@@ -15,7 +15,7 @@ use tokio::task;
 pub mod prelude {
 	pub use tracing::{debug, error, info, instrument, trace, warn};
 
-	pub use crate::{app::AppState, models::PatrDeployment};
+	pub use crate::{app::AppState, models::PatrDeployment, utils::KubeApiExt};
 }
 
 /// All app state that is shared across the entire application. Used to share
@@ -30,6 +30,8 @@ mod constants;
 mod deployment;
 /// All models used by the controller, including CRDs, requests, responses, etc.
 mod models;
+/// Utility functions used by the controller.
+mod utils;
 
 #[tokio::main]
 async fn main() {

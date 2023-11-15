@@ -168,6 +168,12 @@ pub struct DeploymentProbe {
 #[derive(Debug, Copy, Clone, Default, PartialEq, Eq, JsonSchema)]
 pub struct PatrRegistry;
 
+impl Display for PatrRegistry {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", constants::CONTAINER_REGISTRY_URL)
+	}
+}
+
 struct PatrRegistryVisitor;
 
 impl<'de> Deserialize<'de> for PatrRegistry {

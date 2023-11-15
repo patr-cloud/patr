@@ -5,7 +5,7 @@ macros::declare_api_endpoint!(
 	CreateContainerRepository,
 	POST "/workspace/:workspace_id/container-registry" {
 		/// The workspace to create the container repository in.
-		workspace_id: Uuid,
+		pub workspace_id: Uuid,
 	},
 	request_headers = {
 		/// The authorization token

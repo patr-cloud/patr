@@ -3,16 +3,62 @@ use std::{collections::BTreeMap, sync::Arc, time::Duration};
 use futures::{future, FutureExt, StreamExt};
 use k8s_openapi::{
 	api::{
-		apps::v1::{Deployment as KubeDeployment, StatefulSet},
-		autoscaling::v2::HorizontalPodAutoscaler,
-		core::v1::{ConfigMap, PersistentVolumeClaim, Service},
-		networking::v1::Ingress,
+		apps::v1::{
+			Deployment as KubeDeployment,
+			DeploymentSpec,
+			DeploymentStrategy,
+			RollingUpdateDeployment,
+			StatefulSet,
+			StatefulSetSpec,
+			StatefulSetUpdateStrategy,
+		},
+		autoscaling::v1::{
+			CrossVersionObjectReference,
+			HorizontalPodAutoscaler,
+			HorizontalPodAutoscalerSpec,
+		},
+		core::v1::{
+			ConfigMap,
+			ConfigMapVolumeSource,
+			Container,
+			ContainerPort,
+			EnvVar,
+			HTTPGetAction,
+			KeyToPath,
+			LocalObjectReference,
+			PersistentVolumeClaim,
+			PersistentVolumeClaimSpec,
+			PodSpec,
+			PodTemplateSpec,
+			Probe,
+			ResourceRequirements,
+			Service,
+			ServicePort,
+			ServiceSpec,
+			Volume,
+			VolumeMount,
+		},
+		networking::v1::{
+			HTTPIngressPath,
+			HTTPIngressRuleValue,
+			Ingress,
+			IngressBackend,
+			IngressRule,
+			IngressServiceBackend,
+			IngressSpec,
+			ServiceBackendPort,
+		},
+		policy::v1::{PodDisruptionBudget, PodDisruptionBudgetSpec},
 	},
-	apimachinery::pkg::api::resource::Quantity,
+	apimachinery::pkg::{
+		api::resource::Quantity,
+		apis::meta::v1::LabelSelector,
+		util::intstr::IntOrString,
+	},
 	ByteString,
 };
 use kube::{
-	api::{Patch, PatchParams, Resource, DeleteParams, PropagationPolicy},
+	api::{DeleteParams, Patch, PatchParams, PropagationPolicy, Resource},
 	core::ObjectMeta,
 	runtime::{
 		controller::{Action, Controller},
@@ -23,6 +69,9 @@ use kube::{
 };
 use models::{
 	api::workspace::infrastructure::deployment::{
+		DeploymentRegistry,
+		EnvironmentVariableValue,
+		ExposedPortType,
 		ListAllDeploymentMachineTypePath,
 		ListAllDeploymentMachineTypeRequest,
 	},
@@ -232,525 +281,547 @@ async fn reconcile(
 			.await?;
 	}
 
-	// let mut volume_mounts: Vec<VolumeMount> = Vec::new();
-	// let mut volumes: Vec<Volume> = Vec::new();
-	// let mut pvc: Vec<PersistentVolumeClaim> = Vec::new();
+	let mut volume_mounts = Vec::new();
+	let mut volumes = Vec::new();
+	let mut pvc = Vec::new();
 
-	// if !running_details.config_mounts.is_empty() {
-	// 	volume_mounts.push(VolumeMount {
-	// 		name: "config-mounts".to_string(),
-	// 		mount_path: "/etc/config".to_string(),
-	// 		..VolumeMount::default()
-	// 	});
-	// 	volumes.push(Volume {
-	// 		name: "config-mounts".to_string(),
-	// 		config_map: Some(ConfigMapVolumeSource {
-	// 			name: Some(format!("config-mount-{}", deployment.id)),
-	// 			items: Some(
-	// 				running_details
-	// 					.config_mounts
-	// 					.keys()
-	// 					.map(|path| KeyToPath {
-	// 						key: path.clone(),
-	// 						path: path.clone(),
-	// 						..KeyToPath::default()
-	// 					})
-	// 					.collect(),
-	// 			),
-	// 			..ConfigMapVolumeSource::default()
-	// 		}),
-	// 		..Volume::default()
-	// 	})
-	// }
+	if !spec.running_details.config_mounts.is_empty() {
+		volume_mounts.push(VolumeMount {
+			name: "config-mounts".to_string(),
+			mount_path: "/etc/config".to_string(),
+			..VolumeMount::default()
+		});
+		volumes.push(Volume {
+			name: "config-mounts".to_string(),
+			config_map: Some(ConfigMapVolumeSource {
+				name: Some(format!("config-mount-{}", spec.deployment.id)),
+				items: Some(
+					spec.running_details
+						.config_mounts
+						.keys()
+						.map(|path| KeyToPath {
+							key: path.clone(),
+							path: path.clone(),
+							..KeyToPath::default()
+						})
+						.collect(),
+				),
+				..ConfigMapVolumeSource::default()
+			}),
+			..Volume::default()
+		})
+	}
 
-	// for volume in deployment_volumes {
-	// 	volume_mounts.push(VolumeMount {
-	// 		name: format!("pvc-{}", volume.volume_id),
-	// 		// make sure user does not have the mount_path in the directory
-	// 		// in the fs, by my observation it gives crashLoopBackOff error
-	// 		mount_path: volume.path.to_string(),
-	// 		..VolumeMount::default()
-	// 	});
+	for volume in deployment_volumes {
+		volume_mounts.push(VolumeMount {
+			name: format!("pvc-{}", volume.volume_id),
+			// make sure user does not have the mount_path in the directory
+			// in the fs, by my observation it gives crashLoopBackOff error
+			mount_path: volume.path.to_string(),
+			..VolumeMount::default()
+		});
 
-	// 	let storage_limit = [(
-	// 		"storage".to_string(),
-	// 		Quantity(format!("{}Gi", volume.size)),
-	// 	)]
-	// 	.into_iter()
-	// 	.collect::<BTreeMap<_, _>>();
+		let storage_limit = [(
+			"storage".to_string(),
+			Quantity(format!("{}Gi", volume.size)),
+		)]
+		.into_iter()
+		.collect::<BTreeMap<_, _>>();
 
-	// 	pvc.push(PersistentVolumeClaim {
-	// 		metadata: ObjectMeta {
-	// 			name: Some(format!("pvc-{}", volume.volume_id)),
-	// 			namespace: Some(workspace_id.to_string()),
-	// 			..ObjectMeta::default()
-	// 		},
-	// 		spec: Some(PersistentVolumeClaimSpec {
-	// 			access_modes: Some(vec!["ReadWriteOnce".to_string()]),
-	// 			resources: Some(ResourceRequirements {
-	// 				requests: Some(storage_limit),
-	// 				..ResourceRequirements::default()
-	// 			}),
-	// 			..PersistentVolumeClaimSpec::default()
-	// 		}),
-	// 		..PersistentVolumeClaim::default()
-	// 	});
-	// }
+		pvc.push(PersistentVolumeClaim {
+			metadata: ObjectMeta {
+				name: Some(format!("pvc-{}", volume.volume_id)),
+				namespace: Some(namespace.to_string()),
+				..ObjectMeta::default()
+			},
+			spec: Some(PersistentVolumeClaimSpec {
+				access_modes: Some(vec!["ReadWriteOnce".to_string()]),
+				resources: Some(ResourceRequirements {
+					requests: Some(storage_limit),
+					..ResourceRequirements::default()
+				}),
+				..PersistentVolumeClaimSpec::default()
+			}),
+			..PersistentVolumeClaim::default()
+		});
+	}
 
-	// trace!("Creating deployment service");
+	trace!("Creating deployment service");
 
-	// Api::<Service>::namespaced(ctx.client.clone(), namespace)
-	// 	.patch(
-	// 		&format!("service-{}", deployment.id),
-	// 		&PatchParams::apply(&format!("service-{}", deployment.id)),
-	// 		&Patch::Apply(Service {
-	// 			metadata: ObjectMeta {
-	// 				name: Some(format!("service-{}", deployment.id)),
-	// 				owner_references: Some(vec![owner_reference.clone()]),
-	// 				..ObjectMeta::default()
-	// 			},
-	// 			spec: Some(ServiceSpec {
-	// 				ports: Some(
-	// 					running_details
-	// 						.ports
-	// 						.keys()
-	// 						.map(|port| ServicePort {
-	// 							port: port.value() as i32,
-	// 							target_port: Some(IntOrString::Int(port.value() as i32)),
-	// 							name: Some(format!("port-{}", port)),
-	// 							..ServicePort::default()
-	// 						})
-	// 						.collect::<Vec<_>>(),
-	// 				),
-	// 				selector: Some(todo!()),
-	// 				cluster_ip: if running_details.volumes.is_empty() {
-	// 					None
-	// 				} else {
-	// 					Some("None".to_string())
-	// 				},
-	// 				..ServiceSpec::default()
-	// 			}),
-	// 			..Service::default()
-	// 		}),
-	// 	)
-	// 	.await?;
+	Api::<Service>::namespaced(ctx.client.clone(), namespace)
+		.patch(
+			&format!("service-{}", spec.deployment.id),
+			&PatchParams::apply(&format!("service-{}", spec.deployment.id)),
+			&Patch::Apply(Service {
+				metadata: ObjectMeta {
+					name: Some(format!("service-{}", spec.deployment.id)),
+					owner_references: Some(vec![owner_reference.clone()]),
+					..ObjectMeta::default()
+				},
+				spec: Some(ServiceSpec {
+					ports: Some(
+						spec.running_details
+							.ports
+							.keys()
+							.map(|port| ServicePort {
+								port: port.value() as i32,
+								target_port: Some(IntOrString::Int(port.value() as i32)),
+								name: Some(format!("port-{}", port)),
+								..ServicePort::default()
+							})
+							.collect::<Vec<_>>(),
+					),
+					selector: Some(labels.clone()),
+					cluster_ip: if spec.running_details.volumes.is_empty() {
+						None
+					} else {
+						Some("None".to_string())
+					},
+					..ServiceSpec::default()
+				}),
+				..Service::default()
+			}),
+		)
+		.await?;
 
-	// let metadata = ObjectMeta {
-	// 	name: Some(format!(
-	// 		"{}-{}",
-	// 		if running_details.volumes.is_empty() {
-	// 			"deployment"
-	// 		} else {
-	// 			"sts"
-	// 		},
-	// 		deployment.id
-	// 	)),
-	// 	namespace: Some(namespace.to_string()),
-	// 	labels: Some(labels.clone()),
-	// 	..ObjectMeta::default()
-	// };
-	// let replicas = Some(running_details.min_horizontal_scale as i32);
-	// let selector = LabelSelector {
-	// 	match_expressions: None,
-	// 	match_labels: Some(labels.clone()),
-	// };
-	// let template = PodTemplateSpec {
-	// 	spec: Some(PodSpec {
-	// 		containers: vec![Container {
-	// 			name: format!(
-	// 				"{}-{}",
-	// 				if running_details.volumes.is_empty() {
-	// 					"deployment"
-	// 				} else {
-	// 					"sts"
-	// 				},
-	// 				deployment.id
-	// 			),
-	// 			image: Some(image_name),
-	// 			image_pull_policy: Some("Always".to_string()),
-	// 			ports: Some(
-	// 				running_details
-	// 					.ports
-	// 					.keys()
-	// 					.map(|port| ContainerPort {
-	// 						container_port: port.value() as i32,
-	// 						..ContainerPort::default()
-	// 					})
-	// 					.collect::<Vec<_>>(),
-	// 			),
-	// 			startup_probe: running_details.startup_probe.as_ref().map(|probe| Probe {
-	// 				http_get: Some(HTTPGetAction {
-	// 					path: Some(probe.path.clone()),
-	// 					port: IntOrString::Int(probe.port as i32),
-	// 					scheme: Some("HTTP".to_string()),
-	// 					..HTTPGetAction::default()
-	// 				}),
-	// 				failure_threshold: Some(15),
-	// 				period_seconds: Some(10),
-	// 				timeout_seconds: Some(3),
-	// 				..Probe::default()
-	// 			}),
-	// 			liveness_probe: running_details.liveness_probe.as_ref().map(|probe| Probe {
-	// 				http_get: Some(HTTPGetAction {
-	// 					path: Some(probe.path.clone()),
-	// 					port: IntOrString::Int(probe.port as i32),
-	// 					scheme: Some("HTTP".to_string()),
-	// 					..HTTPGetAction::default()
-	// 				}),
-	// 				failure_threshold: Some(15),
-	// 				period_seconds: Some(10),
-	// 				timeout_seconds: Some(3),
-	// 				..Probe::default()
-	// 			}),
-	// 			env: Some(
-	// 				running_details
-	// 					.environment_variables
-	// 					.iter()
-	// 					.map(|(name, value)| {
-	// 						use EnvironmentVariableValue::*;
-	// 						EnvVar {
-	// 							name: name.clone(),
-	// 							value: Some(match value {
-	// 								String(value) => value.clone(),
-	// 								Secret { from_secret } => {
-	// 									format!(
-	// 										"vault:secret/data/{}/{}#data",
-	// 										workspace_id, from_secret
-	// 									)
-	// 								}
-	// 							}),
-	// 							..EnvVar::default()
-	// 						}
-	// 					})
-	// 					.chain([
-	// 						EnvVar {
-	// 							name: "PATR".to_string(),
-	// 							value: Some("true".to_string()),
-	// 							..EnvVar::default()
-	// 						},
-	// 						EnvVar {
-	// 							name: "WORKSPACE_ID".to_string(),
-	// 							value: Some(workspace_id.to_string()),
-	// 							..EnvVar::default()
-	// 						},
-	// 						EnvVar {
-	// 							name: "DEPLOYMENT_ID".to_string(),
-	// 							value: Some(deployment.id.to_string()),
-	// 							..EnvVar::default()
-	// 						},
-	// 						EnvVar {
-	// 							name: "DEPLOYMENT_NAME".to_string(),
-	// 							value: Some(deployment.name.clone()),
-	// 							..EnvVar::default()
-	// 						},
-	// 						EnvVar {
-	// 							name: "CONFIG_MAP_HASH".to_string(),
-	// 							value: Some(config_map_hash),
-	// 							..EnvVar::default()
-	// 						},
-	// 					])
-	// 					.chain(
-	// 						if deployed_region.is_byoc_region() {
-	// 							itertools::Either::Left([
-	// 								EnvVar {
-	// 									name: "VAULT_AUTH_METHOD".to_string(),
-	// 									value: Some("token".to_string()),
-	// 									..EnvVar::default()
-	// 								},
-	// 								EnvVar {
-	// 									name: "VAULT_TOKEN".to_string(),
-	// 									value_from: Some(EnvVarSource {
-	// 										secret_key_ref: Some(SecretKeySelector {
-	// 											name: Some(PATR_BYOC_TOKEN_NAME.to_string()),
-	// 											key: PATR_BYOC_TOKEN_VALUE_NAME.to_string(),
-	// 											..Default::default()
-	// 										}),
-	// 										..Default::default()
-	// 									}),
-	// 									..Default::default()
-	// 								},
-	// 							])
-	// 						} else {
-	// 							itertools::Either::Right([])
-	// 						}
-	// 						.into_iter(),
-	// 					)
-	// 					.collect::<Vec<_>>(),
-	// 			),
-	// 			resources: Some(ResourceRequirements {
-	// 				limits: Some(machine_type),
-	// 				// https://blog.kubecost.com/blog/requests-and-limits/#the-tradeoffs
-	// 				// using too low values for resource request
-	// 				// will result in frequent pod restarts if
-	// 				// memory usage increases and may result in
-	// 				// starvation
-	// 				//
-	// 				// currently used 5% of the mininum deployment
-	// 				// machine type as a request values
-	// 				requests: Some(
-	// 					[
-	// 						("memory".to_string(), Quantity("25M".to_owned())),
-	// 						("cpu".to_string(), Quantity("50m".to_owned())),
-	// 					]
-	// 					.into_iter()
-	// 					.collect(),
-	// 				),
-	// 			}),
-	// 			volume_mounts: if !volume_mounts.is_empty() {
-	// 				Some(volume_mounts)
-	// 			} else {
-	// 				None
-	// 			},
-	// 			..Container::default()
-	// 		}],
-	// 		volumes: if !volumes.is_empty() {
-	// 			Some(volumes)
-	// 		} else {
-	// 			None
-	// 		},
-	// 		image_pull_secrets: deployment.registry.is_patr_registry().then(|| {
-	// 			// TODO: for now patr registry is not supported
-	// 			// for user clusters, need to create a separate
-	// 			// secret for each private repo in future
-	// 			vec![LocalObjectReference {
-	// 				name: Some("patr-regcred".to_string()),
-	// 			}]
-	// 		}),
-	// 		..PodSpec::default()
-	// 	}),
-	// 	metadata: Some(ObjectMeta {
-	// 		labels: Some(labels.clone()),
-	// 		annotations: Some(annotations),
-	// 		..ObjectMeta::default()
-	// 	}),
-	// };
+	let image_name = match spec.deployment.registry {
+		DeploymentRegistry::PatrRegistry {
+			registry,
+			repository_id,
+		} => {
+			let repository = make_request(
+				ApiRequest::<GetContainerRepositoryRequest>::builder()
+					.path(GetRepositoryPath { repository_id })
+					.headers(())
+					.query(())
+					.body(())
+					.build(),
+			)
+			.await?
+			.body
+			.repository;
 
-	// if running_details.volumes.is_empty() {
-	// 	let kubernetes_deployment = K8sDeployment {
-	// 		metadata,
-	// 		spec: Some(DeploymentSpec {
-	// 			replicas,
-	// 			selector,
-	// 			template,
-	// 			strategy: Some(DeploymentStrategy {
-	// 				type_: Some("RollingUpdate".to_owned()),
-	// 				rolling_update: Some(RollingUpdateDeployment {
-	// 					max_surge: Some(IntOrString::Int(1)),
-	// 					max_unavailable: Some(IntOrString::String("25%".to_owned())),
-	// 				}),
-	// 			}),
-	// 			..DeploymentSpec::default()
-	// 		}),
-	// 		..K8sDeployment::default()
-	// 	};
+			format!("{}/{}", registry, repository.name)
+		}
+		DeploymentRegistry::ExternalRegistry {
+			registry,
+			image_name,
+		} => format!("{}/{}", registry, image_name),
+	};
 
-	// 	// Create the deployment defined above
-	// 	trace!("creating deployment", request_id);
-	// 	let deployment_api =
-	// Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace);
+	let image_name = if let Some(current_live_digest) = spec.deployment.current_live_digest {
+		format!("{}@{}", image_name, current_live_digest)
+	} else {
+		format!("{}:{}", image_name, spec.deployment.image_tag)
+	};
 
-	// 	deployment_api
-	// 		.patch(
-	// 			&format!("deployment-{}", deployment.id),
-	// 			&PatchParams::apply(&format!("deployment-{}", deployment.id)),
-	// 			&Patch::Apply(kubernetes_deployment),
-	// 		)
-	// 		.await?;
+	let metadata = ObjectMeta {
+		name: Some(format!(
+			"{}-{}",
+			if spec.running_details.volumes.is_empty() {
+				"deployment"
+			} else {
+				"sts"
+			},
+			spec.deployment.id
+		)),
+		namespace: Some(namespace.to_string()),
+		labels: Some(labels.clone()),
+		..ObjectMeta::default()
+	};
+	let replicas = Some(spec.running_details.min_horizontal_scale.into());
+	let selector = LabelSelector {
+		match_expressions: None,
+		match_labels: Some(labels.clone()),
+	};
+	let template =
+		PodTemplateSpec {
+			spec: Some(PodSpec {
+				containers: vec![Container {
+					name: format!(
+						"{}-{}",
+						if spec.running_details.volumes.is_empty() {
+							"deployment"
+						} else {
+							"sts"
+						},
+						spec.deployment.id
+					),
+					image: Some(image_name),
+					image_pull_policy: Some("Always".to_string()),
+					ports: Some(
+						spec.running_details
+							.ports
+							.keys()
+							.map(|port| ContainerPort {
+								container_port: port.value().into(),
+								..ContainerPort::default()
+							})
+							.collect::<Vec<_>>(),
+					),
+					startup_probe: spec
+						.running_details
+						.startup_probe
+						.as_ref()
+						.map(|probe| Probe {
+							http_get: Some(HTTPGetAction {
+								path: Some(probe.path.clone()),
+								port: IntOrString::Int(probe.port as i32),
+								scheme: Some("HTTP".to_string()),
+								..HTTPGetAction::default()
+							}),
+							failure_threshold: Some(15),
+							period_seconds: Some(10),
+							timeout_seconds: Some(3),
+							..Probe::default()
+						}),
+					liveness_probe: spec.running_details.liveness_probe.as_ref().map(|probe| {
+						Probe {
+							http_get: Some(HTTPGetAction {
+								path: Some(probe.path.clone()),
+								port: IntOrString::Int(probe.port as i32),
+								scheme: Some("HTTP".to_string()),
+								..HTTPGetAction::default()
+							}),
+							failure_threshold: Some(15),
+							period_seconds: Some(10),
+							timeout_seconds: Some(3),
+							..Probe::default()
+						}
+					}),
+					env: Some(
+						spec.running_details
+							.environment_variables
+							.iter()
+							.map(|(name, value)| {
+								use EnvironmentVariableValue::*;
+								EnvVar {
+									name: name.clone(),
+									value: Some(match value {
+										String(value) => value.clone(),
+										Secret { from_secret } => {
+											format!(
+												"vault:secret/data/{}/{}#data",
+												namespace, from_secret
+											)
+										}
+									}),
+									..EnvVar::default()
+								}
+							})
+							.chain([
+								EnvVar {
+									name: "PATR".to_string(),
+									value: Some("true".to_string()),
+									..EnvVar::default()
+								},
+								EnvVar {
+									name: "WORKSPACE_ID".to_string(),
+									value: Some(namespace.to_string()),
+									..EnvVar::default()
+								},
+								EnvVar {
+									name: "DEPLOYMENT_ID".to_string(),
+									value: Some(spec.deployment.id.to_string()),
+									..EnvVar::default()
+								},
+								EnvVar {
+									name: "DEPLOYMENT_NAME".to_string(),
+									value: Some(spec.deployment.name.clone()),
+									..EnvVar::default()
+								},
+								EnvVar {
+									name: "CONFIG_MAP_HASH".to_string(),
+									value: Some(config_map_hash),
+									..EnvVar::default()
+								},
+								EnvVar {
+									name: "VAULT_AUTH_METHOD".to_string(),
+									value: Some("token".to_string()),
+									..EnvVar::default()
+								},
+								EnvVar {
+									name: "VAULT_TOKEN".to_string(),
+									value: Some(ctx.patr_token.clone()),
+									..Default::default()
+								},
+							])
+							.collect::<Vec<_>>(),
+					),
+					resources: Some(ResourceRequirements {
+						limits: Some(machine_type),
+						// https://blog.kubecost.com/blog/requests-and-limits/#the-tradeoffs
+						// using too low values for resource request
+						// will result in frequent pod restarts if
+						// memory usage increases and may result in
+						// starvation
+						//
+						// currently used 5% of the mininum deployment
+						// machine type as a request values
+						requests: Some(
+							[
+								("memory".to_string(), Quantity("25M".to_owned())),
+								("cpu".to_string(), Quantity("50m".to_owned())),
+							]
+							.into_iter()
+							.collect(),
+						),
+					}),
+					volume_mounts: if !volume_mounts.is_empty() {
+						Some(volume_mounts)
+					} else {
+						None
+					},
+					..Container::default()
+				}],
+				volumes: if !volumes.is_empty() {
+					Some(volumes)
+				} else {
+					None
+				},
+				image_pull_secrets: spec.deployment.registry.is_patr_registry().then(|| {
+					// TODO: for now patr registry is not supported
+					// for user clusters, need to create a separate
+					// secret for each private repo in future
+					vec![LocalObjectReference {
+						name: Some("patr-regcred".to_string()),
+					}]
+				}),
+				..PodSpec::default()
+			}),
+			metadata: Some(ObjectMeta {
+				labels: Some(labels.clone()),
+				annotations: Some(annotations),
+				..ObjectMeta::default()
+			}),
+		};
 
-	// 	// This is because if a user wanted to delete the volume from there sts
-	// 	// then a sts will be converted to deployment
-	// 	trace!("deleting the stateful set if there are any");
+	if spec.running_details.volumes.is_empty() {
+		let kubernetes_deployment = KubeDeployment {
+			metadata,
+			spec: Some(DeploymentSpec {
+				replicas,
+				selector,
+				template,
+				strategy: Some(DeploymentStrategy {
+					type_: Some("RollingUpdate".to_owned()),
+					rolling_update: Some(RollingUpdateDeployment {
+						max_surge: Some(IntOrString::Int(1)),
+						max_unavailable: Some(IntOrString::String("25%".to_owned())),
+					}),
+				}),
+				..DeploymentSpec::default()
+			}),
+			..KubeDeployment::default()
+		};
 
-	// 	Api::<StatefulSet>::namespaced(kubernetes_client.clone(),
-	// workspace_id.as_str()) 		.delete_opt(&format!("sts-{}", deployment.id),
-	// &DeleteParams::default()) 		.await?;
+		// Create the deployment defined above
+		trace!("creating deployment");
+		let deployment_api = Api::<KubeDeployment>::namespaced(ctx.client.clone(), namespace);
 
-	// 	// HPA - horizontal pod autoscaler
-	// 	let kubernetes_hpa = HorizontalPodAutoscaler {
-	// 		metadata: ObjectMeta {
-	// 			name: Some(format!("hpa-{}", deployment.id)),
-	// 			namespace: Some(namespace.to_string()),
-	// 			..ObjectMeta::default()
-	// 		},
-	// 		spec: Some(HorizontalPodAutoscalerSpec {
-	// 			scale_target_ref: CrossVersionObjectReference {
-	// 				api_version: Some("apps/v1".to_string()),
-	// 				kind: "Deployment".to_string(),
-	// 				name: format!("deployment-{}", deployment.id),
-	// 			},
-	// 			min_replicas: Some(running_details.min_horizontal_scale.into()),
-	// 			max_replicas: running_details.max_horizontal_scale.into(),
-	// 			target_cpu_utilization_percentage: Some(80),
-	// 		}),
-	// 		..HorizontalPodAutoscaler::default()
-	// 	};
+		deployment_api
+			.patch(
+				&format!("deployment-{}", spec.deployment.id),
+				&PatchParams::apply(&format!("deployment-{}", spec.deployment.id)),
+				&Patch::Apply(kubernetes_deployment),
+			)
+			.await?;
 
-	// 	// Create the HPA defined above
-	// 	trace!("creating horizontal pod autoscalar");
-	// 	let hpa_api =
-	// 		Api::<HorizontalPodAutoscaler>::namespaced(kubernetes_client.clone(),
-	// namespace);
+		// This is because if a user wanted to delete the volume from there sts
+		// then a sts will be converted to deployment
+		trace!("deleting the stateful set if there are any");
 
-	// 	hpa_api
-	// 		.patch(
-	// 			&format!("hpa-{}", deployment.id),
-	// 			&PatchParams::apply(&format!("hpa-{}", deployment.id)),
-	// 			&Patch::Apply(kubernetes_hpa),
-	// 		)
-	// 		.await?;
-	// } else {
-	// 	let kubernetes_sts = StatefulSet {
-	// 		metadata,
-	// 		spec: Some(StatefulSetSpec {
-	// 			replicas,
-	// 			selector,
-	// 			service_name: format!("service-{}", deployment.id),
-	// 			template,
-	// 			update_strategy: Some(StatefulSetUpdateStrategy {
-	// 				type_: Some("RollingUpdate".to_owned()),
-	// 				..StatefulSetUpdateStrategy::default()
-	// 			}),
-	// 			volume_claim_templates: Some(pvc),
-	// 			..StatefulSetSpec::default()
-	// 		}),
-	// 		..StatefulSet::default()
-	// 	};
+		Api::<StatefulSet>::namespaced(ctx.client.clone(), namespace)
+			.delete_opt(
+				&format!("sts-{}", spec.deployment.id),
+				&DeleteParams::default(),
+			)
+			.await?;
 
-	// 	// Create the statefulset defined above
-	// 	trace!("creating statefulset", request_id);
-	// 	let sts_api = Api::<StatefulSet>::namespaced(kubernetes_client.clone(),
-	// namespace);
+		// HPA - horizontal pod autoscaler
+		let kubernetes_hpa = HorizontalPodAutoscaler {
+			metadata: ObjectMeta {
+				name: Some(format!("hpa-{}", spec.deployment.id)),
+				namespace: Some(namespace.to_string()),
+				..ObjectMeta::default()
+			},
+			spec: Some(HorizontalPodAutoscalerSpec {
+				scale_target_ref: CrossVersionObjectReference {
+					api_version: Some("apps/v1".to_string()),
+					kind: "Deployment".to_string(),
+					name: format!("deployment-{}", spec.deployment.id),
+				},
+				min_replicas: Some(spec.running_details.min_horizontal_scale.into()),
+				max_replicas: spec.running_details.max_horizontal_scale.into(),
+				target_cpu_utilization_percentage: Some(80),
+			}),
+			..HorizontalPodAutoscaler::default()
+		};
 
-	// 	sts_api
-	// 		.patch(
-	// 			&format!("sts-{}", deployment.id),
-	// 			&PatchParams::apply(&format!("sts-{}", deployment.id)),
-	// 			&Patch::Apply(kubernetes_sts),
-	// 		)
-	// 		.await?;
+		// Create the HPA defined above
+		trace!("creating horizontal pod autoscalar");
+		let hpa_api = Api::<HorizontalPodAutoscaler>::namespaced(ctx.client.clone(), namespace);
 
-	// 	// This is because if a user wanted to add the volume to there
-	// 	// deployment then a deployment will be converted to sts
-	// 	trace!("deleting the deployment set if there are any");
+		hpa_api
+			.patch(
+				&format!("hpa-{}", spec.deployment.id),
+				&PatchParams::apply(&format!("hpa-{}", spec.deployment.id)),
+				&Patch::Apply(kubernetes_hpa),
+			)
+			.await?;
+	} else {
+		let kubernetes_sts = StatefulSet {
+			metadata,
+			spec: Some(StatefulSetSpec {
+				replicas,
+				selector,
+				service_name: format!("service-{}", spec.deployment.id),
+				template,
+				update_strategy: Some(StatefulSetUpdateStrategy {
+					type_: Some("RollingUpdate".to_owned()),
+					..StatefulSetUpdateStrategy::default()
+				}),
+				volume_claim_templates: Some(pvc),
+				..StatefulSetSpec::default()
+			}),
+			..StatefulSet::default()
+		};
 
-	// 	Api::<K8sDeployment>::namespaced(kubernetes_client.clone(),
-	// workspace_id.as_str()) 		.delete_opt(
-	// 			&format!("deployment-{}", deployment.id),
-	// 			&DeleteParams::default(),
-	// 		)
-	// 		.await?;
+		// Create the statefulset defined above
+		trace!("creating statefulset");
+		let sts_api = Api::<StatefulSet>::namespaced(ctx.client.clone(), namespace);
 
-	// 	// Delete the HPA, if any
-	// 	trace!("deleting horizontal pod autoscalar");
-	// 	let hpa_api =
-	// 		Api::<HorizontalPodAutoscaler>::namespaced(kubernetes_client.clone(),
-	// namespace);
+		sts_api
+			.patch(
+				&format!("sts-{}", spec.deployment.id),
+				&PatchParams::apply(&format!("sts-{}", spec.deployment.id)),
+				&Patch::Apply(kubernetes_sts),
+			)
+			.await?;
 
-	// 	hpa_api
-	// 		.delete_opt(&format!("hpa-{}", deployment.id), &DeleteParams::default())
-	// 		.await?;
-	// }
+		// This is because if a user wanted to add the volume to there
+		// deployment then a deployment will be converted to sts
+		trace!("deleting the deployment set if there are any");
 
-	// // For a deployment has more than one replica, then only we can use
-	// // pod-disruption-budget to move pods between nodes without any down time.
-	// // Even with hpa of max=4 but min=1 if the number of pods currently running
-	// // is 1, then it will block the node drain
-	// if running_details.min_horizontal_scale > 1 {
-	// 	// Create pdb for deployment alone
-	// 	// For sts, we can't use pdb as it involves state handling
-	// 	// see: https://kubernetes.io/docs/tasks/run-application/configure-pdb/#think-about-how-your-application-reacts-to-disruptions
-	// 	trace!("creating pod disruption budget");
+		Api::<KubeDeployment>::namespaced(ctx.client.clone(), namespace)
+			.delete_opt(
+				&format!("deployment-{}", spec.deployment.id),
+				&DeleteParams::default(),
+			)
+			.await?;
 
-	// 	let pdb = PodDisruptionBudget {
-	// 		metadata: ObjectMeta {
-	// 			name: Some(format!("pdb-{}", deployment.id)),
-	// 			namespace: Some(namespace.to_string()),
-	// 			labels: Some(labels.clone()),
-	// 			..Default::default()
-	// 		},
-	// 		spec: Some(PodDisruptionBudgetSpec {
-	// 			selector: Some(LabelSelector {
-	// 				match_labels: Some(labels.clone()),
-	// 				..Default::default()
-	// 			}),
-	// 			min_available: Some(IntOrString::String("50%".to_owned())),
-	// 			..Default::default()
-	// 		}),
-	// 		..Default::default()
-	// 	};
+		// Delete the HPA, if any
+		trace!("deleting horizontal pod autoscalar");
+		let hpa_api = Api::<HorizontalPodAutoscaler>::namespaced(ctx.client.clone(), namespace);
 
-	// 	Api::<PodDisruptionBudget>::namespaced(kubernetes_client.clone(), namespace)
-	// 		.patch(
-	// 			&format!("pdb-{}", deployment.id),
-	// 			&PatchParams::apply(&format!("pdb-{}", deployment.id)),
-	// 			&Patch::Apply(pdb),
-	// 		)
-	// 		.await?;
-	// } else {
-	// 	trace!("min replica is not more than one, so deleting the pdb (if present)");
+		hpa_api
+			.delete_opt(
+				&format!("hpa-{}", spec.deployment.id),
+				&DeleteParams::default(),
+			)
+			.await?;
+	}
 
-	// 	Api::<PodDisruptionBudget>::namespaced(kubernetes_client.clone(), namespace)
-	// 		.delete_opt(&format!("pdb-{}", deployment.id), &DeleteParams::default())
-	// 		.await?;
-	// }
+	// For a deployment has more than one replica, then only we can use
+	// pod-disruption-budget to move pods between nodes without any down time.
+	// Even with hpa of max=4 but min=1 if the number of pods currently running
+	// is 1, then it will block the node drain
+	if spec.running_details.min_horizontal_scale > 1 {
+		// Create pdb for deployment alone
+		// For sts, we can't use pdb as it involves state handling
+		// see: https://kubernetes.io/docs/tasks/run-application/configure-pdb/#think-about-how-your-application-reacts-to-disruptions
+		trace!("creating pod disruption budget");
 
-	// let annotations = [(
-	// 	"kubernetes.io/ingress.class".to_string(),
-	// 	"nginx".to_string(),
-	// )]
-	// .into();
+		let pdb = PodDisruptionBudget {
+			metadata: ObjectMeta {
+				name: Some(format!("pdb-{}", spec.deployment.id)),
+				namespace: Some(namespace.to_string()),
+				labels: Some(labels.clone()),
+				..Default::default()
+			},
+			spec: Some(PodDisruptionBudgetSpec {
+				selector: Some(LabelSelector {
+					match_labels: Some(labels.clone()),
+					..Default::default()
+				}),
+				min_available: Some(IntOrString::String("50%".to_owned())),
+				..Default::default()
+			}),
+			..Default::default()
+		};
 
-	// // Create the ingress defined above
-	// trace!("creating ingress");
-	// Api::<Ingress>::namespaced(ctx.client.clone(), namespace)
-	// 	.patch(
-	// 		&format!("ingress-{}", deployment.id),
-	// 		&PatchParams::apply(&format!("ingress-{}", deployment.id)),
-	// 		&Patch::Apply(Ingress {
-	// 			metadata: ObjectMeta {
-	// 				name: Some(format!("ingress-{}", deployment.id)),
-	// 				annotations: Some(annotations),
-	// 				..ObjectMeta::default()
-	// 			},
-	// 			spec: Some(IngressSpec {
-	// 				rules: Some(
-	// 					running_details
-	// 						.ports
-	// 						.iter()
-	// 						.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
-	// 						.map(|(port, _)| IngressRule {
-	// 							host: Some(format!(
-	// 								"{}-{}.{}.{}",
-	// 								port,
-	// 								deployment.id,
-	// 								deployed_region.id,
-	// 								config.cloudflare.onpatr_domain
-	// 							)),
-	// 							http: Some(HTTPIngressRuleValue {
-	// 								paths: vec![HTTPIngressPath {
-	// 									backend: IngressBackend {
-	// 										service: Some(IngressServiceBackend {
-	// 											name: format!("service-{}", deployment.id),
-	// 											port: Some(ServiceBackendPort {
-	// 												number: Some(port.value() as i32),
-	// 												..ServiceBackendPort::default()
-	// 											}),
-	// 										}),
-	// 										..Default::default()
-	// 									},
-	// 									path: Some("/".to_string()),
-	// 									path_type: "Prefix".to_string(),
-	// 								}],
-	// 							}),
-	// 						})
-	// 						.collect(),
-	// 				),
-	// 				..IngressSpec::default()
-	// 			}),
-	// 			..Ingress::default()
-	// 		}),
-	// 	)
-	// 	.await?;
+		Api::<PodDisruptionBudget>::namespaced(ctx.client.clone(), namespace)
+			.patch(
+				&format!("pdb-{}", spec.deployment.id),
+				&PatchParams::apply(&format!("pdb-{}", spec.deployment.id)),
+				&Patch::Apply(pdb),
+			)
+			.await?;
+	} else {
+		trace!("min replica is not more than one, so deleting the pdb (if present)");
+
+		Api::<PodDisruptionBudget>::namespaced(ctx.client.clone(), namespace)
+			.delete_opt(
+				&format!("pdb-{}", spec.deployment.id),
+				&DeleteParams::default(),
+			)
+			.await?;
+	}
+
+	let annotations = [(
+		"kubernetes.io/ingress.class".to_string(),
+		"nginx".to_string(),
+	)]
+	.into();
+
+	// Create the ingress defined above
+	trace!("creating ingress");
+	Api::<Ingress>::namespaced(ctx.client.clone(), namespace)
+		.patch(
+			&format!("ingress-{}", spec.deployment.id),
+			&PatchParams::apply(&format!("ingress-{}", spec.deployment.id)),
+			&Patch::Apply(Ingress {
+				metadata: ObjectMeta {
+					name: Some(format!("ingress-{}", spec.deployment.id)),
+					annotations: Some(annotations),
+					..ObjectMeta::default()
+				},
+				spec: Some(IngressSpec {
+					rules: Some(
+						spec.running_details
+							.ports
+							.iter()
+							.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
+							.map(|(port, _)| IngressRule {
+								host: Some(format!(
+									"{}-{}.{}.onpatr.cloud",
+									port, spec.deployment.id, ctx.region_id,
+								)),
+								http: Some(HTTPIngressRuleValue {
+									paths: vec![HTTPIngressPath {
+										backend: IngressBackend {
+											service: Some(IngressServiceBackend {
+												name: format!("service-{}", spec.deployment.id),
+												port: Some(ServiceBackendPort {
+													number: Some(port.value().into()),
+													..ServiceBackendPort::default()
+												}),
+											}),
+											..Default::default()
+										},
+										path: Some("/".to_string()),
+										path_type: "Prefix".to_string(),
+									}],
+								}),
+							})
+							.collect(),
+					),
+					..IngressSpec::default()
+				}),
+				..Ingress::default()
+			}),
+		)
+		.await?;
 
 	Ok(Action::requeue(Duration::from_secs(3600)))
 }
