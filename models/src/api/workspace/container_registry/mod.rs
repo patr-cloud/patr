@@ -3,15 +3,16 @@ use time::OffsetDateTime;
 
 mod create_repository;
 // mod delete_repository;
-// mod delete_repository_image;
+mod delete_repository_image;
 // mod get_exposed_port;
 // mod get_repository_image_details;
 // mod get_repository_info;
 // mod get_repository_tag_details;
 // mod list_repositories;
+
 // mod list_repository_tags;
 
-pub use self::create_repository::*;
+pub use self::{create_repository::*, delete_repository_image::*};
 
 /// Represents a repository of container images in Patr's in-build container
 /// registry.
