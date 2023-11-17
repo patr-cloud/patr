@@ -12,7 +12,8 @@ pub mod domain;
 /// infrastructure
 pub mod infrastructure;
 // pub mod rbac;
-// pub mod region;
+/// This module contains all the models that corresponds to regions
+pub mod region;
 // pub mod secret;
 
 mod create_workspace;
