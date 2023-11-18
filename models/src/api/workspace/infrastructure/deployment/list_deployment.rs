@@ -21,6 +21,10 @@ macros::declare_api_endpoint!(
 		}
 	},
 	pagination = true,
+	response_headers = {
+		/// The total number of databases in the requested workspace
+		pub total_count: TotalCountHeader,
+	},
 	response = {
 		/// The list of deployment in the workspace containing:
 		/// name - The deployment name

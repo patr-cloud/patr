@@ -91,7 +91,7 @@ where
 		let mut state = self.state.clone();
 		let mut inner = self.inner.clone();
 		async {
-			let mut redis = &mut state.redis;
+			let redis = &mut state.redis;
 
 			let Ok(mut database) = state.database.begin().await else {
 				debug!("Failed to begin database transaction");
@@ -103,7 +103,7 @@ where
 			let req = AppRequest {
 				request,
 				database: &mut database,
-				redis: &mut redis,
+				redis,
 				client_ip,
 				config: state.config.clone(),
 			};

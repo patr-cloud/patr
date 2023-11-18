@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, sync::Arc, time::Duration};
+use std::{collections::BTreeMap, str::FromStr, sync::Arc, time::Duration};
 
 use futures::{future, FutureExt, StreamExt};
 use k8s_openapi::{
@@ -68,23 +68,51 @@ use kube::{
 	Client,
 };
 use models::{
-	api::workspace::infrastructure::deployment::{
-		DeploymentRegistry,
-		EnvironmentVariableValue,
-		ExposedPortType,
-		ListAllDeploymentMachineTypePath,
-		ListAllDeploymentMachineTypeRequest,
+	api::workspace::{
+		container_registry::{
+			GetContainerRepositoryInfoPath,
+			GetContainerRepositoryInfoRequest,
+			GetContainerRepositoryInfoRequestHeaders,
+		},
+		infrastructure::deployment::{
+			DeploymentRegistry,
+			EnvironmentVariableValue,
+			ExposedPortType,
+			ListAllDeploymentMachineTypePath,
+			ListAllDeploymentMachineTypeRequest,
+		},
 	},
+	utils::{BearerToken, Uuid},
 	ApiRequest,
+	ErrorType,
 };
 use sha2::{Digest, Sha512};
-use tokio::signal;
+use tokio::{
+	signal,
+	sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
+	task,
+	task::JoinHandle,
+};
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
-use crate::{app::AppError, client::make_request, constants, prelude::*};
+use crate::{client::make_request, constants, prelude::*};
 
 /// Starts the deployment controller. This function will ideally run forever,
 /// only exiting when a ctrl-c signal is received.
-pub(super) async fn start_controller(client: Client, state: Arc<AppState>) {
+pub(super) fn start_controller(
+	client: Client,
+	state: Arc<AppState>,
+) -> (UnboundedSender<()>, JoinHandle<()>) {
+	let (sender, receiver) = mpsc::unbounded_channel::<()>();
+	let handle = task::spawn(run_controller(client, state, receiver));
+	(sender, handle)
+}
+
+async fn run_controller(
+	client: Client,
+	state: Arc<AppState>,
+	reconcile_receiver: UnboundedReceiver<()>,
+) {
 	Controller::new(
 		Api::<PatrDeployment>::all(client.clone()),
 		watcher::Config::default(),
@@ -117,6 +145,7 @@ pub(super) async fn start_controller(client: Client, state: Arc<AppState>) {
 		Api::<Ingress>::all(client.clone()),
 		watcher::Config::default(),
 	)
+	.reconcile_all_on(UnboundedReceiverStream::new(reconcile_receiver))
 	.graceful_shutdown_on(signal::ctrl_c().map(|_| ()))
 	.run(reconcile, error_policy, state)
 	.for_each(|_| future::ready(()))
@@ -157,17 +186,13 @@ async fn reconcile(
 
 	trace!("Computing hash of config map data");
 
-	let mut hasher = Sha512::default();
-
-	spec.running_details
-		.config_mounts
-		.iter()
-		.for_each(|(key, value)| {
-			hasher.update(key.as_bytes());
-			hasher.update(value);
-		});
-
-	let config_map_hash = hex::encode(hasher.finalize());
+	let config_map_hash = hex::encode(
+		spec.running_details
+			.config_mounts
+			.values()
+			.fold(Sha512::default(), |acc, value| acc.chain_update(value))
+			.finalize(),
+	);
 	trace!(
 		"Patching ConfigMap for deployment with id: {}",
 		spec.deployment.id
@@ -210,19 +235,6 @@ async fn reconcile(
 	.find(|machine_type| machine_type.id == spec.deployment.machine_type)
 	.ok_or_else(|| AppError::InternalError("invalid machine type".to_string()))?;
 
-	let machine_type = [
-		(
-			"memory".to_string(),
-			Quantity(format!("{:.1}G", (machine_type.memory_count as f64) / 4f64)),
-		),
-		(
-			"cpu".to_string(),
-			Quantity(format!("{:.1}", machine_type.cpu_count as f64)),
-		),
-	]
-	.into_iter()
-	.collect::<BTreeMap<_, _>>();
-
 	trace!("Deploying deployment: {}", spec.deployment.id);
 
 	let labels = [
@@ -241,31 +253,6 @@ async fn reconcile(
 	.collect::<BTreeMap<_, _>>();
 
 	trace!("generating deployment configuration");
-
-	let annotations = [
-		(
-			"vault.security.banzaicloud.io/vault-addr".to_string(),
-			"https://secrets.patr.cloud".to_string(),
-		),
-		(
-			"vault.security.banzaicloud.io/vault-skip-verify".to_string(),
-			"false".to_string(),
-		),
-		(
-			"vault.security.banzaicloud.io/vault-agent".to_string(),
-			"false".to_string(),
-		),
-		(
-			"vault.security.banzaicloud.io/vault-role".to_string(),
-			"vault".to_string(),
-		),
-		(
-			"vault.security.banzaicloud.io/vault-path".to_string(),
-			"kubernetes".to_string(),
-		),
-	]
-	.into_iter()
-	.collect();
 
 	if !spec.running_details.volumes.is_empty() {
 		// Deleting stateful set using orphan flag to update the volumes
@@ -312,7 +299,7 @@ async fn reconcile(
 		})
 	}
 
-	for volume in deployment_volumes {
+	for (_, volume) in spec.running_details.volumes {
 		volume_mounts.push(VolumeMount {
 			name: format!("pvc-{}", volume.volume_id),
 			// make sure user does not have the mount_path in the directory
@@ -321,23 +308,23 @@ async fn reconcile(
 			..VolumeMount::default()
 		});
 
-		let storage_limit = [(
-			"storage".to_string(),
-			Quantity(format!("{}Gi", volume.size)),
-		)]
-		.into_iter()
-		.collect::<BTreeMap<_, _>>();
-
 		pvc.push(PersistentVolumeClaim {
 			metadata: ObjectMeta {
 				name: Some(format!("pvc-{}", volume.volume_id)),
 				namespace: Some(namespace.to_string()),
+				owner_references: Some(vec![owner_reference.clone()]),
 				..ObjectMeta::default()
 			},
 			spec: Some(PersistentVolumeClaimSpec {
 				access_modes: Some(vec!["ReadWriteOnce".to_string()]),
 				resources: Some(ResourceRequirements {
-					requests: Some(storage_limit),
+					requests: Some(
+						[(
+							"storage".to_string(),
+							Quantity(format!("{}Gi", volume.size)),
+						)]
+						.into(),
+					),
 					..ResourceRequirements::default()
 				}),
 				..PersistentVolumeClaimSpec::default()
@@ -390,11 +377,18 @@ async fn reconcile(
 			repository_id,
 		} => {
 			let repository = make_request(
-				ApiRequest::<GetContainerRepositoryRequest>::builder()
-					.path(GetRepositoryPath { repository_id })
-					.headers(())
+				ApiRequest::<GetContainerRepositoryInfoRequest>::builder()
+					.path(GetContainerRepositoryInfoPath {
+						workspace_id: Uuid::parse_str(namespace).unwrap(),
+						repository_id,
+					})
+					.headers(GetContainerRepositoryInfoRequestHeaders {
+						authorization: BearerToken::from_str(&ctx.patr_token).map_err(|err| {
+							ErrorType::server_error(format!("invalid patr token. Error: `{}`", err))
+						})?,
+					})
 					.query(())
-					.body(())
+					.body(GetContainerRepositoryInfoRequest)
 					.build(),
 			)
 			.await?
@@ -427,6 +421,7 @@ async fn reconcile(
 		)),
 		namespace: Some(namespace.to_string()),
 		labels: Some(labels.clone()),
+		owner_references: Some(vec![owner_reference.clone()]),
 		..ObjectMeta::default()
 	};
 	let replicas = Some(spec.running_details.min_horizontal_scale.into());
@@ -549,14 +544,29 @@ async fn reconcile(
 							.collect::<Vec<_>>(),
 					),
 					resources: Some(ResourceRequirements {
-						limits: Some(machine_type),
+						limits: Some(
+							[
+								(
+									"memory".to_string(),
+									Quantity(format!(
+										"{:.1}G",
+										(machine_type.memory_count as f64) / 4f64
+									)),
+								),
+								(
+									"cpu".to_string(),
+									Quantity(format!("{:.1}", machine_type.cpu_count as f64)),
+								),
+							]
+							.into(),
+						),
 						// https://blog.kubecost.com/blog/requests-and-limits/#the-tradeoffs
 						// using too low values for resource request
 						// will result in frequent pod restarts if
 						// memory usage increases and may result in
 						// starvation
 						//
-						// currently used 5% of the mininum deployment
+						// currently used 5% of the minimum deployment
 						// machine type as a request values
 						requests: Some(
 							[
@@ -591,7 +601,32 @@ async fn reconcile(
 			}),
 			metadata: Some(ObjectMeta {
 				labels: Some(labels.clone()),
-				annotations: Some(annotations),
+				annotations: Some(
+					[
+						(
+							"vault.security.banzaicloud.io/vault-addr".to_string(),
+							"https://secrets.patr.cloud".to_string(),
+						),
+						(
+							"vault.security.banzaicloud.io/vault-skip-verify".to_string(),
+							"false".to_string(),
+						),
+						(
+							"vault.security.banzaicloud.io/vault-agent".to_string(),
+							"false".to_string(),
+						),
+						(
+							"vault.security.banzaicloud.io/vault-role".to_string(),
+							"vault".to_string(),
+						),
+						(
+							"vault.security.banzaicloud.io/vault-path".to_string(),
+							"kubernetes".to_string(),
+						),
+					]
+					.into(),
+				),
+				owner_references: Some(vec![owner_reference.clone()]),
 				..ObjectMeta::default()
 			}),
 		};
@@ -643,6 +678,7 @@ async fn reconcile(
 			metadata: ObjectMeta {
 				name: Some(format!("hpa-{}", spec.deployment.id)),
 				namespace: Some(namespace.to_string()),
+				owner_references: Some(vec![owner_reference.clone()]),
 				..ObjectMeta::default()
 			},
 			spec: Some(HorizontalPodAutoscalerSpec {
@@ -659,7 +695,7 @@ async fn reconcile(
 		};
 
 		// Create the HPA defined above
-		trace!("creating horizontal pod autoscalar");
+		trace!("creating horizontal pod autoscaler");
 		let hpa_api = Api::<HorizontalPodAutoscaler>::namespaced(ctx.client.clone(), namespace);
 
 		hpa_api
@@ -687,8 +723,8 @@ async fn reconcile(
 			..StatefulSet::default()
 		};
 
-		// Create the statefulset defined above
-		trace!("creating statefulset");
+		// Create the stateful set defined above
+		trace!("creating stateful set");
 		let sts_api = Api::<StatefulSet>::namespaced(ctx.client.clone(), namespace);
 
 		sts_api
@@ -711,7 +747,7 @@ async fn reconcile(
 			.await?;
 
 		// Delete the HPA, if any
-		trace!("deleting horizontal pod autoscalar");
+		trace!("deleting horizontal pod autoscaler");
 		let hpa_api = Api::<HorizontalPodAutoscaler>::namespaced(ctx.client.clone(), namespace);
 
 		hpa_api
@@ -737,6 +773,7 @@ async fn reconcile(
 				name: Some(format!("pdb-{}", spec.deployment.id)),
 				namespace: Some(namespace.to_string()),
 				labels: Some(labels.clone()),
+				owner_references: Some(vec![owner_reference.clone()]),
 				..Default::default()
 			},
 			spec: Some(PodDisruptionBudgetSpec {
@@ -768,12 +805,6 @@ async fn reconcile(
 			.await?;
 	}
 
-	let annotations = [(
-		"kubernetes.io/ingress.class".to_string(),
-		"nginx".to_string(),
-	)]
-	.into();
-
 	// Create the ingress defined above
 	trace!("creating ingress");
 	Api::<Ingress>::namespaced(ctx.client.clone(), namespace)
@@ -783,7 +814,14 @@ async fn reconcile(
 			&Patch::Apply(Ingress {
 				metadata: ObjectMeta {
 					name: Some(format!("ingress-{}", spec.deployment.id)),
-					annotations: Some(annotations),
+					annotations: Some(
+						[(
+							"kubernetes.io/ingress.class".to_string(),
+							"nginx".to_string(),
+						)]
+						.into(),
+					),
+					owner_references: Some(vec![owner_reference.clone()]),
 					..ObjectMeta::default()
 				},
 				spec: Some(IngressSpec {

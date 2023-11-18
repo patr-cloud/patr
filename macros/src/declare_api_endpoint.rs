@@ -242,8 +242,14 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			}
 		}
 	} else {
-		quote::quote! {
-			()
+		if paginate_query.unwrap_or(false) {
+			quote::quote! {
+				crate::api::Paginated<()>
+			}
+		} else {
+			quote::quote! {
+				()
+			}
 		}
 	};
 	let query_decl = if let Some(query) = query {
