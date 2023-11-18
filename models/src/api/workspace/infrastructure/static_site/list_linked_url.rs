@@ -23,6 +23,10 @@ macros::declare_api_endpoint!(
 		}
 	},
 	pagination = true,
+	response_headers = {
+		/// The total number of databases in the requested workspace
+		pub total_count: TotalCountHeader,
+	},
 	response = {
 		/// The list of linked URLs linked to the static site which contain:
 		/// sub_domain - The subdomain of the URL

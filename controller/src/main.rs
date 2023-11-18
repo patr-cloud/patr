@@ -9,13 +9,17 @@
 use std::sync::Arc;
 
 use app::AppState;
-use tokio::task;
+use tokio::time::Duration;
 
 /// A prelude that re-exports commonly used items.
 pub mod prelude {
 	pub use tracing::{debug, error, info, instrument, trace, warn};
 
-	pub use crate::{app::AppState, models::PatrDeployment, utils::KubeApiExt};
+	pub use crate::{
+		app::{AppError, AppState},
+		models::PatrDeployment,
+		utils::KubeApiExt,
+	};
 }
 
 /// All app state that is shared across the entire application. Used to share
@@ -25,10 +29,13 @@ mod app;
 mod client;
 /// All the constants used by the controller.
 mod constants;
+/// All functions and business logic to run a database controller and keep it
+/// in sync with the Patr API data.
+mod database;
 /// All functions and business login to run a deployment controller and keep it
 /// in sync with the Patr API data.
 mod deployment;
-/// All models used by the controller, including CRDs, requests, responses, etc.
+/// All models used by the controller, including CRDs, etc.
 mod models;
 /// Utility functions used by the controller.
 mod utils;
@@ -37,10 +44,25 @@ mod utils;
 async fn main() {
 	let state = Arc::new(AppState::try_default().await);
 
-	let deployment_task = task::spawn(deployment::start_controller(
-		state.client.clone(),
-		state.clone(),
-	));
+	let (mut reconcile_all_deployments, deployment_controller_task) =
+		deployment::start_controller(state.client.clone(), state.clone());
 
-	_ = deployment_task.await;
+	loop {
+		tokio::select! {
+			_ = async {
+				// Ever 1 hour, reconcile everything
+				tokio::time::sleep(Duration::from_secs(3600)).await;
+				_ = reconcile_all_deployments.send(());
+			} => {},
+			_ = tokio::signal::ctrl_c() => {
+				tracing::info!("Received SIGINT, shutting down");
+
+				// Wait for all existing controllers to finish
+				_ = deployment_controller_task.await;
+
+				// Break out of the loop and exit
+				break;
+			}
+		}
+	}
 }

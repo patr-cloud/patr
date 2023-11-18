@@ -8,6 +8,8 @@ mod rbac;
 mod user;
 mod workspace;
 
+pub mod schema;
+
 pub use self::{initializer::*, meta_data::*, rbac::*, user::*, workspace::*};
 
 /// Connects to the database based on a config. Not much to say here.

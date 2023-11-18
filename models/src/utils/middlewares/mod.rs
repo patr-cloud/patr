@@ -8,4 +8,5 @@ mod audit_logger;
 /// [`AppAuthentication`] enum.
 mod authentication_type;
 
+#[allow(unused_imports)]
 pub use self::{audit_logger::*, authentication_type::*};

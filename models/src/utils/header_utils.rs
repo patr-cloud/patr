@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use serde::{Deserialize, Serialize};
 use typed_headers::{
 	http::{header::ValueIter, HeaderMap, HeaderName, HeaderValue},
@@ -50,6 +52,17 @@ impl Header for BearerToken {
 
 	fn to_values(&self, values: &mut ToValues) {
 		Authorization::to_values(&Authorization(Credentials::bearer(self.0.clone())), values)
+	}
+}
+
+impl FromStr for BearerToken {
+	type Err = String;
+
+	#[inline]
+	fn from_str(s: &str) -> Result<BearerToken, String> {
+		Token68::new(s)
+			.map(BearerToken)
+			.map_err(|err| err.to_string())
 	}
 }
 

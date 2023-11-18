@@ -1,5 +1,5 @@
 use std::{
-	collections::{BTreeMap, BTreeSet},
+	collections::BTreeMap,
 	future::Future,
 	marker::PhantomData,
 	ops::Sub,
@@ -9,7 +9,7 @@ use std::{
 use argon2::{Algorithm, Argon2, PasswordHash, PasswordVerifier, Version};
 use jsonwebtoken::{DecodingKey, TokenData, Validation};
 use models::{
-	permission::{ResourcePermissionType, WorkspacePermission},
+	permission::WorkspacePermission,
 	utils::{AppAuthentication, BearerToken, HasAuthentication, HasHeader},
 	ApiEndpoint,
 	ErrorType,
@@ -288,7 +288,7 @@ where
 					)
 					.map_err(|err| {
 						warn!("Invalid JWT provided: {}", err);
-						return ErrorType::MalformedAccessToken;
+						ErrorType::MalformedAccessToken
 					})?;
 
 					if iss != constants::JWT_ISSUER {
@@ -395,7 +395,7 @@ where
 }
 
 async fn get_permissions_for_login_id(
-	db_connection: &mut DatabaseConnection,
+	_db_connection: &mut DatabaseConnection,
 	redis_connection: &mut RedisClient,
 	login_id: &Uuid,
 ) -> Result<BTreeMap<Uuid, WorkspacePermission>, ErrorType> {
@@ -406,217 +406,221 @@ async fn get_permissions_for_login_id(
 		return Ok(serde_json::from_str(data.as_str())?);
 	}
 
-	let mut workspace_permissions = BTreeMap::<Uuid, WorkspacePermission>::new();
+	todo!()
 
-	query!(
-		r#"
-		SELECT
-			id as "workspace_id"
-		FROM
-			workspace
-		WHERE
-			super_admin_id = $1;
-		"#,
-		user_id as _
-	)
-	.fetch_all(&mut *db_connection)
-	.await?
-	.into_iter()
-	.map(|row| row.workspace_id.into())
-	.for_each(|workspace_id| {
-		// override the member roles for workspace with super admin
-		// as super admin has high privilege than member permissions
-		workspace_permissions.insert(workspace_id, WorkspacePermission::SuperAdmin);
-	});
+	// let mut workspace_permissions = BTreeMap::<Uuid,
+	// WorkspacePermission>::new();
 
-	query!(
-		r#"
-		SELECT
-			workspace_user.workspace_id,
-			role_resource_permissions_include.permission_id,
-			role_resource_permissions_include.resource_id
-		FROM
-			role_resource_permissions_include
-		JOIN
-			workspace_user
-		ON
-			workspace_user.role_id = role_resource_permissions_include.role_id
-		WHERE
-			workspace_user.user_id = $1;
-		"#,
-		user_id
-	)
-	.fetch_all(&mut *db_connection)
-	.await?
-	.into_iter()
-	.map(|row| {
-		(
-			row.workspace_id.into(),
-			row.permission_id.into(),
-			row.resource_id.into(),
-		)
-	})
-	.fold(
-		BTreeMap::<(Uuid, Uuid), BTreeSet<Uuid>>::new(),
-		|mut accumulator, (workspace_id, permission_id, resource_id)| {
-			accumulator
-				.entry((workspace_id, permission_id))
-				.or_default()
-				.insert(resource_id);
-			accumulator
-		},
-	)
-	.into_iter()
-	.for_each(|((workspace_id, permission_id), resource_ids)| {
-		workspace_permissions
-			.entry(workspace_id)
-			.and_modify(|existing_permissions| match existing_permissions {
-				WorkspacePermission::SuperAdmin => unreachable!(),
-				WorkspacePermission::Member { permissions } => {
-					permissions
-						.entry(permission_id)
-						.or_insert(ResourcePermissionType::Include(resource_ids));
-				}
-			})
-			.or_insert(
-				// insert is fine as every include resource has been
-				// accumulated already
-				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(
-						permission_id,
-						ResourcePermissionType::Include(resource_ids),
-					)]),
-				},
-			);
-	});
+	// query!(
+	// 	r#"
+	// 	SELECT
+	// 		id as "workspace_id"
+	// 	FROM
+	// 		workspace
+	// 	WHERE
+	// 		super_admin_id = $1;
+	// 	"#,
+	// 	user_id as _
+	// )
+	// .fetch_all(&mut *db_connection)
+	// .await?
+	// .into_iter()
+	// .map(|row| row.workspace_id.into())
+	// .for_each(|workspace_id| {
+	// 	// override the member roles for workspace with super admin
+	// 	// as super admin has high privilege than member permissions
+	// 	workspace_permissions.insert(workspace_id,
+	// WorkspacePermission::SuperAdmin); });
 
-	query!(
-		r#"
-		SELECT
-			workspace_user.workspace_id as "workspace_id: Uuid",
-			workspace_user.role_id as "role_id: Uuid",
-			role_resource_permissions_exclude.permission_id as "permission_id: Uuid",
-			role_resource_permissions_exclude.resource_id as "resource_id: Uuid"
-		FROM
-			role_resource_permissions_exclude
-		JOIN
-			workspace_user
-			ON workspace_user.role_id = role_resource_permissions_exclude.role_id
-		WHERE
-			workspace_user.user_id = $1;
-		"#,
-		user_id as _
-	)
-	.fetch_all(&mut *db_connection)
-	.await?
-	.into_iter()
-	.map(|row| {
-		(
-			row.workspace_id.into(),
-			row.role_id.into(),
-			row.permission_id.into(),
-			row.resource_id.into(),
-		)
-	})
-	.fold(
-		BTreeMap::<(Uuid, Uuid, Uuid), BTreeSet<Uuid>>::new(),
-		|mut accumulator, (workspace_id, role_id, permission_id, resource_id)| {
-			accumulator
-				.entry((workspace_id, role_id, permission_id))
-				.or_default()
-				.insert(resource_id);
-			accumulator
-		},
-	)
-	.into_iter()
-	.fold(
-		BTreeMap::<(Uuid, Uuid), BTreeSet<Uuid>>::new(),
-		|mut accumulator, ((workspace_id, _role_id, permission_id), resource_ids)| {
-			accumulator
-				.entry((workspace_id, permission_id))
-				.and_modify(|existing_excludes| {
-					*existing_excludes = existing_excludes
-						.intersection(&resource_ids)
-						.cloned()
-						.collect();
-				})
-				.or_insert_with(|| resource_ids);
-			accumulator
-		},
-	)
-	.into_iter()
-	.for_each(|((workspace_id, permission_id), mut resource_ids)| {
-		let resource_permissions = workspace_permissions
-			.entry(workspace_id)
-			.or_default()
-			.entry(permission_id)
-			.or_insert_with(|| ResourcePermissionType::Include(BTreeSet::new()));
+	// query!(
+	// 	r#"
+	// 	SELECT
+	// 		workspace_user.workspace_id,
+	// 		role_resource_permissions_include.permission_id,
+	// 		role_resource_permissions_include.resource_id
+	// 	FROM
+	// 		role_resource_permissions_include
+	// 	JOIN
+	// 		workspace_user
+	// 	ON
+	// 		workspace_user.role_id = role_resource_permissions_include.role_id
+	// 	WHERE
+	// 		workspace_user.user_id = $1;
+	// 	"#,
+	// 	user_id
+	// )
+	// .fetch_all(&mut *db_connection)
+	// .await?
+	// .into_iter()
+	// .map(|row| {
+	// 	(
+	// 		row.workspace_id.into(),
+	// 		row.permission_id.into(),
+	// 		row.resource_id.into(),
+	// 	)
+	// })
+	// .fold(
+	// 	BTreeMap::<(Uuid, Uuid), BTreeSet<Uuid>>::new(),
+	// 	|mut accumulator, (workspace_id, permission_id, resource_id)| {
+	// 		accumulator
+	// 			.entry((workspace_id, permission_id))
+	// 			.or_default()
+	// 			.insert(resource_id);
+	// 		accumulator
+	// 	},
+	// )
+	// .into_iter()
+	// .for_each(|((workspace_id, permission_id), resource_ids)| {
+	// 	workspace_permissions
+	// 		.entry(workspace_id)
+	// 		.and_modify(|existing_permissions| match existing_permissions {
+	// 			WorkspacePermission::SuperAdmin => unreachable!(),
+	// 			WorkspacePermission::Member { permissions } => {
+	// 				permissions
+	// 					.entry(permission_id)
+	// 					.or_insert(ResourcePermissionType::Include(resource_ids));
+	// 			}
+	// 		})
+	// 		.or_insert(
+	// 			// insert is fine as every include resource has been
+	// 			// accumulated already
+	// 			WorkspacePermission::Member {
+	// 				permissions: BTreeMap::from([(
+	// 					permission_id,
+	// 					ResourcePermissionType::Include(resource_ids),
+	// 				)]),
+	// 			},
+	// 		);
+	// });
 
-		match resource_permissions {
-			ResourcePermissionType::Include(includes) => includes.iter().for_each(|resource_id| {
-				resource_ids.remove(resource_id);
-			}),
-			ResourcePermissionType::Exclude(excludes) => {
-				// ideally this case won't happen, as excludes are accumulated
-				// and then inserted
-				excludes.iter().cloned().for_each(|resource_id| {
-					resource_ids.insert(resource_id);
-				})
-			}
-		}
+	// query!(
+	// 	r#"
+	// 	SELECT
+	// 		workspace_user.workspace_id as "workspace_id: Uuid",
+	// 		workspace_user.role_id as "role_id: Uuid",
+	// 		role_resource_permissions_exclude.permission_id as "permission_id: Uuid",
+	// 		role_resource_permissions_exclude.resource_id as "resource_id: Uuid"
+	// 	FROM
+	// 		role_resource_permissions_exclude
+	// 	JOIN
+	// 		workspace_user
+	// 		ON workspace_user.role_id = role_resource_permissions_exclude.role_id
+	// 	WHERE
+	// 		workspace_user.user_id = $1;
+	// 	"#,
+	// 	user_id as _
+	// )
+	// .fetch_all(&mut *db_connection)
+	// .await?
+	// .into_iter()
+	// .map(|row| {
+	// 	(
+	// 		row.workspace_id.into(),
+	// 		row.role_id.into(),
+	// 		row.permission_id.into(),
+	// 		row.resource_id.into(),
+	// 	)
+	// })
+	// .fold(
+	// 	BTreeMap::<(Uuid, Uuid, Uuid), BTreeSet<Uuid>>::new(),
+	// 	|mut accumulator, (workspace_id, role_id, permission_id, resource_id)| {
+	// 		accumulator
+	// 			.entry((workspace_id, role_id, permission_id))
+	// 			.or_default()
+	// 			.insert(resource_id);
+	// 		accumulator
+	// 	},
+	// )
+	// .into_iter()
+	// .fold(
+	// 	BTreeMap::<(Uuid, Uuid), BTreeSet<Uuid>>::new(),
+	// 	|mut accumulator, ((workspace_id, _role_id, permission_id), resource_ids)| {
+	// 		accumulator
+	// 			.entry((workspace_id, permission_id))
+	// 			.and_modify(|existing_excludes| {
+	// 				*existing_excludes = existing_excludes
+	// 					.intersection(&resource_ids)
+	// 					.cloned()
+	// 					.collect();
+	// 			})
+	// 			.or_insert_with(|| resource_ids);
+	// 		accumulator
+	// 	},
+	// )
+	// .into_iter()
+	// .for_each(|((workspace_id, permission_id), mut resource_ids)| {
+	// 	let resource_permissions = workspace_permissions
+	// 		.entry(workspace_id)
+	// 		.or_default()
+	// 		.entry(permission_id)
+	// 		.or_insert_with(|| ResourcePermissionType::Include(BTreeSet::new()));
 
-		*resource_permissions = ResourcePermissionType::Exclude(resource_ids);
-	});
+	// 	match resource_permissions {
+	// 		ResourcePermissionType::Include(includes) =>
+	// includes.iter().for_each(|resource_id| { 			resource_ids.
+	// remove(resource_id); 		}),
+	// 		ResourcePermissionType::Exclude(excludes) => {
+	// 			// ideally this case won't happen, as excludes are accumulated
+	// 			// and then inserted
+	// 			excludes.iter().cloned().for_each(|resource_id| {
+	// 				resource_ids.insert(resource_id);
+	// 			})
+	// 		}
+	// 	}
 
-	query!(
-		r#"
-		SELECT
-			workspace_user.workspace_id as "workspace_id: Uuid",
-			role_resource_permissions_type.permission_id as "permission_id: Uuid"
-		FROM
-			role_resource_permissions_type
-		JOIN
-			workspace_user
-			ON workspace_user.role_id = role_resource_permissions_type.role_id
-		WHERE
-			workspace_user.user_id = $1
-			AND role_resource_permissions_type.permission_type = 'exclude'
-			AND NOT EXISTS (
-				SELECT 1
-				FROM
-					role_resource_permissions_exclude
-				WHERE
-					role_resource_permissions_exclude.role_id = role_resource_permissions_type.role_id
-					AND role_resource_permissions_exclude.permission_id = role_resource_permissions_type.permission_id
-		);
-		"#,
-		user_id as _
-	)
-	.fetch_all(&mut *db_connection)
-	.await?
-	.into_iter()
-	.map(|row| (row.workspace_id.into(), row.permission_id.into()))
-	.for_each(|(workspace_id, permission_id)| {
-		workspace_permissions
-			.entry(workspace_id)
-			.or_default()
-			.insert(
-				permission_id,
-				ResourcePermissionType::Exclude(BTreeSet::new()),
-			);
-	});
+	// 	*resource_permissions = ResourcePermissionType::Exclude(resource_ids);
+	// });
 
-	let mut workspace_permissions = workspace_permissions
-		.into_iter()
-		.map(|(workspace_id, member_permissions)| {
-			(
-				workspace_id,
-				WorkspacePermission::Member {
-					permissions: member_permissions,
-				},
-			)
-		})
-		.collect::<BTreeMap<_, _>>();
+	// query!(
+	// 	r#"
+	// 	SELECT
+	// 		workspace_user.workspace_id as "workspace_id: Uuid",
+	// 		role_resource_permissions_type.permission_id as "permission_id: Uuid"
+	// 	FROM
+	// 		role_resource_permissions_type
+	// 	JOIN
+	// 		workspace_user
+	// 		ON workspace_user.role_id = role_resource_permissions_type.role_id
+	// 	WHERE
+	// 		workspace_user.user_id = $1
+	// 		AND role_resource_permissions_type.permission_type = 'exclude'
+	// 		AND NOT EXISTS (
+	// 			SELECT 1
+	// 			FROM
+	// 				role_resource_permissions_exclude
+	// 			WHERE
+	// 				role_resource_permissions_exclude.role_id =
+	// role_resource_permissions_type.role_id
+	// 				AND role_resource_permissions_exclude.permission_id =
+	// role_resource_permissions_type.permission_id 	);
+	// 	"#,
+	// 	user_id as _
+	// )
+	// .fetch_all(&mut *db_connection)
+	// .await?
+	// .into_iter()
+	// .map(|row| (row.workspace_id.into(), row.permission_id.into()))
+	// .for_each(|(workspace_id, permission_id)| {
+	// 	workspace_permissions
+	// 		.entry(workspace_id)
+	// 		.or_default()
+	// 		.insert(
+	// 			permission_id,
+	// 			ResourcePermissionType::Exclude(BTreeSet::new()),
+	// 		);
+	// });
 
-	Ok(workspace_permissions)
+	// let mut workspace_permissions = workspace_permissions
+	// 	.into_iter()
+	// 	.map(|(workspace_id, member_permissions)| {
+	// 		(
+	// 			workspace_id,
+	// 			WorkspacePermission::Member {
+	// 				permissions: member_permissions,
+	// 			},
+	// 		)
+	// 	})
+	// 	.collect::<BTreeMap<_, _>>();
+
+	// Ok(workspace_permissions)
 }

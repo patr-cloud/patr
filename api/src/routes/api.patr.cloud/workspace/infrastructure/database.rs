@@ -16,12 +16,13 @@ pub async fn setup_routes(state: &AppState) -> Router {
 
 async fn all_database_plan(
 	AppRequest {
-		request: ApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
+		request:
+			ApiRequest {
+				path: ListAllDatabaseMachineTypePath,
+				query: (),
+				headers: _,
+				body: ListAllDatabaseMachineTypeRequest,
+			},
 		database,
 		redis: _,
 		client_ip: _,
@@ -42,12 +43,21 @@ async fn all_database_plan(
 
 async fn create_database(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
+		request:
+			ApiRequest {
+				path: CreateDatabasePath { workspace_id },
+				query: (),
+				headers: _,
+				body:
+					CreateDatabaseRequest {
+						name,
+						engine,
+						database_plan_id,
+						region,
+						version,
+						num_node,
+					},
+			},
 		database,
 		redis: _,
 		client_ip: _,
@@ -69,12 +79,16 @@ async fn create_database(
 
 async fn delete_database(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
+		request:
+			ApiRequest {
+				path: DeleteDatabasePath {
+					workspace_id,
+					database_id,
+				},
+				query: (),
+				headers: _,
+				body: DeleteDatabaseRequest,
+			},
 		database,
 		redis: _,
 		client_ip: _,
@@ -96,12 +110,16 @@ async fn delete_database(
 
 async fn get_database(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
+		request:
+			ApiRequest {
+				path: GetDatabasePath {
+					workspace_id,
+					database_id,
+				},
+				query: (),
+				headers: _,
+				body: GetDatabaseRequest,
+			},
 		database,
 		redis: _,
 		client_ip: _,
@@ -123,12 +141,17 @@ async fn get_database(
 
 async fn list_database(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
+		request:
+			ApiRequest {
+				path: ListDatabasePath { workspace_id },
+				query: Paginated {
+					data: (),
+					count,
+					page,
+				},
+				headers: _,
+				body: ListDatabaseRequest,
+			},
 		database,
 		redis: _,
 		client_ip: _,

@@ -26,4 +26,5 @@ serde_json = { workspace = true, features = ["default"] }
 sha2 = { workspace = true, features = ["default"] }
 thiserror = { workspace = true, features = [] }
 tokio = { workspace = true, features = ["tracing", "full"] }
+tokio-stream = { workspace = true, features = ["default", "sync"] }
 tracing = { workspace = true, features = ["default"] }

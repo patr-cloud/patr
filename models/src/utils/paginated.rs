@@ -60,6 +60,7 @@ where
 
 /// This struct represents the total count of items that are available for the
 /// query. This is used to set the `X-Total-Count` header in the response.
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub struct TotalCountHeader(pub usize);
 
 /// A header that is added to the response to indicate the total number of

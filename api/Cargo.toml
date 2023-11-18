@@ -14,6 +14,8 @@ axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
 axum-extra = { workspace = true, features = ["default", "typed-routing"] }
 axum-typed-websockets = { workspace = true, features = ["default"] }
 config = { workspace = true, features = ["default"] }
+diesel = { workspace = true, features = ["network-address", "time", "32-column-tables"] }
+diesel-async = { workspace = true, features = ["postgres", "r2d2", "default"] }
 frontend = { workspace = true, features = [] }
 futures = { workspace = true, features = ["default"] }
 jsonwebtoken = { workspace = true, features = ["default"] }

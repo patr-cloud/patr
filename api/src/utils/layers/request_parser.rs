@@ -25,7 +25,7 @@ use crate::{prelude::*, utils::extractors::ClientIP};
 /// A [`tower::Layer`] that can be used to parse the request and call the inner
 /// service with the parsed request. Ideally, this will automatically be done by
 /// [`RouterExt::mount_endpoint`], and you should not need to use this directly.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct RequestParserLayer<E>
 where
 	E: ApiEndpoint,
@@ -38,7 +38,7 @@ where
 	E: ApiEndpoint,
 {
 	/// Create a new instance of the [`RequestParserLayer`]
-	pub fn new() -> Self {
+	pub const fn new() -> Self {
 		Self {
 			phantom: PhantomData,
 		}

@@ -23,6 +23,10 @@ macros::declare_api_endpoint!(
 		}
 	},
 	pagination = true,
+	response_headers = {
+		/// The total number of databases in the requested workspace
+		pub total_count: TotalCountHeader,
+	},
 	response = {
 		/// The deployment history containing:
 		/// image_digest - The image digest of the deployment
