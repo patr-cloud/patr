@@ -19,7 +19,7 @@ pub struct PatrDomainDnsRecord {
 
 macros::declare_api_endpoint!(
 	/// Route to get domain DNS record
-	GetDomainDNSrecord,
+	GetDomainDNSRecord,
 	GET "/workspace/:workspace_id/domain/:domain_id/dns-record" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid,
