@@ -14,7 +14,8 @@ pub mod infrastructure;
 // pub mod rbac;
 /// This module contains all the models that corresponds to regions
 pub mod region;
-// pub mod secret;
+/// This module contains all the models that corresponds to Patr secrets
+pub mod secret;
 
 mod create_workspace;
 mod delete_workspace;
