@@ -3,7 +3,7 @@ use super::Region;
 
 macros::declare_api_endpoint!(
 	/// Route to list all the regions of a workspace
-	GetRegionInfo,
+	ListRegionsForWorkspace,
 	GET "/workspace/:workspace_id/region" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid

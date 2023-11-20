@@ -3,7 +3,7 @@ use super::DnsRecordValue;
 
 macros::declare_api_endpoint!(
 	/// Route to add new DNS record
-	AddDNSRrecord,
+	AddDNSRecord,
 	POST "/workspace/:workspace_id/domain/:domain_id/dns-record" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid,
