@@ -11,6 +11,8 @@ pub use self::{
 	add_region_to_workspace::*,
 	check_region_status::*,
 	delete_region::*,
+	get_region_info::*,
+	list_regions_for_workspace::*
 };
 
 #[cfg(feature = "server")]
