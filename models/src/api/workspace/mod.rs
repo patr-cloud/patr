@@ -11,7 +11,8 @@ pub mod domain;
 /// This module contains all the models that corresponds to Patr's main
 /// infrastructure
 pub mod infrastructure;
-// pub mod rbac;
+/// This module contains all the models that corresponds to the RBAC of Patr
+pub mod rbac;
 /// This module contains all the models that corresponds to regions
 pub mod region;
 /// This module contains all the models that corresponds to Patr secrets
