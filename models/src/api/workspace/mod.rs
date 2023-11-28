@@ -4,15 +4,19 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
-/// All the routes that corresponds to Patr's in-build container registry
+/// All the modules that corresponds to Patr's in-build container registry
 pub mod container_registry;
-// pub mod domain;
+/// All the modules that corresponds to Patr Domains
+pub mod domain;
 /// This module contains all the models that corresponds to Patr's main
 /// infrastructure
 pub mod infrastructure;
-// pub mod rbac;
-// pub mod region;
-// pub mod secret;
+/// This module contains all the models that corresponds to the RBAC of Patr
+pub mod rbac;
+/// This module contains all the models that corresponds to regions
+pub mod region;
+/// This module contains all the models that corresponds to Patr secrets
+pub mod secret;
 
 mod create_workspace;
 mod delete_workspace;

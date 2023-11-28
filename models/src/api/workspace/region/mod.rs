@@ -1,8 +1,5 @@
 use std::{fmt::Display, str::FromStr};
-
 use serde::{Deserialize, Serialize};
-
-use crate::utils::Uuid;
 
 mod add_region_to_workspace;
 mod check_region_status;
@@ -15,7 +12,7 @@ pub use self::{
 	check_region_status::*,
 	delete_region::*,
 	get_region_info::*,
-	list_regions_for_workspace::*,
+	list_regions_for_workspace::*
 };
 
 #[cfg(feature = "server")]
@@ -27,11 +24,14 @@ pub enum InfrastructureCloudProvider {
 	Other,
 }
 
+/// Cloud providers
 #[cfg(not(feature = "server"))]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum InfrastructureCloudProvider {
+	/// DigitalOcean
 	Digitalocean,
+	/// Other cloud providers
 	Other,
 }
 
@@ -69,33 +69,47 @@ pub enum RegionStatus {
 	ComingSoon,
 }
 
+/// Region status
 #[cfg(not(feature = "server"))]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum RegionStatus {
+	/// Region is creating
 	Creating,
+	/// Region is active
 	Active,
+	/// Region has errored
 	Errored,
+	/// Region is deleted
 	Deleted,
+	/// Region has been disconnected
 	Disconnected,
+	/// Region is currently not supported
 	ComingSoon,
 }
 
+/// Region type
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum RegionType {
+	/// Patr owned region
 	PatrOwned,
 	#[serde(rename = "byoc")]
+	/// BYOC region
 	BYOC,
 }
 
+/// Region information
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Region {
-	pub id: Uuid,
+	/// Name of the region
 	pub name: String,
+	/// Cloud sertvice provider
 	pub cloud_provider: InfrastructureCloudProvider,
+	/// Status of the region
 	pub status: RegionStatus,
+	/// Region type
 	#[serde(flatten)]
 	pub r#type: RegionType,
 }

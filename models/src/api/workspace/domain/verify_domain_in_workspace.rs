@@ -1,94 +1,25 @@
-use axum_extra::routing::TypedPath;
-use reqwest::Method;
-use serde::{Deserialize, Serialize};
+use crate::{prelude::*, utils::BearerToken};
 
-use crate::{utils::Uuid, ApiRequest};
-
-#[derive(
-	Eq,
-	Ord,
-	Hash,
-	Debug,
-	Clone,
-	Default,
-	TypedPath,
-	PartialEq,
-	Serialize,
-	PartialOrd,
-	Deserialize,
-)]
-#[typed_path("/workspace/:workspace_id/domain/:domain_id/verify")]
-pub struct VerifyDomainPath {
-	pub workspace_id: Uuid,
-	pub domain_id: Uuid,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct VerifyDomainRequest;
-
-impl ApiRequest for VerifyDomainRequest {
-	const METHOD: Method = Method::GET;
-	const IS_PROTECTED: bool = true;
-
-	type RequestPath = VerifyDomainPath;
-	type RequestQuery = ();
-	type RequestBody = ();
-	type Response = VerifyDomainResponse;
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct VerifyDomainResponse {
-	pub verified: bool,
-}
-
-#[cfg(test)]
-mod test {
-
-	use serde_test::{assert_tokens, Token};
-
-	use super::{VerifyDomainRequest, VerifyDomainResponse};
-	use crate::ApiResponse;
-
-	#[test]
-	fn assert_request_types() {
-		assert_tokens(
-			&VerifyDomainRequest,
-			&[Token::UnitStruct {
-				name: "VerifyDomainRequest",
-			}],
-		)
+macros::declare_api_endpoint!(
+	/// Route to update the domains DNS record
+	VerifyDomainInWorkspace,
+	GET "/workspace/:workspace_id/domain/:domain_id/verify" {
+		/// The ID of the workspace
+		pub workspace_id: Uuid,
+		/// The domain ID of the record
+		pub domain_id: Uuid,
+	},
+	request_headers = {
+		/// Token used to authorize user
+		pub authorization: BearerToken
+	},
+	authentication = {
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
+			extract_resource_id: |req| req.path.domain_id
+		}
+	},
+	response = {
+		/// Whether the domain is verified or not
+		pub verified: bool,
 	}
-
-	#[test]
-	fn assert_response_types() {
-		assert_tokens(
-			&VerifyDomainResponse { verified: true },
-			&[
-				Token::Struct {
-					name: "VerifyDomainResponse",
-					len: 1,
-				},
-				Token::Str("verified"),
-				Token::Bool(true),
-				Token::StructEnd,
-			],
-		)
-	}
-
-	#[test]
-	fn assert_success_response_types() {
-		assert_tokens(
-			&ApiResponse::success(VerifyDomainResponse { verified: true }),
-			&[
-				Token::Map { len: None },
-				Token::Str("success"),
-				Token::Bool(true),
-				Token::Str("verified"),
-				Token::Bool(true),
-				Token::MapEnd,
-			],
-		)
-	}
-}
+);
