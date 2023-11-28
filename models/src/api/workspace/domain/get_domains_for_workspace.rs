@@ -12,16 +12,21 @@ macros::declare_api_endpoint!(
 		/// Token used to authorize user
 		pub authorization: BearerToken
 	},
+	pagination = true,
 	authentication = {
-		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
-			extract_resource_id: |req| req.path.workspace_id
+		AppAuthentication::<Self>::WorkspaceMembershipAuthenticator {
+			extract_workspace_id: |req| req.path.workspace_id
 		}
+	},
+	response_headers = {
+		/// The total number of items in the pagination
+		pub total_count: TotalCountHeader,
 	},
 	response = {
 		/// The list of domains containing:
-		///     domain - The domain metadata
-		///     is_verified - whether the domain is verified or not
-		///     nameserver_type - The type of the nameserver
+		/// - domain - The domain metadata
+		/// - is_verified - whether the domain is verified or not
+		/// - nameserver_type - The type of the nameserver
 		pub domains: Vec<WithId<WorkspaceDomain>>,
 	}
 );

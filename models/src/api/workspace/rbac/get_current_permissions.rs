@@ -1,4 +1,4 @@
-use crate::{prelude::*, utils::BearerToken, permission::WorkspacePermission};
+use crate::{permission::WorkspacePermission, prelude::*, utils::BearerToken};
 
 macros::declare_api_endpoint!(
 	/// Route to get current permissions
@@ -12,8 +12,8 @@ macros::declare_api_endpoint!(
 		pub authorization: BearerToken
 	},
 	authentication = {
-		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
-			extract_resource_id: |req| req.path.workspace_id
+		AppAuthentication::<Self>::WorkspaceMembershipAuthenticator {
+			extract_workspace_id: |req| req.path.workspace_id
 		}
 	},
 	response = {

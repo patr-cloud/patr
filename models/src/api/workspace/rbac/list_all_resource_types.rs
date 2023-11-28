@@ -23,14 +23,14 @@ macros::declare_api_endpoint!(
 		pub authorization: BearerToken
 	},
 	authentication = {
-		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
-			extract_resource_id: |req| req.path.workspace_id
+		AppAuthentication::<Self>::WorkspaceMembershipAuthenticator {
+			extract_workspace_id: |req| req.path.workspace_id
 		}
 	},
 	response = {
 		/// The list of resource type containing:
-		/// 	name - The name of the resource type
-		/// 	description - The description of the resource type
+		/// - name - The name of the resource type
+		/// - description - The description of the resource type
 		pub resource_types: Vec<WithId<ResourceType>>,
 	}
 );

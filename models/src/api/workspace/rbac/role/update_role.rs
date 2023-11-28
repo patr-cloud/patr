@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 macros::declare_api_endpoint!(
 	/// Route to create a new role
 	UpdateRole,
-	PUT "/workspace/:workspace_id/rbac/role/:role_id" {
+	PATCH "/workspace/:workspace_id/rbac/role/:role_id" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid,
 		/// The ID of the role to update

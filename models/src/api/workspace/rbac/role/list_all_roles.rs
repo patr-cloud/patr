@@ -12,10 +12,15 @@ macros::declare_api_endpoint!(
 		/// Token used to authorize user
 		pub authorization: BearerToken
 	},
+	pagination = true,
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.workspace_id
 		}
+	},
+	response_headers = {
+		/// The total number of items in the pagination
+		pub total_count: TotalCountHeader,
 	},
 	response = {
 		/// The list of all roles that contains:

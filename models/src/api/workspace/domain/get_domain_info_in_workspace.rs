@@ -9,7 +9,6 @@ macros::declare_api_endpoint!(
 		pub workspace_id: Uuid,
 		/// The domain ID
 		pub domain_id: Uuid,
-
 	},
 	request_headers = {
 		/// Token used to authorize user
@@ -22,9 +21,9 @@ macros::declare_api_endpoint!(
 	},
 	response = {
 		/// The domain information containing:
-		///     domain - The domain metadata
-		///     is_verified - whether the domain is verified or not
-		///     nameserver_type - The type of the nameserver
+		/// - domain - The domain metadata
+		/// - is_verified - whether the domain is verified or not
+		/// - nameserver_type - The type of the nameserver
 		#[serde(flatten)]
 		pub workspace_domain: WithId<WorkspaceDomain>,
 	}
