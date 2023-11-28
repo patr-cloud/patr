@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct Permission {
 	/// The name of the permission
 	pub name: String,
-	/// The descripton of the permission
+	/// The description of the permission
 	pub description: String,
 }
 
@@ -23,14 +23,14 @@ macros::declare_api_endpoint!(
 		pub authorization: BearerToken
 	},
 	authentication = {
-		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
-			extract_resource_id: |req| req.path.workspace_id
+		AppAuthentication::<Self>::WorkspaceMembershipAuthenticator {
+			extract_workspace_id: |req| req.path.workspace_id
 		}
 	},
 	response = {
 		/// The list permissions that contains:
-		/// 	name - The name of the permission
-		/// 	description - The description of the permission
+		/// - name - The name of the permission
+		/// - description - The description of the permission
 		pub permissions: Vec<WithId<Permission>>
 	}
 );

@@ -1,21 +1,5 @@
+use super::PatrDomainDnsRecord;
 use crate::{prelude::*, utils::BearerToken};
-use serde::{Serialize, Deserialize};
-use super::DnsRecordValue;
-
-/// The DNS record information of patr domain
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct PatrDomainDnsRecord {
-	/// The domain ID
-	pub domain_id: Uuid,
-	/// The domain name
-	pub name: String,
-	/// The domain type
-	#[serde(flatten)]
-	pub r#type: DnsRecordValue,
-	/// The time to live
-	pub ttl: u32,
-}
 
 macros::declare_api_endpoint!(
 	/// Route to get domain DNS record
@@ -26,21 +10,26 @@ macros::declare_api_endpoint!(
 		/// The domain ID
 		pub domain_id: Uuid,
 	},
+	pagination = true,
 	request_headers = {
 		/// Token used to authorize user
-		pub authorization: BearerToken
+		pub authorization: BearerToken,
 	},
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.domain_id
 		}
 	},
+	response_headers = {
+		/// The total number of items in the pagination
+		pub total_count: TotalCountHeader,
+	},
 	response = {
 		/// The list of records containing:
-		///     domain_id -  The domain ID
-		///     name - The domain name
-		///     r#type - The domain type
-		///     ttl - The time to live
+		/// - domain_id - The domain ID
+		/// - name - The domain name
+		/// - type - The domain type
+		/// - ttl - The time to live
 		pub records: Vec<WithId<PatrDomainDnsRecord>>,
 	}
 );

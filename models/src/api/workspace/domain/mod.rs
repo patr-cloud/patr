@@ -1,10 +1,12 @@
-use crate::prelude::*;
 use std::{
-	fmt::Display, 
-	net::{Ipv4Addr, Ipv6Addr},
+	fmt::Display,
+	net::{Ipv4Addr, Ipv6Addr}, str::FromStr,
 };
+
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
+
+use crate::prelude::*;
 
 mod add_dns_record;
 mod add_domain_to_workspace;
@@ -30,11 +32,11 @@ pub use self::{
 	verify_domain_in_workspace::*,
 };
 
-/// The domain metadeta information
+/// The domain metadata information
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Domain {
-	/// The name of the domain 
+	/// The name of the domain
 	pub name: String,
 	/// Last verified time of the domain
 	pub last_unverified: Option<OffsetDateTime>,
@@ -71,7 +73,7 @@ impl WorkspaceDomain {
 pub struct PatrControlledDomain {
 	/// The domain ID
 	pub domain_id: Uuid,
-	/// The domain nameserver type 
+	/// The domain nameserver type
 	pub nameserver_type: DomainNameserverType,
 	/// The domain zone identifier
 	pub zone_identifier: String,
@@ -82,38 +84,38 @@ pub struct PatrControlledDomain {
 #[allow(clippy::upper_case_acronyms)]
 #[serde(tag = "type")]
 pub enum DnsRecordValue {
-	/// A
+	/// A record for IPv4 addresses
 	A {
 		/// The target address
 		target: Ipv4Addr,
-		/// Whether proxied or not
-		proxied: bool 
+		/// If the DNS record should be proxied or not
+		proxied: bool,
 	},
-	/// MX
+	/// MX record for mail servers
 	MX {
-		/// The priorty
-		priority: u16, 
+		/// The priority
+		priority: u16,
 		/// The target address
-		target: String 
+		target: String,
 	},
-	/// TXT
+	/// TXT record for text information
 	TXT {
 		/// The target address
-		target: String 
+		target: String,
 	},
-	/// AAAA
+	/// AAAA record for IPv6 addresses
 	AAAA {
 		/// The target address
 		target: Ipv6Addr,
-		/// Whether proxied or not
-		proxied: bool 
+		/// If the DNS record should be proxied or not
+		proxied: bool,
 	},
-	/// CNAME
+	/// CNAME record for aliases
 	CNAME {
 		/// The target address
 		target: String,
-		/// Whether proxied or not
-		proxied: bool 
+		/// If the DNS record should be proxied or not
+		proxied: bool,
 	},
 }
 
@@ -154,9 +156,7 @@ impl DnsRecordValue {
 	/// To return as of type some
 	pub fn as_aaaa_record(&self) -> Option<(&Ipv6Addr, bool)> {
 		match self {
-			DnsRecordValue::AAAA { target, proxied } => {
-				Some((target, *proxied))
-			}
+			DnsRecordValue::AAAA { target, proxied } => Some((target, *proxied)),
 			_ => None,
 		}
 	}
@@ -164,9 +164,7 @@ impl DnsRecordValue {
 	/// To return as of type some
 	pub fn as_cname_record(&self) -> Option<(&str, bool)> {
 		match self {
-			DnsRecordValue::CNAME { target, proxied } => {
-				Some((target, *proxied))
-			}
+			DnsRecordValue::CNAME { target, proxied } => Some((target, *proxied)),
 			_ => None,
 		}
 	}
@@ -174,9 +172,7 @@ impl DnsRecordValue {
 	/// To return as of type some
 	pub fn as_mx_record(&self) -> Option<(u16, &str)> {
 		match self {
-			DnsRecordValue::MX { priority, target } => {
-				Some((*priority, target))
-			}
+			DnsRecordValue::MX { priority, target } => Some((*priority, target)),
 			_ => None,
 		}
 	}
@@ -200,4 +196,69 @@ impl Display for DnsRecordValue {
 			Self::TXT { .. } => write!(f, "TXT"),
 		}
 	}
+}
+
+/// Type of domain nameserver
+#[cfg(not(feature = "server"))]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[cfg_attr(not(target_arch = "wasm"), derive(sqlx::Type))]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(
+	not(target_arch = "wasm"),
+	sqlx(type_name = "DOMAIN_NAMESERVER_TYPE", rename_all = "lowercase")
+)]
+pub enum DomainNameserverType {
+	/// Internal
+	Internal,
+	/// External
+	External,
+}
+
+impl DomainNameserverType {
+	/// To check if external
+	pub fn is_external(&self) -> bool {
+		matches!(self, DomainNameserverType::External)
+	}
+
+	/// To check if internal
+	pub fn is_internal(&self) -> bool {
+		matches!(self, DomainNameserverType::Internal)
+	}
+}
+
+impl Display for DomainNameserverType {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Internal => write!(f, "internal"),
+			Self::External => write!(f, "external"),
+		}
+	}
+}
+
+impl FromStr for DomainNameserverType {
+	type Err = String;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		let s = s.to_lowercase();
+		match s.as_str() {
+			"internal" => Ok(Self::Internal),
+			"external" => Ok(Self::External),
+			_ => Err(s),
+		}
+	}
+}
+
+/// The DNS record information of patr domain
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PatrDomainDnsRecord {
+	/// The domain ID
+	pub domain_id: Uuid,
+	/// The domain name
+	pub name: String,
+	/// The domain type
+	#[serde(flatten)]
+	pub r#type: DnsRecordValue,
+	/// The time to live
+	pub ttl: u32,
 }

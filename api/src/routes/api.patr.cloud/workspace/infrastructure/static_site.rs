@@ -127,7 +127,9 @@ async fn list_static_site(
 		.body(ListStaticSiteResponse {
 			static_sites: todo!(),
 		})
-		.headers(())
+		.headers(ListStaticSiteResponseHeaders {
+			total_count: todo!(),
+		})
 		.status_code(StatusCode::OK)
 		.build()
 		.into_result()
@@ -154,7 +156,9 @@ async fn list_upload_history(
 
 	AppResponse::builder()
 		.body(ListStaticSiteUploadHistoryResponse { uploads: todo!() })
-		.headers(())
+		.headers(ListStaticSiteUploadHistoryResponseHeaders {
+			total_count: todo!(),
+		})
 		.status_code(StatusCode::OK)
 		.build()
 		.into_result()
@@ -316,7 +320,9 @@ async fn list_linked_url(
 
 	AppResponse::builder()
 		.body(ListLinkedURLResponse { urls: todo!() })
-		.headers(())
+		.headers(ListLinkedURLResponseHeaders {
+			total_count: todo!(),
+		})
 		.status_code(StatusCode::OK)
 		.build()
 		.into_result()

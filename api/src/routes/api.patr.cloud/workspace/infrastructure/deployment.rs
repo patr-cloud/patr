@@ -73,7 +73,9 @@ async fn list_deployment(
 		.body(ListDeploymentResponse {
 			deployments: todo!(),
 		})
-		.headers(())
+		.headers(ListDeploymentResponseHeaders {
+			total_count: todo!(),
+		})
 		.status_code(StatusCode::OK)
 		.build()
 		.into_result()
@@ -100,7 +102,9 @@ async fn list_deployment_history(
 
 	AppResponse::builder()
 		.body(ListDeploymentHistoryResponse { deploys: todo!() })
-		.headers(())
+		.headers(ListDeploymentHistoryResponseHeaders {
+			total_count: todo!(),
+		})
 		.status_code(StatusCode::OK)
 		.build()
 		.into_result()
@@ -346,7 +350,9 @@ async fn list_linked_url(
 
 	AppResponse::builder()
 		.body(ListLinkedURLResponse { urls: todo!() })
-		.headers(())
+		.headers(ListLinkedURLResponseHeaders {
+			total_count: todo!(),
+		})
 		.status_code(StatusCode::OK)
 		.build()
 		.into_result()

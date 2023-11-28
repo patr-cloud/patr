@@ -97,8 +97,9 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use crate::{client::make_request, constants, prelude::*};
 
-/// Starts the deployment controller. This function will ideally run forever,
-/// only exiting when a ctrl-c signal is received.
+/// Starts the deployment controller. This function will spawn a new task that
+/// will run the controller. This function will return a sender that can be
+/// used to send a message to the controller to reconcile all deployments.
 pub(super) fn start_controller(
 	client: Client,
 	state: Arc<AppState>,
@@ -108,6 +109,8 @@ pub(super) fn start_controller(
 	(sender, handle)
 }
 
+/// This function will ideally run forever, only exiting when a ctrl-c signal is
+/// received.
 async fn run_controller(
 	client: Client,
 	state: Arc<AppState>,
@@ -155,6 +158,7 @@ async fn run_controller(
 /// Handles errors that occur during the reconciliation process. This function
 /// is called whenever an error occurs during the reconciliation process. This
 /// function should decide what to do with the error.
+#[instrument(skip(_ctx))]
 fn error_policy(_obj: Arc<PatrDeployment>, _err: &AppError, _ctx: Arc<AppState>) -> Action {
 	Action::requeue(Duration::from_secs(5))
 }
@@ -165,16 +169,24 @@ fn error_policy(_obj: Arc<PatrDeployment>, _err: &AppError, _ctx: Arc<AppState>)
 /// updated / deleted, this function is then as well. This function should
 /// check with the Patr API to see if the deployment is up to date, and if not,
 /// update it, along with all child objects.
+#[instrument(skip(ctx))]
 async fn reconcile(
 	deployment_object: Arc<PatrDeployment>,
 	ctx: Arc<AppState>,
 ) -> Result<Action, AppError> {
+	info!(
+		"Reconciling deployment with id: {}",
+		deployment_object.spec.deployment.id
+	);
+
 	let namespace = deployment_object
 		.metadata
 		.namespace
 		.as_deref()
 		.ok_or_else(|| {
-			AppError::InternalError("Deployment does not have a namespace".to_string())
+			AppError::InternalError(
+				"The provided PatrDeployment does not have a namespace".to_string(),
+			)
 		})?;
 	let owner_reference = deployment_object.controller_owner_ref(&()).ok_or_else(|| {
 		AppError::InternalError("Deployment does not have a controller owner reference".to_string())
@@ -182,15 +194,14 @@ async fn reconcile(
 
 	let spec = &deployment_object.spec;
 
-	info!("Reconciling deployment with id: {}", spec.deployment.id);
-
 	trace!("Computing hash of config map data");
-
 	let config_map_hash = hex::encode(
 		spec.running_details
 			.config_mounts
-			.values()
-			.fold(Sha512::default(), |acc, value| acc.chain_update(value))
+			.iter()
+			.fold(Sha512::default(), |acc, (key, value)| {
+				acc.chain_update(key).chain_update(value)
+			})
 			.finalize(),
 	);
 	trace!(

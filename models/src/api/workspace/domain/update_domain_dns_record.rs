@@ -17,22 +17,17 @@ macros::declare_api_endpoint!(
 	},
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
-			extract_resource_id: |req| req.path.domain_id
+			extract_resource_id: |req| req.path.record_id
 		}
 	},
 	request = {
 		/// To update the time to live of the domain
 		pub ttl: Option<u32>,
-		/// To update the tagert of the domain
+		/// To update the target of the domain
 		pub target: Option<String>,
 		/// To update the priority of the domain
 		pub priority: Option<u16>,
 		/// To update the if the domain is proxied or not
 		pub proxied: Option<bool>,
-	},
-	response = {
-		/// The ID of the created record
-		#[serde(flatten)]
-		pub id: WithId<()>
 	}
 );

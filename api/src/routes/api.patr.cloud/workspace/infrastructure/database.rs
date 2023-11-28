@@ -165,7 +165,9 @@ async fn list_database(
 
 	AppResponse::builder()
 		.body(ListDatabaseResponse { database: todo!() })
-		.headers(())
+		.headers(ListDatabaseResponseHeaders {
+			total_count: todo!()
+		})
 		.status_code(StatusCode::OK)
 		.build()
 		.into_result()
