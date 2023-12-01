@@ -140,31 +140,31 @@ pub fn OtpInput(
 		_ => (),
 	};
 
-	let handle_on_paste = move |e: ev::Event| {
-		e.prevent_default();
-		let Some(data) = e
-			.unchecked_into::<web_sys::ClipboardEvent>()
-			.clipboard_data()
-			.and_then(|data| data.get_data("Text").ok())
-		else {
-			return;
-		};
-		let mut last_index = 0;
-		data.chars()
-			.filter_map(|c| c.to_digit(10))
-			.map(|n| n as u8)
-			.take(length)
-			.enumerate()
-			.for_each(|(index, digit)| {
-				refs.with_value(|refs| {
-					refs[index].2.set(Some(digit));
-					last_index = index;
-				});
-			});
-		refs.with_value(|refs| {
-			_ = refs[last_index].1.get().unwrap().focus();
-		});
-	};
+	// let handle_on_paste = move |e: ev::Event| {
+	// 	e.prevent_default();
+	// 	let Some(data) = e
+	// 		.unchecked_into::<web_sys::ClipboardEvent>()
+	// 		.clipboard_data()
+	// 		.and_then(|data| data.get_data("Text").ok())
+	// 	else {
+	// 		return;
+	// 	};
+	// 	let mut last_index = 0;
+	// 	data.chars()
+	// 		.filter_map(|c| c.to_digit(10))
+	// 		.map(|n| n as u8)
+	// 		.take(length)
+	// 		.enumerate()
+	// 		.for_each(|(index, digit)| {
+	// 			refs.with_value(|refs| {
+	// 				refs[index].2.set(Some(digit));
+	// 				last_index = index;
+	// 			});
+	// 		});
+	// 	refs.with_value(|refs| {
+	// 		_ = refs[last_index].1.get().unwrap().focus();
+	// 	});
+	// };
 
 	view! {
 		<div
@@ -197,7 +197,7 @@ pub fn OtpInput(
 											e
 										);
 									}
-									on:paste=handle_on_paste
+									// on:paste=handle_on_paste
 									prop:value=move || signal.get()
 									placeholder="0"
 									disabled=move || {

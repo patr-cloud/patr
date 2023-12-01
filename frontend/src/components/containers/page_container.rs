@@ -9,7 +9,7 @@ pub fn PageContainer(
 	// workspace page
 	view! {
 		<div class="fr-fs-fs full-width full-height bg-secondary">
-			// <Sidebar blurLinks={!currentWorkspace} />
+		 	<Sidebar />
 			<main class="fc-fs-ct full-width px-lg">
 				<TopNav />
 				{children()}

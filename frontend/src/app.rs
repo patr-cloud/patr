@@ -18,7 +18,7 @@ pub fn App() -> impl IntoView {
 							<Outlet />
 						</div>
 					}
-					>
+				>
 					<Route path=LoggedOutRoute::Login view=Login />
 					<Route path=LoggedOutRoute::SignUp view=SignUp />
 				</ProtectedRoute>
@@ -34,8 +34,8 @@ pub fn App() -> impl IntoView {
 							<Outlet />
 						</PageContainer>
 					}
-					>
-					<Route path=LoggedInRoute::Home view=|| () /> // TODO show home page
+				>
+					<Route path=LoggedInRoute::Home view=Home /> // TODO show home page
 				</ProtectedRoute>
 
 				<Route path="/*other" view=|| {

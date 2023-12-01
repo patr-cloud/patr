@@ -333,13 +333,12 @@ pub fn SignUp() -> impl IntoView {
 				<h1 class="txt-primary txt-xl txt-medium">{"Sign In"}</h1>
 				<p class="txt-white txt-thin fr-fs-fs">
 					Already have an account?
-					<Link
-						disabled={sign_up_loading}
+					<ALink
 						to=AppRoute::LoggedOutRoute(LoggedOutRoute::Login)
 						class="ml-xs"
 					>
 						Login
-					</Link>
+					</ALink>
 				</p>
 			</div>
 			<div class="fr-ct-fs full-width">
@@ -404,7 +403,7 @@ pub fn SignUp() -> impl IntoView {
 										r#type=NotificationType::Error
 										class="mt-xs"
 										message=username
-										/>
+									/>
 								}
 							})
 					}}
@@ -446,7 +445,7 @@ pub fn SignUp() -> impl IntoView {
 									r#type=username_error_type
 									class="mt-xs"
 									message=username
-									/>
+								/>
 							}
 						})
 				}}
@@ -496,7 +495,7 @@ pub fn SignUp() -> impl IntoView {
 						.size(Size::ExtraSmall)
 						.build())
 				}
-				/>
+			/>
 			{move || {
 				email_error
 					.get()
@@ -507,7 +506,7 @@ pub fn SignUp() -> impl IntoView {
 								r#type=NotificationType::Error
 								class="mt-xs"
 								message=email
-								/>
+							/>
 						}
 					})
 			}}
@@ -566,7 +565,7 @@ pub fn SignUp() -> impl IntoView {
 								r#type=NotificationType::Error
 								class="mt-xs"
 								message={password}
-								/>
+							/>
 						}
 					})
 			}}
@@ -621,7 +620,7 @@ pub fn SignUp() -> impl IntoView {
 								r#type=NotificationType::Error
 								class="mt-xs"
 								message={password}
-								/>
+							/>
 						}
 					})
 			}}
@@ -634,8 +633,8 @@ pub fn SignUp() -> impl IntoView {
 					// 		: navigate(PublicPath.CONFIRM_SIGN_UP)
 					// }}
 					class="btn mr-xs txt-thin txt-xs"
-					>
-					ALREADY HAVE AN OTP?
+				>
+					"ALREADY HAVE AN OTP?"
 				</Link>
 				{move || {
 					if sign_up_loading.get() {

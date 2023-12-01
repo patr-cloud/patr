@@ -10,6 +10,8 @@ mod spinner;
 mod tooltip;
 mod tooltip_container;
 mod top_nav;
+mod sidebar;
+mod a_link;
 
 pub use self::{
 	alert::*,
@@ -24,4 +26,6 @@ pub use self::{
 	tooltip::*,
 	tooltip_container::*,
 	top_nav::*,
+	sidebar::*,
+	a_link::*,
 };
