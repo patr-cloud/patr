@@ -35,9 +35,7 @@ async fn create_new_role(
 	// LOGIC
 
 	AppResponse::builder()
-		.body(CreateNewRoleResponse {
-			id: todo!()
-		})
+		.body(CreateNewRoleResponse { id: todo!() })
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
@@ -122,10 +120,10 @@ async fn list_all_roles(
 	// LOGIC
 
 	AppResponse::builder()
-		.body(ListAllRolesResponse {
-			roles: todo!(),
+		.body(ListAllRolesResponse { roles: todo!() })
+		.headers(ListAllRolesResponseHeaders {
+			total_count: todo!(),
 		})
-		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
 		.into_result()
@@ -151,10 +149,10 @@ async fn list_users_for_roles(
 	// LOGIC
 
 	AppResponse::builder()
-		.body(ListUsersForRolesResponse {
-			users: todo!(),
+		.body(ListUsersForRolesResponse { users: todo!() })
+		.headers(ListUsersForRolesResponseHeaders {
+			total_count: todo!(),
 		})
-		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
 		.into_result()

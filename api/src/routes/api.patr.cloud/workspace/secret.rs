@@ -15,17 +15,18 @@ pub async fn setup_routes(state: &AppState) -> Router {
 
 async fn create_secret(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
+		request:
+			ApiRequest {
+				path: CreateSecretPath { workspace_id },
+				query: _,
+				headers,
+				body,
+			},
 		database,
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, CreateSecretRequest>,
 ) -> Result<AppResponse<CreateSecretRequest>, ErrorType> {
 	info!("Starting: Create secret");
@@ -42,12 +43,16 @@ async fn create_secret(
 
 async fn delete_secret(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
+		request:
+			ApiRequest {
+				path: DeleteSecretPath {
+					workspace_id,
+					secret_id,
+				},
+				query: _,
+				headers: _,
+				body,
+			},
 		database,
 		redis: _,
 		client_ip: _,
@@ -88,7 +93,9 @@ async fn list_secrets_for_workspace(
 
 	AppResponse::builder()
 		.body(ListSecretsForWorkspaceResponse { secrets: todo!() })
-		.headers(())
+		.headers(ListSecretsForWorkspaceResponseHeaders {
+			total_count: todo!(),
+		})
 		.status_code(StatusCode::OK)
 		.build()
 		.into_result()

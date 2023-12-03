@@ -13,6 +13,8 @@ use serde::{Deserialize, Serialize};
 	kind = "PatrDeployment",
 	group = "patr.cloud",
 	version = "v1alpha1",
+	singular = "PatrDeployment",
+	plural = "PatrDeployments",
 	namespaced
 )]
 pub struct PatrDeploymentSpec {

@@ -21,10 +21,10 @@ pub use self::{
 
 /// Cloud providers
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[cfg_attr(not(target_arch = "wasm"), derive(sqlx::Type))]
+#[cfg_attr(not(target_arch = "wasm32"), derive(sqlx::Type))]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(
-	not(target_arch = "wasm"),
+	not(target_arch = "wasm32"),
 	sqlx(type_name = "INFRASTRUCTURE_CLOUD_PROVIDER", rename_all = "lowercase")
 )]
 pub enum InfrastructureCloudProvider {
@@ -57,10 +57,10 @@ impl FromStr for InfrastructureCloudProvider {
 
 /// Region status
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[cfg_attr(not(target_arch = "wasm"), derive(sqlx::Type))]
+#[cfg_attr(not(target_arch = "wasm32"), derive(sqlx::Type))]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(
-	not(target_arch = "wasm"),
+	not(target_arch = "wasm32"),
 	sqlx(type_name = "REGION_STATUS", rename_all = "snake_case")
 )]
 pub enum RegionStatus {

@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, str::FromStr, sync::Arc, time::Duration};
 
-use futures::{future, FutureExt, StreamExt};
+use futures::{future, StreamExt};
 use k8s_openapi::{
 	api::{
 		apps::v1::{
@@ -88,7 +88,6 @@ use models::{
 };
 use sha2::{Digest, Sha512};
 use tokio::{
-	signal,
 	sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
 	task,
 	task::JoinHandle,
@@ -149,7 +148,7 @@ async fn run_controller(
 		watcher::Config::default(),
 	)
 	.reconcile_all_on(UnboundedReceiverStream::new(reconcile_receiver))
-	.graceful_shutdown_on(signal::ctrl_c().map(|_| ()))
+	.graceful_shutdown_on(crate::exit_signal())
 	.run(reconcile, error_policy, state)
 	.for_each(|_| future::ready(()))
 	.await;

@@ -54,7 +54,7 @@ async fn main() {
 				tokio::time::sleep(Duration::from_secs(3600)).await;
 				_ = reconcile_all_deployments.send(());
 			} => {},
-			_ = tokio::signal::ctrl_c() => {
+			_ = exit_signal() => {
 				tracing::info!("Received SIGINT, shutting down");
 
 				// Wait for all existing controllers to finish
@@ -65,4 +65,10 @@ async fn main() {
 			}
 		}
 	}
+}
+
+async fn exit_signal() {
+	tokio::signal::ctrl_c()
+		.await
+		.expect("Failed to listen for SIGINT")
 }

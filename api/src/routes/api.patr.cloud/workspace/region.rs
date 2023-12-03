@@ -26,7 +26,7 @@ async fn add_region_to_workspace(
 		redis: _,
 		client_ip: _,
 		config,
-    	user_data,
+		user_data,
 	}: AuthenticatedAppRequest<'_, AddRegionToWorkspaceRequest>,
 ) -> Result<AppResponse<AddRegionToWorkspaceRequest>, ErrorType> {
 	info!("Starting: Add region to a workspace");
@@ -132,12 +132,17 @@ async fn get_region_info(
 
 async fn list_regions_for_workspace(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
+		request:
+			ApiRequest {
+				path: ListRegionsForWorkspacePath { workspace_id },
+				query: Paginated {
+					data: (),
+					count,
+					page,
+				},
+				headers: _,
+				body: ListRegionsForWorkspaceRequest,
+			},
 		database,
 		redis: _,
 		client_ip: _,
@@ -151,7 +156,9 @@ async fn list_regions_for_workspace(
 
 	AppResponse::builder()
 		.body(ListRegionsForWorkspaceResponse { regions: todo!() })
-		.headers(())
+		.headers(ListRegionsForWorkspaceResponseHeaders {
+			total_count: todo!(),
+		})
 		.status_code(StatusCode::OK)
 		.build()
 		.into_result()
