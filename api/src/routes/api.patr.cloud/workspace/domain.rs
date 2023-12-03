@@ -177,7 +177,9 @@ async fn get_doamin_dns_record(
 
 	AppResponse::builder()
 		.body(GetDomainDNSRecordResponse { records: todo!() })
-		.headers(())
+		.headers(GetDomainDNSRecordResponseHeaders {
+			total_count: todo!(),
+		})
 		.status_code(StatusCode::OK)
 		.build()
 		.into_result()
@@ -203,7 +205,9 @@ async fn get_domain_info_in_workspace(
 	// LOGIC
 
 	AppResponse::builder()
-		.body(GetDomainInfoInWorkspaceResponse { workspace_domain: todo!() })
+		.body(GetDomainInfoInWorkspaceResponse {
+			workspace_domain: todo!(),
+		})
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
@@ -231,7 +235,9 @@ async fn get_domains_for_workspace(
 
 	AppResponse::builder()
 		.body(GetDomainsForWorkspaceResponse { domains: todo!() })
-		.headers(())
+		.headers(GetDomainsForWorkspaceResponseHeaders {
+			total_count: todo!(),
+		})
 		.status_code(StatusCode::OK)
 		.build()
 		.into_result()
@@ -257,7 +263,7 @@ async fn update_domain_dns_record(
 	// LOGIC
 
 	AppResponse::builder()
-		.body(UpdateDomainDNSRecordResponse { id: todo!() })
+		.body(UpdateDomainDNSRecordResponse)
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
