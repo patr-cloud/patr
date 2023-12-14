@@ -42,10 +42,12 @@ pub mod prelude {
 
 	pub use crate::{
 		app::{AppRequest, AppState, AuthenticatedAppRequest},
-		db,
+		db::schema,
 		redis,
 		utils::{constants, RouterExt},
 	};
+	pub use diesel::prelude::*;
+	pub use diesel::dsl::*;
 
 	/// The type of the database connection. A mutable reference to this should
 	/// be used as the parameter for database functions, since it accepts both a
@@ -90,48 +92,50 @@ async fn main() {
 	let config = utils::config::parse_config();
 
 	tracing::subscriber::set_global_default(
-		tracing_subscriber::registry().with(
-			FmtLayer::new()
-				.with_span_events(FmtSpan::NONE)
-				.event_format(
-					tracing_subscriber::fmt::format()
-						.with_ansi(true)
-						.with_file(false)
-						.without_time()
-						.compact(),
+		tracing_subscriber::registry()
+			.with(
+				FmtLayer::new()
+					.with_span_events(FmtSpan::NONE)
+					.event_format(
+						tracing_subscriber::fmt::format()
+							.with_ansi(true)
+							.with_file(false)
+							.without_time()
+							.compact(),
+					)
+					.with_filter(
+						tracing_subscriber::filter::Targets::new()
+							.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE),
+					)
+					.with_filter(LevelFilter::from_level(
+						if config.environment == RunningEnvironment::Development {
+							Level::DEBUG
+						} else {
+							Level::TRACE
+						},
+					)),
+			)
+			.with(
+				OpenTelemetryLayer::new(
+					opentelemetry_otlp::new_pipeline()
+						.tracing()
+						.with_trace_config(opentelemetry_sdk::trace::config())
+						.with_exporter(
+							opentelemetry_otlp::new_exporter()
+								.tonic()
+								.with_endpoint(&config.opentelemetry.endpoint),
+						)
+						.install_simple()
+						.expect("Failed to install OpenTelemetry tracing pipeline"),
 				)
 				.with_filter(
 					tracing_subscriber::filter::Targets::new()
 						.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE),
-				)
-				.with_filter(LevelFilter::from_level(
-					if config.environment == RunningEnvironment::Development {
-						Level::DEBUG
-					} else {
-						Level::TRACE
-					},
-				)),
-		), /* .with(
-		    * 	// TODO: WHAT THE FUCK IS HAPPENING HERE?
-		    * 	OpenTelemetryLayer::new(
-		    * 		opentelemetry_otlp::new_pipeline()
-		    * 			.tracing()
-		    * 			.with_trace_config(opentelemetry_sdk::trace::config())
-		    * 			.with_exporter(
-		    * 				opentelemetry_otlp::new_exporter()
-		    * 					.tonic()
-		    * 					.with_endpoint(config.opentelemetry.endpoint.as_str()),
-		    * 			)
-		    * 			.install_simple()
-		    * 			.expect("Failed to install OpenTelemetry tracing pipeline"),
-		    * 	)
-		    * 	.with_filter(
-		    * 		tracing_subscriber::filter::Targets::new()
-		    * 			.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE),
-		    * 	),
-		    * ), */
+				),
+			),
 	)
 	.expect("Failed to set global default subscriber");
+
 	tracing::info!("Config parsed. Running in {} mode", config.environment);
 
 	let bind_address = config.bind_address;

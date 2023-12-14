@@ -2,15 +2,18 @@ use sqlx::{pool::PoolOptions, Pool};
 
 use crate::{prelude::*, utils::config::DatabaseConfig};
 
-mod initializer;
-mod meta_data;
-mod rbac;
-mod user;
-mod workspace;
+pub(super) mod initializer;
+pub(super) mod meta_data;
+pub(super) mod rbac;
+pub(super) mod user;
+pub(super) mod workspace;
 
+/// The diesel database schema and types for querying
+#[allow(missing_docs)]
 pub mod schema;
 
-pub use self::{initializer::*, meta_data::*, rbac::*, user::*, workspace::*};
+pub use self::initializer::initialize;
+pub(super) use self::{meta_data::*, rbac::*, user::*, workspace::*};
 
 /// Connects to the database based on a config. Not much to say here.
 #[instrument(skip(config))]
