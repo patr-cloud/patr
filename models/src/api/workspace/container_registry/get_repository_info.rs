@@ -1,5 +1,5 @@
-use crate::prelude::*;
 use super::ContainerRepository;
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Gets the information of a container repository in the workspace.

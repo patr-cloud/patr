@@ -1,6 +1,7 @@
 use std::{
 	fmt::Display,
-	net::{Ipv4Addr, Ipv6Addr}, str::FromStr,
+	net::{Ipv4Addr, Ipv6Addr},
+	str::FromStr,
 };
 
 use serde::{Deserialize, Serialize};

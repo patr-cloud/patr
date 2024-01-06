@@ -1,5 +1,6 @@
-use crate::{prelude::*, utils::BearerToken};
 use serde::{Deserialize, Serialize};
+
+use crate::{prelude::*, utils::BearerToken};
 
 /// The Resource Type metadata
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

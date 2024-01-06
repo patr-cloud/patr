@@ -53,7 +53,7 @@ async fn list_all_permissions(
 		redis: _,
 		client_ip: _,
 		config,
-		user_data
+		user_data,
 	}: AuthenticatedAppRequest<'_, ListAllPermissionsRequest>,
 ) -> Result<AppResponse<ListAllPermissionsRequest>, ErrorType> {
 	info!("Starting: List all permissions");
@@ -82,7 +82,7 @@ async fn list_all_resource_types(
 		redis: _,
 		client_ip: _,
 		config,
-		user_data
+		user_data,
 	}: AuthenticatedAppRequest<'_, ListAllResourceTypesRequest>,
 ) -> Result<AppResponse<ListAllResourceTypesRequest>, ErrorType> {
 	info!("Starting: List all resource type");

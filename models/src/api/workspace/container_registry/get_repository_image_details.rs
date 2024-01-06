@@ -28,7 +28,7 @@ macros::declare_api_endpoint!(
 		/// The size of the container repository's image.
 		pub size: u64,
 		/// The creation date of the container repository's image.
-		/// 
+		///
 		/// TODO: Change this to audit log
 		pub created: OffsetDateTime,
 		/// The tags of the container repository's image.

@@ -1,6 +1,7 @@
-use crate::{prelude::*, utils::BearerToken};
 use std::collections::BTreeMap;
+
 use super::Role;
+use crate::{prelude::*, utils::BearerToken};
 
 macros::declare_api_endpoint!(
 	/// Route to get the role info

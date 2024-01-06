@@ -1,5 +1,6 @@
-use crate::{prelude::*, utils::BearerToken};
 use std::collections::BTreeMap;
+
+use crate::{prelude::*, utils::BearerToken};
 
 macros::declare_api_endpoint!(
 	/// Route to list all users and their role in a workspace

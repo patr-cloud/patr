@@ -1,5 +1,5 @@
-use crate::{prelude::*, utils::BearerToken};
 use super::DnsRecordValue;
+use crate::{prelude::*, utils::BearerToken};
 
 macros::declare_api_endpoint!(
 	/// Route to add new DNS record
@@ -22,7 +22,7 @@ macros::declare_api_endpoint!(
 	request = {
 		/// The name of the new record
 		pub name: String,
-		/// The type of the new record 
+		/// The type of the new record
 		/// It can be of type:
 		///     A
 		///     MX

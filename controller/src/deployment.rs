@@ -62,6 +62,7 @@ use kube::{
 	core::ObjectMeta,
 	runtime::{
 		controller::{Action, Controller},
+		reflector::ObjectRef,
 		watcher,
 	},
 	Api,
@@ -88,11 +89,14 @@ use models::{
 };
 use sha2::{Digest, Sha512};
 use tokio::{
-	sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
+	sync::{
+		broadcast::Receiver,
+		mpsc::{self, UnboundedReceiver, UnboundedSender},
+	},
 	task,
 	task::JoinHandle,
 };
-use tokio_stream::wrappers::UnboundedReceiverStream;
+use tokio_stream::wrappers::{BroadcastStream, UnboundedReceiverStream};
 
 use crate::{client::make_request, constants, prelude::*};
 
@@ -102,9 +106,10 @@ use crate::{client::make_request, constants, prelude::*};
 pub(super) fn start_controller(
 	client: Client,
 	state: Arc<AppState>,
+	patr_update_sender: Receiver<()>,
 ) -> (UnboundedSender<()>, JoinHandle<()>) {
 	let (sender, receiver) = mpsc::unbounded_channel::<()>();
-	let handle = task::spawn(run_controller(client, state, receiver));
+	let handle = task::spawn(run_controller(client, state, receiver, patr_update_sender));
 	(sender, handle)
 }
 
@@ -114,6 +119,7 @@ async fn run_controller(
 	client: Client,
 	state: Arc<AppState>,
 	reconcile_receiver: UnboundedReceiver<()>,
+	patr_update_sender: Receiver<()>,
 ) {
 	Controller::new(
 		Api::<PatrDeployment>::all(client.clone()),
@@ -148,6 +154,11 @@ async fn run_controller(
 		watcher::Config::default(),
 	)
 	.reconcile_all_on(UnboundedReceiverStream::new(reconcile_receiver))
+	.reconcile_on(
+		BroadcastStream::new(patr_update_sender).filter_map(|input| async move {
+			Some(ObjectRef::new(&format!("deployment-{}", Uuid::nil())).within("default"))
+		}),
+	)
 	.graceful_shutdown_on(crate::exit_signal())
 	.run(reconcile, error_policy, state)
 	.for_each(|_| future::ready(()))
@@ -306,7 +317,7 @@ async fn reconcile(
 				..ConfigMapVolumeSource::default()
 			}),
 			..Volume::default()
-		})
+		});
 	}
 
 	for (_, volume) in spec.running_details.volumes {

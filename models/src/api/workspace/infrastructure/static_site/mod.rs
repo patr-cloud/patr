@@ -35,15 +35,16 @@ use crate::utils::Uuid;
 pub struct StaticSite {
 	/// Name of the static site
 	pub name: String,
-	/// Status of the static site
+	/// Status of the static site.
+	///
 	/// Can either be:
-	/// 	Created,
-	///		Pushed,
-	///		Deploying,
-	///		Running,
-	///		Stopped,
-	///		Errored,
-	///		Deleted,
+	/// - Created,
+	/// - Pushed,
+	/// - Deploying,
+	/// - Running,
+	/// - Stopped,
+	/// - Errored,
+	/// - Deleted,
 	pub status: DeploymentStatus,
 	/// The current index.html file running
 	pub current_live_upload: Option<Uuid>, /* add more details about the

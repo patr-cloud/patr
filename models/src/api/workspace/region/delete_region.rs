@@ -6,7 +6,7 @@ macros::declare_api_endpoint!(
 	DELETE "/workspace/:workspace_id/region/:region_id" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid,
-		/// The region ID 
+		/// The region ID
 		pub region_id: Uuid,
 	},
 	request_headers = {

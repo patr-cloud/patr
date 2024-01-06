@@ -1,5 +1,6 @@
 mod auth;
 
+#[allow(unused_variables, dead_code, clippy::unreachable)]
 mod workspace;
 
 use axum::Router;

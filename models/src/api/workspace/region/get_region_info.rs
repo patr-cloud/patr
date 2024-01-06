@@ -1,6 +1,7 @@
-use crate::{prelude::*, utils::BearerToken};
 use time::OffsetDateTime;
+
 use super::Region;
+use crate::{prelude::*, utils::BearerToken};
 
 macros::declare_api_endpoint!(
 	/// Route to get region information
@@ -8,7 +9,7 @@ macros::declare_api_endpoint!(
 	GET "/workspace/:workspace_id/region/:region_id" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid,
-		/// The region ID 
+		/// The region ID
 		pub region_id: Uuid,
 	},
 	request_headers = {
