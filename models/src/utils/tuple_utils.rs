@@ -24,7 +24,7 @@ pub trait AddTuple<T> {
 }
 
 impl<T> AddTuple<T> for () {
-    type ResultantTuple = (T,);
+	type ResultantTuple = (T,);
 }
 
 /// A macro to implement [`AddTuple`] for tuples of different sizes. It is

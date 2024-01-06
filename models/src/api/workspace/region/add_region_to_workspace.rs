@@ -1,6 +1,5 @@
-use crate::{prelude::*, utils::BearerToken};
-
 use super::AddRegionToWorkspaceData;
+use crate::{prelude::*, utils::BearerToken};
 
 macros::declare_api_endpoint!(
 	/// Route to add region to a workspace

@@ -39,6 +39,7 @@
         "sqlx",
         "Stylesheet",
         "TIMESTAMPTZ",
+        "tungstenite",
         "wayy"
     ],
     "nixEnvSelector.nixFile": "${workspaceRoot}/shell.nix",

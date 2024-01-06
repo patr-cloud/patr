@@ -9,7 +9,7 @@
 use std::sync::Arc;
 
 use app::AppState;
-use tokio::time::Duration;
+use tokio::{sync::broadcast, time::Duration};
 
 /// A prelude that re-exports commonly used items.
 pub mod prelude {
@@ -44,8 +44,10 @@ mod utils;
 async fn main() {
 	let state = Arc::new(AppState::try_default().await);
 
+	let (patr_update_sender, patr_update_receiver) = broadcast::channel::<()>(100);
+
 	let (mut reconcile_all_deployments, deployment_controller_task) =
-		deployment::start_controller(state.client.clone(), state.clone());
+		deployment::start_controller(state.client.clone(), state.clone(), patr_update_receiver);
 
 	loop {
 		tokio::select! {

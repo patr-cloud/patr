@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::{prelude::*, api::workspace::infrastructure::deployment::ExposedPortType};
+use crate::{api::workspace::infrastructure::deployment::ExposedPortType, prelude::*};
 
 macros::declare_api_endpoint!(
 	/// Gets the exposed ports of a container repository in the workspace.

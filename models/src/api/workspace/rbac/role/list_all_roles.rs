@@ -1,5 +1,5 @@
-use crate::{prelude::*, utils::BearerToken};
 use super::Role;
+use crate::{prelude::*, utils::BearerToken};
 
 macros::declare_api_endpoint!(
 	/// Route to list all the roles

@@ -1,5 +1,5 @@
-use crate::{prelude::*, utils::BearerToken};
 use super::WorkspaceDomain;
+use crate::{prelude::*, utils::BearerToken};
 
 macros::declare_api_endpoint!(
 	/// Route to get all the domains in a workspace

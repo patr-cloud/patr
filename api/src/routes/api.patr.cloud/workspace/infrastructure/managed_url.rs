@@ -90,7 +90,7 @@ async fn list_managed_url(
 	AppResponse::builder()
 		.body(ListManagedURLResponse { urls: todo!() })
 		.headers(ListManagedURLResponseHeaders {
-			total_count: todo!()
+			total_count: todo!(),
 		})
 		.status_code(StatusCode::OK)
 		.build()

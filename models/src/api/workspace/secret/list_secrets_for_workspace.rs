@@ -1,6 +1,5 @@
-use crate::{prelude::*, utils::BearerToken};
-
 use super::Secret;
+use crate::{prelude::*, utils::BearerToken};
 
 macros::declare_api_endpoint!(
 	/// Route to list all the secrets in a workspace

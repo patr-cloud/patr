@@ -31,6 +31,7 @@ pub mod utils;
 /// A prelude that re-exports commonly used items.
 pub mod prelude {
 	pub use anyhow::Context;
+	pub use diesel::{dsl::*, prelude::*};
 	pub use macros::query;
 	pub use models::{
 		utils::{OneOrMore, Paginated, Uuid},
@@ -46,8 +47,6 @@ pub mod prelude {
 		redis,
 		utils::{constants, RouterExt},
 	};
-	pub use diesel::prelude::*;
-	pub use diesel::dsl::*;
 
 	/// The type of the database connection. A mutable reference to this should
 	/// be used as the parameter for database functions, since it accepts both a

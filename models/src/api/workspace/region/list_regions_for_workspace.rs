@@ -1,5 +1,5 @@
-use crate::{prelude::*, utils::BearerToken};
 use super::Region;
+use crate::{prelude::*, utils::BearerToken};
 
 macros::declare_api_endpoint!(
 	/// Route to list all the regions of a workspace

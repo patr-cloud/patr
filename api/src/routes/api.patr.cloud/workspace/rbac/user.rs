@@ -33,7 +33,9 @@ async fn list_users_with_roles_in_workspace(
 
 	AppResponse::builder()
 		.body(ListUsersWithRolesInWorkspaceResponse { users: todo!() })
-		.headers(ListUsersWithRolesInWorkspaceResponseHeaders { total_count: todo!() })
+		.headers(ListUsersWithRolesInWorkspaceResponseHeaders {
+			total_count: todo!(),
+		})
 		.status_code(StatusCode::OK)
 		.build()
 		.into_result()

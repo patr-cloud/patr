@@ -4,7 +4,7 @@ use std::{
 	mem,
 };
 
-use reqwest::StatusCode;
+use axum::http::StatusCode;
 use serde::{Deserialize, Serialize};
 
 /// A list of all the possible errors that can be returned by the API

@@ -6,7 +6,6 @@ use axum::{
 	Router,
 };
 use axum_extra::routing::TypedPath;
-
 use models::{
 	utils::{AppAuthentication, BearerToken, HasHeader, NoAuthentication},
 	ApiEndpoint,

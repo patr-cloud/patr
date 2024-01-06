@@ -41,7 +41,7 @@ impl Uuid {
 			let (secs, nanos) = ts.to_unix();
 			Some(
 				OffsetDateTime::from_unix_timestamp(secs.try_into().unwrap_or_default()).ok()? +
-					Duration::nanoseconds(nanos.try_into().unwrap_or_default()),
+					Duration::nanoseconds(nanos.into()),
 			)
 		})
 	}
