@@ -1,10 +1,6 @@
+use headers::{Error, Header};
+use http::{HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
-use typed_headers::{
-	http::{header::ValueIter, HeaderName, HeaderValue},
-	Error,
-	Header,
-	ToValues,
-};
 
 use super::{AddTuple, RequiresResponseHeaders};
 
@@ -72,25 +68,28 @@ impl Header for TotalCountHeader {
 		&TOTAL_COUNT_HEADER_NAME
 	}
 
-	fn from_values(
-		values: &mut ValueIter<'_, HeaderValue>,
-	) -> Result<Option<Self>, typed_headers::Error>
+	fn decode<'i, I>(values: &mut I) -> Result<Self, Error>
 	where
 		Self: Sized,
+		I: Iterator<Item = &'i HeaderValue>,
 	{
-		let Some(value) = values.next() else {
-			return Ok(None);
-		};
+		let value = values.next().ok_or_else(headers::Error::invalid)?;
+
 		let count = value
 			.to_str()
-			.map_err(|_| Error::invalid_value())?
+			.map_err(|_| headers::Error::invalid())?
 			.parse::<usize>()
-			.map_err(|_| Error::invalid_value())?;
-		values.into_iter().for_each(drop);
-		Ok(Some(TotalCountHeader(count)))
+			.map_err(|_| headers::Error::invalid())?;
+
+		Ok(Self(count))
 	}
 
-	fn to_values(&self, values: &mut ToValues) {
-		values.append(HeaderValue::from_str(self.0.to_string().as_str()).unwrap());
+	fn encode<E>(&self, values: &mut E)
+	where
+		E: Extend<HeaderValue>,
+	{
+		values.extend(std::iter::once(
+			HeaderValue::from_str(&self.0.to_string()).unwrap(),
+		))
 	}
 }
