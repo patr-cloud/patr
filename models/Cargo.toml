@@ -12,7 +12,9 @@ anyhow = { workspace = true, features = ["default"] }
 axum = { workspace = true, features = ["json"] }
 axum-extra = { workspace = true, features = ["typed-routing"] }
 base64 = { workspace = true, features = ["default"] }
+headers = { workspace = true, features = [] }
 hex = { workspace = true, features = ["default"] }
+http = { workspace = true, features = ["default"] }
 ipnetwork = { workspace = true, features = ["default"] }
 macros = { workspace = true, features = [] }
 preprocess = { workspace = true, features = [] }
@@ -28,7 +30,6 @@ tokio-tungstenite = { workspace = true, features = [] }
 tower = { workspace = true }
 tracing = { workspace = true, features = ["attributes"] }
 typed-builder = { workspace = true, features = [] }
-typed-headers = { workspace = true, features = [] }
 url = { workspace = true, features = ["default"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

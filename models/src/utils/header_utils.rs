@@ -1,28 +1,63 @@
 use std::str::FromStr;
 
-use serde::{Deserialize, Serialize};
-use typed_headers::{
-	http::{header::ValueIter, HeaderMap, HeaderName, HeaderValue},
-	Accept,
-	AcceptEncoding,
+use headers::{
+	authorization::{Bearer, Credentials},
+	AcceptRanges,
+	AccessControlAllowCredentials,
+	AccessControlAllowHeaders,
+	AccessControlAllowMethods,
+	AccessControlAllowOrigin,
+	AccessControlExposeHeaders,
+	AccessControlMaxAge,
+	AccessControlRequestHeaders,
+	AccessControlRequestMethod,
+	Age,
 	Allow,
-	AuthScheme,
 	Authorization,
-	ContentCoding,
+	CacheControl,
+	Connection,
+	ContentDisposition,
 	ContentEncoding,
 	ContentLength,
+	ContentLocation,
+	ContentRange,
 	ContentType,
-	Credentials,
+	Cookie,
+	Date,
+	ETag,
 	Error,
+	Expect,
+	Expires,
 	Header,
 	Host,
-	HttpDate,
+	IfMatch,
+	IfModifiedSince,
+	IfNoneMatch,
+	IfRange,
+	IfUnmodifiedSince,
+	LastModified,
+	Location,
+	Origin,
+	Pragma,
 	ProxyAuthorization,
-	Quality,
-	QualityItem,
-	ToValues,
-	Token68,
+	Range,
+	Referer,
+	ReferrerPolicy,
+	RetryAfter,
+	SecWebsocketAccept,
+	SecWebsocketKey,
+	SecWebsocketVersion,
+	Server,
+	SetCookie,
+	StrictTransportSecurity,
+	Te,
+	TransferEncoding,
+	Upgrade,
+	UserAgent,
+	Vary,
 };
+use http::{HeaderMap, HeaderName, HeaderValue};
+use serde::{Deserialize, Serialize};
 
 use super::Uuid;
 
@@ -31,38 +66,42 @@ use super::Uuid;
 ///
 /// This is a wrapper around [`typed_headers::Token68`].
 /// Example: Authorization: Bearer *token*
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BearerToken(pub Token68);
+#[derive(Debug, Clone, PartialEq)]
+pub struct BearerToken(pub Bearer);
 
-impl Header for BearerToken {
-	fn name() -> &'static HeaderName {
-		Authorization::name()
-	}
+impl FromStr for BearerToken {
+	type Err = headers::Error;
 
-	fn from_values(
-		values: &mut reqwest::header::ValueIter<'_, HeaderValue>,
-	) -> Result<Option<Self>, Error>
-	where
-		Self: Sized,
-	{
-		Authorization::from_values(values).map(|token| {
-			token.and_then(|Authorization(creds)| creds.as_bearer().cloned().map(BearerToken))
-		})
-	}
-
-	fn to_values(&self, values: &mut ToValues) {
-		Authorization::to_values(&Authorization(Credentials::bearer(self.0.clone())), values)
+	fn from_str(value: &str) -> Result<Self, Self::Err> {
+		Ok(Self(
+			Bearer::decode(&HeaderValue::from_str(value).map_err(|_| headers::Error::invalid())?)
+				.ok_or_else(headers::Error::invalid)?,
+		))
 	}
 }
 
-impl FromStr for BearerToken {
-	type Err = String;
+impl Header for BearerToken {
+	fn name() -> &'static HeaderName {
+		Authorization::<Bearer>::name()
+	}
 
-	#[inline]
-	fn from_str(s: &str) -> Result<BearerToken, String> {
-		Token68::new(s)
-			.map(BearerToken)
-			.map_err(|err| err.to_string())
+	fn decode<'i, I>(values: &mut I) -> Result<Self, Error>
+	where
+		Self: Sized,
+		I: Iterator<Item = &'i HeaderValue>,
+	{
+		let value = values.next().ok_or_else(headers::Error::invalid)?;
+
+		let value = Bearer::decode(value).ok_or_else(headers::Error::invalid)?;
+
+		Ok(Self(value))
+	}
+
+	fn encode<E>(&self, values: &mut E)
+	where
+		E: Extend<HeaderValue>,
+	{
+		values.extend(std::iter::once(self.0.encode()))
 	}
 }
 
@@ -81,21 +120,30 @@ impl Header for LoginId {
 		&LOGIN_ID_HEADER_NAME
 	}
 
-	fn from_values(values: &mut ValueIter<'_, HeaderValue>) -> Result<Option<Self>, Error>
+	fn decode<'i, I>(values: &mut I) -> Result<Self, Error>
 	where
 		Self: Sized,
+		I: Iterator<Item = &'i HeaderValue>,
 	{
-		let Some(value) = values.next() else {
-			return Ok(None);
-		};
-		let login_id = Uuid::parse_str(value.to_str().map_err(|_| Error::invalid_value())?)
-			.map_err(|_| Error::invalid_value())?;
-		values.into_iter().for_each(drop);
-		Ok(Some(LoginId(login_id)))
+		let value = values.next().ok_or_else(headers::Error::invalid)?;
+
+		let uuid = value
+			.to_str()
+			.map_err(|_| headers::Error::invalid())
+			.map(Uuid::parse_str)
+			.map_err(|_| headers::Error::invalid())?
+			.map_err(|_| headers::Error::invalid())?;
+
+		Ok(Self(uuid))
 	}
 
-	fn to_values(&self, values: &mut ToValues) {
-		values.append(HeaderValue::from_str(self.0.to_string().as_str()).unwrap());
+	fn encode<E>(&self, values: &mut E)
+	where
+		E: Extend<HeaderValue>,
+	{
+		values.extend(std::iter::once(
+			HeaderValue::from_str(&self.0.to_string()).unwrap(),
+		))
 	}
 }
 
@@ -300,25 +348,60 @@ macro_rules! impl_has_headers_for_standard_header {
 }
 
 impl_has_headers_for_standard_header![
-	Accept,
-	AcceptEncoding,
+	AcceptRanges,
+	AccessControlAllowCredentials,
+	AccessControlAllowHeaders,
+	AccessControlAllowMethods,
+	AccessControlAllowOrigin,
+	AccessControlExposeHeaders,
+	AccessControlMaxAge,
+	AccessControlRequestHeaders,
+	AccessControlRequestMethod,
+	Age,
 	Allow,
-	AuthScheme,
-	Authorization,
-	ContentCoding,
+	CacheControl,
+	Connection,
+	ContentDisposition,
 	ContentEncoding,
 	ContentLength,
+	ContentLocation,
+	ContentRange,
 	ContentType,
-	Credentials,
+	Cookie,
+	Date,
+	ETag,
+	Error,
+	Expect,
+	Expires,
 	Host,
-	HttpDate,
-	ProxyAuthorization,
-	Quality,
-	Token68
+	IfMatch,
+	IfModifiedSince,
+	IfNoneMatch,
+	IfRange,
+	IfUnmodifiedSince,
+	LastModified,
+	Location,
+	Origin,
+	Pragma,
+	Range,
+	Referer,
+	ReferrerPolicy,
+	RetryAfter,
+	SecWebsocketAccept,
+	SecWebsocketKey,
+	SecWebsocketVersion,
+	Server,
+	SetCookie,
+	StrictTransportSecurity,
+	Te,
+	TransferEncoding,
+	Upgrade,
+	UserAgent,
+	Vary,
 ];
 
-impl<T> HasHeaders<QualityItem<T>> for QualityItem<T> {}
-impl<'a> HasHeaders<ToValues<'a>> for ToValues<'a> {}
+impl<C> HasHeaders<Authorization<C>> for Authorization<C> where C: Credentials {}
+impl<C> HasHeaders<ProxyAuthorization<C>> for ProxyAuthorization<C> where C: Credentials {}
 
 /// This trait is used to convert a struct to and from a [`HeaderMap`]. This is
 /// mostly used for internal purposes and you shouldn't have to implement this
@@ -329,7 +412,7 @@ pub trait Headers: Sized {
 	fn to_header_map(&self) -> HeaderMap;
 	/// Convert the struct from a [`HeaderMap`], returning a [`None`] if the
 	/// conversion fails.
-	fn from_header_map(map: &HeaderMap) -> Option<Self>;
+	fn from_header_map(map: &HeaderMap) -> Result<Self, headers::Error>;
 }
 
 impl Headers for () {
@@ -337,8 +420,8 @@ impl Headers for () {
 		HeaderMap::new()
 	}
 
-	fn from_header_map(_: &HeaderMap) -> Option<Self> {
-		Some(())
+	fn from_header_map(_: &HeaderMap) -> Result<Self, headers::Error> {
+		Ok(())
 	}
 }
 
