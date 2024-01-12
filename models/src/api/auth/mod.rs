@@ -1,9 +1,9 @@
-mod access_token;
+mod renew_access_token;
 mod create_account;
 mod forgot_password;
 mod is_email_valid;
 mod is_username_valid;
-mod join;
+mod complete_sign_up;
 mod list_recovery_options;
 mod login;
 mod logout;
@@ -12,12 +12,12 @@ mod resend_otp;
 mod reset_password;
 
 pub use self::{
-	access_token::*,
+	renew_access_token::*,
 	create_account::*,
 	forgot_password::*,
 	is_email_valid::*,
 	is_username_valid::*,
-	join::*,
+	complete_sign_up::*,
 	list_recovery_options::*,
 	login::*,
 	logout::*,
