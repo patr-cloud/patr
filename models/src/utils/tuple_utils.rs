@@ -23,8 +23,8 @@ pub trait AddTuple<T> {
 	type ResultantTuple;
 }
 
-impl AddTuple<()> for () {
-	type ResultantTuple = ();
+impl<T> AddTuple<T> for () {
+	type ResultantTuple = (T,);
 }
 
 /// A macro to implement [`AddTuple`] for tuples of different sizes. It is
@@ -32,11 +32,6 @@ impl AddTuple<()> for () {
 /// below if you really need it. But if you need more than 16, you should
 /// probably rethink your design.
 macro_rules! impl_add_tuples {
-    () => {
-        impl<H> AddTuple<H> for () {
-            type ResultantTuple = (H,);
-        }
-    };
     ($($header:ident),+ $(,)?) => {
         impl<H, $($header,)*> AddTuple<H> for ($($header,)*) {
             type ResultantTuple = ($($header,)* H);

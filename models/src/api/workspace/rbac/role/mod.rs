@@ -15,44 +15,14 @@ pub use self::{
 	list_users_for_role::*,
 	update_role::*,
 };
-use crate::utils::Uuid;
 
+/// The role metadata
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Role {
-	pub id: Uuid,
+	/// The name of the role
 	pub name: String,
+	/// The description of the role
 	#[serde(default, skip_serializing_if = "String::is_empty")]
 	pub description: String,
-}
-
-#[cfg(test)]
-mod test {
-	use serde_test::{assert_tokens, Token};
-
-	use super::Role;
-	use crate::utils::Uuid;
-
-	#[test]
-	fn assert_role_types() {
-		assert_tokens(
-			&Role {
-				id: Uuid::parse_str("2aef18631ded45eb9170dc2166b30867")
-					.unwrap(),
-				name: "Software Developer".to_string(),
-				description: String::new(),
-			},
-			&[
-				Token::Struct {
-					name: "Role",
-					len: 2,
-				},
-				Token::Str("id"),
-				Token::Str("2aef18631ded45eb9170dc2166b30867"),
-				Token::Str("name"),
-				Token::Str("Software Developer"),
-				Token::StructEnd,
-			],
-		);
-	}
 }

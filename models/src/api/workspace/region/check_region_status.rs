@@ -1,170 +1,36 @@
-use axum_extra::routing::TypedPath;
-use chrono::Utc;
-use reqwest::Method;
-use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 
 use super::Region;
-use crate::{
-	utils::{DateTime, Uuid},
-	ApiRequest,
-};
+use crate::{prelude::*, utils::BearerToken};
 
-#[derive(
-	Eq,
-	Ord,
-	Hash,
-	Debug,
-	Clone,
-	Default,
-	TypedPath,
-	PartialEq,
-	Serialize,
-	PartialOrd,
-	Deserialize,
-)]
-#[typed_path("/workspace/:workspace_id/region/:region_id/checkStatus")]
-pub struct CheckRegionStatusPath {
-	pub workspace_id: Uuid,
-	pub region_id: Uuid,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct CheckRegionStatusRequest {}
-
-impl ApiRequest for CheckRegionStatusRequest {
-	const METHOD: Method = Method::POST;
-	const IS_PROTECTED: bool = true;
-
-	type RequestPath = CheckRegionStatusPath;
-	type RequestQuery = ();
-	type RequestBody = ();
-	type Response = CheckRegionStatusResponse;
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct CheckRegionStatusResponse {
-	#[serde(flatten)]
-	pub region: Region,
-	#[serde(skip_serializing_if = "Option::is_none")]
-	pub message_log: Option<String>,
-	#[serde(skip_serializing_if = "Option::is_none")]
-	pub disconnected_at: Option<DateTime<Utc>>,
-}
-
-#[cfg(test)]
-mod test {
-	use chrono::{TimeZone, Utc};
-	use serde_test::{assert_tokens, Token};
-
-	use super::{CheckRegionStatusRequest, CheckRegionStatusResponse};
-	use crate::{
-		models::workspace::region::{
-			InfrastructureCloudProvider,
-			Region,
-			RegionStatus,
-			RegionType,
-		},
-		utils::Uuid,
-		ApiResponse,
-	};
-
-	#[test]
-	fn assert_request_types() {
-		assert_tokens(
-			&CheckRegionStatusRequest {},
-			&[
-				Token::Struct {
-					name: "CheckRegionStatusRequest",
-					len: 0,
-				},
-				Token::StructEnd,
-			],
-		);
+macros::declare_api_endpoint!(
+	/// Route to check region status
+	CheckRegionStatus,
+	POST "/workspace/:workspace_id/region/:region_id/checkStatus" {
+		/// The ID of the workspace
+		pub workspace_id: Uuid,
+		/// The region ID
+		pub region_id: Uuid,
+	},
+	request_headers = {
+		/// Token used to authorize user
+		pub authorization: BearerToken
+	},
+	authentication = {
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
+			extract_resource_id: |req| req.path.region_id
+		}
+	},
+	response = {
+		/// The region information containing:
+		///     name - The name of the region
+		///     cloud_provider - The cloud provider the region is of
+		///     status - The status of the region
+		///     r#type - The region type
+		pub region: WithId<Region>,
+		/// The logs
+		pub message_log: Option<String>,
+		/// The time when the region was disconnected
+		pub disconnected_at: Option<OffsetDateTime>
 	}
-
-	#[test]
-	fn assert_response_types() {
-		assert_tokens(
-			&CheckRegionStatusResponse {
-				region: Region {
-					id: Uuid::parse_str("2aef18631ded45eb9170dc2166b30867")
-						.unwrap(),
-					name: "Bangalore".to_string(),
-					cloud_provider: InfrastructureCloudProvider::Digitalocean,
-					status: RegionStatus::Active,
-					r#type: RegionType::PatrOwned,
-				},
-				message_log: None,
-				disconnected_at: None,
-			},
-			&[
-				Token::Map { len: None },
-				Token::Str("id"),
-				Token::Str("2aef18631ded45eb9170dc2166b30867"),
-				Token::Str("name"),
-				Token::Str("Bangalore"),
-				Token::Str("cloudProvider"),
-				Token::UnitVariant {
-					name: "InfrastructureCloudProvider",
-					variant: "digitalocean",
-				},
-				Token::Str("status"),
-				Token::UnitVariant {
-					name: "RegionStatus",
-					variant: "active",
-				},
-				Token::Str("type"),
-				Token::Str("patrOwned"),
-				Token::MapEnd,
-			],
-		);
-	}
-
-	#[test]
-	fn assert_success_response_types() {
-		assert_tokens(
-			&ApiResponse::success(CheckRegionStatusResponse {
-				region: Region {
-					id: Uuid::parse_str("2aef18631ded45eb9170dc2166b30867")
-						.unwrap(),
-					name: "Bangalore".to_string(),
-					cloud_provider: InfrastructureCloudProvider::Digitalocean,
-					status: RegionStatus::Disconnected,
-					r#type: RegionType::BYOC,
-				},
-				message_log: Some("Unknown error".into()),
-				disconnected_at: Some(Utc.timestamp_opt(0, 0).unwrap().into()),
-			}),
-			&[
-				Token::Map { len: None },
-				Token::Str("success"),
-				Token::Bool(true),
-				Token::Str("id"),
-				Token::Str("2aef18631ded45eb9170dc2166b30867"),
-				Token::Str("name"),
-				Token::Str("Bangalore"),
-				Token::Str("cloudProvider"),
-				Token::UnitVariant {
-					name: "InfrastructureCloudProvider",
-					variant: "digitalocean",
-				},
-				Token::Str("status"),
-				Token::UnitVariant {
-					name: "RegionStatus",
-					variant: "disconnected",
-				},
-				Token::Str("type"),
-				Token::Str("byoc"),
-				Token::Str("messageLog"),
-				Token::Some,
-				Token::Str("Unknown error"),
-				Token::Str("disconnectedAt"),
-				Token::Some,
-				Token::Str("Thu, 01 Jan 1970 00:00:00 +0000"),
-				Token::MapEnd,
-			],
-		);
-	}
-}
+);

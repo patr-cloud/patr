@@ -7,8 +7,10 @@ edition.workspace = true
 version.workspace = true
 
 [dependencies]
+either = { workspace = true, features = ["default"] }
 futures = { workspace = true, features = ["default"] }
 hex = { workspace = true, features = [] }
+httparse = { workspace = true, features = ["default"] }
 k8s-openapi = { workspace = true, features = ["v1_24"] }
 kube = { workspace = true, features = [
     "client",
@@ -16,12 +18,16 @@ kube = { workspace = true, features = [
     "ws",
     "runtime",
     "derive",
+    "unstable-runtime"
 ] }
 models = { workspace = true, features = [] }
+reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 schemars = { workspace = true, features = ["default"] }
 serde = { workspace = true, features = ["default", "derive"] }
 serde_json = { workspace = true, features = ["default"] }
 sha2 = { workspace = true, features = ["default"] }
 thiserror = { workspace = true, features = [] }
 tokio = { workspace = true, features = ["tracing", "full"] }
+tokio-stream = { workspace = true, features = ["default", "sync"] }
+tokio-tungstenite = { workspace = true, features = ["default"] }
 tracing = { workspace = true, features = ["default"] }

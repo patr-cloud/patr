@@ -124,6 +124,18 @@ pub enum WorkspacePermission {
 	},
 }
 
+impl WorkspacePermission {
+	/// Returns true if the user is a super admin of the workspace.
+	pub fn is_super_admin(&self) -> bool {
+		matches!(self, WorkspacePermission::SuperAdmin)
+	}
+
+	/// Returns true if the user is a member of the workspace.
+	pub fn is_member(&self) -> bool {
+		matches!(self, WorkspacePermission::Member { .. })
+	}
+}
+
 /// Represents the type of permission that is granted on a set of Resource IDs.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(

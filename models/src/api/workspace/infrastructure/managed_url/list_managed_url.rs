@@ -1,0 +1,36 @@
+use super::ManagedUrl;
+use crate::{
+	prelude::*,
+	utils::{BearerToken, Uuid},
+};
+
+macros::declare_api_endpoint!(
+	/// Route to list all managed URLs
+	ListManagedURL,
+	GET "/workspace/:workspace_id/infrastructure/managed-url" {
+		/// The workspace ID of the user
+		pub workspace_id: Uuid,
+	},
+	request_headers = {
+		/// Token used to authorize user
+		pub authorization: BearerToken
+	},
+	authentication = {
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
+			extract_resource_id: |req| req.path.workspace_id
+		}
+	},
+	pagination = true,
+	response_headers = {
+		/// The total number of databases in the requested workspace
+		pub total_count: TotalCountHeader,
+	},
+	response = {
+		/// The list of all managed URLs present in the workspace containing:
+		/// sub_domain - The subdomain of the URL
+		/// domain_id - The domain ID of the URL
+		/// path - The URL path
+		/// url_type - The type of URL (Deployment, Static Site, Proxy, Redirect)
+		pub urls: Vec<WithId<ManagedUrl>>,
+	}
+);

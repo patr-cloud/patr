@@ -1,10 +1,11 @@
 use std::{fmt::Display, num::ParseIntError, ops::Deref, str::FromStr};
 
+use schemars::JsonSchema;
 use serde::{de::Error, Deserialize, Serialize};
 
 /// A wrapper around a `u16` that serializes and deserializes as a string.
 /// Mostly used as keys in maps.
-#[derive(Clone, Copy, Debug, PartialEq, Hash, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, Eq, PartialOrd, Ord, JsonSchema)]
 pub struct StringifiedU16(u16);
 
 impl StringifiedU16 {

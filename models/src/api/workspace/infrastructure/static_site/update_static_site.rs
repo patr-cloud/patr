@@ -1,88 +1,28 @@
-use axum_extra::routing::TypedPath;
-use reqwest::Method;
-use serde::{Deserialize, Serialize};
+use crate::{
+	prelude::*,
+	utils::{BearerToken, Uuid},
+};
 
-use crate::{utils::Uuid, ApiRequest};
-
-#[derive(
-	Eq,
-	Ord,
-	Hash,
-	Debug,
-	Clone,
-	Default,
-	TypedPath,
-	PartialEq,
-	Serialize,
-	PartialOrd,
-	Deserialize,
-)]
-#[typed_path(
-	"/workspace/:workspace_id/infrastructure/static-site/:static_site_id/"
-)]
-pub struct UpdateStaticSitePath {
-	pub workspace_id: Uuid,
-	pub static_site_id: Uuid,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateStaticSiteRequest {
-	pub name: String,
-}
-
-impl ApiRequest for UpdateStaticSiteRequest {
-	const METHOD: Method = Method::PATCH;
-	const IS_PROTECTED: bool = true;
-
-	type RequestPath = UpdateStaticSitePath;
-	type RequestQuery = ();
-	type RequestBody = Self;
-	type Response = ();
-}
-
-#[cfg(test)]
-mod test {
-	use serde_test::{assert_tokens, Token};
-
-	use super::UpdateStaticSiteRequest;
-	use crate::{ApiRequest, ApiResponse};
-
-	#[test]
-	fn assert_request_types() {
-		assert_tokens(
-			&UpdateStaticSiteRequest {
-				name: "patr".to_string(),
-			},
-			&[
-				Token::Struct {
-					name: "UpdateStaticSiteRequest",
-					len: 1,
-				},
-				Token::Str("name"),
-				Token::Str("patr"),
-				Token::StructEnd,
-			],
-		)
+macros::declare_api_endpoint!(
+	/// Route to update a static site
+	UpdateStaticSite,
+	PATCH "/workspace/:workspace_id/infrastructure/static-site/:static_site_id" {
+		/// The workspace ID of the user
+		pub workspace_id: Uuid,
+		/// The static site ID of static site to update
+		pub static_site_id: Uuid,
+	},
+	request_headers = {
+		/// Token used to authorize user
+		pub authorization: BearerToken
+	},
+	authentication = {
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
+			extract_resource_id: |req| req.path.static_site_id
+		}
+	},
+	request = {
+		/// The updated static site name
+		pub name: String,
 	}
-
-	#[test]
-	fn assert_response_types() {
-		crate::assert_types::<<UpdateStaticSiteRequest as ApiRequest>::Response>(
-			(),
-		);
-	}
-
-	#[test]
-	fn assert_success_response_types() {
-		assert_tokens(
-			&ApiResponse::success(()),
-			&[
-				Token::Map { len: None },
-				Token::Str("success"),
-				Token::Bool(true),
-				Token::MapEnd,
-			],
-		)
-	}
-}
+);

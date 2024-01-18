@@ -6,7 +6,6 @@ use axum::{
 	Router,
 };
 use axum_extra::routing::TypedPath;
-use matchit::Router as MatchRouter;
 use models::{
 	utils::{AppAuthentication, BearerToken, HasHeader, NoAuthentication},
 	ApiEndpoint,
@@ -80,7 +79,7 @@ where
 			.get_mut()
 			.expect("registry should be initialized by now")
 			.entry(E::METHOD)
-			.or_insert(MatchRouter::new())
+			.or_default()
 			.insert(
 				<E::RequestPath as TypedPath>::PATH,
 				Box::new(BoxLayer::<
@@ -138,7 +137,7 @@ where
 			.get_mut()
 			.expect("registry should be initialized by now")
 			.entry(E::METHOD)
-			.or_insert(MatchRouter::new())
+			.or_default()
 			.insert(
 				<E::RequestPath as TypedPath>::PATH,
 				Box::new(BoxLayer::<

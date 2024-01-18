@@ -1,5 +1,6 @@
 use std::{borrow::Cow, fmt::Display};
 
+use schemars::JsonSchema;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use time::{Duration, OffsetDateTime};
 
@@ -9,7 +10,7 @@ use time::{Duration, OffsetDateTime};
 /// be used instead of [`uuid::Uuid`]. Ideally, this is the struct that should
 /// be imported and [`uuid`] should not be added as a dependency at all. This
 /// would prevent wrong UUIDs from being sent or received.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default, JsonSchema)]
 pub struct Uuid(uuid::Uuid);
 
 impl Uuid {
@@ -40,7 +41,7 @@ impl Uuid {
 			let (secs, nanos) = ts.to_unix();
 			Some(
 				OffsetDateTime::from_unix_timestamp(secs.try_into().unwrap_or_default()).ok()? +
-					Duration::nanoseconds(nanos.try_into().unwrap_or_default()),
+					Duration::nanoseconds(nanos.into()),
 			)
 		})
 	}
@@ -118,5 +119,18 @@ where
 		buf: &mut <Db as sqlx::database::HasArguments<'a>>::ArgumentBuffer,
 	) -> sqlx::encode::IsNull {
 		self.0.encode_by_ref(buf)
+	}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<'a, Db> sqlx::Decode<'a, Db> for Uuid
+where
+	Db: sqlx::Database,
+	uuid::Uuid: sqlx::Decode<'a, Db>,
+{
+	fn decode(
+		value: <Db as sqlx::database::HasValueRef<'a>>::ValueRef,
+	) -> Result<Self, sqlx::error::BoxDynError> {
+		Ok(Self(uuid::Uuid::decode(value)?))
 	}
 }

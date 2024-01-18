@@ -2,16 +2,24 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
 mod create_repository;
-// mod delete_repository;
-// mod delete_repository_image;
-// mod get_exposed_port;
-// mod get_repository_image_details;
-// mod get_repository_info;
-// mod get_repository_tag_details;
-// mod list_repositories;
-// mod list_repository_tags;
+mod delete_repository;
+mod delete_repository_image;
+mod get_exposed_ports;
+mod get_repository_image_details;
+mod get_repository_info;
+mod list_repositories;
+mod list_repository_tags;
 
-pub use self::create_repository::*;
+pub use self::{
+	create_repository::*,
+	delete_repository::*,
+	delete_repository_image::*,
+	get_exposed_ports::*,
+	get_repository_image_details::*,
+	get_repository_info::*,
+	list_repositories::*,
+	list_repository_tags::*,
+};
 
 /// Represents a repository of container images in Patr's in-build container
 /// registry.
@@ -24,8 +32,12 @@ pub struct ContainerRepository {
 	pub size: u64,
 	/// The last time the repository was either created, updated or a tag was
 	/// updated.
+	///
+	/// TODO: Change this to audit log
 	pub last_updated: OffsetDateTime,
 	/// The time the repository was created.
+	///
+	/// TODO: Change this to audit log
 	pub created: OffsetDateTime,
 }
 

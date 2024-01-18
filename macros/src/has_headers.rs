@@ -47,7 +47,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				ident: field_ident, ..
 			} = field;
 			quote::quote! {
-				::typed_headers::HeaderMapExt::typed_insert(&mut map, &self.#field_ident);
+				::headers::HeaderMapExt::typed_insert(&mut map, self.#field_ident.clone());
 			}
 		})
 		.collect::<TokenStream2>();
@@ -57,17 +57,14 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		.map(|field| {
 			let Field { ident, ty, .. } = field;
 			quote::quote! {
-				#ident: ::typed_headers::HeaderMapExt::typed_get::<#ty>(map)
-					.map_err(|err| {
+				#ident: ::headers::HeaderMapExt::typed_get::<#ty>(map)
+					.ok_or_else(|| {
 						tracing::debug!(
-							"Failed to parse header `{}`: {}",
-							<#ty as ::typed_headers::Header>::name().as_str(),
-							err
+							"Failed to parse header `{}`",
+							<#ty as ::headers::Header>::name().as_str()
 						);
-						err
-					})
-					.ok()
-					.flatten()?,
+						::headers::Error::invalid()
+					})?,
 			}
 		})
 		.collect::<TokenStream2>();
@@ -76,17 +73,17 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		#has_header_impls
 
 		impl models::utils::Headers for #ident {
-			fn to_header_map(&self) -> ::typed_headers::http::HeaderMap {
-				let mut map = ::typed_headers::http::HeaderMap::new();
+			fn to_header_map(&self) -> ::http::HeaderMap {
+				let mut map = ::http::HeaderMap::new();
 				#headers_impl
 				map
 			}
 
-			fn from_header_map(map: &::typed_headers::http::HeaderMap) -> Option<Self> {
+			fn from_header_map(map: &::http::HeaderMap) -> Result<Self, ::headers::Error> {
 				let value = Self {
 					#from_headers_impl
 				};
-				Some(value)
+				Ok(value)
 			}
 		}
 	}

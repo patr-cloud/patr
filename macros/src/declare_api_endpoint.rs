@@ -241,6 +241,10 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				#name
 			}
 		}
+	} else if paginate_query.unwrap_or(false) {
+		quote::quote! {
+			crate::api::Paginated<()>
+		}
 	} else {
 		quote::quote! {
 			()

@@ -5,8 +5,6 @@ mod managed_database;
 mod managed_url;
 mod static_site;
 
-pub use self::{deployment::*, managed_database::*, managed_url::*, static_site::*};
-
 /// Initialize all infrastructure-related tables
 #[instrument(skip(connection))]
 pub async fn initialize_infrastructure_tables(

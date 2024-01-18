@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT workspace_user.workspace_id, role_resource_permissions_include.permission_id, role_resource_permissions_include.resource_id FROM role_resource_permissions_include JOIN workspace_user ON workspace_user.role_id = role_resource_permissions_include.role_id WHERE workspace_user.user_id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "workspace_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "permission_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "resource_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8feb19a6f68ed6736254c03712f6a8eaa1923001c89f89cae9b0acf9ec87cb2e"
+}

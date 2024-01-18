@@ -56,20 +56,20 @@ pub async fn initialize(app: &AppState) -> Result<(), ErrorType> {
 		warn!("No tables exist. Creating fresh");
 
 		// Create all tables
-		db::initialize_meta_tables(&mut transaction).await?;
-		db::initialize_user_tables(&mut transaction).await?;
-		db::initialize_workspace_tables(&mut transaction).await?;
-		db::initialize_rbac_tables(&mut transaction).await?;
+		super::initialize_meta_tables(&mut transaction).await?;
+		super::initialize_user_tables(&mut transaction).await?;
+		super::initialize_workspace_tables(&mut transaction).await?;
+		super::initialize_rbac_tables(&mut transaction).await?;
 
-		db::initialize_rbac_indices(&mut transaction).await?;
-		db::initialize_workspace_indices(&mut transaction).await?;
-		db::initialize_user_indices(&mut transaction).await?;
-		db::initialize_meta_indices(&mut transaction).await?;
+		super::initialize_rbac_indices(&mut transaction).await?;
+		super::initialize_workspace_indices(&mut transaction).await?;
+		super::initialize_user_indices(&mut transaction).await?;
+		super::initialize_meta_indices(&mut transaction).await?;
 
-		db::initialize_rbac_constraints(&mut transaction).await?;
-		db::initialize_workspace_constraints(&mut transaction).await?;
-		db::initialize_user_constraints(&mut transaction).await?;
-		db::initialize_meta_constraints(&mut transaction).await?;
+		super::initialize_rbac_constraints(&mut transaction).await?;
+		super::initialize_workspace_constraints(&mut transaction).await?;
+		super::initialize_user_constraints(&mut transaction).await?;
+		super::initialize_meta_constraints(&mut transaction).await?;
 
 		// Set the database schema version
 		query!(
