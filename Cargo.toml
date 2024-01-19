@@ -6,6 +6,7 @@ members = [
     "controller", # "cloudflare-ingress",
     "frontend",
     "cli",
+    "components",
 ]
 package.authors = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
 package.description = "Patr API and all it's dependencies"
