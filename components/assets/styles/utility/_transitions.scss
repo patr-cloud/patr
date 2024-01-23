@@ -1,0 +1,87 @@
+.fade-in {
+  animation: transition-in 600ms;
+}
+
+.fade-out {
+  opacity: 0;
+  transition: 3000ms;
+}
+
+@keyframes transition-in {
+  from {
+    opacity: 0;
+    transform: rotateX(-10deg);
+  }
+  to {
+    opacity: 1;
+    transform: rotateX(0);
+  }
+}
+
+@keyframes transition-out {
+  to {
+    opacity: 0;
+    transform: rotateX(-10deg);
+  }
+  from {
+    opacity: 1;
+    transform: rotateX(0);
+  }
+}
+
+.grey-scale {
+  filter: grayscale(100%);
+}
+
+.transition-md {
+  transition: width 400ms ease-in, height 400ms ease-in, filter 600ms ease-in;
+}
+
+.pulse {
+  animation: pulse-animation 1000ms infinite;
+}
+
+@keyframes pulse-animation {
+  0% {
+    box-shadow: 0 0 0 0px rgb(248, 155, 65);
+  }
+  100% {
+    box-shadow: 0 0 0 10px rgb(248, 155, 65, 0.2);
+  }
+}
+
+.upload-button {
+  width: 7rem;
+  height: 2.3rem;
+  display: flex;
+  border: 0.5px solid #f89b41;
+  border-radius: 5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.upload-button::before {
+  content: "";
+
+  left: 50%;
+  width: 50rem;
+  height: 50rem;
+  position: absolute;
+
+  z-index: 99;
+  border-radius: 18rem;
+  background: #f89b41;
+  transform: translateX(-50%);
+  animation: fill 9000ms ease-in-out infinite;
+}
+
+@keyframes fill {
+  from {
+    top: 40px;
+    transform: translateX(-50%) rotate(0deg);
+  }
+  to {
+    top: -10px;
+    transform: translateX(-50%) rotate(360deg);
+  }
+}
