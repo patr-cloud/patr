@@ -1,5 +1,4 @@
 use std::rc::Rc;
-
 use web_sys::MouseEvent;
 
 use crate::imports::*;
@@ -37,6 +36,7 @@ pub fn Link(
 	#[prop(into, optional)]
 	style_variant: MaybeSignal<LinkStyleVariant>,
 ) -> impl IntoView {
+    // todo!("Change r#type to shouldsubmit and type_variant to type and make a");
 	let class = move || {
 		format!(
 			"fr-ct-ct {} {}",

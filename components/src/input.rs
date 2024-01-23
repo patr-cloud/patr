@@ -20,6 +20,21 @@ pub enum InputType {
 	/// validation. Displays a numeric keypad in some devices with dynamic
 	/// keypads.
 	Number,
+	/// A check box allowing single values to be selected/deselected.
+	Checkbox,
+}
+
+impl InputType {
+	pub const fn as_html_attribute(self) -> &'static str {
+		match self {
+			Self::Text => "text",
+			Self::Email => "email",
+			Self::Phone => "tel",
+			Self::Number => "number",
+			Self::Checkbox => "checkbox",
+			Self::Password => "password",
+		}
+	}
 }
 
 #[component]
@@ -34,8 +49,8 @@ pub fn Input(
 	#[prop(into, optional)]
 	placeholder: MaybeSignal<String>,
 	/// The type of input
-	#[prop(into, optional, default = "text".into())]
-	r#type: MaybeSignal<String>,
+	#[prop(into, optional, default = InputType::Text.into())]
+	r#type: MaybeSignal<InputType>,
 	/// Whether the input is disabled.
 	#[prop(into, optional, default = false.into())]
 	disabled: MaybeSignal<bool>,
@@ -68,12 +83,60 @@ pub fn Input(
 	let cloned_label = label.clone();
 	let show_label = move || !cloned_label.is_empty();
 
+	let show_password = create_rw_signal(false);
+	let is_js_enable = create_rw_signal(false);
+
+	// FIX: use create_effect rather render_effect.
+	create_render_effect(move |_| {
+		is_js_enable.set(true);
+		// log(format!("{:?}", is_js_enable))
+	});
+
 	let class = move || {
 		format!(
 			"input fr-fs-ct row-card bg-secondary-{} {}",
 			variant.get().as_css_name(),
 			class
 		)
+	};
+
+	let end_icon_view = end_icon.with(|props| {
+		props
+			.as_ref()
+			.map(|props| IconProps {
+				icon: props.icon,
+				size: props.size,
+				color: props.color,
+				class: props.class.clone(),
+				on_click: props.on_click.clone(),
+				enable_pulse: props.enable_pulse,
+				fill: props.fill,
+			})
+			.into_view()
+	});
+
+	let end_icon_view_cloned = end_icon_view.clone();
+	// logging::log!("{:?}", is_js_enable.get());
+
+	let password_icon = || match r#type.get() {
+		InputType::Password => view! {
+			<Show when=move || is_js_enable.get()>
+				{ end_icon_view_cloned }
+			</Show>
+		},
+		_ => end_icon
+			.with(|props| {
+				props.as_ref().map(|props| IconProps {
+					icon: props.icon,
+					size: props.size,
+					color: props.color,
+					class: props.class.clone(),
+					on_click: props.on_click.clone(),
+					enable_pulse: props.enable_pulse,
+					fill: props.fill,
+				})
+			})
+			.into_view(),
 	};
 
 	view! {
@@ -108,29 +171,32 @@ pub fn Input(
 				disabled={move || disabled.get()}
 				on:input=on_input
 				value={move|| value.clone()}
-				type={move || r#type.get()}
+				type={move || r#type.get().as_html_attribute()}
 			/>
 
 			{move || end_text.get()}
-			{
-				end_icon
-					.with(|props|
-						props
-							.as_ref()
-							.map(|props|
-								IconProps {
-									icon: props.icon,
-									size: props.size,
-									color: props.color,
-									class: props.class.clone(),
-									on_click: props.on_click.clone(),
-									enable_pulse: props.enable_pulse,
-									fill: props.fill,
-								}
-							)
-					)
-					.into_view()
-			}
+			{password_icon}
+			// <Show when=move || is_js_enable.get()>
+			//     {
+			//         end_icon
+			//             .with(|props|
+			//                 props
+			//                     .as_ref()
+			//                     .map(|props|
+			//                         IconProps {
+			//                             icon: props.icon,
+			//                             size: props.size,
+			//                             color: props.color,
+			//                             class: props.class.clone(),
+			//                             on_click: props.on_click.clone(),
+			//                             enable_pulse: props.enable_pulse,
+			//                             fill: props.fill,
+			//                         }
+			//                     )
+			//             )
+			//             .into_view()
+			//     }
+			// </Show>
 		</div>
 	}
 }
