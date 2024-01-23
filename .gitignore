@@ -1,6 +1,8 @@
 /target
 /log
 
+**/dist/
+
 /config/*
 !/config/*.sample.*
 .env

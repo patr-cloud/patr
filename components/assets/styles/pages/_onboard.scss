@@ -1,0 +1,29 @@
+@use "sass:map";
+@use "../helpers/maps" as *;
+@use "../base/variables" as *;
+
+.box-onboard {
+    width: 32rem;
+    padding: 3.125rem;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    box-shadow: $shadow-medium;
+    border-radius: map.get($border-radii, "sm");
+    background-color: map.get($background-colors, "secondary-dark");
+
+    &.feedback-modal {
+        padding: 2rem 2.5rem;
+
+        & .image-preview {
+            max-height: 12rem;
+        }
+    }
+}
+
+.row-card {
+  min-height: 2.5rem;
+}
