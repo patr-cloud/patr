@@ -2,9 +2,11 @@ use components::pages::*;
 use leptos::*;
 
 fn main() {
-	mount_to_body(|| {
-		view! {
-			<LoginPage />
-		}
-	})
+	wasm_logger::init(wasm_logger::Config::default());
+
+	if cfg!(debug_assertions) {
+		console_error_panic_hook::set_once();
+	}
+	
+	mount_to_body(LoginPage)
 }
