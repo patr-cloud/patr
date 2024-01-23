@@ -62,25 +62,20 @@ pub fn Link(
 		{move || match variant.get() {
 			Variant::Link => {
 				view! {
-					<a
-						href={to.clone()}
-						class=class()
-					>
+					<a href=to.clone() class=class()>
 						{children()}
 					</a>
-				}.into_view()
-			},
+				}
+					.into_view()
+			}
 			Variant::Button => {
 				view! {
-					<button
-						type=cloned_type()
-						on:click=on_click.clone()
-						class=class()
-					>
+					<button type=cloned_type() on:click=on_click.clone() class=class()>
 						{children()}
 					</button>
-				}.into_view()
-			},
+				}
+					.into_view()
+			}
 		}}
 	}
 }
