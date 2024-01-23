@@ -1,0 +1,386 @@
+@use "sass:map";
+@use "sass:color";
+
+@use "./transitions" as *;
+@use "../helpers/maps" as *;
+@use "../helpers/mixins" as *;
+@use "../base/variables" as *;
+
+@each $property, $map in $utility-map {
+  $prefix: map-get($map, "prefix");
+  $values: map-get($map, "values");
+  @each $key, $value in $values {
+    //creating horizontal and vertical spacing classes
+    @if $prefix == "p" or $prefix == "m" {
+      .#{$prefix}-#{$key} {
+        #{$property}: $value;
+      }
+      .#{$prefix}x-#{$key} {
+        #{$property}-left: $value;
+        #{$property}-right: $value;
+      }
+      .#{$prefix}y-#{$key} {
+        #{$property}-top: $value;
+        #{$property}-bottom: $value;
+      }
+    } @else {
+      .#{$prefix}-#{$key} {
+        #{$property}: $value;
+      }
+    }
+  }
+}
+
+.br-round {
+  border-radius: 50%;
+}
+
+.icon {
+  width: map.get($icon-sizes, "sm");
+  height: map.get($icon-sizes, "sm");
+
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+
+  fill: none;
+}
+
+@each $size, $value in $icon-sizes {
+  .icon-#{$size} {
+    @include create-size($value);
+  }
+}
+
+.avatar {
+  border-radius: 50%;
+}
+
+@each $size, $value in $avatar-sizes {
+  .avatar-#{$size} {
+    @include create-size($value);
+  }
+}
+
+@each $color, $value in $text-colors {
+  .icon-#{$color}-fill {
+    fill: $value;
+  }
+}
+
+.flex {
+  display: flex;
+}
+
+@each $dir, $dir-value in $flex-directions {
+  @each $justify, $justify-value in $flex-justify {
+    @each $align, $align-value in $flex-align {
+      .#{$dir}-#{$justify}-#{$align} {
+        @include flex($dir-value, $justify-value, $align-value);
+      }
+    }
+  }
+}
+
+.f-wrap {
+  flex-wrap: wrap;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.half-width {
+  width: 50%;
+}
+
+.full-height {
+  height: 100%;
+}
+
+.min-full-height {
+  min-height: 100%;
+}
+
+.half-height {
+  height: 50%;
+}
+
+.width-fit-content {
+  width: fit-content;
+}
+
+.img-res {
+  max-inline-size: 100%;
+  block-size: auto;
+  object-fit: cover;
+  object-position: center;
+}
+
+.full-page {
+  width: 100%;
+  height: 100vh;
+}
+
+.of-auto {
+  overflow: auto;
+}
+
+.ofy-auto {
+  overflow-y: auto;
+}
+
+.ofx-auto {
+  overflow-x: auto;
+}
+
+.of-hidden {
+  overflow: hidden;
+}
+
+.ofx-hidden {
+  overflow-x: hidden;
+}
+
+.ofy-hidden {
+  overflow-y: hidden;
+}
+
+.txt-of-ellipsis {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bg-gradient {
+  background-image: $gradient-top-to-bottom;
+  border-bottom: 1px solid
+    transparentize(map.get($background-colors, "primary"), 0.6);
+  border-left: 1px solid
+    transparentize(map.get($background-colors, "primary"), 0.6);
+}
+
+.bd-none {
+  transition: 250ms;
+  border: 2px solid transparent;
+}
+
+.bd-light {
+  border: 1px solid $border-color;
+}
+
+.bd-thick-light {
+  border: 2px solid $border-color;
+}
+
+.bd-dashed-light {
+  border: 2px dashed $border-color;
+}
+
+.bd-primary {
+  border: 2px solid map.get($background-colors, "primary");
+}
+
+.bd-dashed-primary {
+  border: 2px solid map.get($background-colors, "primary");
+}
+
+.bd-primary-focus {
+  &:focus-visible {
+    border: 1px solid map.get($background-colors, "primary");
+  }
+}
+
+.bd-collapse {
+  border-collapse: collapse;
+}
+
+.outline-primary {
+  outline: 2px solid map.get($background-colors, "primary");
+}
+
+.outline-primary-focus {
+  @include btn-secondary-focus;
+}
+
+.outline-info-focus {
+  @include btn-secondary-focus("info");
+}
+
+.letter-sp-md {
+  letter-spacing: 1px;
+}
+
+.letter-sp-lg {
+  letter-spacing: 3px;
+}
+
+.pos-abs {
+  position: absolute;
+}
+
+.pos-fix {
+  position: fixed;
+}
+
+.pos-rel {
+  position: relative;
+}
+
+.top-right-xs {
+  top: 0.2rem;
+  right: 0.2rem;
+}
+
+.top-right-sm {
+  top: 0.5rem;
+  right: 0.5rem;
+}
+
+.top-right-md {
+  top: 1rem;
+  right: 1rem;
+}
+
+.top-right-lg {
+  top: 2rem;
+  right: 2.5rem;
+}
+
+.full-width-height {
+  top: 1rem;
+  left: 1rem;
+  right: 1rem;
+  bottom: 1rem;
+}
+
+.pos-sticky-top {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.br-bottom-sm:last-of-type {
+  border-bottom-left-radius: map.get($border-radii, "sm");
+  border-bottom-right-radius: map.get($border-radii, "sm");
+}
+
+.txt-underline {
+  text-decoration: underline;
+}
+
+.txt-line-through {
+  text-decoration: line-through;
+}
+
+.txt-center {
+  text-align: center;
+}
+
+.txt-left {
+  text-align: left;
+}
+
+.ul-primary {
+  border-bottom: 2px solid map.get($background-colors, "primary") !important;
+}
+
+.ul-primary-light {
+  border-bottom: 2px solid
+    transparentize(darken(map.get($background-colors, "primary"), 25%), 0.4);
+}
+
+.ol-primary-light {
+  border-top: 2px solid
+    transparentize(darken(map.get($background-colors, "primary"), 25%), 0.4);
+}
+
+.ul-light {
+  border-bottom: 2px solid $border-color;
+}
+
+.ul-light-thin {
+  border-bottom: 1px solid $border-color;
+}
+
+.ul-grey-thin {
+  border-bottom: 1px solid map.get($text-colors, "grey");
+}
+
+.ul-none {
+  border-bottom: 2px solid transparent !important;
+}
+
+.z-500 {
+  z-index: 500;
+}
+
+.z-600 {
+  z-index: 600;
+}
+
+.z-700 {
+  z-index: 700;
+}
+
+.display-none {
+  display: none;
+}
+
+.disable-resize {
+  resize: none;
+}
+
+@for $i from 1 to 16 {
+  .w-fix-#{$i * 5} {
+    width: #{$i * 5}ch;
+  }
+  .w-#{$i * 5} {
+    max-width: #{$i * 5}ch;
+  }
+}
+
+@for $i from 2 to 7 {
+  .max-height-#{$i * 5} {
+    max-height: #{$i * 5}rem;
+  }
+}
+
+.li-diamond {
+  position: relative;
+  padding-left: map.get($paddings, "lg");
+
+  &::before {
+    content: "";
+
+    top: 5px;
+    left: 0;
+    width: 0.5rem;
+    height: 0.5rem;
+    position: absolute;
+
+    transform: rotate(45deg);
+    background-color: map.get($background-colors, "primary");
+  }
+}
+
+.code-snippet {
+  color: $txt-code-snippet;
+  padding: 2px 5px;
+  border-radius: 5px;
+  background-color: $bg-code-snippet;
+}
+
+.break-word {
+  word-break: break-all;
+}
+
+.list-disc {
+  list-style-type: disc;
+}
+
+.focus-within-primary {
+  &:focus-within {
+    outline: 2px solid map.get($background-colors, "primary");
+  }
+}
