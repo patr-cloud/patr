@@ -10,7 +10,7 @@ pub fn PageContainer(
 ) -> impl IntoView {
 	let class = move || {
 		format!(
-			"fr-fs-fs bg-page full-width full-height bg-secondary {}",
+			"fr-fs-fs bg-page-container full-width full-height bg-secondary {}",
 			class.get()
 		)
 	};
