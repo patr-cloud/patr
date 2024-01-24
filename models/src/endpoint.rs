@@ -50,7 +50,7 @@ where
 		IntoAxumResponse + RequestHeaders + ResponseHeaders + Debug + Send + Sync + 'static,
 {
 	/// The HTTP method that should be used for this endpoint
-	const METHOD: reqwest::Method;
+	const METHOD: http::Method;
 
 	/// The path that should be used for this endpoint. This should be a valid
 	/// HTML URL Path and can contain URL parameters as a struct. For example,

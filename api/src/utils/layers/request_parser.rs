@@ -115,7 +115,7 @@ where
 				.into_response());
 			};
 
-			let Some(headers) = <E::RequestHeaders as Headers>::from_header_map(req.headers())
+			let Ok(headers) = <E::RequestHeaders as Headers>::from_header_map(req.headers())
 			else {
 				debug!("Failed to parse headers");
 				return Ok(ApiErrorResponse::error_with_message(

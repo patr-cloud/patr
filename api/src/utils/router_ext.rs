@@ -1,7 +1,6 @@
 use std::net::IpAddr;
 
 use axum::{
-	body::Body,
 	routing::{MethodFilter, MethodRouter},
 	Router,
 };
@@ -55,7 +54,7 @@ where
 		E::RequestHeaders: HasHeader<BearerToken>;
 }
 
-impl<S> RouterExt<S> for Router<S, Body>
+impl<S> RouterExt<S> for Router<S>
 where
 	S: Clone + Send + Sync + 'static,
 {

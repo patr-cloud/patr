@@ -126,7 +126,7 @@ where
 		async move {
 			trace!("Authenticating request");
 			let BearerToken(token) = req.request.headers.get_header();
-			let token = token.as_str();
+			let token = token.token();
 
 			let user_data = match client_type {
 				ClientType::ApiToken => {

@@ -13,6 +13,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 axum-extra = { workspace = true, features = ["typed-routing"] }
 console_error_panic_hook = { workspace = true, features = [] }
+http = { workspace = true, features = ["default"] }
 leptos-use = { workspace = true, features = [] }
 log = { workspace = true, features = [] }
 matchit = { workspace = true, features = ["default"] }

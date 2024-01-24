@@ -4,6 +4,8 @@
 
 //! The main API server for Patr.
 
+use tokio::net::TcpListener;
+
 /// This module contains the main application logic. Most of the app requests,
 /// states, and mounting of endpoints are done here
 pub mod app;
@@ -155,19 +157,19 @@ async fn main() {
 
 	tokio::join!(
 		async {
-			axum::Server::bind(&bind_address)
-				.serve(
-					app::setup_routes(&state)
-						.await
-						.into_make_service_with_connect_info::<SocketAddr>(),
-				)
-				.with_graceful_shutdown(async {
-					tokio::signal::ctrl_c()
-						.await
-						.expect("failed to install ctrl-c signal handler");
-				})
-				.await
-				.unwrap();
+			axum::serve(
+				TcpListener::bind(bind_address).await.unwrap(),
+				app::setup_routes(&state)
+					.await
+					.into_make_service_with_connect_info::<SocketAddr>(),
+			)
+			.with_graceful_shutdown(async {
+				tokio::signal::ctrl_c()
+					.await
+					.expect("failed to install ctrl-c signal handler");
+			})
+			.await
+			.unwrap();
 		},
 		async {
 			redis_publisher::run(&state).await;
