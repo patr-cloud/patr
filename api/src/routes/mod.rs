@@ -1,5 +1,5 @@
 use axum::{
-	body::{self, Body},
+	body::Body,
 	extract::Host,
 	http::{Request, Response, StatusCode},
 	routing::any,
@@ -33,7 +33,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 				"app.patr.cloud" => app_router.oneshot(request).await,
 				_ => Ok(Response::builder()
 					.status(StatusCode::NOT_FOUND)
-					.body(body::boxed(Body::empty()))
+					.body(Body::empty())
 					.unwrap()),
 			}
 		}

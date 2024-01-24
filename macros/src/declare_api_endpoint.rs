@@ -440,7 +440,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		}
 
 		impl crate::ApiEndpoint for #request_name {
-			const METHOD: ::reqwest::Method = ::reqwest::Method::#method;
+			const METHOD: ::http::Method = ::http::Method::#method;
 
 			type RequestPath = #path_name;
 			type RequestQuery = #query_name;
