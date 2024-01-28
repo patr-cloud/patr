@@ -4,6 +4,8 @@
 
 //! The main API server for Patr.
 
+use opentelemetry::KeyValue;
+use opentelemetry_sdk::Resource;
 use tokio::net::TcpListener;
 
 /// This module contains the main application logic. Most of the app requests,
@@ -33,7 +35,6 @@ pub mod utils;
 /// A prelude that re-exports commonly used items.
 pub mod prelude {
 	pub use anyhow::Context;
-	pub use diesel::{dsl::*, prelude::*};
 	pub use macros::query;
 	pub use models::{
 		utils::{OneOrMore, Paginated, Uuid},
@@ -45,7 +46,6 @@ pub mod prelude {
 
 	pub use crate::{
 		app::{AppRequest, AppState, AuthenticatedAppRequest},
-		db::schema,
 		redis,
 		utils::{constants, RouterExt},
 	};
@@ -118,16 +118,25 @@ async fn main() {
 			)
 			.with(
 				OpenTelemetryLayer::new(
-					opentelemetry_otlp::new_pipeline()
-						.tracing()
-						.with_trace_config(opentelemetry_sdk::trace::config())
-						.with_exporter(
-							opentelemetry_otlp::new_exporter()
-								.tonic()
-								.with_endpoint(&config.opentelemetry.endpoint),
-						)
-						.install_simple()
-						.expect("Failed to install OpenTelemetry tracing pipeline"),
+					{
+						let pipeline = opentelemetry_otlp::new_pipeline()
+							.tracing()
+							.with_trace_config(opentelemetry_sdk::trace::config().with_resource(
+								Resource::new(vec![KeyValue::new("service.name", "Patr API")]),
+							))
+							.with_exporter(
+								opentelemetry_otlp::new_exporter()
+									.tonic()
+									.with_endpoint(&config.opentelemetry.endpoint),
+							);
+						match config.environment {
+							RunningEnvironment::Development => pipeline.install_simple(),
+							RunningEnvironment::Production => {
+								pipeline.install_batch(opentelemetry_sdk::runtime::Tokio)
+							}
+						}
+					}
+					.expect("Failed to install OpenTelemetry tracing pipeline"),
 				)
 				.with_filter(
 					tracing_subscriber::filter::Targets::new()

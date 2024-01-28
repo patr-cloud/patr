@@ -91,7 +91,7 @@ pub async fn initialize_rbac_tables(
 			permission_id UUID NOT NULL,
 			resource_id UUID NOT NULL,
 			permission_type PERMISSION_TYPE NOT NULL
-				GENERATED ALWAYS AS('include') STORED
+				GENERATED ALWAYS AS ('include') STORED
 		);
 		"#
 	)

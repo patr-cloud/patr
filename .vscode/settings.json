@@ -40,7 +40,8 @@
         "Stylesheet",
         "TIMESTAMPTZ",
         "tungstenite",
-        "wayy"
+        "wayy",
+        "Workspaced"
     ],
     "nixEnvSelector.nixFile": "${workspaceRoot}/shell.nix",
     "rust-analyzer.showUnlinkedFileNotification": false

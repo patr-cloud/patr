@@ -14,12 +14,6 @@ axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
 axum-extra = { workspace = true, features = ["default", "typed-routing"] }
 axum-typed-websockets = { workspace = true, features = ["default"] }
 config = { workspace = true, features = ["default"] }
-diesel = { workspace = true, features = [
-    "network-address",
-    "time",
-    "32-column-tables",
-] }
-diesel-async = { workspace = true, features = ["postgres", "r2d2", "default"] }
 frontend = { workspace = true, features = [] }
 futures = { workspace = true, features = ["default"] }
 headers = { workspace = true, features = [] }
@@ -29,8 +23,9 @@ leptos_axum = { workspace = true, features = ["default"] }
 macros = { workspace = true, features = [] }
 matchit = { workspace = true, features = ["default"] }
 models = { workspace = true, features = [] }
+opentelemetry = { workspace = true, features = ["default"] }
 opentelemetry-otlp = { workspace = true, features = ["default"] }
-opentelemetry_sdk = { workspace = true, features = ["default"] }
+opentelemetry_sdk = { workspace = true, features = ["default", "rt-tokio"] }
 rustis = { workspace = true, features = [
     "default",
     "pool",

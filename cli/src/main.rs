@@ -6,7 +6,7 @@
 use clap::Parser;
 use commands::{AppArgs, CommandExecutor};
 
-/// All the comamnds, arguments and the functionalities for it.
+/// All the commands, arguments and the functionalities for it.
 mod commands;
 /// All the structs for the JSON output as well as the tabled output.
 mod models;

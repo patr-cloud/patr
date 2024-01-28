@@ -18,7 +18,7 @@ impl Table {
 			"Logged in as {}. Hello, {} {}!",
 			self.username, self.first_name, self.last_name
 		)]);
-		builder.remove_header();
+		// builder.remove_header();
 		let mut table = builder.build();
 		table.with(Style::blank());
 		table
