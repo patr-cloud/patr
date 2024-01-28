@@ -95,23 +95,23 @@
       },
       {
         "ordinal": 18,
-        "name": "password_reset_token",
+        "name": "mfa_secret",
         "type_info": "Text"
       },
       {
         "ordinal": 19,
+        "name": "password_reset_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 20,
         "name": "password_reset_token_expiry",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 20,
+        "ordinal": 21,
         "name": "password_reset_attempts",
         "type_info": "Int4"
-      },
-      {
-        "ordinal": 21,
-        "name": "mfa_secret",
-        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -139,8 +139,8 @@
       true,
       false,
       true,
-      false,
-      false,
+      true,
+      true,
       true
     ]
   },

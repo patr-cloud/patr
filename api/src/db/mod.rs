@@ -8,10 +8,6 @@ pub(super) mod rbac;
 pub(super) mod user;
 pub(super) mod workspace;
 
-/// The diesel database schema and types for querying
-#[allow(missing_docs)]
-pub mod schema;
-
 pub use self::initializer::initialize;
 pub(super) use self::{meta_data::*, rbac::*, user::*, workspace::*};
 
@@ -31,35 +27,4 @@ pub async fn connect(config: &DatabaseConfig) -> Pool<DatabaseType> {
 		)
 		.await
 		.expect("Failed to connect to database")
-}
-
-/// Sets all constraints to deferred for this particular connection
-pub async fn begin_deferred_constraints(
-	connection: &mut DatabaseConnection,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		SET CONSTRAINTS ALL DEFERRED;
-		"#,
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
-}
-
-/// Ends all deferred constraints for this connection.
-/// Note: This can cause errors if the constraints are violated.
-pub async fn end_deferred_constraints(
-	connection: &mut DatabaseConnection,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		SET CONSTRAINTS ALL IMMEDIATE;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
 }

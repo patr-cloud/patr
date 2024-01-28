@@ -32,7 +32,7 @@ where
 	E: ApiEndpoint,
 {
 	let ConnectInfo(socket_addr) =
-		leptos_axum::extractor::<ConnectInfo<SocketAddr>, leptos::ServerFnErrorErr>()
+		leptos_axum::extract::<ConnectInfo<SocketAddr>, leptos::ServerFnErrorErr>()
 			.await
 			.map_err(|err| ErrorType::server_error(err.to_string()))?;
 	let layer = API_CALL_REGISTRY
