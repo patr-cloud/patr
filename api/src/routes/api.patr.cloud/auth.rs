@@ -1,10 +1,6 @@
 use argon2::{Algorithm, PasswordHash, PasswordVerifier, Version};
 use axum::{http::StatusCode, Router};
-use models::{
-	api::auth::*,
-	ApiRequest,
-	ErrorType,
-};
+use models::{api::auth::*, ErrorType};
 
 use crate::prelude::*;
 
@@ -27,7 +23,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 
 async fn login(
 	AppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path: _,
 			query: _,
 			headers: _,
@@ -114,7 +110,7 @@ async fn login(
 
 async fn logout(
 	AppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -140,7 +136,7 @@ async fn logout(
 
 async fn create_account(
 	AppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -166,7 +162,7 @@ async fn create_account(
 
 async fn renew_access_token(
 	AppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -194,7 +190,7 @@ async fn renew_access_token(
 
 async fn forgot_password(
 	AppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -220,7 +216,7 @@ async fn forgot_password(
 
 async fn is_email_valid(
 	AppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -237,9 +233,7 @@ async fn is_email_valid(
 	// LOGIC
 
 	AppResponse::builder()
-		.body(IsEmailValidResponse { 
-			available: todo!() 
-		})
+		.body(IsEmailValidResponse { available: todo!() })
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
@@ -248,7 +242,7 @@ async fn is_email_valid(
 
 async fn is_username_valid(
 	AppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -265,9 +259,7 @@ async fn is_username_valid(
 	// LOGIC
 
 	AppResponse::builder()
-		.body(IsUsernameValidResponse { 
-			available: todo!() 
-		})
+		.body(IsUsernameValidResponse { available: todo!() })
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
@@ -276,7 +268,7 @@ async fn is_username_valid(
 
 async fn complete_sign_up(
 	AppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -293,9 +285,9 @@ async fn complete_sign_up(
 	// LOGIC
 
 	AppResponse::builder()
-		.body(CompleteSignUpResponse { 
+		.body(CompleteSignUpResponse {
 			access_token: todo!(),
-			refresh_token: todo!() 
+			refresh_token: todo!(),
 		})
 		.headers(())
 		.status_code(StatusCode::OK)
@@ -305,7 +297,7 @@ async fn complete_sign_up(
 
 async fn list_recovery_options(
 	AppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -324,7 +316,7 @@ async fn list_recovery_options(
 	AppResponse::builder()
 		.body(ListRecoveryOptionsResponse {
 			recovery_phone_number: todo!(),
-			recovery_email: todo!()
+			recovery_email: todo!(),
 		})
 		.headers(())
 		.status_code(StatusCode::OK)
@@ -334,7 +326,7 @@ async fn list_recovery_options(
 
 async fn resend_otp(
 	AppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -360,7 +352,7 @@ async fn resend_otp(
 
 async fn reset_password(
 	AppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,

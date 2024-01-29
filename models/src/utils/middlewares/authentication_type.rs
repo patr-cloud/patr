@@ -1,5 +1,7 @@
 use std::fmt::Debug;
 
+use preprocess::Preprocessable;
+
 use crate::{
 	prelude::*,
 	private::Sealed,
@@ -60,6 +62,7 @@ impl HasAuthentication for NoAuthentication {
 pub enum AppAuthentication<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// Any logged in user can access this endpoint.
 	PlainTokenAuthenticator,
@@ -102,15 +105,22 @@ where
 impl<E> RequiresRequestHeaders for AppAuthentication<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	type RequiredRequestHeaders = (BearerToken,);
 }
 
-impl<E> Sealed for AppAuthentication<E> where E: ApiEndpoint {}
+impl<E> Sealed for AppAuthentication<E>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+{
+}
 
 impl<E> HasAuthentication for AppAuthentication<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	const REQUIRES_AUTHENTICATION: bool = true;
 }
@@ -118,6 +128,7 @@ where
 impl<E> Debug for AppAuthentication<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {

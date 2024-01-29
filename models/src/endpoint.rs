@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
 use axum_extra::routing::TypedPath;
+use preprocess::Preprocessable;
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::utils::{
@@ -34,7 +35,9 @@ where
 		+ Send
 		+ Sync
 		+ 'static,
-	Self::RequestBody: ResponseHeaders + FromAxumRequest + Clone + Send + Sync + 'static,
+	Self::RequestBody:
+		ResponseHeaders + FromAxumRequest + Preprocessable + Clone + Send + Sync + 'static,
+	<Self::RequestBody as Preprocessable>::Processed: Send,
 	Self::Authenticator: HasAuthentication + RequestHeaders + Clone + Send,
 
 	Self::ResponseHeaders: Headers

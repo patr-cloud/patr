@@ -364,7 +364,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		}
 	} else {
 		quote::quote! {
-				;
+			;
 		}
 	};
 
@@ -391,6 +391,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			type RequiredResponseHeaders = ();
 		}
 
+		#[::preprocess::sync]
 		/// The request body for the #name endpoint
 		///
 		/// The documentation for the endpoint is below:

@@ -45,7 +45,13 @@ pub mod prelude {
 	pub use tracing::{debug, error, info, instrument, trace, warn};
 
 	pub use crate::{
-		app::{AppRequest, AppState, AuthenticatedAppRequest},
+		app::{
+			AppRequest,
+			AppState,
+			AuthenticatedAppRequest,
+			ProcessedApiRequest,
+			UnprocessedAppRequest,
+		},
 		redis,
 		utils::{constants, RouterExt},
 	};

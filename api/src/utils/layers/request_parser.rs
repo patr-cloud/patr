@@ -18,6 +18,7 @@ use models::{
 	utils::{FromAxumRequest, Headers, IntoAxumResponse},
 	ApiErrorResponse,
 };
+use preprocess::Preprocessable;
 use tower::{Layer, Service};
 
 use crate::{prelude::*, utils::extractors::ClientIP};
@@ -29,6 +30,7 @@ use crate::{prelude::*, utils::extractors::ClientIP};
 pub struct RequestParserLayer<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	phantom: PhantomData<E>,
 }
@@ -36,6 +38,7 @@ where
 impl<E> RequestParserLayer<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// Create a new instance of the [`RequestParserLayer`]
 	pub const fn new() -> Self {
@@ -49,6 +52,7 @@ impl<S, E> Layer<S> for RequestParserLayer<E>
 where
 	for<'a> S: Service<(ApiRequest<E>, IpAddr)>,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	type Service = RequestParserService<S, E>;
 
@@ -69,6 +73,7 @@ pub struct RequestParserService<S, E>
 where
 	for<'a> S: Service<(ApiRequest<E>, IpAddr)>,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	inner: S,
 	phantom: PhantomData<E>,
@@ -79,6 +84,7 @@ where
 	for<'a> S:
 		Service<(ApiRequest<E>, IpAddr), Response = AppResponse<E>, Error = ErrorType> + Clone,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	type Error = Infallible;
 	type Response = Response;
@@ -115,8 +121,7 @@ where
 				.into_response());
 			};
 
-			let Ok(headers) = <E::RequestHeaders as Headers>::from_header_map(req.headers())
-			else {
+			let Ok(headers) = <E::RequestHeaders as Headers>::from_header_map(req.headers()) else {
 				debug!("Failed to parse headers");
 				return Ok(ApiErrorResponse::error_with_message(
 					ErrorType::WrongParameters,

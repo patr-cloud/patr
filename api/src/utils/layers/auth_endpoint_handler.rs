@@ -5,6 +5,7 @@ use std::{
 };
 
 use models::{ApiEndpoint, ErrorType};
+use preprocess::Preprocessable;
 use tower::{Layer, Service};
 
 use crate::prelude::*;
@@ -17,6 +18,7 @@ use crate::prelude::*;
 pub trait AuthEndpointHandler<'req, E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// The `Future` type that is returned by the handler.
 	type Future: Future<Output = Result<AppResponse<E>, ErrorType>> + Send;
@@ -30,6 +32,7 @@ where
 	F: FnOnce(AuthenticatedAppRequest<'req, E>) -> Fut + Send,
 	Fut: Future<Output = Result<AppResponse<E>, ErrorType>> + Send,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	type Future = Fut;
 
@@ -48,6 +51,7 @@ pub struct AuthEndpointLayer<H, E>
 where
 	for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	handler: H,
 	endpoint: PhantomData<E>,
@@ -57,6 +61,7 @@ impl<H, E> AuthEndpointLayer<H, E>
 where
 	for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// Create a new instance of the [`AuthEndpointLayer`] with the given
 	/// function or closure.
@@ -72,6 +77,7 @@ impl<S, H, E> Layer<S> for AuthEndpointLayer<H, E>
 where
 	for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	type Service = AuthEndpointService<H, E>;
 
@@ -87,6 +93,7 @@ impl<H, E> Clone for AuthEndpointLayer<H, E>
 where
 	for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	fn clone(&self) -> Self {
 		Self {
@@ -105,6 +112,7 @@ pub struct AuthEndpointService<H, E>
 where
 	for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	handler: H,
 	endpoint: PhantomData<E>,
@@ -114,6 +122,7 @@ impl<H, E> AuthEndpointService<H, E>
 where
 	for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// Create a new instance of the [`AuthEndpointService`] with the given
 	/// function or closure.
@@ -129,6 +138,7 @@ impl<'req, H, E> Service<AuthenticatedAppRequest<'req, E>> for AuthEndpointServi
 where
 	for<'anon> H: AuthEndpointHandler<'anon, E> + Clone + Send,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	type Error = ErrorType;
 	type Response = AppResponse<E>;
@@ -148,6 +158,7 @@ impl<H, E> Clone for AuthEndpointService<H, E>
 where
 	for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	fn clone(&self) -> Self {
 		Self {

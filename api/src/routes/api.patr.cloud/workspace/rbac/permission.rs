@@ -14,7 +14,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 
 async fn get_current_permissions(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -43,7 +43,7 @@ async fn get_current_permissions(
 
 async fn list_all_permissions(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -72,7 +72,7 @@ async fn list_all_permissions(
 
 async fn list_all_resource_types(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,

@@ -15,6 +15,7 @@ use models::{
 	ErrorType,
 	RequestUserData,
 };
+use preprocess::Preprocessable;
 use rustis::{client::Client as RedisClient, commands::StringCommands};
 use time::OffsetDateTime;
 use tower::{Layer, Service};
@@ -44,6 +45,7 @@ pub enum ClientType {
 pub struct AuthenticationLayer<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	endpoint: PhantomData<E>,
 	client_type: ClientType,
@@ -52,6 +54,7 @@ where
 impl<E> AuthenticationLayer<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// Helper function to initialize an authentication layer
 	pub fn new(client_type: ClientType) -> Self {
@@ -65,6 +68,7 @@ where
 impl<E, S> Layer<S> for AuthenticationLayer<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 	for<'a> S: Service<AuthenticatedAppRequest<'a, E>>,
 {
 	type Service = AuthenticationService<E::Authenticator, E, S>;
@@ -82,6 +86,7 @@ where
 impl<E> Clone for AuthenticationLayer<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	fn clone(&self) -> Self {
 		Self {
@@ -96,6 +101,7 @@ pub struct AuthenticationService<A, E, S>
 where
 	A: HasAuthentication,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	inner: S,
 	client_type: ClientType,
@@ -106,6 +112,7 @@ where
 impl<'a, E, S> Service<AppRequest<'a, E>> for AuthenticationService<AppAuthentication<E>, E, S>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 	E::RequestHeaders: HasHeader<BearerToken>,
 	for<'b> S: Service<AuthenticatedAppRequest<'b, E>, Response = AppResponse<E>, Error = ErrorType>
 		+ Clone,
@@ -403,6 +410,7 @@ impl<A, E, S> Clone for AuthenticationService<A, E, S>
 where
 	A: HasAuthentication,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 	for<'b> S: Service<AuthenticatedAppRequest<'b, E>, Response = AppResponse<E>, Error = ErrorType>
 		+ Clone,
 {

@@ -1,5 +1,5 @@
 use axum::{http::StatusCode, Router};
-use models::{api::workspace::infrastructure::database::*, ApiRequest, ErrorType};
+use models::{api::workspace::infrastructure::database::*, ErrorType};
 
 use crate::prelude::*;
 
@@ -17,11 +17,11 @@ pub async fn setup_routes(state: &AppState) -> Router {
 async fn all_database_plan(
 	AppRequest {
 		request:
-			ApiRequest {
+			ProcessedApiRequest {
 				path: ListAllDatabaseMachineTypePath,
 				query: (),
 				headers: _,
-				body: ListAllDatabaseMachineTypeRequest,
+				body: ListAllDatabaseMachineTypeRequestProcessed,
 			},
 		database,
 		redis: _,
@@ -44,12 +44,12 @@ async fn all_database_plan(
 async fn create_database(
 	AuthenticatedAppRequest {
 		request:
-			ApiRequest {
+			ProcessedApiRequest {
 				path: CreateDatabasePath { workspace_id },
 				query: (),
 				headers: _,
 				body:
-					CreateDatabaseRequest {
+					CreateDatabaseRequestProcessed {
 						name,
 						engine,
 						database_plan_id,
@@ -80,14 +80,14 @@ async fn create_database(
 async fn delete_database(
 	AuthenticatedAppRequest {
 		request:
-			ApiRequest {
+			ProcessedApiRequest {
 				path: DeleteDatabasePath {
 					workspace_id,
 					database_id,
 				},
 				query: (),
 				headers: _,
-				body: DeleteDatabaseRequest,
+				body: DeleteDatabaseRequestProcessed,
 			},
 		database,
 		redis: _,
@@ -111,14 +111,14 @@ async fn delete_database(
 async fn get_database(
 	AuthenticatedAppRequest {
 		request:
-			ApiRequest {
+			ProcessedApiRequest {
 				path: GetDatabasePath {
 					workspace_id,
 					database_id,
 				},
 				query: (),
 				headers: _,
-				body: GetDatabaseRequest,
+				body: GetDatabaseRequestProcessed,
 			},
 		database,
 		redis: _,
@@ -142,7 +142,7 @@ async fn get_database(
 async fn list_database(
 	AuthenticatedAppRequest {
 		request:
-			ApiRequest {
+			ProcessedApiRequest {
 				path: ListDatabasePath { workspace_id },
 				query: Paginated {
 					data: (),
@@ -150,7 +150,7 @@ async fn list_database(
 					page,
 				},
 				headers: _,
-				body: ListDatabaseRequest,
+				body: ListDatabaseRequestProcessed,
 			},
 		database,
 		redis: _,
