@@ -1,4 +1,5 @@
 use std::rc::Rc;
+
 use web_sys::MouseEvent;
 
 use crate::imports::*;
@@ -10,8 +11,8 @@ use crate::imports::*;
 pub fn Link(
 	/// The Type of the button. This is directly passed to the
 	/// type attribute of the button if variant is Button
-	#[prop(into, optional, default = "button".into())]
-	r#type: MaybeSignal<String>,
+	#[prop(into, optional, default = false.into())]
+	should_submit: MaybeSignal<bool>,
 	/// The Target of the Link, to be used with the link variant
 	#[prop(into, optional)]
 	to: MaybeSignal<String>,
@@ -31,25 +32,22 @@ pub fn Link(
 	/// Button Variant i.e. a button or a Link,
 	/// Defaults to Button
 	#[prop(into, optional)]
-	variant: MaybeSignal<Variant>,
+	r#type: MaybeSignal<Variant>,
 	/// Variant of the Link
 	#[prop(into, optional)]
 	style_variant: MaybeSignal<LinkStyleVariant>,
 ) -> impl IntoView {
-    // todo!("Change r#type to shouldsubmit and type_variant to type and make a");
 	let class = move || {
 		format!(
 			"fr-ct-ct {} {}",
+			class.get(),
 			if style_variant.get() == LinkStyleVariant::Contained {
 				format!("btn btn-{}", color.get())
 			} else {
 				format!("btn-plain txt-{}", color.get())
 			},
-			class.get()
 		)
 	};
-
-	let cloned_type = move || r#type.get().clone();
 
 	let on_click = move |e: MouseEvent| {
 		if let Some(click) = &on_click {
@@ -58,19 +56,32 @@ pub fn Link(
 		}
 	};
 
+	let button_type = move || {
+		if should_submit.get() == false {
+			"submit".to_owned()
+		} else {
+			"button".to_owned()
+		}
+	};
+
 	view! {
-		{move || match variant.get() {
+		{
+			move || match r#type.get() {
 			Variant::Link => {
 				view! {
-					<a href=to.clone() class=class()>
+					<a href=to.clone() class=class.clone()>
 						{children()}
 					</a>
 				}
 					.into_view()
-			}
+			},
 			Variant::Button => {
 				view! {
-					<button type=cloned_type() on:click=on_click.clone() class=class()>
+					<button
+						type=button_type
+						on:click=on_click.clone()
+						class=class.clone()
+					>
 						{children()}
 					</button>
 				}
