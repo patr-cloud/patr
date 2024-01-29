@@ -60,7 +60,7 @@ fn LoginForm() -> impl IntoView {
 #[component]
 pub fn LoginPage() -> impl IntoView {
 	view! {
-		<PageContainer class="bg-onboard">
+		<PageContainer class="bg-image">
 			<LoginForm/>
 		</PageContainer>
 	}
