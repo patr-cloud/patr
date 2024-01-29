@@ -10,6 +10,7 @@ use http::Method;
 use axum_extra::routing::TypedPath;
 use matchit::Router;
 use models::{ApiEndpoint, ApiRequest, AppResponse, ErrorType};
+use preprocess::Preprocessable;
 use tower::{
 	service_fn,
 	util::{BoxCloneService, BoxLayer},
@@ -30,6 +31,7 @@ pub static API_CALL_REGISTRY: RwLock<
 pub(crate) async fn make_api_call<E>(request: ApiRequest<E>) -> Result<AppResponse<E>, ErrorType>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	let ConnectInfo(socket_addr) =
 		leptos_axum::extract::<ConnectInfo<SocketAddr>, leptos::ServerFnErrorErr>()

@@ -22,7 +22,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 
 async fn create_static_site(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -49,7 +49,7 @@ async fn create_static_site(
 
 async fn delete_static_site(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -76,7 +76,7 @@ async fn delete_static_site(
 
 async fn get_static_site_info(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -106,7 +106,7 @@ async fn get_static_site_info(
 
 async fn list_static_site(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -137,7 +137,7 @@ async fn list_static_site(
 
 async fn list_upload_history(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -166,7 +166,7 @@ async fn list_upload_history(
 
 async fn revert_static_site(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -193,7 +193,7 @@ async fn revert_static_site(
 
 async fn start_static_site(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -220,7 +220,7 @@ async fn start_static_site(
 
 async fn stop_static_site(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -247,7 +247,7 @@ async fn stop_static_site(
 
 async fn update_static_site(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -274,7 +274,7 @@ async fn update_static_site(
 
 async fn upload_static_site(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -301,7 +301,7 @@ async fn upload_static_site(
 
 async fn list_linked_url(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,

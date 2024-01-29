@@ -1,3 +1,4 @@
+use preprocess::Preprocessable;
 use typed_builder::TypedBuilder;
 
 use crate::ApiEndpoint;
@@ -9,6 +10,7 @@ use crate::ApiEndpoint;
 pub struct ApiRequest<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// The path of the request. This is the part of the URL after the domain
 	/// and port.

@@ -6,6 +6,7 @@ use std::{
 };
 
 use models::prelude::*;
+use preprocess::Preprocessable;
 use tower::{Layer, Service};
 
 use crate::prelude::*;
@@ -17,6 +18,7 @@ use crate::prelude::*;
 pub struct DataStoreConnectionLayer<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	phantom: PhantomData<E>,
 	state: AppState,
@@ -25,6 +27,7 @@ where
 impl<E> DataStoreConnectionLayer<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// Create a new instance of the [`RequestParserLayer`] with the given
 	/// state. This state will be used to parse the request, create a database
@@ -41,8 +44,9 @@ where
 
 impl<S, E> Layer<S> for DataStoreConnectionLayer<E>
 where
-	for<'a> S: Service<AppRequest<'a, E>>,
+	for<'a> S: Service<UnprocessedAppRequest<'a, E>>,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	type Service = DataStoreConnectionService<S, E>;
 
@@ -62,8 +66,9 @@ where
 #[derive(Clone, Debug)]
 pub struct DataStoreConnectionService<S, E>
 where
-	for<'a> S: Service<AppRequest<'a, E>>,
+	for<'a> S: Service<UnprocessedAppRequest<'a, E>>,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	inner: S,
 	state: AppState,
@@ -72,8 +77,10 @@ where
 
 impl<S, E> Service<(ApiRequest<E>, IpAddr)> for DataStoreConnectionService<S, E>
 where
-	for<'a> S: Service<AppRequest<'a, E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
+	for<'a> S:
+		Service<UnprocessedAppRequest<'a, E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	type Error = ErrorType;
 	type Response = AppResponse<E>;
@@ -100,7 +107,7 @@ where
 				));
 			};
 
-			let req = AppRequest {
+			let req = UnprocessedAppRequest {
 				request,
 				database: &mut database,
 				redis,

@@ -21,7 +21,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 
 async fn is_domain_personal(
 	AppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -50,7 +50,7 @@ async fn is_domain_personal(
 
 async fn add_dns_record(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -77,7 +77,7 @@ async fn add_dns_record(
 
 async fn add_domain_to_workspace(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -104,7 +104,7 @@ async fn add_domain_to_workspace(
 
 async fn delete_dns_record(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -131,7 +131,7 @@ async fn delete_dns_record(
 
 async fn delete_domain_in_workspace(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -158,7 +158,7 @@ async fn delete_domain_in_workspace(
 
 async fn get_doamin_dns_record(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -187,7 +187,7 @@ async fn get_doamin_dns_record(
 
 async fn get_domain_info_in_workspace(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -216,7 +216,7 @@ async fn get_domain_info_in_workspace(
 
 async fn get_domains_for_workspace(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -245,7 +245,7 @@ async fn get_domains_for_workspace(
 
 async fn update_domain_dns_record(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -272,7 +272,7 @@ async fn update_domain_dns_record(
 
 async fn verify_domain_in_workspace(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,

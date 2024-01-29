@@ -1,4 +1,5 @@
 use axum::{http::StatusCode, response::IntoResponse, Json};
+use preprocess::Preprocessable;
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 
@@ -14,6 +15,7 @@ use crate::{
 pub struct AppResponse<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// The status code of the response
 	pub status_code: StatusCode,
@@ -26,6 +28,7 @@ where
 impl<E> AppResponse<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// Convert the response into a Result
 	pub fn into_result(self) -> Result<Self, ErrorType> {
@@ -39,6 +42,7 @@ where
 pub struct ApiSuccessResponse<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// The status code of the success response. Ideally in the 2xx range.
 	pub status_code: StatusCode,
@@ -52,6 +56,7 @@ where
 impl<E> IntoResponse for ApiSuccessResponse<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	fn into_response(self) -> axum::response::Response {
 		(

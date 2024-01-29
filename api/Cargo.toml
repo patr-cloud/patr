@@ -26,6 +26,7 @@ models = { workspace = true, features = [] }
 opentelemetry = { workspace = true, features = ["default"] }
 opentelemetry-otlp = { workspace = true, features = ["default"] }
 opentelemetry_sdk = { workspace = true, features = ["default", "rt-tokio"] }
+preprocess = { workspace = true, features = [] }
 rustis = { workspace = true, features = [
     "default",
     "pool",
