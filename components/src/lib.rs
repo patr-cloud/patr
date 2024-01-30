@@ -1,5 +1,15 @@
 pub mod prelude {
-	pub use crate::{containers::*, icon::*, input::*, link::*, sidebar::*, utils::*};
+	pub use crate::{
+		containers::*,
+		icon::*,
+		input::*,
+		link::*,
+		page_title::*,
+		sidebar::*,
+		status_badge::*,
+		table_dashboard::*,
+		utils::*,
+	};
 }
 
 mod imports {
@@ -12,7 +22,10 @@ pub mod containers;
 pub mod icon;
 pub mod input;
 pub mod link;
+pub mod page_title;
 pub mod pages;
 pub mod sidebar;
+pub mod status_badge;
+pub mod table_dashboard;
 
 pub mod utils;
