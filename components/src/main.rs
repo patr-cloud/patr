@@ -1,4 +1,4 @@
-use components::pages::*;
+use components::{pages::*, sidebar::Sidebar_TEST_Page};
 use leptos::*;
 
 fn main() {
@@ -8,5 +8,5 @@ fn main() {
 		console_error_panic_hook::set_once();
 	}
 
-	mount_to_body(LoginPage)
+	mount_to_body(Sidebar_TEST_Page)
 }

@@ -2,13 +2,18 @@ use crate::imports::*;
 
 #[component]
 pub fn TableDashboard(
+	/// Flex Grid Ratio of columns
+	#[prop(into, optional)]
+	column_grids: Vec<i32>,
 	/// Headings of the Table
 	#[prop(into)]
 	headings: Vec<View>,
 	/// Additional class names to apply to the outer class, if any.
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
-	// #[prop(into, optional)] children: Children,
+	/// All the rows to be rendered, does not iterate,
+	/// send the <For /> component or all the rows in the component.
+	render_rows: View,
 ) -> impl IntoView {
 	let class = move || {
 		format!(
@@ -23,29 +28,21 @@ pub fn TableDashboard(
 				<tr class="fr-ct-ct px-xl full-width">
 						{
 							headings.into_iter()
-								.map(|x| view! {
-									<th class="fr-ct-ct txt-sm txt-medium">
-										{x}
-									</th>
-								})
+							.enumerate()
+								.map(|(i, heading)|
+									view! {
+										<th class=format!("fr-ct-ct txt-sm txt-medium flex-col-{}", column_grids[i])>
+											{heading}
+										</th>
+									}
+								)
 								.collect_view()
 						}
 				</tr>
 			</thead>
-			// {children()}
 
 			<tbody class="full-width full-height fc-fs-fs">
-				<tr class="bg-secondary-light full-width fr-ct-ct px-xl bd-light br-smooth-sm row-card">
-					<td class="flex-col-11 fr-fs-ct">"Email Password"</td>
-					<td class="flex-col-1 fr-sa-ct">
-						<button>
-							<Icon icon=IconType::Edit size=Size::ExtraSmall />
-						</button>
-						<button>
-							<Icon icon=IconType::Trash2 size=Size::ExtraSmall color=Color::Error />
-						</button>
-					</td>
-				</tr>
+				{render_rows}
 			</tbody>
 		</table>
 	}

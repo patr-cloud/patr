@@ -12,7 +12,6 @@ pub fn SidebarItem(
 	let class = move || format!("sidebar-item full-width fc-fs-fs {}", class.get());
 
 	view! {
-		/// Will add the class later
 		<li class=class>
 			<Link style_variant=LinkStyleVariant::Plain class="btn full-width py-sm">
 				<img src={link.get().icon_src} alt={link.get().title} />
