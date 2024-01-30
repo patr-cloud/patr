@@ -34,7 +34,7 @@ where
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	let ConnectInfo(socket_addr) =
-		leptos_axum::extract::<ConnectInfo<SocketAddr>, leptos::ServerFnErrorErr>()
+		leptos_axum::extract::<ConnectInfo<SocketAddr>>()
 			.await
 			.map_err(|err| ErrorType::server_error(err.to_string()))?;
 	let layer = API_CALL_REGISTRY
