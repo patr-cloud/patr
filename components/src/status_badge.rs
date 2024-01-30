@@ -47,20 +47,26 @@ pub fn StatusBadge(
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
 	/// Status of the component
-	#[prop(into)]
+	#[prop(into, optional)]
 	status: MaybeSignal<Status>,
+	/// Background color of the badge
+	#[prop(into, optional)]
+	color: MaybeSignal<Color>,
+	/// Text of the badge
+	#[prop(into, optional)]
+	text: MaybeSignal<String>,
 ) -> impl IntoView {
 	let class = move || {
 		format!(
 			"status-badge pos-rel txt-secondary cursor-default {} {}",
-			status.get().get_status_color(),
+			color.get().as_css_name(),
 			class.get(),
 		)
 	};
 
 	view! {
 		<span class=class>
-			{status.get().get_status_text()}
+			{text.get()}
 		</span>
 	}
 }

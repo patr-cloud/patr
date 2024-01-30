@@ -24,7 +24,7 @@ pub fn DeploymentDashboard() -> impl IntoView {
 								"Infrastructure"
 							</PageTitle>
 							<PageTitle variant=PageTitleVariant::SubHeading>
-								"Infrastructure"
+								"Deployment"
 							</PageTitle>
 						</PageTitleContainer>
 
@@ -48,9 +48,7 @@ pub fn DeploymentDashboard() -> impl IntoView {
 
 			<ContainerBody>
 				<section class="p-xl full-width ofy-auto">
-					/// TODO CHANGE THIS TO THE GRID CLASSES
 					<div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; align-content: start; justify-content: start" class="">
-						/// CHANGE THIS TO A <For /> Component
 						<DeploymentCard deployment=DeploymentType {
 							id: "53184348".to_owned(),
 							name: "Depoymentl".to_owned(),

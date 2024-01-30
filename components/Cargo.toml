@@ -26,14 +26,14 @@ tracing = { workspace = true, features = ["attributes"] }
 wasm-bindgen = { workspace = true, features = ["default"] }
 wasm-logger = { workspace = true, features = [] }
 
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-leptos = { workspace = true, features = ["tracing", "hydrate"] }
-leptos_meta = { workspace = true, features = ["hydrate"] }
-leptos_router = { workspace = true, features = ["hydrate"] }
+# [target.'cfg(target_arch = "wasm32")'.dependencies]
+# leptos = { workspace = true, features = ["tracing", "hydrate"] }
+# leptos_meta = { workspace = true, features = ["hydrate"] }
+# leptos_router = { workspace = true, features = ["hydrate"] }
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
-leptos = { workspace = true, features = ["tracing", "ssr"] }
-leptos_axum = { workspace = true, features = ["default"] }
-leptos_meta = { workspace = true, features = ["ssr"] }
-leptos_router = { workspace = true, features = ["ssr"] }
+# [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
+# leptos = { workspace = true, features = ["tracing", "ssr"] }
+# leptos_axum = { workspace = true, features = ["default"] }
+# leptos_meta = { workspace = true, features = ["ssr"] }
+# leptos_router = { workspace = true, features = ["ssr"] }
