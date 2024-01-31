@@ -1,6 +1,7 @@
 use argon2::{Algorithm, PasswordHash, PasswordVerifier, Version};
 use axum::{http::StatusCode, Router};
 use models::{api::auth::*, ErrorType};
+use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};
 
 use crate::prelude::*;
 
@@ -38,8 +39,10 @@ async fn login(
 	let user_data = query!(
 		r#"
 		SELECT
+			"user".id,
 			"user".username,
-			"user".password
+			"user".password,
+			"user".mfa_secret
 		FROM
 			"user"
 		LEFT JOIN
@@ -96,6 +99,51 @@ async fn login(
 	if !success {
 		return Err(ErrorType::InvalidPassword);
 	}
+
+	if let Some(mfa_secret) = user_data.mfa_secret {
+		let Some(mfa_otp) = body.mfa_otp else {
+			return Err(ErrorType::MfaRequired);
+		};
+
+		let totp = TOTP::new(
+			TotpAlgorithm::SHA1,
+			6,
+			1,
+			30,
+			Secret::Encoded(mfa_secret).to_bytes().map_err(|err| {
+				error!(
+					"Unable to parse MFA secret for userId `{}`: {}",
+					user_data.id,
+					err.to_string()
+				);
+				ErrorType::server_error(err.to_string())
+			})?,
+		)
+		.map_err(|err| {
+			error!(
+				"Unable to parse TOTP for userId `{}`: {}",
+				user_data.id,
+				err.to_string()
+			);
+			ErrorType::server_error(err.to_string())
+		})?;
+
+		let mfa_valid = totp.check_current(&mfa_otp).map_err(|err| {
+			error!(
+				"System time error while checking TOTP for userId `{}`: {}",
+				user_data.id,
+				err.to_string()
+			);
+			ErrorType::server_error(err.to_string())
+		})?;
+
+		if !mfa_valid {
+			return Err(ErrorType::MfaOtpInvalid);
+		}
+	}
+
+	// TODO: Generate Login in DB
+	// TODO: Generate Token and send it as response
 
 	AppResponse::builder()
 		.body(LoginResponse {

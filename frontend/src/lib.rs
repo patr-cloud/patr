@@ -47,7 +47,7 @@ pub fn hydrate() {
 
 /// The main render function. Called when the application starts to render
 /// from the client side.
-pub fn render() -> View {
+pub fn render() -> impl IntoView {
 	use app::App;
 
 	provide_meta_context();
@@ -85,5 +85,5 @@ pub fn render() -> View {
 
 			<App />
 		</>
-	}.into()
+	}
 }

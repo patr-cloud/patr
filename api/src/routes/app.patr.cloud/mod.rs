@@ -1,6 +1,6 @@
 use std::{future::Future, pin::Pin};
 
-use axum::{routing::post, Router};
+use axum::Router;
 use leptos_axum::LeptosRoutes;
 use tokio::fs;
 use tower_http::services::ServeFile;
@@ -19,21 +19,15 @@ pub async fn setup_routes(state: &AppState) -> Router {
 	.await
 	.expect("failed to get configuration");
 
-	let mut router = Router::new().route(
-		"/api/*fn_name",
-		post(leptos_axum::handle_server_fns).get(leptos_axum::handle_server_fns),
-	);
-
-	let files = read_files(&config.leptos_options.site_root).await;
-
-	for file in files {
-		router = router.route_service(
-			file.trim_start_matches(config.leptos_options.site_root.as_str()),
-			ServeFile::new(file.as_str()),
-		);
-	}
-
-	router
+	read_files(&config.leptos_options.site_root)
+		.await
+		.into_iter()
+		.fold(Router::new(), |router, file| {
+			router.route_service(
+				file.trim_start_matches(config.leptos_options.site_root.as_str()),
+				ServeFile::new(file.as_str()),
+			)
+		})
 		.leptos_routes(
 			&config.leptos_options,
 			leptos_axum::generate_route_list(frontend::render),
