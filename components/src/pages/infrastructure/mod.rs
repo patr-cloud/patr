@@ -1,4 +1,6 @@
+mod container_registry;
 mod deployment;
 mod secret;
+mod static_sites;
 
-pub use self::{deployment::*, secret::*};
+pub use self::{container_registry::*, deployment::*, secret::*, static_sites::*};
