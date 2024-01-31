@@ -1,0 +1,82 @@
+use std::vec;
+
+use crate::imports::*;
+
+pub struct CardItem {
+	label: &'static str,
+	value: String,
+}
+
+#[component]
+pub fn DatabaseCard(
+	/// The Database Info
+	// #[prop(into)]
+	// deployment: MaybeSignal<DeploymentType>,
+	/// Additional Classes to add to the outer div, if any.:w
+	#[prop(into, optional)]
+	class: MaybeSignal<String>,
+) -> impl IntoView {
+	let items = vec![
+		CardItem {
+			label: "REGION",
+			value: "aws-production".to_owned(),
+		},
+		CardItem {
+			label: "ENGINE",
+			value: "MONGO".to_owned(),
+		},
+		CardItem {
+			label: "VERSION",
+			value: "4".to_owned(),
+		},
+		CardItem {
+			label: "PLAN",
+			value: "1vCPU 2 GB RAM".to_owned(),
+		},
+	];
+
+	view! {
+		<div class="bg-secondary-light br-sm p-lg fc-fs-fs database-card">
+			<div class="fr-fs-ct full-width px-xxs">
+				<h4 class="txt-md txt-primary of-hidden txt-of-ellipsis w-25">
+					"Some"
+				</h4>
+
+				<StatusBadge
+					status=Status::Live
+					class="mb-xxs ml-xxs"
+				/>
+			</div>
+
+			<div class="fr-fs-fs txt-white full-width f-wrap my-auto">
+				{
+					items
+						.into_iter()
+						.map(|item| view! {
+							<div class="half-width p-xxs">
+								<div class="bg-secondary-medium br-sm px-lg py-sm fc-ct-fs">
+									<span className="letter-sp-md txt-xxs txt-grey">
+										{item.label}
+									</span>
+									<span className="txt-primary w-15 txt-of-ellipsis of-hidden">
+										{item.value}
+									</span>
+								</div>
+							</div>
+						})
+						.collect::<Vec<_>>()
+				}
+			</div>
+			<div class="fr-fs-ct mt-xs full-width px-xxs">
+				<Link class="letter-sp-md  txt-sm fr-fs-ct">
+					"MANAGE DATABASE"
+					<Icon
+						icon=IconType::ChevronRight
+						size=Size::ExtraSmall
+						color=Color::Primary
+					/>
+				</Link>
+			</div>
+		</div>
+	}
+}
