@@ -12,7 +12,7 @@ mkdir -p $baseDir/../volume/data/dockerd
 
 USER_ID=$(id -u)
 GROUP_ID=$(id -g)
-COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-$USER}
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$USER}-patr"
 
 echo "$USER_ID" > $baseDir/../volume/config/init-data/user
 echo "$GROUP_ID" > $baseDir/../volume/config/init-data/group
