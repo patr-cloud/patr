@@ -53,6 +53,7 @@ tokio-tungstenite = { workspace = true, features = [
     "rustls-tls-webpki-roots",
     "rustls",
 ] }
+totp-rs = { workspace = true, features = ["default", "gen_secret"] }
 tower = { workspace = true, features = ["default", "full"] }
 tower-http = { workspace = true, features = ["fs"] }
 tracing = { workspace = true, features = ["default", "async-await"] }
