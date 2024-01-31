@@ -48,7 +48,7 @@ pub fn DeploymentDashboard() -> impl IntoView {
 
 			<ContainerBody>
 				<section class="p-xl full-width ofy-auto">
-					<div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; align-content: start; justify-content: start" class="">
+					<div class="grid-cnt-st-st grid-col-3 gap-xl" style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; align-content: start; justify-content: start">
 						<DeploymentCard deployment=DeploymentType {
 							id: "53184348".to_owned(),
 							name: "Depoymentl".to_owned(),

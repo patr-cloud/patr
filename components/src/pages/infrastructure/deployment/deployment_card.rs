@@ -57,7 +57,8 @@ pub fn DeploymentCard(
 
 			<div class="fr-fs-fs txt-white full-width f-wrap my-auto">
 				{
-					items.into_iter()
+					items
+						.into_iter()
 						.map(|item| view! {
 							<div class="half-width p-xxs">
 								<div class="bg-secondary-medium br-sm px-lg py-sm fc-ct-fs">

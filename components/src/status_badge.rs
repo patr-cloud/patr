@@ -59,14 +59,16 @@ pub fn StatusBadge(
 	let class = move || {
 		format!(
 			"status-badge pos-rel txt-secondary cursor-default {} {}",
-			color.get().as_css_name(),
+			// color.get().as_css_name(),
+			status.get().get_status_color(),
 			class.get(),
 		)
 	};
 
 	view! {
 		<span class=class>
-			{text.get()}
+			// {text.get()}
+			{status.get().get_status_text()}
 		</span>
 	}
 }

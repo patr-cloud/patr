@@ -1,6 +1,7 @@
 pub mod prelude {
 	pub use crate::{
 		containers::*,
+		dashboard_container::*,
 		icon::*,
 		input::*,
 		link::*,
@@ -19,6 +20,7 @@ mod imports {
 }
 
 pub mod containers;
+pub mod dashboard_container;
 pub mod icon;
 pub mod input;
 pub mod link;
