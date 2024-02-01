@@ -1,5 +1,6 @@
 use std::vec;
 
+use super::DatabaseItem;
 use crate::imports::*;
 
 pub struct CardItem {
@@ -10,36 +11,42 @@ pub struct CardItem {
 #[component]
 pub fn DatabaseCard(
 	/// The Database Info
-	// #[prop(into)]
-	// deployment: MaybeSignal<DeploymentType>,
+	#[prop(into)]
+	deployment: MaybeSignal<DatabaseItem>,
 	/// Additional Classes to add to the outer div, if any.:w
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
 ) -> impl IntoView {
+	let class = move || {
+		format!(
+			"bg-secondary-light br-sm p-lg fc-fs-fs database-card {}",
+			class.get()
+		)
+	};
 	let items = vec![
 		CardItem {
 			label: "REGION",
-			value: "aws-production".to_owned(),
+			value: deployment.get().region,
 		},
 		CardItem {
 			label: "ENGINE",
-			value: "MONGO".to_owned(),
+			value: deployment.get().engine,
 		},
 		CardItem {
 			label: "VERSION",
-			value: "4".to_owned(),
+			value: deployment.get().version,
 		},
 		CardItem {
 			label: "PLAN",
-			value: "1vCPU 2 GB RAM".to_owned(),
+			value: deployment.get().plan,
 		},
 	];
 
 	view! {
-		<div class="bg-secondary-light br-sm p-lg fc-fs-fs database-card">
+		<div class=class>
 			<div class="fr-fs-ct full-width px-xxs">
 				<h4 class="txt-md txt-primary of-hidden txt-of-ellipsis w-25">
-					"Some"
+					{deployment.get().name}
 				</h4>
 
 				<StatusBadge

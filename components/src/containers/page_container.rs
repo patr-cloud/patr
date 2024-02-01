@@ -1,5 +1,6 @@
 use crate::imports::*;
 
+/// A Single Page container, typically used for LoggedOut set of Routes
 #[component]
 pub fn PageContainer(
 	/// Additional classnames to appy to the outer div, if any

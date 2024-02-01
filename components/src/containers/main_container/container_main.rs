@@ -1,5 +1,7 @@
 use crate::imports::*;
 
+/// The Main Container for all the content, typically used alongside the sidebar
+/// and used for LoggedIn Routes
 #[component]
 pub fn ContainerMain(
 	/// Additional class names to apply to the outer header, if any

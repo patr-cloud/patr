@@ -1,5 +1,7 @@
 use crate::imports::*;
 
+/// Contains the title, description and the DocLink of the Page,
+/// Usually wrapping around the <PageTitle /> section of components
 #[component]
 pub fn ContainerHead(
 	/// Additional class names to apply to the outer header, if any
