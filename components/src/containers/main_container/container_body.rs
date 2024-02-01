@@ -1,5 +1,6 @@
 use crate::imports::*;
 
+/// The Body of the dashboard. Wraps around the main content of the page.
 #[component]
 pub fn ContainerBody(
 	/// The Children of the component

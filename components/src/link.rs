@@ -9,8 +9,8 @@ use crate::imports::*;
 /// tag
 #[component]
 pub fn Link(
-	/// The Type of the button. This is directly passed to the
-	/// type attribute of the button if variant is Button
+	/// Specifies which type of button to use,
+	/// "button" or "submit", to be only used with the button variant
 	#[prop(into, optional, default = false.into())]
 	should_submit: MaybeSignal<bool>,
 	/// The Target of the Link, to be used with the link variant

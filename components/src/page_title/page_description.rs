@@ -1,5 +1,6 @@
 use crate::imports::*;
 
+/// Provides a breif description of the page, and optionally the doc link
 #[component]
 pub fn PageDescription(
 	/// Additional classnames to appy to the \<p/> tag, if any

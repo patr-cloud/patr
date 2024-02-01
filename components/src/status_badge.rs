@@ -1,6 +1,6 @@
 use crate::imports::*;
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, Hash, PartialEq, Eq)]
 pub enum Status {
 	Deleted,
 	Errored,

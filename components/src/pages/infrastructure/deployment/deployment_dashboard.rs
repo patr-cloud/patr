@@ -14,6 +14,48 @@ pub struct DeploymentType {
 
 #[component]
 pub fn DeploymentDashboard() -> impl IntoView {
+	let data = create_rw_signal(vec![
+		DeploymentType {
+			id: "53184348".to_owned(),
+			name: "Depoymentl".to_owned(),
+			image_tag: "asdqwdadawdasdasd".to_owned(),
+			status: Status::Created,
+			region: "North America".to_owned(),
+			machine_type: "1vCPU 0.5GB".to_owned(),
+		},
+		DeploymentType {
+			id: "784654685".to_owned(),
+			name: "Depoymentl".to_owned(),
+			image_tag: "asdqwdafwedwddwdqwd".to_owned(),
+			status: Status::Deploying,
+			region: "China".to_owned(),
+			machine_type: "1vCPU 0.5GB".to_owned(),
+		},
+		DeploymentType {
+			id: "12343123".to_owned(),
+			name: "Depoymentl".to_owned(),
+			image_tag: "ejlkjfweieq".to_owned(),
+			status: Status::Live,
+			region: "APAC".to_owned(),
+			machine_type: "1vCPU 0.5GB".to_owned(),
+		},
+		DeploymentType {
+			id: "4345398435".to_owned(),
+			name: "Depoymentl".to_owned(),
+			image_tag: "asdqwdsawasda".to_owned(),
+			status: Status::Stopped,
+			region: "APAC".to_owned(),
+			machine_type: "1vCPU 0.5GB".to_owned(),
+		},
+		DeploymentType {
+			id: "8486546851".to_owned(),
+			name: "Depoymentl".to_owned(),
+			image_tag: "cfgjljijadkqwd".to_owned(),
+			status: Status::Errored,
+			region: "EMEA".to_owned(),
+			machine_type: "1vCPU 0.5GB".to_owned(),
+		},
+	]);
 	view! {
 		<ContainerMain class="full-width full-height mb-md">
 			<ContainerHead>
@@ -47,50 +89,18 @@ pub fn DeploymentDashboard() -> impl IntoView {
 			</ContainerHead>
 
 			<ContainerBody>
-				<section class="p-xl full-width ofy-auto">
-					<div class="grid-cnt-st-st grid-col-3 gap-xl" style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; align-content: start; justify-content: start">
-						<DeploymentCard deployment=DeploymentType {
-							id: "53184348".to_owned(),
-							name: "Depoymentl".to_owned(),
-							image_tag: "asdqwdadawdasdasd".to_owned(),
-							status: Status::Created,
-							region: "North America".to_owned(),
-							machine_type: "1vCPU 0.5GB".to_owned(),
-						} />
-						<DeploymentCard deployment=DeploymentType {
-							id: "784654685".to_owned(),
-							name: "Depoymentl".to_owned(),
-							image_tag: "asdqwdafwedwddwdqwd".to_owned(),
-							status: Status::Deploying,
-							region: "China".to_owned(),
-							machine_type: "1vCPU 0.5GB".to_owned(),
-						} />
-						<DeploymentCard deployment=DeploymentType {
-							id: "12343123".to_owned(),
-							name: "Depoymentl".to_owned(),
-							image_tag: "ejlkjfweieq".to_owned(),
-							status: Status::Live,
-							region: "APAC".to_owned(),
-							machine_type: "1vCPU 0.5GB".to_owned(),
-						} />
-						<DeploymentCard deployment=DeploymentType {
-							id: "4345398435".to_owned(),
-							name: "Depoymentl".to_owned(),
-							image_tag: "asdqwdsawasda".to_owned(),
-							status: Status::Stopped,
-							region: "APAC".to_owned(),
-							machine_type: "1vCPU 0.5GB".to_owned(),
-						} />
-						<DeploymentCard deployment=DeploymentType {
-							id: "8486546851".to_owned(),
-							name: "Depoymentl".to_owned(),
-							image_tag: "cfgjljijadkqwd".to_owned(),
-							status: Status::Errored,
-							region: "EMEA".to_owned(),
-							machine_type: "1vCPU 0.5GB".to_owned(),
-						} />
-					</div>
-				</section>
+				<DashboardContainer
+					gap=Size::Large
+					render_items=view! {
+						<For
+							each=move || data.get()
+							key=|state| state.id.clone()
+							let:child
+						>
+							<DeploymentCard deployment=child />
+						</For>
+					}
+				/>
 			</ContainerBody>
 		</ContainerMain>
 	}

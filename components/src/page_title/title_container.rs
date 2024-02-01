@@ -1,5 +1,7 @@
 use crate::imports::*;
 
+/// Contains all the page titles, and wraps around indivisual <PageTitle />
+/// components
 #[component]
 pub fn PageTitleContainer(
 	/// Additional class names to apply to the outer div, if any

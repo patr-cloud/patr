@@ -1,0 +1,94 @@
+@use "sass:map";
+@use "../helpers/maps" as *;
+
+.skeleton {
+  border-radius: 0.3rem;
+  background: linear-gradient(
+    270deg,
+    #23203e,
+    #0d0526,
+    #23203e,
+    #0d0526,
+    #23203e,
+    #0d0526
+  );
+  background-size: 400% 400%;
+  animation: gradient 1.8s linear infinite;
+}
+
+.skeleton-text-id {
+  width: 31rem;
+  height: 1.3rem;
+}
+.skeleton-text-xs {
+  width: 2rem;
+  height: 1.3rem;
+}
+.skeleton-text-sm {
+  width: 5rem;
+  height: 1.3rem;
+}
+.skeleton-text-md {
+  height: 1.3rem;
+  width: 7rem;
+}
+.skeleton-text-lg {
+  height: 1.3rem;
+  width: 9rem;
+}
+.skeleton-text-xl {
+  width: 18.5rem;
+  height: 1rem;
+}
+.skeleton-text-xxl {
+  width: 18rem;
+  height: 2rem;
+  border-radius: map.get($border-radii, "sm");
+}
+.skeleton-text-half-width {
+  width: 10rem;
+  height: 1rem;
+}
+.skeleton-div-sm {
+  width: 10rem;
+  height: 3rem;
+}
+
+.skeleton-circle {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 10rem;
+}
+
+.skeleton-deployment-metrics {
+  height: 14rem;
+}
+
+.skeleton-button {
+  width: 7rem;
+  border-radius: map.get($border-radii, "xl");
+  height: 2.4rem;
+}
+.skeleton-button-md {
+  width: 10rem;
+  border-radius: map.get($border-radii, "xl");
+  height: 2.4rem;
+}
+
+.skeleton-icon-md {
+  width: 2rem;
+  height: 1.5rem;
+}
+.skeleton-icon-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}

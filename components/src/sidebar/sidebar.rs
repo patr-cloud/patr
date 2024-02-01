@@ -113,7 +113,7 @@ pub fn Sidebar_TEST_Page() -> impl IntoView {
 				// This is a temporary empty div for the header
 				<header style="width: 100%; min-height: 5rem;"></header>
 
-				<DatabaseDashboard />
+				<StaticSiteDashboard />
 			</main>
 		</div>
 	}

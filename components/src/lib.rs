@@ -7,6 +7,8 @@ pub mod prelude {
 		link::*,
 		page_title::*,
 		sidebar::*,
+		skeleton::*,
+		spinner::*,
 		status_badge::*,
 		table_dashboard::*,
 		utils::*,
@@ -27,6 +29,8 @@ pub mod link;
 pub mod page_title;
 pub mod pages;
 pub mod sidebar;
+pub mod skeleton;
+pub mod spinner;
 pub mod status_badge;
 pub mod table_dashboard;
 

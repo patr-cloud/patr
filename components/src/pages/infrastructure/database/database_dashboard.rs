@@ -1,8 +1,43 @@
 use crate::{imports::*, pages::DatabaseCard};
 
+#[derive(PartialEq, Eq, Hash, Clone)]
+pub struct DatabaseItem {
+	pub id: i32,
+	pub name: String,
+	pub region: String,
+	pub engine: String,
+	pub version: String,
+	pub plan: String,
+}
+
 #[component]
 pub fn DatabaseDashboard() -> impl IntoView {
-	let data = create_rw_signal(vec![0, 1, 2]);
+	let data = create_rw_signal(vec![
+		DatabaseItem {
+			id: 1234,
+			name: "Mongo Database Instance".to_owned(),
+			region: "aws-prod".to_owned(),
+			engine: "MONGO".to_owned(),
+			version: "4".to_owned(),
+			plan: "1vCPU 2 GB RAM".to_owned(),
+		},
+		DatabaseItem {
+			id: 2345,
+			name: "Azure Database Instance".to_owned(),
+			region: "azure-prod".to_owned(),
+			engine: "PSQL".to_owned(),
+			version: "2".to_owned(),
+			plan: "1vCPU 2 GB RAM".to_owned(),
+		},
+		DatabaseItem {
+			id: 3567,
+			name: "Mongo Database Instance".to_owned(),
+			region: "aws-prod".to_owned(),
+			engine: "MariaDB".to_owned(),
+			version: "1".to_owned(),
+			plan: "2vCPU 4 GB RAM".to_owned(),
+		},
+	]);
 
 	view! {
 		<ContainerMain class="full-width full-height mb-md">
@@ -37,16 +72,15 @@ pub fn DatabaseDashboard() -> impl IntoView {
 			</ContainerHead>
 
 			<ContainerBody>
-				<div></div>
 				<DashboardContainer
 					gap=Size::Large
 					render_items=view! {
 						<For
 							each=move || data.get()
-							key=|state| state.clone()
+							key=|state| state.id.clone()
 							let:child
 						>
-							<DatabaseCard />
+							<DatabaseCard deployment=child />
 						</For>
 					}
 				/>
