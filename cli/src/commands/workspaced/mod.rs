@@ -1,9 +1,8 @@
-use std::io::Write;
-
 use clap::Subcommand;
 
 use self::workspace::WorkspaceCommands;
 use super::{CommandExecutor, GlobalArgs};
+use crate::CommandOutput;
 
 mod infrastructure;
 mod workspace;
@@ -20,20 +19,16 @@ pub enum WorkspacedCommands {
 	// DomainConfigurationCommands(DomainConfigurationCommands),
 }
 
-#[async_trait::async_trait]
 impl CommandExecutor for WorkspacedCommands {
-	async fn execute(
-		self,
-		global_args: &GlobalArgs,
-		writer: impl Write + Send,
-	) -> anyhow::Result<()> {
+	async fn execute(self, global_args: &GlobalArgs) -> anyhow::Result<CommandOutput> {
 		match self {
-			Self::WorkspaceCommands(commands) => commands.execute(global_args, writer).await, /* Self::InfrastructureCommands(commands) => {
-			                                                                                   * 	commands.execute(global_args, writer).await
-			                                                                                   * }
-			                                                                                   * Self::DomainConfigurationCommands(commands) => {
-			                                                                                   * 	commands.execute(global_args, writer).await
-			                                                                                   * } */
+			Self::WorkspaceCommands(commands) => commands.execute(global_args).await,
+			/* Self::InfrastructureCommands(commands) => {
+			 * 	commands.execute(global_args, writer).await
+			 * }
+			 * Self::DomainConfigurationCommands(commands) => {
+			 * 	commands.execute(global_args, writer).await
+			 * } */
 		}
 	}
 }

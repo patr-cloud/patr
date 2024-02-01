@@ -1,6 +1,6 @@
-use std::io::Write;
-
 use clap::Args;
+
+use crate::CommandOutput;
 
 use super::GlobalArgs;
 
@@ -16,9 +16,8 @@ pub struct RenameArgs {
 }
 
 pub(super) async fn execute(
-	global_args: &GlobalArgs,
-	args: RenameArgs,
-	mut writer: impl Write + Send,
-) -> anyhow::Result<()> {
-	Ok(())
+	_global_args: &GlobalArgs,
+	_args: RenameArgs,
+) -> anyhow::Result<CommandOutput> {
+	todo!()
 }
