@@ -1,9 +1,14 @@
 use serde::{Deserialize, Serialize};
 
+/// The client used to make requests to the Patr API
+mod client;
+
+pub use client::*;
+
 /// Constants used in the CLI
-mod constants {
+pub mod constants {
 	/// The base URL for the Patr API
-	pub const BASE_URL: &str = if cfg!(debug_assertions) {
+	pub const API_BASE_URL: &str = if cfg!(debug_assertions) {
 		"https://api.patr.cloud"
 	} else {
 		"http://localhost:3000"

@@ -1,11 +1,6 @@
-use std::io::Write;
-
 use super::GlobalArgs;
+use crate::CommandOutput;
 
-pub(super) async fn execute(
-	global_args: &GlobalArgs,
-	_: (),
-	mut writer: impl Write + Send,
-) -> anyhow::Result<()> {
-	Ok(())
+pub(super) async fn execute(_global_args: &GlobalArgs, _: ()) -> anyhow::Result<CommandOutput> {
+	todo!()
 }
