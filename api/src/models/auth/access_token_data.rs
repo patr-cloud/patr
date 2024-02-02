@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use ::redis::aio::MultiplexedConnection as RedisConnection;
 use api_models::{models::workspace::WorkspacePermission, utils::Uuid};
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 use jsonwebtoken::{
 	Algorithm,
 	DecodingKey,
@@ -111,12 +111,11 @@ impl AccessTokenData {
 			permissions
 		} else {
 			// If not present in the redis fetch from db
-			let all_workspace_permissions =
-				db::get_all_workspace_role_permissions_for_user(
+			db::get_all_workspace_role_permissions_for_user(
 					connection,
 					&self.user.id,
 				)
-				.await?;
+				.await
 
 			// add into redis
 			// let access_token_ttl =
@@ -128,8 +127,6 @@ impl AccessTokenData {
 			// 	Some(&access_token_ttl),
 			// )
 			// .await?;
-
-			all_workspace_permissions
 		};
 
 		// check workspace revocation
