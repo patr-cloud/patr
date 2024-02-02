@@ -66,11 +66,11 @@ impl ApiTokenData {
 
 		// check if the token exists on redis
 		let redis_token_data = None::<ApiTokenData>;
-			// redis::get_user_api_token_data(redis_connection, &login_id)
-			// 	.await?
-			// 	.and_then(|token| {
-			// 		serde_json::from_str::<ApiTokenData>(&token).ok()
-			// 	});
+		// redis::get_user_api_token_data(redis_connection, &login_id)
+		// 	.await?
+		// 	.and_then(|token| {
+		// 		serde_json::from_str::<ApiTokenData>(&token).ok()
+		// 	});
 
 		let token_data = if let Some(redis_token_data) = redis_token_data {
 			if !service::validate_hash(
