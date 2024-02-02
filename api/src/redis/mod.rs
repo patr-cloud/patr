@@ -35,7 +35,6 @@ pub async fn create_redis_connection(
 	))?
 	.get_multiplexed_tokio_connection()
 	.await?;
-	task::spawn(redis_poller);
 
 	Ok(redis)
 }
