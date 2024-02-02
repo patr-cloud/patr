@@ -115,7 +115,7 @@ impl AccessTokenData {
 					connection,
 					&self.user.id,
 				)
-				.await
+				.await?
 
 			// add into redis
 			// let access_token_ttl =
