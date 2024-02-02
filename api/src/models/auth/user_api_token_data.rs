@@ -65,12 +65,12 @@ impl ApiTokenData {
 			.body(error!(UNAUTHORIZED).to_string())?;
 
 		// check if the token exists on redis
-		let redis_token_data =
-			redis::get_user_api_token_data(redis_connection, &login_id)
-				.await?
-				.and_then(|token| {
-					serde_json::from_str::<ApiTokenData>(&token).ok()
-				});
+		let redis_token_data = None::<ApiTokenData>;
+			// redis::get_user_api_token_data(redis_connection, &login_id)
+			// 	.await?
+			// 	.and_then(|token| {
+			// 		serde_json::from_str::<ApiTokenData>(&token).ok()
+			// 	});
 
 		let token_data = if let Some(redis_token_data) = redis_token_data {
 			if !service::validate_hash(
@@ -120,13 +120,13 @@ impl ApiTokenData {
 					.body(error!(UNAUTHORIZED).to_string()));
 			}
 
-			redis::set_user_api_token_data(
-				redis_connection,
-				&login_id,
-				&serde_json::to_string(&token)?,
-				Some(&Duration::hours(8)),
-			)
-			.await?;
+			// redis::set_user_api_token_data(
+			// 	redis_connection,
+			// 	&login_id,
+			// 	&serde_json::to_string(&token)?,
+			// 	Some(&Duration::hours(8)),
+			// )
+			// .await?;
 
 			token
 		};
