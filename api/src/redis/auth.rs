@@ -157,6 +157,7 @@ pub async fn revoke_global_tokens_created_before_timestamp(
 	}
 }
 
+#[allow(dead_code)]
 pub async fn get_user_api_token_data(
 	redis_conn: &mut RedisConnection,
 	token_id: &Uuid,
