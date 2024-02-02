@@ -119,8 +119,8 @@ impl AccessTokenData {
 				.await?;
 
 			// add into redis
-			let access_token_ttl =
-				service::get_access_token_expiry() + Duration::seconds(60);
+			// let access_token_ttl =
+			// 	service::get_access_token_expiry() + Duration::seconds(60);
 			// redis::set_user_access_token_permissions(
 			// 	redis_conn,
 			// 	&self.login_id,
