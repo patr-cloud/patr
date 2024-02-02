@@ -5,7 +5,6 @@ use redis::{
 	Client,
 	RedisError,
 };
-use tokio::task;
 
 pub use self::auth::*;
 use crate::utils::settings::Settings;
