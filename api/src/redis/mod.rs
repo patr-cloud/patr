@@ -5,7 +5,6 @@ use redis::{
 	Client,
 	RedisError,
 };
-use tokio::task;
 
 pub use self::auth::*;
 use crate::utils::settings::Settings;
@@ -30,12 +29,11 @@ pub async fn create_redis_connection(
 	let port = config.redis.port;
 	let database = config.redis.database.unwrap_or(0);
 
-	let (redis, redis_poller) = Client::open(format!(
+	let redis = Client::open(format!(
 		"{schema}://{username}{password}{host}:{port}/{database}"
 	))?
-	.create_multiplexed_tokio_connection()
+	.get_multiplexed_tokio_connection()
 	.await?;
-	task::spawn(redis_poller);
 
 	Ok(redis)
 }
