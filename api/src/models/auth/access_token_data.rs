@@ -94,17 +94,18 @@ impl AccessTokenData {
 		}
 
 		// get permissions from redis
-		let permissions = redis::get_user_access_token_permissions(
-			redis_conn,
-			&self.login_id,
-		)
-		.await?
-		.and_then(|permission| {
-			serde_json::from_str::<BTreeMap<Uuid, WorkspacePermission>>(
-				&permission,
-			)
-			.ok()
-		});
+		let permissions = None;
+		// redis::get_user_access_token_permissions(
+		// 	redis_conn,
+		// 	&self.login_id,
+		// )
+		// .await?
+		// .and_then(|permission| {
+		// 	serde_json::from_str::<BTreeMap<Uuid, WorkspacePermission>>(
+		// 		&permission,
+		// 	)
+		// 	.ok()
+		// });
 
 		self.permissions = if let Some(permissions) = permissions {
 			permissions
@@ -120,13 +121,13 @@ impl AccessTokenData {
 			// add into redis
 			let access_token_ttl =
 				service::get_access_token_expiry() + Duration::seconds(60);
-			redis::set_user_access_token_permissions(
-				redis_conn,
-				&self.login_id,
-				&serde_json::to_string(&all_workspace_permissions)?,
-				Some(&access_token_ttl),
-			)
-			.await?;
+			// redis::set_user_access_token_permissions(
+			// 	redis_conn,
+			// 	&self.login_id,
+			// 	&serde_json::to_string(&all_workspace_permissions)?,
+			// 	Some(&access_token_ttl),
+			// )
+			// .await?;
 
 			all_workspace_permissions
 		};
