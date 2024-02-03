@@ -12,7 +12,7 @@ use jsonwebtoken::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{db, error, redis, service, utils::Error, Database};
+use crate::{db, error, redis, utils::Error, Database};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
