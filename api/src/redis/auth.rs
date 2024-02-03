@@ -212,6 +212,7 @@ pub async fn get_add_card_payment_intent_id(
 	Ok(payment_intent_id)
 }
 
+#[allow(dead_code)]
 pub async fn get_user_access_token_permissions(
 	redis_conn: &mut RedisConnection,
 	login_id: &Uuid,
@@ -222,6 +223,7 @@ pub async fn get_user_access_token_permissions(
 	Ok(token_data)
 }
 
+#[allow(dead_code)]
 pub async fn set_user_access_token_permissions(
 	redis_conn: &mut RedisConnection,
 	login_id: &Uuid,

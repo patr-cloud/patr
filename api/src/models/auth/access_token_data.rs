@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use ::redis::aio::MultiplexedConnection as RedisConnection;
 use api_models::{models::workspace::WorkspacePermission, utils::Uuid};
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 use jsonwebtoken::{
 	Algorithm,
 	DecodingKey,
@@ -12,7 +12,7 @@ use jsonwebtoken::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{db, error, redis, service, utils::Error, Database};
+use crate::{db, error, redis, utils::Error, Database};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -94,41 +94,39 @@ impl AccessTokenData {
 		}
 
 		// get permissions from redis
-		let permissions = redis::get_user_access_token_permissions(
-			redis_conn,
-			&self.login_id,
-		)
-		.await?
-		.and_then(|permission| {
-			serde_json::from_str::<BTreeMap<Uuid, WorkspacePermission>>(
-				&permission,
-			)
-			.ok()
-		});
+		let permissions = None;
+		// redis::get_user_access_token_permissions(
+		// 	redis_conn,
+		// 	&self.login_id,
+		// )
+		// .await?
+		// .and_then(|permission| {
+		// 	serde_json::from_str::<BTreeMap<Uuid, WorkspacePermission>>(
+		// 		&permission,
+		// 	)
+		// 	.ok()
+		// });
 
 		self.permissions = if let Some(permissions) = permissions {
 			permissions
 		} else {
 			// If not present in the redis fetch from db
-			let all_workspace_permissions =
-				db::get_all_workspace_role_permissions_for_user(
-					connection,
-					&self.user.id,
-				)
-				.await?;
+			db::get_all_workspace_role_permissions_for_user(
+				connection,
+				&self.user.id,
+			)
+			.await?
 
 			// add into redis
-			let access_token_ttl =
-				service::get_access_token_expiry() + Duration::seconds(60);
-			redis::set_user_access_token_permissions(
-				redis_conn,
-				&self.login_id,
-				&serde_json::to_string(&all_workspace_permissions)?,
-				Some(&access_token_ttl),
-			)
-			.await?;
-
-			all_workspace_permissions
+			// let access_token_ttl =
+			// 	service::get_access_token_expiry() + Duration::seconds(60);
+			// redis::set_user_access_token_permissions(
+			// 	redis_conn,
+			// 	&self.login_id,
+			// 	&serde_json::to_string(&all_workspace_permissions)?,
+			// 	Some(&access_token_ttl),
+			// )
+			// .await?;
 		};
 
 		// check workspace revocation
