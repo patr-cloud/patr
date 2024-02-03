@@ -8,7 +8,7 @@ fn LoginForm() -> impl IntoView {
 				<h1 class="txt-primary txt-xl txt-medium">"Sign In"</h1>
 				<div class="txt-white txt-thin fr-fs-fs">
 					<p>"New User? "</p>
-					<Link to="/sign-up" variant=Variant::Link>
+					<Link to="/sign-up" r#type=Variant::Link>
 						"Sign Up"
 					</Link>
 				</div>
@@ -40,14 +40,14 @@ fn LoginForm() -> impl IntoView {
 			<div class="fr-sb-ct full-width pt-xs">
 				<Link
 					to="https://book.leptos.dev/view/03_components.html".to_owned()
-					variant=Variant::Link
+					r#type=Variant::Link
 				>
 					"Forgot Password?"
 				</Link>
 			</div>
 			<Link
-				r#type="submit"
-				variant=Variant::Button
+				should_submit=true
+				r#type=Variant::Button
 				class="btn ml-auto mt-md"
 				style_variant=LinkStyleVariant::Contained
 			>
@@ -60,7 +60,7 @@ fn LoginForm() -> impl IntoView {
 #[component]
 pub fn LoginPage() -> impl IntoView {
 	view! {
-		<PageContainer class="bg-onboard">
+		<PageContainer class="bg-image">
 			<LoginForm/>
 		</PageContainer>
 	}

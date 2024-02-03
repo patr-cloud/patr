@@ -9,11 +9,11 @@
   cursor: pointer;
 
   padding: map.get($paddings, "xs") map.get($paddings, "xl");
-	font-size: map.get($font-sizes, "sm");
+  font-size: map.get($font-sizes, "sm");
   font-weight: map.get($font-weights, "medium");
-	border-radius: map.get($border-radii, "xl");
+  border-radius: map.get($border-radii, "xl");
 
-	transition: background 200ms;
+  transition: background 200ms;
 
   img {
     @include create-size;

@@ -1,0 +1,99 @@
+@use "../base/variables" as *;
+
+.static-site-card {
+  height: 18rem;
+
+  & > .head {
+    border-bottom: 2px $border-color solid;
+  }
+}
+
+.frame {
+  border: none;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+.site-preview-sm {
+  & > .frame {
+    transform: scale(0.2) translate(-50%, -50%);
+    top: 50%;
+    left: 50%;
+  }
+}
+
+.site-preview-lg {
+  width: 25rem;
+  height: 10rem;
+
+  & > .frame {
+    transform: scale(0.15) translate(-50%, -50%);
+    top: 50%;
+    left: 50%;
+    width: 168rem;
+    height: 66rem;
+  }
+}
+
+.site-deploy-card {
+  box-shadow: $shadow-light;
+  height: 5rem;
+  &.repo-card {
+    height: auto;
+    & .box-commit::before {
+      height: 1.5rem;
+    }
+  }
+  &.build-card {
+    & .box-commit::before {
+      height: 1rem;
+    }
+    & .icon-checked {
+      top: 0rem;
+      left: 0;
+    }
+  }
+  & .icon-checked {
+    top: 0.35rem;
+    left: 0;
+  }
+  & .icon-circle {
+    bottom: 0;
+    left: 2.2rem;
+  }
+  & .box-commit::before {
+    content: "";
+    position: absolute;
+    width: 1.2rem;
+    height: 1rem;
+    bottom: 0.5rem;
+    left: 0.5rem;
+    border-left: 1px solid #666666;
+    border-bottom: 1px solid #666666;
+    border-bottom-left-radius: 5px;
+  }
+  & .commit-message {
+    margin-left: 2.8rem;
+  }
+  & .commit {
+    background-color: $bg-code-snippet;
+    color: $txt-code-snippet;
+    padding: 2px 5px;
+  }
+  & .time {
+    top: 0.8rem;
+    right: 1.5rem;
+  }
+}
+.deploy-summary-card {
+  box-shadow: $shadow-light;
+  & .line {
+    width: 1.2rem;
+    height: 1.5rem;
+    top: 45%;
+    left: 2rem;
+    border-left: 1px solid #666666;
+    border-bottom: 1px solid #666666;
+    border-bottom-left-radius: 5px;
+  }
+}
