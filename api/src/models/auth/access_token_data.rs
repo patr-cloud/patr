@@ -112,10 +112,10 @@ impl AccessTokenData {
 		} else {
 			// If not present in the redis fetch from db
 			db::get_all_workspace_role_permissions_for_user(
-					connection,
-					&self.user.id,
-				)
-				.await?
+				connection,
+				&self.user.id,
+			)
+			.await?
 
 			// add into redis
 			// let access_token_ttl =
