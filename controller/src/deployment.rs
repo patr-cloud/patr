@@ -249,7 +249,8 @@ async fn reconcile(
 			.body(ListAllDeploymentMachineTypeRequest)
 			.build(),
 	)
-	.await?
+	.await
+	.map_err(|err| err.body.error)?
 	.body
 	.machine_types
 	.into_iter()
@@ -412,7 +413,8 @@ async fn reconcile(
 					.body(GetContainerRepositoryInfoRequest)
 					.build(),
 			)
-			.await?
+			.await
+			.map_err(|err| err.body.error)?
 			.body
 			.repository;
 

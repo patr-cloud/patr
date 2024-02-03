@@ -10,6 +10,7 @@ version.workspace = true
 either = { workspace = true, features = ["default"] }
 futures = { workspace = true, features = ["default"] }
 hex = { workspace = true, features = [] }
+http = { workspace = true, features = ["default"] }
 httparse = { workspace = true, features = ["default"] }
 k8s-openapi = { workspace = true, features = ["v1_24"] }
 kube = { workspace = true, features = [
@@ -18,9 +19,10 @@ kube = { workspace = true, features = [
     "ws",
     "runtime",
     "derive",
-    "unstable-runtime"
+    "unstable-runtime",
 ] }
 models = { workspace = true, features = [] }
+preprocess = { workspace = true, features = [] }
 reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 schemars = { workspace = true, features = ["default"] }
 serde = { workspace = true, features = ["default", "derive"] }
@@ -31,3 +33,4 @@ tokio = { workspace = true, features = ["tracing", "full"] }
 tokio-stream = { workspace = true, features = ["default", "sync"] }
 tokio-tungstenite = { workspace = true, features = ["default"] }
 tracing = { workspace = true, features = ["default"] }
+url = { workspace = true, features = ["default"] }

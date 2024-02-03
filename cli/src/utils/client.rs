@@ -32,7 +32,16 @@ where
 	E::ResponseBody: DeserializeOwned + Serialize,
 	E::RequestBody: DeserializeOwned + Serialize,
 {
-	let body = serde_json::to_value(&body).unwrap();
+	let body = serde_json::to_value(&body)
+		.map_err(|err| err.to_string())
+		.map_err(|err| ApiErrorResponse {
+			status_code: http::StatusCode::INTERNAL_SERVER_ERROR,
+			body: ApiErrorResponseBody {
+				success: False,
+				error: ErrorType::server_error(err.clone()),
+				message: err,
+			},
+		})?;
 	let builder = REQUEST_CLIENT
 		.get_or_init(initialize_client)
 		.request(

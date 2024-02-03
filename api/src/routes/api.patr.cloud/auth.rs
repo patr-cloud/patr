@@ -148,7 +148,6 @@ async fn login(
 	AppResponse::builder()
 		.body(LoginResponse {
 			access_token: "TODO".to_string(),
-			refresh_token: "TODO".to_string(),
 		})
 		.headers(())
 		.status_code(StatusCode::ACCEPTED)
