@@ -1,13 +1,4 @@
-use crate::{
-	imports::*,
-	pages::{
-		ContainerRegistryDashboard,
-		DatabaseDashboard,
-		DeploymentDashboard,
-		SecretsDashboard,
-		StaticSiteDashboard,
-	},
-};
+use crate::imports::*;
 
 #[derive(Default, Clone)]
 pub struct LinkItem {
@@ -24,28 +15,28 @@ pub fn Sidebar() -> impl IntoView {
 		LinkItem {
 			title: "Home".to_owned(),
 			path: "/".to_owned(),
-			icon_src: "/public/images/sidebar/home.svg".to_owned(),
+			icon_src: "/images/sidebar/home.svg".to_owned(),
 			subtitle: None,
 			items: None,
 		},
 		LinkItem {
 			title: "BYOC".to_owned(),
 			path: "/".to_owned(),
-			icon_src: "/public/images/sidebar/byoc.svg".to_owned(),
+			icon_src: "/images/sidebar/byoc.svg".to_owned(),
 			subtitle: Some("Connect your cloud".to_owned()),
 			items: None,
 		},
 		LinkItem {
 			title: "Infrastructure".to_owned(),
 			path: "/".to_owned(),
-			icon_src: "/public/images/sidebar/infrastructure.svg".to_owned(),
+			icon_src: "/images/sidebar/infrastructure.svg".to_owned(),
 			subtitle: None,
 			items: None,
 		},
 		LinkItem {
 			title: "Domain Configuration".to_owned(),
 			path: "/".to_owned(),
-			icon_src: "/public/images/sidebar/domains.svg".to_owned(),
+			icon_src: "/images/sidebar/domains.svg".to_owned(),
 			subtitle: None,
 			items: Some(vec![
 				LinkItem {
@@ -67,14 +58,14 @@ pub fn Sidebar() -> impl IntoView {
 		LinkItem {
 			title: "CI/CD".to_owned(),
 			path: "/".to_owned(),
-			icon_src: "/public/images/sidebar/cicd.svg".to_owned(),
+			icon_src: "/images/sidebar/cicd.svg".to_owned(),
 			subtitle: None,
 			items: None,
 		},
 		LinkItem {
 			title: "Workspace".to_owned(),
 			path: "/".to_owned(),
-			icon_src: "/public/images/sidebar/deployment.svg".to_owned(),
+			icon_src: "/images/sidebar/deployment.svg".to_owned(),
 			subtitle: None,
 			items: None,
 		},
@@ -83,9 +74,9 @@ pub fn Sidebar() -> impl IntoView {
 	view! {
 		<aside class="sidebar fc-fs-fs">
 			<div class="sidebar-logo">
-				<img src="/public/images/planet-purple.svg" alt="Plante Patr" />
+				<img src="/images/planet-purple.svg" alt="Plante Patr" />
 				<div class="fc-ct-ct br-sm">
-					<img src="/public/images/patr.svg" alt="Patr Logo" />
+					<img src="/images/patr.svg" alt="Patr Logo" />
 				</div>
 			</div>
 
@@ -101,20 +92,5 @@ pub fn Sidebar() -> impl IntoView {
 				</nav>
 			</div>
 		</aside>
-	}
-}
-
-#[component]
-pub fn Sidebar_TEST_Page() -> impl IntoView {
-	view! {
-		<div class="fr-fs-fs full-width full-height bg-secondary">
-			<Sidebar />
-			<main class="fc-fs-ct full-width px-lg">
-				// This is a temporary empty div for the header
-				<header style="width: 100%; min-height: 5rem;"></header>
-
-				<StaticSiteDashboard />
-			</main>
-		</div>
 	}
 }

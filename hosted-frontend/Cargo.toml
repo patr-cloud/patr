@@ -1,23 +1,38 @@
 [package]
-name = "components"
+description = "The frontend dashboard for the hosted Patr version"
+name = "hosted-frontend"
 
 authors.workspace = true
-description.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 axum-extra = { workspace = true, features = ["typed-routing"] }
+components = { workspace = true, features = [] }
+console_error_panic_hook = { workspace = true, features = [] }
+http = { workspace = true, features = ["default"] }
+log = { workspace = true, features = [] }
+matchit = { workspace = true, features = ["default"] }
+models = { workspace = true, features = [] }
+preprocess = { workspace = true, features = [] }
+reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 serde = { workspace = true, features = ["default", "derive"] }
 serde_json = { workspace = true, features = ["default"] }
 serde_urlencoded = { workspace = true, features = [] }
+tower = { workspace = true, features = ["util"] }
 tracing = { workspace = true, features = ["attributes"] }
-web-sys = { workspace = true, features = ["MouseEvent"] }
+url = { workspace = true, features = ["default"] }
+wasm-bindgen = { workspace = true, features = ["default"] }
+wasm-logger = { workspace = true, features = [] }
+web-sys = { workspace = true, features = [
+    "Clipboard",
+    "Navigator",
+    "DataTransfer",
+] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 leptos = { workspace = true, features = ["tracing", "hydrate"] }

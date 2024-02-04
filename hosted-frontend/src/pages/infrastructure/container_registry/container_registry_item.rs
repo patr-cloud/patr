@@ -1,5 +1,5 @@
 use super::ContainerRegistryItem;
-use crate::imports::*;
+use crate::prelude::*;
 
 #[component]
 pub fn ContainerRegistryCard(item: ContainerRegistryItem) -> impl IntoView {

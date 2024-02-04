@@ -1,13 +1,13 @@
 [workspace]
 members = [
     "api",
+    "cli",
+    # "cloudflare-ingress",
+    "components",
+    "controller",
+    "hosted-frontend",
     "macros",
     "models",
-    "controller",
-    # "cloudflare-ingress",
-    "frontend",
-    "cli",
-    "components",
 ]
 package.authors = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
 package.description = "Patr API and all it's dependencies"
@@ -25,10 +25,11 @@ axum-typed-websockets = { version = "0.6", default-features = false }
 base64 = { version = "0.21", default-features = false }
 clap = { version = "4", default-features = false }
 comfy-table = { version = "7", default-features = false }
-config = { version = "0.14", default-features = false }
+components = { path = "components", default-features = false }
+config = { version = "0.13", default-features = false }
 console_error_panic_hook = { version = "0.1", default-features = false }
 either = { version = "1", default-features = false }
-frontend = { path = "frontend", default-features = false }
+hosted-frontend = { path = "hosted-frontend", default-features = false }
 futures = { version = "0.3", default-features = false }
 headers = { version = "0.4", default-features = false }
 hex = { version = "0.4", default-features = false }
@@ -110,18 +111,18 @@ strip = true
 [[workspace.metadata.leptos]]
 # The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name
 bin-package = "api"
-lib-package = "frontend"
+lib-package = "hosted-frontend"
 name = "dashboard"
 output-name = "dashboard"
 # The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
-site-root = "target/site"
+site-root = "target/hosted-frontend"
 # The site-root relative folder where all compiled output (JS, WASM and CSS) is written
 site-pkg-dir = "pkg"
 # [Optional] The source CSS file. If it ends with .sass or .scss then it will be compiled by dart-sass into CSS. The CSS is optimized by Lightning CSS before being written to <site-root>/<site-pkg>/app.css
-style-file = "frontend/assets/styles/index.scss"
+style-file = "hosted-frontend/assets/styles/index.scss"
 # Assets source dir. All files found here will be copied and synchronized to site-root.
 # The assets-dir cannot have a sub directory with the same name/path as site-pkg-dir.
-assets-dir = "frontend/public"
+assets-dir = "components/assets"
 #  The browserlist query used for optimizing the CSS.
 browserquery = "defaults"
 # The profile to use for the lib target when compiling for release

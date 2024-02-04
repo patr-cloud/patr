@@ -1,5 +1,5 @@
 use super::container_registry_item::ContainerRegistryCard;
-use crate::imports::*;
+use crate::prelude::*;
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct ContainerRegistryItem {

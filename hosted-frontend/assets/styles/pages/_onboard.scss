@@ -1,6 +1,6 @@
 @use "sass:map";
-@use "../helpers/maps" as *;
-@use "../base/variables" as *;
+@use "../../../../components/assets/styles/helpers/maps" as *;
+@use "../../../../components/assets/styles/base/variables" as *;
 
 .box-onboard {
   width: 32rem;

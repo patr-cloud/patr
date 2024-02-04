@@ -1,5 +1,5 @@
 use super::DeploymentType;
-use crate::imports::*;
+use crate::prelude::*;
 
 pub struct DeploymentCardItem {
 	label: &'static str,

@@ -1,4 +1,4 @@
-use crate::{imports::*, pages::DatabaseCard};
+use crate::{prelude::*, pages::DatabaseCard};
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct DatabaseItem {
