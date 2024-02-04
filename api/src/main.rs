@@ -4,10 +4,6 @@
 
 //! The main API server for Patr.
 
-use opentelemetry::KeyValue;
-use opentelemetry_sdk::Resource;
-use tokio::net::TcpListener;
-
 /// This module contains the main application logic. Most of the app requests,
 /// states, and mounting of endpoints are done here
 pub mod app;
@@ -85,7 +81,10 @@ async fn main() {
 	use std::net::SocketAddr;
 
 	use app::AppState;
+	use opentelemetry::KeyValue;
 	use opentelemetry_otlp::WithExportConfig;
+	use opentelemetry_sdk::Resource;
+	use tokio::net::TcpListener;
 	use tracing::Level;
 	use tracing_opentelemetry::OpenTelemetryLayer;
 	use tracing_subscriber::{

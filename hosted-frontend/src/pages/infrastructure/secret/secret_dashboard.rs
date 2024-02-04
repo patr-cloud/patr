@@ -1,4 +1,4 @@
-use crate::{imports::*, pages::SecretCard};
+use crate::{prelude::*, pages::SecretCard};
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct SecretListItem {

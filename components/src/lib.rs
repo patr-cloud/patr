@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 pub mod prelude {
 	pub use crate::{
 		containers::*,
@@ -27,7 +29,6 @@ pub mod icon;
 pub mod input;
 pub mod link;
 pub mod page_title;
-pub mod pages;
 pub mod sidebar;
 pub mod skeleton;
 pub mod spinner;

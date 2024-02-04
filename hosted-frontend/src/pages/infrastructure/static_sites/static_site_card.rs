@@ -1,5 +1,5 @@
 use super::StaticSiteItemType;
-use crate::imports::*;
+use crate::prelude::*;
 
 #[component]
 pub fn StaticSiteCard(

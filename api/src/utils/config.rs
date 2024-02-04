@@ -16,12 +16,12 @@ pub fn parse_config() -> AppConfig {
 	let env = if cfg!(debug_assertions) {
 		"dev".to_string()
 	} else {
-		env::var("APP_ENV").unwrap_or_else(|_| "prod".into())
+		env::var("PATR_ENV").unwrap_or_else(|_| "prod".into())
 	};
 
 	match env.as_ref() {
 		"prod" | "production" => Config::builder()
-			.add_source(File::with_name("config/prod").required(false))
+			.add_source(File::with_name("config").required(false))
 			.set_default("environment", "production")
 			.expect("unable to set environment to production"),
 		"dev" | "development" => Config::builder()
@@ -35,7 +35,7 @@ pub fn parse_config() -> AppConfig {
 			panic!("Unknown running environment found!");
 		}
 	}
-	.add_source(Environment::with_prefix("APP").separator("_"))
+	.add_source(Environment::with_prefix("PATR").separator("_"))
 	.build()
 	.expect("unable to merge with environment variables")
 	.try_deserialize()
@@ -126,7 +126,7 @@ pub struct DatabaseConfig {
 	/// The name of the database to connect to within the database server
 	pub database: String,
 	/// The maximum number of connections to the database
-	pub connection_limit: u32,
+	pub connection_limit: serde_json::value::Number,
 }
 
 /// The configuration for Redis. This is used for caching, rate limiting and for

@@ -68,7 +68,7 @@ where
 		E: ApiEndpoint<Authenticator = NoAuthentication> + Sync,
 		<E::RequestBody as Preprocessable>::Processed: Send,
 	{
-		let mut registry = frontend::utils::API_CALL_REGISTRY
+		let mut registry = hosted_frontend::utils::API_CALL_REGISTRY
 			.write()
 			.expect("API call registry poisoned");
 
@@ -134,7 +134,7 @@ where
 		<E::RequestBody as Preprocessable>::Processed: Send,
 		E::RequestHeaders: HasHeader<BearerToken>,
 	{
-		let mut registry = frontend::utils::API_CALL_REGISTRY
+		let mut registry = hosted_frontend::utils::API_CALL_REGISTRY
 			.write()
 			.expect("API call registry poisoned");
 

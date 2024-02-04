@@ -1,5 +1,5 @@
 use super::SecretListItem;
-use crate::imports::*;
+use crate::prelude::*;
 
 #[component]
 pub fn SecretCard(

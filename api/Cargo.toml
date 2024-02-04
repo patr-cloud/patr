@@ -14,7 +14,7 @@ axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
 axum-extra = { workspace = true, features = ["default", "typed-routing"] }
 axum-typed-websockets = { workspace = true, features = ["default"] }
 config = { workspace = true, features = ["default"] }
-frontend = { workspace = true, features = [] }
+hosted-frontend = { workspace = true, features = [] }
 futures = { workspace = true, features = ["default"] }
 headers = { workspace = true, features = [] }
 jsonwebtoken = { workspace = true, features = ["default"] }
