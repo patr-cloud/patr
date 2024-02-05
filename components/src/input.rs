@@ -97,6 +97,58 @@ pub fn Input(
 		)
 	};
 
+	let end_icon = if r#type.with(|input_type| {
+		if let InputType::Password = input_type {
+			true
+		} else {
+			false
+		}
+	}) {
+		MaybeSignal::derive(move || {
+			Some(
+				IconProps::builder()
+					.icon(MaybeSignal::derive(move || {
+						if show_password.get() {
+							IconType::Eye
+						} else {
+							IconType::EyeOff
+						}
+					}))
+					.size(
+						end_icon
+							.with_untracked(|props| props.as_ref().map(|props| props.size))
+							.unwrap_or_else(|| MaybeSignal::Static(Size::ExtraSmall)),
+					)
+					.color(
+						end_icon
+							.with_untracked(|props| props.as_ref().map(|props| props.color))
+							.unwrap_or_else(|| MaybeSignal::Static(Color::White)),
+					)
+					.on_click(Rc::new(move |_| {
+						show_password.set(!show_password.get());
+					}))
+					.class(
+						end_icon
+							.with_untracked(|props| props.as_ref().map(|props| props.class.clone()))
+							.unwrap_or_default(),
+					)
+					.enable_pulse(
+						end_icon
+							.with_untracked(|props| props.as_ref().map(|props| props.enable_pulse))
+							.unwrap_or_default(),
+					)
+					.fill(
+						end_icon
+							.with_untracked(|props| props.as_ref().map(|props| props.fill))
+							.unwrap_or_default(),
+					)
+					.build(),
+			)
+		})
+	} else {
+		end_icon
+	};
+
 	view! {
 		<div class=class>
 			<Show when={
@@ -129,65 +181,57 @@ pub fn Input(
 				placeholder=move || placeholder.get()
 				disabled=move || disabled.get()
 				on:input=on_input
-				value=move || value.clone()
-				type=move || r#type.get().as_html_attribute()
+				value=value
+				type=move || {
+					if let InputType::Password = r#type.get() {
+						if show_password.get() {
+							InputType::Text
+						} else {
+							InputType::Password
+						}
+					} else {
+						r#type.get()
+					}.as_html_attribute()
+				}
 			/>
 
 			{move || end_text.get()}
-			{show_password_icon
-				.with(|&show_password_icon| {
-					if show_password_icon {
-						match r#type.get() {
-							InputType::Password => {
-								view! {
-									<Show when=move || {
-										show_password_icon
-									}>
-										{end_icon
-											.with(|props| {
-												props
-													.as_ref()
-													.map(|props| IconProps {
-														icon: MaybeSignal::derive(move || if show_password.get() {
-															IconType::Eye
-														} else {
-															IconType::EyeOff
-														}),
-														size: props.size,
-														color: props.color,
-														class: props.class.clone(),
-														on_click: Some(Rc::new(move |_| show_password.set(!show_password.get()))),
-														enable_pulse: props.enable_pulse,
-														fill: props.fill,
-													})
-											})
-											.into_view()}
-									</Show>
-								}
-							}
-							_ => {
-								end_icon
-									.with(|props| {
-										props
-											.as_ref()
-											.map(|props| IconProps {
-												icon: props.icon,
-												size: props.size,
-												color: props.color,
-												class: props.class.clone(),
-												on_click: props.on_click.clone(),
-												enable_pulse: props.enable_pulse,
-												fill: props.fill,
-											})
-									})
-									.into_view()
-							}
-						}
-					} else {
-						Default::default()
-					}
-				})}
-
+			{move || {
+				if let InputType::Password = r#type.get() {
+					show_password_icon.get().then(|| end_icon
+						.with(|props| {
+							props
+								.as_ref()
+								.map(|props| IconProps {
+									icon: props.icon,
+									size: props.size,
+									color: props.color,
+									class: props.class.clone(),
+									on_click: props.on_click.clone(),
+									enable_pulse: props.enable_pulse,
+									fill: props.fill,
+								})
+						})
+					)
+					.into_view()
+				} else {
+					end_icon
+						.with(|props| {
+							props
+								.as_ref()
+								.map(|props| IconProps {
+									icon: props.icon,
+									size: props.size,
+									color: props.color,
+									class: props.class.clone(),
+									on_click: props.on_click.clone(),
+									enable_pulse: props.enable_pulse,
+									fill: props.fill,
+								})
+						})
+						.into_view()
+				}
+			}}
 		</div>
 	}
 }
