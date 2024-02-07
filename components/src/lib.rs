@@ -6,6 +6,7 @@
 /// The prelude module. Used to re-export commonly used items.
 pub mod prelude {
 	pub use crate::{
+		backdrop::*,
 		containers::*,
 		dashboard_container::*,
 		icon::*,
@@ -17,6 +18,7 @@ pub mod prelude {
 		spinner::*,
 		status_badge::*,
 		table_dashboard::*,
+		tooltip::*,
 		utils::*,
 	};
 }
@@ -35,6 +37,7 @@ mod imports {
 	pub use crate::prelude::*;
 }
 
+pub mod backdrop;
 pub mod containers;
 pub mod dashboard_container;
 pub mod icon;
@@ -46,5 +49,6 @@ pub mod skeleton;
 pub mod spinner;
 pub mod status_badge;
 pub mod table_dashboard;
+pub mod tooltip;
 
 pub mod utils;
