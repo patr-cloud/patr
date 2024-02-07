@@ -1,6 +1,9 @@
 use models::api::auth::*;
 
-use crate::{pages::LoginPage, prelude::*};
+use crate::{
+	pages::{DomainsDashboard, LoginPage, ManagedUrlDashboard},
+	prelude::*,
+};
 
 #[allow(async_fn_in_trait)] // WIP
 pub trait AppAPIs {
@@ -11,5 +14,21 @@ pub trait AppAPIs {
 
 #[component]
 pub fn App() -> impl IntoView {
-	view! { <LoginPage/> }
+	view! {
+		<div class="fr-fs-fs full-width full-height bg-secondary">
+			<Sidebar />
+			<main class="fc-fs-ct full-width px-lg">
+				// This is a temporary empty div for the header
+				<header style="width: 100%; min-height: 5rem;">
+					<Skeleton
+						class={"full-width".to_owned()}
+						enable_full_height={true}
+						enable_full_width={true}
+					/>
+				</header>
+
+				<ManagedUrlDashboard />
+			</main>
+		</div>
+	}
 }

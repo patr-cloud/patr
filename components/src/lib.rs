@@ -6,6 +6,7 @@
 /// The prelude module. Used to re-export commonly used items.
 pub mod prelude {
 	pub use crate::{
+		backdrop::*,
 		containers::*,
 		dashboard_container::*,
 		icon::*,
@@ -17,6 +18,7 @@ pub mod prelude {
 		spinner::*,
 		status_badge::*,
 		table_dashboard::*,
+		tooltip::*,
 		utils::*,
 	};
 }
@@ -35,6 +37,10 @@ mod imports {
 	pub use crate::prelude::*;
 }
 
+/// The backdrop component. The backdrop component is used to display a backdrop
+/// that can be used to block the user from interacting with the rest of the
+/// page. It is used to show the user that something is loading or in modals
+pub mod backdrop;
 /// The containers module. This module contains all the container components. A
 /// container is a component that can be used to hold other components (like a
 /// box).
@@ -81,6 +87,7 @@ pub mod status_badge;
 /// display a table of data in a dashboard. It is used to show the user a table
 /// of data, like a list of users, or a list of deployments, etc.
 pub mod table_dashboard;
+pub mod tooltip;
 
 /// Utility functions and components that are used across the entire crate.
 pub mod utils;

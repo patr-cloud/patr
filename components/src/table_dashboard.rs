@@ -8,7 +8,7 @@ pub fn TableDashboard(
 	/// Headings of the Table
 	#[prop(into)]
 	headings: Vec<View>,
-	/// Additional class names to apply to the outer class, if any.
+	/// Additional class names to apply to the outer table, if any.
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
 	/// All the rows to be rendered, does not iterate,
