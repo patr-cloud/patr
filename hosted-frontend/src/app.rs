@@ -11,9 +11,8 @@ pub trait AppAPIs {
 		request: ApiRequest<LoginRequest>,
 	) -> Result<AppResponse<LoginRequest>, ServerFnError<ErrorType>>;
 }
-
 #[component]
-fn LoggedInPage() -> impl IntoView {
+pub fn App() -> impl IntoView {
 	view! {
 		<div class="fr-fs-fs full-width full-height bg-secondary">
 			<Sidebar />
@@ -27,15 +26,8 @@ fn LoggedInPage() -> impl IntoView {
 					/>
 				</header>
 
-				<ManageDeployments />
+				<ManagedUrlDashboard />
 			</main>
 		</div>
-	}
-}
-
-#[component]
-pub fn App() -> impl IntoView {
-	view! {
-		<LoggedInPage />
 	}
 }
