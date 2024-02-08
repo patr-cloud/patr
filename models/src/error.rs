@@ -85,8 +85,8 @@ impl ErrorType {
 	}
 
 	/// Creates an [`ErrorType::InternalServerError`] with the given message
-	pub fn server_error(message: impl Into<String>) -> Self {
-		Self::InternalServerError(anyhow::anyhow!(message.into()))
+	pub fn server_error(message: impl Display) -> Self {
+		Self::InternalServerError(anyhow::anyhow!(message.to_string()))
 	}
 }
 

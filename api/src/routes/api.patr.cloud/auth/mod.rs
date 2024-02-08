@@ -1,9 +1,11 @@
-use argon2::{Algorithm, PasswordHash, PasswordVerifier, Version};
 use axum::{http::StatusCode, Router};
 use models::{api::auth::*, ErrorType};
-use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};
 
 use crate::prelude::*;
+
+mod login;
+
+use self::login::*;
 
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
@@ -20,139 +22,6 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.mount_endpoint(resend_otp, state)
 		.mount_endpoint(reset_password, state)
 		.with_state(state.clone())
-}
-
-async fn login(
-	AppRequest {
-		request: ProcessedApiRequest {
-			path: _,
-			query: _,
-			headers: _,
-			body,
-		},
-		database,
-		redis: _,
-		client_ip: _,
-		config,
-	}: AppRequest<'_, LoginRequest>,
-) -> Result<AppResponse<LoginRequest>, ErrorType> {
-	let user_data = query!(
-		r#"
-		SELECT
-			"user".id,
-			"user".username,
-			"user".password,
-			"user".mfa_secret
-		FROM
-			"user"
-		LEFT JOIN
-			personal_email
-		ON
-			personal_email.user_id = "user".id
-		LEFT JOIN
-			domain
-		ON
-			domain.id = personal_email.domain_id
-		LEFT JOIN
-			user_phone_number
-		ON
-			user_phone_number.user_id = "user".id
-		LEFT JOIN
-			phone_number_country_code
-		ON
-			phone_number_country_code.country_code = user_phone_number.country_code
-		WHERE
-			"user".username = $1 OR
-			CONCAT(
-				personal_email.local,
-				'@',
-				domain.name,
-				'.',
-				domain.tld
-			) = $1 OR
-			CONCAT(
-				'+',
-				phone_number_country_code.phone_code,
-				user_phone_number.number
-			) = $1;
-		"#,
-		""
-	)
-	.fetch_optional(&mut **database)
-	.await?
-	.ok_or(ErrorType::UserNotFound)?;
-
-	let success = argon2::Argon2::new_with_secret(
-		config.password_pepper.as_ref(),
-		Algorithm::Argon2id,
-		Version::V0x13,
-		constants::HASHING_PARAMS,
-	)
-	.map_err(|err| ErrorType::server_error(err.to_string()))?
-	.verify_password(
-		body.password.as_ref(),
-		&PasswordHash::new(&user_data.password)
-			.map_err(|err| ErrorType::server_error(err.to_string()))?,
-	)
-	.is_ok();
-
-	if !success {
-		return Err(ErrorType::InvalidPassword);
-	}
-
-	if let Some(mfa_secret) = user_data.mfa_secret {
-		let Some(mfa_otp) = body.mfa_otp else {
-			return Err(ErrorType::MfaRequired);
-		};
-
-		let totp = TOTP::new(
-			TotpAlgorithm::SHA1,
-			6,
-			1,
-			30,
-			Secret::Encoded(mfa_secret).to_bytes().map_err(|err| {
-				error!(
-					"Unable to parse MFA secret for userId `{}`: {}",
-					user_data.id,
-					err.to_string()
-				);
-				ErrorType::server_error(err.to_string())
-			})?,
-		)
-		.map_err(|err| {
-			error!(
-				"Unable to parse TOTP for userId `{}`: {}",
-				user_data.id,
-				err.to_string()
-			);
-			ErrorType::server_error(err.to_string())
-		})?;
-
-		let mfa_valid = totp.check_current(&mfa_otp).map_err(|err| {
-			error!(
-				"System time error while checking TOTP for userId `{}`: {}",
-				user_data.id,
-				err.to_string()
-			);
-			ErrorType::server_error(err.to_string())
-		})?;
-
-		if !mfa_valid {
-			return Err(ErrorType::MfaOtpInvalid);
-		}
-	}
-
-	// TODO: Generate Login in DB
-	// TODO: Generate Token and send it as response
-
-	AppResponse::builder()
-		.body(LoginResponse {
-			access_token: "TODO".to_string(),
-		})
-		.headers(())
-		.status_code(StatusCode::ACCEPTED)
-		.build()
-		.into_result()
 }
 
 async fn logout(

@@ -4,6 +4,8 @@
 
 //! The main API server for Patr.
 
+use tracing::Dispatch;
+
 /// This module contains the main application logic. Most of the app requests,
 /// states, and mounting of endpoints are done here
 pub mod app;
@@ -97,58 +99,69 @@ async fn main() {
 
 	let config = utils::config::parse_config();
 
-	tracing::subscriber::set_global_default(
-		tracing_subscriber::registry()
-			.with(
-				FmtLayer::new()
-					.with_span_events(FmtSpan::NONE)
-					.event_format(
-						tracing_subscriber::fmt::format()
-							.with_ansi(true)
-							.with_file(false)
-							.without_time()
-							.compact(),
-					)
-					.with_filter(
-						tracing_subscriber::filter::Targets::new()
-							.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE),
-					)
-					.with_filter(LevelFilter::from_level(
-						if config.environment == RunningEnvironment::Development {
-							Level::DEBUG
-						} else {
-							Level::TRACE
-						},
-					)),
-			)
-			.with(
-				OpenTelemetryLayer::new(
-					{
-						let pipeline = opentelemetry_otlp::new_pipeline()
-							.tracing()
-							.with_trace_config(opentelemetry_sdk::trace::config().with_resource(
-								Resource::new(vec![KeyValue::new("service.name", "Patr API")]),
-							))
-							.with_exporter(
-								opentelemetry_otlp::new_exporter()
-									.tonic()
-									.with_endpoint(&config.opentelemetry.endpoint),
-							);
-						match config.environment {
-							RunningEnvironment::Development => pipeline.install_simple(),
-							RunningEnvironment::Production => {
-								pipeline.install_batch(opentelemetry_sdk::runtime::Tokio)
-							}
-						}
-					}
-					.expect("Failed to install OpenTelemetry tracing pipeline"),
+	tracing::dispatcher::set_global_default({
+		let registry = tracing_subscriber::registry().with(
+			FmtLayer::new()
+				.with_span_events(FmtSpan::NONE)
+				.event_format(
+					tracing_subscriber::fmt::format()
+						.with_ansi(true)
+						.with_file(false)
+						.without_time()
+						.compact(),
 				)
 				.with_filter(
 					tracing_subscriber::filter::Targets::new()
 						.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE),
+				)
+				.with_filter(LevelFilter::from_level(
+					if config.environment == RunningEnvironment::Development {
+						Level::DEBUG
+					} else {
+						Level::TRACE
+					},
+				)),
+		);
+
+		if let Some(opentelemetry) = &config.opentelemetry {
+			Dispatch::new(
+				registry.with(
+					OpenTelemetryLayer::new(
+						{
+							let pipeline = opentelemetry_otlp::new_pipeline()
+								.tracing()
+								.with_trace_config(
+									opentelemetry_sdk::trace::config().with_resource(
+										Resource::new(vec![KeyValue::new(
+											"service.name",
+											"Patr API",
+										)]),
+									),
+								)
+								.with_exporter(
+									opentelemetry_otlp::new_exporter()
+										.tonic()
+										.with_endpoint(&opentelemetry.endpoint),
+								);
+							match config.environment {
+								RunningEnvironment::Development => pipeline.install_simple(),
+								RunningEnvironment::Production => {
+									pipeline.install_batch(opentelemetry_sdk::runtime::Tokio)
+								}
+							}
+						}
+						.expect("Failed to install OpenTelemetry tracing pipeline"),
+					)
+					.with_filter(
+						tracing_subscriber::filter::Targets::new()
+							.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE),
+					),
 				),
-			),
-	)
+			)
+		} else {
+			Dispatch::new(registry)
+		}
+	})
 	.expect("Failed to set global default subscriber");
 
 	tracing::info!("Config parsed. Running in {} mode", config.environment);

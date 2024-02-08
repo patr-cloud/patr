@@ -1,8 +1,7 @@
 [workspace]
 members = [
     "api",
-    "cli",
-    # "cloudflare-ingress",
+    "cli",             # "cloudflare-ingress",
     "components",
     "controller",
     "hosted-frontend",
@@ -29,12 +28,13 @@ components = { path = "components", default-features = false }
 config = { version = "0.13", default-features = false }
 console_error_panic_hook = { version = "0.1", default-features = false }
 either = { version = "1", default-features = false }
-hosted-frontend = { path = "hosted-frontend", default-features = false }
 futures = { version = "0.3", default-features = false }
 headers = { version = "0.4", default-features = false }
 hex = { version = "0.4", default-features = false }
+hosted-frontend = { path = "hosted-frontend", default-features = false }
 http = { version = "1", default-features = false }
 httparse = { version = "1", default-features = false }
+ipinfo = { version = "3", default-features = false }
 ipnetwork = { version = "0.20", default-features = false }
 jsonwebtoken = { version = "9", default-features = false }
 k8s-openapi = { version = "0.21", default-features = false }
@@ -56,6 +56,7 @@ opentelemetry_sdk = { version = "0.21", default-features = false }
 preprocess = { version = "0.3", default-features = false }
 proc-macro2 = { version = "1", default-features = false }
 quote = { version = "1", default-features = false }
+rand = { version = "0.8", default-features = false }
 reqwest = { version = "0.11", default-features = false }
 rustis = { version = "0.12", default-features = false }
 schemars = { version = "0.8", default-features = false }

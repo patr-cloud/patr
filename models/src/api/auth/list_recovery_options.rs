@@ -4,6 +4,7 @@ macros::declare_api_endpoint!(
 	/// The backend performs validation and prevents the leak of sensitive user information.
 	ListRecoveryOptions,
 	GET "/auth/list-recovery-options",
+	api = false,
 	request = {
 		/// The user identifier of the user
 		/// It can be either the username or the email of the user depending on the user input

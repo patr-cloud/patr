@@ -107,23 +107,27 @@ where
 			));
 
 		// Setup the layers for the backend
-		self.route(
-			<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH,
-			MethodRouter::<S>::new()
-				.on(
-					MethodFilter::try_from(<E as ApiEndpoint>::METHOD).unwrap(),
-					|| async { unreachable!() },
-				)
-				.layer(
-					ServiceBuilder::new()
-						// .layer(todo!("Add rate limiter checker middleware here")),
-						.layer(RequestParserLayer::new())
-						.layer(DataStoreConnectionLayer::with_state(state.clone()))
-						// .layer(todo!("Add rate limiter value updater middleware here"))
-						.layer(PreprocessLayer::new())
-						.layer(EndpointLayer::new(handler)),
-				),
-		)
+		if <E as ApiEndpoint>::API_ALLOWED {
+			self.route(
+				<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH,
+				MethodRouter::<S>::new()
+					.on(
+						MethodFilter::try_from(<E as ApiEndpoint>::METHOD).unwrap(),
+						|| async { unreachable!() },
+					)
+					.layer(
+						ServiceBuilder::new()
+							// .layer(todo!("Add rate limiter checker middleware here")),
+							.layer(RequestParserLayer::new())
+							.layer(DataStoreConnectionLayer::with_state(state.clone()))
+							// .layer(todo!("Add rate limiter value updater middleware here"))
+							.layer(PreprocessLayer::new())
+							.layer(EndpointLayer::new(handler)),
+					),
+			)
+		} else {
+			self
+		}
 	}
 
 	#[instrument(skip_all)]
@@ -175,24 +179,28 @@ where
 			));
 
 		// Setup the layers for the backend
-		self.route(
-			<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH,
-			MethodRouter::<S>::new()
-				.on(
-					MethodFilter::try_from(<E as ApiEndpoint>::METHOD).unwrap(),
-					|| async { unreachable!() },
-				)
-				.layer(
-					ServiceBuilder::new()
-						// .layer(todo!("Add rate limiter checker middleware here")),
-						.layer(RequestParserLayer::new())
-						.layer(DataStoreConnectionLayer::with_state(state.clone()))
-						.layer(PreprocessLayer::new())
-						.layer(AuthenticationLayer::new(ClientType::ApiToken))
-						// .layer(todo!("Add rate limiter value updater middleware here"))
-						// .layer(todo!("Add audit logger middleware here"))
-						.layer(AuthEndpointLayer::new(handler)),
-				),
-		)
+		if <E as ApiEndpoint>::API_ALLOWED {
+			self.route(
+				<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH,
+				MethodRouter::<S>::new()
+					.on(
+						MethodFilter::try_from(<E as ApiEndpoint>::METHOD).unwrap(),
+						|| async { unreachable!() },
+					)
+					.layer(
+						ServiceBuilder::new()
+							// .layer(todo!("Add rate limiter checker middleware here")),
+							.layer(RequestParserLayer::new())
+							.layer(DataStoreConnectionLayer::with_state(state.clone()))
+							.layer(PreprocessLayer::new())
+							.layer(AuthenticationLayer::new(ClientType::ApiToken))
+							// .layer(todo!("Add rate limiter value updater middleware here"))
+							// .layer(todo!("Add audit logger middleware here"))
+							.layer(AuthEndpointLayer::new(handler)),
+					),
+			)
+		} else {
+			self
+		}
 	}
 }

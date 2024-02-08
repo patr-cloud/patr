@@ -26,6 +26,7 @@ macros::declare_api_endpoint!(
 	/// The route to create a new user account
 	CreateAccount,
 	POST "/auth/sign-up",
+	api = false,
 	request = {
 		/// The username of the user signing up
 		pub username: String,

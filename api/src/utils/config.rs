@@ -67,7 +67,15 @@ pub struct AppConfig {
 	pub redis: RedisConfig,
 	// pub email: EmailConfig,
 	/// The opentelemetry endpoint to send traces to
+	#[cfg(debug_assertions)]
+	pub opentelemetry: Option<OpenTelemetryConfig>,
+	#[cfg(not(debug_assertions))]
 	pub opentelemetry: OpenTelemetryConfig,
+	/// The configuration for IpInfo to get IpAddress details
+	#[cfg(debug_assertions)]
+	pub ipinfo: Option<IpInfoConfig>,
+	#[cfg(not(debug_assertions))]
+	pub ipinfo: IpInfoConfig,
 }
 
 /// The environment the application is running in
@@ -177,4 +185,12 @@ pub struct EmailConfig {
 pub struct OpenTelemetryConfig {
 	/// The endpoint to send traces to
 	pub endpoint: String,
+}
+
+/// The configuration for IpInfo to get information about an IP Address
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IpInfoConfig {
+	/// The token for connecting to ipinfo.io
+	pub token: String,
 }

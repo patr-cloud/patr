@@ -10,6 +10,7 @@ use syn::{
 	FieldsNamed,
 	Ident,
 	Lit,
+	LitBool,
 	LitStr,
 	Token,
 };
@@ -30,6 +31,8 @@ pub struct ApiEndpoint {
 	path_body: Option<FieldsNamed>,
 	/// The authentication for this endpoint.
 	auth: Option<Block>,
+	/// Should this route be allowed through APIs or only through the web-login
+	api_allowed: bool,
 
 	/// The query params for the endpoint
 	query: Option<FieldsNamed>,
@@ -87,6 +90,7 @@ impl Parse for ApiEndpoint {
 		let mut request_headers = None;
 		let mut response_headers = None;
 		let mut response = None;
+		let mut api_allowed = None;
 
 		while !input.is_empty() {
 			let ident = input.parse::<Ident>()?;
@@ -151,6 +155,14 @@ impl Parse for ApiEndpoint {
 
 					auth = Some(input.parse()?);
 				}
+				"api" => {
+					if api_allowed.is_some() {
+						return Err(Error::new(ident.span(), "Duplicate field"));
+					}
+					input.parse::<Token![=]>()?;
+
+					api_allowed = Some(input.parse::<LitBool>()?.value);
+				}
 				_ => {
 					return Err(Error::new(ident.span(), "Unknown field"));
 				}
@@ -159,6 +171,7 @@ impl Parse for ApiEndpoint {
 				input.parse::<Token![,]>()?;
 			}
 		}
+		let api_allowed = api_allowed.unwrap_or(true);
 
 		Ok(Self {
 			documentation,
@@ -167,6 +180,7 @@ impl Parse for ApiEndpoint {
 			path,
 			path_body,
 			auth,
+			api_allowed,
 
 			query,
 			paginate_query,
@@ -189,6 +203,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		method,
 		path,
 		path_body,
+		api_allowed,
 
 		auth,
 		query,
@@ -442,6 +457,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 
 		impl crate::ApiEndpoint for #request_name {
 			const METHOD: ::http::Method = ::http::Method::#method;
+			const API_ALLOWED: bool = #api_allowed;
 
 			type RequestPath = #path_name;
 			type RequestQuery = #query_name;

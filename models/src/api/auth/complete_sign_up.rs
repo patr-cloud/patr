@@ -4,6 +4,7 @@ macros::declare_api_endpoint!(
 	/// This route will complete the sign-up process of the user.
 	CompleteSignUp,
 	POST "/auth/join",
+	api = false,
 	request = {
 		/// The username of the user verifying their account
 		pub username: String,

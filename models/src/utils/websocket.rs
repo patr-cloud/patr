@@ -27,6 +27,6 @@ where
 			.extract()
 			.await
 			.map(WebSocketUpgrade)
-			.map_err(|err| ErrorType::server_error(err.to_string()))
+			.map_err(ErrorType::server_error)
 	}
 }

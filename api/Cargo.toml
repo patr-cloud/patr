@@ -14,9 +14,10 @@ axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
 axum-extra = { workspace = true, features = ["default", "typed-routing"] }
 axum-typed-websockets = { workspace = true, features = ["default"] }
 config = { workspace = true, features = ["default"] }
-hosted-frontend = { workspace = true, features = [] }
 futures = { workspace = true, features = ["default"] }
 headers = { workspace = true, features = [] }
+hosted-frontend = { workspace = true, features = [] }
+ipinfo = { workspace = true, features = [] }
 jsonwebtoken = { workspace = true, features = ["default"] }
 leptos = { workspace = true, features = ["ssr"] }
 leptos_axum = { workspace = true, features = ["default"] }
@@ -27,6 +28,7 @@ opentelemetry = { workspace = true, features = ["default"] }
 opentelemetry-otlp = { workspace = true, features = ["default"] }
 opentelemetry_sdk = { workspace = true, features = ["default", "rt-tokio"] }
 preprocess = { workspace = true, features = [] }
+rand = { workspace = true, features = ["default"] }
 rustis = { workspace = true, features = [
     "default",
     "pool",

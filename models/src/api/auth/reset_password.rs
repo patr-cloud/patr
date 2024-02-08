@@ -3,6 +3,7 @@ macros::declare_api_endpoint!(
 	/// preferred recovery method
 	ResetPassword,
 	POST "/auth/reset-password",
+	api = false,
 	request = {
 		/// The user ID of the user
 		pub user_id: String,

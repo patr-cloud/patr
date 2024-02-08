@@ -138,6 +138,7 @@ dependencies = [
  "futures",
  "headers",
  "hosted-frontend",
+ "ipinfo",
  "jsonwebtoken",
  "leptos",
  "leptos_axum",
@@ -148,6 +149,7 @@ dependencies = [
  "opentelemetry-otlp",
  "opentelemetry_sdk",
  "preprocess",
+ "rand",
  "rustis",
  "semver",
  "serde",
@@ -208,6 +210,12 @@ checksum = "f28d99ec8bfea296261ca1af174f24225171fea9664ba9003cbebee704810528"
 dependencies = [
  "num-traits",
 ]
+
+[[package]]
+name = "atomic"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c59bdb34bc650a32731b31bd8f0829cc15d24a708ee31559e0bb34f2bc320cba"
 
 [[package]]
 name = "atomic-write-file"
@@ -1505,6 +1513,9 @@ name = "hashbrown"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43a3c133739dddd0d2990f9a4bdf8eb4b21ef50e4851ca85ab661199821d510e"
+dependencies = [
+ "ahash 0.8.7",
+]
 
 [[package]]
 name = "hashbrown"
@@ -1876,6 +1887,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "include_dir"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18762faeff7122e89e0857b02f7ce6fcc0d101d5e9ad2ad7846cc01d61b7f19e"
+dependencies = [
+ "include_dir_macros",
+]
+
+[[package]]
+name = "include_dir_macros"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b139284b5cf57ecfa712bcc66950bb635b31aff41c188e8a4cfc758eca374a3f"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
 name = "indexmap"
 version = "1.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1915,6 +1945,22 @@ name = "inventory"
 version = "0.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f958d3d68f4167080a18141e10381e7634563984a537f2a49a30fd8e53ac5767"
+
+[[package]]
+name = "ipinfo"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05473c792c1d81d3b9023f61b0d85d64b580f31467bc5fbf989763acc9bd125b"
+dependencies = [
+ "include_dir",
+ "ipnetwork",
+ "lazy_static",
+ "lru 0.10.1",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+]
 
 [[package]]
 name = "ipnet"
@@ -2388,7 +2434,7 @@ dependencies = [
  "leptos_integration_utils",
  "leptos_meta",
  "linear-map",
- "lru",
+ "lru 0.11.1",
  "once_cell",
  "percent-encoding",
  "regex",
@@ -2480,6 +2526,15 @@ name = "log"
 version = "0.4.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5e6163cb8c49088c2c36f57875e58ccd8c87c7427f7fbd50ea6710b2f3f2e8f"
+
+[[package]]
+name = "lru"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "718e8fae447df0c7e1ba7f5189829e63fd536945c8988d61444c19039f16b670"
+dependencies = [
+ "hashbrown 0.13.2",
+]
 
 [[package]]
 name = "lru"
@@ -5005,6 +5060,7 @@ version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f00cc9702ca12d3c81455259621e676d0f7251cec66a21e98fe2e9a37db93b2a"
 dependencies = [
+ "atomic",
  "getrandom",
  "wasm-bindgen",
 ]

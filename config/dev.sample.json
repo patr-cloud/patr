@@ -37,5 +37,8 @@
 	},
 	"opentelemetry": {
 		"endpoint": "http://jaeger:4317"
+	},
+	"ipinfo": {
+		"token": "token"
 	}
 }

@@ -36,7 +36,7 @@ where
 	let ConnectInfo(socket_addr) =
 		leptos_axum::extract::<ConnectInfo<SocketAddr>>()
 			.await
-			.map_err(|err| ErrorType::server_error(err.to_string()))?;
+			.map_err(ErrorType::server_error)?;
 	let layer = API_CALL_REGISTRY
 		.read()
 		.expect("API call registry poisoned")
