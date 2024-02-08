@@ -258,7 +258,7 @@ where
 						Version::V0x13,
 						constants::HASHING_PARAMS,
 					)
-					.map_err(|err| ErrorType::server_error(err.to_string()))?
+					.map_err(ErrorType::server_error)?
 					.verify_password(refresh_token.as_bytes(), &password_hash)
 					.is_ok();
 

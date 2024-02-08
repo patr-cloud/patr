@@ -2,6 +2,7 @@ macros::declare_api_endpoint!(
 	/// Route to validate user's entered email ID is available or not
 	IsEmailValid,
 	GET "/auth/email-valid",
+	api = false,
 	query = {
 		/// The email that has to be verified
 		pub email: String,

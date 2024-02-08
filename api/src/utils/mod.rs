@@ -27,6 +27,9 @@ pub mod constants {
 	/// The issuer (iss) of the JWT. This is currently the URL of Patr API.
 	pub const JWT_ISSUER: &str = "https://api.patr.cloud";
 
+	/// The `aud` field in Patr's JWT
+	pub const PATR_JWT_AUDIENCE: &str = "https://app.patr.cloud";
+
 	/// The parameters that will be used to hash, using argon2 as the hashing
 	/// algorithm. This is used for all sorts of hashing, from API tokens, user
 	/// passwords, sign up tokens, etc.
@@ -36,6 +39,15 @@ pub mod constants {
 		} else {
 			panic!("Failed to create hashing params");
 		};
+
+	/// How long a refresh token, once generated, is valid for without any
+	/// activity. After this duration of no activity on the refresh token, it
+	/// will be considered expired.
+	pub const INACTIVE_REFRESH_TOKEN_VALIDITY: time::Duration = time::Duration::days(30);
+
+	/// How long an access token is valid before it needs to be refreshed using
+	/// a refresh token (which will be provided at login)
+	pub const ACCESS_TOKEN_VALIDITY: time::Duration = time::Duration::hours(1);
 
 	/// The version of the database. This is used to determine whether the
 	/// database needs to be migrated or not. This is always set to the manifest

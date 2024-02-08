@@ -5,6 +5,7 @@ macros::declare_api_endpoint!(
 	/// when the access token expires, and requires the refresh token to be provided.
 	RenewAccessToken,
 	GET "/auth/access-token",
+	api = false,
 	request_headers = {
 		/// The refresh token which was provided to the user when they logged in
 		pub refresh_token: BearerToken,

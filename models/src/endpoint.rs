@@ -54,6 +54,9 @@ where
 {
 	/// The HTTP method that should be used for this endpoint
 	const METHOD: http::Method;
+	/// If true, this route can be accessed by the API. Otherwise, it'll only be
+	/// accessible by the Web UI
+	const API_ALLOWED: bool;
 
 	/// The path that should be used for this endpoint. This should be a valid
 	/// HTML URL Path and can contain URL parameters as a struct. For example,

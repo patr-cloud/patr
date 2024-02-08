@@ -9,6 +9,7 @@ macros::declare_api_endpoint!(
 		/// The ID of the token to regenerate
 		pub token_id: Uuid,
 	},
+	api = false,
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,

@@ -5,6 +5,7 @@ macros::declare_api_endpoint!(
 	/// Create a new API token for the user with the given permissions.
 	CreateApiToken,
 	POST "/user/api-token",
+	api = false,
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,

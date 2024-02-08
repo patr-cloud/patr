@@ -4,6 +4,8 @@ use schemars::JsonSchema;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use time::{Duration, OffsetDateTime};
 
+use super::constants;
+
 /// A wrapper around [`uuid::Uuid`] that implements [`serde::Serialize`] and
 /// [`serde::Deserialize`], but specifically only in the form of a hex string.
 /// Any other format will be rejected. In API requests and response, this should
@@ -14,6 +16,12 @@ use time::{Duration, OffsetDateTime};
 pub struct Uuid(uuid::Uuid);
 
 impl Uuid {
+	/// Create a new v1 (sequencially generated) [`Uuid`] with the current
+	/// timestamp
+	pub fn now_v1() -> Self {
+		Self(uuid::Uuid::now_v1(&constants::UUID_NODE_ID))
+	}
+
 	/// Creates a new v4 (randomly generated) [`Uuid`]
 	pub fn new_v4() -> Self {
 		Self(uuid::Uuid::new_v4())

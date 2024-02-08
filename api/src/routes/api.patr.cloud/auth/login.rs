@@ -1,0 +1,304 @@
+use std::{num::ParseFloatError, ops::Add};
+
+use argon2::{
+	password_hash::SaltString,
+	Algorithm,
+	PasswordHash,
+	PasswordHasher,
+	PasswordVerifier,
+	Version,
+};
+use axum::http::StatusCode;
+use jsonwebtoken::EncodingKey;
+use models::{api::auth::*, ErrorType};
+use sqlx::types::ipnetwork::IpNetwork;
+use time::OffsetDateTime;
+use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};
+
+use crate::{models::access_token_data::AccessTokenData, prelude::*};
+
+pub async fn login(
+	AppRequest {
+		request: ProcessedApiRequest {
+			path: _,
+			query: _,
+			headers: _,
+			body,
+		},
+		database,
+		redis: _,
+		client_ip,
+		config,
+	}: AppRequest<'_, LoginRequest>,
+) -> Result<AppResponse<LoginRequest>, ErrorType> {
+	let user_data = query!(
+		r#"
+		SELECT
+			"user".id,
+			"user".username,
+			"user".password,
+			"user".mfa_secret
+		FROM
+			"user"
+		LEFT JOIN
+			personal_email
+		ON
+			personal_email.user_id = "user".id
+		LEFT JOIN
+			domain
+		ON
+			domain.id = personal_email.domain_id
+		LEFT JOIN
+			user_phone_number
+		ON
+			user_phone_number.user_id = "user".id
+		LEFT JOIN
+			phone_number_country_code
+		ON
+			phone_number_country_code.country_code = user_phone_number.country_code
+		WHERE
+			"user".username = $1 OR
+			CONCAT(
+				personal_email.local,
+				'@',
+				domain.name,
+				'.',
+				domain.tld
+			) = $1 OR
+			CONCAT(
+				'+',
+				phone_number_country_code.phone_code,
+				user_phone_number.number
+			) = $1;
+		"#,
+		""
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	.ok_or(ErrorType::UserNotFound)?;
+
+	let success = argon2::Argon2::new_with_secret(
+		config.password_pepper.as_ref(),
+		Algorithm::Argon2id,
+		Version::V0x13,
+		constants::HASHING_PARAMS,
+	)
+	.map_err(ErrorType::server_error)?
+	.verify_password(
+		body.password.as_ref(),
+		&PasswordHash::new(&user_data.password).map_err(ErrorType::server_error)?,
+	)
+	.is_ok();
+
+	if !success {
+		return Err(ErrorType::InvalidPassword);
+	}
+
+	if let Some(mfa_secret) = user_data.mfa_secret {
+		let Some(mfa_otp) = body.mfa_otp else {
+			return Err(ErrorType::MfaRequired);
+		};
+
+		let totp = TOTP::new(
+			TotpAlgorithm::SHA1,
+			6,
+			1,
+			30,
+			Secret::Encoded(mfa_secret)
+				.to_bytes()
+				.inspect_err(|err| {
+					error!(
+						"Unable to parse MFA secret for userId `{}`: {}",
+						user_data.id,
+						err.to_string()
+					);
+				})
+				.map_err(ErrorType::server_error)?,
+		)
+		.inspect_err(|err| {
+			error!(
+				"Unable to parse TOTP for userId `{}`: {}",
+				user_data.id,
+				err.to_string()
+			);
+		})
+		.map_err(ErrorType::server_error)?;
+
+		let mfa_valid = totp
+			.check_current(&mfa_otp)
+			.inspect_err(|err| {
+				error!(
+					"System time error while checking TOTP for userId `{}`: {}",
+					user_data.id,
+					err.to_string()
+				);
+			})
+			.map_err(ErrorType::server_error)?;
+
+		if !mfa_valid {
+			return Err(ErrorType::MfaOtpInvalid);
+		}
+	}
+
+	let now = OffsetDateTime::now_utc();
+
+	let login_id = Uuid::new_v4();
+
+	let refresh_token = Uuid::new_v4();
+	let hashed_refresh_token = argon2::Argon2::new_with_secret(
+		config.password_pepper.as_ref(),
+		Algorithm::Argon2id,
+		Version::V0x13,
+		constants::HASHING_PARAMS,
+	)
+	.map_err(ErrorType::server_error)?
+	.hash_password(
+		refresh_token.as_bytes(),
+		SaltString::generate(&mut rand::thread_rng()).as_salt(),
+	)
+	.map_err(ErrorType::server_error)?
+	.to_string();
+	let refresh_token_expiry = now.add(constants::INACTIVE_REFRESH_TOKEN_VALIDITY);
+
+	let ip_info = ipinfo::IpInfo::new(ipinfo::IpInfoConfig {
+		token: config.ipinfo.map(|ipinfo| ipinfo.token),
+		..Default::default()
+	})
+	.map_err(ErrorType::server_error)?
+	.lookup(client_ip.to_string().as_str())
+	.await
+	.map_err(ErrorType::server_error)?;
+
+	if ip_info.bogon.unwrap_or(false) {
+		return Err(ErrorType::server_error(format!(
+			"cannot use bogon IP address: `{}`",
+			client_ip
+		)));
+	}
+
+	let client_ip = IpNetwork::from(client_ip);
+
+	let (lat, lng) = ip_info
+		.loc
+		.split_once(',')
+		.map(|(lat, lng)| Ok::<_, ParseFloatError>((lat.parse::<f64>()?, lng.parse::<f64>()?)))
+		.ok_or_else(|| {
+			ErrorType::server_error(format!("unknown latitude and longitude: {}", ip_info.loc))
+		})?
+		.map_err(ErrorType::server_error)?;
+	let country = ip_info.country;
+	let region = ip_info.region;
+	let city = ip_info.city;
+	let timezone = ip_info.timezone.unwrap_or_else(Default::default);
+
+	let user_agent = headers::UserAgent::from_static("todo").to_string();
+
+	query!(
+		r#"
+		INSERT INTO
+			user_login(
+				login_id,
+				user_id,
+				login_type,
+				created
+			)
+		VALUES
+			(
+				$1,
+				$2,
+				'web_login',
+				$3
+			);
+		"#,
+		login_id as _,
+		user_data.id,
+		now,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	query!(
+		r#"
+		INSERT INTO
+			web_login(
+				login_id,
+				original_login_id,
+				user_id,
+	
+				refresh_token,
+				token_expiry,
+	
+				created,
+				created_ip,
+				created_location,
+				created_user_agent,
+				created_country,
+				created_region,
+				created_city,
+				created_timezone
+			)
+		VALUES
+			(
+				$1,
+				NULL,
+				$2,
+
+				$3,
+				$4,
+
+				$5,
+				$6,
+				ST_SetSRID(POINT($7, $8)::GEOMETRY, 4326),
+				$9,
+				$10,
+				$11,
+				$12,
+				$13
+			);
+		"#,
+		login_id as _,
+		user_data.id,
+		hashed_refresh_token,
+		refresh_token_expiry,
+		now,
+		client_ip,
+		lat,
+		lng,
+		user_agent,
+		country,
+		region,
+		city,
+		timezone,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	let access_token = AccessTokenData {
+		iss: constants::JWT_ISSUER.to_string(),
+		sub: login_id,
+		aud: OneOrMore::One(constants::PATR_JWT_AUDIENCE.to_string()),
+		exp: now.add(constants::ACCESS_TOKEN_VALIDITY),
+		nbf: now,
+		iat: now,
+		jti: Uuid::now_v1(),
+	};
+
+	let access_token = jsonwebtoken::encode(
+		&Default::default(),
+		&access_token,
+		&EncodingKey::from_secret(config.jwt_secret.as_ref()),
+	)
+	.map_err(ErrorType::server_error)?;
+
+	let refresh_token = format!("{}.{}", login_id, refresh_token);
+
+	AppResponse::builder()
+		.body(LoginResponse {
+			access_token,
+			refresh_token,
+		})
+		.headers(())
+		.status_code(StatusCode::ACCEPTED)
+		.build()
+		.into_result()
+}

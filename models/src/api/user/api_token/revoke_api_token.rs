@@ -7,6 +7,7 @@ macros::declare_api_endpoint!(
 		/// The ID of the token to revoke
 		pub token_id: Uuid,
 	},
+	api = false,
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,

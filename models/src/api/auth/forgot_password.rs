@@ -17,6 +17,7 @@ macros::declare_api_endpoint!(
 	/// This will send an OTP to the selected recovery method.
 	ForgotPassword,
 	POST "/auth/forgot-password",
+	api = false,
 	request = {
 		/// The user identifier. It can either be a username or an email ID
 		/// depending on what user enters
