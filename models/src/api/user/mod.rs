@@ -4,9 +4,9 @@ mod api_token;
 mod change_password;
 mod get_user_details; // Get a user's details by userId
 mod get_user_info; // Get my own personal info
-mod list_workspaces;
+mod list_user_workspaces;
 mod recovery_options;
-mod set_user_info;
+mod update_user_info;
 mod web_logins; // Set my own personal info
 
 pub use self::{
@@ -14,9 +14,9 @@ pub use self::{
 	change_password::*,
 	get_user_details::*,
 	get_user_info::*,
-	list_workspaces::*,
+	list_user_workspaces::*,
 	recovery_options::*,
-	set_user_info::*,
+	update_user_info::*,
 	web_logins::*,
 };
 
@@ -47,56 +47,4 @@ pub struct BasicUserInfo {
 	pub first_name: String,
 	/// The last name of the user.
 	pub last_name: String,
-}
-
-#[cfg(test)]
-mod test {
-	use serde_test::{assert_tokens, Token};
-
-	use super::{BasicUserInfo, UserPhoneNumber};
-
-	#[test]
-	fn assert_user_phone_number_types() {
-		assert_tokens(
-			&UserPhoneNumber {
-				country_code: "IN".to_string(),
-				phone_number: "1234567890".to_string(),
-			},
-			&[
-				Token::Struct {
-					name: "UserPhoneNumber",
-					len: 2,
-				},
-				Token::Str("countryCode"),
-				Token::Str("IN"),
-				Token::Str("phoneNumber"),
-				Token::Str("1234567890"),
-				Token::StructEnd,
-			],
-		);
-	}
-
-	#[test]
-	fn assert_basic_user_info_types() {
-		assert_tokens(
-			&BasicUserInfo {
-				username: "john-patr".to_string(),
-				first_name: "John".to_string(),
-				last_name: "Patr".to_string(),
-			},
-			&[
-				Token::Struct {
-					name: "BasicUserInfo",
-					len: 3,
-				},
-				Token::Str("username"),
-				Token::Str("john-patr"),
-				Token::Str("firstName"),
-				Token::Str("John"),
-				Token::Str("lastName"),
-				Token::Str("Patr"),
-				Token::StructEnd,
-			],
-		);
-	}
 }

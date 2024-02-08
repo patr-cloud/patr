@@ -22,5 +22,7 @@ macros::declare_api_endpoint!(
 		pub current_password: String,
 		/// The new password of the user.
 		pub new_password: String,
+		/// If user has mfa enabled then mfa otp required to change password
+		pub mfa_otp: Option<String>,
 	},
 );

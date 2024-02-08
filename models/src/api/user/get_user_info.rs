@@ -26,5 +26,7 @@ macros::declare_api_endpoint!(
 		pub recovery_email: Option<String>,
 		/// The primary phone number of the user
 		pub recovery_phone_number: Option<UserPhoneNumber>,
+		/// Check if MFA is enabled or not
+		pub is_mfa_enabled: bool,
 	}
 );

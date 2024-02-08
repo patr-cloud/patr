@@ -47,6 +47,7 @@ sqlx = { workspace = true, features = [
     "time",
     "ipnetwork",
     "postgres",
+    "json",
 ] }
 time = { workspace = true, features = ["default", "serde-human-readable"] }
 tokio = { workspace = true, features = ["default", "full"] }

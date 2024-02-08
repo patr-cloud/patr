@@ -11,6 +11,9 @@ macros::declare_api_endpoint!(
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,
 	},
+	authentication = {
+		AppAuthentication::<Self>::PlainTokenAuthenticator
+	},
 	request = {
 		/// The first name of the user.
 		pub first_name: Option<String>,
