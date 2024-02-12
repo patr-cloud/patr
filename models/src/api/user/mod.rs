@@ -9,6 +9,8 @@ mod recovery_options;
 mod update_user_info;
 mod web_logins; // Set my own personal info
 
+mod mfa;
+
 pub use self::{
 	api_token::*,
 	change_password::*,
@@ -18,6 +20,7 @@ pub use self::{
 	recovery_options::*,
 	update_user_info::*,
 	web_logins::*,
+	mfa::*,
 };
 
 /// The phone number of a user. This is used to send OTPs, notifications, etc to
