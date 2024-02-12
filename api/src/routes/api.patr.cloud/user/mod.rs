@@ -1,10 +1,12 @@
 use argon2::{Algorithm, PasswordHash, PasswordVerifier, Version};
 use axum::{http::StatusCode, Router};
 use models::{api::{user::*, workspace::Workspace, WithId}, ErrorType};
+use rustis::commands::StringCommands;
 use sqlx::query;
+use time::Duration;
 use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};
 
-use crate::prelude::*;
+use crate::{prelude::*, redis::keys::get_key_for_user_mfa_secret};
 
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
@@ -14,6 +16,9 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.mount_auth_endpoint(get_user_info, state)
 		.mount_auth_endpoint(list_workspaces, state)
 		.mount_auth_endpoint(set_user_info, state)
+		.mount_auth_endpoint(activate_mfa, state)
+		.mount_auth_endpoint(deactivate_mfa, state)
+		.mount_auth_endpoint(get_mfa_secret, state)
 		.with_state(state.clone())
 }
 
@@ -219,15 +224,15 @@ async fn get_user_details(
 async fn get_user_info(
 	AuthenticatedAppRequest {
 		request: ProcessedApiRequest {
-			path,
+			path: _,
 			query: _,
-			headers,
-			body,
+			headers: _,
+			body: _,
 		},
 		database,
 		redis: _,
 		client_ip: _,
-		config,
+		config: _,
 		user_data,
 	}: AuthenticatedAppRequest<'_, GetUserInfoRequest>,
 ) -> Result<AppResponse<GetUserInfoRequest>, ErrorType> {
@@ -294,15 +299,15 @@ async fn get_user_info(
 async fn list_workspaces(
 	AuthenticatedAppRequest {
 		request: ProcessedApiRequest {
-			path,
+			path: _,
 			query: _,
-			headers,
-			body,
+			headers: _,
+			body: _,
 		},
 		database,
 		redis: _,
 		client_ip: _,
-		config,
+		config: _,
 		user_data,
 	}: AuthenticatedAppRequest<'_, ListUserWorkspacesRequest>,
 ) -> Result<AppResponse<ListUserWorkspacesRequest>, ErrorType> {
@@ -353,15 +358,15 @@ async fn list_workspaces(
 async fn set_user_info(
 	AuthenticatedAppRequest {
 		request: ProcessedApiRequest {
-			path,
+			path: _,
 			query: _,
-			headers,
+			headers: _,
 			body,
 		},
 		database,
 		redis: _,
 		client_ip: _,
-		config,
+		config: _,
 		user_data,
 	}: AuthenticatedAppRequest<'_, UpdateUserInfoRequest>,
 ) -> Result<AppResponse<UpdateUserInfoRequest>, ErrorType> {
@@ -386,6 +391,237 @@ async fn set_user_info(
 
 	AppResponse::builder()
 		.body(UpdateUserInfoResponse)
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
+}
+
+async fn activate_mfa(
+	AuthenticatedAppRequest {
+		request: ProcessedApiRequest {
+			path: _,
+			query: _,
+			headers: _,
+			body,
+		},
+		database,
+		redis,
+		client_ip: _,
+		config: _,
+		user_data,
+	}: AuthenticatedAppRequest<'_, ActivateMfaRequest>,
+) -> Result<AppResponse<ActivateMfaRequest>, ErrorType> {
+	info!("Starting: Activate MFA for user");
+
+	let mfa_detail = query!(
+		r#"
+		SELECT
+			"user".mfa_secret
+		FROM
+			"user"
+		WHERE
+			id = $1;
+		"#,
+		user_data.id as _
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	.ok_or(ErrorType::UserNotFound)?;
+
+	if mfa_detail.mfa_secret.is_some() {
+		return Err(ErrorType::MfaAlreadyActive);
+	}
+
+	let secret:String = redis.get(get_key_for_user_mfa_secret(&user_data.id)).await?;
+
+	let totp = TOTP::new(
+			TotpAlgorithm::SHA1,
+			6,
+			1,
+			30,
+			Secret::Encoded(secret.clone())
+				.to_bytes()
+				.inspect_err(|err| {
+					error!(
+						"Unable to parse MFA secret for userId `{}`: {}",
+						user_data.id,
+						err.to_string()
+					);
+				})
+				.map_err(ErrorType::server_error)?,
+		)
+		.inspect_err(|err| {
+			error!(
+				"Unable to parse TOTP for userId `{}`: {}",
+				user_data.id,
+				err.to_string()
+			);
+		})
+		.map_err(ErrorType::server_error)?;
+
+	if !(totp.check_current(&body.otp)?) {
+		return Err(ErrorType::MfaOtpInvalid);
+	}
+
+	query!(
+		r#"
+		UPDATE
+			"user"
+		SET
+			mfa_secret = $2
+		WHERE
+			id = $1;
+		"#,
+		user_data.id as _,
+		secret
+	)
+	.execute(&mut **database)
+	.await?;
+
+	AppResponse::builder()
+		.body(ActivateMfaResponse)
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
+}
+
+async fn deactivate_mfa(
+	AuthenticatedAppRequest {
+		request: ProcessedApiRequest {
+			path: _,
+			query: _,
+			headers: _,
+			body,
+		},
+		database,
+		redis: _,
+		client_ip: _,
+		config: _,
+		user_data,
+	}: AuthenticatedAppRequest<'_, DeactivateMfaRequest>,
+) -> Result<AppResponse<DeactivateMfaRequest>, ErrorType> {
+	info!("Starting: Deactivate MFA for user");
+
+	let mfa_detail = query!(
+		r#"
+		SELECT
+			"user".mfa_secret
+		FROM
+			"user"
+		WHERE
+			id = $1;
+		"#,
+		user_data.id as _
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	.ok_or(ErrorType::UserNotFound)?;
+
+	let Some(secret) = mfa_detail.mfa_secret else {
+		return Err(ErrorType::MfaAlreadyInactive);
+	};
+
+	let totp = TOTP::new(
+			TotpAlgorithm::SHA1,
+			6,
+			1,
+			30,
+			Secret::Encoded(secret.clone())
+				.to_bytes()
+				.inspect_err(|err| {
+					error!(
+						"Unable to parse MFA secret for userId `{}`: {}",
+						user_data.id,
+						err.to_string()
+					);
+				})
+				.map_err(ErrorType::server_error)?,
+		)
+		.inspect_err(|err| {
+			error!(
+				"Unable to parse TOTP for userId `{}`: {}",
+				user_data.id,
+				err.to_string()
+			);
+		})
+		.map_err(ErrorType::server_error)?;
+
+	if !(totp.check_current(&body.otp)?) {
+		return Err(ErrorType::MfaOtpInvalid);
+	}
+
+	query!(
+		r#"
+		UPDATE
+			"user"
+		SET
+			mfa_secret = NULL
+		WHERE
+			id = $1;
+		"#,
+		user_data.id as _
+	)
+	.execute(&mut **database)
+	.await?;
+
+	AppResponse::builder()
+		.body(DeactivateMfaResponse)
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
+}
+
+async fn get_mfa_secret(
+	AuthenticatedAppRequest {
+		request: ProcessedApiRequest {
+			path: _,
+			query: _,
+			headers: _,
+			body: _,
+		},
+		database,
+		redis,
+		client_ip: _,
+		config: _,
+		user_data,
+	}: AuthenticatedAppRequest<'_, GetMfaSecretRequest>,
+) -> Result<AppResponse<GetMfaSecretRequest>, ErrorType> {
+	info!("Starting: Get MFA secret");
+
+	let mfa_detail = query!(
+		r#"
+		SELECT
+			"user".mfa_secret
+		FROM
+			"user"
+		WHERE
+			id = $1;
+		"#,
+		user_data.id as _
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	.ok_or(ErrorType::UserNotFound)?;
+
+	if mfa_detail.mfa_secret.is_some() {
+		return Err(ErrorType::MfaAlreadyActive);
+	}
+
+	let secret = Secret::generate_secret().to_encoded().to_string();
+
+	redis.setex(
+		get_key_for_user_mfa_secret(&user_data.id), 
+		Duration::minutes(5).whole_seconds() as u64, 
+		secret.clone()
+	).await?;
+
+	AppResponse::builder()
+		.body(GetMfaSecretResponse { 
+			secret 
+		})
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
