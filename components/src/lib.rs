@@ -12,12 +12,14 @@ pub mod prelude {
 		icon::*,
 		input::*,
 		link::*,
+		otp_input::*,
 		page_title::*,
 		sidebar::*,
 		skeleton::*,
 		spinner::*,
 		status_badge::*,
 		table_dashboard::*,
+		textbox::*,
 		tooltip::*,
 		utils::*,
 	};
@@ -58,6 +60,9 @@ pub mod input;
 /// The link component. The link component is used to create a link to another
 /// page, or to an external website. It can also be used to create a button.
 pub mod link;
+/// The OTP input component. The OTP input component is used to display an input
+/// for an OTP code. It is used in the login page.
+pub mod otp_input;
 /// The page title component. The page title component is used to display the
 /// title of a page, specifically the title of a dashboard page.
 pub mod page_title;
@@ -87,6 +92,7 @@ pub mod status_badge;
 /// display a table of data in a dashboard. It is used to show the user a table
 /// of data, like a list of users, or a list of deployments, etc.
 pub mod table_dashboard;
+pub mod textbox;
 pub mod tooltip;
 
 /// Utility functions and components that are used across the entire crate.

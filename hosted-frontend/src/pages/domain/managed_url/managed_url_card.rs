@@ -1,6 +1,8 @@
+use std::rc::Rc;
+
 use leptos::html::Col;
 
-use crate::prelude::*;
+use crate::{pages::*, prelude::*};
 
 #[component]
 pub fn ManagedUrlCard(
@@ -11,23 +13,45 @@ pub fn ManagedUrlCard(
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
 ) -> impl IntoView {
+	let show_update_url = create_rw_signal(false);
+
 	let class = move || {
 		class.with(|classname| {
-			format!(
-				"full-width bd-light row-card bg-secondary-light cursor-default br-bottom-sm fr-ct-ct {} {}",
-				classname,
-				if enable_radius_on_top.get() {
-					"br-top-sm"
-				} else {
-					""
-				}
-			)
+			if show_update_url.get() {
+				format!(
+					"full-width cursor-default fr-ct-ct bd-light br-bottom-sm of-hidden {}",
+					if enable_radius_on_top.get() {
+						"br-top-sm"
+					} else {
+						""
+					}
+				)
+			} else {
+				format!(
+					"full-width bd-light row-card bg-secondary-light cursor-default br-bottom-sm fr-ct-ct {} {}",
+					classname,
+					if enable_radius_on_top.get() {
+						"br-top-sm"
+					} else {
+						""
+					}
+				)
+			}
 		})
 	};
 
 	view! {
-		<>
-			<tr class=class>
+		<tr class=class>
+			<Show
+				when=move || !show_update_url.get()
+				fallback=move || view! {
+					<td class="full-width fr-ct-ct">
+						<UpdateManagedUrl
+							show_update_component=show_update_url
+						/>
+					</td>
+				}
+			>
 				<td class="flex-col-4 fr-ct-ct">
 					<a
 						href=""
@@ -72,14 +96,18 @@ pub fn ManagedUrlCard(
 				</td>
 
 				<td class="flex-col-1 fr-sa-ct">
-					<button>
+					<Link
+						on_click=Rc::new(move |_| {
+							show_update_url.update(|val| *val = !*val)
+						})
+					>
 						<Icon icon=IconType::Edit size=Size::ExtraSmall />
-					</button>
-					<button>
+					</Link>
+					<Link>
 						<Icon icon=IconType::Trash2 size=Size::ExtraSmall color=Color::Error />
-					</button>
+					</Link>
 				</td>
-			</tr>
-		</>
+			</Show>
+		</tr>
 	}
 }

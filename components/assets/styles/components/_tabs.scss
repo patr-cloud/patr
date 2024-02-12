@@ -1,0 +1,35 @@
+@use "sass:map";
+@use "../helpers/maps" as *;
+
+.tab-item {
+  color: map.get($text-colors, "grey");
+  padding: map.get($paddings, "sm") 0;
+  font-size: map.get($font-sizes, "sm");
+  position: relative;
+  cursor: pointer;
+
+  &:hover {
+    color: map.get($text-colors, "white");
+    transition: color 150ms;
+  }
+
+  &:focus-visible {
+    color: map.get($text-colors, "primary");
+  }
+}
+
+.active-tab-item {
+  color: map.get($text-colors, "white");
+
+  &::after {
+    content: "";
+    position: absolute;
+
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 4px;
+    border-radius: 5px 5px 0 0;
+    background-color: map.get($background-colors, "primary");
+  }
+}
