@@ -1,5 +1,5 @@
+mod auth;
 mod domain;
 mod infrastructure;
-mod login;
 
-pub use self::{domain::*, infrastructure::*, login::*};
+pub use self::{auth::*, domain::*, infrastructure::*};

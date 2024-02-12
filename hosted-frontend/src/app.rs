@@ -1,7 +1,7 @@
 use models::api::auth::*;
 
 use crate::{
-	pages::{DomainsDashboard, LoginPage, ManagedUrlDashboard},
+	pages::{DomainsDashboard, LoginPage, ManagedUrlDashboard, *},
 	prelude::*,
 };
 
@@ -13,7 +13,7 @@ pub trait AppAPIs {
 }
 
 #[component]
-pub fn App() -> impl IntoView {
+fn LoggedInPage() -> impl IntoView {
 	view! {
 		<div class="fr-fs-fs full-width full-height bg-secondary">
 			<Sidebar />
@@ -27,8 +27,15 @@ pub fn App() -> impl IntoView {
 					/>
 				</header>
 
-				<ManagedUrlDashboard />
+				<ManageDeployments />
 			</main>
 		</div>
+	}
+}
+
+#[component]
+pub fn App() -> impl IntoView {
+	view! {
+		<LoggedInPage />
 	}
 }
