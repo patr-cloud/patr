@@ -41,85 +41,73 @@ pub fn ManagedUrlCard(
 	};
 
 	view! {
-			<tr class=class>
-				<Show
-					when=move || !show_update_url.get()
-					fallback=move || view! {
-						<td class="full-width fr-ct-ct">
-							<UpdateManagedUrl
-								show_update_component=show_update_url
-							/>
-						</td>
-					}
-				>
-					<td class="flex-col-4 fr-ct-ct">
-						<a
-							href=""
-							target="_blank"
-							rel="noreferrer"
-							class="txt-underline fr-ct-ct"
-						>
-							<span class="w-35 txt-of-ellipsis of-hidden">
-								"https://onpatr.cloud"
-							</span>
-							<Icon
-								icon=IconType::ExternalLink
-								size=Size::ExtraExtraSmall
-								class="ml-xxs"
-							/>
-						</a>
+		<tr class=class>
+			<Show
+				when=move || !show_update_url.get()
+				fallback=move || view! {
+					<td class="full-width fr-ct-ct">
+						<UpdateManagedUrl
+							show_update_component=show_update_url
+						/>
 					</td>
+				}
+			>
+				<td class="flex-col-4 fr-ct-ct">
+					<a
+						href=""
+						target="_blank"
+						rel="noreferrer"
+						class="txt-underline fr-ct-ct"
+					>
+						<span class="w-35 txt-of-ellipsis of-hidden">
+							"https://onpatr.cloud"
+						</span>
+						<Icon
+							icon=IconType::ExternalLink
+							size=Size::ExtraExtraSmall
+							class="ml-xxs"
+						/>
+					</a>
+				</td>
 
-					<td class="flex-col-1 fr-ct-ct">
-						"Redirect"
-					</td>
+				<td class="flex-col-1 fr-ct-ct">
+					"Redirect"
+				</td>
 
-					<td class="flex-col-4 fr-ct-ct">
-						<a
-							href=""
-							target="_blank"
-							rel="noreferrer"
-							class="txt-underline fr-ct-ct"
-						>
-							<span class="txt-medium txt-of-ellipsis of-hidden w-35">
-								"https://onpatr.cloud"
-							</span>
-							<Icon
-								icon=IconType::ExternalLink
-								size=Size::ExtraExtraSmall
-								class="ml-xxs"
-							/>
-						</a>
-					</td>
+				<td class="flex-col-4 fr-ct-ct">
+					<a
+						href=""
+						target="_blank"
+						rel="noreferrer"
+						class="txt-underline fr-ct-ct"
+					>
+						<span class="txt-medium txt-of-ellipsis of-hidden w-35">
+							"https://onpatr.cloud"
+						</span>
+						<Icon
+							icon=IconType::ExternalLink
+							size=Size::ExtraExtraSmall
+							class="ml-xxs"
+						/>
+					</a>
+				</td>
 
-					<td class="flex-col-2 fr-ct-ct">
-					</td>
+				<td class="flex-col-2 fr-ct-ct">
+				</td>
 
-					<td class="flex-col-1 fr-sa-ct">
-	<<<<<<< HEAD
-						<Link
-							on_click=Rc::new(move |_| {
-								show_update_url.update(|val| *val = !*val)
-							})
-						>
-							<Icon icon=IconType::Edit size=Size::ExtraSmall />
-						</Link>
-						<Link>
-							<Icon icon=IconType::Trash2 size=Size::ExtraSmall color=Color::Error />
-						</Link>
-					</td>
-				</Show>
-			</tr>
-	=======
-						<button>
-							<Icon icon=IconType::Edit size=Size::ExtraSmall />
-						</button>
-						<button>
-							<Icon icon=IconType::Trash2 size=Size::ExtraSmall color=Color::Error />
-						</button>
-					</td>
-				</tr>
-			</>
-	>>>>>>> 29da1fde (modified spinner, added tooltip, skeleton components, and created managed_url and domains pages)
-		}
+				<td class="flex-col-1 fr-sa-ct">
+					<Link
+						on_click=Rc::new(move |_| {
+							show_update_url.update(|val| *val = !*val)
+						})
+					>
+						<Icon icon=IconType::Edit size=Size::ExtraSmall />
+					</Link>
+					<Link>
+						<Icon icon=IconType::Trash2 size=Size::ExtraSmall color=Color::Error />
+					</Link>
+				</td>
+			</Show>
+		</tr>
+	}
 }
