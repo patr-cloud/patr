@@ -20,6 +20,10 @@ pub enum ErrorType {
 	MfaRequired,
 	/// The two factor authentication code provided is invalid
 	MfaOtpInvalid,
+	/// The user already has two factor authentication enabled
+	MfaAlreadyActive,
+	/// The user does not have two factor authentication enabled
+	MfaAlreadyInactive,
 	/// The parameters sent with the request is invalid. This would ideally not
 	/// happen unless there is a bug in the client
 	WrongParameters,
@@ -63,6 +67,8 @@ impl ErrorType {
 			Self::InvalidPassword => StatusCode::UNAUTHORIZED,
 			Self::MfaOtpInvalid => StatusCode::UNAUTHORIZED,
 			Self::MfaRequired => StatusCode::UNAUTHORIZED,
+			Self::MfaAlreadyActive => StatusCode::BAD_REQUEST,
+			Self::MfaAlreadyInactive => StatusCode::BAD_REQUEST,
 			Self::WrongParameters => StatusCode::BAD_REQUEST,
 			Self::MalformedApiToken => StatusCode::BAD_REQUEST,
 			Self::DisallowedIpAddressForApiToken => StatusCode::UNAUTHORIZED,
@@ -87,6 +93,8 @@ impl ErrorType {
 			Self::InvalidPassword => "Invalid Password",
 			Self::MfaRequired => "Two factor authentication required",
 			Self::MfaOtpInvalid => "Invalid two factor authentication code",
+			Self::MfaAlreadyActive => "Two factor authentication already enabled",
+			Self::MfaAlreadyInactive => "Two factor authentication not enabled",
 			Self::WrongParameters => "The parameters sent with that request is invalid",
 			Self::MalformedApiToken => "The API token provided is not a valid token",
 			Self::DisallowedIpAddressForApiToken => {
@@ -140,6 +148,8 @@ impl Clone for ErrorType {
 			Self::InvalidPassword => Self::InvalidPassword,
 			Self::MfaRequired => Self::MfaRequired,
 			Self::MfaOtpInvalid => Self::MfaOtpInvalid,
+			Self::MfaAlreadyActive => Self::MfaAlreadyActive,
+			Self::MfaAlreadyInactive => Self::MfaAlreadyInactive,
 			Self::WrongParameters => Self::WrongParameters,
 			Self::MalformedApiToken => Self::MalformedApiToken,
 			Self::DisallowedIpAddressForApiToken => Self::DisallowedIpAddressForApiToken,
