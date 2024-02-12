@@ -1,10 +1,7 @@
-use crate::{
-	pages::{DomainsDashboard, ManagedUrlDashboard},
-	prelude::*,
-};
+use crate::{pages::*, prelude::*};
 
 #[component]
-pub fn App() -> impl IntoView {
+fn LoggedInPage() -> impl IntoView {
 	view! {
 		<div class="fr-fs-fs full-width full-height bg-secondary">
 			<Sidebar />
@@ -18,8 +15,15 @@ pub fn App() -> impl IntoView {
 					/>
 				</header>
 
-				<ManagedUrlDashboard />
+				<ManageDeployments />
 			</main>
 		</div>
+	}
+}
+
+#[component]
+pub fn App() -> impl IntoView {
+	view! {
+		<LoggedInPage />
 	}
 }

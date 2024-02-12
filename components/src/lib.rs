@@ -12,12 +12,14 @@ pub mod prelude {
 		icon::*,
 		input::*,
 		link::*,
+		otp_input::*,
 		page_title::*,
 		sidebar::*,
 		skeleton::*,
 		spinner::*,
 		status_badge::*,
 		table_dashboard::*,
+		textbox::*,
 		tooltip::*,
 		utils::*,
 	};
@@ -43,12 +45,14 @@ pub mod dashboard_container;
 pub mod icon;
 pub mod input;
 pub mod link;
+pub mod otp_input;
 pub mod page_title;
 pub mod sidebar;
 pub mod skeleton;
 pub mod spinner;
 pub mod status_badge;
 pub mod table_dashboard;
+pub mod textbox;
 pub mod tooltip;
 
 pub mod utils;
