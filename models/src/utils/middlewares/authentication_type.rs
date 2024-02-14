@@ -2,11 +2,7 @@ use std::fmt::Debug;
 
 use preprocess::Preprocessable;
 
-use crate::{
-	prelude::*,
-	private::Sealed,
-	utils::{BearerToken, RequiresRequestHeaders},
-};
+use crate::{prelude::*, private::Sealed, utils::RequiresRequestHeaders};
 
 /// This trait is used to specify if an API endpoint requires authentication or
 /// not. It is used in the [`ApiEndpoint`] trait to specify the

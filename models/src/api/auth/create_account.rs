@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::prelude::*;
+
 /// Recovery method options provided to the user when they forget their
 /// passsword and request a password change by hitting the ForgetPassword API
 /// endpoint. The curent recovery options are email and phone number.
@@ -27,6 +29,10 @@ macros::declare_api_endpoint!(
 	CreateAccount,
 	POST "/auth/sign-up",
 	api = false,
+	request_headers = {
+		/// The user-agent used to access this API
+		pub user_agent: UserAgent,
+	},
 	request = {
 		/// The username of the user signing up
 		pub username: String,

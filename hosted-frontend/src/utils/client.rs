@@ -6,8 +6,8 @@ use std::{
 };
 
 use axum::extract::ConnectInfo;
-use http::Method;
 use axum_extra::routing::TypedPath;
+use http::Method;
 use matchit::Router;
 use models::{ApiEndpoint, ApiRequest, AppResponse, ErrorType};
 use preprocess::Preprocessable;
@@ -33,10 +33,9 @@ where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
-	let ConnectInfo(socket_addr) =
-		leptos_axum::extract::<ConnectInfo<SocketAddr>>()
-			.await
-			.map_err(ErrorType::server_error)?;
+	let ConnectInfo(socket_addr) = leptos_axum::extract::<ConnectInfo<SocketAddr>>()
+		.await
+		.map_err(ErrorType::server_error)?;
 	let layer = API_CALL_REGISTRY
 		.read()
 		.expect("API call registry poisoned")

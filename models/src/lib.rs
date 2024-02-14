@@ -22,6 +22,8 @@ pub mod utils;
 /// used across the crate. This is mostly used to avoid having to import a lot
 /// of things from different modules.
 pub mod prelude {
+	pub use headers::UserAgent;
+
 	pub(crate) use crate as models;
 	pub use crate::{
 		api::WithId,

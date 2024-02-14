@@ -1,4 +1,4 @@
-use crate::{prelude::*, pages::DeploymentCard};
+use crate::{pages::DeploymentCard, prelude::*};
 
 /// TO BE REPLACED LATER WITH MODEL A PROPER MODEL TYPE
 /// ACCORDING TO THE REQUEST RESPONSE TYPE
