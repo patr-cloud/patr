@@ -1,8 +1,7 @@
 use clap::Args;
 
-use crate::CommandOutput;
-
 use super::GlobalArgs;
+use crate::CommandOutput;
 
 /// The arguments that can be passed to the login command.
 #[derive(Debug, Clone, Args)]

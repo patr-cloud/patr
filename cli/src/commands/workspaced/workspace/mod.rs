@@ -52,10 +52,7 @@ impl CommandExecutor for WorkspaceCommands {
 }
 
 impl CommandExecutor for WorkspaceActionCommands {
-	async fn execute(
-		self,
-		global_args: &GlobalArgs,
-	) -> anyhow::Result<CommandOutput> {
+	async fn execute(self, global_args: &GlobalArgs) -> anyhow::Result<CommandOutput> {
 		match self {
 			Self::Create(args) => create::execute(global_args, args).await,
 			Self::Switch(args) => switch::execute(global_args, args).await,

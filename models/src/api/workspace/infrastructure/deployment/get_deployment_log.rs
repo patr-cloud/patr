@@ -1,10 +1,7 @@
 use time::OffsetDateTime;
 
 use super::DeploymentLogs;
-use crate::{
-	prelude::*,
-	utils::{BearerToken, Uuid},
-};
+use crate::{prelude::*, utils::Uuid};
 
 macros::declare_api_endpoint!(
 	/// Route to get the running logs of a deployment
@@ -22,7 +19,9 @@ macros::declare_api_endpoint!(
 	},
 	request_headers = {
 		/// Token used to authorize user
-		pub authorization: BearerToken
+		pub authorization: BearerToken,
+		/// The user-agent used to access this API
+		pub user_agent: UserAgent,
 	},
 	query = {
 		/// The time up until which the deployment logs should be fetched

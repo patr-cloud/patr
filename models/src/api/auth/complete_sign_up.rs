@@ -1,3 +1,5 @@
+use crate::prelude::*;
+
 macros::declare_api_endpoint!(
 	/// Route when user verifies his identity/recovery-method by entering the OTP
 	/// sent to their recovery method which is email/phone-number.
@@ -5,6 +7,10 @@ macros::declare_api_endpoint!(
 	CompleteSignUp,
 	POST "/auth/join",
 	api = false,
+	request_headers = {
+		/// The user-agent used to access this API
+		pub user_agent: UserAgent,
+	},
 	request = {
 		/// The username of the user verifying their account
 		pub username: String,

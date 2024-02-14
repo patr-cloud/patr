@@ -83,7 +83,7 @@ use models::{
 			ListAllDeploymentMachineTypeRequest,
 		},
 	},
-	utils::{BearerToken, Uuid},
+	utils::Uuid,
 	ApiRequest,
 	ErrorType,
 };

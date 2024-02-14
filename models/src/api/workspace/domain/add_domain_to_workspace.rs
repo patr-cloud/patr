@@ -1,5 +1,5 @@
 use super::DomainNameserverType;
-use crate::{prelude::*, utils::BearerToken};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to add domain to a workspace

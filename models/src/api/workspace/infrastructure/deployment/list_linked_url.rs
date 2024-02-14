@@ -1,8 +1,4 @@
-use crate::{
-	api::workspace::infrastructure::managed_url::ManagedUrl,
-	prelude::*,
-	utils::{BearerToken, Uuid},
-};
+use crate::{api::workspace::infrastructure::managed_url::ManagedUrl, prelude::*, utils::Uuid};
 
 macros::declare_api_endpoint!(
 	/// Route to get all linked URLs for a deployment
@@ -15,7 +11,9 @@ macros::declare_api_endpoint!(
 	},
 	request_headers = {
 		/// Token used to authorize user
-		pub authorization: BearerToken
+		pub authorization: BearerToken,
+		/// The user-agent used to access this API
+		pub user_agent: UserAgent,
 	},
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {

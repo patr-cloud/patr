@@ -1,5 +1,5 @@
 use super::DatabasePlan;
-use crate::{prelude::*, utils::BearerToken};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to get database information
@@ -7,7 +7,9 @@ macros::declare_api_endpoint!(
 	GET "/workspace/infrastructure/database/plan",
 	request_headers = {
 		/// Token used to authorize user
-		pub authorization: BearerToken
+		pub authorization: BearerToken,
+		/// The user-agent used to access this API
+		pub user_agent: UserAgent,
 	},
 	response = {
 		/// List of database plans containing:

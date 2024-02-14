@@ -1,8 +1,5 @@
 use super::{DeploymentMetrics, Interval, Step};
-use crate::{
-	prelude::*,
-	utils::{BearerToken, Uuid},
-};
+use crate::{prelude::*, utils::Uuid};
 
 macros::declare_api_endpoint!(
 	/// Route to get monitoring metrics like CPU, RAM and Disk usage
@@ -16,7 +13,9 @@ macros::declare_api_endpoint!(
 	},
 	request_headers = {
 		/// Token used to authorize user
-		pub authorization: BearerToken
+		pub authorization: BearerToken,
+		/// The user-agent used to access this API
+		pub user_agent: UserAgent,
 	},
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {

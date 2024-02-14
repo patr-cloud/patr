@@ -1,4 +1,4 @@
-use crate::{prelude::*, pages::StaticSiteCard};
+use crate::{pages::StaticSiteCard, prelude::*};
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct StaticSiteItemType {
