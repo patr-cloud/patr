@@ -3,10 +3,11 @@ use models::{api::auth::*, ErrorType};
 
 use crate::prelude::*;
 
+mod create_account;
 mod login;
 mod logout;
 
-use self::{login::*, logout::*};
+use self::{create_account::*, login::*, logout::*};
 
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
@@ -23,32 +24,6 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.mount_endpoint(resend_otp, state)
 		.mount_endpoint(reset_password, state)
 		.with_state(state.clone())
-}
-
-async fn create_account(
-	AppRequest {
-		request: ProcessedApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
-		database,
-		redis: _,
-		client_ip: _,
-		config,
-	}: AppRequest<'_, CreateAccountRequest>,
-) -> Result<AppResponse<CreateAccountRequest>, ErrorType> {
-	info!("Starting: Create account");
-
-	// LOGIC
-
-	AppResponse::builder()
-		.body(CreateAccountResponse)
-		.headers(())
-		.status_code(StatusCode::OK)
-		.build()
-		.into_result()
 }
 
 async fn renew_access_token(

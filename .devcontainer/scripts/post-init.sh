@@ -15,9 +15,7 @@ mkdir -p ~/.kube
 
 # TODO setup kubernetes cluster with k3d and use that kubeconfig
 
-echo "Installing sea-orm-cli, trunk, sqlx-cli and cargo-leptos"
-cargo install sea-orm-cli
-cargo install trunk
+echo "Installing sqlx-cli and cargo-leptos"
 cargo install sqlx-cli
 cargo install cargo-leptos
 
