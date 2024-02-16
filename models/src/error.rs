@@ -80,7 +80,7 @@ impl ErrorType {
 			Self::MalformedAccessToken => "Your access token is invalid. Please login in again",
 			Self::Unauthorized => "You are not authorized to perform that action",
 			Self::AuthorizationTokenInvalid => "Your access token has expired. Please login again",
-			Self::InternalServerError(_) => "internal server error",
+			Self::InternalServerError(_) => "An internal server error has occured",
 		}
 	}
 

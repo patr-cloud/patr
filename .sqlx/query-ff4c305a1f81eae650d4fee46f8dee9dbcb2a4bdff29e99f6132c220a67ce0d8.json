@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO user_login( login_id, user_id, login_type, created ) VALUES ( $1, $2, 'web_login', $3 );",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ff4c305a1f81eae650d4fee46f8dee9dbcb2a4bdff29e99f6132c220a67ce0d8"
+}
