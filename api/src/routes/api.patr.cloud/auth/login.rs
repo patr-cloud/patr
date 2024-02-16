@@ -77,6 +77,8 @@ pub async fn login(
 	.await?
 	.ok_or(ErrorType::UserNotFound)?;
 
+	trace!("Found userId: {}", user_data.id);
+
 	let success = argon2::Argon2::new_with_secret(
 		config.password_pepper.as_ref(),
 		Algorithm::Argon2id,
@@ -94,7 +96,11 @@ pub async fn login(
 		return Err(ErrorType::InvalidPassword);
 	}
 
+	trace!("Password hashes match");
+
 	if let Some(mfa_secret) = user_data.mfa_secret {
+		trace!("User has MFA secret");
+
 		let Some(mfa_otp) = body.mfa_otp else {
 			return Err(ErrorType::MfaRequired);
 		};
@@ -138,6 +144,8 @@ pub async fn login(
 		if !mfa_valid {
 			return Err(ErrorType::MfaOtpInvalid);
 		}
+
+		trace!("User MFA is valid");
 	}
 
 	let now = OffsetDateTime::now_utc();

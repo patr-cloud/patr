@@ -172,7 +172,11 @@ where
 						.into_response())
 				}
 				Err(error) => {
-					warn!("Inner service failed: {:?}", error);
+					if let ErrorType::InternalServerError(error) = &error {
+						error!("Internal server error: {}", error);
+					} else {
+						warn!("Inner service failed: {:?}", error);
+					}
 					Ok(ApiErrorResponse::error(error).into_response())
 				}
 			}

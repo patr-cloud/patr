@@ -12,5 +12,8 @@ macros::declare_api_endpoint!(
 		pub refresh_token: BearerToken,
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,
-	}
+	},
+	authentication = {
+		AppAuthentication::<Self>::PlainTokenAuthenticator
+	},
 );
