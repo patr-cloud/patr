@@ -19,12 +19,13 @@ use crate::{models::access_token_data::AccessTokenData, prelude::*};
 
 pub async fn login(
 	AppRequest {
-		request: ProcessedApiRequest {
-			path: _,
-			query: _,
-			headers: _,
-			body,
-		},
+		request:
+			ProcessedApiRequest {
+				path: LoginPath,
+				query: (),
+				headers: LoginRequestHeaders { user_agent },
+				body,
+			},
 		database,
 		redis: _,
 		client_ip,
@@ -199,7 +200,7 @@ pub async fn login(
 	let city = ip_info.city;
 	let timezone = ip_info.timezone.unwrap_or_else(Default::default);
 
-	let user_agent = headers::UserAgent::from_static("todo").to_string();
+	let user_agent = user_agent.to_string();
 
 	query!(
 		r#"

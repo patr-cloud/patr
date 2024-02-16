@@ -22,6 +22,8 @@ pub use self::router_ext::RouterExt;
 /// A list of constants that will be used throughout the application. This is
 /// mostly kept to prevent typos.
 pub mod constants {
+	use std::ops::{Range, RangeInclusive};
+
 	use semver::Version;
 
 	/// The issuer (iss) of the JWT. This is currently the URL of Patr API.
@@ -58,4 +60,16 @@ pub mod constants {
 	/// used to notify the backend when data has changed in the database, so
 	/// that it can notify the frontend via websockets.
 	pub const DATABASE_CHANNEL: &str = "data";
+
+	/// The range within which to randomly generate an OTP
+	pub const OTP_RANGE: RangeInclusive<u64> = if cfg!(debug_assertions) {
+		RangeInclusive::new(0, 0)
+	} else {
+		RangeInclusive::new(0, 999_999)
+	};
+
+	/// How long an OTP is valid for. After this time, the OTP will be invalid
+	/// and the error returned will be the same as an "OTP doesn't exist" error
+	/// to prevent it from leaking old OTPs.
+	pub const OTP_VALIDITY: time::Duration = time::Duration::hours(2);
 }
