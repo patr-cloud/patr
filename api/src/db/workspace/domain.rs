@@ -18,20 +18,6 @@ pub async fn initialize_domain_tables(
 
 	query!(
 		r#"
-		CREATE TABLE domain(
-			id UUID NOT NULL,
-			name TEXT NOT NULL,
-			type RESOURCE_OWNER_TYPE NOT NULL,
-			tld TEXT NOT NULL,
-			deleted TIMESTAMPTZ
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
 		CREATE TYPE DOMAIN_NAMESERVER_TYPE AS ENUM(
 			'internal',
 			'external'
@@ -43,25 +29,13 @@ pub async fn initialize_domain_tables(
 
 	query!(
 		r#"
-		CREATE TABLE personal_domain(
-			id UUID NOT NULL,
-			domain_type RESOURCE_OWNER_TYPE NOT NULL,
-			deleted TIMESTAMPTZ
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
 		CREATE TABLE workspace_domain(
 			id UUID NOT NULL,
-			domain_type RESOURCE_OWNER_TYPE NOT NULL,
-			is_verified BOOLEAN NOT NULL,
+			name TEXT NOT NULL,
+			tld TEXT NOT NULL,
 			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL,
-			last_unverified TIMESTAMPTZ,
-			cloudflare_worker_route_id TEXT NOT NULL
+			is_verified BOOLEAN NOT NULL,
+			deleted TIMESTAMPTZ
 		);
 		"#
 	)
@@ -132,36 +106,6 @@ pub async fn initialize_domain_indices(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
 	info!("Setting up domain tables indices");
-	query!(
-		r#"
-		ALTER TABLE domain_tld
-		ADD CONSTRAINT domain_tld_pk
-		PRIMARY KEY(tld);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE domain
-			ADD CONSTRAINT domain_pk PRIMARY KEY(id),
-			ADD	CONSTRAINT domain_uq_name_type UNIQUE(id, type),
-			ADD	CONSTRAINT domain_uq_id_type_deleted UNIQUE(id, type, deleted);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE personal_domain
-		ADD CONSTRAINT personal_domain_pk
-		PRIMARY KEY(id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
 
 	query!(
 		r#"
@@ -208,9 +152,9 @@ pub async fn initialize_domain_indices(
 	query!(
 		r#"
 		CREATE UNIQUE INDEX
-			domain_uq_name_tld
+			workspace_domain_uq_name_tld
 		ON
-			domain(name, tld)
+			workspace_domain(name, tld)
 		WHERE
 			deleted IS NULL;
 		"#
@@ -255,45 +199,14 @@ pub async fn initialize_domain_constraints(
 
 	query!(
 		r#"
-		ALTER TABLE domain
-			ADD CONSTRAINT domain_chk_name_is_valid CHECK(
+		ALTER TABLE workspace_domain
+			ADD CONSTRAINT workspace_domain_chk_name_is_valid CHECK(
 				name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$'
 			),
-			ADD CONSTRAINT domain_chk_max_domain_name_length CHECK(
+			ADD CONSTRAINT workspace_domain_chk_max_domain_name_length CHECK(
 				(LENGTH(name) + LENGTH(tld)) < 255
 			),
-			ADD CONSTRAINT domain_fk_tld FOREIGN KEY(tld) REFERENCES domain_tld(tld);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE personal_domain
-			ADD CONSTRAINT personal_domain_chk_domain_type CHECK(
-				domain_type = 'personal'
-			),
-			ADD CONSTRAINT personal_domain_chk_deletion CHECK(
-				deleted IS NULL
-			),
-			ADD CONSTRAINT personal_domain_fk_id_domain_type_deleted
-				FOREIGN KEY(id, domain_type, deleted) REFERENCES domain(id, type, deleted);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE workspace_domain
-			ADD CONSTRAINT workspace_domain_fk_id
-				FOREIGN KEY(id) REFERENCES resource(id),
-			ADD CONSTRAINT workspace_domain_chk_domain_type CHECK(
-				domain_type = 'business'
-			),
-			ADD CONSTRAINT workspace_domain_fk_id_domain_type
-				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type);
+			ADD CONSTRAINT workspace_domain_fk_tld FOREIGN KEY(tld) REFERENCES domain_tld(tld);
 		"#
 	)
 	.execute(&mut *connection)

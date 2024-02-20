@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE INDEX user_email_idx_user_id ON user_email (user_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "5e7778a1fd72d2000f0afa717e602346ada0f0efe206f02df8aa232a8c7fea6d"
+}

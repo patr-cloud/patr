@@ -4,10 +4,12 @@ use models::{api::auth::*, ErrorType};
 use crate::prelude::*;
 
 mod create_account;
+mod is_email_valid;
+mod is_username_valid;
 mod login;
 mod logout;
 
-use self::{create_account::*, login::*, logout::*};
+use self::{create_account::*, is_email_valid::*, is_username_valid::*, login::*, logout::*};
 
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
@@ -74,58 +76,6 @@ async fn forgot_password(
 
 	AppResponse::builder()
 		.body(ForgotPasswordResponse)
-		.headers(())
-		.status_code(StatusCode::OK)
-		.build()
-		.into_result()
-}
-
-async fn is_email_valid(
-	AppRequest {
-		request: ProcessedApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
-		database,
-		redis: _,
-		client_ip: _,
-		config,
-	}: AppRequest<'_, IsEmailValidRequest>,
-) -> Result<AppResponse<IsEmailValidRequest>, ErrorType> {
-	info!("Starting: Check for email validity");
-
-	// LOGIC
-
-	AppResponse::builder()
-		.body(IsEmailValidResponse { available: todo!() })
-		.headers(())
-		.status_code(StatusCode::OK)
-		.build()
-		.into_result()
-}
-
-async fn is_username_valid(
-	AppRequest {
-		request: ProcessedApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
-		database,
-		redis: _,
-		client_ip: _,
-		config,
-	}: AppRequest<'_, IsUsernameValidRequest>,
-) -> Result<AppResponse<IsUsernameValidRequest>, ErrorType> {
-	info!("Starting: Check for username validity");
-
-	// LOGIC
-
-	AppResponse::builder()
-		.body(IsUsernameValidResponse { available: todo!() })
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()

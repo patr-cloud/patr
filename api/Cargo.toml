@@ -63,3 +63,4 @@ tracing-log = { workspace = true, features = ["default"] }
 tracing-opentelemetry = { workspace = true, features = ["default"] }
 tracing-subscriber = { workspace = true, features = ["default"] }
 typed-builder = { workspace = true, features = [] }
+woothee = { workspace = true, features = ["default"] }

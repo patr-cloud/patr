@@ -2,7 +2,7 @@ use std::ops::Add;
 
 use argon2::{password_hash::SaltString, Algorithm, PasswordHasher, Version};
 use axum::http::StatusCode;
-use models::{api::auth::*, ErrorType};
+use models::{api::auth::*, ApiRequest, ErrorType};
 use rand::Rng;
 use time::OffsetDateTime;
 
@@ -14,7 +14,7 @@ pub async fn create_account(
 			ProcessedApiRequest {
 				path: CreateAccountPath,
 				query: (),
-				headers: (),
+				headers: CreateAccountRequestHeaders { user_agent },
 				body:
 					CreateAccountRequestProcessed {
 						username,
@@ -25,29 +25,74 @@ pub async fn create_account(
 					},
 			},
 		database,
-		redis: _,
-		client_ip: _,
+		redis,
+		client_ip,
 		config,
 	}: AppRequest<'_, CreateAccountRequest>,
 ) -> Result<AppResponse<CreateAccountRequest>, ErrorType> {
 	info!("Creating account");
 
-	// TODO check if username is available
-	let is_username_available = true;
+	trace!("Checking if username is available");
+	// check if username is available
+	let is_username_available = super::is_username_valid(AppRequest {
+		client_ip,
+		request: ProcessedApiRequest::builder()
+			.headers(IsUsernameValidRequestHeaders {
+				user_agent: user_agent.clone(),
+			})
+			.query(IsUsernameValidQuery {
+				username: username.clone(),
+			})
+			.path(IsUsernameValidPath)
+			.body(IsUsernameValidRequestProcessed)
+			.build(),
+		database,
+		redis,
+		config: config.clone(),
+	})
+	.await?
+	.body
+	.available;
 
-	let is_recovery_method_available = match recovery_method {
+	if !is_username_available {
+		return Err(ErrorType::UsernameUnavailable);
+	}
+
+	match &recovery_method {
 		RecoveryMethod::PhoneNumber {
 			recovery_phone_country_code,
 			recovery_phone_number,
 		} => {
 			// TODO Check if phone is valid
-			true
+			true;
 		}
 		RecoveryMethod::Email { recovery_email } => {
-			// TODO Check if email is valid
-			true
+			// Check if email is valid
+			let is_email_available = super::is_email_valid(AppRequest {
+				client_ip,
+				request: ProcessedApiRequest::builder()
+					.headers(IsEmailValidRequestHeaders {
+						user_agent: user_agent.clone(),
+					})
+					.query(IsEmailValidQuery {
+						email: recovery_email.clone(),
+					})
+					.path(IsEmailValidPath)
+					.body(IsEmailValidRequestProcessed)
+					.build(),
+				database,
+				redis,
+				config: config.clone(),
+			})
+			.await?
+			.body
+			.available;
+
+			if !is_email_available {
+				return Err(ErrorType::EmailUnavailable);
+			}
 		}
-	};
+	}
 
 	let now = OffsetDateTime::now_utc();
 	let otp = rand::thread_rng().gen_range(constants::OTP_RANGE);
@@ -89,8 +134,7 @@ pub async fn create_account(
 				first_name,
 				last_name,
 
-				recovery_email_local,
-				recovery_email_domain_id,
+				recovery_email,
 				recovery_phone_country_code,
 				recovery_phone_number,
 
@@ -107,10 +151,9 @@ pub async fn create_account(
 				$5,
 				$6,
 				$7,
+				
 				$8,
-
-				$9,
-				$10
+				$9
 			);
 		"#,
 		username,
@@ -118,7 +161,6 @@ pub async fn create_account(
 		first_name,
 		last_name,
 		"TODO",
-		Uuid::nil() as _,
 		"TODO",
 		"TODO",
 		hashed_otp,
