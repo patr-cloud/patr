@@ -36,6 +36,14 @@ pub enum ErrorType {
 	Unauthorized,
 	/// The access token (JWT) provided is invalid
 	AuthorizationTokenInvalid,
+	/// The username provided is not available. It is being used by another
+	/// account
+	UsernameUnavailable,
+	/// The email provided is not available. It is being used by another account
+	EmailUnavailable,
+	/// The phone number provided is not available. It is being used by another
+	/// account
+	PhoneUnavailable,
 	/// An internal server error occurred. This should not happen unless there
 	/// is a bug in the server
 	#[serde(with = "serialize_server_error")]
@@ -59,6 +67,9 @@ impl ErrorType {
 			Self::MalformedAccessToken => StatusCode::BAD_REQUEST,
 			Self::Unauthorized => StatusCode::UNAUTHORIZED,
 			Self::AuthorizationTokenInvalid => StatusCode::UNAUTHORIZED,
+			Self::UsernameUnavailable => StatusCode::CONFLICT,
+			Self::EmailUnavailable => StatusCode::CONFLICT,
+			Self::PhoneUnavailable => StatusCode::CONFLICT,
 			Self::InternalServerError(_) => StatusCode::INTERNAL_SERVER_ERROR,
 		}
 	}
@@ -80,6 +91,9 @@ impl ErrorType {
 			Self::MalformedAccessToken => "Your access token is invalid. Please login in again",
 			Self::Unauthorized => "You are not authorized to perform that action",
 			Self::AuthorizationTokenInvalid => "Your access token has expired. Please login again",
+			Self::UsernameUnavailable => "An account already exists with that username",
+			Self::EmailUnavailable => "An account already exists with that email",
+			Self::PhoneUnavailable => "An account already exists with that phone number",
 			Self::InternalServerError(_) => "An internal server error has occured",
 		}
 	}
@@ -124,6 +138,9 @@ impl Clone for ErrorType {
 			Self::MalformedAccessToken => Self::MalformedAccessToken,
 			Self::Unauthorized => Self::Unauthorized,
 			Self::AuthorizationTokenInvalid => Self::AuthorizationTokenInvalid,
+			Self::UsernameUnavailable => Self::UsernameUnavailable,
+			Self::EmailUnavailable => Self::EmailUnavailable,
+			Self::PhoneUnavailable => Self::PhoneUnavailable,
 			Self::InternalServerError(arg0) => {
 				Self::InternalServerError(anyhow::anyhow!(arg0.to_string()))
 			}

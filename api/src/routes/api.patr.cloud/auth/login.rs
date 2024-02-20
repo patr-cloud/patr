@@ -42,13 +42,13 @@ pub async fn login(
 		FROM
 			"user"
 		LEFT JOIN
-			personal_email
+			user_email
 		ON
-			personal_email.user_id = "user".id
+			user_email.user_id = "user".id
 		LEFT JOIN
 			domain
 		ON
-			domain.id = personal_email.domain_id
+			domain.id = user_email.domain_id
 		LEFT JOIN
 			user_phone_number
 		ON
@@ -60,7 +60,7 @@ pub async fn login(
 		WHERE
 			"user".username = $1 OR
 			CONCAT(
-				personal_email.local,
+				user_email.local,
 				'@',
 				domain.name,
 				'.',

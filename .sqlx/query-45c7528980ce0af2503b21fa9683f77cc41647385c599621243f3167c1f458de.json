@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE \"user\" ADD CONSTRAINT user_fk_id_recovery_email_local_recovery_email_domain_id FOREIGN KEY( id, recovery_email_local, recovery_email_domain_id ) REFERENCES user_email( user_id, local, domain_id ) DEFERRABLE INITIALLY IMMEDIATE;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "45c7528980ce0af2503b21fa9683f77cc41647385c599621243f3167c1f458de"
+}
