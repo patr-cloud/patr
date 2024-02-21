@@ -109,6 +109,16 @@ pub async fn initialize_domain_indices(
 
 	query!(
 		r#"
+		ALTER TABLE domain_tld
+		ADD CONSTRAINT domain_tld_pk
+		PRIMARY KEY(tld);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		ALTER TABLE workspace_domain
 			ADD CONSTRAINT workspace_domain_pk PRIMARY KEY(id),
 			ADD CONSTRAINT workspace_domain_uq_id_nameserver_type

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE domain_tld ADD CONSTRAINT domain_tld_pk PRIMARY KEY(tld);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "793769508a5e97505c261a9041129713ce4e345798d7410a8e3ae9564c8c902b"
+}

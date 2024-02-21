@@ -14,9 +14,8 @@ pub async fn initialize_user_sign_up_tables(
 			first_name VARCHAR(100) NOT NULL,
 			last_name VARCHAR(100) NOT NULL,
 			
-			/* Personal email address OR recovery email */
-			recovery_email_local VARCHAR(64),
-			recovery_email_domain_id UUID,
+			/* recovery email OR recovery phone number */
+			recovery_email TEXT,
 			recovery_phone_country_code CHAR(2),
 			recovery_phone_number VARCHAR(15),
 
@@ -91,10 +90,8 @@ pub async fn initialize_user_sign_up_constraints(
 				username NOT LIKE '%-.%'
 			),
 			ADD CONSTRAINT user_to_sign_up_chk_recovery_email_is_lower_case CHECK(
-				recovery_email_local = LOWER(recovery_email_local)
+				recovery_email = LOWER(recovery_email)
 			),
-			ADD CONSTRAINT user_to_sign_up_fk_recovery_email_domain_id
-				FOREIGN KEY(recovery_email_domain_id) REFERENCES personal_domain(id),
 			ADD CONSTRAINT user_to_sign_up_fk_recovery_phone_country_code
 				FOREIGN KEY(recovery_phone_country_code)
 					REFERENCES phone_number_country_code(country_code),
@@ -108,13 +105,11 @@ pub async fn initialize_user_sign_up_constraints(
 			),
 			ADD CONSTRAINT user_to_sign_up_chk_recovery_details CHECK(
 				(
-					recovery_email_local IS NOT NULL AND
-					recovery_email_domain_id IS NOT NULL AND
+					recovery_email IS NOT NULL AND
 					recovery_phone_country_code IS NULL AND
 					recovery_phone_number IS NULL
 				) OR (
-					recovery_email_local IS NULL AND
-					recovery_email_domain_id IS NULL AND
+					recovery_email IS NULL AND
 					recovery_phone_country_code IS NOT NULL AND
 					recovery_phone_number IS NOT NULL
 				)

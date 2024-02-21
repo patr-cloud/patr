@@ -32,27 +32,11 @@ pub async fn is_email_valid(
 	let is_user_exists = query!(
 		r#"
 		SELECT
-			CONCAT(
-				user_email.local,
-				'@',
-				domain.name,
-				'.',
-				domain.tld
-			)
+			*
 		FROM
 			user_email
-		INNER JOIN
-			domain
-		ON
-			user_email.domain_id = domain.id
 		WHERE
-			CONCAT(
-				user_email.local,
-				'@',
-				domain.name,
-				'.',
-				domain.tld
-			) = $1;
+			email = $1;
 		"#,
 		email,
 	)
@@ -65,7 +49,7 @@ pub async fn is_email_valid(
 	let is_user_unverified_exists = query!(
 		r#"
 		SELECT
-			email
+			*
 		FROM
 			user_unverified_email
 		WHERE
@@ -83,7 +67,7 @@ pub async fn is_email_valid(
 	let is_user_signing_up = query!(
 		r#"
 		SELECT
-			recovery_email
+			*
 		FROM
 			user_to_sign_up
 		WHERE

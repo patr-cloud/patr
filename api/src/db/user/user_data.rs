@@ -16,8 +16,7 @@ pub async fn initialize_user_data_tables(
 			last_name VARCHAR(100) NOT NULL,
 			created TIMESTAMPTZ NOT NULL,
 			/* Recovery options */
-			recovery_email_local VARCHAR(64),
-			recovery_email_domain_id UUID,
+			recovery_email TEXT,
 			recovery_phone_country_code CHAR(2),
 			recovery_phone_number VARCHAR(15),
 			workspace_limit INTEGER NOT NULL,
@@ -45,8 +44,7 @@ pub async fn initialize_user_data_indices(
 		ALTER TABLE "user"
 			ADD CONSTRAINT user_pk PRIMARY KEY(id),
 			ADD CONSTRAINT user_uq_username UNIQUE(username),
-			ADD CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id
-				UNIQUE(recovery_email_local, recovery_email_domain_id),
+			ADD CONSTRAINT user_uq_recovery_email UNIQUE(recovery_email),
 			ADD CONSTRAINT user_uq_recovery_phone_country_code_recovery_phone_number
 				UNIQUE(recovery_phone_country_code, recovery_phone_number);
 		"#
@@ -86,15 +84,14 @@ pub async fn initialize_user_data_constraints(
 				username NOT LIKE '%-.%'
 			),
 			ADD CONSTRAINT user_chk_recovery_email_is_lower_case CHECK(
-				recovery_email_local = LOWER(recovery_email_local)
+				recovery_email = LOWER(recovery_email)
 			),
 			ADD CONSTRAINT user_chk_recovery_phone_country_code_is_upper_case CHECK(
 				recovery_phone_country_code = UPPER(recovery_phone_country_code)
 			),
-			ADD CONSTRAINT user_chk_rcvry_eml_or_rcvry_phn_present CHECK(
+			ADD CONSTRAINT user_chk_email_or_phone_present CHECK(
 				(
-					recovery_email_local IS NOT NULL AND
-					recovery_email_domain_id IS NOT NULL
+					recovery_email IS NOT NULL
 				) OR
 				(
 					recovery_phone_country_code IS NOT NULL AND
