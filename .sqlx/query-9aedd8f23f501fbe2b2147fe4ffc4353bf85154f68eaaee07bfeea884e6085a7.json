@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM user_unverified_email WHERE email = $1 AND verification_token_expiry < NOW();",
+  "query": "SELECT * FROM user_unverified_email WHERE email = $1 AND verification_token_expiry > NOW();",
   "describe": {
     "columns": [
       {
@@ -36,5 +36,5 @@
       false
     ]
   },
-  "hash": "7b1b9a4637d4186f7486a37fc624aeab299e51465a86217d72cee4e8b4f74037"
+  "hash": "9aedd8f23f501fbe2b2147fe4ffc4353bf85154f68eaaee07bfeea884e6085a7"
 }

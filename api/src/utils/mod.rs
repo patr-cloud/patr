@@ -22,7 +22,7 @@ pub use self::router_ext::RouterExt;
 /// A list of constants that will be used throughout the application. This is
 /// mostly kept to prevent typos.
 pub mod constants {
-	use std::ops::{Range, RangeInclusive};
+	use std::ops::RangeInclusive;
 
 	use semver::Version;
 
@@ -72,4 +72,9 @@ pub mod constants {
 	/// and the error returned will be the same as an "OTP doesn't exist" error
 	/// to prevent it from leaking old OTPs.
 	pub const OTP_VALIDITY: time::Duration = time::Duration::hours(2);
+
+	/// The default maximum limit for the number of workspaces a user can
+	/// create. If this needs to be increased, the user should open a support
+	/// ticket with the team.
+	pub const DEFAULT_WORKSPACE_LIMIT: i32 = 10;
 }

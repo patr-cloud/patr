@@ -110,3 +110,9 @@ impl<T> IntoIterator for OneOrMore<T> {
 		}
 	}
 }
+
+impl<T> From<T> for OneOrMore<T> {
+	fn from(value: T) -> Self {
+		OneOrMore::One(value)
+	}
+}

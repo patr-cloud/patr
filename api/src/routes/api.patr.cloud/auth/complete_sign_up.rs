@@ -10,65 +10,58 @@ use argon2::{
 };
 use axum::http::StatusCode;
 use jsonwebtoken::EncodingKey;
-use models::{api::auth::*, ErrorType};
+use models::api::auth::{
+	CompleteSignUpPath,
+	CompleteSignUpRequest,
+	CompleteSignUpRequestHeaders,
+	CompleteSignUpRequestProcessed,
+	CompleteSignUpResponse,
+};
 use sqlx::types::ipnetwork::IpNetwork;
 use time::OffsetDateTime;
-use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};
 
 use crate::{models::access_token_data::AccessTokenData, prelude::*};
 
-pub async fn login(
+pub async fn complete_sign_up(
 	AppRequest {
 		request:
 			ProcessedApiRequest {
-				path: LoginPath,
+				path: CompleteSignUpPath,
 				query: (),
-				headers: LoginRequestHeaders { user_agent },
-				body,
+				headers: CompleteSignUpRequestHeaders { user_agent },
+				body: CompleteSignUpRequestProcessed {
+					username,
+					verification_token,
+				},
 			},
 		database,
 		redis: _,
 		client_ip,
 		config,
-	}: AppRequest<'_, LoginRequest>,
-) -> Result<AppResponse<LoginRequest>, ErrorType> {
-	let user_data = query!(
+	}: AppRequest<'_, CompleteSignUpRequest>,
+) -> Result<AppResponse<CompleteSignUpRequest>, ErrorType> {
+	info!("Completing sign up for user: `{username}`");
+
+	let Some(row) = query!(
 		r#"
-		SELECT
-			"user".id,
-			"user".username,
-			"user".password,
-			"user".mfa_secret
-		FROM
-			"user"
-		LEFT JOIN
-			user_email
-		ON
-			user_email.user_id = "user".id
-		LEFT JOIN
-			user_phone_number
-		ON
-			user_phone_number.user_id = "user".id
-		LEFT JOIN
-			phone_number_country_code
-		ON
-			phone_number_country_code.country_code = user_phone_number.country_code
-		WHERE
-			"user".username = $1 OR
-			user_email.email = $1 OR
-			CONCAT(
-				'+',
-				phone_number_country_code.phone_code,
-				user_phone_number.number
-			) = $1;
-		"#,
-		""
+        SELECT
+            *
+        FROM
+            user_to_sign_up
+        WHERE
+            username = $1 AND
+			otp_expiry > NOW();
+        "#,
+		username
 	)
 	.fetch_optional(&mut **database)
 	.await?
-	.ok_or(ErrorType::UserNotFound)?;
+	else {
+		debug!("No row found for that username within the expiry time");
+		return Err(ErrorType::UserNotFound);
+	};
 
-	trace!("Found userId: {}", user_data.id);
+	trace!("Found a row with the given username");
 
 	let success = argon2::Argon2::new_with_secret(
 		config.password_pepper.as_ref(),
@@ -78,68 +71,73 @@ pub async fn login(
 	)
 	.map_err(ErrorType::server_error)?
 	.verify_password(
-		body.password.as_ref(),
-		&PasswordHash::new(&user_data.password).map_err(ErrorType::server_error)?,
+		verification_token.as_ref(),
+		&PasswordHash::new(&row.otp_hash).map_err(ErrorType::server_error)?,
 	)
 	.is_ok();
 
 	if !success {
-		return Err(ErrorType::InvalidPassword);
+		debug!("Verification token hash is invalid");
+		return Err(ErrorType::UserNotFound);
 	}
 
-	trace!("Password hashes match");
+	trace!("Verification token hash is validated");
 
-	if let Some(mfa_secret) = user_data.mfa_secret {
-		trace!("User has MFA secret");
-
-		let Some(mfa_otp) = body.mfa_otp else {
-			return Err(ErrorType::MfaRequired);
-		};
-
-		let totp = TOTP::new(
-			TotpAlgorithm::SHA1,
-			6,
-			1,
-			30,
-			Secret::Encoded(mfa_secret)
-				.to_bytes()
-				.inspect_err(|err| {
-					error!(
-						"Unable to parse MFA secret for userId `{}`: {}",
-						user_data.id,
-						err.to_string()
-					);
-				})
-				.map_err(ErrorType::server_error)?,
-		)
-		.inspect_err(|err| {
-			error!(
-				"Unable to parse TOTP for userId `{}`: {}",
-				user_data.id,
-				err.to_string()
-			);
-		})
-		.map_err(ErrorType::server_error)?;
-
-		let mfa_valid = totp
-			.check_current(&mfa_otp)
-			.inspect_err(|err| {
-				error!(
-					"System time error while checking TOTP for userId `{}`: {}",
-					user_data.id,
-					err.to_string()
-				);
-			})
-			.map_err(ErrorType::server_error)?;
-
-		if !mfa_valid {
-			return Err(ErrorType::MfaOtpInvalid);
-		}
-
-		trace!("User MFA is valid");
-	}
+	// User is valid. Now create a login and send back the credentials
 
 	let now = OffsetDateTime::now_utc();
+	let user_id = Uuid::new_v4();
+
+	query!(
+		r#"
+        INSERT INTO
+            "user"(
+                id,
+                username,
+                password,
+                first_name,
+                last_name,
+                created,
+                recovery_email,
+                recovery_phone_country_code,
+                recovery_phone_number,
+                workspace_limit,
+                password_reset_token,
+                password_reset_token_expiry,
+                password_reset_attempts,
+                mfa_secret
+            )
+        VALUES
+            (
+                $1,
+                $2,
+                $3,
+                $4,
+                $5,
+                $6,
+                $7,
+                $8,
+                $9,
+                $10,
+                NULL,
+                NULL,
+                NULL,
+                NULL
+            );
+        "#,
+		user_id as _,
+		username,
+		row.password,
+		row.first_name,
+		row.last_name,
+		now,
+		row.recovery_email,
+		row.recovery_phone_country_code,
+		row.recovery_phone_number,
+		constants::DEFAULT_WORKSPACE_LIMIT,
+	)
+	.execute(&mut **database)
+	.await?;
 
 	let login_id = Uuid::new_v4();
 
@@ -194,19 +192,19 @@ pub async fn login(
 
 	query!(
 		r#"
-		INSERT INTO
-			user_login(
-				login_id,
-				user_id,
-				login_type,
-				created
-			)
-		VALUES
-			($1, $2, 'web_login', $3);
-		"#,
+        INSERT INTO
+            user_login(
+                login_id,
+                user_id,
+                login_type,
+                created
+            )
+        VALUES
+            ($1, $2, 'web_login', $3);
+        "#,
 		login_id as _,
-		user_data.id,
-		now,
+		user_id as _,
+		now
 	)
 	.execute(&mut **database)
 	.await?;
@@ -251,7 +249,7 @@ pub async fn login(
 			);
 		"#,
 		login_id as _,
-		user_data.id,
+		user_id as _,
 		hashed_refresh_token,
 		refresh_token_expiry,
 		now,
@@ -276,7 +274,6 @@ pub async fn login(
 		iat: now,
 		jti: Uuid::now_v1(),
 	};
-
 	let access_token = jsonwebtoken::encode(
 		&Default::default(),
 		&access_token,
@@ -287,12 +284,12 @@ pub async fn login(
 	let refresh_token = format!("{login_id}.{refresh_token}");
 
 	AppResponse::builder()
-		.body(LoginResponse {
+		.body(CompleteSignUpResponse {
 			access_token,
 			refresh_token,
 		})
 		.headers(())
-		.status_code(StatusCode::ACCEPTED)
+		.status_code(StatusCode::OK)
 		.build()
 		.into_result()
 }

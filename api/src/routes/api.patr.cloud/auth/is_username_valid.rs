@@ -16,7 +16,7 @@ pub async fn is_username_valid(
 			ProcessedApiRequest {
 				path: IsUsernameValidPath,
 				query: IsUsernameValidQuery { username },
-				headers: IsUsernameValidRequestHeaders { user_agent },
+				headers: IsUsernameValidRequestHeaders { user_agent: _ },
 				body: IsUsernameValidRequestProcessed,
 			},
 		database,
@@ -27,7 +27,8 @@ pub async fn is_username_valid(
 ) -> Result<AppResponse<IsUsernameValidRequest>, ErrorType> {
 	info!("Checking for validity of username: `{username}`");
 
-	// TODO make sure the user_agent is a browser
+	// User agent being a browser is expected to be checked in the
+	// UserAgentValidationLayer
 
 	let is_user_exists = query!(
 		r#"
@@ -54,7 +55,7 @@ pub async fn is_username_valid(
 			user_to_sign_up
 		WHERE
 			username = $1 AND
-			otp_expiry < NOW();
+			otp_expiry > NOW();
 		"#,
 		username,
 	)

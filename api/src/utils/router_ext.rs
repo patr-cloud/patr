@@ -18,7 +18,13 @@ use tower::{
 	ServiceBuilder,
 };
 
-use super::layers::{AuthenticationLayer, ClientType, PreprocessLayer, RequestParserLayer};
+use super::layers::{
+	AuthenticationLayer,
+	ClientType,
+	PreprocessLayer,
+	RequestParserLayer,
+	UserAgentValidationLayer,
+};
 use crate::{
 	prelude::*,
 	utils::layers::{
@@ -97,6 +103,7 @@ where
 						.layer(DataStoreConnectionLayer::<E>::with_state(state.clone()))
 						// .layer(todo!("Add rate limiter value updater middleware here"))
 						.layer(PreprocessLayer::new())
+						.layer(UserAgentValidationLayer::new())
 						.layer(EndpointLayer::new(handler.clone())),
 				)),
 			)
@@ -107,7 +114,7 @@ where
 			));
 
 		// Setup the layers for the backend
-		if <E as ApiEndpoint>::API_ALLOWED {
+		if <E as ApiEndpoint>::API_ALLOWED || cfg!(debug_assertions) {
 			self.route(
 				<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH,
 				MethodRouter::<S>::new()
@@ -122,6 +129,7 @@ where
 							.layer(DataStoreConnectionLayer::with_state(state.clone()))
 							// .layer(todo!("Add rate limiter value updater middleware here"))
 							.layer(PreprocessLayer::new())
+							.layer(UserAgentValidationLayer::new())
 							.layer(EndpointLayer::new(handler)),
 					),
 			)
@@ -166,6 +174,7 @@ where
 						// .layer(todo!("Add rate limiter checker middleware here")),
 						.layer(DataStoreConnectionLayer::with_state(state.clone()))
 						.layer(PreprocessLayer::new())
+						.layer(UserAgentValidationLayer::new())
 						.layer(AuthenticationLayer::new(ClientType::WebDashboard))
 						// .layer(todo!("Add rate limiter value updater middleware here"))
 						// .layer(todo!("Add audit logger middleware here"))
@@ -179,7 +188,7 @@ where
 			));
 
 		// Setup the layers for the backend
-		if <E as ApiEndpoint>::API_ALLOWED {
+		if <E as ApiEndpoint>::API_ALLOWED || cfg!(debug_assertions) {
 			self.route(
 				<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH,
 				MethodRouter::<S>::new()
@@ -193,6 +202,7 @@ where
 							.layer(RequestParserLayer::new())
 							.layer(DataStoreConnectionLayer::with_state(state.clone()))
 							.layer(PreprocessLayer::new())
+							.layer(UserAgentValidationLayer::new())
 							.layer(AuthenticationLayer::new(ClientType::ApiToken))
 							// .layer(todo!("Add rate limiter value updater middleware here"))
 							// .layer(todo!("Add audit logger middleware here"))

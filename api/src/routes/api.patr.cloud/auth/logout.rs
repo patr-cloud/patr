@@ -11,7 +11,7 @@ pub async fn logout(
 				query: (),
 				headers: LogoutRequestHeaders {
 					refresh_token,
-					user_agent,
+					user_agent: _,
 				},
 				body,
 			},
@@ -22,7 +22,10 @@ pub async fn logout(
 		config,
 	}: AuthenticatedAppRequest<'_, LogoutRequest>,
 ) -> Result<AppResponse<LogoutRequest>, ErrorType> {
-	info!("Recieved logout request");
+	info!("Logging out user: {}", user_data.id);
+
+	// User agent being a browser is expected to be checked in the
+	// UserAgentValidationLayer
 
 	// LOGIC
 

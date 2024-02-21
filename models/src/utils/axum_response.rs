@@ -27,11 +27,18 @@ where
 	T: Serialize + DeserializeOwned,
 {
 	fn into_axum_response(self) -> Response {
-		Json(ApiSuccessResponseBody {
-			success: True,
-			response: self,
-		})
-		.into_response()
+		match serde_json::to_value(self).unwrap() {
+			serde_json::Value::Null => Json(ApiSuccessResponseBody {
+				success: True,
+				response: (),
+			})
+			.into_response(),
+			other => Json(ApiSuccessResponseBody {
+				success: True,
+				response: other,
+			})
+			.into_response(),
+		}
 	}
 }
 
