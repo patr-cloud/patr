@@ -2,7 +2,7 @@ use std::ops::Add;
 
 use argon2::{password_hash::SaltString, Algorithm, PasswordHasher, Version};
 use axum::http::StatusCode;
-use models::{api::auth::*, ApiRequest, ErrorType};
+use models::{api::auth::*, ErrorType};
 use rand::Rng;
 use time::OffsetDateTime;
 
@@ -60,11 +60,10 @@ pub async fn create_account(
 
 	match &recovery_method {
 		RecoveryMethod::PhoneNumber {
-			recovery_phone_country_code,
-			recovery_phone_number,
+			recovery_phone_country_code: _,
+			recovery_phone_number: _,
 		} => {
-			// TODO Check if phone is valid
-			true;
+			todo!("Check if phone is valid");
 		}
 		RecoveryMethod::Email { recovery_email } => {
 			// Check if email is valid
@@ -125,6 +124,28 @@ pub async fn create_account(
 	.map_err(ErrorType::server_error)?
 	.to_string();
 
+	let recovery_email;
+	let recovery_phone_country_code;
+	let recovery_phone_number;
+
+	match recovery_method {
+		RecoveryMethod::PhoneNumber {
+			recovery_phone_country_code: country_code,
+			recovery_phone_number: number,
+		} => {
+			recovery_email = None;
+			recovery_phone_country_code = Some(country_code);
+			recovery_phone_number = Some(number);
+		}
+		RecoveryMethod::Email {
+			recovery_email: email,
+		} => {
+			recovery_email = Some(email);
+			recovery_phone_country_code = None;
+			recovery_phone_number = None;
+		}
+	}
+
 	query!(
 		r#"
 		INSERT INTO
@@ -160,14 +181,16 @@ pub async fn create_account(
 		hashed_password,
 		first_name,
 		last_name,
-		"TODO",
-		"TODO",
-		"TODO",
+		recovery_email,
+		recovery_phone_country_code,
+		recovery_phone_number,
 		hashed_otp,
 		otp_expiry,
 	)
 	.execute(&mut **database)
 	.await?;
+
+	// TODO send OTP via email
 
 	AppResponse::builder()
 		.body(CreateAccountResponse)

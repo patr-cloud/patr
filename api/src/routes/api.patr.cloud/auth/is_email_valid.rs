@@ -16,7 +16,7 @@ pub async fn is_email_valid(
 			ProcessedApiRequest {
 				path: IsEmailValidPath,
 				query: IsEmailValidQuery { email },
-				headers: IsEmailValidRequestHeaders { user_agent },
+				headers: IsEmailValidRequestHeaders { user_agent: _ },
 				body: IsEmailValidRequestProcessed,
 			},
 		database,
@@ -27,7 +27,8 @@ pub async fn is_email_valid(
 ) -> Result<AppResponse<IsEmailValidRequest>, ErrorType> {
 	info!("Checking for validity of Email: `{email}`");
 
-	// TODO make sure the user_agent is a browser
+	// User agent being a browser is expected to be checked in the
+	// UserAgentValidationLayer
 
 	let is_user_exists = query!(
 		r#"
@@ -54,7 +55,7 @@ pub async fn is_email_valid(
 			user_unverified_email
 		WHERE
 			email = $1 AND
-			verification_token_expiry < NOW();
+			verification_token_expiry > NOW();
 		"#,
 		email,
 	)
@@ -72,7 +73,7 @@ pub async fn is_email_valid(
 			user_to_sign_up
 		WHERE
 			recovery_email = $1 AND
-			otp_expiry < NOW();
+			otp_expiry > NOW();
 		"#,
 		email,
 	)

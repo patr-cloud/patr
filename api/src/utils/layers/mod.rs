@@ -5,6 +5,7 @@ mod endpoint_handler;
 mod login_id_manager;
 mod preprocess_handler;
 mod request_parser;
+mod user_agent_validation_layer;
 
 pub use self::{
 	auth_endpoint_handler::*,
@@ -14,4 +15,5 @@ pub use self::{
 	login_id_manager::*,
 	preprocess_handler::*,
 	request_parser::*,
+	user_agent_validation_layer::*,
 };

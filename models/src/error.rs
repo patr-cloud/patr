@@ -8,8 +8,7 @@ use axum::http::StatusCode;
 use serde::{Deserialize, Serialize};
 
 /// A list of all the possible errors that can be returned by the API
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug)]
 pub enum ErrorType {
 	/// The email provided is invalid
 	InvalidEmail,
@@ -46,7 +45,6 @@ pub enum ErrorType {
 	PhoneUnavailable,
 	/// An internal server error occurred. This should not happen unless there
 	/// is a bug in the server
-	#[serde(with = "serialize_server_error")]
 	InternalServerError(anyhow::Error),
 }
 
@@ -154,30 +152,57 @@ impl Display for ErrorType {
 	}
 }
 
-/// A helper module to serialize and deserialize the internal server error
-/// variant of the [`super::ErrorType`] enum
-mod serialize_server_error {
-	use anyhow::Error;
-	use serde::{Deserializer, Serializer};
-
-	/// Converts an
-	/// [`ErrorType::InternalServerError`][super::ErrorType::InternalServerError]
-	/// into an error field.
-	pub fn serialize<S>(_: &Error, serializer: S) -> Result<S::Ok, S::Error>
+impl Serialize for ErrorType {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where
-		S: Serializer,
+		S: serde::Serializer,
 	{
-		serializer.serialize_str("internalServerError")
+		match self {
+			ErrorType::InvalidEmail => serializer.serialize_str("invalidEmail"),
+			ErrorType::UserNotFound => serializer.serialize_str("userNotFound"),
+			ErrorType::InvalidPassword => serializer.serialize_str("invalidPassword"),
+			ErrorType::MfaRequired => serializer.serialize_str("mfaRequired"),
+			ErrorType::MfaOtpInvalid => serializer.serialize_str("mfaOtpInvalid"),
+			ErrorType::WrongParameters => serializer.serialize_str("wrongParameters"),
+			ErrorType::MalformedApiToken => serializer.serialize_str("malformedApiToken"),
+			ErrorType::DisallowedIpAddressForApiToken => {
+				serializer.serialize_str("disallowedIpAddressForApiToken")
+			}
+			ErrorType::MalformedAccessToken => serializer.serialize_str("malformedAccessToken"),
+			ErrorType::Unauthorized => serializer.serialize_str("unauthorized"),
+			ErrorType::AuthorizationTokenInvalid => {
+				serializer.serialize_str("authorizationTokenInvalid")
+			}
+			ErrorType::UsernameUnavailable => serializer.serialize_str("usernameUnavailable"),
+			ErrorType::EmailUnavailable => serializer.serialize_str("emailUnavailable"),
+			ErrorType::PhoneUnavailable => serializer.serialize_str("phoneUnavailable"),
+			ErrorType::InternalServerError(_) => serializer.serialize_str("internalServerError"),
+		}
 	}
+}
 
-	/// Converts a given error field into an internal server error. Since the
-	/// module is only used on the
-	/// [`ErrorType::InternalServerError`][super::ErrorType::InternalServerError]
-	/// variant, this function will always return an internal server error.
-	pub fn deserialize<'de, D>(_: D) -> Result<anyhow::Error, D::Error>
+impl<'de> Deserialize<'de> for ErrorType {
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
 	where
-		D: Deserializer<'de>,
+		D: serde::Deserializer<'de>,
 	{
-		Ok(Error::msg("internalServerError"))
+		let string = String::deserialize(deserializer)?;
+		Ok(match string.as_str() {
+			"invalidEmail" => ErrorType::InvalidEmail,
+			"userNotFound" => ErrorType::UserNotFound,
+			"invalidPassword" => ErrorType::InvalidPassword,
+			"mfaRequired" => ErrorType::MfaRequired,
+			"mfaOtpInvalid" => ErrorType::MfaOtpInvalid,
+			"wrongParameters" => ErrorType::WrongParameters,
+			"malformedApiToken" => ErrorType::MalformedApiToken,
+			"disallowedIpAddressForApiToken" => ErrorType::DisallowedIpAddressForApiToken,
+			"malformedAccessToken" => ErrorType::MalformedAccessToken,
+			"unauthorized" => ErrorType::Unauthorized,
+			"authorizationTokenInvalid" => ErrorType::AuthorizationTokenInvalid,
+			"usernameUnavailable" => ErrorType::UsernameUnavailable,
+			"emailUnavailable" => ErrorType::EmailUnavailable,
+			"phoneUnavailable" => ErrorType::PhoneUnavailable,
+			unknown => ErrorType::InternalServerError(anyhow::anyhow!(unknown.to_owned())),
+		})
 	}
 }

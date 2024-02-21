@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM user_to_sign_up WHERE recovery_email = $1 AND otp_expiry < NOW();",
+  "query": "SELECT * FROM user_to_sign_up WHERE recovery_email = $1 AND otp_expiry > NOW();",
   "describe": {
     "columns": [
       {
@@ -66,5 +66,5 @@
       false
     ]
   },
-  "hash": "2ed4eada2f0edf4dee77b0e11cf58d3c050fcfa6a9f3e8f3f39d2cd60182b602"
+  "hash": "e7025fe160ebebd9bf2d179c556d47e6ef6d301cf3e119c21c5dc3d703fa95dd"
 }

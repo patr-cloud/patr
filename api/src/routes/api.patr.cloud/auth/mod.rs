@@ -3,13 +3,21 @@ use models::{api::auth::*, ErrorType};
 
 use crate::prelude::*;
 
+mod complete_sign_up;
 mod create_account;
 mod is_email_valid;
 mod is_username_valid;
 mod login;
 mod logout;
 
-use self::{create_account::*, is_email_valid::*, is_username_valid::*, login::*, logout::*};
+use self::{
+	complete_sign_up::*,
+	create_account::*,
+	is_email_valid::*,
+	is_username_valid::*,
+	login::*,
+	logout::*,
+};
 
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
@@ -76,35 +84,6 @@ async fn forgot_password(
 
 	AppResponse::builder()
 		.body(ForgotPasswordResponse)
-		.headers(())
-		.status_code(StatusCode::OK)
-		.build()
-		.into_result()
-}
-
-async fn complete_sign_up(
-	AppRequest {
-		request: ProcessedApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
-		database,
-		redis: _,
-		client_ip: _,
-		config,
-	}: AppRequest<'_, CompleteSignUpRequest>,
-) -> Result<AppResponse<CompleteSignUpRequest>, ErrorType> {
-	info!("Starting: Complete sign up");
-
-	// LOGIC
-
-	AppResponse::builder()
-		.body(CompleteSignUpResponse {
-			access_token: todo!(),
-			refresh_token: todo!(),
-		})
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
