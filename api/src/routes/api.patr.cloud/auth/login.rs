@@ -46,10 +46,6 @@ pub async fn login(
 		ON
 			user_email.user_id = "user".id
 		LEFT JOIN
-			domain
-		ON
-			domain.id = user_email.domain_id
-		LEFT JOIN
 			user_phone_number
 		ON
 			user_phone_number.user_id = "user".id
@@ -59,13 +55,7 @@ pub async fn login(
 			phone_number_country_code.country_code = user_phone_number.country_code
 		WHERE
 			"user".username = $1 OR
-			CONCAT(
-				user_email.local,
-				'@',
-				domain.name,
-				'.',
-				domain.tld
-			) = $1 OR
+			user_email.email = $1 OR
 			CONCAT(
 				'+',
 				phone_number_country_code.phone_code,
