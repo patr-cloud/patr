@@ -42,7 +42,7 @@ pub async fn complete_sign_up(
 ) -> Result<AppResponse<CompleteSignUpRequest>, ErrorType> {
 	info!("Completing sign up for user: `{username}`");
 
-	let Some(row) = query!(
+	let row = query!(
 		r#"
         SELECT
             *
@@ -56,10 +56,7 @@ pub async fn complete_sign_up(
 	)
 	.fetch_optional(&mut **database)
 	.await?
-	else {
-		debug!("No row found for that username within the expiry time");
-		return Err(ErrorType::UserNotFound);
-	};
+	.ok_or(ErrorType::UserNotFound)?;
 
 	trace!("Found a row with the given username");
 

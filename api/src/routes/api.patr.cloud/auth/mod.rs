@@ -7,6 +7,7 @@ mod complete_sign_up;
 mod create_account;
 mod is_email_valid;
 mod is_username_valid;
+mod list_recovery_options;
 mod login;
 mod logout;
 
@@ -15,6 +16,7 @@ use self::{
 	create_account::*,
 	is_email_valid::*,
 	is_username_valid::*,
+	list_recovery_options::*,
 	login::*,
 	logout::*,
 };
@@ -84,35 +86,6 @@ async fn forgot_password(
 
 	AppResponse::builder()
 		.body(ForgotPasswordResponse)
-		.headers(())
-		.status_code(StatusCode::OK)
-		.build()
-		.into_result()
-}
-
-async fn list_recovery_options(
-	AppRequest {
-		request: ProcessedApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
-		database,
-		redis: _,
-		client_ip: _,
-		config,
-	}: AppRequest<'_, ListRecoveryOptionsRequest>,
-) -> Result<AppResponse<ListRecoveryOptionsRequest>, ErrorType> {
-	info!("Starting: List recovery options");
-
-	// LOGIC
-
-	AppResponse::builder()
-		.body(ListRecoveryOptionsResponse {
-			recovery_phone_number: todo!(),
-			recovery_email: todo!(),
-		})
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
