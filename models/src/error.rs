@@ -30,6 +30,8 @@ pub enum ErrorType {
 	DisallowedIpAddressForApiToken,
 	/// The access token (JWT) provided is malformed
 	MalformedAccessToken,
+	/// The refresh token provided is malformed
+	MalformedRefreshToken,
 	/// The authentication token provided is not authorized to perform the
 	/// requested action
 	Unauthorized,
@@ -63,6 +65,7 @@ impl ErrorType {
 			Self::MalformedApiToken => StatusCode::BAD_REQUEST,
 			Self::DisallowedIpAddressForApiToken => StatusCode::UNAUTHORIZED,
 			Self::MalformedAccessToken => StatusCode::BAD_REQUEST,
+			Self::MalformedRefreshToken => StatusCode::BAD_REQUEST,
 			Self::Unauthorized => StatusCode::UNAUTHORIZED,
 			Self::AuthorizationTokenInvalid => StatusCode::UNAUTHORIZED,
 			Self::UsernameUnavailable => StatusCode::CONFLICT,
@@ -86,7 +89,8 @@ impl ErrorType {
 			Self::DisallowedIpAddressForApiToken => {
 				"The API token provided is not allowed from this IP address"
 			}
-			Self::MalformedAccessToken => "Your access token is invalid. Please login in again",
+			Self::MalformedAccessToken => "Your access token is invalid. Please login again",
+			Self::MalformedRefreshToken => "Your refresh token is invalid. Please login again",
 			Self::Unauthorized => "You are not authorized to perform that action",
 			Self::AuthorizationTokenInvalid => "Your access token has expired. Please login again",
 			Self::UsernameUnavailable => "An account already exists with that username",
@@ -134,6 +138,7 @@ impl Clone for ErrorType {
 			Self::MalformedApiToken => Self::MalformedApiToken,
 			Self::DisallowedIpAddressForApiToken => Self::DisallowedIpAddressForApiToken,
 			Self::MalformedAccessToken => Self::MalformedAccessToken,
+			Self::MalformedRefreshToken => Self::MalformedRefreshToken,
 			Self::Unauthorized => Self::Unauthorized,
 			Self::AuthorizationTokenInvalid => Self::AuthorizationTokenInvalid,
 			Self::UsernameUnavailable => Self::UsernameUnavailable,
@@ -158,25 +163,26 @@ impl Serialize for ErrorType {
 		S: serde::Serializer,
 	{
 		match self {
-			ErrorType::InvalidEmail => serializer.serialize_str("invalidEmail"),
-			ErrorType::UserNotFound => serializer.serialize_str("userNotFound"),
-			ErrorType::InvalidPassword => serializer.serialize_str("invalidPassword"),
-			ErrorType::MfaRequired => serializer.serialize_str("mfaRequired"),
-			ErrorType::MfaOtpInvalid => serializer.serialize_str("mfaOtpInvalid"),
-			ErrorType::WrongParameters => serializer.serialize_str("wrongParameters"),
-			ErrorType::MalformedApiToken => serializer.serialize_str("malformedApiToken"),
-			ErrorType::DisallowedIpAddressForApiToken => {
+			Self::InvalidEmail => serializer.serialize_str("invalidEmail"),
+			Self::UserNotFound => serializer.serialize_str("userNotFound"),
+			Self::InvalidPassword => serializer.serialize_str("invalidPassword"),
+			Self::MfaRequired => serializer.serialize_str("mfaRequired"),
+			Self::MfaOtpInvalid => serializer.serialize_str("mfaOtpInvalid"),
+			Self::WrongParameters => serializer.serialize_str("wrongParameters"),
+			Self::MalformedApiToken => serializer.serialize_str("malformedApiToken"),
+			Self::DisallowedIpAddressForApiToken => {
 				serializer.serialize_str("disallowedIpAddressForApiToken")
 			}
-			ErrorType::MalformedAccessToken => serializer.serialize_str("malformedAccessToken"),
-			ErrorType::Unauthorized => serializer.serialize_str("unauthorized"),
-			ErrorType::AuthorizationTokenInvalid => {
+			Self::MalformedAccessToken => serializer.serialize_str("malformedAccessToken"),
+			Self::MalformedRefreshToken => serializer.serialize_str("malformedRefreshToken"),
+			Self::Unauthorized => serializer.serialize_str("unauthorized"),
+			Self::AuthorizationTokenInvalid => {
 				serializer.serialize_str("authorizationTokenInvalid")
 			}
-			ErrorType::UsernameUnavailable => serializer.serialize_str("usernameUnavailable"),
-			ErrorType::EmailUnavailable => serializer.serialize_str("emailUnavailable"),
-			ErrorType::PhoneUnavailable => serializer.serialize_str("phoneUnavailable"),
-			ErrorType::InternalServerError(_) => serializer.serialize_str("internalServerError"),
+			Self::UsernameUnavailable => serializer.serialize_str("usernameUnavailable"),
+			Self::EmailUnavailable => serializer.serialize_str("emailUnavailable"),
+			Self::PhoneUnavailable => serializer.serialize_str("phoneUnavailable"),
+			Self::InternalServerError(_) => serializer.serialize_str("internalServerError"),
 		}
 	}
 }
@@ -188,21 +194,22 @@ impl<'de> Deserialize<'de> for ErrorType {
 	{
 		let string = String::deserialize(deserializer)?;
 		Ok(match string.as_str() {
-			"invalidEmail" => ErrorType::InvalidEmail,
-			"userNotFound" => ErrorType::UserNotFound,
-			"invalidPassword" => ErrorType::InvalidPassword,
-			"mfaRequired" => ErrorType::MfaRequired,
-			"mfaOtpInvalid" => ErrorType::MfaOtpInvalid,
-			"wrongParameters" => ErrorType::WrongParameters,
-			"malformedApiToken" => ErrorType::MalformedApiToken,
-			"disallowedIpAddressForApiToken" => ErrorType::DisallowedIpAddressForApiToken,
-			"malformedAccessToken" => ErrorType::MalformedAccessToken,
-			"unauthorized" => ErrorType::Unauthorized,
-			"authorizationTokenInvalid" => ErrorType::AuthorizationTokenInvalid,
-			"usernameUnavailable" => ErrorType::UsernameUnavailable,
-			"emailUnavailable" => ErrorType::EmailUnavailable,
-			"phoneUnavailable" => ErrorType::PhoneUnavailable,
-			unknown => ErrorType::InternalServerError(anyhow::anyhow!(unknown.to_owned())),
+			"invalidEmail" => Self::InvalidEmail,
+			"userNotFound" => Self::UserNotFound,
+			"invalidPassword" => Self::InvalidPassword,
+			"mfaRequired" => Self::MfaRequired,
+			"mfaOtpInvalid" => Self::MfaOtpInvalid,
+			"wrongParameters" => Self::WrongParameters,
+			"malformedApiToken" => Self::MalformedApiToken,
+			"disallowedIpAddressForApiToken" => Self::DisallowedIpAddressForApiToken,
+			"malformedAccessToken" => Self::MalformedAccessToken,
+			"malformedRefreshToken" => Self::MalformedRefreshToken,
+			"unauthorized" => Self::Unauthorized,
+			"authorizationTokenInvalid" => Self::AuthorizationTokenInvalid,
+			"usernameUnavailable" => Self::UsernameUnavailable,
+			"emailUnavailable" => Self::EmailUnavailable,
+			"phoneUnavailable" => Self::PhoneUnavailable,
+			unknown => Self::InternalServerError(anyhow::anyhow!(unknown.to_owned())),
 		})
 	}
 }

@@ -10,6 +10,7 @@ mod is_username_valid;
 mod list_recovery_options;
 mod login;
 mod logout;
+mod renew_access_token;
 
 use self::{
 	complete_sign_up::*,
@@ -19,6 +20,7 @@ use self::{
 	list_recovery_options::*,
 	login::*,
 	logout::*,
+	renew_access_token::*,
 };
 
 #[instrument(skip(state))]
@@ -36,34 +38,6 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.mount_endpoint(resend_otp, state)
 		.mount_endpoint(reset_password, state)
 		.with_state(state.clone())
-}
-
-async fn renew_access_token(
-	AppRequest {
-		request: ProcessedApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
-		database,
-		redis: _,
-		client_ip: _,
-		config,
-	}: AppRequest<'_, RenewAccessTokenRequest>,
-) -> Result<AppResponse<RenewAccessTokenRequest>, ErrorType> {
-	info!("Starting: Create account");
-
-	// LOGIC
-
-	AppResponse::builder()
-		.body(RenewAccessTokenResponse {
-			access_token: todo!(),
-		})
-		.headers(())
-		.status_code(StatusCode::OK)
-		.build()
-		.into_result()
 }
 
 async fn forgot_password(
