@@ -25,7 +25,7 @@ pub fn SkeletonDeploymentCard(
 
 			<div class="fr-fs-fs full-width my-auto py-xxs f-wrap">
 				{
-					vec![1, 2, 3, 4, 5, 6].into_iter().map(|i| view! {
+					[1, 2, 3, 4, 5, 6].into_iter().map(|_| view! {
 						<div class="half-width p-xxs">
 							<Skeleton class="full-width skeleton-div-sm" />
 						</div>

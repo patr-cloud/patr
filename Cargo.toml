@@ -25,7 +25,7 @@ base64 = { version = "0.21", default-features = false }
 clap = { version = "4", default-features = false }
 comfy-table = { version = "7", default-features = false }
 components = { path = "components", default-features = false }
-config = { version = "0.13", default-features = false }
+config = { version = "0.14", default-features = false }
 console_error_panic_hook = { version = "0.1", default-features = false }
 either = { version = "1", default-features = false }
 futures = { version = "0.3", default-features = false }
@@ -87,8 +87,8 @@ uuid = { version = "1", default-features = false }
 wasm-bindgen = { version = "0.2", default-features = false }
 wasm-logger = { version = "0.2", default-features = false }
 web-sys = { version = "0.3", default-features = false }
-worker = { version = "0.0.18", default-features = false }
 woothee = { version = "0.13", default-features = false }
+worker = { version = "0.0.18", default-features = false }
 
 [workspace.dev-dependencies]
 k8s-openapi = { features = ["v1_29"] }
