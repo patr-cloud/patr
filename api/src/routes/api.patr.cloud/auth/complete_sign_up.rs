@@ -286,7 +286,7 @@ pub async fn complete_sign_up(
 			refresh_token,
 		})
 		.headers(())
-		.status_code(StatusCode::OK)
+		.status_code(StatusCode::ACCEPTED)
 		.build()
 		.into_result()
 }

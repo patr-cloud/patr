@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE \"user\" SET password_reset_attempts = password_reset_attempts + 1 WHERE id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f78568cdd577d08d90cb4965b36803380001d97917fc6eaf35f1b12bc6eb9a54"
+}

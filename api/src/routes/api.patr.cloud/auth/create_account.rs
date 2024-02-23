@@ -94,7 +94,9 @@ pub async fn create_account(
 	}
 
 	let now = OffsetDateTime::now_utc();
-	let otp = rand::thread_rng().gen_range(constants::OTP_RANGE);
+	let otp = rand::thread_rng()
+		.gen_range(constants::OTP_RANGE)
+		.to_string();
 	let hashed_otp = argon2::Argon2::new_with_secret(
 		config.password_pepper.as_ref(),
 		Algorithm::Argon2id,
@@ -103,7 +105,7 @@ pub async fn create_account(
 	)
 	.map_err(ErrorType::server_error)?
 	.hash_password(
-		otp.to_string().as_bytes(),
+		otp.as_bytes(),
 		SaltString::generate(&mut rand::thread_rng()).as_salt(),
 	)
 	.map_err(ErrorType::server_error)?

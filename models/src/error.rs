@@ -45,6 +45,8 @@ pub enum ErrorType {
 	/// The phone number provided is not available. It is being used by another
 	/// account
 	PhoneUnavailable,
+	/// The reset token used to reset the given user's password is invalid.
+	InvalidPasswordResetToken,
 	/// An internal server error occurred. This should not happen unless there
 	/// is a bug in the server
 	InternalServerError(anyhow::Error),
@@ -71,6 +73,7 @@ impl ErrorType {
 			Self::UsernameUnavailable => StatusCode::CONFLICT,
 			Self::EmailUnavailable => StatusCode::CONFLICT,
 			Self::PhoneUnavailable => StatusCode::CONFLICT,
+			Self::InvalidPasswordResetToken => StatusCode::BAD_REQUEST,
 			Self::InternalServerError(_) => StatusCode::INTERNAL_SERVER_ERROR,
 		}
 	}
@@ -96,6 +99,9 @@ impl ErrorType {
 			Self::UsernameUnavailable => "An account already exists with that username",
 			Self::EmailUnavailable => "An account already exists with that email",
 			Self::PhoneUnavailable => "An account already exists with that phone number",
+			Self::InvalidPasswordResetToken => {
+				"The token provided to reset your password is not valid"
+			}
 			Self::InternalServerError(_) => "An internal server error has occured",
 		}
 	}
@@ -144,6 +150,7 @@ impl Clone for ErrorType {
 			Self::UsernameUnavailable => Self::UsernameUnavailable,
 			Self::EmailUnavailable => Self::EmailUnavailable,
 			Self::PhoneUnavailable => Self::PhoneUnavailable,
+			Self::InvalidPasswordResetToken => Self::InvalidPasswordResetToken,
 			Self::InternalServerError(arg0) => {
 				Self::InternalServerError(anyhow::anyhow!(arg0.to_string()))
 			}
@@ -182,6 +189,7 @@ impl Serialize for ErrorType {
 			Self::UsernameUnavailable => serializer.serialize_str("usernameUnavailable"),
 			Self::EmailUnavailable => serializer.serialize_str("emailUnavailable"),
 			Self::PhoneUnavailable => serializer.serialize_str("phoneUnavailable"),
+			Self::InvalidPasswordResetToken => serializer.serialize_str("invalidResetToken"),
 			Self::InternalServerError(_) => serializer.serialize_str("internalServerError"),
 		}
 	}
@@ -209,6 +217,7 @@ impl<'de> Deserialize<'de> for ErrorType {
 			"usernameUnavailable" => Self::UsernameUnavailable,
 			"emailUnavailable" => Self::EmailUnavailable,
 			"phoneUnavailable" => Self::PhoneUnavailable,
+			"invalidResetToken" => Self::InvalidPasswordResetToken,
 			unknown => Self::InternalServerError(anyhow::anyhow!(unknown.to_owned())),
 		})
 	}

@@ -55,7 +55,7 @@ pub async fn list_recovery_options(
 				user_phone_number.number
 			) = $1;
 		"#,
-		""
+		user_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?

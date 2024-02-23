@@ -24,7 +24,11 @@ pub async fn login(
 				path: LoginPath,
 				query: (),
 				headers: LoginRequestHeaders { user_agent },
-				body,
+				body: LoginRequestProcessed {
+					user_id,
+					password,
+					mfa_otp,
+				},
 			},
 		database,
 		redis: _,
@@ -62,7 +66,7 @@ pub async fn login(
 				user_phone_number.number
 			) = $1;
 		"#,
-		""
+		user_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -78,7 +82,7 @@ pub async fn login(
 	)
 	.map_err(ErrorType::server_error)?
 	.verify_password(
-		body.password.as_ref(),
+		password.as_ref(),
 		&PasswordHash::new(&user_data.password).map_err(ErrorType::server_error)?,
 	)
 	.is_ok();
@@ -92,7 +96,7 @@ pub async fn login(
 	if let Some(mfa_secret) = user_data.mfa_secret {
 		trace!("User has MFA secret");
 
-		let Some(mfa_otp) = body.mfa_otp else {
+		let Some(mfa_otp) = mfa_otp else {
 			return Err(ErrorType::MfaRequired);
 		};
 
