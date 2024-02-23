@@ -58,7 +58,8 @@ pub async fn renew_access_token(
 	let row = query!(
 		r#"
         SELECT
-            *
+            token_expiry,
+			refresh_token
         FROM
             web_login
         WHERE
