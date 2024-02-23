@@ -1,6 +1,9 @@
 use argon2::{Algorithm, PasswordHash, PasswordVerifier, Version};
 use axum::{http::StatusCode, Router};
-use models::{api::{user::*, workspace::Workspace, WithId}, ErrorType};
+use models::{
+	api::{user::*, workspace::Workspace, WithId},
+	ErrorType,
+};
 use rustis::commands::StringCommands;
 use sqlx::query;
 use time::Duration;
@@ -49,13 +52,9 @@ async fn change_password(
 		FROM
 			"user"
 		LEFT JOIN
-			personal_email
+			user_email
 		ON
-			personal_email.user_id = "user".id
-		LEFT JOIN
-			domain
-		ON
-			domain.id = personal_email.domain_id
+			user_email.user_id = "user".id
 		LEFT JOIN
 			user_phone_number
 		ON
@@ -66,13 +65,7 @@ async fn change_password(
 			phone_number_country_code.country_code = user_phone_number.country_code
 		WHERE
 			"user".username = $1 OR
-			CONCAT(
-				personal_email.local,
-				'@',
-				domain.name,
-				'.',
-				domain.tld
-			) = $1 OR
+			user_email.email = $1 OR
 			CONCAT(
 				'+',
 				phone_number_country_code.phone_code,
@@ -83,7 +76,7 @@ async fn change_password(
 	)
 	.fetch_optional(&mut **database)
 	.await?
-	.ok_or(ErrorType::server_error("user not found".to_string()))?;
+	.ok_or(ErrorType::UserNotFound)?;
 
 	let success = argon2::Argon2::new_with_secret(
 		config.password_pepper.as_ref(),
@@ -98,7 +91,7 @@ async fn change_password(
 			.map_err(|err| ErrorType::server_error(err.to_string()))?,
 	)
 	.is_ok();
-	
+
 	if !success {
 		return Err(ErrorType::InvalidPassword);
 	}
@@ -200,17 +193,16 @@ async fn get_user_details(
 	)
 	.fetch_optional(&mut **database)
 	.await?
-	.map(|row|
-		GetUserDetailsResponse{
-			basic_user_info: WithId::new(
-				user_data.id, 
-				BasicUserInfo { 
-					username: row.username, 
-					first_name: row.first_name,
-					last_name: row.last_name
-				})
-		}
-	)
+	.map(|row| GetUserDetailsResponse {
+		basic_user_info: WithId::new(
+			user_data.id,
+			BasicUserInfo {
+				username: row.username,
+				first_name: row.first_name,
+				last_name: row.last_name,
+			},
+		),
+	})
 	.ok_or(ErrorType::UserNotFound)?;
 
 	AppResponse::builder()
@@ -246,21 +238,11 @@ async fn get_user_info(
 			"user".last_name,
 			"user".created,
 			"user".mfa_secret,
-			"user".recovery_phone_country_code AS "recovery_phone_country_code!: String",
-			"user".recovery_phone_number AS "recovery_phone_number!: String",
-			CONCAT(
-				"user".recovery_email_local,
-				'@',
-				domain.name,
-				'.',
-				domain.tld
-			) as "email!: String"
+			"user".recovery_phone_country_code,
+			"user".recovery_phone_number,
+			"user".recovery_email
 		FROM
 			"user"
-		INNER JOIN
-			domain
-		ON
-			"user".recovery_email_domain_id = domain.id
 		WHERE
 			"user".id = $1;
 		"#,
@@ -268,24 +250,26 @@ async fn get_user_info(
 	)
 	.fetch_optional(&mut **database)
 	.await?
-	.map(|row| 
-		GetUserInfoResponse{
-			basic_user_info: WithId::new(
-				user_data.id,
-				BasicUserInfo {
-					username: row.username,
-					first_name: row.first_name,
-					last_name: row.last_name
-				}),
-			created: row.created,
-			is_mfa_enabled: row.mfa_secret.is_some(),
-			recovery_email: Some(row.email),
-			recovery_phone_number: Some(UserPhoneNumber {
-				country_code: row.recovery_phone_country_code,
-				phone_number: row.recovery_phone_number
-			})
-		}
-	)
+	.map(|row| GetUserInfoResponse {
+		basic_user_info: WithId::new(
+			user_data.id,
+			BasicUserInfo {
+				username: row.username,
+				first_name: row.first_name,
+				last_name: row.last_name,
+			},
+		),
+		created: row.created,
+		is_mfa_enabled: row.mfa_secret.is_some(),
+		recovery_email: row.recovery_email,
+		recovery_phone_number: row
+			.recovery_phone_country_code
+			.zip(row.recovery_phone_number)
+			.map(|(country_code, phone_number)| UserPhoneNumber {
+				country_code,
+				phone_number,
+			}),
+	})
 	.ok_or(ErrorType::UserNotFound)?;
 
 	AppResponse::builder()
@@ -337,18 +321,21 @@ async fn list_workspaces(
 	.fetch_optional(&mut **database)
 	.await?
 	.into_iter()
-	.map(|row| 
+	.map(|row| {
 		WithId::new(
 			user_data.id,
-			Workspace{
+			Workspace {
 				name: row.name,
-				super_admin_id: row.super_admin_id
-			})
-	)
+				super_admin_id: row.super_admin_id,
+			},
+		)
+	})
 	.collect();
 
 	AppResponse::builder()
-		.body(ListUserWorkspacesResponse { workspaces: list_of_workspaces })
+		.body(ListUserWorkspacesResponse {
+			workspaces: list_of_workspaces,
+		})
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
@@ -433,32 +420,34 @@ async fn activate_mfa(
 		return Err(ErrorType::MfaAlreadyActive);
 	}
 
-	let secret:String = redis.get(get_key_for_user_mfa_secret(&user_data.id)).await?;
+	let secret: String = redis
+		.get(get_key_for_user_mfa_secret(&user_data.id))
+		.await?;
 
 	let totp = TOTP::new(
-			TotpAlgorithm::SHA1,
-			6,
-			1,
-			30,
-			Secret::Encoded(secret.clone())
-				.to_bytes()
-				.inspect_err(|err| {
-					error!(
-						"Unable to parse MFA secret for userId `{}`: {}",
-						user_data.id,
-						err.to_string()
-					);
-				})
-				.map_err(ErrorType::server_error)?,
-		)
-		.inspect_err(|err| {
-			error!(
-				"Unable to parse TOTP for userId `{}`: {}",
-				user_data.id,
-				err.to_string()
-			);
-		})
-		.map_err(ErrorType::server_error)?;
+		TotpAlgorithm::SHA1,
+		6,
+		1,
+		30,
+		Secret::Encoded(secret.clone())
+			.to_bytes()
+			.inspect_err(|err| {
+				error!(
+					"Unable to parse MFA secret for userId `{}`: {}",
+					user_data.id,
+					err.to_string()
+				);
+			})
+			.map_err(ErrorType::server_error)?,
+	)
+	.inspect_err(|err| {
+		error!(
+			"Unable to parse TOTP for userId `{}`: {}",
+			user_data.id,
+			err.to_string()
+		);
+	})
+	.map_err(ErrorType::server_error)?;
 
 	if !(totp.check_current(&body.otp)?) {
 		return Err(ErrorType::MfaOtpInvalid);
@@ -524,29 +513,29 @@ async fn deactivate_mfa(
 	};
 
 	let totp = TOTP::new(
-			TotpAlgorithm::SHA1,
-			6,
-			1,
-			30,
-			Secret::Encoded(secret.clone())
-				.to_bytes()
-				.inspect_err(|err| {
-					error!(
-						"Unable to parse MFA secret for userId `{}`: {}",
-						user_data.id,
-						err.to_string()
-					);
-				})
-				.map_err(ErrorType::server_error)?,
-		)
-		.inspect_err(|err| {
-			error!(
-				"Unable to parse TOTP for userId `{}`: {}",
-				user_data.id,
-				err.to_string()
-			);
-		})
-		.map_err(ErrorType::server_error)?;
+		TotpAlgorithm::SHA1,
+		6,
+		1,
+		30,
+		Secret::Encoded(secret.clone())
+			.to_bytes()
+			.inspect_err(|err| {
+				error!(
+					"Unable to parse MFA secret for userId `{}`: {}",
+					user_data.id,
+					err.to_string()
+				);
+			})
+			.map_err(ErrorType::server_error)?,
+	)
+	.inspect_err(|err| {
+		error!(
+			"Unable to parse TOTP for userId `{}`: {}",
+			user_data.id,
+			err.to_string()
+		);
+	})
+	.map_err(ErrorType::server_error)?;
 
 	if !(totp.check_current(&body.otp)?) {
 		return Err(ErrorType::MfaOtpInvalid);
@@ -612,16 +601,16 @@ async fn get_mfa_secret(
 
 	let secret = Secret::generate_secret().to_encoded().to_string();
 
-	redis.setex(
-		get_key_for_user_mfa_secret(&user_data.id), 
-		Duration::minutes(5).whole_seconds() as u64, 
-		secret.clone()
-	).await?;
+	redis
+		.setex(
+			get_key_for_user_mfa_secret(&user_data.id),
+			Duration::minutes(5).whole_seconds() as u64,
+			secret.clone(),
+		)
+		.await?;
 
 	AppResponse::builder()
-		.body(GetMfaSecretResponse { 
-			secret 
-		})
+		.body(GetMfaSecretResponse { secret })
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
