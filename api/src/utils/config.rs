@@ -47,12 +47,16 @@ pub fn parse_config() -> AppConfig {
 #[serde(rename_all = "camelCase")]
 pub struct AppConfig {
 	/// The address to listed on
+	#[serde(alias = "bindaddress")]
 	pub bind_address: SocketAddr,
 	/// The base path of the API
+	#[serde(alias = "apibasepath")]
 	pub api_base_path: String,
 	/// The pepper used to hash passwords
+	#[serde(alias = "passwordpepper")]
 	pub password_pepper: String,
 	/// The secret used to sign JWTs
+	#[serde(alias = "jwtsecret")]
 	pub jwt_secret: String,
 	/// The environment the application is running in. This is set at runtime
 	/// based on an environment variable and if the application is compiled with
@@ -134,7 +138,8 @@ pub struct DatabaseConfig {
 	/// The name of the database to connect to within the database server
 	pub database: String,
 	/// The maximum number of connections to the database
-	pub connection_limit: serde_json::value::Number,
+	#[serde(alias = "connectionlimit")]
+	pub connection_limit: u32,
 }
 
 /// The configuration for Redis. This is used for caching, rate limiting and for

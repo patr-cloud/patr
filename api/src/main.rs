@@ -123,43 +123,44 @@ async fn main() {
 				)),
 		);
 
-		if let Some(opentelemetry) = &config.opentelemetry {
-			Dispatch::new(
-				registry.with(
-					OpenTelemetryLayer::new(
-						{
-							let pipeline = opentelemetry_otlp::new_pipeline()
-								.tracing()
-								.with_trace_config(
-									opentelemetry_sdk::trace::config().with_resource(
-										Resource::new(vec![KeyValue::new(
-											"service.name",
-											"Patr API",
-										)]),
-									),
-								)
-								.with_exporter(
-									opentelemetry_otlp::new_exporter()
-										.tonic()
-										.with_endpoint(&opentelemetry.endpoint),
-								);
-							match config.environment {
-								RunningEnvironment::Development => pipeline.install_simple(),
-								RunningEnvironment::Production => {
-									pipeline.install_batch(opentelemetry_sdk::runtime::Tokio)
-								}
-							}
+		let setup_opentelemetry = |opentelemetry: &utils::config::OpenTelemetryConfig| {
+			OpenTelemetryLayer::new(
+				{
+					let pipeline = opentelemetry_otlp::new_pipeline()
+						.tracing()
+						.with_trace_config(opentelemetry_sdk::trace::config().with_resource(
+							Resource::new(vec![KeyValue::new("service.name", "Patr API")]),
+						))
+						.with_exporter(
+							opentelemetry_otlp::new_exporter()
+								.tonic()
+								.with_endpoint(&opentelemetry.endpoint),
+						);
+					match config.environment {
+						RunningEnvironment::Development => pipeline.install_simple(),
+						RunningEnvironment::Production => {
+							pipeline.install_batch(opentelemetry_sdk::runtime::Tokio)
 						}
-						.expect("Failed to install OpenTelemetry tracing pipeline"),
-					)
-					.with_filter(
-						tracing_subscriber::filter::Targets::new()
-							.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE),
-					),
-				),
+					}
+				}
+				.expect("Failed to install OpenTelemetry tracing pipeline"),
 			)
-		} else {
-			Dispatch::new(registry)
+			.with_filter(
+				tracing_subscriber::filter::Targets::new()
+					.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE),
+			)
+		};
+		#[cfg(debug_assertions)]
+		{
+			if let Some(opentelemetry) = &config.opentelemetry {
+				Dispatch::new(registry.with(setup_opentelemetry(opentelemetry)))
+			} else {
+				Dispatch::new(registry)
+			}
+		}
+		#[cfg(not(debug_assertions))]
+		{
+			registry.with(setup_opentelemetry(&config.opentelemetry))
 		}
 	})
 	.expect("Failed to set global default subscriber");
