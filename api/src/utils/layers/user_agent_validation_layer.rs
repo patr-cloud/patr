@@ -88,7 +88,7 @@ where
 		self.inner.poll_ready(cx)
 	}
 
-	#[instrument(skip(self, req))]
+	#[instrument(skip(self, req), name = "UserAgentValidationService")]
 	fn call(&mut self, req: AppRequest<'a, E>) -> Self::Future {
 		let mut inner = self.inner.clone();
 		async move {

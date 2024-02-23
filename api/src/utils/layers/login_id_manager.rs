@@ -77,7 +77,8 @@ impl<'a, E, S> Service<AuthenticatedAppRequest<'a, E>> for LoginIdService<E, S>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
-	for<'b> S: Service<AuthenticatedAppRequest<'b, E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
+	for<'b> S: Service<AuthenticatedAppRequest<'b, E>, Response = AppResponse<E>, Error = ErrorType>
+		+ Clone,
 {
 	type Error = ErrorType;
 	type Response = AppResponse<E>;
@@ -88,7 +89,7 @@ where
 		self.inner.poll_ready(cx)
 	}
 
-	#[instrument(skip(self, req))]
+	#[instrument(skip(self, req), name = "LoginIdService")]
 	fn call(&mut self, req: AuthenticatedAppRequest<'a, E>) -> Self::Future {
 		let mut inner = self.inner.clone();
 		async move {

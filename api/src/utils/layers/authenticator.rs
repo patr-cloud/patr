@@ -126,7 +126,7 @@ where
 		self.inner.poll_ready(cx)
 	}
 
-	#[instrument(skip(self, req))]
+	#[instrument(skip(self, req), name = "AuthenticatorService")]
 	fn call(&mut self, req: AppRequest<'a, E>) -> Self::Future {
 		let mut inner = self.inner.clone();
 		let client_type = self.client_type;

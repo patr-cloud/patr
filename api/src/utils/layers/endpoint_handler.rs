@@ -125,7 +125,7 @@ where
 		Poll::Ready(Ok(()))
 	}
 
-	#[instrument(skip(self, req))]
+	#[instrument(skip(self, req), name = "EndpointService")]
 	fn call(&mut self, req: AppRequest<'req, E>) -> Self::Future {
 		trace!("Calling request handler");
 		self.handler.clone().call(req)
