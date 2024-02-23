@@ -117,7 +117,7 @@ pub async fn renew_access_token(
 	AppResponse::builder()
 		.body(RenewAccessTokenResponse { access_token })
 		.headers(())
-		.status_code(StatusCode::OK)
+		.status_code(StatusCode::ACCEPTED)
 		.build()
 		.into_result()
 }

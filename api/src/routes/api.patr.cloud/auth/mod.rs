@@ -5,22 +5,26 @@ use crate::prelude::*;
 
 mod complete_sign_up;
 mod create_account;
+mod forgot_password;
 mod is_email_valid;
 mod is_username_valid;
 mod list_recovery_options;
 mod login;
 mod logout;
 mod renew_access_token;
+mod reset_password;
 
 use self::{
 	complete_sign_up::*,
 	create_account::*,
+	forgot_password::*,
 	is_email_valid::*,
 	is_username_valid::*,
 	list_recovery_options::*,
 	login::*,
 	logout::*,
 	renew_access_token::*,
+	reset_password::*,
 };
 
 #[instrument(skip(state))]
@@ -38,32 +42,6 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.mount_endpoint(resend_otp, state)
 		.mount_endpoint(reset_password, state)
 		.with_state(state.clone())
-}
-
-async fn forgot_password(
-	AppRequest {
-		request: ProcessedApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
-		database,
-		redis: _,
-		client_ip: _,
-		config,
-	}: AppRequest<'_, ForgotPasswordRequest>,
-) -> Result<AppResponse<ForgotPasswordRequest>, ErrorType> {
-	info!("Starting: Forget password");
-
-	// LOGIC
-
-	AppResponse::builder()
-		.body(ForgotPasswordResponse)
-		.headers(())
-		.status_code(StatusCode::OK)
-		.build()
-		.into_result()
 }
 
 async fn resend_otp(
@@ -86,32 +64,6 @@ async fn resend_otp(
 
 	AppResponse::builder()
 		.body(ResendOtpResponse)
-		.headers(())
-		.status_code(StatusCode::OK)
-		.build()
-		.into_result()
-}
-
-async fn reset_password(
-	AppRequest {
-		request: ProcessedApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
-		database,
-		redis: _,
-		client_ip: _,
-		config,
-	}: AppRequest<'_, ResetPasswordRequest>,
-) -> Result<AppResponse<ResetPasswordRequest>, ErrorType> {
-	info!("Starting: Reset password");
-
-	// LOGIC
-
-	AppResponse::builder()
-		.body(ResetPasswordResponse)
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()

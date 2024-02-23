@@ -77,4 +77,8 @@ pub mod constants {
 	/// create. If this needs to be increased, the user should open a support
 	/// ticket with the team.
 	pub const DEFAULT_WORKSPACE_LIMIT: i32 = 10;
+
+	/// The maximum number of times a user can attempt to reset a password
+	/// before getting banned altogether
+	pub const MAX_PASSWORD_RESET_ATTEMPTS: u16 = 5;
 }
