@@ -155,7 +155,16 @@ pub async fn complete_sign_up(
 	let refresh_token_expiry = now.add(constants::INACTIVE_REFRESH_TOKEN_VALIDITY);
 
 	let ip_info = ipinfo::IpInfo::new(ipinfo::IpInfoConfig {
-		token: config.ipinfo.map(|ipinfo| ipinfo.token),
+		token: {
+			#[cfg(debug_assertions)]
+			{
+				config.ipinfo.map(|ipinfo| ipinfo.token)
+			}
+			#[cfg(not(debug_assertions))]
+			{
+				config.ip_info.token
+			}
+		},
 		..Default::default()
 	})
 	.map_err(ErrorType::server_error)?

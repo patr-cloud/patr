@@ -16,7 +16,7 @@ pub(super) use self::{meta_data::*, rbac::*, user::*, workspace::*};
 pub async fn connect(config: &DatabaseConfig) -> Pool<DatabaseType> {
 	info!("Connecting to database `{}:{}`", config.host, config.port);
 	PoolOptions::<DatabaseType>::new()
-		.max_connections(config.connection_limit.as_u64().unwrap() as u32)
+		.max_connections(config.connection_limit)
 		.connect_with(
 			<DatabaseConnection as sqlx::Connection>::Options::new()
 				.username(config.user.as_str())
