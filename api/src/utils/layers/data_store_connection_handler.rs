@@ -93,7 +93,7 @@ where
 			.map_err(|_| unreachable!("Layers must always be ready"))
 	}
 
-	#[instrument(skip(self, request))]
+	#[instrument(skip(self, request), name = "DataStoreConnectionService")]
 	fn call(&mut self, (request, client_ip): (ApiRequest<E>, IpAddr)) -> Self::Future {
 		let mut state = self.state.clone();
 		let mut inner = self.inner.clone();

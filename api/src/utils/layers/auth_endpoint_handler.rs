@@ -149,6 +149,7 @@ where
 		Poll::Ready(Ok(()))
 	}
 
+	#[instrument(skip(self, req), name = "AuthEndpointService")]
 	fn call(&mut self, req: AuthenticatedAppRequest<'req, E>) -> Self::Future {
 		self.handler.clone().call(req)
 	}

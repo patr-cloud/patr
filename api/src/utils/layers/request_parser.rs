@@ -97,7 +97,7 @@ where
 			.map_err(|_| unreachable!("Layers must always be ready"))
 	}
 
-	#[instrument(skip(self, req))]
+	#[instrument(skip(self, req), name = "RequestParserService")]
 	fn call(&mut self, mut req: Request<Body>) -> Self::Future {
 		let mut inner = self.inner.clone();
 		async {
