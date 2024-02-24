@@ -4,7 +4,6 @@ use std::{
 	task::{Context, Poll},
 };
 
-use models::{ApiEndpoint, ErrorType};
 use preprocess::Preprocessable;
 use tower::{Layer, Service};
 
@@ -22,13 +21,23 @@ where
 	endpoint: PhantomData<E>,
 }
 
+impl<E> Default for LoginIdLayer<E>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+{
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl<E> LoginIdLayer<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// Helper function to initialize a new preprocess layer
-	pub fn new() -> Self {
+	pub const fn new() -> Self {
 		Self {
 			endpoint: PhantomData,
 		}

@@ -10,6 +10,9 @@ use proc_macro::TokenStream;
 
 /// The proc macro for declaring an API endpoint.
 mod declare_api_endpoint;
+/// The proc macro for declaring a streaming endpoint. A streaming endpoint is
+/// basically a websocket endpoint.
+mod declare_stream_endpoint;
 /// A derive macro for the `HasHeaders` trait.
 mod has_headers;
 /// A proc macro for stripping whitespaces and newlines from SQL queries.
@@ -58,6 +61,49 @@ mod version;
 #[proc_macro]
 pub fn declare_api_endpoint(input: TokenStream) -> TokenStream {
 	declare_api_endpoint::parse(input)
+}
+
+/// Declares a stream endpoint. This macro allows easy definition of a stream
+/// endpoint, which is basically a websocket endpoint along with the request
+/// URL, headers, query, client message, server message as well as the response
+/// headers and body. Generates the required structs for the endpoint.
+///
+/// ## Example usage:
+/// ```rust
+/// // In the root
+/// macros::declare_stream_endpoint!(
+///     /// The documentation for the endpoint.
+///     EndpointName,
+///     Method "/URL" {
+///         pub url_body: IfAny,
+///     },
+///
+///     // Can also use paginated_query = ... for automatic pagination
+///     query = {
+///         pub param1: Type,
+///     },
+///     request_headers = {
+///         pub header1: Type,
+///     },
+///     client_msg = {
+///         pub body_param1: Type,
+///     },
+///
+///     // Ref: AuthenticatorType
+///     authentication = WorkspaceMembershipAuthenticator {
+///         extract_workspace_id: |req| req.path.workspace_id,
+///     },
+///     response_headers = {
+///         pub header1: Type,
+///     },
+///     server_msg = {
+///         pub body_param1: Type,
+///     },
+/// );
+/// ```
+#[proc_macro]
+pub fn declare_stream_endpoint(input: TokenStream) -> TokenStream {
+	declare_stream_endpoint::parse(input)
 }
 
 /// A derive macro that makes it easy to implement `HasHeader` for every single

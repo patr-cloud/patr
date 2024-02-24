@@ -15,6 +15,10 @@ pub mod layers;
 /// [2]: axum::Router
 pub mod extractors;
 
+/// Contains the extension traits that will be used with the axum [`Router`][1]
+/// to mount the various endpoints on the router.
+///
+/// [1]: axum::Router
 mod router_ext;
 
 pub use self::router_ext::RouterExt;

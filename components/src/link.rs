@@ -57,7 +57,7 @@ pub fn Link(
 	};
 
 	let button_type = move || {
-		if should_submit.get() == false {
+		if !should_submit.get() {
 			"submit".to_owned()
 		} else {
 			"button".to_owned()

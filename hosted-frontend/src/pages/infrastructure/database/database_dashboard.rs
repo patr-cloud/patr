@@ -77,7 +77,7 @@ pub fn DatabaseDashboard() -> impl IntoView {
 					render_items=view! {
 						<For
 							each=move || data.get()
-							key=|state| state.id.clone()
+							key=|state| state.id
 							let:child
 						>
 							<DatabaseCard deployment=child />

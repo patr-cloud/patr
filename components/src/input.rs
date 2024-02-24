@@ -117,12 +117,12 @@ pub fn Input(
 					.size(
 						end_icon
 							.with_untracked(|props| props.as_ref().map(|props| props.size))
-							.unwrap_or_else(|| MaybeSignal::Static(Size::ExtraSmall)),
+							.unwrap_or(MaybeSignal::Static(Size::ExtraSmall)),
 					)
 					.color(
 						end_icon
 							.with_untracked(|props| props.as_ref().map(|props| props.color))
-							.unwrap_or_else(|| MaybeSignal::Static(Color::White)),
+							.unwrap_or(MaybeSignal::Static(Color::White)),
 					)
 					.on_click(Rc::new(move |_| {
 						show_password.set(!show_password.get());

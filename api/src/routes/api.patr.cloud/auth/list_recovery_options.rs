@@ -92,8 +92,7 @@ pub async fn list_recovery_options(
 	let recovery_email = row
 		.recovery_email
 		.as_deref()
-		.map(|email| email.split_once('@'))
-		.flatten()
+		.and_then(|email| email.split_once('@'))
 		.map(|(local, domain)| {
 			let local = || {
 				if local.is_empty() {

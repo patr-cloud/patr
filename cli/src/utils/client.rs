@@ -45,7 +45,7 @@ where
 	let builder = REQUEST_CLIENT
 		.get_or_init(initialize_client)
 		.request(
-			reqwest::Method::from_str(&E::METHOD.to_string()).unwrap(),
+			reqwest::Method::from_str(E::METHOD.as_ref()).unwrap(),
 			Url::from_str(super::constants::API_BASE_URL)
 				.unwrap()
 				.join(path.to_string().as_str())
