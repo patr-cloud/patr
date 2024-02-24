@@ -20,7 +20,7 @@ use rustis::{client::Client as RedisClient, commands::StringCommands};
 use time::OffsetDateTime;
 use tower::{Layer, Service};
 
-use crate::{models::access_token_data::AccessTokenData, prelude::*, utils::constants};
+use crate::{models::access_token_data::AccessTokenData, prelude::*};
 
 /// The type of client used for a request. This is used to determine
 /// which authentication method to use, based on if the API call is made by our

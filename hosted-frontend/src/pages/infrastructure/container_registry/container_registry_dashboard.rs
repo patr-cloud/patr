@@ -77,7 +77,7 @@ pub fn ContainerRegistryDashboard() -> impl IntoView {
 					render_rows=view! {
 						<For
 							each=move || data.get()
-							key=|state| state.id.clone()
+							key=|state| state.id
 							let:child
 						>
 							<ContainerRegistryCard item=child />
