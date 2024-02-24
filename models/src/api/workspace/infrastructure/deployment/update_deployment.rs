@@ -1,10 +1,7 @@
 use std::collections::BTreeMap;
 
 use super::{DeploymentProbe, DeploymentVolume, EnvironmentVariableValue, ExposedPortType};
-use crate::{
-	prelude::*,
-	utils::{Base64String, BearerToken, StringifiedU16, Uuid},
-};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to update a deployment

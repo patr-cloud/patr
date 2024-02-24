@@ -1,4 +1,4 @@
-use crate::{prelude::*, utils::Uuid};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to verify a managed URL configuration

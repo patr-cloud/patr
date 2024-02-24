@@ -1,5 +1,5 @@
 use super::Deployment;
-use crate::{prelude::*, utils::Uuid};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to list all the deployments in a workspace

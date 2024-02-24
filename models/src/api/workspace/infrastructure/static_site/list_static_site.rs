@@ -1,5 +1,5 @@
 use super::StaticSite;
-use crate::{prelude::*, utils::Uuid};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to list all static site in a workspace

@@ -11,8 +11,6 @@ use jsonwebtoken::{DecodingKey, TokenData, Validation};
 use models::{
 	permission::{ResourcePermissionType, WorkspacePermission},
 	utils::{AppAuthentication, BearerToken, HasAuthentication, HasHeader},
-	ApiEndpoint,
-	ErrorType,
 	RequestUserData,
 };
 use preprocess::Preprocessable;

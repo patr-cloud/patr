@@ -1,5 +1,5 @@
 use super::ManagedUrl;
-use crate::{prelude::*, utils::Uuid};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to list all managed URLs
