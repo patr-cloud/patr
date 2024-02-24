@@ -1,5 +1,5 @@
 use super::{Deployment, DeploymentRunningDetails};
-use crate::{prelude::*, utils::Uuid};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to get all the deployment information of a deployment

@@ -1,5 +1,5 @@
 use super::StaticSiteUploadHistory;
-use crate::{prelude::*, utils::Uuid};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to get all upload history of a static site

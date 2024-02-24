@@ -10,7 +10,7 @@ use argon2::{
 };
 use axum::http::StatusCode;
 use jsonwebtoken::EncodingKey;
-use models::{api::auth::*, ErrorType};
+use models::api::auth::*;
 use sqlx::types::ipnetwork::IpNetwork;
 use time::OffsetDateTime;
 use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};

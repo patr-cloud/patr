@@ -1,7 +1,7 @@
 use time::OffsetDateTime;
 
 use super::DeploymentLogs;
-use crate::{prelude::*, utils::Uuid};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to get the running logs of a deployment

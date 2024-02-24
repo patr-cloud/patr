@@ -1,5 +1,5 @@
 use super::{DeploymentMetrics, Interval, Step};
-use crate::{prelude::*, utils::Uuid};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to get monitoring metrics like CPU, RAM and Disk usage

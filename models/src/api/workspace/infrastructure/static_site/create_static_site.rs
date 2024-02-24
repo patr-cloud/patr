@@ -1,5 +1,5 @@
 use super::StaticSiteDetails;
-use crate::{prelude::*, utils::Uuid};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Definition of a route to create a new static site

@@ -1,4 +1,4 @@
-use crate::{api::workspace::infrastructure::managed_url::ManagedUrl, prelude::*, utils::Uuid};
+use crate::{api::workspace::infrastructure::managed_url::ManagedUrl, prelude::*};
 
 macros::declare_api_endpoint!(
 	/// Route to get all linked URLs for a deployment

@@ -2,7 +2,7 @@ use std::ops::Add;
 
 use argon2::{password_hash::SaltString, Algorithm, PasswordHasher, Version};
 use axum::http::StatusCode;
-use models::{api::auth::*, ErrorType};
+use models::api::auth::*;
 use rand::Rng;
 use time::OffsetDateTime;
 

@@ -1,5 +1,5 @@
 use super::ManagedUrlType;
-use crate::{prelude::*, utils::Uuid};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to update a managed URL configurations

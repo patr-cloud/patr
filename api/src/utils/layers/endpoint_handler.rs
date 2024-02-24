@@ -4,7 +4,6 @@ use std::{
 	task::{Context, Poll},
 };
 
-use models::{ApiEndpoint, ErrorType};
 use preprocess::Preprocessable;
 use tower::{Layer, Service};
 

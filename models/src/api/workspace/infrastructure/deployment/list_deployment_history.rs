@@ -1,5 +1,5 @@
 use super::DeploymentDeployHistory;
-use crate::{prelude::*, utils::Uuid};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to get list of deployment history for a deployment
