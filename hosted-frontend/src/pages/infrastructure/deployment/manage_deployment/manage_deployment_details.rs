@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{pages::*, prelude::*};
 
 #[component]
 pub fn ManageDeploymentDetailsTab() -> impl IntoView {
@@ -69,6 +69,27 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 					/>
 				</div>
 			</div>
+
+			<PortInput
+				is_update_screen=true
+				ports_list=vec!["8080".to_owned()]
+			/>
+
+			<EnvInput
+				envs_list=vec!["LINK".to_owned()]
+			/>
+
+			<ConfigMountInput
+				mount_points=vec!["/x/y/path".to_owned()]
+			/>
+
+			<ProbeInput
+				probe_type=ProbeInputType::Startup
+			/>
+
+			<ProbeInput
+				probe_type=ProbeInputType::Liveness
+			/>
 		</div>
 	}
 }

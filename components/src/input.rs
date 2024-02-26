@@ -24,6 +24,7 @@ pub enum InputType {
 	Number,
 	/// A check box allowing single values to be selected/deselected.
 	Checkbox,
+	File,
 }
 
 impl InputType {
@@ -35,6 +36,7 @@ impl InputType {
 			Self::Number => "number",
 			Self::Checkbox => "checkbox",
 			Self::Password => "password",
+			Self::File => "file",
 		}
 	}
 }

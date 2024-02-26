@@ -1,0 +1,36 @@
+@use "sass:map";
+@use "../helpers/mixins" as *;
+@use "../helpers/maps" as *;
+@use "../base/variables" as *;
+
+.input-dropdown {
+  @include btn-secondary-focus;
+
+  & input {
+    @include btn-secondary-focus;
+  }
+
+  .drop-down {
+    top: 2rem;
+    right: 0;
+    max-height: 18rem;
+    z-index: 200;
+    box-shadow: $shadow-medium;
+
+    & li,
+    & label {
+      &:focus-visible {
+        background-color: lighten(
+          map.get($background-colors, "secondary-light"),
+          8%
+        );
+      }
+      &:hover {
+        background-color: lighten(
+          map.get($background-colors, "secondary-light"),
+          3%
+        );
+      }
+    }
+  }
+}

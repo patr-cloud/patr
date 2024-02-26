@@ -7,7 +7,7 @@ pub fn ToolTipContainer(
 	content: String,
 	/// The label of the display in the container
 	#[prop(optional)]
-	label: Option<Children>,
+	label: Option<View>,
 	/// The Color Variant of the icon in the tooltip
 	#[prop(into, optional)]
 	icon_color: Color,
@@ -33,7 +33,7 @@ pub fn ToolTipContainer(
 		>
 			{
 				if let Some(label) = label {
-					label()
+					label.into_view()
 				} else {
 					view! {
 						<Icon
@@ -42,7 +42,7 @@ pub fn ToolTipContainer(
 							color={icon_color}
 							class="br-round cursor-pointer"
 						/>
-					}.into()
+					}.into_view()
 				}
 			}
 			<Tooltip
