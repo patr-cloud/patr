@@ -60,8 +60,8 @@ pub fn ManageDeployments() -> impl IntoView {
 				/>
 			</ContainerHead>
 
-			<ContainerBody class="px-xxl py-xl gap-md">
-				<ManageDeploymentImageHistory />
+			<ContainerBody class="gap-md">
+				<ManageDeploymentsLogs />
 			</ContainerBody>
 		</ContainerMain>
 	}
@@ -69,14 +69,18 @@ pub fn ManageDeployments() -> impl IntoView {
 
 mod image_history_card;
 mod image_tag;
+mod logs;
 mod manage_deployment_details;
 mod manage_deployment_image_history;
+mod manage_deployment_scaling;
 mod manage_deployment_urls;
 
 pub use self::{
 	image_history_card::*,
 	image_tag::*,
+	logs::*,
 	manage_deployment_details::*,
 	manage_deployment_image_history::*,
+	manage_deployment_scaling::*,
 	manage_deployment_urls::*,
 };
