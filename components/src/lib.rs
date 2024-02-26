@@ -9,9 +9,13 @@ pub mod prelude {
 		backdrop::*,
 		containers::*,
 		dashboard_container::*,
+		double_input_slider::*,
 		icon::*,
 		input::*,
+		input_dropdown::*,
 		link::*,
+		log_statement::*,
+		number_picker::*,
 		otp_input::*,
 		page_title::*,
 		sidebar::*,
@@ -51,15 +55,31 @@ pub mod containers;
 /// component. The dashboard container is a container that is used to hold
 /// dashboard components.
 pub mod dashboard_container;
+/// The Double Input Slider component. The Double Input Slider component is used
+/// to display a slider with two inputs. It is used to allow the user to select
+/// two values from a range of values.
+pub mod double_input_slider;
 /// The Icon component. This component is used to display an icon in the
 /// fontawsome library, of different sizes and colors.
 pub mod icon;
 /// The input component. The input component is used for text, email, and other
 /// things.
 pub mod input;
+/// The Input Dropdown component. The input dropdown component is used to
+/// display a dropdown input. It is used to allow the user to select an option
+/// from a list of options.
+pub mod input_dropdown;
 /// The link component. The link component is used to create a link to another
 /// page, or to an external website. It can also be used to create a button.
 pub mod link;
+/// The Log Statement component. The log statement component is used to display
+/// a log statement. It is used to show the user a log statement, like a
+/// deployment log, or a database log in the Deployments page
+pub mod log_statement;
+/// The number picker component. The number picker component is used to display
+/// a number picker. It is used to allow the user to select a number from a
+/// range of numbers.
+pub mod number_picker;
 /// The OTP input component. The OTP input component is used to display an input
 /// for an OTP code. It is used in the login page.
 pub mod otp_input;
@@ -92,7 +112,12 @@ pub mod status_badge;
 /// display a table of data in a dashboard. It is used to show the user a table
 /// of data, like a list of users, or a list of deployments, etc.
 pub mod table_dashboard;
+/// The Textbox component. The textbox component is used to display a textbox
+/// input when the user cannot edit the value.
 pub mod textbox;
+/// The Tooltip component. The tooltip component is used to display a tooltip
+/// when the user hovers over an element. It is used to show the user more
+/// information about an element.
 pub mod tooltip;
 
 /// Utility functions and components that are used across the entire crate.
