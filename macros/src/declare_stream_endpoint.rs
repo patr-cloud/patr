@@ -249,7 +249,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		let name = format_ident!("{}Query", name);
 		if paginate_query.unwrap_or(false) {
 			quote::quote! {
-				crate::api::Paginated<#name>
+				models::api::Paginated<#name>
 			}
 		} else {
 			quote::quote! {
@@ -258,7 +258,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		}
 	} else if paginate_query.unwrap_or(false) {
 		quote::quote! {
-			crate::api::Paginated<()>
+			models::api::Paginated<()>
 		}
 	} else {
 		quote::quote! {
@@ -282,7 +282,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			#[serde(rename_all = "camelCase")]
 			pub struct #query_name #query
 
-			impl crate::utils::RequiresResponseHeaders for #query_name {
+			impl models::utils::RequiresResponseHeaders for #query_name {
 				type RequiredResponseHeaders = ();
 			}
 		}
@@ -335,7 +335,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			)]
 			pub struct #request_headers_name #headers
 
-			impl crate::utils::RequiresResponseHeaders for #request_headers_name {
+			impl models::utils::RequiresResponseHeaders for #request_headers_name {
 				type RequiredResponseHeaders = ();
 			}
 		}
@@ -402,7 +402,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		#[typed_path(#path)]
 		pub struct #path_name #path_body
 
-		impl crate::utils::RequiresResponseHeaders for #path_name {
+		impl models::utils::RequiresResponseHeaders for #path_name {
 			type RequiredResponseHeaders = ();
 		}
 
@@ -422,7 +422,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		#[serde(rename_all = "camelCase")]
 		pub struct #request_name #request_body
 
-		impl crate::utils::RequiresResponseHeaders for #request_name {
+		impl models::utils::RequiresResponseHeaders for #request_name {
 			type RequiredResponseHeaders = ();
 		}
 
@@ -447,23 +447,23 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		#[serde(rename_all = "camelCase")]
 		pub struct #response_name #response_body
 
-		impl crate::utils::RequiresRequestHeaders for #response_name {
+		impl models::utils::RequiresRequestHeaders for #response_name {
 			type RequiredRequestHeaders = ();
 		}
 
-		impl crate::utils::RequiresResponseHeaders for #response_name {
+		impl models::utils::RequiresResponseHeaders for #response_name {
 			type RequiredResponseHeaders = ();
 		}
 
-		impl crate::ApiEndpoint for #request_name {
+		impl models::ApiEndpoint for #request_name {
 			const METHOD: ::http::Method = ::http::Method::#method;
 			const API_ALLOWED: bool = #api_allowed;
 
 			type RequestPath = #path_name;
 			type RequestQuery = #query_name;
 			type RequestHeaders = #request_headers_name;
-			type RequestBody = Self;
-			type Authenticator = crate::utils::#auth_type;
+			type RequestBody = models::utils::WebSocketUpgrade<#response_name, #request_name>;
+			type Authenticator = models::utils::#auth_type;
 
 			#auth_impl
 
