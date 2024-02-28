@@ -12,6 +12,6 @@ use crate::prelude::*;
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
 		.merge(auth::setup_routes(state).await)
-		.merge(workspace::setup_routes(state).await)
 		.merge(user::setup_routes(state).await)
+		.merge(workspace::setup_routes(state).await)
 }
