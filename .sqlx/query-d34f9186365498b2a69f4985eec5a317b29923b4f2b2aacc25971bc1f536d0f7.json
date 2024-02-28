@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\tSELECT\n\t\t\t\"user\".username,\n\t\t\t\"user\".first_name,\n\t\t\t\"user\".last_name\n\t\tFROM\n\t\t\t\"user\"\n\t\tWHERE\n\t\t\tid = $1;\n\t\t",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "first_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "last_name",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d34f9186365498b2a69f4985eec5a317b29923b4f2b2aacc25971bc1f536d0f7"
+}

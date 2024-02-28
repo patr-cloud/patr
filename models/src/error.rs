@@ -5,7 +5,7 @@ use std::{
 };
 
 use axum::http::StatusCode;
-use serde::{Deserialize, Serialize};
+use serde::{de::Error, Deserialize, Serialize};
 
 /// A list of all the possible errors that can be returned by the API
 #[derive(Debug)]
@@ -20,6 +20,12 @@ pub enum ErrorType {
 	MfaRequired,
 	/// The two factor authentication code provided is invalid
 	MfaOtpInvalid,
+	/// The user already has two factor authentication enabled, and tried
+	/// enabling it
+	MfaAlreadyActive,
+	/// The user does not have two factor authentication enabled, and tried
+	/// disabling it
+	MfaAlreadyInactive,
 	/// The parameters sent with the request is invalid. This would ideally not
 	/// happen unless there is a bug in the client
 	WrongParameters,
@@ -63,6 +69,8 @@ impl ErrorType {
 			Self::InvalidPassword => StatusCode::UNAUTHORIZED,
 			Self::MfaOtpInvalid => StatusCode::UNAUTHORIZED,
 			Self::MfaRequired => StatusCode::UNAUTHORIZED,
+			Self::MfaAlreadyActive => StatusCode::CONFLICT,
+			Self::MfaAlreadyInactive => StatusCode::CONFLICT,
 			Self::WrongParameters => StatusCode::BAD_REQUEST,
 			Self::MalformedApiToken => StatusCode::BAD_REQUEST,
 			Self::DisallowedIpAddressForApiToken => StatusCode::UNAUTHORIZED,
@@ -87,6 +95,10 @@ impl ErrorType {
 			Self::InvalidPassword => "Invalid Password",
 			Self::MfaRequired => "Two factor authentication required",
 			Self::MfaOtpInvalid => "Invalid two factor authentication code",
+			Self::MfaAlreadyActive => {
+				"Two factor authentication is already enabled on your account"
+			}
+			Self::MfaAlreadyInactive => "Two factor authentication is not enabled on your account",
 			Self::WrongParameters => "The parameters sent with that request is invalid",
 			Self::MalformedApiToken => "The API token provided is not a valid token",
 			Self::DisallowedIpAddressForApiToken => {
@@ -140,6 +152,8 @@ impl Clone for ErrorType {
 			Self::InvalidPassword => Self::InvalidPassword,
 			Self::MfaRequired => Self::MfaRequired,
 			Self::MfaOtpInvalid => Self::MfaOtpInvalid,
+			Self::MfaAlreadyActive => Self::MfaAlreadyActive,
+			Self::MfaAlreadyInactive => Self::MfaAlreadyInactive,
 			Self::WrongParameters => Self::WrongParameters,
 			Self::MalformedApiToken => Self::MalformedApiToken,
 			Self::DisallowedIpAddressForApiToken => Self::DisallowedIpAddressForApiToken,
@@ -174,6 +188,8 @@ impl Serialize for ErrorType {
 			Self::UserNotFound => serializer.serialize_str("userNotFound"),
 			Self::InvalidPassword => serializer.serialize_str("invalidPassword"),
 			Self::MfaRequired => serializer.serialize_str("mfaRequired"),
+			Self::MfaAlreadyActive => serializer.serialize_str("mfaAlreadyActive"),
+			Self::MfaAlreadyInactive => serializer.serialize_str("mfaAlreadyInactive"),
 			Self::MfaOtpInvalid => serializer.serialize_str("mfaOtpInvalid"),
 			Self::WrongParameters => serializer.serialize_str("wrongParameters"),
 			Self::MalformedApiToken => serializer.serialize_str("malformedApiToken"),
@@ -207,6 +223,8 @@ impl<'de> Deserialize<'de> for ErrorType {
 			"invalidPassword" => Self::InvalidPassword,
 			"mfaRequired" => Self::MfaRequired,
 			"mfaOtpInvalid" => Self::MfaOtpInvalid,
+			"mfaAlreadyActive" => Self::MfaAlreadyActive,
+			"mfaAlreadyInactive" => Self::MfaAlreadyInactive,
 			"wrongParameters" => Self::WrongParameters,
 			"malformedApiToken" => Self::MalformedApiToken,
 			"disallowedIpAddressForApiToken" => Self::DisallowedIpAddressForApiToken,
@@ -218,7 +236,10 @@ impl<'de> Deserialize<'de> for ErrorType {
 			"emailUnavailable" => Self::EmailUnavailable,
 			"phoneUnavailable" => Self::PhoneUnavailable,
 			"invalidResetToken" => Self::InvalidPasswordResetToken,
-			unknown => Self::InternalServerError(anyhow::anyhow!(unknown.to_owned())),
+			"internalServerError" => {
+				Self::InternalServerError(anyhow::anyhow!("Internal Server Error"))
+			}
+			unknown => return Err(Error::custom(format!("unknown variant: {unknown}"))),
 		})
 	}
 }

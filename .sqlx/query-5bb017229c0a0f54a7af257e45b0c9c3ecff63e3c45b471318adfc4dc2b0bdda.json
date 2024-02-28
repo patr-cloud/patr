@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\tSELECT\n\t\t\t\"user\".mfa_secret\n\t\tFROM\n\t\t\t\"user\"\n\t\tWHERE\n\t\t\tid = $1;\n\t\t",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "mfa_secret",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "5bb017229c0a0f54a7af257e45b0c9c3ecff63e3c45b471318adfc4dc2b0bdda"
+}
