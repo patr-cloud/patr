@@ -1,7 +1,8 @@
 [workspace]
 members = [
     "api",
-    "cli",             # "cloudflare-ingress",
+    "cli",
+    "cloudflare-ingress",
     "components",
     "controller",
     "hosted-frontend",
@@ -88,7 +89,7 @@ wasm-bindgen = { version = "0.2", default-features = false }
 wasm-logger = { version = "0.2", default-features = false }
 web-sys = { version = "0.3", default-features = false }
 woothee = { version = "0.13", default-features = false }
-worker = { version = "0.0.18", default-features = false }
+worker = { git = "https://github.com/cloudflare/workers-rs", default-features = false }
 
 [workspace.dev-dependencies]
 k8s-openapi = { features = ["v1_29"] }
