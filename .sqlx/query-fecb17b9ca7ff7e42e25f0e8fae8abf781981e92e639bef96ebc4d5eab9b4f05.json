@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT password, mfa_secret FROM \"user\" WHERE id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "password",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "mfa_secret",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "fecb17b9ca7ff7e42e25f0e8fae8abf781981e92e639bef96ebc4d5eab9b4f05"
+}

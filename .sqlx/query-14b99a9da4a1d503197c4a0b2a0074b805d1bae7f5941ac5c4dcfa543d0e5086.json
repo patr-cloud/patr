@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n\t\tSELECT\n\t\t\t\"user\".username,\n\t\t\t\"user\".first_name,\n\t\t\t\"user\".last_name\n\t\tFROM\n\t\t\t\"user\"\n\t\tWHERE\n\t\t\tid = $1;\n\t\t",
+  "query": "SELECT \"user\".username, \"user\".first_name, \"user\".last_name FROM \"user\" WHERE id = $1;",
   "describe": {
     "columns": [
       {
@@ -30,5 +30,5 @@
       false
     ]
   },
-  "hash": "d34f9186365498b2a69f4985eec5a317b29923b4f2b2aacc25971bc1f536d0f7"
+  "hash": "14b99a9da4a1d503197c4a0b2a0074b805d1bae7f5941ac5c4dcfa543d0e5086"
 }
