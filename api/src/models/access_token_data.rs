@@ -90,10 +90,12 @@ impl AccessTokenData {
 	pub const REFRESH_TOKEN_VALIDITY: Duration = Duration::days(30);
 }
 
+/// A module to help serialize and deserialize `OffsetDateTime` as seconds
 mod datetime_as_seconds {
 	use serde::{de::Error, Deserialize, Deserializer, Serializer};
 	use time::OffsetDateTime;
 
+	/// Serialize an `OffsetDateTime` as seconds
 	pub fn serialize<S>(value: &OffsetDateTime, serializer: S) -> Result<S::Ok, S::Error>
 	where
 		S: Serializer,
@@ -101,6 +103,7 @@ mod datetime_as_seconds {
 		serializer.serialize_i64(value.unix_timestamp())
 	}
 
+	/// Deserialize an `OffsetDateTime` from seconds
 	pub fn deserialize<'de, D>(deserializer: D) -> Result<OffsetDateTime, D::Error>
 	where
 		D: Deserializer<'de>,

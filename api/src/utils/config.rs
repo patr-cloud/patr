@@ -162,6 +162,7 @@ pub struct RedisConfig {
 	pub secure: bool,
 }
 
+/// The default value for the Redis database
 fn default_redis_database() -> u8 {
 	0
 }

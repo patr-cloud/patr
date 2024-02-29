@@ -32,6 +32,7 @@ where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
+	/// The endpoint type that this layer will handle.
 	phantom: PhantomData<E>,
 }
 
@@ -75,7 +76,9 @@ where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
+	/// The inner service that will be called with the parsed request.
 	inner: S,
+	/// The endpoint type that this service will handle.
 	phantom: PhantomData<E>,
 }
 

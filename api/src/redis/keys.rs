@@ -6,6 +6,6 @@ pub fn permission_for_login_id(login_id: &Uuid) -> String {
 }
 
 /// The key used to store the mfa secret of a user
-pub fn get_key_for_user_mfa_secret(user_id: &Uuid) -> String {
+pub fn user_mfa_secret(user_id: &Uuid) -> String {
 	format!("mfa:{}", user_id)
 }

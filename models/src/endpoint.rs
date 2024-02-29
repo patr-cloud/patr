@@ -6,7 +6,6 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use crate::utils::{
 	FromAxumRequest,
-	HasAuthentication,
 	HasHeaders,
 	Headers,
 	IntoAxumResponse,
@@ -38,7 +37,7 @@ where
 	Self::RequestBody:
 		ResponseHeaders + FromAxumRequest + Preprocessable + Clone + Send + Sync + 'static,
 	<Self::RequestBody as Preprocessable>::Processed: Send,
-	Self::Authenticator: HasAuthentication + RequestHeaders + Clone + Send,
+	Self::Authenticator: RequestHeaders + Clone + Send,
 
 	Self::ResponseHeaders: Headers
 		+ HasHeaders<<Self::RequestPath as ResponseHeaders>::RequiredResponseHeaders>

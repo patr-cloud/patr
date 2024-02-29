@@ -4,8 +4,6 @@
 
 //! The main API server for Patr.
 
-use tracing::Dispatch;
-
 /// This module contains the main application logic. Most of the app requests,
 /// states, and mounting of endpoints are done here
 pub mod app;
@@ -87,7 +85,7 @@ async fn main() {
 	use opentelemetry_otlp::WithExportConfig;
 	use opentelemetry_sdk::Resource;
 	use tokio::net::TcpListener;
-	use tracing::Level;
+	use tracing::{Dispatch, Level};
 	use tracing_opentelemetry::OpenTelemetryLayer;
 	use tracing_subscriber::{
 		filter::LevelFilter,

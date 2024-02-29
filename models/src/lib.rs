@@ -28,7 +28,6 @@ pub mod prelude {
 	pub use crate::{
 		api::WithId,
 		utils::{
-			constants,
 			AppAuthentication,
 			Base64String,
 			BearerToken,
@@ -55,6 +54,7 @@ mod private {
 	/// implementations provided within the crate. If you need to implement
 	/// something outside this crate that requires a [`Sealed`] trait, something
 	/// went wrong in the API design.
+	#[allow(dead_code)]
 	pub trait Sealed {}
 }
 

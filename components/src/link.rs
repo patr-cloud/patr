@@ -1,13 +1,11 @@
-use std::rc::Rc;
-
 use web_sys::MouseEvent;
 
 use crate::imports::*;
 
-/// Link component to navigate to other pages
-/// Use the variant prop to switch between \<a/> and \<button/>
-/// tag
 #[component]
+/// Link component to navigate to other pages
+/// Use the variant prop to switch between <a/> and <button/>
+/// tag
 pub fn Link(
 	/// Specifies which type of button to use,
 	/// "button" or "submit", to be only used with the button variant
@@ -19,7 +17,7 @@ pub fn Link(
 	/// Click Handler, to be only used with the button variant,
 	/// this NEEDS JavaScript to be enabled.
 	#[prop(optional)]
-	on_click: Option<Rc<dyn Fn(&ev::MouseEvent)>>,
+	on_click: Option<ClickHandler>,
 	/// The Children of the Link, usually a \<p\> tag or simply
 	/// the link text
 	children: ChildrenFn,

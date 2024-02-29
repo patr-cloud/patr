@@ -1,4 +1,5 @@
 #![warn(missing_docs)]
+
 //! Main dashboard console for Patr
 
 /// Prelude module. Used to re-export commonly used items.

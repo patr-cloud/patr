@@ -51,7 +51,7 @@ pub async fn list_workspaces(
 	.into_iter()
 	.map(|row| {
 		WithId::new(
-			user_data.id.into(),
+			user_data.id,
 			Workspace {
 				name: row.name,
 				super_admin_id: row.super_admin_id.into(),

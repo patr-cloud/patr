@@ -3,16 +3,7 @@ use std::ops::Add;
 use argon2::{Algorithm, PasswordHash, PasswordVerifier, Version};
 use axum::http::StatusCode;
 use jsonwebtoken::EncodingKey;
-use models::{
-	api::auth::{
-		RenewAccessTokenPath,
-		RenewAccessTokenRequest,
-		RenewAccessTokenRequestHeaders,
-		RenewAccessTokenRequestProcessed,
-		RenewAccessTokenResponse,
-	},
-	utils::BearerToken,
-};
+use models::api::auth::*;
 use time::OffsetDateTime;
 
 use crate::{models::access_token_data::AccessTokenData, prelude::*};
@@ -25,7 +16,7 @@ pub async fn renew_access_token(
 				query: (),
 				headers:
 					RenewAccessTokenRequestHeaders {
-						refresh_token: BearerToken(refresh_token),
+						refresh_token,
 						user_agent: _,
 					},
 				body: RenewAccessTokenRequestProcessed,
@@ -38,14 +29,12 @@ pub async fn renew_access_token(
 ) -> Result<AppResponse<RenewAccessTokenRequest>, ErrorType> {
 	info!(
 		"Renewing access token for refresh token: `{}`",
-		refresh_token.token()
+		refresh_token.0.token()
 	);
 
-	let refresh_token = refresh_token.token();
-
-	let (login_id, refresh_token) = refresh_token
-		.split_once('.')
-		.ok_or(ErrorType::MalformedRefreshToken)?;
+	let Some((login_id, refresh_token)) = refresh_token.0.token().split_once('.') else {
+		return Err(ErrorType::MalformedRefreshToken);
+	};
 	trace!("Split refresh token into loginId: {login_id}");
 
 	let login_id = Uuid::parse_str(login_id).map_err(|_| {

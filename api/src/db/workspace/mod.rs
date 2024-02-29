@@ -1,9 +1,14 @@
 use crate::prelude::*;
 
+/// The data stored in the container registry
 mod container_registry;
+/// The list of domains that are added to a workspace
 mod domain;
+/// All infrastructure related stuff goes here
 mod infrastructure;
+/// The list of regions that are added to a workspace
 mod region;
+/// The list of secrets that are added to a workspace
 mod secret;
 
 /// Initializes all workspace-related tables

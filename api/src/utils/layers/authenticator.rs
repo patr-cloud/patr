@@ -10,7 +10,7 @@ use argon2::{Algorithm, Argon2, PasswordHash, PasswordVerifier, Version};
 use jsonwebtoken::{DecodingKey, TokenData, Validation};
 use models::{
 	permission::{ResourcePermissionType, WorkspacePermission},
-	utils::{AppAuthentication, BearerToken, HasAuthentication, HasHeader},
+	utils::{AppAuthentication, BearerToken, HasHeader},
 	RequestUserData,
 };
 use preprocess::Preprocessable;
@@ -45,8 +45,10 @@ where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
-	endpoint: PhantomData<E>,
+	/// The type of client that is allowed to make the request
 	client_type: ClientType,
+	/// The endpoint type that this layer will handle
+	endpoint: PhantomData<E>,
 }
 
 impl<E> AuthenticationLayer<E>
@@ -97,13 +99,16 @@ where
 /// The underlying service that runs when the [`AuthenticationLayer`] is used.
 pub struct AuthenticationService<A, E, S>
 where
-	A: HasAuthentication,
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
+	/// The inner service that will be called after the request is authenticated
 	inner: S,
+	/// The type of client that is allowed to make the request
 	client_type: ClientType,
+	/// The type of authenticator that will be used to authenticate the request
 	authenticator: PhantomData<A>,
+	/// The endpoint type that this layer will handle
 	endpoint: PhantomData<E>,
 }
 
@@ -346,13 +351,18 @@ where
 					let Some(user) = query! {
 						r#"
 						SELECT
-							"user".*
+							"user".*,
+							web_login.token_expiry
 						FROM
 							"user"
 						INNER JOIN
 							user_login
 						ON
 							"user".id = user_login.user_id
+						INNER JOIN
+							web_login
+						ON
+							user_login.login_id = web_login.login_id
 						WHERE
 							user_login.login_id = $1 AND
 							user_login.login_type = 'web_login';
@@ -368,6 +378,11 @@ where
 						return Err(ErrorType::AuthorizationTokenInvalid);
 					};
 					trace!("Web login exists in the database");
+
+					if OffsetDateTime::now_utc() > user.token_expiry {
+						warn!("Web login has expired");
+						return Err(ErrorType::AuthorizationTokenInvalid);
+					}
 
 					let permissions =
 						get_permissions_for_login_id(req.database, req.redis, &sub).await?;
@@ -406,7 +421,6 @@ where
 
 impl<A, E, S> Clone for AuthenticationService<A, E, S>
 where
-	A: HasAuthentication,
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 	for<'b> S: Service<AuthenticatedAppRequest<'b, E>, Response = AppResponse<E>, Error = ErrorType>
@@ -422,6 +436,9 @@ where
 	}
 }
 
+/// Get all the permissions for a given login ID. This will first check the
+/// Redis cache, and if the data is not found, it will query the database and
+/// then store the result in the Redis cache.
 #[tracing::instrument(skip(db_connection, redis_connection))]
 async fn get_permissions_for_login_id(
 	db_connection: &mut DatabaseConnection,

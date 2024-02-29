@@ -52,7 +52,9 @@ where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
+	/// The function or closure that will be used to handle the endpoint.
 	handler: H,
+	/// The endpoint type that this layer will handle.
 	endpoint: PhantomData<E>,
 }
 
@@ -113,7 +115,9 @@ where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
+	/// The function or closure that will be used to handle the endpoint.
 	handler: H,
+	/// The endpoint type that this service will handle.
 	endpoint: PhantomData<E>,
 }
 

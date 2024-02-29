@@ -1,11 +1,5 @@
 use axum::http::StatusCode;
-use models::api::auth::{
-	ListRecoveryOptionsPath,
-	ListRecoveryOptionsRequest,
-	ListRecoveryOptionsRequestHeaders,
-	ListRecoveryOptionsRequestProcessed,
-	ListRecoveryOptionsResponse,
-};
+use models::api::auth::*;
 
 use crate::prelude::*;
 

@@ -13,7 +13,10 @@ use axum::{
 /// Cloudflare headers first, then from X-Real-IP header, then from
 /// X-Forwarded-For header, and finally from the socket.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ClientIP(pub IpAddr);
+pub struct ClientIP(
+	/// The IP address of the client.
+	pub IpAddr,
+);
 
 #[axum::async_trait]
 impl FromRequestParts<()> for ClientIP {
