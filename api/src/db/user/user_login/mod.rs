@@ -1,4 +1,7 @@
+/// All API token related data of a user
 mod api_token;
+/// All web login related data of a user. Any login that is done through the
+/// web dashboard will be stored here.
 mod web_login;
 
 use crate::prelude::*;

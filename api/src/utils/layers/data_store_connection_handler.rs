@@ -20,8 +20,13 @@ where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
-	phantom: PhantomData<E>,
+	/// The state that will be used to parse the request, create a database
+	/// transaction and a redis connection, and call the inner service. If the
+	/// inner service fails, the database transaction will be automatically
+	/// rolled back, otherwise it will be committed.
 	state: AppState,
+	/// The endpoint type that this layer will handle.
+	phantom: PhantomData<E>,
 }
 
 impl<E> DataStoreConnectionLayer<E>
@@ -70,8 +75,14 @@ where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
+	/// The inner service that will be called with the parsed request.
 	inner: S,
+	/// The state that will be used to parse the request, create a database
+	/// transaction and a redis connection, and call the inner service. If the
+	/// inner service fails, the database transaction will be automatically
+	/// rolled back, otherwise it will be committed.
 	state: AppState,
+	/// The endpoint type that this service will handle.
 	phantom: PhantomData<E>,
 }
 

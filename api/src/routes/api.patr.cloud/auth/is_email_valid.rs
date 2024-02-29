@@ -1,12 +1,5 @@
 use axum::http::StatusCode;
-use models::api::auth::{
-	IsEmailValidPath,
-	IsEmailValidQuery,
-	IsEmailValidRequest,
-	IsEmailValidRequestHeaders,
-	IsEmailValidRequestProcessed,
-	IsEmailValidResponse,
-};
+use models::api::auth::*;
 
 use crate::prelude::*;
 

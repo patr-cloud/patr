@@ -97,13 +97,7 @@ pub fn Input(
 		)
 	};
 
-	let end_icon = if r#type.with(|input_type| {
-		if let InputType::Password = input_type {
-			true
-		} else {
-			false
-		}
-	}) {
+	let end_icon = if r#type.with(|input_type| matches!(input_type, InputType::Password)) {
 		MaybeSignal::derive(move || {
 			Some(
 				IconProps::builder()

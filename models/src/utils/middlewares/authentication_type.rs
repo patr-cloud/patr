@@ -2,20 +2,7 @@ use std::fmt::Debug;
 
 use preprocess::Preprocessable;
 
-use crate::{prelude::*, private::Sealed, utils::RequiresRequestHeaders};
-
-/// This trait is used to specify if an API endpoint requires authentication or
-/// not. It is used in the [`ApiEndpoint`] trait to specify the
-/// [`Authenticator`][1] type of an endpoint. The constant in the trait is used
-/// by the router extension to mount the corresponding [`tower::Layer`] in the
-/// router.
-///
-/// [1]: ApiEndpoint::Authenticator
-pub trait HasAuthentication: RequiresRequestHeaders + Sealed {
-	/// A simple constant that specifies if the API endpoint requires
-	/// authentication or not. Can be used for runtime checks on API endpoints.
-	const REQUIRES_AUTHENTICATION: bool;
-}
+use crate::{prelude::*, utils::RequiresRequestHeaders};
 
 /// This struct is used to specify that an API endpoint does not require
 /// authentication. It can be accessed without any token.
@@ -24,12 +11,6 @@ pub struct NoAuthentication;
 
 impl RequiresRequestHeaders for NoAuthentication {
 	type RequiredRequestHeaders = ();
-}
-
-impl Sealed for NoAuthentication {}
-
-impl HasAuthentication for NoAuthentication {
-	const REQUIRES_AUTHENTICATION: bool = false;
 }
 
 /// This enum represents the different types of authentication that can be used
@@ -104,21 +85,6 @@ where
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	type RequiredRequestHeaders = (BearerToken,);
-}
-
-impl<E> Sealed for AppAuthentication<E>
-where
-	E: ApiEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-{
-}
-
-impl<E> HasAuthentication for AppAuthentication<E>
-where
-	E: ApiEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-{
-	const REQUIRES_AUTHENTICATION: bool = true;
 }
 
 impl<E> Debug for AppAuthentication<E>

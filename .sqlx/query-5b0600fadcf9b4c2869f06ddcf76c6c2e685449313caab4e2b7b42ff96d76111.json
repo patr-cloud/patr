@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE user_to_sign_up SET otp_hash = $1 WHERE username = $2;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5b0600fadcf9b4c2869f06ddcf76c6c2e685449313caab4e2b7b42ff96d76111"
+}

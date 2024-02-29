@@ -10,13 +10,7 @@ use argon2::{
 };
 use axum::http::StatusCode;
 use jsonwebtoken::EncodingKey;
-use models::api::auth::{
-	CompleteSignUpPath,
-	CompleteSignUpRequest,
-	CompleteSignUpRequestHeaders,
-	CompleteSignUpRequestProcessed,
-	CompleteSignUpResponse,
-};
+use models::api::auth::*;
 use sqlx::types::ipnetwork::IpNetwork;
 use time::OffsetDateTime;
 

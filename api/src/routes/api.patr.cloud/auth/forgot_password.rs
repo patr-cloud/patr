@@ -2,14 +2,7 @@ use std::ops::Add;
 
 use argon2::{password_hash::SaltString, Algorithm, PasswordHasher, Version};
 use axum::http::StatusCode;
-use models::api::auth::{
-	ForgotPasswordPath,
-	ForgotPasswordRequest,
-	ForgotPasswordRequestHeaders,
-	ForgotPasswordRequestProcessed,
-	ForgotPasswordResponse,
-	PreferredRecoveryOption,
-};
+use models::api::auth::*;
 use rand::Rng;
 use time::OffsetDateTime;
 
@@ -94,16 +87,10 @@ pub async fn forgot_password(
 	.map_err(ErrorType::server_error)?
 	.to_string();
 
-	let should_reset;
-
-	match &preferred_recovery_option {
-		PreferredRecoveryOption::RecoveryPhoneNumber => {
-			should_reset = user_data.recovery_phone_number.is_some();
-		}
-		PreferredRecoveryOption::RecoveryEmail => {
-			should_reset = user_data.recovery_email.is_some();
-		}
-	}
+	let should_reset = match &preferred_recovery_option {
+		PreferredRecoveryOption::RecoveryPhoneNumber => user_data.recovery_phone_number.is_some(),
+		PreferredRecoveryOption::RecoveryEmail => user_data.recovery_email.is_some(),
+	};
 
 	if !should_reset {
 		// Return Ok even if the data is invalid to prevent leaking user data

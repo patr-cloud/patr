@@ -7,6 +7,7 @@ use tower_http::services::ServeFile;
 
 use crate::prelude::*;
 
+/// Sets up the routes for the web dashboard
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	let config = leptos::get_configuration(
@@ -37,6 +38,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.with_state(state.clone())
 }
 
+/// Reads all files in a directory and its subdirectories
 fn read_files(path: &str) -> Pin<Box<dyn Future<Output = Vec<String>> + '_>> {
 	Box::pin(async move {
 		let mut files = Vec::new();

@@ -10,13 +10,15 @@ use tower::{Layer, Service};
 use crate::prelude::*;
 
 /// The [`tower::Layer`] used to validate that the user agent is from a browser.
-/// This will parse the [`UserAgent`] header and verify it is that of a browser.
-/// If it is not that of a browser, the request will be rejected
+/// This will parse the [`UserAgent`][headers::UserAgent] header and verify it
+/// is that of a browser. If it is not that of a browser, the request will be
+/// rejected
 pub struct UserAgentValidationLayer<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
+	/// The endpoint type that this layer will handle.
 	endpoint: PhantomData<E>,
 }
 
@@ -78,7 +80,9 @@ where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
+	/// The inner service that will be called with the validated user agent.
 	inner: S,
+	/// The endpoint type that this service will handle.
 	endpoint: PhantomData<E>,
 }
 

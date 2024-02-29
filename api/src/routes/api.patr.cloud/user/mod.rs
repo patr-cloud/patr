@@ -22,6 +22,7 @@ pub use self::{
 	update_user_info::*,
 };
 
+/// Sets up the user routes
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()

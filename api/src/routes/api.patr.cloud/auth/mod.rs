@@ -1,5 +1,4 @@
-use axum::{http::StatusCode, Router};
-use models::api::auth::*;
+use axum::Router;
 
 use crate::prelude::*;
 
@@ -12,6 +11,7 @@ mod list_recovery_options;
 mod login;
 mod logout;
 mod renew_access_token;
+mod resend_otp;
 mod reset_password;
 
 use self::{
@@ -24,9 +24,11 @@ use self::{
 	login::*,
 	logout::*,
 	renew_access_token::*,
+	resend_otp::*,
 	reset_password::*,
 };
 
+/// Sets up the auth routes
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
@@ -42,30 +44,4 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.mount_endpoint(resend_otp, state)
 		.mount_endpoint(reset_password, state)
 		.with_state(state.clone())
-}
-
-async fn resend_otp(
-	AppRequest {
-		request: ProcessedApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
-		database,
-		redis: _,
-		client_ip: _,
-		config,
-	}: AppRequest<'_, ResendOtpRequest>,
-) -> Result<AppResponse<ResendOtpRequest>, ErrorType> {
-	info!("Starting: Resend OTP");
-
-	// LOGIC
-
-	AppResponse::builder()
-		.body(ResendOtpResponse)
-		.headers(())
-		.status_code(StatusCode::OK)
-		.build()
-		.into_result()
 }

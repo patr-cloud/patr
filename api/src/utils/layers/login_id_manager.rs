@@ -18,6 +18,7 @@ where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
+	/// The endpoint type that this layer will handle.
 	endpoint: PhantomData<E>,
 }
 
@@ -72,13 +73,16 @@ where
 	}
 }
 
-/// The underlying service that runs when the [`PreprocessLayer`] is used.
+/// The underlying service that runs when the [`LoginIdLayer`] is used.
 pub struct LoginIdService<E, S>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
+	/// The inner service that will be called after the request's login Id is
+	/// handled
 	inner: S,
+	/// The endpoint type that this service will handle.
 	endpoint: PhantomData<E>,
 }
 

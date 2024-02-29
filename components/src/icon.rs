@@ -1,4 +1,4 @@
-use std::{fmt::Display, rc::Rc};
+use std::fmt::Display;
 
 use crate::imports::*;
 
@@ -902,7 +902,7 @@ pub fn icon(
 	enable_pulse: MaybeSignal<bool>,
 	/// click handler
 	#[prop(optional)]
-	on_click: Option<Rc<dyn Fn(&ev::MouseEvent)>>,
+	on_click: Option<ClickHandler>,
 ) -> impl IntoView {
 	let is_clickable = on_click.is_some();
 
