@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n\t\tSELECT\n\t\t\t\"user\".username,\n\t\t\t\"user\".first_name,\n\t\t\t\"user\".last_name,\n\t\t\t\"user\".created,\n\t\t\t\"user\".mfa_secret,\n\t\t\t\"user\".recovery_phone_country_code,\n\t\t\t\"user\".recovery_phone_number,\n\t\t\t\"user\".recovery_email\n\t\tFROM\n\t\t\t\"user\"\n\t\tWHERE\n\t\t\t\"user\".id = $1;\n\t\t",
+  "query": "SELECT \"user\".username, \"user\".first_name, \"user\".last_name, \"user\".created, \"user\".mfa_secret, \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".recovery_email FROM \"user\" WHERE \"user\".id = $1;",
   "describe": {
     "columns": [
       {
@@ -60,5 +60,5 @@
       true
     ]
   },
-  "hash": "1aee716d6209931c4997e49f1f2550935cdd3d78c40548b8935ce5fdc2fa4a3a"
+  "hash": "7713df437fd9dcfd92505f96e82b4e6479996d52610ca1e42fb0c4c6d12e23f3"
 }
