@@ -3,6 +3,6 @@
 
 [alias]
 serve = "leptos serve"
-watch = "leptos watch --hot-reload"
+watch = "leptos watch"
 prepare = "sqlx prepare --workspace"
 patr = "run -p cli --"
