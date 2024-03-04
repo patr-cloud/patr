@@ -61,7 +61,7 @@ pub fn ManageDeployments() -> impl IntoView {
 			</ContainerHead>
 
 			<ContainerBody class="gap-md">
-				<ManageDeploymentsLogs />
+				<ManageDeploymentScaling />
 			</ContainerBody>
 		</ContainerMain>
 	}

@@ -25,6 +25,8 @@ pub enum InputType {
 	/// A check box allowing single values to be selected/deselected.
 	Checkbox,
 	File,
+	/// A Callender like date picker
+	Date,
 }
 
 impl InputType {
@@ -37,6 +39,7 @@ impl InputType {
 			Self::Checkbox => "checkbox",
 			Self::Password => "password",
 			Self::File => "file",
+			Self::Date => "date",
 		}
 	}
 }
