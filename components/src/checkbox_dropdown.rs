@@ -1,6 +1,4 @@
-use leptos::MaybeSignal;
-
-use crate::prelude::*;
+use crate::imports::*;
 
 #[component]
 pub fn CheckboxDropdown(
