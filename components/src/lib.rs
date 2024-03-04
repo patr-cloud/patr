@@ -7,6 +7,7 @@
 pub mod prelude {
 	pub use crate::{
 		backdrop::*,
+		checkbox_dropdown::*,
 		containers::*,
 		dashboard_container::*,
 		double_input_slider::*,
