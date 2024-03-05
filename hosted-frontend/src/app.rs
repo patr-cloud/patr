@@ -27,6 +27,6 @@ fn LoggedInPage() -> impl IntoView {
 #[component]
 pub fn App() -> impl IntoView {
 	view! {
-		<LoggedInPage />
+		<LoginPage />
 	}
 }

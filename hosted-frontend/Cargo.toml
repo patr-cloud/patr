@@ -36,6 +36,7 @@ web-sys = { workspace = true, features = [
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 leptos = { workspace = true, features = ["tracing", "hydrate"] }
+leptos_query = { workspace = true, features = ["csr", "hydrate"] }
 leptos-use = { workspace = true, features = [] }
 leptos_meta = { workspace = true, features = ["hydrate"] }
 leptos_router = { workspace = true, features = ["hydrate"] }
@@ -43,6 +44,7 @@ leptos_router = { workspace = true, features = ["hydrate"] }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
 leptos = { workspace = true, features = ["tracing", "ssr"] }
+leptos_query = { workspace = true, features = ["ssr"] }
 leptos-use = { workspace = true, features = ["axum", "ssr"] }
 leptos_axum = { workspace = true, features = ["default"] }
 leptos_meta = { workspace = true, features = ["ssr"] }
