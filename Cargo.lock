@@ -205,6 +205,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "async_cell"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "834eee9ce518130a3b4d5af09ecc43e9d6b57ee76613f227a1ddd6b77c7a62bc"
+
+[[package]]
 name = "atoi"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1760,6 +1766,7 @@ dependencies = [
  "leptos-use",
  "leptos_axum",
  "leptos_meta",
+ "leptos_query",
  "leptos_router",
  "log",
  "matchit",
@@ -2518,6 +2525,25 @@ dependencies = [
  "leptos",
  "tracing",
  "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
+name = "leptos_query"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "35d3832e05d692eaa6e191fbd4838f8798ec1d488a32ea23a7e647efd812d477"
+dependencies = [
+ "async-trait",
+ "async_cell",
+ "cfg-if",
+ "futures",
+ "futures-channel",
+ "gloo-timers",
+ "js-sys",
+ "leptos",
+ "slotmap",
+ "tokio",
  "web-sys",
 ]
 

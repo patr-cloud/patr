@@ -44,6 +44,7 @@ leptos = { version = "0.6", default-features = false }
 leptos-use = { version = "0.10", default-features = false }
 leptos_axum = { version = "0.6", default-features = false }
 leptos_meta = { version = "0.6", default-features = false }
+leptos_query = { version = "0.5.2", default-features = false }
 leptos_router = { version = "0.6", default-features = false }
 log = { version = "0.4", default-features = false }
 macros = { path = "macros", default-features = false }
