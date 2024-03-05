@@ -24,7 +24,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 
 async fn machine_type(
 	AppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -52,7 +52,7 @@ async fn machine_type(
 
 async fn list_deployment(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -83,7 +83,7 @@ async fn list_deployment(
 
 async fn list_deployment_history(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -112,7 +112,7 @@ async fn list_deployment_history(
 
 async fn create_deployment(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -139,7 +139,7 @@ async fn create_deployment(
 
 async fn get_deployment_info(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -169,7 +169,7 @@ async fn get_deployment_info(
 
 async fn start_deployment(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -196,7 +196,7 @@ async fn start_deployment(
 
 async fn stop_deployment(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -223,7 +223,7 @@ async fn stop_deployment(
 
 async fn revert_deployment(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -250,7 +250,7 @@ async fn revert_deployment(
 
 async fn get_deployment_log(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -277,7 +277,7 @@ async fn get_deployment_log(
 
 async fn delete_deployment(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -304,7 +304,7 @@ async fn delete_deployment(
 
 async fn update_deployment(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -331,7 +331,7 @@ async fn update_deployment(
 
 async fn list_linked_url(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -360,7 +360,7 @@ async fn list_linked_url(
 
 async fn get_deployment_metric(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,

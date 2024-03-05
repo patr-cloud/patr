@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM user_to_sign_up WHERE recovery_email = $1 AND otp_expiry > NOW();",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "password",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "first_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "last_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "recovery_email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "recovery_phone_country_code",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "recovery_phone_number",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "otp_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "otp_expiry",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "e7025fe160ebebd9bf2d179c556d47e6ef6d301cf3e119c21c5dc3d703fa95dd"
+}

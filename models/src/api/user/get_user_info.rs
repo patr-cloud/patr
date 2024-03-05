@@ -10,6 +10,8 @@ macros::declare_api_endpoint!(
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,
+		/// The user-agent used to access this API
+		pub user_agent: UserAgent,
 	},
 	authentication = {
 		AppAuthentication::<Self>::PlainTokenAuthenticator
@@ -24,5 +26,7 @@ macros::declare_api_endpoint!(
 		pub recovery_email: Option<String>,
 		/// The primary phone number of the user
 		pub recovery_phone_number: Option<UserPhoneNumber>,
+		/// Check if MFA is enabled or not
+		pub is_mfa_enabled: bool,
 	}
 );

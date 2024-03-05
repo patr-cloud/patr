@@ -1,23 +1,8 @@
 use std::fmt::Debug;
 
-use crate::{
-	prelude::*,
-	private::Sealed,
-	utils::{BearerToken, RequiresRequestHeaders},
-};
+use preprocess::Preprocessable;
 
-/// This trait is used to specify if an API endpoint requires authentication or
-/// not. It is used in the [`ApiEndpoint`] trait to specify the
-/// [`Authenticator`][1] type of an endpoint. The constant in the trait is used
-/// by the router extension to mount the corresponding [`tower::Layer`] in the
-/// router.
-///
-/// [1]: ApiEndpoint::Authenticator
-pub trait HasAuthentication: RequiresRequestHeaders + Sealed {
-	/// A simple constant that specifies if the API endpoint requires
-	/// authentication or not. Can be used for runtime checks on API endpoints.
-	const REQUIRES_AUTHENTICATION: bool;
-}
+use crate::{prelude::*, utils::RequiresRequestHeaders};
 
 /// This struct is used to specify that an API endpoint does not require
 /// authentication. It can be accessed without any token.
@@ -26,12 +11,6 @@ pub struct NoAuthentication;
 
 impl RequiresRequestHeaders for NoAuthentication {
 	type RequiredRequestHeaders = ();
-}
-
-impl Sealed for NoAuthentication {}
-
-impl HasAuthentication for NoAuthentication {
-	const REQUIRES_AUTHENTICATION: bool = false;
 }
 
 /// This enum represents the different types of authentication that can be used
@@ -60,6 +39,7 @@ impl HasAuthentication for NoAuthentication {
 pub enum AppAuthentication<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// Any logged in user can access this endpoint.
 	PlainTokenAuthenticator,
@@ -102,22 +82,15 @@ where
 impl<E> RequiresRequestHeaders for AppAuthentication<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	type RequiredRequestHeaders = (BearerToken,);
-}
-
-impl<E> Sealed for AppAuthentication<E> where E: ApiEndpoint {}
-
-impl<E> HasAuthentication for AppAuthentication<E>
-where
-	E: ApiEndpoint,
-{
-	const REQUIRES_AUTHENTICATION: bool = true;
 }
 
 impl<E> Debug for AppAuthentication<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {

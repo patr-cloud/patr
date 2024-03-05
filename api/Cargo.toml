@@ -14,23 +14,22 @@ axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
 axum-extra = { workspace = true, features = ["default", "typed-routing"] }
 axum-typed-websockets = { workspace = true, features = ["default"] }
 config = { workspace = true, features = ["default"] }
-diesel = { workspace = true, features = [
-    "network-address",
-    "time",
-    "32-column-tables",
-] }
-diesel-async = { workspace = true, features = ["postgres", "r2d2", "default"] }
-frontend = { workspace = true, features = [] }
 futures = { workspace = true, features = ["default"] }
 headers = { workspace = true, features = [] }
+hosted-frontend = { workspace = true, features = [] }
+ipinfo = { workspace = true, features = [] }
 jsonwebtoken = { workspace = true, features = ["default"] }
 leptos = { workspace = true, features = ["ssr"] }
 leptos_axum = { workspace = true, features = ["default"] }
 macros = { workspace = true, features = [] }
 matchit = { workspace = true, features = ["default"] }
 models = { workspace = true, features = [] }
+opentelemetry = { workspace = true, features = ["default"] }
 opentelemetry-otlp = { workspace = true, features = ["default"] }
-opentelemetry_sdk = { workspace = true, features = ["default"] }
+opentelemetry_sdk = { workspace = true, features = ["default", "rt-tokio"] }
+preprocess = { workspace = true, features = [] }
+rand = { workspace = true, features = ["default"] }
+rust-s3 = { workspace = true, features = ["default", "with-tokio"] }
 rustis = { workspace = true, features = [
     "default",
     "pool",
@@ -57,6 +56,7 @@ tokio-tungstenite = { workspace = true, features = [
     "rustls-tls-webpki-roots",
     "rustls",
 ] }
+totp-rs = { workspace = true, features = ["default", "gen_secret"] }
 tower = { workspace = true, features = ["default", "full"] }
 tower-http = { workspace = true, features = ["fs"] }
 tracing = { workspace = true, features = ["default", "async-await"] }
@@ -64,3 +64,4 @@ tracing-log = { workspace = true, features = ["default"] }
 tracing-opentelemetry = { workspace = true, features = ["default"] }
 tracing-subscriber = { workspace = true, features = ["default"] }
 typed-builder = { workspace = true, features = [] }
+woothee = { workspace = true, features = ["default"] }

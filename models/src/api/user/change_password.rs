@@ -7,9 +7,12 @@ macros::declare_api_endpoint!(
 	/// forgot password, this does not require the user to enter an OTP.
 	ChangePassword,
 	POST "/user/change-password",
+	api = false,
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,
+		/// The user-agent used to access this API
+		pub user_agent: UserAgent,
 	},
 	authentication = {
 		AppAuthentication::<Self>::PlainTokenAuthenticator
@@ -19,5 +22,7 @@ macros::declare_api_endpoint!(
 		pub current_password: String,
 		/// The new password of the user.
 		pub new_password: String,
+		/// If user has mfa enabled then mfa otp required to change password
+		pub mfa_otp: Option<String>,
 	},
 );

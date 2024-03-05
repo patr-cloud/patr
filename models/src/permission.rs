@@ -1,12 +1,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
-use strum::EnumVariantNames;
+use strum::VariantNames;
 
 use crate::prelude::*;
 
 /// A list of all possible resource types in Patr.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, EnumVariantNames)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, VariantNames)]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
 pub enum ResourceType {
@@ -36,7 +36,7 @@ pub enum ResourceType {
 }
 
 /// A list of all permissions that can be granted on a DNS record.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, EnumVariantNames)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, VariantNames)]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
 pub enum DnsRecordPermissions {
@@ -51,7 +51,7 @@ pub enum DnsRecordPermissions {
 }
 
 /// A list of all permissions that can be granted on a domain.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, EnumVariantNames)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, VariantNames)]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
 pub enum DomainPermissions {
@@ -68,7 +68,7 @@ pub enum DomainPermissions {
 }
 
 /// A list of all permissions that can be granted on a deployment
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, EnumVariantNames)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, VariantNames)]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
 pub enum DeploymentPermissions {
@@ -83,7 +83,7 @@ pub enum DeploymentPermissions {
 }
 
 /// A list of all permissions that can be used for workspace billing stuff.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, EnumVariantNames)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, VariantNames)]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
 pub enum BillingPermissions {
@@ -96,7 +96,7 @@ pub enum BillingPermissions {
 }
 
 /// A list of all permissions that can be granted on a resource.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, EnumVariantNames)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, VariantNames)]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
 pub enum Permission {

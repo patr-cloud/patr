@@ -1,8 +1,5 @@
 use super::ManagedUrl;
-use crate::{
-	prelude::*,
-	utils::{BearerToken, Uuid},
-};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to list all managed URLs
@@ -13,7 +10,9 @@ macros::declare_api_endpoint!(
 	},
 	request_headers = {
 		/// Token used to authorize user
-		pub authorization: BearerToken
+		pub authorization: BearerToken,
+		/// The user-agent used to access this API
+		pub user_agent: UserAgent,
 	},
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {

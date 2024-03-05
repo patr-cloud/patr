@@ -1,0 +1,102 @@
+@use "sass:map";
+@use "../helpers/maps" as *;
+@use "../base/variables" as *;
+@use "../helpers/mixins" as *;
+
+.input {
+  padding: map.get($paddings, "sm") map.get($paddings, "xl");
+  border-radius: map.get($border-radii, "sm");
+  background-color: map.get($background-colors, "secondary-light");
+
+  input {
+    width: 100%;
+    color: map.get($text-colors, "white");
+    border: none;
+    font-weight: map.get($font-weights, "medium");
+    background-color: inherit;
+
+    &:disabled {
+      color: map.get($text-colors, "disabled");
+    }
+
+    &:-webkit-autofill {
+      -webkit-text-fill-color: map.get($text-colors, "white");
+      box-shadow: inset 0 0 0 32px $secondary-light !important;
+    }
+  }
+
+  &:focus-within {
+    outline: 2px solid map.get($background-colors, "primary");
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    border-radius: 50%;
+  }
+}
+
+.placeholder-sm::placeholder {
+  font-size: map.get($font-sizes, "xs");
+  font-weight: map.get($font-weights, "regular");
+}
+
+.autofil-dark:-webkit-autofill {
+  -webkit-text-fill-color: map.get($text-colors, "white");
+  box-shadow: inset 0 0 0 32px map.get($background-colors, "secondary-dark") !important;
+}
+
+input {
+  &[type="range"] {
+    appearance: none;
+    -webkit-appearance: none;
+
+    width: 100%;
+    height: 0.6rem;
+
+    outline: none;
+    background: map.get($background-colors, "secondary");
+    border-radius: map.get($border-radii, "sm");
+
+    &:is(::-webkit-slider-thumb, ::-moz-range-thumb) {
+      appearance: none;
+      -webkit-appearance: none;
+
+      width: 25px;
+      height: 25px;
+
+      cursor: pointer;
+      background: map.get($background-colors, "primary");
+    }
+  }
+
+  &::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+
+    position: relative;
+    background-color: map.get($background-colors, "primary");
+
+    border: none;
+    border-radius: 50%;
+
+    cursor: pointer;
+    pointer-events: all;
+
+    @include create-size(1.5rem);
+  }
+
+  &::-moz-range-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+
+    position: relative;
+    background-color: map.get($background-colors, "primary");
+
+    border: none;
+    border-radius: 50%;
+
+    cursor: pointer;
+    pointer-events: all;
+
+    @include create-size(1.5rem);
+  }
+}

@@ -1,8 +1,12 @@
 use crate::prelude::*;
 
+/// The list of deployments that are present in a workspace
 mod deployment;
+/// The list of databases that are created in a workspace
 mod managed_database;
+/// The list of Managed URLs that are created in a workspace
 mod managed_url;
+/// The list of static sites that are created in a workspace
 mod static_site;
 
 /// Initialize all infrastructure-related tables

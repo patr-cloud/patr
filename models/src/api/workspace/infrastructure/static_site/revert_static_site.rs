@@ -1,7 +1,4 @@
-use crate::{
-	prelude::*,
-	utils::{BearerToken, Uuid},
-};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to revert a static site to an older version
@@ -18,7 +15,9 @@ macros::declare_api_endpoint!(
 	},
 	request_headers = {
 		/// Token used to authorize user
-		pub authorization: BearerToken
+		pub authorization: BearerToken,
+		/// The user-agent used to access this API
+		pub user_agent: UserAgent,
 	},
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {

@@ -6,8 +6,14 @@ macros::declare_api_endpoint!(
 	/// and access token associated with it.
 	Logout,
 	POST "/auth/sign-out",
+	api = false,
 	request_headers = {
 		/// The refresh token which was provided to the user when they logged in
 		pub refresh_token: BearerToken,
-	}
+		/// The user-agent used to access this API
+		pub user_agent: UserAgent,
+	},
+	authentication = {
+		AppAuthentication::<Self>::PlainTokenAuthenticator
+	},
 );

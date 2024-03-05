@@ -17,7 +17,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 
 async fn create_new_role(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -44,7 +44,7 @@ async fn create_new_role(
 
 async fn delete_role(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -71,7 +71,7 @@ async fn delete_role(
 
 async fn get_role_info(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -102,7 +102,7 @@ async fn get_role_info(
 
 async fn list_all_roles(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -131,7 +131,7 @@ async fn list_all_roles(
 
 async fn list_users_for_roles(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -160,7 +160,7 @@ async fn list_users_for_roles(
 
 async fn update_role(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,

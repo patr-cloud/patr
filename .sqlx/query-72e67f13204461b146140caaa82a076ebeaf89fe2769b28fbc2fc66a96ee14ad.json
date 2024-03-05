@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE UNIQUE INDEX workspace_domain_uq_name_tld ON workspace_domain(name, tld) WHERE deleted IS NULL;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "72e67f13204461b146140caaa82a076ebeaf89fe2769b28fbc2fc66a96ee14ad"
+}

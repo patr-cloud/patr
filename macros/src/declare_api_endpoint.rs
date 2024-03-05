@@ -10,6 +10,7 @@ use syn::{
 	FieldsNamed,
 	Ident,
 	Lit,
+	LitBool,
 	LitStr,
 	Token,
 };
@@ -30,6 +31,8 @@ pub struct ApiEndpoint {
 	path_body: Option<FieldsNamed>,
 	/// The authentication for this endpoint.
 	auth: Option<Block>,
+	/// Should this route be allowed through APIs or only through the web-login
+	api_allowed: bool,
 
 	/// The query params for the endpoint
 	query: Option<FieldsNamed>,
@@ -87,6 +90,7 @@ impl Parse for ApiEndpoint {
 		let mut request_headers = None;
 		let mut response_headers = None;
 		let mut response = None;
+		let mut api_allowed = None;
 
 		while !input.is_empty() {
 			let ident = input.parse::<Ident>()?;
@@ -151,6 +155,14 @@ impl Parse for ApiEndpoint {
 
 					auth = Some(input.parse()?);
 				}
+				"api" => {
+					if api_allowed.is_some() {
+						return Err(Error::new(ident.span(), "Duplicate field"));
+					}
+					input.parse::<Token![=]>()?;
+
+					api_allowed = Some(input.parse::<LitBool>()?.value);
+				}
 				_ => {
 					return Err(Error::new(ident.span(), "Unknown field"));
 				}
@@ -159,6 +171,7 @@ impl Parse for ApiEndpoint {
 				input.parse::<Token![,]>()?;
 			}
 		}
+		let api_allowed = api_allowed.unwrap_or(true);
 
 		Ok(Self {
 			documentation,
@@ -167,6 +180,7 @@ impl Parse for ApiEndpoint {
 			path,
 			path_body,
 			auth,
+			api_allowed,
 
 			query,
 			paginate_query,
@@ -189,6 +203,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		method,
 		path,
 		path_body,
+		api_allowed,
 
 		auth,
 		query,
@@ -234,7 +249,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		let name = format_ident!("{}Query", name);
 		if paginate_query.unwrap_or(false) {
 			quote::quote! {
-				crate::api::Paginated<#name>
+				models::api::Paginated<#name>
 			}
 		} else {
 			quote::quote! {
@@ -243,7 +258,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		}
 	} else if paginate_query.unwrap_or(false) {
 		quote::quote! {
-			crate::api::Paginated<()>
+			models::api::Paginated<()>
 		}
 	} else {
 		quote::quote! {
@@ -267,7 +282,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			#[serde(rename_all = "camelCase")]
 			pub struct #query_name #query
 
-			impl crate::utils::RequiresResponseHeaders for #query_name {
+			impl models::utils::RequiresResponseHeaders for #query_name {
 				type RequiredResponseHeaders = ();
 			}
 		}
@@ -320,7 +335,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			)]
 			pub struct #request_headers_name #headers
 
-			impl crate::utils::RequiresResponseHeaders for #request_headers_name {
+			impl models::utils::RequiresResponseHeaders for #request_headers_name {
 				type RequiredResponseHeaders = ();
 			}
 		}
@@ -364,7 +379,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		}
 	} else {
 		quote::quote! {
-				;
+			;
 		}
 	};
 
@@ -387,10 +402,11 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		#[typed_path(#path)]
 		pub struct #path_name #path_body
 
-		impl crate::utils::RequiresResponseHeaders for #path_name {
+		impl models::utils::RequiresResponseHeaders for #path_name {
 			type RequiredResponseHeaders = ();
 		}
 
+		#[::preprocess::sync]
 		/// The request body for the #name endpoint
 		///
 		/// The documentation for the endpoint is below:
@@ -406,7 +422,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		#[serde(rename_all = "camelCase")]
 		pub struct #request_name #request_body
 
-		impl crate::utils::RequiresResponseHeaders for #request_name {
+		impl models::utils::RequiresResponseHeaders for #request_name {
 			type RequiredResponseHeaders = ();
 		}
 
@@ -431,22 +447,23 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		#[serde(rename_all = "camelCase")]
 		pub struct #response_name #response_body
 
-		impl crate::utils::RequiresRequestHeaders for #response_name {
+		impl models::utils::RequiresRequestHeaders for #response_name {
 			type RequiredRequestHeaders = ();
 		}
 
-		impl crate::utils::RequiresResponseHeaders for #response_name {
+		impl models::utils::RequiresResponseHeaders for #response_name {
 			type RequiredResponseHeaders = ();
 		}
 
-		impl crate::ApiEndpoint for #request_name {
-			const METHOD: ::reqwest::Method = ::reqwest::Method::#method;
+		impl models::ApiEndpoint for #request_name {
+			const METHOD: ::http::Method = ::http::Method::#method;
+			const API_ALLOWED: bool = #api_allowed;
 
 			type RequestPath = #path_name;
 			type RequestQuery = #query_name;
 			type RequestHeaders = #request_headers_name;
 			type RequestBody = Self;
-			type Authenticator = crate::utils::#auth_type;
+			type Authenticator = models::utils::#auth_type;
 
 			#auth_impl
 

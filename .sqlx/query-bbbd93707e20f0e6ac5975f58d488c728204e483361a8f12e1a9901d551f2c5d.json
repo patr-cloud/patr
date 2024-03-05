@@ -1,0 +1,106 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT \"user\".*, web_login.token_expiry FROM \"user\" INNER JOIN user_login ON \"user\".id = user_login.user_id INNER JOIN web_login ON user_login.login_id = web_login.login_id WHERE user_login.login_id = $1 AND user_login.login_type = 'web_login';",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "password",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "first_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "last_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "created",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "recovery_email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "recovery_phone_country_code",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "recovery_phone_number",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "workspace_limit",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "password_reset_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "password_reset_token_expiry",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "password_reset_attempts",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 13,
+        "name": "mfa_secret",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "token_expiry",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "bbbd93707e20f0e6ac5975f58d488c728204e483361a8f12e1a9901d551f2c5d"
+}

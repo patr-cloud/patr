@@ -1,5 +1,5 @@
 use std::{
-	collections::BTreeMap,
+	collections::{BTreeMap, BTreeSet},
 	future::Future,
 	marker::PhantomData,
 	ops::Sub,
@@ -9,17 +9,16 @@ use std::{
 use argon2::{Algorithm, Argon2, PasswordHash, PasswordVerifier, Version};
 use jsonwebtoken::{DecodingKey, TokenData, Validation};
 use models::{
-	permission::WorkspacePermission,
-	utils::{AppAuthentication, BearerToken, HasAuthentication, HasHeader},
-	ApiEndpoint,
-	ErrorType,
+	permission::{ResourcePermissionType, WorkspacePermission},
+	utils::{AppAuthentication, BearerToken, HasHeader},
 	RequestUserData,
 };
+use preprocess::Preprocessable;
 use rustis::{client::Client as RedisClient, commands::StringCommands};
 use time::OffsetDateTime;
 use tower::{Layer, Service};
 
-use crate::{models::access_token_data::AccessTokenData, prelude::*, utils::constants};
+use crate::{models::access_token_data::AccessTokenData, prelude::*};
 
 /// The type of client used for a request. This is used to determine
 /// which authentication method to use, based on if the API call is made by our
@@ -44,14 +43,18 @@ pub enum ClientType {
 pub struct AuthenticationLayer<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
-	endpoint: PhantomData<E>,
+	/// The type of client that is allowed to make the request
 	client_type: ClientType,
+	/// The endpoint type that this layer will handle
+	endpoint: PhantomData<E>,
 }
 
 impl<E> AuthenticationLayer<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// Helper function to initialize an authentication layer
 	pub fn new(client_type: ClientType) -> Self {
@@ -65,6 +68,7 @@ where
 impl<E, S> Layer<S> for AuthenticationLayer<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 	for<'a> S: Service<AuthenticatedAppRequest<'a, E>>,
 {
 	type Service = AuthenticationService<E::Authenticator, E, S>;
@@ -82,6 +86,7 @@ where
 impl<E> Clone for AuthenticationLayer<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	fn clone(&self) -> Self {
 		Self {
@@ -94,18 +99,23 @@ where
 /// The underlying service that runs when the [`AuthenticationLayer`] is used.
 pub struct AuthenticationService<A, E, S>
 where
-	A: HasAuthentication,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
+	/// The inner service that will be called after the request is authenticated
 	inner: S,
+	/// The type of client that is allowed to make the request
 	client_type: ClientType,
+	/// The type of authenticator that will be used to authenticate the request
 	authenticator: PhantomData<A>,
+	/// The endpoint type that this layer will handle
 	endpoint: PhantomData<E>,
 }
 
 impl<'a, E, S> Service<AppRequest<'a, E>> for AuthenticationService<AppAuthentication<E>, E, S>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 	E::RequestHeaders: HasHeader<BearerToken>,
 	for<'b> S: Service<AuthenticatedAppRequest<'b, E>, Response = AppResponse<E>, Error = ErrorType>
 		+ Clone,
@@ -119,14 +129,14 @@ where
 		self.inner.poll_ready(cx)
 	}
 
-	#[instrument(skip(self, req))]
+	#[instrument(skip(self, req), name = "AuthenticatorService")]
 	fn call(&mut self, req: AppRequest<'a, E>) -> Self::Future {
 		let mut inner = self.inner.clone();
 		let client_type = self.client_type;
 		async move {
 			trace!("Authenticating request");
 			let BearerToken(token) = req.request.headers.get_header();
-			let token = token.as_str();
+			let token = token.token();
 
 			let user_data = match client_type {
 				ClientType::ApiToken => {
@@ -151,12 +161,14 @@ where
 						);
 						ErrorType::MalformedApiToken
 					})?;
+					trace!("Refresh token parsed as UUID");
 
 					let login_id = Uuid::parse_str(login_id).map_err(|err| {
 						warn!("Invalid API token provided: {}", token);
 						warn!("Cannot parse loginId `{}` as UUID: {}", login_id, err);
 						ErrorType::MalformedApiToken
 					})?;
+					trace!("Login ID parsed as UUID");
 
 					info!("Extracting information about API token");
 					let Some(token) = query!(
@@ -194,27 +206,40 @@ where
 						// information about whether a loginId is valid or if it's expired
 						return Err(ErrorType::AuthorizationTokenInvalid);
 					};
+					trace!("Token extracted from database");
 
 					if let Some(nbf) = token.token_nbf {
+						trace!("Token has an NBF");
 						if OffsetDateTime::now_utc() < nbf {
 							info!("API token is not valid yet");
 							return Err(ErrorType::AuthorizationTokenInvalid);
 						}
+					} else {
+						trace!("Token does not have an NBF");
 					}
+					trace!("Token passed NBF check");
 
 					if let Some(exp) = token.token_exp {
+						trace!("Token has an EXP");
 						if OffsetDateTime::now_utc() > exp {
 							info!("API token has expired");
 							return Err(ErrorType::AuthorizationTokenInvalid);
 						}
+					} else {
+						trace!("Token does not have an EXP");
 					}
+					trace!("Token passed EXP check");
 
 					if let Some(revoked) = token.revoked {
+						trace!("Token has a revoked timestamp");
 						if OffsetDateTime::now_utc() > revoked {
 							info!("API token has been revoked");
 							return Err(ErrorType::AuthorizationTokenInvalid);
 						}
+					} else {
+						trace!("Token does not have a revoked timestamp");
 					}
+					trace!("Token passed revoked timestamp check");
 
 					if let Some(allowed_ips) = token.allowed_ips {
 						if !allowed_ips
@@ -236,7 +261,7 @@ where
 						Version::V0x13,
 						constants::HASHING_PARAMS,
 					)
-					.map_err(|err| ErrorType::server_error(err.to_string()))?
+					.map_err(ErrorType::server_error)?
 					.verify_password(refresh_token.as_bytes(), &password_hash)
 					.is_ok();
 
@@ -244,6 +269,7 @@ where
 						warn!("API token has invalid refresh token");
 						return Err(ErrorType::AuthorizationTokenInvalid);
 					}
+					info!("API token valid");
 
 					let permissions =
 						get_permissions_for_login_id(req.database, req.redis, &login_id).await?;
@@ -290,11 +316,13 @@ where
 						warn!("Invalid JWT provided: {}", err);
 						ErrorType::MalformedAccessToken
 					})?;
+					trace!("Authentication header is a valid JWT");
 
 					if iss != constants::JWT_ISSUER {
 						warn!("Invalid JWT issuer: {}", iss);
 						return Err(ErrorType::MalformedAccessToken);
 					}
+					trace!("JWT issuer valid");
 
 					// The token should have been issued within the last `REFRESH_TOKEN_VALIDITY`
 					// duration
@@ -306,27 +334,35 @@ where
 						warn!("JWT is too old");
 						return Err(ErrorType::AuthorizationTokenInvalid);
 					}
+					trace!("JWT JTI valid");
 
 					if OffsetDateTime::now_utc() < nbf {
 						warn!("JWT is not valid yet");
 						return Err(ErrorType::AuthorizationTokenInvalid);
 					}
+					trace!("JWT NBF valid");
 
 					if OffsetDateTime::now_utc() > exp {
 						warn!("JWT has expired");
 						return Err(ErrorType::AuthorizationTokenInvalid);
 					}
+					trace!("JWT EXP valid");
 
 					let Some(user) = query! {
 						r#"
 						SELECT
-							"user".*
+							"user".*,
+							web_login.token_expiry
 						FROM
 							"user"
 						INNER JOIN
 							user_login
 						ON
 							"user".id = user_login.user_id
+						INNER JOIN
+							web_login
+						ON
+							user_login.login_id = web_login.login_id
 						WHERE
 							user_login.login_id = $1 AND
 							user_login.login_type = 'web_login';
@@ -341,6 +377,12 @@ where
 						// information about whether a loginId is valid or if it's expired
 						return Err(ErrorType::AuthorizationTokenInvalid);
 					};
+					trace!("Web login exists in the database");
+
+					if OffsetDateTime::now_utc() > user.token_expiry {
+						warn!("Web login has expired");
+						return Err(ErrorType::AuthorizationTokenInvalid);
+					}
 
 					let permissions =
 						get_permissions_for_login_id(req.database, req.redis, &sub).await?;
@@ -379,8 +421,8 @@ where
 
 impl<A, E, S> Clone for AuthenticationService<A, E, S>
 where
-	A: HasAuthentication,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 	for<'b> S: Service<AuthenticatedAppRequest<'b, E>, Response = AppResponse<E>, Error = ErrorType>
 		+ Clone,
 {
@@ -394,233 +436,195 @@ where
 	}
 }
 
+/// Get all the permissions for a given login ID. This will first check the
+/// Redis cache, and if the data is not found, it will query the database and
+/// then store the result in the Redis cache.
+#[tracing::instrument(skip(db_connection, redis_connection))]
 async fn get_permissions_for_login_id(
-	_db_connection: &mut DatabaseConnection,
+	db_connection: &mut DatabaseConnection,
 	redis_connection: &mut RedisClient,
 	login_id: &Uuid,
 ) -> Result<BTreeMap<Uuid, WorkspacePermission>, ErrorType> {
 	let redis_data: Option<String> = redis_connection
 		.get(redis::keys::permission_for_login_id(login_id))
 		.await?;
-	if let Some(data) = redis_data {
-		return Ok(serde_json::from_str(data.as_str())?);
+	if let Some(Ok(data)) = redis_data.as_deref().map(serde_json::from_str) {
+		return Ok(data);
 	}
 
-	todo!()
+	let mut workspace_permissions = BTreeMap::<Uuid, WorkspacePermission>::new();
 
-	// let mut workspace_permissions = BTreeMap::<Uuid,
-	// WorkspacePermission>::new();
+	query!(
+		r#"
+		SELECT DISTINCT
+			COALESCE(
+				user_api_token_workspace_super_admin.workspace_id,
+				workspace.id
+			) AS "workspace_id"
+		FROM
+			user_login
+		LEFT JOIN
+			user_api_token_workspace_super_admin
+		ON
+			user_login.login_type = 'api_token' AND
+			user_api_token_workspace_super_admin.token_id = user_login.login_id
+		LEFT JOIN
+			workspace
+		ON
+			user_login.login_type = 'web_login' AND
+			workspace.super_admin_id = user_login.user_id
+		WHERE
+			user_login.login_id = $1;
+		"#,
+		login_id as _
+	)
+	.fetch_all(&mut *db_connection)
+	.await?
+	.into_iter()
+	.filter_map(|row| row.workspace_id)
+	.for_each(|workspace_id| {
+		workspace_permissions.insert(workspace_id.into(), WorkspacePermission::SuperAdmin);
+	});
 
-	// query!(
-	// 	r#"
-	// 	SELECT
-	// 		id as "workspace_id"
-	// 	FROM
-	// 		workspace
-	// 	WHERE
-	// 		super_admin_id = $1;
-	// 	"#,
-	// 	user_id as _
-	// )
-	// .fetch_all(&mut *db_connection)
-	// .await?
-	// .into_iter()
-	// .map(|row| row.workspace_id.into())
-	// .for_each(|workspace_id| {
-	// 	// override the member roles for workspace with super admin
-	// 	// as super admin has high privilege than member permissions
-	// 	workspace_permissions.insert(workspace_id,
-	// WorkspacePermission::SuperAdmin); });
+	// Once all super-admins are added, add the excludes, then remove the includes
+	query!(
+		r#"
+		SELECT
+			COALESCE(
+				user_api_token_resource_permissions_exclude.workspace_id,
+				workspace_user.workspace_id
+			) AS "workspace_id",
+			COALESCE(
+				user_api_token_resource_permissions_exclude.resource_id,
+				role_resource_permissions_exclude.resource_id
+			) AS "resource_id",
+			COALESCE(
+				user_api_token_resource_permissions_exclude.permission_id,
+				role_resource_permissions_exclude.permission_id
+			) AS "permission_id"
+		FROM
+			user_login
+		LEFT JOIN
+			user_api_token_resource_permissions_exclude
+		ON
+			user_login.login_type = 'api_token' AND
+			user_api_token_resource_permissions_exclude.token_id = user_login.login_id
+		LEFT JOIN
+			workspace_user
+		ON
+			workspace_user.user_id = user_login.user_id
+		LEFT JOIN
+			role_resource_permissions_exclude
+		ON
+			role_resource_permissions_exclude.role_id = workspace_user.role_id
+		WHERE
+			user_login.login_id = $1;
+		"#,
+		login_id as _
+	)
+	.fetch_all(&mut *db_connection)
+	.await?
+	.into_iter()
+	.filter_map(|row| row.workspace_id.zip(row.resource_id).zip(row.permission_id))
+	.for_each(|((workspace_id, resource_id), permission_id)| {
+		let permissions = workspace_permissions
+			.entry(workspace_id.into())
+			.or_insert_with(|| WorkspacePermission::Member {
+				permissions: BTreeMap::new(),
+			});
+		match permissions {
+			WorkspacePermission::SuperAdmin => {
+				error!("SuperAdmin found when Member expected. This shouldn't be possible!");
+			}
+			WorkspacePermission::Member { permissions } => {
+				let permission_type = permissions
+					.entry(permission_id.into())
+					.or_insert_with(|| ResourcePermissionType::Exclude(BTreeSet::new()));
+				match permission_type {
+					ResourcePermissionType::Include(_) => {
+						error!(
+							"Found include permissions before include is even called. This should be possible!"
+						);
+					}
+					ResourcePermissionType::Exclude(resources) => {
+						resources.insert(resource_id.into());
+					}
+				}
+			}
+		}
+	});
 
-	// query!(
-	// 	r#"
-	// 	SELECT
-	// 		workspace_user.workspace_id,
-	// 		role_resource_permissions_include.permission_id,
-	// 		role_resource_permissions_include.resource_id
-	// 	FROM
-	// 		role_resource_permissions_include
-	// 	JOIN
-	// 		workspace_user
-	// 	ON
-	// 		workspace_user.role_id = role_resource_permissions_include.role_id
-	// 	WHERE
-	// 		workspace_user.user_id = $1;
-	// 	"#,
-	// 	user_id
-	// )
-	// .fetch_all(&mut *db_connection)
-	// .await?
-	// .into_iter()
-	// .map(|row| {
-	// 	(
-	// 		row.workspace_id.into(),
-	// 		row.permission_id.into(),
-	// 		row.resource_id.into(),
-	// 	)
-	// })
-	// .fold(
-	// 	BTreeMap::<(Uuid, Uuid), BTreeSet<Uuid>>::new(),
-	// 	|mut accumulator, (workspace_id, permission_id, resource_id)| {
-	// 		accumulator
-	// 			.entry((workspace_id, permission_id))
-	// 			.or_default()
-	// 			.insert(resource_id);
-	// 		accumulator
-	// 	},
-	// )
-	// .into_iter()
-	// .for_each(|((workspace_id, permission_id), resource_ids)| {
-	// 	workspace_permissions
-	// 		.entry(workspace_id)
-	// 		.and_modify(|existing_permissions| match existing_permissions {
-	// 			WorkspacePermission::SuperAdmin => unreachable!(),
-	// 			WorkspacePermission::Member { permissions } => {
-	// 				permissions
-	// 					.entry(permission_id)
-	// 					.or_insert(ResourcePermissionType::Include(resource_ids));
-	// 			}
-	// 		})
-	// 		.or_insert(
-	// 			// insert is fine as every include resource has been
-	// 			// accumulated already
-	// 			WorkspacePermission::Member {
-	// 				permissions: BTreeMap::from([(
-	// 					permission_id,
-	// 					ResourcePermissionType::Include(resource_ids),
-	// 				)]),
-	// 			},
-	// 		);
-	// });
+	query!(
+		r#"
+		SELECT
+			COALESCE(
+				user_api_token_resource_permissions_include.workspace_id,
+				workspace_user.workspace_id
+			) AS "workspace_id",
+			COALESCE(
+				user_api_token_resource_permissions_include.resource_id,
+				role_resource_permissions_include.resource_id
+			) AS "resource_id",
+			COALESCE(
+				user_api_token_resource_permissions_include.permission_id,
+				role_resource_permissions_include.permission_id
+			) AS "permission_id"
+		FROM
+			user_login
+		LEFT JOIN
+			user_api_token_resource_permissions_include
+		ON
+			user_login.login_type = 'api_token' AND
+			user_api_token_resource_permissions_include.token_id = user_login.login_id
+		LEFT JOIN
+			workspace_user
+		ON
+			workspace_user.user_id = user_login.user_id
+		LEFT JOIN
+			role_resource_permissions_include
+		ON
+			role_resource_permissions_include.role_id = workspace_user.role_id
+		WHERE
+			user_login.login_id = $1;
+		"#,
+		login_id as _
+	)
+	.fetch_all(&mut *db_connection)
+	.await?
+	.into_iter()
+	.filter_map(|row| row.workspace_id.zip(row.resource_id).zip(row.permission_id))
+	.for_each(|((workspace_id, resource_id), permission_id)| {
+		let permissions = workspace_permissions
+			.entry(workspace_id.into())
+			.or_insert_with(|| WorkspacePermission::Member {
+				permissions: BTreeMap::new(),
+			});
+		match permissions {
+			WorkspacePermission::SuperAdmin => {
+				error!("SuperAdmin found when Member expected. This shouldn't be possible!");
+			}
+			WorkspacePermission::Member { permissions } => {
+				let permission_type = permissions
+					.entry(permission_id.into())
+					.or_insert_with(|| ResourcePermissionType::Include(BTreeSet::new()));
+				match permission_type {
+					ResourcePermissionType::Include(resources) => {
+						resources.insert(resource_id.into());
+					}
+					ResourcePermissionType::Exclude(resources) => {
+						resources.remove(&resource_id.into());
+					}
+				}
+			}
+		}
+	});
 
-	// query!(
-	// 	r#"
-	// 	SELECT
-	// 		workspace_user.workspace_id as "workspace_id: Uuid",
-	// 		workspace_user.role_id as "role_id: Uuid",
-	// 		role_resource_permissions_exclude.permission_id as "permission_id: Uuid",
-	// 		role_resource_permissions_exclude.resource_id as "resource_id: Uuid"
-	// 	FROM
-	// 		role_resource_permissions_exclude
-	// 	JOIN
-	// 		workspace_user
-	// 		ON workspace_user.role_id = role_resource_permissions_exclude.role_id
-	// 	WHERE
-	// 		workspace_user.user_id = $1;
-	// 	"#,
-	// 	user_id as _
-	// )
-	// .fetch_all(&mut *db_connection)
-	// .await?
-	// .into_iter()
-	// .map(|row| {
-	// 	(
-	// 		row.workspace_id.into(),
-	// 		row.role_id.into(),
-	// 		row.permission_id.into(),
-	// 		row.resource_id.into(),
-	// 	)
-	// })
-	// .fold(
-	// 	BTreeMap::<(Uuid, Uuid, Uuid), BTreeSet<Uuid>>::new(),
-	// 	|mut accumulator, (workspace_id, role_id, permission_id, resource_id)| {
-	// 		accumulator
-	// 			.entry((workspace_id, role_id, permission_id))
-	// 			.or_default()
-	// 			.insert(resource_id);
-	// 		accumulator
-	// 	},
-	// )
-	// .into_iter()
-	// .fold(
-	// 	BTreeMap::<(Uuid, Uuid), BTreeSet<Uuid>>::new(),
-	// 	|mut accumulator, ((workspace_id, _role_id, permission_id), resource_ids)| {
-	// 		accumulator
-	// 			.entry((workspace_id, permission_id))
-	// 			.and_modify(|existing_excludes| {
-	// 				*existing_excludes = existing_excludes
-	// 					.intersection(&resource_ids)
-	// 					.cloned()
-	// 					.collect();
-	// 			})
-	// 			.or_insert_with(|| resource_ids);
-	// 		accumulator
-	// 	},
-	// )
-	// .into_iter()
-	// .for_each(|((workspace_id, permission_id), mut resource_ids)| {
-	// 	let resource_permissions = workspace_permissions
-	// 		.entry(workspace_id)
-	// 		.or_default()
-	// 		.entry(permission_id)
-	// 		.or_insert_with(|| ResourcePermissionType::Include(BTreeSet::new()));
+	redis_connection
+		.set(
+			redis::keys::permission_for_login_id(login_id),
+			serde_json::to_string(&workspace_permissions)?,
+		)
+		.await?;
 
-	// 	match resource_permissions {
-	// 		ResourcePermissionType::Include(includes) =>
-	// includes.iter().for_each(|resource_id| { 			resource_ids.
-	// remove(resource_id); 		}),
-	// 		ResourcePermissionType::Exclude(excludes) => {
-	// 			// ideally this case won't happen, as excludes are accumulated
-	// 			// and then inserted
-	// 			excludes.iter().cloned().for_each(|resource_id| {
-	// 				resource_ids.insert(resource_id);
-	// 			})
-	// 		}
-	// 	}
-
-	// 	*resource_permissions = ResourcePermissionType::Exclude(resource_ids);
-	// });
-
-	// query!(
-	// 	r#"
-	// 	SELECT
-	// 		workspace_user.workspace_id as "workspace_id: Uuid",
-	// 		role_resource_permissions_type.permission_id as "permission_id: Uuid"
-	// 	FROM
-	// 		role_resource_permissions_type
-	// 	JOIN
-	// 		workspace_user
-	// 		ON workspace_user.role_id = role_resource_permissions_type.role_id
-	// 	WHERE
-	// 		workspace_user.user_id = $1
-	// 		AND role_resource_permissions_type.permission_type = 'exclude'
-	// 		AND NOT EXISTS (
-	// 			SELECT 1
-	// 			FROM
-	// 				role_resource_permissions_exclude
-	// 			WHERE
-	// 				role_resource_permissions_exclude.role_id =
-	// role_resource_permissions_type.role_id
-	// 				AND role_resource_permissions_exclude.permission_id =
-	// role_resource_permissions_type.permission_id 	);
-	// 	"#,
-	// 	user_id as _
-	// )
-	// .fetch_all(&mut *db_connection)
-	// .await?
-	// .into_iter()
-	// .map(|row| (row.workspace_id.into(), row.permission_id.into()))
-	// .for_each(|(workspace_id, permission_id)| {
-	// 	workspace_permissions
-	// 		.entry(workspace_id)
-	// 		.or_default()
-	// 		.insert(
-	// 			permission_id,
-	// 			ResourcePermissionType::Exclude(BTreeSet::new()),
-	// 		);
-	// });
-
-	// let mut workspace_permissions = workspace_permissions
-	// 	.into_iter()
-	// 	.map(|(workspace_id, member_permissions)| {
-	// 		(
-	// 			workspace_id,
-	// 			WorkspacePermission::Member {
-	// 				permissions: member_permissions,
-	// 			},
-	// 		)
-	// 	})
-	// 	.collect::<BTreeMap<_, _>>();
-
-	// Ok(workspace_permissions)
+	Ok(workspace_permissions)
 }

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE user_to_sign_up( username VARCHAR(100) NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, /* recovery email OR recovery phone number */ recovery_email TEXT, recovery_phone_country_code CHAR(2), recovery_phone_number VARCHAR(15), otp_hash TEXT NOT NULL, otp_expiry TIMESTAMPTZ NOT NULL );",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "93433226da3e8e2756a5c27ebd7b50acc37efd1f490ed34afea441c64c8ec9cf"
+}

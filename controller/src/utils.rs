@@ -4,6 +4,16 @@ use either::Either;
 use kube::{api::DeleteParams, core::Status, error::ErrorResponse, Api, Error};
 use serde::de::DeserializeOwned;
 
+/// Constants used in the Controller
+pub mod constants {
+	/// The base URL for the Patr API
+	pub const API_BASE_URL: &str = if cfg!(debug_assertions) {
+		"https://api.patr.cloud"
+	} else {
+		"http://localhost:3000"
+	};
+}
+
 pub trait KubeApiExt<K>
 where
 	K: Clone + DeserializeOwned + Debug,

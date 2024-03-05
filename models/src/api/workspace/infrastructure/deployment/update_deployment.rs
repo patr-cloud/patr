@@ -1,10 +1,7 @@
 use std::collections::BTreeMap;
 
 use super::{DeploymentProbe, DeploymentVolume, EnvironmentVariableValue, ExposedPortType};
-use crate::{
-	prelude::*,
-	utils::{Base64String, BearerToken, StringifiedU16, Uuid},
-};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to update a deployment
@@ -17,7 +14,9 @@ macros::declare_api_endpoint!(
 	},
 	request_headers = {
 		/// Token used to authorize user
-		pub authorization: BearerToken
+		pub authorization: BearerToken,
+		/// The user-agent used to access this API
+		pub user_agent: UserAgent,
 	},
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {

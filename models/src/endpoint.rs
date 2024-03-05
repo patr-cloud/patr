@@ -1,11 +1,11 @@
 use std::fmt::Debug;
 
 use axum_extra::routing::TypedPath;
+use preprocess::Preprocessable;
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::utils::{
 	FromAxumRequest,
-	HasAuthentication,
 	HasHeaders,
 	Headers,
 	IntoAxumResponse,
@@ -34,8 +34,10 @@ where
 		+ Send
 		+ Sync
 		+ 'static,
-	Self::RequestBody: ResponseHeaders + FromAxumRequest + Clone + Send + Sync + 'static,
-	Self::Authenticator: HasAuthentication + RequestHeaders + Clone + Send,
+	Self::RequestBody:
+		ResponseHeaders + FromAxumRequest + Preprocessable + Clone + Send + Sync + 'static,
+	<Self::RequestBody as Preprocessable>::Processed: Send,
+	Self::Authenticator: RequestHeaders + Clone + Send,
 
 	Self::ResponseHeaders: Headers
 		+ HasHeaders<<Self::RequestPath as ResponseHeaders>::RequiredResponseHeaders>
@@ -50,7 +52,10 @@ where
 		IntoAxumResponse + RequestHeaders + ResponseHeaders + Debug + Send + Sync + 'static,
 {
 	/// The HTTP method that should be used for this endpoint
-	const METHOD: reqwest::Method;
+	const METHOD: http::Method;
+	/// If true, this route can be accessed by the API. Otherwise, it'll only be
+	/// accessible by the Web UI
+	const API_ALLOWED: bool;
 
 	/// The path that should be used for this endpoint. This should be a valid
 	/// HTML URL Path and can contain URL parameters as a struct. For example,

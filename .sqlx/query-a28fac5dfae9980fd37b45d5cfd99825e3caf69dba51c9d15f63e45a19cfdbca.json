@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE \"user\" ADD CONSTRAINT user_pk PRIMARY KEY(id), ADD CONSTRAINT user_uq_username UNIQUE(username), ADD CONSTRAINT user_uq_recovery_email UNIQUE(recovery_email), ADD CONSTRAINT user_uq_recovery_phone_country_code_recovery_phone_number UNIQUE(recovery_phone_country_code, recovery_phone_number);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "a28fac5dfae9980fd37b45d5cfd99825e3caf69dba51c9d15f63e45a19cfdbca"
+}

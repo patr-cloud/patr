@@ -1,4 +1,4 @@
-use crate::{prelude::*, utils::BearerToken};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to check if a workspace name is available
@@ -10,6 +10,8 @@ macros::declare_api_endpoint!(
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,
+		/// The user-agent used to access this API
+		pub user_agent: UserAgent,
 	},
 	query = {
 		/// The name of the workspace to check

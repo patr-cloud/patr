@@ -16,7 +16,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 
 async fn create_managed_url(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -43,7 +43,7 @@ async fn create_managed_url(
 
 async fn delete_managed_url(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -70,7 +70,7 @@ async fn delete_managed_url(
 
 async fn list_managed_url(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -99,7 +99,7 @@ async fn list_managed_url(
 
 async fn update_managed_url(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -126,7 +126,7 @@ async fn update_managed_url(
 
 async fn verify_configuration(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,

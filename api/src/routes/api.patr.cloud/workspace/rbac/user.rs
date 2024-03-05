@@ -14,7 +14,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 
 async fn list_users_with_roles_in_workspace(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -43,7 +43,7 @@ async fn list_users_with_roles_in_workspace(
 
 async fn remove_user_from_workspace(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -70,7 +70,7 @@ async fn remove_user_from_workspace(
 
 async fn update_user_roles_in_workspace(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,

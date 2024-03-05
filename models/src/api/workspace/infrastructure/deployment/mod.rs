@@ -33,7 +33,7 @@ pub use self::{
 	stop_deployment::*,
 	update_deployment::*,
 };
-use crate::prelude::*;
+use crate::{prelude::*, utils::constants};
 
 /// Information of all the different deployment plans currently supported
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]

@@ -1,5 +1,5 @@
 use axum::{http::StatusCode, Router};
-use models::{api::workspace::region::*, ApiRequest, ErrorType};
+use models::{api::workspace::region::*, ErrorType};
 
 use crate::prelude::*;
 
@@ -16,7 +16,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 
 async fn add_region_to_workspace(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -43,7 +43,7 @@ async fn add_region_to_workspace(
 
 async fn check_region_status(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -74,7 +74,7 @@ async fn check_region_status(
 
 async fn delete_region(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -101,7 +101,7 @@ async fn delete_region(
 
 async fn get_region_info(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -133,7 +133,7 @@ async fn get_region_info(
 async fn list_regions_for_workspace(
 	AuthenticatedAppRequest {
 		request:
-			ApiRequest {
+			ProcessedApiRequest {
 				path: ListRegionsForWorkspacePath { workspace_id },
 				query: Paginated {
 					data: (),
@@ -141,7 +141,7 @@ async fn list_regions_for_workspace(
 					page,
 				},
 				headers: _,
-				body: ListRegionsForWorkspaceRequest,
+				body: ListRegionsForWorkspaceRequestProcessed,
 			},
 		database,
 		redis: _,

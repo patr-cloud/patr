@@ -3,4 +3,6 @@ rustflags = ["--cfg=web_sys_unstable_apis", "-Z", "threads=8"]
 
 [alias]
 serve = "leptos serve"
+watch = "leptos watch --hot-reload"
 prepare = "sqlx prepare --workspace"
+patr = "run -p cli --"

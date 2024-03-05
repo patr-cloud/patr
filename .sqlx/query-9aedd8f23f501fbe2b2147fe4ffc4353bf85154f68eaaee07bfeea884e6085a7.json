@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM user_unverified_email WHERE email = $1 AND verification_token_expiry > NOW();",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "verification_token_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "verification_token_expiry",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "9aedd8f23f501fbe2b2147fe4ffc4353bf85154f68eaaee07bfeea884e6085a7"
+}

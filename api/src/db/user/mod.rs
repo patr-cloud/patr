@@ -1,9 +1,15 @@
 use crate::prelude::*;
 
+/// All sign up related data of a user
 mod sign_up;
+/// The main user data tables
 mod user_data;
+/// The user email tables
 mod user_email;
+/// The user login tables. This is used to store the login information of the
+/// user and their API tokens.
 mod user_login;
+/// The phone numbers of the user
 mod user_phone;
 
 /// Initializes all user tables

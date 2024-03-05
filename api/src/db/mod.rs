@@ -2,15 +2,21 @@ use sqlx::{pool::PoolOptions, Pool};
 
 use crate::{prelude::*, utils::config::DatabaseConfig};
 
+/// The initializer for the database. This will create the database pool and
+/// initialize the database with the necessary tables and data.
 pub(super) mod initializer;
+/// The meta data for the database. This is mostly used for the version number
+/// of the database and handling the migrations for the database.
 pub(super) mod meta_data;
+/// The role based access control for the database. This is used to handle the
+/// permissions for the users and what workspace they have access to.
 pub(super) mod rbac;
+/// The user module for the database. This is used to handle the users and their
+/// data.
 pub(super) mod user;
+/// The workspace module for the database. This is used to handle the workspaces
+/// and their data.
 pub(super) mod workspace;
-
-/// The diesel database schema and types for querying
-#[allow(missing_docs)]
-pub mod schema;
 
 pub use self::initializer::initialize;
 pub(super) use self::{meta_data::*, rbac::*, user::*, workspace::*};
@@ -31,35 +37,4 @@ pub async fn connect(config: &DatabaseConfig) -> Pool<DatabaseType> {
 		)
 		.await
 		.expect("Failed to connect to database")
-}
-
-/// Sets all constraints to deferred for this particular connection
-pub async fn begin_deferred_constraints(
-	connection: &mut DatabaseConnection,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		SET CONSTRAINTS ALL DEFERRED;
-		"#,
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
-}
-
-/// Ends all deferred constraints for this connection.
-/// Note: This can cause errors if the constraints are violated.
-pub async fn end_deferred_constraints(
-	connection: &mut DatabaseConnection,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		SET CONSTRAINTS ALL IMMEDIATE;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
 }

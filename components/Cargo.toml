@@ -1,0 +1,35 @@
+[package]
+name = "components"
+
+authors.workspace = true
+description.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+axum-extra = { workspace = true, features = ["typed-routing"] }
+serde = { workspace = true, features = ["default", "derive"] }
+serde_json = { workspace = true, features = ["default"] }
+serde_urlencoded = { workspace = true, features = [] }
+tracing = { workspace = true, features = ["attributes"] }
+web-sys = { workspace = true, features = ["MouseEvent"] }
+log = { workspace = true, features = [] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+leptos = { workspace = true, features = ["tracing", "hydrate"] }
+leptos-use = { workspace = true, features = [] }
+leptos_meta = { workspace = true, features = ["hydrate"] }
+leptos_router = { workspace = true, features = ["hydrate"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
+leptos = { workspace = true, features = ["tracing", "ssr"] }
+leptos-use = { workspace = true, features = ["axum", "ssr"] }
+leptos_axum = { workspace = true, features = ["default"] }
+leptos_meta = { workspace = true, features = ["ssr"] }
+leptos_router = { workspace = true, features = ["ssr"] }

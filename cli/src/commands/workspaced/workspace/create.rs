@@ -1,8 +1,7 @@
-use std::io::Write;
-
 use clap::Args;
 
 use super::GlobalArgs;
+use crate::CommandOutput;
 
 /// The arguments that can be passed to the create workspace command.
 #[derive(Debug, Clone, Args)]
@@ -13,9 +12,8 @@ pub struct CreateArgs {
 }
 
 pub(super) async fn execute(
-	global_args: &GlobalArgs,
-	args: CreateArgs,
-	mut writer: impl Write + Send,
-) -> anyhow::Result<()> {
-	Ok(())
+	_global_args: &GlobalArgs,
+	_args: CreateArgs,
+) -> anyhow::Result<CommandOutput> {
+	todo!()
 }

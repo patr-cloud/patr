@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM user_to_sign_up WHERE username = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "password",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "first_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "last_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "recovery_email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "recovery_phone_country_code",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "recovery_phone_number",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "otp_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "otp_expiry",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "c78831413d51fd6f0318655e61d824a84a75d31b4bbfc6acda5835c6dbe0d132"
+}

@@ -1,8 +1,7 @@
-use std::io::Write;
-
 use clap::Args;
 
 use super::GlobalArgs;
+use crate::CommandOutput;
 
 /// The arguments that can be passed to the login command.
 #[derive(Debug, Clone, Args)]
@@ -19,16 +18,8 @@ pub struct LoginArgs {
 
 /// A command that logs the user into their Patr account.
 pub(super) async fn execute(
-	global_args: &GlobalArgs,
-	args: LoginArgs,
-	mut writer: impl Write + Send,
-) -> Result<(), anyhow::Error> {
-	let table = crate::models::commands::login::Table {
-		first_name: "Test".to_string(),
-		last_name: "User".to_string(),
-		username: "testuser".to_string(),
-	}
-	.into_formatted();
-	write!(writer, "{}", table)?;
+	_global_args: &GlobalArgs,
+	_args: LoginArgs,
+) -> Result<CommandOutput, anyhow::Error> {
 	todo!()
 }

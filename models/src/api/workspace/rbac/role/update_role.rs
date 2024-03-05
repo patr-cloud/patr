@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::{prelude::*, utils::BearerToken};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to create a new role
@@ -13,7 +13,9 @@ macros::declare_api_endpoint!(
 	},
 	request_headers = {
 		/// Token used to authorize user
-		pub authorization: BearerToken
+		pub authorization: BearerToken,
+		/// The user-agent used to access this API
+		pub user_agent: UserAgent,
 	},
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {

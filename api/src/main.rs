@@ -31,7 +31,6 @@ pub mod utils;
 /// A prelude that re-exports commonly used items.
 pub mod prelude {
 	pub use anyhow::Context;
-	pub use diesel::{dsl::*, prelude::*};
 	pub use macros::query;
 	pub use models::{
 		utils::{OneOrMore, Paginated, Uuid},
@@ -42,8 +41,13 @@ pub mod prelude {
 	pub use tracing::{debug, error, info, instrument, trace, warn};
 
 	pub use crate::{
-		app::{AppRequest, AppState, AuthenticatedAppRequest},
-		db::schema,
+		app::{
+			AppRequest,
+			AppState,
+			AuthenticatedAppRequest,
+			ProcessedApiRequest,
+			UnprocessedAppRequest,
+		},
 		redis,
 		utils::{constants, RouterExt},
 	};
@@ -77,8 +81,11 @@ async fn main() {
 	use std::net::SocketAddr;
 
 	use app::AppState;
+	use opentelemetry::KeyValue;
 	use opentelemetry_otlp::WithExportConfig;
-	use tracing::Level;
+	use opentelemetry_sdk::Resource;
+	use tokio::net::TcpListener;
+	use tracing::{Dispatch, Level};
 	use tracing_opentelemetry::OpenTelemetryLayer;
 	use tracing_subscriber::{
 		filter::LevelFilter,
@@ -90,49 +97,70 @@ async fn main() {
 
 	let config = utils::config::parse_config();
 
-	tracing::subscriber::set_global_default(
-		tracing_subscriber::registry()
-			.with(
-				FmtLayer::new()
-					.with_span_events(FmtSpan::NONE)
-					.event_format(
-						tracing_subscriber::fmt::format()
-							.with_ansi(true)
-							.with_file(false)
-							.without_time()
-							.compact(),
-					)
-					.with_filter(
-						tracing_subscriber::filter::Targets::new()
-							.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE),
-					)
-					.with_filter(LevelFilter::from_level(
-						if config.environment == RunningEnvironment::Development {
-							Level::DEBUG
-						} else {
-							Level::TRACE
-						},
-					)),
-			)
-			.with(
-				OpenTelemetryLayer::new(
-					opentelemetry_otlp::new_pipeline()
-						.tracing()
-						.with_trace_config(opentelemetry_sdk::trace::config())
-						.with_exporter(
-							opentelemetry_otlp::new_exporter()
-								.tonic()
-								.with_endpoint(&config.opentelemetry.endpoint),
-						)
-						.install_simple()
-						.expect("Failed to install OpenTelemetry tracing pipeline"),
+	tracing::dispatcher::set_global_default({
+		let registry = tracing_subscriber::registry().with(
+			FmtLayer::new()
+				.with_span_events(FmtSpan::NONE)
+				.event_format(
+					tracing_subscriber::fmt::format()
+						.with_ansi(true)
+						.with_file(false)
+						.without_time()
+						.compact(),
 				)
 				.with_filter(
 					tracing_subscriber::filter::Targets::new()
 						.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE),
-				),
-			),
-	)
+				)
+				.with_filter(LevelFilter::from_level(
+					if config.environment == RunningEnvironment::Development {
+						Level::DEBUG
+					} else {
+						Level::TRACE
+					},
+				)),
+		);
+
+		let setup_opentelemetry = |opentelemetry: &utils::config::OpenTelemetryConfig| {
+			OpenTelemetryLayer::new(
+				{
+					let pipeline = opentelemetry_otlp::new_pipeline()
+						.tracing()
+						.with_trace_config(opentelemetry_sdk::trace::config().with_resource(
+							Resource::new(vec![KeyValue::new("service.name", "Patr API")]),
+						))
+						.with_exporter(
+							opentelemetry_otlp::new_exporter()
+								.tonic()
+								.with_endpoint(&opentelemetry.endpoint),
+						);
+					match config.environment {
+						RunningEnvironment::Development => pipeline.install_simple(),
+						RunningEnvironment::Production => {
+							pipeline.install_batch(opentelemetry_sdk::runtime::Tokio)
+						}
+					}
+				}
+				.expect("Failed to install OpenTelemetry tracing pipeline"),
+			)
+			.with_filter(
+				tracing_subscriber::filter::Targets::new()
+					.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE),
+			)
+		};
+		#[cfg(debug_assertions)]
+		{
+			if let Some(opentelemetry) = &config.opentelemetry {
+				Dispatch::new(registry.with(setup_opentelemetry(opentelemetry)))
+			} else {
+				Dispatch::new(registry)
+			}
+		}
+		#[cfg(not(debug_assertions))]
+		{
+			registry.with(setup_opentelemetry(&config.opentelemetry))
+		}
+	})
 	.expect("Failed to set global default subscriber");
 
 	tracing::info!("Config parsed. Running in {} mode", config.environment);
@@ -155,19 +183,19 @@ async fn main() {
 
 	tokio::join!(
 		async {
-			axum::Server::bind(&bind_address)
-				.serve(
-					app::setup_routes(&state)
-						.await
-						.into_make_service_with_connect_info::<SocketAddr>(),
-				)
-				.with_graceful_shutdown(async {
-					tokio::signal::ctrl_c()
-						.await
-						.expect("failed to install ctrl-c signal handler");
-				})
-				.await
-				.unwrap();
+			axum::serve(
+				TcpListener::bind(bind_address).await.unwrap(),
+				app::setup_routes(&state)
+					.await
+					.into_make_service_with_connect_info::<SocketAddr>(),
+			)
+			.with_graceful_shutdown(async {
+				tokio::signal::ctrl_c()
+					.await
+					.expect("failed to install ctrl-c signal handler");
+			})
+			.await
+			.unwrap();
 		},
 		async {
 			redis_publisher::run(&state).await;

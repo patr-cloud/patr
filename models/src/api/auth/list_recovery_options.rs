@@ -1,9 +1,16 @@
+use crate::prelude::*;
+
 macros::declare_api_endpoint!(
 	/// Route to list all the available recovery options when user forgets their
 	/// password and opt for changing it. The current recovery options are email and phone number.
 	/// The backend performs validation and prevents the leak of sensitive user information.
 	ListRecoveryOptions,
 	GET "/auth/list-recovery-options",
+	api = false,
+	request_headers = {
+		/// The user-agent used to access this API
+		pub user_agent: UserAgent,
+	},
 	request = {
 		/// The user identifier of the user
 		/// It can be either the username or the email of the user depending on the user input

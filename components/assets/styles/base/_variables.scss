@@ -1,0 +1,99 @@
+//colors
+$primary-main: #f89b41;
+$primary-light: #f89b4180;
+$primary-dark: #f89b41;
+$secondary-dark: #191131;
+$secondary-main: #0d0526;
+$secondary-medium: #2e2450;
+$secondary-light: #23203e;
+
+$error-main: #d62b36;
+$error-light: #d62b3680;
+$warning-main: #fdd13a;
+$warning-light: #fdd13a80;
+$success-main: #47c96c;
+$success-light: #47c96c80;
+$info-main: #007bff;
+$info-light: #007bff80;
+
+$text-white: #ffffff;
+$text-black: #000000;
+$text-grey: #ffffffac;
+$text-disabled: #ffffff60;
+
+$txt-code-snippet: #a5c5ff;
+$bg-code-snippet: #78a7ff1a;
+
+$border-color: #414245;
+
+$tooltip-color: #333333;
+
+//fonts
+$font-primary: "Poppins", "Roboto", "Helvetica", "Arial", sans-serif;
+$font-log: "Source Code Pro", monospace;
+
+$base-font-size: 1rem;
+
+$font-thin: 300;
+$font-regular: 400;
+$font-medium: 500;
+$font-bold: 600;
+
+//shadows
+$shadow-high: 4px 4px 10px #000000f0;
+$shadow-medium: 4px 4px 10px #00000080;
+$shadow-light: 5px 0px 10px #00000040;
+
+//spacing
+$base-padding: 0.3125rem;
+$base-margin: 0.3125rem;
+$base-grid-gap: 0.3125rem;
+$base-border-radius: 0.3125rem;
+
+//icon-size
+$base-icon-size: 1.25rem;
+
+$base-avatar-sizes: 2rem;
+
+//cursor types
+$cursors: pointer, not-allowed, default, grab, text;
+
+//gradients
+$image-overlay-light: linear-gradient(0deg, #00000010, #00000010);
+$image-overlay-medium: linear-gradient(0deg, #00000020, #00000020);
+$image-overlay-dark: linear-gradient(0deg, #00000030, #00000030);
+$billing-card-border-gradient: radial-gradient(
+  68.99% 181.01% at 1.41% 100%,
+  rgba(254, 185, 90, 0.75) 0%,
+  rgba(254, 185, 90, 0) 100%
+);
+$billing-card-bg-gradient: radial-gradient(
+    57.56% 113.73% at 98.94% 1.74%,
+    rgba(254, 185, 90, 0.1) 0%,
+    rgba(254, 185, 90, 0) 100%
+  ),
+  #23203e;
+
+$gradient-top-to-bottom: linear-gradient(
+  10deg,
+  transparentize($secondary-light, 0.1) 60%,
+  transparentize($primary-main, 0.75)
+);
+
+//image urls
+$onboard: "/images/add-details.png";
+$empty: "/images/section-bg.svg";
+$main-bg: "/images/main-bg.svg";
+$spaceship: "/images/spaceship.svg";
+$astronaut: "/images/astronaut.svg";
+$planet: "/images/planet.svg";
+$sky: "/images/starry-sky.svg";
+
+//media query break points
+$bp-xxs: 0px;
+$bp-xs: 420px;
+$bp-sm: 768px;
+$bp-md: 1350px;
+$bp-lg: 1440px;
+$bp-xl: 2040px;
+$bp-xxl: 2690px;

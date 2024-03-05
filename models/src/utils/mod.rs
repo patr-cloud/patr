@@ -65,6 +65,11 @@ pub use self::{
 pub mod constants {
 	/// Base URL for the API
 	pub const API_BASE_URL: &str = "https://api.patr.cloud";
+
 	/// Patr's container registry URL
 	pub const CONTAINER_REGISTRY_URL: &str = "registry.patr.cloud";
+
+	/// A NodeID for Uuid v1.
+	/// Spells "*Patr*" in bytes
+	pub const UUID_NODE_ID: [u8; 6] = [42, 80, 97, 116, 114, 42];
 }

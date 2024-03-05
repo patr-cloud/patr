@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT web_login.refresh_token, web_login.token_expiry FROM web_login WHERE login_id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "refresh_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "token_expiry",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "cc7869b4588fc3fed35c22ef011ba79e494cf72248dea862ba6a9632514210c1"
+}

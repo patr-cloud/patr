@@ -1,8 +1,15 @@
+use crate::prelude::*;
+
 macros::declare_api_endpoint!(
 	/// Route to login and start a new user session. This route will generate all
 	/// the authentication token needed to access all the services on PATR.
 	Login,
 	POST "/auth/sign-in",
+	api = false,
+	request_headers = {
+		/// The user-agent used to access this API
+		pub user_agent: UserAgent,
+	},
 	request = {
 		/// The user identifier of the user
 		/// It can be either the username or the email of the user depending on the user input

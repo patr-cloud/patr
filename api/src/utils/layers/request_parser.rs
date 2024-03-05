@@ -18,6 +18,7 @@ use models::{
 	utils::{FromAxumRequest, Headers, IntoAxumResponse},
 	ApiErrorResponse,
 };
+use preprocess::Preprocessable;
 use tower::{Layer, Service};
 
 use crate::{prelude::*, utils::extractors::ClientIP};
@@ -29,13 +30,16 @@ use crate::{prelude::*, utils::extractors::ClientIP};
 pub struct RequestParserLayer<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
+	/// The endpoint type that this layer will handle.
 	phantom: PhantomData<E>,
 }
 
 impl<E> RequestParserLayer<E>
 where
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// Create a new instance of the [`RequestParserLayer`]
 	pub const fn new() -> Self {
@@ -49,6 +53,7 @@ impl<S, E> Layer<S> for RequestParserLayer<E>
 where
 	for<'a> S: Service<(ApiRequest<E>, IpAddr)>,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	type Service = RequestParserService<S, E>;
 
@@ -69,8 +74,11 @@ pub struct RequestParserService<S, E>
 where
 	for<'a> S: Service<(ApiRequest<E>, IpAddr)>,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
+	/// The inner service that will be called with the parsed request.
 	inner: S,
+	/// The endpoint type that this service will handle.
 	phantom: PhantomData<E>,
 }
 
@@ -79,6 +87,7 @@ where
 	for<'a> S:
 		Service<(ApiRequest<E>, IpAddr), Response = AppResponse<E>, Error = ErrorType> + Clone,
 	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	type Error = Infallible;
 	type Response = Response;
@@ -91,7 +100,7 @@ where
 			.map_err(|_| unreachable!("Layers must always be ready"))
 	}
 
-	#[instrument(skip(self, req))]
+	#[instrument(skip(self, req), name = "RequestParserService")]
 	fn call(&mut self, mut req: Request<Body>) -> Self::Future {
 		let mut inner = self.inner.clone();
 		async {
@@ -115,8 +124,7 @@ where
 				.into_response());
 			};
 
-			let Some(headers) = <E::RequestHeaders as Headers>::from_header_map(req.headers())
-			else {
+			let Ok(headers) = <E::RequestHeaders as Headers>::from_header_map(req.headers()) else {
 				debug!("Failed to parse headers");
 				return Ok(ApiErrorResponse::error_with_message(
 					ErrorType::WrongParameters,
@@ -167,7 +175,11 @@ where
 						.into_response())
 				}
 				Err(error) => {
-					warn!("Inner service failed: {:?}", error);
+					if let ErrorType::InternalServerError(error) = &error {
+						error!("Internal server error: {}", error);
+					} else {
+						warn!("Inner service failed: {:?}", error);
+					}
 					Ok(ApiErrorResponse::error(error).into_response())
 				}
 			}

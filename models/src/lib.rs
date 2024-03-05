@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs, clippy::missing_docs_in_private_items)]
+#![feature(associated_type_bounds)]
 
 //! This crate contains all the DTOs and common models used in the API across
 //! the frontend, backend, the CLI, and the controller.
@@ -21,11 +22,12 @@ pub mod utils;
 /// used across the crate. This is mostly used to avoid having to import a lot
 /// of things from different modules.
 pub mod prelude {
+	pub use headers::UserAgent;
+
 	pub(crate) use crate as models;
 	pub use crate::{
 		api::WithId,
 		utils::{
-			constants,
 			AppAuthentication,
 			Base64String,
 			BearerToken,
@@ -52,6 +54,7 @@ mod private {
 	/// implementations provided within the crate. If you need to implement
 	/// something outside this crate that requires a [`Sealed`] trait, something
 	/// went wrong in the API design.
+	#[allow(dead_code)]
 	pub trait Sealed {}
 }
 

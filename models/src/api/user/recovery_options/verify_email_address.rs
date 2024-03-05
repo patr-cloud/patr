@@ -6,9 +6,12 @@ macros::declare_api_endpoint!(
 	/// using the [`super::update_user_email`] endpoint.
 	VerifyUserEmail,
 	POST "/user/verify-email",
+	api = false,
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,
+		/// The user-agent used to access this API
+		pub user_agent: UserAgent,
 	},
 	authentication = {
 		AppAuthentication::<Self>::PlainTokenAuthenticator

@@ -1,0 +1,37 @@
+@use "sass:map";
+@use "../../../../components/assets/styles/helpers/maps" as *;
+@use "../../../../components/assets/styles/base/variables" as *;
+
+.box-onboard {
+  width: 32rem;
+  padding: 3.125rem;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  box-shadow: $shadow-medium;
+  border-radius: map.get($border-radii, "sm");
+  background-color: map.get($background-colors, "secondary-dark");
+
+  &.feedback-modal {
+    padding: 2rem 2.5rem;
+
+    & .image-preview {
+      max-height: 12rem;
+    }
+  }
+}
+
+.row-card {
+  min-height: 2.5rem;
+}
+
+.bg-image {
+  background-image: url($astronaut), url($spaceship), url($planet), url($sky);
+
+  background-size: auto, 160px, 280px, cover;
+  background-position: bottom left, top 100px right 150px, top -75px right -75px,
+    center;
+}

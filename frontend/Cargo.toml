@@ -13,10 +13,11 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 axum-extra = { workspace = true, features = ["typed-routing"] }
 console_error_panic_hook = { workspace = true, features = [] }
-leptos-use = { workspace = true, features = [] }
+http = { workspace = true, features = ["default"] }
 log = { workspace = true, features = [] }
 matchit = { workspace = true, features = ["default"] }
 models = { workspace = true, features = [] }
+preprocess = { workspace = true, features = [] }
 reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 serde = { workspace = true, features = ["default", "derive"] }
 serde_json = { workspace = true, features = ["default"] }
@@ -34,12 +35,14 @@ web-sys = { workspace = true, features = [
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 leptos = { workspace = true, features = ["tracing", "hydrate"] }
+leptos-use = { workspace = true, features = [] }
 leptos_meta = { workspace = true, features = ["hydrate"] }
 leptos_router = { workspace = true, features = ["hydrate"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
 leptos = { workspace = true, features = ["tracing", "ssr"] }
+leptos-use = { workspace = true, features = ["axum", "ssr"] }
 leptos_axum = { workspace = true, features = ["default"] }
 leptos_meta = { workspace = true, features = ["ssr"] }
 leptos_router = { workspace = true, features = ["ssr"] }

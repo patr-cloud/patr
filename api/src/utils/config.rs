@@ -16,23 +16,26 @@ pub fn parse_config() -> AppConfig {
 	let env = if cfg!(debug_assertions) {
 		"dev".to_string()
 	} else {
-		env::var("APP_ENV").unwrap_or_else(|_| "prod".into())
+		env::var("PATR_ENV").unwrap_or_else(|_| "prod".into())
 	};
 
 	match env.as_ref() {
 		"prod" | "production" => Config::builder()
-			.add_source(File::with_name("config/prod").required(false))
+			.add_source(File::with_name("config").required(false))
 			.set_default("environment", "production")
 			.expect("unable to set environment to production"),
 		"dev" | "development" => Config::builder()
-			.add_source(File::with_name("config/dev").required(false))
+			.add_source(
+				File::with_name(concat!(env!("CARGO_MANIFEST_DIR"), "/../config/dev"))
+					.required(false),
+			)
 			.set_default("environment", "development")
 			.expect("unable to set environment to development"),
 		_ => {
 			panic!("Unknown running environment found!");
 		}
 	}
-	.add_source(Environment::with_prefix("APP").separator("_"))
+	.add_source(Environment::with_prefix("PATR").separator("_"))
 	.build()
 	.expect("unable to merge with environment variables")
 	.try_deserialize()
@@ -44,12 +47,16 @@ pub fn parse_config() -> AppConfig {
 #[serde(rename_all = "camelCase")]
 pub struct AppConfig {
 	/// The address to listed on
+	#[serde(alias = "bindaddress")]
 	pub bind_address: SocketAddr,
 	/// The base path of the API
+	#[serde(alias = "apibasepath")]
 	pub api_base_path: String,
 	/// The pepper used to hash passwords
+	#[serde(alias = "passwordpepper")]
 	pub password_pepper: String,
 	/// The secret used to sign JWTs
+	#[serde(alias = "jwtsecret")]
 	pub jwt_secret: String,
 	/// The environment the application is running in. This is set at runtime
 	/// based on an environment variable and if the application is compiled with
@@ -64,7 +71,15 @@ pub struct AppConfig {
 	pub redis: RedisConfig,
 	// pub email: EmailConfig,
 	/// The opentelemetry endpoint to send traces to
+	#[cfg(debug_assertions)]
+	pub opentelemetry: Option<OpenTelemetryConfig>,
+	#[cfg(not(debug_assertions))]
 	pub opentelemetry: OpenTelemetryConfig,
+	/// The configuration for IpInfo to get IpAddress details
+	#[cfg(debug_assertions)]
+	pub ipinfo: Option<IpInfoConfig>,
+	#[cfg(not(debug_assertions))]
+	pub ipinfo: IpInfoConfig,
 }
 
 /// The environment the application is running in
@@ -123,6 +138,7 @@ pub struct DatabaseConfig {
 	/// The name of the database to connect to within the database server
 	pub database: String,
 	/// The maximum number of connections to the database
+	#[serde(alias = "connectionlimit")]
 	pub connection_limit: u32,
 }
 
@@ -146,6 +162,7 @@ pub struct RedisConfig {
 	pub secure: bool,
 }
 
+/// The default value for the Redis database
 fn default_redis_database() -> u8 {
 	0
 }
@@ -174,4 +191,12 @@ pub struct EmailConfig {
 pub struct OpenTelemetryConfig {
 	/// The endpoint to send traces to
 	pub endpoint: String,
+}
+
+/// The configuration for IpInfo to get information about an IP Address
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IpInfoConfig {
+	/// The token for connecting to ipinfo.io
+	pub token: String,
 }

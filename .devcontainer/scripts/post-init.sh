@@ -15,8 +15,9 @@ mkdir -p ~/.kube
 
 # TODO setup kubernetes cluster with k3d and use that kubeconfig
 
-echo "Installing sea-orm-cli and trunk"
-cargo install sea-orm-cli trunk
+echo "Installing sqlx-cli and cargo-leptos"
+cargo install sqlx-cli
+cargo install cargo-leptos
 
 if [ ! -f /workspace/config/dev.json ]; then
 	echo "Setting up dev.json"

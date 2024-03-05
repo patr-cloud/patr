@@ -13,9 +13,12 @@ macros::declare_api_endpoint!(
 		/// The ID of the token to update
 		pub token_id: Uuid,
 	},
+	api = false,
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,
+		/// The user-agent used to access this API
+		pub user_agent: UserAgent,
 	},
 	authentication = {
 		AppAuthentication::<Self>::PlainTokenAuthenticator

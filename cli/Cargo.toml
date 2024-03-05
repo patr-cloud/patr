@@ -15,9 +15,17 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = { workspace = true, features = ["default"] }
-async-trait = { workspace = true, features = [] }
 clap = { workspace = true, features = ["default", "derive"] }
+comfy-table = { workspace = true, features = ["default"] }
+http = { workspace = true, features = ["default"] }
+models = { workspace = true, features = [] }
 open = { workspace = true, features = [] }
+preprocess = { workspace = true, features = [] }
+reqwest = { workspace = true, features = ["default", "json"] }
 serde = { workspace = true, features = ["default", "derive"] }
-tabled = { workspace = true, features = ["default", "derive"] }
+serde_json = { workspace = true, features = ["default"] }
 tokio = { workspace = true, features = ["default", "full"] }
+tracing = { workspace = true, features = ["default", "async-await"] }
+tracing-log = { workspace = true, features = ["default"] }
+tracing-subscriber = { workspace = true, features = ["default"] }
+url = { workspace = true, features = ["default"] }

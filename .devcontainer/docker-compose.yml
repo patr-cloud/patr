@@ -28,6 +28,7 @@ services:
     depends_on:
       - postgres
       - redis
+      - jaeger
     hostname: backend
     networks:
       vpc:
@@ -62,3 +63,16 @@ services:
       vpc:
         aliases:
           - redis
+
+  jaeger:
+    image: jaegertracing/all-in-one:1
+    restart: unless-stopped
+    expose:
+      - 4317
+      - 4318
+      - 16686
+    hostname: jaeger
+    networks:
+      vpc:
+        aliases:
+          - jaeger

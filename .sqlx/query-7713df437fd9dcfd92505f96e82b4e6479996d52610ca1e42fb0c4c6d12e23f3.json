@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT \"user\".username, \"user\".first_name, \"user\".last_name, \"user\".created, \"user\".mfa_secret, \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".recovery_email FROM \"user\" WHERE \"user\".id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "first_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "last_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "created",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "mfa_secret",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "recovery_phone_country_code",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "recovery_phone_number",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "recovery_email",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "7713df437fd9dcfd92505f96e82b4e6479996d52610ca1e42fb0c4c6d12e23f3"
+}

@@ -1,5 +1,5 @@
 use axum::{http::StatusCode, Router};
-use models::{api::workspace::secret::*, ApiRequest, ErrorType};
+use models::{api::workspace::secret::*, ErrorType};
 
 use crate::prelude::*;
 
@@ -16,7 +16,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 async fn create_secret(
 	AuthenticatedAppRequest {
 		request:
-			ApiRequest {
+			ProcessedApiRequest {
 				path: CreateSecretPath { workspace_id },
 				query: _,
 				headers,
@@ -44,7 +44,7 @@ async fn create_secret(
 async fn delete_secret(
 	AuthenticatedAppRequest {
 		request:
-			ApiRequest {
+			ProcessedApiRequest {
 				path: DeleteSecretPath {
 					workspace_id,
 					secret_id,
@@ -74,7 +74,7 @@ async fn delete_secret(
 
 async fn list_secrets_for_workspace(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,
@@ -103,7 +103,7 @@ async fn list_secrets_for_workspace(
 
 async fn update_secret(
 	AuthenticatedAppRequest {
-		request: ApiRequest {
+		request: ProcessedApiRequest {
 			path,
 			query: _,
 			headers,

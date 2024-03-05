@@ -34,9 +34,9 @@ url = { workspace = true, features = ["default"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 axum-typed-websockets = { workspace = true, features = ["default"] }
-sqlx = { workspace = true, features = ["uuid", "postgres"] }
+sqlx = { workspace = true, features = ["uuid", "postgres", "macros"] }
 time = { workspace = true, features = ["default", "serde-human-readable"] }
-uuid = { workspace = true, features = ["v4"] }
+uuid = { workspace = true, features = ["default", "v1", "v4"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 time = { workspace = true, features = [
@@ -44,4 +44,4 @@ time = { workspace = true, features = [
 	"serde-human-readable",
 	"wasm-bindgen",
 ] }
-uuid = { workspace = true, features = ["v4", "js"] }
+uuid = { workspace = true, features = ["default", "v1", "v4", "js"] }

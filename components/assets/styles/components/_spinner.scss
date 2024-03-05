@@ -1,0 +1,43 @@
+@use "sass:map";
+@use "../base/variables" as *;
+@use "../helpers/maps" as *;
+
+.spinner {
+  width: 2.2rem;
+  height: 2.2rem;
+  min-width: 2.2rem;
+  min-height: 2.2rem;
+  background-color: transparent;
+  border-radius: 50%;
+  border: 3px solid map.get($background-colors, "primary");
+  border-bottom-color: transparent;
+  position: relative;
+  animation: spin 1s linear infinite;
+  &-sm {
+    width: 1.8rem;
+    height: 1.8rem;
+    min-width: 1.8rem;
+    min-height: 1.8rem;
+  }
+  &-xs {
+    width: 1.35rem;
+    height: 1.35rem;
+    min-width: 1.35rem;
+    min-height: 1.35rem;
+    border: 2px solid map.get($background-colors, "primary");
+    border-bottom-color: transparent;
+  }
+  &-xxs {
+    width: 0.95rem;
+    height: 0.95rem;
+    min-width: 0.95rem;
+    min-height: 0.95rem;
+    border: 1px solid map.get($background-colors, "primary");
+    border-bottom-color: transparent;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
