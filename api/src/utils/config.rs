@@ -27,7 +27,7 @@ pub fn parse_config() -> AppConfig {
 		"dev" | "development" => Config::builder()
 			.add_source(
 				File::with_name(concat!(env!("CARGO_MANIFEST_DIR"), "/../config/dev"))
-					.required(false),
+					.required(true),
 			)
 			.set_default("environment", "development")
 			.expect("unable to set environment to development"),
