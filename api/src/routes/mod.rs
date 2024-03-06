@@ -31,7 +31,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 
 	let route_handler = any(|Host(hostname), request: Request<Body>| async move {
 		if cfg!(debug_assertions) {
-			api_router.oneshot(request).await
+			app_router.oneshot(request).await
 		} else {
 			match hostname.as_str() {
 				"api.patr.cloud" => api_router.oneshot(request).await,

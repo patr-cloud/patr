@@ -285,7 +285,8 @@ pub(super) async fn handle(
 				headers
 			},
 			StatusCode::OK,
-			axum::body::Body::from_stream(object.bytes.map::<Result<_, Infallible>, _>(|x| Ok(x))),
+			// axum::body::Body::from_stream(object.bytes.map::<Result<_, Infallible>, _>(|x|
+			// Ok(x))),
 		)
 			.into_response()
 	}

@@ -1,9 +1,10 @@
 mod alignment;
+mod app_route;
 mod color;
 mod size;
 mod variant;
 
-pub use self::{alignment::*, color::*, size::*, variant::*};
+pub use self::{alignment::*, app_route::*, color::*, size::*, variant::*};
 
 /// The constants used within the components
 pub mod constants {

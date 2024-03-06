@@ -87,7 +87,7 @@ tracing-subscriber = { version = "0.3", default-features = false }
 typed-builder = { version = "0.18", default-features = false }
 url = { version = "2", default-features = false }
 uuid = { version = "1", default-features = false }
-wasm-bindgen = { version = "0.2", default-features = false }
+wasm-bindgen = { version = "= 0.2.89", default-features = false }
 wasm-logger = { version = "0.2", default-features = false }
 web-sys = { version = "0.3", default-features = false }
 woothee = { version = "0.13", default-features = false }

@@ -1,3 +1,5 @@
+use leptos_router::{use_location, Outlet, ProtectedRoute, Redirect, Route, Router, Routes};
+
 use crate::{pages::*, prelude::*};
 
 #[component]
@@ -19,6 +21,13 @@ fn LoggedInPage() -> impl IntoView {
 #[component]
 pub fn App() -> impl IntoView {
 	view! {
-		<LoginPage />
+		<Router>
+			<Routes>
+				<AppRoute
+					route=LoginRoute {}
+					view=|_| LoginPage()
+				/>
+			</Routes>
+		</Router>
 	}
 }
