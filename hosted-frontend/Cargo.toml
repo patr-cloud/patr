@@ -18,6 +18,7 @@ http = { workspace = true, features = ["default"] }
 log = { workspace = true, features = [] }
 matchit = { workspace = true, features = ["default"] }
 models = { workspace = true, features = [] }
+macros = { workspace = true, features = [] }
 preprocess = { workspace = true, features = [] }
 reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 serde = { workspace = true, features = ["default", "derive"] }
@@ -35,6 +36,7 @@ web-sys = { workspace = true, features = [
 ] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+axum = { workspace = true, features = ["macros"] }
 leptos = { workspace = true, features = ["tracing", "hydrate"] }
 leptos_query = { workspace = true, features = ["csr", "hydrate"] }
 leptos-use = { workspace = true, features = [] }

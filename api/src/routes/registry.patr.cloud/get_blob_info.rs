@@ -138,6 +138,103 @@ pub(super) async fn handle(
 		if !(200..300).contains(&object.status_code) {
 			return Ok(StatusCode::INTERNAL_SERVER_ERROR.into_response());
 		}
-		Ok((StatusCode::OK, headers, Body::from_stream(object.bytes)).into_response())
+		(
+			StatusCode::OK,
+			{
+				let mut headers = HeaderMap::new();
+
+				headers.insert(
+					HeaderName::from_static("Docker-Distribution-API-Version"),
+					HeaderValue::from_static("registry/2.0"),
+				);
+
+				if let Some(accept_ranges) = head.accept_ranges {
+					headers.insert(http::header::ACCEPT_RANGES, {
+						let Ok(value) = HeaderValue::from_str(&accept_ranges) else {
+							return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+						};
+						value
+					});
+				}
+				if let Some(cache_control) = head.cache_control {
+					headers.insert(http::header::CACHE_CONTROL, {
+						let Ok(value) = HeaderValue::from_str(&cache_control) else {
+							return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+						};
+						value
+					});
+				}
+				if let Some(content_disposition) = head.content_disposition {
+					headers.insert(http::header::CONTENT_DISPOSITION, {
+						let Ok(value) = HeaderValue::from_str(&content_disposition) else {
+							return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+						};
+						value
+					});
+				}
+				if let Some(content_encoding) = head.content_encoding {
+					headers.insert(http::header::CONTENT_ENCODING, {
+						let Ok(value) = HeaderValue::from_str(&content_encoding) else {
+							return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+						};
+						value
+					});
+				}
+				if let Some(content_language) = head.content_language {
+					headers.insert(http::header::CONTENT_LANGUAGE, {
+						let Ok(value) = HeaderValue::from_str(&content_language) else {
+							return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+						};
+						value
+					});
+				}
+				if let Some(content_length) = head.content_length {
+					headers.insert(http::header::CONTENT_LENGTH, {
+						let Ok(value) = HeaderValue::from_str(&content_length.to_string()) else {
+							return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+						};
+						value
+					});
+				}
+				if let Some(content_type) = head.content_type {
+					headers.insert(http::header::CONTENT_TYPE, {
+						let Ok(value) = HeaderValue::from_str(&content_type) else {
+							return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+						};
+						value
+					});
+				}
+				if let Some(e_tag) = head.e_tag {
+					headers.insert(http::header::ETAG, {
+						let Ok(value) = HeaderValue::from_str(&e_tag) else {
+							return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+						};
+						value
+					});
+				}
+				if let Some(expires) = head.expires {
+					headers.insert(http::header::EXPIRES, {
+						let Ok(value) = HeaderValue::from_str(&expires) else {
+							return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+						};
+						value
+					});
+				}
+				if let Some(last_modified) = head.last_modified {
+					headers.insert(http::header::LAST_MODIFIED, {
+						let Ok(value) = HeaderValue::from_str(&last_modified) else {
+							return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+						};
+						value
+					});
+				}
+
+				headers
+			},
+			StatusCode::OK,
+			// axum::body::Body::from_stream(object.bytes.map::<Result<_, Infallible>, _>(|x|
+			// Ok(x))),
+		)
+			.into_response()
 	}
 }

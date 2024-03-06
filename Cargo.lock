@@ -1780,6 +1780,7 @@ dependencies = [
  "leptos_query",
  "leptos_router",
  "log",
+ "macros",
  "matchit",
  "models",
  "preprocess",
@@ -2555,9 +2556,9 @@ dependencies = [
 
 [[package]]
 name = "leptos_query"
-version = "0.5.2"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35d3832e05d692eaa6e191fbd4838f8798ec1d488a32ea23a7e647efd812d477"
+checksum = "210f99102170bc3d227148d78c2fdd79e89f724981a697c526f294c85a0b0521"
 dependencies = [
  "async-trait",
  "async_cell",
