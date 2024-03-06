@@ -48,6 +48,9 @@ mod imports {
 /// that can be used to block the user from interacting with the rest of the
 /// page. It is used to show the user that something is loading or in modals
 pub mod backdrop;
+/// The Checkbox Dropdown component. The checkbox dropdown component is used to
+/// display a dropdown with checkboxes.
+pub mod checkbox_dropdown;
 /// The containers module. This module contains all the container components. A
 /// container is a component that can be used to hold other components (like a
 /// box).
