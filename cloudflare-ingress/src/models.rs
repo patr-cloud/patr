@@ -25,6 +25,7 @@ pub enum IngressKVData {
 }
 
 impl IngressKVData {
+	/// Check if the data is a redirect
 	pub fn is_redirect(&self) -> bool {
 		matches!(self, IngressKVData::Redirect { .. })
 	}

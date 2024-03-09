@@ -15,6 +15,7 @@ use url::Url;
 
 use crate::prelude::*;
 
+/// A reqwest client that can be used to make requests to the API
 static REQUEST_CLIENT: OnceLock<Client> = OnceLock::new();
 
 /// Make an API request to an endpoint
@@ -136,6 +137,8 @@ where
 	}
 }
 
+/// Initialize a reqwest client that can be used across the application to make
+/// requests
 fn initialize_client() -> Client {
 	Client::builder()
 		.build()
