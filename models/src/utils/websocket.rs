@@ -1,13 +1,9 @@
-#[cfg(not(target_arch = "wasm32"))]
 use axum::{body::Body, http::Request, RequestExt};
 #[cfg(not(target_arch = "wasm32"))]
 use axum_typed_websockets::WebSocketUpgrade as TypedWebSocketUpgrade;
 use preprocess::Preprocessable;
 
-#[cfg(not(target_arch = "wasm32"))]
-use super::FromAxumRequest;
-use super::{RequiresRequestHeaders, RequiresResponseHeaders};
-#[cfg(not(target_arch = "wasm32"))]
+use super::{FromAxumRequest, RequiresRequestHeaders, RequiresResponseHeaders};
 use crate::ErrorType;
 
 /// A websocket upgrade request. This can be used as a body type for websocket
@@ -30,6 +26,18 @@ where
 			.await
 			.map(WebSocketUpgrade)
 			.map_err(ErrorType::server_error)
+	}
+}
+
+#[cfg(target_arch = "wasm32")]
+impl<ServerMsg, ClientMsg> FromAxumRequest for WebSocketUpgrade<ServerMsg, ClientMsg>
+where
+	ClientMsg: 'static,
+	ServerMsg: 'static,
+{
+	#[tracing::instrument(skip(_request))]
+	async fn from_axum_request(_request: Request<Body>) -> Result<Self, ErrorType> {
+		Ok(Self(std::marker::PhantomData))
 	}
 }
 
