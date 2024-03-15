@@ -34,8 +34,7 @@ where
 		+ Send
 		+ Sync
 		+ 'static,
-	Self::RequestBody:
-		ResponseHeaders + FromAxumRequest + Preprocessable + Clone + Send + Sync + 'static,
+	Self::RequestBody: ResponseHeaders + FromAxumRequest + Preprocessable + Send + Sync + 'static,
 	<Self::RequestBody as Preprocessable>::Processed: Send,
 	Self::Authenticator: RequestHeaders + Clone + Send,
 
@@ -49,7 +48,7 @@ where
 		+ Sync
 		+ 'static,
 	Self::ResponseBody:
-		IntoAxumResponse + RequestHeaders + ResponseHeaders + Debug + Send + Sync + 'static,
+		IntoAxumResponse + RequestHeaders + ResponseHeaders + Debug + Send + 'static,
 {
 	/// The HTTP method that should be used for this endpoint
 	const METHOD: http::Method;

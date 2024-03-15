@@ -23,6 +23,7 @@ pub mod utils;
 /// of things from different modules.
 pub mod prelude {
 	pub use headers::UserAgent;
+	pub use preprocess;
 
 	pub(crate) use crate as models;
 	pub use crate::{
