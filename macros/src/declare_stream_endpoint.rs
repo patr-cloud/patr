@@ -1,6 +1,7 @@
 use proc_macro::TokenStream;
 use quote::format_ident;
 use syn::{
+	braced,
 	parse::{Parse, ParseStream},
 	parse_macro_input,
 	Attribute,
@@ -13,6 +14,7 @@ use syn::{
 	LitBool,
 	LitStr,
 	Token,
+	Variant,
 };
 
 /// A helper struct to parse an API endpoint
@@ -39,14 +41,14 @@ pub struct ApiEndpoint {
 	/// Whether the query is paginated or not.
 	paginate_query: Option<bool>,
 	/// The message that the client sends
-	client_msg: Option<FieldsNamed>,
+	client_msg: Option<Vec<Variant>>,
 	/// The required request headers for the endpoint.
 	request_headers: Option<FieldsNamed>,
 
 	/// The required response headers for the endpoint.
 	response_headers: Option<FieldsNamed>,
 	/// The body of the response.
-	server_msg: Option<FieldsNamed>,
+	server_msg: Option<Vec<Variant>>,
 }
 
 impl Parse for ApiEndpoint {
@@ -129,7 +131,14 @@ impl Parse for ApiEndpoint {
 					}
 					input.parse::<Token![=]>()?;
 
-					client_msg = Some(input.parse()?);
+					let content;
+					braced!(content in input);
+					client_msg = Some(
+						content
+							.parse_terminated(Variant::parse, Token![,])?
+							.into_iter()
+							.collect(),
+					);
 				}
 				"response_headers" => {
 					if response_headers.is_some() {
@@ -145,7 +154,14 @@ impl Parse for ApiEndpoint {
 					}
 					input.parse::<Token![=]>()?;
 
-					server_msg = Some(input.parse()?);
+					let content;
+					braced!(content in input);
+					server_msg = Some(
+						content
+							.parse_terminated(Variant::parse, Token![,])?
+							.into_iter()
+							.collect(),
+					);
 				}
 				"authentication" | "auth" => {
 					if auth.is_some() {
@@ -209,10 +225,10 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		query,
 		paginate_query,
 		request_headers,
-		client_msg: request,
+		server_msg,
 
 		response_headers,
-		server_msg: response,
+		client_msg,
 	} = parse_macro_input!(input as ApiEndpoint);
 
 	let (path_default_impl, path_body) = if let Some(body) = path_body {
@@ -235,9 +251,11 @@ pub fn parse(input: TokenStream) -> TokenStream {
 	let path_name = format_ident!("{}Path", name);
 
 	let request_name = format_ident!("{}Request", name);
-	let request_body = if let Some(body) = request {
+
+	let server_msg_name = format_ident!("{}ServerMsg", name);
+	let server_msg_body = if let Some(body) = server_msg {
 		quote::quote! {
-			#body
+			#(#body),*
 		}
 	} else {
 		quote::quote! {
@@ -372,10 +390,10 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		quote::quote!()
 	};
 
-	let response_name = format_ident!("{}Response", name);
-	let response_body = if let Some(body) = response {
+	let client_msg_name = format_ident!("{}ClientMsg", name);
+	let client_msg_body = if let Some(body) = client_msg {
 		quote::quote! {
-			#body
+			#(#body),*
 		}
 	} else {
 		quote::quote! {
@@ -406,8 +424,21 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			type RequiredResponseHeaders = ();
 		}
 
+		/// The request body for the endpoint.
+		///
+		/// The documentation for the endpoint is below:
+		///
+		#[doc = #documentation]
+		#[derive(
+			Copy,
+			Debug,
+			Clone,
+			PartialEq,
+		)]
+		pub struct #request_name;
+
 		#[::preprocess::sync]
-		/// The request body for the #name endpoint
+		/// The message that the server sends to the client.
 		///
 		/// The documentation for the endpoint is below:
 		///
@@ -416,14 +447,9 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			Debug,
 			Clone,
 			PartialEq,
-			serde::Serialize,
-			serde::Deserialize,
 		)]
-		#[serde(rename_all = "camelCase")]
-		pub struct #request_name #request_body
-
-		impl models::utils::RequiresResponseHeaders for #request_name {
-			type RequiredResponseHeaders = ();
+		pub enum #server_msg_name {
+			#server_msg_body
 		}
 
 		#query_decl
@@ -432,6 +458,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 
 		#response_headers_decl
 
+		#[::preprocess::sync]
 		/// The response body for the #name endpoint.
 		///
 		/// The documentation for the endpoint is below:
@@ -441,18 +468,11 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			Debug,
 			Clone,
 			PartialEq,
-			serde::Serialize,
-			serde::Deserialize,
+			::serde::Serialize,
+			::serde::Deserialize,
 		)]
-		#[serde(rename_all = "camelCase")]
-		pub struct #response_name #response_body
-
-		impl models::utils::RequiresRequestHeaders for #response_name {
-			type RequiredRequestHeaders = ();
-		}
-
-		impl models::utils::RequiresResponseHeaders for #response_name {
-			type RequiredResponseHeaders = ();
+		pub enum #client_msg_name {
+			#client_msg_body
 		}
 
 		impl models::ApiEndpoint for #request_name {
@@ -462,13 +482,13 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			type RequestPath = #path_name;
 			type RequestQuery = #query_name;
 			type RequestHeaders = #request_headers_name;
-			type RequestBody = models::utils::WebSocketUpgrade<#response_name, #request_name>;
+			type RequestBody = models::utils::WebSocketUpgrade<#server_msg_name, #client_msg_name>;
 			type Authenticator = models::utils::#auth_type;
 
 			#auth_impl
 
 			type ResponseHeaders = #response_headers_name;
-			type ResponseBody = #response_name;
+			type ResponseBody = models::utils::GenericResponse;
 		}
 	}
 	.into()

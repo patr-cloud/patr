@@ -2,9 +2,11 @@
 use axum::{body::Body, http::Request, RequestExt};
 #[cfg(not(target_arch = "wasm32"))]
 use axum_typed_websockets::WebSocketUpgrade as TypedWebSocketUpgrade;
+use preprocess::Preprocessable;
 
 #[cfg(not(target_arch = "wasm32"))]
 use super::FromAxumRequest;
+use super::{RequiresRequestHeaders, RequiresResponseHeaders};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::ErrorType;
 
@@ -29,4 +31,20 @@ where
 			.map(WebSocketUpgrade)
 			.map_err(ErrorType::server_error)
 	}
+}
+
+impl<ServerMsg, ClientMsg> Preprocessable for WebSocketUpgrade<ServerMsg, ClientMsg> {
+	type Processed = Self;
+
+	fn preprocess(self) -> Result<Self, preprocess::Error> {
+		Ok(self)
+	}
+}
+
+impl<ServerMsg, ClientMsg> RequiresRequestHeaders for WebSocketUpgrade<ServerMsg, ClientMsg> {
+	type RequiredRequestHeaders = ();
+}
+
+impl<ServerMsg, ClientMsg> RequiresResponseHeaders for WebSocketUpgrade<ServerMsg, ClientMsg> {
+	type RequiredResponseHeaders = ();
 }

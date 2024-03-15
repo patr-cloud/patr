@@ -4,7 +4,7 @@ use axum::{
 };
 use serde::{de::DeserializeOwned, Serialize};
 
-use super::True;
+use super::{RequiresRequestHeaders, RequiresResponseHeaders, True};
 use crate::ApiSuccessResponseBody;
 
 /// This trait is implemented for all types that can be used as a response to an
@@ -45,11 +45,19 @@ where
 /// A type that can be used to return a custom [`Response`] from an endpoint.
 /// This is mostly used for WebSocket responses, among other streaming responses
 /// that cannot be represented by a JSON response.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct GenericResponse(pub Response);
 
 impl IntoAxumResponse for GenericResponse {
 	fn into_axum_response(self) -> Response {
 		self.0
 	}
+}
+
+impl RequiresRequestHeaders for GenericResponse {
+	type RequiredRequestHeaders = ();
+}
+
+impl RequiresResponseHeaders for GenericResponse {
+	type RequiredResponseHeaders = ();
 }

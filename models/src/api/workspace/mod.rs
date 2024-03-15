@@ -15,6 +15,9 @@ pub mod infrastructure;
 pub mod rbac;
 /// This module contains all the models that corresponds to regions
 pub mod region;
+/// This module contains all the models that corresponds to a runner of a Patr
+/// workspace
+pub mod runner;
 /// This module contains all the models that corresponds to Patr secrets
 pub mod secret;
 
