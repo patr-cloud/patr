@@ -12,7 +12,7 @@ futures = { workspace = true, features = ["default"] }
 hex = { workspace = true, features = [] }
 http = { workspace = true, features = ["default"] }
 httparse = { workspace = true, features = ["default"] }
-k8s-openapi = { workspace = true, features = ["v1_24"] }
+k8s-openapi = { workspace = true, features = ["latest"] }
 kube = { workspace = true, features = [
     "client",
     "rustls-tls",
