@@ -54,11 +54,11 @@ open = { version = "5", default-features = false }
 opentelemetry = { version = "0.22", default-features = false }
 opentelemetry-otlp = { version = "0.15", default-features = false }
 opentelemetry_sdk = { version = "0.22", default-features = false }
-preprocess = { path = "../preprocess/preprocess", default-features = false }
+preprocess = { version = "0.3", default-features = false }
 proc-macro2 = { version = "1", default-features = false }
 quote = { version = "1", default-features = false }
 rand = { version = "0.8", default-features = false }
-reqwest = { version = "0.11", default-features = false }
+reqwest = { version = "0.12", default-features = false }
 rust-s3 = { version = "0.34.0-rc3", default-features = false }
 rustis = { version = "0.12", default-features = false }
 schemars = { version = "0.8", default-features = false }
