@@ -6,6 +6,7 @@ mod domain;
 mod infrastructure;
 mod rbac;
 mod region;
+mod runner;
 mod secret;
 
 #[instrument(skip(state))]
@@ -16,4 +17,5 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.merge(region::setup_routes(state).await)
 		.merge(secret::setup_routes(state).await)
 		.merge(rbac::setup_routes(state).await)
+		.merge(runner::setup_routes(state).await)
 }
