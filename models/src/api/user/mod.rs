@@ -17,10 +17,10 @@ pub use self::{
 	get_user_details::*,
 	get_user_info::*,
 	list_user_workspaces::*,
+	mfa::*,
 	recovery_options::*,
 	update_user_info::*,
 	web_logins::*,
-	mfa::*,
 };
 
 /// The phone number of a user. This is used to send OTPs, notifications, etc to
