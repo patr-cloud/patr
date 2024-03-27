@@ -37,6 +37,7 @@ use k8s_openapi::{
 			ServiceSpec,
 			Volume,
 			VolumeMount,
+			VolumeResourceRequirements,
 		},
 		networking::v1::{
 			HTTPIngressPath,
@@ -81,9 +82,11 @@ use models::{
 			ExposedPortType,
 			ListAllDeploymentMachineTypePath,
 			ListAllDeploymentMachineTypeRequest,
+			ListAllDeploymentMachineTypeRequestHeaders,
 		},
 	},
-	utils::Uuid,
+	prelude::UserAgent,
+	utils::{BearerToken, Uuid},
 	ApiRequest,
 	ErrorType,
 };
@@ -244,7 +247,11 @@ async fn reconcile(
 	let machine_type = make_request(
 		ApiRequest::<ListAllDeploymentMachineTypeRequest>::builder()
 			.path(ListAllDeploymentMachineTypePath)
-			.headers(())
+			.headers(ListAllDeploymentMachineTypeRequestHeaders {
+				authorization: BearerToken::from_str(ctx.patr_token.as_str())
+					.map_err(|err| AppError::InternalError(err.to_string()))?,
+				user_agent: UserAgent::from_static("deployment-controller"),
+			})
 			.query(())
 			.body(ListAllDeploymentMachineTypeRequest)
 			.build(),
@@ -339,7 +346,7 @@ async fn reconcile(
 			},
 			spec: Some(PersistentVolumeClaimSpec {
 				access_modes: Some(vec!["ReadWriteOnce".to_string()]),
-				resources: Some(ResourceRequirements {
+				resources: Some(VolumeResourceRequirements {
 					requests: Some(
 						[(
 							"storage".to_string(),
@@ -347,7 +354,7 @@ async fn reconcile(
 						)]
 						.into(),
 					),
-					..ResourceRequirements::default()
+					..VolumeResourceRequirements::default()
 				}),
 				..PersistentVolumeClaimSpec::default()
 			}),
@@ -599,6 +606,7 @@ async fn reconcile(
 							.into_iter()
 							.collect(),
 						),
+						claims: None,
 					}),
 					volume_mounts: if !volume_mounts.is_empty() {
 						Some(volume_mounts)
