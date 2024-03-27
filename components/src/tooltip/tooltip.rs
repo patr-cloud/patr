@@ -21,10 +21,7 @@ pub fn Tooltip(
 	let tooltip_ref = create_node_ref::<html::Span>();
 	let is_visible = create_rw_signal(false);
 
-	let show_tooltip = move || {
-		logging::log!("heu");
-		is_visible.set(true)
-	};
+	let show_tooltip = move || is_visible.set(true);
 
 	let hide_tooltip = move || {
 		is_visible.set(false);
