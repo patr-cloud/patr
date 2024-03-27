@@ -17,4 +17,4 @@ crate-type = ["cdylib"]
 serde = { workspace = true, features = ["default", "derive"] }
 url = { workspace = true, features = ["default"] }
 uuid = { workspace = true, features = ["serde", "js"] }
-worker = { workspace = true, features = ["http"] }
+worker = { workspace = true, features = [] }
