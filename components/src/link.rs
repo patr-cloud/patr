@@ -34,6 +34,9 @@ pub fn Link(
 	/// Variant of the Link
 	#[prop(into, optional)]
 	style_variant: MaybeSignal<LinkStyleVariant>,
+	/// Whether the button is disabled or not
+	#[prop(into, optional)]
+	disabled: MaybeSignal<bool>,
 ) -> impl IntoView {
 	let class = move || {
 		format!(
@@ -55,36 +58,41 @@ pub fn Link(
 	};
 
 	let button_type = move || {
-		if !should_submit.get() {
+		if should_submit.get() {
 			"submit".to_owned()
 		} else {
 			"button".to_owned()
 		}
 	};
 
+	let to = store_value(to);
+	let children = store_value(children);
+
 	view! {
 		{
 			move || match r#type.get() {
-			Variant::Link => {
-				view! {
-					<a href=to.clone() class=class.clone()>
-						{children()}
-					</a>
+				Variant::Link => {
+					view! {
+						<A href=move || to.with_value(|val| val.get()) class=class.clone()>
+							{children.with_value(|val| val())}
+						</A>
+					}
+						.into_view()
+				},
+				Variant::Button => {
+					view! {
+						<button
+							r#type=button_type
+							on:click=on_click.clone()
+							disabled=move || disabled.get()
+							class=class.clone()
+						>
+							{children.with_value(|val| val())}
+						</button>
+					}
+						.into_view()
 				}
-					.into_view()
-			},
-			Variant::Button => {
-				view! {
-					<button
-						type=button_type
-						on:click=on_click.clone()
-						class=class.clone()
-					>
-						{children()}
-					</button>
-				}
-					.into_view()
 			}
-		}}
+		}
 	}
 }

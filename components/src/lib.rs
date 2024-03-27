@@ -6,6 +6,7 @@
 /// The prelude module. Used to re-export commonly used items.
 pub mod prelude {
 	pub use crate::{
+		alert::*,
 		backdrop::*,
 		checkbox_dropdown::*,
 		containers::*,
@@ -40,10 +41,12 @@ mod imports {
 	pub(crate) type ClickHandler = Rc<dyn Fn(&ev::MouseEvent)>;
 
 	pub use leptos::*;
+	pub use leptos_router::A;
 
 	pub use crate::prelude::*;
 }
 
+pub mod alert;
 pub mod backdrop;
 pub mod checkbox_dropdown;
 pub mod containers;

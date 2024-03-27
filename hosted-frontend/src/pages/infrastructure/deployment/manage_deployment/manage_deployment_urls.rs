@@ -3,7 +3,7 @@ use crate::{pages::ManagedUrlCard, prelude::*};
 #[component]
 pub fn ManageDeploymentUrls() -> impl IntoView {
 	view! {
-		<div class="fr-fe-ct full-width">
+		<div class="pt-xl px-xl fr-fe-ct full-width">
 			<Link
 				// r#type=Variant::Button
 				// style_variant=LinkStyleVariant::Contained
@@ -13,6 +13,7 @@ pub fn ManageDeploymentUrls() -> impl IntoView {
 			</Link>
 		</div>
 		<TableDashboard
+			class="px-xl"
 			column_grids=[4, 1, 4, 2, 1]
 			headings=vec![
 				"Managed URL".into_view(),
