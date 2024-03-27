@@ -1,9 +1,40 @@
+use leptos_router::ActionForm;
+use models::api::auth::*;
+
 use crate::prelude::*;
 
+/// NameRequest, NameRequestHeader, NamePath, NameResponse
+#[server(Login, endpoint = "auth/sign-in")]
+async fn login(
+	user_id: String,
+	password: String,
+	mfa_otp: Option<String>,
+) -> Result<Result<LoginResponse, ErrorType>, ServerFnError> {
+	logging::log!("{}, {}, {:?}", user_id, password, mfa_otp);
+	Ok(make_api_call::<LoginRequest>(
+		ApiRequest::builder()
+			.path(LoginPath)
+			.query(())
+			.headers(LoginRequestHeaders {
+				user_agent: UserAgent::from_static("hyper/0.12.2"),
+			})
+			.body(LoginRequest {
+				user_id,
+				password,
+				mfa_otp,
+			})
+			.build(),
+	)
+	.await
+	.map(|res| res.body))
+}
+
 #[component]
-fn LoginForm() -> impl IntoView {
+pub fn LoginForm() -> impl IntoView {
+	let login_action = create_server_action::<Login>();
+
 	view! {
-		<form class="box-onboard txt-white">
+		<ActionForm action=login_action class="box-onboard txt-white">
 			<div class="fr-sb-bl mb-lg full-width">
 				<h1 class="txt-primary txt-xl txt-medium">"Sign In"</h1>
 				<div class="txt-white txt-thin fr-fs-fs">
@@ -16,9 +47,10 @@ fn LoginForm() -> impl IntoView {
 
 			<div class="fc-fs-fs full-width gap-md">
 				<Input
+					name="user_id"
 					class="full-width"
-					id="username"
-					r#type=InputType::Email
+					id="user_id"
+					r#type=InputType::Text
 					placeholder="Username/Email"
 					start_icon=Some(
 						IconProps::builder().icon(IconType::User).size(Size::ExtraSmall).build(),
@@ -26,6 +58,7 @@ fn LoginForm() -> impl IntoView {
 				/>
 
 				<Input
+					name="password"
 					class="full-width"
 					id="password"
 					r#type=InputType::Password
@@ -35,11 +68,12 @@ fn LoginForm() -> impl IntoView {
 					)
 				/>
 
+				<input name="mfa_otp" r#type="hidden" />
 			</div>
 
 			<div class="fr-sb-ct full-width pt-xs">
 				<Link
-					to="https://book.leptos.dev/view/03_components.html".to_owned()
+					to="/forgot-password".to_owned()
 					r#type=Variant::Link
 				>
 					"Forgot Password?"
@@ -53,23 +87,23 @@ fn LoginForm() -> impl IntoView {
 			>
 				"LOGIN"
 			</Link>
-		</form>
+		</ActionForm>
 	}
 }
 
 ::macros::declare_app_route!(
 	/// The Login route, requires no path params or query params, and no sign in.
 	Login,
-	"/login",
+	"/",
 	requires_login = false,
 	{}
 );
 
 #[component]
-pub fn LoginPage() -> impl IntoView {
+pub fn AuthPage() -> impl IntoView {
 	view! {
 		<PageContainer class="bg-image">
-			<LoginForm/>
+			<Outlet />
 		</PageContainer>
 	}
 }

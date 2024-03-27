@@ -1,5 +1,15 @@
 use crate::prelude::*;
 
+#[component(transparent)]
+pub fn ProfileRoutes() -> impl IntoView {
+	view! {
+		<Route path=LoggedInRoute::Profile view=ManageProfile>
+			<Route path=LoggedInRoute::ApiTokens view=ApiTokensTab />
+			<Route path=AppRoutes::Empty view=ProfileSettings />
+		</Route>
+	}
+}
+
 #[component]
 pub fn ManageProfile() -> impl IntoView {
 	view! {
@@ -7,7 +17,6 @@ pub fn ManageProfile() -> impl IntoView {
 			<ContainerHead>
 				<PageTitleContainer>
 					<PageTitle>"Manage Profile"</PageTitle>
-
 				</PageTitleContainer>
 
 				<Tabs
@@ -25,7 +34,7 @@ pub fn ManageProfile() -> impl IntoView {
 			</ContainerHead>
 
 			<ContainerBody class="gap-md">
-				<ApiTokensTab />
+				<Outlet />
 			</ContainerBody>
 		</ContainerMain>
 	}

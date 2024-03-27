@@ -1,7 +1,7 @@
-use leptos_router::{use_location, Outlet, ProtectedRoute, Redirect, Route, Router, Routes};
+use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};
 use models::api::auth::*;
 
-use crate::{pages::*, prelude::*};
+use crate::{global_state::*, pages::*, prelude::*};
 
 #[allow(async_fn_in_trait)] // WIP
 pub trait AppAPIs {
@@ -19,7 +19,7 @@ fn LoggedInPage() -> impl IntoView {
 				<header style="width: 100%; min-height: 5rem;">
 				</header>
 
-				<ManageProfile />
+				<Outlet />
 			</main>
 		</div>
 	}
@@ -27,13 +27,27 @@ fn LoggedInPage() -> impl IntoView {
 
 #[component]
 pub fn App() -> impl IntoView {
+	let state = create_rw_signal(AuthState::LoggedOut);
+
+	provide_context(state);
+
+	let auth = get_auth_state();
+
 	view! {
 		<Router>
 			<Routes>
-				<AppRoute
-					route=LoginRoute {}
-					view=|_| LoginPage()
-				/>
+				<AuthRoutes />
+				<ProtectedRoute
+					path="/"
+					redirect_path="/login"
+					condition=move || auth.get().is_logged_in()
+					view=LoggedInPage
+				>
+					<ProfileRoutes />
+					<InfrastructureRoutes />
+					<DomainConfigurationRoutes />
+					<Route path="" view=|| view! { <div></div> } />
+				</ProtectedRoute>
 			</Routes>
 		</Router>
 	}

@@ -13,6 +13,16 @@ pub struct DeploymentType {
 }
 
 #[component]
+pub fn Deployment() -> impl IntoView {
+	view! {
+		<ContainerMain class="full-width full-height mb-md">
+			<Outlet />
+		</ContainerMain>
+
+	}
+}
+
+#[component]
 pub fn DeploymentDashboard() -> impl IntoView {
 	let data = create_rw_signal(vec![
 		DeploymentType {
@@ -87,7 +97,6 @@ pub fn DeploymentDashboard() -> impl IntoView {
 						/>
 					</Link>
 				</div>
-			</ContainerHead>
 
 			<ContainerBody>
 				<DashboardContainer
