@@ -11,7 +11,9 @@ pub fn Tabs(
 	/// Additional class names to apply to the external div
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
-	#[prop(into, optional)] tab_items: MaybeSignal<Vec<TabItem>>,
+	/// The Tab Item
+	#[prop(into, optional)]
+	tab_items: MaybeSignal<Vec<TabItem>>,
 ) -> impl IntoView {
 	let class = class.with(|cname| format!("fr-fs-fe {cname}"));
 
@@ -21,6 +23,7 @@ pub fn Tabs(
 				tab_items.get().into_iter()
 					.map(|n| view! {
 						<Link
+							r#type=Variant::Link
 							to={n.clone().path}
 							class="tab-item mx-xl"
 							style_variant=LinkStyleVariant::Plain

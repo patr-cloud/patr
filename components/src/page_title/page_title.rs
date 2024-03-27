@@ -36,6 +36,9 @@ pub fn PageTitle(
 	/// Title Text Style
 	#[prop(into, optional)]
 	variant: MaybeSignal<PageTitleVariant>,
+	/// The Page to navigate to
+	#[prop(into, optional)]
+	to: MaybeSignal<String>,
 ) -> impl IntoView {
 	let class = format!(
 		"p-xxs fr-fs-ct {} {}",
@@ -64,7 +67,7 @@ pub fn PageTitle(
 	view! {
 		<>
 			{start_icon}
-			<Link class=class>
+			<Link to={to.get()} r#type=Variant::Link class=class>
 				{children()}
 			</Link>
 			{end_icon}
