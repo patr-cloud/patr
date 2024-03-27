@@ -3,7 +3,7 @@ use crate::{pages::*, prelude::*};
 #[component]
 pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 	view! {
-		<div class="fc-fs-fs full-width px-xl mt-sm txt-white gap-md fit-wide-screen mx-auto">
+		<div class="fc-fs-fs full-width px-xl pb-xl mt-xl txt-white gap-md fit-wide-screen mx-auto">
 			<div class="flex full-width">
 				<div class="flex-col-2 fr-fs-fs">
 					<label class="txt-white txt-sm mt-sm fr-fs-ct" html_for="name">
