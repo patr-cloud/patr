@@ -27,6 +27,10 @@ pub enum InputType {
 	File,
 	/// A Callender like date picker
 	Date,
+	/// Hidden input, doesn't render on the dom, but it's name field
+	/// will still be accessed by the _Ancestor Form Element_.
+	/// Can be used to pass the id, or some other request data.
+	Hidden,
 }
 
 impl InputType {
@@ -40,12 +44,17 @@ impl InputType {
 			Self::Password => "password",
 			Self::File => "file",
 			Self::Date => "date",
+			Self::Hidden => "hidden",
 		}
 	}
 }
 
 #[component]
 pub fn Input(
+	/// Name of the form control. Submitted with the form as part of a
+	/// name/value pair
+	#[prop(into, optional)]
+	name: MaybeSignal<String>,
 	/// Additional class names to apply to the outer div, if any.
 	#[prop(into, optional)]
 	class: String,

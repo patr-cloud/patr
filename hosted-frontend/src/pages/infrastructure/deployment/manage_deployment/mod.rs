@@ -3,67 +3,66 @@ use crate::prelude::*;
 #[component]
 pub fn ManageDeployments() -> impl IntoView {
 	view! {
-		<ContainerMain class="full-width full-height mb-md">
-			<ContainerHead>
-				<div class="fr-sb-ct full-width">
-					<div class="fc-fs-fs">
-						<PageTitleContainer>
-							<PageTitle icon_position=PageTitleIconPosition::End>
-								"Infrastructure"
-							</PageTitle>
-							<PageTitle
-								icon_position=PageTitleIconPosition::End
-								variant=PageTitleVariant::SubHeading
-							>
-								"Deployment"
-							</PageTitle>
-							<PageTitle variant=PageTitleVariant::Text>
-								"Deployment Name"
-							</PageTitle>
-						</PageTitleContainer>
-					</div>
-
-					<Link r#type=Variant::Button style_variant=LinkStyleVariant::Contained>
-						"CREATE DEPLOYMENT"
-						<Icon
-							icon=IconType::Plus
-							size=Size::ExtraSmall
-							class="ml-xs"
-							color=Color::Black
-						/>
-					</Link>
+		<ContainerHead>
+			<div class="fr-sb-ct full-width">
+				<div class="fc-fs-fs">
+					<PageTitleContainer>
+						<PageTitle icon_position=PageTitleIconPosition::End>
+							"Infrastructure"
+						</PageTitle>
+						<PageTitle
+							to="deployment"
+							icon_position=PageTitleIconPosition::End
+							variant=PageTitleVariant::SubHeading
+						>
+							"Deployment"
+						</PageTitle>
+						<PageTitle variant=PageTitleVariant::Text>
+							"Deployment Name"
+						</PageTitle>
+					</PageTitleContainer>
 				</div>
 
-				<Tabs
-					tab_items=vec![
-						TabItem {
-							name: "Details".to_owned(),
-							path: "/somepath".to_owned()
-						},
-						TabItem {
-							name: "Scaling".to_owned(),
-							path: "/somepath".to_owned()
-						},
-						TabItem {
-							name: "URLs".to_owned(),
-							path: "/somepath".to_owned()
-						},
-						TabItem {
-							name: "Image History".to_owned(),
-							path: "/somepath".to_owned()
-						},
-						TabItem {
-							name: "Logs".to_owned(),
-							path: "/somepath".to_owned()
-						},
-					]
-				/>
-			</ContainerHead>
+				<Link r#type=Variant::Button style_variant=LinkStyleVariant::Contained>
+					"CREATE DEPLOYMENT"
+					<Icon
+						icon=IconType::Plus
+						size=Size::ExtraSmall
+						class="ml-xs"
+						color=Color::Black
+					/>
+				</Link>
+			</div>
 
-			<ContainerBody class="gap-md">
-				<ManageDeploymentScaling />
-			</ContainerBody>
-		</ContainerMain>
+			<Tabs
+				tab_items=vec![
+					TabItem {
+						name: "Details".to_owned(),
+						path: "".to_owned()
+					},
+					TabItem {
+						name: "Scaling".to_owned(),
+						path: "/scaling".to_owned()
+					},
+					TabItem {
+						name: "URLs".to_owned(),
+						path: "urls".to_owned()
+					},
+					TabItem {
+						name: "Image History".to_owned(),
+						path: "history".to_owned()
+					},
+					TabItem {
+						name: "Logs".to_owned(),
+						path: "logs".to_owned()
+					},
+				]
+			/>
+		</ContainerHead>
+
+		<ContainerBody class="gap-md">
+			<Outlet />
+		</ContainerBody>
 	}
 }
 

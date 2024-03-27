@@ -1,6 +1,15 @@
 use crate::prelude::*;
 
 #[component]
+pub fn ConfirmSignUpPage() -> impl IntoView {
+	view! {
+		<PageContainer class="bg-image">
+			<ConfirmSignUpForm />
+		</PageContainer>
+	}
+}
+
+#[component]
 pub fn ConfirmSignUpForm() -> impl IntoView {
 	view! {
 		<div class="box-onboard txt-white">
@@ -23,14 +32,5 @@ pub fn ConfirmSignUpForm() -> impl IntoView {
 			<form class="fc-fs-fs full-width">
 			</form>
 		</div>
-	}
-}
-
-#[component]
-pub fn ConfirmSignUpPage() -> impl IntoView {
-	view! {
-		<PageContainer class="bg-image">
-			<ConfirmSignUpForm />
-		</PageContainer>
 	}
 }
