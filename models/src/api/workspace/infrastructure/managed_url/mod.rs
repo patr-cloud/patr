@@ -48,6 +48,20 @@ pub struct ManagedUrl {
 	pub is_configured: bool,
 }
 
+/// Database managed URL types
+#[derive(sqlx::Type)]
+#[sqlx(type_name = "MANAGED_URL_TYPE", rename_all = "snake_case")]
+pub enum DbManagedUrlType {
+	/// URL is pointing to a deployment
+	ProxyToDeployment,
+	/// URL is pointing to a static site
+	ProxyToStaticSite,
+	/// URL is a proxy
+	ProxyUrl,
+	/// URL is a redirect to another site
+	Redirect,
+}
+
 /// Manageg URL types
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, EnumDiscriminants)]
 #[strum_discriminants(

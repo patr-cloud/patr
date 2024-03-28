@@ -74,7 +74,7 @@ pub struct Deployment {
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentDeployHistory {
 	/// The images digests the deployment has ran
-	pub image_digest: Vec<String>,
+	pub image_digest: String,
 	/// The timestamp of when the digest previously ran
 	pub created: OffsetDateTime,
 }
@@ -131,20 +131,11 @@ pub enum EnvironmentVariableValue {
 	},
 }
 
-#[cfg(feature = "server")]
+/// The type of exposed port
+// #[cfg(feature = "server")]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::Type, JsonSchema)]
 #[serde(tag = "type", rename_all = "camelCase")]
 #[sqlx(type_name = "EXPOSED_PORT_TYPE", rename_all = "lowercase")]
-pub enum ExposedPortType {
-	Tcp,
-	Udp,
-	Http,
-}
-
-/// The type of exposed port
-#[cfg(not(feature = "server"))]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
-#[serde(tag = "type", rename_all = "camelCase")]
 pub enum ExposedPortType {
 	/// TCP
 	Tcp,
@@ -153,7 +144,6 @@ pub enum ExposedPortType {
 	/// HTTP
 	Http,
 }
-
 /// The deployment startup/liveness probe
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "camelCase")]

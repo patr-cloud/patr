@@ -35,7 +35,7 @@ macros::declare_api_endpoint!(
 		/// The details of the deployment which contains information related to configuration
 		pub running_details: DeploymentRunningDetails,
 		/// Option to start the deployment once it is created
-		pub deploy_on_create: bool,
+		pub deploy_on_push: bool,
 	},
 	response = {
 		/// The deployment ID of the created deployment

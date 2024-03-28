@@ -21,11 +21,13 @@ headers = { workspace = true, features = [] }
 hosted-frontend = { workspace = true, features = [] }
 ipinfo = { workspace = true, features = [] }
 jsonwebtoken = { workspace = true, features = ["default"] }
+lazy_static = "1"
 leptos = { workspace = true, features = ["ssr"] }
 leptos_axum = { workspace = true, features = ["default"] }
 macros = { workspace = true, features = [] }
 matchit = { workspace = true, features = ["default"] }
 models = { workspace = true, features = [] }
+once_cell = "1"
 opentelemetry = { workspace = true, features = ["default"] }
 opentelemetry-otlp = { workspace = true, features = ["default"] }
 opentelemetry_sdk = { workspace = true, features = ["default", "rt-tokio"] }
@@ -39,6 +41,7 @@ reqwest = { workspace = true, features = [
     "cookies",
 ] }
 rust-s3 = { workspace = true, features = ["default", "with-tokio"] }
+regex = "1"
 rustis = { workspace = true, features = [
     "default",
     "pool",
