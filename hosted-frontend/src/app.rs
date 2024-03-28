@@ -31,7 +31,7 @@ pub fn App() -> impl IntoView {
 
 	provide_context(state);
 
-	let auth = get_auth_state();
+	let (auth, _) = get_auth_state();
 
 	view! {
 		<Router>
