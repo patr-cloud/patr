@@ -181,7 +181,7 @@ pub async fn login(
 	.await
 	.map_err(ErrorType::server_error)?;
 
-	if ip_info.bogon.unwrap_or(!cfg!(debug_assertions)) {
+	if ip_info.bogon.unwrap_or(cfg!(debug_assertions)) {
 		return Err(ErrorType::server_error(format!(
 			"cannot use bogon IP address: `{}`",
 			client_ip
