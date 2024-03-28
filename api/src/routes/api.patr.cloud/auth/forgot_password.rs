@@ -102,7 +102,11 @@ pub async fn forgot_password(
 			.into_result();
 	}
 
-	if user_data.password_reset_token_expiry > now {
+	if user_data
+		.password_reset_token_expiry
+		.unwrap_or(OffsetDateTime::UNIX_EPOCH) >
+		now
+	{
 		// The previous attempt hasn't expired yet
 		return AppResponse::builder()
 			.body(ForgotPasswordResponse)

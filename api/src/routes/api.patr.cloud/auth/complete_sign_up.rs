@@ -81,6 +81,14 @@ pub async fn complete_sign_up(
 
 	query!(
 		r#"
+		SET CONSTRAINTS ALL DEFERRED;
+		"#
+	)
+	.execute(&mut **database)
+	.await?;
+
+	query!(
+		r#"
         INSERT INTO
             "user"(
                 id,
@@ -126,6 +134,63 @@ pub async fn complete_sign_up(
 		row.recovery_phone_country_code,
 		row.recovery_phone_number,
 		constants::DEFAULT_WORKSPACE_LIMIT,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	match (
+		row.recovery_email,
+		row.recovery_phone_country_code,
+		row.recovery_phone_number,
+	) {
+		(Some(recovery_email), None, None) => {
+			query!(
+				r#"
+				INSERT INTO
+					user_email(
+						user_id,
+						email
+					)
+				VALUES
+					($1, $2);
+				"#,
+				user_id as _,
+				recovery_email
+			)
+			.execute(&mut **database)
+			.await?;
+		}
+		(None, Some(recovery_phone_country_code), Some(recovery_phone_number)) => {
+			query!(
+				r#"
+				INSERT INTO
+					user_phone_number(
+						user_id,
+						country_code,
+						number
+					)
+				VALUES
+					($1, $2, $3);
+				"#,
+				user_id as _,
+				recovery_phone_country_code,
+				recovery_phone_number
+			)
+			.execute(&mut **database)
+			.await?;
+		}
+		_ => {
+			error!("No recovery email or phone number in user_to_sign_up table");
+			return Err(ErrorType::server_error(
+				"user_to_sign_up row has no recovery email or phone number",
+			));
+		}
+	}
+
+	query!(
+		r#"
+		SET CONSTRAINTS ALL IMMEDIATE;
+		"#
 	)
 	.execute(&mut **database)
 	.await?;
