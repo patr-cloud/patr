@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT workspace_domain.name, workspace_domain.tld FROM workspace_domain INNER JOIN resource ON workspace_domain.id = resource.id WHERE workspace_domain.id = $1 AND workspace_domain.deleted IS NULL AND resource.owner_id = $2;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "tld",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "81b68d3118bdfc256ef7ed362dd1f715c7131d6c3fde51d66585b28108b06e53"
+}

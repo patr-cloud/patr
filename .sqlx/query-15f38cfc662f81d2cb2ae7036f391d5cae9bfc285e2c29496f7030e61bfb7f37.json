@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE managed_url SET deleted = NOW() WHERE id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "15f38cfc662f81d2cb2ae7036f391d5cae9bfc285e2c29496f7030e61bfb7f37"
+}

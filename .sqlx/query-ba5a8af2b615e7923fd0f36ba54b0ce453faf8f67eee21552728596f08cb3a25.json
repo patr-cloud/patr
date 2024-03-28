@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT managed_url.id, managed_url.workspace_id FROM managed_url INNER JOIN resource ON managed_url.id = resource.id WHERE managed_url.id = $1 AND managed_url.deleted IS NULL AND resource.owner_id = $2;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "workspace_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "ba5a8af2b615e7923fd0f36ba54b0ce453faf8f67eee21552728596f08cb3a25"
+}
