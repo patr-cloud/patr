@@ -231,7 +231,7 @@ pub async fn complete_sign_up(
 	.await
 	.map_err(ErrorType::server_error)?;
 
-	if ip_info.bogon.unwrap_or(cfg!(debug_assertions)) {
+	if cfg!(debug_assertions) || ip_info.bogon.unwrap_or(false) {
 		return Err(ErrorType::server_error(format!(
 			"cannot use bogon IP address: `{}`",
 			client_ip
