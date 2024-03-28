@@ -245,15 +245,15 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		}
 	};
 
+	let query_type_name = format_ident!("{}Query", name);
 	let query_name = if query.is_some() {
-		let name = format_ident!("{}Query", name);
 		if paginate_query.unwrap_or(false) {
 			quote::quote! {
-				models::api::Paginated<#name>
+				models::api::Paginated<#query_type_name>
 			}
 		} else {
 			quote::quote! {
-				#name
+				#query_type_name
 			}
 		}
 	} else if paginate_query.unwrap_or(false) {
@@ -280,7 +280,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				serde::Deserialize,
 			)]
 			#[serde(rename_all = "camelCase")]
-			pub struct #query_name #query
+			pub struct #query_type_name #query
 
 			impl models::utils::RequiresResponseHeaders for #query_name {
 				type RequiredResponseHeaders = ();

@@ -20,6 +20,7 @@ mod app_patr_cloud;
 
 /// The routes for serving https://registry.patr.cloud as a docker registry
 #[path = "registry.patr.cloud/mod.rs"]
+#[allow(dead_code)]
 mod registry_patr_cloud;
 
 /// Sets up the routes for the API, across all domains.

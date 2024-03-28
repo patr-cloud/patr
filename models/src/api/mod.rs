@@ -52,6 +52,12 @@ impl<T> Deref for WithId<T> {
 	}
 }
 
+impl From<Uuid> for WithId<()> {
+	fn from(id: Uuid) -> Self {
+		Self::new(id, ())
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use serde_test::{assert_tokens, Token};

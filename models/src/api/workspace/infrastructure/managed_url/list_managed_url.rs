@@ -19,6 +19,12 @@ macros::declare_api_endpoint!(
 			extract_resource_id: |req| req.path.workspace_id
 		}
 	},
+	query = {
+		/// The order to sort the list of managed URLs
+		pub order: Option<ListOrder>,
+		/// The field to order the list of managed URLs by
+		pub order_by: Option<ListOrderBy>,
+	},
 	pagination = true,
 	response_headers = {
 		/// The total number of databases in the requested workspace
