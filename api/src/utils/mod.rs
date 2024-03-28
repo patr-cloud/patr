@@ -21,6 +21,10 @@ pub mod extractors;
 /// [1]: axum::Router
 mod router_ext;
 
+/// Contains the list of validation which will be used throughtout the application. This is 
+/// to help validate body fields of the requests.
+pub mod validator;
+
 pub use self::router_ext::RouterExt;
 
 /// A list of constants that will be used throughout the application. This is

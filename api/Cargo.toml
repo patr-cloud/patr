@@ -41,6 +41,7 @@ reqwest = { workspace = true, features = [
     "cookies",
 ] }
 rust-s3 = { workspace = true, features = ["default", "with-tokio"] }
+regex = "1"
 rustis = { workspace = true, features = [
     "default",
     "pool",
