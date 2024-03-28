@@ -59,24 +59,10 @@ pub enum ErrorType {
 	InvalidPasswordResetToken,
 	/// The resource that the user is trying to access does not exist.
 	ResourceDoesNotExist,
-	/// The container image name provided is invalid
-	InvalidImageName,
-	/// The deployment name provided is invalid
-	InvalidDeploymentName,
-	/// The region is not active
-	RegionNotActive,
 	/// The resource already exists
 	ResourceAlreadyExists,
 	/// The resource is currently in use
 	ResourceInUse,
-	/// The user has utilized their free limit
-	FreeLimitExceeded,
-	/// Volume of a deployment cannot be reduced
-	ReducedVolumeSize,
-	/// Cannot add new volume
-	CannotAddNewVolume,
-	/// Cannot remove volume
-	CannotRemoveVolume,
 	/// An internal server error occurred. This should not happen unless there
 	/// is a bug in the server
 	InternalServerError(anyhow::Error),
@@ -109,15 +95,8 @@ impl ErrorType {
 			Self::PhoneUnavailable => StatusCode::CONFLICT,
 			Self::InvalidPasswordResetToken => StatusCode::BAD_REQUEST,
 			Self::ResourceDoesNotExist => StatusCode::NOT_FOUND,
-			Self::InvalidImageName => StatusCode::BAD_REQUEST,
-			Self::InvalidDeploymentName => StatusCode::BAD_REQUEST,
-			Self::RegionNotActive => StatusCode::BAD_REQUEST,
 			Self::ResourceAlreadyExists => StatusCode::CONFLICT,
-			Self::ResourceInUse => StatusCode::BAD_REQUEST,
-			Self::FreeLimitExceeded => StatusCode::UNAUTHORIZED,
-			Self::ReducedVolumeSize => StatusCode::BAD_REQUEST,
-			Self::CannotAddNewVolume => StatusCode::BAD_REQUEST,
-			Self::CannotRemoveVolume => StatusCode::BAD_REQUEST,
+			Self::ResourceInUse => StatusCode::UNPROCESSABLE_ENTITY,
 			Self::InternalServerError(_) => StatusCode::INTERNAL_SERVER_ERROR,
 		}
 	}
@@ -153,15 +132,8 @@ impl ErrorType {
 				"The token provided to reset your password is not valid"
 			}
 			Self::ResourceDoesNotExist => "The resource you are trying to access does not exist",
-			Self::InvalidImageName => "Invalid image name",
-			Self::InvalidDeploymentName => "Invalid deployment name",
-			Self::RegionNotActive => "The selected region is not active",
 			Self::ResourceAlreadyExists => "Resource already exists with the given details",
 			Self::ResourceInUse => "Resource is currently in use",
-			Self::FreeLimitExceeded => "You have already reached your free limit",
-			Self::ReducedVolumeSize => "The deployment volume size cannot be reduced",
-			Self::CannotAddNewVolume => "New volume cannot be added",
-			Self::CannotRemoveVolume => "The volume cannot be removed",
 			Self::InternalServerError(_) => "An internal server error has occured",
 		}
 	}
@@ -216,15 +188,8 @@ impl Clone for ErrorType {
 			Self::PhoneUnavailable => Self::PhoneUnavailable,
 			Self::InvalidPasswordResetToken => Self::InvalidPasswordResetToken,
 			Self::ResourceDoesNotExist => Self::ResourceDoesNotExist,
-			Self::InvalidImageName => Self::InvalidImageName,
-			Self::InvalidDeploymentName => Self::InvalidDeploymentName,
-			Self::RegionNotActive => Self::RegionNotActive,
 			Self::ResourceAlreadyExists => Self::ResourceAlreadyExists,
 			Self::ResourceInUse => Self::ResourceInUse,
-			Self::FreeLimitExceeded => Self::FreeLimitExceeded,
-			Self::ReducedVolumeSize => Self::ReducedVolumeSize,
-			Self::CannotAddNewVolume => Self::CannotAddNewVolume,
-			Self::CannotRemoveVolume => Self::CannotRemoveVolume,
 			Self::InternalServerError(arg0) => {
 				Self::InternalServerError(anyhow::anyhow!(arg0.to_string()))
 			}
@@ -269,15 +234,8 @@ impl Serialize for ErrorType {
 			Self::PhoneUnavailable => serializer.serialize_str("phoneUnavailable"),
 			Self::InvalidPasswordResetToken => serializer.serialize_str("invalidResetToken"),
 			Self::ResourceDoesNotExist => serializer.serialize_str("resourceDoesNotExist"),
-			Self::InvalidImageName => serializer.serialize_str("invalidImageName"),
-			Self::InvalidDeploymentName => serializer.serialize_str("invalidDeploymentName"),
-			Self::RegionNotActive => serializer.serialize_str("regionNotActive"),
 			Self::ResourceAlreadyExists => serializer.serialize_str("resourceAlreadyExists"),
 			Self::ResourceInUse => serializer.serialize_str("resourceInUse"),
-			Self::FreeLimitExceeded => serializer.serialize_str("freeLimitExceeded"),
-			Self::ReducedVolumeSize => serializer.serialize_str("reducedVolumeSize"),
-			Self::CannotAddNewVolume => serializer.serialize_str("cannotAddNewVolume"),
-			Self::CannotRemoveVolume => serializer.serialize_str("cannotRemoveVolume"),
 			Self::InternalServerError(_) => serializer.serialize_str("internalServerError"),
 		}
 	}
@@ -311,15 +269,8 @@ impl<'de> Deserialize<'de> for ErrorType {
 			"phoneUnavailable" => Self::PhoneUnavailable,
 			"invalidResetToken" => Self::InvalidPasswordResetToken,
 			"resourceDoesNotExist" => Self::ResourceDoesNotExist,
-			"invalidImageName" => Self::InvalidImageName,
-			"invalidDeploymentName" => Self::InvalidDeploymentName,
-			"regionNotActive" => Self::RegionNotActive,
 			"resourceAlreadyExists" => Self::ResourceAlreadyExists,
 			"resourceInUse" => Self::ResourceInUse,
-			"freeLimitExceeded" => Self::FreeLimitExceeded,
-			"reducedVolumeSize" => Self::ReducedVolumeSize,
-			"cannotAddNewVolume" => Self::CannotAddNewVolume,
-			"cannotRemoveVolume" => Self::CannotRemoveVolume,
 			"internalServerError" => {
 				Self::InternalServerError(anyhow::anyhow!("Internal Server Error"))
 			}
