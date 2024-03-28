@@ -21,8 +21,8 @@ pub async fn initialize_user_data_tables(
 			recovery_phone_number VARCHAR(15),
 			workspace_limit INTEGER NOT NULL,
 			password_reset_token TEXT,
-			password_reset_token_expiry TIMESTAMPTZ NOT NULL,
-			password_reset_attempts INT NOT NULL,
+			password_reset_token_expiry TIMESTAMPTZ NULL,
+			password_reset_attempts INT NULL,
 			mfa_secret TEXT
 		);
 		"#

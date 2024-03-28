@@ -58,9 +58,7 @@ pub async fn resend_otp(
 		.is_ok();
 
 		if success {
-			let otp = rand::thread_rng()
-				.gen_range(constants::OTP_RANGE)
-				.to_string();
+			let otp = format!("{:06}", rand::thread_rng().gen_range(constants::OTP_RANGE));
 			let hashed_otp = argon2::Argon2::new_with_secret(
 				config.password_pepper.as_ref(),
 				Algorithm::Argon2id,

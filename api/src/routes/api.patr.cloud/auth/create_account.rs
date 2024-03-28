@@ -94,9 +94,7 @@ pub async fn create_account(
 	}
 
 	let now = OffsetDateTime::now_utc();
-	let otp = rand::thread_rng()
-		.gen_range(constants::OTP_RANGE)
-		.to_string();
+	let otp = format!("{:06}", rand::thread_rng().gen_range(constants::OTP_RANGE));
 	let hashed_otp = argon2::Argon2::new_with_secret(
 		config.password_pepper.as_ref(),
 		Algorithm::Argon2id,
@@ -177,7 +175,20 @@ pub async fn create_account(
 				
 				$8,
 				$9
-			);
+			)
+		ON CONFLICT
+			(username)
+		DO UPDATE SET
+			password = EXCLUDED.password,
+			first_name = EXCLUDED.first_name,
+			last_name = EXCLUDED.last_name,
+			recovery_email = EXCLUDED.recovery_email,
+			recovery_phone_country_code = EXCLUDED.recovery_phone_country_code,
+			recovery_phone_number = EXCLUDED.recovery_phone_number,
+			otp_hash = EXCLUDED.otp_hash,
+			otp_expiry = EXCLUDED.otp_expiry
+		WHERE
+			EXCLUDED.otp_expiry > NOW();
 		"#,
 		username,
 		hashed_password,
