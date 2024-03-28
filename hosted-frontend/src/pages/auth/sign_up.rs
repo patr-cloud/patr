@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use leptos_router::ActionForm;
-use models::api::auth::*;
+use models::{api::auth::*, ApiErrorResponse, ApiErrorResponseBody};
 
 use crate::{pages::*, prelude::*};
 
@@ -59,6 +59,13 @@ pub fn SignUpForm() -> impl IntoView {
 	create_effect(move |_| {
 		if let Some(Ok(resp)) = response.get() {
 			logging::log!("{:#?}", resp);
+			let _ = match resp {
+				Ok(CreateAccountResponse {}) => {}
+				Err(err) => {
+					logging::log!("{:#?}", err);
+					return;
+				}
+			};
 		}
 	});
 
@@ -204,7 +211,7 @@ pub fn SignUpForm() -> impl IntoView {
 				</Show>
 
 				<div class="fr-fe-ct full-width mt-lg">
-					<Link class="btn mr-xs" r#type=Variant::Link>
+					<Link class="btn mr-xs" to="/sign-up/confirm" r#type=Variant::Link>
 						"ALREADY HAVE AN OTP"
 					</Link>
 

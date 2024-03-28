@@ -91,14 +91,6 @@ pub fn LoginForm() -> impl IntoView {
 	}
 }
 
-::macros::declare_app_route!(
-	/// The Login route, requires no path params or query params, and no sign in.
-	Login,
-	"/",
-	requires_login = false,
-	{}
-);
-
 #[component]
 pub fn AuthPage() -> impl IntoView {
 	view! {

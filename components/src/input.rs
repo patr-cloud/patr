@@ -62,6 +62,9 @@ pub fn Input(
 	/// be submitted, doesn't use javascript, defaults to false
 	#[prop(into, optional, default = false.into())]
 	required: bool,
+	/// The Patter of the input, a string regex
+	#[prop(into, optional)]
+	pattern: MaybeSignal<String>,
 	/// The ID of the input.
 	#[prop(into, optional)]
 	id: MaybeSignal<String>,
@@ -161,8 +164,6 @@ pub fn Input(
 		end_icon
 	};
 
-	let id_clone = id.clone().get();
-
 	view! {
 		<div class=class>
 			<Show when={
@@ -192,9 +193,10 @@ pub fn Input(
 			<input
 				id=move || id.get()
 				class="mx-md of-hidden txt-of-ellipsis"
-				name=id_clone
+				name=move || name.get()
 				placeholder=move || placeholder.get()
 				disabled=move || disabled.get()
+				// pattern=move || pattern.get()
 				required=required
 				on:input=on_input
 				prop:value=value
