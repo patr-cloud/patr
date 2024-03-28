@@ -26,6 +26,10 @@ pub enum ErrorType {
 	/// The user does not have two factor authentication enabled, and tried
 	/// disabling it
 	MfaAlreadyInactive,
+	/// The container repository name is invalid
+	InvalidRepositoryName,
+	/// The tag does not exist
+	TagNotFound,
 	/// The parameters sent with the request is invalid. This would ideally not
 	/// happen unless there is a bug in the client
 	WrongParameters,
@@ -55,6 +59,24 @@ pub enum ErrorType {
 	InvalidPasswordResetToken,
 	/// The resource that the user is trying to access does not exist.
 	ResourceDoesNotExist,
+	/// The container image name provided is invalid
+	InvalidImageName,
+	/// The deployment name provided is invalid
+	InvalidDeploymentName,
+	/// The region is not active
+	RegionNotActive,
+	/// The resource already exists
+	ResourceAlreadyExists,
+	/// The resource is currently in use
+	ResourceInUse,
+	/// The user has utilized their free limit
+	FreeLimitExceeded,
+	/// Volume of a deployment cannot be reduced
+	ReducedVolumeSize,
+	/// Cannot add new volume
+	CannotAddNewVolume,
+	/// Cannot remove volume
+	CannotRemoveVolume,
 	/// An internal server error occurred. This should not happen unless there
 	/// is a bug in the server
 	InternalServerError(anyhow::Error),
@@ -73,6 +95,8 @@ impl ErrorType {
 			Self::MfaRequired => StatusCode::UNAUTHORIZED,
 			Self::MfaAlreadyActive => StatusCode::CONFLICT,
 			Self::MfaAlreadyInactive => StatusCode::CONFLICT,
+			Self::InvalidRepositoryName => StatusCode::BAD_REQUEST,
+			Self::TagNotFound => StatusCode::BAD_REQUEST,
 			Self::WrongParameters => StatusCode::BAD_REQUEST,
 			Self::MalformedApiToken => StatusCode::BAD_REQUEST,
 			Self::DisallowedIpAddressForApiToken => StatusCode::UNAUTHORIZED,
@@ -85,6 +109,15 @@ impl ErrorType {
 			Self::PhoneUnavailable => StatusCode::CONFLICT,
 			Self::InvalidPasswordResetToken => StatusCode::BAD_REQUEST,
 			Self::ResourceDoesNotExist => StatusCode::NOT_FOUND,
+			Self::InvalidImageName => StatusCode::BAD_REQUEST,
+			Self::InvalidDeploymentName => StatusCode::BAD_REQUEST,
+			Self::RegionNotActive => StatusCode::BAD_REQUEST,
+			Self::ResourceAlreadyExists => StatusCode::CONFLICT,
+			Self::ResourceInUse => StatusCode::BAD_REQUEST,
+			Self::FreeLimitExceeded => StatusCode::UNAUTHORIZED,
+			Self::ReducedVolumeSize => StatusCode::BAD_REQUEST,
+			Self::CannotAddNewVolume => StatusCode::BAD_REQUEST,
+			Self::CannotRemoveVolume => StatusCode::BAD_REQUEST,
 			Self::InternalServerError(_) => StatusCode::INTERNAL_SERVER_ERROR,
 		}
 	}
@@ -102,6 +135,8 @@ impl ErrorType {
 				"Two factor authentication is already enabled on your account"
 			}
 			Self::MfaAlreadyInactive => "Two factor authentication is not enabled on your account",
+			Self::InvalidRepositoryName => "The repository name is invalid",
+			Self::TagNotFound => "No tag exists",
 			Self::WrongParameters => "The parameters sent with that request is invalid",
 			Self::MalformedApiToken => "The API token provided is not a valid token",
 			Self::DisallowedIpAddressForApiToken => {
@@ -118,6 +153,15 @@ impl ErrorType {
 				"The token provided to reset your password is not valid"
 			}
 			Self::ResourceDoesNotExist => "The resource you are trying to access does not exist",
+			Self::InvalidImageName => "Invalid image name",
+			Self::InvalidDeploymentName => "Invalid deployment name",
+			Self::RegionNotActive => "The selected region is not active",
+			Self::ResourceAlreadyExists => "Resource already exists with the given details",
+			Self::ResourceInUse => "Resource is currently in use",
+			Self::FreeLimitExceeded => "You have already reached your free limit",
+			Self::ReducedVolumeSize => "The deployment volume size cannot be reduced",
+			Self::CannotAddNewVolume => "New volume cannot be added",
+			Self::CannotRemoveVolume => "The volume cannot be removed",
 			Self::InternalServerError(_) => "An internal server error has occured",
 		}
 	}
@@ -158,6 +202,8 @@ impl Clone for ErrorType {
 			Self::MfaOtpInvalid => Self::MfaOtpInvalid,
 			Self::MfaAlreadyActive => Self::MfaAlreadyActive,
 			Self::MfaAlreadyInactive => Self::MfaAlreadyInactive,
+			Self::InvalidRepositoryName => Self::InvalidRepositoryName,
+			Self::TagNotFound => Self::TagNotFound,
 			Self::WrongParameters => Self::WrongParameters,
 			Self::MalformedApiToken => Self::MalformedApiToken,
 			Self::DisallowedIpAddressForApiToken => Self::DisallowedIpAddressForApiToken,
@@ -170,6 +216,15 @@ impl Clone for ErrorType {
 			Self::PhoneUnavailable => Self::PhoneUnavailable,
 			Self::InvalidPasswordResetToken => Self::InvalidPasswordResetToken,
 			Self::ResourceDoesNotExist => Self::ResourceDoesNotExist,
+			Self::InvalidImageName => Self::InvalidImageName,
+			Self::InvalidDeploymentName => Self::InvalidDeploymentName,
+			Self::RegionNotActive => Self::RegionNotActive,
+			Self::ResourceAlreadyExists => Self::ResourceAlreadyExists,
+			Self::ResourceInUse => Self::ResourceInUse,
+			Self::FreeLimitExceeded => Self::FreeLimitExceeded,
+			Self::ReducedVolumeSize => Self::ReducedVolumeSize,
+			Self::CannotAddNewVolume => Self::CannotAddNewVolume,
+			Self::CannotRemoveVolume => Self::CannotRemoveVolume,
 			Self::InternalServerError(arg0) => {
 				Self::InternalServerError(anyhow::anyhow!(arg0.to_string()))
 			}
@@ -196,6 +251,8 @@ impl Serialize for ErrorType {
 			Self::MfaAlreadyActive => serializer.serialize_str("mfaAlreadyActive"),
 			Self::MfaAlreadyInactive => serializer.serialize_str("mfaAlreadyInactive"),
 			Self::MfaOtpInvalid => serializer.serialize_str("mfaOtpInvalid"),
+			Self::InvalidRepositoryName => serializer.serialize_str("invalidRepositoryName"),
+			Self::TagNotFound => serializer.serialize_str("tagNotFound"),
 			Self::WrongParameters => serializer.serialize_str("wrongParameters"),
 			Self::MalformedApiToken => serializer.serialize_str("malformedApiToken"),
 			Self::DisallowedIpAddressForApiToken => {
@@ -212,6 +269,15 @@ impl Serialize for ErrorType {
 			Self::PhoneUnavailable => serializer.serialize_str("phoneUnavailable"),
 			Self::InvalidPasswordResetToken => serializer.serialize_str("invalidResetToken"),
 			Self::ResourceDoesNotExist => serializer.serialize_str("resourceDoesNotExist"),
+			Self::InvalidImageName => serializer.serialize_str("invalidImageName"),
+			Self::InvalidDeploymentName => serializer.serialize_str("invalidDeploymentName"),
+			Self::RegionNotActive => serializer.serialize_str("regionNotActive"),
+			Self::ResourceAlreadyExists => serializer.serialize_str("resourceAlreadyExists"),
+			Self::ResourceInUse => serializer.serialize_str("resourceInUse"),
+			Self::FreeLimitExceeded => serializer.serialize_str("freeLimitExceeded"),
+			Self::ReducedVolumeSize => serializer.serialize_str("reducedVolumeSize"),
+			Self::CannotAddNewVolume => serializer.serialize_str("cannotAddNewVolume"),
+			Self::CannotRemoveVolume => serializer.serialize_str("cannotRemoveVolume"),
 			Self::InternalServerError(_) => serializer.serialize_str("internalServerError"),
 		}
 	}
@@ -231,6 +297,8 @@ impl<'de> Deserialize<'de> for ErrorType {
 			"mfaOtpInvalid" => Self::MfaOtpInvalid,
 			"mfaAlreadyActive" => Self::MfaAlreadyActive,
 			"mfaAlreadyInactive" => Self::MfaAlreadyInactive,
+			"invalidRepositoryName" => Self::InvalidRepositoryName,
+			"tagNotFound" => Self::TagNotFound,
 			"wrongParameters" => Self::WrongParameters,
 			"malformedApiToken" => Self::MalformedApiToken,
 			"disallowedIpAddressForApiToken" => Self::DisallowedIpAddressForApiToken,
@@ -243,6 +311,15 @@ impl<'de> Deserialize<'de> for ErrorType {
 			"phoneUnavailable" => Self::PhoneUnavailable,
 			"invalidResetToken" => Self::InvalidPasswordResetToken,
 			"resourceDoesNotExist" => Self::ResourceDoesNotExist,
+			"invalidImageName" => Self::InvalidImageName,
+			"invalidDeploymentName" => Self::InvalidDeploymentName,
+			"regionNotActive" => Self::RegionNotActive,
+			"resourceAlreadyExists" => Self::ResourceAlreadyExists,
+			"resourceInUse" => Self::ResourceInUse,
+			"freeLimitExceeded" => Self::FreeLimitExceeded,
+			"reducedVolumeSize" => Self::ReducedVolumeSize,
+			"cannotAddNewVolume" => Self::CannotAddNewVolume,
+			"cannotRemoveVolume" => Self::CannotRemoveVolume,
 			"internalServerError" => {
 				Self::InternalServerError(anyhow::anyhow!("Internal Server Error"))
 			}
