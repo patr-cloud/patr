@@ -10,7 +10,7 @@ pub use self::{confirm_sign_up::*, login::*, sign_up::*};
 
 #[component(transparent)]
 pub fn AuthRoutes() -> impl IntoView {
-	let auth = get_auth_state();
+	let (auth, _) = get_auth_state();
 
 	view! {
 		<ProtectedRoute
