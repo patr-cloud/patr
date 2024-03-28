@@ -21,7 +21,7 @@ macros::declare_api_endpoint!(
 	},
 	pagination = true,
 	response_headers = {
-		/// The total number of databases in the requested workspace
+		/// The total number of deployment in the requested workspace
 		pub total_count: TotalCountHeader,
 	},
 	response = {

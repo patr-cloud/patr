@@ -76,7 +76,7 @@ pub struct Deployment {
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentDeployHistory {
 	/// The images digests the deployment has ran
-	pub image_digest: Vec<String>,
+	pub image_digest: String,
 	/// The timestamp of when the digest previously ran
 	pub created: OffsetDateTime,
 }
@@ -152,7 +152,6 @@ pub enum ExposedPortType {
 	/// HTTP
 	Http,
 }
-
 /// The deployment startup/liveness probe
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
