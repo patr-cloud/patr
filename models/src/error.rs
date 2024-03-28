@@ -53,6 +53,8 @@ pub enum ErrorType {
 	PhoneUnavailable,
 	/// The reset token used to reset the given user's password is invalid.
 	InvalidPasswordResetToken,
+	/// The resource that the user is trying to access does not exist.
+	ResourceDoesNotExist,
 	/// An internal server error occurred. This should not happen unless there
 	/// is a bug in the server
 	InternalServerError(anyhow::Error),
@@ -82,6 +84,7 @@ impl ErrorType {
 			Self::EmailUnavailable => StatusCode::CONFLICT,
 			Self::PhoneUnavailable => StatusCode::CONFLICT,
 			Self::InvalidPasswordResetToken => StatusCode::BAD_REQUEST,
+			Self::ResourceDoesNotExist => StatusCode::NOT_FOUND,
 			Self::InternalServerError(_) => StatusCode::INTERNAL_SERVER_ERROR,
 		}
 	}
@@ -114,6 +117,7 @@ impl ErrorType {
 			Self::InvalidPasswordResetToken => {
 				"The token provided to reset your password is not valid"
 			}
+			Self::ResourceDoesNotExist => "The resource you are trying to access does not exist",
 			Self::InternalServerError(_) => "An internal server error has occured",
 		}
 	}
@@ -165,6 +169,7 @@ impl Clone for ErrorType {
 			Self::EmailUnavailable => Self::EmailUnavailable,
 			Self::PhoneUnavailable => Self::PhoneUnavailable,
 			Self::InvalidPasswordResetToken => Self::InvalidPasswordResetToken,
+			Self::ResourceDoesNotExist => Self::ResourceDoesNotExist,
 			Self::InternalServerError(arg0) => {
 				Self::InternalServerError(anyhow::anyhow!(arg0.to_string()))
 			}
@@ -206,6 +211,7 @@ impl Serialize for ErrorType {
 			Self::EmailUnavailable => serializer.serialize_str("emailUnavailable"),
 			Self::PhoneUnavailable => serializer.serialize_str("phoneUnavailable"),
 			Self::InvalidPasswordResetToken => serializer.serialize_str("invalidResetToken"),
+			Self::ResourceDoesNotExist => serializer.serialize_str("resourceDoesNotExist"),
 			Self::InternalServerError(_) => serializer.serialize_str("internalServerError"),
 		}
 	}
@@ -236,6 +242,7 @@ impl<'de> Deserialize<'de> for ErrorType {
 			"emailUnavailable" => Self::EmailUnavailable,
 			"phoneUnavailable" => Self::PhoneUnavailable,
 			"invalidResetToken" => Self::InvalidPasswordResetToken,
+			"resourceDoesNotExist" => Self::ResourceDoesNotExist,
 			"internalServerError" => {
 				Self::InternalServerError(anyhow::anyhow!("Internal Server Error"))
 			}

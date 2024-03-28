@@ -2,11 +2,16 @@ use axum::Router;
 
 use crate::prelude::*;
 
+#[allow(unused_variables, dead_code, unreachable_code, unused_imports)]
 mod domain;
 mod infrastructure;
+#[allow(unused_variables, dead_code, unreachable_code, unused_imports)]
 mod rbac;
+#[allow(unused_variables, dead_code, unreachable_code, unused_imports)]
 mod region;
+#[allow(unused_variables, dead_code, unreachable_code, unused_imports)]
 mod runner;
+#[allow(unused_variables, dead_code, unreachable_code, unused_imports)]
 mod secret;
 
 #[instrument(skip(state))]

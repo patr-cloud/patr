@@ -32,6 +32,8 @@ pub mod prelude {
 			Base64String,
 			BearerToken,
 			GeoLocation,
+			ListOrder,
+			ListOrderBy,
 			LoginId,
 			OneOrMore,
 			Paginated,

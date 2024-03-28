@@ -1,7 +1,6 @@
 mod auth;
 mod user;
 
-#[allow(unused_variables, dead_code, unreachable_code, unused_imports)]
 mod workspace;
 
 use axum::Router;
