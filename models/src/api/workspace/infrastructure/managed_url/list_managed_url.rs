@@ -1,4 +1,4 @@
-use super::ManagedUrl;
+use super::*;
 use crate::prelude::*;
 
 macros::declare_api_endpoint!(
