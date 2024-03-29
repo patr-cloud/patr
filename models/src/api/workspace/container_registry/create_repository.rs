@@ -20,10 +20,12 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The name of the repository to create.
+		#[preprocess(regex = r"^[a-z0-9_-]{2,255}$", trim, lowercase)]
 		pub name: String,
 	},
 	response = {
 		/// The id of the created repository.
-		pub id: Uuid,
+		#[serde(flatten)]
+		pub id: WithId<()>
 	}
 );
