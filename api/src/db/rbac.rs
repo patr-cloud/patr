@@ -345,5 +345,101 @@ pub async fn initialize_rbac_constraints(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		CREATE FUNCTION LOGIN_ID_HAS_PERMISSION_ON_RESOURCE(
+			login_id UUID,
+			permission_name TEXT,
+			resource_id UUID
+		) RETURNS BOOLEAN AS $$
+		DECLARE
+			permission_id UUID;
+		BEGIN
+			SELECT
+				permission_id
+			INTO
+				role_id
+			FROM
+				permission
+			WHERE
+				name = permission_name;
+
+			IF permission_id IS NULL THEN
+				RAISE EXCEPTION 'Permission `%` not found', permission_name;
+			END IF;
+
+			RETURN COALESCE(
+				/* Check if the user is the super admin of the workspace of the resource */
+				SELECT
+					1
+				FROM
+					resource
+				WHERE
+					id = resource_id AND
+					owner_id IN (
+						SELECT DISTINCT
+							COALESCE(
+								user_api_token_workspace_super_admin.workspace_id,
+								workspace.id
+							)
+						FROM
+							user_login
+						LEFT JOIN
+							user_api_token_workspace_super_admin
+						ON
+							user_login.login_type = 'api_token' AND
+							user_api_token_workspace_super_admin.token_id = user_login.login_id
+						LEFT JOIN
+							workspace
+						ON
+							user_login.login_type = 'web_login' AND
+							workspace.super_admin_id = user_login.user_id
+						WHERE
+							user_login.login_id = login_id
+					),
+				/* Check if the user has include permission on the resource */
+				SELECT
+					1
+				FROM
+					resource
+				WHERE
+					id = resource_id AND
+					id IN (
+						SELECT
+							COALESCE(
+								user_api_token_resource_permissions_include.resource_id,
+								role_resource_permissions_include.resource_id
+							)
+						FROM
+							user_login
+						LEFT JOIN
+							user_api_token_resource_permissions_include
+						ON
+							user_login.login_type = 'api_token' AND
+							user_api_token_resource_permissions_include.token_id = user_login.login_id
+						LEFT JOIN
+							workspace_user
+						ON
+							workspace_user.user_id = user_login.user_id
+						LEFT JOIN
+							role_resource_permissions_include
+						ON
+							role_resource_permissions_include.role_id = workspace_user.role_id
+						WHERE
+							user_login.login_id = login_id AND
+							role_resource_permissions_include.permission_id = permission_id AND
+							resource.owner_id = COALESCE(
+								user_api_token_resource_permissions_include.workspace_id,
+								workspace_user.workspace_id
+							)
+					)
+			);
+		END;
+		$$ LANGUAGE plpgsql;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }

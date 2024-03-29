@@ -24,10 +24,12 @@ macros::declare_api_endpoint!(
 		pub order: Option<ListOrder>,
 		/// The field to order the list of managed URLs by
 		pub order_by: Option<ListOrderBy>,
+		/// Search by a specific query
+		pub filter: Option<String>,
 	},
 	pagination = true,
 	response_headers = {
-		/// The total number of databases in the requested workspace
+		/// The total number of Managed URLs in the requested workspace
 		pub total_count: TotalCountHeader,
 	},
 	response = {

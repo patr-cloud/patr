@@ -10,7 +10,12 @@ pub async fn list_managed_url(
 				path: ListManagedURLPath { workspace_id },
 				query:
 					Paginated {
-						data: ListManagedURLQuery { order, order_by },
+						data:
+							ListManagedURLQuery {
+								order,
+								order_by,
+								filter,
+							},
 						count,
 						page,
 					},
