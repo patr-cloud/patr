@@ -54,12 +54,32 @@ async fn machine_type(
 ) -> Result<AppResponse<ListAllDeploymentMachineTypeRequest>, ErrorType> {
 	info!("Starting: List deployments");
 
-	// LOGIC
+	let machine_types = query!(
+		r#"
+		SELECT
+			id,
+			cpu_count,
+			memory_count
+		FROM
+			deployment_machine_type;
+		"#
+	)
+	.fetch_all(&mut **database)
+	.await?
+	.into_iter()
+	.map(|machine| {
+		WithId::new(
+			machine.id.into(),
+			DeploymentMachineType {
+				cpu_count: machine.cpu_count,
+				memory_count: machine.memory_count,
+			},
+		)
+	})
+	.collect();
 
 	AppResponse::builder()
-		.body(ListAllDeploymentMachineTypeResponse {
-			machine_types: todo!(),
-		})
+		.body(ListAllDeploymentMachineTypeResponse { machine_types })
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
@@ -105,7 +125,7 @@ async fn list_deployment(
 		"#,
 		workspace_id as _
 	)
-	.fetch_optional(&mut **database)
+	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
 	.map(|deployment| {
@@ -167,6 +187,23 @@ async fn list_deployment_history(
 ) -> Result<AppResponse<ListDeploymentHistoryRequest>, ErrorType> {
 	info!("Starting: List deployment history");
 
+	// Check if deployment exists
+	query!(
+		r#"
+		SELECT
+			id
+		FROM
+			deployment
+		WHERE
+			id = $1 AND
+			status != 'deleted';
+		"#,
+		deployment_id as _
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	.ok_or(ErrorType::ResourceDoesNotExist);
+
 	let deploys = query!(
 		r#"
 		SELECT 
@@ -179,9 +216,8 @@ async fn list_deployment_history(
 		"#,
 		deployment_id as _,
 	)
-	.fetch_optional(&mut **database)
+	.fetch_all(&mut **database)
 	.await?
-	.ok_or(ErrorType::ResourceDoesNotExist)
 	.into_iter()
 	.map(|deploy| DeploymentDeployHistory {
 		image_digest: deploy.image_digest,
@@ -234,9 +270,11 @@ async fn create_deployment(
 		FROM
 			deployment
 		WHERE
-			workspace_id = $1;
+			workspace_id = $1 AND
+			name = $2
 		"#,
 		workspace_id as _,
+		name
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -269,7 +307,8 @@ async fn create_deployment(
 	let region_details = query!(
 		r#"
 		SELECT
-			status
+			status,
+			workspace_id
 		FROM
 			region
 		WHERE
@@ -279,75 +318,92 @@ async fn create_deployment(
 	)
 	.fetch_optional(&mut **database)
 	.await?
+	.filter(|region| todo!("return if patr region or if workspace_id is some"))
 	.ok_or(ErrorType::server_error("Could not get region details"))?;
 
-	todo!("Filter all the patr regions");
-
-	if !(region_details.status == RegionStatus::Active || todo!("Check if byoc region")) {
+	if !(region_details.status == RegionStatus::Active || todo!("Check if patr region")) {
 		return Err(ErrorType::RegionNotActive);
 	}
 
 	// Check creation limits
 	// If deploy on Patr then the user is only allowed to create resources depending
 	// on their current active plan quota
-	if todo!("check if free user") {
-		let current_deployment_count = query!(
-			r#"
-			SELECT
-				COUNT(id)
-			FROM
-				deployment
-			WHERE
-				workspace_id = $1;
-			"#,
-			workspace_id as _,
-		)
-		.fetch_optional(&mut **database)
-		.await?
-		.map(|row| row.count.unwrap_or(0))
-		.ok_or(ErrorType::server_error(
-			"Could not get total deployment count",
-		))?;
+	if todo!("Check if not byoc region") {
+		let card_added: bool = todo!("Check if card added");
 
-		todo!("Check card details");
+		if !card_added {
+			if running_details.max_horizontal_scale > 1 || running_details.min_horizontal_scale > 1
+			{
+				return Err(ErrorType::FreeLimitExceeded);
+			}
 
-		if current_deployment_count.into() >= constants::DEFAULT_DEPLOYMENT_LIMIT {
-			return Err(ErrorType::FreeLimitExceeded);
-		}
+			let current_deployment_count = query!(
+				r#"
+				SELECT
+					COUNT(id)
+				FROM
+					deployment
+				WHERE
+					workspace_id = $1;
+				"#,
+				workspace_id as _,
+			)
+			.fetch_one(&mut **database)
+			.await
+			.map(|row| row.count.unwrap_or(0))?;
 
-		// only basic machine type is allowed under free plan
-		todo!("Check");
-		let machine_type_to_be_deployed = MACHINE_TYPES
-			.get()
-			.and_then(|machines| machines.get(machine_type))
-			.status(500)?;
+			if current_deployment_count.into() >= constants::DEFAULT_DEPLOYMENT_LIMIT {
+				return Err(ErrorType::FreeLimitExceeded);
+			}
 
-		if machine_type_to_be_deployed != &(1, 2) {
-			return Err(ErrorType::FreeLimitExceeded);
-		}
+			let volume_size = running_details
+				.volumes
+				.iter()
+				.map(|(_, volume)| volume.size as u32)
+				.sum::<u32>();
 
-		if running_details.max_horizontal_scale > 1 || running_details.min_horizontal_scale > 1 {
-			return Err(ErrorType::FreeLimitExceeded);
-		}
+			let volume_size_in_byte = volume_size as usize * 1024 * 1024 * 1024;
+			if volume_size_in_byte > constants::VOLUME_STORAGE_IN_BYTE {
+				return Err(ErrorType::FreeLimitExceeded);
+			}
 
-		let volume_size = running_details
-			.volumes
-			.iter()
-			.map(|(_, volume)| volume.size as u32)
-			.sum::<u32>();
+			// only basic machine type is allowed under free plan
+			let machine_type_to_be_deployed = MACHINE_TYPES
+				.get()
+				.and_then(|machines| machines.get(&machine_type))
+				.ok_or(ErrorType::server_error("Failed to get machine type info"))?;
 
-		let volume_size_in_byte = volume_size as usize * 1024 * 1024 * 1024;
-		if volume_size_in_byte > constants::VOLUME_STORAGE_IN_BYTE {
-			return Err(ErrorType::FreeLimitExceeded);
+			if machine_type_to_be_deployed != &(1, 2) {
+				return Err(ErrorType::FreeLimitExceeded);
+			}
 		}
 	}
 
 	todo!("Get limit on resource creation, max deployment and max volume depending on the users patr plan if not a byoc user");
 
 	let created_time = OffsetDateTime::now_utc();
+	let deployment_id = loop {
+		let uuid = Uuid::new_v4();
 
-	todo!("Have a funcion to generate new distinct ID");
-	let deployment_id = Uuid::new_v4();
+		let exists = query!(
+			r#"
+			SELECT
+				*
+			FROM
+				resource
+			WHERE
+				id = $1;
+			"#,
+			uuid as _
+		)
+		.fetch_optional(&mut **database)
+		.await?
+		.is_some();
+
+		if !exists {
+			break uuid;
+		}
+	};
 
 	// Create resource
 	let resource_type_id: Uuid = todo!("Get resource ID for a deployment");
@@ -646,8 +702,28 @@ async fn create_deployment(
 	}
 
 	for (name, volume) in &running_details.volumes {
-		todo!("Have a funcion to generate new distinct ID");
-		let volume_id = Uuid::new_v4();
+		let volume_id = loop {
+			let uuid = Uuid::new_v4();
+
+			let exists = query!(
+				r#"
+				SELECT
+					*
+				FROM
+					resource
+				WHERE
+					id = $1;
+				"#,
+				uuid as _
+			)
+			.fetch_optional(&mut **database)
+			.await?
+			.is_some();
+
+			if !exists {
+				break uuid;
+			}
+		};
 
 		query!(
 			r#"
@@ -695,11 +771,79 @@ async fn create_deployment(
 	todo!("Generate audit log");
 	todo!("update_cloudflare_kv_for_deployment");
 
+	if let DeploymentRegistry::PatrRegistry { repository_id, .. } = &registry {
+		let digest = query!(
+			r#"
+			SELECT
+				manifest_digest
+			FROM
+				container_registry_repository_manifest
+			WHERE
+				repository_id = $1
+			ORDER BY
+				created DESC
+			LIMIT 1;
+			"#,
+			repository_id as _
+		)
+		.fetch_optional(&mut **database)
+		.await?
+		.map(|row| row.manifest_digest);
+
+		if let Some(digest) = digest {
+			query!(
+				r#"
+				INSERT INTO
+					deployment_deploy_history(
+						deployment_id,
+						image_digest,
+						repository_id,
+						created
+					)
+				VALUES
+					($1, $2, $3, $4)
+				ON CONFLICT
+					(deployment_id, image_digest)
+				DO NOTHING;
+				"#,
+				deployment_id as _,
+				digest as _,
+				repository_id as _,
+				created_time as _,
+			)
+			.execute(&mut **database)
+			.await?;
+
+			query!(
+				r#"
+				INSERT INTO
+					deployment_deploy_history(
+						deployment_id,
+						image_digest,
+						repository_id,
+						created
+					)
+				VALUES
+					($1, $2, $3, $4)
+				ON CONFLICT
+					(deployment_id, image_digest)
+				DO NOTHING;
+				"#,
+				deployment_id as _,
+				digest as _,
+				repository_id as _,
+				created_time as _,
+			)
+			.execute(&mut **database)
+			.await?;
+		}
+	}
+
 	todo!("Deployment metric");
 
 	AppResponse::builder()
 		.body(CreateDeploymentResponse {
-			id: WithId::new(deployment_id, None),
+			id: WithId::new(deployment_id, ()),
 		})
 		.headers(())
 		.status_code(StatusCode::OK)
@@ -740,7 +884,7 @@ async fn get_deployment_info(
 		"#,
 		deployment_id as _
 	)
-	.fetch_optional(&mut **database)
+	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
 	.map(|row| (StringifiedU16::new(row.port as u16), row.port_type))
@@ -759,7 +903,7 @@ async fn get_deployment_info(
 		"#,
 		deployment_id as _
 	)
-	.fetch_optional(&mut **database)
+	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
 	.filter_map(|env| match (env.value, env.secret_id) {
@@ -786,7 +930,7 @@ async fn get_deployment_info(
 		"#,
 		deployment_id as _
 	)
-	.fetch_optional(&mut **database)
+	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
 	.map(|mount| (mount.path, mount.file.into()))
@@ -807,7 +951,7 @@ async fn get_deployment_info(
 		"#,
 		deployment_id as _,
 	)
-	.fetch_optional(&mut **database)
+	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
 	.map(|volume| {
@@ -1130,7 +1274,7 @@ async fn start_deployment(
 		"#,
 		deployment_id as _,
 	)
-	.fetch_optional(&mut **database)
+	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
 	.map(|volume| {
@@ -1148,7 +1292,6 @@ async fn start_deployment(
 		for volume in &volumes {
 			todo!("Start usage history for volume")
 		}
-
 		todo!("Start usage history for deployment");
 	}
 
@@ -1423,7 +1566,7 @@ async fn delete_deployment(
 			"#,
 			deployment_id as _,
 		)
-		.fetch_optional(&mut **database)
+		.fetch_all(&mut **database)
 		.await?
 		.into_iter()
 		.map(|volume| {
@@ -1551,8 +1694,8 @@ async fn update_deployment(
 			// only basic machine type is allowed under free plan
 			let machine_type_to_be_deployed = MACHINE_TYPES
 				.get()
-				.and_then(|machines| machines.get(machine_type))
-				.status(500)?;
+				.and_then(|machines| machines.get(&machine_type))
+				.ok_or(ErrorType::server_error("Failed to get machine type info"))?;
 
 			if machine_type_to_be_deployed != &(1, 2) {
 				return Err(ErrorType::FreeLimitExceeded);
@@ -1988,9 +2131,8 @@ async fn list_linked_url(
 		deployment_id as _,
 		workspace_id as _
 	)
-	.fetch_optional(&mut **database)
+	.fetch_all(&mut **database)
 	.await?
-	.ok_or(ErrorType::ResourceDoesNotExist)
 	.into_iter()
 	.map(|url| {
 		WithId::new(
