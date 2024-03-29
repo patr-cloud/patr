@@ -21,9 +21,6 @@ pub mod extractors;
 /// [1]: axum::Router
 mod router_ext;
 
-/// Contains regex to validate requests
-pub mod validator;
-
 pub use self::router_ext::RouterExt;
 
 /// A list of constants that will be used throughout the application. This is

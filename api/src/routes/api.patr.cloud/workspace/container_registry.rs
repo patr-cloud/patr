@@ -7,14 +7,12 @@ use models::{
 		WithId,
 	},
 	utils::{StringifiedU16, TotalCountHeader},
-	ApiRequest,
-	ErrorType,
 };
 use time::OffsetDateTime;
 
 use crate::{
 	prelude::*,
-	utils::{config::AppConfig, validator},
+	utils::config::AppConfig,
 };
 
 #[instrument(skip(state))]
@@ -38,7 +36,9 @@ async fn create_container_repository(
 				path: CreateContainerRepositoryPath { workspace_id },
 				query: _,
 				headers,
-				body: CreateContainerRepositoryRequestProcessed { name },
+				body: CreateContainerRepositoryRequestProcessed {
+					name 
+				},
 			},
 		database,
 		redis: _,
@@ -48,15 +48,6 @@ async fn create_container_repository(
 	}: AuthenticatedAppRequest<'_, CreateContainerRepositoryRequest>,
 ) -> Result<AppResponse<CreateContainerRepositoryRequest>, ErrorType> {
 	info!("Starting: Create container repository");
-
-	let name = name.trim().to_lowercase();
-
-	// Validate if repository name is valid
-	let is_repo_name_valid = validator::is_docker_repo_name_valid(&name);
-
-	if !is_repo_name_valid {
-		return Err(ErrorType::InvalidRepositoryName);
-	}
 
 	// Check if repository already exist
 	let already_exist = query!(
@@ -149,7 +140,7 @@ async fn create_container_repository(
 	.await?;
 
 	AppResponse::builder()
-		.body(CreateContainerRepositoryResponse { id: todo!() })
+		.body(CreateContainerRepositoryResponse { id: WithId::new(resource_id, ()) })
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
@@ -954,10 +945,28 @@ async fn list_container_repository_tags(
 	})
 	.collect();
 
+	let total_count = query!(
+		r#" 
+		SELECT
+			COUNT(*) AS count
+		FROM
+			container_registry_repository_tag
+		WHERE
+			repository_id = $1;
+		"#,
+		repository_id as _
+	)
+	.fetch_one(&mut **database)
+	.await
+	.map(|repo| repo.count)?
+	.ok_or(ErrorType::server_error(
+		"Failed to get total repository count",
+	))?;
+
 	AppResponse::builder()
 		.body(ListContainerRepositoryTagsResponse { tags })
 		.headers(ListContainerRepositoryTagsResponseHeaders {
-			total_count: todo!(),
+			total_count: TotalCountHeader(total_count as usize),
 		})
 		.status_code(StatusCode::OK)
 		.build()
