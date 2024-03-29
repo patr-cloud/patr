@@ -1,4 +1,5 @@
 use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};
+use leptos_use::{use_cookie, utils::FromToStringCodec};
 use models::api::auth::*;
 
 use crate::{global_state::*, pages::*, prelude::*};
@@ -31,7 +32,10 @@ pub fn App() -> impl IntoView {
 
 	provide_context(state);
 
-	let (auth, _) = get_auth_state();
+	let auth = authstate_from_cookie();
+	create_effect(move |_| {
+		let _ = authstate_from_cookie();
+	});
 
 	view! {
 		<Router>
