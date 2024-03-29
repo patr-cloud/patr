@@ -116,12 +116,15 @@ async fn create_container_repository(
 				created
 			)
 		VALUES
-			($1, $2, $3, $4);
+			(
+				$1,
+				(SELECT id FROM resource_type WHERE name = 'container_repository'),
+				$2,
+				NOW()
+			);
 		"#,
 		resource_id as _,
-		todo!("Get resource_type_id") as _,
 		workspace_id as _,
-		OffsetDateTime::now_utc()
 	)
 	.execute(&mut **database)
 	.await?;
