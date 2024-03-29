@@ -1,6 +1,5 @@
-/// This module contains all the utilities used for listing and ordering items
-/// in a list route along with pagination.
-mod api_list_utils;
+use serde::{Deserialize, Serialize};
+
 /// This module contains all the utilities used for parsing a request and using
 /// it in the [`crate::ApiEndpoint`] request struct.
 mod axum_request;
@@ -76,4 +75,15 @@ pub mod constants {
 	/// A NodeID for Uuid v1.
 	/// Spells "*Patr*" in bytes
 	pub const UUID_NODE_ID: [u8; 6] = [42, 80, 97, 116, 114, 42];
+}
+
+/// Ordering of the list for paginated requests
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ListOrder {
+	/// Ascending order
+	Ascending,
+	/// Descending order
+	#[default]
+	Descending,
 }

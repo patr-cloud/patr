@@ -293,7 +293,7 @@ where
 							AccessTokenData {
 								iss,
 								sub,
-								aud: _,
+								aud,
 								exp,
 								nbf,
 								iat: _,
@@ -308,6 +308,7 @@ where
 							// We'll manually do this
 							validation.validate_exp = false;
 							validation.validate_nbf = false;
+							validation.validate_aud = false;
 
 							validation
 						},
@@ -382,6 +383,21 @@ where
 					if OffsetDateTime::now_utc() > user.token_expiry {
 						warn!("Web login has expired");
 						return Err(ErrorType::AuthorizationTokenInvalid);
+					}
+
+					if !aud
+						.clone()
+						.into_iter()
+						.any(|item| item == constants::PATR_JWT_AUDIENCE)
+					{
+						warn!(
+							"Invalid JWT audience: `{}`",
+							match aud {
+								OneOrMore::One(aud) => aud,
+								OneOrMore::Multiple(aud) => format!("[{}]", aud.join(", ")),
+							}
+						);
+						return Err(ErrorType::MalformedAccessToken);
 					}
 
 					let permissions =
