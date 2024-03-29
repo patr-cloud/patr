@@ -33,7 +33,6 @@ pub mod prelude {
 			BearerToken,
 			GeoLocation,
 			ListOrder,
-			ListOrderBy,
 			LoginId,
 			OneOrMore,
 			Paginated,
