@@ -1,3 +1,4 @@
+use leptos::server_fn::redirect;
 use models::api::auth::{
 	CompleteSignUpPath,
 	CompleteSignUpRequest,
@@ -6,7 +7,10 @@ use models::api::auth::{
 	LoginResponse,
 };
 
-use crate::prelude::*;
+use crate::{
+	global_state::{get_auth_state, set_auth_token, AuthTokens},
+	prelude::*,
+};
 
 #[component]
 pub fn ConfirmSignUpPage() -> impl IntoView {
@@ -22,7 +26,15 @@ async fn complete_sign_up(
 	username: String,
 	otp: String,
 ) -> Result<Result<CompleteSignUpResponse, ErrorType>, ServerFnError> {
-	Ok(make_api_call::<CompleteSignUpRequest>(
+	use axum::{
+		http::header::{HeaderValue, SET_COOKIE},
+		response::AppendHeaders,
+	};
+	// use axum_extra::extract::cookie::Cookie;
+	use http::StatusCode;
+	use leptos_axum::ResponseOptions;
+
+	let api_response = make_api_call::<CompleteSignUpRequest>(
 		ApiRequest::builder()
 			.path(CompleteSignUpPath)
 			.query(())
@@ -35,8 +47,26 @@ async fn complete_sign_up(
 			})
 			.build(),
 	)
-	.await
-	.map(|res| res.body))
+	.await;
+
+	let response = expect_context::<ResponseOptions>();
+
+	if let Ok(resp) = &api_response {
+		logging::log!("{:#?}", resp.body);
+		// let mut cookie = Cookie::new("access_token");
+		let access_token_header = HeaderValue::from_str("access_token=something");
+		let refresh_token_header = HeaderValue::from_str("refresh_token=now");
+
+		if let (Ok(access_token_cookie), Ok(refresh_token_cookie)) =
+			(access_token_header, refresh_token_header)
+		{
+			response.append_header(SET_COOKIE, access_token_cookie);
+			response.append_header(SET_COOKIE, refresh_token_cookie);
+		}
+		leptos_axum::redirect("/");
+	}
+
+	Ok(api_response.map(|res| res.body))
 }
 
 #[component]
@@ -47,6 +77,8 @@ pub fn ConfirmSignUpForm() -> impl IntoView {
 	let username_error = create_rw_signal("".to_owned());
 
 	let response = confirm_action.value();
+	let (_, set_auth_state) = get_auth_state();
+	// let set_auth_state = set_auth_token();
 	// let has_error = move || response.with(|resp| matches!(resp, Some(Err(_))));
 
 	let handle_errors = move |error: ErrorType| match error {
@@ -72,6 +104,10 @@ pub fn ConfirmSignUpForm() -> impl IntoView {
 					access_token,
 				}) => {
 					logging::log!("{}, {}", refresh_token, access_token);
+					set_auth_state.set(Some(AuthTokens {
+						refresh_token,
+						auth_token: access_token,
+					}));
 					return;
 				}
 				Err(err) => {
@@ -110,14 +146,14 @@ pub fn ConfirmSignUpForm() -> impl IntoView {
 					r#type=InputType::Text
 					required=true
 				/>
-				// <Show
-				// 	when=move || !username_error.with(|error| error.is_empty())
-				// 	fallback=|| view! {}.into_view()
-				// >
-				// 	// <Alert r#type=AlertType::Error class="mt-xs">{move || username_error.get()}</Alert>
-				// 	<p>{username_error}</p>
-				// </Show>
-				<p>{username_error}</p>
+				<Show
+					when=move || !username_error.with(|error| error.is_empty())
+					fallback=|| view! {}.into_view()
+				>
+					// <Alert r#type=AlertType::Error class="mt-xs">{move || username_error.get()}</Alert>
+					<p>{username_error}</p>
+				</Show>
+				// <p>{username_error}</p>
 
 				<span class="mt-sm mb-xxs txt-sm txt-white">"Enter OTP"</span>
 				<Input
