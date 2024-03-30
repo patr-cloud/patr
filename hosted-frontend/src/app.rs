@@ -28,29 +28,37 @@ fn LoggedInPage() -> impl IntoView {
 
 #[component]
 pub fn App() -> impl IntoView {
-	let state = create_rw_signal(AuthState::LoggedOut);
-
-	provide_context(state);
-
-	let auth = authstate_from_cookie();
-	create_effect(move |_| {
-		let _ = authstate_from_cookie();
-	});
+	let (access_token, _) = use_cookie::<String, FromToStringCodec>("access_token");
 
 	view! {
 		<Router>
 			<Routes>
-				<AuthRoutes />
 				<ProtectedRoute
 					path="/"
 					redirect_path="/login"
-					condition=move || auth.get().is_logged_in()
+					condition=move || access_token.get().is_some()
 					view=LoggedInPage
 				>
 					<ProfileRoutes />
 					<InfrastructureRoutes />
 					<DomainConfigurationRoutes />
 					<Route path="" view=|| view! { <div></div> } />
+				</ProtectedRoute>
+
+				<ProtectedRoute
+					path="/"
+					view=AuthPage
+					condition=move || access_token.get().is_none()
+					redirect_path="/"
+				>
+					<Route path=LoggedOutRoute::Login view=LoginForm />
+					<Route path=LoggedOutRoute::SignUp view=SignUpPage >
+						<Route
+							path=LoggedOutRoute::ConfirmOtp
+							view=ConfirmSignUpForm
+						/>
+						<Route path=AppRoutes::Empty view=SignUpForm />
+					</Route>
 				</ProtectedRoute>
 			</Routes>
 		</Router>

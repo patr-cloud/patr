@@ -1,7 +1,13 @@
+use models::api::user::BasicUserInfo;
+
 use crate::prelude::*;
 
 #[component]
-pub fn BasicInfo() -> impl IntoView {
+pub fn BasicInfo(
+	/// Basic User with Id
+	// #[prop(into)]
+	basic_user_info: WithId<BasicUserInfo>,
+) -> impl IntoView {
 	view! {
 		<section class="txt-white fc-fs-fs full-width px-xl py-lg br-sm bg-secondary-light">
 			<div class="fr-fs-ct full-width pb-sm ul-light">
@@ -23,6 +29,7 @@ pub fn BasicInfo() -> impl IntoView {
 							class="full-width"
 							placeholder="Enter Username"
 							variant=SecondaryColorVariant::Medium
+							value={basic_user_info.clone().data.username}
 						/>
 					</div>
 				</div>
@@ -41,6 +48,7 @@ pub fn BasicInfo() -> impl IntoView {
 							class="full-width"
 							placeholder="First Name"
 							variant=SecondaryColorVariant::Medium
+							value={basic_user_info.clone().data.first_name}
 						/>
 					</div>
 
@@ -51,6 +59,7 @@ pub fn BasicInfo() -> impl IntoView {
 							class="full-width"
 							placeholder="Last Name"
 							variant=SecondaryColorVariant::Medium
+							value={basic_user_info.clone().data.last_name}
 						/>
 					</div>
 				</div>
