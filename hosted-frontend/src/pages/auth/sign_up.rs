@@ -13,8 +13,7 @@ async fn sign_up(
 	last_name: String,
 	email: String,
 ) -> Result<Result<CreateAccountResponse, ErrorType>, ServerFnError> {
-	logging::log!("{}, {}", username, password);
-	Ok(make_api_call::<CreateAccountRequest>(
+	let api_response = make_api_call::<CreateAccountRequest>(
 		ApiRequest::builder()
 			.path(CreateAccountPath)
 			.query(())
@@ -32,8 +31,11 @@ async fn sign_up(
 			})
 			.build(),
 	)
-	.await
-	.map(|res| res.body))
+	.await;
+
+	leptos_axum::redirect("/sign-up/confirm");
+
+	Ok(api_response.map(|res| res.body))
 }
 
 #[component]

@@ -27,16 +27,16 @@ pub fn Sidebar() -> impl IntoView {
 			items: None,
 		},
 		LinkItem {
-			title: "Infrastructure".to_owned(),
-			path: "/".to_owned(),
+			title: "Deployments".to_owned(),
+			path: "deployment".to_owned(),
 			icon_src: "/images/sidebar/infrastructure.svg".to_owned(),
 			subtitle: None,
 			items: None,
 		},
 		LinkItem {
-			title: "Domain Configuration".to_owned(),
-			path: "/".to_owned(),
-			icon_src: "/images/sidebar/domains.svg".to_owned(),
+			title: "Container Registry".to_owned(),
+			path: "container-registry".to_owned(),
+			icon_src: "/images/sidebar/docker.svg".to_owned(),
 			subtitle: None,
 			items: Some(vec![
 				LinkItem {
@@ -56,16 +56,9 @@ pub fn Sidebar() -> impl IntoView {
 			]),
 		},
 		LinkItem {
-			title: "CI/CD".to_owned(),
-			path: "/".to_owned(),
-			icon_src: "/images/sidebar/cicd.svg".to_owned(),
-			subtitle: None,
-			items: None,
-		},
-		LinkItem {
-			title: "Workspace".to_owned(),
-			path: "/".to_owned(),
-			icon_src: "/images/sidebar/deployment.svg".to_owned(),
+			title: "Profile".to_owned(),
+			path: "profile".to_owned(),
+			icon_src: "/images/sidebar/workspace.svg".to_owned(),
 			subtitle: None,
 			items: None,
 		},

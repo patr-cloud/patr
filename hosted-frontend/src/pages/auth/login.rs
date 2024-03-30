@@ -59,9 +59,9 @@ async fn login(
 			response.append_header(SET_COOKIE, access_token_header);
 			response.append_header(SET_COOKIE, refresh_token_header);
 			// response.append_header(LOCATION, redirect_header);
-			redirect("/");
 		}
 	}
+	leptos_axum::redirect("/profile");
 
 	Ok(api_response.map(|res| res.body))
 }

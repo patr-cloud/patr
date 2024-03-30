@@ -9,7 +9,7 @@ pub fn InfrastructureRoutes() -> impl IntoView {
 			<Route path=LoggedInRoute::Secret view=SecretsDashboard />
 			<Route path=LoggedInRoute::Database view=DatabaseDashboard />
 
-			<Route path=LoggedInRoute::Deployment view=|| view! {<Deployment />}>
+			<Route path=LoggedInRoute::Deployment view=Deployment>
 				<Route path="/:id" view=ManageDeployments>
 					<Route path="/history" view=ManageDeploymentImageHistory />
 					<Route path="/logs" view=ManageDeploymentsLogs />
@@ -24,8 +24,7 @@ pub fn InfrastructureRoutes() -> impl IntoView {
 
 			<Route path=LoggedInRoute::ContainerRegistry view=ContainerRegistry >
 				<Route path="/:id" view=ManageRepository>
-					<Route path="/images" view=|| view! {<div></div>} />
-					<Route path=AppRoutes::Empty view=|| view! {<div></div>} />
+					<Route path=AppRoutes::Empty view=EditRepository />
 				</Route>
 				<Route path="/new" view=CreateRepository />
 				<Route path=AppRoutes::Empty view=ContainerRegistryDashboard />
