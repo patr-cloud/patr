@@ -45,11 +45,11 @@ pub async fn load_api_tokens_list(
 #[component]
 pub fn ManageProfile() -> impl IntoView {
 	let (access_token, _) = use_cookie::<String, FromToStringCodec>("access_token");
-	let access_token_signal = move || access_token.get();
-	let user_data = create_resource(access_token_signal, move |value| async move {
-		let some = load_api_tokens_list(value).await;
-		logging::log!("{:#?}", some.unwrap().unwrap());
-	});
+	// let access_token_signal = move || access_token.get();
+	// let user_data = create_resource(access_token_signal, move |value| async move
+	// { 	let some = load_api_tokens_list(value).await;
+	// 	logging::log!("{:#?}", some.unwrap().unwrap());
+	// });
 
 	view! {
 		<ContainerMain class="full-width full-height mb-md">

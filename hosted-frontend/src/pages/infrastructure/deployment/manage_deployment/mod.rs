@@ -22,16 +22,6 @@ pub fn ManageDeployments() -> impl IntoView {
 						</PageTitle>
 					</PageTitleContainer>
 				</div>
-
-				<Link r#type=Variant::Button style_variant=LinkStyleVariant::Contained>
-					"CREATE DEPLOYMENT"
-					<Icon
-						icon=IconType::Plus
-						size=Size::ExtraSmall
-						class="ml-xs"
-						color=Color::Black
-					/>
-				</Link>
 			</div>
 
 			<Tabs
@@ -42,7 +32,7 @@ pub fn ManageDeployments() -> impl IntoView {
 					},
 					TabItem {
 						name: "Scaling".to_owned(),
-						path: "/scaling".to_owned()
+						path: "scaling".to_owned()
 					},
 					TabItem {
 						name: "URLs".to_owned(),

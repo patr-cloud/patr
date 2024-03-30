@@ -7,10 +7,7 @@ use models::api::auth::{
 	LoginResponse,
 };
 
-use crate::{
-	global_state::{get_auth_state, set_auth_token, AuthTokens},
-	prelude::*,
-};
+use crate::prelude::*;
 
 #[component]
 pub fn ConfirmSignUpPage() -> impl IntoView {
@@ -53,9 +50,18 @@ async fn complete_sign_up(
 
 	if let Ok(resp) = &api_response {
 		logging::log!("{:#?}", resp.body);
-		// let mut cookie = Cookie::new("access_token");
-		let access_token_header = HeaderValue::from_str("access_token=something");
-		let refresh_token_header = HeaderValue::from_str("refresh_token=now");
+		let access_cookie = Cookie::build(("access_token", resp.body.access_token.clone()))
+			.path("/")
+			.max_age(Duration::days(90))
+			.same_site(SameSite::Lax)
+			.build();
+		let refresh_cookie = Cookie::build(("refresh_token", resp.body.refresh_token.clone()))
+			.path("/")
+			.max_age(Duration::days(90))
+			.same_site(SameSite::Lax)
+			.build();
+		let access_token_header = HeaderValue::from_str(access_cookie.to_string().as_str());
+		let refresh_token_header = HeaderValue::from_str(refresh_cookie.to_string().as_str());
 
 		if let (Ok(access_token_cookie), Ok(refresh_token_cookie)) =
 			(access_token_header, refresh_token_header)
@@ -77,7 +83,6 @@ pub fn ConfirmSignUpForm() -> impl IntoView {
 	let username_error = create_rw_signal("".to_owned());
 
 	let response = confirm_action.value();
-	let (_, set_auth_state) = get_auth_state();
 	// let set_auth_state = set_auth_token();
 	// let has_error = move || response.with(|resp| matches!(resp, Some(Err(_))));
 
@@ -96,28 +101,28 @@ pub fn ConfirmSignUpForm() -> impl IntoView {
 		}
 	};
 
-	create_effect(move |_| {
-		if let Some(Ok(resp)) = response.get() {
-			let _ = match resp {
-				Ok(CompleteSignUpResponse {
-					refresh_token,
-					access_token,
-				}) => {
-					logging::log!("{}, {}", refresh_token, access_token);
-					set_auth_state.set(Some(AuthTokens {
-						refresh_token,
-						auth_token: access_token,
-					}));
-					return;
-				}
-				Err(err) => {
-					logging::log!("{:#?}", err);
-					handle_errors(err);
-					return;
-				}
-			};
-		}
-	});
+	// create_effect(move |_| {
+	// 	if let Some(Ok(resp)) = response.get() {
+	// 		let _ = match resp {
+	// 			Ok(CompleteSignUpResponse {
+	// 				refresh_token,
+	// 				access_token,
+	// 			}) => {
+	// 				logging::log!("{}, {}", refresh_token, access_token);
+	// 				set_auth_state.set(Some(AuthTokens {
+	// 					refresh_token,
+	// 					auth_token: access_token,
+	// 				}));
+	// 				return;
+	// 			}
+	// 			Err(err) => {
+	// 				logging::log!("{:#?}", err);
+	// 				handle_errors(err);
+	// 				return;
+	// 			}
+	// 		};
+	// 	}
+	// });
 
 	view! {
 		<div class="box-onboard txt-white">
