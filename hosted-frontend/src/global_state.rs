@@ -1,3 +1,4 @@
+use http::header::ACCEPT_ENCODING;
 use leptos::*;
 use leptos_use::{use_cookie, utils::FromToStringCodec};
 
@@ -7,6 +8,11 @@ use leptos_use::{use_cookie, utils::FromToStringCodec};
 pub struct AuthTokens {
 	pub auth_token: String,
 	pub refresh_token: String,
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct GlobalState {
+	pub auth_state: AuthState,
 }
 
 /// The Auth state, contains the log in status and the auth token
@@ -33,16 +39,17 @@ impl AuthState {
 pub fn authstate_from_cookie() -> Signal<AuthState> {
 	let (access_token, _) = use_cookie::<String, FromToStringCodec>("access_token");
 	let (refresh_token, _) = use_cookie::<String, FromToStringCodec>("refresh_token");
-	let state = use_context::<RwSignal<AuthState>>().expect("State Needs to be provided");
+	let state = use_context::<RwSignal<GlobalState>>().expect("state to be provided");
+	logging::log!("{:#?} {:#?}", access_token.get(), refresh_token.get());
 
-	let (state, set_state) = create_slice(
+	let (state, _) = create_slice(
 		state,
-		|state: &AuthState| state.clone(),
-		move |state: &mut AuthState, _: Option<AuthTokens>| {
+		|state: &GlobalState| state.auth_state.clone(),
+		move |state: &mut GlobalState, _: Option<AuthTokens>| {
 			if let (Some(access_token), Some(refresh_token)) =
 				(access_token.get(), refresh_token.get())
 			{
-				*state = AuthState::LoggedIn(AuthTokens {
+				state.auth_state = AuthState::LoggedIn(AuthTokens {
 					auth_token: access_token.clone(),
 					refresh_token: refresh_token.clone(),
 				})
@@ -58,22 +65,22 @@ pub fn authstate_from_cookie() -> Signal<AuthState> {
 /// LoggedOut, and if Some(AuthState) is passed, sets the refresh and auth
 /// tokens
 pub fn get_auth_state() -> (Signal<AuthState>, SignalSetter<Option<AuthTokens>>) {
-	let state = use_context::<RwSignal<AuthState>>().expect("State Needs to be provided");
+	let state = use_context::<RwSignal<GlobalState>>().expect("State Needs to be provided");
 	let (state, set_state) = create_slice(
 		state,
-		|state| state.clone(),
-		|state: &mut AuthState, auth_tokens: Option<AuthTokens>| {
+		|state| state.auth_state.clone(),
+		|state: &mut GlobalState, auth_tokens: Option<AuthTokens>| {
 			if let Some(AuthTokens {
 				auth_token: token,
 				refresh_token,
 			}) = auth_tokens
 			{
-				*state = AuthState::LoggedIn(AuthTokens {
+				state.auth_state = AuthState::LoggedIn(AuthTokens {
 					auth_token: token,
 					refresh_token,
 				})
 			} else {
-				*state = AuthState::LoggedOut
+				state.auth_state = AuthState::LoggedOut
 			}
 		},
 	);
@@ -84,18 +91,18 @@ pub fn get_auth_state() -> (Signal<AuthState>, SignalSetter<Option<AuthTokens>>)
 /// Returns a funciton that can be used to set the auth token
 /// Make it directly take an Option<String>
 pub fn set_auth_token() -> SignalSetter<Option<AuthTokens>> {
-	let state = use_context::<RwSignal<AuthState>>().expect("State Needs to be provided");
+	let state = use_context::<RwSignal<GlobalState>>().expect("State Needs to be provided");
 	let (_, set_state) = create_slice(
 		state,
 		|_| {},
-		|state: &mut AuthState, t: Option<AuthTokens>| {
+		|state: &mut GlobalState, t: Option<AuthTokens>| {
 			if let Some(token) = t {
-				*state = AuthState::LoggedIn(AuthTokens {
+				state.auth_state = AuthState::LoggedIn(AuthTokens {
 					auth_token: token.auth_token,
 					refresh_token: token.refresh_token,
 				})
 			} else {
-				*state = AuthState::LoggedOut
+				state.auth_state = AuthState::LoggedOut
 			}
 		},
 	);

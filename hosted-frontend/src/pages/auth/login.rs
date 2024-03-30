@@ -2,10 +2,7 @@ use leptos::html::Header;
 use leptos_router::ActionForm;
 use models::api::auth::*;
 
-use crate::{
-	global_state::{get_auth_state, AuthTokens},
-	prelude::*,
-};
+use crate::prelude::*;
 
 /// NameRequest, NameRequestHeader, NamePath, NameResponse
 #[server(Login, endpoint = "auth/sign-in")]
@@ -61,8 +58,8 @@ async fn login(
 		{
 			response.append_header(SET_COOKIE, access_token_header);
 			response.append_header(SET_COOKIE, refresh_token_header);
-			response.append_header(LOCATION, redirect_header);
-			redirect("/some");
+			// response.append_header(LOCATION, redirect_header);
+			redirect("/");
 		}
 	}
 
@@ -77,7 +74,7 @@ pub fn LoginForm() -> impl IntoView {
 	let username_error = create_rw_signal("".to_owned());
 	let password_error = create_rw_signal("".to_owned());
 
-	let (auth_state, set_auth_state) = get_auth_state();
+	// let (auth_state, set_auth_state) = get_auth_state();
 
 	let handle_errors = move |error: ErrorType| match error {
 		ErrorType::UserNotFound => {
@@ -102,10 +99,10 @@ pub fn LoginForm() -> impl IntoView {
 					refresh_token,
 				}) => {
 					logging::log!("{} {}", access_token, refresh_token);
-					set_auth_state.set(Some(AuthTokens {
-						refresh_token,
-						auth_token: access_token,
-					}))
+					// set_auth_state.set(Some(AuthTokens {
+					// 	refresh_token,
+					// 	auth_token: access_token,
+					// }))
 				}
 				Err(err) => {
 					handle_errors(err);
@@ -116,7 +113,7 @@ pub fn LoginForm() -> impl IntoView {
 		}
 	});
 
-	create_effect(move |_| logging::log!("{:#?}", auth_state.get()));
+	// create_effect(move |_| logging::log!("{:#?}", auth_state.get()));
 
 	view! {
 		<ActionForm action=login_action class="box-onboard txt-white">
@@ -124,7 +121,7 @@ pub fn LoginForm() -> impl IntoView {
 				<h1 class="txt-primary txt-xl txt-medium">"Sign In"</h1>
 				<div class="txt-white txt-thin fr-fs-fs">
 					<p>"New User? "</p>
-					<Link to="/sign-up" r#type=Variant::Link>
+					<Link to="/sign-up".to_owned() r#type=Variant::Link>
 						"Sign Up"
 					</Link>
 				</div>

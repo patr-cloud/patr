@@ -121,7 +121,7 @@ pub fn InputDropdown(
 										show_dropdown.set(false);
 									}
 								}
-								class= format!("px-xl py-sm ul-light fr-fs-ct full-width br-bottom-sm {}", if child.disabled {"txt-disabled"} else {"txt-white"})
+								class=format!("px-xl py-sm ul-light fr-fs-ct full-width br-bottom-sm {}", if child.disabled {"txt-disabled"} else {"txt-white"})
 							>
 								{child.label}
 							</li>
