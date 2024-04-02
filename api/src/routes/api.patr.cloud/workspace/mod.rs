@@ -2,6 +2,7 @@ use axum::Router;
 
 use crate::prelude::*;
 
+mod container_registry;
 #[allow(unused_variables, dead_code, unreachable_code, unused_imports)]
 mod domain;
 mod infrastructure;
@@ -13,7 +14,6 @@ mod region;
 mod runner;
 #[allow(unused_variables, dead_code, unreachable_code, unused_imports)]
 mod secret;
-mod container_registry;
 
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {

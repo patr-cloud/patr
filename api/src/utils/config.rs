@@ -4,9 +4,9 @@ use std::{
 	net::SocketAddr,
 };
 
+use base64::prelude::*;
 use config::{Config, Environment, File};
 use serde::{Deserialize, Deserializer, Serialize};
-use base64::prelude::*;
 
 /// Parses the configuration of the application and returns the parsed config.
 /// In case of any errors while parsing, this function will panic.

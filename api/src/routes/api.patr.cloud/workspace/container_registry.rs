@@ -10,10 +10,7 @@ use models::{
 };
 use time::OffsetDateTime;
 
-use crate::{
-	prelude::*,
-	utils::config::AppConfig,
-};
+use crate::{prelude::*, utils::config::AppConfig};
 
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
@@ -36,9 +33,7 @@ async fn create_container_repository(
 				path: CreateContainerRepositoryPath { workspace_id },
 				query: _,
 				headers,
-				body: CreateContainerRepositoryRequestProcessed {
-					name 
-				},
+				body: CreateContainerRepositoryRequestProcessed { name },
 			},
 		database,
 		redis: _,
@@ -140,7 +135,9 @@ async fn create_container_repository(
 	.await?;
 
 	AppResponse::builder()
-		.body(CreateContainerRepositoryResponse { id: WithId::new(resource_id, ()) })
+		.body(CreateContainerRepositoryResponse {
+			id: WithId::new(resource_id, ()),
+		})
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
