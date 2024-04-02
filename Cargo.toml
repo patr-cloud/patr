@@ -22,6 +22,7 @@ argon2 = { version = "0.5", default-features = false }
 axum = { version = "0.7", default-features = false }
 axum-extra = { version = "0.9", default-features = false }
 axum-typed-websockets = { version = "0.6", default-features = false }
+base32 = { version = "0.4.0", default-features = false }
 base64 = { version = "0.22", default-features = false }
 clap = { version = "4", default-features = false }
 comfy-table = { version = "7", default-features = false }
@@ -58,6 +59,7 @@ preprocess = { version = "0.3", default-features = false }
 proc-macro2 = { version = "1", default-features = false }
 quote = { version = "1", default-features = false }
 rand = { version = "0.8", default-features = false }
+regex = { version = "1", default-features = false }
 reqwest = { version = "0.12", default-features = false }
 rust-s3 = { version = "0.34.0-rc3", default-features = false }
 rustis = { version = "0.12", default-features = false }

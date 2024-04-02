@@ -1,0 +1,51 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT container_registry_repository.id AS id, container_registry_repository.name AS name, COALESCE(SUM(container_registry_repository_blob.size), 0)::BIGINT AS size, MAX(container_registry_repository_tag.last_updated) AS last_updated, MIN(container_registry_repository_manifest.created) AS created FROM container_registry_repository LEFT JOIN container_registry_repository_manifest ON container_registry_repository.id = container_registry_repository_manifest.repository_id LEFT JOIN container_registry_repository_tag ON container_registry_repository.id = container_registry_repository_tag.repository_id LEFT JOIN container_registry_manifest_blob ON container_registry_repository_manifest.manifest_digest = container_registry_manifest_blob.manifest_digest LEFT JOIN container_registry_repository_blob ON container_registry_manifest_blob.blob_digest = container_registry_repository_blob.blob_digest WHERE container_registry_repository.workspace_id = $1 GROUP BY container_registry_repository.id, container_registry_repository.name;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "size",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "last_updated",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "created",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "913d82597dc66765d6b042182ece1528a63db7adbbe5ed9a564acc56e6637966"
+}

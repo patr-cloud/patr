@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM container_registry_repository_tag WHERE repository_id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f41cb08f47c34f487dcf20cbb17296f6039fdcfd8a338dae40ac0d41301e4671"
+}

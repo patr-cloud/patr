@@ -74,7 +74,7 @@ pub async fn list_managed_url(
 	.map(|row| {
 		total_count = row.total_count;
 		Ok(WithId::new(
-			row.id.into(),
+			row.id,
 			ManagedUrl {
 				sub_domain: row.sub_domain,
 				domain_id: row.domain_id.into(),

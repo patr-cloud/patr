@@ -62,8 +62,6 @@ pub async fn create_managed_url(
 
 	info!("Creating ManagedURL: `{}.{}{}`", sub_domain, domain, path);
 
-	let id = Uuid::new_v4();
-
 	let url_type;
 	let deployment_id;
 	let port;
@@ -123,7 +121,7 @@ pub async fn create_managed_url(
 		}
 	}
 
-	query!(
+	let id = query!(
 		r#"
 		INSERT INTO
 			resource(
@@ -134,17 +132,22 @@ pub async fn create_managed_url(
 			)
 		VALUES
 			(
-				$1,
+				GENERATE_RESOURCE_ID(),
 				(SELECT id FROM resource_type WHERE name = 'managed_url'),
-				$2,
+				$1,
 				NOW()
-			);
+			)
+		RETURNING id;
 		"#,
-		id as _,
 		workspace_id as _,
 	)
-	.execute(&mut **database)
-	.await?;
+	.fetch_one(&mut **database)
+	.await
+	.map_err(|e| match e {
+		sqlx::Error::Database(dbe) if dbe.is_unique_violation() => ErrorType::ResourceAlreadyExists,
+		other => other.into(),
+	})?
+	.id;
 
 	query!(
 		r#"

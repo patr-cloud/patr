@@ -11,6 +11,7 @@ version.workspace = true
 anyhow = { workspace = true, features = ["default"] }
 axum = { workspace = true, features = ["json"] }
 axum-extra = { workspace = true, features = ["typed-routing"] }
+base32 = { workspace = true, features = [] }
 base64 = { workspace = true, features = ["default"] }
 headers = { workspace = true, features = [] }
 hex = { workspace = true, features = ["default"] }

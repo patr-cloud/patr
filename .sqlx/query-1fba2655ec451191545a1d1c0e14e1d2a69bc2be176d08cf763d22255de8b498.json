@@ -1,0 +1,110 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, sub_domain, domain_id, path, url_type as \"url_type: String\", deployment_id, port, static_site_id, url, is_configured, permanent_redirect, http_only, COUNT(*) OVER() AS \"total_count!\" FROM managed_url WHERE workspace_id = $1 AND managed_url.deleted IS NULL AND LOGIN_ID_HAS_PERMISSION_ON_RESOURCE($2, $3, managed_url.id) = TRUE LIMIT $4 OFFSET $5;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "sub_domain",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "domain_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "url_type: String",
+        "type_info": {
+          "Custom": {
+            "name": "managed_url_type",
+            "kind": {
+              "Enum": [
+                "proxy_to_deployment",
+                "proxy_to_static_site",
+                "proxy_url",
+                "redirect"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "deployment_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "port",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "static_site_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "is_configured",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
+        "name": "permanent_redirect",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 11,
+        "name": "http_only",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 12,
+        "name": "total_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "1fba2655ec451191545a1d1c0e14e1d2a69bc2be176d08cf763d22255de8b498"
+}

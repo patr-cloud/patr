@@ -345,6 +345,31 @@ pub async fn initialize_rbac_constraints(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		CREATE FUNCTION GENERATE_RESOURCE_ID() RETURNS UUID AS $$
+		DECLARE
+			resource_id UUID;
+		BEGIN
+			resource_id := uuid_generate_v4();
+			WHILE EXISTS(
+				SELECT
+					1
+				FROM
+					resource
+				WHERE
+					id = resource_id
+			) LOOP
+				resource_id := uuid_generate_v4();
+			END LOOP;
+			RETURN resource_id;
+		END;
+		$$ LANGUAGE plpgsql;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	// TODO make this better. Possibly use redis here?
 	query!(
 		r#"

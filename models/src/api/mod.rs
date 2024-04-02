@@ -39,8 +39,14 @@ pub struct WithId<T> {
 impl<T> WithId<T> {
 	/// Create a new `WithId` struct with the given Id and data. This helps
 	/// instantiate the struct with the data and Id provided as parameters.
-	pub fn new(id: Uuid, data: T) -> Self {
-		Self { id, data }
+	pub fn new<ID>(id: ID, data: T) -> Self
+	where
+		ID: Into<Uuid>,
+	{
+		Self {
+			id: id.into(),
+			data,
+		}
 	}
 }
 
@@ -52,9 +58,12 @@ impl<T> Deref for WithId<T> {
 	}
 }
 
-impl From<Uuid> for WithId<()> {
-	fn from(id: Uuid) -> Self {
-		Self::new(id, ())
+impl<ID> From<ID> for WithId<()>
+where
+	ID: Into<Uuid>,
+{
+	fn from(id: ID) -> Self {
+		Self::new(id.into(), ())
 	}
 }
 
