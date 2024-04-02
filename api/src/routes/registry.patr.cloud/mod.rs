@@ -1,6 +1,13 @@
 use std::fmt::Display;
 
-use axum::{routing::get, Router};
+use axum::{
+	body::Body,
+	http::{header::InvalidHeaderValue, StatusCode},
+	response::{IntoResponse, Response},
+	routing::get,
+	Router,
+};
+use s3::{creds::error::CredentialsError, error::S3Error};
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
@@ -13,7 +20,7 @@ mod get_registry_status;
 /// The error type for the registry routes. This is used to return errors in the
 /// registry. The error details are taken from the Docker Registry API v2
 /// specification at https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum RegistryError {
 	/// Blob unknown to registry
@@ -45,6 +52,8 @@ pub enum RegistryError {
 	/// Too many requests
 	#[serde(rename = "TOOMANYREQUESTS")]
 	TooManyRequests,
+	/// Internal server error
+	InternalServerError,
 }
 
 /// The error response for the registry routes. This is used to return errors in
@@ -57,6 +66,67 @@ pub struct Error {
 	/// list of errors that occurred during the request. However, we only return
 	/// one error at a time.
 	pub errors: [ErrorItem; 1],
+}
+
+impl IntoResponse for Error {
+	fn into_response(self) -> Response {
+		let Error {
+			errors: [ErrorItem {
+				code,
+				message: _,
+				detail: _,
+			}],
+		} = self;
+		Response::builder()
+			.status(match code {
+				RegistryError::BlobUnknown => StatusCode::NOT_FOUND,
+				RegistryError::BlobUploadInvalid => todo!(),
+				RegistryError::BlobUploadUnknown => todo!(),
+				RegistryError::DigestInvalid => todo!(),
+				RegistryError::ManifestBlobUnknown => todo!(),
+				RegistryError::ManifestInvalid => todo!(),
+				RegistryError::ManifestUnknown => todo!(),
+				RegistryError::NameInvalid => todo!(),
+				RegistryError::NameUnknown => todo!(),
+				RegistryError::SizeInvalid => todo!(),
+				RegistryError::Unauthorized => todo!(),
+				RegistryError::Denied => todo!(),
+				RegistryError::Unsupported => todo!(),
+				RegistryError::TooManyRequests => StatusCode::TOO_MANY_REQUESTS,
+				RegistryError::InternalServerError => {
+					return StatusCode::INTERNAL_SERVER_ERROR.into_response()
+				}
+			})
+			.body(Body::empty())
+			.unwrap_or_else(|_| {
+				// If we can't create the response, just return an empty response
+				(StatusCode::INTERNAL_SERVER_ERROR, Body::empty()).into_response()
+			})
+	}
+}
+
+impl From<S3Error> for Error {
+	fn from(err: S3Error) -> Self {
+		error(RegistryError::InternalServerError, err)
+	}
+}
+
+impl From<sqlx::Error> for Error {
+	fn from(err: sqlx::Error) -> Self {
+		error(RegistryError::InternalServerError, err)
+	}
+}
+
+impl From<CredentialsError> for Error {
+	fn from(err: CredentialsError) -> Self {
+		error(RegistryError::InternalServerError, err)
+	}
+}
+
+impl From<InvalidHeaderValue> for Error {
+	fn from(err: InvalidHeaderValue) -> Self {
+		error(RegistryError::InternalServerError, err)
+	}
 }
 
 /// The error item for the registry routes. This contains the specific error in

@@ -1,4 +1,4 @@
-use axum::{body::Body, http::Request, RequestExt};
+use axum::{body::Body, http::Request};
 #[cfg(not(target_arch = "wasm32"))]
 use axum_typed_websockets::WebSocketUpgrade as TypedWebSocketUpgrade;
 use preprocess::Preprocessable;
@@ -21,6 +21,8 @@ where
 {
 	#[tracing::instrument(skip(request))]
 	async fn from_axum_request(request: Request<Body>) -> Result<Self, ErrorType> {
+		use axum::RequestExt;
+
 		request
 			.extract()
 			.await
