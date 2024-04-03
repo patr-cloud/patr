@@ -26,8 +26,6 @@ pub enum ErrorType {
 	/// The user does not have two factor authentication enabled, and tried
 	/// disabling it
 	MfaAlreadyInactive,
-	/// The container repository name is invalid
-	InvalidRepositoryName,
 	/// The tag does not exist
 	TagNotFound,
 	/// The parameters sent with the request is invalid. This would ideally not
@@ -81,7 +79,6 @@ impl ErrorType {
 			Self::MfaRequired => StatusCode::UNAUTHORIZED,
 			Self::MfaAlreadyActive => StatusCode::CONFLICT,
 			Self::MfaAlreadyInactive => StatusCode::CONFLICT,
-			Self::InvalidRepositoryName => StatusCode::BAD_REQUEST,
 			Self::TagNotFound => StatusCode::BAD_REQUEST,
 			Self::WrongParameters => StatusCode::BAD_REQUEST,
 			Self::MalformedApiToken => StatusCode::BAD_REQUEST,
@@ -114,7 +111,6 @@ impl ErrorType {
 				"Two factor authentication is already enabled on your account"
 			}
 			Self::MfaAlreadyInactive => "Two factor authentication is not enabled on your account",
-			Self::InvalidRepositoryName => "The repository name is invalid",
 			Self::TagNotFound => "No tag exists",
 			Self::WrongParameters => "The parameters sent with that request is invalid",
 			Self::MalformedApiToken => "The API token provided is not a valid token",
@@ -174,7 +170,6 @@ impl Clone for ErrorType {
 			Self::MfaOtpInvalid => Self::MfaOtpInvalid,
 			Self::MfaAlreadyActive => Self::MfaAlreadyActive,
 			Self::MfaAlreadyInactive => Self::MfaAlreadyInactive,
-			Self::InvalidRepositoryName => Self::InvalidRepositoryName,
 			Self::TagNotFound => Self::TagNotFound,
 			Self::WrongParameters => Self::WrongParameters,
 			Self::MalformedApiToken => Self::MalformedApiToken,
@@ -216,7 +211,6 @@ impl Serialize for ErrorType {
 			Self::MfaAlreadyActive => serializer.serialize_str("mfaAlreadyActive"),
 			Self::MfaAlreadyInactive => serializer.serialize_str("mfaAlreadyInactive"),
 			Self::MfaOtpInvalid => serializer.serialize_str("mfaOtpInvalid"),
-			Self::InvalidRepositoryName => serializer.serialize_str("invalidRepositoryName"),
 			Self::TagNotFound => serializer.serialize_str("tagNotFound"),
 			Self::WrongParameters => serializer.serialize_str("wrongParameters"),
 			Self::MalformedApiToken => serializer.serialize_str("malformedApiToken"),
@@ -255,7 +249,6 @@ impl<'de> Deserialize<'de> for ErrorType {
 			"mfaOtpInvalid" => Self::MfaOtpInvalid,
 			"mfaAlreadyActive" => Self::MfaAlreadyActive,
 			"mfaAlreadyInactive" => Self::MfaAlreadyInactive,
-			"invalidRepositoryName" => Self::InvalidRepositoryName,
 			"tagNotFound" => Self::TagNotFound,
 			"wrongParameters" => Self::WrongParameters,
 			"malformedApiToken" => Self::MalformedApiToken,

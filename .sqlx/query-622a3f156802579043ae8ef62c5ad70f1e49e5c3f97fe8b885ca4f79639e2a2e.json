@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE region ADD CONSTRAINT region_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id), ADD CONSTRAINT region_chk_status CHECK( ( status = 'creating' ) OR ( status = 'active' AND ingress_hostname IS NOT NULL AND cloudflare_certificate_id IS NOT NULL AND config_file IS NOT NULL AND disconnected_at IS NULL ) OR ( status = 'errored' ) OR ( status = 'deleted' AND deleted IS NOT NULL ) OR ( status = 'disconnected' AND ingress_hostname IS NOT NULL AND cloudflare_certificate_id IS NOT NULL AND config_file IS NOT NULL AND disconnected_at IS NOT NULL ) OR ( status = 'coming_soon' ) ), ADD CONSTRAINT region_fk_id_workspace_id FOREIGN KEY(id, workspace_id, deleted) REFERENCES resource(id, owner_id, deleted);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "622a3f156802579043ae8ef62c5ad70f1e49e5c3f97fe8b885ca4f79639e2a2e"
+}
