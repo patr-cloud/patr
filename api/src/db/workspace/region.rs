@@ -124,8 +124,8 @@ pub async fn initialize_region_constraints(
 				)
 			),
 			ADD CONSTRAINT region_fk_id_workspace_id
-				FOREIGN KEY (id, workspace_id) 
-					REFERENCES resource(id, owner_id);
+				FOREIGN KEY(id, workspace_id, deleted) 
+					REFERENCES resource(id, owner_id, deleted);
 		"#
 	)
 	.execute(&mut *connection)

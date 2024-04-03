@@ -203,8 +203,9 @@ pub async fn initialize_container_registry_constraints(
 		ALTER TABLE container_registry_repository
 			ADD CONSTRAINT container_registry_repository_fk_workspace_id
 				FOREIGN KEY(workspace_id) REFERENCES workspace(id),
-			ADD CONSTRAINT container_registry_repository_fk_id_workspace_id
-				FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
+			ADD CONSTRAINT container_registry_repository_fk_id_workspace_id_deleted
+				FOREIGN KEY(id, workspace_id, deleted) 
+					REFERENCES resource(id, owner_id, deleted);
 		"#
 	)
 	.execute(&mut *connection)

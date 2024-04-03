@@ -19,7 +19,7 @@ pub async fn create_managed_url(
 						sub_domain,
 						domain_id,
 						path,
-						url_type: managed_url_type,
+						url_type,
 					},
 			},
 		database,
@@ -62,64 +62,55 @@ pub async fn create_managed_url(
 
 	info!("Creating ManagedURL: `{}.{}{}`", sub_domain, domain, path);
 
-	let url_type;
-	let deployment_id;
-	let port;
-	let static_site_id;
-	let url;
-	let permanent_redirect;
-	let http_only;
-
-	match managed_url_type {
-		ManagedUrlType::ProxyDeployment {
-			deployment_id: managed_url_deployment_id,
-			port: managed_url_port,
-		} => {
-			url_type = "proxy_deployment";
-			deployment_id = Some(managed_url_deployment_id);
-			port = Some(managed_url_port);
-			static_site_id = None;
-			url = None;
-			permanent_redirect = None;
-			http_only = None;
-		}
-		ManagedUrlType::ProxyStaticSite {
-			static_site_id: managed_url_static_site_id,
-		} => {
-			url_type = "proxy_static_site";
-			deployment_id = None;
-			port = None;
-			static_site_id = Some(managed_url_static_site_id);
-			url = None;
-			permanent_redirect = None;
-			http_only = None;
-		}
-		ManagedUrlType::ProxyUrl {
-			url: managed_url_url,
-			http_only: managed_url_http_only,
-		} => {
-			url_type = "proxy_url";
-			deployment_id = None;
-			port = None;
-			static_site_id = None;
-			url = Some(managed_url_url);
-			permanent_redirect = None;
-			http_only = Some(managed_url_http_only);
-		}
-		ManagedUrlType::Redirect {
-			url: managed_url_url,
-			permanent_redirect: managed_url_permanent_redirect,
-			http_only: managed_url_http_only,
-		} => {
-			url_type = "redirect";
-			deployment_id = None;
-			port = None;
-			static_site_id = None;
-			url = Some(managed_url_url);
-			permanent_redirect = Some(managed_url_permanent_redirect);
-			http_only = Some(managed_url_http_only);
-		}
-	}
+	let (url_type, deployment_id, port, static_site_id, url, permanent_redirect, http_only) =
+		match url_type {
+			ManagedUrlType::ProxyDeployment {
+				deployment_id,
+				port,
+			} => (
+				ManagedUrlTypeDiscriminant::ProxyDeployment,
+				Some(deployment_id),
+				Some(port),
+				None,
+				None,
+				None,
+				None,
+			),
+			ManagedUrlType::ProxyStaticSite { static_site_id } => (
+				ManagedUrlTypeDiscriminant::ProxyStaticSite,
+				None,
+				None,
+				Some(static_site_id),
+				None,
+				None,
+				None,
+			),
+			ManagedUrlType::ProxyUrl {
+				url: managed_url_url,
+				http_only: managed_url_http_only,
+			} => (
+				ManagedUrlTypeDiscriminant::ProxyUrl,
+				None,
+				None,
+				None,
+				Some(managed_url_url),
+				None,
+				Some(managed_url_http_only),
+			),
+			ManagedUrlType::Redirect {
+				url: managed_url_url,
+				permanent_redirect: managed_url_permanent_redirect,
+				http_only: managed_url_http_only,
+			} => (
+				ManagedUrlTypeDiscriminant::Redirect,
+				None,
+				None,
+				None,
+				Some(managed_url_url),
+				Some(managed_url_permanent_redirect),
+				Some(managed_url_http_only),
+			),
+		};
 
 	let id = query!(
 		r#"

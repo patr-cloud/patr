@@ -131,8 +131,9 @@ pub async fn initialize_managed_url_constraints(
 			),
 			ADD CONSTRAINT managed_url_fk_domain_id
 				FOREIGN KEY(domain_id) REFERENCES workspace_domain(id),
-			ADD CONSTRAINT managed_url_fk_domain_id_workspace_id
-				FOREIGN KEY(domain_id, workspace_id) REFERENCES resource(id, owner_id),
+			ADD CONSTRAINT managed_url_fk_id_workspace_id_deleted
+				FOREIGN KEY(id, workspace_id, deleted)
+					REFERENCES resource(id, owner_id, deleted),
 			ADD CONSTRAINT managed_url_fk_deployment_id_port
 				FOREIGN KEY(deployment_id, port)
 					REFERENCES deployment_exposed_port(deployment_id, port)

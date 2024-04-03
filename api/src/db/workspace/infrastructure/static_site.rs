@@ -6,6 +6,7 @@ pub async fn initialize_static_site_tables(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
 	info!("Setting up static site tables");
+
 	query!(
 		r#"
 		CREATE TABLE static_site(
@@ -20,7 +21,7 @@ pub async fn initialize_static_site_tables(
 	)
 	.execute(&mut *connection)
 	.await?;
-	// add foreign key constraint
+
 	query!(
 		r#"
 		CREATE TABLE static_site_upload_history(
@@ -94,8 +95,9 @@ pub async fn initialize_static_site_constraints(
 			ADD CONSTRAINT static_site_chk_name_is_trimmed CHECK(
 				name = TRIM(name)
 			),
-			ADD CONSTRAINT static_site_fk_id_workspace_id
-				FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id),
+			ADD CONSTRAINT static_site_fk_id_workspace_id_deleted
+				FOREIGN KEY(id, workspace_id, deleted)
+					REFERENCES resource(id, owner_id, deleted),
 			ADD CONSTRAINT static_site_fk_current_live_upload
 				FOREIGN KEY(id, current_live_upload)
 					REFERENCES static_site_upload_history(static_site_id, upload_id);
