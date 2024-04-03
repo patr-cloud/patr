@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, sub_domain, domain_id, path, url_type as \"url_type: String\", deployment_id, port, static_site_id, url, is_configured, permanent_redirect, http_only, COUNT(*) OVER() AS \"total_count!\" FROM managed_url WHERE workspace_id = $1 AND managed_url.deleted IS NULL AND LOGIN_ID_HAS_PERMISSION_ON_RESOURCE($2, $3, managed_url.id) = TRUE LIMIT $4 OFFSET $5;",
+  "query": "SELECT managed_url.id, sub_domain, domain_id, path, url_type as \"url_type: ManagedUrlTypeDiscriminant\", deployment_id, port, static_site_id, url, is_configured, permanent_redirect, http_only, COUNT(*) OVER() AS \"total_count!\" FROM managed_url INNER JOIN RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource ON managed_url.id = resource.id WHERE workspace_id = $1 AND managed_url.deleted IS NULL LIMIT $4 OFFSET $5;",
   "describe": {
     "columns": [
       {
@@ -25,7 +25,7 @@
       },
       {
         "ordinal": 4,
-        "name": "url_type: String",
+        "name": "url_type: ManagedUrlTypeDiscriminant",
         "type_info": {
           "Custom": {
             "name": "managed_url_type",
@@ -106,5 +106,5 @@
       null
     ]
   },
-  "hash": "1fba2655ec451191545a1d1c0e14e1d2a69bc2be176d08cf763d22255de8b498"
+  "hash": "669477d1be4d7abe3afbfcd7b0f871c09c8b6e8c0486867bc7507fd323f46162"
 }
