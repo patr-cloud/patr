@@ -40,11 +40,11 @@ pub async fn list_managed_url(
 	let urls = query!(
 		r#"
 		SELECT
-			id,
+			managed_url.id,
 			sub_domain,
 			domain_id,
 			path,
-			url_type as "url_type: String",
+			url_type as "url_type: ManagedUrlTypeDiscriminant",
 			deployment_id,
 			port,
 			static_site_id,
@@ -55,10 +55,13 @@ pub async fn list_managed_url(
 			COUNT(*) OVER() AS "total_count!"
 		FROM
 			managed_url
+		INNER JOIN
+			RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource
+		ON
+			managed_url.id = resource.id
 		WHERE
 			workspace_id = $1 AND
-			managed_url.deleted IS NULL AND
-			LOGIN_ID_HAS_PERMISSION_ON_RESOURCE($2, $3, managed_url.id) = TRUE
+			managed_url.deleted IS NULL
 		LIMIT $4
 		OFFSET $5;
 		"#,
@@ -79,8 +82,8 @@ pub async fn list_managed_url(
 				sub_domain: row.sub_domain,
 				domain_id: row.domain_id.into(),
 				path: row.path,
-				url_type: match row.url_type.as_str() {
-					"proxy_url" => ManagedUrlType::ProxyUrl {
+				url_type: match row.url_type {
+					ManagedUrlTypeDiscriminant::ProxyUrl => ManagedUrlType::ProxyUrl {
 						url: row
 							.url
 							.ok_or(ErrorType::server_error("url in db is NULL"))?,
@@ -88,7 +91,7 @@ pub async fn list_managed_url(
 							.http_only
 							.ok_or(ErrorType::server_error("http_only in db is NULL"))?,
 					},
-					"redirect" => ManagedUrlType::Redirect {
+					ManagedUrlTypeDiscriminant::Redirect => ManagedUrlType::Redirect {
 						url: row
 							.url
 							.ok_or(ErrorType::server_error("url in db is NULL"))?,
@@ -99,22 +102,25 @@ pub async fn list_managed_url(
 							.http_only
 							.ok_or(ErrorType::server_error("http_only in db is NULL"))?,
 					},
-					"proxy_static_site" => ManagedUrlType::ProxyStaticSite {
-						static_site_id: row
-							.static_site_id
-							.ok_or(ErrorType::server_error("static_site_id in db is NULL"))?
-							.into(),
-					},
-					"proxy_deployment" => ManagedUrlType::ProxyDeployment {
-						deployment_id: row
-							.deployment_id
-							.ok_or(ErrorType::server_error("deployment_id in db is NULL"))?
-							.into(),
-						port: row
-							.port
-							.ok_or(ErrorType::server_error("port in db is NULL"))? as u16,
-					},
-					_ => return Err(ErrorType::server_error("Unknown url_type")),
+					ManagedUrlTypeDiscriminant::ProxyStaticSite => {
+						ManagedUrlType::ProxyStaticSite {
+							static_site_id: row
+								.static_site_id
+								.ok_or(ErrorType::server_error("static_site_id in db is NULL"))?
+								.into(),
+						}
+					}
+					ManagedUrlTypeDiscriminant::ProxyDeployment => {
+						ManagedUrlType::ProxyDeployment {
+							deployment_id: row
+								.deployment_id
+								.ok_or(ErrorType::server_error("deployment_id in db is NULL"))?
+								.into(),
+							port: row
+								.port
+								.ok_or(ErrorType::server_error("port in db is NULL"))? as u16,
+						}
+					}
 				},
 				is_configured: row.is_configured,
 			},

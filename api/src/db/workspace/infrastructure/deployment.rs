@@ -347,15 +347,16 @@ pub async fn initialize_deployment_constraints(
 				liveness_probe_port_type = 'http'
 			),
 			ADD CONSTRAINT deployment_fk_deployment_id_startup_port_startup_port_type
-				FOREIGN KEY (id, startup_probe_port, startup_probe_port_type)
+				FOREIGN KEY(id, startup_probe_port, startup_probe_port_type)
 					REFERENCES deployment_exposed_port(deployment_id, port, port_type)
 						DEFERRABLE INITIALLY IMMEDIATE,
 			ADD CONSTRAINT deployment_fk_deployment_id_liveness_port_liveness_port_type
-				FOREIGN KEY (id, liveness_probe_port, liveness_probe_port_type)
+				FOREIGN KEY(id, liveness_probe_port, liveness_probe_port_type)
 					REFERENCES deployment_exposed_port(deployment_id, port, port_type)
 						DEFERRABLE INITIALLY IMMEDIATE,
-			ADD CONSTRAINT deployment_fk_id_workspace_id
-				FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id),
+			ADD CONSTRAINT deployment_fk_id_workspace_id_deleted
+				FOREIGN KEY(id, workspace_id, deleted)
+					REFERENCES resource(id, owner_id, deleted),
 			ADD CONSTRAINT deployment_fk_current_live_digest
 				FOREIGN KEY(id, current_live_digest) REFERENCES
 					deployment_deploy_history(deployment_id, image_digest);

@@ -154,8 +154,9 @@ pub async fn initialize_managed_database_constraints(
 				FOREIGN KEY(region) REFERENCES region(id),
 			ADD CONSTRAINT managed_database_fk_managed_database_plan_id
 				FOREIGN KEY(database_plan_id) REFERENCES managed_database_plan(id),
-			ADD CONSTRAINT managed_database_fk_id_workspace_id
-				FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
+			ADD CONSTRAINT managed_database_fk_id_workspace_id_deleted
+				FOREIGN KEY(id, workspace_id, deleted)
+					REFERENCES resource(id, owner_id, deleted);
 		"#
 	)
 	.execute(&mut *connection)
