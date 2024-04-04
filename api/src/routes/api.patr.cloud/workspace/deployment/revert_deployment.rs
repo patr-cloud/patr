@@ -3,19 +3,7 @@ use std::{cmp::Ordering, collections::BTreeMap};
 use axum::{http::StatusCode, Router};
 use futures::sink::With;
 use models::{
-	api::{
-		workspace::{
-			container_registry::{ContainerRepository, ContainerRepositoryTagInfo},
-			infrastructure::{
-				deployment::*,
-				managed_url::{DbManagedUrlType, ManagedUrl, ManagedUrlType},
-			},
-			region::{Region, RegionStatus},
-		},
-		WithId,
-	},
-	utils::StringifiedU16,
-	ApiRequest,
+	api::workspace::infrastructure::deployment::*,
 	ErrorType,
 };
 use sqlx::query_as;
@@ -61,7 +49,7 @@ pub async fn revert_deployment(
 	)
 	.fetch_optional(&mut **database)
 	.await?
-	.ok_or(ErrorType::ResourceDoesNotExist);
+	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
 	// Check if the digest is present or not in the deployment_deploy_history
 	// table
@@ -79,7 +67,7 @@ pub async fn revert_deployment(
 	)
 	.fetch_optional(&mut **database)
 	.await?
-	.ok_or(ErrorType::ResourceDoesNotExist);
+	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
 	// Revert the digest
 	query!(
@@ -95,8 +83,7 @@ pub async fn revert_deployment(
 		deployment_id as _
 	)
 	.execute(&mut **database)
-	.await
-	.map(|_| (ErrorType::server_error("Failed to update deployment")));
+	.await?;
 
 	// Set deployment status to deploying
 	query!(

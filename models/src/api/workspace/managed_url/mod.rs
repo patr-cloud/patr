@@ -49,7 +49,7 @@ pub struct ManagedUrl {
 }
 
 /// Database managed URL types
-#[derive(sqlx::Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::Type)]
 #[sqlx(type_name = "MANAGED_URL_TYPE", rename_all = "snake_case")]
 pub enum DbManagedUrlType {
 	/// URL is pointing to a deployment

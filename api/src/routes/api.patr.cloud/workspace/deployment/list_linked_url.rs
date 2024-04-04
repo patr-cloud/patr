@@ -4,18 +4,14 @@ use axum::{http::StatusCode, Router};
 use futures::sink::With;
 use models::{
 	api::{
-		workspace::{
-			container_registry::{ContainerRepository, ContainerRepositoryTagInfo},
+		workspace::
 			infrastructure::{
 				deployment::*,
 				managed_url::{DbManagedUrlType, ManagedUrl, ManagedUrlType},
-			},
-			region::{Region, RegionStatus},
-		},
+			}
+		,
 		WithId,
 	},
-	utils::StringifiedU16,
-	ApiRequest,
 	ErrorType,
 };
 use sqlx::query_as;
@@ -51,7 +47,7 @@ pub async fn list_linked_url(
 			sub_domain,
 			domain_id,
 			path,
-			url_type,
+			url_type as "url_type: DbManagedUrlType",
 			is_configured,
 			deployment_id,
 			port,
