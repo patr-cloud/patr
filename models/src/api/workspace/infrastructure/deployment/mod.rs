@@ -46,7 +46,7 @@ pub struct DeploymentMachineType {
 }
 
 /// Deployment information
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Deployment {
 	/// Name of the deployment

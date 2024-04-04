@@ -21,6 +21,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The name of the deployment
+		#[preprocess(trim, lowercase, regex = r"^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$")]
 		pub name: String,
 		/// The registry the deployment will use
 		/// It can either be patr's registry or docker's registry

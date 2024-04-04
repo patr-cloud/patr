@@ -12,7 +12,7 @@ use models::{
 use sqlx::query_as;
 use time::OffsetDateTime;
 
-use crate::{models::deployment::MACHINE_TYPES, prelude::*, utils::validator};
+use crate::prelude::*;
 
 pub async fn list_deployment(
 	AuthenticatedAppRequest {
