@@ -3,19 +3,7 @@ use std::{cmp::Ordering, collections::BTreeMap};
 use axum::{http::StatusCode, Router};
 use futures::sink::With;
 use models::{
-	api::{
-		workspace::{
-			container_registry::{ContainerRepository, ContainerRepositoryTagInfo},
-			infrastructure::{
-				deployment::*,
-				managed_url::{DbManagedUrlType, ManagedUrl, ManagedUrlType},
-			},
-			region::{Region, RegionStatus},
-		},
-		WithId,
-	},
-	utils::StringifiedU16,
-	ApiRequest,
+	api::workspace::infrastructure::deployment::*,
 	ErrorType,
 };
 use sqlx::query_as;
@@ -402,7 +390,7 @@ pub async fn update_deployment(
 						deployment_id as _,
 						key,
 						Some(value),
-						None
+						None::<Uuid> as _
 					)
 					.execute(&mut **database)
 					.await?;
@@ -424,8 +412,8 @@ pub async fn update_deployment(
 						"#,
 						deployment_id as _,
 						key,
-						None,
-						Some(secret_id.into())
+						None::<String>,
+						Some(secret_id) as _
 					)
 					.execute(&mut **database)
 					.await?;
@@ -435,7 +423,7 @@ pub async fn update_deployment(
 	}
 
 	if let Some(new_min_replica) = min_horizontal_scale {
-		if new_min_replica != deployment.min_horizontal_scale.into() {
+		if new_min_replica != deployment.min_horizontal_scale as u16 {
 			for volume in &volumes {
 				if todo!("if patr cluster") {
 					todo!("stop and start volume usage history");
@@ -447,7 +435,7 @@ pub async fn update_deployment(
 	let deployment_status = query!(
 		r#"
 		SELECT
-			status
+			status as "status: DeploymentStatus"
 		FROM
 			deployment
 		WHERE

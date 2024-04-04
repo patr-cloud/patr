@@ -3,19 +3,7 @@ use std::{cmp::Ordering, collections::BTreeMap};
 use axum::{http::StatusCode, Router};
 use futures::sink::With;
 use models::{
-	api::{
-		workspace::{
-			container_registry::{ContainerRepository, ContainerRepositoryTagInfo},
-			infrastructure::{
-				deployment::*,
-				managed_url::{DbManagedUrlType, ManagedUrl, ManagedUrlType},
-			},
-			region::{Region, RegionStatus},
-		},
-		WithId,
-	},
-	utils::StringifiedU16,
-	ApiRequest,
+	api::workspace::infrastructure::deployment::*,
 	ErrorType,
 };
 use sqlx::query_as;
@@ -140,84 +128,10 @@ pub async fn start_deployment(
 					now as _,
 				)
 				.execute(&mut **database)
-				.await
-				.map(|_| ());
+				.await?;
 			}
 		}
 	}
-
-	let (image_name, digest) = match registry {
-		DeploymentRegistry::PatrRegistry {
-			registry: _,
-			repository_id,
-		} => {
-			let digest = query!(
-				r#"
-				SELECT
-					manifest_digest
-				FROM
-					container_registry_repository_tag
-				WHERE
-					repository_id = $1 AND
-					tag = $2;
-				"#,
-				repository_id as _,
-				image_tag
-			)
-			.fetch_optional(&mut **database)
-			.await?
-			.map(|row| row.manifest_digest);
-
-			let repository_name = query!(
-				r#"
-				SELECT
-					name
-				FROM
-					container_registry_repository
-				WHERE
-					id = $1 AND
-					deleted IS NULL;
-				"#,
-				repository_id as _
-			)
-			.fetch_optional(&mut **database)
-			.await?
-			.map(|repo| repo.name)
-			.ok_or(ErrorType::ResourceDoesNotExist)?;
-
-			if let Some(digest) = digest {
-				Ok((
-					format!(
-						"{}/{}/{}",
-						todo!("config.docker_registry.registry_url"),
-						workspace_id,
-						repository_name
-					),
-					Some(digest),
-				))
-			} else {
-				Ok((
-					format!(
-						"{}/{}/{}:{}",
-						todo!("config.docker_registry.registry_url"),
-						workspace_id,
-						repository_name,
-						image_tag
-					),
-					None,
-				))
-			}
-		}
-		DeploymentRegistry::ExternalRegistry {
-			registry,
-			image_name,
-		} => match registry.as_str() {
-			"registry.hub.docker.com" | "hub.docker.com" | "index.docker.io" | "docker.io" | "" => {
-				Ok((format!("docker.io/{}:{}", image_name, image_tag), None))
-			}
-			_ => Ok((format!("{}/{}:{}", registry, image_name, image_tag), None)),
-		},
-	}?;
 
 	// Update status to deploying
 	query!(
@@ -235,39 +149,8 @@ pub async fn start_deployment(
 	.execute(&mut **database)
 	.await?;
 
-	let volumes = query!(
-		r#"
-		SELECT
-			id,
-			name,
-			volume_size,
-			volume_mount_path
-		FROM
-			deployment_volume
-		WHERE
-			deployment_id = $1 AND
-			deleted IS NULL;
-		"#,
-		deployment_id as _,
-	)
-	.fetch_all(&mut **database)
-	.await?
-	.into_iter()
-	.map(|volume| {
-		(
-			volume.name,
-			DeploymentVolume {
-				path: volume.volume_mount_path,
-				size: volume.volume_size as u16,
-			},
-		)
-	})
-	.collect();
-
 	if todo!("If deployment on patr region") {
-		for volume in &volumes {
-			todo!("Start usage history for volume")
-		}
+		todo!("Start usage history for volume");
 		todo!("Start usage history for deployment");
 	}
 
