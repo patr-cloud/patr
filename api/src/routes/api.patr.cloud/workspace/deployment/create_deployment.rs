@@ -12,10 +12,11 @@ use models::{
 	},
 	ErrorType,
 };
+use regex::Regex;
 use sqlx::query_as;
 use time::OffsetDateTime;
 
-use crate::{models::deployment::MACHINE_TYPES, prelude::*, utils::validator};
+use crate::{models::deployment::MACHINE_TYPES, prelude::*};
 
 pub async fn create_deployment(
 	AuthenticatedAppRequest {
@@ -56,7 +57,7 @@ pub async fn create_deployment(
 			name = $2
 		"#,
 		workspace_id as _,
-		name
+		&name
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -76,13 +77,13 @@ pub async fn create_deployment(
 	}
 
 	if let DeploymentRegistry::ExternalRegistry { image_name, .. } = registry {
-		if !validator::is_docker_image_name_valid(&image_name.trim()) {
+		let valid = Regex::new("^(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?)(((/)(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?))*)?$")
+		.unwrap()
+		.is_match(image_name.trim());
+
+		if !valid {
 			return Err(ErrorType::InvalidImageName);
 		}
-	}
-
-	if !validator::is_deployment_name_valid(&name.trim()) {
-		return Err(ErrorType::InvalidDeploymentName);
 	}
 
 	// Check region if active
