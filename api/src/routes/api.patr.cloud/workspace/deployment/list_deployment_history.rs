@@ -3,19 +3,7 @@ use std::{cmp::Ordering, collections::BTreeMap};
 use axum::{http::StatusCode, Router};
 use futures::sink::With;
 use models::{
-	api::{
-		workspace::{
-			container_registry::{ContainerRepository, ContainerRepositoryTagInfo},
-			infrastructure::{
-				deployment::*,
-				managed_url::{DbManagedUrlType, ManagedUrl, ManagedUrlType},
-			},
-			region::{Region, RegionStatus},
-		},
-		WithId,
-	},
-	utils::StringifiedU16,
-	ApiRequest,
+	api::workspace::infrastructure::deployment::*,
 	ErrorType,
 };
 use sqlx::query_as;
@@ -59,7 +47,7 @@ pub async fn list_deployment_history(
 	)
 	.fetch_optional(&mut **database)
 	.await?
-	.ok_or(ErrorType::ResourceDoesNotExist);
+	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
 	let deploys = query!(
 		r#"

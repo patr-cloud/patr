@@ -4,18 +4,9 @@ use axum::{http::StatusCode, Router};
 use futures::sink::With;
 use models::{
 	api::{
-		workspace::{
-			container_registry::{ContainerRepository, ContainerRepositoryTagInfo},
-			infrastructure::{
-				deployment::*,
-				managed_url::{DbManagedUrlType, ManagedUrl, ManagedUrlType},
-			},
-			region::{Region, RegionStatus},
-		},
+		workspace::infrastructure::deployment::*,
 		WithId,
 	},
-	utils::StringifiedU16,
-	ApiRequest,
 	ErrorType,
 };
 use sqlx::query_as;
@@ -50,7 +41,7 @@ pub async fn list_deployment(
 			repository_id,
 			image_name,
 			image_tag,
-			status,
+			status as "status: DeploymentStatus",
 			region,
 			machine_type,
 			current_live_digest

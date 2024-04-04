@@ -5,17 +5,11 @@ use futures::sink::With;
 use models::{
 	api::{
 		workspace::{
-			container_registry::{ContainerRepository, ContainerRepositoryTagInfo},
-			infrastructure::{
-				deployment::*,
-				managed_url::{DbManagedUrlType, ManagedUrl, ManagedUrlType},
-			},
-			region::{Region, RegionStatus},
+			infrastructure::deployment::*,
+			region::RegionStatus,
 		},
 		WithId,
 	},
-	utils::StringifiedU16,
-	ApiRequest,
 	ErrorType,
 };
 use sqlx::query_as;
@@ -95,7 +89,7 @@ pub async fn create_deployment(
 	let region_details = query!(
 		r#"
 		SELECT
-			status,
+			status as "status: RegionStatus",
 			workspace_id
 		FROM
 			region
@@ -140,7 +134,7 @@ pub async fn create_deployment(
 			.await
 			.map(|row| row.count.unwrap_or(0))?;
 
-			if current_deployment_count.into() >= constants::DEFAULT_DEPLOYMENT_LIMIT {
+			if current_deployment_count as u32 >= constants::DEFAULT_DEPLOYMENT_LIMIT {
 				return Err(ErrorType::FreeLimitExceeded);
 			}
 
@@ -194,7 +188,6 @@ pub async fn create_deployment(
 	};
 
 	// Create resource
-	let resource_type_id: Uuid = todo!("Get resource ID for a deployment");
 	query!(
 		r#"
 		INSERT INTO
@@ -205,10 +198,9 @@ pub async fn create_deployment(
 				created
 			)
 		VALUES
-			($1, $2, $3, $4);
+			($1, (SELECT id FROM resource_type WHERE name = 'deployment'), $2, $3);
 		"#,
 		deployment_id as _,
-		resource_type_id as _,
 		workspace_id as _,
 		created_time
 	)
@@ -290,14 +282,14 @@ pub async fn create_deployment(
 				running_details.startup_probe.map(|probe| probe.port as i32),
 				running_details
 					.startup_probe
-					.map(|probe| probe.path.as_str()),
+					.map(|probe| probe.path),
 				running_details.startup_probe.map(|_| ExposedPortType::Http) as _,
 				running_details
 					.liveness_probe
 					.map(|probe| probe.port as i32),
 				running_details
 					.liveness_probe
-					.map(|probe| probe.path.as_str()),
+					.map(|probe| probe.path),
 				running_details
 					.liveness_probe
 					.map(|_| ExposedPortType::Http) as _,
@@ -371,14 +363,14 @@ pub async fn create_deployment(
 				running_details.startup_probe.map(|probe| probe.port as i32),
 				running_details
 					.startup_probe
-					.map(|probe| probe.path.as_str()),
+					.map(|probe| probe.path),
 				running_details.startup_probe.map(|_| ExposedPortType::Http) as _,
 				running_details
 					.liveness_probe
 					.map(|probe| probe.port as i32),
 				running_details
 					.liveness_probe
-					.map(|probe| probe.path.as_str()),
+					.map(|probe| probe.path),
 				running_details
 					.liveness_probe
 					.map(|_| ExposedPortType::Http) as _,
@@ -437,7 +429,7 @@ pub async fn create_deployment(
 					deployment_id as _,
 					key,
 					Some(value),
-					None as _
+					None::<Uuid> as _
 				)
 				.execute(&mut **database)
 				.await?;
@@ -459,7 +451,7 @@ pub async fn create_deployment(
 					"#,
 					deployment_id as _,
 					key,
-					None,
+					None::<String>,
 					Some(secret_id) as _,
 				)
 				.execute(&mut **database)
@@ -523,10 +515,9 @@ pub async fn create_deployment(
 					created
 				)
 			VALUES
-				($1, $2, $3, $4);
+				($1, (SELECT id FROM resource_type WHERE name = 'deployment_volume'), $2, $3);
 			"#,
 			volume_id as _,
-			resource_type_id as _,
 			workspace_id as _,
 			created_time
 		)
