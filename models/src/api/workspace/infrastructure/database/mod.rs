@@ -1,3 +1,4 @@
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::Uuid;
@@ -30,7 +31,7 @@ pub struct DatabasePlan {
 /// Information for the user to connect to the database instance
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct DatabaseConnection {
+pub struct DatabaseConnectionInfo {
 	/// The database host IP
 	pub host: String,
 	/// The connection port
@@ -38,12 +39,17 @@ pub struct DatabaseConnection {
 	/// The amin username
 	pub username: String,
 	/// The admin password
-	pub password: String,
+	pub password: Option<String>,
 }
 
 /// All the currrently supported databases offered to the users
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(sqlx::Type))]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(
+	not(target_arch = "wasm32"),
+	sqlx(type_name = "MANAGED_DATABASE_ENGINE", rename_all = "snake_case")
+)]
 pub enum DatabaseEngine {
 	/// version:
 	Postgres,
@@ -56,8 +62,13 @@ pub enum DatabaseEngine {
 }
 
 /// All the possible status the database pod can be in during it's lifetime
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(sqlx::Type))]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(
+	not(target_arch = "wasm32"),
+	sqlx(type_name = "MANAGED_DATABASE_STATUS", rename_all = "snake_case")
+)]
 pub enum DatabaseStatus {
 	/// Database is deploying
 	Creating,
@@ -89,5 +100,5 @@ pub struct Database {
 	pub status: DatabaseStatus,
 	/// The connection configuration for the user to connect to the database
 	/// instance
-	pub public_connection: DatabaseConnection,
+	pub public_connection: DatabaseConnectionInfo,
 }

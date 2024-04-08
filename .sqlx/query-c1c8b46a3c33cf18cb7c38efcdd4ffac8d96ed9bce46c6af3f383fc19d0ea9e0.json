@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE deployment_volume SET volume_size = $1 WHERE name = $2 AND deployment_id = $3;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c1c8b46a3c33cf18cb7c38efcdd4ffac8d96ed9bce46c6af3f383fc19d0ea9e0"
+}

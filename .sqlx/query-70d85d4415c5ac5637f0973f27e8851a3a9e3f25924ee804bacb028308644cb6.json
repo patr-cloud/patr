@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id FROM managed_url WHERE managed_url.deployment_id = $1 AND managed_url.workspace_id = $2 AND managed_url.url_type = 'proxy_to_deployment' AND managed_url.deleted IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "70d85d4415c5ac5637f0973f27e8851a3a9e3f25924ee804bacb028308644cb6"
+}

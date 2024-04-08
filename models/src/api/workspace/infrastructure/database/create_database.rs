@@ -22,6 +22,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The name of the database
+		#[preprocess(lowercase, length(min=1, max=64), regex = r"^[a-zA-Z][a-zA-Z0-9_]{2,59}$")]
 		pub name: String,
 		/// The database engine (MySQL, MongoDB, Postgres, Redis)
 		pub engine: DatabaseEngine,

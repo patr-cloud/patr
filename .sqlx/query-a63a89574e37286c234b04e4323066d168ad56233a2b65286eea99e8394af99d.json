@@ -1,0 +1,93 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, name, region, engine as \"engine: DatabaseEngine\", database_plan_id, status as \"status: DatabaseStatus\", username, num_nodes FROM managed_database WHERE workspace_id = $1 AND status != 'deleted';",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "region",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "engine: DatabaseEngine",
+        "type_info": {
+          "Custom": {
+            "name": "managed_database_engine",
+            "kind": {
+              "Enum": [
+                "postgres",
+                "mysql",
+                "mongo",
+                "redis"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "database_plan_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "status: DatabaseStatus",
+        "type_info": {
+          "Custom": {
+            "name": "managed_database_status",
+            "kind": {
+              "Enum": [
+                "creating",
+                "running",
+                "errored",
+                "deleted"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "username",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "num_nodes",
+        "type_info": "Int2"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a63a89574e37286c234b04e4323066d168ad56233a2b65286eea99e8394af99d"
+}

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO resource( id, resource_type_id, owner_id, created ) VALUES ($1, (SELECT id FROM resource_type WHERE name = 'database'), $2, $3);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d2de6d51abe58c70c1432ee6a14ddd3ce138524ed04f627c456645dbeed807f7"
+}

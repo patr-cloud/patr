@@ -39,6 +39,6 @@ macros::declare_api_endpoint!(
 		///                     port - The connection port
 		///                     username - The amin username
 		///                     password - The admin password
-		pub database: Vec<WithId<Database>>
+		pub databases: Vec<WithId<Database>>
 	}
 );

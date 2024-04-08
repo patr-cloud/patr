@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE managed_database SET deleted = $2, status = 'deleted' WHERE id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2de43c75b0dc4e818603638bd8f4c5f6bf203d2ed8cde0a29c27dce4f49d876e"
+}
