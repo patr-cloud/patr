@@ -71,7 +71,7 @@ pub async fn list_linked_url(
 	.into_iter()
 	.map(|url| {
 		WithId::new(
-			url.id.into(),
+			url.id,
 			ManagedUrl {
 				sub_domain: url.sub_domain,
 				domain_id: url.domain_id.into(),

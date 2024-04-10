@@ -58,7 +58,7 @@ pub async fn list_deployment(
 	.into_iter()
 	.map(|deployment| {
 		WithId::new(
-			deployment.id.into(),
+			deployment.id,
 			Deployment {
 				name: deployment.name,
 				registry: if deployment.registry == PatrRegistry.to_string() {

@@ -165,28 +165,33 @@ pub async fn create_deployment(
 	todo!("Get limit on resource creation, max deployment and max volume depending on the users patr plan if not a byoc user");
 
 	let created_time = OffsetDateTime::now_utc();
-	let deployment_id = loop {
-		let uuid = Uuid::new_v4();
-
-		let exists = query!(
-			r#"
-			SELECT
-				*
-			FROM
-				resource
-			WHERE
-				id = $1;
-			"#,
-			uuid as _
-		)
-		.fetch_optional(&mut **database)
-		.await?
-		.is_some();
-
-		if !exists {
-			break uuid;
-		}
-	};
+	let deployment_id = query!(
+		r#"
+		INSERT INTO
+			resource(
+				id,
+				resource_type_id,
+				owner_id,
+				created
+			)
+		VALUES
+			(
+				GENERATE_RESOURCE_ID(),
+				(SELECT id FROM resource_type WHERE name = 'deployment'),
+				$1,
+				NOW()
+			)
+		RETURNING id;
+		"#,
+		workspace_id as _,
+	)
+	.fetch_one(&mut **database)
+	.await
+	.map_err(|e| match e {
+		sqlx::Error::Database(dbe) if dbe.is_unique_violation() => ErrorType::ResourceAlreadyExists,
+		other => other.into(),
+	})?
+	.id;
 
 	// Create resource
 	query!(
@@ -623,7 +628,7 @@ pub async fn create_deployment(
 
 	AppResponse::builder()
 		.body(CreateDeploymentResponse {
-			id: WithId::new(deployment_id, ()),
+			id: WithId::from(deployment_id),
 		})
 		.headers(())
 		.status_code(StatusCode::OK)

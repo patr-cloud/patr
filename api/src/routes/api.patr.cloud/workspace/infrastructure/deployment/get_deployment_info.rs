@@ -162,7 +162,7 @@ pub async fn get_deployment_info(
 	.await?
 	.map(|deployment| GetDeploymentInfoResponse {
 		deployment: WithId::new(
-			deployment.id.into(),
+			deployment.id,
 			Deployment {
 				name: deployment.name,
 				registry: if deployment.registry == PatrRegistry.to_string() {

@@ -74,13 +74,13 @@ pub async fn reset_password(
 
 	if user_data
 		.password_reset_token_expiry
-		.unwrap_or(OffsetDateTime::UNIX_EPOCH) <
+		<
 		now
 	{
 		return Err(ErrorType::InvalidPasswordResetToken);
 	}
 
-	if user_data.password_reset_attempts.unwrap_or(0) >
+	if user_data.password_reset_attempts >
 		constants::MAX_PASSWORD_RESET_ATTEMPTS.into()
 	{
 		return Err(ErrorType::InvalidPasswordResetToken);

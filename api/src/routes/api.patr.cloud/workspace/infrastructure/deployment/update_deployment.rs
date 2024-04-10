@@ -9,7 +9,7 @@ use models::{
 use sqlx::query_as;
 use time::OffsetDateTime;
 
-use crate::prelude::*;
+use crate::{models::deployment::MACHINE_TYPES, prelude::*};
 
 pub async fn update_deployment(
 	AuthenticatedAppRequest {
