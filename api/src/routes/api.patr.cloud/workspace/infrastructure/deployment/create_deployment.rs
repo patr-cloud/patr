@@ -193,26 +193,6 @@ pub async fn create_deployment(
 	})?
 	.id;
 
-	// Create resource
-	query!(
-		r#"
-		INSERT INTO
-			resource(
-				id,
-				resource_type_id,
-				owner_id,
-				created
-			)
-		VALUES
-			($1, (SELECT id FROM resource_type WHERE name = 'deployment'), $2, $3);
-		"#,
-		deployment_id as _,
-		workspace_id as _,
-		created_time
-	)
-	.execute(&mut **database)
-	.await?;
-
 	// BEGIN DEFERRED CONSTRAINT
 	query!(
 		r#"

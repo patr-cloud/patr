@@ -31,28 +31,33 @@ pub async fn create_database(
 ) -> Result<AppResponse<CreateDatabaseRequest>, ErrorType> {
 	info!("Starting: Create database");
 
-	let database_id = loop {
-		let uuid = Uuid::new_v4();
-
-		let exists = query!(
-			r#"
-			SELECT
-				*
-			FROM
-				resource
-			WHERE
-				id = $1;
-			"#,
-			uuid as _
-		)
-		.fetch_optional(&mut **database)
-		.await?
-		.is_some();
-
-		if !exists {
-			break uuid;
-		}
-	};
+	let database_id = query!(
+		r#"
+		INSERT INTO
+			resource(
+				id,
+				resource_type_id,
+				owner_id,
+				created
+			)
+		VALUES
+			(
+				GENERATE_RESOURCE_ID(),
+				(SELECT id FROM resource_type WHERE name = 'managed_database'),
+				$1,
+				NOW()
+			)
+		RETURNING id;
+		"#,
+		workspace_id as _,
+	)
+	.fetch_one(&mut **database)
+	.await
+	.map_err(|e| match e {
+		sqlx::Error::Database(dbe) if dbe.is_unique_violation() => ErrorType::ResourceAlreadyExists,
+		other => other.into(),
+	})?
+	.id;
 
 	// Check if region active or not
 	let region_details = query!(
@@ -77,26 +82,6 @@ pub async fn create_database(
 	}
 
 	todo!("Check creation limit");
-
-	query!(
-		r#"
-		INSERT INTO
-			resource(
-				id,
-				resource_type_id,
-				owner_id,
-				created
-			)
-		VALUES
-			($1, (SELECT id FROM resource_type WHERE name = 'database'), $2, $3);
-		"#,
-		database_id as _,
-		workspace_id as _,
-		OffsetDateTime::now_utc()
-	)
-	.execute(&mut **database)
-	.await?;
-
 	todo!("If not byoc region, start database usage history");
 
 	let password = thread_rng()
@@ -143,7 +128,7 @@ pub async fn create_database(
 	todo!("Internal metrics");
 
 	AppResponse::builder()
-		.body(CreateDatabaseResponse { id: WithId::new(database_id, ())})
+		.body(CreateDatabaseResponse { id: WithId::from(database_id)})
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()

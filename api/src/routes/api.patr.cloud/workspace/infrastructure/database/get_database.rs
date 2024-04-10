@@ -47,7 +47,7 @@ pub async fn get_database(
 	.await?
 	.map(|database| GetDatabaseResponse {
 		database: WithId::new(
-			database.id.into(),
+			database.id,
 			Database {
 				name: database.name,
 				engine: database.engine.to_owned(),
