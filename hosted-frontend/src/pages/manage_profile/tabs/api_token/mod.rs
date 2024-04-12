@@ -1,6 +1,36 @@
-use std::rc::Rc;
+use std::{rc::Rc, str::FromStr};
+
+use leptos_use::{use_cookie, utils::FromToStringCodec};
+use models::api::user::{
+	ListApiTokensPath,
+	ListApiTokensRequest,
+	ListApiTokensRequestHeaders,
+	ListApiTokensResponse,
+};
 
 use crate::prelude::*;
+
+#[server(LoadApiTokenFn, endpoint = "/user/api-token")]
+pub async fn load_api_tokens_list(
+	access_token: Option<String>,
+) -> Result<Result<ListApiTokensResponse, ErrorType>, ServerFnError> {
+	let api_response = make_api_call::<ListApiTokensRequest>(
+		ApiRequest::builder()
+			.path(ListApiTokensPath)
+			.query(Default::default())
+			.headers(ListApiTokensRequestHeaders {
+				authorization: BearerToken::from_str(
+					format!("Bearer {}", access_token.unwrap_or_default()).as_str(),
+				)?,
+				user_agent: UserAgent::from_static("hyper/0.12.2"),
+			})
+			.body(ListApiTokensRequest)
+			.build(),
+	)
+	.await;
+
+	Ok(api_response.map(|res| res.body))
+}
 
 #[component]
 pub fn ApiTokensTab() -> impl IntoView {
@@ -9,6 +39,14 @@ pub fn ApiTokensTab() -> impl IntoView {
 		expiry: "No Expiry".to_string(),
 		created: "3 Days Ago".to_string(),
 	}]);
+
+	let (access_token, _) = use_cookie::<String, FromToStringCodec>("access_token");
+	let access_token_signal = move || access_token.get();
+	let token_list = create_resource(access_token_signal, move |value| async move {
+		load_api_tokens_list(value).await
+	});
+
+	logging::log!("{:#?}", token_list.get());
 
 	view! {
 		<div class="fc-fs-fs full-width full-height px-md py-xl gap-md">

@@ -2,7 +2,7 @@ use leptos::html::Header;
 use leptos_router::ActionForm;
 use models::api::auth::*;
 
-use crate::prelude::*;
+use crate::{global_state::authstate_from_cookie, prelude::*};
 
 /// NameRequest, NameRequestHeader, NamePath, NameResponse
 #[server(Login, endpoint = "auth/sign-in")]
@@ -38,7 +38,6 @@ async fn login(
 	let response = expect_context::<ResponseOptions>();
 
 	if let Ok(ref resp) = api_response {
-		// let mut cookie = Cookie::new("access_token");
 		let access_cookie = Cookie::build(("access_token", resp.body.access_token.clone()))
 			.path("/")
 			.max_age(Duration::days(90))
@@ -58,10 +57,9 @@ async fn login(
 		{
 			response.append_header(SET_COOKIE, access_token_header);
 			response.append_header(SET_COOKIE, refresh_token_header);
-			// response.append_header(LOCATION, redirect_header);
+			leptos_axum::redirect("/");
 		}
 	}
-	leptos_axum::redirect("/profile");
 
 	Ok(api_response.map(|res| res.body))
 }
@@ -74,16 +72,17 @@ pub fn LoginForm() -> impl IntoView {
 	let username_error = create_rw_signal("".to_owned());
 	let password_error = create_rw_signal("".to_owned());
 
-	// let (auth_state, set_auth_state) = get_auth_state();
-
 	let handle_errors = move |error: ErrorType| match error {
 		ErrorType::UserNotFound => {
 			username_error.set("User Not Found".to_owned());
+			password_error.set("".to_owned());
 		}
 		ErrorType::InvalidPassword => {
-			password_error.set("Invalid OTP".to_owned());
+			username_error.set("".to_owned());
+			password_error.set("Wrong Password".to_owned());
 		}
 		ErrorType::InternalServerError(err) => {
+			username_error.set("".to_owned());
 			password_error.set(err.to_string());
 		}
 		e => {
@@ -99,21 +98,16 @@ pub fn LoginForm() -> impl IntoView {
 					refresh_token,
 				}) => {
 					logging::log!("{} {}", access_token, refresh_token);
-					// set_auth_state.set(Some(AuthTokens {
-					// 	refresh_token,
-					// 	auth_token: access_token,
-					// }))
+					authstate_from_cookie();
 				}
 				Err(err) => {
+					logging::log!("{:#?}", err);
 					handle_errors(err);
-					// logging::log!("{:#?}", err);
 					return;
 				}
 			};
 		}
 	});
-
-	// create_effect(move |_| logging::log!("{:#?}", auth_state.get()));
 
 	view! {
 		<ActionForm action=login_action class="box-onboard txt-white">
@@ -138,7 +132,11 @@ pub fn LoginForm() -> impl IntoView {
 						IconProps::builder().icon(IconType::User).size(Size::ExtraSmall).build(),
 					)
 				/>
-				<p>{username_error}</p>
+				<Show
+					when=move || !username_error.get().is_empty()
+				>
+					<Alert r#type=AlertType::Error class="mt-xs">{move || username_error.get()}</Alert>
+				</Show>
 
 				<Input
 					name="password"
@@ -152,7 +150,11 @@ pub fn LoginForm() -> impl IntoView {
 				/>
 
 				<input name="mfa_otp" type="hidden" />
-				<p>{password_error}</p>
+				<Show
+					when=move || !password_error.get().is_empty()
+				>
+					<Alert r#type=AlertType::Error class="mt-xs">{move || password_error.get()}</Alert>
+				</Show>
 			</div>
 
 			<div class="fr-sb-ct full-width pt-xs">

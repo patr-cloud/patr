@@ -33,7 +33,9 @@ async fn sign_up(
 	)
 	.await;
 
-	leptos_axum::redirect("/sign-up/confirm");
+	if let Ok(resp) = &api_response {
+		leptos_axum::redirect("/sign-up/confirm");
+	}
 
 	Ok(api_response.map(|res| res.body))
 }
@@ -58,6 +60,18 @@ pub fn SignUpForm() -> impl IntoView {
 	let passwords_match =
 		Signal::derive(move || password_input.get() != password_confirm_input.get());
 
+	let name_error = create_rw_signal("".to_owned());
+	let username_error = create_rw_signal("".to_owned());
+	let email_error = create_rw_signal("".to_owned());
+
+	let password_error = create_rw_signal("".to_owned());
+
+	let handle_errors = move |error: ErrorType| match error {
+		ErrorType::UsernameUnavailable => username_error.set("Username Not Available".to_owned()),
+		ErrorType::EmailUnavailable => username_error.set("Email Not Available".to_owned()),
+		e => password_error.set("".to_owned()),
+	};
+
 	create_effect(move |_| {
 		if let Some(Ok(resp)) = response.get() {
 			logging::log!("{:#?}", resp);
@@ -65,6 +79,7 @@ pub fn SignUpForm() -> impl IntoView {
 				Ok(CreateAccountResponse {}) => {}
 				Err(err) => {
 					logging::log!("{:#?}", err);
+					handle_errors(err);
 					return;
 				}
 			};
