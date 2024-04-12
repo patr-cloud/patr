@@ -33,6 +33,7 @@ pub async fn initialize_domain_tables(
 			id UUID NOT NULL,
 			name TEXT NOT NULL,
 			tld TEXT NOT NULL,
+			workspace_id UUID NOT NULL,
 			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL,
 			is_verified BOOLEAN NOT NULL,
 			deleted TIMESTAMPTZ
@@ -216,7 +217,12 @@ pub async fn initialize_domain_constraints(
 			ADD CONSTRAINT workspace_domain_chk_max_domain_name_length CHECK(
 				(LENGTH(name) + LENGTH(tld)) < 255
 			),
-			ADD CONSTRAINT workspace_domain_fk_tld FOREIGN KEY(tld) REFERENCES domain_tld(tld);
+			ADD CONSTRAINT workspace_domain_fk_tld FOREIGN KEY(tld) REFERENCES domain_tld(tld),
+			ADD CONSTRAINT workspace_domain_fk_workspace_id
+				FOREIGN KEY(workspace_id) REFERENCES workspace(id),
+			ADD CONSTRAINT workspace_domain_fk_id_deleted
+				FOREIGN KEY(id, workspace_id, deleted)
+					REFERENCES resource(id, owner_id, deleted);
 		"#
 	)
 	.execute(&mut *connection)

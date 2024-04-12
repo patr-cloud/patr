@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use strum::EnumDiscriminants;
 
 mod create_managed_url;
 mod delete_managed_url;
@@ -48,7 +49,17 @@ pub struct ManagedUrl {
 }
 
 /// Manageg URL types
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, EnumDiscriminants)]
+#[strum_discriminants(
+	name(ManagedUrlTypeDiscriminant),
+	derive(strum::Display),
+	strum(serialize_all = "snake_case"),
+	cfg_attr(not(target_arch = "wasm32"), derive(sqlx::Type)),
+	cfg_attr(
+		not(target_arch = "wasm32"),
+		sqlx(type_name = "EXPOSED_PORT_TYPE", rename_all = "snake_case")
+	)
+)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum ManagedUrlType {
 	/// URL is pointing to a deployment

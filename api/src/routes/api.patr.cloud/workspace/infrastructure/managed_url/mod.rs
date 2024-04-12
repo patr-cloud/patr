@@ -1,5 +1,4 @@
-use axum::{http::StatusCode, Router};
-use models::{api::workspace::infrastructure::managed_url::*, prelude::*};
+use axum::Router;
 
 use crate::prelude::*;
 
@@ -26,33 +25,4 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.mount_auth_endpoint(update_managed_url, state)
 		.mount_auth_endpoint(verify_configuration, state)
 		.with_state(state.clone())
-}
-
-async fn verify_configuration(
-	AuthenticatedAppRequest {
-		request: ProcessedApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
-		database,
-		redis: _,
-		client_ip: _,
-		config,
-		user_data,
-	}: AuthenticatedAppRequest<'_, VerifyManagedURLConfigurationRequest>,
-) -> Result<AppResponse<VerifyManagedURLConfigurationRequest>, ErrorType> {
-	info!("Starting: Verify configuration of managed URL");
-
-	// LOGIC
-
-	AppResponse::builder()
-		.body(VerifyManagedURLConfigurationResponse {
-			configured: todo!(),
-		})
-		.headers(())
-		.status_code(StatusCode::OK)
-		.build()
-		.into_result()
 }

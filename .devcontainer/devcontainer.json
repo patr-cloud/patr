@@ -7,9 +7,7 @@
 		"vscode": {
 			"settings": {
 				// runs rust analyzer in different folder so that cargo build won't wait to start compiling
-				"rust-analyzer.checkOnSave.extraArgs": [
-					"--target-dir=./.devcontainer/volume/data/rust-analyzer"
-				],
+				"rust-analyzer.cargo.targetDir": "./.devcontainer/volume/data/rust-analyzer",
 				"files.watcherExclude": {
 					"**/target/**": true,
 					"./devcontainer/volume/**": true

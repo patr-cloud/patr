@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+/// All tables related to the audit logs go here
+mod audit_log;
 /// The data stored in the container registry
 mod container_registry;
 /// The list of domains that are added to a workspace
@@ -42,11 +44,12 @@ pub async fn initialize_workspace_tables(
 	.execute(&mut *connection)
 	.await?;
 
-	domain::initialize_domain_tables(connection).await?;
+	audit_log::initialize_workspace_tables(connection).await?;
 	container_registry::initialize_container_registry_tables(connection).await?;
-	secret::initialize_secret_tables(connection).await?;
-	region::initialize_region_tables(connection).await?;
+	domain::initialize_domain_tables(connection).await?;
 	infrastructure::initialize_infrastructure_tables(connection).await?;
+	region::initialize_region_tables(connection).await?;
+	secret::initialize_secret_tables(connection).await?;
 
 	Ok(())
 }
@@ -93,11 +96,12 @@ pub async fn initialize_workspace_indices(
 	.execute(&mut *connection)
 	.await?;
 
-	domain::initialize_domain_indices(connection).await?;
+	audit_log::initialize_workspace_indices(connection).await?;
 	container_registry::initialize_container_registry_indices(connection).await?;
-	secret::initialize_secret_indices(connection).await?;
-	region::initialize_region_indices(connection).await?;
+	domain::initialize_domain_indices(connection).await?;
 	infrastructure::initialize_infrastructure_indices(connection).await?;
+	region::initialize_region_indices(connection).await?;
+	secret::initialize_secret_indices(connection).await?;
 
 	Ok(())
 }
@@ -120,11 +124,12 @@ pub async fn initialize_workspace_constraints(
 	.execute(&mut *connection)
 	.await?;
 
-	domain::initialize_domain_constraints(connection).await?;
+	audit_log::initialize_workspace_constraints(connection).await?;
 	container_registry::initialize_container_registry_constraints(connection).await?;
-	secret::initialize_secret_constraints(connection).await?;
-	region::initialize_region_constraints(connection).await?;
+	domain::initialize_domain_constraints(connection).await?;
 	infrastructure::initialize_infrastructure_constraints(connection).await?;
+	region::initialize_region_constraints(connection).await?;
+	secret::initialize_secret_constraints(connection).await?;
 
 	Ok(())
 }

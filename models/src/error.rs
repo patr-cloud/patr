@@ -26,6 +26,8 @@ pub enum ErrorType {
 	/// The user does not have two factor authentication enabled, and tried
 	/// disabling it
 	MfaAlreadyInactive,
+	/// The tag does not exist
+	TagNotFound,
 	/// The parameters sent with the request is invalid. This would ideally not
 	/// happen unless there is a bug in the client
 	WrongParameters,
@@ -55,6 +57,10 @@ pub enum ErrorType {
 	InvalidPasswordResetToken,
 	/// The resource that the user is trying to access does not exist.
 	ResourceDoesNotExist,
+	/// The resource already exists
+	ResourceAlreadyExists,
+	/// The resource is currently in use
+	ResourceInUse,
 	/// An internal server error occurred. This should not happen unless there
 	/// is a bug in the server
 	InternalServerError(anyhow::Error),
@@ -73,6 +79,7 @@ impl ErrorType {
 			Self::MfaRequired => StatusCode::UNAUTHORIZED,
 			Self::MfaAlreadyActive => StatusCode::CONFLICT,
 			Self::MfaAlreadyInactive => StatusCode::CONFLICT,
+			Self::TagNotFound => StatusCode::BAD_REQUEST,
 			Self::WrongParameters => StatusCode::BAD_REQUEST,
 			Self::MalformedApiToken => StatusCode::BAD_REQUEST,
 			Self::DisallowedIpAddressForApiToken => StatusCode::UNAUTHORIZED,
@@ -85,6 +92,8 @@ impl ErrorType {
 			Self::PhoneUnavailable => StatusCode::CONFLICT,
 			Self::InvalidPasswordResetToken => StatusCode::BAD_REQUEST,
 			Self::ResourceDoesNotExist => StatusCode::NOT_FOUND,
+			Self::ResourceAlreadyExists => StatusCode::CONFLICT,
+			Self::ResourceInUse => StatusCode::UNPROCESSABLE_ENTITY,
 			Self::InternalServerError(_) => StatusCode::INTERNAL_SERVER_ERROR,
 		}
 	}
@@ -102,6 +111,7 @@ impl ErrorType {
 				"Two factor authentication is already enabled on your account"
 			}
 			Self::MfaAlreadyInactive => "Two factor authentication is not enabled on your account",
+			Self::TagNotFound => "No tag exists",
 			Self::WrongParameters => "The parameters sent with that request is invalid",
 			Self::MalformedApiToken => "The API token provided is not a valid token",
 			Self::DisallowedIpAddressForApiToken => {
@@ -118,6 +128,8 @@ impl ErrorType {
 				"The token provided to reset your password is not valid"
 			}
 			Self::ResourceDoesNotExist => "The resource you are trying to access does not exist",
+			Self::ResourceAlreadyExists => "Resource already exists with the given details",
+			Self::ResourceInUse => "Resource is currently in use",
 			Self::InternalServerError(_) => "An internal server error has occured",
 		}
 	}
@@ -158,6 +170,7 @@ impl Clone for ErrorType {
 			Self::MfaOtpInvalid => Self::MfaOtpInvalid,
 			Self::MfaAlreadyActive => Self::MfaAlreadyActive,
 			Self::MfaAlreadyInactive => Self::MfaAlreadyInactive,
+			Self::TagNotFound => Self::TagNotFound,
 			Self::WrongParameters => Self::WrongParameters,
 			Self::MalformedApiToken => Self::MalformedApiToken,
 			Self::DisallowedIpAddressForApiToken => Self::DisallowedIpAddressForApiToken,
@@ -170,6 +183,8 @@ impl Clone for ErrorType {
 			Self::PhoneUnavailable => Self::PhoneUnavailable,
 			Self::InvalidPasswordResetToken => Self::InvalidPasswordResetToken,
 			Self::ResourceDoesNotExist => Self::ResourceDoesNotExist,
+			Self::ResourceAlreadyExists => Self::ResourceAlreadyExists,
+			Self::ResourceInUse => Self::ResourceInUse,
 			Self::InternalServerError(arg0) => {
 				Self::InternalServerError(anyhow::anyhow!(arg0.to_string()))
 			}
@@ -196,6 +211,7 @@ impl Serialize for ErrorType {
 			Self::MfaAlreadyActive => serializer.serialize_str("mfaAlreadyActive"),
 			Self::MfaAlreadyInactive => serializer.serialize_str("mfaAlreadyInactive"),
 			Self::MfaOtpInvalid => serializer.serialize_str("mfaOtpInvalid"),
+			Self::TagNotFound => serializer.serialize_str("tagNotFound"),
 			Self::WrongParameters => serializer.serialize_str("wrongParameters"),
 			Self::MalformedApiToken => serializer.serialize_str("malformedApiToken"),
 			Self::DisallowedIpAddressForApiToken => {
@@ -212,6 +228,8 @@ impl Serialize for ErrorType {
 			Self::PhoneUnavailable => serializer.serialize_str("phoneUnavailable"),
 			Self::InvalidPasswordResetToken => serializer.serialize_str("invalidResetToken"),
 			Self::ResourceDoesNotExist => serializer.serialize_str("resourceDoesNotExist"),
+			Self::ResourceAlreadyExists => serializer.serialize_str("resourceAlreadyExists"),
+			Self::ResourceInUse => serializer.serialize_str("resourceInUse"),
 			Self::InternalServerError(_) => serializer.serialize_str("internalServerError"),
 		}
 	}
@@ -231,6 +249,7 @@ impl<'de> Deserialize<'de> for ErrorType {
 			"mfaOtpInvalid" => Self::MfaOtpInvalid,
 			"mfaAlreadyActive" => Self::MfaAlreadyActive,
 			"mfaAlreadyInactive" => Self::MfaAlreadyInactive,
+			"tagNotFound" => Self::TagNotFound,
 			"wrongParameters" => Self::WrongParameters,
 			"malformedApiToken" => Self::MalformedApiToken,
 			"disallowedIpAddressForApiToken" => Self::DisallowedIpAddressForApiToken,
@@ -243,6 +262,8 @@ impl<'de> Deserialize<'de> for ErrorType {
 			"phoneUnavailable" => Self::PhoneUnavailable,
 			"invalidResetToken" => Self::InvalidPasswordResetToken,
 			"resourceDoesNotExist" => Self::ResourceDoesNotExist,
+			"resourceAlreadyExists" => Self::ResourceAlreadyExists,
+			"resourceInUse" => Self::ResourceInUse,
 			"internalServerError" => {
 				Self::InternalServerError(anyhow::anyhow!("Internal Server Error"))
 			}

@@ -6,6 +6,14 @@ SHELL ["/bin/bash", "-c"]
 # Install all deps
 RUN apt update && apt install -y build-essential git pkg-config libssl-dev docker.io postgresql-client sudo sed curl inetutils-ping telnet bash-completion nano dumb-init libnss3-tools ca-certificates jq apt-transport-https software-properties-common
 
+WORKDIR /tmp/mold
+RUN git clone --branch stable https://github.com/rui314/mold.git .
+RUN ./install-build-deps.sh
+RUN cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=c++ -B build
+RUN cmake --build build -j$(nproc)
+RUN cmake --build build --target install
+RUN rm -rf /tmp/mold
+
 # Setup user accounts
 WORKDIR /etc/container-init-data
 COPY ./volume/config/init-data/user user
@@ -27,23 +35,22 @@ WORKDIR /home/vscode
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --profile default -y
 RUN source "$HOME/.cargo/env" && rustup toolchain install nightly
 
-# Setup bashrc
-RUN cat /etc/container-init-data/bashrc >> /home/vscode/.bashrc
-
 # Install homebrew
 RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 RUN (echo; echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"') >> /home/vscode/.bashrc
-RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-
-RUN mkdir -p /home/vscode/.bin
-RUN echo "cargo run --manifest-path /workspace/cli/Cargo.toml -- $@" > /home/vscode/.bin/patr
-RUN chmod +x /home/vscode/.bin/patr
-ENV PATH="/home/vscode/.bin:${PATH}"
 
 # Install kubectl, helm, yq and k3d
 RUN /home/linuxbrew/.linuxbrew/bin/brew install kubectl helm yq k3d
 RUN echo 'source <(/home/linuxbrew/.linuxbrew/bin/kubectl completion bash)' >> /home/vscode/.bashrc
 RUN echo 'source <(/home/linuxbrew/.linuxbrew/bin/k3d completion bash)' >> /home/vscode/.bashrc
+
+# Setup bashrc
+RUN cat /etc/container-init-data/bashrc >> /home/vscode/.bashrc
+
+RUN mkdir -p /home/vscode/.bin
+RUN echo "cargo run --manifest-path /workspace/cli/Cargo.toml -- $@" > /home/vscode/.bin/patr
+RUN chmod +x /home/vscode/.bin/patr
+ENV PATH="/home/vscode/.bin:${PATH}"
 
 # Create a bash_history file
 RUN touch /home/vscode/.bash_history

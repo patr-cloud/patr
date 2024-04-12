@@ -3,9 +3,9 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
-/// The response body for the ListContainerRegistryRepositories endpoint.
+/// The response body for the ListContainerRepositories endpoint.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ContainerRegistryRepositoryTagAndDigestInfo {
+pub struct ContainerRepositoryTagAndDigestInfo {
 	/// The tag of the repository
 	pub tag: String,
 	/// The digest that this tag points to
@@ -16,7 +16,7 @@ pub struct ContainerRegistryRepositoryTagAndDigestInfo {
 
 macros::declare_api_endpoint!(
 	/// Route to get list of all container repositories in a workspace
-	ListContainerRegistryRepositoryTags,
+	ListContainerRepositoryTags,
 	GET "/workspace/:workspace_id/container-registry/:repository_id/tag" {
 		/// The workspace ID to list the container registry repositories in
 		pub workspace_id: Uuid,
@@ -41,6 +41,6 @@ macros::declare_api_endpoint!(
 	},
 	response = {
 		/// List of tags in the current container repository
-		pub tags: Vec<ContainerRegistryRepositoryTagAndDigestInfo>
+		pub tags: Vec<ContainerRepositoryTagAndDigestInfo>
 	}
 );

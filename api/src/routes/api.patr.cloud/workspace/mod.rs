@@ -2,6 +2,7 @@ use axum::Router;
 
 use crate::prelude::*;
 
+mod container_registry;
 #[allow(unused_variables, dead_code, unreachable_code, unused_imports)]
 mod domain;
 mod infrastructure;
@@ -23,4 +24,5 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.merge(secret::setup_routes(state).await)
 		.merge(rbac::setup_routes(state).await)
 		.merge(runner::setup_routes(state).await)
+		.merge(container_registry::setup_routes(state).await)
 }
