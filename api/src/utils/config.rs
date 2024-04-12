@@ -70,8 +70,6 @@ pub struct AppConfig {
 	/// The configuration for Redis. This is used for caching, rate limiting and
 	/// for subscribing to events from the database on websockets
 	pub redis: RedisConfig,
-	/// The configuration for container registry
-	pub container_registry: ContainerRegistryConfig,
 	// pub email: EmailConfig,
 	/// The opentelemetry endpoint to send traces to
 	#[cfg(debug_assertions)]
@@ -168,34 +166,6 @@ pub struct RedisConfig {
 /// The default value for the Redis database
 fn default_redis_database() -> u8 {
 	0
-}
-
-/// Base64 to byte
-fn base64_to_byte_array<'de, D>(value: D) -> Result<Vec<u8>, D::Error>
-where
-	D: Deserializer<'de>,
-{
-	let string = String::deserialize(value)?;
-	Ok(BASE64_STANDARD
-		.decode(&string)
-		.unwrap_or_else(|_| panic!("Unable to decode {} as base64", string)))
-}
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ContainerRegistryConfig {
-	#[serde(alias = "servicename")]
-	pub service_name: String,
-	pub issuer: String,
-	#[serde(alias = "registryurl")]
-	pub registry_url: String,
-	#[serde(alias = "privatekey")]
-	pub private_key: String,
-	#[serde(alias = "publickey")]
-	pub public_key: String,
-	#[serde(deserialize_with = "base64_to_byte_array", alias = "publickeyder")]
-	pub public_key_der: Vec<u8>,
-	#[serde(alias = "authorizationheader")]
-	pub authorization_header: String,
 }
 
 /// The configuration for the SMTP server to use to send emails to users

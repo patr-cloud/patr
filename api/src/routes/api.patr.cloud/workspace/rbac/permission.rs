@@ -14,12 +14,13 @@ pub async fn setup_routes(state: &AppState) -> Router {
 
 async fn get_current_permissions(
 	AuthenticatedAppRequest {
-		request: ProcessedApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
+		request:
+			ProcessedApiRequest {
+				path: GetCurrentPermissionsPath { workspace_id },
+				query: (),
+				headers,
+				body,
+			},
 		database,
 		redis: _,
 		client_ip: _,
@@ -27,13 +28,15 @@ async fn get_current_permissions(
 		user_data,
 	}: AuthenticatedAppRequest<'_, GetCurrentPermissionsRequest>,
 ) -> Result<AppResponse<GetCurrentPermissionsRequest>, ErrorType> {
-	info!("Starting: Get current permissions");
-
-	// LOGIC
+	info!("Get permissions of current request");
 
 	AppResponse::builder()
 		.body(GetCurrentPermissionsResponse {
-			permissions: todo!(),
+			permissions: user_data
+				.permissions
+				.get(&workspace_id)
+				.ok_or_else(|| ErrorType::server_error("workspace not found in user_data"))?
+				.clone(),
 		})
 		.headers(())
 		.status_code(StatusCode::OK)

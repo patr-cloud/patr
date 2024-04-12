@@ -164,22 +164,11 @@ pub async fn setup_routes(state: &AppState) -> Router {
 				.route(
 					"/:workspaceId/:repoName/blobs/:digest",
 					get(get_blob_info::handle).head(get_blob_info::handle),
-				), /* .route(
-			    * 	"/:workspaceId/:repoName/blobs/uploads/",
-			    * 	post(get_push_session_id::handle),
-			    * )
-			    * .route(
-			    * 	"/:workspaceId/:repoName/blobs/:digest",
-			    * 	head(get_blob_info::handle).get(get_blob::handle),
-			    * )
-			    * .route(
-			    * 	"/:workspaceId/:repoName/manifests/:tag",
-			    * 	put(add_manifest_to_repo),
-			    * )
-			    * .route(
-			    * 	"/:workspaceId/:repoName/blobs/uploads/:digest",
-			    * 	patch(patch_blob),
-			    * ), */
+				),
 		)
 		.with_state(state.clone())
+}
+
+fn get_s3_object_name_for_blob(blob: &str) -> String {
+	format!("registry/blobs/{blob}")
 }

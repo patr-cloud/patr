@@ -45,22 +45,22 @@ async fn delete_docker_repository_image_in_registry(
 	name: &str,
 	username: &str,
 	digest: &str,
-	config: &AppConfig,
+	_config: &AppConfig,
 ) -> Result<(), ErrorType> {
 	let iat = OffsetDateTime::now_utc();
 	let response = reqwest::Client::new()
 		.delete(format!(
 			"{}://{}/v2/{}/manifests/{}",
-			if config
+			if r"config
 				.container_registry
-				.registry_url
+				.registry_url"
 				.starts_with("localhost")
 			{
 				"http"
 			} else {
 				"https"
 			},
-			config.container_registry.registry_url,
+			"config.container_registry.registry_url",
 			name,
 			digest
 		))
@@ -68,12 +68,13 @@ async fn delete_docker_repository_image_in_registry(
 			&Header {
 				alg: Algorithm::ES256,
 				kid: Some({
-					let hash: Vec<u8> =
-						Sha256::digest(config.container_registry.public_key.as_bytes())
-							.iter()
-							.copied()
-							.take(30)
-							.collect();
+					let hash: Vec<u8> = Sha256::digest(
+						/* config.container_registry.public_key.as_bytes() */ [],
+					)
+					.iter()
+					.copied()
+					.take(30)
+					.collect();
 					let encoded =
 						base32::encode(base32::Alphabet::RFC4648 { padding: false }, &hash);
 					let mut kid = String::with_capacity(59);
@@ -88,9 +89,9 @@ async fn delete_docker_repository_image_in_registry(
 				..Default::default()
 			},
 			&RegistryToken {
-				iss: config.container_registry.issuer.clone(),
+				iss: "config.container_registry.issuer.clone()".to_string(),
 				sub: username.to_string(),
-				aud: config.container_registry.service_name.clone(),
+				aud: "config.container_registry.service_name.clone()".to_string(),
 				exp: iat + Duration::minutes(5), // 5 mins
 				nbf: iat,
 				iat,
@@ -106,7 +107,8 @@ async fn delete_docker_repository_image_in_registry(
 				}],
 			},
 			&jsonwebtoken::EncodingKey::from_ec_pem(
-				config.container_registry.private_key.as_bytes(),
+				// config.container_registry.private_key.as_bytes(),
+				&[],
 			)?,
 		)?)
 		.header(
