@@ -27,8 +27,14 @@ fn LoggedInPage() -> impl IntoView {
 }
 
 #[component]
-pub fn App() -> impl IntoView {
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>("access_token");
+fn InnerApp() -> impl IntoView {
+	let (state, _) = get_auth_state();
+
+	let _ = authstate_from_cookie();
+	create_effect(move |_| {
+		let _ = authstate_from_cookie();
+		logging::log!("here as well");
+	});
 
 	view! {
 		<Router>
@@ -36,7 +42,7 @@ pub fn App() -> impl IntoView {
 				<ProtectedRoute
 					path="/"
 					redirect_path="/login"
-					condition=move || access_token.get().is_some()
+					condition=move || state.get().is_logged_in()
 					view=LoggedInPage
 				>
 					<ProfileRoutes />
@@ -48,7 +54,7 @@ pub fn App() -> impl IntoView {
 				<ProtectedRoute
 					path="/"
 					view=AuthPage
-					condition=move || access_token.get().is_none()
+					condition=move || { logging::log!("state: {:#?}", state.get()); !state.get().is_logged_in() }
 					redirect_path="/"
 				>
 					<Route path=LoggedOutRoute::Login view=LoginForm />
@@ -62,5 +68,16 @@ pub fn App() -> impl IntoView {
 				</ProtectedRoute>
 			</Routes>
 		</Router>
+	}
+}
+
+#[component]
+pub fn App() -> impl IntoView {
+	let state = create_rw_signal(GlobalState::new());
+
+	provide_context(state);
+
+	view! {
+		<InnerApp />
 	}
 }

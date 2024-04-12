@@ -15,6 +15,20 @@ pub struct GlobalState {
 	pub auth_state: AuthState,
 }
 
+impl GlobalState {
+	pub const fn new() -> Self {
+		GlobalState {
+			auth_state: AuthState::LoggedOut,
+		}
+	}
+
+	pub const fn init() -> Self {
+		GlobalState {
+			auth_state: AuthState::LoggedOut,
+		}
+	}
+}
+
 /// The Auth state, contains the log in status and the auth token
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub enum AuthState {
@@ -37,18 +51,19 @@ impl AuthState {
 }
 // -> Signal<AuthState>
 pub fn authstate_from_cookie() -> Signal<AuthState> {
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>("access_token");
-	let (refresh_token, _) = use_cookie::<String, FromToStringCodec>("refresh_token");
 	let state = use_context::<RwSignal<GlobalState>>().expect("state to be provided");
-	logging::log!("{:#?} {:#?}", access_token.get(), refresh_token.get());
 
-	let (state, _) = create_slice(
+	let (state, set_cookie_state) = create_slice(
 		state,
 		|state: &GlobalState| state.auth_state.clone(),
-		move |state: &mut GlobalState, _: Option<AuthTokens>| {
+		move |state: &mut GlobalState, _: ()| {
+			let (access_token, _) = use_cookie::<String, FromToStringCodec>("access_token");
+			let (refresh_token, _) = use_cookie::<String, FromToStringCodec>("refresh_token");
+
 			if let (Some(access_token), Some(refresh_token)) =
-				(access_token.get(), refresh_token.get())
+				(access_token.get_untracked(), refresh_token.get_untracked())
 			{
+				logging::log!("{} {}", access_token.clone(), refresh_token.clone());
 				state.auth_state = AuthState::LoggedIn(AuthTokens {
 					auth_token: access_token.clone(),
 					refresh_token: refresh_token.clone(),
@@ -56,6 +71,8 @@ pub fn authstate_from_cookie() -> Signal<AuthState> {
 			}
 		},
 	);
+
+	set_cookie_state.set(());
 
 	state
 }

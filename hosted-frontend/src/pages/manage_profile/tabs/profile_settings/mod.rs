@@ -71,7 +71,7 @@ pub fn ProfileSettings() -> impl IntoView {
 					}
 				}
 			</Transition>
-			// <PasswordSection />
+			<PasswordSection />
 		</div>
 	}
 }
