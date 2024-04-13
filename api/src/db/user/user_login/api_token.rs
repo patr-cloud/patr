@@ -95,6 +95,7 @@ pub async fn initialize_api_token_tables(
 			workspace_id UUID NOT NULL,
 			permission_id UUID NOT NULL,
 			resource_id UUID NOT NULL,
+			resource_deleted TIMESTAMPTZ GENERATED ALWAYS AS (NULL) STORED,
 			permission_type PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('include') STORED
 		);
 		"#
@@ -109,6 +110,7 @@ pub async fn initialize_api_token_tables(
 			workspace_id UUID NOT NULL,
 			permission_id UUID NOT NULL,
 			resource_id UUID NOT NULL,
+			resource_deleted TIMESTAMPTZ GENERATED ALWAYS AS (NULL) STORED,
 			permission_type PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('exclude') STORED
 		);
 		"#
@@ -316,10 +318,12 @@ pub async fn initialize_api_token_constraints(
 			),
 			ADD CONSTRAINT user_api_token_resource_permissions_include_fk_resource FOREIGN KEY(
 				resource_id,
-				workspace_id
+				workspace_id,
+				resource_deleted
 			) REFERENCES resource(
 				id,
-				owner_id
+				owner_id,
+				deleted
 			);
 		"#
 	)
@@ -342,10 +346,12 @@ pub async fn initialize_api_token_constraints(
 			),
 			ADD CONSTRAINT user_api_token_resource_permissions_exclude_fk_resource FOREIGN KEY(
 				resource_id,
-				workspace_id
+				workspace_id,
+				resource_deleted
 			) REFERENCES resource(
 				id,
-				owner_id
+				owner_id,
+				deleted
 			);
 		"#
 	)

@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT container_registry_repository_manifest.* FROM container_registry_repository_manifest LEFT JOIN container_registry_repository_tag ON container_registry_repository_manifest.repository_id = container_registry_repository_tag.repository_id WHERE container_registry_repository_manifest.manifest_digest = $1 OR container_registry_repository_tag.tag = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "repository_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "manifest_digest",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "architecture",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "os",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "variant",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "created",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "7e481fb87c044230f362926331d076a9f7b4e2d987f293212ba2791b2aae3c29"
+}

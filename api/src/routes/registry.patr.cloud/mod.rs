@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 use axum::{
 	body::Body,
 	http::{header::InvalidHeaderValue, StatusCode},
@@ -14,6 +12,8 @@ use crate::prelude::*;
 
 /// Download a specific blob, given its digest.
 mod get_blob_info;
+/// Get the manifest for a specific reference.
+mod get_manifest_info;
 /// Get the status of the registry.
 mod get_registry_status;
 
@@ -66,38 +66,26 @@ pub struct Error {
 	/// list of errors that occurred during the request. However, we only return
 	/// one error at a time.
 	pub errors: [ErrorItem; 1],
+	#[serde(skip, default = "default_status_code")]
+	/// The status code for the error.
+	pub status_code: StatusCode,
+}
+
+const fn default_status_code() -> StatusCode {
+	StatusCode::INTERNAL_SERVER_ERROR
 }
 
 impl IntoResponse for Error {
 	fn into_response(self) -> Response {
-		let Error {
-			errors: [ErrorItem {
-				code,
-				message: _,
-				detail: _,
-			}],
-		} = self;
 		Response::builder()
-			.status(match code {
-				RegistryError::BlobUnknown => StatusCode::NOT_FOUND,
-				RegistryError::BlobUploadInvalid => todo!(),
-				RegistryError::BlobUploadUnknown => todo!(),
-				RegistryError::DigestInvalid => todo!(),
-				RegistryError::ManifestBlobUnknown => todo!(),
-				RegistryError::ManifestInvalid => todo!(),
-				RegistryError::ManifestUnknown => todo!(),
-				RegistryError::NameInvalid => todo!(),
-				RegistryError::NameUnknown => todo!(),
-				RegistryError::SizeInvalid => todo!(),
-				RegistryError::Unauthorized => todo!(),
-				RegistryError::Denied => todo!(),
-				RegistryError::Unsupported => todo!(),
-				RegistryError::TooManyRequests => StatusCode::TOO_MANY_REQUESTS,
-				RegistryError::InternalServerError => {
-					return StatusCode::INTERNAL_SERVER_ERROR.into_response()
-				}
-			})
-			.body(Body::empty())
+			.status(self.status_code)
+			.body(
+				if self.status_code == StatusCode::INTERNAL_SERVER_ERROR {
+					Body::empty()
+				} else {
+					Body::from(serde_json::to_string(&self).unwrap_or_default())
+				},
+			)
 			.unwrap_or_else(|_| {
 				// If we can't create the response, just return an empty response
 				(StatusCode::INTERNAL_SERVER_ERROR, Body::empty()).into_response()
@@ -107,25 +95,53 @@ impl IntoResponse for Error {
 
 impl From<S3Error> for Error {
 	fn from(err: S3Error) -> Self {
-		error(RegistryError::InternalServerError, err)
+		Self {
+			errors: [ErrorItem {
+				code: RegistryError::InternalServerError,
+				message: err.to_string(),
+				detail: err.to_string(),
+			}],
+			status_code: StatusCode::INTERNAL_SERVER_ERROR,
+		}
 	}
 }
 
 impl From<sqlx::Error> for Error {
 	fn from(err: sqlx::Error) -> Self {
-		error(RegistryError::InternalServerError, err)
+		Self {
+			errors: [ErrorItem {
+				code: RegistryError::InternalServerError,
+				message: err.to_string(),
+				detail: err.to_string(),
+			}],
+			status_code: StatusCode::INTERNAL_SERVER_ERROR,
+		}
 	}
 }
 
 impl From<CredentialsError> for Error {
 	fn from(err: CredentialsError) -> Self {
-		error(RegistryError::InternalServerError, err)
+		Self {
+			errors: [ErrorItem {
+				code: RegistryError::InternalServerError,
+				message: err.to_string(),
+				detail: err.to_string(),
+			}],
+			status_code: StatusCode::INTERNAL_SERVER_ERROR,
+		}
 	}
 }
 
 impl From<InvalidHeaderValue> for Error {
 	fn from(err: InvalidHeaderValue) -> Self {
-		error(RegistryError::InternalServerError, err)
+		Self {
+			errors: [ErrorItem {
+				code: RegistryError::InternalServerError,
+				message: err.to_string(),
+				detail: err.to_string(),
+			}],
+			status_code: StatusCode::INTERNAL_SERVER_ERROR,
+		}
 	}
 }
 
@@ -143,17 +159,6 @@ pub struct ErrorItem {
 	pub detail: String,
 }
 
-/// Create an error response with the given error and message.
-fn error(error: RegistryError, message: impl Display) -> Error {
-	Error {
-		errors: [ErrorItem {
-			code: error,
-			message: message.to_string(),
-			detail: "".to_string(),
-		}],
-	}
-}
-
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
@@ -164,6 +169,10 @@ pub async fn setup_routes(state: &AppState) -> Router {
 				.route(
 					"/:workspaceId/:repoName/blobs/:digest",
 					get(get_blob_info::handle).head(get_blob_info::handle),
+				)
+				.route(
+					"/:workspaceId/:repoName/manifests/:reference",
+					get(get_manifest_info::handle),
 				),
 		)
 		.with_state(state.clone())
