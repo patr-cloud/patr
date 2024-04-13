@@ -9,7 +9,7 @@ pub async fn get_repository_image_details(
 			ProcessedApiRequest {
 				path:
 					GetContainerRepositoryImageDetailsPath {
-						workspace_id,
+						workspace_id: _,
 						repository_id,
 						digest_or_tag,
 					},
