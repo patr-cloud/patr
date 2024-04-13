@@ -1,14 +1,22 @@
 use axum::{
 	body::Body,
 	extract::{Path, State},
-	http::{self, HeaderMap, HeaderName, HeaderValue, Method, StatusCode},
+	http::{
+		header,
+		header::InvalidHeaderValue,
+		HeaderMap,
+		HeaderName,
+		HeaderValue,
+		Method,
+		StatusCode,
+	},
 	response::IntoResponse,
 };
 use preprocess::Preprocessable;
 use s3::Bucket;
 use serde::{Deserialize, Serialize};
 
-use super::{Error, RegistryError};
+use super::{Error, ErrorItem, RegistryError};
 use crate::prelude::*;
 
 #[preprocess::sync]
@@ -19,7 +27,7 @@ pub struct PathParams {
 	workspace_id: Uuid,
 	#[preprocess(regex = r"[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*")]
 	repo_name: String,
-	#[preprocess(length(max = 135))]
+	#[preprocess(lowercase, trim)]
 	digest: String,
 }
 
@@ -30,7 +38,14 @@ pub(super) async fn handle(
 	State(state): State<AppState>,
 ) -> Result<impl IntoResponse, Error> {
 	let Ok(path) = path.preprocess() else {
-		return Err(super::error(RegistryError::BlobUnknown, ""));
+		return Err(Error {
+			errors: [ErrorItem {
+				code: RegistryError::BlobUnknown,
+				message: "Invalid repository name".to_string(),
+				detail: "".to_string(),
+			}],
+			status_code: StatusCode::NOT_FOUND,
+		});
 	};
 
 	let workspace_id = path.workspace_id;
@@ -53,7 +68,14 @@ pub(super) async fn handle(
 	.await?;
 
 	let Some(_) = row else {
-		return Err(super::error(RegistryError::BlobUnknown, ""));
+		return Err(Error {
+			errors: [ErrorItem {
+				code: RegistryError::BlobUnknown,
+				message: "Invalid repository name".to_string(),
+				detail: "".to_string(),
+			}],
+			status_code: StatusCode::NOT_FOUND,
+		});
 	};
 
 	let bucket = Bucket::new(
@@ -73,75 +95,43 @@ pub(super) async fn handle(
 		},
 	)?;
 
-	let mut headers = HeaderMap::new();
-	let (head, _) = bucket.head_object(&path.digest).await?;
+	let s3_key = super::get_s3_object_name_for_blob(&path.digest);
+	let (head, _) = bucket.head_object(&s3_key).await?;
 
-	headers.insert(
-		HeaderName::from_static("Docker-Distribution-API-Version"),
-		HeaderValue::from_static("registry/2.0"),
-	);
-
-	if let Some(accept_ranges) = head.accept_ranges {
-		headers.insert(
-			http::header::ACCEPT_RANGES,
-			HeaderValue::from_str(&accept_ranges)?,
-		);
-	}
-	if let Some(cache_control) = head.cache_control {
-		headers.insert(
-			http::header::CACHE_CONTROL,
-			HeaderValue::from_str(&cache_control)?,
-		);
-	}
-	if let Some(content_disposition) = head.content_disposition {
-		headers.insert(
-			http::header::CONTENT_DISPOSITION,
-			HeaderValue::from_str(&content_disposition)?,
-		);
-	}
-	if let Some(content_encoding) = head.content_encoding {
-		headers.insert(
-			http::header::CONTENT_ENCODING,
-			HeaderValue::from_str(&content_encoding)?,
-		);
-	}
-	if let Some(content_language) = head.content_language {
-		headers.insert(
-			http::header::CONTENT_LANGUAGE,
-			HeaderValue::from_str(&content_language)?,
-		);
-	}
-	if let Some(content_length) = head.content_length {
-		headers.insert(
-			http::header::CONTENT_LENGTH,
-			HeaderValue::from_str(&content_length.to_string())?,
-		);
-	}
-	if let Some(content_type) = head.content_type {
-		headers.insert(
-			http::header::CONTENT_TYPE,
-			HeaderValue::from_str(&content_type)?,
-		);
-	}
-	if let Some(e_tag) = head.e_tag {
-		headers.insert(http::header::ETAG, HeaderValue::from_str(&e_tag)?);
-	}
-	if let Some(expires) = head.expires {
-		headers.insert(http::header::EXPIRES, HeaderValue::from_str(&expires)?);
-	}
-	if let Some(last_modified) = head.last_modified {
-		headers.insert(
-			http::header::LAST_MODIFIED,
-			HeaderValue::from_str(&last_modified)?,
-		);
-	}
+	let headers = [
+		(
+			HeaderName::from_static("Docker-Distribution-API-Version"),
+			Some(String::from("registry/2.0")),
+		),
+		(
+			HeaderName::from_static("Docker-Content-Digest"),
+			Some(path.digest.to_string()),
+		),
+		(header::ACCEPT_RANGES, head.accept_ranges),
+		(header::CACHE_CONTROL, head.cache_control),
+		(header::CONTENT_DISPOSITION, head.content_disposition),
+		(header::CONTENT_ENCODING, head.content_encoding),
+		(header::CONTENT_LANGUAGE, head.content_language),
+		(
+			header::CONTENT_LENGTH,
+			head.content_length.map(|length| length.to_string()),
+		),
+		(header::CONTENT_TYPE, head.content_type),
+		(header::ETAG, head.e_tag),
+		(header::EXPIRES, head.expires),
+		(header::LAST_MODIFIED, head.last_modified),
+	]
+	.into_iter()
+	.filter_map(|(name, value)| value.map(|value| (name, value)))
+	.map(|(name, value)| Ok::<_, InvalidHeaderValue>((name, HeaderValue::from_str(&value)?)))
+	.collect::<Result<HeaderMap, _>>()?;
 
 	if matches!(method, Method::HEAD) {
 		// HEAD request. head the blob from S3 and set the headers
 		Ok((StatusCode::OK, headers).into_response())
 	} else {
 		// GET request. return the blob from S3
-		let object = bucket.get_object_stream(path.digest).await?;
+		let object = bucket.get_object_stream(&s3_key).await?;
 		if !(200..300).contains(&object.status_code) {
 			return Ok(StatusCode::INTERNAL_SERVER_ERROR.into_response());
 		}

@@ -138,7 +138,7 @@ pub async fn initialize_rbac_indices(
 		r#"
 		ALTER TABLE resource
 			ADD CONSTRAINT resource_pk PRIMARY KEY(id),
-			ADD CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id);
+			ADD CONSTRAINT resource_uq_id_owner_id_deleted UNIQUE(id, owner_id, deleted);
 		"#
 	)
 	.execute(&mut *connection)

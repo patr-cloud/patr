@@ -58,6 +58,9 @@ pub async fn initialize_container_registry_tables(
 		CREATE TABLE container_registry_repository_manifest(
 			repository_id UUID NOT NULL,
 			manifest_digest TEXT NOT NULL,
+			architecture TEXT NOT NULL,
+			os TEXT NOT NULL,
+			variant TEXT NOT NULL,
 			created TIMESTAMPTZ NOT NULL
 		);
 		"#
