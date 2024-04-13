@@ -22,14 +22,18 @@ pub async fn get_repository_image_exposed_ports(
 						repository_id,
 						digest_or_tag,
 					},
-				query: _,
-				headers,
-				body,
+				query: (),
+				headers:
+					GetContainerRepositoryExposedPortsRequestHeaders {
+						authorization: _,
+						user_agent: _,
+					},
+				body: GetContainerRepositoryExposedPortsRequestProcessed,
 			},
 		database,
 		redis: _,
 		client_ip: _,
-		config,
+		config: _,
 		user_data,
 	}: AuthenticatedAppRequest<'_, GetContainerRepositoryExposedPortsRequest>,
 ) -> Result<AppResponse<GetContainerRepositoryExposedPortsRequest>, ErrorType> {
@@ -146,8 +150,7 @@ pub async fn get_repository_image_exposed_ports(
 		.send()
 		.await?
 		.json::<ContainerRepositoryManifest>()
-		.await
-		.map_err(|e| e)?
+		.await?
 		.history
 		.into_iter()
 		.filter_map(|v1_comp_str| {

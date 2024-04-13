@@ -29,10 +29,10 @@ pub async fn verify_configuration(
 ) -> Result<AppResponse<VerifyManagedURLConfigurationRequest>, ErrorType> {
 	info!("Verifying configuration of ManagedURL");
 
-	let configured = todo!("Check if the managed URL is configured correctly");
-
 	AppResponse::builder()
-		.body(VerifyManagedURLConfigurationResponse { configured })
+		.body(VerifyManagedURLConfigurationResponse {
+			configured: todo!("Check if the managed URL is configured correctly"),
+		})
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()

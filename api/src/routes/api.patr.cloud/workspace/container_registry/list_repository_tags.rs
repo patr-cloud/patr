@@ -7,10 +7,11 @@ pub async fn list_repository_tags(
 	AuthenticatedAppRequest {
 		request:
 			ProcessedApiRequest {
-				path: ListContainerRepositoryTagsPath {
-					workspace_id,
-					repository_id,
-				},
+				path:
+					ListContainerRepositoryTagsPath {
+						workspace_id: _,
+						repository_id,
+					},
 				query: Paginated {
 					page,
 					count,
@@ -30,48 +31,39 @@ pub async fn list_repository_tags(
 		user_data: _,
 	}: AuthenticatedAppRequest<'_, ListContainerRepositoryTagsRequest>,
 ) -> Result<AppResponse<ListContainerRepositoryTagsRequest>, ErrorType> {
-	info!("Starting: List repository tags");
+	info!("Listing tags for repository: {}", repository_id);
 
+	let mut total_count = 0;
 	let tags = query!(
 		r#"
 		SELECT
-			tag,
-			manifest_digest,
-			last_updated
+			*,
+			COUNT(*) OVER() AS "count!"
 		FROM
 			container_registry_repository_tag
 		WHERE
-			repository_id = $1;
+			repository_id = $1
+		ORDER BY
+			last_updated DESC
+		LIMIT $2
+		OFFSET $3;
 		"#,
-		repository_id as _
+		repository_id as _,
+		count as i32,
+		(page * count) as i32,
 	)
 	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
-	.map(|row| ContainerRepositoryTagAndDigestInfo {
-		tag: row.tag,
-		last_updated: row.last_updated.into(),
-		digest: row.manifest_digest,
+	.map(|row| {
+		total_count = row.count;
+		ContainerRepositoryTagAndDigestInfo {
+			tag: row.tag,
+			last_updated: row.last_updated,
+			digest: row.manifest_digest,
+		}
 	})
 	.collect();
-
-	let total_count = query!(
-		r#" 
-		SELECT
-			COUNT(*) AS count
-		FROM
-			container_registry_repository_tag
-		WHERE
-			repository_id = $1;
-		"#,
-		repository_id as _
-	)
-	.fetch_one(&mut **database)
-	.await
-	.map(|repo| repo.count)?
-	.ok_or(ErrorType::server_error(
-		"Failed to get total repository count",
-	))?;
 
 	AppResponse::builder()
 		.body(ListContainerRepositoryTagsResponse { tags })

@@ -68,8 +68,8 @@ pub async fn delete_repository(
 	)
 	.fetch_optional(&mut **database)
 	.await?
-	.map(|repo| repo.name)
-	.ok_or(ErrorType::ResourceDoesNotExist)?;
+	.ok_or(ErrorType::ResourceDoesNotExist)?
+	.name;
 
 	let name = format!("{}/{}", &workspace_id, repository_name);
 

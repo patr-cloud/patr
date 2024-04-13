@@ -51,12 +51,9 @@ pub async fn delete_repository_image(
 	let name = format!("{}/{}", workspace_id, repository_name);
 
 	// Delete all tags for the given image
-	let container_repo_tag_info: Vec<ContainerRepositoryTagInfo> = query!(
+	query!(
 		r#"
-		SELECT
-			tag,
-			last_updated
-		FROM
+		DELETE FROM
 			container_registry_repository_tag
 		WHERE
 			repository_id = $1 AND
@@ -65,30 +62,8 @@ pub async fn delete_repository_image(
 		repository_id as _,
 		digest
 	)
-	.fetch_all(&mut **database)
-	.await?
-	.into_iter()
-	.map(|row| ContainerRepositoryTagInfo {
-		tag: row.tag,
-		last_updated: row.last_updated.into(),
-	})
-	.collect();
-
-	for tag in container_repo_tag_info {
-		query!(
-			r#"
-			DELETE FROM
-				container_registry_repository_tag
-			WHERE
-				repository_id = $1 AND
-				tag = $2;
-			"#,
-			repository_id as _,
-			tag.tag
-		)
-		.execute(&mut **database)
-		.await?;
-	}
+	.execute(&mut **database)
+	.await?;
 
 	// Delete container repository image with digest from database
 	query!(
@@ -104,42 +79,6 @@ pub async fn delete_repository_image(
 	)
 	.execute(&mut **database)
 	.await?;
-
-	// Update storage used after deleting in usage history
-	let total_storage = query!(
-		r#"
-		SELECT
-			COALESCE(SUM(size), 0)::BIGINT as "size!"
-		FROM
-			container_registry_repository
-		INNER JOIN
-			container_registry_repository_manifest
-		ON
-			container_registry_repository.id 
-			= container_registry_repository_manifest.repository_id
-		INNER JOIN
-			container_registry_manifest_blob
-		ON
-			container_registry_repository_manifest.manifest_digest 
-			= container_registry_manifest_blob.manifest_digest
-		INNER JOIN
-			container_registry_repository_blob
-		ON
-			container_registry_manifest_blob.blob_digest 
-			= container_registry_repository_blob.blob_digest
-		WHERE
-			container_registry_repository.workspace_id = $1;
-		"#,
-		workspace_id as _,
-	)
-	.fetch_one(&mut **database)
-	.await
-	.map(|repo| repo.size)?;
-
-	todo!("Update usage history with the new size");
-
-	// Delete container repository in registry
-	todo!("Is god user's ID required or is current user ID okay?");
 
 	super::delete_docker_repository_image_in_registry(&name, &user_data.username, &digest, &config)
 		.await?;
