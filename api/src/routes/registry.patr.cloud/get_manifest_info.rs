@@ -1,10 +1,12 @@
 use axum::{
 	extract::{Path, State},
-	http::{Method, StatusCode},
+	http::{header, HeaderValue, Method, StatusCode},
 	response::IntoResponse,
+	Json,
 };
 use monostate::MustBe;
 use preprocess::Preprocessable;
+use s3::Bucket;
 use serde::{Deserialize, Serialize};
 
 use super::{Error, ErrorItem, RegistryError};
@@ -335,7 +337,7 @@ server: cloudflare
 
 #[axum::debug_handler]
 pub(super) async fn handle(
-	method: Method,
+	_method: Method,
 	Path(path): Path<PathParams>,
 	State(state): State<AppState>,
 ) -> Result<impl IntoResponse, Error> {
@@ -356,14 +358,14 @@ pub(super) async fn handle(
 	// Check if the workspace exists
 	let row = query!(
 		r#"
-        SELECT
-            *
-        FROM
-            workspace
-        WHERE
-            id = $1 AND
-            deleted IS NULL
-        "#,
+		SELECT
+			*
+		FROM
+			workspace
+		WHERE
+			id = $1 AND
+			deleted IS NULL
+		"#,
 		workspace_id as _
 	)
 	.fetch_optional(&mut *database)
@@ -382,22 +384,174 @@ pub(super) async fn handle(
 
 	let manifests = query!(
 		r#"
-        SELECT
-            container_registry_repository_manifest.*
-        FROM
-            container_registry_repository_manifest
-        LEFT JOIN
-            container_registry_repository_tag
-        ON
-            container_registry_repository_manifest.repository_id = container_registry_repository_tag.repository_id
-        WHERE
-            container_registry_repository_manifest.manifest_digest = $1 OR
-            container_registry_repository_tag.tag = $1;
-        "#,
+		SELECT
+			container_registry_repository_manifest.*
+		FROM
+			container_registry_repository_manifest
+		LEFT JOIN
+			container_registry_repository_tag
+		ON
+			container_registry_repository_manifest.repository_id = container_registry_repository_tag.repository_id
+		WHERE
+			container_registry_repository_manifest.manifest_digest = $1 OR
+			container_registry_repository_tag.tag = $1;
+		"#,
 		path.reference as _,
 	)
 	.fetch_all(&mut *database)
 	.await?;
 
-	Ok(())
+	let mut manifest_data = Vec::with_capacity(manifests.len());
+
+	for manifest in manifests {
+		let layers = query!(
+			r#"
+			WITH RECURSIVE blobs AS (
+				SELECT
+					root.blob_digest,
+					root.parent_blob_digest
+				FROM
+					container_registry_manifest_blob AS root
+				WHERE
+					parent_blob_digest IS NULL AND
+					manifest_digest = $1
+				UNION ALL
+				SELECT 
+					container_registry_manifest_blob.blob_digest,
+					container_registry_manifest_blob.parent_blob_digest
+				FROM
+					container_registry_manifest_blob
+				JOIN
+					blobs
+				ON
+					container_registry_manifest_blob.parent_blob_digest = blobs.blob_digest
+			)
+			SELECT
+				container_registry_repository_blob.*
+			FROM
+				blobs
+			INNER JOIN
+				container_registry_repository_blob
+			ON
+				blobs.blob_digest = container_registry_repository_blob.blob_digest;
+			"#,
+			manifest.manifest_digest as _,
+		)
+		.fetch_all(&mut *database)
+		.await?
+		.into_iter()
+		.map(|row| ManifestLayer {
+			media_type: Default::default(),
+			size: row.size as u64,
+			digest: row.blob_digest,
+		})
+		.collect::<Vec<_>>();
+
+		manifest_data.push((manifest, layers));
+	}
+
+	if let 0 = manifest_data.len() {
+		return Err(Error {
+			errors: [ErrorItem {
+				code: RegistryError::BlobUnknown,
+				message: "Repository not found".to_string(),
+				detail: "".to_string(),
+			}],
+			status_code: StatusCode::NOT_FOUND,
+		});
+	}
+
+	let bucket = Bucket::new(
+		state.config.s3.bucket.as_str(),
+		s3::Region::Custom {
+			region: state.config.s3.region,
+			endpoint: state.config.s3.endpoint,
+		},
+		{
+			s3::creds::Credentials::new(
+				Some(&state.config.s3.key),
+				Some(&state.config.s3.secret),
+				None,
+				None,
+				None,
+			)?
+		},
+	)?;
+
+	// Ehh. Is there a better way to do this?
+	let (content_type, body) = if let (Some((manifest, layers)), true, true) = (
+		manifest_data.first(),
+		manifest_data.first().unwrap().0.manifest_digest == path.reference,
+		manifest_data.len() == 1,
+	) {
+		(
+			"application/vnd.oci.image.index.v1+json",
+			ManifestType::Manifest {
+				schema_version: Default::default(),
+				media_type: Default::default(),
+				config: ManifestConfig {
+					media_type: Default::default(),
+					size: {
+						let s3_key = super::get_s3_object_name_for_blob(&manifest.manifest_digest);
+
+						let (head, _) = bucket.head_object(&s3_key).await?;
+
+						head.content_length.unwrap_or(2) as u64
+					},
+					digest: manifest.manifest_digest.clone(),
+				},
+				layers: layers.clone(),
+			},
+		)
+	} else {
+		(
+			"application/vnd.oci.image.manifest.v1+json",
+			ManifestType::Index {
+				schema_version: Default::default(),
+				media_type: Default::default(),
+				manifests: {
+					let mut manifests = vec![];
+					for (manifest, layers) in manifest_data {
+						manifests.push(PlatformManifest {
+							digest: manifest.manifest_digest.clone(),
+							media_type: Default::default(),
+							platform: PlatformInfo {
+								architecture: manifest.architecture,
+								os: manifest.os,
+								variant: Some(manifest.variant),
+							},
+							size: serde_json::to_string(&ManifestType::Manifest {
+								schema_version: Default::default(),
+								media_type: Default::default(),
+								config: ManifestConfig {
+									media_type: Default::default(),
+									size: {
+										let s3_key = super::get_s3_object_name_for_blob(
+											&manifest.manifest_digest,
+										);
+
+										let (head, _) = bucket.head_object(&s3_key).await?;
+
+										head.content_length.unwrap_or(2) as u64
+									},
+									digest: manifest.manifest_digest.clone(),
+								},
+								layers,
+							})?
+							.chars()
+							.count() as u64,
+						});
+					}
+
+					manifests
+				},
+			},
+		)
+	};
+
+	Ok((
+		StatusCode::OK,
+		[(header::CONTENT_TYPE, HeaderValue::from_static(content_type))],
+		Json(body),
+	))
 }

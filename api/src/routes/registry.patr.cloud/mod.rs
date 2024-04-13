@@ -145,6 +145,19 @@ impl From<InvalidHeaderValue> for Error {
 	}
 }
 
+impl From<serde_json::Error> for Error {
+	fn from(err: serde_json::Error) -> Self {
+		Self {
+			errors: [ErrorItem {
+				code: RegistryError::InternalServerError,
+				message: err.to_string(),
+				detail: err.to_string(),
+			}],
+			status_code: StatusCode::INTERNAL_SERVER_ERROR,
+		}
+	}
+}
+
 /// The error item for the registry routes. This contains the specific error in
 /// the registry.
 #[derive(Debug, Clone, Serialize, Deserialize)]
