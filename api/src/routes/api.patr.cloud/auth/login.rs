@@ -171,7 +171,7 @@ pub async fn login(
 			}
 			#[cfg(not(debug_assertions))]
 			{
-				config.ip_info.token
+				Some(config.ipinfo.token)
 			}
 		},
 		..Default::default()

@@ -158,7 +158,7 @@ async fn main() {
 		}
 		#[cfg(not(debug_assertions))]
 		{
-			registry.with(setup_opentelemetry(&config.opentelemetry))
+			Dispatch::new(registry.with(setup_opentelemetry(&config.opentelemetry)))
 		}
 	})
 	.expect("Failed to set global default subscriber");

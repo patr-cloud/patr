@@ -14,8 +14,8 @@ pub enum ResourceType {
 	Workspace,
 	/// A project within a workspace
 	Project,
-	/// A BYOC region
-	Region,
+	/// A runner within a workspace
+	Runner,
 	/// A deployment
 	Deployment,
 	/// A managed database
@@ -23,7 +23,7 @@ pub enum ResourceType {
 	/// A static site
 	StaticSite,
 	/// A container registry repository
-	ContainerRepository,
+	ContainerRegistryRepository,
 	/// A secret
 	Secret,
 	/// A domain added to a workspace
@@ -32,7 +32,6 @@ pub enum ResourceType {
 	DnsRecord,
 	/// A Managed URL for a particular deployment / static site, or otherwise
 	ManagedURL,
-	// TODO CI stuff
 }
 
 /// A list of all permissions that can be granted on a DNS record.
@@ -82,6 +81,22 @@ pub enum DeploymentPermissions {
 	Delete,
 }
 
+/// A list of all permissions that can be granted on a container registry
+/// repository.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, VariantNames)]
+#[strum(serialize_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
+pub enum ContainerRegistryRepositoryPermissions {
+	/// Create a repository in the container registry
+	Create,
+	/// View the repository and it's details
+	View,
+	/// Edit the repository
+	Edit,
+	/// Delete the repository
+	Delete,
+}
+
 /// A list of all permissions that can be used for workspace billing stuff.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, VariantNames)]
 #[strum(serialize_all = "camelCase")]
@@ -104,6 +119,8 @@ pub enum Permission {
 	Domain(DomainPermissions),
 	/// All permissions related to a deployment
 	Deployment(DeploymentPermissions),
+	/// All permissions related to container registry repositories
+	ContainerRegistryRepository(ContainerRegistryRepositoryPermissions),
 	/// All permissions for a workspace's billing
 	Billing(BillingPermissions),
 	/// The user is allowed to change the workspace name and basic stuff
