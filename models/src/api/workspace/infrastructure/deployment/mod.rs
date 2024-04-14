@@ -131,20 +131,14 @@ pub enum EnvironmentVariableValue {
 	},
 }
 
-#[cfg(feature = "server")]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::Type, JsonSchema)]
-#[serde(tag = "type", rename_all = "camelCase")]
-#[sqlx(type_name = "EXPOSED_PORT_TYPE", rename_all = "lowercase")]
-pub enum ExposedPortType {
-	Tcp,
-	Udp,
-	Http,
-}
-
 /// The type of exposed port
-#[cfg(not(feature = "server"))]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(tag = "type", rename_all = "camelCase")]
+#[cfg_attr(not(target_arch = "wasm32"), derive(sqlx::Type))]
+#[cfg_attr(
+	not(target_arch = "wasm32"),
+	sqlx(type_name = "EXPOSED_PORT_TYPE", rename_all = "lowercase")
+)]
 pub enum ExposedPortType {
 	/// TCP
 	Tcp,
