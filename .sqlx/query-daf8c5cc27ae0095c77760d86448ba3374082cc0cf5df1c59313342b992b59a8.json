@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM deployment_config_mounts WHERE deployment_id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "daf8c5cc27ae0095c77760d86448ba3374082cc0cf5df1c59313342b992b59a8"
+}

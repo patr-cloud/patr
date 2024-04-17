@@ -4,12 +4,10 @@ use axum::{http::StatusCode, Router};
 use futures::sink::With;
 use models::{
 	api::{
-		workspace::
-			infrastructure::{
-				deployment::*,
-				managed_url::{DbManagedUrlType, ManagedUrl, ManagedUrlType},
-			}
-		,
+		workspace::infrastructure::{
+			deployment::*,
+			managed_url::{DbManagedUrlType, ManagedUrl, ManagedUrlType},
+		},
 		WithId,
 	},
 	ErrorType,
@@ -71,7 +69,7 @@ pub async fn list_linked_url(
 	.into_iter()
 	.map(|url| {
 		WithId::new(
-			url.id.into(),
+			url.id,
 			ManagedUrl {
 				sub_domain: url.sub_domain,
 				domain_id: url.domain_id.into(),

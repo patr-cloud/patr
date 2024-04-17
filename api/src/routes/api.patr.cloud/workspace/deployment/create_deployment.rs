@@ -4,10 +4,7 @@ use axum::{http::StatusCode, Router};
 use futures::sink::With;
 use models::{
 	api::{
-		workspace::{
-			infrastructure::deployment::*,
-			region::RegionStatus,
-		},
+		workspace::{infrastructure::deployment::*, region::RegionStatus},
 		WithId,
 	},
 	ErrorType,
@@ -106,60 +103,6 @@ pub async fn create_deployment(
 
 	if !(region_details.status == RegionStatus::Active || todo!("Check if patr region")) {
 		return Err(ErrorType::RegionNotActive);
-	}
-
-	// Check creation limits
-	// If deploy on Patr then the user is only allowed to create resources depending
-	// on their current active plan quota
-	if todo!("Check if not byoc region") {
-		let card_added: bool = todo!("Check if card added");
-
-		if !card_added {
-			if running_details.max_horizontal_scale > 1 || running_details.min_horizontal_scale > 1
-			{
-				return Err(ErrorType::FreeLimitExceeded);
-			}
-
-			let current_deployment_count = query!(
-				r#"
-				SELECT
-					COUNT(id)
-				FROM
-					deployment
-				WHERE
-					workspace_id = $1;
-				"#,
-				workspace_id as _,
-			)
-			.fetch_one(&mut **database)
-			.await
-			.map(|row| row.count.unwrap_or(0))?;
-
-			if current_deployment_count as u32 >= constants::DEFAULT_DEPLOYMENT_LIMIT {
-				return Err(ErrorType::FreeLimitExceeded);
-			}
-
-			let volume_size = running_details
-				.volumes
-				.iter()
-				.map(|(_, volume)| volume.size as u32)
-				.sum::<u32>();
-
-			let volume_size_in_byte = volume_size as usize * 1024 * 1024 * 1024;
-			if volume_size_in_byte > constants::VOLUME_STORAGE_IN_BYTE {
-				return Err(ErrorType::FreeLimitExceeded);
-			}
-
-			// only basic machine type is allowed under free plan
-			let machine_type_to_be_deployed = MACHINE_TYPES
-				.get()
-				.and_then(|machines| machines.get(&machine_type))
-				.ok_or(ErrorType::server_error("Failed to get machine type info"))?;
-
-			if machine_type_to_be_deployed != &(1, 2) {
-				return Err(ErrorType::FreeLimitExceeded);
-			}
-		}
 	}
 
 	todo!("Get limit on resource creation, max deployment and max volume depending on the users patr plan if not a byoc user");
@@ -261,16 +204,12 @@ pub async fn create_deployment(
 				machine_type as _,
 				deploy_on_push,
 				running_details.startup_probe.map(|probe| probe.port as i32),
-				running_details
-					.startup_probe
-					.map(|probe| probe.path),
+				running_details.startup_probe.map(|probe| probe.path),
 				running_details.startup_probe.map(|_| ExposedPortType::Http) as _,
 				running_details
 					.liveness_probe
 					.map(|probe| probe.port as i32),
-				running_details
-					.liveness_probe
-					.map(|probe| probe.path),
+				running_details.liveness_probe.map(|probe| probe.path),
 				running_details
 					.liveness_probe
 					.map(|_| ExposedPortType::Http) as _,
@@ -342,16 +281,12 @@ pub async fn create_deployment(
 				machine_type as _,
 				deploy_on_push,
 				running_details.startup_probe.map(|probe| probe.port as i32),
-				running_details
-					.startup_probe
-					.map(|probe| probe.path),
+				running_details.startup_probe.map(|probe| probe.path),
 				running_details.startup_probe.map(|_| ExposedPortType::Http) as _,
 				running_details
 					.liveness_probe
 					.map(|probe| probe.port as i32),
-				running_details
-					.liveness_probe
-					.map(|probe| probe.path),
+				running_details.liveness_probe.map(|probe| probe.path),
 				running_details
 					.liveness_probe
 					.map(|_| ExposedPortType::Http) as _,

@@ -94,7 +94,7 @@ async fn machine_type(
 	.into_iter()
 	.map(|machine| {
 		WithId::new(
-			machine.id.into(),
+			machine.id,
 			DeploymentMachineType {
 				cpu_count: machine.cpu_count,
 				memory_count: machine.memory_count,

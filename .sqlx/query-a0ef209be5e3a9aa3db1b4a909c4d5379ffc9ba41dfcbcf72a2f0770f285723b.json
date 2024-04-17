@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, cpu_count, memory_count FROM deployment_machine_type;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "cpu_count",
+        "type_info": "Int2"
+      },
+      {
+        "ordinal": 2,
+        "name": "memory_count",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a0ef209be5e3a9aa3db1b4a909c4d5379ffc9ba41dfcbcf72a2f0770f285723b"
+}
