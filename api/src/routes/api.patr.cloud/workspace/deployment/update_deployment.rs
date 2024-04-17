@@ -2,10 +2,7 @@ use std::{cmp::Ordering, collections::BTreeMap};
 
 use axum::{http::StatusCode, Router};
 use futures::sink::With;
-use models::{
-	api::workspace::infrastructure::deployment::*,
-	ErrorType,
-};
+use models::{api::workspace::infrastructure::deployment::*, ErrorType};
 use sqlx::query_as;
 use time::OffsetDateTime;
 
@@ -79,7 +76,7 @@ pub async fn update_deployment(
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
 	// Get volume size to check limit
-	let volume_size = if let Some(volume) = volumes {
+	let volume_size = if let Some(volume) = &volumes {
 		volume
 			.iter()
 			.map(|(_, volume)| volume.size as u32)
@@ -87,38 +84,6 @@ pub async fn update_deployment(
 	} else {
 		0
 	};
-
-	if todo!("Check if deployment in patr region and card not added") {
-		if let Some(machine_type) = machine_type {
-			// only basic machine type is allowed under free plan
-			let machine_type_to_be_deployed = MACHINE_TYPES
-				.get()
-				.and_then(|machines| machines.get(&machine_type))
-				.ok_or(ErrorType::server_error("Failed to get machine type info"))?;
-
-			if machine_type_to_be_deployed != &(1, 2) {
-				return Err(ErrorType::FreeLimitExceeded);
-			}
-		}
-		if let Some(max_horizontal_scale) = max_horizontal_scale {
-			if max_horizontal_scale > 1 {
-				return Err(ErrorType::FreeLimitExceeded);
-			}
-		}
-
-		if let Some(min_horizontal_scale) = min_horizontal_scale {
-			if min_horizontal_scale > 1 {
-				return Err(ErrorType::FreeLimitExceeded);
-			}
-		}
-
-		let volume_size_in_bytes = volume_size as usize * 1024 * 1024 * 1024;
-		if volume_size_in_bytes > constants::VOLUME_STORAGE_IN_BYTE {
-			return Err(ErrorType::FreeLimitExceeded);
-		}
-	}
-
-	todo!("Check if any workspace limit for volume is there for user");
 
 	// BEGIN DEFERRED CONSTRAINT
 	query!(
@@ -240,9 +205,9 @@ pub async fn update_deployment(
 		deploy_on_push,
 		min_horizontal_scale.map(|v| v as i16),
 		max_horizontal_scale.map(|v| v as i16),
-		startup_probe.map(|probe| probe.port as i32),
+		startup_probe.as_ref().map(|probe| probe.port as i32),
 		startup_probe.as_ref().map(|probe| probe.path.as_str()),
-		liveness_probe.map(|probe| probe.port as i32),
+		liveness_probe.as_ref().map(|probe| probe.port as i32),
 		liveness_probe.as_ref().map(|probe| probe.path.as_str()),
 		deployment_id as _
 	)
@@ -292,7 +257,7 @@ pub async fn update_deployment(
 		}
 	}
 
-	if let Some(updated_volumes) = volumes {
+	if let Some(updated_volumes) = &volumes {
 		let mut current_volumes = query!(
 			r#"
 				SELECT
@@ -316,7 +281,7 @@ pub async fn update_deployment(
 		.collect::<BTreeMap<_, _>>();
 
 		for (name, volume) in updated_volumes {
-			if let Some(value) = current_volumes.remove(&name) {
+			if let Some(value) = current_volumes.remove(name) {
 				// The new volume is there in the current volumes. Update it
 				let current_size = value.volume_size.as_u128() as u16;
 				let new_size = volume.size;

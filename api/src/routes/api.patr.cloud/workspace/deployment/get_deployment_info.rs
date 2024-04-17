@@ -3,10 +3,7 @@ use std::{cmp::Ordering, collections::BTreeMap};
 use axum::{http::StatusCode, Router};
 use futures::sink::With;
 use models::{
-	api::{
-		workspace::infrastructure::deployment::*,
-		WithId,
-	},
+	api::{workspace::infrastructure::deployment::*, WithId},
 	utils::StringifiedU16,
 	ErrorType,
 };
@@ -162,7 +159,7 @@ pub async fn get_deployment_info(
 	.await?
 	.map(|deployment| GetDeploymentInfoResponse {
 		deployment: WithId::new(
-			deployment.id.into(),
+			deployment.id,
 			Deployment {
 				name: deployment.name,
 				registry: if deployment.registry == PatrRegistry.to_string() {

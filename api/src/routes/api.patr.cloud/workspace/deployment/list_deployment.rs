@@ -3,10 +3,7 @@ use std::{cmp::Ordering, collections::BTreeMap};
 use axum::{http::StatusCode, Router};
 use futures::sink::With;
 use models::{
-	api::{
-		workspace::infrastructure::deployment::*,
-		WithId,
-	},
+	api::{workspace::infrastructure::deployment::*, WithId},
 	ErrorType,
 };
 use sqlx::query_as;
@@ -58,7 +55,7 @@ pub async fn list_deployment(
 	.into_iter()
 	.map(|deployment| {
 		WithId::new(
-			deployment.id.into(),
+			deployment.id,
 			Deployment {
 				name: deployment.name,
 				registry: if deployment.registry == PatrRegistry.to_string() {
