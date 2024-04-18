@@ -437,7 +437,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		)]
 		pub struct #request_name;
 
-		#[::preprocess::sync]
+		#[::preprocess::sync(strict_mode = true)]
 		/// The message that the server sends to the client.
 		///
 		/// The documentation for the endpoint is below:
