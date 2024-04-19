@@ -11,6 +11,15 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
+/// Delete a deployment
+/// 
+/// #Parameters
+/// - `workspace_id`: The workspace ID
+/// - `deployment_id`: The deployment ID
+/// 
+/// #Returns
+/// - `OK`: The deployment was deleted
+/// 
 pub async fn delete_deployment(
 	AuthenticatedAppRequest {
 		request:

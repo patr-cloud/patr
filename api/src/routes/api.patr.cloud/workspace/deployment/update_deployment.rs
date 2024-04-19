@@ -8,6 +8,26 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
+/// Update deployment
+/// 
+/// #Parameters
+/// - `workspace_id`: The workspace ID
+/// - `deployment_id`: The deployment ID
+/// - `name`: The deployment name
+/// - `machine_type`: The machine type
+/// - `deploy_on_push`: The deploy on push flag
+/// - `min_horizontal_scale`: The minimum horizontal scale
+/// - `max_horizontal_scale`: The maximum horizontal scale
+/// - `ports`: The ports
+/// - `environment_variables`: The environment variables
+/// - `startup_probe`: The startup probe
+/// - `liveness_probe`: The liveness probe
+/// - `config_mounts`: The config mounts
+/// - `volumes`: The volumes
+/// 
+/// #Returns
+/// - `OK`: The deployment was updated
+/// 
 pub async fn update_deployment(
 	AuthenticatedAppRequest {
 		request:

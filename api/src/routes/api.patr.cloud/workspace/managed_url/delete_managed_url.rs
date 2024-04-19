@@ -3,6 +3,15 @@ use models::{api::workspace::managed_url::*, prelude::*};
 
 use crate::prelude::*;
 
+/// Delete a managed URL
+/// 
+/// #Parameters
+/// - `workspace_id`: The workspace ID
+/// - `managed_url_id`: The managed URL ID
+/// 
+/// #Returns
+/// - `OK`: The managed URL was deleted
+/// 
 pub async fn delete_managed_url(
 	AuthenticatedAppRequest {
 		request:

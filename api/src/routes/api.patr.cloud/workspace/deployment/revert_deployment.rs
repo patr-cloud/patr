@@ -11,6 +11,16 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
+/// Revert deployment
+/// 
+/// #Parameters
+/// - `workspace_id`: The workspace ID
+/// - `deployment_id`: The deployment ID
+/// - `digest`: The digest
+/// 
+/// #Returns
+/// - `OK`: The deployment was reverted
+/// 
 pub async fn revert_deployment(
 	AuthenticatedAppRequest {
 		request:

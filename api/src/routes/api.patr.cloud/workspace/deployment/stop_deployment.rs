@@ -11,6 +11,15 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
+/// Stop deployment
+/// 
+/// #Parameters
+/// - `workspace_id`: The workspace ID
+/// - `deployment_id`: The deployment ID
+/// 
+/// #Returns
+/// - `OK`: The deployment was stopped
+/// 
 pub async fn stop_deployment(
 	AuthenticatedAppRequest {
 		request:

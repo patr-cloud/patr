@@ -3,6 +3,20 @@ use models::{api::workspace::managed_url::*, prelude::*};
 
 use crate::prelude::*;
 
+/// List managed URLs
+/// 
+/// #Parameters
+/// - `workspace_id`: The workspace ID
+/// - `order_by`: The order by
+/// - `order`: The order
+/// - `filter`: The filter
+/// - `count`: The count
+/// - `page`: The page
+/// 	
+/// #Returns
+/// - `urls`: The managed URLs and its details
+/// - `total_count`: The total count of managed URLs
+/// 
 pub async fn list_managed_url(
 	AuthenticatedAppRequest {
 		request:

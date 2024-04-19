@@ -11,6 +11,15 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
+/// List deployment history
+/// 
+/// #Parameters
+/// - `workspace_id`: The workspace ID
+/// - `deployment_id`: The deployment ID
+/// 
+/// #Returns
+/// - `deploys`: The deployment history
+/// 
 pub async fn list_deployment_history(
 	AuthenticatedAppRequest {
 		request:
