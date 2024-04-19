@@ -11,6 +11,14 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
+/// List deployments
+/// 
+/// #Parameters
+/// - `workspace_id`: The workspace ID
+/// 
+/// #Returns
+/// - `deployments`: The deployments and its details
+/// 
 pub async fn list_deployment(
 	AuthenticatedAppRequest {
 		request:

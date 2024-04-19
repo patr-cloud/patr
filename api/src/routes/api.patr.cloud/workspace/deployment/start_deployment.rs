@@ -11,6 +11,15 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
+/// Start deployment
+/// 
+/// #Parameters
+/// - `workspace_id`: The workspace ID
+/// - `deployment_id`: The deployment ID
+/// 
+/// #Returns
+/// - `OK`: The deployment was started
+/// 
 pub async fn start_deployment(
 	AuthenticatedAppRequest {
 		request:

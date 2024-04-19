@@ -3,6 +3,15 @@ use models::{api::workspace::managed_url::*, prelude::*};
 
 use crate::prelude::*;
 
+/// Verify the configuration of a managed URL
+/// 
+/// #Parameters
+/// - `workspace_id`: The workspace ID
+/// - `managed_url_id`: The managed URL ID
+///
+/// #Returns
+/// - `configured`: TODO
+/// 
 pub async fn verify_configuration(
 	AuthenticatedAppRequest {
 		request:

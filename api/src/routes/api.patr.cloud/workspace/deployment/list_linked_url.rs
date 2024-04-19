@@ -17,6 +17,16 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
+/// List linked URLs
+/// 
+/// #Parameters
+/// - `workspace_id`: The workspace ID
+/// - `deployment_id`: The deployment ID
+/// 
+/// #Returns
+/// - `urls`: The linked URLs
+/// - `total_count`: The total count of linked URLs
+/// 
 pub async fn list_linked_url(
 	AuthenticatedAppRequest {
 		request:

@@ -3,6 +3,18 @@ use models::{api::workspace::managed_url::*, prelude::*};
 
 use crate::prelude::*;
 
+/// Create a managed URL
+/// 
+/// #Parameters
+/// - `workspace_id`: The workspace ID
+/// - `sub_domain`: The sub domain
+/// - `domain_id`: The domain ID
+/// - `path`: The path
+/// - `url_type`: The URL type
+/// 
+/// #Returns
+/// - `id`: The managed URL ID
+/// 
 pub async fn create_managed_url(
 	AuthenticatedAppRequest {
 		request:

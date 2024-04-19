@@ -15,6 +15,20 @@ use time::OffsetDateTime;
 
 use crate::{models::deployment::MACHINE_TYPES, prelude::*};
 
+/// Create a deployment
+/// 
+/// # Parameters
+/// - `name` - The name of the deployment
+/// - `registry` - The registry to use for the deployment
+/// - `image_tag` - The tag of the image to deploy
+/// - `region` - The region to deploy the deployment in
+/// - `machine_type` - The machine type to use for the deployment
+/// - `running_details` - The running details of the deployment
+/// - `deploy_on_push` - Whether to deploy on push
+///
+/// # Returns
+/// - `id` - The ID of the created deployment
+/// 
 pub async fn create_deployment(
 	AuthenticatedAppRequest {
 		request:
