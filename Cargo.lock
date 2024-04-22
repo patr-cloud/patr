@@ -136,7 +136,6 @@ dependencies = [
  "serde_json",
  "sha2",
  "sqlx",
- "syn 2.0.60",
  "time",
  "tokio",
  "tokio-tungstenite",
