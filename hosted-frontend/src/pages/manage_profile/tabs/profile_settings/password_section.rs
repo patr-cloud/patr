@@ -137,7 +137,7 @@ pub fn PasswordSection() -> impl IntoView {
 
 							<p class="mt-md mb-xs txt-sm">"Enter OTP to confirm"</p>
 
-							<Input r#type="text" id="otp" />
+							<Input r#type=InputType::Text id="otp" />
 
 							<div>
 								<Link
