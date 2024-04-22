@@ -21,20 +21,27 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The name of the deployment
+		#[preprocess(trim, lowercase, regex = r"^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$")]
 		pub name: String,
 		/// The registry the deployment will use
+		#[preprocess(none)]
 		/// It can either be patr's registry or docker's registry
 		pub registry: DeploymentRegistry,
 		/// The image tag to use
+		#[preprocess(trim, lowercase)]
 		pub image_tag: String,
 		/// The region to deploy the deployment on
+		#[preprocess(none)]
 		pub region: Uuid,
 		/// The machine type the deployment pod will run on
 		/// Different machine types will have different resource allocation
+		#[preprocess(none)]
 		pub machine_type: Uuid,
 		/// The details of the deployment which contains information related to configuration
+		#[preprocess(none)]
 		pub running_details: DeploymentRunningDetails,
 		/// Option to start the deployment once it is created
+		#[preprocess(none)]
 		pub deploy_on_create: bool,
 	},
 	response = {

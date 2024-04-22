@@ -35,15 +35,20 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The username of the user signing up
+		#[preprocess(trim, lowercase, regex = "^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$")]
 		pub username: String,
 		/// The password
+		#[preprocess(none)]
 		pub password: String,
 		/// The first name of the user
+		#[preprocess(none)]
 		pub first_name: String,
 		/// The last name of the user
+		#[preprocess(none)]
 		pub last_name: String,
 		/// The recovery method the user would recover their account with
 		#[serde(flatten)]
+		#[preprocess(none)]
 		pub recovery_method: RecoveryMethod,
 	},
 );

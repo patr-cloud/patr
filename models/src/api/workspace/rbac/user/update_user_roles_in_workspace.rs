@@ -23,6 +23,7 @@ macros::declare_api_endpoint!(
 	request = {
 		/// The list of roles the user has after being
 		/// added to the workspace
+		#[preprocess(none)]
 		pub roles: Vec<Uuid>,
 	},
 );

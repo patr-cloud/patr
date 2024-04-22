@@ -26,18 +26,23 @@ macros::declare_api_endpoint!(
 	request = {
 		/// Change the name of the API token
 		#[serde(skip_serializing_if = "Option::is_none")]
+		#[preprocess(none)]
 		pub name: Option<String>,
 		/// Change the permissions of the API token
 		#[serde(skip_serializing_if = "Option::is_none")]
+		#[preprocess(none)]
 		pub permissions: Option<BTreeMap<Uuid, WorkspacePermission>>,
 		/// Change the time when the token becomes valid
 		#[serde(skip_serializing_if = "Option::is_none")]
+		#[preprocess(none)]
 		pub token_nbf: Option<OffsetDateTime>,
 		/// Change the time when the token expires
 		#[serde(skip_serializing_if = "Option::is_none")]
+		#[preprocess(none)]
 		pub token_exp: Option<OffsetDateTime>,
 		/// Change the list of allowed IPs for the token
 		#[serde(skip_serializing_if = "Option::is_none")]
+		#[preprocess(none)]
 		pub allowed_ips: Option<Vec<IpNetwork>>,
 	}
 );

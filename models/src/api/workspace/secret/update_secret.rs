@@ -22,8 +22,10 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The updated name of the secret
+		#[preprocess(trim, uppercase)]		
 		pub name: Option<String>,
 		/// The updated value of the secret
+		#[preprocess(trim)]
 		pub value: Option<String>,
 	}
 );

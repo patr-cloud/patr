@@ -22,12 +22,16 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The static site name
+		#[preprocess(trim, lowercase, regex = "^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$")]
 		pub name: String,
 		/// Release message (eg: v1.0.0)
+		#[preprocess(trim, lowercase)]
 		pub message: String,
 		/// The static site index.html file
+		#[preprocess(trim, lowercase)]
 		pub file: Option<String>,
 		/// Static site details which included metrics, etc
+		#[preprocess(none)]
 		pub static_site_details: StaticSiteDetails,
 	},
 	response = {

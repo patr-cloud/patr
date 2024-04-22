@@ -19,11 +19,13 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The name of the domain
+		#[preprocess(domain)]
 		pub domain: String,
 		/// The type of nameserver
 		/// It can be
 		/// - Internal: The nameserver is managed by Patr
 		/// - External: The nameserver is managed by the user
+		#[preprocess(none)]
 		pub nameserver_type: DomainNameserverType,
 	},
 	response = {

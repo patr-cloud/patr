@@ -12,10 +12,13 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The user ID of the user
+		#[preprocess(trim, lowercase)]
 		pub user_id: String,
 		/// The OTP sent to the recovery method
+		#[preprocess(none)]
 		pub verification_token: String,
 		/// The new password entered by the user
+		#[preprocess(none)]
 		pub password: String,
 	},
 );

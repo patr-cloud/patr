@@ -18,8 +18,10 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The new email address
+		#[preprocess(email)]
 		pub email: String,
 		/// The verification token sent to the new email address
+		#[preprocess(none)]
 		pub verification_token: String,
 	},
 );

@@ -12,8 +12,10 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The username of the user
+		#[preprocess(trim, lowercase)]
 		pub username: String,
 		/// The password of the user
+		#[preprocess(none)]
 		pub password: String,
 	},
 );
