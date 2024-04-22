@@ -23,8 +23,10 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The new index.html file
+		#[preprocess(trim, lowercase)]
 		pub file: String,
 		/// The release note (eg: v1.0.0)
+		#[preprocess(trim, lowercase)]
 		pub message: String
 	},
 	response = {

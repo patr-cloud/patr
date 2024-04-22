@@ -27,8 +27,10 @@ macros::declare_api_endpoint!(
 	request = {
 		/// The user identifier. It can either be a username or an email ID
 		/// depending on what user enters
+		#[preprocess(trim, lowercase)]
 		pub user_id: String,
 		/// Recovery method the user wants to use to reset his password
+		#[preprocess(none)]
 		pub preferred_recovery_option: PreferredRecoveryOption,
 	},
 );

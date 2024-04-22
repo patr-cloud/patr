@@ -20,8 +20,10 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The name of the secret
+		#[preprocess(trim, uppercase)]
 		pub name: String,
 		/// The value of the secret, i.e, the secret content
+		#[preprocess(trim)]
 		pub value: String,
 	},
 	response = {

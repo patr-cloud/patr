@@ -16,8 +16,10 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The first name of the user.
+		#[preprocess(none)]
 		pub first_name: Option<String>,
 		/// The last name of the user.
+		#[preprocess(none)]
 		pub last_name: Option<String>,
 		// TODO MFA stuff
 	},

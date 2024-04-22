@@ -13,8 +13,10 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The username of the user verifying their account
+		#[preprocess(trim, lowercase)]
 		pub username: String,
 		/// The OTP which will validate the verification
+		#[preprocess(none)]
 		pub verification_token: String,
 	},
 	response = {

@@ -19,6 +19,7 @@ macros::declare_api_endpoint!(
 	request = {
 		/// The new phone number. A `None` value will remove the phone number. This is only
 		/// allowed if the user has an email address
+		#[preprocess(none)]
 		pub phone_number: Option<UserPhoneNumber>,
 	},
 );

@@ -22,16 +22,22 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The name of the database
+		#[preprocess(trim, lowercase, regex = r"^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$")]
 		pub name: String,
 		/// The database engine (MySQL, MongoDB, Postgres, Redis)
+		#[preprocess(none)]
 		pub engine: DatabaseEngine,
 		/// The database base plan ID (CPU, Memory, Volume)
+		#[preprocess(none)]
 		pub database_plan_id: Uuid,
 		/// The region to deploy the database on
+		#[preprocess(none)]
 		pub region: Uuid,
 		/// The database version to use
+		#[preprocess(trim, lowercase)]
 		pub version: String,
 		/// The number of database instances to run following a master-slave architecture
+		#[preprocess(type = "u16")]
 		pub num_node: u16
 	},
 	response = {

@@ -20,7 +20,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The name of the repository to create.
-		#[preprocess(regex = r"^[a-z0-9_-]{2,255}$", trim, lowercase)]
+		#[preprocess(trim, lowercase, regex = "^[a-z0-9_-]{2,255}$")]
 		pub name: String,
 	},
 	response = {

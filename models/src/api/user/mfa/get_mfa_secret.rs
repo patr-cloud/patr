@@ -13,6 +13,7 @@ macros::declare_api_endpoint!(
 	},
 	response = {
 		/// The MFA secret used to verify
+		#[preprocess(trim)]
 		pub secret: String,
 	},
 );

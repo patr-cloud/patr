@@ -13,6 +13,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The one time password to deactivate mfa
+		#[preprocess(none)]
 		pub otp: String,
 	},
 );

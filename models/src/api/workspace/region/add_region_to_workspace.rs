@@ -21,8 +21,10 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// Name of the region
+		#[preprocess(lowercase)]
 		pub name: String,
 		/// The region data
+		#[preprocess(none)]
 		pub data: AddRegionToWorkspaceData,
 	},
 	response = {

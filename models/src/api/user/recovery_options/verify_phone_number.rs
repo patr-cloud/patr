@@ -18,8 +18,10 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The new phone number
+		#[preprocess(none)]
 		pub phone_number: UserPhoneNumber,
 		/// The verification token sent to the new phone number
+		#[preprocess(none)]
 		pub verification_token: String,
 	},
 );

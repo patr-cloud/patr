@@ -18,6 +18,7 @@ macros::declare_api_endpoint!(
 	request = {
 		/// The token to create
 		#[serde(flatten)]
+		#[preprocess(none)]
 		pub token: UserApiToken,
 	},
 	response = {

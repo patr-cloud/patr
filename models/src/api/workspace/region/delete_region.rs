@@ -25,6 +25,7 @@ macros::declare_api_endpoint!(
 		/// If hard_delete not present, then take false as default
 		/// NOTE: hard_delete should be shown in frontend iff RegionStatus::Active,
 		///       else the region won't get deleted due to kubeconfig error
+		#[preprocess(none)]
 		pub hard_delete: bool,
 	}
 );
