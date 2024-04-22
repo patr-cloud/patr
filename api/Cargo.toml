@@ -60,6 +60,7 @@ sqlx = { workspace = true, features = [
     "ipnetwork",
     "postgres",
 ] }
+syn = { workspace = true, features = ["default", "full"] }
 time = { workspace = true, features = ["default", "serde-human-readable"] }
 tokio = { workspace = true, features = ["default", "full"] }
 tokio-tungstenite = { workspace = true, features = [

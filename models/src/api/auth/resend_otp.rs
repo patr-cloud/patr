@@ -12,7 +12,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The username of the user
-		#[preprocess(trim, lowercase)]
+		#[preprocess(length(min = 4, max = 10), trim, lowercase, regex = "^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$")]
 		pub username: String,
 		/// The password of the user
 		#[preprocess(none)]

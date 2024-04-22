@@ -5,7 +5,6 @@ macros::declare_api_endpoint!(
 	UpdateWorkspaceInfo,
 	PATCH "/workspace/:workspace_id" {
 		/// The ID of the workspace to update
-		#[preprocess(none)]
 		pub workspace_id: Uuid,
 	},
 	request_headers = {
