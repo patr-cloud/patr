@@ -17,6 +17,8 @@ path = "src/main.rs"
 anyhow = { workspace = true, features = ["default"] }
 clap = { workspace = true, features = ["default", "derive"] }
 comfy-table = { workspace = true, features = ["default"] }
+config = { workspace = true, features = ["default"] }
+dirs = { workspace = true, features = [] }
 http = { workspace = true, features = ["default"] }
 models = { workspace = true, features = [] }
 open = { workspace = true, features = [] }

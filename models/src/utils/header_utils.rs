@@ -105,6 +105,27 @@ impl Header for BearerToken {
 	}
 }
 
+impl Serialize for BearerToken {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: serde::Serializer,
+	{
+		serializer.serialize_str(self.0.token())
+	}
+}
+
+impl<'de> Deserialize<'de> for BearerToken {
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where
+		D: serde::Deserializer<'de>,
+	{
+		Authorization::bearer(&String::deserialize(deserializer)?)
+			.map_err(serde::de::Error::custom)
+			.map(|Authorization(val)| val)
+			.map(Self)
+	}
+}
+
 /// This struct represents a login ID. It is used to identify a user's login in
 /// the database. A user's login can be any way they access the API - Either
 /// through the website, through an API request, the CLI or from an OAuth

@@ -1,4 +1,5 @@
 use clap::{Args, Parser, Subcommand};
+use models::ApiErrorResponse;
 
 use self::{login::LoginArgs, workspaced::WorkspacedCommands};
 use crate::prelude::*;
@@ -30,6 +31,9 @@ pub struct GlobalArgs {
 	/// The output type of each command. Defaults to text.
 	#[arg(short = 'o', default_value_t = OutputType::Text)]
 	pub output: OutputType,
+	/// The token used to authenticate with the API, instead of the login
+	/// credentials
+	pub token: Option<String>,
 }
 
 /// A list of all the commands that can be called on the CLI.
@@ -50,12 +54,16 @@ pub enum GlobalCommands {
 }
 
 impl CommandExecutor for GlobalCommands {
-	async fn execute(self, global_args: &GlobalArgs) -> anyhow::Result<CommandOutput> {
+	async fn execute(
+		self,
+		global_args: GlobalArgs,
+		state: AppState,
+	) -> Result<CommandOutput, ApiErrorResponse> {
 		match self {
-			Self::Login(args) => login::execute(global_args, args).await,
-			Self::Logout => logout::execute(global_args).await,
-			Self::Info => info::execute(global_args).await,
-			Self::Workspaced(commands) => commands.execute(global_args).await,
+			Self::Login(args) => login::execute(args, global_args, state).await,
+			Self::Logout => logout::execute(global_args, state).await,
+			Self::Info => info::execute(global_args, state).await,
+			Self::Workspaced(commands) => commands.execute(global_args, state).await,
 		}
 	}
 }
