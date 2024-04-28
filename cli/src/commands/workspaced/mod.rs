@@ -1,8 +1,9 @@
 use clap::Subcommand;
+use models::ApiErrorResponse;
 
 use self::workspace::WorkspaceCommands;
 use super::{CommandExecutor, GlobalArgs};
-use crate::CommandOutput;
+use crate::prelude::*;
 
 mod infrastructure;
 mod workspace;
@@ -20,9 +21,13 @@ pub enum WorkspacedCommands {
 }
 
 impl CommandExecutor for WorkspacedCommands {
-	async fn execute(self, global_args: &GlobalArgs) -> anyhow::Result<CommandOutput> {
+	async fn execute(
+		self,
+		global_args: GlobalArgs,
+		state: AppState,
+	) -> Result<CommandOutput, ApiErrorResponse> {
 		match self {
-			Self::WorkspaceCommands(commands) => commands.execute(global_args).await,
+			Self::WorkspaceCommands(commands) => commands.execute(global_args, state).await,
 			/* Self::InfrastructureCommands(commands) => {
 			 * 	commands.execute(global_args, writer).await
 			 * }

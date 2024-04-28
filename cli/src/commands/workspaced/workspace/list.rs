@@ -1,6 +1,11 @@
-use super::GlobalArgs;
-use crate::CommandOutput;
+use models::ApiErrorResponse;
 
-pub(super) async fn execute(_global_args: &GlobalArgs, _: ()) -> anyhow::Result<CommandOutput> {
+use crate::prelude::*;
+
+pub(super) async fn execute(
+	global_args: GlobalArgs,
+	(): (),
+	state: AppState,
+) -> Result<CommandOutput, ApiErrorResponse> {
 	todo!()
 }

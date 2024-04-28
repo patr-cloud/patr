@@ -84,6 +84,26 @@ pub struct ApiSuccessResponseBody<T> {
 	pub response: T,
 }
 
+impl<T> ApiSuccessResponseBody<T> {
+	/// Creates a new [`ApiSuccessResponseBody`] with the given response.
+	pub fn new(response: T) -> Self {
+		Self {
+			success: True,
+			response,
+		}
+	}
+}
+
+impl ApiSuccessResponseBody<()> {
+	/// Creates a new [`ApiSuccessResponseBody`] with an empty response.
+	pub fn empty() -> Self {
+		Self {
+			success: True,
+			response: (),
+		}
+	}
+}
+
 /// This struct represents an error response from the API. It contains the
 /// status code and the body of the response.
 #[derive(Debug, Clone)]
@@ -134,6 +154,15 @@ impl ApiErrorResponse {
 impl IntoResponse for ApiErrorResponse {
 	fn into_response(self) -> axum::response::Response {
 		(self.status_code, Json(self.body)).into_response()
+	}
+}
+
+impl<E> From<E> for ApiErrorResponse
+where
+	E: std::error::Error,
+{
+	fn from(err: E) -> Self {
+		ApiErrorResponse::internal_error(err.to_string())
 	}
 }
 

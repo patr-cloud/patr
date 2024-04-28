@@ -1,7 +1,7 @@
 use clap::Args;
+use models::ApiErrorResponse;
 
-use super::GlobalArgs;
-use crate::CommandOutput;
+use crate::prelude::*;
 
 /// The arguments that can be passed to the switch workspace command.
 #[derive(Debug, Clone, Args)]
@@ -15,8 +15,9 @@ pub struct RenameArgs {
 }
 
 pub(super) async fn execute(
-	_global_args: &GlobalArgs,
-	_args: RenameArgs,
-) -> anyhow::Result<CommandOutput> {
+	global_args: GlobalArgs,
+	args: RenameArgs,
+	state: AppState,
+) -> Result<CommandOutput, ApiErrorResponse> {
 	todo!()
 }

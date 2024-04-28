@@ -1,10 +1,8 @@
 use clap::Subcommand;
+use models::ApiErrorResponse;
 
 use self::{create::CreateArgs, rename::RenameArgs, switch::SwitchArgs};
-use crate::{
-	commands::{CommandExecutor, GlobalArgs},
-	CommandOutput,
-};
+use crate::prelude::*;
 
 mod create;
 mod list;
@@ -38,26 +36,38 @@ pub enum ContextCommands {
 }
 
 impl CommandExecutor for WorkspaceCommands {
-	async fn execute(self, global_args: &GlobalArgs) -> anyhow::Result<CommandOutput> {
+	async fn execute(
+		self,
+		global_args: GlobalArgs,
+		state: AppState,
+	) -> Result<CommandOutput, ApiErrorResponse> {
 		match self {
-			Self::WorkspaceAction(commands) => commands.execute(global_args).await,
+			Self::WorkspaceAction(commands) => commands.execute(global_args, state).await,
 			Self::Context(ContextCommands::Switch { name }) => {
 				WorkspaceActionCommands::Switch(SwitchArgs { name })
-					.execute(global_args)
+					.execute(global_args, state)
 					.await
 			}
-			Self::ListWorkspaces => WorkspaceActionCommands::List.execute(global_args).await,
+			Self::ListWorkspaces => {
+				WorkspaceActionCommands::List
+					.execute(global_args, state)
+					.await
+			}
 		}
 	}
 }
 
 impl CommandExecutor for WorkspaceActionCommands {
-	async fn execute(self, global_args: &GlobalArgs) -> anyhow::Result<CommandOutput> {
+	async fn execute(
+		self,
+		global_args: GlobalArgs,
+		state: AppState,
+	) -> Result<CommandOutput, ApiErrorResponse> {
 		match self {
-			Self::Create(args) => create::execute(global_args, args).await,
-			Self::Switch(args) => switch::execute(global_args, args).await,
-			Self::List => list::execute(global_args, ()).await,
-			Self::Rename(args) => rename::execute(global_args, args).await,
+			Self::Create(args) => create::execute(global_args, args, state).await,
+			Self::Switch(args) => switch::execute(global_args, args, state).await,
+			Self::List => list::execute(global_args, (), state).await,
+			Self::Rename(args) => rename::execute(global_args, args, state).await,
 		}
 	}
 }
