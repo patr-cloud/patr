@@ -128,12 +128,10 @@ async fn delete_docker_repository_image_in_registry(
 	// 404 => No Such Repository Error
 
 	let response_status = response.status();
-	if !response_status.is_success() {
-		if response_status != 404 || response_status != 400 {
-			return Err(ErrorType::server_error(
-				"Failed to delete repository from registry",
-			));
-		}
+	if !response_status.is_success() && (response_status != 404 || response_status != 400) {
+		return Err(ErrorType::server_error(
+			"Failed to delete repository from registry",
+		));
 	}
 
 	Ok(())

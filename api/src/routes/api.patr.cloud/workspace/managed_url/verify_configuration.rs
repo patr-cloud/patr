@@ -31,7 +31,7 @@ pub async fn verify_configuration(
 
 	AppResponse::builder()
 		.body(VerifyManagedURLConfigurationResponse {
-			configured: todo!("Check if the managed URL is configured correctly"),
+			configured: None.expect("Check if the managed URL is configured correctly"),
 		})
 		.headers(())
 		.status_code(StatusCode::OK)

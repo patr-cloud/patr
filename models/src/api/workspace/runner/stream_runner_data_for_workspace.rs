@@ -22,9 +22,13 @@ macros::declare_stream_endpoint!(
 	},
 	server_msg = {
 		/// The user has created a new deployment on their account
-		DeploymentCreated(Deployment),
+		DeploymentCreated(WithId<Deployment>),
 		/// The user has updated a deployment on their account
-		DeploymentUpdated(Deployment),
+		DeploymentUpdated {
+			id: Uuid,
+			old: Deployment,
+			new: Deployment,
+		},
 		/// The user has deleted a deployment on their account
 		DeploymentDeleted(Uuid),
 		/// The user has requested a ping, and the server is responding with a pong

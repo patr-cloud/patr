@@ -41,7 +41,7 @@
         "wayy",
         "Workspaced"
     ],
-    "nixEnvSelector.nixFile": "${workspaceRoot}/shell.nix",
+    "nixEnvSelector.nixFile": "${workspaceFolder}/shell.nix",
     "rust-analyzer.showUnlinkedFileNotification": false,
     "editor.formatOnSave": true,
 }

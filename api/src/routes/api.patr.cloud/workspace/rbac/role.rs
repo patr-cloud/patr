@@ -1,5 +1,5 @@
 use axum::{http::StatusCode, Router};
-use models::{api::workspace::rbac::role::*, ApiRequest, ErrorType};
+use models::api::workspace::rbac::role::*;
 
 use crate::prelude::*;
 

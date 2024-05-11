@@ -447,6 +447,8 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			Debug,
 			Clone,
 			PartialEq,
+			::serde::Serialize,
+			::serde::Deserialize,
 		)]
 		pub enum #server_msg_name {
 			#server_msg_body

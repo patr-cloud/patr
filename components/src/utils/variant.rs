@@ -31,7 +31,7 @@ impl SecondaryColorVariant {
 /// Link Variant
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Variant {
-	/// A Normal Buttton. To be used with
+	/// A Normal Button. To be used with the Link Component
 	#[default]
 	Button,
 	Link,

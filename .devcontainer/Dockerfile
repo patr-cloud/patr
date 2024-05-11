@@ -4,15 +4,28 @@ FROM ubuntu:jammy
 SHELL ["/bin/bash", "-c"]
 
 # Install all deps
-RUN apt update && apt install -y build-essential clang git pkg-config libssl-dev docker.io postgresql-client sudo sed curl inetutils-ping telnet bash-completion nano dumb-init libnss3-tools ca-certificates jq apt-transport-https software-properties-common
-
-WORKDIR /tmp/mold
-RUN git clone --branch stable https://github.com/rui314/mold.git .
-RUN ./install-build-deps.sh
-RUN cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=c++ -B build
-RUN cmake --build build -j$(nproc)
-RUN cmake --build build --target install
-RUN rm -rf /tmp/mold
+RUN apt update && apt install -y \
+	build-essential \
+	clang \
+	git \
+	pkg-config \
+	libssl-dev \
+	docker.io \
+	postgresql-client \
+	sudo \
+	sed \
+	curl \
+	inetutils-ping \
+	telnet \
+	bash-completion \
+	nano \
+	dumb-init \
+	libnss3-tools \
+	ca-certificates \
+	jq \
+	apt-transport-https \
+	software-properties-common \
+	mold
 
 # Setup user accounts
 WORKDIR /etc/container-init-data
