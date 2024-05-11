@@ -3,6 +3,7 @@ use axum::{
 	response::IntoResponse,
 };
 
+/// Handles the `GET /v2/` route.
 #[axum::debug_handler]
 pub(super) async fn handle() -> impl IntoResponse {
 	(

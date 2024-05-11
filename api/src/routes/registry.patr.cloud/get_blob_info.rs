@@ -24,9 +24,12 @@ use crate::prelude::*;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PathParams {
+	/// The workspace ID of the repository
 	workspace_id: Uuid,
+	/// The name of the repository
 	#[preprocess(regex = r"[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*")]
 	repo_name: String,
+	/// The digest of the blob
 	#[preprocess(lowercase, trim)]
 	digest: String,
 }

@@ -17,9 +17,12 @@ use crate::prelude::*;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PathParams {
+	/// The workspace ID of the repository
 	workspace_id: Uuid,
+	/// The name of the repository
 	#[preprocess(regex = r"[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*")]
 	repo_name: String,
+	/// The reference of the manifest
 	#[preprocess(
 		trim,
 		lowercase,
@@ -335,6 +338,8 @@ server: cloudflare
 }
 */
 
+/// Handles the `GET /v2/{workspace_id}/{repo_name}/manifests/{reference}`
+/// route.
 #[axum::debug_handler]
 pub(super) async fn handle(
 	_method: Method,

@@ -191,6 +191,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.with_state(state.clone())
 }
 
+/// Get the S3 object name for a blob.
 fn get_s3_object_name_for_blob(blob: &str) -> String {
 	format!("registry/blobs/{blob}")
 }
