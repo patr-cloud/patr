@@ -42,14 +42,14 @@ pub fn StaticSiteDashboard() -> impl IntoView {
 
 						<PageDescription
 							description="Deploy And Manage Static Sites using Patr"
-							doc_link=Some("https://docs.patr.cloud/features/static-sites/".to_owned())
+							doc_link=Some(
+								"https://docs.patr.cloud/features/static-sites/".to_owned(),
+							)
 						/>
+
 					</div>
 
-					<Link
-						r#type=Variant::Button
-						style_variant=LinkStyleVariant::Contained
-					>
+					<Link r#type=Variant::Button style_variant=LinkStyleVariant::Contained>
 						"CREATE SECRET"
 						<Icon
 							icon=IconType::Plus
@@ -65,14 +65,11 @@ pub fn StaticSiteDashboard() -> impl IntoView {
 				<DashboardContainer
 					gap=Size::Large
 					render_items=view! {
-						<For
-							each=move || data.get()
-							key=|state| state.id.clone()
-							let:child
-						>
-							<StaticSiteCard static_site=child />
+						<For each=move || data.get() key=|state| state.id.clone() let:child>
+							<StaticSiteCard static_site=child/>
 						</For>
-					}.into_view()
+					}
+						.into_view()
 				/>
 			</ContainerBody>
 

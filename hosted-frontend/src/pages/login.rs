@@ -47,7 +47,7 @@ fn LoginForm() -> impl IntoView {
 			</div>
 			<Link
 				should_submit=true
-				r#type=Variant::Button
+				r#type=Variant::Link
 				class="btn ml-auto mt-md"
 				style_variant=LinkStyleVariant::Contained
 			>

@@ -49,17 +49,15 @@ pub fn DatabaseCard(
 					{deployment.get().name}
 				</h4>
 
-				<StatusBadge
-					status=Status::Live
-					class="mb-xxs ml-xxs"
-				/>
+				<StatusBadge status=Status::Live class="mb-xxs ml-xxs"/>
 			</div>
 
 			<div class="fr-fs-fs txt-white full-width f-wrap my-auto">
-				{
-					items
-						.into_iter()
-						.map(|item| view! {
+
+				{items
+					.into_iter()
+					.map(|item| {
+						view! {
 							<div class="half-width p-xxs">
 								<div class="bg-secondary-medium br-sm px-lg py-sm fc-ct-fs">
 									<span className="letter-sp-md txt-xxs txt-grey">
@@ -70,18 +68,15 @@ pub fn DatabaseCard(
 									</span>
 								</div>
 							</div>
-						})
-						.collect::<Vec<_>>()
-				}
+						}
+					})
+					.collect::<Vec<_>>()}
+
 			</div>
 			<div class="fr-fs-ct mt-xs full-width px-xxs">
 				<Link class="letter-sp-md  txt-sm fr-fs-ct">
 					"MANAGE DATABASE"
-					<Icon
-						icon=IconType::ChevronRight
-						size=Size::ExtraSmall
-						color=Color::Primary
-					/>
+					<Icon icon=IconType::ChevronRight size=Size::ExtraSmall color=Color::Primary/>
 				</Link>
 			</div>
 		</div>

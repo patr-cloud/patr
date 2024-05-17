@@ -44,19 +44,17 @@ pub fn DatabaseDashboard() -> impl IntoView {
 			<ContainerHead>
 				<div class="fr-sb-ct full-width">
 					<div class="fc-fs-fs">
-							<PageTitleContainer>
-								<PageTitle icon_position=PageTitleIconPosition::End>
-									"Infrastructure"
-								</PageTitle>
-								<PageTitle variant=PageTitleVariant::SubHeading>
-									"Database"
-								</PageTitle>
-							</PageTitleContainer>
+						<PageTitleContainer>
+							<PageTitle icon_position=PageTitleIconPosition::End>
+								"Infrastructure"
+							</PageTitle>
+							<PageTitle variant=PageTitleVariant::SubHeading>"Database"</PageTitle>
+						</PageTitleContainer>
 
-							<PageDescription
-								description="Create and manage Databases using Patr."
-								doc_link=Some("https://docs.patr.cloud/features/databases/".to_owned())
-							/>
+						<PageDescription
+							description="Create and manage Databases using Patr."
+							doc_link=Some("https://docs.patr.cloud/features/databases/".to_owned())
+						/>
 					</div>
 
 					<Link r#type=Variant::Button style_variant=LinkStyleVariant::Contained>
@@ -75,15 +73,12 @@ pub fn DatabaseDashboard() -> impl IntoView {
 				<DashboardContainer
 					gap=Size::Large
 					render_items=view! {
-						<For
-							each=move || data.get()
-							key=|state| state.id
-							let:child
-						>
-							<DatabaseCard deployment=child />
+						<For each=move || data.get() key=|state| state.id let:child>
+							<DatabaseCard deployment=child/>
 						</For>
 					}
 				/>
+
 			</ContainerBody>
 		</ContainerMain>
 	}

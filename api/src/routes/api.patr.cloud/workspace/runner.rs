@@ -38,18 +38,24 @@ async fn stream_runner_data_for_workspace(
 	AppResponse::builder()
 		.body(GenericResponse(
 			body.0
-				.on_upgrade(move |mut websocket| async {
-					let mut pub_sub = redis.create_pub_sub();
+				.on_upgrade(move |mut websocket| async move {
+					let result: Result<(), Box<dyn std::error::Error>> = try {
+						let mut pub_sub = redis.create_pub_sub();
 
-					pub_sub
-						.subscribe(format!("{}/runner/{}/stream", workspace_id, runner_id))
-						.await?;
+						pub_sub
+							.subscribe(format!("{}/runner/{}/stream", workspace_id, runner_id))
+							.await?;
 
-					while let Some(Ok(data)) = pub_sub.next().await {
-						let data = serde_json::from_slice::<StreamRunnerDataForWorkspaceServerMsg>(
-							&data.payload,
-						)?;
-						websocket.send(Message::Item(data)).await?;
+						while let Some(Ok(data)) = pub_sub.next().await {
+							let data = serde_json::from_slice::<
+								StreamRunnerDataForWorkspaceServerMsg,
+							>(&data.payload)?;
+							websocket.send(Message::Item(data)).await?;
+						}
+					};
+
+					if let Err(e) = result {
+						error!("Error streaming runner data: {:?}", e);
 					}
 				})
 				.into_response(),

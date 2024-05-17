@@ -65,15 +65,16 @@ pub fn DeploymentDashboard() -> impl IntoView {
 							<PageTitle icon_position=PageTitleIconPosition::End>
 								"Infrastructure"
 							</PageTitle>
-							<PageTitle variant=PageTitleVariant::SubHeading>
-								"Deployment"
-							</PageTitle>
+							<PageTitle variant=PageTitleVariant::SubHeading>"Deployment"</PageTitle>
 						</PageTitleContainer>
 
 						<PageDescription
 							description="Create and Manage Deployments with ease using Patr."
-							doc_link=Some("https://docs.patr.cloud/features/deployments/".to_owned())
+							doc_link=Some(
+								"https://docs.patr.cloud/features/deployments/".to_owned(),
+							)
 						/>
+
 					</div>
 
 					<Link r#type=Variant::Button style_variant=LinkStyleVariant::Contained>
@@ -92,15 +93,12 @@ pub fn DeploymentDashboard() -> impl IntoView {
 				<DashboardContainer
 					gap=Size::Large
 					render_items=view! {
-						<For
-							each=move || data.get()
-							key=|state| state.id.clone()
-							let:child
-						>
-							<DeploymentCard deployment=child />
+						<For each=move || data.get() key=|state| state.id.clone() let:child>
+							<DeploymentCard deployment=child/>
 						</For>
 					}
 				/>
+
 			</ContainerBody>
 		</ContainerMain>
 	}

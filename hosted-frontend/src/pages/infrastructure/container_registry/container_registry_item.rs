@@ -14,10 +14,8 @@ pub fn ContainerRegistryCard(item: ContainerRegistryItem) -> impl IntoView {
 			<td class="flex-col-2 fr-ct-ct">{item.size}</td>
 			<td class="flex-col-4 fr-ct-ct">{item.date_created}</td>
 			<td class="flex-col-1 fr-fe-ct">
-				<button
-					class="btn-icon"
-				>
-					<Icon icon=IconType::Trash2 size=Size::ExtraSmall color=Color::Error />
+				<button class="btn-icon">
+					<Icon icon=IconType::Trash2 size=Size::ExtraSmall color=Color::Error/>
 				</button>
 			</td>
 		</tr>

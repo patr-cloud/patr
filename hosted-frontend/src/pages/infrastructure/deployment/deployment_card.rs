@@ -52,28 +52,26 @@ pub fn DeploymentCard(
 					{deployment.get().name}
 				</h4>
 
-				<StatusBadge status=deployment.get().status />
+				<StatusBadge status=deployment.get().status/>
 			</div>
 
 			<div class="fr-fs-fs txt-white full-width f-wrap my-auto">
-				{
-					items
-						.into_iter()
-						.map(|item| view! {
+
+				{items
+					.into_iter()
+					.map(|item| {
+						view! {
 							<div class="half-width p-xxs">
 								<div class="bg-secondary-medium br-sm px-lg py-sm fc-ct-fs">
-									<span class="letter-sp-md txt-xxs txt-grey">
-										{item.label}
-									</span>
+									<span class="letter-sp-md txt-xxs txt-grey">{item.label}</span>
 									<span class="txt-primary w-15 txt-of-ellipsis of-hidden">
 										{item.value}
 									</span>
 								</div>
 							</div>
-						})
-						.collect::<Vec<_>>()
-				}
-				<div class="half-width p-xxs">
+						}
+					})
+					.collect::<Vec<_>>()} <div class="half-width p-xxs">
 					<Link class="bg-secondary-medium br-sm px-lg py-sm fc-ct-fs full-width">
 						<span class="letter-sp-md txt-xxs txt-grey">"LIVE LINKS"</span>
 						<span class="txt-primary w-15 txt-of-ellipsis of-hidden fr-fs-ct">
@@ -101,11 +99,7 @@ pub fn DeploymentCard(
 
 				<Link class="letter-sp-md txt-sm fr-fs-ct">
 					"Manage Deployment"
-					<Icon
-						icon=IconType::ChevronRight
-						size=Size::ExtraSmall
-						color=Color::Primary
-					/>
+					<Icon icon=IconType::ChevronRight size=Size::ExtraSmall color=Color::Primary/>
 				</Link>
 			</div>
 		</div>
