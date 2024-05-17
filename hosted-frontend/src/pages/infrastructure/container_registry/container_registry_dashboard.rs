@@ -38,22 +38,20 @@ pub fn ContainerRegistryDashboard() -> impl IntoView {
 				<div class="fr-sb-ct full-width">
 					<div class="fc-fs-fs">
 						<PageTitleContainer>
-							<PageTitle>
-								"Container Registry"
-							</PageTitle>
+							<PageTitle>"Container Registry"</PageTitle>
 						</PageTitleContainer>
 
 						<PageDescription
 							description="Create and manage your Repositories on our private, secure
 							in-built Docker Registry."
-							doc_link=Some("https://docs.patr.cloud/features/container-registry/".to_owned())
+							doc_link=Some(
+								"https://docs.patr.cloud/features/container-registry/".to_owned(),
+							)
 						/>
+
 					</div>
 
-					<Link
-						r#type=Variant::Button
-						style_variant=LinkStyleVariant::Contained
-					>
+					<Link r#type=Variant::Button style_variant=LinkStyleVariant::Contained>
 						"CREATE REPOSITORY"
 						<Icon
 							icon=IconType::ChevronRight
@@ -72,17 +70,15 @@ pub fn ContainerRegistryDashboard() -> impl IntoView {
 						"Repository".into_view(),
 						"Size".into_view(),
 						"Date Created".into_view(),
-						"".into_view()
+						"".into_view(),
 					]
+
 					render_rows=view! {
-						<For
-							each=move || data.get()
-							key=|state| state.id
-							let:child
-						>
-							<ContainerRegistryCard item=child />
+						<For each=move || data.get() key=|state| state.id let:child>
+							<ContainerRegistryCard item=child/>
 						</For>
-					}.into_view()
+					}
+						.into_view()
 				/>
 			</ContainerBody>
 		</ContainerMain>

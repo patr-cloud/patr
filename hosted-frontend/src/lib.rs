@@ -44,18 +44,18 @@ pub fn render() -> impl IntoView {
 	provide_meta_context();
 	view! {
 		<>
-			<Meta charset="utf-8" />
-			<MetaLink rel="shortcut icon" href="/favicon.svg" type_="image/svg+xml" />
-			<MetaLink rel="apple-touch-icon" href="/favicon.svg" />
-			<Meta name="viewport" content="width=device-width, initial-scale=1" />
-			<Meta name="theme-color" content="#000000" />
+			<Meta charset="utf-8"/>
+			<MetaLink rel="shortcut icon" href="/favicon.svg" type_="image/svg+xml"/>
+			<MetaLink rel="apple-touch-icon" href="/favicon.svg"/>
+			<Meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<Meta name="theme-color" content="#000000"/>
 			<Meta
 				name="description"
 				content="Patr: A code Deployment Platform that helps you scale what you build. You build, we scale"
 			/>
-			<MetaLink rel="preconnect" href="https://fonts.gstatic.com" />
-			<MetaLink rel="preconnect" href="https://fonts.googleapis.com" />
-			<MetaLink rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+			<MetaLink rel="preconnect" href="https://fonts.gstatic.com"/>
+			<MetaLink rel="preconnect" href="https://fonts.googleapis.com"/>
+			<MetaLink rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
 			<MetaLink
 				href="https://fonts.googleapis.com/css2?family=PT+Serif:wght@700&family=Source+Code+Pro:wght@300;400&family=Poppins:wght@300;400;500;600;700&display=swap"
 				rel="stylesheet"
@@ -64,17 +64,13 @@ pub fn render() -> impl IntoView {
 				rel="stylesheet"
 				href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
 			/>
-			<Stylesheet id="leptos" href="/pkg/dashboard.css" />
+			<Stylesheet id="leptos" href="/pkg/dashboard.css"/>
 
 			<Title formatter=|title: String| {
-				if title.is_empty() {
-					"Patr".to_string()
-				} else {
-					format!("{title} | Patr")
-				}
-			} />
+				if title.is_empty() { "Patr".to_string() } else { format!("{title} | Patr") }
+			}/>
 
-			<App />
+			<App/>
 		</>
 	}
 }

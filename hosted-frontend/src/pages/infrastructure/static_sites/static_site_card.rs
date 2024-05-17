@@ -24,11 +24,11 @@ pub fn StaticSiteCard(
 						{static_site.get().name}
 					</h5>
 
-					<StatusBadge status=Status::Live />
+					<StatusBadge status=Status::Live/>
 				</div>
 
 				<button class="fr-ct-ct">
-					<Icon color=Color::Error icon=IconType::PlayCircle size=Size::Medium />
+					<Icon color=Color::Error icon=IconType::PlayCircle size=Size::Medium/>
 				</button>
 			</div>
 
@@ -43,17 +43,13 @@ pub fn StaticSiteCard(
 					height="300"
 					class="br-sm of-hidden frame pos-abs"
 					src="https://ca100402d79f408f98c202945cfb0310.onpatr.cloud/"
-				/>
+				></iframe>
 			</a>
 
 			<div class="fr-sb-ct mt-xs full-width px-xxs">
 				<Link class="letter-sp-md txt-sm fr-fs-ct">
 					"MANAGE STATIC SITE"
-					<Icon
-						icon=IconType::ChevronRight
-						size=Size::ExtraSmall
-						color=Color::Primary
-					/>
+					<Icon icon=IconType::ChevronRight size=Size::ExtraSmall color=Color::Primary/>
 				</Link>
 			</div>
 		</div>

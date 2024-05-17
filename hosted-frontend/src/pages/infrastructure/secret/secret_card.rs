@@ -20,10 +20,10 @@ pub fn SecretCard(
 			<td class="flex-col-11 fr-fs-ct">{secret_item.name}</td>
 			<td class="flex-col-1 fr-sa-ct">
 				<button>
-					<Icon icon=IconType::Edit size=Size::ExtraSmall />
+					<Icon icon=IconType::Edit size=Size::ExtraSmall/>
 				</button>
 				<button>
-					<Icon icon=IconType::Trash2 size=Size::ExtraSmall color=Color::Error />
+					<Icon icon=IconType::Trash2 size=Size::ExtraSmall color=Color::Error/>
 				</button>
 			</td>
 		</tr>

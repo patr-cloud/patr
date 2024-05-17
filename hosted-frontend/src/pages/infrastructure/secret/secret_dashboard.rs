@@ -28,22 +28,17 @@ pub fn SecretsDashboard() -> impl IntoView {
 				<div class="fr-sb-ct full-width">
 					<div class="fc-fs-fs">
 						<PageTitleContainer>
-							<PageTitle>
-								"Secret"
-							</PageTitle>
+							<PageTitle>"Secret"</PageTitle>
 						</PageTitleContainer>
 
 						<PageDescription
 							description="Create and manage API keys, Database Passwords, and other
-								sensitive information."
+							sensitive information."
 							doc_link=Some("https://docs.patr.cloud/features/secrets/".to_owned())
 						/>
 					</div>
 
-					<Link
-						r#type=Variant::Button
-						style_variant=LinkStyleVariant::Contained
-					>
+					<Link r#type=Variant::Button style_variant=LinkStyleVariant::Contained>
 						"CREATE SECRET"
 						<Icon
 							icon=IconType::Plus
@@ -59,20 +54,16 @@ pub fn SecretsDashboard() -> impl IntoView {
 				<TableDashboard
 					column_grids=vec![11, 1]
 					headings=vec![
-						view! {
-							<p class="txt-sm txt-medium mr-auto">"Name"</p>
-						}.into_view(),
-						"".into_view()
+						view! { <p class="txt-sm txt-medium mr-auto">"Name"</p> }.into_view(),
+						"".into_view(),
 					]
+
 					render_rows=view! {
-						<For
-							each=move || data.get()
-							key=|state| state.id
-							let:child
-						>
-							<SecretCard secret_item=child />
+						<For each=move || data.get() key=|state| state.id let:child>
+							<SecretCard secret_item=child/>
 						</For>
-					}.into_view()
+					}
+						.into_view()
 				/>
 			</ContainerBody>
 		</ContainerMain>

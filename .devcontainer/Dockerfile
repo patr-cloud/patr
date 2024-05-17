@@ -48,15 +48,6 @@ WORKDIR /home/vscode
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --profile default -y
 RUN source "$HOME/.cargo/env" && rustup toolchain install nightly
 
-# Install homebrew
-RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-RUN (echo; echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"') >> /home/vscode/.bashrc
-
-# Install kubectl, helm, yq and k3d
-RUN /home/linuxbrew/.linuxbrew/bin/brew install kubectl helm yq k3d
-RUN echo 'source <(/home/linuxbrew/.linuxbrew/bin/kubectl completion bash)' >> /home/vscode/.bashrc
-RUN echo 'source <(/home/linuxbrew/.linuxbrew/bin/k3d completion bash)' >> /home/vscode/.bashrc
-
 # Setup bashrc
 RUN cat /etc/container-init-data/bashrc >> /home/vscode/.bashrc
 
