@@ -74,6 +74,8 @@ pub mod constants {
 	/// A NodeID for Uuid v1.
 	/// Spells "*Patr*" in bytes
 	pub const UUID_NODE_ID: [u8; 6] = [42, 80, 97, 116, 114, 42];
+
+	pub const USERNAME_VALIDITY_REGEX: &str = r"^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$";
 }
 
 /// Ordering of the list for paginated requests
