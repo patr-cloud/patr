@@ -22,6 +22,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The updated static site name
+		#[preprocess(trim, lowercase, regex = "^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$")]
 		pub name: String,
 	}
 );

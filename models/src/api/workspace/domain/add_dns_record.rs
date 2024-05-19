@@ -23,6 +23,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The name of the new record
+		#[preprocess(trim, lowercase, regex = "^((@)|(\\*)|((\\*\\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])))$")]
 		pub name: String,
 		/// The type of the new record
 		/// It can be of type:
@@ -32,8 +33,10 @@ macros::declare_api_endpoint!(
 		///     AAAA
 		///     CNAME
 		#[serde(flatten)]
+		#[preprocess(none)]
 		pub r#type: DnsRecordValue,
 		/// The time to live of a record
+		#[preprocess(type = "u32")]
 		pub ttl: u32,
 	},
 	response = {

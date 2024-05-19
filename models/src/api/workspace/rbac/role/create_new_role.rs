@@ -22,12 +22,16 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The name of the new role
+		#[preprocess(none)]
 		pub name: String,
 		/// The description of the new role
+		#[preprocess(none)]
 		pub description: String,
 		/// The list of permission this new role has
+		#[preprocess(none)]
 		pub resource_permissions: BTreeMap<Uuid, Vec<Uuid>>,
 		/// The list of permissions this new role has on what resource types
+		#[preprocess(none)]
 		pub resource_type_permissions: BTreeMap<Uuid, Vec<Uuid>>
 	},
 	response = {

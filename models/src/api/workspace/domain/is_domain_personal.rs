@@ -15,6 +15,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The name of the domain
+		#[preprocess(domain)]
 		pub domain: String,
 	},
 	response = {
