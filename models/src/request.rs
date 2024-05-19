@@ -1,7 +1,7 @@
 use preprocess::Preprocessable;
 use typed_builder::TypedBuilder;
 
-use crate::ApiEndpoint;
+use crate::prelude::*;
 
 /// This struct represents a request to the API. It contains the path, query,
 /// headers and body of the request. This struct provides a builder API to make
