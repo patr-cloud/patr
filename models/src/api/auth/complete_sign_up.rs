@@ -1,14 +1,4 @@
 use crate::prelude::*;
-use axum::Error;
-
-fn validate_token (value: String) -> Result<String, Error> {
-	if value.len() != 6 && value.parse::<u32>().is_ok() {
-		return Err(Error::new(
-			"Invalid verification token",
-		));
-	}
-	Ok(value)
-}
 
 macros::declare_api_endpoint!(
 	/// Route when user verifies his identity/recovery-method by entering the OTP
@@ -23,10 +13,10 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The username of the user verifying their account
-		#[preprocess(length(min = 4, max = 10), trim, lowercase, regex = "^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$")]
+		#[preprocess(trim, length(min = 2, max = 10), regex = r"^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$")]
 		pub username: String,
 		/// The OTP which will validate the verification
-		#[preprocess(custom = "validate_token")]
+		#[preprocess(trim, length(min = 6, max = 7), regex = r"^([0-9]{3}\-[0-9]{3})|([0-9]{6})$")]
 		pub verification_token: String,
 	},
 	response = {

@@ -1,16 +1,14 @@
-use crate::prelude::*;
 use axum::Error;
 
-fn validate_otp (value: Option<String>) -> Result<Option<String>, Error> {
+use crate::prelude::*;
 
+fn validate_otp(value: Option<String>) -> Result<Option<String>, Error> {
 	if let Some(otp) = value {
 		if otp.len() != 6 && otp.parse::<u32>().is_ok() {
-			return Err(Error::new(
-				"Invalid OTP",
-			));
+			return Err(Error::new("Invalid OTP"));
 		}
 	}
-	
+
 	Ok(value)
 }
 
@@ -27,7 +25,7 @@ macros::declare_api_endpoint!(
 	request = {
 		/// The user identifier of the user
 		/// It can be either the username or the email of the user depending on the user input
-		#[preprocess(length(min = 4), trim, lowercase)]		
+		#[preprocess(length(min = 4), trim, lowercase)]
 		pub user_id: String,
 		/// The password of the user
 		/// POLICY:
