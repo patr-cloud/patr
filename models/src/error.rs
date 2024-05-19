@@ -2,6 +2,7 @@ use std::{
 	error::Error as StdError,
 	fmt::{Display, Formatter},
 	mem,
+	str::FromStr,
 };
 
 use axum::http::StatusCode;
@@ -198,6 +199,58 @@ impl Display for ErrorType {
 	}
 }
 
+/// An error type that is used when a string is not a valid [`ErrorType`]
+#[derive(
+	Debug,
+	Clone,
+	Serialize,
+	Deserialize,
+	PartialEq,
+	Eq,
+	Hash,
+	Default,
+	Ord,
+	PartialOrd,
+	thiserror::Error,
+)]
+#[error("{}", self.0)]
+pub struct UnknownErrorType(String);
+
+impl FromStr for ErrorType {
+	type Err = UnknownErrorType;
+
+	fn from_str(string: &str) -> Result<Self, Self::Err> {
+		Ok(match string {
+			"invalidEmail" => Self::InvalidEmail,
+			"userNotFound" => Self::UserNotFound,
+			"invalidPassword" => Self::InvalidPassword,
+			"mfaRequired" => Self::MfaRequired,
+			"mfaOtpInvalid" => Self::MfaOtpInvalid,
+			"mfaAlreadyActive" => Self::MfaAlreadyActive,
+			"mfaAlreadyInactive" => Self::MfaAlreadyInactive,
+			"tagNotFound" => Self::TagNotFound,
+			"wrongParameters" => Self::WrongParameters,
+			"malformedApiToken" => Self::MalformedApiToken,
+			"disallowedIpAddressForApiToken" => Self::DisallowedIpAddressForApiToken,
+			"malformedAccessToken" => Self::MalformedAccessToken,
+			"malformedRefreshToken" => Self::MalformedRefreshToken,
+			"unauthorized" => Self::Unauthorized,
+			"authorizationTokenInvalid" => Self::AuthorizationTokenInvalid,
+			"usernameUnavailable" => Self::UsernameUnavailable,
+			"emailUnavailable" => Self::EmailUnavailable,
+			"phoneUnavailable" => Self::PhoneUnavailable,
+			"invalidResetToken" => Self::InvalidPasswordResetToken,
+			"resourceDoesNotExist" => Self::ResourceDoesNotExist,
+			"resourceAlreadyExists" => Self::ResourceAlreadyExists,
+			"resourceInUse" => Self::ResourceInUse,
+			"internalServerError" => {
+				Self::InternalServerError(anyhow::anyhow!("Internal Server Error"))
+			}
+			unknown => return Err(UnknownErrorType(format!("unknown variant: {unknown}"))),
+		})
+	}
+}
+
 impl Serialize for ErrorType {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where
@@ -241,33 +294,6 @@ impl<'de> Deserialize<'de> for ErrorType {
 		D: serde::Deserializer<'de>,
 	{
 		let string = String::deserialize(deserializer)?;
-		Ok(match string.as_str() {
-			"invalidEmail" => Self::InvalidEmail,
-			"userNotFound" => Self::UserNotFound,
-			"invalidPassword" => Self::InvalidPassword,
-			"mfaRequired" => Self::MfaRequired,
-			"mfaOtpInvalid" => Self::MfaOtpInvalid,
-			"mfaAlreadyActive" => Self::MfaAlreadyActive,
-			"mfaAlreadyInactive" => Self::MfaAlreadyInactive,
-			"tagNotFound" => Self::TagNotFound,
-			"wrongParameters" => Self::WrongParameters,
-			"malformedApiToken" => Self::MalformedApiToken,
-			"disallowedIpAddressForApiToken" => Self::DisallowedIpAddressForApiToken,
-			"malformedAccessToken" => Self::MalformedAccessToken,
-			"malformedRefreshToken" => Self::MalformedRefreshToken,
-			"unauthorized" => Self::Unauthorized,
-			"authorizationTokenInvalid" => Self::AuthorizationTokenInvalid,
-			"usernameUnavailable" => Self::UsernameUnavailable,
-			"emailUnavailable" => Self::EmailUnavailable,
-			"phoneUnavailable" => Self::PhoneUnavailable,
-			"invalidResetToken" => Self::InvalidPasswordResetToken,
-			"resourceDoesNotExist" => Self::ResourceDoesNotExist,
-			"resourceAlreadyExists" => Self::ResourceAlreadyExists,
-			"resourceInUse" => Self::ResourceInUse,
-			"internalServerError" => {
-				Self::InternalServerError(anyhow::anyhow!("Internal Server Error"))
-			}
-			unknown => return Err(Error::custom(format!("unknown variant: {unknown}"))),
-		})
+		ErrorType::from_str(&string).map_err(D::Error::custom)
 	}
 }
