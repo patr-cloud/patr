@@ -27,6 +27,10 @@ pub enum InputType {
 	File,
 	/// A Callender like date picker
 	Date,
+	/// Hidden input, doesn't render on the dom, but it's name field
+	/// will still be accessed by the _Ancestor Form Element_.
+	/// Can be used to pass the id, or some other request data.
+	Hidden,
 }
 
 impl InputType {
@@ -40,12 +44,17 @@ impl InputType {
 			Self::Password => "password",
 			Self::File => "file",
 			Self::Date => "date",
+			Self::Hidden => "hidden",
 		}
 	}
 }
 
 #[component]
 pub fn Input(
+	/// Name of the form control. Submitted with the form as part of a
+	/// name/value pair
+	#[prop(into, optional)]
+	name: MaybeSignal<String>,
 	/// Additional class names to apply to the outer div, if any.
 	#[prop(into, optional)]
 	class: String,
@@ -53,6 +62,9 @@ pub fn Input(
 	/// be submitted, doesn't use javascript, defaults to false
 	#[prop(into, optional, default = false.into())]
 	required: bool,
+	/// The Patter of the input, a string regex
+	#[prop(into, optional)]
+	pattern: MaybeSignal<String>,
 	/// The ID of the input.
 	#[prop(into, optional)]
 	id: MaybeSignal<String>,
@@ -152,8 +164,6 @@ pub fn Input(
 		end_icon
 	};
 
-	let id_clone = id.clone().get();
-
 	view! {
 		<div class=class>
 			<Show when={
@@ -183,9 +193,10 @@ pub fn Input(
 			<input
 				id=move || id.get()
 				class="mx-md of-hidden txt-of-ellipsis"
-				name=id_clone
+				name=move || name.get()
 				placeholder=move || placeholder.get()
 				disabled=move || disabled.get()
+				// pattern=move || pattern.get()
 				required=required
 				on:input=on_input
 				prop:value=value

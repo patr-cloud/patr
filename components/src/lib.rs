@@ -17,6 +17,7 @@ pub mod prelude {
 		input_dropdown::*,
 		link::*,
 		log_statement::*,
+		modal::*,
 		number_picker::*,
 		otp_input::*,
 		page_title::*,
@@ -87,6 +88,10 @@ pub mod link;
 /// a log statement. It is used to show the user a log statement, like a
 /// deployment log, or a database log in the Deployments page
 pub mod log_statement;
+/// The Modal component. The modal component is used to display a modal. It is
+/// used to show the user a modal, like a confirmation modal, or a settings
+/// modal.
+pub mod modal;
 /// The number picker component. The number picker component is used to display
 /// a number picker. It is used to allow the user to select a number from a
 /// range of numbers.

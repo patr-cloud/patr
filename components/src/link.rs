@@ -57,7 +57,7 @@ pub fn Link(
 		}
 	};
 
-	let button_type = move || {
+	let button_type = {
 		if should_submit.get() {
 			"submit".to_owned()
 		} else {
@@ -82,7 +82,7 @@ pub fn Link(
 				Variant::Button => {
 					view! {
 						<button
-							r#type=button_type
+							type= { if should_submit.get() { "submit" } else { "button" } }
 							on:click=on_click.clone()
 							disabled=move || disabled.get()
 							class=class.clone()

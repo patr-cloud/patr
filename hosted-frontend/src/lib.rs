@@ -5,13 +5,18 @@
 /// Prelude module. Used to re-export commonly used items.
 pub mod prelude {
 	pub use components::prelude::*;
-	pub use leptos::{prelude::*, *};
+	pub use leptos::*;
+	pub use leptos_router::*;
 	pub use models::prelude::*;
+
+	pub use crate::utils::*;
 }
 
 /// The application logic code. This contains the routers and all the routing
 /// logic
 pub mod app;
+/// The Global state variables
+pub mod global_state;
 /// The pages module. This contains all the pages used in the application.
 /// Pages are the main views that are rendered when a route is matched.
 pub mod pages;

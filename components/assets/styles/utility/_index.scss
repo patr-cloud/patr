@@ -47,6 +47,10 @@
   fill: none;
 }
 
+.block {
+  display: block;
+}
+
 @each $size, $value in $icon-sizes {
   .icon-#{$size} {
     @include create-size($value);

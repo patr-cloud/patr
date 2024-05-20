@@ -1,7 +1,8 @@
-use leptos_router::{use_location, Outlet, ProtectedRoute, Redirect, Route, Router, Routes};
+use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};
+use leptos_use::{use_cookie, utils::FromToStringCodec};
 use models::api::auth::*;
 
-use crate::{pages::*, prelude::*};
+use crate::{global_state::*, pages::*, prelude::*};
 
 #[allow(async_fn_in_trait)] // WIP
 pub trait AppAPIs {
@@ -19,22 +20,64 @@ fn LoggedInPage() -> impl IntoView {
 				<header style="width: 100%; min-height: 5rem;">
 				</header>
 
-				<ManageProfile />
+				<Outlet />
 			</main>
 		</div>
 	}
 }
 
 #[component]
-pub fn App() -> impl IntoView {
+fn InnerApp() -> impl IntoView {
+	let (state, _) = get_auth_state();
+
+	let _ = authstate_from_cookie();
+	create_effect(move |_| {
+		let _ = authstate_from_cookie();
+		logging::log!("here as well");
+	});
+
 	view! {
 		<Router>
 			<Routes>
-				<AppRoute
-					route=LoginRoute {}
-					view=|_| LoginPage()
-				/>
+				<ProtectedRoute
+					path="/"
+					redirect_path="/login"
+					condition=move || state.get().is_logged_in()
+					view=LoggedInPage
+				>
+					<ProfileRoutes />
+					<InfrastructureRoutes />
+					<DomainConfigurationRoutes />
+					<Route path="" view=|| view! { <div></div> } />
+				</ProtectedRoute>
+
+				<ProtectedRoute
+					path="/"
+					view=AuthPage
+					condition=move || { logging::log!("state: {:#?}", state.get()); !state.get().is_logged_in() }
+					redirect_path="/"
+				>
+					<Route path=LoggedOutRoute::Login view=LoginForm />
+					<Route path=LoggedOutRoute::SignUp view=SignUpPage >
+						<Route
+							path=LoggedOutRoute::ConfirmOtp
+							view=ConfirmSignUpForm
+						/>
+						<Route path=AppRoutes::Empty view=SignUpForm />
+					</Route>
+				</ProtectedRoute>
 			</Routes>
 		</Router>
+	}
+}
+
+#[component]
+pub fn App() -> impl IntoView {
+	let state = create_rw_signal(GlobalState::new());
+
+	provide_context(state);
+
+	view! {
+		<InnerApp />
 	}
 }

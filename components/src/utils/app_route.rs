@@ -24,11 +24,14 @@ pub trait TypedRoute:
 }
 
 #[component(transparent)]
-pub fn AppRoute<R, F, V>(
+fn AppRoute<R, F, V>(
 	/// The path of the route
 	route: R,
 	/// The view for the route
 	view: F,
+	/// The Children of the route
+	#[prop(optional, default = Box::new(|| Fragment::new(vec![])))]
+	children: Children,
 ) -> impl IntoView
 where
 	R: TypedRoute,
@@ -47,6 +50,8 @@ where
 		<Route
 			view={move || view(parameters.clone()).into_view()}
 			path=path
-		/>
+		>
+			{children()}
+		</Route>
 	}
 }

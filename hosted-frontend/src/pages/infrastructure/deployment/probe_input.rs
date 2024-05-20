@@ -67,6 +67,7 @@ pub fn ProbeInput(
 				<div class="flex-col-5 pr-lg">
 					<InputDropdown
 						placeholder="Enter Probe Path".to_string()
+						value="6655".to_owned()
 						options=vec![
 							InputDropdownOption {
 								label: "6655".to_owned(),

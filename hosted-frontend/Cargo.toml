@@ -11,7 +11,7 @@ version.workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-axum-extra = { workspace = true, features = ["typed-routing"] }
+axum-extra = { workspace = true, features = ["typed-routing", "cookie"] }
 components = { workspace = true, features = [] }
 console_error_panic_hook = { workspace = true, features = [] }
 http = { workspace = true, features = ["default"] }
@@ -24,6 +24,7 @@ reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 serde = { workspace = true, features = ["default", "derive"] }
 serde_json = { workspace = true, features = ["default"] }
 serde_urlencoded = { workspace = true, features = [] }
+time = { workspace = true, features = ["default"] }
 tower = { workspace = true, features = ["util"] }
 tracing = { workspace = true, features = ["attributes"] }
 url = { workspace = true, features = ["default"] }

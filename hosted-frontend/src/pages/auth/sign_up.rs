@@ -1,11 +1,98 @@
 use std::rc::Rc;
 
+use leptos_router::ActionForm;
+use models::{api::auth::*, ApiErrorResponse, ApiErrorResponseBody};
+
 use crate::{pages::*, prelude::*};
+
+#[server(CreateAccount, endpoint = "auth/sign-up")]
+async fn sign_up(
+	username: String,
+	password: String,
+	first_name: String,
+	last_name: String,
+	email: String,
+) -> Result<Result<CreateAccountResponse, ErrorType>, ServerFnError> {
+	let api_response = make_api_call::<CreateAccountRequest>(
+		ApiRequest::builder()
+			.path(CreateAccountPath)
+			.query(())
+			.headers(CreateAccountRequestHeaders {
+				user_agent: UserAgent::from_static("hyper/0.12.2"),
+			})
+			.body(CreateAccountRequest {
+				username,
+				password,
+				first_name,
+				last_name,
+				recovery_method: RecoveryMethod::Email {
+					recovery_email: email,
+				},
+			})
+			.build(),
+	)
+	.await;
+
+	if let Ok(resp) = &api_response {
+		leptos_axum::redirect("/sign-up/confirm");
+	}
+
+	Ok(api_response.map(|res| res.body))
+}
+
+#[component]
+pub fn SignUpPage() -> impl IntoView {
+	view! {
+		<Outlet />
+	}
+}
 
 #[component]
 pub fn SignUpForm() -> impl IntoView {
 	let show_coupon = create_rw_signal(false);
 	let show_coupon_button = create_rw_signal(true);
+
+	let sign_up_action = create_server_action::<CreateAccount>();
+	let response = sign_up_action.value();
+
+	let password_input = create_rw_signal("".to_owned());
+	let password_confirm_input = create_rw_signal("".to_owned());
+	let passwords_match =
+		Signal::derive(move || password_input.get() != password_confirm_input.get());
+
+	let name_error = create_rw_signal("".to_owned());
+	let username_error = create_rw_signal("".to_owned());
+	let email_error = create_rw_signal("".to_owned());
+
+	let password_error = create_rw_signal("".to_owned());
+
+	let handle_errors = move |error: ErrorType| match error {
+		ErrorType::UsernameUnavailable => username_error.set("Username Not Available".to_owned()),
+		ErrorType::EmailUnavailable => username_error.set("Email Not Available".to_owned()),
+		e => password_error.set("".to_owned()),
+	};
+
+	create_effect(move |_| {
+		if let Some(Ok(resp)) = response.get() {
+			logging::log!("{:#?}", resp);
+			let _ = match resp {
+				Ok(CreateAccountResponse {}) => {}
+				Err(err) => {
+					logging::log!("{:#?}", err);
+					handle_errors(err);
+					return;
+				}
+			};
+		}
+	});
+
+	create_effect(move |_| {
+		logging::log!(
+			"{:?} {:?}",
+			password_input.get(),
+			password_confirm_input.get()
+		)
+	});
 
 	view! {
 		<div class="box-onboard txt-white">
@@ -24,13 +111,14 @@ pub fn SignUpForm() -> impl IntoView {
 				</div>
 			</div>
 
-			<form class="fc-fs-fs full-width">
+			<ActionForm action=sign_up_action class="fc-fs-fs full-width">
 				<div class="fr-ct-fs full-width">
 					<div class="fc-fs-fs flex-col-6 pr-xxs">
 						<Input
 							class="py-xs"
 							r#type=InputType::Text
-							id="firstName"
+							id="first_name"
+							name="first_name"
 							placeholder="First Name"
 							start_icon=Some(
 								IconProps::builder().icon(IconType::User).size(Size::Medium).build(),
@@ -42,7 +130,8 @@ pub fn SignUpForm() -> impl IntoView {
 						<Input
 							class="py-xs"
 							r#type=InputType::Text
-							id="lastName"
+							id="last_name"
+							name="last_name"
 							placeholder="Last Name"
 							start_icon=Some(
 								IconProps::builder().icon(IconType::User).size(Size::Medium).build(),
@@ -55,6 +144,7 @@ pub fn SignUpForm() -> impl IntoView {
 					class="full-width mt-lg"
 					r#type=InputType::Text
 					id="username"
+					name="username"
 					placeholder="User Name"
 					required=true
 					start_icon=Some(
@@ -65,15 +155,15 @@ pub fn SignUpForm() -> impl IntoView {
 				<Input
 					class="full-width mt-lg"
 					r#type=InputType::Email
+					name="email"
 					id="email"
 					placeholder="proton@gmail.com"
 					start_icon=Some(
 						IconProps::builder().icon(IconType::Mail).build()
 					)
 				/>
-
 				<div class="full-width mt-xxs">{
-						show_coupon_button.get().then(|| view! {
+						move || show_coupon_button.get().then(|| view! {
 							<Link
 								on_click=Rc::new(move |_| {
 									show_coupon.update(|val| *val = !*val)
@@ -107,11 +197,16 @@ pub fn SignUpForm() -> impl IntoView {
 				<Input
 					r#type=InputType::Password
 					id="password"
+					name="password"
 					placeholder="Password"
 					class="full-width mt-xxs"
+					value=password_input
 					start_icon=Some(
 						IconProps::builder().icon(IconType::Unlock).size(Size::Small).build()
 					)
+					on_input=Box::new(move |ev| {
+						password_input.set(event_target_value(&ev));
+					})
 				/>
 
 				<Input
@@ -119,30 +214,34 @@ pub fn SignUpForm() -> impl IntoView {
 					id="confirmPassword"
 					placeholder="Confirm Password"
 					class="full-width mt-lg"
+					value=password_confirm_input
 					start_icon=Some(
 						IconProps::builder().icon(IconType::Lock).size(Size::Small).build()
 					)
+					on_input=Box::new(move |ev| {
+						password_confirm_input.set(event_target_value(&ev));
+					})
 				/>
 
+				<Show when=move || passwords_match.get()>
+					<Alert r#type=AlertType::Error class="mt-xs">"Passwords Don't Match"</Alert>
+				</Show>
+
 				<div class="fr-fe-ct full-width mt-lg">
-					<Link class="btn mr-xs" r#type=Variant::Link>
+					<Link class="btn mr-xs" to="/sign-up/confirm" r#type=Variant::Link>
 						"ALREADY HAVE AN OTP"
 					</Link>
 
-					<Link should_submit=true style_variant=LinkStyleVariant::Contained>
+					<Link
+						disabled=passwords_match.get()
+						r#type=Variant::Button
+						should_submit=true
+						style_variant=LinkStyleVariant::Contained
+					>
 						"NEXT"
 					</Link>
 				</div>
-			</form>
+			</ActionForm>
 		</div>
-	}
-}
-
-#[component]
-pub fn SignUpPage() -> impl IntoView {
-	view! {
-		<PageContainer class="bg-image">
-			<SignUpForm />
-		</PageContainer>
 	}
 }

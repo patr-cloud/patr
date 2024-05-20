@@ -103,6 +103,7 @@ pub fn PortInput(
 					<div class="flex-col-6 fc-fs-fs gap-xxs">
 						<InputDropdown
 							placeholder="Select Protocol".to_string()
+							value="8080"
 							options=vec![
 								InputDropdownOption {
 									label: "8080".to_owned(),
