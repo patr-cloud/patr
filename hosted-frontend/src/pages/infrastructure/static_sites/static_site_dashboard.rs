@@ -1,9 +1,14 @@
 use crate::{pages::StaticSiteCard, prelude::*};
 
+/// The Model for the static site item
+/// TO BE REPLACED WITH A PROPER MODEL TYPE
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct StaticSiteItemType {
+	/// The Id of the site
 	pub id: String,
+	/// The Name of the deployed site
 	pub name: String,
+	/// The status of the site
 	pub status: Status,
 }
 

@@ -1,8 +1,11 @@
 use crate::prelude::*;
 
+/// The type of the probe input.
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub enum ProbeInputType {
+	/// The probe input is for the startup probe.
 	Startup,
+	/// The probe input is for the liveness probe.
 	Liveness,
 }
 

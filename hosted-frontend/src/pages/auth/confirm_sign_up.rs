@@ -1,11 +1,4 @@
-use leptos::server_fn::redirect;
-use models::api::auth::{
-	CompleteSignUpPath,
-	CompleteSignUpRequest,
-	CompleteSignUpRequestHeaders,
-	CompleteSignUpResponse,
-	LoginResponse,
-};
+use models::api::auth::CompleteSignUpResponse;
 
 use crate::{global_state::authstate_from_cookie, prelude::*};
 
@@ -18,19 +11,21 @@ pub fn ConfirmSignUpPage() -> impl IntoView {
 	}
 }
 
+/// Server function for completing the sign up process
 #[server(ConfirmOtp, endpoint = "auth/join")]
 async fn complete_sign_up(
 	username: String,
 	otp: String,
 ) -> Result<Result<CompleteSignUpResponse, ErrorType>, ServerFnError> {
-	use axum::{
-		http::header::{HeaderValue, SET_COOKIE},
-		response::AppendHeaders,
-	};
-	// use axum_extra::extract::cookie::Cookie;
+	use axum::http::header::{HeaderValue, SET_COOKIE};
 	use axum_extra::extract::cookie::{Cookie, SameSite};
-	use http::StatusCode;
-	use leptos_axum::{redirect, ResponseOptions};
+	use leptos_axum::ResponseOptions;
+	// use axum_extra::extract::cookie::Cookie;
+	use models::api::auth::{
+		CompleteSignUpPath,
+		CompleteSignUpRequest,
+		CompleteSignUpRequestHeaders,
+	};
 	use time::Duration;
 
 	let api_response = make_api_call::<CompleteSignUpRequest>(

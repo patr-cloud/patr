@@ -1,16 +1,7 @@
-use std::{rc::Rc, str::FromStr};
+use std::rc::Rc;
 
 use leptos_use::{use_cookie, utils::FromToStringCodec};
-use models::api::user::{
-	ActivateMfaPath,
-	ActivateMfaRequest,
-	ActivateMfaRequestHeaders,
-	ActivateMfaResponse,
-	ChangePasswordPath,
-	ChangePasswordRequest,
-	ChangePasswordRequestHeaders,
-	ChangePasswordResponse,
-};
+use models::api::user::{ActivateMfaResponse, ChangePasswordResponse};
 
 use crate::prelude::*;
 
@@ -21,6 +12,14 @@ async fn change_password(
 	new_password: String,
 	current_password: String,
 ) -> Result<Result<ChangePasswordResponse, ErrorType>, ServerFnError> {
+	use std::str::FromStr;
+
+	use models::api::user::{
+		ChangePasswordPath,
+		ChangePasswordRequest,
+		ChangePasswordRequestHeaders,
+	};
+
 	let api_response = make_api_call::<ChangePasswordRequest>(
 		ApiRequest::builder()
 			.path(ChangePasswordPath)
@@ -43,11 +42,16 @@ async fn change_password(
 	Ok(api_response.map(|res| res.body))
 }
 
+///
 #[server(ActivateMfaFn, endpoint = "/user/mfa")]
 async fn activate_mfa(
 	access_token: Option<String>,
 	otp: String,
 ) -> Result<Result<ActivateMfaResponse, ErrorType>, ServerFnError> {
+	use std::str::FromStr;
+
+	use models::api::user::{ActivateMfaPath, ActivateMfaRequest, ActivateMfaRequestHeaders};
+
 	let api_response = make_api_call::<ActivateMfaRequest>(
 		ApiRequest::builder()
 			.path(ActivateMfaPath)
@@ -75,7 +79,7 @@ pub fn PasswordSection() -> impl IntoView {
 	let (access_token, _) = use_cookie::<String, FromToStringCodec>("access_token");
 
 	let current_password_error = create_rw_signal("".to_owned());
-	let new_password_error = create_rw_signal("".to_owned());
+	let _new_password_error = create_rw_signal("".to_owned());
 	let confirm_password_error = create_rw_signal("".to_owned());
 
 	let handle_errors = move |error: ErrorType| match error {

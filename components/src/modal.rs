@@ -36,7 +36,7 @@ pub fn Modal(
 	let children = store_value(children);
 	view! {
 		<Portal>
-			<ModalContainer has_backdrop=true>
+			<ModalContainer variant=variant has_backdrop=true>
 				{children.with_value(|children| children())}
 			</ModalContainer>
 		</Portal>

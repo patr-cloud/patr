@@ -1,14 +1,20 @@
 use crate::prelude::*;
 
+/// Type of databases thant can be used
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DatabaseType {
+	/// Mongo DB database
 	MongoDB,
+	/// Redis database
 	Redis,
+	/// PostgresQL Database
 	Postgres,
+	/// MySQL Database
 	MySQL,
 }
 
 impl DatabaseType {
+	/// Converts the database type to the icon asset link to be used for images
 	pub const fn icon_link(&self) -> &'static str {
 		match self {
 			Self::MongoDB => "/icons/mongo.svg",
@@ -18,6 +24,7 @@ impl DatabaseType {
 		}
 	}
 
+	/// The Title of the database type
 	pub const fn as_name_string(&self) -> &'static str {
 		match self {
 			Self::MongoDB => "MongoDB",

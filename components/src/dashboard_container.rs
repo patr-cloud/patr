@@ -15,7 +15,7 @@ pub fn DashboardContainer(
 	gap: Gap,
 	/// Alignment of the grid items
 	#[prop(optional)]
-	align: Alignment,
+	_align: Alignment,
 ) -> impl IntoView {
 	let class = move || format!("p-xl full-width ofy-auto {}", class.get());
 	let div_class = move || format!("grid-cnt-st-st grid-col-3 gap-{}", gap.as_css_name());

@@ -3,8 +3,11 @@ use std::vec;
 use super::DatabaseItem;
 use crate::prelude::*;
 
+/// Database Card Item
 pub struct CardItem {
+	/// The label of the card Item
 	label: &'static str,
+	/// The Value of the item
 	value: String,
 }
 

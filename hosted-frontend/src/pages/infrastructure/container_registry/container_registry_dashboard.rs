@@ -1,11 +1,16 @@
 use super::container_registry_item::ContainerRegistryCard;
 use crate::prelude::*;
 
+/// A Container Registry Item
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct ContainerRegistryItem {
+	/// The Id of the Container Registry Item
 	pub id: String,
+	/// The Name of the Container Registry Item
 	pub name: String,
+	/// The Size of the Container Registry Item
 	pub size: String,
+	/// The Date of creation of the Container Registry Item
 	pub date_created: String,
 }
 

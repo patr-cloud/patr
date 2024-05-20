@@ -9,7 +9,7 @@ fn CopyButton(// #[prop(into)]
 	let show_button = create_rw_signal(false);
 	let copy_data = create_rw_signal(false);
 
-	let on_copy = move |_: MouseEvent| {
+	let _on_copy = move |_: MouseEvent| {
 		copy_data.set(true);
 	};
 

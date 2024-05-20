@@ -1,17 +1,27 @@
 use crate::{pages::DomainCard, prelude::*};
 
+/// The Type of the Domain Name Server, Whether we're using an internal server
+/// or an external one
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub enum DomainNameServerType {
+	/// External Domain Name Server
 	External,
+	/// Internal Domain Name Server
 	#[default]
 	Internal,
 }
 
+/// Domain Model
+/// TO BE REPLACED LATER WITH MODEL A PROPER MODEL TYPE
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct DomainItemType {
+	/// The Id of the domain
 	pub id: String,
+	/// The name of the domain
 	pub name: String,
+	/// The Name server type
 	pub name_server: DomainNameServerType,
+	/// Whether the domain is verified
 	pub verified: bool,
 }
 

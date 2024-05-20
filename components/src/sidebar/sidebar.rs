@@ -1,11 +1,17 @@
 use crate::imports::*;
 
+/// A Link item for the sidebar
 #[derive(Default, Clone)]
 pub struct LinkItem {
+	/// The Title of the link
 	pub title: String,
+	/// The Path to navigate to on clicking the link
 	pub path: String,
+	/// The Icon of the link
 	pub icon_src: String,
+	/// The Subtitle of the link, put any additional info or such in here
 	pub subtitle: Option<String>,
+	/// The Sub Items of the link, if any
 	pub items: Option<Vec<LinkItem>>,
 }
 

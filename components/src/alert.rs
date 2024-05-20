@@ -2,10 +2,14 @@ use std::fmt::{self, Display, Formatter};
 
 use crate::imports::*;
 
+/// The type of alert to show.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AlertType {
+	/// Show an error Alert, with a red background
 	Error,
+	/// Show a warning Alert, with a yellow background
 	Warning,
+	/// Show a success Alert, with a green background
 	Success,
 }
 

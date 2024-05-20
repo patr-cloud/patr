@@ -1,11 +1,12 @@
 use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};
-use leptos_use::{use_cookie, utils::FromToStringCodec};
 use models::api::auth::*;
 
 use crate::{global_state::*, pages::*, prelude::*};
 
+/// Contains all the API endpoints for the application
 #[allow(async_fn_in_trait)] // WIP
 pub trait AppAPIs {
+	/// The login endpoint
 	async fn login(
 		request: ApiRequest<LoginRequest>,
 	) -> Result<AppResponse<LoginRequest>, ServerFnError<ErrorType>>;
@@ -33,7 +34,6 @@ fn InnerApp() -> impl IntoView {
 	let _ = authstate_from_cookie();
 	create_effect(move |_| {
 		let _ = authstate_from_cookie();
-		logging::log!("here as well");
 	});
 
 	view! {
