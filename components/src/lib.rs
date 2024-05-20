@@ -6,7 +6,9 @@
 /// The prelude module. Used to re-export commonly used items.
 pub mod prelude {
 	pub use crate::{
+		alert::*,
 		backdrop::*,
+		checkbox_dropdown::*,
 		containers::*,
 		dashboard_container::*,
 		double_input_slider::*,
@@ -39,14 +41,23 @@ mod imports {
 	pub(crate) type ClickHandler = Rc<dyn Fn(&ev::MouseEvent)>;
 
 	pub use leptos::*;
+	pub use leptos_router::A;
 
 	pub use crate::prelude::*;
 }
 
+/// The Alert component. The alert component is used to display an alert to the
+/// user. It is used to show the user a message, like a success message, a
+/// warning message, or an error message. The alert disappeares after a few
+/// seconds
+pub mod alert;
 /// The backdrop component. The backdrop component is used to display a backdrop
 /// that can be used to block the user from interacting with the rest of the
 /// page. It is used to show the user that something is loading or in modals
 pub mod backdrop;
+/// The Checkbox Dropdown component. The checkbox dropdown component is used to
+/// display a dropdown with checkboxes.
+pub mod checkbox_dropdown;
 /// The containers module. This module contains all the container components. A
 /// container is a component that can be used to hold other components (like a
 /// box).

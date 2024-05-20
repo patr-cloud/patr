@@ -143,6 +143,22 @@ $utility-map: (
     "prefix": "br",
     "values": $border-radii,
   ),
+  "border-top-right-radius": (
+    "prefix": "br-tr",
+    "values": $border-radii,
+  ),
+  "border-top-left-radius": (
+    "prefix": "br-tl",
+    "values": $border-radii,
+  ),
+  "border-bottom-right-radius": (
+    "prefix": "br-br",
+    "values": $border-radii,
+  ),
+  "border-bottom-left-radius": (
+    "prefix": "br-bl",
+    "values": $border-radii,
+  ),
   "background-color": (
     "prefix": "bg",
     "values": $background-colors,
@@ -212,10 +228,10 @@ $break-points: (
 );
 
 $grid-item-loc: (
-	"grid-col-start": grid-column-start,
-	"grid-col-end": grid-column-start,
-	"grid-row-start": grid-column-start,
-	"grid-row-end": grid-column-start,
+  "grid-col-start": grid-column-start,
+  "grid-col-end": grid-column-start,
+  "grid-row-start": grid-column-start,
+  "grid-row-end": grid-column-start,
 );
 
 $grid-items: (
@@ -226,11 +242,11 @@ $grid-items: (
 );
 
 $grid-content: (
-	"st": start,
-	"end": end,
-	"ct": center,
-	"sb": space-between,
-	"sa": space-around,
-	"se": space-evenly,
-	"stretch": stretch,
+  "st": start,
+  "end": end,
+  "ct": center,
+  "sb": space-between,
+  "sa": space-around,
+  "se": space-evenly,
+  "stretch": stretch,
 );

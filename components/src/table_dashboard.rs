@@ -24,7 +24,7 @@ pub fn TableDashboard(
 
 	view! {
 		<table class=class>
-			<thead class="fr-ct-ct py-sm bg-secondary-medium full-width">
+			<thead class="fr-ct-ct py-sm bg-secondary-medium full-width br-tr-sm br-tl-sm">
 				<tr class="fr-ct-ct px-xl full-width">
 						{
 							headings.into_iter()

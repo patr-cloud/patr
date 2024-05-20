@@ -97,7 +97,11 @@ pub fn DeploymentCard(
 					"START"
 				</Link>
 
-				<Link class="letter-sp-md txt-sm fr-fs-ct">
+				<Link
+					r#type=Variant::Link
+					to=format!("{}", deployment.get().id)
+					class="letter-sp-md txt-sm fr-fs-ct"
+				>
 					"Manage Deployment"
 					<Icon icon=IconType::ChevronRight size=Size::ExtraSmall color=Color::Primary/>
 				</Link>

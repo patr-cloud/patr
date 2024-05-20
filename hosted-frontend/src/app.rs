@@ -1,9 +1,7 @@
+use leptos_router::{use_location, Outlet, ProtectedRoute, Redirect, Route, Router, Routes};
 use models::api::auth::*;
 
-use crate::{
-	pages::{DomainsDashboard, LoginPage, ManagedUrlDashboard, *},
-	prelude::*,
-};
+use crate::{pages::*, prelude::*};
 
 #[allow(async_fn_in_trait)] // WIP
 pub trait AppAPIs {
@@ -11,7 +9,6 @@ pub trait AppAPIs {
 		request: ApiRequest<LoginRequest>,
 	) -> Result<AppResponse<LoginRequest>, ServerFnError<ErrorType>>;
 }
-
 #[component]
 fn LoggedInPage() -> impl IntoView {
 	view! {
@@ -20,14 +17,9 @@ fn LoggedInPage() -> impl IntoView {
 			<main class="fc-fs-ct full-width px-lg">
 				// This is a temporary empty div for the header
 				<header style="width: 100%; min-height: 5rem;">
-					<Skeleton
-						class={"full-width".to_owned()}
-						enable_full_height={true}
-						enable_full_width={true}
-					/>
 				</header>
 
-				<ManageDeployments />
+				<ManageProfile />
 			</main>
 		</div>
 	}
@@ -36,6 +28,13 @@ fn LoggedInPage() -> impl IntoView {
 #[component]
 pub fn App() -> impl IntoView {
 	view! {
-		<LoggedInPage />
+		<Router>
+			<Routes>
+				<AppRoute
+					route=LoginRoute {}
+					view=|_| LoginPage()
+				/>
+			</Routes>
+		</Router>
 	}
 }
