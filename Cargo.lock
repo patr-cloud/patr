@@ -2054,16 +2054,6 @@ dependencies = [
 
 [[package]]
 name = "idna"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d20d6b07bfbc108882d88ed8e37d39636dcc260e15e30c45e6ba089610b917c"
-dependencies = [
- "unicode-bidi",
- "unicode-normalization",
-]
-
-[[package]]
-name = "idna"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "634d9b1461af396cad843f47fdba5597a4f9e6ddd4bfb6ff5d85028c25cb12f6"
@@ -2745,6 +2735,7 @@ version = "0.18.0"
 dependencies = [
  "proc-macro2",
  "quote",
+ "regex",
  "syn 2.0.65",
 ]
 
@@ -2878,6 +2869,7 @@ dependencies = [
  "leptos",
  "macros",
  "preprocess",
+ "regex",
  "reqwest",
  "schemars",
  "serde",
@@ -3431,12 +3423,12 @@ checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
 
 [[package]]
 name = "preprocess"
-version = "0.5.0"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b8555f810e171e1d116406a43e0665d01bb208b15891cd275ef3d59ecc30efe"
+checksum = "6e55f50088e1a649b78cea5957b2367a666b5c8e88dc2b9f3f19a5739080ad05"
 dependencies = [
  "dashmap",
- "idna 0.4.0",
+ "idna 0.5.0",
  "preprocess-macro",
  "regex",
  "url",
@@ -3444,9 +3436,9 @@ dependencies = [
 
 [[package]]
 name = "preprocess-macro"
-version = "0.5.0"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21b1fff6560d90779e97f84d95bf126449f3f8c202a1f3a97c37558a17921fb4"
+checksum = "b76e1bbfeb395c3cdbdaa03498261835cac574e29a06ffab7495b56ea7fda9ef"
 dependencies = [
  "proc-macro2",
  "quote",

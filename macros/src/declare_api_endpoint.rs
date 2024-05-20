@@ -267,6 +267,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 	};
 	let query_decl = if let Some(query) = query {
 		quote::quote! {
+			#[::preprocess::sync]
 			/// The query params for the #name endpoint.
 			///
 			/// The documentation for the endpoint is below:

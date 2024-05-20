@@ -1,15 +1,5 @@
 use crate::prelude::*;
 
-fn validate_otp(value: Option<String>) -> Result<Option<String>, ::preprocess::Error> {
-	if let Some(ref otp) = value {
-		if otp.len() != 6 && otp.parse::<u32>().is_ok() {
-			return Err(::preprocess::Error::new("Invalid OTP"));
-		}
-	}
-
-	Ok(value)
-}
-
 macros::declare_api_endpoint!(
 	/// Route to login and start a new user session. This route will generate all
 	/// the authentication token needed to access all the services on PATR.
@@ -23,10 +13,9 @@ macros::declare_api_endpoint!(
 	request = {
 		/// The user identifier of the user
 		/// It can be either the username or the email of the user depending on the user input
-		#[preprocess(length(min = 4), trim, lowercase)]
+		#[preprocess(trim, length(min = 4), regex = r"^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$")]
 		pub user_id: String,
-		/// The password of the user
-		/// POLICY:
+		/// The password of the user policy:
 		/// Minimum length (often at least 8 characters).
 		/// At least one uppercase letter.
 		/// At least one lowercase letter.
@@ -36,7 +25,7 @@ macros::declare_api_endpoint!(
 		pub password: String,
 		/// If a user has a multi-factor authentication enabled, the OTP to authenticate the identity
 		/// of the user
-		#[preprocess(custom = "validate_otp")]
+		#[preprocess(optional(trim, length(min = 6, max = 7), regex = r"^([0-9]{3}\-[0-9]{3})|([0-9]{6})$"))]
 		pub mfa_otp: Option<String>,
 	},
 	response = {

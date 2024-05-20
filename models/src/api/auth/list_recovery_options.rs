@@ -14,7 +14,7 @@ macros::declare_api_endpoint!(
 	request = {
 		/// The user identifier of the user
 		/// It can be either the username or the email of the user depending on the user input
-		#[preprocess(length(min = 4), trim, lowercase)]
+		#[preprocess(trim, length(min = 2), regex = r"^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$")]
 		pub user_id: String,
 	},
 	response = {

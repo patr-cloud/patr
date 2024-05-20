@@ -11,6 +11,7 @@ macros::declare_api_endpoint!(
 	},
 	query = {
 		/// The email that has to be verified
+		#[preprocess(trim, email)]
 		pub email: String,
 	},
 	response = {
