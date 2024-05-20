@@ -27,9 +27,9 @@ pub fn DoubleInputSlider(
 	let outer_div_class =
 		class.with(|cname| format!("slider full-width fr-ct-ct pos-rel pb-xl {}", cname,));
 
-	/// The current min value of the slider
+	// The current min value of the slider
 	let min_value = create_rw_signal(default_min);
-	/// The current max value of the slider
+	// The current max value of the slider
 	let max_value = create_rw_signal(default_max);
 
 	view! {

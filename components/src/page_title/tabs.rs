@@ -1,8 +1,11 @@
 use crate::imports::*;
 
+/// A Tab Item
 #[derive(Clone, PartialEq, Eq)]
 pub struct TabItem {
+	/// Name of the tab to navigate to
 	pub name: String,
+	/// The Path to navigate to
 	pub path: String,
 }
 

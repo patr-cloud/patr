@@ -1,12 +1,21 @@
 use crate::{pages::DatabaseCard, prelude::*};
 
+/// The Database Item
+/// TO BE REPLACED LATER WITH MODEL A PROPER MODEL TYPE
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct DatabaseItem {
+	/// The Id of the database
 	pub id: i32,
+	/// The Name of the database
 	pub name: String,
+	/// The region of the database
 	pub region: String,
+	/// What type of engine the database is running on, i.e. Mongo, PSQL, etc
+	/// TODO: Replaced with an ENUM
 	pub engine: String,
+	/// The Version of the database engine
 	pub version: String,
+	/// The Resource allocation plan of the database
 	pub plan: String,
 }
 

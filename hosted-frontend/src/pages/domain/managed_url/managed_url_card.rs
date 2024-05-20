@@ -1,7 +1,5 @@
 use std::rc::Rc;
 
-use leptos::html::Col;
-
 use crate::{pages::*, prelude::*};
 
 #[component]

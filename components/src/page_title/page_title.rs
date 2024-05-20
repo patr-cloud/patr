@@ -16,9 +16,13 @@ pub enum PageTitleVariant {
 /// Specifies where to put the arrow.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum PageTitleIconPosition {
+	/// Don't Put an arrow
 	#[default]
 	None,
+	/// Put the arrow in the end, implying that there are more breadcrumbs to
+	/// follow
 	End,
+	/// Put the arrow in the start, implying that this is the last breadcumb
 	Start,
 }
 

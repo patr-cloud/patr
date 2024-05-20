@@ -8,9 +8,6 @@ pub fn SidebarItem(
 	/// Additional classes to add to the sidebar if necessary
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
-	/// Path to navigate to
-	#[prop(into, optional)]
-	to: MaybeSignal<String>,
 ) -> impl IntoView {
 	let class = move || format!("sidebar-item full-width fc-fs-fs {}", class.get());
 

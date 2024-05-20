@@ -57,14 +57,6 @@ pub fn Link(
 		}
 	};
 
-	let button_type = {
-		if should_submit.get() {
-			"submit".to_owned()
-		} else {
-			"button".to_owned()
-		}
-	};
-
 	let to = store_value(to);
 	let children = store_value(children);
 

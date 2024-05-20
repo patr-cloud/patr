@@ -4,12 +4,9 @@ use leptos_router::{
 	use_params as use_router_params,
 	use_query as use_router_query,
 	Params,
-	ParamsError,
 	Route,
 };
 use serde::{de::DeserializeOwned, Serialize};
-
-use crate::prelude::*;
 
 /// A trait for types that can be used as a route in the application.
 /// It also provides the path as well as the query parameters for the route.

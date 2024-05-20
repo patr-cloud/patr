@@ -1,8 +1,11 @@
 use crate::{pages::SecretCard, prelude::*};
 
+/// The Secret List Item
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct SecretListItem {
+	/// The Id of the secret
 	pub id: String,
+	/// The name of the secret
 	pub name: String,
 }
 

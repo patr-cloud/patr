@@ -1,14 +1,21 @@
 use crate::{pages::DeploymentCard, prelude::*};
 
+/// Deployment Model
 /// TO BE REPLACED LATER WITH MODEL A PROPER MODEL TYPE
 /// ACCORDING TO THE REQUEST RESPONSE TYPE
 #[derive(PartialEq, Eq, Clone)]
 pub struct DeploymentType {
+	/// The Id of the deployment
 	pub id: String,
+	/// The Name of the deployment
 	pub name: String,
+	/// The Image Tag of the deployment
 	pub image_tag: String,
+	/// The Status of the deployment
 	pub status: Status,
+	/// The Region of the deployment
 	pub region: String,
+	/// The Machine Type of the deployment
 	pub machine_type: String,
 }
 

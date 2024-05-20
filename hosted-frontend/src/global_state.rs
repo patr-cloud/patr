@@ -1,28 +1,29 @@
-use http::header::ACCEPT_ENCODING;
 use leptos::*;
 use leptos_use::{use_cookie, utils::FromToStringCodec};
 
 /// WIP NEEDS A BIT OF REWORK
 
+/// The Auth tokens struct, contains the auth token and the refresh token,
+/// stored in the browser cookies
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct AuthTokens {
+	/// The JWT Auth Token
 	pub auth_token: String,
+	/// The Refresh Token
 	pub refresh_token: String,
 }
 
+/// The Global state, basically wraps around all the other states, and is passed
+/// down via the context
 #[derive(Default, Debug, Clone)]
 pub struct GlobalState {
+	/// The auth state
 	pub auth_state: AuthState,
 }
 
 impl GlobalState {
+	/// Create a new instance of the Global State
 	pub const fn new() -> Self {
-		GlobalState {
-			auth_state: AuthState::LoggedOut,
-		}
-	}
-
-	pub const fn init() -> Self {
 		GlobalState {
 			auth_state: AuthState::LoggedOut,
 		}
@@ -32,8 +33,10 @@ impl GlobalState {
 /// The Auth state, contains the log in status and the auth token
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub enum AuthState {
+	/// The user is logged out
 	#[default]
 	LoggedOut,
+	/// User is Logged in
 	LoggedIn(AuthTokens),
 }
 
@@ -50,6 +53,8 @@ impl AuthState {
 	}
 }
 // -> Signal<AuthState>
+
+/// Get auth state for the browser cookie
 pub fn authstate_from_cookie() -> Signal<AuthState> {
 	let state = use_context::<RwSignal<GlobalState>>().expect("state to be provided");
 

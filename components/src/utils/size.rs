@@ -1,5 +1,6 @@
 use std::fmt::{self, Display, Formatter};
 
+/// Various sizes for components.
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Default, Ord)]
 pub enum Size {
 	/// XXL

@@ -1,11 +1,13 @@
-use std::rc::Rc;
-
 use crate::prelude::*;
 
+/// The Api Token object
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct UserApiToken {
+	/// The name of the token
 	pub name: String,
+	/// The expiry date of the token
 	pub expiry: String,
+	/// When the token was created
 	pub created: String,
 }
 

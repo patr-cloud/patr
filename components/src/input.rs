@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use crate::imports::*;
 
+/// The Type of the input
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum InputType {
 	/// The default value. A single-line text field. Line-breaks are
@@ -24,6 +25,8 @@ pub enum InputType {
 	Number,
 	/// A check box allowing single values to be selected/deselected.
 	Checkbox,
+	/// An input which allows for the uploading of a file. Will be rendered as
+	/// a button with a file picker dialog.
 	File,
 	/// A Callender like date picker
 	Date,
@@ -34,6 +37,7 @@ pub enum InputType {
 }
 
 impl InputType {
+	/// Converts the enum into the corresponding html attribute string
 	pub const fn as_html_attribute(self) -> &'static str {
 		match self {
 			Self::Text => "text",
@@ -64,7 +68,7 @@ pub fn Input(
 	required: bool,
 	/// The Patter of the input, a string regex
 	#[prop(into, optional)]
-	pattern: MaybeSignal<String>,
+	_pattern: MaybeSignal<String>,
 	/// The ID of the input.
 	#[prop(into, optional)]
 	id: MaybeSignal<String>,

@@ -1,5 +1,6 @@
 use std::fmt::{self, Display, Formatter};
 
+/// The Color variants supported by the app.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SecondaryColorVariant {
 	/// Default. Light Color Variant
@@ -34,6 +35,7 @@ pub enum Variant {
 	/// A Normal Button. To be used with the Link Component
 	#[default]
 	Button,
+	/// A Link. To be used with the Link Component
 	Link,
 }
 
