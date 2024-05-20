@@ -28,7 +28,7 @@ macros::declare_api_endpoint!(
 		#[preprocess(trim, lowercase)]
 		pub message: String,
 		/// The static site index.html file
-		#[preprocess(trim, lowercase)]
+		// #[preprocess(trim, lowercase)]
 		pub file: Option<String>,
 		/// Static site details which included metrics, etc
 		#[preprocess(none)]

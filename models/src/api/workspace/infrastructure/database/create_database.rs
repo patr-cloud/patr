@@ -37,7 +37,7 @@ macros::declare_api_endpoint!(
 		#[preprocess(trim, lowercase)]
 		pub version: String,
 		/// The number of database instances to run following a master-slave architecture
-		#[preprocess(type = "u16")]
+		// #[preprocess(type = "u16")]
 		pub num_node: u16
 	},
 	response = {

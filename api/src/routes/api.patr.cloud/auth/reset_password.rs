@@ -64,7 +64,7 @@ pub async fn reset_password(
 				user_phone_number.number
 			) = $1;
 		"#,
-		user_id,
+		&user_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -143,7 +143,7 @@ pub async fn reset_password(
 	)
 	.map_err(ErrorType::server_error)?
 	.hash_password(
-		password.as_ref(),
+		password.as_bytes(),
 		SaltString::generate(&mut rand::thread_rng()).as_salt(),
 	)
 	.map_err(ErrorType::server_error)?

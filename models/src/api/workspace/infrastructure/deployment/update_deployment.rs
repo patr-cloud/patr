@@ -25,7 +25,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// To update the deployment name
-		#[preprocess(trim, lowercase, regex = r"^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$")]
+		// #[preprocess(trim, lowercase, regex = r"^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$")]
 		pub name: Option<String>,
 		/// To update the machine type
 		#[preprocess(none)]

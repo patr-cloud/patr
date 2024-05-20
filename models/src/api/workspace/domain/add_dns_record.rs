@@ -36,7 +36,7 @@ macros::declare_api_endpoint!(
 		#[preprocess(none)]
 		pub r#type: DnsRecordValue,
 		/// The time to live of a record
-		#[preprocess(type = "u32")]
+		// #[preprocess(type = "u32")]
 		pub ttl: u32,
 	},
 	response = {

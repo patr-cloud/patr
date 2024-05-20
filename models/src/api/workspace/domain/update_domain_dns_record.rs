@@ -24,16 +24,16 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// To update the time to live of the domain
-		#[preprocess(type = "u32")]
+		// #[preprocess(type = "u32")]
 		pub ttl: Option<u32>,
 		/// To update the target of the domain
-		#[preprocess(trim, lowercase)]
+		// #[preprocess(trim, lowercase)]
 		pub target: Option<String>,
 		/// To update the priority of the domain
-		#[preprocess(type = "u16")]
+		// #[preprocess(type = "u16")]
 		pub priority: Option<u16>,
 		/// To update the if the domain is proxied or not
-		#[preprocess(none)]
+		// #[preprocess(none)]
 		pub proxied: Option<bool>,
 	}
 );

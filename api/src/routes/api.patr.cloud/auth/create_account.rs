@@ -41,7 +41,7 @@ pub async fn create_account(
 				user_agent: user_agent.clone(),
 			})
 			.query(IsUsernameValidQuery {
-				username: username.clone(),
+				username: username.to_string(),
 			})
 			.path(IsUsernameValidPath)
 			.body(IsUsernameValidRequestProcessed)
@@ -190,10 +190,10 @@ pub async fn create_account(
 		WHERE
 			EXCLUDED.otp_expiry > NOW();
 		"#,
-		username,
+		&username,
 		hashed_password,
-		first_name,
-		last_name,
+		&first_name,
+		&last_name,
 		recovery_email,
 		recovery_phone_country_code,
 		recovery_phone_number,

@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
-fn validate_token(value: String) -> Result<String, Error> {
+fn validate_token(value: String) -> Result<String, ::preprocess::Error> {
 	if value.len() != 6 && value.parse::<u32>().is_ok() {
-		return Err(Error::new("Invalid verification token"));
+		return Err(::preprocess::Error::new("Invalid verification token"));
 	}
 	Ok(value)
 }

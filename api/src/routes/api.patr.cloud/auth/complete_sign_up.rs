@@ -46,7 +46,7 @@ pub async fn complete_sign_up(
             username = $1 AND
 			otp_expiry > NOW();
         "#,
-		username
+		&username
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -62,7 +62,7 @@ pub async fn complete_sign_up(
 	)
 	.map_err(ErrorType::server_error)?
 	.verify_password(
-		verification_token.as_ref(),
+		verification_token.as_bytes(),
 		&PasswordHash::new(&row.otp_hash).map_err(ErrorType::server_error)?,
 	)
 	.is_ok();
@@ -125,7 +125,7 @@ pub async fn complete_sign_up(
             );
         "#,
 		user_id as _,
-		username,
+		&username,
 		row.password,
 		row.first_name,
 		row.last_name,
