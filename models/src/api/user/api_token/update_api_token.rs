@@ -26,7 +26,7 @@ macros::declare_api_endpoint!(
 	request = {
 		/// Change the name of the API token
 		#[serde(skip_serializing_if = "Option::is_none")]
-		#[preprocess(none)]
+		#[preprocess(optional(trim, length(min = 4)))]
 		pub name: Option<String>,
 		/// Change the permissions of the API token
 		#[serde(skip_serializing_if = "Option::is_none")]

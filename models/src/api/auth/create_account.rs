@@ -43,22 +43,21 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The username of the user signing up
-		#[preprocess(length(min = 4, max = 10), trim, lowercase, regex = "^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$")]
+		#[preprocess(trim, length(min = 2), regex = r"^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$")]
 		pub username: String,
-		/// The password
-		/// POLICY:
+		/// The password policy:
 		/// Minimum length (often at least 8 characters).
 		/// At least one uppercase letter.
 		/// At least one lowercase letter.
 		/// At least one digit.
 		/// At least one special character (e.g., !@#$%^&*)
-		#[preprocess(trim, regex = r"^(?:.*[a-z])(?:.*[A-Z])(?:.*\d)(?:.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$")]
+		#[preprocess(trim, length(min = 8), regex = r"^(?:.*[a-z])(?:.*[A-Z])(?:.*\d)(?:.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$")]
 		pub password: String,
 		/// The first name of the user
-		#[preprocess(trim)]
+		#[preprocess(trim, length(min = 1))]
 		pub first_name: String,
 		/// The last name of the user
-		#[preprocess(trim)]
+		#[preprocess(trim, length(min = 1))]
 		pub last_name: String,
 		/// The recovery method the user would recover their account with
 		#[serde(flatten)]

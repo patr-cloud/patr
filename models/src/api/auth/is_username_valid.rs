@@ -11,6 +11,7 @@ macros::declare_api_endpoint!(
 	},
 	query = {
 		/// The username that has to be verified
+		#[preprocess(trim, length(min = 2), regex = r"^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$")]
 		pub username: String,
 	},
 	response = {

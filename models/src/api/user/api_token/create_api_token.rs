@@ -1,4 +1,4 @@
-use super::UserApiToken;
+use super::{UserApiToken, UserApiTokenProcessed};
 use crate::prelude::*;
 
 macros::declare_api_endpoint!(
@@ -18,7 +18,7 @@ macros::declare_api_endpoint!(
 	request = {
 		/// The token to create
 		#[serde(flatten)]
-		#[preprocess(none)]
+		#[preprocess]
 		pub token: UserApiToken,
 	},
 	response = {

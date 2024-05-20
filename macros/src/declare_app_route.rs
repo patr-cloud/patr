@@ -5,7 +5,6 @@ use syn::{
 	parse_macro_input,
 	token,
 	Attribute,
-	Block,
 	Error,
 	Expr,
 	FieldsNamed,
@@ -109,7 +108,6 @@ pub fn parse(input: TokenStream) -> TokenStream {
 	} = parse_macro_input!(input as AppEndpoint);
 
 	let route_name = format_ident!("{}Route", name);
-	let path_name = format_ident!("{}Path", name);
 	let path_body = if let Some(body) = path_body {
 		quote::quote! {
 			#body

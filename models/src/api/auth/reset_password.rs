@@ -1,12 +1,5 @@
 use crate::prelude::*;
 
-fn validate_token(value: String) -> Result<String, ::preprocess::Error> {
-	if value.len() != 6 && value.parse::<u32>().is_ok() {
-		return Err(::preprocess::Error::new("Invalid verification token"));
-	}
-	Ok(value)
-}
-
 macros::declare_api_endpoint!(
 	/// The route to reset the current password of the user using an OTP sent to their
 	/// preferred recovery method
@@ -19,13 +12,13 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The user ID of the user
-		#[preprocess(length(min = 4), trim, lowercase)]
+		#[preprocess(trim, length(min = 2))]
 		pub user_id: String,
-		/// The OTP sent to the recovery method
-		#[preprocess(custom = "validate_token")]
-		pub verification_token: String,
 		/// The new password entered by the user
-		#[preprocess(length(min = 4, max = 10), trim, lowercase, regex = "^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$")]
+		#[preprocess(trim, length(min = 8), regex = r"^(?:.*[a-z])(?:.*[A-Z])(?:.*\d)(?:.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$")]
 		pub password: String,
+		/// The OTP sent to the recovery method
+		#[preprocess(trim, length(min = 6, max = 7), regex = r"^([0-9]{3}\-[0-9]{3})|([0-9]{6})$")]
+		pub verification_token: String,
 	},
 );

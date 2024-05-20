@@ -12,10 +12,10 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The username of the user
-		#[preprocess(length(min = 4, max = 10), trim, lowercase, regex = "^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$")]
+		#[preprocess(trim, length(min = 2), regex = r"^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$")]
 		pub username: String,
 		/// The password of the user
-		#[preprocess(none)]
+		#[preprocess(trim, length(min = 8), regex = r"^(?:.*[a-z])(?:.*[A-Z])(?:.*\d)(?:.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$")]
 		pub password: String,
 	},
 );

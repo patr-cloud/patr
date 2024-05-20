@@ -21,6 +21,7 @@ pub use self::{
 };
 use crate::permission::WorkspacePermission;
 
+#[::preprocess::sync]
 /// An API token created by the user. This is mostly used by the user if they
 /// want to automate something on Patr using the API. The ID of the token is the
 /// same as the login ID. The only problem here is that since login IDs are
@@ -36,6 +37,7 @@ use crate::permission::WorkspacePermission;
 pub struct UserApiToken {
 	/// A user-friendly name for the token. This is used to identify the token
 	/// when the user is looking at the list of tokens.
+	#[preprocess(trim, length(min = 4))]
 	pub name: String,
 	/// The list of permissions for this token for a given workspace. A token
 	/// can have multiple permissions across different workspaces. But all the

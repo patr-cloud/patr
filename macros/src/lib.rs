@@ -19,6 +19,8 @@ mod declare_stream_endpoint;
 mod has_headers;
 /// A proc macro for stripping whitespaces and newlines from SQL queries.
 mod query;
+/// A macro to verify if a given string is a valid regex at compile time.
+mod verify_regex;
 /// A macro to get the current crate version.
 mod version;
 
@@ -153,4 +155,18 @@ pub fn query(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn version(input: TokenStream) -> TokenStream {
 	version::parse(input)
+}
+
+/// A macro to verify if a given string is a valid regex at compile time.
+///
+/// ## Example usage:
+/// ```rust
+/// // In the root
+/// macros::verify_regex!(r"^(?:.*[a-z])(?:.*[A-Z])(?:.*\d)(?:.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$");
+/// ```
+///
+/// This will return a compile time error if the given regex is invalid.
+#[proc_macro]
+pub fn verify_regex(input: TokenStream) -> TokenStream {
+	verify_regex::parse(input)
 }

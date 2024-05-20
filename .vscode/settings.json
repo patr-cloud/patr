@@ -30,6 +30,7 @@
         "opentelemetry",
         "otlp",
         "padawan",
+        "preprocess",
         "proxied",
         "reauthenticated",
         "reauthentication",

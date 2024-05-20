@@ -13,7 +13,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The username of the user verifying their account
-		#[preprocess(trim, length(min = 2, max = 10), regex = r"^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$")]
+		#[preprocess(trim, length(min = 2), regex = r"^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$")]
 		pub username: String,
 		/// The OTP which will validate the verification
 		#[preprocess(trim, length(min = 6, max = 7), regex = r"^([0-9]{3}\-[0-9]{3})|([0-9]{6})$")]

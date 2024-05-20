@@ -7,7 +7,6 @@ mod list_recovery_options;
 mod login;
 mod logout;
 mod renew_access_token;
-// mod oauth;
 mod resend_otp;
 mod reset_password;
 
@@ -21,7 +20,6 @@ pub use self::{
 	login::*,
 	logout::*,
 	renew_access_token::*,
-	// oauth::*,
 	resend_otp::*,
 	reset_password::*,
 };
