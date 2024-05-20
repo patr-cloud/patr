@@ -1,20 +1,17 @@
-use std::str::FromStr;
-
 use leptos_use::{use_cookie, utils::FromToStringCodec};
-use models::api::user::{
-	GetUserDetailsRequest,
-	GetUserInfoPath,
-	GetUserInfoRequest,
-	GetUserInfoRequestHeaders,
-	GetUserInfoResponse,
-};
+use models::api::user::GetUserInfoResponse;
 
 use crate::prelude::*;
 
+/// Load user data from the server
 #[server]
 pub async fn load_user_data(
 	access_token: Option<String>,
 ) -> Result<Result<GetUserInfoResponse, ErrorType>, ServerFnError> {
+	use std::str::FromStr;
+
+	use models::api::user::{GetUserInfoPath, GetUserInfoRequest, GetUserInfoRequestHeaders};
+
 	logging::log!("Bearer {}", access_token.clone().unwrap_or_default());
 	let api_response = make_api_call::<GetUserInfoRequest>(
 		ApiRequest::builder()
@@ -57,12 +54,12 @@ pub fn ProfileSettings() -> impl IntoView {
 									<ContactInfo user_email=data.clone().recovery_email />
 								}
 								.into_view(),
-								Err(err) => {
+								Err(_) => {
 									view! {}.into_view()
 								}
 							}
 						},
-						Some(Err(err)) => {
+						Some(Err(_)) => {
 							view! {}.into_view()
 						},
 						None => {

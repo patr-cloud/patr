@@ -1,4 +1,3 @@
-use leptos::html::Header;
 use leptos_router::ActionForm;
 use models::api::auth::*;
 
@@ -12,12 +11,12 @@ async fn login(
 	mfa_otp: Option<String>,
 ) -> Result<Result<LoginResponse, ErrorType>, ServerFnError> {
 	use axum::{
-		http::header::{HeaderValue, LOCATION, SET_COOKIE},
+		http::header::{HeaderValue, SET_COOKIE},
 		response::AppendHeaders,
 	};
 	use axum_extra::extract::cookie::{Cookie, SameSite};
-	use http::StatusCode;
-	use leptos_axum::{redirect, ResponseOptions};
+	use leptos_axum::ResponseOptions;
+	use models::api::auth::{LoginPath, LoginRequest, LoginRequestHeaders};
 	use time::Duration;
 
 	let api_response = make_api_call::<LoginRequest>(
@@ -50,10 +49,9 @@ async fn login(
 			.build();
 		let access_token_header = HeaderValue::from_str(access_cookie.to_string().as_str());
 		let refresh_token_header = HeaderValue::from_str(refresh_cookie.to_string().as_str());
-		let redirect_header = HeaderValue::from_str("/some");
 
-		if let (Ok(access_token_header), Ok(refresh_token_header), Ok(redirect_header)) =
-			(access_token_header, refresh_token_header, redirect_header)
+		if let (Ok(access_token_header), Ok(refresh_token_header)) =
+			(access_token_header, refresh_token_header)
 		{
 			response.append_header(SET_COOKIE, access_token_header);
 			response.append_header(SET_COOKIE, refresh_token_header);

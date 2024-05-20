@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
 use leptos_router::ActionForm;
-use models::{api::auth::*, ApiErrorResponse, ApiErrorResponseBody};
+use models::api::auth::*;
 
-use crate::{pages::*, prelude::*};
+use crate::prelude::*;
 
 #[server(CreateAccount, endpoint = "auth/sign-up")]
 async fn sign_up(
@@ -60,16 +60,16 @@ pub fn SignUpForm() -> impl IntoView {
 	let passwords_match =
 		Signal::derive(move || password_input.get() != password_confirm_input.get());
 
-	let name_error = create_rw_signal("".to_owned());
+	let _name_error = create_rw_signal("".to_owned());
 	let username_error = create_rw_signal("".to_owned());
-	let email_error = create_rw_signal("".to_owned());
+	let _email_error = create_rw_signal("".to_owned());
 
 	let password_error = create_rw_signal("".to_owned());
 
 	let handle_errors = move |error: ErrorType| match error {
 		ErrorType::UsernameUnavailable => username_error.set("Username Not Available".to_owned()),
 		ErrorType::EmailUnavailable => username_error.set("Email Not Available".to_owned()),
-		e => password_error.set("".to_owned()),
+		e => password_error.set(format!("Error: {}", e)),
 	};
 
 	create_effect(move |_| {

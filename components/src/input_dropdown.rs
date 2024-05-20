@@ -1,8 +1,11 @@
 use crate::imports::*;
 
+/// The options to display in the dropdown
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct InputDropdownOption {
+	/// The label of the option
 	pub label: String,
+	/// Whether it's checked by default or not
 	pub disabled: bool,
 }
 

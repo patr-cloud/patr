@@ -1,4 +1,4 @@
-use crate::{pages::*, prelude::*};
+use crate::prelude::*;
 
 #[component]
 pub fn EnvInput(

@@ -11,25 +11,43 @@ pub enum AppRoutes {
 	LoggedInRoute(LoggedInRoute),
 }
 
+/// Logged In Routes, The routes that can be accessed by the user if and only if
+/// the user is logged in
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LoggedInRoute {
+	/// The Home page
 	Home,
+	/// The Profile Page
 	Profile,
+	/// The Api Tokens Page
 	ApiTokens,
+	/// Managed URLs Page
 	ManagedUrl,
+	/// The Domains Page
 	Domain,
+	/// Container Registry Page
 	ContainerRegistry,
+	/// Database Page
 	Database,
+	/// Delpoyment Page
 	Deployment,
+	/// Secrets Page
 	Secret,
+	/// Static Sites Page
 	StaticSites,
 }
 
+/// Logged Out Routes, the routes that can be accessed by the user if and only
+/// if the user is logged out
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LoggedOutRoute {
+	/// Login Page
 	Login,
+	/// Sign Up Page
 	SignUp,
+	/// Confirm OTP Page
 	ConfirmOtp,
+	/// Forgot Password Page
 	ForgotPassword,
 }
 

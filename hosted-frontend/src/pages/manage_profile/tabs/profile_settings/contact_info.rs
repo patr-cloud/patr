@@ -1,6 +1,4 @@
-use models::api::user::BasicUserInfo;
-
-use crate::{pages::*, prelude::*};
+use crate::prelude::*;
 
 #[component]
 pub fn ContactInfo(

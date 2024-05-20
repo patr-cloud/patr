@@ -1,7 +1,10 @@
 use crate::imports::*;
 
+/// A Single Log Item containing the timestamp and the log message
 pub struct LogItem {
+	/// The Timestamp of the log
 	pub timestamp: String,
+	/// The Log message
 	pub log: String,
 }
 

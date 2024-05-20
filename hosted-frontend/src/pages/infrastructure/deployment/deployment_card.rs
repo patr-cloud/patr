@@ -1,8 +1,11 @@
 use super::DeploymentType;
 use crate::prelude::*;
 
+/// A Deployment Card Item Type for the list of options,
 pub struct DeploymentCardItem {
+	/// The Label of the deployment
 	label: &'static str,
+	/// The Value of the deployment
 	value: String,
 }
 

@@ -3,6 +3,7 @@ use leptos_router::A;
 use super::ContainerRegistryItem;
 use crate::prelude::*;
 
+/// Table Row for displaying a container registry item.
 #[component]
 pub fn ContainerRegistryCard(item: ContainerRegistryItem) -> impl IntoView {
 	let stored_item = store_value(item);

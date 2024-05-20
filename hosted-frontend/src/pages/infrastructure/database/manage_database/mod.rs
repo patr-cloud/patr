@@ -1,7 +1,4 @@
-use crate::{
-	pages::{ManageDeploymentDetailsTab, ManageDeploymentImageHistory, ManageDeploymentScaling},
-	prelude::*,
-};
+use crate::prelude::*;
 
 #[component]
 pub fn ManageDatabases() -> impl IntoView {
