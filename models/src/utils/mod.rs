@@ -75,6 +75,10 @@ pub mod constants {
 	/// Spells "*Patr*" in bytes
 	pub const UUID_NODE_ID: [u8; 6] = [42, 80, 97, 116, 114, 42];
 
+	/// The regular expression used to validate a username. The username must
+	/// start with an alphanumeric character or an underscore, and end with an
+	/// alphanumeric character. The username can contain alphanumeric
+	/// characters, underscores, dots, and hyphens.
 	pub const USERNAME_VALIDITY_REGEX: &str = r"^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$";
 }
 

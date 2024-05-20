@@ -25,8 +25,11 @@ macros::declare_stream_endpoint!(
 		DeploymentCreated(WithId<Deployment>),
 		/// The user has updated a deployment on their account
 		DeploymentUpdated {
+			/// The ID of the deployment that was updated
 			id: Uuid,
+			/// The old deployment data
 			old: Deployment,
+			/// The new deployment data
 			new: Deployment,
 		},
 		/// The user has deleted a deployment on their account

@@ -1,11 +1,9 @@
-use axum::Error;
-
 use crate::prelude::*;
 
-fn validate_otp(value: Option<String>) -> Result<Option<String>, Error> {
-	if let Some(otp) = value {
+fn validate_otp(value: Option<String>) -> Result<Option<String>, ::preprocess::Error> {
+	if let Some(ref otp) = value {
 		if otp.len() != 6 && otp.parse::<u32>().is_ok() {
-			return Err(Error::new("Invalid OTP"));
+			return Err(::preprocess::Error::new("Invalid OTP"));
 		}
 	}
 

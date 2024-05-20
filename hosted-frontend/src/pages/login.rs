@@ -1,39 +1,9 @@
-use leptos_router::ActionForm;
-use models::{api::auth::*, utils::Headers};
-
 use crate::prelude::*;
-
-#[server(Login, "/api/auth/login")]
-async fn login(request: LoginRequest) -> Result<LoginResponse, ServerFnError<ErrorType>> {
-	use crate::utils::make_api_call;
-	let parts = leptos_axum::extract::<http::request::Parts>()
-		.await
-		.map_err(|err| {
-			ServerFnError::ServerError(format!("Failed to extract request parts: {}", err))
-		})?;
-
-	let response = make_api_call(
-		ApiRequest::<LoginRequest>::builder()
-			.body(request)
-			.headers(
-				LoginRequestHeaders::from_header_map(&parts.headers)
-					.map_err(|err| ServerFnError::ServerError(err.to_string()))?,
-			)
-			.path(LoginPath)
-			.query(())
-			.build(),
-	)
-	.await?;
-
-	Ok(response.body)
-}
 
 #[component]
 fn LoginForm() -> impl IntoView {
-	let login_action = create_server_action::<Login>();
-
 	view! {
-		<ActionForm action=login_action class="box-onboard txt-white">
+		<form class="box-onboard txt-white">
 			<div class="fr-sb-bl mb-lg full-width">
 				<h1 class="txt-primary txt-xl txt-medium">"Sign In"</h1>
 				<div class="txt-white txt-thin fr-fs-fs">
@@ -83,7 +53,7 @@ fn LoginForm() -> impl IntoView {
 			>
 				"LOGIN"
 			</Link>
-		</ActionForm>
+		</form>
 	}
 }
 

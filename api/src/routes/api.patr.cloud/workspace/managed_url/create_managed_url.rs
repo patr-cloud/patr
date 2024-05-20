@@ -178,7 +178,7 @@ pub async fn create_managed_url(
 			);
 		"#,
 		id as _,
-		sub_domain,
+		&sub_domain,
 		domain_id as _,
 		path,
 		url_type as _,

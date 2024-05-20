@@ -62,7 +62,7 @@ pub async fn forgot_password(
 				user_phone_number.number
 			) = $1;
 		"#,
-		user_id,
+		&user_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?

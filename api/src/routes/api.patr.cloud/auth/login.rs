@@ -66,7 +66,7 @@ pub async fn login(
 				user_phone_number.number
 			) = $1;
 		"#,
-		user_id,
+		&user_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -82,7 +82,7 @@ pub async fn login(
 	)
 	.map_err(ErrorType::server_error)?
 	.verify_password(
-		password.as_ref(),
+		password.as_bytes(),
 		&PasswordHash::new(&user_data.password).map_err(ErrorType::server_error)?,
 	)
 	.is_ok();

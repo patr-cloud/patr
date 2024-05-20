@@ -38,7 +38,7 @@ pub async fn resend_otp(
 		WHERE
 			username = $1;
 		"#,
-		username
+		&username
 	)
 	.fetch_optional(&mut **database)
 	.await?;
@@ -83,7 +83,7 @@ pub async fn resend_otp(
 					username = $2;
 				"#,
 				hashed_otp,
-				username
+				&username
 			)
 			.execute(&mut **database)
 			.await?;
