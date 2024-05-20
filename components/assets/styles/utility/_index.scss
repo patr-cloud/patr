@@ -100,79 +100,79 @@
   }
 }
 
-	@for $i from 1 to 13 {
-	.grid-col-#{$i} {
-		display: grid;
-		grid-template-columns: repeat($i, minmax(0, 1fr));
-	}
+@for $i from 1 to 13 {
+  .grid-col-#{$i} {
+    display: grid;
+    grid-template-columns: repeat($i, minmax(0, 1fr));
+  }
 }
 
 @each $align, $align-value in $grid-items {
-	@each $justify, $justify-value in $grid-items {
-		.grid-itm-#{$justify}-#{$align} {
-			display: grid;
-			align-items: $align-value;
-			justify-items: $justify-value;
-		}
-	}
+  @each $justify, $justify-value in $grid-items {
+    .grid-itm-#{$justify}-#{$align} {
+      display: grid;
+      align-items: $align-value;
+      justify-items: $justify-value;
+    }
+  }
 }
 
 @each $align, $align-value in $grid-content {
-	@each $justify, $justify-value in $grid-content {
-		.grid-cnt-#{$justify}-#{$align} {
-			display: grid;
-			align-content: $align-value;
-			justify-content: $justify-value;
-		}
-	}
+  @each $justify, $justify-value in $grid-content {
+    .grid-cnt-#{$justify}-#{$align} {
+      display: grid;
+      align-content: $align-value;
+      justify-content: $justify-value;
+    }
+  }
 }
 
 // -------------------- For Grid Children ---------------------
 // Parents need grid for these to take effect
 
 @each $align, $align-value in $grid-items {
-	@each $justify, $justify-value in $grid-items {
-		.grid-self-#{$justify}-#{$align} {
-			align-self: $align-value;
-			justify-self: $justify-value;
-		}
-	}
+  @each $justify, $justify-value in $grid-items {
+    .grid-self-#{$justify}-#{$align} {
+      align-self: $align-value;
+      justify-self: $justify-value;
+    }
+  }
 }
 
 @for $i from 1 to 13 {
-	@each $grid-item, $grid-item-value in $grid-item-loc {
-		.#{$grid-item}-#{$i} {
-			#{$grid-item-value}: $i;
-		}
-	}
+  @each $grid-item, $grid-item-value in $grid-item-loc {
+    .#{$grid-item}-#{$i} {
+      #{$grid-item-value}: $i;
+    }
+  }
 }
 
 // Grid span is for spanning grid items accross multiple grid tracks
 
 @for $i from 1 to 13 {
-	.grid-col-span-#{$i} {
-		grid-column: span $i / span $i;
-	}
+  .grid-col-span-#{$i} {
+    grid-column: span $i / span $i;
+  }
 
-	.grid-row-span-#{$i} {
-		grid-row: span $i / span $i;
-	}
+  .grid-row-span-#{$i} {
+    grid-row: span $i / span $i;
+  }
 }
 
 .grid-col-span-auto {
-	grid-column: auto;
+  grid-column: auto;
 }
 
 .grid-row-span-auto {
-	grid-row: auto;
+  grid-row: auto;
 }
 
 .grid-col-span-full {
-	grid-column: 1 / -1;
+  grid-column: 1 / -1;
 }
 
 .grid-row-span-full {
-	grid-row: 1 / -1;
+  grid-row: 1 / -1;
 }
 
 .f-wrap {
@@ -350,6 +350,11 @@
   position: sticky;
   top: 0;
   z-index: 20;
+}
+
+.br-top-sm:first-of-type {
+  border-top-left-radius: map.get($border-radii, "sm");
+  border-top-right-radius: map.get($border-radii, "sm");
 }
 
 .br-bottom-sm:last-of-type {

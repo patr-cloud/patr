@@ -24,6 +24,7 @@ pub enum InputType {
 	Number,
 	/// A check box allowing single values to be selected/deselected.
 	Checkbox,
+	File,
 }
 
 impl InputType {
@@ -35,6 +36,7 @@ impl InputType {
 			Self::Number => "number",
 			Self::Checkbox => "checkbox",
 			Self::Password => "password",
+			Self::File => "file",
 		}
 	}
 }
@@ -44,6 +46,10 @@ pub fn Input(
 	/// Additional class names to apply to the outer div, if any.
 	#[prop(into, optional)]
 	class: String,
+	/// Specifies whether the form field needs to be filled in before it can
+	/// be submitted, doesn't use javascript, defaults to false
+	#[prop(into, optional, default = false.into())]
+	required: bool,
 	/// The ID of the input.
 	#[prop(into, optional)]
 	id: MaybeSignal<String>,
@@ -143,6 +149,8 @@ pub fn Input(
 		end_icon
 	};
 
+	let id_clone = id.clone().get();
+
 	view! {
 		<div class=class>
 			<Show when={
@@ -172,10 +180,12 @@ pub fn Input(
 			<input
 				id=move || id.get()
 				class="mx-md of-hidden txt-of-ellipsis"
+				name=id_clone
 				placeholder=move || placeholder.get()
 				disabled=move || disabled.get()
+				required=required
 				on:input=on_input
-				value=value
+				prop:value=value
 				type=move || {
 					if let InputType::Password = r#type.get() {
 						if show_password.get() {

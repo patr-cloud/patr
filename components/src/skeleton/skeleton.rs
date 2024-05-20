@@ -12,7 +12,19 @@ pub fn Skeleton(
 	#[prop(optional, default = false)]
 	enable_full_height: bool,
 ) -> impl IntoView {
-	let class = move || format!("skeleton {}", class.get());
+	let class = move || {
+		class.with(|classname| {
+			format!(
+				"skeleton {classname} {} {}",
+				if enable_full_height {
+					"full-height"
+				} else {
+					""
+				},
+				if enable_full_width { "full-width" } else { "" }
+			)
+		})
+	};
 
 	view! {
 		<div class=class></div>

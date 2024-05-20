@@ -32,6 +32,10 @@
   input[type="date"]::-webkit-calendar-picker-indicator {
     border-radius: 50%;
   }
+
+  &:invalid:required {
+    background-color: red;
+  }
 }
 
 .placeholder-sm::placeholder {

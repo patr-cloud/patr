@@ -2,7 +2,7 @@ use crate::{pages::SecretCard, prelude::*};
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct SecretListItem {
-	pub id: i32,
+	pub id: String,
 	pub name: String,
 }
 
@@ -10,15 +10,15 @@ pub struct SecretListItem {
 pub fn SecretsDashboard() -> impl IntoView {
 	let data = create_rw_signal(vec![
 		SecretListItem {
-			id: 12,
+			id: "1244".to_owned(),
 			name: "Email".to_owned(),
 		},
 		SecretListItem {
-			id: 13,
+			id: "13".to_owned(),
 			name: "Password".to_owned(),
 		},
 		SecretListItem {
-			id: 123,
+			id: "123".to_owned(),
 			name: "Twilio Auth Key".to_owned(),
 		},
 	]);
