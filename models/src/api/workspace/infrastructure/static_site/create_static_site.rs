@@ -28,10 +28,9 @@ macros::declare_api_endpoint!(
 		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
 		pub name: String,
 		/// Release message (eg: v1.0.0)
-		#[preprocess(trim, regex = FILE_NAME_REGEX)]
 		pub message: String,
 		/// The static site index.html file
-		// #[preprocess(trim, lowercase)]
+		// #[preprocess(none)]
 		pub file: Option<String>,
 		/// Static site details which included metrics, etc
 		#[preprocess(none)]
