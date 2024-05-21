@@ -28,7 +28,6 @@ macros::declare_api_endpoint!(
 		pub password: String,
 		/// If a user has a multi-factor authentication enabled, the OTP to authenticate the identity
 		/// of the user
-		#[preprocess(optional(trim, length(min = 6, max = 7), regex = r"^([0-9]{3}\-[0-9]{3})|([0-9]{6})$"))]
 		#[preprocess(optional(trim, length(min = 6, max = 7), regex = OTP_VERIFICATION_TOKEN_REGEX))]
 		pub mfa_otp: Option<String>,
 	},

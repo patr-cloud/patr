@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use ipnetwork::IpNetwork;
 use time::OffsetDateTime;
 
-use crate::{permission::WorkspacePermission, prelude::*};
+use crate::{permission::WorkspacePermission, prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 
 macros::declare_api_endpoint!(
 	/// Update an API token. The older token will still be valid, but the details of the token will
@@ -26,7 +26,7 @@ macros::declare_api_endpoint!(
 	request = {
 		/// Change the name of the API token
 		#[serde(skip_serializing_if = "Option::is_none")]
-		#[preprocess(optional(trim, length(min = 4)))]
+		#[preprocess(optional(trim, length(min = 4), regex = RESOURCE_NAME_REGEX))]
 		pub name: Option<String>,
 		/// Change the permissions of the API token
 		#[serde(skip_serializing_if = "Option::is_none")]

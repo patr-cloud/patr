@@ -117,7 +117,7 @@ pub mod constants {
 	/// digits, small letters, hyphens, and underscores.
 
 	// PREVIOUSLY: ^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$
-	pub const RESOURCE_NAME_REGEX: &str = r"^[a-z0-9\-_]{4,255}$";
+	pub const RESOURCE_NAME_REGEX: &str = r"^[a-zA-Z0-9\-_]{4,255}$";
 
 	pub const DNS_RECORD_NAME_REGEX: &str = r"^((@)|(\\*)|((\\*\\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])))$";
 

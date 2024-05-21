@@ -25,13 +25,13 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The static site name
-		#[preprocess(trim, lowercase, regex = RESOURCE_NAME_REGEX)]
+		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
 		pub name: String,
 		/// Release message (eg: v1.0.0)
-		#[preprocess(trim, lowercase)]
+		#[preprocess(trim, regex = FILE_NAME_REGEX)]
 		pub message: String,
 		/// The static site index.html file
-		#[preprocess(optional(trim, lowercase, regex = FILE_NAME_REGEX))]
+		// #[preprocess(trim, lowercase)]
 		pub file: Option<String>,
 		/// Static site details which included metrics, etc
 		#[preprocess(none)]
