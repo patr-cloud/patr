@@ -1,6 +1,14 @@
 use serde::{Deserialize, Serialize};
 
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	utils::constants::{
+		PASSWORD_REGEX,
+		PHONE_NUMBER_COUNTRY_CODE_REGEX,
+		PHONE_NUMBER_REGEX,
+		USERNAME_VALIDITY_REGEX,
+	},
+};
 
 /// Recovery method options provided to the user when they forget their
 /// passsword and request a password change by hitting the ForgetPassword API
@@ -15,12 +23,12 @@ pub enum RecoveryMethod {
 		/// The country code of the phone number. Example: US, IN, etc.
 		/// POLICY:
 		/// Plus sign followed by 1 to 4 digits
-		#[preprocess(trim, regex = r"^\+\d{1,4}$")]
+		#[preprocess(trim, regex = PHONE_NUMBER_COUNTRY_CODE_REGEX)]
 		recovery_phone_country_code: String,
 		/// The phone number of the user
 		/// POLICY:
 		/// Standard 10-digit format
-		#[preprocess(trim, regex = r"^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$")]
+		#[preprocess(trim, regex = PHONE_NUMBER_REGEX)]
 		recovery_phone_number: String,
 	},
 	#[serde(rename_all = "camelCase")]
@@ -43,7 +51,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The username of the user signing up
-		#[preprocess(trim, length(min = 2), regex = r"^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$")]
+		#[preprocess(trim, length(min = 2), regex = USERNAME_VALIDITY_REGEX)]
 		pub username: String,
 		/// The password policy:
 		/// Minimum length (often at least 8 characters).
@@ -51,7 +59,7 @@ macros::declare_api_endpoint!(
 		/// At least one lowercase letter.
 		/// At least one digit.
 		/// At least one special character (e.g., !@#$%^&*)
-		#[preprocess(trim, length(min = 8), regex = r"^(?:.*[a-z])(?:.*[A-Z])(?:.*\d)(?:.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$")]
+		#[preprocess(trim, length(min = 8), regex = PASSWORD_REGEX)]
 		pub password: String,
 		/// The first name of the user
 		#[preprocess(trim, length(min = 1))]

@@ -1,5 +1,5 @@
 use super::{DeploymentRegistry, DeploymentRunningDetails};
-use crate::prelude::*;
+use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 
 macros::declare_api_endpoint!(
 	/// Route to create a new deployment
@@ -21,7 +21,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The name of the deployment
-		#[preprocess(trim, lowercase, regex = r"^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$")]
+		#[preprocess(trim, lowercase, regex = RESOURCE_NAME_REGEX)]
 		pub name: String,
 		/// The registry the deployment will use
 		#[preprocess(none)]

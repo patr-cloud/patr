@@ -1,5 +1,5 @@
 use super::DnsRecordValue;
-use crate::prelude::*;
+use crate::{prelude::*, utils::constants::DNS_RECORD_NAME_REGEX};
 
 macros::declare_api_endpoint!(
 	/// Route to add new DNS record
@@ -23,7 +23,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The name of the new record
-		#[preprocess(trim, lowercase, regex = "^((@)|(\\*)|((\\*\\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])))$")]
+		#[preprocess(trim, lowercase, regex = DNS_RECORD_NAME_REGEX)]
 		pub name: String,
 		/// The type of the new record
 		/// It can be of type:
