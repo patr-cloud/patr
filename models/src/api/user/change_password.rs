@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{prelude::*, utils::constants::PASSWORD_REGEX};
 
 macros::declare_api_endpoint!(
 	/// Change the password of the currently logged in user. This will require the
@@ -19,10 +19,10 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The current password of the user.
-		#[preprocess(none)]
+		#[preprocess(length(min = 4), trim, lowercase, regex = PASSWORD_REGEX)]
 		pub current_password: String,
 		/// The new password of the user.
-		#[preprocess(none)]
+		#[preprocess(length(min = 4), trim, lowercase, regex = PASSWORD_REGEX)]
 		pub new_password: String,
 		/// If user has mfa enabled then mfa otp required to change password
 		#[preprocess(none)]

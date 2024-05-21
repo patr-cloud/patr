@@ -1,4 +1,7 @@
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	utils::constants::{OTP_VERIFICATION_TOKEN_REGEX, PASSWORD_REGEX},
+};
 
 macros::declare_api_endpoint!(
 	/// Route to login and start a new user session. This route will generate all
@@ -21,11 +24,12 @@ macros::declare_api_endpoint!(
 		/// At least one lowercase letter.
 		/// At least one digit.
 		/// At least one special character (e.g., !@#$%^&*)
-		#[preprocess(trim, regex = r"^(?:.*[a-z])(?:.*[A-Z])(?:.*\d)(?:.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$")]
+		#[preprocess(trim, regex = PASSWORD_REGEX)]
 		pub password: String,
 		/// If a user has a multi-factor authentication enabled, the OTP to authenticate the identity
 		/// of the user
 		#[preprocess(optional(trim, length(min = 6, max = 7), regex = r"^([0-9]{3}\-[0-9]{3})|([0-9]{6})$"))]
+		#[preprocess(optional(trim, length(min = 6, max = 7), regex = OTP_VERIFICATION_TOKEN_REGEX))]
 		pub mfa_otp: Option<String>,
 	},
 	response = {
