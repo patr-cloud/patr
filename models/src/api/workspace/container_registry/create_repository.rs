@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 
 macros::declare_api_endpoint!(
 	/// Creates a new container repository in the workspace.
@@ -20,7 +20,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The name of the repository to create.
-		#[preprocess(trim, lowercase, regex = "^[a-z0-9_-]{2,255}$")]
+		#[preprocess(trim, lowercase, regex = RESOURCE_NAME_REGEX)]
 		pub name: String,
 	},
 	response = {

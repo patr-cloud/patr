@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{prelude::*, utils::constants::USERNAME_VALIDITY_REGEX};
 
 macros::declare_api_endpoint!(
 	/// The route to check if a user's username is available to be used to create an account or not
@@ -11,7 +11,7 @@ macros::declare_api_endpoint!(
 	},
 	query = {
 		/// The username that has to be verified
-		#[preprocess(trim, length(min = 2), regex = r"^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$")]
+		#[preprocess(trim, length(min = 2), regex = USERNAME_VALIDITY_REGEX)]
 		pub username: String,
 	},
 	response = {

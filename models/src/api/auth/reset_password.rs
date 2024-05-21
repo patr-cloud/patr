@@ -1,4 +1,7 @@
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	utils::constants::{OTP_VERIFICATION_TOKEN_REGEX, PASSWORD_REGEX, USERNAME_VALIDITY_REGEX},
+};
 
 macros::declare_api_endpoint!(
 	/// The route to reset the current password of the user using an OTP sent to their
@@ -12,13 +15,14 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The user ID of the user
-		#[preprocess(trim, length(min = 2))]
+		#[preprocess(trim, length(min = 2), regex = USERNAME_VALIDITY_REGEX)]
 		pub user_id: String,
 		/// The new password entered by the user
-		#[preprocess(trim, length(min = 8), regex = r"^(?:.*[a-z])(?:.*[A-Z])(?:.*\d)(?:.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$")]
+		/// The new password entered by the user
+		#[preprocess(trim, length(min = 8), regex = PASSWORD_REGEX)]
 		pub password: String,
 		/// The OTP sent to the recovery method
-		#[preprocess(trim, length(min = 6, max = 7), regex = r"^([0-9]{3}\-[0-9]{3})|([0-9]{6})$")]
+		#[preprocess(trim, length(equal = 6), regex = OTP_VERIFICATION_TOKEN_REGEX)]
 		pub verification_token: String,
 	},
 );

@@ -1,5 +1,5 @@
 use super::DatabaseEngine;
-use crate::prelude::*;
+use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 
 macros::declare_api_endpoint!(
 	/// Route to create a new database
@@ -22,7 +22,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The name of the database
-		#[preprocess(trim, lowercase, regex = r"^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$")]
+		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
 		pub name: String,
 		/// The database engine (MySQL, MongoDB, Postgres, Redis)
 		#[preprocess(none)]

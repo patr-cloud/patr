@@ -1,5 +1,8 @@
 use super::StaticSiteDetails;
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	utils::constants::{FILE_NAME_REGEX, RESOURCE_NAME_REGEX},
+};
 
 macros::declare_api_endpoint!(
 	/// Definition of a route to create a new static site
@@ -22,13 +25,12 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The static site name
-		#[preprocess(trim, lowercase, regex = "^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$")]
+		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
 		pub name: String,
 		/// Release message (eg: v1.0.0)
-		#[preprocess(trim, lowercase)]
 		pub message: String,
 		/// The static site index.html file
-		// #[preprocess(trim, lowercase)]
+		// #[preprocess(none)]
 		pub file: Option<String>,
 		/// Static site details which included metrics, etc
 		#[preprocess(none)]

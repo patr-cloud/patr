@@ -80,6 +80,69 @@ pub mod constants {
 	/// alphanumeric character. The username can contain alphanumeric
 	/// characters, underscores, dots, and hyphens.
 	pub const USERNAME_VALIDITY_REGEX: &str = r"^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$";
+
+	/// Regex to validate The Country Code of the phone number. The country code
+	/// must start with a plus sign followed by 1 to 4 digits.
+	pub const PHONE_NUMBER_COUNTRY_CODE_REGEX: &str = r"^\+\d{1,4}$";
+
+	/// The Regex to validate the phone number. The phone number must be in the
+	/// standard 10-digit number format. The number must be in the format `(123)
+	/// 456 7890`, `123-456-7890, 1234567890, 123.456.7890`,
+	pub const PHONE_NUMBER_REGEX: &str = r"^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$";
+
+	/// The Regex to validate the password. The password must have a minimum of
+	/// 6 characters Must contain atleast one digit, one uppercase letter, one
+	/// lowercase letter and one special character (!@#$%^&*?)
+	///
+	/// Explanation:
+	/// ```
+	/// ^			// Start of the line
+	/// (?=\S{8,})		// Atleast 8 characters
+	/// (?=\S*\d)		// Atleast one digit
+	/// (?=\S*[A-Z])		// Atleast one uppercase letter
+	/// (?=\S*[a-z])		// Atleast one lowercase letter
+	/// (?=\S*[!@//$%^&*?])	// Atleast one special character
+	/// \S*			// 0 or more non-space characters with previous conditions in mind
+	/// $			// End of the line
+	/// ```
+	pub const PASSWORD_REGEX: &str =
+		r"^\S*(?=\S{8,})(?=\S*\d)(?=\S*[A-Z])(?=\S*[a-z])(?=\S*[!@#$%^&*?])\S*$";
+
+	/// The Regex to validate OTP of the user. The OTP must be a 6-digit number.
+	/// The OTP can be of the format `123456` or `123-456`.
+	pub const OTP_VERIFICATION_TOKEN_REGEX: &str = r"^(\d{3}\-?\d{3})$";
+
+	/// The Regex to validate a resource name (e.g. deployment name, etc.)
+	/// Matches a string that is between 4 and 255 characters long and can have
+	/// digits, small letters, hyphens, and underscores.
+
+	// PREVIOUSLY: ^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$
+	pub const RESOURCE_NAME_REGEX: &str = r"^[a-zA-Z0-9\-_]{4,255}$";
+
+	pub const DNS_RECORD_NAME_REGEX: &str = r"^((@)|(\\*)|((\\*\\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])))$";
+
+	/// The Regex to validate file names (e.g. for satic sites)
+	///
+	/// Explanation:
+	/// ```
+	/// ^			// Start of the line
+	/// (
+	/// 	\/?		// Optional forward slash
+	/// 	\w		// A word character (This is to ensure that there are no spaces in the file name)
+	/// 	[\w\s]*		// One or more word characters or spaces
+	/// )*			// Zero or more of the previous group (This allows for zero or more directories)
+	/// \.			// A period
+	/// [\w]{2,}		// Two or more word characters (This is to ensure that the file has an extension)
+	/// ```
+
+	pub const FILE_NAME_REGEX: &str = r"^(\/?\w[\w\s]*)*\.[\w]{2,}";
+}
+
+pub fn validate_token(value: String) -> Result<String, ::preprocess::Error> {
+	if value.len() != 6 && value.parse::<u32>().is_ok() {
+		return Err(::preprocess::Error::new("Invalid verification token"));
+	}
+	Ok(value)
 }
 
 /// Ordering of the list for paginated requests

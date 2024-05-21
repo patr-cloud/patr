@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::prelude::*;
+use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 
 mod create_api_token;
 mod list_all_api_tokens;
@@ -37,7 +37,7 @@ use crate::permission::WorkspacePermission;
 pub struct UserApiToken {
 	/// A user-friendly name for the token. This is used to identify the token
 	/// when the user is looking at the list of tokens.
-	#[preprocess(trim, length(min = 4))]
+	#[preprocess(trim, length(min = 4), regex = RESOURCE_NAME_REGEX)]
 	pub name: String,
 	/// The list of permissions for this token for a given workspace. A token
 	/// can have multiple permissions across different workspaces. But all the
