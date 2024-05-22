@@ -112,7 +112,7 @@ pub async fn reset_password(
 	)
 	.map_err(ErrorType::server_error)?
 	.verify_password(
-		verification_token.as_ref(),
+		verification_token.as_bytes(),
 		&PasswordHash::new(&password_reset_token).map_err(ErrorType::server_error)?,
 	)
 	.is_ok();

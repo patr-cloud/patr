@@ -52,7 +52,7 @@ pub async fn resend_otp(
 		)
 		.map_err(ErrorType::server_error)?
 		.verify_password(
-			password.as_ref(),
+			password.as_bytes(),
 			&PasswordHash::new(&user_data.password).map_err(ErrorType::server_error)?,
 		)
 		.is_ok();

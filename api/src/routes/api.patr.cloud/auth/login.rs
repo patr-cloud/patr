@@ -181,24 +181,27 @@ pub async fn login(
 	.await
 	.map_err(ErrorType::server_error)?;
 
-	// if cfg!(debug_assertions) || ip_info.bogon.unwrap_or(false) {
-	// 	return Err(ErrorType::server_error(format!(
-	// 		"cannot use bogon IP address: `{}`",
-	// 		client_ip
-	// 	)));
-	// }
+	if cfg!(debug_assertions) || ip_info.bogon.unwrap_or(false) {
+		return Err(ErrorType::server_error(format!(
+			"cannot use bogon IP address: `{}`",
+			client_ip
+		)));
+	}
 
 	let client_ip = IpNetwork::from(client_ip);
 
-	let (lat, lng) = (0., 0.);
-	// let (lat, lng) = ip_info
-	// 	.loc
-	// 	.split_once(',')
-	// 	.map(|(lat, lng)| Ok::<_, ParseFloatError>((lat.parse::<f64>()?,
-	// lng.parse::<f64>()?))) 	.ok_or_else(|| {
-	// 		ErrorType::server_error(format!("unknown latitude and longitude: {}",
-	// ip_info.loc)) 	})?
-	// 	.map_err(ErrorType::server_error)?;
+	let (lat, lng) = if cfg!(debug_assertions) {
+		(0f64, 0f64)
+	} else {
+		ip_info
+			.loc
+			.split_once(',')
+			.map(|(lat, lng)| Ok::<_, ParseFloatError>((lat.parse::<f64>()?, lng.parse::<f64>()?)))
+			.ok_or_else(|| {
+				ErrorType::server_error(format!("unknown latitude and longitude: {}", ip_info.loc))
+			})?
+			.map_err(ErrorType::server_error)?
+	};
 	let country = ip_info.country;
 	let region = ip_info.region;
 	let city = ip_info.city;
