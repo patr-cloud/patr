@@ -55,7 +55,7 @@ pub async fn change_password(
 	)
 	.map_err(|err| ErrorType::server_error(err.to_string()))?
 	.verify_password(
-		current_password.as_ref(),
+		current_password.as_bytes(),
 		&PasswordHash::new(&row.password)
 			.map_err(|err| ErrorType::server_error(err.to_string()))?,
 	)
@@ -116,7 +116,7 @@ pub async fn change_password(
 		WHERE
 			id = $2;
 		"#,
-		new_password,
+		&new_password,
 		user_data.id as _,
 	)
 	.execute(&mut **database)
