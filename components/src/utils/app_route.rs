@@ -23,7 +23,7 @@ pub trait TypedRoute:
 #[component(transparent)]
 fn AppRoute<R, F, V>(
 	/// The path of the route
-	route: R,
+	_route: R,
 	/// The view for the route
 	view: F,
 	/// The Children of the route

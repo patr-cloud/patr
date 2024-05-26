@@ -25,7 +25,7 @@ leptos = { workspace = true, features = ["ssr"] }
 leptos_axum = { workspace = true, features = ["default"] }
 macros = { workspace = true, features = [] }
 matchit = { workspace = true, features = ["default"] }
-models = { workspace = true, features = [] }
+models = { workspace = true, features = ["axum"] }
 monostate = { workspace = true, features = [] }
 opentelemetry = { workspace = true, features = ["default"] }
 opentelemetry-otlp = { workspace = true, features = ["default"] }

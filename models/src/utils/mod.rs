@@ -66,7 +66,11 @@ pub use self::{
 /// typos.
 pub mod constants {
 	/// Base URL for the API
-	pub const API_BASE_URL: &str = "https://api.patr.cloud";
+	pub const API_BASE_URL: &str = if cfg!(debug_assertions) {
+		"http://localhost:3000"
+	} else {
+		"https://api.patr.cloud"
+	};
 
 	/// Patr's container registry URL
 	pub const CONTAINER_REGISTRY_URL: &str = "registry.patr.cloud";

@@ -9,11 +9,11 @@ use crate::ErrorType;
 /// A websocket upgrade request. This can be used as a body type for websocket
 /// endpoints.
 pub struct WebSocketUpgrade<ServerMsg, ClientMsg>(
-	#[cfg(not(target_arch = "wasm32"))] pub TypedWebSocketUpgrade<ServerMsg, ClientMsg>,
-	#[cfg(target_arch = "wasm32")] pub std::marker::PhantomData<(ServerMsg, ClientMsg)>,
+	#[cfg(feature = "axum")] pub TypedWebSocketUpgrade<ServerMsg, ClientMsg>,
+	#[cfg(not(feature = "axum"))] pub std::marker::PhantomData<(ServerMsg, ClientMsg)>,
 );
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "axum")]
 impl<ServerMsg, ClientMsg> FromAxumRequest for WebSocketUpgrade<ServerMsg, ClientMsg>
 where
 	ClientMsg: 'static,
@@ -31,7 +31,7 @@ where
 	}
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(feature = "axum"))]
 impl<ServerMsg, ClientMsg> FromAxumRequest for WebSocketUpgrade<ServerMsg, ClientMsg>
 where
 	ClientMsg: 'static,
