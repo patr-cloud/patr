@@ -12,9 +12,5 @@ pub fn PageTitleContainer(
 ) -> impl IntoView {
 	let class = move || format!("p-xxs fr-fs-ct {}", class.get());
 
-	view! {
-		<div class=class>
-			{children()}
-		</div>
-	}
+	view! { <div class={class}>{children()}</div> }
 }

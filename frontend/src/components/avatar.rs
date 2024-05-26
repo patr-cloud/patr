@@ -23,19 +23,21 @@ pub fn Avatar(
 	variant: MaybeSignal<Option<SecondaryColorVariant>>,
 ) -> impl IntoView {
 	view! {
-		<div class=move || format!(
-			concat!(
-				"avatar cursor-pointer txt-white bg-secondary",
-				" fr-ct-ct of-hidden avatar-{} {} {}"
-			),
-			size.get().as_css_name(),
-			if let Some(variant) = variant.get() {
-				format!("bg-secondary-{}", variant.as_css_name())
-			} else {
-				"bg-secondary".to_owned()
-			},
-			class.get()
-		)>
+		<div class={move || {
+			format!(
+				concat!(
+					"avatar cursor-pointer txt-white bg-secondary",
+					" fr-ct-ct of-hidden avatar-{} {} {}",
+				),
+				size.get().as_css_name(),
+				if let Some(variant) = variant.get() {
+					format!("bg-secondary-{}", variant.as_css_name())
+				} else {
+					"bg-secondary".to_owned()
+				},
+				class.get(),
+			)
+		}}>
 			{image
 				.get()
 				.some_if_not_empty()
@@ -45,39 +47,31 @@ pub fn Avatar(
 						<img
 							class="img-res"
 							src={image}
-							alt={
-								first_name
-								.get()
-								.some_if_not_empty()
-								.unwrap_or("avatar".into())
-							}
+							alt={first_name.get().some_if_not_empty().unwrap_or("avatar".into())}
 						/>
 					}
 				})}
-			{move || first_name
-				.get()
-				.some_if_not_empty()
-				.map(|first_name| {
-					view! {
-						{first_name
-							.chars()
-							.next()
-							.unwrap_or_default()
-							.to_ascii_uppercase()}
-					}
-				})}
-			{move || last_name
-				.get()
-				.some_if_not_empty()
-				.map(|last_name| {
-					view! {
-						{last_name
-							.chars()
-							.next()
-							.unwrap_or_default()
-							.to_ascii_uppercase()}
-					}
-				})}
+			{move || {
+				first_name
+					.get()
+					.some_if_not_empty()
+					.map(|first_name| {
+						view! {
+							{first_name.chars().next().unwrap_or_default().to_ascii_uppercase()}
+						}
+					})
+			}}
+			{move || {
+				last_name
+					.get()
+					.some_if_not_empty()
+					.map(|last_name| {
+						view! {
+							{last_name.chars().next().unwrap_or_default().to_ascii_uppercase()}
+						}
+					})
+			}}
+
 		</div>
 	}
 }

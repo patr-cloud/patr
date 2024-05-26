@@ -167,18 +167,17 @@ pub fn OtpInput(
 	};
 
 	view! {
-		<div
-			class=move || format!("full-width fr-ct-ct gap-xs {}", class.get())
-		>
-		<input
-			id=move || id.get()
-			ref=node_ref
-			prop:value=value.get()
-			type="text"
-			style="display: none;"
-			disabled=true />
-		{
-			refs
+		<div class={move || format!("full-width fr-ct-ct gap-xs {}", class.get())}>
+			<input
+				id={move || id.get()}
+				ref={node_ref}
+				prop:value={value.get()}
+				type="text"
+				style="display: none;"
+				disabled=true
+			/>
+
+			{refs
 				.with_value(|items| {
 					items
 						.iter()
@@ -187,42 +186,38 @@ pub fn OtpInput(
 							let on_submit = on_submit.clone();
 							view! {
 								<input
-									ref=node_ref
+									ref={node_ref}
 									type="number"
-									on:keydown=move |e| {
-										handle_key_down(
-											index,
-											signal,
-											on_submit.clone(),
-											e
-										);
-									}
-									on:paste=handle_on_paste
-									prop:value=move || signal.get()
+									on:keydown={move |e| {
+										handle_key_down(index, signal, on_submit.clone(), e);
+									}}
+
+									on:paste={handle_on_paste}
+									prop:value={move || signal.get()}
 									placeholder="0"
-									disabled=move || {
-										disabled.get() || {
-											refs.with_value(|refs| {
-												is_disabled(index, refs)
-											})
-										}
-									}
+									disabled={move || {
+										disabled.get()
+											|| { refs.with_value(|refs| { is_disabled(index, refs) }) }
+									}}
+
 									inputmode="numeric"
 									style="color: transparent; text-shadow: 0 0 0 white;"
-									class=move || format!(
-										concat!(
-											"full-width px-xxs txt-center row-card ",
-											"br-sm txt-white txt-lg outline-primary-focus ",
-											"bg-secondary-{}"
-										),
-										variant.get()
-									)
+									class={move || {
+										format!(
+											concat!(
+												"full-width px-xxs txt-center row-card ",
+												"br-sm txt-white txt-lg outline-primary-focus ",
+												"bg-secondary-{}",
+											),
+											variant.get(),
+										)
+									}}
 								/>
 							}
 						})
 						.collect::<Vec<_>>()
-				})
-		}
+				})}
+
 		</div>
 	}
 }

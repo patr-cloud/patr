@@ -17,18 +17,18 @@ pub fn StaticSiteCard(
 		)
 	};
 	view! {
-		<div class=class>
+		<div class={class}>
 			<div class="fr-sb-ct full-width head pb-sm">
 				<div class="fr-ct-ct">
 					<h5 class="txt-white txt-md txt-thin mr-sm of-hidden txt-of-ellipsis w-20">
 						{static_site.get().name}
 					</h5>
 
-					<StatusBadge status=Status::Live/>
+					<StatusBadge status={Status::Live}/>
 				</div>
 
 				<button class="fr-ct-ct">
-					<Icon color=Color::Error icon=IconType::PlayCircle size=Size::Medium/>
+					<Icon color={Color::Error} icon={IconType::PlayCircle} size={Size::Medium}/>
 				</button>
 			</div>
 
@@ -49,7 +49,11 @@ pub fn StaticSiteCard(
 			<div class="fr-sb-ct mt-xs full-width px-xxs">
 				<Link class="letter-sp-md txt-sm fr-fs-ct">
 					"MANAGE STATIC SITE"
-					<Icon icon=IconType::ChevronRight size=Size::ExtraSmall color=Color::Primary/>
+					<Icon
+						icon={IconType::ChevronRight}
+						size={Size::ExtraSmall}
+						color={Color::Primary}
+					/>
 				</Link>
 			</div>
 		</div>

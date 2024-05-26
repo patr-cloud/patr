@@ -12,18 +12,13 @@ pub fn ManageDeploymentsLogs() -> impl IntoView {
 			<div class="full-width full-height px-md fc-fs-fs">
 				<div class="full-width full-height br-sm bg-secondary px-xl py-md fc-fs-fs of-auto">
 					<div class="full-width pb-xxs fr-sb-ct ul-light mb-xs gap-xl">
-						<Link>
-							"LOAD MORE"
-						</Link>
-						<p class="txt-grey txt-xss">
-							"Displaying logs since {logsSince}"
-						</p>
+						<Link>"LOAD MORE"</Link>
+						<p class="txt-grey txt-xss">"Displaying logs since {logsSince}"</p>
 					</div>
 
-					<LogStatement log={log} class="mb-xs" />
+					<LogStatement log={log} class="mb-xs"/>
 				</div>
 			</div>
 		</div>
-
 	}
 }

@@ -17,9 +17,5 @@ pub fn ContainerMain(
         )
 	};
 
-	view! {
-		<section class=class>
-			{children()}
-		</section>
-	}
+	view! { <section class={class}>{children()}</section> }
 }

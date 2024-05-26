@@ -37,17 +37,17 @@ pub fn SecretsDashboard() -> impl IntoView {
 						<PageDescription
 							description="Create and manage API keys, Database Passwords, and other
 							sensitive information."
-							doc_link=Some("https://docs.patr.cloud/features/secrets/".to_owned())
+							doc_link={Some("https://docs.patr.cloud/features/secrets/".to_owned())}
 						/>
 					</div>
 
-					<Link r#type=Variant::Button style_variant=LinkStyleVariant::Contained>
+					<Link r#type={Variant::Button} style_variant={LinkStyleVariant::Contained}>
 						"CREATE SECRET"
 						<Icon
-							icon=IconType::Plus
-							size=Size::ExtraSmall
+							icon={IconType::Plus}
+							size={Size::ExtraSmall}
 							class="ml-xs"
-							color=Color::Black
+							color={Color::Black}
 						/>
 					</Link>
 				</div>
@@ -55,22 +55,18 @@ pub fn SecretsDashboard() -> impl IntoView {
 
 			<ContainerBody class="px-xxl py-xl gap-md">
 				<TableDashboard
-					column_grids=vec![11, 1]
-					headings=vec![
+					column_grids={vec![11, 1]}
+					headings={vec![
 						view! { <p class="txt-sm txt-medium mr-auto">"Name"</p> }.into_view(),
 						"".into_view(),
-					]
+					]}
 
-					render_rows=view! {
-						<For
-							each=move || data.get()
-							key=|state| state.clone().id
-							let:child
-						>
-							<SecretCard secret_item=child />
+					render_rows={view! {
+						<For each={move || data.get()} key={|state| state.clone().id} let:child>
+							<SecretCard secret_item={child}/>
 						</For>
 					}
-						.into_view()
+						.into_view()}
 				/>
 			</ContainerBody>
 		</ContainerMain>

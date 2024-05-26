@@ -18,7 +18,7 @@ pub struct ContainerRegistryItem {
 pub fn ContainerRegistry() -> impl IntoView {
 	view! {
 		<ContainerMain>
-			<Outlet />
+			<Outlet/>
 		</ContainerMain>
 	}
 }
@@ -51,28 +51,26 @@ pub fn ContainerRegistryDashboard() -> impl IntoView {
 			<div class="fr-sb-ct full-width">
 				<div class="fc-fs-fs">
 					<PageTitleContainer>
-						<PageTitle>
-							"Container Registry"
-						</PageTitle>
+						<PageTitle>"Container Registry"</PageTitle>
 					</PageTitleContainer>
 
 					<PageDescription
 						description="Create and manage your Repositories on our private, secure
 						in-built Docker Registry."
-						doc_link=Some("https://docs.patr.cloud/features/container-registry/".to_owned())
+						doc_link={Some(
+							"https://docs.patr.cloud/features/container-registry/".to_owned(),
+						)}
 					/>
+
 				</div>
 
-				<Link
-					r#type=Variant::Button
-					style_variant=LinkStyleVariant::Contained
-				>
+				<Link r#type={Variant::Button} style_variant={LinkStyleVariant::Contained}>
 					"CREATE REPOSITORY"
 					<Icon
-						icon=IconType::ChevronRight
-						size=Size::ExtraSmall
+						icon={IconType::ChevronRight}
+						size={Size::ExtraSmall}
 						class="ml-xs"
-						color=Color::Black
+						color={Color::Black}
 					/>
 				</Link>
 			</div>
@@ -80,22 +78,20 @@ pub fn ContainerRegistryDashboard() -> impl IntoView {
 
 		<ContainerBody class="px-xxl py-xl gap-md">
 			<TableDashboard
-				column_grids=vec![5, 2, 4, 1]
-				headings=vec![
+				column_grids={vec![5, 2, 4, 1]}
+				headings={vec![
 					"Repository".into_view(),
 					"Size".into_view(),
 					"Date Created".into_view(),
-					"".into_view()
-				]
-				render_rows=view! {
-					<For
-						each=move || data.get()
-						key=|state| state.id.clone()
-						let:child
-					>
-						<ContainerRegistryCard item=child />
+					"".into_view(),
+				]}
+
+				render_rows={view! {
+					<For each={move || data.get()} key={|state| state.id.clone()} let:child>
+						<ContainerRegistryCard item={child}/>
 					</For>
-				}.into_view()
+				}
+					.into_view()}
 			/>
 		</ContainerBody>
 	}

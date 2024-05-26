@@ -19,9 +19,5 @@ pub fn Backdrop(
 			)
 		})
 	};
-	view! {
-		<div class=class>
-			{children()}
-		</div>
-	}
+	view! { <div class={class}>{children()}</div> }
 }

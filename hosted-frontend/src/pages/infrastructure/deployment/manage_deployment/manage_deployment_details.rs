@@ -12,9 +12,7 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 				</div>
 
 				<div class="flex-col-10 fc-fs-fs">
-					<Input
-						class="full-width"
-					/>
+					<Input class="full-width"/>
 				</div>
 			</div>
 
@@ -26,70 +24,41 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 				</div>
 
 				<div class="flex-col-10">
-					<Textbox
-						disabled={true}
-						value="docker.io".into_view()
-					/>
+					<Textbox disabled=true value={"docker.io".into_view()}/>
 				</div>
 			</div>
 
 			<div class="flex full-width">
 				<div class="flex-col-2 fr-fs-fs">
-					<label html_for="image-details">
-						"Image Details"
-					</label>
+					<label html_for="image-details">"Image Details"</label>
 				</div>
 
 				<div class="flex-col-7">
-					<Textbox
-						disabled={true}
-						value="nginx".into_view()
-					/>
+					<Textbox disabled=true value={"nginx".into_view()}/>
 				</div>
 				<div class="flex-col-3 pl-md">
-					<Textbox
-						disabled={true}
-						value="latest".into_view()
-					/>
+					<Textbox disabled=true value={"latest".into_view()}/>
 				</div>
 			</div>
 
 			<div class="flex full-width">
 				<div class="flex-col-2 fr-fs-fs">
-					<label
-						html_for="image-details"
-					>
-						"Region"
-					</label>
+					<label html_for="image-details">"Region"</label>
 				</div>
 				<div class="flex-col-10 fc-fs-fs">
-					<Textbox
-						value="Singapore".into_view()
-						disabled={ true }
-					/>
+					<Textbox value={"Singapore".into_view()} disabled=true/>
 				</div>
 			</div>
 
-			<PortInput
-				is_update_screen=true
-				ports_list=vec!["8080".to_owned()]
-			/>
+			<PortInput is_update_screen=true ports_list={vec!["8080".to_owned()]}/>
 
-			<EnvInput
-				envs_list=vec!["LINK".to_owned()]
-			/>
+			<EnvInput envs_list={vec!["LINK".to_owned()]}/>
 
-			<ConfigMountInput
-				mount_points=vec!["/x/y/path".to_owned()]
-			/>
+			<ConfigMountInput mount_points={vec!["/x/y/path".to_owned()]}/>
 
-			<ProbeInput
-				probe_type=ProbeInputType::Startup
-			/>
+			<ProbeInput probe_type={ProbeInputType::Startup}/>
 
-			<ProbeInput
-				probe_type=ProbeInputType::Liveness
-			/>
+			<ProbeInput probe_type={ProbeInputType::Liveness}/>
 		</div>
 	}
 }

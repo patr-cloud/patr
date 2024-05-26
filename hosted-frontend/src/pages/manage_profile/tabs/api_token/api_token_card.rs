@@ -25,11 +25,7 @@ pub fn ApiTokenCard(
     );
 
 	view! {
-		<tr
-			tab_index=0
-			class=outer_class
-			aria_label="Select API Token"
-		>
+		<tr tab_index=0 class={outer_class} aria_label="Select API Token">
 			<td class="flex-col-4 fr-ct-ct">{token.get().name}</td>
 			<td class="flex-col-4 fr-ct-ct">{token.get().expiry}</td>
 			<td class="flex-col-4 fr-ct-ct">{token.get().created}</td>

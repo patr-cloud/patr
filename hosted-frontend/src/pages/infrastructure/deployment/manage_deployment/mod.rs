@@ -7,51 +7,48 @@ pub fn ManageDeployments() -> impl IntoView {
 			<div class="fr-sb-ct full-width">
 				<div class="fc-fs-fs">
 					<PageTitleContainer>
-						<PageTitle icon_position=PageTitleIconPosition::End>
+						<PageTitle icon_position={PageTitleIconPosition::End}>
 							"Infrastructure"
 						</PageTitle>
 						<PageTitle
 							to="deployment"
-							icon_position=PageTitleIconPosition::End
-							variant=PageTitleVariant::SubHeading
+							icon_position={PageTitleIconPosition::End}
+							variant={PageTitleVariant::SubHeading}
 						>
 							"Deployment"
 						</PageTitle>
-						<PageTitle variant=PageTitleVariant::Text>
-							"Deployment Name"
-						</PageTitle>
+						<PageTitle variant={PageTitleVariant::Text}>"Deployment Name"</PageTitle>
 					</PageTitleContainer>
 				</div>
 			</div>
 
-			<Tabs
-				tab_items=vec![
-					TabItem {
-						name: "Details".to_owned(),
-						path: "".to_owned()
-					},
-					TabItem {
-						name: "Scaling".to_owned(),
-						path: "scaling".to_owned()
-					},
-					TabItem {
-						name: "URLs".to_owned(),
-						path: "urls".to_owned()
-					},
-					TabItem {
-						name: "Image History".to_owned(),
-						path: "history".to_owned()
-					},
-					TabItem {
-						name: "Logs".to_owned(),
-						path: "logs".to_owned()
-					},
-				]
-			/>
+			<Tabs tab_items={vec![
+				TabItem {
+					name: "Details".to_owned(),
+					path: "".to_owned(),
+				},
+				TabItem {
+					name: "Scaling".to_owned(),
+					path: "scaling".to_owned(),
+				},
+				TabItem {
+					name: "URLs".to_owned(),
+					path: "urls".to_owned(),
+				},
+				TabItem {
+					name: "Image History".to_owned(),
+					path: "history".to_owned(),
+				},
+				TabItem {
+					name: "Logs".to_owned(),
+					path: "logs".to_owned(),
+				},
+			]}/>
+
 		</ContainerHead>
 
 		<ContainerBody class="gap-md">
-			<Outlet />
+			<Outlet/>
 		</ContainerBody>
 	}
 }

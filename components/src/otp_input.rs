@@ -11,8 +11,5 @@ pub fn OtpInput(
 ) -> impl IntoView {
 	let class = class.with(|cname| format!("full-width fr-ct-ct gap-xs {cname}"));
 
-	view! {
-		<div class=class>
-		</div>
-	}
+	view! { <div class={class}></div> }
 }

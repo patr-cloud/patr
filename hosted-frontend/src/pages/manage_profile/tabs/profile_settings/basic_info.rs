@@ -28,7 +28,7 @@ pub fn BasicInfo(
 							disabled=true
 							class="full-width"
 							placeholder="Enter Username"
-							variant=SecondaryColorVariant::Medium
+							variant={SecondaryColorVariant::Medium}
 							value={basic_user_info.clone().data.username}
 						/>
 					</div>
@@ -47,7 +47,7 @@ pub fn BasicInfo(
 							disabled=true
 							class="full-width"
 							placeholder="First Name"
-							variant=SecondaryColorVariant::Medium
+							variant={SecondaryColorVariant::Medium}
 							value={basic_user_info.clone().data.first_name}
 						/>
 					</div>
@@ -58,7 +58,7 @@ pub fn BasicInfo(
 							disabled=true
 							class="full-width"
 							placeholder="Last Name"
-							variant=SecondaryColorVariant::Medium
+							variant={SecondaryColorVariant::Medium}
 							value={basic_user_info.clone().data.last_name}
 						/>
 					</div>

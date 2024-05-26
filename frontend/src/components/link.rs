@@ -45,7 +45,7 @@ pub fn Link(
 
 	view! {
 		<button
-			type=move || r#type.get()
+			type={move || r#type.get()}
 			on:click={move |e| {
 				let mut navigate_page = true;
 				if let Some(click) = &on_click {
@@ -58,17 +58,21 @@ pub fn Link(
 					}
 				}
 			}}
-			disabled=move || disabled.get()
-			class={move || format!(
-				"fr-ct-ct {} {}",
-				if variant.get() == LinkVariant::Contained {
-					format!("btn btn-{}", color.get())
-				} else {
-					format!("btn-plain txt-{}", color.get())
-				},
-				class.get()
-			)}
+
+			disabled={move || disabled.get()}
+			class={move || {
+				format!(
+					"fr-ct-ct {} {}",
+					if variant.get() == LinkVariant::Contained {
+						format!("btn btn-{}", color.get())
+					} else {
+						format!("btn-plain txt-{}", color.get())
+					},
+					class.get(),
+				)
+			}}
 		>
+
 			{children()}
 		</button>
 	}

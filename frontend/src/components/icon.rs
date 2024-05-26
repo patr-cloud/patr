@@ -909,30 +909,26 @@ pub fn Icon(
 
 	view! {
 		<svg
-			class=move || format!(
-				"icon {} {} icon-fill-{} icon-{} {} {}",
-				if enable_pulse.get() {
-					"pulse"
-				} else {
-					""
-				},
-				color.get().as_text_color().as_css_color(),
-				fill.get().as_css_name(),
-				size.get().as_css_name(),
-				if is_clickable {
-					"cursor-pointer"
-				} else {
-					""
-				},
-				class.get()
-			)
-			on:click=move |ev| {
+			class={move || {
+				format!(
+					"icon {} {} icon-fill-{} icon-{} {} {}",
+					if enable_pulse.get() { "pulse" } else { "" },
+					color.get().as_text_color().as_css_color(),
+					fill.get().as_css_name(),
+					size.get().as_css_name(),
+					if is_clickable { "cursor-pointer" } else { "" },
+					class.get(),
+				)
+			}}
+
+			on:click={move |ev| {
 				if let Some(click) = on_click.clone() {
 					click(&ev)
 				}
-			}
+			}}
 		>
-			<use_ href=move || format!("{}#{}", constants::FEATHER_IMG, icon.get()) />
+
+			<use_ href={move || format!("{}#{}", constants::FEATHER_IMG, icon.get())}></use_>
 		</svg>
 	}
 }

@@ -75,16 +75,18 @@ pub fn Input(
 	let node_ref = r#ref.unwrap_or_else(|| create_node_ref::<html::Input>());
 
 	view! {
-		<div class=move || format!(
-			"input fr-fs-ct row-card bg-secondary-{} {}",
-			variant.get().as_css_name(),
-			class.get()
-		)>
-			{move || info_tooltip
-				.get()
-				.map(move |content| {
-					TooltipContainer(
-						TooltipContainerProps {
+		<div class={move || {
+			format!(
+				"input fr-fs-ct row-card bg-secondary-{} {}",
+				variant.get().as_css_name(),
+				class.get(),
+			)
+		}}>
+			{move || {
+				info_tooltip
+					.get()
+					.map(move |content| {
+						TooltipContainer(TooltipContainerProps {
 							content: String::new(),
 							label: None,
 							disable_focus: false,
@@ -92,84 +94,79 @@ pub fn Input(
 							variant: variant.get(),
 							class: String::new(),
 							children: Rc::new(move || content.clone().into_view().into()),
-						},
-					)
-				})}
-			{
-				start_icon
-					.with(|props|
-						props
-							.as_ref()
-							.map(|props|
-								IconProps {
-									icon: props.icon,
-									size: props.size,
-									color: props.color,
-									class: props.class.clone(),
-									on_click: props.on_click.clone(),
-									enable_pulse: props.enable_pulse,
-									fill: props.fill,
-								}
-							)
-					)
-					.into_view()
-			}
-			{move || start_text.get()}
-			{
-				match value {
-					MaybeSignal::Static(value) => {
-						view! {
-							<input
-								id={move || id.get()}
-								ref={node_ref}
-								class="mx-md of-hidden txt-of-ellipsis"
-								disabled={move || disabled.get()}
-								placeholder={move || placeholder.get()}
-								on:input=on_input
-								value=move || value.clone()
-								type=move || r#type.get() />
-						}
-					}
-					MaybeSignal::Dynamic(value) => {
-						view! {
-							<input
-								id={move || id.get()}
-								ref={node_ref}
-								class="mx-md of-hidden txt-of-ellipsis"
-								disabled={move || disabled.get()}
-								placeholder={move || placeholder.get()}
-								on:input=on_input
-								prop:value={move || {
-									JsValue::from_str(value.get().as_str())
-								}}
-								type=move || r#type.get() />
-						}
+						})
+					})
+			}}
+			{start_icon
+				.with(|props| {
+					props
+						.as_ref()
+						.map(|props| IconProps {
+							icon: props.icon,
+							size: props.size,
+							color: props.color,
+							class: props.class.clone(),
+							on_click: props.on_click.clone(),
+							enable_pulse: props.enable_pulse,
+							fill: props.fill,
+						})
+				})
+				.into_view()} {move || start_text.get()}
+			{match value {
+				MaybeSignal::Static(value) => {
+					view! {
+						<input
+							id={move || id.get()}
+							ref={node_ref}
+							class="mx-md of-hidden txt-of-ellipsis"
+							disabled={move || disabled.get()}
+							placeholder={move || placeholder.get()}
+							on:input={on_input}
+							value={move || value.clone()}
+							type={move || r#type.get()}
+						/>
 					}
 				}
-			}
+				MaybeSignal::Dynamic(value) => {
+					view! {
+						<input
+							id={move || id.get()}
+							ref={node_ref}
+							class="mx-md of-hidden txt-of-ellipsis"
+							disabled={move || disabled.get()}
+							placeholder={move || placeholder.get()}
+							on:input={on_input}
+							prop:value={move || { JsValue::from_str(value.get().as_str()) }}
+
+							type={move || r#type.get()}
+						/>
+					}
+				}
+			}}
 			{move || end_text.get()}
-			{
-				end_icon
-					.with(|props|
-						props
-							.as_ref()
-							.map(|props|
-								IconProps {
-									icon: props.icon,
-									size: props.size,
-									color: props.color,
-									class: props.class.clone(),
-									on_click: props.on_click.clone(),
-									enable_pulse: props.enable_pulse,
-									fill: props.fill,
-								}
-							)
-					)
-					.into_view()
-			}
-			{move || loading.get().then(|| Spinner(SpinnerProps {
-				class: String::from("spinner-xs").into(),
-			}))}
+			{end_icon
+				.with(|props| {
+					props
+						.as_ref()
+						.map(|props| IconProps {
+							icon: props.icon,
+							size: props.size,
+							color: props.color,
+							class: props.class.clone(),
+							on_click: props.on_click.clone(),
+							enable_pulse: props.enable_pulse,
+							fill: props.fill,
+						})
+				})
+				.into_view()}
+			{move || {
+				loading
+					.get()
+					.then(|| Spinner(SpinnerProps {
+						class: String::from("spinner-xs").into(),
+					}))
+			}}
+
 		</div>
 	}
 }

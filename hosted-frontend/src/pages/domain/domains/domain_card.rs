@@ -19,33 +19,35 @@ pub fn DomainCard(
 	};
 
 	view! {
-		<tr class=class>
+		<tr class={class}>
 			<td class="flex-col-4 fr-ct-ct">{domain_item.name}</td>
-			<td class="flex-col-3 fr-ct-ct">{
-				if domain_item.name_server == DomainNameServerType::External {
+			<td class="flex-col-3 fr-ct-ct">
+				{if domain_item.name_server == DomainNameServerType::External {
 					"External Name Server"
 				} else {
 					"Patr Name Server"
-				}
-			}</td>
-			<td class="flex-col-3 fr-ct-ct">{
-				if domain_item.verified {
-					view! {<p class="txt-success">"Verified"</p>}
+				}}
+
+			</td>
+			<td class="flex-col-3 fr-ct-ct">
+				{if domain_item.verified {
+					view! { <p class="txt-success">"Verified"</p> }
 				} else {
 					view! {
 						<p class="txt-warning fr-fs-ct">
 							"Not Verified"
 							<ToolTipContainer
-								tooltip_width={25.}
-								icon_color=Color::Warning
-								color_variant=SecondaryColorVariant::Medium
+								tooltip_width=25.
+								icon_color={Color::Warning}
+								color_variant={SecondaryColorVariant::Medium}
 							>
 								"If this domain stays unverified for 15 days, it will be removed automatically"
 							</ToolTipContainer>
 						</p>
 					}
-				}
-			}</td>
+				}}
+
+			</td>
 		</tr>
 	}
 }

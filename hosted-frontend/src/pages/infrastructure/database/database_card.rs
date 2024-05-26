@@ -46,13 +46,13 @@ pub fn DatabaseCard(
 	];
 
 	view! {
-		<div class=class>
+		<div class={class}>
 			<div class="fr-fs-ct full-width px-xxs">
 				<h4 class="txt-md txt-primary of-hidden txt-of-ellipsis w-25">
 					{deployment.get().name}
 				</h4>
 
-				<StatusBadge status=Status::Live class="mb-xxs ml-xxs"/>
+				<StatusBadge status={Status::Live} class="mb-xxs ml-xxs"/>
 			</div>
 
 			<div class="fr-fs-fs txt-white full-width f-wrap my-auto">
@@ -79,7 +79,11 @@ pub fn DatabaseCard(
 			<div class="fr-fs-ct mt-xs full-width px-xxs">
 				<Link class="letter-sp-md  txt-sm fr-fs-ct">
 					"MANAGE DATABASE"
-					<Icon icon=IconType::ChevronRight size=Size::ExtraSmall color=Color::Primary/>
+					<Icon
+						icon={IconType::ChevronRight}
+						size={Size::ExtraSmall}
+						color={Color::Primary}
+					/>
 				</Link>
 			</div>
 		</div>

@@ -19,28 +19,29 @@ pub fn SkeletonTableCard(
 	};
 
 	view! {
-		<tr class=class>
-			{
-				column_grids
-					.get()
-					.into_iter()
-					.enumerate()
-					.map(|(index, columns)|
-						view! {
-							<td class=format!("full-width {} flex-col-{}", if index == column_grids.get().len() - 1 {
+		<tr class={class}>
+
+			{column_grids
+				.get()
+				.into_iter()
+				.enumerate()
+				.map(|(index, columns)| {
+					view! {
+						<td class={format!(
+							"full-width {} flex-col-{}",
+							if index == column_grids.get().len() - 1 {
 								"fr-sa-ct"
 							} else {
 								"fr-ct-ct px-md"
-							}, columns)>
-								<Skeleton
-									enable_full_width={true}
-									enable_full_height={true}
-								/>
-							</td>
-						}
-					)
-					.collect_view()
-			}
+							},
+							columns,
+						)}>
+							<Skeleton enable_full_width=true enable_full_height=true/>
+						</td>
+					}
+				})
+				.collect_view()}
+
 		</tr>
 	}
 }

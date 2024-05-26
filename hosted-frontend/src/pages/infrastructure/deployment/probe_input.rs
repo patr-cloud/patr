@@ -30,21 +30,17 @@ pub fn ProbeInput(
 	let outer_div_class = class.with(|cname| format!("flex full-width {}", cname));
 
 	view! {
-		<div class=outer_div_class>
+		<div class={outer_div_class}>
 			<div class="flex-col-2 fc-fs-fs mb-auto mt-sm">
 				<div class="fr-fs-fs">
-					<label class="fc-fs-fs">
-						{format!("{} Probe", probe_type.as_str())}
-					</label>
+					<label class="fc-fs-fs">{format!("{} Probe", probe_type.as_str())}</label>
 
-					<ToolTipContainer
-						 icon_color=Color::White
-						tooltip_width=25.
-					>
+					<ToolTipContainer icon_color={Color::White} tooltip_width=25.>
 						<p class="txt-xxs">
 							"Choose the Port on which your deployment is running and define the
 							Path that needs to be checked by the probe."
-							<a target="_blank"
+							<a
+								target="_blank"
 								href="https://docs.patr.cloud/features/deployment/#step-3-create-a-deployment"
 								rel="noopener noreferrer"
 								class="txt-xxs txt-primary txt-underline txt-medium"
@@ -56,35 +52,36 @@ pub fn ProbeInput(
 				</div>
 
 				<small class="txt-xxs txt-grey">
-					{
-						if probe_type == ProbeInputType::Liveness {
-							"Restarts containers that are failing"
-						} else {
-							"Determines when the container is ready to accept requests"
-						}
-					}
+
+					{if probe_type == ProbeInputType::Liveness {
+						"Restarts containers that are failing"
+					} else {
+						"Determines when the container is ready to accept requests"
+					}}
+
 				</small>
 			</div>
 
 			<div class="flex-col-10 fr-fs-fs">
 				<div class="flex-col-5 pr-lg">
 					<InputDropdown
-						placeholder="Enter Probe Path".to_string()
-						value="6655".to_owned()
-						options=vec![
+						placeholder={"Enter Probe Path".to_string()}
+						value={"6655".to_owned()}
+						options={vec![
 							InputDropdownOption {
 								label: "6655".to_owned(),
-								disabled: false
-							}
-						]
+								disabled: false,
+							},
+						]}
 					/>
+
 				</div>
 
 				<div class="flex-col-6 fc-fs-fs">
 					<Input
-						r#type=InputType::Text
+						r#type={InputType::Text}
 						class="full-width"
-						placeholder=format!("Enter {} probe path", probe_type.as_str())
+						placeholder={format!("Enter {} probe path", probe_type.as_str())}
 					/>
 				</div>
 			</div>

@@ -37,30 +37,30 @@ pub fn StaticSiteDashboard() -> impl IntoView {
 				<div class="fr-sb-ct full-width">
 					<div class="fc-fs-fs">
 						<PageTitleContainer>
-							<PageTitle icon_position=PageTitleIconPosition::End>
+							<PageTitle icon_position={PageTitleIconPosition::End}>
 								"Infrastructure"
 							</PageTitle>
-							<PageTitle variant=PageTitleVariant::SubHeading>
+							<PageTitle variant={PageTitleVariant::SubHeading}>
 								"Static Site"
 							</PageTitle>
 						</PageTitleContainer>
 
 						<PageDescription
 							description="Deploy And Manage Static Sites using Patr"
-							doc_link=Some(
+							doc_link={Some(
 								"https://docs.patr.cloud/features/static-sites/".to_owned(),
-							)
+							)}
 						/>
 
 					</div>
 
-					<Link r#type=Variant::Button style_variant=LinkStyleVariant::Contained>
+					<Link r#type={Variant::Button} style_variant={LinkStyleVariant::Contained}>
 						"CREATE SECRET"
 						<Icon
-							icon=IconType::Plus
-							size=Size::ExtraSmall
+							icon={IconType::Plus}
+							size={Size::ExtraSmall}
 							class="ml-xs"
-							color=Color::Black
+							color={Color::Black}
 						/>
 					</Link>
 				</div>
@@ -68,13 +68,13 @@ pub fn StaticSiteDashboard() -> impl IntoView {
 
 			<ContainerBody>
 				<DashboardContainer
-					gap=Size::Large
-					render_items=view! {
-						<For each=move || data.get() key=|state| state.id.clone() let:child>
-							<StaticSiteCard static_site=child/>
+					gap={Size::Large}
+					render_items={view! {
+						<For each={move || data.get()} key={|state| state.id.clone()} let:child>
+							<StaticSiteCard static_site={child}/>
 						</For>
 					}
-						.into_view()
+						.into_view()}
 				/>
 			</ContainerBody>
 

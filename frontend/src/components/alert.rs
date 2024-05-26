@@ -14,34 +14,23 @@ pub fn Alert(
 	class: MaybeSignal<String>,
 ) -> impl IntoView {
 	view! {
-		<span class=move || format!("txt-white fr-fs-fs {}", class.get())>
+		<span class={move || format!("txt-white fr-fs-fs {}", class.get())}>
 			<Icon
-				icon={
-					r#type.with(|r#type| {
-						if matches!(
-							r#type,
-							NotificationType::Error | NotificationType::Warning,
-						) {
+				icon={r#type
+					.with(|r#type| {
+						if matches!(r#type, NotificationType::Error | NotificationType::Warning) {
 							IconType::AlertCircle
 						} else {
 							IconType::CheckCircle
 						}
-					})
-				}
+					})}
+
 				size={Size::Small}
 				color={r#type.with(NotificationType::as_patr_color)}
 			/>
-			<span
-				class=move || format!(
-					"ml-xxs {}",
-					r#type
-						.get()
-						.as_patr_color()
-						.as_text_color()
-						.as_css_color()
-				)>
-				{message}
-			</span>
+			<span class={move || {
+				format!("ml-xxs {}", r#type.get().as_patr_color().as_text_color().as_css_color())
+			}}>{message}</span>
 		</span>
 	}
 }

@@ -17,14 +17,14 @@ pub fn ContainerBody(
 	};
 
 	view! {
-		<div class=class>
+		<div class={class}>
 			{children()}
-			// <div class="fc-ct-ct txt-warning txt-lg gap-xxs txt-center p-xxl">
-			//     "You DO NOT have permission to view this resource."
-			//     <small class="txt-grey txt-center">
-			//         "If you think this is a mistake, contact the admin of this workspace"
-			//     </small>
-			// </div>
+		// <div class="fc-ct-ct txt-warning txt-lg gap-xxs txt-center p-xxl">
+		// "You DO NOT have permission to view this resource."
+		// <small class="txt-grey txt-center">
+		// "If you think this is a mistake, contact the admin of this workspace"
+		// </small>
+		// </div>
 		</div>
 	}
 }

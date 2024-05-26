@@ -29,21 +29,21 @@ pub fn NumberPicker(
 		})
 	};
 	view! {
-		<div class=outer_div_class>
+		<div class={outer_div_class}>
 			<button class="btn-icon" r#type="button" aria_label="Minus Button">
-				<Icon icon=IconType::Minus />
+				<Icon icon={IconType::Minus}/>
 			</button>
 
 			<input
 				class="mx-md txt-white txt-center outline-primary-focus py-xxs br-sm"
 				r#type="number"
-				min=min
-				max=max
-				prop:value=value
+				min={min}
+				max={max}
+				prop:value={value}
 			/>
 
 			<button class="btn-icon" r#type="button" aria_label="Plus Button">
-				<Icon icon=IconType::Plus />
+				<Icon icon={IconType::Plus}/>
 			</button>
 		</div>
 	}

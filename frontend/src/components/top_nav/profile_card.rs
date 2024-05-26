@@ -13,21 +13,16 @@ pub fn ProfileCard(
 
 	view! {
 		<Link
-			on_click=on_click
-			class=MaybeSignal::derive(move || {
-				format!(
-					"fr-fe-ct px-lg row-card br-lg bg-secondary-light ml-sm {}",
-					class.get()
-				)
-			})
+			on_click={on_click}
+			class={MaybeSignal::derive(move || {
+				format!("fr-fe-ct px-lg row-card br-lg bg-secondary-light ml-sm {}", class.get())
+			})}
 		>
+
 			<strong class="txt-of-ellipsis txt-medium txt-sm mr-md of-hidden w-30">
 				{first_name} {last_name}
 			</strong>
-			<Avatar
-				size=Size::Small
-				first_name={first_name}
-				last_name={last_name} />
+			<Avatar size={Size::Small} first_name={first_name} last_name={last_name}/>
 		</Link>
 	}
 }

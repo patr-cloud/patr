@@ -30,28 +30,27 @@ pub fn TooltipContainer(
 	view! {
 		<span
 			ref={container_ref}
-			tab_index=if disable_focus { -1 } else { 0 }
-			class=format!(
+			tab_index={if disable_focus { -1 } else { 0 }}
+			class={format!(
 				"fr-ct-ct pos-rel br-sm mx-xxs tooltip-container {} {class}",
-				if disable_focus {
-					"enable-focus"
-				} else {
-					""
-				}
-			)
+				if disable_focus { "enable-focus" } else { "" },
+			)}
 		>
+
 			{if let Some(label) = label {
 				label()
 			} else {
 				view! {
 					<Icon
-						icon=IconType::Info
+						icon={IconType::Info}
 						size={Size::ExtraSmall}
 						color={icon_color}
 						class="br-round cursor-pointer"
 					/>
-				}.into()
+				}
+					.into()
 			}}
+
 			<Tooltip
 				content={content}
 				parent_ref={container_ref}

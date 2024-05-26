@@ -47,27 +47,22 @@ pub fn DomainsDashboard() -> impl IntoView {
 				<div class="fr-sb-ct full-width">
 					<div class="fc-fs-fs">
 						<PageTitleContainer>
-							<PageTitle>
-								"Domain"
-							</PageTitle>
+							<PageTitle>"Domain"</PageTitle>
 						</PageTitleContainer>
 
 						<PageDescription
 							description="Connect and Manage Domains through Patr."
-							doc_link=Some("https://docs.patr.cloud/features/domains/".to_owned())
+							doc_link={Some("https://docs.patr.cloud/features/domains/".to_owned())}
 						/>
 					</div>
 
-					<Link
-						r#type=Variant::Button
-						style_variant=LinkStyleVariant::Contained
-					>
+					<Link r#type={Variant::Button} style_variant={LinkStyleVariant::Contained}>
 						"ADD DOMAIN"
 						<Icon
-							icon=IconType::Plus
-							size=Size::ExtraSmall
+							icon={IconType::Plus}
+							size={Size::ExtraSmall}
 							class="ml-xs"
-							color=Color::Black
+							color={Color::Black}
 						/>
 					</Link>
 				</div>
@@ -75,21 +70,19 @@ pub fn DomainsDashboard() -> impl IntoView {
 
 			<ContainerBody class="px-xxl py-xl gap-md">
 				<TableDashboard
-					column_grids=vec![4, 3, 3]
-					headings=vec![
+					column_grids={vec![4, 3, 3]}
+					headings={vec![
 						"Domain".into_view(),
 						"Name Server".into_view(),
-						"Verification Status".into_view()
-					]
-					render_rows=view! {
-						<For
-							each=move || data.get()
-							key=|state| state.id.clone()
-							let:child
-						>
-							<DomainCard domain_item=child />
+						"Verification Status".into_view(),
+					]}
+
+					render_rows={view! {
+						<For each={move || data.get()} key={|state| state.id.clone()} let:child>
+							<DomainCard domain_item={child}/>
 						</For>
-					}.into_view()
+					}
+						.into_view()}
 				/>
 			</ContainerBody>
 		</ContainerMain>
