@@ -7,6 +7,10 @@ edition.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[features]
+axum = []
+default = []
+
 [dependencies]
 anyhow = { workspace = true, features = ["default"] }
 axum = { workspace = true, features = ["json"] }
