@@ -11,17 +11,12 @@ fn ModalContainer(
 ) -> impl IntoView {
 	view! {
 		<>
-			{
-				if has_backdrop {
-					view! {
-						<Backdrop variant=variant>{children()}</Backdrop>
-					}.into_view()
-				} else {
-					view! {
-						<>{children()}</>
-					}.into_view()
-				}
-			}
+
+			{if has_backdrop {
+				view! { <Backdrop variant={variant}>{children()}</Backdrop> }.into_view()
+			} else {
+				view! { <>{children()}</> }.into_view()
+			}}
 		</>
 	}
 }
@@ -36,7 +31,7 @@ pub fn Modal(
 	let children = store_value(children);
 	view! {
 		<Portal>
-			<ModalContainer variant=variant has_backdrop=true>
+			<ModalContainer variant={variant} has_backdrop=true>
 				{children.with_value(|children| children())}
 			</ModalContainer>
 		</Portal>

@@ -13,26 +13,28 @@ pub fn EnvInput(
 	let store_envs = store_value(envs_list.clone());
 
 	view! {
-		<div class=outer_div_class>
+		<div class={outer_div_class}>
 			<div class="flex-col-2 fr-fs-ct mb-auto mt-md">
-				<label html_for="port" class="fr-fs-ct">"Environment Variables"</label>
+				<label html_for="port" class="fr-fs-ct">
+					"Environment Variables"
+				</label>
 			</div>
 
 			<div class="flex-col-10 fc-fs-fs">
-				<Show
-					when=move || envs_list.with(|list| list.len() > 0)
-				>
+				<Show when={move || envs_list.with(|list| list.len() > 0)}>
 					<div class="flex full-width">
 						<div class="flex-col-12 fc-fs-fs">
 							<For
-								each=move || store_envs.with_value(|list| list.get())
-								key=|state| state.clone()
+								each={move || store_envs.with_value(|list| list.get())}
+								key={|state| state.clone()}
 								let:child
 							>
 								<div class="flex full-width mb-xs">
 									<div class="flex-col-5 pr-lg">
 										<div class="full-width fr-fs-ct px-xl py-sm br-sm bg-secondary-light">
-											<span class="ml-md txt-of-ellipsis of-hidden-40">{child}</span>
+											<span class="ml-md txt-of-ellipsis of-hidden-40">
+												{child}
+											</span>
 										</div>
 									</div>
 
@@ -48,9 +50,9 @@ pub fn EnvInput(
 									<div class="flex-col-1 fr-ct-ct pl-sm">
 										<button>
 											<Icon
-												icon=IconType::Trash2
-												color=Color::Error
-												size=Size::Small
+												icon={IconType::Trash2}
+												color={Color::Error}
+												size={Size::Small}
 											/>
 										</button>
 									</div>
@@ -63,7 +65,7 @@ pub fn EnvInput(
 				<form class="flex full-width">
 					<div class="flex-col-5 fc-fc-fs pr-lg">
 						<Input
-							r#type=InputType::Text
+							r#type={InputType::Text}
 							id="envKey"
 							placeholder="Enter Env Key"
 							class="full-width"
@@ -72,7 +74,7 @@ pub fn EnvInput(
 
 					<div class="flex-col-6 fc-fs-fs gap-xxs">
 						<Input
-							r#type=InputType::Text
+							r#type={InputType::Text}
 							id="envValue"
 							placeholder="Enter Env Value"
 							class="full-width"
@@ -81,16 +83,15 @@ pub fn EnvInput(
 
 					<div class="flex-col-1 fr-ct-fs">
 						<Link
-							style_variant=LinkStyleVariant::Contained
+							style_variant={LinkStyleVariant::Contained}
 							class="br-sm p-xs ml-md"
 							should_submit=true
 						>
-							<Icon icon=IconType::Plus color=Color::Secondary />
+							<Icon icon={IconType::Plus} color={Color::Secondary}/>
 						</Link>
 					</div>
 				</form>
 			</div>
 		</div>
-
 	}
 }

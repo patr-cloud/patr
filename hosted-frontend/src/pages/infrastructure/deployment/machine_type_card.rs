@@ -15,12 +15,10 @@ pub fn MachineTypeCard(
 		})
 	};
 	view! {
-		<div class=outer_div_class>
+		<div class={outer_div_class}>
 			<div class="fc-fs-fs full-width mb-xxs">
 				<div class="fr-ct-ct">
-					<span class="txt-primary txt-lg txt-regular">
-						"$5"
-					</span>
+					<span class="txt-primary txt-lg txt-regular">"$5"</span>
 
 					<span class="txt-xs letter-sp-md">"/mo"</span>
 				</div>

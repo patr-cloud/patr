@@ -6,7 +6,7 @@ use crate::{global_state::authstate_from_cookie, prelude::*};
 pub fn ConfirmSignUpPage() -> impl IntoView {
 	view! {
 		<PageContainer class="bg-image">
-			<ConfirmSignUpForm />
+			<ConfirmSignUpForm/>
 		</PageContainer>
 	}
 }
@@ -119,34 +119,28 @@ pub fn ConfirmSignUpForm() -> impl IntoView {
 	view! {
 		<div class="box-onboard txt-white">
 			<div class="fr-sb-bl mb-lg full-width">
-				<h1 class="txt-primary txt-xl txt-medium">
-					"Confirm OTP"
-				</h1>
+				<h1 class="txt-primary txt-xl txt-medium">"Confirm OTP"</h1>
 
 				<div class="txt-primary txt-thin fr-fs-fs">
-					<Link
-						to="/sign-up"
-						r#type=Variant::Link
-						class="ml-xs"
-					>
+					<Link to="/sign-up" r#type={Variant::Link} class="ml-xs">
 						"Sign Up with different Email"
 					</Link>
 				</div>
 			</div>
 
-			<ActionForm action=confirm_action class="fc-fs-fs full-width">
+			<ActionForm action={confirm_action} class="fc-fs-fs full-width">
 				<Input
 					name="username"
 					placeholder="Username"
 					id="username"
 					class="full-width"
-					r#type=InputType::Text
+					r#type={InputType::Text}
 					required=true
 				/>
-				<Show
-					when=move || !username_error.get().is_empty()
-				>
-					<Alert r#type=AlertType::Error class="mt-xs">{move || username_error.get()}</Alert>
+				<Show when={move || !username_error.get().is_empty()}>
+					<Alert r#type={AlertType::Error} class="mt-xs">
+						{move || username_error.get()}
+					</Alert>
 				</Show>
 
 				<span class="mt-sm mb-xxs txt-sm txt-white">"Enter OTP"</span>
@@ -155,20 +149,20 @@ pub fn ConfirmSignUpForm() -> impl IntoView {
 					placeholder="Enter the 6 Digit OTP"
 					id="username"
 					class="full-width"
-					r#type=InputType::Number
+					r#type={InputType::Number}
 					required=true
 				/>
-				<Show
-					when=move || !otp_error.get().is_empty()
-				>
-					<Alert r#type=AlertType::Error class="mt-xs">{move || otp_error.get()}</Alert>
+				<Show when={move || !otp_error.get().is_empty()}>
+					<Alert r#type={AlertType::Error} class="mt-xs">
+						{move || otp_error.get()}
+					</Alert>
 				</Show>
 
 				<div class="fr-fe-ct full-width mt-lg">
 					<Link
 						should_submit=true
-						r#type=Variant::Button
-						style_variant=LinkStyleVariant::Contained
+						r#type={Variant::Button}
+						style_variant={LinkStyleVariant::Contained}
 						class="btn mr-xs"
 					>
 						"SIGN UP"

@@ -20,7 +20,7 @@ pub fn UpdateManagedUrl(
 	};
 
 	view! {
-		<form class=class>
+		<form class={class}>
 			<div class="flex py-xxs full-width fr-fs-fs">
 				<div class="flex-col-3 br-sm py-sm px-xl bg-secondary-medium">
 					<div class="px-sm txt-disabled">"@"</div>
@@ -29,9 +29,7 @@ pub fn UpdateManagedUrl(
 				<div class="flex-col-6 fr-fs-fs pr-lg">
 					<span class="mx-md txt-xl">"."</span>
 					<div class="br-sm py-sm px-xl bg-secondary-medium full-width">
-						<div class="px-sm txt-disabled">
-							"betterheroku.com"
-						</div>
+						<div class="px-sm txt-disabled">"betterheroku.com"</div>
 					</div>
 				</div>
 
@@ -39,23 +37,21 @@ pub fn UpdateManagedUrl(
 					<Input
 						class="full-width"
 						placeholder="Add Path"
-						r#type=InputType::Text
-						variant=SecondaryColorVariant::Medium
+						r#type={InputType::Text}
+						variant={SecondaryColorVariant::Medium}
 					/>
 				</div>
 			</div>
 
 			<div class="fr-fs-ct mt-lg ml-auto">
-				<Link on_click=Rc::new(move |_| {
-					show_update_component.set(false)
-				}) class="btn mr-xs">
+				<Link
+					on_click={Rc::new(move |_| { show_update_component.set(false) })}
+					class="btn mr-xs"
+				>
 					"CANCEL"
 				</Link>
 
-				<Link
-					style_variant=LinkStyleVariant::Contained
-					should_submit=true
-				>
+				<Link style_variant={LinkStyleVariant::Contained} should_submit=true>
 					"UPDATE"
 				</Link>
 			</div>

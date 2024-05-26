@@ -17,9 +17,5 @@ pub fn ContainerHead(
 		)
 	};
 
-	view! {
-		<header class=class>
-			{children()}
-		</header>
-	}
+	view! { <header class={class}>{children()}</header> }
 }

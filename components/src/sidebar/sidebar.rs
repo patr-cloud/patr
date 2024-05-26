@@ -73,20 +73,21 @@ pub fn Sidebar() -> impl IntoView {
 	view! {
 		<aside class="sidebar fc-fs-fs">
 			<div class="sidebar-logo">
-				<img src="/images/planet-purple.svg" alt="Plante Patr" />
+				<img src="/images/planet-purple.svg" alt="Plante Patr"/>
 				<div class="fc-ct-ct br-sm">
-					<img src="/images/patr.svg" alt="Patr Logo" />
+					<img src="/images/patr.svg" alt="Patr Logo"/>
 				</div>
 			</div>
 
 			<div class="full-width full-height fc-fs-fs of-hidden pt-md">
 				<nav class="full-height full-width fc-fs-fs ofy-auto mt-md">
 					<ul class="full-width full-height fc-fs-fs">
-						{
-							links.into_iter().map(|link| view! {
-								<SidebarItem link=link />
-							}).collect_view()
-						}
+
+						{links
+							.into_iter()
+							.map(|link| view! { <SidebarItem link={link}/> })
+							.collect_view()}
+
 					</ul>
 				</nav>
 			</div>

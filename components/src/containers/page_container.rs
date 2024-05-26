@@ -17,10 +17,8 @@ pub fn PageContainer(
 	};
 
 	view! {
-		<div class=class>
-			<main class="fc-ct-ct full-width px-lg">
-				{children()}
-			</main>
+		<div class={class}>
+			<main class="fc-ct-ct full-width px-lg">{children()}</main>
 		</div>
 	}
 }

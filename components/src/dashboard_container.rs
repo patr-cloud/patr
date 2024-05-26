@@ -21,10 +21,8 @@ pub fn DashboardContainer(
 	let div_class = move || format!("grid-cnt-st-st grid-col-3 gap-{}", gap.as_css_name());
 
 	view! {
-		<section class=class>
-			<div class=div_class>
-				{render_items}
-			</div>
+		<section class={class}>
+			<div class={div_class}>{render_items}</div>
 		</section>
 	}
 }

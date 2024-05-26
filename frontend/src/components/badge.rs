@@ -14,12 +14,12 @@ pub fn Badge(
 	text: MaybeSignal<String>,
 ) -> impl IntoView {
 	view! {
-		<span class=move || format!(
-			"badge pos-abs txt-secondary txt-medium bg-{} {}",
-			color.get().as_css_name(),
-			class.get()
-		)>
-			{text}
-		</span>
+		<span class={move || {
+			format!(
+				"badge pos-abs txt-secondary txt-medium bg-{} {}",
+				color.get().as_css_name(),
+				class.get(),
+			)
+		}}>{text}</span>
 	}
 }

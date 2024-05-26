@@ -11,7 +11,7 @@ pub fn PageContainer(
 		<div class="fr-fs-fs full-width full-height bg-secondary">
 			// <Sidebar blurLinks={!currentWorkspace} />
 			<main class="fc-fs-ct full-width px-lg">
-				<TopNav />
+				<TopNav/>
 				{children()}
 			</main>
 		</div>

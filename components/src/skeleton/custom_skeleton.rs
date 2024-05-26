@@ -8,7 +8,5 @@ pub fn CustomSkeleton(
 ) -> impl IntoView {
 	let class = move || class.with(|classname| format!("custom-skeleton {}", classname));
 
-	view! {
-		<div class=class></div>
-	}
+	view! { <div class={class}></div> }
 }

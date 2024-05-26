@@ -108,12 +108,12 @@ pub fn LoginForm() -> impl IntoView {
 	});
 
 	view! {
-		<ActionForm action=login_action class="box-onboard txt-white">
+		<ActionForm action={login_action} class="box-onboard txt-white">
 			<div class="fr-sb-bl mb-lg full-width">
 				<h1 class="txt-primary txt-xl txt-medium">"Sign In"</h1>
 				<div class="txt-white txt-thin fr-fs-fs">
 					<p>"New User? "</p>
-					<Link to="/sign-up".to_owned() r#type=Variant::Link>
+					<Link to={"/sign-up".to_owned()} r#type={Variant::Link}>
 						"Sign Up"
 					</Link>
 				</div>
@@ -124,50 +124,48 @@ pub fn LoginForm() -> impl IntoView {
 					name="user_id"
 					class="full-width"
 					id="user_id"
-					r#type=InputType::Text
+					r#type={InputType::Text}
 					placeholder="Username/Email"
-					start_icon=Some(
+					start_icon={Some(
 						IconProps::builder().icon(IconType::User).size(Size::ExtraSmall).build(),
-					)
+					)}
 				/>
-				<Show
-					when=move || !username_error.get().is_empty()
-				>
-					<Alert r#type=AlertType::Error class="mt-xs">{move || username_error.get()}</Alert>
+
+				<Show when={move || !username_error.get().is_empty()}>
+					<Alert r#type={AlertType::Error} class="mt-xs">
+						{move || username_error.get()}
+					</Alert>
 				</Show>
 
 				<Input
 					name="password"
 					class="full-width"
 					id="password"
-					r#type=InputType::Password
+					r#type={InputType::Password}
 					placeholder="Password"
-					start_icon=Some(
+					start_icon={Some(
 						IconProps::builder().icon(IconType::Shield).size(Size::ExtraSmall).build(),
-					)
+					)}
 				/>
 
-				<input name="mfa_otp" type="hidden" />
-				<Show
-					when=move || !password_error.get().is_empty()
-				>
-					<Alert r#type=AlertType::Error class="mt-xs">{move || password_error.get()}</Alert>
+				<input name="mfa_otp" type="hidden"/>
+				<Show when={move || !password_error.get().is_empty()}>
+					<Alert r#type={AlertType::Error} class="mt-xs">
+						{move || password_error.get()}
+					</Alert>
 				</Show>
 			</div>
 
 			<div class="fr-sb-ct full-width pt-xs">
-				<Link
-					to="/forgot-password".to_owned()
-					r#type=Variant::Link
-				>
+				<Link to={"/forgot-password".to_owned()} r#type={Variant::Link}>
 					"Forgot Password?"
 				</Link>
 			</div>
 			<Link
 				should_submit=true
-				r#type=Variant::Link
+				r#type={Variant::Link}
 				class="btn ml-auto mt-md"
-				style_variant=LinkStyleVariant::Contained
+				style_variant={LinkStyleVariant::Contained}
 			>
 				"LOGIN"
 			</Link>
@@ -179,7 +177,7 @@ pub fn LoginForm() -> impl IntoView {
 pub fn AuthPage() -> impl IntoView {
 	view! {
 		<PageContainer class="bg-image">
-			<Outlet />
+			<Outlet/>
 		</PageContainer>
 	}
 }

@@ -48,9 +48,7 @@ where
 	let _params: R = use_router_params().get_untracked().unwrap_or_default();
 	let path = <R as TypedPath>::PATH;
 	view! {
-		<Route
-			view={move || view().into_view()}
-			path=path >
+		<Route view={move || view().into_view()} path={path}>
 			{children()}
 		</Route>
 	}

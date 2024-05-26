@@ -85,47 +85,43 @@ pub fn InputDropdown(
 	let input_value = create_rw_signal(value.get_untracked());
 
 	view! {
-		<div on:click=handle_click class=outer_div_class>
+		<div on:click={handle_click} class={outer_div_class}>
 			<Show
-				when=move || enable_input.get()
-				fallback=move || view! {
-					<span class=input_class>
-						{input_value.get()}
-					</span>
-				}
+				when={move || enable_input.get()}
+				fallback={move || view! { <span class={input_class}>{input_value.get()}</span> }}
 			>
+
 				<input
-					r#type=InputType::Text.as_html_attribute()
-					placeholder=placeholder.clone()
-					disabled=disabled.get()
-					class=input_class
-					prop:value=input_value
+					r#type={InputType::Text.as_html_attribute()}
+					placeholder={placeholder.clone()}
+					disabled={disabled.get()}
+					class={input_class}
+					prop:value={input_value}
 				/>
 			</Show>
-			<Icon
-				icon=IconType::ChevronDown
-				class="ml-auto"
-				size=Size::ExtraSmall
-			/>
+			<Icon icon={IconType::ChevronDown} class="ml-auto" size={Size::ExtraSmall}/>
 
-			<Show
-				when=move || show_dropdown.get()
-			>
-				<div class=dropdown_class.clone()>
+			<Show when={move || show_dropdown.get()}>
+				<div class={dropdown_class.clone()}>
 					<ul class="full-width full-height ofx-hidden ofy-hidden fc-fs-fs">
 						<For
-							each=move || store_options.with_value(|opt| opt.get())
-							key=|state| state.label.clone()
+							each={move || store_options.with_value(|opt| opt.get())}
+							key={|state| state.label.clone()}
 							let:child
 						>
-							<li on:click=move |_| {
+							<li
+								on:click={move |_| {
 									if child.disabled {
-										// input_value.set(child.label);
 										show_dropdown.set(false);
 									}
-								}
-								class=format!("px-xl py-sm ul-light fr-fs-ct full-width br-bottom-sm {}", if child.disabled {"txt-disabled"} else {"txt-white"})
+								}}
+
+								class={format!(
+									"px-xl py-sm ul-light fr-fs-ct full-width br-bottom-sm {}",
+									if child.disabled { "txt-disabled" } else { "txt-white" },
+								)}
 							>
+
 								{child.label}
 							</li>
 						</For>

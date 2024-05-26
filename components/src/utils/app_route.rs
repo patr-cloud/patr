@@ -44,10 +44,7 @@ where
 	let parameters = (query, params);
 
 	view! {
-		<Route
-			view={move || view(parameters.clone()).into_view()}
-			path=path
-		>
+		<Route view={move || view(parameters.clone()).into_view()} path={path}>
 			{children()}
 		</Route>
 	}

@@ -48,23 +48,15 @@ pub fn ApiTokensTab() -> impl IntoView {
 	view! {
 		<div class="fc-fs-fs full-width full-height px-md py-xl gap-md">
 			<TableDashboard
-				column_grids=vec![4, 4, 4]
-				headings=vec![
-					"Name".into_view(),
-					"Expiry".into_view(),
-					"Created At".into_view(),
-				]
-				render_rows=view! {
-					<For
-						each=move || data.get()
-						key=|state| state.name.clone()
-						let:child
-					>
-						<ApiTokenCard
-							token=child
-						/>
+				column_grids={vec![4, 4, 4]}
+				headings={vec!["Name".into_view(), "Expiry".into_view(), "Created At".into_view()]}
+
+				render_rows={view! {
+					<For each={move || data.get()} key={|state| state.name.clone()} let:child>
+						<ApiTokenCard token={child}/>
 					</For>
-				}.into_view()
+				}
+					.into_view()}
 			/>
 		</div>
 	}

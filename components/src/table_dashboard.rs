@@ -23,27 +23,27 @@ pub fn TableDashboard(
 	};
 
 	view! {
-		<table class=class>
+		<table class={class}>
 			<thead class="fr-ct-ct py-sm bg-secondary-medium full-width br-tr-sm br-tl-sm">
 				<tr class="fr-ct-ct px-xl full-width">
-						{
-							headings.into_iter()
-							.enumerate()
-								.map(|(i, heading)|
-									view! {
-										<th class=format!("fr-ct-ct txt-sm txt-medium flex-col-{}", column_grids[i])>
-											{heading}
-										</th>
-									}
-								)
-								.collect_view()
-						}
+
+					{headings
+						.into_iter()
+						.enumerate()
+						.map(|(i, heading)| {
+							view! {
+								<th class={format!(
+									"fr-ct-ct txt-sm txt-medium flex-col-{}",
+									column_grids[i],
+								)}>{heading}</th>
+							}
+						})
+						.collect_view()}
+
 				</tr>
 			</thead>
 
-			<tbody class="full-width full-height fc-fs-fs">
-				{render_rows}
-			</tbody>
+			<tbody class="full-width full-height fc-fs-fs">{render_rows}</tbody>
 		</table>
 	}
 }

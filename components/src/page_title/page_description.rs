@@ -18,18 +18,13 @@ pub fn PageDescription(
 	let doc_link = move || {
 		doc_link.get().map(|link| {
 			view! {
-				<a
-					class="btn-plain txt-sm fr-fs-ct"
-					target="_blank"
-					rel="noreferrer"
-					href=link
-				>
+				<a class="btn-plain txt-sm fr-fs-ct" target="_blank" rel="noreferrer" href={link}>
 					"Documentation"
 
 					<Icon
-						icon=IconType::ExternalLink
-						size=Size::ExtraExtraSmall
-						color=Color::Primary
+						icon={IconType::ExternalLink}
+						size={Size::ExtraExtraSmall}
+						color={Color::Primary}
 					/>
 				</a>
 			}
@@ -37,10 +32,5 @@ pub fn PageDescription(
 		})
 	};
 
-	view! {
-		<p class=class>
-			{description}
-			{doc_link}
-		</p>
-	}
+	view! { <p class={class}>{description} {doc_link}</p> }
 }

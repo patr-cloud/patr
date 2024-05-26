@@ -7,7 +7,5 @@ pub fn Spinner(
 	class: MaybeSignal<String>,
 ) -> impl IntoView {
 	let class = move || format!("spinner {}", class.get());
-	view! {
-		<span class=class></span>
-	}
+	view! { <span class={class}></span> }
 }

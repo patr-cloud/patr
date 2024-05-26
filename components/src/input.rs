@@ -169,7 +169,7 @@ pub fn Input(
 	};
 
 	view! {
-		<div class=class>
+		<div class={class}>
 			<Show when={
 				let label = label.clone();
 				move || label.with(|lbl| !lbl.is_empty())
@@ -195,47 +195,47 @@ pub fn Input(
 				.into_view()}
 
 			<input
-				id=move || id.get()
+				id={move || id.get()}
 				class="mx-md of-hidden txt-of-ellipsis"
-				name=move || name.get()
-				placeholder=move || placeholder.get()
-				disabled=move || disabled.get()
+				name={move || name.get()}
+				placeholder={move || placeholder.get()}
+				disabled={move || disabled.get()}
 				// pattern=move || pattern.get()
-				required=required
-				on:input=on_input
-				prop:value=value
-				type=move || {
+				required={required}
+				on:input={on_input}
+				prop:value={value}
+				type={move || {
 					if let InputType::Password = r#type.get() {
-						if show_password.get() {
-							InputType::Text
-						} else {
-							InputType::Password
-						}
+						if show_password.get() { InputType::Text } else { InputType::Password }
 					} else {
 						r#type.get()
-					}.as_html_attribute()
-				}
+					}
+						.as_html_attribute()
+				}}
 			/>
 
 			{move || end_text.get()}
 			{move || {
 				if let InputType::Password = r#type.get() {
-					show_password_icon.get().then(|| end_icon
-						.with(|props| {
-							props
-								.as_ref()
-								.map(|props| IconProps {
-									icon: props.icon,
-									size: props.size,
-									color: props.color,
-									class: props.class.clone(),
-									on_click: props.on_click.clone(),
-									enable_pulse: props.enable_pulse,
-									fill: props.fill,
+					show_password_icon
+						.get()
+						.then(|| {
+							end_icon
+								.with(|props| {
+									props
+										.as_ref()
+										.map(|props| IconProps {
+											icon: props.icon,
+											size: props.size,
+											color: props.color,
+											class: props.class.clone(),
+											on_click: props.on_click.clone(),
+											enable_pulse: props.enable_pulse,
+											fill: props.fill,
+										})
 								})
 						})
-					)
-					.into_view()
+						.into_view()
 				} else {
 					end_icon
 						.with(|props| {
@@ -254,6 +254,7 @@ pub fn Input(
 						.into_view()
 				}
 			}}
+
 		</div>
 	}
 }

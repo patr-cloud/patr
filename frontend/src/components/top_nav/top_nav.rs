@@ -9,25 +9,20 @@ pub fn TopNav() -> impl IntoView {
 		<header class="full-width fr-sb-ct pt-xl pb-md">
 			<nav class="full-width fr-fe-ct">
 				<button
-					on:click=move |_| open_feedback.set(true)
+					on:click={move |_| open_feedback.set(true)}
 					class="btn btn-secondary row-card mx-sm"
 				>
 					Feedback
 				</button>
-				{move || open_feedback.get().then(move || {
-					view! {
-						// <FeedbackModal
-						// 	handleSubmit={handleSubmit}
-						// 	openFeedback={openFeedback}
-						// 	setOpenFeedback={setOpenFeedback}
-						// 	state={state}
-						// />
-					}
-				})}
-				<ProfileCard
-					on_click=Box::new(move |_| {
-						show_profile_settings.set(true)
-					}) />
+				{move || {
+					open_feedback
+						.get()
+						.then(move || {
+							view! {}
+						})
+				}}
+
+				<ProfileCard on_click={Box::new(move |_| { show_profile_settings.set(true) })}/>
 			</nav>
 		</header>
 	}

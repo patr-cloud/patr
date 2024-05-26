@@ -17,18 +17,12 @@ pub fn ImageHistoryCard(
 	};
 
 	view! {
-		<div
-			class=class
-		>
-			<div class="line pos-abs" />
+		<div class={class}>
+			<div class="line pos-abs"></div>
 			<div class="fr-fs-ct full-width">
 				<Icon
-					icon=IconType::UploadCloud
-					color= if active.get() {
-							Color::Success
-						} else {
-							Color::Info
-						}
+					icon={IconType::UploadCloud}
+					color={if active.get() { Color::Success } else { Color::Info }}
 				/>
 
 				<span class="of-hidden txt-of-ellipsis w-45 ml-sm txt-sm">
@@ -36,33 +30,32 @@ pub fn ImageHistoryCard(
 				</span>
 
 				<button class="btn-icon">
-					<Icon icon=IconType::Copy size=Size::ExtraSmall />
+					<Icon icon={IconType::Copy} size={Size::ExtraSmall}/>
 				</button>
 
-				{
-					move || active.get().then(|| view! {
-						<StatusBadge status=Status::Live class="ml-xxs" />
-					})
-				}
-				<span class="txt-grey ml-auto">
-					"4 Months Ago"
-				</span>
+				{move || {
+					active
+						.get()
+						.then(|| view! { <StatusBadge status={Status::Live} class="ml-xxs"/> })
+				}}
+
+				<span class="txt-grey ml-auto">"4 Months Ago"</span>
 			</div>
 
 			<div class="fr-sb-ct full-width mt-sm pl-xl">
 				<div class="fr-fs-ct row-card pl-sm">
-					<ImageTag tag="Latest".to_owned() />
+					<ImageTag tag={"Latest".to_owned()}/>
 				</div>
 
-				{
-					move || (!active.get()).then(|| view! {
-						<Link
-							class="txt-sm letter-sp-md"
-						>
-							"Revert of this version"
-						</Link>
-					})
-				}
+				{move || {
+					(!active.get())
+						.then(|| {
+							view! {
+								<Link class="txt-sm letter-sp-md">"Revert of this version"</Link>
+							}
+						})
+				}}
+
 			</div>
 		</div>
 	}

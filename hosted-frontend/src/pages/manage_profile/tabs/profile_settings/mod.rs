@@ -40,35 +40,29 @@ pub fn ProfileSettings() -> impl IntoView {
 	});
 
 	view! {
-		<div
-			class="full-width fit-wide-screen mx-auto fc-fs-fs px-md my-xl gap-lg"
-		>
+		<div class="full-width fit-wide-screen mx-auto fc-fs-fs px-md my-xl gap-lg">
 			<Transition>
-				{
-					move || match user_data.get() {
-						Some(Ok(user_data)) => {
-							logging::log!("{:#?}", user_data);
-							match user_data {
-								Ok(data) => view! {
-									<BasicInfo basic_user_info=data.clone().basic_user_info />
-									<ContactInfo user_email=data.clone().recovery_email />
+
+				{move || match user_data.get() {
+					Some(Ok(user_data)) => {
+						logging::log!("{:#?}", user_data);
+						match user_data {
+							Ok(data) => {
+								view! {
+									<BasicInfo basic_user_info={data.clone().basic_user_info}/>
+									<ContactInfo user_email={data.clone().recovery_email}/>
 								}
-								.into_view(),
-								Err(_) => {
-									view! {}.into_view()
-								}
+									.into_view()
 							}
-						},
-						Some(Err(_)) => {
-							view! {}.into_view()
-						},
-						None => {
-							view! {}.into_view()
+							Err(_) => view! {}.into_view(),
 						}
 					}
-				}
+					Some(Err(_)) => view! {}.into_view(),
+					None => view! {}.into_view(),
+				}}
+
 			</Transition>
-			<PasswordSection />
+			<PasswordSection/>
 		</div>
 	}
 }

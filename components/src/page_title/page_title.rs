@@ -55,26 +55,20 @@ pub fn PageTitle(
 	);
 	let start_icon = move || {
 		(icon_position.get() == PageTitleIconPosition::Start).then(|| {
-			view! {
-				<Icon icon=IconType::ChevronRight />
-			}
+			view! { <Icon icon={IconType::ChevronRight}/> }
 		})
 	};
 	let end_icon = move || {
 		(icon_position.get() == PageTitleIconPosition::End).then(|| {
-			view! {
-				<Icon size=Size::Small icon=IconType::ChevronRight class="mx-xs" />
-			}
+			view! { <Icon size={Size::Small} icon={IconType::ChevronRight} class="mx-xs"/> }
 		})
 	};
 
 	view! {
 		<>
-			{start_icon}
-			<Link to={to.get()} r#type=Variant::Link class=class>
+			{start_icon} <Link to={to.get()} r#type={Variant::Link} class={class}>
 				{children()}
-			</Link>
-			{end_icon}
+			</Link> {end_icon}
 		</>
 	}
 }

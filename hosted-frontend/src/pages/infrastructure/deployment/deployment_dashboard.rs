@@ -23,9 +23,8 @@ pub struct DeploymentType {
 pub fn Deployment() -> impl IntoView {
 	view! {
 		<ContainerMain class="full-width full-height mb-md">
-			<Outlet />
+			<Outlet/>
 		</ContainerMain>
-
 	}
 }
 
@@ -78,27 +77,25 @@ pub fn DeploymentDashboard() -> impl IntoView {
 			<div class="fr-sb-ct full-width">
 				<div class="fc-fs-fs">
 					<PageTitleContainer>
-						<PageTitle icon_position=PageTitleIconPosition::End>
+						<PageTitle icon_position={PageTitleIconPosition::End}>
 							"Infrastructure"
 						</PageTitle>
-						<PageTitle variant=PageTitleVariant::SubHeading>
-							"Deployment"
-						</PageTitle>
+						<PageTitle variant={PageTitleVariant::SubHeading}>"Deployment"</PageTitle>
 					</PageTitleContainer>
 
 					<PageDescription
 						description="Create and Manage Deployments with ease using Patr."
-						doc_link=Some("https://docs.patr.cloud/features/deployments/".to_owned())
+						doc_link={Some("https://docs.patr.cloud/features/deployments/".to_owned())}
 					/>
 				</div>
 
-				<Link r#type=Variant::Button style_variant=LinkStyleVariant::Contained>
+				<Link r#type={Variant::Button} style_variant={LinkStyleVariant::Contained}>
 					"CREATE DEPLOYMENT"
 					<Icon
-						icon=IconType::Plus
-						size=Size::ExtraSmall
+						icon={IconType::Plus}
+						size={Size::ExtraSmall}
 						class="ml-xs"
-						color=Color::Black
+						color={Color::Black}
 					/>
 				</Link>
 			</div>
@@ -106,17 +103,16 @@ pub fn DeploymentDashboard() -> impl IntoView {
 
 		<ContainerBody>
 			<DashboardContainer
-				gap=Size::Large
-				render_items=view! {
-					<For
-						each=move || data.get()
-						key=|state| state.id.clone()
-						let:child
-					>
-						<DeploymentCard deployment=child />
-					</For>
+				gap={Size::Large}
+				render_items={
+					view! {
+						<For each={move || data.get()} key={|state| state.id.clone()} let:child>
+							<DeploymentCard deployment={child}/>
+						</For>
+					}
 				}
 			/>
+
 		</ContainerBody>
 	}
 }

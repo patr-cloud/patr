@@ -112,13 +112,9 @@ pub fn PasswordSection() -> impl IntoView {
 				<h2 class="letter-sp-md txt-md">Security</h2>
 			</div>
 
-			<form
-				class="full-width pt-md gap-md fc-fs-fs"
-			>
-				<Show
-					when=move || open_mfa_modal.get()
-				>
-					<Modal variant=SecondaryColorVariant::Medium>
+			<form class="full-width pt-md gap-md fc-fs-fs">
+				<Show when={move || open_mfa_modal.get()}>
+					<Modal variant={SecondaryColorVariant::Medium}>
 						<h1>"Scan the QR Code to enable 2FA"</h1>
 
 						<form class="full-width flex mb-md">
@@ -129,9 +125,8 @@ pub fn PasswordSection() -> impl IntoView {
 								layer of protection."
 							</p>
 
-							<div class="flex-col-5 fr-ct-ct">
-								// QR CODE
-							</div>
+							// QR CODE
+							<div class="flex-col-5 fr-ct-ct"></div>
 
 							<small class="txt-warning">
 								"Note: Enabling 2FA will temporarily disable container registry
@@ -141,20 +136,19 @@ pub fn PasswordSection() -> impl IntoView {
 
 							<p class="mt-md mb-xs txt-sm">"Enter OTP to confirm"</p>
 
-							<Input r#type=InputType::Text id="otp" />
+							<Input r#type={InputType::Text} id="otp"/>
 
 							<div>
 								<Link
-									on_click=Rc::new(move |_| {
-										open_mfa_modal.set(false)
-									})
-									style_variant=LinkStyleVariant::Plain
+									on_click={Rc::new(move |_| { open_mfa_modal.set(false) })}
+
+									style_variant={LinkStyleVariant::Plain}
 									should_submit=false
 								>
 									"CANCEL"
 								</Link>
 								<Link
-									style_variant=LinkStyleVariant::Contained
+									style_variant={LinkStyleVariant::Contained}
 									should_submit=true
 								>
 									"CONFIRM"
@@ -166,9 +160,7 @@ pub fn PasswordSection() -> impl IntoView {
 
 				<div class="flex full-width px-md">
 					<div class="flex-col-2 fr-fs-fs pt-sm txt-sm">
-						"Two-Factor"
-						<br />
-						"Authentication"
+						"Two-Factor" <br/> "Authentication"
 					</div>
 
 					<div class="flex-col-10 fc-fs-fs gap-xxs">
@@ -177,10 +169,9 @@ pub fn PasswordSection() -> impl IntoView {
 						</p>
 
 						<Link
-							on_click=Rc::new(move |_| {
-								open_mfa_modal.set(true)
-							})
-							style_variant=LinkStyleVariant::Contained
+							on_click={Rc::new(move |_| { open_mfa_modal.set(true) })}
+
+							style_variant={LinkStyleVariant::Contained}
 						>
 							"ENABLE 2FA"
 						</Link>
@@ -188,37 +179,37 @@ pub fn PasswordSection() -> impl IntoView {
 				</div>
 			</form>
 
-			<ActionForm
-				action=change_password_action
-				class="full-width pt-md gap-md fc-fs-fs"
-			>
-				<input type="hidden" name="mfa_otp" />
-				<input type="hidden" name="access_token" prop:value=access_token/>
+			<ActionForm action={change_password_action} class="full-width pt-md gap-md fc-fs-fs">
+				<input type="hidden" name="mfa_otp"/>
+				<input type="hidden" name="access_token" prop:value={access_token}/>
 
 				<Show
-					when=move || show_create_password_fields.get()
-					fallback=|| view! {
-						<div class="flex full-width px-md">
-							<div class="flex-col-2 fr-fs-fs">
-								<label html_for="password" class="mt-sm txt-sm">
-									"Password"
-								</label>
-							</div>
+					when={move || show_create_password_fields.get()}
+					fallback={|| {
+						view! {
+							<div class="flex full-width px-md">
+								<div class="flex-col-2 fr-fs-fs">
+									<label html_for="password" class="mt-sm txt-sm">
+										"Password"
+									</label>
+								</div>
 
-							<div class="flex-col-10 fc-fs-fs">
-								<Input
-									id="password"
-									placeholder="********"
-									disabled=true
-									class="full-width"
-									end_icon=None
-									r#type=InputType::Password
-									variant=SecondaryColorVariant::Medium
-								/>
+								<div class="flex-col-10 fc-fs-fs">
+									<Input
+										id="password"
+										placeholder="********"
+										disabled=true
+										class="full-width"
+										end_icon={None}
+										r#type={InputType::Password}
+										variant={SecondaryColorVariant::Medium}
+									/>
+								</div>
 							</div>
-						</div>
-					}
+						}
+					}}
 				>
+
 					<div class="flex full-width px-md">
 						<div class="flex-col-2 fr-fs-fs">
 							<label html_for="currentPassword" class="mt-sm txt-sm">
@@ -232,16 +223,14 @@ pub fn PasswordSection() -> impl IntoView {
 								name="current_password"
 								placeholder="Enter Current Password"
 								class="full-width"
-								end_icon=None
-								r#type=InputType::Password
-								variant=SecondaryColorVariant::Medium
+								end_icon={None}
+								r#type={InputType::Password}
+								variant={SecondaryColorVariant::Medium}
 							/>
 
-							<Show
-								when=move || !current_password_error.get().is_empty()
-							>
-								<Alert r#type=AlertType::Error class="mt-xs">
-									{ move || current_password_error.get() }
+							<Show when={move || !current_password_error.get().is_empty()}>
+								<Alert r#type={AlertType::Error} class="mt-xs">
+									{move || current_password_error.get()}
 								</Alert>
 							</Show>
 						</div>
@@ -259,9 +248,9 @@ pub fn PasswordSection() -> impl IntoView {
 								id="newPassword"
 								placeholder="Enter New Password"
 								class="full-width"
-								end_icon=None
-								r#type=InputType::Password
-								variant=SecondaryColorVariant::Medium
+								end_icon={None}
+								r#type={InputType::Password}
+								variant={SecondaryColorVariant::Medium}
 							/>
 						</div>
 					</div>
@@ -279,46 +268,47 @@ pub fn PasswordSection() -> impl IntoView {
 								name="new_password"
 								placeholder="Confirm New Password"
 								class="full-width"
-								end_icon=None
-								r#type=InputType::Password
-								variant=SecondaryColorVariant::Medium
+								end_icon={None}
+								r#type={InputType::Password}
+								variant={SecondaryColorVariant::Medium}
 							/>
 						</div>
 					</div>
 				</Show>
 
 				<Show
-					when=move || show_create_password_fields.get()
-					fallback=move || view! {
-						<div class="full-width fr-fe-ct pt-md">
-							<Link
-								on_click=Rc::new(move |_| {
-									show_create_password_fields.update(|val| *val = !*val)
-								})
-								should_submit=false
-								style_variant=LinkStyleVariant::Contained
-							>
-								"CHANGE PASSWORD"
-							</Link>
-						</div>
-					}
+					when={move || show_create_password_fields.get()}
+					fallback={move || {
+						view! {
+							<div class="full-width fr-fe-ct pt-md">
+								<Link
+									on_click={Rc::new(move |_| {
+										show_create_password_fields.update(|val| *val = !*val)
+									})}
 
+									should_submit=false
+									style_variant={LinkStyleVariant::Contained}
+								>
+									"CHANGE PASSWORD"
+								</Link>
+							</div>
+						}
+					}}
 				>
+
 					<div class="full-width fr-fe-ct pt-md gap-md">
 						<Link
-							on_click=Rc::new(move |_| {
+							on_click={Rc::new(move |_| {
 								show_create_password_fields.update(|val| *val = !*val)
-							})
+							})}
+
 							should_submit=false
-							style_variant=LinkStyleVariant::Plain
+							style_variant={LinkStyleVariant::Plain}
 						>
 							"CANCEL"
 						</Link>
 
-						<Link
-							should_submit=true
-							style_variant=LinkStyleVariant::Contained
-						>
+						<Link should_submit=true style_variant={LinkStyleVariant::Contained}>
 							"CONFIRM"
 						</Link>
 					</div>

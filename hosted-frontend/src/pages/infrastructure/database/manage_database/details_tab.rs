@@ -18,18 +18,16 @@ fn CopyButton(// #[prop(into)]
 	});
 
 	view! {
-		<Show when=move || show_button.get()>
-			 <Show
-				when=move || !copy_data.get()
-				fallback= move || view! {
-					<Icon icon=IconType::Check size=Size::ExtraSmall />
-				}.into_view()
+		<Show when={move || show_button.get()}>
+			<Show
+				when={move || !copy_data.get()}
+				fallback={move || {
+					view! { <Icon icon={IconType::Check} size={Size::ExtraSmall}/> }.into_view()
+				}}
 			>
-				<button
-					aria_label="Copy "
-					class="btn-icon"
-				>
-					<Icon icon=IconType::Copy size=Size::ExtraSmall/>
+
+				<button aria_label="Copy " class="btn-icon">
+					<Icon icon={IconType::Copy} size={Size::ExtraSmall}/>
 				</button>
 
 			</Show>
@@ -40,17 +38,12 @@ fn CopyButton(// #[prop(into)]
 #[component]
 pub fn ManageDatabaseDetailsTab() -> impl IntoView {
 	view! {
-		<div
-			class="full-width px-md fc-fs-fs fit-wide-screen mx-auto my-xl txt-white"
-		>
+		<div class="full-width px-md fc-fs-fs fit-wide-screen mx-auto my-xl txt-white">
 			<div class="flex mb-lg full-width">
-				<label class="flex-col-2 fr-fs-fs"> "Database Type" </label>
+				<label class="flex-col-2 fr-fs-fs">"Database Type"</label>
 
 				<div class="grid grid-col-4 flex-col-10 pl-xs full-width">
-					<DatabaseTypeCard
-						version=4.
-						database_type=DatabaseType::MongoDB
-					/>
+					<DatabaseTypeCard version=4. database_type={DatabaseType::MongoDB}/>
 				</div>
 			</div>
 
@@ -102,7 +95,7 @@ pub fn ManageDatabaseDetailsTab() -> impl IntoView {
 				<div class="flex-col-10 pl-xs">
 					<div class="fr-sb-ct br-sm bg-secondary-light full-width py-sm px-xl">
 						<span class="pl-sm">"root"</span>
-						<CopyButton />
+						<CopyButton/>
 					</div>
 				</div>
 			</div>
@@ -121,14 +114,10 @@ pub fn ManageDatabaseDetailsTab() -> impl IntoView {
 							aria_label="Password"
 							prop:value="********"
 						/>
-						<CopyButton />
+						<CopyButton/>
 					</div>
 					<div class="fr-sb-fs full-width gap-md mt-xxs">
-						<Link
-							class="txt-medium ml-auto"
-						>
-							"CHANGE PASSWORD"
-						</Link>
+						<Link class="txt-medium ml-auto">"CHANGE PASSWORD"</Link>
 					</div>
 
 				</div>
@@ -143,7 +132,7 @@ pub fn ManageDatabaseDetailsTab() -> impl IntoView {
 				<div class="flex-col-10 pl-xs">
 					<div class="fr-sb-ct br-sm bg-secondary-light full-width py-sm px-xl">
 						<span class="pl-sm">"service-cd091367036e48090aeOOa9af6ab95cO"</span>
-						<CopyButton />
+						<CopyButton/>
 					</div>
 				</div>
 			</div>
@@ -157,7 +146,7 @@ pub fn ManageDatabaseDetailsTab() -> impl IntoView {
 				<div class="flex-col-10 pl-xs">
 					<div class="fr-sb-ct br-sm bg-secondary-light full-width py-sm px-xl">
 						<span class="pl-sm">"27017"</span>
-						<CopyButton />
+						<CopyButton/>
 					</div>
 				</div>
 			</div>
@@ -170,8 +159,10 @@ pub fn ManageDatabaseDetailsTab() -> impl IntoView {
 				</div>
 				<div class="flex-col-10 pl-xs">
 					<div class="fr-sb-ct br-sm bg-secondary-light full-width py-sm px-xl">
-						<span class="pl-sm">"mongo://root<DATABASE_PASSWORD>service-cda91367036e48090aeOOa9af6ab95cC27017/staging"</span>
-						<CopyButton />
+						<span class="pl-sm">
+							"mongo://root<DATABASE_PASSWORD>service-cda91367036e48090aeOOa9af6ab95cC27017/staging"
+						</span>
+						<CopyButton/>
 					</div>
 				</div>
 			</div>
@@ -183,7 +174,7 @@ pub fn ManageDatabaseDetailsTab() -> impl IntoView {
 					</label>
 				</div>
 				<div class="flex-col-10 pl-xs">
-					<DatabasePlanCard />
+					<DatabasePlanCard/>
 				</div>
 			</div>
 		</div>

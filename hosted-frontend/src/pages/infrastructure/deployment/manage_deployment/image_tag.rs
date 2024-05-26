@@ -17,21 +17,12 @@ pub fn ImageTag(
 		})
 	};
 	view! {
-		<div
-			class=class
-		>
-			<Icon
-				icon=IconType::Tag
-				size=Size::ExtraSmall
-				class="mr-sm"
-			/>
+		<div class={class}>
+			<Icon icon={IconType::Tag} size={Size::ExtraSmall} class="mr-sm"/>
 			{tag}
 
 			<button class="btn-icon ml-xs">
-				<Icon
-					icon=IconType::Copy
-					size=Size::ExtraSmall
-				/>
+				<Icon icon={IconType::Copy} size={Size::ExtraSmall}/>
 			</button>
 		</div>
 	}

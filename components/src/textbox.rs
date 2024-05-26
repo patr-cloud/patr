@@ -51,12 +51,12 @@ pub fn Textbox(
 		}
 	);
 	view! {
-		<div
-			class=class
-		>
-			{
-				start_icon.with(|props| {
-					props.as_ref()
+		<div class={class}>
+
+			{start_icon
+				.with(|props| {
+					props
+						.as_ref()
 						.map(|props| IconProps {
 							icon: props.icon,
 							size: props.size,
@@ -66,22 +66,16 @@ pub fn Textbox(
 							enable_pulse: props.enable_pulse,
 							fill: props.fill,
 						})
-				})
-			}
-			<span
-				class=span_class
-			>
-				{
-					if value.is_some() {
-						value.into_view()
-					} else {
-						placeholder.into_view()
-					}
-				}
+				})}
+			<span class={span_class}>
+
+				{if value.is_some() { value.into_view() } else { placeholder.into_view() }}
+
 			</span>
-			{
-				end_icon.with(|props| {
-					props.as_ref()
+			{end_icon
+				.with(|props| {
+					props
+						.as_ref()
 						.map(|props| IconProps {
 							icon: props.icon,
 							size: props.size,
@@ -91,8 +85,8 @@ pub fn Textbox(
 							enable_pulse: props.enable_pulse,
 							fill: props.fill,
 						})
-				})
-			}
+				})}
+
 		</div>
 	}
 }

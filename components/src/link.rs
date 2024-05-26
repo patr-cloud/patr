@@ -61,30 +61,28 @@ pub fn Link(
 	let children = store_value(children);
 
 	view! {
-		{
-			move || match r#type.get() {
-				Variant::Link => {
-					view! {
-						<A href=move || to.with_value(|val| val.get()) class=class.clone()>
-							{children.with_value(|val| val())}
-						</A>
-					}
-						.into_view()
-				},
-				Variant::Button => {
-					view! {
-						<button
-							type= { if should_submit.get() { "submit" } else { "button" } }
-							on:click=on_click.clone()
-							disabled=move || disabled.get()
-							class=class.clone()
-						>
-							{children.with_value(|val| val())}
-						</button>
-					}
-						.into_view()
+		{move || match r#type.get() {
+			Variant::Link => {
+				view! {
+					<A href={move || to.with_value(|val| val.get())} class={class.clone()}>
+						{children.with_value(|val| val())}
+					</A>
 				}
+					.into_view()
 			}
-		}
+			Variant::Button => {
+				view! {
+					<button
+						type={if should_submit.get() { "submit" } else { "button" }}
+						on:click={on_click.clone()}
+						disabled={move || disabled.get()}
+						class={class.clone()}
+					>
+						{children.with_value(|val| val())}
+					</button>
+				}
+					.into_view()
+			}
+		}}
 	}
 }

@@ -49,13 +49,13 @@ pub fn DeploymentCard(
 	];
 
 	view! {
-		<div class=class>
+		<div class={class}>
 			<div class="fr-fs-ct gap-md full-width px-xxs">
 				<h4 class="txt-md txt-primary w-25 txt-of-ellipsis of-hidden">
 					{deployment.get().name}
 				</h4>
 
-				<StatusBadge status=deployment.get().status/>
+				<StatusBadge status={deployment.get().status}/>
 			</div>
 
 			<div class="fr-fs-fs txt-white full-width f-wrap my-auto">
@@ -80,9 +80,9 @@ pub fn DeploymentCard(
 						<span class="txt-primary w-15 txt-of-ellipsis of-hidden fr-fs-ct">
 							"PUBLIC URL"
 							<Icon
-								icon=IconType::ArrowUpRight
-								color=Color::Primary
-								size=Size::ExtraSmall
+								icon={IconType::ArrowUpRight}
+								color={Color::Primary}
+								size={Size::ExtraSmall}
 							/>
 						</span>
 					</Link>
@@ -90,23 +90,27 @@ pub fn DeploymentCard(
 			</div>
 
 			<div class="fr-sb-ct mt-xs full-width px-xxs">
-				<Link style_variant=LinkStyleVariant::Contained>
+				<Link style_variant={LinkStyleVariant::Contained}>
 					<Icon
-						icon=IconType::PlayCircle
-						size=Size::ExtraSmall
-						color=Color::Secondary
+						icon={IconType::PlayCircle}
+						size={Size::ExtraSmall}
+						color={Color::Secondary}
 						class="mr-xs"
 					/>
 					"START"
 				</Link>
 
 				<Link
-					r#type=Variant::Link
-					to=format!("{}", deployment.get().id)
+					r#type={Variant::Link}
+					to={format!("{}", deployment.get().id)}
 					class="letter-sp-md txt-sm fr-fs-ct"
 				>
 					"Manage Deployment"
-					<Icon icon=IconType::ChevronRight size=Size::ExtraSmall color=Color::Primary/>
+					<Icon
+						icon={IconType::ChevronRight}
+						size={Size::ExtraSmall}
+						color={Color::Primary}
+					/>
 				</Link>
 			</div>
 		</div>

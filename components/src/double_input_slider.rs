@@ -33,28 +33,25 @@ pub fn DoubleInputSlider(
 	let max_value = create_rw_signal(default_max);
 
 	view! {
-		<div class=outer_div_class>
+		<div class={outer_div_class}>
 			<input
 				r#type="range"
-				prop:value=min_value
-				min=min
-				min=max
+				prop:value={min_value}
+				min={min}
+				min={max}
 				class="thumb full-width pos-abs left"
 			/>
 			<input
 				r#type="range"
-				prop:value=max_value
-				min=min
-				min=max
+				prop:value={max_value}
+				min={min}
+				min={max}
 				class="thumb full-width pos-abs right"
 			/>
 
 			<div class="pos-rel full-width txt-white">
-				<div class="track pos-abs bg-secondary full-width br-sm" />
-				<div
-					style="right: 0%; left: 0%;"
-					class="range pos-abs br-sm bg-primary"
-				/>
+				<div class="track pos-abs bg-secondary full-width br-sm"></div>
+				<div style="right: 0%; left: 0%;" class="range pos-abs br-sm bg-primary"></div>
 			</div>
 		</div>
 	}

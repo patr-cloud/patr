@@ -127,26 +127,25 @@ pub fn Tooltip(
 	view! {
 		<Portal>
 			<span
-				style=move || {
+				style={move || {
 					let (top, left, width) = get_tooltip_dimensions();
 					logging::log!("{}, {}, {}", top, left, width);
-					format!("top: {top}px; width: {width}px; left: {left}px",)
-				}
+					format!("top: {top}px; width: {width}px; left: {left}px")
+				}}
+
 				ref={tooltip_ref}
-				class=move || format!(
-					"tooltip pos-fix br-sm {} {}",
-					if is_visible.get() {
-						"tooltip-visible"
-					} else {
-						""
-					},
-					variant.as_css_name(),
-				)
+				class={move || {
+					format!(
+						"tooltip pos-fix br-sm {} {}",
+						if is_visible.get() { "tooltip-visible" } else { "" },
+						variant.as_css_name(),
+					)
+				}}
 			>
+
 				<span class="tip mx-md py-xxs full-width fc-fs-fs pos-rel">
 					<span class="fr-ct-ct txt-white full-width txt-xxs">
-						{&content}
-						{children()}
+						{&content} {children()}
 					</span>
 				</span>
 			</span>

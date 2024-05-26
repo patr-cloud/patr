@@ -14,9 +14,14 @@ pub fn SidebarItem(
 	let store_link = store_value(link.clone());
 
 	view! {
-		<li class=class>
-			<Link to={store_link.with_value(|link| link.get().path)} r#type=Variant::Link style_variant=LinkStyleVariant::Plain class="btn full-width py-sm">
-				<img src={link.get().icon_src} alt={link.get().title} />
+		<li class={class}>
+			<Link
+				to={store_link.with_value(|link| link.get().path)}
+				r#type={Variant::Link}
+				style_variant={LinkStyleVariant::Plain}
+				class="btn full-width py-sm"
+			>
+				<img src={link.get().icon_src} alt={link.get().title}/>
 				<span class="ml-md txt-md fc-fs-fs txt-left">
 					<span class="pos-rel txt-md txt-left">
 						{move || store_link.with_value(|link| link.get().title)}

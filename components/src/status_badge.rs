@@ -69,9 +69,5 @@ pub fn StatusBadge(
 		)
 	};
 
-	view! {
-		<span class=class>
-			{status.get().get_status_text()}
-		</span>
-	}
+	view! { <span class={class}>{status.get().get_status_text()}</span> }
 }

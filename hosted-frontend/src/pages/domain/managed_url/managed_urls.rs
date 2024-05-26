@@ -24,18 +24,18 @@ pub fn ManagedUrls(
 	};
 
 	view! {
-		<tr class=class on:click=move |_| expanded_urls.update(|val: &mut bool| *val = !*val)>
+		<tr class={class} on:click={move |_| expanded_urls.update(|val: &mut bool| *val = !*val)}>
 			<td class="fr-fs-ct full-width px-md py-sm full-height br-sm gap-sm txt-sm">
-				<Icon icon=MaybeSignal::derive(icon_type) size=Size::ExtraExtraSmall />
+				<Icon icon={MaybeSignal::derive(icon_type)} size={Size::ExtraExtraSmall}/>
 				"On Patr"
 			</td>
 
-			<Show when=move || expanded_urls.get()>
+			<Show when={move || expanded_urls.get()}>
 				<td class="full-width px-xl fc-fs-fs pb-md">
 					<table class="fc-fs-fs full-width">
 						<tbody class="fc-fs-fs full-width">
-							<ManagedUrlCard enable_radius_on_top={true} />
-							<ManagedUrlCard enable_radius_on_top={true} />
+							<ManagedUrlCard enable_radius_on_top=true/>
+							<ManagedUrlCard enable_radius_on_top=true/>
 						</tbody>
 					</table>
 				</td>

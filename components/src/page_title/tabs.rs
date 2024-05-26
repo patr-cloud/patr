@@ -21,22 +21,26 @@ pub fn Tabs(
 	let class = class.with(|cname| format!("fr-fs-fe {cname}"));
 
 	view! {
-		<div class=class>
-			{
-				tab_items.get().into_iter()
-					.map(|n| view! {
+		<div class={class}>
+
+			{tab_items
+				.get()
+				.into_iter()
+				.map(|n| {
+					view! {
 						<Link
-							r#type=Variant::Link
+							r#type={Variant::Link}
 							to={n.clone().path}
 							class="tab-item mx-xl"
-							style_variant=LinkStyleVariant::Plain
-							color=Color::Grey
+							style_variant={LinkStyleVariant::Plain}
+							color={Color::Grey}
 						>
 							{n.clone().name}
 						</Link>
-					})
-					.collect_view()
-			}
+					}
+				})
+				.collect_view()}
+
 		</div>
 	}
 }

@@ -71,9 +71,9 @@ pub fn render() -> impl IntoView {
 			/>
 			<Stylesheet id="leptos" href="/pkg/dashboard.css"/>
 
-			<Title formatter=|title: String| {
+			<Title formatter={|title: String| {
 				if title.is_empty() { "Patr".to_string() } else { format!("{title} | Patr") }
-			}/>
+			}}/>
 
 			<App/>
 		</>

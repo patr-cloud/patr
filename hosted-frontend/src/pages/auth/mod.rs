@@ -15,17 +15,14 @@ pub fn AuthRoutes() -> impl IntoView {
 	view! {
 		<ProtectedRoute
 			path="/"
-			view=AuthPage
-			condition=move || !auth.get().is_logged_in()
+			view={AuthPage}
+			condition={move || !auth.get().is_logged_in()}
 			redirect_path="/"
 		>
-			<Route path=LoggedOutRoute::Login view=LoginForm />
-			<Route path=LoggedOutRoute::SignUp view=SignUpPage >
-				<Route
-					path=LoggedOutRoute::ConfirmOtp
-					view=ConfirmSignUpForm
-				/>
-				<Route path=AppRoutes::Empty view=SignUpForm />
+			<Route path={LoggedOutRoute::Login} view={LoginForm}/>
+			<Route path={LoggedOutRoute::SignUp} view={SignUpPage}>
+				<Route path={LoggedOutRoute::ConfirmOtp} view={ConfirmSignUpForm}/>
+				<Route path={AppRoutes::Empty} view={SignUpForm}/>
 			</Route>
 		</ProtectedRoute>
 	}

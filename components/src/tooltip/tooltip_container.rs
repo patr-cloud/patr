@@ -27,24 +27,23 @@ pub fn ToolTipContainer(
 	view! {
 		<span
 			ref={container_ref}
-			class=format!(
-				"fr-ct-ct pos-rel br-sm mx-xxs tooltip-container {class}"
-			)
+			class={format!("fr-ct-ct pos-rel br-sm mx-xxs tooltip-container {class}")}
 		>
-			{
-				if let Some(label) = label {
-					label.into_view()
-				} else {
-					view! {
-						<Icon
-							icon=IconType::Info
-							size={Size::ExtraSmall}
-							color={icon_color}
-							class="br-round cursor-pointer"
-						/>
-					}.into_view()
+
+			{if let Some(label) = label {
+				label.into_view()
+			} else {
+				view! {
+					<Icon
+						icon={IconType::Info}
+						size={Size::ExtraSmall}
+						color={icon_color}
+						class="br-round cursor-pointer"
+					/>
 				}
-			}
+					.into_view()
+			}}
+
 			<Tooltip
 				content={content}
 				parent_ref={container_ref}

@@ -26,7 +26,5 @@ pub fn Skeleton(
 		})
 	};
 
-	view! {
-		<div class=class></div>
-	}
+	view! { <div class={class}></div> }
 }
