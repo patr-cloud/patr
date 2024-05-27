@@ -74,8 +74,11 @@ impl FromStr for BearerToken {
 
 	fn from_str(value: &str) -> Result<Self, Self::Err> {
 		Ok(Self(
-			Bearer::decode(&HeaderValue::from_str(value).map_err(|_| headers::Error::invalid())?)
-				.ok_or_else(headers::Error::invalid)?,
+			Bearer::decode(
+				&HeaderValue::from_str(&format!("Bearer {value}"))
+					.map_err(|_| headers::Error::invalid())?,
+			)
+			.ok_or_else(headers::Error::invalid)?,
 		))
 	}
 }

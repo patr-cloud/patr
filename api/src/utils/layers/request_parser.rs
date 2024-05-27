@@ -143,9 +143,10 @@ where
 			};
 
 			let Ok(body) =
-				<<E as ApiEndpoint>::RequestBody as FromAxumRequest>::from_axum_request(req).await
+				<<E as ApiEndpoint>::RequestBody as FromAxumRequest>::from_axum_request(req)
+					.await
+					.inspect_err(|err| debug!("Error parsing body: {}", err.to_string()))
 			else {
-				debug!("Failed to parse body");
 				return Ok(ApiErrorResponse::error_with_message(
 					ErrorType::WrongParameters,
 					"Invalid body",

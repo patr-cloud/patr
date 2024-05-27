@@ -3,7 +3,7 @@ use crate::prelude::*;
 #[component(transparent)]
 pub fn ProfileRoutes() -> impl IntoView {
 	view! {
-		<Route path={LoggedInRoute::Profile} view={ManageProfile}>
+		<Route path={LoggedInRoute::UserProfile} view={ManageProfile}>
 			<Route path={LoggedInRoute::ApiTokens} view={ApiTokensTab}/>
 			<Route path={AppRoutes::Empty} view={ProfileSettings}/>
 		</Route>

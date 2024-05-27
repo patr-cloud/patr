@@ -18,7 +18,7 @@ pub enum LoggedInRoute {
 	/// The Home page
 	Home,
 	/// The Profile Page
-	Profile,
+	UserProfile,
 	/// The Api Tokens Page
 	ApiTokens,
 	/// Managed URLs Page
@@ -87,8 +87,8 @@ impl Display for LoggedInRoute {
 			"{}",
 			match self {
 				Self::Home => "/",
-				Self::Profile => "/profile",
-				Self::ApiTokens => "/api-tokens",
+				Self::UserProfile => "/user",
+				Self::ApiTokens => "/user/api-tokens",
 				Self::Domain => "/domain",
 				Self::ManagedUrl => "/managed-url",
 				Self::Database => "/database",

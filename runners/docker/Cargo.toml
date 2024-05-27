@@ -7,10 +7,10 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
+config = { workspace = true, features = ["default"] }
 bollard = { workspace = true, features = ["default"] }
 futures = { workspace = true, features = ["default"] }
 http = { workspace = true, features = ["default"] }
-httparse = { workspace = true, features = ["default"] }
 models = { workspace = true }
 preprocess = { workspace = true, features = [] }
 reqwest = { workspace = true, features = ["json", "rustls-tls"] }

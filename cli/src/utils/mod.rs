@@ -10,9 +10,9 @@ pub use self::{client::*, storage::*};
 pub mod constants {
 	/// The base URL for the Patr API
 	pub const API_BASE_URL: &str = if cfg!(debug_assertions) {
-		"https://api.patr.cloud"
-	} else {
 		"http://localhost:3000"
+	} else {
+		"https://api.patr.cloud"
 	};
 
 	/// The user agent for the CLI
