@@ -7,7 +7,6 @@ use models::{
 	ApiErrorResponseBody,
 };
 use preprocess::Preprocessable;
-use reqwest::Client;
 use serde::{de::DeserializeOwned, Serialize};
 use tokio_tungstenite::tungstenite::{
 	client::IntoClientRequest,

@@ -3,14 +3,6 @@ use models::api::auth::*;
 
 use crate::{global_state::*, pages::*, prelude::*};
 
-/// Contains all the API endpoints for the application
-#[allow(async_fn_in_trait)] // WIP
-pub trait AppAPIs {
-	/// The login endpoint
-	async fn login(
-		request: ApiRequest<LoginRequest>,
-	) -> Result<AppResponse<LoginRequest>, ServerFnError<ErrorType>>;
-}
 #[component]
 fn LoggedInPage() -> impl IntoView {
 	view! {
@@ -27,13 +19,10 @@ fn LoggedInPage() -> impl IntoView {
 }
 
 #[component]
-fn InnerApp() -> impl IntoView {
-	let (state, _) = get_auth_state();
+pub fn App() -> impl IntoView {
+	let state = create_rw_signal(GlobalState::new());
 
-	let _ = authstate_from_cookie();
-	create_effect(move |_| {
-		let _ = authstate_from_cookie();
-	});
+	provide_context(state);
 
 	view! {
 		<Router>
@@ -41,7 +30,7 @@ fn InnerApp() -> impl IntoView {
 				<ProtectedRoute
 					path="/"
 					redirect_path="/login"
-					condition={move || state.get().is_logged_in()}
+					condition={move || state.get().auth_state.is_logged_in()}
 					view={LoggedInPage}
 				>
 					<ProfileRoutes/>
@@ -54,8 +43,7 @@ fn InnerApp() -> impl IntoView {
 					path="/"
 					view={AuthPage}
 					condition={move || {
-						logging::log!("state: {:#?}", state.get());
-						!state.get().is_logged_in()
+						!state.get().auth_state.is_logged_in()
 					}}
 
 					redirect_path="/"
@@ -69,13 +57,4 @@ fn InnerApp() -> impl IntoView {
 			</Routes>
 		</Router>
 	}
-}
-
-#[component]
-pub fn App() -> impl IntoView {
-	let state = create_rw_signal(GlobalState::new());
-
-	provide_context(state);
-
-	view! { <InnerApp/> }
 }

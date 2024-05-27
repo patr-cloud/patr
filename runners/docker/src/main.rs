@@ -1,22 +1,36 @@
 use std::{marker::PhantomData, str::FromStr};
 
+use config::RunnerSettings;
 use futures::StreamExt;
 use models::{api::workspace::runner::*, prelude::*, utils::WebSocketUpgrade};
 
+/// The client for the Patr API to get runner data for a given workspace.
 mod client;
+/// The configuration for the runner.
+mod config;
 
 #[tokio::main]
 async fn main() {
+	let RunnerSettings {
+		workspace_id,
+		runner_id,
+		api_token,
+		environment,
+	} = config::get_runner_settings();
+
+	let authorization =
+		BearerToken::from_str(&format!("patrv1")).expect("Failed to parse Bearer token");
+	let user_agent = UserAgent::from_static("runner/docker");
+
 	client::stream_request(
 		ApiRequest::<StreamRunnerDataForWorkspaceRequest>::builder()
 			.path(StreamRunnerDataForWorkspacePath {
-				workspace_id: Uuid::parse_str("00000000000000000000000000000000").unwrap(),
-				runner_id: Uuid::parse_str("00000000000000000000000000000000").unwrap(),
+				workspace_id,
+				runner_id,
 			})
 			.headers(StreamRunnerDataForWorkspaceRequestHeaders {
-				authorization: BearerToken::from_str("Bearer ")
-					.expect("Failed to parse Bearer token"),
-				user_agent: UserAgent::from_static("runner/docker"),
+				authorization,
+				user_agent,
 			})
 			.query(())
 			.body(WebSocketUpgrade(PhantomData))

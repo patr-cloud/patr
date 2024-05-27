@@ -1,5 +1,5 @@
 use axum::{body::Body, http::Request};
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "axum")]
 use axum_typed_websockets::WebSocketUpgrade as TypedWebSocketUpgrade;
 use preprocess::Preprocessable;
 
