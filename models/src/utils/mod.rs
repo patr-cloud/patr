@@ -97,24 +97,14 @@ pub mod constants {
 	pub const PHONE_NUMBER_REGEX: &str =
 		macros::verify_regex!(r"^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$");
 
-	/// The Regex to validate the password. The password must have a minimum of
-	/// 6 characters Must contain atleast one digit, one uppercase letter, one
-	/// lowercase letter and one special character (!@#$%^&*?)
-	///
-	/// Explanation:
-	/// ```
-	/// ^			// Start of the line
-	/// (?=\S{8,})		// Atleast 8 characters
-	/// (?=\S*\d)		// Atleast one digit
-	/// (?=\S*[A-Z])		// Atleast one uppercase letter
-	/// (?=\S*[a-z])		// Atleast one lowercase letter
-	/// (?=\S*[!@//$%^&*?])	// Atleast one special character
-	/// \S*			// 0 or more non-space characters with previous conditions in mind
-	/// $			// End of the line
-	/// ```
+	/// The Regex to validate the password. The password must have:
+	/// - A minimum of 8 characters
+	/// - Must contain atleast one digit
+	/// - One uppercase letter
+	/// - One lowercase letter
+	/// - One special character (!@#$%^&*?)
 	pub const PASSWORD_REGEX: &str = macros::verify_regex!(
-		// r"^\S*(?=\S{8,})(?=\S*\d)(?=\S*[A-Z])(?=\S*[a-z])(?=\S*[!@#$%^&*?])\S*$"
-		""
+		r"^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*?])[a-zA-Z\d!@#$%^&*?]{8,}$"
 	);
 
 	/// The Regex to validate OTP of the user. The OTP must be a 6-digit number.
@@ -127,8 +117,12 @@ pub mod constants {
 	// PREVIOUSLY: ^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$
 	pub const RESOURCE_NAME_REGEX: &str = macros::verify_regex!(r"^[a-zA-Z0-9\-_]{4,255}$");
 
+	/// The Regex to validate a DNS record name. The DNS record name must be in
+	/// the format `@`, `www`, `subdomain`, etc. The DNS record name can have
+	/// alphanumeric characters and hyphens, but must not start or end with a
+	/// hyphen.
 	pub const DNS_RECORD_NAME_REGEX: &str = macros::verify_regex!(
-		r"^((@)|(\\*)|((\\*\\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])))$"
+		r"^((([a-z0-9].)([a-z0-9\-]*){0,63}([a-z0-9].).)(\.([a-z0-9].)([a-z0-9\-_]*){0,63}([a-z0-9]*)))|\@$"
 	);
 }
 
