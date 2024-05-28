@@ -111,7 +111,8 @@ async fn main() {
 				)
 				.with_filter(
 					tracing_subscriber::filter::Targets::new()
-						.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE),
+						.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
+						.with_target("models", LevelFilter::TRACE),
 				)
 				.with_filter(LevelFilter::from_level(
 					if config.environment == RunningEnvironment::Development {
@@ -146,7 +147,8 @@ async fn main() {
 			)
 			.with_filter(
 				tracing_subscriber::filter::Targets::new()
-					.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE),
+					.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
+					.with_target("models", LevelFilter::TRACE),
 			)
 		};
 		#[cfg(debug_assertions)]

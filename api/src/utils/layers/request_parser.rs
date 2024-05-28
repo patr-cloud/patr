@@ -165,25 +165,28 @@ where
 
 			info!("Calling inner service");
 
-			match inner.call((request, client_ip)).await {
-				Ok(response) => {
-					info!("Inner service called successfully");
-					Ok((
+			let response = inner
+				.call((request, client_ip))
+				.await
+				.inspect(|_| info!("Inner service called successfully"))
+				.map(|response| {
+					(
 						response.status_code,
 						response.headers.to_header_map(),
 						response.body.into_axum_response(),
 					)
-						.into_response())
-				}
-				Err(error) => {
+						.into_response()
+				})
+				.unwrap_or_else(|error| {
 					if let ErrorType::InternalServerError(error) = &error {
 						error!("Internal server error: {}", error);
 					} else {
 						warn!("Inner service failed: {:?}", error);
 					}
-					Ok(ApiErrorResponse::error(error).into_response())
-				}
-			}
+					ApiErrorResponse::error(error).into_response()
+				});
+
+			Ok(response)
 		}
 	}
 }

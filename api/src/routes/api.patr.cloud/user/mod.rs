@@ -2,37 +2,39 @@ use axum::Router;
 
 use crate::prelude::*;
 
-mod activate_mfa;
+mod api_token;
 mod change_password;
-mod deactivate_mfa;
-mod get_mfa_secret;
 mod get_user_details;
 mod get_user_info;
 mod list_workspaces;
+mod mfa;
+mod recovery_options;
 mod update_user_info;
+mod web_logins;
 
 pub use self::{
-	activate_mfa::*,
+	api_token::*,
 	change_password::*,
-	deactivate_mfa::*,
-	get_mfa_secret::*,
 	get_user_details::*,
 	get_user_info::*,
 	list_workspaces::*,
+	mfa::*,
+	recovery_options::*,
 	update_user_info::*,
+	web_logins::*,
 };
 
 /// Sets up the user routes
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
+		.merge(api_token::setup_routes(state).await)
+		.merge(mfa::setup_routes(state).await)
+		.merge(recovery_options::setup_routes(state).await)
+		.merge(web_logins::setup_routes(state).await)
 		.mount_auth_endpoint(change_password, state)
 		.mount_auth_endpoint(get_user_details, state)
 		.mount_auth_endpoint(get_user_info, state)
 		.mount_auth_endpoint(list_workspaces, state)
 		.mount_auth_endpoint(update_user_info, state)
-		.mount_auth_endpoint(activate_mfa, state)
-		.mount_auth_endpoint(deactivate_mfa, state)
-		.mount_auth_endpoint(get_mfa_secret, state)
-		.with_state(state.clone())
 }

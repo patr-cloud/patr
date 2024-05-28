@@ -7,23 +7,6 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'cargo leptos serve'",
-            "cargo": {
-                "args": [
-                    "leptos",
-                    "serve"
-                ],
-                "filter": {
-                    "name": "api",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
             "name": "Debug executable 'api'",
             "cargo": {
                 "args": [

@@ -5,11 +5,10 @@ mod change_password;
 mod get_user_details; // Get a user's details by userId
 mod get_user_info; // Get my own personal info
 mod list_user_workspaces;
+mod mfa;
 mod recovery_options;
 mod update_user_info;
 mod web_logins; // Set my own personal info
-
-mod mfa;
 
 pub use self::{
 	api_token::*,

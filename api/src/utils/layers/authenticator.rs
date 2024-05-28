@@ -139,7 +139,7 @@ where
 			let token = token.token();
 
 			let user_data = match client_type {
-				ClientType::WebDashboard => {
+				ClientType::ApiToken => {
 					trace!("Parsing authentication header as an API token");
 					let (refresh_token, login_id) = token
 						.strip_prefix("patrv1.")
@@ -289,7 +289,7 @@ where
 						.permissions(permissions)
 						.build()
 				}
-				ClientType::ApiToken => {
+				ClientType::WebDashboard => {
 					trace!("Parsing authentication header as a JWT");
 
 					let TokenData {
