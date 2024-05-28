@@ -18,8 +18,7 @@ async fn main() {
 		environment,
 	} = config::get_runner_settings();
 
-	let authorization =
-		BearerToken::from_str(&format!("patrv1")).expect("Failed to parse Bearer token");
+	let authorization = BearerToken::from_str(&api_token).expect("Failed to parse Bearer token");
 	let user_agent = UserAgent::from_static("runner/docker");
 
 	client::stream_request(
