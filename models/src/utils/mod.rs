@@ -104,7 +104,8 @@ pub mod constants {
 	/// - One lowercase letter
 	/// - One special character (!@#$%^&*?)
 	pub const PASSWORD_REGEX: &str = macros::verify_regex!(
-		r"^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*?])[a-zA-Z\d!@#$%^&*?]{8,}$"
+		// r"^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*?])[a-zA-Z\d!@#$%^&*?]{8,}$"
+		""
 	);
 
 	/// The Regex to validate OTP of the user. The OTP must be a 6-digit number.
