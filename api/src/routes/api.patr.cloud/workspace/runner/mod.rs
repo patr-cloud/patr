@@ -1,67 +1,27 @@
-use axum::{http::StatusCode, response::IntoResponse, Router};
-use axum_typed_websockets::Message;
-use futures::StreamExt;
-use models::{api::workspace::runner::*, utils::GenericResponse};
+use axum::Router;
 
 use crate::prelude::*;
 
+mod add_runner_to_workspace;
+mod get_runner_info;
+mod list_runners_for_workspace;
+mod remove_runner_from_workspace;
+mod stream_runner_data_for_workspace;
+
+use self::{
+	add_runner_to_workspace::*,
+	get_runner_info::*,
+	list_runners_for_workspace::*,
+	remove_runner_from_workspace::*,
+	stream_runner_data_for_workspace::*,
+};
+
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
-	Router::new().mount_auth_endpoint(stream_runner_data_for_workspace, state)
-}
-
-async fn stream_runner_data_for_workspace(
-	AuthenticatedAppRequest {
-		request:
-			ProcessedApiRequest {
-				path: StreamRunnerDataForWorkspacePath {
-					workspace_id,
-					runner_id,
-				},
-				query: (),
-				headers:
-					StreamRunnerDataForWorkspaceRequestHeaders {
-						authorization: _,
-						user_agent: _,
-					},
-				body,
-			},
-		database,
-		redis,
-		client_ip: _,
-		config,
-		user_data,
-	}: AuthenticatedAppRequest<'_, StreamRunnerDataForWorkspaceRequest>,
-) -> Result<AppResponse<StreamRunnerDataForWorkspaceRequest>, ErrorType> {
-	let redis = redis.clone();
-
-	AppResponse::builder()
-		.body(GenericResponse(
-			body.0
-				.on_upgrade(move |mut websocket| async move {
-					let result: Result<(), Box<dyn std::error::Error>> = try {
-						let mut pub_sub = redis.create_pub_sub();
-
-						pub_sub
-							.subscribe(format!("{}/runner/{}/stream", workspace_id, runner_id))
-							.await?;
-
-						while let Some(Ok(data)) = pub_sub.next().await {
-							let data = serde_json::from_slice::<
-								StreamRunnerDataForWorkspaceServerMsg,
-							>(&data.payload)?;
-							websocket.send(Message::Item(data)).await?;
-						}
-					};
-
-					if let Err(e) = result {
-						error!("Error streaming runner data: {:?}", e);
-					}
-				})
-				.into_response(),
-		))
-		.headers(())
-		.status_code(StatusCode::OK)
-		.build()
-		.into_result()
+	Router::new()
+		.mount_auth_endpoint(stream_runner_data_for_workspace, state)
+		.mount_auth_endpoint(add_runner_to_workspace, state)
+		.mount_auth_endpoint(remove_runner_from_workspace, state)
+		.mount_auth_endpoint(list_runners_for_workspace, state)
+		.mount_auth_endpoint(get_runner_info, state)
 }
