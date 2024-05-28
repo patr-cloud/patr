@@ -82,7 +82,7 @@ pub async fn create_repository(
 			id: WithId::from(resource_id),
 		})
 		.headers(())
-		.status_code(StatusCode::OK)
+		.status_code(StatusCode::CREATED)
 		.build()
 		.into_result()
 }

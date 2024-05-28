@@ -11,7 +11,7 @@ config = { workspace = true, features = ["default"] }
 bollard = { workspace = true, features = ["default"] }
 futures = { workspace = true, features = ["default"] }
 http = { workspace = true, features = ["default"] }
-models = { workspace = true }
+models = { workspace = true, features = [] }
 preprocess = { workspace = true, features = [] }
 reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 serde = { workspace = true, features = ["default", "derive"] }
