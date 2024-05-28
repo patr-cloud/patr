@@ -9,6 +9,13 @@ mod client;
 /// The configuration for the runner.
 mod config;
 
+/// The prelude module contains all the commonly used types and traits that are
+/// used across the crate. This is mostly used to avoid having to import a lot
+/// of things from different modules.
+pub mod prelude {
+	pub use tracing::{debug, error, info, instrument, trace, warn};
+}
+
 #[tokio::main]
 async fn main() {
 	let RunnerSettings {

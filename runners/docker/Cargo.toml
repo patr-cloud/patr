@@ -7,8 +7,8 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
-config = { workspace = true, features = ["default"] }
 bollard = { workspace = true, features = ["default"] }
+config = { workspace = true, features = ["default"] }
 futures = { workspace = true, features = ["default"] }
 http = { workspace = true, features = ["default"] }
 models = { workspace = true, features = [] }
@@ -19,3 +19,4 @@ serde_json = { workspace = true, features = ["default"] }
 tokio = { workspace = true, features = ["full"] }
 tokio-stream = { workspace = true, features = ["default", "sync"] }
 tokio-tungstenite = { workspace = true, features = ["default"] }
+tracing = { workspace = true, features = ["default"] }

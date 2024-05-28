@@ -14,6 +14,8 @@ use tokio_tungstenite::tungstenite::{
 	Message,
 };
 
+use crate::prelude::*;
+
 pub async fn stream_request<E, ServerMsg, ClientMsg>(
 	request: ApiRequest<E>,
 ) -> Result<impl Stream<Item = ServerMsg>, ApiErrorResponse>
@@ -56,16 +58,17 @@ where
 		.map_err(|err| match err {
 			TungsteniteError::Http(err) => {
 				let (parts, body) = err.into_parts();
+				let body = body.unwrap_or_default();
 				ApiErrorResponse {
 					status_code: parts.status,
-					body: ApiErrorResponseBody {
-						success: False,
-						error: ErrorType::server_error(String::from_utf8_lossy(
-							body.as_deref().unwrap_or_default(),
-						)),
-						message: String::from_utf8_lossy(body.as_deref().unwrap_or_default())
-							.to_string(),
-					},
+					body: serde_json::from_slice(&body).unwrap_or_else(|err| {
+						error!("Failed to parse error body: {}", err);
+						ApiErrorResponseBody {
+							success: False,
+							error: ErrorType::server_error(&err),
+							message: err.to_string(),
+						}
+					}),
 				}
 			}
 			err => ApiErrorResponse {
@@ -79,12 +82,16 @@ where
 		})?
 		.0
 		.filter_map(|msg| async move {
-			let msg = msg.ok()?;
+			let msg = msg
+				.inspect_err(|err| warn!("Error from websocket stream: {}", err))
+				.ok()?;
 			let msg = match msg {
 				Message::Text(text) => text,
 				_ => return None,
 			};
-			let msg = serde_json::from_str(&msg).ok()?;
+			let msg = serde_json::from_str(&msg)
+				.inspect_err(|err| warn!("Error parsing text as JSON: {}", err))
+				.ok()?;
 			Some(msg)
 		}))
 }

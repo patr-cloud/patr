@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 
 mod create_api_token;
-mod list_all_api_tokens;
+mod list_api_tokens;
 mod regenerate_api_token;
 mod revoke_api_token;
 mod update_api_token;
@@ -14,7 +14,7 @@ use time::OffsetDateTime;
 
 pub use self::{
 	create_api_token::*,
-	list_all_api_tokens::*,
+	list_api_tokens::*,
 	regenerate_api_token::*,
 	revoke_api_token::*,
 	update_api_token::*,
