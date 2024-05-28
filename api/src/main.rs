@@ -33,6 +33,7 @@ pub mod prelude {
 	pub use anyhow::Context;
 	pub use macros::query;
 	pub use models::{
+		api::WithId,
 		utils::{OneOrMore, Paginated, Uuid},
 		ApiEndpoint,
 		AppResponse,
