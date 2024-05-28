@@ -4,42 +4,6 @@ use leptos_router::ActionForm;
 use models::api::auth::*;
 
 use crate::prelude::*;
-
-#[server(CreateAccount, endpoint = "auth/sign-up")]
-async fn sign_up(
-	username: String,
-	password: String,
-	first_name: String,
-	last_name: String,
-	email: String,
-) -> Result<Result<CreateAccountResponse, ErrorType>, ServerFnError> {
-	let api_response = make_api_call::<CreateAccountRequest>(
-		ApiRequest::builder()
-			.path(CreateAccountPath)
-			.query(())
-			.headers(CreateAccountRequestHeaders {
-				user_agent: UserAgent::from_static("hyper/0.12.2"),
-			})
-			.body(CreateAccountRequest {
-				username,
-				password,
-				first_name,
-				last_name,
-				recovery_method: RecoveryMethod::Email {
-					recovery_email: email,
-				},
-			})
-			.build(),
-	)
-	.await;
-
-	if let Ok(resp) = &api_response {
-		leptos_axum::redirect("/sign-up/confirm");
-	}
-
-	Ok(api_response.map(|res| res.body))
-}
-
 #[component]
 pub fn SignUpPage() -> impl IntoView {
 	view! { <Outlet/> }
@@ -64,14 +28,21 @@ pub fn SignUpForm() -> impl IntoView {
 
 	let password_error = create_rw_signal("".to_owned());
 
-	let handle_errors = move |error: ErrorType| match error {
-		ErrorType::UsernameUnavailable => username_error.set("Username Not Available".to_owned()),
-		ErrorType::EmailUnavailable => username_error.set("Email Not Available".to_owned()),
-		e => password_error.set(format!("Error: {}", e)),
+	let handle_errors = move |error: ServerFnError<ErrorType>| match error {
+		ServerFnError::WrappedServerError(error) => match error {
+			ErrorType::UsernameUnavailable => {
+				username_error.set("Username Not Available".to_owned())
+			}
+			ErrorType::EmailUnavailable => username_error.set("Email Not Available".to_owned()),
+			e => password_error.set(format!("Error: {}", e)),
+		},
+		e => {
+			password_error.set(e.to_string());
+		}
 	};
 
 	create_effect(move |_| {
-		if let Some(Ok(resp)) = response.get() {
+		if let Some(resp) = response.get() {
 			logging::log!("{:#?}", resp);
 			let _ = match resp {
 				Ok(CreateAccountResponse {}) => {}

@@ -5,70 +5,6 @@ use models::api::user::{ActivateMfaResponse, ChangePasswordResponse};
 
 use crate::prelude::*;
 
-#[server(ChangePasswordFn, endpoint = "/user/change-password")]
-async fn change_password(
-	access_token: Option<String>,
-	mfa_otp: Option<String>,
-	new_password: String,
-	current_password: String,
-) -> Result<Result<ChangePasswordResponse, ErrorType>, ServerFnError> {
-	use std::str::FromStr;
-
-	use models::api::user::{
-		ChangePasswordPath,
-		ChangePasswordRequest,
-		ChangePasswordRequestHeaders,
-	};
-
-	let api_response = make_api_call::<ChangePasswordRequest>(
-		ApiRequest::builder()
-			.path(ChangePasswordPath)
-			.query(())
-			.headers(ChangePasswordRequestHeaders {
-				authorization: BearerToken::from_str(
-					format!("Bearer {}", access_token.unwrap_or_default()).as_str(),
-				)?,
-				user_agent: UserAgent::from_static("hyper/0.12.2"),
-			})
-			.body(ChangePasswordRequest {
-				current_password,
-				new_password,
-				mfa_otp,
-			})
-			.build(),
-	)
-	.await;
-
-	Ok(api_response.map(|res| res.body))
-}
-
-///
-#[server(ActivateMfaFn, endpoint = "/user/mfa")]
-async fn activate_mfa(
-	access_token: Option<String>,
-	otp: String,
-) -> Result<Result<ActivateMfaResponse, ErrorType>, ServerFnError> {
-	use std::str::FromStr;
-
-	use models::api::user::{ActivateMfaPath, ActivateMfaRequest, ActivateMfaRequestHeaders};
-
-	let api_response = make_api_call::<ActivateMfaRequest>(
-		ApiRequest::builder()
-			.path(ActivateMfaPath)
-			.query(())
-			.headers(ActivateMfaRequestHeaders {
-				authorization: BearerToken::from_str(
-					format!("Bearer {}", access_token.unwrap_or_default()).as_str(),
-				)?,
-			})
-			.body(ActivateMfaRequest { otp })
-			.build(),
-	)
-	.await;
-
-	Ok(api_response.map(|res| res.body))
-}
-
 #[component]
 pub fn PasswordSection() -> impl IntoView {
 	let show_create_password_fields = create_rw_signal(false);
@@ -82,19 +18,24 @@ pub fn PasswordSection() -> impl IntoView {
 	let _new_password_error = create_rw_signal("".to_owned());
 	let confirm_password_error = create_rw_signal("".to_owned());
 
-	let handle_errors = move |error: ErrorType| match error {
-		ErrorType::InvalidPassword => {
-			current_password_error.set("Password is Incorrect".to_owned());
-		}
+	let handle_errors = move |error: ServerFnError<ErrorType>| match error {
+		ServerFnError::WrappedServerError(err) => match err {
+			ErrorType::InvalidPassword => {
+				current_password_error.set("Password is Incorrect".to_owned());
+			}
+			e => {
+				confirm_password_error.set(format!("{:?}", e));
+			}
+		},
 		e => {
-			confirm_password_error.set(format!("{:?}", e));
+			confirm_password_error.set(e.to_string());
 		}
 	};
 
 	let open_mfa_modal = create_rw_signal(false);
 
 	create_effect(move |_| {
-		if let Some(Ok(resp)) = response.get() {
+		if let Some(resp) = response.get() {
 			let _ = match resp {
 				Ok(ChangePasswordResponse {}) => {}
 				Err(err) => {

@@ -9,9 +9,12 @@ pub mod prelude {
 	pub use leptos_router::*;
 	pub use models::prelude::*;
 
-	pub use crate::utils::*;
+	pub use crate::{api::*, utils::*};
 }
 
+/// The API Module. This contains all the server functions that are used
+/// to make API calls to the backend.
+pub mod api;
 /// The application logic code. This contains the routers and all the routing
 /// logic
 pub mod app;
