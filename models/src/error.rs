@@ -62,6 +62,10 @@ pub enum ErrorType {
 	ResourceAlreadyExists,
 	/// The resource is currently in use
 	ResourceInUse,
+	/// A workspace with that name cannot be created because it already exists
+	WorkspaceNameAlreadyExists,
+	/// Tried to delete a workspace that has resources in it
+	WorkspaceNotEmpty,
 	/// An internal server error occurred. This should not happen unless there
 	/// is a bug in the server
 	InternalServerError(anyhow::Error),
@@ -95,6 +99,8 @@ impl ErrorType {
 			Self::ResourceDoesNotExist => StatusCode::NOT_FOUND,
 			Self::ResourceAlreadyExists => StatusCode::CONFLICT,
 			Self::ResourceInUse => StatusCode::UNPROCESSABLE_ENTITY,
+			Self::WorkspaceNameAlreadyExists => StatusCode::CONFLICT,
+			Self::WorkspaceNotEmpty => StatusCode::FAILED_DEPENDENCY,
 			Self::InternalServerError(_) => StatusCode::INTERNAL_SERVER_ERROR,
 		}
 	}
@@ -131,6 +137,8 @@ impl ErrorType {
 			Self::ResourceDoesNotExist => "The resource you are trying to access does not exist",
 			Self::ResourceAlreadyExists => "Resource already exists with the given details",
 			Self::ResourceInUse => "Resource is currently in use",
+			Self::WorkspaceNameAlreadyExists => "A workspace with that name already exists",
+			Self::WorkspaceNotEmpty => "A workspace cannot be deleted until all the resources in the workspaces have been deleted",
 			Self::InternalServerError(_) => "An internal server error has occured",
 		}
 	}
@@ -186,6 +194,8 @@ impl Clone for ErrorType {
 			Self::ResourceDoesNotExist => Self::ResourceDoesNotExist,
 			Self::ResourceAlreadyExists => Self::ResourceAlreadyExists,
 			Self::ResourceInUse => Self::ResourceInUse,
+			Self::WorkspaceNameAlreadyExists => Self::WorkspaceNameAlreadyExists,
+			Self::WorkspaceNotEmpty => Self::WorkspaceNotEmpty,
 			Self::InternalServerError(arg0) => {
 				Self::InternalServerError(anyhow::anyhow!(arg0.to_string()))
 			}
@@ -243,6 +253,8 @@ impl FromStr for ErrorType {
 			"resourceDoesNotExist" => Self::ResourceDoesNotExist,
 			"resourceAlreadyExists" => Self::ResourceAlreadyExists,
 			"resourceInUse" => Self::ResourceInUse,
+			"workspaceNameAlreadyExists" => Self::WorkspaceNameAlreadyExists,
+			"workspaceNotEmpty" => Self::WorkspaceNotEmpty,
 			"internalServerError" => {
 				Self::InternalServerError(anyhow::anyhow!("Internal Server Error"))
 			}
@@ -283,6 +295,10 @@ impl Serialize for ErrorType {
 			Self::ResourceDoesNotExist => serializer.serialize_str("resourceDoesNotExist"),
 			Self::ResourceAlreadyExists => serializer.serialize_str("resourceAlreadyExists"),
 			Self::ResourceInUse => serializer.serialize_str("resourceInUse"),
+			Self::WorkspaceNameAlreadyExists => {
+				serializer.serialize_str("workspaceNameAlreadyExists")
+			}
+			Self::WorkspaceNotEmpty => serializer.serialize_str("workspaceNotEmpty"),
 			Self::InternalServerError(_) => serializer.serialize_str("internalServerError"),
 		}
 	}

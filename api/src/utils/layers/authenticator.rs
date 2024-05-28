@@ -139,7 +139,7 @@ where
 			let token = token.token();
 
 			let user_data = match client_type {
-				ClientType::ApiToken => {
+				ClientType::WebDashboard => {
 					trace!("Parsing authentication header as an API token");
 					let (refresh_token, login_id) = token
 						.strip_prefix("patrv1.")
@@ -271,8 +271,13 @@ where
 					}
 					info!("API token valid");
 
-					let permissions =
-						get_permissions_for_login_id(req.database, req.redis, &login_id).await?;
+					let permissions = get_permissions_for_login_id(
+						req.database,
+						req.redis,
+						&login_id,
+						&token.user_id.into(),
+					)
+					.await?;
 
 					RequestUserData::builder()
 						.id(token.user_id)
@@ -284,7 +289,7 @@ where
 						.permissions(permissions)
 						.build()
 				}
-				ClientType::WebDashboard => {
+				ClientType::ApiToken => {
 					trace!("Parsing authentication header as a JWT");
 
 					let TokenData {
@@ -400,8 +405,13 @@ where
 						return Err(ErrorType::MalformedAccessToken);
 					}
 
-					let permissions =
-						get_permissions_for_login_id(req.database, req.redis, &sub).await?;
+					let permissions = get_permissions_for_login_id(
+						req.database,
+						req.redis,
+						&sub,
+						&user.id.into(),
+					)
+					.await?;
 
 					RequestUserData::builder()
 						.id(user.id)
@@ -460,12 +470,71 @@ async fn get_permissions_for_login_id(
 	db_connection: &mut DatabaseConnection,
 	redis_connection: &mut RedisClient,
 	login_id: &Uuid,
+	user_id: &Uuid,
 ) -> Result<BTreeMap<Uuid, WorkspacePermission>, ErrorType> {
 	let redis_data: Option<String> = redis_connection
 		.get(redis::keys::permission_for_login_id(login_id))
 		.await?;
-	if let Some(Ok(data)) = redis_data.as_deref().map(serde_json::from_str) {
-		return Ok(data);
+	if let Some(Ok(data)) = redis_data
+		.as_deref()
+		.map(serde_json::from_str::<BTreeMap<_, _>>)
+	{
+		// Check whether the data stored in redis has been revoked
+
+		// Check user revocation, then loginId revocation, then workspace ID revocation
+		let is_valid: Result<(), ErrorType> = try {
+			let revocation_timestamp = redis_connection
+				.get::<_, Option<i64>>(redis::keys::user_id_revocation_timestamp(user_id))
+				.await?
+				.map(|time| OffsetDateTime::from_unix_timestamp(time).ok())
+				.flatten();
+
+			if matches!(revocation_timestamp, Some(revocation_timestamp) if OffsetDateTime::now_utc() > revocation_timestamp)
+			{
+				return Err(ErrorType::AuthorizationTokenInvalid);
+			}
+
+			let revocation_timestamp = redis_connection
+				.get::<_, Option<i64>>(redis::keys::login_id_revocation_timestamp(login_id))
+				.await?
+				.map(|time| OffsetDateTime::from_unix_timestamp(time).ok())
+				.flatten();
+
+			if matches!(revocation_timestamp, Some(revocation_timestamp) if OffsetDateTime::now_utc() > revocation_timestamp)
+			{
+				return Err(ErrorType::AuthorizationTokenInvalid);
+			}
+
+			for workspace_id in data.keys() {
+				let revocation_timestamp = redis_connection
+					.get::<_, Option<i64>>(redis::keys::workspace_id_revocation_timestamp(
+						workspace_id,
+					))
+					.await?
+					.map(|time| OffsetDateTime::from_unix_timestamp(time).ok())
+					.flatten();
+
+				if matches!(revocation_timestamp, Some(revocation_timestamp) if OffsetDateTime::now_utc() > revocation_timestamp)
+				{
+					return Err(ErrorType::AuthorizationTokenInvalid);
+				}
+			}
+
+			let revocation_timestamp = redis_connection
+				.get::<_, Option<i64>>(redis::keys::global_revocation_timestamp())
+				.await?
+				.map(|time| OffsetDateTime::from_unix_timestamp(time).ok())
+				.flatten();
+
+			if matches!(revocation_timestamp, Some(revocation_timestamp) if OffsetDateTime::now_utc() > revocation_timestamp)
+			{
+				return Err(ErrorType::AuthorizationTokenInvalid);
+			}
+		};
+
+		if is_valid.is_ok() {
+			return Ok(data);
+		}
 	}
 
 	let mut workspace_permissions = BTreeMap::<Uuid, WorkspacePermission>::new();
