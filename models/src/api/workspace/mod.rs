@@ -13,8 +13,6 @@ pub mod domain;
 pub mod infrastructure;
 /// This module contains all the models that corresponds to the RBAC of Patr
 pub mod rbac;
-/// This module contains all the models that corresponds to regions
-pub mod region;
 /// This module contains all the models that corresponds to a runner of a Patr
 /// workspace
 pub mod runner;

@@ -1,10 +1,9 @@
-use super::AddRegionToWorkspaceData;
 use crate::prelude::*;
 
 macros::declare_api_endpoint!(
-	/// Route to add region to a workspace
-	AddRegionToWorkspace,
-	POST "/workspace/:workspace_id/region" {
+	/// Route to add runner to a workspace
+	AddRunnerToWorkspace,
+	POST "/workspace/:workspace_id/runner" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid,
 	},
@@ -20,16 +19,13 @@ macros::declare_api_endpoint!(
 		}
 	},
 	request = {
-		/// Name of the region
+		/// Name of the runner
 		#[preprocess(lowercase)]
 		pub name: String,
-		/// The region data
-		#[preprocess(none)]
-		pub data: AddRegionToWorkspaceData,
 	},
 	response = {
-		/// The ID of the created region
+		/// The ID of the created runner
 		#[serde(flatten)]
-		pub region_id: WithId<()>
+		pub id: WithId<()>
 	}
 );

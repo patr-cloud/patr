@@ -8,8 +8,8 @@ mod container_registry;
 mod domain;
 /// All infrastructure related stuff goes here
 mod infrastructure;
-/// The list of regions that are added to a workspace
-mod region;
+/// The list of runners that are a part of a workspace
+mod runner;
 /// The list of secrets that are added to a workspace
 mod secret;
 
@@ -48,7 +48,7 @@ pub async fn initialize_workspace_tables(
 	container_registry::initialize_container_registry_tables(connection).await?;
 	domain::initialize_domain_tables(connection).await?;
 	infrastructure::initialize_infrastructure_tables(connection).await?;
-	region::initialize_region_tables(connection).await?;
+	runner::initialize_runner_tables(connection).await?;
 	secret::initialize_secret_tables(connection).await?;
 
 	Ok(())
@@ -100,7 +100,7 @@ pub async fn initialize_workspace_indices(
 	container_registry::initialize_container_registry_indices(connection).await?;
 	domain::initialize_domain_indices(connection).await?;
 	infrastructure::initialize_infrastructure_indices(connection).await?;
-	region::initialize_region_indices(connection).await?;
+	runner::initialize_runner_indices(connection).await?;
 	secret::initialize_secret_indices(connection).await?;
 
 	Ok(())
@@ -128,7 +128,7 @@ pub async fn initialize_workspace_constraints(
 	container_registry::initialize_container_registry_constraints(connection).await?;
 	domain::initialize_domain_constraints(connection).await?;
 	infrastructure::initialize_infrastructure_constraints(connection).await?;
-	region::initialize_region_constraints(connection).await?;
+	runner::initialize_runner_constraints(connection).await?;
 	secret::initialize_secret_constraints(connection).await?;
 
 	Ok(())
