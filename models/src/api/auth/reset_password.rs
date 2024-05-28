@@ -1,6 +1,9 @@
 use crate::{
 	prelude::*,
-	utils::constants::{OTP_VERIFICATION_TOKEN_REGEX, PASSWORD_REGEX, USERNAME_VALIDITY_REGEX},
+	utils::{
+		constants::{OTP_VERIFICATION_TOKEN_REGEX, USERNAME_VALIDITY_REGEX},
+		validate_password,
+	},
 };
 
 macros::declare_api_endpoint!(
@@ -18,8 +21,7 @@ macros::declare_api_endpoint!(
 		#[preprocess(trim, length(min = 2), regex = USERNAME_VALIDITY_REGEX)]
 		pub user_id: String,
 		/// The new password entered by the user
-		/// The new password entered by the user
-		#[preprocess(trim, length(min = 8), regex = PASSWORD_REGEX)]
+		#[preprocess(trim, length(min = 8), custom = "validate_password")]
 		pub password: String,
 		/// The OTP sent to the recovery method
 		#[preprocess(trim, length(equal = 6), regex = OTP_VERIFICATION_TOKEN_REGEX)]

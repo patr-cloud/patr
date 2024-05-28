@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use serde::{Deserialize, Serialize};
 
 /// This module contains all the utilities used for parsing a request and using
@@ -61,6 +63,56 @@ pub use self::{
 	websocket::*,
 };
 
+/// The function to validate if a password has:
+/// - A minimum of 8 characters
+/// - Must contain atleast one digit
+/// - One uppercase letter
+/// - One lowercase letter
+/// - One special character (!@#$%^&*?)
+pub fn validate_password(value: Cow<'_, str>) -> Result<Cow<'_, str>, preprocess::Error> {
+	use preprocess::Error;
+
+	let (has_digit, has_uppercase, has_lowercase, has_special) = value.chars().fold(
+		(false, false, false, false),
+		|(has_digit, has_uppercase, has_lowercase, has_special), value| {
+			(
+				has_digit || value.is_digit(10),
+				has_uppercase || value.is_ascii_uppercase(),
+				has_lowercase || value.is_ascii_lowercase(),
+				has_special ||
+					matches!(
+						value,
+						'@' | '!' |
+							'#' | '$' | '%' | '^' | '&' | '*' |
+							'?' | '/' | '\\' | '|' | '~' | '`' |
+							'.' | ',' | ';' | ':' | '<' | '>' |
+							'[' | ']' | '{' | '}'
+					),
+			)
+		},
+	);
+
+	if !has_digit {
+		return Err(Error::new("Password must contain at least one digit"));
+	}
+
+	if !has_lowercase {
+		return Err(Error::new("Password must contain at least one lowercase"));
+	}
+
+	if !has_uppercase {
+		return Err(Error::new("Password must contain at least one uppercase"));
+	}
+
+	if !has_special {
+		return Err(Error::new(
+			"Password must contain at least one special character",
+		));
+	}
+
+	Ok(value)
+}
+
 /// All the constants used in the application.
 /// Constants are used to avoid hardcoding values, since that might introduce
 /// typos.
@@ -96,17 +148,6 @@ pub mod constants {
 	/// 456 7890`, `123-456-7890, 1234567890, 123.456.7890`,
 	pub const PHONE_NUMBER_REGEX: &str =
 		macros::verify_regex!(r"^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$");
-
-	/// The Regex to validate the password. The password must have:
-	/// - A minimum of 8 characters
-	/// - Must contain atleast one digit
-	/// - One uppercase letter
-	/// - One lowercase letter
-	/// - One special character (!@#$%^&*?)
-	pub const PASSWORD_REGEX: &str = macros::verify_regex!(
-		// r"^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*?])[a-zA-Z\d!@#$%^&*?]{8,}$"
-		""
-	);
 
 	/// The Regex to validate OTP of the user. The OTP must be a 6-digit number.
 	/// The OTP can be of the format `123456` or `123-456`.

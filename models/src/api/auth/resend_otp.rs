@@ -1,6 +1,6 @@
 use crate::{
 	prelude::*,
-	utils::constants::{PASSWORD_REGEX, USERNAME_VALIDITY_REGEX},
+	utils::{constants::USERNAME_VALIDITY_REGEX, validate_password},
 };
 
 macros::declare_api_endpoint!(
@@ -18,7 +18,7 @@ macros::declare_api_endpoint!(
 		#[preprocess(trim, length(min = 2), regex = USERNAME_VALIDITY_REGEX)]
 		pub username: String,
 		/// The password of the user
-		#[preprocess(trim, length(min = 8), regex = PASSWORD_REGEX)]
+		#[preprocess(trim, length(min = 8), custom = "validate_password")]
 		pub password: String,
 	},
 );
