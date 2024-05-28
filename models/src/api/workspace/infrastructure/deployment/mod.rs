@@ -1,6 +1,5 @@
 use std::{collections::BTreeMap, fmt::Display, str::FromStr};
 
-use schemars::JsonSchema;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use time::OffsetDateTime;
 
@@ -37,7 +36,7 @@ use crate::{prelude::*, utils::constants};
 
 /// Information of all the different deployment plans currently supported
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(JsonSchema))]
+#[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentMachineType {
 	/// The number of CPU nodes
@@ -48,7 +47,7 @@ pub struct DeploymentMachineType {
 
 /// Deployment information
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(JsonSchema))]
+#[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct Deployment {
 	/// Name of the deployment
@@ -83,7 +82,7 @@ pub struct DeploymentDeployHistory {
 
 /// Deployment running details
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(JsonSchema))]
+#[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentRunningDetails {
 	/// if the deployment should deploy as soon as a new image digest is pushed
@@ -111,7 +110,7 @@ pub struct DeploymentRunningDetails {
 
 /// Deployment volume detail
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(JsonSchema))]
+#[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentVolume {
 	/// The path of the volume attached
@@ -123,7 +122,7 @@ pub struct DeploymentVolume {
 /// The type of environment variable
 /// The keys can either have a string as a value or a secret
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(JsonSchema))]
+#[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
 #[serde(untagged)]
 pub enum EnvironmentVariableValue {
 	/// String
@@ -139,7 +138,7 @@ pub enum EnvironmentVariableValue {
 /// The type of exposed port
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
-#[cfg_attr(not(target_arch = "wasm32"), derive(sqlx::Type, JsonSchema))]
+#[cfg_attr(not(target_arch = "wasm32"), derive(sqlx::Type, schemars::JsonSchema))]
 #[cfg_attr(
 	not(target_arch = "wasm32"),
 	sqlx(type_name = "EXPOSED_PORT_TYPE", rename_all = "lowercase")
@@ -155,7 +154,7 @@ pub enum ExposedPortType {
 
 /// The deployment startup/liveness probe
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(JsonSchema))]
+#[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentProbe {
 	/// The port the probe will be using
@@ -166,7 +165,7 @@ pub struct DeploymentProbe {
 
 /// Patr registry
 #[derive(Debug, Copy, Clone, Default, PartialEq, Eq)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(JsonSchema))]
+#[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
 pub struct PatrRegistry;
 
 impl Display for PatrRegistry {
@@ -203,7 +202,7 @@ impl Serialize for PatrRegistry {
 
 /// Deployment registry
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(JsonSchema))]
+#[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
 #[serde(untagged)]
 pub enum DeploymentRegistry {
 	/// Patr registry offered by patr
@@ -239,7 +238,7 @@ impl DeploymentRegistry {
 /// All the possible deployment status a deployment can be
 /// in during its life cycle
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(sqlx::Type, JsonSchema))]
+#[cfg_attr(not(target_arch = "wasm32"), derive(sqlx::Type, schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(
 	not(target_arch = "wasm32"),

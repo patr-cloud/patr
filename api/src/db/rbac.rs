@@ -352,7 +352,7 @@ pub async fn initialize_rbac_constraints(
 		DECLARE
 			resource_id UUID;
 		BEGIN
-			resource_id := uuid_generate_v4();
+			resource_id := gen_random_uuid();
 			WHILE EXISTS(
 				SELECT
 					1
@@ -361,7 +361,7 @@ pub async fn initialize_rbac_constraints(
 				WHERE
 					id = resource_id
 			) LOOP
-				resource_id := uuid_generate_v4();
+				resource_id := gen_random_uuid();
 			END LOOP;
 			RETURN resource_id;
 		END;
