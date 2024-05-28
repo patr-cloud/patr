@@ -35,7 +35,7 @@ async fn get_current_permissions(
 			permissions: user_data
 				.permissions
 				.get(&workspace_id)
-				.ok_or_else(|| ErrorType::server_error("workspace not found in user_data"))?
+				.ok_or_else(|| ErrorType::WrongParameters)?
 				.clone(),
 		})
 		.headers(())

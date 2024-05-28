@@ -1,5 +1,5 @@
 use clap::Args;
-use models::ApiErrorResponse;
+use models::{api::workspace::*, prelude::*, ApiErrorResponse, ApiSuccessResponseBody};
 
 use crate::prelude::*;
 
@@ -16,5 +16,38 @@ pub(super) async fn execute(
 	args: CreateArgs,
 	state: AppState,
 ) -> Result<CommandOutput, ApiErrorResponse> {
-	todo!()
+	let AppState::LoggedIn {
+		token,
+		refresh_token,
+	} = state
+	else {
+		return Err(ApiErrorResponse::error_with_message(
+			ErrorType::Unauthorized,
+			"You are not logged in. Please log in to create a workspace.",
+		));
+	};
+	let CreateWorkspaceResponse { workspace_id } = make_request(
+		ApiRequest::<CreateWorkspaceRequest>::builder()
+			.path(CreateWorkspacePath)
+			.query(())
+			.body(CreateWorkspaceRequest {
+				workspace_name: args.name.clone(),
+			})
+			.headers(CreateWorkspaceRequestHeaders {
+				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+				authorization: token,
+			})
+			.build(),
+	)
+	.await?
+	.body;
+
+	CommandOutput {
+		text: format!(
+			"Workspace `{}` created with ID `{}`",
+			args.name, workspace_id
+		),
+		json: ApiSuccessResponseBody::new(CreateWorkspaceResponse { workspace_id }).to_json_value(),
+	}
+	.into_result()
 }

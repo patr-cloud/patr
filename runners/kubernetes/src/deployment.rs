@@ -328,9 +328,9 @@ async fn reconcile(
 		});
 	}
 
-	for (_, volume) in spec.running_details.volumes {
+	for (_, volume) in &spec.running_details.volumes {
 		volume_mounts.push(VolumeMount {
-			name: format!("pvc-{}", volume.volume_id),
+			name: format!("pvc-{}", volume.path),
 			// make sure user does not have the mount_path in the directory
 			// in the fs, by my observation it gives crashLoopBackOff error
 			mount_path: volume.path.to_string(),
@@ -339,7 +339,7 @@ async fn reconcile(
 
 		pvc.push(PersistentVolumeClaim {
 			metadata: ObjectMeta {
-				name: Some(format!("pvc-{}", volume.volume_id)),
+				name: Some(format!("pvc-{}", volume.path)),
 				namespace: Some(namespace.to_string()),
 				owner_references: Some(vec![owner_reference.clone()]),
 				..ObjectMeta::default()
@@ -400,7 +400,7 @@ async fn reconcile(
 		)
 		.await?;
 
-	let image_name = match spec.deployment.registry {
+	let image_name = match &spec.deployment.registry {
 		DeploymentRegistry::PatrRegistry {
 			registry,
 			repository_id,
@@ -409,12 +409,13 @@ async fn reconcile(
 				ApiRequest::<GetContainerRepositoryInfoRequest>::builder()
 					.path(GetContainerRepositoryInfoPath {
 						workspace_id: Uuid::parse_str(namespace).unwrap(),
-						repository_id,
+						repository_id: *repository_id,
 					})
 					.headers(GetContainerRepositoryInfoRequestHeaders {
 						authorization: BearerToken::from_str(&ctx.patr_token).map_err(|err| {
 							ErrorType::server_error(format!("invalid patr token. Error: `{}`", err))
 						})?,
+						user_agent: UserAgent::from_static("deployment-controller"),
 					})
 					.query(())
 					.body(GetContainerRepositoryInfoRequest)
@@ -433,7 +434,7 @@ async fn reconcile(
 		} => format!("{}/{}", registry, image_name),
 	};
 
-	let image_name = if let Some(current_live_digest) = spec.deployment.current_live_digest {
+	let image_name = if let Some(current_live_digest) = &spec.deployment.current_live_digest {
 		format!("{}@{}", image_name, current_live_digest)
 	} else {
 		format!("{}:{}", image_name, spec.deployment.image_tag)
