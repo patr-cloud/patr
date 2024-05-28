@@ -43,7 +43,8 @@ async fn main() {
 			.build(),
 	)
 	.await
-	.expect("Failed to stream request")
+	.map_err(|err| err.body.message)
+	.expect("Cannot stream request")
 	.for_each_concurrent(4, |response| async move {
 		println!("{:#?}", response);
 	})
