@@ -21,10 +21,9 @@ pub async fn load_user_data(
 			.path(GetUserInfoPath)
 			.query(())
 			.headers(GetUserInfoRequestHeaders {
-				authorization: BearerToken::from_str(
-					format!("Bearer {}", access_token.unwrap()).as_str(),
-				)
-				.map_err(|e| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?,
+				authorization: BearerToken::from_str(access_token.unwrap().as_str()).map_err(
+					|e| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken),
+				)?,
 				user_agent: UserAgent::from_static("hyper/0.12.2"),
 			})
 			.body(GetUserInfoRequest)
