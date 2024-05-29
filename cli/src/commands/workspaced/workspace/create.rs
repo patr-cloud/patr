@@ -12,13 +12,14 @@ pub struct CreateArgs {
 }
 
 pub(super) async fn execute(
-	global_args: GlobalArgs,
+	_: GlobalArgs,
 	args: CreateArgs,
 	state: AppState,
 ) -> Result<CommandOutput, ApiErrorResponse> {
 	let AppState::LoggedIn {
 		token,
 		refresh_token,
+		current_workspace: _,
 	} = state
 	else {
 		return Err(ApiErrorResponse::error_with_message(

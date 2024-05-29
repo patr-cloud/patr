@@ -33,6 +33,7 @@ pub(super) async fn execute(
 		AppState::LoggedIn {
 			token,
 			refresh_token,
+			current_workspace: _,
 		} => (token, refresh_token),
 	};
 

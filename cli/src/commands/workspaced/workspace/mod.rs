@@ -16,7 +16,7 @@ pub enum WorkspaceCommands {
 	WorkspaceAction(WorkspaceActionCommands),
 	#[command(subcommand)]
 	Context(ContextCommands),
-	#[command(subcommand, name = "workspaces")]
+	#[command(name = "workspaces")]
 	ListWorkspaces,
 }
 
