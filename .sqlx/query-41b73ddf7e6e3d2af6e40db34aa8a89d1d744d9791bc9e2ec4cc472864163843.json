@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE runner SET deleted = NOW() WHERE id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "41b73ddf7e6e3d2af6e40db34aa8a89d1d744d9791bc9e2ec4cc472864163843"
+}

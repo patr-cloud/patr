@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT runner.id, runner.workspace_id FROM runner INNER JOIN resource ON runner.id = resource.id WHERE runner.id = $1 AND runner.deleted IS NULL AND resource.owner_id = $2;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "workspace_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "074da5ce75e70286a87a1bb1b5b27dafa908948a325965beda14490c55475dd4"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE FUNCTION GENERATE_RESOURCE_ID() RETURNS UUID AS $$ DECLARE resource_id UUID; BEGIN resource_id := gen_random_uuid(); WHILE EXISTS( SELECT 1 FROM resource WHERE id = resource_id ) LOOP resource_id := gen_random_uuid(); END LOOP; RETURN resource_id; END; $$ LANGUAGE plpgsql;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "fcd4b7c0403ba4110c3add9d7027aa41c404223c2f0375755c43e757dd3baecb"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE runner( id UUID NOT NULL, name TEXT NOT NULL, workspace_id UUID NOT NULL, deleted TIMESTAMPTZ );",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "8496dbb8157f54df12bf3a03b4c8b5ae7703fd77dc87bef21090fe60a38d9108"
+}
