@@ -178,3 +178,46 @@ pub enum ListOrder {
 	#[default]
 	Descending,
 }
+
+/// Validates passwords to ensure that they are secure.
+/// A secure password must have:
+/// - At least 8 characters
+/// - At least one uppercase letter
+/// - At least one lowercase letter
+/// - At least one digit
+/// - At least one special character
+pub fn validate_password(value: String) -> Result<String, ::preprocess::Error> {
+	let value = value.trim();
+
+	if !(value.len() >= 8) {
+		return Err(::preprocess::Error::new(
+			"Password must be at least 8 characters long",
+		));
+	}
+
+	if !value.contains(&['@', '!', '#', '$', '%', '^', '&', '*'][..]) {
+		return Err(::preprocess::Error::new(
+			"Password must contain at least one special character",
+		));
+	}
+
+	if !value.chars().any(|c| matches!(c, 'A'..='Z')) {
+		return Err(::preprocess::Error::new(
+			"Password must contain at least one uppercase",
+		));
+	}
+
+	if !value.chars().any(|c| matches!(c, 'a'..='z')) {
+		return Err(::preprocess::Error::new(
+			"Password must contain at least one lowercase",
+		));
+	}
+
+	if !value.chars().any(|c| matches!(c, '0'..='9')) {
+		return Err(::preprocess::Error::new(
+			"Password must contain at least one digit",
+		));
+	}
+
+	Ok(value.to_owned())
+}

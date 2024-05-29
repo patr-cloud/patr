@@ -61,7 +61,8 @@ pub fn App() -> impl IntoView {
 					<ProfileRoutes/>
 					<InfrastructureRoutes/>
 					<DomainConfigurationRoutes/>
-					<Route path="" view={|| view! { <div>Home page</div> }}/>
+					<WorkspaceRoutes/>
+					<Route path="" view={|| view! { <div></div> }}/>
 				</ProtectedRoute>
 
 				// Logged out routes
