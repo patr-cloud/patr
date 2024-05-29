@@ -50,7 +50,10 @@ pub async fn create_account(
 		redis,
 		config: config.clone(),
 	})
-	.await?
+	.await
+	.inspect_err(|err| {
+		error!("Error checking if username is available: `{}`", err);
+	})?
 	.body
 	.available;
 
@@ -83,7 +86,10 @@ pub async fn create_account(
 				redis,
 				config: config.clone(),
 			})
-			.await?
+			.await
+			.inspect_err(|err| {
+				error!("Error checking if email is available: `{}`", err);
+			})?
 			.body
 			.available;
 
@@ -101,11 +107,17 @@ pub async fn create_account(
 		Version::V0x13,
 		constants::HASHING_PARAMS,
 	)
+	.inspect_err(|err| {
+		error!("Error creating Argon2: `{}`", err);
+	})
 	.map_err(ErrorType::server_error)?
 	.hash_password(
 		otp.as_bytes(),
 		SaltString::generate(&mut rand::thread_rng()).as_salt(),
 	)
+	.inspect_err(|err| {
+		error!("Error hashing OTP: `{}`", err);
+	})
 	.map_err(ErrorType::server_error)?
 	.to_string();
 	let otp_expiry = now.add(constants::OTP_VALIDITY);
@@ -116,11 +128,17 @@ pub async fn create_account(
 		Version::V0x13,
 		constants::HASHING_PARAMS,
 	)
+	.inspect_err(|err| {
+		error!("Error creating Argon2: `{}`", err);
+	})
 	.map_err(ErrorType::server_error)?
 	.hash_password(
 		password.as_bytes(),
 		SaltString::generate(&mut rand::thread_rng()).as_salt(),
 	)
+	.inspect_err(|err| {
+		error!("Error hashing password: `{}`", err);
+	})
 	.map_err(ErrorType::server_error)?
 	.to_string();
 
@@ -202,6 +220,8 @@ pub async fn create_account(
 	)
 	.execute(&mut **database)
 	.await?;
+
+	trace!("User to sign up inserted into the database");
 
 	// TODO send OTP via email
 

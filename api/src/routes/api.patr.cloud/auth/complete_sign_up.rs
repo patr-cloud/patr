@@ -50,7 +50,10 @@ pub async fn complete_sign_up(
 	)
 	.fetch_optional(&mut **database)
 	.await?
-	.ok_or(ErrorType::UserNotFound)?;
+	.ok_or(ErrorType::UserNotFound)
+	.inspect_err(|_| {
+		info!("Could not find a row with the given username");
+	})?;
 
 	trace!("Found a row with the given username");
 
@@ -60,11 +63,17 @@ pub async fn complete_sign_up(
 		Version::V0x13,
 		constants::HASHING_PARAMS,
 	)
+	.inspect_err(|err| {
+		error!("Error creating Argon2: {err}");
+	})
 	.map_err(ErrorType::server_error)?
 	.verify_password(
 		verification_token.as_bytes(),
 		&PasswordHash::new(&row.otp_hash).map_err(ErrorType::server_error)?,
 	)
+	.inspect_err(|err| {
+		info!("Error verifying password: {err}");
+	})
 	.is_ok();
 
 	if !success {
@@ -86,6 +95,8 @@ pub async fn complete_sign_up(
 	)
 	.execute(&mut **database)
 	.await?;
+
+	trace!("Constraints deferred");
 
 	query!(
 		r#"
@@ -138,12 +149,15 @@ pub async fn complete_sign_up(
 	.execute(&mut **database)
 	.await?;
 
+	trace!("User inserted into the database");
+
 	match (
 		row.recovery_email,
 		row.recovery_phone_country_code,
 		row.recovery_phone_number,
 	) {
 		(Some(recovery_email), None, None) => {
+			trace!("Inserting recovery email");
 			query!(
 				r#"
 				INSERT INTO
@@ -161,6 +175,7 @@ pub async fn complete_sign_up(
 			.await?;
 		}
 		(None, Some(recovery_phone_country_code), Some(recovery_phone_number)) => {
+			trace!("Inserting recovery phone number");
 			query!(
 				r#"
 				INSERT INTO
@@ -195,6 +210,8 @@ pub async fn complete_sign_up(
 	.execute(&mut **database)
 	.await?;
 
+	trace!("Constraints set to immediate");
+
 	let login_id = Uuid::new_v4();
 
 	let refresh_token = Uuid::new_v4();
@@ -204,11 +221,17 @@ pub async fn complete_sign_up(
 		Version::V0x13,
 		constants::HASHING_PARAMS,
 	)
+	.inspect_err(|err| {
+		error!("Error creating Argon2: {err}");
+	})
 	.map_err(ErrorType::server_error)?
 	.hash_password(
 		refresh_token.as_bytes(),
 		SaltString::generate(&mut rand::thread_rng()).as_salt(),
 	)
+	.inspect_err(|err| {
+		error!("Error hashing password: {err}");
+	})
 	.map_err(ErrorType::server_error)?
 	.to_string();
 	let refresh_token_expiry = now.add(constants::INACTIVE_REFRESH_TOKEN_VALIDITY);
@@ -226,9 +249,15 @@ pub async fn complete_sign_up(
 		},
 		..Default::default()
 	})
+	.inspect_err(|err| {
+		info!("Error creating IpInfo: {err}");
+	})
 	.map_err(ErrorType::server_error)?
 	.lookup(client_ip.to_string().as_str())
 	.await
+	.inspect_err(|err| {
+		info!("Error looking up IP address: {err}");
+	})
 	.map_err(ErrorType::server_error)?;
 
 	if !cfg!(debug_assertions) && ip_info.bogon.unwrap_or(false) {
@@ -246,7 +275,16 @@ pub async fn complete_sign_up(
 		ip_info
 			.loc
 			.split_once(',')
-			.map(|(lat, lng)| Ok::<_, ParseFloatError>((lat.parse::<f64>()?, lng.parse::<f64>()?)))
+			.map(|(lat, lng)| {
+				Ok::<_, ParseFloatError>((
+					lat.parse::<f64>().inspect_err(|err| {
+						info!("Error parsing latitude: `{lat}` - {err}");
+					})?,
+					lng.parse::<f64>().inspect_err(|err| {
+						info!("Error parsing longitude: `{lng}` - {err}");
+					})?,
+				))
+			})
 			.ok_or_else(|| {
 				ErrorType::server_error(format!("unknown latitude and longitude: {}", ip_info.loc))
 			})?
@@ -277,6 +315,8 @@ pub async fn complete_sign_up(
 	)
 	.execute(&mut **database)
 	.await?;
+
+	trace!("User login inserted into the database");
 
 	query!(
 		r#"
@@ -334,6 +374,8 @@ pub async fn complete_sign_up(
 	.execute(&mut **database)
 	.await?;
 
+	trace!("Web login inserted into the database");
+
 	let access_token = AccessTokenData {
 		iss: constants::JWT_ISSUER.to_string(),
 		sub: login_id,
@@ -348,6 +390,9 @@ pub async fn complete_sign_up(
 		&access_token,
 		&EncodingKey::from_secret(config.jwt_secret.as_ref()),
 	)
+	.inspect_err(|err| {
+		info!("Error encoding JWT: {err}");
+	})
 	.map_err(ErrorType::server_error)?;
 
 	let refresh_token = format!("{login_id}.{refresh_token}");

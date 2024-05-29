@@ -23,6 +23,7 @@ pub mod utils;
 pub mod prelude {
 	pub use headers::UserAgent;
 	pub use preprocess;
+	pub use tracing::{debug, error, info, instrument, trace, warn};
 
 	pub(crate) use crate as models;
 	pub use crate::{

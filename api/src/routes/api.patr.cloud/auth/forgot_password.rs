@@ -79,11 +79,17 @@ pub async fn forgot_password(
 		Version::V0x13,
 		constants::HASHING_PARAMS,
 	)
+	.inspect_err(|err| {
+		error!("Error creating Argon2: `{err}");
+	})
 	.map_err(ErrorType::server_error)?
 	.hash_password(
 		password_reset_token.as_bytes(),
 		SaltString::generate(&mut rand::thread_rng()).as_salt(),
 	)
+	.inspect_err(|err| {
+		error!("Error hashing reset token: `{err}");
+	})
 	.map_err(ErrorType::server_error)?
 	.to_string();
 
@@ -93,6 +99,8 @@ pub async fn forgot_password(
 	};
 
 	if !should_reset {
+		debug!("User has selected a recovery option that is not set in the database");
+
 		// Return Ok even if the data is invalid to prevent leaking user data
 		return AppResponse::builder()
 			.body(ForgotPasswordResponse)
@@ -107,6 +115,8 @@ pub async fn forgot_password(
 		.unwrap_or(OffsetDateTime::UNIX_EPOCH) >
 		now
 	{
+		debug!("User has an active password reset token");
+
 		// The previous attempt hasn't expired yet
 		return AppResponse::builder()
 			.body(ForgotPasswordResponse)
@@ -133,6 +143,8 @@ pub async fn forgot_password(
 	)
 	.execute(&mut **database)
 	.await?;
+
+	trace!("Password reset token for user `{}` updated", user_data.id);
 
 	// TODO send OTP by the preferred recovery option
 
