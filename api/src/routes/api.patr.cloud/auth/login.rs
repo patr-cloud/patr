@@ -36,6 +36,8 @@ pub async fn login(
 		config,
 	}: AppRequest<'_, LoginRequest>,
 ) -> Result<AppResponse<LoginRequest>, ErrorType> {
+	trace!("Logging in user: {}", user_id);
+
 	let user_data = query!(
 		r#"
 		SELECT
@@ -72,7 +74,7 @@ pub async fn login(
 	.await?
 	.ok_or(ErrorType::UserNotFound)?;
 
-	trace!("Found userId: {}", user_data.id);
+	trace!("Found user with ID: {}", user_data.id);
 
 	let success = argon2::Argon2::new_with_secret(
 		config.password_pepper.as_ref(),
@@ -80,11 +82,17 @@ pub async fn login(
 		Version::V0x13,
 		constants::HASHING_PARAMS,
 	)
+	.inspect_err(|err| {
+		error!("Error creating Argon2: `{}`", err);
+	})
 	.map_err(ErrorType::server_error)?
 	.verify_password(
 		password.as_bytes(),
 		&PasswordHash::new(&user_data.password).map_err(ErrorType::server_error)?,
 	)
+	.inspect_err(|err| {
+		info!("Error verifying password: `{}`", err);
+	})
 	.is_ok();
 
 	if !success {
@@ -176,9 +184,15 @@ pub async fn login(
 		},
 		..Default::default()
 	})
+	.inspect_err(|err| {
+		info!("Error creating IpInfo: {err}");
+	})
 	.map_err(ErrorType::server_error)?
 	.lookup(client_ip.to_string().as_str())
 	.await
+	.inspect_err(|err| {
+		info!("Error looking up IP address: {err}");
+	})
 	.map_err(ErrorType::server_error)?;
 
 	if !cfg!(debug_assertions) && ip_info.bogon.unwrap_or(false) {
@@ -196,7 +210,16 @@ pub async fn login(
 		ip_info
 			.loc
 			.split_once(',')
-			.map(|(lat, lng)| Ok::<_, ParseFloatError>((lat.parse::<f64>()?, lng.parse::<f64>()?)))
+			.map(|(lat, lng)| {
+				Ok::<_, ParseFloatError>((
+					lat.parse::<f64>().inspect_err(|err| {
+						info!("Error parsing latitude: `{lat}` - {err}");
+					})?,
+					lng.parse::<f64>().inspect_err(|err| {
+						info!("Error parsing longitude: `{lng}` - {err}");
+					})?,
+				))
+			})
 			.ok_or_else(|| {
 				ErrorType::server_error(format!("unknown latitude and longitude: {}", ip_info.loc))
 			})?
@@ -299,6 +322,9 @@ pub async fn login(
 		&access_token,
 		&EncodingKey::from_secret(config.jwt_secret.as_ref()),
 	)
+	.inspect_err(|err| {
+		error!("Error encoding JWT: `{}`", err);
+	})
 	.map_err(ErrorType::server_error)?;
 
 	let refresh_token = format!("{login_id}.{refresh_token}");

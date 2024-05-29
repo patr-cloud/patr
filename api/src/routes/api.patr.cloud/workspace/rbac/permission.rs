@@ -59,14 +59,32 @@ async fn list_all_permissions(
 		user_data,
 	}: AuthenticatedAppRequest<'_, ListAllPermissionsRequest>,
 ) -> Result<AppResponse<ListAllPermissionsRequest>, ErrorType> {
-	info!("Starting: List all permissions");
+	info!("Listing all permissions in the database");
 
-	// LOGIC
+	let permissions = query!(
+		r#"
+		SELECT
+			*
+		FROM
+			permissions;
+		"#
+	)
+	.fetch_all(&mut **database)
+	.await?
+	.into_iter()
+	.map(|row| {
+		WithId::new(
+			row.id.into(),
+			Permission {
+				name: row.name,
+				description: row.description,
+			},
+		)
+	})
+	.collect();
 
 	AppResponse::builder()
-		.body(ListAllPermissionsResponse {
-			permissions: todo!(),
-		})
+		.body(ListAllPermissionsResponse { permissions })
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
@@ -88,14 +106,32 @@ async fn list_all_resource_types(
 		user_data,
 	}: AuthenticatedAppRequest<'_, ListAllResourceTypesRequest>,
 ) -> Result<AppResponse<ListAllResourceTypesRequest>, ErrorType> {
-	info!("Starting: List all resource type");
+	info!("Listing all resource types in the database");
 
-	// LOGIC
+	let resource_types = query!(
+		r#"
+		SELECT
+			*
+		FROM
+			resource_type;
+		"#
+	)
+	.fetch_all(&mut **database)
+	.await?
+	.into_iter()
+	.map(|row| {
+		WithId::new(
+			row.id.into(),
+			ResourceType {
+				name: row.name,
+				description: row.description,
+			},
+		)
+	})
+	.collect();
 
 	AppResponse::builder()
-		.body(ListAllResourceTypesResponse {
-			resource_types: todo!(),
-		})
+		.body(ListAllResourceTypesResponse { resource_types })
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()

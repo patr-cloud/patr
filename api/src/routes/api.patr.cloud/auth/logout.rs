@@ -1,7 +1,7 @@
 use argon2::{Algorithm, PasswordHash, PasswordVerifier, Version};
 use axum::http::StatusCode;
 use models::api::auth::*;
-use rustis::commands::GenericCommands;
+use rustis::commands::{GenericCommands, StringCommands};
 
 use crate::{prelude::*, redis::keys as redis};
 
@@ -50,6 +50,7 @@ pub async fn logout(
 	.fetch_optional(&mut **database)
 	.await?
 	else {
+		debug!("Could not find a login with the login id: {}", login_id);
 		return Err(ErrorType::MalformedRefreshToken);
 	};
 
@@ -59,11 +60,17 @@ pub async fn logout(
 		Version::V0x13,
 		constants::HASHING_PARAMS,
 	)
+	.inspect_err(|err| {
+		error!("Error creating Argon2: `{}`", err);
+	})
 	.map_err(ErrorType::server_error)?
 	.verify_password(
 		refresh_token.as_ref(),
 		&PasswordHash::new(&login.refresh_token).map_err(ErrorType::server_error)?,
 	)
+	.inspect_err(|err| {
+		info!("Error verifying password: `{}`", err);
+	})
 	.is_ok();
 
 	if !success {
@@ -82,6 +89,8 @@ pub async fn logout(
 	.execute(&mut **database)
 	.await?;
 
+	trace!("Deleted web login");
+
 	query!(
 		r#"
 		DELETE FROM
@@ -94,7 +103,29 @@ pub async fn logout(
 	.execute(&mut **database)
 	.await?;
 
-	redis.del(redis::permission_for_login_id(&login_id)).await?;
+	trace!("Deleted user login");
+
+	_ = redis
+		.del(redis::permission_for_login_id(&login_id))
+		.await
+		.inspect_err(|err| {
+			error!(
+				"Error deleting the cached permission for login `{}`: `{}`",
+				login_id, err
+			);
+		});
+	_ = redis
+		.setex(
+			redis::login_id_revocation_timestamp(&login_id),
+			constants::ACCESS_TOKEN_VALIDITY.whole_seconds() as u64 + 100,
+			OffsetDateTime::now_utc()
+				.add(constants::ACCESS_TOKEN_VALIDITY)
+				.unix_timestamp(),
+		)
+		.await
+		.inspect_err(|err| {
+			error!("Error setting the revocation timestamp: `{}`", err);
+		});
 
 	AppResponse::builder()
 		.body(LogoutResponse)

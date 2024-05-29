@@ -7,9 +7,14 @@ use std::{
 
 use axum::http::StatusCode;
 use serde::{de::Error, Deserialize, Serialize};
+use strum::{Display, EnumString};
+
+use crate::prelude::*;
 
 /// A list of all the possible errors that can be returned by the API
-#[derive(Debug)]
+#[derive(
+	Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, EnumString, Display,
+)]
 pub enum ErrorType {
 	/// The email provided is invalid
 	InvalidEmail,
@@ -68,7 +73,7 @@ pub enum ErrorType {
 	WorkspaceNotEmpty,
 	/// An internal server error occurred. This should not happen unless there
 	/// is a bug in the server
-	InternalServerError(anyhow::Error),
+	InternalServerError,
 }
 
 impl ErrorType {
@@ -101,7 +106,7 @@ impl ErrorType {
 			Self::ResourceInUse => StatusCode::UNPROCESSABLE_ENTITY,
 			Self::WorkspaceNameAlreadyExists => StatusCode::CONFLICT,
 			Self::WorkspaceNotEmpty => StatusCode::FAILED_DEPENDENCY,
-			Self::InternalServerError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+			Self::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,
 		}
 	}
 
@@ -139,177 +144,23 @@ impl ErrorType {
 			Self::ResourceInUse => "Resource is currently in use",
 			Self::WorkspaceNameAlreadyExists => "A workspace with that name already exists",
 			Self::WorkspaceNotEmpty => "A workspace cannot be deleted until all the resources in the workspaces have been deleted",
-			Self::InternalServerError(_) => "An internal server error has occured",
+			Self::InternalServerError => "An internal server error has occured",
 		}
 	}
 
 	/// Creates an [`ErrorType::InternalServerError`] with the given message
 	pub fn server_error(message: impl Display) -> Self {
-		Self::InternalServerError(anyhow::anyhow!(message.to_string()))
+		error!("Internal server error occured: {message}");
+		Self::InternalServerError
 	}
 }
-
-impl PartialEq for ErrorType {
-	fn eq(&self, other: &Self) -> bool {
-		match (self, other) {
-			(Self::InternalServerError(_), Self::InternalServerError(_)) => true,
-			_ => mem::discriminant(self) == mem::discriminant(other),
-		}
-	}
-}
-
-impl Eq for ErrorType {}
 
 impl<Error> From<Error> for ErrorType
 where
 	Error: StdError + Send + Sync + 'static,
 {
 	fn from(error: Error) -> Self {
-		Self::InternalServerError(error.into())
-	}
-}
-
-impl Clone for ErrorType {
-	fn clone(&self) -> Self {
-		match self {
-			Self::InvalidEmail => Self::InvalidEmail,
-			Self::UserNotFound => Self::UserNotFound,
-			Self::InvalidPassword => Self::InvalidPassword,
-			Self::MfaRequired => Self::MfaRequired,
-			Self::MfaOtpInvalid => Self::MfaOtpInvalid,
-			Self::MfaAlreadyActive => Self::MfaAlreadyActive,
-			Self::MfaAlreadyInactive => Self::MfaAlreadyInactive,
-			Self::TagNotFound => Self::TagNotFound,
-			Self::WrongParameters => Self::WrongParameters,
-			Self::MalformedApiToken => Self::MalformedApiToken,
-			Self::DisallowedIpAddressForApiToken => Self::DisallowedIpAddressForApiToken,
-			Self::MalformedAccessToken => Self::MalformedAccessToken,
-			Self::MalformedRefreshToken => Self::MalformedRefreshToken,
-			Self::Unauthorized => Self::Unauthorized,
-			Self::AuthorizationTokenInvalid => Self::AuthorizationTokenInvalid,
-			Self::UsernameUnavailable => Self::UsernameUnavailable,
-			Self::EmailUnavailable => Self::EmailUnavailable,
-			Self::PhoneUnavailable => Self::PhoneUnavailable,
-			Self::InvalidPasswordResetToken => Self::InvalidPasswordResetToken,
-			Self::ResourceDoesNotExist => Self::ResourceDoesNotExist,
-			Self::ResourceAlreadyExists => Self::ResourceAlreadyExists,
-			Self::ResourceInUse => Self::ResourceInUse,
-			Self::WorkspaceNameAlreadyExists => Self::WorkspaceNameAlreadyExists,
-			Self::WorkspaceNotEmpty => Self::WorkspaceNotEmpty,
-			Self::InternalServerError(arg0) => {
-				Self::InternalServerError(anyhow::anyhow!(arg0.to_string()))
-			}
-		}
-	}
-}
-
-impl Display for ErrorType {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.message().into())
-	}
-}
-
-/// An error type that is used when a string is not a valid [`ErrorType`]
-#[derive(
-	Debug,
-	Clone,
-	Serialize,
-	Deserialize,
-	PartialEq,
-	Eq,
-	Hash,
-	Default,
-	Ord,
-	PartialOrd,
-	thiserror::Error,
-)]
-#[error("{}", self.0)]
-pub struct UnknownErrorType(String);
-
-impl FromStr for ErrorType {
-	type Err = UnknownErrorType;
-
-	fn from_str(string: &str) -> Result<Self, Self::Err> {
-		Ok(match string {
-			"invalidEmail" => Self::InvalidEmail,
-			"userNotFound" => Self::UserNotFound,
-			"invalidPassword" => Self::InvalidPassword,
-			"mfaRequired" => Self::MfaRequired,
-			"mfaOtpInvalid" => Self::MfaOtpInvalid,
-			"mfaAlreadyActive" => Self::MfaAlreadyActive,
-			"mfaAlreadyInactive" => Self::MfaAlreadyInactive,
-			"tagNotFound" => Self::TagNotFound,
-			"wrongParameters" => Self::WrongParameters,
-			"malformedApiToken" => Self::MalformedApiToken,
-			"disallowedIpAddressForApiToken" => Self::DisallowedIpAddressForApiToken,
-			"malformedAccessToken" => Self::MalformedAccessToken,
-			"malformedRefreshToken" => Self::MalformedRefreshToken,
-			"unauthorized" => Self::Unauthorized,
-			"authorizationTokenInvalid" => Self::AuthorizationTokenInvalid,
-			"usernameUnavailable" => Self::UsernameUnavailable,
-			"emailUnavailable" => Self::EmailUnavailable,
-			"phoneUnavailable" => Self::PhoneUnavailable,
-			"invalidResetToken" => Self::InvalidPasswordResetToken,
-			"resourceDoesNotExist" => Self::ResourceDoesNotExist,
-			"resourceAlreadyExists" => Self::ResourceAlreadyExists,
-			"resourceInUse" => Self::ResourceInUse,
-			"workspaceNameAlreadyExists" => Self::WorkspaceNameAlreadyExists,
-			"workspaceNotEmpty" => Self::WorkspaceNotEmpty,
-			"internalServerError" => {
-				Self::InternalServerError(anyhow::anyhow!("Internal Server Error"))
-			}
-			unknown => return Err(UnknownErrorType(format!("unknown variant: {unknown}"))),
-		})
-	}
-}
-
-impl Serialize for ErrorType {
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: serde::Serializer,
-	{
-		match self {
-			Self::InvalidEmail => serializer.serialize_str("invalidEmail"),
-			Self::UserNotFound => serializer.serialize_str("userNotFound"),
-			Self::InvalidPassword => serializer.serialize_str("invalidPassword"),
-			Self::MfaRequired => serializer.serialize_str("mfaRequired"),
-			Self::MfaAlreadyActive => serializer.serialize_str("mfaAlreadyActive"),
-			Self::MfaAlreadyInactive => serializer.serialize_str("mfaAlreadyInactive"),
-			Self::MfaOtpInvalid => serializer.serialize_str("mfaOtpInvalid"),
-			Self::TagNotFound => serializer.serialize_str("tagNotFound"),
-			Self::WrongParameters => serializer.serialize_str("wrongParameters"),
-			Self::MalformedApiToken => serializer.serialize_str("malformedApiToken"),
-			Self::DisallowedIpAddressForApiToken => {
-				serializer.serialize_str("disallowedIpAddressForApiToken")
-			}
-			Self::MalformedAccessToken => serializer.serialize_str("malformedAccessToken"),
-			Self::MalformedRefreshToken => serializer.serialize_str("malformedRefreshToken"),
-			Self::Unauthorized => serializer.serialize_str("unauthorized"),
-			Self::AuthorizationTokenInvalid => {
-				serializer.serialize_str("authorizationTokenInvalid")
-			}
-			Self::UsernameUnavailable => serializer.serialize_str("usernameUnavailable"),
-			Self::EmailUnavailable => serializer.serialize_str("emailUnavailable"),
-			Self::PhoneUnavailable => serializer.serialize_str("phoneUnavailable"),
-			Self::InvalidPasswordResetToken => serializer.serialize_str("invalidResetToken"),
-			Self::ResourceDoesNotExist => serializer.serialize_str("resourceDoesNotExist"),
-			Self::ResourceAlreadyExists => serializer.serialize_str("resourceAlreadyExists"),
-			Self::ResourceInUse => serializer.serialize_str("resourceInUse"),
-			Self::WorkspaceNameAlreadyExists => {
-				serializer.serialize_str("workspaceNameAlreadyExists")
-			}
-			Self::WorkspaceNotEmpty => serializer.serialize_str("workspaceNotEmpty"),
-			Self::InternalServerError(_) => serializer.serialize_str("internalServerError"),
-		}
-	}
-}
-
-impl<'de> Deserialize<'de> for ErrorType {
-	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-	where
-		D: serde::Deserializer<'de>,
-	{
-		let string = String::deserialize(deserializer)?;
-		ErrorType::from_str(&string).map_err(D::Error::custom)
+		error!("Creating error type from error `{}`: {}", std::any::type_name<Error>(), error);
+		Self::InternalServerError
 	}
 }

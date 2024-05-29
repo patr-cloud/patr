@@ -21,7 +21,7 @@ pub async fn activate_mfa(
 		user_data: RequestUserData { id, .. },
 	}: AuthenticatedAppRequest<'_, ActivateMfaRequest>,
 ) -> Result<AppResponse<ActivateMfaRequest>, ErrorType> {
-	info!("Starting: Activate MFA for user");
+	info!("Activating MFA for user");
 
 	let mfa_detail = query!(
 		r#"

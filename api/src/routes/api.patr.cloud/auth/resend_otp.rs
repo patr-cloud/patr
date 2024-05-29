@@ -50,11 +50,17 @@ pub async fn resend_otp(
 			Version::V0x13,
 			constants::HASHING_PARAMS,
 		)
+		.inspect_err(|err| {
+			error!("Error while creating Argon2 instance: {}", err);
+		})
 		.map_err(ErrorType::server_error)?
 		.verify_password(
 			password.as_bytes(),
 			&PasswordHash::new(&user_data.password).map_err(ErrorType::server_error)?,
 		)
+		.inspect_err(|err| {
+			info!("Error while verifying password: {}", err);
+		})
 		.is_ok();
 
 		if success {
@@ -65,11 +71,17 @@ pub async fn resend_otp(
 				Version::V0x13,
 				constants::HASHING_PARAMS,
 			)
+			.inspect_err(|err| {
+				error!("Error while creating Argon2 instance: {}", err);
+			})
 			.map_err(ErrorType::server_error)?
 			.hash_password(
 				otp.as_bytes(),
 				SaltString::generate(&mut rand::thread_rng()).as_salt(),
 			)
+			.inspect_err(|err| {
+				error!("Error hashing OTP: {}", err);
+			})
 			.map_err(ErrorType::server_error)?
 			.to_string();
 

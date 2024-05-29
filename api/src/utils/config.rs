@@ -74,11 +74,13 @@ pub struct AppConfig {
 	#[cfg(debug_assertions)]
 	pub opentelemetry: Option<OpenTelemetryConfig>,
 	#[cfg(not(debug_assertions))]
+	/// The opentelemetry endpoint to send traces to
 	pub opentelemetry: OpenTelemetryConfig,
 	/// The configuration for IpInfo to get IpAddress details
 	#[cfg(debug_assertions)]
 	pub ipinfo: Option<IpInfoConfig>,
 	#[cfg(not(debug_assertions))]
+	/// The configuration for IpInfo to get IpAddress details
 	pub ipinfo: IpInfoConfig,
 }
 

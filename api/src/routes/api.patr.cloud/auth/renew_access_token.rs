@@ -59,7 +59,9 @@ pub async fn renew_access_token(
 	.fetch_optional(&mut **database)
 	.await?
 	.ok_or(ErrorType::MalformedRefreshToken)
-	.inspect_err(|_| debug!("Could not find a row for that refresh token"))?;
+	.inspect_err(|_| {
+		debug!("Could not find a row for that refresh token");
+	})?;
 
 	if row.token_expiry < now {
 		debug!("Token has expiry {}. It is expired.", row.token_expiry);
@@ -72,11 +74,17 @@ pub async fn renew_access_token(
 		Version::V0x13,
 		constants::HASHING_PARAMS,
 	)
+	.inspect_err(|err| {
+		error!("Error creating Argon2: `{}`", err);
+	})
 	.map_err(ErrorType::server_error)?
 	.verify_password(
 		refresh_token.as_ref(),
 		&PasswordHash::new(&row.refresh_token).map_err(ErrorType::server_error)?,
 	)
+	.inspect_err(|err| {
+		info!("Error verifying refresh token: `{}`", err);
+	})
 	.is_ok();
 
 	if !success {
@@ -99,6 +107,9 @@ pub async fn renew_access_token(
 		&access_token,
 		&EncodingKey::from_secret(config.jwt_secret.as_ref()),
 	)
+	.inspect_err(|err| {
+		error!("Error encoding JWT: `{}`", err);
+	})
 	.map_err(ErrorType::server_error)?;
 
 	trace!("Access token generated");

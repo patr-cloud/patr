@@ -77,30 +77,33 @@ pub async fn reset_password(
 		.unwrap_or(OffsetDateTime::UNIX_EPOCH) <
 		now
 	{
+		debug!("Password reset token has expired");
 		return Err(ErrorType::InvalidPasswordResetToken);
 	}
 
 	if user_data.password_reset_attempts.unwrap_or(0) >
 		constants::MAX_PASSWORD_RESET_ATTEMPTS.into()
 	{
+		debug!("Password reset attempts exceeded");
 		return Err(ErrorType::InvalidPasswordResetToken);
 	}
 
-	let Some(password_reset_token) = user_data.password_reset_token else {
-		query!(
-			r#"
-			UPDATE
-				"user"
-			SET
-				password_reset_attempts = password_reset_attempts + 1
-			WHERE
-				id = $1;
-			"#,
-			user_data.id
-		)
-		.execute(&mut **database)
-		.await?;
+	query!(
+		r#"
+		UPDATE
+			"user"
+		SET
+			password_reset_attempts = password_reset_attempts + 1
+		WHERE
+			id = $1;
+		"#,
+		user_data.id
+	)
+	.execute(&mut **database)
+	.await?;
 
+	let Some(password_reset_token) = user_data.password_reset_token else {
+		debug!("Password reset token is missing");
 		return Err(ErrorType::InvalidPasswordResetToken);
 	};
 
@@ -110,28 +113,20 @@ pub async fn reset_password(
 		Version::V0x13,
 		constants::HASHING_PARAMS,
 	)
+	.inspect_err(|err| {
+		error!("Error creating Argon2: `{}`", err);
+	})
 	.map_err(ErrorType::server_error)?
 	.verify_password(
 		verification_token.as_bytes(),
 		&PasswordHash::new(&password_reset_token).map_err(ErrorType::server_error)?,
 	)
+	.inspect_err(|err| {
+		info!("Error verifying token: `{}`", err);
+	})
 	.is_ok();
 
 	if !success {
-		query!(
-			r#"
-			UPDATE
-				"user"
-			SET
-				password_reset_attempts = password_reset_attempts + 1
-			WHERE
-				id = $1;
-			"#,
-			user_data.id
-		)
-		.execute(&mut **database)
-		.await?;
-
 		return Err(ErrorType::InvalidPasswordResetToken);
 	}
 
@@ -141,11 +136,17 @@ pub async fn reset_password(
 		Version::V0x13,
 		constants::HASHING_PARAMS,
 	)
+	.inspect_err(|err| {
+		error!("Error creating Argon2: `{}`", err);
+	})
 	.map_err(ErrorType::server_error)?
 	.hash_password(
 		password.as_bytes(),
 		SaltString::generate(&mut rand::thread_rng()).as_salt(),
 	)
+	.inspect_err(|err| {
+		error!("Error hashing password: `{}`", err);
+	})
 	.map_err(ErrorType::server_error)?
 	.to_string();
 
