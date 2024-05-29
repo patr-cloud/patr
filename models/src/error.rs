@@ -1,20 +1,17 @@
-use std::{
-	error::Error as StdError,
-	fmt::{Display, Formatter},
-	mem,
-	str::FromStr,
-};
+use std::{error::Error as StdError, fmt::Display};
 
 use axum::http::StatusCode;
-use serde::{de::Error, Deserialize, Serialize};
-use strum::{Display, EnumString};
+use enum_utils::FromStr;
+use serde::{Deserialize, Serialize};
+use strum::Display;
 
 use crate::prelude::*;
 
 /// A list of all the possible errors that can be returned by the API
 #[derive(
-	Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, EnumString, Display,
+	Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, FromStr, Display,
 )]
+#[serde(rename_all = "camelCase")]
 pub enum ErrorType {
 	/// The email provided is invalid
 	InvalidEmail,
@@ -160,7 +157,11 @@ where
 	Error: StdError + Send + Sync + 'static,
 {
 	fn from(error: Error) -> Self {
-		error!("Creating error type from error `{}`: {}", std::any::type_name<Error>(), error);
+		error!(
+			"Creating error type from error `{}`: {}",
+			std::any::type_name::<Error>(),
+			error
+		);
 		Self::InternalServerError
 	}
 }

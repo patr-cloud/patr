@@ -28,9 +28,6 @@ pub fn ConfirmSignUpForm() -> impl IntoView {
 			ErrorType::MfaOtpInvalid => {
 				otp_error.set("Invalid OTP".to_owned());
 			}
-			ErrorType::InternalServerError(err) => {
-				otp_error.set(err.to_string());
-			}
 			e => {
 				otp_error.set(format!("{:?}", e));
 			}

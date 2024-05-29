@@ -178,7 +178,7 @@ where
 						.into_response()
 				})
 				.unwrap_or_else(|error| {
-					if let ErrorType::InternalServerError(error) = &error {
+					if let ErrorType::InternalServerError = &error {
 						error!("Internal server error: {}", error);
 					} else {
 						warn!("Inner service failed: {:?}", error);

@@ -39,10 +39,7 @@ pub struct WithId<T> {
 impl<T> WithId<T> {
 	/// Create a new `WithId` struct with the given Id and data. This helps
 	/// instantiate the struct with the data and Id provided as parameters.
-	pub fn new<ID>(id: ID, data: T) -> Self
-	where
-		ID: Into<Uuid>,
-	{
+	pub fn new(id: impl Into<Uuid>, data: T) -> Self {
 		Self {
 			id: id.into(),
 			data,

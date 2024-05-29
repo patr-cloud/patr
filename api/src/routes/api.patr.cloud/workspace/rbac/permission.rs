@@ -66,7 +66,7 @@ async fn list_all_permissions(
 		SELECT
 			*
 		FROM
-			permissions;
+			permission;
 		"#
 	)
 	.fetch_all(&mut **database)
@@ -74,7 +74,7 @@ async fn list_all_permissions(
 	.into_iter()
 	.map(|row| {
 		WithId::new(
-			row.id.into(),
+			row.id,
 			Permission {
 				name: row.name,
 				description: row.description,
@@ -121,7 +121,7 @@ async fn list_all_resource_types(
 	.into_iter()
 	.map(|row| {
 		WithId::new(
-			row.id.into(),
+			row.id,
 			ResourceType {
 				name: row.name,
 				description: row.description,
