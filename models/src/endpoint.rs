@@ -86,20 +86,19 @@ where
 	/// There are two structs provided that implement this trait and no other
 	/// structs can implement this trait. These structs are:
 	/// - [`NoAuthentication`][1]: This struct is used to specify that an API
-	///  endpoint does not require authentication. It can be accessed without
-	/// any token.
+	///   endpoint does not require authentication. It can be accessed without
+	///   any token.
 	/// - [`AppAuthentication`][2]: This struct is used to specify that an API
-	/// endpoint requires authentication. It can be accessed only with a valid
-	/// token. This token can be of three types:
+	///   endpoint requires authentication. It can be accessed only with a valid
+	///   token. This token can be of three types:
 	///     - [`PlainTokenAuthenticator`][3]: Any logged in user can access this
-	///    endpoint.
+	///       endpoint.
 	///     - [`WorkspaceMembershipAuthenticator`][4]: Only users that are
-	///       members
-	///    of the workspace that is specified in the [`extract_workspace_id`][5]
-	///    function can access this endpoint.
+	///       members of the workspace that is specified in the
+	///       [`extract_workspace_id`][5] function can access this endpoint.
 	///     - [`ResourcePermissionAuthenticator`][6]: Only users that have the
-	///    specified permission on the resource that is specified in the request
-	///    can access this endpoint.
+	///       specified permission on the resource that is specified in the
+	///       request can access this endpoint.
 	///
 	/// [1]: crate::utils::NoAuthentication
 	/// [2]: crate::utils::AppAuthentication

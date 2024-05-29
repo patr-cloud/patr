@@ -80,8 +80,8 @@ pub fn declare_api_endpoint(input: TokenStream) -> TokenStream {
 ///     Login,
 ///     "/login/:param1" {
 ///         pub param1: Type
-/// 	},
-/// 	requires_login = true,
+///     },
+///     requires_login = true,
 ///     {
 ///         pub param1: Type,
 ///     },

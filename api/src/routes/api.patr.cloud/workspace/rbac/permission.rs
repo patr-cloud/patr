@@ -35,7 +35,7 @@ async fn get_current_permissions(
 			permissions: user_data
 				.permissions
 				.get(&workspace_id)
-				.ok_or_else(|| ErrorType::WrongParameters)?
+				.ok_or(ErrorType::WrongParameters)?
 				.clone(),
 		})
 		.headers(())

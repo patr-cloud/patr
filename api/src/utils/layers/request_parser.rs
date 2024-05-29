@@ -21,7 +21,7 @@ use models::{
 use preprocess::Preprocessable;
 use tower::{Layer, Service};
 
-use crate::{prelude::*, utils::extractors::ClientIP};
+use crate::utils::extractors::ClientIP;
 
 /// A [`tower::Layer`] that can be used to parse the request and call the inner
 /// service with the parsed request. Ideally, this will automatically be done by

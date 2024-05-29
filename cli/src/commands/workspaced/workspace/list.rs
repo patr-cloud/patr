@@ -1,5 +1,4 @@
 use comfy_table::Table;
-use futures::{stream::StreamExt, Future};
 use models::api::user::*;
 
 use crate::prelude::*;

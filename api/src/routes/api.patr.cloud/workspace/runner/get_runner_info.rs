@@ -44,7 +44,7 @@ pub async fn get_runner_info(
 	)
 	.fetch_optional(&mut **database)
 	.await?
-	.ok_or_else(|| ErrorType::ResourceDoesNotExist)?;
+	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
 	AppResponse::builder()
 		.body(GetRunnerInfoResponse {

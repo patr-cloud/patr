@@ -104,11 +104,13 @@ where
 						.layer(EndpointLayer::new(handler.clone())),
 				)),
 			)
-			.expect(&format!(
-				"API endpoint `{} {}` already registered",
-				E::METHOD,
-				<E::RequestPath as TypedPath>::PATH
-			));
+			.unwrap_or_else(|_| {
+				panic!(
+					"API endpoint `{} {}` already registered",
+					E::METHOD,
+					<E::RequestPath as TypedPath>::PATH
+				);
+			});
 
 		// Setup the layers for the backend
 		if <E as ApiEndpoint>::API_ALLOWED || cfg!(debug_assertions) {
@@ -178,11 +180,13 @@ where
 						.layer(AuthEndpointLayer::new(handler.clone())),
 				)),
 			)
-			.expect(&format!(
-				"API endpoint `{} {}` already registered",
-				E::METHOD,
-				<E::RequestPath as TypedPath>::PATH
-			));
+			.unwrap_or_else(|_| {
+				panic!(
+					"API endpoint `{} {}` already registered",
+					E::METHOD,
+					<E::RequestPath as TypedPath>::PATH
+				);
+			});
 
 		// Setup the layers for the backend
 		if <E as ApiEndpoint>::API_ALLOWED || cfg!(debug_assertions) {

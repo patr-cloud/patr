@@ -39,7 +39,7 @@ pub async fn get_workspace_info(
 	)
 	.fetch_optional(&mut **database)
 	.await?
-	.ok_or_else(|| ErrorType::ResourceDoesNotExist)?;
+	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
 	AppResponse::builder()
 		.body(GetWorkspaceInfoResponse {
