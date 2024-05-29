@@ -332,10 +332,9 @@ where
 
 					// The token should have been issued within the last `REFRESH_TOKEN_VALIDITY`
 					// duration
-					if OffsetDateTime::now_utc().sub(
-						jti.get_timestamp()
-							.ok_or_else(|| ErrorType::MalformedAccessToken)?,
-					) > AccessTokenData::REFRESH_TOKEN_VALIDITY
+					if OffsetDateTime::now_utc()
+						.sub(jti.get_timestamp().ok_or(ErrorType::MalformedAccessToken)?) >
+						AccessTokenData::REFRESH_TOKEN_VALIDITY
 					{
 						warn!("JWT is too old");
 						return Err(ErrorType::AuthorizationTokenInvalid);
@@ -486,8 +485,7 @@ async fn get_permissions_for_login_id(
 			let revocation_timestamp = redis_connection
 				.get::<_, Option<i64>>(redis::keys::user_id_revocation_timestamp(user_id))
 				.await?
-				.map(|time| OffsetDateTime::from_unix_timestamp(time).ok())
-				.flatten();
+				.and_then(|time| OffsetDateTime::from_unix_timestamp(time).ok());
 
 			if matches!(revocation_timestamp, Some(revocation_timestamp) if OffsetDateTime::now_utc() > revocation_timestamp)
 			{
@@ -497,8 +495,7 @@ async fn get_permissions_for_login_id(
 			let revocation_timestamp = redis_connection
 				.get::<_, Option<i64>>(redis::keys::login_id_revocation_timestamp(login_id))
 				.await?
-				.map(|time| OffsetDateTime::from_unix_timestamp(time).ok())
-				.flatten();
+				.and_then(|time| OffsetDateTime::from_unix_timestamp(time).ok());
 
 			if matches!(revocation_timestamp, Some(revocation_timestamp) if OffsetDateTime::now_utc() > revocation_timestamp)
 			{
@@ -511,8 +508,7 @@ async fn get_permissions_for_login_id(
 						workspace_id,
 					))
 					.await?
-					.map(|time| OffsetDateTime::from_unix_timestamp(time).ok())
-					.flatten();
+					.and_then(|time| OffsetDateTime::from_unix_timestamp(time).ok());
 
 				if matches!(revocation_timestamp, Some(revocation_timestamp) if OffsetDateTime::now_utc() > revocation_timestamp)
 				{
@@ -523,8 +519,7 @@ async fn get_permissions_for_login_id(
 			let revocation_timestamp = redis_connection
 				.get::<_, Option<i64>>(redis::keys::global_revocation_timestamp())
 				.await?
-				.map(|time| OffsetDateTime::from_unix_timestamp(time).ok())
-				.flatten();
+				.and_then(|time| OffsetDateTime::from_unix_timestamp(time).ok());
 
 			if matches!(revocation_timestamp, Some(revocation_timestamp) if OffsetDateTime::now_utc() > revocation_timestamp)
 			{

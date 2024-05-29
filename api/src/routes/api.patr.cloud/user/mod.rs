@@ -13,15 +13,11 @@ mod update_user_info;
 mod web_logins;
 
 pub use self::{
-	api_token::*,
 	change_password::*,
 	get_user_details::*,
 	get_user_info::*,
 	list_workspaces::*,
-	mfa::*,
-	recovery_options::*,
 	update_user_info::*,
-	web_logins::*,
 };
 
 /// Sets up the user routes

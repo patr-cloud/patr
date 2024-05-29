@@ -13,8 +13,6 @@ use reqwest::Client;
 use serde::{de::DeserializeOwned, Serialize};
 use url::Url;
 
-use crate::prelude::*;
-
 /// A reqwest client that can be used to make requests to the API
 static REQUEST_CLIENT: OnceLock<Client> = OnceLock::new();
 

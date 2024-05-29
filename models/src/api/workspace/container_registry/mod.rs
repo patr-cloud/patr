@@ -1,7 +1,4 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use time::OffsetDateTime;
 
 mod create_repository;
@@ -61,50 +58,6 @@ pub struct ContainerRepository {
 	///
 	/// TODO: Change this to audit log
 	pub created: OffsetDateTime,
-}
-
-#[derive(Serialize, Debug, Deserialize, Clone)]
-pub struct V1Compatibility {
-	pub container_config: DockerRepositoryExposedPort,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "PascalCase")]
-pub struct DockerRepositoryExposedPort {
-	pub exposed_ports: Option<HashMap<String, Value>>,
-}
-
-/// Container reposiotry manifest which will be used to
-/// parse the json response from the registry
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ContainerRepositoryManifest {
-	/// The history
-	pub history: Vec<V1CompatibilityHolder>,
-}
-
-#[derive(Serialize, Debug, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct V1CompatibilityHolder {
-	pub v1_compatibility: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct RegistryToken {
-	pub iss: String,
-	pub sub: String,
-	pub aud: String,
-	pub exp: OffsetDateTime,
-	pub nbf: OffsetDateTime,
-	pub iat: OffsetDateTime,
-	pub jti: String,
-	pub access: Vec<RegistryTokenAccess>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct RegistryTokenAccess {
-	pub r#type: String,
-	pub name: String,
-	pub actions: Vec<String>,
 }
 
 #[cfg(test)]

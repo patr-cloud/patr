@@ -76,7 +76,7 @@ pub fn validate_password(value: Cow<'_, str>) -> Result<Cow<'_, str>, preprocess
 		(false, false, false, false),
 		|(has_digit, has_uppercase, has_lowercase, has_special), value| {
 			(
-				has_digit || value.is_digit(10),
+				has_digit || value.is_ascii_digit(),
 				has_uppercase || value.is_ascii_uppercase(),
 				has_lowercase || value.is_ascii_lowercase(),
 				has_special ||

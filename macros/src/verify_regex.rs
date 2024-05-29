@@ -2,7 +2,9 @@ use proc_macro::TokenStream;
 use regex::Regex;
 use syn::{parse::Parse, LitStr};
 
+/// Input for the `verify_regex` macro.
 struct VerifyRegexInput {
+	/// The regex to verify.
 	regex: LitStr,
 }
 
@@ -14,6 +16,7 @@ impl Parse for VerifyRegexInput {
 	}
 }
 
+/// Verifies that the input is a valid regex.
 pub fn parse(input: TokenStream) -> TokenStream {
 	let VerifyRegexInput { regex } = syn::parse_macro_input!(input as VerifyRegexInput);
 	match Regex::new(&regex.value()) {

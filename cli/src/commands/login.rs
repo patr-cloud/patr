@@ -40,7 +40,7 @@ pub(super) async fn execute(
 				.body(GetUserInfoRequest)
 				.headers(GetUserInfoRequestHeaders {
 					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
-					authorization: BearerToken::from_str(&token)?,
+					authorization: BearerToken::from_str(token)?,
 				})
 				.build(),
 		)

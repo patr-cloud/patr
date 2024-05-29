@@ -36,21 +36,16 @@ impl AppState {
 	/// - The user specific config location independent of the current platform
 	/// - The system wide config location independent of the current platform
 	pub fn load() -> Result<Self, anyhow::Error> {
-		if let Some(config_path) = std::env::var("CONFIG_PATH").ok() {
+		if let Ok(config_path) = std::env::var("CONFIG_PATH") {
 			config::Config::builder()
 				.add_source(config::File::with_name(&config_path).required(false))
-		} else {
-			if cfg!(debug_assertions) {
-				config::Config::builder().add_source(
-					config::File::with_name(concat!(
-						env!("CARGO_MANIFEST_DIR"),
-						"/../config/cli.json"
-					))
+		} else if cfg!(debug_assertions) {
+			config::Config::builder().add_source(
+				config::File::with_name(concat!(env!("CARGO_MANIFEST_DIR"), "/../config/cli.json"))
 					.required(false),
-				)
-			} else {
-				config::Config::builder()
-			}
+			)
+		} else {
+			config::Config::builder()
 		}
 		.add_source(
 			config::File::with_name(&crate::utils::config_dir().to_string_lossy()).required(false),

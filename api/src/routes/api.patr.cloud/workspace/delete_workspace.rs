@@ -43,7 +43,7 @@ pub async fn delete_workspace(
 	)
 	.fetch_optional(&mut **database)
 	.await?
-	.ok_or_else(|| ErrorType::ResourceDoesNotExist)?;
+	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
 	// Make sure the workspace is owned by the user
 	if workspace.super_admin_id != user_data.id.into() {
@@ -65,8 +65,7 @@ pub async fn delete_workspace(
 	)
 	.fetch_optional(&mut **database)
 	.await?
-	.map(|row| row.count)
-	.flatten()
+	.and_then(|row| row.count)
 	.unwrap_or(0);
 
 	if resources > 0 {
