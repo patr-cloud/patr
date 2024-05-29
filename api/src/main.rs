@@ -116,9 +116,9 @@ async fn main() {
 				)
 				.with_filter(LevelFilter::from_level(
 					if config.environment == RunningEnvironment::Development {
-						Level::DEBUG
-					} else {
 						Level::TRACE
+					} else {
+						Level::DEBUG
 					},
 				)),
 		);

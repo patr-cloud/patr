@@ -43,7 +43,7 @@ where
 				message: err,
 			},
 		})?;
-	let response = REQUEST_CLIENT
+	let builder = REQUEST_CLIENT
 		.get_or_init(initialize_client)
 		.request(
 			reqwest::Method::from_str(E::METHOD.as_ref()).unwrap(),
@@ -68,10 +68,15 @@ where
 					reqwest::header::HeaderValue::from_static("application/json"),
 				)])
 				.collect(),
-		)
-		.json(&body)
-		.send()
-		.await;
+		);
+
+	let response = if body.is_null() {
+		builder
+	} else {
+		builder.json(&body)
+	}
+	.send()
+	.await;
 
 	let response = match response {
 		Ok(response) => response,
