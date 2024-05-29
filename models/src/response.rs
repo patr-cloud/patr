@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use axum::{http::StatusCode, response::IntoResponse, Json};
 use preprocess::Preprocessable;
 use serde::{Deserialize, Serialize};
@@ -131,22 +133,22 @@ impl ApiErrorResponse {
 
 	/// Creates a new [`ApiErrorResponse`] with the given [`ErrorType`] and the
 	/// given message, using the default status code.
-	pub fn error_with_message(error: ErrorType, message: impl Into<String>) -> Self {
+	pub fn error_with_message(error: ErrorType, message: impl Display) -> Self {
 		Self {
 			status_code: error.default_status_code(),
 			body: ApiErrorResponseBody {
 				success: False,
 				error,
-				message: message.into(),
+				message: message.to_string(),
 			},
 		}
 	}
 
 	/// Creates a new [`ApiErrorResponse`] with the given message as an internal
 	/// server error.
-	pub fn internal_error(message: impl Into<String>) -> Self {
+	pub fn internal_error(message: impl Display) -> Self {
 		Self::error(ErrorType::InternalServerError(anyhow::Error::msg(
-			message.into(),
+			message.to_string(),
 		)))
 	}
 }

@@ -21,6 +21,7 @@ pub(super) async fn execute(
 		AppState::LoggedIn {
 			token,
 			refresh_token,
+			current_workspace: _,
 		} => (token, refresh_token),
 		AppState::LoggedOut => {
 			return Err(ApiErrorResponse::error_with_message(

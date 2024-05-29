@@ -798,6 +798,7 @@ dependencies = [
  "comfy-table",
  "config",
  "dirs",
+ "futures",
  "http 1.1.0",
  "models",
  "open",

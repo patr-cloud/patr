@@ -41,8 +41,10 @@ pub mod prelude {
 			Uuid,
 		},
 		ApiEndpoint,
+		ApiErrorResponse,
 		ApiRequest,
 		ApiSuccessResponse,
+		ApiSuccessResponseBody,
 		AppResponse,
 		ErrorType,
 	};

@@ -1,6 +1,9 @@
+use std::{path::PathBuf, str::FromStr};
+
 use anyhow::Context;
-use models::utils::BearerToken;
 use serde::{Deserialize, Serialize};
+
+use crate::prelude::*;
 
 /// State and stored data of the CLI
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -12,7 +15,11 @@ pub enum AppState {
 		/// The user's access token
 		token: BearerToken,
 		/// The user's refresh token
+		#[serde(rename = "refreshtoken")]
 		refresh_token: String,
+		/// The current workspace that is selected by the user
+		#[serde(rename = "currentworkspace")]
+		current_workspace: Option<Uuid>,
 	},
 	/// The state of the CLI when the user is logged out
 	#[serde(rename_all = "camelCase")]
@@ -33,7 +40,17 @@ impl AppState {
 			config::Config::builder()
 				.add_source(config::File::with_name(&config_path).required(false))
 		} else {
-			config::Config::builder()
+			if cfg!(debug_assertions) {
+				config::Config::builder().add_source(
+					config::File::with_name(concat!(
+						env!("CARGO_MANIFEST_DIR"),
+						"/../config/cli.json"
+					))
+					.required(false),
+				)
+			} else {
+				config::Config::builder()
+			}
 		}
 		.add_source(
 			config::File::with_name(&crate::utils::config_dir().to_string_lossy()).required(false),
@@ -44,17 +61,31 @@ impl AppState {
 		)
 		.build()?
 		.try_deserialize()
+		.inspect_err(|err| {
+			eprintln!("{}", err);
+		})
 		.context("Failed to deserialize the CLI state")
 	}
 
 	/// Save the state to the config file. If the config file does not exist, it
 	/// will be created.
 	pub fn save(self) -> Result<(), std::io::Error> {
+		let config_dir = PathBuf::from_str(
+			std::env::var("CONFIG_PATH").ok().as_deref().unwrap_or(
+				if cfg!(debug_assertions) {
+					concat!(env!("CARGO_MANIFEST_DIR"), "/../config/cli.json").to_string()
+				} else {
+					crate::utils::config_local_dir()
+						.to_string_lossy()
+						.to_string()
+				}
+				.as_str(),
+			),
+		)
+		.unwrap();
+		std::fs::create_dir_all(config_dir.parent().unwrap())?;
 		std::fs::write(
-			std::env::var("CONFIG_PATH")
-				.ok()
-				.as_deref()
-				.unwrap_or(&crate::utils::config_local_dir().to_string_lossy()),
+			config_dir,
 			serde_json::to_vec(&self).expect("Failed to serialize the CLI state"),
 		)
 	}

@@ -76,6 +76,8 @@ pub(super) async fn execute(
 	.await?
 	.body;
 
+	let token = BearerToken::from_str(&access_token)?;
+
 	let GetUserInfoResponse {
 		basic_user_info:
 			WithId {
@@ -92,8 +94,8 @@ pub(super) async fn execute(
 			.path(GetUserInfoPath)
 			.query(())
 			.headers(GetUserInfoRequestHeaders {
+				authorization: token.clone(),
 				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
-				authorization: BearerToken::from_str(&access_token)?,
 			})
 			.body(GetUserInfoRequest)
 			.build(),
@@ -101,9 +103,28 @@ pub(super) async fn execute(
 	.await?
 	.body;
 
+	let current_workspace = make_request(
+		ApiRequest::<ListUserWorkspacesRequest>::builder()
+			.path(ListUserWorkspacesPath)
+			.headers(ListUserWorkspacesRequestHeaders {
+				authorization: token.clone(),
+				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+			})
+			.query(())
+			.body(ListUserWorkspacesRequest)
+			.build(),
+	)
+	.await?
+	.body
+	.workspaces
+	.into_iter()
+	.next()
+	.map(|workspace| workspace.id);
+
 	AppState::LoggedIn {
-		token: BearerToken::from_str(&access_token)?,
+		token,
 		refresh_token: refresh_token.clone(),
+		current_workspace,
 	}
 	.save()?;
 

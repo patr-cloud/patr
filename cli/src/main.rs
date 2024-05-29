@@ -17,6 +17,7 @@ mod utils;
 
 /// A prelude that re-exports commonly used items.
 pub mod prelude {
+	pub use models::prelude::*;
 	pub use tracing::{debug, error, info, instrument, trace, warn};
 
 	pub use crate::{
