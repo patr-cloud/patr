@@ -18,7 +18,7 @@ async fn activate_mfa(
 			.query(())
 			.headers(ActivateMfaRequestHeaders {
 				authorization: BearerToken::from_str(
-					format!("Bearer {}", access_token.unwrap_or_default()).as_str(),
+					format!("{}", access_token.unwrap_or_default()).as_str(),
 				)
 				.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?,
 			})

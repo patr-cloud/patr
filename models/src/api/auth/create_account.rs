@@ -57,7 +57,7 @@ macros::declare_api_endpoint!(
 		/// At least one lowercase letter.
 		/// At least one digit.
 		/// At least one special character (e.g., !@#$%^&*)
-		#[preprocess(custom = "validate_password")]
+		#[preprocess(trim, length(min = 8), custom = "validate_password")]
 		pub password: String,
 		/// The first name of the user
 		#[preprocess(trim, length(min = 1))]
