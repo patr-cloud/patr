@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO resource( id, resource_type_id, owner_id, created ) VALUES ( GENERATE_RESOURCE_ID(), (SELECT id FROM resource_type WHERE name = 'runner'), $1, NOW() ) RETURNING id;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4e45ac32cb122f0620ea544d8fd9ddaaaa3f80777e46a24acd34e08342ad906e"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE runner ADD CONSTRAINT runner_pk PRIMARY KEY(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "1518c5d04b1c8a92692f5630f8064a622e874ca5b64d31401d9db9b65af76f85"
+}

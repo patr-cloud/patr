@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COALESCE(COUNT(*), 0) AS count FROM resource WHERE owner_id = $1 AND deleted IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "c4000bf055143d34d5ce560e8ebd7f961258e5ceccddbacbb7b01502ca9486ad"
+}
