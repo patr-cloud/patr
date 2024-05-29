@@ -21,12 +21,9 @@ pub fn LoginForm() -> impl IntoView {
 				username_error.set("".to_owned());
 				password_error.set("Wrong Password".to_owned());
 			}
-			ErrorType::InternalServerError(err) => {
-				username_error.set("".to_owned());
-				password_error.set(err.to_string());
-			}
 			e => {
-				password_error.set(format!("{:?}", e));
+				username_error.set("".to_owned());
+				password_error.set(e.to_string());
 			}
 		},
 		e => {

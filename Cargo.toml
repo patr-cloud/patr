@@ -33,6 +33,7 @@ config = { version = "0.14", default-features = false }
 console_error_panic_hook = { version = "0.1", default-features = false }
 dirs = { version = "5", default-features = false }
 either = { version = "1", default-features = false }
+enum-utils = { version = "0.1", default-features = false }
 futures = { version = "0.3", default-features = false }
 headers = { version = "0.4", default-features = false }
 hex = { version = "0.4", default-features = false }

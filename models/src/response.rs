@@ -6,9 +6,8 @@ use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 
 use crate::{
+	prelude::*,
 	utils::{False, Headers, IntoAxumResponse, True},
-	ApiEndpoint,
-	ErrorType,
 };
 
 /// A response object that is passed through the tower layers and services
@@ -147,9 +146,8 @@ impl ApiErrorResponse {
 	/// Creates a new [`ApiErrorResponse`] with the given message as an internal
 	/// server error.
 	pub fn internal_error(message: impl Display) -> Self {
-		Self::error(ErrorType::InternalServerError(anyhow::Error::msg(
-			message.to_string(),
-		)))
+		error!("Internal server error: `{}`", message);
+		Self::error(ErrorType::InternalServerError)
 	}
 }
 
