@@ -1,6 +1,11 @@
 use std::future::Future;
 
-use axum::{body::Body, http::Request, Json, RequestExt};
+use axum::{
+	body::{Body, HttpBody},
+	http::Request,
+	Json,
+	RequestExt,
+};
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::ErrorType;
@@ -25,13 +30,20 @@ where
 {
 	#[tracing::instrument(skip(request))]
 	async fn from_axum_request(request: Request<Body>) -> Result<Self, ErrorType> {
-		request
-			.extract()
-			.await
-			.map_err(|err| {
-				tracing::debug!("Failed to parse body: {}", err);
+		if request.body().is_end_stream() {
+			serde_json::from_value(serde_json::Value::Null).map_err(|err| {
+				tracing::debug!("Failed to parse empty body: {}", err);
 				ErrorType::WrongParameters
 			})
-			.map(|Json(body)| body)
+		} else {
+			request
+				.extract()
+				.await
+				.map_err(|err| {
+					tracing::debug!("Failed to parse body: {}", err);
+					ErrorType::WrongParameters
+				})
+				.map(|Json(body)| body)
+		}
 	}
 }
