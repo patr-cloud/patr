@@ -68,7 +68,7 @@ pub async fn initialize_managed_database_tables(
 			id UUID NOT NULL,
 			name CITEXT NOT NULL,
 			workspace_id UUID NOT NULL,
-			region UUID NOT NULL,
+			runner UUID NOT NULL,
 			engine MANAGED_DATABASE_ENGINE NOT NULL,
 			database_plan_id UUID NOT NULL,
 			status MANAGED_DATABASE_STATUS NOT NULL,
@@ -150,8 +150,8 @@ pub async fn initialize_managed_database_constraints(
 			),
 			ADD CONSTRAINT managed_database_fk_workspace_id
 				FOREIGN KEY(workspace_id) REFERENCES workspace(id),
-			ADD CONSTRAINT managed_database_fk_region
-				FOREIGN KEY(region) REFERENCES region(id),
+			ADD CONSTRAINT managed_database_fk_runner
+				FOREIGN KEY(runner) REFERENCES runner(id),
 			ADD CONSTRAINT managed_database_fk_managed_database_plan_id
 				FOREIGN KEY(database_plan_id) REFERENCES managed_database_plan(id),
 			ADD CONSTRAINT managed_database_fk_id_workspace_id_deleted
