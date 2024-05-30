@@ -212,8 +212,6 @@ pub async fn complete_sign_up(
 
 	trace!("Constraints set to immediate");
 
-	let login_id = Uuid::new_v4();
-
 	let refresh_token = Uuid::new_v4();
 	let hashed_refresh_token = argon2::Argon2::new_with_secret(
 		config.password_pepper.as_ref(),
@@ -297,24 +295,31 @@ pub async fn complete_sign_up(
 
 	let user_agent = user_agent.to_string();
 
-	query!(
+	let login_id = query!(
 		r#"
-        INSERT INTO
-            user_login(
-                login_id,
-                user_id,
-                login_type,
-                created
-            )
-        VALUES
-            ($1, $2, 'web_login', $3);
-        "#,
-		login_id as _,
+		INSERT INTO
+			user_login(
+				login_id,
+				user_id,
+				login_type,
+				created
+			)
+		VALUES
+			(
+				GENERATE_LOGIN_ID(),
+				$1,
+				'web_login',
+				$2
+			)
+		RETURNING login_id;
+		"#,
 		user_id as _,
-		now
+		now,
 	)
-	.execute(&mut **database)
-	.await?;
+	.fetch_one(&mut **database)
+	.await?
+	.login_id
+	.into();
 
 	trace!("User login inserted into the database");
 

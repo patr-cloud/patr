@@ -86,5 +86,30 @@ pub async fn initialize_user_login_constraints(
 	web_login::initialize_web_login_constraints(&mut *connection).await?;
 	api_token::initialize_api_token_constraints(&mut *connection).await?;
 
+	query!(
+		r#"
+		CREATE FUNCTION GENERATE_LOGIN_ID() RETURNS UUID AS $$
+		DECLARE
+			login_id UUID;
+		BEGIN
+			login_id := gen_random_uuid();
+			WHILE EXISTS(
+				SELECT
+					1
+				FROM
+					user_login
+				WHERE
+					login_id = login_id
+			) LOOP
+				login_id := gen_random_uuid();
+			END LOOP;
+			RETURN login_id;
+		END;
+		$$ LANGUAGE plpgsql;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }

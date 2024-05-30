@@ -153,8 +153,6 @@ pub async fn login(
 
 	let now = OffsetDateTime::now_utc();
 
-	let login_id = Uuid::new_v4();
-
 	let refresh_token = Uuid::new_v4();
 	let hashed_refresh_token = argon2::Argon2::new_with_secret(
 		config.password_pepper.as_ref(),
@@ -162,11 +160,17 @@ pub async fn login(
 		Version::V0x13,
 		constants::HASHING_PARAMS,
 	)
+	.inspect_err(|err| {
+		error!("Error creating Argon2: `{}`", err);
+	})
 	.map_err(ErrorType::server_error)?
 	.hash_password(
 		refresh_token.as_bytes(),
 		SaltString::generate(&mut rand::thread_rng()).as_salt(),
 	)
+	.inspect_err(|err| {
+		error!("Error hashing refresh token: `{}`", err);
+	})
 	.map_err(ErrorType::server_error)?
 	.to_string();
 	let refresh_token_expiry = now.add(constants::INACTIVE_REFRESH_TOKEN_VALIDITY);
@@ -232,7 +236,7 @@ pub async fn login(
 
 	let user_agent = user_agent.to_string();
 
-	query!(
+	let login_id = query!(
 		r#"
 		INSERT INTO
 			user_login(
@@ -242,14 +246,21 @@ pub async fn login(
 				created
 			)
 		VALUES
-			($1, $2, 'web_login', $3);
+			(
+				GENERATE_LOGIN_ID(),
+				$1,
+				'web_login',
+				$2
+			)
+		RETURNING login_id;
 		"#,
-		login_id as _,
 		user_data.id,
 		now,
 	)
-	.execute(&mut **database)
-	.await?;
+	.fetch_one(&mut **database)
+	.await?
+	.login_id
+	.into();
 
 	query!(
 		r#"
