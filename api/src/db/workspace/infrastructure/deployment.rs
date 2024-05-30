@@ -55,7 +55,7 @@ pub async fn initialize_deployment_tables(
 			image_tag VARCHAR(255) NOT NULL,
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
 			workspace_id UUID NOT NULL,
-			region UUID NOT NULL,
+			runner UUID NOT NULL,
 			min_horizontal_scale SMALLINT NOT NULL DEFAULT 1,
 			max_horizontal_scale SMALLINT NOT NULL DEFAULT 1,
 			machine_type UUID NOT NULL,
@@ -291,8 +291,8 @@ pub async fn initialize_deployment_constraints(
 			ADD CONSTRAINT deployment_chk_image_name_is_valid CHECK(
 				image_name ~ '^(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?)(((\/)(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?))*)?$'
 			),
-			ADD CONSTRAINT deployment_fk_region 
-				FOREIGN KEY(region) REFERENCES region(id),
+			ADD CONSTRAINT deployment_fk_runner 
+				FOREIGN KEY(runner) REFERENCES runner(id),
 			ADD CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK(
 				min_horizontal_scale >= 0 AND min_horizontal_scale <= 256
 			),

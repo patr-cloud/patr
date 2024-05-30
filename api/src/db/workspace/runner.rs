@@ -64,9 +64,9 @@ pub async fn initialize_runner_constraints(
 	query!(
 		r#"
 		ALTER TABLE runner
-			ADD CONSTRAINT region_fk_workspace_id
+			ADD CONSTRAINT runner_fk_workspace_id
 				FOREIGN KEY(workspace_id) REFERENCES workspace(id),
-			ADD CONSTRAINT region_fk_id_workspace_id
+			ADD CONSTRAINT runner_fk_id_workspace_id
 				FOREIGN KEY(id, workspace_id, deleted) 
 					REFERENCES resource(id, owner_id, deleted);
 		"#
