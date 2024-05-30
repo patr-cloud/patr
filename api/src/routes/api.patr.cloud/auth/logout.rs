@@ -121,9 +121,7 @@ pub async fn logout(
 		.setex(
 			redis::login_id_revocation_timestamp(&login_id),
 			constants::ACCESS_TOKEN_VALIDITY.whole_seconds() as u64 + 100,
-			OffsetDateTime::now_utc()
-				.add(constants::ACCESS_TOKEN_VALIDITY)
-				.unix_timestamp(),
+			OffsetDateTime::now_utc().unix_timestamp(),
 		)
 		.await
 		.inspect_err(|err| {

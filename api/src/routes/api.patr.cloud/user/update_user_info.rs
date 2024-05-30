@@ -26,7 +26,7 @@ pub async fn update_user_info(
 		user_data,
 	}: AuthenticatedAppRequest<'_, UpdateUserInfoRequest>,
 ) -> Result<AppResponse<UpdateUserInfoRequest>, ErrorType> {
-	info!("Starting: Update user info");
+	info!("Updating user info");
 
 	query!(
 		r#"

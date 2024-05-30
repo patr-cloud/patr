@@ -23,7 +23,7 @@ pub async fn get_user_info(
 		user_data,
 	}: AuthenticatedAppRequest<'_, GetUserInfoRequest>,
 ) -> Result<AppResponse<GetUserInfoRequest>, ErrorType> {
-	info!("Starting: Get authenticated user info");
+	info!("Getting authenticated user info");
 
 	let row = query!(
 		r#"

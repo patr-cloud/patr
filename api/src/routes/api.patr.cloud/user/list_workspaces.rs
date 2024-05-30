@@ -23,7 +23,7 @@ pub async fn list_workspaces(
 		user_data,
 	}: AuthenticatedAppRequest<'_, ListUserWorkspacesRequest>,
 ) -> Result<AppResponse<ListUserWorkspacesRequest>, ErrorType> {
-	info!("Starting: List all user workspaces");
+	info!("Listing all user workspaces");
 
 	let workspaces = query!(
 		r#"
@@ -46,7 +46,7 @@ pub async fn list_workspaces(
 		"#,
 		user_data.id as _,
 	)
-	.fetch_optional(&mut **database)
+	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
 	.map(|row| {

@@ -91,9 +91,7 @@ pub async fn delete_workspace(
 		.setex(
 			redis::keys::workspace_id_revocation_timestamp(&workspace.id.into()),
 			constants::ACCESS_TOKEN_VALIDITY.whole_seconds() as u64 + 300,
-			OffsetDateTime::now_utc()
-				.add(constants::ACCESS_TOKEN_VALIDITY)
-				.unix_timestamp(),
+			OffsetDateTime::now_utc().unix_timestamp(),
 		)
 		.await;
 

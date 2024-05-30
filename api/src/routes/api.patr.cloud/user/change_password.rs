@@ -30,7 +30,7 @@ pub async fn change_password(
 		user_data,
 	}: AuthenticatedAppRequest<'_, ChangePasswordRequest>,
 ) -> Result<AppResponse<ChangePasswordRequest>, ErrorType> {
-	info!("Starting: Change password");
+	info!("Changing user password");
 
 	let row = query!(
 		r#"
@@ -53,12 +53,18 @@ pub async fn change_password(
 		Version::V0x13,
 		constants::HASHING_PARAMS,
 	)
+	.inspect_err(|err| {
+		error!("Error creating Argon2 instance: {err}");
+	})
 	.map_err(|err| ErrorType::server_error(err.to_string()))?
 	.verify_password(
 		current_password.as_bytes(),
 		&PasswordHash::new(&row.password)
 			.map_err(|err| ErrorType::server_error(err.to_string()))?,
 	)
+	.inspect_err(|err| {
+		error!("Error verifying password: {err}");
+	})
 	.is_ok();
 
 	if !success {
@@ -67,6 +73,7 @@ pub async fn change_password(
 
 	if let Some(mfa_secret) = row.mfa_secret {
 		let Some(mfa_otp) = mfa_otp else {
+			debug!("MFA required for userId `{}`", user_data.id);
 			return Err(ErrorType::MfaRequired);
 		};
 
@@ -84,25 +91,26 @@ pub async fn change_password(
 				ErrorType::server_error(err.to_string())
 			})?,
 		)
-		.map_err(|err| {
+		.inspect_err(|err| {
 			error!(
 				"Unable to parse TOTP for userId `{}`: {}",
 				user_data.id,
 				err.to_string()
 			);
-			ErrorType::server_error(err.to_string())
-		})?
+		})
+		.map_err(ErrorType::server_error)?
 		.check_current(&mfa_otp)
-		.map_err(|err| {
+		.inspect_err(|err| {
 			error!(
 				"System time error while checking TOTP for userId `{}`: {}",
 				user_data.id,
 				err.to_string()
 			);
-			ErrorType::server_error(err.to_string())
-		})?;
+		})
+		.map_err(ErrorType::server_error)?;
 
 		if !mfa_valid {
+			info!("MFA OTP invalid for userId `{}`", user_data.id);
 			return Err(ErrorType::MfaOtpInvalid);
 		}
 	}
@@ -121,6 +129,8 @@ pub async fn change_password(
 	)
 	.execute(&mut **database)
 	.await?;
+
+	trace!("Password updated for userId `{}`", user_data.id);
 
 	AppResponse::builder()
 		.body(ChangePasswordResponse)

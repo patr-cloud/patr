@@ -58,7 +58,14 @@ pub struct UserApiToken {
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub allowed_ips: Option<Vec<IpNetwork>>,
 	/// The time at which this token was created.
+	#[serde(default = "default_created")]
 	pub created: OffsetDateTime,
+}
+
+/// The default value for the `created` field of the `UserApiToken` struct. This
+/// value currently defaults to the UNIX epoch (1970-01-01 00:00:00 UTC).
+const fn default_created() -> OffsetDateTime {
+	OffsetDateTime::UNIX_EPOCH
 }
 
 #[cfg(test)]
