@@ -112,11 +112,11 @@ pub fn Tooltip(
 
 		let tooltip_width = width * root_font_size;
 
-		return (
+		(
 			parent_top + parent_height + root_font_size,
 			parent_left + parent_width / 2. - tooltip_width / 2.,
 			tooltip_width,
-		);
+		)
 	};
 
 	_ = use_event_listener(use_document(), ev::mousemove, on_mouse_move);

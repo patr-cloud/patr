@@ -1,6 +1,6 @@
 use models::api::auth::*;
 
-use crate::{global_state::authstate_from_cookie, prelude::*};
+use crate::prelude::*;
 
 /// Server function for completing the sign up process
 #[server(ConfirmOtp, endpoint = "auth/join")]

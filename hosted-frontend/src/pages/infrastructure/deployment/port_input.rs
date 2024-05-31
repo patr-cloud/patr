@@ -24,7 +24,7 @@ pub fn PortInput(
 			</div>
 
 			<div class="flex-col-10 fc-fs-fs">
-				<Show when={move || ports_list.with(|list| list.len() > 0)}>
+				<Show when={move || ports_list.with(|list| !list.is_empty())}>
 					<div class="flex full-width">
 						<div class="flex-col-12 fc-fs-fs">
 							<For
@@ -42,14 +42,11 @@ pub fn PortInput(
 										</div>
 									</div>
 
-									<div class={format!(
-										"{}",
-										if is_update_screen.get() {
+									<div class={(if is_update_screen.get() {
 											"flex-col-3 pr-lg"
 										} else {
 											"flex-col-6"
-										},
-									)}>
+										}).to_string()}>
 
 										<div class="full-width fr-fs-ct px-xl py-sm bg-secondary-light br-sm">
 											<span class="px-sm">"HTTP"</span>

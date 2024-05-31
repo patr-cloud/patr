@@ -46,7 +46,7 @@ async fn main() {
 
 	let (patr_update_sender, patr_update_receiver) = broadcast::channel::<()>(100);
 
-	let (mut reconcile_all_deployments, deployment_controller_task) =
+	let (reconcile_all_deployments, deployment_controller_task) =
 		deployment::start_controller(state.client.clone(), state.clone(), patr_update_receiver);
 
 	loop {

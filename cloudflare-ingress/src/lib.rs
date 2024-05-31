@@ -121,7 +121,7 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 
 			let cache_key = format!(
 				"{}: {}/{}/{}",
-				req.method().to_string(),
+				req.method(),
 				static_site_id,
 				upload_id,
 				requested_path

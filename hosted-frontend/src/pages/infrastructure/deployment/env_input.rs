@@ -21,7 +21,7 @@ pub fn EnvInput(
 			</div>
 
 			<div class="flex-col-10 fc-fs-fs">
-				<Show when={move || envs_list.with(|list| list.len() > 0)}>
+				<Show when={move || envs_list.with(|list| !list.is_empty())}>
 					<div class="flex full-width">
 						<div class="flex-col-12 fc-fs-fs">
 							<For

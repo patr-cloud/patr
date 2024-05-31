@@ -1,6 +1,6 @@
 use models::api::auth::*;
 
-use crate::{global_state::authstate_from_cookie, prelude::*};
+use crate::prelude::*;
 
 /// NameRequest, NameRequestHeader, NamePath, NameResponse
 #[server(Login, endpoint = "auth/sign-in")]
@@ -9,10 +9,7 @@ pub async fn login(
 	password: String,
 	mfa_otp: Option<String>,
 ) -> Result<LoginResponse, ServerFnError<ErrorType>> {
-	use axum::{
-		http::header::{HeaderValue, SET_COOKIE},
-		response::AppendHeaders,
-	};
+	use axum::http::header::{HeaderValue, SET_COOKIE};
 	use axum_extra::extract::cookie::{Cookie, SameSite};
 	use leptos_axum::ResponseOptions;
 	use models::api::auth::{LoginPath, LoginRequest, LoginRequestHeaders};

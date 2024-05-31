@@ -44,14 +44,13 @@ pub fn SignUpForm() -> impl IntoView {
 	create_effect(move |_| {
 		if let Some(resp) = response.get() {
 			logging::log!("{:#?}", resp);
-			let _ = match resp {
+			match resp {
 				Ok(CreateAccountResponse {}) => {}
 				Err(err) => {
 					logging::log!("{:#?}", err);
 					handle_errors(err);
-					return;
 				}
-			};
+			}
 		}
 	});
 

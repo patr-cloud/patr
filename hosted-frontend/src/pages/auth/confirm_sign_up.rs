@@ -39,21 +39,19 @@ pub fn ConfirmSignUpForm() -> impl IntoView {
 
 	create_effect(move |_| {
 		if let Some(resp) = response.get() {
-			let _ = match resp {
+			match resp {
 				Ok(CompleteSignUpResponse {
 					refresh_token,
 					access_token,
 				}) => {
 					logging::log!("{}, {}", refresh_token, access_token);
 					authstate_from_cookie();
-					return;
 				}
 				Err(err) => {
 					logging::log!("{:#?}", err);
 					handle_errors(err);
-					return;
 				}
-			};
+			}
 		}
 	});
 

@@ -27,9 +27,9 @@ async fn activate_mfa(
 	)
 	.await;
 
-	let response_body = api_response
-		.map(|res| res.body)
-		.map_err(|e| ServerFnError::WrappedServerError(e));
+	
 
-	response_body
+	api_response
+		.map(|res| res.body)
+		.map_err(ServerFnError::WrappedServerError)
 }

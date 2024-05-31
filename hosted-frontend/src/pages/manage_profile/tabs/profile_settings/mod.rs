@@ -1,5 +1,4 @@
 use leptos_use::{use_cookie, utils::FromToStringCodec};
-use models::api::user::GetUserInfoResponse;
 
 use crate::prelude::*;
 
