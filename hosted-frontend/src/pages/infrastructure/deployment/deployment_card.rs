@@ -102,7 +102,7 @@ pub fn DeploymentCard(
 
 				<Link
 					r#type={Variant::Link}
-					to={format!("{}", deployment.get().id)}
+					to={deployment.get().id.to_string()}
 					class="letter-sp-md txt-sm fr-fs-ct"
 				>
 					"Manage Deployment"

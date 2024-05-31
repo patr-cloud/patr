@@ -17,7 +17,6 @@ use serde::{de::DeserializeOwned, Serialize};
 use tokio_tungstenite::tungstenite::{Error as TungsteniteError, Message};
 use url::Url;
 
-use crate::prelude::*;
 
 static REQUEST_CLIENT: OnceLock<Client> = OnceLock::new();
 
@@ -48,7 +47,7 @@ where
 	let builder = REQUEST_CLIENT
 		.get_or_init(initialize_client)
 		.request(
-			reqwest::Method::from_str(&E::METHOD.to_string()).unwrap(),
+			reqwest::Method::from_str(E::METHOD.as_ref()).unwrap(),
 			Url::from_str(crate::utils::constants::API_BASE_URL)
 				.unwrap()
 				.join(path.to_string().as_str())
@@ -150,7 +149,7 @@ where
 	ClientMsg: Serialize,
 {
 	Ok(tokio_tungstenite::connect_async(Request {
-		method: Some(&E::METHOD.to_string()),
+		method: Some(E::METHOD.as_ref()),
 		path: Some(&request.path.to_string()),
 		version: Some(1),
 		headers: &mut request

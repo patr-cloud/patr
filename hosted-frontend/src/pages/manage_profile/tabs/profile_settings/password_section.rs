@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use leptos_use::{use_cookie, utils::FromToStringCodec};
-use models::api::user::{ActivateMfaResponse, ChangePasswordResponse};
+use models::api::user::ChangePasswordResponse;
 
 use crate::prelude::*;
 
@@ -36,14 +36,13 @@ pub fn PasswordSection() -> impl IntoView {
 
 	create_effect(move |_| {
 		if let Some(resp) = response.get() {
-			let _ = match resp {
+			match resp {
 				Ok(ChangePasswordResponse {}) => {}
 				Err(err) => {
 					logging::log!("{:#?}", err);
 					handle_errors(err);
-					return;
 				}
-			};
+			}
 		}
 	});
 
