@@ -90,20 +90,20 @@ pub async fn initialize_user_login_constraints(
 		r#"
 		CREATE FUNCTION GENERATE_LOGIN_ID() RETURNS UUID AS $$
 		DECLARE
-			login_id UUID;
+			id UUID;
 		BEGIN
-			login_id := gen_random_uuid();
+			id := gen_random_uuid();
 			WHILE EXISTS(
 				SELECT
 					1
 				FROM
 					user_login
 				WHERE
-					login_id = login_id
+					login_id = id
 			) LOOP
-				login_id := gen_random_uuid();
+				id := gen_random_uuid();
 			END LOOP;
-			RETURN login_id;
+			RETURN id;
 		END;
 		$$ LANGUAGE plpgsql;
 		"#
