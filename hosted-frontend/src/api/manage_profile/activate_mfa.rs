@@ -27,8 +27,6 @@ async fn activate_mfa(
 	)
 	.await;
 
-	
-
 	api_response
 		.map(|res| res.body)
 		.map_err(ServerFnError::WrappedServerError)

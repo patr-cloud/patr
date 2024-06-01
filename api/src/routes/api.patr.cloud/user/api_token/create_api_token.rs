@@ -90,6 +90,8 @@ pub async fn create_api_token(
 	.login_id
 	.into();
 
+	trace!("User login inserted");
+
 	query!(
 		r#"
 		INSERT INTO
@@ -134,8 +136,21 @@ pub async fn create_api_token(
 	trace!("API token inserted");
 
 	for (workspace_id, permission) in permissions {
+		trace!("Inserting permission for workspace ID: `{workspace_id}`");
+
+		let Some(user_permission) = user_data.permissions.get(&workspace_id) else {
+			debug!("The user does not have any permissions on workspace ID: `{workspace_id}`");
+			return Err(ErrorType::Unauthorized);
+		};
+
+		if user_permission.is_superset_of(&permission) {
+			debug!("The user does not have adequate permissions on workspace ID: `{workspace_id}`");
+			return Err(ErrorType::Unauthorized);
+		}
+
 		match permission {
 			WorkspacePermission::SuperAdmin => {
+				trace!("Inserting permission as super admin");
 				query!(
 					r#"
 					INSERT INTO
@@ -182,6 +197,7 @@ pub async fn create_api_token(
 				.await?;
 			}
 			WorkspacePermission::Member { permissions } => {
+				trace!("Inserting permission as member");
 				for (permission_id, resource_permission) in permissions {
 					query!(
 						r#"

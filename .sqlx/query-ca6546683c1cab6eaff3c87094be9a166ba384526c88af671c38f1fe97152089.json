@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM user_api_token_workspace_super_admin WHERE token_id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ca6546683c1cab6eaff3c87094be9a166ba384526c88af671c38f1fe97152089"
+}

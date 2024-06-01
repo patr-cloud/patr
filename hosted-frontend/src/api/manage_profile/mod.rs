@@ -32,8 +32,6 @@ pub async fn load_user_data(
 	)
 	.await;
 
-	
-
 	api_response
 		.map(|res| res.body)
 		.map_err(ServerFnError::WrappedServerError)

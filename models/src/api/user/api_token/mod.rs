@@ -43,19 +43,20 @@ pub struct UserApiToken {
 	/// can have multiple permissions across different workspaces. But all the
 	/// actions performed by the token will be logged as the user who created
 	/// the token.
+	#[serde(skip_serializing_if = "BTreeMap::is_empty")]
 	pub permissions: BTreeMap<Uuid, WorkspacePermission>,
 	/// Any token that is used before the nbf (not before) should be rejected.
 	/// Tokens are only valid after this time.
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub token_nbf: Option<OffsetDateTime>,
 	/// Any token that is used after the exp (expiry) should be rejected. Tokens
 	/// are only valid before this time.
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub token_exp: Option<OffsetDateTime>,
 	/// The IP addresses that are allowed to use this token. If this is not
 	/// specified, then any IP address can use this token. This can also take a
 	/// CIDR range, to allow a range of IP addresses.
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub allowed_ips: Option<Vec<IpNetwork>>,
 	/// The time at which this token was created.
 	#[serde(default = "default_created")]

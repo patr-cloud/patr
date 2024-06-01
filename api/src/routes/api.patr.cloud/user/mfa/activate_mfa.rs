@@ -97,7 +97,7 @@ pub async fn activate_mfa(
 	AppResponse::builder()
 		.body(ActivateMfaResponse)
 		.headers(())
-		.status_code(StatusCode::OK)
+		.status_code(StatusCode::CREATED)
 		.build()
 		.into_result()
 }

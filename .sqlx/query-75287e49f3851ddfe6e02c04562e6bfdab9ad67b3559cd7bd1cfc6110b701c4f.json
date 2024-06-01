@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE user_api_token SET token_hash = $1 WHERE token_id = $2 AND user_id = $3;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "75287e49f3851ddfe6e02c04562e6bfdab9ad67b3559cd7bd1cfc6110b701c4f"
+}

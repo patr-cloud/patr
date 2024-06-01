@@ -17,7 +17,6 @@ use serde::{de::DeserializeOwned, Serialize};
 use tokio_tungstenite::tungstenite::{Error as TungsteniteError, Message};
 use url::Url;
 
-
 static REQUEST_CLIENT: OnceLock<Client> = OnceLock::new();
 
 pub async fn make_request<E>(

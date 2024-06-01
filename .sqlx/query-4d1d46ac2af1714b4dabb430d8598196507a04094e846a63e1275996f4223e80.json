@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE user_api_token SET name = COALESCE($1, name), token_nbf = COALESCE($2, token_nbf), token_exp = COALESCE($3, token_exp), allowed_ips = COALESCE($4, allowed_ips) WHERE token_id = $5 AND user_id = $6;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "InetArray",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4d1d46ac2af1714b4dabb430d8598196507a04094e846a63e1275996f4223e80"
+}
