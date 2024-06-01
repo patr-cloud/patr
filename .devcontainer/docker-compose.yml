@@ -26,7 +26,7 @@ services:
     depends_on:
       - postgres
       - redis
-      - jaeger
+      - opentelemetry
     hostname: backend
     networks:
       vpc:
@@ -62,15 +62,15 @@ services:
         aliases:
           - redis
 
-  jaeger:
+  opentelemetry:
     image: jaegertracing/all-in-one:1
     restart: unless-stopped
     expose:
       - 4317
       - 4318
-      - 16686
-    hostname: jaeger
+      - 3000:16686
+    hostname: opentelemetry
     networks:
       vpc:
         aliases:
-          - jaeger
+          - opentelemetry

@@ -37,8 +37,6 @@ async fn change_password(
 	)
 	.await;
 
-	
-
 	api_response
 		.map(|res| res.body)
 		.map_err(ServerFnError::WrappedServerError)

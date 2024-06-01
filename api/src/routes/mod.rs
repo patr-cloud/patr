@@ -11,7 +11,6 @@ use crate::prelude::*;
 
 /// The routes for serving https://api.patr.cloud
 #[path = "api.patr.cloud/mod.rs"]
-#[allow(dead_code, missing_docs, clippy::missing_docs_in_private_items)]
 mod api_patr_cloud;
 
 /// The routes for serving https://app.patr.cloud
@@ -31,7 +30,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 
 	let route_handler = any(|Host(hostname), request: Request<Body>| async move {
 		if cfg!(debug_assertions) {
-			api_router.oneshot(request).await
+			app_router.oneshot(request).await
 		} else {
 			match hostname.as_str() {
 				"api.patr.cloud" => api_router.oneshot(request).await,

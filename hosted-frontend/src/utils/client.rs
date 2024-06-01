@@ -47,8 +47,12 @@ where
 		.get(&E::METHOD)
 		.unwrap_or_else(|| panic!("API call registry does not contain {}", E::METHOD))
 		.at(<E::RequestPath as TypedPath>::PATH)
-		.unwrap_or_else(|_| panic!("could not find route at path `{}`",
-			<E::RequestPath as TypedPath>::PATH))
+		.unwrap_or_else(|_| {
+			panic!(
+				"could not find route at path `{}`",
+				<E::RequestPath as TypedPath>::PATH
+			)
+		})
 		.value
 		.downcast_ref::<BoxLayer<
 			BoxCloneService<(ApiRequest<E>, IpAddr), AppResponse<E>, ErrorType>,

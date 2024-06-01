@@ -147,7 +147,7 @@ pub async fn update_managed_url(
 	AppResponse::builder()
 		.body(UpdateManagedURLResponse)
 		.headers(())
-		.status_code(StatusCode::CREATED)
+		.status_code(StatusCode::ACCEPTED)
 		.build()
 		.into_result()
 }

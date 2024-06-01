@@ -34,10 +34,10 @@ where
 		name: &str,
 		dp: &DeleteParams,
 	) -> Result<Option<Either<K, Status>>, Error> {
- 			match self.delete(name, dp).await {
- 				Ok(obj) => Ok(Some(obj)),
- 				Err(Error::Api(ErrorResponse { code: 404, .. })) => Ok(None),
- 				Err(err) => Err(err),
- 			}
- 		}
+		match self.delete(name, dp).await {
+			Ok(obj) => Ok(Some(obj)),
+			Err(Error::Api(ErrorResponse { code: 404, .. })) => Ok(None),
+			Err(err) => Err(err),
+		}
+	}
 }

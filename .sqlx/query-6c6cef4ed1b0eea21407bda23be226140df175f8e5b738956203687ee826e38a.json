@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM user_api_token_resource_permissions_include WHERE token_id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6c6cef4ed1b0eea21407bda23be226140df175f8e5b738956203687ee826e38a"
+}
