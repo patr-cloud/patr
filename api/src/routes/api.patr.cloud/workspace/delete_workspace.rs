@@ -1,5 +1,3 @@
-use std::ops::Add;
-
 use axum::http::StatusCode;
 use models::api::workspace::*;
 use rustis::commands::StringCommands;
@@ -87,13 +85,16 @@ pub async fn delete_workspace(
 	.await?;
 
 	// Revoke all tokens that have access to the workspace
-	_ = redis
+	redis
 		.setex(
 			redis::keys::workspace_id_revocation_timestamp(&workspace.id.into()),
-			constants::ACCESS_TOKEN_VALIDITY.whole_seconds() as u64 + 300,
+			constants::CACHED_PERMISSIONS_VALIDITY.whole_seconds() as u64 + 300,
 			OffsetDateTime::now_utc().unix_timestamp(),
 		)
-		.await;
+		.await
+		.inspect_err(|err| {
+			error!("Error setting the revocation timestamp: `{}`", err);
+		})?;
 
 	AppResponse::builder()
 		.body(DeleteWorkspaceResponse)

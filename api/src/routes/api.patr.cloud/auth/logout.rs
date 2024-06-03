@@ -1,5 +1,3 @@
-use std::ops::Add;
-
 use argon2::{Algorithm, PasswordHash, PasswordVerifier, Version};
 use axum::http::StatusCode;
 use models::api::auth::*;
@@ -117,16 +115,16 @@ pub async fn logout(
 				login_id, err
 			);
 		});
-	_ = redis
+	redis
 		.setex(
 			redis::login_id_revocation_timestamp(&login_id),
-			constants::ACCESS_TOKEN_VALIDITY.whole_seconds() as u64 + 100,
+			constants::CACHED_PERMISSIONS_VALIDITY.whole_seconds() as u64 + 100,
 			OffsetDateTime::now_utc().unix_timestamp(),
 		)
 		.await
 		.inspect_err(|err| {
 			error!("Error setting the revocation timestamp: `{}`", err);
-		});
+		})?;
 
 	AppResponse::builder()
 		.body(LogoutResponse)
