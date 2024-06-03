@@ -20,7 +20,7 @@ pub async fn deactivate_mfa(
 		user_data,
 	}: AuthenticatedAppRequest<'_, DeactivateMfaRequest>,
 ) -> Result<AppResponse<DeactivateMfaRequest>, ErrorType> {
-	info!("Starting: Deactivate MFA for user");
+	info!("Deactivating MFA for user");
 
 	let mfa_detail = query!(
 		r#"

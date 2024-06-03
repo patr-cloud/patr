@@ -22,7 +22,7 @@ pub async fn get_mfa_secret(
 		user_data,
 	}: AuthenticatedAppRequest<'_, GetMfaSecretRequest>,
 ) -> Result<AppResponse<GetMfaSecretRequest>, ErrorType> {
-	info!("Starting: Get MFA secret");
+	info!("Getting MFA secret");
 
 	let mfa_detail = query!(
 		r#"
@@ -50,7 +50,13 @@ pub async fn get_mfa_secret(
 			Duration::minutes(5).whole_seconds() as u64,
 			secret.clone(),
 		)
-		.await?;
+		.await
+		.inspect_err(|err| {
+			error!(
+				"Error setting the MFA secret for user `{}`: `{}`",
+				user_data.id, err
+			);
+		})?;
 
 	AppResponse::builder()
 		.body(GetMfaSecretResponse { secret })

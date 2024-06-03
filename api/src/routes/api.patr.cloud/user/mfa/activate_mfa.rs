@@ -46,6 +46,7 @@ pub async fn activate_mfa(
 		.get::<_, Option<String>>(redis::user_mfa_secret(&id))
 		.await?
 	else {
+		error!("MFA secret not found for userId `{}`", id);
 		return Err(ErrorType::MfaRequired);
 	};
 

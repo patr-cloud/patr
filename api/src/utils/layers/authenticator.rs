@@ -14,11 +14,17 @@ use models::{
 	RequestUserData,
 };
 use preprocess::Preprocessable;
-use rustis::{client::Client as RedisClient, commands::StringCommands};
+use rustis::{
+	client::Client as RedisClient,
+	commands::{GenericCommands, StringCommands},
+};
 use time::OffsetDateTime;
 use tower::{Layer, Service};
 
-use crate::{models::access_token_data::AccessTokenData, prelude::*};
+use crate::{
+	models::{access_token_data::AccessTokenData, redis::UserPermissionCache},
+	prelude::*,
+};
 
 /// The type of client used for a request. This is used to determine
 /// which authentication method to use, based on if the API call is made by our
@@ -476,61 +482,103 @@ async fn get_permissions_for_login_id(
 		.await?;
 	if let Some(Ok(data)) = redis_data
 		.as_deref()
-		.map(serde_json::from_str::<BTreeMap<_, _>>)
+		.map(serde_json::from_str::<UserPermissionCache>)
 	{
-		// Check whether the data stored in redis has been revoked
+		// Check whether the data stored in redis is still valid
+		// Simple example: When a user has their permissions stored in Redis, and they
+		// have been removed from a workspace, that data in redis should be considered
+		// invalid. This check is to ensure that the data stored in redis is still
+		// valid.
+		// So when a user's permissions are updated (like being removed from a
+		// workspace), a timestamp is set in redis. When a request is processed, if this
+		// timestamp exists in Redis, and the data inserted into redis was inserted
+		// after this timestamp, it is considered valid.
 
 		// Check user revocation, then loginId revocation, then workspace ID revocation
-		let is_valid: Result<(), ErrorType> = try {
-			let revocation_timestamp = redis_connection
+		'is_valid: {
+			let revoked = redis_connection
 				.get::<_, Option<i64>>(redis::keys::user_id_revocation_timestamp(user_id))
 				.await?
-				.and_then(|time| OffsetDateTime::from_unix_timestamp(time).ok());
+				.and_then(|time| OffsetDateTime::from_unix_timestamp(time).ok())
+				.filter(|time| {
+					// If the timestamp exists, and the token was inserted into Redis before the
+					// timestamp, then the data in Redis is considered invalid
+					data.creation_time < *time
+				})
+				.is_some();
 
-			if matches!(revocation_timestamp, Some(revocation_timestamp) if OffsetDateTime::now_utc() > revocation_timestamp)
-			{
-				return Err(ErrorType::AuthorizationTokenInvalid);
+			if revoked {
+				break 'is_valid;
 			}
 
-			let revocation_timestamp = redis_connection
+			let revoked = redis_connection
 				.get::<_, Option<i64>>(redis::keys::login_id_revocation_timestamp(login_id))
 				.await?
-				.and_then(|time| OffsetDateTime::from_unix_timestamp(time).ok());
+				.and_then(|time| OffsetDateTime::from_unix_timestamp(time).ok())
+				.filter(|time| {
+					// If the timestamp exists, and the token was inserted into Redis before the
+					// timestamp, then the data in Redis is considered invalid
+					data.creation_time < *time
+				})
+				.is_some();
 
-			if matches!(revocation_timestamp, Some(revocation_timestamp) if OffsetDateTime::now_utc() > revocation_timestamp)
-			{
-				return Err(ErrorType::AuthorizationTokenInvalid);
+			if revoked {
+				_ = redis_connection
+					.del(redis::keys::login_id_revocation_timestamp(login_id))
+					.await;
+				break 'is_valid;
 			}
 
-			for workspace_id in data.keys() {
-				let revocation_timestamp = redis_connection
+			for workspace_id in data.permission.keys() {
+				let revoked = redis_connection
 					.get::<_, Option<i64>>(redis::keys::workspace_id_revocation_timestamp(
 						workspace_id,
 					))
 					.await?
-					.and_then(|time| OffsetDateTime::from_unix_timestamp(time).ok());
+					.and_then(|time| OffsetDateTime::from_unix_timestamp(time).ok())
+					.filter(|time| {
+						// If the timestamp exists, and the token was inserted into Redis before the
+						// timestamp, then the data in Redis is considered invalid
+						data.creation_time < *time
+					})
+					.is_some();
 
-				if matches!(revocation_timestamp, Some(revocation_timestamp) if OffsetDateTime::now_utc() > revocation_timestamp)
-				{
-					return Err(ErrorType::AuthorizationTokenInvalid);
+				if revoked {
+					_ = redis_connection
+						.del(redis::keys::workspace_id_revocation_timestamp(workspace_id))
+						.await;
+					break 'is_valid;
 				}
 			}
 
-			let revocation_timestamp = redis_connection
+			let revoked = redis_connection
 				.get::<_, Option<i64>>(redis::keys::global_revocation_timestamp())
 				.await?
-				.and_then(|time| OffsetDateTime::from_unix_timestamp(time).ok());
+				.and_then(|time| OffsetDateTime::from_unix_timestamp(time).ok())
+				.filter(|time| {
+					// If the timestamp exists, and the token was inserted into Redis before the
+					// timestamp, then the data in Redis is considered invalid
+					data.creation_time < *time
+				})
+				.is_some();
 
-			if matches!(revocation_timestamp, Some(revocation_timestamp) if OffsetDateTime::now_utc() > revocation_timestamp)
-			{
-				return Err(ErrorType::AuthorizationTokenInvalid);
+			if revoked {
+				_ = redis_connection
+					.del(redis::keys::global_revocation_timestamp())
+					.await;
+				break 'is_valid;
 			}
+
+			// None of the revocation timestamps exist, so the data in Redis is
+			// valid and can be used
 		};
 
-		if is_valid.is_ok() {
-			return Ok(data);
-		}
+		return Ok(data.permission);
 	}
+
+	_ = redis_connection
+		.del(redis::keys::permission_for_login_id(login_id))
+		.await;
 
 	let mut workspace_permissions = BTreeMap::<Uuid, WorkspacePermission>::new();
 
@@ -700,11 +748,21 @@ async fn get_permissions_for_login_id(
 	});
 
 	redis_connection
-		.set(
+		.setex(
 			redis::keys::permission_for_login_id(login_id),
-			serde_json::to_string(&workspace_permissions)?,
+			constants::CACHED_PERMISSIONS_VALIDITY.whole_seconds() as u64,
+			serde_json::to_string(&UserPermissionCache {
+				permission: workspace_permissions.clone(),
+				creation_time: OffsetDateTime::now_utc(),
+			})?,
 		)
-		.await?;
+		.await
+		.inspect_err(|err| {
+			error!(
+				"Error setting the permissions for the loginId `{login_id}`: `{}`",
+				err
+			);
+		})?;
 
 	Ok(workspace_permissions)
 }

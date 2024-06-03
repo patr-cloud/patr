@@ -2,3 +2,5 @@
 pub mod access_token_data;
 /// All the data for permissions, resource types, etc.
 pub mod rbac;
+/// Contains all the structs that will be stored in Redis
+pub mod redis;

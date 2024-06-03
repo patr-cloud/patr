@@ -53,7 +53,18 @@ pub mod constants {
 
 	/// How long an access token is valid before it needs to be refreshed using
 	/// a refresh token (which will be provided at login)
-	pub const ACCESS_TOKEN_VALIDITY: time::Duration = time::Duration::hours(1);
+	pub const ACCESS_TOKEN_VALIDITY: time::Duration = if cfg!(debug_assertions) {
+		time::Duration::weeks(52) // 1 year
+	} else {
+		time::Duration::hours(1)
+	};
+
+	/// The duration that the permission data in Redis will be valid for. Beyond
+	/// that, the data will be considered stale and will be reloaded from the
+	/// database. This is done to prevent the Redis data from having infinite
+	/// keys for permission revocations, since they're not stored in the
+	/// database.
+	pub const CACHED_PERMISSIONS_VALIDITY: time::Duration = time::Duration::days(2);
 
 	/// The version of the database. This is used to determine whether the
 	/// database needs to be migrated or not. This is always set to the manifest
