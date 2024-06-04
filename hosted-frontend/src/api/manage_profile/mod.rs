@@ -3,9 +3,10 @@ use models::api::user::GetUserInfoResponse;
 use crate::prelude::*;
 
 mod activate_mfa;
+mod api_token;
 mod change_passsword;
 
-pub use self::{activate_mfa::*, change_passsword::*};
+pub use self::{activate_mfa::*, api_token::*, change_passsword::*};
 
 /// Load user data from the server
 #[server]
