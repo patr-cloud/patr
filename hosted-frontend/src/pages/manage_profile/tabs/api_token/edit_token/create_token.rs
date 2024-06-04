@@ -1,25 +1,13 @@
-use crate::prelude::*;
-
-mod create_token;
-mod permission_card;
-mod permission_item;
-
-pub use self::{create_token::*, permission_card::*, permission_item::*};
+use crate::{pages::PermisisonCard, prelude::*};
 
 #[component]
-pub fn EditApiToken() -> impl IntoView {
+pub fn CreateApiToken() -> impl IntoView {
 	view! {
 		<div class="full-width fit-wide-screen full-height txt-white fc-fs-fs px-md">
 			<div class="fr-fs-ct mb-md full-width">
 				<p class="txt-md">
-					<strong class="txt-md">"Manage Token"</strong>
+					<strong class="txt-md">"Create new API Token"</strong>
 				</p>
-
-				<Link style_variant={LinkStyleVariant::Contained} class="ml-auto">
-					"REGENERATE TOKEN"
-				</Link>
-
-				<button class="btn btn-error ml-md">"REVOKE TOKEN"</button>
 			</div>
 
 			<div class="flex mb-xs full-width mb-md">
@@ -93,9 +81,9 @@ pub fn EditApiToken() -> impl IntoView {
 			</div>
 
 			<div class="full-width fr-fe-ct py-md mt-auto">
-				<Link class="txt-sm txt-medium mr-sm">"BACK"</Link>
-				<Link style_variant={LinkStyleVariant::Contained} class="txt-sm txt-medium mr-sm">
-					"UPDATE"
+				<Link r#type={Variant::Link} to="/profile/api-tokens" class="txt-sm txt-medium mr-sm">"BACK"</Link>
+				<Link r#type={Variant::Button} style_variant={LinkStyleVariant::Contained} class="txt-sm txt-medium mr-sm">
+					"Create"
 				</Link>
 			</div>
 		</div>

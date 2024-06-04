@@ -14,8 +14,8 @@ pub fn PermisisonCard(
 				<strong class="txt-md">"{workspace.name}"</strong>
 			</p>
 
-			<label class="fr-fs-ct txt-grey cursor-pointer" html_for="isSuperAdmin">
-				<input type="checkbox" name="super-admin" class="mr-xs"/>
+			<label class="fr-fs-ct txt-grey cursor-pointer" html_for="super-admin">
+				<Input r#type="checkbox" name="super-admin" class="mr-xs"/>
 				"Give"
 				<strong class="txt-medium txt-sm mx-xxs txt-white">"Super Admin"</strong>
 				"permissions for"
