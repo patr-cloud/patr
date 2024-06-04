@@ -28,7 +28,7 @@
 	"shutdownAction": "stopCompose",
 	"forwardPorts": [
 		3000,
-		"jaeger:16686"
+		"opentelemetry:16686"
 	],
 	"postCreateCommand": "./.devcontainer/scripts/post-init.sh",
 	"initializeCommand": "./.devcontainer/scripts/pre-init.sh",

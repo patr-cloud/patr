@@ -17,7 +17,7 @@ pub(super) async fn execute(
 		.into_result();
 	}
 
-	let (access_token, _) = match &state {
+	let (access_token, _) = match state {
 		AppState::LoggedIn {
 			token,
 			refresh_token,
@@ -31,6 +31,7 @@ pub(super) async fn execute(
 			));
 		}
 	};
+
 	let GetUserInfoResponse {
 		basic_user_info:
 			WithId {

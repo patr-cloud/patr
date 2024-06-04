@@ -68,7 +68,7 @@ services:
     expose:
       - 4317
       - 4318
-      - 3000:16686
+      - 16686
     hostname: opentelemetry
     networks:
       vpc:

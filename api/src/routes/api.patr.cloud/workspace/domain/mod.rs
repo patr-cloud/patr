@@ -1,5 +1,5 @@
 use axum::{http::StatusCode, Router};
-use models::{api::workspace::domain::*, ApiRequest, ErrorType};
+use models::api::workspace::domain::*;
 
 use crate::prelude::*;
 
@@ -16,7 +16,6 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.mount_auth_endpoint(get_domains_for_workspace, state)
 		.mount_auth_endpoint(update_domain_dns_record, state)
 		.mount_auth_endpoint(verify_domain_in_workspace, state)
-		.with_state(state.clone())
 }
 
 async fn is_domain_personal(

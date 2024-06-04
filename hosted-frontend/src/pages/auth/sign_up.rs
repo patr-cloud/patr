@@ -54,14 +54,6 @@ pub fn SignUpForm() -> impl IntoView {
 		}
 	});
 
-	create_effect(move |_| {
-		logging::log!(
-			"{:?} {:?}",
-			password_input.get(),
-			password_confirm_input.get()
-		)
-	});
-
 	view! {
 		<div class="box-onboard txt-white">
 			<div class="fr-sb-bl mb-lg full-width">

@@ -76,7 +76,7 @@ async fn delete_docker_repository_image_in_registry(
 					.take(30)
 					.collect();
 					let encoded =
-						base32::encode(base32::Alphabet::RFC4648 { padding: false }, &hash);
+						base32::encode(base32::Alphabet::Rfc4648 { padding: false }, &hash);
 					let mut kid = String::with_capacity(59);
 					for (i, character) in encoded.chars().enumerate() {
 						kid.push(character);

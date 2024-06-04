@@ -19,7 +19,6 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.mount_auth_endpoint(update_deployment, state)
 		.mount_auth_endpoint(list_linked_url, state)
 		.mount_auth_endpoint(get_deployment_metric, state)
-		.with_state(state.clone())
 }
 
 async fn machine_type(

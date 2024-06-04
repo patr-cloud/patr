@@ -8,8 +8,10 @@ mod get_user_details;
 mod get_user_info;
 mod list_workspaces;
 mod mfa;
+#[allow(unreachable_code, unused_variables)]
 mod recovery_options;
 mod update_user_info;
+#[allow(unreachable_code, unused_variables)]
 mod web_logins;
 
 pub use self::{
