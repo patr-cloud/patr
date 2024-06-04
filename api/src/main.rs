@@ -184,24 +184,31 @@ async fn main() {
 		.await
 		.expect("error initializing database");
 
-	tokio::join!(
+	let router = app::setup_routes(&state)
+		.await
+		.into_make_service_with_connect_info::<SocketAddr>();
+
+	let tcp_listener = TcpListener::bind(bind_address).await.unwrap();
+
+	tracing::info!(
+		"Listening for connections on {}",
+		tcp_listener.local_addr().unwrap()
+	);
+
+	futures::future::join(
 		async {
-			axum::serve(
-				TcpListener::bind(bind_address).await.unwrap(),
-				app::setup_routes(&state)
-					.await
-					.into_make_service_with_connect_info::<SocketAddr>(),
-			)
-			.with_graceful_shutdown(async {
-				tokio::signal::ctrl_c()
-					.await
-					.expect("failed to install ctrl-c signal handler");
-			})
-			.await
-			.unwrap();
+			axum::serve(tcp_listener, router)
+				.with_graceful_shutdown(async {
+					tokio::signal::ctrl_c()
+						.await
+						.expect("failed to install ctrl-c signal handler");
+				})
+				.await
+				.unwrap();
 		},
 		async {
 			redis_publisher::run(&state).await;
-		}
-	);
+		},
+	)
+	.await;
 }

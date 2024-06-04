@@ -6,6 +6,7 @@ mod create_managed_url;
 mod delete_managed_url;
 mod list_managed_url;
 mod update_managed_url;
+#[allow(unreachable_code, unused_variables)]
 mod verify_configuration;
 
 use self::{
@@ -24,5 +25,4 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.mount_auth_endpoint(list_managed_url, state)
 		.mount_auth_endpoint(update_managed_url, state)
 		.mount_auth_endpoint(verify_configuration, state)
-		.with_state(state.clone())
 }

@@ -3,6 +3,7 @@ use axum::Router;
 use crate::prelude::*;
 
 mod permission;
+#[allow(unused_variables, unreachable_code)]
 mod role;
 mod user;
 

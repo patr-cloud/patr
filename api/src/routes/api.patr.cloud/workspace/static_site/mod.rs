@@ -17,7 +17,6 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.mount_auth_endpoint(update_static_site, state)
 		.mount_auth_endpoint(upload_static_site, state)
 		.mount_auth_endpoint(list_linked_url, state)
-		.with_state(state.clone())
 }
 
 async fn create_static_site(

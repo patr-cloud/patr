@@ -106,8 +106,9 @@ where
 		async {
 			debug!("Parsing request for URL: {}", req.uri());
 
-			let Ok(Path(path)) = req.extract_parts().await else {
-				debug!("Failed to parse path: {}", req.uri().path());
+			let Ok(Path(path)) = req.extract_parts().await.inspect_err(|err| {
+				debug!("Failed to parse path `{}`: {}", req.uri().path(), err);
+			}) else {
 				return Ok(ApiErrorResponse::error_with_message(
 					ErrorType::WrongParameters,
 					"Invalid Request URL",
@@ -115,8 +116,9 @@ where
 				.into_response());
 			};
 
-			let Ok(Query(query)) = req.extract_parts().await else {
-				debug!("Failed to parse query: {:?}", req.uri().query());
+			let Ok(Query(query)) = req.extract_parts().await.inspect_err(|err| {
+				debug!("Failed to parse query `{:?}`: {}", req.uri().query(), err);
+			}) else {
 				return Ok(ApiErrorResponse::error_with_message(
 					ErrorType::WrongParameters,
 					"Invalid Query Parameters",
@@ -124,8 +126,11 @@ where
 				.into_response());
 			};
 
-			let Ok(headers) = <E::RequestHeaders as Headers>::from_header_map(req.headers()) else {
-				debug!("Failed to parse headers");
+			let Ok(headers) = <E::RequestHeaders as Headers>::from_header_map(req.headers())
+				.inspect_err(|err| {
+					debug!("Failed to parse headers: {err}");
+				})
+			else {
 				return Ok(ApiErrorResponse::error_with_message(
 					ErrorType::WrongParameters,
 					"Invalid Headers",
@@ -133,8 +138,9 @@ where
 				.into_response());
 			};
 
-			let Ok(ClientIP(client_ip)) = req.extract_parts().await else {
-				debug!("Failed to parse client IP");
+			let Ok(ClientIP(client_ip)) = req.extract_parts().await.inspect_err(|err| {
+				debug!("Failed to parse client IP: {err}");
+			}) else {
 				return Ok(ApiErrorResponse::error_with_message(
 					ErrorType::server_error("Failed to parse client IP"),
 					"Internal Server Error",

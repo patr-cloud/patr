@@ -18,6 +18,7 @@ use super::{AddTuple, RequiresResponseHeaders};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
 pub struct Paginated<T = ()> {
 	/// Any other query parameters that should be included in the request.
+	#[serde(flatten)]
 	pub data: T,
 	/// The number of items that should be returned per page.
 	pub count: usize,

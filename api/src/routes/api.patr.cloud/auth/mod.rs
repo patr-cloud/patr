@@ -43,5 +43,4 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.mount_endpoint(list_recovery_options, state)
 		.mount_endpoint(resend_otp, state)
 		.mount_endpoint(reset_password, state)
-		.with_state(state.clone())
 }
