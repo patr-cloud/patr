@@ -19,7 +19,7 @@ pub use self::{
 	revoke_api_token::*,
 	update_api_token::*,
 };
-use crate::permission::WorkspacePermission;
+use crate::rbac::WorkspacePermission;
 
 #[::preprocess::sync]
 /// An API token created by the user. This is mostly used by the user if they
@@ -82,8 +82,8 @@ mod test {
 
 	use super::UserApiToken;
 	use crate::{
-		permission::{ResourcePermissionType, WorkspacePermission},
 		prelude::*,
+		rbac::{ResourcePermissionData, ResourcePermissionType, ResourceType, WorkspacePermission},
 	};
 
 	#[test]
@@ -130,7 +130,12 @@ mod test {
 								let mut map = BTreeMap::new();
 								map.insert(
 									Uuid::nil(),
-									ResourcePermissionType::Include(BTreeSet::from([Uuid::nil()])),
+									ResourcePermissionData {
+										resource_type: ResourceType::Domain,
+										resources: ResourcePermissionType::Include(BTreeSet::from(
+											[Uuid::nil()],
+										)),
+									},
 								);
 								map
 							},

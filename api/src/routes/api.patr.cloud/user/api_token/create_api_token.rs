@@ -2,7 +2,7 @@ use argon2::{password_hash::SaltString, Algorithm, PasswordHasher, Version};
 use axum::http::StatusCode;
 use models::{
 	api::user::*,
-	permission::{ResourcePermissionType, WorkspacePermission},
+	rbac::{ResourcePermissionType, WorkspacePermission},
 };
 use time::OffsetDateTime;
 

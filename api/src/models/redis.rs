@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use models::permission::WorkspacePermission;
+use models::rbac::WorkspacePermission;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 

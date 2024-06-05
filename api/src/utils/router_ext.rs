@@ -1,4 +1,4 @@
-use std::net::IpAddr;
+use std::{net::IpAddr, sync::RwLock};
 
 use axum::{
 	routing::{MethodFilter, MethodRouter},
@@ -71,20 +71,10 @@ where
 		E: ApiEndpoint<Authenticator = NoAuthentication> + Sync,
 		<E::RequestBody as Preprocessable>::Processed: Send,
 	{
-		let mut registry = hosted_frontend::utils::API_CALL_REGISTRY
+		hosted_frontend::utils::API_CALL_REGISTRY
+			.get_or_init(|| RwLock::new(Default::default()))
 			.write()
-			.expect("API call registry poisoned");
-
-		if registry.get().is_none() {
-			registry
-				.set(Default::default())
-				.map_err(|_| ())
-				.expect("registry already set when it is expected to not be set");
-		}
-
-		registry
-			.get_mut()
-			.expect("registry should be initialized by now")
+			.expect("API call registry poisoned")
 			.entry(E::METHOD)
 			.or_default()
 			.insert(
@@ -98,9 +88,9 @@ where
 					ServiceBuilder::new()
 						// .layer(todo!("Add rate limiter checker middleware here")),
 						.layer(DataStoreConnectionLayer::<E>::with_state(state.clone()))
-						// .layer(todo!("Add rate limiter value updater middleware here"))
 						.layer(PreprocessLayer::new())
 						.layer(UserAgentValidationLayer::new())
+						// .layer(todo!("Add rate limiter value updater middleware here"))
 						.layer(EndpointLayer::new(handler.clone())),
 				)),
 			)
@@ -145,20 +135,10 @@ where
 		<E::RequestBody as Preprocessable>::Processed: Send,
 		E::RequestHeaders: HasHeader<BearerToken>,
 	{
-		let mut registry = hosted_frontend::utils::API_CALL_REGISTRY
+		hosted_frontend::utils::API_CALL_REGISTRY
+			.get_or_init(|| RwLock::new(Default::default()))
 			.write()
-			.expect("API call registry poisoned");
-
-		if registry.get().is_none() {
-			registry
-				.set(Default::default())
-				.map_err(|_| ())
-				.expect("registry already set when it is expected to not be set");
-		}
-
-		registry
-			.get_mut()
-			.expect("registry should be initialized by now")
+			.expect("API call registry poisoned")
 			.entry(E::METHOD)
 			.or_default()
 			.insert(
@@ -175,6 +155,7 @@ where
 						.layer(PreprocessLayer::new())
 						.layer(UserAgentValidationLayer::new())
 						.layer(AuthenticationLayer::new(ClientType::WebDashboard))
+						// .layer(todo!("Add permission checker middleware here"))
 						// .layer(todo!("Add rate limiter value updater middleware here"))
 						// .layer(todo!("Add audit logger middleware here"))
 						.layer(AuthEndpointLayer::new(handler.clone())),

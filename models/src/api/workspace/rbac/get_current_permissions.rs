@@ -1,4 +1,4 @@
-use crate::{permission::WorkspacePermission, prelude::*};
+use crate::{prelude::*, rbac::WorkspacePermission};
 
 macros::declare_api_endpoint!(
 	/// Route to get current permissions
