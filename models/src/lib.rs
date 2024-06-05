@@ -13,7 +13,7 @@ pub mod cloudflare;
 /// All infrastructure as code related structs and formats
 pub mod iaac;
 /// All data related to permissions and RBAC data representation
-pub mod permission;
+pub mod rbac;
 /// Utility functions and structs
 pub mod utils;
 

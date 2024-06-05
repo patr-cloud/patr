@@ -9,7 +9,7 @@ use std::{
 use argon2::{Algorithm, Argon2, PasswordHash, PasswordVerifier, Version};
 use jsonwebtoken::{DecodingKey, TokenData, Validation};
 use models::{
-	permission::{ResourcePermissionType, WorkspacePermission},
+	rbac::{ResourcePermissionType, WorkspacePermission},
 	utils::{AppAuthentication, BearerToken, HasHeader},
 	RequestUserData,
 };
@@ -575,10 +575,6 @@ async fn get_permissions_for_login_id(
 
 		return Ok(data.permission);
 	}
-
-	_ = redis_connection
-		.del(redis::keys::permission_for_login_id(login_id))
-		.await;
 
 	let mut workspace_permissions = BTreeMap::<Uuid, WorkspacePermission>::new();
 

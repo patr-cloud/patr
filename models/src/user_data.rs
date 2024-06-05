@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use typed_builder::TypedBuilder;
 
-use crate::{permission::WorkspacePermission, prelude::*};
+use crate::{prelude::*, rbac::WorkspacePermission};
 
 /// Represents the data of a user that is used in an authenticated endpoint.
 #[derive(Debug, Clone, Serialize, Deserialize, TypedBuilder)]

@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use ipnetwork::IpNetwork;
 use time::OffsetDateTime;
 
-use crate::{permission::WorkspacePermission, prelude::*, utils::constants::RESOURCE_NAME_REGEX};
+use crate::{prelude::*, rbac::WorkspacePermission, utils::constants::RESOURCE_NAME_REGEX};
 
 macros::declare_api_endpoint!(
 	/// Update an API token. The older token will still be valid, but the details of the token will

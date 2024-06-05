@@ -21,11 +21,11 @@ use tower::{
 /// The type used for the [`API_CALL_REGISTRY`] static. This is a map of all the
 /// API calls that are registered to the backend. This is used internally and
 /// should not be used by any other part of the code.
-type ApiCallRegistryData = OnceLock<HashMap<Method, Router<Box<dyn Any + Send + Sync>>>>;
+type ApiCallRegistryData = OnceLock<RwLock<HashMap<Method, Router<Box<dyn Any + Send + Sync>>>>>;
 
 /// Used internally for registering API calls to the backend. DO NOT USE THIS ON
 /// YOUR OWN. Use the [`make_api_call`] fn instead.
-pub static API_CALL_REGISTRY: RwLock<ApiCallRegistryData> = RwLock::new(OnceLock::new());
+pub static API_CALL_REGISTRY: ApiCallRegistryData = OnceLock::new();
 
 /// Makes an API call to the backend. If you want to make an API request, just
 /// call this function with the request and you'll get a response. All the
@@ -40,10 +40,10 @@ where
 		.await
 		.map_err(ErrorType::server_error)?;
 	let layer = API_CALL_REGISTRY
-		.read()
-		.expect("API call registry poisoned")
 		.get()
 		.expect("API call registry not initialized")
+		.read()
+		.expect("API call registry poisoned")
 		.get(&E::METHOD)
 		.unwrap_or_else(|| panic!("API call registry does not contain {}", E::METHOD))
 		.at(<E::RequestPath as TypedPath>::PATH)

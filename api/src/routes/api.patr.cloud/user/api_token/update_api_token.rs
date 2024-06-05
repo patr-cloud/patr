@@ -1,6 +1,6 @@
 use models::{
 	api::user::*,
-	permission::{ResourcePermissionType, WorkspacePermission},
+	rbac::{ResourcePermissionType, WorkspacePermission},
 };
 use reqwest::StatusCode;
 use rustis::commands::GenericCommands;

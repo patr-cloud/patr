@@ -62,8 +62,6 @@ pub enum DomainPermissions {
 	Verify,
 	/// Delete the domain
 	Delete,
-	/// All permissions related to DNS records for a domain
-	DnsRecord(DnsRecordPermissions),
 }
 
 /// A list of all permissions that can be granted on a deployment
@@ -106,7 +104,7 @@ pub enum BillingPermissions {
 	View,
 	/// Edit billing information for a workspace
 	Edit,
-	/// Make a payment for a workspace
+	/// Make a payment for a workspace using an existing payment method
 	MakePayment,
 }
 
@@ -117,6 +115,8 @@ pub enum BillingPermissions {
 pub enum Permission {
 	/// All permissions related to a domain
 	Domain(DomainPermissions),
+	/// All permissions related to a DNS record
+	DnsRecord(DnsRecordPermissions),
 	/// All permissions related to a deployment
 	Deployment(DeploymentPermissions),
 	/// All permissions related to container registry repositories
@@ -243,6 +243,19 @@ impl WorkspacePermission {
 				}),
 		}
 	}
+}
+
+/// Represents the data of a resource permission, which type of resource the
+/// permission is granted on, and the resources that the permission is granted
+/// on.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ResourcePermissionData {
+	/// The type of resource that the permission is granted on.
+	pub resource_type: ResourceType,
+	/// The resources that the permission is granted on.
+	#[serde(flatten)]
+	pub resources: ResourcePermissionType,
 }
 
 /// Represents the type of permission that is granted on a set of Resource IDs.
