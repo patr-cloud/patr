@@ -1,4 +1,6 @@
-use models::{api::user::*, utils::TotalCountHeader};
+use std::collections::BTreeMap;
+
+use models::{api::user::*, rbac::WorkspacePermission, utils::TotalCountHeader};
 use reqwest::StatusCode;
 
 use crate::prelude::*;
@@ -63,7 +65,7 @@ pub async fn list_api_tokens(
 			row.token_id,
 			UserApiToken {
 				name: row.name,
-				permissions: Default::default(),
+				permissions: BTreeMap::<Uuid, WorkspacePermission>::new(),
 				token_nbf: row.token_nbf,
 				token_exp: row.token_exp,
 				allowed_ips: row.allowed_ips,

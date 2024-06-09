@@ -1877,6 +1877,7 @@ dependencies = [
  "codee",
  "components",
  "console_error_panic_hook",
+ "convert_case",
  "cookie",
  "http 1.1.0",
  "leptos",

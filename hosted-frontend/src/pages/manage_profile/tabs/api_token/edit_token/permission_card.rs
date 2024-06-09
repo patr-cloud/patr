@@ -1,4 +1,7 @@
-use crate::{pages::*, prelude::*};
+use crate::{
+	pages::{ChoosePermission, PermissionItem},
+	prelude::*,
+};
 
 #[component]
 pub fn PermisisonCard(
@@ -15,7 +18,7 @@ pub fn PermisisonCard(
 			</p>
 
 			<label class="fr-fs-ct txt-grey cursor-pointer" html_for="super-admin">
-				<Input r#type="checkbox" name="super-admin" class="mr-xs"/>
+				<input type="checkbox" name="super-admin" class="mr-xs"/>
 				"Give"
 				<strong class="txt-medium txt-sm mx-xxs txt-white">"Super Admin"</strong>
 				"permissions for"
@@ -26,6 +29,7 @@ pub fn PermisisonCard(
 
 			<div class="fc-fs-fs full-width gap-xs">
 				<PermissionItem/>
+				<ChoosePermission />
 			</div>
 		</div>
 	}

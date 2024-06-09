@@ -1,10 +1,11 @@
 use crate::prelude::*;
 
+mod choose_permission;
 mod create_token;
 mod permission_card;
 mod permission_item;
 
-pub use self::{create_token::*, permission_card::*, permission_item::*};
+pub use self::{choose_permission::*, create_token::*, permission_card::*, permission_item::*};
 
 #[component]
 pub fn EditApiToken() -> impl IntoView {
@@ -87,7 +88,7 @@ pub fn EditApiToken() -> impl IntoView {
 
 			<div class="fc-fs-fs mb-xs full-width my-md gap-sm">
 				<label class="txt-white txt-sm">"Choose Permissions"</label>
-				<div class="full-width fc-fs-fs">
+				<div class="full-width fc-fs-fs gap-xs">
 					<PermisisonCard/>
 				</div>
 			</div>

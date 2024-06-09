@@ -1,9 +1,18 @@
+use leptos_use::{use_cookie, utils::FromToStringCodec};
+
 use crate::{pages::PermisisonCard, prelude::*};
 
 #[component]
 pub fn CreateApiToken() -> impl IntoView {
+	let create_api_token_action = create_server_action::<CreateApiTokenFn>();
+	let response = create_api_token_action.value();
+
+	let (access_token, _) = use_cookie::<String, FromToStringCodec>("access_token");
+
 	view! {
-		<div class="full-width fit-wide-screen full-height txt-white fc-fs-fs px-md">
+		<ActionForm action={create_api_token_action}  class="full-width fit-wide-screen full-height txt-white fc-fs-fs px-md">
+			<input type="hidden" name="access_token" prop:value={access_token}/>
+
 			<div class="fr-fs-ct mb-md full-width">
 				<p class="txt-md">
 					<strong class="txt-md">"Create new API Token"</strong>
@@ -22,6 +31,8 @@ pub fn CreateApiToken() -> impl IntoView {
 						r#type={InputType::Text}
 						placeholder="Enter Token Name"
 						class="full-width"
+						name="token_name"
+						id="token_name"
 					/>
 				</div>
 			</div>
@@ -82,10 +93,10 @@ pub fn CreateApiToken() -> impl IntoView {
 
 			<div class="full-width fr-fe-ct py-md mt-auto">
 				<Link r#type={Variant::Link} to="/profile/api-tokens" class="txt-sm txt-medium mr-sm">"BACK"</Link>
-				<Link r#type={Variant::Button} style_variant={LinkStyleVariant::Contained} class="txt-sm txt-medium mr-sm">
+				<Link should_submit={true} r#type={Variant::Button} style_variant={LinkStyleVariant::Contained} class="txt-sm txt-medium mr-sm">
 					"Create"
 				</Link>
 			</div>
-		</div>
+		</ActionForm>
 	}
 }

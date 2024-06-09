@@ -13,7 +13,11 @@ pub async fn load_api_tokens_list(
 	let api_response = make_api_call::<ListApiTokensRequest>(
 		ApiRequest::builder()
 			.path(ListApiTokensPath)
-			.query(Default::default())
+			.query(Paginated {
+				data: (),
+				page: 0,
+				count: 10,
+			})
 			.headers(ListApiTokensRequestHeaders {
 				authorization: BearerToken::from_str(
 					format!("{}", access_token.unwrap_or_default()).as_str(),
