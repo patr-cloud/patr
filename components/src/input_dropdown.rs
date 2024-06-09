@@ -26,16 +26,16 @@ pub fn InputDropdown(
 	#[prop(into, optional, default = "".to_owned().into())]
 	value: MaybeSignal<String>,
 	/// Placeholder to show if value is empty
-	#[prop(optional, default = "Type Here...".to_owned())]
-	placeholder: String,
+	#[prop(into, optional, default = "Type Here...".to_owned().into())]
+	placeholder: MaybeSignal<String>,
 	/// Whether the componenet is disabled or not
 	#[prop(optional, into, default = false.into())]
 	disabled: MaybeSignal<bool>,
 	/// Whether the componenet is in loading state or not
 	#[prop(optional, into, default = false.into())]
 	loading: MaybeSignal<bool>,
-	/// Whether to show an input, or a span masquerading as one
-	#[prop(optional, into)]
+	/// Whether to render an input, or a span masquerading as one
+	#[prop(optional, into, default = false.into())]
 	enable_input: MaybeSignal<bool>,
 ) -> impl IntoView {
 	let show_dropdown = create_rw_signal(false);
@@ -83,12 +83,31 @@ pub fn InputDropdown(
 	let store_options = store_value(options);
 
 	let input_value = create_rw_signal(value.get_untracked());
+	let store_placehoder = store_value(placeholder.clone());
+
+	let handle_click_option = move |state: &InputDropdownOption| {
+		if state.disabled {
+			show_dropdown.set(false);
+		}
+
+		input_value.set(state.label.clone());
+	};
 
 	view! {
 		<div on:click={handle_click} class={outer_div_class}>
 			<Show
 				when={move || enable_input.get()}
-				fallback={move || view! { <span class={input_class}>{input_value.get()}</span> }}
+				fallback={move || view! {
+					<span class={input_class}>
+						{
+							if input_value.get().is_empty() {
+								store_placehoder.with_value(|placeholder| placeholder.get().into_view())
+							} else {
+								input_value.get().into_view()
+							}
+						}
+					</span>
+				}}
 			>
 
 				<input
@@ -103,26 +122,24 @@ pub fn InputDropdown(
 
 			<Show when={move || show_dropdown.get()}>
 				<div class={dropdown_class.clone()}>
-					<ul class="full-width full-height ofx-hidden ofy-hidden fc-fs-fs">
+					<ul class="full-width full-height ofx-hidden ofy-auto fc-fs-fs">
 						<For
-							each={move || store_options.with_value(|opt| opt.get())}
-							key={|state| state.label.clone()}
+							each={move || store_options.with_value(|opt| opt.clone().get())}
+							key={|state| state.clone()}
 							let:child
 						>
 							<li
-								on:click={move |_| {
-									if child.disabled {
-										show_dropdown.set(false);
-									}
-								}}
-
+								on:click={
+									let child = child.clone();
+									move |_| handle_click_option(&child)
+								}
 								class={format!(
 									"px-xl py-sm ul-light fr-fs-ct full-width br-bottom-sm {}",
-									if child.disabled { "txt-disabled" } else { "txt-white" },
+									if child.clone().disabled { "txt-disabled" } else { "txt-white" },
 								)}
 							>
 
-								{child.label}
+								{child.clone().label}
 							</li>
 						</For>
 					</ul>

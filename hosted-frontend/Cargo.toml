@@ -15,6 +15,7 @@ axum-extra = { workspace = true, features = ["typed-routing", "cookie"] }
 components = { workspace = true, features = [] }
 console_error_panic_hook = { workspace = true, features = [] }
 cookie = { workspace = true, features = [] }
+convert_case = { workspace = true, features = [] }
 http = { workspace = true, features = ["default"] }
 log = { workspace = true, features = [] }
 macros = { workspace = true, features = [] }
@@ -26,7 +27,7 @@ semver = { workspace = true, features = [] }
 serde = { workspace = true, features = ["default", "derive"] }
 serde_json = { workspace = true, features = ["default"] }
 serde_urlencoded = { workspace = true, features = [] }
-strum = { workspace = true, features = ["default"] }
+strum = { workspace = true, features = ["default", "derive"] }
 time = { workspace = true, features = ["default"] }
 tower = { workspace = true, features = ["util"] }
 tracing = { workspace = true, features = ["attributes"] }
