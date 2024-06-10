@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE user_email(user_id UUID, email TEXT NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "731d2e5cc461d893391166ff564f8e532c55bd3d0b0e7472db9c24ac0f89734e"
+}

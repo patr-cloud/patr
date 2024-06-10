@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE permission(id UUID NOT NULL, name VARCHAR(100) NOT NULL, description VARCHAR(500) NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "dbdddb1973bd3338ba68eb42182a4b7eeba3219e0a88a7a552f37c79eb9f5779"
+}

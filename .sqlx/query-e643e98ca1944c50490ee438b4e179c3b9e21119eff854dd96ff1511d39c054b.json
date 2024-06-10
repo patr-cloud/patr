@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE DEPLOYMENT_STATUS AS ENUM('created', /* Created, but nothing pushed to it yet */ 'pushed', /* Something is pushed, but the system has not deployed it yet */ 'deploying', /* Something is pushed, and the system is currently deploying it */ 'running', /* Deployment is running successfully */ 'stopped', /* Deployment is stopped by the user */ 'errored', /* Deployment is stopped because of too many errors */ 'deleted' /* Deployment is deleted by the user */);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "e643e98ca1944c50490ee438b4e179c3b9e21119eff854dd96ff1511d39c054b"
+}

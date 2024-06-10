@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE container_registry_repository_blob ADD CONSTRAINT container_registry_repository_blob_chk_size_positive CHECK(size > 0);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "9d1e5f2c9fea9aa14ec10165fbe6c40deda655e42c23c33a31e9e396204dd2e2"
+}

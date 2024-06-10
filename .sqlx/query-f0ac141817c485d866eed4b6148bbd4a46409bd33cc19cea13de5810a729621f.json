@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE user_api_token_resource_permissions_include ADD CONSTRAINT user_api_token_resource_permissions_include_fk_parent FOREIGN KEY(token_id, workspace_id, permission_id, permission_type) REFERENCES user_api_token_resource_permissions_type(token_id, workspace_id, permission_id, resource_permission_type), ADD CONSTRAINT user_api_token_resource_permissions_include_fk_resource FOREIGN KEY(resource_id, workspace_id, resource_deleted) REFERENCES resource(id, owner_id, deleted);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "f0ac141817c485d866eed4b6148bbd4a46409bd33cc19cea13de5810a729621f"
+}

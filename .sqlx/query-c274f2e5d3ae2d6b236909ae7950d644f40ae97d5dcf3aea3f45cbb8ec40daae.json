@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE \"user\" ADD CONSTRAINT user_fk_id_recovery_phone_country_code_recovery_phone_number FOREIGN KEY(id, recovery_phone_country_code, recovery_phone_number) REFERENCES user_phone_number(user_id, country_code, number) DEFERRABLE INITIALLY IMMEDIATE;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "c274f2e5d3ae2d6b236909ae7950d644f40ae97d5dcf3aea3f45cbb8ec40daae"
+}

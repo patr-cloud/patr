@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE managed_url(id UUID NOT NULL, sub_domain TEXT NOT NULL, domain_id UUID NOT NULL, path TEXT NOT NULL, url_type MANAGED_URL_TYPE NOT NULL, deployment_id UUID, port INTEGER, static_site_id UUID, url TEXT, workspace_id UUID NOT NULL, is_configured BOOLEAN NOT NULL, deleted TIMESTAMPTZ, permanent_redirect BOOLEAN, http_only BOOLEAN, cloudflare_custom_hostname_id TEXT NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "848dc5c948abf1f623c010af0fc84d333caba4555fa760865109ba985704dfa3"
+}

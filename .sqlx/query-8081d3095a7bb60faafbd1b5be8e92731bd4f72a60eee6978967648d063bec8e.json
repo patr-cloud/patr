@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT \"user\".recovery_email, phone_number_country_code.phone_code AS \"recovery_phone_code\", \"user\".recovery_phone_number FROM \"user\" LEFT JOIN user_email ON user_email.user_id = \"user\".id LEFT JOIN user_phone_number ON user_phone_number.user_id = \"user\".id LEFT JOIN phone_number_country_code ON phone_number_country_code.country_code = user_phone_number.country_code WHERE \"user\".username = $1 OR user_email.email = $1 OR CONCAT('+', phone_number_country_code.phone_code, user_phone_number.number) = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "recovery_email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "recovery_phone_code",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "recovery_phone_number",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "8081d3095a7bb60faafbd1b5be8e92731bd4f72a60eee6978967648d063bec8e"
+}

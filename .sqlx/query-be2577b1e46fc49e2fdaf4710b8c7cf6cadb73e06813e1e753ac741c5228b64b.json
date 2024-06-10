@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE RESOURCE_OWNER_TYPE AS ENUM('personal', 'business');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "be2577b1e46fc49e2fdaf4710b8c7cf6cadb73e06813e1e753ac741c5228b64b"
+}

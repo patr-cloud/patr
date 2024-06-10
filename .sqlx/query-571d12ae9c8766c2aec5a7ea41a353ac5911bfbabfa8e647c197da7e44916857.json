@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE user_unverified_phone_number ADD CONSTRAINT user_unverified_phone_number_fk_country_code FOREIGN KEY(country_code) REFERENCES phone_number_country_code(country_code), ADD CONSTRAINT user_unverified_phone_number_chk_country_code_is_upper_case CHECK(country_code = UPPER(country_code)), ADD CONSTRAINT user_unverified_phone_number_fk_user_id FOREIGN KEY(user_id) REFERENCES \"user\"(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "571d12ae9c8766c2aec5a7ea41a353ac5911bfbabfa8e647c197da7e44916857"
+}

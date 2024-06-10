@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COALESCE(user_api_token_resource_permissions_include.workspace_id, workspace_user.workspace_id) AS \"workspace_id\", COALESCE(user_api_token_resource_permissions_include.resource_id, role_resource_permissions_include.resource_id) AS \"resource_id\", COALESCE(user_api_token_resource_permissions_include.permission_id, role_resource_permissions_include.permission_id) AS \"permission_id\" FROM user_login LEFT JOIN user_api_token_resource_permissions_include ON user_login.login_type = 'api_token' AND user_api_token_resource_permissions_include.token_id = user_login.login_id LEFT JOIN workspace_user ON workspace_user.user_id = user_login.user_id LEFT JOIN role_resource_permissions_include ON role_resource_permissions_include.role_id = workspace_user.role_id WHERE user_login.login_id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "workspace_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "resource_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "permission_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "78808e70d2c01aa0296adab533f518264bb736d1f1534c04c8f5c56d762daf32"
+}

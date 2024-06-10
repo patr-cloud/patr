@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE user_unverified_email ADD CONSTRAINT user_unverified_email_pk PRIMARY KEY(email), ADD CONSTRAINT user_unverified_email_uq_user_id_local_domain_id UNIQUE(user_id, email);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "5ee7a8f4a4301ecba44ad4fd6a2596856be407f9eee760662fa9e10f5be0d379"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE user_api_token(token_id UUID NOT NULL, name TEXT NOT NULL, user_id UUID NOT NULL, token_hash TEXT NOT NULL, token_nbf TIMESTAMPTZ, /* The token is not valid before this date */ token_exp TIMESTAMPTZ, /* The token is not valid after this date */ allowed_ips INET[], created TIMESTAMPTZ NOT NULL, revoked TIMESTAMPTZ, login_type USER_LOGIN_TYPE GENERATED ALWAYS AS ('api_token') STORED);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "bd195a521df02a2be44d1769f807765a618df107b3c85dea0adc263e1b657fa5"
+}

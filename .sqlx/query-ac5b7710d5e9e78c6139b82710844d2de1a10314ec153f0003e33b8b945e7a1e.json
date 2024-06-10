@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE MANAGED_DATABASE_STATUS AS ENUM('creating', 'running', 'errored', 'deleted');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "ac5b7710d5e9e78c6139b82710844d2de1a10314ec153f0003e33b8b945e7a1e"
+}

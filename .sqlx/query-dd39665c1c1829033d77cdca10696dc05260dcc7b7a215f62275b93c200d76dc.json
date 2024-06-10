@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE patr_domain_dns_record ADD CONSTRAINT patr_domain_dns_record_fk_id FOREIGN KEY(id) REFERENCES resource(id), ADD CONSTRAINT patr_domain_dns_record_chk_name_is_valid CHECK(name ~ '^((\\*)|((\\*\\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])))$' OR name = '@'), ADD CONSTRAINT patr_domain_dns_record_fk_domain_id FOREIGN KEY(domain_id) REFERENCES patr_controlled_domain(domain_id), ADD CONSTRAINT patr_domain_dns_record_chk_values_valid CHECK((type = 'MX' AND priority IS NOT NULL) OR (type != 'MX' AND priority IS NULL)), ADD CONSTRAINT patr_domain_dns_record_chk_proxied_is_valid CHECK(((type = 'A' OR type = 'AAAA' OR type = 'CNAME') AND proxied IS NOT NULL) OR ((type = 'MX' OR type = 'TXT') AND proxied IS NULL));",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "dd39665c1c1829033d77cdca10696dc05260dcc7b7a215f62275b93c200d76dc"
+}

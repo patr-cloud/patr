@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE TOKEN_PERMISSION_TYPE AS ENUM('super_admin', 'member');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "8d62f4b9d5bd902ba3f1f1dfbb6a42a199aaa586225d846564f3bee2aa80b0e1"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE user_phone_number ADD CONSTRAINT user_phone_number_fk_user_id FOREIGN KEY(user_id) REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, ADD CONSTRAINT user_phone_number_fk_country_code FOREIGN KEY(country_code) REFERENCES phone_number_country_code(country_code), ADD CONSTRAINT user_phone_number_chk_country_code_is_upper_case CHECK(country_code = UPPER(country_code)), ADD CONSTRAINT user_phone_number_chk_number_valid CHECK(LENGTH(number) >= 7 AND LENGTH(number) <= 15 AND CAST(number AS BIGINT) > 0);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "5f18b68674cc4a5ca774bd6b437257581ec6490efa868dd2702fd779adcca068"
+}

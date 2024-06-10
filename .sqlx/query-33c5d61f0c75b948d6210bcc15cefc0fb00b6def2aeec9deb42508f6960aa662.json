@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT \"user\".id, \"user\".password_reset_token, \"user\".password_reset_token_expiry, \"user\".password_reset_attempts FROM \"user\" LEFT JOIN user_email ON user_email.user_id = \"user\".id LEFT JOIN user_phone_number ON user_phone_number.user_id = \"user\".id LEFT JOIN phone_number_country_code ON phone_number_country_code.country_code = user_phone_number.country_code WHERE \"user\".username = $1 OR user_email.email = $1 OR CONCAT('+', phone_number_country_code.phone_code, user_phone_number.number) = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "password_reset_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "password_reset_token_expiry",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "password_reset_attempts",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "33c5d61f0c75b948d6210bcc15cefc0fb00b6def2aeec9deb42508f6960aa662"
+}

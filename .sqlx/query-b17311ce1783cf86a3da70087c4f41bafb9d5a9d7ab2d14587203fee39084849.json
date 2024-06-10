@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE resource_type(id UUID NOT NULL, name VARCHAR(100) NOT NULL, description VARCHAR(500) NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "b17311ce1783cf86a3da70087c4f41bafb9d5a9d7ab2d14587203fee39084849"
+}

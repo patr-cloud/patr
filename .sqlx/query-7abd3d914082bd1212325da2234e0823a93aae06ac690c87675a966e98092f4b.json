@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE user_api_token_workspace_super_admin(token_id UUID NOT NULL, user_id UUID NOT NULL, workspace_id UUID NOT NULL, token_permission_type TOKEN_PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('super_admin') STORED);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "7abd3d914082bd1212325da2234e0823a93aae06ac690c87675a966e98092f4b"
+}

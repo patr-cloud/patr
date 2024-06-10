@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE meta_data(id TEXT CONSTRAINT meta_data_pk PRIMARY KEY, value TEXT NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "c614ed39616af88bfbcbf5144d5e822b4f60d85bb610ed6e75f5f52af7d3abab"
+}

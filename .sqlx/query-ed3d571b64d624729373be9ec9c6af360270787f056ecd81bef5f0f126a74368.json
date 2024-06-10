@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE user_api_token_resource_permissions_exclude(token_id UUID NOT NULL, workspace_id UUID NOT NULL, permission_id UUID NOT NULL, resource_id UUID NOT NULL, resource_deleted TIMESTAMPTZ GENERATED ALWAYS AS (NULL) STORED, permission_type PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('exclude') STORED);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "ed3d571b64d624729373be9ec9c6af360270787f056ecd81bef5f0f126a74368"
+}

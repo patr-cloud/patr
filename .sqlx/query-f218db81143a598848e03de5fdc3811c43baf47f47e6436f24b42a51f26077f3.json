@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE user_phone_number(user_id UUID NOT NULL, country_code CHAR(2) NOT NULL, number VARCHAR(15) NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "f218db81143a598848e03de5fdc3811c43baf47f47e6436f24b42a51f26077f3"
+}

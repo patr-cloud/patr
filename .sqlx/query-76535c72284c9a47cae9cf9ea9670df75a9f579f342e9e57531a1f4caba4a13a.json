@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT workspace.id, workspace.name::TEXT AS \"name!\", workspace.super_admin_id FROM workspace LEFT JOIN workspace_user ON workspace.id = workspace_user.workspace_id WHERE (workspace.super_admin_id = $1 OR workspace_user.user_id = $1) AND workspace.deleted IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "super_admin_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      false
+    ]
+  },
+  "hash": "76535c72284c9a47cae9cf9ea9670df75a9f579f342e9e57531a1f4caba4a13a"
+}

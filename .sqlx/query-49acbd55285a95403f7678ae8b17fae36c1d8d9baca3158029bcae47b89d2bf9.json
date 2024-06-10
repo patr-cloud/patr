@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE static_site_upload_history(upload_id UUID NOT NULL, static_site_id UUID NOT NULL, message TEXT NOT NULL, uploaded_by UUID NOT NULL, created TIMESTAMPTZ NOT NULL, processed TIMESTAMPTZ);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "49acbd55285a95403f7678ae8b17fae36c1d8d9baca3158029bcae47b89d2bf9"
+}

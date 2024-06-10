@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE deployment(id UUID NOT NULL, name CITEXT NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, runner UUID NOT NULL, min_horizontal_scale SMALLINT NOT NULL DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL DEFAULT 1, machine_type UUID NOT NULL, deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, startup_probe_port INTEGER, startup_probe_path VARCHAR(255), startup_probe_port_type EXPOSED_PORT_TYPE, liveness_probe_port INTEGER, liveness_probe_path VARCHAR(255), liveness_probe_port_type EXPOSED_PORT_TYPE, current_live_digest TEXT, deleted TIMESTAMPTZ);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "7bb77e97baecb910384ebade31c9f40d567effada2a031b7c80d56b89bae3b16"
+}

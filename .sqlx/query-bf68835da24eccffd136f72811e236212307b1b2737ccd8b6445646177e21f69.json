@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE role_resource_permissions_exclude(role_id UUID NOT NULL, permission_id UUID NOT NULL, resource_id UUID NOT NULL, permission_type PERMISSION_TYPE NOT NULL GENERATED ALWAYS AS ('exclude') STORED);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "bf68835da24eccffd136f72811e236212307b1b2737ccd8b6445646177e21f69"
+}

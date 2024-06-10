@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE PERMISSION_TYPE AS ENUM('include', 'exclude');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "43bbb4bb4e90a5ef1aa894d334e18172b30abd3430afaf4855da95298eb3836c"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE deployment_volume(id UUID NOT NULL, name TEXT NOT NULL, deployment_id UUID NOT NULL, volume_size INT NOT NULL, volume_mount_path TEXT NOT NULL, deleted TIMESTAMPTZ);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "b84a75804685f79e5fd90776637566478bf97e50f169a318746801becfe42847"
+}

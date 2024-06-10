@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO \"user\"(id, username, password, first_name, last_name, created, recovery_email, recovery_phone_country_code, recovery_phone_number, workspace_limit, password_reset_token, password_reset_token_expiry, password_reset_attempts, mfa_secret) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NULL, NULL, NULL, NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Text",
+        "Varchar",
+        "Varchar",
+        "Timestamptz",
+        "Text",
+        "Bpchar",
+        "Varchar",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cee692fd702c58ad0c2832837349cd9887bc63e1afa19e894e695e04c6e21c94"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE phone_number_country_code ADD CONSTRAINT phone_number_country_code_chk_country_code_is_upper_case CHECK(country_code = UPPER(country_code));",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "a0f9789dba286c68a4f09a110491068de95d14724fc2be017263d1bda5b5fc1b"
+}

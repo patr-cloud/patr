@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE MANAGED_DATABASE_ENGINE AS ENUM('postgres', 'mysql', 'mongo', 'redis');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "cc9a6eb2100288b1c6a054ff3c4d1e234853fc242935918ac5f1d82059b15f88"
+}

@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO user_login(login_id, user_id, login_type, created) VALUES (GENERATE_LOGIN_ID(), $1, 'api_token', $2) RETURNING login_id;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "login_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b9c847c2cf74a215d7fc57c8ecb5672b1bd8586abed8163bf0e9f4666b045e44"
+}

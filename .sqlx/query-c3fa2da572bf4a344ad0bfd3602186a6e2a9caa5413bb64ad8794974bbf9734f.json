@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT \"user\".id, \"user\".username, \"user\".password, \"user\".recovery_email, \"user\".recovery_phone_country_code, \"user\".recovery_phone_number, \"user\".password_reset_token_expiry FROM \"user\" LEFT JOIN user_email ON user_email.user_id = \"user\".id LEFT JOIN user_phone_number ON user_phone_number.user_id = \"user\".id LEFT JOIN phone_number_country_code ON phone_number_country_code.country_code = user_phone_number.country_code WHERE \"user\".username = $1 OR user_email.email = $1 OR CONCAT('+', phone_number_country_code.phone_code, user_phone_number.number) = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "password",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "recovery_email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "recovery_phone_country_code",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "recovery_phone_number",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "password_reset_token_expiry",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "c3fa2da572bf4a344ad0bfd3602186a6e2a9caa5413bb64ad8794974bbf9734f"
+}

@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO user_api_token_resource_permissions_type(token_id, workspace_id, permission_id, resource_permission_type, token_permission_type) VALUES ($1, $2, $3, $4, DEFAULT);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        {
+          "Custom": {
+            "name": "permission_type",
+            "kind": {
+              "Enum": [
+                "include",
+                "exclude"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2a4ce3e705cd51e00af33d526adbb37a96d075e0aec050cbf1d38f56ff764e9f"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE user_api_token_workspace_super_admin ADD CONSTRAINT user_api_token_workspace_super_admin_fk_type FOREIGN KEY(token_id, workspace_id, token_permission_type) REFERENCES user_api_token_workspace_permission_type(token_id, workspace_id, token_permission_type), ADD CONSTRAINT user_api_token_workspace_super_admin_fk_token FOREIGN KEY(token_id, user_id) REFERENCES user_api_token(token_id, user_id), ADD CONSTRAINT user_api_token_workspace_super_admin_fk_workspace FOREIGN KEY(workspace_id, user_id) REFERENCES workspace(id, super_admin_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "f0f462c15787719246194b027c743f02bd226da2ae3c7d1abafecf0c6cb735c7"
+}
