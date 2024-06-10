@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE audit_log(id UUID NOT NULL, /* workspace_id is kept in case the resource is moved to another workspace */ workspace_id UUID NOT NULL, resource_id UUID NOT NULL, timestamp TIMESTAMPTZ NOT NULL, action AUDIT_LOG_TYPE NOT NULL, login_id UUID NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "571c2903e5d7c2d975dccad77b9d7f8373e2ee97117d6986ba7904258b4eb23b"
+}

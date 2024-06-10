@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE user_email ADD CONSTRAINT user_email_fk_user_id FOREIGN KEY(user_id) REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, ADD CONSTRAINT user_email_chk_local_is_lower_case CHECK(email = LOWER(email));",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "21c2efc85e09d32d5269157c951e79c3b4c91bb7d2f2117fa418d1f25707ad9f"
+}

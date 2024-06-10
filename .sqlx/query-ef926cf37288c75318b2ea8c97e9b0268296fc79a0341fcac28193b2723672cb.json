@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE deployment_deploy_history(deployment_id UUID NOT NULL, image_digest TEXT NOT NULL, repository_id UUID NOT NULL, created TIMESTAMPTZ NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "ef926cf37288c75318b2ea8c97e9b0268296fc79a0341fcac28193b2723672cb"
+}

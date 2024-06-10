@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE DNS_RECORD_TYPE AS ENUM('A', 'MX', 'TXT', 'AAAA', 'CNAME');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "1457766075cd6031c6c9193aed698ae5131f6f564b4ca512d3595fc2623ab92c"
+}

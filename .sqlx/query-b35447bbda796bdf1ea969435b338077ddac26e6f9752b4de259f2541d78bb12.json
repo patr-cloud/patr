@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE user_unverified_phone_number(country_code CHAR(2) NOT NULL, phone_number VARCHAR(15) NOT NULL, user_id UUID NOT NULL, verification_token_hash TEXT NOT NULL, verification_token_expiry TIMESTAMPTZ NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "b35447bbda796bdf1ea969435b338077ddac26e6f9752b4de259f2541d78bb12"
+}

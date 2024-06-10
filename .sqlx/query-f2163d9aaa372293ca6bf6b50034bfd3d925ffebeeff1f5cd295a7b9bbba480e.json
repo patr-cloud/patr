@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE AUDIT_LOG_TYPE AS ENUM ('create', 'update', 'delete');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "f2163d9aaa372293ca6bf6b50034bfd3d925ffebeeff1f5cd295a7b9bbba480e"
+}

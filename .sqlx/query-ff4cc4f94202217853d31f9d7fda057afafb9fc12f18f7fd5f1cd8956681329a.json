@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE managed_database_plan(id \t\tUUID NOT NULL, cpu \tINTEGER NOT NULL, /* Multiples of 1 vCPU */ ram \tINTEGER NOT NULL, /* Multiples of 1 GB RAM */ volume \tINTEGER NOT NULL /* Multiples of 1 GB storage space */);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "ff4cc4f94202217853d31f9d7fda057afafb9fc12f18f7fd5f1cd8956681329a"
+}

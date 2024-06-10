@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE user_api_token ADD CONSTRAINT user_api_token_pk PRIMARY KEY(token_id), ADD CONSTRAINT user_api_token_token_id_user_id_uk UNIQUE(token_id, user_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "49c053d1f2505d6b9596d25d75b04fdac521c00c5feb7d3189b5fb8b3de30f0b"
+}

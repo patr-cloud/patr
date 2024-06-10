@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE workspace_domain(id UUID NOT NULL, name TEXT NOT NULL, tld TEXT NOT NULL, workspace_id UUID NOT NULL, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL, is_verified BOOLEAN NOT NULL, deleted TIMESTAMPTZ);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "d640c32b5460079fbd8bd63fc8980ec64267729f3948bb2fd7046ea2696c80c1"
+}

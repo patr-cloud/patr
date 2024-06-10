@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE deployment_exposed_port ADD CONSTRAINT deployment_exposed_port_fk_deployment_id FOREIGN KEY(deployment_id) REFERENCES deployment(id), ADD CONSTRAINT deployment_exposed_port_chk_port_u16 CHECK(port > 0 AND port <= 65535);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "c1321b10ee860384ec9af5ab86f00baefdb01c3d06e6bbe2463949a9201c5898"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE user_controlled_domain ADD CONSTRAINT user_controlled_domain_chk_nameserver_type CHECK(nameserver_type = 'external'), ADD CONSTRAINT user_controlled_domain_fk_domain_id_nameserver_type FOREIGN KEY(domain_id, nameserver_type) REFERENCES workspace_domain(id, nameserver_type);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "5c164fa81fa1cb8d5432b662f8ea75d268c39b6a9d70d3e947a7cc6ee67b5120"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE user_controlled_domain(domain_id UUID NOT NULL, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "2fc8ba6f859e38830514addf2ca950b3b85bd2518d428782c72c31a3e992f5a8"
+}

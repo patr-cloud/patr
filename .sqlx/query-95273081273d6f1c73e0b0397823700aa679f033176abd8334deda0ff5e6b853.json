@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE domain_tld ADD CONSTRAINT domain_tld_chk_is_length_valid CHECK(LENGTH(tld) >= 2 AND LENGTH(tld) <= 63), ADD CONSTRAINT domain_tld_chk_is_tld_valid CHECK(tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "95273081273d6f1c73e0b0397823700aa679f033176abd8334deda0ff5e6b853"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE container_registry_repository_blob(blob_digest TEXT NOT NULL, created TIMESTAMPTZ NOT NULL, size BIGINT NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "ebccec108fd0da2e4a74f414f3116d6d7cb57d4efa17a33a1b973b52a5c27d18"
+}

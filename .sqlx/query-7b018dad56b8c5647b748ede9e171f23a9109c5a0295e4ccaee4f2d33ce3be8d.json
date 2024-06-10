@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE workspace(id UUID NOT NULL, name CITEXT NOT NULL, super_admin_id UUID NOT NULL, deleted TIMESTAMPTZ);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "7b018dad56b8c5647b748ede9e171f23a9109c5a0295e4ccaee4f2d33ce3be8d"
+}

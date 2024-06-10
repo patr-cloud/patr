@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE managed_database(id UUID NOT NULL, name CITEXT NOT NULL, workspace_id UUID NOT NULL, runner UUID NOT NULL, engine MANAGED_DATABASE_ENGINE NOT NULL, database_plan_id UUID NOT NULL, status MANAGED_DATABASE_STATUS NOT NULL, username TEXT NOT NULL, deleted TIMESTAMPTZ);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "3f62a3d5a629ffce21cc551f99f13fd29a8f2100ed398c56c7c3e215e08228a2"
+}

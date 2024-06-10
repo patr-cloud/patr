@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE patr_domain_dns_record(id UUID NOT NULL, record_identifier TEXT NOT NULL, domain_id UUID NOT NULL, name TEXT NOT NULL, type DNS_RECORD_TYPE NOT NULL, value TEXT NOT NULL, priority INTEGER, ttl BIGINT NOT NULL, proxied BOOLEAN);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "d02e64e0ff6091ca1dba941b99cf17fd184bb46e22108928e04dfd5c72b44e4f"
+}

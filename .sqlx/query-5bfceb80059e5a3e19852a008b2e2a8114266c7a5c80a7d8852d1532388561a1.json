@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE DOMAIN_NAMESERVER_TYPE AS ENUM('internal', 'external');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "5bfceb80059e5a3e19852a008b2e2a8114266c7a5c80a7d8852d1532388561a1"
+}

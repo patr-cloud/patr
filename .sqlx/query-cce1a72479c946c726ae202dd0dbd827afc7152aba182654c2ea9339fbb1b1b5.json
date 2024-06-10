@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO meta_data(id, value) VALUES ('version_major', $1), ('version_minor', $2), ('version_patch', $3) ON CONFLICT(id) DO UPDATE SET value = EXCLUDED.value;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cce1a72479c946c726ae202dd0dbd827afc7152aba182654c2ea9339fbb1b1b5"
+}

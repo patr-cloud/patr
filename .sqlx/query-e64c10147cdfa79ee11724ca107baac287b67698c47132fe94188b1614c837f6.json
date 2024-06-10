@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE container_registry_manifest_blob(manifest_digest TEXT NOT NULL, blob_digest TEXT NOT NULL, parent_blob_digest TEXT);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "e64c10147cdfa79ee11724ca107baac287b67698c47132fe94188b1614c837f6"
+}

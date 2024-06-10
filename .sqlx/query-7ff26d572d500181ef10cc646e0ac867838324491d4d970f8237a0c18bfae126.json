@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE deployment_exposed_port(deployment_id UUID NOT NULL, port INTEGER NOT NULL, port_type EXPOSED_PORT_TYPE NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "7ff26d572d500181ef10cc646e0ac867838324491d4d970f8237a0c18bfae126"
+}

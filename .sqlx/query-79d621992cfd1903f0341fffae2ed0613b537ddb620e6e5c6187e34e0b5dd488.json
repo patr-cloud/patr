@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE \"user\"(id UUID NOT NULL, username VARCHAR(100) NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, created TIMESTAMPTZ NOT NULL, /* Recovery options */ recovery_email TEXT, recovery_phone_country_code CHAR(2), recovery_phone_number VARCHAR(15), workspace_limit INTEGER NOT NULL, password_reset_token TEXT, password_reset_token_expiry TIMESTAMPTZ NULL, password_reset_attempts INT NULL, mfa_secret TEXT);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "79d621992cfd1903f0341fffae2ed0613b537ddb620e6e5c6187e34e0b5dd488"
+}

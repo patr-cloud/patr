@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE MANAGED_URL_TYPE AS ENUM('proxy_to_deployment', 'proxy_to_static_site', 'proxy_url', 'redirect');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "88a92135db8538f5dd30417042dd3f5a6fab12f8a5e0b46f9b5c8fd137b95a3b"
+}

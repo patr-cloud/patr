@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE LEGACY_MANAGED_DATABASE_PLAN AS ENUM('nano', 'micro', 'small', 'medium', 'large', 'xlarge', 'xxlarge', 'mammoth');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "7107dc94aaf7e85b296c90f048fa4c59dd32103593659b11a258cc32922c9182"
+}

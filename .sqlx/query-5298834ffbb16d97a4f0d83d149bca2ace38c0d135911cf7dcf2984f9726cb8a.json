@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE deployment_environment_variable(deployment_id UUID NOT NULL, name VARCHAR(256) NOT NULL, value TEXT, secret_id UUID);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "5298834ffbb16d97a4f0d83d149bca2ace38c0d135911cf7dcf2984f9726cb8a"
+}

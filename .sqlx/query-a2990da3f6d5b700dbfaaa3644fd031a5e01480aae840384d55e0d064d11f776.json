@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE USER_LOGIN_TYPE AS ENUM('api_token', 'web_login');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "a2990da3f6d5b700dbfaaa3644fd031a5e01480aae840384d55e0d064d11f776"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE managed_database ADD CONSTRAINT managed_database_chk_name_is_trimmed CHECK(name = TRIM(name)), ADD CONSTRAINT managed_database_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id), ADD CONSTRAINT managed_database_fk_runner FOREIGN KEY(runner) REFERENCES runner(id), ADD CONSTRAINT managed_database_fk_managed_database_plan_id FOREIGN KEY(database_plan_id) REFERENCES managed_database_plan(id), ADD CONSTRAINT managed_database_fk_id_workspace_id_deleted FOREIGN KEY(id, workspace_id, deleted) REFERENCES resource(id, owner_id, deleted);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "fd58e8f1f6cd646f2cf7be6c2aaf52a52289be48adc548ee6280e215c0c8c424"
+}

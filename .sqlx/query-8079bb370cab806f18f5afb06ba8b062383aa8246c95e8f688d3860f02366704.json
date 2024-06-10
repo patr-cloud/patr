@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE user_login(login_id UUID NOT NULL, user_id UUID NOT NULL, login_type USER_LOGIN_TYPE NOT NULL, created TIMESTAMPTZ NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "8079bb370cab806f18f5afb06ba8b062383aa8246c95e8f688d3860f02366704"
+}

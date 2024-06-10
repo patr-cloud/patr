@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE \"user\" ADD CONSTRAINT user_chk_username_is_valid CHECK(/* Username is a-z, 0-9, _, cannot begin or end with a . or - */ username ~ '^[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]$' AND username NOT LIKE '%..%' AND username NOT LIKE '%.-%' AND username NOT LIKE '%-.%'), ADD CONSTRAINT user_chk_recovery_email_is_lower_case CHECK(recovery_email = LOWER(recovery_email)), ADD CONSTRAINT user_chk_recovery_phone_country_code_is_upper_case CHECK(recovery_phone_country_code = UPPER(recovery_phone_country_code)), ADD CONSTRAINT user_chk_email_or_phone_present CHECK((recovery_email IS NOT NULL) OR (recovery_phone_country_code IS NOT NULL AND recovery_phone_number IS NOT NULL));",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "374d87df55be34b7bef33af0b8d7568207e5509beda699f6c8440241497ecf8d"
+}

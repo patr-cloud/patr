@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO web_login(login_id, original_login_id, user_id,  refresh_token, token_expiry,  created, created_ip, created_location, created_user_agent, created_country, created_region, created_city, created_timezone) VALUES ($1, NULL, $2,  $3, $4,  $5, $6, ST_SetSRID(POINT($7, $8)::GEOMETRY, 4326), $9, $10, $11, $12, $13);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Inet",
+        "Float8",
+        "Float8",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e916c669898169fb548667a921280e6af330bf28259f20bc4549a2ebae6685c2"
+}

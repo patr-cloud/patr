@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE phone_number_country_code(country_code CHAR(2), phone_code VARCHAR(5) NOT NULL, country_name VARCHAR(80) NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "b5c27e9193a237f0b6fcca0fff768f17bdb9494b0f0ff469ea132fbf24f3b854"
+}
