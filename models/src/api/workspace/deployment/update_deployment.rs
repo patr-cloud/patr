@@ -6,7 +6,7 @@ use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 macros::declare_api_endpoint!(
 	/// Route to update a deployment
 	UpdateDeployment,
-	PATCH "/workspace/:workspace_id/infrastructure/deployment/:deployment_id" {
+	PATCH "/workspace/:workspace_id/deployment/:deployment_id" {
 		/// The workspace ID of the user
 		pub workspace_id: Uuid,
 		/// The deployment ID of the deployment to stop

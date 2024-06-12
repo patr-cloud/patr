@@ -2,14 +2,14 @@ use std::{cmp::Ordering, collections::BTreeMap};
 
 use axum::{http::StatusCode, Router};
 use futures::sink::With;
-use models::{api::workspace::infrastructure::deployment::*, ErrorType};
+use models::{api::workspace::deployment::*, ErrorType};
 use sqlx::query_as;
 use time::OffsetDateTime;
 
 use crate::prelude::*;
 
 /// Update deployment
-/// 
+///
 /// #Parameters
 /// - `workspace_id`: The workspace ID
 /// - `deployment_id`: The deployment ID
@@ -24,10 +24,9 @@ use crate::prelude::*;
 /// - `liveness_probe`: The liveness probe
 /// - `config_mounts`: The config mounts
 /// - `volumes`: The volumes
-/// 
+///
 /// #Returns
 /// - `OK`: The deployment was updated
-/// 
 pub async fn update_deployment(
 	AuthenticatedAppRequest {
 		request:
@@ -81,7 +80,7 @@ pub async fn update_deployment(
 	let deployment = query!(
 		r#"
 		SELECT
-			region,
+			runner,
 			min_horizontal_scale
 		FROM
 			deployment
@@ -435,7 +434,7 @@ pub async fn update_deployment(
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
 	match deployment_status {
-		DeploymentStatus::Stopped | DeploymentStatus::Deleted | DeploymentStatus::Created => {
+		DeploymentStatus::Stopped | DeploymentStatus::Created => {
 			// Don't update deployments that are explicitly stopped or deleted
 		}
 		_ => {

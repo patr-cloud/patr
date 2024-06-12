@@ -2,24 +2,20 @@ use std::{cmp::Ordering, collections::BTreeMap};
 
 use axum::{http::StatusCode, Router};
 use futures::sink::With;
-use models::{
-	api::workspace::infrastructure::deployment::*,
-	ErrorType,
-};
+use models::{api::workspace::deployment::*, ErrorType};
 use sqlx::query_as;
 use time::OffsetDateTime;
 
 use crate::prelude::*;
 
 /// Delete a deployment
-/// 
+///
 /// #Parameters
 /// - `workspace_id`: The workspace ID
 /// - `deployment_id`: The deployment ID
-/// 
+///
 /// #Returns
 /// - `OK`: The deployment was deleted
-/// 
 pub async fn delete_deployment(
 	AuthenticatedAppRequest {
 		request:
@@ -45,7 +41,7 @@ pub async fn delete_deployment(
 	let deployment = query!(
 		r#"
 		SELECT
-			region
+			runner
 		FROM
 			deployment
 		WHERE

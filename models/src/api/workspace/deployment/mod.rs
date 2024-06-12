@@ -11,8 +11,6 @@ mod get_deployment_metric;
 mod list_all_deployment_machine_type;
 mod list_deployment;
 mod list_deployment_history;
-mod list_linked_url;
-mod revert_deployment;
 mod start_deployment;
 mod stop_deployment;
 mod update_deployment;
@@ -26,8 +24,6 @@ pub use self::{
 	list_all_deployment_machine_type::*,
 	list_deployment::*,
 	list_deployment_history::*,
-	list_linked_url::*,
-	revert_deployment::*,
 	start_deployment::*,
 	stop_deployment::*,
 	update_deployment::*,

@@ -1,22 +1,15 @@
-use std::{cmp::Ordering, collections::BTreeMap};
-
-use axum::{http::StatusCode, Router};
-use futures::sink::With;
+use axum::http::StatusCode;
 use models::{
-	api::{
-		workspace::{infrastructure::deployment::*, region::RegionStatus},
-		WithId,
-	},
+	api::{workspace::deployment::*, WithId},
 	ErrorType,
 };
 use regex::Regex;
-use sqlx::query_as;
 use time::OffsetDateTime;
 
-use crate::{models::deployment::MACHINE_TYPES, prelude::*};
+use crate::prelude::*;
 
 /// Create a deployment
-/// 
+///
 /// # Parameters
 /// - `name` - The name of the deployment
 /// - `registry` - The registry to use for the deployment
@@ -28,7 +21,6 @@ use crate::{models::deployment::MACHINE_TYPES, prelude::*};
 ///
 /// # Returns
 /// - `id` - The ID of the created deployment
-/// 
 pub async fn create_deployment(
 	AuthenticatedAppRequest {
 		request:
@@ -43,8 +35,19 @@ pub async fn create_deployment(
 						image_tag,
 						region,
 						machine_type,
-						running_details,
-						deploy_on_push,
+						running_details:
+							DeploymentRunningDetails {
+								deploy_on_push,
+								min_horizontal_scale,
+								max_horizontal_scale,
+								ports,
+								environment_variables,
+								startup_probe,
+								liveness_probe,
+								config_mounts,
+								volumes,
+							},
+						deploy_on_create,
 					},
 			},
 		database,
@@ -76,47 +79,6 @@ pub async fn create_deployment(
 
 	if deployment_exist {
 		return Err(ErrorType::ResourceAlreadyExists);
-	}
-
-	// Validations
-	if image_tag.is_empty() {
-		return Err(ErrorType::WrongParameters);
-	}
-
-	if running_details.ports.is_empty() {
-		return Err(ErrorType::WrongParameters);
-	}
-
-	if let DeploymentRegistry::ExternalRegistry { image_name, .. } = registry {
-		let valid = Regex::new("^(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?)(((/)(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?))*)?$")
-		.unwrap()
-		.is_match(image_name.trim());
-
-		if !valid {
-			return Err(ErrorType::InvalidImageName);
-		}
-	}
-
-	// Check region if active
-	let region_details = query!(
-		r#"
-		SELECT
-			status as "status: RegionStatus",
-			workspace_id
-		FROM
-			region
-		WHERE
-			id = $1;
-		"#,
-		region as _,
-	)
-	.fetch_optional(&mut **database)
-	.await?
-	.filter(|region| todo!("return if patr region or if workspace_id is some"))
-	.ok_or(ErrorType::server_error("Could not get region details"))?;
-
-	if !(region_details.status == RegionStatus::Active || todo!("Check if patr region")) {
-		return Err(ErrorType::RegionNotActive);
 	}
 
 	todo!("Get limit on resource creation, max deployment and max volume depending on the users patr plan if not a byoc user");
@@ -172,7 +134,7 @@ pub async fn create_deployment(
 						image_tag,
 						status,
 						workspace_id,
-						region,
+						runner,
 						min_horizontal_scale,
 						max_horizontal_scale,
 						machine_type,
@@ -210,23 +172,19 @@ pub async fn create_deployment(
 				deployment_id as _,
 				name as _,
 				repository_id as _,
-				image_tag,
+				image_tag.as_ref(),
 				workspace_id as _,
 				region as _,
-				running_details.min_horizontal_scale as i32,
-				running_details.max_horizontal_scale as i32,
+				min_horizontal_scale as i32,
+				max_horizontal_scale as i32,
 				machine_type as _,
 				deploy_on_push,
-				running_details.startup_probe.map(|probe| probe.port as i32),
-				running_details.startup_probe.map(|probe| probe.path),
-				running_details.startup_probe.map(|_| ExposedPortType::Http) as _,
-				running_details
-					.liveness_probe
-					.map(|probe| probe.port as i32),
-				running_details.liveness_probe.map(|probe| probe.path),
-				running_details
-					.liveness_probe
-					.map(|_| ExposedPortType::Http) as _,
+				startup_probe.map(|probe| probe.port as i32),
+				startup_probe.map(|probe| probe.path),
+				startup_probe.map(|_| ExposedPortType::Http) as _,
+				liveness_probe.map(|probe| probe.port as i32),
+				liveness_probe.map(|probe| probe.path),
+				liveness_probe.map(|_| ExposedPortType::Http) as _,
 			)
 			.execute(&mut **database)
 			.await?;
@@ -248,7 +206,7 @@ pub async fn create_deployment(
 						image_tag,
 						status,
 						workspace_id,
-						region,
+						runner,
 						min_horizontal_scale,
 						max_horizontal_scale,
 						machine_type,
@@ -287,30 +245,26 @@ pub async fn create_deployment(
 				name as _,
 				registry,
 				image_name,
-				image_tag,
+				image_tag.as_ref(),
 				workspace_id as _,
 				region as _,
-				running_details.min_horizontal_scale as i32,
-				running_details.max_horizontal_scale as i32,
+				min_horizontal_scale as i32,
+				max_horizontal_scale as i32,
 				machine_type as _,
 				deploy_on_push,
-				running_details.startup_probe.map(|probe| probe.port as i32),
-				running_details.startup_probe.map(|probe| probe.path),
-				running_details.startup_probe.map(|_| ExposedPortType::Http) as _,
-				running_details
-					.liveness_probe
-					.map(|probe| probe.port as i32),
-				running_details.liveness_probe.map(|probe| probe.path),
-				running_details
-					.liveness_probe
-					.map(|_| ExposedPortType::Http) as _,
+				startup_probe.map(|probe| probe.port as i32),
+				startup_probe.map(|probe| probe.path),
+				startup_probe.map(|_| ExposedPortType::Http) as _,
+				liveness_probe.map(|probe| probe.port as i32),
+				liveness_probe.map(|probe| probe.path),
+				liveness_probe.map(|_| ExposedPortType::Http) as _,
 			)
 			.execute(&mut **database)
 			.await?;
 		}
 	}
 
-	for (port, port_type) in &running_details.ports {
+	for (port, port_type) in &ports {
 		// Adding exposed port entry to database
 		query!(
 			r#"
@@ -340,7 +294,7 @@ pub async fn create_deployment(
 	.execute(&mut **database)
 	.await?;
 
-	for (key, value) in &running_details.environment_variables {
+	for (key, value) in &environment_variables {
 		// Adding environment variable entry to database
 		match value {
 			EnvironmentVariableValue::String(value) => {
@@ -390,7 +344,7 @@ pub async fn create_deployment(
 		}
 	}
 
-	for (path, file) in &running_details.config_mounts {
+	for (path, file) in &config_mounts {
 		// Decoding config file from base64 to byte array
 		query!(
 			r#"
@@ -411,7 +365,7 @@ pub async fn create_deployment(
 		.await?;
 	}
 
-	for (name, volume) in &running_details.volumes {
+	for (name, volume) in &volumes {
 		let volume_id = loop {
 			let uuid = Uuid::new_v4();
 

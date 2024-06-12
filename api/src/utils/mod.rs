@@ -96,15 +96,4 @@ pub mod constants {
 	/// The maximum number of times a user can attempt to reset a password
 	/// before getting banned altogether
 	pub const MAX_PASSWORD_RESET_ATTEMPTS: u16 = 5;
-
-	/// The default maximum limit for a deployment in a workspace. If this 
-	/// need to be increased, the user should upgrade their plan with Patr
-	pub const DEFAULT_DEPLOYMENT_LIMIT: u32 = 1;
-
-	/// The default maximum limit for a deployment volume in a workspace. If this 
-	/// need to be increased, the user shpuld upgrade their plan with Patr
-	pub const VOLUME_STORAGE_IN_BYTE: usize = 0;
-
-	/// The registry address 
-	pub const PATR_REGISTRY: &str = "registry.patr.cloud";
 }

@@ -3,7 +3,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to stop a deployment
 	StopDeployment,
-	POST "/workspace/:workspace_id/infrastructure/deployment/:deployment_id/stop" {
+	POST "/workspace/:workspace_id/deployment/:deployment_id/stop" {
 		/// The workspace ID of the user
 		pub workspace_id: Uuid,
 		/// The deployment ID of the deployment to stop
