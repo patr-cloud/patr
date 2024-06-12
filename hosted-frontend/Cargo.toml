@@ -14,10 +14,10 @@ crate-type = ["cdylib", "rlib"]
 axum-extra = { workspace = true, features = ["typed-routing", "cookie"] }
 components = { workspace = true, features = [] }
 console_error_panic_hook = { workspace = true, features = [] }
+cookie = { workspace = true, features = [] }
 http = { workspace = true, features = ["default"] }
 log = { workspace = true, features = [] }
 macros = { workspace = true, features = [] }
-cookie = { workspace = true, features = [] }
 matchit = { workspace = true, features = ["default"] }
 models = { workspace = true, features = [] }
 preprocess = { workspace = true, features = [] }
