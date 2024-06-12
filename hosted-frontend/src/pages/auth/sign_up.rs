@@ -20,18 +20,17 @@ pub fn SignUpForm() -> impl IntoView {
 
 	let _name_error = create_rw_signal("".to_owned());
 	let username_error = create_rw_signal("".to_owned());
-	let _email_error = create_rw_signal("".to_owned());
+	let email_error = create_rw_signal("".to_owned());
 
 	let password_error = create_rw_signal("".to_owned());
 
-	let handle_errors = move |error: ServerFnError<ErrorType>| match error {
-		ServerFnError::WrappedServerError(error) => match error {
-			ErrorType::UsernameUnavailable => {
-				username_error.set("Username Not Available".to_owned())
-			}
-			ErrorType::EmailUnavailable => username_error.set("Email Not Available".to_owned()),
-			e => password_error.set(format!("Error: {}", e)),
-		},
+	let handle_errors = move |error| match error {
+		ServerFnError::WrappedServerError(ErrorType::UsernameUnavailable) => {
+			username_error.set("Username Not Available".to_owned());
+		}
+		ServerFnError::WrappedServerError(ErrorType::EmailUnavailable) => {
+			email_error.set("Email Not Available".to_owned());
+		}
 		e => {
 			password_error.set(e.to_string());
 		}
@@ -104,6 +103,12 @@ pub fn SignUpForm() -> impl IntoView {
 					start_icon={Some(IconProps::builder().icon(IconType::User).build())}
 				/>
 
+				<Show when={move || !username_error.get().is_empty()}>
+					<Alert r#type={AlertType::Error} class="mt-xs">
+						{move || username_error.get()}
+					</Alert>
+				</Show>
+
 				<Input
 					class="full-width mt-lg"
 					r#type={InputType::Email}
@@ -112,6 +117,12 @@ pub fn SignUpForm() -> impl IntoView {
 					placeholder="proton@gmail.com"
 					start_icon={Some(IconProps::builder().icon(IconType::Mail).build())}
 				/>
+
+				<Show when={move || !email_error.get().is_empty()}>
+					<Alert r#type={AlertType::Error} class="mt-xs">
+						{move || email_error.get()}
+					</Alert>
+				</Show>
 
 				<div class="full-width mt-xxs">
 					{move || {

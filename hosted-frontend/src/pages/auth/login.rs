@@ -13,7 +13,7 @@ pub fn LoginForm() -> impl IntoView {
 	let username_error = create_rw_signal("".to_owned());
 	let password_error = create_rw_signal("".to_owned());
 
-	let handle_errors = move |error: ServerFnError<ErrorType>| match error {
+	let handle_errors = move |error| match error {
 		ServerFnError::WrappedServerError(ErrorType::UserNotFound) => {
 			username_error.set("User Not Found".to_owned());
 			password_error.set("".to_owned());
@@ -35,7 +35,6 @@ pub fn LoginForm() -> impl IntoView {
 					access_token,
 					refresh_token,
 				}) => {
-					logging::log!("{} {}", access_token, refresh_token);
 					let auth_state = AuthState::LoggedIn {
 						access_token,
 						refresh_token,

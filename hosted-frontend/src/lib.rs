@@ -73,7 +73,7 @@ pub fn hydrate() {
 	}
 
 	// Comment the below line to disable JS and test the app in pure SSR mode
-	// mount_to_body(render);
+	mount_to_body(render);
 }
 
 /// The main render function. Called when the application starts to render

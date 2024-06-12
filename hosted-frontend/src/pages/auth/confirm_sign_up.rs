@@ -13,18 +13,13 @@ pub fn ConfirmSignUpPage() -> impl IntoView {
 
 	let response = confirm_action.value();
 
-	let handle_errors = move |error: ServerFnError<ErrorType>| match error {
-		ServerFnError::WrappedServerError(error) => match error {
-			ErrorType::UserNotFound => {
-				username_error.set("User Not Found".to_owned());
-			}
-			ErrorType::MfaOtpInvalid => {
-				otp_error.set("Invalid OTP".to_owned());
-			}
-			e => {
-				otp_error.set(format!("{:?}", e));
-			}
-		},
+	let handle_errors = move |error| match error {
+		ServerFnError::WrappedServerError(ErrorType::UserNotFound) => {
+			username_error.set("User Not Found".to_owned());
+		}
+		ServerFnError::WrappedServerError(ErrorType::MfaOtpInvalid) => {
+			otp_error.set("Invalid OTP".to_owned());
+		}
 		e => {
 			otp_error.set(e.to_string());
 		}
@@ -37,7 +32,6 @@ pub fn ConfirmSignUpPage() -> impl IntoView {
 					refresh_token,
 					access_token,
 				}) => {
-					logging::log!("{}, {}", refresh_token, access_token);
 					let auth_state = AuthState::LoggedIn {
 						access_token,
 						refresh_token,
