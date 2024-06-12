@@ -39,9 +39,10 @@ use crate::{prelude::*, utils::constants};
 #[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentMachineType {
-	/// The number of CPU nodes
+	/// The number of CPU nodes that the machine needs. This is in number of
+	/// nodes
 	pub cpu_count: i16,
-	/// The number of memory nodes
+	/// The amount of RAM that the machine needs. This is in multiples of 0.5GiB
 	pub memory_count: i32,
 }
 
@@ -247,8 +248,6 @@ impl DeploymentRegistry {
 pub enum DeploymentStatus {
 	/// Deployment has been created
 	Created,
-	/// Image of a deployment has been pushed
-	Pushed,
 	/// Deployment is deploying
 	Deploying,
 	/// Deployment is running
@@ -257,20 +256,19 @@ pub enum DeploymentStatus {
 	Stopped,
 	/// Deployment has errored and stopped
 	Errored,
-	/// Deployment has been deleted
-	Deleted,
+	/// The deployment's runner is not reachable
+	Unreachable,
 }
 
 impl Display for DeploymentStatus {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Created => write!(f, "created"),
-			Self::Pushed => write!(f, "pushed"),
 			Self::Deploying => write!(f, "deploying"),
 			Self::Running => write!(f, "running"),
 			Self::Stopped => write!(f, "stopped"),
 			Self::Errored => write!(f, "errored"),
-			Self::Deleted => write!(f, "deleted"),
+			Self::Unreachable => write!(f, "unreachable"),
 		}
 	}
 }
@@ -282,12 +280,11 @@ impl FromStr for DeploymentStatus {
 		let s = s.to_lowercase();
 		match s.as_str() {
 			"created" => Ok(Self::Created),
-			"pushed" => Ok(Self::Pushed),
 			"deploying" => Ok(Self::Deploying),
 			"running" => Ok(Self::Running),
 			"stopped" => Ok(Self::Stopped),
 			"errored" => Ok(Self::Errored),
-			"deleted" => Ok(Self::Deleted),
+			"unreachable" => Ok(Self::Unreachable),
 			_ => Err(s),
 		}
 	}

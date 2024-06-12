@@ -1,8 +1,10 @@
 use leptos_router::ActionForm;
 use models::api::auth::*;
 
-use crate::{global_state::authstate_from_cookie, prelude::*};
+use crate::prelude::*;
 
+/// The login form component. This is the form that the user uses to log in to
+/// the application.
 #[component]
 pub fn LoginForm() -> impl IntoView {
 	let login_action = create_server_action::<Login>();
@@ -12,21 +14,16 @@ pub fn LoginForm() -> impl IntoView {
 	let password_error = create_rw_signal("".to_owned());
 
 	let handle_errors = move |error: ServerFnError<ErrorType>| match error {
-		ServerFnError::WrappedServerError(error) => match error {
-			ErrorType::UserNotFound => {
-				username_error.set("User Not Found".to_owned());
-				password_error.set("".to_owned());
-			}
-			ErrorType::InvalidPassword => {
-				username_error.set("".to_owned());
-				password_error.set("Wrong Password".to_owned());
-			}
-			e => {
-				username_error.set("".to_owned());
-				password_error.set(e.to_string());
-			}
-		},
+		ServerFnError::WrappedServerError(ErrorType::UserNotFound) => {
+			username_error.set("User Not Found".to_owned());
+			password_error.set("".to_owned());
+		}
+		ServerFnError::WrappedServerError(ErrorType::InvalidPassword) => {
+			username_error.set("".to_owned());
+			password_error.set("Wrong Password".to_owned());
+		}
 		e => {
+			username_error.set("".to_owned());
 			password_error.set(e.to_string());
 		}
 	};
@@ -39,7 +36,13 @@ pub fn LoginForm() -> impl IntoView {
 					refresh_token,
 				}) => {
 					logging::log!("{} {}", access_token, refresh_token);
-					authstate_from_cookie();
+					let auth_state = AuthState::LoggedIn {
+						access_token,
+						refresh_token,
+						last_used_workspace_id: None,
+					};
+					auth_state.clone().save();
+					expect_context::<RwSignal<_>>().set(auth_state);
 				}
 				Err(err) => {
 					logging::log!("{:#?}", err);
@@ -112,14 +115,5 @@ pub fn LoginForm() -> impl IntoView {
 				"LOGIN"
 			</Link>
 		</ActionForm>
-	}
-}
-
-#[component]
-pub fn AuthPage() -> impl IntoView {
-	view! {
-		<PageContainer class="bg-image">
-			<Outlet/>
-		</PageContainer>
 	}
 }

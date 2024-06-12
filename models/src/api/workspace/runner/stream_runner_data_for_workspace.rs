@@ -1,4 +1,4 @@
-use crate::{api::workspace::infrastructure::deployment::Deployment, prelude::*};
+use crate::{api::workspace::deployment::Deployment, prelude::*};
 
 macros::declare_stream_endpoint!(
 	/// Subscribe to the changes for a particular runner in a workspace

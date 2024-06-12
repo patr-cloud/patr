@@ -83,7 +83,7 @@ mod test {
 	use super::UserApiToken;
 	use crate::{
 		prelude::*,
-		rbac::{ResourcePermissionData, ResourcePermissionType, ResourceType, WorkspacePermission},
+		rbac::{ResourcePermissionType, WorkspacePermission},
 	};
 
 	#[test]
@@ -130,12 +130,7 @@ mod test {
 								let mut map = BTreeMap::new();
 								map.insert(
 									Uuid::nil(),
-									ResourcePermissionData {
-										resource_type: ResourceType::Domain,
-										resources: ResourcePermissionType::Include(BTreeSet::from(
-											[Uuid::nil()],
-										)),
-									},
+									ResourcePermissionType::Include(BTreeSet::from([Uuid::nil()])),
 								);
 								map
 							},

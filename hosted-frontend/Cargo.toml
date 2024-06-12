@@ -16,14 +16,17 @@ components = { workspace = true, features = [] }
 console_error_panic_hook = { workspace = true, features = [] }
 http = { workspace = true, features = ["default"] }
 log = { workspace = true, features = [] }
+macros = { workspace = true, features = [] }
+cookie = { workspace = true, features = [] }
 matchit = { workspace = true, features = ["default"] }
 models = { workspace = true, features = [] }
-macros = { workspace = true, features = [] }
 preprocess = { workspace = true, features = [] }
 reqwest = { workspace = true, features = ["json", "rustls-tls"] }
+semver = { workspace = true, features = [] }
 serde = { workspace = true, features = ["default", "derive"] }
 serde_json = { workspace = true, features = ["default"] }
 serde_urlencoded = { workspace = true, features = [] }
+strum = { workspace = true, features = ["default"] }
 time = { workspace = true, features = ["default"] }
 tower = { workspace = true, features = ["util"] }
 tracing = { workspace = true, features = ["attributes"] }
@@ -39,16 +42,16 @@ web-sys = { workspace = true, features = [
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 axum = { workspace = true, features = ["macros"] }
 leptos = { workspace = true, features = ["tracing", "hydrate"] }
-leptos_query = { workspace = true, features = ["csr", "hydrate"] }
 leptos-use = { workspace = true, features = [] }
 leptos_meta = { workspace = true, features = ["hydrate"] }
+leptos_query = { workspace = true, features = ["csr", "hydrate"] }
 leptos_router = { workspace = true, features = ["hydrate"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
 leptos = { workspace = true, features = ["tracing", "ssr"] }
-leptos_query = { workspace = true, features = ["ssr"] }
 leptos-use = { workspace = true, features = ["axum", "ssr"] }
 leptos_axum = { workspace = true, features = ["default"] }
 leptos_meta = { workspace = true, features = ["ssr"] }
+leptos_query = { workspace = true, features = ["ssr"] }
 leptos_router = { workspace = true, features = ["ssr"] }

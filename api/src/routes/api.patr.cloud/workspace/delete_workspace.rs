@@ -5,6 +5,10 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
+/// The handler to delete a workspace. This will delete all associated data
+/// with the workspace, including the database, container registry, and any
+/// other resources. This is a destructive operation and cannot be undone.
+/// The workspace must be empty before it can be deleted.
 pub async fn delete_workspace(
 	AuthenticatedAppRequest {
 		request:

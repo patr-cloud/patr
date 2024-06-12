@@ -36,11 +36,16 @@ impl Parse for QueryParser {
 /// mostly just a wrapper around [`sqlx::query!`].
 pub fn parse(input: TokenStream) -> TokenStream {
 	let QueryParser { query, params } = parse_macro_input!(input as QueryParser);
-	let mut simplified_query = query.value().replace(['\n', '\r'], " ").replace('\t', "  ");
-	while simplified_query.contains("  ") {
-		simplified_query = simplified_query.replace("  ", " ");
-	}
-	simplified_query = simplified_query.trim().to_string();
+	let simplified_query = query
+		.value()
+		.lines()
+		.map(|line| line.trim().to_string())
+		.collect::<Vec<_>>()
+		.join(" ")
+		.replace(" )", ")")
+		.replace("( ", "(")
+		.trim()
+		.to_string();
 
 	let expanded = quote! {
 		{

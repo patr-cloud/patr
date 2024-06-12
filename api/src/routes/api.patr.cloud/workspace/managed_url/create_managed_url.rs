@@ -1,5 +1,5 @@
 use axum::http::StatusCode;
-use models::{api::workspace::infrastructure::managed_url::*, prelude::*};
+use models::{api::workspace::managed_url::*, prelude::*};
 
 use crate::prelude::*;
 

@@ -1,6 +1,6 @@
 use kube::CustomResource;
 use models::{
-	api::workspace::infrastructure::deployment::{Deployment, DeploymentRunningDetails},
+	api::workspace::deployment::{Deployment, DeploymentRunningDetails},
 	prelude::WithId,
 };
 use schemars::JsonSchema;

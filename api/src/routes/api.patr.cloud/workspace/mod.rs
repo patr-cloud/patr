@@ -16,10 +16,22 @@ mod runner;
 mod secret;
 // mod static_site;
 
+/// The handler to create a new workspace. The workspace name must be unique.
 mod create_workspace;
+/// The handler to delete a workspace. This will delete all associated data
+/// with the workspace, including the database, container registry, and any
+/// other resources. This is a destructive operation and cannot be undone.
+/// The workspace must be empty before it can be deleted.
 mod delete_workspace;
+/// The handler to get the information of a workspace. This includes the
+/// workspace's name, the user who created it, and the date it was created.
 mod get_workspace_info;
+/// The handler to check if a workspace name is available. This is used when
+/// creating a new workspace to ensure that the name is unique.
 mod is_name_available;
+/// The handler to update the information of a workspace. At the moment, only
+/// the name can be updated. However, this will be expanded in the future. At
+/// least one parameter must be provided for the update.
 mod update_workspace_info;
 
 use self::{

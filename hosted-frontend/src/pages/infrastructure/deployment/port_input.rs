@@ -43,10 +43,11 @@ pub fn PortInput(
 									</div>
 
 									<div class={(if is_update_screen.get() {
-											"flex-col-3 pr-lg"
-										} else {
-											"flex-col-6"
-										}).to_string()}>
+										"flex-col-3 pr-lg"
+									} else {
+										"flex-col-6"
+									})
+										.to_string()}>
 
 										<div class="full-width fr-fs-ct px-xl py-sm bg-secondary-light br-sm">
 											<span class="px-sm">"HTTP"</span>

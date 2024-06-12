@@ -76,5 +76,5 @@ where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
-	todo!();
+	todo!()
 }
