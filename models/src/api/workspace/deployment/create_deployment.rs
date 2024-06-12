@@ -24,8 +24,8 @@ macros::declare_api_endpoint!(
 		#[preprocess(trim, lowercase, regex = RESOURCE_NAME_REGEX)]
 		pub name: String,
 		/// The registry the deployment will use
-		#[preprocess(none)]
 		/// It can either be patr's registry or docker's registry
+		#[preprocess(none)]
 		pub registry: DeploymentRegistry,
 		/// The image tag to use
 		#[preprocess(trim, lowercase)]

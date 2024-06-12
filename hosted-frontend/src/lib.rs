@@ -1,10 +1,44 @@
 #![warn(missing_docs, clippy::missing_docs_in_private_items)]
+#![allow(non_snake_case)]
 
 //! Main dashboard console for Patr
 
 /// Prelude module. Used to re-export commonly used items.
 pub mod prelude {
-	pub use components::prelude::*;
+	pub use components::{
+		alert::*,
+		backdrop::*,
+		checkbox_dropdown::*,
+		containers::*,
+		dashboard_container::*,
+		double_input_slider::*,
+		icon::*,
+		input::*,
+		input_dropdown::*,
+		link::*,
+		log_statement::*,
+		modal::*,
+		number_picker::*,
+		otp_input::*,
+		page_title::*,
+		sidebar::*,
+		skeleton::*,
+		spinner::*,
+		status_badge::*,
+		table_dashboard::*,
+		textbox::*,
+		tooltip::*,
+		utils::{
+			Alignment,
+			Color,
+			LinkStyleVariant,
+			SecondaryColorVariant,
+			Size,
+			TextColor,
+			TypedRoute,
+			Variant,
+		},
+	};
 	pub use leptos::*;
 	pub use leptos_router::*;
 	pub use models::prelude::*;
@@ -18,8 +52,6 @@ pub mod api;
 /// The application logic code. This contains the routers and all the routing
 /// logic
 pub mod app;
-/// The Global state variables
-pub mod global_state;
 /// The pages module. This contains all the pages used in the application.
 /// Pages are the main views that are rendered when a route is matched.
 pub mod pages;
@@ -41,7 +73,7 @@ pub fn hydrate() {
 	}
 
 	// Comment the below line to disable JS and test the app in pure SSR mode
-	mount_to_body(render);
+	// mount_to_body(render);
 }
 
 /// The main render function. Called when the application starts to render

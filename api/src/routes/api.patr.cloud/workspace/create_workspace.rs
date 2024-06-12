@@ -3,6 +3,7 @@ use models::api::workspace::*;
 
 use crate::prelude::*;
 
+/// The handler to create a new workspace. The workspace name must be unique.
 pub async fn create_workspace(
 	AuthenticatedAppRequest {
 		request:

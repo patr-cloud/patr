@@ -1,6 +1,9 @@
 use std::fmt::Display;
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+use strum::EnumIter;
+
+/// The list of all the routes on the frontend
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, EnumIter)]
 pub enum AppRoutes {
 	/// The Empty Route, Used for fallback routes.
 	#[default]
@@ -11,11 +14,25 @@ pub enum AppRoutes {
 	LoggedInRoute(LoggedInRoute),
 }
 
+#[test]
+fn test() {
+	use strum::IntoEnumIterator;
+
+	for route in AppRoutes::iter()
+		.filter(|route| *route == AppRoutes::Empty)
+		.chain(LoggedOutRoute::iter().map(AppRoutes::LoggedOutRoute))
+		.chain(LoggedInRoute::iter().map(AppRoutes::LoggedInRoute))
+	{
+		println!("{:?}", route);
+	}
+}
+
 /// Logged In Routes, The routes that can be accessed by the user if and only if
 /// the user is logged in
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, Default)]
 pub enum LoggedInRoute {
 	/// The Home page
+	#[default]
 	Home,
 	/// The Profile Page
 	UserProfile,
@@ -39,9 +56,10 @@ pub enum LoggedInRoute {
 
 /// Logged Out Routes, the routes that can be accessed by the user if and only
 /// if the user is logged out
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, Default)]
 pub enum LoggedOutRoute {
 	/// Login Page
+	#[default]
 	Login,
 	/// Sign Up Page
 	SignUp,

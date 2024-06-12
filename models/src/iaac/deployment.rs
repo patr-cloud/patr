@@ -4,7 +4,7 @@ use either::Either;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-	api::workspace::infrastructure::deployment::{
+	api::workspace::deployment::{
 		DeploymentProbe,
 		EnvironmentVariableValue,
 		ExposedPortType,
@@ -396,7 +396,7 @@ mod tests {
 
 	use crate::{
 		iaac::IaacDeploymentImage,
-		models::workspace::infrastructure::deployment::PatrRegistry,
+		models::workspace::deployment::PatrRegistry,
 		utils::Uuid,
 	};
 

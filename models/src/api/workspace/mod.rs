@@ -6,11 +6,14 @@ use crate::prelude::*;
 
 /// All the modules that corresponds to Patr's in-build container registry
 pub mod container_registry;
+/// This module contains all the database models
+pub mod database;
+/// This module contains all the deployment models
+pub mod deployment;
 /// All the modules that corresponds to Patr Domains
 pub mod domain;
-/// This module contains all the models that corresponds to Patr's main
-/// infrastructure
-pub mod infrastructure;
+/// This module contains all the managed URL models
+pub mod managed_url;
 /// This module contains all the models that corresponds to the RBAC of Patr
 pub mod rbac;
 /// This module contains all the models that corresponds to a runner of a Patr
@@ -18,6 +21,8 @@ pub mod rbac;
 pub mod runner;
 /// This module contains all the models that corresponds to Patr secrets
 pub mod secret;
+/// This module contains all the static site models
+pub mod static_site;
 
 mod create_workspace;
 mod delete_workspace;

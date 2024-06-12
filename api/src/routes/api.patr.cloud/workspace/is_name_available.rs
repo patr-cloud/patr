@@ -3,6 +3,8 @@ use models::api::workspace::*;
 
 use crate::prelude::*;
 
+/// The handler to check if a workspace name is available. This is used when
+/// creating a new workspace to ensure that the name is unique.
 pub async fn is_name_available(
 	AuthenticatedAppRequest {
 		request:

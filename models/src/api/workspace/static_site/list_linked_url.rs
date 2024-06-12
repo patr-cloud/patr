@@ -1,13 +1,13 @@
-use crate::{api::workspace::infrastructure::managed_url::ManagedUrl, prelude::*};
+use crate::{api::workspace::managed_url::ManagedUrl, prelude::*};
 
 macros::declare_api_endpoint!(
-	/// Route to get all linked URLs for a deployment
+	/// Route to get all the linked URLs with a static site
 	ListLinkedURL,
-	GET "/workspace/:workspace_id/infrastructure/deployment/:deployment_id/managed-urls" {
+	GET "/workspace/:workspace_id/infrastructure/static-site/:static_site_id/managed-urls" {
 		/// The workspace ID of the user
 		pub workspace_id: Uuid,
-		/// The deployment ID to get the history for
-		pub deployment_id: Uuid
+		/// The static site ID to retrieve the linked URLs for
+		pub static_site_id: Uuid
 	},
 	request_headers = {
 		/// Token used to authorize user
@@ -17,7 +17,7 @@ macros::declare_api_endpoint!(
 	},
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
-			extract_resource_id: |req| req.path.deployment_id
+			extract_resource_id: |req| req.path.static_site_id
 		}
 	},
 	pagination = true,
@@ -26,7 +26,7 @@ macros::declare_api_endpoint!(
 		pub total_count: TotalCountHeader,
 	},
 	response = {
-		/// The list of linked managed URL to a deployment containing:
+		/// The list of linked URLs linked to the static site which contain:
 		/// sub_domain - The subdomain of the URL
 		/// domain_id - The domain ID of the URL
 		/// path - The URL path

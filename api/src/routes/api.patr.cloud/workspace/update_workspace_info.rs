@@ -3,6 +3,9 @@ use models::api::workspace::*;
 
 use crate::prelude::*;
 
+/// The handler to update the information of a workspace. At the moment, only
+/// the name can be updated. However, this will be expanded in the future. At
+/// least one parameter must be provided for the update.
 pub async fn update_workspace_info(
 	AuthenticatedAppRequest {
 		request:

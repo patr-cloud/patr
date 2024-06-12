@@ -2,10 +2,10 @@ use web_sys::MouseEvent;
 
 use crate::imports::*;
 
-#[component]
 /// Link component to navigate to other pages
 /// Use the variant prop to switch between <a/> and <button/>
 /// tag
+#[component]
 pub fn Link(
 	/// Specifies which type of button to use,
 	/// "button" or "submit", to be only used with the button variant

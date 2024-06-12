@@ -15,6 +15,7 @@ pub struct LinkItem {
 	pub items: Option<Vec<LinkItem>>,
 }
 
+/// The Sidebar component containing the sidebar items
 #[component]
 pub fn Sidebar() -> impl IntoView {
 	let links: Vec<LinkItem> = vec![

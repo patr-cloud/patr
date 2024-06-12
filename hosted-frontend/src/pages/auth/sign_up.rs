@@ -4,10 +4,6 @@ use leptos_router::ActionForm;
 use models::api::auth::*;
 
 use crate::prelude::*;
-#[component]
-pub fn SignUpPage() -> impl IntoView {
-	view! { <Outlet/> }
-}
 
 #[component]
 pub fn SignUpForm() -> impl IntoView {
