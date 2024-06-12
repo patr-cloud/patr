@@ -18,19 +18,14 @@ pub fn ApiTokensTab() -> impl IntoView {
 
 #[component]
 pub fn ListApiTokens() -> impl IntoView {
-	let data = create_rw_signal(vec![UserApiToken {
-		name: "test-token".to_string(),
-		expiry: "No Expiry".to_string(),
-		created: "3 Days Ago".to_string(),
-	}]);
-
 	let (access_token, _) = use_cookie::<String, FromToStringCodec>("access_token");
 	let access_token_signal = move || access_token.get();
 	let token_list = create_resource(access_token_signal, move |value| async move {
 		load_api_tokens_list(value).await
 	});
 
-	logging::log!("{:#?}", token_list.get());
+	// let l = token_list.get();
+	// logging::log!("{:#?}", token_list.get());
 
 	view! {
 		<Link r#type={Variant::Link} style_variant={LinkStyleVariant::Contained} to="create">
@@ -43,16 +38,36 @@ pub fn ListApiTokens() -> impl IntoView {
 			/>
 		</Link>
 
-		<TableDashboard
-			column_grids={vec![4, 4, 4]}
-			headings={vec!["Name".into_view(), "Expiry".into_view(), "Created At".into_view()]}
+		<Transition>
+			{
+				move || match token_list.get() {
+					Some(token_list) => {
+						match token_list {
+							Ok(data) => {
+								view! {
+									<TableDashboard
+										column_grids={vec![4, 4, 4]}
+										headings={vec!["Name".into_view(), "Expiry".into_view(), "Created At".into_view()]}
 
-			render_rows={view! {
-				<For each={move || data.get()} key={|state| state.name.clone()} let:child>
-					<ApiTokenCard token={child}/>
-				</For>
+										render_rows={view! {
+											<For
+												each={move || data.clone().tokens}
+												key={|state| state.id}
+												let:child
+											>
+												<ApiTokenCard token={child}/>
+											</For>
+										}
+											.into_view()}
+									/>
+								}
+							}
+							Err(_) => view! {}.into_view(),
+						}
+					},
+					None => view! {}.into_view(),
+				}
 			}
-				.into_view()}
-		/>
+		</Transition>
 	}
 }
