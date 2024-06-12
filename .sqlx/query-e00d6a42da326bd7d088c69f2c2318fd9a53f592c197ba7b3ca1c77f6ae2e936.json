@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO role_resource_permissions_type(role_id, permission_id, permission_type) VALUES ($1, $2, $3);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        {
+          "Custom": {
+            "name": "permission_type",
+            "kind": {
+              "Enum": [
+                "include",
+                "exclude"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e00d6a42da326bd7d088c69f2c2318fd9a53f592c197ba7b3ca1c77f6ae2e936"
+}

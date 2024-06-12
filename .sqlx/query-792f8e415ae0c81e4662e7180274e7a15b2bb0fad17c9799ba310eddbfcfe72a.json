@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO role(id, owner_id, name, description) VALUES (GENERATE_ROLE_ID(), $1, $2, $3) RETURNING id;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "792f8e415ae0c81e4662e7180274e7a15b2bb0fad17c9799ba310eddbfcfe72a"
+}

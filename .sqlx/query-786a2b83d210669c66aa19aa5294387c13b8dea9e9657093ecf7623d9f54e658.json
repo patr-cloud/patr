@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM role_resource_permissions_exclude WHERE role_id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "786a2b83d210669c66aa19aa5294387c13b8dea9e9657093ecf7623d9f54e658"
+}
