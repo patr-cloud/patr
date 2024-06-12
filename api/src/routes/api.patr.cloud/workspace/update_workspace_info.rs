@@ -38,7 +38,7 @@ pub async fn update_workspace_info(
 			request: ProcessedApiRequest {
 				path: IsWorkspaceNameAvailablePath,
 				query: IsWorkspaceNameAvailableQuery {
-					name: name.to_owned(),
+					name: name.to_string(),
 				},
 				headers: IsWorkspaceNameAvailableRequestHeaders {
 					authorization,

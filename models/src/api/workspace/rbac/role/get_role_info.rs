@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use super::Role;
-use crate::prelude::*;
+use crate::{prelude::*, rbac::ResourcePermissionType};
 
 macros::declare_api_endpoint!(
 	/// Route to get the role info
@@ -28,9 +28,7 @@ macros::declare_api_endpoint!(
 		///     name - The role name
 		///     description - The role description
 		pub role: WithId<Role>,
-		/// The list of permission this new role has
-		pub resource_permissions: BTreeMap<Uuid, Vec<Uuid>>,
-		/// The list of permissions this new role has on what resource types
-		pub resource_type_permissions: BTreeMap<Uuid, Vec<Uuid>>,
+		/// List of Permission IDs and the type of permission that is granted on this role.
+		pub permissions: BTreeMap<Uuid, ResourcePermissionType>,
 	}
 );

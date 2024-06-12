@@ -83,10 +83,11 @@ pub fn validate_password(value: Cow<'_, str>) -> Result<Cow<'_, str>, preprocess
 					matches!(
 						value,
 						'@' | '!' |
-							'#' | '$' | '%' | '^' | '&' | '*' |
-							'?' | '/' | '\\' | '|' | '~' | '`' |
-							'.' | ',' | ';' | ':' | '<' | '>' |
-							'[' | ']' | '{' | '}'
+							'#' | '$' | '%' | '^' | '&' |
+							'*' | '?' | '/' | '\\' |
+							'|' | '~' | '`' | '.' | ',' |
+							';' | ':' | '<' | '>' | '[' |
+							']' | '{' | '}'
 					),
 			)
 		},
@@ -155,9 +156,8 @@ pub mod constants {
 
 	/// The Regex to validate a resource name (e.g. deployment name, etc.)
 	/// Matches a string that is between 4 and 255 characters long and can have
-	/// digits, letters, hyphens, and underscores.
-	// PREVIOUSLY: ^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$
-	pub const RESOURCE_NAME_REGEX: &str = macros::verify_regex!(r"^[a-zA-Z0-9\-_]{4,255}$");
+	/// digits, letters, hyphens, underscores, spaces and dots.
+	pub const RESOURCE_NAME_REGEX: &str = macros::verify_regex!(r"^[a-zA-Z0-9\-_ \.]{4,255}$");
 
 	/// The Regex to validate a DNS record name. The DNS record name must be in
 	/// the format `@`, `www`, `subdomain`, etc. The DNS record name can have

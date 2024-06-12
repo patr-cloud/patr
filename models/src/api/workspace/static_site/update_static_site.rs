@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 
 macros::declare_api_endpoint!(
 	/// Route to update a static site
@@ -22,7 +22,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The updated static site name
-		#[preprocess(trim, lowercase, regex = "^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$")]
-		pub name: String,
+		#[preprocess(optional(trim, regex = RESOURCE_NAME_REGEX))]
+		pub name: Option<String>,
 	}
 );

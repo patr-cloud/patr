@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 
 macros::declare_api_endpoint!(
 	/// Route to create a secret
@@ -20,10 +20,10 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The name of the secret
-		#[preprocess(trim, uppercase)]
+		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
 		pub name: String,
 		/// The value of the secret, i.e, the secret content
-		#[preprocess(trim)]
+		#[preprocess(none)]
 		pub value: String,
 	},
 	response = {

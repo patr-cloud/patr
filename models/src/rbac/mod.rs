@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
-use strum::VariantNames;
+use strum::{EnumDiscriminants, VariantNames};
 
 use crate::prelude::*;
 
@@ -259,11 +259,21 @@ pub struct ResourcePermissionData {
 }
 
 /// Represents the type of permission that is granted on a set of Resource IDs.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, EnumDiscriminants)]
 #[serde(
 	rename_all = "camelCase",
 	tag = "permissionType",
 	content = "resources"
+)]
+#[strum_discriminants(
+	name(ResourcePermissionTypeDiscriminant),
+	derive(strum::Display),
+	strum(serialize_all = "snake_case"),
+	cfg_attr(not(target_arch = "wasm32"), derive(sqlx::Type)),
+	cfg_attr(
+		not(target_arch = "wasm32"),
+		sqlx(type_name = "MANAGED_URL_TYPE", rename_all = "snake_case")
+	)
 )]
 pub enum ResourcePermissionType {
 	/// The user is allowed to access a set of Resource IDs. Any other
@@ -278,4 +288,19 @@ pub enum ResourcePermissionType {
 		/// Set of Resource IDs to not allow
 		BTreeSet<Uuid>,
 	),
+}
+
+impl ResourcePermissionType {
+	/// Inserts a new resource ID into the current [`ResourcePermissionType`]
+	/// instance based on the type of permission.
+	pub fn insert(&mut self, resource_id: Uuid) {
+		match self {
+			Self::Include(resources) => {
+				resources.insert(resource_id);
+			}
+			Self::Exclude(resources) => {
+				resources.insert(resource_id);
+			}
+		}
+	}
 }

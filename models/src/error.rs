@@ -71,6 +71,10 @@ pub enum ErrorType {
 	/// An internal server error occurred. This should not happen unless there
 	/// is a bug in the server
 	InternalServerError,
+	/// A role with the given name already exists
+	RoleAlreadyExists,
+	/// A role with that ID does not exist
+	RoleDoesNotExist,
 }
 
 impl ErrorType {
@@ -104,6 +108,8 @@ impl ErrorType {
 			Self::WorkspaceNameAlreadyExists => StatusCode::CONFLICT,
 			Self::WorkspaceNotEmpty => StatusCode::FAILED_DEPENDENCY,
 			Self::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,
+			Self::RoleAlreadyExists => StatusCode::CONFLICT,
+			Self::RoleDoesNotExist => StatusCode::NOT_FOUND,
 		}
 	}
 
@@ -142,6 +148,8 @@ impl ErrorType {
 			Self::WorkspaceNameAlreadyExists => "A workspace with that name already exists",
 			Self::WorkspaceNotEmpty => "A workspace cannot be deleted until all the resources in the workspaces have been deleted",
 			Self::InternalServerError => "An internal server error has occured",
+			Self::RoleAlreadyExists => "A role with that name already exists",
+			Self::RoleDoesNotExist => "A role with that ID does not exist",
 		}
 	}
 

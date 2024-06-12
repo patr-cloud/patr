@@ -373,6 +373,31 @@ pub async fn initialize_rbac_constraints(
 
 	query!(
 		r#"
+		CREATE FUNCTION GENERATE_ROLE_ID() RETURNS UUID AS $$
+		DECLARE
+			role_id UUID;
+		BEGIN
+			role_id := gen_random_uuid();
+			WHILE EXISTS(
+				SELECT
+					1
+				FROM
+					role
+				WHERE
+					id = role_id
+			) LOOP
+				role_id := gen_random_uuid();
+			END LOOP;
+			RETURN role_id;
+		END;
+		$$ LANGUAGE plpgsql;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE FUNCTION RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID(
 			login_id UUID,
 			permission_name TEXT
