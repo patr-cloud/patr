@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use super::{DeploymentProbe, DeploymentVolume, EnvironmentVariableValue, ExposedPortType};
-use crate::prelude::*;
+use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 
 macros::declare_api_endpoint!(
 	/// Route to update a deployment
@@ -25,7 +25,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// To update the deployment name
-		// #[preprocess(trim, lowercase, regex = r"^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$")]
+		#[preprocess(optional(trim, regex = RESOURCE_NAME_REGEX))]
 		pub name: Option<String>,
 		/// To update the machine type
 		#[preprocess(none)]

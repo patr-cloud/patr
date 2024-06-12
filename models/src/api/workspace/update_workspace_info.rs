@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 
 macros::declare_api_endpoint!(
 	/// Route to update a workspace's info based on the ID
@@ -21,6 +21,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The new name of the workspace
+		#[preprocess(optional(trim, regex = RESOURCE_NAME_REGEX))]
 		pub name: Option<String>,
 	},
 );

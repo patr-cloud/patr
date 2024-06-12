@@ -6,8 +6,16 @@ mod audit_log;
 mod container_registry;
 /// The list of domains that are added to a workspace
 mod domain;
-/// All infrastructure related stuff goes here
-mod infrastructure;
+
+/// The list of deployments that are present in a workspace
+mod deployment;
+/// The list of databases that are created in a workspace
+mod managed_database;
+/// The list of Managed URLs that are created in a workspace
+mod managed_url;
+/// The list of static sites that are created in a workspace
+mod static_site;
+
 /// The list of runners that are a part of a workspace
 mod runner;
 /// The list of secrets that are added to a workspace
@@ -47,7 +55,12 @@ pub async fn initialize_workspace_tables(
 	audit_log::initialize_workspace_tables(connection).await?;
 	container_registry::initialize_container_registry_tables(connection).await?;
 	domain::initialize_domain_tables(connection).await?;
-	infrastructure::initialize_infrastructure_tables(connection).await?;
+
+	deployment::initialize_deployment_tables(connection).await?;
+	managed_database::initialize_managed_database_tables(connection).await?;
+	managed_url::initialize_managed_url_tables(connection).await?;
+	static_site::initialize_static_site_tables(connection).await?;
+
 	runner::initialize_runner_tables(connection).await?;
 	secret::initialize_secret_tables(connection).await?;
 
@@ -99,7 +112,12 @@ pub async fn initialize_workspace_indices(
 	audit_log::initialize_workspace_indices(connection).await?;
 	container_registry::initialize_container_registry_indices(connection).await?;
 	domain::initialize_domain_indices(connection).await?;
-	infrastructure::initialize_infrastructure_indices(connection).await?;
+
+	deployment::initialize_deployment_indices(connection).await?;
+	managed_database::initialize_managed_database_indices(connection).await?;
+	managed_url::initialize_managed_url_indices(connection).await?;
+	static_site::initialize_static_site_indices(connection).await?;
+
 	runner::initialize_runner_indices(connection).await?;
 	secret::initialize_secret_indices(connection).await?;
 
@@ -127,7 +145,12 @@ pub async fn initialize_workspace_constraints(
 	audit_log::initialize_workspace_constraints(connection).await?;
 	container_registry::initialize_container_registry_constraints(connection).await?;
 	domain::initialize_domain_constraints(connection).await?;
-	infrastructure::initialize_infrastructure_constraints(connection).await?;
+
+	deployment::initialize_deployment_constraints(connection).await?;
+	managed_database::initialize_managed_database_constraints(connection).await?;
+	managed_url::initialize_managed_url_constraints(connection).await?;
+	static_site::initialize_static_site_constraints(connection).await?;
+
 	runner::initialize_runner_constraints(connection).await?;
 	secret::initialize_secret_constraints(connection).await?;
 

@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 
 macros::declare_api_endpoint!(
 	/// Route to add runner to a workspace
@@ -20,7 +20,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// Name of the runner
-		#[preprocess(lowercase)]
+		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
 		pub name: String,
 	},
 	response = {

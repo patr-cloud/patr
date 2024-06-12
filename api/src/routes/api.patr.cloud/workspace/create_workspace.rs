@@ -30,7 +30,7 @@ pub async fn create_workspace(
 		request: ProcessedApiRequest {
 			path: IsWorkspaceNameAvailablePath,
 			query: IsWorkspaceNameAvailableQuery {
-				name: workspace_name.clone(),
+				name: workspace_name.to_string(),
 			},
 			headers: IsWorkspaceNameAvailableRequestHeaders {
 				authorization,

@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 
 macros::declare_api_endpoint!(
 	/// Route to update a secret
@@ -22,10 +22,10 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The updated name of the secret
-		// #[preprocess(trim, uppercase)]
+		#[preprocess(optional(trim, regex = RESOURCE_NAME_REGEX))]
 		pub name: Option<String>,
 		/// The updated value of the secret
-		// #[preprocess(trim)]
+		#[preprocess(none)]
 		pub value: Option<String>,
 	}
 );
