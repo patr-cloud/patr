@@ -1,5 +1,5 @@
 use axum::{http::StatusCode, Router};
-use models::{api::workspace::static_site::*, ApiRequest, ErrorType};
+use models::api::workspace::static_site::*;
 
 use crate::prelude::*;
 
