@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO deployment_environment_variable( deployment_id, name, value, secret_id ) VALUES ($1, $2, $3, $4);",
+  "query": "INSERT INTO deployment_environment_variable(deployment_id, name, value, secret_id) VALUES ($1, $2, $3, $4);",
   "describe": {
     "columns": [],
     "parameters": {
@@ -13,5 +13,5 @@
     },
     "nullable": []
   },
-  "hash": "b2ec6147805201d988bbc47db9ca945fd6fd635c8e3db8f641dd5531e6382772"
+  "hash": "a793731df325f1c8182eccbd774f812966742c969eafa6073dfc2df41c641cd8"
 }
