@@ -2,24 +2,20 @@ use std::{cmp::Ordering, collections::BTreeMap};
 
 use axum::{http::StatusCode, Router};
 use futures::sink::With;
-use models::{
-	api::workspace::infrastructure::deployment::*,
-	ErrorType,
-};
+use models::{api::workspace::deployment::*, ErrorType};
 use sqlx::query_as;
 use time::OffsetDateTime;
 
 use crate::prelude::*;
 
 /// Get deployment metrics
-/// 
+///
 /// #Parameters
 /// - `workspace_id`: The workspace ID
 /// - `deployment_id`: The deployment ID
-/// 
+///
 /// #Returns
 /// - `mertrics`: The deployment metrics
-/// 
 pub async fn get_deployment_metric(
 	AuthenticatedAppRequest {
 		request: ProcessedApiRequest {

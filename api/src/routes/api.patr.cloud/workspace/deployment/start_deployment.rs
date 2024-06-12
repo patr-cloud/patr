@@ -2,24 +2,20 @@ use std::{cmp::Ordering, collections::BTreeMap};
 
 use axum::{http::StatusCode, Router};
 use futures::sink::With;
-use models::{
-	api::workspace::infrastructure::deployment::*,
-	ErrorType,
-};
+use models::{api::workspace::deployment::*, ErrorType};
 use sqlx::query_as;
 use time::OffsetDateTime;
 
 use crate::prelude::*;
 
 /// Start deployment
-/// 
+///
 /// #Parameters
 /// - `workspace_id`: The workspace ID
 /// - `deployment_id`: The deployment ID
-/// 
+///
 /// #Returns
 /// - `OK`: The deployment was started
-/// 
 pub async fn start_deployment(
 	AuthenticatedAppRequest {
 		request:
@@ -50,7 +46,7 @@ pub async fn start_deployment(
 			repository_id,
 			image_name,
 			image_tag,
-			region
+			runner
 		FROM
 			deployment
 		WHERE
@@ -73,7 +69,7 @@ pub async fn start_deployment(
 				image_name: deployment.image_name.unwrap().into(),
 			}
 		};
-		(registry, deployment.image_tag, deployment.region)
+		(registry, deployment.image_tag, deployment.runner)
 	})
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 

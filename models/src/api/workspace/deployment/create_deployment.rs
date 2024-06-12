@@ -4,7 +4,7 @@ use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 macros::declare_api_endpoint!(
 	/// Route to create a new deployment
 	CreateDeployment,
-	POST "/workspace/:workspace_id/infrastructure/deployment" {
+	POST "/workspace/:workspace_id/deployment" {
 		/// The workspace ID of the user
 		pub workspace_id: Uuid,
 	},

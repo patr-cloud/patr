@@ -4,10 +4,11 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to list all machine types for deployment
 	ListAllDeploymentMachineType,
-	GET "/workspace/infrastructure/machine-type",
+	GET "/workspace/:workspace_id/deployment/machine-type" {
+		/// The workspace ID of the user
+		pub workspace_id: Uuid,
+	},
 	request_headers = {
-		/// Token used to authorize user
-		pub authorization: BearerToken,
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,
 	},

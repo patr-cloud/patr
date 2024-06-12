@@ -4,7 +4,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to get all the deployment information of a deployment
 	GetDeploymentInfo,
-	GET "/workspace/:workspace_id/infrastructure/deployment/:deployment_id" {
+	GET "/workspace/:workspace_id/deployment/:deployment_id" {
 		/// The workspace ID of the user
 		pub workspace_id: Uuid,
 		/// The deployment ID to get the event details for

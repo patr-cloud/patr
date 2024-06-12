@@ -3,7 +3,7 @@ use std::{cmp::Ordering, collections::BTreeMap};
 use axum::{http::StatusCode, Router};
 use futures::sink::With;
 use models::{
-	api::{workspace::infrastructure::deployment::*, WithId},
+	api::{workspace::deployment::*, WithId},
 	utils::StringifiedU16,
 	ErrorType,
 };
@@ -13,14 +13,13 @@ use time::OffsetDateTime;
 use crate::prelude::*;
 
 /// Get deployment info
-/// 
+///
 /// #Parameters
 /// - `workspace_id`: The workspace ID
 /// - `deployment_id`: The deployment ID
-/// 
+///
 /// #Returns
 /// - `deployment`: The deployment info
-/// 
 pub async fn get_deployment_info(
 	AuthenticatedAppRequest {
 		request:
@@ -146,7 +145,7 @@ pub async fn get_deployment_info(
 			image_tag,
 			status as "status: DeploymentStatus",
 			workspace_id,
-			region,
+			runner,
 			min_horizontal_scale,
 			max_horizontal_scale,
 			machine_type,
@@ -184,7 +183,7 @@ pub async fn get_deployment_info(
 				},
 				image_tag: deployment.image_tag.into(),
 				status: deployment.status,
-				region: deployment.region.into(),
+				region: deployment.runner.into(),
 				machine_type: deployment.machine_type.into(),
 				current_live_digest: deployment.current_live_digest,
 			},
