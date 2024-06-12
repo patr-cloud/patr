@@ -1,4 +1,6 @@
-use crate::imports::*;
+use ev::MouseEvent;
+
+use crate::{imports::*, input_dropdown};
 
 /// Creates an input with options appearing in a dropdown
 #[component]
@@ -15,7 +17,10 @@ pub fn CheckboxDropdown(
 	/// The default value of the input, if none is provided,
 	/// defaults to empty string and placeholder is shown
 	#[prop(into, optional, default = "".to_owned().into())]
-	value: MaybeSignal<String>,
+	value: RwSignal<String>,
+	/// The Event handler when user checks an option
+	#[prop(optional, into, default = Callback::new(|(_, _)| {}))]
+	on_select: Callback<(MouseEvent, String)>,
 	/// Placeholder to show if value is empty
 	#[prop(into, optional, default = "Type Here...".to_owned().into())]
 	placeholder: MaybeSignal<String>,
@@ -36,7 +41,7 @@ pub fn CheckboxDropdown(
 			"fr-fs-ct br-sm row-card full-width pos-rel px-xl py-xxs input-dropdown bg-secondary-{} {} {}",
 			variant.as_css_name(),
 			cname,
-			value.with(|val| {
+			value.with_untracked(|val| {
 				if val.is_empty() || disabled.get() || loading.get() {
 					"txt-disabled"
 				} else {
@@ -71,26 +76,23 @@ pub fn CheckboxDropdown(
 		}
 	};
 
+	let handle_checkbox_click = move |e: MouseEvent, input_value: &InputDropdownOption| {
+		e.stop_propagation();
+	};
+
 	let store_options = store_value(options);
 	let store_placehoder = store_value(placeholder);
-
-	let input_value = create_rw_signal(value.get_untracked());
-
-	let handle_select_checkbox = move |state: &InputDropdownOption| {
-		if state.disabled {
-			show_dropdown.set(false);
-		}
-	};
+	let store_on_select = store_value(on_select);
 
 	view! {
 		<div on:click={handle_click} class={outer_div_class}>
 			<Show
-				when=move || !input_value.get().is_empty()
+				when=move || !value.get().is_empty()
 				fallback=move || view! {
 					{store_placehoder.with_value(|placeholder| placeholder.get())}
 				}
 			>
-				{input_value.get()}
+				{value.get()}
 			</Show>
 
 			<Icon icon={IconType::ChevronDown} class="ml-auto" size={Size::ExtraSmall}/>
@@ -106,7 +108,10 @@ pub fn CheckboxDropdown(
 							<li
 								on:click={
 									let child = child.clone();
-									move |_| handle_select_checkbox(&child)
+									move |ev| {
+										ev.stop_propagation();
+										on_select.call((ev, child.label.clone()));
+									}
 								}
 								class={"ul-light fr-fs-ct full-width br-bottom-sm row-card"}
 							>

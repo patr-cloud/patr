@@ -5,7 +5,7 @@ use crate::prelude::*;
 #[server(LoadApiTokenFn, endpoint = "/user/api-token")]
 pub async fn load_api_tokens_list(
 	access_token: Option<String>,
-) -> Result<Result<ListApiTokensResponse, ErrorType>, ServerFnError> {
+) -> Result<ListApiTokensResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
 	use models::api::user::{ListApiTokensPath, ListApiTokensRequest, ListApiTokensRequestHeaders};
@@ -19,8 +19,8 @@ pub async fn load_api_tokens_list(
 				count: 10,
 			})
 			.headers(ListApiTokensRequestHeaders {
-				authorization: BearerToken::from_str(
-					format!("{}", access_token.unwrap_or_default()).as_str(),
+				authorization: BearerToken::from_str(access_token.unwrap().as_str()).map_err(
+					|e| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken),
 				)?,
 				user_agent: UserAgent::from_static("hyper/0.12.2"),
 			})
@@ -29,5 +29,7 @@ pub async fn load_api_tokens_list(
 	)
 	.await;
 
-	Ok(api_response.map(|res| res.body))
+	api_response
+		.map(|res| res.body)
+		.map_err(ServerFnError::WrappedServerError)
 }

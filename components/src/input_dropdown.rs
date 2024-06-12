@@ -24,7 +24,7 @@ pub fn InputDropdown(
 	/// The default value of the input, if none is provided,
 	/// defaults to empty string and placeholder is shown
 	#[prop(into, optional, default = "".to_owned().into())]
-	value: MaybeSignal<String>,
+	value: RwSignal<String>,
 	/// Placeholder to show if value is empty
 	#[prop(into, optional, default = "Type Here...".to_owned().into())]
 	placeholder: MaybeSignal<String>,
@@ -45,7 +45,7 @@ pub fn InputDropdown(
 			"fr-fs-ct br-sm row-card full-width pos-rel px-xl py-xxs input-dropdown bg-secondary-{} {} {}",
 			variant.as_css_name(),
 			cname,
-			value.with(|val| {
+			value.with_untracked(|val| {
 				if val.is_empty() || disabled.get() || loading.get() {
 					"txt-disabled"
 				} else {
@@ -54,17 +54,6 @@ pub fn InputDropdown(
 			})
 		)
 	});
-
-	let input_class = move || {
-		format!(
-			"full-width full-height txt-medium pl-sm mr-sm py-xxs br-sm {}",
-			if disabled.get() {
-				"txt-disabled"
-			} else {
-				"txt-white"
-			}
-		)
-	};
 
 	let dropdown_class = move || {
 		format!(
@@ -81,16 +70,29 @@ pub fn InputDropdown(
 	};
 
 	let store_options = store_value(options);
-
-	let input_value = create_rw_signal(value.get_untracked());
 	let store_placehoder = store_value(placeholder.clone());
+
+	let input_class = move || {
+		format!(
+			"full-width full-height txt-medium pl-sm mr-sm py-xxs br-sm {}",
+			if disabled.get() ||
+				(value.with(|val| val.is_empty()) &&
+					store_placehoder.with_value(|placeholder| !placeholder.get().is_empty()))
+			{
+				"txt-disabled"
+			} else {
+				"txt-white"
+			}
+		)
+	};
+	// let store_input_class = store_value(input_class.clone());
 
 	let handle_click_option = move |state: &InputDropdownOption| {
 		if state.disabled {
 			show_dropdown.set(false);
 		}
 
-		input_value.set(state.label.clone());
+		value.set(state.label.clone());
 	};
 
 	view! {
@@ -100,10 +102,10 @@ pub fn InputDropdown(
 				fallback={move || view! {
 					<span class={input_class}>
 						{
-							if input_value.get().is_empty() {
+							if value.get().is_empty() {
 								store_placehoder.with_value(|placeholder| placeholder.get().into_view())
 							} else {
-								input_value.get().into_view()
+								value.get().into_view()
 							}
 						}
 					</span>
@@ -115,12 +117,12 @@ pub fn InputDropdown(
 					placeholder={placeholder.clone()}
 					disabled={disabled.get()}
 					class={input_class}
-					prop:value={input_value}
+					prop:value={value}
 				/>
 			</Show>
 			<Icon icon={IconType::ChevronDown} class="ml-auto" size={Size::ExtraSmall}/>
 
-			<Show when={move || show_dropdown.get()}>
+			<Show when={move || show_dropdown.get() && !disabled.get()}>
 				<div class={dropdown_class.clone()}>
 					<ul class="full-width full-height ofx-hidden ofy-auto fc-fs-fs">
 						<For

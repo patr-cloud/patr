@@ -10,7 +10,7 @@ mod revoke_api_token;
 mod update_api_token;
 
 use ipnetwork::IpNetwork;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use time::OffsetDateTime;
 
 pub use self::{
@@ -46,6 +46,7 @@ pub struct UserApiToken {
 	/// actions performed by the token will be logged as the user who created
 	/// the token.
 	#[serde(skip_serializing_if = "BTreeMap::is_empty")]
+	#[serde(default)]
 	pub permissions: BTreeMap<Uuid, WorkspacePermission>,
 	/// Any token that is used before the nbf (not before) should be rejected.
 	/// Tokens are only valid after this time.

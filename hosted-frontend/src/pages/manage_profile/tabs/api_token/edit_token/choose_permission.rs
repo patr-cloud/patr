@@ -22,6 +22,10 @@ pub fn ChoosePermission(
 		)
 	});
 
+	let input_resource_type = create_rw_signal("".to_string());
+	let input_resources = create_rw_signal::<Vec<String>>(vec![]);
+	let input_permissions = create_rw_signal("".to_string());
+
 	let resource_type_values = ResourceType::VARIANTS
 		.iter()
 		.map(|v| InputDropdownOption {
@@ -30,11 +34,18 @@ pub fn ChoosePermission(
 		})
 		.collect::<Vec<InputDropdownOption>>();
 
-	let resource_type_input = create_rw_signal("".to_string());
-	let show_resource_type = create_memo(move |_| match resource_type_input.get().as_str() {
-		"dnsRecord" => true,
-		"workspace" => true,
-		_ => true,
+	let show_resource_type =
+		create_memo(
+			move |_| match input_resource_type.get().to_case(Case::Camel).as_str() {
+				"dnsRecord" => false,
+				"workspace" => false,
+				_ => true,
+			},
+		);
+
+	create_effect(move |_| {
+		logging::log!("resource_type: {}", input_resource_type.get());
+		logging::log!("show_resource_type: {}", show_resource_type.get());
 	});
 
 	view! {
@@ -44,31 +55,45 @@ pub fn ChoosePermission(
 					<InputDropdown
 						placeholder="Select Resource Type".to_string()
 						options={resource_type_values}
-						value={resource_type_input}
+						value={input_resource_type}
 					/>
 				</div>
 
-				<div>
-					<Show when={move || show_resource_type.get()}>
+				<Show when={move || show_resource_type.get()}>
+					<div class="fc-fs-fs">
 						<InputDropdown
-							placeholder="Select Workspace".to_string()
+							placeholder={format!("All/Specific {}", input_resource_type.with(|resource|
+								if resource.is_empty() {"Resource".to_string()} else {resource.to_owned()}
+							))}
 							options={vec![
 								InputDropdownOption {
-									label: "All Domains".to_string(),
+									label: format!("All {}", input_resource_type.get()),
 									disabled: false,
 								},
 								InputDropdownOption {
-									label: "Specific Domains".to_string(),
+									label: format!("Specific {}", input_resource_type.get()),
 									disabled: false,
 								},
 								InputDropdownOption {
-									label: "All Domains Except".to_string(),
+									label: format!("All {} Except", input_resource_type.get() ).to_string(),
 									disabled: false,
 								},
 							]}
 						/>
-					</Show>
-				</div>
+					</div>
+				</Show>
+
+				<Show when={move || show_resource_type.get()}>
+					<CheckboxDropdown
+						on_select={|(_, label)| {
+							logging::log!("Selected: {}", label);
+						}}
+						placeholder={format!("Select {}", input_resource_type.with(|resource|
+							if resource.is_empty() {"Resources".to_string()} else {resource.to_owned()}
+						))}
+						options={vec![]}
+					/>
+				</Show>
 
 				<div>
 					<CheckboxDropdown
