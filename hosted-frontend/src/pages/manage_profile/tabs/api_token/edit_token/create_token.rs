@@ -5,9 +5,13 @@ use crate::{pages::PermisisonCard, prelude::*};
 #[component]
 pub fn CreateApiToken() -> impl IntoView {
 	let create_api_token_action = create_server_action::<CreateApiTokenFn>();
-	let response = create_api_token_action.value();
+	// let response = create_api_token_action.value();
 
 	let (access_token, _) = use_cookie::<String, FromToStringCodec>("access_token");
+	let access_token_signal = move || access_token.get();
+	let workspace_list = create_resource(access_token_signal, move |value| async move {
+		list_user_workspace(value).await
+	});
 
 	view! {
 		<ActionForm action={create_api_token_action}  class="full-width fit-wide-screen full-height txt-white fc-fs-fs px-md">
@@ -71,6 +75,8 @@ pub fn CreateApiToken() -> impl IntoView {
 							r#type={InputType::Date}
 							placeholder="Valid From"
 							class="full-width cursor-text"
+							name="token_nbf"
+							id="token_nbf"
 						/>
 					</div>
 					<div class="flex-col-1 fr-ct-ct txt-sm">"to"</div>
@@ -79,6 +85,8 @@ pub fn CreateApiToken() -> impl IntoView {
 							r#type={InputType::Date}
 							placeholder="Valid Till"
 							class="full-width cursor-text"
+							name="token_exp"
+							id="token_exp"
 						/>
 					</div>
 				</div>
@@ -87,12 +95,30 @@ pub fn CreateApiToken() -> impl IntoView {
 			<div class="fc-fs-fs mb-xs full-width my-md gap-sm">
 				<label class="txt-white txt-sm">"Choose Permissions"</label>
 				<div class="full-width fc-fs-fs">
-					<PermisisonCard/>
+					<Transition>
+						{
+							move || match workspace_list.get() {
+								Some(workspace_list) => {
+									match workspace_list {
+										Ok(data)  => {
+											data.workspaces.into_iter()
+												.map(|workspace| view! {
+													<PermisisonCard workspace={workspace} />
+												})
+												.collect_view()
+										},
+										Err(_) => view! {}.into_view()
+									}
+								},
+								None => view! {}.into_view()
+							}
+						}
+					</Transition>
 				</div>
 			</div>
 
 			<div class="full-width fr-fe-ct py-md mt-auto">
-				<Link r#type={Variant::Link} to="/profile/api-tokens" class="txt-sm txt-medium mr-sm">"BACK"</Link>
+				<Link r#type={Variant::Link} to="/user/api-tokens" class="txt-sm txt-medium mr-sm">"BACK"</Link>
 				<Link should_submit={true} r#type={Variant::Button} style_variant={LinkStyleVariant::Contained} class="txt-sm txt-medium mr-sm">
 					"Create"
 				</Link>

@@ -23,19 +23,19 @@ pub fn ManageWorkspace() -> impl IntoView {
 			<Tabs tab_items={vec![
 				TabItem {
 					name: "Details".to_owned(),
-					path: "workspace".to_owned()
+					path: "".to_owned()
 				},
 				TabItem {
 					name: "Billing".to_owned(),
-					path: "workspace".to_owned()
+					path: "".to_owned()
 				},
 				TabItem {
 					name: "Pricing".to_owned(),
-					path: "workspace".to_owned()
+					path: "".to_owned()
 				},
 				TabItem {
 					name: "Transactions".to_owned(),
-					path: "workspace".to_owned()
+					path: "".to_owned()
 				}
 			]}/>
 		</ContainerHead>
