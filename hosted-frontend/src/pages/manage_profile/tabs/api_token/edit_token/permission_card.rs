@@ -1,3 +1,5 @@
+use models::api::workspace::Workspace;
+
 use crate::{
 	pages::{ChoosePermission, PermissionItem},
 	prelude::*,
@@ -8,6 +10,9 @@ pub fn PermisisonCard(
 	/// Additional classes
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
+	/// The workspace data to show
+	#[prop(into)]
+	workspace: MaybeSignal<WithId<Workspace>>,
 ) -> impl IntoView {
 	let outer_class = class.with(|cname| format!("full-width txt-white fc-fs-fs gap-md {}", cname));
 
@@ -16,7 +21,7 @@ pub fn PermisisonCard(
 	view! {
 		<div class={outer_class}>
 			<p class="li-diamond">
-				<strong class="txt-md">"{workspace.name}"</strong>
+				<strong class="txt-md">{workspace.get().data.name}</strong>
 			</p>
 
 			<label class="fr-fs-ct txt-grey cursor-pointer" html_for="super-admin">
@@ -34,7 +39,7 @@ pub fn PermisisonCard(
 				<strong class="txt-medium txt-sm mx-xxs txt-white">"Super Admin"</strong>
 				"permissions for"
 				<strong class="mx-xxs txt-sm txt-white txt-medium">
-					"{workspace.name} workspace"
+					{workspace.get().data.name}" workspace"
 				</strong>
 			</label>
 

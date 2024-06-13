@@ -1,7 +1,12 @@
+use leptos_use::{use_cookie, utils::FromToStringCodec};
+
 use crate::prelude::*;
 
 #[component]
 pub fn CreateWorkspace() -> impl IntoView {
+	let create_workspace_action = create_server_action::<CreateWorkspaceFn>();
+	let (access_token, _) = use_cookie::<String, FromToStringCodec>("access_token");
+
 	view! {
 		<ContainerHead>
 			<div class="fc-fs-fs">
@@ -19,9 +24,11 @@ pub fn CreateWorkspace() -> impl IntoView {
 		</ContainerHead>
 
 		<ContainerBody class="px-xl py-lg ofy-auto txt-white">
-			<form
+			<ActionForm
+				action={create_workspace_action}
 				class="full-width full-height gap-md fc-fs-fs px-md fit-wide-screen"
 			>
+				<input type="hidden" name="access_token" prop:value={access_token} />
 				<div class="flex full-width">
 					<div class="flex-col-2 pt-sm">
 						<label html_for="name" class="txt-sm">
@@ -32,6 +39,8 @@ pub fn CreateWorkspace() -> impl IntoView {
 						<Input
 							placeholder="Enter workspace name"
 							class="full-width"
+							id="workspace_name"
+							name="workspace_name"
 						/>
 						// {workspaceNameError && (
 						//     <Alert message={workspaceNameError} type="error" />
@@ -55,7 +64,7 @@ pub fn CreateWorkspace() -> impl IntoView {
 						"CREATE"
 					</Link>
 				</div>
-			</form>
+			</ActionForm>
 		</ContainerBody>
 	}
 }

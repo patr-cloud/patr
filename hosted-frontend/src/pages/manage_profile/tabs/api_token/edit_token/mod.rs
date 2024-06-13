@@ -89,7 +89,7 @@ pub fn EditApiToken() -> impl IntoView {
 			<div class="fc-fs-fs mb-xs full-width my-md gap-sm">
 				<label class="txt-white txt-sm">"Choose Permissions"</label>
 				<div class="full-width fc-fs-fs gap-xs">
-					<PermisisonCard/>
+					// <PermisisonCard/>
 				</div>
 			</div>
 

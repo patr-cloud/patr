@@ -1,13 +1,20 @@
 use std::{collections::BTreeMap, str::FromStr};
 
 use models::api::user::CreateApiTokenResponse;
+use time::{
+	macros::{datetime, format_description},
+	Date,
+	OffsetDateTime,
+};
 
 use crate::prelude::*;
 
-#[server(CreateApiTokenFn, endpoint = "/user/api-token")]
+#[server(CreateApiTokenFn, endpoint = "/user/api-token/create")]
 pub async fn create_api_token(
 	access_token: Option<String>,
 	token_name: String,
+	token_exp: String,
+	token_nbf: String,
 ) -> Result<CreateApiTokenResponse, ServerFnError<ErrorType>> {
 	use models::{
 		api::user::{
@@ -19,16 +26,49 @@ pub async fn create_api_token(
 		rbac::WorkspacePermission,
 	};
 	use time::OffsetDateTime;
+	logging::log!("date tokens: {:?} {:?}", token_exp, token_nbf);
 
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
+	let format = format_description!("[year]-[month]-[day]");
+
+	let token_nbf = token_nbf
+		.some_if_not_empty()
+		.map(|nbf| {
+			let date = Date::parse(nbf.as_str(), &format).map_err(|er| {
+				logging::log!("{:#?}", er);
+				ServerFnError::WrappedServerError(ErrorType::WrongParameters)
+			})?;
+
+			Ok::<OffsetDateTime, ServerFnError<ErrorType>>(
+				datetime!(2020-01-01 0:00 UTC).replace_date(date),
+			)
+		})
+		.transpose()?;
+
+	let token_exp = token_exp
+		.some_if_not_empty()
+		.map(|exp| {
+			let date = Date::parse(exp.as_str(), &format).map_err(|er| {
+				logging::log!("{:#?}", er);
+				ServerFnError::WrappedServerError(ErrorType::WrongParameters)
+			})?;
+
+			Ok::<OffsetDateTime, ServerFnError<ErrorType>>(
+				datetime!(2020-01-01 0:00 UTC).replace_date(date),
+			)
+		})
+		.transpose()?;
+
+	logging::log!("date tokens: {:?} {:?}", token_exp, token_nbf);
+
 	let token = UserApiToken {
 		name: token_name,
+		token_exp,
+		token_nbf,
 		allowed_ips: None,
 		created: OffsetDateTime::now_utc(),
-		token_exp: None,
-		token_nbf: None,
 		permissions: BTreeMap::<Uuid, WorkspacePermission>::new(),
 	};
 
