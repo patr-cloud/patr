@@ -86,7 +86,13 @@ pub async fn create_api_token(
 		now,
 	)
 	.fetch_one(&mut **database)
-	.await?
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(db_err) if db_err.is_unique_violation() => {
+			ErrorType::ApiTokenAlreadyExists
+		}
+		_ => ErrorType::InternalServerError,
+	})?
 	.login_id
 	.into();
 
