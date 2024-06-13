@@ -272,7 +272,7 @@ pub struct ResourcePermissionData {
 	cfg_attr(not(target_arch = "wasm32"), derive(sqlx::Type)),
 	cfg_attr(
 		not(target_arch = "wasm32"),
-		sqlx(type_name = "MANAGED_URL_TYPE", rename_all = "snake_case")
+		sqlx(type_name = "PERMISSION_TYPE", rename_all = "snake_case")
 	)
 )]
 pub enum ResourcePermissionType {
