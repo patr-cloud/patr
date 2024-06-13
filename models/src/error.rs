@@ -75,6 +75,10 @@ pub enum ErrorType {
 	RoleAlreadyExists,
 	/// A role with that ID does not exist
 	RoleDoesNotExist,
+	/// The API token does not exist
+	ApiTokenDoesNotExist,
+	/// An API token with the given name already exists
+	ApiTokenAlreadyExists,
 }
 
 impl ErrorType {
@@ -110,6 +114,8 @@ impl ErrorType {
 			Self::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,
 			Self::RoleAlreadyExists => StatusCode::CONFLICT,
 			Self::RoleDoesNotExist => StatusCode::NOT_FOUND,
+			Self::ApiTokenDoesNotExist => StatusCode::NOT_FOUND,
+			Self::ApiTokenAlreadyExists => StatusCode::CONFLICT,
 		}
 	}
 
@@ -150,6 +156,8 @@ impl ErrorType {
 			Self::InternalServerError => "An internal server error has occured",
 			Self::RoleAlreadyExists => "A role with that name already exists",
 			Self::RoleDoesNotExist => "A role with that ID does not exist",
+			Self::ApiTokenDoesNotExist => "The API token does not exist",
+			Self::ApiTokenAlreadyExists => "An API token with that name already exists",
 		}
 	}
 

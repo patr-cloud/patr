@@ -1,0 +1,60 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT token_id, name, token_nbf, token_exp, allowed_ips, created, COUNT(*) OVER() AS \"total_count!\" FROM user_api_token WHERE user_id = $1 AND revoked IS NULL ORDER BY created DESC LIMIT $2 OFFSET $3;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "token_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "token_nbf",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "token_exp",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "allowed_ips",
+        "type_info": "InetArray"
+      },
+      {
+        "ordinal": 5,
+        "name": "created",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "total_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      null
+    ]
+  },
+  "hash": "41a4faa025d932dd82a4a3a1b86acef6916a6b6b0c0190b1098a28c4e54272b5"
+}

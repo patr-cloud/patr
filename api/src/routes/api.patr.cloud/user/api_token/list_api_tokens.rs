@@ -44,7 +44,7 @@ pub async fn list_api_tokens(
 			user_api_token
 		WHERE
 			user_id = $1 AND
-			revoked > NOW()
+			revoked IS NULL
 		ORDER BY
 			created DESC
 		LIMIT $2
