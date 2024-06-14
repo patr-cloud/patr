@@ -43,7 +43,7 @@ async fn read_files(path: &str) -> Vec<String> {
 	while let Some(entry) = read_dir.next_entry().await.expect("failed to read entry") {
 		let path = entry.path();
 		if path.is_dir() {
-			files.append(&mut Box::pin(read_files(path.to_str().unwrap())).await);
+			files.extend(Box::pin(read_files(path.to_str().unwrap())).await);
 		} else {
 			files.push(path.to_str().unwrap().to_string());
 		}

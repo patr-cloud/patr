@@ -186,6 +186,7 @@ where
 							.layer(PreprocessLayer::new())
 							.layer(UserAgentValidationLayer::new())
 							.layer(AuthenticationLayer::new(ClientType::ApiToken))
+							// .layer(todo!("Add permission checker middleware here"))
 							// .layer(todo!("Add rate limiter value updater middleware here"))
 							// .layer(todo!("Add audit logger middleware here"))
 							.layer(AuthEndpointLayer::new(handler)),
