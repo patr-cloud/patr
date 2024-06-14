@@ -1,5 +1,3 @@
-use std::{future::Future, pin::Pin};
-
 use axum::Router;
 use leptos_axum::LeptosRoutes;
 use tokio::fs;
@@ -39,18 +37,16 @@ pub async fn setup_routes(state: &AppState) -> Router {
 }
 
 /// Reads all files in a directory and its subdirectories
-fn read_files(path: &str) -> Pin<Box<dyn Future<Output = Vec<String>> + '_>> {
-	Box::pin(async move {
-		let mut files = Vec::new();
-		let mut read_dir = fs::read_dir(path).await.expect("failed to read directory");
-		while let Some(entry) = read_dir.next_entry().await.expect("failed to read entry") {
-			let path = entry.path();
-			if path.is_dir() {
-				files.append(&mut read_files(path.to_str().unwrap()).await);
-			} else {
-				files.push(path.to_str().unwrap().to_string());
-			}
+async fn read_files(path: &str) -> Vec<String> {
+	let mut files = Vec::new();
+	let mut read_dir = fs::read_dir(path).await.expect("failed to read directory");
+	while let Some(entry) = read_dir.next_entry().await.expect("failed to read entry") {
+		let path = entry.path();
+		if path.is_dir() {
+			files.append(&mut Box::pin(read_files(path.to_str().unwrap())).await);
+		} else {
+			files.push(path.to_str().unwrap().to_string());
 		}
-		files
-	})
+	}
+	files
 }

@@ -9,6 +9,7 @@ use crate::prelude::*;
 pub fn LoginForm() -> impl IntoView {
 	let login_action = create_server_action::<Login>();
 	let response = login_action.value();
+	let AuthStateContext(context) = expect_context::<crate::utils::AuthStateContext>();
 
 	let username_error = create_rw_signal("".to_owned());
 	let password_error = create_rw_signal("".to_owned());
@@ -41,7 +42,11 @@ pub fn LoginForm() -> impl IntoView {
 						last_used_workspace_id: None,
 					};
 					auth_state.clone().save();
-					expect_context::<RwSignal<_>>().set(auth_state);
+					context.set(auth_state);
+					use_navigate()(
+						&AppRoutes::LoggedInRoute(LoggedInRoute::Home).to_string(),
+						NavigateOptions::default(),
+					);
 				}
 				Err(err) => {
 					logging::log!("{:#?}", err);

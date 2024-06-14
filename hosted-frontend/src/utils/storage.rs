@@ -1,8 +1,11 @@
-use axum_extra::extract::cookie::SameSite;
 use leptos::*;
-use leptos_use::{use_cookie_with_options, utils::FromToStringCodec, UseCookieOptions};
+use leptos_use::{use_cookie, utils::FromToStringCodec};
 
 use crate::prelude::*;
+
+/// The struct to store in the context for the auth state
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct AuthStateContext(pub RwSignal<AuthState>);
 
 /// The auth state stores the information about the user's login status, along
 /// with the data associated with the login, if logged in.
@@ -30,36 +33,18 @@ impl AuthState {
 	/// Load the auth state from the browser cookie storage. This is used to get
 	/// the auth state when the app is first loaded
 	pub fn load() -> Self {
-		let access_token = use_cookie_with_options::<String, FromToStringCodec>(
-			constants::ACCESS_TOKEN,
-			UseCookieOptions::default()
-				.secure(!cfg!(debug_assertions))
-				.http_only(true)
-				.same_site(SameSite::Strict),
-		)
-		.0
-		.get_untracked();
+		let access_token = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN)
+			.0
+			.get_untracked();
 
-		let refresh_token = use_cookie_with_options::<String, FromToStringCodec>(
-			constants::REFRESH_TOKEN,
-			UseCookieOptions::default()
-				.secure(!cfg!(debug_assertions))
-				.http_only(true)
-				.same_site(SameSite::Strict),
-		)
-		.0
-		.get_untracked();
+		let refresh_token = use_cookie::<String, FromToStringCodec>(constants::REFRESH_TOKEN)
+			.0
+			.get_untracked();
 
-		let last_used_workspace_id = use_cookie_with_options::<String, FromToStringCodec>(
-			constants::LAST_USED_WORKSPACE_ID,
-			UseCookieOptions::default()
-				.secure(!cfg!(debug_assertions))
-				.http_only(true)
-				.same_site(SameSite::Strict),
-		)
-		.0
-		.get_untracked()
-		.and_then(|id| Uuid::parse_str(&id).ok());
+		let last_used_workspace_id =
+			use_cookie::<Uuid, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID)
+				.0
+				.get_untracked();
 
 		// TODO: Is a CSRF token needed?
 
@@ -77,88 +62,36 @@ impl AuthState {
 	/// Save the auth state to the browser cookie storage. This is used to save
 	/// the auth state when the user logs in or logs out
 	pub fn save(self) {
-		#[cfg(not(target_arch = "wasm32"))]
-		let cookie_setter = |cookie: &cookie::Cookie| {
-			let response = expect_context::<leptos_axum::ResponseOptions>();
-			response.append_header(
-				http::header::SET_COOKIE,
-				http::HeaderValue::from_str(&cookie.to_string()).unwrap(),
-			);
-		};
-		#[cfg(target_arch = "wasm32")]
-		let cookie_setter = |cookie: &cookie::Cookie| {};
 		match self {
 			AuthState::LoggedOut => {
-				use_cookie_with_options::<String, FromToStringCodec>(
-					constants::ACCESS_TOKEN,
-					UseCookieOptions::<String, _>::default()
-						.secure(!cfg!(debug_assertions))
-						.http_only(true)
-						.same_site(SameSite::Strict)
-						.ssr_set_cookie(cookie_setter),
-				)
-				.1
-				.set(None);
+				use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN)
+					.1
+					.set(None::<String>);
 
-				use_cookie_with_options::<String, FromToStringCodec>(
-					constants::REFRESH_TOKEN,
-					UseCookieOptions::<String, _>::default()
-						.secure(!cfg!(debug_assertions))
-						.http_only(true)
-						.same_site(SameSite::Strict)
-						.ssr_set_cookie(cookie_setter),
-				)
-				.1
-				.set(None);
+				use_cookie::<String, FromToStringCodec>(constants::REFRESH_TOKEN)
+					.1
+					.set(None);
 
-				use_cookie_with_options::<String, FromToStringCodec>(
-					constants::LAST_USED_WORKSPACE_ID,
-					UseCookieOptions::<String, _>::default()
-						.secure(!cfg!(debug_assertions))
-						.http_only(true)
-						.same_site(SameSite::Strict)
-						.ssr_set_cookie(cookie_setter),
-				)
-				.1
-				.set(None);
+				use_cookie::<Uuid, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID)
+					.1
+					.set(None);
 			}
 			AuthState::LoggedIn {
 				access_token,
 				refresh_token,
 				last_used_workspace_id,
 			} => {
-				use_cookie_with_options::<String, FromToStringCodec>(
-					constants::ACCESS_TOKEN,
-					UseCookieOptions::<String, _>::default()
-						.secure(!cfg!(debug_assertions))
-						.http_only(true)
-						.same_site(SameSite::Strict)
-						.ssr_set_cookie(cookie_setter),
-				)
-				.1
-				.set(Some(access_token));
+				use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN)
+					.1
+					.set(Some(access_token));
 
-				use_cookie_with_options::<String, FromToStringCodec>(
-					constants::REFRESH_TOKEN,
-					UseCookieOptions::<String, _>::default()
-						.secure(!cfg!(debug_assertions))
-						.http_only(true)
-						.same_site(SameSite::Strict)
-						.ssr_set_cookie(cookie_setter),
-				)
-				.1
-				.set(Some(refresh_token));
+				use_cookie::<String, FromToStringCodec>(constants::REFRESH_TOKEN)
+					.1
+					.set(Some(refresh_token));
 
-				use_cookie_with_options::<String, FromToStringCodec>(
-					constants::LAST_USED_WORKSPACE_ID,
-					UseCookieOptions::<String, _>::default()
-						.secure(!cfg!(debug_assertions))
-						.http_only(true)
-						.same_site(SameSite::Strict)
-						.ssr_set_cookie(cookie_setter),
-				)
-				.1
-				.set(last_used_workspace_id.map(|id| id.to_string()));
+				use_cookie::<Uuid, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID)
+					.1
+					.set(last_used_workspace_id);
 			}
 		}
 	}

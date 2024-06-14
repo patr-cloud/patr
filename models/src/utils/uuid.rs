@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt::Display};
+use std::{borrow::Cow, fmt::Display, str::FromStr};
 
 use schemars::JsonSchema;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
@@ -101,6 +101,14 @@ impl From<Uuid> for uuid::Uuid {
 impl From<uuid::Uuid> for Uuid {
 	fn from(uuid: uuid::Uuid) -> Self {
 		Self(uuid)
+	}
+}
+
+impl FromStr for Uuid {
+	type Err = uuid::Error;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		Self::parse_str(s)
 	}
 }
 

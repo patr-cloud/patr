@@ -4,7 +4,7 @@ use crate::{pages::*, prelude::*, utils::AuthState};
 
 #[component]
 fn AppOutletView() -> impl IntoView {
-	let state = expect_context::<RwSignal<AuthState>>();
+	let AuthStateContext(state) = expect_context::<AuthStateContext>();
 
 	view! {
 		{move || match state.get() {
@@ -43,7 +43,7 @@ fn AppOutletView() -> impl IntoView {
 pub fn App() -> impl IntoView {
 	let state = create_rw_signal(AuthState::load());
 
-	provide_context(state);
+	provide_context::<AuthStateContext>(AuthStateContext(state));
 
 	// TODO: When redirecting to login, the URL should include the path that the
 	// user was trying to access. This way, after login, the user is redirected
