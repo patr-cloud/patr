@@ -1,30 +1,56 @@
+use std::collections::BTreeMap;
+
 use models::api::user::*;
 
 use crate::prelude::*;
 
-#[server(CreateApiTokenFn, endpoint = "/user/api-token/create")]
-pub async fn create_api_token(
+#[server(UpdateApiTokenFn, endpoint = "/user/api-token/update")]
+pub async fn update_api_token(
 	access_token: Option<String>,
-	token_name: String,
-	token_exp: String,
-	token_nbf: String,
-) -> Result<CreateApiTokenResponse, ServerFnError<ErrorType>> {
-	use std::{collections::BTreeMap, str::FromStr};
+	token_id: String,
+	token_name: Option<String>,
+	token_exp: Option<String>,
+	token_nbf: Option<String>,
+	super_admin: Option<Vec<String>>,
+) -> Result<UpdateApiTokenResponse, ServerFnError<ErrorType>> {
+	use std::str::FromStr;
 
-	use models::{api::user::*, rbac::WorkspacePermission};
+	use models::rbac::WorkspacePermission;
 	use time::{
 		macros::{datetime, format_description},
 		Date,
 		OffsetDateTime,
 	};
 
+	logging::log!(
+		"{:#?} {:?} {:?} {:?} {:?}",
+		super_admin,
+		token_id,
+		token_name,
+		token_exp,
+		token_nbf
+	);
+
+	let super_admin = super_admin.map(|admins| {
+		let mut permissions = BTreeMap::<Uuid, WorkspacePermission>::new();
+
+		admins.iter().for_each(|perm| {
+			let workspace_id = Uuid::parse_str(perm).unwrap();
+			permissions.insert(workspace_id, WorkspacePermission::SuperAdmin);
+		});
+
+		permissions
+	});
+
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
+
+	let token_id = Uuid::parse_str(token_id.clone().as_str())
+		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
 	let format = format_description!("[year]-[month]-[day]");
 
 	let token_nbf = token_nbf
-		.some_if_not_empty()
 		.map(|nbf| {
 			let date = Date::parse(nbf.as_str(), &format).map_err(|er| {
 				logging::log!("{:#?}", er);
@@ -38,7 +64,6 @@ pub async fn create_api_token(
 		.transpose()?;
 
 	let token_exp = token_exp
-		.some_if_not_empty()
 		.map(|exp| {
 			let date = Date::parse(exp.as_str(), &format).map_err(|er| {
 				logging::log!("{:#?}", er);
@@ -51,26 +76,23 @@ pub async fn create_api_token(
 		})
 		.transpose()?;
 
-	logging::log!("date tokens: {:?} {:?}", token_exp, token_nbf);
-
-	let token = UserApiToken {
+	let update_request_body = UpdateApiTokenRequest {
 		name: token_name,
 		token_exp,
 		token_nbf,
 		allowed_ips: None,
-		created: OffsetDateTime::now_utc(),
-		permissions: BTreeMap::<Uuid, WorkspacePermission>::new(),
+		permissions: super_admin,
 	};
 
-	let api_response = make_api_call::<CreateApiTokenRequest>(
+	let api_response = make_api_call::<UpdateApiTokenRequest>(
 		ApiRequest::builder()
-			.path(CreateApiTokenPath)
+			.path(UpdateApiTokenPath { token_id })
 			.query(())
-			.headers(CreateApiTokenRequestHeaders {
+			.headers(UpdateApiTokenRequestHeaders {
 				authorization: access_token,
-				user_agent: UserAgent::from_static("hyper/0.12.2"),
+				user_agent: UserAgent::from_str("Actix-web").unwrap(),
 			})
-			.body(CreateApiTokenRequest { token })
+			.body(update_request_body)
 			.build(),
 	)
 	.await;

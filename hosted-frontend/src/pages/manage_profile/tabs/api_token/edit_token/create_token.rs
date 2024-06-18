@@ -1,19 +1,38 @@
 use leptos_use::{use_cookie, utils::FromToStringCodec};
 
-use crate::{pages::PermisisonCard, prelude::*};
+use crate::{
+	pages::{PermissionCard, TokenModal},
+	prelude::*,
+};
 
 #[component]
 pub fn CreateApiToken() -> impl IntoView {
 	let create_api_token_action = create_server_action::<CreateApiTokenFn>();
 	// let response = create_api_token_action.value();
 
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>("access_token");
+	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
 	let access_token_signal = move || access_token.get();
 	let workspace_list = create_resource(access_token_signal, move |value| async move {
 		list_user_workspace(value).await
 	});
 
+	let response = create_api_token_action.value();
+
 	view! {
+		{
+			move || match response.get() {
+				Some(thing) => match thing {
+					Ok(data) => {
+						logging::log!("logging response get {:#?}", data);
+						view! {
+							<TokenModal is_regenerated={false} token={data.token}/>
+						}.into_view()
+					},
+					Err(_) => view! {}.into_view()
+				},
+				None => view! {}.into_view()
+			}
+		}
 		<ActionForm action={create_api_token_action}  class="full-width fit-wide-screen full-height txt-white fc-fs-fs px-md">
 			<input type="hidden" name="access_token" prop:value={access_token}/>
 
@@ -94,7 +113,7 @@ pub fn CreateApiToken() -> impl IntoView {
 
 			<div class="fc-fs-fs mb-xs full-width my-md gap-sm">
 				<label class="txt-white txt-sm">"Choose Permissions"</label>
-				<div class="full-width fc-fs-fs">
+				<div class="full-width fc-fs-fs gap-xl">
 					<Transition>
 						{
 							move || match workspace_list.get() {
@@ -103,7 +122,7 @@ pub fn CreateApiToken() -> impl IntoView {
 										Ok(data)  => {
 											data.workspaces.into_iter()
 												.map(|workspace| view! {
-													<PermisisonCard workspace={workspace} />
+													<PermissionCard workspace={workspace} />
 												})
 												.collect_view()
 										},
