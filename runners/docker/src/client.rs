@@ -1,7 +1,6 @@
 use futures::{Stream, StreamExt};
 use http::StatusCode;
 use models::{
-	prelude::*,
 	utils::{constants, False, Headers, WebSocketUpgrade},
 	ApiErrorResponse,
 	ApiErrorResponseBody,
@@ -85,13 +84,20 @@ where
 			let msg = msg
 				.inspect_err(|err| warn!("Error from websocket stream: {}", err))
 				.ok()?;
-			let msg = match msg {
-				Message::Text(text) => text,
-				_ => return None,
-			};
-			let msg = serde_json::from_str(&msg)
-				.inspect_err(|err| warn!("Error parsing text as JSON: {}", err))
-				.ok()?;
-			Some(msg)
+			match msg {
+				Message::Text(text) => serde_json::from_str(&text)
+					.inspect_err(|err| warn!("Error parsing text as JSON: {}", err))
+					.ok(),
+				Message::Binary(bin) => serde_json::from_slice(&bin)
+					.inspect_err(|err| {
+						warn!(
+							"Error parsing binary `{}` as JSON: {}",
+							String::from_utf8_lossy(&bin),
+							err
+						)
+					})
+					.ok(),
+				_ => None,
+			}
 		}))
 }

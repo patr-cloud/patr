@@ -85,6 +85,9 @@ pub enum ErrorType {
 	ApiTokenDoesNotExist,
 	/// An API token with the given name already exists
 	ApiTokenAlreadyExists,
+	/// The role that the user is trying to delete is in use and cannot be
+	/// deleted
+	RoleInUse,
 }
 
 impl ErrorType {
@@ -125,6 +128,7 @@ impl ErrorType {
 			Self::RoleDoesNotExist => StatusCode::NOT_FOUND,
 			Self::ApiTokenDoesNotExist => StatusCode::NOT_FOUND,
 			Self::ApiTokenAlreadyExists => StatusCode::CONFLICT,
+			Self::RoleInUse => StatusCode::CONFLICT,
 		}
 	}
 
@@ -170,6 +174,7 @@ impl ErrorType {
 			Self::RoleDoesNotExist => "A role with that ID does not exist",
 			Self::ApiTokenDoesNotExist => "The API token does not exist",
 			Self::ApiTokenAlreadyExists => "An API token with that name already exists",
+			Self::RoleInUse => "The role is currently assigned to users and cannot be deleted",
 		}
 	}
 

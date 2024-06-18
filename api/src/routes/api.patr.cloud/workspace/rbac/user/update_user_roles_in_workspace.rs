@@ -5,6 +5,9 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
+/// The handler to update a user's roles in a workspace. This requires the user
+/// who is sending the request to have the permission to update roles in the
+/// workspace.
 pub async fn update_user_roles_in_workspace(
 	AuthenticatedAppRequest {
 		request:

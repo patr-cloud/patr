@@ -5,7 +5,6 @@ use crate::prelude::*;
 // mod container_registry;
 #[allow(unreachable_code, unused_variables)]
 mod database;
-#[allow(unreachable_code, unused_variables)]
 mod deployment;
 #[allow(unreachable_code, unused_variables)]
 mod domain;

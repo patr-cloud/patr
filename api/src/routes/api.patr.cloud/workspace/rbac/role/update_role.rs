@@ -8,6 +8,9 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
+/// The handler to update a role in a workspace. This will update the name,
+/// description, and permissions of the role. If the name or permissions are not
+/// provided, they will not be updated.
 pub async fn update_role(
 	AuthenticatedAppRequest {
 		request:

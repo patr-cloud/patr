@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\t\tINSERT INTO\n\t\t\t\tresource(\n\t\t\t\t\tid,\n\t\t\t\t\tresource_type_id,\n\t\t\t\t\towner_id,\n\t\t\t\t\tcreated\n\t\t\t\t)\n\t\t\tVALUES\n\t\t\t\t($1, (SELECT id FROM resource_type WHERE name = 'deployment_volume'), $2, $3);\n\t\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f0a9d389d628efd51c176b7ece9650add2b877fe775de6ef740995378e446ae5"
+}

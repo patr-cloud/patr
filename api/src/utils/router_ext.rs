@@ -109,7 +109,7 @@ where
 				MethodRouter::<S>::new()
 					.on(
 						MethodFilter::try_from(<E as ApiEndpoint>::METHOD).unwrap(),
-						|| async { unreachable!() },
+						|| async {},
 					)
 					.layer(
 						ServiceBuilder::new()
@@ -176,7 +176,7 @@ where
 				MethodRouter::<S>::new()
 					.on(
 						MethodFilter::try_from(<E as ApiEndpoint>::METHOD).unwrap(),
-						|| async { unreachable!() },
+						|| async {},
 					)
 					.layer(
 						ServiceBuilder::new()

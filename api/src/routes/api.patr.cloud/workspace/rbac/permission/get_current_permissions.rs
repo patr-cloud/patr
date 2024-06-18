@@ -3,6 +3,8 @@ use models::api::workspace::rbac::*;
 
 use crate::prelude::*;
 
+/// The handler to get the permissions of the current request. This will return
+/// the permissions of the currently authenticated user in the workspace.
 pub async fn get_current_permissions(
 	AuthenticatedAppRequest {
 		request:

@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\tINSERT INTO \n\t\t\tdeployment_exposed_port(\n\t\t\t\tdeployment_id,\n\t\t\t\tport,\n\t\t\t\tport_type\n\t\t\t)\n\t\tVALUES\n\t\t\t(\n\t\t\t\t$1,\n\t\t\t\tUNNEST($2::INTEGER[]),\n\t\t\t\tUNNEST($3::EXPOSED_PORT_TYPE[])\n\t\t\t);\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4Array",
+        {
+          "Custom": {
+            "name": "_exposed_port_type",
+            "kind": {
+              "Array": {
+                "Custom": {
+                  "name": "exposed_port_type",
+                  "kind": {
+                    "Enum": [
+                      "http"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "37c8232181568f636c7c035767e5be1fe9a052e2c224780ed78392b505cb17d8"
+}

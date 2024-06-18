@@ -3,6 +3,11 @@ use models::{api::workspace::rbac::role::*, utils::TotalCountHeader};
 
 use crate::prelude::*;
 
+/// The handler to list all roles in the workspace. This will return all the
+/// roles that are available in the workspace, not just the roles of the user.
+/// To get the roles of the user, use the [`get_current_permissions`][1] route.
+///
+/// [1]: super::super::permission::get_current_permissions
 pub async fn list_all_roles(
 	AuthenticatedAppRequest {
 		request:

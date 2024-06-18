@@ -8,6 +8,8 @@ use models::{
 
 use crate::prelude::*;
 
+/// The handler to get all the details of a role in a workspace. This will
+/// return the name, description, and permissions of the role.
 pub async fn get_role_info(
 	AuthenticatedAppRequest {
 		request:

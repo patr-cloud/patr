@@ -30,9 +30,9 @@ macros::declare_api_endpoint!(
 		/// The image tag to use
 		#[preprocess(trim, lowercase)]
 		pub image_tag: String,
-		/// The region to deploy the deployment on
+		/// The runner to use to run the deployment
 		#[preprocess(none)]
-		pub region: Uuid,
+		pub runner: Uuid,
 		/// The machine type the deployment pod will run on
 		/// Different machine types will have different resource allocation
 		#[preprocess(none)]

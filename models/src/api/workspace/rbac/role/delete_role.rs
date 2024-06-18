@@ -9,6 +9,12 @@ macros::declare_api_endpoint!(
 		/// The role ID to delete
 		pub role_id: Uuid,
 	},
+	query = {
+		/// Whether to remove users from the role. If set to true, all users
+		/// with this role will be removed. If set to false, the role will be
+		/// deleted only if no users have this role.
+		pub remove_users: bool,
+	},
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

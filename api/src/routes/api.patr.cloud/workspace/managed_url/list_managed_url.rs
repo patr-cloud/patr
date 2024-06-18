@@ -3,20 +3,8 @@ use models::{api::workspace::managed_url::*, prelude::*};
 
 use crate::prelude::*;
 
-/// List managed URLs
-/// 
-/// #Parameters
-/// - `workspace_id`: The workspace ID
-/// - `order_by`: The order by
-/// - `order`: The order
-/// - `filter`: The filter
-/// - `count`: The count
-/// - `page`: The page
-/// 	
-/// #Returns
-/// - `urls`: The managed URLs and its details
-/// - `total_count`: The total count of managed URLs
-/// 
+/// The handler to list all managed URLs in a workspace. This will return all
+/// managed URLs that the user has access to in the workspace.
 pub async fn list_managed_url(
 	AuthenticatedAppRequest {
 		request:
@@ -132,7 +120,8 @@ pub async fn list_managed_url(
 								.into(),
 							port: row
 								.port
-								.ok_or(ErrorType::server_error("port in db is NULL"))? as u16,
+								.ok_or(ErrorType::server_error("port in db is NULL"))?
+								as u16,
 						}
 					}
 				},

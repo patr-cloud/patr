@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\t\t\tINSERT INTO\n\t\t\t\t\tdeployment_deploy_history(\n\t\t\t\t\t\tdeployment_id,\n\t\t\t\t\t\timage_digest,\n\t\t\t\t\t\trepository_id,\n\t\t\t\t\t\tcreated\n\t\t\t\t\t)\n\t\t\t\tVALUES\n\t\t\t\t\t($1, $2, $3, $4)\n\t\t\t\tON CONFLICT\n\t\t\t\t\t(deployment_id, image_digest)\n\t\t\t\tDO NOTHING;\n\t\t\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b41425daec8b62bc3bd3c7387198da1df3509d9e2e61455182fbaac0a12c5e19"
+}

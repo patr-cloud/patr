@@ -20,6 +20,15 @@ use crate::ApiSuccessResponseBody;
 pub trait IntoAxumResponse {
 	/// Convert the type to a [`Response`] that can be used with [`axum`].
 	fn into_axum_response(self) -> Response;
+
+	/// Check if the type is the same as the type parameter.
+	fn is<T>(&self) -> bool
+	where
+		T: 'static,
+		Self: 'static,
+	{
+		std::any::TypeId::of::<T>() == std::any::TypeId::of::<Self>()
+	}
 }
 
 impl<T> IntoAxumResponse for T

@@ -6,6 +6,9 @@ use models::{
 
 use crate::prelude::*;
 
+/// The handler to create a new role in a workspace. This will create a new role
+/// with the provided name, description, and permissions. The permissions will
+/// determine what a user with the mentioned role can do in the workspace.
 pub async fn create_new_role(
 	AuthenticatedAppRequest {
 		request:
