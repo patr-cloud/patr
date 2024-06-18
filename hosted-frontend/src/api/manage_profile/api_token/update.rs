@@ -90,7 +90,7 @@ pub async fn update_api_token(
 			.query(())
 			.headers(UpdateApiTokenRequestHeaders {
 				authorization: access_token,
-				user_agent: UserAgent::from_str("Actix-web").unwrap(),
+				user_agent: UserAgent::from_str("hyper/0.12.2").unwrap(),
 			})
 			.body(update_request_body)
 			.build(),

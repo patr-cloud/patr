@@ -21,7 +21,7 @@ pub fn CreateApiToken() -> impl IntoView {
 	view! {
 		{
 			move || match response.get() {
-				Some(thing) => match thing {
+				Some(data) => match data {
 					Ok(data) => {
 						logging::log!("logging response get {:#?}", data);
 						view! {
