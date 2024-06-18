@@ -8,6 +8,7 @@ mod choose_permission;
 mod create_token;
 mod permission_card;
 mod permission_item;
+mod revoke_regen;
 mod token_info;
 mod token_modal;
 
@@ -16,12 +17,13 @@ pub use self::{
 	create_token::*,
 	permission_card::*,
 	permission_item::*,
+	revoke_regen::*,
 	token_info::*,
 	token_modal::*,
 };
 
 #[derive(Params, PartialEq)]
-struct TokenParams {
+pub struct TokenParams {
 	token_id: Option<String>,
 }
 
@@ -48,7 +50,7 @@ fn EditApiTokenPermission(
 	view! {
 		<div class="fc-fs-fs mb-xs full-width my-md gap-sm">
 			<label class="txt-white txt-sm">"Choose Permissions"</label>
-			<div class="full-width fc-fs-fs gap-xs">
+			<div class="full-width fc-fs-fs gap-xl">
 					{
 						let api_token = api_token.clone();
 						move || {
@@ -115,59 +117,60 @@ pub fn EditApiToken() -> impl IntoView {
 	});
 
 	view! {
-		<ActionForm action={update_api_token_action} class="full-width fit-wide-screen full-height txt-white fc-fs-fs px-md">
+		<div class="full-width fit-wide-screen full-height txt-white fc-fs-fs px-md">
 			<input type="hidden" name="access_token" prop:value={access_token}/>
 			<input type="hidden" name="token_id" prop:value={token_id}/>
 
-			<div class="fr-fs-ct mb-md full-width">
+			<div class="fr-sb-ct mb-md full-width">
 				<p class="txt-md">
 					<strong class="txt-md">"Manage Token"</strong>
 				</p>
 
-				<Link style_variant={LinkStyleVariant::Contained} class="ml-auto">
-					"REGENERATE TOKEN"
-				</Link>
-
-				<button class="btn btn-error ml-md">"REVOKE TOKEN"</button>
+				<div class="fr-fs-ct gap-md">
+					<RegenerateApiToken />
+					<RevokeApiToken />
+				</div>
 			</div>
 
-			<Transition>
-				{
-					move || match token_info.get() {
-						Some(token_info) => {
-							match token_info {
-								Ok(data) => {
-									let token = data.token.clone();
-									view! {
-										<TokenInfo token_info={data.token} />
-										<EditApiTokenPermission
-											workspace_list={workspace_list}
-											api_token={token}
-										/>
+			<ActionForm class="full-width full-height" action={update_api_token_action}>
+				<Transition>
+					{
+						move || match token_info.get() {
+							Some(token_info) => {
+								match token_info {
+									Ok(data) => {
+										let token = data.token.clone();
+										view! {
+											<TokenInfo token_info={data.token} />
+											<EditApiTokenPermission
+												workspace_list={workspace_list}
+												api_token={token}
+											/>
+										}.into_view()
+									},
+									Err(err) => view! {
+										<div>"Cannot Load Resource"</div>
 									}.into_view()
-								},
-								Err(err) => view! {
-									<div>"Cannot Load Resource"</div>
-								}.into_view()
-							}
-						},
-						None => view! {}.into_view()
+								}
+							},
+							None => view! {}.into_view()
+						}
 					}
-				}
-			</Transition>
+				</Transition>
 
 
-			<div class="full-width fr-fe-ct py-md mt-auto">
-				<Link class="txt-sm txt-medium mr-sm">"BACK"</Link>
-				<Link
-					r#type={Variant::Button}
-					should_submit={true}
-					style_variant={LinkStyleVariant::Contained}
-					class="txt-sm txt-medium mr-sm"
-				>
-					"UPDATE"
-				</Link>
-			</div>
-		</ActionForm>
+				<div class="full-width fr-fe-ct py-md mt-auto">
+					<Link class="txt-sm txt-medium mr-sm">"BACK"</Link>
+					<Link
+						r#type={Variant::Button}
+						should_submit={true}
+						style_variant={LinkStyleVariant::Contained}
+						class="txt-sm txt-medium mr-sm"
+					>
+						"UPDATE"
+					</Link>
+				</div>
+			</ActionForm>
+		</div>
 	}
 }
