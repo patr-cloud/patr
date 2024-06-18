@@ -10,9 +10,13 @@ pub async fn login(
 	password: String,
 	mfa_otp: Option<String>,
 ) -> Result<LoginResponse, ServerFnError<ErrorType>> {
+	use axum::http::header::{HeaderValue, SET_COOKIE};
+	use axum_extra::extract::cookie::{Cookie, SameSite};
+	use leptos_axum::ResponseOptions;
 	use models::api::auth::*;
+	use time::Duration;
 
-	let response = make_api_call::<LoginRequest>(
+	let api_response = make_api_call::<LoginRequest>(
 		ApiRequest::builder()
 			.path(LoginPath)
 			.query(())
@@ -26,7 +30,32 @@ pub async fn login(
 			})
 			.build(),
 	)
-	.await?;
+	.await;
 
-	Ok(response.body)
+	let response = expect_context::<ResponseOptions>();
+
+	if let Ok(ref resp) = api_response {
+		let access_cookie = Cookie::build(("accessToken", resp.body.access_token.clone()))
+			.path("/")
+			.max_age(Duration::days(90))
+			.same_site(SameSite::Lax)
+			.build();
+		let refresh_cookie = Cookie::build(("refreshToken", resp.body.refresh_token.clone()))
+			.path("/")
+			.max_age(Duration::days(90))
+			.same_site(SameSite::Lax)
+			.build();
+		let access_token_header = HeaderValue::from_str(access_cookie.to_string().as_str());
+		let refresh_token_header = HeaderValue::from_str(refresh_cookie.to_string().as_str());
+
+		if let (Ok(access_token_header), Ok(refresh_token_header)) =
+			(access_token_header, refresh_token_header)
+		{
+			response.append_header(SET_COOKIE, access_token_header);
+			response.append_header(SET_COOKIE, refresh_token_header);
+			leptos_axum::redirect("/");
+		}
+	}
+
+	Ok(api_response.map(|res| res.body)?)
 }

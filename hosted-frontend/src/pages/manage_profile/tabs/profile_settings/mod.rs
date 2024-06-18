@@ -5,7 +5,7 @@ use crate::prelude::*;
 
 #[component]
 pub fn ProfileSettings() -> impl IntoView {
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>("access_token");
+	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
 	let access_token_signal = move || access_token.get();
 	let user_data = create_resource(access_token_signal, move |value| async move {
 		load_user_data(value).await

@@ -20,7 +20,7 @@ pub fn ApiTokensTab() -> impl IntoView {
 
 #[component]
 pub fn ListApiTokens() -> impl IntoView {
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>("access_token");
+	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
 	let access_token_signal = move || access_token.get();
 	let token_list = create_resource(access_token_signal, move |value| async move {
 		load_api_tokens_list(value).await

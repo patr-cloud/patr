@@ -13,7 +13,7 @@ pub fn PasswordSection() -> impl IntoView {
 	let change_password_action = create_server_action::<ChangePasswordFn>();
 	let response = change_password_action.value();
 
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>("access_token");
+	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
 
 	let current_password_error = create_rw_signal("".to_owned());
 	let _new_password_error = create_rw_signal("".to_owned());
@@ -55,7 +55,7 @@ pub fn PasswordSection() -> impl IntoView {
 
 			<form class="full-width pt-md gap-md fc-fs-fs">
 				<Show when={move || open_mfa_modal.get()}>
-					<Modal variant={SecondaryColorVariant::Medium}>
+					<Modal color_variant={SecondaryColorVariant::Medium}>
 						<h1>"Scan the QR Code to enable 2FA"</h1>
 
 						<form class="full-width flex mb-md">

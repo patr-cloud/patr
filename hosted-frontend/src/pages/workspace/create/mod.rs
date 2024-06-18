@@ -5,7 +5,7 @@ use crate::prelude::*;
 #[component]
 pub fn CreateWorkspace() -> impl IntoView {
 	let create_workspace_action = create_server_action::<CreateWorkspaceFn>();
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>("access_token");
+	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
 
 	view! {
 		<ContainerHead>

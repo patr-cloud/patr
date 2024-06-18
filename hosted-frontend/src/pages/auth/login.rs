@@ -14,6 +14,8 @@ pub fn LoginForm() -> impl IntoView {
 	let username_error = create_rw_signal("".to_owned());
 	let password_error = create_rw_signal("".to_owned());
 
+	let global_state = expect_context::<RwSignal<AuthState>>();
+
 	let handle_errors = move |error| match error {
 		ServerFnError::WrappedServerError(ErrorType::UserNotFound) => {
 			username_error.set("User Not Found".to_owned());

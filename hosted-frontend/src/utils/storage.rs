@@ -49,7 +49,12 @@ impl AuthState {
 
 		// TODO: Is a CSRF token needed?
 
-		if let Some((access_token, refresh_token)) = access_token.zip(refresh_token) {
+		logging::log!(
+			"authstate access token: {:?}\n {:?}",
+			access_token,
+			refresh_token.get()
+		);
+		if let Some((access_token, refresh_token)) = access_token.zip(refresh_token.get()) {
 			AuthState::LoggedIn {
 				access_token,
 				refresh_token,

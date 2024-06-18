@@ -37,6 +37,20 @@ fn AppOutletView() -> impl IntoView {
 	}
 }
 
+#[component]
+fn AppOutlet() -> impl IntoView {
+	view! {
+		<div class="fr-fs-fs full-width full-height bg-secondary">
+			<Sidebar/>
+			<main class="fc-fs-ct full-width px-lg">
+				<header style="width: 100%; min-height: 5rem;"></header>
+
+				<Outlet/>
+			</main>
+		</div>
+	}
+}
+
 /// The main application component. This is the root component of the
 /// application. It contains the main router and all the routes.
 #[component]
@@ -54,7 +68,7 @@ pub fn App() -> impl IntoView {
 				// Logged in routes
 				<ProtectedRoute
 					path={AppRoutes::Empty}
-					view={AppOutletView}
+					view={AppOutlet}
 					redirect_path={AppRoutes::LoggedOutRoute(LoggedOutRoute::Login)}
 					condition={move || state.get().is_logged_in()}
 				>
