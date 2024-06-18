@@ -1,5 +1,6 @@
 use axum::http::StatusCode;
 use models::{api::workspace::runner::*, prelude::*};
+use rustis::commands::{GenericCommands, ScanOptions};
 
 use crate::prelude::*;
 
@@ -21,7 +22,7 @@ pub async fn list_runners_for_workspace(
 				body: ListRunnersForWorkspaceRequestProcessed,
 			},
 		database,
-		redis: _,
+		redis,
 		client_ip: _,
 		config: _,
 		user_data,
@@ -29,8 +30,14 @@ pub async fn list_runners_for_workspace(
 ) -> Result<AppResponse<ListRunnersForWorkspaceRequest>, ErrorType> {
 	info!("Listing runners in workspace `{}`", workspace_id);
 
-	let mut total_count = 0;
+	let (_, connected_runners) = redis
+		.scan::<_, Vec<String>>(
+			0,
+			ScanOptions::default().match_pattern(redis::keys::runner_connection_lock_prefix()),
+		)
+		.await?;
 
+	let mut total_count = 0;
 	let runners = query!(
 		r#"
 		SELECT
@@ -62,16 +69,17 @@ pub async fn list_runners_for_workspace(
 	.into_iter()
 	.map(|row| {
 		total_count = row.total_count;
-		Ok(WithId::new(
+		WithId::new(
 			row.id,
 			Runner {
 				name: row.name,
-				connected: false, // TODO
-				last_seen: None,  // TODO
+				connected: connected_runners
+					.contains(&redis::keys::runner_connection_lock(&row.id.into())),
+				last_seen: None, // TODO
 			},
-		))
+		)
 	})
-	.collect::<Result<_, ErrorType>>()?;
+	.collect();
 
 	AppResponse::builder()
 		.body(ListRunnersForWorkspaceResponse { runners })

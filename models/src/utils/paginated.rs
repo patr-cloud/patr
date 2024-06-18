@@ -21,10 +21,12 @@ pub struct Paginated<T = ()> {
 	#[serde(flatten)]
 	pub data: T,
 	/// The number of items that should be returned per page.
+	#[serde(default = "default_page_size")]
 	pub count: usize,
 	/// The page number that should be returned. This is zero-indexed. So to get
 	/// the first page, you should set this to 0, and to get the second page,
 	/// you should set this to 1, etc.
+	#[serde(default)]
 	pub page: usize,
 }
 
@@ -33,6 +35,13 @@ impl<T> Paginated<T> {
 	/// This is currently set to 25. So if no page size is specified, the API
 	/// will return a maximum of 25 items, starting from the first item.
 	pub const DEFAULT_PAGE_SIZE: usize = 25;
+}
+
+/// Get the default page size that should be used if no page size is
+/// specified. This is currently set to 25. So if no page size is specified,
+/// the API will return a maximum of 25 items, starting from the first item.
+const fn default_page_size() -> usize {
+	Paginated::<()>::DEFAULT_PAGE_SIZE
 }
 
 impl<T> Default for Paginated<T>

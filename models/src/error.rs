@@ -88,6 +88,8 @@ pub enum ErrorType {
 	/// The role that the user is trying to delete is in use and cannot be
 	/// deleted
 	RoleInUse,
+	/// Another instance of the same runner ID is already connected
+	RunnerAlreadyConnected,
 }
 
 impl ErrorType {
@@ -129,6 +131,7 @@ impl ErrorType {
 			Self::ApiTokenDoesNotExist => StatusCode::NOT_FOUND,
 			Self::ApiTokenAlreadyExists => StatusCode::CONFLICT,
 			Self::RoleInUse => StatusCode::CONFLICT,
+			Self::RunnerAlreadyConnected => StatusCode::CONFLICT,
 		}
 	}
 
@@ -175,6 +178,7 @@ impl ErrorType {
 			Self::ApiTokenDoesNotExist => "The API token does not exist",
 			Self::ApiTokenAlreadyExists => "An API token with that name already exists",
 			Self::RoleInUse => "The role is currently assigned to users and cannot be deleted",
+			Self::RunnerAlreadyConnected => "Another instance of the same runner ID is already connected",
 		}
 	}
 

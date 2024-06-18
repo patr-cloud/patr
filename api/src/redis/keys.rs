@@ -37,3 +37,15 @@ pub fn global_revocation_timestamp() -> String {
 pub fn user_mfa_secret(user_id: &Uuid) -> String {
 	format!("mfa:{}", user_id)
 }
+
+/// The key used to store the Redis lock for a runner. This is used to ensure
+/// that only one connection is allowed to stream data for a runner at a time,
+/// and that the connection is not lost.
+pub fn runner_connection_lock(runner_id: &Uuid) -> String {
+	format!("{}{}", runner_connection_lock_prefix(), runner_id)
+}
+
+/// The prefix used for the runner connection lock key
+pub fn runner_connection_lock_prefix() -> String {
+	String::from("runnerConnectionLock:")
+}

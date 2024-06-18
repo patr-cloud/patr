@@ -27,6 +27,17 @@ use self::{
 };
 use crate::prelude::*;
 
+/*
+Figure out how to structure:
+	- ports
+	- env vars
+	- config mounts
+	- Volume
+	- deploy history
+	- logs
+	- metrics
+*/
+
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()

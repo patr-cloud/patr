@@ -1,5 +1,6 @@
 use axum::http::StatusCode;
-use models::api::workspace::deployment::*;
+use models::api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg};
+use rustis::commands::PubSubCommands;
 use time::OffsetDateTime;
 
 use crate::prelude::*;
@@ -40,7 +41,7 @@ pub async fn create_deployment(
 					},
 			},
 		database,
-		redis: _,
+		redis,
 		client_ip: _,
 		config,
 		user_data,
@@ -164,8 +165,12 @@ pub async fn create_deployment(
 		liveness_probe.as_ref().map(|probe| probe.path.as_str()),
 		liveness_probe.as_ref().map(|_| ExposedPortType::Http) as _,
 	)
-	.fetch_one(&mut **database)
-	.await?;
+	.execute(&mut **database)
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(err) if err.is_unique_violation() => ErrorType::ResourceAlreadyExists,
+		_ => ErrorType::InternalServerError,
+	})?;
 
 	trace!("Created deployment with ID: {}", deployment_id);
 
@@ -179,12 +184,12 @@ pub async fn create_deployment(
 			)
 		VALUES
 			(
-				$1,
+				UNNEST($1::UUID[]),
 				UNNEST($2::INTEGER[]),
 				UNNEST($3::EXPOSED_PORT_TYPE[])
 			);
 		"#,
-		deployment_id as _,
+		&ports.iter().map(|_| deployment_id).collect::<Vec<_>>(),
 		&ports
 			.iter()
 			.map(|(port, _)| port.value() as i32)
@@ -221,13 +226,16 @@ pub async fn create_deployment(
 			)
 		VALUES
 			(
-				$1,
+				UNNEST($1::UUID[]),
 				UNNEST($2::TEXT[]),
 				UNNEST($3::TEXT[]),
 				UNNEST($4::UUID[])
 			);
 		"#,
-		deployment_id as _,
+		&environment_variables
+			.iter()
+			.map(|_| deployment_id)
+			.collect::<Vec<_>>(),
 		&environment_variables
 			.iter()
 			.map(|(name, _)| name.clone())
@@ -256,12 +264,15 @@ pub async fn create_deployment(
 			)
 		VALUES
 			(
-				$1,
+				UNNEST($1::UUID[]),
 				UNNEST($2::TEXT[]),
 				UNNEST($3::BYTEA[])
 			);
 		"#,
-		deployment_id as _,
+		&config_mounts
+			.iter()
+			.map(|_| deployment_id)
+			.collect::<Vec<_>>(),
 		&config_mounts
 			.iter()
 			.map(|(path, _)| path.clone())
@@ -274,54 +285,39 @@ pub async fn create_deployment(
 	.execute(&mut **database)
 	.await?;
 
-	for (name, volume) in &volumes {
-		let volume_id = query!(
-			r#"
-			INSERT INTO
-				resource(
-					id,
-					resource_type_id,
-					owner_id,
-					created
-				)
-			VALUES
-				(
-					GENERATE_RESOURCE_ID(),
-					(SELECT id FROM resource_type WHERE name = 'deployment_volume'),
-					$1,
-					$2
-				)
-			RETURNING id;
-			"#,
-			workspace_id as _,
-			now
-		)
-		.fetch_one(&mut **database)
-		.await?
-		.id;
-
-		query!(
-			r#"
-			INSERT INTO 
-				deployment_volume(
-					id,
-					name,
-					deployment_id,
-					volume_size,
-					volume_mount_path
-				)
-			VALUES
-				($1, $2, $3, $4, $5);
-			"#,
-			volume_id as _,
-			name,
-			deployment_id as _,
-			volume.size as i32,
-			volume.path,
-		)
-		.execute(&mut **database)
-		.await?;
-	}
+	query!(
+		r#"
+		INSERT INTO 
+			deployment_volume(
+				id,
+				deployment_id,
+				volume_size,
+				volume_mount_path
+			)
+		VALUES
+			(
+				UNNEST($1::UUID[]),
+				UNNEST($2::UUID[]),
+				UNNEST($3::INTEGER[]),
+				UNNEST($4::TEXT[])
+			);
+		"#,
+		&volumes
+			.iter()
+			.map(|(volume_id, _)| (*volume_id).into())
+			.collect::<Vec<_>>(),
+		&volumes.iter().map(|_| deployment_id).collect::<Vec<_>>(),
+		&volumes
+			.iter()
+			.map(|(_, volume)| volume.size as i32)
+			.collect::<Vec<_>>(),
+		&volumes
+			.iter()
+			.map(|(_, volume)| volume.path.clone())
+			.collect::<Vec<_>>(),
+	)
+	.execute(&mut **database)
+	.await?;
 
 	if let DeploymentRegistry::PatrRegistry { repository_id, .. } = &registry {
 		let digest = query!(
@@ -367,6 +363,39 @@ pub async fn create_deployment(
 			.await?;
 		}
 	}
+
+	// TODO Temporary workaround until audit logs and triggers are implemented
+	redis
+		.publish(
+			format!("{}/runner/{}/stream", workspace_id, runner),
+			serde_json::to_string(&StreamRunnerDataForWorkspaceServerMsg::DeploymentCreated {
+				deployment: WithId::new(
+					deployment_id,
+					Deployment {
+						name: name.to_string(),
+						registry,
+						image_tag: image_tag.to_string(),
+						runner,
+						status: DeploymentStatus::Deploying,
+						current_live_digest: None,
+						machine_type,
+					},
+				),
+				running_details: DeploymentRunningDetails {
+					deploy_on_push,
+					min_horizontal_scale,
+					max_horizontal_scale,
+					ports,
+					environment_variables,
+					startup_probe,
+					liveness_probe,
+					config_mounts,
+					volumes,
+				},
+			})
+			.unwrap(),
+		)
+		.await?;
 
 	AppResponse::builder()
 		.body(CreateDeploymentResponse {

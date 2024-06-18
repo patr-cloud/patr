@@ -95,6 +95,14 @@ impl Header for BearerToken {
 	{
 		let value = values.next().ok_or_else(headers::Error::invalid)?;
 
+		if !value
+			.to_str()
+			.map(|value| value.starts_with(Bearer::SCHEME))
+			.unwrap_or(false)
+		{
+			return Err(headers::Error::invalid());
+		}
+
 		let value = Bearer::decode(value).ok_or_else(headers::Error::invalid)?;
 
 		Ok(Self(value))

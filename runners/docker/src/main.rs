@@ -1,9 +1,6 @@
-use std::{marker::PhantomData, str::FromStr};
+use std::{collections::HashMap, marker::PhantomData, str::FromStr};
 
-use bollard::{
-	container::{Config, CreateContainerOptions, StartContainerOptions},
-	secret::HealthConfig,
-};
+use bollard::container::{Config, CreateContainerOptions, StartContainerOptions};
 use config::{RunnerSettings, RunningEnvironment};
 use futures::StreamExt;
 use models::{api::workspace::runner::*, prelude::*, utils::WebSocketUpgrade};
@@ -19,6 +16,10 @@ use tracing_subscriber::{
 mod client;
 /// The configuration for the runner.
 mod config;
+/// The module to handle the creation, updating, and deletion of resources.
+mod docker;
+/// The utility functions and types used across the crate.
+mod utils;
 
 /// The prelude module contains all the commonly used types and traits that are
 /// used across the crate. This is mostly used to avoid having to import a lot
@@ -26,16 +27,13 @@ mod config;
 pub mod prelude {
 	pub use models::prelude::*;
 	pub use tracing::{debug, error, info, instrument, trace, warn};
+
+	pub use crate::utils::*;
 }
 
 #[tokio::main]
 async fn main() {
-	let RunnerSettings {
-		workspace_id,
-		runner_id,
-		api_token,
-		environment,
-	} = config::get_runner_settings();
+	let settings = config::get_runner_settings();
 
 	tracing::dispatcher::set_global_default(Dispatch::new(
 		tracing_subscriber::registry().with(
@@ -54,7 +52,7 @@ async fn main() {
 						.with_target("models", LevelFilter::TRACE),
 				)
 				.with_filter(LevelFilter::from_level(
-					if environment == RunningEnvironment::Development {
+					if settings.environment == RunningEnvironment::Development {
 						Level::TRACE
 					} else {
 						Level::DEBUG
@@ -64,14 +62,19 @@ async fn main() {
 	))
 	.expect("Failed to set global default subscriber");
 
-	let authorization = BearerToken::from_str(&api_token).expect("Failed to parse Bearer token");
-	let user_agent = UserAgent::from_static("runner/docker");
+	let authorization =
+		BearerToken::from_str(&settings.api_token).expect("Failed to parse Bearer token");
+	let user_agent = UserAgent::from_str(&format!("docker-runner/{}", utils::VERSION))
+		.expect("Failed to parse User-Agent");
+
+	let docker =
+		bollard::Docker::connect_with_defaults().expect("Failed to connect to Docker engine");
 
 	client::stream_request(
 		ApiRequest::<StreamRunnerDataForWorkspaceRequest>::builder()
 			.path(StreamRunnerDataForWorkspacePath {
-				workspace_id,
-				runner_id,
+				workspace_id: settings.workspace_id,
+				runner_id: settings.runner_id,
 			})
 			.headers(StreamRunnerDataForWorkspaceRequestHeaders {
 				authorization,
@@ -84,37 +87,33 @@ async fn main() {
 	.await
 	.map_err(|err| err.body)
 	.expect("Cannot stream request")
-	.for_each_concurrent(4, |response| async move {
+	.for_each_concurrent(4, |response| async {
 		use StreamRunnerDataForWorkspaceServerMsg::*;
 		match response {
-			DeploymentCreated(deployment) => {
-				bollard::Docker::connect_with_local_defaults()
-					.expect("Failed to connect to Docker")
-					.create_container(
-						Some(CreateContainerOptions {
-							name: deployment.data.name.clone(),
-							..Default::default()
-						}),
-						Config {
-							image: Some(format!(
-								"{}/{}:{}",
-								deployment.data.registry.registry_url(),
-								deployment.data.registry.image_name().unwrap(),
-								deployment.data.image_tag
-							)),
-							..Default::default()
-						},
-					)
-					.await
-					.expect("Failed to create container");
-				bollard::Docker::connect_with_local_defaults()
-					.expect("Failed to connect to Docker")
-					.start_container(&deployment.data.name, None::<StartContainerOptions<String>>)
-					.await
-					.expect("Failed to start container");
+			DeploymentCreated {
+				deployment,
+				running_details,
+			} => {
+				if let Err(err) = docker::deployment::created(
+					&settings,
+					docker.clone(),
+					deployment,
+					running_details,
+				)
+				.await
+				{
+					error!("Failed to create deployment: {}", err);
+				}
 			}
-			DeploymentUpdated { id, old, new } => todo!(),
-			DeploymentDeleted(_) => todo!(),
+			DeploymentUpdated {
+				deployment,
+				running_details,
+			} => todo!(),
+			DeploymentDeleted { id } => {
+				if let Err(err) = docker::deployment::deleted(&settings, docker.clone(), id).await {
+					error!("Failed to delete deployment: {}", err);
+				}
+			}
 			Pong => (),
 		}
 	})

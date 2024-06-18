@@ -68,7 +68,7 @@ pub async fn list_repository_tags(
 	AppResponse::builder()
 		.body(ListContainerRepositoryTagsResponse { tags })
 		.headers(ListContainerRepositoryTagsResponseHeaders {
-			total_count: TotalCountHeader(total_count as usize),
+			total_count: TotalCountHeader(total_count as _),
 		})
 		.status_code(StatusCode::OK)
 		.build()

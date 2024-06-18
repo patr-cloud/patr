@@ -85,20 +85,24 @@ pub struct DeploymentRunningDetails {
 	/// The maximum number of node deployment can scale up to at peak resource
 	/// requirement
 	pub max_horizontal_scale: u16,
+	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
 	/// List of deployment port number of its type
 	pub ports: BTreeMap<StringifiedU16, ExposedPortType>,
 	/// List of environment variables are values
+	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
 	pub environment_variables: BTreeMap<String, EnvironmentVariableValue>,
 	/// The startup probe of a deployment if any
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub startup_probe: Option<DeploymentProbe>,
 	/// The liveness probe of a deployment if any
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub liveness_probe: Option<DeploymentProbe>,
 	/// The config map attached to a deployment
+	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
 	pub config_mounts: BTreeMap<String, Base64String>,
 	/// The volume attached to a deployment
-	pub volumes: BTreeMap<String, DeploymentVolume>,
+	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+	pub volumes: BTreeMap<Uuid, DeploymentVolume>,
 }
 
 /// Deployment volume detail
@@ -159,7 +163,7 @@ impl EnvironmentVariableValue {
 /// The type of exposed port
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, strum::Display)]
 #[strum(serialize_all = "camelCase")]
-#[serde(tag = "type", rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
 #[cfg_attr(not(target_arch = "wasm32"), derive(sqlx::Type, schemars::JsonSchema))]
 #[cfg_attr(
 	not(target_arch = "wasm32"),

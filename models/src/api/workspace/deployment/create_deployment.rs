@@ -26,6 +26,7 @@ macros::declare_api_endpoint!(
 		/// The registry the deployment will use
 		/// It can either be patr's registry or docker's registry
 		#[preprocess(none)]
+		#[serde(flatten)]
 		pub registry: DeploymentRegistry,
 		/// The image tag to use
 		#[preprocess(trim, lowercase)]
@@ -39,6 +40,7 @@ macros::declare_api_endpoint!(
 		pub machine_type: Uuid,
 		/// The details of the deployment which contains information related to configuration
 		#[preprocess(none)]
+		#[serde(flatten)]
 		pub running_details: DeploymentRunningDetails,
 		/// Option to start the deployment once it is created
 		#[preprocess(none)]

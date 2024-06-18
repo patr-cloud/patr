@@ -50,6 +50,7 @@ rustis = { workspace = true, features = [
 semver = { workspace = true, features = ["default"] }
 serde = { workspace = true, features = ["default", "derive"] }
 serde_json = { workspace = true, features = ["default"] }
+serde_urlencoded = { workspace = true, features = [] }
 sha2 = { workspace = true, features = ["default"] }
 sqlx = { workspace = true, features = [
     "runtime-tokio",

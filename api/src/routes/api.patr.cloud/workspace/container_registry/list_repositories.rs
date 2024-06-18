@@ -120,7 +120,7 @@ pub async fn list_repositories(
 	AppResponse::builder()
 		.body(ListContainerRepositoriesResponse { repositories })
 		.headers(ListContainerRepositoriesResponseHeaders {
-			total_count: TotalCountHeader(total_count as usize),
+			total_count: TotalCountHeader(total_count as _),
 		})
 		.status_code(StatusCode::OK)
 		.build()

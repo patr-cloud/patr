@@ -34,7 +34,7 @@ pub async fn get_deployment_info(
 ) -> Result<AppResponse<GetDeploymentInfoRequest>, ErrorType> {
 	info!("Getting deployment info");
 
-	let deployment_ports = query!(
+	let ports = query!(
 		r#"
 		SELECT
 			port,
@@ -52,7 +52,7 @@ pub async fn get_deployment_info(
 	.map(|row| (StringifiedU16::new(row.port as u16), row.port_type))
 	.collect();
 
-	let deployment_env_variables = query!(
+	let environment_variables = query!(
 		r#"
 		SELECT
 			name,
@@ -80,7 +80,7 @@ pub async fn get_deployment_info(
 	})
 	.collect();
 
-	let deployment_config_mounts = query!(
+	let config_mounts = query!(
 		r#"
 		SELECT
 			path,
@@ -98,7 +98,7 @@ pub async fn get_deployment_info(
 	.map(|mount| (mount.path, mount.file.into()))
 	.collect();
 
-	let deployment_volumes = query!(
+	let volumes = query!(
 		r#"
 		SELECT
 			id,
@@ -118,7 +118,7 @@ pub async fn get_deployment_info(
 	.into_iter()
 	.map(|volume| {
 		(
-			volume.name,
+			volume.id.into(),
 			DeploymentVolume {
 				path: volume.volume_mount_path,
 				size: volume.volume_size as u16,
@@ -158,45 +158,49 @@ pub async fn get_deployment_info(
 	)
 	.fetch_optional(&mut **database)
 	.await?
-	.map(|deployment| GetDeploymentInfoResponse {
+	.map(|row| GetDeploymentInfoResponse {
 		deployment: WithId::new(
-			deployment.id,
+			row.id,
 			Deployment {
-				name: deployment.name,
-				registry: if deployment.registry == PatrRegistry.to_string() {
+				name: row.name,
+				registry: if row.registry == PatrRegistry.to_string() {
 					DeploymentRegistry::PatrRegistry {
 						registry: PatrRegistry,
-						repository_id: deployment.repository_id.unwrap().into(),
+						repository_id: row.repository_id.unwrap().into(),
 					}
 				} else {
 					DeploymentRegistry::ExternalRegistry {
-						registry: deployment.registry,
-						image_name: deployment.image_name.unwrap().into(),
+						registry: row.registry,
+						image_name: row.image_name.unwrap().into(),
 					}
 				},
-				image_tag: deployment.image_tag.into(),
-				status: deployment.status,
-				runner: deployment.runner.into(),
-				machine_type: deployment.machine_type.into(),
-				current_live_digest: deployment.current_live_digest,
+				image_tag: row.image_tag,
+				status: row.status,
+				runner: row.runner.into(),
+				machine_type: row.machine_type.into(),
+				current_live_digest: row.current_live_digest,
 			},
 		),
 		running_details: DeploymentRunningDetails {
-			deploy_on_push: deployment.deploy_on_push,
-			min_horizontal_scale: deployment.min_horizontal_scale as u16,
-			max_horizontal_scale: deployment.max_horizontal_scale as u16,
-			ports: deployment_ports,
-			environment_variables: deployment_env_variables,
-			startup_probe: Some(DeploymentProbe {
-				port: deployment.startup_probe_port.unwrap() as u16,
-				path: deployment.startup_probe_path.unwrap(),
-			}),
-			liveness_probe: Some(DeploymentProbe {
-				port: deployment.liveness_probe_port.unwrap() as u16,
-				path: deployment.liveness_probe_path.unwrap(),
-			}),
-			config_mounts: deployment_config_mounts,
-			volumes: deployment_volumes,
+			deploy_on_push: row.deploy_on_push,
+			min_horizontal_scale: row.min_horizontal_scale as u16,
+			max_horizontal_scale: row.max_horizontal_scale as u16,
+			ports,
+			environment_variables,
+			startup_probe: row.startup_probe_port.zip(row.startup_probe_path).map(
+				|(port, path)| DeploymentProbe {
+					port: port as u16,
+					path,
+				},
+			),
+			liveness_probe: row.liveness_probe_port.zip(row.liveness_probe_path).map(
+				|(port, path)| DeploymentProbe {
+					port: port as u16,
+					path,
+				},
+			),
+			config_mounts,
+			volumes,
 		},
 	})
 	.ok_or(ErrorType::ResourceDoesNotExist)?;

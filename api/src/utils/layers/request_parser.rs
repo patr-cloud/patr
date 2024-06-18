@@ -8,7 +8,7 @@ use std::{
 
 use axum::{
 	body::Body,
-	extract::{Path, Query},
+	extract::Path,
 	http::Request,
 	response::{IntoResponse, Response},
 	RequestExt,
@@ -116,9 +116,11 @@ where
 				.into_response());
 			};
 
-			let Ok(Query(query)) = req.extract_parts().await.inspect_err(|err| {
-				debug!("Failed to parse query `{:?}`: {}", req.uri().query(), err);
-			}) else {
+			let Ok(query) = serde_urlencoded::from_str(req.uri().query().unwrap_or_default())
+				.inspect_err(|err| {
+					debug!("Failed to parse query `{:?}`: {}", req.uri().query(), err);
+				})
+			else {
 				return Ok(ApiErrorResponse::error_with_message(
 					ErrorType::WrongParameters,
 					"Invalid Query Parameters",

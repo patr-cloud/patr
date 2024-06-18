@@ -1,4 +1,7 @@
-use crate::{api::workspace::deployment::Deployment, prelude::*};
+use crate::{
+	api::workspace::deployment::{Deployment, DeploymentRunningDetails},
+	prelude::*,
+};
 
 macros::declare_stream_endpoint!(
 	/// Subscribe to the changes for a particular runner in a workspace
@@ -22,23 +25,28 @@ macros::declare_stream_endpoint!(
 	},
 	server_msg = {
 		/// The user has created a new deployment on their account
-		DeploymentCreated(WithId<Deployment>),
+		DeploymentCreated {
+			/// The deployment that was created
+			#[serde(flatten)]
+			deployment: WithId<Deployment>,
+			/// The running details of the deployment that was created
+			#[serde(flatten)]
+			running_details: DeploymentRunningDetails,
+		},
 		/// The user has updated a deployment on their account
 		DeploymentUpdated {
-			/// The ID of the deployment that was updated
-			id: Uuid,
-			/// The old deployment data
-			old: Deployment,
-			/// The new deployment data
-			new: Deployment,
+			/// The details of the deployment after the update
+			#[serde(flatten)]
+			deployment: WithId<Deployment>,
+			/// The running details of the deployment that was created
+			#[serde(flatten)]
+			running_details: DeploymentRunningDetails,
 		},
 		/// The user has deleted a deployment on their account
-		DeploymentDeleted(Uuid),
-		/// The user has requested a ping, and the server is responding with a pong
-		Pong,
+		DeploymentDeleted {
+			/// The ID of the deployment that was deleted
+			id: Uuid
+		},
 	},
-	client_msg = {
-		/// The user is pinging the server
-		Ping,
-	},
+	client_msg = {},
 );

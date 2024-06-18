@@ -71,7 +71,7 @@ pub async fn list_all_roles(
 	AppResponse::builder()
 		.body(ListAllRolesResponse { roles })
 		.headers(ListAllRolesResponseHeaders {
-			total_count: TotalCountHeader(total_count as usize),
+			total_count: TotalCountHeader(total_count as _),
 		})
 		.status_code(StatusCode::OK)
 		.build()

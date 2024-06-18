@@ -65,7 +65,7 @@ pub async fn list_users_for_role(
 	AppResponse::builder()
 		.body(ListUsersForRoleResponse { users })
 		.headers(ListUsersForRoleResponseHeaders {
-			total_count: TotalCountHeader(total_count as usize),
+			total_count: TotalCountHeader(total_count as _),
 		})
 		.status_code(StatusCode::OK)
 		.build()

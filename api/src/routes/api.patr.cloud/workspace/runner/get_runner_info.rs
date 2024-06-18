@@ -1,5 +1,6 @@
 use axum::http::StatusCode;
 use models::api::workspace::runner::*;
+use rustis::commands::StringCommands;
 
 use crate::prelude::*;
 
@@ -20,7 +21,7 @@ pub async fn get_runner_info(
 				body: GetRunnerInfoRequestProcessed,
 			},
 		database,
-		redis: _,
+		redis,
 		client_ip: _,
 		config: _,
 		user_data: _,
@@ -46,14 +47,19 @@ pub async fn get_runner_info(
 	.await?
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
+	let connected = redis
+		.get::<_, Option<String>>(redis::keys::runner_connection_lock(&runner_id))
+		.await?
+		.is_some();
+
 	AppResponse::builder()
 		.body(GetRunnerInfoResponse {
 			runner: WithId::new(
 				workspace_id,
 				Runner {
 					name: runner.name,
-					connected: false, // TODO
-					last_seen: None,  // TODO
+					connected,
+					last_seen: None, // TODO
 				},
 			),
 		})

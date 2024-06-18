@@ -1,5 +1,9 @@
 use axum::http::StatusCode;
-use models::{api::workspace::deployment::*, ErrorType};
+use models::{
+	api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg},
+	ErrorType,
+};
+use rustis::commands::PubSubCommands;
 
 use crate::prelude::*;
 
@@ -11,7 +15,7 @@ pub async fn delete_deployment(
 		request:
 			ProcessedApiRequest {
 				path: DeleteDeploymentPath {
-					workspace_id: _,
+					workspace_id,
 					deployment_id,
 				},
 				query: (),
@@ -23,13 +27,28 @@ pub async fn delete_deployment(
 				body: DeleteDeploymentRequestProcessed,
 			},
 		database,
-		redis: _,
+		redis,
 		client_ip: _,
 		config: _,
 		user_data: _,
 	}: AuthenticatedAppRequest<'_, DeleteDeploymentRequest>,
 ) -> Result<AppResponse<DeleteDeploymentRequest>, ErrorType> {
 	info!("Deleting deployment: {deployment_id}");
+
+	let runner = query!(
+		r#"
+		SELECT
+			runner
+		FROM
+			deployment
+		WHERE
+			id = $1;
+		"#,
+		deployment_id as _
+	)
+	.fetch_one(&mut **database)
+	.await?
+	.runner;
 
 	query!(
 		r#"
@@ -111,6 +130,17 @@ pub async fn delete_deployment(
 	)
 	.execute(&mut **database)
 	.await?;
+
+	// TODO Temporary workaround until audit logs and triggers are implemented
+	redis
+		.publish(
+			format!("{}/runner/{}/stream", workspace_id, runner),
+			serde_json::to_string(&StreamRunnerDataForWorkspaceServerMsg::DeploymentDeleted {
+				id: deployment_id,
+			})
+			.unwrap(),
+		)
+		.await?;
 
 	AppResponse::builder()
 		.body(DeleteDeploymentResponse)

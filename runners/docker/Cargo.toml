@@ -12,6 +12,8 @@ config = { workspace = true, features = ["default"] }
 futures = { workspace = true, features = ["default"] }
 http = { workspace = true, features = ["default"] }
 models = { workspace = true, features = [] }
+macros = { workspace = true, features = [] }
+semver = { workspace = true, features = ["default"] }
 preprocess = { workspace = true, features = [] }
 reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 serde = { workspace = true, features = ["default", "derive"] }

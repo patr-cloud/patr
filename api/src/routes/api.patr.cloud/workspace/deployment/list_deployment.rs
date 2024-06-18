@@ -3,13 +3,6 @@ use models::{api::workspace::deployment::*, utils::TotalCountHeader};
 
 use crate::prelude::*;
 
-/// List deployments
-///
-/// #Parameters
-/// - `workspace_id`: The workspace ID
-///
-/// #Returns
-/// - `deployments`: The deployments and its details
 pub async fn list_deployment(
 	AuthenticatedAppRequest {
 		request:
@@ -25,12 +18,12 @@ pub async fn list_deployment(
 						authorization: _,
 						user_agent: _,
 					},
-				body,
+				body: ListDeploymentRequestProcessed,
 			},
 		database,
-		redis: _,
+		redis,
 		client_ip: _,
-		config,
+		config: _,
 		user_data,
 	}: AuthenticatedAppRequest<'_, ListDeploymentRequest>,
 ) -> Result<AppResponse<ListDeploymentRequest>, ErrorType> {
@@ -46,7 +39,7 @@ pub async fn list_deployment(
 			repository_id,
 			image_name,
 			image_tag,
-			status as "status: DeploymentStatus",
+			status AS "status: DeploymentStatus",
 			runner,
 			machine_type,
 			current_live_digest,
@@ -59,7 +52,7 @@ pub async fn list_deployment(
 			deployment.id = resource.id
 		WHERE
 			workspace_id = $1 AND
-			status != 'deleted'
+			deployment.deleted IS NULL
 		ORDER BY
 			resource.created DESC
 		LIMIT $4
@@ -104,7 +97,7 @@ pub async fn list_deployment(
 	AppResponse::builder()
 		.body(ListDeploymentResponse { deployments })
 		.headers(ListDeploymentResponseHeaders {
-			total_count: TotalCountHeader(total_count as usize),
+			total_count: TotalCountHeader(total_count as _),
 		})
 		.status_code(StatusCode::OK)
 		.build()

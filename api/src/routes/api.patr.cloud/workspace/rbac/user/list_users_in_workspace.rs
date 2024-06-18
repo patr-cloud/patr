@@ -67,7 +67,7 @@ pub async fn list_users_in_workspace(
 	AppResponse::builder()
 		.body(ListUsersInWorkspaceResponse { users })
 		.headers(ListUsersInWorkspaceResponseHeaders {
-			total_count: TotalCountHeader(total_count as usize),
+			total_count: TotalCountHeader(total_count as _),
 		})
 		.status_code(StatusCode::OK)
 		.build()

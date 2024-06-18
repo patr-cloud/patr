@@ -29,6 +29,7 @@ macros::declare_api_endpoint!(
 		/// region - The deployment region
 		/// machine_type - The deployment machine type corresponding to CPU and RAM
 		/// current_live_digest - The current live digest running
+		#[serde(flatten)]
 		pub deployment: WithId<Deployment>,
 		/// The deployment details which contains information
 		/// related to configuration containing:
@@ -41,6 +42,7 @@ macros::declare_api_endpoint!(
 		/// liveness_probe - The liveness probe configuration
 		/// config_mounts - The configuration mounts
 		/// volumes - The volumes
+		#[serde(flatten)]
 		pub running_details: DeploymentRunningDetails,
 	}
 );
