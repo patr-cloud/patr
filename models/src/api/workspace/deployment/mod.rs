@@ -30,15 +30,9 @@ pub use self::{
 };
 use crate::{prelude::*, utils::constants};
 
-/// Information of all the different deployment plans currently supported
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
-#[serde(rename_all = "camelCase")]
 pub struct DeploymentMachineType {
-	/// The number of CPU nodes that the machine needs. This is in number of
-	/// nodes
 	pub cpu_count: i16,
-	/// The amount of RAM that the machine needs. This is in multiples of 0.5GiB
 	pub memory_count: i32,
 }
 
@@ -49,17 +43,19 @@ pub struct DeploymentMachineType {
 pub struct Deployment {
 	/// Name of the deployment
 	pub name: String,
-	/// The registy of which the image is running
-	/// Can either be patr registry or docker registry
+	/// The registry of the image the deployment is running. This can be either
+	/// the patr registry or an external registry. If it is the patr registry,
+	/// the repository ID will be provided, else the registry URL and image name
+	/// will be provided
 	#[serde(flatten)]
 	pub registry: DeploymentRegistry,
-	/// The image tag
+	/// The image tag of the deployment
 	/// Example: 'latest', 'stable'
 	pub image_tag: String,
 	/// The status of the deployment
 	pub status: DeploymentStatus,
-	/// The region the deployment is running on
-	pub region: Uuid,
+	/// The runner the deployment is running on
+	pub runner: Uuid,
 	/// The deployment machine type ID
 	/// Machine type can be classified by CPU and Memory nodes
 	pub machine_type: Uuid,
@@ -132,8 +128,37 @@ pub enum EnvironmentVariableValue {
 	},
 }
 
+impl EnvironmentVariableValue {
+	/// Check if the environment variable is a raw string
+	pub fn is_string(&self) -> bool {
+		matches!(self, Self::String { .. })
+	}
+
+	/// Check if the environment variable is a secret
+	pub fn is_secret(&self) -> bool {
+		matches!(self, Self::Secret { .. })
+	}
+
+	/// Get the secret ID
+	pub fn secret_id(&self) -> Option<Uuid> {
+		match self {
+			Self::String(_) => None,
+			Self::Secret { from_secret } => Some(*from_secret),
+		}
+	}
+
+	/// Get the string value, if it is a raw string
+	pub fn value(&self) -> Option<&String> {
+		match self {
+			Self::String(value) => Some(value),
+			Self::Secret { .. } => None,
+		}
+	}
+}
+
 /// The type of exposed port
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, strum::Display)]
+#[strum(serialize_all = "camelCase")]
 #[serde(tag = "type", rename_all = "camelCase")]
 #[cfg_attr(not(target_arch = "wasm32"), derive(sqlx::Type, schemars::JsonSchema))]
 #[cfg_attr(
@@ -148,6 +173,7 @@ pub enum ExposedPortType {
 	/// HTTP
 	Http,
 }
+
 /// The deployment startup/liveness probe
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
@@ -222,12 +248,36 @@ pub enum DeploymentRegistry {
 impl DeploymentRegistry {
 	/// Patr registry
 	pub fn is_patr_registry(&self) -> bool {
-		matches!(self, DeploymentRegistry::PatrRegistry { .. })
+		matches!(self, Self::PatrRegistry { .. })
 	}
 
 	/// External registry
 	pub fn is_external_registry(&self) -> bool {
-		matches!(self, DeploymentRegistry::ExternalRegistry { .. })
+		matches!(self, Self::ExternalRegistry { .. })
+	}
+
+	/// Get the registry URL
+	pub fn registry_url(&self) -> String {
+		match self {
+			Self::PatrRegistry { registry, .. } => format!("{registry}"),
+			Self::ExternalRegistry { registry, .. } => registry.clone(),
+		}
+	}
+
+	/// Get the registry's repository ID
+	pub fn repository_id(&self) -> Option<Uuid> {
+		match self {
+			Self::PatrRegistry { repository_id, .. } => Some(*repository_id),
+			Self::ExternalRegistry { .. } => None,
+		}
+	}
+
+	/// Get the registry's image name
+	pub fn image_name(&self) -> Option<String> {
+		match self {
+			Self::PatrRegistry { .. } => None,
+			Self::ExternalRegistry { image_name, .. } => Some(image_name.clone()),
+		}
 	}
 }
 

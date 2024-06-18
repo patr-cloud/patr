@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\t\tSELECT\n\t\t\t\tmanifest_digest\n\t\t\tFROM\n\t\t\t\tcontainer_registry_repository_manifest\n\t\t\tWHERE\n\t\t\t\trepository_id = $1\n\t\t\tORDER BY\n\t\t\t\tcreated DESC\n\t\t\tLIMIT 1;\n\t\t\t",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "manifest_digest",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "9fb4cec41d3423a4e070afa61b454429c7193498f4a693ba143866a635dec269"
+}

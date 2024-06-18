@@ -1,14 +1,9 @@
-use std::{cmp::Ordering, collections::BTreeMap};
-
-use axum::{http::StatusCode, Router};
-use futures::sink::With;
+use axum::http::StatusCode;
 use models::{
 	api::{workspace::deployment::*, WithId},
 	utils::StringifiedU16,
 	ErrorType,
 };
-use sqlx::query_as;
-use time::OffsetDateTime;
 
 use crate::prelude::*;
 
@@ -183,7 +178,7 @@ pub async fn get_deployment_info(
 				},
 				image_tag: deployment.image_tag.into(),
 				status: deployment.status,
-				region: deployment.runner.into(),
+				runner: deployment.runner.into(),
 				machine_type: deployment.machine_type.into(),
 				current_live_digest: deployment.current_live_digest,
 			},

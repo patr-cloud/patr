@@ -3,18 +3,11 @@ use models::{api::workspace::managed_url::*, prelude::*};
 
 use crate::prelude::*;
 
-/// Create a managed URL
-/// 
-/// #Parameters
-/// - `workspace_id`: The workspace ID
-/// - `sub_domain`: The sub domain
-/// - `domain_id`: The domain ID
-/// - `path`: The path
-/// - `url_type`: The URL type
-/// 
-/// #Returns
-/// - `id`: The managed URL ID
-/// 
+/// The handler to create a new managed URL in a workspace. This will create a
+/// new managed URL with the provided subdomain, domain, and path. The URL type
+/// can be a proxy to a deployment, a proxy to a static site, a proxy to a URL,
+/// or a redirect to a URL. The URL type will determine how the managed URL
+/// behaves.
 pub async fn create_managed_url(
 	AuthenticatedAppRequest {
 		request:

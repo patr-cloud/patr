@@ -1,13 +1,8 @@
-use std::{cmp::Ordering, collections::BTreeMap};
-
-use axum::{http::StatusCode, Router};
-use futures::sink::With;
+use axum::http::StatusCode;
 use models::{
 	api::{workspace::deployment::*, WithId},
 	ErrorType,
 };
-use sqlx::query_as;
-use time::OffsetDateTime;
 
 use crate::prelude::*;
 
@@ -39,7 +34,7 @@ pub async fn list_deployment(
 	let deployments = query!(
 		r#"
 		SELECT
-			id,
+			deployment.id,
 			name,
 			registry,
 			repository_id,
@@ -51,11 +46,17 @@ pub async fn list_deployment(
 			current_live_digest
 		FROM
 			deployment
+		INNER JOIN
+			RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource
+		ON
+			deployment.id = resource.id
 		WHERE
 			workspace_id = $1 AND
 			status != 'deleted';
 		"#,
-		workspace_id as _
+		workspace_id as _,
+		user_data.login_id as _,
+		"TODO permission_name",
 	)
 	.fetch_all(&mut **database)
 	.await?
@@ -78,15 +79,13 @@ pub async fn list_deployment(
 				},
 				image_tag: deployment.image_tag,
 				status: deployment.status,
-				region: deployment.runner.into(),
+				runner: deployment.runner.into(),
 				machine_type: deployment.machine_type.into(),
 				current_live_digest: deployment.current_live_digest,
 			},
 		)
 	})
 	.collect();
-
-	todo!("Filter out deployments that are not supposed to be viewed");
 
 	AppResponse::builder()
 		.body(ListDeploymentResponse { deployments })

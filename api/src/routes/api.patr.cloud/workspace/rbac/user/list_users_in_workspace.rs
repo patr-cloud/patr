@@ -5,6 +5,8 @@ use models::{api::workspace::rbac::user::*, utils::TotalCountHeader};
 
 use crate::prelude::*;
 
+/// The handler to list all users in the given workspace, along with their
+/// roles.
 pub async fn list_users_in_workspace(
 	AuthenticatedAppRequest {
 		request:

@@ -3,6 +3,11 @@ use models::api::workspace::rbac::*;
 
 use crate::prelude::*;
 
+/// The handler to list all resource types in the database. This will return all
+/// resource types that are available to a user. This will not return the
+/// resource types of the user, but all resource types that are available in the
+/// database. This is useful for the user to know what resource types are
+/// available to them.
 pub async fn list_all_resource_types(
 	AuthenticatedAppRequest {
 		request:

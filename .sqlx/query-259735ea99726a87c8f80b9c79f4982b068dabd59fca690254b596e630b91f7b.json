@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT runner, min_horizontal_scale FROM deployment WHERE id = $1 AND deleted IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "runner",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "min_horizontal_scale",
+        "type_info": "Int2"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "259735ea99726a87c8f80b9c79f4982b068dabd59fca690254b596e630b91f7b"
+}

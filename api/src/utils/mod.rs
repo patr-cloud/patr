@@ -21,7 +21,11 @@ pub mod extractors;
 /// [1]: axum::Router
 mod router_ext;
 
-pub use self::router_ext::RouterExt;
+/// Contains the extension traits that will be used to timeout futures as
+/// they're executing.
+mod timeout_ext;
+
+pub use self::{router_ext::RouterExt, timeout_ext::TimeoutExt};
 
 /// A list of constants that will be used throughout the application. This is
 /// mostly kept to prevent typos.

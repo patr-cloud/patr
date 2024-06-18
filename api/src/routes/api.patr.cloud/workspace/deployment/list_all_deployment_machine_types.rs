@@ -7,18 +7,18 @@ pub async fn machine_type(
 	AppRequest {
 		request:
 			ProcessedApiRequest {
-				path: ListAllDeploymentMachineTypePath,
+				path: ListAllDeploymentMachineTypePath { workspace_id: _ },
 				query: (),
-				headers: ListAllDeploymentMachineTypeRequestHeaders { user_agent },
+				headers: ListAllDeploymentMachineTypeRequestHeaders { user_agent: _ },
 				body: ListAllDeploymentMachineTypeRequestProcessed,
 			},
 		database,
 		redis: _,
 		client_ip: _,
-		config,
+		config: _,
 	}: AppRequest<'_, ListAllDeploymentMachineTypeRequest>,
 ) -> Result<AppResponse<ListAllDeploymentMachineTypeRequest>, ErrorType> {
-	info!("Starting: List deployments");
+	info!("Listing all deployment machine types");
 
 	let machine_types = query!(
 		r#"

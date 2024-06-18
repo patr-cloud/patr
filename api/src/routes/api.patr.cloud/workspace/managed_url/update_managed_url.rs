@@ -3,17 +3,9 @@ use models::{api::workspace::managed_url::*, prelude::*};
 
 use crate::prelude::*;
 
-/// Update a managed URL
-/// 
-/// #Parameters
-/// - `workspace_id`: The workspace ID
-/// - `managed_url_id`: The managed URL ID
-/// - `path`: The path
-/// - `url_type`: The URL type
-/// 
-/// #Returns
-/// - `OK`: The managed URL was updated
-/// 
+/// The handler to update a managed URL. At the moment, only the URL can be
+/// updated. However, this will be expanded in the future. At least one
+/// parameter must be provided for the update.
 pub async fn update_managed_url(
 	AuthenticatedAppRequest {
 		request:

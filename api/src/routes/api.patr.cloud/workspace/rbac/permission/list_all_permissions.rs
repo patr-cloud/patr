@@ -3,6 +3,11 @@ use models::api::workspace::rbac::*;
 
 use crate::prelude::*;
 
+/// The handler to list all permissions in the database. This will return all
+/// permissions that are available to a user. This will not return the
+/// permissions of the user, but all permissions that are available in the
+/// database. This is useful for the user to know what permissions are available
+/// to them.
 pub async fn list_all_permissions(
 	AuthenticatedAppRequest {
 		request:

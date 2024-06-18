@@ -5,6 +5,8 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
+/// The handler to remove a user from a workspace. This will remove the user
+/// from the workspace, and set the revocation timestamp in Redis.
 pub async fn remove_user_from_workspace(
 	AuthenticatedAppRequest {
 		request:

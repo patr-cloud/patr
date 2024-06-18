@@ -19,4 +19,7 @@ serde_json = { workspace = true, features = ["default"] }
 tokio = { workspace = true, features = ["full"] }
 tokio-stream = { workspace = true, features = ["default", "sync"] }
 tokio-tungstenite = { workspace = true, features = ["default"] }
-tracing = { workspace = true, features = ["default"] }
+tracing = { workspace = true, features = ["default", "async-await"] }
+tracing-log = { workspace = true, features = ["default"] }
+tracing-opentelemetry = { workspace = true, features = ["default"] }
+tracing-subscriber = { workspace = true, features = ["default"] }

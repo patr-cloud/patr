@@ -5,6 +5,10 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
+/// Deletes a role from the workspace and revokes the cached permissions. This
+/// will delete all the permissions associated with the role. Any user that has
+/// the role will have it removed, if the `remove_users` query parameter is set
+/// to true. Otherwise, an error will be thrown.
 pub async fn delete_role(
 	AuthenticatedAppRequest {
 		request:
@@ -13,7 +17,7 @@ pub async fn delete_role(
 					workspace_id,
 					role_id,
 				},
-				query: (),
+				query: DeleteRoleQuery { remove_users },
 				headers: DeleteRoleRequestHeaders {
 					authorization: _,
 					user_agent: _,
@@ -28,6 +32,31 @@ pub async fn delete_role(
 	}: AuthenticatedAppRequest<'_, DeleteRoleRequest>,
 ) -> Result<AppResponse<DeleteRoleRequest>, ErrorType> {
 	info!("Deleting role: {} in workspace: {}", role_id, workspace_id);
+
+	// Remove the role from all the users. If the role is still in use, an error
+	// will be thrown, causing the transaction to be rolled back and the role not
+	// to be deleted
+	let users_with_role = query!(
+		r#"
+		DELETE FROM
+			workspace_user
+		WHERE
+			workspace_id = $1 AND
+			role_id = $2;
+		"#,
+		workspace_id as _,
+		role_id as _
+	)
+	.execute(&mut **database)
+	.await?
+	.rows_affected();
+
+	info!("Removed role from {} users", users_with_role);
+
+	if !remove_users && users_with_role > 0 {
+		// The role is still in use
+		return Err(ErrorType::RoleInUse);
+	}
 
 	query!(
 		r#"

@@ -15,7 +15,7 @@ use axum::{
 };
 use models::{
 	prelude::*,
-	utils::{FromAxumRequest, Headers, IntoAxumResponse},
+	utils::{FromAxumRequest, GenericResponse, Headers, IntoAxumResponse},
 	ApiErrorResponse,
 };
 use preprocess::Preprocessable;
@@ -176,12 +176,16 @@ where
 				.await
 				.inspect(|_| info!("Inner service called successfully"))
 				.map(|response| {
-					(
-						response.status_code,
-						response.headers.to_header_map(),
-						response.body.into_axum_response(),
-					)
-						.into_response()
+					if response.body.is::<GenericResponse>() {
+						response.body.into_axum_response()
+					} else {
+						(
+							response.status_code,
+							response.headers.to_header_map(),
+							response.body.into_axum_response(),
+						)
+							.into_response()
+					}
 				})
 				.unwrap_or_else(|error| {
 					if let ErrorType::InternalServerError = &error {

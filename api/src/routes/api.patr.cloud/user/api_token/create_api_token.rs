@@ -149,7 +149,7 @@ pub async fn create_api_token(
 			return Err(ErrorType::Unauthorized);
 		};
 
-		if user_permission.is_superset_of(&permission) {
+		if !user_permission.is_superset_of(&permission) {
 			debug!("The user does not have adequate permissions on workspace ID: `{workspace_id}`");
 			return Err(ErrorType::Unauthorized);
 		}
