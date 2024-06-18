@@ -1,8 +1,5 @@
 use axum::http::StatusCode;
-use models::{
-	api::{workspace::deployment::*, WithId},
-	ErrorType,
-};
+use models::{api::workspace::deployment::*, utils::TotalCountHeader};
 
 use crate::prelude::*;
 
@@ -18,8 +15,16 @@ pub async fn list_deployment(
 		request:
 			ProcessedApiRequest {
 				path: ListDeploymentPath { workspace_id },
-				query: _,
-				headers,
+				query: Paginated {
+					data: (),
+					count,
+					page,
+				},
+				headers:
+					ListDeploymentRequestHeaders {
+						authorization: _,
+						user_agent: _,
+					},
 				body,
 			},
 		database,
@@ -29,8 +34,9 @@ pub async fn list_deployment(
 		user_data,
 	}: AuthenticatedAppRequest<'_, ListDeploymentRequest>,
 ) -> Result<AppResponse<ListDeploymentRequest>, ErrorType> {
-	info!("Starting: List deployments");
+	info!("Listing all deployments in workspace: {}", workspace_id);
 
+	let mut total_count = 0;
 	let deployments = query!(
 		r#"
 		SELECT
@@ -43,7 +49,8 @@ pub async fn list_deployment(
 			status as "status: DeploymentStatus",
 			runner,
 			machine_type,
-			current_live_digest
+			current_live_digest,
+			COUNT(*) OVER() AS "total_count!"
 		FROM
 			deployment
 		INNER JOIN
@@ -52,36 +59,43 @@ pub async fn list_deployment(
 			deployment.id = resource.id
 		WHERE
 			workspace_id = $1 AND
-			status != 'deleted';
+			status != 'deleted'
+		ORDER BY
+			resource.created DESC
+		LIMIT $4
+		OFFSET $5;
 		"#,
 		workspace_id as _,
 		user_data.login_id as _,
 		"TODO permission_name",
+		count as i32,
+		(count * page) as i32,
 	)
 	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
-	.map(|deployment| {
+	.map(|row| {
+		total_count = row.total_count;
 		WithId::new(
-			deployment.id,
+			row.id,
 			Deployment {
-				name: deployment.name,
-				registry: if deployment.registry == PatrRegistry.to_string() {
+				name: row.name,
+				registry: if row.registry == PatrRegistry.to_string() {
 					DeploymentRegistry::PatrRegistry {
 						registry: PatrRegistry,
-						repository_id: deployment.repository_id.unwrap().into(),
+						repository_id: row.repository_id.unwrap().into(),
 					}
 				} else {
 					DeploymentRegistry::ExternalRegistry {
-						registry: deployment.registry,
-						image_name: deployment.image_name.unwrap().into(),
+						registry: row.registry,
+						image_name: row.image_name.unwrap().into(),
 					}
 				},
-				image_tag: deployment.image_tag,
-				status: deployment.status,
-				runner: deployment.runner.into(),
-				machine_type: deployment.machine_type.into(),
-				current_live_digest: deployment.current_live_digest,
+				image_tag: row.image_tag,
+				status: row.status,
+				runner: row.runner.into(),
+				machine_type: row.machine_type.into(),
+				current_live_digest: row.current_live_digest,
 			},
 		)
 	})
@@ -90,7 +104,7 @@ pub async fn list_deployment(
 	AppResponse::builder()
 		.body(ListDeploymentResponse { deployments })
 		.headers(ListDeploymentResponseHeaders {
-			total_count: todo!(),
+			total_count: TotalCountHeader(total_count as usize),
 		})
 		.status_code(StatusCode::OK)
 		.build()

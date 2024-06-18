@@ -64,6 +64,8 @@ pub async fn list_managed_url(
 		WHERE
 			workspace_id = $1 AND
 			managed_url.deleted IS NULL
+		ORDER BY
+			resource.created DESC
 		LIMIT $4
 		OFFSET $5;
 		"#,

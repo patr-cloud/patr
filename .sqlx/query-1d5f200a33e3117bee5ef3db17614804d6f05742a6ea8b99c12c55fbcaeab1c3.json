@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM deployment_deploy_history WHERE deployment_id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1d5f200a33e3117bee5ef3db17614804d6f05742a6ea8b99c12c55fbcaeab1c3"
+}

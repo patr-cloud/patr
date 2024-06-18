@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO deployment(id, name, registry, repository_id, image_name, image_tag, status, workspace_id, runner, min_horizontal_scale, max_horizontal_scale, machine_type, deploy_on_push, startup_probe_port, startup_probe_path, startup_probe_port_type, liveness_probe_port, liveness_probe_path, liveness_probe_port_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        },
+        "Varchar",
+        "Uuid",
+        "Varchar",
+        "Varchar",
+        {
+          "Custom": {
+            "name": "deployment_status",
+            "kind": {
+              "Enum": [
+                "created",
+                "pushed",
+                "deploying",
+                "running",
+                "stopped",
+                "errored",
+                "deleted"
+              ]
+            }
+          }
+        },
+        "Uuid",
+        "Uuid",
+        "Int2",
+        "Int2",
+        "Uuid",
+        "Bool",
+        "Int4",
+        "Varchar",
+        {
+          "Custom": {
+            "name": "exposed_port_type",
+            "kind": {
+              "Enum": [
+                "http"
+              ]
+            }
+          }
+        },
+        "Int4",
+        "Varchar",
+        {
+          "Custom": {
+            "name": "exposed_port_type",
+            "kind": {
+              "Enum": [
+                "http"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2792fe77107865a038a56b57d48fe0bb9aca77bf3ced9cc07d88248255cac056"
+}

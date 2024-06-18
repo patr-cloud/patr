@@ -44,6 +44,8 @@ pub async fn list_all_roles(
             role
         WHERE
             owner_id = $1
+		ORDER BY
+			id
         LIMIT $2
         OFFSET $3;
         "#,

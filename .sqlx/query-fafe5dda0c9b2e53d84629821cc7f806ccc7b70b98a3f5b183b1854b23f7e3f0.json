@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO resource(id, resource_type_id, owner_id, created, deleted) VALUES (GENERATE_RESOURCE_ID(), (SELECT id FROM resource_type WHERE name = 'deployment'), $1, $2, NULL) RETURNING id;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "fafe5dda0c9b2e53d84629821cc7f806ccc7b70b98a3f5b183b1854b23f7e3f0"
+}

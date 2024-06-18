@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT deployment.id, name, registry, repository_id, image_name, image_tag, status as \"status: DeploymentStatus\", runner, machine_type, current_live_digest FROM deployment INNER JOIN RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource ON deployment.id = resource.id WHERE workspace_id = $1 AND status != 'deleted';",
+  "query": "SELECT id, name, registry, repository_id, image_name, image_tag, status as \"status: DeploymentStatus\", workspace_id, runner, min_horizontal_scale, max_horizontal_scale, machine_type, deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment WHERE id = $1 AND deleted IS NULL;",
   "describe": {
     "columns": [
       {
@@ -60,25 +60,63 @@
       },
       {
         "ordinal": 7,
-        "name": "runner",
+        "name": "workspace_id",
         "type_info": "Uuid"
       },
       {
         "ordinal": 8,
-        "name": "machine_type",
+        "name": "runner",
         "type_info": "Uuid"
       },
       {
         "ordinal": 9,
+        "name": "min_horizontal_scale",
+        "type_info": "Int2"
+      },
+      {
+        "ordinal": 10,
+        "name": "max_horizontal_scale",
+        "type_info": "Int2"
+      },
+      {
+        "ordinal": 11,
+        "name": "machine_type",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 12,
+        "name": "deploy_on_push",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 13,
+        "name": "startup_probe_port",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 14,
+        "name": "startup_probe_path",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 15,
+        "name": "liveness_probe_port",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 16,
+        "name": "liveness_probe_path",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 17,
         "name": "current_live_digest",
         "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Uuid",
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -91,8 +129,16 @@
       false,
       false,
       false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
       true
     ]
   },
-  "hash": "0caba54941b86ae77245df6218196c2067233f0b96b16d12d40178edb26c72e1"
+  "hash": "f6d74181b0882141c7d9f70a16570bd22ea248c1088955ec4957f38cdb23e537"
 }

@@ -402,7 +402,11 @@ pub async fn initialize_rbac_constraints(
 			login_id UUID,
 			permission_name TEXT
 		) RETURNS TABLE(
-			id UUID
+			id UUID,
+			resource_type_id UUID,
+			owner_id UUID,
+			created TIMESTAMPTZ,
+			deleted TIMESTAMPTZ
 		) AS $$
 		DECLARE
 			permission_id UUID;
@@ -421,7 +425,7 @@ pub async fn initialize_rbac_constraints(
 			END IF;
 
 			RETURN QUERY SELECT
-				id
+				*
 			FROM
 				resource
 			WHERE
