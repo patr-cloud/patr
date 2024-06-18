@@ -7,34 +7,32 @@ use models::{
 
 use crate::prelude::*;
 
-/// Get deployment info
-///
-/// #Parameters
-/// - `workspace_id`: The workspace ID
-/// - `deployment_id`: The deployment ID
-///
-/// #Returns
-/// - `deployment`: The deployment info
+/// The handler to get the deployment info in the workspace. This will return
+/// the deployment details for the given deployment ID.
 pub async fn get_deployment_info(
 	AuthenticatedAppRequest {
 		request:
 			ProcessedApiRequest {
 				path: GetDeploymentInfoPath {
-					workspace_id,
+					workspace_id: _,
 					deployment_id,
 				},
-				query: _,
-				headers,
-				body,
+				query: (),
+				headers:
+					GetDeploymentInfoRequestHeaders {
+						authorization: _,
+						user_agent: _,
+					},
+				body: GetDeploymentInfoRequestProcessed,
 			},
 		database,
 		redis: _,
 		client_ip: _,
-		config,
-		user_data,
+		config: _,
+		user_data: _,
 	}: AuthenticatedAppRequest<'_, GetDeploymentInfoRequest>,
 ) -> Result<AppResponse<GetDeploymentInfoRequest>, ErrorType> {
-	info!("Starting: Get deployment info");
+	info!("Getting deployment info");
 
 	let deployment_ports = query!(
 		r#"
@@ -154,7 +152,7 @@ pub async fn get_deployment_info(
 			deployment
 		WHERE
 			id = $1 AND
-			status != 'deleted';
+			deleted IS NULL;
 		"#,
 		deployment_id as _
 	)

@@ -42,12 +42,10 @@ pub async fn list_users_for_role(
             COUNT(*) OVER() AS "total_count!"
         FROM
             workspace_user
-        INNER JOIN
-            role
-        ON
-            role.id = workspace_user.role_id
         WHERE
-            role.owner_id = $1
+            workspace_id = $1
+		ORDER BY
+			workspace_user.user_id
         LIMIT $2
         OFFSET $3;
         "#,

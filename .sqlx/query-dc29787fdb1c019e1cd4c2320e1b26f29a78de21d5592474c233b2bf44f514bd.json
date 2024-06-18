@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO deployment_environment_variable(deployment_id, name, value, secret_id) VALUES ($1, UNNEST($2::TEXT[]), UNNEST($3::TEXT[]), UNNEST($4::UUID[]));",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "TextArray",
+        "TextArray",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dc29787fdb1c019e1cd4c2320e1b26f29a78de21d5592474c233b2bf44f514bd"
+}

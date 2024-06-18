@@ -371,18 +371,6 @@ pub struct DeploymentLogs {
 	pub logs: String,
 }
 
-/// Build logs
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct BuildLog {
-	/// The timestamp of the build log
-	pub timestamp: Option<u64>,
-	/// The type of build log
-	pub reason: Option<String>,
-	/// The log
-	pub message: Option<String>,
-}
-
 /// The time duration of a log
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]

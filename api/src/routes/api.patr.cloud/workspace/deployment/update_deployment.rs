@@ -406,16 +406,6 @@ pub async fn update_deployment(
 		}
 	}
 
-	if let Some(new_min_replica) = min_horizontal_scale {
-		if new_min_replica != deployment.min_horizontal_scale as u16 {
-			for volume in &volumes {
-				if todo!("if patr cluster") {
-					todo!("stop and start volume usage history");
-				};
-			}
-		}
-	}
-
 	let deployment_status = query!(
 		r#"
 		SELECT

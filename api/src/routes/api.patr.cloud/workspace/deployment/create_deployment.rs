@@ -1,9 +1,5 @@
 use axum::http::StatusCode;
-use models::{
-	api::{workspace::deployment::*, WithId},
-	ErrorType,
-};
-use sqlx::query;
+use models::api::workspace::deployment::*;
 use time::OffsetDateTime;
 
 use crate::prelude::*;
@@ -129,7 +125,6 @@ pub async fn create_deployment(
 				$4,
 				$5,
 				$6,
-				'created',
 				$7,
 				$8,
 				$9,
@@ -141,7 +136,8 @@ pub async fn create_deployment(
 				$15,
 				$16,
 				$17,
-				$18
+				$18,
+				$19
 			);
 		"#,
 		deployment_id as _,
@@ -150,6 +146,11 @@ pub async fn create_deployment(
 		registry.repository_id() as _,
 		registry.image_name(),
 		image_tag.as_ref(),
+		if deploy_on_create {
+			DeploymentStatus::Running
+		} else {
+			DeploymentStatus::Created
+		} as _,
 		workspace_id as _,
 		runner as _,
 		min_horizontal_scale as i32,
@@ -191,7 +192,7 @@ pub async fn create_deployment(
 		&ports
 			.iter()
 			.map(|(_, port_type)| port_type.to_string())
-			.collect::<Vec<_>>() as _,
+			.collect::<Vec<String>>() as _,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -233,12 +234,12 @@ pub async fn create_deployment(
 			.collect::<Vec<_>>(),
 		&environment_variables
 			.iter()
-			.filter_map(|(_, value)| value.value().cloned())
-			.collect::<Vec<_>>(),
+			.map(|(_, value)| value.value().cloned())
+			.collect::<Vec<Option<String>>>() as _,
 		&environment_variables
 			.iter()
-			.map(|(_, value)| value.secret_id().unwrap().into())
-			.collect::<Vec<_>>(),
+			.map(|(_, value)| value.secret_id().map(Into::into))
+			.collect::<Vec<Option<sqlx::types::Uuid>>>() as _,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -274,30 +275,7 @@ pub async fn create_deployment(
 	.await?;
 
 	for (name, volume) in &volumes {
-		let volume_id = loop {
-			let uuid = Uuid::new_v4();
-
-			let exists = query!(
-				r#"
-				SELECT
-					*
-				FROM
-					resource
-				WHERE
-					id = $1;
-				"#,
-				uuid as _
-			)
-			.fetch_optional(&mut **database)
-			.await?
-			.is_some();
-
-			if !exists {
-				break uuid;
-			}
-		};
-
-		query!(
+		let volume_id = query!(
 			r#"
 			INSERT INTO
 				resource(
@@ -307,14 +285,20 @@ pub async fn create_deployment(
 					created
 				)
 			VALUES
-				($1, (SELECT id FROM resource_type WHERE name = 'deployment_volume'), $2, $3);
+				(
+					GENERATE_RESOURCE_ID(),
+					(SELECT id FROM resource_type WHERE name = 'deployment_volume'),
+					$1,
+					$2
+				)
+			RETURNING id;
 			"#,
-			volume_id as _,
 			workspace_id as _,
 			now
 		)
-		.execute(&mut **database)
-		.await?;
+		.fetch_one(&mut **database)
+		.await?
+		.id;
 
 		query!(
 			r#"

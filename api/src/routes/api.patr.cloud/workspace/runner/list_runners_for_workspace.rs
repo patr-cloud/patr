@@ -46,6 +46,8 @@ pub async fn list_runners_for_workspace(
 		WHERE
 			workspace_id = $1 AND
 			runner.deleted IS NULL
+		ORDER BY
+			resource.created DESC
 		LIMIT $4
 		OFFSET $5;
 		"#,

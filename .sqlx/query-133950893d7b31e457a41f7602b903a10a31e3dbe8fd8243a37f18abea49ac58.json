@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT *, COUNT(*) OVER() AS \"total_count!\" FROM role WHERE owner_id = $1 LIMIT $2 OFFSET $3;",
+  "query": "SELECT runner.id, name, COUNT(*) OVER() AS \"total_count!\" FROM runner INNER JOIN RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource ON runner.id = resource.id WHERE workspace_id = $1 AND runner.deleted IS NULL ORDER BY resource.created DESC LIMIT $4 OFFSET $5;",
   "describe": {
     "columns": [
       {
@@ -11,20 +11,10 @@
       {
         "ordinal": 1,
         "name": "name",
-        "type_info": "Varchar"
+        "type_info": "Text"
       },
       {
         "ordinal": 2,
-        "name": "description",
-        "type_info": "Varchar"
-      },
-      {
-        "ordinal": 3,
-        "name": "owner_id",
-        "type_info": "Uuid"
-      },
-      {
-        "ordinal": 4,
         "name": "total_count!",
         "type_info": "Int8"
       }
@@ -32,6 +22,8 @@
     "parameters": {
       "Left": [
         "Uuid",
+        "Uuid",
+        "Text",
         "Int8",
         "Int8"
       ]
@@ -39,10 +31,8 @@
     "nullable": [
       false,
       false,
-      false,
-      false,
       null
     ]
   },
-  "hash": "84c68f68b0b57f547c0dacd8ddc469d87629074fe37acf17b0c6970727c87722"
+  "hash": "133950893d7b31e457a41f7602b903a10a31e3dbe8fd8243a37f18abea49ac58"
 }

@@ -3,12 +3,15 @@ use models::{api::workspace::deployment::*, ErrorType};
 
 use crate::prelude::*;
 
+/// The handler to delete a deployment in the workspace. This will delete the
+/// deployment from the workspace, and remove all resources associated with the
+/// deployment.
 pub async fn delete_deployment(
 	AuthenticatedAppRequest {
 		request:
 			ProcessedApiRequest {
 				path: DeleteDeploymentPath {
-					workspace_id,
+					workspace_id: _,
 					deployment_id,
 				},
 				query: (),
@@ -22,8 +25,8 @@ pub async fn delete_deployment(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
-		user_data,
+		config: _,
+		user_data: _,
 	}: AuthenticatedAppRequest<'_, DeleteDeploymentRequest>,
 ) -> Result<AppResponse<DeleteDeploymentRequest>, ErrorType> {
 	info!("Deleting deployment: {deployment_id}");
@@ -44,6 +47,18 @@ pub async fn delete_deployment(
 		r#"
 		DELETE FROM
 			deployment_config_mounts
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id as _
+	)
+	.execute(&mut **database)
+	.await?;
+
+	query!(
+		r#"
+		DELETE FROM
+			deployment_deploy_history
 		WHERE
 			deployment_id = $1;
 		"#,
