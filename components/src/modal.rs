@@ -26,12 +26,13 @@ pub fn Modal(
 	/// The Content of the modal
 	children: ChildrenFn,
 	/// The Variant of the backdrop
-	variant: SecondaryColorVariant,
+	#[prop(optional)]
+	color_variant: SecondaryColorVariant,
 ) -> impl IntoView {
 	let children = store_value(children);
 	view! {
 		<Portal>
-			<ModalContainer variant={variant} has_backdrop=true>
+			<ModalContainer variant={color_variant} has_backdrop=true>
 				{children.with_value(|children| children())}
 			</ModalContainer>
 		</Portal>

@@ -1,0 +1,21 @@
+@use "../helpers/maps" as *;
+@use "../base/variables" as *;
+@use "../helpers/mixins" as *;
+
+.center-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 900;
+  transform: translate(-50%, -50%);
+  box-shadow: $shadow-medium;
+  width: 26.25rem;
+  max-height: 32rem;
+  opacity: 0;
+  transition: 250ms;
+
+  &.show-center-modal {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
