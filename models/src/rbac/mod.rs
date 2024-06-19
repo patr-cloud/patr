@@ -245,19 +245,6 @@ impl WorkspacePermission {
 	}
 }
 
-/// Represents the data of a resource permission, which type of resource the
-/// permission is granted on, and the resources that the permission is granted
-/// on.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct ResourcePermissionData {
-	/// The type of resource that the permission is granted on.
-	pub resource_type: ResourceType,
-	/// The resources that the permission is granted on.
-	#[serde(flatten)]
-	pub resources: ResourcePermissionType,
-}
-
 /// Represents the type of permission that is granted on a set of Resource IDs.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, EnumDiscriminants)]
 #[serde(

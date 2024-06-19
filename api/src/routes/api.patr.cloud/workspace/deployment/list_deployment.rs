@@ -21,7 +21,7 @@ pub async fn list_deployment(
 				body: ListDeploymentRequestProcessed,
 			},
 		database,
-		redis,
+		redis: _,
 		client_ip: _,
 		config: _,
 		user_data,

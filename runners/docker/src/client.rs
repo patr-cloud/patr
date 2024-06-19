@@ -34,7 +34,7 @@ where
 		constants::API_BASE_URL
 			.trim_start_matches("https://")
 			.trim_start_matches("http://"),
-		request.path.to_string()
+		request.path
 	)
 	.into_client_request()
 	.map_err(|err| ApiErrorResponse {

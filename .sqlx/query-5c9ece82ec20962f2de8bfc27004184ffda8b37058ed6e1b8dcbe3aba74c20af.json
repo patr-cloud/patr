@@ -1,11 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO deployment_exposed_port(deployment_id, port, port_type) VALUES ($1, UNNEST($2::INTEGER[]), UNNEST($3::EXPOSED_PORT_TYPE[]));",
+  "query": "INSERT INTO deployment_exposed_port(deployment_id, port, port_type) VALUES (UNNEST($1::UUID[]), UNNEST($2::INTEGER[]), UNNEST($3::EXPOSED_PORT_TYPE[]));",
   "describe": {
     "columns": [],
     "parameters": {
       "Left": [
-        "Uuid",
+        "UuidArray",
         "Int4Array",
         {
           "Custom": {
@@ -28,5 +28,5 @@
     },
     "nullable": []
   },
-  "hash": "6ec6cf6022e0dece6e2eb6689e799a521731dc75b6202cd597117f808655e4a8"
+  "hash": "5c9ece82ec20962f2de8bfc27004184ffda8b37058ed6e1b8dcbe3aba74c20af"
 }

@@ -1,7 +1,13 @@
-use std::{collections::HashMap, marker::PhantomData, str::FromStr};
+#![forbid(unsafe_code)]
+#![warn(missing_docs, clippy::missing_docs_in_private_items)]
 
-use bollard::container::{Config, CreateContainerOptions, StartContainerOptions};
-use config::{RunnerSettings, RunningEnvironment};
+//! The Docker runner is a service that runs on a machine and listens for
+//! incoming WebSocket connections from the Patr API. The runner is responsible
+//! for creating, updating, and deleting deployments in the given runner.
+
+use std::{marker::PhantomData, str::FromStr};
+
+use config::RunningEnvironment;
 use futures::StreamExt;
 use models::{api::workspace::runner::*, prelude::*, utils::WebSocketUpgrade};
 use tracing::{Dispatch, Level};
@@ -114,7 +120,6 @@ async fn main() {
 					error!("Failed to delete deployment: {}", err);
 				}
 			}
-			Pong => (),
 		}
 	})
 	.await;

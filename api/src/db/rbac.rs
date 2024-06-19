@@ -1,3 +1,5 @@
+use models::rbac::Permission;
+
 use crate::prelude::*;
 
 /// Initializes the rbac tables
@@ -412,7 +414,7 @@ pub async fn initialize_rbac_constraints(
 			permission_id UUID;
 		BEGIN
 			SELECT
-				id
+				permission.id
 			INTO
 				permission_id
 			FROM
@@ -425,7 +427,7 @@ pub async fn initialize_rbac_constraints(
 			END IF;
 
 			RETURN QUERY SELECT
-				*
+				resource.*
 			FROM
 				resource
 			WHERE
@@ -449,7 +451,7 @@ pub async fn initialize_rbac_constraints(
 						workspace.super_admin_id = user_login.user_id
 					WHERE
 						user_login.login_id = login_id
-				) OR id IN (
+				) OR resource.id IN (
 					SELECT
 						COALESCE(
 							user_api_token_resource_permissions_include.resource_id,
@@ -477,7 +479,7 @@ pub async fn initialize_rbac_constraints(
 							user_api_token_resource_permissions_include.workspace_id,
 							workspace_user.workspace_id
 						)
-				) OR id NOT IN (
+				) OR resource.id NOT IN (
 					SELECT
 						COALESCE(
 							user_api_token_resource_permissions_exclude.resource_id,

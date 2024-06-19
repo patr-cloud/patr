@@ -14,7 +14,7 @@ pub async fn create_workspace(
 					authorization,
 					user_agent,
 				},
-				body: CreateWorkspaceRequestProcessed { workspace_name },
+				body: CreateWorkspaceRequestProcessed { name },
 			},
 		database,
 		redis,
@@ -23,14 +23,14 @@ pub async fn create_workspace(
 		user_data,
 	}: AuthenticatedAppRequest<'_, CreateWorkspaceRequest>,
 ) -> Result<AppResponse<CreateWorkspaceRequest>, ErrorType> {
-	info!("Creating workspace: `{workspace_name}`");
+	info!("Creating workspace: `{name}`");
 
 	let user_id = user_data.id;
 	let available = super::is_name_available(AuthenticatedAppRequest {
 		request: ProcessedApiRequest {
 			path: IsWorkspaceNameAvailablePath,
 			query: IsWorkspaceNameAvailableQuery {
-				name: workspace_name.to_string(),
+				name: name.to_string(),
 			},
 			headers: IsWorkspaceNameAvailableRequestHeaders {
 				authorization,
@@ -61,7 +61,7 @@ pub async fn create_workspace(
 	.await?;
 
 	// Create resource
-	let workspace_id = query!(
+	let id = query!(
 		r#"
 		INSERT INTO
 			resource(
@@ -102,8 +102,8 @@ pub async fn create_workspace(
 		VALUES
 			($1, $2, $3, NULL);
 		"#,
-		workspace_id as _,
-		&workspace_name,
+		id as _,
+		&name,
 		user_id as _,
 	)
 	.execute(&mut **database)
@@ -119,8 +119,8 @@ pub async fn create_workspace(
 		WHERE
 			id = $2;
 		"#,
-		workspace_id as _,
-		workspace_id as _,
+		id as _,
+		id as _,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -134,7 +134,7 @@ pub async fn create_workspace(
 	.await?;
 
 	AppResponse::builder()
-		.body(CreateWorkspaceResponse { workspace_id })
+		.body(CreateWorkspaceResponse { id })
 		.headers(())
 		.status_code(StatusCode::CREATED)
 		.build()

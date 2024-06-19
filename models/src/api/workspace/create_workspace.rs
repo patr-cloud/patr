@@ -7,7 +7,7 @@ macros::declare_api_endpoint!(
 	request = {
 		/// The name of the workspace to be created
 		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
-		pub workspace_name: String,
+		pub name: String,
 	},
 	request_headers = {
 		/// The authorization token
@@ -20,6 +20,6 @@ macros::declare_api_endpoint!(
 	},
 	response = {
 		/// The ID of the newly created workspace
-		pub workspace_id: Uuid,
+		pub id: Uuid,
 	},
 );
