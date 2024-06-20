@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-#![warn(missing_docs, clippy::missing_docs_in_private_items)]
+#![warn(missing_docs, clippy::all)]
 #![feature(impl_trait_in_assoc_type, try_blocks)]
 
 //! The main API server for Patr.

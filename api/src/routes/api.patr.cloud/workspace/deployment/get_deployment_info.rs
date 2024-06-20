@@ -171,7 +171,7 @@ pub async fn get_deployment_info(
 				} else {
 					DeploymentRegistry::ExternalRegistry {
 						registry: row.registry,
-						image_name: row.image_name.unwrap().into(),
+						image_name: row.image_name.unwrap(),
 					}
 				},
 				image_tag: row.image_tag,

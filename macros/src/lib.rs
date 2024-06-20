@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-#![warn(missing_docs, clippy::missing_docs_in_private_items)]
+#![warn(missing_docs, clippy::all)]
 
 //! This crate contains the macros used in this project. It is not intended to
 //! be used outside of this project. However, this crate is intended to be a
@@ -19,6 +19,8 @@ mod declare_stream_endpoint;
 mod has_headers;
 /// A proc macro for stripping whitespaces and newlines from SQL queries.
 mod query;
+/// A macro to generate a recursive enum iterator.
+mod recursive_enum_iter;
 /// A macro to verify if a given string is a valid regex at compile time.
 mod verify_regex;
 /// A macro to get the current crate version.
@@ -148,6 +150,25 @@ pub fn has_headers(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn query(input: TokenStream) -> TokenStream {
 	query::parse(input)
+}
+
+/// A macro to generate a recursive enum iterator. This macro generates an
+/// iterator for a recursive enum. The enum must be a recursive enum, i.e. it
+/// must have a variant that contains the enum itself.
+///
+/// ## Example usage:
+/// ```rust
+/// // In the root
+/// pub enum RecursiveEnum {
+///     Variant1,
+///     Variant2(AnotherEnum),
+/// }
+/// ```
+///
+/// This will generate an iterator for the given recursive enum.
+#[proc_macro_derive(RecursiveEnumIter)]
+pub fn recursive_enum_iter(input: TokenStream) -> TokenStream {
+	recursive_enum_iter::parse(input)
 }
 
 /// A macro to get the current crate version. This is used to set the version

@@ -39,7 +39,7 @@ pub async fn stream_runner_data_for_workspace(
 	let Ok(true) = redis
 		.set_with_options(
 			redis::keys::runner_connection_lock(&runner_id),
-			&random_connection_id.to_string(),
+			random_connection_id.to_string(),
 			SetCondition::NX,
 			SetExpiration::Ex(
 				const {
@@ -91,7 +91,7 @@ pub async fn stream_runner_data_for_workspace(
 									let Ok(true) = redis
 										.set_with_options(
 											redis::keys::runner_connection_lock(&runner_id),
-											&random_connection_id.to_string(),
+											random_connection_id.to_string(),
 											SetCondition::XX,
 											SetExpiration::Ex(
 												const {

@@ -1,130 +1,309 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+use macros::RecursiveEnumIter;
 use serde::{Deserialize, Serialize};
-use strum::{EnumDiscriminants, VariantNames};
+use strum::{Display, EnumDiscriminants, EnumIter, EnumMessage, IntoEnumIterator, VariantNames};
 
 use crate::prelude::*;
 
 /// A list of all possible resource types in Patr.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, VariantNames)]
+#[derive(
+	Eq,
+	Copy,
+	Hash,
+	Debug,
+	Clone,
+	Display,
+	EnumIter,
+	PartialEq,
+	Serialize,
+	EnumMessage,
+	Deserialize,
+	VariantNames,
+)]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
 pub enum ResourceType {
-	/// A workspace is also considered a resource
+	/// A workspace, which is also considered a resource
 	Workspace,
-	/// A project within a workspace
+	/// A project within a workspace. A project can be used to group resources,
+	/// and provide users permissions only on those specific resources,
 	Project,
-	/// A runner within a workspace
+	/// A runner within a workspace. A runner is used to run deployments,
+	/// databases, StaticSites, Secrets, Domains, etc.
 	Runner,
-	/// A deployment
+	/// A deployment within a workspace. A deployment is a running instance of a
+	/// container image. It can be scaled horizontally, and can be configured to
+	/// deploy on push.
 	Deployment,
-	/// A managed database
+	/// A database within a workspace. A database is a running instance of a
+	/// database server, such as MySQL, PostgreSQL, etc. It can be scaled
+	/// and persists data across deployments. It can also be shelled into for
+	/// debugging purposes.
 	Database,
-	/// A static site
+	/// A static site within a workspace. A static site is a collection of files
+	/// that are served over HTTP. Static sites are automatically deployed and
+	/// are accessible via a managed URL.
 	StaticSite,
-	/// A container registry repository
+	/// A container registry repository within a workspace. A container registry
+	/// repository is a collection of container images that can be deployed to
+	/// a deployment, which will be run on a runner.
 	ContainerRegistryRepository,
-	/// A secret
+	/// A secret within a workspace. A secret is a key-value pair that can be
+	/// used in deployments, databases, etc. It is encrypted at rest and in
+	/// transit. It can be rotated, and is only accessible by the deployment /
+	/// database that it is associated with.
 	Secret,
-	/// A domain added to a workspace
+	/// A domain added to a workspace. A domain can be used to access
+	/// deployments and static sites. It can be verified, and can have DNS
+	/// records added to it.
 	Domain,
-	/// A DNS record within a workspace
+	/// A DNS record within a workspace. A DNS record is a record that points a
+	/// domain to an IP address. It can be added to a domain, and can be used to
+	/// point a domain to a deployment or static site. A DNS record can be used
+	/// to point a domain to a deployment or static site.
 	DnsRecord,
-	/// A Managed URL for a particular deployment / static site, or otherwise
+	/// A Managed URL for a particular deployment / static site, or otherwise. A
+	/// managed URL is a URL that is managed by Patr, and is accessible over the
+	/// internet. It can be used to access deployments, static sites, etc. It is
+	/// managed by Patr, and is automatically updated when the deployment /
+	/// static site is updated.
 	ManagedURL,
 }
 
 /// A list of all permissions that can be granted on a DNS record.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, VariantNames)]
+#[derive(
+	Eq,
+	Copy,
+	Hash,
+	Debug,
+	Clone,
+	Display,
+	EnumIter,
+	PartialEq,
+	Serialize,
+	EnumMessage,
+	Deserialize,
+	VariantNames,
+)]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
 pub enum DnsRecordPermissions {
-	/// Add a DNS record to a domain
+	/// This permission allows the user to add a DNS record to a domain.
 	Add,
-	/// View a DNS record and it's details in a domain
+	/// This permission allows the user to view the already existing DNS
+	/// records in a domain.
 	View,
-	/// Edit a DNS record in a domain
+	/// This permission allows the user to edit a DNS record in a domain, but
+	/// not delete it or create a new one.
 	Edit,
-	/// Delete a DNS record in a domain
+	/// This permission allows the user to delete a DNS record from a domain,
+	/// but not add a new one or edit an existing one.
 	Delete,
 }
 
 /// A list of all permissions that can be granted on a domain.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, VariantNames)]
+#[derive(
+	Eq,
+	Copy,
+	Hash,
+	Debug,
+	Clone,
+	Display,
+	EnumIter,
+	PartialEq,
+	Serialize,
+	EnumMessage,
+	Deserialize,
+	VariantNames,
+)]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
 pub enum DomainPermissions {
-	/// Add a domain to a workspace
+	/// This permission allows the user to add a domain to a workspace, but not
+	/// view it, edit it, or delete it. This permission is useful for users or
+	/// API tokens that need to add a domain to a workspace, but not do
+	/// anything else with it.
 	Add,
-	/// View a domain and it's details in a workspace
+	/// This permission allows the user to view the domain and it's details,
+	/// but cannot modify it in any way. This permission is useful for users or
+	/// API tokens that need to only view the domain.
 	View,
-	/// Verify the domain (regardless of if it's internal or external)
+	/// This permission allows the user to verify the validity of the domain,
+	/// but cannot edit it, delete it, or add DNS records to it. This permission
+	/// is useful for users or API tokens that need to verify the domain, but
+	/// not do anything else with it.
 	Verify,
-	/// Delete the domain
+	/// This permission allows the user to only delete the domain.
 	Delete,
 }
 
 /// A list of all permissions that can be granted on a deployment
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, VariantNames)]
+#[derive(
+	Eq,
+	Copy,
+	Hash,
+	Debug,
+	Clone,
+	Display,
+	EnumIter,
+	PartialEq,
+	Serialize,
+	EnumMessage,
+	Deserialize,
+	VariantNames,
+)]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
 pub enum DeploymentPermissions {
-	/// Create a deployment on a workspace
+	/// This permission allows the user to create a new deployment in a
+	/// workspace.
 	Create,
-	/// View a deployment and it's details
+	/// This permission allows the user to only view the deployment and it's
+	/// details.
 	View,
-	/// Edit a deployment
+	/// This permission allows the user to edit the deployment, but not delete
+	/// it or create a new one.
 	Edit,
-	/// Delete a deployment
+	/// This permission allows the user to delete the deployment, but not create
+	/// a new one, view it, or edit it. This permission is useful for users or
+	/// API tokens that need to only delete deployments.
 	Delete,
+	/// This permission allows the user to start the deployment, but not edit
+	/// it. The user will only be able to start the deployment, with no other
+	/// updates allowed.
+	Start,
+	/// This permission allows the user to stop the deployment, but not edit it.
+	/// The user will only be able to stop the deployment with no other updates
+	/// allowed.
+	Stop,
 }
 
 /// A list of all permissions that can be granted on a container registry
 /// repository.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, VariantNames)]
+#[derive(
+	Eq,
+	Copy,
+	Hash,
+	Debug,
+	Clone,
+	Display,
+	EnumIter,
+	PartialEq,
+	Serialize,
+	EnumMessage,
+	Deserialize,
+	VariantNames,
+)]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
 pub enum ContainerRegistryRepositoryPermissions {
-	/// Create a repository in the container registry
+	/// This permission allows the user to create a new repository in the
+	/// container registry. The user will be able to create a new repository,
+	/// but not view, edit, or delete it.
 	Create,
-	/// View the repository and it's details
+	/// This permission allows the user to view the repository and it's details,
+	/// but not edit it, delete it, or create a new one.
 	View,
-	/// Edit the repository
+	/// This permission allows the user to edit the repository, but not delete
+	/// it or create a new one.
 	Edit,
-	/// Delete the repository
+	/// This permission allows the user to delete the repository, but not create
+	/// a new one, view it, or edit it. This permission is useful for users or
+	/// API tokens that need to only delete repositories.
 	Delete,
 }
 
 /// A list of all permissions that can be used for workspace billing stuff.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, VariantNames)]
+#[derive(
+	Eq,
+	Copy,
+	Hash,
+	Debug,
+	Clone,
+	Display,
+	EnumIter,
+	PartialEq,
+	Serialize,
+	EnumMessage,
+	Deserialize,
+	VariantNames,
+)]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
 pub enum BillingPermissions {
-	/// View billing information of a workspace
+	/// This permission allows the user to view the billing information of a
+	/// workspace, such as the payment method, the billing address, bill due,
+	/// etc.
 	View,
-	/// Edit billing information for a workspace
+	/// This permission allows the user to edit the billing information of a
+	/// workspace, but not view it.
 	Edit,
-	/// Make a payment for a workspace using an existing payment method
+	/// This permission allows the user to make a payment for a workspace, but
+	/// cannot change the payment method, view the billing information, or edit
+	/// the billing information.
 	MakePayment,
 }
 
 /// A list of all permissions that can be granted on a resource.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, VariantNames)]
+#[derive(
+	Eq,
+	Copy,
+	Hash,
+	Debug,
+	Clone,
+	Display,
+	PartialEq,
+	Serialize,
+	Deserialize,
+	EnumMessage,
+	VariantNames,
+	RecursiveEnumIter,
+)]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
 pub enum Permission {
-	/// All permissions related to a domain
+	/// All permissions related to a domains
+	#[strum(to_string = "domain::{0}")]
 	Domain(DomainPermissions),
-	/// All permissions related to a DNS record
+	/// All permissions related to a DNS records
+	#[strum(to_string = "dnsRecord::{0}")]
 	DnsRecord(DnsRecordPermissions),
-	/// All permissions related to a deployment
+	/// All permissions related to a deployments
+	#[strum(to_string = "deployment::{0}")]
 	Deployment(DeploymentPermissions),
 	/// All permissions related to container registry repositories
+	#[strum(to_string = "containerRegistryRepository::{0}")]
 	ContainerRegistryRepository(ContainerRegistryRepositoryPermissions),
 	/// All permissions for a workspace's billing
+	#[strum(to_string = "billing::{0}")]
 	Billing(BillingPermissions),
-	/// The user is allowed to change the workspace name and basic stuff
+	/// This permission allows the user to edit a workspace, but not delete it.
+	/// Only the super admin of a workspace can delete it.
+	#[strum(to_string = "editWorkspace")]
 	EditWorkspace,
+}
+
+impl Permission {
+	/// Returns a list of all permissions that can be granted on a resource.
+	pub fn list_all_permissions() -> Vec<Self> {
+		Self::iter().collect()
+	}
+
+	/// Returns the description of the permission, as per the documentation of
+	/// the permission.
+	pub fn description(&self) -> String {
+		match self {
+			Permission::Domain(permission) => permission.get_documentation(),
+			Permission::DnsRecord(permission) => permission.get_documentation(),
+			Permission::Deployment(permission) => permission.get_documentation(),
+			Permission::ContainerRegistryRepository(permission) => permission.get_documentation(),
+			Permission::Billing(permission) => permission.get_documentation(),
+			Permission::EditWorkspace => self.get_documentation(),
+		}
+		.expect("Documentation not found")
+		.to_string()
+	}
 }
 
 /// Represents the kind of permission that is granted on a workspace.

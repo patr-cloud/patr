@@ -66,7 +66,7 @@ pub async fn start_deployment(
 		} else {
 			DeploymentRegistry::ExternalRegistry {
 				registry: deployment.registry,
-				image_name: deployment.image_name.unwrap().into(),
+				image_name: deployment.image_name.unwrap(),
 			}
 		};
 		(registry, deployment.image_tag, deployment.runner)
@@ -97,7 +97,7 @@ pub async fn start_deployment(
 			let deployment_deploy_history = query_as!(
 				DeploymentDeployHistory,
 				r#"
-				SELECT 
+				SELECT
 					image_digest,
 					created as "created: _"
 				FROM

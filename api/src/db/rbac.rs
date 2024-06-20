@@ -348,6 +348,28 @@ pub async fn initialize_rbac_constraints(
 	.execute(&mut *connection)
 	.await?;
 
+	// Insert all permissions into the database
+	for permission in Permission::list_all_permissions() {
+		trace!("Inserting permission: {}", permission);
+		query!(
+			r#"
+			INSERT INTO
+				permission(
+					id,
+					name,
+					description
+				)
+			VALUES
+				($1, $2, $3);
+			"#,
+			Uuid::new_v4() as _,
+			permission.to_string(),
+			permission.description()
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
 	query!(
 		r#"
 		CREATE FUNCTION GENERATE_RESOURCE_ID() RETURNS UUID AS $$
