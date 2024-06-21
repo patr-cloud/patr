@@ -17,7 +17,8 @@ macros::declare_api_endpoint!(
 	},
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
-			extract_resource_id: |req| req.path.runner_id
+			extract_resource_id: |req| req.path.runner_id,
+			permission: Permission::Runner(RunnerPermission::Delete),
 		}
 	}
 );

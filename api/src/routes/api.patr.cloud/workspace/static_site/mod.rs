@@ -16,7 +16,6 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.mount_auth_endpoint(stop_static_site, state)
 		.mount_auth_endpoint(update_static_site, state)
 		.mount_auth_endpoint(upload_static_site, state)
-		.mount_auth_endpoint(list_linked_url, state)
 }
 
 async fn create_static_site(
@@ -293,35 +292,6 @@ async fn upload_static_site(
 	AppResponse::builder()
 		.body(UploadStaticSiteResponse { upload_id: todo!() })
 		.headers(())
-		.status_code(StatusCode::OK)
-		.build()
-		.into_result()
-}
-
-async fn list_linked_url(
-	AuthenticatedAppRequest {
-		request: ProcessedApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
-		database,
-		redis: _,
-		client_ip: _,
-		config,
-		user_data,
-	}: AuthenticatedAppRequest<'_, ListLinkedURLRequest>,
-) -> Result<AppResponse<ListLinkedURLRequest>, ErrorType> {
-	info!("Starting: List linked URL");
-
-	// LOGIC
-
-	AppResponse::builder()
-		.body(ListLinkedURLResponse { urls: todo!() })
-		.headers(ListLinkedURLResponseHeaders {
-			total_count: todo!(),
-		})
 		.status_code(StatusCode::OK)
 		.build()
 		.into_result()

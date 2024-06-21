@@ -19,7 +19,10 @@ macros::declare_api_endpoint!(
 	},
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
-			extract_resource_id: |req| req.path.domain_id
+			extract_resource_id: |req| req.path.domain_id,
+			// Internally, we will be checking for the `Read` permission on each DNS record.
+			// For now, we are just checking for the `Read` permission on the domain.
+			permission: Permission::Domain(DomainPermission::View),
 		}
 	},
 	response_headers = {

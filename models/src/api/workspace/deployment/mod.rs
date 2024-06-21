@@ -3,6 +3,8 @@ use std::{collections::BTreeMap, fmt::Display, str::FromStr};
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use time::OffsetDateTime;
 
+/// The history of a deployment's deploys. This contains the image digest and
+/// the timestamp of when the deploy was created
 pub mod deploy_history;
 
 mod create_deployment;

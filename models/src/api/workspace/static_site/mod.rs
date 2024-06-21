@@ -4,7 +4,6 @@ use time::OffsetDateTime;
 mod create_static_site;
 mod delete_static_site;
 mod get_static_site_info;
-mod list_linked_url;
 mod list_static_site;
 mod list_upload_history;
 mod revert_static_site;
@@ -17,7 +16,6 @@ pub use self::{
 	create_static_site::*,
 	delete_static_site::*,
 	get_static_site_info::*,
-	list_linked_url::*,
 	list_static_site::*,
 	list_upload_history::*,
 	revert_static_site::*,

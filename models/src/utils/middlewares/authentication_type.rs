@@ -73,8 +73,8 @@ where
 		/// The resource id is then used to check if the user has the specified
 		/// permission on the resource.
 		extract_resource_id: fn(&ApiRequest<E>) -> Uuid,
-		// /// The permission that the user needs to have on the resource.
-		// permission: ResourcePermission,
+		/// The permission that the user needs to have on the resource.
+		permission: Permission,
 	},
 }
 

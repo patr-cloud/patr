@@ -20,7 +20,8 @@ macros::declare_api_endpoint!(
 	},
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
-			extract_resource_id: |req| req.path.role_id
+			extract_resource_id: |req| req.path.workspace_id,
+			permission: Permission::ViewRoles,
 		}
 	},
 	response = {

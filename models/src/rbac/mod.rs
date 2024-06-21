@@ -83,6 +83,44 @@ pub enum ResourceType {
 	ManagedURL,
 }
 
+/// A list of all permissions that can be granted on a Database.
+#[derive(
+	Eq,
+	Copy,
+	Hash,
+	Debug,
+	Clone,
+	Display,
+	EnumIter,
+	PartialEq,
+	Serialize,
+	EnumString,
+	EnumMessage,
+	Deserialize,
+	VariantNames,
+)]
+#[strum(serialize_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
+pub enum DatabasePermission {
+	/// This permission allows the user to create a new Database in a workspace.
+	Create,
+	/// This permission allows the user to view the details of an existing
+	/// database in a workspace.
+	View,
+	/// This permission allows the user to edit a database in a workspace, but
+	/// not delete it or create a new one.
+	Edit,
+	/// This permission allows the user to delete a database, but not add a new
+	/// one or edit an existing one.
+	Delete,
+	/// This permission allows the user to create backups of the database, but
+	/// not restore them on the same instance.
+	Backup,
+	/// This permission allows the user to restore a backup of the database, but
+	/// not create a new backup.
+	Restore,
+}
+
 /// A list of all permissions that can be granted on a DNS record.
 #[derive(
 	Eq,
@@ -185,6 +223,10 @@ pub enum ManagedURLPermission {
 	/// or API tokens that need to verify the Managed URL, but not do anything
 	/// else with it.
 	Verify,
+	/// This permission allows the user to edit the Managed URL, but not delete
+	/// it. The user will only be able to edit the Managed URL, with no other
+	/// updates allowed.
+	Edit,
 	/// This permission allows the user to only delete the Managed URL
 	Delete,
 }
@@ -305,6 +347,101 @@ pub enum ContainerRegistryRepositoryPermission {
 	/// a new one, view it, or edit it. This permission is useful for users or
 	/// API tokens that need to only delete repositories.
 	Delete,
+	/// This permission allows the user to push an image to the repository, but
+	/// not view it, edit it, or delete it. This permission is useful for users
+	/// or API tokens that need to only push images to repositories.
+	Push,
+	/// This permission allows the user to pull an image from the repository,
+	/// but not view it, edit it, or delete it. This permission is useful for
+	/// users or API tokens that need to only pull images from repositories.
+	Pull,
+	/// This permission allows the user to delete an image from the repository,
+	/// but not view it, edit it, or push or pull images from it. This
+	/// permission allows the user / API token to only delete images that have
+	/// been pushed, instead of deleting the whole repository.
+	DeleteImage,
+}
+
+/// A list of all permissions that can be granted on a static site
+#[derive(
+	Eq,
+	Copy,
+	Hash,
+	Debug,
+	Clone,
+	Display,
+	EnumIter,
+	PartialEq,
+	Serialize,
+	EnumString,
+	EnumMessage,
+	Deserialize,
+	VariantNames,
+)]
+#[strum(serialize_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
+pub enum StaticSitePermission {
+	/// This permission allows the user to create a new static site in the
+	/// workspace. The user will be able to create a new site, but not view,
+	/// edit, or delete it.
+	Create,
+	/// This permission allows the user to only view the static site and it's
+	/// details. The user will not be able to edit the site, delete it, or
+	/// create a new one.
+	View,
+	/// This permission allows the user to edit the static site, but not delete
+	/// it or create a new one. The user will only be able to edit the site,
+	/// with no other updates allowed.
+	Edit,
+	/// This permission allows the user to delete the static site, but not
+	/// create a new one, view it, or edit it. This permission is useful for
+	/// users or API tokens that need to only delete sites.
+	Delete,
+	/// This permission allows the user to upload a new website file to the
+	/// static site, but not view it, edit it, or delete it. This permission is
+	/// useful for users or API tokens that need to only upload files to sites.
+	Upload,
+	/// This permission allows the user to start the static site, but not edit
+	/// it. The user will only be able to start the static site, with no other
+	/// updates allowed.
+	Start,
+	/// This permission allows the user to stop the static site, but not edit
+	/// it. The user will only be able to stop the static site with no other
+	/// updates allowed.
+	Stop,
+}
+
+/// A list of all permissions that can be used for a secret
+#[derive(
+	Eq,
+	Copy,
+	Hash,
+	Debug,
+	Clone,
+	Display,
+	EnumIter,
+	PartialEq,
+	Serialize,
+	EnumString,
+	EnumMessage,
+	Deserialize,
+	VariantNames,
+)]
+#[strum(serialize_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
+pub enum SecretPermission {
+	/// This permission allows the user to create a new secret in a workspace.
+	Create,
+	/// This permission allows the user to view the secret and it's details, but
+	/// not edit it, delete it, or create a new one.
+	View,
+	/// This permission allows the user to edit the secret, but not delete it or
+	/// create a new one.
+	Edit,
+	/// This permission allows the user to delete the secret, but not create a
+	/// new one, view it, or edit it. This permission is useful for users or API
+	/// tokens that need to only delete secrets.
+	Delete,
 }
 
 /// A list of all permissions that can be used for workspace billing stuff.
@@ -378,9 +515,24 @@ pub enum Permission {
 	/// All permissions for a Runner
 	#[strum(to_string = "runner::{0}")]
 	Runner(RunnerPermission),
+	/// All permissions for a database
+	#[strum(to_string = "database::{0}")]
+	Database(DatabasePermission),
+	/// All static site permissions
+	#[strum(to_string = "staticSite::{0}")]
+	StaticSite(StaticSitePermission),
+	/// All secret permissions
+	#[strum(to_string = "secret::{0}")]
+	Secret(SecretPermission),
+	/// View all roles in a workspace
+	ViewRoles,
+	/// Edit roles in a workspace. This permission allows the user to edit
+	/// roles, which includes adding permissions to roles, removing permissions
+	/// from roles, and changing the name and description of roles. This is a
+	/// powerful permission, and should be granted with caution.
+	ModifyRoles,
 	/// This permission allows the user to edit a workspace, but not delete it.
 	/// Only the super admin of a workspace can delete it.
-	#[strum(to_string = "editWorkspace")]
 	EditWorkspace,
 }
 
@@ -401,6 +553,11 @@ impl Permission {
 			Permission::Billing(permission) => permission.get_documentation(),
 			Permission::ManagedURL(permission) => permission.get_documentation(),
 			Permission::Runner(permission) => permission.get_documentation(),
+			Permission::Database(permission) => permission.get_documentation(),
+			Permission::StaticSite(permission) => permission.get_documentation(),
+			Permission::Secret(permission) => permission.get_documentation(),
+			Permission::ViewRoles => self.get_documentation(),
+			Permission::ModifyRoles => self.get_documentation(),
 			Permission::EditWorkspace => self.get_documentation(),
 		}
 		.expect("Documentation not found")
@@ -424,6 +581,11 @@ impl FromStr for Permission {
 			"billing" => Self::Billing(permission.parse()?),
 			"managedURL" => Self::ManagedURL(permission.parse()?),
 			"runner" => Self::Runner(permission.parse()?),
+			"database" => Self::Database(permission.parse()?),
+			"staticSite" => Self::StaticSite(permission.parse()?),
+			"secret" => Self::Secret(permission.parse()?),
+			"viewRoles" => Self::ViewRoles,
+			"modifyRoles" => Self::ModifyRoles,
 			"editWorkspace" => Self::EditWorkspace,
 			_ => return Err(strum::ParseError::VariantNotFound),
 		})

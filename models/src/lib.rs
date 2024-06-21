@@ -28,6 +28,19 @@ pub mod prelude {
 	pub(crate) use crate as models;
 	pub use crate::{
 		api::WithId,
+		rbac::{
+			BillingPermission,
+			ContainerRegistryRepositoryPermission,
+			DatabasePermission,
+			DeploymentPermission,
+			DnsRecordPermission,
+			DomainPermission,
+			ManagedURLPermission,
+			Permission,
+			RunnerPermission,
+			SecretPermission,
+			StaticSitePermission,
+		},
 		utils::{
 			AppAuthentication,
 			Base64String,

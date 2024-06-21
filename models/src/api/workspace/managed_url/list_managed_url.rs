@@ -15,8 +15,8 @@ macros::declare_api_endpoint!(
 		pub user_agent: UserAgent,
 	},
 	authentication = {
-		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
-			extract_resource_id: |req| req.path.workspace_id
+		AppAuthentication::<Self>::WorkspaceMembershipAuthenticator {
+			extract_workspace_id: |req| req.path.workspace_id
 		}
 	},
 	query = {

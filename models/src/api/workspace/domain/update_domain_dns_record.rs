@@ -19,7 +19,8 @@ macros::declare_api_endpoint!(
 	},
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
-			extract_resource_id: |req| req.path.record_id
+			extract_resource_id: |req| req.path.record_id,
+			permission: Permission::DnsRecord(DnsRecordPermission::Edit),
 		}
 	},
 	request = {

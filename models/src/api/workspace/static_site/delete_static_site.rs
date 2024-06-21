@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to delete a static site
-	/// This route will permenantly delete the static site including it's history
+	/// This route will permanently delete the static site including it's history
 	/// and the current index.html file
 	DeleteStaticSite,
 	DELETE "/workspace/:workspace_id/infrastructure/static-site/:static_site_id" {
@@ -19,7 +19,8 @@ macros::declare_api_endpoint!(
 	},
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
-			extract_resource_id: |req| req.path.static_site_id
+			extract_resource_id: |req| req.path.static_site_id,
+			permission: Permission::StaticSite(StaticSitePermission::Delete),
 		}
 	}
 );
