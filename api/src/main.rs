@@ -34,6 +34,16 @@ pub mod prelude {
 	pub use macros::query;
 	pub use models::{
 		api::WithId,
+		rbac::{
+			BillingPermission,
+			ContainerRegistryRepositoryPermission,
+			DeploymentPermission,
+			DnsRecordPermission,
+			DomainPermission,
+			ManagedURLPermission,
+			Permission,
+			RunnerPermission,
+		},
 		utils::{OneOrMore, Paginated, Uuid},
 		ApiEndpoint,
 		AppResponse,

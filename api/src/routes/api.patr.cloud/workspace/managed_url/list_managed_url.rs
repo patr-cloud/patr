@@ -71,7 +71,7 @@ pub async fn list_managed_url(
 		"#,
 		workspace_id as _,
 		user_data.login_id as _,
-		"TODO permission_name",
+		Permission::ManagedURL(ManagedURLPermission::View) as _,
 		count as i32,
 		(count * page) as i32,
 	)

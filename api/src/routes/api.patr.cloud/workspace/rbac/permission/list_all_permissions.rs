@@ -1,5 +1,5 @@
 use axum::http::StatusCode;
-use models::api::workspace::rbac::*;
+use models::api::workspace::rbac::{Permission as PermissionModel, *};
 
 use crate::prelude::*;
 
@@ -49,7 +49,7 @@ pub async fn list_all_permissions(
 	.map(|row| {
 		WithId::new(
 			row.id,
-			Permission {
+			PermissionModel {
 				name: row.name,
 				description: row.description,
 			},

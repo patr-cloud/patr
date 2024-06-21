@@ -2,7 +2,7 @@ use std::{cmp::Ordering, collections::BTreeMap};
 
 use axum::{http::StatusCode, Router};
 use futures::sink::With;
-use models::{api::workspace::deployment::*, ErrorType};
+use models::api::workspace::deployment::{deploy_history::*, *};
 use sqlx::query_as;
 use time::OffsetDateTime;
 

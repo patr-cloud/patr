@@ -60,7 +60,7 @@ pub async fn list_runners_for_workspace(
 		"#,
 		workspace_id as _,
 		user_data.login_id as _,
-		"TODO permission_name",
+		Permission::Runner(RunnerPermission::View) as _,
 		count as i32,
 		(count * page) as i32,
 	)

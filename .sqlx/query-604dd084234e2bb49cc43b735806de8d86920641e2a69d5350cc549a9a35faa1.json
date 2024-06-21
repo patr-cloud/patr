@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id FROM deployment WHERE id = $1 AND status != 'deleted';",
+  "query": "SELECT id FROM deployment WHERE id = $1 AND workspace_id = $2 AND deleted IS NULL;",
   "describe": {
     "columns": [
       {
@@ -11,6 +11,7 @@
     ],
     "parameters": {
       "Left": [
+        "Uuid",
         "Uuid"
       ]
     },
@@ -18,5 +19,5 @@
       false
     ]
   },
-  "hash": "234210ef7ec5fa3501738f64c297271d97fcc22dcd882c41aa645df59c93509a"
+  "hash": "604dd084234e2bb49cc43b735806de8d86920641e2a69d5350cc549a9a35faa1"
 }

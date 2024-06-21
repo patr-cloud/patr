@@ -3,6 +3,9 @@ use models::api::workspace::deployment::*;
 
 use crate::prelude::*;
 
+/// List all deployment machine types. This is a public endpoint. No
+/// authentication is required. This endpoint is used to list all the machine
+/// types that are available for deployments.
 pub async fn machine_type(
 	AppRequest {
 		request:
@@ -37,8 +40,8 @@ pub async fn machine_type(
 		WithId::new(
 			machine.id,
 			DeploymentMachineType {
-				cpu_count: machine.cpu_count,
-				memory_count: machine.memory_count,
+				cpu_count: machine.cpu_count as u16,
+				memory_count: machine.memory_count as u32,
 			},
 		)
 	})

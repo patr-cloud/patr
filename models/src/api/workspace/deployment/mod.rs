@@ -3,6 +3,8 @@ use std::{collections::BTreeMap, fmt::Display, str::FromStr};
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use time::OffsetDateTime;
 
+pub mod deploy_history;
+
 mod create_deployment;
 mod delete_deployment;
 mod get_deployment_info;
@@ -10,7 +12,6 @@ mod get_deployment_log;
 mod get_deployment_metric;
 mod list_all_deployment_machine_type;
 mod list_deployment;
-mod list_deployment_history;
 mod start_deployment;
 mod stop_deployment;
 mod update_deployment;
@@ -23,17 +24,25 @@ pub use self::{
 	get_deployment_metric::*,
 	list_all_deployment_machine_type::*,
 	list_deployment::*,
-	list_deployment_history::*,
 	start_deployment::*,
 	stop_deployment::*,
 	update_deployment::*,
 };
 use crate::{prelude::*, utils::constants};
 
+/// The type of machine a deployment can run on. This can be classified by the
+/// number of CPU and Memory allocated to the deployment. The machine type can
+/// be used to classify the deployment based on the resources it requires.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DeploymentMachineType {
-	pub cpu_count: i16,
-	pub memory_count: i32,
+	/// The number of CPU nodes allocated to the deployment. This is the number
+	/// of vCPUs in case of cloud deployments and the number of physical CPUs in
+	/// case of on-prem deployments.
+	pub cpu_count: u16,
+	/// The amount of memory allocated to the deployment. This is the amount of
+	/// RAM in 0.25 GB increments. So for a 4 GB machine, the memory count will
+	/// be 16. This is the same for both cloud and on-prem deployments
+	pub memory_count: u32,
 }
 
 /// Deployment information
@@ -61,16 +70,6 @@ pub struct Deployment {
 	pub machine_type: Uuid,
 	/// The current image digest the deployment is running
 	pub current_live_digest: Option<String>,
-}
-
-/// Deployment history
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct DeploymentDeployHistory {
-	/// The images digests the deployment has ran
-	pub image_digest: String,
-	/// The timestamp of when the digest previously ran
-	pub created: OffsetDateTime,
 }
 
 /// Deployment running details

@@ -1,8 +1,19 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+	collections::{BTreeMap, BTreeSet},
+	str::FromStr,
+};
 
 use macros::RecursiveEnumIter;
 use serde::{Deserialize, Serialize};
-use strum::{Display, EnumDiscriminants, EnumIter, EnumMessage, IntoEnumIterator, VariantNames};
+use strum::{
+	Display,
+	EnumDiscriminants,
+	EnumIter,
+	EnumMessage,
+	EnumString,
+	IntoEnumIterator,
+	VariantNames,
+};
 
 use crate::prelude::*;
 
@@ -17,6 +28,7 @@ use crate::prelude::*;
 	EnumIter,
 	PartialEq,
 	Serialize,
+	EnumString,
 	EnumMessage,
 	Deserialize,
 	VariantNames,
@@ -82,13 +94,14 @@ pub enum ResourceType {
 	EnumIter,
 	PartialEq,
 	Serialize,
+	EnumString,
 	EnumMessage,
 	Deserialize,
 	VariantNames,
 )]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
-pub enum DnsRecordPermissions {
+pub enum DnsRecordPermission {
 	/// This permission allows the user to add a DNS record to a domain.
 	Add,
 	/// This permission allows the user to view the already existing DNS
@@ -113,13 +126,14 @@ pub enum DnsRecordPermissions {
 	EnumIter,
 	PartialEq,
 	Serialize,
+	EnumString,
 	EnumMessage,
 	Deserialize,
 	VariantNames,
 )]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
-pub enum DomainPermissions {
+pub enum DomainPermission {
 	/// This permission allows the user to add a domain to a workspace, but not
 	/// view it, edit it, or delete it. This permission is useful for users or
 	/// API tokens that need to add a domain to a workspace, but not do
@@ -138,6 +152,83 @@ pub enum DomainPermissions {
 	Delete,
 }
 
+/// A list of all permissions that can be granted on a Managed URL.
+#[derive(
+	Eq,
+	Copy,
+	Hash,
+	Debug,
+	Clone,
+	Display,
+	EnumIter,
+	PartialEq,
+	Serialize,
+	EnumString,
+	EnumMessage,
+	Deserialize,
+	VariantNames,
+)]
+#[strum(serialize_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
+pub enum ManagedURLPermission {
+	/// This permission allows the user to add a Managed URL to a workspace, but
+	/// not view it, edit it, or delete it. This permission is useful for users
+	/// or API tokens that need to add a Managed URL to a workspace, but not do
+	/// anything else with it.
+	Add,
+	/// This permission allows the user to view the Managed URL and it's
+	/// details, but cannot modify it in any way. This permission is useful for
+	/// users or API tokens that need to only view the Managed URL.
+	View,
+	/// This permission allows the user to verify the validity of the Managed
+	/// URL, but cannot edit it, delete it. This permission is useful for users
+	/// or API tokens that need to verify the Managed URL, but not do anything
+	/// else with it.
+	Verify,
+	/// This permission allows the user to only delete the Managed URL
+	Delete,
+}
+
+/// A list of all permissions that can be granted on a Runner.
+#[derive(
+	Eq,
+	Copy,
+	Hash,
+	Debug,
+	Clone,
+	Display,
+	EnumIter,
+	PartialEq,
+	Serialize,
+	EnumString,
+	EnumMessage,
+	Deserialize,
+	VariantNames,
+)]
+#[strum(serialize_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
+pub enum RunnerPermission {
+	/// This permission allows the user to create a new runner in a workspace.
+	/// The user will be able to create a new runner, but not view, edit, or
+	/// delete it. This permission is useful for users or API tokens that need
+	/// to create a runner, but not do anything else with it.
+	Create,
+	/// This permission allows the user to only view the runner and it's
+	/// details.
+	View,
+	/// This permission allows the user to only edit the runner, but not delete
+	/// it.
+	Edit,
+	/// This permission allows the user to delete the runner, but not view it or
+	/// edit it. This permission is useful for users or API tokens that need to
+	/// only delete runners.
+	Delete,
+	/// This permission allows the user to regenerate the runner token, but not
+	/// view it, edit it, or delete it. This permission is useful for users or
+	/// API tokens that need to only regenerate the runner token.
+	RegenerateToken,
+}
+
 /// A list of all permissions that can be granted on a deployment
 #[derive(
 	Eq,
@@ -149,13 +240,14 @@ pub enum DomainPermissions {
 	EnumIter,
 	PartialEq,
 	Serialize,
+	EnumString,
 	EnumMessage,
 	Deserialize,
 	VariantNames,
 )]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
-pub enum DeploymentPermissions {
+pub enum DeploymentPermission {
 	/// This permission allows the user to create a new deployment in a
 	/// workspace.
 	Create,
@@ -191,13 +283,14 @@ pub enum DeploymentPermissions {
 	EnumIter,
 	PartialEq,
 	Serialize,
+	EnumString,
 	EnumMessage,
 	Deserialize,
 	VariantNames,
 )]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
-pub enum ContainerRegistryRepositoryPermissions {
+pub enum ContainerRegistryRepositoryPermission {
 	/// This permission allows the user to create a new repository in the
 	/// container registry. The user will be able to create a new repository,
 	/// but not view, edit, or delete it.
@@ -225,13 +318,14 @@ pub enum ContainerRegistryRepositoryPermissions {
 	EnumIter,
 	PartialEq,
 	Serialize,
+	EnumString,
 	EnumMessage,
 	Deserialize,
 	VariantNames,
 )]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
-pub enum BillingPermissions {
+pub enum BillingPermission {
 	/// This permission allows the user to view the billing information of a
 	/// workspace, such as the payment method, the billing address, bill due,
 	/// etc.
@@ -265,19 +359,25 @@ pub enum BillingPermissions {
 pub enum Permission {
 	/// All permissions related to a domains
 	#[strum(to_string = "domain::{0}")]
-	Domain(DomainPermissions),
+	Domain(DomainPermission),
 	/// All permissions related to a DNS records
 	#[strum(to_string = "dnsRecord::{0}")]
-	DnsRecord(DnsRecordPermissions),
+	DnsRecord(DnsRecordPermission),
 	/// All permissions related to a deployments
 	#[strum(to_string = "deployment::{0}")]
-	Deployment(DeploymentPermissions),
+	Deployment(DeploymentPermission),
 	/// All permissions related to container registry repositories
 	#[strum(to_string = "containerRegistryRepository::{0}")]
-	ContainerRegistryRepository(ContainerRegistryRepositoryPermissions),
+	ContainerRegistryRepository(ContainerRegistryRepositoryPermission),
 	/// All permissions for a workspace's billing
 	#[strum(to_string = "billing::{0}")]
-	Billing(BillingPermissions),
+	Billing(BillingPermission),
+	/// All permissions for a Managed URL
+	#[strum(to_string = "managedURL::{0}")]
+	ManagedURL(ManagedURLPermission),
+	/// All permissions for a Runner
+	#[strum(to_string = "runner::{0}")]
+	Runner(RunnerPermission),
 	/// This permission allows the user to edit a workspace, but not delete it.
 	/// Only the super admin of a workspace can delete it.
 	#[strum(to_string = "editWorkspace")]
@@ -299,10 +399,77 @@ impl Permission {
 			Permission::Deployment(permission) => permission.get_documentation(),
 			Permission::ContainerRegistryRepository(permission) => permission.get_documentation(),
 			Permission::Billing(permission) => permission.get_documentation(),
+			Permission::ManagedURL(permission) => permission.get_documentation(),
+			Permission::Runner(permission) => permission.get_documentation(),
 			Permission::EditWorkspace => self.get_documentation(),
 		}
 		.expect("Documentation not found")
 		.to_string()
+	}
+}
+
+impl FromStr for Permission {
+	type Err = strum::ParseError;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		let Some((permission_type, permission)) = s.split_once("::") else {
+			return Err(strum::ParseError::VariantNotFound);
+		};
+
+		Ok(match permission_type {
+			"domain" => Self::Domain(permission.parse()?),
+			"dnsRecord" => Self::DnsRecord(permission.parse()?),
+			"deployment" => Self::Deployment(permission.parse()?),
+			"containerRegistryRepository" => Self::ContainerRegistryRepository(permission.parse()?),
+			"billing" => Self::Billing(permission.parse()?),
+			"managedURL" => Self::ManagedURL(permission.parse()?),
+			"runner" => Self::Runner(permission.parse()?),
+			"editWorkspace" => Self::EditWorkspace,
+			_ => return Err(strum::ParseError::VariantNotFound),
+		})
+	}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<DB> sqlx::Type<DB> for Permission
+where
+	DB: sqlx::Database,
+	String: sqlx::Type<DB>,
+{
+	fn type_info() -> <DB as sqlx::Database>::TypeInfo {
+		<String as sqlx::Type<DB>>::type_info()
+	}
+
+	fn compatible(ty: &<DB as sqlx::Database>::TypeInfo) -> bool {
+		<String as sqlx::Type<DB>>::compatible(ty)
+	}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<'q, DB> sqlx::Encode<'q, DB> for Permission
+where
+	DB: sqlx::Database,
+	String: sqlx::Encode<'q, DB>,
+{
+	fn encode_by_ref(
+		&self,
+		buf: &mut <DB as sqlx::database::HasArguments<'q>>::ArgumentBuffer,
+	) -> sqlx::encode::IsNull {
+		<String as sqlx::Encode<'q, DB>>::encode(self.to_string(), buf)
+	}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<'q, DB> sqlx::Decode<'q, DB> for Permission
+where
+	DB: sqlx::Database,
+	String: sqlx::Decode<'q, DB>,
+{
+	fn decode(
+		value: <DB as sqlx::database::HasValueRef<'q>>::ValueRef,
+	) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+		let permission = <String as sqlx::Decode<'q, DB>>::decode(value)?;
+		Ok(FromStr::from_str(&permission)?)
 	}
 }
 

@@ -27,7 +27,7 @@ pub async fn initialize_deployment_tables(
 		CREATE TABLE deployment_machine_type(
 			id UUID NOT NULL,
 			cpu_count SMALLINT NOT NULL,
-			memory_count INTEGER NOT NULL /* Multiples of 0.25 GB */
+			memory_count BIGINT NOT NULL /* Multiples of 0.25 GB */
 		);
 		"#
 	)

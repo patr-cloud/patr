@@ -60,7 +60,7 @@ pub async fn list_deployment(
 		"#,
 		workspace_id as _,
 		user_data.login_id as _,
-		"TODO permission_name",
+		Permission::Deployment(DeploymentPermission::View) as _,
 		count as i32,
 		(count * page) as i32,
 	)

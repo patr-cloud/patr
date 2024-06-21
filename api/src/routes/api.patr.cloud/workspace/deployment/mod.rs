@@ -1,5 +1,9 @@
 use axum::Router;
 
+/// The history of deploys for a deployment. This includes the status of the
+/// deploy, and the time it was deployed.
+pub mod deploy_history;
+
 mod create_deployment;
 mod delete_deployment;
 mod get_deployment_info;
@@ -7,7 +11,6 @@ mod get_deployment_log;
 mod get_deployment_metric;
 mod list_all_deployment_machine_types;
 mod list_deployment;
-mod list_deployment_history;
 mod start_deployment;
 mod stop_deployment;
 mod update_deployment;
@@ -20,7 +23,6 @@ use self::{
 	get_deployment_metric::*,
 	list_all_deployment_machine_types::*,
 	list_deployment::*,
-	list_deployment_history::*,
 	start_deployment::*,
 	stop_deployment::*,
 	update_deployment::*,
@@ -29,21 +31,18 @@ use crate::prelude::*;
 
 /*
 Figure out how to structure:
-	- ports
-	- env vars
-	- config mounts
 	- Volume
-	- deploy history
 	- logs
 	- metrics
+	- backups
 */
 
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
+		.merge(deploy_history::setup_routes(state).await)
 		.mount_endpoint(machine_type, state)
 		.mount_auth_endpoint(list_deployment, state)
-		.mount_auth_endpoint(list_deployment_history, state)
 		.mount_auth_endpoint(create_deployment, state)
 		.mount_auth_endpoint(get_deployment_info, state)
 		.mount_auth_endpoint(start_deployment, state)

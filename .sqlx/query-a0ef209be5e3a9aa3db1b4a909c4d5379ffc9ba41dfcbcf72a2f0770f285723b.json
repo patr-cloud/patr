@@ -16,7 +16,7 @@
       {
         "ordinal": 2,
         "name": "memory_count",
-        "type_info": "Int4"
+        "type_info": "Int8"
       }
     ],
     "parameters": {
