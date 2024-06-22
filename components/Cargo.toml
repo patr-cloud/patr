@@ -15,6 +15,7 @@ crate-type = ["cdylib", "rlib"]
 axum-extra = { workspace = true, features = ["typed-routing"] }
 serde = { workspace = true, features = ["default", "derive"] }
 serde_json = { workspace = true, features = ["default"] }
+models = { workspace = true, features = [] }
 serde_urlencoded = { workspace = true, features = [] }
 tracing = { workspace = true, features = ["attributes"] }
 web-sys = { workspace = true, features = [

@@ -34,8 +34,6 @@ pub fn RevokeApiToken() -> impl IntoView {
 						<strong>"CANNOT "</strong>
 						"be undone!"
 					</p>
-					// <div class="full-width fr-fs-fs f-wrap px-md py-xs bg-secondary-medium br-sm of-hidden">
-					// </div>
 					<div class="mt-lg full-width fr-fe-ct gap-md">
 						<button class="btn-plain txt-white" on:click={move |_| show_revoke_modal.set(false)}>"CANCEL"</button>
 						<ActionForm action={revoke_api_token_action}>

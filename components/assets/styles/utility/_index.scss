@@ -463,16 +463,20 @@
 
 .li-diamond {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
   padding-left: map.get($paddings, "lg");
 
   &::before {
     content: "";
 
-    top: 5px;
+    position: absolute;
+
     left: 0;
     width: 0.5rem;
     height: 0.5rem;
-    position: absolute;
 
     transform: rotate(45deg);
     background-color: map.get($background-colors, "primary");

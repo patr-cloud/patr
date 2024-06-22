@@ -80,25 +80,48 @@ fn ShowWorkspaceInfo(
 pub fn ManageWorkspaceSettingsTab() -> impl IntoView {
 	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
 	let access_token_signal = move || access_token.get();
+
+	let (current_workspace_id, _) =
+		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+
 	let workspace_list = create_resource(access_token_signal, move |value| async move {
 		list_user_workspace(value).await
 	});
 
-	logging::log!("{:#?}", workspace_list.get());
+	let current_workspace_id =
+		match current_workspace_id.with(|id| id.clone().map(|id| Uuid::parse_str(id.as_str()))) {
+			Some(Ok(id)) => Some(id),
+			_ => None,
+		};
+
+	let current_workspace = Signal::derive(move || {
+		if let Some(workspace_id) = current_workspace_id {
+			workspace_list
+				.get()
+				.map(|list| {
+					list.ok().map(|list| {
+						list.workspaces
+							.iter()
+							.find(|&x| x.id == workspace_id)
+							.cloned()
+					})
+				})
+				.flatten()
+				.flatten()
+		} else {
+			None
+		}
+	});
+
 	view! {
 		<div class="fc-fs-fs full-width full-height fit-wide-screen mx-auto px-md my-xl">
 			<Transition>
 				{
-					move || match workspace_list.get() {
-						Some(workspace_list) => {
-							match workspace_list {
-								Ok(data) => {
-									view! {
-										<ShowWorkspaceInfo workspace={data.clone().workspaces[0].clone()}/>
-									}.into_view()
-								},
-								Err(_) => view! {}.into_view()
-							}
+					move || match current_workspace.get() {
+						Some(current_workspace) => {
+							view! {
+								<ShowWorkspaceInfo workspace={current_workspace.clone()}/>
+							}.into_view()
 						},
 						None => view! {}.into_view()
 					}

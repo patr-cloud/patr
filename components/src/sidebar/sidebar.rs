@@ -17,7 +17,10 @@ pub struct LinkItem {
 
 /// The Sidebar component containing the sidebar items
 #[component]
-pub fn Sidebar() -> impl IntoView {
+pub fn Sidebar(
+	/// Workspace Card
+	children: ChildrenFn,
+) -> impl IntoView {
 	let links: Vec<LinkItem> = vec![
 		LinkItem {
 			title: "Home".to_owned(),
@@ -72,7 +75,7 @@ pub fn Sidebar() -> impl IntoView {
 	];
 
 	view! {
-		<aside class="sidebar fc-fs-fs">
+		<aside class="sidebar fc-fs-fs pb-xl">
 			<div class="sidebar-logo">
 				<img src="/images/planet-purple.svg" alt="Plante Patr"/>
 				<div class="fc-ct-ct br-sm">
@@ -91,6 +94,10 @@ pub fn Sidebar() -> impl IntoView {
 
 					</ul>
 				</nav>
+
+				<div class="fc-fs-fs full-width pt-md px-md mt-auto">
+					{children()}
+				</div>
 			</div>
 		</aside>
 	}

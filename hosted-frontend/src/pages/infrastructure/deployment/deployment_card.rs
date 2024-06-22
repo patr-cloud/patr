@@ -1,4 +1,5 @@
-use super::DeploymentType;
+use models::api::workspace::deployment::Deployment;
+
 use crate::prelude::*;
 
 /// A Deployment Card Item Type for the list of options,
@@ -13,7 +14,7 @@ pub struct DeploymentCardItem {
 pub fn DeploymentCard(
 	/// The Deployment Info
 	#[prop(into)]
-	deployment: MaybeSignal<DeploymentType>,
+	deployment: MaybeSignal<WithId<Deployment>>,
 	/// Additional Classes to add to the outer div, if any.:w
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
@@ -28,11 +29,11 @@ pub fn DeploymentCard(
 	let items = vec![
 		DeploymentCardItem {
 			label: "REGISTRY",
-			value: deployment.get().id,
+			value: deployment.get().id.to_string(),
 		},
 		DeploymentCardItem {
 			label: "REGION",
-			value: deployment.get().region,
+			value: deployment.get().region.to_string(),
 		},
 		DeploymentCardItem {
 			label: "REPOSITORY",
@@ -40,11 +41,11 @@ pub fn DeploymentCard(
 		},
 		DeploymentCardItem {
 			label: "IMAGE TAG",
-			value: deployment.get().image_tag,
+			value: deployment.get().image_tag.clone(),
 		},
 		DeploymentCardItem {
 			label: "MACHINE TYPE",
-			value: deployment.get().machine_type,
+			value: deployment.get().machine_type.to_string(),
 		},
 	];
 
@@ -52,10 +53,10 @@ pub fn DeploymentCard(
 		<div class={class}>
 			<div class="fr-fs-ct gap-md full-width px-xxs">
 				<h4 class="txt-md txt-primary w-25 txt-of-ellipsis of-hidden">
-					{deployment.get().name}
+					{deployment.get().name.clone()}
 				</h4>
 
-				<StatusBadge status={deployment.get().status}/>
+				// <StatusBadge status={deployment.get().status}/>
 			</div>
 
 			<div class="fr-fs-fs txt-white full-width f-wrap my-auto">

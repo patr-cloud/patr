@@ -861,6 +861,7 @@ dependencies = [
  "leptos_meta",
  "leptos_router",
  "log",
+ "models",
  "serde",
  "serde_json",
  "serde_urlencoded",
