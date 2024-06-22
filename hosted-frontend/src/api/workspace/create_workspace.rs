@@ -26,7 +26,9 @@ pub async fn create_workspace(
 				authorization: access_token,
 				user_agent: UserAgent::from_static("hyper/0.12.2"),
 			})
-			.body(CreateWorkspaceRequest { workspace_name })
+			.body(CreateWorkspaceRequest {
+				name: workspace_name,
+			})
 			.build(),
 	)
 	.await;

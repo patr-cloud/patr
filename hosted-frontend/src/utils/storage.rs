@@ -51,9 +51,9 @@ impl AuthState {
 		logging::log!(
 			"authstate access token: {:?}\n {:?}",
 			access_token,
-			refresh_token.get()
+			refresh_token
 		);
-		if let Some((access_token, refresh_token)) = access_token.zip(refresh_token.get()) {
+		if let Some((access_token, refresh_token)) = access_token.zip(refresh_token) {
 			AuthState::LoggedIn {
 				access_token,
 				refresh_token,

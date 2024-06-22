@@ -32,8 +32,8 @@ pub fn DeploymentCard(
 			value: deployment.get().id.to_string(),
 		},
 		DeploymentCardItem {
-			label: "REGION",
-			value: deployment.get().region.to_string(),
+			label: "RUNNER",
+			value: deployment.get().runner.to_string(),
 		},
 		DeploymentCardItem {
 			label: "REPOSITORY",
