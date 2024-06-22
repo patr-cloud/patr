@@ -3,56 +3,57 @@
 
 @use "../../helpers/maps" as *;
 @use "./sidebar-item.scss";
+@use "./workspace-switcher";
 
 .sidebar {
-    height: 100vh;
-    width: 20rem;
+  height: 100vh;
+  width: 20rem;
 
-    box-shadow: $shadow-light;
+  box-shadow: $shadow-light;
 }
 
 .sidebar-logo {
-    position: relative;
-    width: fit-content;
+  position: relative;
+  width: fit-content;
 
+  height: 10.25rem;
+
+  & > img {
+    width: 10.25rem;
     height: 10.25rem;
+    position: absolute;
 
-    & > img {
-        width: 10.25rem;
-        height: 10.25rem;
-        position: absolute;
+    top: -0.3rem;
+    left: -1rem;
+  }
 
-        top: -0.3rem;
-        left: -1rem;
-    }
+  & > div {
+    width: 12.75rem;
+    height: 4.18rem;
 
-    & > div {
-        width: 12.75rem;
-        height: 4.18rem;
+    top: 1.5rem;
+    left: 1.5rem;
+    position: absolute;
 
-        top: 1.5rem;
-        left: 1.5rem;
-        position: absolute;
+    padding: 1rem 2rem;
+    background-color: rgba($color: #000000, $alpha: 0.32);
 
-        padding: 1rem 2rem;
-        background-color: rgba($color: #000000, $alpha: 0.32);
-
-        backdrop-filter: blur(4px);
-    }
+    backdrop-filter: blur(4px);
+  }
 }
 
 .sidebar-item {
-    & .btn {
-        border-radius: 0;
+  & .btn {
+    border-radius: 0;
 
-        position: relative;
-        padding-left: 1.8rem;
+    position: relative;
+    padding-left: 1.8rem;
 
-        color: map.get($text-colors, "grey");
-        justify-content: flex-start;
-    }
+    color: map.get($text-colors, "grey");
+    justify-content: flex-start;
+  }
 
-    .inner-nav-item {
-        transition: 250ms;
-    }
+  .inner-nav-item {
+    transition: 250ms;
+  }
 }

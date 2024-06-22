@@ -6,6 +6,25 @@ use crate::{
 };
 
 #[component]
+fn ListPermissions(
+	/// The Permission Items
+	#[prop(into)]
+	permissions: MaybeSignal<Option<WorkspacePermission>>,
+) -> impl IntoView {
+	match permissions.get() {
+		Some(WorkspacePermission::Member { permissions }) => permissions
+			.into_iter()
+			.map(|permission| {
+				view! {
+					<PermissionItem permission={permission} />
+				}
+			})
+			.collect_view(),
+		_ => view! {<></>}.into_view(),
+	}
+}
+
+#[component]
 pub fn PermissionCard(
 	/// Additional classes
 	#[prop(into, optional)]
@@ -52,20 +71,20 @@ pub fn PermissionCard(
 				</strong>
 			</label>
 
-			// {
-			// 	move || if !is_admin_checkbox.get() {
-			// 		view! {
-			// 			<div class="fc-fs-fs full-width gap-xs">
-			// 				<PermissionItem/>
-			// 				<ChoosePermission />
-			// 			</div>
-			// 		}.into_view()
-			// 	} else {
-			// 		view! {
-			// 			<></>
-			// 		}.into_view()
-			// 	}
-			// }
+			{
+				move || if !is_admin_checkbox.get() {
+					view! {
+						<div class="fc-fs-fs full-width gap-xs">
+							<ListPermissions permissions={permissions.get()}/>
+							<ChoosePermission />
+						</div>
+					}.into_view()
+				} else {
+					view! {
+						<></>
+					}.into_view()
+				}
+			}
 		</div>
 	}
 }

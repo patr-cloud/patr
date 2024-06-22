@@ -31,5 +31,5 @@ pub async fn load_api_tokens_list(
 
 	api_response
 		.map(|res| res.body)
-		.map_err(ServerFnError::WrappedServerError)
+		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::InternalServerError))
 }

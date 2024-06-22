@@ -4,10 +4,11 @@ mod client;
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::client::*;
 
+mod hooks;
 mod routes;
 mod storage;
 
-pub use self::{routes::*, storage::*};
+pub use self::{hooks::*, routes::*, storage::*};
 
 /// A trait to extend the [`String`] type with some useful methods that are not
 /// available in the standard library. This is useful for adding utility methods

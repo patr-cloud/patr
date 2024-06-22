@@ -1,0 +1,44 @@
+@use "sass:map";
+
+@use "../../helpers/maps" as *;
+@use "../../base/variables" as *;
+@use "../../helpers/mixins" as *;
+@use "../../helpers/animations" as *;
+
+.workspace-switcher {
+  position: fixed;
+  bottom: 5rem;
+  left: 1rem;
+  box-shadow: $shadow-high;
+  min-width: 24rem;
+  max-height: 40rem;
+  z-index: 1000;
+
+  & .workspace-item:hover,
+  & .active {
+    background-color: lighten(
+      map-get($background-colors, "secondary-light"),
+      10%
+    );
+    transition: 150ms;
+  }
+  // transform: scaleY(0);
+  // transform-origin: top;
+  transition: 250ms;
+
+  &.open-workspace-switcher {
+    transform: scaleY(1);
+  }
+
+  & ul {
+    max-height: 13.5rem;
+    scroll-snap-type: y mandatory;
+
+    & li {
+      scroll-snap-align: start;
+      height: 4.5rem;
+      min-height: 4.5rem;
+      padding-bottom: map-get($map: $paddings, $key: "xxs");
+    }
+  }
+}

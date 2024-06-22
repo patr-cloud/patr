@@ -1,7 +1,13 @@
+use models::rbac::ResourcePermissionType;
+
 use crate::prelude::*;
 
 #[component]
-pub fn PermissionItem() -> impl IntoView {
+pub fn PermissionItem(
+	/// Permission Item
+	#[prop(into)]
+	permission: MaybeSignal<(Uuid, ResourcePermissionType)>,
+) -> impl IntoView {
 	view! {
 		<div class="full-width txt-grey fr-fs-fs">
 			<Textbox

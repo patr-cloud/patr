@@ -1,8 +1,38 @@
+use std::{str::FromStr, string::ParseError};
+
 use convert_case::{Case, Casing};
+use leptos_use::utils::FromToStringCodec;
 use models::rbac::ResourceType;
-use strum::VariantNames;
+use strum::{EnumString, VariantNames};
 
 use crate::prelude::*;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, VariantNames)]
+#[strum(serialize_all = "camelCase")]
+pub enum ApplyToOptions {
+	AllResource,
+	Specific,
+	Except,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct ParseApplyToOptions;
+
+impl FromStr for ApplyToOptions {
+	type Err = ParseApplyToOptions;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		if s.contains("Specific") {
+			return Ok(Self::Specific);
+		} else if s.contains("Except") {
+			return Ok(Self::Except);
+		} else if s.contains("All") {
+			return Ok(Self::AllResource);
+		} else {
+			return Err(ParseApplyToOptions);
+		}
+	}
+}
 
 #[component]
 pub fn ChoosePermission(
@@ -22,7 +52,14 @@ pub fn ChoosePermission(
 		)
 	});
 
+	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
+	let resource = create_resource(
+		move || access_token.get(),
+		move |value| async move { list_user_workspace(value).await },
+	);
+
 	let input_resource_type = create_rw_signal("".to_string());
+	let input_apply_to = create_rw_signal("".to_string());
 	let input_resources = create_rw_signal::<Vec<String>>(vec![]);
 	let input_permissions = create_rw_signal("".to_string());
 
@@ -34,18 +71,27 @@ pub fn ChoosePermission(
 		})
 		.collect::<Vec<InputDropdownOption>>();
 
-	let show_resource_type =
-		create_memo(
-			move |_| match input_resource_type.get().to_case(Case::Camel).as_str() {
-				"dnsRecord" => false,
-				"workspace" => false,
-				_ => true,
-			},
-		);
+	let show_resource_type = create_memo(move |_| {
+		match ResourceType::from_str(input_resource_type.get().to_case(Case::Camel).as_str()) {
+			Ok(ResourceType::DnsRecord) => false,
+			Ok(ResourceType::Workspace) => true,
+			_ => true,
+		}
+	});
+
+	let show_resources = move || {
+		show_resource_type.get() &&
+			ApplyToOptions::from_str(input_apply_to.get().as_str())
+				.is_ok_and(|option| !matches!(option, ApplyToOptions::AllResource))
+	};
 
 	create_effect(move |_| {
 		logging::log!("resource_type: {}", input_resource_type.get());
 		logging::log!("show_resource_type: {}", show_resource_type.get());
+		logging::log!(
+			"input_apply_to: {:#?}",
+			ApplyToOptions::from_str(input_apply_to.get().as_str())
+		);
 	});
 
 	view! {
@@ -65,9 +111,10 @@ pub fn ChoosePermission(
 							placeholder={format!("All/Specific {}", input_resource_type.with(|resource|
 								if resource.is_empty() {"Resource".to_string()} else {resource.to_owned()}
 							))}
+							value={input_apply_to}
 							options={vec![
 								InputDropdownOption {
-									label: format!("All {}", input_resource_type.get()),
+									label: format!("All {}s", input_resource_type.get()),
 									disabled: false,
 								},
 								InputDropdownOption {
@@ -75,7 +122,7 @@ pub fn ChoosePermission(
 									disabled: false,
 								},
 								InputDropdownOption {
-									label: format!("All {} Except", input_resource_type.get() ).to_string(),
+									label: format!("All {}s Except", input_resource_type.get() ).to_string(),
 									disabled: false,
 								},
 							]}
@@ -83,7 +130,7 @@ pub fn ChoosePermission(
 					</div>
 				</Show>
 
-				<Show when={move || show_resource_type.get()}>
+				<Show when={show_resources}>
 					<CheckboxDropdown
 						on_select={|(_, label)| {
 							logging::log!("Selected: {}", label);
