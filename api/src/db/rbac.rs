@@ -433,18 +433,18 @@ pub async fn initialize_rbac_constraints(
 			deleted TIMESTAMPTZ
 		) AS $$
 		DECLARE
-			permission_id UUID;
+			local_permission_id UUID;
 		BEGIN
 			SELECT
 				permission.id
 			INTO
-				permission_id
+				local_permission_id
 			FROM
 				permission
 			WHERE
 				name = permission_name;
 
-			IF permission_id IS NULL THEN
+			IF local_permission_id IS NULL THEN
 				RAISE EXCEPTION 'Permission `%` not found', permission_name;
 			END IF;
 
@@ -453,7 +453,7 @@ pub async fn initialize_rbac_constraints(
 			FROM
 				resource
 			WHERE
-				owner_id IN (
+				resource.owner_id IN (
 					SELECT DISTINCT
 						COALESCE(
 							user_api_token_workspace_super_admin.workspace_id,
@@ -472,7 +472,7 @@ pub async fn initialize_rbac_constraints(
 						user_login.login_type = 'web_login' AND
 						workspace.super_admin_id = user_login.user_id
 					WHERE
-						user_login.login_id = login_id
+						user_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 				) OR resource.id IN (
 					SELECT
 						COALESCE(
@@ -495,8 +495,8 @@ pub async fn initialize_rbac_constraints(
 					ON
 						role_resource_permissions_include.role_id = workspace_user.role_id
 					WHERE
-						user_login.login_id = login_id AND
-						role_resource_permissions_include.permission_id = permission_id AND
+						user_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
+						role_resource_permissions_include.permission_id = local_permission_id AND
 						resource.owner_id = COALESCE(
 							user_api_token_resource_permissions_include.workspace_id,
 							workspace_user.workspace_id
@@ -523,8 +523,8 @@ pub async fn initialize_rbac_constraints(
 					ON
 						role_resource_permissions_exclude.role_id = workspace_user.role_id
 					WHERE
-						user_login.login_id = login_id AND
-						role_resource_permissions_exclude.permission_id = permission_id AND
+						user_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
+						role_resource_permissions_exclude.permission_id = local_permission_id AND
 						resource.owner_id = COALESCE(
 							user_api_token_resource_permissions_exclude.workspace_id,
 							workspace_user.workspace_id
