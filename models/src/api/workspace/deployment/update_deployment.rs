@@ -35,10 +35,10 @@ macros::declare_api_endpoint!(
 		#[preprocess(none)]
 		pub deploy_on_push: Option<bool>,
 		/// To update the minimum number of node
-		#[preprocess(none)]
+		#[preprocess(optional(range(min = 1)))]
 		pub min_horizontal_scale: Option<u16>,
 		/// To update the maximum number of node
-		#[preprocess(none)]
+		#[preprocess(optional(range(min = 1)))]
 		pub max_horizontal_scale: Option<u16>,
 		/// To update the ports
 		#[preprocess(none)]
@@ -58,6 +58,6 @@ macros::declare_api_endpoint!(
 		pub config_mounts: Option<BTreeMap<String, Base64String>>,
 		/// To update the volume size
 		#[preprocess(none)]
-		pub volumes: Option<BTreeMap<String, DeploymentVolume>>,
+		pub volumes: Option<BTreeMap<Uuid, String>>,
 	}
 );

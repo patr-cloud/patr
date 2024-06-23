@@ -1,32 +1,16 @@
 use std::{cmp::Ordering, collections::BTreeMap};
 
-use axum::{http::StatusCode, Router};
-use futures::sink::With;
-use models::{api::workspace::deployment::*, ErrorType};
-use sqlx::query_as;
+use axum::http::StatusCode;
+use models::api::workspace::deployment::*;
 use time::OffsetDateTime;
 
 use crate::prelude::*;
 
-/// Update deployment
-///
-/// #Parameters
-/// - `workspace_id`: The workspace ID
-/// - `deployment_id`: The deployment ID
-/// - `name`: The deployment name
-/// - `machine_type`: The machine type
-/// - `deploy_on_push`: The deploy on push flag
-/// - `min_horizontal_scale`: The minimum horizontal scale
-/// - `max_horizontal_scale`: The maximum horizontal scale
-/// - `ports`: The ports
-/// - `environment_variables`: The environment variables
-/// - `startup_probe`: The startup probe
-/// - `liveness_probe`: The liveness probe
-/// - `config_mounts`: The config mounts
-/// - `volumes`: The volumes
-///
-/// #Returns
-/// - `OK`: The deployment was updated
+/// Update deployment details. This endpoint is used to update the deployment
+/// details. The deployment details that can be updated are the name, machine
+/// type, deploy on push, min horizontal scale, max horizontal scale, ports,
+/// environment variables, startup probe, liveness probe, config mounts, and
+/// volumes. At least one of the values must be updated.
 pub async fn update_deployment(
 	AuthenticatedAppRequest {
 		request:
@@ -35,8 +19,12 @@ pub async fn update_deployment(
 					workspace_id,
 					deployment_id,
 				},
-				query: _,
-				headers,
+				query: (),
+				headers:
+					UpdateDeploymentRequestHeaders {
+						authorization: _,
+						user_agent: _,
+					},
 				body:
 					UpdateDeploymentRequestProcessed {
 						name,
@@ -59,29 +47,35 @@ pub async fn update_deployment(
 		user_data,
 	}: AuthenticatedAppRequest<'_, UpdateDeploymentRequest>,
 ) -> Result<AppResponse<UpdateDeploymentRequest>, ErrorType> {
-	info!("Starting: List linked URLs");
+	info!("Updating deployment: {}", deployment_id);
 
 	// Validate if at least value is to be updated
-	if name.is_none() &&
-		machine_type.is_none() &&
-		deploy_on_push.is_none() &&
-		min_horizontal_scale.is_none() &&
-		max_horizontal_scale.is_none() &&
-		ports.is_none() &&
-		environment_variables.is_none() &&
-		startup_probe.is_none() &&
-		liveness_probe.is_none() &&
-		config_mounts.is_none() &&
-		volumes.is_none()
+	if name
+		.as_ref()
+		.map(|_| 0)
+		.or(machine_type.as_ref().map(|_| 0))
+		.or(deploy_on_push.as_ref().map(|_| 0))
+		.or(min_horizontal_scale.as_ref().map(|_| 0))
+		.or(max_horizontal_scale.as_ref().map(|_| 0))
+		.or(ports.as_ref().map(|_| 0))
+		.or(environment_variables.as_ref().map(|_| 0))
+		.or(startup_probe.as_ref().map(|_| 0))
+		.or(liveness_probe.as_ref().map(|_| 0))
+		.or(config_mounts.as_ref().map(|_| 0))
+		.or(volumes.as_ref().map(|_| 0))
+		.is_none()
 	{
+		debug!(
+			"No parameters provided for updating deployment: {}",
+			deployment_id
+		);
 		return Err(ErrorType::WrongParameters);
 	}
 
-	let deployment = query!(
+	query!(
 		r#"
 		SELECT
-			runner,
-			min_horizontal_scale
+			id
 		FROM
 			deployment
 		WHERE
@@ -93,16 +87,6 @@ pub async fn update_deployment(
 	.fetch_optional(&mut **database)
 	.await?
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
-
-	// Get volume size to check limit
-	let volume_size = if let Some(volume) = &volumes {
-		volume
-			.iter()
-			.map(|(_, volume)| volume.size as u32)
-			.sum::<u32>()
-	} else {
-		0
-	};
 
 	// BEGIN DEFERRED CONSTRAINT
 	query!(
@@ -131,26 +115,36 @@ pub async fn update_deployment(
 		.execute(&mut **database)
 		.await?;
 
-		for (port, exposed_port_type) in ports {
-			// Adding new exposed port entry to database
-			query!(
-				r#"
-				INSERT INTO 
-					deployment_exposed_port(
-						deployment_id,
-						port,
-						port_type
-					)
-				VALUES
-					($1, $2, $3);
-				"#,
-				deployment_id as _,
-				port.value() as i32,
-				exposed_port_type as _
-			)
-			.execute(&mut **database)
-			.await?;
-		}
+		query!(
+			r#"
+			INSERT INTO 
+				deployment_exposed_port(
+					deployment_id,
+					port,
+					port_type
+				)
+			VALUES
+				(
+					UNNEST($1::UUID[]),
+					UNNEST($2::INTEGER[]),
+					UNNEST($3::EXPOSED_PORT_TYPE[])
+				);
+			"#,
+			&ports
+				.iter()
+				.map(|_| deployment_id.into())
+				.collect::<Vec<_>>(),
+			&ports
+				.iter()
+				.map(|(port, _)| port.value() as i32)
+				.collect::<Vec<_>>(),
+			&ports
+				.iter()
+				.map(|(_, port_type)| port_type.to_string())
+				.collect::<Vec<String>>() as _,
+		)
+		.execute(&mut **database)
+		.await?;
 	}
 
 	// Updating deployment details
@@ -242,107 +236,6 @@ pub async fn update_deployment(
 	.execute(&mut **database)
 	.await?;
 
-	if let Some(config_mounts) = config_mounts {
-		query!(
-			r#"
-			DELETE FROM
-				deployment_config_mounts
-			WHERE
-				deployment_id = $1;
-			"#,
-			deployment_id as _,
-		)
-		.execute(&mut **database)
-		.await?;
-
-		for (path, file) in &config_mounts {
-			query!(
-				r#"
-				INSERT INTO 
-					deployment_config_mounts(
-						path,
-						file,
-						deployment_id
-					)
-				VALUES
-					($1, $2, $3);
-				"#,
-				path,
-				file as &[u8],
-				deployment_id as _,
-			)
-			.execute(&mut **database)
-			.await?;
-		}
-	}
-
-	if let Some(updated_volumes) = &volumes {
-		let mut current_volumes = query!(
-			r#"
-				SELECT
-					id,
-					name,
-					deployment_id
-					volume_size,
-					volume_mount_path
-				FROM
-					deployment_volume
-				WHERE
-					deployment_id = $1 AND
-					deleted IS NULL;
-				"#,
-			deployment_id as _,
-		)
-		.fetch_all(&mut **database)
-		.await?
-		.into_iter()
-		.map(|volume| (volume.name.clone(), volume))
-		.collect::<BTreeMap<_, _>>();
-
-		for (name, volume) in updated_volumes {
-			if let Some(value) = current_volumes.remove(name) {
-				// The new volume is there in the current volumes. Update it
-				let current_size = value.volume_size.as_u128() as u16;
-				let new_size = volume.size;
-
-				match new_size.cmp(&current_size) {
-					Ordering::Less => {
-						// Volume size cannot be reduced
-						return Err(ErrorType::ReducedVolumeSize);
-					}
-					Ordering::Equal => (), // Ignore
-					Ordering::Greater => {
-						query!(
-							r#"
-							UPDATE 
-								deployment_volume
-							SET
-								volume_size = $1
-							WHERE
-								name = $2 AND
-								deployment_id = $3;
-							"#,
-							volume_size as i32,
-							name,
-							deployment_id as _,
-						)
-						.execute(&mut **database)
-						.await?;
-					}
-				}
-			} else {
-				// The new volume is not there in the current volumes. Prevent
-				// from adding it
-				return Err(ErrorType::CannotAddNewVolume);
-			}
-		}
-
-		if !current_volumes.is_empty() {
-			// Preventing removing number of volume
-			return Err(ErrorType::CannotRemoveVolume);
-		}
-	}
-
 	if let Some(environment_variables) = environment_variables {
 		query!(
 			r#"
@@ -356,103 +249,131 @@ pub async fn update_deployment(
 		.execute(&mut **database)
 		.await?;
 
-		for (key, value) in environment_variables {
-			match value {
-				EnvironmentVariableValue::String(value) => {
-					query!(
-						r#"
-						INSERT INTO 
-							deployment_environment_variable(
-								deployment_id,
-								name,
-								value,
-								secret_id
-							)
-						VALUES
-							($1, $2, $3, $4);
-						"#,
-						deployment_id as _,
-						key,
-						Some(value),
-						None::<Uuid> as _
-					)
-					.execute(&mut **database)
-					.await?;
-				}
-				EnvironmentVariableValue::Secret {
-					from_secret: secret_id,
-				} => {
-					query!(
-						r#"
-						INSERT INTO 
-							deployment_environment_variable(
-								deployment_id,
-								name,
-								value,
-								secret_id
-							)
-						VALUES
-							($1, $2, $3, $4);
-						"#,
-						deployment_id as _,
-						key,
-						None::<String>,
-						Some(secret_id) as _
-					)
-					.execute(&mut **database)
-					.await?;
-				}
-			}
-		}
+		query!(
+			r#"
+			INSERT INTO 
+				deployment_environment_variable(
+					deployment_id,
+					name,
+					value,
+					secret_id
+				)
+			VALUES
+				(
+					UNNEST($1::UUID[]),
+					UNNEST($2::TEXT[]),
+					UNNEST($3::TEXT[]),
+					UNNEST($4::UUID[])
+				);
+			"#,
+			&environment_variables
+				.iter()
+				.map(|_| deployment_id.into())
+				.collect::<Vec<sqlx::types::Uuid>>(),
+			&environment_variables
+				.iter()
+				.map(|(name, _)| name.clone())
+				.collect::<Vec<_>>(),
+			&environment_variables
+				.iter()
+				.map(|(_, value)| value.value().cloned())
+				.collect::<Vec<Option<String>>>() as _,
+			&environment_variables
+				.iter()
+				.map(|(_, value)| value.secret_id().map(Into::into))
+				.collect::<Vec<Option<sqlx::types::Uuid>>>() as _,
+		)
+		.execute(&mut **database)
+		.await?;
 	}
 
-	let deployment_status = query!(
-		r#"
-		SELECT
-			status as "status: DeploymentStatus"
-		FROM
-			deployment
-		WHERE
-			id = $1 AND
-			status != 'deleted';
-		"#,
-		deployment_id as _
-	)
-	.fetch_optional(&mut **database)
-	.await?
-	.map(|deployment| deployment.status)
-	.ok_or(ErrorType::ResourceDoesNotExist)?;
+	if let Some(config_mounts) = config_mounts {
+		query!(
+			r#"
+			DELETE FROM
+				deployment_config_mounts
+			WHERE
+				deployment_id = $1;
+			"#,
+			deployment_id as _,
+		)
+		.execute(&mut **database)
+		.await?;
 
-	match deployment_status {
-		DeploymentStatus::Stopped | DeploymentStatus::Created => {
-			// Don't update deployments that are explicitly stopped or deleted
+		query!(
+			r#"
+			INSERT INTO 
+				deployment_config_mounts(
+					deployment_id,
+					path,
+					file
+				)
+			VALUES
+				(
+					UNNEST($1::UUID[]),
+					UNNEST($2::TEXT[]),
+					UNNEST($3::BYTEA[])
+				);
+			"#,
+			&config_mounts
+				.iter()
+				.map(|_| deployment_id.into())
+				.collect::<Vec<_>>(),
+			&config_mounts
+				.iter()
+				.map(|(path, _)| path.clone())
+				.collect::<Vec<_>>(),
+			&config_mounts
+				.iter()
+				.map(|(_, file)| file.to_vec())
+				.collect::<Vec<_>>(),
+		)
+		.execute(&mut **database)
+		.await?;
+	}
+
+	if let Some(updated_volumes) = &volumes {
+		let mut current_volumes = query!(
+			r#"
+			SELECT
+				id,
+				name,
+				deployment_id
+				volume_size,
+				volume_mount_path
+			FROM
+				deployment_volume
+			WHERE
+				deployment_id = $1 AND
+				deleted IS NULL;
+			"#,
+			deployment_id as _,
+		)
+		.fetch_all(&mut **database)
+		.await?
+		.into_iter()
+		.map(|volume| (volume.id.into(), volume.volume_mount_path))
+		.collect::<BTreeMap<Uuid, _>>();
+
+		if !updated_volumes
+			.into_iter()
+			.all(|(id, _)| current_volumes.remove(id).is_some())
+		{
+			// The new volume is not there in the current volumes. Prevent
+			// from adding it
+			return Err(ErrorType::CannotAddNewVolume);
 		}
-		_ => {
-			query!(
-				r#"
-				UPDATE
-					deployment
-				SET
-					status = $1
-				WHERE
-					id = $2;
-				"#,
-				DeploymentStatus::Deploying as _,
-				deployment_id as _
-			)
-			.execute(&mut **database)
-			.await?;
 
-			if todo!("Deployment on patr region") {
-				todo!("Start and stop deployment usage history")
-			}
+		if !current_volumes.is_empty() {
+			// Preventing removing number of volume
+			return Err(ErrorType::CannotRemoveVolume);
 		}
 	}
 
 	AppResponse::builder()
 		.body(UpdateDeploymentResponse)
 		.headers(())
-		.status_code(StatusCode::OK)
+		.status_code(StatusCode::ACCEPTED)
 		.build()
 		.into_result()
 }
