@@ -3,12 +3,6 @@
         "+nightly"
     ],
     "rust-analyzer.cargo.targetDir": "./.devcontainer/volume/data/rust-analyzer",
-    "rust-analyzer.procMacro.ignored": {
-        "leptos_macro": [
-            "component",
-            "server"
-        ]
-    },
     "editor.rulers": [
         100
     ],

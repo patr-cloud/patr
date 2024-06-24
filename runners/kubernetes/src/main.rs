@@ -6,13 +6,22 @@
 //! respective cluster. The controller will periodically check with the API and
 //! make sure that the cluster's state is up to date with the API's state.
 
-use std::sync::Arc;
+use std::{marker::PhantomData, str::FromStr, sync::Arc};
 
+use ::models::{
+	api::workspace::runner::*,
+	prelude::UserAgent,
+	utils::{BearerToken, WebSocketUpgrade},
+	ApiRequest,
+};
 use app::AppState;
+use futures::StreamExt;
+use prelude::*;
 use tokio::{sync::broadcast, time::Duration};
 
 /// A prelude that re-exports commonly used items.
 pub mod prelude {
+	use models::prelude::*;
 	pub use tracing::{debug, error, info, instrument, trace, warn};
 
 	pub use crate::{
@@ -45,6 +54,27 @@ async fn main() {
 	let state = Arc::new(AppState::try_default().await);
 
 	let (patr_update_sender, patr_update_receiver) = broadcast::channel::<()>(100);
+
+	client::stream_request(
+		ApiRequest::<StreamRunnerDataForWorkspaceRequest>::builder()
+			.path(StreamRunnerDataForWorkspacePath {
+				workspace_id: state.workspace_id,
+				runner_id: state.region_id,
+			})
+			.query(())
+			.headers(StreamRunnerDataForWorkspaceRequestHeaders {
+				authorization: BearerToken::from_str(state.patr_token.as_str()).unwrap(),
+				user_agent: UserAgent::from_static("deployment-controller"),
+			})
+			.body(WebSocketUpgrade(PhantomData))
+			.build(),
+	)
+	.await
+	.unwrap()
+	.for_each(|deployment| async {
+		_ = patr_update_sender.send(());
+	})
+	.await;
 
 	let (reconcile_all_deployments, deployment_controller_task) =
 		deployment::start_controller(state.client.clone(), state.clone(), patr_update_receiver);

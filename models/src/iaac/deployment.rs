@@ -37,9 +37,11 @@ pub struct IaacDeployment {
 	pub ports: IaacDeploymentPorts,
 	#[serde(default, alias = "env", alias = "envVars")]
 	pub environment_variables: IaacDeploymentEnvVars,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub startup_probe: Option<DeploymentProbe>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub liveness_probe: Option<DeploymentProbe>,
-	#[serde(alias = "configs")]
+	#[serde(alias = "configs", default, skip_serializing_if = "BTreeMap::is_empty")]
 	pub config_mounts: BTreeMap<String, String>,
 }
 
@@ -310,13 +312,13 @@ impl Into<String> for IaacDeploymentRam {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(try_from = "OneOrMany<String>")]
+#[serde(try_from = "OneOrMore<String>")]
 pub struct IaacDeploymentPorts(BTreeMap<StringifiedU16, ExposedPortType>);
 
-impl TryFrom<OneOrMany<String>> for IaacDeploymentPorts {
+impl TryFrom<OneOrMore<String>> for IaacDeploymentPorts {
 	type Error = &'static str;
 
-	fn try_from(value: OneOrMany<String>) -> Result<Self, Self::Error> {
+	fn try_from(value: OneOrMore<String>) -> Result<Self, Self::Error> {
 		fn parse_one_port(port: String) -> Result<(u16, ExposedPortType), &'static str> {
 			if let Ok(num) = port.trim().parse::<u16>() {
 				return Ok((num, ExposedPortType::Http));
@@ -350,10 +352,10 @@ impl TryFrom<OneOrMany<String>> for IaacDeploymentPorts {
 		}
 
 		match value {
-			OneOrMany::One(string) => {
+			OneOrMore::One(string) => {
 				vec![string]
 			}
-			OneOrMany::Many(many) => many,
+			OneOrMore::Multiple(many) => many,
 		}
 		.into_iter()
 		.map(parse_one_port)

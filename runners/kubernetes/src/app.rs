@@ -9,6 +9,8 @@ pub struct AppState {
 	pub patr_token: String,
 	/// The region ID of the cluster.
 	pub region_id: Uuid,
+	/// The workspace ID of the cluster.
+	pub workspace_id: Uuid,
 	/// The kubernetes client used to communicate with the cluster.
 	pub client: Client,
 }
@@ -20,6 +22,7 @@ impl AppState {
 	pub async fn try_default() -> Self {
 		let patr_token = std::env::var("PATR_TOKEN");
 		let region_id = std::env::var("REGION_ID");
+		let workspace_id = std::env::var("WORKSPACE_ID");
 
 		let patr_token = if cfg!(debug_assertions) {
 			patr_token.unwrap_or_default()
@@ -46,6 +49,22 @@ impl AppState {
 			region_id.expect("malformed region ID")
 		};
 
+		let workspace_id = Uuid::parse_str(
+			&if cfg!(debug_assertions) {
+				workspace_id.unwrap_or_default()
+			} else {
+				workspace_id.expect(concat!(
+					"could not find environment variable WORKSPACE_ID. ",
+					"Please set the region ID of your cluster as an environment variable."
+				))
+			},
+		);
+		let workspace_id = if cfg!(debug_assertions) {
+			workspace_id.unwrap_or_default()
+		} else {
+			workspace_id.expect("malformed workspace ID")
+		};
+
 		let client = Client::try_default()
 			.await
 			.expect("Failed to get kubernetes client details");
@@ -53,6 +72,7 @@ impl AppState {
 		Self {
 			patr_token,
 			region_id,
+			workspace_id,
 			client,
 		}
 	}

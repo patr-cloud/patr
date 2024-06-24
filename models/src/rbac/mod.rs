@@ -48,6 +48,10 @@ pub enum ResourceType {
 	/// container image. It can be scaled horizontally, and can be configured to
 	/// deploy on push.
 	Deployment,
+	/// A volume within a workspace. A volume is a persistent storage that can
+	/// be attached to a deployment. It can be used to store data that needs to
+	/// persist across deployments.
+	Volume,
 	/// A database within a workspace. A database is a running instance of a
 	/// database server, such as MySQL, PostgreSQL, etc. It can be scaled
 	/// and persists data across deployments. It can also be shelled into for
@@ -301,7 +305,7 @@ pub enum DeploymentPermission {
 	Edit,
 	/// This permission allows the user to delete the deployment, but not create
 	/// a new one, view it, or edit it. This permission is useful for users or
-	/// API tokens that need to only delete deployments.
+	/// API tokens that need to only delete deployments by their ID.
 	Delete,
 	/// This permission allows the user to start the deployment, but not edit
 	/// it. The user will only be able to start the deployment, with no other
@@ -345,7 +349,7 @@ pub enum ContainerRegistryRepositoryPermission {
 	Edit,
 	/// This permission allows the user to delete the repository, but not create
 	/// a new one, view it, or edit it. This permission is useful for users or
-	/// API tokens that need to only delete repositories.
+	/// API tokens that need to only delete repositories by their ID.
 	Delete,
 	/// This permission allows the user to push an image to the repository, but
 	/// not view it, edit it, or delete it. This permission is useful for users
@@ -395,7 +399,7 @@ pub enum StaticSitePermission {
 	Edit,
 	/// This permission allows the user to delete the static site, but not
 	/// create a new one, view it, or edit it. This permission is useful for
-	/// users or API tokens that need to only delete sites.
+	/// users or API tokens that need to only delete sites by their ID.
 	Delete,
 	/// This permission allows the user to upload a new website file to the
 	/// static site, but not view it, edit it, or delete it. This permission is
@@ -440,7 +444,7 @@ pub enum SecretPermission {
 	Edit,
 	/// This permission allows the user to delete the secret, but not create a
 	/// new one, view it, or edit it. This permission is useful for users or API
-	/// tokens that need to only delete secrets.
+	/// tokens that need to only delete secrets by their ID.
 	Delete,
 }
 
@@ -476,6 +480,39 @@ pub enum BillingPermission {
 	MakePayment,
 }
 
+/// A list of all permissions that can be granted on a volume.
+#[derive(
+	Eq,
+	Copy,
+	Hash,
+	Debug,
+	Clone,
+	Display,
+	EnumIter,
+	PartialEq,
+	Serialize,
+	EnumString,
+	EnumMessage,
+	Deserialize,
+	VariantNames,
+)]
+#[strum(serialize_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
+pub enum VolumePermission {
+	/// This permission allows the user to create a new volume in a workspace.
+	Create,
+	/// This permission allows the user to view the volume and it's details, but
+	/// not edit it, delete it, or create a new one.
+	View,
+	/// This permission allows the user to edit the volume, but not delete it or
+	/// create a new one.
+	Edit,
+	/// This permission allows the user to delete the volume, but not create a
+	/// new one, view it, or edit it. This permission is useful for users or API
+	/// tokens that need to only delete volumes by their ID.
+	Delete,
+}
+
 /// A list of all permissions that can be granted on a resource.
 #[derive(
 	Eq,
@@ -503,6 +540,9 @@ pub enum Permission {
 	/// All permissions related to a deployments
 	#[strum(to_string = "deployment::{0}")]
 	Deployment(DeploymentPermission),
+	/// All permissions related to volumes
+	#[strum(to_string = "volume::{0}")]
+	Volume(VolumePermission),
 	/// All permissions related to container registry repositories
 	#[strum(to_string = "containerRegistryRepository::{0}")]
 	ContainerRegistryRepository(ContainerRegistryRepositoryPermission),
@@ -556,6 +596,7 @@ impl Permission {
 			Permission::Database(permission) => permission.get_documentation(),
 			Permission::StaticSite(permission) => permission.get_documentation(),
 			Permission::Secret(permission) => permission.get_documentation(),
+			Permission::Volume(permission) => permission.get_documentation(),
 			Permission::ViewRoles => self.get_documentation(),
 			Permission::ModifyRoles => self.get_documentation(),
 			Permission::EditWorkspace => self.get_documentation(),
@@ -584,6 +625,7 @@ impl FromStr for Permission {
 			"database" => Self::Database(permission.parse()?),
 			"staticSite" => Self::StaticSite(permission.parse()?),
 			"secret" => Self::Secret(permission.parse()?),
+			"volume" => Self::Volume(permission.parse()?),
 			"viewRoles" => Self::ViewRoles,
 			"modifyRoles" => Self::ModifyRoles,
 			"editWorkspace" => Self::EditWorkspace,

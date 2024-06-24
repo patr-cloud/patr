@@ -1,8 +1,5 @@
 use axum::http::StatusCode;
-use models::{
-	api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg},
-	ErrorType,
-};
+use models::api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg};
 use rustis::commands::PubSubCommands;
 
 use crate::prelude::*;

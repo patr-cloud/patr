@@ -1,25 +1,19 @@
 use std::{cmp::Ordering, collections::BTreeMap};
 
-use axum::{http::StatusCode, Router};
-use futures::sink::With;
-use models::{
-	api::workspace::deployment::*,
-	ErrorType,
-};
-use sqlx::query_as;
+use axum::http::StatusCode;
+use models::api::workspace::deployment::*;
 use time::OffsetDateTime;
 
 use crate::prelude::*;
 
 /// Stop deployment
-/// 
+///
 /// #Parameters
 /// - `workspace_id`: The workspace ID
 /// - `deployment_id`: The deployment ID
-/// 
+///
 /// #Returns
 /// - `OK`: The deployment was stopped
-/// 
 pub async fn stop_deployment(
 	AuthenticatedAppRequest {
 		request:
@@ -56,9 +50,6 @@ pub async fn stop_deployment(
 	)
 	.execute(&mut **database)
 	.await?;
-
-	todo!("Stop deployment usage history");
-	todo!("Audit log");
 
 	AppResponse::builder()
 		.body(StopDeploymentResponse)

@@ -101,25 +101,15 @@ pub struct DeploymentRunningDetails {
 	/// The config map attached to a deployment
 	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
 	pub config_mounts: BTreeMap<String, Base64String>,
-	/// The volume attached to a deployment
+	/// The volume ID attached to a deployment, along with the path it is
+	/// mounted on
 	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-	pub volumes: BTreeMap<Uuid, DeploymentVolume>,
-}
-
-/// Deployment volume detail
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
-#[serde(rename_all = "camelCase")]
-pub struct DeploymentVolume {
-	/// The path of the volume attached
-	pub path: String,
-	/// The size of the volume
-	pub size: u16,
+	pub volumes: BTreeMap<Uuid, String>,
 }
 
 /// The type of environment variable
 /// The keys can either have a string as a value or a secret
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
 #[serde(untagged)]
 pub enum EnvironmentVariableValue {

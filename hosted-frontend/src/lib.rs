@@ -1,5 +1,4 @@
-#![warn(missing_docs, clippy::missing_docs_in_private_items)]
-#![allow(non_snake_case)]
+#![warn(missing_docs, clippy::all)]
 
 //! Main dashboard console for Patr
 

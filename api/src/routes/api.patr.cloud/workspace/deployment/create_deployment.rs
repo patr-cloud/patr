@@ -43,8 +43,8 @@ pub async fn create_deployment(
 		database,
 		redis,
 		client_ip: _,
-		config,
-		user_data,
+		config: _,
+		user_data: _,
 	}: AuthenticatedAppRequest<'_, CreateDeploymentRequest>,
 ) -> Result<AppResponse<CreateDeploymentRequest>, ErrorType> {
 	info!(
@@ -288,32 +288,26 @@ pub async fn create_deployment(
 	query!(
 		r#"
 		INSERT INTO 
-			deployment_volume(
-				id,
+			deployment_volume_mount(
 				deployment_id,
-				volume_size,
+				volume_id,
 				volume_mount_path
 			)
 		VALUES
 			(
 				UNNEST($1::UUID[]),
 				UNNEST($2::UUID[]),
-				UNNEST($3::INTEGER[]),
-				UNNEST($4::TEXT[])
+				UNNEST($3::TEXT[])
 			);
 		"#,
+		&volumes.iter().map(|_| deployment_id).collect::<Vec<_>>(),
 		&volumes
 			.iter()
 			.map(|(volume_id, _)| (*volume_id).into())
 			.collect::<Vec<_>>(),
-		&volumes.iter().map(|_| deployment_id).collect::<Vec<_>>(),
 		&volumes
 			.iter()
-			.map(|(_, volume)| volume.size as i32)
-			.collect::<Vec<_>>(),
-		&volumes
-			.iter()
-			.map(|(_, volume)| volume.path.clone())
+			.map(|(_, mount_path)| mount_path.clone())
 			.collect::<Vec<_>>(),
 	)
 	.execute(&mut **database)
@@ -399,7 +393,7 @@ pub async fn create_deployment(
 
 	AppResponse::builder()
 		.body(CreateDeploymentResponse {
-			id: WithId::new(deployment_id, ()),
+			id: WithId::from(deployment_id),
 		})
 		.headers(())
 		.status_code(StatusCode::CREATED)

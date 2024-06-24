@@ -1,9 +1,7 @@
 use std::{cmp::Ordering, collections::BTreeMap};
 
-use axum::{http::StatusCode, Router};
-use futures::sink::With;
-use models::{api::workspace::deployment::*, ErrorType};
-use sqlx::query_as;
+use axum::http::StatusCode;
+use models::api::workspace::deployment::*;
 use time::OffsetDateTime;
 
 use crate::prelude::*;

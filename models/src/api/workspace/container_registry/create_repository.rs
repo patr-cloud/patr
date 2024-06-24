@@ -27,6 +27,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// The id of the created repository.
 		#[serde(flatten)]
-		pub id: WithId<()>
+		pub id: WithId<()>,
 	}
 );

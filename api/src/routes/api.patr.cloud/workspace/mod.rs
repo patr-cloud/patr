@@ -15,6 +15,7 @@ mod runner;
 mod secret;
 #[allow(unreachable_code, unused_variables)]
 mod static_site;
+mod volume;
 
 /// The handler to create a new workspace. The workspace name must be unique.
 mod create_workspace;
@@ -54,6 +55,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.merge(runner::setup_routes(state).await)
 		.merge(secret::setup_routes(state).await)
 		.merge(static_site::setup_routes(state).await)
+		.merge(volume::setup_routes(state).await)
 		.mount_auth_endpoint(create_workspace, state)
 		.mount_auth_endpoint(delete_workspace, state)
 		.mount_auth_endpoint(get_workspace_info, state)

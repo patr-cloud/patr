@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use super::{DeploymentProbe, DeploymentVolume, EnvironmentVariableValue, ExposedPortType};
+use super::{DeploymentProbe, EnvironmentVariableValue, ExposedPortType};
 use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 
 macros::declare_api_endpoint!(
@@ -28,6 +28,9 @@ macros::declare_api_endpoint!(
 		/// To update the deployment name
 		#[preprocess(optional(trim, regex = RESOURCE_NAME_REGEX))]
 		pub name: Option<String>,
+		/// Update which runner the deployment is running on
+		#[preprocess(optional(none))]
+		pub runner: Option<Uuid>,
 		/// To update the machine type
 		#[preprocess(none)]
 		pub machine_type: Option<Uuid>,
@@ -56,7 +59,7 @@ macros::declare_api_endpoint!(
 		/// To update the config mount
 		#[preprocess(none)]
 		pub config_mounts: Option<BTreeMap<String, Base64String>>,
-		/// To update the volume size
+		/// To update the volumes attached to the deployment
 		#[preprocess(none)]
 		pub volumes: Option<BTreeMap<Uuid, String>>,
 	}

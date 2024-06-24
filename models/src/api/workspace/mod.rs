@@ -23,6 +23,8 @@ pub mod runner;
 pub mod secret;
 /// This module contains all the static site models
 pub mod static_site;
+/// This module contains all the models that corresponds to a deployment volume
+pub mod volume;
 
 mod create_workspace;
 mod delete_workspace;

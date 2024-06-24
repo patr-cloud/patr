@@ -1,8 +1,7 @@
-use std::{cmp::Ordering, collections::BTreeMap};
+use std::collections::BTreeMap;
 
 use axum::http::StatusCode;
 use models::api::workspace::deployment::*;
-use time::OffsetDateTime;
 
 use crate::prelude::*;
 
@@ -16,7 +15,7 @@ pub async fn update_deployment(
 		request:
 			ProcessedApiRequest {
 				path: UpdateDeploymentPath {
-					workspace_id,
+					workspace_id: _,
 					deployment_id,
 				},
 				query: (),
@@ -30,6 +29,7 @@ pub async fn update_deployment(
 						name,
 						machine_type,
 						deploy_on_push,
+						runner,
 						min_horizontal_scale,
 						max_horizontal_scale,
 						ports,
@@ -43,8 +43,8 @@ pub async fn update_deployment(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
-		user_data,
+		config: _,
+		user_data: _,
 	}: AuthenticatedAppRequest<'_, UpdateDeploymentRequest>,
 ) -> Result<AppResponse<UpdateDeploymentRequest>, ErrorType> {
 	info!("Updating deployment: {}", deployment_id);
@@ -55,6 +55,7 @@ pub async fn update_deployment(
 		.map(|_| 0)
 		.or(machine_type.as_ref().map(|_| 0))
 		.or(deploy_on_push.as_ref().map(|_| 0))
+		.or(runner.as_ref().map(|_| 0))
 		.or(min_horizontal_scale.as_ref().map(|_| 0))
 		.or(max_horizontal_scale.as_ref().map(|_| 0))
 		.or(ports.as_ref().map(|_| 0))
@@ -156,29 +157,30 @@ pub async fn update_deployment(
 			name = COALESCE($1, name),
 			machine_type = COALESCE($2, machine_type),
 			deploy_on_push = COALESCE($3, deploy_on_push),
-			min_horizontal_scale = COALESCE($4, min_horizontal_scale),
-			max_horizontal_scale = COALESCE($5, max_horizontal_scale),
+			runner = COALESCE($4, runner),
+			min_horizontal_scale = COALESCE($5, min_horizontal_scale),
+			max_horizontal_scale = COALESCE($6, max_horizontal_scale),
 			startup_probe_port = (
 				CASE
-					WHEN $6 = 0 THEN
-						NULL
-					ELSE
-						$6
-				END
-			),
-			startup_probe_path = (
-				CASE
-					WHEN $6 = 0 THEN
+					WHEN $7 = 0 THEN
 						NULL
 					ELSE
 						$7
 				END
 			),
+			startup_probe_path = (
+				CASE
+					WHEN $7 = 0 THEN
+						NULL
+					ELSE
+						$8
+				END
+			),
 			startup_probe_port_type = (
 				CASE
-					WHEN $6 = 0 THEN
+					WHEN $7 = 0 THEN
 						NULL
-					WHEN $6 IS NULL THEN
+					WHEN $7 IS NULL THEN
 						startup_probe_port_type
 					ELSE
 						'http'::EXPOSED_PORT_TYPE
@@ -186,36 +188,37 @@ pub async fn update_deployment(
 			),
 			liveness_probe_port = (
 				CASE
-					WHEN $8 = 0 THEN
-						NULL
-					ELSE
-						$8
-				END
-			),
-			liveness_probe_path = (
-				CASE
-					WHEN $8 = 0 THEN
+					WHEN $9 = 0 THEN
 						NULL
 					ELSE
 						$9
 				END
 			),
+			liveness_probe_path = (
+				CASE
+					WHEN $9 = 0 THEN
+						NULL
+					ELSE
+						$10
+				END
+			),
 			liveness_probe_port_type = (
 				CASE
-					WHEN $8 = 0 THEN
+					WHEN $9 = 0 THEN
 						NULL
-					WHEN $8 IS NULL THEN
+					WHEN $9 IS NULL THEN
 						liveness_probe_port_type
 					ELSE
 						'http'::EXPOSED_PORT_TYPE
 				END
 			)
 		WHERE
-			id = $10;
+			id = $11;
 		"#,
 		name as _,
 		machine_type as _,
 		deploy_on_push,
+		runner as _,
 		min_horizontal_scale.map(|v| v as i16),
 		max_horizontal_scale.map(|v| v as i16),
 		startup_probe.as_ref().map(|probe| probe.port as i32),
@@ -336,23 +339,19 @@ pub async fn update_deployment(
 		let mut current_volumes = query!(
 			r#"
 			SELECT
-				id,
-				name,
-				deployment_id
-				volume_size,
+				volume_id,
 				volume_mount_path
 			FROM
-				deployment_volume
+				deployment_volume_mount
 			WHERE
-				deployment_id = $1 AND
-				deleted IS NULL;
+				deployment_id = $1;
 			"#,
 			deployment_id as _,
 		)
 		.fetch_all(&mut **database)
 		.await?
 		.into_iter()
-		.map(|volume| (volume.id.into(), volume.volume_mount_path))
+		.map(|volume| (volume.volume_id.into(), volume.volume_mount_path))
 		.collect::<BTreeMap<Uuid, _>>();
 
 		if !updated_volumes

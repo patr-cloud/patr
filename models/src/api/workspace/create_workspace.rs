@@ -20,6 +20,7 @@ macros::declare_api_endpoint!(
 	},
 	response = {
 		/// The ID of the newly created workspace
-		pub id: Uuid,
+		#[serde(flatten)]
+		pub id: WithId<()>,
 	},
 );

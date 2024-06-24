@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE deployment_volume ADD CONSTRAINT deployment_volume_pk PRIMARY KEY(id), ADD CONSTRAINT deployment_volume_uq_name UNIQUE(name);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "b567f4dccf2cc7a60e4404fbdc263ba7cda18b28cde8b588a9c33604f4101c84"
+}

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n\t\t\t\tSELECT\n\t\t\t\t\timage_digest,\n\t\t\t\t\tcreated as \"created: _\"\n\t\t\t\tFROM\n\t\t\t\t\tdeployment_deploy_history\n\t\t\t\tWHERE\n\t\t\t\t\timage_digest = $1;\n\t\t\t\t",
+  "query": "SELECT image_digest, created FROM deployment_deploy_history WHERE image_digest = $1;",
   "describe": {
     "columns": [
       {
@@ -10,7 +10,7 @@
       },
       {
         "ordinal": 1,
-        "name": "created: _",
+        "name": "created",
         "type_info": "Timestamptz"
       }
     ],
@@ -24,5 +24,5 @@
       false
     ]
   },
-  "hash": "baf0ba290de999073a0cc663daf105e452ac6dea192f0e6d27bdbbe69b2bca28"
+  "hash": "96139d5cc07d9d46e7273c1ab06cfa1a0ded0abf3b2a3e38044a4a4d736d12b2"
 }

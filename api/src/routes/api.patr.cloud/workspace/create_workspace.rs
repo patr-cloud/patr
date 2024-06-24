@@ -61,7 +61,7 @@ pub async fn create_workspace(
 	.await?;
 
 	// Create resource
-	let id = query!(
+	let workspace_id = query!(
 		r#"
 		INSERT INTO
 			resource(
@@ -86,8 +86,7 @@ pub async fn create_workspace(
 		sqlx::Error::Database(dbe) if dbe.is_unique_violation() => ErrorType::ResourceAlreadyExists,
 		other => other.into(),
 	})?
-	.id
-	.into();
+	.id;
 
 	// Create new workspace in database
 	query!(
@@ -102,7 +101,7 @@ pub async fn create_workspace(
 		VALUES
 			($1, $2, $3, NULL);
 		"#,
-		id as _,
+		workspace_id as _,
 		&name,
 		user_id as _,
 	)
@@ -119,8 +118,8 @@ pub async fn create_workspace(
 		WHERE
 			id = $2;
 		"#,
-		id as _,
-		id as _,
+		workspace_id as _,
+		workspace_id as _,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -134,7 +133,9 @@ pub async fn create_workspace(
 	.await?;
 
 	AppResponse::builder()
-		.body(CreateWorkspaceResponse { id })
+		.body(CreateWorkspaceResponse {
+			id: WithId::from(workspace_id),
+		})
 		.headers(())
 		.status_code(StatusCode::CREATED)
 		.build()

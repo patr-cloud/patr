@@ -147,7 +147,7 @@ pub async fn create_new_role(
 
 	AppResponse::builder()
 		.body(CreateNewRoleResponse {
-			id: WithId::new(role_id, ()),
+			id: WithId::from(role_id),
 		})
 		.headers(())
 		.status_code(StatusCode::CREATED)

@@ -1,9 +1,5 @@
 use axum::http::StatusCode;
-use models::{
-	api::{workspace::deployment::*, WithId},
-	utils::StringifiedU16,
-	ErrorType,
-};
+use models::{api::workspace::deployment::*, utils::StringifiedU16};
 
 use crate::prelude::*;
 
@@ -101,30 +97,19 @@ pub async fn get_deployment_info(
 	let volumes = query!(
 		r#"
 		SELECT
-			id,
-			name,
-			volume_size,
+			volume_id,
 			volume_mount_path
 		FROM
-			deployment_volume
+			deployment_volume_mount
 		WHERE
-			deployment_id = $1 AND
-			deleted IS NULL;
+			deployment_id = $1;
 		"#,
 		deployment_id as _,
 	)
 	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
-	.map(|volume| {
-		(
-			volume.id.into(),
-			DeploymentVolume {
-				path: volume.volume_mount_path,
-				size: volume.volume_size as u16,
-			},
-		)
-	})
+	.map(|row| (row.volume_id.into(), row.volume_mount_path))
 	.collect();
 
 	let deployment = query!(

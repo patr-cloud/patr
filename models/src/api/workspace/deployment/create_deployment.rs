@@ -50,6 +50,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// The deployment ID of the created deployment
 		#[serde(flatten)]
-		pub id: WithId<()>
+		pub id: WithId<()>,
 	}
 );

@@ -1,10 +1,10 @@
 use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 
 macros::declare_api_endpoint!(
-	/// Route to add runner to a workspace
-	AddRunnerToWorkspace,
-	POST "/workspace/:workspace_id/runner" {
-		/// The ID of the workspace
+	/// Route to create a new volume
+	CreateVolume,
+	POST "/workspace/:workspace_id/volume" {
+		/// The workspace ID of the user
 		pub workspace_id: Uuid,
 	},
 	request_headers = {
@@ -16,16 +16,19 @@ macros::declare_api_endpoint!(
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.workspace_id,
-			permission: Permission::Runner(RunnerPermission::Create),
+			permission: Permission::Volume(VolumePermission::Create),
 		}
 	},
 	request = {
-		/// Name of the runner
+		/// The name of the volume
 		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
 		pub name: String,
+		/// The size of the volume
+		#[preprocess(range(min = 1))]
+		pub size: u16,
 	},
 	response = {
-		/// The ID of the created runner
+		/// The ID of the created volume
 		#[serde(flatten)]
 		pub id: WithId<()>,
 	}

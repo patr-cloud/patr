@@ -12,6 +12,7 @@ use crate::prelude::*;
 	Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, FromStr, Display,
 )]
 #[serde(rename_all = "camelCase")]
+#[enumeration(rename_all = "camelCase")]
 pub enum ErrorType {
 	/// The email provided is invalid
 	InvalidEmail,

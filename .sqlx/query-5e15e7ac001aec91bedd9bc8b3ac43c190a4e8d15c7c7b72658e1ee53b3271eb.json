@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE deployment_volume_mount ADD CONSTRAINT deployment_volume_mount_pk PRIMARY KEY(deployment_id, volume_id), ADD CONSTRAINT deployment_volume_mount_fk_volume_id FOREIGN KEY(volume_id) REFERENCES deployment_volume(id), ADD CONSTRAINT deployment_volume_mount_fk_deployment_id FOREIGN KEY(deployment_id) REFERENCES deployment(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "5e15e7ac001aec91bedd9bc8b3ac43c190a4e8d15c7c7b72658e1ee53b3271eb"
+}

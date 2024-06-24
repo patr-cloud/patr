@@ -129,10 +129,20 @@ pub async fn initialize_deployment_tables(
 		CREATE TABLE deployment_volume(
 			id UUID NOT NULL,
 			name TEXT NOT NULL,
-			deployment_id UUID NOT NULL,
 			volume_size INT NOT NULL,
-			volume_mount_path TEXT NOT NULL,
 			deleted TIMESTAMPTZ
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE deployment_volume_mount(
+			deployment_id UUID NOT NULL,
+			volume_id UUID NOT NULL,
+			volume_mount_path TEXT NOT NULL
 		);
 		"#
 	)
@@ -215,10 +225,20 @@ pub async fn initialize_deployment_indices(
 		r#"
 		ALTER TABLE deployment_volume
 			ADD CONSTRAINT deployment_volume_pk PRIMARY KEY(id),
-			ADD CONSTRAINT deployment_volume_name_unique_deployment_id
-				UNIQUE(deployment_id, name),
-			ADD CONSTRAINT deployment_volume_path_unique_deployment_id
-				UNIQUE(deployment_id, volume_mount_path);
+			ADD CONSTRAINT deployment_volume_uq_name UNIQUE(name);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_volume_mount
+			ADD CONSTRAINT deployment_volume_mount_pk PRIMARY KEY(deployment_id, volume_id),
+			ADD CONSTRAINT deployment_volume_mount_fk_volume_id
+				FOREIGN KEY(volume_id) REFERENCES deployment_volume(id),
+			ADD CONSTRAINT deployment_volume_mount_fk_deployment_id
+				FOREIGN KEY(deployment_id) REFERENCES deployment(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -289,7 +309,7 @@ pub async fn initialize_deployment_constraints(
 				name = TRIM(name)
 			),
 			ADD CONSTRAINT deployment_chk_image_name_is_valid CHECK(
-				image_name ~ '^(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?)(((\/)(([a-z0-9]+)(((?:[._]|__|[-]*)([a-z0-9]+))*)?))*)?$'
+				image_name ~ '^[a-zA-Z0-9\-_ \.]{4,255}$'
 			),
 			ADD CONSTRAINT deployment_fk_runner 
 				FOREIGN KEY(runner) REFERENCES runner(id),

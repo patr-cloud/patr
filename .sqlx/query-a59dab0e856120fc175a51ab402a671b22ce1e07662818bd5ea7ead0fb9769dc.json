@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT volume_id, volume_mount_path FROM deployment_volume_mount WHERE deployment_id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "volume_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "volume_mount_path",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "a59dab0e856120fc175a51ab402a671b22ce1e07662818bd5ea7ead0fb9769dc"
+}

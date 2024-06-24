@@ -37,6 +37,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// The new managed URL ID
 		#[serde(flatten)]
-		pub id: WithId<()>
+		pub id: WithId<()>,
 	}
 );

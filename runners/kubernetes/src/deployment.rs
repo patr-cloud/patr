@@ -12,44 +12,10 @@ use k8s_openapi::{
 			StatefulSetSpec,
 			StatefulSetUpdateStrategy,
 		},
-		autoscaling::v1::{
-			CrossVersionObjectReference,
-			HorizontalPodAutoscaler,
-			HorizontalPodAutoscalerSpec,
-		},
-		core::v1::{
-			ConfigMap,
-			ConfigMapVolumeSource,
-			Container,
-			ContainerPort,
-			EnvVar,
-			HTTPGetAction,
-			KeyToPath,
-			LocalObjectReference,
-			PersistentVolumeClaim,
-			PersistentVolumeClaimSpec,
-			PodSpec,
-			PodTemplateSpec,
-			Probe,
-			ResourceRequirements,
-			Service,
-			ServicePort,
-			ServiceSpec,
-			Volume,
-			VolumeMount,
-			VolumeResourceRequirements,
-		},
-		networking::v1::{
-			HTTPIngressPath,
-			HTTPIngressRuleValue,
-			Ingress,
-			IngressBackend,
-			IngressRule,
-			IngressServiceBackend,
-			IngressSpec,
-			ServiceBackendPort,
-		},
-		policy::v1::{PodDisruptionBudget, PodDisruptionBudgetSpec},
+		autoscaling::v1::*,
+		core::v1::*,
+		networking::v1::*,
+		policy::v1::*,
 	},
 	apimachinery::pkg::{
 		api::resource::Quantity,
@@ -70,25 +36,8 @@ use kube::{
 	Client,
 };
 use models::{
-	api::workspace::{
-		container_registry::{
-			GetContainerRepositoryInfoPath,
-			GetContainerRepositoryInfoRequest,
-			GetContainerRepositoryInfoRequestHeaders,
-		},
-		infrastructure::deployment::{
-			DeploymentRegistry,
-			EnvironmentVariableValue,
-			ExposedPortType,
-			ListAllDeploymentMachineTypePath,
-			ListAllDeploymentMachineTypeRequest,
-			ListAllDeploymentMachineTypeRequestHeaders,
-		},
-	},
-	prelude::UserAgent,
-	utils::{BearerToken, Uuid},
-	ApiRequest,
-	ErrorType,
+	api::workspace::{container_registry::*, deployment::*},
+	prelude::*,
 };
 use sha2::{Digest, Sha512};
 use tokio::{
@@ -246,10 +195,10 @@ async fn reconcile(
 
 	let machine_type = make_request(
 		ApiRequest::<ListAllDeploymentMachineTypeRequest>::builder()
-			.path(ListAllDeploymentMachineTypePath)
+			.path(ListAllDeploymentMachineTypePath {
+				workspace_id: ctx.workspace_id,
+			})
 			.headers(ListAllDeploymentMachineTypeRequestHeaders {
-				authorization: BearerToken::from_str(ctx.patr_token.as_str())
-					.map_err(|err| AppError::InternalError(err.to_string()))?,
 				user_agent: UserAgent::from_static("deployment-controller"),
 			})
 			.query(())
@@ -273,8 +222,8 @@ async fn reconcile(
 		),
 		(constants::WORKSPACE_ID.to_string(), namespace.to_string()),
 		(
-			constants::REGION.to_string(),
-			spec.deployment.region.to_string(),
+			constants::RUNNER.to_string(),
+			spec.deployment.runner.to_string(),
 		),
 		("app.kubernetes.io/name".to_string(), "vault".to_string()),
 	]
@@ -328,9 +277,9 @@ async fn reconcile(
 		});
 	}
 
-	for (_, volume) in &spec.running_details.volumes {
+	for (volume_id, volume) in &spec.running_details.volumes {
 		volume_mounts.push(VolumeMount {
-			name: format!("pvc-{}", volume.path),
+			name: format!("pvc-{}", volume_id),
 			// make sure user does not have the mount_path in the directory
 			// in the fs, by my observation it gives crashLoopBackOff error
 			mount_path: volume.path.to_string(),
@@ -339,7 +288,7 @@ async fn reconcile(
 
 		pvc.push(PersistentVolumeClaim {
 			metadata: ObjectMeta {
-				name: Some(format!("pvc-{}", volume.path)),
+				name: Some(format!("pvc-{}", volume_id)),
 				namespace: Some(namespace.to_string()),
 				owner_references: Some(vec![owner_reference.clone()]),
 				..ObjectMeta::default()
