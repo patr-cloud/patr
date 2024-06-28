@@ -1,6 +1,9 @@
 use std::collections::BTreeMap;
 
-use models::api::user::*;
+use models::{
+	api::user::*,
+	rbac::{ResourcePermissionType, WorkspacePermission},
+};
 
 use crate::prelude::*;
 
@@ -11,7 +14,7 @@ pub async fn update_api_token(
 	token_name: Option<String>,
 	token_exp: Option<String>,
 	token_nbf: Option<String>,
-	super_admin: Option<Vec<String>>,
+	permissions: Option<BTreeMap<Uuid, WorkspacePermission>>,
 ) -> Result<UpdateApiTokenResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
@@ -24,23 +27,12 @@ pub async fn update_api_token(
 
 	logging::log!(
 		"{:#?} {:?} {:?} {:?} {:?}",
-		super_admin,
+		permissions,
 		token_id,
 		token_name,
 		token_exp,
 		token_nbf
 	);
-
-	let super_admin = super_admin.map(|admins| {
-		let mut permissions = BTreeMap::<Uuid, WorkspacePermission>::new();
-
-		admins.iter().for_each(|perm| {
-			let workspace_id = Uuid::parse_str(perm).unwrap();
-			permissions.insert(workspace_id, WorkspacePermission::SuperAdmin);
-		});
-
-		permissions
-	});
 
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
@@ -80,8 +72,8 @@ pub async fn update_api_token(
 		name: token_name,
 		token_exp,
 		token_nbf,
+		permissions,
 		allowed_ips: None,
-		permissions: super_admin,
 	};
 
 	let api_response = make_api_call::<UpdateApiTokenRequest>(
