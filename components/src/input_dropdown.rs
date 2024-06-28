@@ -1,8 +1,10 @@
 use crate::imports::*;
 
 /// The options to display in the dropdown
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub struct InputDropdownOption {
+	/// The Id of the option
+	pub id: String,
 	/// The label of the option
 	pub label: String,
 	/// Whether it's checked by default or not
@@ -92,7 +94,7 @@ pub fn InputDropdown(
 			show_dropdown.set(false);
 		}
 
-		value.set(state.label.clone());
+		value.set(state.id.clone());
 	};
 
 	view! {

@@ -52,7 +52,7 @@ impl AuthState {
 		logging::log!(
 			"authstate access token: {:?}\n {:?}",
 			access_token,
-			refresh_token
+			refresh_token,
 		);
 		if let Some((access_token, refresh_token)) = access_token.zip(refresh_token) {
 			AuthState::LoggedIn {

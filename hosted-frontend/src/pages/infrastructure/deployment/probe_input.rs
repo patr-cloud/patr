@@ -69,6 +69,7 @@ pub fn ProbeInput(
 						value={"6655".to_owned()}
 						options={vec![
 							InputDropdownOption {
+								id: "1".to_string(),
 								label: "6655".to_owned(),
 								disabled: false,
 							},

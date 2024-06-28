@@ -16,18 +16,18 @@ pub fn CheckboxDropdown(
 	variant: SecondaryColorVariant,
 	/// The default value of the input, if none is provided,
 	/// defaults to empty string and placeholder is shown
-	#[prop(into, optional, default = "".to_owned().into())]
-	value: RwSignal<String>,
+	#[prop(into, optional, default = vec!["".to_owned()].into())]
+	value: RwSignal<Vec<String>>,
 	/// The Event handler when user checks an option
 	#[prop(optional, into, default = Callback::new(|(_, _)| {}))]
 	on_select: Callback<(MouseEvent, String)>,
 	/// Placeholder to show if value is empty
 	#[prop(into, optional, default = "Type Here...".to_owned().into())]
 	placeholder: MaybeSignal<String>,
-	/// Whether the componenet is disabled or not
+	/// Whether the component is disabled or not
 	#[prop(optional, into, default = false.into())]
 	disabled: MaybeSignal<bool>,
-	/// Whether the componenet is in loading state or not
+	/// Whether the component is in loading state or not
 	#[prop(optional, into, default = false.into())]
 	loading: MaybeSignal<bool>,
 	/// Whether to render an input, or a span masquerading as one
@@ -76,10 +76,6 @@ pub fn CheckboxDropdown(
 		}
 	};
 
-	let handle_checkbox_click = move |e: MouseEvent, input_value: &InputDropdownOption| {
-		e.stop_propagation();
-	};
-
 	let store_options = store_value(options);
 	let store_placehoder = store_value(placeholder);
 	let store_on_select = store_value(on_select);
@@ -92,7 +88,7 @@ pub fn CheckboxDropdown(
 					{store_placehoder.with_value(|placeholder| placeholder.get())}
 				}
 			>
-				{value.get()}
+				{value.get().len()} "selected"
 			</Show>
 
 			<Icon icon={IconType::ChevronDown} class="ml-auto" size={Size::ExtraSmall}/>
@@ -109,7 +105,13 @@ pub fn CheckboxDropdown(
 								on:click={
 									let child = child.clone();
 									move |ev| {
-										ev.stop_propagation();
+										ev.prevent_default();
+										if value.get().iter().any(|e| e.to_owned() == child.id.clone()) {
+											value.update(|val| val.retain(|x| x.to_owned() != child.id.clone()))
+										} else {
+											value.update(|val| val.push(child.id.clone()))
+										}
+
 										on_select.call((ev, child.label.clone()));
 									}
 								}
@@ -119,7 +121,9 @@ pub fn CheckboxDropdown(
 									html_for=""
 									class="txt-left fr-fs-ct cursor-pointer full-width full-height px-xl py-sm"
 								>
-									<input type="checkbox" class="ml-md mr-sm checkbox-sm" />
+									<input type="checkbox" class="ml-md mr-sm checkbox-sm" checked={
+										value.get().iter().any(|e| e.to_owned() == child.id.clone())
+									} />
 									<span>{child.label}</span>
 								</label>
 							</li>

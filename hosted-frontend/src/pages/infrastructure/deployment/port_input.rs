@@ -110,6 +110,7 @@ pub fn PortInput(
 							placeholder={"Select Protocol".to_string()}
 							options={vec![
 								InputDropdownOption {
+									id: "1".to_owned(),
 									label: "8080".to_owned(),
 									disabled: false,
 								},
