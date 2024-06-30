@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT deployment_volume.*, deployment_volume_mount.deployment_id AS \"deployment_id?: Uuid\" FROM deployment_volume LEFT JOIN deployment_volume_mount ON deployment_volume.id = deployment_volume_mount.deployment_id WHERE deployment_volume.id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "volume_size",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "deleted",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "deployment_id?: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "78a0c2c25edf07869596d5e3d4a0989ca780a59319502b59879e87f6aaa423ca"
+}

@@ -8,7 +8,7 @@ pub async fn delete_volume(
 		request:
 			ProcessedApiRequest {
 				path: DeleteVolumePath {
-					workspace_id,
+					workspace_id: _,
 					volume_id,
 				},
 				query: (),
@@ -17,19 +17,56 @@ pub async fn delete_volume(
 						authorization: _,
 						user_agent: _,
 					},
-				body: DeleteVolumeRequestProcessed { name, size },
+				body: DeleteVolumeRequestProcessed,
 			},
 		database,
-		redis,
+		redis: _,
 		client_ip: _,
 		config: _,
 		user_data: _,
 	}: AuthenticatedAppRequest<'_, DeleteVolumeRequest>,
 ) -> Result<AppResponse<DeleteVolumeRequest>, ErrorType> {
+	trace!("Deleting volume ID: `{volume_id}`");
+
+	query!(
+		r#"
+		DELETE FROM
+			deployment_volume
+		WHERE
+			id = $1;
+		"#,
+		volume_id as _
+	)
+	.execute(&mut **database)
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(dbe) if dbe.is_foreign_key_violation() => ErrorType::ResourceInUse,
+		_ => ErrorType::InternalServerError,
+	})?;
+
+	// Mark the resource as deleted in the database
+	query!(
+		r#"
+		UPDATE
+			resource
+		SET
+			deleted = NOW()
+		WHERE
+			id = $1;
+		"#,
+		volume_id as _
+	)
+	.execute(&mut **database)
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(err) if err.is_foreign_key_violation() => ErrorType::ResourceInUse,
+		_ => ErrorType::InternalServerError,
+	})?;
+
 	AppResponse::builder()
 		.body(DeleteVolumeResponse)
 		.headers(())
-		.status_code(StatusCode::OK)
+		.status_code(StatusCode::RESET_CONTENT)
 		.build()
 		.into_result()
 }

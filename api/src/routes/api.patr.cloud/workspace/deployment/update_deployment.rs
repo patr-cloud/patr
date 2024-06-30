@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use axum::http::StatusCode;
 use models::api::workspace::deployment::*;
 
@@ -336,37 +334,55 @@ pub async fn update_deployment(
 	}
 
 	if let Some(updated_volumes) = &volumes {
-		let mut current_volumes = query!(
+		query!(
 			r#"
-			SELECT
-				volume_id,
-				volume_mount_path
-			FROM
+			DELETE FROM
 				deployment_volume_mount
 			WHERE
 				deployment_id = $1;
 			"#,
 			deployment_id as _,
 		)
-		.fetch_all(&mut **database)
-		.await?
-		.into_iter()
-		.map(|volume| (volume.volume_id.into(), volume.volume_mount_path))
-		.collect::<BTreeMap<Uuid, _>>();
+		.execute(&mut **database)
+		.await?;
 
-		if !updated_volumes
-			.into_iter()
-			.all(|(id, _)| current_volumes.remove(id).is_some())
-		{
-			// The new volume is not there in the current volumes. Prevent
-			// from adding it
-			return Err(ErrorType::CannotAddNewVolume);
-		}
-
-		if !current_volumes.is_empty() {
-			// Preventing removing number of volume
-			return Err(ErrorType::CannotRemoveVolume);
-		}
+		query!(
+			r#"
+			INSERT INTO
+				deployment_volume_mount(
+					deployment_id,
+					volume_id,
+					volume_mount_path
+				)
+			VALUES
+				(
+					UNNEST($1::UUID[]),
+					UNNEST($2::UUID[]),
+					UNNEST($3::TEXT[])
+				);
+			"#,
+			&updated_volumes
+				.iter()
+				.map(|_| deployment_id.into())
+				.collect::<Vec<_>>(),
+			&updated_volumes
+				.iter()
+				.map(|(volume_id, _)| (*volume_id).into())
+				.collect::<Vec<_>>(),
+			&updated_volumes
+				.iter()
+				.map(|(_, volume_mount_path)| volume_mount_path.clone())
+				.collect::<Vec<_>>(),
+		)
+		.execute(&mut **database)
+		.await
+		.map_err(|err| match err {
+			sqlx::Error::Database(err) if err.is_unique_violation() => ErrorType::ResourceInUse,
+			sqlx::Error::Database(err) if err.is_foreign_key_violation() => {
+				ErrorType::ResourceDoesNotExist
+			}
+			_ => ErrorType::InternalServerError,
+		})?;
 	}
 
 	AppResponse::builder()

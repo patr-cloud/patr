@@ -15,6 +15,8 @@ mod managed_database;
 mod managed_url;
 /// The list of static sites that are created in a workspace
 mod static_site;
+/// The list of deployment volumes that are created in a workspace
+mod volume;
 
 /// The list of runners that are a part of a workspace
 mod runner;
@@ -60,6 +62,7 @@ pub async fn initialize_workspace_tables(
 	managed_database::initialize_managed_database_tables(connection).await?;
 	managed_url::initialize_managed_url_tables(connection).await?;
 	static_site::initialize_static_site_tables(connection).await?;
+	volume::initialize_volume_tables(connection).await?;
 
 	runner::initialize_runner_tables(connection).await?;
 	secret::initialize_secret_tables(connection).await?;
@@ -117,6 +120,7 @@ pub async fn initialize_workspace_indices(
 	managed_database::initialize_managed_database_indices(connection).await?;
 	managed_url::initialize_managed_url_indices(connection).await?;
 	static_site::initialize_static_site_indices(connection).await?;
+	volume::initialize_volume_indices(connection).await?;
 
 	runner::initialize_runner_indices(connection).await?;
 	secret::initialize_secret_indices(connection).await?;
@@ -150,6 +154,7 @@ pub async fn initialize_workspace_constraints(
 	managed_database::initialize_managed_database_constraints(connection).await?;
 	managed_url::initialize_managed_url_constraints(connection).await?;
 	static_site::initialize_static_site_constraints(connection).await?;
+	volume::initialize_volume_constraints(connection).await?;
 
 	runner::initialize_runner_constraints(connection).await?;
 	secret::initialize_secret_constraints(connection).await?;

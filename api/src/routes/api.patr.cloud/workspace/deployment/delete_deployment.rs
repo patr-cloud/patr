@@ -103,7 +103,7 @@ pub async fn delete_deployment(
 	.execute(&mut **database)
 	.await?;
 
-	// Mark deployment deleted in database
+	// Delete the deployment in the database
 	query!(
 		r#"
 		DELETE FROM
@@ -127,6 +127,25 @@ pub async fn delete_deployment(
 	)
 	.execute(&mut **database)
 	.await?;
+
+	// Mark the resource as deleted in the database
+	query!(
+		r#"
+		UPDATE
+			resource
+		SET
+			deleted = NOW()
+		WHERE
+			id = $1;
+		"#,
+		deployment_id as _
+	)
+	.execute(&mut **database)
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(err) if err.is_foreign_key_violation() => ErrorType::ResourceInUse,
+		_ => ErrorType::InternalServerError,
+	})?;
 
 	// TODO Temporary workaround until audit logs and triggers are implemented
 	redis

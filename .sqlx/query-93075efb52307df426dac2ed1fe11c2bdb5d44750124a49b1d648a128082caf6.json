@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO deployment_volume(id, name, volume_size, deleted) VALUES ($1, $2, $3, NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "93075efb52307df426dac2ed1fe11c2bdb5d44750124a49b1d648a128082caf6"
+}

@@ -26,7 +26,5 @@ macros::declare_api_endpoint!(
 		/// The volume information
 		#[serde(flatten)]
 		pub volume: WithId<DeploymentVolume>,
-		/// Whether the volume is connected to a deployment or not, and if so, which one
-		pub attached_deployment: Option<Uuid>,
 	}
 );

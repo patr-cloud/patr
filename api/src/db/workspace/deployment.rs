@@ -124,31 +124,6 @@ pub async fn initialize_deployment_tables(
 	.execute(&mut *connection)
 	.await?;
 
-	query!(
-		r#"
-		CREATE TABLE deployment_volume(
-			id UUID NOT NULL,
-			name TEXT NOT NULL,
-			volume_size INT NOT NULL,
-			deleted TIMESTAMPTZ
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE deployment_volume_mount(
-			deployment_id UUID NOT NULL,
-			volume_id UUID NOT NULL,
-			volume_mount_path TEXT NOT NULL
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	Ok(())
 }
 
@@ -216,29 +191,6 @@ pub async fn initialize_deployment_indices(
 		ALTER TABLE deployment_deploy_history
 		ADD CONSTRAINT deployment_image_digest_pk
 		PRIMARY KEY(deployment_id, image_digest);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE deployment_volume
-			ADD CONSTRAINT deployment_volume_pk PRIMARY KEY(id),
-			ADD CONSTRAINT deployment_volume_uq_name UNIQUE(name);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE deployment_volume_mount
-			ADD CONSTRAINT deployment_volume_mount_pk PRIMARY KEY(deployment_id, volume_id),
-			ADD CONSTRAINT deployment_volume_mount_fk_volume_id
-				FOREIGN KEY(volume_id) REFERENCES deployment_volume(id),
-			ADD CONSTRAINT deployment_volume_mount_fk_deployment_id
-				FOREIGN KEY(deployment_id) REFERENCES deployment(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -438,17 +390,6 @@ pub async fn initialize_deployment_constraints(
 				FOREIGN KEY(deployment_id) REFERENCES deployment(id),
 			ADD CONSTRAINT deployment_image_digest_fk_repository_id
 				FOREIGN KEY(repository_id) REFERENCES container_registry_repository(id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE deployment_volume
-			ADD CONSTRAINT deployment_volume_fk_deployment_id
-				FOREIGN KEY(deployment_id) REFERENCES deployment(id),
-			ADD CONSTRAINT deployment_volume_chk_size_unsigned CHECK(volume_size > 0);
 		"#
 	)
 	.execute(&mut *connection)

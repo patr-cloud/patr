@@ -28,7 +28,5 @@ macros::declare_api_endpoint!(
 		/// The size of the volume
 		#[preprocess(optional(range(min = 1)))]
 		pub size: Option<u16>,
-		/// The deployment that the volume is attached to
-		pub attached_deployment: Option<Uuid>,
 	}
 );

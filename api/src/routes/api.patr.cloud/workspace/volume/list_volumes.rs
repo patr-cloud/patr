@@ -1,5 +1,5 @@
 use axum::http::StatusCode;
-use models::api::workspace::volume::*;
+use models::{api::workspace::volume::*, utils::TotalCountHeader};
 
 use crate::prelude::*;
 
@@ -7,27 +7,31 @@ pub async fn list_volumes(
 	AuthenticatedAppRequest {
 		request:
 			ProcessedApiRequest {
-				path: CreateVolumePath { workspace_id },
-				query: (),
+				path: ListVolumesInWorkspacePath { workspace_id },
+				query: Paginated {
+					data: (),
+					count,
+					page,
+				},
 				headers:
-					CreateVolumeRequestHeaders {
+					ListVolumesInWorkspaceRequestHeaders {
 						authorization: _,
 						user_agent: _,
 					},
-				body: CreateVolumeRequestProcessed { name, size },
+				body: ListVolumesInWorkspaceRequestProcessed,
 			},
 		database,
 		redis,
 		client_ip: _,
 		config: _,
 		user_data: _,
-	}: AuthenticatedAppRequest<'_, CreateVolumeRequest>,
-) -> Result<AppResponse<CreateVolumeRequest>, ErrorType> {
+	}: AuthenticatedAppRequest<'_, ListVolumesInWorkspaceRequest>,
+) -> Result<AppResponse<ListVolumesInWorkspaceRequest>, ErrorType> {
 	AppResponse::builder()
-		.body(CreateVolumeResponse {
-			id: WithId::new(workspace_id, ()),
+		.body(ListVolumesInWorkspaceResponse { volumes: todo!() })
+		.headers(ListVolumesInWorkspaceResponseHeaders {
+			total_count: TotalCountHeader(todo!() as _),
 		})
-		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
 		.into_result()

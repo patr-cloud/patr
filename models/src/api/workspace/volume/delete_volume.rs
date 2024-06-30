@@ -1,4 +1,4 @@
-use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to create a new volume
@@ -20,13 +20,5 @@ macros::declare_api_endpoint!(
 			extract_resource_id: |req| req.path.volume_id,
 			permission: Permission::Volume(VolumePermission::Delete),
 		}
-	},
-	request = {
-		/// The name of the volume
-		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
-		pub name: String,
-		/// The size of the volume
-		#[preprocess(range(min = 1))]
-		pub size: u16,
 	}
 );

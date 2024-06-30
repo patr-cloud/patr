@@ -311,7 +311,11 @@ pub async fn create_deployment(
 			.collect::<Vec<_>>(),
 	)
 	.execute(&mut **database)
-	.await?;
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(err) if err.is_unique_violation() => ErrorType::ResourceInUse,
+		_ => ErrorType::InternalServerError,
+	})?;
 
 	if let DeploymentRegistry::PatrRegistry { repository_id, .. } = &registry {
 		let digest = query!(

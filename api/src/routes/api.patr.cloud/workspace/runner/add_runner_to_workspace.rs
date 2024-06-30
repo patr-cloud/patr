@@ -58,16 +58,19 @@ pub async fn add_runner_to_workspace(
 		INSERT INTO
 			runner(
 				id,
-				name
+				name,
+				workspace_id
 			)
 		VALUES
 			(
 				$1,
-				$2
+				$2,
+				$3
 			);
 		"#,
 		id as _,
-		name.as_ref()
+		name.as_ref(),
+		workspace_id as _,
 	)
 	.execute(&mut **database)
 	.await?;

@@ -7,26 +7,27 @@ pub async fn update_volume(
 	AuthenticatedAppRequest {
 		request:
 			ProcessedApiRequest {
-				path: CreateVolumePath { workspace_id },
+				path: UpdateVolumePath {
+					workspace_id,
+					volume_id,
+				},
 				query: (),
 				headers:
-					CreateVolumeRequestHeaders {
+					UpdateVolumeRequestHeaders {
 						authorization: _,
 						user_agent: _,
 					},
-				body: CreateVolumeRequestProcessed { name, size },
+				body: UpdateVolumeRequestProcessed { name, size },
 			},
 		database,
 		redis,
 		client_ip: _,
 		config: _,
 		user_data: _,
-	}: AuthenticatedAppRequest<'_, CreateVolumeRequest>,
-) -> Result<AppResponse<CreateVolumeRequest>, ErrorType> {
+	}: AuthenticatedAppRequest<'_, UpdateVolumeRequest>,
+) -> Result<AppResponse<UpdateVolumeRequest>, ErrorType> {
 	AppResponse::builder()
-		.body(CreateVolumeResponse {
-			id: WithId::new(workspace_id, ()),
-		})
+		.body(UpdateVolumeResponse)
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
