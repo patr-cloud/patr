@@ -27,6 +27,6 @@ macros::declare_api_endpoint!(
 		pub name: Option<String>,
 		/// The size of the volume
 		#[preprocess(optional(range(min = 1)))]
-		pub size: Option<u16>,
+		pub size: Option<u64>,
 	}
 );

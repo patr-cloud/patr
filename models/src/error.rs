@@ -70,7 +70,7 @@ pub enum ErrorType {
 	/// Tried to delete a workspace that has resources in it
 	WorkspaceNotEmpty,
 	/// Volume of a deployment cannot be reduced
-	ReducedVolumeSize,
+	CannotReduceVolumeSize,
 	/// Cannot add new volume
 	CannotAddNewVolume,
 	/// Cannot remove volume
@@ -123,7 +123,7 @@ impl ErrorType {
 			Self::ResourceInUse => StatusCode::UNPROCESSABLE_ENTITY,
 			Self::WorkspaceNameAlreadyExists => StatusCode::CONFLICT,
 			Self::WorkspaceNotEmpty => StatusCode::FAILED_DEPENDENCY,
-			Self::ReducedVolumeSize => StatusCode::BAD_REQUEST,
+			Self::CannotReduceVolumeSize => StatusCode::BAD_REQUEST,
 			Self::CannotAddNewVolume => StatusCode::BAD_REQUEST,
 			Self::CannotRemoveVolume => StatusCode::BAD_REQUEST,
 			Self::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,
@@ -170,7 +170,7 @@ impl ErrorType {
 			Self::ResourceInUse => "Resource is currently in use",
 			Self::WorkspaceNameAlreadyExists => "A workspace with that name already exists",
 			Self::WorkspaceNotEmpty => "A workspace cannot be deleted until all the resources in the workspaces have been deleted",
-			Self::ReducedVolumeSize => "The deployment volume size cannot be reduced",
+			Self::CannotReduceVolumeSize => "The deployment volume size cannot be reduced",
 			Self::CannotAddNewVolume => "New volume cannot be added",
 			Self::CannotRemoveVolume => "The volume cannot be removed",
 			Self::InternalServerError => "An internal server error has occured",

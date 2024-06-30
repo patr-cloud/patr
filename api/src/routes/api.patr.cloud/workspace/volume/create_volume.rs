@@ -40,7 +40,7 @@ pub async fn create_volume(
 		VALUES
 			(
 				GENERATE_RESOURCE_ID(),
-				(SELECT id FROM resource_type WHERE name = 'deployment'),
+				(SELECT id FROM resource_type WHERE name = 'volume'),
 				$1,
 				$2,
 				NULL

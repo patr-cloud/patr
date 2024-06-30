@@ -54,7 +54,7 @@ pub async fn get_volume_info(
 				row.id,
 				DeploymentVolume {
 					name: row.name,
-					size: row.volume_size as u16,
+					size: row.volume_size as u64,
 					deployment_id: row.deployment_id,
 				},
 			),

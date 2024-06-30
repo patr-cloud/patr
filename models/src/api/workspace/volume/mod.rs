@@ -23,7 +23,7 @@ pub struct DeploymentVolume {
 	/// The path of the volume attached
 	pub name: String,
 	/// The size of the volume
-	pub size: u16,
+	pub size: u64,
 	/// The deployment that the volume is attached to, if any
 	pub deployment_id: Option<Uuid>,
 }
