@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-#![warn(missing_docs, clippy::missing_docs_in_private_items)]
+#![warn(missing_docs, clippy::all)]
 
 //! The Docker runner is a service that runs on a machine and listens for
 //! incoming WebSocket connections from the Patr API. The runner is responsible

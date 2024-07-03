@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-#![warn(missing_docs, clippy::missing_docs_in_private_items)]
+#![warn(missing_docs, clippy::all)]
 
 //! This project generates a controller that can be installed in the user's
 //! Kubernetes cluster. Each controller will be responsible for managing the

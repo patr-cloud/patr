@@ -7,6 +7,7 @@ members = [
     "hosted-frontend",
     "macros",
     "models",
+    "runners/common",
     "runners/docker",
     "runners/kubernetes",
 ]
