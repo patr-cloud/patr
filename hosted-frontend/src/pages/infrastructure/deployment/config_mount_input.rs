@@ -18,19 +18,8 @@ pub fn ConfigMountInput(
 				<label html_for="port" class="fr-fs-ct">
 					"Config Mounts"
 				</label>
-
-				<ToolTipContainer tooltip_width=25.>
-					<p class="txt-xxs">
-						"In order to prevent binary injection attacks, among other security
-						reasons, all config mounts will be placed by default in the"
-						<code class="code-snippet txt-xxs">"/etc/config"</code>
-						<p>
-							"directory. If you'd like to place it in a different location instead, you can
-							create a symlink in your"
-						</p> <code class="code-snippet txt-xxs">Dockerfile</code>
-					</p>
-				</ToolTipContainer>
 			</div>
+
 			<div class="flex-col-10 fc-fs-fs">
 				<Show when={move || mount_points.with(|list| !list.is_empty())}>
 					<div class="flex full-width">

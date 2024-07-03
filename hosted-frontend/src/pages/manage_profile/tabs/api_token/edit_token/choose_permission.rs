@@ -133,8 +133,6 @@ pub fn ChoosePermission(
 				.permissions
 				.iter()
 				.filter_map(|permission| {
-					/// Database::name
-					Permission::from_str(permission.name.as_str());
 					let split_name = permission.name.split("::").collect::<Vec<_>>();
 					let resource_type = split_name.get(0).map(|x| x.to_owned()).unwrap_or_default();
 

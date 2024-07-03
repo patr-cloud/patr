@@ -22,7 +22,7 @@ pub fn ManageDeploymentScaling() -> impl IntoView {
 						</div>
 
 						<div class="flex-col-8 mt-xl px-xl fc-fs-ct">
-							<DoubleInputSlider class="full-width"/>
+							// <DoubleInputSlider class="full-width"/>
 
 							<p class="txt-warning txt-xxs">
 								"Any excess volumes will be removed if the number of instances is reduced."
@@ -50,9 +50,9 @@ pub fn ManageDeploymentScaling() -> impl IntoView {
 						</p>
 
 						<div class="fr-fs-ct ofx-auto py-xxs gap-md">
-							<MachineTypeCard/>
-							<MachineTypeCard/>
-							<MachineTypeCard/>
+							// <MachineTypeCard/>
+							// <MachineTypeCard/>
+							// <MachineTypeCard/>
 						</div>
 					</div>
 				</div>

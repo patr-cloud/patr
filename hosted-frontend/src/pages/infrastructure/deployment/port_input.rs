@@ -1,3 +1,9 @@
+use std::collections::BTreeMap;
+
+use ev::MouseEvent;
+use models::api::workspace::deployment::ExposedPortType;
+use strum::VariantNames;
+
 use crate::prelude::*;
 
 #[component]
@@ -6,15 +12,38 @@ pub fn PortInput(
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
 	/// List of ports already present
-	#[prop(into, optional, default = vec![].into())]
-	ports_list: MaybeSignal<Vec<String>>,
+	#[prop(into, optional, default = BTreeMap::new().into())]
+	ports_list: MaybeSignal<BTreeMap<StringifiedU16, ExposedPortType>>,
 	/// Whether updating, or viewing details.
 	#[prop(into, optional, default = false.into())]
 	is_update_screen: MaybeSignal<bool>,
+	/// On Pressing Delete Button
+	#[prop(into, optional, default = Callback::new(|_| ()))]
+	on_delete: Callback<(MouseEvent, String)>,
+	/// On Pressing Add Button
+	#[prop(into, optional, default = Callback::new(|_| ()))]
+	on_add: Callback<(MouseEvent, String, String)>,
+	/// The Error For Port Input
+	#[prop(into, optional)]
+	error: MaybeSignal<String>,
 ) -> impl IntoView {
 	let outer_div_class = class.with(|cname| format!("flex full-width {}", cname));
 
 	let store_ports = store_value(ports_list.clone());
+	let exposed_port_types = ExposedPortType::VARIANTS
+		.iter()
+		.map(|x| InputDropdownOption {
+			id: x.to_string(),
+			label: x.to_string(),
+			disabled: false,
+		})
+		.collect::<Vec<_>>();
+
+	let port_type = create_rw_signal("".to_string());
+	let port_number = create_rw_signal("".to_string());
+
+	let store_error = store_value(error);
+
 	view! {
 		<div class={outer_div_class}>
 			<div class="flex-col-2 fr-fs-ct mb-auto mt-md">
@@ -38,7 +67,7 @@ pub fn PortInput(
 										if is_update_screen.get() { "2" } else { "5" },
 									)}>
 										<div class="full-width fr-fs-ct px-xl py-sm br-sm bg-secondary-light">
-											<span class="ml-md">{child}</span>
+											<span class="ml-md">{child.0.to_string()}</span>
 										</div>
 									</div>
 
@@ -50,7 +79,7 @@ pub fn PortInput(
 										.to_string()}>
 
 										<div class="full-width fr-fs-ct px-xl py-sm bg-secondary-light br-sm">
-											<span class="px-sm">"HTTP"</span>
+											<span class="px-sm">{child.1.to_string()}</span>
 										</div>
 									</div>
 
@@ -78,10 +107,17 @@ pub fn PortInput(
 													</div>
 												</div>
 											}
-										})}
+										})
+									}
 
 									<div class="flex-col-1 fr-ct-ct pl-sm">
-										<button>
+										<button
+											on:click={
+												move |ev| {
+													on_delete.call((ev, child.0.to_string()))
+												}
+											}
+										>
 											<Icon
 												icon={IconType::Trash2}
 												color={Color::Error}
@@ -95,40 +131,51 @@ pub fn PortInput(
 					</div>
 				</Show>
 
-				<form class="flex full-width">
+				<div class="flex full-width">
 					<div class="flex-col-5 fc-fs-fs pr-lg gap-xxs">
 						<Input
+							value={Signal::derive(move || port_number.get())}
+							on_input={
+								Box::new(move |ev| {
+									ev.prevent_default();
+									port_number.set(event_target_value(&ev));
+								})
+							}
 							r#type={InputType::Number}
 							id="port"
 							class="full-width"
 							placeholder="Enter Port Number"
 						/>
+
+
+						<Show when={move || store_error.with_value(|error| !error.get().clone().is_empty())}>
+							<Alert r#type={AlertType::Error} class="mt-xs">
+								{move || store_error.with_value(|error| error.get().clone())}
+							</Alert>
+						</Show>
 					</div>
 
 					<div class="flex-col-6 fc-fs-fs gap-xxs">
 						<InputDropdown
+							value={port_type}
 							placeholder={"Select Protocol".to_string()}
-							options={vec![
-								InputDropdownOption {
-									id: "1".to_owned(),
-									label: "8080".to_owned(),
-									disabled: false,
-								},
-							]}
+							options={exposed_port_types}
 						/>
 
 					</div>
 
 					<div class="flex-col-1 fr-ct-fs">
-						<Link
-							style_variant={LinkStyleVariant::Contained}
-							class="br-sm p-xs ml-md"
-							should_submit=true
+						<button
+							on:click={move |ev| {
+								on_add.call((ev, port_number.get(), port_type.get()))
+							}}
+							class="btn btn-primary br-sm p-xs ml-md"
+							type="button"
 						>
 							<Icon icon={IconType::Plus} color={Color::Secondary}/>
-						</Link>
+						</button>
 					</div>
-				</form>
+				</div>
 			</div>
 		</div>
 	}

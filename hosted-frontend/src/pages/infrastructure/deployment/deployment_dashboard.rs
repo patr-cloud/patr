@@ -62,7 +62,11 @@ pub fn DeploymentDashboard() -> impl IntoView {
 					/>
 				</div>
 
-				<Link r#type={Variant::Button} style_variant={LinkStyleVariant::Contained}>
+				<Link
+					r#type={Variant::Link}
+					to={"create".to_string()}
+					style_variant={LinkStyleVariant::Contained}
+				>
 					"CREATE DEPLOYMENT"
 					<Icon
 						icon={IconType::Plus}

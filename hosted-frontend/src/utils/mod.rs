@@ -42,4 +42,6 @@ pub mod constants {
 	pub const REFRESH_TOKEN: &str = "refreshToken";
 	/// The name of the cookie that stores the last used workspaceId
 	pub const LAST_USED_WORKSPACE_ID: &str = "lastUsedWorkspaceId";
+	/// The User Agent String
+	pub const USER_AGENT_STRING: &str = "hyper/0.12.2";
 }

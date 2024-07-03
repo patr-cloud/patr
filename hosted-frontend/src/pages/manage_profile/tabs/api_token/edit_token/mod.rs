@@ -125,7 +125,7 @@ pub fn EditApiToken() -> impl IntoView {
 	let token_id = create_rw_signal(params.with(|params| {
 		params
 			.as_ref()
-			.map(|param| param.token_id.clone().unwrap_or_default())
+			.map(|param: &TokenParams| param.token_id.clone().unwrap_or_default())
 			.unwrap_or_default()
 	}));
 

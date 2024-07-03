@@ -10,6 +10,7 @@ pub fn InfrastructureRoutes() -> impl IntoView {
 			<Route path={LoggedInRoute::Database} view={DatabaseDashboard}/>
 
 			<Route path={LoggedInRoute::Deployment} view={Deployment}>
+				<Route path="create" view={CreateDeployment} />
 				<Route path="/:id" view={ManageDeployments}>
 					<Route path="/history" view={ManageDeploymentImageHistory}/>
 					<Route path="/logs" view={ManageDeploymentsLogs}/>
