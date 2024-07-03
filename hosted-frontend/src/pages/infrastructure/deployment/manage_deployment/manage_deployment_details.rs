@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use crate::{pages::*, prelude::*};
 
 #[component]
@@ -50,9 +52,11 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 				</div>
 			</div>
 
-			<PortInput is_update_screen=true ports_list={vec!["8080".to_owned()]}/>
+			<PortInput
+				is_update_screen=true
+			/>
 
-			<EnvInput envs_list={vec!["LINK".to_owned()]}/>
+			<EnvInput envs_list={BTreeMap::new()}/>
 
 			<ConfigMountInput mount_points={vec!["/x/y/path".to_owned()]}/>
 

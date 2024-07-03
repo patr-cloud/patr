@@ -26,29 +26,26 @@ pub fn ProbeInput(
 	class: MaybeSignal<String>,
 	/// The type of the input
 	probe_type: ProbeInputType,
+	/// List of all available Ports
+	#[prop(into, optional, default = vec![].into())]
+	available_ports: MaybeSignal<Vec<u16>>,
+	/// On Select Port
+	#[prop(into, optional, default = Callback::new(|_| ()))]
+	on_select_port: Callback<(String, String)>,
+	/// On Enter Path
+	#[prop(into, optional, default = Callback::new(|_| ()))]
+	on_input_path: Callback<(String, String)>,
 ) -> impl IntoView {
 	let outer_div_class = class.with(|cname| format!("flex full-width {}", cname));
+
+	let probe_port = create_rw_signal("".to_owned());
+	let probe_path = create_rw_signal("".to_owned());
 
 	view! {
 		<div class={outer_div_class}>
 			<div class="flex-col-2 fc-fs-fs mb-auto mt-sm">
 				<div class="fr-fs-fs">
 					<label class="fc-fs-fs">{format!("{} Probe", probe_type.as_str())}</label>
-
-					<ToolTipContainer icon_color={Color::White} tooltip_width=25.>
-						<p class="txt-xxs">
-							"Choose the Port on which your deployment is running and define the
-							Path that needs to be checked by the probe."
-							<a
-								target="_blank"
-								href="https://docs.patr.cloud/features/deployment/#step-3-create-a-deployment"
-								rel="noopener noreferrer"
-								class="txt-xxs txt-primary txt-underline txt-medium"
-							>
-								"Learn more"
-							</a>
-						</p>
-					</ToolTipContainer>
 				</div>
 
 				<small class="txt-xxs txt-grey">
@@ -64,23 +61,44 @@ pub fn ProbeInput(
 
 			<div class="flex-col-10 fr-fs-fs">
 				<div class="flex-col-5 pr-lg">
-					<InputDropdown
-						placeholder={"Enter Probe Path".to_string()}
-						value={"6655".to_owned()}
-						options={vec![
-							InputDropdownOption {
-								id: "1".to_string(),
-								label: "6655".to_owned(),
-								disabled: false,
-							},
-						]}
-					/>
-
+					{
+						move || view! {
+							<InputDropdown
+								placeholder={"Enter Probe Path".to_string()}
+								value={probe_port}
+								// on_select={move |id: String| {
+								// 	on_select_port.call((id.clone(), probe_path.get().clone()));
+								// }}
+								on_select={move |id: String| {
+									logging::log!("{}", id.clone());
+									probe_port.set(id.clone());
+									on_select_port.call((id.clone(), probe_path.get().clone()))
+								}}
+								options={
+									logging::log!("{:?}", available_ports.get());
+									available_ports.get()
+										.iter()
+										.map(|x| InputDropdownOption {
+											id: x.to_string(),
+											label: x.to_string(),
+											disabled: false,
+										})
+										.collect::<Vec<_>>()
+								}
+							/>
+						}
+					}
 				</div>
 
 				<div class="flex-col-6 fc-fs-fs">
 					<Input
 						r#type={InputType::Text}
+						value={Signal::derive(move || probe_path.get())}
+						on_input={Box::new(move |ev| {
+							ev.prevent_default();
+							probe_path.set(event_target_value(&ev));
+							on_input_path.call((probe_port.get().clone(), event_target_value(&ev)));
+						})}
 						class="full-width"
 						placeholder={format!("Enter {} probe path", probe_type.as_str())}
 					/>

@@ -1,16 +1,15 @@
-use models::api::workspace::deployment::ListDeploymentResponse;
+use models::api::workspace::runner::*;
 
 use crate::prelude::*;
 
-#[server(ListDeploymentFn, endpoint = "/infrastructure/deployment/list")]
-pub async fn list_deployments(
+#[server(ListRunnersFn, endpoint = "/runners/list")]
+pub async fn list_runners(
 	workspace_id: Option<String>,
 	access_token: Option<String>,
-) -> Result<ListDeploymentResponse, ServerFnError<ErrorType>> {
+) -> Result<ListRunnersForWorkspaceResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
 	use constants::USER_AGENT_STRING;
-	use models::api::workspace::deployment::*;
 
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
@@ -18,19 +17,19 @@ pub async fn list_deployments(
 	let workspace_id = Uuid::parse_str(workspace_id.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	let api_response = make_api_call::<ListDeploymentRequest>(
+	let api_response = make_api_call::<ListRunnersForWorkspaceRequest>(
 		ApiRequest::builder()
-			.path(ListDeploymentPath { workspace_id })
+			.path(ListRunnersForWorkspacePath { workspace_id })
 			.query(Paginated {
 				data: (),
 				page: 0,
 				count: 10,
 			})
-			.headers(ListDeploymentRequestHeaders {
+			.headers(ListRunnersForWorkspaceRequestHeaders {
 				authorization: access_token,
 				user_agent: UserAgent::from_static(USER_AGENT_STRING),
 			})
-			.body(ListDeploymentRequest)
+			.body(ListRunnersForWorkspaceRequest)
 			.build(),
 	)
 	.await;

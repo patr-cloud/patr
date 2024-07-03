@@ -17,6 +17,9 @@ pub fn InputDropdown(
 	/// The List of options to display
 	#[prop(into, optional, default = vec![].into())]
 	options: MaybeSignal<Vec<InputDropdownOption>>,
+	/// On Selecting an Input
+	#[prop(into, optional, default = Callback::new(|_| {}))]
+	on_select: Callback<String>,
 	/// Additional class names to apply to the outer div, if any.
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
@@ -65,7 +68,7 @@ pub fn InputDropdown(
 		)
 	};
 
-	let handle_click = move |_| {
+	let handle_toggle_options = move |_| {
 		if !disabled.get() && !loading.get() {
 			show_dropdown.update(|val| *val = !*val);
 		}
@@ -92,13 +95,15 @@ pub fn InputDropdown(
 	let handle_click_option = move |state: &InputDropdownOption| {
 		if state.disabled {
 			show_dropdown.set(false);
+			return;
 		}
 
 		value.set(state.id.clone());
+		on_select.call(state.id.clone());
 	};
 
 	view! {
-		<div on:click={handle_click} class={outer_div_class}>
+		<div on:click={handle_toggle_options} class={outer_div_class}>
 			<Show
 				when={move || enable_input.get()}
 				fallback={move || view! {

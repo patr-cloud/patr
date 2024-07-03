@@ -73,7 +73,6 @@ pub fn PermissionCard(
 			api_token.update(|token| {
 				token.as_mut().and_then(|token| {
 					let permission_exists = token.data.permissions.contains_key(&workspace_id);
-					// perm.insert(workspace_id, WorkspacePermission::SuperAdmin);
 
 					if permission_exists {
 						let _ = token.data.permissions.remove(&workspace_id);
