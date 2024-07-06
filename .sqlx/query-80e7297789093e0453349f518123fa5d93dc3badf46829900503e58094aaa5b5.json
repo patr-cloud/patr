@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE deployment_volume SET volume_size = COALESCE($1, volume_size), name = COALESCE($2, name) WHERE id = $3;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "80e7297789093e0453349f518123fa5d93dc3badf46829900503e58094aaa5b5"
+}

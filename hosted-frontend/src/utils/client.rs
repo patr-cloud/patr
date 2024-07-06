@@ -70,11 +70,3 @@ where
 		.oneshot((request, socket_addr.ip()))
 		.await
 }
-
-async fn make_api_query<E>(req: ApiRequest<E>) -> Result<AppResponse<E>, ErrorType>
-where
-	E: ApiEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-{
-	todo!()
-}
