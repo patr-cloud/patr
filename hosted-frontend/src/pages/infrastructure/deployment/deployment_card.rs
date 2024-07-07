@@ -56,7 +56,10 @@ pub fn DeploymentCard(
 					{deployment.get().name.clone()}
 				</h4>
 
-				// <StatusBadge status={deployment.get().status}/>
+				<StatusBadge status={
+					let deployment = deployment.clone();
+					Signal::derive(move || Status::from_deployment_status(deployment.get().status.clone()))
+				}/>
 			</div>
 
 			<div class="fr-fs-fs txt-white full-width f-wrap my-auto">

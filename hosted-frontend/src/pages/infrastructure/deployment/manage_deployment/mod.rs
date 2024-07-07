@@ -1,72 +1,93 @@
-use crate::prelude::*;
-
-#[component]
-pub fn ManageDeployments() -> impl IntoView {
-	view! {
-		<ContainerHead>
-			<div class="fr-sb-ct full-width">
-				<div class="fc-fs-fs">
-					<PageTitleContainer>
-						<PageTitle icon_position={PageTitleIconPosition::End}>
-							"Infrastructure"
-						</PageTitle>
-						<PageTitle
-							to="deployment"
-							icon_position={PageTitleIconPosition::End}
-							variant={PageTitleVariant::SubHeading}
-						>
-							"Deployment"
-						</PageTitle>
-						<PageTitle variant={PageTitleVariant::Text}>"Deployment Name"</PageTitle>
-					</PageTitleContainer>
-				</div>
-			</div>
-
-			<Tabs tab_items={vec![
-				TabItem {
-					name: "Details".to_owned(),
-					path: "".to_owned(),
-				},
-				TabItem {
-					name: "Scaling".to_owned(),
-					path: "scaling".to_owned(),
-				},
-				TabItem {
-					name: "URLs".to_owned(),
-					path: "urls".to_owned(),
-				},
-				TabItem {
-					name: "Image History".to_owned(),
-					path: "history".to_owned(),
-				},
-				TabItem {
-					name: "Logs".to_owned(),
-					path: "logs".to_owned(),
-				},
-			]}/>
-
-		</ContainerHead>
-
-		<ContainerBody class="gap-md">
-			<Outlet/>
-		</ContainerBody>
-	}
-}
-
+mod details;
+mod head;
+mod image_history;
 mod image_history_card;
 mod image_tag;
 mod logs;
-mod manage_deployment_details;
-mod manage_deployment_image_history;
-mod manage_deployment_scaling;
-mod manage_deployment_urls;
+mod scaling;
+mod urls;
+
+use models::api::workspace::deployment::*;
+use utils::FromToStringCodec;
 
 pub use self::{
+	details::*,
+	head::*,
+	image_history::*,
 	image_history_card::*,
 	image_tag::*,
 	logs::*,
-	manage_deployment_details::*,
-	manage_deployment_image_history::*,
-	manage_deployment_scaling::*,
-	manage_deployment_urls::*,
+	scaling::*,
+	urls::*,
 };
+use crate::prelude::*;
+
+#[derive(Debug, Clone)]
+pub struct DeploymentInfoContext(RwSignal<Option<GetDeploymentInfoResponse>>);
+
+#[derive(Params, PartialEq)]
+pub struct DeploymentParams {
+	deployment_id: Option<String>,
+}
+
+#[component]
+pub fn ManageDeployments() -> impl IntoView {
+	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
+	let (current_workspace_id, _) =
+		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+
+	let params = use_params::<DeploymentParams>();
+	let deployment_id = Signal::derive(move || {
+		params.with(|params| {
+			params
+				.as_ref()
+				.map(|param| param.deployment_id.clone())
+				.unwrap_or_default()
+		})
+	});
+
+	let deployment_info = create_resource(
+		move || {
+			(
+				access_token.get(),
+				deployment_id.get(),
+				current_workspace_id.get(),
+			)
+		},
+		move |(access_token, deployment_id, workspace_id)| async move {
+			get_deployment(access_token, deployment_id, workspace_id).await
+		},
+	);
+
+	let deployment_info_signal = create_rw_signal::<Option<GetDeploymentInfoResponse>>(None);
+	provide_context(DeploymentInfoContext(deployment_info_signal));
+
+	view! {
+		<Transition>
+			{
+				move || match deployment_info.get() {
+					Some(info) => {
+						match info {
+							Ok(data) => {
+								let deployment = data.clone();
+								logging::log!("{:#?}", deployment);
+								deployment_info_signal.set(Some(deployment.clone()));
+								view! {
+									<ManageDeploymentHeader />
+									<ContainerBody class="gap-md">
+										<Outlet/>
+									</ContainerBody>
+								}.into_view()
+							},
+							Err(_)  => view! {
+								<div>"Error Fetching Resource"</div>
+							}.into_view(),
+						}
+					},
+					None => view! {<div>"Loading"</div>}.into_view()
+				}
+			}
+		</Transition>
+
+	}
+}
