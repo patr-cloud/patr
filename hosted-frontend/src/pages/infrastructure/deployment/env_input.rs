@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, rc::Rc};
 
 use ev::MouseEvent;
 use models::api::workspace::deployment::EnvironmentVariableValue;
@@ -108,14 +108,16 @@ pub fn EnvInput(
 					</div>
 
 					<div class="flex-col-1 fr-ct-fs">
-						<button
-							on:click={move |ev| {
-								on_add.call((ev, env_name.get(), env_value.get()))
-							}}
-							class="btn btn-primary br-sm p-xs ml-md"
+						<Link
+							style_variant={LinkStyleVariant::Contained}
+							class="br-sm p-xs ml-md"
+							should_submit=false
+							on_click={Rc::new(move |ev| {
+								on_add.call((ev.clone(), env_name.get(), env_value.get()))
+							})}
 						>
 							<Icon icon={IconType::Plus} color={Color::Secondary}/>
-						</button>
+						</Link>
 					</div>
 				</div>
 			</div>

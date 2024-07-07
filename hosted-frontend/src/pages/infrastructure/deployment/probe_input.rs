@@ -1,3 +1,5 @@
+use models::api::workspace::deployment::DeploymentProbe;
+
 use crate::prelude::*;
 
 /// The type of the probe input.
@@ -35,11 +37,26 @@ pub fn ProbeInput(
 	/// On Enter Path
 	#[prop(into, optional, default = Callback::new(|_| ()))]
 	on_input_path: Callback<(String, String)>,
+	/// Current Probe Value
+	#[prop(into, optional, default = None.into())]
+	probe_value: MaybeSignal<Option<DeploymentProbe>>,
 ) -> impl IntoView {
 	let outer_div_class = class.with(|cname| format!("flex full-width {}", cname));
 
-	let probe_port = create_rw_signal("".to_owned());
-	let probe_path = create_rw_signal("".to_owned());
+	let probe_port = create_rw_signal(
+		if let Some(probe_value) = probe_value.get_untracked() {
+			probe_value.port.to_string()
+		} else {
+			"".to_owned()
+		},
+	);
+	let probe_path = create_rw_signal(
+		if let Some(probe_value) = probe_value.get_untracked() {
+			probe_value.path
+		} else {
+			"".to_owned()
+		},
+	);
 
 	view! {
 		<div class={outer_div_class}>
@@ -70,12 +87,10 @@ pub fn ProbeInput(
 								// 	on_select_port.call((id.clone(), probe_path.get().clone()));
 								// }}
 								on_select={move |id: String| {
-									logging::log!("{}", id.clone());
 									probe_port.set(id.clone());
 									on_select_port.call((id.clone(), probe_path.get().clone()))
 								}}
 								options={
-									logging::log!("{:?}", available_ports.get());
 									available_ports.get()
 										.iter()
 										.map(|x| InputDropdownOption {

@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, rc::Rc};
 
 use ev::MouseEvent;
 use models::api::workspace::deployment::DeploymentVolume;
@@ -110,14 +110,16 @@ pub fn VolumeInput(
 					</div>
 
 					<div class="flex-col-1 fr-ct-fs">
-						<button
-							on:click={move |ev| {
-								on_add.call((ev, vol_path.get(), vol_size.get()))
-							}}
-							class="btn btn-primary br-sm p-xs ml-md"
+						<Link
+							style_variant={LinkStyleVariant::Contained}
+							class="br-sm p-xs ml-md"
+							should_submit=false
+							on_click={Rc::new(move |ev| {
+								on_add.call((ev.clone(), vol_path.get(), vol_size.get()))
+							})}
 						>
 							<Icon icon={IconType::Plus} color={Color::Secondary}/>
-						</button>
+						</Link>
 					</div>
 				</div>
 			</div>
