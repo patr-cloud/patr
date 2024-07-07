@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, rc::Rc};
 
 use ev::MouseEvent;
 use models::api::workspace::deployment::ExposedPortType;
@@ -165,15 +165,16 @@ pub fn PortInput(
 					</div>
 
 					<div class="flex-col-1 fr-ct-fs">
-						<button
-							on:click={move |ev| {
-								on_add.call((ev, port_number.get(), port_type.get()))
-							}}
-							class="btn btn-primary br-sm p-xs ml-md"
-							type="button"
+						<Link
+							style_variant={LinkStyleVariant::Contained}
+							class="br-sm p-xs ml-md"
+							should_submit=false
+							on_click={Rc::new(move |ev| {
+								on_add.call((ev.clone(), port_number.get(), port_type.get()))
+							})}
 						>
 							<Icon icon={IconType::Plus} color={Color::Secondary}/>
-						</button>
+						</Link>
 					</div>
 				</div>
 			</div>

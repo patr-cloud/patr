@@ -43,8 +43,6 @@ pub fn DeploymentDashboard() -> impl IntoView {
 		},
 	);
 
-	create_effect(move |_| logging::log!("{:#?}", deployment_list.get()));
-
 	view! {
 		<ContainerHead>
 			<div class="fr-sb-ct full-width">
