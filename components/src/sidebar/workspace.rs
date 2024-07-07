@@ -1,3 +1,4 @@
+use leptos_router::use_navigate;
 use models::api::{workspace::Workspace, WithId};
 
 use crate::imports::*;
@@ -18,6 +19,7 @@ pub fn WorkspaceCard(
 	set_workspace_id: WriteSignal<Option<String>>,
 ) -> impl IntoView {
 	let show_workspace_switcher = create_rw_signal(false);
+	let navigate = use_navigate();
 
 	view! {
 		<div
@@ -28,19 +30,28 @@ pub fn WorkspaceCard(
 		>
 			<div class="fc-fs-fs full-width">
 				<p class="txt-sm txt-white w-20 txt-of-ellipsis of-hidden">
-					"{workspace.name}"
+					{move || match current_workspace.get() {
+						Some(workspace) => {
+							format!("{}", workspace.name).into_view()
+						},
+						None => "Select A Workspace".into_view()
+					}}
 				</p>
 			</div>
 
 			<Link
-				r#type={Variant::Link}
+				r#type={Variant::Button}
 				to="/workspace"
 			>
 				<Icon icon=IconType::Settings color=Color::Grey />
 			</Link>
 
 			<Show when=move || show_workspace_switcher.get()>
-				<WorkspaceSwitcher set_workspace_id={set_workspace_id.clone()} workspaces={workspaces.clone()} />
+				<WorkspaceSwitcher
+					set_workspace_id={set_workspace_id.clone()}
+					workspaces={workspaces.clone()}
+					show_workspace_switcher={show_workspace_switcher}
+				/>
 			</Show>
 		</div>
 	}

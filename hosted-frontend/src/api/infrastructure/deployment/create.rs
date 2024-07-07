@@ -4,7 +4,7 @@ use models::api::workspace::deployment::*;
 
 use crate::prelude::*;
 
-#[server(CreateDeploymentFn, endpoint = "")]
+#[server(CreateDeploymentFn, endpoint = "/infrastructure/deployment/create")]
 pub async fn create_deployment(
 	workspace_id: Option<String>,
 	access_token: Option<String>,
@@ -20,8 +20,8 @@ pub async fn create_deployment(
 	startup_probe: Option<(u16, String)>,
 	liveness_probe: Option<(u16, String)>,
 	machine_type: String,
-	environment_variables: Vec<(String, EnvironmentVariableValue)>,
-	volumes: Vec<(Uuid, DeploymentVolume)>,
+	#[server(default)] environment_variables: Vec<(String, EnvironmentVariableValue)>,
+	#[server(default)] volumes: Vec<(Uuid, DeploymentVolume)>,
 	ports: Vec<(StringifiedU16, ExposedPortType)>,
 ) -> Result<CreateDeploymentResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
@@ -85,6 +85,10 @@ pub async fn create_deployment(
 			.build(),
 	)
 	.await;
+
+	if api_response.is_ok() {
+		leptos_axum::redirect("/deployment");
+	}
 
 	api_response
 		.map(|res| res.body)

@@ -88,14 +88,15 @@ pub fn ManageWorkspaceSettingsTab() -> impl IntoView {
 		list_user_workspace(value).await
 	});
 
-	let current_workspace_id =
+	let current_workspace_id = Signal::derive(move || {
 		match current_workspace_id.with(|id| id.clone().map(|id| Uuid::parse_str(id.as_str()))) {
 			Some(Ok(id)) => Some(id),
 			_ => None,
-		};
+		}
+	});
 
 	let current_workspace = Signal::derive(move || {
-		if let Some(workspace_id) = current_workspace_id {
+		if let Some(workspace_id) = current_workspace_id.get() {
 			workspace_list
 				.get()
 				.map(|list| {

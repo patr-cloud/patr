@@ -11,6 +11,9 @@ pub fn WorkspaceSwitcher(
 	/// Set the Current Workspace ID
 	#[prop(into)]
 	set_workspace_id: WriteSignal<Option<String>>,
+	/// Show Switcher Setter
+	#[prop(into)]
+	show_workspace_switcher: RwSignal<bool>,
 ) -> impl IntoView {
 	let stored_workspaces = store_value(workspaces);
 
@@ -28,7 +31,11 @@ pub fn WorkspaceSwitcher(
 							key={|state| state.id}
 							let:child
 						>
-							<WorkspaceItem set_workspace_id={set_workspace_id.clone()} workspace={child}/>
+							<WorkspaceItem
+								show_workspace_switcher={show_workspace_switcher}
+								set_workspace_id={set_workspace_id.clone()}
+								workspace={child}
+							/>
 						</For>
 					</ul>
 				</div>

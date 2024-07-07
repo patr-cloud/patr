@@ -1,4 +1,4 @@
-use models::api::workspace::deployment::ListDeploymentResponse;
+use models::api::workspace::deployment::*;
 
 use crate::prelude::*;
 
@@ -10,7 +10,6 @@ pub async fn list_deployments(
 	use std::str::FromStr;
 
 	use constants::USER_AGENT_STRING;
-	use models::api::workspace::deployment::*;
 
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;

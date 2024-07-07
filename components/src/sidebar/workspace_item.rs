@@ -10,6 +10,9 @@ pub fn WorkspaceItem(
 	/// Set the Current Workspace ID
 	#[prop(into)]
 	set_workspace_id: WriteSignal<Option<String>>,
+	/// Show Switcher Setter
+	#[prop(into)]
+	show_workspace_switcher: RwSignal<bool>,
 ) -> impl IntoView {
 	view! {
 		<li class="full-width py-xxs"
@@ -17,7 +20,8 @@ pub fn WorkspaceItem(
 				let workspace = workspace.clone();
 				move |_| {
 					logging::log!("{:#?}", workspace.get());
-					set_workspace_id.set(Some(workspace.get().id.to_string()))
+					set_workspace_id.set(Some(workspace.get().id.to_string()));
+					show_workspace_switcher.set(false);
 				}
 			}
 		>
