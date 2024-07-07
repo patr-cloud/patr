@@ -9,6 +9,8 @@ pub async fn get_api_token(
 ) -> Result<GetApiTokenInfoResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
+	use constants::USER_AGENT_STRING;
+
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
@@ -21,7 +23,7 @@ pub async fn get_api_token(
 			.query(())
 			.headers(GetApiTokenInfoRequestHeaders {
 				authorization: access_token,
-				user_agent: UserAgent::from_static("hyper/0.12.2"),
+				user_agent: UserAgent::from_static(USER_AGENT_STRING),
 			})
 			.body(GetApiTokenInfoRequest)
 			.build(),
