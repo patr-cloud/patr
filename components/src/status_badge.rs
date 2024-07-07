@@ -1,3 +1,5 @@
+use models::api::workspace::deployment::DeploymentStatus;
+
 use crate::imports::*;
 
 /// The Status of the component
@@ -20,13 +22,28 @@ pub enum Status {
 	Running,
 	/// Indicates that the component is live
 	Live,
+	/// Indicates that the resource is unreachable
+	Unreachable,
 }
 
 impl Status {
+	/// Convert from deployment status to Status
+	pub const fn from_deployment_status(deployment_status: DeploymentStatus) -> Self {
+		match deployment_status {
+			DeploymentStatus::Created => Self::Created,
+			DeploymentStatus::Deploying => Self::Deploying,
+			DeploymentStatus::Errored => Self::Errored,
+			DeploymentStatus::Running => Self::Running,
+			DeploymentStatus::Stopped => Self::Stopped,
+			DeploymentStatus::Unreachable => Self::Unreachable,
+		}
+	}
+
 	/// Gets the css class name color of the status badge
 	pub const fn get_status_color(self) -> &'static str {
 		match self {
 			Self::Deleted => "bg-error",
+			Self::Unreachable => "bg-error",
 			Self::Errored => "bg-error",
 			Self::Created => "bg-info",
 			Self::Pushed => "bg-info",
@@ -41,6 +58,7 @@ impl Status {
 	pub const fn get_status_text(self) -> &'static str {
 		match self {
 			Self::Deleted => "deleted",
+			Self::Unreachable => "error",
 			Self::Errored => "error",
 			Self::Created => "created",
 			Self::Pushed => "pushed",
