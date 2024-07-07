@@ -82,6 +82,12 @@ pub struct AppConfig {
 	#[cfg(not(debug_assertions))]
 	/// The configuration for IpInfo to get IpAddress details
 	pub ipinfo: IpInfoConfig,
+	/// The loki configuration to use for logs
+	#[cfg(debug_assertions)]
+	pub loki: Option<LokiConfig>,
+	#[cfg(not(debug_assertions))]
+	/// The loki configuration to use for logs
+	pub loki: LokiConfig,
 }
 
 /// The environment the application is running in
@@ -201,4 +207,16 @@ pub struct OpenTelemetryConfig {
 pub struct IpInfoConfig {
 	/// The token for connecting to ipinfo.io
 	pub token: String,
+}
+
+/// The configuration for Loki to use for logs
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LokiConfig {
+	/// The endpoint to send logs to
+	pub endpoint: String,
+	/// The username to use to connect to the Loki server
+	pub username: String,
+	/// The password to use to connect to the Loki server
+	pub password: String,
 }
