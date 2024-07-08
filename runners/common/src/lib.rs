@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs, clippy::all)]
+#![feature(never_type)]
 
 //! Common utilities for the runner. This library contains all the things you
 //! will need to make a runner. All it needs are the implementations of how the
@@ -13,11 +14,15 @@ mod config;
 /// to run the resources.
 mod executor;
 
-use std::{marker::PhantomData, str::FromStr, time::Duration};
+use std::{collections::HashMap, str::FromStr, time::Duration};
 
-use futures::StreamExt;
-use models::{api::workspace::runner::*, utils::WebSocketUpgrade};
+use futures::TryStreamExt;
+use models::{
+	api::workspace::{deployment::*, runner::*},
+	utils::WebSocketUpgrade,
+};
 use prelude::*;
+use tokio::time;
 use tracing::{level_filters::LevelFilter, Dispatch, Level};
 use tracing_subscriber::{
 	fmt::{format::FmtSpan, Layer as FmtLayer},
@@ -28,6 +33,7 @@ use tracing_subscriber::{
 /// The prelude module contains all the things you need to import to get
 /// started with the runner.
 pub mod prelude {
+	pub use macros::{query, version};
 	pub use models::prelude::*;
 
 	pub use crate::{config::*, executor::RunnerExecutor};
@@ -77,6 +83,9 @@ where
 	/// ID, the API token, the environment, and any additional settings that the
 	/// runner needs.
 	settings: RunnerSettings<E::Settings<'de>>,
+	/// The state of the runner. This is used to store the list of deployments,
+	/// databases, etc. that the runner is running.
+	deployments: HashMap<Uuid, (Deployment, DeploymentRunningDetails)>,
 }
 
 impl<E> Runner<'_, E>
@@ -120,55 +129,117 @@ where
 			.await
 			.expect("unable to connect to the database");
 
+		let deployments = HashMap::new();
+
 		Self {
 			executor,
 			database,
 			settings,
+			deployments,
 		}
 	}
 
 	/// Run the runner. This function will start the runner and run the
 	/// resources that the runner is responsible for. This function will run
 	/// forever until the runner is stopped.
-	pub async fn run(self) {
-		let authorization =
-			BearerToken::from_str(&self.settings.api_token).expect("Failed to parse Bearer token");
-		let user_agent = UserAgent::from_str(&format!("TODO")).expect("Failed to parse User-Agent");
+	pub async fn run(mut self) -> Result<!, ErrorType> {
+		let authorization = BearerToken::from_str(&self.settings.api_token)?;
+		let user_agent = UserAgent::from_str(concat!(
+			env!("CARGO_PKG_NAME"),
+			"/",
+			env!("CARGO_PKG_VERSION"),
+		))?;
+		let workspace_id = self.settings.workspace_id;
+		let runner_id = self.settings.runner_id;
 
 		loop {
-			client::stream_request(
+			let Ok(stream) = client::stream_request(
 				ApiRequest::<StreamRunnerDataForWorkspaceRequest>::builder()
 					.path(StreamRunnerDataForWorkspacePath {
-						workspace_id: self.settings.workspace_id,
-						runner_id: self.settings.runner_id,
+						workspace_id,
+						runner_id,
 					})
 					.headers(StreamRunnerDataForWorkspaceRequestHeaders {
-						authorization,
-						user_agent,
+						authorization: authorization.clone(),
+						user_agent: user_agent.clone(),
 					})
 					.query(())
-					.body(WebSocketUpgrade(PhantomData))
+					.body(WebSocketUpgrade::new())
 					.build(),
 			)
 			.await
-			.map_err(|err| err.body)
-			.expect("Cannot stream request")
-			.for_each(|response| async move {
-				use StreamRunnerDataForWorkspaceServerMsg::*;
-				match response {
-					DeploymentCreated {
-						deployment,
-						running_details,
-					} => todo!(),
-					DeploymentUpdated {
-						deployment,
-						running_details,
-					} => todo!(),
-					DeploymentDeleted { id } => todo!(),
-				}
+			.inspect_err(|err| {
+				error!("Failed to connect to the server: {:?}", err);
+				error!("Retrying in 5 second");
 			})
-			.await;
+			.map_err(|err| err.body) else {
+				time::sleep(Duration::from_secs(5)).await;
+				continue;
+			};
+
+			let Ok(()) = stream
+				.try_for_each(|response| async {
+					use StreamRunnerDataForWorkspaceServerMsg::*;
+					match response {
+						DeploymentCreated {
+							deployment,
+							running_details,
+						} => self.create_deployment(deployment, running_details).await,
+						DeploymentUpdated {
+							deployment,
+							running_details,
+						} => self.update_deployment(deployment, running_details).await,
+						DeploymentDeleted { id } => self.delete_deployment(id).await,
+					}
+				})
+				.await
+				.inspect_err(|err| {
+					error!("Failed to connect to the server: {:?}", err);
+					error!("Retrying in 1 second");
+				})
+			else {
+				time::sleep(Duration::from_secs(1)).await;
+				continue;
+			};
 		}
+	}
+
+	/// Create a new deployment in this runner
+	async fn create_deployment(
+		&mut self,
+		deployment: WithId<Deployment>,
+		running_details: DeploymentRunningDetails,
+	) -> Result<(), ErrorType> {
+		self.deployments.insert(
+			deployment.id,
+			(deployment.data.clone(), running_details.clone()),
+		);
+		self.executor
+			.create_deployment(deployment, running_details)
+			.await?;
+		Ok(())
+	}
+
+	/// Update a deployment in this runner
+	async fn update_deployment(
+		&mut self,
+		deployment: WithId<Deployment>,
+		running_details: DeploymentRunningDetails,
+	) -> Result<(), ErrorType> {
+		self.deployments
+			.entry(deployment.id)
+			.or_insert((deployment.data.clone(), running_details.clone()));
+		self.executor
+			.update_deployment(deployment, running_details)
+			.await?;
+		Ok(())
+	}
+
+	/// Delete a deployment in this runner
+	async fn delete_deployment(&mut self, id: Uuid) -> Result<(), ErrorType> {
+		self.deployments.remove(&id);
+		self.executor.delete_deployment(id).await?;
+		Ok(())
 	}
 }
 

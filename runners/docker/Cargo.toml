@@ -8,6 +8,7 @@ version.workspace = true
 
 [dependencies]
 bollard = { workspace = true, features = ["default"] }
+common = { workspace = true }
 config = { workspace = true, features = ["default"] }
 futures = { workspace = true, features = ["default"] }
 http = { workspace = true, features = ["default"] }

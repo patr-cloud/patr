@@ -43,6 +43,14 @@ where
 	}
 }
 
+#[cfg(not(feature = "axum"))]
+impl<ServerMsg, ClientMsg> WebSocketUpgrade<ServerMsg, ClientMsg> {
+	/// Create a new `WebSocketUpgrade` instance.
+	pub fn new() -> Self {
+		Self(std::marker::PhantomData)
+	}
+}
+
 impl<ServerMsg, ClientMsg> Preprocessable for WebSocketUpgrade<ServerMsg, ClientMsg> {
 	type Processed = Self;
 
