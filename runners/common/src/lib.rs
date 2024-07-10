@@ -142,7 +142,7 @@ where
 	/// Run the runner. This function will start the runner and run the
 	/// resources that the runner is responsible for. This function will run
 	/// forever until the runner is stopped.
-	pub async fn run(mut self) -> Result<!, ErrorType> {
+	pub async fn run(mut self) -> Result<(), ErrorType> {
 		let authorization = BearerToken::from_str(&self.settings.api_token)?;
 		let user_agent = UserAgent::from_str(concat!(
 			env!("CARGO_PKG_NAME"),
@@ -152,55 +152,63 @@ where
 		let workspace_id = self.settings.workspace_id;
 		let runner_id = self.settings.runner_id;
 
-		loop {
-			let Ok(stream) = client::stream_request(
-				ApiRequest::<StreamRunnerDataForWorkspaceRequest>::builder()
-					.path(StreamRunnerDataForWorkspacePath {
-						workspace_id,
-						runner_id,
+		tokio::select! {
+			_ = async {
+				loop {
+					let Ok(stream) = client::stream_request(
+						ApiRequest::<StreamRunnerDataForWorkspaceRequest>::builder()
+							.path(StreamRunnerDataForWorkspacePath {
+								workspace_id,
+								runner_id,
+							})
+							.headers(StreamRunnerDataForWorkspaceRequestHeaders {
+								authorization: authorization.clone(),
+								user_agent: user_agent.clone(),
+							})
+							.query(())
+							.body(WebSocketUpgrade::new())
+							.build(),
+					)
+					.await
+					.inspect_err(|err| {
+						error!("Failed to connect to the server: {:?}", err);
+						error!("Retrying in 5 second");
 					})
-					.headers(StreamRunnerDataForWorkspaceRequestHeaders {
-						authorization: authorization.clone(),
-						user_agent: user_agent.clone(),
-					})
-					.query(())
-					.body(WebSocketUpgrade::new())
-					.build(),
-			)
-			.await
-			.inspect_err(|err| {
-				error!("Failed to connect to the server: {:?}", err);
-				error!("Retrying in 5 second");
-			})
-			.map_err(|err| err.body) else {
-				time::sleep(Duration::from_secs(5)).await;
-				continue;
-			};
+					.map_err(|err| err.body) else {
+						time::sleep(Duration::from_secs(5)).await;
+						continue;
+					};
 
-			let Ok(()) = stream
-				.try_for_each(|response| async {
-					use StreamRunnerDataForWorkspaceServerMsg::*;
-					match response {
-						DeploymentCreated {
-							deployment,
-							running_details,
-						} => self.create_deployment(deployment, running_details).await,
-						DeploymentUpdated {
-							deployment,
-							running_details,
-						} => self.update_deployment(deployment, running_details).await,
-						DeploymentDeleted { id } => self.delete_deployment(id).await,
-					}
-				})
-				.await
-				.inspect_err(|err| {
-					error!("Failed to connect to the server: {:?}", err);
-					error!("Retrying in 1 second");
-				})
-			else {
-				time::sleep(Duration::from_secs(1)).await;
-				continue;
-			};
+					let Ok(()) = stream
+						.try_for_each(|response| async {
+							use StreamRunnerDataForWorkspaceServerMsg::*;
+							match response {
+								DeploymentCreated {
+									deployment,
+									running_details,
+								} => self.create_deployment(deployment, running_details).await,
+								DeploymentUpdated {
+									deployment,
+									running_details,
+								} => self.update_deployment(deployment, running_details).await,
+								DeploymentDeleted { id } => self.delete_deployment(id).await,
+							}
+						})
+						.await
+						.inspect_err(|err| {
+							error!("Failed to connect to the server: {:?}", err);
+							error!("Retrying in 1 second");
+						})
+					else {
+						time::sleep(Duration::from_secs(1)).await;
+						continue;
+					};
+				}
+			} => Ok(()),
+			_ = exit_signal() => {
+				tracing::info!("Received SIGINT, shutting down");
+				Ok(())
+			}
 		}
 	}
 
