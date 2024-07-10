@@ -2,7 +2,7 @@ use models::api::workspace::deployment::*;
 
 use crate::prelude::*;
 
-#[server(DeleteDeploymentFn, endpoint = "/infrastructure/deployment/get")]
+#[server(DeleteDeploymentFn, endpoint = "/infrastructure/deployment/delete")]
 pub async fn delete_deployment(
 	access_token: Option<String>,
 	deployment_id: Option<String>,

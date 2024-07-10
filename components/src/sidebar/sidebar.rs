@@ -67,7 +67,7 @@ pub fn Sidebar(
 		},
 		LinkItem {
 			title: "Profile".to_owned(),
-			path: "profile".to_owned(),
+			path: "/user".to_owned(),
 			icon_src: "/images/sidebar/workspace.svg".to_owned(),
 			subtitle: None,
 			items: None,
