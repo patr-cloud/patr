@@ -4,6 +4,7 @@ mod image_history;
 mod image_history_card;
 mod image_tag;
 mod logs;
+mod monitor;
 mod scaling;
 mod urls;
 
@@ -17,6 +18,7 @@ pub use self::{
 	image_history_card::*,
 	image_tag::*,
 	logs::*,
+	monitor::*,
 	scaling::*,
 	urls::*,
 };

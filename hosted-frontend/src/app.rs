@@ -54,7 +54,17 @@ fn AppOutlet() -> impl IntoView {
 	let current_workspace_id = Signal::derive(move || {
 		match current_workspace_id.with(|id| id.clone().map(|id| Uuid::parse_str(id.as_str()))) {
 			Some(Ok(id)) => Some(id),
-			_ => None,
+			_ => {
+				let first_id = workspace_list.get().and_then(|list| {
+					list.ok().and_then(|x| {
+						let x = x.workspaces.first().and_then(|x| Some(x.id));
+						x
+					})
+				});
+				set_current_workspace.set(first_id.map(|x| x.to_string()));
+
+				first_id
+			}
 		}
 	});
 

@@ -61,6 +61,10 @@ pub fn StartStopButton() -> impl IntoView {
 					on_click_start_stop(ev);
 				})}
 				style_variant={LinkStyleVariant::Contained}
+				disabled={match deployment_info.deployment.status {
+						DeploymentStatus::Running | DeploymentStatus::Created | DeploymentStatus::Stopped => false,
+						_ => true,
+				}}
 			>
 				<Icon
 					icon={
@@ -78,7 +82,7 @@ pub fn StartStopButton() -> impl IntoView {
 					match status {
 						Status::Running => "STOP",
 						Status::Created | Status::Stopped => "START",
-						_ => "",
+						_ => status.get_status_text(),
 					}
 				}
 			</Link>
@@ -144,6 +148,10 @@ pub fn ManageDeploymentHeader() -> impl IntoView {
 				TabItem {
 					name: "Details".to_owned(),
 					path: "".to_owned(),
+				},
+				TabItem {
+					name: "Monitoring".to_owned(),
+					path: "monitor".to_owned(),
 				},
 				TabItem {
 					name: "Scaling".to_owned(),

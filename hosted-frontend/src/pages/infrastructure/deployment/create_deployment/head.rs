@@ -11,7 +11,7 @@ pub fn CreateDeploymentHead() -> impl IntoView {
 							"Infrastructure"
 						</PageTitle>
 						<PageTitle
-							to="deployment"
+							to="/deployment"
 							icon_position={PageTitleIconPosition::End}
 							variant={PageTitleVariant::SubHeading}
 						>

@@ -1,13 +1,16 @@
-use models::api::workspace::deployment::*;
+use models::api::workspace::deployment::deploy_history::*;
 
 use crate::prelude::*;
 
-#[server(StartDeploymentFn, endpoint = "/infrastructure/deployment/start")]
-pub async fn start_deployment(
+#[server(
+	DeploymentImageHistoryFn,
+	endpoint = "/infrastructure/deployment/image-history"
+)]
+pub async fn get_deployment_image_history(
 	access_token: Option<String>,
 	deployment_id: Option<String>,
 	workspace_id: Option<String>,
-) -> Result<StartDeploymentResponse, ServerFnError<ErrorType>> {
+) -> Result<ListDeploymentDeployHistoryResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
 	use constants::USER_AGENT_STRING;
@@ -21,18 +24,18 @@ pub async fn start_deployment(
 	let deployment_id = Uuid::parse_str(deployment_id.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	let api_response = make_api_call::<StartDeploymentRequest>(
+	let api_response = make_api_call::<ListDeploymentDeployHistoryRequest>(
 		ApiRequest::builder()
-			.path(StartDeploymentPath {
+			.path(ListDeploymentDeployHistoryPath {
 				deployment_id,
 				workspace_id,
 			})
-			.query(())
-			.headers(StartDeploymentRequestHeaders {
+			.query(Paginated::default())
+			.headers(ListDeploymentDeployHistoryRequestHeaders {
 				authorization: access_token,
 				user_agent: UserAgent::from_static(USER_AGENT_STRING),
 			})
-			.body(StartDeploymentRequest)
+			.body(ListDeploymentDeployHistoryRequest)
 			.build(),
 	)
 	.await;

@@ -1,3 +1,5 @@
+use models::api::workspace::deployment::deploy_history::DeploymentDeployHistory;
+
 use crate::{pages::*, prelude::*};
 
 #[component]
@@ -8,12 +10,15 @@ pub fn ImageHistoryCard(
 	/// Whether the card is active or not
 	#[prop(into, optional, default = false.into())]
 	active: MaybeSignal<bool>,
+	/// The Deployment Info
+	#[prop(into)]
+	deploy_history: MaybeSignal<DeploymentDeployHistory>,
 ) -> impl IntoView {
 	let class = move || {
 		class.with(|cname| format!(
-        "full-width px-xl py-md bg-secondary-light br-sm fc-fs-fs pos-rel deploy-summary-card txt-white {}",
-        cname
-    ))
+			"full-width px-xl py-md bg-secondary-light br-sm fc-fs-fs pos-rel deploy-summary-card txt-white {}",
+			cname
+    	))
 	};
 
 	view! {
@@ -26,7 +31,7 @@ pub fn ImageHistoryCard(
 				/>
 
 				<span class="of-hidden txt-of-ellipsis w-45 ml-sm txt-sm">
-					"sha256:8414cd06d35d01807f64b4b7c99d32563a7906c54fbf11736402fd2bb57d908c"
+					{deploy_history.get().clone().image_digest}
 				</span>
 
 				<button class="btn-icon">
@@ -39,7 +44,7 @@ pub fn ImageHistoryCard(
 						.then(|| view! { <StatusBadge status={Status::Live} class="ml-xxs"/> })
 				}}
 
-				<span class="txt-grey ml-auto">"4 Months Ago"</span>
+				<span class="txt-grey ml-auto">{deploy_history.get().clone().created.to_string()}</span>
 			</div>
 
 			<div class="fr-sb-ct full-width mt-sm pl-xl">

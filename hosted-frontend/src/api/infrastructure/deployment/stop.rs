@@ -2,7 +2,7 @@ use models::api::workspace::deployment::*;
 
 use crate::prelude::*;
 
-#[server(StopDeploymentFn, endpoint = "/infrastructure/deployment/get")]
+#[server(StopDeploymentFn, endpoint = "/infrastructure/deployment/stop")]
 pub async fn stop_deployment(
 	access_token: Option<String>,
 	deployment_id: Option<String>,

@@ -14,6 +14,7 @@ pub fn InfrastructureRoutes() -> impl IntoView {
 				<Route path="/:deployment_id" view={ManageDeployments}>
 					<Route path="/history" view={ManageDeploymentImageHistory}/>
 					<Route path="/logs" view={ManageDeploymentsLogs}/>
+					<Route path="/monitor" view={ManageDeploymentsMonitoring}/>
 					<Route path="/scaling" view={ManageDeploymentScaling}/>
 					<Route path="/urls" view={ManageDeploymentUrls}/>
 					<Route path={AppRoutes::Empty} view={ManageDeploymentDetailsTab}/>
