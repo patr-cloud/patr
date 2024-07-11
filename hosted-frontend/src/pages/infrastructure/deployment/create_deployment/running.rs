@@ -87,7 +87,7 @@ pub fn RunningDetails(
 							let deployment_vol = DeploymentVolume {
 								path,
 								// Already checking if it's Ok above
-								// Hence, save to unwrap
+								// Hence, safe to unwrap
 								size: vol_size.unwrap(),
 							};
 
