@@ -30,10 +30,10 @@ pub fn Sidebar(
 			items: None,
 		},
 		LinkItem {
-			title: "BYOC".to_owned(),
-			path: "/".to_owned(),
+			title: "Runners".to_owned(),
+			path: "/runners".to_owned(),
 			icon_src: "/images/sidebar/byoc.svg".to_owned(),
-			subtitle: Some("Connect your cloud".to_owned()),
+			subtitle: None,
 			items: None,
 		},
 		LinkItem {

@@ -54,6 +54,8 @@ pub enum LoggedInRoute {
 	StaticSites,
 	/// Workspace Page
 	Workspace,
+	/// Runners Page
+	Runners,
 }
 
 /// Logged Out Routes, the routes that can be accessed by the user if and only
@@ -117,6 +119,7 @@ impl Display for LoggedInRoute {
 				Self::Secret => "/secret",
 				Self::ContainerRegistry => "/container-registry",
 				Self::Workspace => "/workspace",
+				Self::Runners => "/runners",
 			}
 		)
 	}
