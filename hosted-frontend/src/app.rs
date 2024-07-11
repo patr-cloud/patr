@@ -145,6 +145,7 @@ pub fn App() -> impl IntoView {
 					<ProfileRoutes/>
 					<InfrastructureRoutes/>
 					<DomainConfigurationRoutes/>
+					<RunnerRoutes />
 					<WorkspaceRoutes/>
 					<Route path="" view={|| view! { <div></div> }}/>
 				</ProtectedRoute>
