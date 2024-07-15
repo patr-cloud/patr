@@ -14,7 +14,7 @@ pub fn RunnerDashboard() -> impl IntoView {
 
 	let runners_list = create_resource(
 		move || (access_token.get(), current_workspace_id.get()),
-		move |((access_token, workspace_id))| async move {
+		move |(access_token, workspace_id)| async move {
 			list_runners(workspace_id, access_token).await
 		},
 	);

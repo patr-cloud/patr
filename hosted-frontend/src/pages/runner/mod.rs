@@ -11,8 +11,8 @@ use crate::prelude::*;
 pub fn RunnerRoutes() -> impl IntoView {
 	view! {
 		<Route path={LoggedInRoute::Runners} view={RunnerPage}>
-			<Route path={"/create"} view={CreateRunner}/>
-			<Route path={"/:runner_id"} view={ManageRunner}/>
+			<Route path={"create"} view={CreateRunner}/>
+			<Route path={":runner_id"} view={ManageRunner}/>
 			<Route path={AppRoutes::Empty} view={RunnerDashboard}/>
 		</Route>
 	}

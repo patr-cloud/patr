@@ -1,15 +1,41 @@
 mod head;
 
+use utils::FromToStringCodec;
+
 pub use self::head::*;
 use crate::prelude::*;
 
 #[component]
 pub fn CreateRunner() -> impl IntoView {
+	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
+	let (workspace_id, _) =
+		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+
+	let create_runner_action = create_server_action::<CreateRunnerFn>();
+	let response = create_runner_action.value();
+
 	view! {
 		<RunnerCreateHead />
 		<ContainerBody class="p-xs px-md gap-md ofy-auto txt-white">
-			<form class="full-width full-height px-md py-xl fc-fs-fs fit-wide-screen mx-auto gap-md">
+			<ActionForm
+				action={create_runner_action}
+				class="full-width full-height px-md py-xl fc-sb-fs fit-wide-screen mx-auto gap-md"
+			>
 				<div class="flex full-width">
+					<input
+						type="hidden"
+						id="access_token"
+						name="access_token"
+						value={move || access_token.get()}
+					/>
+
+					<input
+						type="hidden"
+						id="workspace_id"
+						name="workspace_id"
+						value={move || workspace_id.get()}
+					/>
+
 					<div class="flex-col-2 fr-fs-fs pt-sm">
 						<label html_for="name" class="txt-white txt-sm">
 							"Runner Name"
@@ -27,27 +53,22 @@ pub fn CreateRunner() -> impl IntoView {
 					</div>
 				</div>
 
-				<div class="flex full-width">
-					<div class="flex-col-2 fr-fs-fs pt-sm">
-						<label html_for="name" class="txt-white txt-sm">
-							"Machine Type"
-						</label>
-					</div>
-
-					<div class="flex-col-10 fc-fs-fs of-auto">
-						<div class="full-width p-xl br-sm bg-secondary-light fc-fs-fs of-auto">
-							<span class="letter-sp-md mb-lg txt-xxs">
-								"Specify the resources to be allocated to your container"
-							</span>
-
-							<div class="fr-fs-ct ofx-auto p-xxs gap-xs">
-
-							</div>
-						</div>
-					</div>
+				<div class="fr-fe-ct gap-md full-width">
+					<Link
+						to="/runners"
+						style_variant={LinkStyleVariant::Plain}
+						should_submit={false}
+					>
+						"Back"
+					</Link>
+					<Link
+						style_variant={LinkStyleVariant::Contained}
+						should_submit={true}
+					>
+						"CREATE"
+					</Link>
 				</div>
-
-			</form>
+			</ActionForm>
 		</ContainerBody>
 	}
 }
