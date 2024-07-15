@@ -7,7 +7,11 @@ pub fn InfrastructureRoutes() -> impl IntoView {
 	view! {
 		<Route path={AppRoutes::Empty} view={|| view! { <Outlet/> }}>
 			<Route path={LoggedInRoute::Secret} view={SecretsDashboard}/>
-			<Route path={LoggedInRoute::Database} view={DatabaseDashboard}/>
+			<Route path={LoggedInRoute::Database} view={DatabasePage}>
+				<Route path="create" view={CreateDatabase}/>
+				<Route path="/:database_id" view={ManageDatabase}/>
+				<Route path={AppRoutes::Empty} view={DatabaseDashboard}/>
+			</Route>
 
 			<Route path={LoggedInRoute::Deployment} view={Deployment}>
 				<Route path="create" view={CreateDeployment} />

@@ -56,24 +56,24 @@ pub fn DatabaseCard(
 			</div>
 
 			<div class="fr-fs-fs txt-white full-width f-wrap my-auto">
-
 				{items
 					.into_iter()
 					.map(|item| {
 						view! {
 							<div class="half-width p-xxs">
 								<div class="bg-secondary-medium br-sm px-lg py-sm fc-ct-fs">
-									<span className="letter-sp-md txt-xxs txt-grey">
+									<span class="letter-sp-md txt-xxs txt-grey">
 										{item.label}
 									</span>
-									<span className="txt-primary w-15 txt-of-ellipsis of-hidden">
+									<span class="txt-primary w-15 txt-of-ellipsis of-hidden">
 										{item.value}
 									</span>
 								</div>
 							</div>
 						}
 					})
-					.collect::<Vec<_>>()}
+					.collect::<Vec<_>>()
+				}
 
 			</div>
 			<div class="fr-fs-ct mt-xs full-width px-xxs">
