@@ -32,7 +32,7 @@ pub fn RunnerCard(
 
 			<Link
 				r#type={Variant::Link}
-				to="some_route"
+				to={runner.get().id.to_string()}
 				class="txt-medium letter-sp-md txt-sm mt-xs ml-auto"
 			>
 				"MANAGE RUNNER"
