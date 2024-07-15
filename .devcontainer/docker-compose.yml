@@ -3,26 +3,25 @@ version: '3'
 networks:
   vpc:
 
+
+volumes:
+  postgres-data:
+
+
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
     # Overrides default command so things don't shut down after the process ends.
-    command: sudo /bin/dumb-init /runc.sh
-    privileged: true
+    command: sleep infinity
     user: vscode
     environment:
       - PGHOST=postgres
       - PGUSER=postgres
       - PG_PASSWORD=postgres
-    expose:
-      - 3000
     volumes:
       - ..:/workspace:cached
-      - ./volume/data/cargo:/home/vscode/.cargo-volume
-      - ${HOME}/.bash_history:/home/vscode/.bash_history
-      - ${HOME}/.netrc:/home/vscode/.netrc
     depends_on:
       - postgres
       - redis
@@ -32,7 +31,6 @@ services:
       vpc:
         aliases:
           - backend
-          - frontend
 
   postgres:
     image: postgis/postgis:13-master
@@ -44,7 +42,7 @@ services:
     expose:
       - 5432
     volumes:
-      - ./volume/data/postgres:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
     hostname: postgres
     networks:
       vpc:

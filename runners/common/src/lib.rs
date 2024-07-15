@@ -88,7 +88,7 @@ where
 	deployments: HashMap<Uuid, (Deployment, DeploymentRunningDetails)>,
 }
 
-impl<E> Runner<'_, E>
+impl<'de, E> Runner<'de, E>
 where
 	E: RunnerExecutor,
 {
