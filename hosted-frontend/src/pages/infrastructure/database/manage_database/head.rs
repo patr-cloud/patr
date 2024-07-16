@@ -11,6 +11,7 @@ pub fn ManageDatabaseHeader() -> impl IntoView {
 							"Infrastructure"
 						</PageTitle>
 						<PageTitle
+							to="/database"
 							icon_position={PageTitleIconPosition::End}
 							variant={PageTitleVariant::SubHeading}
 						>

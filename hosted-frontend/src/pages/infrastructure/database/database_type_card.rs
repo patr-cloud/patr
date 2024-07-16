@@ -1,3 +1,6 @@
+use convert_case::{Case, Casing};
+use models::api::workspace::database::DatabaseEngine;
+
 use crate::prelude::*;
 
 /// Type of databases thant can be used
@@ -38,18 +41,19 @@ impl DatabaseType {
 #[component]
 pub fn DatabaseTypeCard(
 	/// The Type of database
-	database_type: DatabaseType,
+	#[prop(into)]
+	database_type: MaybeSignal<DatabaseEngine>,
 	/// The Version number
 	version: f64,
 ) -> impl IntoView {
 	view! {
 		<div class="fc-ct-ct bg-secondary-light br-sm px-md py-sm outline-info-focus database-type-card txt-white txt-sm">
 			<img
-				alt={database_type.as_name_string()}
-				src={database_type.icon_link()}
+				alt={database_type.get().to_string()}
+				src={format!("/icons/{}.svg", database_type.get().clone())}
 				class="txt-grey txt-xxs"
 			/>
-			{move || database_type.as_name_string()}
+			{move || database_type.get().to_string().to_case(Case::Pascal)}
 			<small>{format!("Version {}", version)}</small>
 		</div>
 	}

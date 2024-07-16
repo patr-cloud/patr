@@ -1,3 +1,4 @@
+use models::api::workspace::database::DatabaseEngine;
 use web_sys::MouseEvent;
 
 use crate::{pages::*, prelude::*};
@@ -43,7 +44,7 @@ pub fn ManageDatabaseDetailsTab() -> impl IntoView {
 				<label class="flex-col-2 fr-fs-fs">"Database Type"</label>
 
 				<div class="grid grid-col-4 flex-col-10 pl-xs full-width">
-					<DatabaseTypeCard version=4. database_type={DatabaseType::MongoDB}/>
+					<DatabaseTypeCard version=4. database_type={DatabaseEngine::Mongo}/>
 				</div>
 			</div>
 
