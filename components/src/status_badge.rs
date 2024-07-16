@@ -1,4 +1,4 @@
-use models::api::workspace::deployment::DeploymentStatus;
+use models::api::workspace::{database::DatabaseStatus, deployment::DeploymentStatus};
 
 use crate::imports::*;
 
@@ -39,6 +39,15 @@ impl Status {
 		}
 	}
 
+	pub const fn from_database_status(database_status: DatabaseStatus) -> Self {
+		match database_status {
+			DatabaseStatus::Creating => Self::Deploying,
+			DatabaseStatus::Errored => Self::Errored,
+			DatabaseStatus::Running => Self::Running,
+			DatabaseStatus::Deleted => Self::Deleted,
+		}
+	}
+
 	/// Gets the css class name color of the status badge
 	pub const fn get_status_color(self) -> &'static str {
 		match self {
@@ -75,17 +84,50 @@ pub fn StatusBadge(
 	/// Additional Classed to add, if any
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
+	/// The Text of the status Badge
+	#[prop(into, optional, default = None.into())]
+	text: MaybeSignal<Option<String>>,
+	/// The Color of the status Badge
+	#[prop(into, optional, default = None.into())]
+	color: MaybeSignal<Option<Color>>,
 	/// Status of the component
-	#[prop(into, optional)]
-	status: MaybeSignal<Status>,
+	#[prop(into, optional, default = None.into())]
+	status: MaybeSignal<Option<Status>>,
 ) -> impl IntoView {
+	// let store_text = store_value(text);
+
 	let class = move || {
 		format!(
 			"status-badge pos-rel txt-secondary cursor-default {} {}",
-			status.get().get_status_color(),
+			if let Some(status) = status.get() {
+				status.get_status_color().to_string()
+			} else {
+				format!(
+					"bg-{}",
+					if let Some(color) = color.get() {
+						color.to_string()
+					} else {
+						"".to_string()
+					}
+				)
+			},
 			class.get(),
 		)
 	};
 
-	view! { <span class={class}>{status.get().get_status_text()}</span> }
+	view! {
+		<span class={class}>
+			{
+				if let Some(status) = status.get() {
+					status.get_status_text().to_owned()
+				} else {
+					if let Some(text) = text.get() {
+						text
+					} else {
+						"".to_string()
+					}
+				}
+			}
+		</span>
+	}
 }

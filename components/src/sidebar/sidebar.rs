@@ -32,21 +32,21 @@ pub fn Sidebar(
 		LinkItem {
 			title: "Runners".to_owned(),
 			path: "/runners".to_owned(),
-			icon_src: "/images/sidebar/byoc.svg".to_owned(),
+			icon_src: "/images/sidebar/runner.svg".to_owned(),
 			subtitle: None,
 			items: None,
 		},
 		LinkItem {
 			title: "Deployments".to_owned(),
 			path: "deployment".to_owned(),
-			icon_src: "/images/sidebar/infrastructure.svg".to_owned(),
+			icon_src: "/images/sidebar/deployment.svg".to_owned(),
 			subtitle: None,
 			items: None,
 		},
 		LinkItem {
-			title: "Container Registry".to_owned(),
-			path: "container-registry".to_owned(),
-			icon_src: "/images/sidebar/docker.svg".to_owned(),
+			title: "Database".to_owned(),
+			path: "database".to_owned(),
+			icon_src: "/images/sidebar/database.svg".to_owned(),
 			subtitle: None,
 			items: Some(vec![
 				LinkItem {

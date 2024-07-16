@@ -58,7 +58,7 @@ pub fn DeploymentCard(
 
 				<StatusBadge status={
 					let deployment = deployment.clone();
-					Signal::derive(move || Status::from_deployment_status(deployment.get().status.clone()))
+					Signal::derive(move || Some(Status::from_deployment_status(deployment.get().status.clone())))
 				}/>
 			</div>
 

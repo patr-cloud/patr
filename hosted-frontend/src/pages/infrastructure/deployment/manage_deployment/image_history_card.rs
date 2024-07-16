@@ -41,7 +41,7 @@ pub fn ImageHistoryCard(
 				{move || {
 					active
 						.get()
-						.then(|| view! { <StatusBadge status={Status::Live} class="ml-xxs"/> })
+						.then(|| view! { <StatusBadge status={Some(Status::Live)} class="ml-xxs"/> })
 				}}
 
 				<span class="txt-grey ml-auto">{deploy_history.get().clone().created.to_string()}</span>

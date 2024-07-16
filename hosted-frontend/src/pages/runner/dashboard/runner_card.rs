@@ -12,9 +12,27 @@ pub fn RunnerCard(
 		<div
 			class="bg-secondary-light fc-fs-fs px-lg py-md br-sm txt-white gap-xs"
 		>
-			<p class="txt-md txt-primary w-25 txt-of-ellipsis of-hidden">
-				{runner.get().name.clone()}
-			</p>
+			 <div class="full-width fr-fs-ct gap-md">
+				<p class="txt-md txt-primary w-25 txt-of-ellipsis of-hidden">
+					{runner.get().name.clone()}
+				</p>
+
+				{match runner.get().last_seen.clone() {
+					Some(date) => view! {
+						<StatusBadge
+							text=Some("unreachable".to_string())
+							color={Some(Color::Grey)}
+						/>
+					},
+					None => view! {
+						<StatusBadge
+							text=Some("live".to_string())
+							color={Some(Color::Success)}
+						/>
+					}.into_view()
+				}}
+				<StatusBadge />
+			</div>
 
 			<div class="flex-2 full-width gap-xs fr-ct-ct">
 				<div class="bg-secondary-medium br-sm px-lg py-sm fc-ct-fs full-width">
