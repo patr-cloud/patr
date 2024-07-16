@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::Uuid;
@@ -41,8 +43,19 @@ pub struct DatabaseConnection {
 	pub password: String,
 }
 
-/// All the currrently supported databases offered to the users
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// All the currently supported databases offered to the users
+#[derive(
+	Debug,
+	Clone,
+	Serialize,
+	Deserialize,
+	PartialEq,
+	Eq,
+	strum::VariantNames,
+	strum::EnumString,
+	strum::Display,
+)]
+#[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
 pub enum DatabaseEngine {
 	/// version:

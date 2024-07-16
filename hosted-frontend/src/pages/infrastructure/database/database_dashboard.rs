@@ -1,55 +1,24 @@
+use models::api::workspace::database::Database;
+use utils::FromToStringCodec;
+
 use crate::{
 	pages::{DatabaseCard, DatabaseHead},
 	prelude::*,
 };
 
-/// The Database Item
-/// TO BE REPLACED LATER WITH MODEL A PROPER MODEL TYPE
-#[derive(PartialEq, Eq, Hash, Clone)]
-pub struct DatabaseItem {
-	/// The Id of the database
-	pub id: i32,
-	/// The Name of the database
-	pub name: String,
-	/// The region of the database
-	pub region: String,
-	/// What type of engine the database is running on, i.e. Mongo, PSQL, etc
-	/// TODO: Replaced with an ENUM
-	pub engine: String,
-	/// The Version of the database engine
-	pub version: String,
-	/// The Resource allocation plan of the database
-	pub plan: String,
-}
-
 #[component]
 pub fn DatabaseDashboard() -> impl IntoView {
-	let data = create_rw_signal(vec![
-		DatabaseItem {
-			id: 1234,
-			name: "Mongo Database Instance".to_owned(),
-			region: "aws-prod".to_owned(),
-			engine: "MONGO".to_owned(),
-			version: "4".to_owned(),
-			plan: "1vCPU 2 GB RAM".to_owned(),
+	let data = create_rw_signal::<Vec<WithId<Database>>>(vec![]);
+	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
+	let (current_workspace_id, _) =
+		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+
+	let database_list = create_resource(
+		move || (access_token.get(), current_workspace_id.get()),
+		move |(access_token, workspace_id)| async move {
+			list_database(access_token, workspace_id).await
 		},
-		DatabaseItem {
-			id: 2345,
-			name: "Azure Database Instance".to_owned(),
-			region: "azure-prod".to_owned(),
-			engine: "PSQL".to_owned(),
-			version: "2".to_owned(),
-			plan: "1vCPU 2 GB RAM".to_owned(),
-		},
-		DatabaseItem {
-			id: 3567,
-			name: "Mongo Database Instance".to_owned(),
-			region: "aws-prod".to_owned(),
-			engine: "MariaDB".to_owned(),
-			version: "1".to_owned(),
-			plan: "2vCPU 4 GB RAM".to_owned(),
-		},
-	]);
+	);
 
 	view! {
 		<ContainerMain class="full-width full-height mb-md">
@@ -59,13 +28,36 @@ pub fn DatabaseDashboard() -> impl IntoView {
 					gap={Size::Large}
 					render_items={
 						view! {
-							<For
-								each={move || data.get()}
-								key={|state| state.id}
-								let:child
-							>
-								<DatabaseCard deployment={child}/>
-							</For>
+							<Transition>
+								 {
+									move || match database_list.get() {
+										Some(resp) => {
+											match resp {
+												Ok(data) => view! {
+													<For
+														each={move || data.database.clone()}
+														key={|state| state.id.clone()}
+														let:database_info
+													>
+														<DatabaseCard database={database_info}/>
+														// <div>"here there be a database"</div>
+													</For>
+												}.into_view(),
+												Err(_) => view! {
+													<div class="full-width txt-white">
+														"ERROR LOADING DATABASES"
+													</div>
+												}.into_view()
+											}
+										},
+										_ => view! {
+											<div class="full-width txt-white">
+												"LOADING DATABASES"
+											</div>
+										}.into_view()
+									}
+								}
+							</Transition>
 						}
 					}
 				/>
