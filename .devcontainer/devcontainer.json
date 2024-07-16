@@ -20,7 +20,8 @@
 				"rust-lang.rust-analyzer",
 				"tamasfe.even-better-toml",
 				"usernamehw.errorlens",
-				"be5invis.toml"
+				"be5invis.toml",
+				"citreae535.sparse-crates"
 			]
 		}
 	},

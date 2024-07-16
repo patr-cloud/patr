@@ -141,9 +141,11 @@ async fn main() {
 				{
 					let pipeline = opentelemetry_otlp::new_pipeline()
 						.tracing()
-						.with_trace_config(opentelemetry_sdk::trace::config().with_resource(
-							Resource::new(vec![KeyValue::new("service.name", "Patr API")]),
-						))
+						.with_trace_config(
+							opentelemetry_sdk::trace::Config::default().with_resource(
+								Resource::new(vec![KeyValue::new("service.name", "Patr API")]),
+							),
+						)
 						.with_exporter(
 							opentelemetry_otlp::new_exporter()
 								.tonic()

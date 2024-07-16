@@ -22,6 +22,7 @@ services:
       - PG_PASSWORD=postgres
     volumes:
       - ..:/workspace:cached
+      - $HOME/.ssh:/home/vscode/.ssh:ro
     depends_on:
       - postgres
       - redis
