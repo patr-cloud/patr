@@ -27,7 +27,7 @@ pub fn DatabaseHead() -> impl IntoView {
 					to="create"
 					style_variant={LinkStyleVariant::Contained}
 				>
-					"ADD DATABASE"
+					"CREATE DATABASE"
 					<Icon
 						icon={IconType::Plus}
 						size={Size::ExtraSmall}
