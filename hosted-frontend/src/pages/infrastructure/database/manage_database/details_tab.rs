@@ -40,6 +40,7 @@ fn CopyButton(// #[prop(into)]
 pub fn ManageDatabaseDetailsTab() -> impl IntoView {
 	view! {
 		<div class="full-width px-md fc-fs-fs fit-wide-screen mx-auto my-xl txt-white">
+
 			<div class="flex mb-lg full-width">
 				<label class="flex-col-2 fr-fs-fs">"Database Type"</label>
 
@@ -111,16 +112,14 @@ pub fn ManageDatabaseDetailsTab() -> impl IntoView {
 					<div class="fr-sb-ct br-sm bg-secondary-light full-width py-sm px-xl">
 						<input
 							class="txt-white px-sm"
-							r#type="password"
+							type="password"
 							aria_label="Password"
 							prop:value="********"
 						/>
 						<CopyButton/>
 					</div>
-					<div class="fr-sb-fs full-width gap-md mt-xxs">
-						<Link class="txt-medium ml-auto">"CHANGE PASSWORD"</Link>
-					</div>
 
+					<ChangePasswordButton />
 				</div>
 			</div>
 

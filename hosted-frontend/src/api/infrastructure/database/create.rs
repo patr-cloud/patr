@@ -9,9 +9,9 @@ pub async fn create_database(
 	engine: DatabaseEngine,
 	access_token: Option<String>,
 	workspace_id: Option<String>,
-	machine_type: Uuid,
+	machine_type: String,
 	version: String,
-	runner: Uuid,
+	runner_id: String,
 ) -> Result<CreateDatabaseResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
@@ -23,12 +23,18 @@ pub async fn create_database(
 	let workspace_id = Uuid::parse_str(workspace_id.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
+	let runner_id = Uuid::parse_str(runner_id.as_str())
+		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
+
+	let machine_type = Uuid::parse_str(machine_type.as_str())
+		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
+
 	let req_body = CreateDatabaseRequest {
 		name,
 		engine,
 		num_node: num_nodes,
 		database_plan_id: machine_type,
-		region: runner,
+		region: runner_id,
 		version,
 	};
 
