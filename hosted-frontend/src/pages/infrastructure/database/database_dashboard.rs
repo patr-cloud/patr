@@ -40,13 +40,13 @@ pub fn DatabaseDashboard() -> impl IntoView {
 														let:database_info
 													>
 														<DatabaseCard database={database_info}/>
-														// <div>"here there be a database"</div>
 													</For>
 												}.into_view(),
 												Err(_) => view! {
 													<div class="full-width txt-white">
 														"ERROR LOADING DATABASES"
 													</div>
+													<a href="/database/some">"here"</a>
 												}.into_view()
 											}
 										},

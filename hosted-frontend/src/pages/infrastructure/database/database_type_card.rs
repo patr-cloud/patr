@@ -45,16 +45,35 @@ pub fn DatabaseTypeCard(
 	database_type: MaybeSignal<DatabaseEngine>,
 	/// The Version number
 	version: f64,
+	/// On clicking a card
+	#[prop(into, optional, default = Callback::new(|_| {}))]
+	on_click: Callback<DatabaseEngine>,
+	/// Current Selected Card
+	#[prop(into, optional, default = false.into())]
+	is_selected: MaybeSignal<bool>,
 ) -> impl IntoView {
 	view! {
-		<div class="fc-ct-ct bg-secondary-light br-sm px-md py-sm outline-info-focus database-type-card txt-white txt-sm">
+		<div
+			on:click={
+				let database_type = database_type.clone();
+				move |ev| {
+					ev.prevent_default();
+					on_click.call(database_type.get());
+				}
+			}
+			class=format!(
+				"fc-ct-ct bg-secondary-light br-sm px-md py-sm outline-info-focus database-type-card
+				txt-white txt-sm {}",
+				if is_selected.get() {"bg-primary"} else {"bd-none"}
+			)
+		>
 			<img
 				alt={database_type.get().to_string()}
 				src={format!("/icons/{}.svg", database_type.get().clone())}
 				class="txt-grey txt-xxs"
 			/>
 			{move || database_type.get().to_string().to_case(Case::Pascal)}
-			<small>{format!("Version {}", version)}</small>
+			<small class="txt-xxs txt-grey">{format!("Version {}", version)}</small>
 		</div>
 	}
 }

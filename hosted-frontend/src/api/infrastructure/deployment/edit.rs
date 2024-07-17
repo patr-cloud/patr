@@ -53,16 +53,17 @@ pub async fn update_deployment(
 
 	let update_deployment = UpdateDeploymentRequest {
 		name,
+		ports,
 		machine_type,
 		deploy_on_push,
 		min_horizontal_scale,
 		max_horizontal_scale,
-		ports,
 		environment_variables,
-		startup_probe,
 		liveness_probe,
+		startup_probe,
 		config_mounts,
-		volumes,
+		runner: None,
+		volumes: None,
 	};
 
 	let api_response = make_api_call::<UpdateDeploymentRequest>(
