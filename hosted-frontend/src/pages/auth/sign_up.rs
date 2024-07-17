@@ -206,7 +206,7 @@ pub fn SignUpForm() -> impl IntoView {
 				</Show>
 
 				<div class="fr-fe-ct full-width mt-lg">
-					<Link class="btn mr-xs" to="/sign-up/confirm" r#type={Variant::Link}>
+					<Link class="btn mr-xs" to="/confirm" r#type={Variant::Link}>
 						"ALREADY HAVE AN OTP"
 					</Link>
 

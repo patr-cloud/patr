@@ -31,7 +31,7 @@ async fn sign_up(
 	.await;
 
 	if let Ok(resp) = &api_response {
-		leptos_axum::redirect("/sign-up/confirm");
+		leptos_axum::redirect("/confirm");
 	}
 
 	Ok(api_response.map(|res| res.body)?)
