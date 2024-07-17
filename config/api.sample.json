@@ -4,15 +4,15 @@
 	"passwordPepper": "keyboard cat",
 	"jwtSecret": "keyboard cat",
 	"database": {
-		"host": "localhost",
+		"host": "postgres",
 		"port": 5432,
-		"user": "root",
-		"password": "database",
+		"user": "postgres",
+		"password": "postgres",
 		"database": "api",
 		"connectionLimit": 10
 	},
 	"redis": {
-		"host": "localhost",
+		"host": "redis",
 		"port": 6379,
 		"user": null,
 		"password": null,

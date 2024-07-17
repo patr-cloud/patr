@@ -15,6 +15,5 @@ WORKDIR /app
 
 RUN apt update && apt install -y libssl-dev ca-certificates dumb-init
 COPY --from=build /app/target/x86_64-unknown-linux-gnu/release/api .
-COPY --from=build /app/assets assets/
 
 CMD ["dumb-init", "/app/api"]

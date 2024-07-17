@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE deployment_volume ADD CONSTRAINT deployment_volume_chk_size_unsigned CHECK(volume_size > 0);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "760ef02af407e49152622ff20193145fc9e78b2132f4afceeabc9f8656f3ac56"
+}

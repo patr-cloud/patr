@@ -75,9 +75,8 @@ pub async fn initialize_volume_constraints(
 	query!(
 		r#"
 		ALTER TABLE deployment_volume
-			ADD CONSTRAINT deployment_volume_fk_deployment_id
-				FOREIGN KEY(deployment_id) REFERENCES deployment(id),
-			ADD CONSTRAINT deployment_volume_chk_size_unsigned CHECK(volume_size > 0);
+		ADD CONSTRAINT deployment_volume_chk_size_unsigned
+		CHECK(volume_size > 0);
 		"#
 	)
 	.execute(&mut *connection)
