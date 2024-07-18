@@ -44,9 +44,8 @@ where
 }
 
 #[cfg(not(feature = "axum"))]
-impl<ServerMsg, ClientMsg> WebSocketUpgrade<ServerMsg, ClientMsg> {
-	/// Create a new `WebSocketUpgrade` instance.
-	pub fn new() -> Self {
+impl<ServerMsg, ClientMsg> std::default::Default for WebSocketUpgrade<ServerMsg, ClientMsg> {
+	fn default() -> Self {
 		Self(std::marker::PhantomData)
 	}
 }

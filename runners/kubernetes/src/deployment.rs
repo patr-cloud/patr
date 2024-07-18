@@ -36,7 +36,7 @@ use kube::{
 	Client,
 };
 use models::{
-	api::workspace::{container_registry::*, deployment::*},
+	api::workspace::{container_registry::*, deployment::*, volume::*},
 	prelude::*,
 };
 use sha2::{Digest, Sha512};
@@ -106,11 +106,11 @@ async fn run_controller(
 		watcher::Config::default(),
 	)
 	.reconcile_all_on(UnboundedReceiverStream::new(reconcile_receiver))
-	.reconcile_on(
-		BroadcastStream::new(patr_update_sender).filter_map(|input| async move {
+	.reconcile_on(BroadcastStream::new(patr_update_sender).filter_map(
+		|_input: Result<(), tokio_stream::wrappers::errors::BroadcastStreamRecvError>| async move {
 			Some(ObjectRef::new(&format!("deployment-{}", Uuid::nil())).within("default"))
-		}),
-	)
+		},
+	))
 	.graceful_shutdown_on(crate::exit_signal())
 	.run(reconcile, error_policy, state)
 	.for_each(|_| future::ready(()))
@@ -277,12 +277,33 @@ async fn reconcile(
 		});
 	}
 
-	for (volume_id, volume) in &spec.running_details.volumes {
+	for (&volume_id, mount_path) in &spec.running_details.volumes {
+		let volume = make_request(
+			ApiRequest::<GetVolumeInfoRequest>::builder()
+				.path(GetVolumeInfoPath {
+					workspace_id: ctx.workspace_id,
+					volume_id,
+				})
+				.headers(GetVolumeInfoRequestHeaders {
+					authorization: BearerToken::from_str(&ctx.patr_token).map_err(|err| {
+						ErrorType::server_error(format!("invalid patr token. Error: `{}`", err))
+					})?,
+					user_agent: UserAgent::from_static("deployment-controller"),
+				})
+				.query(())
+				.body(GetVolumeInfoRequest)
+				.build(),
+		)
+		.await
+		.map_err(|err| err.body.error)?
+		.body
+		.volume;
+
 		volume_mounts.push(VolumeMount {
 			name: format!("pvc-{}", volume_id),
 			// make sure user does not have the mount_path in the directory
 			// in the fs, by my observation it gives crashLoopBackOff error
-			mount_path: volume.path.to_string(),
+			mount_path: mount_path.clone(),
 			..VolumeMount::default()
 		});
 

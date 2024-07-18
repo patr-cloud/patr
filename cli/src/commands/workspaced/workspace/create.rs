@@ -44,7 +44,7 @@ pub(super) async fn execute(
 	.body;
 
 	CommandOutput {
-		text: format!("Workspace `{}` created with ID `{}`", args.name, id),
+		text: format!("Workspace `{}` created with ID `{}`", args.name, id.id),
 		json: ApiSuccessResponseBody::new(CreateWorkspaceResponse { id }).to_json_value(),
 	}
 	.into_result()

@@ -66,7 +66,7 @@ async fn main() {
 				authorization: BearerToken::from_str(state.patr_token.as_str()).unwrap(),
 				user_agent: UserAgent::from_static("deployment-controller"),
 			})
-			.body(WebSocketUpgrade(PhantomData))
+			.body(WebSocketUpgrade::new())
 			.build(),
 	)
 	.await

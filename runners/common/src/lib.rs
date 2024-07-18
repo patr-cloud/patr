@@ -16,11 +16,8 @@ mod executor;
 
 use std::{collections::HashMap, str::FromStr, time::Duration};
 
-use futures::TryStreamExt;
-use models::{
-	api::workspace::{deployment::*, runner::*},
-	utils::WebSocketUpgrade,
-};
+use futures::{future::Either, StreamExt};
+use models::api::workspace::{deployment::*, runner::*};
 use prelude::*;
 use tokio::time;
 use tracing::{level_filters::LevelFilter, Dispatch, Level};
@@ -152,64 +149,84 @@ where
 		let workspace_id = self.settings.workspace_id;
 		let runner_id = self.settings.runner_id;
 
-		tokio::select! {
-			_ = async {
-				loop {
-					let Ok(stream) = client::stream_request(
-						ApiRequest::<StreamRunnerDataForWorkspaceRequest>::builder()
-							.path(StreamRunnerDataForWorkspacePath {
-								workspace_id,
-								runner_id,
-							})
-							.headers(StreamRunnerDataForWorkspaceRequestHeaders {
-								authorization: authorization.clone(),
-								user_agent: user_agent.clone(),
-							})
-							.query(())
-							.body(WebSocketUpgrade::new())
-							.build(),
-					)
-					.await
-					.inspect_err(|err| {
-						error!("Failed to connect to the server: {:?}", err);
-						error!("Retrying in 5 second");
-					})
-					.map_err(|err| err.body) else {
-						time::sleep(Duration::from_secs(5)).await;
-						continue;
-					};
+		let mut exit_signal = Box::pin(exit_signal());
 
-					let Ok(()) = stream
-						.try_for_each(|response| async {
-							use StreamRunnerDataForWorkspaceServerMsg::*;
-							match response {
-								DeploymentCreated {
-									deployment,
-									running_details,
-								} => self.create_deployment(deployment, running_details).await,
-								DeploymentUpdated {
-									deployment,
-									running_details,
-								} => self.update_deployment(deployment, running_details).await,
-								DeploymentDeleted { id } => self.delete_deployment(id).await,
-							}
+		'main: loop {
+			let Either::Right((response, _)) = futures::future::select(
+				&mut exit_signal,
+				Box::pin(client::stream_request(
+					ApiRequest::<StreamRunnerDataForWorkspaceRequest>::builder()
+						.path(StreamRunnerDataForWorkspacePath {
+							workspace_id,
+							runner_id,
 						})
-						.await
-						.inspect_err(|err| {
-							error!("Failed to connect to the server: {:?}", err);
-							error!("Retrying in 1 second");
+						.headers(StreamRunnerDataForWorkspaceRequestHeaders {
+							authorization: authorization.clone(),
+							user_agent: user_agent.clone(),
 						})
-					else {
+						.query(())
+						.body(Default::default())
+						.build(),
+				)),
+			)
+			.await
+			else {
+				break;
+			};
+
+			let Ok(stream) = response
+				.inspect_err(|err| {
+					error!("Failed to connect to the server: {:?}", err);
+					error!("Retrying in 5 second");
+				})
+				.map_err(|err| err.body)
+			else {
+				time::sleep(Duration::from_secs(5)).await;
+				continue;
+			};
+
+			let mut stream = Box::pin(stream);
+
+			loop {
+				match futures::future::select(&mut exit_signal, Box::pin(stream.next())).await {
+					// Exit signal received
+					Either::Left(_) => break 'main,
+					// Server message received
+					Either::Right((Some(Ok(response)), _)) => {
+						use StreamRunnerDataForWorkspaceServerMsg::*;
+						let updated = match response {
+							DeploymentCreated {
+								deployment,
+								running_details,
+							} => self.create_deployment(deployment, running_details).await,
+							DeploymentUpdated {
+								deployment,
+								running_details,
+							} => self.update_deployment(deployment, running_details).await,
+							DeploymentDeleted { id } => self.delete_deployment(id).await,
+						};
+						// TODO If not updated, schedule it for retry
+					}
+					// Server message received with error. Reconnect to the server
+					Either::Right((Some(err), _)) => {
+						error!("Failed to connect to the server: {:?}", err);
+						error!("Retrying in 1 second");
 						time::sleep(Duration::from_secs(1)).await;
-						continue;
-					};
+						continue 'main;
+					}
+					// Connection to server closed. Reconnect to the server
+					Either::Right((None, _)) => {
+						error!("Connection to server closed");
+						error!("Retrying in 2 seconds");
+						time::sleep(Duration::from_secs(2)).await;
+						continue 'main;
+					}
 				}
-			} => Ok(()),
-			_ = exit_signal() => {
-				tracing::info!("Received SIGINT, shutting down");
-				Ok(())
 			}
 		}
+
+		info!("Runner stopped. Exiting...");
+		Ok(())
 	}
 
 	/// Create a new deployment in this runner
