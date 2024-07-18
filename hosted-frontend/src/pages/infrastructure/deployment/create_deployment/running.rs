@@ -1,11 +1,7 @@
 use std::str::FromStr;
 
 use ev::MouseEvent;
-use models::api::workspace::deployment::{
-	DeploymentVolume,
-	EnvironmentVariableValue,
-	ExposedPortType,
-};
+use models::api::workspace::deployment::{EnvironmentVariableValue, ExposedPortType};
 
 use super::RunnerPageError;
 use crate::{
@@ -84,15 +80,8 @@ pub fn RunningDetails(
 					on_add=move |(_, path, size): (MouseEvent, String, String)| {
 						let vol_size = size.parse::<u16>();
 						if !path.is_empty() && vol_size.is_ok() {
-							let deployment_vol = DeploymentVolume {
-								path,
-								// Already checking if it's Ok above
-								// Hence, safe to unwrap
-								size: vol_size.unwrap(),
-							};
-
 							deployment_info.update(|info| {
-								info.volumes.insert(Uuid::new_v4(), deployment_vol);
+								info.volumes.insert(Uuid::new_v4(), path);
 							});
 						}
 					}

@@ -1,7 +1,6 @@
 use std::{collections::BTreeMap, rc::Rc};
 
 use ev::MouseEvent;
-use models::api::workspace::deployment::DeploymentVolume;
 
 use crate::prelude::*;
 
@@ -12,7 +11,7 @@ pub fn VolumeInput(
 	class: MaybeSignal<String>,
 	/// List of ports already present
 	#[prop(into, optional, default = BTreeMap::new().into())]
-	volumes_list: MaybeSignal<BTreeMap<Uuid, DeploymentVolume>>,
+	volumes_list: MaybeSignal<BTreeMap<Uuid, String>>,
 	/// On Pressing Delete Button
 	#[prop(into, optional, default = Callback::new(|_| ()))]
 	on_delete: Callback<(MouseEvent, Uuid)>,
@@ -45,15 +44,15 @@ pub fn VolumeInput(
 								<div class="flex full-width mb-xs">
 									<div class="flex-col-5 pr-lg">
 										<div class="full-width fr-fs-ct px-xl py-sm br-sm bg-secondary-light">
-											<span class="ml-md txt-of-ellipsis of-hidden-40">
-												{child.1.path}
-											</span>
+											// <span class="ml-md txt-of-ellipsis of-hidden-40">
+											// 	{child.1.path}
+											// </span>
 										</div>
 									</div>
 
 									<div class="flex-col-6">
 										<div class="full-width fr-sb-ct px-xl py-sm bg-secondary-light br-sm">
-											<span class="px-sm">{child.1.size}</span>
+											// <span class="px-sm">{child.1.size}</span>
 											<span class="px-sm">"GB"</span>
 										</div>
 									</div>

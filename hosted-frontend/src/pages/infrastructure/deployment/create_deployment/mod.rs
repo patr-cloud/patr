@@ -4,7 +4,6 @@ use ev::MouseEvent;
 use leptos_use::{use_cookie, utils::FromToStringCodec};
 use models::api::workspace::deployment::{
 	DeploymentRegistry,
-	DeploymentVolume,
 	EnvironmentVariableValue,
 	ExposedPortType,
 };
@@ -34,7 +33,7 @@ pub struct DeploymentInfo {
 	startup_probe: Option<(u16, String)>,
 	liveness_probe: Option<(u16, String)>,
 	environment_variables: BTreeMap<String, EnvironmentVariableValue>,
-	volumes: BTreeMap<Uuid, DeploymentVolume>,
+	volumes: BTreeMap<Uuid, String>,
 }
 
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
