@@ -21,7 +21,7 @@ pub async fn create_deployment(
 	liveness_probe: Option<(u16, String)>,
 	machine_type: String,
 	#[server(default)] environment_variables: Vec<(String, EnvironmentVariableValue)>,
-	#[server(default)] volumes: Vec<(Uuid, DeploymentVolume)>,
+	#[server(default)] volumes: Vec<(Uuid, String)>,
 	ports: Vec<(StringifiedU16, ExposedPortType)>,
 ) -> Result<CreateDeploymentResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;

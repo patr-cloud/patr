@@ -19,7 +19,7 @@ pub async fn update_deployment(
 	startup_probe: Option<DeploymentProbe>,
 	liveness_probe: Option<DeploymentProbe>,
 	config_mounts: Option<BTreeMap<String, Base64String>>,
-	volumes: Option<BTreeMap<Uuid, DeploymentVolume>>,
+	volumes: Option<BTreeMap<Uuid, String>>,
 ) -> Result<UpdateDeploymentResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
@@ -45,11 +45,11 @@ pub async fn update_deployment(
 			.ok()
 	});
 
-	let volumes: Option<BTreeMap<String, DeploymentVolume>> = volumes.map(|vols| {
-		vols.iter()
-			.map(|(id, vol_info)| (id.to_string(), vol_info.to_owned()))
-			.collect()
-	});
+	// let volumes: Option<BTreeMap<String, DeploymentVolume>> = volumes.map(|vols|
+	// { 	vols.iter()
+	// 		.map(|(id, vol_info)| (id.to_string(), vol_info.to_owned()))
+	// 		.collect()
+	// });
 
 	let update_deployment = UpdateDeploymentRequest {
 		name,
