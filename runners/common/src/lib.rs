@@ -1,6 +1,5 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs, clippy::all)]
-#![feature(never_type)]
 
 //! Common utilities for the runner. This library contains all the things you
 //! will need to make a runner. All it needs are the implementations of how the

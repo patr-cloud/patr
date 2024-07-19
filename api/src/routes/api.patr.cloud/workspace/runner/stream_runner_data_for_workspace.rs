@@ -64,77 +64,83 @@ pub async fn stream_runner_data_for_workspace(
 			upgrade
 				.on_upgrade(move |mut websocket| async move {
 					let redis_channel = format!("{}/runner/{}/stream", workspace_id, runner_id);
-					let result: Result<(), Box<dyn std::error::Error>> = try {
-						let mut pub_sub = redis.create_pub_sub();
+					let mut pub_sub = redis.create_pub_sub();
 
-						pub_sub.subscribe(&redis_channel).await?;
-
-						let ping_interval = if cfg!(debug_assertions) {
-							Duration::from_secs(1)
-						} else {
-							Duration::from_secs(30)
-						};
-
-						let mut sleeper = Box::pin(tokio::time::sleep(ping_interval));
-						let mut data_future = pub_sub.next();
-
-						loop {
-							match futures::future::select(sleeper, data_future).await {
-								Either::Left((_, right)) => {
-									data_future = right;
-									sleeper = Box::pin(tokio::time::sleep(ping_interval));
-									let Ok(_) = websocket.send(Message::Ping(Vec::new())).await
-									else {
-										debug!("Failed to send ping to websocket");
-										break;
-									};
-									let Ok(true) = redis
-										.set_with_options(
-											redis::keys::runner_connection_lock(&runner_id),
-											random_connection_id.to_string(),
-											SetCondition::XX,
-											SetExpiration::Ex(
-												const {
-													if cfg!(debug_assertions) {
-														5 // 5 seconds
-													} else {
-														120 // 2 mins
-													}
-												},
-											),
-											false,
-										)
-										.await
-									else {
-										info!("Runner connection lock expired, closing websocket");
-										break;
-									};
-								}
-								Either::Right((data, left)) => {
-									sleeper = left;
-									data_future = pub_sub.next();
-									let Some(Ok(data)) = data else {
-										continue;
-									};
-									let data = serde_json::from_slice::<
-										StreamRunnerDataForWorkspaceServerMsg,
-									>(&data.payload)?;
-									debug!("Sending data down the pipe: {:#?}", data);
-									let Ok(_) = websocket.send(Message::Item(data)).await else {
-										debug!("Failed to send data to websocket");
-										break;
-									};
-								}
-							}
-						}
-
-						trace!("Websocket closed, unsubscribing from runner data stream");
-						pub_sub.unsubscribe(&redis_channel).await?;
+					let Ok(()) = pub_sub
+						.subscribe(&redis_channel)
+						.await
+						.inspect_err(|err| error!("Error streaming runner data: {:?}", err))
+					else {
+						return;
 					};
 
-					if let Err(e) = result {
-						error!("Error streaming runner data: {:?}", e);
+					let ping_interval = if cfg!(debug_assertions) {
+						Duration::from_secs(1)
+					} else {
+						Duration::from_secs(30)
+					};
+
+					let mut sleeper = Box::pin(tokio::time::sleep(ping_interval));
+					let mut data_future = pub_sub.next();
+
+					loop {
+						match futures::future::select(sleeper, data_future).await {
+							Either::Left((_, right)) => {
+								data_future = right;
+								sleeper = Box::pin(tokio::time::sleep(ping_interval));
+								let Ok(_) = websocket.send(Message::Ping(Vec::new())).await else {
+									debug!("Failed to send ping to websocket");
+									break;
+								};
+								let Ok(true) = redis
+									.set_with_options(
+										redis::keys::runner_connection_lock(&runner_id),
+										random_connection_id.to_string(),
+										SetCondition::XX,
+										SetExpiration::Ex(
+											const {
+												if cfg!(debug_assertions) {
+													5 // 5 seconds
+												} else {
+													120 // 2 mins
+												}
+											},
+										),
+										false,
+									)
+									.await
+								else {
+									info!("Runner connection lock expired, closing websocket");
+									break;
+								};
+							}
+							Either::Right((data, left)) => {
+								sleeper = left;
+								data_future = pub_sub.next();
+								let Some(Ok(data)) = data else {
+									continue;
+								};
+								let Ok(data) =
+									serde_json::from_slice(&data.payload).inspect_err(|err| {
+										error!("Error streaming runner data: {:?}", err)
+									})
+								else {
+									return;
+								};
+								debug!("Sending data down the pipe: {:#?}", data);
+								let Ok(_) = websocket.send(Message::Item(data)).await else {
+									debug!("Failed to send data to websocket");
+									break;
+								};
+							}
+						}
 					}
+
+					trace!("Websocket closed, unsubscribing from runner data stream");
+					_ = pub_sub
+						.unsubscribe(&redis_channel)
+						.await
+						.inspect_err(|err| error!("Error streaming runner data: {:?}", err));
 				})
 				.into_response(),
 		))

@@ -1,8 +1,9 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs, clippy::missing_docs_in_private_items)]
-#![feature(exitcode_exit_method)]
 
 //! A CLI tool for interacting and managing your Patr resources.
+
+use std::process::ExitCode;
 
 use clap::Parser;
 
@@ -28,7 +29,7 @@ pub mod prelude {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> ExitCode {
 	let AppArgs {
 		global_args,
 		command,
@@ -42,25 +43,23 @@ async fn main() {
 		.unwrap_or_default();
 
 	let output_format = global_args.output;
-	let output = match command.execute(global_args, state).await {
-		Ok(output) => output,
-		Err(err) => {
-			eprintln!(
-				"{}",
-				match output_format {
-					OutputType::Text => {
-						err.body.message
-					}
-					OutputType::Json => {
-						serde_json::to_string(&err.body).unwrap()
-					}
-					OutputType::PrettyJson => {
-						serde_json::to_string_pretty(&err.body).unwrap()
-					}
+	let Ok(output) = command.execute(global_args, state).await.map_err(|err| {
+		eprintln!(
+			"{}",
+			match output_format {
+				OutputType::Text => {
+					err.body.message
 				}
-			);
-			std::process::ExitCode::FAILURE.exit_process();
-		}
+				OutputType::Json => {
+					serde_json::to_string(&err.body).unwrap()
+				}
+				OutputType::PrettyJson => {
+					serde_json::to_string_pretty(&err.body).unwrap()
+				}
+			}
+		)
+	}) else {
+		return ExitCode::FAILURE;
 	};
 
 	match output_format {
@@ -74,4 +73,6 @@ async fn main() {
 			println!("{}", serde_json::to_string_pretty(&output.json).unwrap());
 		}
 	}
+
+	ExitCode::SUCCESS
 }
