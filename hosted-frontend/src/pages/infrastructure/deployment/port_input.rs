@@ -135,14 +135,9 @@ pub fn PortInput(
 					<div class="flex-col-5 fc-fs-fs pr-lg gap-xxs">
 						<Input
 							value={Signal::derive(move || port_number.get())}
-							on_input={
-								Box::new(move |ev| {
-									ev.prevent_default();
-									port_number.set(event_target_value(&ev));
-								})
-							}
 							r#type={InputType::Number}
 							id="port"
+							name="port"
 							class="full-width"
 							placeholder="Enter Port Number"
 						/>
@@ -155,14 +150,25 @@ pub fn PortInput(
 						</Show>
 					</div>
 
-					<div class="flex-col-6 fc-fs-fs gap-xxs">
-						<InputDropdown
-							value={port_type}
-							placeholder={"Select Protocol".to_string()}
-							options={exposed_port_types}
-						/>
-
-					</div>
+					<ul class="flex-col-6 fr-fs-fs">
+						{
+							move || ExposedPortType::VARIANTS
+								.iter()
+								.map(|port| view! {
+									<li class="flex-col-4 pr-sm">
+										<label class="bg-secondary-light fr-fs-ct gap-md full-width txt-white full-width flex-col-4 br-sm py-sm px-xl">
+											<input
+												type="radio"
+												value={port.clone().to_string()}
+												name="port_protocol"
+											/>
+											<p>{port.clone().to_string()}</p>
+										</label>
+									</li>
+								}.into_view()
+							).collect_view()
+						}
+					</ul>
 
 					<div class="flex-col-1 fr-ct-fs">
 						<Link

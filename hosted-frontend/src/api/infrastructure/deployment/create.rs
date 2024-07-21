@@ -1,8 +1,15 @@
 use std::collections::BTreeMap;
 
 use models::api::workspace::deployment::*;
+use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
+
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+struct Env {
+	key: String,
+	value: String,
+}
 
 #[server(CreateDeploymentFn, endpoint = "/infrastructure/deployment/create")]
 pub async fn create_deployment(
@@ -12,21 +19,23 @@ pub async fn create_deployment(
 	registry_name: String,
 	image_name: String,
 	image_tag: String,
-	deploy_on_create: bool,
-	deploy_on_push: bool,
+	runner: String,
+	machine_type: String,
+	#[server(default)] env: Vec<Env>,
+	port: u16,
+	port_protocol: String,
 	min_horizontal_scale: u16,
 	max_horizontal_scale: u16,
-	runner: String,
-	startup_probe: Option<(u16, String)>,
-	liveness_probe: Option<(u16, String)>,
-	machine_type: String,
-	#[server(default)] environment_variables: Vec<(String, EnvironmentVariableValue)>,
-	#[server(default)] volumes: Vec<(Uuid, String)>,
-	ports: Vec<(StringifiedU16, ExposedPortType)>,
 ) -> Result<CreateDeploymentResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
 	use constants::USER_AGENT_STRING;
+	logging::log!(
+		"\n\n======================{:?} {:?} {:?}--------------------\n\n",
+		env,
+		port,
+		port_protocol
+	);
 
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
@@ -53,15 +62,20 @@ pub async fn create_deployment(
 		}
 	};
 
+	let port = StringifiedU16::new(port);
+	// let port_protocol = ExposedPortType::from_str(port_protocol.as_str())
+	// 	.map_err(|_|
+	// ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
+
 	let running_details = DeploymentRunningDetails {
-		deploy_on_push,
+		deploy_on_push: false,
 		min_horizontal_scale,
 		max_horizontal_scale,
-		environment_variables: environment_variables.iter().map(|x| x.to_owned()).collect(),
-		ports: ports.iter().map(|x| x.to_owned()).collect(),
-		volumes: volumes.iter().map(|x| x.to_owned()).collect(),
-		startup_probe: startup_probe.map(|(port, path)| DeploymentProbe { port, path }),
-		liveness_probe: liveness_probe.map(|(port, path)| DeploymentProbe { port, path }),
+		environment_variables: BTreeMap::from([]),
+		ports: BTreeMap::from([]),
+		volumes: BTreeMap::from([]),
+		startup_probe: None,
+		liveness_probe: None,
 		config_mounts: BTreeMap::from([]),
 	};
 
@@ -79,7 +93,7 @@ pub async fn create_deployment(
 				registry,
 				machine_type,
 				runner,
-				deploy_on_create,
+				deploy_on_create: false,
 				running_details,
 			})
 			.build(),

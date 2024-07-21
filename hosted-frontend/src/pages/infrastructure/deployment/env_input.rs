@@ -78,47 +78,45 @@ pub fn EnvInput(
 					</div>
 				</Show>
 
-				<div class="flex full-width">
-					<div class="flex-col-5 fc-fc-fs pr-lg">
-						<Input
-							r#type={InputType::Text}
-							id="envKey"
-							placeholder="Enter Env Key"
-							class="full-width"
-							value={Signal::derive(move || env_name.get())}
-							on_input={Box::new(move |ev| {
-								ev.prevent_default();
-								env_name.set(event_target_value(&ev))
-							})}
-						/>
-					</div>
+				<div class="fc-fs-fs gap-md full-width">
+					{(0..2)
+						.collect::<Vec<i32>>()
+						.iter()
+						.map(|i| view! {
+							<div class="flex full-width">
+								<div class="flex-col-5 fc-fc-fs pr-lg">
+									<Input
+										r#type={InputType::Text}
+										id="envKey"
+										placeholder="Enter Env Key"
+										class="full-width"
+										name={format!("env[{i}][key]")}
+									/>
+								</div>
 
-					<div class="flex-col-6 fc-fs-fs gap-xxs">
-						<Input
-							r#type={InputType::Text}
-							id="envValue"
-							placeholder="Enter Env Value"
-							class="full-width"
-							value={Signal::derive(move || env_value.get())}
-							on_input={Box::new(move |ev| {
-								ev.prevent_default();
-								env_value.set(event_target_value(&ev))
-							})}
-						/>
-					</div>
+								<div class="flex-col-6 fc-fs-fs gap-xxs">
+									<Input
+										r#type={InputType::Text}
+										id="envValue"
+										placeholder="Enter Env Value"
+										class="full-width"
+										value={Signal::derive(move || env_value.get())}
+										name={format!("env[{i}][value]")}
+									/>
+								</div>
 
-					<div class="flex-col-1 fr-ct-fs">
-						<Link
-							style_variant={LinkStyleVariant::Contained}
-							class="br-sm p-xs ml-md"
-							should_submit=false
-							on_click={Rc::new(move |ev| {
-								on_add.call((ev.clone(), env_name.get(), env_value.get()))
-							})}
-						>
-							<Icon icon={IconType::Plus} color={Color::Secondary}/>
-						</Link>
-					</div>
+								<div class="flex-col-1 fr-ct-fs">
+									<Link
+										style_variant={LinkStyleVariant::Contained}
+										class="br-sm p-xs ml-md"
+										should_submit=false
+									>
+										<Icon icon={IconType::Plus} color={Color::Secondary}/>
+									</Link>
+								</div>
+							</div>
+						}.into_view()).collect_view()
+					}
 				</div>
 			</div>
 		</div>

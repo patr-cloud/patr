@@ -46,7 +46,8 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 		})
 	};
 
-	move || match deployment_info.get() {
+	move || {
+		match deployment_info.get() {
 		Some(info) => {
 			let (image_registry, image_name) = match &info.clone().deployment.registry {
 				DeploymentRegistry::PatrRegistry {
@@ -69,14 +70,20 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 						</div>
 
 						<div class="flex-col-10 fc-fs-fs">
-							<Input
-								r#type={InputType::Text}
-								class="full-width"
-								value={
-									let deployment_info = info.clone();
-									Signal::derive(move || deployment_info.clone().deployment.clone().name.clone())
-								}
-							/>
+							<div class="txt-white br-sm px-xxl py-sm txt-disabled row-card bg-secondary-light full-width">
+								<p class="px-md">{
+									let info = info.clone();
+									Signal::derive(move || info.clone().deployment.clone().name.clone())
+								}</p>
+							</div>
+							// <Input
+							// 	r#type={InputType::Text}
+							// 	class="full-width"
+							// 	value={
+							// 		let deployment_info = info.clone();
+							// 		Signal::derive(move || deployment_info.clone().deployment.clone().name.clone())
+							// 	}
+							// />
 						</div>
 					</div>
 
@@ -235,5 +242,6 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 		}
 		.into_view(),
 		None => view! {"error occurred"}.into_view(),
+	}
 	}
 }

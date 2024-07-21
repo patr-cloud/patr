@@ -7,9 +7,6 @@ use crate::{
 
 #[component]
 pub fn ScaleDeployment() -> impl IntoView {
-	let min_horizontal = create_rw_signal::<u16>(2);
-	let max_horizontal = create_rw_signal::<u16>(10);
-
 	let deployment_info = expect_context::<RwSignal<DeploymentInfo>>();
 	let (current_workspace_id, _) =
 		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
@@ -26,55 +23,54 @@ pub fn ScaleDeployment() -> impl IntoView {
 			<div class="flex full-width">
 				<div class="flex-col-2 my-auto pr-md">
 					<span class="txt-sm">"Choose Horizontal Scale"</span>
-				</div>
-
-				<div class="flex-col-10 fc-fs-ct bg-secondary-light p-xl br-sm">
 					<p class="full-width letter-sp-md mb-lg txt-xxs">
 						"Choose the minimum and maximum number of instances for your deployment "
 					</p>
+				</div>
 
-					<div class="full-width fr-ct-ct">
-						<div class="flex-col-2 fc-ct-ct">
-							<label html_for="minHorizontalScale">"Minimum Scale"</label>
+				<div class="flex-col-10 fc-fs-fs gap-sm px-md br-sm">
+					<div
+						style="width: 30%"
+						class="full-width full-height fr-sb-ct"
+					>
+						<label
+							class="flex-col-3"
+							html_for="minHorizontalScale"
+						>
+							"Minimum Scale"
+						</label>
 
-							<NumberPicker
-								value={min_horizontal}
-								style_variant={SecondaryColorVariant::Medium}
-								on_change={move |_| {
-									deployment_info.update(|info| {
-										info.min_horizontal_scale = Some(min_horizontal.get());
-									})
-								}}
-							/>
-						</div>
+						<input
+							class="mx-md txt-white txt-center outline-primary-focus py-xxs br-sm bg-secondary-light flex-col-9 full-height"
+							type="number"
+							min={1}
+							max={10}
+							id="minHorizontalScale"
+							name="min_horizontal_scale"
+							value={1}
+						/>
+					</div>
 
-						<div class="flex-col-8 mt-xl px-xl fc-fs-ct">
-							<DoubleInputSlider
-								min={min_horizontal}
-								max={max_horizontal}
-								min_limit={1}
-								max_limit={10}
-								class="full-width"
-							/>
+					<div
+						style="width: 30%;"
+						class="full-width full-height fr-sb-ct"
+					>
+						<label
+							class="flex-col-3"
+							html_for="maxHorizontalScale"
+						>
+							"Maximum Scale"
+						</label>
 
-							<p class="txt-warning txt-xxs">
-								"Any excess volumes will be removed if the number of instances is reduced."
-							</p>
-						</div>
-
-						<div class="flex-col-2 fc-ct-ct">
-							<label html_for="maxHorizontalScale">"Maximum Scale"</label>
-
-							<NumberPicker
-								value={max_horizontal}
-								style_variant={SecondaryColorVariant::Medium}
-								on_change={move |_| {
-									deployment_info.update(|info| {
-										info.max_horizontal_scale = Some(max_horizontal.get());
-									})
-								}}
-							/>
-						</div>
+						<input
+							class="mx-md txt-white txt-center outline-primary-focus py-xxs br-sm bg-secondary-light flex-col-9 full-height"
+							type="number"
+							min={1}
+							max={10}
+							id="maxHorizontalScale"
+							name="max_horizontal_scale"
+							value={1}
+						/>
 					</div>
 				</div>
 			</div>
@@ -82,16 +78,16 @@ pub fn ScaleDeployment() -> impl IntoView {
 			<div class="flex full-width">
 				<div class="flex-col-2 my-auto pr-md">
 					<span class="txt-sm">"Manage Resource Allocation"</span>
+
+					<p class="letter-sp-md mb-lg txt-xxs">
+						"Specify the resources to be allocated to your container"
+					</p>
 				</div>
 
 				<div class="flex-col-10 fr-fs-ct of-auto">
-					<div class="full-width p-xl br-sm bg-secondary-light fc-fs-fs of-auto">
-						<p class="letter-sp-md mb-lg txt-xxs">
-							"Specify the resources to be allocated to your container"
-						</p>
-
+					<div class="full-width p-xl br-sm fc-fs-fs of-auto">
 						<Transition>
-							<div class="fr-fs-ct ofx-auto py-xxs gap-md">
+							<div class="fr-fs-ct f-wrap ofx-auto py-xxs gap-xl">
 								{
 									move || match machine_list.get() {
 										Some(Ok(data)) => view! {

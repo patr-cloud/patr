@@ -1,6 +1,6 @@
 use leptos_use::{use_cookie, utils::FromToStringCodec};
 
-use super::{DeploymentInfo, DetailsPageError, Page};
+use super::{DeploymentInfo, DetailsPageError};
 use crate::prelude::*;
 
 /// The Deploy Details Page, has stuff like name, runner, registry, etc.
@@ -11,17 +11,10 @@ pub fn DeploymentDetails(
 	errors: MaybeSignal<DetailsPageError>,
 ) -> impl IntoView {
 	let deployment_info = expect_context::<RwSignal<DeploymentInfo>>();
-	let runner = create_rw_signal("".to_string());
-	let registry = create_rw_signal("patr".to_string());
 
 	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
 	let (current_workspace_id, _) =
 		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
-
-	create_effect(move |_| deployment_info.update(|info| info.runner_id = Some(runner.get())));
-	create_effect(move |_| {
-		deployment_info.update(|info| info.registry_name = Some(registry.get()))
-	});
 
 	let runner_list = create_resource(
 		move || (access_token.get(), current_workspace_id.get()),
@@ -50,21 +43,7 @@ pub fn DeploymentDetails(
 							name="name"
 							id="name"
 							value={Signal::derive(move || deployment_info.get().name.unwrap_or_default())}
-							on_input={
-								Box::new(move |ev| {
-									ev.prevent_default();
-									deployment_info.update(
-										|info| info.name = Some(event_target_value(&ev))
-									)
-								})
-							}
 						/>
-
-						<Show when={move || store_errors.with_value(|errors| !errors.get().name.clone().is_empty())}>
-							<Alert r#type={AlertType::Error} class="mt-xs">
-								{move || store_errors.with_value(|errors| errors.get().name.clone())}
-							</Alert>
-						</Show>
 					</div>
 				</div>
 
@@ -73,25 +52,25 @@ pub fn DeploymentDetails(
 						<label class="txt-white txt-sm fr-fs-ct">"Registry"</label>
 					</div>
 
-					<div class="flex-col-10 fc-fs-fs">
-						<InputDropdown
-							placeholder="Registry Name"
-							value={registry}
-							class="full-width"
-							options={vec![
-								InputDropdownOption {
-									id: "docker".to_string(),
-									label: "Docker Hub (docker.io)".to_string(),
-									disabled: false
-								},
-								InputDropdownOption {
-									id: "patr".to_string(),
-									label: "Container Registry (registry.patr.cloud)".to_string(),
-									disabled: false
-								},
-							]}
-						/>
-					</div>
+					<ul class="flex-col-10 fr-fs-fs gap-sm">
+						<li class="flex-col-6">
+							<label html_for="registry_name" class="
+								bg-secondary-light fr-fs-ct gap-md full-width txt-white full-width flex-col-4 br-sm py-sm px-xl
+							">
+								<input name="registry_name" value="docker" type="radio" />
+								<p>"Docker Registry"</p>
+							</label>
+						</li>
+
+						<li class="flex-col-6">
+							<label html_for="registry_name" class="
+								bg-secondary-light fr-fs-ct gap-md full-width txt-white full-width flex-col-4 br-sm py-sm px-xl
+							">
+								<input name="registry_name" value="patr" type="radio" />
+								<p>"Patr Registry"</p>
+							</label>
+						</li>
+					</ul>
 				</div>
 
 				<div class="flex my-xs full-width">
@@ -103,25 +82,10 @@ pub fn DeploymentDetails(
 						<Input
 							placeholder="Enter Repository Image Name"
 							r#type={InputType::Text}
-							name="repository_name"
+							name="image_name"
 							class="full-width"
 							id="repository_name"
-							value={Signal::derive(move || deployment_info.get().image_name.unwrap_or_default())}
-							on_input={
-								Box::new(move |ev| {
-									ev.prevent_default();
-									deployment_info.update(
-										|info| info.image_name = Some(event_target_value(&ev))
-									)
-								})
-							}
 						/>
-
-						<Show when={move || store_errors.with_value(|errors| !errors.get().image_name.clone().is_empty())}>
-							<Alert r#type={AlertType::Error} class="mt-xs">
-								{move || store_errors.with_value(|errors| errors.get().image_name.clone())}
-							</Alert>
-						</Show>
 					</div>
 
 					<div class="flex-col-4 pl-md fc-fs-fs">
@@ -131,22 +95,7 @@ pub fn DeploymentDetails(
 							class="full-width"
 							name="image_tag"
 							id="image_tag"
-							value={Signal::derive(move || deployment_info.get().image_tag.unwrap_or_default())}
-							on_input={
-								Box::new(move |ev| {
-									ev.prevent_default();
-									deployment_info.update(
-										|info| info.image_tag = Some(event_target_value(&ev))
-									)
-								})
-							}
 						/>
-
-						<Show when={move || store_errors.with_value(|errors| !errors.get().image_tag.clone().is_empty())}>
-							<Alert r#type={AlertType::Error} class="mt-xs">
-								{move || store_errors.with_value(|errors| errors.get().image_tag.clone())}
-							</Alert>
-						</Show>
 					</div>
 				</div>
 
@@ -157,37 +106,35 @@ pub fn DeploymentDetails(
 
 					<div class="flex-col-10 fc-fs-fs">
 						<Transition>
-							{
-								move || view! {
-									<InputDropdown
-										placeholder="Choose A Runner"
-										class="full-width"
-										value={runner}
-										options={
-											match runner_list.get() {
-												Some(Ok(data)) => {
-													data.runners
-														.iter()
-														.map(|x| InputDropdownOption {
-															id: x.id.to_string().clone(),
-															disabled: false,
-															label: x.name.clone()
-														})
-														.collect::<Vec<_>>()
-												},
-												_ => vec![]
-											}
-										}
-									/>
-
-									<Show when={move || store_errors.with_value(|errors| !errors.get().runner.clone().is_empty())}>
-										<Alert r#type={AlertType::Error} class="mt-xs">
-											{move || store_errors.with_value(|errors| errors.get().runner.clone())}
-										</Alert>
-									</Show>
-
-								}.into_view()
-							}
+							<ul class="fr-fs-fs gap-sm full-width f-wrap">
+								{
+									move || match runner_list.get() {
+										Some(Ok(runners)) => view! {
+											<For
+												each={move || runners.runners.clone()}
+												key={|state| state.id.clone()}
+												let:child
+											>
+												 <li class="flex-col-3">
+													<label class="fr-fs-ct gap-md bg-secondary-light fr-fs-ct full-width txt-white br-sm py-sm px-xl">
+														<input
+															type="radio"
+															value={child.id.to_string()}
+															name="runner"
+														/>
+														<p>{child.name.clone()}</p>
+													</label>
+												</li>
+											</For>
+										}.into_view(),
+										_ => view! {
+											<li class="px-xl py-sm ul-light fr-fs-ct full-width br-bottom-sm txt-white">
+												"Error Loading Runners"
+											</li>
+										}.into_view()
+									}
+								}
+							</ul>
 						</Transition>
 					</div>
 				</div>

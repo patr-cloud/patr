@@ -67,7 +67,7 @@ pub fn ConfigMountInput(
 					</div>
 				</Show>
 
-				<form class="flex full-width">
+				<div class="flex full-width">
 					<div class="flex-col-5 fc-fs-fs pr-lg gap-xxs">
 						<Input
 							r#type={InputType::Text}
@@ -115,7 +115,7 @@ pub fn ConfigMountInput(
 							<Icon icon={IconType::Plus} color={Color::Secondary}/>
 						</Link>
 					</div>
-				</form>
+				</div>
 			</div>
 		</div>
 	}

@@ -40,6 +40,8 @@ pub fn StartStopButton() -> impl IntoView {
 		})
 	};
 
+	let delete_action = create_server_action::<DeleteDeploymentFn>();
+
 	let on_click_delete = move |_: MouseEvent| {
 		spawn_local(async move {
 			if let Some(deployment_info) = deployment_info.get() {
@@ -65,10 +67,11 @@ pub fn StartStopButton() -> impl IntoView {
 						DeploymentStatus::Running | DeploymentStatus::Created | DeploymentStatus::Stopped => false,
 						_ => true,
 				}}
+				clone:deployment_info
 			>
 				<Icon
 					icon={
-						match Status::from_deployment_status(deployment_info.deployment.status.clone()) {
+						match Status::from_deployment_status(deployment_info.deployment.clone().status.clone()) {
 							Status::Running => IconType::PauseCircle,
 							_ => IconType::PlayCircle
 						}
@@ -87,17 +90,24 @@ pub fn StartStopButton() -> impl IntoView {
 				}
 			</Link>
 
-			<button
-				class="fr-fs-ct btn btn-error ml-md"
-				on:click={on_click_delete}
-			>
-				<Icon
-					icon={IconType::Trash2}
-					size=Size::ExtraSmall
-					class="mr-xs"
-				/>
-				"DELETE"
-			</button>
+			<ActionForm action={delete_action}>
+				<input type="hidden" name="access_token" value={access_token.get()}/>
+				<input type="hidden" name="workspace_id" value={current_workspace_id.get()}/>
+				<input type="hidden" name="deployment_id" value={deployment_info.deployment.id.to_string()}/>
+
+				<button
+					type="submit"
+					class="fr-fs-ct btn btn-error ml-md"
+					on:click={on_click_delete}
+				>
+					<Icon
+						icon={IconType::Trash2}
+						size=Size::ExtraSmall
+						class="mr-xs"
+					/>
+					"DELETE"
+				</button>
+			</ActionForm>
 		}
 		.into_view(),
 		None => {}.into_view(),

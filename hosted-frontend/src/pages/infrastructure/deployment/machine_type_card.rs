@@ -19,35 +19,41 @@ pub fn MachineTypeCard(
 	let outer_div_class = move || {
 		class.with(|cname| {
 			format!(
-                "px-xl py-lg bg-secondary-medium cursor-pointer br-sm fc-fs-fs machine-type-card {} {}",
+                "px-xl py-lg bg-secondary-light cursor-pointer br-sm fc-fs-fs machine-type-card {} {}",
 				cname,
-				if is_selected.get() { "bd-primary" } else { "bd-none" }
+				if is_selected.get() { "bd-none" } else { "bd-primary" }
 			)
 		})
 	};
-	create_effect(move |_| {
-		logging::log!("{}", is_selected.get());
-	});
 
 	view! {
-		<div class={outer_div_class} on:click={
-			let id = machine_type.get().id.clone();
-			is_selected.update(|v| *v = !*v);
-			move |_| {
-				on_select.call(id);
-			}
-		}>
-			<div class="fr-fs-bl">
-				<span class="txt-md">
-					{format!("{} MB", machine_type.clone().get().memory_count)}
-				</span>
-				<span class="txt-disabled ml-xxs txt-xxs">"RAM"</span>
-			</div>
-			<div class="fr-fs-bl">
-				<span class="txt-lg">{machine_type.get().cpu_count}</span>
-				<span class="txt-disabled ml-xxs txt-xxs">"vCPU"</span>
-			</div>
+		<label class="fr-fs-fs gap-md">
+			<input
+				class="mt-xs"
+				type="radio"
+				name="machine_type"
+				value={machine_type.get().id.to_string()}
+			/>
 
-		</div>
+			<div class={outer_div_class} on:click={
+				let id = machine_type.get().id.clone();
+				is_selected.update(|v| *v = !*v);
+				move |_| {
+					on_select.call(id);
+				}
+			}>
+				<div class="fr-fs-bl">
+					<span class="txt-md">
+						{format!("{} MB", machine_type.clone().get().memory_count)}
+					</span>
+					<span class="txt-disabled ml-xxs txt-xxs">"RAM"</span>
+				</div>
+				<div class="fr-fs-bl">
+					<span class="txt-lg">{machine_type.get().cpu_count}</span>
+					<span class="txt-disabled ml-xxs txt-xxs">"vCPU"</span>
+				</div>
+
+			</div>
+		</label>
 	}
 }
