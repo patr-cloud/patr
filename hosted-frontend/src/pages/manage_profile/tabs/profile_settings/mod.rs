@@ -15,7 +15,6 @@ pub fn ProfileSettings() -> impl IntoView {
 			<Transition>
 				{move || match user_data.get() {
 					Some(user_data) => {
-						logging::log!("{:#?}", user_data);
 						match user_data {
 							Ok(data) => {
 								view! {

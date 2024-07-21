@@ -3,7 +3,7 @@ use crate::prelude::*;
 #[component(transparent)]
 pub fn ProfileRoutes() -> impl IntoView {
 	view! {
-		<Route path={LoggedInRoute::UserProfile} view={ManageProfile}>
+		<Route ssr=SsrMode::InOrder path={LoggedInRoute::UserProfile} view={ManageProfile}>
 			<Route path={LoggedInRoute::ApiTokens} view={ApiTokensTab}>
 				<Route path="create" view={CreateApiToken} />
 				<Route path=":token_id" view={EditApiToken} />
@@ -31,6 +31,10 @@ pub fn ManageProfile() -> impl IntoView {
 					TabItem {
 						name: "API Tokens".to_owned(),
 						path: "api-tokens".to_owned(),
+					},
+					TabItem {
+						name: "Worksapce".to_owned(),
+						path: "/workspace".to_owned(),
 					},
 				]}/>
 

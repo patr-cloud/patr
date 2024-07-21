@@ -23,14 +23,9 @@ pub fn BasicInfo(
 					</div>
 
 					<div class="flex-col-10 fc-fs-fs">
-						<Input
-							id="username"
-							disabled=true
-							class="full-width"
-							placeholder="Enter Username"
-							variant={SecondaryColorVariant::Medium}
-							value={basic_user_info.clone().data.username}
-						/>
+						 <p class="bg-secondary-medium full-width fr-fs-ct full-height br-sm px-xl py-sm">
+							{basic_user_info.clone().data.username}
+						</p>
 					</div>
 				</div>
 
@@ -42,25 +37,15 @@ pub fn BasicInfo(
 					</div>
 
 					<div class="flex-col-5 fc-fs-fs pr-xs">
-						<Input
-							id="first_name"
-							disabled=true
-							class="full-width"
-							placeholder="First Name"
-							variant={SecondaryColorVariant::Medium}
-							value={basic_user_info.clone().data.first_name}
-						/>
+						<p class="bg-secondary-medium full-width fr-fs-ct full-height br-sm px-xl py-sm">
+							{basic_user_info.clone().data.first_name}
+						</p>
 					</div>
 
 					<div class="flex-col-5 fc-fs-fs pl-xs">
-						<Input
-							id="last_name"
-							disabled=true
-							class="full-width"
-							placeholder="Last Name"
-							variant={SecondaryColorVariant::Medium}
-							value={basic_user_info.clone().data.last_name}
-						/>
+						<p class="bg-secondary-medium full-width fr-fs-ct full-height br-sm px-xl py-sm">
+							{basic_user_info.clone().data.last_name}
+						</p>
 					</div>
 				</div>
 			</form>
