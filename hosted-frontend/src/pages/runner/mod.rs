@@ -10,7 +10,7 @@ use crate::prelude::*;
 #[component(transparent)]
 pub fn RunnerRoutes() -> impl IntoView {
 	view! {
-		<Route path={LoggedInRoute::Runners} view={RunnerPage}>
+		<Route ssr=SsrMode::InOrder path={LoggedInRoute::Runners} view={RunnerPage}>
 			<Route path={"create"} view={CreateRunner}/>
 			<Route path={":runner_id"} view={ManageRunner}/>
 			<Route path={AppRoutes::Empty} view={RunnerDashboard}/>
