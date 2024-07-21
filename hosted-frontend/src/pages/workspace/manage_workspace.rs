@@ -26,16 +26,8 @@ pub fn ManageWorkspace() -> impl IntoView {
 					path: "".to_owned()
 				},
 				TabItem {
-					name: "Billing".to_owned(),
-					path: "".to_owned()
-				},
-				TabItem {
-					name: "Pricing".to_owned(),
-					path: "".to_owned()
-				},
-				TabItem {
-					name: "Transactions".to_owned(),
-					path: "".to_owned()
+					name: "List".to_owned(),
+					path: "list".to_owned()
 				}
 			]}/>
 		</ContainerHead>

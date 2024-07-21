@@ -9,10 +9,11 @@ pub use self::{create::*, manage_workspace::*, tabs::*};
 #[component(transparent)]
 pub fn WorkspaceRoutes() -> impl IntoView {
 	view! {
-		<Route path={AppRoutes::Empty} view={|| view! { <Outlet /> }}>
+		<Route ssr=SsrMode::InOrder path={AppRoutes::Empty} view={|| view! { <Outlet /> }}>
 			<Route path={LoggedInRoute::Workspace} view={WorkspacePage}>
 				<Route path={AppRoutes::Empty} view={ManageWorkspace}>
-					<Route path="" view={ManageWorkspaceSettingsTab} />
+					<Route path="/list" view={ListWorksapce} />
+					<Route path={AppRoutes::Empty} view={ManageWorkspaceSettingsTab} />
 				</Route>
 				<Route path="/create" view={CreateWorkspace} />
 			</Route>
