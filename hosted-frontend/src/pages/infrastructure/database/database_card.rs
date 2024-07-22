@@ -84,7 +84,11 @@ pub fn DatabaseCard(
 
 			</div>
 			<div class="fr-fs-ct mt-xs full-width px-xxs">
-				<Link class="letter-sp-md  txt-sm fr-fs-ct">
+				<Link
+					r#type={Variant::Link}
+					to={database.get().id.to_string()}
+					class="letter-sp-md txt-sm fr-fs-ct"
+				>
 					"MANAGE DATABASE"
 					<Icon
 						icon={IconType::ChevronRight}

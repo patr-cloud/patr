@@ -45,34 +45,43 @@ pub fn ManageDatabase() -> impl IntoView {
 
 	view! {
 		<ContainerMain class="full-width full-height mb-md">
-			<ManageDatabaseHeader />
-
-			<ContainerBody class="px-xl py-md gap-md">
-				<ManageDatabaseDetailsTab />
-				// <Transition>
-				// 	{
-				// 		move || match database_info.get() {
-				// 			Some(Ok(data)) => {
-				// 				view! {
-				// 					<div class="txt-white full-width fr-fc-fc">
-				// 						"something"
-				// 					</div>
-				// 				}.into_view()
-				// 			},
-				// 			Some(Err(_)) => view! {
-				// 				<div class="txt-white full-width fr-fc-fc">
-				// 					"Error loading"
-				// 				</div>
-				// 			}.into_view(),
-				// 			None => view! {
-				// 				<div class="txt-white full-width fr-fc-fc">
-				// 					"Loading"
-				// 				</div>
-				// 			}.into_view()
-				// 		}
-				// 	}
-				// </Transition>
-			</ContainerBody>
+			<Transition>
+				{
+					move || match database_info.get() {
+						Some(Ok(database)) => {
+							let id = database.database.id.clone();
+							let name = database.database.name.clone();
+							view! {
+								<ManageDatabaseHeader
+									id={Signal::derive(move || Some(id))}
+									name={Signal::derive(move || name.clone())}
+								/>
+								<ContainerBody class="px-xl py-md gap-md">
+									<ManageDatabaseDetailsTab
+										database_info={Signal::derive(move || database.database.clone())}
+									/>
+								</ContainerBody>
+							}.into_view()
+						},
+						Some(Err(_)) => view! {
+							<ManageDatabaseHeader />
+							<ContainerBody class="px-xl py-md gap-md">
+								<div class="txt-white full-width fr-fc-fc">
+									"Error loading"
+								</div>
+							</ContainerBody>
+						}.into_view(),
+						None => view! {
+							<ManageDatabaseHeader />
+							<ContainerBody class="px-xl py-md gap-md">
+								<div class="txt-white full-width fr-fc-fc">
+									"Loading"
+								</div>
+							</ContainerBody>
+						}.into_view()
+					}
+				}
+			</Transition>
 		</ContainerMain>
 	}
 }
