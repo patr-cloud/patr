@@ -1,14 +1,14 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, str::FromStr};
 
 use models::api::workspace::deployment::*;
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
-struct Env {
-	key: String,
-	value: String,
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Env {
+	pub key: String,
+	pub value: String,
 }
 
 #[server(CreateDeploymentFn, endpoint = "/infrastructure/deployment/create")]
@@ -21,7 +21,7 @@ pub async fn create_deployment(
 	image_tag: String,
 	runner: String,
 	machine_type: String,
-	#[server(default)] env: Vec<Env>,
+	// env: EnvFormData,
 	port: u16,
 	port_protocol: String,
 	min_horizontal_scale: u16,
@@ -30,12 +30,6 @@ pub async fn create_deployment(
 	use std::str::FromStr;
 
 	use constants::USER_AGENT_STRING;
-	logging::log!(
-		"\n\n======================{:?} {:?} {:?}--------------------\n\n",
-		env,
-		port,
-		port_protocol
-	);
 
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
@@ -63,16 +57,15 @@ pub async fn create_deployment(
 	};
 
 	let port = StringifiedU16::new(port);
-	// let port_protocol = ExposedPortType::from_str(port_protocol.as_str())
-	// 	.map_err(|_|
-	// ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
+	let protocol = ExposedPortType::from_str(port_protocol.as_str())
+		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
 	let running_details = DeploymentRunningDetails {
 		deploy_on_push: false,
 		min_horizontal_scale,
 		max_horizontal_scale,
 		environment_variables: BTreeMap::from([]),
-		ports: BTreeMap::from([]),
+		ports: BTreeMap::from([(port, protocol)]),
 		volumes: BTreeMap::from([]),
 		startup_probe: None,
 		liveness_probe: None,

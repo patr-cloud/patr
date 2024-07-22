@@ -156,9 +156,21 @@ pub fn PortInput(
 								.iter()
 								.map(|port| view! {
 									<li class="flex-col-4 pr-sm">
-										<label class="bg-secondary-light fr-fs-ct gap-md full-width txt-white full-width flex-col-4 br-sm py-sm px-xl">
+										<label
+											class={
+												format!(
+													"bg-secondary-light fr-fs-ct gap-md full-width txt-{} full-width flex-col-4 br-sm py-sm px-xl",
+													if port.clone().to_string() == "http".to_string() {
+														"white"
+													} else {
+														"disabled"
+													}
+												)
+											}
+										>
 											<input
 												type="radio"
+												disabled={!(port.clone().to_string() == "http".to_string())}
 												value={port.clone().to_string()}
 												name="port_protocol"
 											/>

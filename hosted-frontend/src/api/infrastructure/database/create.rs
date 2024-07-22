@@ -51,6 +51,10 @@ pub async fn create_database(
 	)
 	.await;
 
+	if api_response.is_ok() {
+		leptos_axum::redirect("/database");
+	}
+
 	api_response
 		.map(|res| res.body)
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::InternalServerError))
