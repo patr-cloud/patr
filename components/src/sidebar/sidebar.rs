@@ -76,7 +76,7 @@ pub fn Sidebar(
 
 	view! {
 		<aside class="sidebar fc-fs-fs pb-xl">
-			<div class="sidebar-logo">
+			<div class="sidebar-logo w-full">
 				<img src="/images/planet-purple.svg" alt="Plante Patr"/>
 				<div class="fc-ct-ct br-sm">
 					<img src="/images/patr.svg" alt="Patr Logo"/>

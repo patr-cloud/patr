@@ -62,7 +62,7 @@ pub fn InputDropdown(
 
 	let dropdown_class = move || {
 		format!(
-			"pos-abs drop-down txt-white fc-fs-fs br-sm of-hidden full-width mt-lg bg-secondary-{} {}",
+			"absolute drop-down text-white flex flex-col items-start justify-start br-sm overflow-hidden w-full mt-lg bg-secondary-{} {}",
 			variant.as_css_name(),
 			class.get()
 		)
@@ -79,18 +79,17 @@ pub fn InputDropdown(
 
 	let input_class = move || {
 		format!(
-			"full-width full-height txt-medium pl-sm mr-sm py-xxs br-sm {}",
+			"w-full h-full font-medium pl-sm mr-sm py-xxs br-sm {}",
 			if disabled.get() ||
 				(value.with(|val| val.is_empty()) &&
 					store_placehoder.with_value(|placeholder| !placeholder.get().is_empty()))
 			{
-				"txt-disabled"
+				"text-disabled"
 			} else {
-				"txt-white"
+				"text-white"
 			}
 		)
 	};
-	// let store_input_class = store_value(input_class.clone());
 
 	let handle_click_option = move |state: &InputDropdownOption| {
 		if state.disabled {
@@ -131,7 +130,7 @@ pub fn InputDropdown(
 
 			<Show when={move || show_dropdown.get() && !disabled.get()}>
 				<div class={dropdown_class.clone()}>
-					<ul class="full-width full-height ofx-hidden ofy-auto fc-fs-fs">
+					<ul class="w-full h-full overflow-x-hidden overflow-y-auto flex flex-col items-start justify-start">
 						<For
 							each={move || store_options.with_value(|opt| opt.clone().get())}
 							key={|state| state.clone()}
@@ -143,8 +142,8 @@ pub fn InputDropdown(
 									move |_| handle_click_option(&child)
 								}
 								class={format!(
-									"px-xl py-sm ul-light fr-fs-ct full-width br-bottom-sm {}",
-									if child.clone().disabled { "txt-disabled" } else { "txt-white" },
+									"px-xl py-sm ul-light flex justify-start items-center w-full br-bottom-sm {}",
+									if child.clone().disabled { "text-disabled" } else { "text-white" },
 								)}
 							>
 

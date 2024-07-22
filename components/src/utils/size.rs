@@ -39,4 +39,16 @@ impl Size {
 			Self::ExtraExtraSmall => "xxs",
 		}
 	}
+
+	const fn as_gap(&self) -> &'static str {
+		match self {
+			Self::ExtraExtraLarge => "gap-xxl",
+			Self::ExtraLarge => "gap-xl",
+			Self::Large => "gap-lg",
+			Self::Medium => "gap-md",
+			Self::Small => "gap-sm",
+			Self::ExtraSmall => "gap-xs",
+			Self::ExtraExtraSmall => "gap-xxs",
+		}
+	}
 }

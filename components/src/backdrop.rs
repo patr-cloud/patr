@@ -13,7 +13,7 @@ pub fn Backdrop(
 	let class = move || {
 		class.with(|classname| {
 			format!(
-				"bg-page bg-backdrop fr-ct-ct backdrop-{} {}",
+				"bg-page bg-backdrop flex items-center justify-center backdrop-{} {}",
 				variant.as_css_name(),
 				classname,
 			)

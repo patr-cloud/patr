@@ -915,7 +915,7 @@ pub fn icon(
 					color.get().as_text_color().as_css_color(),
 					fill.get().as_css_name(),
 					size.get().as_css_name(),
-					if is_clickable { "cursor_pointer" } else { "" },
+					if is_clickable { "cursor-pointer" } else { "" },
 					class.get(),
 				)
 			}}

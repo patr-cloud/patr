@@ -116,7 +116,7 @@ pub fn Input(
 
 	let class = move || {
 		format!(
-			"input fr-fs-ct row-card bg-secondary-{} {}",
+			"input flex justify-start items-center row-card bg-secondary-{} {}",
 			variant.get().as_css_name(),
 			class
 		)
@@ -196,7 +196,7 @@ pub fn Input(
 
 			<input
 				id={move || id.get()}
-				class="mx-md of-hidden txt-of-ellipsis"
+				class="mx-md overflow-hidden text-ellipsis"
 				name={move || name.get()}
 				placeholder={move || placeholder.get()}
 				disabled={move || disabled.get()}

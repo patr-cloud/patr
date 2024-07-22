@@ -1,7 +1,5 @@
 use crate::imports::*;
 
-type Gap = Size;
-
 #[component]
 pub fn DashboardContainer(
 	/// Additional classes to apply to the outer section
@@ -12,13 +10,16 @@ pub fn DashboardContainer(
 	render_items: View,
 	/// Gap between each item in Dashboard grid
 	#[prop(optional)]
-	gap: Gap,
-	/// Alignment of the grid items
-	#[prop(optional)]
-	_align: Alignment,
+	gap: Size,
 ) -> impl IntoView {
-	let class = move || format!("p-xl full-width ofy-auto {}", class.get());
-	let div_class = move || format!("grid-cnt-st-st grid-col-3 gap-{}", gap.as_css_name());
+	let class = move || format!("p-xl w-full overflow-y-auto {}", class.get());
+
+	let div_class = move || {
+		format!(
+			"grid content-start justify-start grid-cols-3 gap-{}",
+			gap.as_css_name()
+		)
+	};
 
 	view! {
 		<section class={class}>

@@ -38,7 +38,7 @@ pub fn CheckboxDropdown(
 
 	let outer_div_class = class.with(|cname| {
 		format!(
-			"fr-fs-ct br-sm row-card full-width pos-rel px-xl py-xxs input-dropdown bg-secondary-{} {} {}",
+			"flex justify-start items-start br-sm row-card w-full relative px-xl py-xxs input-dropdown bg-secondary-{} {} {}",
 			variant.as_css_name(),
 			cname,
 			value.with_untracked(|val| {
@@ -53,18 +53,20 @@ pub fn CheckboxDropdown(
 
 	let input_class = move || {
 		format!(
-			"full-width full-height txt-medium pl-sm mr-sm py-xxs br-sm {}",
+			"w-full h-full font-medium pl-sm mr-sm py-xxs rounded-sm {}",
 			if disabled.get() {
-				"txt-disabled"
+				"text-disabled"
 			} else {
-				"txt-white"
+				"text-white"
 			}
 		)
 	};
 
+	let css_class = "absolute drop-down text-white flex flex-col items-start justify-start rounded-sm overflow-hidden w-full mt-lg";
 	let dropdown_class = move || {
 		format!(
-			"pos-abs drop-down txt-white fc-fs-fs br-sm of-hidden full-width mt-lg bg-secondary-{} {}",
+			"{} bg-secondary-{} {}",
+			css_class,
 			variant.as_css_name(),
 			class.get()
 		)
@@ -95,7 +97,7 @@ pub fn CheckboxDropdown(
 
 			<Show when={move || show_dropdown.get()}>
 				<div class={dropdown_class.clone()}>
-					<ul class="full-width full-height ofx-hidden ofy-auto fc-fs-fs">
+					<ul class="w-full h-full overflow-x-hidden overflow-y-auto flex flex-col items-start justify-start">
 						<For
 							each={move || store_options.with_value(|opt| opt.get())}
 							key={|state| state.label.clone()}
@@ -115,11 +117,11 @@ pub fn CheckboxDropdown(
 										on_select.call((ev, child.label.clone()));
 									}
 								}
-								class={"ul-light fr-fs-ct full-width br-bottom-sm row-card"}
+								class={"ul-light flex justify-start items-center w-full rounded-b-sm row-card"}
 							>
 								<label
 									html_for=""
-									class="txt-left fr-fs-ct cursor-pointer full-width full-height px-xl py-sm"
+									class="text-left flex justify-start items-center cursor-pointer w-full h-full px-xl py-sm"
 								>
 									<input type="checkbox" class="ml-md mr-sm checkbox-sm" checked={
 										value.get().iter().any(|e| e.to_owned() == child.id.clone())

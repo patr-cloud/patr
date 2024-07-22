@@ -22,8 +22,12 @@ pub fn DoubleInputSlider(
 	/// Maximum Possible Value of the input
 	max_limit: u16,
 ) -> impl IntoView {
-	let outer_div_class =
-		class.with(|cname| format!("slider full-width fr-ct-ct pos-rel pb-xl {}", cname));
+	let outer_div_class = class.with(|cname| {
+		format!(
+			"slider w-full flex justify-center items-center relative pb-xl {}",
+			cname
+		)
+	});
 
 	let get_percent = move |val: u16| ((val - min_limit) / (max_limit - min_limit)) * 100;
 	create_effect(move |_| {
@@ -37,18 +41,18 @@ pub fn DoubleInputSlider(
 				prop:value={min}
 				min={min_limit}
 				min={max_limit}
-				class="thumb full-width pos-abs left"
+				class="thumb w-full absolute left"
 			/>
 			<input
 				type="range"
 				prop:value={max}
 				min={min_limit}
 				min={max_limit}
-				class="thumb full-width pos-abs right"
+				class="thumb w-full absolute right"
 			/>
 
-			<div class="pos-rel full-width txt-white">
-				<div class="track pos-abs bg-secondary full-width br-sm"></div>
+			<div class="relative w-full text-white">
+				<div class="track absolute bg-secondary w-full br-sm"></div>
 				{
 					move || view! {
 						<div
@@ -57,7 +61,7 @@ pub fn DoubleInputSlider(
 								(100 - get_percent(max.get())),
 								get_percent(min.get())
 							)}
-							class="range pos-abs br-sm bg-primary"
+							class="range absolute br-sm bg-primary"
 						></div>
 					}
 				}

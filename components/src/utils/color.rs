@@ -49,6 +49,36 @@ impl Color {
 		}
 	}
 
+	const fn as_txt(self) -> &'static str {
+		match self {
+			Self::Primary => "text-primary",
+			Self::Secondary => "text-secondary",
+			Self::White => "text-white",
+			Self::Black => "text-black",
+			Self::Grey => "text-grey",
+			Self::Success => "text-success",
+			Self::Warning => "text-warning",
+			Self::Error => "text-error",
+			Self::Info => "text-info",
+			Self::Disabled => "text-disabled",
+		}
+	}
+
+	const fn as_bg(self) -> &'static str {
+		match self {
+			Self::Primary => "bg-primary",
+			Self::Secondary => "bg-secondary",
+			Self::White => "bg-white",
+			Self::Black => "bg-black",
+			Self::Grey => "bg-grey",
+			Self::Success => "bg-success",
+			Self::Warning => "bg-warning",
+			Self::Error => "bg-error",
+			Self::Info => "bg-info",
+			Self::Disabled => "bg-disabled",
+		}
+	}
+
 	/// Returns the text color corresponding to this color.
 	pub const fn as_text_color(self) -> TextColor {
 		TextColor(self)
