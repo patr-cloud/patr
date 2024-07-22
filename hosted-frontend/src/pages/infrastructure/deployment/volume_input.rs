@@ -39,21 +39,14 @@ pub fn VolumeInput(
 							<For
 								each={move || store_volumes.with_value(|list| list.get())}
 								key={|state| state.clone()}
-								let:child
+								let:vol
 							>
 								<div class="flex full-width mb-xs">
-									<div class="flex-col-5 pr-lg">
+									<div class="flex-col-11 pr-lg">
 										<div class="full-width fr-fs-ct px-xl py-sm br-sm bg-secondary-light">
-											// <span class="ml-md txt-of-ellipsis of-hidden-40">
-											// 	{child.1.path}
-											// </span>
-										</div>
-									</div>
-
-									<div class="flex-col-6">
-										<div class="full-width fr-sb-ct px-xl py-sm bg-secondary-light br-sm">
-											// <span class="px-sm">{child.1.size}</span>
-											<span class="px-sm">"GB"</span>
+											<span class="ml-md txt-of-ellipsis of-hidden-40">
+												{vol.1}
+											</span>
 										</div>
 									</div>
 
@@ -61,7 +54,7 @@ pub fn VolumeInput(
 										<button
 											on:click={
 												move |ev| {
-													on_delete.call((ev, child.0))
+													on_delete.call((ev, vol.0))
 												}
 											}
 										>

@@ -76,22 +76,22 @@ pub fn RunningDetails(
 					mount_points={vec!["/x/y/path".to_owned()]}
 				/>
 
-				<VolumeInput
-					on_add=move |(_, path, size): (MouseEvent, String, String)| {
-						let vol_size = size.parse::<u16>();
-						if !path.is_empty() && vol_size.is_ok() {
-							deployment_info.update(|info| {
-								info.volumes.insert(Uuid::new_v4(), path);
-							});
-						}
-					}
-					on_delete=move |(_, id): (MouseEvent, Uuid)| {
-						deployment_info.update(|info| {
-							info.volumes.remove(&id);
-						});
-					}
-					volumes_list={Signal::derive(move || deployment_info.get().volumes)}
-				/>
+				// <VolumeInput
+				// 	on_add=move |(_, path, size): (MouseEvent, String, String)| {
+				// 		let vol_size = size.parse::<u16>();
+				// 		if !path.is_empty() && vol_size.is_ok() {
+				// 			deployment_info.update(|info| {
+				// 				info.volumes.insert(Uuid::new_v4(), path);
+				// 			});
+				// 		}
+				// 	}
+				// 	on_delete=move |(_, id): (MouseEvent, Uuid)| {
+				// 		deployment_info.update(|info| {
+				// 			info.volumes.remove(&id);
+				// 		});
+				// 	}
+				// 	volumes_list={Signal::derive(move || deployment_info.get().volumes)}
+				// />
 
 				<ProbeInput
 					available_ports={Signal::derive(

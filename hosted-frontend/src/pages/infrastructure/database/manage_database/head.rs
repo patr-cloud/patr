@@ -1,7 +1,14 @@
 use crate::prelude::*;
 
 #[component]
-pub fn ManageDatabaseHeader() -> impl IntoView {
+pub fn ManageDatabaseHeader(
+	/// The name of the database
+	#[prop(into, optional)]
+	name: MaybeSignal<String>,
+	/// The ID of the database
+	#[prop(into, optional, default = None.into())]
+	id: MaybeSignal<Option<Uuid>>,
+) -> impl IntoView {
 	view! {
 		<ContainerHead>
 			<div class="fr-sb-ct full-width">
@@ -17,7 +24,16 @@ pub fn ManageDatabaseHeader() -> impl IntoView {
 						>
 							"Database"
 						</PageTitle>
-						<PageTitle variant={PageTitleVariant::Text}>"{database_name}"</PageTitle>
+						{
+							let name = name.get().clone();
+							if !name.is_empty() {
+								view! {
+									<PageTitle variant={PageTitleVariant::Text}>{name.clone()}</PageTitle>
+								}.into_view()
+							} else {
+								view! {}.into_view()
+							}
+						}
 					</PageTitleContainer>
 				</div>
 

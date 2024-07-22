@@ -1,5 +1,5 @@
 use axum::{http::StatusCode, Router};
-use models::{api::workspace::database::*, ErrorType};
+use models::{api::workspace::database::*, utils::TotalCountHeader, ErrorType};
 
 use crate::prelude::*;
 
@@ -31,9 +31,19 @@ async fn all_database_plan(
 	info!("Starting: Get database plans");
 
 	// LOGIC
+	let id = Uuid::parse_str("a1a2a3a4b1b2c1c2d1d2d3d4a5a6a7d8")?;
 
 	AppResponse::builder()
-		.body(ListAllDatabaseMachineTypeResponse { plans: todo!() })
+		.body(ListAllDatabaseMachineTypeResponse {
+			plans: vec![WithId::new(
+				id,
+				DatabasePlan {
+					cpu_count: 1,
+					memory_count: 1024,
+					volume: 1,
+				},
+			)],
+		})
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
@@ -67,9 +77,12 @@ async fn create_database(
 	info!("Starting: Create database");
 
 	// LOGIC
+	let id = Uuid::parse_str("a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8")?;
 
 	AppResponse::builder()
-		.body(CreateDatabaseResponse { id: todo!() })
+		.body(CreateDatabaseResponse {
+			id: WithId::new(id, ()),
+		})
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
@@ -129,9 +142,31 @@ async fn get_database(
 	info!("Starting: Get database");
 
 	// LOGIC
+	let id = Uuid::parse_str("a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8")?;
+	let region_id = Uuid::parse_str("a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8")?;
+	let plan_id = Uuid::parse_str("a1a2a3a4b1b2c1c2d1d2d3d4a5a6a7d8")?;
 
 	AppResponse::builder()
-		.body(GetDatabaseResponse { database: todo!() })
+		.body(GetDatabaseResponse {
+			database: WithId::new(
+				id,
+				Database {
+					name: "test-database".to_string(),
+					engine: DatabaseEngine::Postgres,
+					version: "14".to_string(),
+					num_nodes: 2,
+					database_plan_id: plan_id,
+					region: region_id,
+					status: DatabaseStatus::Creating,
+					public_connection: models::api::workspace::database::DatabaseConnection {
+						host: "132.12.12.1".to_string(),
+						port: 5432,
+						username: "root".to_string(),
+						password: "password".to_string(),
+					},
+				},
+			),
+		})
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
@@ -161,11 +196,33 @@ async fn list_database(
 	info!("Starting: List database");
 
 	// LOGIC
+	let id_1 = Uuid::parse_str("a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8")?;
+	let plan_id = Uuid::parse_str("a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8")?;
+	let region_id = Uuid::parse_str("a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8")?;
 
 	AppResponse::builder()
-		.body(ListDatabaseResponse { database: todo!() })
+		.body(ListDatabaseResponse {
+			database: vec![WithId::new(
+				id_1,
+				Database {
+					name: "test-database".to_string(),
+					engine: DatabaseEngine::Postgres,
+					version: "14".to_string(),
+					num_nodes: 2,
+					database_plan_id: plan_id,
+					region: region_id,
+					status: DatabaseStatus::Creating,
+					public_connection: models::api::workspace::database::DatabaseConnection {
+						host: "132.12.12.1".to_string(),
+						port: 5432,
+						username: "root".to_string(),
+						password: "password".to_string(),
+					},
+				},
+			)],
+		})
 		.headers(ListDatabaseResponseHeaders {
-			total_count: todo!(),
+			total_count: TotalCountHeader(2),
 		})
 		.status_code(StatusCode::OK)
 		.build()

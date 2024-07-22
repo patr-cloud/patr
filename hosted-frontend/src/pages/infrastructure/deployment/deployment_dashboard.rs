@@ -81,7 +81,9 @@ pub fn DeploymentDashboard() -> impl IntoView {
 				gap={Size::Large}
 				render_items={
 					view! {
-						<Transition>
+						<Transition
+							fallback=move || view! {<p>"loading"</p>}
+						>
 							{
 								move || match deployment_list.get() {
 									Some(Ok(data)) => {
