@@ -132,8 +132,8 @@ where
 {
 	fn encode_by_ref(
 		&self,
-		buf: &mut <Db as sqlx::database::HasArguments<'a>>::ArgumentBuffer,
-	) -> sqlx::encode::IsNull {
+		buf: &mut <Db as sqlx::Database>::ArgumentBuffer<'a>,
+	) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
 		self.0.encode_by_ref(buf)
 	}
 }
@@ -145,8 +145,8 @@ where
 	uuid::Uuid: sqlx::Decode<'a, Db>,
 {
 	fn decode(
-		value: <Db as sqlx::database::HasValueRef<'a>>::ValueRef,
+		value: <Db as sqlx::Database>::ValueRef<'a>,
 	) -> Result<Self, sqlx::error::BoxDynError> {
-		Ok(Self(uuid::Uuid::decode(value)?))
+		uuid::Uuid::decode(value).map(Self)
 	}
 }

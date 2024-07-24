@@ -657,8 +657,8 @@ where
 {
 	fn encode_by_ref(
 		&self,
-		buf: &mut <DB as sqlx::database::HasArguments<'q>>::ArgumentBuffer,
-	) -> sqlx::encode::IsNull {
+		buf: &mut <DB as sqlx::Database>::ArgumentBuffer<'q>,
+	) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
 		<String as sqlx::Encode<'q, DB>>::encode(self.to_string(), buf)
 	}
 }
@@ -670,8 +670,8 @@ where
 	String: sqlx::Decode<'q, DB>,
 {
 	fn decode(
-		value: <DB as sqlx::database::HasValueRef<'q>>::ValueRef,
-	) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+		value: <DB as sqlx::Database>::ValueRef<'q>,
+	) -> Result<Self, sqlx::error::BoxDynError> {
 		let permission = <String as sqlx::Decode<'q, DB>>::decode(value)?;
 		Ok(FromStr::from_str(&permission)?)
 	}
