@@ -49,23 +49,23 @@ pub fn ConfirmSignUpPage() -> impl IntoView {
 	});
 
 	view! {
-		<div class="box-onboard txt-white">
-			<div class="fr-sb-bl mb-lg full-width">
-				<h1 class="txt-primary txt-xl txt-medium">"Confirm OTP"</h1>
+		<div class="box-onboard text-white">
+			<div class="flex justify-between items-baseline mb-lg w-full">
+				<h1 class="text-primary text-xl text-medium">"Confirm OTP"</h1>
 
-				<div class="txt-primary txt-thin fr-fs-fs">
+				<div class="text-primary text-thin flex items-start justify-start">
 					<Link to="/sign-up" r#type={Variant::Link} class="ml-xs">
 						"Sign Up with different Email"
 					</Link>
 				</div>
 			</div>
 
-			<ActionForm action={confirm_action} class="fc-fs-fs full-width">
+			<ActionForm action={confirm_action} class="flex flex-col items-start justify-start w-full">
 				<Input
 					name="username"
 					placeholder="Username"
 					id="username"
-					class="full-width"
+					class="w-full"
 					r#type={InputType::Text}
 					required=true
 				/>
@@ -75,12 +75,12 @@ pub fn ConfirmSignUpPage() -> impl IntoView {
 					</Alert>
 				</Show>
 
-				<span class="mt-sm mb-xxs txt-sm txt-white">"Enter OTP"</span>
+				<span class="mt-sm mb-xxs text-sm text-white">"Enter OTP"</span>
 				<Input
 					name="otp"
 					placeholder="Enter the 6 Digit OTP"
 					id="username"
-					class="full-width"
+					class="w-full"
 					r#type={InputType::Number}
 					required=true
 				/>
@@ -90,7 +90,7 @@ pub fn ConfirmSignUpPage() -> impl IntoView {
 					</Alert>
 				</Show>
 
-				<div class="fr-fe-ct full-width mt-lg">
+				<div class="flex justify-end items-center w-full mt-lg">
 					<Link
 						should_submit=true
 						r#type={Variant::Button}

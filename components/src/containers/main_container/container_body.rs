@@ -11,7 +11,7 @@ pub fn ContainerBody(
 ) -> impl IntoView {
 	let class = move || {
 		format!(
-			"pos-rel fc-fs-ct full-width full-height ofy-auto container-body {}",
+			"relative flex flex-col items-center justify-start w-full h-full overflow-y-auto container-body {}",
 			class.get()
 		)
 	};

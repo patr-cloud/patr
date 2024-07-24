@@ -18,7 +18,7 @@ pub fn Tabs(
 	#[prop(into, optional)]
 	tab_items: MaybeSignal<Vec<TabItem>>,
 ) -> impl IntoView {
-	let class = class.with(|cname| format!("fr-fs-fe {cname}"));
+	let class = class.with(|cname| format!("flex justify-start items-end {cname}"));
 
 	view! {
 		<div class={class}>

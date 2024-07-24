@@ -16,12 +16,8 @@ pub fn Skeleton(
 		class.with(|classname| {
 			format!(
 				"skeleton {classname} {} {}",
-				if enable_full_height {
-					"full-height"
-				} else {
-					""
-				},
-				if enable_full_width { "full-width" } else { "" }
+				if enable_full_height { "h-full" } else { "" },
+				if enable_full_width { "w-full" } else { "" }
 			)
 		})
 	};

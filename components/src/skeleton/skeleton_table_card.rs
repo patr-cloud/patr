@@ -12,15 +12,14 @@ pub fn SkeletonTableCard(
 	let class = move || {
 		class.with(|classname| {
 			format!(
-				"full-width row-card bd-light py-sm px-xl br-bottom-sm 
-                bg-secondary-light fr-ct-ct {classname}"
+				"w-full row-card border border-border-color py-sm px-xl br-bottom-sm 
+                bg-secondary-light flex items-center justify-center {classname}"
 			)
 		})
 	};
 
 	view! {
 		<tr class={class}>
-
 			{column_grids
 				.get()
 				.into_iter()
@@ -28,11 +27,11 @@ pub fn SkeletonTableCard(
 				.map(|(index, columns)| {
 					view! {
 						<td class={format!(
-							"full-width {} flex-col-{}",
+							"w-full {} flex-col-{}",
 							if index == column_grids.get().len() - 1 {
-								"fr-sa-ct"
+								"flex justify-around items-center"
 							} else {
-								"fr-ct-ct px-md"
+								"flex items-center justify-center px-md"
 							},
 							columns,
 						)}>

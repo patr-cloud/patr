@@ -26,7 +26,7 @@ pub fn NumberPicker(
 	let outer_div_class = move || {
 		class.with(|cname| {
 			format!(
-				"number-picker row-card fr-sb-ct br-sm px-sm bg-secondary-{} {}",
+				"number-picker row-card flex justify-between items-center br-sm px-sm bg-secondary-{} {}",
 				style_variant.as_css_name(),
 				cname,
 			)
@@ -64,7 +64,7 @@ pub fn NumberPicker(
 			</button>
 
 			<input
-				class="mx-md txt-white txt-center outline-primary-focus py-xxs br-sm"
+				class="mx-md text-white text-center outline-primary-focus py-xxs br-sm"
 				type="number"
 				min={min}
 				max={max}

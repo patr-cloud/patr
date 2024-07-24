@@ -98,7 +98,7 @@ pub fn StatusBadge(
 
 	let class = move || {
 		format!(
-			"status-badge pos-rel txt-secondary cursor-default {} {}",
+			"status-badge relative text-secondary cursor-default {} {}",
 			if let Some(status) = status.get() {
 				status.get_status_color().to_string()
 			} else {

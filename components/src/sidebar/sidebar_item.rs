@@ -9,7 +9,12 @@ pub fn SidebarItem(
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
 ) -> impl IntoView {
-	let class = move || format!("sidebar-item full-width fc-fs-fs {}", class.get());
+	let class = move || {
+		format!(
+			"sidebar-item w-full flex items-start justify-start {}",
+			class.get()
+		)
+	};
 
 	let store_link = store_value(link.clone());
 
@@ -19,15 +24,14 @@ pub fn SidebarItem(
 				to={store_link.with_value(|link| link.get().path)}
 				r#type={Variant::Link}
 				style_variant={LinkStyleVariant::Plain}
-				class="btn full-width py-sm"
+				class="btn w-full py-sm"
 			>
 				<img src={link.get().icon_src} alt={link.get().title}/>
-				<span class="ml-md txt-md fc-fs-fs txt-left">
-					<span class="pos-rel txt-md txt-left">
+				<span class="ml-md text-md flex items-start justify-start txt-left">
+					<span class="pos-rel text-md txt-left">
 						{move || store_link.with_value(|link| link.get().title)}
 					</span>
-					<small class="txt-xxs txt-grey">
-						// {move || link.get().subtitle}
+					<small class="text-xxs txt-grey">
 						{move || store_link.with_value(|link| link.get().subtitle)}
 					</small>
 				</span>

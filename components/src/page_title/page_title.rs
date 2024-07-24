@@ -47,9 +47,9 @@ pub fn PageTitle(
 	let class = format!(
 		"p-xxs fr-fs-ct {} {}",
 		match variant.get() {
-			PageTitleVariant::Heading => "txt-xl",
-			PageTitleVariant::SubHeading => "txt-md txt-white",
-			PageTitleVariant::Text => "txt-sm txt-white",
+			PageTitleVariant::Heading => "text-xl",
+			PageTitleVariant::SubHeading => "text-md text-white",
+			PageTitleVariant::Text => "text-sm text-white",
 		},
 		class.get()
 	);

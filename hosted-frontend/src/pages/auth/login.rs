@@ -59,10 +59,10 @@ pub fn LoginForm() -> impl IntoView {
 	});
 
 	view! {
-		<ActionForm action={login_action} class="box-onboard txt-white">
-			<div class="fr-sb-bl mb-lg full-width">
-				<h1 class="txt-primary txt-xl txt-medium">"Sign In"</h1>
-				<div class="txt-white txt-thin fr-fs-fs">
+		<ActionForm action={login_action} class="box-onboard text-white">
+			<div class="flex justify-between items-baseline mb-lg w-full">
+				<h1 class="text-primary text-xl text-medium">"Sign In"</h1>
+				<div class="text-white text-thin flex items-start justify-start">
 					<p>"New User? "</p>
 					<Link to={"/sign-up".to_owned()} r#type={Variant::Link}>
 						"Sign Up"
@@ -70,10 +70,10 @@ pub fn LoginForm() -> impl IntoView {
 				</div>
 			</div>
 
-			<div class="fc-fs-fs full-width gap-md">
+			<div class="flex flex-col items-start justify-start w-full gap-md">
 				<Input
 					name="user_id"
-					class="full-width"
+					class="w-full"
 					id="user_id"
 					r#type={InputType::Text}
 					placeholder="Username/Email"
@@ -90,7 +90,7 @@ pub fn LoginForm() -> impl IntoView {
 
 				<Input
 					name="password"
-					class="full-width"
+					class="w-full"
 					id="password"
 					r#type={InputType::Password}
 					placeholder="Password"
@@ -107,7 +107,7 @@ pub fn LoginForm() -> impl IntoView {
 				</Show>
 			</div>
 
-			<div class="fr-sb-ct full-width pt-xs">
+			<div class="flex justify-between items-center w-full pt-xs">
 				<Link to={"/forgot-password".to_owned()} r#type={Variant::Link}>
 					"Forgot Password?"
 				</Link>

@@ -50,11 +50,11 @@ pub fn SignUpForm() -> impl IntoView {
 	});
 
 	view! {
-		<div class="box-onboard txt-white">
-			<div class="fr-sb-bl mb-lg full-width">
-				<h1 class="txt-primary txt-xl txt-medium">"Sign Up"</h1>
+		<div class="box-onboard text-white">
+			<div class="flex justify-between items-baseline mb-lg w-full">
+				<h1 class="text-primary text-xl text-medium">"Sign Up"</h1>
 
-				<div class="txt-white txt-thin fr-fs-fs">
+				<div class="text-white text-thin flex justify-start items-start">
 					<p>"Existing User? "</p>
 					<Link to="/login" r#type={Variant::Link} class="ml-xs">
 						"Login"
@@ -62,9 +62,9 @@ pub fn SignUpForm() -> impl IntoView {
 				</div>
 			</div>
 
-			<ActionForm action={sign_up_action} class="fc-fs-fs full-width">
-				<div class="fr-ct-fs full-width">
-					<div class="fc-fs-fs flex-col-6 pr-xxs">
+			<ActionForm action={sign_up_action} class="flex flex-col items-start justify-start w-full">
+				<div class="flex justify-center items-start w-full">
+					<div class="flex flex-col items-start justify-start flex-col-6 pr-xxs">
 						<Input
 							class="py-xs"
 							r#type={InputType::Text}
@@ -75,10 +75,9 @@ pub fn SignUpForm() -> impl IntoView {
 								IconProps::builder().icon(IconType::User).size(Size::Medium).build(),
 							)}
 						/>
-
 					</div>
 
-					<div class="fc-fs-fs flex-col-6 pl-xxs">
+					<div class="flex flex-col items-start justify-start flex-col-6 pl-xxs">
 						<Input
 							class="py-xs"
 							r#type={InputType::Text}
@@ -94,7 +93,7 @@ pub fn SignUpForm() -> impl IntoView {
 				</div>
 
 				<Input
-					class="full-width mt-lg"
+					class="w-full mt-lg"
 					r#type={InputType::Text}
 					id="username"
 					name="username"
@@ -110,7 +109,7 @@ pub fn SignUpForm() -> impl IntoView {
 				</Show>
 
 				<Input
-					class="full-width mt-lg"
+					class="w-full mt-lg"
 					r#type={InputType::Email}
 					name="email"
 					id="email"
@@ -124,7 +123,7 @@ pub fn SignUpForm() -> impl IntoView {
 					</Alert>
 				</Show>
 
-				<div class="full-width mt-xxs">
+				<div class="w-full mt-xxs">
 					{move || {
 						show_coupon_button
 							.get()
@@ -157,7 +156,7 @@ pub fn SignUpForm() -> impl IntoView {
 									<Input
 										id="class"
 										placeholder="Coupon Code"
-										class="full-width mt-xs"
+										class="w-full mt-xs"
 										start_icon={Some(
 											IconProps::builder().icon(IconType::Tag).build(),
 										)}
@@ -173,7 +172,7 @@ pub fn SignUpForm() -> impl IntoView {
 					id="password"
 					name="password"
 					placeholder="Password"
-					class="full-width mt-xxs"
+					class="w-full mt-xxs"
 					value={password_input}
 					start_icon={Some(
 						IconProps::builder().icon(IconType::Unlock).size(Size::Small).build(),
@@ -188,7 +187,7 @@ pub fn SignUpForm() -> impl IntoView {
 					r#type={InputType::Password}
 					id="confirmPassword"
 					placeholder="Confirm Password"
-					class="full-width mt-lg"
+					class="w-full mt-lg"
 					value={password_confirm_input}
 					start_icon={Some(
 						IconProps::builder().icon(IconType::Lock).size(Size::Small).build(),
@@ -205,7 +204,7 @@ pub fn SignUpForm() -> impl IntoView {
 					</Alert>
 				</Show>
 
-				<div class="fr-fe-ct full-width mt-lg">
+				<div class="fr-fe-ct w-full mt-lg">
 					<Link class="btn mr-xs" to="/confirm" r#type={Variant::Link}>
 						"ALREADY HAVE AN OTP"
 					</Link>

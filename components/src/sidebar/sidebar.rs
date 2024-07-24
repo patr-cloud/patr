@@ -75,7 +75,7 @@ pub fn Sidebar(
 	];
 
 	view! {
-		<aside class="sidebar fc-fs-fs pb-xl">
+		<aside class="sidebar flex-col items-start justify-start pb-xl">
 			<div class="sidebar-logo w-full">
 				<img src="/images/planet-purple.svg" alt="Plante Patr"/>
 				<div class="fc-ct-ct br-sm">
@@ -83,9 +83,9 @@ pub fn Sidebar(
 				</div>
 			</div>
 
-			<div class="full-width full-height fc-fs-fs of-hidden pt-md">
-				<nav class="full-height full-width fc-fs-fs ofy-auto mt-md">
-					<ul class="full-width full-height fc-fs-fs">
+			<div class="w-full h-full flex flex-col items-start justify-start overflow-hidden pt-md">
+				<nav class="h-full w-full flex flex-col items-start justify-start overflow-y-auto mt-md">
+					<ul class="w-full h-full flex flex-col items-start justify-start">
 
 						{links
 							.into_iter()
@@ -95,7 +95,7 @@ pub fn Sidebar(
 					</ul>
 				</nav>
 
-				<div class="fc-fs-fs full-width pt-md px-md mt-auto">
+				<div class="flex items-start justify-start w-full pt-md px-md mt-auto">
 					{children()}
 				</div>
 			</div>

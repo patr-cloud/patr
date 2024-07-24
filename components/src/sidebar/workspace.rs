@@ -23,13 +23,14 @@ pub fn WorkspaceCard(
 
 	view! {
 		<div
-			class="sidebar-user fr-sb-ct py-sm px-md cursor-pointer full-width br-sm bg-secondary-dark gap-xxs pos-rel "
+			class="sidebar-user flex justify-between items-center py-sm px-md cursor-pointer
+				w-full br-sm bg-secondary-dark gap-xxs relative"
 			on:click={move |ev| {
 				show_workspace_switcher.update(|v| *v = !*v)
 			}}
 		>
-			<div class="fc-fs-fs full-width">
-				<p class="txt-sm txt-white w-20 txt-of-ellipsis of-hidden">
+			<div class="flex flex-col items-start justify-start w-full">
+				<p class="text-sm text-white w-[20ch] text-ellipsis overflow-hidden">
 					{move || match current_workspace.get() {
 						Some(workspace) => {
 							format!("{}", workspace.name).into_view()

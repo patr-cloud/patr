@@ -47,14 +47,15 @@ pub fn InputDropdown(
 
 	let outer_div_class = class.with(|cname| {
 		format!(
-			"fr-fs-ct br-sm row-card full-width pos-rel px-xl py-xxs input-dropdown bg-secondary-{} {} {}",
+			"flex justify-center items-cecnter br-sm row-card w-full relative px-xl py-xxs 
+			input-dropdown bg-secondary-{} {} {}",
 			variant.as_css_name(),
 			cname,
 			value.with_untracked(|val| {
 				if val.is_empty() || disabled.get() || loading.get() {
-					"txt-disabled"
+					"text-disabled"
 				} else {
-					"txt-white"
+					"text-white"
 				}
 			})
 		)
@@ -62,7 +63,8 @@ pub fn InputDropdown(
 
 	let dropdown_class = move || {
 		format!(
-			"absolute drop-down text-white flex flex-col items-start justify-start br-sm overflow-hidden w-full mt-lg bg-secondary-{} {}",
+			"absolute drop-down text-white br-sm overflow-hidden
+			flex flex-col items-start justify-start w-full mt-lg bg-secondary-{} {}",
 			variant.as_css_name(),
 			class.get()
 		)
@@ -142,7 +144,8 @@ pub fn InputDropdown(
 									move |_| handle_click_option(&child)
 								}
 								class={format!(
-									"px-xl py-sm ul-light flex justify-start items-center w-full br-bottom-sm {}",
+									"px-xl py-sm flex justify-start items-center
+									border-border-color border-solid border-2 w-full br-bottom-sm {}",
 									if child.clone().disabled { "text-disabled" } else { "text-white" },
 								)}
 							>

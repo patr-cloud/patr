@@ -99,16 +99,16 @@ impl TextColor {
 	/// Returns the CSS name of the text color.
 	pub const fn as_css_color(self) -> &'static str {
 		match self.0 {
-			Color::Primary => "txt-primary",
-			Color::Secondary => "txt-secondary",
-			Color::White => "txt-white",
-			Color::Black => "txt-black",
-			Color::Grey => "txt-grey",
-			Color::Success => "txt-success",
-			Color::Warning => "txt-warning",
-			Color::Error => "txt-error",
-			Color::Info => "txt-info",
-			Color::Disabled => "txt-disabled",
+			Color::Primary => "text-primary",
+			Color::Secondary => "text-secondary",
+			Color::White => "text-white",
+			Color::Black => "text-black",
+			Color::Grey => "text-grey",
+			Color::Success => "text-success",
+			Color::Warning => "text-warning",
+			Color::Error => "text-error",
+			Color::Info => "text-info",
+			Color::Disabled => "text-disabled",
 		}
 	}
 }

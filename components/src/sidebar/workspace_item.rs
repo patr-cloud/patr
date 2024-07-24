@@ -26,17 +26,18 @@ pub fn WorkspaceItem(
 			}
 		>
 			<div
-				class="fc-sb-fs py-xxs px-md br-sm gap-xxs full-width workspace-item cursor-pointer bd-light full-height outline-primary-focus"
+				class="flex flex-col justify-between items-start py-xxs px-md br-sm gap-xxs w-full cursor-pointer
+				border border-border-color h-full outline-primary-focus workspace-item"
 			>
-				<div class="fr-sb-ct full-width gap-xxs">
-					<span class="of-hidden txt-of-ellipsis w-25 txt-sm txt-medium">
+				<div class="flex justify-between items-center w-full gap-xxs">
+					<span class="overflow-hidden text-of-ellipsis w-[25ch] text-sm text-medium">
 						{workspace.get().name.clone()}
 					</span>
 				</div>
 
-				<span class="fr-fs-ct txt-xxs txt-grey">
+				<span class="flex justify-start items-center text-xxs text-grey">
 					"Owned by &nbsp;"
-					<strong class="txt-xxs txt-bold txt-white">"You"</strong>
+					<strong class="text-xxs text-bold text-white">"You"</strong>
 				</span>
 			</div>
 		</li>

@@ -12,7 +12,7 @@ pub fn ContainerHead(
 ) -> impl IntoView {
 	let class = move || {
 		format!(
-			"fc-fs-fs px-xl py-md bg-secondary-light full-width {}",
+			"flex flex-col items-start justify-start px-xl py-md bg-secondary-light w-full {}",
 			class.get()
 		)
 	};

@@ -32,17 +32,17 @@ pub fn Textbox(
 ) -> impl IntoView {
 	let class = class.with(|cname| {
 		format!(
-			"fr-fs-ct py-sm px-xl br-sm txt-medium row-card full-width bg-secondary-{} {}",
+			"flex justify-start items-center py-sm px-xl br-sm text-medium row-card w-full bg-secondary-{} {}",
 			color_variant.as_css_name(),
 			cname
 		)
 	});
 
 	let span_class = format!(
-		"px-md mr-auto txt-of-ellipsis {} {}",
+		"px-md mr-auto text-ellipsis {} {}",
 		match ellipsis {
 			0 => "".to_owned(),
-			n => format!("txt-of-ellipsis of-hidden w-{n}"),
+			n => format!("text-ellipsis overflow-hidden w-{n}"),
 		},
 		if value.is_none() || disabled.get() {
 			"txt-disabled"

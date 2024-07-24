@@ -21,11 +21,13 @@ pub fn WorkspaceSwitcher(
 		<Portal>
 			<div
 				tab_index={-1}
-				class="txt-white bg-secondary-light bd-light br-sm pt-md fc-fs-fs workspace-switcher"
+				class="
+					text-white bg-secondary-light border border-border-color rounded-sm
+					flex flex-col itmes-start justify-start workspace-switcher pt-md "
 			>
-				<p class="mx-xl txt-md mb-sm">"Workspaces"</p>
-				<div class="fc-fs-fs full-width ul-light pb-xs">
-					<ul class="full-width ofy-auto px-xl fc-fs-fs">
+				<p class="mx-xl text-md mb-sm">"Workspaces"</p>
+				<div class="fc-fs-fs w-full ul-light pb-xs">
+					<ul class="w-full overflow-y-auto px-xl flex flex-col items-start justify-start">
 						<For
 							each={move || stored_workspaces.with_value(|workspaces| workspaces.clone().get())}
 							key={|state| state.id}
@@ -40,14 +42,15 @@ pub fn WorkspaceSwitcher(
 					</ul>
 				</div>
 
-				<div class="fc-ct-ct full-width my-lg">
+				<div class="flex flex-col items-center justify-center w-full my-lg">
 					<Link
 						style_variant={LinkStyleVariant::Plain}
 						r#type={Variant::Link}
 						to="/workspace/create"
 						class="gap-xxs"
 					>
-						"CREATE WORKSPACE" <Icon icon=IconType::Plus size=Size::ExtraSmall color=Color::Primary />
+						"CREATE WORKSPACE"
+						<Icon icon=IconType::Plus size=Size::ExtraSmall color=Color::Primary />
 					</Link>
 				</div>
 			</div>
