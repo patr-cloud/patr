@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use super::ManageURLForm;
 use crate::{pages::*, prelude::*};
 
 #[component]
@@ -17,7 +18,7 @@ pub fn ManagedUrlCard(
 		class.with(|classname| {
 			if show_update_url.get() {
 				format!(
-					"full-width cursor-default fr-ct-ct bd-light br-bottom-sm of-hidden {}",
+					"w-full cursor-default flex items-center justify-center bd-light br-bottom-sm of-hidden {}",
 					if enable_radius_on_top.get() {
 						"br-top-sm"
 					} else {
@@ -26,7 +27,7 @@ pub fn ManagedUrlCard(
 				)
 			} else {
 				format!(
-					"full-width bd-light row-card bg-secondary-light cursor-default br-bottom-sm fr-ct-ct {} {}",
+					"w-full bd-light row-card bg-secondary-light cursor-default br-bottom-sm flex items-center justify-center {} {}",
 					classname,
 					if enable_radius_on_top.get() {
 						"br-top-sm"
@@ -38,22 +39,34 @@ pub fn ManagedUrlCard(
 		})
 	};
 
+	// let url_type = create_rw_signal("redirect".to_string());
+	// let sub_domain = create_rw_signal("tech".to_string());
+	// let domain = create_rw_signal("google.com".to_string());
+	// let path = create_rw_signal("redirect".to_string());
+
 	view! {
 		<tr class={class}>
 			<Show
 				when={move || !show_update_url.get()}
 				fallback={move || {
 					view! {
-						<td class="full-width fr-ct-ct">
-							<UpdateManagedUrl show_update_component={show_update_url}/>
+						<td class="w-full flex items-center justify-center py-lg px-xl overflow-y-scroll">
+							// <ManageURLForm
+							// 	url_type={url_type}
+							// 	domain={domain}
+							// 	sub_domain={sub_domain}
+							// 	path={path}
+							// 	is_create_mode={false}
+							// 	show_form={show_update_url}
+							// />
 						</td>
 					}
 				}}
 			>
 
-				<td class="flex-col-4 fr-ct-ct">
-					<a href="" target="_blank" rel="noreferrer" class="txt-underline fr-ct-ct">
-						<span class="w-35 txt-of-ellipsis of-hidden">"https://onpatr.cloud"</span>
+				<td class="flex-col-4 flex items-center justify-center">
+					<a href="" target="_blank" rel="noreferrer" class="txt-underline flex items-center justify-center">
+						<span class="max-w-[35ch] text-ellipsis overflow-hidden">"https://onpatr.cloud"</span>
 						<Icon
 							icon={IconType::ExternalLink}
 							size={Size::ExtraExtraSmall}
@@ -62,11 +75,11 @@ pub fn ManagedUrlCard(
 					</a>
 				</td>
 
-				<td class="flex-col-1 fr-ct-ct">"Redirect"</td>
+				<td class="flex-col-1 flex items-center justify-center">"Redirect"</td>
 
-				<td class="flex-col-4 fr-ct-ct">
-					<a href="" target="_blank" rel="noreferrer" class="txt-underline fr-ct-ct">
-						<span class="txt-medium txt-of-ellipsis of-hidden w-35">
+				<td class="flex-col-4 flex items-center justify-center">
+					<a href="" target="_blank" rel="noreferrer" class="txt-underline flex items-center justify-center">
+						<span class="txt-medium txt-of-ellipsis of-hidden max-w-[35ch]">
 							"https://onpatr.cloud"
 						</span>
 						<Icon
@@ -77,9 +90,9 @@ pub fn ManagedUrlCard(
 					</a>
 				</td>
 
-				<td class="flex-col-2 fr-ct-ct"></td>
+				<td class="flex-col-2 flex items-center justify-center"></td>
 
-				<td class="flex-col-1 fr-sa-ct">
+				<td class="flex-col-1 flex justify-around items-center">
 					<Link on_click={Rc::new(move |_| {
 						show_update_url.update(|val| *val = !*val)
 					})}>

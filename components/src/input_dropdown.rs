@@ -47,7 +47,7 @@ pub fn InputDropdown(
 
 	let outer_div_class = class.with(|cname| {
 		format!(
-			"flex justify-center items-cecnter br-sm row-card w-full relative px-xl py-xxs 
+			"flex justify-center items-center br-sm row-card w-full relative px-xl py-xxs 
 			input-dropdown bg-secondary-{} {} {}",
 			variant.as_css_name(),
 			cname,
@@ -93,6 +93,18 @@ pub fn InputDropdown(
 		)
 	};
 
+	let label = create_memo(move |_| {
+		store_options.with_value(|options| {
+			options
+				.get()
+				.clone()
+				.into_iter()
+				.filter(|op| op.id == value.get())
+				.next()
+				.map(|val| val.label)
+				.unwrap_or_default()
+		})
+	});
 	let handle_click_option = move |state: &InputDropdownOption| {
 		if state.disabled {
 			show_dropdown.set(false);
@@ -113,7 +125,7 @@ pub fn InputDropdown(
 							if value.get().is_empty() {
 								store_placehoder.with_value(|placeholder| placeholder.get().into_view())
 							} else {
-								value.get().into_view()
+								label.get().into_view()
 							}
 						}
 					</span>
@@ -125,7 +137,7 @@ pub fn InputDropdown(
 					placeholder={placeholder.clone()}
 					disabled={disabled.get()}
 					class={input_class}
-					prop:value={value}
+					prop:value={label}
 				/>
 			</Show>
 			<Icon icon={IconType::ChevronDown} class="ml-auto" size={Size::ExtraSmall}/>
@@ -145,7 +157,7 @@ pub fn InputDropdown(
 								}
 								class={format!(
 									"px-xl py-sm flex justify-start items-center
-									border-border-color border-solid border-2 w-full br-bottom-sm {}",
+									border-border-color border-b-2 w-full br-bottom-sm {}",
 									if child.clone().disabled { "text-disabled" } else { "text-white" },
 								)}
 							>

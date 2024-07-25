@@ -4,8 +4,8 @@ use crate::prelude::*;
 pub fn RunnerDashboardHead() -> impl IntoView {
 	view! {
 		<ContainerHead>
-			<div class="fr-sb-ct full-width">
-				<div class="fc-sb-fs">
+			<div class="w-full flex justify-between items-center">
+				<div class="flex flex-col justify-between items-start">
 					<PageTitleContainer>
 						<PageTitle icon_position={PageTitleIconPosition::End}>
 							"CI/CD"
@@ -24,7 +24,7 @@ pub fn RunnerDashboardHead() -> impl IntoView {
 					/>
 				</div>
 
-				<div class="fr-ct-ct">
+				<div class="flex items-center justify-center">
 					<Link
 						r#type={Variant::Link}
 						to={"create".to_string()}
