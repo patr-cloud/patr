@@ -122,7 +122,7 @@ pub fn InputDropdown(
 				fallback={move || view! {
 					<span class={input_class}>
 						{
-							if value.get().is_empty() {
+							if value.get().is_empty() || disabled.get() {
 								store_placehoder.with_value(|placeholder| placeholder.get().into_view())
 							} else {
 								label.get().into_view()
