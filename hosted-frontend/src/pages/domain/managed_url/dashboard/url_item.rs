@@ -1,10 +1,15 @@
 use std::rc::Rc;
 
+use models::api::workspace::managed_url::*;
+
 use super::ManagedUrlCard;
 use crate::prelude::*;
 
 #[component]
 pub fn ManagedUrls(
+	/// Managed URL Item
+	#[prop(into)]
+	manage_url: Signal<WithId<ManagedUrl>>,
 	/// The class names to add to the outer table row
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
@@ -40,8 +45,10 @@ pub fn ManagedUrls(
 				<td class="flex flex-col items-start justify-start w-full px-xl pb-md">
 					<table class="flex flex-col items-start justify-start w-full">
 						<tbody class="flex flex-col items-start justify-start w-full">
-							<ManagedUrlCard enable_radius_on_top=true/>
-							<ManagedUrlCard enable_radius_on_top=true/>
+							<ManagedUrlCard
+								manage_url={Signal::derive(move || Some(manage_url.get()))}
+								enable_radius_on_top=true
+							/>
 						</tbody>
 					</table>
 				</td>

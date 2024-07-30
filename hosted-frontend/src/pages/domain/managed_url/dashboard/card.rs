@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+use models::api::workspace::managed_url::*;
+
 use super::ManageURLForm;
 use crate::{pages::*, prelude::*};
 
@@ -11,6 +13,9 @@ pub fn ManagedUrlCard(
 	/// The class names to add to the outer table row
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
+	/// Managed URL Item
+	#[prop(into, optional, default = None.into())]
+	manage_url: MaybeSignal<Option<WithId<ManagedUrl>>>,
 ) -> impl IntoView {
 	let show_update_url = create_rw_signal(false);
 
@@ -39,10 +44,14 @@ pub fn ManagedUrlCard(
 		})
 	};
 
-	// let url_type = create_rw_signal("redirect".to_string());
-	// let sub_domain = create_rw_signal("tech".to_string());
-	// let domain = create_rw_signal("google.com".to_string());
-	// let path = create_rw_signal("redirect".to_string());
+	let url_type = create_rw_signal("redirect".to_string());
+	let sub_domain = create_rw_signal("@".to_string());
+	let domain = create_rw_signal("google.com".to_string());
+	let path = create_rw_signal("redirect".to_string());
+	let url = create_rw_signal("google.com".to_string());
+	let port = create_rw_signal::<u16>(3000);
+	let http_only = create_rw_signal(false);
+	let permanent_redirect = create_rw_signal(true);
 
 	view! {
 		<tr class={class}>
@@ -51,14 +60,18 @@ pub fn ManagedUrlCard(
 				fallback={move || {
 					view! {
 						<td class="w-full flex items-center justify-center py-lg px-xl overflow-y-scroll">
-							// <ManageURLForm
-							// 	url_type={url_type}
-							// 	domain={domain}
-							// 	sub_domain={sub_domain}
-							// 	path={path}
-							// 	is_create_mode={false}
-							// 	show_form={show_update_url}
-							// />
+							<ManageURLForm
+								url_type={url_type}
+								domain={domain}
+								sub_domain={sub_domain}
+								path={path}
+								is_create_mode={false}
+								show_form={show_update_url}
+								url={url}
+								port={port}
+								http_only={http_only}
+								permanent_redirect={permanent_redirect}
+							/>
 						</td>
 					}
 				}}
