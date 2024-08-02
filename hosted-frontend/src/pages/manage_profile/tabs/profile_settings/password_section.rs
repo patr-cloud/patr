@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
-use leptos_use::{use_cookie, utils::FromToStringCodec};
+use codee::string::FromToStringCodec;
+use leptos_use::use_cookie;
 use models::api::user::ChangePasswordResponse;
 
 use crate::prelude::*;

@@ -1,4 +1,5 @@
-use leptos_use::{use_cookie, utils::FromToStringCodec};
+use codee::string::FromToStringCodec;
+use leptos_use::use_cookie;
 use models::api::user::ListApiTokensResponse;
 
 use crate::prelude::*;

@@ -95,9 +95,8 @@ async fn main() {
 	use std::net::SocketAddr;
 
 	use app::AppState;
-	use opentelemetry::KeyValue;
+	use opentelemetry::trace::TracerProvider;
 	use opentelemetry_otlp::WithExportConfig;
-	use opentelemetry_sdk::Resource;
 	use tokio::net::TcpListener;
 	use tracing::{Dispatch, Level};
 	use tracing_opentelemetry::OpenTelemetryLayer;
@@ -141,11 +140,7 @@ async fn main() {
 				{
 					let pipeline = opentelemetry_otlp::new_pipeline()
 						.tracing()
-						.with_trace_config(
-							opentelemetry_sdk::trace::Config::default().with_resource(
-								Resource::new(vec![KeyValue::new("service.name", "Patr API")]),
-							),
-						)
+						.with_trace_config(opentelemetry_sdk::trace::Config::default())
 						.with_exporter(
 							opentelemetry_otlp::new_exporter()
 								.tonic()
@@ -158,7 +153,8 @@ async fn main() {
 						}
 					}
 				}
-				.expect("Failed to install OpenTelemetry tracing pipeline"),
+				.expect("Failed to install OpenTelemetry tracing pipeline")
+				.tracer("Patr API"),
 			)
 			.with_filter(
 				tracing_subscriber::filter::Targets::new()

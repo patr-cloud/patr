@@ -1,5 +1,6 @@
+use codee::string::FromToStringCodec;
 use leptos::*;
-use leptos_use::{use_cookie, utils::FromToStringCodec};
+use leptos_use::use_cookie;
 
 use crate::prelude::*;
 
