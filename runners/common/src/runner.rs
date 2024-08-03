@@ -1,4 +1,9 @@
-use std::{collections::HashMap, future::Future, pin::pin, str::FromStr};
+use std::{
+	collections::HashMap,
+	future::{Future, IntoFuture},
+	pin::pin,
+	str::FromStr,
+};
 
 use futures::{
 	future::{self, Either},
@@ -14,7 +19,7 @@ use tracing_subscriber::{
 	Layer,
 };
 
-use crate::prelude::*;
+use crate::{delayed_future::DelayedFuture, prelude::*};
 
 /// The runner is the main struct that is used to run the resources. It contains
 /// the executor, the database connection pool, and the settings for the runner.
@@ -33,6 +38,9 @@ where
 	/// The state of the runner. This is used to store the list of deployments,
 	/// databases, etc. that the runner is running.
 	deployments: HashMap<Uuid, (Deployment, DeploymentRunningDetails)>,
+	/// A list of resources that need to be reconciled at a later time
+	/// This is used to retry resources that failed to reconcile
+	reconcilation_list: Vec<DelayedFuture<StreamRunnerDataForWorkspaceServerMsg>>,
 }
 
 impl<'de, E> Runner<'de, E>
@@ -73,11 +81,13 @@ where
 		.expect("Failed to set global default subscriber");
 
 		let deployments = HashMap::new();
+		let reconcilation_list = Vec::new();
 
 		Self {
 			executor,
 			settings,
 			deployments,
+			reconcilation_list,
 		}
 	}
 
@@ -139,15 +149,14 @@ where
 				continue 'main;
 			};
 
+			// Reconcile all resources at the start (or when reconnecting to the websocket)
+			self.reconcilation_list.clear();
+			self.reconcile_all().await;
+
 			// Reconcile all resources at a fixed interval
 			let mut reconcile_all = Box::pin(time::sleep(E::FULL_RECONCILIATION_INTERVAL));
-			// If any resource failes to be reconciled, it will be requeued here
-			let reconcile_requeues = Vec::<(StreamRunnerDataForWorkspaceServerMsg, Instant)>::new();
-			let mut next_reconcile_future = get_next_reconcile_future(&reconcile_requeues);
+			let mut next_reconcile_future = get_next_reconcile_future(&self.reconcilation_list);
 			let mut pinned_stream = pin!(stream);
-
-			// Reconcile all resources at the start (or when reconnecting to the websocket)
-			self.reconcile_all().await;
 
 			'message: loop {
 				let Some(reconcile_all_or_one) = future::select(
@@ -167,6 +176,8 @@ where
 					// Reconcile all resources
 					Either::Left(_) => {
 						reconcile_all = Box::pin(time::sleep(E::FULL_RECONCILIATION_INTERVAL));
+						self.reconcilation_list.clear();
+						next_reconcile_future = get_next_reconcile_future(&self.reconcilation_list);
 						self.reconcile_all().await;
 						continue 'message;
 					}
@@ -176,6 +187,18 @@ where
 				match reconcile_message {
 					// Reconcile a resource from the server
 					Either::Left((Some(Ok(response)), _)) => {
+						// If this resource is already queued for reconciliation, remove that
+						let current_id = get_resource_id_from_message(&response);
+						let already_queued = self.reconcilation_list.iter().position(|message| {
+							get_resource_id_from_message(&message.value) == current_id
+						});
+						if let Some(already_queued) = already_queued {
+							self.reconcilation_list.remove(already_queued);
+							next_reconcile_future =
+								get_next_reconcile_future(&self.reconcilation_list);
+						}
+
+						// Reconcile the resource
 						self.reconcile(response).await;
 					}
 					// Data from the websocket failed
@@ -217,7 +240,7 @@ where
 					// A specific resource needs to be reconciled again
 					Either::Right((response, _)) => {
 						self.reconcile(response).await;
-						next_reconcile_future = get_next_reconcile_future(&reconcile_requeues);
+						next_reconcile_future = get_next_reconcile_future(&self.reconcilation_list);
 					}
 				}
 			}
@@ -232,7 +255,33 @@ where
 	/// runner is responsible for.
 	async fn reconcile_all(&mut self) {}
 
-	async fn reconcile(&mut self, _: StreamRunnerDataForWorkspaceServerMsg) {}
+	async fn reconcile(&mut self, msg: StreamRunnerDataForWorkspaceServerMsg) {
+		use StreamRunnerDataForWorkspaceServerMsg::*;
+		let response = match msg.clone() {
+			DeploymentCreated {
+				deployment,
+				running_details,
+			} => {
+				self.executor
+					.upsert_deployment(deployment, running_details)
+					.await
+			}
+			DeploymentUpdated {
+				deployment,
+				running_details,
+			} => {
+				self.executor
+					.upsert_deployment(deployment, running_details)
+					.await
+			}
+			DeploymentDeleted { id } => self.executor.delete_deployment(id).await,
+		};
+		let Err(err) = response else {
+			return;
+		};
+		self.reconcilation_list
+			.push(DelayedFuture::new(Instant::now() + err, msg));
+	}
 }
 
 /// Listen for the exit signal and stop the runner when the signal is received.
@@ -263,16 +312,20 @@ async fn exit_signal() {
 }
 
 fn get_next_reconcile_future(
-	reconcile_requeues: &[(StreamRunnerDataForWorkspaceServerMsg, Instant)],
+	reconcile_requeues: &[DelayedFuture<StreamRunnerDataForWorkspaceServerMsg>],
 ) -> std::pin::Pin<Box<dyn Future<Output = StreamRunnerDataForWorkspaceServerMsg> + Send>> {
 	reconcile_requeues
 		.iter()
-		.reduce(|a, b| if a.1 < b.1 { a } else { b })
-		.map(|(message, instant)| {
-			let message = message.clone();
-			time::sleep_until(*instant)
-				.then(|_| async move { message })
-				.boxed()
-		})
+		.reduce(|a, b| if a.resolve_at < b.resolve_at { a } else { b })
+		.map(|message| message.clone().into_future().boxed())
 		.unwrap_or_else(|| future::pending().boxed())
+}
+
+fn get_resource_id_from_message(message: &StreamRunnerDataForWorkspaceServerMsg) -> Uuid {
+	use StreamRunnerDataForWorkspaceServerMsg::*;
+	match message {
+		DeploymentCreated { deployment, .. } => deployment.id,
+		DeploymentUpdated { deployment, .. } => deployment.id,
+		DeploymentDeleted { id } => *id,
+	}
 }

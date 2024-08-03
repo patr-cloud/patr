@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs, clippy::all)]
+#![feature(impl_trait_in_assoc_type)]
 
 //! Common utilities for the runner. This library contains all the things you
 //! will need to make a runner. All it needs are the implementations of how the
@@ -9,11 +10,14 @@
 mod client;
 /// The configuration for the runner.
 mod config;
+/// A utility that returns a value after a delay.
+mod delayed_future;
 /// The executor module contains the trait that the runner needs to implement
 /// to run the resources.
 mod executor;
 /// Extensions traits for the `Either` type.
 mod ext_traits;
+/// All the runner related structs and functions.
 mod runner;
 
 /// The prelude module contains all the things you need to import to get

@@ -20,7 +20,7 @@ struct DockerRunner;
 impl RunnerExecutor for DockerRunner {
 	type Settings<'s> = ();
 
-	async fn reconcile(
+	async fn upsert_deployment(
 		&self,
 		deployment: WithId<Deployment>,
 		running_details: DeploymentRunningDetails,
