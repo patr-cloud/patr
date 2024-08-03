@@ -5,32 +5,31 @@
 //! incoming WebSocket connections from the Patr API. The runner is responsible
 //! for creating, updating, and deleting deployments in the given runner.
 
-use common::Runner;
-
 /// The configuration for the runner.
 mod config;
+use std::time::Duration;
+
 /// The module to handle the creation, updating, and deletion of resources.
-mod docker;
+// mod docker;
+use common::prelude::*;
+use futures::Stream;
+use models::api::workspace::deployment::{Deployment, DeploymentRunningDetails};
 
 struct DockerRunner;
 
 impl RunnerExecutor for DockerRunner {
-	type Resource = docker::DockerResource;
+	type Settings<'s> = ();
 
-	fn new() -> Self {
-		Self
+	async fn reconcile(
+		&self,
+		deployment: WithId<Deployment>,
+		running_details: DeploymentRunningDetails,
+	) -> Result<(), Duration> {
+		Ok(())
 	}
 
-	async fn create(&self, resource: Self::Resource) -> Result<(), Error> {
-		resource.create().await
-	}
-
-	async fn update(&self, resource: Self::Resource) -> Result<(), Error> {
-		resource.update().await
-	}
-
-	async fn delete(&self, resource: Self::Resource) -> Result<(), Error> {
-		resource.delete().await
+	fn list_running_deployments(&self) -> impl Stream<Item = Uuid> {
+		futures::stream::empty()
 	}
 }
 

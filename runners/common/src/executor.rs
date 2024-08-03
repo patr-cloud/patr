@@ -1,4 +1,4 @@
-use std::future::Future;
+use std::{future::Future, time::Duration};
 
 use futures::Stream;
 use models::{api::workspace::deployment::*, prelude::*};
@@ -7,28 +7,27 @@ use serde::{Deserialize, Serialize};
 /// This trait is the main trait that the runner needs to implement to run the
 /// resources.
 pub trait RunnerExecutor {
+	/// The reconciliation interval for the runner. This is the interval at
+	/// which the runner will reconcile ALL the resources with the server. The
+	/// default is 10 minutes.
+	const FULL_RECONCILIATION_INTERVAL: Duration = Duration::from_secs(10 * 60);
+
 	/// The settings type for the runner. This is used to store any additional
 	/// settings needed for the runner.
 	type Settings<'de>: Serialize + Deserialize<'de>;
 
-	/// This function is called when a deployment is created. The runner should
-	/// start the deployment.
-	fn create_deployment(
+	/// This function is called when a deployment is created, updated or
+	/// deleted. The runner should create, update or delete the deployment.
+	/// The runner should return an error with a duration if the deployment
+	/// failed to reconcile. This will be used to retry the deployment after
+	/// the given duration.
+	fn reconcile(
 		&self,
 		deployment: WithId<Deployment>,
 		running_details: DeploymentRunningDetails,
-	) -> impl Future<Output = Result<(), ErrorType>>;
+	) -> impl Future<Output = Result<(), Duration>>;
+
 	/// This function should return a stream of all the running deployment IDs
 	/// in the runner.
 	fn list_running_deployments(&self) -> impl Stream<Item = Uuid>;
-	/// This function is called when a deployment is updated. The runner should
-	/// update the deployment.
-	fn update_deployment(
-		&self,
-		deployment: WithId<Deployment>,
-		running_details: DeploymentRunningDetails,
-	) -> impl Future<Output = Result<(), ErrorType>>;
-	/// This function is called when a deployment is deleted. The runner should
-	/// delete the deployment.
-	fn delete_deployment(&self, id: Uuid) -> impl Future<Output = Result<(), ErrorType>>;
 }

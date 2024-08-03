@@ -82,12 +82,18 @@ pub struct AppConfig {
 	#[cfg(not(debug_assertions))]
 	/// The configuration for IpInfo to get IpAddress details
 	pub ipinfo: IpInfoConfig,
-	/// The loki configuration to use for logs
 	#[cfg(debug_assertions)]
+	/// The loki configuration to use for logs
 	pub loki: Option<LokiConfig>,
 	#[cfg(not(debug_assertions))]
 	/// The loki configuration to use for logs
 	pub loki: LokiConfig,
+	#[cfg(debug_assertions)]
+	/// The mimir configuration to use for metrics
+	pub mimir: Option<MimirConfig>,
+	#[cfg(not(debug_assertions))]
+	/// The mimir configuration to use for metrics
+	pub mimir: MimirConfig,
 }
 
 /// The environment the application is running in
@@ -218,5 +224,17 @@ pub struct LokiConfig {
 	/// The username to use to connect to the Loki server
 	pub username: String,
 	/// The password to use to connect to the Loki server
+	pub password: String,
+}
+
+/// The configuration for Mimir to use for metrics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MimirConfig {
+	/// The endpoint to query for metrics
+	pub endpoint: String,
+	/// The username to use to connect to the Mimir server
+	pub username: String,
+	/// The password to use to connect to the Mimir server
 	pub password: String,
 }

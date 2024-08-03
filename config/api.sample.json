@@ -40,5 +40,15 @@
 	},
 	"ipinfo": {
 		"token": "token"
+	},
+	"loki": {
+		"endpoint": "http://loki:3100",
+		"username": "admin",
+		"password": "password"
+	},
+	"mimir": {
+		"endpoint": "http://mimir:3000",
+		"username": "admin",
+		"password": "password"
 	}
 }
