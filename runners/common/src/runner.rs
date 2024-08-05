@@ -1,12 +1,7 @@
-use std::{
-	collections::HashMap,
-	future::{Future, IntoFuture},
-	pin::pin,
-	str::FromStr,
-};
+use std::{collections::HashMap, future::IntoFuture, pin::pin, str::FromStr};
 
 use futures::{
-	future::{self, Either},
+	future::{self, BoxFuture, Either},
 	FutureExt,
 	StreamExt,
 };
@@ -41,6 +36,9 @@ where
 	/// A list of resources that need to be reconciled at a later time
 	/// This is used to retry resources that failed to reconcile
 	reconcilation_list: Vec<DelayedFuture<StreamRunnerDataForWorkspaceServerMsg>>,
+	/// The future that will resolve to the next resource that needs to be
+	/// reconciled
+	next_reconcile_future: BoxFuture<'static, StreamRunnerDataForWorkspaceServerMsg>,
 }
 
 impl<'de, E> Runner<'de, E>
@@ -51,7 +49,8 @@ where
 	/// new database connection pool and set up the global default subscriber
 	/// for the runner.
 	pub async fn new(executor: E) -> Self {
-		let settings = get_runner_settings();
+		let settings = RunnerSettings::<E::Settings<'_>>::parse(env!("CARGO_PKG_NAME"))
+			.expect("Failed to parse settings");
 
 		tracing::dispatcher::set_global_default(Dispatch::new(
 			tracing_subscriber::registry().with(
@@ -82,12 +81,14 @@ where
 
 		let deployments = HashMap::new();
 		let reconcilation_list = Vec::new();
+		let next_reconcile_future = future::pending().boxed();
 
 		Self {
 			executor,
 			settings,
 			deployments,
 			reconcilation_list,
+			next_reconcile_future,
 		}
 	}
 
@@ -155,7 +156,6 @@ where
 
 			// Reconcile all resources at a fixed interval
 			let mut reconcile_all = Box::pin(time::sleep(E::FULL_RECONCILIATION_INTERVAL));
-			let mut next_reconcile_future = get_next_reconcile_future(&self.reconcilation_list);
 			let mut pinned_stream = pin!(stream);
 
 			'message: loop {
@@ -163,7 +163,7 @@ where
 					&mut exit_signal,
 					future::select(
 						reconcile_all.as_mut(),
-						future::select(pinned_stream.next(), &mut next_reconcile_future),
+						future::select(pinned_stream.next(), &mut self.next_reconcile_future),
 					),
 				)
 				.await
@@ -177,7 +177,6 @@ where
 					Either::Left(_) => {
 						reconcile_all = Box::pin(time::sleep(E::FULL_RECONCILIATION_INTERVAL));
 						self.reconcilation_list.clear();
-						next_reconcile_future = get_next_reconcile_future(&self.reconcilation_list);
 						self.reconcile_all().await;
 						continue 'message;
 					}
@@ -189,14 +188,6 @@ where
 					Either::Left((Some(Ok(response)), _)) => {
 						// If this resource is already queued for reconciliation, remove that
 						let current_id = get_resource_id_from_message(&response);
-						let already_queued = self.reconcilation_list.iter().position(|message| {
-							get_resource_id_from_message(&message.value) == current_id
-						});
-						if let Some(already_queued) = already_queued {
-							self.reconcilation_list.remove(already_queued);
-							next_reconcile_future =
-								get_next_reconcile_future(&self.reconcilation_list);
-						}
 
 						// Reconcile the resource
 						self.reconcile(response).await;
@@ -240,7 +231,6 @@ where
 					// A specific resource needs to be reconciled again
 					Either::Right((response, _)) => {
 						self.reconcile(response).await;
-						next_reconcile_future = get_next_reconcile_future(&self.reconcilation_list);
 					}
 				}
 			}
@@ -256,6 +246,11 @@ where
 	async fn reconcile_all(&mut self) {}
 
 	async fn reconcile(&mut self, msg: StreamRunnerDataForWorkspaceServerMsg) {
+		// if this resource is already queued for reconciliation, remove that
+		let current_id = get_resource_id_from_message(&msg);
+		self.reconcilation_list
+			.retain(|message| get_resource_id_from_message(&message.value) != current_id);
+
 		use StreamRunnerDataForWorkspaceServerMsg::*;
 		let response = match msg.clone() {
 			DeploymentCreated {
@@ -276,11 +271,24 @@ where
 			}
 			DeploymentDeleted { id } => self.executor.delete_deployment(id).await,
 		};
-		let Err(err) = response else {
-			return;
-		};
-		self.reconcilation_list
-			.push(DelayedFuture::new(Instant::now() + err, msg));
+		if let Err(err) = response {
+			self.reconcilation_list
+				.push(DelayedFuture::new(Instant::now() + err, msg));
+		}
+
+		self.recheck_next_reconcile_future();
+	}
+
+	/// Get the next reconcile future from the list of futures. This function
+	/// will get the future that resolves to the earliest reconciliation future
+	/// and set that to `next_reconcile_future`.
+	fn recheck_next_reconcile_future(&mut self) {
+		self.next_reconcile_future = self
+			.reconcilation_list
+			.iter()
+			.reduce(|a, b| if a.resolve_at < b.resolve_at { a } else { b })
+			.map(|message| message.clone().into_future().boxed())
+			.unwrap_or_else(|| future::pending().boxed());
 	}
 }
 
@@ -311,16 +319,7 @@ async fn exit_signal() {
 	info!("Shutdown signal received, shutting down server gracefully");
 }
 
-fn get_next_reconcile_future(
-	reconcile_requeues: &[DelayedFuture<StreamRunnerDataForWorkspaceServerMsg>],
-) -> std::pin::Pin<Box<dyn Future<Output = StreamRunnerDataForWorkspaceServerMsg> + Send>> {
-	reconcile_requeues
-		.iter()
-		.reduce(|a, b| if a.resolve_at < b.resolve_at { a } else { b })
-		.map(|message| message.clone().into_future().boxed())
-		.unwrap_or_else(|| future::pending().boxed())
-}
-
+/// For a given message, get the resource ID from the message
 fn get_resource_id_from_message(message: &StreamRunnerDataForWorkspaceServerMsg) -> Uuid {
 	use StreamRunnerDataForWorkspaceServerMsg::*;
 	match message {

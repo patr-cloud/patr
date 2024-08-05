@@ -31,11 +31,13 @@ impl RunnerExecutor for DockerRunner {
 	fn list_running_deployments(&self) -> impl Stream<Item = Uuid> {
 		futures::stream::empty()
 	}
+
+	async fn delete_deployment(&self, deployment_id: Uuid) -> Result<(), Duration> {
+		Ok(())
+	}
 }
 
 #[tokio::main]
 async fn main() {
-	let settings = config::get_runner_settings();
-
 	Runner::new(DockerRunner).await.run().await;
 }
