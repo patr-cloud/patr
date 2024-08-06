@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use convert_case::{Case, *};
 use models::api::workspace::managed_url::*;
 
 use crate::prelude::*;
@@ -11,7 +12,7 @@ pub fn get_managed_url_type(
 	http_only: bool,
 	permanent_redirect: bool,
 ) -> Option<ManagedUrlType> {
-	match ManagedUrlTypeDiscriminant::from_str(url_type.as_str()) {
+	match ManagedUrlTypeDiscriminant::from_str(url_type.to_case(Case::Camel).as_str()) {
 		Ok(ManagedUrlTypeDiscriminant::ProxyDeployment) => {
 			let deployment_id = Uuid::from_str(url.as_str()).ok()?;
 			Some(ManagedUrlType::ProxyDeployment {

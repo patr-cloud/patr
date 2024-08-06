@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
-use strum::{EnumDiscriminants, EnumString, VariantNames};
+use strum::{Display, EnumDiscriminants, EnumString, VariantNames};
 
 mod create_managed_url;
 mod delete_managed_url;
@@ -51,7 +51,18 @@ pub struct ManagedUrl {
 }
 
 /// Manageg URL types
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, EnumDiscriminants, VariantNames)]
+#[derive(
+	Display,
+	Debug,
+	Clone,
+	Serialize,
+	Deserialize,
+	PartialEq,
+	Eq,
+	EnumDiscriminants,
+	EnumString,
+	VariantNames,
+)]
 #[strum_discriminants(
 	name(ManagedUrlTypeDiscriminant),
 	derive(strum::Display, EnumString),

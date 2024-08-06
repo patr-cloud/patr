@@ -5,11 +5,12 @@ use models::api::workspace::managed_url::*;
 use super::ManagedUrlCard;
 use crate::prelude::*;
 
+/// A Bunch of Collected URLs under the same Domain
 #[component]
 pub fn ManagedUrls(
 	/// Managed URL Item
 	#[prop(into)]
-	manage_url: Signal<WithId<ManagedUrl>>,
+	managed_url: Signal<WithId<ManagedUrl>>,
 	/// The class names to add to the outer table row
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
@@ -46,7 +47,7 @@ pub fn ManagedUrls(
 					<table class="flex flex-col items-start justify-start w-full">
 						<tbody class="flex flex-col items-start justify-start w-full">
 							<ManagedUrlCard
-								manage_url={Signal::derive(move || Some(manage_url.get()))}
+								managed_url={managed_url}
 								enable_radius_on_top=true
 							/>
 						</tbody>

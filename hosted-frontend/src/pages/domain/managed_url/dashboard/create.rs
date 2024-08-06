@@ -5,7 +5,7 @@ use leptos_use::utils::FromToStringCodec;
 use models::api::workspace::managed_url::*;
 use strum::VariantNames;
 
-use super::ManageURLForm;
+use super::ManagedURLForm;
 use crate::prelude::*;
 
 #[component]
@@ -67,7 +67,7 @@ pub fn CreateManagedUrlDashboard(
 					</Link>
 				</div>
 
-				<ManageURLForm
+				<ManagedURLForm
 					url={url}
 					path={path}
 					domain={domain}

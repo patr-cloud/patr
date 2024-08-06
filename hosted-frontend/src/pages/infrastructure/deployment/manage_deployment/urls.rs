@@ -22,7 +22,7 @@ pub fn ManageDeploymentUrls() -> impl IntoView {
 				"".into_view(),
 			]}
 
-			render_rows={view! { <ManagedUrlCard/> }.into_view()}
+			render_rows={view! { <div></div> }.into_view()}
 		/>
 	}
 }

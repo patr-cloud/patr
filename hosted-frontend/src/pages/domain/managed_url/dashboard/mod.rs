@@ -2,6 +2,7 @@ mod card;
 mod create;
 mod head;
 mod update;
+mod url_form;
 mod url_item;
 
 use std::{rc::Rc, str::FromStr};
@@ -11,7 +12,7 @@ use models::api::workspace::managed_url::*;
 use strum::VariantNames;
 use utils::FromToStringCodec;
 
-pub use self::{card::*, create::*, head::*, update::*, url_item::*};
+pub use self::{card::*, create::*, head::*, update::*, url_form::*, url_item::*};
 use crate::prelude::*;
 
 #[component]
@@ -42,7 +43,7 @@ pub fn UrlDashboard() -> impl IntoView {
 					let:url
 				>
 					<ManagedUrls
-						manage_url={Signal::derive(move || url.clone())}
+						managed_url={Signal::derive(move || url.clone())}
 						class="border-b border-border-color"
 					/>
 				</For>
