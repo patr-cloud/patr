@@ -7,20 +7,20 @@ pub fn ContactInfo(
 	user_email: Option<String>,
 ) -> impl IntoView {
 	view! {
-		<section class="txt-white fc-fs-fs full-width px-xl py-lg br-sm bg-secondary-light">
-			<div class="fr-fs-ct full-width pb-sm ul-light">
-				<h2 class="letter-sp-md txt-md">"Contact Info"</h2>
+		<section class="text-white flex flex-col items-start justify-start w-full px-xl py-lg br-sm bg-secondary-light">
+			<div class="flex items-center justify-start w-full pb-sm border-b border-border-color">
+				<h2 class="tracking-[1px] text-md">"Contact Info"</h2>
 			</div>
 
-			<div class="full-width gap-md fc-fs-fs pt-md">
-				<div class="flex full-width px-md">
-					<div class="flex-col-2 fr-fs-fs">
+			<div class="w-full flex items-start justify-start gap-md pt-md">
+				<div class="flex w-full px-md">
+					<div class="flex-col-2 flex items-start justify-start">
 						<label html_for="primaryEmail" class="mt-sm txt-sm">
 							"Primary Email"
 						</label>
 					</div>
 
-					<div class="flex-col-10 fc-fs-fs">
+					<div class="flex-col-10 flex flex-col items-start justify-start">
 
 						{match user_email {
 							Some(email) => {

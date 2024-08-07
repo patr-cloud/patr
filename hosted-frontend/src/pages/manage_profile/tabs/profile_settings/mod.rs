@@ -12,7 +12,7 @@ pub fn ProfileSettings() -> impl IntoView {
 	});
 
 	view! {
-		<div class="full-width fit-wide-screen mx-auto fc-fs-fs px-md my-xl gap-lg">
+		<div class="w-full fit-wide-screen mx-auto flex flex-col items-start justify-start px-md my-xl gap-lg">
 			<Transition>
 				{move || match user_data.get() {
 					Some(user_data) => {

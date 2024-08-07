@@ -9,7 +9,8 @@ pub fn EmailCard(
 	#[prop(into)]
 	email: MaybeSignal<String>,
 ) -> impl IntoView {
-	let outer_div_class = class.with(|cname| format!("full-width flex fr-fs-ct {}", cname));
+	let outer_div_class =
+		class.with(|cname| format!("w-full flex items-center justify-start {}", cname));
 
 	view! {
 		<div class={outer_div_class}>
@@ -17,7 +18,7 @@ pub fn EmailCard(
 				<Textbox color_variant={SecondaryColorVariant::Medium} value={email.into_view()}/>
 			</div>
 
-			<div class="flex-col-1 fr-ct-ct">
+			<div class="flex-col-1 flex items-center justify-center">
 				<button class="btn-icon" aria_label="Delete Email">
 					<Icon icon={IconType::Trash2} color={Color::Error}/>
 				</button>

@@ -17,7 +17,7 @@ pub fn ProfileRoutes() -> impl IntoView {
 #[component]
 pub fn ManageProfile() -> impl IntoView {
 	view! {
-		<ContainerMain class="full-width full-height mb-md">
+		<ContainerMain class="w-full h-full mb-md">
 			<ContainerHead>
 				<PageTitleContainer>
 					<PageTitle>"Manage Profile"</PageTitle>
