@@ -10,14 +10,14 @@ fn ShowWorkspaceInfo(
 	workspace: MaybeSignal<WithId<Workspace>>,
 ) -> impl IntoView {
 	view! {
-		<div class="fc-fs-fs full-width">
-			<div class="flex my-xs full-width">
-				<div class="flex-col-2 fr-fs-fs mt-sm">
-					<label html_for="workspaceId" class="txt-white txt-sm fr-fs-ct">
+		<div class="flex flex-col items-start justify-start w-full">
+			<div class="flex my-xs w-full">
+				<div class="flex-2 flex items-start justify-start mt-sm">
+					<label html_for="workspaceId" class="text-white text-sm flex items-center justify-start">
 						"Workspace ID"
 					</label>
 				</div>
-				<div class="flex-col-10 txt-grey bg-secondary-light br-sm py-xxs px-xl fr-sb-ct">
+				<div class="flex-10 text-grey bg-secondary-light br-sm py-xxs px-xl flex justify-between items-center">
 					<div class="px-sm">{workspace.get().id.to_string()}</div>
 					<button
 						class="btn-icon ml-auto p-xxs"
@@ -25,48 +25,40 @@ fn ShowWorkspaceInfo(
 					>
 						<Icon icon=IconType::Copy size=Size::ExtraSmall />
 					</button>
-					// {copy ? (
-					// 	<Icon icon="check" class="ml-auto m-xxs" size="xs" />
-					// ) : (
-					// )}
 				</div>
 			</div>
 
-			<div class="flex my-xs full-width">
-				<div class="flex-col-2 fr-fs-fs mt-sm">
-					<label html_for="name" class="txt-white txt-sm fr-fs-ct">
+			<div class="flex my-xs w-full">
+				<div class="flex-2 flex items-start justify-start mt-sm">
+					<label html_for="name" class="text-white text-sm flex items-center justify-start">
 						"Name"
 					</label>
 				</div>
-				<div class="flex-col-10 fr-fs-fs">
+				<div class="flex-10 flex items-start justify-start">
 					<Input
 						placeholder="Workspace Name"
-						class="full-width"
+						class="w-full"
 						r#type=InputType::Text
 						id="name"
 						name="name"
 						value={workspace.get().data.name}
 					/>
-					// {copy ? (
-					// 	<Icon icon="check" class="ml-auto m-xxs" size="xs" />
-					// ) : (
-					// )}
 				</div>
 			</div>
 
-			<div class="flex my-xs full-width">
-				<div class="flex-col-2 fc-fs-fs mt-md">
-					<label html_for="alertEmail" class="txt-white txt-sm fr-fs-ct">
+			<div class="flex my-xs w-full">
+				<div class="flex-2 flex flex-col items-start justify-start mt-md">
+					<label html_for="alertEmail" class="text-white text-sm flex items-center justify-start">
 						"Alert Email(s)"
 					</label>
-					<span class="txt-grey">
+					<span class="text-grey">
 						"These are a list of emails that will recieve a notification whenever a deployment crashes"
 					</span>
 				</div>
 
-				<div class="flex-col-10 fc-fs-fs">
-					<div class="full-width flex fr-fs-ct mb-xs">
-						<div class="flex-col-11">
+				<div class="flex-10 flex flex-col items-start justify-start">
+					<div class="w-full flex items-center justify-start mb-xs">
+						<div class="flex-11">
 							<Textbox value="ac380012@gmail.com".into_view() />
 						</div>
 					</div>
@@ -115,7 +107,7 @@ pub fn ManageWorkspaceSettingsTab() -> impl IntoView {
 	});
 
 	view! {
-		<div class="fc-fs-fs full-width full-height fit-wide-screen mx-auto px-md my-xl">
+		<div class="flex flex-col items-start justify-start w-full h-full fit-wide-screen mx-auto px-md my-xl">
 			<Transition>
 				{
 					move || match current_workspace.get() {

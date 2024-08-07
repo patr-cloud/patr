@@ -23,7 +23,7 @@ pub fn WorkspaceRoutes() -> impl IntoView {
 #[component]
 pub fn WorkspacePage() -> impl IntoView {
 	view! {
-		<ContainerMain class="full-width full-height mb-md">
+		<ContainerMain class="w-full h-full mb-md">
 			<Outlet />
 		</ContainerMain>
 	}
