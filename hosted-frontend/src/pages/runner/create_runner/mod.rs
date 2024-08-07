@@ -16,12 +16,12 @@ pub fn CreateRunner() -> impl IntoView {
 
 	view! {
 		<RunnerCreateHead />
-		<ContainerBody class="p-xs px-md gap-md ofy-auto txt-white">
+		<ContainerBody class="p-xs px-md gap-md overflow-y-auto text-white">
 			<ActionForm
 				action={create_runner_action}
-				class="full-width full-height px-md py-xl fc-sb-fs fit-wide-screen mx-auto gap-md"
+				class="w-full h-full flex flex-col justify-between items-start px-md py-xl fit-wide-screen mx-auto gap-md"
 			>
-				<div class="flex full-width">
+				<div class="flex w-full">
 					<input
 						type="hidden"
 						id="access_token"
@@ -36,24 +36,24 @@ pub fn CreateRunner() -> impl IntoView {
 						value={move || workspace_id.get()}
 					/>
 
-					<div class="flex-col-2 fr-fs-fs pt-sm">
-						<label html_for="name" class="txt-white txt-sm">
+					<div class="flex-2 flex items-start justify-start pt-sm">
+						<label html_for="name" class="text-white text-sm">
 							"Runner Name"
 						</label>
 					</div>
 
-					<div class="flex-col-10 fc-fs-fs">
+					<div class="flex-10 flex flex-col items-start justify-start">
 						<Input
 							id="name"
 							name="name"
 							r#type={InputType::Text}
 							placeholder="Enter runner name"
-							class="full-width"
+							class="w-full"
 						/>
 					</div>
 				</div>
 
-				<div class="fr-fe-ct gap-md full-width">
+				<div class="flex items-center justify-end gap-md w-full">
 					<Link
 						to="/runners"
 						style_variant={LinkStyleVariant::Plain}

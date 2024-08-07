@@ -42,25 +42,25 @@ pub fn ManageRunner() -> impl IntoView {
 									<RunnerManageHead
 										runner_info={runner_info.runner.clone()}
 									/>
-									<ContainerBody class="p-xs px-md gap-md ofy-auto txt-white">
+									<ContainerBody class="p-xs px-md gap-md overflow-y-auto text-white">
 										<form
-											class="full-width full-height px-md py-xl fc-fs-fs
+											class="w-full h-full px-md py-xl flex flex-col items-start justify-start
 												fit-wide-screen mx-auto gap-md"
 										>
-											<div class="flex full-width">
-												<div class="flex-col-2 fr-fs-fs pt-sm">
-													<label html_for="name" class="txt-white txt-sm">
+											<div class="flex w-full">
+												<div class="flex-2 flex items-start justify-start pt-sm">
+													<label html_for="name" class="text-white text-sm">
 														"Runner Name"
 													</label>
 												</div>
 
-												<div class="flex-col-10 fc-fs-fs">
+												<div class="flex-10 flex flex-col items-start justify-start">
 													<Input
 														id="name"
 														name="name"
 														r#type={InputType::Text}
 														placeholder="Enter runner name"
-														class="full-width"
+														class="w-full"
 														value={runner_info.runner.name.clone()}
 													/>
 												</div>

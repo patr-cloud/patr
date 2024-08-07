@@ -17,8 +17,8 @@ pub fn RunnerManageHead(
 
 	view! {
 		<ContainerHead>
-			<div class="fr-sb-ct full-width">
-				<div class="fc-sb-fs">
+			<div class="w-full flex justify-between items-center">
+				<div class="flex flex-col items-start justify-between">
 					<PageTitleContainer clone:runner_info>
 						<PageTitle icon_position={PageTitleIconPosition::End}>
 							"CI/CD"
@@ -74,7 +74,7 @@ pub fn RunnerManageHead(
 					<Link
 						style_variant={LinkStyleVariant::Contained}
 						should_submit={true}
-						class="txt-white btn-error"
+						class="text-white btn-error"
 					>
 						<Icon
 							icon=IconType::Trash2

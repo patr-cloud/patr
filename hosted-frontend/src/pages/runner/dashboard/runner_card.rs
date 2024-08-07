@@ -10,10 +10,10 @@ pub fn RunnerCard(
 ) -> impl IntoView {
 	view! {
 		<div
-			class="bg-secondary-light fc-fs-fs px-lg py-md br-sm txt-white gap-xs"
+			class="bg-secondary-light flex flex-col items-start justify-start px-lg py-md br-sm text-white gap-xs"
 		>
-			 <div class="full-width fr-fs-ct gap-md">
-				<p class="txt-md txt-primary w-25 txt-of-ellipsis of-hidden">
+			 <div class="w-full flex items-center justify-start gap-md">
+				<p class="text-md text-primary w-[25ch] text-ellipsis overflow-hidden">
 					{runner.get().name.clone()}
 				</p>
 
@@ -34,12 +34,12 @@ pub fn RunnerCard(
 				<StatusBadge />
 			</div>
 
-			<div class="flex-2 full-width gap-xs fr-ct-ct">
-				<div class="bg-secondary-medium br-sm px-lg py-sm fc-ct-fs full-width">
-					<small class="letter-sp-md txt-xxs txt-grey">
+			<div class="flex-2 w-full gap-xs flex items-center justify-center">
+				<div class="bg-secondary-medium br-sm px-lg py-sm flex flex-col items-start justify-center w-full">
+					<small class="letter-sp-md text-xxs text-grey">
 						"LAST SEEN"
 					</small>
-					<p class="txt-primary w-15 txt-of-ellipsis of-hidden">
+					<p class="text-primary w-[15ch] text-ellipsis overflow-hidden">
 						{match runner.get().last_seen.clone() {
 							Some(date) => date.to_string().into_view(),
 							None => "Just Now".into_view()
@@ -51,7 +51,7 @@ pub fn RunnerCard(
 			<Link
 				r#type={Variant::Link}
 				to={runner.get().id.to_string()}
-				class="txt-medium letter-sp-md txt-sm mt-xs ml-auto"
+				class="text-medium letter-sp-md text-sm mt-xs ml-auto"
 			>
 				"MANAGE RUNNER"
 				<Icon

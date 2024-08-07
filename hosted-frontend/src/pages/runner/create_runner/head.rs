@@ -4,8 +4,8 @@ use crate::prelude::*;
 pub fn RunnerCreateHead() -> impl IntoView {
 	view! {
 		<ContainerHead>
-			<div class="fr-sb-ct full-width">
-				<div class="fc-sb-fs">
+			<div class="w-full flex items-center justify-between">
+				<div class="flex flex-col items-start justify-between">
 					<PageTitleContainer>
 						<PageTitle icon_position={PageTitleIconPosition::End}>
 							"CI/CD"
