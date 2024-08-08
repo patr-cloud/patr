@@ -26,10 +26,10 @@ pub fn RunningDetails(
 	let deployment_info = expect_context::<RwSignal<DeploymentInfo>>();
 
 	view! {
-		<div class="fc-fs-fs full-width fit-wide-screen px-xl mt-xl">
-			<h4 class="txt-white txt-lg pb-md txt-white">"Deployment Details"</h4>
+		<div class="flex flex-col items-start justify-start w-full fit-wide-screen px-xl mt-xl">
+			<h4 class="text-lg pb-md text-white">"Deployment Details"</h4>
 
-			<div class="fc-fs-fs gap-xl full-width full-height txt-white">
+			<div class="fc-fs-fs gap-xl w-full h-full text-white">
 				<PortInput
 					on_add=move |(_, port_number, port_type): (MouseEvent, String, String)| {
 						let port_number = StringifiedU16::from_str(port_number.as_str());

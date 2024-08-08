@@ -177,7 +177,7 @@ pub fn CreateDeployment() -> impl IntoView {
 
 	view! {
 		<CreateDeploymentHead />
-		<ContainerBody class="gap-md ofy-auto px-md">
+		<ContainerBody class="gap-md overflow-y-auto px-md">
 			{
 				move || match page.get() {
 					Page::Details => view! {
@@ -191,7 +191,7 @@ pub fn CreateDeployment() -> impl IntoView {
 					}.into_view(),
 				}
 			}
-			<div class="fr-fe-ct gap-md full-width fit-wide-screen mx-auto mt-auto pt-md pb-xl px-md">
+			<div class="flex justify-end items-center gap-md w-full fit-wide-screen mx-auto mt-auto pt-md pb-xl px-md">
 				 <Show when={move || page.get() != Page::Details}>
 					<Link
 						on_click={Rc::new(move |_| {
@@ -271,7 +271,7 @@ pub fn CreateDeployment() -> impl IntoView {
 				>
 					<button
 						type="submit"
-						class="fr-ct-ct btn btn-primary"
+						class="flex items-center justify-center btn btn-primary"
 						on:click={on_submit}
 					>
 						"CREATE"

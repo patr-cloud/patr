@@ -16,21 +16,21 @@ pub fn ImageHistoryCard(
 ) -> impl IntoView {
 	let class = move || {
 		class.with(|cname| format!(
-			"full-width px-xl py-md bg-secondary-light br-sm fc-fs-fs pos-rel deploy-summary-card txt-white {}",
+			"w-full px-xl py-md bg-secondary-light rounded-sm flex flex-col items-start justify-start pos-rel deploy-summary-card text-white {}",
 			cname
     	))
 	};
 
 	view! {
 		<div class={class}>
-			<div class="line pos-abs"></div>
-			<div class="fr-fs-ct full-width">
+			<div class="line absolute"></div>
+			<div class="flex justify-start items-center w-full">
 				<Icon
 					icon={IconType::UploadCloud}
 					color={if active.get() { Color::Success } else { Color::Info }}
 				/>
 
-				<span class="of-hidden txt-of-ellipsis w-45 ml-sm txt-sm">
+				<span class="overflow-hidden text-ellipsis w-[45ch] ml-sm text-sm">
 					{deploy_history.get().clone().image_digest}
 				</span>
 
@@ -44,11 +44,11 @@ pub fn ImageHistoryCard(
 						.then(|| view! { <StatusBadge status={Some(Status::Live)} class="ml-xxs"/> })
 				}}
 
-				<span class="txt-grey ml-auto">{deploy_history.get().clone().created.to_string()}</span>
+				<span class="text-grey ml-auto">{deploy_history.get().clone().created.to_string()}</span>
 			</div>
 
-			<div class="fr-sb-ct full-width mt-sm pl-xl">
-				<div class="fr-fs-ct row-card pl-sm">
+			<div class="flex justify-between items-center w-full mt-sm pl-xl">
+				<div class="flex justify-start items-center row-card pl-sm">
 					<ImageTag tag={"Latest".to_owned()}/>
 				</div>
 
@@ -56,7 +56,7 @@ pub fn ImageHistoryCard(
 					(!active.get())
 						.then(|| {
 							view! {
-								<Link class="txt-sm letter-sp-md">"Revert of this version"</Link>
+								<Link class="text-sm tracking-[1px]">"Revert of this version"</Link>
 							}
 						})
 				}}

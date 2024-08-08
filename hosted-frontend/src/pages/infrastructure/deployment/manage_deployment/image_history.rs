@@ -23,8 +23,8 @@ pub fn ManageDeploymentImageHistory() -> impl IntoView {
 	);
 
 	view! {
-		<div class="fc-fs-fs full-width px-md my-xl mx-auto fit-wide-screen">
-			<div class="fc-fs-fs full-width full-height gap-sm">
+		<div class="flex flex-col items-start justify-start w-full px-md my-xl mx-auto fit-wide-screen">
+			<div class="flex flex-col items-start justify-start w-full h-full gap-sm">
 				<Transition>
 					{
 						move || match image_history_list.get() {

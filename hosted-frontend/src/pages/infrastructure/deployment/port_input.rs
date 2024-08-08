@@ -27,7 +27,7 @@ pub fn PortInput(
 	#[prop(into, optional)]
 	error: MaybeSignal<String>,
 ) -> impl IntoView {
-	let outer_div_class = class.with(|cname| format!("flex full-width {}", cname));
+	let outer_div_class = class.with(|cname| format!("flex w-full {}", cname));
 
 	let store_ports = store_value(ports_list.clone());
 	let exposed_port_types = ExposedPortType::VARIANTS
@@ -46,39 +46,39 @@ pub fn PortInput(
 
 	view! {
 		<div class={outer_div_class}>
-			<div class="flex-col-2 fr-fs-ct mb-auto mt-md">
-				<label html_for="port" class="fr-fs-ct">
+			<div class="flex-2 flex justify-start items-center mb-auto mt-md">
+				<label html_for="port" class="flex justify-start items-center">
 					"Ports"
 				</label>
 			</div>
 
-			<div class="flex-col-10 fc-fs-fs">
+			<div class="flex-10 flex flex-col items-start justify-start">
 				<Show when={move || ports_list.with(|list| !list.is_empty())}>
-					<div class="flex full-width">
-						<div class="flex-col-12 fc-fs-fs">
+					<div class="flex w-full">
+						<div class="flex-12 flex flex-col items-start justify-start">
 							<For
 								each={move || store_ports.with_value(|list| list.get())}
 								key={|state| state.clone()}
 								let:child
 							>
-								<div class="flex full-width mb-xs">
+								<div class="flex w-full mb-xs">
 									<div class={format!(
-										"flex-col-{} pr-lg",
+										"flex-{} pr-lg",
 										if is_update_screen.get() { "2" } else { "5" },
 									)}>
-										<div class="full-width fr-fs-ct px-xl py-sm br-sm bg-secondary-light">
+										<div class="w-full flex justify-start items-center px-xl py-sm br-sm bg-secondary-light">
 											<span class="ml-md">{child.0.to_string()}</span>
 										</div>
 									</div>
 
 									<div class={(if is_update_screen.get() {
-										"flex-col-3 pr-lg"
+										"flex-3 pr-lg"
 									} else {
-										"flex-col-6"
+										"flex-6"
 									})
 										.to_string()}>
 
-										<div class="full-width fr-fs-ct px-xl py-sm bg-secondary-light br-sm">
+										<div class="w-full flex justify-start items-center px-xl py-sm bg-secondary-light br-sm">
 											<span class="px-sm">{child.1.to_string()}</span>
 										</div>
 									</div>
@@ -87,15 +87,15 @@ pub fn PortInput(
 										.get()
 										.then(|| {
 											view! {
-												<div class="flex-col-6 fr-ct-ct">
-													<div class="bg-secondary-light br-sm py-sm px-xl full-width fr-fs-ct">
+												<div class="flex-6 flex items-center justify-center">
+													<div class="bg-secondary-light br-sm py-sm px-xl w-full flex justify-start items-center">
 														<a
 															href="https://onpatr.cloud"
 															target="_blank"
-															class="txt-underline ml-sm fr-fs-ct"
+															class="underline ml-sm flex justify-start items-center"
 															rel="noreferrer"
 														>
-															<span class="txt-of-ellipsis of-hidden w-50">
+															<span class="text-ellipsis overflow-hidden w-[50ch]">
 																"https://onpatr.cloud"
 															</span>
 															<Icon
@@ -110,7 +110,7 @@ pub fn PortInput(
 										})
 									}
 
-									<div class="flex-col-1 fr-ct-ct pl-sm">
+									<div class="flex-1 flex items-center justify-center pl-sm">
 										<button
 											on:click={
 												move |ev| {
@@ -131,8 +131,8 @@ pub fn PortInput(
 					</div>
 				</Show>
 
-				<div class="flex full-width">
-					<div class="flex-col-5 fc-fs-fs pr-lg gap-xxs">
+				<div class="flex w-full">
+					<div class="flex-5 flex flex-col justify-start items-start pr-lg gap-xxs">
 						<Input
 							value={Signal::derive(move || port_number.get())}
 							on_input={
@@ -143,7 +143,7 @@ pub fn PortInput(
 							}
 							r#type={InputType::Number}
 							id="port"
-							class="full-width"
+							class="w-full"
 							placeholder="Enter Port Number"
 						/>
 
@@ -155,7 +155,7 @@ pub fn PortInput(
 						</Show>
 					</div>
 
-					<div class="flex-col-6 fc-fs-fs gap-xxs">
+					<div class="flex-6 flex flex-col items-start justify-start gap-xxs">
 						<InputDropdown
 							value={port_type}
 							placeholder={"Select Protocol".to_string()}
@@ -164,7 +164,7 @@ pub fn PortInput(
 
 					</div>
 
-					<div class="flex-col-1 fr-ct-fs">
+					<div class="flex-1 flex items-start justify-center">
 						<Link
 							style_variant={LinkStyleVariant::Contained}
 							class="br-sm p-xs ml-md"

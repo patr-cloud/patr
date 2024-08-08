@@ -20,21 +20,21 @@ pub fn ScaleDeployment() -> impl IntoView {
 	);
 
 	view! {
-		<div class="fc-fs-fs full-width px-xl mt-xl txt-white txt-sm fit-wide-screen mx-auto gap-md">
-			<h4 class="txt-white txt-lg pb-md txt-white">"Scale Your Servers"</h4>
+		<div class="fc-fs-fs w-full px-xl mt-xl text-white text-sm fit-wide-screen mx-auto gap-md">
+			<h4 class="text-white text-lg pb-md">"Scale Your Servers"</h4>
 
-			<div class="flex full-width">
-				<div class="flex-col-2 my-auto pr-md">
-					<span class="txt-sm">"Choose Horizontal Scale"</span>
+			<div class="flex w-full">
+				<div class="flex-2 my-auto pr-md">
+					<span class="text-sm">"Choose Horizontal Scale"</span>
 				</div>
 
-				<div class="flex-col-10 fc-fs-ct bg-secondary-light p-xl br-sm">
-					<p class="full-width letter-sp-md mb-lg txt-xxs">
+				<div class="flex-10 flex flex-col justify-start items-center bg-secondary-light p-xl br-sm">
+					<p class="w-full tracking-[1px] mb-lg text-xxs">
 						"Choose the minimum and maximum number of instances for your deployment "
 					</p>
 
-					<div class="full-width fr-ct-ct">
-						<div class="flex-col-2 fc-ct-ct">
+					<div class="w-full flex items-center justify-center">
+						<div class="flex-2 flex flex-col items-center justify-center">
 							<label html_for="minHorizontalScale">"Minimum Scale"</label>
 
 							<NumberPicker
@@ -48,21 +48,21 @@ pub fn ScaleDeployment() -> impl IntoView {
 							/>
 						</div>
 
-						<div class="flex-col-8 mt-xl px-xl fc-fs-ct">
+						<div class="flex-8 mt-xl px-xl flex flex-col items-center justify-start">
 							<DoubleInputSlider
 								min={min_horizontal}
 								max={max_horizontal}
 								min_limit={1}
 								max_limit={10}
-								class="full-width"
+								class="w-full"
 							/>
 
-							<p class="txt-warning txt-xxs">
+							<p class="text-warning text-xxs">
 								"Any excess volumes will be removed if the number of instances is reduced."
 							</p>
 						</div>
 
-						<div class="flex-col-2 fc-ct-ct">
+						<div class="flex-2 flex flex-col justify-center items-center">
 							<label html_for="maxHorizontalScale">"Maximum Scale"</label>
 
 							<NumberPicker
@@ -79,19 +79,19 @@ pub fn ScaleDeployment() -> impl IntoView {
 				</div>
 			</div>
 
-			<div class="flex full-width">
-				<div class="flex-col-2 my-auto pr-md">
-					<span class="txt-sm">"Manage Resource Allocation"</span>
+			<div class="flex w-full">
+				<div class="flex-2 my-auto pr-md">
+					<span class="text-sm">"Manage Resource Allocation"</span>
 				</div>
 
-				<div class="flex-col-10 fr-fs-ct of-auto">
-					<div class="full-width p-xl br-sm bg-secondary-light fc-fs-fs of-auto">
-						<p class="letter-sp-md mb-lg txt-xxs">
+				<div class="flex-10 flex justify-start items-center overflow-auto">
+					<div class="w-full p-xl rounded-sm bg-secondary-light flex flex-col items-start justify-start overflow-auto">
+						<p class="tracking-[1px] mb-lg text-xxs">
 							"Specify the resources to be allocated to your container"
 						</p>
 
 						<Transition>
-							<div class="fr-fs-ct ofx-auto py-xxs gap-md">
+							<div class="flex justify-start items-center overflow-x-auto py-xxs gap-md">
 								{
 									move || match machine_list.get() {
 										Some(Ok(data)) => view! {

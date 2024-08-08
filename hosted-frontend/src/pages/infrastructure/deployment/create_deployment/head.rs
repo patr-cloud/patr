@@ -4,8 +4,8 @@ use crate::prelude::*;
 pub fn CreateDeploymentHead() -> impl IntoView {
 	view! {
 		<ContainerHead>
-			<div class="fr-sb-ct full-width">
-				<div class="fc-fs-fs">
+			<div class="w-full flex justify-between items-center">
+				<div class="flex flex-col items-start justify-start">
 					<PageTitleContainer>
 						<PageTitle icon_position={PageTitleIconPosition::End}>
 							"Infrastructure"

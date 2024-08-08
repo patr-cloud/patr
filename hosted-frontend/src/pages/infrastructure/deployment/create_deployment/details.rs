@@ -33,20 +33,20 @@ pub fn DeploymentDetails(
 	let store_errors = store_value(errors);
 
 	view! {
-		<div class="fc-fs-fs full-width fit-wide-screen px-xl mt-xl">
-			<h4 class="txt-white txt-lg pb-md txt-white">"Deployment Details"</h4>
+		<div class="flex flex-col items-start justify-start w-full fit-wide-screen px-xl mt-xl">
+			<h4 class="text-white text-lg pb-md">"Deployment Details"</h4>
 
-			<div class="fc-fs-fs full-width full-height txt-white">
-				<div class="flex mb-xs full-width">
-					<div class="flex-col-2 fr-fs-ct">
-						<label html_for="name" class="txt-white txt-sm fr-fs-ct">"Name"</label>
+			<div class="flex flex-col items-start justify-start w-full h-full text-white">
+				<div class="flex mb-xs w-full">
+					<div class="flex-2 flex items-center justify-start">
+						<label html_for="name" class="text-white text-sm flex items-center justify-start">"Name"</label>
 					</div>
 
-					<div class="flex-col-10 fc-fs-fs">
+					<div class="flex-10 flex flex-col items-start justify-start">
 						<Input
 							placeholder="Deployment Name"
 							r#type=InputType::Text
-							class="full-width"
+							class="w-full"
 							name="name"
 							id="name"
 							value={Signal::derive(move || deployment_info.get().name.unwrap_or_default())}
@@ -68,16 +68,16 @@ pub fn DeploymentDetails(
 					</div>
 				</div>
 
-				<div class="flex my-xs full-width mb-md">
-					<div class="flex-col-2 fr-fs-ct">
-						<label class="txt-white txt-sm fr-fs-ct">"Registry"</label>
+				<div class="flex my-xs w-full mb-md">
+					<div class="flex-2 flex justify-start items-center">
+						<label class="text-white text-sm flex justify-start items-center">"Registry"</label>
 					</div>
 
-					<div class="flex-col-10 fc-fs-fs">
+					<div class="flex-10 flex flex-col items-start justify-start">
 						<InputDropdown
 							placeholder="Registry Name"
 							value={registry}
-							class="full-width"
+							class="w-full"
 							options={vec![
 								InputDropdownOption {
 									id: "docker".to_string(),
@@ -94,17 +94,17 @@ pub fn DeploymentDetails(
 					</div>
 				</div>
 
-				<div class="flex my-xs full-width">
-					<div class="flex-col-2 fr-fs-ct">
-						<label class="txt-white txt-sm fr-fs-ct">"Image Details"</label>
+				<div class="flex my-xs w-full">
+					<div class="flex-2 flex justify-start items-center">
+						<label class="text-white text-sm flex justify-start items-center">"Image Details"</label>
 					</div>
 
-					<div class="flex-col-6 fc-fs-fs">
+					<div class="flex-6 flex flex-col items-start justify-start">
 						<Input
 							placeholder="Enter Repository Image Name"
 							r#type={InputType::Text}
 							name="repository_name"
-							class="full-width"
+							class="w-full"
 							id="repository_name"
 							value={Signal::derive(move || deployment_info.get().image_name.unwrap_or_default())}
 							on_input={
@@ -124,11 +124,11 @@ pub fn DeploymentDetails(
 						</Show>
 					</div>
 
-					<div class="flex-col-4 pl-md fc-fs-fs">
+					<div class="flex-4 pl-md flex flex-col items-start justify-start">
 						<Input
 							r#type=InputType::Text
 							placeholder="Choose Image Tag"
-							class="full-width"
+							class="w-full"
 							name="image_tag"
 							id="image_tag"
 							value={Signal::derive(move || deployment_info.get().image_tag.unwrap_or_default())}
@@ -150,18 +150,18 @@ pub fn DeploymentDetails(
 					</div>
 				</div>
 
-				<div class="flex my-xs full-width mb-md">
-					<div class="flex-col-2 fr-fs-ct">
-						<label class="txt-white txt-sm fr-fs-ct">"Choose Runner"</label>
+				<div class="flex my-xs w-full mb-md">
+					<div class="flex-2 flex justify-start items-center">
+						<label class="text-white text-sm flex justify-start items-center">"Choose Runner"</label>
 					</div>
 
-					<div class="flex-col-10 fc-fs-fs">
+					<div class="flex-10 flex flex-col items-start justify-start">
 						<Transition>
 							{
 								move || view! {
 									<InputDropdown
 										placeholder="Choose A Runner"
-										class="full-width"
+										class="w-full"
 										value={runner}
 										options={
 											match runner_list.get() {

@@ -41,7 +41,7 @@ pub fn ProbeInput(
 	#[prop(into, optional, default = None.into())]
 	probe_value: MaybeSignal<Option<DeploymentProbe>>,
 ) -> impl IntoView {
-	let outer_div_class = class.with(|cname| format!("flex full-width {}", cname));
+	let outer_div_class = class.with(|cname| format!("flex w-full {}", cname));
 
 	let probe_port = create_rw_signal(
 		if let Some(probe_value) = probe_value.get_untracked() {
@@ -60,12 +60,14 @@ pub fn ProbeInput(
 
 	view! {
 		<div class={outer_div_class}>
-			<div class="flex-col-2 fc-fs-fs mb-auto mt-sm">
-				<div class="fr-fs-fs">
-					<label class="fc-fs-fs">{format!("{} Probe", probe_type.as_str())}</label>
+			<div class="flex-2 flex flex-col items-start justify-start mb-auto mt-sm">
+				<div class="flex items-start justify-start">
+					<label class="flex flex-col items-start justify-start">
+						{format!("{} Probe", probe_type.as_str())}
+					</label>
 				</div>
 
-				<small class="txt-xxs txt-grey">
+				<small class="text-xxs text-grey">
 
 					{if probe_type == ProbeInputType::Liveness {
 						"Restarts containers that are failing"
@@ -76,8 +78,8 @@ pub fn ProbeInput(
 				</small>
 			</div>
 
-			<div class="flex-col-10 fr-fs-fs">
-				<div class="flex-col-5 pr-lg">
+			<div class="flex-10 flex items-start justify-start">
+				<div class="flex-5 pr-lg">
 					{
 						move || view! {
 							<InputDropdown
@@ -105,7 +107,7 @@ pub fn ProbeInput(
 					}
 				</div>
 
-				<div class="flex-col-6 fc-fs-fs">
+				<div class="flex-6 flex flex-col items-start justify-start">
 					<Input
 						r#type={InputType::Text}
 						value={Signal::derive(move || probe_path.get())}
@@ -114,7 +116,7 @@ pub fn ProbeInput(
 							probe_path.set(event_target_value(&ev));
 							on_input_path.call((probe_port.get().clone(), event_target_value(&ev)));
 						})}
-						class="full-width"
+						class="w-full"
 						placeholder={format!("Enter {} probe path", probe_type.as_str())}
 					/>
 				</div>

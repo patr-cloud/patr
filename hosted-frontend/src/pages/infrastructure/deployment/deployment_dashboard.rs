@@ -2,29 +2,10 @@ use leptos_use::{use_cookie, utils::FromToStringCodec};
 
 use crate::{pages::DeploymentCard, prelude::*};
 
-/// Deployment Model
-/// TO BE REPLACED LATER WITH MODEL A PROPER MODEL TYPE
-/// ACCORDING TO THE REQUEST RESPONSE TYPE
-#[derive(PartialEq, Eq, Clone)]
-pub struct DeploymentType {
-	/// The Id of the deployment
-	pub id: String,
-	/// The Name of the deployment
-	pub name: String,
-	/// The Image Tag of the deployment
-	pub image_tag: String,
-	/// The Status of the deployment
-	pub status: Status,
-	/// The Region of the deployment
-	pub region: String,
-	/// The Machine Type of the deployment
-	pub machine_type: String,
-}
-
 #[component]
 pub fn Deployment() -> impl IntoView {
 	view! {
-		<ContainerMain class="full-width full-height mb-md">
+		<ContainerMain class="w-full h-full mb-md">
 			<Outlet/>
 		</ContainerMain>
 	}
@@ -45,8 +26,8 @@ pub fn DeploymentDashboard() -> impl IntoView {
 
 	view! {
 		<ContainerHead>
-			<div class="fr-sb-ct full-width">
-				<div class="fc-fs-fs">
+			<div class="flex justify-between items-center w-full">
+				<div class="flex flex-col items-start justify-start">
 					<PageTitleContainer>
 						<PageTitle icon_position={PageTitleIconPosition::End}>
 							"Infrastructure"

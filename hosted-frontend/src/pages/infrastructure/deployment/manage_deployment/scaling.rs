@@ -3,33 +3,36 @@ use crate::{pages::*, prelude::*};
 #[component]
 pub fn ManageDeploymentScaling() -> impl IntoView {
 	view! {
-		<div class="fc-fs-fs full-width px-xl mt-xl txt-white txt-sm fit-wide-screen mx-auto gap-md">
-			<div class="flex full-width">
-				<div class="flex-col-2 my-auto pr-md">
-					<span class="txt-sm">"Choose Horizontal Scale"</span>
+		<div
+			class="flex flex-col items-start justify-start w-full px-xl mt-xl
+				text-white text-sm fit-wide-screen mx-auto gap-md"
+			>
+			<div class="flex w-full">
+				<div class="flex-2 my-auto pr-md">
+					<span class="text-sm">"Choose Horizontal Scale"</span>
 				</div>
 
-				<div class="flex-col-10 fc-fs-ct bg-secondary-light p-xl br-sm">
-					<p class="full-width letter-sp-md mb-lg txt-xxs">
+				<div class="flex-10 fc-fs-ct flex flex-col items-center justify-start bg-secondary-light p-xl br-sm">
+					<p class="w-full tracking-[1px] mb-lg text-xxs">
 						"Choose the minimum and maximum number of instances for your deployment "
 					</p>
 
-					<div class="full-width fr-ct-ct">
-						<div class="flex-col-2 fc-ct-ct">
+					<div class="w-full flex items-center justify-center">
+						<div class="flex-2 flex flex-col items-center justify-center">
 							<label html_for="minHorizontalScale">"Minimum Scale"</label>
 
 							<NumberPicker value=5 style_variant={SecondaryColorVariant::Medium}/>
 						</div>
 
-						<div class="flex-col-8 mt-xl px-xl fc-fs-ct">
-							// <DoubleInputSlider class="full-width"/>
+						<div class="flex-8 mt-xl px-xl flex flex-col items-center justify-start">
+							// <DoubleInputSlider class="w-full"/>
 
-							<p class="txt-warning txt-xxs">
+							<p class="text-warning text-xxs">
 								"Any excess volumes will be removed if the number of instances is reduced."
 							</p>
 						</div>
 
-						<div class="flex-col-2 fc-ct-ct">
+						<div class="flex-2 flex flex-col items-center justify-center">
 							<label html_for="maxHorizontalScale">"Maximum Scale"</label>
 
 							<NumberPicker value=4 style_variant={SecondaryColorVariant::Medium}/>
@@ -38,18 +41,21 @@ pub fn ManageDeploymentScaling() -> impl IntoView {
 				</div>
 			</div>
 
-			<div class="flex full-width">
-				<div class="flex-col-2 my-auto pr-md">
-					<span class="txt-sm">"Manage Resource Allocation"</span>
+			<div class="flex w-full">
+				<div class="flex-2 my-auto pr-md">
+					<span class="text-sm">"Manage Resource Allocation"</span>
 				</div>
 
-				<div class="flex-col-10 fr-fs-ct of-auto">
-					<div class="full-width p-xl br-sm bg-secondary-light fc-fs-fs of-auto">
-						<p class="letter-sp-md mb-lg txt-xxs">
+				<div class="flex-10 flex items-center justify-start overflow-auto">
+					<div
+						class="w-full p-xl br-sm bg-secondary-light
+						flex flex-col items-start justify-start overflow-auto"
+					>
+						<p class="tracking-[1px] mb-lg text-xxs">
 							"Specify the resources to be allocated to your container"
 						</p>
 
-						<div class="fr-fs-ct ofx-auto py-xxs gap-md">
+						<div class="flex items-center justify-start overflow-x-auto py-xxs gap-md">
 							// <MachineTypeCard/>
 							// <MachineTypeCard/>
 							// <MachineTypeCard/>
@@ -58,21 +64,21 @@ pub fn ManageDeploymentScaling() -> impl IntoView {
 				</div>
 			</div>
 
-			<div class="flex full-width">
-				<div class="flex-col-2 my-auto pr-md">
-					<span class="txt-sm">"Estimated Cost"</span>
+			<div class="flex w-full">
+				<div class="flex-2 my-auto pr-md">
+					<span class="text-sm">"Estimated Cost"</span>
 				</div>
 
-				<div class="flex-col-10 fc-fs-fs of-auto">
-					<div class="fr-fs-ct">
-						<span class="txt-xl txt-success txt-thin">
-							"$5" <small class="txt-grey txt-lg">"/month"</small>
+				<div class="flex-10 flex flex-col items-start justify-start overflow-auto">
+					<div class="flex items-center justify-start">
+						<span class="text-xl text-success text-thin">
+							"$5" <small class="text-grey text-lg">"/month"</small>
 						</span>
 					</div>
 
-					<p class="txt-grey">
+					<p class="text-grey">
 						"This deployment is eligible for "
-						<strong class="txt-medium txt-sm">"Free"</strong> plan
+						<strong class="text-medium text-sm">"Free"</strong> "plan"
 						"since it's your first deployment and" <br/>
 						"you have selected the base machine type with only one instance."
 					</p>

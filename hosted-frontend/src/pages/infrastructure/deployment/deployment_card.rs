@@ -21,7 +21,7 @@ pub fn DeploymentCard(
 ) -> impl IntoView {
 	let class = move || {
 		format!(
-			"bg-secondary-light br-sm p-lg fc-fs-fs deployment-card {}",
+			"bg-secondary-light rounded-sm p-lg flex flex-col items-start justify-between deployment-card {}",
 			class.get()
 		)
 	};
@@ -51,37 +51,46 @@ pub fn DeploymentCard(
 
 	view! {
 		<div class={class}>
-			<div class="fr-fs-ct gap-md full-width px-xxs">
-				<h4 class="txt-md txt-primary w-25 txt-of-ellipsis of-hidden">
+			<div class="fr-fs-ct gap-md w-full px-xxs">
+				<h4 class="text-md text-primary text-ellipsis overflow-hidden">
 					{deployment.get().name.clone()}
 				</h4>
 
 				<StatusBadge status={
 					let deployment = deployment.clone();
-					Signal::derive(move || Some(Status::from_deployment_status(deployment.get().status.clone())))
-				}/>
+					Signal::derive(move || Some(
+						Status::from_deployment_status(deployment.get().status.clone()),
+					))
+				} />
 			</div>
 
-			<div class="fr-fs-fs txt-white full-width f-wrap my-auto">
-
-				{items
-					.into_iter()
-					.map(|item| {
-						view! {
-							<div class="half-width p-xxs">
-								<div class="bg-secondary-medium br-sm px-lg py-sm fc-ct-fs">
-									<span class="letter-sp-md txt-xxs txt-grey">{item.label}</span>
-									<span class="txt-primary w-15 txt-of-ellipsis of-hidden">
-										{item.value}
-									</span>
+			<div class="flex items-start justify-start text-white w-full flex-wrap">
+				{
+					items.into_iter()
+						.map(|item| {
+							view! {
+								<div class="w-1/2 p-xxs">
+									<div class="bg-secondary-medium rounded-sm px-lg py-sm flex flex-col items-start justify-center">
+										<span class="tracking-[1px] text-xxs text-grey">
+											{item.label}
+										</span>
+										<span class="text-primary w-[15ch] text-ellipsis overflow-hidden">
+											{item.value}
+										</span>
+									</div>
 								</div>
-							</div>
-						}
-					})
-					.collect::<Vec<_>>()} <div class="half-width p-xxs">
-					<Link class="bg-secondary-medium br-sm px-lg py-sm fc-ct-fs full-width">
-						<span class="letter-sp-md txt-xxs txt-grey">"LIVE LINKS"</span>
-						<span class="txt-primary w-15 txt-of-ellipsis of-hidden fr-fs-ct">
+							}
+						})
+						.collect::<Vec<_>>()
+					}
+
+				<div class="w-1/2 p-xxs">
+					<a
+						href=""
+						class="bg-secondary-medium rounded-sm px-lg py-sm flex flex-col items-start justify-center w-full"
+					>
+						<span class="tracking-[1px] text-xxs text-grey">"LIVE LINKS"</span>
+						<span class="text-primary w-[15ch] text-ellipsis overflow-hidden flex items-center justify-start">
 							"PUBLIC URL"
 							<Icon
 								icon={IconType::ArrowUpRight}
@@ -89,11 +98,11 @@ pub fn DeploymentCard(
 								size={Size::ExtraSmall}
 							/>
 						</span>
-					</Link>
+					</a>
 				</div>
 			</div>
 
-			<div class="fr-sb-ct mt-xs full-width px-xxs">
+			<div class="flex justify-between items-center mt-xs w-full px-xxs">
 				<Link style_variant={LinkStyleVariant::Contained}>
 					<Icon
 						icon={IconType::PlayCircle}
@@ -107,7 +116,7 @@ pub fn DeploymentCard(
 				<Link
 					r#type={Variant::Link}
 					to={deployment.get().id.to_string()}
-					class="letter-sp-md txt-sm fr-fs-ct"
+					class="leading-[1px] text-sm flex items-start justify-center"
 				>
 					"Manage Deployment"
 					<Icon

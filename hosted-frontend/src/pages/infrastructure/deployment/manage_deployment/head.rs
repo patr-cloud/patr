@@ -88,7 +88,7 @@ pub fn StartStopButton() -> impl IntoView {
 			</Link>
 
 			<button
-				class="fr-fs-ct btn btn-error ml-md"
+				class="flex items-center justify-start btn btn-error ml-md"
 				on:click={on_click_delete}
 			>
 				<Icon
@@ -110,8 +110,8 @@ pub fn ManageDeploymentHeader() -> impl IntoView {
 
 	view! {
 		<ContainerHead>
-			<div class="fr-sb-ct full-width">
-				<div class="fc-sb-fs">
+			<div class="flex justify-between items-center w-full">
+				<div class="flex flex-col items-start justify-between">
 					<PageTitleContainer clone:deployment_info>
 						<PageTitle icon_position={PageTitleIconPosition::End}>
 							"Infrastructure"
@@ -139,7 +139,7 @@ pub fn ManageDeploymentHeader() -> impl IntoView {
 					</PageTitleContainer>
 				</div>
 
-				<div class="fr-ct-ct">
+				<div class="flex items-center justify-center">
 					<StartStopButton />
 				</div>
 			</div>

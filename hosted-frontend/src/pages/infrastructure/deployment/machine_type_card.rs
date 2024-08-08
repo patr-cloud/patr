@@ -19,7 +19,7 @@ pub fn MachineTypeCard(
 	let outer_div_class = move || {
 		class.with(|cname| {
 			format!(
-                "px-xl py-lg bg-secondary-medium cursor-pointer br-sm fc-fs-fs machine-type-card {} {}",
+                "px-xl py-lg bg-secondary-medium cursor-pointer rounded-sm flex flex-col items-start justify-start machine-type-card {} {}",
 				cname,
 				if is_selected.get() { "bd-primary" } else { "bd-none" }
 			)
@@ -37,15 +37,15 @@ pub fn MachineTypeCard(
 				on_select.call(id);
 			}
 		}>
-			<div class="fr-fs-bl">
-				<span class="txt-md">
+			<div class="flex justify-start items-baseline">
+				<span class="text-md">
 					{format!("{} MB", machine_type.clone().get().memory_count)}
 				</span>
-				<span class="txt-disabled ml-xxs txt-xxs">"RAM"</span>
+				<span class="text-disabled ml-xxs text-xxs">"RAM"</span>
 			</div>
-			<div class="fr-fs-bl">
-				<span class="txt-lg">{machine_type.get().cpu_count}</span>
-				<span class="txt-disabled ml-xxs txt-xxs">"vCPU"</span>
+			<div class="flex justify-start items-baseline">
+				<span class="text-lg">{machine_type.get().cpu_count}</span>
+				<span class="text-disabled ml-xxs text-xxs">"vCPU"</span>
 			</div>
 
 		</div>

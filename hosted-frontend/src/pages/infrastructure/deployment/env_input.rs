@@ -35,24 +35,24 @@ pub fn EnvInput(
 
 			<div class="flex-col-10 fc-fs-fs">
 				<Show when={move || envs_list.with(|list| !list.is_empty())}>
-					<div class="flex full-width">
+					<div class="flex w-full">
 						<div class="flex-col-12 fc-fs-fs">
 							<For
 								each={move || store_envs.with_value(|list| list.get())}
 								key={|state| state.clone()}
 								let:child
 							>
-								<div class="flex full-width mb-xs">
+								<div class="flex w-full mb-xs">
 									<div class="flex-col-5 pr-lg">
-										<div class="full-width fr-fs-ct px-xl py-sm br-sm bg-secondary-light">
-											<span class="ml-md txt-of-ellipsis of-hidden-40">
+										<div class="w-full fr-fs-ct px-xl py-sm br-sm bg-secondary-light">
+											<span class="ml-md text-ellipsis of-hidden-40">
 												{child.0.clone()}
 											</span>
 										</div>
 									</div>
 
 									<div class="flex-col-6">
-										<div class="full-width fr-fs-ct px-xl py-sm bg-secondary-light br-sm">
+										<div class="w-full fr-fs-ct px-xl py-sm bg-secondary-light br-sm">
 											<span class="px-sm">{child.1.value()}</span>
 										</div>
 									</div>
@@ -78,13 +78,13 @@ pub fn EnvInput(
 					</div>
 				</Show>
 
-				<div class="flex full-width">
+				<div class="flex w-full">
 					<div class="flex-col-5 fc-fc-fs pr-lg">
 						<Input
 							r#type={InputType::Text}
 							id="envKey"
 							placeholder="Enter Env Key"
-							class="full-width"
+							class="w-full"
 							value={Signal::derive(move || env_name.get())}
 							on_input={Box::new(move |ev| {
 								ev.prevent_default();
@@ -98,7 +98,7 @@ pub fn EnvInput(
 							r#type={InputType::Text}
 							id="envValue"
 							placeholder="Enter Env Value"
-							class="full-width"
+							class="w-full"
 							value={Signal::derive(move || env_value.get())}
 							on_input={Box::new(move |ev| {
 								ev.prevent_default();

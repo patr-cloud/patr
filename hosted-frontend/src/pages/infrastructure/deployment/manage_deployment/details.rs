@@ -46,7 +46,8 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 		})
 	};
 
-	move || match deployment_info.get() {
+	move || {
+		match deployment_info.get() {
 		Some(info) => {
 			let (image_registry, image_name) = match &info.clone().deployment.registry {
 				DeploymentRegistry::PatrRegistry {
@@ -60,18 +61,18 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 			};
 
 			view! {
-				<div class="fc-fs-fs full-width px-xl pb-xl mt-xl txt-white gap-md fit-wide-screen mx-auto">
-					<div class="flex full-width">
-						<div class="flex-col-2 fr-fs-fs">
-							<label class="txt-white txt-sm mt-sm fr-fs-ct" html_for="name">
+				<div class="flex flex-col items-start justify-start w-full px-xl pb-xl mt-xl text-white gap-md fit-wide-screen mx-auto">
+					<div class="flex w-full">
+						<div class="flex-2 flex items-start justify-start">
+							<label class="text-white text-sm mt-sm flex items-center justify-start" html_for="name">
 								"Name"
 							</label>
 						</div>
 
-						<div class="flex-col-10 fc-fs-fs">
+						<div class="flex-10 flex flex-col items-start justify-start">
 							<Input
 								r#type={InputType::Text}
-								class="full-width"
+								class="w-full"
 								value={
 									let deployment_info = info.clone();
 									Signal::derive(move || deployment_info.clone().deployment.clone().name.clone())
@@ -80,30 +81,30 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 						</div>
 					</div>
 
-					<div class="flex full-width mb-md">
-						<div class="flex-col-2 fr-fs-fs">
-							<label class="txt-white txt-sm mt-sm fr-fs-ct" html_for="registry">
+					<div class="flex w-full mb-md">
+						<div class="flex-2 flex items-start justify-start">
+							<label class="text-white text-sm mt-sm flex items-center justify-start" html_for="registry">
 								"Registry"
 							</label>
 						</div>
 
-						<div class="flex-col-10">
+						<div class="flex-10">
 							<Textbox disabled=true value={image_registry.into_view()}/>
 						</div>
 					</div>
 
-					<div class="flex full-width">
-						<div class="flex-col-2 fr-fs-fs">
+					<div class="flex w-full">
+						<div class="flex-2 flex items-start justify-start">
 							<label html_for="image-details">"Image Details"</label>
 						</div>
 
-						<div class="flex-col-7">
+						<div class="flex-7">
 							<Textbox
 								disabled=true
 								value={image_name.into_view()}
 							/>
 						</div>
-						<div class="flex-col-3 pl-md">
+						<div class="flex-3 pl-md">
 							<Textbox
 								disabled=true
 								value={
@@ -114,11 +115,11 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 						</div>
 					</div>
 
-					<div class="flex full-width">
-						<div class="flex-col-2 fr-fs-fs">
+					<div class="flex w-full">
+						<div class="flex-2 flex items-start justify-start">
 							<label html_for="image-details">"Runner"</label>
 						</div>
-						<div class="flex-col-10 fc-fs-fs">
+						<div class="flex-10 flex flex-col items-start justify-start">
 							<Textbox
 								value={
 									let runner_id = info.deployment.runner.clone();
@@ -222,10 +223,10 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 					/>
 				</div>
 
-				<div class="fr-fe-ct gap-md full-width fit-wide-screen mx-auto mt-auto pb-xl px-xl">
+				<div class="flex justify-end items-center gap-md w-full fit-wide-screen mx-auto mt-auto pb-xl px-xl">
 					<button
 						type="submit"
-						class="fr-ct-ct btn btn-primary"
+						class="flex items-center justify-center btn btn-primary"
 						on:click={on_click_submit.clone()}
 					>
 						"UPDATE"
@@ -235,5 +236,6 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 		}
 		.into_view(),
 		None => view! {"error occurred"}.into_view(),
+	}
 	}
 }

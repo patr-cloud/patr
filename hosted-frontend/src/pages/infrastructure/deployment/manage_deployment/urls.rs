@@ -3,7 +3,7 @@ use crate::{pages::ManagedUrlCard, prelude::*};
 #[component]
 pub fn ManageDeploymentUrls() -> impl IntoView {
 	view! {
-		<div class="pt-xl px-xl fr-fe-ct full-width">
+		<div class="pt-xl px-xl flex justify-end items-center w-full">
 			<Link>
 				// r#type=Variant::Button
 				// style_variant=LinkStyleVariant::Contained
