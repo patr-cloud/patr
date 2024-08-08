@@ -3,7 +3,7 @@ use models::api::auth::*;
 use crate::prelude::*;
 
 #[server(CreateAccount, endpoint = "auth/sign-up")]
-async fn sign_up(
+pub async fn sign_up(
 	username: String,
 	password: String,
 	first_name: String,

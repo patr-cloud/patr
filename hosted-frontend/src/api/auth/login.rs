@@ -4,7 +4,7 @@ use crate::prelude::*;
 
 /// The API endpoint for logging in to the application. This endpoint is used to
 /// authenticate the user and get the JWT tokens for the user.
-#[server(Login, endpoint = "auth/sign-in")]
+#[server(LoginFn, endpoint = "auth/sign-in")]
 pub async fn login(
 	user_id: String,
 	password: String,
