@@ -24,8 +24,10 @@ pub fn TableDashboard(
 
 	view! {
 		<table class={class}>
-			<thead class="fr-ct-ct py-sm bg-secondary-medium full-width br-tr-sm br-tl-sm">
-				<tr class="fr-ct-ct px-xl full-width">
+			<thead class="flex items-center justify-center py-sm
+				bg-secondary-medium full-width rounded-tl-sm rounded-tr-sm"
+			>
+				<tr class="flex items-center justify-center px-xl w-full">
 
 					{headings
 						.into_iter()
@@ -33,7 +35,7 @@ pub fn TableDashboard(
 						.map(|(i, heading)| {
 							view! {
 								<th class={format!(
-									"fr-ct-ct txt-sm txt-medium flex-col-{}",
+									"flex items-center justify-center text-sm text-medium flex-col-{}",
 									column_grids[i],
 								)}>{heading}</th>
 							}
@@ -43,7 +45,9 @@ pub fn TableDashboard(
 				</tr>
 			</thead>
 
-			<tbody class="full-width full-height fc-fs-fs">{render_rows}</tbody>
+			<tbody class="w-full h-full flex flex-col justify-start items-start">
+				{render_rows}
+			</tbody>
 		</table>
 	}
 }

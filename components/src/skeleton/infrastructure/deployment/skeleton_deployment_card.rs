@@ -8,26 +8,26 @@ pub fn SkeletonDeploymentCard(
 ) -> impl IntoView {
 	let class = move || {
 		format!(
-			"bg-secondary-light br-sm p-lg fc-fs-fs deployment-card {}",
+			"bg-secondary-light rounded-sm p-lg flex-col items-start justify-start deployment-card {}",
 			class.get(),
 		)
 	};
 
 	view! {
 		<div class={class}>
-			<div class="fr-fs-ct full-width px-xxs">
-				<h4 class="half-width">
+			<div class="flex justify-start items-center w-full px-xxs">
+				<h4 class="w-1/2">
 					<Skeleton class="full-width skeleton-div-sm"/>
 				</h4>
 			</div>
 
-			<div class="fr-fs-fs full-width my-auto py-xxs f-wrap">
+			<div class="flex items-start justify-start w-full my-auto py-xxs f-wrap">
 
 				{[1, 2, 3, 4, 5, 6]
 					.into_iter()
 					.map(|_| {
 						view! {
-							<div class="half-width p-xxs">
+							<div class="w-1/2 p-xxs">
 								<Skeleton class="full-width skeleton-div-sm"/>
 							</div>
 						}
@@ -36,12 +36,12 @@ pub fn SkeletonDeploymentCard(
 
 			</div>
 
-			<div class="fr-sb-ct full-width px-xxs">
-				<div class="half-width">
+			<div class="flex justify-between items-center w-full px-xxs">
+				<div class="w-1/2">
 					<Skeleton class="skeleton-button"/>
 				</div>
 
-				<div class="half-width">
+				<div class="w-1/2">
 					<Skeleton class="skeleton-text-half-width"/>
 				</div>
 			</div>

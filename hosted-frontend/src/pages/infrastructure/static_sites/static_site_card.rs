@@ -24,7 +24,7 @@ pub fn StaticSiteCard(
 						{static_site.get().name}
 					</h5>
 
-					<StatusBadge status={Status::Live}/>
+					<StatusBadge status={Some(Status::Live)}/>
 				</div>
 
 				<button class="fr-ct-ct">

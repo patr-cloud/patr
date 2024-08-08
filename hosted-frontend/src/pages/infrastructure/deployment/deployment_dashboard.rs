@@ -1,28 +1,12 @@
-use crate::{pages::DeploymentCard, prelude::*};
+use codee::string::FromToStringCodec;
+use leptos_use::use_cookie;
 
-/// Deployment Model
-/// TO BE REPLACED LATER WITH MODEL A PROPER MODEL TYPE
-/// ACCORDING TO THE REQUEST RESPONSE TYPE
-#[derive(PartialEq, Eq, Clone)]
-pub struct DeploymentType {
-	/// The Id of the deployment
-	pub id: String,
-	/// The Name of the deployment
-	pub name: String,
-	/// The Image Tag of the deployment
-	pub image_tag: String,
-	/// The Status of the deployment
-	pub status: Status,
-	/// The Region of the deployment
-	pub region: String,
-	/// The Machine Type of the deployment
-	pub machine_type: String,
-}
+use crate::{pages::DeploymentCard, prelude::*};
 
 #[component]
 pub fn Deployment() -> impl IntoView {
 	view! {
-		<ContainerMain class="full-width full-height mb-md">
+		<ContainerMain class="w-full h-full mb-md">
 			<Outlet/>
 		</ContainerMain>
 	}
@@ -30,52 +14,21 @@ pub fn Deployment() -> impl IntoView {
 
 #[component]
 pub fn DeploymentDashboard() -> impl IntoView {
-	let data = create_rw_signal(vec![
-		DeploymentType {
-			id: "53184348".to_owned(),
-			name: "Depoymentl".to_owned(),
-			image_tag: "asdqwdadawdasdasd".to_owned(),
-			status: Status::Created,
-			region: "North America".to_owned(),
-			machine_type: "1vCPU 0.5GB".to_owned(),
+	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
+	let (current_workspace_id, _) =
+		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+
+	let deployment_list = create_resource(
+		move || (access_token.get(), current_workspace_id.get()),
+		move |(access_token, workspace_id)| async move {
+			list_deployments(workspace_id, access_token).await
 		},
-		DeploymentType {
-			id: "784654685".to_owned(),
-			name: "Depoymentl".to_owned(),
-			image_tag: "asdqwdafwedwddwdqwd".to_owned(),
-			status: Status::Deploying,
-			region: "China".to_owned(),
-			machine_type: "1vCPU 0.5GB".to_owned(),
-		},
-		DeploymentType {
-			id: "12343123".to_owned(),
-			name: "Depoymentl".to_owned(),
-			image_tag: "ejlkjfweieq".to_owned(),
-			status: Status::Live,
-			region: "APAC".to_owned(),
-			machine_type: "1vCPU 0.5GB".to_owned(),
-		},
-		DeploymentType {
-			id: "4345398435".to_owned(),
-			name: "Depoymentl".to_owned(),
-			image_tag: "asdqwdsawasda".to_owned(),
-			status: Status::Stopped,
-			region: "APAC".to_owned(),
-			machine_type: "1vCPU 0.5GB".to_owned(),
-		},
-		DeploymentType {
-			id: "8486546851".to_owned(),
-			name: "Depoymentl".to_owned(),
-			image_tag: "cfgjljijadkqwd".to_owned(),
-			status: Status::Errored,
-			region: "EMEA".to_owned(),
-			machine_type: "1vCPU 0.5GB".to_owned(),
-		},
-	]);
+	);
+
 	view! {
 		<ContainerHead>
-			<div class="fr-sb-ct full-width">
-				<div class="fc-fs-fs">
+			<div class="flex justify-between items-center w-full">
+				<div class="flex flex-col items-start justify-start">
 					<PageTitleContainer>
 						<PageTitle icon_position={PageTitleIconPosition::End}>
 							"Infrastructure"
@@ -89,7 +42,11 @@ pub fn DeploymentDashboard() -> impl IntoView {
 					/>
 				</div>
 
-				<Link r#type={Variant::Button} style_variant={LinkStyleVariant::Contained}>
+				<Link
+					r#type={Variant::Link}
+					to={"create".to_string()}
+					style_variant={LinkStyleVariant::Contained}
+				>
 					"CREATE DEPLOYMENT"
 					<Icon
 						icon={IconType::Plus}
@@ -106,9 +63,26 @@ pub fn DeploymentDashboard() -> impl IntoView {
 				gap={Size::Large}
 				render_items={
 					view! {
-						<For each={move || data.get()} key={|state| state.id.clone()} let:child>
-							<DeploymentCard deployment={child}/>
-						</For>
+						<Transition
+							fallback=move || view! {<p>"loading"</p>}
+						>
+							{
+								move || match deployment_list.get() {
+									Some(Ok(data)) => {
+										view! {
+											<For
+												each={move || data.deployments.clone()}
+												key={|state| state.id.clone()}
+												let:child
+											>
+												<DeploymentCard deployment={child}/>
+											</For>
+										}
+									},
+									_ => view! {}.into_view()
+								}
+							}
+						</Transition>
 					}
 				}
 			/>

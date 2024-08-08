@@ -1,3 +1,5 @@
+use leptos_router::use_location;
+
 use crate::imports::*;
 
 /// A Link item for the sidebar
@@ -17,7 +19,10 @@ pub struct LinkItem {
 
 /// The Sidebar component containing the sidebar items
 #[component]
-pub fn Sidebar() -> impl IntoView {
+pub fn Sidebar(
+	/// Workspace Card
+	children: ChildrenFn,
+) -> impl IntoView {
 	let links: Vec<LinkItem> = vec![
 		LinkItem {
 			title: "Home".to_owned(),
@@ -27,70 +32,102 @@ pub fn Sidebar() -> impl IntoView {
 			items: None,
 		},
 		LinkItem {
-			title: "BYOC".to_owned(),
-			path: "/".to_owned(),
-			icon_src: "/images/sidebar/byoc.svg".to_owned(),
-			subtitle: Some("Connect your cloud".to_owned()),
-			items: None,
-		},
-		LinkItem {
-			title: "Deployments".to_owned(),
-			path: "deployment".to_owned(),
-			icon_src: "/images/sidebar/infrastructure.svg".to_owned(),
+			title: "Runners".to_owned(),
+			path: "/runners".to_owned(),
+			icon_src: "/images/sidebar/runner.svg".to_owned(),
 			subtitle: None,
 			items: None,
 		},
 		LinkItem {
-			title: "Container Registry".to_owned(),
-			path: "container-registry".to_owned(),
-			icon_src: "/images/sidebar/docker.svg".to_owned(),
+			title: "Infrastructure".to_owned(),
+			path: "".to_owned(),
+			icon_src: "/images/sidebar/infrastructure.svg".to_owned(),
 			subtitle: None,
 			items: Some(vec![
 				LinkItem {
-					title: "Domains".to_owned(),
-					path: "/".to_owned(),
+					title: "Deployments".to_owned(),
+					path: "/deployment".to_owned(),
 					subtitle: None,
-					icon_src: "".to_owned(),
+					icon_src: "/images/sidebar/deployment.svg".to_owned(),
 					items: None,
 				},
 				LinkItem {
-					title: "Managed URLs".to_owned(),
-					icon_src: "".to_owned(),
+					title: "Databases".to_owned(),
+					path: "/database".to_owned(),
 					subtitle: None,
-					path: "/".to_owned(),
+					icon_src: "/images/sidebar/database.svg".to_owned(),
 					items: None,
 				},
 			]),
 		},
 		LinkItem {
-			title: "Profile".to_owned(),
-			path: "profile".to_owned(),
+			title: "Domain Configuration".to_owned(),
+			path: "".to_owned(),
+			icon_src: "/images/sidebar/domains.svg".to_owned(),
+			subtitle: None,
+			items: Some(vec![
+				LinkItem {
+					title: "Domains".to_owned(),
+					path: "/domain".to_owned(),
+					subtitle: None,
+					icon_src: "/images/sidebar/domains.svg".to_owned(),
+					items: None,
+				},
+				LinkItem {
+					title: "Managed URLs".to_owned(),
+					icon_src: "/images/sidebar/managed-url.svg".to_owned(),
+					subtitle: None,
+					path: "/managed-url".to_owned(),
+					items: None,
+				},
+			]),
+		},
+		LinkItem {
+			title: "User".to_owned(),
+			path: "/user".to_owned(),
 			icon_src: "/images/sidebar/workspace.svg".to_owned(),
 			subtitle: None,
-			items: None,
+			items: Some(vec![
+				LinkItem {
+					title: "Workspace".to_owned(),
+					icon_src: "/images/sidebar/workspace.svg".to_owned(),
+					subtitle: None,
+					path: "/workspace".to_owned(),
+					items: None,
+				},
+				LinkItem {
+					title: "API Tokens".to_owned(),
+					icon_src: "/images/sidebar/secrets.svg".to_owned(),
+					subtitle: None,
+					path: "/user/api-tokens".to_owned(),
+					items: None,
+				},
+			]),
 		},
 	];
 
 	view! {
-		<aside class="sidebar fc-fs-fs">
-			<div class="sidebar-logo">
+		<aside class="sidebar flex flex-col items-start justify-start pb-xl">
+			<div class="sidebar-logo w-full">
 				<img src="/images/planet-purple.svg" alt="Plante Patr"/>
 				<div class="fc-ct-ct br-sm">
 					<img src="/images/patr.svg" alt="Patr Logo"/>
 				</div>
 			</div>
 
-			<div class="full-width full-height fc-fs-fs of-hidden pt-md">
-				<nav class="full-height full-width fc-fs-fs ofy-auto mt-md">
-					<ul class="full-width full-height fc-fs-fs">
-
+			<div class="w-full h-full flex flex-col items-start justify-between overflow-hidden pt-md">
+				<nav class="h-full w-full flex flex-col items-start justify-start overflow-y-auto mt-md">
+					<ul class="w-full h-full flex flex-col items-start justify-start">
 						{links
 							.into_iter()
 							.map(|link| view! { <SidebarItem link={link}/> })
 							.collect_view()}
-
 					</ul>
 				</nav>
+
+				<div class="flex items-start justify-start w-full pt-md px-md">
+					{children()}
+				</div>
 			</div>
 		</aside>
 	}

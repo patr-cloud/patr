@@ -27,6 +27,7 @@ pub struct DatabasePlan {
 	/// The size of the volume
 	pub volume: i32,
 }
+
 /// Information for the user to connect to the database instance
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -41,8 +42,19 @@ pub struct DatabaseConnection {
 	pub password: String,
 }
 
-/// All the currrently supported databases offered to the users
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// All the currently supported databases offered to the users
+#[derive(
+	Debug,
+	Clone,
+	Serialize,
+	Deserialize,
+	PartialEq,
+	Eq,
+	strum::VariantNames,
+	strum::EnumString,
+	strum::Display,
+)]
+#[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
 pub enum DatabaseEngine {
 	/// version:

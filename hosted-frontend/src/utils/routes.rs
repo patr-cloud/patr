@@ -52,6 +52,10 @@ pub enum LoggedInRoute {
 	Secret,
 	/// Static Sites Page
 	StaticSites,
+	/// Workspace Page
+	Workspace,
+	/// Runners Page
+	Runners,
 }
 
 /// Logged Out Routes, the routes that can be accessed by the user if and only
@@ -106,7 +110,7 @@ impl Display for LoggedInRoute {
 			match self {
 				Self::Home => "/",
 				Self::UserProfile => "/user",
-				Self::ApiTokens => "/user/api-tokens",
+				Self::ApiTokens => "/api-tokens",
 				Self::Domain => "/domain",
 				Self::ManagedUrl => "/managed-url",
 				Self::Database => "/database",
@@ -114,6 +118,8 @@ impl Display for LoggedInRoute {
 				Self::StaticSites => "/static-site",
 				Self::Secret => "/secret",
 				Self::ContainerRegistry => "/container-registry",
+				Self::Workspace => "/workspace",
+				Self::Runners => "/runners",
 			}
 		)
 	}

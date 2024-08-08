@@ -9,7 +9,8 @@ pub fn OtpInput(
 	#[prop(into, optional, default = 6)]
 	_length: u32,
 ) -> impl IntoView {
-	let class = class.with(|cname| format!("full-width fr-ct-ct gap-xs {cname}"));
+	let class =
+		class.with(|cname| format!("w-full flex items-center justify-center gap-xs {cname}"));
 
 	view! { <div class={class}></div> }
 }

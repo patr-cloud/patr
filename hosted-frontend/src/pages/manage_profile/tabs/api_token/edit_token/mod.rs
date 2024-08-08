@@ -1,102 +1,220 @@
+use std::collections::BTreeMap;
+
+use codee::string::FromToStringCodec;
+use ev::MouseEvent;
+use leptos_use::use_cookie;
+use models::{
+	api::user::{ListUserWorkspacesResponse, UserApiToken},
+	rbac::WorkspacePermission,
+};
+use time::{
+	error::{Parse, TryFromParsed},
+	macros::format_description,
+	Date,
+	OffsetDateTime,
+};
+
 use crate::prelude::*;
 
-#[component]
-pub fn EditApiToken() -> impl IntoView {
-	view! {
-		<div class="full-width fit-wide-screen full-height txt-white fc-fs-fs px-md">
-			<div class="fr-fs-ct mb-md full-width">
-				<p class="txt-md">
-					<strong class="txt-md">"Manage Token"</strong>
-				</p>
+mod choose_permission;
+mod create_token;
+mod permission_card;
+mod permission_item;
+mod revoke_regen;
+mod token_info;
+mod token_modal;
 
-				<Link style_variant={LinkStyleVariant::Contained} class="ml-auto">
-					"REGENERATE TOKEN"
-				</Link>
+pub use self::{
+	choose_permission::*,
+	create_token::*,
+	permission_card::*,
+	permission_item::*,
+	revoke_regen::*,
+	token_info::*,
+	token_modal::*,
+};
 
-				<button class="btn btn-error ml-md">"REVOKE TOKEN"</button>
-			</div>
+#[derive(Params, PartialEq)]
+pub struct TokenParams {
+	token_id: Option<String>,
+}
 
-			<div class="flex mb-xs full-width mb-md">
-				<div class="flex-col-2 fr-fs-fs pt-xs">
-					<label html_for="name" class="txt-white txt-sm">
-						"Token Name"
-					</label>
-				</div>
-
-				<div class="flex-col-10 fc-fs-fs pl-xl">
-					<Input
-						r#type={InputType::Text}
-						placeholder="Enter Token Name"
-						class="full-width"
-					/>
-				</div>
-			</div>
-
-			<div class="flex mb-xs full-width mb-md">
-				<div class="flex-col-2 fc-fs-fs pt-xs">
-					<label html_for="allowedIps" class="txt-white txt-sm">
-						"Allowed IP(s)"
-					</label>
-					<small class="txt-xxs txt-grey">
-						"By default, all IP addresses will be allowed."
-					</small>
-				</div>
-				<div class="flex-col-10 fc-fs-fs pl-xl">
-					<Input
-						r#type={InputType::Text}
-						placeholder="Enter Allowed IP addresses"
-						class="full-width"
-					/>
-				</div>
-			</div>
-
-			<div class="flex mb-xs full-width mb-md">
-				<div class="flex-col-2 fc-fs-fs pt-xs">
-					<label html_for="tokenNbf" class="txt-white txt-sm">
-						"Token Validity"
-					</label>
-					<small class="txt-xxs txt-grey">
-						"By default, the token will be valid forever from the date created."
-					</small>
-				</div>
-				<div class="flex-col-10 fr-fs-ct pl-xl">
-					<div class="flex-col-1 fr-ct-ct txt-sm">"Valid from"</div>
-					<div class="flex-col-5 fr-fs-fs pl-md">
-						<Input
-							r#type={InputType::Date}
-							placeholder="Valid From"
-							class="full-width cursor-text"
-						/>
-					</div>
-					<div class="flex-col-1 fr-ct-ct txt-sm">"to"</div>
-					<div class="flex-col-5 fr-fs-fs pl-md">
-						<Input
-							r#type={InputType::Date}
-							placeholder="Valid Till"
-							class="full-width cursor-text"
-						/>
-					</div>
-				</div>
-			</div>
-
-			<div class="fc-fs-fs mb-xs full-width my-md gap-sm">
-				<label class="txt-white txt-sm">"Choose Permissions"</label>
-				<div class="full-width fc-fs-fs">
-					<PermisisonCard/>
-				</div>
-			</div>
-
-			<div class="full-width fr-fe-ct py-md mt-auto">
-				<Link class="txt-sm txt-medium mr-sm">"BACK"</Link>
-				<Link style_variant={LinkStyleVariant::Contained} class="txt-sm txt-medium mr-sm">
-					"UPDATE"
-				</Link>
-			</div>
-		</div>
+/// Convert OffsetDateTime to a string date
+pub fn convert_offset_to_date(date_time: Option<OffsetDateTime>) -> String {
+	if date_time.is_some() {
+		date_time.unwrap().date().to_string()
+	} else {
+		"".to_string()
 	}
 }
 
-mod permission_card;
-mod permission_item;
+/// Convert String to OffsetDateTime
+pub fn convert_string_to_datetime(dt_str: String) -> Result<OffsetDateTime, Parse> {
+	let format = format_description!("[year]-[month]-[day]");
+	let date = Date::parse(dt_str.as_str(), format);
+	let mut date_time = OffsetDateTime::UNIX_EPOCH;
+	logging::log!("{} {:?}", dt_str, date);
 
-pub use self::{permission_card::*, permission_item::*};
+	if let Ok(date) = date {
+		date_time = date_time.replace_date(date);
+	} else {
+		logging::log!("cannot parse date convert_string_to_datetime");
+		return Err(Parse::TryFromParsed(TryFromParsed::InsufficientInformation));
+	}
+
+	Ok(date_time)
+}
+
+#[component]
+fn EditApiTokenPermission() -> impl IntoView {
+	// let api_token = create_rw_signal(api_token.get_untracked());
+	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
+	let api_token = expect_context::<ApiTokenInfo>().0;
+
+	let workspace_list = create_resource(
+		move || access_token.get(),
+		move |value| async move { list_user_workspace(value).await },
+	);
+
+	move || match api_token.get() {
+		Some(api_token) => view! {
+			<div class="flex flex-col items-start justify-start mb-xs w-full my-md gap-sm">
+				<label class="text-white text-sm">"Choose Permissions"</label>
+				<div class="w-full fc-fs-fs gap-xl">
+					{
+						let api_token = api_token.clone();
+						move || {
+							match workspace_list.get() {
+								Some(Ok(data)) => {
+									data.workspaces.into_iter()
+										.map(|workspace| {
+											view! {
+												<PermissionCard
+													workspace={workspace}
+												/>
+											}
+										})
+										.collect_view()
+								},
+								_ => view! {
+									<div>"Cannot Load Resource"</div>
+								}.into_view()
+							}
+						}
+					}
+				</div>
+			</div>
+		}
+		.into_view(),
+		None => view! {
+			<p>"Couldn't Load Resource!"</p>
+		}
+		.into_view(),
+	}
+}
+
+#[derive(Copy, Clone)]
+pub struct ApiTokenInfo(RwSignal<Option<WithId<UserApiToken>>>);
+
+/// The Edit API Token Page
+#[component]
+pub fn EditApiToken() -> impl IntoView {
+	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
+	let navigate = leptos_router::use_navigate();
+
+	let params = use_params::<TokenParams>();
+	let token_id = create_rw_signal(params.with(|params| {
+		params
+			.as_ref()
+			.map(|param: &TokenParams| param.token_id.clone().unwrap_or_default())
+			.unwrap_or_default()
+	}));
+
+	let token_info = create_resource(
+		move || (access_token.get(), token_id.get()),
+		move |(access_token, token_id)| async move { get_api_token(access_token, token_id).await },
+	);
+
+	let token_info_signal = create_rw_signal::<Option<WithId<UserApiToken>>>(None);
+	provide_context(ApiTokenInfo(token_info_signal));
+
+	let on_submit = move |_: MouseEvent| {
+		let navigate = navigate.clone();
+		spawn_local(async move {
+			match token_info_signal.get() {
+				Some(token_info) => {
+					let x = update_api_token(
+						access_token.get(),
+						token_id.get(),
+						Some(token_info.name.clone()),
+						Some(convert_offset_to_date(token_info.token_exp)),
+						Some(convert_offset_to_date(token_info.token_nbf)),
+						Some(token_info.permissions.clone()),
+					)
+					.await;
+
+					if x.is_ok() {
+						navigate("/user/api-tokens", Default::default());
+					}
+				}
+				None => {}
+			}
+		});
+	};
+
+	let permissions = create_rw_signal(BTreeMap::<Uuid, WorkspacePermission>::new());
+
+	view! {
+		<div class="w-full fit-wide-screen h-full text-white flex flex-col items-start justify-start px-md">
+			<input type="hidden" name="access_token" prop:value={access_token}/>
+			<input type="hidden" name="token_id" prop:value={token_id}/>
+
+			<div class="flex justify-between items-center mb-md w-full">
+				<p class="text-md">
+					<strong class="text-md">"Manage Token"</strong>
+				</p>
+
+				<div class="flex justify-start items-center gap-md">
+					<RegenerateApiToken />
+					<RevokeApiToken />
+				</div>
+			</div>
+
+			<form class="w-full h-full">
+				<Transition>
+					{
+						move || match token_info.get() {
+							Some(token_info) => {
+								match token_info {
+									Ok(data) => {
+										let token = data.token.clone();
+										token_info_signal.set(Some(data.token.clone()));
+										view! {
+											<TokenInfo />
+											<EditApiTokenPermission/>
+										}.into_view()
+									},
+									Err(err) => view! {
+										<div>"Cannot Load Resource"</div>
+									}.into_view()
+								}
+							},
+							None => view! {}.into_view()
+						}
+					}
+				</Transition>
+
+				<div class="w-full flex justify-end items-center py-md mt-auto">
+					<Link class="text-sm text-medium mr-sm">"BACK"</Link>
+					<button
+						r#type="submit"
+						class="text-sm text-medium mr-sm flex justify-center items-center btn btn-primary"
+						on:click={on_submit}
+					>
+						"UPDATE"
+					</button>
+				</div>
+			</form>
+		</div>
+	}
+}

@@ -12,7 +12,7 @@ pub fn ContainerMain(
 ) -> impl IntoView {
 	let class = move || {
 		format!(
-            "fc-fs-fs bg-secondary-dark full-width full-height mb-md box-full-main br-sm of-hidden {}",
+            "flex flex-col items-start justify-start bg-secondary-dark w-full h-full mb-md br-sm overflow-hidden {}",
             class.get()
         )
 	};

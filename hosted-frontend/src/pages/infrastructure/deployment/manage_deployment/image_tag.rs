@@ -11,7 +11,7 @@ pub fn ImageTag(
 	let class = move || {
 		class.with(|cname| {
 			format!(
-				"px-xs py-xxs fr-fs-ct bg-secondary-medium br-sm txt-white {}",
+				"px-xs py-xxs flex justify-start items-center bg-secondary-medium br-sm text-white {}",
 				cname
 			)
 		})

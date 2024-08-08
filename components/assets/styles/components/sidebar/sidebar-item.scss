@@ -3,47 +3,51 @@
 @use "../../base/variables" as *;
 
 .sidebar-item {
+  position: relative;
+
+  & .btn {
+    border-radius: 0;
+
+    position: relative;
+    padding-left: 1.8rem;
+
+    color: map.get($text-colors, "grey");
+    justify-content: flex-start;
+  }
+
+  .inner-nav-item {
+    transition: 250ms;
+
     & .btn {
-        border-radius: 0;
-
-        position: relative;
-        padding-left: 1.8rem;
-
-        color: map.get($text-colors, "grey");
-        justify-content: flex-start;
+      padding-left: 3rem;
+      border-bottom: 1px solid $border-color;
     }
+  }
 
-    .inner-nav-item {
-        transition: 250ms;
-
-        & .btn {
-            padding-left: 3rem;
-            border-bottom: 1px solid $border-color;
-        }
+  &:not(.disabled) {
+    .active-nav-item,
+    .active-item,
+    & .btn:hover,
+    & .btn:focus {
+      color: map.get($text-colors, "white");
+      outline: none;
+      background-color: map.get($background-colors, "secondary-light");
     }
+  }
 
-    &:not(.disabled) {
-        .active-nav-item,
-        .active-item,
-        & .btn:hover,
-        & .btn:focus {
-            color: map.get($text-colors, "white");
-            outline: none;
-            background-color: map.get($background-colors, "secondary-light");
-        }
-    }
+  .active-nav-item::before {
+    content: "";
 
-    .active-nav-item::before {
-        content: "";
+    top: 0;
+    left: 0;
+    position: absolute;
 
-        top: 0;
-        left: 0;
-        position: absolute;
+    width: 0.5rem;
+    height: 100%;
 
-        width: 0.5rem;
-        height: 100%;
+    border-radius: 0 3px 3px 0;
+    background-color: map.get($background-colors, "primary");
 
-        border-radius: 0 3px 3px 0;
-        background-color: map.get($background-colors, "primary");
-    }
+    z-index: 2;
+  }
 }

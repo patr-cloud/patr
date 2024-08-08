@@ -1,3 +1,4 @@
+use codee::string::FromToStringCodec;
 use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};
 
 use crate::{pages::*, prelude::*, utils::AuthState};
@@ -17,7 +18,9 @@ fn AppOutletView() -> impl IntoView {
 				if let Some(_) = last_used_workspace_id {
 					view! {
 						<div class="fr-fs-fs full-width full-height bg-secondary">
-							<Sidebar/>
+							<Sidebar>
+								<div></div>
+							</Sidebar>
 							<main class="fc-fs-ct full-width px-lg">
 								<header style="width: 100%; min-height: 5rem;"></header>
 
@@ -34,6 +37,87 @@ fn AppOutletView() -> impl IntoView {
 				}
 			}
 		}}
+	}
+}
+
+#[component]
+fn AppOutlet() -> impl IntoView {
+	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
+	let (current_workspace_id, set_current_workspace) =
+		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+
+	let workspace_list = create_resource(
+		move || access_token.get(),
+		move |value| async move { list_user_workspace(value).await },
+	);
+
+	let current_workspace_id = Signal::derive(move || {
+		match current_workspace_id.with(|id| id.clone().map(|id| Uuid::parse_str(id.as_str()))) {
+			Some(Ok(id)) => Some(id),
+			_ => {
+				let first_id = workspace_list.get().and_then(|list| {
+					list.ok().and_then(|x| {
+						let x = x.workspaces.first().and_then(|x| Some(x.id));
+						x
+					})
+				});
+				set_current_workspace.set(first_id.map(|x| x.to_string()));
+
+				first_id
+			}
+		}
+	});
+
+	let current_workspace = Signal::derive(move || {
+		if let Some(workspace_id) = current_workspace_id.get() {
+			workspace_list
+				.get()
+				.map(|list| {
+					list.ok().map(|list| {
+						list.workspaces
+							.iter()
+							.find(|&x| x.id == workspace_id)
+							.cloned()
+					})
+				})
+				.flatten()
+				.flatten()
+		} else {
+			None
+		}
+	});
+
+	view! {
+		<div class="fr-fs-fs full-width full-height bg-secondary">
+			<Sidebar>
+				<Transition>
+					{
+						move || match workspace_list.get() {
+							Some(workspace_list) => {
+								match workspace_list {
+									Ok(data) => {
+										view! {
+											<WorkspaceCard
+												current_workspace={current_workspace}
+												set_workspace_id={set_current_workspace}
+												workspaces={data.clone().workspaces}
+											/>
+										}.into_view()
+									},
+									Err(_) => view! {"Error Loading"}.into_view()
+								}
+							},
+							None => view! {"loading..."}.into_view()
+						}
+					}
+				</Transition>
+			</Sidebar>
+			<main class="fc-fs-ct full-width px-lg">
+				<header style="width: 100%; min-height: 5rem;"></header>
+
+				<Outlet/>
+			</main>
+		</div>
 	}
 }
 
@@ -54,14 +138,16 @@ pub fn App() -> impl IntoView {
 				// Logged in routes
 				<ProtectedRoute
 					path={AppRoutes::Empty}
-					view={AppOutletView}
+					view={AppOutlet}
 					redirect_path={AppRoutes::LoggedOutRoute(LoggedOutRoute::Login)}
 					condition={move || state.get().is_logged_in()}
 				>
 					<ProfileRoutes/>
 					<InfrastructureRoutes/>
 					<DomainConfigurationRoutes/>
-					<Route path="" view={|| view! { <div>Home page</div> }}/>
+					<RunnerRoutes />
+					<WorkspaceRoutes/>
+					<Route path="" view={|| view! { <div></div> }}/>
 				</ProtectedRoute>
 
 				// Logged out routes

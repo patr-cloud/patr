@@ -4,66 +4,72 @@ use models::api::user::ListApiTokensResponse;
 
 use crate::prelude::*;
 
-#[server(LoadApiTokenFn, endpoint = "/user/api-token")]
-pub async fn load_api_tokens_list(
-	access_token: Option<String>,
-) -> Result<Result<ListApiTokensResponse, ErrorType>, ServerFnError> {
-	use std::str::FromStr;
+mod api_token_card;
+mod edit_token;
 
-	use models::api::user::{ListApiTokensPath, ListApiTokensRequest, ListApiTokensRequestHeaders};
-
-	let api_response = make_api_call::<ListApiTokensRequest>(
-		ApiRequest::builder()
-			.path(ListApiTokensPath)
-			.query(Default::default())
-			.headers(ListApiTokensRequestHeaders {
-				authorization: BearerToken::from_str(
-					format!("Bearer {}", access_token.unwrap_or_default()).as_str(),
-				)?,
-				user_agent: UserAgent::from_static("hyper/0.12.2"),
-			})
-			.body(ListApiTokensRequest)
-			.build(),
-	)
-	.await;
-
-	Ok(api_response.map(|res| res.body))
-}
+pub use self::{api_token_card::*, edit_token::*};
 
 #[component]
 pub fn ApiTokensTab() -> impl IntoView {
-	let data = create_rw_signal(vec![UserApiToken {
-		name: "test-token".to_string(),
-		expiry: "No Expiry".to_string(),
-		created: "3 Days Ago".to_string(),
-	}]);
+	view! {
+		<div class="flex flex-col items-start justify-start w-full h-full px-md py-xl gap-md">
+			<Outlet />
+		</div>
+	}
+}
 
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>("access_token");
+#[component]
+pub fn ListApiTokens() -> impl IntoView {
+	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
 	let access_token_signal = move || access_token.get();
 	let token_list = create_resource(access_token_signal, move |value| async move {
 		load_api_tokens_list(value).await
 	});
 
-	logging::log!("{:#?}", token_list.get());
+	// let l = token_list.get();
+	// logging::log!("{:#?}", token_list.get());
 
 	view! {
-		<div class="fc-fs-fs full-width full-height px-md py-xl gap-md">
-			<TableDashboard
-				column_grids={vec![4, 4, 4]}
-				headings={vec!["Name".into_view(), "Expiry".into_view(), "Created At".into_view()]}
-
-				render_rows={view! {
-					<For each={move || data.get()} key={|state| state.name.clone()} let:child>
-						<ApiTokenCard token={child}/>
-					</For>
-				}
-					.into_view()}
+		<Link r#type={Variant::Link} style_variant={LinkStyleVariant::Contained} to="create">
+			"Create New Token"
+			<Icon
+				icon={IconType::Plus}
+				size={Size::ExtraSmall}
+				class="ml-xs"
+				color={Color::Black}
 			/>
-		</div>
+		</Link>
+
+		<Transition>
+			{
+				move || match token_list.get() {
+					Some(token_list) => {
+						match token_list {
+							Ok(data) => {
+								view! {
+									<TableDashboard
+										column_grids={vec![4, 4, 4]}
+										headings={vec!["Name".into_view(), "Expiry".into_view(), "Created At".into_view()]}
+
+										render_rows={view! {
+											<For
+												each={move || data.clone().tokens}
+												key={|state| state.id}
+												let:child
+											>
+												<ApiTokenCard token={child}/>
+											</For>
+										}
+											.into_view()}
+									/>
+								}
+							}
+							Err(_) => view! {}.into_view(),
+						}
+					},
+					None => view! {}.into_view(),
+				}
+			}
+		</Transition>
 	}
 }
-
-mod api_token_card;
-mod edit_token;
-
-pub use self::{api_token_card::*, edit_token::*};

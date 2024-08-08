@@ -11,14 +11,14 @@ pub fn PageContainer(
 ) -> impl IntoView {
 	let class = move || {
 		format!(
-			"fr-fs-fs bg-page-container full-width full-height bg-secondary {}",
+			"flex items-start justify-start bg-page-container w-full h-full bg-secondary {}",
 			class.get()
 		)
 	};
 
 	view! {
 		<div class={class}>
-			<main class="fc-ct-ct full-width px-lg">{children()}</main>
+			<main class="flex flex-col items-center justify-center w-full px-lg">{children()}</main>
 		</div>
 	}
 }

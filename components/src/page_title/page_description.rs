@@ -13,12 +13,17 @@ pub fn PageDescription(
 	#[prop(into, optional)]
 	doc_link: MaybeSignal<Option<String>>,
 ) -> impl IntoView {
-	let class = move || format!("fr-fs-bl txt-grey mx-md {}", class.get());
+	let class = move || format!("flex justify-start fr-fs-bl txt-grey mx-md {}", class.get());
 
 	let doc_link = move || {
 		doc_link.get().map(|link| {
 			view! {
-				<a class="btn-plain txt-sm fr-fs-ct" target="_blank" rel="noreferrer" href={link}>
+				<a
+					class="btn-plain text-sm flex justify-start items-center"
+					target="_blank"
+					rel="noreferrer"
+					href={link}
+				>
 					"Documentation"
 
 					<Icon

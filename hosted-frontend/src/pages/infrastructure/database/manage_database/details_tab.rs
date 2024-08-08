@@ -1,3 +1,4 @@
+use models::api::workspace::database::*;
 use web_sys::MouseEvent;
 
 use crate::{pages::*, prelude::*};
@@ -36,14 +37,27 @@ fn CopyButton(// #[prop(into)]
 }
 
 #[component]
-pub fn ManageDatabaseDetailsTab() -> impl IntoView {
+pub fn ManageDatabaseDetailsTab(
+	/// The Database Item
+	#[prop(into)]
+	database_info: MaybeSignal<WithId<Database>>,
+) -> impl IntoView {
+	let store_datbase = store_value(database_info.clone());
 	view! {
 		<div class="full-width px-md fc-fs-fs fit-wide-screen mx-auto my-xl txt-white">
+
 			<div class="flex mb-lg full-width">
 				<label class="flex-col-2 fr-fs-fs">"Database Type"</label>
 
 				<div class="grid grid-col-4 flex-col-10 pl-xs full-width">
-					<DatabaseTypeCard version=4. database_type={DatabaseType::MongoDB}/>
+					<DatabaseTypeCard
+						version=4.
+						database_type={Signal::derive(
+							move || store_datbase
+								.clone()
+								.with_value(|db| db.get().engine.clone())
+						)}
+					/>
 				</div>
 			</div>
 
@@ -55,20 +69,9 @@ pub fn ManageDatabaseDetailsTab() -> impl IntoView {
 				</div>
 				<div class="flex-col-10 fc-fs-fs pl-xs">
 					<div class="fr-fs-ct br-sm bg-secondary-light full-width py-sm px-xl">
-						<span class="pl-sm">"Database Name"</span>
-					</div>
-				</div>
-			</div>
-
-			<div class="flex my-xs full-width mb-md">
-				<div class="flex-col-2 fr-fs-ct">
-					<label html_for="database-engine" class="txt-sm fr-fs-ct">
-						"Database Engine"
-					</label>
-				</div>
-				<div class="flex-col-10 pl-xs">
-					<div class="fr-fs-ct br-sm bg-secondary-light full-width py-sm px-xl">
-						<span class="pl-sm">"MongoDB"</span>
+						<span class="pl-sm">
+							{move || store_datbase.with_value(|db| db.get().name.clone())}
+						</span>
 					</div>
 				</div>
 			</div>
@@ -81,7 +84,9 @@ pub fn ManageDatabaseDetailsTab() -> impl IntoView {
 				</div>
 				<div class="flex-col-10 pl-xs">
 					<div class="fr-fs-ct br-sm bg-secondary-light full-width py-sm px-xl">
-						<span class="pl-sm">"aws-production"</span>
+						<span class="pl-sm">{
+							move || store_datbase.with_value(|db| db.get().region.to_string())
+						}</span>
 					</div>
 				</div>
 			</div>
@@ -94,7 +99,12 @@ pub fn ManageDatabaseDetailsTab() -> impl IntoView {
 				</div>
 				<div class="flex-col-10 pl-xs">
 					<div class="fr-sb-ct br-sm bg-secondary-light full-width py-sm px-xl">
-						<span class="pl-sm">"root"</span>
+						<span class="pl-sm">
+							{
+								move || store_datbase
+									.with_value(|db| db.get().public_connection.username.clone())
+							}
+						</span>
 						<CopyButton/>
 					</div>
 				</div>
@@ -110,16 +120,14 @@ pub fn ManageDatabaseDetailsTab() -> impl IntoView {
 					<div class="fr-sb-ct br-sm bg-secondary-light full-width py-sm px-xl">
 						<input
 							class="txt-white px-sm"
-							r#type="password"
+							type="password"
 							aria_label="Password"
 							prop:value="********"
 						/>
 						<CopyButton/>
 					</div>
-					<div class="fr-sb-fs full-width gap-md mt-xxs">
-						<Link class="txt-medium ml-auto">"CHANGE PASSWORD"</Link>
-					</div>
 
+					<ChangePasswordButton />
 				</div>
 			</div>
 
@@ -131,7 +139,12 @@ pub fn ManageDatabaseDetailsTab() -> impl IntoView {
 				</div>
 				<div class="flex-col-10 pl-xs">
 					<div class="fr-sb-ct br-sm bg-secondary-light full-width py-sm px-xl">
-						<span class="pl-sm">"service-cd091367036e48090aeOOa9af6ab95cO"</span>
+						<span class="pl-sm">
+							{
+								move || store_datbase
+									.with_value(|db| db.get().public_connection.host.clone())
+							}
+						</span>
 						<CopyButton/>
 					</div>
 				</div>
@@ -145,7 +158,9 @@ pub fn ManageDatabaseDetailsTab() -> impl IntoView {
 				</div>
 				<div class="flex-col-10 pl-xs">
 					<div class="fr-sb-ct br-sm bg-secondary-light full-width py-sm px-xl">
-						<span class="pl-sm">"27017"</span>
+						<span class="pl-sm">{
+							move || store_datbase.with_value(|db| db.get().public_connection.port)
+						}</span>
 						<CopyButton/>
 					</div>
 				</div>
@@ -160,7 +175,15 @@ pub fn ManageDatabaseDetailsTab() -> impl IntoView {
 				<div class="flex-col-10 pl-xs">
 					<div class="fr-sb-ct br-sm bg-secondary-light full-width py-sm px-xl">
 						<span class="pl-sm">
-							"mongo://root<DATABASE_PASSWORD>service-cda91367036e48090aeOOa9af6ab95cC27017/staging"
+							{
+								move || store_datbase.with_value(|db| format!(
+									"{}://{}:<DATABASE_PASSWORD>@{}:{}/staging",
+									database_info.get().engine,
+									database_info.get().public_connection.clone().username,
+									database_info.get().public_connection.clone().host,
+									database_info.get().public_connection.clone().port,
+								))
+							}
 						</span>
 						<CopyButton/>
 					</div>

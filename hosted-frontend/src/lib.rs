@@ -40,6 +40,7 @@ pub mod prelude {
 	};
 	pub use leptos::*;
 	pub use leptos_router::*;
+	pub use leptos_use::*;
 	pub use models::prelude::*;
 
 	pub use crate::{api::*, utils::*};

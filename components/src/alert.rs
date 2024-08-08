@@ -41,12 +41,16 @@ pub fn Alert(
 	/// The Message
 	children: ChildrenFn,
 ) -> impl IntoView {
-	let message_class = move || format!("ml-xxs txt-{}", r#type);
-	let outer_class = move || format!("txt-white fr-fs-fs {}", class.get());
+	let message_class = move || format!("ml-xxs text-{}", r#type);
+	let outer_class = move || {
+		format!(
+			"flex flex-row items-start justify-start text-white {}",
+			class.get()
+		)
+	};
 
 	view! {
 		<span class={outer_class}>
-
 			{match r#type {
 				AlertType::Success => {
 					view! {

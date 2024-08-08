@@ -29,6 +29,7 @@ pub mod prelude {
 	pub(crate) use crate::ext_traits::EitherExt;
 	pub use crate::{config::*, executor::RunnerExecutor, runner::Runner};
 
+	/// The client module to interface with the Patr API
 	pub mod client {
 		pub use crate::client::*;
 	}

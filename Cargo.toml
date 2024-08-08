@@ -35,6 +35,7 @@ components = { path = "components", default-features = false }
 config = { version = "0.14", default-features = false }
 console_error_panic_hook = { version = "0.1", default-features = false }
 cookie = { version = "0.18", default-features = false }
+convert_case = { version = "0.6.0" }
 dirs = { version = "5", default-features = false }
 either = { version = "1", default-features = false }
 enum-utils = { version = "0.1", default-features = false }
@@ -133,8 +134,21 @@ output-name = "dashboard"
 site-root = "target/hosted-frontend"
 # The site-root relative folder where all compiled output (JS, WASM and CSS) is written
 site-pkg-dir = "pkg"
+
 # [Optional] The source CSS file. If it ends with .sass or .scss then it will be compiled by dart-sass into CSS. The CSS is optimized by Lightning CSS before being written to <site-root>/<site-pkg>/app.css
 style-file = "hosted-frontend/assets/styles/index.scss"
+
+# The tailwind input file.
+#
+# Optional, Activates the tailwind build
+tailwind-input-file = "hosted-frontend/assets/styles/index.scss"
+
+# The tailwind config file.
+#
+# Optional, defaults to "tailwind.config.js" which if is not present
+# is generated for you
+tailwind-config-file = "tailwind.config.js"
+
 # Assets source dir. All files found here will be copied and synchronized to site-root.
 # The assets-dir cannot have a sub directory with the same name/path as site-pkg-dir.
 assets-dir = "components/assets"

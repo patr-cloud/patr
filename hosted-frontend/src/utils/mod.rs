@@ -4,10 +4,11 @@ mod client;
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::client::*;
 
+mod hooks;
 mod routes;
 mod storage;
 
-pub use self::{routes::*, storage::*};
+pub use self::{hooks::*, routes::*, storage::*};
 
 /// A trait to extend the [`String`] type with some useful methods that are not
 /// available in the standard library. This is useful for adding utility methods
@@ -41,4 +42,6 @@ pub mod constants {
 	pub const REFRESH_TOKEN: &str = "refreshToken";
 	/// The name of the cookie that stores the last used workspaceId
 	pub const LAST_USED_WORKSPACE_ID: &str = "lastUsedWorkspaceId";
+	/// The User Agent String
+	pub const USER_AGENT_STRING: &str = "hyper/0.12.2";
 }

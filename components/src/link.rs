@@ -40,12 +40,12 @@ pub fn Link(
 ) -> impl IntoView {
 	let class = move || {
 		format!(
-			"fr-ct-ct {} {}",
+			"flex items-center justify-center {} {}",
 			class.get(),
 			if style_variant.get() == LinkStyleVariant::Contained {
 				format!("btn btn-{}", color.get())
 			} else {
-				format!("btn-plain txt-{}", color.get())
+				format!("btn-plain text-{}", color.get())
 			},
 		)
 	};

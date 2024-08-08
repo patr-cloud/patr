@@ -5,16 +5,15 @@ use crate::prelude::*;
 
 #[component]
 pub fn ProfileSettings() -> impl IntoView {
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>("access_token");
+	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
 	let access_token_signal = move || access_token.get();
 	let user_data = create_resource(access_token_signal, move |value| async move {
 		load_user_data(value).await
 	});
 
 	view! {
-		<div class="full-width fit-wide-screen mx-auto fc-fs-fs px-md my-xl gap-lg">
+		<div class="w-full fit-wide-screen mx-auto flex flex-col items-start justify-start px-md my-xl gap-lg">
 			<Transition>
-
 				{move || match user_data.get() {
 					Some(user_data) => {
 						logging::log!("{:#?}", user_data);

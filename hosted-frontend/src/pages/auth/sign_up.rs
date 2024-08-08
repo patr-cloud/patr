@@ -1,27 +1,33 @@
 use std::rc::Rc;
 
+use ev::SubmitEvent;
 use leptos_router::ActionForm;
 use models::api::auth::*;
 
-use crate::prelude::*;
+use crate::{api::sign_up::*, prelude::*};
 
 #[component]
 pub fn SignUpForm() -> impl IntoView {
 	let show_coupon = create_rw_signal(false);
 	let show_coupon_button = create_rw_signal(true);
 
-	let sign_up_action = create_server_action::<CreateAccount>();
-	let response = sign_up_action.value();
+	let loading = create_rw_signal(false);
 
+	// let response = sign_up_action.value();
+
+	let first_name = create_rw_signal("".to_owned());
+	let last_name = create_rw_signal("".to_owned());
+	let email_input = create_rw_signal("".to_owned());
+	let username_input = create_rw_signal("".to_owned());
 	let password_input = create_rw_signal("".to_owned());
 	let password_confirm_input = create_rw_signal("".to_owned());
 	let passwords_match =
 		Signal::derive(move || password_input.get() != password_confirm_input.get());
 
-	let _name_error = create_rw_signal("".to_owned());
+	let name_error = create_rw_signal("".to_owned());
 	let username_error = create_rw_signal("".to_owned());
 	let email_error = create_rw_signal("".to_owned());
-
+	let password_confirm_error = create_rw_signal("".to_owned());
 	let password_error = create_rw_signal("".to_owned());
 
 	let handle_errors = move |error| match error {
@@ -36,25 +42,79 @@ pub fn SignUpForm() -> impl IntoView {
 		}
 	};
 
-	create_effect(move |_| {
-		if let Some(resp) = response.get() {
-			logging::log!("{:#?}", resp);
-			match resp {
+	let on_submit_sign_up = move |ev: SubmitEvent| {
+		ev.prevent_default();
+		loading.set(true);
+
+		name_error.set("".to_string());
+		password_error.set("".to_string());
+		username_error.set("".to_string());
+		password_confirm_error.set("".to_string());
+
+		if first_name.get().is_empty() || last_name.get().is_empty() {
+			name_error.set("Please Give us a Name".to_string());
+			loading.set(false);
+			return;
+		}
+
+		if username_input.get().is_empty() {
+			username_error.set("Give Username".to_string());
+			loading.set(false);
+			return;
+		}
+
+		if password_input.get().is_empty() {
+			password_error.set("Give Password".to_string());
+			loading.set(false);
+			return;
+		}
+
+		if password_confirm_input.get().is_empty() {
+			password_confirm_error.set("Please Re-Enter Password".to_string());
+			loading.set(false);
+			return;
+		}
+
+		spawn_local(async move {
+			let response = sign_up(
+				username_input.get_untracked(),
+				password_input.get_untracked(),
+				first_name.get_untracked(),
+				last_name.get_untracked(),
+				email_input.get_untracked(),
+			)
+			.await;
+
+			match response {
 				Ok(CreateAccountResponse {}) => {}
 				Err(err) => {
-					logging::log!("{:#?}", err);
 					handle_errors(err);
 				}
 			}
-		}
-	});
+
+			loading.set(false);
+		})
+	};
+
+	// create_effect(move |_| {
+	// 	if let Some(resp) = response.get() {
+	// 		logging::log!("{:#?}", resp);
+	// 		match resp {
+	// 			Ok(CreateAccountResponse {}) => {}
+	// 			Err(err) => {
+	// 				logging::log!("{:#?}", err);
+	// 				handle_errors(err);
+	// 			}
+	// 		}
+	// 	}
+	// });
 
 	view! {
-		<div class="box-onboard txt-white">
-			<div class="fr-sb-bl mb-lg full-width">
-				<h1 class="txt-primary txt-xl txt-medium">"Sign Up"</h1>
+		<div class="box-onboard text-white">
+			<div class="flex justify-between items-baseline mb-lg w-full">
+				<h1 class="text-primary text-xl text-medium">"Sign Up"</h1>
 
-				<div class="txt-white txt-thin fr-fs-fs">
+				<div class="text-white text-thin flex justify-start items-start">
 					<p>"Existing User? "</p>
 					<Link to="/login" r#type={Variant::Link} class="ml-xs">
 						"Login"
@@ -62,45 +122,59 @@ pub fn SignUpForm() -> impl IntoView {
 				</div>
 			</div>
 
-			<ActionForm action={sign_up_action} class="fc-fs-fs full-width">
-				<div class="fr-ct-fs full-width">
-					<div class="fc-fs-fs flex-col-6 pr-xxs">
+			<form on:submit={on_submit_sign_up} class="flex flex-col items-start justify-start w-full">
+				<div class="flex justify-center items-start w-full">
+					<div class="flex flex-col items-start justify-start flex-col-6 pr-xxs">
 						<Input
 							class="py-xs"
 							r#type={InputType::Text}
 							id="first_name"
 							name="first_name"
 							placeholder="First Name"
+							value={first_name}
+							on_input={Box::new(move |ev| {
+								first_name.set(event_target_value(&ev))
+							})}
 							start_icon={Some(
 								IconProps::builder().icon(IconType::User).size(Size::Medium).build(),
 							)}
 						/>
-
 					</div>
 
-					<div class="fc-fs-fs flex-col-6 pl-xxs">
+					<div class="flex flex-col items-start justify-start flex-col-6 pl-xxs">
 						<Input
 							class="py-xs"
 							r#type={InputType::Text}
 							id="last_name"
 							name="last_name"
 							placeholder="Last Name"
+							value={last_name}
+							on_input={Box::new(move |ev| {
+								last_name.set(event_target_value(&ev))
+							})}
 							start_icon={Some(
 								IconProps::builder().icon(IconType::User).size(Size::Medium).build(),
 							)}
 						/>
-
 					</div>
 				</div>
+				<Show when={move || !name_error.get().is_empty()}>
+					<Alert r#type={AlertType::Error} class="mt-xs">
+						{move || name_error.get()}
+					</Alert>
+				</Show>
 
 				<Input
-					class="full-width mt-lg"
+					class="w-full mt-lg"
 					r#type={InputType::Text}
 					id="username"
 					name="username"
 					placeholder="User Name"
-					required=true
 					start_icon={Some(IconProps::builder().icon(IconType::User).build())}
+					value={username_input}
+					on_input={Box::new(move |ev| {
+						username_input.set(event_target_value(&ev))
+					})}
 				/>
 
 				<Show when={move || !username_error.get().is_empty()}>
@@ -110,12 +184,16 @@ pub fn SignUpForm() -> impl IntoView {
 				</Show>
 
 				<Input
-					class="full-width mt-lg"
+					class="w-full mt-lg"
 					r#type={InputType::Email}
 					name="email"
 					id="email"
 					placeholder="proton@gmail.com"
 					start_icon={Some(IconProps::builder().icon(IconType::Mail).build())}
+					value={email_input}
+					on_input={Box::new(move |ev| {
+						email_input.set(event_target_value(&ev))
+					})}
 				/>
 
 				<Show when={move || !email_error.get().is_empty()}>
@@ -124,7 +202,7 @@ pub fn SignUpForm() -> impl IntoView {
 					</Alert>
 				</Show>
 
-				<div class="full-width mt-xxs">
+				<div class="w-full mt-xxs">
 					{move || {
 						show_coupon_button
 							.get()
@@ -157,7 +235,7 @@ pub fn SignUpForm() -> impl IntoView {
 									<Input
 										id="class"
 										placeholder="Coupon Code"
-										class="full-width mt-xs"
+										class="w-full mt-xs"
 										start_icon={Some(
 											IconProps::builder().icon(IconType::Tag).build(),
 										)}
@@ -173,22 +251,26 @@ pub fn SignUpForm() -> impl IntoView {
 					id="password"
 					name="password"
 					placeholder="Password"
-					class="full-width mt-xxs"
-					value={password_input}
+					class="w-full mt-xxs"
 					start_icon={Some(
 						IconProps::builder().icon(IconType::Unlock).size(Size::Small).build(),
 					)}
-
+					value={password_input}
 					on_input={Box::new(move |ev| {
 						password_input.set(event_target_value(&ev));
 					})}
 				/>
+				<Show when={move || !password_error.get().is_empty()}>
+					<Alert r#type={AlertType::Error} class="mt-xs">
+						{move || password_error.get()}
+					</Alert>
+				</Show>
 
 				<Input
 					r#type={InputType::Password}
 					id="confirmPassword"
 					placeholder="Confirm Password"
-					class="full-width mt-lg"
+					class="w-full mt-lg"
 					value={password_confirm_input}
 					start_icon={Some(
 						IconProps::builder().icon(IconType::Lock).size(Size::Small).build(),
@@ -205,21 +287,34 @@ pub fn SignUpForm() -> impl IntoView {
 					</Alert>
 				</Show>
 
-				<div class="fr-fe-ct full-width mt-lg">
-					<Link class="btn mr-xs" to="/sign-up/confirm" r#type={Variant::Link}>
+				<div class="fr-fe-ct w-full mt-lg">
+					<Link class="btn mr-xs" to="/confirm" r#type={Variant::Link}>
 						"ALREADY HAVE AN OTP"
 					</Link>
 
-					<Link
-						disabled={passwords_match.get()}
-						r#type={Variant::Button}
-						should_submit=true
-						style_variant={LinkStyleVariant::Contained}
+					<Show
+						when=move || !loading.get()
+						fallback=move || view! {
+							<Link
+								disabled={true}
+								r#type={Variant::Button}
+								style_variant={LinkStyleVariant::Contained}
+							>
+								"LOADING..."
+							</Link>
+						}
 					>
-						"NEXT"
-					</Link>
+						<Link
+							disabled={Signal::derive(move || passwords_match.get() || loading.get())}
+							r#type={Variant::Button}
+							should_submit=true
+							style_variant={LinkStyleVariant::Contained}
+						>
+							"NEXT"
+						</Link>
+					</Show>
 				</div>
-			</ActionForm>
+			</form>
 		</div>
 	}
 }

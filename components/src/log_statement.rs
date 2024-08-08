@@ -16,8 +16,12 @@ pub fn LogStatement(
 	/// The Log Details
 	log: LogItem,
 ) -> impl IntoView {
-	let outer_div_class =
-		class.with(|cname| format!("txt-grey log-statement fr-fs-ct full-width {}", cname));
+	let outer_div_class = class.with(|cname| {
+		format!(
+			"text-grey log-statement w-full flex justify-start items-center full-width {}",
+			cname
+		)
+	});
 
 	view! {
 		<div class={outer_div_class}>
@@ -26,14 +30,14 @@ pub fn LogStatement(
 			<ToolTipContainer
 				tooltip_width=10.
 				label={view! {
-					<time class="w-fix-10">
+					<time class="w-[10ch]">
 						// {getTimeFromNow(Date.parse(log.timestamp))}
 						"13:00"
 					</time>
 				}
 					.into_view()}
 			>
-				<time date_time="2008-02-14 20:00" class="txt-xxs">
+				<time date_time="2008-02-14 20:00" class="text-xxs">
 					// {new Date(log.timestamp).toUTCString()}
 					"12:00"
 				</time>

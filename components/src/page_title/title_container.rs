@@ -10,7 +10,7 @@ pub fn PageTitleContainer(
 	/// The Children of the component
 	children: Children,
 ) -> impl IntoView {
-	let class = move || format!("p-xxs fr-fs-ct {}", class.get());
+	let class = move || format!("p-xxs flex justify-start items-center {}", class.get());
 
 	view! { <div class={class}>{children()}</div> }
 }

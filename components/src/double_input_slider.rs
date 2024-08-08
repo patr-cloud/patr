@@ -11,47 +11,60 @@ pub fn DoubleInputSlider(
 	/// Additional class names to apply to the outer div, if any
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
-	/// The Minimum value of the silder
-	#[prop(default = 1)]
-	min: usize,
-	/// The Maximum value of the silder
-	#[prop(default = 10)]
-	max: usize,
-	/// The Default MIN value of the slider
-	#[prop(default = 1)]
-	default_min: usize,
-	/// The Default MAX value of the slider
-	#[prop(default = 10)]
-	default_max: usize,
+	/// The Minimum value of the slider
+	#[prop(into)]
+	min: RwSignal<u16>,
+	/// The Maximum value of the slider
+	#[prop(into)]
+	max: RwSignal<u16>,
+	/// Minimum Possible Value of the input
+	min_limit: u16,
+	/// Maximum Possible Value of the input
+	max_limit: u16,
 ) -> impl IntoView {
-	let outer_div_class =
-		class.with(|cname| format!("slider full-width fr-ct-ct pos-rel pb-xl {}", cname,));
+	let outer_div_class = class.with(|cname| {
+		format!(
+			"slider w-full flex justify-center items-center relative pb-xl {}",
+			cname
+		)
+	});
 
-	// The current min value of the slider
-	let min_value = create_rw_signal(default_min);
-	// The current max value of the slider
-	let max_value = create_rw_signal(default_max);
+	let get_percent = move |val: u16| ((val - min_limit) / (max_limit - min_limit)) * 100;
+	create_effect(move |_| {
+		logging::log!("{} {}", get_percent(min.get()), get_percent(max.get()));
+	});
 
 	view! {
 		<div class={outer_div_class}>
 			<input
-				r#type="range"
-				prop:value={min_value}
-				min={min}
-				min={max}
-				class="thumb full-width pos-abs left"
+				type="range"
+				prop:value={min}
+				min={min_limit}
+				min={max_limit}
+				class="thumb w-full absolute left"
 			/>
 			<input
-				r#type="range"
-				prop:value={max_value}
-				min={min}
-				min={max}
-				class="thumb full-width pos-abs right"
+				type="range"
+				prop:value={max}
+				min={min_limit}
+				min={max_limit}
+				class="thumb w-full absolute right"
 			/>
 
-			<div class="pos-rel full-width txt-white">
-				<div class="track pos-abs bg-secondary full-width br-sm"></div>
-				<div style="right: 0%; left: 0%;" class="range pos-abs br-sm bg-primary"></div>
+			<div class="relative w-full text-white">
+				<div class="track absolute bg-secondary w-full br-sm"></div>
+				{
+					move || view! {
+						<div
+							style={format!(
+								"right: {}%; left: {}%;",
+								(100 - get_percent(max.get())),
+								get_percent(min.get())
+							)}
+							class="range absolute br-sm bg-primary"
+						></div>
+					}
+				}
 			</div>
 		</div>
 	}

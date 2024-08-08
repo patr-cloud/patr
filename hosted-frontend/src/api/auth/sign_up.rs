@@ -3,7 +3,7 @@ use models::api::auth::*;
 use crate::prelude::*;
 
 #[server(CreateAccount, endpoint = "auth/sign-up")]
-async fn sign_up(
+pub async fn sign_up(
 	username: String,
 	password: String,
 	first_name: String,
@@ -31,7 +31,7 @@ async fn sign_up(
 	.await;
 
 	if let Ok(resp) = &api_response {
-		leptos_axum::redirect("/sign-up/confirm");
+		leptos_axum::redirect("/confirm");
 	}
 
 	Ok(api_response.map(|res| res.body)?)
