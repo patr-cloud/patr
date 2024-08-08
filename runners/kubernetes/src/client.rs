@@ -2,7 +2,6 @@ use std::{str::FromStr, sync::OnceLock};
 
 use futures::{Stream, StreamExt};
 use http::{HeaderName, HeaderValue, StatusCode};
-use httparse::{Header, Request};
 use models::{
 	prelude::*,
 	utils::{constants, False, Headers, WebSocketUpgrade},

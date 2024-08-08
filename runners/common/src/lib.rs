@@ -28,4 +28,8 @@ pub mod prelude {
 
 	pub(crate) use crate::ext_traits::EitherExt;
 	pub use crate::{config::*, executor::RunnerExecutor, runner::Runner};
+
+	pub mod client {
+		pub use crate::client::*;
+	}
 }

@@ -4,6 +4,7 @@ use futures::{
 	future::{self, BoxFuture, Either},
 	FutureExt,
 	StreamExt,
+	TryStreamExt,
 };
 use models::api::workspace::{deployment::*, runner::*};
 use tokio::time::{self, Duration, Instant};
@@ -35,10 +36,14 @@ where
 	deployments: HashMap<Uuid, (Deployment, DeploymentRunningDetails)>,
 	/// A list of resources that need to be reconciled at a later time
 	/// This is used to retry resources that failed to reconcile
-	reconcilation_list: Vec<DelayedFuture<StreamRunnerDataForWorkspaceServerMsg>>,
+	reconcilation_list: Vec<DelayedFuture<Uuid>>,
 	/// The future that will resolve to the next resource that needs to be
 	/// reconciled
-	next_reconcile_future: BoxFuture<'static, StreamRunnerDataForWorkspaceServerMsg>,
+	next_reconcile_future: BoxFuture<'static, Uuid>,
+	/// The bearer token for the runner to access the API
+	authorization: BearerToken,
+	/// The user agent that the runner uses to access the API
+	user_agent: UserAgent,
 }
 
 impl<'de, E> Runner<'de, E>
@@ -82,6 +87,8 @@ where
 		let deployments = HashMap::new();
 		let reconcilation_list = Vec::new();
 		let next_reconcile_future = future::pending().boxed();
+		let authorization = BearerToken::from_str("").unwrap();
+		let user_agent = UserAgent::from_static("");
 
 		Self {
 			executor,
@@ -89,6 +96,8 @@ where
 			deployments,
 			reconcilation_list,
 			next_reconcile_future,
+			authorization,
+			user_agent,
 		}
 	}
 
@@ -96,8 +105,8 @@ where
 	/// resources that the runner is responsible for. This function will run
 	/// forever until the runner is stopped.
 	pub async fn run(mut self) -> Result<(), ErrorType> {
-		let authorization = BearerToken::from_str(&self.settings.api_token)?;
-		let user_agent = UserAgent::from_str(concat!(
+		self.authorization = BearerToken::from_str(&self.settings.api_token)?;
+		self.user_agent = UserAgent::from_str(concat!(
 			env!("CARGO_PKG_NAME"),
 			"/",
 			env!("CARGO_PKG_VERSION"),
@@ -118,8 +127,8 @@ where
 							runner_id,
 						})
 						.headers(StreamRunnerDataForWorkspaceRequestHeaders {
-							authorization: authorization.clone(),
-							user_agent: user_agent.clone(),
+							authorization: self.authorization.clone(),
+							user_agent: self.user_agent.clone(),
 						})
 						.query(())
 						.body(Default::default())
@@ -186,11 +195,8 @@ where
 				match reconcile_message {
 					// Reconcile a resource from the server
 					Either::Left((Some(Ok(response)), _)) => {
-						// If this resource is already queued for reconciliation, remove that
-						let current_id = get_resource_id_from_message(&response);
-
 						// Reconcile the resource
-						self.reconcile(response).await;
+						self.handle_server_message(response).await;
 					}
 					// Data from the websocket failed
 					Either::Left((Some(Err(err)), _)) => {
@@ -229,8 +235,8 @@ where
 						continue 'main;
 					}
 					// A specific resource needs to be reconciled again
-					Either::Right((response, _)) => {
-						self.reconcile(response).await;
+					Either::Right((deployment_id, _)) => {
+						self.reconcile_deployment(deployment_id).await;
 					}
 				}
 			}
@@ -243,13 +249,71 @@ where
 	/// Reconcile all the resources that the runner is responsible for. This
 	/// function will run the reconciliation for all the resources that the
 	/// runner is responsible for.
-	async fn reconcile_all(&mut self) {}
+	async fn reconcile_all(&mut self) {
+		// Reconcile all resources
+		self.reconcile_all_deployments().await;
+	}
 
-	async fn reconcile(&mut self, msg: StreamRunnerDataForWorkspaceServerMsg) {
+	/// Reconcile all the deployments that the runner is responsible for. This
+	/// function will run the reconciliation for all the deployments that the
+	/// runner is responsible for.
+	async fn reconcile_all_deployments(&mut self) {
+		// Reconcile all deployments
+
+		// Update running deployments
+		let should_run_deployments = client::make_request(
+			ApiRequest::<ListDeploymentRequest>::builder()
+				.path(ListDeploymentPath {
+					workspace_id: self.settings.workspace_id,
+				})
+				.headers(ListDeploymentRequestHeaders {
+					authorization: self.authorization.clone(),
+					user_agent: self.user_agent.clone(),
+				})
+				.query(Paginated::default())
+				.body(ListDeploymentRequest)
+				.build(),
+		)
+		.await
+		.map(|response| {
+			response
+				.body
+				.deployments
+				.into_iter()
+				.map(|deployment| deployment.id)
+				.collect::<Vec<_>>()
+		})
+		.unwrap_or_else(|_| self.deployments.keys().copied().collect());
+
+		let mut running_deployment_ids = pin!(self.executor.list_running_deployments());
+		while let Some(deployment_id) = running_deployment_ids.next().await {
+			let deployment = should_run_deployments
+				.iter()
+				.copied()
+				.find(|id| deployment_id == *id);
+
+			// If the deployment does not exist in the should run list, delete it
+			let Some(deployment_id) = deployment else {
+				self.executor.delete_deployment(deployment_id).await;
+				return;
+			};
+
+			self.reconcile_deployment(deployment_id).await;
+		}
+	}
+
+	async fn reconcile_deployment(&mut self, deployment_id: Uuid) -> Result<(), Duration> {
+		self.reconcilation_list
+			.retain(|message| message.value != deployment_id);
+
+		Ok(())
+	}
+
+	async fn handle_server_message(&mut self, msg: StreamRunnerDataForWorkspaceServerMsg) {
 		// if this resource is already queued for reconciliation, remove that
 		let current_id = get_resource_id_from_message(&msg);
 		self.reconcilation_list
-			.retain(|message| get_resource_id_from_message(&message.value) != current_id);
+			.retain(|message| message.value != current_id);
 
 		use StreamRunnerDataForWorkspaceServerMsg::*;
 		let response = match msg.clone() {
@@ -272,8 +336,10 @@ where
 			DeploymentDeleted { id } => self.executor.delete_deployment(id).await,
 		};
 		if let Err(err) = response {
-			self.reconcilation_list
-				.push(DelayedFuture::new(Instant::now() + err, msg));
+			self.reconcilation_list.push(DelayedFuture::new(
+				Instant::now() + err,
+				get_resource_id_from_message(&msg),
+			));
 		}
 
 		self.recheck_next_reconcile_future();
