@@ -4,7 +4,7 @@ use std::{rc::Rc, str::FromStr};
 
 use models::api::workspace::database::DatabaseEngine;
 use strum::VariantNames;
-use utils::FromToStringCodec;
+use codee::string::FromToStringCodec;
 
 pub use self::head::*;
 use crate::{pages::DatabaseTypeCard, prelude::*};

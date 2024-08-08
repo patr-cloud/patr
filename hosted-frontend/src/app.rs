@@ -1,5 +1,5 @@
+use codee::string::FromToStringCodec;
 use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};
-use leptos_use::utils::FromToStringCodec;
 
 use crate::{pages::*, prelude::*, utils::AuthState};
 

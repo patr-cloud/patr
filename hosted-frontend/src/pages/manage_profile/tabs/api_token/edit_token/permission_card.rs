@@ -4,7 +4,7 @@ use std::{
 };
 
 use ev::MouseEvent;
-use leptos_use::utils::FromToStringCodec;
+use codee::string::FromToStringCodec;
 use models::{
 	api::{user::UserApiToken, workspace::Workspace},
 	rbac::{ResourcePermissionType, ResourceType, WorkspacePermission},

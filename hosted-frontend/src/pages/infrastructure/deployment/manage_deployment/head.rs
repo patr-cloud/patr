@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use ev::MouseEvent;
 use models::api::workspace::deployment::*;
-use utils::FromToStringCodec;
+use codee::string::FromToStringCodec;
 
 use crate::{pages::DeploymentInfoContext, prelude::*};
 

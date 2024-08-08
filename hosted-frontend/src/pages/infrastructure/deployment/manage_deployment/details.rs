@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, str::FromStr};
 
 use ev::MouseEvent;
 use models::api::workspace::deployment::*;
-use utils::FromToStringCodec;
+use codee::string::FromToStringCodec;
 
 use crate::{pages::*, prelude::*};
 

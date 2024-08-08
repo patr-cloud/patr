@@ -10,7 +10,7 @@ use std::{rc::Rc, str::FromStr};
 use convert_case::{self, Case, Casing};
 use models::api::workspace::managed_url::*;
 use strum::VariantNames;
-use utils::FromToStringCodec;
+use codee::string::FromToStringCodec;
 
 pub use self::{card::*, create::*, head::*, update::*, url_form::*, url_item::*};
 use crate::prelude::*;

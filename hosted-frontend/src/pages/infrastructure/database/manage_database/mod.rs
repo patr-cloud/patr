@@ -3,7 +3,7 @@ mod details_tab;
 mod head;
 
 use models::api::workspace::database::DatabaseEngine;
-use utils::FromToStringCodec;
+use codee::string::FromToStringCodec;
 
 pub use self::{change_password::*, details_tab::*, head::*};
 use super::DatabaseTypeCard;

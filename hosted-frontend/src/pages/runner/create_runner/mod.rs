@@ -1,6 +1,6 @@
 mod head;
 
-use utils::FromToStringCodec;
+use codee::string::FromToStringCodec;
 
 pub use self::head::*;
 use crate::prelude::*;

@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
+use codee::string::FromToStringCodec;
 use ev::MouseEvent;
-use leptos_use::{use_cookie, utils::FromToStringCodec};
+use leptos_use::use_cookie;
 use models::{
 	api::user::{ListUserWorkspacesResponse, UserApiToken},
 	rbac::WorkspacePermission,

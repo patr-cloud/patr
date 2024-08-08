@@ -1,8 +1,9 @@
 use std::{rc::Rc, str::FromStr};
 
+use codee::string::FromToStringCodec;
 use convert_case::{self, Case, Casing};
 use ev::SubmitEvent;
-use leptos_use::{use_cookie, utils::FromToStringCodec};
+use leptos_use::use_cookie;
 use models::api::workspace::managed_url::*;
 use strum::VariantNames;
 

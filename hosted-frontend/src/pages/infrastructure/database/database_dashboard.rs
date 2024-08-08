@@ -1,5 +1,5 @@
 use models::api::workspace::database::Database;
-use utils::FromToStringCodec;
+use codee::string::FromToStringCodec;
 
 use crate::{
 	pages::{DatabaseCard, DatabaseHead},

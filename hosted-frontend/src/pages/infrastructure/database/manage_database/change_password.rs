@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use utils::FromToStringCodec;
+use codee::string::FromToStringCodec;
 
 use super::DatabaseParams;
 use crate::prelude::*;

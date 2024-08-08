@@ -1,7 +1,7 @@
 use std::{rc::Rc, str::FromStr};
 
 use convert_case::{self, Case, Casing};
-use leptos_use::utils::FromToStringCodec;
+use codee::string::FromToStringCodec;
 use models::api::workspace::managed_url::*;
 use strum::VariantNames;
 

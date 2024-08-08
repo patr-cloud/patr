@@ -1,4 +1,4 @@
-use utils::FromToStringCodec;
+use codee::string::FromToStringCodec;
 
 use crate::{pages::*, prelude::*};
 

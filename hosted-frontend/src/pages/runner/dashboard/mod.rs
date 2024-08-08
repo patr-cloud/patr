@@ -1,7 +1,7 @@
 mod head;
 mod runner_card;
 
-use leptos_use::utils::FromToStringCodec;
+use codee::string::FromToStringCodec;
 
 pub use self::{head::*, runner_card::*};
 use crate::prelude::*;

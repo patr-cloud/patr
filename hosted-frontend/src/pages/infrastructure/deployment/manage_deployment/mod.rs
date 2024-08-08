@@ -9,7 +9,7 @@ mod scaling;
 mod urls;
 
 use models::api::workspace::deployment::*;
-use utils::FromToStringCodec;
+use codee::string::FromToStringCodec;
 
 pub use self::{
 	details::*,

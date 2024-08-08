@@ -4,9 +4,9 @@ use std::{
 	string::ParseError,
 };
 
+use codee::string::FromToStringCodec;
 use convert_case::{Case, Casing};
 use ev::MouseEvent;
-use leptos_use::utils::FromToStringCodec;
 use models::{
 	api::workspace::rbac::ListAllPermissionsResponse,
 	rbac::{ResourcePermissionType, ResourceType, WorkspacePermission},

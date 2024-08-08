@@ -1,9 +1,9 @@
 use std::{rc::Rc, str::FromStr};
 
+use codee::string::FromToStringCodec;
 use convert_case::*;
 use ev::MouseEvent;
 use models::api::workspace::managed_url::*;
-use utils::FromToStringCodec;
 
 use super::ManagedURLForm;
 use crate::{pages::*, prelude::*};

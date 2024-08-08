@@ -1,4 +1,4 @@
-use leptos_use::utils::FromToStringCodec;
+use codee::string::FromToStringCodec;
 use models::api::workspace::deployment::ListDeploymentResponse;
 
 use crate::prelude::*;
@@ -23,7 +23,7 @@ pub fn get_deployments() -> Resource<
 	let (current_workspace_id, _) =
 		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
 
-	/// TODO: Use this with create_resource_with_initial_value
+	// TODO: Use this with create_resource_with_initial_value
 	let deployment_list = create_resource_with_initial_value(
 		move || {
 			logging::log!(
