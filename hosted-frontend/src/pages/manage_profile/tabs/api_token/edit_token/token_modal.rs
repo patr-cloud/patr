@@ -14,13 +14,14 @@ pub fn TokenModal(
 			color_variant={SecondaryColorVariant::Light}
 		>
 			<div
-				class="center-modal txt-white txt-sm fc-fs-fs bg-secondary-light br-sm p-xl show-center-modal"
+				class="center-modal text-white text-sm flex flex-col items-start justify-start \
+				bg-secondary-light br-sm p-xl show-center-modal"
 			>
-				<h3 class="txt-primary txt-lg">
+				<h3 class="text-primary text-lg">
 					"API Token is "
 					{move || if is_regenerated.get() {"Regenerated"} else {"Generated"}}
 				</h3>
-				<p class="txt-sm txt-thin my-md">
+				<p class="text-sm text-thin my-md">
 					{
 						move || if is_regenerated.get() {
 							"Your Token has be regenerated. \
@@ -31,7 +32,7 @@ pub fn TokenModal(
 						}
 					}
 				</p>
-				<div class="full-width fr-fs-fs f-wrap px-md py-xs bg-secondary-medium br-sm of-hidden">
+				<div class="w-full flex items-start justify-start flex-wrap px-md py-xs bg-secondary-medium br-sm overflow-hidden">
 					<p class="break-word">{
 						let token = token.clone();
 						move || token.get()
@@ -43,7 +44,7 @@ pub fn TokenModal(
 					</button>
 				</div>
 
-				<div class="fr-fs-ct mt-lg ml-auto">
+				<div class="flex items-center justify-start mt-lg ml-auto">
 					<Link r#type={Variant::Link} to="/user/api-tokens" class="btn mr-xs">
 						"DONE"
 					</Link>

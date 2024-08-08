@@ -27,15 +27,17 @@ pub fn RevokeApiToken() -> impl IntoView {
 			<Modal
 				color_variant={SecondaryColorVariant::Light}
 			>
-				<div class="center-modal txt-white txt-sm fc-fs-fs bg-secondary-light br-sm p-xl show-center-modal">
-					<h3 class="txt-primary txt-lg">"Revoke API Token?"</h3>
-					<p class="txt-sm txt-thin my-md">
+				<div class="center-modal text-white text-sm flex items-start justify-start \
+					bg-secondary-light br-sm p-xl show-center-modal"
+				>
+					<h3 class="text-primary text-lg">"Revoke API Token?"</h3>
+					<p class="text-sm text-thin my-md">
 						"This Process "
 						<strong>"CANNOT "</strong>
 						"be undone!"
 					</p>
-					<div class="mt-lg full-width fr-fe-ct gap-md">
-						<button class="btn-plain txt-white" on:click={move |_| show_revoke_modal.set(false)}>"CANCEL"</button>
+					<div class="mt-lg w-full fr-fe-ct gap-md">
+						<button class="btn-plain text-white" on:click={move |_| show_revoke_modal.set(false)}>"CANCEL"</button>
 						<ActionForm action={revoke_api_token_action}>
 							<input type="hidden" name="access_token" prop:value={access_token}/>
 							<input type="hidden" name="token_id" prop:value={token_id}/>

@@ -13,7 +13,7 @@ pub fn RunnerCard(
 			class="bg-secondary-light flex flex-col items-start justify-start px-lg py-md br-sm text-white gap-xs"
 		>
 			 <div class="w-full flex items-center justify-start gap-md">
-				<p class="text-md text-primary w-[25ch] text-ellipsis overflow-hidden">
+				<p class="text-md text-primary text-ellipsis overflow-hidden">
 					{runner.get().name.clone()}
 				</p>
 

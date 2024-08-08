@@ -9,18 +9,18 @@ pub fn PermissionItem(
 	permission: MaybeSignal<(Uuid, ResourcePermissionType)>,
 ) -> impl IntoView {
 	view! {
-		<div class="full-width txt-grey fr-fs-fs">
+		<div class="w-full text-grey flex items-start justify-start">
 			<Textbox
 				value={
 					view! {
-						<strong class="txt-white txt-bold">"{permission.name} "</strong>
+						<strong class="text-white text-bold">"{permission.name} "</strong>
 						"permission will be applied to "
-						<strong class="txt-white txt-bold">"{permission.name}"</strong>
+						<strong class="text-white text-bold">"{permission.name}"</strong>
 					}.into_view()
 				}
 			/>
 
-			<div class="fr-ct-ct pl-md">
+			<div class="flex items-center justify-center pl-md">
 				<Link class="p-xs">
 					<Icon icon={IconType::Trash2} color={Color::Error}/>
 				</Link>

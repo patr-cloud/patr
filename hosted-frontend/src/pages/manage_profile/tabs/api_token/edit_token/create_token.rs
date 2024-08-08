@@ -33,77 +33,80 @@ pub fn CreateApiToken() -> impl IntoView {
 				None => view! {}.into_view()
 			}
 		}
-		<ActionForm action={create_api_token_action}  class="full-width fit-wide-screen full-height txt-white fc-fs-fs px-md">
+		<ActionForm action={create_api_token_action}
+			class="w-full fit-wide-screen h-full px-md \
+				text-white flex flex-col items-start justify-start"
+		>
 			<input type="hidden" name="access_token" prop:value={access_token}/>
 
-			<div class="fr-fs-ct mb-md full-width">
-				<p class="txt-md">
-					<strong class="txt-md">"Create new API Token"</strong>
+			<div class="flex justify-start items-center mb-md w-full">
+				<p class="text-md">
+					<strong class="text-md">"Create new API Token"</strong>
 				</p>
 			</div>
 
-			<div class="flex mb-xs full-width mb-md">
-				<div class="flex-col-2 fr-fs-fs pt-xs">
-					<label html_for="name" class="txt-white txt-sm">
+			<div class="flex w-full mb-md">
+				<div class="flex-2 flex items-start justify-start pt-xs">
+					<label html_for="name" class="text-white text-sm">
 						"Token Name"
 					</label>
 				</div>
 
-				<div class="flex-col-10 fc-fs-fs pl-xl">
+				<div class="flex-10 flex flex-col items-start justify-start pl-xl">
 					<Input
 						r#type={InputType::Text}
 						placeholder="Enter Token Name"
-						class="full-width"
+						class="w-full"
 						name="token_name"
 						id="token_name"
 					/>
 				</div>
 			</div>
 
-			<div class="flex mb-xs full-width mb-md">
-				<div class="flex-col-2 fc-fs-fs pt-xs">
-					<label html_for="allowedIps" class="txt-white txt-sm">
+			<div class="flex w-full mb-md">
+				<div class="flex-2 flex flex-col items-start justify-start pt-xs">
+					<label html_for="allowedIps" class="text-white text-sm">
 						"Allowed IP(s)"
 					</label>
-					<small class="txt-xxs txt-grey">
+					<small class="text-xxs text-grey">
 						"By default, all IP addresses will be allowed."
 					</small>
 				</div>
-				<div class="flex-col-10 fc-fs-fs pl-xl">
+				<div class="flex-10 flex flex-col items-start justify-start pl-xl">
 					<Input
 						r#type={InputType::Text}
 						placeholder="Enter Allowed IP addresses"
-						class="full-width"
+						class="w-full"
 					/>
 				</div>
 			</div>
 
-			<div class="flex mb-xs full-width mb-md">
-				<div class="flex-col-2 fc-fs-fs pt-xs">
-					<label html_for="tokenNbf" class="txt-white txt-sm">
+			<div class="flex w-full mb-md">
+				<div class="flex-2 flex flex-col items-start justify-start pt-xs">
+					<label html_for="tokenNbf" class="text-white text-sm">
 						"Token Validity"
 					</label>
-					<small class="txt-xxs txt-grey">
+					<small class="text-xxs text-grey">
 						"By default, the token will be valid forever from the date created."
 					</small>
 				</div>
-				<div class="flex-col-10 fr-fs-ct pl-xl">
-					<div class="flex-col-1 fr-ct-ct txt-sm">"Valid from"</div>
-					<div class="flex-col-5 fr-fs-fs pl-md">
+				<div class="flex-10 flex justify-start items-center pl-xl">
+					<div class="flex-1 flex items-center justify-center text-sm">"Valid from"</div>
+					<div class="flex-5 flex items-start justify-start pl-md">
 						<Input
 							r#type={InputType::Date}
 							placeholder="Valid From"
-							class="full-width cursor-text"
+							class="w-full cursor-text"
 							name="token_nbf"
 							id="token_nbf"
 						/>
 					</div>
-					<div class="flex-col-1 fr-ct-ct txt-sm">"to"</div>
-					<div class="flex-col-5 fr-fs-fs pl-md">
+					<div class="flex-1 flex items-center justify-center text-sm">"to"</div>
+					<div class="flex-5 flex items-start justify-start pl-md">
 						<Input
 							r#type={InputType::Date}
 							placeholder="Valid Till"
-							class="full-width cursor-text"
+							class="w-full cursor-text"
 							name="token_exp"
 							id="token_exp"
 						/>
@@ -111,9 +114,9 @@ pub fn CreateApiToken() -> impl IntoView {
 				</div>
 			</div>
 
-			<div class="fc-fs-fs mb-xs full-width my-md gap-sm">
-				<label class="txt-white txt-sm">"Choose Permissions"</label>
-				<div class="full-width fc-fs-fs gap-xl">
+			<div class="flex flex-col items-start justify-start mb-xs w-full my-md gap-sm">
+				<label class="text-white text-sm">"Choose Permissions"</label>
+				<div class="w-full flex flex-col items-start justify-start gap-xl">
 					<Transition>
 						{
 							move || match workspace_list.get() {
@@ -136,8 +139,8 @@ pub fn CreateApiToken() -> impl IntoView {
 				</div>
 			</div>
 
-			<div class="full-width fr-fe-ct py-md mt-auto">
-				<Link r#type={Variant::Link} to="/user/api-tokens" class="txt-sm txt-medium mr-sm">"BACK"</Link>
+			<div class="w-full flex items-center justify-end py-md mt-auto">
+				<Link r#type={Variant::Link} to="/user/api-tokens" class="text-sm text-medium mr-sm">"BACK"</Link>
 				<Link should_submit={true} r#type={Variant::Button} style_variant={LinkStyleVariant::Contained} class="txt-sm txt-medium mr-sm">
 					"Create"
 				</Link>

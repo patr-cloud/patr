@@ -77,7 +77,7 @@ pub fn ChoosePermission(
 ) -> impl IntoView {
 	let div_class = class.with(|cname| {
 		format!(
-			"gap-sm grid grid-col-{} full-width {}",
+			"gap-sm grid grid-col-{} w-full {}",
 			grid_columns.get(),
 			cname
 		)
@@ -250,23 +250,10 @@ pub fn ChoosePermission(
 		})
 	};
 
-	create_effect(move |_| {
-		logging::log!("resource_type: {}", input_resource_type.get());
-		logging::log!("show_resource_type: {}", show_resource_type.get());
-		logging::log!(
-			"input_apply_to: {:?}",
-			ApplyToOptions::from_str(input_apply_to.get().as_str())
-		);
-		logging::log!("input_resource: {:?}", input_resources.get());
-		logging::log!("input_permissions: {:?}", input_permissions.get());
-		logging::log!("resources {:?}", resource_permissions.get());
-		logging::log!("\n");
-	});
-
 	view! {
-		<div class="fr-fs-fs full-width">
+		<div class="w-full flex items-start justify-start">
 			<div class={div_class}>
-				<div class="fc-fs-fs">
+				<div class="flex flex-col items-start justify-start">
 					<InputDropdown
 						placeholder="Select Resource Type".to_string()
 						options={resource_type_values}
@@ -275,7 +262,7 @@ pub fn ChoosePermission(
 				</div>
 
 				<Show when={move || show_resource_type.get()}>
-					<div class="fc-fs-fs">
+					<div class="flex flex-col items-start justify-start">
 						<InputDropdown
 							placeholder={format!("All/Specific {}", input_resource_type.with(|resource|
 								if resource.is_empty() {"Resource".to_string()} else {resource.to_owned()}
@@ -332,10 +319,10 @@ pub fn ChoosePermission(
 				</div>
 			</div>
 
-			<div class="fr-ct-ct pl-md">
+			<div class="flex items-center justify-center pl-md">
 				<button
 					on:click={on_select_permission}
-					class="fr-ct-ct br-sm p-xs btn btn-primary"
+					class="flex items-center justify-center br-sm p-xs btn btn-primary"
 				>
 					<Icon icon={IconType::Plus} color=Color::Secondary />
 				</button>

@@ -14,8 +14,8 @@ pub fn ApiTokenCard(
 ) -> impl IntoView {
 	let outer_class = class.with(|cname| {
 		format!(
-			"bg-secondary-light full-width row-card px-xl bd-light \
-			cursor-pointer br-bottom-sm fr-ct-ct {}",
+			"bg-secondary-light w-full row-card px-xl border border-border-color \
+			cursor-pointer br-bottom-sm flex items-center justify-center {}",
 			cname
 		)
 	});
@@ -46,9 +46,9 @@ pub fn ApiTokenCard(
 			class={outer_class}
 			aria_label="Select API Token"
 		>
-			<td class="flex-col-4 fr-ct-ct">{token.get().data.name}</td>
-			<td class="flex-col-4 fr-ct-ct">{expiry.clone()}</td>
-			<td class="flex-col-4 fr-ct-ct">{date.clone()}</td>
+			<td class="flex-4 flex items-center justify-center">{token.get().data.name}</td>
+			<td class="flex-4 flex items-center justify-center">{expiry.clone()}</td>
+			<td class="flex-4 flex items-center justify-center">{date.clone()}</td>
 		</tr>
 	}
 }

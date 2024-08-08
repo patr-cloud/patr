@@ -77,9 +77,9 @@ fn EditApiTokenPermission() -> impl IntoView {
 
 	move || match api_token.get() {
 		Some(api_token) => view! {
-			<div class="fc-fs-fs mb-xs full-width my-md gap-sm">
-				<label class="txt-white txt-sm">"Choose Permissions"</label>
-				<div class="full-width fc-fs-fs gap-xl">
+			<div class="flex flex-col items-start justify-start mb-xs w-full my-md gap-sm">
+				<label class="text-white text-sm">"Choose Permissions"</label>
+				<div class="w-full fc-fs-fs gap-xl">
 					{
 						let api_token = api_token.clone();
 						move || {
@@ -164,22 +164,22 @@ pub fn EditApiToken() -> impl IntoView {
 	let permissions = create_rw_signal(BTreeMap::<Uuid, WorkspacePermission>::new());
 
 	view! {
-		<div class="full-width fit-wide-screen full-height txt-white fc-fs-fs px-md">
+		<div class="w-full fit-wide-screen h-full text-white flex flex-col items-start justify-start px-md">
 			<input type="hidden" name="access_token" prop:value={access_token}/>
 			<input type="hidden" name="token_id" prop:value={token_id}/>
 
-			<div class="fr-sb-ct mb-md full-width">
-				<p class="txt-md">
-					<strong class="txt-md">"Manage Token"</strong>
+			<div class="flex justify-between items-center mb-md w-full">
+				<p class="text-md">
+					<strong class="text-md">"Manage Token"</strong>
 				</p>
 
-				<div class="fr-fs-ct gap-md">
+				<div class="flex justify-start items-center gap-md">
 					<RegenerateApiToken />
 					<RevokeApiToken />
 				</div>
 			</div>
 
-			<form class="full-width full-height">
+			<form class="w-full h-full">
 				<Transition>
 					{
 						move || match token_info.get() {
@@ -203,11 +203,11 @@ pub fn EditApiToken() -> impl IntoView {
 					}
 				</Transition>
 
-				<div class="full-width fr-fe-ct py-md mt-auto">
-					<Link class="txt-sm txt-medium mr-sm">"BACK"</Link>
+				<div class="w-full flex justify-end items-center py-md mt-auto">
+					<Link class="text-sm text-medium mr-sm">"BACK"</Link>
 					<button
 						r#type="submit"
-						class="txt-sm txt-medium mr-sm fr-ct-ct btn btn-primary"
+						class="text-sm text-medium mr-sm flex justify-center items-center btn btn-primary"
 						on:click={on_submit}
 					>
 						"UPDATE"

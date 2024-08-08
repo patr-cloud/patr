@@ -12,7 +12,7 @@ pub use self::{api_token_card::*, edit_token::*};
 #[component]
 pub fn ApiTokensTab() -> impl IntoView {
 	view! {
-		<div class="fc-fs-fs full-width full-height px-md py-xl gap-md">
+		<div class="flex flex-col items-start justify-start w-full h-full px-md py-xl gap-md">
 			<Outlet />
 		</div>
 	}

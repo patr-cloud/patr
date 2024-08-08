@@ -44,7 +44,12 @@ pub fn PermissionCard(
 	#[prop(into)]
 	workspace: MaybeSignal<WithId<Workspace>>,
 ) -> impl IntoView {
-	let outer_class = class.with(|cname| format!("full-width txt-white fc-fs-fs gap-md {}", cname));
+	let outer_class = class.with(|cname| {
+		format!(
+			"w-full text-white flex flex-col items-start justify-start gap-md {}",
+			cname
+		)
+	});
 	let api_token = expect_context::<ApiTokenInfo>().0;
 
 	let permissions = Signal::derive({
@@ -92,10 +97,10 @@ pub fn PermissionCard(
 	view! {
 		<div class={outer_class}>
 			<p class="li-diamond">
-				<strong class="txt-md">{workspace.get().data.name}</strong>
+				<strong class="text-md">{workspace.get().data.name}</strong>
 			</p>
 
-			<label class="fr-fs-ct txt-grey cursor-pointer" html_for="super_admin">
+			<label class="flex items-center justify-start text-grey cursor-pointer" html_for="super_admin">
 				<input
 					prop:checked={is_admin_checkbox}
 					on:input={on_input_checkbox}
@@ -105,9 +110,9 @@ pub fn PermissionCard(
 					class="mr-xs"
 				/>
 				"Give"
-				<strong class="txt-medium txt-sm mx-xxs txt-white">"Super Admin"</strong>
+				<strong class="text-medium text-sm mx-xxs text-white">"Super Admin"</strong>
 				"permissions for"
-				<strong class="mx-xxs txt-sm txt-white txt-medium">
+				<strong class="mx-xxs text-sm text-white text-medium">
 					{workspace.get().data.name}" workspace"
 				</strong>
 			</label>
@@ -115,7 +120,7 @@ pub fn PermissionCard(
 			{
 				move || if !is_admin_checkbox.get() {
 					view! {
-						<div class="fc-fs-fs full-width gap-xs">
+						<div class="flex flex-col items-start justify-start w-full gap-xs">
 							<ListPermissions permissions={permissions.get()}/>
 							<ChoosePermission
 								workspace_id={workspace.get().id.clone()}
