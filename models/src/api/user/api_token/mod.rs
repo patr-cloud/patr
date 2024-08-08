@@ -10,7 +10,7 @@ mod revoke_api_token;
 mod update_api_token;
 
 use ipnetwork::IpNetwork;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
 pub use self::{

@@ -1,6 +1,7 @@
 use futures::future::Either;
 
 pub trait EitherExt<L, R> {
+	#[allow(dead_code)]
 	fn into_left(self) -> Option<L>;
 	fn is_left(&self) -> bool;
 	fn into_right(self) -> Option<R>;

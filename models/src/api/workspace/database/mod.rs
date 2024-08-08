@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::Uuid;
@@ -29,6 +27,7 @@ pub struct DatabasePlan {
 	/// The size of the volume
 	pub volume: i32,
 }
+
 /// Information for the user to connect to the database instance
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]

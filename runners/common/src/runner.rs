@@ -4,7 +4,6 @@ use futures::{
 	future::{self, BoxFuture, Either},
 	FutureExt,
 	StreamExt,
-	TryStreamExt,
 };
 use models::api::workspace::{deployment::*, runner::*};
 use tokio::time::{self, Duration, Instant};
@@ -53,9 +52,9 @@ where
 	/// Create a new runner with the given executor. This function will create a
 	/// new database connection pool and set up the global default subscriber
 	/// for the runner.
-	pub async fn new(executor: E) -> Self {
-		let settings = RunnerSettings::<E::Settings<'_>>::parse(env!("CARGO_PKG_NAME"))
-			.expect("Failed to parse settings");
+	pub fn new(executor: E) -> Result<Self, ErrorType> {
+		let settings =
+			RunnerSettings::<E::Settings<'_>>::parse("docker").expect("Failed to parse settings");
 
 		tracing::dispatcher::set_global_default(Dispatch::new(
 			tracing_subscriber::registry().with(
@@ -87,10 +86,14 @@ where
 		let deployments = HashMap::new();
 		let reconcilation_list = Vec::new();
 		let next_reconcile_future = future::pending().boxed();
-		let authorization = BearerToken::from_str("").unwrap();
-		let user_agent = UserAgent::from_static("");
+		let authorization = BearerToken::from_str(&settings.api_token)?;
+		let user_agent = UserAgent::from_str(concat!(
+			env!("CARGO_PKG_NAME"),
+			"/",
+			env!("CARGO_PKG_VERSION"),
+		))?;
 
-		Self {
+		Ok(Self {
 			executor,
 			settings,
 			deployments,
@@ -98,24 +101,21 @@ where
 			next_reconcile_future,
 			authorization,
 			user_agent,
-		}
+		})
 	}
 
 	/// Run the runner. This function will start the runner and run the
 	/// resources that the runner is responsible for. This function will run
 	/// forever until the runner is stopped.
-	pub async fn run(mut self) -> Result<(), ErrorType> {
-		self.authorization = BearerToken::from_str(&self.settings.api_token)?;
-		self.user_agent = UserAgent::from_str(concat!(
-			env!("CARGO_PKG_NAME"),
-			"/",
-			env!("CARGO_PKG_VERSION"),
-		))?;
+	pub async fn run(mut self) {
+		info!("Runner started");
 		let workspace_id = self.settings.workspace_id;
 		let runner_id = self.settings.runner_id;
 
 		let mut exit_signal = pin!(exit_signal());
+		debug!("Exit signal listener started");
 
+		info!("Connecting to the server");
 		// Connect to the server infinitely until the exit signal is received
 		'main: loop {
 			let Some(response) = futures::future::select(
@@ -138,8 +138,10 @@ where
 			.await
 			.into_right() else {
 				// Left branch is the exit signal
+				warn!("Exit signal received. Stopping runner");
 				break 'main;
 			};
+			info!("Connected to the server");
 
 			let Ok(stream) = response
 				.inspect_err(|err| {
@@ -159,6 +161,7 @@ where
 				continue 'main;
 			};
 
+			info!("Reconciling all resources before starting");
 			// Reconcile all resources at the start (or when reconnecting to the websocket)
 			self.reconcilation_list.clear();
 			self.reconcile_all().await;
@@ -243,7 +246,6 @@ where
 		}
 
 		info!("Runner stopped. Exiting...");
-		Ok(())
 	}
 
 	/// Reconcile all the resources that the runner is responsible for. This
