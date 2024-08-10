@@ -1,21 +1,18 @@
-use codee::string::FromToStringCodec;
-use leptos::*;
-use leptos_use::use_cookie;
+use codee::string::JsonSerdeCodec;
+use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
 
-/// The struct to store in the context for the auth state
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct AuthStateContext(pub RwSignal<AuthState>);
-
 /// The auth state stores the information about the user's login status, along
 /// with the data associated with the login, if logged in.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "type")]
 pub enum AuthState {
 	/// The user is logged out
 	#[default]
 	LoggedOut,
 	/// The user is logged in
+	#[serde(rename_all = "camelCase")]
 	LoggedIn {
 		/// The JWT access token. Used to authenticate requests to the server
 		/// and is stored in the browser cookies
@@ -31,74 +28,54 @@ pub enum AuthState {
 }
 
 impl AuthState {
-	/// Load the auth state from the browser cookie storage. This is used to get
-	/// the auth state when the app is first loaded
-	pub fn load() -> Self {
-		let access_token = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN)
-			.0
-			.get_untracked();
+	/// A function that parses the cookie and returns a read and write signal
+	/// for the [`AuthState`] object
+	pub fn load() -> (Signal<AuthState>, WriteSignal<Option<AuthState>>) {
+		let (read, write) = use_cookie::<_, JsonSerdeCodec>(constants::AUTH_STATE);
 
-		let refresh_token = use_cookie::<String, FromToStringCodec>(constants::REFRESH_TOKEN)
-			.0
-			.get_untracked();
+		(read.map(Option::unwrap_or_default), write)
+	}
 
-		let last_used_workspace_id =
-			use_cookie::<Uuid, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID)
-				.0
-				.get_untracked();
-
-		// TODO: Is a CSRF token needed?
-
-		logging::log!(
-			"authstate access token: {:?}\n {:?}",
-			access_token,
-			refresh_token,
-		);
-		if let Some((access_token, refresh_token)) = access_token.zip(refresh_token) {
-			AuthState::LoggedIn {
-				access_token,
-				refresh_token,
-				last_used_workspace_id,
-			}
-		} else {
-			AuthState::LoggedOut
+	/// Get the access token if the user is logged in
+	pub fn get_access_token(&self) -> Option<&str> {
+		match self {
+			AuthState::LoggedIn { access_token, .. } => Some(access_token),
+			_ => None,
 		}
 	}
 
-	/// Save the auth state to the browser cookie storage. This is used to save
-	/// the auth state when the user logs in or logs out
-	pub fn save(self) {
+	/// Get the refresh token if the user is logged in
+	pub fn get_refresh_token(&self) -> Option<&str> {
 		match self {
-			AuthState::LoggedOut => {
-				use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN)
-					.1
-					.set(None::<String>);
+			AuthState::LoggedIn { refresh_token, .. } => Some(refresh_token),
+			_ => None,
+		}
+	}
 
-				use_cookie::<String, FromToStringCodec>(constants::REFRESH_TOKEN)
-					.1
-					.set(None);
-
-				use_cookie::<Uuid, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID)
-					.1
-					.set(None);
-			}
+	/// Get the last used workspace ID if the user is logged in
+	pub fn get_last_used_workspace_id(&self) -> Option<Uuid> {
+		match self {
 			AuthState::LoggedIn {
-				access_token,
-				refresh_token,
 				last_used_workspace_id,
-			} => {
-				use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN)
-					.1
-					.set(Some(access_token));
+				..
+			} => *last_used_workspace_id,
+			_ => None,
+		}
+	}
 
-				use_cookie::<String, FromToStringCodec>(constants::REFRESH_TOKEN)
-					.1
-					.set(Some(refresh_token));
+	/// Get the access token, and panic if the user is not logged in
+	pub fn expect_access_token(&self) -> &str {
+		match self {
+			AuthState::LoggedIn { access_token, .. } => access_token,
+			_ => panic!("user is not logged in"),
+		}
+	}
 
-				use_cookie::<Uuid, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID)
-					.1
-					.set(last_used_workspace_id);
-			}
+	/// Get the refresh token, and panic if the user is not logged in
+	pub fn expect_refresh_token(&self) -> &str {
+		match self {
+			AuthState::LoggedIn { refresh_token, .. } => refresh_token,
+			_ => panic!("user is not logged in"),
 		}
 	}
 

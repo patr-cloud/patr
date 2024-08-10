@@ -14,7 +14,7 @@ members = [
 package.authors = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
 package.description = "Patr API and all it's dependencies"
 package.edition = "2021"
-package.rust-version = "1.79"
+package.rust-version = "1.80"
 package.version = "0.18.0"
 resolver = "2"
 

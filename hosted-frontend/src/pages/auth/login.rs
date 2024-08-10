@@ -1,5 +1,4 @@
 use ev::SubmitEvent;
-use leptos_router::ActionForm;
 use models::api::auth::*;
 
 use crate::prelude::*;
@@ -10,7 +9,7 @@ use crate::prelude::*;
 pub fn LoginForm() -> impl IntoView {
 	let login_action = create_server_action::<LoginFn>();
 	let response = login_action.value();
-	let AuthStateContext(context) = expect_context::<crate::utils::AuthStateContext>();
+	let (auth_state, set_auth_state) = AuthState::load();
 
 	let username = create_rw_signal("".to_owned());
 	let password = create_rw_signal("".to_owned());
@@ -63,13 +62,11 @@ pub fn LoginForm() -> impl IntoView {
 					access_token,
 					refresh_token,
 				}) => {
-					let auth_state = AuthState::LoggedIn {
+					set_auth_state.set(Some(AuthState::LoggedIn {
 						access_token,
 						refresh_token,
 						last_used_workspace_id: None,
-					};
-					auth_state.clone().save();
-					context.set(auth_state);
+					}));
 					use_navigate()(
 						&AppRoutes::LoggedInRoute(LoggedInRoute::Home).to_string(),
 						NavigateOptions::default(),

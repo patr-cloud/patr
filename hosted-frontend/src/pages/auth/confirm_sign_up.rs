@@ -6,6 +6,7 @@ use crate::prelude::*;
 /// their OTP to complete the sign-up process.
 #[component]
 pub fn ConfirmSignUpPage() -> impl IntoView {
+	let (auth_state, set_auth_state) = AuthState::load();
 	let confirm_action = create_server_action::<ConfirmOtp>();
 
 	let otp_error = create_rw_signal("".to_owned());
@@ -32,13 +33,11 @@ pub fn ConfirmSignUpPage() -> impl IntoView {
 					refresh_token,
 					access_token,
 				}) => {
-					let auth_state = AuthState::LoggedIn {
+					set_auth_state.set(Some(AuthState::LoggedIn {
 						access_token,
 						refresh_token,
 						last_used_workspace_id: None,
-					};
-					auth_state.clone().save();
-					expect_context::<RwSignal<_>>().set(auth_state);
+					}));
 				}
 				Err(err) => {
 					logging::log!("{:#?}", err);
