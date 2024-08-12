@@ -2,6 +2,7 @@ use models::api::user::BasicUserInfo;
 
 use crate::prelude::*;
 
+/// Basic Info about the user, contains name and email id
 #[component]
 pub fn BasicInfo(
 	/// Basic User with Id

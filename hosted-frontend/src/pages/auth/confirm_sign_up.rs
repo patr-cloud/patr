@@ -11,6 +11,7 @@ pub fn ConfirmSignUpPage() -> impl IntoView {
 
 	let otp_error = create_rw_signal("".to_owned());
 	let username_error = create_rw_signal("".to_owned());
+	let otp = create_rw_signal("".to_string());
 
 	let response = confirm_action.value();
 
@@ -75,13 +76,10 @@ pub fn ConfirmSignUpPage() -> impl IntoView {
 				</Show>
 
 				<span class="mt-sm mb-xxs text-sm text-white">"Enter OTP"</span>
-				<Input
-					name="otp"
-					placeholder="Enter the 6 Digit OTP"
-					id="username"
-					class="w-full"
-					r#type={InputType::Number}
-					required=true
+				<input type="hidden" value={otp} />
+				<OtpInput
+					otp={otp}
+					on_change={move |val: String| otp.set(val)}
 				/>
 				<Show when={move || !otp_error.get().is_empty()}>
 					<Alert r#type={AlertType::Error} class="mt-xs">
