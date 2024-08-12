@@ -287,21 +287,22 @@ where
 		})
 		.unwrap_or_else(|_| self.deployments.keys().copied().collect());
 
-		let mut running_deployment_ids = pin!(self.executor.list_running_deployments());
-		while let Some(deployment_id) = running_deployment_ids.next().await {
-			let deployment = should_run_deployments
-				.iter()
-				.copied()
-				.find(|id| deployment_id == *id);
+		self.executor
+			.list_running_deployments()
+			.for_each(|deployment_id| async {
+				let deployment = should_run_deployments
+					.iter()
+					.find(|&&id| deployment_id == id);
 
-			// If the deployment does not exist in the should run list, delete it
-			let Some(deployment_id) = deployment else {
-				self.executor.delete_deployment(deployment_id).await;
-				return;
-			};
+				// If the deployment does not exist in the should run list, delete it
+				let Some(&deployment_id) = deployment else {
+					self.executor.delete_deployment(deployment_id).await;
+					return;
+				};
 
-			self.reconcile_deployment(deployment_id).await;
-		}
+				self.reconcile_deployment(deployment_id).await;
+			})
+			.await;
 	}
 
 	async fn reconcile_deployment(&mut self, deployment_id: Uuid) -> Result<(), Duration> {

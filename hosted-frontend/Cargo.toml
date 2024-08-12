@@ -42,7 +42,7 @@ web-sys = { workspace = true, features = [
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 axum = { workspace = true, features = ["macros"] }
-codee = { workspace = true, features = ["json_serde_wasm"] }
+codee = { workspace = true, features = ["json_serde"] }
 leptos = { workspace = true, features = ["tracing", "hydrate"] }
 leptos-use = { workspace = true, features = [] }
 leptos_meta = { workspace = true, features = ["hydrate"] }

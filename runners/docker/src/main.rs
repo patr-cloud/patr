@@ -149,8 +149,8 @@ impl RunnerExecutor for DockerRunner {
 		Ok(())
 	}
 
-	fn list_running_deployments(&self) -> impl Stream<Item = Uuid> {
-		futures::stream::empty()
+	async fn list_running_deployments(&self) -> Vec<Uuid> {
+		vec![]
 	}
 
 	async fn delete_deployment(&self, deployment_id: Uuid) -> Result<(), Duration> {

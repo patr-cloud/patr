@@ -5,7 +5,7 @@ use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to get the running logs of a deployment
-	GetDeploymentLog,
+	GetDeploymentLogs,
 	GET "/workspace/:workspace_id/deployment/:deployment_id/logs" {
 		/// The workspace ID of the user
 		pub workspace_id: Uuid,
