@@ -6,7 +6,7 @@ use crate::prelude::*;
 macros::declare_stream_endpoint!(
 	/// Route to get the running logs of a deployment
 	StreamDeploymentLogs,
-	GET "/workspace/:workspace_id/deployment/:deployment_id/logs" {
+	GET "/workspace/:workspace_id/deployment/:deployment_id/logs/stream" {
 		/// The workspace ID of the user
 		pub workspace_id: Uuid,
 		/// The deployment ID to get the logs for

@@ -1,4 +1,4 @@
-use axum::http::StatusCode;
+use axum::{http::StatusCode, response::IntoResponse};
 use axum_typed_websockets::Message;
 use models::{
 	api::workspace::deployment::*,
@@ -18,7 +18,7 @@ use crate::prelude::*;
 ///
 /// #Returns
 /// - `logs`: The logs
-pub async fn stream_deployment_log(
+pub async fn stream_deployment_logs(
 	AuthenticatedAppRequest {
 		request:
 			ProcessedApiRequest {
