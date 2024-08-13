@@ -1,4 +1,4 @@
-use models::api::{self, user::*};
+use models::api::{user::*};
 
 use crate::prelude::*;
 

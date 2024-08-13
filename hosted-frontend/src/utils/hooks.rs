@@ -24,7 +24,9 @@ pub fn get_deployments() -> Resource<
 		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
 
 	// TODO: Use this with create_resource_with_initial_value
-	let deployment_list = create_resource_with_initial_value(
+	
+
+	create_resource_with_initial_value(
 		move || {
 			logging::log!(
 				"from get_deployment list: {:?}, {:?}",
@@ -39,7 +41,5 @@ pub fn get_deployments() -> Resource<
 		Some(Ok(ListDeploymentResponse {
 			deployments: vec![],
 		})),
-	);
-
-	deployment_list
+	)
 }

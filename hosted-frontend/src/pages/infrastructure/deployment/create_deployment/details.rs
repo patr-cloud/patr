@@ -1,7 +1,7 @@
 use codee::string::FromToStringCodec;
 use leptos_use::use_cookie;
 
-use super::{DeploymentInfo, DetailsPageError, Page};
+use super::{DeploymentInfo, DetailsPageError};
 use crate::prelude::*;
 
 /// The Deploy Details Page, has stuff like name, runner, registry, etc.

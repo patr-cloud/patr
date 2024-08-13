@@ -98,7 +98,7 @@ pub fn ScaleDeployment() -> impl IntoView {
 										Some(Ok(data)) => view! {
 											<For
 												each={move || data.clone().machine_types}
-												key={|state| state.id.clone()}
+												key={|state| state.id}
 												let:child
 											>
 												<MachineTypeCard

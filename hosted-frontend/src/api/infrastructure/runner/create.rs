@@ -24,7 +24,7 @@ pub async fn create_runner(
 			.query(())
 			.headers(AddRunnerToWorkspaceRequestHeaders {
 				authorization: access_token,
-				user_agent: UserAgent::from_static(&USER_AGENT_STRING),
+				user_agent: UserAgent::from_static(USER_AGENT_STRING),
 			})
 			.body(AddRunnerToWorkspaceRequest { name })
 			.build(),

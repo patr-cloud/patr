@@ -17,7 +17,7 @@ pub fn RunnerCard(
 					{runner.get().name.clone()}
 				</p>
 
-				{match runner.get().last_seen.clone() {
+				{match runner.get().last_seen {
 					Some(date) => view! {
 						<StatusBadge
 							text=Some("unreachable".to_string())
@@ -40,7 +40,7 @@ pub fn RunnerCard(
 						"LAST SEEN"
 					</small>
 					<p class="text-primary w-[15ch] text-ellipsis overflow-hidden">
-						{match runner.get().last_seen.clone() {
+						{match runner.get().last_seen {
 							Some(date) => date.to_string().into_view(),
 							None => "Just Now".into_view()
 						}}

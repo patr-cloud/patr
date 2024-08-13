@@ -2,11 +2,9 @@ mod change_password;
 mod details_tab;
 mod head;
 
-use models::api::workspace::database::DatabaseEngine;
 use codee::string::FromToStringCodec;
 
 pub use self::{change_password::*, details_tab::*, head::*};
-use super::DatabaseTypeCard;
 use crate::prelude::*;
 
 #[derive(Params, PartialEq)]
@@ -49,7 +47,7 @@ pub fn ManageDatabase() -> impl IntoView {
 				{
 					move || match database_info.get() {
 						Some(Ok(database)) => {
-							let id = database.database.id.clone();
+							let id = database.database.id;
 							let name = database.database.name.clone();
 							view! {
 								<ManageDatabaseHeader

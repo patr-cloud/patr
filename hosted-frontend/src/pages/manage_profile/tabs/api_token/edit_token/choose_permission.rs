@@ -1,18 +1,13 @@
 use std::{
 	collections::{BTreeMap, BTreeSet},
 	str::FromStr,
-	string::ParseError,
 };
 
 use codee::string::FromToStringCodec;
 use convert_case::{Case, Casing};
 use ev::MouseEvent;
-use models::{
-	api::workspace::rbac::ListAllPermissionsResponse,
-	rbac::{ResourcePermissionType, ResourceType, WorkspacePermission},
-};
-use server_fn::ServerFn;
-use strum::{EnumString, VariantNames};
+use models::rbac::{ResourcePermissionType, ResourceType, WorkspacePermission};
+use strum::VariantNames;
 
 use crate::{pages::ApiTokenInfo, prelude::*};
 
@@ -51,13 +46,13 @@ impl FromStr for ApplyToOptions {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		if s.contains("Specific") {
-			return Ok(Self::Specific);
+			Ok(Self::Specific)
 		} else if s.contains("Except") {
-			return Ok(Self::Except);
+			Ok(Self::Except)
 		} else if s.contains("All") {
-			return Ok(Self::AllResource);
+			Ok(Self::AllResource)
 		} else {
-			return Err(ParseApplyToOptions);
+			Err(ParseApplyToOptions)
 		}
 	}
 }
@@ -134,7 +129,8 @@ pub fn ChoosePermission(
 				.iter()
 				.filter_map(|permission| {
 					let split_name = permission.name.split("::").collect::<Vec<_>>();
-					let resource_type = split_name.get(0).map(|x| x.to_owned()).unwrap_or_default();
+					let resource_type =
+						split_name.first().map(|x| x.to_owned()).unwrap_or_default();
 
 					let permission_name =
 						split_name.get(1).map(|x| x.to_owned()).unwrap_or_default();
@@ -239,14 +235,12 @@ pub fn ChoosePermission(
 		resource_permissions.set(resource_permissions_new);
 
 		api_token.update(|token| {
-			token.as_mut().and_then(|token| {
+			if let Some(token) = token.as_mut() {
 				token
 					.data
 					.permissions
 					.insert(workspace_id.get(), WorkspacePermission::SuperAdmin);
-
-				Some(())
-			});
+			}
 		})
 	};
 

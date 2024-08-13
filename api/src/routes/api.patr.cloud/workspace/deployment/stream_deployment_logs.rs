@@ -4,7 +4,7 @@ use models::{
 	api::workspace::deployment::*,
 	utils::{GenericResponse, WebSocketUpgrade},
 };
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 
 use crate::prelude::*;
 

@@ -9,7 +9,7 @@ use crate::prelude::*;
 pub async fn list_all_machines(
 	workspace_id: Option<String>,
 ) -> Result<ListAllDeploymentMachineTypeResponse, ServerFnError<ErrorType>> {
-	use std::str::FromStr;
+	
 
 	use constants::USER_AGENT_STRING;
 

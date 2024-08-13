@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use models::{
 	api::user::*,
-	rbac::{ResourcePermissionType, WorkspacePermission},
+	rbac::WorkspacePermission,
 };
 
 use crate::prelude::*;
@@ -18,7 +18,7 @@ pub async fn update_api_token(
 ) -> Result<UpdateApiTokenResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
-	use models::rbac::WorkspacePermission;
+	
 	use time::{
 		macros::{datetime, format_description},
 		Date,

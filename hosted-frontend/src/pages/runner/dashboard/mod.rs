@@ -33,7 +33,7 @@ pub fn RunnerDashboard() -> impl IntoView {
 										view! {
 											<For
 												each={move || data.runners.clone()}
-												key={|state| state.id.clone()}
+												key={|state| state.id}
 												let:runner
 											>
 												<RunnerCard runner={runner}/>

@@ -7,7 +7,7 @@ use leptos_use::use_cookie;
 use models::api::workspace::managed_url::*;
 use strum::VariantNames;
 
-use crate::{pages::ManagedUrlCard, prelude::*};
+use crate::prelude::*;
 
 #[component]
 pub fn ManagedURLForm(

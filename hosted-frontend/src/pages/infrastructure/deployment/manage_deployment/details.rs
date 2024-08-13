@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, str::FromStr};
+use std::str::FromStr;
 
 use ev::MouseEvent;
 use models::api::workspace::deployment::*;
@@ -17,32 +17,29 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 	let on_click_submit = move |_: MouseEvent| {
 		let navigate = navigate.clone();
 		spawn_local(async move {
-			match deployment_info.get() {
-				Some(deployment_info) => {
-					let resp = update_deployment(
-						current_workspace_id.get(),
-						access_token.get(),
-						Some(deployment_info.deployment.id.to_string()),
-						Some(deployment_info.deployment.name.clone()),
-						Some(deployment_info.deployment.machine_type.to_string()),
-						Some(deployment_info.running_details.deploy_on_push),
-						Some(deployment_info.running_details.min_horizontal_scale),
-						Some(deployment_info.running_details.max_horizontal_scale),
-						Some(deployment_info.running_details.ports),
-						Some(deployment_info.running_details.environment_variables),
-						deployment_info.running_details.startup_probe,
-						deployment_info.running_details.liveness_probe,
-						Some(deployment_info.running_details.config_mounts),
-						Some(deployment_info.running_details.volumes),
-					)
-					.await;
+			if let Some(deployment_info) = deployment_info.get() {
+   					let resp = update_deployment(
+   						current_workspace_id.get(),
+   						access_token.get(),
+   						Some(deployment_info.deployment.id.to_string()),
+   						Some(deployment_info.deployment.name.clone()),
+   						Some(deployment_info.deployment.machine_type.to_string()),
+   						Some(deployment_info.running_details.deploy_on_push),
+   						Some(deployment_info.running_details.min_horizontal_scale),
+   						Some(deployment_info.running_details.max_horizontal_scale),
+   						Some(deployment_info.running_details.ports),
+   						Some(deployment_info.running_details.environment_variables),
+   						deployment_info.running_details.startup_probe,
+   						deployment_info.running_details.liveness_probe,
+   						Some(deployment_info.running_details.config_mounts),
+   						Some(deployment_info.running_details.volumes),
+   					)
+   					.await;
 
-					if resp.is_ok() {
-						navigate("/deployment", Default::default());
-					}
-				}
-				None => {}
-			}
+   					if resp.is_ok() {
+   						navigate("/deployment", Default::default());
+   					}
+   				}
 		})
 	};
 
@@ -122,7 +119,7 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 						<div class="flex-10 flex flex-col items-start justify-start">
 							<Textbox
 								value={
-									let runner_id = info.deployment.runner.clone();
+									let runner_id = info.deployment.runner;
 									(move || runner_id.to_string()).into_view()
 								}
 								disabled=true
@@ -196,9 +193,7 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 							let ports = info.running_details.ports.clone();
 
 							Signal::derive(
-								move || ports
-									.iter()
-									.map(|(port, _)| port.value())
+								move || ports.keys().map(|port| port.value())
 									.collect::<Vec<_>>()
 							)
 						}
@@ -213,9 +208,7 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 						available_ports={
 							let ports = info.running_details.ports.clone();
 							Signal::derive(
-								move || ports
-									.iter()
-									.map(|(port, _)| port.value())
+								move || ports.keys().map(|port| port.value())
 									.collect::<Vec<_>>()
 							)
 						}

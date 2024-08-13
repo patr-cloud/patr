@@ -4,7 +4,6 @@ use codee::string::FromToStringCodec;
 use ev::MouseEvent;
 use leptos_use::use_cookie;
 use models::api::workspace::deployment::{
-	DeploymentRegistry,
 	EnvironmentVariableValue,
 	ExposedPortType,
 };
@@ -72,6 +71,12 @@ pub struct DetailsPageError {
 	runner: String,
 }
 
+impl Default for DetailsPageError {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DetailsPageError {
 	pub const fn new() -> Self {
 		DetailsPageError {
@@ -87,6 +92,12 @@ impl DetailsPageError {
 #[derive(Clone)]
 pub struct RunnerPageError {
 	ports: String,
+}
+
+impl Default for RunnerPageError {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RunnerPageError {
@@ -248,7 +259,7 @@ pub fn CreateDeployment() -> impl IntoView {
 											}
 										}
 										Page::Running => {
-											if deployment_info.ports.len() < 1 {
+											if deployment_info.ports.is_empty() {
 												return;
 											}
 										}

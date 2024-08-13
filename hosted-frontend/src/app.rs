@@ -15,7 +15,7 @@ fn AppOutletView() -> impl IntoView {
 				</PageContainer>
 			}.into_view(),
 			AuthState::LoggedIn { access_token: _, refresh_token: _, last_used_workspace_id } => {
-				if let Some(_) = last_used_workspace_id {
+				if last_used_workspace_id.is_some() {
 					view! {
 						<div class="fr-fs-fs full-width full-height bg-secondary">
 							<Sidebar>
@@ -57,7 +57,7 @@ fn AppOutlet() -> impl IntoView {
 			_ => {
 				let first_id = workspace_list.get().and_then(|list| {
 					list.ok().and_then(|x| {
-						let x = x.workspaces.first().and_then(|x| Some(x.id));
+						let x = x.workspaces.first().map(|x| x.id);
 						x
 					})
 				});
@@ -72,7 +72,7 @@ fn AppOutlet() -> impl IntoView {
 		if let Some(workspace_id) = current_workspace_id.get() {
 			workspace_list
 				.get()
-				.map(|list| {
+				.and_then(|list| {
 					list.ok().map(|list| {
 						list.workspaces
 							.iter()
@@ -80,7 +80,6 @@ fn AppOutlet() -> impl IntoView {
 							.cloned()
 					})
 				})
-				.flatten()
 				.flatten()
 		} else {
 			None

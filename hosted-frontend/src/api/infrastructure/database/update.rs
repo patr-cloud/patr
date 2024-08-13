@@ -1,6 +1,5 @@
 use std::error::Error;
 
-use models::api::workspace::database::*;
 
 use crate::prelude::*;
 
@@ -13,7 +12,7 @@ pub async fn get_database(
 ) -> Result<(), ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
-	use constants::USER_AGENT_STRING;
+	
 
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
@@ -26,7 +25,7 @@ pub async fn get_database(
 
 	let api_response = Ok(());
 
-	api_response.map(|res| res).map_err(|_: Box<dyn Error>| {
+	api_response.map_err(|_: Box<dyn Error>| {
 		ServerFnError::WrappedServerError(ErrorType::InternalServerError)
 	})
 }

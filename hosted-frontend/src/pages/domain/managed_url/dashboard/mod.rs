@@ -5,11 +5,7 @@ mod update;
 mod url_form;
 mod url_item;
 
-use std::{rc::Rc, str::FromStr};
 
-use convert_case::{self, Case, Casing};
-use models::api::workspace::managed_url::*;
-use strum::VariantNames;
 use codee::string::FromToStringCodec;
 
 pub use self::{card::*, create::*, head::*, update::*, url_form::*, url_item::*};
@@ -39,7 +35,7 @@ pub fn UrlDashboard() -> impl IntoView {
 			view! {
 				<For
 					each={move || data.urls.clone()}
-					key={|state| state.id.clone()}
+					key={|state| state.id}
 					let:url
 				>
 					<ManagedUrls

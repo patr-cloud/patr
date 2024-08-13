@@ -31,7 +31,7 @@ pub fn MachineTypeCard(
 
 	view! {
 		<div class={outer_div_class} on:click={
-			let id = machine_type.get().id.clone();
+			let id = machine_type.get().id;
 			is_selected.update(|v| *v = !*v);
 			move |_| {
 				on_select.call(id);

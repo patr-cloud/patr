@@ -11,7 +11,7 @@ pub async fn list_domains(
 ) -> Result<GetDomainsForWorkspaceResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
-	use constants::USER_AGENT_STRING;
+	
 
 	let _ = access_token.ok_or(ServerFnError::WrappedServerError(
 		ErrorType::MalformedAccessToken,

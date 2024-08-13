@@ -140,15 +140,7 @@ where
 				.into_response());
 			};
 
-			let Ok(ClientIP(client_ip)) = req.extract_parts().await.inspect_err(|err| {
-				debug!("Failed to parse client IP: {err}");
-			}) else {
-				return Ok(ApiErrorResponse::error_with_message(
-					ErrorType::server_error("Failed to parse client IP"),
-					"Internal Server Error",
-				)
-				.into_response());
-			};
+			let Ok(ClientIP(client_ip)) = req.extract_parts().await;
 
 			let Ok(body) =
 				<<E as ApiEndpoint>::RequestBody as FromAxumRequest>::from_axum_request(req)

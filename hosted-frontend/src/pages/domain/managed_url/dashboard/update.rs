@@ -1,4 +1,3 @@
-use std::str::FromStr;
 
 use convert_case::*;
 use ev::SubmitEvent;
@@ -20,7 +19,7 @@ pub fn UpdateManagedUrl(
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
 ) -> impl IntoView {
-	let store_managed_url = store_value(managed_url.clone());
+	let store_managed_url = store_value(managed_url);
 	let managed_url_id = Signal::derive(move || managed_url.clone().get().id);
 
 	let url_type = create_rw_signal(

@@ -100,7 +100,7 @@ pub fn StartStopButton() -> impl IntoView {
 			</button>
 		}
 		.into_view(),
-		None => {}.into_view(),
+		None => ().into_view(),
 	}
 }
 
@@ -124,7 +124,7 @@ pub fn ManageDeploymentHeader() -> impl IntoView {
 							"Deployment"
 						</PageTitle>
 						{
-							let deployment_info = deployment_info.clone();
+							let deployment_info = deployment_info;
 							move || match deployment_info.get() {
 								Some(deployment_info) => view! {
 									<PageTitle

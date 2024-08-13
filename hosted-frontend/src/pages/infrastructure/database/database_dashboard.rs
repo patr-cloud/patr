@@ -36,7 +36,7 @@ pub fn DatabaseDashboard() -> impl IntoView {
 												Ok(data) => view! {
 													<For
 														each={move || data.database.clone()}
-														key={|state| state.id.clone()}
+														key={|state| state.id}
 														let:database_info
 													>
 														<DatabaseCard database={database_info}/>

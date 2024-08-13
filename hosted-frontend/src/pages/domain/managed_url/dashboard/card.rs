@@ -1,11 +1,10 @@
-use std::{rc::Rc, str::FromStr};
+use std::rc::Rc;
 
 use codee::string::FromToStringCodec;
 use convert_case::*;
 use ev::MouseEvent;
 use models::api::workspace::managed_url::*;
 
-use super::ManagedURLForm;
 use crate::{pages::*, prelude::*};
 
 /// Indivisual URL Card Item
@@ -60,7 +59,7 @@ pub fn ManagedUrlCard(
 			(
 				access_token.get(),
 				current_workspace_id.get(),
-				managed_url.get().domain_id.clone(),
+				managed_url.get().domain_id,
 			)
 		},
 		move |(access_token, current_workspace_id, domain_id)| async move {
@@ -78,20 +77,18 @@ pub fn ManagedUrlCard(
 
 		if domain.is_none() {
 			"Cannot Load Domain".to_string()
-		} else {
-			if domain.clone().unwrap().is_err() {
-				"Cannot Load Domain".to_string()
-			} else {
-				domain
-					.clone()
-					.unwrap()
-					.unwrap()
-					.workspace_domain
-					.domain
-					.name
-					.clone()
-			}
-		}
+		} else if domain.clone().unwrap().is_err() {
+  				"Cannot Load Domain".to_string()
+  			} else {
+  				domain
+  					.clone()
+  					.unwrap()
+  					.unwrap()
+  					.workspace_domain
+  					.domain
+  					.name
+  					.clone()
+  			}
 	});
 
 	let managed_url_link = Signal::derive({
@@ -100,32 +97,28 @@ pub fn ManagedUrlCard(
 
 			let domain_name = if domain.is_none() {
 				"Cannot Load Domain".to_string()
-			} else {
-				if domain.clone().unwrap().is_err() {
-					"Cannot Load Domain".to_string()
-				} else {
-					domain
-						.clone()
-						.unwrap()
-						.unwrap()
-						.workspace_domain
-						.domain
-						.name
-						.clone()
-				}
-			};
+			} else if domain.clone().unwrap().is_err() {
+   					"Cannot Load Domain".to_string()
+   				} else {
+   					domain
+   						.clone()
+   						.unwrap()
+   						.unwrap()
+   						.workspace_domain
+   						.domain
+   						.name
+   						.clone()
+   				};
 
 			store_managed_url.with_value(|managed_url| {
 				managed_url.clone().with(|managed_url| {
 					if managed_url.sub_domain == "@" {
-						format!("{}", domain_name.clone())
-					} else {
-						if domain.is_none() {
-							format!("{}", domain_name.clone())
-						} else {
-							format!("{}.{}", managed_url.sub_domain, domain_name.clone())
-						}
-					}
+						domain_name.clone().to_string()
+					} else if domain.is_none() {
+     							domain_name.clone().to_string()
+     						} else {
+     							format!("{}.{}", managed_url.sub_domain, domain_name.clone())
+     						}
 				})
 			})
 		}
@@ -164,7 +157,7 @@ pub fn ManagedUrlCard(
 					<td class="flex-col-4 flex items-center justify-center">
 						<a href="" target="_blank" rel="noreferrer" class="txt-underline flex items-center justify-center">
 							<span class="max-w-[35ch] text-ellipsis overflow-hidden">
-								{managed_url.clone()}
+								{managed_url}
 							</span>
 							<Icon
 								icon={IconType::ExternalLink}
@@ -181,7 +174,7 @@ pub fn ManagedUrlCard(
 					<td class="flex-col-4 flex items-center justify-center">
 						<a href="" target="_blank" rel="noreferrer" class="txt-underline flex items-center justify-center">
 							<span class="txt-medium txt-of-ellipsis of-hidden max-w-[35ch]">
-								{managed_url_link.clone()}
+								{managed_url_link}
 							</span>
 							<Icon
 								icon={IconType::ExternalLink}

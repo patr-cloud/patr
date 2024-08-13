@@ -1,4 +1,3 @@
-use std::rc::Rc;
 
 use models::api::workspace::managed_url::*;
 

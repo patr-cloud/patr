@@ -1,4 +1,4 @@
-use models::api::workspace::{domain::*, managed_url::*};
+use models::api::workspace::domain::*;
 
 use crate::prelude::*;
 
@@ -10,7 +10,7 @@ pub async fn get_domain(
 ) -> Result<GetDomainInfoInWorkspaceResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
-	use constants::USER_AGENT_STRING;
+	
 
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;

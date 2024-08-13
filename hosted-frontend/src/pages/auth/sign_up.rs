@@ -1,10 +1,9 @@
 use std::rc::Rc;
 
 use ev::SubmitEvent;
-use leptos_router::ActionForm;
 use models::api::auth::*;
 
-use crate::{api::sign_up::*, prelude::*};
+use crate::prelude::*;
 
 #[component]
 pub fn SignUpForm() -> impl IntoView {

@@ -51,7 +51,6 @@ pub fn CreateDatabase() -> impl IntoView {
 			}
 			if info.database_type.is_none() {
 				db_type_error.set("Please Provide a Database Engine!".to_string());
-				return;
 			}
 		});
 		if selected_runner.get().clone().is_empty() {
@@ -94,7 +93,7 @@ pub fn CreateDatabase() -> impl IntoView {
 						// </For>
 						{
 							DatabaseEngine::VARIANTS
-								.into_iter()
+								.iter()
 								.map(|engine| match DatabaseEngine::from_str(engine.to_owned()) {
 									Ok(engine) => view! {
 										<DatabaseTypeCard

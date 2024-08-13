@@ -92,7 +92,7 @@ pub fn ManageWorkspaceSettingsTab() -> impl IntoView {
 		if let Some(workspace_id) = current_workspace_id.get() {
 			workspace_list
 				.get()
-				.map(|list| {
+				.and_then(|list| {
 					list.ok().map(|list| {
 						list.workspaces
 							.iter()
@@ -100,7 +100,6 @@ pub fn ManageWorkspaceSettingsTab() -> impl IntoView {
 							.cloned()
 					})
 				})
-				.flatten()
 				.flatten()
 		} else {
 			None

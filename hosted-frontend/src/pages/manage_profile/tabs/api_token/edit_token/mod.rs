@@ -4,7 +4,7 @@ use codee::string::FromToStringCodec;
 use ev::MouseEvent;
 use leptos_use::use_cookie;
 use models::{
-	api::user::{ListUserWorkspacesResponse, UserApiToken},
+	api::user::UserApiToken,
 	rbac::WorkspacePermission,
 };
 use time::{
@@ -141,24 +141,21 @@ pub fn EditApiToken() -> impl IntoView {
 	let on_submit = move |_: MouseEvent| {
 		let navigate = navigate.clone();
 		spawn_local(async move {
-			match token_info_signal.get() {
-				Some(token_info) => {
-					let x = update_api_token(
-						access_token.get(),
-						token_id.get(),
-						Some(token_info.name.clone()),
-						Some(convert_offset_to_date(token_info.token_exp)),
-						Some(convert_offset_to_date(token_info.token_nbf)),
-						Some(token_info.permissions.clone()),
-					)
-					.await;
+			if let Some(token_info) = token_info_signal.get() {
+   					let x = update_api_token(
+   						access_token.get(),
+   						token_id.get(),
+   						Some(token_info.name.clone()),
+   						Some(convert_offset_to_date(token_info.token_exp)),
+   						Some(convert_offset_to_date(token_info.token_nbf)),
+   						Some(token_info.permissions.clone()),
+   					)
+   					.await;
 
-					if x.is_ok() {
-						navigate("/user/api-tokens", Default::default());
-					}
-				}
-				None => {}
-			}
+   					if x.is_ok() {
+   						navigate("/user/api-tokens", Default::default());
+   					}
+   				}
 		});
 	};
 

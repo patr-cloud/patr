@@ -1,13 +1,7 @@
-use std::{
-	collections::{BTreeMap, BTreeSet},
-	str::FromStr,
-};
 
-use ev::MouseEvent;
-use codee::string::FromToStringCodec;
 use models::{
-	api::{user::UserApiToken, workspace::Workspace},
-	rbac::{ResourcePermissionType, ResourceType, WorkspacePermission},
+	api::workspace::Workspace,
+	rbac::WorkspacePermission,
 };
 
 use super::ApiTokenInfo;
@@ -59,8 +53,7 @@ pub fn PermissionCard(
 				.get()
 				.unwrap()
 				.permissions
-				.get(&workspace.get().id)
-				.map(|id| id.clone())
+				.get(&workspace.get().id).cloned()
 		}
 	});
 
@@ -76,7 +69,7 @@ pub fn PermissionCard(
 		let workspace_id = workspace.get().clone().id;
 		move |ev| {
 			api_token.update(|token| {
-				token.as_mut().and_then(|token| {
+				token.as_mut().map(|token| {
 					let permission_exists = token.data.permissions.contains_key(&workspace_id);
 
 					if permission_exists {
@@ -88,7 +81,7 @@ pub fn PermissionCard(
 							.insert(workspace_id, WorkspacePermission::SuperAdmin);
 					}
 
-					Some(())
+					
 				});
 			})
 		}
@@ -123,7 +116,7 @@ pub fn PermissionCard(
 						<div class="flex flex-col items-start justify-start w-full gap-xs">
 							<ListPermissions permissions={permissions.get()}/>
 							<ChoosePermission
-								workspace_id={workspace.get().id.clone()}
+								workspace_id={workspace.get().id}
 							/>
 						</div>
 					}.into_view()

@@ -42,7 +42,7 @@ pub fn EventLogContainer() -> impl IntoView {
 					view! {
 						<For
 							each={move || data.get().clone()}
-							key={move |v| v.id.clone()}
+							key={move |v| v.id}
 							let:child
 						>
 							<EventLogCard

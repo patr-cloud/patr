@@ -30,7 +30,7 @@ pub async fn get_runner(
 			.query(())
 			.headers(GetRunnerInfoRequestHeaders {
 				authorization: access_token,
-				user_agent: UserAgent::from_static(&USER_AGENT_STRING),
+				user_agent: UserAgent::from_static(USER_AGENT_STRING),
 			})
 			.body(GetRunnerInfoRequest)
 			.build(),

@@ -1,5 +1,3 @@
-use ev::MouseEvent;
-use models::api::user::UserApiToken;
 
 use super::ApiTokenInfo;
 use crate::{
@@ -38,9 +36,7 @@ pub fn TokenInfo() -> impl IntoView {
 								token_info_signal.update(|token| {
 									if let Some(ref mut token) = token {
 										token.data.name = event_target_value(&ev);
-									} else {
-
-									}
+									} 
 								});
 							})}
 							r#type={InputType::Text}

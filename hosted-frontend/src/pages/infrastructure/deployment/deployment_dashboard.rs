@@ -72,7 +72,7 @@ pub fn DeploymentDashboard() -> impl IntoView {
 										view! {
 											<For
 												each={move || data.deployments.clone()}
-												key={|state| state.id.clone()}
+												key={|state| state.id}
 												let:child
 											>
 												<DeploymentCard deployment={child}/>

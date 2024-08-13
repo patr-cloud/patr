@@ -1,4 +1,4 @@
-use crate::{pages::ManagedUrlCard, prelude::*};
+use crate::prelude::*;
 
 #[component]
 pub fn ManageDeploymentUrls() -> impl IntoView {

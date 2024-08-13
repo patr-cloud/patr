@@ -12,7 +12,6 @@ use crate::{
 		PortInput,
 		ProbeInput,
 		ProbeInputType,
-		VolumeInput,
 	},
 	prelude::*,
 };
@@ -96,9 +95,7 @@ pub fn RunningDetails(
 				<ProbeInput
 					available_ports={Signal::derive(
 						move || deployment_info.get()
-							.ports
-							.iter()
-							.map(|(port, _)| port.value())
+							.ports.keys().map(|port| port.value())
 							.collect::<Vec<_>>()
 					)}
 					probe_type={ProbeInputType::Startup}
@@ -123,9 +120,7 @@ pub fn RunningDetails(
 				<ProbeInput
 					available_ports={Signal::derive(
 						move || deployment_info.get()
-							.ports
-							.iter()
-							.map(|(port, _)| port.value())
+							.ports.keys().map(|port| port.value())
 							.collect::<Vec<_>>()
 					)}
 					probe_type={ProbeInputType::Liveness}
