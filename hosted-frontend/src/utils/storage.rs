@@ -37,9 +37,9 @@ impl AuthState {
 	}
 
 	/// Get the access token if the user is logged in
-	pub fn get_access_token(&self) -> Option<&str> {
+	pub fn get_access_token(&self) -> Option<String> {
 		match self {
-			AuthState::LoggedIn { access_token, .. } => Some(access_token),
+			AuthState::LoggedIn { access_token, .. } => Some(access_token.to_owned()),
 			_ => None,
 		}
 	}

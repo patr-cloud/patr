@@ -6,7 +6,7 @@ use crate::prelude::*;
 #[component]
 pub fn ManagedUrlPage() -> impl IntoView {
 	view! {
-		<ContainerMain>
+		<ContainerMain class="my-md">
 			<Outlet />
 		</ContainerMain>
 	}

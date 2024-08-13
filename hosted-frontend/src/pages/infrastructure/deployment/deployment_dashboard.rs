@@ -6,7 +6,7 @@ use crate::{pages::DeploymentCard, prelude::*};
 #[component]
 pub fn Deployment() -> impl IntoView {
 	view! {
-		<ContainerMain class="w-full h-full mb-md">
+		<ContainerMain class="w-full h-full my-md">
 			<Outlet/>
 		</ContainerMain>
 	}

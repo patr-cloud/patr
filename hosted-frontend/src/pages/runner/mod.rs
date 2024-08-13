@@ -21,7 +21,7 @@ pub fn RunnerRoutes() -> impl IntoView {
 #[component]
 pub fn RunnerPage() -> impl IntoView {
 	view! {
-		<ContainerMain>
+		<ContainerMain class="my-md">
 			<Outlet />
 		</ContainerMain>
 	}

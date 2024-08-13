@@ -55,11 +55,17 @@ pub mod app;
 /// The pages module. This contains all the pages used in the application.
 /// Pages are the main views that are rendered when a route is matched.
 pub mod pages;
+/// All the Leptos Queries and Tags used in the API routes
+pub mod queries;
+/// The Routes module. This contains all the routes used in the applica.
+/// Routes are what defines the URL for each and every page.
+pub mod routes;
 /// The utils module. This contains all the utility functions and other things
 /// needed to make the application work.
 pub mod utils;
 
 use leptos_meta::{provide_meta_context, Link as MetaLink, Meta, Stylesheet, Title};
+use leptos_query::provide_query_client;
 use prelude::*;
 
 /// The main hydrate function. Called when the application starts to hydrate
@@ -82,6 +88,8 @@ pub fn render() -> impl IntoView {
 	use app::App;
 
 	provide_meta_context();
+	provide_query_client();
+
 	view! {
 		<>
 			<Meta charset="utf-8"/>

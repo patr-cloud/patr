@@ -17,7 +17,7 @@ pub struct ContainerRegistryItem {
 #[component]
 pub fn ContainerRegistry() -> impl IntoView {
 	view! {
-		<ContainerMain>
+		<ContainerMain class="my-md">
 			<Outlet/>
 		</ContainerMain>
 	}

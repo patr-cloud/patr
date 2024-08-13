@@ -20,7 +20,7 @@ use crate::prelude::*;
 #[component]
 pub fn DatabasePage() -> impl IntoView {
 	view! {
-		<ContainerMain class="full-width full-height mb-md">
+		<ContainerMain class="full-width full-height my-md">
 			<Outlet />
 		</ContainerMain>
 	}

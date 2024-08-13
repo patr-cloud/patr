@@ -1,10 +1,10 @@
 use codee::string::FromToStringCodec;
 use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};
 
-use crate::{pages::*, prelude::*, utils::AuthState};
+use crate::{pages::*, prelude::*, routes::*, utils::AuthState};
 
 #[component]
-fn AppOutletView() -> impl IntoView {
+pub fn AppOutletView() -> impl IntoView {
 	let (state, _) = AuthState::load();
 
 	view! {
@@ -41,7 +41,7 @@ fn AppOutletView() -> impl IntoView {
 }
 
 #[component]
-fn AppOutlet() -> impl IntoView {
+pub fn AppOutlet() -> impl IntoView {
 	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
 	let (current_workspace_id, set_current_workspace) =
 		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
@@ -50,23 +50,34 @@ fn AppOutlet() -> impl IntoView {
 		move || access_token.get(),
 		move |value| async move { list_user_workspace(value).await },
 	);
+	let (state, set_state) = AuthState::load();
 
-	let current_workspace_id = Signal::derive(move || {
-		match current_workspace_id.with(|id| id.clone().map(|id| Uuid::parse_str(id.as_str()))) {
-			Some(Ok(id)) => Some(id),
-			_ => {
-				let first_id = workspace_list.get().and_then(|list| {
-					list.ok().and_then(|x| {
-						let x = x.workspaces.first().map(|x| x.id);
-						x
-					})
-				});
-				set_current_workspace.set(first_id.map(|x| x.to_string()));
+	let current_workspace_id =
+		Signal::derive(
+			move || match state.with(|state| state.get_last_used_workspace_id()) {
+				Some(id) => Some(id),
+				_ => {
+					let first_id = workspace_list.get().and_then(|list| {
+						list.ok().and_then(|x| {
+							let x = x.workspaces.first().and_then(|x| Some(x.id));
+							x
+						})
+					});
+					set_current_workspace.set(first_id.map(|x| x.to_string()));
+					set_state.update(|state| match *state {
+						Some(AuthState::LoggedIn {
+							ref mut last_used_workspace_id,
+							..
+						}) => {
+							*last_used_workspace_id = first_id;
+						}
+						_ => {}
+					});
 
-				first_id
-			}
-		}
-	});
+					first_id
+				}
+			},
+		);
 
 	let current_workspace = Signal::derive(move || {
 		if let Some(workspace_id) = current_workspace_id.get() {
@@ -112,8 +123,6 @@ fn AppOutlet() -> impl IntoView {
 				</Transition>
 			</Sidebar>
 			<main class="fc-fs-ct full-width px-lg">
-				<header style="width: 100%; min-height: 5rem;"></header>
-
 				<Outlet/>
 			</main>
 		</div>
@@ -146,8 +155,6 @@ pub fn App() -> impl IntoView {
 					<WorkspaceRoutes/>
 					<Route path="" view={|| view! { <div></div> }}/>
 				</ProtectedRoute>
-
-				// Logged out routes
 				<ProtectedRoute
 					path={AppRoutes::Empty}
 					redirect_path={AppRoutes::LoggedInRoute(LoggedInRoute::Home)}
