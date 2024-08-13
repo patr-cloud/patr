@@ -36,16 +36,14 @@ pub fn NumberPicker(
 	let on_minus = move || {
 		value.update(|v| {
 			let changed_val = *v - 1;
-			let new_val = cmp::max(cmp::min(changed_val, max), min);
-
-			*v = new_val
+			*v = cmp::max(cmp::min(changed_val, max), min)
 		})
 	};
 	let on_plus = move || {
 		value.update(|v| {
 			let changed_val = *v + 1;
 
-			*v = cmp::max(cmp::min(*v + 1, max), min)
+			*v = cmp::max(cmp::min(changed_val, max), min)
 		})
 	};
 

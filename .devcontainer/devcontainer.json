@@ -35,6 +35,11 @@
 		"ghcr.io/eliises/devcontainer-features/bash-profile:1": {
 			"command": "alias k=kubectl",
 			"file": "$_CONTAINER_USER_HOME/.bashrc"
+		},
+		"ghcr.io/devcontainers-contrib/features/apt-packages:1": {
+			"packages": [
+				"bash-completion"
+			]
 		}
 	},
 	"forwardPorts": [
