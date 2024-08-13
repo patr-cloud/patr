@@ -18,16 +18,17 @@ pub fn ManageRunner() -> impl IntoView {
 	let params = use_params::<ManageRunnerRouteParams>();
 	let runner_id = Signal::derive(move || {
 		params.with(|params| {
-			params
+			let x = params
 				.as_ref()
 				.map(|param| param.runner_id.clone())
 				.unwrap_or_default()
+				.map(|x| Uuid::parse_str(x.as_str())?);
 		})
 	});
 	let runner_info = create_resource(
 		move || (access_token.get(), runner_id.get(), workspace_id.get()),
 		move |(access_token, runner_id, workspace_id)| async move {
-			get_runner(access_token, runner_id, workspace_id).await
+			get_runner(access_token, workspace_id, runner_id).await
 		},
 	);
 
