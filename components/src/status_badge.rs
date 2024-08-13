@@ -27,7 +27,7 @@ pub enum Status {
 }
 
 impl Status {
-	/// Convert from deployment status to Status
+	/// Convert from deployment status to [`Status`]
 	pub const fn from_deployment_status(deployment_status: DeploymentStatus) -> Self {
 		match deployment_status {
 			DeploymentStatus::Created => Self::Created,
@@ -39,6 +39,7 @@ impl Status {
 		}
 	}
 
+	/// Convert from database status to [`Status`]
 	pub const fn from_database_status(database_status: DatabaseStatus) -> Self {
 		match database_status {
 			DatabaseStatus::Creating => Self::Deploying,
