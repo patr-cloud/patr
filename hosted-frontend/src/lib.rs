@@ -1,4 +1,4 @@
-#![warn(missing_docs, clippy::all)]
+#![feature(impl_trait_in_assoc_type)]
 
 //! Main dashboard console for Patr
 

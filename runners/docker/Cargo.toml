@@ -6,6 +6,9 @@ name = "docker"
 rust-version.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 bollard = { workspace = true, features = ["default"] }
 common = { workspace = true }

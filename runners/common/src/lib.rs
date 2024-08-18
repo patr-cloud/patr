@@ -1,6 +1,4 @@
-#![forbid(unsafe_code)]
-#![warn(missing_docs, clippy::all)]
-#![feature(impl_trait_in_assoc_type)]
+#![feature(impl_trait_in_assoc_type, async_closure)]
 
 //! Common utilities for the runner. This library contains all the things you
 //! will need to make a runner. All it needs are the implementations of how the

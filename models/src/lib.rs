@@ -1,6 +1,3 @@
-#![forbid(unsafe_code)]
-#![warn(missing_docs, clippy::all)]
-
 //! This crate contains all the DTOs and common models used in the API across
 //! the frontend, backend, the CLI, and the controller.
 

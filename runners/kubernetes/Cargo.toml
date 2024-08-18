@@ -6,6 +6,9 @@ description.workspace = true
 edition.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 either = { workspace = true, features = ["default"] }
 futures = { workspace = true, features = ["default"] }

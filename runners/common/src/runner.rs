@@ -289,7 +289,7 @@ where
 
 		self.executor
 			.list_running_deployments()
-			.for_each(|deployment_id| async {
+			.for_each(async |deployment_id| {
 				let deployment = should_run_deployments
 					.iter()
 					.find(|&&id| deployment_id == id);
@@ -307,7 +307,7 @@ where
 
 	async fn reconcile_deployment(&mut self, deployment_id: Uuid) -> Result<(), Duration> {
 		self.reconcilation_list
-			.retain(|message| message.value != deployment_id);
+			.retain(|message| message.value() != &deployment_id);
 
 		Ok(())
 	}
@@ -316,7 +316,7 @@ where
 		// if this resource is already queued for reconciliation, remove that
 		let current_id = get_resource_id_from_message(&msg);
 		self.reconcilation_list
-			.retain(|message| message.value != current_id);
+			.retain(|message| message.value() != &current_id);
 
 		use StreamRunnerDataForWorkspaceServerMsg::*;
 		let response = match msg.clone() {
@@ -355,7 +355,13 @@ where
 		self.next_reconcile_future = self
 			.reconcilation_list
 			.iter()
-			.reduce(|a, b| if a.resolve_at < b.resolve_at { a } else { b })
+			.reduce(|a, b| {
+				if a.resolve_at() < b.resolve_at() {
+					a
+				} else {
+					b
+				}
+			})
 			.map(|message| message.clone().into_future().boxed())
 			.unwrap_or_else(|| future::pending().boxed());
 	}

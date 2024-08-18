@@ -7,6 +7,9 @@ edition.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 anyhow = { workspace = true, features = ["default"] }
 argon2 = { workspace = true, features = ["default"] }

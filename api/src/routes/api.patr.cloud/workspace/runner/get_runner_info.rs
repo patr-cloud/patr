@@ -55,7 +55,7 @@ pub async fn get_runner_info(
 	AppResponse::builder()
 		.body(GetRunnerInfoResponse {
 			runner: WithId::new(
-				workspace_id,
+				runner_id,
 				Runner {
 					name: runner.name,
 					connected,
