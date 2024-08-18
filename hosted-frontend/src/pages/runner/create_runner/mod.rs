@@ -3,39 +3,29 @@ mod head;
 use codee::string::FromToStringCodec;
 
 pub use self::head::*;
-use crate::prelude::*;
+use crate::{prelude::*, queries::create_runner_query};
 
 #[component]
 pub fn CreateRunner() -> impl IntoView {
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+	let runner_name = create_rw_signal("".to_string());
 
-	let create_runner_action = create_server_action::<CreateRunnerFn>();
-	let response = create_runner_action.value();
+	let create_runner_action = create_runner_query();
+
+	let create_response = create_runner_action.value();
 
 	view! {
 		<RunnerCreateHead />
 		<ContainerBody class="p-xs px-md gap-md overflow-y-auto text-white">
-			<ActionForm
-				action={create_runner_action}
+			<form
+				on:submit={
+					move |ev| {
+						ev.prevent_default();
+						create_runner_action.dispatch(runner_name.get());
+					}
+				}
 				class="w-full h-full flex flex-col justify-between items-start px-md py-xl fit-wide-screen mx-auto gap-md"
 			>
 				<div class="flex w-full">
-					<input
-						type="hidden"
-						id="access_token"
-						name="access_token"
-						value={move || access_token.get()}
-					/>
-
-					<input
-						type="hidden"
-						id="workspace_id"
-						name="workspace_id"
-						value={move || workspace_id.get()}
-					/>
-
 					<div class="flex-2 flex items-start justify-start pt-sm">
 						<label html_for="name" class="text-white text-sm">
 							"Runner Name"
@@ -49,6 +39,11 @@ pub fn CreateRunner() -> impl IntoView {
 							r#type={InputType::Text}
 							placeholder="Enter runner name"
 							class="w-full"
+							value={runner_name}
+							on_input={Box::new(move |ev| {
+								ev.prevent_default();
+								runner_name.set(event_target_value(&ev))
+							})}
 						/>
 					</div>
 				</div>
@@ -68,7 +63,7 @@ pub fn CreateRunner() -> impl IntoView {
 						"CREATE"
 					</Link>
 				</div>
-			</ActionForm>
+			</form>
 		</ContainerBody>
 	}
 }

@@ -1,4 +1,5 @@
 use codee::string::FromToStringCodec;
+use leptos_query_devtools::LeptosQueryDevtools;
 use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};
 
 use crate::{pages::*, prelude::*, routes::*, utils::AuthState};
@@ -139,6 +140,7 @@ pub fn App() -> impl IntoView {
 	// user was trying to access. This way, after login, the user is redirected
 	// to the page they were trying to access.
 	view! {
+		<LeptosQueryDevtools />
 		<Router>
 			<Routes>
 				// Logged in routes

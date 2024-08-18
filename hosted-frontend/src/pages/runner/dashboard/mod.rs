@@ -1,16 +1,14 @@
 mod head;
 mod runner_card;
 
-use codee::string::FromToStringCodec;
 use leptos_query::QueryResult;
 
 pub use self::{head::*, runner_card::*};
 use crate::{prelude::*, queries::*};
 
+/// The Runner Dashboard page
 #[component]
 pub fn RunnerDashboard() -> impl IntoView {
-	let (state, _) = AuthState::load();
-
 	let QueryResult {
 		data: runners_list, ..
 	} = list_runners_query().use_query(move || AllRunnersTag);

@@ -30,6 +30,7 @@ semver = { workspace = true, features = [] }
 serde = { workspace = true, features = ["default", "derive"] }
 serde_json = { workspace = true, features = ["default"] }
 serde_urlencoded = { workspace = true, features = [] }
+leptos_query_devtools = { workspace = true, features = ["csr"] }
 strum = { workspace = true, features = ["default", "derive"] }
 time = { workspace = true, features = ["default"] }
 tower = { workspace = true, features = ["util"] }

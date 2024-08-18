@@ -16,7 +16,7 @@ pub async fn get_runner(
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
 	let workspace_id = workspace_id
-		.ok_or_else(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
+		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
 	let api_response = make_api_call::<GetRunnerInfoRequest>(
 		ApiRequest::builder()
