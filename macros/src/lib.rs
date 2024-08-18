@@ -33,34 +33,40 @@ mod version;
 ///
 /// ## Example usage:
 /// ```rust
+/// # use headers::AcceptRanges;
+/// # use models::prelude::*;
 /// // In the root
 /// macros::declare_api_endpoint!(
 ///     /// The documentation for the endpoint.
 ///     EndpointName,
-///     Method "/URL" {
-///         pub url_body: IfAny,
+///     POST "/:workspace_id/URL/:url_body" {
+///         pub workspace_id: Uuid,
+///         pub url_body: String,
 ///     },
 ///
 ///     // Can also use paginated_query = ... for automatic pagination
 ///     query = {
-///         pub param1: Type,
+///         pub param1: u32,
 ///     },
 ///     request_headers = {
-///         pub header1: Type,
+///         pub header1: AcceptRanges,
+///         pub token: BearerToken,
 ///     },
 ///     request = {
-///         pub body_param1: Type,
+///         pub body_param1: String,
 ///     },
 ///
 ///     // Ref: AuthenticatorType
-///     authentication = WorkspaceMembershipAuthenticator {
-///         extract_workspace_id: |req| req.path.workspace_id,
+///     authentication = {
+///         AppAuthentication::<Self>::WorkspaceMembershipAuthenticator {
+///             extract_workspace_id: |req| req.path.workspace_id,
+///         }
 ///     },
 ///     response_headers = {
-///         pub header1: Type,
+///         pub header1: AcceptRanges,
 ///     },
 ///     response = {
-///         pub body_param1: Type,
+///         pub body_param1: String,
 ///     },
 /// );
 /// ```
@@ -81,11 +87,11 @@ pub fn declare_api_endpoint(input: TokenStream) -> TokenStream {
 ///     /// The documentation for the endpoint.
 ///     Login,
 ///     "/login/:param1" {
-///         pub param1: Type
+///         pub param1: i32
 ///     },
 ///     requires_login = true,
-///     {
-///         pub param1: Type,
+///     query = {
+///         pub param1: bool,
 ///     },
 /// );
 /// ```
@@ -101,34 +107,44 @@ pub fn declare_app_route(input: TokenStream) -> TokenStream {
 ///
 /// ## Example usage:
 /// ```rust
+/// # use headers::AcceptRanges;
+/// # use models::prelude::*;
 /// // In the root
 /// macros::declare_stream_endpoint!(
 ///     /// The documentation for the endpoint.
 ///     EndpointName,
-///     Method "/URL" {
-///         pub url_body: IfAny,
+///     GET "/:workspace_id/URL/:url_body" {
+///         pub workspace_id: Uuid,
+///         pub url_body: String,
 ///     },
 ///
 ///     // Can also use paginated_query = ... for automatic pagination
 ///     query = {
-///         pub param1: Type,
+///         pub param1: u32,
 ///     },
 ///     request_headers = {
-///         pub header1: Type,
+///         pub header1: AcceptRanges,
+///         pub token: BearerToken,
 ///     },
 ///     client_msg = {
-///         pub body_param1: Type,
+///         Variant1 {
+///             body_param1: String,
+///         },
 ///     },
 ///
 ///     // Ref: AuthenticatorType
-///     authentication = WorkspaceMembershipAuthenticator {
-///         extract_workspace_id: |req| req.path.workspace_id,
+///     authentication = {
+///         AppAuthentication::<Self>::WorkspaceMembershipAuthenticator {
+///             extract_workspace_id: |req| req.path.workspace_id,
+///         }
 ///     },
 ///     response_headers = {
-///         pub header1: Type,
+///         pub header1: AcceptRanges,
 ///     },
 ///     server_msg = {
-///         pub body_param1: Type,
+///         Variant1 {
+///             body_param1: String,
+///         },
 ///     },
 /// );
 /// ```
@@ -158,6 +174,11 @@ pub fn query(input: TokenStream) -> TokenStream {
 ///
 /// ## Example usage:
 /// ```rust
+/// # pub enum AnotherEnum {
+/// #    Variant1,
+/// #    Variant2,
+/// # }
+/// #
 /// // In the root
 /// pub enum RecursiveEnum {
 ///     Variant1,

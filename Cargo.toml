@@ -117,6 +117,7 @@ worker = { version = "0.3", default-features = false }
 
 [workspace.dev-dependencies]
 k8s-openapi = { features = ["latest"] }
+models = { features = ["default"] }
 
 [profile.dev]
 opt-level = 0

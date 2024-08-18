@@ -3049,10 +3049,21 @@ dependencies = [
 name = "macros"
 version = "0.18.0"
 dependencies = [
+ "axum",
+ "axum-extra",
+ "components",
+ "headers",
+ "http 1.1.0",
+ "leptos_router",
+ "models",
+ "preprocess",
  "proc-macro2",
  "quote",
  "regex",
+ "serde",
+ "serde_json",
  "syn 2.0.75",
+ "tracing",
 ]
 
 [[package]]

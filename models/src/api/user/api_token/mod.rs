@@ -104,13 +104,10 @@ mod test {
 			&[
 				Token::Struct {
 					name: "UserApiToken",
-					len: 3,
+					len: 2,
 				},
 				Token::Str("name"),
 				Token::Str("Token 1"),
-				Token::Str("permissions"),
-				Token::Map { len: Some(0) },
-				Token::MapEnd,
 				Token::Str("created"),
 				Token::Str("1970-01-01 00:00:00.0 +00:00:00"),
 				Token::StructEnd,

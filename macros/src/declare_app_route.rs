@@ -3,14 +3,12 @@ use quote::format_ident;
 use syn::{
 	parse::{Parse, ParseStream},
 	parse_macro_input,
-	token,
 	Attribute,
 	Error,
 	Expr,
 	FieldsNamed,
 	Ident,
 	Lit,
-	LitBool,
 	LitStr,
 	Token,
 };
@@ -31,7 +29,7 @@ pub struct AppEndpoint {
 	query: Option<FieldsNamed>,
 	/// Defines if this route should be allowed only when logged in or can it be
 	/// accessed by anybody
-	requires_login: bool,
+	login_required: bool,
 }
 
 impl Parse for AppEndpoint {
@@ -66,29 +64,60 @@ impl Parse for AppEndpoint {
 			Some(body)
 		};
 
-		let true = input.parse::<Ident>()? == "requires_login" else {
-			return Err(Error::new(input.span(), "Expected `requires_login`"));
-		};
+		let mut query = None;
+		let mut paginate_query = None;
+		let mut login_required = None;
+		while !input.is_empty() {
+			let ident = input.parse::<Ident>()?;
+			match ident.to_string().as_str() {
+				"query" => {
+					if query.is_some() {
+						return Err(Error::new(ident.span(), "Duplicate field"));
+					}
+					input.parse::<Token![=]>()?;
 
-		input.parse::<Token![=]>()?;
+					query = Some(input.parse()?);
+				}
+				"pagination" => {
+					if paginate_query.is_some() {
+						return Err(Error::new(ident.span(), "Duplicate field"));
+					}
+					input.parse::<Token![=]>()?;
 
-		let requires_login = input.parse::<LitBool>()?.value;
+					let Lit::Bool(lit) = input.parse()? else {
+						return Err(Error::new(input.span(), "Expected boolean value"));
+					};
 
-		input.parse::<Token![,]>()?;
+					paginate_query = Some(lit.value);
+				}
+				"login_required" | "requires_login" => {
+					if login_required.is_some() {
+						return Err(Error::new(ident.span(), "Duplicate field"));
+					}
+					input.parse::<Token![=]>()?;
 
-		let query = if input.peek(token::Brace) {
-			Some(input.parse::<FieldsNamed>()?)
-		} else {
-			None
-		};
-		_ = input.parse::<Token![,]>();
+					let Lit::Bool(lit) = input.parse()? else {
+						return Err(Error::new(input.span(), "Expected boolean value"));
+					};
+
+					login_required = Some(lit.value);
+				}
+				_ => {
+					return Err(Error::new(ident.span(), "Unknown field"));
+				}
+			}
+			if !input.is_empty() {
+				input.parse::<Token![,]>()?;
+			}
+		}
+		let login_required = login_required.unwrap_or(false);
 
 		Ok(Self {
 			documentation,
 			name,
 			path,
 			path_body,
-			requires_login,
+			login_required,
 			query,
 		})
 	}
@@ -103,7 +132,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		name,
 		path,
 		path_body,
-		requires_login,
+		login_required,
 		query,
 	} = parse_macro_input!(input as AppEndpoint);
 
@@ -166,7 +195,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		#query
 
 		impl components::utils::TypedRoute for #route_name {
-			const REQUIRES_LOGIN: bool = #requires_login;
+			const REQUIRES_LOGIN: bool = #login_required;
 
 			type Query = #query_name;
 		}
