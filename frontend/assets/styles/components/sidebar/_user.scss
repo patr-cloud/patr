@@ -1,9 +1,0 @@
-.sidebar-user {
-	width: 85%;
-	box-shadow: $shadow-light;
-	& span {
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-	@include btn-secondary-focus;
-}
