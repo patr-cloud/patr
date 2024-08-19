@@ -1,18 +1,17 @@
-use std::{error::Error as StdError, fmt::Display};
+use std::{error::Error as StdError, fmt::Display, str::FromStr};
 
 use axum::http::StatusCode;
-use enum_utils::FromStr;
 use serde::{Deserialize, Serialize};
-use strum::Display;
+use strum::{Display, EnumIter, IntoEnumIterator};
 
 use crate::prelude::*;
 
 /// A list of all the possible errors that can be returned by the API
 #[derive(
-	Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, FromStr, Display,
+	Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Display, EnumIter,
 )]
 #[serde(rename_all = "camelCase")]
-#[enumeration(rename_all = "camelCase")]
+#[strum(serialize_all = "camelCase")]
 pub enum ErrorType {
 	/// The email provided is invalid
 	InvalidEmail,
@@ -187,6 +186,16 @@ impl ErrorType {
 	pub fn server_error(message: impl Display) -> Self {
 		error!("Internal server error occured: {message}");
 		Self::InternalServerError
+	}
+}
+
+impl FromStr for ErrorType {
+	type Err = ErrorType;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		Self::iter()
+			.find(|error_type| error_type.to_string() == s)
+			.ok_or(ErrorType::InternalServerError)
 	}
 }
 

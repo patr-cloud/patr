@@ -49,7 +49,6 @@ cookie = { version = "0.18", default-features = false }
 convert_case = { version = "0.6.0" }
 dirs = { version = "5", default-features = false }
 either = { version = "1", default-features = false }
-enum-utils = { version = "0.1", default-features = false }
 futures = { version = "0.3", default-features = false }
 headers = { version = "0.4", default-features = false }
 hex = { version = "0.4", default-features = false }

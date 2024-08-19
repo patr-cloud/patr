@@ -20,7 +20,6 @@ axum = { workspace = true, features = ["json"] }
 axum-extra = { workspace = true, features = ["typed-routing"] }
 base32 = { workspace = true, features = [] }
 base64 = { workspace = true, features = ["default"] }
-enum-utils = { workspace = true, features = [] }
 headers = { workspace = true, features = [] }
 hex = { workspace = true, features = ["default"] }
 http = { workspace = true, features = ["default"] }

@@ -33,5 +33,5 @@ pub trait RunnerExecutor {
 
 	/// This function should return a stream of all the running deployment IDs
 	/// in the runner.
-	fn list_running_deployments(&self) -> impl Stream<Item = Uuid> + Unpin;
+	fn list_running_deployments<'a>(&self) -> impl Stream<Item = Uuid> + 'a;
 }

@@ -35,7 +35,7 @@ where
 	deployments: HashMap<Uuid, (Deployment, DeploymentRunningDetails)>,
 	/// A list of resources that need to be reconciled at a later time
 	/// This is used to retry resources that failed to reconcile
-	reconcilation_list: Vec<DelayedFuture<Uuid>>,
+	reconciliation_list: Vec<DelayedFuture<Uuid>>,
 	/// The future that will resolve to the next resource that needs to be
 	/// reconciled
 	next_reconcile_future: BoxFuture<'static, Uuid>,
@@ -97,7 +97,7 @@ where
 			executor,
 			settings,
 			deployments,
-			reconcilation_list,
+			reconciliation_list: reconcilation_list,
 			next_reconcile_future,
 			authorization,
 			user_agent,
@@ -163,7 +163,7 @@ where
 
 			info!("Reconciling all resources before starting");
 			// Reconcile all resources at the start (or when reconnecting to the websocket)
-			self.reconcilation_list.clear();
+			self.reconciliation_list.clear();
 			self.reconcile_all().await;
 
 			// Reconcile all resources at a fixed interval
@@ -188,7 +188,7 @@ where
 					// Reconcile all resources
 					Either::Left(_) => {
 						reconcile_all = Box::pin(time::sleep(E::FULL_RECONCILIATION_INTERVAL));
-						self.reconcilation_list.clear();
+						self.reconciliation_list.clear();
 						self.reconcile_all().await;
 						continue 'message;
 					}
@@ -287,26 +287,25 @@ where
 		})
 		.unwrap_or_else(|_| self.deployments.keys().copied().collect());
 
-		self.executor
-			.list_running_deployments()
-			.for_each(async |deployment_id| {
-				let deployment = should_run_deployments
-					.iter()
-					.find(|&&id| deployment_id == id);
+		let mut running_deployments = pin!(self.executor.list_running_deployments());
 
-				// If the deployment does not exist in the should run list, delete it
-				let Some(&deployment_id) = deployment else {
-					self.executor.delete_deployment(deployment_id).await;
-					return;
-				};
+		while let Some(deployment_id) = running_deployments.next().await {
+			let deployment = should_run_deployments
+				.iter()
+				.find(|&&id| deployment_id == id);
 
-				self.reconcile_deployment(deployment_id).await;
-			})
-			.await;
+			// If the deployment does not exist in the should run list, delete it
+			let Some(&deployment_id) = deployment else {
+				self.executor.delete_deployment(deployment_id).await;
+				return;
+			};
+
+			self.reconcile_deployment(deployment_id).await;
+		}
 	}
 
 	async fn reconcile_deployment(&mut self, deployment_id: Uuid) -> Result<(), Duration> {
-		self.reconcilation_list
+		self.reconciliation_list
 			.retain(|message| message.value() != &deployment_id);
 
 		Ok(())
@@ -315,7 +314,7 @@ where
 	async fn handle_server_message(&mut self, msg: StreamRunnerDataForWorkspaceServerMsg) {
 		// if this resource is already queued for reconciliation, remove that
 		let current_id = get_resource_id_from_message(&msg);
-		self.reconcilation_list
+		self.reconciliation_list
 			.retain(|message| message.value() != &current_id);
 
 		use StreamRunnerDataForWorkspaceServerMsg::*;
@@ -339,7 +338,7 @@ where
 			DeploymentDeleted { id } => self.executor.delete_deployment(id).await,
 		};
 		if let Err(err) = response {
-			self.reconcilation_list.push(DelayedFuture::new(
+			self.reconciliation_list.push(DelayedFuture::new(
 				Instant::now() + err,
 				get_resource_id_from_message(&msg),
 			));
@@ -353,7 +352,7 @@ where
 	/// and set that to `next_reconcile_future`.
 	fn recheck_next_reconcile_future(&mut self) {
 		self.next_reconcile_future = self
-			.reconcilation_list
+			.reconciliation_list
 			.iter()
 			.reduce(|a, b| {
 				if a.resolve_at() < b.resolve_at() {
