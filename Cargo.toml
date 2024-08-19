@@ -132,15 +132,15 @@ panic = "abort"
 
 [profile.frontend]
 inherits = "release"
-opt-level = 'z'
+opt-level = 's'
 strip = true
 
 [[workspace.metadata.leptos]]
 # The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name
+name = "dashboard"
+output-name = "patr"
 bin-package = "api"
 lib-package = "hosted-frontend"
-name = "dashboard"
-output-name = "dashboard"
 # The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
 site-root = "target/hosted-frontend"
 # The site-root relative folder where all compiled output (JS, WASM and CSS) is written
@@ -158,7 +158,7 @@ tailwind-input-file = "hosted-frontend/assets/styles/index.scss"
 #
 # Optional, defaults to "tailwind.config.js" which if is not present
 # is generated for you
-tailwind-config-file = "tailwind.config.js"
+tailwind-config-file = "config/tailwind.config.js"
 
 # Assets source dir. All files found here will be copied and synchronized to site-root.
 # The assets-dir cannot have a sub directory with the same name/path as site-pkg-dir.
