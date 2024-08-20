@@ -20,6 +20,15 @@ reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 semver = { workspace = true, features = ["default"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+sqlx = { workspace = true, features = [
+    "runtime-tokio",
+    "tls-rustls",
+    "macros",
+    "uuid",
+    "time",
+    "ipnetwork",
+    "sqlite",
+] }
 tokio = { workspace = true, features = ["full"] }
 tokio-stream = { workspace = true, features = ["default", "sync"] }
 tokio-tungstenite = { workspace = true, features = ["default"] }

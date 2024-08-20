@@ -84,7 +84,7 @@ where
 		.expect("Failed to set global default subscriber");
 
 		let deployments = HashMap::new();
-		let reconcilation_list = Vec::new();
+		let reconciliation_list = Vec::new();
 		let next_reconcile_future = future::pending().boxed();
 		let authorization = BearerToken::from_str(&settings.api_token)?;
 		let user_agent = UserAgent::from_str(concat!(
@@ -97,7 +97,7 @@ where
 			executor,
 			settings,
 			deployments,
-			reconciliation_list: reconcilation_list,
+			reconciliation_list,
 			next_reconcile_future,
 			authorization,
 			user_agent,
