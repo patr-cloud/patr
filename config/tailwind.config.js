@@ -2,8 +2,8 @@
 export default {
   content: [
     ".html",
-    "../hosted-frontend/src/**/*.rs",
-    "../components/src/**/*.rs",
+    "hosted-frontend/src/**/*.rs",
+    "components/src/**/*.rs",
   ],
   corePlugins: {
     preflight: false,

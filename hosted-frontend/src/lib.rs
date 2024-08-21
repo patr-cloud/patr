@@ -113,7 +113,7 @@ pub fn render() -> impl IntoView {
 				rel="stylesheet"
 				href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
 			/>
-			<Stylesheet id="leptos" href="/pkg/dashboard.css"/>
+			<Stylesheet id="leptos" href="/pkg/patr.css"/>
 
 			<Title formatter={|title: String| {
 				if title.is_empty() { "Patr".to_string() } else { format!("{title} | Patr") }
