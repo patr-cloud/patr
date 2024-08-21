@@ -3,18 +3,8 @@ use std::str::FromStr;
 use ev::MouseEvent;
 use models::api::workspace::deployment::{EnvironmentVariableValue, ExposedPortType};
 
-use super::RunnerPageError;
-use crate::{
-	pages::{
-		ConfigMountInput,
-		DeploymentInfo,
-		EnvInput,
-		PortInput,
-		ProbeInput,
-		ProbeInputType,
-	},
-	prelude::*,
-};
+use super::{super::components::*, RunnerPageError};
+use crate::{pages::DeploymentInfo, prelude::*};
 
 #[component]
 pub fn RunningDetails(

@@ -1,10 +1,8 @@
 use codee::string::FromToStringCodec;
 use leptos_use::use_cookie;
 
-use crate::{
-	pages::{DeploymentInfo, MachineTypeCard},
-	prelude::*,
-};
+use super::super::components::*;
+use crate::{pages::DeploymentInfo, prelude::*};
 
 #[component]
 pub fn ScaleDeployment() -> impl IntoView {
@@ -105,7 +103,7 @@ pub fn ScaleDeployment() -> impl IntoView {
 													machine_type={child}
 													on_select={move |id: Uuid| {
 														deployment_info.update(
-															|info| info.machine_type = Some(id.to_string())
+															|info| info.machine_type = Some(id)
 														)
 													}}
 												/>

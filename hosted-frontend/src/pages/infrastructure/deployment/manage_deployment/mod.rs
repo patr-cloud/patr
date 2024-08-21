@@ -8,8 +8,8 @@ mod monitor;
 mod scaling;
 mod urls;
 
+use leptos_query::QueryResult;
 use models::api::workspace::deployment::*;
-use codee::string::FromToStringCodec;
 
 pub use self::{
 	details::*,
@@ -22,44 +22,28 @@ pub use self::{
 	scaling::*,
 	urls::*,
 };
-use crate::prelude::*;
+use crate::{prelude::*, queries::get_deployment_query};
 
+/// The State Data for deployment management page
 #[derive(Debug, Clone)]
 pub struct DeploymentInfoContext(RwSignal<Option<GetDeploymentInfoResponse>>);
 
+/// The Route Params for the manage deployments page
 #[derive(Params, PartialEq)]
 pub struct DeploymentParams {
 	deployment_id: Option<String>,
 }
 
 #[component]
-pub fn ManageDeployments() -> impl IntoView {
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (current_workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
-
-	let params = use_params::<DeploymentParams>();
-	let deployment_id = Signal::derive(move || {
-		params.with(|params| {
-			params
-				.as_ref()
-				.map(|param| param.deployment_id.clone())
-				.unwrap_or_default()
-		})
-	});
-
-	let deployment_info = create_resource(
-		move || {
-			(
-				access_token.get(),
-				deployment_id.get(),
-				current_workspace_id.get(),
-			)
-		},
-		move |(access_token, deployment_id, workspace_id)| async move {
-			get_deployment(access_token, deployment_id, workspace_id).await
-		},
-	);
+pub fn ManageDeploymentsContent(
+	/// The deployment id
+	#[prop(into)]
+	deployment_id: Signal<Uuid>,
+) -> impl IntoView {
+	let QueryResult {
+		data: deployment_info,
+		..
+	} = get_deployment_query().use_query(move || deployment_id.get());
 
 	let deployment_info_signal = create_rw_signal::<Option<GetDeploymentInfoResponse>>(None);
 	provide_context(DeploymentInfoContext(deployment_info_signal));
@@ -91,5 +75,39 @@ pub fn ManageDeployments() -> impl IntoView {
 			}
 		</Transition>
 
+	}
+}
+
+/// A Wrapper around the manage deployments page content to make sure that
+/// the runner id is a valid Uuid
+#[component]
+pub fn ManageDeployments() -> impl IntoView {
+	let params = use_params::<DeploymentParams>();
+	let deployment_id = Signal::derive(move || {
+		params.with(|params| {
+			params
+				.as_ref()
+				.map(|param| param.deployment_id.clone())
+				.unwrap_or_default()
+				.map(|x| Uuid::parse_str(x.as_str()).ok())
+				.flatten()
+		})
+	});
+
+	move || match deployment_id.get() {
+		Some(deployment_id) => {
+			view! {
+				<ManageDeploymentsContent
+					deployment_id={Signal::derive(move || deployment_id)}
+				/>
+			}
+		}
+		.into_view(),
+		None => view! {
+			<ErrorPage
+				title="Error"
+			/>
+		}
+		.into_view(),
 	}
 }

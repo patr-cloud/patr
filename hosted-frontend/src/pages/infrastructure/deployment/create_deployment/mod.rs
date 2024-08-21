@@ -1,14 +1,9 @@
 use std::{collections::BTreeMap, rc::Rc};
 
-use codee::string::FromToStringCodec;
 use ev::MouseEvent;
-use leptos_use::use_cookie;
-use models::api::workspace::deployment::{
-	EnvironmentVariableValue,
-	ExposedPortType,
-};
+use serde_json::to_string;
 
-use crate::prelude::*;
+use crate::{prelude::*, queries::create_deployment_query};
 
 mod details;
 mod head;
@@ -16,98 +11,9 @@ mod running;
 mod scale;
 
 pub use self::{details::*, head::*, running::*, scale::*};
+pub use super::utils::{DeploymentInfo, DetailsPageError, Page, RunnerPageError};
 
-#[derive(Clone, Debug)]
-pub struct DeploymentInfo {
-	name: Option<String>,
-	registry_name: Option<String>,
-	image_tag: Option<String>,
-	image_name: Option<String>,
-	runner_id: Option<String>,
-	machine_type: Option<String>,
-	deploy_on_create: bool,
-	deploy_on_push: bool,
-	min_horizontal_scale: Option<u16>,
-	max_horizontal_scale: Option<u16>,
-	ports: BTreeMap<StringifiedU16, ExposedPortType>,
-	startup_probe: Option<(u16, String)>,
-	liveness_probe: Option<(u16, String)>,
-	environment_variables: BTreeMap<String, EnvironmentVariableValue>,
-	volumes: BTreeMap<Uuid, String>,
-}
-
-#[derive(Clone, Copy, Default, PartialEq, Eq)]
-pub enum Page {
-	#[default]
-	Details,
-	Running,
-	Scaling,
-}
-
-impl Page {
-	pub fn next(&self) -> Self {
-		match self {
-			Self::Details => Self::Running,
-			Self::Running => Self::Scaling,
-			Self::Scaling => Self::Scaling,
-		}
-	}
-
-	pub fn back(&self) -> Self {
-		match self {
-			Self::Scaling => Self::Running,
-			Self::Running => Self::Details,
-			Self::Details => Self::Details,
-		}
-	}
-}
-
-#[derive(Clone)]
-pub struct DetailsPageError {
-	name: String,
-	registry: String,
-	image_name: String,
-	image_tag: String,
-	runner: String,
-}
-
-impl Default for DetailsPageError {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl DetailsPageError {
-	pub const fn new() -> Self {
-		DetailsPageError {
-			name: String::new(),
-			runner: String::new(),
-			image_tag: String::new(),
-			image_name: String::new(),
-			registry: String::new(),
-		}
-	}
-}
-
-#[derive(Clone)]
-pub struct RunnerPageError {
-	ports: String,
-}
-
-impl Default for RunnerPageError {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl RunnerPageError {
-	pub const fn new() -> Self {
-		RunnerPageError {
-			ports: String::new(),
-		}
-	}
-}
-
+/// The Create Deployment Page
 #[component]
 pub fn CreateDeployment() -> impl IntoView {
 	let deployment_info = create_rw_signal(DeploymentInfo {
@@ -135,56 +41,16 @@ pub fn CreateDeployment() -> impl IntoView {
 	let details_error = create_rw_signal(DetailsPageError::new());
 	let runner_error = create_rw_signal(RunnerPageError::new());
 
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (current_workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+	let create_deployment_action = create_deployment_query();
 
-	let on_submit = move |_: MouseEvent| {
-		// let navigate =
-		logging::log!("{:?}", deployment_info.get());
-		spawn_local(async move {
-			let resp = create_deployment(
-				current_workspace_id.get(),
-				access_token.get(),
-				deployment_info.get().name.unwrap_or_default(),
-				deployment_info.get().registry_name.unwrap_or_default(),
-				deployment_info.get().image_name.unwrap_or_default(),
-				deployment_info.get().image_tag.unwrap_or_default(),
-				deployment_info.get().deploy_on_create,
-				deployment_info.get().deploy_on_push,
-				deployment_info
-					.get()
-					.min_horizontal_scale
-					.unwrap_or_default(),
-				deployment_info
-					.get()
-					.max_horizontal_scale
-					.unwrap_or_default(),
-				deployment_info.get().runner_id.unwrap_or_default(),
-				deployment_info.get().startup_probe,
-				deployment_info.get().liveness_probe,
-				deployment_info.get().machine_type.unwrap_or_default(),
-				deployment_info
-					.get()
-					.environment_variables
-					.iter()
-					.map(|x| (x.0.to_owned(), x.1.to_owned()))
-					.collect::<Vec<_>>(),
-				deployment_info
-					.get()
-					.volumes
-					.iter()
-					.map(|(id, dv)| (id.to_owned(), dv.to_owned()))
-					.collect::<Vec<_>>(),
-				deployment_info
-					.get()
-					.ports
-					.iter()
-					.map(|(port, port_type)| (port.to_owned(), port_type.to_owned()))
-					.collect::<Vec<_>>(),
-			)
-			.await;
-		})
+	let on_submit = move |ev: MouseEvent| {
+		ev.prevent_default();
+		if let Some(deployment_info) = deployment_info.get().convert_to_deployment_req() {
+			logging::log!("value: {:#?}", to_string(&deployment_info));
+			create_deployment_action.dispatch(deployment_info);
+		} else {
+			logging::error!("Invalid deployment info");
+		}
 	};
 
 	view! {
@@ -251,7 +117,7 @@ pub fn CreateDeployment() -> impl IntoView {
 
 												return;
 											}
-											if !deployment_info.runner_id.is_some_and(|x| !x.is_empty()) {
+											if !deployment_info.runner_id.is_some_and(|x| !x.to_string().is_empty()) {
 												details_error.update(
 													|errors| errors.runner = "Please Select a Runner".to_string()
 												);

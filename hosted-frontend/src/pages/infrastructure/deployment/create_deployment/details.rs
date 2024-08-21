@@ -19,11 +19,6 @@ pub fn DeploymentDetails(
 	let (current_workspace_id, _) =
 		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
 
-	create_effect(move |_| deployment_info.update(|info| info.runner_id = Some(runner.get())));
-	create_effect(move |_| {
-		deployment_info.update(|info| info.registry_name = Some(registry.get()))
-	});
-
 	let runner_list = create_resource(
 		move || (access_token.get(), current_workspace_id.get()),
 		move |(access_token, workspace_id)| async move {
@@ -40,7 +35,12 @@ pub fn DeploymentDetails(
 			<div class="flex flex-col items-start justify-start w-full h-full text-white">
 				<div class="flex mb-xs w-full">
 					<div class="flex-2 flex items-center justify-start">
-						<label html_for="name" class="text-white text-sm flex items-center justify-start">"Name"</label>
+						<label
+							html_for="name"
+							class="text-white text-sm flex items-center justify-start"
+						>
+							"Name"
+						</label>
 					</div>
 
 					<div class="flex-10 flex flex-col items-start justify-start">
@@ -71,7 +71,11 @@ pub fn DeploymentDetails(
 
 				<div class="flex my-xs w-full mb-md">
 					<div class="flex-2 flex justify-start items-center">
-						<label class="text-white text-sm flex justify-start items-center">"Registry"</label>
+						<label
+							class="text-white text-sm flex justify-start items-center"
+						>
+							"Registry"
+						</label>
 					</div>
 
 					<div class="flex-10 flex flex-col items-start justify-start">
@@ -79,6 +83,9 @@ pub fn DeploymentDetails(
 							placeholder="Registry Name"
 							value={registry}
 							class="w-full"
+							on_select={move |id: String| {
+								deployment_info.update(|info| info.registry_name = Some(id))
+							}}
 							options={vec![
 								InputDropdownOption {
 									id: "docker".to_string(),
@@ -97,7 +104,11 @@ pub fn DeploymentDetails(
 
 				<div class="flex my-xs w-full">
 					<div class="flex-2 flex justify-start items-center">
-						<label class="text-white text-sm flex justify-start items-center">"Image Details"</label>
+						<label
+							class="text-white text-sm flex justify-start items-center"
+						>
+							"Image Details"
+						</label>
 					</div>
 
 					<div class="flex-6 flex flex-col items-start justify-start">
@@ -164,13 +175,18 @@ pub fn DeploymentDetails(
 										placeholder="Choose A Runner"
 										class="w-full"
 										value={runner}
+										on_select={move |id: String| {
+											if let Ok(runner_id) = Uuid::parse_str(id.as_str()) {
+												deployment_info.update(|info| info.runner_id = Some(runner_id))
+											}
+										}}
 										options={
 											match runner_list.get() {
 												Some(Ok(data)) => {
 													data.runners
 														.iter()
 														.map(|x| InputDropdownOption {
-															id: x.id.to_string().clone(),
+															id: x.id.to_string(),
 															disabled: false,
 															label: x.name.clone()
 														})
