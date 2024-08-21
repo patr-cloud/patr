@@ -1,17 +1,16 @@
 mod head;
 
-use codee::string::FromToStringCodec;
-
 pub use self::head::*;
 use crate::{prelude::*, queries::create_runner_query};
 
+/// The Create Runner Page
 #[component]
 pub fn CreateRunner() -> impl IntoView {
 	let runner_name = create_rw_signal("".to_string());
 
 	let create_runner_action = create_runner_query();
 
-	let create_response = create_runner_action.value();
+	// let create_response = create_runner_action.value();
 
 	view! {
 		<RunnerCreateHead />

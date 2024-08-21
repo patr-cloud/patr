@@ -10,7 +10,9 @@ use crate::{prelude::*, queries::*};
 #[component]
 pub fn RunnerDashboard() -> impl IntoView {
 	let QueryResult {
-		data: runners_list, ..
+		data: runners_list,
+		is_loading: is_runners_list_loading,
+		..
 	} = list_runners_query().use_query(move || AllRunnersTag);
 
 	view! {
@@ -34,7 +36,10 @@ pub fn RunnerDashboard() -> impl IntoView {
 											</For>
 										}.into_view()
 									},
-									_ => view! {}.into_view()
+									Some(Err(_)) => view! {}.into_view(),
+									None => view! {
+										<RunnerSkeleton />
+									}.into_view(),
 								}
 							}
 						</Transition>

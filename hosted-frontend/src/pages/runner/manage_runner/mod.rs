@@ -1,5 +1,6 @@
 mod head;
 
+use convert_case::*;
 use leptos_query::QueryResult;
 
 pub use self::head::*;
@@ -60,9 +61,20 @@ fn ManageRunnerContent(
 						.into_view(),
 						Some(Err(err)) => view! {
 							<div>"Error fetching runner info"</div>
+							<ErrorPage
+								title="Error Loading Runner Info"
+								content={
+									logging::log!("{:?}", err);
+									view! {
+										<p class="text-white">
+											{format!("{}", err.to_string().to_case(Case::Title))}
+										</p>
+									}.into_view()
+								}
+							/>
 						}.into_view(),
 						None => view! {
-							<div>"Runner not found"</div>
+							<div>"Loading Runner Info"</div>
 						}
 						.into_view(),
 					}
@@ -80,14 +92,12 @@ pub fn ManageRunner() -> impl IntoView {
 	let params = use_params::<ManageRunnerRouteParams>();
 	let runner_id = Signal::derive(move || {
 		params.with(|params| {
-			let x = params
+			params
 				.as_ref()
 				.map(|param| param.runner_id.clone())
 				.unwrap_or_default()
 				.map(|x| Uuid::parse_str(x.as_str()).ok())
-				.flatten();
-
-			x
+				.flatten()
 		})
 	});
 
@@ -99,7 +109,14 @@ pub fn ManageRunner() -> impl IntoView {
 		}
 		.into_view(),
 		None => view! {
-			<div>"invalid runner id"</div>
+			<ErrorPage
+				title="Invalid Runner ID"
+				content={
+					view! {
+						<p class="text-white">"Runner id is not a valid UUID"</p>
+					}.into_view()
+				}
+			/>
 		}
 		.into_view(),
 	}

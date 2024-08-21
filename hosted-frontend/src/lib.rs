@@ -11,6 +11,7 @@ pub mod prelude {
 		containers::*,
 		dashboard_container::*,
 		double_input_slider::*,
+		error_page::*,
 		icon::*,
 		input::*,
 		input_dropdown::*,

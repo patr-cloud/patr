@@ -1,3 +1,5 @@
+use std::{thread, time};
+
 use models::api::workspace::runner::*;
 
 use crate::prelude::*;
@@ -11,6 +13,7 @@ pub async fn list_runners(
 
 	use constants::USER_AGENT_STRING;
 
+	thread::sleep(time::Duration::from_secs(2));
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 

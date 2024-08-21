@@ -12,6 +12,7 @@ pub mod prelude {
 		containers::*,
 		dashboard_container::*,
 		double_input_slider::*,
+		error_page::*,
 		icon::*,
 		input::*,
 		input_dropdown::*,
@@ -27,6 +28,7 @@ pub mod prelude {
 		status_badge::*,
 		table_dashboard::*,
 		textbox::*,
+		toast::*,
 		tooltip::*,
 		utils::*,
 	};
@@ -71,6 +73,10 @@ pub mod dashboard_container;
 /// to display a slider with two inputs. It is used to allow the user to select
 /// two values from a range of values.
 pub mod double_input_slider;
+/// The error page component. The error page component is used to display an
+/// error page. It is used to show the user an error page, like a 404 error
+/// page, or any other form of error.
+pub mod error_page;
 /// The Icon component. This component is used to display an icon in the
 /// fontawsome library, of different sizes and colors.
 pub mod icon;
@@ -131,6 +137,10 @@ pub mod table_dashboard;
 /// The Textbox component. The textbox component is used to display a textbox
 /// input when the user cannot edit the value.
 pub mod textbox;
+/// The toast component. The toast component is used to display a notification
+/// to the user. For Example, to show the user a notification for success
+/// or failure of an action like reseouce creation or deletion.
+pub mod toast;
 /// The Tooltip component. The tooltip component is used to display a tooltip
 /// when the user hovers over an element. It is used to show the user more
 /// information about an element.
