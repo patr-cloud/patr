@@ -45,7 +45,6 @@ pub fn RunnerManageHead(
 					on:submit={
 						move |ev| {
 							ev.prevent_default();
-							logging::log!("Submitted delete runner form with id: {:?}", runner_info.get().id.clone());
 							delete_runner_action.dispatch(runner_info.get().id.clone());
 						}
 					}

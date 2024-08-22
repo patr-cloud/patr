@@ -59,7 +59,7 @@ pub fn create_runner_query(
 	let access_token = state.get().get_access_token();
 	let workspace_id = state.get().get_last_used_workspace_id();
 
-	let action = create_action(move |runner_name: &String| {
+	create_action(move |runner_name: &String| {
 		let navigate = use_navigate();
 
 		let access_token = access_token.clone();
@@ -80,9 +80,7 @@ pub fn create_runner_query(
 
 			response
 		}
-	});
-
-	action
+	})
 }
 
 /// Query to delete a runner, Returns an action to be dispatched on submit.
@@ -95,7 +93,7 @@ pub fn delete_runner_query() -> Action<Uuid, Result<DeleteRunnerResponse, Server
 	let access_token = state.get().get_access_token();
 	let workspace_id = state.get().get_last_used_workspace_id();
 
-	let action = create_action(move |runner_id: &Uuid| {
+	create_action(move |runner_id: &Uuid| {
 		let navigate = use_navigate();
 
 		let access_token = access_token.clone();
@@ -116,7 +114,5 @@ pub fn delete_runner_query() -> Action<Uuid, Result<DeleteRunnerResponse, Server
 
 			response
 		}
-	});
-
-	action
+	})
 }
