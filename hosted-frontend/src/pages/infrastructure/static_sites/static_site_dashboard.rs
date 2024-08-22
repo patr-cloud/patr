@@ -32,7 +32,7 @@ pub fn StaticSiteDashboard() -> impl IntoView {
 		},
 	]);
 	view! {
-		<ContainerMain>
+		<ContainerMain class="my-md">
 			<ContainerHead>
 				<div class="fr-sb-ct full-width">
 					<div class="fc-fs-fs">

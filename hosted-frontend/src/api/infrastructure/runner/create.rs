@@ -4,9 +4,9 @@ use crate::prelude::*;
 
 #[server(CreateRunnerFn, endpoint = "/infrastructure/runner/create")]
 pub async fn create_runner(
-	name: String,
 	access_token: Option<String>,
-	workspace_id: Option<String>,
+	workspace_id: Option<Uuid>,
+	name: String,
 ) -> Result<AddRunnerToWorkspaceResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
@@ -15,8 +15,8 @@ pub async fn create_runner(
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	let workspace_id = Uuid::parse_str(workspace_id.unwrap().as_str())
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
+	let workspace_id = workspace_id
+		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
 	let api_response = make_api_call::<AddRunnerToWorkspaceRequest>(
 		ApiRequest::builder()
@@ -30,10 +30,6 @@ pub async fn create_runner(
 			.build(),
 	)
 	.await;
-
-	if api_response.is_ok() {
-		leptos_axum::redirect("/runners");
-	}
 
 	api_response
 		.map(|res| res.body)

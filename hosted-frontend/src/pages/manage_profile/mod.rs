@@ -1,5 +1,8 @@
 use crate::prelude::*;
 
+/// All the Routes for Profile Pages,
+/// Contains create and edit api tokens, and
+/// Managed Profile
 #[component(transparent)]
 pub fn ProfileRoutes() -> impl IntoView {
 	view! {
@@ -14,6 +17,7 @@ pub fn ProfileRoutes() -> impl IntoView {
 	}
 }
 
+/// All the Outer Shell for Profile Pages, Contains the header and the tabs
 #[component]
 pub fn ManageProfile() -> impl IntoView {
 	view! {

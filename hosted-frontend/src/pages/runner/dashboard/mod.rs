@@ -1,23 +1,19 @@
 mod head;
 mod runner_card;
 
-use codee::string::FromToStringCodec;
+use leptos_query::QueryResult;
 
 pub use self::{head::*, runner_card::*};
-use crate::prelude::*;
+use crate::{prelude::*, queries::*};
 
+/// The Runner Dashboard page
 #[component]
 pub fn RunnerDashboard() -> impl IntoView {
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (current_workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
-
-	let runners_list = create_resource(
-		move || (access_token.get(), current_workspace_id.get()),
-		move |(access_token, workspace_id)| async move {
-			list_runners(workspace_id, access_token).await
-		},
-	);
+	let QueryResult {
+		data: runners_list,
+		is_loading: is_runners_list_loading,
+		..
+	} = list_runners_query().use_query(move || AllRunnersTag);
 
 	view! {
 		<RunnerDashboardHead />
@@ -40,7 +36,10 @@ pub fn RunnerDashboard() -> impl IntoView {
 											</For>
 										}.into_view()
 									},
-									_ => view! {}.into_view()
+									Some(Err(_)) => view! {}.into_view(),
+									None => view! {
+										<RunnerSkeleton />
+									}.into_view(),
 								}
 							}
 						</Transition>

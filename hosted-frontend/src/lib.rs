@@ -11,6 +11,7 @@ pub mod prelude {
 		containers::*,
 		dashboard_container::*,
 		double_input_slider::*,
+		error_page::*,
 		icon::*,
 		input::*,
 		input_dropdown::*,
@@ -55,11 +56,17 @@ pub mod app;
 /// The pages module. This contains all the pages used in the application.
 /// Pages are the main views that are rendered when a route is matched.
 pub mod pages;
+/// All the Leptos Queries and Tags used in the API routes
+pub mod queries;
+/// The Routes module. This contains all the routes used in the applica.
+/// Routes are what defines the URL for each and every page.
+pub mod routes;
 /// The utils module. This contains all the utility functions and other things
 /// needed to make the application work.
 pub mod utils;
 
 use leptos_meta::{provide_meta_context, Link as MetaLink, Meta, Stylesheet, Title};
+use leptos_query::provide_query_client;
 use prelude::*;
 
 /// The main hydrate function. Called when the application starts to hydrate
@@ -82,6 +89,8 @@ pub fn render() -> impl IntoView {
 	use app::App;
 
 	provide_meta_context();
+	provide_query_client();
+
 	view! {
 		<>
 			<Meta charset="utf-8"/>
@@ -104,7 +113,7 @@ pub fn render() -> impl IntoView {
 				rel="stylesheet"
 				href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
 			/>
-			<Stylesheet id="leptos" href="/pkg/dashboard.css"/>
+			<Stylesheet id="leptos" href="/pkg/patr.css"/>
 
 			<Title formatter={|title: String| {
 				if title.is_empty() { "Patr".to_string() } else { format!("{title} | Patr") }

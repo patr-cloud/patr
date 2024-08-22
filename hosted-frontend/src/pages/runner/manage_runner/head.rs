@@ -1,7 +1,6 @@
-use codee::string::FromToStringCodec;
 use models::api::workspace::runner::Runner;
 
-use crate::prelude::*;
+use crate::{prelude::*, queries::delete_runner_query};
 
 #[component]
 pub fn RunnerManageHead(
@@ -9,11 +8,7 @@ pub fn RunnerManageHead(
 	#[prop(into)]
 	runner_info: MaybeSignal<WithId<Runner>>,
 ) -> impl IntoView {
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
-
-	let delete_runner_action = create_server_action::<DeleteRunnerFn>();
+	let delete_runner_action = delete_runner_query();
 
 	view! {
 		<ContainerHead>
@@ -41,36 +36,19 @@ pub fn RunnerManageHead(
 					</PageTitleContainer>
 
 					<PageDescription
-						description={"Create and manage CI Runners for automated builds.".to_string()}
+						description={"change me to a description".to_string()}
 						doc_link={Some("https://docs.patr.cloud/ci-cd/#choosing-a-runner".to_string())}
 					/>
 				</div>
 
-				<ActionForm action={delete_runner_action}>
-					<input
-						type="hidden"
-						id="access_token"
-						name="access_token"
-						value={move || access_token.get()}
-					/>
-
-					<input
-						type="hidden"
-						id="workspace_id"
-						name="workspace_id"
-						value={move || workspace_id.get()}
-					/>
-
-					<input
-						type="hidden"
-						id="runner_id"
-						name="runner_id"
-						value={
-							let runner_info = runner_info.clone();
-							move || runner_info.get().id.to_string()
+				<form
+					on:submit={
+						move |ev| {
+							ev.prevent_default();
+							delete_runner_action.dispatch(runner_info.get().id.clone());
 						}
-					/>
-
+					}
+				>
 					<Link
 						style_variant={LinkStyleVariant::Contained}
 						should_submit={true}
@@ -84,7 +62,7 @@ pub fn RunnerManageHead(
 						/>
 						"DELETE"
 					</Link>
-				</ActionForm>
+				</form>
 			</div>
 		</ContainerHead>
 	}

@@ -2,9 +2,9 @@ mod head;
 
 use std::{rc::Rc, str::FromStr};
 
+use codee::string::FromToStringCodec;
 use models::api::workspace::database::DatabaseEngine;
 use strum::VariantNames;
-use codee::string::FromToStringCodec;
 
 pub use self::head::*;
 use crate::{pages::DatabaseTypeCard, prelude::*};
@@ -132,7 +132,7 @@ pub fn CreateDatabase() -> impl IntoView {
 					</div>
 				</div>
 
-				<div class="flex mb-xs full-width mb-md">
+				<div class="flex full-width mb-md">
 					<div class="flex-col-2 fr-fs-ct">
 						<label html_for="database-engine" class="txt-sm fr-fs-ct">
 							"Name"

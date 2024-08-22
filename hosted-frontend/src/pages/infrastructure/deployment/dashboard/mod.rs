@@ -1,17 +1,23 @@
+mod head;
+
 use codee::string::FromToStringCodec;
 use leptos_use::use_cookie;
 
-use crate::{pages::DeploymentCard, prelude::*};
+pub use self::head::*;
+use super::components::*;
+use crate::prelude::*;
 
+/// The Shell Outer for Deployment Page
 #[component]
-pub fn Deployment() -> impl IntoView {
+pub fn DeploymentPage() -> impl IntoView {
 	view! {
-		<ContainerMain class="w-full h-full mb-md">
+		<ContainerMain class="w-full h-full my-md">
 			<Outlet/>
 		</ContainerMain>
 	}
 }
 
+/// The Deployment Dashboard Page
 #[component]
 pub fn DeploymentDashboard() -> impl IntoView {
 	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
@@ -26,37 +32,7 @@ pub fn DeploymentDashboard() -> impl IntoView {
 	);
 
 	view! {
-		<ContainerHead>
-			<div class="flex justify-between items-center w-full">
-				<div class="flex flex-col items-start justify-start">
-					<PageTitleContainer>
-						<PageTitle icon_position={PageTitleIconPosition::End}>
-							"Infrastructure"
-						</PageTitle>
-						<PageTitle variant={PageTitleVariant::SubHeading}>"Deployment"</PageTitle>
-					</PageTitleContainer>
-
-					<PageDescription
-						description="Create and Manage Deployments with ease using Patr."
-						doc_link={Some("https://docs.patr.cloud/features/deployments/".to_owned())}
-					/>
-				</div>
-
-				<Link
-					r#type={Variant::Link}
-					to={"create".to_string()}
-					style_variant={LinkStyleVariant::Contained}
-				>
-					"CREATE DEPLOYMENT"
-					<Icon
-						icon={IconType::Plus}
-						size={Size::ExtraSmall}
-						class="ml-xs"
-						color={Color::Black}
-					/>
-				</Link>
-			</div>
-		</ContainerHead>
+		<DeploymentDashboardHead />
 
 		<ContainerBody>
 			<DashboardContainer

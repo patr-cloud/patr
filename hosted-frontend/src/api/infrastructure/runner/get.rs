@@ -5,8 +5,8 @@ use crate::prelude::*;
 #[server(GetRunnerInfoFn, endpoint = "/infrastructure/runner/get-info")]
 pub async fn get_runner(
 	access_token: Option<String>,
-	runner_id: Option<String>,
-	workspace_id: Option<String>,
+	workspace_id: Option<Uuid>,
+	runner_id: Uuid,
 ) -> Result<GetRunnerInfoResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
@@ -15,11 +15,8 @@ pub async fn get_runner(
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	let runner_id = Uuid::parse_str(runner_id.unwrap().as_str())
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
-
-	let workspace_id = Uuid::parse_str(workspace_id.unwrap().as_str())
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
+	let workspace_id = workspace_id
+		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
 	let api_response = make_api_call::<GetRunnerInfoRequest>(
 		ApiRequest::builder()
@@ -39,5 +36,5 @@ pub async fn get_runner(
 
 	api_response
 		.map(|res| res.body)
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::InternalServerError))
+		.map_err(|err| ServerFnError::WrappedServerError(err))
 }

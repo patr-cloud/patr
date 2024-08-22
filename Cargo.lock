@@ -1853,6 +1853,7 @@ dependencies = [
  "leptos_axum",
  "leptos_meta",
  "leptos_query",
+ "leptos_query_devtools",
  "leptos_router",
  "log",
  "macros",
@@ -2838,6 +2839,20 @@ dependencies = [
  "leptos",
  "slotmap",
  "tokio",
+ "web-sys",
+]
+
+[[package]]
+name = "leptos_query_devtools"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "03da420d373103de2681e69a15d040054a9023e5135a9a39bfaa0adf2af41fd2"
+dependencies = [
+ "cfg-if",
+ "js-sys",
+ "leptos",
+ "leptos_query",
+ "wasm-bindgen",
  "web-sys",
 ]
 

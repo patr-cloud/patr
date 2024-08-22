@@ -2,11 +2,12 @@ use models::api::workspace::runner::*;
 
 use crate::prelude::*;
 
+/// Server function to delete a runner
 #[server(DeleteRunnerFn, endpoint = "/infrastructure/runner/delete")]
 pub async fn delete_runner(
-	runner_id: Option<String>,
 	access_token: Option<String>,
-	workspace_id: Option<String>,
+	workspace_id: Option<Uuid>,
+	runner_id: Uuid,
 ) -> Result<DeleteRunnerResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
@@ -15,11 +16,8 @@ pub async fn delete_runner(
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	let runner_id = Uuid::parse_str(runner_id.unwrap().as_str())
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
-
-	let workspace_id = Uuid::parse_str(workspace_id.unwrap().as_str())
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
+	let workspace_id = workspace_id
+		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
 	let api_response = make_api_call::<DeleteRunnerRequest>(
 		ApiRequest::builder()
@@ -38,7 +36,8 @@ pub async fn delete_runner(
 	.await;
 
 	if api_response.is_ok() {
-		leptos_axum::redirect("/runners");
+		// leptos_axum::redirect("/runners");
+		logging::log!("Deleted runner {:?}", runner_id);
 	}
 
 	api_response

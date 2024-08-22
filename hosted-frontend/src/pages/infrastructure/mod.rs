@@ -13,7 +13,7 @@ pub fn InfrastructureRoutes() -> impl IntoView {
 				<Route path={AppRoutes::Empty} view={DatabaseDashboard}/>
 			</Route>
 
-			<Route ssr=SsrMode::InOrder path={LoggedInRoute::Deployment} view={Deployment}>
+			<Route ssr=SsrMode::InOrder path={LoggedInRoute::Deployment} view={DeploymentPage}>
 				<Route path="create" view={CreateDeployment} />
 				<Route path="/:deployment_id" view={ManageDeployments}>
 					<Route path="/history" view={ManageDeploymentImageHistory}/>

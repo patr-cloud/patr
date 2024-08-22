@@ -1,9 +1,10 @@
 use std::str::FromStr;
 
+use codee::string::FromToStringCodec;
 use ev::MouseEvent;
 use models::api::workspace::deployment::*;
-use codee::string::FromToStringCodec;
 
+use super::super::components::*;
 use crate::{pages::*, prelude::*};
 
 #[component]

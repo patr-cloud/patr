@@ -3,6 +3,8 @@ use leptos_use::use_cookie;
 
 use crate::prelude::*;
 
+/// The Profile Settings Page, shows the basic info about the user, contact info
+/// and password management
 #[component]
 pub fn ProfileSettings() -> impl IntoView {
 	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
@@ -28,7 +30,9 @@ pub fn ProfileSettings() -> impl IntoView {
 							Err(_) => view! {}.into_view(),
 						}
 					}
-					None => view! {}.into_view(),
+					None => view! {
+						// <BasicInfo
+					}.into_view(),
 				}}
 
 			</Transition>
