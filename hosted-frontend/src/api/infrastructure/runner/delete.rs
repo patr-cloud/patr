@@ -36,8 +36,7 @@ pub async fn delete_runner(
 	.await;
 
 	if api_response.is_ok() {
-		// leptos_axum::redirect("/runners");
-		logging::log!("Deleted runner {:?}", runner_id);
+		leptos_axum::redirect("/runners");
 	}
 
 	api_response

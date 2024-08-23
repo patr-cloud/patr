@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use leptos::prelude::*;
 use models::{
 	api::workspace::deployment::{
 		CreateDeploymentRequest,
@@ -9,9 +10,14 @@ use models::{
 		EnvironmentVariableValue,
 		ExposedPortType,
 		PatrRegistry,
+		*,
 	},
 	utils::{StringifiedU16, Uuid},
 };
+
+/// The State Data for deployment management page
+#[derive(Debug, Clone)]
+pub struct DeploymentInfoContext(pub RwSignal<Option<GetDeploymentInfoResponse>>);
 
 /// The Deployment Info
 #[derive(Clone, Debug)]

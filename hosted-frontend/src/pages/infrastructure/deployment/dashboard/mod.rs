@@ -1,11 +1,14 @@
 mod head;
 
-use codee::string::FromToStringCodec;
-use leptos_use::use_cookie;
+use convert_case::*;
+use leptos_query::QueryResult;
 
 pub use self::head::*;
 use super::components::*;
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	queries::{list_deployments_query, AllDeploymentsTag},
+};
 
 /// The Shell Outer for Deployment Page
 #[component]
@@ -20,49 +23,50 @@ pub fn DeploymentPage() -> impl IntoView {
 /// The Deployment Dashboard Page
 #[component]
 pub fn DeploymentDashboard() -> impl IntoView {
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (current_workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
-
-	let deployment_list = create_resource(
-		move || (access_token.get(), current_workspace_id.get()),
-		move |(access_token, workspace_id)| async move {
-			list_deployments(workspace_id, access_token).await
-		},
-	);
+	let QueryResult {
+		data: deployment_list,
+		..
+	} = list_deployments_query().use_query(move || AllDeploymentsTag);
 
 	view! {
 		<DeploymentDashboardHead />
 
 		<ContainerBody>
-			<DashboardContainer
-				gap={Size::Large}
-				render_items={
-					view! {
-						<Transition
-							fallback=move || view! {<p>"loading"</p>}
-						>
-							{
-								move || match deployment_list.get() {
-									Some(Ok(data)) => {
-										view! {
-											<For
-												each={move || data.deployments.clone()}
-												key={|state| state.id}
-												let:child
-											>
-												<DeploymentCard deployment={child}/>
-											</For>
-										}
-									},
-									_ => view! {}.into_view()
+			<Transition
+				fallback=move || view! {<p>"loading"</p>}
+			>
+				{
+					move || match deployment_list.get() {
+						Some(Ok(data)) => view! {
+							<DashboardContainer
+								gap={Size::Large}
+								render_items={
+									view! {
+										<For
+											each={move || data.deployments.clone()}
+											key={|state| state.id}
+											let:child
+										>
+											<DeploymentCard deployment={child}/>
+										</For>
+									}.into_view()
 								}
-							}
-						</Transition>
+							/>
+						},
+						Some(Err(err)) => view! {
+							<ErrorPage
+								title="Error Loading Deployments"
+								content=view! {
+									<p class="text-white">
+										{format!("{}", err.to_string().to_case(Case::Title))}
+									</p>
+								}.into_view()
+							/>
+						}.into_view(),
+						_ => view! {}.into_view()
 					}
 				}
-			/>
-
+			</Transition>
 		</ContainerBody>
 	}
 }

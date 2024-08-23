@@ -17,7 +17,7 @@ pub use super::utils::{DeploymentInfo, DetailsPageError, Page, RunnerPageError};
 pub fn CreateDeployment() -> impl IntoView {
 	let deployment_info = create_rw_signal(DeploymentInfo {
 		name: None,
-		registry_name: None,
+		registry_name: Some("docker".to_string()),
 		image_tag: None,
 		image_name: None,
 		runner_id: None,
@@ -49,6 +49,52 @@ pub fn CreateDeployment() -> impl IntoView {
 		} else {
 			logging::error!("Invalid deployment info");
 		}
+	};
+
+	let on_click_next = move |ev: &MouseEvent| {
+		ev.prevent_default();
+		let deployment_info = deployment_info.get();
+		logging::log!("{:#?}", details_error.get());
+
+		match page.get() {
+			Page::Details => {
+				details_error.set(DetailsPageError::new());
+				if deployment_info.name.is_none() {
+					details_error.update(|errors| errors.name = "Name is Required!".to_string());
+					return;
+				}
+				if deployment_info.registry_name.is_none() {
+					details_error.update(|errors| errors.registry = "".to_string());
+					return;
+				}
+				if deployment_info.image_name.is_none() {
+					details_error
+						.update(|errors| errors.image_name = "Image Name is Required".to_string());
+					return;
+				}
+				if deployment_info.image_tag.is_none() {
+					details_error.update(|errors| {
+						errors.image_tag = "Image Tag is also Required!".to_string()
+					});
+					return;
+				}
+				if !deployment_info
+					.runner_id
+					.is_some_and(|x| !x.to_string().is_empty())
+				{
+					details_error
+						.update(|errors| errors.runner = "Please Select a Runner".to_string());
+					return;
+				}
+			}
+			Page::Running => {
+				if deployment_info.ports.is_empty() {
+					return;
+				}
+			}
+			Page::Scaling => {}
+		};
+		page.update(|x| *x = x.next());
 	};
 
 	view! {
@@ -84,54 +130,7 @@ pub fn CreateDeployment() -> impl IntoView {
 					when={move || page.get() == Page::Scaling}
 					fallback={move || view! {
 						<Link
-							on_click={
-								Rc::new(move |_| {
-									let deployment_info = deployment_info.get();
-									match page.get() {
-										Page::Details => {
-											details_error.set(DetailsPageError::new());
-											if deployment_info.name.is_none() {
-												details_error.update(
-													|errors| errors.name = "Name is Required!".to_string()
-												);
-												return;
-											}
-											if deployment_info.registry_name.is_none() {
-												details_error.update(
-													|errors| errors.registry = "".to_string()
-												);
-												return;
-											}
-											if deployment_info.image_name.is_none() {
-												details_error.update(
-													|errors| errors.image_name = "Image Name is Required".to_string()
-												);
-												return;
-											}
-											if deployment_info.image_tag.is_none() {
-												details_error.update(
-													|errors| errors.image_tag = "Image Tag is also Required!".to_string()
-												);
-
-												return;
-											}
-											if !deployment_info.runner_id.is_some_and(|x| !x.to_string().is_empty()) {
-												details_error.update(
-													|errors| errors.runner = "Please Select a Runner".to_string()
-												);
-												return;
-											}
-										}
-										Page::Running => {
-											if deployment_info.ports.is_empty() {
-												return;
-											}
-										}
-										Page::Scaling => {}
-									};
-									page.update(|x| *x = x.next());
-								})
-							}
+							on_click={Rc::new(on_click_next)}
 							style_variant={LinkStyleVariant::Contained}
 							r#type={Variant::Button}
 						>

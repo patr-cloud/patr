@@ -2,55 +2,44 @@ use std::rc::Rc;
 
 use ev::MouseEvent;
 use models::api::workspace::deployment::*;
-use codee::string::FromToStringCodec;
 
-use crate::{pages::DeploymentInfoContext, prelude::*};
+use super::DeploymentInfoContext;
+use crate::{
+	prelude::*,
+	queries::{delete_deployment_query, start_deployment_query, stop_deployment_query},
+};
 
+/// The component that contains the start/stop and delete buttons for a
+/// deployment.
 #[component]
 pub fn StartStopButton() -> impl IntoView {
 	let deployment_info = expect_context::<DeploymentInfoContext>().0;
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (current_workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
 
-	let on_click_start_stop = move |_: &MouseEvent| {
-		spawn_local(async move {
-			if let Some(deployment_info) = deployment_info.get() {
-				let status = deployment_info.deployment.status.clone();
-				match status {
-					DeploymentStatus::Running => {
-						stop_deployment(
-							access_token.get(),
-							Some(deployment_info.deployment.id.to_string()),
-							current_workspace_id.get(),
-						)
-						.await;
-					}
-					DeploymentStatus::Created | DeploymentStatus::Stopped => {
-						start_deployment(
-							access_token.get(),
-							Some(deployment_info.deployment.id.to_string()),
-							current_workspace_id.get(),
-						)
-						.await;
-					}
-					_ => {}
+	let start_deployment_action = start_deployment_query();
+	let stop_deployment_action = stop_deployment_query();
+	let delete_deployment_action = delete_deployment_query();
+
+	let on_click_start_stop = move |ev: &MouseEvent| {
+		ev.prevent_default();
+		if let Some(deployment_info) = deployment_info.get() {
+			let status = deployment_info.deployment.status.clone();
+			match status {
+				DeploymentStatus::Running => {
+					stop_deployment_action.dispatch(deployment_info.deployment.id.clone());
 				}
+				DeploymentStatus::Created | DeploymentStatus::Stopped => {
+					start_deployment_action.dispatch(deployment_info.deployment.id.clone());
+				}
+				_ => {}
 			}
-		})
+		}
 	};
 
-	let on_click_delete = move |_: MouseEvent| {
-		spawn_local(async move {
-			if let Some(deployment_info) = deployment_info.get() {
-				delete_deployment(
-					access_token.get(),
-					Some(deployment_info.deployment.id.to_string()),
-					current_workspace_id.get(),
-				)
-				.await;
-			}
-		})
+	let on_click_delete = move |ev: MouseEvent| {
+		ev.prevent_default();
+		if let Some(deployment_info) = deployment_info.get() {
+			delete_deployment_action.dispatch(deployment_info.deployment.id.clone());
+		}
 	};
 
 	move || match deployment_info.get() {
@@ -104,6 +93,8 @@ pub fn StartStopButton() -> impl IntoView {
 	}
 }
 
+/// The Header Component for the deployment management page.
+/// Contains the deployment name, the start/stop and delete buttons.
 #[component]
 pub fn ManageDeploymentHeader() -> impl IntoView {
 	let deployment_info = expect_context::<DeploymentInfoContext>().0;
