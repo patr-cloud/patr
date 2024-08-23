@@ -16,27 +16,19 @@ pub fn get_workspaces() {
 
 /// Get the list of deployments as a resource
 pub fn get_deployments() -> Resource<
-	(Option<String>, Option<String>),
+	(Option<String>, Option<Uuid>),
 	Result<ListDeploymentResponse, ServerFnError<ErrorType>>,
 > {
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (current_workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+	let (state, _) = AuthState::load();
+	let access_token = state.get().get_access_token();
+	let workspace_id = state.get().get_last_used_workspace_id();
 
 	// TODO: Use this with create_resource_with_initial_value
-	
 
 	create_resource_with_initial_value(
-		move || {
-			logging::log!(
-				"from get_deployment list: {:?}, {:?}",
-				access_token.get(),
-				current_workspace_id.get()
-			);
-			(access_token.get(), current_workspace_id.get())
-		},
+		move || (access_token.clone(), workspace_id),
 		move |(access_token, workspace_id)| async move {
-			list_deployments(workspace_id, access_token).await
+			list_deployments(access_token, workspace_id).await
 		},
 		Some(Ok(ListDeploymentResponse {
 			deployments: vec![],

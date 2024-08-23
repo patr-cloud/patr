@@ -64,7 +64,6 @@ fn ManageRunnerContent(
 							<ErrorPage
 								title="Error Loading Runner Info"
 								content={
-									logging::log!("{:?}", err);
 									view! {
 										<p class="text-white">
 											{format!("{}", err.to_string().to_case(Case::Title))}

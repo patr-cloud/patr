@@ -3,14 +3,12 @@ use models::api::workspace::deployment::*;
 use crate::prelude::*;
 
 #[server(
-	ListDeploymentFn,
+	ListDeploymentMachinesFn,
 	endpoint = "/infrastructure/deployment/machines/list"
 )]
 pub async fn list_all_machines(
 	workspace_id: Option<String>,
 ) -> Result<ListAllDeploymentMachineTypeResponse, ServerFnError<ErrorType>> {
-	
-
 	use constants::USER_AGENT_STRING;
 
 	let workspace_id = Uuid::parse_str(workspace_id.unwrap().as_str())
@@ -30,5 +28,5 @@ pub async fn list_all_machines(
 
 	api_response
 		.map(|res| res.body)
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::InternalServerError))
+		.map_err(|err| ServerFnError::WrappedServerError(err))
 }

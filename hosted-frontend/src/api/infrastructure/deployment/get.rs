@@ -38,5 +38,5 @@ pub async fn get_deployment(
 
 	api_response
 		.map(|res| res.body)
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::InternalServerError))
+		.map_err(|err| ServerFnError::WrappedServerError(err))
 }

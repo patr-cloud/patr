@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+/// The Runner Dashboard Heading
 #[component]
 pub fn RunnerDashboardHead() -> impl IntoView {
 	view! {
