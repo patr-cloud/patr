@@ -52,7 +52,6 @@ Here are some of the features that we plan to implement:
 - [ ] Create and manage secrets.
 - [ ] Create and manage databases.
 
-
 # Contributing
 
-We'd love to have you onboard! Please read the [ARCHITECTURE.md](./ARCHITECTURE.md) file for more information on how to get started.
+We'd love to have you onboard! Please read the [ARCHITECTURE.md](./ARCHITECTURE.md) file for more information on how to get started and the [CONTRIBUTING.md](./CONTRIBUTING.md) file for details on how to contribute.

@@ -29,6 +29,7 @@
         "reauthenticated",
         "reauthentication",
         "regcred",
+        "rustfmt",
         "sqlx",
         "Stylesheet",
         "TIMESTAMPTZ",

@@ -1,14 +1,32 @@
 # Git hiker's guide to the galaxy
 
-Firstly, thank you for your interest in contributing to Patr! Contributions are greatly appreciated.
+Thank you so much for your interest in contributing to Patr! This document is a guide to help you understand the architecture of the project, and how you can contribute to it.
 
-Participation is governed by the [Code of Conduct](./CODE_OF_CONDUCT.md).
+Participation is governed by the Code of Conduct and the Licensing Terms as mentioned in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
-## How to contribute
+## Contribution instructions, again
+
+Since most people wouldn't follow along with the instructions in the CONTRIBUTING.md file, here it is again.
+
+<sub>Psst....jump to [Development environment](#development-environment) to skip ahead.<sub>
+
+### How to contribute
 
 In order to prevent people's efforts from going to waste, we ask that you communicate with us before starting work on a new feature or a significant change. This way, we can ensure that your work is not duplicating someone else's efforts. Creating GitHub issues and getting them assigned to you is a good way to track who is working on what.
 
 We would be happy to mentor you on the codebase if you need any assistance!
+
+### Pull requests
+
+Please run rustfmt on your codebase before submitting a PR. This will ensure that the codebase is consistent and easy to read.
+
+You can run rustfmt by running:
+
+```bash
+cargo +nightly fmt
+```
+
+Oh, also - we use tabs instead of spaces. Controversial, I know. But I don't find it productive to have conversations about tabs vs spaces. You're free to setup your editor to automatically convert tabs to spaces and convert them back when committing, but please don't submit PRs that change the indentation style.
 
 ## Development environment
 
@@ -23,18 +41,6 @@ cargo leptos serve
 ```
 
 You can now access the project at `http://localhost:3000`.
-
-## Pull requests
-
-Please run rustfmt on your codebase before submitting a PR. This will ensure that the codebase is consistent and easy to read.
-
-You can run rustfmt by running:
-
-```bash
-cargo +nightly fmt
-```
-
-Oh, also - we use tabs instead of spaces. Controrversial, I know. But I don't find it productive to have conversations about tabs vs spaces. You're free to setup your editor to automatically convert tabs to spaces and convert them back when commiting, but please don't submit PRs that change the indentation style.
 
 ## Onto the good stuff!
 
@@ -56,11 +62,11 @@ Okay, here's a rough architecture of the project. The whole repo is a single mon
 - `./hosted-frontend`: The frontend that is hosted by Patr.
 - `./macros`: Commonly used macros for the project.
 - `./models`: The models that are shared throughout the codebase. This includes:
-    - `./api`: The format for request, response, error, headers and query parameters.
-    - `./cloudflare`: The format of data that is stored in Cloudflare KV.
-    - `./iaac`: The format of data that will be used by IaaC files.
-    - `./rbac`: The list of resource types, permissions and the way they are stored.
-    - `./utils`: Commonly used utilities.
+  - `./api`: The format for request, response, error, headers and query parameters.
+  - `./cloudflare`: The format of data that is stored in Cloudflare KV.
+  - `./iaac`: The format of data that will be used by IaaC files.
+  - `./rbac`: The list of resource types, permissions and the way they are stored.
+  - `./utils`: Commonly used utilities.
 - `./runners`: The runners that are used to run the deployments.
 
 ## How runners work
