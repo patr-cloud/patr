@@ -4,16 +4,19 @@ RUN rustup target add x86_64-unknown-linux-gnu
 
 WORKDIR /app
 
+RUN cargo install cargo-leptos
+
 COPY . .
 
 ENV SQLX_OFFLINE=true
-RUN cargo build --release --target=x86_64-unknown-linux-gnu
+RUN cargo leptos build --release
 
-FROM ubuntu:latest
+FROM rust:1
 
 WORKDIR /app
 
 RUN apt update && apt install -y libssl-dev ca-certificates dumb-init
-COPY --from=build /app/target/x86_64-unknown-linux-gnu/release/api .
+COPY --from=build /usr/local/cargo/bin/. /usr/local/cargo/bin/.
+COPY --from=build /app/target/release/api .
 
-CMD ["dumb-init", "/app/api"]
+CMD ["cargo", "leptos", "serve"]

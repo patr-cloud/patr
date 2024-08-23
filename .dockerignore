@@ -5,6 +5,7 @@
 .[Dd][Ss]_[Ss]tore
 
 /config/*
+!/config/tailwind.config.js
 .env
 Dockerfile
 .dockerignore

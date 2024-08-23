@@ -263,29 +263,45 @@ where
 		// Reconcile all deployments
 
 		// Update running deployments
-		let should_run_deployments = client::make_request(
-			ApiRequest::<ListDeploymentRequest>::builder()
-				.path(ListDeploymentPath {
-					workspace_id: self.settings.workspace_id,
-				})
-				.headers(ListDeploymentRequestHeaders {
-					authorization: self.authorization.clone(),
-					user_agent: self.user_agent.clone(),
-				})
-				.query(Paginated::default())
-				.body(ListDeploymentRequest)
-				.build(),
-		)
-		.await
-		.map(|response| {
-			response
-				.body
-				.deployments
-				.into_iter()
-				.map(|deployment| deployment.id)
-				.collect::<Vec<_>>()
-		})
-		.unwrap_or_else(|_| self.deployments.keys().copied().collect());
+		let mut should_run_deployments = vec![];
+
+		loop {
+			let Ok(response) = client::make_request(
+				ApiRequest::<ListDeploymentRequest>::builder()
+					.path(ListDeploymentPath {
+						workspace_id: self.settings.workspace_id,
+					})
+					.headers(ListDeploymentRequestHeaders {
+						authorization: self.authorization.clone(),
+						user_agent: self.user_agent.clone(),
+					})
+					.query(Paginated {
+						data: (),
+						count: Paginated::<()>::DEFAULT_PAGE_SIZE,
+						page: should_run_deployments.len() / Paginated::<()>::DEFAULT_PAGE_SIZE,
+					})
+					.body(ListDeploymentRequest)
+					.build(),
+			)
+			.await
+			else {
+				should_run_deployments = self.deployments.keys().copied().collect();
+				break;
+			};
+
+			should_run_deployments.extend(
+				response
+					.body
+					.deployments
+					.into_iter()
+					.map(|deployment| deployment.id)
+					.collect::<Vec<_>>(),
+			);
+
+			if response.headers.total_count.0 <= should_run_deployments.len() {
+				break;
+			}
+		}
 
 		let mut running_deployments = pin!(self.executor.list_running_deployments());
 
@@ -296,21 +312,83 @@ where
 
 			// If the deployment does not exist in the should run list, delete it
 			let Some(&deployment_id) = deployment else {
-				self.executor.delete_deployment(deployment_id).await;
+				if let Err(wait_time) = self.executor.delete_deployment(deployment_id).await {
+					self.reconciliation_list.push(DelayedFuture::new(
+						Instant::now() + wait_time,
+						deployment_id,
+					));
+					self.recheck_next_reconcile_future();
+				}
 				return;
 			};
 
+			// If it does exist, reconcile the deployment and remove it from the should run
+			// list
+			self.reconcile_deployment(deployment_id).await;
+			should_run_deployments.retain(|&id| id != deployment_id);
+		}
+
+		// All remaining deployments are the ones that are there in the should run list,
+		// but aren't running. So get them up and running
+		for deployment_id in should_run_deployments {
 			self.reconcile_deployment(deployment_id).await;
 		}
 	}
 
-	async fn reconcile_deployment(&mut self, deployment_id: Uuid) -> Result<(), Duration> {
+	/// Reconcile a specific deployment. This function will run the
+	/// reconciliation for a specific deployment (based on the ID)
+	async fn reconcile_deployment(&mut self, deployment_id: Uuid) {
 		self.reconciliation_list
 			.retain(|message| message.value() != &deployment_id);
 
-		Ok(())
+		let result = 'reconcile: {
+			let Ok(GetDeploymentInfoResponse {
+				deployment,
+				running_details,
+			}) = client::make_request(
+				ApiRequest::<GetDeploymentInfoRequest>::builder()
+					.path(GetDeploymentInfoPath {
+						workspace_id: self.settings.workspace_id,
+						deployment_id,
+					})
+					.headers(GetDeploymentInfoRequestHeaders {
+						authorization: self.authorization.clone(),
+						user_agent: self.user_agent.clone(),
+					})
+					.query(())
+					.body(GetDeploymentInfoRequest)
+					.build(),
+			)
+			.await
+			.map(|response| response.body)
+			else {
+				break 'reconcile Err(Duration::from_secs(5));
+			};
+
+			if let Err(err) = self
+				.executor
+				.upsert_deployment(deployment, running_details)
+				.await
+			{
+				break 'reconcile Err(err);
+			};
+
+			Ok(())
+		};
+
+		if let Err(wait_time) = result {
+			self.reconciliation_list.push(DelayedFuture::new(
+				Instant::now() + wait_time,
+				deployment_id,
+			));
+		}
+
+		self.recheck_next_reconcile_future();
 	}
 
+	/// Handle a message from the server. This function will handle the message
+	/// from the server and run the reconciliation for the resource that the
+	/// message is for.
 	async fn handle_server_message(&mut self, msg: StreamRunnerDataForWorkspaceServerMsg) {
 		// if this resource is already queued for reconciliation, remove that
 		let current_id = get_resource_id_from_message(&msg);
@@ -337,9 +415,9 @@ where
 			}
 			DeploymentDeleted { id } => self.executor.delete_deployment(id).await,
 		};
-		if let Err(err) = response {
+		if let Err(wait_time) = response {
 			self.reconciliation_list.push(DelayedFuture::new(
-				Instant::now() + err,
+				Instant::now() + wait_time,
 				get_resource_id_from_message(&msg),
 			));
 		}
