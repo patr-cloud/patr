@@ -3,6 +3,8 @@
         "+nightly"
     ],
     "rust-analyzer.cargo.targetDir": "./target/rust-analyzer",
+    "rust-analyzer.check.noDefaultFeatures": true,
+    "rust-analyzer.check.workspace": false,
     "editor.rulers": [
         100
     ],

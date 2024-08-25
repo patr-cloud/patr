@@ -7,6 +7,7 @@
 
 /// The configuration for the runner.
 mod config;
+
 use std::{collections::HashMap, time::Duration};
 
 use bollard::{
@@ -20,8 +21,6 @@ use bollard::{
 	secret::{RestartPolicy, ServiceSpec},
 	Docker,
 };
-/// The module to handle the creation, updating, and deletion of resources.
-// mod docker;
 use common::prelude::*;
 use futures::Stream;
 use models::api::workspace::deployment::*;
@@ -31,12 +30,34 @@ struct DockerRunner {
 }
 
 impl RunnerExecutor for DockerRunner {
-	type Settings<'s> = ();
+	type Settings<'s> = config::RunnerSettings;
 
 	async fn upsert_deployment(
 		&self,
-		deployment: WithId<Deployment>,
-		running_details: DeploymentRunningDetails,
+		WithId {
+			id,
+			data:
+				Deployment {
+					name,
+					registry,
+					image_tag,
+					status,
+					runner,
+					machine_type,
+					current_live_digest,
+				},
+		}: WithId<Deployment>,
+		DeploymentRunningDetails {
+			deploy_on_push,
+			min_horizontal_scale,
+			max_horizontal_scale,
+			ports,
+			environment_variables,
+			startup_probe,
+			liveness_probe,
+			config_mounts,
+			volumes,
+		}: DeploymentRunningDetails,
 	) -> Result<(), Duration> {
 		// Check if the container exists, first.
 		let container = self
@@ -44,7 +65,7 @@ impl RunnerExecutor for DockerRunner {
 			.list_containers(Some(ListContainersOptions {
 				filters: HashMap::from([(
 					String::from("label"),
-					vec![format!("patr.deploymentId={}", deployment.id)],
+					vec![format!("patr.deploymentId={}", id)],
 				)]),
 				..Default::default()
 			}))
@@ -77,15 +98,15 @@ impl RunnerExecutor for DockerRunner {
 			.docker
 			.create_container(
 				Some(CreateContainerOptions {
-					name: deployment.name.clone(),
+					name: name.clone(),
 					..Default::default()
 				}),
 				Config {
-					hostname: Some(format!("{}.onpatr.cloud", deployment.id)),
+					hostname: Some(format!("{}.onpatr.cloud", id)),
 					image: Some(format!(
 						"{}/{}",
-						deployment.data.registry.registry_url(),
-						deployment.data.registry.image_name().unwrap()
+						registry.registry_url(),
+						registry.image_name().unwrap()
 					)),
 					exposed_ports: Some(
 						running_details
@@ -127,7 +148,7 @@ impl RunnerExecutor for DockerRunner {
 					),
 					labels: Some(HashMap::from([(
 						String::from("patr.deploymentId"),
-						deployment.id.to_string(),
+						id.to_string(),
 					)])),
 					..Default::default()
 				},
@@ -149,11 +170,45 @@ impl RunnerExecutor for DockerRunner {
 		Ok(())
 	}
 
-	async fn list_running_deployments(&self) -> Vec<Uuid> {
-		vec![]
+	fn list_running_deployments<'a>(&self) -> impl Stream<Item = Uuid> + 'a {
+		futures::stream::empty()
 	}
 
-	async fn delete_deployment(&self, deployment_id: Uuid) -> Result<(), Duration> {
+	async fn delete_deployment(&self, id: Uuid) -> Result<(), Duration> {
+		// Check if the container exists, first.
+		let container = self
+			.docker
+			.list_containers(Some(ListContainersOptions {
+				filters: HashMap::from([(
+					String::from("label"),
+					vec![format!("patr.deploymentId={}", id)],
+				)]),
+				..Default::default()
+			}))
+			.await
+			.map_err(|err| {
+				error!("Error listing containers: {:?}", err);
+				Duration::from_secs(5)
+			})?
+			.into_iter()
+			.next();
+
+		if let Some(container) = container {
+			self.docker
+				.remove_container(
+					container.id.as_deref().unwrap_or_default(),
+					Some(RemoveContainerOptions {
+						force: true,
+						v: false,
+						..Default::default()
+					}),
+				)
+				.await
+				.map_err(|err| {
+					error!("Error removing container: {:?}", err);
+					Duration::from_secs(5)
+				})?;
+		}
 		Ok(())
 	}
 }
