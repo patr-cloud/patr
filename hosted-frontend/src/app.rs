@@ -2,7 +2,7 @@ use codee::string::FromToStringCodec;
 use leptos_query_devtools::LeptosQueryDevtools;
 use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};
 
-use crate::{pages::*, prelude::*, routes::*, utils::AuthState};
+use crate::{pages::*, prelude::*, utils::AuthState};
 
 #[component]
 pub fn AppOutletView() -> impl IntoView {

@@ -106,7 +106,7 @@ tracing = { version = "0.1", default-features = false }
 tracing-log = { version = "0.2", default-features = false }
 tracing-opentelemetry = { version = "0.25", default-features = false }
 tracing-subscriber = { version = "0.3", default-features = false }
-typed-builder = { version = "0.19", default-features = false }
+typed-builder = { version = "0.20", default-features = false }
 url = { version = "2", default-features = false }
 uuid = { version = "1", default-features = false }
 wasm-bindgen = { version = "0.2", default-features = false }
