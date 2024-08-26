@@ -16,6 +16,7 @@ use bollard::{
 		CreateContainerOptions,
 		ListContainersOptions,
 		RemoveContainerOptions,
+		StopContainerOptions,
 		UpdateContainerOptions,
 	},
 	secret::{RestartPolicy, ServiceSpec},
@@ -79,6 +80,16 @@ impl RunnerExecutor for DockerRunner {
 
 		if let Some(container) = container {
 			self.docker
+				.stop_container(
+					container.id.as_deref().unwrap(),
+					Some(StopContainerOptions { t: 30 }),
+				)
+				.await
+				.map_err(|err| {
+					error!("Error stopping container: {:?}", err);
+					Duration::from_secs(5)
+				})?;
+			self.docker
 				.remove_container(
 					container.id.as_deref().unwrap_or_default(),
 					Some(RemoveContainerOptions {
@@ -109,8 +120,7 @@ impl RunnerExecutor for DockerRunner {
 						registry.image_name().unwrap()
 					)),
 					exposed_ports: Some(
-						running_details
-							.ports
+						ports
 							.into_iter()
 							.map(|(port, port_type)| {
 								{
@@ -131,8 +141,7 @@ impl RunnerExecutor for DockerRunner {
 							.collect(),
 					),
 					env: Some(
-						running_details
-							.environment_variables
+						environment_variables
 							.into_iter()
 							.map(|(key, value)| {
 								format!(

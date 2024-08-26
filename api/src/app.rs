@@ -1,19 +1,100 @@
 use std::{
 	fmt::{self, Debug, Formatter},
-	net::IpAddr,
+	net::{IpAddr, SocketAddr},
 };
 
 use axum::{extract::FromRef, Router};
 use models::{prelude::*, RequestUserData};
 use preprocess::Preprocessable;
 use rustis::client::Client as RedisClient;
+use tokio::net::TcpListener;
 use typed_builder::TypedBuilder;
 
 use crate::{prelude::*, utils::config::AppConfig};
 
-/// Sets up all the routes for the API
+/// Sets up the router and starts the server.
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState) -> Router {
+pub async fn serve(state: &AppState) {
+	if cfg!(debug_assertions) {
+		let api_listener = TcpListener::bind(state.config.bind_address).await.unwrap();
+
+		info!(
+			"API server running on http://{}",
+			api_listener.local_addr().unwrap()
+		);
+
+		let app_listener = TcpListener::bind(SocketAddr::from((
+			state.config.bind_address.ip(),
+			state.config.bind_address.port() + 1,
+		)))
+		.await
+		.unwrap();
+
+		info!(
+			"Frontend server running on http://{}",
+			app_listener.local_addr().unwrap()
+		);
+
+		futures::future::join(
+			async {
+				axum::serve(
+					api_listener,
+					crate::routes::api_patr_cloud::setup_routes(&state)
+						.await
+						.into_make_service_with_connect_info::<SocketAddr>(),
+				)
+				.with_graceful_shutdown(async {
+					tokio::signal::ctrl_c()
+						.await
+						.expect("failed to install ctrl-c signal handler");
+				})
+				.await
+				.unwrap();
+			},
+			async {
+				axum::serve(
+					app_listener,
+					crate::routes::app_patr_cloud::setup_routes(&state)
+						.await
+						.into_make_service_with_connect_info::<SocketAddr>(),
+				)
+				.with_graceful_shutdown(async {
+					tokio::signal::ctrl_c()
+						.await
+						.expect("failed to install ctrl-c signal handler");
+				})
+				.await
+				.unwrap();
+			},
+		)
+		.await;
+	} else {
+		let tcp_listener = TcpListener::bind(state.config.bind_address).await.unwrap();
+
+		info!(
+			"Listening for connections on {}",
+			tcp_listener.local_addr().unwrap()
+		);
+
+		axum::serve(
+			tcp_listener,
+			setup_routes(&state)
+				.await
+				.into_make_service_with_connect_info::<SocketAddr>(),
+		)
+		.with_graceful_shutdown(async {
+			tokio::signal::ctrl_c()
+				.await
+				.expect("failed to install ctrl-c signal handler");
+		})
+		.await
+		.unwrap();
+	}
+}
+
+/// Sets up all the routes for the API and returns the router object.
+#[instrument(skip(state))]
+async fn setup_routes(state: &AppState) -> Router {
 	crate::routes::setup_routes(state).await
 }
 

@@ -90,12 +90,9 @@ pub mod prelude {
 #[tokio::main]
 #[tracing::instrument]
 async fn main() {
-	use std::net::SocketAddr;
-
 	use app::AppState;
 	use opentelemetry::trace::TracerProvider;
 	use opentelemetry_otlp::WithExportConfig;
-	use tokio::net::TcpListener;
 	use tracing::{Dispatch, Level};
 	use tracing_opentelemetry::OpenTelemetryLayer;
 	use tracing_subscriber::{
@@ -177,8 +174,6 @@ async fn main() {
 
 	tracing::info!("Config parsed. Running in {} mode", config.environment);
 
-	let bind_address = config.bind_address;
-
 	let database = db::connect(&config.database).await;
 
 	let redis = redis::connect(&config.redis).await;
@@ -193,31 +188,5 @@ async fn main() {
 		.await
 		.expect("error initializing database");
 
-	let router = app::setup_routes(&state)
-		.await
-		.into_make_service_with_connect_info::<SocketAddr>();
-
-	let tcp_listener = TcpListener::bind(bind_address).await.unwrap();
-
-	tracing::info!(
-		"Listening for connections on {}",
-		tcp_listener.local_addr().unwrap()
-	);
-
-	futures::future::join(
-		async {
-			axum::serve(tcp_listener, router)
-				.with_graceful_shutdown(async {
-					tokio::signal::ctrl_c()
-						.await
-						.expect("failed to install ctrl-c signal handler");
-				})
-				.await
-				.unwrap();
-		},
-		async {
-			redis_publisher::run(&state).await;
-		},
-	)
-	.await;
+	futures::future::join(app::serve(&state), redis_publisher::run(&state)).await;
 }
