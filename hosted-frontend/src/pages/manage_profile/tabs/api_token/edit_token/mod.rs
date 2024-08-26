@@ -3,10 +3,7 @@ use std::collections::BTreeMap;
 use codee::string::FromToStringCodec;
 use ev::MouseEvent;
 use leptos_use::use_cookie;
-use models::{
-	api::user::UserApiToken,
-	rbac::WorkspacePermission,
-};
+use models::{api::user::UserApiToken, rbac::WorkspacePermission};
 use time::{
 	error::{Parse, TryFromParsed},
 	macros::format_description,
@@ -142,20 +139,20 @@ pub fn EditApiToken() -> impl IntoView {
 		let navigate = navigate.clone();
 		spawn_local(async move {
 			if let Some(token_info) = token_info_signal.get() {
-   					let x = update_api_token(
-   						access_token.get(),
-   						token_id.get(),
-   						Some(token_info.name.clone()),
-   						Some(convert_offset_to_date(token_info.token_exp)),
-   						Some(convert_offset_to_date(token_info.token_nbf)),
-   						Some(token_info.permissions.clone()),
-   					)
-   					.await;
+				let x = update_api_token(
+					access_token.get(),
+					token_id.get(),
+					Some(token_info.name.clone()),
+					Some(convert_offset_to_date(token_info.token_exp)),
+					Some(convert_offset_to_date(token_info.token_nbf)),
+					Some(token_info.permissions.clone()),
+				)
+				.await;
 
-   					if x.is_ok() {
-   						navigate("/user/api-tokens", Default::default());
-   					}
-   				}
+				if x.is_ok() {
+					navigate("/user/api-tokens", Default::default());
+				}
+			}
 		});
 	};
 
@@ -204,7 +201,7 @@ pub fn EditApiToken() -> impl IntoView {
 				<div class="w-full flex justify-end items-center py-md mt-auto">
 					<Link class="text-sm text-medium mr-sm">"BACK"</Link>
 					<button
-						r#type="submit"
+						type="submit"
 						class="text-sm text-medium mr-sm flex justify-center items-center btn btn-primary"
 						on:click={on_submit}
 					>
