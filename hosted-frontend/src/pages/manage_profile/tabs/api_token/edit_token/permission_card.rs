@@ -1,8 +1,7 @@
+use std::collections::BTreeMap;
 
-use models::{
-	api::workspace::Workspace,
-	rbac::WorkspacePermission,
-};
+use leptos::ev::Event;
+use models::{api::workspace::Workspace, rbac::WorkspacePermission};
 
 use super::ApiTokenInfo;
 use crate::{
@@ -46,6 +45,8 @@ pub fn PermissionCard(
 	});
 	let api_token = expect_context::<ApiTokenInfo>().0;
 
+	let store_workspace = store_value(workspace.clone());
+
 	let permissions = Signal::derive({
 		let workspace = workspace.clone();
 		move || {
@@ -53,35 +54,38 @@ pub fn PermissionCard(
 				.get()
 				.unwrap()
 				.permissions
-				.get(&workspace.get().id).cloned()
+				.get(&workspace.get().id)
+				.cloned()
 		}
 	});
 
 	let is_admin_checkbox = Signal::derive(move || match permissions.get() {
-		Some(permission) => match permission {
-			WorkspacePermission::Member { permissions: _ } => false,
-			WorkspacePermission::SuperAdmin => true,
-		},
+		Some(permission) => permission.is_super_admin(),
 		None => false,
 	});
 
 	let on_input_checkbox = {
 		let workspace_id = workspace.get().clone().id;
-		move |ev| {
+		move |ev: Event| {
+			ev.prevent_default();
+
 			api_token.update(|token| {
 				token.as_mut().map(|token| {
 					let permission_exists = token.data.permissions.contains_key(&workspace_id);
 
 					if permission_exists {
-						let _ = token.data.permissions.remove(&workspace_id);
+						token.data.permissions.insert(
+							workspace_id,
+							WorkspacePermission::Member {
+								permissions: BTreeMap::new(),
+							},
+						);
 					} else {
 						token
 							.data
 							.permissions
 							.insert(workspace_id, WorkspacePermission::SuperAdmin);
 					}
-
-					
 				});
 			})
 		}
@@ -95,18 +99,18 @@ pub fn PermissionCard(
 
 			<label class="flex items-center justify-start text-grey cursor-pointer" html_for="super_admin">
 				<input
-					prop:checked={is_admin_checkbox}
-					on:input={on_input_checkbox}
+					class="mr-xs"
 					type="checkbox"
 					name="super_admin"
-					value={workspace.get().id.to_string()}
-					class="mr-xs"
+					on:input={on_input_checkbox}
+					prop:checked={is_admin_checkbox}
+					value={move || store_workspace.with_value(|workspace| workspace.get().id.to_string()) }
 				/>
 				"Give"
 				<strong class="text-medium text-sm mx-xxs text-white">"Super Admin"</strong>
 				"permissions for"
 				<strong class="mx-xxs text-sm text-white text-medium">
-					{workspace.get().data.name}" workspace"
+					{move || store_workspace.with_value(|workspace| workspace.get().name.clone()) }" workspace"
 				</strong>
 			</label>
 

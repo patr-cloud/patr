@@ -1,9 +1,7 @@
-use std::collections::BTreeMap;
-
 use codee::string::FromToStringCodec;
 use ev::MouseEvent;
 use leptos_use::use_cookie;
-use models::{api::user::UserApiToken, rbac::WorkspacePermission};
+use models::api::user::UserApiToken;
 use time::{
 	error::{Parse, TryFromParsed},
 	macros::format_description,
@@ -31,8 +29,10 @@ pub use self::{
 	token_modal::*,
 };
 
+/// Path URL Params for the Edit API Token Page
 #[derive(Params, PartialEq)]
 pub struct TokenParams {
+	/// The ID of the API Token
 	token_id: Option<String>,
 }
 
@@ -64,7 +64,6 @@ pub fn convert_string_to_datetime(dt_str: String) -> Result<OffsetDateTime, Pars
 
 #[component]
 fn EditApiTokenPermission() -> impl IntoView {
-	// let api_token = create_rw_signal(api_token.get_untracked());
 	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
 	let api_token = expect_context::<ApiTokenInfo>().0;
 
@@ -74,12 +73,11 @@ fn EditApiTokenPermission() -> impl IntoView {
 	);
 
 	move || match api_token.get() {
-		Some(api_token) => view! {
+		Some(_) => view! {
 			<div class="flex flex-col items-start justify-start mb-xs w-full my-md gap-sm">
 				<label class="text-white text-sm">"Choose Permissions"</label>
 				<div class="w-full fc-fs-fs gap-xl">
 					{
-						let api_token = api_token.clone();
 						move || {
 							match workspace_list.get() {
 								Some(Ok(data)) => {
@@ -104,12 +102,13 @@ fn EditApiTokenPermission() -> impl IntoView {
 		}
 		.into_view(),
 		None => view! {
-			<p>"Couldn't Load Resource!"</p>
+			<p>"Loading..."</p>
 		}
 		.into_view(),
 	}
 }
 
+/// Context for the Edit API Token Page
 #[derive(Copy, Clone)]
 pub struct ApiTokenInfo(RwSignal<Option<WithId<UserApiToken>>>);
 
@@ -117,7 +116,6 @@ pub struct ApiTokenInfo(RwSignal<Option<WithId<UserApiToken>>>);
 #[component]
 pub fn EditApiToken() -> impl IntoView {
 	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let navigate = leptos_router::use_navigate();
 
 	let params = use_params::<TokenParams>();
 	let token_id = create_rw_signal(params.with(|params| {
@@ -135,34 +133,28 @@ pub fn EditApiToken() -> impl IntoView {
 	let token_info_signal = create_rw_signal::<Option<WithId<UserApiToken>>>(None);
 	provide_context(ApiTokenInfo(token_info_signal));
 
-	let on_submit = move |_: MouseEvent| {
-		let navigate = navigate.clone();
+	let on_submit = move |ev: MouseEvent| {
+		ev.prevent_default();
+
 		spawn_local(async move {
 			if let Some(token_info) = token_info_signal.get() {
+				logging::log!("token_info_signal {:?}", token_info);
 				let x = update_api_token(
-					access_token.get(),
-					token_id.get(),
+					access_token.get_untracked(),
+					token_id.get_untracked(),
 					Some(token_info.name.clone()),
 					Some(convert_offset_to_date(token_info.token_exp)),
 					Some(convert_offset_to_date(token_info.token_nbf)),
 					Some(token_info.permissions.clone()),
 				)
 				.await;
-
-				if x.is_ok() {
-					navigate("/user/api-tokens", Default::default());
-				}
+				logging::log!("x {:?} {:?}", x, token_info.permissions.clone());
 			}
 		});
 	};
 
-	let permissions = create_rw_signal(BTreeMap::<Uuid, WorkspacePermission>::new());
-
 	view! {
 		<div class="w-full fit-wide-screen h-full text-white flex flex-col items-start justify-start px-md">
-			<input type="hidden" name="access_token" prop:value={access_token}/>
-			<input type="hidden" name="token_id" prop:value={token_id}/>
-
 			<div class="flex justify-between items-center mb-md w-full">
 				<p class="text-md">
 					<strong class="text-md">"Manage Token"</strong>
@@ -181,7 +173,6 @@ pub fn EditApiToken() -> impl IntoView {
 							Some(token_info) => {
 								match token_info {
 									Ok(data) => {
-										let token = data.token.clone();
 										token_info_signal.set(Some(data.token.clone()));
 										view! {
 											<TokenInfo />
@@ -189,7 +180,7 @@ pub fn EditApiToken() -> impl IntoView {
 										}.into_view()
 									},
 									Err(err) => view! {
-										<div>"Cannot Load Resource"</div>
+										<div>{format!("Cannot Load Resource {:?}", err.to_string())}</div>
 									}.into_view()
 								}
 							},

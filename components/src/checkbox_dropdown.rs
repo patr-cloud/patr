@@ -16,8 +16,8 @@ pub fn CheckboxDropdown(
 	variant: SecondaryColorVariant,
 	/// The default value of the input, if none is provided,
 	/// defaults to empty string and placeholder is shown
-	#[prop(into, optional, default = vec!["".to_owned()].into())]
-	value: RwSignal<Vec<String>>,
+	#[prop(into)]
+	value: Signal<Vec<String>>,
 	/// The Event handler when user checks an option
 	#[prop(optional, into, default = Callback::new(|(_, _)| {}))]
 	on_select: Callback<(MouseEvent, String)>,
@@ -30,15 +30,12 @@ pub fn CheckboxDropdown(
 	/// Whether the component is in loading state or not
 	#[prop(optional, into, default = false.into())]
 	loading: MaybeSignal<bool>,
-	/// Whether to render an input, or a span masquerading as one
-	#[prop(optional, into)]
-	enable_input: MaybeSignal<bool>,
 ) -> impl IntoView {
 	let show_dropdown = create_rw_signal(false);
 
 	let outer_div_class = class.with(|cname| {
 		format!(
-			"flex justify-start items-start br-sm row-card w-full relative px-xl py-xxs input-dropdown bg-secondary-{} {} {}",
+			"flex justify-start items-center br-sm row-card w-full relative px-xl py-xxs input-dropdown bg-secondary-{} {} {}",
 			variant.as_css_name(),
 			cname,
 			value.with_untracked(|val| {
@@ -50,17 +47,6 @@ pub fn CheckboxDropdown(
 			})
 		)
 	});
-
-	let _input_class = move || {
-		format!(
-			"w-full h-full font-medium pl-sm mr-sm py-xxs rounded-sm {}",
-			if disabled.get() {
-				"text-disabled"
-			} else {
-				"text-white"
-			}
-		)
-	};
 
 	let css_class = "absolute drop-down text-white flex flex-col items-start justify-start rounded-sm overflow-hidden w-full mt-lg";
 	let dropdown_class = move || {
@@ -80,7 +66,6 @@ pub fn CheckboxDropdown(
 
 	let store_options = store_value(options);
 	let store_placehoder = store_value(placeholder);
-	let _store_on_select = store_value(on_select);
 
 	view! {
 		<div on:click={handle_click} class={outer_div_class}>
@@ -90,7 +75,7 @@ pub fn CheckboxDropdown(
 					{store_placehoder.with_value(|placeholder| placeholder.get())}
 				}
 			>
-				{value.get().len()} "selected"
+				{value.get().len()}" Selected"
 			</Show>
 
 			<Icon icon={IconType::ChevronDown} class="ml-auto" size={Size::ExtraSmall}/>
@@ -108,13 +93,7 @@ pub fn CheckboxDropdown(
 									let child = child.clone();
 									move |ev| {
 										ev.prevent_default();
-										if value.get().iter().any(|e| e.to_owned() == child.id.clone()) {
-											value.update(|val| val.retain(|x| x.to_owned() != child.id.clone()))
-										} else {
-											value.update(|val| val.push(child.id.clone()))
-										}
-
-										on_select.call((ev, child.label.clone()));
+										on_select.call((ev, child.id.clone()));
 									}
 								}
 								class={"ul-light flex justify-start items-center w-full rounded-b-sm row-card"}

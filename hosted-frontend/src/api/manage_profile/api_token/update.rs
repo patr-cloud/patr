@@ -1,13 +1,11 @@
 use std::collections::BTreeMap;
 
-use models::{
-	api::user::*,
-	rbac::WorkspacePermission,
-};
+use leptos::server_fn::codec::Json;
+use models::{api::user::*, rbac::WorkspacePermission};
 
 use crate::prelude::*;
 
-#[server(UpdateApiTokenFn, endpoint = "/user/api-token/update")]
+#[server(UpdateApiTokenFn, endpoint = "/user/api-token/update", input = Json)]
 pub async fn update_api_token(
 	access_token: Option<String>,
 	token_id: String,
@@ -18,7 +16,6 @@ pub async fn update_api_token(
 ) -> Result<UpdateApiTokenResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
-	
 	use time::{
 		macros::{datetime, format_description},
 		Date,
@@ -91,5 +88,5 @@ pub async fn update_api_token(
 
 	api_response
 		.map(|res| res.body)
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::InternalServerError))
+		.map_err(|err| ServerFnError::WrappedServerError(err))
 }
