@@ -25,10 +25,8 @@ pub fn parse_config() -> AppConfig {
 			.set_default("environment", "production")
 			.expect("unable to set environment to production"),
 		"dev" | "development" => Config::builder()
-			.add_source(
-				File::with_name(concat!(env!("CARGO_MANIFEST_DIR"), "/../config/api"))
-					.required(true),
-			)
+			.add_source(File::with_name("./config/api").required(false))
+			.add_source(File::with_name("../config/api").required(false))
 			.set_default("environment", "development")
 			.expect("unable to set environment to development"),
 		_ => {

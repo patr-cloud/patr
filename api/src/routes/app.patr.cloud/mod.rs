@@ -39,7 +39,9 @@ pub async fn setup_routes(state: &AppState) -> Router {
 /// Reads all files in a directory and its subdirectories
 async fn read_files(path: &str) -> Vec<String> {
 	let mut files = Vec::new();
-	let mut read_dir = fs::read_dir(path).await.expect("failed to read directory");
+	let mut read_dir = fs::read_dir(path)
+		.await
+		.expect(&format!("failed to read directory: `{}`", path));
 	while let Some(entry) = read_dir.next_entry().await.expect("failed to read entry") {
 		let path = entry.path();
 		if path.is_dir() {
