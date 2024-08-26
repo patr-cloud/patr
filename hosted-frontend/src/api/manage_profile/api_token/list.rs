@@ -20,7 +20,7 @@ pub async fn load_api_tokens_list(
 			})
 			.headers(ListApiTokensRequestHeaders {
 				authorization: BearerToken::from_str(access_token.unwrap().as_str()).map_err(
-					|e| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken),
+					|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken),
 				)?,
 				user_agent: UserAgent::from_static("hyper/0.12.2"),
 			})
@@ -31,5 +31,5 @@ pub async fn load_api_tokens_list(
 
 	api_response
 		.map(|res| res.body)
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::InternalServerError))
+		.map_err(|err| ServerFnError::WrappedServerError(err))
 }

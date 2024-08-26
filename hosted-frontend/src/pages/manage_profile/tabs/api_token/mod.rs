@@ -1,32 +1,31 @@
-use codee::string::FromToStringCodec;
-use leptos_use::use_cookie;
+use leptos_query::*;
 
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	queries::{list_api_tokens_query, AllApiTokensTag},
+};
 
 mod api_token_card;
 mod edit_token;
 
 pub use self::{api_token_card::*, edit_token::*};
 
+/// Container for the API tokens tab
 #[component]
 pub fn ApiTokensTab() -> impl IntoView {
 	view! {
-		<div class="flex flex-col items-start justify-start w-full h-full px-md py-xl gap-md">
+		<div class="flex flex-col items-start justify-start w-full h-full px-md py-xl px-md gap-md">
 			<Outlet />
 		</div>
 	}
 }
 
+/// List all the API tokens
 #[component]
 pub fn ListApiTokens() -> impl IntoView {
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let access_token_signal = move || access_token.get();
-	let token_list = create_resource(access_token_signal, move |value| async move {
-		load_api_tokens_list(value).await
-	});
-
-	// let l = token_list.get();
-	// logging::log!("{:#?}", token_list.get());
+	let QueryResult {
+		data: token_list, ..
+	} = list_api_tokens_query().use_query(move || AllApiTokensTag);
 
 	view! {
 		<Link r#type={Variant::Link} style_variant={LinkStyleVariant::Contained} to="create">
