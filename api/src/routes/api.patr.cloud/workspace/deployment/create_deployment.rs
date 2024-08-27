@@ -81,7 +81,7 @@ pub async fn create_deployment(
 	.await
 	.map_err(|err| match err {
 		sqlx::Error::Database(err) if err.is_unique_violation() => ErrorType::ResourceAlreadyExists,
-		_ => ErrorType::InternalServerError,
+		err => ErrorType::server_error(err),
 	})?
 	.id;
 
@@ -169,7 +169,7 @@ pub async fn create_deployment(
 	.await
 	.map_err(|err| match err {
 		sqlx::Error::Database(err) if err.is_unique_violation() => ErrorType::ResourceAlreadyExists,
-		_ => ErrorType::InternalServerError,
+		err => ErrorType::server_error(err),
 	})?;
 
 	trace!("Created deployment with ID: {}", deployment_id);
@@ -314,7 +314,7 @@ pub async fn create_deployment(
 	.await
 	.map_err(|err| match err {
 		sqlx::Error::Database(err) if err.is_unique_violation() => ErrorType::ResourceInUse,
-		_ => ErrorType::InternalServerError,
+		err => ErrorType::server_error(err),
 	})?;
 
 	if let DeploymentRegistry::PatrRegistry { repository_id, .. } = &registry {

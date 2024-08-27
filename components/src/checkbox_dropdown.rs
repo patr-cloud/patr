@@ -51,7 +51,7 @@ pub fn CheckboxDropdown(
 		)
 	});
 
-	let input_class = move || {
+	let _input_class = move || {
 		format!(
 			"w-full h-full font-medium pl-sm mr-sm py-xxs rounded-sm {}",
 			if disabled.get() {
@@ -80,7 +80,7 @@ pub fn CheckboxDropdown(
 
 	let store_options = store_value(options);
 	let store_placehoder = store_value(placeholder);
-	let store_on_select = store_value(on_select);
+	let _store_on_select = store_value(on_select);
 
 	view! {
 		<div on:click={handle_click} class={outer_div_class}>

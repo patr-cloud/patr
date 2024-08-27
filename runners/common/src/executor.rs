@@ -12,6 +12,8 @@ pub trait RunnerExecutor {
 	/// default is 10 minutes.
 	const FULL_RECONCILIATION_INTERVAL: Duration = Duration::from_secs(10 * 60);
 
+	const RUNNER_INTERNAL_NAME: &'static str;
+
 	/// The settings type for the runner. This is used to store any additional
 	/// settings needed for the runner.
 	type Settings<'de>: Serialize + Deserialize<'de>;
@@ -33,5 +35,5 @@ pub trait RunnerExecutor {
 
 	/// This function should return a stream of all the running deployment IDs
 	/// in the runner.
-	fn list_running_deployments<'a>(&self) -> impl Stream<Item = Uuid> + 'a;
+	fn list_running_deployments<'a>(&self) -> impl Future<Output = impl Stream<Item = Uuid> + 'a>;
 }

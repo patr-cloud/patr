@@ -1,5 +1,3 @@
-#![warn(missing_docs, clippy::missing_docs_in_private_items)]
-
 //! The components module. This module contains all the components that are used
 //! across all applications in the Patr ecosystem.
 

@@ -381,7 +381,7 @@ pub async fn update_deployment(
 			sqlx::Error::Database(err) if err.is_foreign_key_violation() => {
 				ErrorType::ResourceDoesNotExist
 			}
-			_ => ErrorType::InternalServerError,
+			err => ErrorType::server_error(err),
 		})?;
 	}
 

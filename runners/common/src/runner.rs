@@ -53,8 +53,8 @@ where
 	/// new database connection pool and set up the global default subscriber
 	/// for the runner.
 	pub fn new(executor: E) -> Result<Self, ErrorType> {
-		let settings =
-			RunnerSettings::<E::Settings<'_>>::parse("docker").expect("Failed to parse settings");
+		let settings = RunnerSettings::<E::Settings<'_>>::parse(E::RUNNER_INTERNAL_NAME)
+			.expect("Failed to parse settings");
 
 		tracing::dispatcher::set_global_default(Dispatch::new(
 			tracing_subscriber::registry().with(
@@ -69,6 +69,7 @@ where
 					)
 					.with_filter(
 						tracing_subscriber::filter::Targets::new()
+							.with_target(E::RUNNER_INTERNAL_NAME, LevelFilter::TRACE)
 							.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
 							.with_target("models", LevelFilter::TRACE),
 					)
@@ -261,11 +262,17 @@ where
 	/// runner is responsible for.
 	async fn reconcile_all_deployments(&mut self) {
 		// Reconcile all deployments
+		info!("Reconciling all deployments");
 
 		// Update running deployments
 		let mut should_run_deployments = vec![];
 
 		loop {
+			trace!(
+				"Fetching deployments {} to {}",
+				should_run_deployments.len(),
+				should_run_deployments.len() + Paginated::<()>::DEFAULT_PAGE_SIZE
+			);
 			let Ok(response) = client::make_request(
 				ApiRequest::<ListDeploymentRequest>::builder()
 					.path(ListDeploymentPath {
@@ -284,7 +291,10 @@ where
 					.build(),
 			)
 			.await
-			else {
+			.inspect_err(|err| {
+				debug!("Failed to get deployment list: {:?}", err);
+				warn!("Using the pre-existing list");
+			}) else {
 				should_run_deployments = self.deployments.keys().copied().collect();
 				break;
 			};
@@ -303,7 +313,7 @@ where
 			}
 		}
 
-		let mut running_deployments = pin!(self.executor.list_running_deployments());
+		let mut running_deployments = pin!(self.executor.list_running_deployments().await);
 
 		while let Some(deployment_id) = running_deployments.next().await {
 			let deployment = should_run_deployments
@@ -312,6 +322,12 @@ where
 
 			// If the deployment does not exist in the should run list, delete it
 			let Some(&deployment_id) = deployment else {
+				trace!(
+					"Deployment `{}` does not exist in the should run list",
+					deployment_id
+				);
+				info!("Deleting deployment `{}`", deployment_id);
+
 				if let Err(wait_time) = self.executor.delete_deployment(deployment_id).await {
 					self.reconciliation_list.push(DelayedFuture::new(
 						Instant::now() + wait_time,
@@ -338,6 +354,7 @@ where
 	/// Reconcile a specific deployment. This function will run the
 	/// reconciliation for a specific deployment (based on the ID)
 	async fn reconcile_deployment(&mut self, deployment_id: Uuid) {
+		trace!("Reconciling deployment `{}`", deployment_id);
 		self.reconciliation_list
 			.retain(|message| message.value() != &deployment_id);
 
@@ -361,6 +378,13 @@ where
 			)
 			.await
 			.map(|response| response.body)
+			.inspect_err(|err| {
+				debug!(
+					"Failed to get deployment info for `{}`: {:?}",
+					deployment_id, err
+				);
+				debug!("Retrying in 5 seconds");
+			})
 			else {
 				break 'reconcile Err(Duration::from_secs(5));
 			};
@@ -390,6 +414,7 @@ where
 	/// from the server and run the reconciliation for the resource that the
 	/// message is for.
 	async fn handle_server_message(&mut self, msg: StreamRunnerDataForWorkspaceServerMsg) {
+		info!("Handling server message: {:?}", msg);
 		// if this resource is already queued for reconciliation, remove that
 		let current_id = get_resource_id_from_message(&msg);
 		self.reconciliation_list

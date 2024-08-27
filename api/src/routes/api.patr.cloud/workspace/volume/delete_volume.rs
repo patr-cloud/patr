@@ -60,7 +60,7 @@ pub async fn delete_volume(
 	.await
 	.map_err(|err| match err {
 		sqlx::Error::Database(err) if err.is_foreign_key_violation() => ErrorType::ResourceInUse,
-		_ => ErrorType::InternalServerError,
+		err => ErrorType::server_error(err),
 	})?;
 
 	AppResponse::builder()

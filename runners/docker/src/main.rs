@@ -17,13 +17,12 @@ use bollard::{
 		ListContainersOptions,
 		RemoveContainerOptions,
 		StopContainerOptions,
-		UpdateContainerOptions,
 	},
-	secret::{RestartPolicy, ServiceSpec},
+	image::CreateImageOptions,
 	Docker,
 };
 use common::prelude::*;
-use futures::Stream;
+use futures::{Stream, StreamExt, TryStreamExt};
 use models::api::workspace::deployment::*;
 
 struct DockerRunner {
@@ -32,6 +31,8 @@ struct DockerRunner {
 
 impl RunnerExecutor for DockerRunner {
 	type Settings<'s> = config::RunnerSettings;
+
+	const RUNNER_INTERNAL_NAME: &'static str = env!("CARGO_CRATE_NAME");
 
 	async fn upsert_deployment(
 		&self,
@@ -43,13 +44,13 @@ impl RunnerExecutor for DockerRunner {
 					registry,
 					image_tag,
 					status,
-					runner,
+					runner: _,
 					machine_type,
 					current_live_digest,
 				},
 		}: WithId<Deployment>,
 		DeploymentRunningDetails {
-			deploy_on_push,
+			deploy_on_push: _,
 			min_horizontal_scale,
 			max_horizontal_scale,
 			ports,
@@ -105,6 +106,25 @@ impl RunnerExecutor for DockerRunner {
 				})?;
 		}
 
+		let mut pull_image = self.docker.create_image(
+			Some(CreateImageOptions {
+				from_image: format!(
+					"{}/{}{}",
+					registry.registry_url(),
+					registry.image_name().unwrap(),
+					if let Some(ref digest) = current_live_digest {
+						format!("@{}", digest)
+					} else {
+						format!(":{}", image_tag)
+					}
+				),
+				..Default::default()
+			}),
+			None,
+			None,
+		);
+		while let Some(_) = pull_image.next().await {}
+
 		let container = self
 			.docker
 			.create_container(
@@ -115,9 +135,14 @@ impl RunnerExecutor for DockerRunner {
 				Config {
 					hostname: Some(format!("{}.onpatr.cloud", id)),
 					image: Some(format!(
-						"{}/{}",
+						"{}/{}{}",
 						registry.registry_url(),
-						registry.image_name().unwrap()
+						registry.image_name().unwrap(),
+						if let Some(digest) = current_live_digest {
+							format!("@{}", digest)
+						} else {
+							format!(":{}", image_tag)
+						}
 					)),
 					exposed_ports: Some(
 						ports
@@ -179,8 +204,29 @@ impl RunnerExecutor for DockerRunner {
 		Ok(())
 	}
 
-	fn list_running_deployments<'a>(&self) -> impl Stream<Item = Uuid> + 'a {
-		futures::stream::empty()
+	async fn list_running_deployments<'a>(&self) -> impl Stream<Item = Uuid> + 'a {
+		let Ok(containers) = self
+			.docker
+			.list_containers(Some(ListContainersOptions::<String> {
+				filters: HashMap::new(),
+				..Default::default()
+			}))
+			.await
+			.map_err(|err| {
+				error!("Error listing containers: {:?}", err);
+				Duration::from_secs(5)
+			})
+		else {
+			return futures::stream::empty().boxed();
+		};
+		futures::stream::iter(containers.into_iter().filter_map(|container| {
+			container
+				.labels
+				.unwrap_or_default()
+				.get("patr.deploymentId")
+				.and_then(|value| Uuid::parse_str(value).ok())
+		}))
+		.boxed()
 	}
 
 	async fn delete_deployment(&self, id: Uuid) -> Result<(), Duration> {

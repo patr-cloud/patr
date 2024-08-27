@@ -9,7 +9,7 @@
         "Int4Array",
         {
           "Custom": {
-            "name": "_exposed_port_type",
+            "name": "exposed_port_type[]",
             "kind": {
               "Array": {
                 "Custom": {

@@ -1,6 +1,4 @@
-use std::fmt::format;
-
-use ev::{Event, InputEvent, KeyboardEvent};
+use ev::{Event, KeyboardEvent};
 use html::Input;
 
 use crate::imports::*;

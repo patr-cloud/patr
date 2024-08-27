@@ -261,15 +261,19 @@ pub async fn initialize_deployment_constraints(
 				name = TRIM(name)
 			),
 			ADD CONSTRAINT deployment_chk_image_name_is_valid CHECK(
-				image_name ~ '^[a-zA-Z0-9\-_ \.]{4,255}$'
+				image_name ~ '^[a-zA-Z0-9\-_ \./]{4,255}$'
 			),
 			ADD CONSTRAINT deployment_fk_runner 
 				FOREIGN KEY(runner) REFERENCES runner(id),
 			ADD CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK(
-				min_horizontal_scale >= 0 AND min_horizontal_scale <= 256
+				min_horizontal_scale >= 0 AND
+				min_horizontal_scale <= 256 AND
+				min_horizontal_scale <= max_horizontal_scale
 			),
 			ADD CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK(
-				max_horizontal_scale >= 0 AND max_horizontal_scale <= 256
+				max_horizontal_scale >= 0 AND
+				max_horizontal_scale <= 256 AND
+				max_horizontal_scale >= min_horizontal_scale
 			),
 			ADD CONSTRAINT deployment_fk_machine_type
 				FOREIGN KEY(machine_type) REFERENCES deployment_machine_type(id),

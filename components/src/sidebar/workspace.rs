@@ -19,13 +19,13 @@ pub fn WorkspaceCard(
 	set_workspace_id: WriteSignal<Option<String>>,
 ) -> impl IntoView {
 	let show_workspace_switcher = create_rw_signal(false);
-	let navigate = use_navigate();
+	let _navigate = use_navigate();
 
 	view! {
 		<div
 			class="sidebar-user flex justify-between items-center py-sm px-md cursor-pointer
 				w-full br-sm bg-secondary-dark gap-xxs relative"
-			on:click={move |ev| {
+			on:click={move |_| {
 				show_workspace_switcher.update(|v| *v = !*v)
 			}}
 		>

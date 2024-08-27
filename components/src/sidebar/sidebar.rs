@@ -1,5 +1,3 @@
-use leptos_router::use_location;
-
 use crate::imports::*;
 
 /// A Link item for the sidebar
