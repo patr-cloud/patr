@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE container_registry_repository ADD CONSTRAINT container_registry_repository_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id), ADD CONSTRAINT container_registry_repository_fk_id_workspace_id_deleted FOREIGN KEY(id, workspace_id, deleted) REFERENCES resource(id, owner_id, deleted) DEFERRABLE INITIALLY IMMEDIATE;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "bd5ccdd9d4f77f644d4a66e024de5a91026e8e0b8a45eaaf5b6eeb58b7f1cc4d"
+}

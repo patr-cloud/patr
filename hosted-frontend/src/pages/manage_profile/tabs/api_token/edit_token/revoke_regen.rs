@@ -12,12 +12,14 @@ pub fn RevokeApiToken() -> impl IntoView {
 	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
 
 	let params = use_params::<TokenParams>();
-	let token_id = create_rw_signal(params.with(|params| {
-		params
-			.as_ref()
-			.map(|param| param.token_id.clone().unwrap_or_default())
-			.unwrap_or_default()
-	}));
+	let token_id = Signal::derive(move || {
+		params.with(|params| {
+			params
+				.as_ref()
+				.map(|param| param.token_id.clone().unwrap_or_default())
+				.unwrap_or_default()
+		})
+	});
 
 	let show_revoke_modal = create_rw_signal(false);
 
@@ -68,7 +70,7 @@ pub fn RevokeApiToken() -> impl IntoView {
 #[component]
 pub fn RegenerateApiToken() -> impl IntoView {
 	let regenerate_api_token_action = create_server_action::<RegenerateApiTokenFn>();
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
+	let (access_token, _) = AuthState::load();
 
 	let params = use_params::<TokenParams>();
 	let token_id = create_rw_signal(params.with(|params| {
@@ -96,7 +98,7 @@ pub fn RegenerateApiToken() -> impl IntoView {
 			}
 		}
 		<ActionForm action={regenerate_api_token_action}>
-			<input type="hidden" name="access_token" prop:value={access_token}/>
+			<input type="hidden" name="access_token" prop:value={access_token.map(|state| state.get_access_token())}/>
 			<input type="hidden" name="token_id" prop:value={token_id}/>
 
 			<Link

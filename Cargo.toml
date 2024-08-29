@@ -19,14 +19,14 @@ package.version = "0.18.0"
 resolver = "2"
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
 missing_docs = "warn"
+unsafe_code = "forbid"
 
 [workspace.lints.clippy]
 all = "warn"
-cast_sign_loss = "warn"
 cast_possible_truncation = "warn"
 cast_possible_wrap = "warn"
+cast_sign_loss = "warn"
 missing_docs_in_private_items = "warn"
 
 [workspace.dependencies]
@@ -45,8 +45,8 @@ common = { path = "runners/common", default-features = false }
 components = { path = "components", default-features = false }
 config = { version = "0.14", default-features = false }
 console_error_panic_hook = { version = "0.1", default-features = false }
-cookie = { version = "0.18", default-features = false }
 convert_case = { version = "0.6" }
+cookie = { version = "0.18", default-features = false }
 dirs = { version = "5", default-features = false }
 either = { version = "1", default-features = false }
 futures = { version = "0.3", default-features = false }
@@ -138,17 +138,17 @@ strip = true
 
 [[workspace.metadata.leptos]]
 # The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name
-name = "dashboard"
-output-name = "patr"
 bin-package = "api"
 lib-package = "hosted-frontend"
+name = "dashboard"
+output-name = "dashboard"
 # The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
 site-root = "target/hosted-frontend"
 # The site-root relative folder where all compiled output (JS, WASM and CSS) is written
 site-pkg-dir = "pkg"
 style-file = "hosted-frontend/assets/styles/index.scss"
-tailwind-input-file = "hosted-frontend/assets/styles/index.scss"
 tailwind-config-file = "config/tailwind.config.js"
+tailwind-input-file = "hosted-frontend/assets/styles/index.scss"
 # Assets source dir. All files found here will be copied and synchronized to site-root.
 # The assets-dir cannot have a sub directory with the same name/path as site-pkg-dir.
 assets-dir = "components/assets"

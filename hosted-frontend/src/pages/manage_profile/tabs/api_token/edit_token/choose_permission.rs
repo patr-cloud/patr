@@ -11,11 +11,19 @@ use strum::VariantNames;
 
 use crate::{pages::ApiTokenInfo, prelude::*};
 
+/// Enum that specifies whether to apply the permission to all resources, a
+/// specific set of resources, or all resources except a specific set of
+/// resources.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, VariantNames)]
 #[strum(serialize_all = "camelCase")]
 pub enum ApplyToOptions {
+	/// Apply the permissions to all resources.
 	AllResource,
+	/// Apply the permissions to a specific set of resources. Specified in a
+	/// seperate InputDropdown.
 	Specific,
+	/// Apply the permissions to all resources except a specific set of
+	/// resources. Specified in a seperate InputDropdown.
 	Except,
 }
 
@@ -38,11 +46,12 @@ struct ParsedPermission {
 	details: String,
 }
 
+/// An Error Struct that is thrown when the [`ApplyToOptions`] fails to parse.
 #[derive(Debug, PartialEq, Eq)]
-pub struct ParseApplyToOptions;
+pub struct ParseApplyToOptionsError;
 
 impl FromStr for ApplyToOptions {
-	type Err = ParseApplyToOptions;
+	type Err = ParseApplyToOptionsError;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		if s.contains("Specific") {
@@ -52,7 +61,7 @@ impl FromStr for ApplyToOptions {
 		} else if s.contains("All") {
 			Ok(Self::AllResource)
 		} else {
-			Err(ParseApplyToOptions)
+			Err(ParseApplyToOptionsError)
 		}
 	}
 }
@@ -80,11 +89,7 @@ pub fn ChoosePermission(
 
 	let api_token = expect_context::<ApiTokenInfo>().0;
 
-	let resource_permissions = create_rw_signal(BTreeMap::<Uuid, ResourcePermissionType>::new());
-
 	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (current_workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
 
 	let input_resource_type = create_rw_signal("".to_string());
 	let input_apply_to = create_rw_signal("all".to_string());
@@ -201,13 +206,13 @@ pub fn ChoosePermission(
 
 	let on_select_permission = move |ev: MouseEvent| {
 		ev.prevent_default();
-		let mut resources_new = BTreeSet::<Uuid>::new();
+		let mut resource_ids = BTreeSet::<Uuid>::new();
 		let mut resource_permissions_new = BTreeMap::<Uuid, ResourcePermissionType>::new();
 
 		input_resources.with(|resources| {
 			resources.iter().for_each(|resource| {
 				if let Ok(parsed_resource_id) = Uuid::parse_str(resource) {
-					resources_new.insert(parsed_resource_id);
+					resource_ids.insert(parsed_resource_id);
 				}
 			});
 		});
@@ -222,8 +227,8 @@ pub fn ChoosePermission(
 			.collect::<Vec<_>>();
 
 		let permission_types = match ApplyToOptions::from_str(input_apply_to.get().as_str()) {
-			Ok(ApplyToOptions::Specific) => ResourcePermissionType::Include(resources_new.clone()),
-			Ok(ApplyToOptions::Except) => ResourcePermissionType::Exclude(resources_new.clone()),
+			Ok(ApplyToOptions::Specific) => ResourcePermissionType::Include(resource_ids.clone()),
+			Ok(ApplyToOptions::Except) => ResourcePermissionType::Exclude(resource_ids.clone()),
 			Ok(ApplyToOptions::AllResource) => {
 				ResourcePermissionType::Exclude(BTreeSet::<Uuid>::new())
 			}
@@ -232,14 +237,16 @@ pub fn ChoosePermission(
 		permissions.iter().for_each(|r| {
 			resource_permissions_new.insert(r.to_owned(), permission_types.clone());
 		});
-		resource_permissions.set(resource_permissions_new);
 
+		logging::log!("filtered_permissions {:?}", filtered_permissions.get());
 		api_token.update(|token| {
 			if let Some(token) = token.as_mut() {
-				token
-					.data
-					.permissions
-					.insert(workspace_id.get(), WorkspacePermission::SuperAdmin);
+				token.data.permissions.insert(
+					workspace_id.get(),
+					WorkspacePermission::Member {
+						permissions: resource_permissions_new.clone(),
+					},
+				);
 			}
 		})
 	};
@@ -291,10 +298,17 @@ pub fn ChoosePermission(
 									placeholder={format!("Select {}", input_resource_type.with(|resource|
 										if resource.is_empty() {"Resources".to_string()} else {resource.to_owned()}
 									))}
-									value={input_resources}
+									value={Signal::derive(move || input_resources.get())}
 									options={match resource_dropdown_options.get() {
 										Some(Ok(options)) => options,
 										_ => vec![]
+									}}
+									on_select={move |(_, id): (MouseEvent, String)| {
+										if input_resources.get().iter().any(|e| e.to_owned() == id) {
+											input_resources.update(|options| options.retain(|e| e.to_owned() != id));
+										} else {
+											input_resources.update(|options| options.push(id.clone()));
+										}
 									}}
 								/>
 							}
@@ -307,7 +321,14 @@ pub fn ChoosePermission(
 						<CheckboxDropdown
 							placeholder="Select Permissions".to_string()
 							options={permissions_options}
-							value={input_permissions}
+							value={Signal::derive(move || input_permissions.get())}
+							on_select={move |(_, id): (MouseEvent, String)| {
+								if input_permissions.get().iter().any(|e| e.to_owned() == id) {
+									input_permissions.update(|options| options.retain(|e| e.to_owned() != id));
+								} else {
+									input_permissions.update(|options| options.push(id.clone()));
+								}
+							}}
 						/>
 					</Transition>
 				</div>

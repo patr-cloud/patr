@@ -5,7 +5,7 @@ use crate::prelude::*;
 #[server(GetApiTokenFn, endpoint = "/user/api-token/get")]
 pub async fn get_api_token(
 	access_token: Option<String>,
-	token_id: String,
+	token_id: Uuid,
 ) -> Result<GetApiTokenInfoResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
@@ -13,9 +13,6 @@ pub async fn get_api_token(
 
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
-
-	let token_id = Uuid::parse_str(token_id.clone().as_str())
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
 	let api_response = make_api_call::<GetApiTokenInfoRequest>(
 		ApiRequest::builder()

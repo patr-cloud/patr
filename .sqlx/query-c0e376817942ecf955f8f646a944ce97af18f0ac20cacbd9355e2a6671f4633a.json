@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE secret ADD CONSTRAINT secret_chk_name_is_trimmed CHECK(name = TRIM(name)), ADD CONSTRAINT secret_fk_id_workspace_id_deleted FOREIGN KEY(id, workspace_id, deleted) REFERENCES resource(id, owner_id, deleted) DEFERRABLE INITIALLY IMMEDIATE;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "c0e376817942ecf955f8f646a944ce97af18f0ac20cacbd9355e2a6671f4633a"
+}

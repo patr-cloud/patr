@@ -156,7 +156,8 @@ pub async fn initialize_managed_database_constraints(
 				FOREIGN KEY(database_plan_id) REFERENCES managed_database_plan(id),
 			ADD CONSTRAINT managed_database_fk_id_workspace_id_deleted
 				FOREIGN KEY(id, workspace_id, deleted)
-					REFERENCES resource(id, owner_id, deleted);
+					REFERENCES resource(id, owner_id, deleted)
+					DEFERRABLE INITIALLY IMMEDIATE;
 		"#
 	)
 	.execute(&mut *connection)

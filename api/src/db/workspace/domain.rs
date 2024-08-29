@@ -222,7 +222,8 @@ pub async fn initialize_domain_constraints(
 				FOREIGN KEY(workspace_id) REFERENCES workspace(id),
 			ADD CONSTRAINT workspace_domain_fk_id_deleted
 				FOREIGN KEY(id, workspace_id, deleted)
-					REFERENCES resource(id, owner_id, deleted);
+					REFERENCES resource(id, owner_id, deleted)
+					DEFERRABLE INITIALLY IMMEDIATE;
 		"#
 	)
 	.execute(&mut *connection)

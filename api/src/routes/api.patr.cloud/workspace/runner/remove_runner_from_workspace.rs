@@ -53,6 +53,28 @@ pub async fn remove_runner_from_workspace(
 	if let Some(runner) = runner {
 		query!(
 			r#"
+			SET CONSTRAINTS ALL DEFERRED;
+			"#
+		)
+		.execute(&mut **database)
+		.await?;
+
+		query!(
+			r#"
+			UPDATE
+				resource
+			SET
+				deleted = NOW()
+			WHERE
+				id = $1;
+			"#,
+			runner.id as _,
+		)
+		.execute(&mut **database)
+		.await?;
+
+		query!(
+			r#"
 			UPDATE
 				runner
 			SET

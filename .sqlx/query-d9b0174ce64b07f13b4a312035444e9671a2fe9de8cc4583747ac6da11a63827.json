@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE static_site ADD CONSTRAINT static_site_chk_name_is_trimmed CHECK(name = TRIM(name)), ADD CONSTRAINT static_site_fk_id_workspace_id_deleted FOREIGN KEY(id, workspace_id, deleted) REFERENCES resource(id, owner_id, deleted) DEFERRABLE INITIALLY IMMEDIATE, ADD CONSTRAINT static_site_fk_current_live_upload FOREIGN KEY(id, current_live_upload) REFERENCES static_site_upload_history(static_site_id, upload_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "d9b0174ce64b07f13b4a312035444e9671a2fe9de8cc4583747ac6da11a63827"
+}
