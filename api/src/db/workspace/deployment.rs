@@ -332,7 +332,8 @@ pub async fn initialize_deployment_constraints(
 						DEFERRABLE INITIALLY IMMEDIATE,
 			ADD CONSTRAINT deployment_fk_id_workspace_id_deleted
 				FOREIGN KEY(id, workspace_id, deleted)
-					REFERENCES resource(id, owner_id, deleted),
+					REFERENCES resource(id, owner_id, deleted)
+					DEFERRABLE INITIALLY IMMEDIATE,
 			ADD CONSTRAINT deployment_fk_current_live_digest
 				FOREIGN KEY(id, current_live_digest) REFERENCES
 					deployment_deploy_history(deployment_id, image_digest);

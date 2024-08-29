@@ -1,8 +1,9 @@
+use leptos::server_fn::codec::Json;
 use models::api::user::*;
 
 use crate::prelude::*;
 
-#[server(ListUserWorkspace, endpoint = "workspaces")]
+#[server(ListUserWorkspaceFn, endpoint = "user/workspace/list", input = Json)]
 pub async fn list_user_workspace(
 	access_token: Option<String>,
 ) -> Result<ListUserWorkspacesResponse, ServerFnError<ErrorType>> {

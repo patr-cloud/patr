@@ -1,7 +1,5 @@
-use codee::string::FromToStringCodec;
 use ev::MouseEvent;
 use leptos_query::QueryResult;
-use leptos_use::use_cookie;
 use models::api::user::UserApiToken;
 use time::{
 	error::{Parse, TryFromParsed},
@@ -67,11 +65,11 @@ pub fn convert_string_to_datetime(dt_str: String) -> Result<OffsetDateTime, Pars
 
 #[component]
 fn EditApiTokenPermission() -> impl IntoView {
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
+	let (access_token, _) = AuthState::load();
 	let api_token = expect_context::<ApiTokenInfo>().0;
 
 	let workspace_list = create_resource(
-		move || access_token.get(),
+		move || access_token.get().get_access_token(),
 		move |value| async move { list_user_workspace(value).await },
 	);
 
@@ -90,14 +88,15 @@ fn EditApiTokenPermission() -> impl IntoView {
 												<PermissionCard
 													workspace={workspace}
 												/>
-												<div>""</div>
 											}
 										})
 										.collect_view()
 								},
-								_ => view! {
-									<div>"Cannot Load Resource"</div>
-								}.into_view()
+								_ => {
+									view! {
+										<div>"Cannot Load Resource"</div>
+									}.into_view()
+								}
 							}
 						}
 					}
@@ -119,27 +118,24 @@ pub struct ApiTokenInfo(RwSignal<Option<WithId<UserApiToken>>>);
 /// The Edit API Token Page
 #[component]
 pub fn EditApiToken() -> impl IntoView {
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
+	let (access_token, _) = AuthState::load();
 
 	let params = use_params::<TokenParams>();
-	let token_id = create_rw_signal(params.with(|params| {
-		params
-			.as_ref()
-			.map(|param: &TokenParams| param.token_id.clone().unwrap_or_default())
-			.unwrap_or_default()
-			.parse::<Uuid>()
-			.unwrap()
-	}));
+	let token_id = Signal::derive(move || {
+		params.with(|params| {
+			params
+				.as_ref()
+				.map(|param: &TokenParams| param.token_id.clone().unwrap_or_default())
+				.unwrap_or_default()
+				.parse::<Uuid>()
+				.unwrap()
+		})
+	});
 
 	let QueryResult {
 		data: token_info, ..
 	} = get_api_token_query().use_query(move || token_id.get());
 
-	// let token_info = create_resource(
-	// 	move || (access_token.get(), token_id.get()),
-	// 	move |(access_token, token_id)| async move { get_api_token(access_token,
-	// token_id).await }, );
-	//
 	let token_info_signal = create_rw_signal::<Option<WithId<UserApiToken>>>(None);
 	provide_context(ApiTokenInfo(token_info_signal));
 
@@ -150,7 +146,7 @@ pub fn EditApiToken() -> impl IntoView {
 			if let Some(token_info) = token_info_signal.get() {
 				logging::log!("token_info_signal {:?}", token_info);
 				let x = update_api_token(
-					access_token.get_untracked(),
+					access_token.get_untracked().get_access_token(),
 					token_id.with_untracked(|token| token.to_string()),
 					Some(token_info.name.clone()),
 					Some(convert_offset_to_date(token_info.token_exp)),

@@ -97,7 +97,8 @@ pub async fn initialize_static_site_constraints(
 			),
 			ADD CONSTRAINT static_site_fk_id_workspace_id_deleted
 				FOREIGN KEY(id, workspace_id, deleted)
-					REFERENCES resource(id, owner_id, deleted),
+					REFERENCES resource(id, owner_id, deleted)
+					DEFERRABLE INITIALLY IMMEDIATE,
 			ADD CONSTRAINT static_site_fk_current_live_upload
 				FOREIGN KEY(id, current_live_upload)
 					REFERENCES static_site_upload_history(static_site_id, upload_id);

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE managed_url ADD CONSTRAINT managed_url_chk_sub_domain_valid CHECK(sub_domain ~ '^(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])$' OR sub_domain = '@'), ADD CONSTRAINT managed_url_chk_port_u16 CHECK(port > 0 AND port <= 65535), ADD CONSTRAINT managed_url_chk_values_null_or_not_null CHECK((url_type = 'proxy_to_deployment' AND deployment_id IS NOT NULL AND port IS NOT NULL AND static_site_id IS NULL AND url IS NULL AND permanent_redirect IS NULL AND http_only IS NULL) OR (url_type = 'proxy_to_static_site' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NOT NULL AND url IS NULL AND permanent_redirect IS NULL AND http_only IS NULL) OR (url_type = 'proxy_url' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NULL AND url IS NOT NULL AND permanent_redirect IS NULL AND http_only IS NOT NULL) OR (url_type = 'redirect' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NULL AND url IS NOT NULL AND permanent_redirect IS NOT NULL AND http_only IS NOT NULL)), ADD CONSTRAINT managed_url_fk_domain_id FOREIGN KEY(domain_id) REFERENCES workspace_domain(id), ADD CONSTRAINT managed_url_fk_id_workspace_id_deleted FOREIGN KEY(id, workspace_id, deleted) REFERENCES resource(id, owner_id, deleted) DEFERRABLE INITIALLY IMMEDIATE, ADD CONSTRAINT managed_url_fk_deployment_id_port FOREIGN KEY(deployment_id, port) REFERENCES deployment_exposed_port(deployment_id, port) DEFERRABLE INITIALLY IMMEDIATE, ADD CONSTRAINT managed_url_fk_deployment_id_workspace_id FOREIGN KEY(deployment_id, workspace_id) REFERENCES deployment(id, workspace_id), ADD CONSTRAINT managed_url_fk_static_site_id_workspace_id FOREIGN KEY(static_site_id, workspace_id) REFERENCES static_site(id, workspace_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "9c89a337daa183faf001065e5d76ba516b72e99f0a2c0f292bc75ebef8d0f04b"
+}

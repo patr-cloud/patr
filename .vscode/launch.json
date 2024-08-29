@@ -7,7 +7,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'api'",
+            "name": "Debug API",
             "cargo": {
                 "args": [
                     "build",
@@ -20,88 +20,17 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "Frontend server running on http://127.0.0.1:([0-9]+)",
+                "uriFormat": "http://localhost:%s"
+            }
         },
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'api'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--bin=api",
-                    "--package=api"
-                ],
-                "filter": {
-                    "name": "api",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in library 'hosted_frontend'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--lib",
-                    "--package=hosted-frontend"
-                ],
-                "filter": {
-                    "name": "hosted_frontend",
-                    "kind": "lib"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in library 'components'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--lib",
-                    "--package=components"
-                ],
-                "filter": {
-                    "name": "components",
-                    "kind": "lib"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in library 'models'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--lib",
-                    "--package=models"
-                ],
-                "filter": {
-                    "name": "models",
-                    "kind": "lib"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug executable 'patr'",
+            "name": "Debug CLI",
             "cargo": {
                 "args": [
                     "build",
@@ -119,26 +48,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'patr'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--bin=patr",
-                    "--package=cli"
-                ],
-                "filter": {
-                    "name": "patr",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug executable 'docker'",
+            "name": "Debug Docker Runner",
             "cargo": {
                 "args": [
                     "build",
@@ -156,48 +66,10 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'docker'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--bin=docker",
-                    "--package=docker"
-                ],
-                "filter": {
-                    "name": "docker",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug executable 'controller'",
+            "name": "Debug Kubernetes Runner",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=controller",
-                    "--package=controller"
-                ],
-                "filter": {
-                    "name": "controller",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in executable 'controller'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
                     "--bin=controller",
                     "--package=controller"
                 ],
