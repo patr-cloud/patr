@@ -1,6 +1,6 @@
 use models::{
 	api::user::*,
-	rbac::{ResourcePermissionType, WorkspacePermission},
+	rbac::{ResourcePermissionType, ResourcePermissionTypeDiscriminant, WorkspacePermission},
 };
 use reqwest::StatusCode;
 use rustis::commands::GenericCommands;
@@ -230,10 +230,7 @@ pub async fn update_api_token(
 							token_id as _,
 							workspace_id as _,
 							permission_id as _,
-							match &resource_permission {
-								ResourcePermissionType::Include(_) => "include",
-								ResourcePermissionType::Exclude(_) => "exclude",
-							} as _,
+							ResourcePermissionTypeDiscriminant::from(&resource_permission) as _,
 						)
 						.execute(&mut **database)
 						.await?;

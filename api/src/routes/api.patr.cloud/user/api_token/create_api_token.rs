@@ -2,7 +2,7 @@ use argon2::{password_hash::SaltString, Algorithm, PasswordHasher, Version};
 use axum::http::StatusCode;
 use models::{
 	api::user::*,
-	rbac::{ResourcePermissionType, WorkspacePermission},
+	rbac::{ResourcePermissionType, ResourcePermissionTypeDiscriminant, WorkspacePermission},
 };
 use time::OffsetDateTime;
 
@@ -227,10 +227,7 @@ pub async fn create_api_token(
 						token_id as _,
 						workspace_id as _,
 						permission_id as _,
-						match &resource_permission {
-							ResourcePermissionType::Include(_) => "include",
-							ResourcePermissionType::Exclude(_) => "exclude",
-						} as _,
+						ResourcePermissionTypeDiscriminant::from(&resource_permission) as _,
 					)
 					.execute(&mut **database)
 					.await?;
