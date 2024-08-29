@@ -1,5 +1,6 @@
 use codee::string::FromToStringCodec;
 use ev::MouseEvent;
+use leptos_query::QueryResult;
 use leptos_use::use_cookie;
 use models::api::user::UserApiToken;
 use time::{
@@ -9,11 +10,12 @@ use time::{
 	OffsetDateTime,
 };
 
-use crate::prelude::*;
+use crate::{prelude::*, queries::get_api_token_query};
 
 mod choose_permission;
 mod create_token;
 mod permission_card;
+mod permission_card_create;
 mod permission_item;
 mod revoke_regen;
 mod token_info;
@@ -23,6 +25,7 @@ pub use self::{
 	choose_permission::*,
 	create_token::*,
 	permission_card::*,
+	permission_card_create::*,
 	permission_item::*,
 	revoke_regen::*,
 	token_info::*,
@@ -87,6 +90,7 @@ fn EditApiTokenPermission() -> impl IntoView {
 												<PermissionCard
 													workspace={workspace}
 												/>
+												<div>""</div>
 											}
 										})
 										.collect_view()
@@ -123,13 +127,19 @@ pub fn EditApiToken() -> impl IntoView {
 			.as_ref()
 			.map(|param: &TokenParams| param.token_id.clone().unwrap_or_default())
 			.unwrap_or_default()
+			.parse::<Uuid>()
+			.unwrap()
 	}));
 
-	let token_info = create_resource(
-		move || (access_token.get(), token_id.get()),
-		move |(access_token, token_id)| async move { get_api_token(access_token, token_id).await },
-	);
+	let QueryResult {
+		data: token_info, ..
+	} = get_api_token_query().use_query(move || token_id.get());
 
+	// let token_info = create_resource(
+	// 	move || (access_token.get(), token_id.get()),
+	// 	move |(access_token, token_id)| async move { get_api_token(access_token,
+	// token_id).await }, );
+	//
 	let token_info_signal = create_rw_signal::<Option<WithId<UserApiToken>>>(None);
 	provide_context(ApiTokenInfo(token_info_signal));
 
@@ -141,7 +151,7 @@ pub fn EditApiToken() -> impl IntoView {
 				logging::log!("token_info_signal {:?}", token_info);
 				let x = update_api_token(
 					access_token.get_untracked(),
-					token_id.get_untracked(),
+					token_id.with_untracked(|token| token.to_string()),
 					Some(token_info.name.clone()),
 					Some(convert_offset_to_date(token_info.token_exp)),
 					Some(convert_offset_to_date(token_info.token_nbf)),

@@ -1,3 +1,5 @@
+use leptos_use::{use_clipboard, UseClipboardReturn};
+
 use crate::prelude::*;
 
 #[component]
@@ -9,6 +11,13 @@ pub fn TokenModal(
 	#[prop(into)]
 	token: MaybeSignal<String>,
 ) -> impl IntoView {
+	let UseClipboardReturn {
+		is_supported,
+		copy,
+		copied,
+		..
+	} = use_clipboard();
+
 	view! {
 		<Modal
 			color_variant={SecondaryColorVariant::Light}
@@ -37,11 +46,30 @@ pub fn TokenModal(
 						let token = token.clone();
 						move || token.get()
 					}</p>
-					<button
-						class="ml-auto btn-icon"
+
+					<Show
+						clone:copy
+						clone:token
+						when={move || is_supported.get()}
 					>
-						<Icon icon={IconType::Copy} size=Size::ExtraSmall />
-					</button>
+						<button
+							on:click={
+								let copy = copy.clone();
+								let token = token.clone();
+								move |_| copy(token.get().as_str())
+							}
+							class="ml-auto btn-icon"
+						>
+							<Show
+								when={move || copied.get()}
+								fallback={|| view! {
+									<Icon icon={IconType::Copy} size=Size::ExtraSmall />
+								}}
+							>
+								<Icon icon={IconType::Check} size=Size::ExtraSmall />
+							</Show>
+						</button>
+					</Show>
 				</div>
 
 				<div class="flex items-center justify-start mt-lg ml-auto">

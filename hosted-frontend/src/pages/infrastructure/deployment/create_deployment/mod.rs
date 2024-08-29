@@ -1,7 +1,6 @@
 use std::{collections::BTreeMap, rc::Rc};
 
 use ev::MouseEvent;
-use serde_json::to_string;
 
 use crate::{prelude::*, queries::create_deployment_query};
 
@@ -46,7 +45,6 @@ pub fn CreateDeployment() -> impl IntoView {
 	let on_submit = move |ev: MouseEvent| {
 		ev.prevent_default();
 		if let Some(deployment_info) = deployment_info.get().convert_to_deployment_req() {
-			logging::log!("value: {:#?}", to_string(&deployment_info));
 			create_deployment_action.dispatch(deployment_info);
 		} else {
 			logging::error!("Invalid deployment info");

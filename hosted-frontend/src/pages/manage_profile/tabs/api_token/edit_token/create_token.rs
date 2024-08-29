@@ -1,23 +1,40 @@
 use codee::string::FromToStringCodec;
+use ev::SubmitEvent;
 use leptos_use::use_cookie;
+use models::api::user::CreateApiTokenRequest;
 
-use crate::{
-	pages::{PermissionCard, TokenModal},
-	prelude::*,
-};
+use super::super::{utils::CreateApiTokenInfo, CreatePermissionCard};
+use crate::{pages::TokenModal, prelude::*, queries::create_api_token_query};
 
+/// The Create API Token Page
 #[component]
 pub fn CreateApiToken() -> impl IntoView {
-	let create_api_token_action = create_server_action::<CreateApiTokenFn>();
-	// let response = create_api_token_action.value();
-
 	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let access_token_signal = move || access_token.get();
-	let workspace_list = create_resource(access_token_signal, move |value| async move {
-		list_user_workspace(value).await
-	});
+	let workspace_list = create_resource(
+		move || access_token.get(),
+		move |value| async move { list_user_workspace(value).await },
+	);
 
+	let create_api_token_action = create_api_token_query();
 	let response = create_api_token_action.value();
+
+	let api_token_info = create_rw_signal(CreateApiTokenInfo::new());
+
+	provide_context(api_token_info);
+
+	let on_submit_create = move |ev: SubmitEvent| {
+		ev.prevent_default();
+
+		if let Some(api_token_info) = api_token_info.get().convert_to_user_api_token() {
+			let request = CreateApiTokenRequest {
+				token: api_token_info,
+			};
+
+			create_api_token_action.dispatch(request);
+		} else {
+			logging::error!("Invalid Api Token Info");
+		}
+	};
 
 	view! {
 		{
@@ -34,12 +51,10 @@ pub fn CreateApiToken() -> impl IntoView {
 				None => view! {}.into_view()
 			}
 		}
-		<ActionForm action={create_api_token_action}
+		<form on:submit={on_submit_create}
 			class="w-full fit-wide-screen h-full px-md \
 				text-white flex flex-col items-start justify-start"
 		>
-			<input type="hidden" name="access_token" prop:value={access_token}/>
-
 			<div class="flex justify-start items-center mb-md w-full">
 				<p class="text-md">
 					<strong class="text-md">"Create new API Token"</strong>
@@ -121,19 +136,17 @@ pub fn CreateApiToken() -> impl IntoView {
 					<Transition>
 						{
 							move || match workspace_list.get() {
-								Some(workspace_list) => {
-									match workspace_list {
-										Ok(data)  => {
-											data.workspaces.into_iter()
-												.map(|workspace| view! {
-													<PermissionCard workspace={workspace} />
-												})
-												.collect_view()
-										},
-										Err(_) => view! {}.into_view()
-									}
+								Some(Ok(workspace_list)) => {
+									workspace_list.workspaces.into_iter().map(|workspace| view! {
+										<CreatePermissionCard workspace={workspace} />
+									}.into_view()).collect_view()
 								},
-								None => view! {}.into_view()
+								Some(Err(err)) => view! {
+									<div>"Error loading workspaces"</div>
+								}.into_view(),
+								None => view! {
+									<div>"Loading workspaces..."</div>
+								}.into_view()
 							}
 						}
 					</Transition>
@@ -141,11 +154,22 @@ pub fn CreateApiToken() -> impl IntoView {
 			</div>
 
 			<div class="w-full flex items-center justify-end py-md mt-auto">
-				<Link r#type={Variant::Link} to="/user/api-tokens" class="text-sm text-medium mr-sm">"BACK"</Link>
-				<Link should_submit={true} r#type={Variant::Button} style_variant={LinkStyleVariant::Contained} class="txt-sm txt-medium mr-sm">
+				<Link
+					r#type={Variant::Link}
+					to="/user/api-tokens"
+					class="text-sm text-medium mr-sm"
+				>
+					"BACK"
+				</Link>
+				<Link
+					should_submit={true}
+					r#type={Variant::Button}
+					style_variant={LinkStyleVariant::Contained}
+					class="txt-sm txt-medium mr-sm"
+				>
 					"Create"
 				</Link>
 			</div>
-		</ActionForm>
+		</form>
 	}
 }

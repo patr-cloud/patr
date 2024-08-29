@@ -238,6 +238,7 @@ pub fn ChoosePermission(
 			resource_permissions_new.insert(r.to_owned(), permission_types.clone());
 		});
 
+		logging::log!("filtered_permissions {:?}", filtered_permissions.get());
 		api_token.update(|token| {
 			if let Some(token) = token.as_mut() {
 				token.data.permissions.insert(

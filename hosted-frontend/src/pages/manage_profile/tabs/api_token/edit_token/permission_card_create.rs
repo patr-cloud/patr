@@ -3,33 +3,17 @@ use std::collections::BTreeMap;
 use leptos::ev::Event;
 use models::{api::workspace::Workspace, rbac::WorkspacePermission};
 
-use super::ApiTokenInfo;
 use crate::{
-	pages::{ChoosePermission, PermissionItem},
+	pages::{
+		manage_profile::tabs::api_token::utils::CreateApiTokenInfo,
+		ChoosePermission,
+		ListPermissions,
+	},
 	prelude::*,
 };
 
 #[component]
-pub fn ListPermissions(
-	/// The Permission Items
-	#[prop(into)]
-	permissions: MaybeSignal<Option<WorkspacePermission>>,
-) -> impl IntoView {
-	match permissions.get() {
-		Some(WorkspacePermission::Member { permissions }) => permissions
-			.into_iter()
-			.map(|permission| {
-				view! {
-					<PermissionItem permission={permission} />
-				}
-			})
-			.collect_view(),
-		_ => view! {<></>}.into_view(),
-	}
-}
-
-#[component]
-pub fn PermissionCard(
+pub fn CreatePermissionCard(
 	/// Additional classes
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
@@ -43,20 +27,13 @@ pub fn PermissionCard(
 			cname
 		)
 	});
-	let api_token = expect_context::<ApiTokenInfo>().0;
+	let api_token = expect_context::<RwSignal<CreateApiTokenInfo>>();
 
 	let store_workspace = store_value(workspace.clone());
 
 	let permissions = Signal::derive({
 		let workspace = workspace.clone();
-		move || {
-			api_token
-				.get()
-				.unwrap()
-				.permissions
-				.get(&workspace.get().id)
-				.cloned()
-		}
+		move || api_token.get().permission.get(&workspace.get().id).cloned()
 	});
 
 	let is_admin_checkbox = Signal::derive(move || match permissions.get() {
@@ -70,23 +47,24 @@ pub fn PermissionCard(
 			ev.prevent_default();
 
 			api_token.update(|token| {
-				token.as_mut().map(|token| {
-					let permission_exists = token.data.permissions.contains_key(&workspace_id);
+				let permission_exists_or_super_admin = token.permission.contains_key(&workspace_id) ||
+					token
+						.permission
+						.get(&workspace_id)
+						.is_some_and(|permission| permission.is_super_admin());
 
-					if permission_exists {
-						token.data.permissions.insert(
-							workspace_id,
-							WorkspacePermission::Member {
-								permissions: BTreeMap::new(),
-							},
-						);
-					} else {
-						token
-							.data
-							.permissions
-							.insert(workspace_id, WorkspacePermission::SuperAdmin);
-					}
-				});
+				if permission_exists_or_super_admin {
+					token.permission.insert(
+						workspace_id,
+						WorkspacePermission::Member {
+							permissions: BTreeMap::new(),
+						},
+					);
+				} else {
+					token
+						.permission
+						.insert(workspace_id, WorkspacePermission::SuperAdmin);
+				}
 			})
 		}
 	};
@@ -118,10 +96,10 @@ pub fn PermissionCard(
 				move || if !is_admin_checkbox.get() {
 					view! {
 						<div class="flex flex-col items-start justify-start w-full gap-xs">
-							<ListPermissions permissions={permissions.get()}/>
-							<ChoosePermission
-								workspace_id={workspace.get().id}
-							/>
+							// <ListPermissions permissions={permissions.get()}/>
+							// <ChoosePermission
+							// 	workspace_id={workspace.get().id}
+							// />
 						</div>
 					}.into_view()
 				} else {

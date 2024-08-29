@@ -7,6 +7,7 @@ use crate::{
 
 mod api_token_card;
 mod edit_token;
+mod utils;
 
 pub use self::{api_token_card::*, edit_token::*};
 
