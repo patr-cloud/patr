@@ -12,6 +12,8 @@ pub trait RunnerExecutor {
 	/// default is 10 minutes.
 	const FULL_RECONCILIATION_INTERVAL: Duration = Duration::from_secs(10 * 60);
 
+	/// The internal name of the runner. This is used to identify the runner in
+	/// tracing and logs.
 	const RUNNER_INTERNAL_NAME: &'static str;
 
 	/// The settings type for the runner. This is used to store any additional

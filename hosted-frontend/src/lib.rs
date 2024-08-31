@@ -30,6 +30,7 @@ pub mod prelude {
 		tooltip::*,
 		utils::{
 			Alignment,
+			AppRoute,
 			Color,
 			LinkStyleVariant,
 			SecondaryColorVariant,
@@ -44,7 +45,7 @@ pub mod prelude {
 	pub use leptos_use::use_cookie;
 	pub use models::prelude::*;
 
-	pub use crate::{api::*, utils::*};
+	pub use crate::{api::*, routes::*, utils::*};
 }
 
 /// The API Module. This contains all the server functions that are used

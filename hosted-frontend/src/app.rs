@@ -44,7 +44,7 @@ pub fn AppOutletView() -> impl IntoView {
 #[component]
 pub fn AppOutlet() -> impl IntoView {
 	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (current_workspace_id, set_current_workspace) =
+	let (_, set_current_workspace) =
 		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
 
 	let workspace_list = create_resource(
@@ -163,7 +163,7 @@ pub fn App() -> impl IntoView {
 					view={AppOutletView}
 					condition={move || state.get().is_logged_out()}
 				>
-					<Route path={LoggedOutRoute::Login} view={LoginForm}/>
+					<AppRoute<LoginRoute, _, _> view={move |(_query, _children)| LoginForm} />
 					<Route path={LoggedOutRoute::SignUp} view={SignUpForm}/>
 					<Route path={LoggedOutRoute::ConfirmOtp} view={ConfirmSignUpPage}/>
 				</ProtectedRoute>

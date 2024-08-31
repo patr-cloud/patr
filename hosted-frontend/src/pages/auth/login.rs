@@ -9,7 +9,7 @@ use crate::prelude::*;
 pub fn LoginForm() -> impl IntoView {
 	let login_action = create_server_action::<LoginFn>();
 	let response = login_action.value();
-	let (auth_state, set_auth_state) = AuthState::load();
+	let (_, set_auth_state) = AuthState::load();
 
 	let username = create_rw_signal("".to_owned());
 	let password = create_rw_signal("".to_owned());

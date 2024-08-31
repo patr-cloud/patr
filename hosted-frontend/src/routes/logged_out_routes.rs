@@ -1,13 +1,8 @@
-use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};
+use leptos_router::{ProtectedRoute, Route};
 
-use crate::{
-	app::{AppOutlet, AppOutletView},
-	pages::*,
-	prelude::*,
-	routes::LoggedInRoutesView,
-	utils::AuthState,
-};
+use crate::{pages::*, prelude::*, routes::LoggedInRoutesView, utils::AuthState};
 
+/// All the routes for when the user is logged out
 #[component(transparent)]
 pub fn LoggedOutRoutesComponent() -> impl IntoView {
 	let (state, _) = AuthState::load();

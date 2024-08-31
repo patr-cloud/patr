@@ -1,13 +1,9 @@
 use codee::string::FromToStringCodec;
-use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};
+use leptos_router::{Outlet, ProtectedRoute};
 
-use crate::{
-	app::{AppOutlet, AppOutletView},
-	pages::*,
-	prelude::*,
-	utils::AuthState,
-};
+use crate::{pages::*, prelude::*, utils::AuthState};
 
+/// The view for the Workspaced Routes
 #[component]
 pub fn WorkspacedRouteView() -> impl IntoView {
 	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
@@ -109,7 +105,7 @@ pub fn WorkspacedRoutes() -> impl IntoView {
 				let new_state = match state.get() {
 					AuthState::LoggedOut => AuthState::LoggedOut,
 					AuthState::LoggedIn {
-						last_used_workspace_id,
+						last_used_workspace_id: _,
 						access_token,
 						refresh_token,
 					} => AuthState::LoggedIn {

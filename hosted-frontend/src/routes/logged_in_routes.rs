@@ -1,12 +1,6 @@
-use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};
+use leptos_router::{Outlet, ProtectedRoute};
 
-use crate::{
-	app::{AppOutlet, AppOutletView},
-	pages::*,
-	prelude::*,
-	routes::*,
-	utils::AuthState,
-};
+use crate::{prelude::*, routes::*, utils::AuthState};
 
 /// The Outer View for Logged In Route
 #[component]

@@ -22,7 +22,7 @@ use bollard::{
 	Docker,
 };
 use common::prelude::*;
-use futures::{Stream, StreamExt, TryStreamExt};
+use futures::{Stream, StreamExt};
 use models::api::workspace::deployment::*;
 
 struct DockerRunner {
@@ -174,7 +174,8 @@ impl RunnerExecutor for DockerRunner {
 									key,
 									match value {
 										EnvironmentVariableValue::String(value) => value,
-										EnvironmentVariableValue::Secret { from_secret } => todo!(),
+										EnvironmentVariableValue::Secret { from_secret: _ } =>
+											todo!(),
 									}
 								)
 							})

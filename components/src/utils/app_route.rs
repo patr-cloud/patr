@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use axum_extra::routing::TypedPath;
 use leptos::*;
 use leptos_router::{
@@ -21,9 +23,10 @@ pub trait TypedRoute:
 }
 
 #[component(transparent)]
-fn AppRoute<R, F, V>(
-	/// The path of the route
-	_route: R,
+pub fn AppRoute<R, F, V>(
+	/// Phantom data for the route
+	#[prop(optional)]
+	_phantom: PhantomData<R>,
 	/// The view for the route
 	view: F,
 	/// The Children of the route

@@ -1,9 +1,4 @@
-use crate::{
-	app::{AppOutlet, AppOutletView},
-	pages::*,
-	prelude::*,
-	utils::AuthState,
-};
+use crate::{pages::*, prelude::*};
 
 /// Not Workspaced Routes, For example Profile or Workspace Routes.
 /// Ideally used only when there is not a single workspace present
