@@ -162,3 +162,56 @@ pub fn stop_deployment_query(
 		}
 	})
 }
+
+/// Tag for Listing All Deployments query
+#[derive(Debug, Hash, Eq, PartialEq, Clone)]
+pub struct AllMachinesTag;
+
+/// Query to list all machines for a workspace
+pub fn list_machines_query() -> QueryScope<
+	AllMachinesTag,
+	Result<ListAllDeploymentMachineTypeResponse, ServerFnError<ErrorType>>,
+> {
+	let (state, _) = AuthState::load();
+	let workspace_id = state.get().get_last_used_workspace_id();
+
+	create_query(
+		move |_| async move { list_all_machines(workspace_id).await },
+		QueryOptions {
+			..Default::default()
+		},
+	)
+}
+
+/// Tag for Getting the initial set of logs for a deployment
+#[derive(Debug, Hash, Eq, PartialEq, Clone)]
+pub struct GetDeploymentLogsTag(pub Uuid);
+
+/// Query to get the running logs of a deployment
+pub fn get_deployment_logs_query(
+) -> QueryScope<GetDeploymentLogsTag, Result<GetDeploymentLogsResponse, ServerFnError<ErrorType>>> {
+	let (state, _) = AuthState::load();
+
+	let access_token = state.get().get_access_token();
+	let workspace_id = state.get().get_last_used_workspace_id();
+
+	create_query(
+		move |deployment_id: GetDeploymentLogsTag| {
+			let access_token = access_token.clone();
+			let deployment_id = deployment_id.0;
+			async move {
+				get_deployment_logs(
+					access_token.clone(),
+					workspace_id,
+					deployment_id,
+					None,
+					None,
+				)
+				.await
+			}
+		},
+		QueryOptions {
+			..Default::default()
+		},
+	)
+}

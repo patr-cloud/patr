@@ -16,7 +16,6 @@ pub mod prelude {
 		input::*,
 		input_dropdown::*,
 		link::*,
-		log_statement::*,
 		modal::*,
 		number_picker::*,
 		otp_input::*,

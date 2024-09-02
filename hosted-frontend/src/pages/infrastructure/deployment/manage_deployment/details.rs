@@ -7,6 +7,7 @@ use models::api::workspace::deployment::*;
 use super::{super::components::*, DeploymentInfoContext};
 use crate::prelude::*;
 
+/// Details tab for a deployment
 #[component]
 pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 	let deployment_info = expect_context::<DeploymentInfoContext>().0;

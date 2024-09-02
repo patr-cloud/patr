@@ -7,12 +7,12 @@ use crate::prelude::*;
 	endpoint = "/infrastructure/deployment/machines/list"
 )]
 pub async fn list_all_machines(
-	workspace_id: Option<String>,
+	workspace_id: Option<Uuid>,
 ) -> Result<ListAllDeploymentMachineTypeResponse, ServerFnError<ErrorType>> {
 	use constants::USER_AGENT_STRING;
 
-	let workspace_id = Uuid::parse_str(workspace_id.unwrap().as_str())
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
+	let workspace_id = workspace_id
+		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
 	let api_response = make_api_call::<ListAllDeploymentMachineTypeRequest>(
 		ApiRequest::builder()
