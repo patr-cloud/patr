@@ -1,4 +1,4 @@
-use models::api::user::GetUserInfoResponse;
+use models::api::user::*;
 
 use crate::prelude::*;
 
@@ -15,12 +15,10 @@ pub async fn load_user_data(
 ) -> Result<GetUserInfoResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
-	use models::api::user::{GetUserInfoPath, GetUserInfoRequest, GetUserInfoRequestHeaders};
-
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	let api_response = make_api_call::<GetUserInfoRequest>(
+	make_api_call::<GetUserInfoRequest>(
 		ApiRequest::builder()
 			.path(GetUserInfoPath)
 			.query(())
@@ -31,9 +29,7 @@ pub async fn load_user_data(
 			.body(GetUserInfoRequest)
 			.build(),
 	)
-	.await;
-
-	api_response
-		.map(|res| res.body)
-		.map_err(ServerFnError::WrappedServerError)
+	.await
+	.map(|res| res.body)
+	.map_err(ServerFnError::WrappedServerError)
 }

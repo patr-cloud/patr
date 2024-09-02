@@ -1,6 +1,6 @@
 use leptos_router::{Outlet, ProtectedRoute};
 
-use crate::{prelude::*, routes::*, utils::AuthState};
+use crate::{prelude::*, utils::AuthState};
 
 /// The Outer View for Logged In Route
 #[component]

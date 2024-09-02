@@ -13,8 +13,6 @@ pub async fn get_deployment_logs(
 ) -> Result<GetDeploymentLogsResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
-	use constants::USER_AGENT_STRING;
-
 	let access_token = access_token
 		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 	let access_token = BearerToken::from_str(access_token.as_str())
@@ -23,7 +21,7 @@ pub async fn get_deployment_logs(
 	let workspace_id = workspace_id
 		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	let api_response = make_api_call::<GetDeploymentLogsRequest>(
+	make_api_call::<GetDeploymentLogsRequest>(
 		ApiRequest::builder()
 			.path(GetDeploymentLogsPath {
 				deployment_id,
@@ -32,14 +30,12 @@ pub async fn get_deployment_logs(
 			.query(GetDeploymentLogsQuery { end_time, limit })
 			.headers(GetDeploymentLogsRequestHeaders {
 				authorization: access_token,
-				user_agent: UserAgent::from_static(USER_AGENT_STRING),
+				user_agent: UserAgent::from_static("todo"),
 			})
 			.body(GetDeploymentLogsRequest)
 			.build(),
 	)
-	.await;
-
-	api_response
-		.map(|res| res.body)
-		.map_err(|err| ServerFnError::WrappedServerError(err))
+	.await
+	.map(|res| res.body)
+	.map_err(ServerFnError::WrappedServerError)
 }

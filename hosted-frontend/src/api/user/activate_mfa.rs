@@ -10,9 +10,9 @@ async fn activate_mfa(
 ) -> Result<ActivateMfaResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
-	use models::api::user::{ActivateMfaPath, ActivateMfaRequest, ActivateMfaRequestHeaders};
+	use models::api::user::*;
 
-	let api_response = make_api_call::<ActivateMfaRequest>(
+	make_api_call::<ActivateMfaRequest>(
 		ApiRequest::builder()
 			.path(ActivateMfaPath)
 			.query(())
@@ -25,9 +25,7 @@ async fn activate_mfa(
 			.body(ActivateMfaRequest { otp })
 			.build(),
 	)
-	.await;
-
-	api_response
-		.map(|res| res.body)
-		.map_err(ServerFnError::WrappedServerError)
+	.await
+	.map(|res| res.body)
+	.map_err(ServerFnError::WrappedServerError)
 }

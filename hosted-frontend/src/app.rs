@@ -1,4 +1,3 @@
-use codee::string::FromToStringCodec;
 use leptos_query::QueryResult;
 use leptos_query_devtools::LeptosQueryDevtools;
 use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};

@@ -5,8 +5,6 @@ mod update;
 mod url_form;
 mod url_item;
 
-use codee::string::FromToStringCodec;
-
 pub use self::{card::*, create::*, head::*, update::*, url_form::*, url_item::*};
 use crate::prelude::*;
 
@@ -14,9 +12,9 @@ use crate::prelude::*;
 pub fn UrlDashboard() -> impl IntoView {
 	let show_create = create_rw_signal(false);
 
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (current_workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+	let (state, _) = AuthState::load();
+	let access_token = Signal::derive(move || state.get().get_access_token());
+	let current_workspace_id = Signal::derive(move || state.get().get_last_used_workspace_id());
 
 	let managed_url_list = create_resource(
 		move || (access_token.get(), current_workspace_id.get()),

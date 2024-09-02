@@ -5,23 +5,21 @@ use crate::prelude::*;
 #[server(DeleteManagedURLFn, endpoint = "/domain-config/managed-url/delete")]
 pub async fn delete_managed_url(
 	access_token: Option<String>,
-	workspace_id: Option<String>,
+	workspace_id: Option<Uuid>,
 	managed_url_id: Option<String>,
 ) -> Result<DeleteManagedURLResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
-	use constants::USER_AGENT_STRING;
-
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	let workspace_id = Uuid::parse_str(workspace_id.unwrap().as_str())
+	let workspace_id = Uuid::parse_str(&workspace_id.unwrap().to_string())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
 	let managed_url_id = Uuid::parse_str(managed_url_id.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	let api_response = make_api_call::<DeleteManagedURLRequest>(
+	make_api_call::<DeleteManagedURLRequest>(
 		ApiRequest::builder()
 			.path(DeleteManagedURLPath {
 				managed_url_id,
@@ -30,18 +28,15 @@ pub async fn delete_managed_url(
 			.query(())
 			.headers(DeleteManagedURLRequestHeaders {
 				authorization: access_token,
-				user_agent: UserAgent::from_static(USER_AGENT_STRING),
+				user_agent: UserAgent::from_static("todo"),
 			})
 			.body(DeleteManagedURLRequest)
 			.build(),
 	)
-	.await;
-
-	if api_response.is_ok() {
+	.await
+	.map(|res| {
 		leptos_axum::redirect("/managed-url");
-	}
-
-	api_response
-		.map(|res| res.body)
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::InternalServerError))
+		res.body
+	})
+	.map_err(ServerFnError::WrappedServerError)
 }

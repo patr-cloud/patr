@@ -1,6 +1,3 @@
-use codee::string::FromToStringCodec;
-use models::api::workspace::database::Database;
-
 use crate::{
 	pages::{DatabaseCard, DatabaseHead},
 	prelude::*,
@@ -8,13 +5,12 @@ use crate::{
 
 #[component]
 pub fn DatabaseDashboard() -> impl IntoView {
-	let data = create_rw_signal::<Vec<WithId<Database>>>(vec![]);
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (current_workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+	let (state, _) = AuthState::load();
+	let access_token = move || state.get().get_access_token();
+	let current_workspace_id = move || state.get().get_last_used_workspace_id();
 
 	let database_list = create_resource(
-		move || (access_token.get(), current_workspace_id.get()),
+		move || (access_token(), current_workspace_id()),
 		move |(access_token, workspace_id)| async move {
 			list_database(access_token, workspace_id).await
 		},

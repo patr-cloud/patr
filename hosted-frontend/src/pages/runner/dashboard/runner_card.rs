@@ -18,7 +18,7 @@ pub fn RunnerCard(
 				</p>
 
 				{match runner.get().last_seen {
-					Some(date) => view! {
+					Some(_) => view! {
 						<StatusBadge
 							text=Some("unreachable".to_string())
 							color={Some(Color::Grey)}

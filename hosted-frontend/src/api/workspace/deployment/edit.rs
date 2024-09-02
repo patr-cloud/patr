@@ -6,7 +6,7 @@ use crate::prelude::*;
 
 #[server(UpdateDeploymentFn, endpoint = "/infrastructure/deployment/update")]
 pub async fn update_deployment(
-	workspace_id: Option<String>,
+	workspace_id: Option<Uuid>,
 	access_token: Option<String>,
 	deployment_id: Option<String>,
 	name: Option<String>,
@@ -19,18 +19,15 @@ pub async fn update_deployment(
 	startup_probe: Option<DeploymentProbe>,
 	liveness_probe: Option<DeploymentProbe>,
 	config_mounts: Option<BTreeMap<String, Base64String>>,
-	volumes: Option<BTreeMap<Uuid, String>>,
+	_volumes: Option<BTreeMap<Uuid, String>>,
 ) -> Result<UpdateDeploymentResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
-
-	use constants::USER_AGENT_STRING;
-	use models::api::workspace::deployment::*;
 
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	let workspace_id = Uuid::parse_str(workspace_id.unwrap().as_str())
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
+	let workspace_id = workspace_id
+		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
 	let deployment_id = Uuid::parse_str(deployment_id.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
@@ -44,12 +41,6 @@ pub async fn update_deployment(
 			.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))
 			.ok()
 	});
-
-	// let volumes: Option<BTreeMap<String, DeploymentVolume>> = volumes.map(|vols|
-	// { 	vols.iter()
-	// 		.map(|(id, vol_info)| (id.to_string(), vol_info.to_owned()))
-	// 		.collect()
-	// });
 
 	let update_deployment = UpdateDeploymentRequest {
 		name,
@@ -66,7 +57,7 @@ pub async fn update_deployment(
 		volumes: None,
 	};
 
-	let api_response = make_api_call::<UpdateDeploymentRequest>(
+	make_api_call::<UpdateDeploymentRequest>(
 		ApiRequest::builder()
 			.path(UpdateDeploymentPath {
 				workspace_id,
@@ -75,14 +66,12 @@ pub async fn update_deployment(
 			.query(())
 			.headers(UpdateDeploymentRequestHeaders {
 				authorization: access_token,
-				user_agent: UserAgent::from_static(USER_AGENT_STRING),
+				user_agent: UserAgent::from_static("todo"),
 			})
 			.body(update_deployment)
 			.build(),
 	)
-	.await;
-
-	api_response
-		.map(|res| res.body)
-		.map_err(|err| ServerFnError::WrappedServerError(err))
+	.await
+	.map(|res| res.body)
+	.map_err(ServerFnError::WrappedServerError)
 }

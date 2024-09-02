@@ -1,4 +1,3 @@
-use codee::string::FromToStringCodec;
 use leptos_router::{Outlet, ProtectedRoute};
 
 use crate::{pages::*, prelude::*, utils::AuthState};
@@ -6,29 +5,19 @@ use crate::{pages::*, prelude::*, utils::AuthState};
 /// The view for the Workspaced Routes
 #[component]
 pub fn WorkspacedRouteView() -> impl IntoView {
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (current_workspace_id, set_current_workspace) =
-		use_cookie::<Uuid, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+	let (state, _) = AuthState::load();
+	let current_workspace_id = Signal::derive(move || state.get().get_last_used_workspace_id());
+	let (_, set_current_workspace) = create_signal(None);
+
+	// Don't think this will work properly. Need to check
+	create_effect(move |_| {
+		set_current_workspace.set(current_workspace_id.get());
+	});
 
 	let workspace_list = create_resource(
-		move || access_token.get(),
+		move || state.get().get_access_token(),
 		move |value| async move { list_user_workspace(value).await },
 	);
-
-	let current_workspace_id = Signal::derive(move || match current_workspace_id.with(|id| *id) {
-		Some(id) => Some(id),
-		_ => {
-			let first_id = workspace_list.get().and_then(|list| {
-				list.ok().and_then(|x| {
-					let x = x.workspaces.first().and_then(|x| Some(x.id));
-					x
-				})
-			});
-			set_current_workspace.set(first_id);
-
-			first_id
-		}
-	});
 
 	let current_workspace = Signal::derive(move || {
 		if let Some(workspace_id) = current_workspace_id.get() {

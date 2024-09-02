@@ -12,7 +12,8 @@ pub fn list_deployments_query(
 ) -> QueryScope<AllDeploymentsTag, Result<ListDeploymentResponse, ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
 	let access_token = state.get().get_access_token();
-	let workspace_id = state.get().get_last_used_workspace_id();
+	// TODO remove this unwrap
+	let workspace_id = state.get().get_last_used_workspace_id().unwrap();
 
 	create_query(
 		move |_| {
@@ -123,7 +124,7 @@ pub fn start_deployment_query(
 	let (state, _) = AuthState::load();
 
 	let access_token = state.get().get_access_token();
-	let workspace_id = state.get().get_last_used_workspace_id();
+	let workspace_id = state.get().get_last_used_workspace_id().unwrap();
 
 	create_action(move |deployment_id: &Uuid| {
 		let access_token = access_token.clone();
@@ -146,7 +147,7 @@ pub fn stop_deployment_query(
 	let (state, _) = AuthState::load();
 
 	let access_token = state.get().get_access_token();
-	let workspace_id = state.get().get_last_used_workspace_id();
+	let workspace_id = state.get().get_last_used_workspace_id().unwrap();
 
 	create_action(move |deployment_id: &Uuid| {
 		let access_token = access_token.clone();
@@ -173,7 +174,7 @@ pub fn list_machines_query() -> QueryScope<
 	Result<ListAllDeploymentMachineTypeResponse, ServerFnError<ErrorType>>,
 > {
 	let (state, _) = AuthState::load();
-	let workspace_id = state.get().get_last_used_workspace_id();
+	let workspace_id = state.get().get_last_used_workspace_id().unwrap();
 
 	create_query(
 		move |_| async move { list_all_machines(workspace_id).await },

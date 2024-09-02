@@ -22,15 +22,6 @@ pub async fn update_api_token(
 		OffsetDateTime,
 	};
 
-	logging::log!(
-		"{:#?} {:?} {:?} {:?} {:?}",
-		permissions,
-		token_id,
-		token_name,
-		token_exp,
-		token_nbf
-	);
-
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
@@ -73,7 +64,7 @@ pub async fn update_api_token(
 		allowed_ips: None,
 	};
 
-	let api_response = make_api_call::<UpdateApiTokenRequest>(
+	make_api_call::<UpdateApiTokenRequest>(
 		ApiRequest::builder()
 			.path(UpdateApiTokenPath { token_id })
 			.query(())
@@ -84,9 +75,7 @@ pub async fn update_api_token(
 			.body(update_request_body)
 			.build(),
 	)
-	.await;
-
-	api_response
-		.map(|res| res.body)
-		.map_err(|err| ServerFnError::WrappedServerError(err))
+	.await
+	.map(|res| res.body)
+	.map_err(ServerFnError::WrappedServerError)
 }

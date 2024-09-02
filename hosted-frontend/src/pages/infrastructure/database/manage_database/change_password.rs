@@ -1,7 +1,5 @@
 use std::rc::Rc;
 
-use codee::string::FromToStringCodec;
-
 use super::DatabaseParams;
 use crate::prelude::*;
 
@@ -10,9 +8,9 @@ pub fn ChangePasswordButton() -> impl IntoView {
 	let show_password_modal = create_rw_signal(false);
 	let change_password_action = create_server_action::<UpdateDatabaseFn>();
 
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (current_workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+	let (state, _) = AuthState::load();
+	let access_token = Signal::derive(move || state.get().get_access_token());
+	let current_workspace_id = Signal::derive(move || state.get().get_last_used_workspace_id());
 
 	let params = use_params::<DatabaseParams>();
 	let database_id = Signal::derive(move || {
@@ -40,7 +38,7 @@ pub fn ChangePasswordButton() -> impl IntoView {
 					<ActionForm action={change_password_action} class="fc-fs-fs gap-lg full-width">
 						<input type="hidden" name="access_token" prop:value={access_token}/>
 						<input type="hidden" name="database_id" prop:value={database_id}/>
-						<input type="hidden" name="workspace_id" prop:value={current_workspace_id}/>
+						<input type="hidden" name="workspace_id" prop:value={current_workspace_id.map(|value| value.map(|value| value.to_string()))}/>
 
 						<div class="fc-fs-fs gap-md full-width">
 							<label class="txt-white">"Change the password for this database"</label>

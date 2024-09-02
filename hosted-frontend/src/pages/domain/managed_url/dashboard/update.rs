@@ -1,4 +1,3 @@
-use codee::string::FromToStringCodec;
 use convert_case::*;
 use ev::SubmitEvent;
 use models::api::workspace::managed_url::*;
@@ -16,6 +15,7 @@ pub fn UpdateManagedUrl(
 	managed_url: Signal<WithId<ManagedUrl>>,
 	/// The class names to add to the outer table row
 	#[prop(into, optional)]
+	#[allow(unused)]
 	class: MaybeSignal<String>,
 ) -> impl IntoView {
 	let store_managed_url = store_value(managed_url);
@@ -65,16 +65,18 @@ pub fn UpdateManagedUrl(
 			}),
 		);
 
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (current_workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+	let (state, _) = AuthState::load();
+	let access_token = Signal::derive(move || state.get().get_access_token());
+	let current_workspace_id = Signal::derive(move || state.get().get_last_used_workspace_id());
 
 	let on_submit_update = move |_: SubmitEvent| {
 		spawn_local(async move {
 			logging::log!("{} {}", url.get(), url_type.get());
 
 			let resp = update_managed_url(
-				current_workspace_id.get_untracked(),
+				current_workspace_id
+					.get_untracked()
+					.map(|uuid| uuid.to_string()),
 				access_token.get_untracked(),
 				path.get_untracked(),
 				managed_url_id.get_untracked().to_string(),

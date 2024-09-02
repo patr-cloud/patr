@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use codee::string::FromToStringCodec;
 use ev::MouseEvent;
 use models::api::workspace::deployment::*;
 
@@ -11,9 +10,7 @@ use crate::prelude::*;
 #[component]
 pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 	let deployment_info = expect_context::<DeploymentInfoContext>().0;
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (current_workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+	let (state, _) = AuthState::load();
 
 	let navigate = leptos_router::use_navigate();
 	let on_click_submit = move |_: MouseEvent| {
@@ -21,8 +18,8 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 		spawn_local(async move {
 			if let Some(deployment_info) = deployment_info.get() {
 				let resp = update_deployment(
-					current_workspace_id.get(),
-					access_token.get(),
+					state.get().get_last_used_workspace_id(),
+					state.get().get_access_token(),
 					Some(deployment_info.deployment.id.to_string()),
 					Some(deployment_info.deployment.name.clone()),
 					Some(deployment_info.deployment.machine_type.to_string()),
@@ -50,7 +47,7 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 			Some(info) => {
 				let (image_registry, image_name) = match &info.clone().deployment.registry {
 					DeploymentRegistry::PatrRegistry {
-						registry,
+						registry: _,
 						repository_id,
 					} => ("Patr Registry".to_string(), repository_id.to_string()),
 					DeploymentRegistry::ExternalRegistry {

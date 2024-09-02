@@ -9,25 +9,21 @@ pub async fn create_api_token(
 ) -> Result<CreateApiTokenResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
-	use models::api::user::*;
-
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	let api_response = make_api_call::<CreateApiTokenRequest>(
+	make_api_call::<CreateApiTokenRequest>(
 		ApiRequest::builder()
 			.path(CreateApiTokenPath)
 			.query(())
 			.headers(CreateApiTokenRequestHeaders {
 				authorization: access_token,
-				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+				user_agent: UserAgent::from_static("todo"),
 			})
 			.body(api_token_info)
 			.build(),
 	)
-	.await;
-
-	api_response
-		.map(|res| res.body)
-		.map_err(|err| ServerFnError::WrappedServerError(err))
+	.await
+	.map(|res| res.body)
+	.map_err(ServerFnError::WrappedServerError)
 }

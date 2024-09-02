@@ -1,9 +1,7 @@
 use std::{rc::Rc, str::FromStr};
 
-use codee::string::FromToStringCodec;
-use convert_case::{self, Case, Casing};
+use convert_case::{Case, Casing};
 use ev::SubmitEvent;
-use leptos_use::use_cookie;
 use models::api::workspace::managed_url::*;
 use strum::VariantNames;
 
@@ -13,6 +11,7 @@ use crate::prelude::*;
 pub fn ManagedURLForm(
 	/// The class names to add to the outer table row
 	#[prop(into, optional)]
+	#[allow(unused)]
 	class: MaybeSignal<String>,
 	/// Is Create Mode or Update Mode, True is Create Mode
 	#[prop(into)]
@@ -48,18 +47,9 @@ pub fn ManagedURLForm(
 	#[prop(into, default = Callback::new(|_| ()))]
 	on_submit: Callback<SubmitEvent>,
 ) -> impl IntoView {
-	let class = move || {
-		class.with(|cname| {
-			format!(
-				"w-full flex flex-col justify-start items-start bg-secondary-light text-white px-xl py-md {}",
-				cname
-			)
-		})
-	};
-
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (current_workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+	let (state, _) = AuthState::load();
+	let access_token = Signal::derive(move || state.get().get_access_token());
+	let current_workspace_id = Signal::derive(move || state.get().get_last_used_workspace_id());
 
 	let port_string = create_rw_signal(format!("{:?}", port.get_untracked()));
 

@@ -1,4 +1,4 @@
-use models::api::user::ListApiTokensResponse;
+use models::api::user::*;
 
 use crate::prelude::*;
 
@@ -8,9 +8,7 @@ pub async fn load_api_tokens_list(
 ) -> Result<ListApiTokensResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
-	use models::api::user::{ListApiTokensPath, ListApiTokensRequest, ListApiTokensRequestHeaders};
-
-	let api_response = make_api_call::<ListApiTokensRequest>(
+	make_api_call::<ListApiTokensRequest>(
 		ApiRequest::builder()
 			.path(ListApiTokensPath)
 			.query(Paginated {
@@ -27,9 +25,7 @@ pub async fn load_api_tokens_list(
 			.body(ListApiTokensRequest)
 			.build(),
 	)
-	.await;
-
-	api_response
-		.map(|res| res.body)
-		.map_err(|err| ServerFnError::WrappedServerError(err))
+	.await
+	.map(|res| res.body)
+	.map_err(ServerFnError::WrappedServerError)
 }

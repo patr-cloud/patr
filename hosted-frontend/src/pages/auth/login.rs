@@ -7,8 +7,6 @@ use crate::prelude::*;
 /// the application.
 #[component]
 pub fn LoginForm() -> impl IntoView {
-	let login_action = create_server_action::<LoginFn>();
-	let response = login_action.value();
 	let (_, set_auth_state) = AuthState::load();
 
 	let username = create_rw_signal("".to_owned());

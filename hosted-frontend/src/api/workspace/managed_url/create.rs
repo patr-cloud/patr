@@ -38,62 +38,52 @@ pub fn get_managed_url_type(
 
 #[server(CreateManagedURLs, endpoint = "/domain-config/managed-url/create")]
 pub async fn create_managed_url(
-	workspace_id: Option<String>,
+	workspace_id: Option<Uuid>,
 	access_token: Option<String>,
 	sub_domain: String,
 	domain_id: String,
 	path: String,
-	// url_type: ManagedUrlType,
 	url_type: String,
 	url: String,
 	port: u16,
 	http_only: bool,
 	permanent_redirect: bool,
 ) -> Result<CreateManagedURLResponse, ServerFnError<ErrorType>> {
-	use constants::USER_AGENT_STRING;
-
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	let workspace_id = Uuid::parse_str(workspace_id.unwrap().as_str())
+	let workspace_id = Uuid::parse_str(&workspace_id.unwrap().to_string())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
 	let domain_id = Uuid::parse_str(domain_id.as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	let manage_url_type = get_managed_url_type(url_type, url, port, http_only, permanent_redirect)
-		.ok_or(ServerFnError::WrappedServerError(
-			ErrorType::WrongParameters,
-		))?;
+	let url_type = get_managed_url_type(url_type, url, port, http_only, permanent_redirect).ok_or(
+		ServerFnError::WrappedServerError(ErrorType::WrongParameters),
+	)?;
 
 	let req_body = CreateManagedURLRequest {
 		sub_domain,
 		domain_id,
 		path,
-		url_type: ManagedUrlType::ProxyUrl {
-			url: "vicara.co".to_string(),
-			http_only: false,
-		},
+		url_type,
 	};
 
-	let api_response: Result<_, _> = make_api_call::<CreateManagedURLRequest>(
+	make_api_call::<CreateManagedURLRequest>(
 		ApiRequest::builder()
 			.path(CreateManagedURLPath { workspace_id })
 			.query(())
 			.headers(CreateManagedURLRequestHeaders {
 				authorization: access_token,
-				user_agent: UserAgent::from_static(USER_AGENT_STRING),
+				user_agent: UserAgent::from_static("todo"),
 			})
 			.body(req_body)
 			.build(),
 	)
-	.await;
-
-	if api_response.is_ok() {
-		leptos_axum::redirect("/managed-url")
-	}
-
-	api_response
-		.map(|res| res.body)
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::InternalServerError))
+	.await
+	.map(|res| {
+		leptos_axum::redirect("/managed-url");
+		res.body
+	})
+	.map_err(ServerFnError::WrappedServerError)
 }

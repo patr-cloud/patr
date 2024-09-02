@@ -11,6 +11,8 @@ use tower::{Layer, Service};
 
 use crate::LoggedOutRoute;
 
+/// Middleware to check if the user is authenticated. If not, it will redirect
+/// to the login page with the current path as a query parameter.
 pub struct AuthenticationLayer<E>
 where
 	E: ApiEndpoint,
@@ -24,6 +26,7 @@ where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
+	/// Create a new instance of the authentication layer.
 	pub const fn new() -> Self {
 		Self {
 			endpoint: PhantomData,
@@ -56,6 +59,8 @@ where
 	}
 }
 
+/// Middleware to check if the user is authenticated. If not, it will redirect
+/// to the login page with the current path as a query parameter.
 pub struct AuthenticationService<S, E>
 where
 	E: ApiEndpoint,
@@ -83,7 +88,7 @@ where
 	{
 		let (parts, body) = req.into_parts();
 
-		if let Ok(cookie) = Cookie::parse_encoded(
+		if let Ok(_) = Cookie::parse_encoded(
 			parts
 				.headers
 				.get(http::header::COOKIE)

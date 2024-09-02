@@ -10,8 +10,6 @@ pub async fn delete_database(
 ) -> Result<DeleteDatabaseResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
-	use constants::USER_AGENT_STRING;
-
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
@@ -21,7 +19,7 @@ pub async fn delete_database(
 	let database_id = Uuid::parse_str(database_id.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	let api_response = make_api_call::<DeleteDatabaseRequest>(
+	make_api_call::<DeleteDatabaseRequest>(
 		ApiRequest::builder()
 			.path(DeleteDatabasePath {
 				database_id,
@@ -30,14 +28,12 @@ pub async fn delete_database(
 			.query(())
 			.headers(DeleteDatabaseRequestHeaders {
 				authorization: access_token,
-				user_agent: UserAgent::from_static(USER_AGENT_STRING),
+				user_agent: UserAgent::from_static("todo"),
 			})
 			.body(DeleteDatabaseRequest)
 			.build(),
 	)
-	.await;
-
-	api_response
-		.map(|res| res.body)
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::InternalServerError))
+	.await
+	.map(|res| res.body)
+	.map_err(ServerFnError::WrappedServerError)
 }

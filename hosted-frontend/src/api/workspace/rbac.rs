@@ -5,22 +5,14 @@ use crate::prelude::*;
 #[server(ListAppPermissionsFn, endpoint = "/workspace/rbac/permissions")]
 pub async fn list_all_permissions(
 	access_token: Option<String>,
-	workspace_id: Option<String>,
+	workspace_id: Uuid,
 ) -> Result<ListAllPermissionsResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
-
-	use models::api::workspace::rbac::*;
-
-	use crate::prelude::*;
 
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	let workspace_id = Uuid::parse_str(workspace_id.unwrap().as_str())
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
-
-	// let api_response = make_api_call::<ListDeploymentRequest>(
-	let api_response = make_api_call::<ListAllPermissionsRequest>(
+	make_api_call::<ListAllPermissionsRequest>(
 		ApiRequest::builder()
 			.path(ListAllPermissionsPath { workspace_id })
 			.query(())
@@ -31,9 +23,7 @@ pub async fn list_all_permissions(
 			.body(ListAllPermissionsRequest)
 			.build(),
 	)
-	.await;
-
-	api_response
-		.map(|res| res.body)
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::InternalServerError))
+	.await
+	.map(|res| res.body)
+	.map_err(ServerFnError::WrappedServerError)
 }

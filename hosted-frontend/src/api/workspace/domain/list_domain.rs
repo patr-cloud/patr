@@ -1,5 +1,3 @@
-use std::error::Error;
-
 use models::api::workspace::domain::*;
 
 use crate::prelude::*;
@@ -7,7 +5,7 @@ use crate::prelude::*;
 #[server(ListDomains, endpoint = "/domain-config/domain/list")]
 pub async fn list_domains(
 	access_token: Option<String>,
-	workspace_id: Option<String>,
+	workspace_id: Option<Uuid>,
 ) -> Result<GetDomainsForWorkspaceResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
@@ -32,11 +30,8 @@ pub async fn list_domains(
 			nameserver_type: DomainNameserverType::Internal,
 		},
 	);
-	let api_response = Ok(GetDomainsForWorkspaceResponse {
+	Ok(GetDomainsForWorkspaceResponse {
 		domains: vec![domain],
-	});
-
-	api_response.map_err(|_: Box<dyn Error>| {
-		ServerFnError::WrappedServerError(ErrorType::InternalServerError)
 	})
+	.map_err(ServerFnError::WrappedServerError)
 }

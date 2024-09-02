@@ -1,6 +1,5 @@
 use std::rc::Rc;
 
-use codee::string::FromToStringCodec;
 use convert_case::*;
 use ev::MouseEvent;
 use models::api::workspace::managed_url::*;
@@ -49,9 +48,9 @@ pub fn ManagedUrlCard(
 		})
 	};
 
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (current_workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+	let (state, _) = AuthState::load();
+	let access_token = Signal::derive(move || state.get().get_access_token());
+	let current_workspace_id = Signal::derive(move || state.get().get_last_used_workspace_id());
 
 	let store_managed_url = store_value(managed_url.clone());
 	let domain = create_resource(
@@ -130,7 +129,7 @@ pub fn ManagedUrlCard(
 
 	let on_delete = move |_: MouseEvent| {
 		spawn_local(async move {
-			let resp = delete_managed_url(
+			_ = delete_managed_url(
 				access_token.get_untracked(),
 				current_workspace_id.get_untracked(),
 				managed_url_id.with_untracked(|id| Some(id.clone())),

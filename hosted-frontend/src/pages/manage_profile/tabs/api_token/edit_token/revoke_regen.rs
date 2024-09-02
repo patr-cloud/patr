@@ -1,6 +1,3 @@
-use codee::string::FromToStringCodec;
-use leptos_use::use_cookie;
-
 use crate::{
 	pages::{TokenModal, TokenParams},
 	prelude::*,
@@ -9,7 +6,7 @@ use crate::{
 #[component]
 pub fn RevokeApiToken() -> impl IntoView {
 	let revoke_api_token_action = create_server_action::<RevokeApiTokenFn>();
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
+	let access_token = move || AuthState::load().0.get().get_access_token();
 
 	let params = use_params::<TokenParams>();
 	let token_id = Signal::derive(move || {

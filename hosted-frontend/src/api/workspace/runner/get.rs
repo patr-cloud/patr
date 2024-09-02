@@ -10,15 +10,13 @@ pub async fn get_runner(
 ) -> Result<GetRunnerInfoResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
-	use constants::USER_AGENT_STRING;
-
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
 	let workspace_id = workspace_id
 		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	let api_response = make_api_call::<GetRunnerInfoRequest>(
+	make_api_call::<GetRunnerInfoRequest>(
 		ApiRequest::builder()
 			.path(GetRunnerInfoPath {
 				workspace_id,
@@ -27,14 +25,12 @@ pub async fn get_runner(
 			.query(())
 			.headers(GetRunnerInfoRequestHeaders {
 				authorization: access_token,
-				user_agent: UserAgent::from_static(USER_AGENT_STRING),
+				user_agent: UserAgent::from_static("todo"),
 			})
 			.body(GetRunnerInfoRequest)
 			.build(),
 	)
-	.await;
-
-	api_response
-		.map(|res| res.body)
-		.map_err(|err| ServerFnError::WrappedServerError(err))
+	.await
+	.map(|res| res.body)
+	.map_err(ServerFnError::WrappedServerError)
 }

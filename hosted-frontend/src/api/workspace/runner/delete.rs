@@ -11,15 +11,13 @@ pub async fn delete_runner(
 ) -> Result<DeleteRunnerResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
-	use constants::USER_AGENT_STRING;
-
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
 	let workspace_id = workspace_id
 		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	let api_response = make_api_call::<DeleteRunnerRequest>(
+	make_api_call::<DeleteRunnerRequest>(
 		ApiRequest::builder()
 			.path(DeleteRunnerPath {
 				workspace_id,
@@ -28,18 +26,15 @@ pub async fn delete_runner(
 			.query(())
 			.headers(DeleteRunnerRequestHeaders {
 				authorization: access_token,
-				user_agent: UserAgent::from_static(USER_AGENT_STRING),
+				user_agent: UserAgent::from_static("todo"),
 			})
 			.body(DeleteRunnerRequest)
 			.build(),
 	)
-	.await;
-
-	if api_response.is_ok() {
+	.await
+	.map(|res| {
 		leptos_axum::redirect("/runners");
-	}
-
-	api_response
-		.map(|res| res.body)
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::InternalServerError))
+		res.body
+	})
+	.map_err(ServerFnError::WrappedServerError)
 }

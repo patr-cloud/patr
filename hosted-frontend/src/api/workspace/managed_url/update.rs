@@ -16,8 +16,6 @@ pub async fn update_managed_url(
 	http_only: bool,
 	permanent_redirect: bool,
 ) -> Result<UpdateManagedURLResponse, ServerFnError<ErrorType>> {
-	use constants::USER_AGENT_STRING;
-
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
@@ -27,22 +25,13 @@ pub async fn update_managed_url(
 	let managed_url_id = Uuid::parse_str(managed_url_id.as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	logging::log!("error here");
-	let managed_url_type = get_managed_url_type(url_type, url, port, http_only, permanent_redirect)
-		.ok_or(ServerFnError::WrappedServerError(
-			ErrorType::WrongParameters,
-		))?;
+	let url_type = get_managed_url_type(url_type, url, port, http_only, permanent_redirect).ok_or(
+		ServerFnError::WrappedServerError(ErrorType::WrongParameters),
+	)?;
 
-	logging::log!("error here");
-	let req_body = UpdateManagedURLRequest {
-		path,
-		url_type: ManagedUrlType::ProxyUrl {
-			url: "vicara.co".to_string(),
-			http_only: false,
-		},
-	};
+	let req_body = UpdateManagedURLRequest { path, url_type };
 
-	let api_response: Result<_, _> = make_api_call::<UpdateManagedURLRequest>(
+	make_api_call::<UpdateManagedURLRequest>(
 		ApiRequest::builder()
 			.path(UpdateManagedURLPath {
 				workspace_id,
@@ -51,14 +40,12 @@ pub async fn update_managed_url(
 			.query(())
 			.headers(UpdateManagedURLRequestHeaders {
 				authorization: access_token,
-				user_agent: UserAgent::from_static(USER_AGENT_STRING),
+				user_agent: UserAgent::from_static("todo"),
 			})
 			.body(req_body)
 			.build(),
 	)
-	.await;
-
-	api_response
-		.map(|res| res.body)
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::InternalServerError))
+	.await
+	.map(|res| res.body)
+	.map_err(ServerFnError::WrappedServerError)
 }

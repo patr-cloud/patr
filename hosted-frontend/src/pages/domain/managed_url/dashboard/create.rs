@@ -1,5 +1,3 @@
-use codee::string::FromToStringCodec;
-
 use super::ManagedURLForm;
 use crate::prelude::*;
 
@@ -19,14 +17,13 @@ pub fn CreateManagedUrlDashboard(
 	let http_only = create_rw_signal(false);
 	let perma_redirect = create_rw_signal(false);
 
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (current_workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+	let (state, _) = AuthState::load();
+	let access_token = Signal::derive(move || state.get().get_access_token());
+	let current_workspace_id = Signal::derive(move || state.get().get_last_used_workspace_id());
 
 	let on_submit_create = move |_| {
 		spawn_local(async move {
-			logging::log!("submit event\n {:#?}", domain.get_untracked());
-			let resp = create_managed_url(
+			_ = create_managed_url(
 				current_workspace_id.get_untracked(),
 				access_token.get_untracked(),
 				sub_domain.get_untracked(),
@@ -39,8 +36,6 @@ pub fn CreateManagedUrlDashboard(
 				perma_redirect.get_untracked(),
 			)
 			.await;
-
-			logging::log!("event resp {:?}", resp);
 		});
 	};
 

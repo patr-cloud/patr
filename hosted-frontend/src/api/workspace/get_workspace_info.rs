@@ -2,7 +2,7 @@ use models::api::workspace::*;
 
 use crate::prelude::*;
 
-#[server(CreateWorkspaceFn, endpoint = "/workspace/create")]
+#[server(GetWorkspaceInfoFn, endpoint = "/workspace/create")]
 pub async fn get_workspace_info(
 	access_token: Option<String>,
 	workspace_id: Uuid,

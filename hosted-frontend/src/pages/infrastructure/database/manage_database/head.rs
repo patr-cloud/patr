@@ -7,6 +7,7 @@ pub fn ManageDatabaseHeader(
 	name: MaybeSignal<String>,
 	/// The ID of the database
 	#[prop(into, optional, default = None.into())]
+	#[allow(unused)]
 	id: MaybeSignal<Option<Uuid>>,
 ) -> impl IntoView {
 	view! {

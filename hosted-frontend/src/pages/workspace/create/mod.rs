@@ -1,12 +1,9 @@
-use codee::string::FromToStringCodec;
-use leptos_use::use_cookie;
-
 use crate::prelude::*;
 
 #[component]
 pub fn CreateWorkspace() -> impl IntoView {
 	let create_workspace_action = create_server_action::<CreateWorkspaceFn>();
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
+	let (state, _) = AuthState::load();
 
 	view! {
 		<ContainerHead>
@@ -30,7 +27,7 @@ pub fn CreateWorkspace() -> impl IntoView {
 				class="w-full h-full px-md fit-wide-screen \
 				gap-md flex flex-col items-start justify-start"
 			>
-				<input type="hidden" name="access_token" prop:value={access_token} />
+				<input type="hidden" name="access_token" prop:value={state.get_untracked().get_access_token()} />
 				<div class="flex w-full">
 					<div class="flex-2 pt-sm">
 						<label html_for="name" class="text-sm">

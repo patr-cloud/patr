@@ -3,7 +3,6 @@ use std::{
 	str::FromStr,
 };
 
-use codee::string::FromToStringCodec;
 use convert_case::{Case, Casing};
 use ev::MouseEvent;
 use models::rbac::{ResourcePermissionType, ResourceType, WorkspacePermission};
@@ -89,7 +88,7 @@ pub fn ChoosePermission(
 
 	let api_token = expect_context::<ApiTokenInfo>().0;
 
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
+	let access_token = move || AuthState::load().0.get().get_access_token();
 
 	let input_resource_type = create_rw_signal("".to_string());
 	let input_apply_to = create_rw_signal("all".to_string());
@@ -120,7 +119,7 @@ pub fn ChoosePermission(
 	};
 
 	let all_permissions = create_resource(
-		move || (access_token.get(), Some(workspace_id.get().to_string())),
+		move || (access_token(), workspace_id.get()),
 		move |(access_token, workspace_id)| async move {
 			list_all_permissions(access_token, workspace_id).await
 		},

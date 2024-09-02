@@ -1,5 +1,3 @@
-use codee::string::FromToStringCodec;
-use leptos_use::use_cookie;
 use models::api::workspace::Workspace;
 
 use crate::prelude::*;
@@ -71,22 +69,18 @@ fn ShowWorkspaceInfo(
 
 #[component]
 pub fn ManageWorkspaceSettingsTab() -> impl IntoView {
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let access_token_signal = move || access_token.get();
+	let (state, _) = AuthState::load();
 
-	let (current_workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+	let workspace_list = create_resource(
+		move || state.get().get_access_token(),
+		move |value| async move { list_user_workspace(value).await },
+	);
 
-	let workspace_list = create_resource(access_token_signal, move |value| async move {
-		list_user_workspace(value).await
-	});
-
-	let current_workspace_id = Signal::derive(move || {
-		match current_workspace_id.with(|id| id.clone().map(|id| Uuid::parse_str(id.as_str()))) {
-			Some(Ok(id)) => Some(id),
+	let current_workspace_id =
+		Signal::derive(move || match state.get().get_last_used_workspace_id() {
+			Some(id) => Some(id),
 			_ => None,
-		}
-	});
+		});
 
 	let current_workspace = Signal::derive(move || {
 		if let Some(workspace_id) = current_workspace_id.get() {

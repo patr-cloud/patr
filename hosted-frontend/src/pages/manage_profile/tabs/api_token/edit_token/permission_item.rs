@@ -6,6 +6,7 @@ use crate::prelude::*;
 pub fn PermissionItem(
 	/// Permission Item
 	#[prop(into)]
+	#[allow(unused)]
 	permission: MaybeSignal<(Uuid, ResourcePermissionType)>,
 ) -> impl IntoView {
 	view! {

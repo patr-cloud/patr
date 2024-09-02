@@ -5,15 +5,15 @@ use crate::prelude::*;
 #[server(GetDomainFn, endpoint = "/domain-config/domain/get")]
 pub async fn get_domain(
 	access_token: Option<String>,
-	workspace_id: Option<String>,
+	workspace_id: Option<Uuid>,
 	domain_id: Option<String>,
 ) -> Result<GetDomainInfoInWorkspaceResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
-	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
+	let _access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	let workspace_id = Uuid::parse_str(workspace_id.unwrap().as_str())
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
+	let _workspace_id = workspace_id
+		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
 	let domain_id = Uuid::parse_str(domain_id.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;

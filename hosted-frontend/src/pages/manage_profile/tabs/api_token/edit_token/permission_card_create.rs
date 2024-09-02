@@ -3,14 +3,7 @@ use std::collections::BTreeMap;
 use leptos::ev::Event;
 use models::{api::workspace::Workspace, rbac::WorkspacePermission};
 
-use crate::{
-	pages::{
-		manage_profile::tabs::api_token::utils::CreateApiTokenInfo,
-		ChoosePermission,
-		ListPermissions,
-	},
-	prelude::*,
-};
+use crate::{pages::manage_profile::tabs::api_token::utils::CreateApiTokenInfo, prelude::*};
 
 #[component]
 pub fn CreatePermissionCard(

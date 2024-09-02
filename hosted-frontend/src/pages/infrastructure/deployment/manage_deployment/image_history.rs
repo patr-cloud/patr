@@ -1,21 +1,19 @@
-use codee::string::FromToStringCodec;
-
 use super::DeploymentInfoContext;
 use crate::{pages::*, prelude::*};
 
 #[component]
 pub fn ManageDeploymentImageHistory() -> impl IntoView {
 	let deployment_info = expect_context::<DeploymentInfoContext>().0;
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (current_workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+	let (state, _) = AuthState::load();
+	let access_token = move || state.get().get_access_token();
+	let current_workspace_id = move || state.get().get_last_used_workspace_id();
 
 	let image_history_list = create_resource(
 		move || {
 			(
-				access_token.get(),
-				current_workspace_id.get(),
-				deployment_info.get().map(|x| x.deployment.id.to_string()),
+				access_token(),
+				current_workspace_id().unwrap(),
+				deployment_info.get().map(|x| x.deployment.id).unwrap(),
 			)
 		},
 		move |(access_token, current_workspace_id, deployment_id)| async move {

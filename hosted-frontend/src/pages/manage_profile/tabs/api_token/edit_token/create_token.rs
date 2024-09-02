@@ -1,6 +1,4 @@
-use codee::string::FromToStringCodec;
 use ev::SubmitEvent;
-use leptos_use::use_cookie;
 use models::api::user::CreateApiTokenRequest;
 
 use super::super::{utils::CreateApiTokenInfo, CreatePermissionCard};
@@ -9,9 +7,9 @@ use crate::{pages::TokenModal, prelude::*, queries::create_api_token_query};
 /// The Create API Token Page
 #[component]
 pub fn CreateApiToken() -> impl IntoView {
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
+	let (state, _) = AuthState::load();
 	let workspace_list = create_resource(
-		move || access_token.get(),
+		move || state.get().get_access_token(),
 		move |value| async move { list_user_workspace(value).await },
 	);
 
@@ -141,7 +139,7 @@ pub fn CreateApiToken() -> impl IntoView {
 										<CreatePermissionCard workspace={workspace} />
 									}.into_view()).collect_view()
 								},
-								Some(Err(err)) => view! {
+								Some(Err(_)) => view! {
 									<div>"Error loading workspaces"</div>
 								}.into_view(),
 								None => view! {

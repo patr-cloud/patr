@@ -6,30 +6,26 @@ use crate::prelude::*;
 	ListMachineTypesFn,
 	endpoint = "/infrastructure/database/machine-types"
 )]
-pub async fn list_database(
+pub async fn list_database_machine_types(
 	access_token: Option<String>,
 ) -> Result<ListAllDatabaseMachineTypeResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
-	use constants::USER_AGENT_STRING;
-
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	let api_response = make_api_call::<ListAllDatabaseMachineTypeRequest>(
+	make_api_call::<ListAllDatabaseMachineTypeRequest>(
 		ApiRequest::builder()
 			.path(ListAllDatabaseMachineTypePath)
 			.query(())
 			.headers(ListAllDatabaseMachineTypeRequestHeaders {
 				authorization: access_token,
-				user_agent: UserAgent::from_static(USER_AGENT_STRING),
+				user_agent: UserAgent::from_static("todo"),
 			})
 			.body(ListAllDatabaseMachineTypeRequest)
 			.build(),
 	)
-	.await;
-
-	api_response
-		.map(|res| res.body)
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::InternalServerError))
+	.await
+	.map(|res| res.body)
+	.map_err(|_| ServerFnError::WrappedServerError(ErrorType::InternalServerError))
 }

@@ -10,15 +10,13 @@ pub async fn delete_deployment(
 ) -> Result<DeleteDeploymentResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
-	use constants::USER_AGENT_STRING;
-
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
 	let workspace_id = workspace_id
 		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	let api_response = make_api_call::<DeleteDeploymentRequest>(
+	make_api_call::<DeleteDeploymentRequest>(
 		ApiRequest::builder()
 			.path(DeleteDeploymentPath {
 				deployment_id,
@@ -27,18 +25,15 @@ pub async fn delete_deployment(
 			.query(())
 			.headers(DeleteDeploymentRequestHeaders {
 				authorization: access_token,
-				user_agent: UserAgent::from_static(USER_AGENT_STRING),
+				user_agent: UserAgent::from_static("todo"),
 			})
 			.body(DeleteDeploymentRequest)
 			.build(),
 	)
-	.await;
-
-	if api_response.is_ok() {
+	.await
+	.map(|res| {
 		leptos_axum::redirect("/deployment");
-	}
-
-	api_response
-		.map(|res| res.body)
-		.map_err(|err| ServerFnError::WrappedServerError(err))
+		res.body
+	})
+	.map_err(ServerFnError::WrappedServerError)
 }

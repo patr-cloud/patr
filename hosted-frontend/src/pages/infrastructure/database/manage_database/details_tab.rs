@@ -176,7 +176,7 @@ pub fn ManageDatabaseDetailsTab(
 					<div class="fr-sb-ct br-sm bg-secondary-light full-width py-sm px-xl">
 						<span class="pl-sm">
 							{
-								move || store_datbase.with_value(|db| format!(
+								move || store_datbase.with_value(|_db| format!(
 									"{}://{}:<DATABASE_PASSWORD>@{}:{}/staging",
 									database_info.get().engine,
 									database_info.get().public_connection.clone().username,

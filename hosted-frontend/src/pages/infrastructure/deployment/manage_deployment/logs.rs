@@ -42,7 +42,7 @@ pub fn ManageDeploymentsLogs() -> impl IntoView {
 								</For>
 
 							},
-							Some(Err(err)) => view! {
+							Some(Err(_)) => view! {
 								"error loading logs"
 							}.into_view(),
 							None => view! {

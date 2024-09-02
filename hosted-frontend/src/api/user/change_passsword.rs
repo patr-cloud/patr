@@ -1,4 +1,4 @@
-use models::api::user::ChangePasswordResponse;
+use models::api::user::*;
 
 use crate::prelude::*;
 
@@ -11,13 +11,7 @@ async fn change_password(
 ) -> Result<ChangePasswordResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
-	use models::api::user::{
-		ChangePasswordPath,
-		ChangePasswordRequest,
-		ChangePasswordRequestHeaders,
-	};
-
-	let api_response = make_api_call::<ChangePasswordRequest>(
+	make_api_call::<ChangePasswordRequest>(
 		ApiRequest::builder()
 			.path(ChangePasswordPath)
 			.query(())
@@ -35,9 +29,7 @@ async fn change_password(
 			})
 			.build(),
 	)
-	.await;
-
-	api_response
-		.map(|res| res.body)
-		.map_err(ServerFnError::WrappedServerError)
+	.await
+	.map(|res| res.body)
+	.map_err(ServerFnError::WrappedServerError)
 }

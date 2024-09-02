@@ -10,7 +10,7 @@ pub async fn sign_up(
 	last_name: String,
 	email: String,
 ) -> Result<CreateAccountResponse, ServerFnError<ErrorType>> {
-	let api_response = make_api_call::<CreateAccountRequest>(
+	make_api_call::<CreateAccountRequest>(
 		ApiRequest::builder()
 			.path(CreateAccountPath)
 			.query(())
@@ -28,11 +28,10 @@ pub async fn sign_up(
 			})
 			.build(),
 	)
-	.await;
-
-	if let Ok(resp) = &api_response {
+	.await
+	.map(|res| {
 		leptos_axum::redirect("/confirm");
-	}
-
-	Ok(api_response.map(|res| res.body)?)
+		res.body
+	})
+	.map_err(ServerFnError::WrappedServerError)
 }

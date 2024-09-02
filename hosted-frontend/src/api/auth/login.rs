@@ -10,13 +10,7 @@ pub async fn login(
 	password: String,
 	mfa_otp: Option<String>,
 ) -> Result<LoginResponse, ServerFnError<ErrorType>> {
-	use axum::http::header::{HeaderValue, SET_COOKIE};
-	use axum_extra::extract::cookie::{Cookie, SameSite};
-	use leptos_axum::ResponseOptions;
-	use models::api::auth::*;
-	use time::Duration;
-
-	let api_response = make_api_call::<LoginRequest>(
+	make_api_call::<LoginRequest>(
 		ApiRequest::builder()
 			.path(LoginPath)
 			.query(())
@@ -30,18 +24,15 @@ pub async fn login(
 			})
 			.build(),
 	)
-	.await;
-
-	let response = expect_context::<ResponseOptions>();
-
-	if let Ok(ref resp) = api_response {
+	.await
+	.map(|res| {
 		AuthState::load().1.set(Some(AuthState::LoggedIn {
-			access_token: resp.body.access_token.clone(),
-			refresh_token: resp.body.refresh_token.clone(),
+			access_token: res.body.access_token.clone(),
+			refresh_token: res.body.refresh_token.clone(),
 			last_used_workspace_id: None,
 		}));
 		leptos_axum::redirect("/");
-	}
-
-	Ok(api_response.map(|res| res.body)?)
+		res.body
+	})
+	.map_err(ServerFnError::WrappedServerError)
 }

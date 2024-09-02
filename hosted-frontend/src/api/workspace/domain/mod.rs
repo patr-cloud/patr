@@ -1,4 +1,4 @@
-pub mod get_domain;
-pub mod list_domain;
+mod get_domain;
+mod list_domain;
 
 pub use self::{get_domain::*, list_domain::*};

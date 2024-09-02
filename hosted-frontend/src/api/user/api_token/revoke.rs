@@ -15,7 +15,7 @@ pub async fn revoke_api_token(
 	let token_id = Uuid::parse_str(token_id.clone().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	let api_response = make_api_call::<RevokeApiTokenRequest>(
+	make_api_call::<RevokeApiTokenRequest>(
 		ApiRequest::builder()
 			.path(RevokeApiTokenPath { token_id })
 			.query(())
@@ -26,13 +26,10 @@ pub async fn revoke_api_token(
 			.body(RevokeApiTokenRequest)
 			.build(),
 	)
-	.await;
-
-	if api_response.is_ok() {
+	.await
+	.map(|res| {
 		leptos_axum::redirect("/user/api-tokens");
-	}
-
-	api_response
-		.map(|res| res.body)
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::InternalServerError))
+		res.body
+	})
+	.map_err(ServerFnError::WrappedServerError)
 }

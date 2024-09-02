@@ -10,28 +10,24 @@ pub async fn create_runner(
 ) -> Result<AddRunnerToWorkspaceResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
-	use constants::USER_AGENT_STRING;
-
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
 	let workspace_id = workspace_id
 		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	let api_response = make_api_call::<AddRunnerToWorkspaceRequest>(
+	make_api_call::<AddRunnerToWorkspaceRequest>(
 		ApiRequest::builder()
 			.path(AddRunnerToWorkspacePath { workspace_id })
 			.query(())
 			.headers(AddRunnerToWorkspaceRequestHeaders {
 				authorization: access_token,
-				user_agent: UserAgent::from_static(USER_AGENT_STRING),
+				user_agent: UserAgent::from_static("todo"),
 			})
 			.body(AddRunnerToWorkspaceRequest { name })
 			.build(),
 	)
-	.await;
-
-	api_response
-		.map(|res| res.body)
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::InternalServerError))
+	.await
+	.map(|res| res.body)
+	.map_err(ServerFnError::WrappedServerError)
 }

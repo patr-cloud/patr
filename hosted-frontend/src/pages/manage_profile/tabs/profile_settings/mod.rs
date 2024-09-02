@@ -1,14 +1,10 @@
-use codee::string::FromToStringCodec;
-use leptos_use::use_cookie;
-
 use crate::prelude::*;
 
 /// The Profile Settings Page, shows the basic info about the user, contact info
 /// and password management
 #[component]
 pub fn ProfileSettings() -> impl IntoView {
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let access_token_signal = move || access_token.get();
+	let access_token_signal = move || AuthState::load().0.get().get_access_token();
 	let user_data = create_resource(access_token_signal, move |value| async move {
 		load_user_data(value).await
 	});

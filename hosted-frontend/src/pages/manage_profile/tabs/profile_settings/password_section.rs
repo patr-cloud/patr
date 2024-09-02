@@ -1,7 +1,5 @@
 use std::rc::Rc;
 
-use codee::string::FromToStringCodec;
-use leptos_use::use_cookie;
 use models::api::user::ChangePasswordResponse;
 
 use crate::prelude::*;
@@ -12,8 +10,7 @@ pub fn PasswordSection() -> impl IntoView {
 
 	let change_password_action = create_server_action::<ChangePasswordFn>();
 	let response = change_password_action.value();
-
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
+	let access_token = AuthState::load().0.get_untracked().get_access_token();
 
 	let current_password_error = create_rw_signal("".to_owned());
 	let _new_password_error = create_rw_signal("".to_owned());

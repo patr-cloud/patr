@@ -2,7 +2,6 @@ mod head;
 
 use std::{rc::Rc, str::FromStr};
 
-use codee::string::FromToStringCodec;
 use models::api::workspace::database::DatabaseEngine;
 use strum::VariantNames;
 
@@ -17,9 +16,9 @@ pub struct DatabaseInfo {
 
 #[component]
 pub fn CreateDatabase() -> impl IntoView {
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (current_workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+	let (state, _) = AuthState::load();
+	let access_token = Signal::derive(move || state.get().get_access_token());
+	let current_workspace_id = Signal::derive(move || state.get().get_last_used_workspace_id());
 
 	let selected_runner = create_rw_signal("".to_string());
 	let database_info = create_rw_signal(DatabaseInfo {
@@ -30,7 +29,7 @@ pub fn CreateDatabase() -> impl IntoView {
 	let runner_list = create_resource(
 		move || (access_token.get(), current_workspace_id.get()),
 		move |(access_token, workspace_id)| async move {
-			list_runners(workspace_id, access_token).await
+			list_runners(workspace_id.unwrap(), access_token).await
 		},
 	);
 
@@ -59,7 +58,7 @@ pub fn CreateDatabase() -> impl IntoView {
 		}
 
 		spawn_local(async move {
-			let resp = create_database(
+			_ = create_database(
 				// I'm checking that the value is not none above, hence
 				// it's safe to unwrap
 				database_info.get().name.unwrap(),
