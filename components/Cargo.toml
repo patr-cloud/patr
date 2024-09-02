@@ -30,14 +30,28 @@ log = { workspace = true, features = [] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 leptos = { workspace = true, features = ["tracing", "hydrate"] }
-leptos-use = { workspace = true, features = [] }
+leptos-use = { workspace = true, features = [
+    "use_document",
+    "use_event_listener",
+    "use_window",
+    "use_cookie",
+    "use_clipboard",
+] }
 leptos_meta = { workspace = true, features = ["hydrate"] }
 leptos_router = { workspace = true, features = ["hydrate"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
 leptos = { workspace = true, features = ["tracing", "ssr"] }
-leptos-use = { workspace = true, features = ["axum", "ssr"] }
+leptos-use = { workspace = true, features = [
+    "axum",
+    "ssr",
+    "use_document",
+    "use_event_listener",
+    "use_window",
+    "use_cookie",
+    "use_clipboard",
+] }
 leptos_axum = { workspace = true, features = ["default"] }
 leptos_meta = { workspace = true, features = ["ssr"] }
 leptos_router = { workspace = true, features = ["ssr"] }

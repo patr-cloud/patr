@@ -42,6 +42,9 @@ web-sys = { workspace = true, features = [
     "Clipboard",
     "Navigator",
     "DataTransfer",
+    "File",
+    "FileList",
+    "HtmlInputElement",
 ] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

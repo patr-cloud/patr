@@ -39,7 +39,7 @@ base32 = { version = "0.5", default-features = false }
 base64 = { version = "0.22", default-features = false }
 bollard = { version = "0.17", default-features = false }
 clap = { version = "4", default-features = false }
-codee = { version = "0.1", default-features = false }
+codee = { version = "0.2", default-features = false }
 comfy-table = { version = "7", default-features = false }
 common = { path = "runners/common", default-features = false }
 components = { path = "components", default-features = false }
@@ -61,7 +61,7 @@ jsonwebtoken = { version = "9", default-features = false }
 k8s-openapi = { version = "0.22", default-features = false }
 kube = { version = "0.93", default-features = false }
 leptos = { version = "0.6", default-features = false }
-leptos-use = { version = "0.12", default-features = false }
+leptos-use = { version = "0.13", default-features = false }
 leptos_axum = { version = "0.6", default-features = false }
 leptos_meta = { version = "0.6", default-features = false }
 leptos_query = { version = "0.5", default-features = false }
@@ -82,7 +82,7 @@ quote = { version = "1", default-features = false }
 rand = { version = "0.8", default-features = false }
 regex = { version = "1", default-features = false }
 reqwest = { version = "0.12", default-features = false }
-rust-s3 = { version = "0.34", default-features = false }
+rust-s3 = { version = "0.35", default-features = false }
 rustis = { version = "0.13", default-features = false }
 schemars = { version = "0.8", default-features = false }
 semver = { version = "1", default-features = false }
