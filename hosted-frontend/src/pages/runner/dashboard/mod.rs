@@ -10,9 +10,7 @@ use crate::{prelude::*, queries::*};
 #[component]
 pub fn RunnerDashboard() -> impl IntoView {
 	let QueryResult {
-		data: runners_list,
-		is_loading: is_runners_list_loading,
-		..
+		data: runners_list, ..
 	} = list_runners_query().use_query(move || AllRunnersTag);
 
 	view! {

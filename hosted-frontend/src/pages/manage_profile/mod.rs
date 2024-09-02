@@ -1,5 +1,9 @@
 use crate::prelude::*;
 
+mod tabs;
+
+pub use self::tabs::*;
+
 /// All the Routes for Profile Pages,
 /// Contains create and edit api tokens, and
 /// Managed Profile
@@ -46,7 +50,3 @@ pub fn ManageProfile() -> impl IntoView {
 		</ContainerMain>
 	}
 }
-
-mod tabs;
-
-pub use self::tabs::*;

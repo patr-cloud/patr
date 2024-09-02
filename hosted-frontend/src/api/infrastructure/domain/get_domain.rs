@@ -9,9 +9,6 @@ pub async fn get_domain(
 	domain_id: Option<String>,
 ) -> Result<GetDomainInfoInWorkspaceResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
-
-	
-
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 

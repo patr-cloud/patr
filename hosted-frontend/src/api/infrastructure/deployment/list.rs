@@ -2,10 +2,11 @@ use models::api::workspace::deployment::*;
 
 use crate::prelude::*;
 
+/// List Dpeloyments
 #[server(ListDeploymentFn, endpoint = "/infrastructure/deployment/list")]
 pub async fn list_deployments(
-	workspace_id: Option<String>,
 	access_token: Option<String>,
+	workspace_id: Option<Uuid>,
 ) -> Result<ListDeploymentResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
@@ -14,8 +15,8 @@ pub async fn list_deployments(
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	let workspace_id = Uuid::parse_str(workspace_id.unwrap().as_str())
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
+	let workspace_id = workspace_id
+		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
 	let api_response = make_api_call::<ListDeploymentRequest>(
 		ApiRequest::builder()
@@ -36,5 +37,5 @@ pub async fn list_deployments(
 
 	api_response
 		.map(|res| res.body)
-		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::InternalServerError))
+		.map_err(|err| ServerFnError::WrappedServerError(err))
 }

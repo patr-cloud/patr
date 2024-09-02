@@ -1,13 +1,16 @@
 use models::api::workspace::deployment::*;
+use time::OffsetDateTime;
 
 use crate::prelude::*;
 
-#[server(StartDeploymentFn, endpoint = "/infrastructure/deployment/start")]
-pub async fn start_deployment(
+#[server(GetDeploymentLogsFn, endpoint = "/infrastructure/deployment/get_logs")]
+pub async fn get_deployment_logs(
 	access_token: Option<String>,
 	workspace_id: Option<Uuid>,
 	deployment_id: Uuid,
-) -> Result<StartDeploymentResponse, ServerFnError<ErrorType>> {
+	end_time: Option<OffsetDateTime>,
+	limit: Option<u32>,
+) -> Result<GetDeploymentLogsResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
 	use constants::USER_AGENT_STRING;
@@ -20,18 +23,18 @@ pub async fn start_deployment(
 	let workspace_id = workspace_id
 		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	let api_response = make_api_call::<StartDeploymentRequest>(
+	let api_response = make_api_call::<GetDeploymentLogsRequest>(
 		ApiRequest::builder()
-			.path(StartDeploymentPath {
+			.path(GetDeploymentLogsPath {
 				deployment_id,
 				workspace_id,
 			})
-			.query(())
-			.headers(StartDeploymentRequestHeaders {
+			.query(GetDeploymentLogsQuery { end_time, limit })
+			.headers(GetDeploymentLogsRequestHeaders {
 				authorization: access_token,
 				user_agent: UserAgent::from_static(USER_AGENT_STRING),
 			})
-			.body(StartDeploymentRequest)
+			.body(GetDeploymentLogsRequest)
 			.build(),
 	)
 	.await;

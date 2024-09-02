@@ -63,12 +63,7 @@ pub fn ManagedURLForm(
 
 	let port_string = create_rw_signal(format!("{:?}", port.get_untracked()));
 
-	let deployment_list = create_resource(
-		move || (access_token.get(), current_workspace_id.get()),
-		move |(access_token, workspace_id)| async move {
-			list_deployments(workspace_id, access_token).await
-		},
-	);
+	let deployment_list = get_deployments();
 
 	let domains = create_resource(
 		move || (access_token.get(), current_workspace_id.get()),

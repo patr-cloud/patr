@@ -28,5 +28,5 @@ pub async fn list_user_workspace(
 
 	api_response
 		.map(|res| res.body)
-		.map_err(|e| ServerFnError::WrappedServerError(ErrorType::InternalServerError))
+		.map_err(|err| ServerFnError::WrappedServerError(err))
 }

@@ -15,7 +15,6 @@ pub mod prelude {
 		input::*,
 		input_dropdown::*,
 		link::*,
-		log_statement::*,
 		modal::*,
 		number_picker::*,
 		otp_input::*,
@@ -88,10 +87,6 @@ pub mod input_dropdown;
 /// The link component. The link component is used to create a link to another
 /// page, or to an external website. It can also be used to create a button.
 pub mod link;
-/// The Log Statement component. The log statement component is used to display
-/// a log statement. It is used to show the user a log statement, like a
-/// deployment log, or a database log in the Deployments page
-pub mod log_statement;
 /// The Modal component. The modal component is used to display a modal. It is
 /// used to show the user a modal, like a confirmation modal, or a settings
 /// modal.

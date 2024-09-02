@@ -13,9 +13,9 @@ pub fn MachineTypeCard(
 	/// On Selecting an Input
 	#[prop(into, optional, default = Callback::new(|_| {}))]
 	on_select: Callback<Uuid>,
+	/// Whether the machine type is selected or not
+	is_selected: Signal<bool>,
 ) -> impl IntoView {
-	let is_selected = create_rw_signal(false);
-
 	let outer_div_class = move || {
 		class.with(|cname| {
 			format!(
@@ -25,18 +25,17 @@ pub fn MachineTypeCard(
 			)
 		})
 	};
-	create_effect(move |_| {
-		logging::log!("{}", is_selected.get());
-	});
 
 	view! {
-		<div class={outer_div_class} on:click={
-			let id = machine_type.get().id;
-			is_selected.update(|v| *v = !*v);
-			move |_| {
-				on_select.call(id);
+		<div
+			class={outer_div_class}
+			on:click={
+					let id = machine_type.get().id;
+					move |_| {
+						on_select.call(id);
+					}
 			}
-		}>
+		>
 			<div class="flex justify-start items-baseline">
 				<span class="text-md">
 					{format!("{} MB", machine_type.clone().get().memory_count)}
@@ -47,7 +46,6 @@ pub fn MachineTypeCard(
 				<span class="text-lg">{machine_type.get().cpu_count}</span>
 				<span class="text-disabled ml-xxs text-xxs">"vCPU"</span>
 			</div>
-
 		</div>
 	}
 }

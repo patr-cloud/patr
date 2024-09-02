@@ -2,9 +2,10 @@ use crate::prelude::*;
 
 mod create;
 mod manage_workspace;
+mod sidebar;
 mod tabs;
 
-pub use self::{create::*, manage_workspace::*, tabs::*};
+pub use self::{create::*, manage_workspace::*, sidebar::*, tabs::*};
 
 #[component(transparent)]
 pub fn WorkspaceRoutes() -> impl IntoView {

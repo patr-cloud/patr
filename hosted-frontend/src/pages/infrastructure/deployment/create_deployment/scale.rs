@@ -1,22 +1,23 @@
-use codee::string::FromToStringCodec;
-use leptos_use::use_cookie;
+use leptos_query::QueryResult;
 
 use super::super::components::*;
-use crate::{pages::DeploymentInfo, prelude::*};
+use crate::{
+	pages::DeploymentInfo,
+	prelude::*,
+	queries::{list_machines_query, AllMachinesTag},
+};
 
+/// A component that allows the user to scale their deployment
 #[component]
 pub fn ScaleDeployment() -> impl IntoView {
 	let min_horizontal = create_rw_signal::<u16>(2);
 	let max_horizontal = create_rw_signal::<u16>(10);
 
 	let deployment_info = expect_context::<RwSignal<DeploymentInfo>>();
-	let (current_workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
 
-	let machine_list = create_resource(
-		move || current_workspace_id.get(),
-		move |workspace_id| async move { list_all_machines(workspace_id).await },
-	);
+	let QueryResult {
+		data: machine_list, ..
+	} = list_machines_query().use_query(move || AllMachinesTag);
 
 	view! {
 		<div class="fc-fs-fs w-full px-xl mt-xl text-white text-sm fit-wide-screen mx-auto gap-md">
@@ -27,14 +28,22 @@ pub fn ScaleDeployment() -> impl IntoView {
 					<span class="text-sm">"Choose Horizontal Scale"</span>
 				</div>
 
-				<div class="flex-10 flex flex-col justify-start items-center bg-secondary-light p-xl br-sm">
-					<p class="w-full tracking-[1px] mb-lg text-xxs">
+				<div class="flex-10 flex flex-col justify-start items-start bg-secondary-light p-xl br-sm gap-md">
+					<p class="w-full tracking-[1px] text-xxs">
 						"Choose the minimum and maximum number of instances for your deployment "
 					</p>
 
-					<div class="w-full flex items-center justify-center">
-						<div class="flex-2 flex flex-col items-center justify-center">
-							<label html_for="minHorizontalScale">"Minimum Scale"</label>
+					<div class="flex flex-col justify-start items-start gap-xl">
+						<div
+							style="width: 30%"
+							class="w-full h-full flex justify-between items-center gap-xl"
+						>
+							<label
+								class="flex-3"
+								html_for="minHorizontalScale"
+							>
+								"Minimum Scale"
+							</label>
 
 							<NumberPicker
 								value={min_horizontal}
@@ -47,22 +56,16 @@ pub fn ScaleDeployment() -> impl IntoView {
 							/>
 						</div>
 
-						<div class="flex-8 mt-xl px-xl flex flex-col items-center justify-start">
-							<DoubleInputSlider
-								min={min_horizontal}
-								max={max_horizontal}
-								min_limit={1}
-								max_limit={10}
-								class="w-full"
-							/>
-
-							<p class="text-warning text-xxs">
-								"Any excess volumes will be removed if the number of instances is reduced."
-							</p>
-						</div>
-
-						<div class="flex-2 flex flex-col justify-center items-center">
-							<label html_for="maxHorizontalScale">"Maximum Scale"</label>
+						<div
+							style="width: 30%;"
+							class="w-full h-full flex justify-between items-center gap-xl"
+						>
+							<label
+								class="flex-3"
+								html_for="maxHorizontalScale"
+							>
+								"Maximum Scale"
+							</label>
 
 							<NumberPicker
 								value={max_horizontal}
@@ -100,7 +103,12 @@ pub fn ScaleDeployment() -> impl IntoView {
 												let:child
 											>
 												<MachineTypeCard
-													machine_type={child}
+													machine_type={child.clone()}
+													is_selected={
+														Signal::derive(
+															move || deployment_info.with(|info| info.machine_type.is_some_and(|id| id == child.clone().id))
+														)
+													}
 													on_select={move |id: Uuid| {
 														deployment_info.update(
 															|info| info.machine_type = Some(id)

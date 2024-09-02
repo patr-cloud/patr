@@ -8,6 +8,7 @@ mod monitor;
 mod scaling;
 mod urls;
 
+use convert_case::*;
 use leptos_query::QueryResult;
 use models::api::workspace::deployment::*;
 
@@ -22,11 +23,11 @@ pub use self::{
 	scaling::*,
 	urls::*,
 };
-use crate::{prelude::*, queries::get_deployment_query};
-
-/// The State Data for deployment management page
-#[derive(Debug, Clone)]
-pub struct DeploymentInfoContext(RwSignal<Option<GetDeploymentInfoResponse>>);
+use crate::{
+	pages::infrastructure::deployment::utils::DeploymentInfoContext,
+	prelude::*,
+	queries::get_deployment_query,
+};
 
 /// The Route Params for the manage deployments page
 #[derive(Params, PartialEq)]
@@ -56,7 +57,6 @@ pub fn ManageDeploymentsContent(
 						match info {
 							Ok(data) => {
 								let deployment = data.clone();
-								logging::log!("{:#?}", deployment);
 								deployment_info_signal.set(Some(deployment.clone()));
 								view! {
 									<ManageDeploymentHeader />
@@ -65,8 +65,16 @@ pub fn ManageDeploymentsContent(
 									</ContainerBody>
 								}.into_view()
 							},
-							Err(_)  => view! {
+							Err(err)  => view! {
 								<div>"Error Fetching Resource"</div>
+								<ErrorPage
+									title="Error Fetching Resource"
+									content={view! {
+										<p class="text-white">
+											{format!("{}", err.to_string().to_case(Case::Title))}
+										</p>
+									}.into_view()}
+								/>
 							}.into_view(),
 						}
 					},
@@ -105,7 +113,7 @@ pub fn ManageDeployments() -> impl IntoView {
 		.into_view(),
 		None => view! {
 			<ErrorPage
-				title="Error"
+				title="Deployment ID is not a valid UUID"
 			/>
 		}
 		.into_view(),

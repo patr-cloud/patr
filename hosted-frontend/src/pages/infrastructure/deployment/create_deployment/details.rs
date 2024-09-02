@@ -1,8 +1,10 @@
-use codee::string::FromToStringCodec;
-use leptos_use::use_cookie;
+use leptos_query::QueryResult;
 
 use super::{DeploymentInfo, DetailsPageError};
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	queries::{list_runners_query, AllRunnersTag},
+};
 
 /// The Deploy Details Page, has stuff like name, runner, registry, etc.
 #[component]
@@ -12,19 +14,10 @@ pub fn DeploymentDetails(
 	errors: MaybeSignal<DetailsPageError>,
 ) -> impl IntoView {
 	let deployment_info = expect_context::<RwSignal<DeploymentInfo>>();
-	let runner = create_rw_signal("".to_string());
-	let registry = create_rw_signal("patr".to_string());
 
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
-	let (current_workspace_id, _) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
-
-	let runner_list = create_resource(
-		move || (access_token.get(), current_workspace_id.get()),
-		move |(access_token, workspace_id)| async move {
-			list_runners(workspace_id, access_token).await
-		},
-	);
+	let QueryResult {
+		data: runners_list, ..
+	} = list_runners_query().use_query(move || AllRunnersTag);
 
 	let store_errors = store_value(errors);
 
@@ -81,7 +74,7 @@ pub fn DeploymentDetails(
 					<div class="flex-10 flex flex-col items-start justify-start">
 						<InputDropdown
 							placeholder="Registry Name"
-							value={registry}
+							value={deployment_info.with(|info| info.registry_name.clone().unwrap_or_default())}
 							class="w-full"
 							on_select={move |id: String| {
 								deployment_info.update(|info| info.registry_name = Some(id))
@@ -174,14 +167,22 @@ pub fn DeploymentDetails(
 									<InputDropdown
 										placeholder="Choose A Runner"
 										class="w-full"
-										value={runner}
+										value={
+											deployment_info
+												.with(
+													|info| info
+														.runner_id
+														.clone()
+														.map(|id| id.to_string()).unwrap_or_default()
+												)
+										}
 										on_select={move |id: String| {
 											if let Ok(runner_id) = Uuid::parse_str(id.as_str()) {
 												deployment_info.update(|info| info.runner_id = Some(runner_id))
 											}
 										}}
 										options={
-											match runner_list.get() {
+											match runners_list.get() {
 												Some(Ok(data)) => {
 													data.runners
 														.iter()

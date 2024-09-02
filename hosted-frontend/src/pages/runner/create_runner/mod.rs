@@ -10,8 +10,6 @@ pub fn CreateRunner() -> impl IntoView {
 
 	let create_runner_action = create_runner_query();
 
-	// let create_response = create_runner_action.value();
-
 	view! {
 		<RunnerCreateHead />
 		<ContainerBody class="p-xs px-md gap-md overflow-y-auto text-white">

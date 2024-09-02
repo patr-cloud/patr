@@ -156,3 +156,5 @@ assets-dir = "components/assets"
 browserquery = "defaults"
 # The profile to use for the lib target when compiling for release
 lib-profile-release = "frontend"
+# The port to use for the live reload server
+reload-port = 8080
