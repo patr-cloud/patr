@@ -1,8 +1,14 @@
 use codee::string::FromToStringCodec;
+use leptos_query::QueryResult;
 use leptos_query_devtools::LeptosQueryDevtools;
 use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};
 
-use crate::{pages::*, prelude::*, utils::AuthState};
+use crate::{
+	pages::*,
+	prelude::*,
+	queries::{list_workspaces_query, AllWorkspacesTag},
+	utils::AuthState,
+};
 
 #[component]
 pub fn AppOutletView() -> impl IntoView {
@@ -43,14 +49,13 @@ pub fn AppOutletView() -> impl IntoView {
 
 #[component]
 pub fn AppOutlet() -> impl IntoView {
-	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
 	let (_, set_current_workspace) =
 		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
 
-	let workspace_list = create_resource(
-		move || access_token.get(),
-		move |value| async move { list_user_workspace(value).await },
-	);
+	let QueryResult {
+		data: workspace_list,
+		..
+	} = list_workspaces_query().use_query(|| AllWorkspacesTag);
 	let (state, set_state) = AuthState::load();
 
 	let current_workspace_id =

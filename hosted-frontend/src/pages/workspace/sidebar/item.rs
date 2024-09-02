@@ -1,6 +1,6 @@
-use models::{api::workspace::Workspace, prelude::*};
+use models::api::workspace::Workspace;
 
-use crate::imports::*;
+use crate::prelude::*;
 
 #[component]
 pub fn WorkspaceItem(
@@ -14,6 +14,8 @@ pub fn WorkspaceItem(
 	#[prop(into)]
 	show_workspace_switcher: RwSignal<bool>,
 ) -> impl IntoView {
+	// let (state, set_state) = AuthState::load();
+
 	view! {
 		<li class="full-width py-xxs"
 			on:click={
@@ -22,6 +24,15 @@ pub fn WorkspaceItem(
 					logging::log!("{:#?}", workspace.get());
 					set_workspace_id.set(Some(workspace.get().id.to_string()));
 					show_workspace_switcher.set(false);
+					// set_state.update(|state| match *state {
+					// 	Some(AuthState::LoggedIn {
+					// 		ref mut last_used_workspace_id,
+					// 		..
+					// 	}) => {
+					// 		*last_used_workspace_id = Some(workspace.get().id.to_string());
+					// 	}
+					// 	_ => {}
+					// });
 				}
 			}
 		>

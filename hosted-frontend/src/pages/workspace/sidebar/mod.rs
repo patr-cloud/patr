@@ -1,13 +1,16 @@
 use leptos_router::use_navigate;
-use models::api::{workspace::Workspace, WithId};
+use models::api::workspace::Workspace;
 
-use crate::imports::*;
+mod item;
+mod switcher;
 
+use switcher::WorkspaceSwitcher;
+
+use crate::prelude::*;
+
+/// The Workspace Card on the sidebar
 #[component]
 pub fn WorkspaceCard(
-	/// Additional classes to apply
-	#[prop(into, optional)]
-	class: MaybeSignal<String>,
 	/// The Workspace
 	#[prop(into)]
 	workspaces: MaybeSignal<Vec<WithId<Workspace>>>,

@@ -1,7 +1,7 @@
-use models::{api::workspace::Workspace, prelude::*};
+use models::api::workspace::Workspace;
 
-use super::WorkspaceItem;
-use crate::imports::*;
+use super::item::WorkspaceItem;
+use crate::prelude::*;
 
 #[component]
 pub fn WorkspaceSwitcher(
