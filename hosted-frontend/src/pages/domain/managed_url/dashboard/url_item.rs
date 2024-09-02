@@ -1,4 +1,3 @@
-
 use models::api::workspace::managed_url::*;
 
 use super::ManagedUrlCard;

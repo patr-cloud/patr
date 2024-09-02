@@ -10,7 +10,7 @@ pub fn WorkspaceSwitcher(
 	workspaces: MaybeSignal<Vec<WithId<Workspace>>>,
 	/// Set the Current Workspace ID
 	#[prop(into)]
-	set_workspace_id: WriteSignal<Option<String>>,
+	set_workspace_id: WriteSignal<Option<Uuid>>,
 	/// Show Switcher Setter
 	#[prop(into)]
 	show_workspace_switcher: RwSignal<bool>,

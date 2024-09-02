@@ -8,27 +8,25 @@ use crate::{pages::*, prelude::*, utils::AuthState};
 pub fn WorkspacedRouteView() -> impl IntoView {
 	let (access_token, _) = use_cookie::<String, FromToStringCodec>(constants::ACCESS_TOKEN);
 	let (current_workspace_id, set_current_workspace) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
+		use_cookie::<Uuid, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
 
 	let workspace_list = create_resource(
 		move || access_token.get(),
 		move |value| async move { list_user_workspace(value).await },
 	);
 
-	let current_workspace_id = Signal::derive(move || {
-		match current_workspace_id.with(|id| id.clone().map(|id| Uuid::parse_str(id.as_str()))) {
-			Some(Ok(id)) => Some(id),
-			_ => {
-				let first_id = workspace_list.get().and_then(|list| {
-					list.ok().and_then(|x| {
-						let x = x.workspaces.first().and_then(|x| Some(x.id));
-						x
-					})
-				});
-				set_current_workspace.set(first_id.map(|x| x.to_string()));
+	let current_workspace_id = Signal::derive(move || match current_workspace_id.with(|id| *id) {
+		Some(id) => Some(id),
+		_ => {
+			let first_id = workspace_list.get().and_then(|list| {
+				list.ok().and_then(|x| {
+					let x = x.workspaces.first().and_then(|x| Some(x.id));
+					x
+				})
+			});
+			set_current_workspace.set(first_id);
 
-				first_id
-			}
+			first_id
 		}
 	});
 

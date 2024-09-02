@@ -9,7 +9,7 @@ pub fn WorkspaceItem(
 	workspace: MaybeSignal<WithId<Workspace>>,
 	/// Set the Current Workspace ID
 	#[prop(into)]
-	set_workspace_id: WriteSignal<Option<String>>,
+	set_workspace_id: WriteSignal<Option<Uuid>>,
 	/// Show Switcher Setter
 	#[prop(into)]
 	show_workspace_switcher: RwSignal<bool>,
@@ -21,18 +21,8 @@ pub fn WorkspaceItem(
 			on:click={
 				let workspace = workspace.clone();
 				move |_| {
-					logging::log!("{:#?}", workspace.get());
-					set_workspace_id.set(Some(workspace.get().id.to_string()));
+					set_workspace_id.set(Some(workspace.get().id));
 					show_workspace_switcher.set(false);
-					// set_state.update(|state| match *state {
-					// 	Some(AuthState::LoggedIn {
-					// 		ref mut last_used_workspace_id,
-					// 		..
-					// 	}) => {
-					// 		*last_used_workspace_id = Some(workspace.get().id.to_string());
-					// 	}
-					// 	_ => {}
-					// });
 				}
 			}
 		>

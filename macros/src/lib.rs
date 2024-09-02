@@ -21,6 +21,9 @@ mod has_headers;
 mod query;
 /// A macro to generate a recursive enum iterator.
 mod recursive_enum_iter;
+/// An attribute that expands to other attributes for a server fn, adding
+/// middlewares to it.
+mod server_fn;
 /// A macro to verify if a given string is a valid regex at compile time.
 mod verify_regex;
 /// A macro to get the current crate version.
@@ -211,4 +214,18 @@ pub fn version(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn verify_regex(input: TokenStream) -> TokenStream {
 	verify_regex::parse(input)
+}
+
+/// An attribute that expands to other attributes for a server fn, adding
+/// middlewares to it.
+/// ## Example usage:
+/// ```rust
+/// #[server_fn]
+/// pub async fn server_fn<E>() -> Result<E::Response, Rejection> where E: ApiEndpoint {
+///    Ok(warp::reply::json(&"Hello, World!"))
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn server_fn(args: TokenStream, input: TokenStream) -> TokenStream {
+	server_fn::parse(args, input)
 }

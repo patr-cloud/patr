@@ -1,7 +1,6 @@
-
+use codee::string::FromToStringCodec;
 use convert_case::*;
 use ev::SubmitEvent;
-use codee::string::FromToStringCodec;
 use models::api::workspace::managed_url::*;
 
 use crate::{pages::ManagedURLForm, prelude::*};

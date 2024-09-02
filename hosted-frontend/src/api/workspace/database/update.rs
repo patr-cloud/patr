@@ -1,6 +1,5 @@
 use std::error::Error;
 
-
 use crate::prelude::*;
 
 #[server(UpdateDatabaseFn, endpoint = "/infrastructure/database/update")]
@@ -11,8 +10,6 @@ pub async fn get_database(
 	password: String,
 ) -> Result<(), ServerFnError<ErrorType>> {
 	use std::str::FromStr;
-
-	
 
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;

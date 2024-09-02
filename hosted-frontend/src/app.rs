@@ -49,14 +49,26 @@ pub fn AppOutletView() -> impl IntoView {
 
 #[component]
 pub fn AppOutlet() -> impl IntoView {
-	let (_, set_current_workspace) =
-		use_cookie::<String, FromToStringCodec>(constants::LAST_USED_WORKSPACE_ID);
-
 	let QueryResult {
 		data: workspace_list,
 		..
 	} = list_workspaces_query().use_query(|| AllWorkspacesTag);
 	let (state, set_state) = AuthState::load();
+	let (current_workspace, set_current_workspace) = create_signal(None);
+
+	create_effect(move |_| {
+		if let Some(current_workspace) = current_workspace.get() {
+			set_state.update(|state| {
+				if let Some(AuthState::LoggedIn {
+					ref mut last_used_workspace_id,
+					..
+				}) = *state
+				{
+					*last_used_workspace_id = Some(current_workspace);
+				}
+			})
+		}
+	});
 
 	let current_workspace_id =
 		Signal::derive(
@@ -69,7 +81,7 @@ pub fn AppOutlet() -> impl IntoView {
 							x
 						})
 					});
-					set_current_workspace.set(first_id.map(|x| x.to_string()));
+					set_current_workspace.set(first_id);
 					set_state.update(|state| match *state {
 						Some(AuthState::LoggedIn {
 							ref mut last_used_workspace_id,

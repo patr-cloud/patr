@@ -1,4 +1,3 @@
-
 use super::ApiTokenInfo;
 use crate::{
 	pages::{convert_offset_to_date, convert_string_to_datetime},
@@ -36,7 +35,7 @@ pub fn TokenInfo() -> impl IntoView {
 								token_info_signal.update(|token| {
 									if let Some(ref mut token) = token {
 										token.data.name = event_target_value(&ev);
-									} 
+									}
 								});
 							})}
 							r#type={InputType::Text}

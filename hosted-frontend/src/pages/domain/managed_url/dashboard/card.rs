@@ -78,17 +78,17 @@ pub fn ManagedUrlCard(
 		if domain.is_none() {
 			"Cannot Load Domain".to_string()
 		} else if domain.clone().unwrap().is_err() {
-  				"Cannot Load Domain".to_string()
-  			} else {
-  				domain
-  					.clone()
-  					.unwrap()
-  					.unwrap()
-  					.workspace_domain
-  					.domain
-  					.name
-  					.clone()
-  			}
+			"Cannot Load Domain".to_string()
+		} else {
+			domain
+				.clone()
+				.unwrap()
+				.unwrap()
+				.workspace_domain
+				.domain
+				.name
+				.clone()
+		}
 	});
 
 	let managed_url_link = Signal::derive({
@@ -98,27 +98,27 @@ pub fn ManagedUrlCard(
 			let domain_name = if domain.is_none() {
 				"Cannot Load Domain".to_string()
 			} else if domain.clone().unwrap().is_err() {
-   					"Cannot Load Domain".to_string()
-   				} else {
-   					domain
-   						.clone()
-   						.unwrap()
-   						.unwrap()
-   						.workspace_domain
-   						.domain
-   						.name
-   						.clone()
-   				};
+				"Cannot Load Domain".to_string()
+			} else {
+				domain
+					.clone()
+					.unwrap()
+					.unwrap()
+					.workspace_domain
+					.domain
+					.name
+					.clone()
+			};
 
 			store_managed_url.with_value(|managed_url| {
 				managed_url.clone().with(|managed_url| {
 					if managed_url.sub_domain == "@" {
 						domain_name.clone().to_string()
 					} else if domain.is_none() {
-     							domain_name.clone().to_string()
-     						} else {
-     							format!("{}.{}", managed_url.sub_domain, domain_name.clone())
-     						}
+						domain_name.clone().to_string()
+					} else {
+						format!("{}.{}", managed_url.sub_domain, domain_name.clone())
+					}
 				})
 			})
 		}

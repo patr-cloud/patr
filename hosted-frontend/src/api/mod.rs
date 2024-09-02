@@ -1,8 +1,11 @@
-pub mod auth;
-pub mod infrastructure;
-pub mod manage_profile;
+/// All auth related endpoints, including OAuth
+mod auth;
 #[cfg(not(target_arch = "wasm32"))]
-pub mod middlewares;
-pub mod workspace;
+/// Contains the middlewares that will be used with server_fns
+mod middlewares;
+/// All endpoints that relate to a user and their data
+mod user;
+/// All endpoints that can be performed on a workspace
+mod workspace;
 
-pub use self::{auth::*, infrastructure::*, manage_profile::*, workspace::*};
+pub use self::{auth::*, user::*, workspace::*};

@@ -20,7 +20,7 @@ pub fn Toast(
 		with!(|class, show| {
 			format!("
                 {} {} popup br-sm fixed flex flex-col items-start justify-start text-white outline-primary-focus", 
-				class, 
+				class,
 				if *show {"show"} else {""}
 			)
 		})

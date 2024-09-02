@@ -19,7 +19,7 @@ pub fn WorkspaceCard(
 	current_workspace: MaybeSignal<Option<WithId<Workspace>>>,
 	/// Set the Current Workspace ID
 	#[prop(into)]
-	set_workspace_id: WriteSignal<Option<String>>,
+	set_workspace_id: WriteSignal<Option<Uuid>>,
 ) -> impl IntoView {
 	let show_workspace_switcher = create_rw_signal(false);
 	let _navigate = use_navigate();

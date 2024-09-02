@@ -35,28 +35,12 @@ pub async fn login(
 	let response = expect_context::<ResponseOptions>();
 
 	if let Ok(ref resp) = api_response {
-		let access_cookie =
-			Cookie::build((constants::ACCESS_TOKEN, resp.body.access_token.clone()))
-				.path("/")
-				.max_age(Duration::days(90))
-				.same_site(SameSite::Lax)
-				.build();
-		let refresh_cookie =
-			Cookie::build((constants::REFRESH_TOKEN, resp.body.refresh_token.clone()))
-				.path("/")
-				.max_age(Duration::days(90))
-				.same_site(SameSite::Lax)
-				.build();
-		let access_token_header = HeaderValue::from_str(access_cookie.to_string().as_str());
-		let refresh_token_header = HeaderValue::from_str(refresh_cookie.to_string().as_str());
-
-		if let (Ok(access_token_header), Ok(refresh_token_header)) =
-			(access_token_header, refresh_token_header)
-		{
-			response.append_header(SET_COOKIE, access_token_header);
-			response.append_header(SET_COOKIE, refresh_token_header);
-			leptos_axum::redirect("/");
-		}
+		AuthState::load().1.set(Some(AuthState::LoggedIn {
+			access_token: resp.body.access_token.clone(),
+			refresh_token: resp.body.refresh_token.clone(),
+			last_used_workspace_id: None,
+		}));
+		leptos_axum::redirect("/");
 	}
 
 	Ok(api_response.map(|res| res.body)?)
