@@ -27,3 +27,10 @@ tracing = { workspace = true, features = ["default", "async-await"] }
 tracing-log = { workspace = true, features = ["default"] }
 tracing-opentelemetry = { workspace = true, features = ["default"] }
 tracing-subscriber = { workspace = true, features = ["default"] }
+sqlx = { workspace = true, features = [
+	"runtime-tokio",
+	"tls-rustls",
+	"uuid",
+	"time",
+	"sqlite",
+] }

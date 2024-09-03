@@ -9,3 +9,5 @@
 .env
 .localData
 .[Dd][Ss]_[Ss]tore
+
+*.db
