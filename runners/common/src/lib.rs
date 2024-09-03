@@ -1,11 +1,4 @@
-// TODO:
-// - Figure out SQLX migrations
-// - Figure out slqx queries, and make them not throw errors and give proper
-//   type
-// - Figure out sqlite constraints / enums and all
-// - Figure out how to run all this and test it.
-
-#![feature(impl_trait_in_assoc_type, async_closure)]
+#![feature(impl_trait_in_assoc_type)]
 
 //! Common utilities for the runner. This library contains all the things you
 //! will need to make a runner. All it needs are the implementations of how the
@@ -13,51 +6,35 @@
 
 /// This module contains the main application logic. Most of the app requests,
 /// states, and mounting of endpoints are done here
-pub mod app;
-/// The client for the Patr API to get runner data for a given workspace.
-mod client;
-/// The configuration for the runner.
-mod config;
+mod app;
 /// The database module contains all the database related functions. Such as
 /// initializing the database, getting the connection, etc.
 mod db;
-/// A utility that returns a value after a delay.
-mod delayed_future;
 /// The executor module contains the trait that the runner needs to implement
 /// to run the resources.
 mod executor;
-/// Extensions traits for the `Either` type.
-mod ext_traits;
 /// All the Routes for the self-hosted Patr is defined here.
 mod routes;
 /// All the runner related structs and functions.
 mod runner;
-
-/// The constants module contains all the constants that are used throughout
-/// the runner Project.
-pub mod constants {
-	use semver::Version;
-
-	pub const SQLITE_DATABASE_PATH: &str = "db.db";
-
-	pub const DATABASE_VERSION: Version = macros::version!();
-}
+/// This module contains all the utilities used by the API. This includes things
+/// like the config parser, the [`tower::Layer`]s that are used to parse the
+/// requests, etc.
+mod utils;
 
 /// The prelude module contains all the things you need to import to get
 /// started with the runner.
 pub mod prelude {
-	pub use macros::{query, version};
+	pub use macros::version;
 	pub use models::prelude::*;
+	pub use sqlx::{query, Row};
 
-	pub(crate) use crate::ext_traits::EitherExt;
-	pub use crate::{app::AppState, config::*, executor::RunnerExecutor, runner::Runner};
-
-	/// The client module to interface with the Patr API
-	pub mod client {
-		pub use crate::client::*;
-	}
-
-	pub use crate::constants;
+	pub use crate::{
+		app::AppState,
+		executor::RunnerExecutor,
+		runner::Runner,
+		utils::{client, config::*, constants, ext_traits::*},
+	};
 
 	/// The type of the database connection. A mutable reference to this should
 	/// be used as the parameter for database functions, since it accepts both a

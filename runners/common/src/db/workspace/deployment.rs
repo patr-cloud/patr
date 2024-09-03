@@ -1,25 +1,25 @@
 use crate::prelude::*;
 
 pub async fn initialize_deployment_tables(
-	conn: &mut DatabaseConnection,
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
 	info!("Setting up deployment tables");
 
-	query!(
+	query(
 		r#"
-		CREATE TABLE deployment_machine_type(
+		CREATE TABLE machine_type(
 			id TEXT PRIMARY KEY,
 			cpu_count INTEGER NOT NULL,
 			memory_count INTEGER NOT NULL
 		);
-		"#
+		"#,
 	)
-	.execute(&mut *conn)
+	.execute(&mut *connection)
 	.await?;
 
-	query!(
+	query(
 		r#"
-		CREATE TABLE deployment(
+		CREATE TABLE IF NOT EXISTS deployment(
 			id TEXT NOT NULL PRIMARY KEY,
 			name TEXT NOT NULL,
 			registry TEXT NOT NULL DEFAULT 'docker.io',
@@ -48,9 +48,35 @@ pub async fn initialize_deployment_tables(
 			liveness_probe_port_type TEXT CHECK (liveness_probe_port_type IN ('tcp', 'http')),
 			current_live_digest TEXT
 		);
-		"#
+		"#,
 	)
-	.execute(&mut *conn)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn initialize_deployment_indices(
+	_connection: &mut DatabaseConnection,
+) -> Result<(), sqlx::Error> {
+	info!("Setting up deployment indices");
+
+	Ok(())
+}
+
+pub async fn initialize_deployment_constraints(
+	connection: &mut DatabaseConnection,
+) -> Result<(), sqlx::Error> {
+	info!("Setting up deployment constraints");
+
+	query(
+		r#"
+		ALTER TABLE deployment
+			ADD CONSTRAINT deployment_fk_machine_type FOREIGN KEY(machine_type)
+				REFERENCES deployment_machine_type(id);
+		"#,
+	)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())

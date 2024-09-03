@@ -17,8 +17,12 @@ pub struct RunnerSettings<D> {
 	/// The API token to authenticate the runner with.
 	#[serde(rename = "apitoken")]
 	pub api_token: String,
-	/// The environment to run the runner in.
+	/// The environment the application is running in. This is set at runtime
+	/// based on an environment variable and if the application is compiled with
+	/// debug mode.
 	pub environment: RunningEnvironment,
+	/// The configuration for the database to connect to
+	pub database: DatabaseConfig,
 	/// Additional settings for the runner.
 	#[serde(flatten)]
 	pub data: D,
@@ -82,4 +86,16 @@ impl Display for RunningEnvironment {
 			}
 		)
 	}
+}
+
+/// The configuration for the database to connect to. This will be the primary
+/// data store for all information contained in the API
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DatabaseConfig {
+	/// The location of the sqlite database file
+	pub file: String,
+	/// The maximum number of connections to the database
+	#[serde(alias = "connectionlimit")]
+	pub connection_limit: u32,
 }

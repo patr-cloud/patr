@@ -1,23 +1,27 @@
-use std::{fs::File, path::Path};
-
-use sqlx::{sqlite::SqlitePoolOptions, Pool};
+use sqlx::{pool::PoolOptions, Pool};
 
 use crate::prelude::*;
 
-pub mod initializer;
+/// The initializer for the database. This will create the database pool and
+/// initialize the database with the necessary tables and data.
+pub(super) mod initializer;
+/// The meta data for the database. This is mostly used for the version number
+/// of the database and handling the migrations for the database.
+pub(super) mod meta_data;
+/// The workspace module for the database. This is used to handle the workspaces
+/// and their data.
+pub(super) mod workspace;
 
-pub async fn connect() -> Pool<DatabaseType> {
-	let path = Path::new(constants::SQLITE_DATABASE_PATH);
-	if !path.exists() {
-		warn!("Database file does not exist. Creating a new one");
-		let _ =
-			File::create(constants::SQLITE_DATABASE_PATH).expect("Failed to create database file");
-	}
+pub use self::initializer::initialize;
+pub(super) use self::{meta_data::*, workspace::*};
 
-	info!("Connecting to database");
-	SqlitePoolOptions::new()
-		.max_connections(1)
-		.connect(&format!("sqlite://{}", constants::SQLITE_DATABASE_PATH))
+/// Connects to the database based on a config. Not much to say here.
+#[instrument(skip(config))]
+pub async fn connect(config: &DatabaseConfig) -> Pool<DatabaseType> {
+	info!("Connecting to database: `{}`", config.file);
+	PoolOptions::<DatabaseType>::new()
+		.max_connections(config.connection_limit)
+		.connect(&format!("sqlite:///{}", config.file))
 		.await
 		.expect("Failed to connect to database")
 }
