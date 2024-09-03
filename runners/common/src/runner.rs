@@ -1,4 +1,4 @@
-use std::{collections::HashMap, future::IntoFuture, pin::pin, str::FromStr};
+use std::{future::IntoFuture, net::SocketAddr, pin::pin, str::FromStr};
 
 use futures::{
 	future::{self, BoxFuture, Either},
@@ -6,7 +6,11 @@ use futures::{
 	StreamExt,
 };
 use models::api::workspace::{deployment::*, runner::*};
-use tokio::time::{self, Duration, Instant};
+use tokio::{
+	net::TcpListener,
+	task,
+	time::{self, Duration, Instant},
+};
 use tracing::{level_filters::LevelFilter, Dispatch, Level};
 use tracing_subscriber::{
 	fmt::{format::FmtSpan, Layer as FmtLayer},
@@ -14,25 +18,21 @@ use tracing_subscriber::{
 	Layer,
 };
 
-use crate::{delayed_future::DelayedFuture, prelude::*};
+use crate::{db, prelude::*, utils::delayed_future::DelayedFuture};
 
 /// The runner is the main struct that is used to run the resources. It contains
 /// the executor, the database connection pool, and the settings for the runner.
 /// The runner is created using the [`Runner::new`] function.
-pub struct Runner<'de, E>
+pub struct Runner<E>
 where
 	E: RunnerExecutor,
 {
 	/// The executor for the runner. This is the main trait that the runner
 	/// needs to implement to run the resources.
 	executor: E,
-	/// The settings for the runner. This contains the workspace ID, the runner
-	/// ID, the API token, the environment, and any additional settings that the
-	/// runner needs.
-	settings: RunnerSettings<E::Settings<'de>>,
-	/// The state of the runner. This is used to store the list of deployments,
-	/// databases, etc. that the runner is running.
-	deployments: HashMap<Uuid, (Deployment, DeploymentRunningDetails)>,
+	/// The app state for the runner. This contains the database connection pool
+	/// and the configuration for the runner.
+	state: AppState<E>,
 	/// A list of resources that need to be reconciled at a later time
 	/// This is used to retry resources that failed to reconcile
 	reconciliation_list: Vec<DelayedFuture<Uuid>>,
@@ -45,73 +45,45 @@ where
 	user_agent: UserAgent,
 }
 
-impl<'de, E> Runner<'de, E>
+impl<E> Runner<E>
 where
-	E: RunnerExecutor,
+	E: RunnerExecutor + 'static,
 {
-	/// Create a new runner with the given executor. This function will create a
-	/// new database connection pool and set up the global default subscriber
-	/// for the runner.
-	pub fn new(executor: E) -> Result<Self, ErrorType> {
-		let settings = RunnerSettings::<E::Settings<'_>>::parse(E::RUNNER_INTERNAL_NAME)
-			.expect("Failed to parse settings");
+	/// Initializes and runs the runner. This function will create a new
+	/// database connection pool and set up the global default subscriber for
+	/// the runner, then start the runner and run the resources that the runner
+	/// is responsible for. This function will run forever until the runner is
+	/// stopped.
+	pub async fn run(executor: E) {
+		let mut runner = Self::init(executor).await;
 
-		tracing::dispatcher::set_global_default(Dispatch::new(
-			tracing_subscriber::registry().with(
-				FmtLayer::new()
-					.with_span_events(FmtSpan::NONE)
-					.event_format(
-						tracing_subscriber::fmt::format()
-							.with_ansi(true)
-							.with_file(false)
-							.without_time()
-							.compact(),
-					)
-					.with_filter(
-						tracing_subscriber::filter::Targets::new()
-							.with_target(E::RUNNER_INTERNAL_NAME, LevelFilter::TRACE)
-							.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
-							.with_target("models", LevelFilter::TRACE),
-					)
-					.with_filter(LevelFilter::from_level(
-						if settings.environment == RunningEnvironment::Development {
-							Level::TRACE
-						} else {
-							Level::DEBUG
-						},
-					)),
-			),
-		))
-		.expect("Failed to set global default subscriber");
+		let workspace_id = runner.state.config.workspace_id;
+		let runner_id = runner.state.config.runner_id;
 
-		let deployments = HashMap::new();
-		let reconciliation_list = Vec::new();
-		let next_reconcile_future = future::pending().boxed();
-		let authorization = BearerToken::from_str(&settings.api_token)?;
-		let user_agent = UserAgent::from_str(concat!(
-			env!("CARGO_PKG_NAME"),
-			"/",
-			env!("CARGO_PKG_VERSION"),
-		))?;
+		// Run the server here
+		let state = runner.state.clone();
+		let server_task = task::spawn(async move {
+			let tcp_listener = TcpListener::bind(state.config.web_bind_address)
+				.await
+				.unwrap();
 
-		Ok(Self {
-			executor,
-			settings,
-			deployments,
-			reconciliation_list,
-			next_reconcile_future,
-			authorization,
-			user_agent,
-		})
-	}
+			info!(
+				"Listening for connections on {}",
+				tcp_listener.local_addr().unwrap()
+			);
 
-	/// Run the runner. This function will start the runner and run the
-	/// resources that the runner is responsible for. This function will run
-	/// forever until the runner is stopped.
-	pub async fn run(mut self) {
+			axum::serve(
+				tcp_listener,
+				crate::routes::setup_routes(&state)
+					.await
+					.into_make_service_with_connect_info::<SocketAddr>(),
+			)
+			.with_graceful_shutdown(exit_signal())
+			.await
+			.unwrap();
+		});
+
 		info!("Runner started");
-		let workspace_id = self.settings.workspace_id;
-		let runner_id = self.settings.runner_id;
 
 		let mut exit_signal = pin!(exit_signal());
 		debug!("Exit signal listener started");
@@ -121,15 +93,15 @@ where
 		'main: loop {
 			let Some(response) = futures::future::select(
 				&mut exit_signal,
-				Box::pin(crate::client::stream_request(
+				Box::pin(client::stream_request(
 					ApiRequest::<StreamRunnerDataForWorkspaceRequest>::builder()
 						.path(StreamRunnerDataForWorkspacePath {
 							workspace_id,
 							runner_id,
 						})
 						.headers(StreamRunnerDataForWorkspaceRequestHeaders {
-							authorization: self.authorization.clone(),
-							user_agent: self.user_agent.clone(),
+							authorization: runner.authorization.clone(),
+							user_agent: runner.user_agent.clone(),
 						})
 						.query(())
 						.body(Default::default())
@@ -164,8 +136,8 @@ where
 
 			info!("Reconciling all resources before starting");
 			// Reconcile all resources at the start (or when reconnecting to the websocket)
-			self.reconciliation_list.clear();
-			self.reconcile_all().await;
+			runner.reconciliation_list.clear();
+			runner.reconcile_all().await;
 
 			// Reconcile all resources at a fixed interval
 			let mut reconcile_all = Box::pin(time::sleep(E::FULL_RECONCILIATION_INTERVAL));
@@ -176,7 +148,7 @@ where
 					&mut exit_signal,
 					future::select(
 						reconcile_all.as_mut(),
-						future::select(pinned_stream.next(), &mut self.next_reconcile_future),
+						future::select(pinned_stream.next(), &mut runner.next_reconcile_future),
 					),
 				)
 				.await
@@ -189,8 +161,8 @@ where
 					// Reconcile all resources
 					Either::Left(_) => {
 						reconcile_all = Box::pin(time::sleep(E::FULL_RECONCILIATION_INTERVAL));
-						self.reconciliation_list.clear();
-						self.reconcile_all().await;
+						runner.reconciliation_list.clear();
+						runner.reconcile_all().await;
 						continue 'message;
 					}
 					Either::Right((actionable_message, _)) => actionable_message,
@@ -200,7 +172,7 @@ where
 					// Reconcile a resource from the server
 					Either::Left((Some(Ok(response)), _)) => {
 						// Reconcile the resource
-						self.handle_server_message(response).await;
+						runner.handle_server_message(response).await;
 					}
 					// Data from the websocket failed
 					Either::Left((Some(Err(err)), _)) => {
@@ -240,13 +212,76 @@ where
 					}
 					// A specific resource needs to be reconciled again
 					Either::Right((deployment_id, _)) => {
-						self.reconcile_deployment(deployment_id).await;
+						runner.reconcile_deployment(deployment_id).await;
 					}
 				}
 			}
 		}
 
-		info!("Runner stopped. Exiting...");
+		info!("Runner stopped. Waiting for server to exit");
+		_ = server_task.await;
+		info!("Server exited. Exiting runner...");
+	}
+
+	async fn init(executor: E) -> Self {
+		let config = RunnerSettings::<E::Settings>::parse(E::RUNNER_INTERNAL_NAME)
+			.expect("Failed to parse settings");
+
+		tracing::dispatcher::set_global_default(Dispatch::new(
+			tracing_subscriber::registry().with(
+				FmtLayer::new()
+					.with_span_events(FmtSpan::NONE)
+					.event_format(
+						tracing_subscriber::fmt::format()
+							.with_ansi(true)
+							.with_file(false)
+							.without_time()
+							.compact(),
+					)
+					.with_filter(
+						tracing_subscriber::filter::Targets::new()
+							.with_target(E::RUNNER_INTERNAL_NAME, LevelFilter::TRACE)
+							.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
+							.with_target("models", LevelFilter::TRACE),
+					)
+					.with_filter(LevelFilter::from_level(
+						if config.environment == RunningEnvironment::Development {
+							Level::TRACE
+						} else {
+							Level::DEBUG
+						},
+					)),
+			),
+		))
+		.expect("Failed to set global default subscriber");
+
+		let authorization =
+			BearerToken::from_str(&config.api_token).expect("Failed to parse API token");
+		let user_agent = UserAgent::from_str(concat!(
+			env!("CARGO_PKG_NAME"),
+			"/",
+			env!("CARGO_PKG_VERSION"),
+		))
+		.expect("Failed to parse user agent as valid header");
+		let reconciliation_list = Vec::new();
+		let next_reconcile_future = future::pending().boxed();
+
+		let database = db::connect(&config.database).await;
+
+		let state = AppState { database, config };
+
+		db::initialize(&state)
+			.await
+			.expect("unable to initialize database");
+
+		Self {
+			executor,
+			state,
+			reconciliation_list,
+			next_reconcile_future,
+			authorization,
+			user_agent,
+		}
 	}
 
 	/// Reconcile all the resources that the runner is responsible for. This
@@ -276,7 +311,7 @@ where
 			let Ok(response) = client::make_request(
 				ApiRequest::<ListDeploymentRequest>::builder()
 					.path(ListDeploymentPath {
-						workspace_id: self.settings.workspace_id,
+						workspace_id: self.state.config.workspace_id,
 					})
 					.headers(ListDeploymentRequestHeaders {
 						authorization: self.authorization.clone(),
@@ -295,7 +330,10 @@ where
 				debug!("Failed to get deployment list: {:?}", err);
 				warn!("Using the pre-existing list");
 			}) else {
-				should_run_deployments = self.deployments.keys().copied().collect();
+				let Ok(deployments) = self.get_all_local_deployments().await else {
+					return;
+				};
+				should_run_deployments = deployments;
 				break;
 			};
 
@@ -365,7 +403,7 @@ where
 			}) = client::make_request(
 				ApiRequest::<GetDeploymentInfoRequest>::builder()
 					.path(GetDeploymentInfoPath {
-						workspace_id: self.settings.workspace_id,
+						workspace_id: self.state.config.workspace_id,
 						deployment_id,
 					})
 					.headers(GetDeploymentInfoRequestHeaders {
@@ -448,6 +486,26 @@ where
 		}
 
 		self.recheck_next_reconcile_future();
+	}
+
+	async fn get_all_local_deployments(&mut self) -> Result<Vec<Uuid>, ErrorType> {
+		let rows = query(
+			r#"
+			SELECT
+				id
+			FROM
+				deployments
+			ORDER BY
+				id
+			"#,
+		)
+		.fetch_all(&self.state.database)
+		.await?;
+
+		Ok(rows
+			.into_iter()
+			.map(|row| row.get::<Uuid, _>("id"))
+			.collect())
 	}
 
 	/// Get the next reconcile future from the list of futures. This function

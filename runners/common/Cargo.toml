@@ -10,6 +10,7 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
 config = { workspace = true }
 futures = { workspace = true }
 http = { workspace = true, features = ["default"] }
@@ -20,6 +21,7 @@ reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 semver = { workspace = true, features = ["default"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+tower = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tokio-stream = { workspace = true, features = ["default", "sync"] }
 tokio-tungstenite = { workspace = true, features = ["default"] }
@@ -27,3 +29,10 @@ tracing = { workspace = true, features = ["default", "async-await"] }
 tracing-log = { workspace = true, features = ["default"] }
 tracing-opentelemetry = { workspace = true, features = ["default"] }
 tracing-subscriber = { workspace = true, features = ["default"] }
+sqlx = { workspace = true, features = [
+	"runtime-tokio",
+	"tls-rustls",
+	"uuid",
+	"time",
+	"sqlite",
+] }

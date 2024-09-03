@@ -1,5 +1,10 @@
 {
+  "webBindAddress": "127.0.0.1:4000",
   "workspaceId": "workspaceId",
   "runnerId": "runnerId",
-  "apiToken": "apiToken"
+  "apiToken": "apiToken",
+  "database": {
+    "file": "data.db",
+    "connectionLimit": 5
+  }
 }
