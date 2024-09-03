@@ -829,6 +829,7 @@ dependencies = [
 name = "common"
 version = "0.18.0"
 dependencies = [
+ "axum",
  "config",
  "futures",
  "http 1.1.0",

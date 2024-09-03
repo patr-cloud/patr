@@ -4,7 +4,7 @@ use semver::Version;
 
 use crate::prelude::*;
 
-pub async fn initialize<E>(app: &AppState<'_, E>) -> Result<(), ErrorType>
+pub async fn initialize<E>(app: &AppState<E>) -> Result<(), ErrorType>
 where
 	E: RunnerExecutor,
 {

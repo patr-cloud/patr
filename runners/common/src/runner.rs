@@ -1,4 +1,4 @@
-use std::{future::IntoFuture, pin::pin, str::FromStr};
+use std::{future::IntoFuture, net::SocketAddr, pin::pin, str::FromStr};
 
 use futures::{
 	future::{self, BoxFuture, Either},
@@ -6,7 +6,11 @@ use futures::{
 	StreamExt,
 };
 use models::api::workspace::{deployment::*, runner::*};
-use tokio::time::{self, Duration, Instant};
+use tokio::{
+	net::TcpListener,
+	task,
+	time::{self, Duration, Instant},
+};
 use tracing::{level_filters::LevelFilter, Dispatch, Level};
 use tracing_subscriber::{
 	fmt::{format::FmtSpan, Layer as FmtLayer},
@@ -19,7 +23,7 @@ use crate::{db, prelude::*, utils::delayed_future::DelayedFuture};
 /// The runner is the main struct that is used to run the resources. It contains
 /// the executor, the database connection pool, and the settings for the runner.
 /// The runner is created using the [`Runner::new`] function.
-pub struct Runner<'de, E>
+pub struct Runner<E>
 where
 	E: RunnerExecutor,
 {
@@ -28,7 +32,7 @@ where
 	executor: E,
 	/// The app state for the runner. This contains the database connection pool
 	/// and the configuration for the runner.
-	state: AppState<'de, E>,
+	state: AppState<E>,
 	/// A list of resources that need to be reconciled at a later time
 	/// This is used to retry resources that failed to reconcile
 	reconciliation_list: Vec<DelayedFuture<Uuid>>,
@@ -41,9 +45,9 @@ where
 	user_agent: UserAgent,
 }
 
-impl<'de, E> Runner<'de, E>
+impl<E> Runner<E>
 where
-	E: RunnerExecutor,
+	E: RunnerExecutor + 'static,
 {
 	/// Initializes and runs the runner. This function will create a new
 	/// database connection pool and set up the global default subscriber for
@@ -55,6 +59,29 @@ where
 
 		let workspace_id = runner.state.config.workspace_id;
 		let runner_id = runner.state.config.runner_id;
+
+		// Run the server here
+		let state = runner.state.clone();
+		let server_task = task::spawn(async move {
+			let tcp_listener = TcpListener::bind(state.config.web_bind_address)
+				.await
+				.unwrap();
+
+			info!(
+				"Listening for connections on {}",
+				tcp_listener.local_addr().unwrap()
+			);
+
+			axum::serve(
+				tcp_listener,
+				crate::routes::setup_routes(&state)
+					.await
+					.into_make_service_with_connect_info::<SocketAddr>(),
+			)
+			.with_graceful_shutdown(exit_signal())
+			.await
+			.unwrap();
+		});
 
 		info!("Runner started");
 
@@ -191,11 +218,13 @@ where
 			}
 		}
 
-		info!("Runner stopped. Exiting...");
+		info!("Runner stopped. Waiting for server to exit");
+		_ = server_task.await;
+		info!("Server exited. Exiting runner...");
 	}
 
 	async fn init(executor: E) -> Self {
-		let config = RunnerSettings::<E::Settings<'_>>::parse(E::RUNNER_INTERNAL_NAME)
+		let config = RunnerSettings::<E::Settings>::parse(E::RUNNER_INTERNAL_NAME)
 			.expect("Failed to parse settings");
 
 		tracing::dispatcher::set_global_default(Dispatch::new(

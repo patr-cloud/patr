@@ -1,4 +1,7 @@
-use std::fmt::{Display, Formatter};
+use std::{
+	fmt::{Display, Formatter},
+	net::SocketAddr,
+};
 
 use config::{Config, ConfigError, Environment, File};
 use models::prelude::*;
@@ -23,6 +26,9 @@ pub struct RunnerSettings<D> {
 	pub environment: RunningEnvironment,
 	/// The configuration for the database to connect to
 	pub database: DatabaseConfig,
+	/// The address to listed on
+	#[serde(alias = "webbindaddress")]
+	pub web_bind_address: SocketAddr,
 	/// Additional settings for the runner.
 	#[serde(flatten)]
 	pub data: D,

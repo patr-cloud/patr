@@ -30,7 +30,7 @@ struct DockerRunner {
 }
 
 impl RunnerExecutor for DockerRunner {
-	type Settings<'s> = config::RunnerSettings;
+	type Settings = config::RunnerSettings;
 
 	const RUNNER_INTERNAL_NAME: &'static str = env!("CARGO_CRATE_NAME");
 

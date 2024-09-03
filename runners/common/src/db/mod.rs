@@ -23,7 +23,7 @@ pub async fn connect(config: &DatabaseConfig) -> Pool<DatabaseType> {
 		.max_connections(config.connection_limit)
 		.connect_with(
 			<DatabaseConnection as sqlx::Connection>::Options::new()
-				.filename(&format!("sqlite://{}", config.file))
+				.filename(&config.file)
 				.foreign_keys(true)
 				.create_if_missing(true),
 		)
