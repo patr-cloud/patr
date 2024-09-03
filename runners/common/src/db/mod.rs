@@ -1,4 +1,5 @@
 use sqlx::{pool::PoolOptions, Pool};
+use tokio::fs::{self, File};
 
 use crate::prelude::*;
 
@@ -19,9 +20,14 @@ pub(super) use self::{meta_data::*, workspace::*};
 #[instrument(skip(config))]
 pub async fn connect(config: &DatabaseConfig) -> Pool<DatabaseType> {
 	info!("Connecting to database: `{}`", config.file);
+	if fs::metadata(config.file.as_str()).await.is_err() {
+		File::create(config.file.as_str())
+			.await
+			.expect("Failed to create database file");
+	}
 	PoolOptions::<DatabaseType>::new()
 		.max_connections(config.connection_limit)
-		.connect(&format!("sqlite:///{}", config.file))
+		.connect(&format!("sqlite://{}", config.file))
 		.await
 		.expect("Failed to connect to database")
 }

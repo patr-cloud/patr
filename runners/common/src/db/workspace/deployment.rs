@@ -65,19 +65,9 @@ pub async fn initialize_deployment_indices(
 }
 
 pub async fn initialize_deployment_constraints(
-	connection: &mut DatabaseConnection,
+	_connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
 	info!("Setting up deployment constraints");
-
-	query(
-		r#"
-		ALTER TABLE deployment
-			ADD CONSTRAINT deployment_fk_machine_type FOREIGN KEY(machine_type)
-				REFERENCES deployment_machine_type(id);
-		"#,
-	)
-	.execute(&mut *connection)
-	.await?;
 
 	Ok(())
 }

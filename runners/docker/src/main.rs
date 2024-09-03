@@ -271,10 +271,8 @@ impl RunnerExecutor for DockerRunner {
 
 #[tokio::main]
 async fn main() {
-	Runner::new(DockerRunner {
+	Runner::run(DockerRunner {
 		docker: Docker::connect_with_local_defaults().unwrap(),
 	})
-	.expect("unable to construct runner")
-	.run()
 	.await;
 }

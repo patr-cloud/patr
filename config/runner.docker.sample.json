@@ -1,5 +1,9 @@
 {
   "workspaceId": "workspaceId",
   "runnerId": "runnerId",
-  "apiToken": "apiToken"
+  "apiToken": "apiToken",
+  "database": {
+    "file": "data.db",
+    "connectionLimit": 5
+  }
 }
