@@ -2,7 +2,6 @@ use crate::prelude::*;
 
 /// The global state of the application.
 /// This will contain the database connection and other configuration.
-#[derive(Clone)]
 pub struct AppState<E>
 where
 	E: RunnerExecutor,
@@ -11,4 +10,16 @@ where
 	pub database: sqlx::Pool<DatabaseType>,
 	/// The application configuration.
 	pub config: RunnerSettings<E::Settings>,
+}
+
+impl<E> Clone for AppState<E>
+where
+	E: RunnerExecutor,
+{
+	fn clone(&self) -> Self {
+		Self {
+			database: self.database.clone(),
+			config: self.config.clone(),
+		}
+	}
 }

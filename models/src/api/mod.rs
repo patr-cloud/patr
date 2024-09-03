@@ -17,12 +17,13 @@ use serde::{Deserialize, Serialize};
 pub use self::get_version::*;
 use crate::prelude::*;
 
-/// A wrapper for any type that contains an ID. This is used to return data from
-/// the API that contains the ID of the object. For example, when listing all
-/// deployments, the API will return a list of `WithId<Deployment>`. This means
-/// that the `Deployment` struct should not contain the ID field, or it will
-/// panic. The struct contained in the `WithId` struct can be reused in multiple
-/// places.
+/// A wrapper for any type that contains an ID.
+///
+/// This is used to return data from the API that contains the ID of the object.
+/// For example, when listing all deployments, the API will return a list of
+/// `WithId<Deployment>`. This means that the `Deployment` struct should not
+/// contain the ID field, or it will panic. The struct contained in the `WithId`
+/// struct can be reused in multiple places.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd, Hash, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct WithId<T> {

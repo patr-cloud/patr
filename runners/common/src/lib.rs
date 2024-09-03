@@ -48,10 +48,11 @@ pub mod prelude {
 	/// ```
 	pub type DatabaseConnection = <DatabaseType as sqlx::Database>::Connection;
 
-	/// The type of the database transaction. This is used in requests to
-	/// rollback or commit transactions based on how an endpoint responds. This
-	/// currently has a static lifetime, implying that only transactions from a
-	/// pooled connection is allowed.
+	/// The type of the database transaction.
+	///
+	/// This is used in requests to rollback or commit transactions based on how
+	/// an endpoint responds. This currently has a static lifetime, implying
+	/// that only transactions from a pooled connection is allowed.
 	pub type DatabaseTransaction = sqlx::Transaction<'static, DatabaseType>;
 
 	/// The type of the database. This is currently set to [`sqlx::Sqlite`].

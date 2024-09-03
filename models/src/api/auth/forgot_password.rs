@@ -2,9 +2,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
 
-/// Recovery method options provided to the user when they forget their
-/// passsword and request a password change by hitting the ForgetPassword API
-/// endpoint. The curent recovery options are email and phone number.
+/// Recovery method options provided to the user.
+///
+/// When they forget their password and request a password change by hitting the
+/// ForgetPassword API endpoint, these are the options presented to them. The
+/// current recovery options are email and phone number.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum PreferredRecoveryOption {

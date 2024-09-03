@@ -20,9 +20,10 @@ use tracing_subscriber::{
 
 use crate::{db, prelude::*, utils::delayed_future::DelayedFuture};
 
-/// The runner is the main struct that is used to run the resources. It contains
-/// the executor, the database connection pool, and the settings for the runner.
-/// The runner is created using the [`Runner::new`] function.
+/// The runner is the main struct that is used to run the resources.
+///
+/// It contains the executor, the database connection pool, and the settings for
+/// the runner. The runner is created using the [`Runner::new`] function.
 pub struct Runner<E>
 where
 	E: RunnerExecutor,
@@ -223,6 +224,8 @@ where
 		info!("Server exited. Exiting runner...");
 	}
 
+	/// Initialize the runner. This function will create a new database
+	/// connection pool and set up the global default subscriber for the runner.
 	async fn init(executor: E) -> Self {
 		let config = RunnerSettings::<E::Settings>::parse(E::RUNNER_INTERNAL_NAME)
 			.expect("Failed to parse settings");
@@ -488,6 +491,8 @@ where
 		self.recheck_next_reconcile_future();
 	}
 
+	/// Get all the local deployments. This function will get all the local
+	/// deployments from the SQLite database.
 	async fn get_all_local_deployments(&mut self) -> Result<Vec<Uuid>, ErrorType> {
 		let rows = query(
 			r#"

@@ -13,9 +13,11 @@ use crate::utils::{
 	RequiresResponseHeaders as ResponseHeaders,
 };
 
-/// A trait that defines an API endpoint. This is used to generate the routes
-/// for the API, as well as the corresponding path, request query, request
-/// headers, request body, response headers, and response body types.
+/// A trait that defines an API endpoint.
+///
+/// This is used to generate the routes for the API, as well as the
+/// corresponding path, request query, request headers, request body, response
+/// headers, and response body types.
 ///
 /// Ideally, this trait would contain all the information needed to define the
 /// functionality of a route

@@ -132,16 +132,19 @@ pub mod constants {
 	/// Spells "*Patr*" in bytes
 	pub const UUID_NODE_ID: [u8; 6] = [42, 80, 97, 116, 114, 42];
 
-	/// The regular expression used to validate a username. The username must
-	/// start with an alphanumeric character or an underscore, and end with an
-	/// alphanumeric character. The username can contain alphanumeric
-	/// characters, underscores, dots, and hyphens.
+	/// The regular expression used to validate a username.
+	///
+	/// The username must start with an alphanumeric character or an underscore,
+	/// and end with an alphanumeric character. The username can contain
+	/// alphanumeric characters, underscores, dots, and hyphens.
 	pub const USERNAME_VALIDITY_REGEX: &str =
 		macros::verify_regex!(r"^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$");
 
-	/// Regex to validate The Country Code of the phone number. The country code
-	/// is a 2-letter code that represents the country of the phone number. The
-	/// country code must be in the format `US`, `IN`, `UK`, etc.
+	/// Regex to validate The Country Code of the phone number.
+	///
+	/// The country code is a 2-letter code that represents the country of the
+	/// phone number. The country code must be in the format `US`, `IN`, `UK`,
+	/// etc.
 	pub const PHONE_NUMBER_COUNTRY_CODE_REGEX: &str = macros::verify_regex!(r"^[A-Z][A-Z]$");
 
 	/// The Regex to validate the phone number. The phone number must be in the
@@ -159,10 +162,11 @@ pub mod constants {
 	/// digits, letters, hyphens, underscores, spaces and dots.
 	pub const RESOURCE_NAME_REGEX: &str = macros::verify_regex!(r"^[a-zA-Z0-9\-_ \.]{4,255}$");
 
-	/// The Regex to validate a DNS record name. The DNS record name must be in
-	/// the format `@`, `www`, `subdomain`, etc. The DNS record name can have
-	/// alphanumeric characters and hyphens, but must not start or end with a
-	/// hyphen.
+	/// The Regex to validate a DNS record name.
+	///
+	/// The DNS record name must be in the format `@`, `www`, `subdomain`, etc.
+	/// The DNS record name can have alphanumeric characters and hyphens, but
+	/// must not start or end with a hyphen.
 	pub const DNS_RECORD_NAME_REGEX: &str = macros::verify_regex!(
 		r"^((([a-z0-9].)([a-z0-9\-]*){0,63}([a-z0-9].).)(\.([a-z0-9].)([a-z0-9\-_]*){0,63}([a-z0-9]*)))|\@$"
 	);

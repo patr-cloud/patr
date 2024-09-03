@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+/// Initializes the deployment tables
+#[instrument(skip(connection))]
 pub async fn initialize_deployment_tables(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
@@ -56,6 +58,8 @@ pub async fn initialize_deployment_tables(
 	Ok(())
 }
 
+/// Initializes the deployment indices
+#[instrument(skip(_connection))]
 pub async fn initialize_deployment_indices(
 	_connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
@@ -64,6 +68,8 @@ pub async fn initialize_deployment_indices(
 	Ok(())
 }
 
+/// Initializes the deployment constraints
+#[instrument(skip(_connection))]
 pub async fn initialize_deployment_constraints(
 	_connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {

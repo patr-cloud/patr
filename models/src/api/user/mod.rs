@@ -36,9 +36,10 @@ pub struct UserPhoneNumber {
 	pub phone_number: String,
 }
 
-/// This is the information that is _allowed_ to be public about a user. This is
-/// not the entire user object, but only the information that is allowed to be
-/// public. For privacy reasons, things like their email address and phone
+/// This is the information that is _allowed_ to be public about a user.
+///
+/// This is not the entire user object, but only the information that is allowed
+/// to be public. For privacy reasons, things like their email address and phone
 /// number are not public.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]

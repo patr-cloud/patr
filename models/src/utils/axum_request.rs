@@ -10,10 +10,11 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use crate::ErrorType;
 
-/// A trait that defines a type that can be parsed from an axum request. This is
-/// used to parse the request body into a struct. This is implemented for any
-/// type that implements [`serde::Serialize`] and [`serde::Deserialize`] as
-/// JSON, and for websocket requests
+/// A trait that defines a type that can be parsed from an axum request.
+///
+/// This is used to parse the request body into a struct. This is implemented
+/// for any type that implements [`serde::Serialize`] and [`serde::Deserialize`]
+/// as JSON, and for websocket requests
 pub trait FromAxumRequest
 where
 	Self: Sized,

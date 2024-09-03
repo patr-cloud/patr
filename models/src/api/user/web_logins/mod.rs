@@ -10,6 +10,8 @@ use time::OffsetDateTime;
 pub use self::{delete_web_login::*, get_web_login_info::*, list_web_logins::*};
 use crate::prelude::*;
 
+/// Tracks a user's web login.
+///
 /// Whenever a user logs into Patr via the dashboard, a new login is created.
 /// This is used to track the last time a user logged in, and to allow users to
 /// see all of their active sessions, and revoke them if necessary (kinda like

@@ -24,13 +24,14 @@ pub use self::{
 use crate::rbac::WorkspacePermission;
 
 #[::preprocess::sync]
-/// An API token created by the user. This is mostly used by the user if they
-/// want to automate something on Patr using the API. The ID of the token is the
-/// same as the login ID. The only problem here is that since login IDs are
-/// hard-coded in the API token, we will have to explicitly store the IP address
-/// and other things in the audit log to make sure that we can track the token,
-/// instead of changing the loginId when something changes. Not sure how to go
-/// about doing that yet.
+/// An API token created by the user.
+///
+/// This is mostly used by the user if they want to automate something on Patr
+/// using the API. The ID of the token is the same as the login ID. The only
+/// problem here is that since login IDs are hard-coded in the API token, we
+/// will have to explicitly store the IP address and other things in the audit
+/// log to make sure that we can track the token, instead of changing the
+/// loginId when something changes. Not sure how to go about doing that yet.
 ///
 /// I mean, if we're anyway gonna store everything in the audit log, then why
 /// store anything in the login ID table? Ehh, idk.

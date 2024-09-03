@@ -25,7 +25,9 @@ use common::prelude::*;
 use futures::{Stream, StreamExt};
 use models::api::workspace::deployment::*;
 
+/// A Patr runner that uses Docker to run deployments.
 struct DockerRunner {
+	/// The [`Docker`] client.
 	docker: Docker,
 }
 
@@ -34,6 +36,7 @@ impl RunnerExecutor for DockerRunner {
 
 	const RUNNER_INTERNAL_NAME: &'static str = env!("CARGO_CRATE_NAME");
 
+	#[allow(unused_variables)]
 	async fn upsert_deployment(
 		&self,
 		WithId {
@@ -51,8 +54,8 @@ impl RunnerExecutor for DockerRunner {
 		}: WithId<Deployment>,
 		DeploymentRunningDetails {
 			deploy_on_push: _,
-			min_horizontal_scale,
-			max_horizontal_scale,
+			min_horizontal_scale: _,
+			max_horizontal_scale: _,
 			ports,
 			environment_variables,
 			startup_probe,
@@ -123,7 +126,7 @@ impl RunnerExecutor for DockerRunner {
 			None,
 			None,
 		);
-		while let Some(_) = pull_image.next().await {}
+		while pull_image.next().await.is_some() {}
 
 		let container = self
 			.docker

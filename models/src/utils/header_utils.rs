@@ -137,10 +137,12 @@ impl<'de> Deserialize<'de> for BearerToken {
 	}
 }
 
-/// This struct represents a login ID. It is used to identify a user's login in
-/// the database. A user's login can be any way they access the API - Either
-/// through the website, through an API request, the CLI or from an OAuth
-/// application. It is used as a header in requests to the API.
+/// This struct represents a login ID.
+///
+/// It is used to identify a user's login in the database. A user's login can be
+/// any way they access the API - Either through the website, through an API
+/// request, the CLI or from an OAuth application. It is used as a header in
+/// requests to the API.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct LoginId(pub Uuid);
 
@@ -180,9 +182,11 @@ impl Header for LoginId {
 }
 
 /// This struct is implemented for all types that can be used as a header in a
-/// request to the API. This struct is used in conjunction with the
-/// [`HasHeaders`] trait to ensure that a request headers struct has all the
-/// required headers that are needed for the query, body, etc.
+/// request to the API.
+///
+/// This struct is used in conjunction with the [`HasHeaders`] trait to ensure
+/// that a request headers struct has all the required headers that are needed
+/// for the query, body, etc.
 ///
 /// This should be implemented for any struct that defines a header. It is
 /// already implemented for all types that implement the [`Header`] trait
@@ -206,9 +210,10 @@ where
 }
 
 /// This trait is implemented with tuples of elements as a generic (up to 16
-/// elements) for any struct that has those headers. It is used to ensure that a
-/// request headers struct has all the required headers that are needed for the
-/// query, body, etc.
+/// elements) for any struct that has those headers.
+///
+/// It is used to ensure that a request headers struct has all the required
+/// headers that are needed for the query, body, etc.
 ///
 /// For example, given a struct `Foo` that has the headers `A` and `B`,
 /// `HasHeaders<(A, B)>` is automatically implemented for `Foo` IF AND ONLY IF
@@ -435,10 +440,11 @@ impl_has_headers_for_standard_header![
 impl<C> HasHeaders<Authorization<C>> for Authorization<C> where C: Credentials {}
 impl<C> HasHeaders<ProxyAuthorization<C>> for ProxyAuthorization<C> where C: Credentials {}
 
-/// This trait is used to convert a struct to and from a [`HeaderMap`]. This is
-/// mostly used for internal purposes and you shouldn't have to implement this
-/// by hand. This is automatically implemented for any endpoint defined using
-/// the [`macros::declare_api_endpoint`] macro.
+/// This trait is used to convert a struct to and from a [`HeaderMap`].
+///
+/// This is mostly used for internal purposes and you shouldn't have to
+/// implement this by hand. This is automatically implemented for any endpoint
+/// defined using the [`macros::declare_api_endpoint`] macro.
 pub trait Headers: Sized {
 	/// Convert the struct to a [`HeaderMap`].
 	fn to_header_map(&self) -> HeaderMap;

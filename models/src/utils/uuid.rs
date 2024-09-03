@@ -8,6 +8,7 @@ use super::constants;
 
 /// A wrapper around [`uuid::Uuid`] that implements [`serde::Serialize`] and
 /// [`serde::Deserialize`], but specifically only in the form of a hex string.
+///
 /// Any other format will be rejected. In API requests and response, this should
 /// be used instead of [`uuid::Uuid`]. Ideally, this is the struct that should
 /// be imported and [`uuid`] should not be added as a dependency at all. This

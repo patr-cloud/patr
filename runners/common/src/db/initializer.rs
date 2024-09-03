@@ -4,6 +4,8 @@ use semver::Version;
 
 use crate::prelude::*;
 
+/// Initializes the database, and performs migrations if necessary
+#[instrument(skip(app))]
 pub async fn initialize<E>(app: &AppState<E>) -> Result<(), ErrorType>
 where
 	E: RunnerExecutor,

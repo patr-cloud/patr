@@ -34,9 +34,11 @@ pub use self::{
 };
 use crate::{prelude::*, utils::constants};
 
-/// The type of machine a deployment can run on. This can be classified by the
-/// number of CPU and Memory allocated to the deployment. The machine type can
-/// be used to classify the deployment based on the resources it requires.
+/// The type of machine a deployment can run on.
+///
+/// This can be classified by the number of CPU and Memory allocated to the
+/// deployment. The machine type can be used to classify the deployment based on
+/// the resources it requires.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DeploymentMachineType {
 	/// The number of CPU nodes allocated to the deployment. This is the number

@@ -4,11 +4,12 @@ use serde::{Deserialize, Serialize};
 
 use super::{AddTuple, RequiresResponseHeaders};
 
-/// This struct represents a paginated query parameter for the API. It contains
-/// the offset and count of the list of items that should be returned. A request
-/// that is paginated will always return the total count of items that are
-/// available for the query in the `X-Total-Count` header (see the
-/// [`TotalCountHeader`] struct for reference).
+/// This struct represents a paginated query parameter for the API.
+///
+/// It contains the offset and count of the list of items that should be
+/// returned. A request that is paginated will always return the total count of
+/// items that are available for the query in the `X-Total-Count` header (see
+/// the [`TotalCountHeader`] struct for reference).
 ///
 /// ## Example
 /// An offset of 10 and a count of 5 would return the items 10, 11, 12, 13 and

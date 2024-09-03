@@ -29,10 +29,12 @@ mod verify_regex;
 /// A macro to get the current crate version.
 mod version;
 
-/// Declares an API endpoint. This macro allows easy definition of an API
-/// endpoint along with the request URL, headers, query, body as well as the
-/// response headers and body. Generates the required structs for the endpoint.
-/// Currently only supports JSON endpoints.
+/// Declares an API endpoint.
+///
+/// This macro allows easy definition of an API endpoint along with the request
+/// URL, headers, query, body as well as the response headers and body.
+/// Generates the required structs for the endpoint. Currently only supports
+/// JSON endpoints.
 ///
 /// ## Example usage:
 /// ```rust
@@ -78,10 +80,12 @@ pub fn declare_api_endpoint(input: TokenStream) -> TokenStream {
 	declare_api_endpoint::parse(input)
 }
 
-/// Declares a app route. This macro allows creates a router path,
-/// which will be the URL of the page. It includes the URL of the route,
-/// a route name, the path parameter e.g /path/:id, the query i.e. the query
-/// string, and whether the URL is auth protected or not.
+/// Declares a app route.
+///
+/// This macro allows creates a router path, which will be the URL of the page.
+/// It includes the URL of the route, a route name, the path parameter e.g
+/// /path/:id, the query i.e. the query string, and whether the URL is auth
+/// protected or not.
 ///
 /// ## Example usage:
 /// ```rust
@@ -103,10 +107,12 @@ pub fn declare_app_route(input: TokenStream) -> TokenStream {
 	declare_app_route::parse(input)
 }
 
-/// Declares a stream endpoint. This macro allows easy definition of a stream
-/// endpoint, which is basically a websocket endpoint along with the request
-/// URL, headers, query, client message, server message as well as the response
-/// headers and body. Generates the required structs for the endpoint.
+/// Declares a stream endpoint.
+///
+/// This macro allows easy definition of a stream endpoint, which is basically a
+/// websocket endpoint along with the request URL, headers, query, client
+/// message, server message as well as the response headers and body. Generates
+/// the required structs for the endpoint.
 ///
 /// ## Example usage:
 /// ```rust

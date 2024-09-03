@@ -182,10 +182,12 @@ pub struct ApiErrorResponseBody {
 	pub message: String,
 }
 
-/// This struct represents the JSON body of a response from the API. It can be
-/// either a success or an error response. This is mostly used internally and
-/// would ideally not need to be constructed manually. This is used to parse the
-/// response from the API and determine whether it was successful or not.
+/// This struct represents the JSON body of a response from the API.
+///
+/// It can be either a success or an error response. This is mostly used
+/// internally and would ideally not need to be constructed manually. This is
+/// used to parse the response from the API and determine whether it was
+/// successful or not.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum ApiResponseBody<T> {

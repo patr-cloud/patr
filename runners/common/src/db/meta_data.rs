@@ -19,20 +19,20 @@ pub async fn initialize_meta_tables(
 	Ok(())
 }
 
-/// Initializes the meta table indices
+/// Initializes the meta indices
 #[instrument(skip(_connection))]
 pub async fn initialize_meta_indices(
 	_connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up meta tables indices");
+	info!("Setting up meta indices");
 	Ok(())
 }
 
-/// Initializes the meta tables constraints
+/// Initializes the meta constraints
 #[instrument(skip(_connection))]
 pub async fn initialize_meta_constraints(
 	_connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
-	info!("Setting up meta tables constraints");
+	info!("Setting up meta constraints");
 	Ok(())
 }
