@@ -52,7 +52,7 @@ where
 				>::new(
 					ServiceBuilder::new()
 						// .layer(todo!("Add rate limiter checker middleware here")),
-						.layer(DataStoreConnectionLayer::<E>::with_state(state.clone()))
+						.layer(DataStoreConnectionLayer::<E, R>::with_state(state.clone()))
 						.layer(EndpointLayer::new(handler.clone())),
 				)),
 			)

@@ -15,31 +15,33 @@ use crate::prelude::*;
 /// service with the parsed request. Ideally, this will automatically be done by
 /// [`RouterExt::mount_endpoint`], and you should not need to use this directly.
 #[derive(Clone, Debug)]
-pub struct DataStoreConnectionLayer<E>
+pub struct DataStoreConnectionLayer<E, R>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	R: RunnerExecutor,
 {
 	/// The state that will be used to parse the request, create a database
 	/// transaction and a redis connection, and call the inner service. If the
 	/// inner service fails, the database transaction will be automatically
 	/// rolled back, otherwise it will be committed.
-	state: AppState,
+	state: AppState<R>,
 	/// The endpoint type that this layer will handle.
 	phantom: PhantomData<E>,
 }
 
-impl<E> DataStoreConnectionLayer<E>
+impl<E, R> DataStoreConnectionLayer<E, R>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	R: RunnerExecutor,
 {
 	/// Create a new instance of the [`RequestParserLayer`] with the given
 	/// state. This state will be used to parse the request, create a database
 	/// transaction, and call the inner service. If the inner service fails, the
 	/// database transaction will be automatically rolled back, otherwise it
 	/// will be committed.
-	pub fn with_state(state: AppState) -> Self {
+	pub fn with_state(state: AppState<R>) -> Self {
 		Self {
 			phantom: PhantomData,
 			state,
@@ -47,11 +49,12 @@ where
 	}
 }
 
-impl<S, E> Layer<S> for DataStoreConnectionLayer<E>
+impl<S, E, R> Layer<S> for DataStoreConnectionLayer<E, R>
 where
 	for<'a> S: Service<UnprocessedAppRequest<'a, E>>,
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	R: RunnerExecutor,
 {
 	type Service = DataStoreConnectionService<S, E>;
 
@@ -69,11 +72,12 @@ where
 /// done by [`RouterExt::mount_endpoint`], and you should not need to use this
 /// directly.
 #[derive(Clone, Debug)]
-pub struct DataStoreConnectionService<S, E>
+pub struct DataStoreConnectionService<S, E, R>
 where
 	for<'a> S: Service<UnprocessedAppRequest<'a, E>>,
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	R: RunnerExecutor,
 {
 	/// The inner service that will be called with the parsed request.
 	inner: S,
@@ -81,17 +85,18 @@ where
 	/// transaction and a redis connection, and call the inner service. If the
 	/// inner service fails, the database transaction will be automatically
 	/// rolled back, otherwise it will be committed.
-	state: AppState,
+	state: AppState<R>,
 	/// The endpoint type that this service will handle.
 	phantom: PhantomData<E>,
 }
 
-impl<S, E> Service<(ApiRequest<E>, IpAddr)> for DataStoreConnectionService<S, E>
+impl<S, E, R> Service<(ApiRequest<E>, IpAddr)> for DataStoreConnectionService<S, E, R>
 where
 	for<'a> S:
 		Service<UnprocessedAppRequest<'a, E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	R: RunnerExecutor,
 {
 	type Error = ErrorType;
 	type Response = AppResponse<E>;
