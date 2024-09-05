@@ -34,12 +34,6 @@ where
 		super::initialize_meta_tables(&mut connection).await?;
 		super::initialize_workspace_tables(&mut connection).await?;
 
-		super::initialize_meta_indices(&mut connection).await?;
-		super::initialize_workspace_indices(&mut connection).await?;
-
-		super::initialize_meta_constraints(&mut connection).await?;
-		super::initialize_workspace_constraints(&mut connection).await?;
-
 		query(
 			r#"
 			INSERT INTO

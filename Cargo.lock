@@ -830,8 +830,10 @@ name = "common"
 version = "0.18.0"
 dependencies = [
  "axum",
+ "axum-extra",
  "config",
  "futures",
+ "hosted-frontend",
  "http 1.1.0",
  "macros",
  "models",

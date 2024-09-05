@@ -18,21 +18,3 @@ pub async fn initialize_meta_tables(
 	.await?;
 	Ok(())
 }
-
-/// Initializes the meta indices
-#[instrument(skip(_connection))]
-pub async fn initialize_meta_indices(
-	_connection: &mut DatabaseConnection,
-) -> Result<(), sqlx::Error> {
-	info!("Setting up meta indices");
-	Ok(())
-}
-
-/// Initializes the meta constraints
-#[instrument(skip(_connection))]
-pub async fn initialize_meta_constraints(
-	_connection: &mut DatabaseConnection,
-) -> Result<(), sqlx::Error> {
-	info!("Setting up meta constraints");
-	Ok(())
-}

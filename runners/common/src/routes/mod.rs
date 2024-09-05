@@ -1,3 +1,5 @@
+mod workspace;
+
 use axum::Router;
 
 use crate::prelude::*;

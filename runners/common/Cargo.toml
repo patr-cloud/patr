@@ -11,8 +11,10 @@ workspace = true
 
 [dependencies]
 axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
+axum-extra = { workspace = true, features = ["default", "typed-routing"] }
 config = { workspace = true }
 futures = { workspace = true }
+hosted-frontend = { workspace = true, features = [] }
 http = { workspace = true, features = ["default"] }
 macros = { workspace = true }
 models = { workspace = true }

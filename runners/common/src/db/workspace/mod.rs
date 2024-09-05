@@ -14,27 +14,3 @@ pub async fn initialize_workspace_tables(
 
 	Ok(())
 }
-
-/// Initializes all workspace-related indices
-#[instrument(skip(connection))]
-pub async fn initialize_workspace_indices(
-	connection: &mut DatabaseConnection,
-) -> Result<(), sqlx::Error> {
-	info!("Setting up workspace indices");
-
-	deployment::initialize_deployment_indices(connection).await?;
-
-	Ok(())
-}
-
-/// Initializes all workspace-related constraints
-#[instrument(skip(connection))]
-pub async fn initialize_workspace_constraints(
-	connection: &mut DatabaseConnection,
-) -> Result<(), sqlx::Error> {
-	info!("Setting up workspace constraints");
-
-	deployment::initialize_deployment_constraints(connection).await?;
-
-	Ok(())
-}
