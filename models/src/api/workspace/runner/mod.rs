@@ -1,7 +1,12 @@
+/// The endpoint to add a runner to a workspace
 mod add_runner_to_workspace;
+/// The endpoint to get the details of a runner in a workspace
 mod get_runner_info;
+/// The endpoint to list all the runners in a workspace
 mod list_runners_for_workspace;
+/// The endpoint to remove a runner from a workspace
 mod remove_runner_from_workspace;
+/// The endpoint to stream the runner data for a workspace
 mod stream_runner_data_for_workspace;
 
 use serde::{Deserialize, Serialize};

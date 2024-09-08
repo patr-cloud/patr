@@ -2,11 +2,17 @@ use std::collections::BTreeMap;
 
 use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 
+/// The endpoint to create an API token
 mod create_api_token;
+/// The endpoint to get the information of an API token
 mod get_api_token_info;
+/// The endpoint to list all the API tokens of a user
 mod list_api_tokens;
+/// The endpoint to regenerate an API token
 mod regenerate_api_token;
+/// The endpoint to revoke an API token
 mod revoke_api_token;
+/// The endpoint to update an API token
 mod update_api_token;
 
 use ipnetwork::IpNetwork;

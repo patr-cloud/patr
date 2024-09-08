@@ -26,6 +26,7 @@
         "opentelemetry",
         "otlp",
         "padawan",
+        "PKCE",
         "preprocess",
         "proxied",
         "reauthenticated",

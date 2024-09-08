@@ -1,5 +1,8 @@
+/// The endpoint to delete a web login
 mod delete_web_login;
+/// The endpoint to get the details of a web login
 mod get_web_login_info;
+/// The endpoint to list all the web logins of a user
 mod list_web_logins;
 
 use std::net::IpAddr;

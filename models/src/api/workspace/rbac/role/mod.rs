@@ -1,8 +1,14 @@
+/// The endpoint to create a new role in the workspace
 mod create_new_role;
+/// The endpoint to delete a role in the workspace
 mod delete_role;
+/// The endpoint to get the details of a role in the workspace
 mod get_role_info;
+/// The endpoint to list all the roles in the workspace
 mod list_all_roles;
+/// The endpoint to list all the users for a role in the workspace
 mod list_users_for_role;
+/// The endpoint to update the details of a role in the workspace
 mod update_role;
 
 use serde::{Deserialize, Serialize};

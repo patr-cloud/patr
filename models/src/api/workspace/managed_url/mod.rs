@@ -1,10 +1,15 @@
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumDiscriminants, EnumString, VariantNames};
 
+/// The endpoint to create a managed URL
 mod create_managed_url;
+/// The endpoint to delete a managed URL
 mod delete_managed_url;
+/// The endpoint to list all the managed URLs in a workspace
 mod list_managed_url;
+/// The endpoint to update a managed URL
 mod update_managed_url;
+/// The endpoint to verify the configuration of a managed URL
 mod verify_configuration;
 
 pub use self::{

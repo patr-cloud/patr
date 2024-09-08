@@ -2,9 +2,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
 
+/// The endpoint to create a secret in the workspace
 mod create_secret;
+/// The endpoint to delete a secret in the workspace
 mod delete_secret;
+/// The endpoint to list all the secrets in the workspace
 mod list_secrets_for_workspace;
+/// The endpoint to update a secret in the workspace
 mod update_secret;
 
 pub use self::{

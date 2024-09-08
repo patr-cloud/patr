@@ -1,14 +1,23 @@
 use serde::{Deserialize, Serialize};
 
+/// All endpoints related to API tokens
 mod api_token;
+/// The endpoint to change the password of a user
 mod change_password;
-mod get_user_details; // Get a user's details by userId
-mod get_user_info; // Get my own personal info
+/// The endpoint to get the details of any user, based on their userId
+mod get_user_details;
+/// The endpoint to get the details of the currently logged in user
+mod get_user_info;
+/// The endpoint to list all the workspaces that a user is a part of
 mod list_user_workspaces;
+/// All endpoints related to MFA
 mod mfa;
+/// All endpoints related to recovery options
 mod recovery_options;
+/// The endpoint to update the information of a user
 mod update_user_info;
-mod web_logins; // Set my own personal info
+/// All endpoints related to web logins
+mod web_logins;
 
 pub use self::{
 	api_token::*,

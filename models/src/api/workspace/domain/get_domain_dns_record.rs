@@ -2,7 +2,7 @@ use super::PatrDomainDnsRecord;
 use crate::prelude::*;
 
 macros::declare_api_endpoint!(
-	/// Route to get domain DNS record
+	/// Route to get all the DNS records of a domain
 	GetDomainDNSRecord,
 	GET "/workspace/:workspace_id/domain/:domain_id/dns-record" {
 		/// The ID of the workspace

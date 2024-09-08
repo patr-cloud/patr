@@ -26,10 +26,15 @@ pub mod static_site;
 /// This module contains all the models that corresponds to a deployment volume
 pub mod volume;
 
+/// The endpoint to create a workspace
 mod create_workspace;
+/// The endpoint to delete a workspace
 mod delete_workspace;
+/// The endpoint to get the details of a workspace
 mod get_workspace_info;
+/// The endpoint to check if a workspace name is available
 mod is_name_available;
+/// The endpoint to update the details of a workspace
 mod update_workspace_info;
 
 pub use self::{

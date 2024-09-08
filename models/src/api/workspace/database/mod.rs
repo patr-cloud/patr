@@ -2,10 +2,15 @@ use serde::{Deserialize, Serialize};
 
 use crate::prelude::Uuid;
 
+/// The endpoint to create a database
 mod create_database;
+/// The endpoint to delete a database
 mod delete_database;
+/// The endpoint to get the details of a database
 mod get_database;
+/// The endpoint to list all the machine types for databases
 mod list_all_database_machine_type;
+/// The endpoint to list all the databases in a workspace
 mod list_database;
 
 pub use self::{

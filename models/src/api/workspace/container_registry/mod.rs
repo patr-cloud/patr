@@ -1,13 +1,21 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
+/// The endpoint to create a repository
 mod create_repository;
+/// The endpoint to delete a repository
 mod delete_repository;
+/// The endpoint to delete an image from a repository
 mod delete_repository_image;
+/// The endpoint to get the exposed ports of an image in a repository
 mod get_exposed_ports;
+/// The endpoint to get the details of an image in a repository
 mod get_repository_image_details;
+/// The endpoint to get the details of a repository
 mod get_repository_info;
+/// The endpoint to list all the repositories in a workspace
 mod list_repositories;
+/// The endpoint to list all the tags of a repository
 mod list_repository_tags;
 
 pub use self::{

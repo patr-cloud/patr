@@ -7,6 +7,7 @@ pub mod user;
 /// All endpoints that can be performed on a workspace
 pub mod workspace;
 
+/// The endpoint to get the version of the API
 mod get_version;
 
 use std::ops::Deref;

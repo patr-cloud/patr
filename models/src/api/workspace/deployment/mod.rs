@@ -7,16 +7,27 @@ use time::OffsetDateTime;
 /// the timestamp of when the deploy was created
 pub mod deploy_history;
 
+/// The endpoint to create a deployment
 mod create_deployment;
+/// The endpoint to delete a deployment
 mod delete_deployment;
+/// The endpoint to get the details of a deployment
 mod get_deployment_info;
+/// The endpoint to get the logs of a deployment
 mod get_deployment_logs;
+/// The endpoint to get the metrics of a deployment
 mod get_deployment_metric;
+/// The endpoint to list all the machine types for deployments
 mod list_all_deployment_machine_type;
+/// The endpoint to list all the deployments in a workspace
 mod list_deployment;
+/// The endpoint to start a deployment
 mod start_deployment;
+/// The endpoint to stop a deployment
 mod stop_deployment;
+/// The endpoint to stream the logs of a deployment
 mod stream_deployment_logs;
+/// The endpoint to update a deployment's details
 mod update_deployment;
 
 pub use self::{

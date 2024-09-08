@@ -1,9 +1,14 @@
 use serde::{Deserialize, Serialize};
 
+/// The endpoint to create a volume
 mod create_volume;
+/// The endpoint to delete a volume
 mod delete_volume;
+/// The endpoint to get the details of a volume
 mod get_volume_info;
+/// The endpoint to list all the volumes in a workspace
 mod list_volumes;
+/// The endpoint to update the details of a volume
 mod update_volume;
 
 pub use self::{

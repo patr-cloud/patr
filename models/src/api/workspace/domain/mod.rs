@@ -9,15 +9,25 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
+/// The endpoint to add a DNS record to a domain
 mod add_dns_record;
+/// The endpoint to add a domain to a workspace
 mod add_domain_to_workspace;
+/// The endpoint to delete a DNS record from a domain
 mod delete_dns_record;
+/// The endpoint to delete a domain from a workspace
 mod delete_domain_in_workspace;
+/// The endpoint to list all DNS records of a domain
 mod get_domain_dns_record;
+/// The endpoint to get the domain information in a workspace
 mod get_domain_info_in_workspace;
+/// The endpoint to get all the domains in a workspace
 mod get_domains_for_workspace;
+/// The endpoint to check if a domain is personal
 mod is_domain_personal;
+/// The endpoint to update a DNS record of a domain
 mod update_domain_dns_record;
+/// The endpoint to verify a domain in a workspace
 mod verify_domain_in_workspace;
 
 pub use self::{

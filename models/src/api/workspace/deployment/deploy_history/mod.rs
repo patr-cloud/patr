@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
+/// The endpoint to delete the deployment history of a deployment
 mod delete_deploy_history;
+/// The endpoint to list the deployment history of a deployment
 mod list_deploy_history;
 
 pub use self::{delete_deploy_history::*, list_deploy_history::*};
