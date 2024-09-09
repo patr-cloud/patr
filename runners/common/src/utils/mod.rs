@@ -1,3 +1,6 @@
+/// The data that is stored inside the access token, which will be encoded as a
+/// JWT.
+pub mod access_token_data;
 /// The client for the Patr API to get runner data for a given workspace.
 pub mod client;
 /// The configuration for the runner.
@@ -31,4 +34,6 @@ pub mod constants {
 	/// database needs to be migrated or not. This is always set to the manifest
 	/// version in Cargo.toml.
 	pub const DATABASE_VERSION: Version = macros::version!();
+	/// The issuer (iss) of the JWT. This is currently the URL of Patr API.
+	pub const JWT_ISSUER: &str = "https://api.patr.cloud";
 }

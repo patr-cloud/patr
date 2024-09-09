@@ -101,3 +101,23 @@ where
 	/// an Error, this transaction will be automatically rolled back.
 	pub database: &'a mut DatabaseTransaction,
 }
+
+// TODO: Remove this if it's not needed,
+// if needed, then remove this TODO
+/// A request object that is passed through the tower layers and services for
+/// endpoints that require authentication. This will contain the user data of
+/// the current authenticated user.
+pub struct AuthenticatedAppRequest<'a, E>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+{
+	/// The Endpoint that the request is being made for. This would ideally be
+	/// parsed to have all the data needed to process a request
+	pub request: ProcessedApiRequest<E>,
+	/// The database transaction for the request. In case the request returns
+	/// an Error, this transaction will be automatically rolled back.
+	pub database: &'a mut DatabaseTransaction,
+	/// The user data of the current authenticated user.
+	pub user_data: Uuid,
+}

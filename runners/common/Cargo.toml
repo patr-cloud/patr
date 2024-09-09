@@ -10,12 +10,14 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+argon2 = { workspace = true, features = ["default"] }
 axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
 axum-extra = { workspace = true, features = ["default", "typed-routing"] }
 config = { workspace = true }
 futures = { workspace = true }
 hosted-frontend = { workspace = true, features = [] }
 http = { workspace = true, features = ["default"] }
+jsonwebtoken = { workspace = true, features = ["default"] }
 macros = { workspace = true }
 models = { workspace = true }
 preprocess = { workspace = true, features = [] }
@@ -31,6 +33,7 @@ sqlx = { workspace = true, features = [
 	"time",
 	"sqlite",
 ] }
+time = { workspace = true, features = ["default", "serde-human-readable"] }
 tower = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tokio-stream = { workspace = true, features = ["default", "sync"] }

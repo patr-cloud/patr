@@ -28,7 +28,6 @@ pub async fn list_deployment(
 			registry,
 			image_name,
 			image_tag,
-			runner,
 			machine_type,
 			current_live_digest,
 		FROM
@@ -39,35 +38,39 @@ pub async fn list_deployment(
 	.await?
 	.into_iter()
 	.map(|row| {
-		let deployment_id = row.get::<String, &str>("id");
-		let deployment_name = row.get::<String, &str>("name");
+		let deployment_id = row.try_get::<String, &str>("id")?;
+		let name = row.try_get::<String, &str>("name")?;
 		let deployment_id =
 			Uuid::parse_str(&deployment_id).expect("deployment id to be valid uuid");
 
-		// TODO: either use query_as, or write row.get() for everything and convert them
-		// into the correct types
+		let image_tag = row.try_get::<String, &str>("image_tag")?;
+		let status = row.try_get::<DeploymentStatus, &str>("status")?;
+		let registry = row.try_get::<String, &str>("registry")?;
+		let image_name = row.try_get::<String, &str>("image_name")?;
 
-		WithId::new(
+		let machine_type = row
+			.try_get::<String, &str>("machine_type")?
+			.parse::<Uuid>()?;
+
+		Ok(WithId::new(
 			deployment_id,
 			Deployment {
-				name: deployment_name.to_string(),
-				image_tag: "test".to_string(),
+				name,
+				image_tag,
+				status,
 				registry: DeploymentRegistry::ExternalRegistry {
-					registry: "test".to_string(),
-					image_name: "test".to_string(),
+					registry,
+					image_name,
 				},
-				status: DeploymentStatus::Created,
+				// WARN: This is a dummy runner ID, as there is no runner-id in self-hosted PATR
 				runner: models::utils::Uuid::parse_str("00000000-0000-0000-0000-000000000000")
 					.unwrap(),
 				current_live_digest: None,
-				machine_type: models::utils::Uuid::parse_str(
-					"00000000-0000-0000-0000-000000000000",
-				)
-				.unwrap(),
+				machine_type: machine_type.into(),
 			},
-		)
+		))
 	})
-	.collect::<Vec<_>>();
+	.collect::<Result<_, ErrorType>>()?;
 
 	AppResponse::builder()
 		.body(ListDeploymentResponse { deployments })

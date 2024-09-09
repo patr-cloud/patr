@@ -9,8 +9,8 @@ use crate::{prelude::*, utils::RouterExt};
 #[instrument(skip(state))]
 pub async fn setup_routes<E>(state: &AppState<E>) -> Router
 where
-	E: RunnerExecutor,
+	E: RunnerExecutor + Clone,
 {
-	Router::new().mount_endpoint(list_deployment, state)
+	Router::new().mount_auth_endpoint(list_deployment, state)
 	// .mount_endpoint(create_deployment, state)
 }
