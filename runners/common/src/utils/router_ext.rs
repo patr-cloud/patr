@@ -1,15 +1,28 @@
 use std::{net::IpAddr, sync::RwLock};
 
-use axum::Router;
+use axum::{
+	routing::{MethodFilter, MethodRouter},
+	Router,
+};
 use axum_extra::routing::TypedPath;
 use models::{utils::NoAuthentication, ApiEndpoint};
+use preprocess::Preprocessable;
 use tower::{
 	util::{BoxCloneService, BoxLayer},
 	ServiceBuilder,
 };
 
-use crate::prelude::*;
-// use crate::utils::layers::EndpointHandler;
+use crate::{
+	prelude::*,
+	utils::layers::{
+		DataStoreConnectionLayer,
+		EndpointHandler,
+		EndpointLayer,
+		PreprocessLayer,
+		RemoveIpAddrLayer,
+		RequestParserLayer,
+	},
+};
 
 pub trait RouterExt<S>
 where
@@ -22,7 +35,8 @@ where
 	where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
 		E: ApiEndpoint<Authenticator = NoAuthentication> + Sync,
-		R: RunnerExecutor;
+		<E::RequestBody as Preprocessable>::Processed: Send,
+		R: RunnerExecutor + Clone + 'static;
 }
 
 impl<S> RouterExt<S> for Router<S>
@@ -34,7 +48,8 @@ where
 	where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
 		E: ApiEndpoint<Authenticator = NoAuthentication> + Sync,
-		R: RunnerExecutor,
+		<E::RequestBody as Preprocessable>::Processed: Send,
+		R: RunnerExecutor + Clone + 'static,
 	{
 		hosted_frontend::utils::API_CALL_REGISTRY
 			.get_or_init(|| RwLock::new(Default::default()))
@@ -52,7 +67,10 @@ where
 				>::new(
 					ServiceBuilder::new()
 						// .layer(todo!("Add rate limiter checker middleware here")),
+						// .layer(todo!("strip IP address and send"))
+						.layer(RemoveIpAddrLayer::<E>::new())
 						.layer(DataStoreConnectionLayer::<E, R>::with_state(state.clone()))
+						.layer(PreprocessLayer::new())
 						.layer(EndpointLayer::new(handler.clone())),
 				)),
 			)
@@ -63,5 +81,27 @@ where
 					<E::RequestPath as TypedPath>::PATH
 				);
 			});
+
+		// Setup the layers for the backend
+		if <E as ApiEndpoint>::API_ALLOWED || cfg!(debug_assertions) {
+			self.route(
+				<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH,
+				MethodRouter::<S>::new()
+					.on(
+						MethodFilter::try_from(<E as ApiEndpoint>::METHOD).unwrap(),
+						|| async {},
+					)
+					.layer(
+						ServiceBuilder::new()
+							.layer(RequestParserLayer::new())
+							// .layer(todo!("Add rate limiter checker middleware here")),
+							.layer(DataStoreConnectionLayer::with_state(state.clone()))
+							.layer(PreprocessLayer::new())
+							.layer(EndpointLayer::new(handler)),
+					),
+			)
+		} else {
+			self
+		}
 	}
 }

@@ -842,6 +842,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
+ "serde_urlencoded",
  "sqlx",
  "tokio",
  "tokio-stream",
@@ -851,6 +852,7 @@ dependencies = [
  "tracing-log",
  "tracing-opentelemetry",
  "tracing-subscriber",
+ "typed-builder 0.20.0",
 ]
 
 [[package]]

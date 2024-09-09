@@ -1,7 +1,6 @@
 use std::{
 	future::Future,
 	marker::PhantomData,
-	net::IpAddr,
 	task::{Context, Poll},
 };
 
@@ -9,7 +8,7 @@ use models::prelude::*;
 use preprocess::Preprocessable;
 use tower::{Layer, Service};
 
-use crate::prelude::*;
+use crate::{app::UnprocessedAppRequest, prelude::*};
 
 /// A [`tower::Layer`] that can be used to parse the request and call the inner
 /// service with the parsed request. Ideally, this will automatically be done by
@@ -22,7 +21,7 @@ where
 	R: RunnerExecutor,
 {
 	/// The state that will be used to parse the request, create a database
-	/// transaction and a redis connection, and call the inner service. If the
+	/// transaction, and call the inner service. If the
 	/// inner service fails, the database transaction will be automatically
 	/// rolled back, otherwise it will be committed.
 	state: AppState<R>,
@@ -56,7 +55,7 @@ where
 	<E::RequestBody as Preprocessable>::Processed: Send,
 	R: RunnerExecutor,
 {
-	type Service = DataStoreConnectionService<S, E>;
+	type Service = DataStoreConnectionService<S, E, R>;
 
 	fn layer(&self, inner: S) -> Self::Service {
 		DataStoreConnectionService {
@@ -82,7 +81,7 @@ where
 	/// The inner service that will be called with the parsed request.
 	inner: S,
 	/// The state that will be used to parse the request, create a database
-	/// transaction and a redis connection, and call the inner service. If the
+	/// transaction, and call the inner service. If the
 	/// inner service fails, the database transaction will be automatically
 	/// rolled back, otherwise it will be committed.
 	state: AppState<R>,
@@ -90,7 +89,7 @@ where
 	phantom: PhantomData<E>,
 }
 
-impl<S, E, R> Service<(ApiRequest<E>, IpAddr)> for DataStoreConnectionService<S, E, R>
+impl<S, E, R> Service<ApiRequest<E>> for DataStoreConnectionService<S, E, R>
 where
 	for<'a> S:
 		Service<UnprocessedAppRequest<'a, E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
@@ -110,12 +109,10 @@ where
 	}
 
 	#[instrument(skip(self, request), name = "DataStoreConnectionService")]
-	fn call(&mut self, (request, client_ip): (ApiRequest<E>, IpAddr)) -> Self::Future {
-		let mut state = self.state.clone();
+	fn call(&mut self, request: ApiRequest<E>) -> Self::Future {
+		let state = self.state.clone();
 		let mut inner = self.inner.clone();
 		async {
-			let redis = &mut state.redis;
-
 			let Ok(mut database) = state.database.begin().await else {
 				debug!("Failed to begin database transaction");
 				return Err(ErrorType::server_error(
@@ -126,9 +123,6 @@ where
 			let req = UnprocessedAppRequest {
 				request,
 				database: &mut database,
-				redis,
-				client_ip,
-				config: state.config.clone(),
 			};
 
 			info!("Calling inner service");
