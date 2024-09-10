@@ -10,10 +10,14 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+argon2 = { workspace = true, features = ["default"] }
 axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
+axum-extra = { workspace = true, features = ["default", "typed-routing"] }
 config = { workspace = true }
 futures = { workspace = true }
+hosted-frontend = { workspace = true, features = [] }
 http = { workspace = true, features = ["default"] }
+jsonwebtoken = { workspace = true, features = ["default"] }
 macros = { workspace = true }
 models = { workspace = true }
 preprocess = { workspace = true, features = [] }
@@ -21,6 +25,15 @@ reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 semver = { workspace = true, features = ["default"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+serde_urlencoded = { workspace = true, features = [] }
+sqlx = { workspace = true, features = [
+	"runtime-tokio",
+	"tls-rustls",
+	"uuid",
+	"time",
+	"sqlite",
+] }
+time = { workspace = true, features = ["default", "serde-human-readable"] }
 tower = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tokio-stream = { workspace = true, features = ["default", "sync"] }
@@ -29,10 +42,4 @@ tracing = { workspace = true, features = ["default", "async-await"] }
 tracing-log = { workspace = true, features = ["default"] }
 tracing-opentelemetry = { workspace = true, features = ["default"] }
 tracing-subscriber = { workspace = true, features = ["default"] }
-sqlx = { workspace = true, features = [
-	"runtime-tokio",
-	"tls-rustls",
-	"uuid",
-	"time",
-	"sqlite",
-] }
+typed-builder = { workspace = true, features = [] }

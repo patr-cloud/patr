@@ -829,10 +829,14 @@ dependencies = [
 name = "common"
 version = "0.18.0"
 dependencies = [
+ "argon2",
  "axum",
+ "axum-extra",
  "config",
  "futures",
+ "hosted-frontend",
  "http 1.1.0",
+ "jsonwebtoken",
  "macros",
  "models",
  "preprocess",
@@ -840,7 +844,9 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
+ "serde_urlencoded",
  "sqlx",
+ "time",
  "tokio",
  "tokio-stream",
  "tokio-tungstenite 0.23.1",
@@ -849,6 +855,7 @@ dependencies = [
  "tracing-log",
  "tracing-opentelemetry",
  "tracing-subscriber",
+ "typed-builder 0.20.0",
 ]
 
 [[package]]

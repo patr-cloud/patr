@@ -2,6 +2,8 @@ use crate::prelude::*;
 
 /// The list of deployments that are present in a workspace
 mod deployment;
+/// The list of volumes that are present in a workspace
+mod volume;
 
 /// Initializes all workspace-related tables
 #[instrument(skip(connection))]
@@ -11,6 +13,7 @@ pub async fn initialize_workspace_tables(
 	info!("Setting up workspace tables");
 
 	deployment::initialize_deployment_tables(connection).await?;
+	volume::initialize_volume_tables(connection).await?;
 
 	Ok(())
 }
@@ -23,18 +26,7 @@ pub async fn initialize_workspace_indices(
 	info!("Setting up workspace indices");
 
 	deployment::initialize_deployment_indices(connection).await?;
-
-	Ok(())
-}
-
-/// Initializes all workspace-related constraints
-#[instrument(skip(connection))]
-pub async fn initialize_workspace_constraints(
-	connection: &mut DatabaseConnection,
-) -> Result<(), sqlx::Error> {
-	info!("Setting up workspace constraints");
-
-	deployment::initialize_deployment_constraints(connection).await?;
+	volume::initialize_volume_indices(connection).await?;
 
 	Ok(())
 }

@@ -34,11 +34,9 @@ where
 		super::initialize_meta_tables(&mut connection).await?;
 		super::initialize_workspace_tables(&mut connection).await?;
 
+		// Create all indices
 		super::initialize_meta_indices(&mut connection).await?;
 		super::initialize_workspace_indices(&mut connection).await?;
-
-		super::initialize_meta_constraints(&mut connection).await?;
-		super::initialize_workspace_constraints(&mut connection).await?;
 
 		query(
 			r#"
@@ -48,9 +46,9 @@ where
 					value
 				)
 			VALUES
-				('version_major', ?),
-				('version_minor', ?),
-				('version_patch', ?);
+				('version_major', $1),
+				('version_minor', $2),
+				('version_patch', $3);
 			"#,
 		)
 		.bind(constants::DATABASE_VERSION.major.to_string())
