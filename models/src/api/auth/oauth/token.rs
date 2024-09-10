@@ -6,7 +6,10 @@ use crate::prelude::*;
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum OAuthTokenGrantType {
+	/// The request is for a temporary authorization code that will be exchanged
+	/// for an access token and a refresh token.
 	AuthorizationCode,
+	/// The request is for a new access token using a refresh token.
 	RefreshToken,
 }
 
