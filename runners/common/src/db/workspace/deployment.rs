@@ -141,9 +141,9 @@ pub async fn initialize_deployment_tables(
 	query(
 		r#"
 		CREATE TABLE deployment_config_mounts(
+			deployment_id TEXT NOT NULL,
 			path TEXT NOT NULL,
 			file BLOB NOT NULL,
-			deployment_id TEXT NOT NULL,
 
 			PRIMARY KEY (deployment_id, path),
 			FOREIGN KEY (deployment_id) REFERENCES deployment(id)
