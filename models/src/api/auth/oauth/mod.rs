@@ -63,3 +63,5 @@ mod revoke;
 /// refresh token. The temporary code is obtained by authorizing a user using
 /// the [`authorize`] endpoint.
 mod token;
+
+pub use self::{authorize::*, introspect::*, revoke::*, token::*};
