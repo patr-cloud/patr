@@ -1,3 +1,5 @@
+use futures::sink::With;
+use http::StatusCode;
 use models::api::workspace::deployment::*;
 use time::OffsetDateTime;
 
@@ -188,5 +190,12 @@ pub async fn create_deployment(
 
 	trace!("Inserted environment variables for deployment");
 
-	Err(ErrorType::InternalServerError)
+	AppResponse::builder()
+		.body(CreateDeploymentResponse {
+			id: WithId::from(deployment_id),
+		})
+		.headers(())
+		.status_code(StatusCode::CREATED)
+		.build()
+		.into_result()
 }
