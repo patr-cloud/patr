@@ -90,7 +90,7 @@ where
 	}
 
 	#[instrument(skip(self, request), name = "RemoveIpAddrService")]
-	fn call(&mut self, (request, client_ip): (ApiRequest<E>, IpAddr)) -> Self::Future {
+	fn call(&mut self, (request, _): (ApiRequest<E>, IpAddr)) -> Self::Future {
 		let mut inner = self.inner.clone();
 		async move { inner.call(request).await }
 	}
