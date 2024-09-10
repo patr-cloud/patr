@@ -75,7 +75,7 @@ pub async fn list_deployment(
 				// WARN: This is a dummy runner ID, as there is no runner-id in self-hosted PATR
 				runner: Uuid::nil(),
 				current_live_digest: None,
-				machine_type: machine_type.into(),
+				machine_type,
 			},
 		))
 	})

@@ -26,6 +26,7 @@ use futures::{Stream, StreamExt};
 use models::api::workspace::deployment::*;
 
 /// A Patr runner that uses Docker to run deployments.
+#[derive(Debug, Clone)]
 struct DockerRunner {
 	/// The [`Docker`] client.
 	docker: Docker,

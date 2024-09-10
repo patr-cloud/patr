@@ -21,7 +21,7 @@ pub async fn initialize_deployment_tables(
 
 	query(
 		r#"
-		CREATE TABLE IF NOT EXISTS deployment(
+		CREATE TABLE deployment(
 			id TEXT NOT NULL PRIMARY KEY,
 			name TEXT NOT NULL,
 			registry TEXT NOT NULL,

@@ -1,7 +1,5 @@
-use futures::sink::With;
 use http::StatusCode;
 use models::api::workspace::deployment::*;
-use time::OffsetDateTime;
 
 use crate::{
 	app::{AppRequest, ProcessedApiRequest},
@@ -42,11 +40,9 @@ pub async fn create_deployment(
 			},
 	} = request;
 
-	let now = OffsetDateTime::now_utc();
-
 	let deployment_id = Uuid::new_v4();
 
-	let created_deployment_id = query(
+	query(
 		r#"
 		INSERT INTO
 			deployment(
@@ -65,8 +61,10 @@ pub async fn create_deployment(
 				startup_probe_port_type,
 				liveness_probe_port,
 				liveness_probe_path,
-				liveness_probe_port_type,
-			) VALUES (
+				liveness_probe_port_type
+			)
+		VALUES
+			(
 				$1,
 				$2,
 				$3,
@@ -82,113 +80,143 @@ pub async fn create_deployment(
 				$13,
 				$14,
 				$15,
-				$16,
-			)
+				$16
+			);
 		"#,
 	)
-	.bind(deployment_id.to_string())
-	.bind(name.to_string())
+	.bind(deployment_id)
+	.bind(name)
 	.bind(registry.registry_url())
 	.bind(registry.image_name())
 	.bind(image_tag)
 	.bind(
-		(if deploy_on_create {
+		if deploy_on_create {
 			DeploymentStatus::Running
 		} else {
 			DeploymentStatus::Created
-		})
-		.to_string(),
+		},
 	)
-	.bind(machine_type.to_string())
+	.bind(machine_type)
 	.bind(min_horizontal_scale)
 	.bind(max_horizontal_scale)
 	.bind(deploy_on_push)
 	.bind(startup_probe.as_ref().map(|probe| probe.port as i32))
 	.bind(startup_probe.as_ref().map(|probe| probe.path.as_str()))
-	.bind(
-		startup_probe
-			.as_ref()
-			.map(|_| ExposedPortType::Http.to_string()),
-	)
+	.bind(startup_probe.as_ref().map(|_| ExposedPortType::Http))
 	.bind(liveness_probe.as_ref().map(|probe| probe.port as i32))
 	.bind(liveness_probe.as_ref().map(|probe| probe.path.as_str()))
-	.bind(
-		liveness_probe
-			.as_ref()
-			.map(|_| ExposedPortType::Http.to_string()),
-	)
+	.bind(liveness_probe.as_ref().map(|_| ExposedPortType::Http))
 	.fetch_one(&mut **database)
-	.await;
+	.await?;
 
 	trace!("Created deployment with ID: {}", deployment_id);
 
-	// TODO: Find a way to do this using async iterator
-	&ports.iter().for_each(|(port, port_type)| {
+	for (port, port_type) in ports {
 		query(
 			r#"
-			INSERT INTO deployment_exposed_port(
-				deployment_id,
-				port,
-				port_type
-			)
-			VALUES (
-				$1,
-				$2,
-				$3
-			);
+			INSERT INTO
+				deployment_exposed_port(
+					deployment_id,
+					port,
+					port_type
+				)
+			VALUES
+				(
+					$1,
+					$2,
+					$3
+				);
 			"#,
 		)
-		.bind(deployment_id.to_string())
+		.bind(deployment_id)
 		.bind(port.value() as i32)
-		.bind(port_type.to_string())
-		.execute(&mut **database);
-	});
+		.bind(port_type)
+		.execute(&mut **database)
+		.await?;
+	}
 
 	trace!("Inserted exposed ports for deployment");
 
-	&environment_variables.iter().for_each(|(name, value)| {
+	for (name, value) in environment_variables {
 		query(
 			r#"
-		INSERT INTO deployment_environment_variable(
-			deployment_id,
-			name,
-			value,
+			INSERT INTO
+				deployment_environment_variable(
+					deployment_id,
+					name,
+					value,
+					secret_id
+				)
+			VALUES
+				(
+					$1,
+					$2,
+					$3,
+					$4
+				);
+			"#,
 		)
-		VALUES (
-			$1,
-			$2,
-			$3,
-		);
-		"#,
-		)
-		.bind(deployment_id.to_string())
-		.bind(name.to_string())
-		.bind(value.value().unwrap_or(&"".to_string()))
-		.execute(&mut **database);
-	});
-
-	&config_mounts.iter().for_each(|(path, file)| {
-		query(
-			r#"
-			INSERT INTO deployment_config_mounts(
-				deployment_id,
-				path,
-				file
-			)
-			VALUES (
-				$1,
-				$2,
-				$3
-			);
-		"#,
-		)
-		.bind(deployment_id.to_string())
-		.bind(path.to_string())
-		.bind(file.to_vec())
-		.execute(&mut **database);
-	});
+		.bind(deployment_id)
+		.bind(name)
+		.bind(value.value())
+		.bind(value.secret_id())
+		.execute(&mut **database)
+		.await?;
+	}
 
 	trace!("Inserted environment variables for deployment");
+
+	for (path, file) in config_mounts {
+		query(
+			r#"
+			INSERT INTO
+				deployment_config_mounts(
+					deployment_id,
+					path,
+					file
+				)
+			VALUES
+				(
+					$1,
+					$2,
+					$3
+				);
+			"#,
+		)
+		.bind(deployment_id)
+		.bind(path)
+		.bind(file.to_vec())
+		.execute(&mut **database)
+		.await?;
+	}
+
+	trace!("Inserted config mounts for deployment");
+
+	for (volume_id, mount_path) in volumes {
+		query(
+			r#"
+			INSERT INTO 
+				deployment_volume_mount(
+					deployment_id,
+					volume_id,
+					volume_mount_path
+				)
+			VALUES
+				(
+					$1,
+					$2,
+					$3
+				);
+			"#,
+		)
+		.bind(deployment_id)
+		.bind(volume_id)
+		.bind(mount_path)
+		.execute(&mut **database)
+		.await?;
+	}
+
+	trace!("Inserted volume mounts for deployment");
 
 	AppResponse::builder()
 		.body(CreateDeploymentResponse {

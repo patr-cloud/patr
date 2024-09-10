@@ -18,3 +18,12 @@ pub async fn initialize_meta_tables(
 	.await?;
 	Ok(())
 }
+
+/// Initializes the meta indices
+#[instrument(skip(_connection))]
+pub async fn initialize_meta_indices(
+	_connection: &mut DatabaseConnection,
+) -> Result<(), sqlx::Error> {
+	info!("Setting up meta indices");
+	Ok(())
+}

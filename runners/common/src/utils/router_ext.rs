@@ -1,9 +1,6 @@
 use std::{net::IpAddr, sync::RwLock};
 
-use axum::{
-	routing::{MethodFilter, MethodRouter},
-	Router,
-};
+use axum::Router;
 use axum_extra::routing::TypedPath;
 use models::{
 	utils::{HasHeader, NoAuthentication},
@@ -19,13 +16,11 @@ use crate::{
 	prelude::*,
 	utils::layers::{
 		AuthenticationLayer,
-		ClientType,
 		DataStoreConnectionLayer,
 		EndpointHandler,
 		EndpointLayer,
 		PreprocessLayer,
 		RemoveIpAddrLayer,
-		RequestParserLayer,
 	},
 };
 
@@ -36,6 +31,7 @@ where
 	/// Mount an API endpoint directly along with the required request parser,
 	/// and endpoint handler, using tower layers.
 	#[track_caller]
+	#[expect(dead_code)]
 	fn mount_endpoint<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
 	where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
@@ -83,9 +79,8 @@ where
 				>::new(
 					ServiceBuilder::new()
 						// .layer(todo!("Add rate limiter checker middleware here")),
-						// .layer(todo!("strip IP address and send"))
-						.layer(RemoveIpAddrLayer::<E>::new())
-						.layer(DataStoreConnectionLayer::<E, R>::with_state(state.clone()))
+						.layer(RemoveIpAddrLayer::new())
+						.layer(DataStoreConnectionLayer::with_state(state.clone()))
 						.layer(PreprocessLayer::new())
 						.layer(EndpointLayer::new(handler.clone())),
 				)),
@@ -98,27 +93,7 @@ where
 				);
 			});
 
-		// Setup the layers for the backend
-		if <E as ApiEndpoint>::API_ALLOWED || cfg!(debug_assertions) {
-			self.route(
-				<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH,
-				MethodRouter::<S>::new()
-					.on(
-						MethodFilter::try_from(<E as ApiEndpoint>::METHOD).unwrap(),
-						|| async {},
-					)
-					.layer(
-						ServiceBuilder::new()
-							.layer(RequestParserLayer::new())
-							// .layer(todo!("Add rate limiter checker middleware here")),
-							.layer(DataStoreConnectionLayer::with_state(state.clone()))
-							.layer(PreprocessLayer::new())
-							.layer(EndpointLayer::new(handler)),
-					),
-			)
-		} else {
-			self
-		}
+		self
 	}
 
 	#[instrument(skip_all)]
@@ -146,10 +121,10 @@ where
 				>::new(
 					ServiceBuilder::new()
 						// .layer(todo!("Add rate limiter checker middleware here")),
-						.layer(RemoveIpAddrLayer::<E>::new())
+						.layer(RemoveIpAddrLayer::new())
 						.layer(DataStoreConnectionLayer::with_state(state.clone()))
 						.layer(PreprocessLayer::new())
-						.layer(AuthenticationLayer::new(ClientType::WebDashboard))
+						.layer(AuthenticationLayer::new())
 						.layer(EndpointLayer::new(handler.clone())),
 				)),
 			)
@@ -161,7 +136,6 @@ where
 				);
 			});
 
-		// Setup the layers for the backend
 		self
 	}
 }

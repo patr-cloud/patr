@@ -17,5 +17,5 @@ where
 		.mount_auth_endpoint(list_deployment, state)
 		.mount_auth_endpoint(delete_deployment, state)
 		.mount_auth_endpoint(update_deployment, state)
-	// .mount_endpoint(create_deployment, state)
+		.mount_auth_endpoint(create_deployment, state)
 }
