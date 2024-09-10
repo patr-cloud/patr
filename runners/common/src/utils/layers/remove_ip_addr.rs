@@ -12,7 +12,7 @@ use tower::{Layer, Service};
 /// A [`tower::Layer`] that can be used to parse the request and call the inner
 /// service with the parsed request. Ideally, this will automatically be done by
 /// [`RouterExt::mount_endpoint`], and you should not need to use this directly.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct RemoveIpAddrLayer<E>
 where
 	E: ApiEndpoint,
@@ -59,7 +59,7 @@ where
 /// inner service with the parsed request. Ideally, this will automatically be
 /// done by [`RouterExt::mount_endpoint`], and you should not need to use this
 /// directly.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct RemoveIpAddrService<S, E>
 where
 	for<'a> S: Service<ApiRequest<E>>,

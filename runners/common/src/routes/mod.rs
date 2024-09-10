@@ -8,7 +8,7 @@ use crate::prelude::*;
 #[instrument(skip(state))]
 pub async fn setup_routes<E>(state: &AppState<E>) -> Router
 where
-	E: RunnerExecutor,
+	E: RunnerExecutor + Clone + 'static,
 {
 	Router::new().merge(workspace::setup_routes(state).await)
 }

@@ -23,7 +23,7 @@ use tower::{Layer, Service};
 /// A [`tower::Layer`] that can be used to parse the request and call the inner
 /// service with the parsed request. Ideally, this will automatically be done by
 /// [`RouterExt::mount_endpoint`], and you should not need to use this directly.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 pub struct RequestParserLayer<E>
 where
 	E: ApiEndpoint,

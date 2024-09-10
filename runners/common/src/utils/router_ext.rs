@@ -162,25 +162,6 @@ where
 			});
 
 		// Setup the layers for the backend
-		if <E as ApiEndpoint>::API_ALLOWED || cfg!(debug_assertions) {
-			self.route(
-				<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH,
-				MethodRouter::<S>::new()
-					.on(
-						MethodFilter::try_from(<E as ApiEndpoint>::METHOD).unwrap(),
-						|| async {},
-					)
-					.layer(
-						ServiceBuilder::new()
-							.layer(RequestParserLayer::new())
-							.layer(DataStoreConnectionLayer::with_state(state.clone()))
-							.layer(PreprocessLayer::new())
-							.layer(AuthenticationLayer::new(ClientType::ApiToken))
-							.layer(EndpointLayer::new(handler)),
-					),
-			)
-		} else {
-			self
-		}
+		self
 	}
 }

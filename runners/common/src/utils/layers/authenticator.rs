@@ -162,7 +162,7 @@ where
 					})?;
 					trace!("Login ID parsed as UUID");
 
-					todo!("Add the API token authenticator");
+					unimplemented!("Add the API token authenticator");
 				}
 				ClientType::WebDashboard => {
 					trace!("Parsing authentication header as a JWT");

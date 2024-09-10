@@ -48,7 +48,7 @@ where
 
 impl<E> Runner<E>
 where
-	E: RunnerExecutor + 'static,
+	E: RunnerExecutor + Clone + 'static,
 {
 	/// Initializes and runs the runner. This function will create a new
 	/// database connection pool and set up the global default subscriber for

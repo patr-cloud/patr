@@ -1,4 +1,4 @@
-use std::{fmt::Debug, future::Future, time::Duration};
+use std::{future::Future, time::Duration};
 
 use futures::Stream;
 use models::{api::workspace::deployment::*, prelude::*};
@@ -18,7 +18,7 @@ pub trait RunnerExecutor {
 
 	/// The settings type for the runner. This is used to store any additional
 	/// settings needed for the runner.
-	type Settings: Serialize + DeserializeOwned + Clone + Send + Sync + Debug;
+	type Settings: Serialize + DeserializeOwned + Clone + Send + Sync;
 
 	/// This function is called when a deployment is created, or updated.
 	/// The runner should return an error with a duration if the deployment
