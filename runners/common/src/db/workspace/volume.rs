@@ -13,7 +13,11 @@ pub async fn initialize_volume_tables(
 			id UUID NOT NULL,
 			name TEXT NOT NULL,
 			volume_size INT NOT NULL,
-			deleted TIMESTAMPTZ
+			deleted DATETIME,
+
+			PRIMARY KEY (id),
+			UNIQUE (name),
+			CHECK (volume_size > 0)
 		);
 		"#,
 	)
@@ -25,7 +29,11 @@ pub async fn initialize_volume_tables(
 		CREATE TABLE deployment_volume_mount(
 			deployment_id UUID NOT NULL,
 			volume_id UUID NOT NULL,
-			volume_mount_path TEXT NOT NULL
+			volume_mount_path TEXT NOT NULL,
+
+			PRIMARY KEY (deployment_id, volume_id),
+			FOREIGN KEY (deployment_id) REFERENCES deployment(id),
+			FOREIGN KEY (volume_id) REFERENCES deployment_volume(id)
 		);
 		"#,
 	)
