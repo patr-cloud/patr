@@ -1,10 +1,7 @@
 use axum::http::StatusCode;
 use models::api::workspace::deployment::*;
 
-use crate::{
-	app::{AppRequest, ProcessedApiRequest},
-	prelude::*,
-};
+use crate::prelude::*;
 
 /// The handler to delete a deployment in the workspace. This will delete the
 /// deployment from the workspace, and remove all resources associated with the

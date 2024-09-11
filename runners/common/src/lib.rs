@@ -30,7 +30,7 @@ pub mod prelude {
 	pub use sqlx::{query, Row};
 
 	pub use crate::{
-		app::AppState,
+		app::{AppRequest, AppState, ProcessedApiRequest},
 		executor::RunnerExecutor,
 		runner::Runner,
 		utils::{client, config::*, constants, ext_traits::*},

@@ -1,10 +1,7 @@
 use http::StatusCode;
 use models::api::workspace::deployment::*;
 
-use crate::{
-	app::{AppRequest, ProcessedApiRequest},
-	prelude::*,
-};
+use crate::prelude::*;
 
 pub async fn create_deployment(
 	AppRequest {
@@ -63,7 +60,9 @@ pub async fn create_deployment(
 				startup_probe_port_type,
 				liveness_probe_port,
 				liveness_probe_path,
-				liveness_probe_port_type
+				liveness_probe_port_type,
+				current_live_digest,
+				deleted
 			)
 		VALUES
 			(
@@ -82,7 +81,9 @@ pub async fn create_deployment(
 				$13,
 				$14,
 				$15,
-				$16
+				$16,
+				NULL,
+				NULL
 			);
 		"#,
 	)
@@ -146,22 +147,19 @@ pub async fn create_deployment(
 				deployment_environment_variable(
 					deployment_id,
 					name,
-					value,
-					secret_id
+					value
 				)
 			VALUES
 				(
 					$1,
 					$2,
-					$3,
-					$4
+					$3
 				);
 			"#,
 		)
 		.bind(deployment_id)
 		.bind(name)
 		.bind(value.value())
-		.bind(value.secret_id())
 		.execute(&mut **database)
 		.await?;
 	}
