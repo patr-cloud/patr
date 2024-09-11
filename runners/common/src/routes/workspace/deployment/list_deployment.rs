@@ -1,10 +1,7 @@
 use http::StatusCode;
 use models::{api::workspace::deployment::*, utils::Uuid};
 
-use crate::{
-	app::{AppRequest, ProcessedApiRequest},
-	prelude::*,
-};
+use crate::prelude::*;
 
 pub async fn list_deployment(
 	AppRequest {
