@@ -138,7 +138,7 @@ strip = true
 
 [[workspace.metadata.leptos]]
 # The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name
-bin-package = "api"
+bin-package = "docker"
 lib-package = "hosted-frontend"
 name = "dashboard"
 output-name = "dashboard"
