@@ -41,6 +41,10 @@ pub async fn create_deployment(
 ) -> Result<AppResponse<CreateDeploymentRequest>, ErrorType> {
 	let deployment_id = Uuid::new_v4();
 
+	query("PRAGMA defer_foreign_keys = ON;")
+		.execute(&mut **database)
+		.await?;
+
 	query(
 		r#"
 		INSERT INTO
@@ -138,6 +142,10 @@ pub async fn create_deployment(
 		.await?;
 	}
 
+	query("PRAGMA defer_foreign_keys = OFF;")
+		.execute(&mut **database)
+		.await?;
+
 	trace!("Inserted exposed ports for deployment");
 
 	for (name, value) in environment_variables {
@@ -147,13 +155,15 @@ pub async fn create_deployment(
 				deployment_environment_variable(
 					deployment_id,
 					name,
-					value
+					value,
+					secret_id
 				)
 			VALUES
 				(
 					$1,
 					$2,
-					$3
+					$3,
+					NULL
 				);
 			"#,
 		)

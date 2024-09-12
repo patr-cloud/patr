@@ -34,7 +34,7 @@ pub async fn initialize_deployment_tables(
 			deploy_on_push BOOLEAN NOT NULL,
 			startup_probe_port INTEGER,
 			startup_probe_path TEXT,
-			startup_probe_port_type TEXT CHECK(liveness_probe_port_type IN ('tcp', 'http')),
+			startup_probe_port_type TEXT CHECK(liveness_probe_port_type IN ('http')),
 			liveness_probe_port INTEGER,
 			liveness_probe_path TEXT,
 			liveness_probe_port_type TEXT CHECK (liveness_probe_port_type IN ('tcp', 'http')),
@@ -111,6 +111,7 @@ pub async fn initialize_deployment_tables(
 			deployment_id TEXT NOT NULL,
 			name TEXT NOT NULL,
 			value TEXT NOT NULL,
+			secret_id TEXT,
 
 			PRIMARY KEY (deployment_id, name),
 			FOREIGN KEY (deployment_id) REFERENCES deployment(id),
@@ -129,8 +130,9 @@ pub async fn initialize_deployment_tables(
 			port INTEGER NOT NULL,
 			port_type TEXT CHECK (port_type IN ('http')),
 
-			PRIMARY KEY (deployment_id, port),
-			FOREIGN KEY (deployment_id) REFERENCES deployment(id),
+			PRIMARY KEY (deployment_id, port, port_type),
+			FOREIGN KEY (deployment_id) REFERENCES deployment(id)
+				DEFERRABLE INITIALLY IMMEDIATE,
 			CHECK (port > 0 AND port <= 65535)
 		);
 		"#,
