@@ -63,13 +63,9 @@ pub async fn delete_deployment(
 	.execute(&mut **database)
 	.await?;
 
-	query(
-		r#"
-		SET CONSTRAINTS ALL DEFERRED;
-		"#,
-	)
-	.execute(&mut **database)
-	.await?;
+	query("PRAGMA defer_foreign_keys = ON;")
+		.execute(&mut **database)
+		.await?;
 
 	query(
 		r#"
@@ -100,13 +96,9 @@ pub async fn delete_deployment(
 		err => ErrorType::server_error(err),
 	})?;
 
-	query(
-		r#"
-		SET CONSTRAINTS ALL IMMEDIATE;
-		"#,
-	)
-	.execute(&mut **database)
-	.await?;
+	query("PRAGMA defer_foreign_keys = OFF;")
+		.execute(&mut **database)
+		.await?;
 
 	AppResponse::builder()
 		.body(DeleteDeploymentResponse)

@@ -27,13 +27,12 @@ pub async fn get_deployment_info(
 		r#"
 		SELECT
 			port,
-			port_type,
+			port_type
 		FROM
-			deployment_exposed_ports
+			deployment_exposed_port
 		WHERE
 			deployment_id = $1
-
-	"#,
+		"#,
 	)
 	.bind(deployment_id)
 	.fetch_all(&mut **database)
@@ -53,7 +52,7 @@ pub async fn get_deployment_info(
 		r#"
 		SELECT
 			name,
-			value,
+			value
 		FROM
 			deployment_environment_variable
 		WHERE
@@ -67,8 +66,21 @@ pub async fn get_deployment_info(
 	.map(|env| {
 		let name = env.try_get::<String, &str>("name")?;
 		let value = env
-			.try_get::<String, &str>("value")
-			.map(|val| EnvironmentVariableValue::String(val))?;
+			.try_get::<Option<String>, &str>("value")?
+			.map(|val| EnvironmentVariableValue::String(val));
+
+		let secret_id = env
+			.try_get::<Option<Uuid>, &str>("secret_id")?
+			.map(|val| EnvironmentVariableValue::Secret { from_secret: val });
+
+		let value = match (value, secret_id) {
+			(Some(value), None) => Some(value),
+			(None, Some(secret)) => Some(secret),
+			_ => None,
+		}
+		.ok_or(ErrorType::server_error(
+			"corrupted deployment, cannot find environment variable value",
+		))?;
 
 		Ok((name, value))
 	})
