@@ -1,5 +1,9 @@
 use crate::prelude::*;
 
+const fn is_false(force_restart: &bool) -> bool {
+	*force_restart == false
+}
+
 macros::declare_api_endpoint!(
 	/// Route to start a deployment
 	StartDeployment,
@@ -8,6 +12,12 @@ macros::declare_api_endpoint!(
 		pub workspace_id: Uuid,
 		/// The deployment ID of the deployment to start
 		pub deployment_id: Uuid,
+	},
+	query = {
+		/// If true, the deployment will be force-restarted, even
+		/// if it is already running
+		#[serde(skip_serializing_if = "is_false")]
+		pub force_restart: bool,
 	},
 	request_headers = {
 		/// Token used to authorize user

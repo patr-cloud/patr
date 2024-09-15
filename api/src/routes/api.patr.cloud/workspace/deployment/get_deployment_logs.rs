@@ -23,8 +23,12 @@ pub async fn get_deployment_logs(
 					deployment_id,
 				},
 				query: GetDeploymentLogsQuery { end_time, limit },
-				headers,
-				body,
+				headers:
+					GetDeploymentLogsRequestHeaders {
+						authorization,
+						user_agent,
+					},
+				body: GetDeploymentLogsRequestProcessed,
 			},
 		database,
 		redis: _,

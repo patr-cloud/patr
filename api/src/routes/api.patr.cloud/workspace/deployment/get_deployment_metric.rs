@@ -13,12 +13,20 @@ use crate::prelude::*;
 /// - `mertrics`: The deployment metrics
 pub async fn get_deployment_metric(
 	AuthenticatedAppRequest {
-		request: ProcessedApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
+		request:
+			ProcessedApiRequest {
+				path: GetDeploymentMetricPath {
+					workspace_id,
+					deployment_id,
+				},
+				query: GetDeploymentMetricQuery { start_time, step },
+				headers:
+					GetDeploymentMetricRequestHeaders {
+						authorization,
+						user_agent,
+					},
+				body: GetDeploymentMetricRequestProcessed,
+			},
 		database,
 		redis: _,
 		client_ip: _,

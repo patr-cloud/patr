@@ -3,31 +3,30 @@ use models::api::workspace::deployment::*;
 
 use crate::prelude::*;
 
-/// Stop deployment
-///
-/// #Parameters
-/// - `workspace_id`: The workspace ID
-/// - `deployment_id`: The deployment ID
-///
-/// #Returns
-/// - `OK`: The deployment was stopped
+/// The handler to stop a deployment in the workspace. This will stop
+/// the deployment. In case the deployment is already stopped, it will
+/// do nothing.
 pub async fn stop_deployment(
 	AuthenticatedAppRequest {
 		request:
 			ProcessedApiRequest {
 				path: StopDeploymentPath {
-					workspace_id,
+					workspace_id: _,
 					deployment_id,
 				},
 				query: _,
-				headers,
-				body,
+				headers:
+					StopDeploymentRequestHeaders {
+						authorization: _,
+						user_agent: _,
+					},
+				body: StopDeploymentRequestProcessed,
 			},
 		database,
 		redis: _,
 		client_ip: _,
-		config,
-		user_data,
+		config: _,
+		user_data: _,
 	}: AuthenticatedAppRequest<'_, StopDeploymentRequest>,
 ) -> Result<AppResponse<StopDeploymentRequest>, ErrorType> {
 	info!("Starting: Stop deployment");
@@ -51,7 +50,7 @@ pub async fn stop_deployment(
 	AppResponse::builder()
 		.body(StopDeploymentResponse)
 		.headers(())
-		.status_code(StatusCode::OK)
+		.status_code(StatusCode::ACCEPTED)
 		.build()
 		.into_result()
 }

@@ -4,23 +4,18 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
-/// Start deployment
-///
-/// #Parameters
-/// - `workspace_id`: The workspace ID
-/// - `deployment_id`: The deployment ID
-///
-/// #Returns
-/// - `OK`: The deployment was started
+/// The handler to start a deployment in the workspace. This will start
+/// the deployment. In case the deployment is already running, it will
+/// do nothing.
 pub async fn start_deployment(
 	AuthenticatedAppRequest {
 		request:
 			ProcessedApiRequest {
 				path: StartDeploymentPath {
-					workspace_id,
+					workspace_id: _,
 					deployment_id,
 				},
-				query: (),
+				query: StartDeploymentQuery { force_restart },
 				headers:
 					StartDeploymentRequestHeaders {
 						authorization: _,
@@ -57,19 +52,19 @@ pub async fn start_deployment(
 	)
 	.fetch_optional(&mut **database)
 	.await?
-	.map(|deployment| {
+	.and_then(|deployment| {
 		let registry = if deployment.registry == PatrRegistry.to_string() {
 			DeploymentRegistry::PatrRegistry {
 				registry: PatrRegistry,
-				repository_id: deployment.repository_id.unwrap().into(),
+				repository_id: deployment.repository_id?.into(),
 			}
 		} else {
 			DeploymentRegistry::ExternalRegistry {
 				registry: deployment.registry,
-				image_name: deployment.image_name.unwrap(),
+				image_name: deployment.image_name?,
 			}
 		};
-		(registry, deployment.image_tag, deployment.runner)
+		Some((registry, deployment.image_tag, deployment.runner))
 	})
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 

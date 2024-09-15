@@ -113,7 +113,7 @@ wasm-bindgen = { version = "0.2", default-features = false }
 wasm-logger = { version = "0.2", default-features = false }
 web-sys = { version = "0.3", default-features = false }
 woothee = { version = "0.13", default-features = false }
-worker = { version = "0.3", default-features = false }
+worker = { version = "0.4", default-features = false }
 
 [workspace.dev-dependencies]
 k8s-openapi = { features = ["latest"] }
@@ -144,6 +144,29 @@ name = "dashboard"
 output-name = "dashboard"
 # The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
 site-root = "target/hosted-frontend"
+# The site-root relative folder where all compiled output (JS, WASM and CSS) is written
+site-pkg-dir = "pkg"
+style-file = "hosted-frontend/assets/styles/index.scss"
+tailwind-config-file = "config/tailwind.config.js"
+tailwind-input-file = "hosted-frontend/assets/styles/index.scss"
+# Assets source dir. All files found here will be copied and synchronized to site-root.
+# The assets-dir cannot have a sub directory with the same name/path as site-pkg-dir.
+assets-dir = "components/assets"
+#  The browserlist query used for optimizing the CSS.
+browserquery = "defaults"
+# The profile to use for the lib target when compiling for release
+lib-profile-release = "frontend"
+# The port to use for the live reload server
+reload-port = 8080
+
+[[workspace.metadata.leptos]]
+# The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name
+bin-package = "docker"
+lib-package = "hosted-frontend"
+name = "docker"
+output-name = "docker-runner"
+# The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
+site-root = "target/docker-runner"
 # The site-root relative folder where all compiled output (JS, WASM and CSS) is written
 site-pkg-dir = "pkg"
 style-file = "hosted-frontend/assets/styles/index.scss"

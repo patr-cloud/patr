@@ -21,7 +21,9 @@ pub async fn start_deployment(
 				deployment_id,
 				workspace_id,
 			})
-			.query(())
+			.query(StartDeploymentQuery {
+				force_restart: false,
+			})
 			.headers(StartDeploymentRequestHeaders {
 				authorization: access_token,
 				user_agent: UserAgent::from_static("todo"),
