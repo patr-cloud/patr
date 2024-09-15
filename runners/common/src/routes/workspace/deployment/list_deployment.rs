@@ -7,23 +7,25 @@ use crate::{
 };
 
 pub async fn list_deployment(
-	request: AppRequest<'_, ListDeploymentRequest>,
-) -> Result<AppResponse<ListDeploymentRequest>, ErrorType> {
-	let AppRequest {
-		database,
+	AppRequest {
 		request:
 			ProcessedApiRequest {
-				path: _,
+				path: ListDeploymentPath { workspace_id: _ },
 				query: Paginated {
 					data: (),
 					count,
 					page,
 				},
-				headers: _,
-				body: _,
+				headers:
+					ListDeploymentRequestHeaders {
+						authorization: _,
+						user_agent: _,
+					},
+				body: ListDeploymentRequestProcessed,
 			},
-	} = request;
-
+		database,
+	}: AppRequest<'_, ListDeploymentRequest>,
+) -> Result<AppResponse<ListDeploymentRequest>, ErrorType> {
 	let mut total_count = 0;
 	let deployments = query(
 		r#"

@@ -7,15 +7,16 @@ use crate::{
 };
 
 pub async fn create_deployment(
-	request: AppRequest<'_, CreateDeploymentRequest>,
-) -> Result<AppResponse<CreateDeploymentRequest>, ErrorType> {
-	let AppRequest {
-		database,
+	AppRequest {
 		request:
 			ProcessedApiRequest {
 				path: CreateDeploymentPath { workspace_id: _ },
-				query: _,
-				headers: _,
+				query: (),
+				headers:
+					CreateDeploymentRequestHeaders {
+						authorization: _,
+						user_agent: _,
+					},
 				body:
 					CreateDeploymentRequestProcessed {
 						name,
@@ -38,8 +39,9 @@ pub async fn create_deployment(
 						deploy_on_create,
 					},
 			},
-	} = request;
-
+		database,
+	}: AppRequest<'_, CreateDeploymentRequest>,
+) -> Result<AppResponse<CreateDeploymentRequest>, ErrorType> {
 	let deployment_id = Uuid::new_v4();
 
 	query(
