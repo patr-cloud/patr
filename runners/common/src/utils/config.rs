@@ -7,6 +7,8 @@ use config::{Config, ConfigError, Environment, File};
 use models::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::prelude::RunnerExecutor;
+
 /// The configuration for the runner.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -29,9 +31,45 @@ pub struct RunnerSettings<D> {
 	/// The address to listed on
 	#[serde(alias = "webbindaddress")]
 	pub web_bind_address: SocketAddr,
+	/// The Username of the user
+	pub user_name: Option<String>,
+	/// The Password Hash of the user
+	pub password_hash: Option<String>,
 	/// Additional settings for the runner.
 	#[serde(flatten)]
 	pub data: D,
+}
+
+impl<D> RunnerSettings<D> {
+	/// Convert the the runner settings into a base runner setting, with the
+	/// additional data as [`()`]. This allows the settings to be parsed and
+	/// used internally in the common runner library without regard for the
+	/// specific runner settings.
+	pub fn into_base(self) -> RunnerSettings<()> {
+		let RunnerSettings {
+			workspace_id,
+			runner_id,
+			api_token,
+			environment,
+			database,
+			web_bind_address,
+			user_name,
+			password_hash,
+			data: _,
+		} = self;
+
+		RunnerSettings::<()> {
+			workspace_id,
+			runner_id,
+			api_token,
+			environment,
+			database,
+			web_bind_address,
+			user_name,
+			password_hash,
+			data: (),
+		}
+	}
 }
 
 impl<'de, D> RunnerSettings<D>

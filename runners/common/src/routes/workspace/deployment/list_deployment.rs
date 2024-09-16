@@ -5,6 +5,7 @@ use crate::prelude::*;
 
 pub async fn list_deployment(
 	AppRequest {
+		config: _,
 		request:
 			ProcessedApiRequest {
 				path: ListDeploymentPath { workspace_id: _ },

@@ -8,6 +8,7 @@ use crate::prelude::*;
 /// deployment.
 pub async fn delete_deployment(
 	AppRequest {
+		config: _,
 		request:
 			ProcessedApiRequest {
 				path: DeleteDeploymentPath {

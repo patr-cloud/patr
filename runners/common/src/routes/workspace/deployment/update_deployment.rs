@@ -13,6 +13,7 @@ use crate::{
 /// volumes. At least one of the values must be updated.
 pub async fn update_deployment(
 	AppRequest {
+		config: _,
 		request:
 			ProcessedApiRequest {
 				path: UpdateDeploymentPath {
