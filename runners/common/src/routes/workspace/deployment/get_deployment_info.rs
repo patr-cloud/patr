@@ -9,6 +9,7 @@ pub async fn get_deployment_info(
 	request: AppRequest<'_, GetDeploymentInfoRequest>,
 ) -> Result<AppResponse<GetDeploymentInfoRequest>, ErrorType> {
 	let AppRequest {
+		config: _,
 		database,
 		request:
 			ProcessedApiRequest {

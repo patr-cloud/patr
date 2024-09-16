@@ -7,6 +7,7 @@ pub async fn stop_deployment(
 	request: AppRequest<'_, StopDeploymentRequest>,
 ) -> Result<AppResponse<StopDeploymentRequest>, ErrorType> {
 	let AppRequest {
+		config: _,
 		database,
 		request:
 			ProcessedApiRequest {

@@ -1,3 +1,4 @@
+mod auth;
 mod workspace;
 
 use axum::Router;
@@ -40,7 +41,12 @@ where
 		)
 		.with_state(config.leptos_options)
 		.with_state(state.clone())
-		.nest("/api", workspace::setup_routes(state).await)
+		.nest(
+			"/api",
+			Router::new()
+				.merge(workspace::setup_routes(state).await)
+				.merge(auth::setup_routes(state).await),
+		)
 }
 
 /// Reads all files in a directory and its subdirectories

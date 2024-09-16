@@ -85,6 +85,8 @@ where
 	/// The database transaction for the request. In case the request returns
 	/// an Error, this transaction will be automatically rolled back.
 	pub database: &'a mut DatabaseTransaction,
+	/// The Application Config.
+	pub config: RunnerSettings<()>,
 }
 
 /// A request object that is passed through the tower layers and services for
@@ -100,4 +102,6 @@ where
 	/// The database transaction for the request. In case the request returns
 	/// an Error, this transaction will be automatically rolled back.
 	pub database: &'a mut DatabaseTransaction,
+	/// The Application Config.
+	pub config: RunnerSettings<()>,
 }

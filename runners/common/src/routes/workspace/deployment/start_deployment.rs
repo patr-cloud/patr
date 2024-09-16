@@ -7,6 +7,7 @@ pub async fn start_deployment(
 	request: AppRequest<'_, StartDeploymentRequest>,
 ) -> Result<AppResponse<StartDeploymentRequest>, ErrorType> {
 	let AppRequest {
+		config: _,
 		database,
 		request:
 			ProcessedApiRequest {

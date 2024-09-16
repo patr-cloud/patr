@@ -123,6 +123,7 @@ where
 			let req = UnprocessedAppRequest {
 				request,
 				database: &mut database,
+				config: state.config.clone().into_base(),
 			};
 
 			info!("Calling inner service");
