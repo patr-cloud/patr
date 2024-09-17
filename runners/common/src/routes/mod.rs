@@ -41,11 +41,17 @@ where
 		)
 		.with_state(config.leptos_options)
 		.with_state(state.clone())
-		.nest(
-			"/api",
-			Router::new()
-				.merge(workspace::setup_routes(state).await)
-				.merge(auth::setup_routes(state).await),
+		.merge(
+			if cfg!(debug_assertions) {
+				Router::new().nest(
+					"/api2",
+					Router::new()
+						.merge(workspace::setup_routes(state).await)
+						.merge(auth::setup_routes(state).await),
+				)
+			} else {
+				Router::new()
+			},
 		)
 }
 

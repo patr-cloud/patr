@@ -5,7 +5,6 @@ use crate::prelude::*;
 
 pub async fn list_deployment(
 	AppRequest {
-		config: _,
 		request:
 			ProcessedApiRequest {
 				path: ListDeploymentPath { workspace_id: _ },
@@ -22,10 +21,12 @@ pub async fn list_deployment(
 				body: ListDeploymentRequestProcessed,
 			},
 		database,
+		config: _,
 	}: AppRequest<'_, ListDeploymentRequest>,
 ) -> Result<AppResponse<ListDeploymentRequest>, ErrorType> {
-	let mut total_count = 0;
-	let deployments = query(
+	trace!("Listing all deployments");
+
+	let rows = query(
 		r#"
 		SELECT
 			id,
@@ -44,50 +45,52 @@ pub async fn list_deployment(
 	.bind(count as i32)
 	.bind((count * page) as i32)
 	.fetch_all(&mut **database)
-	.await?
-	.into_iter()
-	.map(|row| {
-		total_count += 1;
-		let deployment_id = row.try_get::<String, &str>("id")?;
-		let name = row.try_get::<String, &str>("name")?;
-		let deployment_id =
-			Uuid::parse_str(&deployment_id).expect("deployment id to be valid uuid");
+	.await?;
 
-		let image_tag = row.try_get::<String, &str>("image_tag")?;
-		let status = row
-			.try_get::<String, &str>("status")?
-			.parse::<DeploymentStatus>()
-			.map_err(|err| ErrorType::server_error(err))?;
-		let registry = row.try_get::<String, &str>("registry")?;
-		let image_name = row.try_get::<String, &str>("image_name")?;
+	let total_count = rows.len();
 
-		let machine_type = row
-			.try_get::<String, &str>("machine_type")?
-			.parse::<Uuid>()?;
+	let deployments = rows
+		.into_iter()
+		.map(|row| {
+			let deployment_id = row.try_get::<Uuid, _>("id")?;
+			let name = row.try_get::<String, _>("name")?;
+			let image_tag = row.try_get::<String, _>("image_tag")?;
+			let status = row.try_get::<DeploymentStatus, _>("status")?;
+			let registry = row.try_get::<String, _>("registry")?;
+			let repository_id = row.try_get::<Uuid, _>("repository_id")?;
+			let image_name = row.try_get::<String, _>("image_name")?;
+			let machine_type = row.try_get::<Uuid, _>("machine_type")?;
 
-		Ok(WithId::new(
-			deployment_id,
-			Deployment {
-				name,
-				image_tag,
-				status,
-				registry: DeploymentRegistry::ExternalRegistry {
-					registry,
-					image_name,
+			Ok(WithId::new(
+				deployment_id,
+				Deployment {
+					name,
+					image_tag,
+					status,
+					registry: if registry == PatrRegistry.to_string() {
+						DeploymentRegistry::PatrRegistry {
+							registry: PatrRegistry,
+							repository_id,
+						}
+					} else {
+						DeploymentRegistry::ExternalRegistry {
+							registry,
+							image_name,
+						}
+					},
+					// WARN: This is a dummy runner ID, as there is no runner-id in self-hosted PATR
+					runner: Uuid::nil(),
+					current_live_digest: None,
+					machine_type,
 				},
-				// WARN: This is a dummy runner ID, as there is no runner-id in self-hosted PATR
-				runner: Uuid::nil(),
-				current_live_digest: None,
-				machine_type,
-			},
-		))
-	})
-	.collect::<Result<_, ErrorType>>()?;
+			))
+		})
+		.collect::<Result<_, ErrorType>>()?;
 
 	AppResponse::builder()
 		.body(ListDeploymentResponse { deployments })
 		.headers(ListDeploymentResponseHeaders {
-			total_count: TotalCountHeader(total_count as _),
+			total_count: TotalCountHeader(total_count),
 		})
 		.status_code(StatusCode::OK)
 		.build()

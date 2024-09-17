@@ -5,7 +5,6 @@ use crate::prelude::*;
 
 pub async fn create_deployment(
 	AppRequest {
-		config: _,
 		request:
 			ProcessedApiRequest {
 				path: CreateDeploymentPath { workspace_id: _ },
@@ -38,8 +37,11 @@ pub async fn create_deployment(
 					},
 			},
 		database,
+		config: _,
 	}: AppRequest<'_, CreateDeploymentRequest>,
 ) -> Result<AppResponse<CreateDeploymentRequest>, ErrorType> {
+	trace!("Creating deployment: {}", name);
+
 	let deployment_id = Uuid::new_v4();
 
 	query(
@@ -88,7 +90,7 @@ pub async fn create_deployment(
 			);
 		"#,
 	)
-	.bind(deployment_id.to_string())
+	.bind(deployment_id)
 	.bind(name)
 	.bind(registry.registry_url())
 	.bind(registry.image_name())
@@ -100,14 +102,14 @@ pub async fn create_deployment(
 			DeploymentStatus::Created
 		},
 	)
-	.bind(machine_type.to_string())
+	.bind(machine_type)
 	.bind(min_horizontal_scale)
 	.bind(max_horizontal_scale)
 	.bind(deploy_on_push)
-	.bind(startup_probe.as_ref().map(|probe| probe.port as i32))
+	.bind(startup_probe.as_ref().map(|probe| probe.port))
 	.bind(startup_probe.as_ref().map(|probe| probe.path.as_str()))
 	.bind(startup_probe.as_ref().map(|_| ExposedPortType::Http))
-	.bind(liveness_probe.as_ref().map(|probe| probe.port as i32))
+	.bind(liveness_probe.as_ref().map(|probe| probe.port))
 	.bind(liveness_probe.as_ref().map(|probe| probe.path.as_str()))
 	.bind(liveness_probe.as_ref().map(|_| ExposedPortType::Http))
 	.execute(&mut **database)
@@ -132,8 +134,8 @@ pub async fn create_deployment(
 				);
 			"#,
 		)
-		.bind(deployment_id.to_string())
-		.bind(port.value() as i32)
+		.bind(deployment_id)
+		.bind(port.value())
 		.bind(port_type)
 		.execute(&mut **database)
 		.await?;
@@ -160,7 +162,7 @@ pub async fn create_deployment(
 				);
 			"#,
 		)
-		.bind(deployment_id.to_string())
+		.bind(deployment_id)
 		.bind(name)
 		.bind(value.value())
 		.execute(&mut **database)
@@ -186,9 +188,9 @@ pub async fn create_deployment(
 				);
 			"#,
 		)
-		.bind(deployment_id.to_string())
+		.bind(deployment_id)
 		.bind(path)
-		.bind(file.to_vec())
+		.bind(file.into_vec())
 		.execute(&mut **database)
 		.await?;
 	}
@@ -212,7 +214,7 @@ pub async fn create_deployment(
 				);
 			"#,
 		)
-		.bind(deployment_id.to_string())
+		.bind(deployment_id)
 		.bind(volume_id)
 		.bind(mount_path)
 		.execute(&mut **database)

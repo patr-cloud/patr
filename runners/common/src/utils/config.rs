@@ -144,37 +144,3 @@ pub struct DatabaseConfig {
 	#[serde(alias = "connectionlimit")]
 	pub connection_limit: u32,
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UserData {
-	/// The First Name of the user
-	pub first_name: String,
-	/// The Last Name of the user
-	pub last_name: String,
-	/// The Username of the user
-	pub user_id: String,
-	/// The Password Hash of the user
-	pub password_hash: String,
-}
-
-impl UserData {
-	pub const fn new() -> Self {
-		Self {
-			first_name: String::new(),
-			last_name: String::new(),
-			user_id: String::new(),
-			password_hash: String::new(),
-		}
-	}
-
-	/// Check if the user data is valid, can be used to authenticate a user
-	/// with.
-	pub fn is_user_available(&self) -> bool {
-		if self.user_id.is_empty() || self.password_hash.is_empty() {
-			return false;
-		}
-
-		true
-	}
-}

@@ -10,14 +10,10 @@ pub async fn initialize_volume_tables(
 	query(
 		r#"
 		CREATE TABLE deployment_volume(
-			id UUID NOT NULL,
-			name TEXT NOT NULL,
-			volume_size INT NOT NULL,
-			deleted DATETIME,
-
-			PRIMARY KEY (id),
-			UNIQUE (name),
-			CHECK (volume_size > 0)
+			id UUID NOT NULL PRIMARY KEY,
+			name TEXT NOT NULL UNIQUE,
+			volume_size INT NOT NULL CHECK(volume_size > 0),
+			deleted DATETIME
 		);
 		"#,
 	)
@@ -31,9 +27,9 @@ pub async fn initialize_volume_tables(
 			volume_id UUID NOT NULL,
 			volume_mount_path TEXT NOT NULL,
 
-			PRIMARY KEY (deployment_id, volume_id),
-			FOREIGN KEY (deployment_id) REFERENCES deployment(id),
-			FOREIGN KEY (volume_id) REFERENCES deployment_volume(id)
+			PRIMARY KEY(deployment_id, volume_id),
+			FOREIGN KEY(deployment_id) REFERENCES deployment(id),
+			FOREIGN KEY(volume_id) REFERENCES deployment_volume(id)
 		);
 		"#,
 	)

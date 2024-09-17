@@ -9,15 +9,12 @@ use time::OffsetDateTime;
 use crate::{prelude::*, utils::access_token_data::AccessTokenData};
 
 pub async fn login(
-	request: AppRequest<'_, LoginRequest>,
-) -> Result<AppResponse<LoginRequest>, ErrorType> {
-	let AppRequest {
-		config,
+	AppRequest {
 		request:
 			ProcessedApiRequest {
-				path: _,
-				query: _,
-				headers: _,
+				path: LoginPath,
+				query: (),
+				headers: LoginRequestHeaders { user_agent: _ },
 				body: LoginRequestProcessed {
 					user_id,
 					password,
@@ -25,47 +22,54 @@ pub async fn login(
 				},
 			},
 		database,
-	} = request;
+		config,
+	}: AppRequest<'_, LoginRequest>,
+) -> Result<AppResponse<LoginRequest>, ErrorType> {
 	trace!("Logging in user: {}", user_id);
 
-	let raw_user_data = query(
+	let rows = query(
 		r#"
 		SELECT
 			*
 		FROM
 			meta_data
 		WHERE
-			id = $1 OR
-			id = $2;
+			(
+				id = $1 AND
+				value = $2
+	 		) OR
+			id = $3;
 		"#,
 	)
 	.bind(constants::USER_ID_KEY)
+	.bind(user_id.as_ref())
 	.bind(constants::PASSWORD_HASH_KEY)
 	.fetch_all(&mut **database)
 	.await?;
 
-	let mut user_data = UserData::new();
+	let mut db_user_id = None;
+	let mut db_password_hash = None;
 
-	for row in raw_user_data {
-		let id = row.try_get::<String, &str>("id")?;
-		let value = row.try_get::<String, &str>("value")?;
+	for row in rows {
+		let id = row.try_get::<String, _>("id")?;
+		let value = row.try_get::<String, _>("value")?;
 
 		match id.as_str() {
-			"user_id" => {
-				user_data.user_id = value;
+			constants::USER_ID_KEY => {
+				db_user_id = Some(value);
 			}
-			"password_hash" => {
-				user_data.password_hash = value;
+			constants::PASSWORD_HASH_KEY => {
+				db_password_hash = Some(value);
 			}
-			_ => {}
+			_ => (),
 		}
 	}
 
-	if !user_data.is_user_available() || user_data.user_id != user_id {
+	let Some((user_id, password_hash)) = db_user_id.zip(db_password_hash) else {
 		return Err(ErrorType::UserNotFound);
-	}
+	};
 
-	trace!("Found user with ID: {}", user_data.user_id);
+	trace!("Found user with ID: {}", user_id);
 
 	let password_valid = Argon2::new_with_secret(
 		config.password_pepper.as_ref(),
@@ -79,7 +83,7 @@ pub async fn login(
 	.map_err(ErrorType::server_error)?
 	.verify_password(
 		password.as_bytes(),
-		&PasswordHash::new(&user_data.password_hash).map_err(ErrorType::server_error)?,
+		&PasswordHash::new(&password_hash).map_err(ErrorType::server_error)?,
 	)
 	.inspect_err(|err| {
 		info!("Error verifying password: `{}`", err);
@@ -111,7 +115,6 @@ pub async fn login(
 	)
 	.map_err(ErrorType::server_error)?;
 
-	// Err(ErrorType::server_error("Not implemented"))
 	AppResponse::builder()
 		.body(LoginResponse {
 			access_token,

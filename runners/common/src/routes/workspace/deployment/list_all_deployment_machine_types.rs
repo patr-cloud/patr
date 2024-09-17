@@ -4,9 +4,18 @@ use models::{api::workspace::deployment::*, prelude::*};
 use crate::prelude::*;
 
 pub async fn machine_type(
-	request: AppRequest<'_, ListAllDeploymentMachineTypeRequest>,
+	AppRequest {
+		request:
+			ProcessedApiRequest {
+				path: ListAllDeploymentMachineTypePath { workspace_id: _ },
+				query: (),
+				headers: ListAllDeploymentMachineTypeRequestHeaders { user_agent: _ },
+				body: ListAllDeploymentMachineTypeRequestProcessed,
+			},
+		database,
+		config: _,
+	}: AppRequest<'_, ListAllDeploymentMachineTypeRequest>,
 ) -> Result<AppResponse<ListAllDeploymentMachineTypeRequest>, ErrorType> {
-	let AppRequest { database, .. } = request;
 	info!("Listing all Deployment Machine Types");
 
 	let machine_types = query(
@@ -35,7 +44,7 @@ pub async fn machine_type(
 			},
 		))
 	})
-	.collect::<Result<Vec<_>, ErrorType>>()?;
+	.collect::<Result<_, ErrorType>>()?;
 
 	AppResponse::builder()
 		.body(ListAllDeploymentMachineTypeResponse { machine_types })

@@ -1,10 +1,11 @@
 use axum::Router;
 
+use crate::{prelude::*, utils::RouterExt};
+
 mod login;
 mod sign_up;
 
 use self::{login::*, sign_up::*};
-use crate::{prelude::*, utils::RouterExt};
 
 #[instrument(skip(state))]
 pub async fn setup_routes<E>(state: &AppState<E>) -> Router

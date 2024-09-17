@@ -6,22 +6,25 @@ use models::api::workspace::deployment::*;
 use crate::prelude::*;
 
 pub async fn get_deployment_info(
-	request: AppRequest<'_, GetDeploymentInfoRequest>,
-) -> Result<AppResponse<GetDeploymentInfoRequest>, ErrorType> {
-	let AppRequest {
-		config: _,
-		database,
+	AppRequest {
 		request:
 			ProcessedApiRequest {
 				path: GetDeploymentInfoPath {
 					workspace_id: _,
 					deployment_id,
 				},
-				query: _,
-				headers: _,
-				body: _,
+				query: (),
+				headers:
+					GetDeploymentInfoRequestHeaders {
+						authorization: _,
+						user_agent: _,
+					},
+				body: GetDeploymentInfoRequestProcessed,
 			},
-	} = request;
+		database,
+		config: _,
+	}: AppRequest<'_, GetDeploymentInfoRequest>,
+) -> Result<AppResponse<GetDeploymentInfoRequest>, ErrorType> {
 	info!("Getting deployment info");
 
 	let ports = query(
@@ -35,17 +38,15 @@ pub async fn get_deployment_info(
 			deployment_id = $1
 		"#,
 	)
-	.bind(deployment_id.to_string())
+	.bind(deployment_id)
 	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
 	.map(|row| {
-		let port = row.try_get::<i32, &str>("port")?;
-		let port_type = row
-			.try_get::<String, &str>("port_type")?
-			.parse::<ExposedPortType>()?;
+		let port = row.try_get::<u16, _>("port")?;
+		let port_type = row.try_get::<ExposedPortType, _>("port_type")?;
 
-		Ok((StringifiedU16::new(port as u16), port_type))
+		Ok((StringifiedU16::new(port), port_type))
 	})
 	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
 
@@ -65,14 +66,14 @@ pub async fn get_deployment_info(
 	.await?
 	.into_iter()
 	.map(|env| {
-		let name = env.try_get::<String, &str>("name")?;
+		let name = env.try_get::<String, _>("name")?;
 		let value = env
-			.try_get::<Option<String>, &str>("value")?
+			.try_get::<Option<String>, _>("value")?
 			.map(|val| EnvironmentVariableValue::String(val));
 
 		let secret_id = env
-			.try_get::<Option<Uuid>, &str>("secret_id")?
-			.map(|val| EnvironmentVariableValue::Secret { from_secret: val });
+			.try_get::<Option<Uuid>, _>("secret_id")?
+			.map(|from_secret| EnvironmentVariableValue::Secret { from_secret });
 
 		let value = match (value, secret_id) {
 			(Some(value), None) => Some(value),
@@ -85,7 +86,7 @@ pub async fn get_deployment_info(
 
 		Ok((name, value))
 	})
-	.collect::<Result<BTreeMap<String, EnvironmentVariableValue>, ErrorType>>()?;
+	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
 
 	let config_mounts = query(
 		r#"
@@ -103,14 +104,14 @@ pub async fn get_deployment_info(
 	.await?
 	.into_iter()
 	.map(|row| {
-		let path = row.try_get::<String, &str>("path")?;
+		let path = row.try_get::<String, _>("path")?;
 		let file = row
-			.try_get::<Vec<u8>, &str>("file")
+			.try_get::<Vec<u8>, _>("file")
 			.map(|file| Base64String::from(file))?;
 
 		Ok((path, file))
 	})
-	.collect::<Result<BTreeMap<String, Base64String>, ErrorType>>()?;
+	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
 
 	let volumes = query(
 		r#"
@@ -128,8 +129,8 @@ pub async fn get_deployment_info(
 	.await?
 	.into_iter()
 	.map(|row| {
-		let volume_id = row.try_get::<Uuid, &str>("volume_id")?;
-		let volume_mount_path = row.try_get::<String, &str>("volume_mount_path")?;
+		let volume_id = row.try_get::<Uuid, _>("volume_id")?;
+		let volume_mount_path = row.try_get::<String, _>("volume_mount_path")?;
 
 		Ok((volume_id, volume_mount_path))
 	})
@@ -162,107 +163,46 @@ pub async fn get_deployment_info(
 			deleted IS NULL;
 		"#,
 	)
-	.bind(deployment_id.to_string())
+	.bind(deployment_id)
 	.fetch_optional(&mut **database)
 	.await?
-	.map(|row| -> Result<GetDeploymentInfoResponse, ErrorType> {
-		let name = row.try_get::<String, &str>("name").map_err(|err| {
-			ErrorType::server_error(format!("corrupted deployment, {}", err.to_string()))
-		})?;
-		let repository = row.try_get::<String, &str>("registry").map_err(|err| {
-			ErrorType::server_error(format!("corrupted deployment, {}", err.to_string()))
-		})?;
-		let image_name = row.try_get::<String, &str>("image_name").map_err(|err| {
-			ErrorType::server_error(format!("corrupted deployment, {}", err.to_string()))
-		})?;
-		let image_tag = row.try_get::<String, &str>("image_tag").map_err(|err| {
-			ErrorType::server_error(format!("corrupted deployment, {}", err.to_string()))
-		})?;
+	.map(|row| {
+		let deployment_id = row.try_get::<Uuid, _>("id")?;
+		let name = row.try_get::<String, _>("name")?;
+		let image_tag = row.try_get::<String, _>("image_tag")?;
+		let status = row.try_get::<DeploymentStatus, _>("status")?;
+		let registry = row.try_get::<String, _>("registry")?;
+		let repository_id = row.try_get::<Uuid, _>("repository_id")?;
+		let image_name = row.try_get::<String, _>("image_name")?;
+		let machine_type = row.try_get::<Uuid, _>("machine_type")?;
+		let current_live_digest = row.try_get::<Option<String>, _>("current_live_digest")?;
 
-		let registry = DeploymentRegistry::ExternalRegistry {
-			registry: repository,
-			image_name,
-		};
+		let deploy_on_push = row.try_get::<bool, _>("deploy_on_push")?;
+		let min_horizontal_scale = row.try_get::<u16, _>("min_horizontal_scale")?;
+		let max_horizontal_scale = row.try_get::<u16, _>("max_horizontal_scale")?;
 
-		let status = row
-			.try_get::<String, &str>("status")?
-			.parse::<DeploymentStatus>()
-			.map_err(|err| {
-				ErrorType::server_error(format!("corrupted deployment, {}", err.to_string()))
-			})?;
-
-		let machine_type = row
-			.try_get::<String, &str>("machine_type")?
-			.parse::<Uuid>()
-			.map_err(|err| {
-				ErrorType::server_error(format!("corrupted deployment, {}", err.to_string()))
-			})?;
-
-		let current_live_digest = row
-			.try_get::<Option<String>, &str>("current_live_digest")
-			.map_err(|err| {
-				ErrorType::server_error(format!("corrupted deployment, {}", err.to_string()))
-			})?;
-
-		let deploy_on_push = row.try_get::<bool, &str>("deploy_on_push").map_err(|err| {
-			ErrorType::server_error(format!("corrupted deployment, {}", err.to_string()))
-		})?;
-
-		let min_horizontal_scale =
-			row.try_get::<u16, &str>("min_horizontal_scale")
-				.map_err(|err| {
-					ErrorType::server_error(format!("corrupted deployment, {}", err.to_string()))
-				})?;
-
-		let max_horizontal_scale =
-			row.try_get::<u16, &str>("max_horizontal_scale")
-				.map_err(|err| {
-					ErrorType::server_error(format!("corrupted deployment, {}", err.to_string()))
-				})?;
-
-		let startup_port_port = row
-			.try_get::<Option<u16>, &str>("startup_probe_port")
-			.map_err(|_| {
-				ErrorType::server_error("corrupted deployment, cannot find startup_probe_port")
-			})?;
-
-		let startup_port_path = row
-			.try_get::<Option<String>, &str>("startup_probe_path")
-			.map_err(|_| {
-				ErrorType::server_error("corrupted deployment, cannot find startup_probe_path")
-			})?;
-
-		let startup_probe = startup_port_port
-			.zip(startup_port_path)
-			.map(|(port, path)| DeploymentProbe { port, path });
-
-		let liveness_port_port = row
-			.try_get::<Option<u16>, &str>("liveness_probe_port")
-			.map_err(|err| {
-				ErrorType::server_error(format!("corrupted deployment, {}", err.to_string()))
-			})?;
-
-		let liveness_port_path = row
-			.try_get::<Option<String>, &str>("liveness_probe_path")
-			.map_err(|err| {
-				ErrorType::server_error(format!("corrupted deployment, {}", err.to_string()))
-			})?;
-
-		let liveness_probe = liveness_port_port
-			.zip(liveness_port_path)
-			.map(|(port, path)| DeploymentProbe { port, path });
-
-		Ok(GetDeploymentInfoResponse {
+		Ok::<_, ErrorType>(GetDeploymentInfoResponse {
 			deployment: WithId::new(
 				deployment_id,
 				Deployment {
 					name,
-					registry,
 					image_tag,
 					status,
-					machine_type,
+					registry: if registry == PatrRegistry.to_string() {
+						DeploymentRegistry::PatrRegistry {
+							registry: PatrRegistry,
+							repository_id,
+						}
+					} else {
+						DeploymentRegistry::ExternalRegistry {
+							registry,
+							image_name,
+						}
+					},
+					// WARN: This is a dummy runner ID, as there is no runner-id in self-hosted PATR
 					runner: Uuid::nil(),
 					current_live_digest,
+					machine_type,
 				},
 			),
 			running_details: DeploymentRunningDetails {
@@ -270,16 +210,21 @@ pub async fn get_deployment_info(
 				min_horizontal_scale,
 				max_horizontal_scale,
 				ports,
-				startup_probe,
-				liveness_probe,
 				environment_variables,
-				volumes,
+				startup_probe: row
+					.try_get::<Option<u16>, _>("startup_probe_port")?
+					.zip(row.try_get::<Option<String>, _>("startup_probe_path")?)
+					.map(|(port, path)| DeploymentProbe { port, path }),
+				liveness_probe: row
+					.try_get::<Option<u16>, _>("liveness_probe_port")?
+					.zip(row.try_get::<Option<String>, _>("liveness_probe_path")?)
+					.map(|(port, path)| DeploymentProbe { port, path }),
 				config_mounts,
+				volumes,
 			},
 		})
 	})
-	.ok_or(ErrorType::ResourceDoesNotExist)?
-	.map_err(|err| ErrorType::server_error(format!("corrupted deployment, {}", err.to_string())))?;
+	.ok_or(ErrorType::ResourceDoesNotExist)??;
 
 	AppResponse::builder()
 		.body(deployment)

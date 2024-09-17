@@ -8,7 +8,6 @@ use crate::prelude::*;
 /// deployment.
 pub async fn delete_deployment(
 	AppRequest {
-		config: _,
 		request:
 			ProcessedApiRequest {
 				path: DeleteDeploymentPath {
@@ -24,6 +23,7 @@ pub async fn delete_deployment(
 				body: DeleteDeploymentRequestProcessed,
 			},
 		database,
+		config: _,
 	}: AppRequest<'_, DeleteDeploymentRequest>,
 ) -> Result<AppResponse<DeleteDeploymentRequest>, ErrorType> {
 	info!("Deleting deployment: {deployment_id}");
@@ -36,7 +36,7 @@ pub async fn delete_deployment(
 			deployment_id = $1;
 		"#,
 	)
-	.bind(deployment_id.to_string())
+	.bind(deployment_id)
 	.execute(&mut **database)
 	.await?;
 
@@ -48,7 +48,7 @@ pub async fn delete_deployment(
 			deployment_id = $1;
 		"#,
 	)
-	.bind(deployment_id.to_string())
+	.bind(deployment_id)
 	.execute(&mut **database)
 	.await?;
 
@@ -60,7 +60,7 @@ pub async fn delete_deployment(
 			deployment_id = $1;
 		"#,
 	)
-	.bind(deployment_id.to_string())
+	.bind(deployment_id)
 	.execute(&mut **database)
 	.await?;
 
@@ -72,7 +72,7 @@ pub async fn delete_deployment(
 			deployment_id = $1;
 		"#,
 	)
-	.bind(deployment_id.to_string())
+	.bind(deployment_id)
 	.execute(&mut **database)
 	.await?;
 
@@ -85,7 +85,7 @@ pub async fn delete_deployment(
 			id = $1;
 		"#,
 	)
-	.bind(deployment_id.to_string())
+	.bind(deployment_id)
 	.execute(&mut **database)
 	.await
 	.map_err(|err| match err {

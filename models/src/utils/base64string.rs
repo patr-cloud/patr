@@ -15,6 +15,13 @@ pub struct Base64String {
 	data: Vec<u8>,
 }
 
+impl Base64String {
+	/// Convert the `Base64String` into a `Vec<u8>`.
+	pub fn into_vec(self) -> Vec<u8> {
+		self.data
+	}
+}
+
 impl From<Vec<u8>> for Base64String {
 	fn from(data: Vec<u8>) -> Self {
 		Base64String { data }

@@ -6,15 +6,12 @@ use crate::prelude::*;
 
 /// The `sign_up` endpoint is used to create a new account.
 pub async fn sign_up(
-	request: AppRequest<'_, CreateAccountRequest>,
-) -> Result<AppResponse<CreateAccountRequest>, ErrorType> {
-	let AppRequest {
-		config,
+	AppRequest {
 		request:
 			ProcessedApiRequest {
-				path: _,
-				query: _,
-				headers: _,
+				path: CreateAccountPath,
+				query: (),
+				headers: CreateAccountRequestHeaders { user_agent: _ },
 				body:
 					CreateAccountRequestProcessed {
 						first_name,
@@ -25,9 +22,12 @@ pub async fn sign_up(
 					},
 			},
 		database,
-	} = request;
+		config,
+	}: AppRequest<'_, CreateAccountRequest>,
+) -> Result<AppResponse<CreateAccountRequest>, ErrorType> {
+	trace!("Signing up user: {}", username);
 
-	let raw_user_data = query(
+	let rows = query(
 		r#"
 		SELECT
 			*
@@ -43,26 +43,28 @@ pub async fn sign_up(
 	.fetch_all(&mut **database)
 	.await?;
 
-	let mut user_data = UserData::new();
+	let mut db_user_id = None;
+	let mut db_password_hash = None;
 
-	for row in raw_user_data {
-		let id = row.try_get::<String, &str>("id")?;
-		let value = row.try_get::<String, &str>("value")?;
+	for row in rows {
+		let id = row.try_get::<String, _>("id")?;
+		let value = row.try_get::<String, _>("value")?;
 
 		match id.as_str() {
-			"user_id" => {
-				user_data.user_id = value;
+			constants::USER_ID_KEY => {
+				db_user_id = Some(value);
 			}
-			"password_hash" => {
-				user_data.password_hash = value;
+			constants::PASSWORD_HASH_KEY => {
+				db_password_hash = Some(value);
 			}
-			_ => {}
+			_ => (),
 		}
 	}
 
-	if user_data.is_user_available() {
-		return Err(ErrorType::server_error("User Already Exists"));
-	}
+	let None = db_user_id.zip(db_password_hash) else {
+		return Err(ErrorType::UsernameUnavailable);
+	};
+
 	trace!("Creating user with username: {}", username);
 
 	let hashed_password = argon2::Argon2::new_with_secret(

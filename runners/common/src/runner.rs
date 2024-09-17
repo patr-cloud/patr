@@ -82,8 +82,7 @@ where
 			.with_graceful_shutdown(exit_signal())
 			.await
 			.unwrap();
-		})
-		.await;
+		});
 
 		info!("Runner started");
 
@@ -221,7 +220,7 @@ where
 		}
 
 		info!("Runner stopped. Waiting for server to exit");
-		// _ = server_task.await;
+		_ = server_task.await;
 		info!("Server exited. Exiting runner...");
 	}
 

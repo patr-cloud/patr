@@ -15,6 +15,8 @@ use self::{
 	get_deployment_info::*,
 	list_all_deployment_machine_types::*,
 	list_deployment::*,
+	start_deployment::*,
+	stop_deployment::*,
 	update_deployment::*,
 };
 use crate::{prelude::*, utils::RouterExt};
@@ -30,5 +32,7 @@ where
 		.mount_auth_endpoint(update_deployment, state)
 		.mount_auth_endpoint(create_deployment, state)
 		.mount_auth_endpoint(get_deployment_info, state)
+		.mount_auth_endpoint(start_deployment, state)
+		.mount_auth_endpoint(stop_deployment, state)
 		.mount_endpoint(machine_type, state)
 }

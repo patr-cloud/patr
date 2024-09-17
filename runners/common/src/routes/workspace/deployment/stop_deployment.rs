@@ -4,22 +4,26 @@ use models::{api::workspace::deployment::*, prelude::*};
 use crate::prelude::*;
 
 pub async fn stop_deployment(
-	request: AppRequest<'_, StopDeploymentRequest>,
-) -> Result<AppResponse<StopDeploymentRequest>, ErrorType> {
-	let AppRequest {
-		config: _,
-		database,
+	AppRequest {
 		request:
 			ProcessedApiRequest {
 				path: StopDeploymentPath {
 					workspace_id: _,
 					deployment_id,
 				},
-				query: _,
-				headers: _,
-				body: _,
+				query: (),
+				headers:
+					StopDeploymentRequestHeaders {
+						authorization: _,
+						user_agent: _,
+					},
+				body: StopDeploymentRequestProcessed,
 			},
-	} = request;
+		database,
+		config: _,
+	}: AppRequest<'_, StopDeploymentRequest>,
+) -> Result<AppResponse<StopDeploymentRequest>, ErrorType> {
+	trace!("Stopping deployment: {}", deployment_id);
 
 	query(
 		r#"
@@ -31,7 +35,7 @@ pub async fn stop_deployment(
 			id = $1
 		"#,
 	)
-	.bind(deployment_id.to_string())
+	.bind(deployment_id)
 	.execute(&mut **database)
 	.await?;
 

@@ -81,7 +81,7 @@ pub async fn update_deployment(
 			deleted IS NULL;
 		"#,
 	)
-	.bind(deployment_id.to_string())
+	.bind(deployment_id)
 	.fetch_optional(&mut **database)
 	.await?
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
@@ -101,7 +101,7 @@ pub async fn update_deployment(
 				deployment_id = $1;
 			"#,
 		)
-		.bind(deployment_id.to_string())
+		.bind(deployment_id)
 		.execute(&mut **database)
 		.await?;
 
@@ -122,7 +122,7 @@ pub async fn update_deployment(
 					);
 				"#,
 			)
-			.bind(deployment_id.to_string())
+			.bind(deployment_id)
 			.bind(port.value())
 			.bind(port_type.to_string())
 			.execute(&mut **database)
@@ -219,7 +219,7 @@ pub async fn update_deployment(
 				deployment_id = $1;
 			"#,
 		)
-		.bind(deployment_id.to_string())
+		.bind(deployment_id)
 		.execute(&mut **database)
 		.await?;
 
@@ -242,10 +242,10 @@ pub async fn update_deployment(
 					);
 				"#,
 			)
-			.bind(deployment_id.to_string())
-			.bind(name.clone())
-			.bind(value.value().cloned())
-			.bind(value.secret_id().map(|id| id.to_string()))
+			.bind(deployment_id)
+			.bind(name)
+			.bind(value.value())
+			.bind(value.secret_id())
 			.execute(&mut **database)
 			.await?;
 		}
@@ -260,7 +260,7 @@ pub async fn update_deployment(
 				deployment_id = $1;
 			"#,
 		)
-		.bind(deployment_id.to_string())
+		.bind(deployment_id)
 		.execute(&mut **database)
 		.await?;
 
@@ -281,9 +281,9 @@ pub async fn update_deployment(
 					);
 				"#,
 			)
-			.bind(deployment_id.to_string())
-			.bind(path.clone())
-			.bind(file.to_vec())
+			.bind(deployment_id)
+			.bind(path)
+			.bind(file.into_vec())
 			.execute(&mut **database)
 			.await?;
 		}
@@ -298,7 +298,7 @@ pub async fn update_deployment(
 				deployment_id = $1;
 			"#,
 		)
-		.bind(deployment_id.to_string())
+		.bind(deployment_id)
 		.execute(&mut **database)
 		.await?;
 
@@ -319,8 +319,8 @@ pub async fn update_deployment(
 					);
 				"#,
 			)
-			.bind(deployment_id.to_string())
-			.bind(volume_id.to_string())
+			.bind(deployment_id)
+			.bind(volume_id)
 			.bind(volume_mount_path.clone())
 			.execute(&mut **database)
 			.await
