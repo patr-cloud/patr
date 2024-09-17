@@ -164,7 +164,7 @@ reload-port = 8080
 bin-package = "docker"
 lib-package = "hosted-frontend"
 name = "docker"
-output-name = "docker-runner"
+output-name = "dashboard"
 # The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
 site-root = "target/docker-runner"
 # The site-root relative folder where all compiled output (JS, WASM and CSS) is written

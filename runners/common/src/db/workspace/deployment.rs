@@ -117,7 +117,7 @@ pub async fn initialize_deployment_tables(
 			FOREIGN KEY(id, startup_probe_port, startup_probe_port_type)
 				REFERENCES deployment_exposed_port(deployment_id, port, port_type),
 			FOREIGN KEY(id, liveness_probe_port, liveness_probe_port_type)
-				REFERENCES deployment_exposed_port(deployment_id, port, port_type);
+				REFERENCES deployment_exposed_port(deployment_id, port, port_type)
 		);
 		"#,
 	)
