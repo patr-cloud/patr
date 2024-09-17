@@ -7,8 +7,6 @@ use config::{Config, ConfigError, Environment, File};
 use models::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::prelude::RunnerExecutor;
-
 /// The configuration for the runner.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -31,10 +29,12 @@ pub struct RunnerSettings<D> {
 	/// The address to listed on
 	#[serde(alias = "webbindaddress")]
 	pub web_bind_address: SocketAddr,
-	/// The Username of the user
-	pub user_name: Option<String>,
-	/// The Password Hash of the user
-	pub password_hash: Option<String>,
+	/// The Pepper used to hash passwords
+	#[serde(alias = "passwordpepper")]
+	pub password_pepper: String,
+	/// The secret used to sign JWTs
+	#[serde(alias = "jwtsecret")]
+	pub jwt_secret: String,
 	/// Additional settings for the runner.
 	#[serde(flatten)]
 	pub data: D,
@@ -53,8 +53,8 @@ impl<D> RunnerSettings<D> {
 			environment,
 			database,
 			web_bind_address,
-			user_name,
-			password_hash,
+			password_pepper,
+			jwt_secret,
 			data: _,
 		} = self;
 
@@ -65,8 +65,8 @@ impl<D> RunnerSettings<D> {
 			environment,
 			database,
 			web_bind_address,
-			user_name,
-			password_hash,
+			password_pepper,
+			jwt_secret,
 			data: (),
 		}
 	}
@@ -77,6 +77,7 @@ where
 	D: Deserialize<'de> + Serialize,
 {
 	/// Get the runner settings from the environment.
+	#[instrument]
 	pub fn parse(name: &str) -> Result<Self, ConfigError> {
 		let env = if cfg!(debug_assertions) {
 			"dev".to_string()
@@ -142,4 +143,38 @@ pub struct DatabaseConfig {
 	/// The maximum number of connections to the database
 	#[serde(alias = "connectionlimit")]
 	pub connection_limit: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserData {
+	/// The First Name of the user
+	pub first_name: String,
+	/// The Last Name of the user
+	pub last_name: String,
+	/// The Username of the user
+	pub user_id: String,
+	/// The Password Hash of the user
+	pub password_hash: String,
+}
+
+impl UserData {
+	pub const fn new() -> Self {
+		Self {
+			first_name: String::new(),
+			last_name: String::new(),
+			user_id: String::new(),
+			password_hash: String::new(),
+		}
+	}
+
+	/// Check if the user data is valid, can be used to authenticate a user
+	/// with.
+	pub fn is_user_available(&self) -> bool {
+		if self.user_id.is_empty() || self.password_hash.is_empty() {
+			return false;
+		}
+
+		true
+	}
 }

@@ -3,8 +3,8 @@
   "workspaceId": "workspaceId",
   "runnerId": "runnerId",
   "apiToken": "apiToken",
-  "userName": null,
-  "passwordHash": null,
+  "passwordPepper": "keyboard cat",
+  "jwtSecret": "keyboard cat",
   "database": {
     "file": "data.db",
     "connectionLimit": 5

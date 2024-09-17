@@ -35,7 +35,7 @@ pub async fn get_deployment_info(
 			deployment_id = $1
 		"#,
 	)
-	.bind(deployment_id)
+	.bind(deployment_id.to_string())
 	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
@@ -162,7 +162,7 @@ pub async fn get_deployment_info(
 			deleted IS NULL;
 		"#,
 	)
-	.bind(deployment_id)
+	.bind(deployment_id.to_string())
 	.fetch_optional(&mut **database)
 	.await?
 	.map(|row| -> Result<GetDeploymentInfoResponse, ErrorType> {

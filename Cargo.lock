@@ -851,6 +851,7 @@ dependencies = [
  "macros",
  "models",
  "preprocess",
+ "rand",
  "reqwest",
  "semver",
  "serde",

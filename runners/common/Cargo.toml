@@ -23,6 +23,7 @@ leptos_axum = { workspace = true, features = ["default"] }
 macros = { workspace = true }
 models = { workspace = true }
 preprocess = { workspace = true, features = [] }
+rand = { workspace = true, features = ["default"] }
 reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 semver = { workspace = true, features = ["default"] }
 serde = { workspace = true, features = ["derive"] }

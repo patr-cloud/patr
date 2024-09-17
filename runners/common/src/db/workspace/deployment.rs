@@ -19,6 +19,23 @@ pub async fn initialize_deployment_tables(
 	.execute(&mut *connection)
 	.await?;
 
+	// TODO: Move this somewhere else, this is just here for testing
+	let uuids = [Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()];
+	query(
+		r#"
+		INSERT INTO deployment_machine_type(id, cpu_count, memory_count)
+		VALUES
+			($1, 1, 1024),
+			($2, 2, 2048),
+			($3, 4, 4096),
+		"#,
+	)
+	.bind(uuids[0].to_string())
+	.bind(uuids[1].to_string())
+	.bind(uuids[2].to_string())
+	.execute(&mut *connection)
+	.await?;
+
 	query(
 		r#"
 		CREATE TABLE deployment(
@@ -93,12 +110,8 @@ pub async fn initialize_deployment_tables(
 			),
 
 			FOREIGN KEY (machine_type) REFERENCES deployment_machine_type(id),
-
-			FOREIGN KEY (id, startup_probe_port, startup_probe_port_type) REFERENCES deployment_exposed_port(deployment_id, port, port_type)
-				DEFERRABLE INITIALLY IMMEDIATE,
-
-			FOREIGN KEY (id, liveness_probe_port, liveness_probe_port_type) REFERENCES deployment_exposed_port(deployment_id, port, port_type)
-				DEFERRABLE INITIALLY IMMEDIATE
+			FOREIGN KEY (id, startup_probe_port, startup_probe_port_type) REFERENCES deployment_exposed_port(deployment_id, port, port_type),
+			FOREIGN KEY (id, liveness_probe_port, liveness_probe_port_type) REFERENCES deployment_exposed_port(deployment_id, port, port_type);
 		);
 		"#,
 	)
@@ -131,8 +144,7 @@ pub async fn initialize_deployment_tables(
 			port_type TEXT CHECK (port_type IN ('http')),
 
 			PRIMARY KEY (deployment_id, port, port_type),
-			FOREIGN KEY (deployment_id) REFERENCES deployment(id)
-				DEFERRABLE INITIALLY IMMEDIATE,
+			FOREIGN KEY (deployment_id) REFERENCES deployment(id),
 			CHECK (port > 0 AND port <= 65535)
 		);
 		"#,

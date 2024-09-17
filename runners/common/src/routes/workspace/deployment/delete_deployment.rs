@@ -36,7 +36,7 @@ pub async fn delete_deployment(
 			deployment_id = $1;
 		"#,
 	)
-	.bind(deployment_id)
+	.bind(deployment_id.to_string())
 	.execute(&mut **database)
 	.await?;
 
@@ -48,7 +48,7 @@ pub async fn delete_deployment(
 			deployment_id = $1;
 		"#,
 	)
-	.bind(deployment_id)
+	.bind(deployment_id.to_string())
 	.execute(&mut **database)
 	.await?;
 
@@ -60,13 +60,9 @@ pub async fn delete_deployment(
 			deployment_id = $1;
 		"#,
 	)
-	.bind(deployment_id)
+	.bind(deployment_id.to_string())
 	.execute(&mut **database)
 	.await?;
-
-	query("PRAGMA defer_foreign_keys = ON;")
-		.execute(&mut **database)
-		.await?;
 
 	query(
 		r#"
@@ -76,7 +72,7 @@ pub async fn delete_deployment(
 			deployment_id = $1;
 		"#,
 	)
-	.bind(deployment_id)
+	.bind(deployment_id.to_string())
 	.execute(&mut **database)
 	.await?;
 
@@ -89,17 +85,13 @@ pub async fn delete_deployment(
 			id = $1;
 		"#,
 	)
-	.bind(deployment_id)
+	.bind(deployment_id.to_string())
 	.execute(&mut **database)
 	.await
 	.map_err(|err| match err {
 		sqlx::Error::Database(err) if err.is_foreign_key_violation() => ErrorType::ResourceInUse,
 		err => ErrorType::server_error(err),
 	})?;
-
-	query("PRAGMA defer_foreign_keys = OFF;")
-		.execute(&mut **database)
-		.await?;
 
 	AppResponse::builder()
 		.body(DeleteDeploymentResponse)
