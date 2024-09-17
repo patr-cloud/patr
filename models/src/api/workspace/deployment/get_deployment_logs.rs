@@ -27,8 +27,11 @@ macros::declare_api_endpoint!(
 	query = {
 		/// The time up until which the deployment logs should be fetched
 		pub end_time: Option<OffsetDateTime>,
-		/// The limit of logs to fetch
-		pub limit: Option<u32>
+		/// The limit of logs to fetch. Defaults to 100
+		#[preprocess(range(max = Some(500)))]
+		pub limit: Option<u32>,
+		/// The search query to filter logs
+		pub search: Option<String>,
 	},
 	response = {
 		/// The deployment logs containing:

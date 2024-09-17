@@ -359,19 +359,9 @@ impl FromStr for DeploymentStatus {
 /// Deployment metrics
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct DeploymentMetrics {
-	/// Pod name of the deployment
-	pub pod_name: String,
-	/// List of metrics of type Metric
-	pub metrics: Vec<Metric>,
-}
-
-/// Metrics of a deployment pod
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct Metric {
+pub struct DeploymentMetric {
 	/// The timestamp of the metric
-	pub timestamp: u64,
+	pub timestamp: OffsetDateTime,
 	/// The cpu usage of a pod
 	pub cpu_usage: String,
 	/// The memory usage of a pod
@@ -389,114 +379,5 @@ pub struct DeploymentLogs {
 	/// Timestamp of a deployment log
 	pub timestamp: OffsetDateTime,
 	/// The logs of a deployment
-	pub logs: String,
-}
-
-/// The time duration of a log
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub enum Step {
-	/// One minute
-	OneMinute,
-	/// Two minute
-	TwoMinutes,
-	/// Five minute
-	FiveMinutes,
-	/// Ten minute
-	TenMinutes,
-	/// Fifteen minute
-	FifteenMinutes,
-	/// Thirty minute
-	ThirtyMinutes,
-	/// One hour
-	OneHour,
-}
-
-impl Display for Step {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Self::OneMinute => write!(f, "1m"),
-			Self::TwoMinutes => write!(f, "2m"),
-			Self::FiveMinutes => write!(f, "5m"),
-			Self::TenMinutes => write!(f, "10m"),
-			Self::FifteenMinutes => write!(f, "15m"),
-			Self::ThirtyMinutes => write!(f, "30m"),
-			Self::OneHour => write!(f, "1h"),
-		}
-	}
-}
-
-impl FromStr for Step {
-	type Err = String;
-
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		let s = s.to_lowercase();
-		match s.as_str() {
-			"1m" => Ok(Self::OneMinute),
-			"2m" => Ok(Self::TwoMinutes),
-			"5m" => Ok(Self::FiveMinutes),
-			"10m" => Ok(Self::TenMinutes),
-			"15m" => Ok(Self::FifteenMinutes),
-			"30m" => Ok(Self::ThirtyMinutes),
-			"1h" => Ok(Self::OneHour),
-			_ => Err(s),
-		}
-	}
-}
-
-/// Internval
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub enum Interval {
-	/// Hour
-	Hour,
-	/// Day
-	Day,
-	/// Week
-	Week,
-	/// Month
-	Month,
-	/// Year
-	Year,
-}
-
-impl Display for Interval {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Self::Hour => write!(f, "hour"),
-			Self::Day => write!(f, "day"),
-			Self::Week => write!(f, "week"),
-			Self::Month => write!(f, "month"),
-			Self::Year => write!(f, "year"),
-		}
-	}
-}
-
-impl Interval {
-	/// Get internval as u64
-	pub fn as_u64(&self) -> u64 {
-		match self {
-			Interval::Hour => todo!("Current time in seconds - 3600"),
-			Interval::Day => todo!("Current time in seconds - 86400"),
-			Interval::Week => todo!("Current time in seconds - 604800"),
-			Interval::Month => todo!("Current time in seconds - 2628000"),
-			Interval::Year => todo!("Current time in seconds - 31556952"),
-		}
-	}
-}
-
-impl FromStr for Interval {
-	type Err = String;
-
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		let s = s.to_lowercase();
-		match s.as_str() {
-			"hour" | "hr" | "h" => Ok(Self::Hour),
-			"day" | "d" => Ok(Self::Day),
-			"week" | "w" => Ok(Self::Week),
-			"month" | "mnth" | "m" => Ok(Self::Month),
-			"year" | "yr" | "y" => Ok(Self::Year),
-			_ => Err(s),
-		}
-	}
+	pub log: String,
 }

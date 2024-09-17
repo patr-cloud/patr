@@ -25,17 +25,15 @@ macros::declare_stream_endpoint!(
 		pub user_agent: UserAgent,
 	},
 	query = {
-		/// The time up until which the deployment logs should be fetched
-		pub end_time: Option<OffsetDateTime>,
-		/// The limit of logs to fetch
-		pub limit: Option<u32>
+		/// The time from which the deployment logs should be fetched
+		pub start_time: Option<OffsetDateTime>,
 	},
 	server_msg = {
 		/// There is new log data for the deployment
 		LogData {
 			/// The deployment that was created
 			#[serde(flatten)]
-			log: DeploymentLogs,
+			logs: Vec<DeploymentLogs>,
 		},
 	},
 	client_msg = {},
