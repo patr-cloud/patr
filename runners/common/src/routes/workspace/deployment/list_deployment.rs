@@ -30,12 +30,12 @@ pub async fn list_deployment(
 		SELECT
 			id,
 			name,
+			status,
 			registry,
 			image_name,
 			image_tag,
 			machine_type,
-			current_live_digest,
-			COUNT(*) AS total_count!
+			current_live_digest
 		FROM
 			deployment
 		LIMIT $1 OFFSET $2;
@@ -47,14 +47,17 @@ pub async fn list_deployment(
 	.await?
 	.into_iter()
 	.map(|row| {
-		total_count = row.try_get::<i32, &str>("total_count")?;
+		total_count += 1;
 		let deployment_id = row.try_get::<String, &str>("id")?;
 		let name = row.try_get::<String, &str>("name")?;
 		let deployment_id =
 			Uuid::parse_str(&deployment_id).expect("deployment id to be valid uuid");
 
 		let image_tag = row.try_get::<String, &str>("image_tag")?;
-		let status = row.try_get::<DeploymentStatus, &str>("status")?;
+		let status = row
+			.try_get::<String, &str>("status")?
+			.parse::<DeploymentStatus>()
+			.map_err(|err| ErrorType::server_error(err))?;
 		let registry = row.try_get::<String, &str>("registry")?;
 		let image_name = row.try_get::<String, &str>("image_name")?;
 

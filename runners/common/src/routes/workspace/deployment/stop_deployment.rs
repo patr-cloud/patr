@@ -31,7 +31,7 @@ pub async fn stop_deployment(
 			id = $1
 		"#,
 	)
-	.bind(deployment_id)
+	.bind(deployment_id.to_string())
 	.execute(&mut **database)
 	.await?;
 

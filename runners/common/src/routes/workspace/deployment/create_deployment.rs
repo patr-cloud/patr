@@ -42,10 +42,6 @@ pub async fn create_deployment(
 ) -> Result<AppResponse<CreateDeploymentRequest>, ErrorType> {
 	let deployment_id = Uuid::new_v4();
 
-	query("PRAGMA defer_foreign_keys = ON;")
-		.execute(&mut **database)
-		.await?;
-
 	query(
 		r#"
 		INSERT INTO
@@ -92,7 +88,7 @@ pub async fn create_deployment(
 			);
 		"#,
 	)
-	.bind(deployment_id)
+	.bind(deployment_id.to_string())
 	.bind(name)
 	.bind(registry.registry_url())
 	.bind(registry.image_name())
@@ -104,7 +100,7 @@ pub async fn create_deployment(
 			DeploymentStatus::Created
 		},
 	)
-	.bind(machine_type)
+	.bind(machine_type.to_string())
 	.bind(min_horizontal_scale)
 	.bind(max_horizontal_scale)
 	.bind(deploy_on_push)
@@ -114,7 +110,7 @@ pub async fn create_deployment(
 	.bind(liveness_probe.as_ref().map(|probe| probe.port as i32))
 	.bind(liveness_probe.as_ref().map(|probe| probe.path.as_str()))
 	.bind(liveness_probe.as_ref().map(|_| ExposedPortType::Http))
-	.fetch_one(&mut **database)
+	.execute(&mut **database)
 	.await?;
 
 	trace!("Created deployment with ID: {}", deployment_id);
@@ -136,16 +132,12 @@ pub async fn create_deployment(
 				);
 			"#,
 		)
-		.bind(deployment_id)
+		.bind(deployment_id.to_string())
 		.bind(port.value() as i32)
 		.bind(port_type)
 		.execute(&mut **database)
 		.await?;
 	}
-
-	query("PRAGMA defer_foreign_keys = OFF;")
-		.execute(&mut **database)
-		.await?;
 
 	trace!("Inserted exposed ports for deployment");
 
@@ -168,7 +160,7 @@ pub async fn create_deployment(
 				);
 			"#,
 		)
-		.bind(deployment_id)
+		.bind(deployment_id.to_string())
 		.bind(name)
 		.bind(value.value())
 		.execute(&mut **database)
@@ -194,7 +186,7 @@ pub async fn create_deployment(
 				);
 			"#,
 		)
-		.bind(deployment_id)
+		.bind(deployment_id.to_string())
 		.bind(path)
 		.bind(file.to_vec())
 		.execute(&mut **database)
@@ -220,7 +212,7 @@ pub async fn create_deployment(
 				);
 			"#,
 		)
-		.bind(deployment_id)
+		.bind(deployment_id.to_string())
 		.bind(volume_id)
 		.bind(mount_path)
 		.execute(&mut **database)
