@@ -158,13 +158,14 @@ pub async fn create_deployment(
 					$1,
 					$2,
 					$3,
-					NULL
+					$4
 				);
 			"#,
 		)
 		.bind(deployment_id)
 		.bind(name)
 		.bind(value.value())
+		.bind(value.secret_id())
 		.execute(&mut **database)
 		.await?;
 	}
