@@ -11,7 +11,7 @@ pub fn LogStatement(
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
 	/// The Log Details
-	log: Signal<DeploymentLogs>,
+	log: Signal<DeploymentLog>,
 ) -> impl IntoView {
 	let outer_div_class = class.with(|cname| {
 		format!(

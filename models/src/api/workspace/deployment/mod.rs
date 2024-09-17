@@ -375,7 +375,7 @@ pub struct DeploymentMetric {
 /// Deployment logs
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct DeploymentLogs {
+pub struct DeploymentLog {
 	/// Timestamp of a deployment log
 	pub timestamp: OffsetDateTime,
 	/// The logs of a deployment

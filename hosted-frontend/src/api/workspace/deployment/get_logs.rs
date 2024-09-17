@@ -27,7 +27,11 @@ pub async fn get_deployment_logs(
 				deployment_id,
 				workspace_id,
 			})
-			.query(GetDeploymentLogsQuery { end_time, limit })
+			.query(GetDeploymentLogsQuery {
+				end_time,
+				limit,
+				search: None,
+			})
 			.headers(GetDeploymentLogsRequestHeaders {
 				authorization: access_token,
 				user_agent: UserAgent::from_static("todo"),

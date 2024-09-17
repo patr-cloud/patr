@@ -285,8 +285,7 @@ pub async fn complete_sign_up(
 			})
 			.ok_or_else(|| {
 				ErrorType::server_error(format!("unknown latitude and longitude: {}", ip_info.loc))
-			})?
-			.map_err(ErrorType::server_error)?
+			})??
 	};
 	let country = ip_info.country;
 	let region = ip_info.region;
@@ -397,8 +396,7 @@ pub async fn complete_sign_up(
 	)
 	.inspect_err(|err| {
 		info!("Error encoding JWT: {err}");
-	})
-	.map_err(ErrorType::server_error)?;
+	})?;
 
 	let refresh_token = format!("{login_id}.{refresh_token}");
 

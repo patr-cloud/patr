@@ -109,8 +109,7 @@ pub async fn renew_access_token(
 	)
 	.inspect_err(|err| {
 		error!("Error encoding JWT: `{}`", err);
-	})
-	.map_err(ErrorType::server_error)?;
+	})?;
 
 	trace!("Access token generated");
 

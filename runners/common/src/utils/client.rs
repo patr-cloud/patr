@@ -1,7 +1,7 @@
 use std::{str::FromStr, sync::OnceLock};
 
 use futures::{Stream, StreamExt};
-use http::StatusCode;
+use http::{StatusCode, Uri};
 use models::{
 	utils::{constants, False, Headers, WebSocketUpgrade},
 	ApiErrorResponse,
@@ -156,43 +156,55 @@ where
 	ServerMsg: DeserializeOwned,
 	ClientMsg: Serialize,
 {
-	let mut client_request = format!(
-		"{}://{}{}",
-		if constants::API_BASE_URL.starts_with("https") {
-			"wss"
-		} else {
-			"ws"
-		},
-		constants::API_BASE_URL
-			.trim_start_matches("https://")
-			.trim_start_matches("http://"),
-		request.path
-	)
-	.into_client_request()
-	.map_err(|err| ApiErrorResponse {
-		status_code: StatusCode::INTERNAL_SERVER_ERROR,
-		body: ApiErrorResponseBody {
-			success: False,
-			error: ErrorType::server_error(err.to_string()),
-			message: err.to_string(),
-		},
-	})?;
+	let mut client_request = Uri::builder()
+		.scheme(
+			if constants::API_BASE_URL.starts_with("https") {
+				"wss"
+			} else {
+				"ws"
+			},
+		)
+		.authority(
+			constants::API_BASE_URL
+				.trim_start_matches("https://")
+				.trim_start_matches("http://"),
+		)
+		.path_and_query(format!(
+			"{}?{}",
+			request.path,
+			serde_urlencoded::to_string(&request.query).map_err(|err| ApiErrorResponse {
+				status_code: StatusCode::INTERNAL_SERVER_ERROR,
+				body: ApiErrorResponseBody {
+					success: False,
+					error: ErrorType::server_error(&err),
+					message: err.to_string(),
+				},
+			},)?
+		))
+		.build()
+		.map_err(|err| ApiErrorResponse {
+			status_code: StatusCode::INTERNAL_SERVER_ERROR,
+			body: ApiErrorResponseBody {
+				success: False,
+				error: ErrorType::server_error(&err),
+				message: err.to_string(),
+			},
+		})?
+		.into_client_request()
+		.map_err(|err| ApiErrorResponse {
+			status_code: StatusCode::INTERNAL_SERVER_ERROR,
+			body: ApiErrorResponseBody {
+				success: False,
+				error: ErrorType::server_error(&err),
+				message: err.to_string(),
+			},
+		})?;
 	for (header, value) in request.headers.to_header_map().iter() {
 		client_request
 			.headers_mut()
 			.insert(header.clone(), value.clone());
 	}
 	*client_request.method_mut() = E::METHOD;
-	*client_request.uri_mut().query() = Some(serde_urlencoded::to_string(&request.query).map_err(
-		|err| ApiErrorResponse {
-			status_code: StatusCode::INTERNAL_SERVER_ERROR,
-			body: ApiErrorResponseBody {
-				success: False,
-				error: ErrorType::server_error(err.to_string()),
-				message: err.to_string(),
-			},
-		},
-	)?);
 
 	let stream = tokio_tungstenite::connect_async(client_request)
 		.await

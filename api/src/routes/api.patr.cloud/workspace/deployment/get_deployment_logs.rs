@@ -1,7 +1,7 @@
 use axum::http::StatusCode;
 use models::api::workspace::deployment::*;
 use serde::{Deserialize, Serialize};
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 
 use crate::prelude::*;
 
@@ -31,7 +31,7 @@ pub async fn get_deployment_logs(
 		request:
 			ProcessedApiRequest {
 				path: GetDeploymentLogsPath {
-					workspace_id,
+					workspace_id: _,
 					deployment_id,
 				},
 				query: GetDeploymentLogsQuery {
@@ -41,8 +41,8 @@ pub async fn get_deployment_logs(
 				},
 				headers:
 					GetDeploymentLogsRequestHeaders {
-						authorization,
-						user_agent,
+						authorization: _,
+						user_agent: _,
 					},
 				body: GetDeploymentLogsRequestProcessed,
 			},
@@ -50,10 +50,26 @@ pub async fn get_deployment_logs(
 		redis: _,
 		client_ip: _,
 		config,
-		user_data,
+		user_data: _,
 	}: AuthenticatedAppRequest<'_, GetDeploymentLogsRequest>,
 ) -> Result<AppResponse<GetDeploymentLogsRequest>, ErrorType> {
 	info!("Getting logs for deployment: {}", deployment_id);
+
+	query!(
+		r#"
+		SELECT
+			id
+		FROM
+			deployment
+		WHERE
+			id = $1 AND
+			deleted IS NULL;
+		"#,
+		deployment_id as _,
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
 	let Some(loki) = config.loki else {
 		return Err(ErrorType::server_error("Loki configuration not found"));
@@ -63,7 +79,7 @@ pub async fn get_deployment_logs(
 		.basic_auth(loki.username, Some(loki.password))
 		.query(&{
 			let mut query = vec![
-				("limit", limit.unwrap_or(100)),
+				("limit", limit.unwrap_or(100).to_string()),
 				(
 					"end",
 					end_time
@@ -74,7 +90,7 @@ pub async fn get_deployment_logs(
 			];
 
 			if let Some(search) = search {
-				query.extend_one(("query", format!("{{}} |= \"{}\"", search)));
+				query.extend([("query", format!("{{}} |= \"{}\"", search))]);
 			}
 
 			query
@@ -84,18 +100,23 @@ pub async fn get_deployment_logs(
 		.text()
 		.await?;
 
-	let Ok(loki_response) = serde_json::from_str::<LokiResponse>(&loki_response) else {
+	let Ok(LokiResponse {
+		data: LokiData {
+			result: [LokiMatrixResult { values }],
+		},
+	}) = serde_json::from_str::<LokiResponse>(&loki_response)
+	else {
 		error!("Cannot parse Loki response: {}", loki_response);
 		return Err(ErrorType::server_error(format!(
 			"Failed to parse Loki response"
 		)));
 	};
 
-	let logs = loki_response.data.result[0]
-		.values
+	let logs = values
 		.into_iter()
 		.map(|(timestamp, log)| DeploymentLog {
-			timestamp: OffsetDateTime::from_unix_timestamp_nanos(timestamp),
+			timestamp: OffsetDateTime::from_unix_timestamp_nanos(timestamp)
+				.unwrap_or(OffsetDateTime::UNIX_EPOCH),
 			log,
 		})
 		.collect();

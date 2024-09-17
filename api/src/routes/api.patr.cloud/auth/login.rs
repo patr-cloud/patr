@@ -113,16 +113,13 @@ pub async fn login(
 			6,
 			1,
 			30,
-			Secret::Encoded(mfa_secret)
-				.to_bytes()
-				.inspect_err(|err| {
-					error!(
-						"Unable to parse MFA secret for userId `{}`: {}",
-						user_data.id,
-						err.to_string()
-					);
-				})
-				.map_err(ErrorType::server_error)?,
+			Secret::Encoded(mfa_secret).to_bytes().inspect_err(|err| {
+				error!(
+					"Unable to parse MFA secret for userId `{}`: {}",
+					user_data.id,
+					err.to_string()
+				);
+			})?,
 		)
 		.inspect_err(|err| {
 			error!(
@@ -130,19 +127,15 @@ pub async fn login(
 				user_data.id,
 				err.to_string()
 			);
-		})
-		.map_err(ErrorType::server_error)?;
+		})?;
 
-		let mfa_valid = totp
-			.check_current(&mfa_otp)
-			.inspect_err(|err| {
-				error!(
-					"System time error while checking TOTP for userId `{}`: {}",
-					user_data.id,
-					err.to_string()
-				);
-			})
-			.map_err(ErrorType::server_error)?;
+		let mfa_valid = totp.check_current(&mfa_otp).inspect_err(|err| {
+			error!(
+				"System time error while checking TOTP for userId `{}`: {}",
+				user_data.id,
+				err.to_string()
+			);
+		})?;
 
 		if !mfa_valid {
 			return Err(ErrorType::MfaOtpInvalid);
@@ -190,14 +183,12 @@ pub async fn login(
 	})
 	.inspect_err(|err| {
 		info!("Error creating IpInfo: {err}");
-	})
-	.map_err(ErrorType::server_error)?
+	})?
 	.lookup(client_ip.to_string().as_str())
 	.await
 	.inspect_err(|err| {
 		info!("Error looking up IP address: {err}");
-	})
-	.map_err(ErrorType::server_error)?;
+	})?;
 
 	if !cfg!(debug_assertions) && ip_info.bogon.unwrap_or(false) {
 		return Err(ErrorType::server_error(format!(
@@ -226,8 +217,7 @@ pub async fn login(
 			})
 			.ok_or_else(|| {
 				ErrorType::server_error(format!("unknown latitude and longitude: {}", ip_info.loc))
-			})?
-			.map_err(ErrorType::server_error)?
+			})??
 	};
 	let country = ip_info.country;
 	let region = ip_info.region;
@@ -335,8 +325,7 @@ pub async fn login(
 	)
 	.inspect_err(|err| {
 		error!("Error encoding JWT: `{}`", err);
-	})
-	.map_err(ErrorType::server_error)?;
+	})?;
 
 	let refresh_token = format!("{login_id}.{refresh_token}");
 

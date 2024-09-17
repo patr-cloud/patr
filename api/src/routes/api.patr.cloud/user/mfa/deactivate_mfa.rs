@@ -53,8 +53,7 @@ pub async fn deactivate_mfa(
 					user_data.id,
 					err.to_string()
 				);
-			})
-			.map_err(ErrorType::server_error)?,
+			})?,
 	)
 	.inspect_err(|err| {
 		error!(
@@ -62,8 +61,7 @@ pub async fn deactivate_mfa(
 			user_data.id,
 			err.to_string()
 		);
-	})
-	.map_err(ErrorType::server_error)?
+	})?
 	.check_current(&otp)?;
 
 	if !mfa_valid {

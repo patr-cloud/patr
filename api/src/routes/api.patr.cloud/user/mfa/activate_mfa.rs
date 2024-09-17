@@ -63,8 +63,7 @@ pub async fn activate_mfa(
 					id,
 					err.to_string()
 				);
-			})
-			.map_err(ErrorType::server_error)?,
+			})?,
 	)
 	.inspect_err(|err| {
 		error!(
@@ -72,8 +71,7 @@ pub async fn activate_mfa(
 			id,
 			err.to_string()
 		);
-	})
-	.map_err(ErrorType::server_error)?
+	})?
 	.check_current(&otp)?;
 
 	if !mfa_valid {

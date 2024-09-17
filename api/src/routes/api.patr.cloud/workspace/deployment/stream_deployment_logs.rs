@@ -1,4 +1,7 @@
-use axum::{http::StatusCode, response::IntoResponse};
+use axum::{
+	http::{StatusCode, Uri},
+	response::IntoResponse,
+};
 use axum_typed_websockets::Message;
 use futures::StreamExt;
 use headers::{Authorization, HeaderMapExt};
@@ -7,6 +10,7 @@ use models::{
 	utils::{GenericResponse, WebSocketUpgrade},
 };
 use reqwest::Method;
+use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use tokio_tungstenite::tungstenite::{client::IntoClientRequest, Message as RawMessage};
 
@@ -31,21 +35,41 @@ pub async fn stream_deployment_logs(
 		request:
 			ProcessedApiRequest {
 				path: StreamDeploymentLogsPath {
-					workspace_id,
+					workspace_id: _,
 					deployment_id,
 				},
 				query: StreamDeploymentLogsQuery { start_time },
-				headers,
+				headers:
+					StreamDeploymentLogsRequestHeaders {
+						authorization: _,
+						user_agent: _,
+					},
 				body: WebSocketUpgrade(upgrade),
 			},
 		database,
 		redis: _,
 		client_ip: _,
 		config,
-		user_data,
+		user_data: _,
 	}: AuthenticatedAppRequest<'_, StreamDeploymentLogsRequest>,
 ) -> Result<AppResponse<StreamDeploymentLogsRequest>, ErrorType> {
 	info!("Streaming logs for deployment: {}", deployment_id);
+
+	query!(
+		r#"
+		SELECT
+			id
+		FROM
+			deployment
+		WHERE
+			id = $1 AND
+			deleted IS NULL;
+		"#,
+		deployment_id as _,
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
 	#[cfg(debug_assertions)]
 	let Some(loki) = config.loki
@@ -55,30 +79,35 @@ pub async fn stream_deployment_logs(
 	#[cfg(not(debug_assertions))]
 	let loki = config.loki;
 
-	let mut client_request = format!(
-		"{}://{}",
-		if loki.endpoint.starts_with("https") {
-			"wss"
-		} else {
-			"ws"
-		},
-		loki.endpoint
-			.trim_start_matches("https://")
-			.trim_start_matches("http://"),
-	)
-	.into_client_request()
-	.map_err(|err| ErrorType::server_error(err.to_string()))?;
+	let mut client_request = Uri::builder()
+		.scheme(
+			if loki.endpoint.starts_with("https") {
+				"wss"
+			} else {
+				"ws"
+			},
+		)
+		.authority(
+			loki.endpoint
+				.trim_start_matches("https://")
+				.trim_start_matches("http://"),
+		)
+		.path_and_query(format!(
+			"/loki/api/v1/tail?{}",
+			serde_urlencoded::to_string(&[(
+				"start",
+				start_time
+					.unwrap_or(OffsetDateTime::now_utc())
+					.unix_timestamp_nanos()
+					.to_string(),
+			)])?
+		))
+		.build()?
+		.into_client_request()?;
 	client_request
 		.headers_mut()
 		.typed_insert(Authorization::basic(&loki.username, &loki.password));
 	*client_request.method_mut() = Method::GET;
-	*client_request.uri_mut().query() = Some(serde_urlencoded::to_string(&[(
-		"start",
-		start_time
-			.unwrap_or(OffsetDateTime::now_utc())
-			.unix_timestamp_nanos()
-			.to_string(),
-	)]))?;
 
 	let (mut stream, _) = tokio_tungstenite::connect_async(client_request)
 		.await
@@ -114,8 +143,9 @@ pub async fn stream_deployment_logs(
 							.streams
 							.values
 							.into_iter()
-							.map(|(timestamp, log)| DeploymentLogs {
-								timestamp: OffsetDateTime::from_unix_timestamp_nanos(timestamp),
+							.map(|(timestamp, log)| DeploymentLog {
+								timestamp: OffsetDateTime::from_unix_timestamp_nanos(timestamp)
+									.unwrap_or(OffsetDateTime::UNIX_EPOCH),
 								log,
 							})
 							.collect();

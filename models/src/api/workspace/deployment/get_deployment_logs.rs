@@ -1,6 +1,6 @@
 use time::OffsetDateTime;
 
-use super::DeploymentLogs;
+use super::DeploymentLog;
 use crate::prelude::*;
 
 macros::declare_api_endpoint!(
@@ -37,6 +37,6 @@ macros::declare_api_endpoint!(
 		/// The deployment logs containing:
 		/// timestamp - The timestamp of the log
 		/// logs - The log message
-		pub logs: Vec<DeploymentLogs>
+		pub logs: Vec<DeploymentLog>
 	}
 );

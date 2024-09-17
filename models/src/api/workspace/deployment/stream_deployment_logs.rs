@@ -1,6 +1,6 @@
 use time::OffsetDateTime;
 
-use super::DeploymentLogs;
+use super::DeploymentLog;
 use crate::prelude::*;
 
 macros::declare_stream_endpoint!(
@@ -33,7 +33,7 @@ macros::declare_stream_endpoint!(
 		LogData {
 			/// The deployment that was created
 			#[serde(flatten)]
-			logs: Vec<DeploymentLogs>,
+			logs: Vec<DeploymentLog>,
 		},
 	},
 	client_msg = {},

@@ -167,7 +167,7 @@ where
 		status_code: StatusCode::INTERNAL_SERVER_ERROR,
 		body: ApiErrorResponseBody {
 			success: False,
-			error: ErrorType::server_error(err.to_string()),
+			error: ErrorType::server_error(err),
 			message: err.to_string(),
 		},
 	})?;
@@ -200,7 +200,7 @@ where
 				status_code: StatusCode::INTERNAL_SERVER_ERROR,
 				body: ApiErrorResponseBody {
 					success: False,
-					error: ErrorType::server_error(err.to_string()),
+					error: ErrorType::server_error(err),
 					message: err.to_string(),
 				},
 			},

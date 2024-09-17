@@ -56,11 +56,10 @@ pub async fn change_password(
 	.inspect_err(|err| {
 		error!("Error creating Argon2 instance: {err}");
 	})
-	.map_err(|err| ErrorType::server_error(err.to_string()))?
+	.map_err(ErrorType::server_error)?
 	.verify_password(
 		current_password.as_bytes(),
-		&PasswordHash::new(&row.password)
-			.map_err(|err| ErrorType::server_error(err.to_string()))?,
+		&PasswordHash::new(&row.password).map_err(ErrorType::server_error)?,
 	)
 	.inspect_err(|err| {
 		error!("Error verifying password: {err}");
@@ -88,7 +87,7 @@ pub async fn change_password(
 					user_data.id,
 					err.to_string()
 				);
-				ErrorType::server_error(err.to_string())
+				ErrorType::server_error(err)
 			})?,
 		)
 		.inspect_err(|err| {
