@@ -19,7 +19,7 @@ pub async fn get_deployment_metric(
 					workspace_id,
 					deployment_id,
 				},
-				query: GetDeploymentMetricQuery { start_time, step },
+				query: GetDeploymentMetricQuery { end_time, limit },
 				headers:
 					GetDeploymentMetricRequestHeaders {
 						authorization,

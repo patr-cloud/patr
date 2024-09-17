@@ -43,7 +43,7 @@ pub fn LogStatement(
 			</time>
 			" - "
 			<span class="px-sm">
-				{store_log.with_value(|log| log.get().logs.clone())}
+				{store_log.with_value(|log| log.get().log.clone())}
 			</span>
 		</div>
 	}

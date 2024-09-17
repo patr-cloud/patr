@@ -1,4 +1,6 @@
-use super::{DeploymentMetrics, Interval, Step};
+use time::OffsetDateTime;
+
+use super::DeploymentMetric;
 use crate::prelude::*;
 
 macros::declare_api_endpoint!(
@@ -24,16 +26,15 @@ macros::declare_api_endpoint!(
 		}
 	},
 	query = {
-		/// The interval of the metric to fetch where start_time is the starting duration
-		/// All metrics from the start_time to the current time will be fetched
-		pub start_time: Option<Interval>,
-		/// The set intervals like 1min, 5min, 10mins, etc
-		pub step: Option<Step>
+		/// The time up until which the deployment metrics should be fetched
+		pub end_time: Option<OffsetDateTime>,
+		/// The limit of metrics to fetch. Defaults to 100
+		pub limit: Option<u32>,
 	},
 	response = {
 		/// The deployment metrics containing:
 		/// pod_name - The name of the pod
 		/// metrics - The metrics of the pod
-		pub metrics: Vec<DeploymentMetrics>
+		pub metrics: Vec<DeploymentMetric>
 	}
 );

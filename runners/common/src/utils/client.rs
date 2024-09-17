@@ -183,6 +183,16 @@ where
 			.insert(header.clone(), value.clone());
 	}
 	*client_request.method_mut() = E::METHOD;
+	*client_request.uri_mut().query() = Some(serde_urlencoded::to_string(&request.query).map_err(
+		|err| ApiErrorResponse {
+			status_code: StatusCode::INTERNAL_SERVER_ERROR,
+			body: ApiErrorResponseBody {
+				success: False,
+				error: ErrorType::server_error(err.to_string()),
+				message: err.to_string(),
+			},
+		},
+	)?);
 
 	let stream = tokio_tungstenite::connect_async(client_request)
 		.await
