@@ -109,7 +109,11 @@ where
 		async move {
 			trace!("Preprocessing request");
 
-			let UnprocessedAppRequest { request, database } = req;
+			let UnprocessedAppRequest {
+				request,
+				database,
+				config,
+			} = req;
 			let req = AppRequest {
 				request: ProcessedApiRequest::try_from(request).map_err(
 					|err: preprocess::Error| {
@@ -121,6 +125,7 @@ where
 					},
 				)?,
 				database,
+				config,
 			};
 			inner.call(req).await
 		}

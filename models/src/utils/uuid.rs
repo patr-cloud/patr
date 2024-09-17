@@ -115,38 +115,66 @@ impl FromStr for Uuid {
 
 // For backend
 #[cfg(not(target_arch = "wasm32"))]
-impl<Db> sqlx::Type<Db> for Uuid
-where
-	Db: sqlx::Database,
-	uuid::Uuid: sqlx::Type<Db>,
-{
-	fn type_info() -> <Db as sqlx::Database>::TypeInfo {
-		<uuid::Uuid as sqlx::Type<Db>>::type_info()
+impl sqlx::Type<sqlx::Sqlite> for Uuid {
+	fn type_info() -> <sqlx::Sqlite as sqlx::Database>::TypeInfo {
+		<uuid::fmt::Simple as sqlx::Type<sqlx::Sqlite>>::type_info()
 	}
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-impl<'a, Db> sqlx::Encode<'a, Db> for Uuid
+impl sqlx::Type<sqlx::Postgres> for Uuid {
+	fn type_info() -> <sqlx::Postgres as sqlx::Database>::TypeInfo {
+		<uuid::Uuid as sqlx::Type<sqlx::Postgres>>::type_info()
+	}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<'a> sqlx::Encode<'a, sqlx::Sqlite> for Uuid
 where
-	Db: sqlx::Database,
-	uuid::Uuid: sqlx::Encode<'a, Db>,
+	uuid::Uuid: sqlx::Encode<'a, sqlx::Sqlite>,
 {
 	fn encode_by_ref(
 		&self,
-		buf: &mut <Db as sqlx::Database>::ArgumentBuffer<'a>,
+		buf: &mut <sqlx::Sqlite as sqlx::Database>::ArgumentBuffer<'a>,
+	) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+		self.0.simple().encode_by_ref(buf)
+	}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<'a> sqlx::Encode<'a, sqlx::Postgres> for Uuid
+where
+	uuid::Uuid: sqlx::Encode<'a, sqlx::Postgres>,
+{
+	fn encode_by_ref(
+		&self,
+		buf: &mut <sqlx::Postgres as sqlx::Database>::ArgumentBuffer<'a>,
 	) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
 		self.0.encode_by_ref(buf)
 	}
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-impl<'a, Db> sqlx::Decode<'a, Db> for Uuid
+impl<'a> sqlx::Decode<'a, sqlx::Sqlite> for Uuid
 where
-	Db: sqlx::Database,
-	uuid::Uuid: sqlx::Decode<'a, Db>,
+	uuid::fmt::Simple: sqlx::Decode<'a, sqlx::Sqlite>,
 {
 	fn decode(
-		value: <Db as sqlx::Database>::ValueRef<'a>,
+		value: <sqlx::Sqlite as sqlx::Database>::ValueRef<'a>,
+	) -> Result<Self, sqlx::error::BoxDynError> {
+		uuid::fmt::Simple::decode(value)
+			.map(uuid::fmt::Simple::into_uuid)
+			.map(Self)
+	}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<'a> sqlx::Decode<'a, sqlx::Postgres> for Uuid
+where
+	uuid::Uuid: sqlx::Decode<'a, sqlx::Postgres>,
+{
+	fn decode(
+		value: <sqlx::Postgres as sqlx::Database>::ValueRef<'a>,
 	) -> Result<Self, sqlx::error::BoxDynError> {
 		uuid::Uuid::decode(value).map(Self)
 	}

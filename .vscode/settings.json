@@ -14,6 +14,7 @@
         "banzaicloud",
         "BYOC",
         "Citext",
+        "DATETIME",
         "DTO",
         "INET",
         "intstr",
@@ -43,4 +44,5 @@
     "nixEnvSelector.nixFile": "${workspaceFolder}/shell.nix",
     "rust-analyzer.showUnlinkedFileNotification": false,
     "editor.formatOnSave": true,
+    "evenBetterToml.formatter.reorderKeys": true,
 }

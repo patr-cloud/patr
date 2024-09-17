@@ -1,10 +1,7 @@
 use http::StatusCode;
 use models::api::workspace::deployment::*;
 
-use crate::{
-	app::{AppRequest, ProcessedApiRequest},
-	prelude::*,
-};
+use crate::prelude::*;
 
 pub async fn create_deployment(
 	AppRequest {
@@ -40,8 +37,11 @@ pub async fn create_deployment(
 					},
 			},
 		database,
+		config: _,
 	}: AppRequest<'_, CreateDeploymentRequest>,
 ) -> Result<AppResponse<CreateDeploymentRequest>, ErrorType> {
+	trace!("Creating deployment: {}", name);
+
 	let deployment_id = Uuid::new_v4();
 
 	query(
@@ -63,7 +63,9 @@ pub async fn create_deployment(
 				startup_probe_port_type,
 				liveness_probe_port,
 				liveness_probe_path,
-				liveness_probe_port_type
+				liveness_probe_port_type,
+				current_live_digest,
+				deleted
 			)
 		VALUES
 			(
@@ -82,7 +84,9 @@ pub async fn create_deployment(
 				$13,
 				$14,
 				$15,
-				$16
+				$16,
+				NULL,
+				NULL
 			);
 		"#,
 	)
@@ -102,13 +106,13 @@ pub async fn create_deployment(
 	.bind(min_horizontal_scale)
 	.bind(max_horizontal_scale)
 	.bind(deploy_on_push)
-	.bind(startup_probe.as_ref().map(|probe| probe.port as i32))
+	.bind(startup_probe.as_ref().map(|probe| probe.port))
 	.bind(startup_probe.as_ref().map(|probe| probe.path.as_str()))
 	.bind(startup_probe.as_ref().map(|_| ExposedPortType::Http))
-	.bind(liveness_probe.as_ref().map(|probe| probe.port as i32))
+	.bind(liveness_probe.as_ref().map(|probe| probe.port))
 	.bind(liveness_probe.as_ref().map(|probe| probe.path.as_str()))
 	.bind(liveness_probe.as_ref().map(|_| ExposedPortType::Http))
-	.fetch_one(&mut **database)
+	.execute(&mut **database)
 	.await?;
 
 	trace!("Created deployment with ID: {}", deployment_id);
@@ -131,7 +135,7 @@ pub async fn create_deployment(
 			"#,
 		)
 		.bind(deployment_id)
-		.bind(port.value() as i32)
+		.bind(port.value())
 		.bind(port_type)
 		.execute(&mut **database)
 		.await?;
@@ -187,7 +191,7 @@ pub async fn create_deployment(
 		)
 		.bind(deployment_id)
 		.bind(path)
-		.bind(file.to_vec())
+		.bind(file.into_vec())
 		.execute(&mut **database)
 		.await?;
 	}

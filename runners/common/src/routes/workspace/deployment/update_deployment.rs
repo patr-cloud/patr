@@ -42,6 +42,7 @@ pub async fn update_deployment(
 					},
 			},
 		database,
+		config: _,
 	}: AppRequest<'_, UpdateDeploymentRequest>,
 ) -> Result<AppResponse<UpdateDeploymentRequest>, ErrorType> {
 	info!("Updating deployment: {}", deployment_id);
@@ -86,14 +87,6 @@ pub async fn update_deployment(
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
 	// BEGIN DEFERRED CONSTRAINT
-	query(
-		r#"
-		SET CONSTRAINTS ALL DEFERRED;
-		"#,
-	)
-	.execute(&mut **database)
-	.await?;
-
 	if let Some(ports) = ports {
 		if ports.is_empty() {
 			return Err(ErrorType::WrongParameters);
@@ -217,15 +210,6 @@ pub async fn update_deployment(
 	.execute(&mut **database)
 	.await?;
 
-	// END DEFERRED CONSTRAINT
-	query(
-		r#"
-		SET CONSTRAINTS ALL IMMEDIATE;
-		"#,
-	)
-	.execute(&mut **database)
-	.await?;
-
 	if let Some(environment_variables) = environment_variables {
 		query(
 			r#"
@@ -259,8 +243,8 @@ pub async fn update_deployment(
 				"#,
 			)
 			.bind(deployment_id)
-			.bind(name.clone())
-			.bind(value.value().cloned())
+			.bind(name)
+			.bind(value.value())
 			.bind(value.secret_id())
 			.execute(&mut **database)
 			.await?;
@@ -298,8 +282,8 @@ pub async fn update_deployment(
 				"#,
 			)
 			.bind(deployment_id)
-			.bind(path.clone())
-			.bind(file.to_vec())
+			.bind(path)
+			.bind(file.into_vec())
 			.execute(&mut **database)
 			.await?;
 		}

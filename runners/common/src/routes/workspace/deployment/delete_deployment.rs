@@ -1,10 +1,7 @@
 use axum::http::StatusCode;
 use models::api::workspace::deployment::*;
 
-use crate::{
-	app::{AppRequest, ProcessedApiRequest},
-	prelude::*,
-};
+use crate::prelude::*;
 
 /// The handler to delete a deployment in the workspace. This will delete the
 /// deployment from the workspace, and remove all resources associated with the
@@ -26,6 +23,7 @@ pub async fn delete_deployment(
 				body: DeleteDeploymentRequestProcessed,
 			},
 		database,
+		config: _,
 	}: AppRequest<'_, DeleteDeploymentRequest>,
 ) -> Result<AppResponse<DeleteDeploymentRequest>, ErrorType> {
 	info!("Deleting deployment: {deployment_id}");
@@ -68,14 +66,6 @@ pub async fn delete_deployment(
 
 	query(
 		r#"
-		SET CONSTRAINTS ALL DEFERRED;
-		"#,
-	)
-	.execute(&mut **database)
-	.await?;
-
-	query(
-		r#"
 		DELETE FROM
 			deployment_exposed_port
 		WHERE
@@ -102,14 +92,6 @@ pub async fn delete_deployment(
 		sqlx::Error::Database(err) if err.is_foreign_key_violation() => ErrorType::ResourceInUse,
 		err => ErrorType::server_error(err),
 	})?;
-
-	query(
-		r#"
-		SET CONSTRAINTS ALL IMMEDIATE;
-		"#,
-	)
-	.execute(&mut **database)
-	.await?;
 
 	AppResponse::builder()
 		.body(DeleteDeploymentResponse)

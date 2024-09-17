@@ -31,7 +31,6 @@ where
 	/// Mount an API endpoint directly along with the required request parser,
 	/// and endpoint handler, using tower layers.
 	#[track_caller]
-	#[expect(dead_code)]
 	fn mount_endpoint<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
 	where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,

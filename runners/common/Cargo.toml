@@ -18,9 +18,12 @@ futures = { workspace = true }
 hosted-frontend = { workspace = true, features = [] }
 http = { workspace = true, features = ["default"] }
 jsonwebtoken = { workspace = true, features = ["default"] }
+leptos = { workspace = true, features = ["ssr"] }
+leptos_axum = { workspace = true, features = ["default"] }
 macros = { workspace = true }
 models = { workspace = true }
 preprocess = { workspace = true, features = [] }
+rand = { workspace = true, features = ["default"] }
 reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 semver = { workspace = true, features = ["default"] }
 serde = { workspace = true, features = ["derive"] }
@@ -35,6 +38,7 @@ sqlx = { workspace = true, features = [
 ] }
 time = { workspace = true, features = ["default", "serde-human-readable"] }
 tower = { workspace = true }
+tower-http = { workspace = true, features = ["fs"] }
 tokio = { workspace = true, features = ["full"] }
 tokio-stream = { workspace = true, features = ["default", "sync"] }
 tokio-tungstenite = { workspace = true, features = ["default"] }

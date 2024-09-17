@@ -29,9 +29,47 @@ pub struct RunnerSettings<D> {
 	/// The address to listed on
 	#[serde(alias = "webbindaddress")]
 	pub web_bind_address: SocketAddr,
+	/// The Pepper used to hash passwords
+	#[serde(alias = "passwordpepper")]
+	pub password_pepper: String,
+	/// The secret used to sign JWTs
+	#[serde(alias = "jwtsecret")]
+	pub jwt_secret: String,
 	/// Additional settings for the runner.
 	#[serde(flatten)]
 	pub data: D,
+}
+
+impl<D> RunnerSettings<D> {
+	/// Convert the the runner settings into a base runner setting, with the
+	/// additional data as [`()`]. This allows the settings to be parsed and
+	/// used internally in the common runner library without regard for the
+	/// specific runner settings.
+	pub fn into_base(self) -> RunnerSettings<()> {
+		let RunnerSettings {
+			workspace_id,
+			runner_id,
+			api_token,
+			environment,
+			database,
+			web_bind_address,
+			password_pepper,
+			jwt_secret,
+			data: _,
+		} = self;
+
+		RunnerSettings::<()> {
+			workspace_id,
+			runner_id,
+			api_token,
+			environment,
+			database,
+			web_bind_address,
+			password_pepper,
+			jwt_secret,
+			data: (),
+		}
+	}
 }
 
 impl<'de, D> RunnerSettings<D>
@@ -39,6 +77,7 @@ where
 	D: Deserialize<'de> + Serialize,
 {
 	/// Get the runner settings from the environment.
+	#[instrument]
 	pub fn parse(name: &str) -> Result<Self, ConfigError> {
 		let env = if cfg!(debug_assertions) {
 			"dev".to_string()

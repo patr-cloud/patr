@@ -3,6 +3,8 @@
   "workspaceId": "workspaceId",
   "runnerId": "runnerId",
   "apiToken": "apiToken",
+  "passwordPepper": "keyboard cat",
+  "jwtSecret": "keyboard cat",
   "database": {
     "file": "data.db",
     "connectionLimit": 5
