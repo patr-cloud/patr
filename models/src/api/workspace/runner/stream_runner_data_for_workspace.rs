@@ -1,6 +1,7 @@
 use crate::{
 	api::workspace::deployment::{Deployment, DeploymentRunningDetails},
 	prelude::*,
+	rbac::ResourceType,
 };
 
 macros::declare_stream_endpoint!(
@@ -51,3 +52,14 @@ macros::declare_stream_endpoint!(
 	},
 	client_msg = {},
 );
+
+impl StreamRunnerDataForWorkspaceServerMsg {
+	/// Get the resource type that this message is related to
+	pub fn resource_type(&self) -> ResourceType {
+		match self {
+			Self::DeploymentCreated { .. } => ResourceType::Deployment,
+			Self::DeploymentUpdated { .. } => ResourceType::Deployment,
+			Self::DeploymentDeleted { .. } => ResourceType::Deployment,
+		}
+	}
+}

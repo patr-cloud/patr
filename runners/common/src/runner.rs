@@ -5,7 +5,10 @@ use futures::{
 	FutureExt,
 	StreamExt,
 };
-use models::api::workspace::{deployment::*, runner::*};
+use models::{
+	api::workspace::{deployment::*, runner::*},
+	rbac::ResourceType,
+};
 use tokio::{
 	net::TcpListener,
 	task,
@@ -457,38 +460,16 @@ where
 	async fn handle_server_message(&mut self, msg: StreamRunnerDataForWorkspaceServerMsg) {
 		info!("Handling server message: {:?}", msg);
 		// if this resource is already queued for reconciliation, remove that
-		let current_id = get_resource_id_from_message(&msg);
-		self.reconciliation_list
-			.retain(|message| message.value() != &current_id);
+		let resource_id = get_resource_id_from_message(&msg);
 
-		use StreamRunnerDataForWorkspaceServerMsg::*;
-		let response = match msg.clone() {
-			DeploymentCreated {
-				deployment,
-				running_details,
-			} => {
-				self.executor
-					.upsert_deployment(deployment, running_details)
-					.await
+		match msg.resource_type() {
+			ResourceType::Deployment => {
+				self.reconcile_deployment(resource_id).await;
 			}
-			DeploymentUpdated {
-				deployment,
-				running_details,
-			} => {
-				self.executor
-					.upsert_deployment(deployment, running_details)
-					.await
+			_ => {
+				warn!("Unknown resource type: {:?}", msg);
 			}
-			DeploymentDeleted { id } => self.executor.delete_deployment(id).await,
-		};
-		if let Err(wait_time) = response {
-			self.reconciliation_list.push(DelayedFuture::new(
-				Instant::now() + wait_time,
-				get_resource_id_from_message(&msg),
-			));
 		}
-
-		self.recheck_next_reconcile_future();
 	}
 
 	/// Get all the local deployments. This function will get all the local
