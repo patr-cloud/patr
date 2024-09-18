@@ -71,8 +71,16 @@ pub async fn login(
 
 	trace!("Found user with ID: {}", user_id);
 
+	let RunnerMode::SelfHosted {
+		password_pepper,
+		jwt_secret,
+	} = config.mode
+	else {
+		return Err(ErrorType::InvalidRunnerMode);
+	};
+
 	let password_valid = Argon2::new_with_secret(
-		config.password_pepper.as_ref(),
+		password_pepper.as_ref(),
 		Algorithm::Argon2id,
 		Version::V0x13,
 		constants::HASHING_PARAMS,
@@ -111,7 +119,7 @@ pub async fn login(
 	let access_token = jsonwebtoken::encode(
 		&Default::default(),
 		&access_token,
-		&EncodingKey::from_secret(config.jwt_secret.as_ref()),
+		&EncodingKey::from_secret(jwt_secret.as_ref()),
 	)
 	.map_err(ErrorType::server_error)?;
 

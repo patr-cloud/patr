@@ -58,18 +58,16 @@ where
 	/// the runner, then start the runner and run the resources that the runner
 	/// is responsible for. This function will run forever until the runner is
 	/// stopped.
-	pub async fn run(executor: E) {
-		let mut runner = Self::init(executor).await;
+	pub async fn run() {
+		let mut runner = Self::init().await;
 
 		let workspace_id = runner.state.config.workspace_id;
 		let runner_id = runner.state.config.runner_id;
 
 		// Run the server here
 		let state = runner.state.clone();
-		let _server_task = task::spawn(async move {
-			let tcp_listener = TcpListener::bind(state.config.web_bind_address)
-				.await
-				.unwrap();
+		let server_task = task::spawn(async move {
+			let tcp_listener = TcpListener::bind(state.config.bind_address).await.unwrap();
 
 			info!(
 				"Listening for connections on {}",
@@ -230,9 +228,11 @@ where
 
 	/// Initialize the runner. This function will create a new database
 	/// connection pool and set up the global default subscriber for the runner.
-	async fn init(executor: E) -> Self {
+	async fn init() -> Self {
 		let config = RunnerSettings::<E::Settings>::parse(E::RUNNER_INTERNAL_NAME)
 			.expect("Failed to parse settings");
+
+		let executor = E::create(&config).await;
 
 		tracing::dispatcher::set_global_default(Dispatch::new(
 			tracing_subscriber::registry().with(
@@ -307,56 +307,9 @@ where
 		info!("Reconciling all deployments");
 
 		// Update running deployments
-		let mut should_run_deployments = vec![];
-
-		loop {
-			trace!(
-				"Fetching deployments {} to {}",
-				should_run_deployments.len(),
-				should_run_deployments.len() + Paginated::<()>::DEFAULT_PAGE_SIZE
-			);
-			let Ok(response) = client::make_request(
-				ApiRequest::<ListDeploymentRequest>::builder()
-					.path(ListDeploymentPath {
-						workspace_id: self.state.config.workspace_id,
-					})
-					.headers(ListDeploymentRequestHeaders {
-						authorization: self.authorization.clone(),
-						user_agent: self.user_agent.clone(),
-					})
-					.query(Paginated {
-						data: (),
-						count: Paginated::<()>::DEFAULT_PAGE_SIZE,
-						page: should_run_deployments.len() / Paginated::<()>::DEFAULT_PAGE_SIZE,
-					})
-					.body(ListDeploymentRequest)
-					.build(),
-			)
-			.await
-			.inspect_err(|err| {
-				debug!("Failed to get deployment list: {:?}", err);
-				warn!("Using the pre-existing list");
-			}) else {
-				let Ok(deployments) = self.get_all_local_deployments().await else {
-					return;
-				};
-				should_run_deployments = deployments;
-				break;
-			};
-
-			should_run_deployments.extend(
-				response
-					.body
-					.deployments
-					.into_iter()
-					.map(|deployment| deployment.id)
-					.collect::<Vec<_>>(),
-			);
-
-			if response.headers.total_count.0 <= should_run_deployments.len() {
-				break;
-			}
-		}
+		let Ok(mut should_run_deployments) = self.get_all_local_deployments().await else {
+			return;
+		};
 
 		let mut running_deployments = pin!(self.executor.list_running_deployments().await);
 
@@ -440,7 +393,7 @@ where
 				.await
 			{
 				break 'reconcile Err(err);
-			};
+			}
 
 			Ok(())
 		};
@@ -483,7 +436,7 @@ where
 			FROM
 				deployments
 			ORDER BY
-				id
+				id;
 			"#,
 		)
 		.fetch_all(&self.state.database)

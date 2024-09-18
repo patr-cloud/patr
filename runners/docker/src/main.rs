@@ -40,6 +40,11 @@ impl RunnerExecutor for DockerRunner {
 
 	const RUNNER_INTERNAL_NAME: &'static str = env!("CARGO_CRATE_NAME");
 
+	async fn create(_: &RunnerSettings<Self::Settings>) -> Self {
+		let docker = Docker::connect_with_local_defaults().unwrap();
+		Self { docker }
+	}
+
 	#[allow(unused_variables)]
 	async fn upsert_deployment(
 		&self,
@@ -278,8 +283,5 @@ impl RunnerExecutor for DockerRunner {
 
 #[tokio::main]
 async fn main() {
-	Runner::run(DockerRunner {
-		docker: Docker::connect_with_local_defaults().unwrap(),
-	})
-	.await;
+	Runner::<DockerRunner>::run().await;
 }
