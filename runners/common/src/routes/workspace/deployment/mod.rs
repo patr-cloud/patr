@@ -9,7 +9,7 @@ mod start_deployment;
 mod stop_deployment;
 mod update_deployment;
 
-use self::{
+pub use self::{
 	create_deployment::*,
 	delete_deployment::*,
 	get_deployment_info::*,

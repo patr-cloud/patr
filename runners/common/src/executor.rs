@@ -43,6 +43,6 @@ pub trait RunnerExecutor: Sized {
 	fn delete_deployment(&self, deployment_id: Uuid) -> impl Future<Output = Result<(), Duration>>;
 
 	/// This function should return a stream of all the running deployment IDs
-	/// in the runner.
+	/// in the runner, sorted by the deployment ID.
 	fn list_running_deployments<'a>(&self) -> impl Future<Output = impl Stream<Item = Uuid> + 'a>;
 }

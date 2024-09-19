@@ -218,7 +218,7 @@ impl RunnerExecutor for DockerRunner {
 	}
 
 	async fn list_running_deployments<'a>(&self) -> impl Stream<Item = Uuid> + 'a {
-		let Ok(containers) = self
+		let Ok(mut containers) = self
 			.docker
 			.list_containers(Some(ListContainersOptions::<String> {
 				filters: HashMap::new(),
@@ -232,6 +232,23 @@ impl RunnerExecutor for DockerRunner {
 		else {
 			return futures::stream::empty().boxed();
 		};
+		containers.sort_by(|a, b| {
+			let a = a
+				.labels
+				.as_ref()
+				.unwrap_or_default()
+				.get("patr.deploymentId")
+				.and_then(|value| Uuid::parse_str(value).ok());
+			let b = b
+				.labels
+				.as_ref()
+				.unwrap_or_default()
+				.get("patr.deploymentId")
+				.and_then(|value| Uuid::parse_str(value).ok());
+
+			a.cmp(&b)
+		});
+
 		futures::stream::iter(containers.into_iter().filter_map(|container| {
 			container
 				.labels

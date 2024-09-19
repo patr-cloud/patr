@@ -1,5 +1,5 @@
-mod auth;
-mod workspace;
+pub mod auth;
+pub mod workspace;
 
 use axum::Router;
 use leptos::*;
