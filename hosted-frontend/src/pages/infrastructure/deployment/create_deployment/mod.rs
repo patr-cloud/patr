@@ -15,12 +15,16 @@ pub use super::utils::{DeploymentInfo, DetailsPageError, Page, RunnerPageError};
 /// The Create Deployment Page
 #[component]
 pub fn CreateDeployment() -> impl IntoView {
+	let app_type = expect_context::<AppType>();
 	let deployment_info = create_rw_signal(DeploymentInfo {
 		name: None,
 		registry_name: Some("docker".to_string()),
 		image_tag: None,
 		image_name: None,
-		runner_id: None,
+		runner_id: match app_type {
+			AppType::Managed => None,
+			AppType::SelfHosted => Some(Uuid::nil()),
+		},
 		machine_type: None,
 		deploy_on_create: false,
 		deploy_on_push: false,

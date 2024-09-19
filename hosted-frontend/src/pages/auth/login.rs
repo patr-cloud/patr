@@ -8,6 +8,7 @@ use crate::prelude::*;
 #[component]
 pub fn LoginForm() -> impl IntoView {
 	let (_, set_auth_state) = AuthState::load();
+	let app_type = expect_context::<AppType>();
 
 	let username = create_rw_signal("".to_owned());
 	let password = create_rw_signal("".to_owned());
@@ -63,7 +64,7 @@ pub fn LoginForm() -> impl IntoView {
 					set_auth_state.set(Some(AuthState::LoggedIn {
 						access_token,
 						refresh_token,
-						last_used_workspace_id: None,
+						last_used_workspace_id: Some(Uuid::nil()),
 					}));
 					use_navigate()(
 						&AppRoutes::LoggedInRoute(LoggedInRoute::Home).to_string(),
@@ -138,11 +139,19 @@ pub fn LoginForm() -> impl IntoView {
 				</Show>
 			</div>
 
-			<div class="flex justify-between items-center w-full pt-xs">
-				<Link to={"/forgot-password".to_owned()} r#type={Variant::Link}>
-					"Forgot Password?"
-				</Link>
-			</div>
+			{
+				match app_type {
+					AppType::SelfHosted => view! {}.into_view(),
+					AppType::Managed => view! {
+						<div class="flex justify-between items-center w-full pt-xs">
+							<Link to={"/forgot-password".to_owned()} r#type={Variant::Link}>
+								"Forgot Password?"
+							</Link>
+						</div>
+					}
+					.into_view()
+				}
+			}
 
 			<Show
 				when=move || !loading.get()
