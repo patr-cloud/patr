@@ -66,7 +66,7 @@ where
 
 		// Run the server here
 		let state = runner.state.clone();
-		let server_task = task::spawn(async move {
+		let _server_task = task::spawn(async move {
 			let tcp_listener = TcpListener::bind(state.config.web_bind_address)
 				.await
 				.unwrap();
@@ -85,7 +85,8 @@ where
 			.with_graceful_shutdown(exit_signal())
 			.await
 			.unwrap();
-		});
+		})
+		.await;
 
 		info!("Runner started");
 
@@ -223,7 +224,7 @@ where
 		}
 
 		info!("Runner stopped. Waiting for server to exit");
-		_ = server_task.await;
+		// _ = server_task.await;
 		info!("Server exited. Exiting runner...");
 	}
 

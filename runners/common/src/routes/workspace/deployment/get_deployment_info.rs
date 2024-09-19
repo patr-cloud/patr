@@ -172,7 +172,6 @@ pub async fn get_deployment_info(
 		let image_tag = row.try_get::<String, _>("image_tag")?;
 		let status = row.try_get::<DeploymentStatus, _>("status")?;
 		let registry = row.try_get::<String, _>("registry")?;
-		let repository_id = row.try_get::<Uuid, _>("repository_id")?;
 		let image_name = row.try_get::<String, _>("image_name")?;
 		let machine_type = row.try_get::<Uuid, _>("machine_type")?;
 		let current_live_digest = row.try_get::<Option<String>, _>("current_live_digest")?;
@@ -191,7 +190,7 @@ pub async fn get_deployment_info(
 					registry: if registry == PatrRegistry.to_string() {
 						DeploymentRegistry::PatrRegistry {
 							registry: PatrRegistry,
-							repository_id,
+							repository_id: Uuid::nil(),
 						}
 					} else {
 						DeploymentRegistry::ExternalRegistry {
