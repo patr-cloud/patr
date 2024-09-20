@@ -1,62 +1,104 @@
-use leptos_router::use_navigate;
-use models::api::workspace::Workspace;
+use leptos_query::QueryResult;
 
+mod card;
 mod item;
 mod switcher;
 
-use switcher::WorkspaceSwitcher;
+use card::WorkspaceCard;
 
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	queries::{list_workspaces_query, AllWorkspacesTag},
+	utils::AuthState,
+};
 
-/// The Workspace Card on the sidebar
+/// The Component that renders the workspace viewer and switcher in sidebar
 #[component]
-pub fn WorkspaceCard(
-	/// The Workspace
-	#[prop(into)]
-	workspaces: MaybeSignal<Vec<WithId<Workspace>>>,
-	/// The Currently Selected Workspace
-	#[prop(into, optional)]
-	current_workspace: MaybeSignal<Option<WithId<Workspace>>>,
-	/// Set the Current Workspace ID
-	#[prop(into)]
-	set_workspace_id: WriteSignal<Option<Uuid>>,
-) -> impl IntoView {
-	let show_workspace_switcher = create_rw_signal(false);
-	let _navigate = use_navigate();
+pub fn WorkspaceSidebarComponent() -> impl IntoView {
+	let QueryResult {
+		data: workspace_list,
+		..
+	} = list_workspaces_query().use_query(|| AllWorkspacesTag);
+	let (state, set_state) = AuthState::load();
+	let (current_workspace, set_current_workspace) = create_signal(None);
+
+	create_effect(move |_| {
+		if let Some(current_workspace) = current_workspace.get() {
+			set_state.update(|state| {
+				if let Some(AuthState::LoggedIn {
+					ref mut last_used_workspace_id,
+					..
+				}) = *state
+				{
+					*last_used_workspace_id = Some(current_workspace);
+				}
+			})
+		}
+	});
+
+	let current_workspace_id =
+		Signal::derive(
+			move || match state.with(|state| state.get_last_used_workspace_id()) {
+				Some(id) => Some(id),
+				_ => {
+					let first_id = workspace_list.get().and_then(|list| {
+						list.ok().and_then(|x| {
+							let x = x.workspaces.first().and_then(|x| Some(x.id));
+							x
+						})
+					});
+					set_current_workspace.set(first_id);
+					set_state.update(|state| match *state {
+						Some(AuthState::LoggedIn {
+							ref mut last_used_workspace_id,
+							..
+						}) => {
+							*last_used_workspace_id = first_id;
+						}
+						_ => {}
+					});
+
+					first_id
+				}
+			},
+		);
+
+	let current_workspace = Signal::derive(move || {
+		if let Some(workspace_id) = current_workspace_id.get() {
+			workspace_list
+				.get()
+				.and_then(|list| {
+					list.ok().map(|list| {
+						list.workspaces
+							.iter()
+							.find(|&x| x.id == workspace_id)
+							.cloned()
+					})
+				})
+				.flatten()
+		} else {
+			None
+		}
+	});
 
 	view! {
-		<div
-			class="sidebar-user flex justify-between items-center py-sm px-md cursor-pointer
-				w-full br-sm bg-secondary-dark gap-xxs relative"
-			on:click={move |_| {
-				show_workspace_switcher.update(|v| *v = !*v)
-			}}
-		>
-			<div class="flex flex-col items-start justify-start w-full">
-				<p class="text-sm text-white w-[20ch] text-ellipsis overflow-hidden">
-					{move || match current_workspace.get() {
-						Some(workspace) => {
-							format!("{}", workspace.name).into_view()
-						},
-						None => "Select A Workspace".into_view()
-					}}
-				</p>
-			</div>
-
-			<Link
-				r#type={Variant::Button}
-				to="/workspace"
-			>
-				<Icon icon=IconType::Settings color=Color::Grey />
-			</Link>
-
-			<Show when=move || show_workspace_switcher.get()>
-				<WorkspaceSwitcher
-					set_workspace_id={set_workspace_id.clone()}
-					workspaces={workspaces.clone()}
-					show_workspace_switcher={show_workspace_switcher}
-				/>
-			</Show>
-		</div>
+		<Transition>
+			{
+				move || match workspace_list.get() {
+					Some(workspace_list) => match workspace_list {
+						Ok(data) => view! {
+							<WorkspaceCard
+								current_workspace={current_workspace}
+								set_workspace_id={set_current_workspace}
+								workspaces={data.clone().workspaces}
+							/>
+						}
+						.into_view(),
+						Err(_) => view! {"Error Loading"}.into_view(),
+					},
+					None => view! {"loading..."}.into_view(),
+				}
+			}
+		</Transition>
 	}
 }

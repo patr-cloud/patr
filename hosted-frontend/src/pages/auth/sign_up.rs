@@ -7,6 +7,7 @@ use crate::prelude::*;
 
 #[component]
 pub fn SignUpForm() -> impl IntoView {
+	let app_type = expect_context::<AppType>();
 	let show_coupon = create_rw_signal(false);
 	let show_coupon_button = create_rw_signal(true);
 
@@ -85,7 +86,20 @@ pub fn SignUpForm() -> impl IntoView {
 			.await;
 
 			match response {
-				Ok(CreateAccountResponse {}) => {}
+				Ok(CreateAccountResponse {}) => match app_type {
+					AppType::SelfHosted => {
+						use_navigate()(
+							&AppRoutes::LoggedOutRoute(LoggedOutRoute::Login).to_string(),
+							Default::default(),
+						);
+					}
+					AppType::Managed => {
+						use_navigate()(
+							&AppRoutes::LoggedInRoute(LoggedInRoute::Home).to_string(),
+							Default::default(),
+						);
+					}
+				},
 				Err(err) => {
 					handle_errors(err);
 				}
@@ -94,19 +108,6 @@ pub fn SignUpForm() -> impl IntoView {
 			loading.set(false);
 		})
 	};
-
-	// create_effect(move |_| {
-	// 	if let Some(resp) = response.get() {
-	// 		logging::log!("{:#?}", resp);
-	// 		match resp {
-	// 			Ok(CreateAccountResponse {}) => {}
-	// 			Err(err) => {
-	// 				logging::log!("{:#?}", err);
-	// 				handle_errors(err);
-	// 			}
-	// 		}
-	// 	}
-	// });
 
 	view! {
 		<div class="box-onboard text-white">
@@ -287,10 +288,16 @@ pub fn SignUpForm() -> impl IntoView {
 				</Show>
 
 				<div class="fr-fe-ct w-full mt-lg">
-					<Link class="btn mr-xs" to="/confirm" r#type={Variant::Link}>
-						"ALREADY HAVE AN OTP"
-					</Link>
-
+					{
+						match app_type {
+							AppType::SelfHosted => view! {}.into_view(),
+							AppType::Managed => view! {
+								<Link class="btn mr-xs" to="/confirm" r#type={Variant::Link}>
+									"ALREADY HAVE AN OTP"
+								</Link>
+							}.into_view()
+						}
+					}
 					<Show
 						when=move || !loading.get()
 						fallback=move || view! {

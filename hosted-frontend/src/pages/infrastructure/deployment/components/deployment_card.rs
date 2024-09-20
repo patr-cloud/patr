@@ -2,14 +2,21 @@ use std::rc::Rc;
 
 use convert_case::*;
 use ev::MouseEvent;
-use models::api::workspace::deployment::{Deployment, DeploymentStatus};
+use leptos_query::QueryResult;
+use models::api::workspace::deployment::{
+	Deployment,
+	DeploymentRegistry,
+	DeploymentStatus,
+	ListAllDeploymentMachineTypeResponse,
+};
 
 use crate::{
 	prelude::*,
-	queries::{start_deployment_query, stop_deployment_query},
+	queries::{list_machines_query, start_deployment_query, stop_deployment_query, AllMachinesTag},
 };
 
 /// A Deployment Card Item Type for the list of options,
+#[derive(Clone)]
 pub struct DeploymentCardItem {
 	/// The Label of the deployment
 	label: &'static str,
@@ -30,6 +37,7 @@ pub fn DeploymentCard(
 	let stop_deployment_action = stop_deployment_query();
 
 	let store_deployment = store_value(deployment.clone());
+	let deployment = Signal::derive(move || deployment.get().clone());
 
 	let on_click_start_stop = move |ev: &MouseEvent| {
 		ev.prevent_default();
@@ -55,34 +63,62 @@ pub fn DeploymentCard(
 		)
 	};
 
-	let items = vec![
-		DeploymentCardItem {
-			label: "REGISTRY",
-			value: deployment.get().id.to_string(),
-		},
-		DeploymentCardItem {
-			label: "RUNNER",
-			value: deployment.get().runner.to_string(),
-		},
-		DeploymentCardItem {
-			label: "REPOSITORY",
-			value: "registry.patr.cloud".to_owned(),
-		},
-		DeploymentCardItem {
-			label: "IMAGE TAG",
-			value: deployment.get().image_tag.clone(),
-		},
-		DeploymentCardItem {
-			label: "MACHINE TYPE",
-			value: deployment.get().machine_type.to_string(),
-		},
-	];
+	let QueryResult {
+		data: machine_list, ..
+	} = list_machines_query().use_query(move || AllMachinesTag);
+
+	let machine_type_string = Signal::derive({
+		// let deployment = deployment.clone();
+		// logging::log!("machine_list: {:?}", deployment.get().machine_type);
+		move || match machine_list.get() {
+			Some(machine_list) => match machine_list {
+				Ok(ListAllDeploymentMachineTypeResponse { machine_types }) => machine_types
+					.into_iter()
+					.find(|machine| machine.id == deployment.get().machine_type)
+					.map(|machine_type| {
+						format!(
+							"{}vCPU {}MB RAM",
+							machine_type.cpu_count, machine_type.memory_count
+						)
+					})
+					.unwrap_or(deployment.get().machine_type.to_string()),
+				Err(_) => "Error".to_string(),
+			},
+			None => "Loading..".to_string(),
+		}
+	});
+
+	let items = Signal::derive(move || {
+		vec![
+			DeploymentCardItem {
+				label: "REGISTRY",
+				value: deployment.get().registry.registry_url().clone(),
+			},
+			DeploymentCardItem {
+				label: "REPOSITORY",
+				value: match deployment.get().registry.clone() {
+					DeploymentRegistry::PatrRegistry { repository_id, .. } => {
+						repository_id.to_string()
+					}
+					DeploymentRegistry::ExternalRegistry { image_name, .. } => image_name,
+				},
+			},
+			DeploymentCardItem {
+				label: "IMAGE TAG",
+				value: deployment.get().image_tag.clone(),
+			},
+			DeploymentCardItem {
+				label: "MACHINE TYPE",
+				value: machine_type_string.get().clone(),
+			},
+		]
+	});
 
 	view! {
 		<div class={class}>
 			<div class="fr-fs-ct gap-md w-full px-xxs">
 				<h4 class="text-md text-primary text-ellipsis overflow-hidden">
-					{deployment.get().name.clone()}
+					{move || deployment.get().name.clone()}
 				</h4>
 
 				<StatusBadge
@@ -96,8 +132,25 @@ pub fn DeploymentCard(
 			</div>
 
 			<div class="flex items-start justify-start text-white w-full flex-wrap">
+				// <For
+				// 	each=move || items.get()
+				// 	key=|item| item.label
+				// 	let:item
+				// >
+				// 	<div class="w-1/2 p-xxs">
+				// 		<div class="bg-secondary-medium rounded-sm px-lg py-sm flex flex-col items-start justify-center">
+				// 			<span class="tracking-[1px] text-xxs text-grey">
+				// 				{item.label}
+				// 			</span>
+				// 			<span class="text-primary w-[15ch] text-ellipsis overflow-hidden">
+				// 				{item.value}
+				// 			</span>
+				// 		</div>
+				// 	</div>
+				// </For>
 				{
-					items
+					move || items
+						.get()
 						.into_iter()
 						.map(|item| {
 							view! {

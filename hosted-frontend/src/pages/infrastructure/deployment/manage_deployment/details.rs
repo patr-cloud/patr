@@ -4,42 +4,25 @@ use ev::MouseEvent;
 use models::api::workspace::deployment::*;
 
 use super::{super::components::*, DeploymentInfoContext};
-use crate::prelude::*;
+use crate::{prelude::*, queries::update_deployment_query};
 
 /// Details tab for a deployment
 #[component]
 pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 	let deployment_info = expect_context::<DeploymentInfoContext>().0;
-	let (state, _) = AuthState::load();
+	let app_type = expect_context::<AppType>();
 
-	let navigate = leptos_router::use_navigate();
-	let on_click_submit = move |_: MouseEvent| {
-		let navigate = navigate.clone();
-		spawn_local(async move {
-			if let Some(deployment_info) = deployment_info.get() {
-				let resp = update_deployment(
-					state.get().get_last_used_workspace_id(),
-					state.get().get_access_token(),
-					Some(deployment_info.deployment.id.to_string()),
-					Some(deployment_info.deployment.name.clone()),
-					Some(deployment_info.deployment.machine_type.to_string()),
-					Some(deployment_info.running_details.deploy_on_push),
-					Some(deployment_info.running_details.min_horizontal_scale),
-					Some(deployment_info.running_details.max_horizontal_scale),
-					Some(deployment_info.running_details.ports),
-					Some(deployment_info.running_details.environment_variables),
-					deployment_info.running_details.startup_probe,
-					deployment_info.running_details.liveness_probe,
-					Some(deployment_info.running_details.config_mounts),
-					Some(deployment_info.running_details.volumes),
-				)
-				.await;
+	let update_deployment_body = create_rw_signal(UpdateDeploymentRequest::new());
 
-				if resp.is_ok() {
-					navigate("/deployment", Default::default());
-				}
-			}
-		})
+	let update_deployment_action = update_deployment_query();
+
+	let on_click_submit = move |ev: MouseEvent| {
+		ev.prevent_default();
+
+		if let Some(deployment_info) = deployment_info.get() {
+			update_deployment_action
+				.dispatch((deployment_info.deployment.id, update_deployment_body.get()));
+		}
 	};
 
 	move || {
@@ -71,7 +54,21 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 									class="w-full"
 									value={
 										let deployment_info = info.clone();
-										Signal::derive(move || deployment_info.clone().deployment.clone().name.clone())
+
+										// If the name is changed, then use that as the value, 
+										// otherwise use the one fetched from the server
+										if let Some(name) = update_deployment_body.get().name {
+											Signal::derive(move || name.clone())
+										} else {
+											Signal::derive(move || deployment_info.deployment.name.clone())
+
+										}
+									}
+									on_input={Box::new(
+										move |ev: web_sys::Event| update_deployment_body
+											.update(
+												|body| body.name = Some(event_target_value(&ev)))
+											)
 									}
 								/>
 							</div>
@@ -111,20 +108,27 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 							</div>
 						</div>
 
-						<div class="flex w-full">
-							<div class="flex-2 flex items-start justify-start">
-								<label html_for="image-details">"Runner"</label>
-							</div>
-							<div class="flex-10 flex flex-col items-start justify-start">
-								<Textbox
-									value={
-										let runner_id = info.deployment.runner;
-										(move || runner_id.to_string()).into_view()
-									}
-									disabled=true
-								/>
-							</div>
-						</div>
+						{
+							match app_type {
+								AppType::SelfHosted => view! {}.into_view(),
+								AppType::Managed => view! {
+									<div class="flex w-full">
+										<div class="flex-2 flex items-start justify-start">
+											<label html_for="image-details">"Runner"</label>
+										</div>
+										<div class="flex-10 flex flex-col items-start justify-start">
+											<Textbox
+												value={
+													let runner_id = info.deployment.runner;
+													(move || runner_id.to_string()).into_view()
+												}
+												disabled=true
+											/>
+										</div>
+									</div>
+								}.into_view()
+							}
+						}
 
 						<PortInput
 							ports_list={
@@ -139,6 +143,9 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 											info.running_details.ports.remove(&port_number.unwrap());
 										}
 									});
+									update_deployment_body.update(|body| {
+										body.ports = deployment_info.get().map(|info| info.running_details.ports);
+									});
 								}
 							}
 							on_add=move |(_, port_number, port_type): (MouseEvent, String, String)| {
@@ -150,6 +157,9 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 										if let Some(info) = info {
 											info.running_details.ports.insert(port_number.unwrap(), port_type.unwrap());
 										}
+									});
+									update_deployment_body.update(|body| {
+										body.ports = deployment_info.get().map(|info| info.running_details.ports);
 									});
 								}
 							}
@@ -166,6 +176,9 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 											info.running_details.environment_variables.insert(name, env_val);
 										}
 									});
+									update_deployment_body.update(|body| {
+										body.environment_variables = deployment_info.get().map(|info| info.running_details.environment_variables);
+									});
 								}
 							}
 							on_delete=move |(_, name): (MouseEvent, String)| {
@@ -174,6 +187,9 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 										info.running_details.environment_variables.remove(name.as_str());
 									}
 								});
+								update_deployment_body.update(|body| {
+									body.environment_variables = deployment_info.get().map(|info| info.running_details.environment_variables);
+								});
 							}
 							envs_list={
 								let envs = info.running_details.environment_variables.clone();
@@ -181,9 +197,8 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 							}
 						/>
 
-						<ConfigMountInput mount_points={vec!["/x/y/path".to_owned()]}/>
-
 						<ProbeInput
+							probe_type={ProbeInputType::Startup}
 							probe_value={
 								let startup_probe = info.running_details.startup_probe.clone();
 								Signal::derive(move || startup_probe.clone())
@@ -196,10 +211,52 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 										.collect::<Vec<_>>()
 								)
 							}
-							probe_type={ProbeInputType::Startup}
+							on_select_port={move |(port, path): (String, String)| {
+								let probe_port = port.parse::<u16>();
+								if let Ok(probe_port) = probe_port {
+									deployment_info.update(|info| {
+										if let Some(info) = info {
+											info.running_details.startup_probe = Some(DeploymentProbe {
+												port: probe_port,
+												path: path.clone(),
+											})
+										}
+									})
+								}
+								update_deployment_body.update(|body| {
+									body.startup_probe = deployment_info.get().map(|info| info.running_details.startup_probe).flatten();
+								});
+							}}
+							on_input_path={move |(port, path): (String, String)| {
+								let probe_port = port.parse::<u16>();
+								if let Ok(probe_port) = probe_port {
+									deployment_info.update(|info| {
+										if let Some(info) = info {
+											info.running_details.startup_probe = Some(DeploymentProbe {
+												port: probe_port,
+												path: path.clone(),
+											})
+										}
+									})
+								}
+								update_deployment_body.update(|body| {
+									body.startup_probe = deployment_info.get().map(|info| info.running_details.startup_probe).flatten();
+								});
+							}}
+							on_delete={move |_| {
+								deployment_info.update(|info| {
+									if let Some(info) = info {
+										info.running_details.startup_probe = None;
+									}
+								});
+								update_deployment_body.update(|body| {
+									body.startup_probe = None;
+								});
+							}}
 						/>
 
 						<ProbeInput
+							probe_type={ProbeInputType::Liveness}
 							probe_value={
 								let liveness_probe = info.running_details.liveness_probe.clone();
 								Signal::derive(move || liveness_probe.clone())
@@ -211,7 +268,48 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 										.collect::<Vec<_>>()
 								)
 							}
-							probe_type={ProbeInputType::Liveness}
+							on_select_port={move |(port, path): (String, String)| {
+								let probe_port = port.parse::<u16>();
+								if let Ok(probe_port) = probe_port {
+									deployment_info.update(|info| {
+										if let Some(info) = info {
+											info.running_details.liveness_probe = Some(DeploymentProbe {
+												port: probe_port,
+												path: path.clone(),
+											})
+										}
+									})
+								}
+								update_deployment_body.update(|body| {
+									body.liveness_probe = deployment_info.get().map(|info| info.running_details.liveness_probe).flatten();
+								});
+							}}
+							on_input_path={move |(port, path): (String, String)| {
+								let probe_port = port.parse::<u16>();
+								if let Ok(probe_port) = probe_port {
+									deployment_info.update(|info| {
+										if let Some(info) = info {
+											info.running_details.liveness_probe = Some(DeploymentProbe {
+												port: probe_port,
+												path: path.clone(),
+											})
+										}
+									})
+								}
+								update_deployment_body.update(|body| {
+									body.liveness_probe = deployment_info.get().map(|info| info.running_details.liveness_probe).flatten();
+								});
+							}}
+							on_delete={move |_| {
+								deployment_info.update(|info| {
+									if let Some(info) = info {
+										info.running_details.liveness_probe = None;
+									}
+								});
+								update_deployment_body.update(|body| {
+									body.liveness_probe = None;
+								});
+							}}
 						/>
 					</div>
 
@@ -219,7 +317,7 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 						<button
 							type="submit"
 							class="flex items-center justify-center btn btn-primary"
-							on:click={on_click_submit.clone()}
+							on:click={on_click_submit}
 						>
 							"UPDATE"
 						</button>

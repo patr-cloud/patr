@@ -3,6 +3,26 @@ use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
 
+/// The Type of the App, whether it is hosted or self hosted
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum AppType {
+	/// The app is hosted and managed by patr
+	Managed,
+	/// The app is self hosted
+	SelfHosted,
+}
+
+impl AppType {
+	pub fn is_managed(&self) -> bool {
+		matches!(self, AppType::Managed)
+	}
+
+	pub fn is_self_hosted(&self) -> bool {
+		matches!(self, AppType::SelfHosted)
+	}
+}
+
 /// The auth state stores the information about the user's login status, along
 /// with the data associated with the login, if logged in.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]

@@ -2,6 +2,7 @@ use models::api::auth::*;
 
 use crate::prelude::*;
 
+/// Server Function to sign up a new user
 #[server(CreateAccount, endpoint = "auth/sign-up")]
 pub async fn sign_up(
 	username: String,
@@ -29,9 +30,6 @@ pub async fn sign_up(
 			.build(),
 	)
 	.await
-	.map(|res| {
-		leptos_axum::redirect("/confirm");
-		res.body
-	})
+	.map(|res| res.body)
 	.map_err(ServerFnError::WrappedServerError)
 }

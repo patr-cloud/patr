@@ -12,8 +12,7 @@ pub(super) mod meta_data;
 /// and their data.
 pub(super) mod workspace;
 
-pub use self::initializer::initialize;
-pub(super) use self::{meta_data::*, workspace::*};
+pub(super) use self::{initializer::initialize, meta_data::*, workspace::*};
 
 /// Connects to the database based on a config. Not much to say here.
 #[instrument(skip(config))]

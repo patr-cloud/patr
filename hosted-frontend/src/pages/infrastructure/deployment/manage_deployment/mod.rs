@@ -66,7 +66,6 @@ pub fn ManageDeploymentsContent(
 								}.into_view()
 							},
 							Err(err)  => view! {
-								<div>"Error Fetching Resource"</div>
 								<ErrorPage
 									title="Error Fetching Resource"
 									content={view! {

@@ -1,13 +1,7 @@
-use leptos_query::QueryResult;
 use leptos_query_devtools::LeptosQueryDevtools;
 use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};
 
-use crate::{
-	pages::*,
-	prelude::*,
-	queries::{list_workspaces_query, AllWorkspacesTag},
-	utils::AuthState,
-};
+use crate::{pages::*, prelude::*, utils::AuthState};
 
 #[component]
 pub fn AppOutletView() -> impl IntoView {
@@ -48,96 +42,21 @@ pub fn AppOutletView() -> impl IntoView {
 
 #[component]
 pub fn AppOutlet() -> impl IntoView {
-	let QueryResult {
-		data: workspace_list,
-		..
-	} = list_workspaces_query().use_query(|| AllWorkspacesTag);
-	let (state, set_state) = AuthState::load();
-	let (current_workspace, set_current_workspace) = create_signal(None);
-
-	create_effect(move |_| {
-		if let Some(current_workspace) = current_workspace.get() {
-			set_state.update(|state| {
-				if let Some(AuthState::LoggedIn {
-					ref mut last_used_workspace_id,
-					..
-				}) = *state
-				{
-					*last_used_workspace_id = Some(current_workspace);
-				}
-			})
-		}
-	});
-
-	let current_workspace_id =
-		Signal::derive(
-			move || match state.with(|state| state.get_last_used_workspace_id()) {
-				Some(id) => Some(id),
-				_ => {
-					let first_id = workspace_list.get().and_then(|list| {
-						list.ok().and_then(|x| {
-							let x = x.workspaces.first().and_then(|x| Some(x.id));
-							x
-						})
-					});
-					set_current_workspace.set(first_id);
-					set_state.update(|state| match *state {
-						Some(AuthState::LoggedIn {
-							ref mut last_used_workspace_id,
-							..
-						}) => {
-							*last_used_workspace_id = first_id;
-						}
-						_ => {}
-					});
-
-					first_id
-				}
-			},
-		);
-
-	let current_workspace = Signal::derive(move || {
-		if let Some(workspace_id) = current_workspace_id.get() {
-			workspace_list
-				.get()
-				.and_then(|list| {
-					list.ok().map(|list| {
-						list.workspaces
-							.iter()
-							.find(|&x| x.id == workspace_id)
-							.cloned()
-					})
-				})
-				.flatten()
-		} else {
-			None
-		}
-	});
+	let app_type = expect_context::<AppType>();
 
 	view! {
 		<div class="fr-fs-fs full-width full-height bg-secondary">
 			<Sidebar>
-				<Transition>
-					{
-						move || match workspace_list.get() {
-							Some(workspace_list) => {
-								match workspace_list {
-									Ok(data) => {
-										view! {
-											<WorkspaceCard
-												current_workspace={current_workspace}
-												set_workspace_id={set_current_workspace}
-												workspaces={data.clone().workspaces}
-											/>
-										}.into_view()
-									},
-									Err(_) => view! {"Error Loading"}.into_view()
-								}
-							},
-							None => view! {"loading..."}.into_view()
+				{
+					match app_type {
+						AppType::SelfHosted => view! {}.into_view(),
+						AppType::Managed => view! {
+							<Transition>
+								<WorkspaceSidebarComponent/>
+							</Transition>
 						}
 					}
-				</Transition>
+				}
 			</Sidebar>
 			<main class="fc-fs-ct full-width px-lg">
 				<Outlet/>
@@ -151,10 +70,14 @@ pub fn AppOutlet() -> impl IntoView {
 #[component]
 pub fn App() -> impl IntoView {
 	let (state, _) = AuthState::load();
+	let app_type = AppType::SelfHosted;
 
 	// TODO: When redirecting to login, the URL should include the path that the
 	// user was trying to access. This way, after login, the user is redirected
 	// to the page they were trying to access.
+
+	provide_context(app_type);
+
 	view! {
 		<LeptosQueryDevtools />
 		<Router>

@@ -6,6 +6,51 @@ use crate::{
 	queries::{list_runners_query, AllRunnersTag},
 };
 
+#[component]
+fn RunnerDropdown() -> impl IntoView {
+	let deployment_info = expect_context::<RwSignal<DeploymentInfo>>();
+
+	let QueryResult {
+		data: runners_list, ..
+	} = list_runners_query().use_query(move || AllRunnersTag);
+
+	view! {
+		<InputDropdown
+			placeholder="Choose A Runner"
+			class="w-full"
+			value={
+				deployment_info
+					.with(
+						|info| info
+							.runner_id
+							.clone()
+							.map(|id| id.to_string()).unwrap_or_default()
+					)
+			}
+			on_select={move |id: String| {
+				if let Ok(runner_id) = Uuid::parse_str(id.as_str()) {
+					deployment_info.update(|info| info.runner_id = Some(runner_id))
+				}
+			}}
+			options={
+				match runners_list.get() {
+					Some(Ok(data)) => {
+						data.runners
+							.iter()
+							.map(|x| InputDropdownOption {
+								id: x.id.to_string(),
+								disabled: false,
+								label: x.name.clone()
+							})
+							.collect::<Vec<_>>()
+					},
+					_ => vec![]
+				}
+			}
+		/>
+	}
+}
+
 /// The Deploy Details Page, has stuff like name, runner, registry, etc.
 #[component]
 pub fn DeploymentDetails(
@@ -13,11 +58,8 @@ pub fn DeploymentDetails(
 	#[prop(into)]
 	errors: MaybeSignal<DetailsPageError>,
 ) -> impl IntoView {
+	let app_type = expect_context::<AppType>();
 	let deployment_info = expect_context::<RwSignal<DeploymentInfo>>();
-
-	let QueryResult {
-		data: runners_list, ..
-	} = list_runners_query().use_query(move || AllRunnersTag);
 
 	let store_errors = store_value(errors);
 
@@ -154,61 +196,35 @@ pub fn DeploymentDetails(
 						</Show>
 					</div>
 				</div>
+				{
+					match app_type {
+						AppType::SelfHosted => view! {}.into_view(),
+						AppType::Managed => view! {
+							<div class="flex my-xs w-full mb-md">
+								<div class="flex-2 flex justify-start items-center">
+									<label class="text-white text-sm flex justify-start items-center">"Choose Runner"</label>
+								</div>
 
-				<div class="flex my-xs w-full mb-md">
-					<div class="flex-2 flex justify-start items-center">
-						<label class="text-white text-sm flex justify-start items-center">"Choose Runner"</label>
-					</div>
+								<div class="flex-10 flex flex-col items-start justify-start">
+									<Transition>
+										{
+											move || view! {
+												<RunnerDropdown />
 
-					<div class="flex-10 flex flex-col items-start justify-start">
-						<Transition>
-							{
-								move || view! {
-									<InputDropdown
-										placeholder="Choose A Runner"
-										class="w-full"
-										value={
-											deployment_info
-												.with(
-													|info| info
-														.runner_id
-														.clone()
-														.map(|id| id.to_string()).unwrap_or_default()
-												)
+												<Show when={move || store_errors.with_value(|errors| !errors.get().runner.clone().is_empty())}>
+													<Alert r#type={AlertType::Error} class="mt-xs">
+														{move || store_errors.with_value(|errors| errors.get().runner.clone())}
+													</Alert>
+												</Show>
+
+											}.into_view()
 										}
-										on_select={move |id: String| {
-											if let Ok(runner_id) = Uuid::parse_str(id.as_str()) {
-												deployment_info.update(|info| info.runner_id = Some(runner_id))
-											}
-										}}
-										options={
-											match runners_list.get() {
-												Some(Ok(data)) => {
-													data.runners
-														.iter()
-														.map(|x| InputDropdownOption {
-															id: x.id.to_string(),
-															disabled: false,
-															label: x.name.clone()
-														})
-														.collect::<Vec<_>>()
-												},
-												_ => vec![]
-											}
-										}
-									/>
-
-									<Show when={move || store_errors.with_value(|errors| !errors.get().runner.clone().is_empty())}>
-										<Alert r#type={AlertType::Error} class="mt-xs">
-											{move || store_errors.with_value(|errors| errors.get().runner.clone())}
-										</Alert>
-									</Show>
-
-								}.into_view()
-							}
-						</Transition>
-					</div>
-				</div>
+									</Transition>
+								</div>
+							</div>
+						}.into_view()
+					}
+				}
 			</div>
 		</div>
 	}
