@@ -2,6 +2,7 @@ use axum::Router;
 
 use crate::prelude::*;
 
+/// All deployment related handlers
 pub mod deployment;
 
 #[instrument(skip(state))]

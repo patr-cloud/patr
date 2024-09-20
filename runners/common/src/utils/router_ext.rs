@@ -24,6 +24,10 @@ use crate::{
 	},
 };
 
+/// Extension trait for the `Router` type.
+///
+/// This trait provides additional methods to mount API endpoints directly along
+/// with the required request parser, and endpoint handler, using tower layers.
 pub trait RouterExt<S>
 where
 	S: Clone + Send + Sync + 'static,

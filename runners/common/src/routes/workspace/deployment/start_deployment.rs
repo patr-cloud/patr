@@ -3,6 +3,8 @@ use models::{api::workspace::deployment::*, prelude::*};
 
 use crate::prelude::*;
 
+/// The handler to start a deployment. This will start the deployment. In case
+/// the deployment is already running, it will do nothing.
 pub async fn start_deployment(
 	AppRequest {
 		request:

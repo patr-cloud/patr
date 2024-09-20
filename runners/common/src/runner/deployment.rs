@@ -129,6 +129,9 @@ where
 			.collect())
 	}
 
+	/// Get the deployment info. This function will get the deployment info from
+	/// the local database if the runner is self-hosted, or from the API if the
+	/// runner is managed.
 	async fn get_deployment_info(
 		&self,
 		deployment_id: Uuid,
@@ -187,6 +190,8 @@ where
 		}
 	}
 
+	/// Delete a deployment. This function will delete a deployment from the
+	/// database, and call the executor to delete the deployment.
 	async fn delete_deployment(&self, id: Uuid) -> Result<(), Duration> {
 		query(
 			r#"

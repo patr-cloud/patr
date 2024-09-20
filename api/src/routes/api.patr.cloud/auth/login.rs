@@ -17,6 +17,8 @@ use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};
 
 use crate::{models::access_token_data::AccessTokenData, prelude::*};
 
+/// The handler to login the user. This will return the access token and the
+/// refresh token.
 pub async fn login(
 	AppRequest {
 		request:

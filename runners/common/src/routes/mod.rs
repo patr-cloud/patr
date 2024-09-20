@@ -1,4 +1,7 @@
+/// All handlers for authentication and authorization.
 pub mod auth;
+/// All handlers for resources that would, in the managed version, be part of
+/// the workspace.
 pub mod workspace;
 
 use axum::Router;
@@ -60,7 +63,7 @@ async fn read_files(path: &str) -> Vec<String> {
 	let mut files = Vec::new();
 	let mut read_dir = fs::read_dir(path)
 		.await
-		.expect(&format!("failed to read directory: `{}`", path));
+		.unwrap_or_else(|_| panic!("failed to read directory: `{}`", path));
 	while let Some(entry) = read_dir.next_entry().await.expect("failed to read entry") {
 		let path = entry.path();
 		if path.is_dir() {

@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 const fn is_false(force_restart: &bool) -> bool {
-	*force_restart == false
+	!*force_restart
 }
 
 macros::declare_api_endpoint!(

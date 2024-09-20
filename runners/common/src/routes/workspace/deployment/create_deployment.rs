@@ -3,6 +3,8 @@ use models::api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspace
 
 use crate::prelude::*;
 
+/// The handler to create a deployment. This will create a new deployment, and
+/// return the ID of the deployment.
 pub async fn create_deployment(
 	AppRequest {
 		request:
@@ -227,7 +229,7 @@ pub async fn create_deployment(
 		.get()
 		.expect("Runner changes sender not set")
 		.read()
-		.expect("Runner changes sender lock poisoned")
+		.await
 		.send(Ok(
 			StreamRunnerDataForWorkspaceServerMsg::DeploymentCreated {
 				deployment: WithId::new(

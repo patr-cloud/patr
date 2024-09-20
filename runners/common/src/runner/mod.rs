@@ -1,9 +1,4 @@
-use std::{
-	future::IntoFuture,
-	net::SocketAddr,
-	pin::pin,
-	sync::{OnceLock, RwLock},
-};
+use std::{future::IntoFuture, net::SocketAddr, pin::pin, sync::OnceLock};
 
 use futures::{
 	future::{self, BoxFuture, Either},
@@ -14,7 +9,10 @@ use futures::{
 use models::{api::workspace::runner::*, rbac::ResourceType};
 use tokio::{
 	net::TcpListener,
-	sync::mpsc::{unbounded_channel, UnboundedSender},
+	sync::{
+		mpsc::{unbounded_channel, UnboundedSender},
+		RwLock,
+	},
 	task,
 	time::{self, Duration},
 };
@@ -28,8 +26,12 @@ use tracing_subscriber::{
 
 use crate::{db, prelude::*, utils::delayed_future::DelayedFuture};
 
+/// All deployment related functions for the runner
 mod deployment;
 
+/// The global sender for the runner changes. This is used to send changes to
+/// the runner when a resource is created, updated, or deleted. Ideally, this
+/// would be automatically done by some sort of an audit log layer.
 pub(crate) static RUNNER_CHANGES_SENDER: OnceLock<
 	RwLock<UnboundedSender<Result<StreamRunnerDataForWorkspaceServerMsg, ErrorType>>>,
 > = OnceLock::new();
@@ -107,7 +109,7 @@ where
 			let mut global_sender = RUNNER_CHANGES_SENDER
 				.get_or_init(|| RwLock::new(sender.clone()))
 				.write()
-				.expect("Failed to get write lock on RUNNER_CHANGES_SENDER");
+				.await;
 			*global_sender = sender;
 			drop(global_sender);
 
@@ -312,6 +314,12 @@ where
 		}
 	}
 
+	/// Get the stream of updates for the runner.
+	///
+	/// If the runner is running in self-hosted mode, this function will return
+	/// the stream of updates from the runner changes receiver. If the runner is
+	/// running in managed mode, this function will return the stream of updates
+	/// from the websocket endpoint to the Patr API.
 	async fn get_update_resources_stream<'a>(
 		&mut self,
 	) -> Result<

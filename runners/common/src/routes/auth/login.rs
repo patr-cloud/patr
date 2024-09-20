@@ -8,6 +8,8 @@ use time::OffsetDateTime;
 
 use crate::{prelude::*, utils::access_token_data::AccessTokenData};
 
+/// The handler to login the user. This will return the access token and the
+/// refresh token.
 pub async fn login(
 	AppRequest {
 		request:

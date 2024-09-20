@@ -3,9 +3,8 @@ use models::api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspace
 
 use crate::prelude::*;
 
-/// The handler to delete a deployment in the workspace. This will delete the
-/// deployment from the workspace, and remove all resources associated with the
-/// deployment.
+/// The handler to delete a deployment. This will delete the deployment, and
+/// remove all resources associated with the deployment.
 pub async fn delete_deployment(
 	AppRequest {
 		request:
@@ -107,7 +106,7 @@ pub async fn delete_deployment(
 		.get()
 		.expect("Runner changes sender not set")
 		.read()
-		.expect("Runner changes sender lock poisoned")
+		.await
 		.send(Ok(
 			StreamRunnerDataForWorkspaceServerMsg::DeploymentDeleted { id: deployment_id },
 		))

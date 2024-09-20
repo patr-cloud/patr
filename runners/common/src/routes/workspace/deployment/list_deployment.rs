@@ -3,6 +3,8 @@ use models::{api::workspace::deployment::*, utils::Uuid};
 
 use crate::prelude::*;
 
+/// The handler to list all deployments in the workspace. This will return
+/// all the deployments.
 pub async fn list_deployment(
 	AppRequest {
 		request:
@@ -42,8 +44,8 @@ pub async fn list_deployment(
 		LIMIT $1 OFFSET $2;
 		"#,
 	)
-	.bind(count as i32)
-	.bind((count * page) as i32)
+	.bind(u32::try_from(count)?)
+	.bind(u32::try_from(count * page)?)
 	.fetch_all(&mut **database)
 	.await?;
 
