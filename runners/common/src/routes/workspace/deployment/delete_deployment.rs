@@ -40,6 +40,8 @@ pub async fn delete_deployment(
 	.execute(&mut **database)
 	.await?;
 
+	trace!("Environment variables deleted");
+
 	query(
 		r#"
 		DELETE FROM
@@ -52,17 +54,21 @@ pub async fn delete_deployment(
 	.execute(&mut **database)
 	.await?;
 
-	query(
-		r#"
-		DELETE FROM
-			deployment_deploy_history
-		WHERE
-			deployment_id = $1;
-		"#,
-	)
-	.bind(deployment_id)
-	.execute(&mut **database)
-	.await?;
+	trace!("Config mounts deleted");
+
+	// query(
+	// 	r#"
+	// 	DELETE FROM
+	// 		deployment_deploy_history
+	// 	WHERE
+	// 		deployment_id = $1;
+	// 	"#,
+	// )
+	// .bind(deployment_id)
+	// .execute(&mut **database)
+	// .await?;
+
+	// trace!("Deploy history deleted");
 
 	query(
 		r#"
@@ -75,6 +81,8 @@ pub async fn delete_deployment(
 	.bind(deployment_id)
 	.execute(&mut **database)
 	.await?;
+
+	trace!("Exposed ports deleted");
 
 	// Delete the deployment in the database
 	query(
@@ -93,6 +101,8 @@ pub async fn delete_deployment(
 		err => ErrorType::server_error(err),
 	})?;
 
+	trace!("Deployment deleted");
+
 	crate::runner::RUNNER_CHANGES_SENDER
 		.get()
 		.expect("Runner changes sender not set")
@@ -102,6 +112,8 @@ pub async fn delete_deployment(
 			StreamRunnerDataForWorkspaceServerMsg::DeploymentDeleted { id: deployment_id },
 		))
 		.expect("Failed to send deployment created message");
+
+	trace!("Changes sent to runner");
 
 	AppResponse::builder()
 		.body(DeleteDeploymentResponse)

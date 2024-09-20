@@ -110,6 +110,7 @@ where
 				.write()
 				.expect("Failed to get write lock on RUNNER_CHANGES_SENDER");
 			*global_sender = sender;
+			drop(global_sender);
 
 			let Some(response) = futures::future::select(
 				&mut exit_signal,

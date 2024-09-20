@@ -68,12 +68,22 @@ where
 			.retain(|message| message.value() != &deployment_id);
 
 		let result = 'reconcile: {
-			let Ok(GetDeploymentInfoResponse {
+			let GetDeploymentInfoResponse {
 				deployment,
 				running_details,
-			}) = self.get_deployment_info(deployment_id).await
-			else {
-				break 'reconcile Err(Duration::from_secs(5));
+			} = match self.get_deployment_info(deployment_id).await {
+				Ok(response) => response,
+				Err(ErrorType::ResourceDoesNotExist) => {
+					info!("Deployment `{}` does not exist. Deleting", deployment_id);
+					break 'reconcile self.delete_deployment(deployment_id).await;
+				}
+				Err(err) => {
+					debug!(
+						"Failed to get deployment info for `{}`: {:?}",
+						deployment_id, err
+					);
+					break 'reconcile Err(Duration::from_secs(5));
+				}
 			};
 
 			if let Err(err) = self
@@ -175,5 +185,28 @@ where
 				err.body.error
 			}),
 		}
+	}
+
+	async fn delete_deployment(&self, id: Uuid) -> Result<(), Duration> {
+		query(
+			r#"
+			DELETE FROM
+				deployment
+			WHERE
+				id = $1;
+			"#,
+		)
+		.bind(id)
+		.execute(&self.state.database)
+		.await
+		.map_err(|err| {
+			debug!("Failed to delete deployment `{}`: {:?}", id, err);
+			debug!("Retrying in 5 seconds");
+			Duration::from_secs(5)
+		})?;
+
+		self.executor.delete_deployment(id).await?;
+
+		Ok(())
 	}
 }

@@ -123,12 +123,12 @@ pub fn DeploymentDetails(
 							}}
 							options={vec![
 								InputDropdownOption {
-									id: "docker".to_string(),
+									id: "docker.io".to_string(),
 									label: "Docker Hub (docker.io)".to_string(),
 									disabled: false
 								},
 								InputDropdownOption {
-									id: "patr".to_string(),
+									id: "registry.patr.cloud".to_string(),
 									label: "Container Registry (registry.patr.cloud)".to_string(),
 									disabled: false
 								},

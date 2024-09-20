@@ -219,6 +219,7 @@ impl RunnerExecutor for DockerRunner {
 				error!("Error creating container: {:?}", err);
 				Duration::from_secs(5)
 			})?;
+		info!("Container created");
 
 		self.docker
 			.start_container::<String>(&container.id, None)
@@ -227,6 +228,7 @@ impl RunnerExecutor for DockerRunner {
 				error!("Error starting container: {:?}", err);
 				Duration::from_secs(5)
 			})?;
+		info!("Container started");
 
 		Ok(())
 	}
