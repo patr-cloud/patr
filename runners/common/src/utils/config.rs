@@ -1,6 +1,7 @@
 use std::{
 	fmt::{Display, Formatter},
 	net::SocketAddr,
+	str::FromStr,
 };
 
 use config::{Config, ConfigError, Environment, File};
@@ -101,8 +102,10 @@ pub enum RunnerMode {
 	#[serde(rename_all = "camelCase")]
 	SelfHosted {
 		/// The Pepper used to hash passwords
+		#[serde(alias = "passwordpepper")]
 		password_pepper: String,
 		/// The secret used to sign JWTs
+		#[serde(alias = "jwtsecret")]
 		jwt_secret: String,
 	},
 	/// This runner is running in managed mode. This means that the runner will
@@ -110,11 +113,17 @@ pub enum RunnerMode {
 	#[serde(rename_all = "camelCase")]
 	Managed {
 		/// The workspace ID to connect the runner for.
+		#[serde(alias = "workspaceid")]
 		workspace_id: Uuid,
 		/// The runner ID to connect the runner for.
+		#[serde(alias = "runnerid")]
 		runner_id: Uuid,
-		/// The API token to authenticate the runner with.
-		api_token: String,
+		/// The bearer token for the runner to access the API
+		#[serde(alias = "apitoken")]
+		api_token: BearerToken,
+		/// The user agent that the runner uses to access the API
+		#[serde(skip, default = "get_user_agent")]
+		user_agent: UserAgent,
 	},
 }
 
@@ -128,6 +137,16 @@ impl RunnerMode {
 	pub fn is_managed(&self) -> bool {
 		matches!(self, RunnerMode::Managed { .. })
 	}
+}
+
+/// Get the user agent for the runner
+fn get_user_agent() -> UserAgent {
+	UserAgent::from_str(concat!(
+		env!("CARGO_PKG_NAME"),
+		"/",
+		env!("CARGO_PKG_VERSION"),
+	))
+	.expect("Failed to parse user agent as valid header")
 }
 
 /// The environment the application is running in

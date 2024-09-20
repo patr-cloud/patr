@@ -304,7 +304,7 @@ impl DeploymentRegistry {
 
 /// All the possible deployment status a deployment can be
 /// in during its life cycle
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(sqlx::Type, schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(

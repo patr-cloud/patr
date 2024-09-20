@@ -5,6 +5,7 @@
   "apiToken": "apiToken",
   "passwordPepper": "keyboard cat",
   "jwtSecret": "keyboard cat",
+  "mode": "selfHosted",
   "database": {
     "file": "data.db",
     "connectionLimit": 5

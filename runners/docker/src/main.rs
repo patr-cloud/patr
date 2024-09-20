@@ -118,6 +118,7 @@ impl RunnerExecutor for DockerRunner {
 				})?;
 		}
 
+		info!("Pulling latest image...");
 		let mut pull_image = self.docker.create_image(
 			Some(CreateImageOptions {
 				from_image: format!(
@@ -233,18 +234,16 @@ impl RunnerExecutor for DockerRunner {
 			return futures::stream::empty().boxed();
 		};
 		containers.sort_by(|a, b| {
-			let a = a
-				.labels
-				.as_ref()
-				.unwrap_or_default()
-				.get("patr.deploymentId")
-				.and_then(|value| Uuid::parse_str(value).ok());
-			let b = b
-				.labels
-				.as_ref()
-				.unwrap_or_default()
-				.get("patr.deploymentId")
-				.and_then(|value| Uuid::parse_str(value).ok());
+			let a = a.labels.as_ref().and_then(|labels| {
+				labels
+					.get("patr.deploymentId")
+					.and_then(|value| Uuid::parse_str(value).ok())
+			});
+			let b = b.labels.as_ref().and_then(|labels| {
+				labels
+					.get("patr.deploymentId")
+					.and_then(|value| Uuid::parse_str(value).ok())
+			});
 
 			a.cmp(&b)
 		});

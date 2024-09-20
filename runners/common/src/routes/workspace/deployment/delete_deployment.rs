@@ -1,5 +1,5 @@
 use axum::http::StatusCode;
-use models::api::workspace::deployment::*;
+use models::api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg};
 
 use crate::prelude::*;
 
@@ -92,6 +92,16 @@ pub async fn delete_deployment(
 		sqlx::Error::Database(err) if err.is_foreign_key_violation() => ErrorType::ResourceInUse,
 		err => ErrorType::server_error(err),
 	})?;
+
+	crate::runner::RUNNER_CHANGES_SENDER
+		.get()
+		.expect("Runner changes sender not set")
+		.read()
+		.expect("Runner changes sender lock poisoned")
+		.send(Ok(
+			StreamRunnerDataForWorkspaceServerMsg::DeploymentDeleted { id: deployment_id },
+		))
+		.expect("Failed to send deployment created message");
 
 	AppResponse::builder()
 		.body(DeleteDeploymentResponse)

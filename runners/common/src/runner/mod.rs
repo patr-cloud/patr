@@ -1,16 +1,24 @@
-use std::{future::IntoFuture, net::SocketAddr, pin::pin, str::FromStr};
+use std::{
+	future::IntoFuture,
+	net::SocketAddr,
+	pin::pin,
+	sync::{OnceLock, RwLock},
+};
 
 use futures::{
 	future::{self, BoxFuture, Either},
+	stream::BoxStream,
 	FutureExt,
 	StreamExt,
 };
 use models::{api::workspace::runner::*, rbac::ResourceType};
 use tokio::{
 	net::TcpListener,
+	sync::mpsc::{unbounded_channel, UnboundedSender},
 	task,
 	time::{self, Duration},
 };
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use tracing::{level_filters::LevelFilter, Dispatch, Level};
 use tracing_subscriber::{
 	fmt::{format::FmtSpan, Layer as FmtLayer},
@@ -21,6 +29,10 @@ use tracing_subscriber::{
 use crate::{db, prelude::*, utils::delayed_future::DelayedFuture};
 
 mod deployment;
+
+pub(crate) static RUNNER_CHANGES_SENDER: OnceLock<
+	RwLock<UnboundedSender<Result<StreamRunnerDataForWorkspaceServerMsg, ErrorType>>>,
+> = OnceLock::new();
 
 /// The runner is the main struct that is used to run the resources.
 ///
@@ -42,10 +54,10 @@ where
 	/// The future that will resolve to the next resource that needs to be
 	/// reconciled
 	next_reconcile_future: BoxFuture<'static, Uuid>,
-	/// The bearer token for the runner to access the API
-	authorization: BearerToken,
-	/// The user agent that the runner uses to access the API
-	user_agent: UserAgent,
+	/// The stream that will receive changes from the server for the runner when
+	/// a resource is created, updated, or deleted.
+	runner_changes_receiver:
+		Option<UnboundedReceiverStream<Result<StreamRunnerDataForWorkspaceServerMsg, ErrorType>>>,
 }
 
 impl<E> Runner<E>
@@ -90,22 +102,18 @@ where
 		info!("Connecting to the server");
 		// Connect to the server infinitely until the exit signal is received
 		'main: loop {
+			// Initialize the runner changes receiver
+			let (sender, receiver) = unbounded_channel();
+			runner.runner_changes_receiver = Some(UnboundedReceiverStream::new(receiver));
+			let mut global_sender = RUNNER_CHANGES_SENDER
+				.get_or_init(|| RwLock::new(sender.clone()))
+				.write()
+				.expect("Failed to get write lock on RUNNER_CHANGES_SENDER");
+			*global_sender = sender;
+
 			let Some(response) = futures::future::select(
 				&mut exit_signal,
-				Box::pin(client::stream_request(
-					ApiRequest::<StreamRunnerDataForWorkspaceRequest>::builder()
-						.path(StreamRunnerDataForWorkspacePath {
-							workspace_id,
-							runner_id,
-						})
-						.headers(StreamRunnerDataForWorkspaceRequestHeaders {
-							authorization: runner.authorization.clone(),
-							user_agent: runner.user_agent.clone(),
-						})
-						.query(())
-						.body(Default::default())
-						.build(),
-				)),
+				pin!(runner.get_update_resources_stream()),
 			)
 			.await
 			.into_right() else {
@@ -258,14 +266,6 @@ where
 		))
 		.expect("Failed to set global default subscriber");
 
-		let authorization = BearerToken::from_str("TODO get this value based on mode")
-			.expect("Failed to parse API token");
-		let user_agent = UserAgent::from_str(concat!(
-			env!("CARGO_PKG_NAME"),
-			"/",
-			env!("CARGO_PKG_VERSION"),
-		))
-		.expect("Failed to parse user agent as valid header");
 		let reconciliation_list = Vec::new();
 		let next_reconcile_future = future::pending().boxed();
 
@@ -282,8 +282,7 @@ where
 			state,
 			reconciliation_list,
 			next_reconcile_future,
-			authorization,
-			user_agent,
+			runner_changes_receiver: None,
 		}
 	}
 
@@ -310,6 +309,45 @@ where
 			_ => {
 				warn!("Unknown resource type: {:?}", msg);
 			}
+		}
+	}
+
+	async fn get_update_resources_stream<'a>(
+		&mut self,
+	) -> Result<
+		BoxStream<'a, Result<StreamRunnerDataForWorkspaceServerMsg, ErrorType>>,
+		ApiErrorResponse,
+	> {
+		match &self.state.config.mode {
+			RunnerMode::SelfHosted {
+				password_pepper: _,
+				jwt_secret: _,
+			} => Ok(self
+				.runner_changes_receiver
+				.take()
+				.expect("Runner changes receiver is not initialized. This should never happen")
+				.boxed()),
+			RunnerMode::Managed {
+				workspace_id,
+				runner_id,
+				api_token,
+				user_agent,
+			} => client::stream_request(
+				ApiRequest::<StreamRunnerDataForWorkspaceRequest>::builder()
+					.path(StreamRunnerDataForWorkspacePath {
+						workspace_id: *workspace_id,
+						runner_id: *runner_id,
+					})
+					.headers(StreamRunnerDataForWorkspaceRequestHeaders {
+						authorization: api_token.clone(),
+						user_agent: user_agent.clone(),
+					})
+					.query(())
+					.body(Default::default())
+					.build(),
+			)
+			.await
+			.map(StreamExt::boxed),
 		}
 	}
 

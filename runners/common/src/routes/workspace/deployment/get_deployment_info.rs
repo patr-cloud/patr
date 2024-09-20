@@ -188,16 +188,9 @@ pub async fn get_deployment_info(
 					name,
 					image_tag,
 					status,
-					registry: if registry == PatrRegistry.to_string() {
-						DeploymentRegistry::PatrRegistry {
-							registry: PatrRegistry,
-							repository_id: Uuid::nil(),
-						}
-					} else {
-						DeploymentRegistry::ExternalRegistry {
-							registry,
-							image_name,
-						}
+					registry: DeploymentRegistry::ExternalRegistry {
+						registry,
+						image_name,
 					},
 					// WARN: This is a dummy runner ID, as there is no runner-id in self-hosted PATR
 					runner: Uuid::nil(),

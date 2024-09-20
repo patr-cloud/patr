@@ -105,7 +105,7 @@ where
 			SELECT
 				id
 			FROM
-				deployments
+				deployment
 			ORDER BY
 				id;
 			"#,
@@ -148,7 +148,8 @@ where
 			RunnerMode::Managed {
 				workspace_id,
 				runner_id: _,
-				api_token: _,
+				api_token,
+				user_agent,
 			} => client::make_request(
 				ApiRequest::<GetDeploymentInfoRequest>::builder()
 					.path(GetDeploymentInfoPath {
@@ -156,8 +157,8 @@ where
 						deployment_id,
 					})
 					.headers(GetDeploymentInfoRequestHeaders {
-						authorization: self.authorization.clone(),
-						user_agent: self.user_agent.clone(),
+						authorization: api_token.clone(),
+						user_agent: user_agent.clone(),
 					})
 					.query(())
 					.body(GetDeploymentInfoRequest)
