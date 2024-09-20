@@ -1,3 +1,6 @@
+use std::rc::Rc;
+
+use ev::MouseEvent;
 use models::api::workspace::deployment::DeploymentProbe;
 
 use crate::prelude::*;
@@ -37,9 +40,12 @@ pub fn ProbeInput(
 	/// On Enter Path
 	#[prop(into, optional, default = Callback::new(|_| ()))]
 	on_input_path: Callback<(String, String)>,
+	/// On Delete
+	#[prop(into, optional, default = Callback::new(|_| ()))]
+	on_delete: Callback<MouseEvent>,
 	/// Current Probe Value
-	#[prop(into, optional, default = None.into())]
-	probe_value: MaybeSignal<Option<DeploymentProbe>>,
+	#[prop(optional, default = Signal::derive(move || None))]
+	probe_value: Signal<Option<DeploymentProbe>>,
 ) -> impl IntoView {
 	let outer_div_class = class.with(|cname| format!("flex w-full {}", cname));
 
@@ -85,9 +91,6 @@ pub fn ProbeInput(
 							<InputDropdown
 								placeholder={"Enter Probe Path".to_string()}
 								value={probe_port}
-								// on_select={move |id: String| {
-								// 	on_select_port.call((id.clone(), probe_path.get().clone()));
-								// }}
 								on_select={move |id: String| {
 									probe_port.set(id.clone());
 									on_select_port.call((id.clone(), probe_path.get().clone()))
@@ -110,16 +113,50 @@ pub fn ProbeInput(
 				<div class="flex-6 flex flex-col items-start justify-start">
 					<Input
 						r#type={InputType::Text}
-						value={Signal::derive(move || probe_path.get())}
+						value={
+							Signal::derive(
+								move || probe_value
+									.get()
+									.map(|probe| {
+										probe.path
+									})
+									.unwrap_or_default()
+							)
+						}
 						on_input={Box::new(move |ev| {
 							ev.prevent_default();
-							probe_path.set(event_target_value(&ev));
 							on_input_path.call((probe_port.get().clone(), event_target_value(&ev)));
 						})}
 						class="w-full"
 						placeholder={format!("Enter {} probe path", probe_type.as_str())}
 					/>
 				</div>
+
+				<Show
+					when={move ||
+						probe_value
+							.get()
+							.is_some()
+						// !probe_port.get().is_empty()
+					}
+				>
+					<div class="flex-1 flex items-start justify-center">
+						<Link
+							style_variant={LinkStyleVariant::Plain}
+							class="br-sm p-xs ml-md"
+							should_submit=false
+							on_click={Rc::new(move |ev| {
+								on_delete.call(ev.clone())
+							})}
+						>
+							<Icon
+								icon={IconType::Trash2}
+								color={Color::Error}
+								size={Size::Small}
+							/>
+						</Link>
+					</div>
+				</Show>
 			</div>
 		</div>
 	}

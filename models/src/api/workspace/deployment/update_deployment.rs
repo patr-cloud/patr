@@ -64,3 +64,42 @@ macros::declare_api_endpoint!(
 		pub volumes: Option<BTreeMap<Uuid, String>>,
 	}
 );
+
+impl UpdateDeploymentRequest {
+	/// Creates a new UpdateDeploymentRequest
+	pub const fn new() -> Self {
+		Self {
+			name: None,
+			ports: None,
+			machine_type: None,
+			deploy_on_push: None,
+			min_horizontal_scale: None,
+			max_horizontal_scale: None,
+			environment_variables: None,
+			liveness_probe: None,
+			startup_probe: None,
+			config_mounts: None,
+			runner: None,
+			volumes: None,
+		}
+	}
+
+	/// Returns true if all fields are None
+	pub fn is_none(&self) -> bool {
+		self.name
+			.as_ref()
+			.map(|_| 0)
+			.or(self.machine_type.as_ref().map(|_| 0))
+			.or(self.deploy_on_push.as_ref().map(|_| 0))
+			.or(self.runner.as_ref().map(|_| 0))
+			.or(self.min_horizontal_scale.as_ref().map(|_| 0))
+			.or(self.max_horizontal_scale.as_ref().map(|_| 0))
+			.or(self.ports.as_ref().map(|_| 0))
+			.or(self.environment_variables.as_ref().map(|_| 0))
+			.or(self.startup_probe.as_ref().map(|_| 0))
+			.or(self.liveness_probe.as_ref().map(|_| 0))
+			.or(self.config_mounts.as_ref().map(|_| 0))
+			.or(self.volumes.as_ref().map(|_| 0))
+			.is_none()
+	}
+}

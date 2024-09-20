@@ -98,7 +98,6 @@ pub fn delete_deployment_query(
 
 		let deployment_query = get_deployment_query();
 		let deployments_list_query = list_deployments_query();
-
 		async move {
 			let _ = deployment_query.cancel_query(deployment_id);
 			let _ = deployments_list_query.cancel_query(AllDeploymentsTag);
@@ -213,6 +212,47 @@ pub fn get_deployment_logs_query(
 		},
 		QueryOptions {
 			..Default::default()
+		},
+	)
+}
+
+/// Query to update a deployment, Returns an action to be dispatched on submit.
+pub fn udpdate_deployment_query() -> Action<
+	(Uuid, UpdateDeploymentRequest),
+	Result<UpdateDeploymentResponse, ServerFnError<ErrorType>>,
+> {
+	let (state, _) = AuthState::load();
+
+	let access_token = state.get().get_access_token();
+	let workspace_id = state.get().get_last_used_workspace_id();
+
+	create_action(
+		move |(deployment_id, request): &(Uuid, UpdateDeploymentRequest)| {
+			let request = request.clone();
+
+			let access_token = access_token.clone();
+			let deployment_id = deployment_id.clone();
+
+			let deployments_list_query = list_deployments_query();
+			let deployment_query = get_deployment_query();
+
+			async move {
+				let response = update_deployment(
+					access_token.clone(),
+					workspace_id,
+					Some(deployment_id),
+					request.clone(),
+				)
+				.await;
+
+				if response.is_ok() {
+					let _ = deployments_list_query.invalidate_query(AllDeploymentsTag);
+					let _ = deployment_query.cancel_query(deployment_id);
+					let _ = deployment_query.invalidate_query(deployment_id);
+				}
+
+				response
+			}
 		},
 	)
 }

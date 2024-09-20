@@ -86,12 +86,20 @@ pub fn SignUpForm() -> impl IntoView {
 			.await;
 
 			match response {
-				Ok(CreateAccountResponse {}) => {
-					use_navigate()(
-						&AppRoutes::LoggedOutRoute(LoggedOutRoute::Login).to_string(),
-						Default::default(),
-					);
-				}
+				Ok(CreateAccountResponse {}) => match app_type {
+					AppType::SelfHosted => {
+						use_navigate()(
+							&AppRoutes::LoggedOutRoute(LoggedOutRoute::Login).to_string(),
+							Default::default(),
+						);
+					}
+					AppType::Managed => {
+						use_navigate()(
+							&AppRoutes::LoggedInRoute(LoggedInRoute::Home).to_string(),
+							Default::default(),
+						);
+					}
+				},
 				Err(err) => {
 					handle_errors(err);
 				}

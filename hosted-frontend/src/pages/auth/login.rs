@@ -64,7 +64,10 @@ pub fn LoginForm() -> impl IntoView {
 					set_auth_state.set(Some(AuthState::LoggedIn {
 						access_token,
 						refresh_token,
-						last_used_workspace_id: Some(Uuid::nil()),
+						last_used_workspace_id: match app_type {
+							AppType::SelfHosted => Some(Uuid::nil()),
+							AppType::Managed => None,
+						},
 					}));
 					use_navigate()(
 						&AppRoutes::LoggedInRoute(LoggedInRoute::Home).to_string(),

@@ -25,7 +25,7 @@ pub async fn start_deployment(
 ) -> Result<AppResponse<StartDeploymentRequest>, ErrorType> {
 	trace!("Starting deployment: {}", deployment_id);
 
-	let (registry, image_name, image_tag) = query(
+	let _ = query(
 		r#"
 		SELECT 
 			registry,
@@ -34,7 +34,7 @@ pub async fn start_deployment(
 		FROM
 			deployment
 		WHERE
-			id = $1,
+			id = $1 AND
 			deleted IS NULL;
 		"#,
 	)

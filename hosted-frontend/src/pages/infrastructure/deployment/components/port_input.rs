@@ -88,11 +88,11 @@ pub fn PortInput(
 										.then(|| {
 											view! {
 												<div class="flex-6 flex items-center justify-center">
-													<div class="bg-secondary-light br-sm py-sm px-xl w-full flex justify-start items-center">
+													<div class="bg-secondary-light rounded-sm py-sm px-xl w-full flex justify-start items-center">
 														<a
 															href="https://onpatr.cloud"
 															target="_blank"
-															class="underline ml-sm flex justify-start items-center"
+															class="underline ml-sm w-full flex justify-between items-center"
 															rel="noreferrer"
 														>
 															<span class="text-ellipsis overflow-hidden w-[50ch]">

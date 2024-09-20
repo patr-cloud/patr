@@ -54,7 +54,8 @@ pub async fn get_deployment_info(
 		r#"
 		SELECT
 			name,
-			value
+			value,
+			secret_id
 		FROM
 			deployment_environment_variable
 		WHERE

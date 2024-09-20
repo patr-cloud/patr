@@ -86,7 +86,6 @@ pub async fn update_deployment(
 	.await?
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
-	// BEGIN DEFERRED CONSTRAINT
 	if let Some(ports) = ports {
 		if ports.is_empty() {
 			return Err(ErrorType::WrongParameters);
@@ -164,7 +163,7 @@ pub async fn update_deployment(
 					WHEN $6 IS NULL THEN
 						startup_probe_port_type
 					ELSE
-						'http'::EXPOSED_PORT_TYPE
+						'http'
 				END
 			),
 			liveness_probe_port = (
@@ -190,7 +189,7 @@ pub async fn update_deployment(
 					WHEN $8 IS NULL THEN
 						liveness_probe_port_type
 					ELSE
-						'http'::EXPOSED_PORT_TYPE
+						'http'
 				END
 			)
 		WHERE
