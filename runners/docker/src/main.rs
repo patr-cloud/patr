@@ -16,6 +16,7 @@ use bollard::{
 		StopContainerOptions,
 	},
 	image::CreateImageOptions,
+	secret::CreateImageInfo,
 	Docker,
 };
 use common::prelude::*;
@@ -136,7 +137,19 @@ impl RunnerExecutor for DockerRunner {
 			None,
 			None,
 		);
-		while pull_image.next().await.is_some() {}
+		while let Some(result) = pull_image.next().await {
+			match result {
+				Ok(CreateImageInfo {
+					status: Some(status),
+					..
+				}) => {
+					trace!("Image pull status: {}", status);
+				}
+				Err(err) => warn!("Unable to pull image: {}", err),
+				_ => (),
+			}
+		}
+		info!("Image updated");
 
 		let container = self
 			.docker
