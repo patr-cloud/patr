@@ -217,7 +217,7 @@ pub fn get_deployment_logs_query(
 }
 
 /// Query to update a deployment, Returns an action to be dispatched on submit.
-pub fn udpdate_deployment_query() -> Action<
+pub fn update_deployment_query() -> Action<
 	(Uuid, UpdateDeploymentRequest),
 	Result<UpdateDeploymentResponse, ServerFnError<ErrorType>>,
 > {

@@ -4,7 +4,7 @@ use ev::MouseEvent;
 use models::api::workspace::deployment::*;
 
 use super::{super::components::*, DeploymentInfoContext};
-use crate::{prelude::*, queries::udpdate_deployment_query};
+use crate::{prelude::*, queries::update_deployment_query};
 
 /// Details tab for a deployment
 #[component]
@@ -14,7 +14,7 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 
 	let update_deployment_body = create_rw_signal(UpdateDeploymentRequest::new());
 
-	let update_deployment_action = udpdate_deployment_query();
+	let update_deployment_action = update_deployment_query();
 
 	let on_click_submit = move |ev: MouseEvent| {
 		ev.prevent_default();
