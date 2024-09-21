@@ -14,10 +14,12 @@ pub enum AppType {
 }
 
 impl AppType {
+	/// Returns true if the frontend is running on a managed instance
 	pub fn is_managed(&self) -> bool {
 		matches!(self, AppType::Managed)
 	}
 
+	/// Returns true if the frontend is running on a self-hosted instance
 	pub fn is_self_hosted(&self) -> bool {
 		matches!(self, AppType::SelfHosted)
 	}

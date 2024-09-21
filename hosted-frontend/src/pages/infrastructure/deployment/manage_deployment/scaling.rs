@@ -1,7 +1,6 @@
 use leptos_query::QueryResult;
 use models::api::workspace::deployment::ListAllDeploymentMachineTypeResponse;
 
-use super::{super::components::*, DeploymentInfoContext};
 use crate::{
 	prelude::*,
 	queries::{list_machines_query, AllMachinesTag},
@@ -10,7 +9,6 @@ use crate::{
 /// The Scaling page of the deployment management page.
 #[component]
 pub fn ManageDeploymentScaling() -> impl IntoView {
-	let deployment_info = expect_context::<DeploymentInfoContext>().0;
 	let app_type = expect_context::<AppType>();
 
 	let QueryResult {

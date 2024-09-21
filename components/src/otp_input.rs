@@ -28,30 +28,20 @@ pub fn OtpInput(
 	);
 
 	let otp_arr = Signal::derive(move || {
-		let mut otp_arr = vec!["".to_string(); 6];
-
-		for i in 0..length {
-			let val = otp
-				.get()
-				.chars()
-				.nth(i)
-				.map(|char| char.to_string())
-				.unwrap_or_else(|| "".to_string());
-
-			otp_arr[i] = val;
-		}
-
-		otp_arr
+		(0..length)
+			.map(|i| {
+				otp.get()
+					.chars()
+					.nth(i)
+					.map(|char| char.to_string())
+					.unwrap_or_default()
+			})
+			.collect::<Vec<_>>()
 	});
 
 	let handle_input = move |_: Event, index: usize| {
 		let value = input_refs.with_value(|refs| {
-			if let Some(x) = refs
-				.get(index)
-				.map(|x| x.get())
-				.flatten()
-				.map(|x| x.value())
-			{
+			if let Some(x) = refs.get(index).and_then(|x| x.get()).map(|x| x.value()) {
 				x
 			} else {
 				"".to_owned()
@@ -89,8 +79,7 @@ pub fn OtpInput(
 				if let Some(x) = input_refs
 					.clone()
 					.get(index + 1)
-					.map(|node| node.get())
-					.flatten()
+					.and_then(|node| node.get())
 				{
 					let _ = x.focus();
 				}
@@ -121,8 +110,7 @@ pub fn OtpInput(
 					if let Some(x) = input_refs
 						.clone()
 						.get(index - 1)
-						.map(|node| node.get())
-						.flatten()
+						.and_then(|node| node.get())
 					{
 						let _ = x.focus();
 					}
@@ -135,14 +123,14 @@ pub fn OtpInput(
 		<div class={class}>
 			{
 				move || otp_arr.get().iter().enumerate().map(|(i, c)| {
-					let i_ref = input_refs.with_value(|refs| refs.get(i).unwrap().to_owned());
+					let _ref = input_refs.with_value(|refs| refs.get(i).unwrap().to_owned());
 
 					view! {
 						<div
 							class="full-width fr-ct-ct gap-xs"
 						>
 							<input
-								_ref={i_ref}
+								_ref={_ref}
 								class="full-width px-xxs txt-center row-card br-sm txt-white txt-lg outline-primary-focus bg-secondary-light"
 								type="number"
 								placeholder="0"

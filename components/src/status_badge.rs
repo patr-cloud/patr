@@ -122,11 +122,7 @@ pub fn StatusBadge(
 				if let Some(status) = status.get() {
 					status.get_status_text().to_owned()
 				} else {
-					if let Some(text) = text.get() {
-						text
-					} else {
-						"".to_string()
-					}
+					text.get().unwrap_or_default()
 				}
 			}
 		</span>

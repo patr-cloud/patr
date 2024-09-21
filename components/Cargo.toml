@@ -16,17 +16,19 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 axum-extra = { workspace = true, features = ["typed-routing"] }
+log = { workspace = true, features = [] }
+models = { workspace = true, features = [] }
 serde = { workspace = true, features = ["default", "derive"] }
 serde_json = { workspace = true, features = ["default"] }
-models = { workspace = true, features = [] }
 serde_urlencoded = { workspace = true, features = [] }
 tracing = { workspace = true, features = ["attributes"] }
 web-sys = { workspace = true, features = [
     "MouseEvent",
     "HtmlInputElement",
     "HtmlElement",
+    "DomRect",
+    "Element",
 ] }
-log = { workspace = true, features = [] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 leptos = { workspace = true, features = ["tracing", "hydrate"] }

@@ -4,6 +4,7 @@ use leptos::component;
 
 use crate::imports::*;
 
+/// The skeleton for the runner component in the runner list.
 #[component]
 pub fn RunnerSkeleton() -> impl IntoView {
 	view! {

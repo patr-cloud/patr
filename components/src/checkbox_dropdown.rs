@@ -103,7 +103,7 @@ pub fn CheckboxDropdown(
 									class="text-left flex justify-start items-center cursor-pointer w-full h-full px-xl py-sm"
 								>
 									<input type="checkbox" class="ml-md mr-sm checkbox-sm" checked={
-										value.get().iter().any(|e| e.to_owned() == child.id.clone())
+										value.get().iter().any(|e| *e == child.id)
 									} />
 									<span>{child.label}</span>
 								</label>
