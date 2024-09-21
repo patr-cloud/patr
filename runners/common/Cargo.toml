@@ -37,11 +37,11 @@ sqlx = { workspace = true, features = [
 	"sqlite",
 ] }
 time = { workspace = true, features = ["default", "serde-human-readable"] }
-tower = { workspace = true }
-tower-http = { workspace = true, features = ["fs"] }
 tokio = { workspace = true, features = ["full"] }
 tokio-stream = { workspace = true, features = ["default", "sync"] }
 tokio-tungstenite = { workspace = true, features = ["default"] }
+tower = { workspace = true }
+tower-http = { workspace = true, features = ["fs"] }
 tracing = { workspace = true, features = ["default", "async-await"] }
 tracing-log = { workspace = true, features = ["default"] }
 tracing-opentelemetry = { workspace = true, features = ["default"] }
