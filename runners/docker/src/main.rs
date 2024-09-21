@@ -5,9 +5,6 @@
 //! incoming WebSocket connections from the Patr API. The runner is responsible
 //! for creating, updating, and deleting deployments in the given runner.
 
-/// The configuration for the runner.
-mod config;
-
 use std::{collections::HashMap, time::Duration};
 
 use bollard::{
@@ -24,6 +21,12 @@ use bollard::{
 use common::prelude::*;
 use futures::{Stream, StreamExt};
 use models::api::workspace::deployment::*;
+use serde::{Deserialize, Serialize};
+
+/// The configuration for the runner.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RunnerSettings {}
 
 /// A Patr runner that uses Docker to run deployments.
 #[derive(Debug, Clone)]
@@ -33,7 +36,7 @@ struct DockerRunner {
 }
 
 impl RunnerExecutor for DockerRunner {
-	type Settings = config::RunnerSettings;
+	type Settings = RunnerSettings;
 
 	const RUNNER_INTERNAL_NAME: &'static str = env!("CARGO_CRATE_NAME");
 
