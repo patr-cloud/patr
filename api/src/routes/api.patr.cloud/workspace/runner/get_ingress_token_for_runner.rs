@@ -4,30 +4,30 @@ use rustis::commands::StringCommands;
 
 use crate::prelude::*;
 
-pub async fn get_runner_info(
+pub async fn get_ingress_token_for_runner(
 	AuthenticatedAppRequest {
 		request:
 			ProcessedApiRequest {
-				path: GetRunnerInfoPath {
+				path: GetIngressTokenForRunnerPath {
 					workspace_id,
 					runner_id,
 				},
 				query: (),
 				headers:
-					GetRunnerInfoRequestHeaders {
+					GetIngressTokenForRunnerRequestHeaders {
 						authorization: _,
 						user_agent: _,
 					},
-				body: GetRunnerInfoRequestProcessed,
+				body: GetIngressTokenForRunnerRequestProcessed,
 			},
 		database,
 		redis,
 		client_ip: _,
 		config: _,
 		user_data: _,
-	}: AuthenticatedAppRequest<'_, GetRunnerInfoRequest>,
-) -> Result<AppResponse<GetRunnerInfoRequest>, ErrorType> {
-	info!("Getting information about the runner `{runner_id}`");
+	}: AuthenticatedAppRequest<'_, GetIngressTokenForRunnerRequest>,
+) -> Result<AppResponse<GetIngressTokenForRunnerRequest>, ErrorType> {
+	info!("Getting ingress token for runner `{runner_id}`");
 
 	let runner = query!(
 		r#"
@@ -47,22 +47,10 @@ pub async fn get_runner_info(
 	.await?
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
-	let connected = redis
-		.get::<_, Option<String>>(redis::keys::runner_connection_lock(&runner_id))
-		.await?
-		.is_some();
+	// TODO get token from cloudflare
 
 	AppResponse::builder()
-		.body(GetRunnerInfoResponse {
-			runner: WithId::new(
-				runner_id,
-				Runner {
-					name: runner.name,
-					connected,
-					last_seen: None, // TODO
-				},
-			),
-		})
+		.body(GetIngressTokenForRunnerResponse { token: todo!() })
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
