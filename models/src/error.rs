@@ -90,6 +90,8 @@ pub enum ErrorType {
 	RoleInUse,
 	/// Another instance of the same runner ID is already connected
 	RunnerAlreadyConnected,
+	/// The operation is not allowed in the current runner mode
+	InvalidRunnerMode,
 }
 
 impl ErrorType {
@@ -132,6 +134,7 @@ impl ErrorType {
 			Self::ApiTokenAlreadyExists => StatusCode::CONFLICT,
 			Self::RoleInUse => StatusCode::CONFLICT,
 			Self::RunnerAlreadyConnected => StatusCode::CONFLICT,
+			Self::InvalidRunnerMode => StatusCode::FORBIDDEN,
 		}
 	}
 
@@ -179,6 +182,7 @@ impl ErrorType {
 			Self::ApiTokenAlreadyExists => "An API token with that name already exists",
 			Self::RoleInUse => "The role is currently assigned to users and cannot be deleted",
 			Self::RunnerAlreadyConnected => "Another instance of the same runner ID is already connected",
+			Self::InvalidRunnerMode => "That operation is not allowed in the mode the runner is currently in",
 		}
 	}
 

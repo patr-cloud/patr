@@ -18,7 +18,7 @@ pub fn CreateDeployment() -> impl IntoView {
 	let app_type = expect_context::<AppType>();
 	let deployment_info = create_rw_signal(DeploymentInfo {
 		name: None,
-		registry_name: Some("docker".to_string()),
+		registry_name: Some("docker.io".to_string()),
 		image_tag: None,
 		image_name: None,
 		runner_id: match app_type {

@@ -16,6 +16,7 @@ use bollard::{
 		StopContainerOptions,
 	},
 	image::CreateImageOptions,
+	secret::CreateImageInfo,
 	Docker,
 };
 use common::prelude::*;
@@ -26,7 +27,7 @@ use serde::{Deserialize, Serialize};
 /// The configuration for the runner.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RunnerSettings {}
+pub struct DockerSettings {}
 
 /// A Patr runner that uses Docker to run deployments.
 #[derive(Debug, Clone)]
@@ -36,9 +37,14 @@ struct DockerRunner {
 }
 
 impl RunnerExecutor for DockerRunner {
-	type Settings = RunnerSettings;
+	type Settings = DockerSettings;
 
 	const RUNNER_INTERNAL_NAME: &'static str = env!("CARGO_CRATE_NAME");
+
+	async fn create(_: &RunnerSettings<Self::Settings>) -> Self {
+		let docker = Docker::connect_with_local_defaults().unwrap();
+		Self { docker }
+	}
 
 	#[allow(unused_variables)]
 	async fn upsert_deployment(
@@ -113,6 +119,7 @@ impl RunnerExecutor for DockerRunner {
 				})?;
 		}
 
+		info!("Pulling latest image...");
 		let mut pull_image = self.docker.create_image(
 			Some(CreateImageOptions {
 				from_image: format!(
@@ -130,7 +137,19 @@ impl RunnerExecutor for DockerRunner {
 			None,
 			None,
 		);
-		while pull_image.next().await.is_some() {}
+		while let Some(result) = pull_image.next().await {
+			match result {
+				Ok(CreateImageInfo {
+					status: Some(status),
+					..
+				}) => {
+					trace!("Image pull status: {}", status);
+				}
+				Err(err) => warn!("Unable to pull image: {}", err),
+				_ => (),
+			}
+		}
+		info!("Image updated");
 
 		let container = self
 			.docker
@@ -200,6 +219,7 @@ impl RunnerExecutor for DockerRunner {
 				error!("Error creating container: {:?}", err);
 				Duration::from_secs(5)
 			})?;
+		info!("Container created");
 
 		self.docker
 			.start_container::<String>(&container.id, None)
@@ -208,12 +228,13 @@ impl RunnerExecutor for DockerRunner {
 				error!("Error starting container: {:?}", err);
 				Duration::from_secs(5)
 			})?;
+		info!("Container started");
 
 		Ok(())
 	}
 
 	async fn list_running_deployments<'a>(&self) -> impl Stream<Item = Uuid> + 'a {
-		let Ok(containers) = self
+		let Ok(mut containers) = self
 			.docker
 			.list_containers(Some(ListContainersOptions::<String> {
 				filters: HashMap::new(),
@@ -227,6 +248,21 @@ impl RunnerExecutor for DockerRunner {
 		else {
 			return futures::stream::empty().boxed();
 		};
+		containers.sort_by(|a, b| {
+			let a = a.labels.as_ref().and_then(|labels| {
+				labels
+					.get("patr.deploymentId")
+					.and_then(|value| Uuid::parse_str(value).ok())
+			});
+			let b = b.labels.as_ref().and_then(|labels| {
+				labels
+					.get("patr.deploymentId")
+					.and_then(|value| Uuid::parse_str(value).ok())
+			});
+
+			a.cmp(&b)
+		});
+
 		futures::stream::iter(containers.into_iter().filter_map(|container| {
 			container
 				.labels
@@ -278,8 +314,5 @@ impl RunnerExecutor for DockerRunner {
 
 #[tokio::main]
 async fn main() {
-	Runner::run(DockerRunner {
-		docker: Docker::connect_with_local_defaults().unwrap(),
-	})
-	.await;
+	Runner::<DockerRunner>::run().await;
 }

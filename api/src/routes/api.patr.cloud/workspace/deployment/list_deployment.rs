@@ -3,6 +3,8 @@ use models::{api::workspace::deployment::*, utils::TotalCountHeader};
 
 use crate::prelude::*;
 
+/// The handler to list all deployments in the workspace. This will return
+/// all the deployments in the workspace.
 pub async fn list_deployment(
 	AuthenticatedAppRequest {
 		request:

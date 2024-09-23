@@ -1,6 +1,7 @@
 use std::{
 	fmt::{Display, Formatter},
 	net::SocketAddr,
+	str::FromStr,
 };
 
 use config::{Config, ConfigError, Environment, File};
@@ -11,65 +12,23 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RunnerSettings<D> {
-	/// The workspace ID to connect the runner for.
-	#[serde(rename = "workspaceid")]
-	pub workspace_id: Uuid,
-	/// The runner ID to connect the runner for.
-	#[serde(rename = "runnerid")]
-	pub runner_id: Uuid,
-	/// The API token to authenticate the runner with.
-	#[serde(rename = "apitoken")]
-	pub api_token: String,
+	/// The mode the runner is running in. This will determine if the runner is
+	/// running in self-hosted mode or managed mode (connecting to the Patr
+	/// server).
+	#[serde(flatten)]
+	pub mode: RunnerMode,
 	/// The environment the application is running in. This is set at runtime
 	/// based on an environment variable and if the application is compiled with
 	/// debug mode.
 	pub environment: RunningEnvironment,
 	/// The configuration for the database to connect to
 	pub database: DatabaseConfig,
-	/// The address to listed on
-	#[serde(alias = "webbindaddress")]
-	pub web_bind_address: SocketAddr,
-	/// The Pepper used to hash passwords
-	#[serde(alias = "passwordpepper")]
-	pub password_pepper: String,
-	/// The secret used to sign JWTs
-	#[serde(alias = "jwtsecret")]
-	pub jwt_secret: String,
+	/// The address to listen on
+	#[serde(alias = "bindaddress")]
+	pub bind_address: SocketAddr,
 	/// Additional settings for the runner.
 	#[serde(flatten)]
 	pub data: D,
-}
-
-impl<D> RunnerSettings<D> {
-	/// Convert the the runner settings into a base runner setting, with the
-	/// additional data as [`()`]. This allows the settings to be parsed and
-	/// used internally in the common runner library without regard for the
-	/// specific runner settings.
-	pub fn into_base(self) -> RunnerSettings<()> {
-		let RunnerSettings {
-			workspace_id,
-			runner_id,
-			api_token,
-			environment,
-			database,
-			web_bind_address,
-			password_pepper,
-			jwt_secret,
-			data: _,
-		} = self;
-
-		RunnerSettings::<()> {
-			workspace_id,
-			runner_id,
-			api_token,
-			environment,
-			database,
-			web_bind_address,
-			password_pepper,
-			jwt_secret,
-			data: (),
-		}
-	}
 }
 
 impl<'de, D> RunnerSettings<D>
@@ -108,6 +67,86 @@ where
 		.build()?
 		.try_deserialize()
 	}
+
+	/// Convert the the runner settings into a base runner setting, with the
+	/// additional data as [`()`]. This allows the settings to be parsed and
+	/// used internally in the common runner library without regard for the
+	/// specific runner settings.
+	#[instrument(skip(self))]
+	pub fn into_base(self) -> RunnerSettings<()> {
+		let RunnerSettings {
+			mode,
+			environment,
+			database,
+			bind_address,
+			data: _,
+		} = self;
+
+		RunnerSettings::<()> {
+			mode,
+			environment,
+			database,
+			bind_address,
+			data: (),
+		}
+	}
+}
+
+/// The mode the runner is running in. This will determine if the runner is
+/// running in self-hosted mode or managed mode (connecting to the Patr server).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "mode")]
+pub enum RunnerMode {
+	/// This runner is running in self-hosted mode. This means that the runner
+	/// will run all deployments on the runner itself.
+	#[serde(rename_all = "camelCase")]
+	SelfHosted {
+		/// The Pepper used to hash passwords
+		#[serde(alias = "passwordpepper")]
+		password_pepper: String,
+		/// The secret used to sign JWTs
+		#[serde(alias = "jwtsecret")]
+		jwt_secret: String,
+	},
+	/// This runner is running in managed mode. This means that the runner will
+	/// connect to the Patr server to get the deployments to run.
+	#[serde(rename_all = "camelCase")]
+	Managed {
+		/// The workspace ID to connect the runner for.
+		#[serde(alias = "workspaceid")]
+		workspace_id: Uuid,
+		/// The runner ID to connect the runner for.
+		#[serde(alias = "runnerid")]
+		runner_id: Uuid,
+		/// The bearer token for the runner to access the API
+		#[serde(alias = "apitoken")]
+		api_token: BearerToken,
+		/// The user agent that the runner uses to access the API
+		#[serde(skip, default = "get_user_agent")]
+		user_agent: UserAgent,
+	},
+}
+
+impl RunnerMode {
+	/// Check if the runner is running in self-hosted mode
+	pub fn is_self_hosted(&self) -> bool {
+		matches!(self, RunnerMode::SelfHosted { .. })
+	}
+
+	/// Check if the runner is running in managed mode
+	pub fn is_managed(&self) -> bool {
+		matches!(self, RunnerMode::Managed { .. })
+	}
+}
+
+/// Get the user agent for the runner
+fn get_user_agent() -> UserAgent {
+	UserAgent::from_str(concat!(
+		env!("CARGO_PKG_NAME"),
+		"/",
+		env!("CARGO_PKG_VERSION"),
+	))
+	.expect("Failed to parse user agent as valid header")
 }
 
 /// The environment the application is running in

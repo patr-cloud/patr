@@ -28,9 +28,10 @@ where
 	}
 }
 
-/// This struct represents a preprocessed request to the API. It contains the
-/// path, query, headers and preprocessed body of the request. This struct
-/// provides a builder API to make it easier to construct requests.
+/// This struct represents a preprocessed request to the API.
+///
+/// It contains the path, query, headers and preprocessed body of the request.
+/// This struct provides a builder API to make it easier to construct requests.
 #[derive(TypedBuilder)]
 pub struct ProcessedApiRequest<E>
 where

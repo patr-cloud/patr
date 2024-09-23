@@ -1,12 +1,14 @@
 use std::{future::Future, time::Duration};
 
 use futures::Stream;
-use models::{api::workspace::deployment::*, prelude::*};
+use models::api::workspace::deployment::*;
 use serde::{de::DeserializeOwned, Serialize};
+
+use crate::prelude::*;
 
 /// This trait is the main trait that the runner needs to implement to run the
 /// resources.
-pub trait RunnerExecutor {
+pub trait RunnerExecutor: Sized {
 	/// The reconciliation interval for the runner. This is the interval at
 	/// which the runner will reconcile ALL the resources with the server. The
 	/// default is 10 minutes.
@@ -19,6 +21,11 @@ pub trait RunnerExecutor {
 	/// The settings type for the runner. This is used to store any additional
 	/// settings needed for the runner.
 	type Settings: Serialize + DeserializeOwned + Clone + Send + Sync;
+
+	/// This function is called when the runner is constructed. This is where
+	/// the runner should initialize any resources it needs to run the
+	/// deployments.
+	fn create(settings: &RunnerSettings<Self::Settings>) -> impl Future<Output = Self>;
 
 	/// This function is called when a deployment is created, or updated.
 	/// The runner should return an error with a duration if the deployment
@@ -36,6 +43,6 @@ pub trait RunnerExecutor {
 	fn delete_deployment(&self, deployment_id: Uuid) -> impl Future<Output = Result<(), Duration>>;
 
 	/// This function should return a stream of all the running deployment IDs
-	/// in the runner.
+	/// in the runner, sorted by the deployment ID.
 	fn list_running_deployments<'a>(&self) -> impl Future<Output = impl Stream<Item = Uuid> + 'a>;
 }

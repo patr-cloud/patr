@@ -19,6 +19,7 @@
         "INET",
         "intstr",
         "jsonwebtoken",
+        "JWT",
         "kubeconfig",
         "leptos",
         "middlewares",

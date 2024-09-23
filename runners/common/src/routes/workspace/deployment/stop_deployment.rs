@@ -3,6 +3,8 @@ use models::{api::workspace::deployment::*, prelude::*};
 
 use crate::prelude::*;
 
+/// The handler to stop a deployment. This will stop the deployment. In case the
+/// deployment is already stopped, it will do nothing.
 pub async fn stop_deployment(
 	AppRequest {
 		request:

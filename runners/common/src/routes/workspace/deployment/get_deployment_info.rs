@@ -5,6 +5,8 @@ use models::api::workspace::deployment::*;
 
 use crate::prelude::*;
 
+/// The handler to get the deployment info. This will return the deployment
+/// details for the given deployment ID.
 pub async fn get_deployment_info(
 	AppRequest {
 		request:
@@ -70,7 +72,7 @@ pub async fn get_deployment_info(
 		let name = env.try_get::<String, _>("name")?;
 		let value = env
 			.try_get::<Option<String>, _>("value")?
-			.map(|val| EnvironmentVariableValue::String(val));
+			.map(EnvironmentVariableValue::String);
 
 		let secret_id = env
 			.try_get::<Option<Uuid>, _>("secret_id")?
@@ -106,9 +108,7 @@ pub async fn get_deployment_info(
 	.into_iter()
 	.map(|row| {
 		let path = row.try_get::<String, _>("path")?;
-		let file = row
-			.try_get::<Vec<u8>, _>("file")
-			.map(|file| Base64String::from(file))?;
+		let file = row.try_get::<Vec<u8>, _>("file").map(Base64String::from)?;
 
 		Ok((path, file))
 	})
@@ -188,16 +188,9 @@ pub async fn get_deployment_info(
 					name,
 					image_tag,
 					status,
-					registry: if registry == PatrRegistry.to_string() {
-						DeploymentRegistry::PatrRegistry {
-							registry: PatrRegistry,
-							repository_id: Uuid::nil(),
-						}
-					} else {
-						DeploymentRegistry::ExternalRegistry {
-							registry,
-							image_name,
-						}
+					registry: DeploymentRegistry::ExternalRegistry {
+						registry,
+						image_name,
 					},
 					// WARN: This is a dummy runner ID, as there is no runner-id in self-hosted PATR
 					runner: Uuid::nil(),

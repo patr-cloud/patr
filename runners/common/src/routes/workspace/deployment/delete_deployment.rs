@@ -1,11 +1,10 @@
 use axum::http::StatusCode;
-use models::api::workspace::deployment::*;
+use models::api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg};
 
 use crate::prelude::*;
 
-/// The handler to delete a deployment in the workspace. This will delete the
-/// deployment from the workspace, and remove all resources associated with the
-/// deployment.
+/// The handler to delete a deployment. This will delete the deployment, and
+/// remove all resources associated with the deployment.
 pub async fn delete_deployment(
 	AppRequest {
 		request:
@@ -40,6 +39,8 @@ pub async fn delete_deployment(
 	.execute(&mut **database)
 	.await?;
 
+	trace!("Environment variables deleted");
+
 	query(
 		r#"
 		DELETE FROM
@@ -52,17 +53,21 @@ pub async fn delete_deployment(
 	.execute(&mut **database)
 	.await?;
 
-	query(
-		r#"
-		DELETE FROM
-			deployment_deploy_history
-		WHERE
-			deployment_id = $1;
-		"#,
-	)
-	.bind(deployment_id)
-	.execute(&mut **database)
-	.await?;
+	trace!("Config mounts deleted");
+
+	// query(
+	// 	r#"
+	// 	DELETE FROM
+	// 		deployment_deploy_history
+	// 	WHERE
+	// 		deployment_id = $1;
+	// 	"#,
+	// )
+	// .bind(deployment_id)
+	// .execute(&mut **database)
+	// .await?;
+
+	// trace!("Deploy history deleted");
 
 	query(
 		r#"
@@ -75,6 +80,8 @@ pub async fn delete_deployment(
 	.bind(deployment_id)
 	.execute(&mut **database)
 	.await?;
+
+	trace!("Exposed ports deleted");
 
 	// Delete the deployment in the database
 	query(
@@ -92,6 +99,20 @@ pub async fn delete_deployment(
 		sqlx::Error::Database(err) if err.is_foreign_key_violation() => ErrorType::ResourceInUse,
 		err => ErrorType::server_error(err),
 	})?;
+
+	trace!("Deployment deleted");
+
+	crate::runner::RUNNER_CHANGES_SENDER
+		.get()
+		.expect("Runner changes sender not set")
+		.read()
+		.await
+		.send(Ok(
+			StreamRunnerDataForWorkspaceServerMsg::DeploymentDeleted { id: deployment_id },
+		))
+		.expect("Failed to send deployment created message");
+
+	trace!("Changes sent to runner");
 
 	AppResponse::builder()
 		.body(DeleteDeploymentResponse)

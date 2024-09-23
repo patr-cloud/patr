@@ -2,7 +2,8 @@ use axum::Router;
 
 use crate::prelude::*;
 
-mod deployment;
+/// All deployment related handlers
+pub mod deployment;
 
 #[instrument(skip(state))]
 pub async fn setup_routes<E>(state: &AppState<E>) -> Router

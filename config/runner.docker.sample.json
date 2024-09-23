@@ -1,10 +1,11 @@
 {
-  "webBindAddress": "127.0.0.1:4000",
+  "bindAddress": "127.0.0.1:4000",
   "workspaceId": "workspaceId",
   "runnerId": "runnerId",
   "apiToken": "apiToken",
   "passwordPepper": "keyboard cat",
   "jwtSecret": "keyboard cat",
+  "mode": "selfHosted",
   "database": {
     "file": "data.db",
     "connectionLimit": 5

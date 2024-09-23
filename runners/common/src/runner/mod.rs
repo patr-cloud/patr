@@ -1,19 +1,22 @@
-use std::{future::IntoFuture, net::SocketAddr, pin::pin, str::FromStr};
+use std::{future::IntoFuture, net::SocketAddr, pin::pin, sync::OnceLock};
 
 use futures::{
 	future::{self, BoxFuture, Either},
+	stream::BoxStream,
 	FutureExt,
 	StreamExt,
 };
-use models::{
-	api::workspace::{deployment::*, runner::*},
-	rbac::ResourceType,
-};
+use models::{api::workspace::runner::*, rbac::ResourceType};
 use tokio::{
 	net::TcpListener,
+	sync::{
+		mpsc::{unbounded_channel, UnboundedSender},
+		RwLock,
+	},
 	task,
-	time::{self, Duration, Instant},
+	time::{self, Duration},
 };
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use tracing::{level_filters::LevelFilter, Dispatch, Level};
 use tracing_subscriber::{
 	fmt::{format::FmtSpan, Layer as FmtLayer},
@@ -22,6 +25,16 @@ use tracing_subscriber::{
 };
 
 use crate::{db, prelude::*, utils::delayed_future::DelayedFuture};
+
+/// All deployment related functions for the runner
+mod deployment;
+
+/// The global sender for the runner changes. This is used to send changes to
+/// the runner when a resource is created, updated, or deleted. Ideally, this
+/// would be automatically done by some sort of an audit log layer.
+pub(crate) static RUNNER_CHANGES_SENDER: OnceLock<
+	RwLock<UnboundedSender<Result<StreamRunnerDataForWorkspaceServerMsg, ErrorType>>>,
+> = OnceLock::new();
 
 /// The runner is the main struct that is used to run the resources.
 ///
@@ -43,10 +56,10 @@ where
 	/// The future that will resolve to the next resource that needs to be
 	/// reconciled
 	next_reconcile_future: BoxFuture<'static, Uuid>,
-	/// The bearer token for the runner to access the API
-	authorization: BearerToken,
-	/// The user agent that the runner uses to access the API
-	user_agent: UserAgent,
+	/// The stream that will receive changes from the server for the runner when
+	/// a resource is created, updated, or deleted.
+	runner_changes_receiver:
+		Option<UnboundedReceiverStream<Result<StreamRunnerDataForWorkspaceServerMsg, ErrorType>>>,
 }
 
 impl<E> Runner<E>
@@ -58,18 +71,13 @@ where
 	/// the runner, then start the runner and run the resources that the runner
 	/// is responsible for. This function will run forever until the runner is
 	/// stopped.
-	pub async fn run(executor: E) {
-		let mut runner = Self::init(executor).await;
-
-		let workspace_id = runner.state.config.workspace_id;
-		let runner_id = runner.state.config.runner_id;
+	pub async fn run() {
+		let mut runner = Self::init().await;
 
 		// Run the server here
 		let state = runner.state.clone();
-		let _server_task = task::spawn(async move {
-			let tcp_listener = TcpListener::bind(state.config.web_bind_address)
-				.await
-				.unwrap();
+		let server_task = task::spawn(async move {
+			let tcp_listener = TcpListener::bind(state.config.bind_address).await.unwrap();
 
 			info!(
 				"Listening for connections on {}",
@@ -85,8 +93,7 @@ where
 			.with_graceful_shutdown(exit_signal())
 			.await
 			.unwrap();
-		})
-		.await;
+		});
 
 		info!("Runner started");
 
@@ -96,22 +103,19 @@ where
 		info!("Connecting to the server");
 		// Connect to the server infinitely until the exit signal is received
 		'main: loop {
+			// Initialize the runner changes receiver
+			let (sender, receiver) = unbounded_channel();
+			runner.runner_changes_receiver = Some(UnboundedReceiverStream::new(receiver));
+			let mut global_sender = RUNNER_CHANGES_SENDER
+				.get_or_init(|| RwLock::new(sender.clone()))
+				.write()
+				.await;
+			*global_sender = sender;
+			drop(global_sender);
+
 			let Some(response) = futures::future::select(
 				&mut exit_signal,
-				Box::pin(client::stream_request(
-					ApiRequest::<StreamRunnerDataForWorkspaceRequest>::builder()
-						.path(StreamRunnerDataForWorkspacePath {
-							workspace_id,
-							runner_id,
-						})
-						.headers(StreamRunnerDataForWorkspaceRequestHeaders {
-							authorization: runner.authorization.clone(),
-							user_agent: runner.user_agent.clone(),
-						})
-						.query(())
-						.body(Default::default())
-						.build(),
-				)),
+				pin!(runner.get_update_resources_stream()),
 			)
 			.await
 			.into_right() else {
@@ -224,15 +228,17 @@ where
 		}
 
 		info!("Runner stopped. Waiting for server to exit");
-		// _ = server_task.await;
+		_ = server_task.await;
 		info!("Server exited. Exiting runner...");
 	}
 
 	/// Initialize the runner. This function will create a new database
 	/// connection pool and set up the global default subscriber for the runner.
-	async fn init(executor: E) -> Self {
+	async fn init() -> Self {
 		let config = RunnerSettings::<E::Settings>::parse(E::RUNNER_INTERNAL_NAME)
 			.expect("Failed to parse settings");
+
+		let executor = E::create(&config).await;
 
 		tracing::dispatcher::set_global_default(Dispatch::new(
 			tracing_subscriber::registry().with(
@@ -262,14 +268,6 @@ where
 		))
 		.expect("Failed to set global default subscriber");
 
-		let authorization =
-			BearerToken::from_str(&config.api_token).expect("Failed to parse API token");
-		let user_agent = UserAgent::from_str(concat!(
-			env!("CARGO_PKG_NAME"),
-			"/",
-			env!("CARGO_PKG_VERSION"),
-		))
-		.expect("Failed to parse user agent as valid header");
 		let reconciliation_list = Vec::new();
 		let next_reconcile_future = future::pending().boxed();
 
@@ -286,8 +284,7 @@ where
 			state,
 			reconciliation_list,
 			next_reconcile_future,
-			authorization,
-			user_agent,
+			runner_changes_receiver: None,
 		}
 	}
 
@@ -297,162 +294,6 @@ where
 	async fn reconcile_all(&mut self) {
 		// Reconcile all resources
 		self.reconcile_all_deployments().await;
-	}
-
-	/// Reconcile all the deployments that the runner is responsible for. This
-	/// function will run the reconciliation for all the deployments that the
-	/// runner is responsible for.
-	async fn reconcile_all_deployments(&mut self) {
-		// Reconcile all deployments
-		info!("Reconciling all deployments");
-
-		// Update running deployments
-		let mut should_run_deployments = vec![];
-
-		loop {
-			trace!(
-				"Fetching deployments {} to {}",
-				should_run_deployments.len(),
-				should_run_deployments.len() + Paginated::<()>::DEFAULT_PAGE_SIZE
-			);
-			let Ok(response) = client::make_request(
-				ApiRequest::<ListDeploymentRequest>::builder()
-					.path(ListDeploymentPath {
-						workspace_id: self.state.config.workspace_id,
-					})
-					.headers(ListDeploymentRequestHeaders {
-						authorization: self.authorization.clone(),
-						user_agent: self.user_agent.clone(),
-					})
-					.query(Paginated {
-						data: (),
-						count: Paginated::<()>::DEFAULT_PAGE_SIZE,
-						page: should_run_deployments.len() / Paginated::<()>::DEFAULT_PAGE_SIZE,
-					})
-					.body(ListDeploymentRequest)
-					.build(),
-			)
-			.await
-			.inspect_err(|err| {
-				debug!("Failed to get deployment list: {:?}", err);
-				warn!("Using the pre-existing list");
-			}) else {
-				let Ok(deployments) = self.get_all_local_deployments().await else {
-					return;
-				};
-				should_run_deployments = deployments;
-				break;
-			};
-
-			should_run_deployments.extend(
-				response
-					.body
-					.deployments
-					.into_iter()
-					.map(|deployment| deployment.id)
-					.collect::<Vec<_>>(),
-			);
-
-			if response.headers.total_count.0 <= should_run_deployments.len() {
-				break;
-			}
-		}
-
-		let mut running_deployments = pin!(self.executor.list_running_deployments().await);
-
-		while let Some(deployment_id) = running_deployments.next().await {
-			let deployment = should_run_deployments
-				.iter()
-				.find(|&&id| deployment_id == id);
-
-			// If the deployment does not exist in the should run list, delete it
-			let Some(&deployment_id) = deployment else {
-				trace!(
-					"Deployment `{}` does not exist in the should run list",
-					deployment_id
-				);
-				info!("Deleting deployment `{}`", deployment_id);
-
-				if let Err(wait_time) = self.executor.delete_deployment(deployment_id).await {
-					self.reconciliation_list.push(DelayedFuture::new(
-						Instant::now() + wait_time,
-						deployment_id,
-					));
-					self.recheck_next_reconcile_future();
-				}
-				return;
-			};
-
-			// If it does exist, reconcile the deployment and remove it from the should run
-			// list
-			self.reconcile_deployment(deployment_id).await;
-			should_run_deployments.retain(|&id| id != deployment_id);
-		}
-
-		// All remaining deployments are the ones that are there in the should run list,
-		// but aren't running. So get them up and running
-		for deployment_id in should_run_deployments {
-			self.reconcile_deployment(deployment_id).await;
-		}
-	}
-
-	/// Reconcile a specific deployment. This function will run the
-	/// reconciliation for a specific deployment (based on the ID)
-	async fn reconcile_deployment(&mut self, deployment_id: Uuid) {
-		trace!("Reconciling deployment `{}`", deployment_id);
-		self.reconciliation_list
-			.retain(|message| message.value() != &deployment_id);
-
-		let result = 'reconcile: {
-			let Ok(GetDeploymentInfoResponse {
-				deployment,
-				running_details,
-			}) = client::make_request(
-				ApiRequest::<GetDeploymentInfoRequest>::builder()
-					.path(GetDeploymentInfoPath {
-						workspace_id: self.state.config.workspace_id,
-						deployment_id,
-					})
-					.headers(GetDeploymentInfoRequestHeaders {
-						authorization: self.authorization.clone(),
-						user_agent: self.user_agent.clone(),
-					})
-					.query(())
-					.body(GetDeploymentInfoRequest)
-					.build(),
-			)
-			.await
-			.map(|response| response.body)
-			.inspect_err(|err| {
-				debug!(
-					"Failed to get deployment info for `{}`: {:?}",
-					deployment_id, err
-				);
-				debug!("Retrying in 5 seconds");
-			})
-			else {
-				break 'reconcile Err(Duration::from_secs(5));
-			};
-
-			if let Err(err) = self
-				.executor
-				.upsert_deployment(deployment, running_details)
-				.await
-			{
-				break 'reconcile Err(err);
-			};
-
-			Ok(())
-		};
-
-		if let Err(wait_time) = result {
-			self.reconciliation_list.push(DelayedFuture::new(
-				Instant::now() + wait_time,
-				deployment_id,
-			));
-		}
-
-		self.recheck_next_reconcile_future();
 	}
 
 	/// Handle a message from the server. This function will handle the message
@@ -473,26 +314,49 @@ where
 		}
 	}
 
-	/// Get all the local deployments. This function will get all the local
-	/// deployments from the SQLite database.
-	async fn get_all_local_deployments(&mut self) -> Result<Vec<Uuid>, ErrorType> {
-		let rows = query(
-			r#"
-			SELECT
-				id
-			FROM
-				deployments
-			ORDER BY
-				id
-			"#,
-		)
-		.fetch_all(&self.state.database)
-		.await?;
-
-		Ok(rows
-			.into_iter()
-			.map(|row| row.get::<Uuid, _>("id"))
-			.collect())
+	/// Get the stream of updates for the runner.
+	///
+	/// If the runner is running in self-hosted mode, this function will return
+	/// the stream of updates from the runner changes receiver. If the runner is
+	/// running in managed mode, this function will return the stream of updates
+	/// from the websocket endpoint to the Patr API.
+	async fn get_update_resources_stream<'a>(
+		&mut self,
+	) -> Result<
+		BoxStream<'a, Result<StreamRunnerDataForWorkspaceServerMsg, ErrorType>>,
+		ApiErrorResponse,
+	> {
+		match &self.state.config.mode {
+			RunnerMode::SelfHosted {
+				password_pepper: _,
+				jwt_secret: _,
+			} => Ok(self
+				.runner_changes_receiver
+				.take()
+				.expect("Runner changes receiver is not initialized. This should never happen")
+				.boxed()),
+			RunnerMode::Managed {
+				workspace_id,
+				runner_id,
+				api_token,
+				user_agent,
+			} => client::stream_request(
+				ApiRequest::<StreamRunnerDataForWorkspaceRequest>::builder()
+					.path(StreamRunnerDataForWorkspacePath {
+						workspace_id: *workspace_id,
+						runner_id: *runner_id,
+					})
+					.headers(StreamRunnerDataForWorkspaceRequestHeaders {
+						authorization: api_token.clone(),
+						user_agent: user_agent.clone(),
+					})
+					.query(())
+					.body(Default::default())
+					.build(),
+			)
+			.await
+			.map(StreamExt::boxed),
+		}
 	}
 
 	/// Get the next reconcile future from the list of futures. This function

@@ -67,8 +67,16 @@ pub async fn sign_up(
 
 	trace!("Creating user with username: {}", username);
 
+	let RunnerMode::SelfHosted {
+		password_pepper,
+		jwt_secret: _, // Not needed for sign up
+	} = config.mode
+	else {
+		return Err(ErrorType::InvalidRunnerMode);
+	};
+
 	let hashed_password = argon2::Argon2::new_with_secret(
-		config.password_pepper.as_ref(),
+		password_pepper.as_ref(),
 		Algorithm::Argon2id,
 		Version::V0x13,
 		constants::HASHING_PARAMS,

@@ -103,3 +103,9 @@ impl UpdateDeploymentRequest {
 			.is_none()
 	}
 }
+
+impl Default for UpdateDeploymentRequest {
+	fn default() -> Self {
+		Self::new()
+	}
+}

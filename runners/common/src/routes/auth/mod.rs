@@ -2,7 +2,9 @@ use axum::Router;
 
 use crate::{prelude::*, utils::RouterExt};
 
+/// The handler to login a user
 mod login;
+/// The handler to sign up a user
 mod sign_up;
 
 use self::{login::*, sign_up::*};

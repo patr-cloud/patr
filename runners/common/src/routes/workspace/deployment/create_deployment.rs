@@ -1,8 +1,10 @@
 use http::StatusCode;
-use models::api::workspace::deployment::*;
+use models::api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg};
 
 use crate::prelude::*;
 
+/// The handler to create a deployment. This will create a new deployment, and
+/// return the ID of the deployment.
 pub async fn create_deployment(
 	AppRequest {
 		request:
@@ -44,6 +46,11 @@ pub async fn create_deployment(
 
 	let deployment_id = Uuid::new_v4();
 
+	let status = if deploy_on_create {
+		DeploymentStatus::Running
+	} else {
+		DeploymentStatus::Created
+	};
 	query(
 		r#"
 		INSERT INTO
@@ -91,17 +98,11 @@ pub async fn create_deployment(
 		"#,
 	)
 	.bind(deployment_id)
-	.bind(name)
+	.bind(name.to_string())
 	.bind(registry.registry_url())
 	.bind(registry.image_name())
-	.bind(image_tag)
-	.bind(
-		if deploy_on_create {
-			DeploymentStatus::Running
-		} else {
-			DeploymentStatus::Created
-		},
-	)
+	.bind(image_tag.to_string())
+	.bind(status)
 	.bind(machine_type)
 	.bind(min_horizontal_scale)
 	.bind(max_horizontal_scale)
@@ -117,7 +118,7 @@ pub async fn create_deployment(
 
 	trace!("Created deployment with ID: {}", deployment_id);
 
-	for (port, port_type) in ports {
+	for (port, port_type) in &ports {
 		query(
 			r#"
 			INSERT INTO
@@ -143,7 +144,7 @@ pub async fn create_deployment(
 
 	trace!("Inserted exposed ports for deployment");
 
-	for (name, value) in environment_variables {
+	for (name, value) in &environment_variables {
 		query(
 			r#"
 			INSERT INTO
@@ -172,7 +173,7 @@ pub async fn create_deployment(
 
 	trace!("Inserted environment variables for deployment");
 
-	for (path, file) in config_mounts {
+	for (path, file) in &config_mounts {
 		query(
 			r#"
 			INSERT INTO
@@ -191,14 +192,14 @@ pub async fn create_deployment(
 		)
 		.bind(deployment_id)
 		.bind(path)
-		.bind(file.into_vec())
+		.bind(file.to_vec())
 		.execute(&mut **database)
 		.await?;
 	}
 
 	trace!("Inserted config mounts for deployment");
 
-	for (volume_id, mount_path) in volumes {
+	for (volume_id, mount_path) in &volumes {
 		query(
 			r#"
 			INSERT INTO 
@@ -223,6 +224,40 @@ pub async fn create_deployment(
 	}
 
 	trace!("Inserted volume mounts for deployment");
+
+	crate::runner::RUNNER_CHANGES_SENDER
+		.get()
+		.expect("Runner changes sender not set")
+		.read()
+		.await
+		.send(Ok(
+			StreamRunnerDataForWorkspaceServerMsg::DeploymentCreated {
+				deployment: WithId::new(
+					deployment_id,
+					Deployment {
+						name: name.to_string(),
+						registry,
+						image_tag: image_tag.to_string(),
+						status,
+						runner: Uuid::nil(),
+						machine_type,
+						current_live_digest: None,
+					},
+				),
+				running_details: DeploymentRunningDetails {
+					deploy_on_push,
+					min_horizontal_scale,
+					max_horizontal_scale,
+					ports,
+					environment_variables,
+					startup_probe,
+					liveness_probe,
+					config_mounts,
+					volumes,
+				},
+			},
+		))
+		.expect("Failed to send deployment created message");
 
 	AppResponse::builder()
 		.body(CreateDeploymentResponse {
