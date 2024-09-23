@@ -58,7 +58,7 @@ pub fn DeploymentCard(
 
 	let class = move || {
 		format!(
-			"bg-secondary-light rounded-sm p-lg flex flex-col items-start justify-between deployment-card {}",
+			"bg-secondary-light rounded-sm p-lg flex flex-col items-start justify-between gap-md deployment-card {}",
 			class.get()
 		)
 	};
@@ -131,60 +131,41 @@ pub fn DeploymentCard(
 				/>
 			</div>
 
-			<div class="flex items-start justify-start text-white w-full flex-wrap">
-				// <For
-				// 	each=move || items.get()
-				// 	key=|item| item.label
-				// 	let:item
-				// >
-				// 	<div class="w-1/2 p-xxs">
-				// 		<div class="bg-secondary-medium rounded-sm px-lg py-sm flex flex-col items-start justify-center">
-				// 			<span class="tracking-[1px] text-xxs text-grey">
-				// 				{item.label}
-				// 			</span>
-				// 			<span class="text-primary w-[15ch] text-ellipsis overflow-hidden">
-				// 				{item.value}
-				// 			</span>
-				// 		</div>
-				// 	</div>
-				// </For>
+			<div class="deployment-card-items text-white w-full">
 				{
 					move || items
 						.get()
 						.into_iter()
 						.map(|item| {
 							view! {
-								<div class="w-1/2 p-xxs">
-									<div class="bg-secondary-medium rounded-sm px-lg py-sm flex flex-col items-start justify-center">
-										<span class="tracking-[1px] text-xxs text-grey">
-											{item.label}
-										</span>
-										<span class="text-primary w-[15ch] text-ellipsis overflow-hidden">
-											{item.value}
-										</span>
-									</div>
+								<div class="bg-secondary-medium rounded-sm flex flex-col items-start justify-center">
+									<span class="tracking-[1px] text-xxs text-grey">
+										{item.label}
+									</span>
+									<span class="text-primary w-[15ch] h-4 text-ellipsis overflow-hidden">
+										{item.value}
+									</span>
 								</div>
 							}
 						})
 						.collect::<Vec<_>>()
 				}
 
-				<div class="w-1/2 p-xxs">
-					<a
-						href=""
-						class="bg-secondary-medium rounded-sm px-lg py-sm flex flex-col items-start justify-center w-full"
-					>
-						<span class="tracking-[1px] text-xxs text-grey">"LIVE LINKS"</span>
-						<span class="text-primary w-[15ch] text-ellipsis overflow-hidden flex items-center justify-start">
-							"PUBLIC URL"
-							<Icon
-								icon={IconType::ArrowUpRight}
-								color={Color::Primary}
-								size={Size::ExtraSmall}
-							/>
-						</span>
-					</a>
-				</div>
+				<a
+					href=""
+					class="bg-secondary-medium rounded-sm flex flex-col items-start justify-center w-full"
+				>
+					<span class="tracking-[1px] text-xxs text-grey">"LIVE LINKS"</span>
+					<span class="text-primary w-[15ch] text-ellipsis overflow-hidden flex items-center justify-start">
+						"PUBLIC URL"
+						<Icon
+							icon={IconType::ArrowUpRight}
+							color={Color::Primary}
+							size={Size::ExtraSmall}
+						/>
+					</span>
+				</a>
+				<div></div>
 			</div>
 
 			<div class="flex justify-between items-center mt-xs w-full px-xxs">
