@@ -18,7 +18,7 @@ pub async fn get_deployment(
 	let workspace_id = workspace_id
 		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	make_api_call::<GetDeploymentInfoRequest>(
+	make_request::<GetDeploymentInfoRequest>(
 		ApiRequest::builder()
 			.path(GetDeploymentInfoPath {
 				deployment_id,

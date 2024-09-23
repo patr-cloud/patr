@@ -22,7 +22,7 @@ pub async fn create_deployment(
 	let workspace_id = Uuid::parse_str(workspace_id.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	make_api_call::<CreateDeploymentRequest>(
+	make_request::<CreateDeploymentRequest>(
 		ApiRequest::builder()
 			.path(CreateDeploymentPath { workspace_id })
 			.query(())

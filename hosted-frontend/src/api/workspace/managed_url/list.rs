@@ -15,7 +15,7 @@ pub async fn list_managed_urls(
 	let workspace_id = Uuid::parse_str(&workspace_id.unwrap().to_string())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	make_api_call::<ListManagedURLRequest>(
+	make_request::<ListManagedURLRequest>(
 		ApiRequest::builder()
 			.path(ListManagedURLPath { workspace_id })
 			.query(Paginated {

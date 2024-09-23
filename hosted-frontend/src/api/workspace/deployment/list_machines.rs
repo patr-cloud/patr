@@ -9,7 +9,7 @@ use crate::prelude::*;
 pub async fn list_all_machines(
 	workspace_id: Uuid,
 ) -> Result<ListAllDeploymentMachineTypeResponse, ServerFnError<ErrorType>> {
-	make_api_call::<ListAllDeploymentMachineTypeRequest>(
+	make_request::<ListAllDeploymentMachineTypeRequest>(
 		ApiRequest::builder()
 			.path(ListAllDeploymentMachineTypePath { workspace_id })
 			.query(())

@@ -12,7 +12,7 @@ pub async fn get_api_token(
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	make_api_call::<GetApiTokenInfoRequest>(
+	make_request::<GetApiTokenInfoRequest>(
 		ApiRequest::builder()
 			.path(GetApiTokenInfoPath { token_id })
 			.query(())

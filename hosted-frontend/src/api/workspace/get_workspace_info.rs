@@ -14,7 +14,7 @@ pub async fn get_workspace_info(
 	let access_token = BearerToken::from_str(access_token.as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	let api_response = make_api_call::<GetWorkspaceInfoRequest>(
+	let api_response = make_request::<GetWorkspaceInfoRequest>(
 		ApiRequest::builder()
 			.path(GetWorkspaceInfoPath { workspace_id })
 			.query(())

@@ -15,7 +15,7 @@ pub async fn stop_deployment(
 	let access_token = BearerToken::from_str(access_token.as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	make_api_call::<StopDeploymentRequest>(
+	make_request::<StopDeploymentRequest>(
 		ApiRequest::builder()
 			.path(StopDeploymentPath {
 				deployment_id,

@@ -1,8 +1,5 @@
-#[cfg(not(target_arch = "wasm32"))]
+/// A module containing the client that is used to make requests to the backend
 mod client;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use self::client::*;
 
 /// A module containing the custom [`AppRoute`].
 /// The App Route Enum. This Enum is used to specify the route of the app.
@@ -15,26 +12,6 @@ mod sidebar_items;
 mod storage;
 
 pub use self::{app_route::*, ext_traits::*, hooks::*, routes::*, sidebar_items::*, storage::*};
-
-/// A trait to extend the [`String`] type with some useful methods that are not
-/// available in the standard library. This is useful for adding utility methods
-/// to the [`String`] type without polluting the global namespace.
-pub trait StringExt {
-	/// Wraps the [`String`] into an option depending on whether it's empty
-	/// Returns [`None`] if string is empty otherwise returns the string wrapped
-	/// in a [`Some()`]
-	fn some_if_not_empty(self) -> Option<String>;
-}
-
-impl StringExt for String {
-	fn some_if_not_empty(self) -> Option<String> {
-		if self.is_empty() {
-			None
-		} else {
-			Some(self)
-		}
-	}
-}
 
 /// A module containing constants that are used throughout the application.
 pub mod constants {

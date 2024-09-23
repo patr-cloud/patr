@@ -10,7 +10,7 @@ pub async fn login(
 	password: String,
 	mfa_otp: Option<String>,
 ) -> Result<LoginResponse, ServerFnError<ErrorType>> {
-	make_api_call::<LoginRequest>(
+	make_request::<LoginRequest>(
 		ApiRequest::builder()
 			.path(LoginPath)
 			.query(())

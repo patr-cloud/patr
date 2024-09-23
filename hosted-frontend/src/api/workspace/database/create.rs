@@ -36,7 +36,7 @@ pub async fn create_database(
 		version,
 	};
 
-	make_api_call::<CreateDatabaseRequest>(
+	make_request::<CreateDatabaseRequest>(
 		ApiRequest::builder()
 			.path(CreateDatabasePath { workspace_id })
 			.query(())

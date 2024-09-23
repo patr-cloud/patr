@@ -15,7 +15,7 @@ pub async fn revoke_api_token(
 	let token_id = Uuid::parse_str(token_id.clone().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	make_api_call::<RevokeApiTokenRequest>(
+	make_request::<RevokeApiTokenRequest>(
 		ApiRequest::builder()
 			.path(RevokeApiTokenPath { token_id })
 			.query(())

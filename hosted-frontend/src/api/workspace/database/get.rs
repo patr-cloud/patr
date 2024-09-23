@@ -19,7 +19,7 @@ pub async fn get_database(
 	let database_id = Uuid::parse_str(database_id.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	make_api_call::<GetDatabaseRequest>(
+	make_request::<GetDatabaseRequest>(
 		ApiRequest::builder()
 			.path(GetDatabasePath {
 				database_id,

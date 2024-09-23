@@ -69,7 +69,7 @@ pub async fn create_managed_url(
 		url_type,
 	};
 
-	make_api_call::<CreateManagedURLRequest>(
+	make_request::<CreateManagedURLRequest>(
 		ApiRequest::builder()
 			.path(CreateManagedURLPath { workspace_id })
 			.query(())
