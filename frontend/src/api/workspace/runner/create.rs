@@ -16,7 +16,7 @@ pub async fn create_runner(
 	let workspace_id = workspace_id
 		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	make_api_call::<AddRunnerToWorkspaceRequest>(
+	make_request::<AddRunnerToWorkspaceRequest>(
 		ApiRequest::builder()
 			.path(AddRunnerToWorkspacePath { workspace_id })
 			.query(())

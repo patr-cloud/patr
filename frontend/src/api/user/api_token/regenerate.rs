@@ -15,7 +15,7 @@ pub async fn regenerate_api_token(
 	let token_id = Uuid::parse_str(token_id.clone().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	make_api_call::<RegenerateApiTokenRequest>(
+	make_request::<RegenerateApiTokenRequest>(
 		ApiRequest::builder()
 			.path(RegenerateApiTokenPath { token_id })
 			.query(())

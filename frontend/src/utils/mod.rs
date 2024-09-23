@@ -1,15 +1,11 @@
-#[cfg(not(target_arch = "wasm32"))]
-mod client;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use self::client::*;
-
 /// The alignment enum. This enum is used to specify the alignment of a
 /// component of left, right, or center.
 mod alignment;
 /// A module containing the custom [`AppRoute`].
 /// The App Route Enum. This Enum is used to specify the route of the app.
 mod app_route;
+/// A module containing the client that is used to make requests to the backend
+mod client;
 /// The color enum. This enum is used to specify the color of a component. These
 /// include the primary and secondary colors of the app.
 mod color;
@@ -36,6 +32,7 @@ mod variant;
 pub use self::{
 	alignment::*,
 	app_route::*,
+	client::*,
 	color::*,
 	ext_traits::*,
 	hooks::*,
@@ -45,26 +42,6 @@ pub use self::{
 	storage::*,
 	variant::*,
 };
-
-/// A trait to extend the [`String`] type with some useful methods that are not
-/// available in the standard library. This is useful for adding utility methods
-/// to the [`String`] type without polluting the global namespace.
-pub trait StringExt {
-	/// Wraps the [`String`] into an option depending on whether it's empty
-	/// Returns [`None`] if string is empty otherwise returns the string wrapped
-	/// in a [`Some()`]
-	fn some_if_not_empty(self) -> Option<String>;
-}
-
-impl StringExt for String {
-	fn some_if_not_empty(self) -> Option<String> {
-		if self.is_empty() {
-			None
-		} else {
-			Some(self)
-		}
-	}
-}
 
 /// A module containing constants that are used throughout the application.
 pub mod constants {

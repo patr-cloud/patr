@@ -16,7 +16,7 @@ pub async fn delete_deployment(
 	let workspace_id = workspace_id
 		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	make_api_call::<DeleteDeploymentRequest>(
+	make_request::<DeleteDeploymentRequest>(
 		ApiRequest::builder()
 			.path(DeleteDeploymentPath {
 				deployment_id,

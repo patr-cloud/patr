@@ -12,7 +12,7 @@ pub async fn list_runners(
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	make_api_call::<ListRunnersForWorkspaceRequest>(
+	make_request::<ListRunnersForWorkspaceRequest>(
 		ApiRequest::builder()
 			.path(ListRunnersForWorkspacePath { workspace_id })
 			.query(Paginated {

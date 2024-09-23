@@ -13,7 +13,7 @@ pub async fn list_user_workspace(
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	let api_response = make_api_call::<ListUserWorkspacesRequest>(
+	let api_response = make_request::<ListUserWorkspacesRequest>(
 		ApiRequest::builder()
 			.path(ListUserWorkspacesPath)
 			.query(())

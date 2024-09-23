@@ -15,7 +15,7 @@ pub async fn list_database(
 	let workspace_id = workspace_id
 		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	make_api_call::<ListDatabaseRequest>(
+	make_request::<ListDatabaseRequest>(
 		ApiRequest::builder()
 			.path(ListDatabasePath { workspace_id })
 			.query(Paginated::default())

@@ -64,7 +64,7 @@ pub async fn update_api_token(
 		allowed_ips: None,
 	};
 
-	make_api_call::<UpdateApiTokenRequest>(
+	make_request::<UpdateApiTokenRequest>(
 		ApiRequest::builder()
 			.path(UpdateApiTokenPath { token_id })
 			.query(())

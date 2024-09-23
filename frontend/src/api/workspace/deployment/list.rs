@@ -19,7 +19,7 @@ pub async fn list_deployments(
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	make_api_call::<ListDeploymentRequest>(
+	make_request::<ListDeploymentRequest>(
 		ApiRequest::builder()
 			.path(ListDeploymentPath { workspace_id })
 			.query(Paginated {

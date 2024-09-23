@@ -16,7 +16,7 @@ pub async fn get_runner(
 	let workspace_id = workspace_id
 		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	make_api_call::<GetRunnerInfoRequest>(
+	make_request::<GetRunnerInfoRequest>(
 		ApiRequest::builder()
 			.path(GetRunnerInfoPath {
 				workspace_id,

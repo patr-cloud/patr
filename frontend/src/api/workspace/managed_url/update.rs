@@ -31,7 +31,7 @@ pub async fn update_managed_url(
 
 	let req_body = UpdateManagedURLRequest { path, url_type };
 
-	make_api_call::<UpdateManagedURLRequest>(
+	make_request::<UpdateManagedURLRequest>(
 		ApiRequest::builder()
 			.path(UpdateManagedURLPath {
 				workspace_id,
