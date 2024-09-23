@@ -193,7 +193,7 @@ pub async fn update_deployment(
 				END
 			)
 		WHERE
-			id = $11;
+			id = $10;
 		"#,
 	)
 	.bind(name)
