@@ -98,6 +98,8 @@ where
 				);
 			});
 
+		hosted_frontend::utils::register_request::<E>();
+
 		self
 	}
 
