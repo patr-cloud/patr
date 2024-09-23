@@ -27,7 +27,7 @@ use serde::{Deserialize, Serialize};
 /// The configuration for the runner.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RunnerSettings {}
+pub struct DockerSettings {}
 
 /// A Patr runner that uses Docker to run deployments.
 #[derive(Debug, Clone)]
@@ -37,7 +37,7 @@ struct DockerRunner {
 }
 
 impl RunnerExecutor for DockerRunner {
-	type Settings = RunnerSettings;
+	type Settings = DockerSettings;
 
 	const RUNNER_INTERNAL_NAME: &'static str = env!("CARGO_CRATE_NAME");
 
