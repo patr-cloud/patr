@@ -39,6 +39,7 @@ pub async fn create_deployment(
 					},
 			},
 		database,
+		runner_changes_sender,
 		config: _,
 	}: AppRequest<'_, CreateDeploymentRequest>,
 ) -> Result<AppResponse<CreateDeploymentRequest>, ErrorType> {
@@ -225,38 +226,32 @@ pub async fn create_deployment(
 
 	trace!("Inserted volume mounts for deployment");
 
-	crate::runner::RUNNER_CHANGES_SENDER
-		.get()
-		.expect("Runner changes sender not set")
-		.read()
-		.await
-		.send(Ok(
-			StreamRunnerDataForWorkspaceServerMsg::DeploymentCreated {
-				deployment: WithId::new(
-					deployment_id,
-					Deployment {
-						name: name.to_string(),
-						registry,
-						image_tag: image_tag.to_string(),
-						status,
-						runner: Uuid::nil(),
-						machine_type,
-						current_live_digest: None,
-					},
-				),
-				running_details: DeploymentRunningDetails {
-					deploy_on_push,
-					min_horizontal_scale,
-					max_horizontal_scale,
-					ports,
-					environment_variables,
-					startup_probe,
-					liveness_probe,
-					config_mounts,
-					volumes,
+	runner_changes_sender
+		.send(StreamRunnerDataForWorkspaceServerMsg::DeploymentCreated {
+			deployment: WithId::new(
+				deployment_id,
+				Deployment {
+					name: name.to_string(),
+					registry,
+					image_tag: image_tag.to_string(),
+					status,
+					runner: Uuid::nil(),
+					machine_type,
+					current_live_digest: None,
 				},
+			),
+			running_details: DeploymentRunningDetails {
+				deploy_on_push,
+				min_horizontal_scale,
+				max_horizontal_scale,
+				ports,
+				environment_variables,
+				startup_probe,
+				liveness_probe,
+				config_mounts,
+				volumes,
 			},
-		))
+		})
 		.expect("Failed to send deployment created message");
 
 	AppResponse::builder()

@@ -24,6 +24,7 @@ pub async fn get_deployment_info(
 				body: GetDeploymentInfoRequestProcessed,
 			},
 		database,
+		runner_changes_sender: _,
 		config: _,
 	}: AppRequest<'_, GetDeploymentInfoRequest>,
 ) -> Result<AppResponse<GetDeploymentInfoRequest>, ErrorType> {

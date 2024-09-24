@@ -42,6 +42,7 @@ pub async fn update_deployment(
 					},
 			},
 		database,
+		runner_changes_sender: _,
 		config: _,
 	}: AppRequest<'_, UpdateDeploymentRequest>,
 ) -> Result<AppResponse<UpdateDeploymentRequest>, ErrorType> {

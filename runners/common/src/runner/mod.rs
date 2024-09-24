@@ -1,4 +1,4 @@
-use std::{future::IntoFuture, net::SocketAddr, pin::pin, sync::OnceLock};
+use std::{future::IntoFuture, net::SocketAddr, pin::pin};
 
 use futures::{
 	future::{self, BoxFuture, Either},
@@ -9,10 +9,7 @@ use futures::{
 use models::{api::workspace::runner::*, rbac::ResourceType};
 use tokio::{
 	net::TcpListener,
-	sync::{
-		mpsc::{unbounded_channel, UnboundedSender},
-		RwLock,
-	},
+	sync::mpsc::unbounded_channel,
 	task,
 	time::{self, Duration},
 };
@@ -28,13 +25,6 @@ use crate::{db, prelude::*, utils::delayed_future::DelayedFuture};
 
 /// All deployment related functions for the runner
 mod deployment;
-
-/// The global sender for the runner changes. This is used to send changes to
-/// the runner when a resource is created, updated, or deleted. Ideally, this
-/// would be automatically done by some sort of an audit log layer.
-pub(crate) static RUNNER_CHANGES_SENDER: OnceLock<
-	RwLock<UnboundedSender<Result<StreamRunnerDataForWorkspaceServerMsg, ErrorType>>>,
-> = OnceLock::new();
 
 /// The runner is the main struct that is used to run the resources.
 ///
@@ -56,10 +46,6 @@ where
 	/// The future that will resolve to the next resource that needs to be
 	/// reconciled
 	next_reconcile_future: BoxFuture<'static, Uuid>,
-	/// The stream that will receive changes from the server for the runner when
-	/// a resource is created, updated, or deleted.
-	runner_changes_receiver:
-		Option<UnboundedReceiverStream<Result<StreamRunnerDataForWorkspaceServerMsg, ErrorType>>>,
 }
 
 impl<E> Runner<E>
@@ -72,7 +58,7 @@ where
 	/// is responsible for. This function will run forever until the runner is
 	/// stopped.
 	pub async fn run() {
-		let mut runner = Self::init().await;
+		let (mut runner, mut runner_changes_receiver) = Self::init().await;
 
 		// Run the server here
 		let state = runner.state.clone();
@@ -80,7 +66,7 @@ where
 			let tcp_listener = TcpListener::bind(state.config.bind_address).await.unwrap();
 
 			info!(
-				"Listening for connections on {}",
+				"Listening for connections on http://{}",
 				tcp_listener.local_addr().unwrap()
 			);
 
@@ -104,18 +90,9 @@ where
 		// Connect to the server infinitely until the exit signal is received
 		'main: loop {
 			// Initialize the runner changes receiver
-			let (sender, receiver) = unbounded_channel();
-			runner.runner_changes_receiver = Some(UnboundedReceiverStream::new(receiver));
-			let mut global_sender = RUNNER_CHANGES_SENDER
-				.get_or_init(|| RwLock::new(sender.clone()))
-				.write()
-				.await;
-			*global_sender = sender;
-			drop(global_sender);
-
 			let Some(response) = futures::future::select(
 				&mut exit_signal,
-				pin!(runner.get_update_resources_stream()),
+				pin!(runner.get_update_resources_stream(&mut runner_changes_receiver)),
 			)
 			.await
 			.into_right() else {
@@ -234,7 +211,10 @@ where
 
 	/// Initialize the runner. This function will create a new database
 	/// connection pool and set up the global default subscriber for the runner.
-	async fn init() -> Self {
+	async fn init() -> (
+		Self,
+		UnboundedReceiverStream<StreamRunnerDataForWorkspaceServerMsg>,
+	) {
 		let config = RunnerSettings::<E::Settings>::parse(E::RUNNER_INTERNAL_NAME)
 			.expect("Failed to parse settings");
 
@@ -273,19 +253,28 @@ where
 
 		let database = db::connect(&config.database).await;
 
-		let state = AppState { database, config };
+		let (runner_changes_sender, runner_changes_receiver) = unbounded_channel();
+		let runner_changes_receiver = UnboundedReceiverStream::new(runner_changes_receiver);
+
+		let state = AppState {
+			database,
+			runner_changes_sender,
+			config,
+		};
 
 		db::initialize(&state)
 			.await
 			.expect("unable to initialize database");
 
-		Self {
-			executor,
-			state,
-			reconciliation_list,
-			next_reconcile_future,
-			runner_changes_receiver: None,
-		}
+		(
+			Self {
+				executor,
+				state,
+				reconciliation_list,
+				next_reconcile_future,
+			},
+			runner_changes_receiver,
+		)
 	}
 
 	/// Reconcile all the resources that the runner is responsible for. This
@@ -322,6 +311,9 @@ where
 	/// from the websocket endpoint to the Patr API.
 	async fn get_update_resources_stream<'a>(
 		&mut self,
+		runner_changes_receiver: &'a mut UnboundedReceiverStream<
+			StreamRunnerDataForWorkspaceServerMsg,
+		>,
 	) -> Result<
 		BoxStream<'a, Result<StreamRunnerDataForWorkspaceServerMsg, ErrorType>>,
 		ApiErrorResponse,
@@ -330,10 +322,8 @@ where
 			RunnerMode::SelfHosted {
 				password_pepper: _,
 				jwt_secret: _,
-			} => Ok(self
-				.runner_changes_receiver
-				.take()
-				.expect("Runner changes receiver is not initialized. This should never happen")
+			} => Ok(runner_changes_receiver
+				.map(|msg| Ok::<_, ErrorType>(msg))
 				.boxed()),
 			RunnerMode::Managed {
 				workspace_id,

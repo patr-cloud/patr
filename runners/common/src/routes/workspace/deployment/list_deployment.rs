@@ -23,6 +23,7 @@ pub async fn list_deployment(
 				body: ListDeploymentRequestProcessed,
 			},
 		database,
+		runner_changes_sender: _,
 		config: _,
 	}: AppRequest<'_, ListDeploymentRequest>,
 ) -> Result<AppResponse<ListDeploymentRequest>, ErrorType> {

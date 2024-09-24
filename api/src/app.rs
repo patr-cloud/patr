@@ -72,7 +72,7 @@ pub async fn serve(state: &AppState) {
 		let tcp_listener = TcpListener::bind(state.config.bind_address).await.unwrap();
 
 		info!(
-			"Listening for connections on {}",
+			"Listening for connections on http://{}",
 			tcp_listener.local_addr().unwrap()
 		);
 

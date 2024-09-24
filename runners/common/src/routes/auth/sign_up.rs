@@ -22,6 +22,7 @@ pub async fn sign_up(
 					},
 			},
 		database,
+		runner_changes_sender: _,
 		config,
 	}: AppRequest<'_, CreateAccountRequest>,
 ) -> Result<AppResponse<CreateAccountRequest>, ErrorType> {

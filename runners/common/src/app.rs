@@ -1,4 +1,6 @@
+use models::api::workspace::runner::StreamRunnerDataForWorkspaceServerMsg;
 use preprocess::Preprocessable;
+use tokio::sync::mpsc::UnboundedSender;
 use typed_builder::TypedBuilder;
 
 use crate::prelude::*;
@@ -12,6 +14,8 @@ where
 {
 	/// The database connection.
 	pub database: sqlx::Pool<DatabaseType>,
+	/// The channel to notify the runner of changes to a particular resource.
+	pub runner_changes_sender: UnboundedSender<StreamRunnerDataForWorkspaceServerMsg>,
 	/// The application configuration.
 	pub config: RunnerSettings<E::Settings>,
 }
@@ -23,6 +27,7 @@ where
 	fn clone(&self) -> Self {
 		Self {
 			database: self.database.clone(),
+			runner_changes_sender: self.runner_changes_sender.clone(),
 			config: self.config.clone(),
 		}
 	}
@@ -86,6 +91,8 @@ where
 	/// The database transaction for the request. In case the request returns
 	/// an Error, this transaction will be automatically rolled back.
 	pub database: &'a mut DatabaseTransaction,
+	/// The channel to notify the runner of changes to a particular resource.
+	pub runner_changes_sender: UnboundedSender<StreamRunnerDataForWorkspaceServerMsg>,
 	/// The Application Config.
 	pub config: RunnerSettings<()>,
 }
@@ -103,6 +110,8 @@ where
 	/// The database transaction for the request. In case the request returns
 	/// an Error, this transaction will be automatically rolled back.
 	pub database: &'a mut DatabaseTransaction,
+	/// The channel to notify the runner of changes to a particular resource.
+	pub runner_changes_sender: UnboundedSender<StreamRunnerDataForWorkspaceServerMsg>,
 	/// The Application Config.
 	pub config: RunnerSettings<()>,
 }
