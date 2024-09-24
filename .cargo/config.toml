@@ -2,6 +2,7 @@
 rustflags = ["--cfg=web_sys_unstable_apis"]
 
 [alias]
+api = "leptos serve -p dashboard"
 docker = "leptos serve -p docker"
 patr = "run -p cli --"
 prepare = "sqlx prepare --workspace"

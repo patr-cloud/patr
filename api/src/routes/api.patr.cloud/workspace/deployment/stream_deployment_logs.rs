@@ -71,24 +71,18 @@ pub async fn stream_deployment_logs(
 	.await?
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
-	#[cfg(debug_assertions)]
-	let Some(loki) = config.loki
-	else {
-		return Err(ErrorType::server_error("Loki configuration not found"));
-	};
-	#[cfg(not(debug_assertions))]
-	let loki = config.loki;
-
 	let mut client_request = Uri::builder()
 		.scheme(
-			if loki.endpoint.starts_with("https") {
+			if config.loki.endpoint.starts_with("https") {
 				"wss"
 			} else {
 				"ws"
 			},
 		)
 		.authority(
-			loki.endpoint
+			config
+				.loki
+				.endpoint
 				.trim_start_matches("https://")
 				.trim_start_matches("http://"),
 		)
@@ -106,7 +100,10 @@ pub async fn stream_deployment_logs(
 		.into_client_request()?;
 	client_request
 		.headers_mut()
-		.typed_insert(Authorization::basic(&loki.username, &loki.password));
+		.typed_insert(Authorization::basic(
+			&config.loki.username,
+			&config.loki.password,
+		));
 	*client_request.method_mut() = Method::GET;
 
 	let (mut stream, _) = tokio_tungstenite::connect_async(client_request)

@@ -102,7 +102,7 @@ pub fn App() -> impl IntoView {
 					view={AppOutletView}
 					condition={move || state.get().is_logged_out()}
 				>
-					<AppRoute<LoginRoute, _, _> view={move |(_query, _children)| LoginForm} />
+					<AppRoute<LoginRoute, _, _> view={move |_query, _params| LoginForm}/>
 					<Route path={LoggedOutRoute::SignUp} view={SignUpForm}/>
 					<Route path={LoggedOutRoute::ConfirmOtp} view={ConfirmSignUpPage}/>
 				</ProtectedRoute>

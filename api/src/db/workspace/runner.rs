@@ -12,6 +12,7 @@ pub async fn initialize_runner_tables(
 			id UUID NOT NULL,
 			name TEXT NOT NULL,
 			workspace_id UUID NOT NULL,
+			cloudflare_tunnel_id TEXT NOT NULL,
 			deleted TIMESTAMPTZ
 		);
 		"#

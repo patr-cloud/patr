@@ -171,16 +171,7 @@ pub async fn login(
 	let refresh_token_expiry = now.add(constants::INACTIVE_REFRESH_TOKEN_VALIDITY);
 
 	let ip_info = ipinfo::IpInfo::new(ipinfo::IpInfoConfig {
-		token: {
-			#[cfg(debug_assertions)]
-			{
-				config.ipinfo.map(|ipinfo| ipinfo.token)
-			}
-			#[cfg(not(debug_assertions))]
-			{
-				Some(config.ipinfo.token)
-			}
-		},
+		token: { Some(config.ipinfo.token) },
 		..Default::default()
 	})
 	.inspect_err(|err| {

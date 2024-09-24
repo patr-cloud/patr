@@ -68,28 +68,14 @@ pub struct AppConfig {
 	/// for subscribing to events from the database on websockets
 	pub redis: RedisConfig,
 	// pub email: EmailConfig,
-	/// The opentelemetry endpoint to send traces to
-	#[cfg(debug_assertions)]
-	pub opentelemetry: Option<OpenTelemetryConfig>,
-	#[cfg(not(debug_assertions))]
+	/// The cloudflare settings to use for the API
+	pub cloudflare: CloudflareConfig,
 	/// The opentelemetry endpoint to send traces to
 	pub opentelemetry: OpenTelemetryConfig,
 	/// The configuration for IpInfo to get IpAddress details
-	#[cfg(debug_assertions)]
-	pub ipinfo: Option<IpInfoConfig>,
-	#[cfg(not(debug_assertions))]
-	/// The configuration for IpInfo to get IpAddress details
 	pub ipinfo: IpInfoConfig,
-	#[cfg(debug_assertions)]
-	/// The loki configuration to use for logs
-	pub loki: Option<LokiConfig>,
-	#[cfg(not(debug_assertions))]
 	/// The loki configuration to use for logs
 	pub loki: LokiConfig,
-	#[cfg(debug_assertions)]
-	/// The mimir configuration to use for metrics
-	pub mimir: Option<MimirConfig>,
-	#[cfg(not(debug_assertions))]
 	/// The mimir configuration to use for metrics
 	pub mimir: MimirConfig,
 }
@@ -177,6 +163,18 @@ pub struct RedisConfig {
 /// The default value for the Redis database
 fn default_redis_database() -> u8 {
 	0
+}
+
+/// The configuration for Cloudflare to use for the API. This is used to
+/// setup DNS records and for Cloudflare Tunnels.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CloudflareConfig {
+	/// The email to use to connect to Cloudflare
+	pub email: String,
+	/// The API key to use to connect to Cloudflare
+	#[serde(alias = "apikey")]
+	pub api_key: String,
 }
 
 /// The configuration for the SMTP server to use to send emails to users

@@ -40,7 +40,8 @@
 			"packages": [
 				"bash-completion"
 			]
-		}
+		},
+		"ghcr.io/lee-orr/rusty-dev-containers/wasm32-unknown-unknown:0": {}
 	},
 	"forwardPorts": [
 		3000,

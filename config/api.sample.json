@@ -35,6 +35,10 @@
 		"from": "no-reply@example.com",
 		"password": "password"
 	},
+	"cloudflare": {
+		"email": "test@example.com",
+		"apiKey": "<cloudflare-api-key>"
+	},
 	"opentelemetry": {
 		"endpoint": "http://jaeger:4317"
 	},

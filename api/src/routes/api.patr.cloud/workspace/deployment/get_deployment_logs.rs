@@ -71,12 +71,9 @@ pub async fn get_deployment_logs(
 	.await?
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
-	let Some(loki) = config.loki else {
-		return Err(ErrorType::server_error("Loki configuration not found"));
-	};
 	let loki_response = reqwest::Client::new()
-		.get(format!("{}/loki/api/v1/query_range", loki.endpoint))
-		.basic_auth(loki.username, Some(loki.password))
+		.get(format!("{}/loki/api/v1/query_range", config.loki.endpoint))
+		.basic_auth(config.loki.username, Some(config.loki.password))
 		.query(&{
 			let mut query = vec![
 				("limit", limit.unwrap_or(100).to_string()),
