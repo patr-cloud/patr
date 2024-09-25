@@ -146,10 +146,15 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			{}
 		}
 	};
+	let query_name = format_ident!("{}Query", name);
 	let query_name = if query.is_some() {
-		format_ident!("{}Query", name)
+		quote::quote! {
+			#query_name
+		}
 	} else {
-		format_ident!("()")
+		quote::quote! {
+			()
+		}
 	};
 
 	let query = query.map(|query| {
