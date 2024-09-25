@@ -36,5 +36,4 @@ pub async fn list_deployments(
 	)
 	.await
 	.map(|res| (res.headers.total_count.0, res.body))
-	.map_err(ServerFnError::WrappedServerError)
 }

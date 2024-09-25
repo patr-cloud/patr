@@ -3113,6 +3113,7 @@ dependencies = [
  "axum-typed-websockets",
  "base32 0.5.1",
  "base64 0.22.1",
+ "futures",
  "headers",
  "hex",
  "http",

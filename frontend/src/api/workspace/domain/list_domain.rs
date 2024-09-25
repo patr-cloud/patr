@@ -33,5 +33,4 @@ pub async fn list_domains(
 	Ok(GetDomainsForWorkspaceResponse {
 		domains: vec![domain],
 	})
-	.map_err(ServerFnError::WrappedServerError)
 }

@@ -27,5 +27,4 @@ pub async fn load_api_tokens_list(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }

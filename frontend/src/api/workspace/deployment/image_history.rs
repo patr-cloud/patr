@@ -32,5 +32,4 @@ pub async fn get_deployment_image_history(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }

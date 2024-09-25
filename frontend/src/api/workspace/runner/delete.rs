@@ -36,5 +36,5 @@ pub async fn delete_runner(
 		leptos_axum::redirect("/runners");
 		res.body
 	})
-	.map_err(ServerFnError::WrappedServerError)
+	
 }

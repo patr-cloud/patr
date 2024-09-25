@@ -26,7 +26,5 @@ pub async fn list_user_workspace(
 	)
 	.await;
 
-	api_response
-		.map(|res| res.body)
-		.map_err(|err| ServerFnError::WrappedServerError(err))
+	api_response.map(|res| res.body)
 }

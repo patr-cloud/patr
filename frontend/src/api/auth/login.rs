@@ -34,5 +34,4 @@ pub async fn login(
 		leptos_axum::redirect("/");
 		res.body
 	})
-	.map_err(ServerFnError::WrappedServerError)
 }

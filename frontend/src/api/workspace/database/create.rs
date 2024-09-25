@@ -49,5 +49,4 @@ pub async fn create_database(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }

@@ -85,5 +85,5 @@ pub async fn create_managed_url(
 		leptos_axum::redirect("/managed-url");
 		res.body
 	})
-	.map_err(ServerFnError::WrappedServerError)
+	
 }

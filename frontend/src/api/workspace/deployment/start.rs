@@ -33,5 +33,4 @@ pub async fn start_deployment(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }

@@ -27,7 +27,5 @@ pub async fn get_workspace_info(
 	)
 	.await;
 
-	api_response
-		.map(|res| res.body)
-		.map_err(|err| ServerFnError::WrappedServerError(err))
+	api_response.map(|res| res.body)
 }

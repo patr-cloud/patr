@@ -29,5 +29,5 @@ pub async fn list_runners(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
+	
 }

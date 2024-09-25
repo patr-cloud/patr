@@ -32,5 +32,4 @@ pub async fn get_runner(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }

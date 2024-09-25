@@ -25,5 +25,4 @@ pub async fn list_all_permissions(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }

@@ -77,5 +77,4 @@ pub async fn update_api_token(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }
