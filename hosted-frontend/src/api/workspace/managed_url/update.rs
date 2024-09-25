@@ -47,5 +47,5 @@ pub async fn update_managed_url(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
+	
 }

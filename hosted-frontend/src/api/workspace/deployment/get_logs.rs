@@ -41,5 +41,4 @@ pub async fn get_deployment_logs(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }

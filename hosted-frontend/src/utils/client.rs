@@ -4,16 +4,21 @@ use std::{
 	sync::{Arc, OnceLock, RwLock},
 };
 
+use axum::body::Body;
 use axum_extra::routing::TypedPath;
-use http::Method;
-use leptos::server_fn::{
-	client::browser::BrowserClient,
-	codec::Json,
-	const_format::concatcp,
-	middleware::Layer,
-	ServerFn,
+use http::{Method, Request};
+use leptos::{
+	server_fn::{
+		client::browser::BrowserClient,
+		codec::{FromReq, IntoReq},
+		middleware::Layer,
+		request::{browser::BrowserRequest, BrowserMockReq},
+		ServerFn,
+	},
+	ServerFnError,
 };
-use models::{ApiEndpoint, ApiRequest, AppResponse, ErrorType};
+use matchit::Router;
+use models::{ApiEncoding, ApiEndpoint, ApiRequest, AppResponse, ErrorType};
 use preprocess::Preprocessable;
 
 /// The type used for the [`API_CALL_REGISTRY`] static. This is a map of all the
@@ -35,6 +40,40 @@ where
 	request: ApiRequest<E>,
 }
 
+impl<E> IntoReq<ApiEncoding<E>, BrowserRequest, ErrorType> for MakeRequest<E>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+{
+	fn into_req(
+		self,
+		path: &str,
+		accepts: &str,
+	) -> Result<BrowserRequest, ServerFnError<ErrorType>> {
+		todo!()
+	}
+}
+
+impl<E> FromReq<ApiEncoding<E>, Request<Body>, ErrorType> for MakeRequest<E>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+{
+	async fn from_req(req: Request<Body>) -> Result<Self, ServerFnError<ErrorType>> {
+		todo!()
+	}
+}
+
+impl<E> FromReq<ApiEncoding<E>, BrowserMockReq, ErrorType> for MakeRequest<E>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+{
+	async fn from_req(req: BrowserMockReq) -> Result<Self, ServerFnError<ErrorType>> {
+		todo!()
+	}
+}
+
 impl<E> ServerFn for MakeRequest<E>
 where
 	E: ApiEndpoint,
@@ -42,19 +81,19 @@ where
 {
 	type Client = BrowserClient;
 	type Error = ErrorType;
-	type InputEncoding = Json;
+	type InputEncoding = ApiEncoding<E>;
 	type Output = AppResponse<E>;
-	type OutputEncoding = Json;
+	type OutputEncoding = ApiEncoding<E>;
 	#[cfg(not(target_arch = "wasm32"))]
 	type ServerRequest = http::Request<axum::body::Body>;
 	#[cfg(target_arch = "wasm32")]
-	type ServerRequest = leptos::server_fn::request::BrowserMockReq;
+	type ServerRequest = BrowserMockReq;
 	#[cfg(not(target_arch = "wasm32"))]
 	type ServerResponse = http::Response<axum::body::Body>;
 	#[cfg(target_arch = "wasm32")]
 	type ServerResponse = leptos::server_fn::response::BrowserMockRes;
 
-	const PATH: &'static str = get_endpoint_path::<E>();
+	const PATH: &'static str = E::RequestPath::PATH;
 
 	fn middlewares() -> Vec<Arc<dyn Layer<Self::ServerRequest, Self::ServerResponse>>> {
 		// TODO change the middlewares based on the endpoint
@@ -63,15 +102,9 @@ where
 
 	#[cfg(not(target_arch = "wasm32"))]
 	async fn run_body(self) -> Result<Self::Output, ServerFnError<Self::Error>> {
-		use std::{
-			marker::PhantomData,
-			net::{IpAddr, SocketAddr},
-		};
+		use std::net::{IpAddr, SocketAddr};
 
 		use axum::extract::ConnectInfo;
-		use leptos::ServerFnError;
-		use matchit::Router;
-		use serde::Serialize;
 		use tower::{
 			service_fn,
 			util::{BoxCloneService, BoxLayer},
@@ -112,6 +145,7 @@ where
 			})))
 			.oneshot((self.request, socket_addr.ip()))
 			.await
+			.map_err(ServerFnError::WrappedServerError)
 	}
 
 	#[cfg(target_arch = "wasm32")]
@@ -147,17 +181,4 @@ where
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	leptos::server_fn::axum::register_explicit::<MakeRequest<E>>();
-}
-
-const fn get_endpoint_path<E>() -> &'static str
-where
-	E: ApiEndpoint,
-{
-	match E::METHOD {
-		Method::GET => E::RequestPath::PATH,
-		Method::POST => concatcp!(E::RequestPath::PATH, "/create"),
-		Method::PUT | Method::PATCH => concatcp!(E::RequestPath::PATH, "/update"),
-		Method::DELETE => concatcp!(E::RequestPath::PATH, "/delete"),
-		_ => panic!("Unsupported method: {}", E::METHOD),
-	}
 }

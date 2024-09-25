@@ -27,5 +27,4 @@ async fn activate_mfa(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }

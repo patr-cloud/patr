@@ -170,7 +170,7 @@ where
 				.await
 				.inspect(|_| info!("Inner service called successfully"))
 				.map(|response| {
-					if response.body.is::<GenericResponse>() {
+					if E::ResponseBody::is::<GenericResponse>() {
 						response.body.into_axum_response()
 					} else {
 						(

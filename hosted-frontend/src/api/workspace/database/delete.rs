@@ -35,5 +35,4 @@ pub async fn delete_database(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }

@@ -38,5 +38,4 @@ pub async fn create_deployment(
 		leptos_axum::redirect("/deployment");
 		res.body
 	})
-	.map_err(ServerFnError::WrappedServerError)
 }

@@ -35,5 +35,5 @@ pub async fn get_database(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
+	
 }

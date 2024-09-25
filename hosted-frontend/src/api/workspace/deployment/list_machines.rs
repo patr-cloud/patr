@@ -21,5 +21,4 @@ pub async fn list_all_machines(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }

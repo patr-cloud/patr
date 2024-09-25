@@ -21,8 +21,11 @@
 				"rust-lang.rust-analyzer",
 				"tamasfe.even-better-toml",
 				"usernamehw.errorlens",
-				"be5invis.toml",
-				"citreae535.sparse-crates"
+				"citreae535.sparse-crates",
+				"GitHub.vscode-pull-request-github",
+				"naumovs.color-highlight",
+				"streetsidesoftware.code-spell-checker",
+				"patr-cloud.patr-theme"
 			]
 		}
 	},

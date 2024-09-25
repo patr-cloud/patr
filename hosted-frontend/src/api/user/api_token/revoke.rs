@@ -31,5 +31,4 @@ pub async fn revoke_api_token(
 		leptos_axum::redirect("/user/api-tokens");
 		res.body
 	})
-	.map_err(ServerFnError::WrappedServerError)
 }

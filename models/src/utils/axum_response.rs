@@ -22,7 +22,7 @@ pub trait IntoAxumResponse {
 	fn into_axum_response(self) -> Response;
 
 	/// Check if the type is the same as the type parameter.
-	fn is<T>(&self) -> bool
+	fn is<T>() -> bool
 	where
 		T: 'static,
 		Self: 'static,

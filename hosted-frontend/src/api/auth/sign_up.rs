@@ -31,5 +31,4 @@ pub async fn sign_up(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }

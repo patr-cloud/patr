@@ -35,5 +35,4 @@ pub async fn delete_deployment(
 		leptos_axum::redirect("/deployment");
 		res.body
 	})
-	.map_err(ServerFnError::WrappedServerError)
 }

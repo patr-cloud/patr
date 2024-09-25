@@ -20,10 +20,12 @@ axum = { workspace = true, features = ["json"] }
 axum-extra = { workspace = true, features = ["typed-routing"] }
 base32 = { workspace = true, features = [] }
 base64 = { workspace = true, features = ["default"] }
+futures = { workspace = true, features = ["default"] }
 headers = { workspace = true, features = [] }
 hex = { workspace = true, features = ["default"] }
 http = { workspace = true, features = ["default"] }
 ipnetwork = { workspace = true, features = ["default"] }
+leptos = { workspace = true, features = ["default"] }
 macros = { workspace = true, features = [] }
 preprocess = { workspace = true, features = [] }
 regex = { workspace = true, features = ["default"] }
@@ -49,7 +51,6 @@ time = { workspace = true, features = ["default", "serde-human-readable"] }
 uuid = { workspace = true, features = ["default", "v1", "v4"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-leptos = { workspace = true, features = ["default"] }
 time = { workspace = true, features = [
 	"default",
 	"serde-human-readable",
