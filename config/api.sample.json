@@ -40,19 +40,19 @@
 		"apiKey": "<cloudflare-api-key>"
 	},
 	"opentelemetry": {
-		"endpoint": "http://jaeger:4317"
+		"tracing": {
+			"endpoint": "http://tracing:4317"
+		},
+		"logs": {
+			"endpoint": "http://logs:3100"
+		},
+		"metrics": {
+			"endpoint": "http://metrics:8080",
+			"username": "admin",
+			"password": "password"
+		}
 	},
 	"ipinfo": {
 		"token": "token"
-	},
-	"loki": {
-		"endpoint": "http://loki:3100",
-		"username": "admin",
-		"password": "password"
-	},
-	"mimir": {
-		"endpoint": "http://mimir:3000",
-		"username": "admin",
-		"password": "password"
 	}
 }

@@ -138,7 +138,7 @@ async fn main() {
 					.with_exporter(
 						opentelemetry_otlp::new_exporter()
 							.tonic()
-							.with_endpoint(&config.opentelemetry.endpoint),
+							.with_endpoint(&config.opentelemetry.tracing.endpoint),
 					)
 					.install_batch(opentelemetry_sdk::runtime::Tokio)
 					.expect("Failed to install OpenTelemetry tracing pipeline")

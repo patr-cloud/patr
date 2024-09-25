@@ -74,10 +74,6 @@ pub struct AppConfig {
 	pub opentelemetry: OpenTelemetryConfig,
 	/// The configuration for IpInfo to get IpAddress details
 	pub ipinfo: IpInfoConfig,
-	/// The loki configuration to use for logs
-	pub loki: LokiConfig,
-	/// The mimir configuration to use for metrics
-	pub mimir: MimirConfig,
 }
 
 /// The environment the application is running in
@@ -195,12 +191,44 @@ pub struct EmailConfig {
 	pub password: String,
 }
 
-/// The configuration for the opentelemetry endpoint to send traces to
+/// The configuration for the opentelemetry endpoints
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenTelemetryConfig {
+	/// The metrics configuration for the opentelemetry endpoint
+	pub tracing: TracingConfig,
+	/// The loki configuration to use for logs
+	pub logs: LogsConfig,
+	/// The mimir configuration to use for metrics
+	pub metrics: MetricsConfig,
+}
+
+/// The configuration for the opentelemetry endpoint to send traces to
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TracingConfig {
 	/// The endpoint to send traces to
 	pub endpoint: String,
+}
+
+/// The configuration for Loki to use for logs
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LogsConfig {
+	/// The endpoint to send logs to
+	pub endpoint: String,
+}
+
+/// The configuration for Mimir to use for metrics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MetricsConfig {
+	/// The endpoint to query for metrics
+	pub endpoint: String,
+	/// The username to use to connect to the Mimir server
+	pub username: String,
+	/// The password to use to connect to the Mimir server
+	pub password: String,
 }
 
 /// The configuration for IpInfo to get information about an IP Address
@@ -209,28 +237,4 @@ pub struct OpenTelemetryConfig {
 pub struct IpInfoConfig {
 	/// The token for connecting to ipinfo.io
 	pub token: String,
-}
-
-/// The configuration for Loki to use for logs
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LokiConfig {
-	/// The endpoint to send logs to
-	pub endpoint: String,
-	/// The username to use to connect to the Loki server
-	pub username: String,
-	/// The password to use to connect to the Loki server
-	pub password: String,
-}
-
-/// The configuration for Mimir to use for metrics
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MimirConfig {
-	/// The endpoint to query for metrics
-	pub endpoint: String,
-	/// The username to use to connect to the Mimir server
-	pub username: String,
-	/// The password to use to connect to the Mimir server
-	pub password: String,
 }

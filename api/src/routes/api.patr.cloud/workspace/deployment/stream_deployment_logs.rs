@@ -1,10 +1,9 @@
 use axum::{
-	http::{StatusCode, Uri},
+	http::{HeaderName, HeaderValue, StatusCode, Uri},
 	response::IntoResponse,
 };
 use axum_typed_websockets::Message;
 use futures::StreamExt;
-use headers::{Authorization, HeaderMapExt};
 use models::{
 	api::workspace::deployment::*,
 	utils::{GenericResponse, WebSocketUpgrade},
@@ -35,7 +34,7 @@ pub async fn stream_deployment_logs(
 		request:
 			ProcessedApiRequest {
 				path: StreamDeploymentLogsPath {
-					workspace_id: _,
+					workspace_id,
 					deployment_id,
 				},
 				query: StreamDeploymentLogsQuery { start_time },
@@ -73,7 +72,7 @@ pub async fn stream_deployment_logs(
 
 	let mut client_request = Uri::builder()
 		.scheme(
-			if config.loki.endpoint.starts_with("https") {
+			if config.opentelemetry.logs.endpoint.starts_with("https") {
 				"wss"
 			} else {
 				"ws"
@@ -81,7 +80,8 @@ pub async fn stream_deployment_logs(
 		)
 		.authority(
 			config
-				.loki
+				.opentelemetry
+				.logs
 				.endpoint
 				.trim_start_matches("https://")
 				.trim_start_matches("http://"),
@@ -98,12 +98,10 @@ pub async fn stream_deployment_logs(
 		))
 		.build()?
 		.into_client_request()?;
-	client_request
-		.headers_mut()
-		.typed_insert(Authorization::basic(
-			&config.loki.username,
-			&config.loki.password,
-		));
+	client_request.headers_mut().insert(
+		HeaderName::from_static("X-Scope-OrgID"),
+		HeaderValue::from_str(&workspace_id.to_string()).unwrap(),
+	);
 	*client_request.method_mut() = Method::GET;
 
 	let (mut stream, _) = tokio_tungstenite::connect_async(client_request)

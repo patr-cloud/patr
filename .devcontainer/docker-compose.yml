@@ -27,6 +27,8 @@ services:
       - postgres
       - redis
       - tracing
+      - logs
+      - metrics
     hostname: backend
     networks:
       vpc:
@@ -73,3 +75,25 @@ services:
       vpc:
         aliases:
           - tracing
+
+  logs:
+    image: grafana/loki:3.2
+    restart: unless-stopped
+    expose:
+      - 3100
+    hostname: logs
+    networks:
+      vpc:
+        aliases:
+          - logs
+
+  metrics:
+    image: grafana/mimir:2.13
+    restart: unless-stopped
+    expose:
+      - 8080
+    hostname: metrics
+    networks:
+      vpc:
+        aliases:
+          - metrics

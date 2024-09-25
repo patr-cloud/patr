@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use models::api::workspace::managed_url::*;
 
 use crate::prelude::*;
@@ -16,6 +14,8 @@ pub async fn update_managed_url(
 	http_only: bool,
 	permanent_redirect: bool,
 ) -> Result<UpdateManagedURLResponse, ServerFnError<ErrorType>> {
+	use std::str::FromStr;
+
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 

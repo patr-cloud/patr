@@ -10,6 +10,7 @@ mod is_username_valid;
 mod list_recovery_options;
 mod login;
 mod logout;
+#[expect(unused_variables)]
 mod oauth;
 mod renew_access_token;
 mod resend_otp;

@@ -1,4 +1,4 @@
-use axum::http::StatusCode;
+use axum::http::{HeaderName, HeaderValue, StatusCode};
 use models::api::workspace::deployment::*;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -31,7 +31,7 @@ pub async fn get_deployment_logs(
 		request:
 			ProcessedApiRequest {
 				path: GetDeploymentLogsPath {
-					workspace_id: _,
+					workspace_id,
 					deployment_id,
 				},
 				query: GetDeploymentLogsQuery {
@@ -72,8 +72,10 @@ pub async fn get_deployment_logs(
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
 	let loki_response = reqwest::Client::new()
-		.get(format!("{}/loki/api/v1/query_range", config.loki.endpoint))
-		.basic_auth(config.loki.username, Some(config.loki.password))
+		.get(format!(
+			"{}/loki/api/v1/query_range",
+			config.opentelemetry.logs.endpoint
+		))
 		.query(&{
 			let mut query = vec![
 				("limit", limit.unwrap_or(100).to_string()),
@@ -92,6 +94,10 @@ pub async fn get_deployment_logs(
 
 			query
 		})
+		.header(
+			HeaderName::from_static("X-Scope-OrgID"),
+			HeaderValue::from_str(&workspace_id.to_string()).unwrap(),
+		)
 		.send()
 		.await?
 		.text()
