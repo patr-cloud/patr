@@ -3474,6 +3474,7 @@ dependencies = [
  "either",
  "getrandom 0.2.16",
  "getrandom 0.3.3",
+ "futures",
  "headers",
  "hex",
  "http",

@@ -20,14 +20,16 @@ axum-extra        = { workspace = true, features = ["typed-routing"] }
 base32            = { workspace = true, features = [] }
 base64            = { workspace = true, features = ["default"] }
 either            = { workspace = true, features = ["serde"] }
+futures           = { workspace = true, features = ["default"] }
 headers           = { workspace = true, features = [] }
 hex               = { workspace = true, features = ["default"] }
 http              = { workspace = true, features = ["default"] }
 ipnetwork         = { workspace = true, features = ["default"] }
+leptos            = { workspace = true, features = ["default"] }
 macros            = { workspace = true, features = [] }
 preprocess        = { workspace = true, features = [] }
 regex             = { workspace = true, features = ["default"] }
-reqwest           = { workspace = true, features = ["default", "json", "rustls-tls"] }
+reqwest           = { workspace = true, features = ["default", "rustls-tls", "json"] }
 schemars          = { workspace = true, features = ["default", "uuid1"] }
 serde             = { workspace = true, features = ["default", "derive"] }
 serde_json        = { workspace = true, features = ["default"] }
