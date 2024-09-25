@@ -3,9 +3,12 @@ use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};
 
 use crate::{pages::*, prelude::*, utils::AuthState};
 
+/// The View for the App Component, it encapsulates the whole application, and
+/// adds the sidebar or headedr if necessary
 #[component]
 pub fn AppOutletView() -> impl IntoView {
 	let (state, _) = AuthState::load();
+	let app_type = expect_context::<AppType>();
 
 	view! {
 		{move || match state.get() {
@@ -14,54 +17,27 @@ pub fn AppOutletView() -> impl IntoView {
 					<Outlet/>
 				</PageContainer>
 			}.into_view(),
-			AuthState::LoggedIn { access_token: _, refresh_token: _, last_used_workspace_id } => {
-				if last_used_workspace_id.is_some() {
-					view! {
-						<div class="fr-fs-fs full-width full-height bg-secondary">
-							<Sidebar>
-								<div></div>
-							</Sidebar>
-							<main class="fc-fs-ct full-width px-lg">
-								<header style="width: 100%; min-height: 5rem;"></header>
+			AuthState::LoggedIn {..} => {
+				view! {
+					<div class="fr-fs-fs full-width full-height bg-secondary">
+						<Sidebar>
+							{
+								app_type.is_managed().then(|| view! {
+									<Transition>
+										<WorkspaceSidebarComponent/>
+									</Transition>
+								})
+							}
+						</Sidebar>
 
-								<Outlet/>
-							</main>
-						</div>
-					}
-					.into_view()
-				} else {
-					view! {
-						<div>"No workspace exists. Create workspace"</div>
-					}
-					.into_view()
+						<main class="fc-fs-ct full-width px-lg">
+							<Outlet/>
+						</main>
+					</div>
 				}
+				.into_view()
 			}
 		}}
-	}
-}
-
-#[component]
-pub fn AppOutlet() -> impl IntoView {
-	let app_type = expect_context::<AppType>();
-
-	view! {
-		<div class="fr-fs-fs full-width full-height bg-secondary">
-			<Sidebar>
-				{
-					match app_type {
-						AppType::SelfHosted => view! {}.into_view(),
-						AppType::Managed => view! {
-							<Transition>
-								<WorkspaceSidebarComponent/>
-							</Transition>
-						}
-					}
-				}
-			</Sidebar>
-			<main class="fc-fs-ct full-width px-lg">
-				<Outlet/>
-			</main>
-		</div>
 	}
 }
 
@@ -85,7 +61,7 @@ pub fn App() -> impl IntoView {
 				// Logged in routes
 				<ProtectedRoute
 					path={AppRoutes::Empty}
-					view={AppOutlet}
+					view={AppOutletView}
 					redirect_path={AppRoutes::LoggedOutRoute(LoggedOutRoute::Login)}
 					condition={move || state.get().is_logged_in()}
 				>
