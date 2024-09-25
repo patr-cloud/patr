@@ -1,7 +1,11 @@
-FROM mcr.microsoft.com/devcontainers/rust:1-1-bullseye
+FROM ubuntu:jammy
 
-# Include lld linker to improve build times either by using environment variable
-# RUSTFLAGS="-C link-arg=-fuse-ld=lld" or with Cargo's configuration file (i.e see .cargo/config.toml).
-RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
-   && apt-get -y install clang lld \
-   && apt-get autoremove -y && apt-get clean -y
+RUN apt update
+RUN apt install -y libssl-dev pkg-config bash-completion git sudo curl htop nano vim build-essential
+RUN adduser vscode
+RUN adduser vscode sudo
+RUN echo vscode ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/vscode
+RUN chmod 0440 /etc/sudoers.d/vscode
+USER vscode
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain nightly -y --target wasm32-unknown-unknown
+RUN cargo install cargo-leptos cargo-audit sqlx-cli

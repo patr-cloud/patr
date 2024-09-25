@@ -3,6 +3,7 @@
 {
 	"name": "Patr API",
 	"dockerComposeFile": "docker-compose.yml",
+	"updateRemoteUserUID": true,
 	"service": "app",
 	"workspaceFolder": "/workspace",
 	"customizations": {
@@ -24,24 +25,6 @@
 				"citreae535.sparse-crates"
 			]
 		}
-	},
-	"features": {
-		"ghcr.io/devcontainers/features/docker-in-docker:2": {
-			"installDockerBuildx": true,
-			"installDockerComposeSwitch": true,
-			"version": "latest",
-			"dockerDashComposeVersion": "latest"
-		},
-		"ghcr.io/eliises/devcontainer-features/bash-profile:1": {
-			"command": "alias k=kubectl",
-			"file": "$_CONTAINER_USER_HOME/.bashrc"
-		},
-		"ghcr.io/devcontainers-contrib/features/apt-packages:1": {
-			"packages": [
-				"bash-completion"
-			]
-		},
-		"ghcr.io/lee-orr/rusty-dev-containers/wasm32-unknown-unknown:0": {}
 	},
 	"forwardPorts": [
 		3000,
