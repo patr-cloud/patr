@@ -94,7 +94,7 @@ pub fn WorkspaceSidebarComponent() -> impl IntoView {
 							/>
 						}
 						.into_view(),
-						Err(_) => view! {"Error Loading"}.into_view(),
+						Err(err) => format!( "Error Loading, {:?}", err ).into_view(),
 					},
 					None => view! {"loading..."}.into_view(),
 				}

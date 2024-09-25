@@ -38,21 +38,20 @@ pub fn DeploymentDashboard() -> impl IntoView {
 				{
 					move || match deployment_list.get() {
 						Some(Ok(data)) => view! {
-							<DashboardContainer
-								gap={Size::Large}
-								render_items={
-									view! {
-										<For
-											each={move || data.deployments.clone()}
-											key={|state| state.id}
-											let:child
-										>
-											<DeploymentCard deployment={child}/>
-										</For>
-									}.into_view()
-								}
-							/>
-						},
+							<section class="p-xl w-full overflow-y-auto">
+								<div class="grid gap-lg justify-start content-start
+									grid-cols-[repeat(auto-fit,_minmax(300px,_400px))]"
+								>
+									<For
+										each={move || data.deployments.clone()}
+										key={|state| state.id}
+										let:child
+									>
+										<DeploymentCard deployment={child}/>
+									</For>
+								</div>
+							</section>
+						}.into_view(),
 						Some(Err(err)) => view! {
 							<ErrorPage
 								title="Error Loading Deployments"

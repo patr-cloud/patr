@@ -289,14 +289,12 @@ pub fn SignUpForm() -> impl IntoView {
 
 				<div class="fr-fe-ct w-full mt-lg">
 					{
-						match app_type {
-							AppType::SelfHosted => view! {}.into_view(),
-							AppType::Managed => view! {
+						app_type.is_managed().then(|| view! {
 								<Link class="btn mr-xs" to="/confirm" r#type={Variant::Link}>
 									"ALREADY HAVE AN OTP"
 								</Link>
 							}.into_view()
-						}
+						)
 					}
 					<Show
 						when=move || !loading.get()

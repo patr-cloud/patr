@@ -143,17 +143,14 @@ pub fn LoginForm() -> impl IntoView {
 			</div>
 
 			{
-				match app_type {
-					AppType::SelfHosted => view! {}.into_view(),
-					AppType::Managed => view! {
+				app_type.is_managed().then(||
+					view! {
 						<div class="flex justify-between items-center w-full pt-xs">
 							<Link to={"/forgot-password".to_owned()} r#type={Variant::Link}>
 								"Forgot Password?"
 							</Link>
 						</div>
-					}
-					.into_view()
-				}
+					}.into_view())
 			}
 
 			<Show

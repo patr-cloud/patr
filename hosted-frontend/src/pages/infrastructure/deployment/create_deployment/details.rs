@@ -197,33 +197,30 @@ pub fn DeploymentDetails(
 					</div>
 				</div>
 				{
-					match app_type {
-						AppType::SelfHosted => view! {}.into_view(),
-						AppType::Managed => view! {
-							<div class="flex my-xs w-full mb-md">
-								<div class="flex-2 flex justify-start items-center">
-									<label class="text-white text-sm flex justify-start items-center">"Choose Runner"</label>
-								</div>
-
-								<div class="flex-10 flex flex-col items-start justify-start">
-									<Transition>
-										{
-											move || view! {
-												<RunnerDropdown />
-
-												<Show when={move || store_errors.with_value(|errors| !errors.get().runner.clone().is_empty())}>
-													<Alert r#type={AlertType::Error} class="mt-xs">
-														{move || store_errors.with_value(|errors| errors.get().runner.clone())}
-													</Alert>
-												</Show>
-
-											}.into_view()
-										}
-									</Transition>
-								</div>
+					app_type.is_managed().then(|| view! {
+						<div class="flex my-xs w-full mb-md">
+							<div class="flex-2 flex justify-start items-center">
+								<label class="text-white text-sm flex justify-start items-center">"Choose Runner"</label>
 							</div>
-						}.into_view()
-					}
+
+							<div class="flex-10 flex flex-col items-start justify-start">
+								<Transition>
+									{
+										move || view! {
+											<RunnerDropdown />
+
+											<Show when={move || store_errors.with_value(|errors| !errors.get().runner.clone().is_empty())}>
+												<Alert r#type={AlertType::Error} class="mt-xs">
+													{move || store_errors.with_value(|errors| errors.get().runner.clone())}
+												</Alert>
+											</Show>
+
+										}.into_view()
+									}
+								</Transition>
+							</div>
+						</div>
+					}.into_view())
 				}
 			</div>
 		</div>

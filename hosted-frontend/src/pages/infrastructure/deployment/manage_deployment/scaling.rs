@@ -103,31 +103,28 @@ pub fn ManageDeploymentScaling() -> impl IntoView {
 			</div>
 
 			{
-				match app_type {
-					AppType::SelfHosted => view! {}.into_view(),
-					AppType::Managed => view! {
-						<div class="flex w-full">
-							<div class="flex-2 my-auto pr-md">
-								<span class="text-sm">"Estimated Cost"</span>
-							</div>
-
-							<div class="flex-10 flex flex-col items-start justify-start overflow-auto">
-								<div class="flex items-center justify-start">
-									<span class="text-xl text-success text-thin">
-										"$5" <small class="text-grey text-lg">"/month"</small>
-									</span>
-								</div>
-
-								<p class="text-grey">
-									"This deployment is eligible for "
-									<strong class="text-medium text-sm">"Free"</strong> "plan"
-									"since it's your first deployment and" <br/>
-									"you have selected the base machine type with only one instance."
-								</p>
-							</div>
+				app_type.is_managed().then(|| view! {
+					<div class="flex w-full">
+						<div class="flex-2 my-auto pr-md">
+							<span class="text-sm">"Estimated Cost"</span>
 						</div>
-					}.into_view()
-				}
+
+						<div class="flex-10 flex flex-col items-start justify-start overflow-auto">
+							<div class="flex items-center justify-start">
+								<span class="text-xl text-success text-thin">
+									"$5" <small class="text-grey text-lg">"/month"</small>
+								</span>
+							</div>
+
+							<p class="text-grey">
+								"This deployment is eligible for "
+								<strong class="text-medium text-sm">"Free"</strong> "plan"
+								"since it's your first deployment and" <br/>
+								"you have selected the base machine type with only one instance."
+							</p>
+						</div>
+					</div>
+				}.into_view())
 			}
 		</div>
 	}

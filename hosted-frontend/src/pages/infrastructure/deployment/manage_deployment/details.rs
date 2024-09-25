@@ -109,25 +109,22 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 						</div>
 
 						{
-							match app_type {
-								AppType::SelfHosted => view! {}.into_view(),
-								AppType::Managed => view! {
-									<div class="flex w-full">
-										<div class="flex-2 flex items-start justify-start">
-											<label html_for="image-details">"Runner"</label>
-										</div>
-										<div class="flex-10 flex flex-col items-start justify-start">
-											<Textbox
-												value={
-													let runner_id = info.deployment.runner;
-													(move || runner_id.to_string()).into_view()
-												}
-												disabled=true
-											/>
-										</div>
+							app_type.is_managed().then(|| view! {
+								<div class="flex w-full">
+									<div class="flex-2 flex items-start justify-start">
+										<label html_for="image-details">"Runner"</label>
 									</div>
-								}.into_view()
-							}
+									<div class="flex-10 flex flex-col items-start justify-start">
+										<Textbox
+											value={
+												let runner_id = info.deployment.runner;
+												(move || runner_id.to_string()).into_view()
+											}
+											disabled=true
+										/>
+									</div>
+								</div>
+							}.into_view())
 						}
 
 						<PortInput

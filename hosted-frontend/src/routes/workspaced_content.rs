@@ -65,9 +65,7 @@ pub fn WorkspacedRoutes() -> impl IntoView {
 	view! {
 		<ProtectedRoute
 			path={AppRoutes::Empty}
-			view={move || view! {
-				<WorkspacedRouteView />
-			}}
+			view={WorkspacedRouteView}
 			redirect_path={AppRoutes::LoggedInRoute(LoggedInRoute::UserProfile)}
 			condition={move || current_workspace_id.get().is_some()}
 		>
