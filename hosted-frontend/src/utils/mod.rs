@@ -4,13 +4,17 @@ mod client;
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::client::*;
 
+/// A module containing the custom [`AppRoute`].
+/// The App Route Enum. This Enum is used to specify the route of the app.
+mod app_route;
 /// A module containing extension traits for various types
 mod ext_traits;
 mod hooks;
 mod routes;
+mod sidebar_items;
 mod storage;
 
-pub use self::{ext_traits::*, hooks::*, routes::*, storage::*};
+pub use self::{app_route::*, ext_traits::*, hooks::*, routes::*, sidebar_items::*, storage::*};
 
 /// A trait to extend the [`String`] type with some useful methods that are not
 /// available in the standard library. This is useful for adding utility methods

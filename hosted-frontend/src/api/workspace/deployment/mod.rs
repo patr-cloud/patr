@@ -8,6 +8,7 @@ mod list;
 mod list_machines;
 mod start;
 mod stop;
+mod stream_logs;
 
 pub use self::{
 	create::*,
@@ -20,4 +21,5 @@ pub use self::{
 	list_machines::*,
 	start::*,
 	stop::*,
+	stream_logs::*,
 };

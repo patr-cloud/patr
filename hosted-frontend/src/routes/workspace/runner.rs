@@ -1,8 +1,12 @@
 use models::utils::Uuid;
 
-use crate::CommonQueryParams;
+use crate::{
+	pages::{CreateRunner, ManageRunner, RunnerDashboard, RunnerPage},
+	prelude::*,
+	CommonQueryParams,
+};
 
-macros::declare_app_route! {
+::macros::declare_app_route! {
 	/// Route for Runners Dashboard Page
 	RunnerDashboard,
 	"/runner",
@@ -14,7 +18,7 @@ macros::declare_app_route! {
 	}
 }
 
-macros::declare_app_route! {
+::macros::declare_app_route! {
 	/// Route for Runners Create Page
 	CreateRunner,
 	"/runner/create",
@@ -22,7 +26,7 @@ macros::declare_app_route! {
 	query = {}
 }
 
-macros::declare_app_route! {
+::macros::declare_app_route! {
 	/// Route for Runners Details Page
 	ManageRunner,
 	"/runner/:runner_id" {
@@ -31,4 +35,16 @@ macros::declare_app_route! {
 	},
 	requires_login = true,
 	query = {}
+}
+
+/// The Routes for the Runner Page
+#[component(transparent)]
+pub fn RunnerRoutes() -> impl IntoView {
+	view! {
+		<AppRoute<RunnerDashboardRoute, _, _> view={move |_query, _params| RunnerPage}>
+			<AppRoute<CreateRunnerRoute, _, _> view={move |_query, _params| CreateRunner}/>
+			<AppRoute<ManageRunnerRoute, _, _> view={move |_query, _params| ManageRunner}/>
+			<Route path={AppRoutes::Empty} view={RunnerDashboard}/>
+		</AppRoute<RunnerDashboardRoute, _, _>>
+	}
 }

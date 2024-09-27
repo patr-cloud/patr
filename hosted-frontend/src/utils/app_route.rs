@@ -30,6 +30,9 @@ pub fn AppRoute<R, F, V>(
 	_phantom: PhantomData<R>,
 	/// The view for the route
 	view: F,
+	/// Whether to the render the path or not based on the AppType
+	#[prop(into, optional, default = Callback::new(|_| true))]
+	to_render: Callback<(), bool>,
 	/// The Children of the route
 	#[prop(optional, default = Box::new(|| Fragment::new(vec![])))]
 	children: Children,
@@ -51,12 +54,18 @@ where
 		.trim_start_matches('/')
 		.to_string();
 
-	view! {
-		<Route
-			view={move || view(query.clone(), params.clone())}
-			path={router_path}
-			data={move || path.clone()}>
-			{children()}
-		</Route>
+	if to_render.call(()) {
+		view! {
+			<Route
+				view={move || view(query.clone(), params.clone())}
+				path={router_path}
+				data={move || path.clone()}
+			>
+				{children()}
+			</Route>
+		}
+		.into_view()
+	} else {
+		return view! { <></> }.into_view();
 	}
 }

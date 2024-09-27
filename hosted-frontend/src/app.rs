@@ -20,7 +20,9 @@ pub fn AppOutletView() -> impl IntoView {
 			AuthState::LoggedIn {..} => {
 				view! {
 					<div class="fr-fs-fs full-width full-height bg-secondary">
-						<Sidebar>
+						<Sidebar
+							sidebar_items={get_sidebar_items(app_type)}
+						>
 							{
 								app_type.is_managed().then(|| view! {
 									<Transition>
@@ -51,7 +53,6 @@ pub fn App() -> impl IntoView {
 	// TODO: When redirecting to login, the URL should include the path that the
 	// user was trying to access. This way, after login, the user is redirected
 	// to the page they were trying to access.
-
 	provide_context(app_type);
 
 	view! {
@@ -68,9 +69,32 @@ pub fn App() -> impl IntoView {
 					<ProfileRoutes/>
 					<InfrastructureRoutes/>
 					<DomainConfigurationRoutes/>
-					<RunnerRoutes />
-					<WorkspaceRoutes/>
+					{
+						app_type.is_managed().then(|| view! {
+							<Route path={LoggedInRoute::Runners} view={RunnerPage}>
+								<Route path={"create"} view={CreateRunner}/>
+								<Route path={":runner_id"} view={ManageRunner}/>
+								<Route path={AppRoutes::Empty} view={RunnerDashboard}/>
+							</Route>
+							<Route path={AppRoutes::Empty} view={|| view! { <Outlet /> }}>
+								<Route path={LoggedInRoute::Workspace} view={WorkspacePage}>
+									<Route path={AppRoutes::Empty} view={ManageWorkspace}>
+										<Route path="" view={ManageWorkspaceSettingsTab} />
+									</Route>
+									<Route path="/create" view={CreateWorkspace} />
+								</Route>
+							</Route>
+						})
+					}
 					<Route path="" view={|| view! { <div></div> }}/>
+					<Route
+						path={AppRoutes::NotFound}
+						view={|| view! {
+							<ErrorPage
+								title={"Page Not Found"}
+							/>
+						}}
+					/>
 				</ProtectedRoute>
 				<ProtectedRoute
 					path={AppRoutes::Empty}
@@ -79,8 +103,16 @@ pub fn App() -> impl IntoView {
 					condition={move || state.get().is_logged_out()}
 				>
 					<AppRoute<LoginRoute, _, _> view={move |_query, _params| LoginForm}/>
-					<Route path={LoggedOutRoute::SignUp} view={SignUpForm}/>
-					<Route path={LoggedOutRoute::ConfirmOtp} view={ConfirmSignUpPage}/>
+					<AppRoute<SignUpRoute, _, _> view={move |_query, _params| SignUpForm}/>
+					<AppRoute<VerifySignUpRoute, _, _>
+						to_render={move |_| app_type.is_managed()}
+						view={move |_query, _params| ConfirmSignUpPage}
+					/>
+					{
+						app_type.is_managed().then(|| view! {
+							<Route path={LoggedOutRoute::ConfirmOtp} view={ConfirmSignUpPage}/>
+						})
+					}
 				</ProtectedRoute>
 			</Routes>
 		</Router>

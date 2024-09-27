@@ -8,7 +8,9 @@ pub fn NotWorkspacedRoutes() -> impl IntoView {
 		<Route
 			path={AppRoutes::Empty}
 			view={|| view! {
-				<Sidebar>
+				<Sidebar
+					sidebar_items={get_sidebar_items(expect_context::<AppType>())}
+				>
 					<div />
 				</Sidebar>
 
