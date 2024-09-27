@@ -12,7 +12,9 @@ use crate::{
 #[component]
 pub fn WorkspacedRouteView() -> impl IntoView {
 	view! {
-		<Sidebar>
+		<Sidebar
+			sidebar_items={get_sidebar_items(expect_context::<AppType>())}
+		>
 			<WorkspaceSidebarComponent/>
 		</Sidebar>
 
