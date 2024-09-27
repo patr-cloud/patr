@@ -20,24 +20,28 @@ pub use self::{
 	workspaced_content::*,
 };
 
+/// The direction of the sort
 #[derive(
 	Debug, Clone, Serialize, Deserialize, PartialEq, Eq, strum::Display, strum::EnumString,
 )]
 #[strum(serialize_all = "camelCase")]
 pub enum SortDirection {
+	/// Sort in ascending order
 	Ascending,
+	/// Sort in descending order
 	Descending,
 }
 
+/// Common query parameters for all routes
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct CommonQueryParams {
 	/// The Page number to fetch
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub page: Option<u32>,
-	/// The Sorting order of the deployments
+	/// The Sorting order of the resource
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub order: Option<SortDirection>,
-	/// Filter the deployments by date
+	/// Filter the resource by the given query
 	#[serde(skip_serializing_if = "Option::is_none")]
-	pub query: Option<OneOrMore<String>>,
+	pub query: Option<String>,
 }

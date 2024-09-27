@@ -2,6 +2,7 @@ use leptos_router::*;
 
 use crate::prelude::*;
 
+/// The Routes for the Domain Configuration
 #[component(transparent)]
 pub fn DomainConfigurationRoutes() -> impl IntoView {
 	view! {

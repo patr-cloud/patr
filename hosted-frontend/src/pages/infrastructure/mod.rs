@@ -2,6 +2,9 @@ use leptos_router::*;
 
 use crate::prelude::*;
 
+/// The Routes for the Infrastructure Pages,
+/// Contains Secrets, Databases, Deployments, Static Sites, Repository, and
+/// Container Registry
 #[component(transparent)]
 pub fn InfrastructureRoutes() -> impl IntoView {
 	view! {
