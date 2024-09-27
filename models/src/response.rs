@@ -1,20 +1,6 @@
 use std::fmt::Display;
 
-use axum::{
-	body::{Body, Bytes},
-	http::StatusCode,
-	response::IntoResponse,
-	Json,
-};
-use futures::{stream, Stream};
-use http::Response;
-use leptos::{
-	server_fn::{
-		codec::{FromRes, IntoRes},
-		response::{browser::BrowserResponse, BrowserMockRes, ClientRes},
-	},
-	ServerFnError,
-};
+use axum::{http::StatusCode, response::IntoResponse, Json};
 use preprocess::Preprocessable;
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
@@ -22,7 +8,6 @@ use typed_builder::TypedBuilder;
 use crate::{
 	prelude::*,
 	utils::{False, Headers, IntoAxumResponse, True},
-	ApiEncoding,
 };
 
 /// A response object that is passed through the tower layers and services
@@ -49,89 +34,6 @@ where
 	/// Convert the response into a Result
 	pub fn into_result(self) -> Result<Self, ErrorType> {
 		Ok(self)
-	}
-}
-
-impl<E> ClientRes<ErrorType> for AppResponse<E>
-where
-	E: ApiEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-{
-	async fn try_into_string(self) -> Result<String, ServerFnError<ErrorType>> {
-		todo!()
-	}
-
-	async fn try_into_bytes(self) -> Result<Bytes, ServerFnError<ErrorType>> {
-		todo!()
-	}
-
-	fn try_into_stream(
-		self,
-	) -> Result<
-		impl Stream<Item = Result<Bytes, ServerFnError>> + Send + Sync + 'static,
-		ServerFnError<ErrorType>,
-	> {
-		Ok(stream::empty())
-	}
-
-	fn status(&self) -> u16 {
-		self.status_code.as_u16()
-	}
-
-	fn status_text(&self) -> String {
-		self.status_code.to_string()
-	}
-
-	fn location(&self) -> String {
-		String::new()
-	}
-
-	fn has_redirect(&self) -> bool {
-		false
-	}
-}
-
-impl<E> FromRes<ApiEncoding<E>, BrowserResponse, ErrorType> for AppResponse<E>
-where
-	E: ApiEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-{
-	async fn from_res(res: BrowserResponse) -> Result<Self, ServerFnError<ErrorType>> {
-		todo!()
-	}
-}
-
-impl<E> FromRes<ApiEncoding<E>, BrowserMockRes, ErrorType> for AppResponse<E>
-where
-	E: ApiEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-{
-	async fn from_res(res: BrowserMockRes) -> Result<Self, ServerFnError<ErrorType>> {
-		todo!()
-	}
-}
-
-impl<E> IntoRes<ApiEncoding<E>, Response<Body>, ErrorType> for AppResponse<E>
-where
-	E: ApiEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-{
-	async fn into_res(self) -> Result<Response<Body>, ServerFnError<ErrorType>> {
-		let mut response = self.body.into_axum_response();
-		*response.status_mut() = self.status_code;
-		*response.headers_mut() = self.headers.to_header_map();
-
-		Ok(response)
-	}
-}
-
-impl<E> IntoRes<ApiEncoding<E>, BrowserMockRes, ErrorType> for AppResponse<E>
-where
-	E: ApiEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-{
-	async fn into_res(self) -> Result<BrowserMockRes, ServerFnError<ErrorType>> {
-		unreachable!()
 	}
 }
 
