@@ -1,26 +1,15 @@
-use std::{
-	any::Any,
-	collections::HashMap,
-	sync::{Arc, OnceLock, RwLock},
-};
+use std::sync::OnceLock;
+#[cfg(not(target_arch = "wasm32"))]
+use std::{any::Any, collections::HashMap, sync::RwLock};
 
-use axum::body::Body;
-use axum_extra::routing::TypedPath;
-use http::{Method, Request};
-use leptos::{
-	server_fn::{
-		client::browser::BrowserClient,
-		codec::{FromReq, IntoReq},
-		middleware::Layer,
-		request::{browser::BrowserRequest, BrowserMockReq},
-		ServerFn,
-	},
-	ServerFnError,
-};
+use http::Method;
+use leptos::ServerFnError;
 use matchit::Router;
-use models::{ApiEncoding, ApiEndpoint, ApiRequest, AppResponse, ErrorType};
+use models::{ApiEndpoint, ApiRequest, AppResponse, ErrorType};
 use preprocess::Preprocessable;
+use serde::{de::DeserializeOwned, Serialize};
 
+#[cfg(not(target_arch = "wasm32"))]
 /// The type used for the [`API_CALL_REGISTRY`] static. This is a map of all the
 /// API calls that are registered to the backend. This is used internally and
 /// should not be used by any other part of the code.
@@ -31,80 +20,29 @@ type ApiCallRegistryData = OnceLock<RwLock<HashMap<Method, Router<Box<dyn Any + 
 /// YOUR OWN. Use the [`make_request`] fn instead.
 pub static API_CALL_REGISTRY: ApiCallRegistryData = OnceLock::new();
 
-struct MakeRequest<E>
-where
-	E: ApiEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-{
-	/// The request to be made to the backend
+#[cfg(target_arch = "wasm32")]
+/// The client used to make requests to the backend
+static REQWEST_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+
+/// Makes an API call to the backend. If you want to make an API request, just
+/// call this function with the request and you'll get a response. All the
+/// layering is automatically done. You don't need to do anything. The
+/// registering of all APIs is done by the RouterExt trait in the backend
+pub async fn make_request<E>(
 	request: ApiRequest<E>,
-}
-
-impl<E> IntoReq<ApiEncoding<E>, BrowserRequest, ErrorType> for MakeRequest<E>
+) -> Result<AppResponse<E>, ServerFnError<ErrorType>>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	E::RequestBody: Serialize + DeserializeOwned,
+	E::ResponseBody: Serialize + DeserializeOwned,
 {
-	fn into_req(
-		self,
-		path: &str,
-		accepts: &str,
-	) -> Result<BrowserRequest, ServerFnError<ErrorType>> {
-		todo!()
-	}
-}
-
-impl<E> FromReq<ApiEncoding<E>, Request<Body>, ErrorType> for MakeRequest<E>
-where
-	E: ApiEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-{
-	async fn from_req(req: Request<Body>) -> Result<Self, ServerFnError<ErrorType>> {
-		todo!()
-	}
-}
-
-impl<E> FromReq<ApiEncoding<E>, BrowserMockReq, ErrorType> for MakeRequest<E>
-where
-	E: ApiEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-{
-	async fn from_req(req: BrowserMockReq) -> Result<Self, ServerFnError<ErrorType>> {
-		todo!()
-	}
-}
-
-impl<E> ServerFn for MakeRequest<E>
-where
-	E: ApiEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-{
-	type Client = BrowserClient;
-	type Error = ErrorType;
-	type InputEncoding = ApiEncoding<E>;
-	type Output = AppResponse<E>;
-	type OutputEncoding = ApiEncoding<E>;
 	#[cfg(not(target_arch = "wasm32"))]
-	type ServerRequest = http::Request<axum::body::Body>;
-	#[cfg(target_arch = "wasm32")]
-	type ServerRequest = BrowserMockReq;
-	#[cfg(not(target_arch = "wasm32"))]
-	type ServerResponse = http::Response<axum::body::Body>;
-	#[cfg(target_arch = "wasm32")]
-	type ServerResponse = leptos::server_fn::response::BrowserMockRes;
-
-	const PATH: &'static str = E::RequestPath::PATH;
-
-	fn middlewares() -> Vec<Arc<dyn Layer<Self::ServerRequest, Self::ServerResponse>>> {
-		// TODO change the middlewares based on the endpoint
-		vec![]
-	}
-
-	#[cfg(not(target_arch = "wasm32"))]
-	async fn run_body(self) -> Result<Self::Output, ServerFnError<Self::Error>> {
+	{
 		use std::net::{IpAddr, SocketAddr};
 
 		use axum::extract::ConnectInfo;
+		use axum_extra::routing::TypedPath;
 		use tower::{
 			service_fn,
 			util::{BoxCloneService, BoxLayer},
@@ -143,42 +81,38 @@ where
 			.service(BoxCloneService::new(service_fn(|_| async move {
 				unreachable!()
 			})))
-			.oneshot((self.request, socket_addr.ip()))
+			.oneshot((request, socket_addr.ip()))
 			.await
 			.map_err(ServerFnError::WrappedServerError)
 	}
-
 	#[cfg(target_arch = "wasm32")]
-	async fn run_body(self) -> Result<Self::Output, ServerFnError<Self::Error>> {
-		unreachable!()
+	{
+		use models::utils::Headers;
+
+		let response = REQWEST_CLIENT
+			.get_or_init(reqwest::Client::new)
+			.request(E::METHOD, format!("/api/{}", request.path.to_string()))
+			.headers(request.headers.to_header_map())
+			.query(&request.query)
+			.json(&request.body)
+			.send()
+			.await
+			.map_err(|err| ServerFnError::Request(err.to_string()))?;
+
+		let status_code = response.status();
+		let headers = E::ResponseHeaders::from_header_map(response.headers())
+			.map_err(|err| ServerFnError::Response(err.to_string()))?;
+		let text = response
+			.text()
+			.await
+			.map_err(|err| ServerFnError::Response(err.to_string()))?;
+		let body =
+			serde_json::from_str(&text).map_err(|err| ServerFnError::Response(err.to_string()))?;
+
+		Ok(AppResponse {
+			status_code,
+			headers,
+			body,
+		})
 	}
-}
-
-/// Makes an API call to the backend. If you want to make an API request, just
-/// call this function with the request and you'll get a response. All the
-/// layering is automatically done. You don't need to do anything. The
-/// registering of all APIs is done by the RouterExt trait in the backend
-pub async fn make_request<E>(
-	request: ApiRequest<E>,
-) -> Result<AppResponse<E>, ServerFnError<ErrorType>>
-where
-	E: ApiEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-{
-	#[cfg(not(target_arch = "wasm32"))]
-	let response = MakeRequest::<E> { request }.run_body().await;
-	#[cfg(target_arch = "wasm32")]
-	let response = MakeRequest::<E> { request }.run_on_client().await;
-	response
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-/// Used internally for registering API calls to the backend. DO NOT USE THIS ON
-/// YOUR OWN. Use the [`make_request`] fn instead.
-pub fn register_request<E>()
-where
-	E: ApiEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-{
-	leptos::server_fn::axum::register_explicit::<MakeRequest<E>>();
 }

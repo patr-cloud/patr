@@ -102,8 +102,6 @@ where
 				);
 			});
 
-		hosted_frontend::utils::register_request::<E>();
-
 		// Setup the layers for the backend
 		if <E as ApiEndpoint>::API_ALLOWED || cfg!(debug_assertions) {
 			self.route(
@@ -170,8 +168,6 @@ where
 					<E::RequestPath as TypedPath>::PATH
 				);
 			});
-
-		hosted_frontend::utils::register_request::<E>();
 
 		// Setup the layers for the backend
 		if <E as ApiEndpoint>::API_ALLOWED || cfg!(debug_assertions) {
