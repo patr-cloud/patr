@@ -78,35 +78,24 @@ fn EditApiTokenPermission() -> impl IntoView {
 			<div class="flex flex-col items-start justify-start mb-xs w-full my-md gap-sm">
 				<label class="text-white text-sm">"Choose Permissions"</label>
 				<div class="w-full fc-fs-fs gap-xl">
-					{
-						move || {
-							match workspace_list.get() {
-								Some(Ok(data)) => {
-									data.workspaces.into_iter()
-										.map(|workspace| {
-											view! {
-												<PermissionCard
-													workspace={workspace}
-												/>
-											}
-										})
-										.collect_view()
-								},
-								_ => {
-									view! {
-										<div>"Cannot Load Resource"</div>
-									}.into_view()
-								}
+					{move || {
+						match workspace_list.get() {
+							Some(Ok(data)) => {
+								data.workspaces
+									.into_iter()
+									.map(|workspace| {
+										view! { <PermissionCard workspace={workspace} /> }
+									})
+									.collect_view()
 							}
+							_ => view! { <div>"Cannot Load Resource"</div> }.into_view(),
 						}
-					}
+					}}
 				</div>
 			</div>
 		}
 		.into_view(),
-		None => view! {
-			<p>"Loading..."</p>
-		}
+		None => view! { <p>"Loading..."</p> }
 		.into_view(),
 	}
 }
@@ -174,25 +163,29 @@ pub fn EditApiToken() -> impl IntoView {
 
 			<form class="w-full h-full">
 				<Transition>
-					{
-						move || match token_info.get() {
-							Some(token_info) => {
-								match token_info {
-									Ok(data) => {
-										token_info_signal.set(Some(data.token.clone()));
-										view! {
-											<TokenInfo />
-											<EditApiTokenPermission/>
-										}.into_view()
-									},
-									Err(err) => view! {
-										<div>{format!("Cannot Load Resource {:?}", err.to_string())}</div>
-									}.into_view()
+					{move || match token_info.get() {
+						Some(token_info) => {
+							match token_info {
+								Ok(data) => {
+									token_info_signal.set(Some(data.token.clone()));
+									view! {
+										<TokenInfo />
+										<EditApiTokenPermission />
+									}
+										.into_view()
 								}
-							},
-							None => view! {}.into_view()
+								Err(err) => {
+									view! {
+										<div>
+											{format!("Cannot Load Resource {:?}", err.to_string())}
+										</div>
+									}
+										.into_view()
+								}
+							}
 						}
-					}
+						None => view! {}.into_view(),
+					}}
 				</Transition>
 
 				<div class="w-full flex justify-end items-center py-md mt-auto">

@@ -61,11 +61,11 @@ pub fn DatabaseTypeCard(
 					on_click.call(database_type.get());
 				}
 			}
-			class=format!(
+			class={format!(
 				"fc-ct-ct bg-secondary-light br-sm px-md py-sm outline-info-focus database-type-card
 				txt-white txt-sm {}",
-				if is_selected.get() {"bg-primary"} else {"bd-none"}
-			)
+				if is_selected.get() { "bg-primary" } else { "bd-none" },
+			)}
 		>
 			<img
 				alt={database_type.get().to_string()}

@@ -57,7 +57,9 @@ pub fn DatabaseCard(
 					class="mb-xxs ml-xxs"
 					status={
 						let database = database.clone();
-						Signal::derive(move || Some(Status::from_database_status(database.get().status.clone())))
+						Signal::derive(move || Some(
+							Status::from_database_status(database.get().status.clone()),
+						))
 					}
 				/>
 			</div>
@@ -69,9 +71,7 @@ pub fn DatabaseCard(
 						view! {
 							<div class="half-width p-xxs">
 								<div class="bg-secondary-medium br-sm px-lg py-sm fc-ct-fs">
-									<span class="letter-sp-md txt-xxs txt-grey">
-										{item.label}
-									</span>
+									<span class="letter-sp-md txt-xxs txt-grey">{item.label}</span>
 									<span class="txt-primary w-15 txt-of-ellipsis of-hidden">
 										{item.value}
 									</span>
@@ -79,8 +79,7 @@ pub fn DatabaseCard(
 							</div>
 						}
 					})
-					.collect::<Vec<_>>()
-				}
+					.collect::<Vec<_>>()}
 
 			</div>
 			<div class="fr-fs-ct mt-xs full-width px-xxs">

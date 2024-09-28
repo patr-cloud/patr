@@ -51,37 +51,39 @@ pub fn ManageDeploymentsContent(
 
 	view! {
 		<Transition>
-			{
-				move || match deployment_info.get() {
-					Some(info) => {
-						match info {
-							Ok(data) => {
-								let deployment = data.clone();
-								deployment_info_signal.set(Some(deployment.clone()));
-								view! {
-									<ManageDeploymentHeader />
-									<ContainerBody class="gap-md">
-										<Outlet/>
-									</ContainerBody>
-								}.into_view()
-							},
-							Err(err)  => view! {
+			{move || match deployment_info.get() {
+				Some(info) => {
+					match info {
+						Ok(data) => {
+							let deployment = data.clone();
+							deployment_info_signal.set(Some(deployment.clone()));
+							view! {
+								<ManageDeploymentHeader />
+								<ContainerBody class="gap-md">
+									<Outlet />
+								</ContainerBody>
+							}
+								.into_view()
+						}
+						Err(err) => {
+							view! {
 								<ErrorPage
 									title="Error Fetching Resource"
 									content={view! {
 										<p class="text-white">
 											{format!("{}", err.to_string().to_case(Case::Title))}
 										</p>
-									}.into_view()}
+									}
+										.into_view()}
 								/>
-							}.into_view(),
+							}
+								.into_view()
 						}
-					},
-					None => view! {<div>"Loading"</div>}.into_view()
+					}
 				}
-			}
+				None => view! { <div>"Loading"</div> }.into_view(),
+			}}
 		</Transition>
-
 	}
 }
 
@@ -103,18 +105,10 @@ pub fn ManageDeployments() -> impl IntoView {
 
 	move || match deployment_id.get() {
 		Some(deployment_id) => {
-			view! {
-				<ManageDeploymentsContent
-					deployment_id={Signal::derive(move || deployment_id)}
-				/>
-			}
+			view! { <ManageDeploymentsContent deployment_id={Signal::derive(move || deployment_id)} /> }
 		}
 		.into_view(),
-		None => view! {
-			<ErrorPage
-				title="Deployment ID is not a valid UUID"
-			/>
-		}
+		None => view! { <ErrorPage title="Deployment ID is not a valid UUID" /> }
 		.into_view(),
 	}
 }

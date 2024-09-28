@@ -18,21 +18,19 @@ pub fn ProfileSettings() -> impl IntoView {
 						match user_data {
 							Ok(data) => {
 								view! {
-									<BasicInfo basic_user_info={data.clone().basic_user_info}/>
-									<ContactInfo user_email={data.clone().recovery_email}/>
+									<BasicInfo basic_user_info={data.clone().basic_user_info} />
+									<ContactInfo user_email={data.clone().recovery_email} />
 								}
 									.into_view()
 							}
 							Err(_) => view! {}.into_view(),
 						}
 					}
-					None => view! {
-						// <BasicInfo
-					}.into_view(),
+					None => view! {}.into_view(),
 				}}
 
 			</Transition>
-			<PasswordSection/>
+			<PasswordSection />
 		</div>
 	}
 }

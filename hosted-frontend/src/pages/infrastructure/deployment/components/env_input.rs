@@ -58,13 +58,9 @@ pub fn EnvInput(
 									</div>
 
 									<div class="flex-col-1 fr-ct-ct pl-sm">
-										<button
-											on:click={
-												move |ev| {
-													on_delete.call((ev, child.0.clone()))
-												}
-											}
-										>
+										<button on:click={move |ev| {
+											on_delete.call((ev, child.0.clone()))
+										}}>
 											<Icon
 												icon={IconType::Trash2}
 												color={Color::Error}
@@ -116,7 +112,7 @@ pub fn EnvInput(
 								on_add.call((ev.clone(), env_name.get(), env_value.get()))
 							})}
 						>
-							<Icon icon={IconType::Plus} color={Color::Secondary}/>
+							<Icon icon={IconType::Plus} color={Color::Secondary} />
 						</Link>
 					</div>
 				</div>

@@ -76,11 +76,11 @@ pub fn ManageRepository() -> impl IntoView {
 					name: "General".to_owned(),
 					path: "".to_owned(),
 				},
-			]}/>
+			]} />
 
 		</ContainerHead>
 		<ContainerBody class="px-xxl pt-xl pb-sm gap-md">
-			<Outlet/>
+			<Outlet />
 		</ContainerBody>
 	}
 }

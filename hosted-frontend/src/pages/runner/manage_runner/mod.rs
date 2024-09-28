@@ -25,18 +25,14 @@ fn ManageRunnerContent(
 
 	view! {
 		<Transition>
-			{
-				move || {
-					match runner_info.get() {
-						Some(Ok(runner_info)) => view! {
-							<RunnerManageHead
-								runner_info={runner_info.runner.clone()}
-							/>
+			{move || {
+				match runner_info.get() {
+					Some(Ok(runner_info)) => {
+						view! {
+							<RunnerManageHead runner_info={runner_info.runner.clone()} />
 
 							<ContainerBody class="p-xs px-md gap-md overflow-y-auto text-white">
-								<form
-									class="w-full h-full px-md py-xl flex flex-col items-start justify-start fit-wide-screen mx-auto gap-md"
-								>
+								<form class="w-full h-full px-md py-xl flex flex-col items-start justify-start fit-wide-screen mx-auto gap-md">
 									<div class="flex w-full">
 										<div class="flex-2 flex items-start justify-start pt-sm">
 											<label html_for="name" class="text-white text-sm">
@@ -58,29 +54,27 @@ fn ManageRunnerContent(
 								</form>
 							</ContainerBody>
 						}
-						.into_view(),
-						Some(Err(err)) => view! {
+							.into_view()
+					}
+					Some(Err(err)) => {
+						view! {
 							<div>"Error fetching runner info"</div>
 							<ErrorPage
 								title="Error Loading Runner Info"
-								content={
-									view! {
-										<p class="text-white">
-											{format!("{}", err.to_string().to_case(Case::Title))}
-										</p>
-									}.into_view()
+								content={view! {
+									<p class="text-white">
+										{format!("{}", err.to_string().to_case(Case::Title))}
+									</p>
 								}
+									.into_view()}
 							/>
-						}.into_view(),
-						None => view! {
-							<div>"Loading Runner Info"</div>
 						}
-						.into_view(),
+							.into_view()
 					}
+					None => view! { <div>"Loading Runner Info"</div> }.into_view(),
 				}
-			}
+			}}
 		</Transition>
-
 	}
 }
 
@@ -101,20 +95,13 @@ pub fn ManageRunner() -> impl IntoView {
 	});
 
 	move || match runner_id.get() {
-		Some(runner_id) => view! {
-			<ManageRunnerContent
-				runner_id={Signal::derive(move || runner_id)}
-			/>
-		}
+		Some(runner_id) => view! { <ManageRunnerContent runner_id={Signal::derive(move || runner_id)} /> }
 		.into_view(),
 		None => view! {
 			<ErrorPage
 				title="Invalid Runner ID"
-				content={
-					view! {
-						<p class="text-white">"Runner id is not a valid UUID"</p>
-					}.into_view()
-				}
+				content={view! { <p class="text-white">"Runner id is not a valid UUID"</p> }
+					.into_view()}
 			/>
 		}
 		.into_view(),

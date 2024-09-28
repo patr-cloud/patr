@@ -18,7 +18,7 @@ pub struct ContainerRegistryItem {
 pub fn ContainerRegistry() -> impl IntoView {
 	view! {
 		<ContainerMain class="my-md">
-			<Outlet/>
+			<Outlet />
 		</ContainerMain>
 	}
 }
@@ -88,7 +88,7 @@ pub fn ContainerRegistryDashboard() -> impl IntoView {
 
 				render_rows={view! {
 					<For each={move || data.get()} key={|state| state.id.clone()} let:child>
-						<ContainerRegistryCard item={child}/>
+						<ContainerRegistryCard item={child} />
 					</For>
 				}
 					.into_view()}

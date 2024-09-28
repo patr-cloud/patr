@@ -51,23 +51,27 @@ pub fn StartStopButton() -> impl IntoView {
 				})}
 				style_variant={LinkStyleVariant::Contained}
 				disabled={match deployment_info.deployment.status {
-						DeploymentStatus::Running | DeploymentStatus::Created | DeploymentStatus::Stopped => false,
-						_ => true,
+					DeploymentStatus::Running
+					| DeploymentStatus::Created
+					| DeploymentStatus::Stopped => false,
+					_ => true,
 				}}
 			>
 				<Icon
-					icon={
-						match Status::from_deployment_status(deployment_info.deployment.status.clone()) {
-							Status::Running => IconType::PauseCircle,
-							_ => IconType::PlayCircle
-						}
-					}
-					size={ Size::ExtraSmall }
+					icon={match Status::from_deployment_status(
+						deployment_info.deployment.status.clone(),
+					) {
+						Status::Running => IconType::PauseCircle,
+						_ => IconType::PlayCircle,
+					}}
+					size={Size::ExtraSmall}
 					class="mr-xs"
 					color={Color::Secondary}
 				/>
 				{
-					let status = Status::from_deployment_status(deployment_info.deployment.status.clone());
+					let status = Status::from_deployment_status(
+						deployment_info.deployment.status.clone(),
+					);
 					match status {
 						Status::Running => "STOP",
 						Status::Created | Status::Stopped => "START",
@@ -80,11 +84,7 @@ pub fn StartStopButton() -> impl IntoView {
 				class="flex items-center justify-start btn btn-error ml-md"
 				on:click={on_click_delete}
 			>
-				<Icon
-					icon={IconType::Trash2}
-					size=Size::ExtraSmall
-					class="mr-xs"
-				/>
+				<Icon icon={IconType::Trash2} size={Size::ExtraSmall} class="mr-xs" />
 				"DELETE"
 			</button>
 		}
@@ -117,14 +117,15 @@ pub fn ManageDeploymentHeader() -> impl IntoView {
 						{
 							let deployment_info = deployment_info;
 							move || match deployment_info.get() {
-								Some(deployment_info) => view! {
-									<PageTitle
-										variant={PageTitleVariant::Text}
-									>
-										{deployment_info.deployment.name.clone()}
-									</PageTitle>
-								}.into_view(),
-								None => view! {}.into_view()
+								Some(deployment_info) => {
+									view! {
+										<PageTitle variant={PageTitleVariant::Text}>
+											{deployment_info.deployment.name.clone()}
+										</PageTitle>
+									}
+										.into_view()
+								}
+								None => view! {}.into_view(),
 							}
 						}
 					</PageTitleContainer>
@@ -160,7 +161,7 @@ pub fn ManageDeploymentHeader() -> impl IntoView {
 					name: "Logs".to_owned(),
 					path: "logs".to_owned(),
 				},
-			]}/>
+			]} />
 
 		</ContainerHead>
 	}

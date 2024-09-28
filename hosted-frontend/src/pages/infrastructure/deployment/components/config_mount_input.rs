@@ -90,9 +90,10 @@ pub fn ConfigMountInput(
 							placeholder="No File Selected"
 							on_input={Box::new(move |ev| {
 								ev.prevent_default();
-
-								// TODO: Remove unsafe unwrap
-								let elem = ev.target().unwrap().unchecked_into::<HtmlInputElement>();
+								let elem = ev
+									.target()
+									.unwrap()
+									.unchecked_into::<HtmlInputElement>();
 								if let Some(files) = elem.files() {
 									for i in 0..files.length() {
 										let file = files.get(i).unwrap();
@@ -112,7 +113,7 @@ pub fn ConfigMountInput(
 								on_add.call((ev.clone(), config_file_path.get(), String::new()))
 							})}
 						>
-							<Icon icon={IconType::Plus} color={Color::Secondary}/>
+							<Icon icon={IconType::Plus} color={Color::Secondary} />
 						</Link>
 					</div>
 				</form>

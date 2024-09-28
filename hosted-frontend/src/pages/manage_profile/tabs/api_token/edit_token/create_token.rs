@@ -35,23 +35,22 @@ pub fn CreateApiToken() -> impl IntoView {
 	};
 
 	view! {
-		{
-			move || match response.get() {
-				Some(data) => match data {
+		{move || match response.get() {
+			Some(data) => {
+				match data {
 					Ok(data) => {
 						logging::log!("logging response get {:#?}", data);
-						view! {
-							<TokenModal is_regenerated={false} token={data.token}/>
-						}.into_view()
-					},
-					Err(_) => view! {}.into_view()
-				},
-				None => view! {}.into_view()
+						view! { <TokenModal is_regenerated=false token={data.token} /> }.into_view()
+					}
+					Err(_) => view! {}.into_view(),
+				}
 			}
-		}
-		<form on:submit={on_submit_create}
+			None => view! {}.into_view(),
+		}}
+		<form
+			on:submit={on_submit_create}
 			class="w-full fit-wide-screen h-full px-md \
-				text-white flex flex-col items-start justify-start"
+			text-white flex flex-col items-start justify-start"
 		>
 			<div class="flex justify-start items-center mb-md w-full">
 				<p class="text-md">
@@ -132,21 +131,22 @@ pub fn CreateApiToken() -> impl IntoView {
 				<label class="text-white text-sm">"Choose Permissions"</label>
 				<div class="w-full flex flex-col items-start justify-start gap-xl">
 					<Transition>
-						{
-							move || match workspace_list.get() {
-								Some(Ok(workspace_list)) => {
-									workspace_list.workspaces.into_iter().map(|workspace| view! {
-										<CreatePermissionCard workspace={workspace} />
-									}.into_view()).collect_view()
-								},
-								Some(Err(_)) => view! {
-									<div>"Error loading workspaces"</div>
-								}.into_view(),
-								None => view! {
-									<div>"Loading workspaces..."</div>
-								}.into_view()
+						{move || match workspace_list.get() {
+							Some(Ok(workspace_list)) => {
+								workspace_list
+									.workspaces
+									.into_iter()
+									.map(|workspace| {
+										view! { <CreatePermissionCard workspace={workspace} /> }
+											.into_view()
+									})
+									.collect_view()
 							}
-						}
+							Some(Err(_)) => {
+								view! { <div>"Error loading workspaces"</div> }.into_view()
+							}
+							None => view! { <div>"Loading workspaces..."</div> }.into_view(),
+						}}
 					</Transition>
 				</div>
 			</div>
@@ -160,7 +160,7 @@ pub fn CreateApiToken() -> impl IntoView {
 					"BACK"
 				</Link>
 				<Link
-					should_submit={true}
+					should_submit=true
 					r#type={Variant::Button}
 					style_variant={LinkStyleVariant::Contained}
 					class="txt-sm txt-medium mr-sm"

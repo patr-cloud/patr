@@ -8,20 +8,18 @@ pub fn RunnerDashboardHead() -> impl IntoView {
 			<div class="w-full flex justify-between items-center">
 				<div class="flex flex-col justify-between items-start">
 					<PageTitleContainer>
-						<PageTitle icon_position={PageTitleIconPosition::End}>
-							"CI/CD"
-						</PageTitle>
-						<PageTitle
-							to="/runners"
-							variant={PageTitleVariant::SubHeading}
-						>
+						<PageTitle icon_position={PageTitleIconPosition::End}>"CI/CD"</PageTitle>
+						<PageTitle to="/runners" variant={PageTitleVariant::SubHeading}>
 							"Runners"
 						</PageTitle>
 					</PageTitleContainer>
 
 					<PageDescription
-						description={"Create and manage CI Runners for automated builds.".to_string()}
-						doc_link={Some("https://docs.patr.cloud/ci-cd/#choosing-a-runner".to_string())}
+						description={"Create and manage CI Runners for automated builds."
+							.to_string()}
+						doc_link={Some(
+							"https://docs.patr.cloud/ci-cd/#choosing-a-runner".to_string(),
+						)}
 					/>
 				</div>
 

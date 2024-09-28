@@ -17,11 +17,7 @@ pub fn CreateDatabaseHeader() -> impl IntoView {
 						>
 							"Database"
 						</PageTitle>
-						<PageTitle
-							variant={PageTitleVariant::SubHeading}
-						>
-							"Create"
-						</PageTitle>
+						<PageTitle variant={PageTitleVariant::SubHeading}>"Create"</PageTitle>
 					</PageTitleContainer>
 
 					<PageDescription

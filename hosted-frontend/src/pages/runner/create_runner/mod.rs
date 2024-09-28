@@ -14,12 +14,10 @@ pub fn CreateRunner() -> impl IntoView {
 		<RunnerCreateHead />
 		<ContainerBody class="p-xs px-md gap-md overflow-y-auto text-white">
 			<form
-				on:submit={
-					move |ev| {
-						ev.prevent_default();
-						create_runner_action.dispatch(runner_name.get());
-					}
-				}
+				on:submit={move |ev| {
+					ev.prevent_default();
+					create_runner_action.dispatch(runner_name.get());
+				}}
 				class="w-full h-full flex flex-col justify-between items-start px-md py-xl fit-wide-screen mx-auto gap-md"
 			>
 				<div class="flex w-full">
@@ -46,17 +44,10 @@ pub fn CreateRunner() -> impl IntoView {
 				</div>
 
 				<div class="flex items-center justify-end gap-md w-full">
-					<Link
-						to="/runners"
-						style_variant={LinkStyleVariant::Plain}
-						should_submit={false}
-					>
+					<Link to="/runners" style_variant={LinkStyleVariant::Plain} should_submit=false>
 						"Back"
 					</Link>
-					<Link
-						style_variant={LinkStyleVariant::Contained}
-						should_submit={true}
-					>
+					<Link style_variant={LinkStyleVariant::Contained} should_submit=true>
 						"CREATE"
 					</Link>
 				</div>

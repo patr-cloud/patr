@@ -38,19 +38,12 @@ pub fn EventLogContainer() -> impl IntoView {
 					"IP Address".into_view(),
 					"Date".into_view(),
 				]}
-				render_rows={
-					view! {
-						<For
-							each={move || data.get().clone()}
-							key={move |v| v.id}
-							let:child
-						>
-							<EventLogCard
-								event={child.clone()}
-							/>
-						</For>
-					}.into_view()
+				render_rows={view! {
+					<For each={move || data.get().clone()} key={move |v| v.id} let:child>
+						<EventLogCard event={child.clone()} />
+					</For>
 				}
+					.into_view()}
 			/>
 		</div>
 	}

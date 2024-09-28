@@ -23,12 +23,12 @@ fn CopyButton(// #[prop(into)]
 			<Show
 				when={move || !copy_data.get()}
 				fallback={move || {
-					view! { <Icon icon={IconType::Check} size={Size::ExtraSmall}/> }.into_view()
+					view! { <Icon icon={IconType::Check} size={Size::ExtraSmall} /> }.into_view()
 				}}
 			>
 
 				<button aria_label="Copy " class="btn-icon">
-					<Icon icon={IconType::Copy} size={Size::ExtraSmall}/>
+					<Icon icon={IconType::Copy} size={Size::ExtraSmall} />
 				</button>
 
 			</Show>
@@ -52,11 +52,9 @@ pub fn ManageDatabaseDetailsTab(
 				<div class="grid grid-col-4 flex-col-10 pl-xs full-width">
 					<DatabaseTypeCard
 						version=4.
-						database_type={Signal::derive(
-							move || store_datbase
-								.clone()
-								.with_value(|db| db.get().engine.clone())
-						)}
+						database_type={Signal::derive(move || {
+							store_datbase.clone().with_value(|db| db.get().engine.clone())
+						})}
 					/>
 				</div>
 			</div>
@@ -84,9 +82,9 @@ pub fn ManageDatabaseDetailsTab(
 				</div>
 				<div class="flex-col-10 pl-xs">
 					<div class="fr-fs-ct br-sm bg-secondary-light full-width py-sm px-xl">
-						<span class="pl-sm">{
-							move || store_datbase.with_value(|db| db.get().region.to_string())
-						}</span>
+						<span class="pl-sm">
+							{move || store_datbase.with_value(|db| db.get().region.to_string())}
+						</span>
 					</div>
 				</div>
 			</div>
@@ -100,12 +98,12 @@ pub fn ManageDatabaseDetailsTab(
 				<div class="flex-col-10 pl-xs">
 					<div class="fr-sb-ct br-sm bg-secondary-light full-width py-sm px-xl">
 						<span class="pl-sm">
-							{
-								move || store_datbase
+							{move || {
+								store_datbase
 									.with_value(|db| db.get().public_connection.username.clone())
-							}
+							}}
 						</span>
-						<CopyButton/>
+						<CopyButton />
 					</div>
 				</div>
 			</div>
@@ -124,7 +122,7 @@ pub fn ManageDatabaseDetailsTab(
 							aria_label="Password"
 							prop:value="********"
 						/>
-						<CopyButton/>
+						<CopyButton />
 					</div>
 
 					<ChangePasswordButton />
@@ -140,12 +138,12 @@ pub fn ManageDatabaseDetailsTab(
 				<div class="flex-col-10 pl-xs">
 					<div class="fr-sb-ct br-sm bg-secondary-light full-width py-sm px-xl">
 						<span class="pl-sm">
-							{
-								move || store_datbase
+							{move || {
+								store_datbase
 									.with_value(|db| db.get().public_connection.host.clone())
-							}
+							}}
 						</span>
-						<CopyButton/>
+						<CopyButton />
 					</div>
 				</div>
 			</div>
@@ -158,10 +156,10 @@ pub fn ManageDatabaseDetailsTab(
 				</div>
 				<div class="flex-col-10 pl-xs">
 					<div class="fr-sb-ct br-sm bg-secondary-light full-width py-sm px-xl">
-						<span class="pl-sm">{
-							move || store_datbase.with_value(|db| db.get().public_connection.port)
-						}</span>
-						<CopyButton/>
+						<span class="pl-sm">
+							{move || store_datbase.with_value(|db| db.get().public_connection.port)}
+						</span>
+						<CopyButton />
 					</div>
 				</div>
 			</div>
@@ -175,17 +173,20 @@ pub fn ManageDatabaseDetailsTab(
 				<div class="flex-col-10 pl-xs">
 					<div class="fr-sb-ct br-sm bg-secondary-light full-width py-sm px-xl">
 						<span class="pl-sm">
-							{
-								move || store_datbase.with_value(|_db| format!(
-									"{}://{}:<DATABASE_PASSWORD>@{}:{}/staging",
-									database_info.get().engine,
-									database_info.get().public_connection.clone().username,
-									database_info.get().public_connection.clone().host,
-									database_info.get().public_connection.clone().port,
-								))
-							}
+							{move || {
+								store_datbase
+									.with_value(|_db| {
+										format!(
+											"{}://{}:<DATABASE_PASSWORD>@{}:{}/staging",
+											database_info.get().engine,
+											database_info.get().public_connection.clone().username,
+											database_info.get().public_connection.clone().host,
+											database_info.get().public_connection.clone().port,
+										)
+									})
+							}}
 						</span>
-						<CopyButton/>
+						<CopyButton />
 					</div>
 				</div>
 			</div>
@@ -197,7 +198,7 @@ pub fn ManageDatabaseDetailsTab(
 					</label>
 				</div>
 				<div class="flex-col-10 pl-xs">
-					<DatabasePlanCard/>
+					<DatabasePlanCard />
 				</div>
 			</div>
 		</div>

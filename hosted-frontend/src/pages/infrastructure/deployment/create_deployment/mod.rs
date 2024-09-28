@@ -104,21 +104,13 @@ pub fn CreateDeployment() -> impl IntoView {
 	view! {
 		<CreateDeploymentHead />
 		<ContainerBody class="gap-md overflow-y-auto px-md">
-			{
-				move || match page.get() {
-					Page::Details => view! {
-						<DeploymentDetails errors={details_error}  />
-					}.into_view(),
-					Page::Running => view! {
-						<RunningDetails errors={runner_error} />
-					}.into_view(),
-					Page::Scaling => view! {
-						<ScaleDeployment />
-					}.into_view(),
-				}
-			}
+			{move || match page.get() {
+				Page::Details => view! { <DeploymentDetails errors={details_error} /> }.into_view(),
+				Page::Running => view! { <RunningDetails errors={runner_error} /> }.into_view(),
+				Page::Scaling => view! { <ScaleDeployment /> }.into_view(),
+			}}
 			<div class="flex justify-end items-center gap-md w-full fit-wide-screen mx-auto mt-auto pt-md pb-xl px-md">
-				 <Show when={move || page.get() != Page::Details}>
+				<Show when={move || page.get() != Page::Details}>
 					<Link
 						on_click={Rc::new(move |_| {
 							page.update(|x| *x = x.back());
@@ -132,20 +124,22 @@ pub fn CreateDeployment() -> impl IntoView {
 
 				<Show
 					when={move || page.get() == Page::Scaling}
-					fallback={move || view! {
-						<Link
-							on_click={Rc::new(on_click_next)}
-							style_variant={LinkStyleVariant::Contained}
-							r#type={Variant::Button}
-						>
-							"NEXT"
-							<Icon
-								icon={IconType::ChevronRight}
-								size={Size::ExtraSmall}
-								color={Color::Black}
-								class="ml-xxs"
-							/>
-						</Link>
+					fallback={move || {
+						view! {
+							<Link
+								on_click={Rc::new(on_click_next)}
+								style_variant={LinkStyleVariant::Contained}
+								r#type={Variant::Button}
+							>
+								"NEXT"
+								<Icon
+									icon={IconType::ChevronRight}
+									size={Size::ExtraSmall}
+									color={Color::Black}
+									class="ml-xxs"
+								/>
+							</Link>
+						}
 					}}
 				>
 					<button

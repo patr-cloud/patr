@@ -25,23 +25,22 @@ pub fn ManageDeploymentImageHistory() -> impl IntoView {
 		<div class="flex flex-col items-start justify-start w-full px-md my-xl mx-auto fit-wide-screen">
 			<div class="flex flex-col items-start justify-start w-full h-full gap-sm">
 				<Transition>
-					{
-						move || match image_history_list.get() {
-							Some(Ok(data)) => {
-								let history = data.deploys;
-								view! {
-									<For
-										each=move || history.clone()
-										key={|log| log.clone()}
-										let:child
-									>
-										<ImageHistoryCard deploy_history={child.clone()}/>
-									</For>
-								}.into_view()
-							},
-							_ => view! {"loading"}.into_view()
+					{move || match image_history_list.get() {
+						Some(Ok(data)) => {
+							let history = data.deploys;
+							view! {
+								<For
+									each={move || history.clone()}
+									key={|log| log.clone()}
+									let:child
+								>
+									<ImageHistoryCard deploy_history={child.clone()} />
+								</For>
+							}
+								.into_view()
 						}
-					}
+						_ => view! { "loading" }.into_view(),
+					}}
 				</Transition>
 			</div>
 		</div>

@@ -255,7 +255,7 @@ pub fn ChoosePermission(
 			<div class={div_class}>
 				<div class="flex flex-col items-start justify-start">
 					<InputDropdown
-						placeholder="Select Resource Type".to_string()
+						placeholder={"Select Resource Type".to_string()}
 						options={resource_type_values}
 						value={input_resource_type}
 					/>
@@ -264,9 +264,17 @@ pub fn ChoosePermission(
 				<Show when={move || show_resource_type.get()}>
 					<div class="flex flex-col items-start justify-start">
 						<InputDropdown
-							placeholder={format!("All/Specific {}", input_resource_type.with(|resource|
-								if resource.is_empty() {"Resource".to_string()} else {resource.to_owned()}
-							))}
+							placeholder={format!(
+								"All/Specific {}",
+								input_resource_type
+									.with(|resource| {
+										if resource.is_empty() {
+											"Resource".to_string()
+										} else {
+											resource.to_owned()
+										}
+									}),
+							)}
 							value={input_apply_to}
 							options={vec![
 								InputDropdownOption {
@@ -281,7 +289,8 @@ pub fn ChoosePermission(
 								},
 								InputDropdownOption {
 									id: "Except".to_string(),
-									label: format!("All {}s Except", input_resource_type.get() ).to_string(),
+									label: format!("All {}s Except", input_resource_type.get())
+										.to_string(),
 									disabled: false,
 								},
 							]}
@@ -291,39 +300,50 @@ pub fn ChoosePermission(
 
 				<Transition>
 					<Show when={show_resources}>
-						{
-							move || view! {
+						{move || {
+							view! {
 								<CheckboxDropdown
-									placeholder={format!("Select {}", input_resource_type.with(|resource|
-										if resource.is_empty() {"Resources".to_string()} else {resource.to_owned()}
-									))}
+									placeholder={format!(
+										"Select {}",
+										input_resource_type
+											.with(|resource| {
+												if resource.is_empty() {
+													"Resources".to_string()
+												} else {
+													resource.to_owned()
+												}
+											}),
+									)}
 									value={Signal::derive(move || input_resources.get())}
 									options={match resource_dropdown_options.get() {
 										Some(Ok(options)) => options,
-										_ => vec![]
+										_ => vec![],
 									}}
 									on_select={move |(_, id): (MouseEvent, String)| {
-										if input_resources.get().iter().any(|e| e.to_owned() == id) {
-											input_resources.update(|options| options.retain(|e| e.to_owned() != id));
+										if input_resources.get().iter().any(|e| e.to_owned() == id)
+										{
+											input_resources
+												.update(|options| options.retain(|e| e.to_owned() != id));
 										} else {
 											input_resources.update(|options| options.push(id.clone()));
 										}
 									}}
 								/>
 							}
-						}
+						}}
 					</Show>
 				</Transition>
 
 				<div>
 					<Transition>
 						<CheckboxDropdown
-							placeholder="Select Permissions".to_string()
+							placeholder={"Select Permissions".to_string()}
 							options={permissions_options}
 							value={Signal::derive(move || input_permissions.get())}
 							on_select={move |(_, id): (MouseEvent, String)| {
 								if input_permissions.get().iter().any(|e| e.to_owned() == id) {
-									input_permissions.update(|options| options.retain(|e| e.to_owned() != id));
+									input_permissions
+										.update(|options| options.retain(|e| e.to_owned() != id));
 								} else {
 									input_permissions.update(|options| options.push(id.clone()));
 								}
@@ -338,7 +358,7 @@ pub fn ChoosePermission(
 					on:click={on_select_permission}
 					class="flex items-center justify-center br-sm p-xs btn btn-primary"
 				>
-					<Icon icon={IconType::Plus} color=Color::Secondary />
+					<Icon icon={IconType::Plus} color={Color::Secondary} />
 				</button>
 			</div>
 		</div>

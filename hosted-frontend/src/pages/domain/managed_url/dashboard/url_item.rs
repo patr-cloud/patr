@@ -36,7 +36,7 @@ pub fn ManagedUrls(
 				on:click={move |_| expanded_urls.update(|val: &mut bool| *val = !*val)}
 				class="flex justify-start items-center w-full h-full px-md py-sm rounded-sm gap-sm text-sm"
 			>
-				<Icon icon={MaybeSignal::derive(icon_type)} size={Size::ExtraExtraSmall}/>
+				<Icon icon={MaybeSignal::derive(icon_type)} size={Size::ExtraExtraSmall} />
 				"On Patr"
 			</td>
 
@@ -44,10 +44,7 @@ pub fn ManagedUrls(
 				<td class="flex flex-col items-start justify-start w-full px-xl pb-md">
 					<table class="flex flex-col items-start justify-start w-full">
 						<tbody class="flex flex-col items-start justify-start w-full">
-							<ManagedUrlCard
-								managed_url={managed_url}
-								enable_radius_on_top=true
-							/>
+							<ManagedUrlCard managed_url={managed_url} enable_radius_on_top=true />
 						</tbody>
 					</table>
 				</td>

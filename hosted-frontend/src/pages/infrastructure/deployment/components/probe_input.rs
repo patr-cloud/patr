@@ -86,8 +86,8 @@ pub fn ProbeInput(
 
 			<div class="flex-10 flex items-start justify-start">
 				<div class="flex-5 pr-lg">
-					{
-						move || view! {
+					{move || {
+						view! {
 							<InputDropdown
 								placeholder={"Enter Probe Path".to_string()}
 								value={probe_port}
@@ -95,34 +95,26 @@ pub fn ProbeInput(
 									probe_port.set(id.clone());
 									on_select_port.call((id.clone(), probe_path.get().clone()))
 								}}
-								options={
-									available_ports.get()
-										.iter()
-										.map(|x| InputDropdownOption {
-											id: x.to_string(),
-											label: x.to_string(),
-											disabled: false,
-										})
-										.collect::<Vec<_>>()
-								}
+								options={available_ports
+									.get()
+									.iter()
+									.map(|x| InputDropdownOption {
+										id: x.to_string(),
+										label: x.to_string(),
+										disabled: false,
+									})
+									.collect::<Vec<_>>()}
 							/>
 						}
-					}
+					}}
 				</div>
 
 				<div class="flex-6 flex flex-col items-start justify-start">
 					<Input
 						r#type={InputType::Text}
-						value={
-							Signal::derive(
-								move || probe_value
-									.get()
-									.map(|probe| {
-										probe.path
-									})
-									.unwrap_or_default()
-							)
-						}
+						value={Signal::derive(move || {
+							probe_value.get().map(|probe| { probe.path }).unwrap_or_default()
+						})}
 						on_input={Box::new(move |ev| {
 							ev.prevent_default();
 							on_input_path.call((probe_port.get().clone(), event_target_value(&ev)));
@@ -132,28 +124,16 @@ pub fn ProbeInput(
 					/>
 				</div>
 
-				<Show
-					when={move ||
-						probe_value
-							.get()
-							.is_some()
-						// !probe_port.get().is_empty()
-					}
-				>
+				<Show when={move || probe_value.get().is_some()}>
+					// !probe_port.get().is_empty()
 					<div class="flex-1 flex items-start justify-center">
 						<Link
 							style_variant={LinkStyleVariant::Plain}
 							class="br-sm p-xs ml-md"
 							should_submit=false
-							on_click={Rc::new(move |ev| {
-								on_delete.call(ev.clone())
-							})}
+							on_click={Rc::new(move |ev| { on_delete.call(ev.clone()) })}
 						>
-							<Icon
-								icon={IconType::Trash2}
-								color={Color::Error}
-								size={Size::Small}
-							/>
+							<Icon icon={IconType::Trash2} color={Color::Error} size={Size::Small} />
 						</Link>
 					</div>
 				</Show>

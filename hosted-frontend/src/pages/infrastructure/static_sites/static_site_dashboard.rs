@@ -71,7 +71,7 @@ pub fn StaticSiteDashboard() -> impl IntoView {
 					gap={Size::Large}
 					render_items={view! {
 						<For each={move || data.get()} key={|state| state.id.clone()} let:child>
-							<StaticSiteCard static_site={child}/>
+							<StaticSiteCard static_site={child} />
 						</For>
 					}
 						.into_view()}

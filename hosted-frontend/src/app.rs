@@ -86,7 +86,7 @@ pub fn App() -> impl IntoView {
 								<WorkspaceRoutes />
 							}
 						})}
-					// <Route path="" view={|| view! { <div></div> }} />
+				// <Route path="" view={|| view! { <div></div> }} />
 				</ProtectedRoute>
 				<ProtectedRoute
 					path={AppRoutes::Empty}
@@ -100,9 +100,11 @@ pub fn App() -> impl IntoView {
 						.is_managed()
 						.then(|| {
 							view! {
-								<AppRoute<VerifySignUpRoute, _, _>
-									view={move |_query, _params| ConfirmSignUpPage}
-								/>
+								<AppRoute<
+								VerifySignUpRoute,
+								_,
+								_,
+							> view={move |_query, _params| ConfirmSignUpPage} />
 							}
 						})}
 				</ProtectedRoute>

@@ -27,7 +27,11 @@ pub fn ContainerRegistryCard(item: ContainerRegistryItem) -> impl IntoView {
 				</td>
 				<td class="flex-col-1 fr-fe-ct">
 					<button class="btn-icon">
-						<Icon icon={IconType::Trash2} size={Size::ExtraSmall} color={Color::Error}/>
+						<Icon
+							icon={IconType::Trash2}
+							size={Size::ExtraSmall}
+							color={Color::Error}
+						/>
 					</button>
 				</td>
 			</A>

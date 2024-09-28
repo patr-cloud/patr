@@ -10,7 +10,5 @@ use crate::{pages::CreateWorkspace, prelude::*};
 
 #[component(transparent)]
 pub fn WorkspaceRoutes() -> impl IntoView {
-	view! {
-		<AppRoute<CreateWorkspaceRoute, _, _> view={move |_, _| CreateWorkspace} />
-	}
+	view! { <AppRoute<CreateWorkspaceRoute, _, _> view={move |_, _| CreateWorkspace} /> }
 }

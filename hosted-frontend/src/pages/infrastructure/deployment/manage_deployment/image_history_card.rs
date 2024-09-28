@@ -35,21 +35,25 @@ pub fn ImageHistoryCard(
 				</span>
 
 				<button class="btn-icon">
-					<Icon icon={IconType::Copy} size={Size::ExtraSmall}/>
+					<Icon icon={IconType::Copy} size={Size::ExtraSmall} />
 				</button>
 
 				{move || {
 					active
 						.get()
-						.then(|| view! { <StatusBadge status={Some(Status::Live)} class="ml-xxs"/> })
+						.then(|| {
+							view! { <StatusBadge status={Some(Status::Live)} class="ml-xxs" /> }
+						})
 				}}
 
-				<span class="text-grey ml-auto">{deploy_history.get().clone().created.to_string()}</span>
+				<span class="text-grey ml-auto">
+					{deploy_history.get().clone().created.to_string()}
+				</span>
 			</div>
 
 			<div class="flex justify-between items-center w-full mt-sm pl-xl">
 				<div class="flex justify-start items-center row-card pl-sm">
-					<ImageTag tag={"Latest".to_owned()}/>
+					<ImageTag tag={"Latest".to_owned()} />
 				</div>
 
 				{move || {

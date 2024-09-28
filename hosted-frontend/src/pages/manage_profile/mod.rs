@@ -13,16 +13,18 @@ pub fn ProfileRoutes() -> impl IntoView {
 
 	view! {
 		<Route path={LoggedInRoute::UserProfile} view={ManageProfile}>
-			{
-				app_type.is_managed().then(|| view! {
-					<Route path={LoggedInRoute::ApiTokens} view={ApiTokensTab}>
-						<Route path="create" view={CreateApiToken} />
-						<Route path=":token_id" view={EditApiToken} />
-						<Route path={AppRoutes::Empty} view={ListApiTokens} />
-					</Route>
-				})
-			}
-			<Route path={AppRoutes::Empty} view={ProfileSettings}/>
+			{app_type
+				.is_managed()
+				.then(|| {
+					view! {
+						<Route path={LoggedInRoute::ApiTokens} view={ApiTokensTab}>
+							<Route path="create" view={CreateApiToken} />
+							<Route path=":token_id" view={EditApiToken} />
+							<Route path={AppRoutes::Empty} view={ListApiTokens} />
+						</Route>
+					}
+				})}
+			<Route path={AppRoutes::Empty} view={ProfileSettings} />
 		</Route>
 	}
 }
@@ -46,12 +48,12 @@ pub fn ManageProfile() -> impl IntoView {
 						name: "API Tokens".to_owned(),
 						path: "api-tokens".to_owned(),
 					},
-				]}/>
+				]} />
 
 			</ContainerHead>
 
 			<ContainerBody class="gap-md">
-				<Outlet/>
+				<Outlet />
 			</ContainerBody>
 		</ContainerMain>
 	}

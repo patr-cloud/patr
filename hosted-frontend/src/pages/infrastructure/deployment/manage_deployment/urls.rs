@@ -8,7 +8,7 @@ pub fn ManageDeploymentUrls() -> impl IntoView {
 				// r#type=Variant::Button
 				// style_variant=LinkStyleVariant::Contained
 				"CREATE MANAGED URL"
-				<Icon icon={IconType::Plus} size={Size::ExtraSmall} color={Color::Secondary}/>
+				<Icon icon={IconType::Plus} size={Size::ExtraSmall} color={Color::Secondary} />
 			</Link>
 		</div>
 		<TableDashboard

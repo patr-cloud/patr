@@ -29,8 +29,11 @@ pub fn ManageDatabaseHeader(
 							let name = name.get().clone();
 							if !name.is_empty() {
 								view! {
-									<PageTitle variant={PageTitleVariant::Text}>{name.clone()}</PageTitle>
-								}.into_view()
+									<PageTitle variant={PageTitleVariant::Text}>
+										{name.clone()}
+									</PageTitle>
+								}
+									.into_view()
 							} else {
 								view! {}.into_view()
 							}
@@ -44,11 +47,7 @@ pub fn ManageDatabaseHeader(
 					color={Color::Error}
 					class="fr-ct-ct gap-xs"
 				>
-					<Icon
-						icon={IconType::Trash2}
-						size={Size::ExtraSmall}
-						color={Color::White}
-					/>
+					<Icon icon={IconType::Trash2} size={Size::ExtraSmall} color={Color::White} />
 					"DELETE"
 				</Link>
 			</div>

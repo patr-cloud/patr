@@ -60,7 +60,10 @@ pub fn ConfirmSignUpPage() -> impl IntoView {
 				</div>
 			</div>
 
-			<ActionForm action={confirm_action} class="flex flex-col items-start justify-start w-full">
+			<ActionForm
+				action={confirm_action}
+				class="flex flex-col items-start justify-start w-full"
+			>
 				<Input
 					name="username"
 					placeholder="Username"
@@ -77,10 +80,7 @@ pub fn ConfirmSignUpPage() -> impl IntoView {
 
 				<span class="mt-sm mb-xxs text-sm text-white">"Enter OTP"</span>
 				<input name="otp" type="hidden" value={otp} />
-				<OtpInput
-					otp={otp}
-					on_change={move |val: String| otp.set(val)}
-				/>
+				<OtpInput otp={otp} on_change={move |val: String| otp.set(val)} />
 				<Show when={move || !otp_error.get().is_empty()}>
 					<Alert r#type={AlertType::Error} class="mt-xs">
 						{move || otp_error.get()}

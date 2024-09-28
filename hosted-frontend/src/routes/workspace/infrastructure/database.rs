@@ -38,9 +38,9 @@ use crate::{
 pub fn DatabaseRoutes() -> impl IntoView {
 	view! {
 		<AppRoute<DatabaseDashboardRoute, _, _> view={move |_query, _params| DatabasePage}>
-			<AppRoute<CreateDatabaseRoute, _, _> view={move |_query, _params| CreateDatabase}/>
-			<AppRoute<ManageDatabaseRoute, _, _> view={move |_query, _params| ManageDatabase}/>
-			<Route path={AppRoutes::Empty} view={DatabaseDashboard}/>
-		</AppRoute<DatabaseDashboardRoute, _, _>>
+			<AppRoute<CreateDatabaseRoute, _, _> view={move |_query, _params| CreateDatabase} />
+			<AppRoute<ManageDatabaseRoute, _, _> view={move |_query, _params| ManageDatabase} />
+			<Route path={AppRoutes::Empty} view={DatabaseDashboard} />
+		</AppRoute>
 	}
 }
