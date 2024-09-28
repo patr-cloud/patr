@@ -153,6 +153,5 @@ pub fn get_sidebar_items(app_type: AppType) -> Vec<LinkItem> {
 				]),
 			},
 		],
-		_ => vec![],
 	}
 }

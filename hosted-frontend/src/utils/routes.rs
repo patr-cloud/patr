@@ -8,8 +8,6 @@ pub enum AppRoutes {
 	/// The Empty Route, Used for fallback routes.
 	#[default]
 	Empty,
-	/// The Not Found Route
-	NotFound,
 	/// The routes that can be taken when the user is logged out.
 	LoggedOutRoute(LoggedOutRoute),
 	/// The routes that can be taken when the user is logged in.
@@ -78,7 +76,6 @@ pub enum LoggedOutRoute {
 impl Display for AppRoutes {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			Self::NotFound => write!(f, "/*any"),
 			Self::Empty => write!(f, "/"),
 			Self::LoggedInRoute(logged_in_routes) => {
 				write!(f, "{}", logged_in_routes)

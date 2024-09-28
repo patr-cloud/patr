@@ -12,32 +12,37 @@ pub fn AppOutletView() -> impl IntoView {
 
 	view! {
 		{move || match state.get() {
-			AuthState::LoggedOut => view! {
-				<PageContainer class="bg-image">
-					<Outlet/>
-				</PageContainer>
-			}.into_view(),
-			AuthState::LoggedIn {..} => {
+			AuthState::LoggedOut => {
+				view! {
+					<PageContainer class="bg-image">
+						<Outlet />
+					</PageContainer>
+				}
+					.into_view()
+			}
+			AuthState::LoggedIn { .. } => {
 				view! {
 					<div class="fr-fs-fs full-width full-height bg-secondary">
-						<Sidebar
-							sidebar_items={get_sidebar_items(app_type)}
-						>
-							{
-								app_type.is_managed().then(|| view! {
-									<Transition>
-										<WorkspaceSidebarComponent/>
-									</Transition>
-								})
-							}
+						<Sidebar sidebar_items={get_sidebar_items(
+							app_type,
+						)}>
+							{app_type
+								.is_managed()
+								.then(|| {
+									view! {
+										<Transition>
+											<WorkspaceSidebarComponent />
+										</Transition>
+									}
+								})}
 						</Sidebar>
 
 						<main class="fc-fs-ct full-width px-lg">
-							<Outlet/>
+							<Outlet />
 						</main>
 					</div>
 				}
-				.into_view()
+					.into_view()
 			}
 		}}
 	}
@@ -66,35 +71,22 @@ pub fn App() -> impl IntoView {
 					redirect_path={AppRoutes::LoggedOutRoute(LoggedOutRoute::Login)}
 					condition={move || state.get().is_logged_in()}
 				>
-					<ProfileRoutes/>
-					<InfrastructureRoutes/>
-					<DomainConfigurationRoutes/>
-					{
-						app_type.is_managed().then(|| view! {
-							<Route path={LoggedInRoute::Runners} view={RunnerPage}>
-								<Route path={"create"} view={CreateRunner}/>
-								<Route path={":runner_id"} view={ManageRunner}/>
-								<Route path={AppRoutes::Empty} view={RunnerDashboard}/>
-							</Route>
-							<Route path={AppRoutes::Empty} view={|| view! { <Outlet /> }}>
-								<Route path={LoggedInRoute::Workspace} view={WorkspacePage}>
-									<Route path={AppRoutes::Empty} view={ManageWorkspace}>
-										<Route path="" view={ManageWorkspaceSettingsTab} />
-									</Route>
-									<Route path="/create" view={CreateWorkspace} />
-								</Route>
-							</Route>
-						})
-					}
-					<Route path="" view={|| view! { <div></div> }}/>
-					<Route
-						path={AppRoutes::NotFound}
-						view={|| view! {
-							<ErrorPage
-								title={"Page Not Found"}
-							/>
-						}}
-					/>
+					<ProfileRoutes />
+					<InfrastructureRoutes />
+					<Route path={LoggedInRoute::ManagedUrl} view={ManagedUrlPage}>
+						<Route path="create" view={|| view! { <div>"create"</div> }} />
+						<Route path={AppRoutes::Empty} view={UrlDashboard} />
+					</Route>
+					<Route path={LoggedInRoute::Domain} view={DomainsDashboard} />
+					{app_type
+						.is_managed()
+						.then(|| {
+							view! {
+								<RunnerRoutes />
+								<WorkspaceRoutes />
+							}
+						})}
+					// <Route path="" view={|| view! { <div></div> }} />
 				</ProtectedRoute>
 				<ProtectedRoute
 					path={AppRoutes::Empty}
@@ -102,18 +94,19 @@ pub fn App() -> impl IntoView {
 					view={AppOutletView}
 					condition={move || state.get().is_logged_out()}
 				>
-					<AppRoute<LoginRoute, _, _> view={move |_query, _params| LoginForm}/>
-					<AppRoute<SignUpRoute, _, _> view={move |_query, _params| SignUpForm}/>
-					<AppRoute<VerifySignUpRoute, _, _>
-						to_render={move |_| app_type.is_managed()}
-						view={move |_query, _params| ConfirmSignUpPage}
-					/>
-					{
-						app_type.is_managed().then(|| view! {
-							<Route path={LoggedOutRoute::ConfirmOtp} view={ConfirmSignUpPage}/>
-						})
-					}
+					<AppRoute<LoginRoute, _, _> view={move |_query, _params| LoginForm} />
+					<AppRoute<SignUpRoute, _, _> view={move |_query, _params| SignUpForm} />
+					{app_type
+						.is_managed()
+						.then(|| {
+							view! {
+								<AppRoute<VerifySignUpRoute, _, _>
+									view={move |_query, _params| ConfirmSignUpPage}
+								/>
+							}
+						})}
 				</ProtectedRoute>
+				<Route path="/*any" view={|| view! { <ErrorPage title="Page Not Found" /> }} />
 			</Routes>
 		</Router>
 	}

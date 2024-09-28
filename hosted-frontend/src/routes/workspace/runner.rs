@@ -41,10 +41,11 @@ use crate::{
 #[component(transparent)]
 pub fn RunnerRoutes() -> impl IntoView {
 	view! {
-		<AppRoute<RunnerDashboardRoute, _, _> view={move |_query, _params| RunnerPage}>
-			<AppRoute<CreateRunnerRoute, _, _> view={move |_query, _params| CreateRunner}/>
-			<AppRoute<ManageRunnerRoute, _, _> view={move |_query, _params| ManageRunner}/>
-			<Route path={AppRoutes::Empty} view={RunnerDashboard}/>
-		</AppRoute<RunnerDashboardRoute, _, _>>
+		<>
+			<AppRoute<RunnerDashboardRoute, _, _> view={move |_query, _params| RunnerPage} />
+			<AppRoute<CreateRunnerRoute, _, _> view={move |_query, _params| CreateRunner} />
+			<AppRoute<ManageRunnerRoute, _, _> view={move |_query, _params| ManageRunner} />
+			<AppRoute<RunnerDashboardRoute, _, _> view={move |_, _| RunnerDashboard} />
+		</>
 	}
 }

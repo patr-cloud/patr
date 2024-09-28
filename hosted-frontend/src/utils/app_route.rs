@@ -5,7 +5,6 @@ use leptos::*;
 use leptos_router::{
 	use_params as use_router_params,
 	use_query as use_router_query,
-	use_route_data,
 	Params,
 	Route,
 };
@@ -30,9 +29,6 @@ pub fn AppRoute<R, F, V>(
 	_phantom: PhantomData<R>,
 	/// The view for the route
 	view: F,
-	/// Whether to the render the path or not based on the AppType
-	#[prop(into, optional, default = Callback::new(|_| true))]
-	to_render: Callback<(), bool>,
 	/// The Children of the route
 	#[prop(optional, default = Box::new(|| Fragment::new(vec![])))]
 	children: Children,
@@ -46,26 +42,10 @@ where
 	let params: R = use_router_params()
 		.get_untracked()
 		.expect("cannot parse params");
-	let path = <R as TypedPath>::PATH.to_string();
 
-	let current_path = use_route_data::<String>().unwrap_or_default();
-	let router_path = path
-		.trim_start_matches(&current_path)
-		.trim_start_matches('/')
-		.to_string();
-
-	if to_render.call(()) {
-		view! {
-			<Route
-				view={move || view(query.clone(), params.clone())}
-				path={router_path}
-				data={move || path.clone()}
-			>
-				{children()}
-			</Route>
-		}
-		.into_view()
-	} else {
-		return view! { <></> }.into_view();
+	view! {
+		<Route view={move || view(query.clone(), params.clone())} path={<R as TypedPath>::PATH}>
+			{children()}
+		</Route>
 	}
 }
