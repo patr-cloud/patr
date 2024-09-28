@@ -22,14 +22,16 @@ pub fn WorkspaceSwitcher(
 			<div
 				tab_index={-1}
 				class="
-					text-white bg-secondary-light border border-border-color rounded-sm
-					flex flex-col itmes-start justify-start workspace-switcher pt-md "
+				text-white bg-secondary-light border border-border-color rounded-sm
+				flex flex-col itmes-start justify-start workspace-switcher pt-md "
 			>
 				<p class="mx-xl text-md mb-sm">"Workspaces"</p>
 				<div class="fc-fs-fs w-full ul-light pb-xs">
 					<ul class="w-full overflow-y-auto px-xl flex flex-col items-start justify-start">
 						<For
-							each={move || stored_workspaces.with_value(|workspaces| workspaces.clone().get())}
+							each={move || {
+								stored_workspaces.with_value(|workspaces| workspaces.clone().get())
+							}}
 							key={|state| state.id}
 							let:child
 						>
@@ -50,7 +52,11 @@ pub fn WorkspaceSwitcher(
 						class="gap-xxs"
 					>
 						"CREATE WORKSPACE"
-						<Icon icon=IconType::Plus size=Size::ExtraSmall color=Color::Primary />
+						<Icon
+							icon={IconType::Plus}
+							size={Size::ExtraSmall}
+							color={Color::Primary}
+						/>
 					</Link>
 				</div>
 			</div>

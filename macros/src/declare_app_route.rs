@@ -199,7 +199,8 @@ pub fn parse(input: TokenStream) -> TokenStream {
 
 		#query
 
-		impl components::utils::TypedRoute for #route_name {
+		// TODO: Change this to not use crate::
+		impl crate::utils::TypedRoute for #route_name {
 			const REQUIRES_LOGIN: bool = #login_required;
 
 			type Query = #query_name;

@@ -29,13 +29,11 @@ pub mod prelude {
 		tooltip::*,
 		utils::{
 			Alignment,
-			AppRoute,
 			Color,
 			LinkStyleVariant,
 			SecondaryColorVariant,
 			Size,
 			TextColor,
-			TypedRoute,
 			Variant,
 		},
 	};

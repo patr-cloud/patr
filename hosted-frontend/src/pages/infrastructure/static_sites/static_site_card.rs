@@ -24,11 +24,11 @@ pub fn StaticSiteCard(
 						{static_site.get().name}
 					</h5>
 
-					<StatusBadge status={Some(Status::Live)}/>
+					<StatusBadge status={Some(Status::Live)} />
 				</div>
 
 				<button class="fr-ct-ct">
-					<Icon color={Color::Error} icon={IconType::PlayCircle} size={Size::Medium}/>
+					<Icon color={Color::Error} icon={IconType::PlayCircle} size={Size::Medium} />
 				</button>
 			</div>
 

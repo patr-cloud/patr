@@ -1,7 +1,7 @@
 macros::declare_app_route! {
 	/// Route for verifying a signup with a token
 	VerifySignUp,
-	"/verify-signup",
+	"/confirm",
 	requires_login = false,
 	query = {
 		/// The userId to prefill the forgot password form with

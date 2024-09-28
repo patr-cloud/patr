@@ -101,7 +101,7 @@ pub fn UpdateManagedUrl(
 				domain={domain}
 				sub_domain={sub_domain}
 				path={path}
-				is_create_mode={false}
+				is_create_mode=false
 				show_form={show_component}
 				url={url}
 				port={port}

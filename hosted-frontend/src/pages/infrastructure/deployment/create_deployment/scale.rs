@@ -38,10 +38,7 @@ pub fn ScaleDeployment() -> impl IntoView {
 							style="width: 30%"
 							class="w-full h-full flex justify-between items-center gap-xl"
 						>
-							<label
-								class="flex-3"
-								html_for="minHorizontalScale"
-							>
+							<label class="flex-3" html_for="minHorizontalScale">
 								"Minimum Scale"
 							</label>
 
@@ -49,9 +46,10 @@ pub fn ScaleDeployment() -> impl IntoView {
 								value={min_horizontal}
 								style_variant={SecondaryColorVariant::Medium}
 								on_change={move |_| {
-									deployment_info.update(|info| {
-										info.min_horizontal_scale = Some(min_horizontal.get());
-									})
+									deployment_info
+										.update(|info| {
+											info.min_horizontal_scale = Some(min_horizontal.get());
+										})
 								}}
 							/>
 						</div>
@@ -60,10 +58,7 @@ pub fn ScaleDeployment() -> impl IntoView {
 							style="width: 30%;"
 							class="w-full h-full flex justify-between items-center gap-xl"
 						>
-							<label
-								class="flex-3"
-								html_for="maxHorizontalScale"
-							>
+							<label class="flex-3" html_for="maxHorizontalScale">
 								"Maximum Scale"
 							</label>
 
@@ -71,9 +66,10 @@ pub fn ScaleDeployment() -> impl IntoView {
 								value={max_horizontal}
 								style_variant={SecondaryColorVariant::Medium}
 								on_change={move |_| {
-									deployment_info.update(|info| {
-										info.max_horizontal_scale = Some(max_horizontal.get());
-									})
+									deployment_info
+										.update(|info| {
+											info.max_horizontal_scale = Some(max_horizontal.get());
+										})
 								}}
 							/>
 						</div>
@@ -94,9 +90,9 @@ pub fn ScaleDeployment() -> impl IntoView {
 
 						<Transition>
 							<div class="flex justify-start items-center overflow-x-auto py-xxs gap-md">
-								{
-									move || match machine_list.get() {
-										Some(Ok(data)) => view! {
+								{move || match machine_list.get() {
+									Some(Ok(data)) => {
+										view! {
 											<For
 												each={move || data.clone().machine_types}
 												key={|state| state.id}
@@ -104,22 +100,22 @@ pub fn ScaleDeployment() -> impl IntoView {
 											>
 												<MachineTypeCard
 													machine_type={child.clone()}
-													is_selected={
-														Signal::derive(
-															move || deployment_info.with(|info| info.machine_type.is_some_and(|id| id == child.clone().id))
-														)
-													}
+													is_selected={Signal::derive(move || {
+														deployment_info
+															.with(|info| {
+																info.machine_type.is_some_and(|id| id == child.clone().id)
+															})
+													})}
 													on_select={move |id: Uuid| {
-														deployment_info.update(
-															|info| info.machine_type = Some(id)
-														)
+														deployment_info.update(|info| info.machine_type = Some(id))
 													}}
 												/>
 											</For>
-										}.into_view(),
-										_ => "Couldn't load resource".into_view()
+										}
+											.into_view()
 									}
-								}
+									_ => "Couldn't load resource".into_view(),
+								}}
 							</div>
 						</Transition>
 					</div>

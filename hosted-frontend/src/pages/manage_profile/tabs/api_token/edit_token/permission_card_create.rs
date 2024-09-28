@@ -68,39 +68,50 @@ pub fn CreatePermissionCard(
 				<strong class="text-md">{workspace.get().data.name}</strong>
 			</p>
 
-			<label class="flex items-center justify-start text-grey cursor-pointer" html_for="super_admin">
+			<label
+				class="flex items-center justify-start text-grey cursor-pointer"
+				html_for="super_admin"
+			>
 				<input
 					class="mr-xs"
 					type="checkbox"
 					name="super_admin"
 					on:input={on_input_checkbox}
 					prop:checked={is_admin_checkbox}
-					value={move || store_workspace.with_value(|workspace| workspace.get().id.to_string()) }
+					value={move || {
+						store_workspace.with_value(|workspace| workspace.get().id.to_string())
+					}}
 				/>
 				"Give"
 				<strong class="text-medium text-sm mx-xxs text-white">"Super Admin"</strong>
 				"permissions for"
 				<strong class="mx-xxs text-sm text-white text-medium">
-					{move || store_workspace.with_value(|workspace| workspace.get().name.clone()) }" workspace"
+					{move || store_workspace.with_value(|workspace| workspace.get().name.clone())}
+					" workspace"
 				</strong>
 			</label>
 
-			{
-				move || if !is_admin_checkbox.get() {
+			{move || {
+				if !is_admin_checkbox.get() {
 					view! {
-						<div class="flex flex-col items-start justify-start w-full gap-xs">
-							// <ListPermissions permissions={permissions.get()}/>
-							// <ChoosePermission
-							// 	workspace_id={workspace.get().id}
-							// />
+						<div class="flex flex-col items-start justify-start w-full gap-xs">// <ListPermissions permissions={permissions.get()}/>
+						// <ChoosePermission
+						// workspace_id={workspace.get().id}
+						// />
 						</div>
-					}.into_view()
+					}
+						.into_view()
 				} else {
 					view! {
+						// <ListPermissions permissions={permissions.get()}/>
+						// <ChoosePermission
+						// workspace_id={workspace.get().id}
+						// />
 						<></>
-					}.into_view()
+					}
+						.into_view()
 				}
-			}
+			}}
 		</div>
 	}
 }

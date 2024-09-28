@@ -12,24 +12,27 @@ fn ShowWorkspaceInfo(
 		<div class="flex flex-col items-start justify-start w-full">
 			<div class="flex my-xs w-full">
 				<div class="flex-2 flex items-start justify-start mt-sm">
-					<label html_for="workspaceId" class="text-white text-sm flex items-center justify-start">
+					<label
+						html_for="workspaceId"
+						class="text-white text-sm flex items-center justify-start"
+					>
 						"Workspace ID"
 					</label>
 				</div>
 				<div class="flex-10 text-grey bg-secondary-light br-sm py-xxs px-xl flex justify-between items-center">
 					<div class="px-sm">{workspace.get().id.to_string()}</div>
-					<button
-						class="btn-icon ml-auto p-xxs"
-						aria_label="Copy workspace id"
-					>
-						<Icon icon=IconType::Copy size=Size::ExtraSmall />
+					<button class="btn-icon ml-auto p-xxs" aria_label="Copy workspace id">
+						<Icon icon={IconType::Copy} size={Size::ExtraSmall} />
 					</button>
 				</div>
 			</div>
 
 			<div class="flex my-xs w-full">
 				<div class="flex-2 flex items-start justify-start mt-sm">
-					<label html_for="name" class="text-white text-sm flex items-center justify-start">
+					<label
+						html_for="name"
+						class="text-white text-sm flex items-center justify-start"
+					>
 						"Name"
 					</label>
 				</div>
@@ -37,7 +40,7 @@ fn ShowWorkspaceInfo(
 					<Input
 						placeholder="Workspace Name"
 						class="w-full"
-						r#type=InputType::Text
+						r#type={InputType::Text}
 						id="name"
 						name="name"
 						value={workspace.get().data.name}
@@ -47,7 +50,10 @@ fn ShowWorkspaceInfo(
 
 			<div class="flex my-xs w-full">
 				<div class="flex-2 flex flex-col items-start justify-start mt-md">
-					<label html_for="alertEmail" class="text-white text-sm flex items-center justify-start">
+					<label
+						html_for="alertEmail"
+						class="text-white text-sm flex items-center justify-start"
+					>
 						"Alert Email(s)"
 					</label>
 					<span class="text-grey">
@@ -58,7 +64,7 @@ fn ShowWorkspaceInfo(
 				<div class="flex-10 flex flex-col items-start justify-start">
 					<div class="w-full flex items-center justify-start mb-xs">
 						<div class="flex-11">
-							<Textbox value="ac380012@gmail.com".into_view() />
+							<Textbox value={"ac380012@gmail.com".into_view()} />
 						</div>
 					</div>
 				</div>
@@ -103,16 +109,13 @@ pub fn ManageWorkspaceSettingsTab() -> impl IntoView {
 	view! {
 		<div class="flex flex-col items-start justify-start w-full h-full fit-wide-screen mx-auto px-md my-xl">
 			<Transition>
-				{
-					move || match current_workspace.get() {
-						Some(current_workspace) => {
-							view! {
-								<ShowWorkspaceInfo workspace={current_workspace.clone()}/>
-							}.into_view()
-						},
-						None => view! {}.into_view()
+				{move || match current_workspace.get() {
+					Some(current_workspace) => {
+						view! { <ShowWorkspaceInfo workspace={current_workspace.clone()} /> }
+							.into_view()
 					}
-				}
+					None => view! {}.into_view(),
+				}}
 			</Transition>
 		</div>
 	}

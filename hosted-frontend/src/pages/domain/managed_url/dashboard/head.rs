@@ -18,30 +18,24 @@ pub fn UrlDashboardHead(
 						<PageTitle icon_position={PageTitleIconPosition::End}>
 							"Incfrastructure"
 						</PageTitle>
-						<PageTitle variant={PageTitleVariant::SubHeading}>
-							"Managed URL"
-						</PageTitle>
+						<PageTitle variant={PageTitleVariant::SubHeading}>"Managed URL"</PageTitle>
 					</PageTitleContainer>
 
 					<PageDescription
 						description="Create and Manage URLs with ease using Patr."
-						doc_link={Some(
-							"https://docs.patr.cloud/features/managed-urls/".to_owned(),
-						)}
+						doc_link={Some("https://docs.patr.cloud/features/managed-urls/".to_owned())}
 					/>
 				</div>
 
 				<Link
 					r#type={Variant::Button}
 					style_variant={LinkStyleVariant::Contained}
-					on_click=Rc::new(move |ev| {
-						on_click_create.call(ev.clone())
-					})
+					on_click={Rc::new(move |ev| { on_click_create.call(ev.clone()) })}
 				>
 					"CREATE MANAGED URL"
 					<Icon
-						icon=IconType::Plus
-						size=Size::ExtraSmall
+						icon={IconType::Plus}
+						size={Size::ExtraSmall}
 						class="ml-xs"
 						color={Color::Black}
 					/>

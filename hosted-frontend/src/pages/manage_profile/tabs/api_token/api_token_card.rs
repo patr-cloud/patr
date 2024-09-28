@@ -59,12 +59,7 @@ pub fn ApiTokenCard(
 	};
 
 	view! {
-		<tr
-			on:click={on_click_link}
-			tab_index=0
-			class={outer_class}
-			aria_label="Select API Token"
-		>
+		<tr on:click={on_click_link} tab_index=0 class={outer_class} aria_label="Select API Token">
 			<td class="flex-4 flex items-center justify-center">
 				{move || store_token.with_value(|token| token.get().name.clone())}
 			</td>

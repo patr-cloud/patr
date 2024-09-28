@@ -11,7 +11,7 @@
 }
 
 .deployment-card {
-  height: 20rem;
+  min-height: 20rem;
 
   .date-time {
     background-color: $bg-code-snippet;
@@ -23,7 +23,7 @@
 .deployment-card-items {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  grid-auto-rows: 1fr;
+  grid-auto-rows: 50px;
 
   width: 100%;
   height: 100%;

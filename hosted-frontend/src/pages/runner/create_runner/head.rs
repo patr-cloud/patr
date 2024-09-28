@@ -7,9 +7,7 @@ pub fn RunnerCreateHead() -> impl IntoView {
 			<div class="w-full flex items-center justify-between">
 				<div class="flex flex-col items-start justify-between">
 					<PageTitleContainer>
-						<PageTitle icon_position={PageTitleIconPosition::End}>
-							"CI/CD"
-						</PageTitle>
+						<PageTitle icon_position={PageTitleIconPosition::End}>"CI/CD"</PageTitle>
 						<PageTitle
 							to="/runners"
 							variant={PageTitleVariant::SubHeading}
@@ -17,16 +15,15 @@ pub fn RunnerCreateHead() -> impl IntoView {
 						>
 							"Runners"
 						</PageTitle>
-						<PageTitle
-							variant={PageTitleVariant::SubHeading}
-						>
-							"New"
-						</PageTitle>
+						<PageTitle variant={PageTitleVariant::SubHeading}>"New"</PageTitle>
 					</PageTitleContainer>
 
 					<PageDescription
-						description={"Create and manage CI Runners for automated builds.".to_string()}
-						doc_link={Some("https://docs.patr.cloud/ci-cd/#choosing-a-runner".to_string())}
+						description={"Create and manage CI Runners for automated builds."
+							.to_string()}
+						doc_link={Some(
+							"https://docs.patr.cloud/ci-cd/#choosing-a-runner".to_string(),
+						)}
 					/>
 				</div>
 			</div>

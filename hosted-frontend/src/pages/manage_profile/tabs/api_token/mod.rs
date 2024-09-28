@@ -40,35 +40,37 @@ pub fn ListApiTokens() -> impl IntoView {
 		</Link>
 
 		<Transition>
-			{
-				move || match token_list.get() {
-					Some(token_list) => {
-						match token_list {
-							Ok(data) => {
-								view! {
-									<TableDashboard
-										column_grids={vec![4, 4, 4]}
-										headings={vec!["Name".into_view(), "Expiry".into_view(), "Created At".into_view()]}
+			{move || match token_list.get() {
+				Some(token_list) => {
+					match token_list {
+						Ok(data) => {
+							view! {
+								<TableDashboard
+									column_grids={vec![4, 4, 4]}
+									headings={vec![
+										"Name".into_view(),
+										"Expiry".into_view(),
+										"Created At".into_view(),
+									]}
 
-										render_rows={view! {
-											<For
-												each={move || data.clone().tokens}
-												key={|state| state.id}
-												let:child
-											>
-												<ApiTokenCard token={child}/>
-											</For>
-										}
-											.into_view()}
-									/>
-								}
+									render_rows={view! {
+										<For
+											each={move || data.clone().tokens}
+											key={|state| state.id}
+											let:child
+										>
+											<ApiTokenCard token={child} />
+										</For>
+									}
+										.into_view()}
+								/>
 							}
-							Err(_) => view! {}.into_view(),
 						}
-					},
-					None => view! {}.into_view(),
+						Err(_) => view! {}.into_view(),
+					}
 				}
-			}
+				None => view! {}.into_view(),
+			}}
 		</Transition>
 	}
 }

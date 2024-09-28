@@ -22,7 +22,10 @@ pub fn CreateDeploymentHead() -> impl IntoView {
 
 					<PageDescription
 						description={"Create a new Deployment here.".to_string()}
-						doc_link={Some("https://docs.patr.cloud/features/deployments/#how-to-create-a-deployment".to_string())}
+						doc_link={Some(
+							"https://docs.patr.cloud/features/deployments/#how-to-create-a-deployment"
+								.to_string(),
+						)}
 					/>
 				</div>
 			</div>

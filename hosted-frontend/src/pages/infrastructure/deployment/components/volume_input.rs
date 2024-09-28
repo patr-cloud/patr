@@ -51,13 +51,9 @@ pub fn VolumeInput(
 									</div>
 
 									<div class="flex-1 flex items-center justify-center pl-sm">
-										<button
-											on:click={
-												move |ev| {
-													on_delete.call((ev, vol.0))
-												}
-											}
-										>
+										<button on:click={move |ev| {
+											on_delete.call((ev, vol.0))
+										}}>
 											<Icon
 												icon={IconType::Trash2}
 												color={Color::Error}
@@ -110,7 +106,7 @@ pub fn VolumeInput(
 								on_add.call((ev.clone(), vol_path.get(), vol_size.get()))
 							})}
 						>
-							<Icon icon={IconType::Plus} color={Color::Secondary}/>
+							<Icon icon={IconType::Plus} color={Color::Secondary} />
 						</Link>
 					</div>
 				</div>

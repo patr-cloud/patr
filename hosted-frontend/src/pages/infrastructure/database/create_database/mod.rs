@@ -85,44 +85,37 @@ pub fn CreateDatabase() -> impl IntoView {
 
 					<div class="grid-col-4 flex-col-10 pl-xs full-width gap-sm">
 						// <For
-						//  	each=
-						// 	key=|state| state.clone()
-						// 	let:engine
+						// each=
+						// key=|state| state.clone()
+						// let:engine
 						// >
 						// </For>
-						{
-							DatabaseEngine::VARIANTS
-								.iter()
-								.map(|engine| match DatabaseEngine::from_str(engine.to_owned()) {
-									Ok(engine) => view! {
+						{DatabaseEngine::VARIANTS
+							.iter()
+							.map(|engine| match DatabaseEngine::from_str(engine.to_owned()) {
+								Ok(engine) => {
+									view! {
 										<DatabaseTypeCard
 											version=4.
 											database_type={engine.clone()}
-											is_selected={
-												Signal::derive(
-													// move || database_info.with(|info| {
-													// 	info.database_type.clone().is_some_and(|val| val == engine.clone())
-													// })
-													// move || database_info.get().database_type.is_some_and(|val| val == engine.clone())
-													move || false
-												)
-											}
+											is_selected={Signal::derive(move || false)}
 											on_click={move |engine| {
-												database_info.update(|info| {
-													if info.database_type.is_some() {
-														info.database_type = None
-													} else {
-														info.database_type = Some(engine)
-													}
-												})
+												database_info
+													.update(|info| {
+														if info.database_type.is_some() {
+															info.database_type = None
+														} else {
+															info.database_type = Some(engine)
+														}
+													})
 											}}
 										/>
-									}.into_view(),
-									Err(_) =>  view! {}.into_view()
-								})
-								.collect_view()
-						}
-
+									}
+										.into_view()
+								}
+								Err(_) => view! {}.into_view(),
+							})
+							.collect_view()}
 						<Show when={move || !db_type_error.get().clone().is_empty()}>
 							<Alert r#type={AlertType::Error} class="mt-xs">
 								{move || db_type_error.get().clone()}
@@ -143,15 +136,14 @@ pub fn CreateDatabase() -> impl IntoView {
 							r#type={InputType::Text}
 							class="full-width"
 							placeholder="Database Name"
-							value={Signal::derive(move || database_info.get().name.unwrap_or_default())}
-							on_input={
-								Box::new(move |ev| {
-									ev.prevent_default();
-									database_info.update(
-										|info| info.name = Some(event_target_value(&ev))
-									)
-								})
-							}
+							value={Signal::derive(move || {
+								database_info.get().name.unwrap_or_default()
+							})}
+							on_input={Box::new(move |ev| {
+								ev.prevent_default();
+								database_info
+									.update(|info| info.name = Some(event_target_value(&ev)))
+							})}
 						/>
 
 						<Show when={move || !name_error.get().clone().is_empty()}>
@@ -169,32 +161,32 @@ pub fn CreateDatabase() -> impl IntoView {
 						</label>
 					</div>
 					<div class="flex-col-10 pl-xs">
-						 <Transition>
+						<Transition>
 							<InputDropdown
 								placeholder="Choose A Runner"
 								class="full-width"
 								value={selected_runner}
-								options={Signal::derive(
-									move || match runner_list.get() {
-										Some(Ok(data)) => {
-											data.runners
-												.iter()
-												.map(|runner| InputDropdownOption {
-													id: runner.id.to_string().clone(),
-													disabled: runner.data.connected,
-													label: runner.name.clone()
-												})
-												.collect::<Vec<_>>()
-										},
-										_ => vec![
+								options={Signal::derive(move || match runner_list.get() {
+									Some(Ok(data)) => {
+										data.runners
+											.iter()
+											.map(|runner| InputDropdownOption {
+												id: runner.id.to_string().clone(),
+												disabled: runner.data.connected,
+												label: runner.name.clone(),
+											})
+											.collect::<Vec<_>>()
+									}
+									_ => {
+										vec![
 											InputDropdownOption {
 												id: "error".to_string(),
 												disabled: true,
-												label: "Error Loading".to_string()
-											}
+												label: "Error Loading".to_string(),
+											},
 										]
-									})
-								}
+									}
+								})}
 							/>
 						</Transition>
 
@@ -208,11 +200,7 @@ pub fn CreateDatabase() -> impl IntoView {
 			</div>
 
 			<div class="fr-fe-ct gap-md full-width fit-wide-screen mx-auto mt-auto pt-md pb-xl px-md">
-				<Link
-					r#type={Variant::Link}
-					style_variant={LinkStyleVariant::Plain}
-					to="/database"
-				>
+				<Link r#type={Variant::Link} style_variant={LinkStyleVariant::Plain} to="/database">
 					"BACK"
 				</Link>
 				<Link

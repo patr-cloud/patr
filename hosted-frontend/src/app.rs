@@ -3,65 +3,48 @@ use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};
 
 use crate::{pages::*, prelude::*, utils::AuthState};
 
+/// The View for the App Component, it encapsulates the whole application, and
+/// adds the sidebar or headedr if necessary
 #[component]
 pub fn AppOutletView() -> impl IntoView {
 	let (state, _) = AuthState::load();
-
-	view! {
-		{move || match state.get() {
-			AuthState::LoggedOut => view! {
-				<PageContainer class="bg-image">
-					<Outlet/>
-				</PageContainer>
-			}.into_view(),
-			AuthState::LoggedIn { access_token: _, refresh_token: _, last_used_workspace_id } => {
-				if last_used_workspace_id.is_some() {
-					view! {
-						<div class="fr-fs-fs full-width full-height bg-secondary">
-							<Sidebar>
-								<div></div>
-							</Sidebar>
-							<main class="fc-fs-ct full-width px-lg">
-								<header style="width: 100%; min-height: 5rem;"></header>
-
-								<Outlet/>
-							</main>
-						</div>
-					}
-					.into_view()
-				} else {
-					view! {
-						<div>"No workspace exists. Create workspace"</div>
-					}
-					.into_view()
-				}
-			}
-		}}
-	}
-}
-
-#[component]
-pub fn AppOutlet() -> impl IntoView {
 	let app_type = expect_context::<AppType>();
 
 	view! {
-		<div class="fr-fs-fs full-width full-height bg-secondary">
-			<Sidebar>
-				{
-					match app_type {
-						AppType::SelfHosted => view! {}.into_view(),
-						AppType::Managed => view! {
-							<Transition>
-								<WorkspaceSidebarComponent/>
-							</Transition>
-						}
-					}
+		{move || match state.get() {
+			AuthState::LoggedOut => {
+				view! {
+					<PageContainer class="bg-image">
+						<Outlet />
+					</PageContainer>
 				}
-			</Sidebar>
-			<main class="fc-fs-ct full-width px-lg">
-				<Outlet/>
-			</main>
-		</div>
+					.into_view()
+			}
+			AuthState::LoggedIn { .. } => {
+				view! {
+					<div class="fr-fs-fs full-width full-height bg-secondary">
+						<Sidebar sidebar_items={get_sidebar_items(
+							app_type,
+						)}>
+							{app_type
+								.is_managed()
+								.then(|| {
+									view! {
+										<Transition>
+											<WorkspaceSidebarComponent />
+										</Transition>
+									}
+								})}
+						</Sidebar>
+
+						<main class="fc-fs-ct full-width px-lg">
+							<Outlet />
+						</main>
+					</div>
+				}
+					.into_view()
+			}
+		}}
 	}
 }
 
@@ -75,7 +58,6 @@ pub fn App() -> impl IntoView {
 	// TODO: When redirecting to login, the URL should include the path that the
 	// user was trying to access. This way, after login, the user is redirected
 	// to the page they were trying to access.
-
 	provide_context(app_type);
 
 	view! {
@@ -85,16 +67,26 @@ pub fn App() -> impl IntoView {
 				// Logged in routes
 				<ProtectedRoute
 					path={AppRoutes::Empty}
-					view={AppOutlet}
+					view={AppOutletView}
 					redirect_path={AppRoutes::LoggedOutRoute(LoggedOutRoute::Login)}
 					condition={move || state.get().is_logged_in()}
 				>
-					<ProfileRoutes/>
-					<InfrastructureRoutes/>
-					<DomainConfigurationRoutes/>
-					<RunnerRoutes />
-					<WorkspaceRoutes/>
-					<Route path="" view={|| view! { <div></div> }}/>
+					<ProfileRoutes />
+					<InfrastructureRoutes />
+					<Route path={LoggedInRoute::ManagedUrl} view={ManagedUrlPage}>
+						<Route path="create" view={|| view! { <div>"create"</div> }} />
+						<Route path={AppRoutes::Empty} view={UrlDashboard} />
+					</Route>
+					<Route path={LoggedInRoute::Domain} view={DomainsDashboard} />
+					{app_type
+						.is_managed()
+						.then(|| {
+							view! {
+								<RunnerRoutes />
+								<WorkspaceRoutes />
+							}
+						})}
+				// <Route path="" view={|| view! { <div></div> }} />
 				</ProtectedRoute>
 				<ProtectedRoute
 					path={AppRoutes::Empty}
@@ -102,10 +94,21 @@ pub fn App() -> impl IntoView {
 					view={AppOutletView}
 					condition={move || state.get().is_logged_out()}
 				>
-					<AppRoute<LoginRoute, _, _> view={move |_query, _params| LoginForm}/>
-					<Route path={LoggedOutRoute::SignUp} view={SignUpForm}/>
-					<Route path={LoggedOutRoute::ConfirmOtp} view={ConfirmSignUpPage}/>
+					<AppRoute<LoginRoute, _, _> view={move |_query, _params| LoginForm} />
+					<AppRoute<SignUpRoute, _, _> view={move |_query, _params| SignUpForm} />
+					{app_type
+						.is_managed()
+						.then(|| {
+							view! {
+								<AppRoute<
+								VerifySignUpRoute,
+								_,
+								_,
+							> view={move |_query, _params| ConfirmSignUpPage} />
+							}
+						})}
 				</ProtectedRoute>
+				<Route path="/*any" view={|| view! { <ErrorPage title="Page Not Found" /> }} />
 			</Routes>
 		</Router>
 	}

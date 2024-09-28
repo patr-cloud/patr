@@ -142,19 +142,26 @@ pub fn ManagedUrlCard(
 		<tr class={class}>
 			<Show
 				when={move || !show_update_url.get()}
-				fallback={move || view! {
-					<UpdateManagedUrl
-						show_component={show_update_url}
-						managed_url={
-							Signal::derive(move || store_managed_url.with_value(|managed_url| managed_url.get()))
-						}
-					/>
+				fallback={move || {
+					view! {
+						<UpdateManagedUrl
+							show_component={show_update_url}
+							managed_url={Signal::derive(move || {
+								store_managed_url.with_value(|managed_url| managed_url.get())
+							})}
+						/>
+					}
 				}}
 			>
 
 				<Transition>
 					<td class="flex-col-4 flex items-center justify-center">
-						<a href="" target="_blank" rel="noreferrer" class="txt-underline flex items-center justify-center">
+						<a
+							href=""
+							target="_blank"
+							rel="noreferrer"
+							class="txt-underline flex items-center justify-center"
+						>
 							<span class="max-w-[35ch] text-ellipsis overflow-hidden">
 								{managed_url}
 							</span>
@@ -167,11 +174,26 @@ pub fn ManagedUrlCard(
 					</td>
 
 					<td class="flex-col-1 flex items-center justify-center">
-						{store_managed_url.with_value(|managed_url| managed_url.clone().get().data.clone().url_type.to_string().to_case(Case::Title))}
+						{store_managed_url
+							.with_value(|managed_url| {
+								managed_url
+									.clone()
+									.get()
+									.data
+									.clone()
+									.url_type
+									.to_string()
+									.to_case(Case::Title)
+							})}
 					</td>
 
 					<td class="flex-col-4 flex items-center justify-center">
-						<a href="" target="_blank" rel="noreferrer" class="txt-underline flex items-center justify-center">
+						<a
+							href=""
+							target="_blank"
+							rel="noreferrer"
+							class="txt-underline flex items-center justify-center"
+						>
 							<span class="txt-medium txt-of-ellipsis of-hidden max-w-[35ch]">
 								{managed_url_link}
 							</span>
@@ -186,8 +208,8 @@ pub fn ManagedUrlCard(
 					<td class="flex-col-2 flex items-center justify-center"></td>
 
 					<td class="flex-col-1 flex justify-around items-center">
-						{
-							move || if show_delete_dialogue.get() {
+						{move || {
+							if show_delete_dialogue.get() {
 								view! {
 									<Link on_click={Rc::new(move |ev: &MouseEvent| {
 										on_delete(ev.to_owned());
@@ -199,18 +221,15 @@ pub fn ManagedUrlCard(
 									})}>
 										<p class="text-white">"Cancel"</p>
 									</Link>
-
-								}.into_view()
+								}
+									.into_view()
 							} else {
 								view! {
 									<Link on_click={Rc::new(move |_| {
 										show_update_url.update(|val| *val = !*val)
 									})}>
 
-										<Icon
-											icon={IconType::Edit}
-											size={Size::ExtraSmall}
-										/>
+										<Icon icon={IconType::Edit} size={Size::ExtraSmall} />
 									</Link>
 									<Link on_click={Rc::new(move |_| {
 										show_delete_dialogue.set(true);
@@ -221,9 +240,10 @@ pub fn ManagedUrlCard(
 											color={Color::Error}
 										/>
 									</Link>
-								}.into_view()
+								}
+									.into_view()
 							}
-						}
+						}}
 					</td>
 				</Transition>
 			</Show>

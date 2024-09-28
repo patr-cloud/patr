@@ -128,197 +128,209 @@ pub fn ManagedURLForm(
 				</div>
 			</div>
 			<div class="flex items-start justify-start gap-md w-full">
-				{logging::log!("{:?}", url_type.get())}
-				<div class="flex-3">
+				{logging::log!("{:?}", url_type.get())} <div class="flex-3">
 					<InputDropdown
 						value={url_type.with(|val| val.to_case(Case::Snake))}
-						on_select={move |variant: String| {
-							url_type.set(variant.clone())
-						}}
+						on_select={move |variant: String| { url_type.set(variant.clone()) }}
 						variant={SecondaryColorVariant::Medium}
 						placeholder={"Type".to_string()}
-						options={
-							ManagedUrlType::VARIANTS
-								.iter()
-								.map(|variant| {
-									let label = variant.to_case(Case::Title);
-									let id = variant.to_case(Case::Snake);
-
-									InputDropdownOption {
-										id,
-										label,
-										disabled: false,
-									}
-								})
-								.collect::<Vec<_>>()
-						}
+						options={ManagedUrlType::VARIANTS
+							.iter()
+							.map(|variant| {
+								let label = variant.to_case(Case::Title);
+								let id = variant.to_case(Case::Snake);
+								InputDropdownOption {
+									id,
+									label,
+									disabled: false,
+								}
+							})
+							.collect::<Vec<_>>()}
 					/>
 				</div>
-				{
-					move || url_type.with(|url_type| match ManagedUrlTypeDiscriminant::from_str(url_type) {
-						Ok(ManagedUrlTypeDiscriminant::ProxyDeployment) => view! {
-							<Transition>
-								{
-									move || match deployment_list.get() {
-										Some(Ok(deployments)) => view! {
-											<div class="flex-7">
-												<InputDropdown
-													variant={SecondaryColorVariant::Medium}
-													placeholder="Select Deployment"
-													on_select={
-														move |val: String| {
-															url.set(val);
-														}
-													}
-													options={
-														deployments.deployments.iter().map(|deployment| InputDropdownOption {
-															id: deployment.id.to_string(),
-															label: deployment.name.clone(),
-															disabled: false
-														}).collect::<Vec<_>>()
-													}
-												/>
-											</div>
+				{move || {
+					url_type
+						.with(|url_type| match ManagedUrlTypeDiscriminant::from_str(url_type) {
+							Ok(ManagedUrlTypeDiscriminant::ProxyDeployment) => {
+								view! {
+									<Transition>
+										{move || match deployment_list.get() {
+											Some(Ok(deployments)) => {
+												view! {
+													<div class="flex-7">
+														<InputDropdown
+															variant={SecondaryColorVariant::Medium}
+															placeholder="Select Deployment"
+															on_select={move |val: String| {
+																url.set(val);
+															}}
+															options={deployments
+																.deployments
+																.iter()
+																.map(|deployment| InputDropdownOption {
+																	id: deployment.id.to_string(),
+																	label: deployment.name.clone(),
+																	disabled: false,
+																})
+																.collect::<Vec<_>>()}
+														/>
+													</div>
 
-											<div class="flex-2">
-												<InputDropdown
-													placeholder="Select Port"
-													variant={SecondaryColorVariant::Medium}
-													value={port_string}
-													on_select={move |val: String| {
-														if let Ok(val) = u16::from_str(val.as_str()) {
-															port.set(val);
-														}
-													}}
-													options={vec![]}
-												/>
-											</div>
-										}.into_view(),
-										Some(Err(_)) => view! {
-											<div class="flex-9">
-												<InputDropdown
-													variant={SecondaryColorVariant::Medium}
-													placeholder="Error Loading Deployments"
-													options={vec![
-														InputDropdownOption {
-															id: "error".to_string(),
-															label: "Error Loading Deployments".to_string(),
-															disabled: true,
-														}
-													]}
-												/>
-											</div>
-										}.into_view(),
-										None => view! {}.into_view()
-									}
+													<div class="flex-2">
+														<InputDropdown
+															placeholder="Select Port"
+															variant={SecondaryColorVariant::Medium}
+															value={port_string}
+															on_select={move |val: String| {
+																if let Ok(val) = u16::from_str(val.as_str()) {
+																	port.set(val);
+																}
+															}}
+															options={vec![]}
+														/>
+													</div>
+												}
+													.into_view()
+											}
+											Some(Err(_)) => {
+												view! {
+													<div class="flex-9">
+														<InputDropdown
+															variant={SecondaryColorVariant::Medium}
+															placeholder="Error Loading Deployments"
+															options={vec![
+																InputDropdownOption {
+																	id: "error".to_string(),
+																	label: "Error Loading Deployments".to_string(),
+																	disabled: true,
+																},
+															]}
+														/>
+													</div>
+												}
+													.into_view()
+											}
+											None => view! {}.into_view(),
+										}}
+									</Transition>
 								}
-							</Transition>
-						}.into_view(),
-						Ok(ManagedUrlTypeDiscriminant::ProxyStaticSite) => view! {
-							<div class="flex-9">
-								<InputDropdown
-									variant={SecondaryColorVariant::Medium}
-									placeholder="Select Static Site"
-									options={vec![]}
-								/>
-							</div>
+									.into_view()
+							}
+							Ok(ManagedUrlTypeDiscriminant::ProxyStaticSite) => {
+								view! {
+									<div class="flex-9">
+										<InputDropdown
+											variant={SecondaryColorVariant::Medium}
+											placeholder="Select Static Site"
+											options={vec![]}
+										/>
+									</div>
 
-							<div class="flex-2">
-								<label class="flex items-center justify-center gap-sm w-full rounded-sm bg-secondary-medium row-card">
-									<input
-										type="checkbox"
-										prop:checked={move || http_only.get()}
-										on:input={move |_| {
-											http_only.update(|v| *v = !*v);
-										}}
-									/>
-									<p>"HTTP ONLY"</p>
-								</label>
-							</div>
-						}.into_view(),
-						Ok(ManagedUrlTypeDiscriminant::Redirect) => view! {
-							<div class="flex-4">
-								<Input
-									variant={SecondaryColorVariant::Medium}
-									r#type={InputType::Text}
-									start_text={Some("https://".to_string())}
-									placeholder="URL"
-									value={url}
-									on_input={Box::new(move |ev| {
-										url.set(event_target_value(&ev));
-									})}
-								/>
-							</div>
+									<div class="flex-2">
+										<label class="flex items-center justify-center gap-sm w-full rounded-sm bg-secondary-medium row-card">
+											<input
+												type="checkbox"
+												prop:checked={move || http_only.get()}
+												on:input={move |_| {
+													http_only.update(|v| *v = !*v);
+												}}
+											/>
+											<p>"HTTP ONLY"</p>
+										</label>
+									</div>
+								}
+									.into_view()
+							}
+							Ok(ManagedUrlTypeDiscriminant::Redirect) => {
+								view! {
+									<div class="flex-4">
+										<Input
+											variant={SecondaryColorVariant::Medium}
+											r#type={InputType::Text}
+											start_text={Some("https://".to_string())}
+											placeholder="URL"
+											value={url}
+											on_input={Box::new(move |ev| {
+												url.set(event_target_value(&ev));
+											})}
+										/>
+									</div>
 
-							<div class="flex-2">
-								<label class="flex items-center justify-center gap-sm w-full rounded-sm bg-secondary-medium row-card">
-									<input
-										type="checkbox"
-										prop:checked={move || http_only.get()}
-										on:input={move |_| {
-											http_only.update(|v| *v = !*v);
-										}}
-									/>
-									<p>"HTTP ONLY"</p>
-								</label>
-							</div>
+									<div class="flex-2">
+										<label class="flex items-center justify-center gap-sm w-full rounded-sm bg-secondary-medium row-card">
+											<input
+												type="checkbox"
+												prop:checked={move || http_only.get()}
+												on:input={move |_| {
+													http_only.update(|v| *v = !*v);
+												}}
+											/>
+											<p>"HTTP ONLY"</p>
+										</label>
+									</div>
 
-							<div class="flex-3">
-								<label class="flex items-center justify-center gap-sm w-full rounded-sm bg-secondary-medium row-card">
-									<input
-										prop:checked={permanent_redirect}
-										type="checkbox"
-										on:input={move |_| {
-											permanent_redirect.update(|val| *val = !*val)
-										}}
-									/>
-									<p>"PERMANENT REDIRECT"</p>
-								</label>
-							</div>
-						}.into_view(),
-						Ok(ManagedUrlTypeDiscriminant::ProxyUrl) => view! {
-							<div class="flex-7">
-								<Input
-									variant={SecondaryColorVariant::Medium}
-									r#type={InputType::Text}
-									start_text={Some("https://".to_string())}
-									placeholder="URL"
-									value={url}
-									on_input={Box::new(move |ev| {
-										url.set(event_target_value(&ev));
-									})}
-								/>
-							</div>
+									<div class="flex-3">
+										<label class="flex items-center justify-center gap-sm w-full rounded-sm bg-secondary-medium row-card">
+											<input
+												prop:checked={permanent_redirect}
+												type="checkbox"
+												on:input={move |_| {
+													permanent_redirect.update(|val| *val = !*val)
+												}}
+											/>
+											<p>"PERMANENT REDIRECT"</p>
+										</label>
+									</div>
+								}
+									.into_view()
+							}
+							Ok(ManagedUrlTypeDiscriminant::ProxyUrl) => {
+								view! {
+									<div class="flex-7">
+										<Input
+											variant={SecondaryColorVariant::Medium}
+											r#type={InputType::Text}
+											start_text={Some("https://".to_string())}
+											placeholder="URL"
+											value={url}
+											on_input={Box::new(move |ev| {
+												url.set(event_target_value(&ev));
+											})}
+										/>
+									</div>
 
-							<div class="flex-2">
-								<label class="flex items-center justify-center gap-sm w-full rounded-sm bg-secondary-medium row-card">
-									<input
-										type="checkbox"
-										prop:checked={http_only}
-										on:input={move |_| {
-											http_only.update(|val| *val = !*val)
-										}}
-									/>
-									<p>"HTTP ONLY"</p>
-								</label>
-							</div>
-						}.into_view(),
-						_ => view! {
-							<div class="flex-9">
-								<Input
-									variant={SecondaryColorVariant::Medium}
-									r#type={InputType::Text}
-									start_text={Some("https://".to_string())}
-									placeholder="URL"
-									value={url}
-									on_input={Box::new(move |ev| {
-										url.set(event_target_value(&ev));
-									})}
-								/>
-							</div>
-						}.into_view()
-					})
-				}
+									<div class="flex-2">
+										<label class="flex items-center justify-center gap-sm w-full rounded-sm bg-secondary-medium row-card">
+											<input
+												type="checkbox"
+												prop:checked={http_only}
+												on:input={move |_| { http_only.update(|val| *val = !*val) }}
+											/>
+											<p>"HTTP ONLY"</p>
+										</label>
+									</div>
+								}
+									.into_view()
+							}
+							_ => {
+								view! {
+									<div class="flex-9">
+										<Input
+											variant={SecondaryColorVariant::Medium}
+											r#type={InputType::Text}
+											start_text={Some("https://".to_string())}
+											placeholder="URL"
+											value={url}
+											on_input={Box::new(move |ev| {
+												url.set(event_target_value(&ev));
+											})}
+										/>
+									</div>
+								}
+									.into_view()
+							}
+						})
+				}}
 			</div>
 			<div class="w-full flex justify-end items-center mt-auto gap-md">
 				<Link
@@ -331,19 +343,15 @@ pub fn ManagedURLForm(
 
 				<Show
 					when={move || is_create_mode.get()}
-					fallback={move || view! {
-						<Link
-							should_submit={true}
-							style_variant={LinkStyleVariant::Contained}
-						>
-							"UPDATE"
-						</Link>
+					fallback={move || {
+						view! {
+							<Link should_submit=true style_variant={LinkStyleVariant::Contained}>
+								"UPDATE"
+							</Link>
+						}
 					}}
 				>
-					<Link
-						should_submit={true}
-						style_variant={LinkStyleVariant::Contained}
-					>
+					<Link should_submit=true style_variant={LinkStyleVariant::Contained}>
 						"CREATE"
 					</Link>
 				</Show>

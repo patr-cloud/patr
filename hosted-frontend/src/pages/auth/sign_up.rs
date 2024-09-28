@@ -122,7 +122,10 @@ pub fn SignUpForm() -> impl IntoView {
 				</div>
 			</div>
 
-			<form on:submit={on_submit_sign_up} class="flex flex-col items-start justify-start w-full">
+			<form
+				on:submit={on_submit_sign_up}
+				class="flex flex-col items-start justify-start w-full"
+			>
 				<div class="flex justify-center items-start w-full">
 					<div class="flex flex-col items-start justify-start flex-col-6 pr-xxs">
 						<Input
@@ -172,9 +175,7 @@ pub fn SignUpForm() -> impl IntoView {
 					placeholder="User Name"
 					start_icon={Some(IconProps::builder().icon(IconType::User).build())}
 					value={username_input}
-					on_input={Box::new(move |ev| {
-						username_input.set(event_target_value(&ev))
-					})}
+					on_input={Box::new(move |ev| { username_input.set(event_target_value(&ev)) })}
 				/>
 
 				<Show when={move || !username_error.get().is_empty()}>
@@ -191,9 +192,7 @@ pub fn SignUpForm() -> impl IntoView {
 					placeholder="proton@gmail.com"
 					start_icon={Some(IconProps::builder().icon(IconType::Mail).build())}
 					value={email_input}
-					on_input={Box::new(move |ev| {
-						email_input.set(event_target_value(&ev))
-					})}
+					on_input={Box::new(move |ev| { email_input.set(event_target_value(&ev)) })}
 				/>
 
 				<Show when={move || !email_error.get().is_empty()}>
@@ -288,30 +287,34 @@ pub fn SignUpForm() -> impl IntoView {
 				</Show>
 
 				<div class="fr-fe-ct w-full mt-lg">
-					{
-						match app_type {
-							AppType::SelfHosted => view! {}.into_view(),
-							AppType::Managed => view! {
+					{app_type
+						.is_managed()
+						.then(|| {
+							view! {
 								<Link class="btn mr-xs" to="/confirm" r#type={Variant::Link}>
 									"ALREADY HAVE AN OTP"
 								</Link>
-							}.into_view()
-						}
-					}
+							}
+								.into_view()
+						})}
 					<Show
-						when=move || !loading.get()
-						fallback=move || view! {
-							<Link
-								disabled={true}
-								r#type={Variant::Button}
-								style_variant={LinkStyleVariant::Contained}
-							>
-								"LOADING..."
-							</Link>
-						}
+						when={move || !loading.get()}
+						fallback={move || {
+							view! {
+								<Link
+									disabled=true
+									r#type={Variant::Button}
+									style_variant={LinkStyleVariant::Contained}
+								>
+									"LOADING..."
+								</Link>
+							}
+						}}
 					>
 						<Link
-							disabled={Signal::derive(move || passwords_match.get() || loading.get())}
+							disabled={Signal::derive(move || {
+								passwords_match.get() || loading.get()
+							})}
 							r#type={Variant::Button}
 							should_submit=true
 							style_variant={LinkStyleVariant::Contained}

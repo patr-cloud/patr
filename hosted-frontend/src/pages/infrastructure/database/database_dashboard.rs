@@ -25,34 +25,39 @@ pub fn DatabaseDashboard() -> impl IntoView {
 					render_items={
 						view! {
 							<Transition>
-								 {
-									move || match database_list.get() {
-										Some(resp) => {
-											match resp {
-												Ok(data) => view! {
+								{move || match database_list.get() {
+									Some(resp) => {
+										match resp {
+											Ok(data) => {
+												view! {
 													<For
 														each={move || data.database.clone()}
 														key={|state| state.id}
 														let:database_info
 													>
-														<DatabaseCard database={database_info}/>
+														<DatabaseCard database={database_info} />
 													</For>
-												}.into_view(),
-												Err(_) => view! {
+												}
+													.into_view()
+											}
+											Err(_) => {
+												view! {
 													<div class="full-width txt-white">
 														"ERROR LOADING DATABASES"
 													</div>
 													<a href="/database/some">"here"</a>
-												}.into_view()
+												}
+													.into_view()
 											}
-										},
-										_ => view! {
-											<div class="full-width txt-white">
-												"LOADING DATABASES"
-											</div>
-										}.into_view()
+										}
 									}
-								}
+									_ => {
+										view! {
+											<div class="full-width txt-white">"LOADING DATABASES"</div>
+										}
+											.into_view()
+									}
+								}}
 							</Transition>
 						}
 					}

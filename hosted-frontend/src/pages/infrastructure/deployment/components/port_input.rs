@@ -107,17 +107,12 @@ pub fn PortInput(
 													</div>
 												</div>
 											}
-										})
-									}
+										})}
 
 									<div class="flex-1 flex items-center justify-center pl-sm">
-										<button
-											on:click={
-												move |ev| {
-													on_delete.call((ev, child.0.to_string()))
-												}
-											}
-										>
+										<button on:click={move |ev| {
+											on_delete.call((ev, child.0.to_string()))
+										}}>
 											<Icon
 												icon={IconType::Trash2}
 												color={Color::Error}
@@ -135,20 +130,19 @@ pub fn PortInput(
 					<div class="flex-5 flex flex-col justify-start items-start pr-lg gap-xxs">
 						<Input
 							value={Signal::derive(move || port_number.get())}
-							on_input={
-								Box::new(move |ev| {
-									ev.prevent_default();
-									port_number.set(event_target_value(&ev));
-								})
-							}
+							on_input={Box::new(move |ev| {
+								ev.prevent_default();
+								port_number.set(event_target_value(&ev));
+							})}
 							r#type={InputType::Number}
 							id="port"
 							class="w-full"
 							placeholder="Enter Port Number"
 						/>
 
-
-						<Show when={move || store_error.with_value(|error| !error.get().clone().is_empty())}>
+						<Show when={move || {
+							store_error.with_value(|error| !error.get().clone().is_empty())
+						}}>
 							<Alert r#type={AlertType::Error} class="mt-xs">
 								{move || store_error.with_value(|error| error.get().clone())}
 							</Alert>
@@ -173,7 +167,7 @@ pub fn PortInput(
 								on_add.call((ev.clone(), port_number.get(), port_type.get()))
 							})}
 						>
-							<Icon icon={IconType::Plus} color={Color::Secondary}/>
+							<Icon icon={IconType::Plus} color={Color::Secondary} />
 						</Link>
 					</div>
 				</div>

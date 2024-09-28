@@ -30,10 +30,10 @@ pub fn MachineTypeCard(
 		<div
 			class={outer_div_class}
 			on:click={
-					let id = machine_type.get().id;
-					move |_| {
-						on_select.call(id);
-					}
+				let id = machine_type.get().id;
+				move |_| {
+					on_select.call(id);
+				}
 			}
 		>
 			<div class="flex justify-start items-baseline">

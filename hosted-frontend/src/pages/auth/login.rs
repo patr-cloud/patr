@@ -134,7 +134,7 @@ pub fn LoginForm() -> impl IntoView {
 					value={password}
 				/>
 
-				<input name="mfa_otp" type="hidden"/>
+				<input name="mfa_otp" type="hidden" />
 				<Show when={move || !password_error.get().is_empty()}>
 					<Alert r#type={AlertType::Error} class="mt-xs">
 						{move || password_error.get()}
@@ -142,32 +142,33 @@ pub fn LoginForm() -> impl IntoView {
 				</Show>
 			</div>
 
-			{
-				match app_type {
-					AppType::SelfHosted => view! {}.into_view(),
-					AppType::Managed => view! {
+			{app_type
+				.is_managed()
+				.then(|| {
+					view! {
 						<div class="flex justify-between items-center w-full pt-xs">
 							<Link to={"/forgot-password".to_owned()} r#type={Variant::Link}>
 								"Forgot Password?"
 							</Link>
 						</div>
 					}
-					.into_view()
-				}
-			}
+						.into_view()
+				})}
 
 			<Show
-				when=move || !loading.get()
-				fallback=move || view! {
-					<Link
-						r#type={Variant::Button}
-						class="ml-auto"
-						style_variant={LinkStyleVariant::Contained}
-						disabled={true}
-					>
-						"LOADING"
-					</Link>
-				}
+				when={move || !loading.get()}
+				fallback={move || {
+					view! {
+						<Link
+							r#type={Variant::Button}
+							class="ml-auto"
+							style_variant={LinkStyleVariant::Contained}
+							disabled=true
+						>
+							"LOADING"
+						</Link>
+					}
+				}}
 			>
 				<Link
 					should_submit=true

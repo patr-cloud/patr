@@ -25,26 +25,25 @@ pub fn LogStatement(
 
 	view! {
 		<div class={outer_div_class}>
-			<Icon icon={IconType::ChevronRight} size={Size::ExtraSmall} color={Color::Grey}/>
+			<Icon icon={IconType::ChevronRight} size={Size::ExtraSmall} color={Color::Grey} />
 
-			{
-				move || match store_log.with_value(|log| log.get().timestamp.format(&date_formater)) {
-					Ok(date_time) => view! {
+			{move || match store_log.with_value(|log| log.get().timestamp.format(&date_formater)) {
+				Ok(date_time) => {
+					view! {
 						<time date_time={date_time.clone()} class="text-xxs pr-sm">
 							{date_time.clone()}
 						</time>
-					}.into_view(),
-					Err(_) => view! {}.into_view()
+					}
+						.into_view()
 				}
-			}
+				Err(_) => view! {}.into_view(),
+			}}
 			<time date_time="2008-02-14 20:00" class="text-xxs pr-sm">
 				// {new Date(log.timestamp).toUTCString()}
 				{store_log.with_value(|log| log.get().timestamp.format(&date_formater))}
 			</time>
 			" - "
-			<span class="px-sm">
-				{store_log.with_value(|log| log.get().log.clone())}
-			</span>
+			<span class="px-sm">{store_log.with_value(|log| log.get().log.clone())}</span>
 		</div>
 	}
 }

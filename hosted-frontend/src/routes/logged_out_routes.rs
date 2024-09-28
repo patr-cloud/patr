@@ -14,9 +14,9 @@ pub fn LoggedOutRoutesComponent() -> impl IntoView {
 			view={LoggedInRoutesView}
 			condition={move || state.get().is_logged_out()}
 		>
-			<Route path={LoggedOutRoute::Login} view={LoginForm}/>
-			<Route path={LoggedOutRoute::SignUp} view={SignUpForm}/>
-			<Route path={LoggedOutRoute::ConfirmOtp} view={ConfirmSignUpPage}/>
+			<Route path={LoggedOutRoute::Login} view={LoginForm} />
+			<Route path={LoggedOutRoute::SignUp} view={SignUpForm} />
+			<Route path={LoggedOutRoute::ConfirmOtp} view={ConfirmSignUpPage} />
 		</ProtectedRoute>
 	}
 }

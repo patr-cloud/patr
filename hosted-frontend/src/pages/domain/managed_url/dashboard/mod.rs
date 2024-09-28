@@ -30,11 +30,7 @@ pub fn UrlDashboard() -> impl IntoView {
 				"delete this line hosted-frontend/src/pages/domain/managed_url/dashboard/mod.rs:35"
 			);
 			view! {
-				<For
-					each={move || data.urls.clone()}
-					key={|state| state.id}
-					let:url
-				>
+				<For each={move || data.urls.clone()} key={|state| state.id} let:url>
 					<ManagedUrls
 						managed_url={Signal::derive(move || url.clone())}
 						class="border-b border-border-color"
@@ -47,16 +43,12 @@ pub fn UrlDashboard() -> impl IntoView {
 	};
 
 	view! {
-		<Show when=move || show_create.get()>
-			<CreateManagedUrlDashboard
-				show_create={show_create}
-			/>
+		<Show when={move || show_create.get()}>
+			<CreateManagedUrlDashboard show_create={show_create} />
 		</Show>
-		<UrlDashboardHead
-			on_click_create={move |_| {
-				show_create.set(true);
-			}}
-		/>
+		<UrlDashboardHead on_click_create={move |_| {
+			show_create.set(true);
+		}} />
 		<ContainerBody class="px-xl">
 			<div class="flex flex-col items-start justify-start w-full h-full px-md py-xl gap-md">
 				<TableDashboard
@@ -69,11 +61,7 @@ pub fn UrlDashboard() -> impl IntoView {
 						"".into_view(),
 					]}
 
-					render_rows={view! {
-						<Transition>
-							{table_rows}
-						</Transition>
-					}.into_view()}
+					render_rows={view! { <Transition>{table_rows}</Transition> }.into_view()}
 				/>
 			</div>
 		</ContainerBody>

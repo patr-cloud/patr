@@ -83,22 +83,24 @@ pub fn WorkspaceSidebarComponent() -> impl IntoView {
 
 	view! {
 		<Transition>
-			{
-				move || match workspace_list.get() {
-					Some(workspace_list) => match workspace_list {
-						Ok(data) => view! {
-							<WorkspaceCard
-								current_workspace={current_workspace}
-								set_workspace_id={set_current_workspace}
-								workspaces={data.clone().workspaces}
-							/>
+			{move || match workspace_list.get() {
+				Some(workspace_list) => {
+					match workspace_list {
+						Ok(data) => {
+							view! {
+								<WorkspaceCard
+									current_workspace={current_workspace}
+									set_workspace_id={set_current_workspace}
+									workspaces={data.clone().workspaces}
+								/>
+							}
+								.into_view()
 						}
-						.into_view(),
-						Err(_) => view! {"Error Loading"}.into_view(),
-					},
-					None => view! {"loading..."}.into_view(),
+						Err(err) => format!("Error Loading, {:?}", err).into_view(),
+					}
 				}
-			}
+				None => view! { "loading..." }.into_view(),
+			}}
 		</Transition>
 	}
 }

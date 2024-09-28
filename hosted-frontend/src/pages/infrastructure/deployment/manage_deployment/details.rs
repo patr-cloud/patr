@@ -43,7 +43,10 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 					<div class="flex flex-col items-start justify-start w-full px-xl pb-xl mt-xl text-white gap-md fit-wide-screen mx-auto">
 						<div class="flex w-full">
 							<div class="flex-2 flex items-start justify-start">
-								<label class="text-white text-sm mt-sm flex items-center justify-start" html_for="name">
+								<label
+									class="text-white text-sm mt-sm flex items-center justify-start"
+									html_for="name"
+								>
 									"Name"
 								</label>
 							</div>
@@ -54,35 +57,34 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 									class="w-full"
 									value={
 										let deployment_info = info.clone();
-
-										// If the name is changed, then use that as the value, 
-										// otherwise use the one fetched from the server
 										if let Some(name) = update_deployment_body.get().name {
 											Signal::derive(move || name.clone())
 										} else {
-											Signal::derive(move || deployment_info.deployment.name.clone())
-
+											Signal::derive(move || {
+												deployment_info.deployment.name.clone()
+											})
 										}
 									}
-									on_input={Box::new(
-										move |ev: web_sys::Event| update_deployment_body
-											.update(
-												|body| body.name = Some(event_target_value(&ev)))
-											)
-									}
+									on_input={Box::new(move |ev: web_sys::Event| {
+										update_deployment_body
+											.update(|body| body.name = Some(event_target_value(&ev)))
+									})}
 								/>
 							</div>
 						</div>
 
 						<div class="flex w-full mb-md">
 							<div class="flex-2 flex items-start justify-start">
-								<label class="text-white text-sm mt-sm flex items-center justify-start" html_for="registry">
+								<label
+									class="text-white text-sm mt-sm flex items-center justify-start"
+									html_for="registry"
+								>
 									"Registry"
 								</label>
 							</div>
 
 							<div class="flex-10">
-								<Textbox disabled=true value={image_registry.into_view()}/>
+								<Textbox disabled=true value={image_registry.into_view()} />
 							</div>
 						</div>
 
@@ -92,10 +94,7 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 							</div>
 
 							<div class="flex-7">
-								<Textbox
-									disabled=true
-									value={image_name.into_view()}
-								/>
+								<Textbox disabled=true value={image_name.into_view()} />
 							</div>
 							<div class="flex-3 pl-md">
 								<Textbox
@@ -108,10 +107,10 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 							</div>
 						</div>
 
-						{
-							match app_type {
-								AppType::SelfHosted => view! {}.into_view(),
-								AppType::Managed => view! {
+						{app_type
+							.is_managed()
+							.then(|| {
+								view! {
 									<div class="flex w-full">
 										<div class="flex-2 flex items-start justify-start">
 											<label html_for="image-details">"Runner"</label>
@@ -126,71 +125,93 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 											/>
 										</div>
 									</div>
-								}.into_view()
-							}
-						}
+								}
+									.into_view()
+							})}
 
 						<PortInput
 							ports_list={
 								let ports = info.running_details.ports.clone();
 								Signal::derive(move || ports.clone())
 							}
-							on_delete=move |(_, port_number): (MouseEvent, String)| {
+							on_delete={move |(_, port_number): (MouseEvent, String)| {
 								let port_number = StringifiedU16::from_str(port_number.as_str());
 								if port_number.is_ok() {
-									deployment_info.update(|info| {
-										if let Some(info) = info {
-											info.running_details.ports.remove(&port_number.unwrap());
-										}
-									});
-									update_deployment_body.update(|body| {
-										body.ports = deployment_info.get().map(|info| info.running_details.ports);
-									});
+									deployment_info
+										.update(|info| {
+											if let Some(info) = info {
+												info.running_details.ports.remove(&port_number.unwrap());
+											}
+										});
+									update_deployment_body
+										.update(|body| {
+											body.ports = deployment_info
+												.get()
+												.map(|info| info.running_details.ports);
+										});
 								}
-							}
-							on_add=move |(_, port_number, port_type): (MouseEvent, String, String)| {
+							}}
+							on_add={move |
+								(_, port_number, port_type): (MouseEvent, String, String)|
+							{
 								let port_number = StringifiedU16::from_str(port_number.as_str());
 								let port_type = ExposedPortType::from_str(port_type.as_str());
-
 								if port_number.is_ok() && port_type.is_ok() {
-									deployment_info.update(|info| {
-										if let Some(info) = info {
-											info.running_details.ports.insert(port_number.unwrap(), port_type.unwrap());
-										}
-									});
-									update_deployment_body.update(|body| {
-										body.ports = deployment_info.get().map(|info| info.running_details.ports);
-									});
+									deployment_info
+										.update(|info| {
+											if let Some(info) = info {
+												info.running_details
+													.ports
+													.insert(port_number.unwrap(), port_type.unwrap());
+											}
+										});
+									update_deployment_body
+										.update(|body| {
+											body.ports = deployment_info
+												.get()
+												.map(|info| info.running_details.ports);
+										});
 								}
-							}
+							}}
 							is_update_screen=true
 						/>
 
 						<EnvInput
-							on_add=move |(_, name, value): (MouseEvent, String, String)| {
+							on_add={move |(_, name, value): (MouseEvent, String, String)| {
 								let env_val = EnvironmentVariableValue::String(value);
-
 								if !name.is_empty() && env_val.value().is_some() {
-									deployment_info.update(|info| {
+									deployment_info
+										.update(|info| {
+											if let Some(info) = info {
+												info.running_details
+													.environment_variables
+													.insert(name, env_val);
+											}
+										});
+									update_deployment_body
+										.update(|body| {
+											body.environment_variables = deployment_info
+												.get()
+												.map(|info| info.running_details.environment_variables);
+										});
+								}
+							}}
+							on_delete={move |(_, name): (MouseEvent, String)| {
+								deployment_info
+									.update(|info| {
 										if let Some(info) = info {
-											info.running_details.environment_variables.insert(name, env_val);
+											info.running_details
+												.environment_variables
+												.remove(name.as_str());
 										}
 									});
-									update_deployment_body.update(|body| {
-										body.environment_variables = deployment_info.get().map(|info| info.running_details.environment_variables);
+								update_deployment_body
+									.update(|body| {
+										body.environment_variables = deployment_info
+											.get()
+											.map(|info| info.running_details.environment_variables);
 									});
-								}
-							}
-							on_delete=move |(_, name): (MouseEvent, String)| {
-								deployment_info.update(|info| {
-									if let Some(info) = info {
-										info.running_details.environment_variables.remove(name.as_str());
-									}
-								});
-								update_deployment_body.update(|body| {
-									body.environment_variables = deployment_info.get().map(|info| info.running_details.environment_variables);
-								});
-							}
+							}}
 							envs_list={
 								let envs = info.running_details.environment_variables.clone();
 								Signal::derive(move || envs.clone())
@@ -205,53 +226,63 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 							}
 							available_ports={
 								let ports = info.running_details.ports.clone();
-
-								Signal::derive(
-									move || ports.keys().map(|port| port.value())
-										.collect::<Vec<_>>()
-								)
+								Signal::derive(move || {
+									ports.keys().map(|port| port.value()).collect::<Vec<_>>()
+								})
 							}
 							on_select_port={move |(port, path): (String, String)| {
 								let probe_port = port.parse::<u16>();
 								if let Ok(probe_port) = probe_port {
-									deployment_info.update(|info| {
-										if let Some(info) = info {
-											info.running_details.startup_probe = Some(DeploymentProbe {
-												port: probe_port,
-												path: path.clone(),
-											})
-										}
-									})
+									deployment_info
+										.update(|info| {
+											if let Some(info) = info {
+												info.running_details.startup_probe = Some(DeploymentProbe {
+													port: probe_port,
+													path: path.clone(),
+												});
+											}
+										})
 								}
-								update_deployment_body.update(|body| {
-									body.startup_probe = deployment_info.get().map(|info| info.running_details.startup_probe).flatten();
-								});
+								update_deployment_body
+									.update(|body| {
+										body.startup_probe = deployment_info
+											.get()
+											.map(|info| info.running_details.startup_probe)
+											.flatten();
+									});
 							}}
 							on_input_path={move |(port, path): (String, String)| {
 								let probe_port = port.parse::<u16>();
 								if let Ok(probe_port) = probe_port {
-									deployment_info.update(|info| {
-										if let Some(info) = info {
-											info.running_details.startup_probe = Some(DeploymentProbe {
-												port: probe_port,
-												path: path.clone(),
-											})
-										}
-									})
+									deployment_info
+										.update(|info| {
+											if let Some(info) = info {
+												info.running_details.startup_probe = Some(DeploymentProbe {
+													port: probe_port,
+													path: path.clone(),
+												});
+											}
+										})
 								}
-								update_deployment_body.update(|body| {
-									body.startup_probe = deployment_info.get().map(|info| info.running_details.startup_probe).flatten();
-								});
+								update_deployment_body
+									.update(|body| {
+										body.startup_probe = deployment_info
+											.get()
+											.map(|info| info.running_details.startup_probe)
+											.flatten();
+									});
 							}}
 							on_delete={move |_| {
-								deployment_info.update(|info| {
-									if let Some(info) = info {
-										info.running_details.startup_probe = None;
-									}
-								});
-								update_deployment_body.update(|body| {
-									body.startup_probe = None;
-								});
+								deployment_info
+									.update(|info| {
+										if let Some(info) = info {
+											info.running_details.startup_probe = None;
+										}
+									});
+								update_deployment_body
+									.update(|body| {
+										body.startup_probe = None;
+									});
 							}}
 						/>
 
@@ -263,52 +294,63 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 							}
 							available_ports={
 								let ports = info.running_details.ports.clone();
-								Signal::derive(
-									move || ports.keys().map(|port| port.value())
-										.collect::<Vec<_>>()
-								)
+								Signal::derive(move || {
+									ports.keys().map(|port| port.value()).collect::<Vec<_>>()
+								})
 							}
 							on_select_port={move |(port, path): (String, String)| {
 								let probe_port = port.parse::<u16>();
 								if let Ok(probe_port) = probe_port {
-									deployment_info.update(|info| {
-										if let Some(info) = info {
-											info.running_details.liveness_probe = Some(DeploymentProbe {
-												port: probe_port,
-												path: path.clone(),
-											})
-										}
-									})
+									deployment_info
+										.update(|info| {
+											if let Some(info) = info {
+												info.running_details.liveness_probe = Some(DeploymentProbe {
+													port: probe_port,
+													path: path.clone(),
+												});
+											}
+										})
 								}
-								update_deployment_body.update(|body| {
-									body.liveness_probe = deployment_info.get().map(|info| info.running_details.liveness_probe).flatten();
-								});
+								update_deployment_body
+									.update(|body| {
+										body.liveness_probe = deployment_info
+											.get()
+											.map(|info| info.running_details.liveness_probe)
+											.flatten();
+									});
 							}}
 							on_input_path={move |(port, path): (String, String)| {
 								let probe_port = port.parse::<u16>();
 								if let Ok(probe_port) = probe_port {
-									deployment_info.update(|info| {
-										if let Some(info) = info {
-											info.running_details.liveness_probe = Some(DeploymentProbe {
-												port: probe_port,
-												path: path.clone(),
-											})
-										}
-									})
+									deployment_info
+										.update(|info| {
+											if let Some(info) = info {
+												info.running_details.liveness_probe = Some(DeploymentProbe {
+													port: probe_port,
+													path: path.clone(),
+												});
+											}
+										})
 								}
-								update_deployment_body.update(|body| {
-									body.liveness_probe = deployment_info.get().map(|info| info.running_details.liveness_probe).flatten();
-								});
+								update_deployment_body
+									.update(|body| {
+										body.liveness_probe = deployment_info
+											.get()
+											.map(|info| info.running_details.liveness_probe)
+											.flatten();
+									});
 							}}
 							on_delete={move |_| {
-								deployment_info.update(|info| {
-									if let Some(info) = info {
-										info.running_details.liveness_probe = None;
-									}
-								});
-								update_deployment_body.update(|body| {
-									body.liveness_probe = None;
-								});
+								deployment_info
+									.update(|info| {
+										if let Some(info) = info {
+											info.running_details.liveness_probe = None;
+										}
+									});
+								update_deployment_body
+									.update(|body| {
+										body.liveness_probe = None;
+									});
 							}}
 						/>
 					</div>
@@ -325,7 +367,7 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 				}
 			}
 			.into_view(),
-			None => view! {"error occurred"}.into_view(),
+			None => view! { "error occurred" }.into_view(),
 		}
 	}
 }

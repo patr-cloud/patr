@@ -26,10 +26,9 @@ pub fn ManageDeploymentsLogs() -> impl IntoView {
 						<p class="text-grey text-xss">"Displaying logs since {logsSince}"</p>
 					</div>
 
-
-					{
-						move || match deployment_logs.get() {
-							Some(Ok(deployment_logs)) => view! {
+					{move || match deployment_logs.get() {
+						Some(Ok(deployment_logs)) => {
+							view! {
 								<For
 									each={move || deployment_logs.logs.clone()}
 									key={|state| state.timestamp}
@@ -40,19 +39,13 @@ pub fn ManageDeploymentsLogs() -> impl IntoView {
 										log={Signal::derive(move || log.clone())}
 									/>
 								</For>
-
-							},
-							Some(Err(_)) => view! {
-								"error loading logs"
-							}.into_view(),
-							None => view! {
-								"loading logs..."
-							}.into_view(),
-
+							}
 						}
-					}
+						Some(Err(_)) => view! { "error loading logs" }.into_view(),
+						None => view! { "loading logs..." }.into_view(),
+					}}
 
-					// <LogStatement log={log} class="mb-xs"/>
+				// <LogStatement log={log} class="mb-xs"/>
 				</div>
 			</div>
 		</div>

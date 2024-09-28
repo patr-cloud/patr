@@ -63,7 +63,7 @@ pub fn SecretsDashboard() -> impl IntoView {
 
 					render_rows={view! {
 						<For each={move || data.get()} key={|state| state.clone().id} let:child>
-							<SecretCard secret_item={child}/>
+							<SecretCard secret_item={child} />
 						</For>
 					}
 						.into_view()}

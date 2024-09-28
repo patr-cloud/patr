@@ -79,7 +79,7 @@ pub fn DomainsDashboard() -> impl IntoView {
 
 					render_rows={view! {
 						<For each={move || data.get()} key={|state| state.id.clone()} let:child>
-							<DomainCard domain_item={child}/>
+							<DomainCard domain_item={child} />
 						</For>
 					}
 						.into_view()}

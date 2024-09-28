@@ -121,19 +121,17 @@ pub fn DeploymentCard(
 					{move || deployment.get().name.clone()}
 				</h4>
 
-				<StatusBadge
-					status={
-						let deployment = deployment.clone();
-						Signal::derive(move || Some(
-							Status::from_deployment_status(deployment.get().status.clone()),
-						))
-					}
-				/>
+				<StatusBadge status={
+					let deployment = deployment.clone();
+					Signal::derive(move || Some(
+						Status::from_deployment_status(deployment.get().status.clone()),
+					))
+				} />
 			</div>
 
 			<div class="deployment-card-items text-white w-full">
-				{
-					move || items
+				{move || {
+					items
 						.get()
 						.into_iter()
 						.map(|item| {
@@ -149,8 +147,7 @@ pub fn DeploymentCard(
 							}
 						})
 						.collect::<Vec<_>>()
-				}
-
+				}}
 				<a
 					href=""
 					class="bg-secondary-medium rounded-sm flex flex-col items-start justify-center w-full"
@@ -164,24 +161,22 @@ pub fn DeploymentCard(
 							size={Size::ExtraSmall}
 						/>
 					</span>
-				</a>
-				<div></div>
+				</a> <div></div>
 			</div>
 
 			<div class="flex justify-between items-center mt-xs w-full px-xxs">
 				<Link
-					disabled={
-						store_deployment.with_value(
-							move |deployment|
-								deployment.get().status.clone() == DeploymentStatus::Deploying ||
-								deployment.get().status.clone() == DeploymentStatus::Errored ||
-								deployment.get().status.clone() == DeploymentStatus::Unreachable
-						)
-					}
+					disabled={store_deployment
+						.with_value(move |deployment| {
+							deployment.get().status.clone() == DeploymentStatus::Deploying
+								|| deployment.get().status.clone() == DeploymentStatus::Errored
+								|| deployment.get().status.clone() == DeploymentStatus::Unreachable
+						})}
 					style_variant={LinkStyleVariant::Contained}
 				>
 					{
-						let deployment = store_deployment.with_value(move |deployment| deployment.get());
+						let deployment = store_deployment
+							.with_value(move |deployment| deployment.get());
 						match deployment.status.clone() {
 							DeploymentStatus::Running => {
 								view! {
@@ -191,7 +186,8 @@ pub fn DeploymentCard(
 										color={Color::Secondary}
 										class="mr-xs"
 									/>
-								}.into_view()
+								}
+									.into_view()
 							}
 							_ => {
 								view! {
@@ -201,23 +197,19 @@ pub fn DeploymentCard(
 										color={Color::Secondary}
 										class="mr-xs"
 									/>
-								}.into_view()
+								}
+									.into_view()
 							}
 						}
 					}
-					{
-						format!(
-							"{}",
-							store_deployment
-								.with_value(
-									move |deployment| deployment
-										.get()
-										.status
-										.to_string()
-										.to_case(Case::Title)
-								)
-						).into_view()
-					}
+					{format!(
+						"{}",
+						store_deployment
+							.with_value(move |deployment| {
+								deployment.get().status.to_string().to_case(Case::Title)
+							}),
+					)
+						.into_view()}
 				</Link>
 
 				<Link

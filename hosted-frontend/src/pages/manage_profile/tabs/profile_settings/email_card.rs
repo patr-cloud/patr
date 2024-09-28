@@ -15,12 +15,12 @@ pub fn EmailCard(
 	view! {
 		<div class={outer_div_class}>
 			<div class="flex-col-11">
-				<Textbox color_variant={SecondaryColorVariant::Medium} value={email.into_view()}/>
+				<Textbox color_variant={SecondaryColorVariant::Medium} value={email.into_view()} />
 			</div>
 
 			<div class="flex-col-1 flex items-center justify-center">
 				<button class="btn-icon" aria_label="Delete Email">
-					<Icon icon={IconType::Trash2} color={Color::Error}/>
+					<Icon icon={IconType::Trash2} color={Color::Error} />
 				</button>
 			</div>
 		</div>

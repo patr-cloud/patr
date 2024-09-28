@@ -74,7 +74,7 @@ pub fn PasswordSection() -> impl IntoView {
 
 							<p class="mt-md mb-xs txt-sm">"Enter OTP to confirm"</p>
 
-							<Input r#type={InputType::Text} id="otp"/>
+							<Input r#type={InputType::Text} id="otp" />
 
 							<div>
 								<Link
@@ -98,7 +98,7 @@ pub fn PasswordSection() -> impl IntoView {
 
 				<div class="flex full-width px-md">
 					<div class="flex-col-2 fr-fs-fs pt-sm txt-sm">
-						"Two-Factor" <br/> "Authentication"
+						"Two-Factor" <br /> "Authentication"
 					</div>
 
 					<div class="flex-col-10 fc-fs-fs gap-xxs">
@@ -118,8 +118,8 @@ pub fn PasswordSection() -> impl IntoView {
 			</form>
 
 			<ActionForm action={change_password_action} class="full-width pt-md gap-md fc-fs-fs">
-				<input type="hidden" name="mfa_otp"/>
-				<input type="hidden" name="access_token" prop:value={access_token}/>
+				<input type="hidden" name="mfa_otp" />
+				<input type="hidden" name="access_token" prop:value={access_token} />
 
 				<Show
 					when={move || show_create_password_fields.get()}

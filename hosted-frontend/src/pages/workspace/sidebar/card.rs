@@ -23,30 +23,23 @@ pub fn WorkspaceCard(
 	view! {
 		<div
 			class="sidebar-user flex justify-between items-center py-sm px-md cursor-pointer
-				w-full br-sm bg-secondary-dark gap-xxs relative"
-			on:click={move |_| {
-				show_workspace_switcher.update(|v| *v = !*v)
-			}}
+			w-full br-sm bg-secondary-dark gap-xxs relative"
+			on:click={move |_| { show_workspace_switcher.update(|v| *v = !*v) }}
 		>
 			<div class="flex flex-col items-start justify-start w-full">
 				<p class="text-sm text-white w-[20ch] text-ellipsis overflow-hidden">
 					{move || match current_workspace.get() {
-						Some(workspace) => {
-							format!("{}", workspace.name).into_view()
-						},
-						None => "Select A Workspace".into_view()
+						Some(workspace) => format!("{}", workspace.name).into_view(),
+						None => "Select A Workspace".into_view(),
 					}}
 				</p>
 			</div>
 
-			<Link
-				r#type={Variant::Button}
-				to="/workspace"
-			>
-				<Icon icon=IconType::Settings color=Color::Grey />
+			<Link r#type={Variant::Button} to="/workspace">
+				<Icon icon={IconType::Settings} color={Color::Grey} />
 			</Link>
 
-			<Show when=move || show_workspace_switcher.get()>
+			<Show when={move || show_workspace_switcher.get()}>
 				<WorkspaceSwitcher
 					set_workspace_id={set_workspace_id.clone()}
 					workspaces={workspaces.clone()}

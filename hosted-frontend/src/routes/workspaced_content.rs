@@ -12,8 +12,8 @@ use crate::{
 #[component]
 pub fn WorkspacedRouteView() -> impl IntoView {
 	view! {
-		<Sidebar>
-			<WorkspaceSidebarComponent/>
+		<Sidebar sidebar_items={get_sidebar_items(expect_context::<AppType>())}>
+			<WorkspaceSidebarComponent />
 		</Sidebar>
 
 		<main class="fc-fs-ct full-width px-lg">
@@ -65,14 +65,12 @@ pub fn WorkspacedRoutes() -> impl IntoView {
 	view! {
 		<ProtectedRoute
 			path={AppRoutes::Empty}
-			view={move || view! {
-				<WorkspacedRouteView />
-			}}
+			view={WorkspacedRouteView}
 			redirect_path={AppRoutes::LoggedInRoute(LoggedInRoute::UserProfile)}
 			condition={move || current_workspace_id.get().is_some()}
 		>
-			<InfrastructureRoutes/>
-			<DomainConfigurationRoutes/>
+			<InfrastructureRoutes />
+			<DomainConfigurationRoutes />
 			<RunnerRoutes />
 		</ProtectedRoute>
 	}

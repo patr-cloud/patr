@@ -32,11 +32,12 @@ pub fn TokenInfo() -> impl IntoView {
 						<Input
 							on_input={Box::new(move |ev| {
 								ev.stop_propagation();
-								token_info_signal.update(|token| {
-									if let Some(ref mut token) = token {
-										token.data.name = event_target_value(&ev);
-									}
-								});
+								token_info_signal
+									.update(|token| {
+										if let Some(ref mut token) = token {
+											token.data.name = event_target_value(&ev);
+										}
+									});
 							})}
 							r#type={InputType::Text}
 							placeholder="Enter Token Name"
@@ -62,8 +63,8 @@ pub fn TokenInfo() -> impl IntoView {
 							r#type={InputType::Text}
 							placeholder="Enter Allowed IP addresses"
 							class="w-full"
-
 						/>
+
 					</div>
 				</div>
 
@@ -77,16 +78,22 @@ pub fn TokenInfo() -> impl IntoView {
 						</small>
 					</div>
 					<div class="flex-10 fr-fs-ct pl-xl">
-						<div class="flex-1 flex justify-center items-center text-sm">"Valid from"</div>
+						<div class="flex-1 flex justify-center items-center text-sm">
+							"Valid from"
+						</div>
 						<div class="flex-5 flex items-start justify-start pl-md">
 							<Input
 								on_input={Box::new(move |ev| {
 									ev.prevent_default();
-									token_info_signal.update(|token| {
-										if let Some(ref mut token) = token {
-											token.data.token_nbf = convert_string_to_datetime(event_target_value(&ev)).ok();
-										}
-									});
+									token_info_signal
+										.update(|token| {
+											if let Some(ref mut token) = token {
+												token.data.token_nbf = convert_string_to_datetime(
+														event_target_value(&ev),
+													)
+													.ok();
+											}
+										});
 								})}
 								r#type={InputType::Date}
 								placeholder="Valid From"
@@ -101,11 +108,15 @@ pub fn TokenInfo() -> impl IntoView {
 							<Input
 								on_input={Box::new(move |ev| {
 									ev.prevent_default();
-									token_info_signal.update(|token| {
-										if let Some(ref mut token) = token {
-											token.data.token_exp = convert_string_to_datetime(event_target_value(&ev)).ok();
-										}
-									});
+									token_info_signal
+										.update(|token| {
+											if let Some(ref mut token) = token {
+												token.data.token_exp = convert_string_to_datetime(
+														event_target_value(&ev),
+													)
+													.ok();
+											}
+										});
 								})}
 								r#type={InputType::Date}
 								placeholder="Valid Till"
@@ -120,9 +131,7 @@ pub fn TokenInfo() -> impl IntoView {
 			}
 			.into_view()
 		}
-		None => view! {
-			<p>"Couldn't Load Resource!"</p>
-		}
+		None => view! { <p>"Couldn't Load Resource!"</p> }
 		.into_view(),
 	}
 }

@@ -18,31 +18,27 @@ pub fn RunnerDashboard() -> impl IntoView {
 		<ContainerBody class="p-xs gap-md">
 			<DashboardContainer
 				gap={Size::Large}
-				render_items={
-					view! {
-						<Transition>
-							{
-								move || match runners_list.get() {
-									Some(Ok(data)) => {
-										view! {
-											<For
-												each={move || data.runners.clone()}
-												key={|state| state.id}
-												let:runner
-											>
-												<RunnerCard runner={runner}/>
-											</For>
-										}.into_view()
-									},
-									Some(Err(_)) => view! {}.into_view(),
-									None => view! {
-										<RunnerSkeleton />
-									}.into_view(),
+				render_items={view! {
+					<Transition>
+						{move || match runners_list.get() {
+							Some(Ok(data)) => {
+								view! {
+									<For
+										each={move || data.runners.clone()}
+										key={|state| state.id}
+										let:runner
+									>
+										<RunnerCard runner={runner} />
+									</For>
 								}
+									.into_view()
 							}
-						</Transition>
-					}.into_view()
+							Some(Err(_)) => view! {}.into_view(),
+							None => view! { <RunnerSkeleton /> }.into_view(),
+						}}
+					</Transition>
 				}
+					.into_view()}
 			/>
 		</ContainerBody>
 	}

@@ -41,17 +41,15 @@ pub fn CreateManagedUrlDashboard(
 
 	view! {
 		<Modal color_variant={SecondaryColorVariant::Light}>
-			<div
-				class="w-3/5 center-modal text-white text-sm flex flex-col items-start justify-start bg-secondary-light br-sm p-xl show-center-modal gap-lg"
-			>
+			<div class="w-3/5 center-modal text-white text-sm flex flex-col items-start justify-start bg-secondary-light br-sm p-xl show-center-modal gap-lg">
 				<div class="flex items-center justify-start">
 					<h3 class="text-white text-lg">"Create New Managed URL"</h3>
 					<Link to="">
 						"Documentation"
 						<Icon
-							icon=IconType::Link
-							size=Size::ExtraExtraSmall
-							color=Color::Primary
+							icon={IconType::Link}
+							size={Size::ExtraExtraSmall}
+							color={Color::Primary}
 							class="ml-xxs"
 						/>
 					</Link>
@@ -62,7 +60,7 @@ pub fn CreateManagedUrlDashboard(
 					path={path}
 					domain={domain}
 					url_type={url_type}
-					is_create_mode={true}
+					is_create_mode=true
 					sub_domain={sub_domain}
 					show_form={show_create}
 					on_submit={on_submit_create}

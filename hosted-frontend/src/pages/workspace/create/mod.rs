@@ -11,8 +11,8 @@ pub fn CreateWorkspace() -> impl IntoView {
 				<PageTitleContainer>
 					<PageTitle to="/workspace">"Workspace"</PageTitle>
 					<PageTitle
-						variant=PageTitleVariant::SubHeading
-						icon_position=PageTitleIconPosition::Start
+						variant={PageTitleVariant::SubHeading}
+						icon_position={PageTitleIconPosition::Start}
 					>
 						"Create Workspace"
 					</PageTitle>
@@ -27,7 +27,11 @@ pub fn CreateWorkspace() -> impl IntoView {
 				class="w-full h-full px-md fit-wide-screen \
 				gap-md flex flex-col items-start justify-start"
 			>
-				<input type="hidden" name="access_token" prop:value={state.get_untracked().get_access_token()} />
+				<input
+					type="hidden"
+					name="access_token"
+					prop:value={state.get_untracked().get_access_token()}
+				/>
 				<div class="flex w-full">
 					<div class="flex-2 pt-sm">
 						<label html_for="name" class="text-sm">
@@ -53,7 +57,7 @@ pub fn CreateWorkspace() -> impl IntoView {
 						"BACK"
 					</Link>
 					<Link
-						should_submit={true}
+						should_submit=true
 						r#type={Variant::Button}
 						style_variant={LinkStyleVariant::Contained}
 					>

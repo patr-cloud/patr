@@ -15,9 +15,7 @@ pub fn DatabaseHead() -> impl IntoView {
 
 					<PageDescription
 						description="Create and manage Databases using Patr."
-						doc_link={Some(
-							"https://docs.patr.cloud/features/databases/".to_owned(),
-						)}
+						doc_link={Some("https://docs.patr.cloud/features/databases/".to_owned())}
 					/>
 
 				</div>

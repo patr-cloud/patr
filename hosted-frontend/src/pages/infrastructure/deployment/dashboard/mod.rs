@@ -15,7 +15,7 @@ use crate::{
 pub fn DeploymentPage() -> impl IntoView {
 	view! {
 		<ContainerMain class="w-full h-full my-md">
-			<Outlet/>
+			<Outlet />
 		</ContainerMain>
 	}
 }
@@ -32,40 +32,43 @@ pub fn DeploymentDashboard() -> impl IntoView {
 		<DeploymentDashboardHead />
 
 		<ContainerBody>
-			<Transition
-				fallback=move || view! {<p>"loading"</p>}
-			>
-				{
-					move || match deployment_list.get() {
-						Some(Ok(data)) => view! {
-							<DashboardContainer
-								gap={Size::Large}
-								render_items={
-									view! {
-										<For
-											each={move || data.deployments.clone()}
-											key={|state| state.id}
-											let:child
-										>
-											<DeploymentCard deployment={child}/>
-										</For>
-									}.into_view()
-								}
-							/>
-						},
-						Some(Err(err)) => view! {
+			<Transition fallback={move || {
+				view! { <p>"loading"</p> }
+			}}>
+				{move || match deployment_list.get() {
+					Some(Ok(data)) => {
+						view! {
+							<section class="p-xl w-full overflow-y-auto">
+								<div class="grid gap-lg justify-start content-start
+								grid-cols-[repeat(auto-fit,_minmax(300px,_400px))]">
+									<For
+										each={move || data.deployments.clone()}
+										key={|state| state.id}
+										let:child
+									>
+										<DeploymentCard deployment={child} />
+									</For>
+								</div>
+							</section>
+						}
+							.into_view()
+					}
+					Some(Err(err)) => {
+						view! {
 							<ErrorPage
 								title="Error Loading Deployments"
-								content=view! {
+								content={view! {
 									<p class="text-white">
 										{format!("{}", err.to_string().to_case(Case::Title))}
 									</p>
-								}.into_view()
+								}
+									.into_view()}
 							/>
-						}.into_view(),
-						_ => view! {}.into_view()
+						}
+							.into_view()
 					}
-				}
+					_ => view! {}.into_view(),
+				}}
 			</Transition>
 		</ContainerBody>
 	}
