@@ -1,7 +1,7 @@
 FROM ubuntu:jammy
 
 RUN apt update
-RUN apt install -y libssl-dev pkg-config bash-completion git sudo curl htop nano vim build-essential postgresql-client
+RUN apt install -y libssl-dev pkg-config bash-completion git sudo curl htop nano vim build-essential postgresql-client clang
 RUN adduser vscode
 RUN adduser vscode sudo
 RUN echo vscode ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/vscode

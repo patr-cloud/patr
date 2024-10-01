@@ -168,31 +168,21 @@ pub fn DeploymentRoutes() -> impl IntoView {
 		<AppRoute<DeploymentsDashboardRoute, _, _> view={move |_query, _params| DeploymentPage}>
 			<AppRoute<CreateDeploymentRoute, _, _> view={move |_query, _params| CreateDeployment} />
 			<AppRoute<ManageDeploymentRoute, _, _> view={move |_query, _params| ManageDeployments}>
-				<AppRoute<
-				ManageDeploymentUrlsRoute,
-				_,
-				_,
-			> view={move |_query, _params| ManageDeploymentUrls} />
-				<AppRoute<
-				ManageDeploymentImageHistoryRoute,
-				_,
-				_,
-			> view={move |_query, _params| ManageDeploymentImageHistory} />
-				<AppRoute<
-				ManageDeploymentsLogsRoute,
-				_,
-				_,
-			> view={move |_query, _params| ManageDeploymentsLogs} />
-				<AppRoute<
-				ManageDeploymentsMonitoringRoute,
-				_,
-				_,
-			> view={move |_query, _params| ManageDeploymentsMonitoring} />
-				<AppRoute<
-				ManageDeploymentScalingRoute,
-				_,
-				_,
-			> view={move |_query, _params| ManageDeploymentScaling} />
+				<AppRoute<ManageDeploymentUrlsRoute, _, _,>
+					view={move |_query, _params| ManageDeploymentUrls}
+				/>
+				<AppRoute<ManageDeploymentImageHistoryRoute, _, _,>
+					view={move |_query, _params| ManageDeploymentImageHistory}
+				/>
+				<AppRoute<ManageDeploymentsLogsRoute, _, _,>
+					view={move |_query, _params| ManageDeploymentsLogs}
+				/>
+				<AppRoute<ManageDeploymentsMonitoringRoute, _, _,>
+					view={move |_query, _params| ManageDeploymentsMonitoring}
+				/>
+				<AppRoute<ManageDeploymentScalingRoute, _, _,>
+					view={move |_query, _params| ManageDeploymentScaling}
+				/>
 				<Route path={AppRoutes::Empty} view={ManageDeploymentDetailsTab} />
 			</AppRoute<ManageDeploymentRoute, _, _>>
 			<Route path={AppRoutes::Empty} view={DeploymentDashboard} />
