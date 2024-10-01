@@ -194,8 +194,8 @@ pub fn DeploymentRoutes() -> impl IntoView {
 				_,
 			> view={move |_query, _params| ManageDeploymentScaling} />
 				<Route path={AppRoutes::Empty} view={ManageDeploymentDetailsTab} />
-			</AppRoute>
+			</AppRoute<ManageDeploymentRoute, _, _>>
 			<Route path={AppRoutes::Empty} view={DeploymentDashboard} />
-		</AppRoute>
+		</AppRoute<DeploymentsDashboardRoute, _, _>>
 	}
 }

@@ -41,6 +41,6 @@ pub fn DatabaseRoutes() -> impl IntoView {
 			<AppRoute<CreateDatabaseRoute, _, _> view={move |_query, _params| CreateDatabase} />
 			<AppRoute<ManageDatabaseRoute, _, _> view={move |_query, _params| ManageDatabase} />
 			<Route path={AppRoutes::Empty} view={DatabaseDashboard} />
-		</AppRoute>
+		</AppRoute<DatabaseDashboardRoute, _, _>>
 	}
 }
