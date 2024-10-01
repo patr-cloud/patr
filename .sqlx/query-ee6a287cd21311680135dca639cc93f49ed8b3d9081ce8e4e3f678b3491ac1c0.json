@@ -22,6 +22,11 @@
         "ordinal": 3,
         "name": "deleted",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "cloudflare_tunnel_id",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -34,7 +39,8 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
   "hash": "ee6a287cd21311680135dca639cc93f49ed8b3d9081ce8e4e3f678b3491ac1c0"
