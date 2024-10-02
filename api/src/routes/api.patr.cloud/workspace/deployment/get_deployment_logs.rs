@@ -105,6 +105,7 @@ pub async fn get_deployment_logs(
 		.text()
 		.await?;
 
+	trace!("{}", &loki_response);
 	let Ok(LokiResponse {
 		data: LokiData { result },
 	}) = serde_json::from_str::<LokiResponse>(&loki_response)
