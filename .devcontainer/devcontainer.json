@@ -28,6 +28,10 @@
 	},
 	"forwardPorts": [
 		3000,
-		"opentelemetry:16686"
+		3001,
+		4000,
+		"logs:3100",
+		"tracing:16686",
+		"grafana:3000"
 	]
 }

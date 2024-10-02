@@ -14,7 +14,7 @@ struct LokiResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct LokiData {
-	result: [LokiMatrixResult; 1],
+	result: Vec<LokiMatrixResult>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -95,7 +95,7 @@ pub async fn get_deployment_logs(
 			query
 		})
 		.header(
-			HeaderName::from_static("X-Scope-OrgID"),
+			HeaderName::from_static("x-scope-orgid"),
 			HeaderValue::from_str(&workspace_id.to_string()).unwrap(),
 		)
 		.send()
@@ -104,9 +104,7 @@ pub async fn get_deployment_logs(
 		.await?;
 
 	let Ok(LokiResponse {
-		data: LokiData {
-			result: [LokiMatrixResult { values }],
-		},
+		data: LokiData { result },
 	}) = serde_json::from_str::<LokiResponse>(&loki_response)
 	else {
 		error!("Cannot parse Loki response: {}", loki_response);
@@ -115,14 +113,20 @@ pub async fn get_deployment_logs(
 		)));
 	};
 
-	let logs = values
+	let logs = result
 		.into_iter()
-		.map(|(timestamp, log)| DeploymentLog {
-			timestamp: OffsetDateTime::from_unix_timestamp_nanos(timestamp)
-				.unwrap_or(OffsetDateTime::UNIX_EPOCH),
-			log,
+		.next()
+		.map(|LokiMatrixResult { values }| {
+			values
+				.into_iter()
+				.map(|(timestamp, log)| DeploymentLog {
+					timestamp: OffsetDateTime::from_unix_timestamp_nanos(timestamp)
+						.unwrap_or(OffsetDateTime::UNIX_EPOCH),
+					log,
+				})
+				.collect()
 		})
-		.collect();
+		.unwrap_or_default();
 
 	AppResponse::builder()
 		.body(GetDeploymentLogsResponse { logs })

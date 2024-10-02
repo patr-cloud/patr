@@ -6,7 +6,7 @@ networks:
 
 volumes:
   postgres-data:
-
+  grafana-data:
 
 services:
   app:
@@ -77,7 +77,7 @@ services:
           - tracing
 
   logs:
-    image: grafana/loki:3.2
+    image: grafana/loki:3.2.0
     restart: unless-stopped
     expose:
       - 3100
@@ -88,7 +88,7 @@ services:
           - logs
 
   metrics:
-    image: grafana/mimir:2.13
+    image: grafana/mimir:2.13.0
     restart: unless-stopped
     expose:
       - 8080
@@ -97,3 +97,16 @@ services:
       vpc:
         aliases:
           - metrics
+
+  grafana:
+    image: grafana/grafana-oss:11.2.2
+    restart: unless-stopped
+    expose:
+      - 3000
+    volumes:
+      - grafana-data:/var/lib/grafana
+    hostname: grafana
+    networks:
+      vpc:
+        aliases:
+          - grafana

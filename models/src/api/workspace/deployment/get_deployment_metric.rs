@@ -1,4 +1,4 @@
-use time::OffsetDateTime;
+use time::Duration;
 
 use super::DeploymentMetric;
 use crate::prelude::*;
@@ -26,10 +26,9 @@ macros::declare_api_endpoint!(
 		}
 	},
 	query = {
-		/// The time up until which the deployment metrics should be fetched
-		pub end_time: Option<OffsetDateTime>,
-		/// The limit of metrics to fetch. Defaults to 100
-		pub limit: Option<u32>,
+		/// The duration for when the deployment metrics are fetched
+		#[preprocess(range(max = Some(Duration::days(14))))]
+		pub interval: Option<Duration>,
 	},
 	response = {
 		/// The deployment metrics containing:
