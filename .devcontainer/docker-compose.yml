@@ -19,7 +19,7 @@ services:
     environment:
       - PGHOST=postgres
       - PGUSER=postgres
-      - PG_PASSWORD=postgres
+      - PGPASSWORD=postgres
     volumes:
       - ..:/workspace:cached
       - $HOME/.ssh:/home/vscode/.ssh:ro

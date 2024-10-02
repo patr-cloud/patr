@@ -76,24 +76,26 @@ pub async fn get_deployment_logs(
 			"{}/loki/api/v1/query_range",
 			config.opentelemetry.logs.endpoint
 		))
-		.query(&{
-			let mut query = vec![
-				("limit", limit.unwrap_or(100).to_string()),
-				(
-					"end",
-					end_time
-						.unwrap_or(OffsetDateTime::now_utc())
-						.unix_timestamp_nanos()
-						.to_string(),
+		.query(&[
+			("limit", limit.unwrap_or(100).to_string()),
+			(
+				"end",
+				end_time
+					.unwrap_or(OffsetDateTime::now_utc())
+					.unix_timestamp_nanos()
+					.to_string(),
+			),
+			(
+				"query",
+				format!(
+					"{{deploymentId=\"{}\"}}{}",
+					deployment_id,
+					search
+						.map(|search| format!(" |= `{}`", search))
+						.unwrap_or_default()
 				),
-			];
-
-			if let Some(search) = search {
-				query.extend([("query", format!("{{}} |= \"{}\"", search))]);
-			}
-
-			query
-		})
+			),
+		])
 		.header(
 			HeaderName::from_static("x-scope-orgid"),
 			HeaderValue::from_str(&workspace_id.to_string()).unwrap(),
