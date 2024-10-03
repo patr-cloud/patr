@@ -115,7 +115,7 @@ pub fn InputDropdown(
 	};
 
 	view! {
-		<div on:click={handle_toggle_options} class={outer_div_class}>
+		<div tab_index=2 on:click={handle_toggle_options} class={outer_div_class}>
 			<Show
 				when={move || enable_input.get()}
 				fallback={move || view! {

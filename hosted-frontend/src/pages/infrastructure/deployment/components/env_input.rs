@@ -15,16 +15,17 @@ pub fn EnvInput(
 	envs_list: MaybeSignal<BTreeMap<String, EnvironmentVariableValue>>,
 	/// On Pressing Delete Button
 	#[prop(into, optional, default = Callback::new(|_| ()))]
-	on_delete: Callback<(MouseEvent, String)>,
+	on_delete: Callback<String>,
 	/// On Pressing Add Button
 	#[prop(into, optional, default = Callback::new(|_| ()))]
-	on_add: Callback<(MouseEvent, String, String)>,
+	on_add: Callback<(String, String)>,
 ) -> impl IntoView {
 	let outer_div_class = class.with(|cname| format!("flex full-width {}", cname));
 	let store_envs = store_value(envs_list.clone());
 
 	let env_name = create_rw_signal("".to_string());
 	let env_value = create_rw_signal("".to_string());
+
 	view! {
 		<div class={outer_div_class}>
 			<div class="flex-col-2 fr-fs-ct mb-auto mt-md">
@@ -59,7 +60,7 @@ pub fn EnvInput(
 
 									<div class="flex-col-1 fr-ct-ct pl-sm">
 										<button on:click={move |ev| {
-											on_delete.call((ev, child.0.clone()))
+											on_delete.call(child.0.clone())
 										}}>
 											<Icon
 												icon={IconType::Trash2}
@@ -74,7 +75,7 @@ pub fn EnvInput(
 					</div>
 				</Show>
 
-				<div class="flex w-full">
+				<form class="flex w-full">
 					<div class="flex-col-5 fc-fc-fs pr-lg">
 						<Input
 							r#type={InputType::Text}
@@ -107,15 +108,16 @@ pub fn EnvInput(
 						<Link
 							style_variant={LinkStyleVariant::Contained}
 							class="br-sm p-xs ml-md"
-							should_submit=false
+							should_submit=true
 							on_click={Rc::new(move |ev| {
-								on_add.call((ev.clone(), env_name.get(), env_value.get()))
+								ev.prevent_default();
+								on_add.call((env_name.get(), env_value.get()))
 							})}
 						>
 							<Icon icon={IconType::Plus} color={Color::Secondary} />
 						</Link>
 					</div>
-				</div>
+				</form>
 			</div>
 		</div>
 	}

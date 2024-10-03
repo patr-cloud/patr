@@ -19,10 +19,10 @@ pub fn PortInput(
 	is_update_screen: MaybeSignal<bool>,
 	/// On Pressing Delete Button
 	#[prop(into, optional, default = Callback::new(|_| ()))]
-	on_delete: Callback<(MouseEvent, String)>,
+	on_delete: Callback<String>,
 	/// On Pressing Add Button
 	#[prop(into, optional, default = Callback::new(|_| ()))]
-	on_add: Callback<(MouseEvent, String, String)>,
+	on_add: Callback<(String, String)>,
 	/// The Error For Port Input
 	#[prop(into, optional)]
 	error: MaybeSignal<String>,
@@ -111,7 +111,7 @@ pub fn PortInput(
 
 									<div class="flex-1 flex items-center justify-center pl-sm">
 										<button on:click={move |ev| {
-											on_delete.call((ev, child.0.to_string()))
+											on_delete.call(child.0.to_string())
 										}}>
 											<Icon
 												icon={IconType::Trash2}
@@ -126,7 +126,7 @@ pub fn PortInput(
 					</div>
 				</Show>
 
-				<div class="flex w-full">
+				<form class="flex w-full">
 					<div class="flex-5 flex flex-col justify-start items-start pr-lg gap-xxs">
 						<Input
 							value={Signal::derive(move || port_number.get())}
@@ -154,6 +154,12 @@ pub fn PortInput(
 							value={port_type}
 							placeholder={"Select Protocol".to_string()}
 							options={exposed_port_types}
+							on_select={move |val: String| {
+								port_type.set(val);
+								if (!port_type.get().is_empty() && !port_number.get().is_empty()) {
+									on_add.call((port_number.get(), port_type.get()));
+								}
+							}}
 						/>
 
 					</div>
@@ -162,15 +168,15 @@ pub fn PortInput(
 						<Link
 							style_variant={LinkStyleVariant::Contained}
 							class="br-sm p-xs ml-md"
-							should_submit=false
-							on_click={Rc::new(move |ev| {
-								on_add.call((ev.clone(), port_number.get(), port_type.get()))
+							should_submit=true
+							on_click={Rc::new(move |_| {
+								on_add.call((port_number.get(), port_type.get()))
 							})}
 						>
 							<Icon icon={IconType::Plus} color={Color::Secondary} />
 						</Link>
 					</div>
-				</div>
+				</form>
 			</div>
 		</div>
 	}
