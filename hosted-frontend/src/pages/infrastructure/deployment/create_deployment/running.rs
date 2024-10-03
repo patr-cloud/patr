@@ -20,7 +20,7 @@ pub fn RunningDetails(
 
 			<div class="fc-fs-fs gap-xl w-full h-full text-white">
 				<PortInput
-					on_add={move |(_, port_number, port_type): (MouseEvent, String, String)| {
+					on_add={move |(port_number, port_type): (String, String)| {
 						let port_number = StringifiedU16::from_str(port_number.as_str());
 						let port_type = ExposedPortType::from_str(port_type.as_str());
 						if port_number.is_ok() && port_type.is_ok() {
@@ -30,7 +30,7 @@ pub fn RunningDetails(
 								});
 						}
 					}}
-					on_delete={move |(_, port_number): (MouseEvent, String)| {
+					on_delete={move |port_number: String| {
 						let port_number = StringifiedU16::from_str(port_number.as_str());
 						if port_number.is_ok() {
 							deployment_info
@@ -45,7 +45,7 @@ pub fn RunningDetails(
 				/>
 
 				<EnvInput
-					on_add={move |(_, name, value): (MouseEvent, String, String)| {
+					on_add={move |(name, value): (String, String)| {
 						let env_value = EnvironmentVariableValue::String(value);
 						if !name.is_empty() && env_value.value().is_some() {
 							deployment_info
@@ -54,7 +54,7 @@ pub fn RunningDetails(
 								});
 						}
 					}}
-					on_delete={move |(_, name): (MouseEvent, String)| {
+					on_delete={move |name: String| {
 						deployment_info
 							.update(|info| {
 								info.environment_variables.remove(name.as_str());

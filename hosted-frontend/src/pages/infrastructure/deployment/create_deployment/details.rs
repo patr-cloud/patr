@@ -25,7 +25,7 @@ fn RunnerDropdown() -> impl IntoView {
 					deployment_info.update(|info| info.runner_id = Some(runner_id))
 				}
 			}}
-			options={match runners_list.get() {
+			options={Signal::derive(move || match runners_list.get() {
 				Some(Ok(data)) => {
 					data.runners
 						.iter()
@@ -37,7 +37,7 @@ fn RunnerDropdown() -> impl IntoView {
 						.collect::<Vec<_>>()
 				}
 				_ => vec![],
-			}}
+			})}
 		/>
 	}
 }
@@ -55,6 +55,7 @@ pub fn DeploymentDetails(
 	let store_errors = store_value(errors);
 
 	view! {
+		<form id="details-form"></form>
 		<div class="flex flex-col items-start justify-start w-full fit-wide-screen px-xl mt-xl">
 			<h4 class="text-white text-lg pb-md">"Deployment Details"</h4>
 
@@ -76,6 +77,7 @@ pub fn DeploymentDetails(
 							class="w-full"
 							name="name"
 							id="name"
+							form="details-form"
 							value={Signal::derive(move || {
 								deployment_info.get().name.unwrap_or_default()
 							})}
@@ -144,6 +146,7 @@ pub fn DeploymentDetails(
 							name="repository_name"
 							class="w-full"
 							id="repository_name"
+							form="details-form"
 							value={Signal::derive(move || {
 								deployment_info.get().image_name.unwrap_or_default()
 							})}
@@ -172,6 +175,7 @@ pub fn DeploymentDetails(
 							r#type={InputType::Text}
 							placeholder="Choose Image Tag"
 							class="w-full"
+							form="details-form"
 							name="image_tag"
 							id="image_tag"
 							value={Signal::derive(move || {

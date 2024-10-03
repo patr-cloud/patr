@@ -72,6 +72,9 @@ pub fn Input(
 	/// The ID of the input.
 	#[prop(into, optional)]
 	id: MaybeSignal<String>,
+	/// The form id of the input.
+	#[prop(into, optional)]
+	form: MaybeSignal<String>,
 	/// Placeholder text for the input.
 	#[prop(into, optional)]
 	placeholder: MaybeSignal<String>,
@@ -195,6 +198,7 @@ pub fn Input(
 				.into_view()}
 
 			<input
+				form={move || form.get()}
 				id={move || id.get()}
 				class="mx-md overflow-hidden text-ellipsis"
 				name={move || name.get()}
