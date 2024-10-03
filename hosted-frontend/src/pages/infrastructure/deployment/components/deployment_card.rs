@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use components::prelude::Popover;
 use convert_case::*;
 use ev::MouseEvent;
 use leptos_query::QueryResult;
@@ -148,20 +149,36 @@ pub fn DeploymentCard(
 						})
 						.collect::<Vec<_>>()
 				}}
-				<a
-					href=""
-					class="bg-secondary-medium rounded-sm flex flex-col items-start justify-center w-full"
+				<Popover
+					trigger_children={
+						view! {
+							<div>
+								<a
+									href=""
+									class="bg-secondary-medium rounded-sm flex flex-col items-start justify-center w-full"
+								>
+									<span class="tracking-[1px] text-xxs text-grey">"LIVE LINKS"</span>
+									<span class="text-primary w-[15ch] text-ellipsis overflow-hidden flex items-center justify-start">
+										"PUBLIC URL"
+										<Icon
+											icon={IconType::ArrowUpRight}
+											color={Color::Primary}
+											size={Size::ExtraSmall}
+										/>
+									</span>
+								</a>
+							</div>
+						}.into_view()
+					}
+					popover_content={
+						view! {
+							<div class="tooltip fixed">
+								"something in the way"
+							</div>
+						}.into_view()
+					}
 				>
-					<span class="tracking-[1px] text-xxs text-grey">"LIVE LINKS"</span>
-					<span class="text-primary w-[15ch] text-ellipsis overflow-hidden flex items-center justify-start">
-						"PUBLIC URL"
-						<Icon
-							icon={IconType::ArrowUpRight}
-							color={Color::Primary}
-							size={Size::ExtraSmall}
-						/>
-					</span>
-				</a> <div></div>
+				</Popover>
 			</div>
 
 			<div class="flex justify-between items-center mt-xs w-full px-xxs">
