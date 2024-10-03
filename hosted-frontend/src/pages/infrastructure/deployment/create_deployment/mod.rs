@@ -55,7 +55,7 @@ pub fn CreateDeployment() -> impl IntoView {
 		}
 	};
 
-	let on_click_next = move |ev: &MouseEvent| {
+	let on_click_next = move |ev: MouseEvent| {
 		ev.prevent_default();
 		let deployment_info = deployment_info.get();
 		logging::log!("{:#?}", details_error.get());
@@ -126,10 +126,15 @@ pub fn CreateDeployment() -> impl IntoView {
 					when={move || page.get() == Page::Scaling}
 					fallback={move || {
 						view! {
-							<Link
-								on_click={Rc::new(on_click_next)}
-								style_variant={LinkStyleVariant::Contained}
-								r#type={Variant::Button}
+							<button
+								form={move || match page.get() {
+									Page::Details => "details-form",
+									Page::Running => "running-form",
+									Page::Scaling => "scaling-form",
+								}}
+								type="submit"
+								class="flex items-center justify-center btn btn-primary"
+								on:click={on_click_next}
 							>
 								"NEXT"
 								<Icon
@@ -138,7 +143,7 @@ pub fn CreateDeployment() -> impl IntoView {
 									color={Color::Black}
 									class="ml-xxs"
 								/>
-							</Link>
+							</button>
 						}
 					}}
 				>
