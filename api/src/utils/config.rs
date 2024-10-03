@@ -171,6 +171,9 @@ pub struct CloudflareConfig {
 	/// The API key to use to connect to Cloudflare
 	#[serde(alias = "apikey")]
 	pub api_key: String,
+	/// The account ID to use to connect to Cloudflare
+	#[serde(alias = "accountid")]
+	pub account_id: String,
 }
 
 /// The configuration for the SMTP server to use to send emails to users
