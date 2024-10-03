@@ -27,6 +27,7 @@ base32                   = { default-features = false, version = "0.5" }
 base64                   = { default-features = false, version = "0.22" }
 bollard                  = { default-features = false, version = "0.18" }
 clap                     = { default-features = false, version = "4" }
+cloudflare               = { default-features = false, version = "0.14" }
 codee                    = { default-features = false, version = "0.3" }
 comfy-table              = { default-features = false, version = "7" }
 common                   = { default-features = false, path = "runners/common" }

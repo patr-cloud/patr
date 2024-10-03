@@ -46,6 +46,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --defau
 RUN /home/vscode/.cargo/bin/cargo install --locked cargo-leptos
 RUN /home/vscode/.cargo/bin/cargo install --locked cargo-audit
 RUN /home/vscode/.cargo/bin/cargo install --locked sqlx-cli
+RUN /home/vscode/.cargo/bin/cargo install --locked wasm-pack
 RUN /home/vscode/.cargo/bin/cargo install --locked worker-build
 
 # `patr` should build and run the local CLI
