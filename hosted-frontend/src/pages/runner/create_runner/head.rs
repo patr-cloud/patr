@@ -4,29 +4,34 @@ use crate::prelude::*;
 pub fn RunnerCreateHead() -> impl IntoView {
 	view! {
 		<ContainerHead>
-			<div class="w-full flex items-center justify-between">
-				<div class="flex flex-col items-start justify-between">
-					<PageTitleContainer>
-						<PageTitle icon_position={PageTitleIconPosition::End}>"CI/CD"</PageTitle>
-						<PageTitle
-							to="/runners"
-							variant={PageTitleVariant::SubHeading}
-							icon_position={PageTitleIconPosition::End}
-						>
-							"Runners"
-						</PageTitle>
-						<PageTitle variant={PageTitleVariant::SubHeading}>"New"</PageTitle>
-					</PageTitleContainer>
-
-					<PageDescription
-						description={"Create and manage CI Runners for automated builds."
-							.to_string()}
-						doc_link={Some(
-							"https://docs.patr.cloud/ci-cd/#choosing-a-runner".to_string(),
-						)}
-					/>
-				</div>
-			</div>
+			<PageTitleContainer
+				page_title_items={vec![
+					PageTitleItem {
+						title: "CI/CD".to_owned(),
+						link: None,
+						icon_position: PageTitleIconPosition::End,
+						variant: PageTitleVariant::Heading,
+					},
+					PageTitleItem {
+						title: "Runner".to_owned(),
+						link: None,
+						icon_position: PageTitleIconPosition::End,
+						variant: PageTitleVariant::SubHeading,
+					},
+					PageTitleItem {
+						title: "New".to_owned(),
+						link: None,
+						icon_position: PageTitleIconPosition::None,
+						variant: PageTitleVariant::SubHeading,
+					},
+				]}
+				description_title={
+					Some("Create and manage CI Runners for automated builds.".to_owned())
+				}
+				description_link={
+					Some("https://docs.patr.cloud/ci-cd/#choosing-a-runner".to_owned())
+				}
+			/>
 		</ContainerHead>
 	}
 }

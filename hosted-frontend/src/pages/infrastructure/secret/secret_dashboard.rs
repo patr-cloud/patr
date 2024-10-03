@@ -28,29 +28,37 @@ pub fn SecretsDashboard() -> impl IntoView {
 	view! {
 		<ContainerMain class="my-md">
 			<ContainerHead>
-				<div class="fr-sb-ct full-width">
-					<div class="fc-fs-fs">
-						<PageTitleContainer>
-							<PageTitle>"Secret"</PageTitle>
-						</PageTitleContainer>
-
-						<PageDescription
-							description="Create and manage API keys, Database Passwords, and other
-							sensitive information."
-							doc_link={Some("https://docs.patr.cloud/features/secrets/".to_owned())}
-						/>
-					</div>
-
-					<Link r#type={Variant::Button} style_variant={LinkStyleVariant::Contained}>
-						"CREATE SECRET"
-						<Icon
-							icon={IconType::Plus}
-							size={Size::ExtraSmall}
-							class="ml-xs"
-							color={Color::Black}
-						/>
-					</Link>
-				</div>
+				<PageTitleContainer
+					page_title_items={vec![
+						PageTitleItem {
+							title: "Secret".to_owned(),
+							link: None,
+							icon_position: PageTitleIconPosition::None,
+							variant: PageTitleVariant::Heading,
+						},
+					]}
+					description_title={
+						Some("Create and manage API keys, Database Passwords, and other
+						sensitive information.".to_owned())
+					}
+					description_link={
+						Some("https://docs.patr.cloud/features/secrets/".to_owned())
+					}
+					action_buttons={Some(view! {
+						<Link
+							r#type={Variant::Button}
+							style_variant={LinkStyleVariant::Contained}
+						>
+							"CREATE SECRET"
+							<Icon
+								icon={IconType::Plus}
+								size={Size::ExtraSmall}
+								class="ml-xs"
+								color={Color::Black}
+							/>
+						</Link>
+					}.into_view())}
+				/>
 			</ContainerHead>
 
 			<ContainerBody class="px-xxl py-xl gap-md">

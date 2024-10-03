@@ -7,18 +7,25 @@ pub fn CreateWorkspace() -> impl IntoView {
 
 	view! {
 		<ContainerHead>
-			<div class="flex flex-col items-start justify-start">
-				<PageTitleContainer>
-					<PageTitle to="/workspace">"Workspace"</PageTitle>
-					<PageTitle
-						variant={PageTitleVariant::SubHeading}
-						icon_position={PageTitleIconPosition::Start}
-					>
-						"Create Workspace"
-					</PageTitle>
-				</PageTitleContainer>
-				<PageDescription description="Create a new workspace here." />
-			</div>
+			<PageTitleContainer
+				page_title_items={vec![
+					PageTitleItem {
+						title: "Workspace".to_owned(),
+						link: Some("/workspace".to_owned()),
+						icon_position: PageTitleIconPosition::Start,
+						variant: PageTitleVariant::Heading,
+					},
+					PageTitleItem {
+						title: "Create Workspace".to_owned(),
+						link: None,
+						icon_position: PageTitleIconPosition::None,
+						variant: PageTitleVariant::SubHeading,
+					},
+				]}
+				description_title={
+					Some("Create a new workspace here.".to_owned())
+				}
+			/>
 		</ContainerHead>
 
 		<ContainerBody class="px-xl py-lg overflow-y-auto text-white">

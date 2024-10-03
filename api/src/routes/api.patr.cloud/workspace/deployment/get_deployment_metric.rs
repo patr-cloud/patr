@@ -1,6 +1,7 @@
-use axum::http::StatusCode;
+use axum::http::{HeaderName, HeaderValue, StatusCode};
 use models::api::workspace::deployment::*;
-use time::Duration;
+use serde::{Deserialize, Serialize};
+use time::{Duration, OffsetDateTime};
 
 use crate::prelude::*;
 
@@ -92,7 +93,7 @@ pub async fn get_deployment_metric(
 			query
 		})
 		.header(
-			HeaderName::from_static("X-Scope-OrgID"),
+			HeaderName::from_static("x-scope-orgid"),
 			HeaderValue::from_str(&workspace_id.to_string()).unwrap(),
 		)
 		.send()
@@ -117,10 +118,10 @@ pub async fn get_deployment_metric(
 				.map(|(timestamp, metric)| DeploymentMetric {
 					timestamp: OffsetDateTime::from_unix_timestamp_nanos(timestamp)
 						.unwrap_or(OffsetDateTime::UNIX_EPOCH),
-					cpu_usage: (),
-					memory_usage: (),
-					network_usage_tx: (),
-					network_usage_rx: (),
+					cpu_usage: String::new(),
+					memory_usage: String::new(),
+					network_usage_tx: String::new(),
+					network_usage_rx: String::new(),
 				})
 				.collect()
 		})

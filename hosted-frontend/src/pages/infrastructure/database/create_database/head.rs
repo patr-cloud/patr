@@ -4,28 +4,34 @@ use crate::prelude::*;
 pub fn CreateDatabaseHeader() -> impl IntoView {
 	view! {
 		<ContainerHead>
-			<div class="fr-sb-ct full-width">
-				<div class="fc-fs-fs">
-					<PageTitleContainer>
-						<PageTitle icon_position={PageTitleIconPosition::End}>
-							"Infrastructure"
-						</PageTitle>
-						<PageTitle
-							icon_position={PageTitleIconPosition::End}
-							variant={PageTitleVariant::SubHeading}
-							to="/database"
-						>
-							"Database"
-						</PageTitle>
-						<PageTitle variant={PageTitleVariant::SubHeading}>"Create"</PageTitle>
-					</PageTitleContainer>
-
-					<PageDescription
-						description={"Create a new Database here.".to_string()}
-						doc_link={Some("https://docs.patr.cloud/features/databases/".to_string())}
-					/>
-				</div>
-			</div>
+			<PageTitleContainer
+				page_title_items={vec![
+					PageTitleItem {
+						title: "Infrastructure".to_owned(),
+						link: None,
+						icon_position: PageTitleIconPosition::End,
+						variant: PageTitleVariant::Heading,
+					},
+					PageTitleItem {
+						title: "Database".to_owned(),
+						link: Some("/database".to_owned()),
+						icon_position: PageTitleIconPosition::End,
+						variant: PageTitleVariant::SubHeading,
+					},
+					PageTitleItem {
+						title: "Create Database".to_owned(),
+						link: None,
+						icon_position: PageTitleIconPosition::None,
+						variant: PageTitleVariant::Text,
+					},
+				]}
+				description_title={
+					Some("Create a new Database here.".to_owned())
+				}
+				description_link={
+					Some("https://docs.patr.cloud/features/databases/".to_owned())
+				}
+			/>
 		</ContainerHead>
 	}
 }

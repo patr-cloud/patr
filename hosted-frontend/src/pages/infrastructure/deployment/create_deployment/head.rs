@@ -4,31 +4,33 @@ use crate::prelude::*;
 pub fn CreateDeploymentHead() -> impl IntoView {
 	view! {
 		<ContainerHead>
-			<div class="w-full flex justify-between items-center">
-				<div class="flex flex-col items-start justify-start">
-					<PageTitleContainer>
-						<PageTitle icon_position={PageTitleIconPosition::End}>
-							"Infrastructure"
-						</PageTitle>
-						<PageTitle
-							to="/deployment"
-							icon_position={PageTitleIconPosition::End}
-							variant={PageTitleVariant::SubHeading}
-						>
-							"Deployment"
-						</PageTitle>
-						<PageTitle variant={PageTitleVariant::Text}>"Create Deployment"</PageTitle>
-					</PageTitleContainer>
-
-					<PageDescription
-						description={"Create a new Deployment here.".to_string()}
-						doc_link={Some(
-							"https://docs.patr.cloud/features/deployments/#how-to-create-a-deployment"
-								.to_string(),
-						)}
-					/>
-				</div>
-			</div>
+			<PageTitleContainer
+				page_title_items={vec![
+					PageTitleItem {
+						title: "Infrastructure".to_owned(),
+						link: None,
+						icon_position: PageTitleIconPosition::End,
+						variant: PageTitleVariant::Heading,
+					},
+					PageTitleItem {
+						title: "Deployment".to_owned(),
+						link: Some("/deployment".to_owned()),
+						icon_position: PageTitleIconPosition::End,
+						variant: PageTitleVariant::SubHeading,
+					},
+					PageTitleItem {
+						title: "Create Deployment".to_owned(),
+						link: None,
+						icon_position: PageTitleIconPosition::None,
+						variant: PageTitleVariant::Text,
+					},
+				]}
+				description_title={Some("Create a new Deployment here.".to_string())}
+				description_link={Some(
+					"https://docs.patr.cloud/features/deployments/#how-to-create-a-deployment"
+						.to_string(),
+				)}
+			/>
 		</ContainerHead>
 	}
 }

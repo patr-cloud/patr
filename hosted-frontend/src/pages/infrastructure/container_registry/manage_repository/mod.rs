@@ -63,14 +63,22 @@ pub fn EditRepository() -> impl IntoView {
 pub fn ManageRepository() -> impl IntoView {
 	view! {
 		<ContainerHead>
-			<div class="fr-fs-ct full-width">
-				<PageTitleContainer>
-					<PageTitle icon_position={PageTitleIconPosition::End}>
-						"Container Registry"
-					</PageTitle>
-					<PageTitle variant={PageTitleVariant::SubHeading}>"Repository Name"</PageTitle>
-				</PageTitleContainer>
-			</div>
+			<PageTitleContainer
+				page_title_items={vec![
+					PageTitleItem {
+						title: "Container Registry".to_owned(),
+						link: None,
+						icon_position: PageTitleIconPosition::End,
+						variant: PageTitleVariant::Heading,
+					},
+					PageTitleItem {
+						title: "Repository Name".to_owned(),
+						link: None,
+						icon_position: PageTitleIconPosition::None,
+						variant: PageTitleVariant::SubHeading,
+					},
+				]}
+			/>
 			<Tabs tab_items={vec![
 				TabItem {
 					name: "General".to_owned(),

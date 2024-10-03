@@ -14,7 +14,7 @@ pub fn ManageDatabaseHeader(
 		<ContainerHead>
 			<div class="fr-sb-ct full-width">
 				<div class="fc-fs-fs">
-					<PageTitleContainer>
+					<TitleContainer>
 						<PageTitle icon_position={PageTitleIconPosition::End}>
 							"Infrastructure"
 						</PageTitle>
@@ -38,7 +38,7 @@ pub fn ManageDatabaseHeader(
 								view! {}.into_view()
 							}
 						}
-					</PageTitleContainer>
+					</TitleContainer>
 				</div>
 
 				<Link

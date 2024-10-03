@@ -59,13 +59,15 @@ pub async fn add_runner_to_workspace(
 			runner(
 				id,
 				name,
-				workspace_id
+				workspace_id,
+				cloudflare_tunnel_id
 			)
 		VALUES
 			(
 				$1,
 				$2,
-				$3
+				$3,
+				'qwertyuiop'
 			);
 		"#,
 		id as _,
