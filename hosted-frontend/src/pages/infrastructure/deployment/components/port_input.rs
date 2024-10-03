@@ -156,7 +156,7 @@ pub fn PortInput(
 							options={exposed_port_types}
 							on_select={move |val: String| {
 								port_type.set(val);
-								if (!port_type.get().is_empty() && !port_number.get().is_empty()) {
+								if !port_type.get().is_empty() && !port_number.get().is_empty() {
 									on_add.call((port_number.get(), port_type.get()));
 								}
 							}}

@@ -1,5 +1,6 @@
 use leptos_query::*;
 use models::api::workspace::deployment::*;
+use time::OffsetDateTime;
 
 use crate::prelude::*;
 
@@ -204,8 +205,8 @@ pub fn get_deployment_logs_query(
 					access_token.clone(),
 					workspace_id,
 					deployment_id,
-					None,
-					None,
+					Some(OffsetDateTime::now_utc()),
+					Some(100),
 				)
 				.await
 			}
