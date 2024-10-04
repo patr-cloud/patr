@@ -1,4 +1,4 @@
-FROM ubuntu:jammy
+FROM ubuntu:noble
 
 RUN apt update
 RUN apt install -y libssl-dev pkg-config bash-completion git sudo curl htop nano vim build-essential postgresql-client
