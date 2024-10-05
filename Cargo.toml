@@ -39,6 +39,7 @@ base32 = { version = "0.5", default-features = false }
 base64 = { version = "0.22", default-features = false }
 bollard = { version = "0.17", default-features = false }
 clap = { version = "4", default-features = false }
+cloudflare = { git = "https://github.com/cloudflare/cloudflare-rs", default-features = false }
 codee = { version = "0.2", default-features = false }
 comfy-table = { version = "7", default-features = false }
 common = { path = "runners/common", default-features = false }

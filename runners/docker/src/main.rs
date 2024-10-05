@@ -16,7 +16,7 @@ use bollard::{
 		StopContainerOptions,
 	},
 	image::CreateImageOptions,
-	secret::CreateImageInfo,
+	secret::{CreateImageInfo, HostConfig, PortBinding},
 	Docker,
 };
 use common::prelude::*;
@@ -172,7 +172,7 @@ impl RunnerExecutor for DockerRunner {
 					)),
 					exposed_ports: Some(
 						ports
-							.into_iter()
+							.iter()
 							.map(|(port, port_type)| {
 								{
 									(
@@ -211,6 +211,31 @@ impl RunnerExecutor for DockerRunner {
 						String::from("patr.deploymentId"),
 						id.to_string(),
 					)])),
+					host_config: Some(HostConfig {
+						port_bindings: Some(
+							ports
+								.iter()
+								.map(|(port, port_type)| {
+									(
+										format!(
+											"{}/{}",
+											port,
+											match port_type {
+												ExposedPortType::Tcp => "tcp",
+												ExposedPortType::Udp => "udp",
+												ExposedPortType::Http => "tcp",
+											}
+										),
+										Some(vec![PortBinding {
+											host_port: Some(port.to_string()),
+											..Default::default()
+										}]),
+									)
+								})
+								.collect(),
+						),
+						..Default::default()
+					}),
 					..Default::default()
 				},
 			)

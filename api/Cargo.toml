@@ -18,6 +18,7 @@ axum-extra = { workspace = true, features = ["default", "typed-routing"] }
 axum-typed-websockets = { workspace = true, features = ["default"] }
 base32 = { workspace = true, features = [] }
 base64 = { workspace = true, features = ["default"] }
+cloudflare = { workspace = true, features = ["default"] }
 config = { workspace = true, features = ["default"] }
 futures = { workspace = true, features = ["default"] }
 headers = { workspace = true, features = [] }

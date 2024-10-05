@@ -37,7 +37,8 @@
 	},
 	"cloudflare": {
 		"email": "test@example.com",
-		"apiKey": "<cloudflare-api-key>"
+		"apiKey": "<cloudflare-api-key>",
+		"accountId": "accountId"
 	},
 	"opentelemetry": {
 		"tracing": {

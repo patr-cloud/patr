@@ -1,6 +1,7 @@
-use axum::http::StatusCode;
+use axum::http::{HeaderName, HeaderValue, StatusCode};
 use models::api::workspace::deployment::*;
-use time::Duration;
+use serde::{Deserialize, Serialize};
+use time::{Duration, OffsetDateTime};
 
 use crate::prelude::*;
 
@@ -13,7 +14,7 @@ struct MimirResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct MimirData {
-	result: Option<[MimirMatrixResult; 1]>,
+	result: Vec<MimirMatrixResult>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,23 +75,19 @@ pub async fn get_deployment_metric(
 			"{}/mimir/api/v1/query_range",
 			config.opentelemetry.logs.endpoint
 		))
-		.query(&{
-			let mut query = vec![
-				(
-					"start",
-					OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
-				),
-				(
-					"end",
-					(OffsetDateTime::now_utc() - interval.unwrap_or(Duration::hours(1)))
-						.unix_timestamp_nanos()
-						.to_string(),
-				),
-				("query", format!("{{deployment_id=\"{}\"}}", deployment_id)),
-			];
-
-			query
-		})
+		.query(&[
+			(
+				"start",
+				OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
+			),
+			(
+				"end",
+				(OffsetDateTime::now_utc() - interval.unwrap_or(Duration::hours(1)))
+					.unix_timestamp_nanos()
+					.to_string(),
+			),
+			("query", format!("{{deployment_id=\"{}\"}}", deployment_id)),
+		])
 		.header(
 			HeaderName::from_static("X-Scope-OrgID"),
 			HeaderValue::from_str(&workspace_id.to_string()).unwrap(),
@@ -111,16 +108,18 @@ pub async fn get_deployment_metric(
 	};
 
 	let metrics = result
-		.map(|[MimirMatrixResult { values }]| {
+		.into_iter()
+		.next()
+		.map(|MimirMatrixResult { values }| {
 			values
 				.into_iter()
 				.map(|(timestamp, metric)| DeploymentMetric {
 					timestamp: OffsetDateTime::from_unix_timestamp_nanos(timestamp)
 						.unwrap_or(OffsetDateTime::UNIX_EPOCH),
-					cpu_usage: (),
-					memory_usage: (),
-					network_usage_tx: (),
-					network_usage_rx: (),
+					cpu_usage: todo!(),
+					memory_usage: todo!(),
+					network_usage_tx: todo!(),
+					network_usage_rx: todo!(),
 				})
 				.collect()
 		})
