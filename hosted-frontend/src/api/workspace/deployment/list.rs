@@ -15,7 +15,7 @@ pub async fn list_deployments(
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	let deployments = make_api_call::<ListDeploymentRequest>(
+	make_api_call::<ListDeploymentRequest>(
 		ApiRequest::builder()
 			.path(ListDeploymentPath { workspace_id })
 			.query(Paginated {
@@ -31,8 +31,6 @@ pub async fn list_deployments(
 			.build(),
 	)
 	.await
-	.map_err(ServerFnError::WrappedServerError)?;
-
-	logging::log!("Response: {:#?}", deployments.headers);
-	Ok(deployments.body)
+	.map(|res| res.body)
+	.map_err(ServerFnError::WrappedServerError)
 }

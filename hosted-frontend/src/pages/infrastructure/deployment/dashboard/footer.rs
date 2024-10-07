@@ -3,10 +3,7 @@ use std::rc::Rc;
 use ev::MouseEvent;
 use leptos_query::QueryResult;
 
-use crate::{
-	prelude::*,
-	queries::{list_deployments_query, AllDeploymentsTag},
-};
+use crate::prelude::*;
 
 /// The Deployment Dashboard Pagination Footer
 #[component]
