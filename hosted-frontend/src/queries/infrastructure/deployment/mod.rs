@@ -6,7 +6,7 @@ use crate::prelude::*;
 
 /// Tag for Listing All Deployments query
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
-pub struct AllDeploymentsTag;
+pub struct AllDeploymentsTag(pub usize);
 
 /// Query to list all deployments for a workspace
 pub fn list_deployments_query(
@@ -17,9 +17,9 @@ pub fn list_deployments_query(
 	let workspace_id = state.get().get_last_used_workspace_id().unwrap();
 
 	create_query(
-		move |_| {
+		move |query_tag: AllDeploymentsTag| {
 			let access_token = access_token.clone();
-			async move { list_deployments(access_token, workspace_id).await }
+			async move { list_deployments(access_token, workspace_id, Some(query_tag.0), Some(2)).await }
 		},
 		QueryOptions {
 			..Default::default()
@@ -59,8 +59,6 @@ pub fn create_deployment_query(
 
 		let access_token = access_token.clone();
 
-		let deployments_list_query = list_deployments_query();
-
 		async move {
 			let response = create_deployment(
 				access_token.clone(),
@@ -70,7 +68,7 @@ pub fn create_deployment_query(
 			.await;
 
 			if let Ok(ref response) = response {
-				let _ = deployments_list_query.invalidate_query(AllDeploymentsTag);
+				let _ = use_query_client().invalidate_query_type::<AllDeploymentsTag, Result<ListDeploymentResponse, ServerFnError<ErrorType>>>();
 
 				navigate(
 					format!("/deployments/{}", response.id.id.to_string()).as_str(),
@@ -98,17 +96,16 @@ pub fn delete_deployment_query(
 		let deployment_id = deployment_id.clone();
 
 		let deployment_query = get_deployment_query();
-		let deployments_list_query = list_deployments_query();
+
 		async move {
 			let _ = deployment_query.cancel_query(deployment_id);
-			let _ = deployments_list_query.cancel_query(AllDeploymentsTag);
 
 			let response =
 				delete_deployment(access_token.clone(), workspace_id, deployment_id).await;
 
 			if response.is_ok() {
 				let _ = deployment_query.invalidate_query(deployment_id);
-				let _ = deployments_list_query.invalidate_query(AllDeploymentsTag);
+				let _ = use_query_client().invalidate_query_type::<AllDeploymentsTag, Result<ListDeploymentResponse, ServerFnError<ErrorType>>>();
 
 				navigate("/deployments", Default::default());
 			}
@@ -238,6 +235,8 @@ pub fn update_deployment_query() -> Action<
 			let deployment_query = get_deployment_query();
 
 			async move {
+				let _ = deployment_query.cancel_query(deployment_id);
+
 				let response = update_deployment(
 					access_token.clone(),
 					workspace_id,
@@ -247,8 +246,7 @@ pub fn update_deployment_query() -> Action<
 				.await;
 
 				if response.is_ok() {
-					let _ = deployments_list_query.invalidate_query(AllDeploymentsTag);
-					let _ = deployment_query.cancel_query(deployment_id);
+					let _ = use_query_client().invalidate_query_type::<AllDeploymentsTag, Result<ListDeploymentResponse, ServerFnError<ErrorType>>>();
 					let _ = deployment_query.invalidate_query(deployment_id);
 				}
 
