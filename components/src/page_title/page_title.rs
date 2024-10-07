@@ -1,6 +1,21 @@
 /// TODO: GIVE BETTER DOC STRING
 use crate::imports::*;
 
+/// Contains all the page titles, and wraps around indivisual <PageTitle />
+/// components
+#[component]
+pub fn TitleContainer(
+	/// Additional class names to apply to the outer div, if any
+	#[prop(into, optional)]
+	class: MaybeSignal<String>,
+	/// The Children of the component
+	children: Children,
+) -> impl IntoView {
+	let class = move || format!("p-xxs flex justify-start items-center {}", class.get());
+
+	view! { <div class={class}>{children()}</div> }
+}
+
 /// Sets the Text Size of the Page Title
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum PageTitleVariant {

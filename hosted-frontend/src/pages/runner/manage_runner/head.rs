@@ -14,7 +14,7 @@ pub fn RunnerManageHead(
 		<ContainerHead>
 			<div class="w-full flex justify-between items-center">
 				<div class="flex flex-col items-start justify-between">
-					<PageTitleContainer clone:runner_info>
+					<TitleContainer clone:runner_info>
 						<PageTitle icon_position={PageTitleIconPosition::End}>"CI/CD"</PageTitle>
 						<PageTitle
 							to="/runners"
@@ -29,7 +29,7 @@ pub fn RunnerManageHead(
 								move || runner_info.get().name.clone()
 							}
 						</PageTitle>
-					</PageTitleContainer>
+					</TitleContainer>
 
 					<PageDescription
 						description={"change me to a description".to_string()}

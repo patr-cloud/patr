@@ -4,27 +4,28 @@ use crate::prelude::*;
 pub fn CreateRepository() -> impl IntoView {
 	view! {
 		<ContainerHead>
-			<div class="fr-sb-ct full-width">
-				<div class="fc-fs-fs">
-					<PageTitleContainer>
-						<PageTitle icon_position={PageTitleIconPosition::End}>
-							"Container Registry"
-						</PageTitle>
-						<PageTitle variant={PageTitleVariant::SubHeading}>
-							"Container Registry"
-						</PageTitle>
-					</PageTitleContainer>
-
-					<PageDescription
-						description="Create a new Repository here."
-						doc_link={Some(
-							"https://docs.patr.cloud/features/container-registry/#creating-a-repository"
-								.to_owned(),
-						)}
-					/>
-
-				</div>
-			</div>
+			<PageTitleContainer
+				page_title_items={vec![
+					PageTitleItem {
+						title: "Container Registry".to_owned(),
+						link: None,
+						icon_position: PageTitleIconPosition::End,
+						variant: PageTitleVariant::Heading,
+					},
+					PageTitleItem {
+						title: "Repository".to_owned(),
+						link: None,
+						icon_position: PageTitleIconPosition::None,
+						variant: PageTitleVariant::SubHeading,
+					},
+				]}
+				description_title={
+					Some("Create a new Repository here.".to_owned())
+				}
+				description_link={
+					Some("https://docs.patr.cloud/features/container-registry/#creating-a-repository".to_owned())
+				}
+			/>
 		</ContainerHead>
 		<ContainerBody class="px-xxl pt-xl pb-sm gap-md">
 			<form class="full-width px-md mb-lg full-height fc-fs-fs fit-wide-screen mx-auto">

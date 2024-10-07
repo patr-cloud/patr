@@ -48,32 +48,37 @@ pub fn ContainerRegistryDashboard() -> impl IntoView {
 
 	view! {
 		<ContainerHead>
-			<div class="fr-sb-ct full-width">
-				<div class="fc-fs-fs">
-					<PageTitleContainer>
-						<PageTitle>"Container Registry"</PageTitle>
-					</PageTitleContainer>
-
-					<PageDescription
-						description="Create and manage your Repositories on our private, secure
-						in-built Docker Registry."
-						doc_link={Some(
-							"https://docs.patr.cloud/features/container-registry/".to_owned(),
-						)}
-					/>
-
-				</div>
-
-				<Link r#type={Variant::Button} style_variant={LinkStyleVariant::Contained}>
-					"CREATE REPOSITORY"
-					<Icon
-						icon={IconType::ChevronRight}
-						size={Size::ExtraSmall}
-						class="ml-xs"
-						color={Color::Black}
-					/>
-				</Link>
-			</div>
+			<PageTitleContainer
+				page_title_items={vec![
+					PageTitleItem {
+						title: "Container Registry".to_owned(),
+						link: None,
+						icon_position: PageTitleIconPosition::None,
+						variant: PageTitleVariant::Heading,
+					},
+				]}
+				description_title={
+					Some("Create and manage your Repositories on our private, secure
+					in-built Docker Registry.".to_owned())
+				}
+				description_link={
+					Some("https://docs.patr.cloud/features/container-registry/".to_owned())
+				}
+				action_buttons={Some(view! {
+					<Link
+						r#type={Variant::Button}
+						style_variant={LinkStyleVariant::Contained}
+					>
+						"CREATE REPOSITORY"
+						<Icon
+							icon={IconType::Plus}
+							size={Size::ExtraSmall}
+							class="ml-xs"
+							color={Color::Black}
+						/>
+					</Link>
+				}.into_view())}
+			/>
 		</ContainerHead>
 
 		<ContainerBody class="px-xxl py-xl gap-md">

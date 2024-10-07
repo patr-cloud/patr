@@ -19,6 +19,7 @@ pub mod prelude {
 		number_picker::*,
 		otp_input::*,
 		page_title::*,
+		popover::*,
 		sidebar::*,
 		skeleton::*,
 		spinner::*,
@@ -124,6 +125,12 @@ pub mod otp_input;
 /// The page title component is used to display the title of a page,
 /// specifically the title of a dashboard page.
 pub mod page_title;
+/// The Popover Component
+///
+/// The Popover Component, used to display a tooltip when user hovers / clicks
+/// over an element. It is used to show the user more information about an
+/// element.
+pub mod popover;
 /// The sidebar component.
 ///
 /// The sidebar component is used to display a sidebar that can be used to

@@ -101,40 +101,35 @@ pub fn ManageDeploymentHeader() -> impl IntoView {
 
 	view! {
 		<ContainerHead>
-			<div class="flex justify-between items-center w-full">
-				<div class="flex flex-col items-start justify-between">
-					<PageTitleContainer clone:deployment_info>
-						<PageTitle icon_position={PageTitleIconPosition::End}>
-							"Infrastructure"
-						</PageTitle>
-						<PageTitle
-							to="/deployment"
-							icon_position={PageTitleIconPosition::End}
-							variant={PageTitleVariant::SubHeading}
-						>
-							"Deployment"
-						</PageTitle>
-						{
-							let deployment_info = deployment_info;
-							move || match deployment_info.get() {
-								Some(deployment_info) => {
-									view! {
-										<PageTitle variant={PageTitleVariant::Text}>
-											{deployment_info.deployment.name.clone()}
-										</PageTitle>
-									}
-										.into_view()
-								}
-								None => view! {}.into_view(),
-							}
-						}
-					</PageTitleContainer>
-				</div>
-
-				<div class="flex items-center justify-center">
-					<StartStopButton />
-				</div>
-			</div>
+			<PageTitleContainer
+				page_title_items={Signal::derive(move || vec![
+					PageTitleItem {
+						title: "Infrastructure".to_owned(),
+						link: None,
+						icon_position: PageTitleIconPosition::End,
+						variant: PageTitleVariant::Heading,
+					},
+					PageTitleItem {
+						title: "Deployment".to_owned(),
+						link: Some("/deployment".to_owned()),
+						icon_position: PageTitleIconPosition::End,
+						variant: PageTitleVariant::SubHeading,
+					},
+					PageTitleItem {
+						title: match deployment_info.get() {
+							Some(info) => info.deployment.name.clone(),
+							None => "Loading...".to_string(),
+						},
+						link: None,
+						icon_position: PageTitleIconPosition::None,
+						variant: PageTitleVariant::Text,
+					}
+				])}
+				action_buttons={
+					Some(view! { <StartStopButton /> }.into_view())
+				}
+			>
+			</PageTitleContainer>
 
 			<Tabs tab_items={vec![
 				TabItem {
@@ -162,7 +157,6 @@ pub fn ManageDeploymentHeader() -> impl IntoView {
 					path: "logs".to_owned(),
 				},
 			]} />
-
 		</ContainerHead>
 	}
 }

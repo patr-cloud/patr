@@ -44,28 +44,33 @@ pub fn DomainsDashboard() -> impl IntoView {
 	view! {
 		<ContainerMain class="my-md">
 			<ContainerHead>
-				<div class="fr-sb-ct full-width">
-					<div class="fc-fs-fs">
-						<PageTitleContainer>
-							<PageTitle>"Domain"</PageTitle>
-						</PageTitleContainer>
-
-						<PageDescription
-							description="Connect and Manage Domains through Patr."
-							doc_link={Some("https://docs.patr.cloud/features/domains/".to_owned())}
-						/>
-					</div>
-
-					<Link r#type={Variant::Button} style_variant={LinkStyleVariant::Contained}>
-						"ADD DOMAIN"
-						<Icon
-							icon={IconType::Plus}
-							size={Size::ExtraSmall}
-							class="ml-xs"
-							color={Color::Black}
-						/>
-					</Link>
-				</div>
+				<PageTitleContainer
+					page_title_items={vec![
+						PageTitleItem {
+							title: "Domain".to_owned(),
+							link: None,
+							icon_position: PageTitleIconPosition::None,
+							variant: PageTitleVariant::Heading,
+						}
+					]}
+					description_title={
+						Some("Connect and Manage Domains through Patr.".to_owned())
+					}
+					description_link={
+						Some("https://docs.patr.cloud/features/domains/".to_owned())
+					}
+					action_buttons={Some(view! {
+						<Link r#type={Variant::Button} style_variant={LinkStyleVariant::Contained}>
+							"ADD DOMAIN"
+							<Icon
+								icon={IconType::Plus}
+								size={Size::ExtraSmall}
+								class="ml-xs"
+								color={Color::Black}
+							/>
+						</Link>
+					}.into_view())}
+				/>
 			</ContainerHead>
 
 			<ContainerBody class="px-xxl py-xl gap-md">

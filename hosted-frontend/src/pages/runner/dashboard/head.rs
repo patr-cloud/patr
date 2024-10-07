@@ -5,28 +5,31 @@ use crate::prelude::*;
 pub fn RunnerDashboardHead() -> impl IntoView {
 	view! {
 		<ContainerHead>
-			<div class="w-full flex justify-between items-center">
-				<div class="flex flex-col justify-between items-start">
-					<PageTitleContainer>
-						<PageTitle icon_position={PageTitleIconPosition::End}>"CI/CD"</PageTitle>
-						<PageTitle to="/runners" variant={PageTitleVariant::SubHeading}>
-							"Runners"
-						</PageTitle>
-					</PageTitleContainer>
-
-					<PageDescription
-						description={"Create and manage CI Runners for automated builds."
-							.to_string()}
-						doc_link={Some(
-							"https://docs.patr.cloud/ci-cd/#choosing-a-runner".to_string(),
-						)}
-					/>
-				</div>
-
-				<div class="flex items-center justify-center">
+			<PageTitleContainer
+				page_title_items={vec![
+					PageTitleItem {
+						title: "CI/CD".to_owned(),
+						link: None,
+						icon_position: PageTitleIconPosition::End,
+						variant: PageTitleVariant::Heading,
+					},
+					PageTitleItem {
+						title: "Runners".to_owned(),
+						link: Some("/runners".to_owned()),
+						icon_position: PageTitleIconPosition::None,
+						variant: PageTitleVariant::SubHeading,
+					},
+				]}
+				description_title={
+					Some("Create and manage CI Runners for automated builds.".to_owned())
+				}
+				description_link={
+					Some("https://docs.patr.cloud/ci-cd/#choosing-a-runner".to_owned())
+				}
+				action_buttons={Some(view! {
 					<Link
 						r#type={Variant::Link}
-						to={"create".to_string()}
+						to={"create".to_owned()}
 						style_variant={LinkStyleVariant::Contained}
 					>
 						"CREATE RUNNER"
@@ -37,8 +40,8 @@ pub fn RunnerDashboardHead() -> impl IntoView {
 							color={Color::Black}
 						/>
 					</Link>
-				</div>
-			</div>
+				}.into_view())}
+			/>
 		</ContainerHead>
 	}
 }

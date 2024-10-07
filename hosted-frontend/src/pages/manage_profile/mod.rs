@@ -35,10 +35,16 @@ pub fn ManageProfile() -> impl IntoView {
 	view! {
 		<ContainerMain class="w-full h-full mb-md">
 			<ContainerHead>
-				<PageTitleContainer>
-					<PageTitle>"Manage Profile"</PageTitle>
-				</PageTitleContainer>
-
+				<PageTitleContainer
+					page_title_items={vec![
+						PageTitleItem {
+							title: "Manage Profile".to_owned(),
+							link: None,
+							icon_position: PageTitleIconPosition::None,
+							variant: PageTitleVariant::Heading,
+						},
+					]}
+				/>
 				<Tabs tab_items={vec![
 					TabItem {
 						name: "Settings".to_owned(),

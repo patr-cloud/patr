@@ -95,7 +95,7 @@ pub fn SignUpForm() -> impl IntoView {
 					}
 					AppType::Managed => {
 						use_navigate()(
-							&AppRoutes::LoggedInRoute(LoggedInRoute::Home).to_string(),
+							&AppRoutes::LoggedOutRoute(LoggedOutRoute::ConfirmOtp).to_string(),
 							Default::default(),
 						);
 					}

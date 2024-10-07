@@ -4,21 +4,27 @@ use crate::prelude::*;
 pub fn ManageWorkspace() -> impl IntoView {
 	view! {
 		<ContainerHead>
-			<div class="fr-sb-ct full-width">
-				<PageTitleContainer>
-					<PageTitle>"Workspace"</PageTitle>
-				</PageTitleContainer>
-
-				<Link
-					class="gap-xxs"
-					r#type={Variant::Link}
-					style_variant={LinkStyleVariant::Contained}
-					to="create"
-				>
-					"CREATE WORKSPACE"
-					<Icon icon={IconType::Plus} size={Size::ExtraSmall} color={Color::Black} />
-				</Link>
-			</div>
+			<PageTitleContainer
+				page_title_items={vec![
+					PageTitleItem {
+						title: "Workspace".to_owned(),
+						link: None,
+						icon_position: PageTitleIconPosition::None,
+						variant: PageTitleVariant::Heading,
+					},
+				]}
+				action_buttons={Some(view! {
+					<Link
+						class="gap-xxs"
+						r#type={Variant::Link}
+						style_variant={LinkStyleVariant::Contained}
+						to="create"
+					>
+						"CREATE WORKSPACE"
+						<Icon icon={IconType::Plus} size={Size::ExtraSmall} color={Color::Black} />
+					</Link>
+				}.into_view())}
+			/>
 
 			<Tabs tab_items={vec![
 				TabItem {

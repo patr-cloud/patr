@@ -34,36 +34,42 @@ pub fn StaticSiteDashboard() -> impl IntoView {
 	view! {
 		<ContainerMain class="my-md">
 			<ContainerHead>
-				<div class="fr-sb-ct full-width">
-					<div class="fc-fs-fs">
-						<PageTitleContainer>
-							<PageTitle icon_position={PageTitleIconPosition::End}>
-								"Infrastructure"
-							</PageTitle>
-							<PageTitle variant={PageTitleVariant::SubHeading}>
-								"Static Site"
-							</PageTitle>
-						</PageTitleContainer>
-
-						<PageDescription
-							description="Deploy And Manage Static Sites using Patr"
-							doc_link={Some(
-								"https://docs.patr.cloud/features/static-sites/".to_owned(),
-							)}
-						/>
-
-					</div>
-
-					<Link r#type={Variant::Button} style_variant={LinkStyleVariant::Contained}>
-						"CREATE SECRET"
-						<Icon
-							icon={IconType::Plus}
-							size={Size::ExtraSmall}
-							class="ml-xs"
-							color={Color::Black}
-						/>
-					</Link>
-				</div>
+				<PageTitleContainer
+					page_title_items={vec![
+						PageTitleItem {
+							title: "Infrastructure".to_owned(),
+							link: None,
+							icon_position: PageTitleIconPosition::End,
+							variant: PageTitleVariant::Heading,
+						},
+						PageTitleItem {
+							title: "Static Site".to_owned(),
+							link: None,
+							icon_position: PageTitleIconPosition::None,
+							variant: PageTitleVariant::SubHeading,
+						},
+					]}
+					description_title={
+						Some("Deploy And Manage Static Sites using Patr".to_owned())
+					}
+					description_link={
+						Some("https://docs.patr.cloud/features/static-sites/".to_owned())
+					}
+					action_buttons={Some(view! {
+						<Link
+							r#type={Variant::Button}
+							style_variant={LinkStyleVariant::Contained}
+						>
+							"CREATE SECRET"
+							<Icon
+								icon={IconType::Plus}
+								size={Size::ExtraSmall}
+								class="ml-xs"
+								color={Color::Black}
+							/>
+						</Link>
+					}.into_view())}
+				/>
 			</ContainerHead>
 
 			<ContainerBody>
