@@ -75,23 +75,19 @@ pub async fn get_deployment_metric(
 			"{}/mimir/api/v1/query_range",
 			config.opentelemetry.logs.endpoint
 		))
-		.query(&{
-			let mut query = vec![
-				(
-					"start",
-					OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
-				),
-				(
-					"end",
-					(OffsetDateTime::now_utc() - interval.unwrap_or(Duration::hours(1)))
-						.unix_timestamp_nanos()
-						.to_string(),
-				),
-				("query", format!("{{deployment_id=\"{}\"}}", deployment_id)),
-			];
-
-			query
-		})
+		.query(&[
+			(
+				"start",
+				OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
+			),
+			(
+				"end",
+				(OffsetDateTime::now_utc() - interval.unwrap_or(Duration::hours(1)))
+					.unix_timestamp_nanos()
+					.to_string(),
+			),
+			("query", format!("{{deployment_id=\"{}\"}}", deployment_id)),
+		])
 		.header(
 			HeaderName::from_static("x-scope-orgid"),
 			HeaderValue::from_str(&workspace_id.to_string()).unwrap(),
