@@ -73,8 +73,8 @@ pub fn Input(
 	#[prop(into, optional)]
 	id: MaybeSignal<String>,
 	/// The form id of the input.
-	#[prop(into, optional)]
-	form: MaybeSignal<String>,
+	#[prop(into, optional, default = None.into())]
+	form: MaybeSignal<Option<String>>,
 	/// Placeholder text for the input.
 	#[prop(into, optional)]
 	placeholder: MaybeSignal<String>,

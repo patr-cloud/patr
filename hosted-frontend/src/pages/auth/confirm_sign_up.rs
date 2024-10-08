@@ -13,6 +13,7 @@ pub fn ConfirmSignUpPage() -> impl IntoView {
 	let username_error = create_rw_signal("".to_owned());
 	let otp = create_rw_signal("".to_string());
 
+	let pending = confirm_action.pending();
 	let response = confirm_action.value();
 
 	let handle_errors = move |error| match error {
@@ -88,14 +89,28 @@ pub fn ConfirmSignUpPage() -> impl IntoView {
 				</Show>
 
 				<div class="flex justify-end items-center w-full mt-lg">
-					<Link
-						should_submit=true
-						r#type={Variant::Button}
-						style_variant={LinkStyleVariant::Contained}
-						class="btn mr-xs"
+					<Show
+						when=move || !pending.get()
+						fallback={|| view! {
+							<Link
+								disabled={true}
+								r#type={Variant::Button}
+								style_variant={LinkStyleVariant::Contained}
+								class="btn mr-xs"
+							>
+								"LOADING"
+							</Link>
+						}}
 					>
-						"SIGN UP"
-					</Link>
+						<Link
+							should_submit=true
+							r#type={Variant::Button}
+							style_variant={LinkStyleVariant::Contained}
+							class="btn mr-xs"
+						>
+							"SIGN UP"
+						</Link>
+					</Show>
 				</div>
 			</ActionForm>
 		</div>

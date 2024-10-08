@@ -1,10 +1,11 @@
+mod footer;
 mod head;
 
 use convert_case::*;
 use leptos_query::QueryResult;
 
-pub use self::head::*;
-use super::components::*;
+use self::{footer::*, head::*};
+use super::{components::*, utils::*};
 use crate::{
 	prelude::*,
 	queries::{list_deployments_query, AllDeploymentsTag},
@@ -23,10 +24,18 @@ pub fn DeploymentPage() -> impl IntoView {
 /// The Deployment Dashboard Page
 #[component]
 pub fn DeploymentDashboard() -> impl IntoView {
+	let deployment_page = create_rw_signal(0);
+	create_effect(move |_| {
+		use_navigate()(
+			format!("/deployment?page={}", deployment_page.get()).as_str(),
+			Default::default(),
+		);
+	});
+
 	let QueryResult {
 		data: deployment_list,
 		..
-	} = list_deployments_query().use_query(move || AllDeploymentsTag);
+	} = list_deployments_query().use_query(move || AllDeploymentsTag(deployment_page.get()));
 
 	view! {
 		<DeploymentDashboardHead />
@@ -70,6 +79,10 @@ pub fn DeploymentDashboard() -> impl IntoView {
 					_ => view! {}.into_view(),
 				}}
 			</Transition>
+
+			<DeploymentDashboardFooter
+				current_page={deployment_page}
+			/>
 		</ContainerBody>
 	}
 }

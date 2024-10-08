@@ -77,7 +77,7 @@ pub fn DeploymentDetails(
 							class="w-full"
 							name="name"
 							id="name"
-							form="details-form"
+							form={Some(String::from("details-form"))}
 							value={Signal::derive(move || {
 								deployment_info.get().name.unwrap_or_default()
 							})}
@@ -146,7 +146,7 @@ pub fn DeploymentDetails(
 							name="repository_name"
 							class="w-full"
 							id="repository_name"
-							form="details-form"
+							form={Some(String::from("details-form"))}
 							value={Signal::derive(move || {
 								deployment_info.get().image_name.unwrap_or_default()
 							})}
@@ -175,7 +175,7 @@ pub fn DeploymentDetails(
 							r#type={InputType::Text}
 							placeholder="Choose Image Tag"
 							class="w-full"
-							form="details-form"
+							form={Some(String::from("details-form"))}
 							name="image_tag"
 							id="image_tag"
 							value={Signal::derive(move || {

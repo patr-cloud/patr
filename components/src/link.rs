@@ -42,10 +42,10 @@ pub fn Link(
 		format!(
 			"flex items-center justify-center {} {}",
 			class.get(),
-			if style_variant.get() == LinkStyleVariant::Contained {
-				format!("btn btn-{}", color.get())
-			} else {
-				format!("btn-plain text-{}", color.get())
+			match style_variant.get() {
+				LinkStyleVariant::Outlined => "btn-outline".to_string(),
+				LinkStyleVariant::Contained => format!("btn btn-{}", color.get()),
+				_ => format!("btn-plain text-{}", color.get()).to_string(),
 			},
 		)
 	};

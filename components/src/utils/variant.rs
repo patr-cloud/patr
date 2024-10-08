@@ -43,6 +43,9 @@ pub enum Variant {
 /// while a plain link looks like an anchor tag.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum LinkStyleVariant {
+	/// An Outlined Link. This is a button without a background, but with an
+	/// outline.
+	Outlined,
 	/// A contained link. This is a button with a background.
 	Contained,
 	/// A plain link. This looks like an anchor tag.

@@ -20,6 +20,30 @@
   }
 }
 
+.btn-outline {
+  font-weight: map.get($font-weights, "medium");
+  border-radius: 50%;
+  padding: map.get($paddings, "xs") map.get($paddings, "md");
+  border: 2px solid map.get($background-colors, "primary");
+  transition: all 150ms;
+  aspect-ratio: 1;
+
+  &,
+  & * {
+    color: map.get($background-colors, "primary");
+  }
+
+  &:is(:hover, :focus) {
+    border: 2px solid transparent;
+    background-color: map.get($background-colors, "primary");
+
+    &,
+    & * {
+      color: map.get($background-colors, "secondary");
+    }
+  }
+}
+
 .btn-primary {
   background-color: map.get($background-colors, "primary");
   color: map.get($text-colors, "secondary");
@@ -186,9 +210,7 @@
 
   &.drag {
     border: 2px solid map.get($background-colors, "primary");
-    background-color: transparentize(
-      map.get($background-colors, "primary"),
-      0.85
-    );
+    background-color: transparentize(map.get($background-colors, "primary"),
+        0.85);
   }
 }

@@ -7,6 +7,8 @@ use crate::prelude::*;
 pub async fn list_deployments(
 	access_token: Option<String>,
 	workspace_id: Uuid,
+	page: Option<usize>,
+	count: Option<usize>,
 ) -> Result<ListDeploymentResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
@@ -18,8 +20,8 @@ pub async fn list_deployments(
 			.path(ListDeploymentPath { workspace_id })
 			.query(Paginated {
 				data: (),
-				page: 0,
-				count: 10,
+				page: page.unwrap_or(0),
+				count: count.unwrap_or(10),
 			})
 			.headers(ListDeploymentRequestHeaders {
 				authorization: access_token,
