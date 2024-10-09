@@ -5,7 +5,6 @@ use models::api::workspace::deployment::*;
 
 use super::DeploymentInfoContext;
 use crate::{
-	pages::ShowWorkspaceInfoPropsBuilder_Error_Missing_required_field_workspace,
 	prelude::*,
 	queries::{delete_deployment_query, start_deployment_query, stop_deployment_query},
 };
@@ -91,7 +90,6 @@ pub fn StartStopButton() -> impl IntoView {
 
 	let start_deployment_action = start_deployment_query();
 	let stop_deployment_action = stop_deployment_query();
-	let delete_deployment_action = delete_deployment_query();
 
 	let on_click_start_stop = move |ev: &MouseEvent| {
 		ev.prevent_default();

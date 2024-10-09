@@ -1,9 +1,19 @@
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 #[cfg(not(target_arch = "wasm32"))]
 use std::{any::Any, collections::HashMap, sync::RwLock};
 
+use axum_extra::routing::TypedPath;
 use http::Method;
-use leptos::ServerFnError;
+use leptos::{
+	server_fn::{
+		client::browser::BrowserClient,
+		codec::{Encoding, FromReq, IntoReq, Json},
+		middleware::Layer,
+		request::{browser::BrowserRequest, ClientReq},
+		ServerFn,
+	},
+	ServerFnError,
+};
 use matchit::Router;
 use models::{ApiEndpoint, ApiRequest, AppResponse, ErrorType};
 use preprocess::Preprocessable;
@@ -16,13 +26,108 @@ use serde::{de::DeserializeOwned, Serialize};
 type ApiCallRegistryData = OnceLock<RwLock<HashMap<Method, Router<Box<dyn Any + Send + Sync>>>>>;
 
 #[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
 /// Used internally for registering API calls to the backend. DO NOT USE THIS ON
 /// YOUR OWN. Use the [`make_request`] fn instead.
 pub static API_CALL_REGISTRY: ApiCallRegistryData = OnceLock::new();
 
+/// A struct that holds the request to be made to the backend. This is used
+/// for the server fn to make the request to the backend.
+struct MakeRequest<E>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+	E::RequestBody: Serialize + DeserializeOwned,
+	E::ResponseBody: Serialize + DeserializeOwned,
+{
+	request: ApiRequest<E>,
+}
+
+impl<E> ServerFn for MakeRequest<E>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+	E::RequestBody: Serialize + DeserializeOwned,
+	E::ResponseBody: Serialize + DeserializeOwned,
+{
+	type Client = BrowserClient;
+	type Error = ErrorType;
+	type InputEncoding = if E::METHOD == Method::GET {
+		GetJson
+	} else {
+		Json
+	};
+	type Output = AppResponse<E>;
+	type OutputEncoding = Json;
+	#[cfg(not(target_arch = "wasm32"))]
+	type ServerRequest = http::Request<axum::body::Body>;
+	#[cfg(target_arch = "wasm32")]
+	type ServerRequest = leptos::server_fn::request::BrowserMockReq;
+	#[cfg(not(target_arch = "wasm32"))]
+	type ServerResponse = http::Response<axum::body::Body>;
+	#[cfg(target_arch = "wasm32")]
+	type ServerResponse = leptos::server_fn::response::BrowserMockRes;
+
+	const PATH: &'static str = <E::RequestPath as TypedPath>::PATH;
+
+	async fn run_body(self) -> Result<Self::Output, ServerFnError<Self::Error>> {
+		todo!()
+	}
+
+	fn middlewares() -> Vec<Arc<dyn Layer<Self::ServerRequest, Self::ServerResponse>>> {
+		vec![]
+	}
+}
+
+impl<E> IntoReq<Json, BrowserRequest, ErrorType> for MakeRequest<E>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+	E::RequestBody: Serialize + DeserializeOwned,
+	E::ResponseBody: Serialize + DeserializeOwned,
+{
+	fn into_req(
+		self,
+		path: &str,
+		accepts: &str,
+	) -> Result<BrowserRequest, ServerFnError<ErrorType>> {
+		let request = if E::METHOD == Method::GET {
+			BrowserRequest::try_new_get(path, Json::CONTENT_TYPE, accepts, query)
+		} else {
+			BrowserRequest::try_new_post(path, content_type, accepts, body)
+		}
+	}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<E> FromReq<Json, http::Request<axum::body::Body>, ErrorType> for MakeRequest<E>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+	E::RequestBody: Serialize + DeserializeOwned,
+	E::ResponseBody: Serialize + DeserializeOwned,
+{
+	async fn from_req(
+		req: http::Request<axum::body::Body>,
+	) -> Result<Self, ServerFnError<ErrorType>> {
+		todo!()
+	}
+}
+
 #[cfg(target_arch = "wasm32")]
-/// The client used to make requests to the backend
-static REQWEST_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+impl<E> FromReq<Json, leptos::server_fn::request::BrowserMockReq, ErrorType> for MakeRequest<E>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+	E::RequestBody: Serialize + DeserializeOwned,
+	E::ResponseBody: Serialize + DeserializeOwned,
+{
+	async fn from_req(
+		req: leptos::server_fn::request::BrowserMockReq,
+	) -> Result<Self, ServerFnError<ErrorType>> {
+		unreachable!()
+	}
+}
 
 /// Makes an API call to the backend. If you want to make an API request, just
 /// call this function with the request and you'll get a response. All the
