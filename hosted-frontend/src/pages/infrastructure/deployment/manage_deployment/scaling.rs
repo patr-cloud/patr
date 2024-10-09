@@ -1,4 +1,4 @@
-use std::{f32::consts::E, rc::Rc};
+use std::rc::Rc;
 
 use ev::MouseEvent;
 use leptos_query::QueryResult;
@@ -19,7 +19,6 @@ fn UpdateScale(
 	/// Update Deployment Info Body
 	update_deployment_body: RwSignal<UpdateDeploymentRequest>,
 ) -> impl IntoView {
-	let store_deployment = store_value(deployment_info.clone());
 	let min_horizontal_value =
 		create_rw_signal(deployment_info.running_details.min_horizontal_scale);
 	let max_horizontal_value =

@@ -11,7 +11,15 @@ mod routes;
 mod sidebar_items;
 mod storage;
 
-pub use self::{app_route::*, ext_traits::*, hooks::*, routes::*, sidebar_items::*, storage::*};
+pub use self::{
+	app_route::*,
+	client::*,
+	ext_traits::*,
+	hooks::*,
+	routes::*,
+	sidebar_items::*,
+	storage::*,
+};
 
 /// A module containing constants that are used throughout the application.
 pub mod constants {
