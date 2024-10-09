@@ -12,7 +12,7 @@ async fn activate_mfa(
 
 	use models::api::user::*;
 
-	make_api_call::<ActivateMfaRequest>(
+	make_request::<ActivateMfaRequest>(
 		ApiRequest::builder()
 			.path(ActivateMfaPath)
 			.query(())
@@ -27,5 +27,4 @@ async fn activate_mfa(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }

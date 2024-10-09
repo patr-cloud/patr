@@ -12,7 +12,7 @@ pub async fn create_api_token(
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	make_api_call::<CreateApiTokenRequest>(
+	make_request::<CreateApiTokenRequest>(
 		ApiRequest::builder()
 			.path(CreateApiTokenPath)
 			.query(())
@@ -25,5 +25,4 @@ pub async fn create_api_token(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }

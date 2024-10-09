@@ -17,7 +17,7 @@ pub async fn delete_runner(
 	let workspace_id = workspace_id
 		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	make_api_call::<DeleteRunnerRequest>(
+	make_request::<DeleteRunnerRequest>(
 		ApiRequest::builder()
 			.path(DeleteRunnerPath {
 				workspace_id,
@@ -36,5 +36,5 @@ pub async fn delete_runner(
 		leptos_axum::redirect("/runners");
 		res.body
 	})
-	.map_err(ServerFnError::WrappedServerError)
+	
 }

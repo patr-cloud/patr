@@ -6,5 +6,5 @@ pub async fn update_database(
 	_database_id: Option<Uuid>,
 	_workspace_id: Option<Uuid>,
 ) -> Result<(), ServerFnError<ErrorType>> {
-	Ok(()).map_err(ServerFnError::WrappedServerError)
+	Ok(())
 }

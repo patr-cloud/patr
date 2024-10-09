@@ -10,7 +10,7 @@ pub async fn login(
 	password: String,
 	mfa_otp: Option<String>,
 ) -> Result<LoginResponse, ServerFnError<ErrorType>> {
-	make_api_call::<LoginRequest>(
+	make_request::<LoginRequest>(
 		ApiRequest::builder()
 			.path(LoginPath)
 			.query(())
@@ -34,5 +34,4 @@ pub async fn login(
 		leptos_axum::redirect("/");
 		res.body
 	})
-	.map_err(ServerFnError::WrappedServerError)
 }

@@ -12,7 +12,7 @@ pub async fn list_all_permissions(
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	make_api_call::<ListAllPermissionsRequest>(
+	make_request::<ListAllPermissionsRequest>(
 		ApiRequest::builder()
 			.path(ListAllPermissionsPath { workspace_id })
 			.query(())
@@ -25,5 +25,4 @@ pub async fn list_all_permissions(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }

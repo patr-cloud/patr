@@ -8,7 +8,7 @@ async fn complete_sign_up(
 	username: String,
 	otp: String,
 ) -> Result<CompleteSignUpResponse, ServerFnError<ErrorType>> {
-	make_api_call::<CompleteSignUpRequest>(
+	make_request::<CompleteSignUpRequest>(
 		ApiRequest::builder()
 			.path(CompleteSignUpPath)
 			.query(())
@@ -31,5 +31,4 @@ async fn complete_sign_up(
 		leptos_axum::redirect("/");
 		res.body
 	})
-	.map_err(ServerFnError::WrappedServerError)
 }

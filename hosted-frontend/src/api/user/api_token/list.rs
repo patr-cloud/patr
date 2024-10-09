@@ -8,7 +8,7 @@ pub async fn load_api_tokens_list(
 ) -> Result<ListApiTokensResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
-	make_api_call::<ListApiTokensRequest>(
+	make_request::<ListApiTokensRequest>(
 		ApiRequest::builder()
 			.path(ListApiTokensPath)
 			.query(Paginated {
@@ -27,5 +27,4 @@ pub async fn load_api_tokens_list(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }

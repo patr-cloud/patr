@@ -15,7 +15,7 @@ pub async fn start_deployment(
 	let access_token = BearerToken::from_str(access_token.as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	make_api_call::<StartDeploymentRequest>(
+	make_request::<StartDeploymentRequest>(
 		ApiRequest::builder()
 			.path(StartDeploymentPath {
 				deployment_id,
@@ -33,5 +33,4 @@ pub async fn start_deployment(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }

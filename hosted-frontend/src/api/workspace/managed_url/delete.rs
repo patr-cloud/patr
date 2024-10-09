@@ -19,7 +19,7 @@ pub async fn delete_managed_url(
 	let managed_url_id = Uuid::parse_str(managed_url_id.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	make_api_call::<DeleteManagedURLRequest>(
+	make_request::<DeleteManagedURLRequest>(
 		ApiRequest::builder()
 			.path(DeleteManagedURLPath {
 				managed_url_id,
@@ -38,5 +38,5 @@ pub async fn delete_managed_url(
 		leptos_axum::redirect("/managed-url");
 		res.body
 	})
-	.map_err(ServerFnError::WrappedServerError)
+	
 }
