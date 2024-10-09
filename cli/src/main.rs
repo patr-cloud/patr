@@ -1,5 +1,4 @@
-#![forbid(unsafe_code)]
-#![warn(missing_docs, clippy::missing_docs_in_private_items)]
+#![feature(exitcode_exit_method)]
 
 //! A CLI tool for interacting and managing your Patr resources.
 

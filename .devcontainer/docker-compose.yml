@@ -22,6 +22,7 @@ services:
     volumes:
       - ..:/workspace:cached
       - $HOME/.ssh:/home/vscode/.ssh:ro
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - postgres
       - redis
