@@ -12,6 +12,7 @@ mod get_version;
 
 use std::ops::Deref;
 
+use preprocess::Preprocessable;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -63,6 +64,18 @@ where
 {
 	fn from(id: ID) -> Self {
 		Self::new(id.into(), ())
+	}
+}
+
+impl<T> Preprocessable for WithId<T>
+where
+	T: Preprocessable,
+{
+	type Processed = WithId<T::Processed>;
+
+	fn preprocess(self) -> Result<Self::Processed, preprocess::Error> {
+		let WithId { id, data } = self;
+		data.preprocess().map(|data| WithId { id, data })
 	}
 }
 

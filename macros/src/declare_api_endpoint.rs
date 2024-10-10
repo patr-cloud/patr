@@ -407,7 +407,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			type RequiredResponseHeaders = ();
 		}
 
-		#[::preprocess::sync]
+		#[::preprocess::sync(strict_mode = true)]
 		/// The request body for the #name endpoint
 		///
 		/// The documentation for the endpoint is below:
