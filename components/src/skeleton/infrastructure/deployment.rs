@@ -1,7 +1,7 @@
 use crate::imports::*;
 
 #[component]
-pub fn SkeletonDeploymentCard(
+pub fn DeploymentSkeletonCard(
 	/// Additional class names to apply to the outer div, if any
 	#[prop(into, optional)]
 	class: MaybeSignal<String>,
@@ -23,7 +23,7 @@ pub fn SkeletonDeploymentCard(
 
 			<div class="flex items-start justify-start w-full my-auto py-xxs f-wrap">
 
-				{[1, 2, 3, 4, 5, 6]
+				{(0..5).collect::<Vec<_>>()
 					.into_iter()
 					.map(|_| {
 						view! {

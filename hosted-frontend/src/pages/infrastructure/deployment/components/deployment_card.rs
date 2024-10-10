@@ -150,24 +150,23 @@ pub fn DeploymentCard(
 						.collect::<Vec<_>>()
 				}}
 				<Popover
+					trigger_class="bg-secondary-medium rounded-sm flex flex-col items-start justify-center w-full"
 					trigger_children={
 						view! {
-							<div>
-								<a
-									href=""
-									class="bg-secondary-medium rounded-sm flex flex-col items-start justify-center w-full"
-								>
-									<span class="tracking-[1px] text-xxs text-grey">"LIVE LINKS"</span>
-									<span class="text-primary w-[15ch] text-ellipsis overflow-hidden flex items-center justify-start">
-										"PUBLIC URL"
-										<Icon
-											icon={IconType::ArrowUpRight}
-											color={Color::Primary}
-											size={Size::ExtraSmall}
-										/>
-									</span>
-								</a>
-							</div>
+							<a
+								href=""
+								class="flex flex-col items-start justify-center w-full"
+							>
+								<span class="tracking-[1px] text-xxs text-grey">"LIVE LINKS"</span>
+								<span class="text-primary w-[15ch] text-ellipsis overflow-hidden flex items-center justify-start">
+									"PUBLIC URL"
+									<Icon
+										icon={IconType::ArrowUpRight}
+										color={Color::Primary}
+										size={Size::ExtraSmall}
+									/>
+								</span>
+							</a>
 						}.into_view()
 					}
 					popover_content={

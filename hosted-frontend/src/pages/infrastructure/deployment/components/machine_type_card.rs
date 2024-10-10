@@ -28,7 +28,16 @@ pub fn MachineTypeCard(
 
 	view! {
 		<div
+			tabindex={0}
 			class={outer_div_class}
+			on:keydown={
+				let id = machine_type.get().id;
+				move |e| {
+					if e.key() == "Enter" || e.key() == "Space" {
+						on_select.call(id);
+					}
+				}
+			}
 			on:click={
 				let id = machine_type.get().id;
 				move |_| {

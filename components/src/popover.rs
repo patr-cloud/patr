@@ -18,6 +18,9 @@ pub fn Popover(
 	/// The Child for the popover, e.g. A button
 	#[prop(into)]
 	trigger_children: View,
+	/// Classes to be applied to the trigger
+	#[prop(into, optional)]
+	trigger_class: MaybeSignal<String>,
 	/// The Content of the popover, e.g. a description of what this button does
 	#[prop(into)]
 	popover_content: View,
@@ -140,6 +143,7 @@ pub fn Popover(
 
 	view! {
 		<div
+			class={trigger_class}
 			ref={trigger_ref}
 			on:mouseenter={on_mouse_enter}
 			on:mouseleave={on_mouse_leave}

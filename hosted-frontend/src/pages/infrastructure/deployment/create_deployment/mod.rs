@@ -10,7 +10,7 @@ mod running;
 mod scale;
 
 pub use self::{details::*, head::*, running::*, scale::*};
-pub use super::utils::{DeploymentInfo, DetailsPageError, Page, RunnerPageError};
+pub use super::utils::{DeploymentInfo, DetailsPageError, Page, RunnerPageError, ScalePageError};
 
 /// The Create Deployment Page
 #[component]
@@ -43,6 +43,7 @@ pub fn CreateDeployment() -> impl IntoView {
 
 	let details_error = create_rw_signal(DetailsPageError::new());
 	let runner_error = create_rw_signal(RunnerPageError::new());
+	let scale_page_error = create_rw_signal(ScalePageError::new());
 
 	let create_deployment_action = create_deployment_query();
 
@@ -58,7 +59,6 @@ pub fn CreateDeployment() -> impl IntoView {
 	let on_click_next = move |ev: MouseEvent| {
 		ev.prevent_default();
 		let deployment_info = deployment_info.get();
-		logging::log!("{:#?}", details_error.get());
 
 		match page.get() {
 			Page::Details => {
@@ -93,10 +93,20 @@ pub fn CreateDeployment() -> impl IntoView {
 			}
 			Page::Running => {
 				if deployment_info.ports.is_empty() {
+					runner_error.update(|errors| {
+						errors.ports = "Please Select at least one Port".to_string()
+					});
 					return;
 				}
 			}
-			Page::Scaling => {}
+			Page::Scaling => {
+				if deployment_info.machine_type.is_none() {
+					scale_page_error.update(|errors| {
+						errors.machine_type = "Please select a Machine Type".to_string()
+					});
+					return;
+				}
+			}
 		};
 		page.update(|x| *x = x.next());
 	};

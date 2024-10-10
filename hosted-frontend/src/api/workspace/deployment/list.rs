@@ -1,4 +1,7 @@
+use std::{thread, time};
+
 use models::api::workspace::deployment::*;
+use server_fn::codec::FromRes;
 
 use crate::prelude::*;
 
@@ -9,9 +12,10 @@ pub async fn list_deployments(
 	workspace_id: Uuid,
 	page: Option<usize>,
 	count: Option<usize>,
-) -> Result<ListDeploymentResponse, ServerFnError<ErrorType>> {
+) -> Result<(usize, ListDeploymentResponse), ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
+	thread::sleep(time::Duration::from_secs(2));
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
@@ -31,6 +35,6 @@ pub async fn list_deployments(
 			.build(),
 	)
 	.await
-	.map(|res| res.body)
+	.map(|res| (res.headers.total_count.0, res.body))
 	.map_err(ServerFnError::WrappedServerError)
 }

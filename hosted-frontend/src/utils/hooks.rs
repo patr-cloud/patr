@@ -14,7 +14,9 @@ pub fn get_deployments() -> Resource<
 	create_resource_with_initial_value(
 		move || (access_token.clone(), workspace_id),
 		move |(access_token, workspace_id)| async move {
-			list_deployments(access_token, workspace_id.unwrap(), None, None).await
+			list_deployments(access_token, workspace_id.unwrap(), None, None)
+				.await
+				.map(|(headers, body)| body)
 		},
 		Some(Ok(ListDeploymentResponse {
 			deployments: vec![],

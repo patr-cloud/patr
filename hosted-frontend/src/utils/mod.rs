@@ -44,4 +44,6 @@ pub mod constants {
 	pub const VERSION: Version = macros::version!();
 	/// The name of the cookie that stores the auth state
 	pub const AUTH_STATE: &str = "authState";
+	/// The Number of resources to fetch per page
+	pub const RESOURCES_PER_PAGE: usize = 2;
 }

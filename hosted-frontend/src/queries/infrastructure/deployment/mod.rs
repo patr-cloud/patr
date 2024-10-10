@@ -10,7 +10,8 @@ pub struct AllDeploymentsTag(pub usize);
 
 /// Query to list all deployments for a workspace
 pub fn list_deployments_query(
-) -> QueryScope<AllDeploymentsTag, Result<ListDeploymentResponse, ServerFnError<ErrorType>>> {
+) -> QueryScope<AllDeploymentsTag, Result<(usize, ListDeploymentResponse), ServerFnError<ErrorType>>>
+{
 	let (state, _) = AuthState::load();
 	let access_token = state.get().get_access_token();
 	// TODO: remove this unwrap
@@ -19,7 +20,15 @@ pub fn list_deployments_query(
 	create_query(
 		move |query_tag: AllDeploymentsTag| {
 			let access_token = access_token.clone();
-			async move { list_deployments(access_token, workspace_id, Some(query_tag.0), Some(2)).await }
+			async move {
+				list_deployments(
+					access_token,
+					workspace_id,
+					Some(query_tag.0),
+					Some(constants::RESOURCES_PER_PAGE),
+				)
+				.await
+			}
 		},
 		QueryOptions {
 			..Default::default()

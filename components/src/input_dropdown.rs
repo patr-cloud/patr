@@ -1,3 +1,5 @@
+use ev::KeyboardEvent;
+
 use crate::imports::*;
 
 /// The options to display in the dropdown
@@ -114,8 +116,30 @@ pub fn InputDropdown(
 		on_select.call(state.id.clone());
 	};
 
+	let handle_keydown_input = move |e: KeyboardEvent| {
+		e.stop_propagation();
+		if !disabled.get() && !loading.get() {
+			if e.key() == "Enter" || e.key() == "Space" {
+				show_dropdown.update(|val| *val = !*val);
+			}
+		}
+	};
+
+	let handle_keydown_option = move |e: KeyboardEvent, child: &InputDropdownOption| {
+		e.stop_propagation();
+		if e.key() == "Enter" || e.key() == "Space" {
+			handle_click_option(child);
+			show_dropdown.set(false);
+		}
+	};
+
 	view! {
-		<div tab_index=2 on:click={handle_toggle_options} class={outer_div_class}>
+		<div
+			tabindex={0}
+			on:click={handle_toggle_options}
+			on:keydown={handle_keydown_input}
+			class={outer_div_class}
+		>
 			<Show
 				when={move || enable_input.get()}
 				fallback={move || view! {
@@ -150,9 +174,15 @@ pub fn InputDropdown(
 							let:child
 						>
 							<li
+								tabindex={0}
 								on:click={
 									let child = child.clone();
 									move |_| handle_click_option(&child)
+
+								}
+								on:keydown={
+									let child = child.clone();
+									move |ev| handle_keydown_option(ev, &child)
 								}
 								class={format!(
 									"px-xl py-sm flex justify-start items-center
