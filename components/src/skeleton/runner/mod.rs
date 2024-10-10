@@ -6,7 +6,7 @@ use crate::imports::*;
 
 /// The skeleton for the runner component in the runner list.
 #[component]
-pub fn RunnerSkeleton() -> impl IntoView {
+pub fn RunnerCardSkeleton() -> impl IntoView {
 	view! {
 		<div
 			class="bg-secondary-light flex flex-col items-start justify-start px-lg py-md br-sm text-white gap-xs"

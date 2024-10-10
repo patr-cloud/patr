@@ -37,6 +37,11 @@ pub fn DeploymentDashboard() -> impl IntoView {
 		..
 	} = list_deployments_query().use_query(move || AllDeploymentsTag(deployment_page.get()));
 
+	let total_count = Signal::derive(move || match deployment_list.get() {
+		Some(Ok((count, _))) => count,
+		_ => 0,
+	});
+
 	view! {
 		<DeploymentDashboardHead />
 
@@ -47,18 +52,18 @@ pub fn DeploymentDashboard() -> impl IntoView {
 				{move || match deployment_list.get() {
 					Some(Ok(data)) => {
 						view! {
-							<section class="p-xl w-full overflow-y-auto">
-								<div class="grid gap-lg justify-start content-start
-								grid-cols-[repeat(auto-fit,_minmax(300px,_400px))]">
-									<For
-										each={move || data.deployments.clone()}
-										key={|state| state.id}
-										let:child
-									>
-										<DeploymentCard deployment={child} />
-									</For>
-								</div>
-							</section>
+							<ContainerGrid
+								min_width={"300px"}
+								max_width={"400px"}
+							>
+								<For
+									each={move || data.1.deployments.clone()}
+									key={|state| state.id}
+									let:child
+								>
+									<DeploymentCard deployment={child} />
+								</For>
+							</ContainerGrid>
 						}
 							.into_view()
 					}
@@ -76,11 +81,19 @@ pub fn DeploymentDashboard() -> impl IntoView {
 						}
 							.into_view()
 					}
-					_ => view! {}.into_view(),
+					_ => view! {
+							<ContainerGrid
+								min_width={"300px"}
+								max_width={"400px"}
+							>
+								<DeploymentSkeletonCard />
+							</ContainerGrid>
+					}.into_view(),
 				}}
 			</Transition>
 
 			<DeploymentDashboardFooter
+				total_count={total_count}
 				current_page={deployment_page}
 			/>
 		</ContainerBody>

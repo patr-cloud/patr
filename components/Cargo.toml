@@ -21,6 +21,7 @@ models = { workspace = true, features = [] }
 serde = { workspace = true, features = ["default", "derive"] }
 serde_json = { workspace = true, features = ["default"] }
 serde_urlencoded = { workspace = true, features = [] }
+strum = { workspace = true, features = ["default", "derive"] }
 tracing = { workspace = true, features = ["attributes"] }
 web-sys = { workspace = true, features = [
     "MouseEvent",

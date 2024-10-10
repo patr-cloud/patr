@@ -34,7 +34,7 @@ pub fn RunnerDashboard() -> impl IntoView {
 									.into_view()
 							}
 							Some(Err(_)) => view! {}.into_view(),
-							None => view! { <RunnerSkeleton /> }.into_view(),
+							None => view! { <RunnerCardSkeleton /> }.into_view(),
 						}}
 					</Transition>
 				}
