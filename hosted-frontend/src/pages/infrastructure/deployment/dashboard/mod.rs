@@ -21,10 +21,30 @@ pub fn DeploymentPage() -> impl IntoView {
 	}
 }
 
+#[component]
+fn LoadingDeployments() -> impl IntoView {
+	view! {
+		<ContainerGrid
+			min_width={"300px"}
+			max_width={"400px"}
+		>
+			<For
+				each={move || (0..constants::RESOURCES_PER_PAGE).collect::<Vec<usize>>()}
+				key={|state| state.clone()}
+				let:_
+			>
+				<DeploymentSkeletonCard />
+			</For>
+		</ContainerGrid>
+	}
+}
+
 /// The Deployment Dashboard Page
 #[component]
 pub fn DeploymentDashboard() -> impl IntoView {
 	let deployment_page = create_rw_signal(0);
+	let (state, _) = AuthState::load();
+
 	create_effect(move |_| {
 		use_navigate()(
 			format!("/deployment?page={}", deployment_page.get()).as_str(),
@@ -46,9 +66,11 @@ pub fn DeploymentDashboard() -> impl IntoView {
 		<DeploymentDashboardHead />
 
 		<ContainerBody>
-			<Transition fallback={move || {
-				view! { <p>"loading"</p> }
-			}}>
+			<Transition
+				fallback={move || {
+					view! { <LoadingDeployments /> }
+				}}
+			>
 				{move || match deployment_list.get() {
 					Some(Ok(data)) => {
 						view! {
@@ -82,12 +104,7 @@ pub fn DeploymentDashboard() -> impl IntoView {
 							.into_view()
 					}
 					_ => view! {
-							<ContainerGrid
-								min_width={"300px"}
-								max_width={"400px"}
-							>
-								<DeploymentSkeletonCard />
-							</ContainerGrid>
+						<LoadingDeployments />
 					}.into_view(),
 				}}
 			</Transition>

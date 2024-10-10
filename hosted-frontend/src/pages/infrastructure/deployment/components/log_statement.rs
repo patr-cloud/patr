@@ -24,7 +24,10 @@ pub fn LogStatement(
 	let date_formater = format_description!("[year]-[month]-[day] [hour]:[minute]");
 
 	view! {
-		<div class={outer_div_class}>
+		<div
+			id={store_log.with_value(|log| log.get().timestamp.to_string())}
+			class={outer_div_class}
+		>
 			<Icon icon={IconType::ChevronRight} size={Size::ExtraSmall} color={Color::Grey} />
 
 			{move || match store_log.with_value(|log| log.get().timestamp.format(&date_formater)) {
@@ -38,10 +41,6 @@ pub fn LogStatement(
 				}
 				Err(_) => view! {}.into_view(),
 			}}
-			<time date_time="2008-02-14 20:00" class="text-xxs pr-sm">
-				// {new Date(log.timestamp).toUTCString()}
-				{store_log.with_value(|log| log.get().timestamp.format(&date_formater))}
-			</time>
 			" - "
 			<span class="px-sm">{store_log.with_value(|log| log.get().log.clone())}</span>
 		</div>
