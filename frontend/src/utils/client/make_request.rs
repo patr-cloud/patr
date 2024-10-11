@@ -1,6 +1,9 @@
-use std::sync::{Arc, OnceLock};
 #[cfg(not(target_arch = "wasm32"))]
 use std::{any::Any, collections::HashMap, sync::RwLock};
+use std::{
+	marker::PhantomData,
+	sync::{Arc, OnceLock},
+};
 
 use axum_extra::routing::TypedPath;
 use http::Method;
@@ -15,7 +18,10 @@ use leptos::{
 	ServerFnError,
 };
 use matchit::Router;
-use models::{ApiEndpoint, ApiRequest, AppResponse, ErrorType};
+use models::{
+	prelude::*,
+	utils::{GenericResponse, IntoAxumResponse},
+};
 use preprocess::Preprocessable;
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -30,6 +36,27 @@ type ApiCallRegistryData = OnceLock<RwLock<HashMap<Method, Router<Box<dyn Any + 
 /// Used internally for registering API calls to the backend. DO NOT USE THIS ON
 /// YOUR OWN. Use the [`make_request`] fn instead.
 pub static API_CALL_REGISTRY: ApiCallRegistryData = OnceLock::new();
+
+#[derive(Debug, Clone, Copy, Default)]
+struct ApiEncoding<E>(PhantomData<E>)
+where
+	E: ApiEndpoint;
+
+impl<E> Encoding for ApiEncoding<E>
+where
+	E: ApiEndpoint,
+{
+	const CONTENT_TYPE: &'static str =
+		if <E::ResponseBody as IntoAxumResponse>::is::<GenericResponse>() {
+			// If the response body is a GenericResponse, then we can't know the
+			// content type of the response. So we just return the default content
+			// type of binary data.
+			"application/octet-stream"
+		} else {
+			Json::CONTENT_TYPE
+		};
+	const METHOD: Method = E::METHOD;
+}
 
 /// A struct that holds the request to be made to the backend. This is used
 /// for the server fn to make the request to the backend.
@@ -52,11 +79,7 @@ where
 {
 	type Client = BrowserClient;
 	type Error = ErrorType;
-	type InputEncoding = if E::METHOD == Method::GET {
-		GetJson
-	} else {
-		Json
-	};
+	type InputEncoding = ApiEncoding<E>;
 	type Output = AppResponse<E>;
 	type OutputEncoding = Json;
 	#[cfg(not(target_arch = "wasm32"))]
@@ -79,7 +102,7 @@ where
 	}
 }
 
-impl<E> IntoReq<Json, BrowserRequest, ErrorType> for MakeRequest<E>
+impl<E> IntoReq<ApiEncoding<E>, BrowserRequest, ErrorType> for MakeRequest<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
@@ -91,16 +114,16 @@ where
 		path: &str,
 		accepts: &str,
 	) -> Result<BrowserRequest, ServerFnError<ErrorType>> {
-		let request = if E::METHOD == Method::GET {
+		if E::METHOD == Method::GET {
 			BrowserRequest::try_new_get(path, Json::CONTENT_TYPE, accepts, query)
 		} else {
-			BrowserRequest::try_new_post(path, content_type, accepts, body)
+			BrowserRequest::try_new_post(path, Json::CONTENT_TYPE, accepts, body)
 		}
 	}
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-impl<E> FromReq<Json, http::Request<axum::body::Body>, ErrorType> for MakeRequest<E>
+impl<E> FromReq<ApiEncoding<E>, http::Request<axum::body::Body>, ErrorType> for MakeRequest<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
@@ -115,7 +138,8 @@ where
 }
 
 #[cfg(target_arch = "wasm32")]
-impl<E> FromReq<Json, leptos::server_fn::request::BrowserMockReq, ErrorType> for MakeRequest<E>
+impl<E> FromReq<ApiEncoding<E>, leptos::server_fn::request::BrowserMockReq, ErrorType>
+	for MakeRequest<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
