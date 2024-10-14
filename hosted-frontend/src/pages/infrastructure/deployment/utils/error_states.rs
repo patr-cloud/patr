@@ -14,7 +14,8 @@ pub struct DetailsPageError {
 }
 
 impl DetailsPageError {
-	/// Creates a new instance of the details page error, or wipe all the errors
+	/// Creates a new instance of the [`DetailsPageError`], or wipe all the
+	/// errors
 	pub const fn new() -> Self {
 		DetailsPageError {
 			name: String::new(),
@@ -34,10 +35,26 @@ pub struct RunnerPageError {
 }
 
 impl RunnerPageError {
-	/// Creates a new instance of the runner page error, or wipe all the errors
+	/// Creates a new instance of the [`RunnerPageError`], or wipe all the
+	/// errors
 	pub const fn new() -> Self {
 		RunnerPageError {
 			ports: String::new(),
+		}
+	}
+}
+
+#[derive(Clone, Debug)]
+pub struct ScalePageError {
+	/// Errors for the machine type field
+	pub machine_type: String,
+}
+
+impl ScalePageError {
+	/// Creates a new instance of the [`ScalePageError`], or wipe all the errors
+	pub const fn new() -> Self {
+		ScalePageError {
+			machine_type: String::new(),
 		}
 	}
 }
