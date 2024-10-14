@@ -1,52 +1,3 @@
-//! The components module. This module contains all the components that are used
-//! across all applications in the Patr ecosystem.
-
-/// The prelude module. Used to re-export commonly used items.
-pub mod prelude {
-	pub use crate::{
-		alert::*,
-		backdrop::*,
-		checkbox_dropdown::*,
-		containers::*,
-		dashboard_container::*,
-		double_input_slider::*,
-		error_page::*,
-		icon::*,
-		input::*,
-		input_dropdown::*,
-		link::*,
-		modal::*,
-		number_picker::*,
-		otp_input::*,
-		page_title::*,
-		popover::*,
-		sidebar::*,
-		skeleton::*,
-		spinner::*,
-		status_badge::*,
-		table_dashboard::*,
-		textbox::*,
-		toast::*,
-		tooltip::*,
-		utils::*,
-	};
-}
-
-/// The imports module. This is basically similar to a prelude, but for within
-/// the crate
-mod imports {
-	use std::rc::Rc;
-
-	/// The handler for the click event on a component. This can be either a
-	/// function or a closure that takes a MouseEvent as an argument.
-	pub(crate) type ClickHandler = Rc<dyn Fn(&ev::MouseEvent)>;
-
-	pub use leptos::*;
-	pub use leptos_router::A;
-
-	pub use crate::prelude::*;
-}
-
 /// The Alert component.
 ///
 /// The alert component is used to display an alert to the user. It is used to
@@ -181,6 +132,3 @@ pub mod toast;
 /// The tooltip component is used to display a tooltip when the user hovers over
 /// an element. It is used to show the user more information about an element.
 pub mod tooltip;
-
-/// Utility functions and components that are used across the entire crate.
-pub mod utils;

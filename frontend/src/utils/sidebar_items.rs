@@ -1,6 +1,5 @@
-use components::sidebar::LinkItem;
-
 use super::AppType;
+use crate::components::sidebar::LinkItem;
 
 /// Get the Sidebar Items depending on the App Type
 pub fn get_sidebar_items(app_type: AppType) -> Vec<LinkItem> {

@@ -29,8 +29,8 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		})
 		.leptos_routes(
 			&config.leptos_options,
-			leptos_axum::generate_route_list(hosted_frontend::render),
-			hosted_frontend::render,
+			leptos_axum::generate_route_list(frontend::render),
+			frontend::render,
 		)
 		.with_state(config.leptos_options)
 		.with_state(state.clone())

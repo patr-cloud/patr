@@ -4,45 +4,57 @@
 
 /// Prelude module. Used to re-export commonly used items.
 pub mod prelude {
-	pub use components::{
-		alert::*,
-		backdrop::*,
-		checkbox_dropdown::*,
-		containers::*,
-		dashboard_container::*,
-		double_input_slider::*,
-		error_page::*,
-		icon::*,
-		input::*,
-		input_dropdown::*,
-		link::*,
-		modal::*,
-		number_picker::*,
-		otp_input::*,
-		page_title::*,
-		sidebar::*,
-		skeleton::*,
-		spinner::*,
-		status_badge::*,
-		table_dashboard::*,
-		textbox::*,
-		tooltip::*,
-		utils::{
-			Alignment,
-			Color,
-			LinkStyleVariant,
-			SecondaryColorVariant,
-			Size,
-			TextColor,
-			Variant,
-		},
-	};
 	pub use leptos::*;
 	pub use leptos_router::*;
 	pub use leptos_use::use_cookie;
 	pub use models::prelude::*;
 
-	pub use crate::{api::*, routes::*, utils::*};
+	pub use crate::{
+		api::*,
+		components::{
+			alert::*,
+			backdrop::*,
+			checkbox_dropdown::*,
+			containers::*,
+			dashboard_container::*,
+			double_input_slider::*,
+			error_page::*,
+			icon::*,
+			input::*,
+			input_dropdown::*,
+			link::*,
+			modal::*,
+			number_picker::*,
+			otp_input::*,
+			page_title::*,
+			popover::*,
+			sidebar::*,
+			skeleton::*,
+			spinner::*,
+			status_badge::*,
+			table_dashboard::*,
+			textbox::*,
+			toast::*,
+			tooltip::*,
+		},
+		routes::*,
+		utils::*,
+	};
+}
+
+/// The imports module. This is basically similar to a prelude, but for within
+/// the crate
+mod imports {
+	use std::rc::Rc;
+
+	/// The handler for the click event on a component. This can be either a
+	/// function or a closure that takes a MouseEvent as an argument.
+	pub(crate) type ClickHandler = Rc<dyn Fn(&ev::MouseEvent)>;
+
+	pub use leptos::*;
+	pub use leptos_router::A;
+
+	pub use crate::prelude::*;
 }
 
 /// The API Module. This contains all the server functions that are used
@@ -51,6 +63,9 @@ pub mod api;
 /// The application logic code. This contains the routers and all the routing
 /// logic
 pub mod app;
+/// The components module. This module contains all the components that are used
+/// across all applications in the Patr ecosystem.
+pub mod components;
 /// The pages module. This contains all the pages used in the application.
 /// Pages are the main views that are rendered when a route is matched.
 pub mod pages;
