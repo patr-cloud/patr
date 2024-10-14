@@ -10,7 +10,7 @@ use http::Method;
 use leptos::{
 	server_fn::{
 		client::browser::BrowserClient,
-		codec::{Encoding, FromReq, IntoReq, Json},
+		codec::{Encoding, FromReq, GetUrl, IntoReq, PostUrl},
 		middleware::Layer,
 		request::{browser::BrowserRequest, ClientReq},
 		ServerFn,
@@ -18,10 +18,7 @@ use leptos::{
 	ServerFnError,
 };
 use matchit::Router;
-use models::{
-	prelude::*,
-	utils::{GenericResponse, IntoAxumResponse},
-};
+use models::{prelude::*, utils::GenericResponse};
 use preprocess::Preprocessable;
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -47,15 +44,19 @@ where
 	E: ApiEndpoint,
 {
 	const CONTENT_TYPE: &'static str =
-		if <E::ResponseBody as IntoAxumResponse>::is::<GenericResponse>() {
+		if std::any::TypeId::of::<E::ResponseBody>() == std::any::TypeId::of::<GenericResponse>() {
 			// If the response body is a GenericResponse, then we can't know the
 			// content type of the response. So we just return the default content
 			// type of binary data.
 			"application/octet-stream"
 		} else {
-			Json::CONTENT_TYPE
+			GetUrl::CONTENT_TYPE
 		};
-	const METHOD: Method = E::METHOD;
+	const METHOD: Method = if Method::GET == E::METHOD {
+		Method::GET
+	} else {
+		Method::POST
+	};
 }
 
 /// A struct that holds the request to be made to the backend. This is used
@@ -81,7 +82,7 @@ where
 	type Error = ErrorType;
 	type InputEncoding = ApiEncoding<E>;
 	type Output = AppResponse<E>;
-	type OutputEncoding = Json;
+	type OutputEncoding = ApiEncoding<E>;
 	#[cfg(not(target_arch = "wasm32"))]
 	type ServerRequest = http::Request<axum::body::Body>;
 	#[cfg(target_arch = "wasm32")]
@@ -94,80 +95,6 @@ where
 	const PATH: &'static str = <E::RequestPath as TypedPath>::PATH;
 
 	async fn run_body(self) -> Result<Self::Output, ServerFnError<Self::Error>> {
-		todo!()
-	}
-
-	fn middlewares() -> Vec<Arc<dyn Layer<Self::ServerRequest, Self::ServerResponse>>> {
-		vec![]
-	}
-}
-
-impl<E> IntoReq<ApiEncoding<E>, BrowserRequest, ErrorType> for MakeRequest<E>
-where
-	E: ApiEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-	E::RequestBody: Serialize + DeserializeOwned,
-	E::ResponseBody: Serialize + DeserializeOwned,
-{
-	fn into_req(
-		self,
-		path: &str,
-		accepts: &str,
-	) -> Result<BrowserRequest, ServerFnError<ErrorType>> {
-		if E::METHOD == Method::GET {
-			BrowserRequest::try_new_get(path, Json::CONTENT_TYPE, accepts, query)
-		} else {
-			BrowserRequest::try_new_post(path, Json::CONTENT_TYPE, accepts, body)
-		}
-	}
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-impl<E> FromReq<ApiEncoding<E>, http::Request<axum::body::Body>, ErrorType> for MakeRequest<E>
-where
-	E: ApiEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-	E::RequestBody: Serialize + DeserializeOwned,
-	E::ResponseBody: Serialize + DeserializeOwned,
-{
-	async fn from_req(
-		req: http::Request<axum::body::Body>,
-	) -> Result<Self, ServerFnError<ErrorType>> {
-		todo!()
-	}
-}
-
-#[cfg(target_arch = "wasm32")]
-impl<E> FromReq<ApiEncoding<E>, leptos::server_fn::request::BrowserMockReq, ErrorType>
-	for MakeRequest<E>
-where
-	E: ApiEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-	E::RequestBody: Serialize + DeserializeOwned,
-	E::ResponseBody: Serialize + DeserializeOwned,
-{
-	async fn from_req(
-		req: leptos::server_fn::request::BrowserMockReq,
-	) -> Result<Self, ServerFnError<ErrorType>> {
-		unreachable!()
-	}
-}
-
-/// Makes an API call to the backend. If you want to make an API request, just
-/// call this function with the request and you'll get a response. All the
-/// layering is automatically done. You don't need to do anything. The
-/// registering of all APIs is done by the RouterExt trait in the backend
-pub async fn make_request<E>(
-	request: ApiRequest<E>,
-) -> Result<AppResponse<E>, ServerFnError<ErrorType>>
-where
-	E: ApiEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-	E::RequestBody: Serialize + DeserializeOwned,
-	E::ResponseBody: Serialize + DeserializeOwned,
-{
-	#[cfg(not(target_arch = "wasm32"))]
-	{
 		use std::net::{IpAddr, SocketAddr};
 
 		use axum::extract::ConnectInfo;
@@ -210,38 +137,98 @@ where
 			.service(BoxCloneService::new(service_fn(|_| async move {
 				unreachable!()
 			})))
-			.oneshot((request, socket_addr.ip()))
+			.oneshot((self.request, socket_addr.ip()))
 			.await
 			.map_err(ServerFnError::WrappedServerError)
 	}
+
+	fn middlewares() -> Vec<Arc<dyn Layer<Self::ServerRequest, Self::ServerResponse>>> {
+		vec![]
+	}
+}
+
+impl<E> IntoReq<ApiEncoding<E>, BrowserRequest, ErrorType> for MakeRequest<E>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+	E::RequestBody: Serialize + DeserializeOwned,
+	E::ResponseBody: Serialize + DeserializeOwned,
+{
+	fn into_req(
+		self,
+		path: &str,
+		accepts: &str,
+	) -> Result<BrowserRequest, ServerFnError<ErrorType>> {
+		if E::METHOD == Method::GET {
+			BrowserRequest::try_new_get(
+				path,
+				GetUrl::CONTENT_TYPE,
+				accepts,
+				serde_urlencoded::to_string(self.request.query)
+					.unwrap()
+					.as_str(),
+			)
+		} else {
+			BrowserRequest::try_new_post(
+				path,
+				PostUrl::CONTENT_TYPE,
+				accepts,
+				serde_json::to_string(&self.request.body).unwrap(),
+			)
+		}
+	}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<E> FromReq<ApiEncoding<E>, http::Request<axum::body::Body>, ErrorType> for MakeRequest<E>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+	E::RequestBody: Serialize + DeserializeOwned,
+	E::ResponseBody: Serialize + DeserializeOwned,
+{
+	async fn from_req(
+		_req: http::Request<axum::body::Body>,
+	) -> Result<Self, ServerFnError<ErrorType>> {
+		todo!()
+	}
+}
+
+#[cfg(target_arch = "wasm32")]
+impl<E> FromReq<ApiEncoding<E>, leptos::server_fn::request::BrowserMockReq, ErrorType>
+	for MakeRequest<E>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+	E::RequestBody: Serialize + DeserializeOwned,
+	E::ResponseBody: Serialize + DeserializeOwned,
+{
+	async fn from_req(
+		req: leptos::server_fn::request::BrowserMockReq,
+	) -> Result<Self, ServerFnError<ErrorType>> {
+		unreachable!()
+	}
+}
+
+/// Makes an API call to the backend. If you want to make an API request, just
+/// call this function with the request and you'll get a response. All the
+/// layering is automatically done. You don't need to do anything. The
+/// registering of all APIs is done by the RouterExt trait in the backend
+pub async fn make_request<E>(
+	request: ApiRequest<E>,
+) -> Result<AppResponse<E>, ServerFnError<ErrorType>>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+	E::RequestBody: Serialize + DeserializeOwned,
+	E::ResponseBody: Serialize + DeserializeOwned,
+{
+	#[cfg(not(target_arch = "wasm32"))]
+	{
+		MakeRequest { request }.run_body().await
+	}
 	#[cfg(target_arch = "wasm32")]
 	{
-		use models::utils::Headers;
-
-		let response = REQWEST_CLIENT
-			.get_or_init(reqwest::Client::new)
-			.request(E::METHOD, format!("/api/{}", request.path.to_string()))
-			.headers(request.headers.to_header_map())
-			.query(&request.query)
-			.json(&request.body)
-			.send()
-			.await
-			.map_err(|err| ServerFnError::Request(err.to_string()))?;
-
-		let status_code = response.status();
-		let headers = E::ResponseHeaders::from_header_map(response.headers())
-			.map_err(|err| ServerFnError::Response(err.to_string()))?;
-		let text = response
-			.text()
-			.await
-			.map_err(|err| ServerFnError::Response(err.to_string()))?;
-		let body =
-			serde_json::from_str(&text).map_err(|err| ServerFnError::Response(err.to_string()))?;
-
-		Ok(AppResponse {
-			status_code,
-			headers,
-			body,
-		})
+		MakeRequest { request }.run_on_client().await
 	}
 }
