@@ -1,5 +1,5 @@
-@use "../../../../components/assets/styles/base/variables" as *;
-@use "../../../../components/assets/styles/helpers/mixins" as *;
+@use "../base/variables" as *;
+@use "../helpers/mixins" as *;
 
 .database-plan-card {
   width: 13rem;

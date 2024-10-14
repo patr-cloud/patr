@@ -1,6 +1,5 @@
 use std::rc::Rc;
 
-use components::prelude::Popover;
 use convert_case::*;
 use ev::MouseEvent;
 use leptos_query::QueryResult;

@@ -2,7 +2,7 @@
 export default {
   content: [
     ".html",
-    "hosted-frontend/src/**/*.rs",
+    "frontend/src/**/*.rs",
     "components/src/**/*.rs",
   ],
   corePlugins: {

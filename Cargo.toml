@@ -3,8 +3,7 @@ members = [
     "api",
     "cli",
     "cloudflare-ingress",
-    "components",
-    "hosted-frontend",
+    "frontend",
     "macros",
     "models",
     "runners/common",
@@ -42,17 +41,16 @@ clap = { version = "4", default-features = false }
 codee = { version = "0.2", default-features = false }
 comfy-table = { version = "7", default-features = false }
 common = { path = "runners/common", default-features = false }
-components = { path = "components", default-features = false }
 config = { version = "0.14", default-features = false }
 console_error_panic_hook = { version = "0.1", default-features = false }
 convert_case = { version = "0.6" }
 cookie = { version = "0.18", default-features = false }
 dirs = { version = "5", default-features = false }
 either = { version = "1", default-features = false }
+frontend = { path = "frontend", default-features = false }
 futures = { version = "0.3", default-features = false }
 headers = { version = "0.4", default-features = false }
 hex = { version = "0.4", default-features = false }
-hosted-frontend = { path = "hosted-frontend", default-features = false }
 http = { version = "1", default-features = false }
 httparse = { version = "1", default-features = false }
 ipinfo = { git = "https://github.com/rakshith-ravi/ipinfo-rust", branch = "feature/upgrade-reqwest", default-features = false }
@@ -139,19 +137,19 @@ strip = true
 [[workspace.metadata.leptos]]
 # The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name
 bin-package = "api"
-lib-package = "hosted-frontend"
+lib-package = "frontend"
 name = "dashboard"
 output-name = "dashboard"
 # The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
-site-root = "target/hosted-frontend"
+site-root = "target/dashboard"
 # The site-root relative folder where all compiled output (JS, WASM and CSS) is written
 site-pkg-dir = "pkg"
-style-file = "hosted-frontend/assets/styles/index.scss"
+style-file = "frontend/assets/styles/index.scss"
 tailwind-config-file = "config/tailwind.config.js"
-tailwind-input-file = "hosted-frontend/assets/styles/index.scss"
+tailwind-input-file = "frontend/assets/styles/index.scss"
 # Assets source dir. All files found here will be copied and synchronized to site-root.
 # The assets-dir cannot have a sub directory with the same name/path as site-pkg-dir.
-assets-dir = "components/assets"
+assets-dir = "frontend/assets"
 #  The browserlist query used for optimizing the CSS.
 browserquery = "defaults"
 # The profile to use for the lib target when compiling for release
@@ -162,19 +160,19 @@ reload-port = 8080
 [[workspace.metadata.leptos]]
 # The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name
 bin-package = "docker"
-lib-package = "hosted-frontend"
+lib-package = "frontend"
 name = "docker"
 output-name = "dashboard"
 # The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
 site-root = "target/docker-runner"
 # The site-root relative folder where all compiled output (JS, WASM and CSS) is written
 site-pkg-dir = "pkg"
-style-file = "hosted-frontend/assets/styles/index.scss"
+style-file = "frontend/assets/styles/index.scss"
 tailwind-config-file = "config/tailwind.config.js"
-tailwind-input-file = "hosted-frontend/assets/styles/index.scss"
+tailwind-input-file = "frontend/assets/styles/index.scss"
 # Assets source dir. All files found here will be copied and synchronized to site-root.
 # The assets-dir cannot have a sub directory with the same name/path as site-pkg-dir.
-assets-dir = "components/assets"
+assets-dir = "frontend/assets"
 #  The browserlist query used for optimizing the CSS.
 browserquery = "defaults"
 # The profile to use for the lib target when compiling for release

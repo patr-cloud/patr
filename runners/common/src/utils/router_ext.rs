@@ -66,7 +66,7 @@ where
 		<E::RequestBody as Preprocessable>::Processed: Send,
 		R: RunnerExecutor + Clone + 'static,
 	{
-		hosted_frontend::utils::API_CALL_REGISTRY
+		frontend::utils::API_CALL_REGISTRY
 			.get_or_init(|| RwLock::new(Default::default()))
 			.write()
 			.expect("API call registry poisoned")
@@ -108,7 +108,7 @@ where
 		E::RequestHeaders: HasHeader<BearerToken>,
 		R: RunnerExecutor + Clone + 'static,
 	{
-		hosted_frontend::utils::API_CALL_REGISTRY
+		frontend::utils::API_CALL_REGISTRY
 			.get_or_init(|| RwLock::new(Default::default()))
 			.write()
 			.expect("API call registry poisoned")

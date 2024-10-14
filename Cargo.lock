@@ -127,9 +127,9 @@ dependencies = [
  "base32 0.5.1",
  "base64 0.22.1",
  "config",
+ "frontend",
  "futures",
  "headers",
- "hosted-frontend",
  "ipinfo",
  "jsonwebtoken",
  "leptos",
@@ -842,8 +842,8 @@ dependencies = [
  "axum",
  "axum-extra",
  "config",
+ "frontend",
  "futures",
- "hosted-frontend",
  "http",
  "jsonwebtoken",
  "leptos",
@@ -882,27 +882,6 @@ dependencies = [
  "itoa",
  "ryu",
  "static_assertions",
-]
-
-[[package]]
-name = "components"
-version = "0.18.0"
-dependencies = [
- "axum",
- "axum-extra",
- "leptos",
- "leptos-use",
- "leptos_axum",
- "leptos_meta",
- "leptos_router",
- "log",
- "models",
- "serde",
- "serde_json",
- "serde_urlencoded",
- "strum",
- "tracing",
- "web-sys",
 ]
 
 [[package]]
@@ -1547,6 +1526,44 @@ dependencies = [
 ]
 
 [[package]]
+name = "frontend"
+version = "0.18.0"
+dependencies = [
+ "axum",
+ "axum-extra",
+ "codee",
+ "console_error_panic_hook",
+ "convert_case",
+ "cookie",
+ "http",
+ "leptos",
+ "leptos-use",
+ "leptos_axum",
+ "leptos_meta",
+ "leptos_query",
+ "leptos_query_devtools",
+ "leptos_router",
+ "log",
+ "macros",
+ "matchit",
+ "models",
+ "preprocess",
+ "reqwest",
+ "semver",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "strum",
+ "time",
+ "tower",
+ "tracing",
+ "url",
+ "wasm-bindgen",
+ "wasm-logger",
+ "web-sys",
+]
+
+[[package]]
 name = "futures"
 version = "0.3.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1870,45 +1887,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3d1354bf6b7235cb4a0576c2619fd4ed18183f689b12b006a0ee7329eeff9a5"
 dependencies = [
  "windows-sys 0.52.0",
-]
-
-[[package]]
-name = "hosted-frontend"
-version = "0.18.0"
-dependencies = [
- "axum",
- "axum-extra",
- "codee",
- "components",
- "console_error_panic_hook",
- "convert_case",
- "cookie",
- "http",
- "leptos",
- "leptos-use",
- "leptos_axum",
- "leptos_meta",
- "leptos_query",
- "leptos_query_devtools",
- "leptos_router",
- "log",
- "macros",
- "matchit",
- "models",
- "preprocess",
- "reqwest",
- "semver",
- "serde",
- "serde_json",
- "serde_urlencoded",
- "strum",
- "time",
- "tower",
- "tracing",
- "url",
- "wasm-bindgen",
- "wasm-logger",
- "web-sys",
 ]
 
 [[package]]
@@ -2998,7 +2976,6 @@ version = "0.18.0"
 dependencies = [
  "axum",
  "axum-extra",
- "components",
  "headers",
  "http",
  "leptos_router",

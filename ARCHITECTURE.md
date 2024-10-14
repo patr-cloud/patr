@@ -59,7 +59,7 @@ Okay, here's a rough architecture of the project. The whole repo is a single mon
 - `./cli`: The CLI that interacts with the API.
 - `./components`: The shared Leptos components that are used by the frontend.
 - `./config`: The configuration files for the API.
-- `./hosted-frontend`: The frontend that is hosted by Patr.
+- `./frontend`: The frontend for Patr.
 - `./macros`: Commonly used macros for the project.
 - `./models`: The models that are shared throughout the codebase. This includes:
   - `./api`: The format for request, response, error, headers and query parameters.

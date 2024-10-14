@@ -1,10 +1,10 @@
 [package]
-name = "macros"
-version.workspace = true
-rust-version.workspace = true
-description.workspace = true
 authors.workspace = true
+description.workspace = true
 edition.workspace = true
+name = "macros"
+rust-version.workspace = true
+version.workspace = true
 
 [lints]
 workspace = true
@@ -21,7 +21,6 @@ syn = { workspace = true, features = ["default", "full"] }
 [dev-dependencies]
 axum = { workspace = true }
 axum-extra = { workspace = true }
-components = { workspace = true }
 headers = { workspace = true }
 http = { workspace = true }
 leptos_router = { workspace = true }

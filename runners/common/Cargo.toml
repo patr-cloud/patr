@@ -14,8 +14,8 @@ argon2 = { workspace = true, features = ["default"] }
 axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
 axum-extra = { workspace = true, features = ["default", "typed-routing"] }
 config = { workspace = true }
+frontend = { workspace = true, features = [] }
 futures = { workspace = true }
-hosted-frontend = { workspace = true, features = [] }
 http = { workspace = true, features = ["default"] }
 jsonwebtoken = { workspace = true, features = ["default"] }
 leptos = { workspace = true, features = ["ssr"] }

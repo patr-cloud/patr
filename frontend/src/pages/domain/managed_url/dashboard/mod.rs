@@ -27,7 +27,7 @@ pub fn UrlDashboard() -> impl IntoView {
 		Some(Ok(data)) => {
 			// let x = data.urls.get(0).expect("").data;
 			logging::log!(
-				"delete this line hosted-frontend/src/pages/domain/managed_url/dashboard/mod.rs:35"
+				"delete this line frontend/src/pages/domain/managed_url/dashboard/mod.rs:35"
 			);
 			view! {
 				<For each={move || data.urls.clone()} key={|state| state.id} let:url>

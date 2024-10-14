@@ -71,7 +71,7 @@ where
 		E: ApiEndpoint<Authenticator = NoAuthentication> + Sync,
 		<E::RequestBody as Preprocessable>::Processed: Send,
 	{
-		hosted_frontend::utils::API_CALL_REGISTRY
+		frontend::utils::API_CALL_REGISTRY
 			.get_or_init(|| RwLock::new(Default::default()))
 			.write()
 			.expect("API call registry poisoned")
@@ -135,7 +135,7 @@ where
 		<E::RequestBody as Preprocessable>::Processed: Send,
 		E::RequestHeaders: HasHeader<BearerToken>,
 	{
-		hosted_frontend::utils::API_CALL_REGISTRY
+		frontend::utils::API_CALL_REGISTRY
 			.get_or_init(|| RwLock::new(Default::default()))
 			.write()
 			.expect("API call registry poisoned")
