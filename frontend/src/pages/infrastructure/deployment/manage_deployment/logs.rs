@@ -6,10 +6,7 @@ use models::api::workspace::deployment::DeploymentLog;
 use time::{macros::format_description, Duration, OffsetDateTime};
 
 use super::{super::components::*, DeploymentInfoContext};
-use crate::{
-	prelude::*,
-	queries::{get_deployment_logs_query, GetDeploymentLogsTag},
-};
+use crate::prelude::*;
 
 /// List Logs for a deployment
 #[component]

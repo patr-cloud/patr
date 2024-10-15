@@ -1,9 +1,4 @@
-#[cfg(not(target_arch = "wasm32"))]
-use std::{any::Any, collections::HashMap, sync::RwLock};
-use std::{
-	marker::PhantomData,
-	sync::{Arc, OnceLock},
-};
+use std::sync::Arc;
 
 use axum_extra::routing::TypedPath;
 use http::Method;
@@ -17,47 +12,9 @@ use leptos::{
 	},
 	ServerFnError,
 };
-use matchit::Router;
-use models::{prelude::*, utils::GenericResponse};
+use models::prelude::*;
 use preprocess::Preprocessable;
 use serde::{de::DeserializeOwned, Serialize};
-
-#[cfg(not(target_arch = "wasm32"))]
-/// The type used for the [`API_CALL_REGISTRY`] static. This is a map of all the
-/// API calls that are registered to the backend. This is used internally and
-/// should not be used by any other part of the code.
-type ApiCallRegistryData = OnceLock<RwLock<HashMap<Method, Router<Box<dyn Any + Send + Sync>>>>>;
-
-#[cfg(not(target_arch = "wasm32"))]
-#[doc(hidden)]
-/// Used internally for registering API calls to the backend. DO NOT USE THIS ON
-/// YOUR OWN. Use the [`make_request`] fn instead.
-pub static API_CALL_REGISTRY: ApiCallRegistryData = OnceLock::new();
-
-#[derive(Debug, Clone, Copy, Default)]
-struct ApiEncoding<E>(PhantomData<E>)
-where
-	E: ApiEndpoint;
-
-impl<E> Encoding for ApiEncoding<E>
-where
-	E: ApiEndpoint,
-{
-	const CONTENT_TYPE: &'static str =
-		if std::any::TypeId::of::<E::ResponseBody>() == std::any::TypeId::of::<GenericResponse>() {
-			// If the response body is a GenericResponse, then we can't know the
-			// content type of the response. So we just return the default content
-			// type of binary data.
-			"application/octet-stream"
-		} else {
-			GetUrl::CONTENT_TYPE
-		};
-	const METHOD: Method = if Method::GET == E::METHOD {
-		Method::GET
-	} else {
-		Method::POST
-	};
-}
 
 /// A struct that holds the request to be made to the backend. This is used
 /// for the server fn to make the request to the backend.
@@ -94,6 +51,7 @@ where
 
 	const PATH: &'static str = <E::RequestPath as TypedPath>::PATH;
 
+	#[cfg(not(target_arch = "wasm32"))]
 	async fn run_body(self) -> Result<Self::Output, ServerFnError<Self::Error>> {
 		use std::net::{IpAddr, SocketAddr};
 
@@ -109,7 +67,7 @@ where
 		let ConnectInfo(socket_addr) = leptos_axum::extract::<ConnectInfo<SocketAddr>>()
 			.await
 			.map_err(ErrorType::server_error)?;
-		let layer = API_CALL_REGISTRY
+		let layer = super::API_CALL_REGISTRY
 			.get()
 			.expect("API call registry not initialized")
 			.read()
@@ -140,6 +98,11 @@ where
 			.oneshot((self.request, socket_addr.ip()))
 			.await
 			.map_err(ServerFnError::WrappedServerError)
+	}
+
+	#[cfg(target_arch = "wasm32")]
+	async fn run_body(self) -> Result<Self::Output, ServerFnError<Self::Error>> {
+		unreachable!()
 	}
 
 	fn middlewares() -> Vec<Arc<dyn Layer<Self::ServerRequest, Self::ServerResponse>>> {
@@ -231,4 +194,17 @@ where
 	{
 		MakeRequest { request }.run_on_client().await
 	}
+}
+
+/// Register an API call to the backend. This will register the API call to the
+/// backend so that it can be used by the frontend. This is used internally and
+/// should not be used by any other part of the code.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn register_api_call<E>()
+where
+	E: ApiEndpoint,
+	E::RequestBody: Serialize + DeserializeOwned,
+	E::ResponseBody: Serialize + DeserializeOwned,
+{
+	leptos::server_fn::axum::register_explicit::<MakeRequest<E>>();
 }

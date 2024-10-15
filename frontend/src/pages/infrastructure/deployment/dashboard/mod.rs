@@ -5,7 +5,7 @@ use convert_case::*;
 use leptos_query::QueryResult;
 
 use self::{footer::*, head::*};
-use super::{components::*, utils::*};
+use super::components::*;
 use crate::{
 	prelude::*,
 	queries::{list_deployments_query, AllDeploymentsTag},

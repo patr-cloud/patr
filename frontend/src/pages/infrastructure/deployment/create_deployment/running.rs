@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use ev::MouseEvent;
 use models::api::workspace::deployment::{EnvironmentVariableValue, ExposedPortType};
 
 use super::{super::components::*, RunnerPageError};

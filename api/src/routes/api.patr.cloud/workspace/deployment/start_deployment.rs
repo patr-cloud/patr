@@ -34,7 +34,7 @@ pub async fn start_deployment(
 
 	let now = OffsetDateTime::now_utc();
 
-	let (registry, image_tag, region) = query!(
+	let (registry, ..) = query!(
 		r#"
 		SELECT
 			registry,

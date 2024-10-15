@@ -215,6 +215,12 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		response,
 	} = parse_macro_input!(input as ApiEndpoint);
 
+	let frontend_api_endpoint = if method == "GET" {
+		format_ident!("GET")
+	} else {
+		format_ident!("POST")
+	};
+
 	let (path_default_impl, path_body) = if let Some(body) = path_body {
 		(
 			quote::quote! {},
@@ -458,6 +464,10 @@ pub fn parse(input: TokenStream) -> TokenStream {
 
 		impl models::ApiEndpoint for #request_name {
 			const METHOD: ::http::Method = ::http::Method::#method;
+
+			const FRONTEND_API_METHOD: ::http::Method = ::http::Method::#frontend_api_endpoint;
+			const IS_REST: bool = true;
+
 			const API_ALLOWED: bool = #api_allowed;
 
 			type RequestPath = #path_name;
