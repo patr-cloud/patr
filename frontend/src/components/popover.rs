@@ -1,7 +1,7 @@
 use leptos::{window, *};
 use web_sys::DomRect;
 
-use crate::imports::*;
+use crate::prelude::*;
 
 #[derive(Default, PartialEq, Clone)]
 pub enum PopoverTriggerType {

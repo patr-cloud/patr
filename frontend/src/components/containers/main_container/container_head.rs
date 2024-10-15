@@ -1,4 +1,4 @@
-use crate::imports::*;
+use crate::prelude::*;
 
 /// Contains the title, description and the DocLink of the Page,
 /// Usually wrapping around the <PageTitle /> section of components

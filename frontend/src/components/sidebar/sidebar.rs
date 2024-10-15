@@ -1,4 +1,4 @@
-use crate::imports::*;
+use crate::prelude::*;
 
 /// A Link item for the sidebar
 #[derive(Default, Clone)]

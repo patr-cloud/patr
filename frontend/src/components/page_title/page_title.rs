@@ -1,5 +1,5 @@
 /// TODO: GIVE BETTER DOC STRING
-use crate::imports::*;
+use crate::prelude::*;
 
 /// Contains all the page titles, and wraps around indivisual <PageTitle />
 /// components

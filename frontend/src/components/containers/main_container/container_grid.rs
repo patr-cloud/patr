@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use strum::Display;
 
-use crate::imports::*;
+use crate::prelude::*;
 
 #[derive(Display, Clone, Copy)]
 pub enum AutoSizing {

@@ -1,6 +1,6 @@
 use std::fmt::{self, Display, Formatter};
 
-use crate::imports::*;
+use crate::prelude::*;
 
 /// The type of alert to show.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

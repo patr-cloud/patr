@@ -1,4 +1,4 @@
-use crate::imports::*;
+use crate::prelude::*;
 
 /// Page Title Item, used to specify the title Segments of the Page Title
 /// Mulitple Segements can be used as breadcrumbs.

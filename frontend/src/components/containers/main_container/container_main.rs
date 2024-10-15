@@ -1,4 +1,4 @@
-use crate::imports::*;
+use crate::prelude::*;
 
 /// The Main Container for all the content, typically used alongside the sidebar
 /// and used for LoggedIn Routes

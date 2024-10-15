@@ -1,4 +1,4 @@
-use crate::imports::*;
+use crate::prelude::*;
 
 /// A Tab Item
 #[derive(Clone, PartialEq, Eq)]

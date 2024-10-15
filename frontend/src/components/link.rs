@@ -1,6 +1,6 @@
 use web_sys::MouseEvent;
 
-use crate::imports::*;
+use crate::prelude::*;
 
 /// Link component to navigate to other pages
 /// Use the variant prop to switch between <a/> and <button/>
