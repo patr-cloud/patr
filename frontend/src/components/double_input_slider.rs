@@ -1,4 +1,4 @@
-use crate::imports::*;
+use crate::prelude::*;
 
 /// A Slider for selecting both minimum and maximum values
 /// uses two input[type=range] to facilitate the slider,

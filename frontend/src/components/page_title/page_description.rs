@@ -1,4 +1,4 @@
-use crate::imports::*;
+use crate::prelude::*;
 
 /// Provides a breif description of the page, and optionally the doc link
 #[component]

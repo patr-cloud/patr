@@ -1,4 +1,4 @@
-use crate::imports::*;
+use crate::prelude::*;
 
 #[component]
 pub fn ErrorPage(

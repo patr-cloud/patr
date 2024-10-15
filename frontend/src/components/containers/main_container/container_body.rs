@@ -1,4 +1,4 @@
-use crate::imports::*;
+use crate::prelude::*;
 
 /// The Body of the dashboard. Wraps around the main content of the page.
 #[component]

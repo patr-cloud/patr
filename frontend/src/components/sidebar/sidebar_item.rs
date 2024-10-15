@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use leptos_router::{use_location, use_navigate};
 
-use crate::imports::*;
+use crate::prelude::*;
 
 #[component]
 pub fn SidebarExpanded(

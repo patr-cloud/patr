@@ -1,4 +1,4 @@
-use crate::imports::*;
+use crate::prelude::*;
 
 /// The Toast component. The toast component is used to display a notification
 /// to the user. For Example, to show the user a notification for success

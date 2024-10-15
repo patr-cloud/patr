@@ -1,6 +1,6 @@
 use models::api::workspace::{database::DatabaseStatus, deployment::DeploymentStatus};
 
-use crate::imports::*;
+use crate::prelude::*;
 
 /// The Status of the component
 #[derive(Debug, Clone, Copy, Default, Hash, PartialEq, Eq)]

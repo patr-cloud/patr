@@ -1,6 +1,6 @@
 use ev::KeyboardEvent;
 
-use crate::imports::*;
+use crate::prelude::*;
 
 /// The options to display in the dropdown
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]

@@ -1,7 +1,7 @@
 use ev::{Event, KeyboardEvent};
 use html::Input;
 
-use crate::imports::*;
+use crate::prelude::*;
 
 #[component]
 pub fn OtpInput(

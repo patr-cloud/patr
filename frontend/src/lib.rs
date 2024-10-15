@@ -4,7 +4,11 @@
 
 /// Prelude module. Used to re-export commonly used items.
 pub mod prelude {
+	pub(crate) use std::rc::Rc;
+
 	pub use leptos::*;
+	pub(crate) use leptos::*;
+	pub(crate) use leptos_router::A;
 	pub use leptos_router::*;
 	pub use leptos_use::use_cookie;
 	pub use models::prelude::*;
@@ -40,21 +44,10 @@ pub mod prelude {
 		routes::*,
 		utils::*,
 	};
-}
-
-/// The imports module. This is basically similar to a prelude, but for within
-/// the crate
-mod imports {
-	use std::rc::Rc;
 
 	/// The handler for the click event on a component. This can be either a
 	/// function or a closure that takes a MouseEvent as an argument.
 	pub(crate) type ClickHandler = Rc<dyn Fn(&ev::MouseEvent)>;
-
-	pub use leptos::*;
-	pub use leptos_router::A;
-
-	pub use crate::prelude::*;
 }
 
 /// The API Module. This contains all the server functions that are used
@@ -103,6 +96,8 @@ pub fn render() -> impl IntoView {
 
 	provide_meta_context();
 	provide_query_client();
+
+	provide_context(APP_TYPE.get().copied().expect("APP_TYPE not set"));
 
 	view! {
 		<>

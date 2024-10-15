@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::imports::*;
+use crate::prelude::*;
 
 /// The kind of icon to display. This is taken directly from the Feather icon
 /// set.

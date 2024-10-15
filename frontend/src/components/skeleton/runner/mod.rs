@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use leptos::component;
 
-use crate::imports::*;
+use crate::prelude::*;
 
 /// The skeleton for the runner component in the runner list.
 #[component]

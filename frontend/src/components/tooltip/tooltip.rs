@@ -1,6 +1,6 @@
 use leptos_use::{use_document, use_event_listener, use_window};
 
-use crate::imports::*;
+use crate::prelude::*;
 
 #[component]
 pub fn Tooltip(

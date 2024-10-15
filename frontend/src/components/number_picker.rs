@@ -1,6 +1,6 @@
 use std::cmp;
 
-use crate::imports::*;
+use crate::prelude::*;
 
 #[component]
 pub fn NumberPicker(

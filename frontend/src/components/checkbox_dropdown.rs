@@ -1,6 +1,6 @@
 use ev::MouseEvent;
 
-use crate::imports::*;
+use crate::prelude::*;
 
 /// Creates an input with options appearing in a dropdown
 #[component]

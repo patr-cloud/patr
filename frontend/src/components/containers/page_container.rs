@@ -1,4 +1,4 @@
-use crate::imports::*;
+use crate::prelude::*;
 
 /// A Single Page container, typically used for LoggedOut set of Routes
 #[component]
