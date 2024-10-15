@@ -27,6 +27,7 @@ pub mod prelude {
 
 	pub(crate) use crate as models;
 	pub use crate::{
+		ApiEncoding,
 		ApiEndpoint,
 		ApiErrorResponse,
 		ApiRequest,
