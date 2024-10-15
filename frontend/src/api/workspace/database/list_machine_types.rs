@@ -14,7 +14,7 @@ pub async fn list_database_machine_types(
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	make_api_call::<ListAllDatabaseMachineTypeRequest>(
+	make_request::<ListAllDatabaseMachineTypeRequest>(
 		ApiRequest::builder()
 			.path(ListAllDatabaseMachineTypePath)
 			.query(())

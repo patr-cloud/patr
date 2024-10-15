@@ -21,7 +21,7 @@ pub async fn update_deployment(
 	let deployment_id = deployment_id
 		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	make_api_call::<UpdateDeploymentRequest>(
+	make_request::<UpdateDeploymentRequest>(
 		ApiRequest::builder()
 			.path(UpdateDeploymentPath {
 				workspace_id,
@@ -37,5 +37,4 @@ pub async fn update_deployment(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }

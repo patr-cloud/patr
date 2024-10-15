@@ -18,7 +18,7 @@ pub async fn load_user_data(
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	make_api_call::<GetUserInfoRequest>(
+	make_request::<GetUserInfoRequest>(
 		ApiRequest::builder()
 			.path(GetUserInfoPath)
 			.query(())
@@ -31,5 +31,4 @@ pub async fn load_user_data(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }

@@ -54,6 +54,14 @@ where
 {
 	/// The HTTP method that should be used for this endpoint
 	const METHOD: http::Method;
+
+	/// The HTTP method that should be used for API endpoints
+	#[doc(hidden)]
+	const FRONTEND_API_METHOD: http::Method = http::Method::GET;
+	/// Is this a REST API route?
+	#[doc(hidden)]
+	const IS_REST: bool = false;
+
 	/// If true, this route can be accessed by the API. Otherwise, it'll only be
 	/// accessible by the Web UI
 	const API_ALLOWED: bool;

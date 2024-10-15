@@ -53,5 +53,5 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.mount_auth_endpoint(delete_deployment, state)
 		.mount_auth_endpoint(update_deployment, state)
 		.mount_auth_endpoint(get_deployment_metric, state)
-		.mount_auth_endpoint(stream_deployment_logs, state)
+		.mount_auth_stream(stream_deployment_logs, state)
 }

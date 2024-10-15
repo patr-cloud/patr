@@ -52,6 +52,7 @@ pub mod prelude {
 			TotalCountHeader,
 			Uuid,
 		},
+		ApiEncoding,
 		ApiEndpoint,
 		ApiErrorResponse,
 		ApiRequest,

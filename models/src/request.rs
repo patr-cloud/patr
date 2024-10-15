@@ -1,7 +1,31 @@
+use std::marker::PhantomData;
+
+use http::Method;
+use leptos::server_fn::codec::{Encoding, GetUrl};
 use preprocess::Preprocessable;
 use typed_builder::TypedBuilder;
 
 use crate::prelude::*;
+
+/// This is the API encoding used to encode and decode the body of the request.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ApiEncoding<E>(PhantomData<E>)
+where
+	E: ApiEndpoint;
+
+impl<E> Encoding for ApiEncoding<E>
+where
+	E: ApiEndpoint,
+{
+	const CONTENT_TYPE: &'static str = if E::IS_REST {
+		GetUrl::CONTENT_TYPE
+	} else {
+		// If the response body is not a REST API, then we can't know the content type
+		// of the response. So we just return the default content type of binary data.
+		"application/octet-stream"
+	};
+	const METHOD: Method = E::FRONTEND_API_METHOD;
+}
 
 /// This struct represents a request to the API. It contains the path, query,
 /// headers and body of the request. This struct provides a builder API to make

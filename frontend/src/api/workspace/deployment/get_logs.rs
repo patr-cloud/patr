@@ -21,7 +21,7 @@ pub async fn get_deployment_logs(
 	let workspace_id = workspace_id
 		.ok_or_else(|| ServerFnError::WrappedServerError(ErrorType::WrongParameters))?;
 
-	make_api_call::<GetDeploymentLogsRequest>(
+	make_request::<GetDeploymentLogsRequest>(
 		ApiRequest::builder()
 			.path(GetDeploymentLogsPath {
 				deployment_id,
@@ -41,5 +41,4 @@ pub async fn get_deployment_logs(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }

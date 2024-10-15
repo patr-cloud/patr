@@ -16,7 +16,7 @@ pub async fn get_deployment_image_history(
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
-	make_api_call::<ListDeploymentDeployHistoryRequest>(
+	make_request::<ListDeploymentDeployHistoryRequest>(
 		ApiRequest::builder()
 			.path(ListDeploymentDeployHistoryPath {
 				deployment_id,
@@ -32,5 +32,4 @@ pub async fn get_deployment_image_history(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }

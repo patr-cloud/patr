@@ -11,7 +11,7 @@ pub async fn sign_up(
 	last_name: String,
 	email: String,
 ) -> Result<CreateAccountResponse, ServerFnError<ErrorType>> {
-	make_api_call::<CreateAccountRequest>(
+	make_request::<CreateAccountRequest>(
 		ApiRequest::builder()
 			.path(CreateAccountPath)
 			.query(())
@@ -31,5 +31,4 @@ pub async fn sign_up(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }

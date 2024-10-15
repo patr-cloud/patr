@@ -1,8 +1,15 @@
 use std::fmt::Display;
 
 use axum::{http::StatusCode, response::IntoResponse, Json};
+use leptos::{
+	server_fn::{
+		codec::{FromRes, IntoRes},
+		response::{browser::BrowserResponse, ClientRes},
+	},
+	ServerFnError,
+};
 use preprocess::Preprocessable;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 
 use crate::{
@@ -34,6 +41,72 @@ where
 	/// Convert the response into a Result
 	pub fn into_result(self) -> Result<Self, ErrorType> {
 		Ok(self)
+	}
+}
+
+#[cfg(target_arch = "wasm32")]
+impl<E> IntoRes<ApiEncoding<E>, leptos::server_fn::response::BrowserMockRes, ErrorType>
+	for AppResponse<E>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+{
+	async fn into_res(
+		self,
+	) -> Result<leptos::server_fn::response::BrowserMockRes, ServerFnError<ErrorType>> {
+		unreachable!()
+	}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<E> IntoRes<ApiEncoding<E>, http::Response<axum::body::Body>, ErrorType> for AppResponse<E>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+{
+	async fn into_res(self) -> Result<http::Response<axum::body::Body>, ServerFnError<ErrorType>> {
+		let AppResponse {
+			status_code,
+			headers,
+			body,
+		} = self;
+
+		let mut response = http::Response::builder().status(status_code);
+
+		for (key, value) in headers.to_header_map() {
+			if let Some(key) = key {
+				response = response.header(key, value);
+			}
+		}
+
+		response
+			.body(body.into_axum_response().into_body())
+			.map_err(|err| ServerFnError::Response(err.to_string()))
+	}
+}
+
+impl<E> FromRes<ApiEncoding<E>, BrowserResponse, ErrorType> for AppResponse<E>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+	E::RequestBody: Serialize + DeserializeOwned,
+	E::ResponseBody: Serialize + DeserializeOwned,
+{
+	async fn from_res(res: BrowserResponse) -> Result<Self, ServerFnError<ErrorType>> {
+		let status_code = <BrowserResponse as ClientRes<ErrorType>>::status(&res);
+		let status_code = StatusCode::from_u16(status_code)
+			.map_err(|err| ServerFnError::Response(err.to_string()))?;
+		let headers = E::ResponseHeaders::from_header_map(todo!())
+			.map_err(|err| ServerFnError::Response(err.to_string()))?;
+		let body = res.try_into_string().await?;
+		let body = serde_urlencoded::from_str(&body)
+			.map_err(|err| ServerFnError::Response(err.to_string()))?;
+
+		Ok(Self {
+			status_code,
+			headers,
+			body,
+		})
 	}
 }
 

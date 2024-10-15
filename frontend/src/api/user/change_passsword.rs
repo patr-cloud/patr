@@ -11,7 +11,7 @@ async fn change_password(
 ) -> Result<ChangePasswordResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
-	make_api_call::<ChangePasswordRequest>(
+	make_request::<ChangePasswordRequest>(
 		ApiRequest::builder()
 			.path(ChangePasswordPath)
 			.query(())
@@ -31,5 +31,4 @@ async fn change_password(
 	)
 	.await
 	.map(|res| res.body)
-	.map_err(ServerFnError::WrappedServerError)
 }
