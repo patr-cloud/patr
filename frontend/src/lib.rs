@@ -51,6 +51,8 @@ pub fn render(options: LeptosOptions) -> impl IntoView {
 
 	provide_meta_context();
 
+	provide_context(APP_TYPE.get().copied().expect("APP_TYPE not set"));
+
 	view! {
 		<!DOCTYPE html>
 		<html lang="en">
