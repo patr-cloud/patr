@@ -41,11 +41,17 @@ pub fn InputDropdown(
 	/// Whether the componenet is in loading state or not
 	#[prop(optional, into, default = false.into())]
 	loading: MaybeSignal<bool>,
-	/// Whether to render an input, or a span masquerading as one
-	#[prop(optional, into, default = false.into())]
-	enable_input: MaybeSignal<bool>,
+	/// Additional View to add at the end of the list
+	#[prop(optional, default = None)]
+	additional_view: Option<View>,
+	/// Additional Classes for the list item surrounding the action view
+	#[prop(into, optional, default = "".to_string().into())]
+	additional_view_class: MaybeSignal<String>,
+	/// Message to display when there's no item in the list
+	#[prop(into, optional, default = "No Item in the List".to_string().into())]
+	empty_fallback: MaybeSignal<String>,
 ) -> impl IntoView {
-	let show_dropdown = create_rw_signal(false);
+	let show_dropdown = create_rw_signal(true);
 
 	let outer_div_class = class.with(|cname| {
 		format!(
@@ -80,6 +86,8 @@ pub fn InputDropdown(
 
 	let store_options = store_value(options);
 	let store_placehoder = store_value(placeholder.clone());
+	let store_empty_fallback = store_value(empty_fallback);
+	let store_additional_view_class = store_value(additional_view_class);
 
 	let input_class = move || {
 		format!(
@@ -140,32 +148,23 @@ pub fn InputDropdown(
 			on:keydown={handle_keydown_input}
 			class={outer_div_class}
 		>
-			<Show
-				when={move || enable_input.get()}
-				fallback={move || view! {
-					<span class={input_class}>
-						{
-							if value.get().is_empty() || disabled.get() {
-								store_placehoder.with_value(|placeholder| placeholder.get().into_view())
-							} else {
-								label.get().into_view()
-							}
-						}
-					</span>
-				}}
-			>
+			<span class={input_class}>
+				{
+					if value.get().is_empty() || disabled.get() {
+						store_placehoder.with_value(|placeholder| placeholder.get().into_view())
+					} else {
+						label.get().into_view()
+					}
+				}
+			</span>
 
-				<input
-					r#type={InputType::Text.as_html_attribute()}
-					placeholder={placeholder.clone()}
-					disabled={disabled.get()}
-					class={input_class}
-					prop:value={label}
-				/>
-			</Show>
-			<Icon icon={IconType::ChevronDown} class="ml-auto" size={Size::ExtraSmall}/>
+			<Icon
+				icon={IconType::ChevronDown}
+				class="ml-auto"
+				size={Size::ExtraSmall}
+			/>
 
-			<Show when={move || show_dropdown.get() && !disabled.get()}>
+			<Show when={move || show_dropdown.get()}>
 				<div class={dropdown_class.clone()}>
 					<ul class="w-full h-full overflow-x-hidden overflow-y-auto flex flex-col items-start justify-start">
 						<For
@@ -194,6 +193,35 @@ pub fn InputDropdown(
 								{child.clone().label}
 							</li>
 						</For>
+
+						<Show
+							when={move || store_options.with_value(|opt| opt.get().len() == 0)}
+						>
+							<li
+								class={"px-xl py-sm flex justify-start items-center border-border-color border-b-2 w-full br-bottom-sm"}
+							>
+
+								{store_empty_fallback.with_value(|val| val.get())}
+							</li>
+						</Show>
+
+						{
+							additional_view.clone().map(|additional_view| {
+								view! {
+									<li
+										class={move ||
+											format!(
+												"px-xl py-sm flex justify-start items-center
+												border-border-color border-b-2 w-full br-bottom-sm {}",
+												store_additional_view_class.with_value(|val| val.get())
+											)
+										}
+									>
+										{additional_view}
+									</li>
+								}
+							})
+						}
 					</ul>
 				</div>
 			</Show>

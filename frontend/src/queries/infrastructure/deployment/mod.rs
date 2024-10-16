@@ -17,6 +17,7 @@ pub fn list_deployments_query(
 	// TODO: remove this unwrap
 	let workspace_id = state.get().get_last_used_workspace_id().unwrap();
 
+	logging::log!("here i'm being called here");
 	create_query(
 		move |query_tag: AllDeploymentsTag| {
 			let access_token = access_token.clone();
