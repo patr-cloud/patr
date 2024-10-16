@@ -51,7 +51,7 @@ pub fn InputDropdown(
 	#[prop(into, optional, default = "No Item in the List".to_string().into())]
 	empty_fallback: MaybeSignal<String>,
 ) -> impl IntoView {
-	let show_dropdown = create_rw_signal(true);
+	let show_dropdown = create_rw_signal(false);
 
 	let outer_div_class = class.with(|cname| {
 		format!(
@@ -150,10 +150,12 @@ pub fn InputDropdown(
 		>
 			<span class={input_class}>
 				{
-					if value.get().is_empty() || disabled.get() {
-						store_placehoder.with_value(|placeholder| placeholder.get().into_view())
-					} else {
-						label.get().into_view()
+					move || {
+						if value.get().is_empty() || disabled.get() {
+							store_placehoder.with_value(|placeholder| placeholder.get().into_view())
+						} else {
+							label.get().into_view()
+						}
 					}
 				}
 			</span>
@@ -198,7 +200,7 @@ pub fn InputDropdown(
 							when={move || store_options.with_value(|opt| opt.get().len() == 0)}
 						>
 							<li
-								class={"px-xl py-sm flex justify-start items-center border-border-color border-b-2 w-full br-bottom-sm"}
+								class={"px-xl py-sm flex justify-start items-center border-border-color border-b-2 w-full br-bottom-sm text-disabled"}
 							>
 
 								{store_empty_fallback.with_value(|val| val.get())}
