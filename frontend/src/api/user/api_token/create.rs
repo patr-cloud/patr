@@ -9,6 +9,7 @@ pub async fn create_api_token(
 ) -> Result<CreateApiTokenResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
+	logging::log!("here");
 	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
@@ -18,7 +19,7 @@ pub async fn create_api_token(
 			.query(())
 			.headers(CreateApiTokenRequestHeaders {
 				authorization: access_token,
-				user_agent: UserAgent::from_static("todo"),
+				user_agent: UserAgent::from_static("hyper/0.12.2"),
 			})
 			.body(api_token_info)
 			.build(),

@@ -30,6 +30,15 @@ pub fn CheckboxDropdown(
 	/// Whether the component is in loading state or not
 	#[prop(optional, into, default = false.into())]
 	loading: MaybeSignal<bool>,
+	/// Additional View to add at the end of the list
+	#[prop(optional, default = None)]
+	additional_view: Option<View>,
+	/// Additional Classes for the list item surrounding the action view
+	#[prop(into, optional, default = "".to_string().into())]
+	additional_view_class: MaybeSignal<String>,
+	/// Message to display when there's no item in the list
+	#[prop(into, optional, default = "No Item in the List".to_string().into())]
+	empty_fallback: MaybeSignal<String>,
 ) -> impl IntoView {
 	let show_dropdown = create_rw_signal(false);
 
@@ -66,6 +75,8 @@ pub fn CheckboxDropdown(
 
 	let store_options = store_value(options);
 	let store_placehoder = store_value(placeholder);
+	let store_empty_fallback = store_value(empty_fallback);
+	let store_additional_view_class = store_value(additional_view_class);
 
 	view! {
 		<div on:click={handle_click} class={outer_div_class}>
@@ -113,6 +124,36 @@ pub fn CheckboxDropdown(
 								</label>
 							</li>
 						</For>
+
+						<Show
+							when={move || store_options.with_value(|opt| opt.get().len() == 0)}
+						>
+							<li
+								class={"px-xl py-sm border-border-color border-b-2 bg-[#292548]
+									flex justify-start items-center w-full br-bottom-sm text-disabled"
+								}
+							>
+								{store_empty_fallback.with_value(|val| val.get())}
+							</li>
+						</Show>
+
+						{
+							additional_view.clone().map(|additional_view| {
+								view! {
+									<li
+										class={move ||
+											format!(
+												"px-xl py-sm flex justify-start items-center
+												border-border-color border-b-2 w-full br-bottom-sm {}",
+												store_additional_view_class.with_value(|val| val.get())
+											)
+										}
+									>
+										{additional_view}
+									</li>
+								}
+							})
+						}
 					</ul>
 				</div>
 			</Show>
