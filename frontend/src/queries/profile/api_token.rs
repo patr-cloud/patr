@@ -1,5 +1,5 @@
 use leptos_query::*;
-use models::api::user::*;
+use models::api::{user::*, workspace::rbac::ListAllPermissionsResponse};
 
 use crate::prelude::*;
 
@@ -38,6 +38,19 @@ pub fn get_api_token_query(
 		QueryOptions {
 			..Default::default()
 		},
+	)
+}
+
+pub fn get_all_permissions_query(
+) -> QueryScope<Uuid, Result<ListAllPermissionsResponse, ServerFnError<ErrorType>>> {
+	let (state, _) = AuthState::load();
+
+	create_query(
+		move |workspace_id| {
+			let access_token = state.get().get_access_token();
+			async move { list_all_permissions(access_token, workspace_id).await }
+		},
+		Default::default(),
 	)
 }
 

@@ -3,14 +3,14 @@ use std::collections::BTreeMap;
 use leptos::ev::Event;
 use models::{api::workspace::Workspace, rbac::WorkspacePermission};
 
-use super::ApiTokenInfo;
-use crate::{
-	pages::{ChoosePermission, PermissionItem},
-	prelude::*,
+use super::super::{
+	components::{ChoosePermission, PermissionItem},
+	utils::{ApiTokenInfo, ApiTokenPermissions},
 };
+use crate::prelude::*;
 
 #[component]
-pub fn ListPermissions(
+fn ListPermissions(
 	/// The Permission Items
 	#[prop(into)]
 	permissions: MaybeSignal<Option<WorkspacePermission>>,
@@ -41,17 +41,16 @@ pub fn PermissionCard(
 			cname
 		)
 	});
-	let api_token = expect_context::<ApiTokenInfo>().0;
+	let api_token_permissions = expect_context::<ApiTokenPermissions>().0;
 
 	let store_workspace = store_value(workspace.clone());
 
 	let permissions = Signal::derive({
 		let workspace = workspace.clone();
 		move || {
-			api_token
+			api_token_permissions
 				.get()
 				.unwrap()
-				.permissions
 				.get(&workspace.get().id)
 				.cloned()
 		}
@@ -67,25 +66,21 @@ pub fn PermissionCard(
 		move |ev: Event| {
 			ev.prevent_default();
 
-			api_token.update(|token| {
-				token.as_mut().map(|token| {
-					let permission_exists = token.data.permissions.contains_key(&workspace_id);
-
+			api_token_permissions.update(|permissions| {
+				permissions.as_mut().map(|permissions| {
+					let permission_exists = permissions.contains_key(&workspace_id);
 					if permission_exists {
-						token.data.permissions.insert(
+						permissions.insert(
 							workspace_id,
 							WorkspacePermission::Member {
 								permissions: BTreeMap::new(),
 							},
 						);
 					} else {
-						token
-							.data
-							.permissions
-							.insert(workspace_id, WorkspacePermission::SuperAdmin);
+						permissions.insert(workspace_id, WorkspacePermission::SuperAdmin);
 					}
 				});
-			})
+			});
 		}
 	};
 
@@ -122,7 +117,9 @@ pub fn PermissionCard(
 				if !is_admin_checkbox.get() {
 					view! {
 						<div class="flex flex-col items-start justify-start w-full gap-xs">
-							<ListPermissions permissions={permissions.get()} />
+							<ListPermissions
+								permissions={permissions.get()}
+							/>
 							<ChoosePermission workspace_id={workspace.get().id} />
 						</div>
 					}

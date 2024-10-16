@@ -1,7 +1,16 @@
 use std::collections::BTreeMap;
 
-use models::{api::user::UserApiToken, rbac::WorkspacePermission, utils::Uuid};
+use leptos::prelude::*;
+use models::{api::user::UserApiToken, prelude::*, rbac::WorkspacePermission};
 use time::OffsetDateTime;
+
+/// The Api Token Permissions
+#[derive(Clone, Debug)]
+pub struct ApiTokenPermissions(pub RwSignal<Option<BTreeMap<Uuid, WorkspacePermission>>>);
+
+/// Context for the Edit API Token Page
+#[derive(Copy, Clone)]
+pub struct ApiTokenInfo(pub RwSignal<Option<WithId<UserApiToken>>>);
 
 /// The Api Token Info
 #[derive(Clone, Debug)]

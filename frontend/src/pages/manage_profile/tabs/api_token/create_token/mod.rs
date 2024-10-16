@@ -1,8 +1,13 @@
-use ev::SubmitEvent;
-use models::api::user::CreateApiTokenRequest;
+use std::collections::BTreeMap;
 
-use super::super::{utils::CreateApiTokenInfo, CreatePermissionCard};
-use crate::{pages::TokenModal, prelude::*, queries::create_api_token_query};
+use ev::SubmitEvent;
+use models::{api::user::CreateApiTokenRequest, rbac::WorkspacePermission};
+
+use super::{
+	components::{PermissionCard, TokenModal},
+	utils::{ApiTokenPermissions, CreateApiTokenInfo},
+};
+use crate::{prelude::*, queries::create_api_token_query};
 
 /// The Create API Token Page
 #[component]
@@ -23,8 +28,11 @@ pub fn CreateApiToken() -> impl IntoView {
 	let response = create_api_token_action.value();
 
 	let api_token_info = create_rw_signal(CreateApiTokenInfo::new());
+	let api_token_permissions =
+		create_rw_signal::<Option<BTreeMap<Uuid, WorkspacePermission>>>(Some(BTreeMap::new()));
 
 	provide_context(api_token_info);
+	provide_context(ApiTokenPermissions(api_token_permissions));
 
 	let on_submit_create = move |ev: SubmitEvent| {
 		ev.prevent_default();
@@ -143,8 +151,9 @@ pub fn CreateApiToken() -> impl IntoView {
 									.workspaces
 									.into_iter()
 									.map(|workspace| {
-										view! { <CreatePermissionCard workspace={workspace} /> }
-											.into_view()
+										view! {
+											<PermissionCard workspace={workspace} />
+										}.into_view()
 									})
 									.collect_view()
 							}
@@ -166,7 +175,7 @@ pub fn CreateApiToken() -> impl IntoView {
 					"BACK"
 				</Link>
 				<Link
-					should_submit=true
+					should_submit={false}
 					r#type={Variant::Button}
 					style_variant={LinkStyleVariant::Contained}
 					class="txt-sm txt-medium mr-sm"

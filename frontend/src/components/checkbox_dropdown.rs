@@ -96,15 +96,19 @@ pub fn CheckboxDropdown(
 										on_select.call((ev, child.id.clone()));
 									}
 								}
-								class={"ul-light flex justify-start items-center w-full rounded-b-sm row-card"}
+								class={"flex justify-start items-center w-full row-card border-border-color border-b-2 br-bottom-sm"}
 							>
 								<label
 									html_for=""
 									class="text-left flex justify-start items-center cursor-pointer w-full h-full px-xl py-sm"
 								>
-									<input type="checkbox" class="ml-md mr-sm checkbox-sm" checked={
-										value.get().iter().any(|e| *e == child.id)
-									} />
+									<input
+										type="checkbox"
+										class="ml-md mr-sm checkbox-sm"
+										prop:checked={
+											value.get().iter().any(|e| *e == child.id)
+										}
+									/>
 									<span>{child.label}</span>
 								</label>
 							</li>
