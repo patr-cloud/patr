@@ -5,6 +5,7 @@ use leptos::*;
 use leptos_router::{
 	use_params as use_router_params,
 	use_query as use_router_query,
+	use_router,
 	Params,
 	Route,
 };
@@ -43,8 +44,14 @@ where
 		.get_untracked()
 		.expect("cannot parse params");
 
+	let base_path = use_router().pathname().get_untracked();
+	let mount_path = <R as TypedPath>::PATH
+		.trim()
+		.trim_start_matches('/')
+		.trim_start_matches(base_path.trim().trim_start_matches('/'));
+
 	view! {
-		<Route view={move || view(query.clone(), params.clone())} path={<R as TypedPath>::PATH}>
+		<Route view={move || view(query.clone(), params.clone())} path={mount_path}>
 			{children()}
 		</Route>
 	}
