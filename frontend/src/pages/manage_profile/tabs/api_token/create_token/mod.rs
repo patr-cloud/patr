@@ -59,7 +59,7 @@ pub fn CreateApiToken() -> impl IntoView {
 					name,
 					token_exp: api_token_info.get().token_exp,
 					token_nbf: api_token_info.get().token_nbf,
-					created: OffsetDateTime::UNIX_EPOCH,
+					created: OffsetDateTime::now_utc(),
 					allowed_ips: None,
 					permissions,
 				},
