@@ -1,6 +1,8 @@
+use std::collections::BTreeMap;
+
 use ev::MouseEvent;
 use leptos_query::QueryResult;
-use models::api::user::UserApiToken;
+use models::{api::user::UserApiToken, rbac::WorkspacePermission};
 use time::{
 	error::{Parse, TryFromParsed},
 	macros::format_description,
@@ -10,24 +12,13 @@ use time::{
 
 use crate::{prelude::*, queries::get_api_token_query};
 
-mod choose_permission;
-mod create_token;
-mod permission_card;
-mod permission_card_create;
-mod permission_item;
 mod revoke_regen;
 mod token_info;
-mod token_modal;
 
-pub use self::{
-	choose_permission::*,
-	create_token::*,
-	permission_card::*,
-	permission_card_create::*,
-	permission_item::*,
-	revoke_regen::*,
-	token_info::*,
-	token_modal::*,
+use self::{revoke_regen::*, token_info::*};
+use super::{
+	components::PermissionCard,
+	utils::{ApiTokenInfo, ApiTokenPermissions},
 };
 
 /// Path URL Params for the Edit API Token Page
@@ -95,14 +86,9 @@ fn EditApiTokenPermission() -> impl IntoView {
 			</div>
 		}
 		.into_view(),
-		None => view! { <p>"Loading..."</p> }
-		.into_view(),
+		None => view! { <p>"Loading..."</p> }.into_view(),
 	}
 }
-
-/// Context for the Edit API Token Page
-#[derive(Copy, Clone)]
-pub struct ApiTokenInfo(RwSignal<Option<WithId<UserApiToken>>>);
 
 /// The Edit API Token Page
 #[component]
@@ -126,7 +112,18 @@ pub fn EditApiToken() -> impl IntoView {
 	} = get_api_token_query().use_query(move || token_id.get());
 
 	let token_info_signal = create_rw_signal::<Option<WithId<UserApiToken>>>(None);
+	let token_permissions = create_rw_signal::<Option<BTreeMap<Uuid, WorkspacePermission>>>(None);
+
 	provide_context(ApiTokenInfo(token_info_signal));
+	provide_context(ApiTokenPermissions(token_permissions));
+
+	create_effect(move |_| match token_info.get() {
+		Some(Ok(data)) => {
+			token_info_signal.set(Some(data.token.clone()));
+			token_permissions.set(Some(data.token.permissions.clone()));
+		}
+		_ => {}
+	});
 
 	let on_submit = move |ev: MouseEvent| {
 		ev.prevent_default();
@@ -164,27 +161,18 @@ pub fn EditApiToken() -> impl IntoView {
 			<form class="w-full h-full">
 				<Transition>
 					{move || match token_info.get() {
-						Some(token_info) => {
-							match token_info {
-								Ok(data) => {
-									token_info_signal.set(Some(data.token.clone()));
-									view! {
-										<TokenInfo />
-										<EditApiTokenPermission />
-									}
-										.into_view()
-								}
-								Err(err) => {
-									view! {
-										<div>
-											{format!("Cannot Load Resource {:?}", err.to_string())}
-										</div>
-									}
-										.into_view()
-								}
-							}
-						}
-						None => view! {}.into_view(),
+						Some(Ok(token_info)) => view! {
+							<TokenInfo />
+							<EditApiTokenPermission />
+						}.into_view(),
+						Some(Err(err)) => view! {
+							<div>
+								{format!("Cannot Load Resource {:?}", err.to_string())}
+							</div>
+						}.into_view(),
+						None => view! {
+							"loading..."
+						}.into_view(),
 					}}
 				</Transition>
 

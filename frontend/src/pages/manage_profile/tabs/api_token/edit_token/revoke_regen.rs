@@ -1,7 +1,5 @@
-use crate::{
-	pages::{TokenModal, TokenParams},
-	prelude::*,
-};
+use super::super::components::TokenModal;
+use crate::{pages::TokenParams, prelude::*};
 
 #[component]
 pub fn RevokeApiToken() -> impl IntoView {

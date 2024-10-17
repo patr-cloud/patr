@@ -74,7 +74,7 @@ fn RunnerWorkspaceRoutes() -> impl IntoView {
 #[component]
 pub fn App() -> impl IntoView {
 	let (state, _) = AuthState::load();
-	let app_type = AppType::SelfHosted;
+	let app_type = AppType::Managed;
 
 	// TODO: When redirecting to login, the URL should include the path that the
 	// user was trying to access. This way, after login, the user is redirected
