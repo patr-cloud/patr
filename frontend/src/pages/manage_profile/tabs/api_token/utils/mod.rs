@@ -24,10 +24,10 @@ pub struct CreateApiTokenInfo {
 }
 
 impl CreateApiTokenInfo {
-	pub const fn new() -> Self {
+	pub fn new() -> Self {
 		Self {
 			name: None,
-			token_nbf: None,
+			token_nbf: Some(OffsetDateTime::now_utc()),
 			token_exp: None,
 		}
 	}
