@@ -16,7 +16,13 @@ pub fn list_workspaces_query(
 	create_query(
 		move |_| {
 			let access_token = access_token.clone();
-			async move { list_user_workspace(access_token.clone()).await }
+			async move {
+				if let Some(access_token) = access_token {
+					list_user_workspace(access_token).await
+				} else {
+					Err(ServerFnError::WrappedServerError(ErrorType::Unauthorized))
+				}
+			}
 		},
 		QueryOptions {
 			..Default::default()

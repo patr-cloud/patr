@@ -1,9 +1,8 @@
-use std::str::FromStr;
-
 use strum::Display;
 
 use crate::imports::*;
 
+/// The AutoSizing of the Grid Item
 #[derive(Display, Clone, Copy)]
 pub enum AutoSizing {
 	#[strum(to_string = "auto-fill")]
@@ -28,8 +27,9 @@ pub fn ContainerGrid(
 	/// Minimum Width of the Grid Item, Defaults to 1fr.
 	#[prop(into, optional, default = "1fr".into())]
 	max_width: MaybeSignal<String>,
-	// The Fit of the Grid Item, Defaults to Fill.
-	#[prop(into, optional, default = AutoSizing::Fill)] auto_sizing: AutoSizing,
+	/// The Fit of the Grid Item, Defaults to Fill.
+	#[prop(into, optional, default = AutoSizing::Fill)]
+	auto_sizing: AutoSizing,
 ) -> impl IntoView {
 	let class = move || format!("grid gap-lg justify-start content-start {}", class.get());
 

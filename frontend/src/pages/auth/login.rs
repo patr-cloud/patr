@@ -1,41 +1,86 @@
 use ev::SubmitEvent;
-use models::api::auth::*;
 
 use crate::prelude::*;
+
+/// The API endpoint for logging in to the application. This endpoint is used to
+/// authenticate the user and get the JWT tokens for the user.
+#[server(LoginApi, endpoint = "auth/sign-in")]
+pub async fn login(
+	user_id: String,
+	password: String,
+	mfa_otp: Option<String>,
+) -> Result<(), ServerFnError<ErrorType>> {
+	use std::str::FromStr;
+
+	use models::api::{auth::*, user::*};
+
+	let (_, set_state) = AuthState::load();
+
+	let LoginResponse {
+		access_token,
+		refresh_token,
+	} = make_api_call::<LoginRequest>(
+		ApiRequest::builder()
+			.path(LoginPath)
+			.query(())
+			.headers(LoginRequestHeaders {
+				user_agent: UserAgent::from_static("hyper/0.12.2"),
+			})
+			.body(LoginRequest {
+				user_id,
+				password,
+				mfa_otp,
+			})
+			.build(),
+	)
+	.await?
+	.body;
+
+	let workspaces = make_api_call::<ListUserWorkspacesRequest>(
+		ApiRequest::builder()
+			.path(ListUserWorkspacesPath)
+			.query(())
+			.headers(ListUserWorkspacesRequestHeaders {
+				authorization: BearerToken::from_str(&access_token)
+					.map_err(|err| ServerFnError::<ErrorType>::ServerError(err.to_string()))?,
+				user_agent: UserAgent::from_static("hyper/0.12.2"),
+			})
+			.body(ListUserWorkspacesRequest)
+			.build(),
+	)
+	.await?
+	.body
+	.workspaces;
+
+	let last_used_workspace_id = workspaces.into_iter().next().map(|workspace| workspace.id);
+
+	set_state.set(Some(AuthState::LoggedIn {
+		access_token,
+		refresh_token,
+		last_used_workspace_id,
+	}));
+
+	Ok(())
+}
 
 /// The login form component. This is the form that the user uses to log in to
 /// the application.
 #[component]
-pub fn LoginForm() -> impl IntoView {
-	let (_, set_auth_state) = AuthState::load();
+pub fn LoginForm(
+	/// The query params for the page
+	query: LoginQuery,
+) -> impl IntoView {
+	let LoginQuery { next, user_id } = query;
+
 	let app_type = expect_context::<AppType>();
 
-	let username = create_rw_signal("".to_owned());
+	let username = create_rw_signal(user_id.unwrap_or_default());
 	let password = create_rw_signal("".to_owned());
 
 	let username_error = create_rw_signal("".to_owned());
 	let password_error = create_rw_signal("".to_owned());
 
 	let loading = create_rw_signal(false);
-
-	let handle_errors = move |error| match error {
-		ServerFnError::WrappedServerError(ErrorType::UserNotFound) => {
-			username_error.set("User Not Found".to_owned());
-			password_error.set("".to_owned());
-		}
-		ServerFnError::WrappedServerError(ErrorType::InvalidPassword) => {
-			username_error.set("".to_owned());
-			password_error.set("Wrong Password".to_owned());
-		}
-		ServerFnError::Deserialization(msg) => {
-			username_error.set("".to_owned());
-			password_error.set(msg);
-		}
-		e => {
-			username_error.set("".to_owned());
-			password_error.set(e.to_string());
-		}
-	};
 
 	let on_submit_login = move |ev: SubmitEvent| {
 		ev.prevent_default();
@@ -44,43 +89,47 @@ pub fn LoginForm() -> impl IntoView {
 		password_error.set("".to_string());
 
 		if username.get().is_empty() {
-			username_error.set("Please Provide a User Name".to_owned());
+			username_error.set("Username / email cannot be empty".to_owned());
+			loading.set(false);
 			return;
 		}
 
 		if password.get().is_empty() {
-			password_error.set("Please Provide a Password".to_owned());
+			password_error.set("Password cannot be empty".to_owned());
+			loading.set(false);
 			return;
 		}
 
-		spawn_local(async move {
-			let response = login(username.get_untracked(), password.get_untracked(), None).await;
+		let next = next.clone();
 
-			match response {
-				Ok(LoginResponse {
-					access_token,
-					refresh_token,
-				}) => {
-					set_auth_state.set(Some(AuthState::LoggedIn {
-						access_token,
-						refresh_token,
-						last_used_workspace_id: match app_type {
-							AppType::SelfHosted => Some(Uuid::nil()),
-							AppType::Managed => None,
-						},
-					}));
+		spawn_local(async move {
+			match login(username.get(), password.get(), None).await {
+				Ok(()) => {
 					use_navigate()(
-						&AppRoutes::LoggedInRoute(LoggedInRoute::Home).to_string(),
+						&next.unwrap_or_else(|| DeploymentsDashboardRoute {}.to_string()),
 						NavigateOptions::default(),
 					);
 				}
+				Err(ServerFnError::WrappedServerError(ErrorType::UserNotFound)) => {
+					username_error.set("User Not Found".to_owned());
+					password_error.set("".to_owned());
+				}
+				Err(ServerFnError::WrappedServerError(ErrorType::InvalidPassword)) => {
+					username_error.set("".to_owned());
+					password_error.set("Wrong Password".to_owned());
+				}
+				Err(ServerFnError::Deserialization(msg)) => {
+					username_error.set("".to_owned());
+					password_error.set(msg);
+				}
 				Err(err) => {
-					logging::log!("{:#?}", err);
-					handle_errors(err);
+					username_error.set("".to_owned());
+					password_error.set(err.to_string());
 				}
 			}
+
 			loading.set(false);
-		})
+		});
 	};
 
 	view! {
@@ -97,12 +146,12 @@ pub fn LoginForm() -> impl IntoView {
 
 			<div class="flex flex-col items-start justify-start w-full gap-md">
 				<Input
+					id="user_id"
 					name="user_id"
 					class="w-full"
-					id="user_id"
-					r#type={InputType::Text}
-					placeholder="Username/Email"
-					disabled={Signal::derive(move || loading.get())}
+					r#type={InputType::Email}
+					placeholder="Username / Email"
+					disabled={loading}
 					start_icon={Some(
 						IconProps::builder().icon(IconType::User).size(Size::ExtraSmall).build(),
 					)}
@@ -112,11 +161,14 @@ pub fn LoginForm() -> impl IntoView {
 					value={username}
 				/>
 
-				<Show when={move || !username_error.get().is_empty()}>
-					<Alert r#type={AlertType::Error} class="mt-xs">
-						{move || username_error.get()}
-					</Alert>
-				</Show>
+				{move || username_error
+					.get()
+					.some_if_not_empty()
+					.map(|message| view! {
+						<Alert r#type={AlertType::Error} class="mt-xs">
+							{&message}
+						</Alert>
+					})}
 
 				<Input
 					name="password"
@@ -127,7 +179,7 @@ pub fn LoginForm() -> impl IntoView {
 					start_icon={Some(
 						IconProps::builder().icon(IconType::Shield).size(Size::ExtraSmall).build(),
 					)}
-					disabled={Signal::derive(move || loading.get())}
+					disabled={loading}
 					on_input={Box::new(move |ev| {
 						password.set(event_target_value(&ev));
 					})}
@@ -135,11 +187,15 @@ pub fn LoginForm() -> impl IntoView {
 				/>
 
 				<input name="mfa_otp" type="hidden" />
-				<Show when={move || !password_error.get().is_empty()}>
-					<Alert r#type={AlertType::Error} class="mt-xs">
-						{move || password_error.get()}
-					</Alert>
-				</Show>
+
+				{move || password_error
+					.get()
+					.some_if_not_empty()
+					.map(|message| view! {
+						<Alert r#type={AlertType::Error} class="mt-xs">
+							{&message}
+						</Alert>
+					})}
 			</div>
 
 			{app_type
@@ -152,33 +208,24 @@ pub fn LoginForm() -> impl IntoView {
 							</Link>
 						</div>
 					}
-						.into_view()
 				})}
 
-			<Show
-				when={move || !loading.get()}
-				fallback={move || {
-					view! {
-						<Link
-							r#type={Variant::Button}
-							class="ml-auto"
-							style_variant={LinkStyleVariant::Contained}
-							disabled=true
+			{move || if loading.get() {
+				view! {
+					<Spinner class="ml-auto" />
+				}
+			} else {
+				view! {
+					<Link
+						should_submit=true
+						r#type={Variant::Button}
+						class="btn ml-auto mt-md"
+						style_variant={LinkStyleVariant::Contained}
 						>
-							"LOADING"
-						</Link>
-					}
-				}}
-			>
-				<Link
-					should_submit=true
-					r#type={Variant::Button}
-					class="btn ml-auto mt-md"
-					style_variant={LinkStyleVariant::Contained}
-				>
-					"LOGIN"
-				</Link>
-			</Show>
+						"LOGIN"
+					</Link>
+				}
+			}}
 		</form>
 	}
 }

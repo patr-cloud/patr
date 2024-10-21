@@ -9,7 +9,7 @@ macros::declare_app_route! {
 		pub next: Option<String>,
 		/// The userId to prefill the sign-up form with
 		#[serde(skip_serializing_if = "Option::is_none")]
-		pub user_id: Option<String>,
+		pub username: Option<String>,
 		/// The email to prefill the sign-up form with
 		#[serde(skip_serializing_if = "Option::is_none")]
 		pub email: Option<String>,

@@ -5,12 +5,12 @@ use crate::prelude::*;
 
 #[server(ListUserWorkspaceFn, endpoint = "user/workspace/list", input = Json)]
 pub async fn list_user_workspace(
-	access_token: Option<String>,
+	access_token: String,
 ) -> Result<ListUserWorkspacesResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
 	use models::prelude::*;
-	let access_token = BearerToken::from_str(access_token.unwrap().as_str())
+	let access_token = BearerToken::from_str(access_token.as_str())
 		.map_err(|_| ServerFnError::WrappedServerError(ErrorType::MalformedAccessToken))?;
 
 	let api_response = make_api_call::<ListUserWorkspacesRequest>(

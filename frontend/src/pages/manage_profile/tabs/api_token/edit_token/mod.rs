@@ -70,7 +70,13 @@ fn EditApiTokenPermission() -> impl IntoView {
 
 	let workspace_list = create_resource(
 		move || access_token.get().get_access_token(),
-		move |value| async move { list_user_workspace(value).await },
+		move |value| async move {
+			if let Some(value) = value {
+				list_user_workspace(value).await
+			} else {
+				Err(ServerFnError::WrappedServerError(ErrorType::Unauthorized))
+			}
+		},
 	);
 
 	move || match api_token.get() {
@@ -95,8 +101,7 @@ fn EditApiTokenPermission() -> impl IntoView {
 			</div>
 		}
 		.into_view(),
-		None => view! { <p>"Loading..."</p> }
-		.into_view(),
+		None => view! { <p>"Loading..."</p> }.into_view(),
 	}
 }
 

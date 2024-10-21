@@ -79,7 +79,13 @@ pub fn ManageWorkspaceSettingsTab() -> impl IntoView {
 
 	let workspace_list = create_resource(
 		move || state.get().get_access_token(),
-		move |value| async move { list_user_workspace(value).await },
+		move |value| async move {
+			if let Some(value) = value {
+				list_user_workspace(value).await
+			} else {
+				Err(ServerFnError::WrappedServerError(ErrorType::Unauthorized))
+			}
+		},
 	);
 
 	let current_workspace_id =

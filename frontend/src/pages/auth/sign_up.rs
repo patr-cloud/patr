@@ -1,92 +1,137 @@
-use std::rc::Rc;
-
 use ev::SubmitEvent;
-use models::api::auth::*;
 
 use crate::prelude::*;
 
+/// Server Function to sign up a new user
+#[server(CreateAccount, endpoint = "auth/sign-up")]
+pub async fn sign_up(
+	first_name: String,
+	last_name: String,
+	email: String,
+	username: String,
+	password: String,
+) -> Result<(), ServerFnError<ErrorType>> {
+	use models::api::auth::*;
+
+	make_api_call::<CreateAccountRequest>(
+		ApiRequest::builder()
+			.path(CreateAccountPath)
+			.query(())
+			.headers(CreateAccountRequestHeaders {
+				user_agent: UserAgent::from_static("hyper/0.12.2"),
+			})
+			.body(CreateAccountRequest {
+				username,
+				password,
+				first_name,
+				last_name,
+				recovery_method: RecoveryMethod::Email {
+					recovery_email: email,
+				},
+			})
+			.build(),
+	)
+	.await?;
+
+	leptos_axum::redirect(
+		&use_query::<SignUpQuery>()
+			.get_untracked()
+			.unwrap_or_default()
+			.next
+			.unwrap_or(DeploymentsDashboardRoute {}.to_string()),
+	);
+
+	Ok(())
+}
+
 #[component]
-pub fn SignUpForm() -> impl IntoView {
+pub fn SignUpForm(
+	/// The query params for the page
+	query: SignUpQuery,
+) -> impl IntoView {
+	let SignUpQuery {
+		next,
+		first_name,
+		last_name,
+		username,
+		email,
+	} = query;
+
 	let app_type = expect_context::<AppType>();
-	let show_coupon = create_rw_signal(false);
-	let show_coupon_button = create_rw_signal(true);
 
-	let loading = create_rw_signal(false);
-
-	// let response = sign_up_action.value();
-
-	let first_name = create_rw_signal("".to_owned());
-	let last_name = create_rw_signal("".to_owned());
-	let email_input = create_rw_signal("".to_owned());
-	let username_input = create_rw_signal("".to_owned());
-	let password_input = create_rw_signal("".to_owned());
-	let password_confirm_input = create_rw_signal("".to_owned());
-	let passwords_match =
-		Signal::derive(move || password_input.get() != password_confirm_input.get());
-
+	let first_name = create_rw_signal(first_name.unwrap_or_else(|| "".to_owned()));
 	let name_error = create_rw_signal("".to_owned());
-	let username_error = create_rw_signal("".to_owned());
+
+	let last_name = create_rw_signal(last_name.unwrap_or_else(|| "".to_owned()));
+
+	let email = create_rw_signal(email.unwrap_or_else(|| "".to_owned()));
 	let email_error = create_rw_signal("".to_owned());
-	let password_confirm_error = create_rw_signal("".to_owned());
+
+	let username = create_rw_signal(username.unwrap_or_else(|| "".to_owned()));
+	let username_error = create_rw_signal("".to_owned());
+
+	let password = create_rw_signal("".to_owned());
 	let password_error = create_rw_signal("".to_owned());
 
-	let handle_errors = move |error| match error {
-		ServerFnError::WrappedServerError(ErrorType::UsernameUnavailable) => {
-			username_error.set("Username Not Available".to_owned());
-		}
-		ServerFnError::WrappedServerError(ErrorType::EmailUnavailable) => {
-			email_error.set("Email Not Available".to_owned());
-		}
-		e => {
-			password_error.set(e.to_string());
-		}
-	};
+	let password_confirm = create_rw_signal("".to_owned());
+	let password_confirm_error = create_rw_signal("".to_owned());
+	let passwords_match = Signal::derive(move || password.get() != password_confirm.get());
+
+	let loading = create_rw_signal(false);
 
 	let on_submit_sign_up = move |ev: SubmitEvent| {
 		ev.prevent_default();
 		loading.set(true);
 
 		name_error.set("".to_string());
-		password_error.set("".to_string());
+		email_error.set("".to_string());
 		username_error.set("".to_string());
+		password_error.set("".to_string());
 		password_confirm_error.set("".to_string());
 
 		if first_name.get().is_empty() || last_name.get().is_empty() {
-			name_error.set("Please Give us a Name".to_string());
+			name_error.set("Name cannot be empty".to_string());
 			loading.set(false);
 			return;
 		}
 
-		if username_input.get().is_empty() {
-			username_error.set("Give Username".to_string());
+		if email.get().is_empty() {
+			email_error.set("Email cannot be empty".to_string());
 			loading.set(false);
 			return;
 		}
 
-		if password_input.get().is_empty() {
-			password_error.set("Give Password".to_string());
+		if username.get().is_empty() {
+			username_error.set("Username cannot be empty".to_string());
 			loading.set(false);
 			return;
 		}
 
-		if password_confirm_input.get().is_empty() {
-			password_confirm_error.set("Please Re-Enter Password".to_string());
+		if password.get().is_empty() {
+			password_error.set("Password cannot be empty".to_string());
 			loading.set(false);
 			return;
 		}
+
+		if password_confirm.get().is_empty() {
+			password_confirm_error.set("Re-enter your password".to_string());
+			loading.set(false);
+			return;
+		}
+
+		let next = next.clone();
 
 		spawn_local(async move {
-			let response = sign_up(
-				username_input.get_untracked(),
-				password_input.get_untracked(),
+			match sign_up(
+				username.get_untracked(),
+				password.get_untracked(),
 				first_name.get_untracked(),
 				last_name.get_untracked(),
-				email_input.get_untracked(),
+				email.get_untracked(),
 			)
-			.await;
-
-			match response {
-				Ok(CreateAccountResponse {}) => match app_type {
+			.await
+			{
+				Ok(()) => match app_type {
 					AppType::SelfHosted => {
 						use_navigate()(
 							&AppRoutes::LoggedOutRoute(LoggedOutRoute::Login).to_string(),
@@ -100,8 +145,14 @@ pub fn SignUpForm() -> impl IntoView {
 						);
 					}
 				},
-				Err(err) => {
-					handle_errors(err);
+				Err(ServerFnError::WrappedServerError(ErrorType::UsernameUnavailable)) => {
+					username_error.set("Username not available".to_owned());
+				}
+				Err(ServerFnError::WrappedServerError(ErrorType::EmailUnavailable)) => {
+					email_error.set("Email not available".to_owned());
+				}
+				Err(e) => {
+					password_error.set(e.to_string());
 				}
 			}
 
@@ -174,8 +225,8 @@ pub fn SignUpForm() -> impl IntoView {
 					name="username"
 					placeholder="User Name"
 					start_icon={Some(IconProps::builder().icon(IconType::User).build())}
-					value={username_input}
-					on_input={Box::new(move |ev| { username_input.set(event_target_value(&ev)) })}
+					value={username}
+					on_input={Box::new(move |ev| { username.set(event_target_value(&ev)) })}
 				/>
 
 				<Show when={move || !username_error.get().is_empty()}>
@@ -191,8 +242,8 @@ pub fn SignUpForm() -> impl IntoView {
 					id="email"
 					placeholder="proton@gmail.com"
 					start_icon={Some(IconProps::builder().icon(IconType::Mail).build())}
-					value={email_input}
-					on_input={Box::new(move |ev| { email_input.set(event_target_value(&ev)) })}
+					value={email}
+					on_input={Box::new(move |ev| { email.set(event_target_value(&ev)) })}
 				/>
 
 				<Show when={move || !email_error.get().is_empty()}>
@@ -200,50 +251,6 @@ pub fn SignUpForm() -> impl IntoView {
 						{move || email_error.get()}
 					</Alert>
 				</Show>
-
-				<div class="w-full mt-xxs">
-					{move || {
-						show_coupon_button
-							.get()
-							.then(|| {
-								view! {
-									<Link
-										on_click={Rc::new(move |_| {
-											show_coupon.update(|val| *val = !*val)
-										})}
-
-										class="ml-auto"
-									>
-
-										{if show_coupon.get() {
-											"Cancel"
-										} else {
-											"Have a Coupon Code?"
-										}}
-
-									</Link>
-								}
-									.into_view()
-							})
-					}}
-					{move || {
-						show_coupon
-							.get()
-							.then(|| {
-								view! {
-									<Input
-										id="class"
-										placeholder="Coupon Code"
-										class="w-full mt-xs"
-										start_icon={Some(
-											IconProps::builder().icon(IconType::Tag).build(),
-										)}
-									/>
-								}
-							})
-					}}
-
-				</div>
 
 				<Input
 					r#type={InputType::Password}
@@ -254,9 +261,9 @@ pub fn SignUpForm() -> impl IntoView {
 					start_icon={Some(
 						IconProps::builder().icon(IconType::Unlock).size(Size::Small).build(),
 					)}
-					value={password_input}
+					value={password}
 					on_input={Box::new(move |ev| {
-						password_input.set(event_target_value(&ev));
+						password.set(event_target_value(&ev));
 					})}
 				/>
 				<Show when={move || !password_error.get().is_empty()}>
@@ -270,13 +277,13 @@ pub fn SignUpForm() -> impl IntoView {
 					id="confirmPassword"
 					placeholder="Confirm Password"
 					class="w-full mt-lg"
-					value={password_confirm_input}
+					value={password_confirm}
 					start_icon={Some(
 						IconProps::builder().icon(IconType::Lock).size(Size::Small).build(),
 					)}
 
 					on_input={Box::new(move |ev| {
-						password_confirm_input.set(event_target_value(&ev));
+						password_confirm.set(event_target_value(&ev));
 					})}
 				/>
 
