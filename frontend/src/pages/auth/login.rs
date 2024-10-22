@@ -14,7 +14,7 @@ pub async fn login(
 
 	use models::api::{auth::*, user::*};
 
-	let (_, set_state) = AuthState::load();
+	// let (_, set_state) = AuthState::load();
 
 	let LoginResponse {
 		access_token,
@@ -54,11 +54,31 @@ pub async fn login(
 
 	let last_used_workspace_id = workspaces.into_iter().next().map(|workspace| workspace.id);
 
-	set_state.set(Some(AuthState::LoggedIn {
-		access_token,
-		refresh_token,
-		last_used_workspace_id,
-	}));
+	// TODO: uncomment this when Leptos-use fixes this
+	// set_state.set(Some(AuthState::LoggedIn {
+	// 	access_token,
+	// 	refresh_token,
+	// 	last_used_workspace_id,
+	// }));
+
+	let options = expect_context::<leptos_axum::ResponseOptions>();
+	let access_cookie = cookie::Cookie::build((
+		constants::AUTH_STATE,
+		serde_json::to_string(&AuthState::LoggedIn {
+			access_token,
+			refresh_token,
+			last_used_workspace_id,
+		})
+		.unwrap(),
+	))
+	.path("/")
+	.http_only(true)
+	.build();
+	let access_token_header = http::HeaderValue::from_str(access_cookie.to_string().as_str());
+
+	if let Ok(access_token_header) = access_token_header {
+		options.append_header(http::header::SET_COOKIE, access_token_header);
+	}
 
 	Ok(())
 }
@@ -103,7 +123,7 @@ pub fn LoginForm(
 		let next = next.clone();
 
 		spawn_local(async move {
-			match login(username.get(), password.get(), None).await {
+			match login(username.get_untracked(), password.get_untracked(), None).await {
 				Ok(()) => {
 					use_navigate()(
 						&next.unwrap_or_else(|| DeploymentsDashboardRoute {}.to_string()),
@@ -149,7 +169,7 @@ pub fn LoginForm(
 					id="user_id"
 					name="user_id"
 					class="w-full"
-					r#type={InputType::Email}
+					r#type={InputType::Text}
 					placeholder="Username / Email"
 					disabled={loading}
 					start_icon={Some(

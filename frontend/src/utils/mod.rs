@@ -46,26 +46,6 @@ pub use self::{
 	variant::*,
 };
 
-/// A trait to extend the [`String`] type with some useful methods that are not
-/// available in the standard library. This is useful for adding utility methods
-/// to the [`String`] type without polluting the global namespace.
-pub trait StringExt {
-	/// Wraps the [`String`] into an option depending on whether it's empty
-	/// Returns [`None`] if string is empty otherwise returns the string wrapped
-	/// in a [`Some()`]
-	fn some_if_not_empty(self) -> Option<String>;
-}
-
-impl StringExt for String {
-	fn some_if_not_empty(self) -> Option<String> {
-		if self.is_empty() {
-			None
-		} else {
-			Some(self)
-		}
-	}
-}
-
 /// A module containing constants that are used throughout the application.
 pub mod constants {
 	use semver::Version;

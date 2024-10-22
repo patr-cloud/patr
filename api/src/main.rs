@@ -147,6 +147,7 @@ async fn main() {
 			.with_filter(
 				tracing_subscriber::filter::Targets::new()
 					.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
+					.with_target("frontend", LevelFilter::TRACE)
 					.with_target("models", LevelFilter::TRACE),
 			),
 		)
