@@ -1,4 +1,5 @@
 use ev::SubmitEvent;
+use models::api::auth::LoginResponse;
 
 use crate::prelude::*;
 
@@ -9,12 +10,10 @@ pub async fn login(
 	user_id: String,
 	password: String,
 	mfa_otp: Option<String>,
-) -> Result<(), ServerFnError<ErrorType>> {
+) -> Result<LoginResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 
 	use models::api::{auth::*, user::*};
-
-	// let (_, set_state) = AuthState::load();
 
 	let LoginResponse {
 		access_token,
@@ -65,8 +64,8 @@ pub async fn login(
 	let access_cookie = cookie::Cookie::build((
 		constants::AUTH_STATE,
 		serde_json::to_string(&AuthState::LoggedIn {
-			access_token,
-			refresh_token,
+			access_token: access_token.clone(),
+			refresh_token: refresh_token.clone(),
 			last_used_workspace_id,
 		})
 		.unwrap(),
@@ -80,7 +79,10 @@ pub async fn login(
 		options.append_header(http::header::SET_COOKIE, access_token_header);
 	}
 
-	Ok(())
+	Ok(LoginResponse {
+		access_token: access_token.clone(),
+		refresh_token: refresh_token.clone(),
+	})
 }
 
 /// The login form component. This is the form that the user uses to log in to
@@ -92,6 +94,7 @@ pub fn LoginForm(
 ) -> impl IntoView {
 	let LoginQuery { next, user_id } = query;
 
+	let (_, set_state) = AuthState::load();
 	let app_type = expect_context::<AppType>();
 
 	let username = create_rw_signal(user_id.unwrap_or_default());
@@ -124,7 +127,16 @@ pub fn LoginForm(
 
 		spawn_local(async move {
 			match login(username.get_untracked(), password.get_untracked(), None).await {
-				Ok(()) => {
+				Ok(LoginResponse {
+					access_token,
+					refresh_token,
+				}) => {
+					set_state.set(Some(AuthState::LoggedIn {
+						access_token,
+						refresh_token,
+						last_used_workspace_id: None,
+					}));
+
 					use_navigate()(
 						&next.unwrap_or_else(|| DeploymentsDashboardRoute {}.to_string()),
 						NavigateOptions::default(),
