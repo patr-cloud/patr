@@ -1,4 +1,5 @@
 use ev::SubmitEvent;
+use models::api::auth::LoginResponse;
 
 use crate::prelude::*;
 
@@ -13,8 +14,6 @@ pub async fn login(
 	use std::str::FromStr;
 
 	use models::api::{auth::*, user::*};
-
-	// let (_, set_state) = AuthState::load();
 
 	let LoginResponse {
 		access_token,
