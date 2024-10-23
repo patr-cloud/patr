@@ -6,6 +6,7 @@
 @use "./spinner" as *;
 @use "./status-badge" as *;
 // @use "./modal" as *;
+@use "./toast";
 @use "./tooltip";
 @use "./tabs";
 @use "./number_picker";
