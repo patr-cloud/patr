@@ -53,6 +53,8 @@ pub fn Toast(
 	};
 
 	let expiry = f64::from(toast_data.expiry.unwrap_or(0));
+	let animation_duration = 150;
+	let show_toast = create_rw_signal(true);
 
 	let UseTimeoutFnReturn { start, .. } = use_timeout_fn(
 		move |_: ()| {
@@ -68,23 +70,32 @@ pub fn Toast(
 		start(());
 	});
 
-	let class = format!("toast bg-{}", toast_data.level.as_css_name(),);
+	let class = move || {
+		format!(
+			"toast bg-{} {}",
+			toast_data.level.as_css_name(),
+			if show_toast.get() { "show" } else { "leave" }
+		)
+	};
 
 	let UseTimeoutFnReturn { start, .. } = use_timeout_fn(
 		move |_: ()| {
 			expect_toaster().remove(toast_data.id);
 		},
-		175 as f64,
+		animation_duration as f64,
 	);
 
 	create_effect(move |_| {
 		if toast_data.clear.get() {
+			show_toast.set(false);
 			start(());
+			// expect_toaster().remove(toast_data.id);
 		}
 	});
 
 	view! {
 		<div
+			style=format!("--anim-duration: {}ms", animation_duration)
 			on:click=handle_click
 			class=class
 		>
