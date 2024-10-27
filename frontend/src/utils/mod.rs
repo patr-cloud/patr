@@ -58,4 +58,8 @@ pub mod constants {
 	pub const RESOURCES_PER_PAGE: usize = 2;
 	/// The path to the feather icons sprite
 	pub const FEATHER_IMG: &str = "/icons/sprite/feather-sprite.svg";
+	/// The default debounce time for input fields
+	pub const DEFAULT_DEBOUNCE_TIME: f64 = 750.0;
+	/// The max wait time for the input field debounce
+	pub const MAX_DEBOUNCE_TIME: f64 = 1500.0;
 }

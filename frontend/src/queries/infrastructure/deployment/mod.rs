@@ -240,7 +240,6 @@ pub fn update_deployment_query() -> Action<
 			let access_token = access_token.clone();
 			let deployment_id = deployment_id.clone();
 
-			let deployments_list_query = list_deployments_query();
 			let deployment_query = get_deployment_query();
 
 			async move {

@@ -51,6 +51,7 @@ axum = { workspace = true, features = ["macros"] }
 codee = { workspace = true, features = ["json_serde"] }
 leptos = { workspace = true, features = ["tracing", "hydrate"] }
 leptos-use = { workspace = true, features = [
+    "signal_debounced",
     "use_document",
     "use_event_listener",
     "use_window",
@@ -67,6 +68,7 @@ codee = { workspace = true, features = ["json_serde"] }
 leptos = { workspace = true, features = ["tracing", "ssr"] }
 leptos-use = { workspace = true, features = [
     "axum",
+    "signal_debounced",
     "ssr",
     "use_document",
     "use_event_listener",

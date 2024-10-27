@@ -1,4 +1,6 @@
 use ev::SubmitEvent;
+use leptos_use::{signal_debounced_with_options, utils::DebounceOptions};
+use models::api::auth::*;
 
 use crate::prelude::*;
 
@@ -11,8 +13,6 @@ pub async fn sign_up(
 	username: String,
 	password: String,
 ) -> Result<(), ServerFnError<ErrorType>> {
-	use models::api::auth::*;
-
 	make_api_call::<CreateAccountRequest>(
 		ApiRequest::builder()
 			.path(CreateAccountPath)
@@ -60,18 +60,103 @@ pub fn SignUpForm(
 	let app_type = expect_context::<AppType>();
 
 	let first_name = create_rw_signal(first_name.unwrap_or_else(|| "".to_owned()));
-	let name_error = create_rw_signal("".to_owned());
+	let name_error = Signal::derive(move || {
+		first_name
+			.get()
+			.is_empty()
+			.then_some("Name cannot be empty".to_owned())
+			.unwrap_or_default()
+	});
 
 	let last_name = create_rw_signal(last_name.unwrap_or_else(|| "".to_owned()));
 
 	let email = create_rw_signal(email.unwrap_or_else(|| "".to_owned()));
 	let email_error = create_rw_signal("".to_owned());
+	let email_checking = create_resource(
+		move || {
+			signal_debounced_with_options(
+				email,
+				constants::DEFAULT_DEBOUNCE_TIME,
+				DebounceOptions::default().max_wait(Some(constants::MAX_DEBOUNCE_TIME)),
+			)
+			.get()
+		},
+		move |email| async move {
+			if email.is_empty() {
+				email_error.set("Email cannot be empty".to_owned());
+				return;
+			}
+
+			let Ok(IsEmailValidResponse { available }) = make_api_call::<IsEmailValidRequest>(
+				ApiRequest::builder()
+					.path(IsEmailValidPath)
+					.query(IsEmailValidQuery { email })
+					.headers(IsEmailValidRequestHeaders {
+						user_agent: UserAgent::from_static("hyper/0.12.2"),
+					})
+					.body(IsEmailValidRequest)
+					.build(),
+			)
+			.await
+			.map(|response| response.body) else {
+				email_error.set("".to_owned());
+				return;
+			};
+
+			if !available {
+				email_error.set("User Not Found".to_owned());
+			} else {
+				email_error.set("".to_owned());
+			}
+		},
+	);
 
 	let username = create_rw_signal(username.unwrap_or_else(|| "".to_owned()));
 	let username_error = create_rw_signal("".to_owned());
+	let username_checking = create_resource(
+		move || {
+			signal_debounced_with_options(
+				username,
+				constants::DEFAULT_DEBOUNCE_TIME,
+				DebounceOptions::default().max_wait(Some(constants::MAX_DEBOUNCE_TIME)),
+			)
+			.get()
+		},
+		move |username| async move {
+			if username.is_empty() {
+				username_error.set("Username cannot be empty".to_owned());
+				return;
+			}
+
+			let Ok(IsUsernameValidResponse { available }) =
+				make_api_call::<IsUsernameValidRequest>(
+					ApiRequest::builder()
+						.path(IsUsernameValidPath)
+						.query(IsUsernameValidQuery { username })
+						.headers(IsUsernameValidRequestHeaders {
+							user_agent: UserAgent::from_static("hyper/0.12.2"),
+						})
+						.body(IsUsernameValidRequest)
+						.build(),
+				)
+				.await
+				.map(|response| response.body)
+			else {
+				username_error.set("".to_owned());
+				return;
+			};
+
+			if !available {
+				username_error.set("User Not Found".to_owned());
+			} else {
+				username_error.set("".to_owned());
+			}
+		},
+	);
 
 	let password = create_rw_signal("".to_owned());
 	let password_error = create_rw_signal("".to_owned());
+	let password_valid = Signal::derive(move || password.get().len() >= 8);
 
 	let password_confirm = create_rw_signal("".to_owned());
 	let password_confirm_error = create_rw_signal("".to_owned());
@@ -83,14 +168,12 @@ pub fn SignUpForm(
 		ev.prevent_default();
 		loading.set(true);
 
-		name_error.set("".to_string());
 		email_error.set("".to_string());
 		username_error.set("".to_string());
 		password_error.set("".to_string());
 		password_confirm_error.set("".to_string());
 
 		if first_name.get().is_empty() || last_name.get().is_empty() {
-			name_error.set("Name cannot be empty".to_string());
 			loading.set(false);
 			return;
 		}

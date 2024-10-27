@@ -5,7 +5,6 @@ use crate::{pages::CreateWorkspace, prelude::*};
 	CreateWorkspace,
 	"/workspace/create",
 	requires_login = true,
-	query = {}
 }
 
 #[component(transparent)]

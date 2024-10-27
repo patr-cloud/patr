@@ -20,7 +20,6 @@ use crate::{
 	CreateDatabase,
 	"/database/create",
 	requires_login = true,
-	query = {}
 }
 
 ::macros::declare_app_route! {
@@ -31,7 +30,6 @@ use crate::{
 		pub database_id: Uuid,
 	},
 	requires_login = true,
-	query = {}
 }
 
 #[component(transparent)]

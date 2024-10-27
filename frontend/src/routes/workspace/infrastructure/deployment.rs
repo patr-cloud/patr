@@ -85,7 +85,6 @@ pub enum SortableColumns {
 	CreateDeployment,
 	"/deployment/create",
 	requires_login = true,
-	query = { }
 }
 
 ::macros::declare_app_route! {
@@ -96,7 +95,6 @@ pub enum SortableColumns {
 		pub deployment_id: Uuid,
 	},
 	requires_login = true,
-	query = {}
 }
 
 ::macros::declare_app_route! {
@@ -137,7 +135,6 @@ pub enum SortableColumns {
 		pub deployment_id: Uuid,
 	},
 	requires_login = true,
-	query = {}
 }
 
 ::macros::declare_app_route! {
@@ -148,7 +145,6 @@ pub enum SortableColumns {
 		pub deployment_id: Uuid,
 	},
 	requires_login = true,
-	query = {}
 }
 
 ::macros::declare_app_route! {
@@ -159,7 +155,6 @@ pub enum SortableColumns {
 		pub deployment_id: Uuid,
 	},
 	requires_login = true,
-	query = {}
 }
 
 #[component(transparent)]

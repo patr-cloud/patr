@@ -5,7 +5,6 @@ macros::declare_app_route! {
 	ManageProfile,
 	"/user",
 	requires_login = true,
-	query = {}
 }
 
 macros::declare_app_route! {
@@ -13,7 +12,6 @@ macros::declare_app_route! {
 	ApiTokens,
 	"/user/api-tokens",
 	requires_login = true,
-	query = {}
 }
 
 macros::declare_app_route! {
@@ -21,15 +19,14 @@ macros::declare_app_route! {
 	CreateApiToken,
 	"/user/api-tokens/create",
 	requires_login = true,
-	query = {}
 }
 
 macros::declare_app_route! {
 	/// Route for Edit Api Tokens Page
 	EditApiToken,
 	"/user/api-tokens/:token_id" {
-		pub token_id: Uuid
+		/// The ID of the token to edit
+		pub token_id: Uuid,
 	},
 	requires_login = true,
-	query = {}
 }

@@ -23,7 +23,7 @@ use crate::{
 	CreateRunner,
 	"/runner/create",
 	requires_login = true,
-	query = {}
+
 }
 
 ::macros::declare_app_route! {
@@ -34,7 +34,7 @@ use crate::{
 		pub runner_id: Uuid,
 	},
 	requires_login = true,
-	query = {}
+
 }
 
 /// The Routes for the Runner Page
