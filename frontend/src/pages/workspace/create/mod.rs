@@ -12,7 +12,7 @@ pub fn CreateWorkspace() -> impl IntoView {
 					PageTitleItem {
 						title: "Workspace".to_owned(),
 						link: Some("/workspace".to_owned()),
-						icon_position: PageTitleIconPosition::Start,
+						icon_position: PageTitleIconPosition::End,
 						variant: PageTitleVariant::Heading,
 					},
 					PageTitleItem {
@@ -37,7 +37,7 @@ pub fn CreateWorkspace() -> impl IntoView {
 				<input
 					type="hidden"
 					name="access_token"
-					prop:value={state.get_untracked().get_access_token()}
+					prop:value={move || state.get().get_access_token()}
 				/>
 				<div class="flex w-full">
 					<div class="flex-2 pt-sm">
