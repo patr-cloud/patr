@@ -72,87 +72,87 @@ pub fn SignUpForm(
 
 	let email = create_rw_signal(email.unwrap_or_else(|| "".to_owned()));
 	let email_error = create_rw_signal("".to_owned());
-	let email_checking = create_resource(
-		move || {
-			signal_debounced_with_options(
-				email,
-				constants::DEFAULT_DEBOUNCE_TIME,
-				DebounceOptions::default().max_wait(Some(constants::MAX_DEBOUNCE_TIME)),
-			)
-			.get()
-		},
-		move |email| async move {
-			if email.is_empty() {
-				email_error.set("Email cannot be empty".to_owned());
-				return;
-			}
+	// let email_checking = create_resource(
+	// 	move || {
+	// 		signal_debounced_with_options(
+	// 			email,
+	// 			constants::DEFAULT_DEBOUNCE_TIME,
+	// 			DebounceOptions::default().max_wait(Some(constants::MAX_DEBOUNCE_TIME)),
+	// 		)
+	// 		.get()
+	// 	},
+	// 	move |email| async move {
+	// 		if email.is_empty() {
+	// 			email_error.set("Email cannot be empty".to_owned());
+	// 			return;
+	// 		}
 
-			let Ok(IsEmailValidResponse { available }) = make_api_call::<IsEmailValidRequest>(
-				ApiRequest::builder()
-					.path(IsEmailValidPath)
-					.query(IsEmailValidQuery { email })
-					.headers(IsEmailValidRequestHeaders {
-						user_agent: UserAgent::from_static("hyper/0.12.2"),
-					})
-					.body(IsEmailValidRequest)
-					.build(),
-			)
-			.await
-			.map(|response| response.body) else {
-				email_error.set("".to_owned());
-				return;
-			};
+	// 		let Ok(IsEmailValidResponse { available }) =
+	// make_api_call::<IsEmailValidRequest>( 			ApiRequest::builder()
+	// 				.path(IsEmailValidPath)
+	// 				.query(IsEmailValidQuery { email })
+	// 				.headers(IsEmailValidRequestHeaders {
+	// 					user_agent: UserAgent::from_static("hyper/0.12.2"),
+	// 				})
+	// 				.body(IsEmailValidRequest)
+	// 				.build(),
+	// 		)
+	// 		.await
+	// 		.map(|response| response.body) else {
+	// 			email_error.set("".to_owned());
+	// 			return;
+	// 		};
 
-			if !available {
-				email_error.set("User Not Found".to_owned());
-			} else {
-				email_error.set("".to_owned());
-			}
-		},
-	);
+	// 		if !available {
+	// 			email_error.set("User Not Found".to_owned());
+	// 		} else {
+	// 			email_error.set("".to_owned());
+	// 		}
+	// 	},
+	// );
 
 	let username = create_rw_signal(username.unwrap_or_else(|| "".to_owned()));
 	let username_error = create_rw_signal("".to_owned());
-	let username_checking = create_resource(
-		move || {
-			signal_debounced_with_options(
-				username,
-				constants::DEFAULT_DEBOUNCE_TIME,
-				DebounceOptions::default().max_wait(Some(constants::MAX_DEBOUNCE_TIME)),
-			)
-			.get()
-		},
-		move |username| async move {
-			if username.is_empty() {
-				username_error.set("Username cannot be empty".to_owned());
-				return;
-			}
+	// let username_checking = create_resource(
+	// 	move || {
+	// 		signal_debounced_with_options(
+	// 			username,
+	// 			constants::DEFAULT_DEBOUNCE_TIME,
+	// 			DebounceOptions::default().max_wait(Some(constants::MAX_DEBOUNCE_TIME)),
+	// 		)
+	// 		.get()
+	// 	},
+	// 	move |username| async move {
+	// 		if username.is_empty() {
+	// 			username_error.set("Username cannot be empty".to_owned());
+	// 			return;
+	// 		}
 
-			let Ok(IsUsernameValidResponse { available }) =
-				make_api_call::<IsUsernameValidRequest>(
-					ApiRequest::builder()
-						.path(IsUsernameValidPath)
-						.query(IsUsernameValidQuery { username })
-						.headers(IsUsernameValidRequestHeaders {
-							user_agent: UserAgent::from_static("hyper/0.12.2"),
-						})
-						.body(IsUsernameValidRequest)
-						.build(),
-				)
-				.await
-				.map(|response| response.body)
-			else {
-				username_error.set("".to_owned());
-				return;
-			};
+	// 		let Ok(IsUsernameValidResponse { available }) =
+	// 			make_api_call::<IsUsernameValidRequest>(
+	// 				ApiRequest::builder()
+	// 					.path(IsUsernameValidPath)
+	// 					.query(IsUsernameValidQuery { username })
+	// 					.headers(IsUsernameValidRequestHeaders {
+	// 						user_agent: UserAgent::from_static("hyper/0.12.2"),
+	// 					})
+	// 					.body(IsUsernameValidRequest)
+	// 					.build(),
+	// 			)
+	// 			.await
+	// 			.map(|response| response.body)
+	// 		else {
+	// 			username_error.set("".to_owned());
+	// 			return;
+	// 		};
 
-			if !available {
-				username_error.set("User Not Found".to_owned());
-			} else {
-				username_error.set("".to_owned());
-			}
-		},
-	);
+	// 		if !available {
+	// 			username_error.set("User Not Found".to_owned());
+	// 		} else {
+	// 			username_error.set("".to_owned());
+	// 		}
+	// 	},
+	// );
 
 	let password = create_rw_signal("".to_owned());
 	let password_error = create_rw_signal("".to_owned());
