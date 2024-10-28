@@ -283,7 +283,7 @@ pub async fn initialize_api_token_constraints(
 	query!(
 		r#"
 		ALTER TABLE user_api_token_resource_permissions_type
-			ADD CONSTRAINT user_api_token_resource_permisssions_type_fk_type FOREIGN KEY(
+			ADD CONSTRAINT user_api_token_resource_permissions_type_fk_type FOREIGN KEY(
 				token_id,
 				workspace_id,
 				token_permission_type
@@ -292,7 +292,7 @@ pub async fn initialize_api_token_constraints(
 				workspace_id,
 				token_permission_type
 			),
-			ADD CONSTRAINT user_api_token_resource_permisssions_type_fk_permission_id FOREIGN KEY(
+			ADD CONSTRAINT user_api_token_resource_permissions_type_fk_permission_id FOREIGN KEY(
 				permission_id
 			) REFERENCES permission(
 				id
