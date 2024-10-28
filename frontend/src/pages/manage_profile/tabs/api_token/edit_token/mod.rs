@@ -1,6 +1,11 @@
+use std::collections::BTreeMap;
+
 use ev::MouseEvent;
 use leptos_query::QueryResult;
-use models::api::user::UserApiToken;
+use models::{
+	api::user::{UpdateApiTokenRequest, UserApiToken},
+	rbac::WorkspacePermission,
+};
 use time::{
 	error::{Parse, TryFromParsed},
 	macros::format_description,
@@ -10,24 +15,13 @@ use time::{
 
 use crate::{prelude::*, queries::get_api_token_query};
 
-mod choose_permission;
-mod create_token;
-mod permission_card;
-mod permission_card_create;
-mod permission_item;
 mod revoke_regen;
 mod token_info;
-mod token_modal;
 
-pub use self::{
-	choose_permission::*,
-	create_token::*,
-	permission_card::*,
-	permission_card_create::*,
-	permission_item::*,
-	revoke_regen::*,
-	token_info::*,
-	token_modal::*,
+use self::{revoke_regen::*, token_info::*};
+use super::{
+	components::PermissionCard,
+	utils::{ApiTokenInfo, ApiTokenPermissions, CreateApiTokenInfo},
 };
 
 /// Path URL Params for the Edit API Token Page
@@ -84,19 +78,21 @@ fn EditApiTokenPermission() -> impl IntoView {
 			<div class="flex flex-col items-start justify-start mb-xs w-full my-md gap-sm">
 				<label class="text-white text-sm">"Choose Permissions"</label>
 				<div class="w-full fc-fs-fs gap-xl">
-					{move || {
-						match workspace_list.get() {
-							Some(Ok(data)) => {
-								data.workspaces
-									.into_iter()
-									.map(|workspace| {
-										view! { <PermissionCard workspace={workspace} /> }
-									})
-									.collect_view()
+					<Transition>
+						{move || {
+							match workspace_list.get() {
+								Some(Ok(data)) => {
+									data.workspaces
+										.into_iter()
+										.map(|workspace| {
+											view! { <PermissionCard workspace={workspace} /> }
+										})
+										.collect_view()
+								}
+								_ => view! { <div>"Cannot Load Resource"</div> }.into_view(),
 							}
-							_ => view! { <div>"Cannot Load Resource"</div> }.into_view(),
-						}
-					}}
+						}}
+					</Transition>
 				</div>
 			</div>
 		}
@@ -104,10 +100,6 @@ fn EditApiTokenPermission() -> impl IntoView {
 		None => view! { <p>"Loading..."</p> }.into_view(),
 	}
 }
-
-/// Context for the Edit API Token Page
-#[derive(Copy, Clone)]
-pub struct ApiTokenInfo(RwSignal<Option<WithId<UserApiToken>>>);
 
 /// The Edit API Token Page
 #[component]
@@ -131,24 +123,44 @@ pub fn EditApiToken() -> impl IntoView {
 	} = get_api_token_query().use_query(move || token_id.get());
 
 	let token_info_signal = create_rw_signal::<Option<WithId<UserApiToken>>>(None);
+	let api_token_changes = create_rw_signal(CreateApiTokenInfo::new());
+	let token_permissions = create_rw_signal::<Option<BTreeMap<Uuid, WorkspacePermission>>>(None);
+
+	provide_context(api_token_changes);
 	provide_context(ApiTokenInfo(token_info_signal));
+	provide_context(ApiTokenPermissions(token_permissions));
+
+	create_effect(move |_| match token_info.get() {
+		Some(Ok(data)) => {
+			token_info_signal.set(Some(data.token.clone()));
+			token_permissions.set(Some(data.token.permissions.clone()));
+		}
+		_ => {}
+	});
 
 	let on_submit = move |ev: MouseEvent| {
 		ev.prevent_default();
 
 		spawn_local(async move {
 			if let Some(token_info) = token_info_signal.get() {
-				logging::log!("token_info_signal {:?}", token_info);
-				let x = update_api_token(
+				logging::log!(
+					"token_info_signal {:?} {:?}",
+					token_info,
+					token_permissions.get()
+				);
+				let res = update_api_token(
 					access_token.get_untracked().get_access_token(),
-					token_id.with_untracked(|token| token.to_string()),
-					Some(token_info.name.clone()),
-					Some(convert_offset_to_date(token_info.token_exp)),
-					Some(convert_offset_to_date(token_info.token_nbf)),
-					Some(token_info.permissions.clone()),
+					token_id.get_untracked(),
+					UpdateApiTokenRequest {
+						name: api_token_changes.get().name.clone(),
+						token_nbf: api_token_changes.get().token_nbf,
+						token_exp: api_token_changes.get().token_exp,
+						permissions: token_permissions.get(),
+						allowed_ips: None,
+					},
 				)
 				.await;
-				logging::log!("x {:?} {:?}", x, token_info.permissions.clone());
+				logging::log!("x {:?} {:?}", res, token_info.permissions.clone());
 			}
 		});
 	};
@@ -167,31 +179,8 @@ pub fn EditApiToken() -> impl IntoView {
 			</div>
 
 			<form class="w-full h-full">
-				<Transition>
-					{move || match token_info.get() {
-						Some(token_info) => {
-							match token_info {
-								Ok(data) => {
-									token_info_signal.set(Some(data.token.clone()));
-									view! {
-										<TokenInfo />
-										<EditApiTokenPermission />
-									}
-										.into_view()
-								}
-								Err(err) => {
-									view! {
-										<div>
-											{format!("Cannot Load Resource {:?}", err.to_string())}
-										</div>
-									}
-										.into_view()
-								}
-							}
-						}
-						None => view! {}.into_view(),
-					}}
-				</Transition>
+				<TokenInfo />
+				<EditApiTokenPermission />
 
 				<div class="w-full flex justify-end items-center py-md mt-auto">
 					<Link class="text-sm text-medium mr-sm">"BACK"</Link>

@@ -26,6 +26,7 @@ matchit = { workspace = true, features = ["default"] }
 models = { workspace = true, features = [] }
 preprocess = { workspace = true, features = [] }
 reqwest = { workspace = true, features = ["json", "rustls-tls"] }
+rand = { workspace = true, features = [] }
 semver = { workspace = true, features = [] }
 serde = { workspace = true, features = ["default", "derive"] }
 serde_json = { workspace = true, features = ["default"] }

@@ -8,11 +8,12 @@ use ev::MouseEvent;
 use models::rbac::{ResourcePermissionType, ResourceType, WorkspacePermission};
 use strum::VariantNames;
 
-use crate::{pages::ApiTokenInfo, prelude::*};
+use super::{super::utils::ApiTokenPermissions, PermissionsDropdown, ResourceDropdownOptions};
+use crate::prelude::*;
 
 /// Enum that specifies whether to apply the permission to all resources, a
 /// specific set of resources, or all resources except a specific set of
-/// resources.
+/// resources.15
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, VariantNames)]
 #[strum(serialize_all = "camelCase")]
 pub enum ApplyToOptions {
@@ -36,13 +37,13 @@ pub enum ApplyToOptions {
 /// TODO: Figure out a way to point this to the actual thing
 /// [perm]: struct@models::rbac::Permission
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct ParsedPermission {
+pub struct ParsedPermission {
 	/// The name of the permission
-	name: String,
+	pub name: String,
 	/// The Resource Type
-	resource_type: ResourceType,
+	pub resource_type: ResourceType,
 	/// Details of the permission
-	details: String,
+	pub details: String,
 }
 
 /// An Error Struct that is thrown when the [`ApplyToOptions`] fails to parse.
@@ -78,6 +79,8 @@ pub fn ChoosePermission(
 	#[prop(into)]
 	workspace_id: MaybeSignal<Uuid>,
 ) -> impl IntoView {
+	let (state, _) = AuthState::load();
+
 	let div_class = class.with(|cname| {
 		format!(
 			"gap-sm grid grid-col-{} w-full {}",
@@ -86,9 +89,7 @@ pub fn ChoosePermission(
 		)
 	});
 
-	let api_token = expect_context::<ApiTokenInfo>().0;
-
-	let access_token = move || AuthState::load().0.get().get_access_token();
+	let api_token_permissions = expect_context::<ApiTokenPermissions>().0;
 
 	let input_resource_type = create_rw_signal("".to_string());
 	let input_apply_to = create_rw_signal("all".to_string());
@@ -117,91 +118,6 @@ pub fn ChoosePermission(
 			ApplyToOptions::from_str(input_apply_to.get().as_str())
 				.is_ok_and(|option| !matches!(option, ApplyToOptions::AllResource))
 	};
-
-	let all_permissions = create_resource(
-		move || (access_token(), workspace_id.get()),
-		move |(access_token, workspace_id)| async move {
-			list_all_permissions(access_token, workspace_id).await
-		},
-	);
-
-	let filtered_permissions = create_memo(move |_| {
-		let permissions = all_permissions.get();
-		match permissions {
-			Some(Ok(permissions)) => permissions
-				.permissions
-				.iter()
-				.filter_map(|permission| {
-					let split_name = permission.name.split("::").collect::<Vec<_>>();
-					let resource_type =
-						split_name.first().map(|x| x.to_owned()).unwrap_or_default();
-
-					let permission_name =
-						split_name.get(1).map(|x| x.to_owned()).unwrap_or_default();
-					let resource_type =
-						ResourceType::from_str(resource_type.to_case(Case::Camel).as_str());
-					match resource_type {
-						Ok(resource_type) => Some(WithId {
-							id: permission.id,
-							data: ParsedPermission {
-								name: permission_name.to_string(),
-								resource_type,
-								details: permission.description.clone(),
-							},
-						}),
-						Err(_) => None,
-					}
-				})
-				.filter(|x| {
-					match ResourceType::from_str(
-						input_resource_type.get().to_case(Case::Camel).as_str(),
-					) {
-						Ok(r_type) => r_type == x.resource_type,
-						_ => false,
-					}
-				})
-				.collect::<Vec<WithId<ParsedPermission>>>(),
-			_ => {
-				logging::log!("error fetching permissions");
-				vec![]
-			}
-		}
-	});
-
-	let permissions_options = Signal::derive(move || {
-		filtered_permissions
-			.get()
-			.iter()
-			.map(|x| InputDropdownOption {
-				id: x.id.to_string(),
-				label: x.name.clone(),
-				disabled: false,
-			})
-			.collect::<Vec<InputDropdownOption>>()
-	});
-
-	let deployments_list = get_deployments();
-	let resource_dropdown_options = create_memo(move |_| {
-		let resource_type =
-			{ ResourceType::from_str(input_resource_type.get().to_case(Case::Camel).as_str()) };
-
-		match resource_type {
-			Ok(ResourceType::Deployment) => deployments_list.get().map(|x| {
-				x.map(|x| {
-					x.deployments
-						.iter()
-						.map(|x| InputDropdownOption {
-							id: x.id.to_string().clone(),
-							disabled: false,
-							label: x.name.clone(),
-						})
-						.collect::<Vec<InputDropdownOption>>()
-				})
-			}),
-			Ok(_) => None,
-			Err(_) => None,
-		}
-	});
 
 	let on_select_permission = move |ev: MouseEvent| {
 		ev.prevent_default();
@@ -237,17 +153,16 @@ pub fn ChoosePermission(
 			resource_permissions_new.insert(r.to_owned(), permission_types.clone());
 		});
 
-		logging::log!("filtered_permissions {:?}", filtered_permissions.get());
-		api_token.update(|token| {
-			if let Some(token) = token.as_mut() {
-				token.data.permissions.insert(
+		api_token_permissions.update(|permissions| {
+			permissions.as_mut().map(|permissions| {
+				permissions.insert(
 					workspace_id.get(),
 					WorkspacePermission::Member {
 						permissions: resource_permissions_new.clone(),
 					},
-				);
-			}
-		})
+				)
+			});
+		});
 	};
 
 	view! {
@@ -298,58 +213,19 @@ pub fn ChoosePermission(
 					</div>
 				</Show>
 
-				<Transition>
-					<Show when={show_resources}>
-						{move || {
-							view! {
-								<CheckboxDropdown
-									placeholder={format!(
-										"Select {}",
-										input_resource_type
-											.with(|resource| {
-												if resource.is_empty() {
-													"Resources".to_string()
-												} else {
-													resource.to_owned()
-												}
-											}),
-									)}
-									value={Signal::derive(move || input_resources.get())}
-									options={match resource_dropdown_options.get() {
-										Some(Ok(options)) => options,
-										_ => vec![],
-									}}
-									on_select={move |(_, id): (MouseEvent, String)| {
-										if input_resources.get().iter().any(|e| e.to_owned() == id)
-										{
-											input_resources
-												.update(|options| options.retain(|e| e.to_owned() != id));
-										} else {
-											input_resources.update(|options| options.push(id.clone()));
-										}
-									}}
-								/>
-							}
-						}}
-					</Show>
-				</Transition>
+				<Show when={show_resources}>
+					<ResourceDropdownOptions
+						input_resource_type={input_resource_type}
+						input_resources={input_resources}
+					/>
+				</Show>
 
 				<div>
-					<Transition>
-						<CheckboxDropdown
-							placeholder={"Select Permissions".to_string()}
-							options={permissions_options}
-							value={Signal::derive(move || input_permissions.get())}
-							on_select={move |(_, id): (MouseEvent, String)| {
-								if input_permissions.get().iter().any(|e| e.to_owned() == id) {
-									input_permissions
-										.update(|options| options.retain(|e| e.to_owned() != id));
-								} else {
-									input_permissions.update(|options| options.push(id.clone()));
-								}
-							}}
-						/>
-					</Transition>
+					<PermissionsDropdown
+						workspace_id={workspace_id}
+						input_permissions={input_permissions}
+						input_resource_type={input_resource_type}
+					/>
 				</div>
 			</div>
 

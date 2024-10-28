@@ -1,0 +1,45 @@
+@use "../helpers/animations" as *;
+
+.toaster-container {
+    position: fixed;
+    top: auto;
+    bottom: 1rem;
+    left: 1rem;
+    right: auto;
+}
+
+.toaster {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+}
+
+.toast {
+    overflow: hidden;
+    width: 15rem;
+    height: 4rem;
+    max-height: 20rem;
+    opacity: 1;
+    transition: opacity 250ms ease, transform 250ms ease;
+    border-radius: 13px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    justify-content: center;
+    padding-left: 1rem;
+
+    color: black;
+    cursor: pointer;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+    animation-duration: var(--anim-duration);
+}
+
+.show {
+    animation-name: slide-in-left;
+}
+
+.leave {
+    animation-name: slide-out-left;
+}

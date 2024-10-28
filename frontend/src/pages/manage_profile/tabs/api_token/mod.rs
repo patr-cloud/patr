@@ -5,11 +5,13 @@ use crate::{
 	queries::{list_api_tokens_query, AllApiTokensTag},
 };
 
-mod api_token_card;
+mod components;
+mod create_token;
 mod edit_token;
 mod utils;
 
-pub use self::{api_token_card::*, edit_token::*};
+use self::components::*;
+pub use self::{create_token::*, edit_token::*};
 
 /// Container for the API tokens tab
 #[component]
@@ -52,17 +54,18 @@ pub fn ListApiTokens() -> impl IntoView {
 										"Expiry".into_view(),
 										"Created At".into_view(),
 									]}
-
-									render_rows={view! {
-										<For
-											each={move || data.clone().tokens}
-											key={|state| state.id}
-											let:child
-										>
-											<ApiTokenCard token={child} />
-										</For>
+									render_rows={
+										view! {
+											<For
+												each={move || data.clone().tokens}
+												key={|state| state.id}
+												let:child
+											>
+												<ApiTokenCard token={child} />
+											</For>
+										}
+										.into_view()
 									}
-										.into_view()}
 								/>
 							}
 						}

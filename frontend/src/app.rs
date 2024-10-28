@@ -1,5 +1,6 @@
 use leptos_query_devtools::LeptosQueryDevtools;
 use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};
+use leptos_use::{use_timeout_fn, UseTimeoutFnReturn};
 
 use crate::{pages::*, prelude::*, utils::AuthState};
 
@@ -74,9 +75,12 @@ pub fn App() -> impl IntoView {
 	// user was trying to access. This way, after login, the user is redirected
 	// to the page they were trying to access.
 	provide_context(app_type);
+	provide_toaster();
 
 	view! {
 		<LeptosQueryDevtools />
+		<Toaster />
+
 		<Router>
 			<Routes>
 				// Logged in routes
@@ -96,13 +100,7 @@ pub fn App() -> impl IntoView {
 					{app_type.is_managed().then(RunnerWorkspaceRoutes)}
 					<Route
 						path={AppRoutes::Empty}
-						view={|| {
-							view! {
-								<div class="pt-[25vh] w-full flex justify-center items-center">
-									<h1 class="text-primary text-xl">"Welcome To Patr!"</h1>
-								</div>
-							}
-						}}
+						view={HomePage}
 					/>
 				</ProtectedRoute>
 				<ProtectedRoute

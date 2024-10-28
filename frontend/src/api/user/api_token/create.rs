@@ -1,8 +1,13 @@
+use leptos::server_fn::codec::Json;
 use models::api::user::*;
 
 use crate::prelude::*;
 
-#[server(CreateApiTokenFn, endpoint = "/user/api-token/create")]
+#[server(
+	CreateApiTokenFn, 
+	endpoint = "/user/api-token/create", 
+	input = Json
+)]
 pub async fn create_api_token(
 	access_token: Option<String>,
 	api_token_info: CreateApiTokenRequest,
@@ -18,7 +23,7 @@ pub async fn create_api_token(
 			.query(())
 			.headers(CreateApiTokenRequestHeaders {
 				authorization: access_token,
-				user_agent: UserAgent::from_static("todo"),
+				user_agent: UserAgent::from_static("hyper/0.12.2"),
 			})
 			.body(api_token_info)
 			.build(),
