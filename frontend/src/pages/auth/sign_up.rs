@@ -1,5 +1,4 @@
 use ev::SubmitEvent;
-use leptos_use::{signal_debounced_with_options, utils::DebounceOptions};
 use models::api::auth::*;
 
 use crate::prelude::*;
@@ -44,19 +43,19 @@ pub async fn sign_up(
 	Ok(())
 }
 
-#[component]
+/// The sign up form component. This is the form that the user uses to create an
+/// account
+#[allow(non_snake_case)]
 pub fn SignUpForm(
-	/// The query params for the page
-	query: SignUpQuery,
-) -> impl IntoView {
-	let SignUpQuery {
+	SignUpRoute {}: SignUpRoute,
+	SignUpQuery {
 		next,
 		first_name,
 		last_name,
 		username,
 		email,
-	} = query;
-
+	}: SignUpQuery,
+) -> impl IntoView {
 	let app_type = expect_context::<AppType>();
 
 	let first_name = create_rw_signal(first_name.unwrap_or_else(|| "".to_owned()));
@@ -156,7 +155,6 @@ pub fn SignUpForm(
 
 	let password = create_rw_signal("".to_owned());
 	let password_error = create_rw_signal("".to_owned());
-	let password_valid = Signal::derive(move || password.get().len() >= 8);
 
 	let password_confirm = create_rw_signal("".to_owned());
 	let password_confirm_error = create_rw_signal("".to_owned());
@@ -217,14 +215,14 @@ pub fn SignUpForm(
 				Ok(()) => match app_type {
 					AppType::SelfHosted => {
 						use_navigate()(
-							&AppRoutes::LoggedOutRoute(LoggedOutRoute::Login).to_string(),
-							Default::default(),
+							&next.unwrap_or_else(|| LoginRoute {}.to_string()),
+							NavigateOptions::default(),
 						);
 					}
 					AppType::Managed => {
 						use_navigate()(
-							&AppRoutes::LoggedOutRoute(LoggedOutRoute::ConfirmOtp).to_string(),
-							Default::default(),
+							&next.unwrap_or_else(|| VerifySignUpRoute {}.to_string()),
+							NavigateOptions::default(),
 						);
 					}
 				},

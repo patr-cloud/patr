@@ -90,6 +90,8 @@ pub enum ErrorType {
 	RoleInUse,
 	/// Another instance of the same runner ID is already connected
 	RunnerAlreadyConnected,
+	/// The instance of the runner is not connected
+	RunnerNotConnected,
 	/// The operation is not allowed in the current runner mode
 	InvalidRunnerMode,
 }
@@ -134,6 +136,7 @@ impl ErrorType {
 			Self::ApiTokenAlreadyExists => StatusCode::CONFLICT,
 			Self::RoleInUse => StatusCode::CONFLICT,
 			Self::RunnerAlreadyConnected => StatusCode::CONFLICT,
+			Self::RunnerNotConnected => StatusCode::FAILED_DEPENDENCY,
 			Self::InvalidRunnerMode => StatusCode::FORBIDDEN,
 		}
 	}
@@ -182,13 +185,14 @@ impl ErrorType {
 			Self::ApiTokenAlreadyExists => "An API token with that name already exists",
 			Self::RoleInUse => "The role is currently assigned to users and cannot be deleted",
 			Self::RunnerAlreadyConnected => "Another instance of the same runner ID is already connected",
+			Self::RunnerNotConnected => "The instance of the runner is not connected",
 			Self::InvalidRunnerMode => "That operation is not allowed in the mode the runner is currently in",
 		}
 	}
 
 	/// Creates an [`ErrorType::InternalServerError`] with the given message
 	pub fn server_error(message: impl Display) -> Self {
-		error!("Internal server error occured: {message}");
+		error!("Internal server error occurred: {message}");
 		Self::InternalServerError
 	}
 }

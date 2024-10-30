@@ -1,5 +1,4 @@
 use ev::SubmitEvent;
-use models::api::auth::LoginResponse;
 
 use crate::prelude::*;
 
@@ -69,13 +68,11 @@ pub async fn login(
 
 /// The login form component. This is the form that the user uses to log in to
 /// the application.
-#[component]
+#[allow(non_snake_case)]
 pub fn LoginForm(
-	/// The query params for the page
-	query: LoginQuery,
+	LoginRoute {}: LoginRoute,
+	LoginQuery { next, user_id }: LoginQuery,
 ) -> impl IntoView {
-	let LoginQuery { next, user_id } = query;
-
 	let (_, set_state) = AuthState::load();
 	let app_type = expect_context::<AppType>();
 

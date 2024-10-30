@@ -142,12 +142,11 @@ async fn main() {
 					)
 					.install_batch(opentelemetry_sdk::runtime::Tokio)
 					.expect("Failed to install OpenTelemetry tracing pipeline")
-					.tracer("Patr API"),
+					.tracer("PatrAPI"),
 			)
 			.with_filter(
 				tracing_subscriber::filter::Targets::new()
 					.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
-					.with_target("frontend", LevelFilter::TRACE)
 					.with_target("models", LevelFilter::TRACE),
 			),
 		)

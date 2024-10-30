@@ -4,8 +4,14 @@ use crate::prelude::*;
 
 /// This page is shown to the user when they have signed up and need to confirm
 /// their OTP to complete the sign-up process.
-#[component]
-pub fn ConfirmSignUpPage() -> impl IntoView {
+#[allow(non_snake_case)]
+pub fn VerifySignUpPage(
+	VerifySignUpRoute {}: VerifySignUpRoute,
+	VerifySignUpQuery {
+		user_id,
+		signup_token,
+	}: VerifySignUpQuery,
+) -> impl IntoView {
 	let (_, set_auth_state) = AuthState::load();
 	let confirm_action = create_server_action::<ConfirmOtp>();
 
@@ -15,18 +21,6 @@ pub fn ConfirmSignUpPage() -> impl IntoView {
 
 	let pending = confirm_action.pending();
 	let response = confirm_action.value();
-
-	let handle_errors = move |error| match error {
-		ServerFnError::WrappedServerError(ErrorType::UserNotFound) => {
-			username_error.set("User Not Found".to_owned());
-		}
-		ServerFnError::WrappedServerError(ErrorType::MfaOtpInvalid) => {
-			otp_error.set("Invalid OTP".to_owned());
-		}
-		e => {
-			otp_error.set(e.to_string());
-		}
-	};
 
 	create_effect(move |_| {
 		if let Some(resp) = response.get() {
@@ -41,9 +35,14 @@ pub fn ConfirmSignUpPage() -> impl IntoView {
 						last_used_workspace_id: None,
 					}));
 				}
-				Err(err) => {
-					logging::log!("{:#?}", err);
-					handle_errors(err);
+				Err(ServerFnError::WrappedServerError(ErrorType::UserNotFound)) => {
+					username_error.set("User Not Found".to_owned());
+				}
+				Err(ServerFnError::WrappedServerError(ErrorType::MfaOtpInvalid)) => {
+					otp_error.set("Invalid OTP".to_owned());
+				}
+				Err(e) => {
+					otp_error.set(e.to_string());
 				}
 			}
 		}

@@ -1,6 +1,5 @@
 use leptos_query_devtools::LeptosQueryDevtools;
 use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};
-use leptos_use::{use_timeout_fn, UseTimeoutFnReturn};
 
 use crate::{pages::*, prelude::*, utils::AuthState};
 
@@ -68,7 +67,6 @@ fn RunnerWorkspaceRoutes() -> impl IntoView {
 /// application. It contains the main router and all the routes.
 #[component]
 pub fn App() -> impl IntoView {
-	let (state, _) = AuthState::load();
 	let app_type = AppType::Managed;
 
 	// TODO: When redirecting to login, the URL should include the path that the
@@ -84,61 +82,80 @@ pub fn App() -> impl IntoView {
 		<Router>
 			<Routes>
 				// Logged in routes
-				<ProtectedRoute
-					path={AppRoutes::Empty}
-					view={AppOutletView}
-					redirect_path={AppRoutes::LoggedOutRoute(LoggedOutRoute::Login)}
-					condition={move || state.get().is_logged_in()}
-				>
-					<ProfileRoutes />
-					<InfrastructureRoutes />
-					<Route path={LoggedInRoute::ManagedUrl} view={ManagedUrlPage}>
-						<Route path="create" view={|| view! { <div>"create"</div> }} />
-						<Route path={AppRoutes::Empty} view={UrlDashboard} />
-					</Route>
-					<Route path={LoggedInRoute::Domain} view={DomainsDashboard} />
-					{app_type.is_managed().then(RunnerWorkspaceRoutes)}
-					<Route
-						path={AppRoutes::Empty}
-						view={HomePage}
-					/>
-				</ProtectedRoute>
-				<ProtectedRoute
-					path={"".to_string()}
-					redirect_path={AppRoutes::LoggedInRoute(LoggedInRoute::Home).to_string()}
-					view={AppOutletView}
-					condition={move || state.get().is_logged_out()}
-				>
-					<AppRoute<LoginRoute, _, _> view={|query, _| LoginForm(LoginFormProps { query })} />
-					<AppRoute<SignUpRoute, _, _> view={|query, _| SignUpForm(SignUpFormProps { query })} />
-					{app_type
-						.is_managed()
-						.then(|| {
-							view! { <Route path="/confirm" view={ConfirmSignUpPage} /> }
-						})}
-				</ProtectedRoute>
-				<Route
-					path="/*any"
-					view={|| {
-						view! {
-							<ErrorPage
-								title="Page Not Found"
-								content={
-									view! {
-										<Link
-											r#type={Variant::Link}
-											style_variant={LinkStyleVariant::Contained}
-											to="/"
-										>
-											"Go to Home"
-										</Link>
-									}
-								}
-							/>
-						}
-					}}
-				/>
+				<LoggedInRoutes />
+
+				// Logged out routes
+				<AppRoute<LoginRoute, _, _> view={LoginForm} />
+				<AppRoute<SignUpRoute, _, _> view={SignUpForm} />
+				{app_type
+					.is_managed()
+					.then(|| view! {
+						<AppRoute<VerifySignUpRoute, _, _> view={VerifySignUpPage} />
+					})}
+
+				<Route path="/*any" view={NotFoundPage} />
 			</Routes>
 		</Router>
 	}
+}
+
+/// The routes for the logged in user
+#[component(transparent)]
+fn LoggedInRoutes() -> impl IntoView {
+	let (state, _) = AuthState::load();
+	let app_type = expect_context::<AppType>();
+
+	view! {
+		// Logged in routes
+		<ProtectedRoute
+			path={AppRoutes::Empty}
+			view={AppOutletView}
+			redirect_path={AppRoutes::LoggedOutRoute(LoggedOutRoute::Login)}
+			condition={move || state.get().is_logged_in()}
+		>
+			<ProfileRoutes />
+			<InfrastructureRoutes />
+			<Route path={LoggedInRoute::ManagedUrl} view={ManagedUrlPage}>
+				<Route path="create" view={|| view! { <div>"create"</div> }} />
+				<Route path={AppRoutes::Empty} view={UrlDashboard} />
+			</Route>
+			<Route path={LoggedInRoute::Domain} view={DomainsDashboard} />
+			{app_type.is_managed().then(RunnerWorkspaceRoutes)}
+			<Route
+				path={AppRoutes::Empty}
+				view={HomePage}
+			/>
+		</ProtectedRoute>
+	}
+}
+
+/// The routes for a user without a workspace
+#[component(transparent)]
+fn NotWorkspacedContent() -> impl IntoView {
+	view! {}
+}
+
+/// The routes for a user with a workspace
+#[component(transparent)]
+fn WorkspacedContent() -> impl IntoView {
+	view! {}
+}
+
+/// The 404 page
+#[component(transparent)]
+fn NotFoundPage() -> impl IntoView {
+	ErrorPage(
+		ErrorPageProps::builder()
+			.title("Page Not Found")
+			.content(view! {
+				<Link
+					r#type={Variant::Link}
+					style_variant={LinkStyleVariant::Contained}
+					to="/"
+				>
+					"Go to Home"
+				</Link>
+			})
+			.build(),
+	)
 }
