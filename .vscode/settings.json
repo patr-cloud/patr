@@ -30,6 +30,7 @@
         "padawan",
         "PKCE",
         "preprocess",
+        "Preprocessable",
         "proxied",
         "reauthenticated",
         "reauthentication",
@@ -40,6 +41,7 @@
         "TIMESTAMPTZ",
         "tungstenite",
         "wayy",
+        "Websockets",
         "Workspaced"
     ],
     "nixEnvSelector.nixFile": "${workspaceFolder}/shell.nix",
