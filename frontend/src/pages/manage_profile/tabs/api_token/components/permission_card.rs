@@ -5,7 +5,7 @@ use models::{api::workspace::Workspace, rbac::WorkspacePermission};
 
 use super::super::{
 	components::{ChoosePermission, PermissionItem},
-	utils::{ApiTokenInfo, ApiTokenPermissions},
+	utils::ApiTokenPermissions,
 };
 use crate::prelude::*;
 

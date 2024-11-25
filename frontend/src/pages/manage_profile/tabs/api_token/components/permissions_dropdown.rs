@@ -4,7 +4,6 @@ use convert_case::{Case, Casing};
 use ev::MouseEvent;
 use leptos_query::QueryResult;
 use models::rbac::ResourceType;
-use strum::VariantNames;
 
 use super::ParsedPermission;
 use crate::{prelude::*, queries::get_all_permissions_query};

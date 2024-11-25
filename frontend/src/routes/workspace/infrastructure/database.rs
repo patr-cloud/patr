@@ -32,6 +32,7 @@ use crate::{
 	requires_login = true,
 }
 
+/// The list of routes for the database stuff
 #[component(transparent)]
 pub fn DatabaseRoutes() -> impl IntoView {
 	view! {

@@ -4,11 +4,10 @@ use convert_case::{Case, Casing};
 use ev::MouseEvent;
 use leptos_query::QueryResult;
 use models::rbac::ResourceType;
-use strum::VariantNames;
 
 use crate::{
 	prelude::*,
-	queries::{get_deployment_query, list_deployments_query, AllDeploymentsTag},
+	queries::{list_deployments_query, AllDeploymentsTag},
 };
 
 #[component]
@@ -107,7 +106,7 @@ pub fn ResourceDropdownOptions(
 					<button
 						class="text-primary w-full justify-center"
 						on:click={move |ev| {
-							ev.prevent_default();;
+							ev.prevent_default();
 							current_page.update(|v| *v += 1)
 						}}
 					>

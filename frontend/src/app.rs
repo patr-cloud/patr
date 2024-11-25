@@ -1,6 +1,5 @@
 use leptos_query_devtools::LeptosQueryDevtools;
 use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};
-use leptos_use::{use_timeout_fn, UseTimeoutFnReturn};
 
 use crate::{pages::*, prelude::*, utils::AuthState};
 

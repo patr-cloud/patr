@@ -157,6 +157,7 @@ pub enum SortableColumns {
 	requires_login = true,
 }
 
+/// The routes for the deployment pages
 #[component(transparent)]
 pub fn DeploymentRoutes() -> impl IntoView {
 	view! {

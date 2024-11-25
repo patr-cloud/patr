@@ -41,6 +41,7 @@ pub fn get_api_token_query(
 	)
 }
 
+/// Query to get all permissions
 pub fn get_all_permissions_query(
 ) -> QueryScope<Uuid, Result<ListAllPermissionsResponse, ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();

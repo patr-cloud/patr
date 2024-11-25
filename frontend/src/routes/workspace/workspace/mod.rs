@@ -7,6 +7,7 @@ use crate::{pages::CreateWorkspace, prelude::*};
 	requires_login = true,
 }
 
+/// The list of routes for the workspace stuff
 #[component(transparent)]
 pub fn WorkspaceRoutes() -> impl IntoView {
 	view! { <AppRoute<CreateWorkspaceRoute, _, _> view={move |_, _| CreateWorkspace} /> }

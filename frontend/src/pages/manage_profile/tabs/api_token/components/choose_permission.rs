@@ -79,8 +79,6 @@ pub fn ChoosePermission(
 	#[prop(into)]
 	workspace_id: MaybeSignal<Uuid>,
 ) -> impl IntoView {
-	let (state, _) = AuthState::load();
-
 	let div_class = class.with(|cname| {
 		format!(
 			"gap-sm grid grid-col-{} w-full {}",

@@ -2,13 +2,11 @@ use rand::Rng;
 
 use crate::imports::*;
 
-pub type ToastId = u64;
-
 /// All Info regarding the Toast.
 #[derive(Clone, Debug)]
 pub struct ToastData {
 	/// The ID of the toast
-	pub id: ToastId,
+	pub id: u64,
 	/// The Alert Level of the Toast
 	pub level: AlertType,
 	/// The Toast Expires after, set None so that the toast requires some action
@@ -82,7 +80,7 @@ impl ToastBuilder {
 	}
 
 	/// Build the toast data
-	pub fn build(self, id: ToastId) -> ToastData {
+	pub fn build(self, id: u64) -> ToastData {
 		ToastData {
 			id,
 			level: self.level,
@@ -133,7 +131,7 @@ impl ToasterContext {
 	}
 
 	/// Removes a toast of given ID
-	pub fn remove(&self, id: ToastId) {
+	pub fn remove(&self, id: u64) {
 		let index = self
 			.queue
 			.get_untracked()
@@ -151,12 +149,14 @@ impl ToasterContext {
 	}
 }
 
+/// Provide the Toaster Context
 pub fn provide_toaster() {
 	if use_context::<ToasterContext>().is_none() {
 		provide_context(ToasterContext::default());
 	}
 }
 
+/// Get the Toaster Context
 pub fn expect_toaster() -> ToasterContext {
 	use_context::<ToasterContext>().expect("No ToasterContext found")
 }
