@@ -33,14 +33,6 @@ pub async fn sign_up(
 	)
 	.await?;
 
-	leptos_axum::redirect(
-		&use_query::<SignUpQuery>()
-			.get_untracked()
-			.unwrap_or_default()
-			.next
-			.unwrap_or(DeploymentsDashboardRoute {}.to_string()),
-	);
-
 	Ok(())
 }
 
@@ -206,11 +198,11 @@ pub fn SignUpForm(
 
 		spawn_local(async move {
 			match sign_up(
-				username.get_untracked(),
-				password.get_untracked(),
 				first_name.get_untracked(),
 				last_name.get_untracked(),
 				email.get_untracked(),
+				username.get_untracked(),
+				password.get_untracked(),
 			)
 			.await
 			{
