@@ -73,7 +73,9 @@ pub async fn update_user_roles_in_workspace(
 	redis
 		.setex(
 			redis::keys::user_id_revocation_timestamp(&user_id),
-			constants::CACHED_PERMISSIONS_VALIDITY.whole_seconds() as u64,
+			constants::CACHED_PERMISSIONS_VALIDITY
+				.whole_seconds()
+				.unsigned_abs(),
 			OffsetDateTime::now_utc().unix_timestamp(),
 		)
 		.await

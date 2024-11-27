@@ -11,7 +11,7 @@ pub async fn initialize_volume_tables(
 		CREATE TABLE deployment_volume(
 			id UUID NOT NULL,
 			name TEXT NOT NULL,
-			volume_size INT NOT NULL,
+			volume_size BIGINT NOT NULL,
 			deleted TIMESTAMPTZ
 		);
 		"#

@@ -14,9 +14,9 @@ pub async fn list_managed_url(
 					Paginated {
 						data:
 							ListManagedURLQuery {
-								order: _, // TODO implement these
-								order_by: _,
-								filter: _,
+								order, // TODO implement these
+								order_by,
+								filter,
 							},
 						count,
 						page,

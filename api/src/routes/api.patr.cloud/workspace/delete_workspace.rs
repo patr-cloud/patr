@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 use axum::http::StatusCode;
 use models::api::workspace::*;
 use rustis::commands::StringCommands;
@@ -92,7 +94,10 @@ pub async fn delete_workspace(
 	redis
 		.setex(
 			redis::keys::workspace_id_revocation_timestamp(&workspace.id.into()),
-			constants::CACHED_PERMISSIONS_VALIDITY.whole_seconds() as u64 + 300,
+			constants::CACHED_PERMISSIONS_VALIDITY
+				.whole_seconds()
+				.unsigned_abs()
+				.add(300),
 			OffsetDateTime::now_utc().unix_timestamp(),
 		)
 		.await

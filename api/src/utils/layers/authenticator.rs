@@ -746,7 +746,9 @@ async fn get_permissions_for_login_id(
 	redis_connection
 		.setex(
 			redis::keys::permission_for_login_id(login_id),
-			constants::CACHED_PERMISSIONS_VALIDITY.whole_seconds() as u64,
+			constants::CACHED_PERMISSIONS_VALIDITY
+				.whole_seconds()
+				.unsigned_abs(),
 			serde_json::to_string(&UserPermissionCache {
 				permission: workspace_permissions.clone(),
 				creation_time: OffsetDateTime::now_utc(),

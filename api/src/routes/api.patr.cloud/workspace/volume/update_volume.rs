@@ -64,7 +64,7 @@ pub async fn update_volume(
 		WHERE
 			id = $3;
 		"#,
-		size.map(|size| size as i32),
+		size.map(|size| size as i64),
 		name.as_deref(),
 		volume_id as _
 	)
