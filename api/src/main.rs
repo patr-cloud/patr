@@ -91,8 +91,9 @@ pub mod prelude {
 #[tracing::instrument]
 async fn main() {
 	use app::AppState;
-	use opentelemetry::trace::TracerProvider;
-	use opentelemetry_otlp::WithExportConfig;
+	use opentelemetry::trace::TracerProvider as _;
+	use opentelemetry_otlp::{Protocol, SpanExporter, WithExportConfig};
+	use opentelemetry_sdk::{runtime::Tokio as OtelTokioRuntime, trace::TracerProvider};
 	use tracing::Level;
 	use tracing_opentelemetry::OpenTelemetryLayer;
 	use tracing_subscriber::{
@@ -132,16 +133,17 @@ async fn main() {
 		)
 		.with(
 			OpenTelemetryLayer::new(
-				opentelemetry_otlp::new_pipeline()
-					.tracing()
-					.with_trace_config(opentelemetry_sdk::trace::Config::default())
-					.with_exporter(
-						opentelemetry_otlp::new_exporter()
-							.tonic()
-							.with_endpoint(&config.opentelemetry.tracing.endpoint),
+				TracerProvider::builder()
+					.with_batch_exporter(
+						SpanExporter::builder()
+							.with_tonic()
+							.with_endpoint(&config.opentelemetry.tracing.endpoint)
+							.with_protocol(Protocol::Grpc)
+							.build()
+							.expect("Failed to install OpenTelemetry tracing pipeline"),
+						OtelTokioRuntime,
 					)
-					.install_batch(opentelemetry_sdk::runtime::Tokio)
-					.expect("Failed to install OpenTelemetry tracing pipeline")
+					.build()
 					.tracer("Patr API"),
 			)
 			.with_filter(
