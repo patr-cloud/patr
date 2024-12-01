@@ -3,7 +3,7 @@ use std::{
 	net::{IpAddr, SocketAddr},
 };
 
-use axum::{extract::FromRef, Router};
+use axum::extract::FromRef;
 use models::{prelude::*, RequestUserData};
 use preprocess::Preprocessable;
 use rustis::client::Client as RedisClient;
@@ -43,11 +43,7 @@ pub async fn serve(state: &AppState) {
 						.await
 						.into_make_service_with_connect_info::<SocketAddr>(),
 				)
-				.with_graceful_shutdown(async {
-					tokio::signal::ctrl_c()
-						.await
-						.expect("failed to install ctrl-c signal handler");
-				})
+				.with_graceful_shutdown(crate::exit_signal())
 				.await
 				.unwrap();
 			},
@@ -58,11 +54,7 @@ pub async fn serve(state: &AppState) {
 						.await
 						.into_make_service_with_connect_info::<SocketAddr>(),
 				)
-				.with_graceful_shutdown(async {
-					tokio::signal::ctrl_c()
-						.await
-						.expect("failed to install ctrl-c signal handler");
-				})
+				.with_graceful_shutdown(crate::exit_signal())
 				.await
 				.unwrap();
 			},
@@ -78,24 +70,14 @@ pub async fn serve(state: &AppState) {
 
 		axum::serve(
 			tcp_listener,
-			setup_routes(&state)
+			crate::routes::setup_routes(state)
 				.await
 				.into_make_service_with_connect_info::<SocketAddr>(),
 		)
-		.with_graceful_shutdown(async {
-			tokio::signal::ctrl_c()
-				.await
-				.expect("failed to install ctrl-c signal handler");
-		})
+		.with_graceful_shutdown(crate::exit_signal())
 		.await
 		.unwrap();
 	}
-}
-
-/// Sets up all the routes for the API and returns the router object.
-#[instrument(skip(state))]
-async fn setup_routes(state: &AppState) -> Router {
-	crate::routes::setup_routes(state).await
 }
 
 #[derive(Clone, FromRef)]

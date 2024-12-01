@@ -1,3 +1,6 @@
+use std::pin::pin;
+
+use futures::future::Either;
 use rustis::commands::PubSubCommands;
 use sqlx::postgres::PgListener;
 
@@ -18,17 +21,22 @@ pub async fn run(state: &AppState) {
 		.await
 		.expect("unable to listen to the notification channel");
 
-	tokio::select! {
-		_ = async {
-			while let Ok(message) = listener.recv().await {
-				_ = state
-					.redis
-					.publish(message.channel(), message.payload())
-					.await;
-			}
-		} => {},
-		_ = tokio::signal::ctrl_c() => {
+	let mut exit_signal = pin!(crate::exit_signal());
+
+	loop {
+		let Either::Right((message, _)) =
+			futures::future::select(&mut exit_signal, pin!(listener.recv())).await
+		else {
+			// Left branch is the exit signal
 			info!("Received SIGINT, shutting down");
+			break;
+		};
+
+		if let Ok(message) = message {
+			_ = state
+				.redis
+				.publish(message.channel(), message.payload())
+				.await;
 		}
 	}
 }

@@ -91,9 +91,9 @@ pub mod prelude {
 #[tracing::instrument]
 async fn main() {
 	use app::AppState;
-	use opentelemetry::trace::TracerProvider as _;
+	use opentelemetry::{trace::TracerProvider as _, KeyValue};
 	use opentelemetry_otlp::{Protocol, SpanExporter, WithExportConfig};
-	use opentelemetry_sdk::{runtime::Tokio as OtelTokioRuntime, trace::TracerProvider};
+	use opentelemetry_sdk::{runtime::Tokio as OtelTokioRuntime, trace::TracerProvider, Resource};
 	use tracing::Level;
 	use tracing_opentelemetry::OpenTelemetryLayer;
 	use tracing_subscriber::{
@@ -143,6 +143,7 @@ async fn main() {
 							.expect("Failed to install OpenTelemetry tracing pipeline"),
 						OtelTokioRuntime,
 					)
+					.with_resource(Resource::new([KeyValue::new("service.name", "Patr API")]))
 					.build()
 					.tracer("Patr API"),
 			)
@@ -172,4 +173,31 @@ async fn main() {
 		.expect("error initializing database");
 
 	futures::future::join(app::serve(&state), redis_publisher::run(&state)).await;
+}
+
+/// Listen for the exit signal and stop the server when the signal is received.
+#[tracing::instrument]
+async fn exit_signal() {
+	let ctrl_c = async {
+		tokio::signal::ctrl_c()
+			.await
+			.expect("Failed to listen for SIGINT")
+	};
+
+	#[cfg(unix)]
+	let terminate = async {
+		tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+			.expect("failed to install signal handler")
+			.recv()
+			.await;
+	};
+
+	#[cfg(not(unix))]
+	let terminate = std::future::pending::<()>();
+
+	tokio::select! {
+		_ = ctrl_c => (),
+		_ = terminate => (),
+	}
+	tracing::info!("Shutdown signal received, shutting down server gracefully");
 }
