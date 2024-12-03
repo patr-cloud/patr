@@ -54,7 +54,7 @@ pub fn Toast(
 
 	let expiry = f64::from(toast_data.expiry.unwrap_or(0));
 	let animation_duration = 150;
-	let show_toast = create_rw_signal(true);
+	let show_toast = RwSignal::new(true);
 
 	let UseTimeoutFnReturn { start, .. } = use_timeout_fn(
 		move |_: ()| {
@@ -63,7 +63,7 @@ pub fn Toast(
 		expiry,
 	);
 
-	create_effect(move |_| {
+	Effect::new(move |_| {
 		if toast_data.expiry.is_none() {
 			return;
 		}
@@ -85,7 +85,7 @@ pub fn Toast(
 		animation_duration as f64,
 	);
 
-	create_effect(move |_| {
+	Effect::new(move |_| {
 		if toast_data.clear.get() {
 			show_toast.set(false);
 			start(());

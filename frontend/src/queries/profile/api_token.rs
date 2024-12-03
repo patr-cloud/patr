@@ -56,7 +56,7 @@ pub fn create_api_token_query(
 	let (state, _) = AuthState::load();
 	let access_token = state.get().get_access_token();
 
-	create_action(move |request: &CreateApiTokenRequest| {
+	Action::new(move |request: &CreateApiTokenRequest| {
 		let request = request.clone();
 		let access_token = access_token.clone();
 

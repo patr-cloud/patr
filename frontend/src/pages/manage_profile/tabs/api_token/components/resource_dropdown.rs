@@ -16,9 +16,9 @@ pub fn ResourceDropdownOptions(
 	let current_page = create_rw_signal::<usize>(0);
 	let deployments_list = list_deployments_query(current_page.into());
 
-	let resource_list_options = create_rw_signal::<Vec<InputDropdownOption>>(vec![]);
+	let resource_list_options = RwSignal::<Vec<InputDropdownOption>>(vec![]);
 
-	create_effect(move |_| {
+	Effect::new(move |_| {
 		let resource_type =
 			{ ResourceType::from_str(input_resource_type.get().to_case(Case::Camel).as_str()) };
 
@@ -44,7 +44,7 @@ pub fn ResourceDropdownOptions(
 		}
 	});
 
-	// let resource_dropdown_options = create_memo(move |_| {
+	// let resource_dropdown_options = Memo::new(move |_| {
 	// 	let resource_type =
 	// 		{ ResourceType::from_str(input_resource_type.get().to_case(Case::Camel).
 	// as_str()) };

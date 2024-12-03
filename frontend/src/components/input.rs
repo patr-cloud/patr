@@ -28,7 +28,7 @@ pub enum InputType {
 	/// An input which allows for the uploading of a file. Will be rendered as
 	/// a button with a file picker dialog.
 	File,
-	/// A Callender like date picker
+	/// A Calender like date picker
 	Date,
 	/// Hidden input, doesn't render on the dom, but it's name field
 	/// will still be accessed by the _Ancestor Form Element_.
@@ -58,7 +58,7 @@ pub fn Input(
 	/// Name of the form control. Submitted with the form as part of a
 	/// name/value pair
 	#[prop(into, optional)]
-	name: MaybeSignal<String>,
+	name: Signal<String>,
 	/// Additional class names to apply to the outer div, if any.
 	#[prop(into, optional)]
 	class: String,
@@ -68,52 +68,52 @@ pub fn Input(
 	required: bool,
 	/// The Patter of the input, a string regex
 	#[prop(into, optional)]
-	_pattern: MaybeSignal<String>,
+	_pattern: Signal<String>,
 	/// The ID of the input.
 	#[prop(into, optional)]
-	id: MaybeSignal<String>,
+	id: Signal<String>,
 	/// The form id of the input.
 	#[prop(into, optional, default = None.into())]
-	form: MaybeSignal<Option<String>>,
+	form: Signal<Option<String>>,
 	/// Placeholder text for the input.
 	#[prop(into, optional)]
-	placeholder: MaybeSignal<String>,
+	placeholder: Signal<String>,
 	/// The type of input
 	#[prop(into, optional, default = InputType::Text.into())]
-	r#type: MaybeSignal<InputType>,
+	r#type: Signal<InputType>,
 	/// Whether the input is disabled.
 	#[prop(into, optional, default = false.into())]
-	disabled: MaybeSignal<bool>,
+	disabled: Signal<bool>,
 	/// Input event handler
 	#[prop(optional, default = Box::new(|_| ()))]
 	on_input: Box<dyn FnMut(ev::Event)>,
 	/// The Color Variant of the input
 	#[prop(into, optional)]
-	variant: MaybeSignal<SecondaryColorVariant>,
+	variant: Signal<SecondaryColorVariant>,
 	/// Label for the input, an empty string doesn't render the label,
 	/// defaults to empty string
 	#[prop(into, optional, default = "".into())]
-	label: MaybeSignal<String>,
+	label: Signal<String>,
 	/// The Initial Value of the input
 	#[prop(into, optional)]
-	value: MaybeSignal<String>,
+	value: Signal<String>,
 	/// The End Icon if any
 	#[prop(into, optional)]
-	end_icon: MaybeSignal<Option<IconProps>>,
+	end_icon: Signal<Option<IconProps>>,
 	/// The End Text, if any
 	#[prop(into, optional)]
-	end_text: MaybeSignal<Option<String>>,
+	end_text: Signal<Option<String>>,
 	/// The Start Icon if any
 	#[prop(into, optional)]
-	start_icon: MaybeSignal<Option<IconProps>>,
+	start_icon: Signal<Option<IconProps>>,
 	/// The Start Text, if any
 	#[prop(into, optional)]
-	start_text: MaybeSignal<Option<String>>,
+	start_text: Signal<Option<String>>,
 ) -> impl IntoView {
-	let show_password_icon = create_rw_signal(false);
-	let show_password = create_rw_signal(false);
+	let show_password_icon = RwSignal::new(false);
+	let show_password = RwSignal::new(false);
 
-	create_effect(move |_| {
+	Effect::new(move |_| {
 		show_password_icon.set(true);
 	});
 

@@ -7,10 +7,10 @@ use crate::imports::*;
 pub fn CheckboxDropdown(
 	/// The List of options to display
 	#[prop(into, optional, default = vec![].into())]
-	options: MaybeSignal<Vec<InputDropdownOption>>,
+	options: Signal<Vec<InputDropdownOption>>,
 	/// Additional class names to apply to the outer div, if any.
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// The color variant of the component
 	#[prop(optional, default = SecondaryColorVariant::Light)]
 	variant: SecondaryColorVariant,
@@ -23,24 +23,24 @@ pub fn CheckboxDropdown(
 	on_select: Callback<(MouseEvent, String)>,
 	/// Placeholder to show if value is empty
 	#[prop(into, optional, default = "Type Here...".to_owned().into())]
-	placeholder: MaybeSignal<String>,
+	placeholder: Signal<String>,
 	/// Whether the component is disabled or not
 	#[prop(optional, into, default = false.into())]
-	disabled: MaybeSignal<bool>,
+	disabled: Signal<bool>,
 	/// Whether the component is in loading state or not
 	#[prop(optional, into, default = false.into())]
-	loading: MaybeSignal<bool>,
+	loading: Signal<bool>,
 	/// Additional View to add at the end of the list
 	#[prop(optional, default = None)]
 	additional_view: Option<View>,
 	/// Additional Classes for the list item surrounding the action view
 	#[prop(into, optional, default = "".to_string().into())]
-	additional_view_class: MaybeSignal<String>,
+	additional_view_class: Signal<String>,
 	/// Message to display when there's no item in the list
 	#[prop(into, optional, default = "No Item in the List".to_string().into())]
-	empty_fallback: MaybeSignal<String>,
+	empty_fallback: Signal<String>,
 ) -> impl IntoView {
-	let show_dropdown = create_rw_signal(false);
+	let show_dropdown = RwSignal::new(false);
 
 	let outer_div_class = class.with(|cname| {
 		format!(

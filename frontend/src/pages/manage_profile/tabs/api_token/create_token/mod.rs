@@ -21,7 +21,7 @@ use crate::{
 #[component]
 pub fn CreateApiToken() -> impl IntoView {
 	let (state, _) = AuthState::load();
-	let workspace_list = create_resource(
+	let workspace_list = Resource::new(
 		move || state.get().get_access_token(),
 		move |value| async move {
 			if let Some(value) = value {
@@ -35,54 +35,46 @@ pub fn CreateApiToken() -> impl IntoView {
 	let create_api_token_action = create_api_token_query();
 	let response = create_api_token_action.value();
 
-	let api_token_info = create_rw_signal(CreateApiTokenInfo::new());
+	let api_token_info = RwSignal::new(CreateApiTokenInfo::new());
 	let api_token_permissions =
-		create_rw_signal::<Option<BTreeMap<Uuid, WorkspacePermission>>>(Some(BTreeMap::new()));
+		RwSignal::<Option<BTreeMap<Uuid, WorkspacePermission>>>(Some(BTreeMap::new()));
 
 	provide_context(api_token_info);
 	provide_context(ApiTokenPermissions(api_token_permissions));
 
 	let on_submit_create = move |ev: SubmitEvent| {
 		ev.prevent_default();
-		logging::log!(
-			"{:?}\n{:?}",
-			api_token_info.get(),
-			api_token_permissions.get()
-		);
 
-		if let Some(name) = api_token_info.get().name {
-			let permissions = api_token_permissions
-				.get()
-				.expect("the permissions context to be Some");
-			let request = CreateApiTokenRequest {
-				token: UserApiToken {
-					name,
-					token_exp: api_token_info.get().token_exp,
-					token_nbf: api_token_info.get().token_nbf,
-					created: OffsetDateTime::now_utc(),
-					allowed_ips: None,
-					permissions,
-				},
-			};
+		let Some(name) = api_token_info.get().name else {
+			return;
+		};
 
-			create_api_token_action.dispatch(request);
-		} else {
-			logging::error!("Invalid Api Token Info");
-		}
+		let permissions = api_token_permissions
+			.get()
+			.expect("the permissions context to be Some");
+		let request = CreateApiTokenRequest {
+			token: UserApiToken {
+				name,
+				token_exp: api_token_info.get().token_exp,
+				token_nbf: api_token_info.get().token_nbf,
+				created: OffsetDateTime::now_utc(),
+				allowed_ips: None,
+				permissions,
+			},
+		};
+
+		create_api_token_action.dispatch(request);
 	};
 
 	view! {
-		{move || match response.get() {
-			Some(data) => {
-				match data {
-					Ok(data) => {
-						logging::log!("logging response get {:#?}", data);
-						view! { <TokenModal is_regenerated=false token={data.token} /> }.into_view()
-					}
-					Err(_) => view! {}.into_view(),
-				}
-			}
-			None => view! {}.into_view(),
+		{move || if let Some(Ok(data)) = response.get() {
+			Either::Left(view! {
+				<TokenModal is_regenerated=false token={data.token} />
+			})
+		} else {
+			Either::Right(view! {
+
+			})
 		}}
 		<form
 			on:submit={on_submit_create}

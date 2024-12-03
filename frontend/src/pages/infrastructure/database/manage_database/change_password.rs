@@ -5,8 +5,8 @@ use crate::prelude::*;
 
 #[component]
 pub fn ChangePasswordButton() -> impl IntoView {
-	let show_password_modal = create_rw_signal(false);
-	let change_password_action = create_server_action::<UpdateDatabaseFn>();
+	let show_password_modal = RwSignal::new(false);
+	let change_password_action = ServerAction::<UpdateDatabaseFn>::new();
 
 	let (state, _) = AuthState::load();
 	let access_token = Signal::derive(move || state.get().get_access_token());

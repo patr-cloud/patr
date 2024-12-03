@@ -4,10 +4,10 @@ use crate::prelude::*;
 pub fn EmailCard(
 	/// Additional class names to apply to the outer div, if any.
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// The email to display
 	#[prop(into)]
-	email: MaybeSignal<String>,
+	email: Signal<String>,
 ) -> impl IntoView {
 	let outer_div_class =
 		class.with(|cname| format!("w-full flex items-center justify-start {}", cname));

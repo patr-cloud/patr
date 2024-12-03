@@ -27,10 +27,10 @@ pub struct DeploymentCardItem {
 pub fn DeploymentCard(
 	/// The Deployment Info
 	#[prop(into)]
-	deployment: MaybeSignal<WithId<Deployment>>,
+	deployment: Signal<WithId<Deployment>>,
 	/// Additional Classes to add to the outer div, if any.:w
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 ) -> impl IntoView {
 	let start_deployment_action = start_deployment_query();
 	let stop_deployment_action = stop_deployment_query();
@@ -65,8 +65,6 @@ pub fn DeploymentCard(
 	let machine_list = list_machines_query();
 
 	let machine_type_string = Signal::derive({
-		// let deployment = deployment.clone();
-		// logging::log!("machine_list: {:?}", deployment.get().machine_type);
 		move || match machine_list.get() {
 			Some(machine_list) => match machine_list {
 				Ok(ListAllDeploymentMachineTypeResponse { machine_types }) => machine_types

@@ -7,7 +7,7 @@ pub fn PermissionItem(
 	/// Permission Item
 	#[prop(into)]
 	#[allow(unused)]
-	permission: MaybeSignal<(Uuid, ResourcePermissionType)>,
+	permission: Signal<(Uuid, ResourcePermissionType)>,
 ) -> impl IntoView {
 	view! {
 		<div class="w-full text-grey flex items-start justify-start">

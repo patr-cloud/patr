@@ -10,10 +10,10 @@ pub fn Link(
 	/// Specifies which type of button to use,
 	/// "button" or "submit", to be only used with the button variant
 	#[prop(into, optional, default = false.into())]
-	should_submit: MaybeSignal<bool>,
+	should_submit: Signal<bool>,
 	/// The Target of the Link, to be used with the link variant
 	#[prop(into, optional)]
-	to: MaybeSignal<String>,
+	to: Signal<String>,
 	/// Click Handler, to be only used with the button variant,
 	/// this NEEDS JavaScript to be enabled.
 	#[prop(optional)]
@@ -23,20 +23,20 @@ pub fn Link(
 	children: ChildrenFn,
 	/// Additional class names to apply to the link, if any
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// Color of the link
 	#[prop(into, optional)]
-	color: MaybeSignal<Color>,
+	color: Signal<Color>,
 	/// Button Variant i.e. a button or a Link,
 	/// Defaults to Button
 	#[prop(into, optional)]
-	r#type: MaybeSignal<Variant>,
+	r#type: Signal<Variant>,
 	/// Variant of the Link
 	#[prop(into, optional)]
-	style_variant: MaybeSignal<LinkStyleVariant>,
+	style_variant: Signal<LinkStyleVariant>,
 	/// Whether the button is disabled or not
 	#[prop(into, optional)]
-	disabled: MaybeSignal<bool>,
+	disabled: Signal<bool>,
 ) -> impl IntoView {
 	let class = move || {
 		format!(

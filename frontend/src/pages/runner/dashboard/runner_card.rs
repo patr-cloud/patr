@@ -6,7 +6,7 @@ use crate::prelude::*;
 pub fn RunnerCard(
 	/// The Runner Info
 	#[prop(into)]
-	runner: MaybeSignal<WithId<Runner>>,
+	runner: Signal<WithId<Runner>>,
 ) -> impl IntoView {
 	view! {
 		<div class="bg-secondary-light flex flex-col items-start justify-start px-lg py-md br-sm text-white gap-xs">

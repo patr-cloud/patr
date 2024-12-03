@@ -10,10 +10,10 @@ use crate::prelude::*;
 pub fn ConfigMountInput(
 	/// Additional class names to apply to the outer div, if any.
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// List of all mount file names
 	#[prop(into, optional, default = vec![].into())]
-	mount_points: MaybeSignal<Vec<String>>,
+	mount_points: Signal<Vec<String>>,
 	/// On Pressing Add Button
 	#[prop(into, optional, default = Callback::new(|_| ()))]
 	on_add: Callback<(MouseEvent, String, String)>,
@@ -24,8 +24,8 @@ pub fn ConfigMountInput(
 	let outer_div_class = class.with(|cname| format!("flex full-width {}", cname));
 	let store_filenames = store_value(mount_points.clone());
 
-	let config_file_path = create_rw_signal("".to_string());
-	let config_file = create_rw_signal::<Option<File>>(None);
+	let config_file_path = RwSignal::new("".to_string());
+	let config_file = RwSignal::<Option<File>>::new(None);
 
 	view! {
 		<div class={outer_div_class}>

@@ -10,7 +10,7 @@ pub fn ContainerRegistryCard(item: ContainerRegistryItem) -> impl IntoView {
 
 	view! {
 		<tr
-			tab_index=0
+			tabindex=0
 			class="fr-ct-ct full-width row-card px-xl br-bottom-sm bd-light bg-secondary-light txt-white"
 		>
 			<A href="some">

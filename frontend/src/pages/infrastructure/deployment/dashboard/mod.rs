@@ -38,10 +38,10 @@ fn LoadingDeployments() -> impl IntoView {
 /// The Deployment Dashboard Page
 #[component]
 pub fn DeploymentDashboard() -> impl IntoView {
-	let deployment_page = create_rw_signal(0);
+	let deployment_page = RwSignal::new(0);
 	let (state, _) = AuthState::load();
 
-	create_effect(move |_| {
+	Effect::new(move |_| {
 		use_navigate()(
 			format!("/deployment?page={}", deployment_page.get()).as_str(),
 			Default::default(),

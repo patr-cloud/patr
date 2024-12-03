@@ -4,8 +4,8 @@ use crate::{pages::DeploymentInfo, prelude::*, queries::list_machines_query};
 /// A component that allows the user to scale their deployment
 #[component]
 pub fn ScaleDeployment() -> impl IntoView {
-	let min_horizontal = create_rw_signal::<u16>(2);
-	let max_horizontal = create_rw_signal::<u16>(10);
+	let min_horizontal = RwSignal::<u16>::new(2);
+	let max_horizontal = RwSignal::<u16>::new(10);
 
 	let deployment_info = expect_context::<RwSignal<DeploymentInfo>>();
 

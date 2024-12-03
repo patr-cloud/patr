@@ -4,7 +4,7 @@ use crate::imports::*;
 pub fn DashboardContainer(
 	/// Additional classes to apply to the outer section
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// All the items to be rendered, does not iterate,
 	/// send the <For /> component or all the rows in the component.
 	render_items: View,

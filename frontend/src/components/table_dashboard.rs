@@ -10,7 +10,7 @@ pub fn TableDashboard(
 	headings: Vec<View>,
 	/// Additional class names to apply to the outer table, if any.
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// All the rows to be rendered, does not iterate,
 	/// send the <For /> component or all the rows in the component.
 	render_rows: View,

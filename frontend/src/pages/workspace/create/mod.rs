@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 #[component]
 pub fn CreateWorkspace() -> impl IntoView {
-	let create_workspace_action = create_server_action::<CreateWorkspaceFn>();
+	let create_workspace_action = ServerAction::<CreateWorkspaceFn>::new();
 	let (state, _) = AuthState::load();
 
 	view! {

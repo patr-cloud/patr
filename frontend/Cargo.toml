@@ -51,7 +51,7 @@ web-sys = { workspace = true, features = [
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 axum = { workspace = true, features = ["macros"] }
 codee = { workspace = true, features = ["json_serde"] }
-leptos = { workspace = true, features = ["tracing", "hydrate"] }
+leptos = { workspace = true, features = ["tracing"] }
 leptos-use = { workspace = true, features = [
     "signal_debounced",
     "use_document",
@@ -60,8 +60,8 @@ leptos-use = { workspace = true, features = [
     "use_cookie",
     "use_clipboard",
 ] }
-leptos_meta = { workspace = true, features = ["hydrate"] }
-leptos_router = { workspace = true, features = ["hydrate"] }
+leptos_meta = { workspace = true, features = [] }
+leptos_router = { workspace = true, features = [] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }

@@ -10,7 +10,7 @@ use crate::{pages::DeploymentInfo, prelude::*};
 pub fn RunningDetails(
 	/// The Errors For This Page
 	#[prop(into)]
-	errors: MaybeSignal<RunnerPageError>,
+	errors: Signal<RunnerPageError>,
 ) -> impl IntoView {
 	let deployment_info = expect_context::<RwSignal<DeploymentInfo>>();
 

@@ -42,18 +42,9 @@ pub fn convert_offset_to_date(date_time: Option<OffsetDateTime>) -> String {
 /// Convert String to OffsetDateTime
 pub fn convert_string_to_datetime(dt_str: String) -> Result<OffsetDateTime, Parse> {
 	let format = format_description!("[year]-[month]-[day]");
-	let date = Date::parse(dt_str.as_str(), format);
-	let mut date_time = OffsetDateTime::UNIX_EPOCH;
-	logging::log!("{} {:?}", dt_str, date);
-
-	if let Ok(date) = date {
-		date_time = date_time.replace_date(date);
-	} else {
-		logging::log!("cannot parse date convert_string_to_datetime");
-		return Err(Parse::TryFromParsed(TryFromParsed::InsufficientInformation));
-	}
-
-	Ok(date_time)
+	Date::parse(dt_str.as_str(), format)
+		.map_err(|_| Err(Parse::TryFromParsed(TryFromParsed::InsufficientInformation)))?
+		.with_hms(0, 0, 0)
 }
 
 #[component]
@@ -61,7 +52,7 @@ fn EditApiTokenPermission() -> impl IntoView {
 	let (access_token, _) = AuthState::load();
 	let api_token = expect_context::<ApiTokenInfo>().0;
 
-	let workspace_list = create_resource(
+	let workspace_list = Resource::new(
 		move || access_token.get().get_access_token(),
 		move |value| async move {
 			if let Some(value) = value {
@@ -119,15 +110,15 @@ pub fn EditApiToken() -> impl IntoView {
 
 	let token_info = get_api_token_query(token_id);
 
-	let token_info_signal = create_rw_signal::<Option<WithId<UserApiToken>>>(None);
-	let api_token_changes = create_rw_signal(CreateApiTokenInfo::new());
-	let token_permissions = create_rw_signal::<Option<BTreeMap<Uuid, WorkspacePermission>>>(None);
+	let token_info_signal = RwSignal::<Option<WithId<UserApiToken>>>(None);
+	let api_token_changes = RwSignal::new(CreateApiTokenInfo::new());
+	let token_permissions = RwSignal::<Option<BTreeMap<Uuid, WorkspacePermission>>>(None);
 
 	provide_context(api_token_changes);
 	provide_context(ApiTokenInfo(token_info_signal));
 	provide_context(ApiTokenPermissions(token_permissions));
 
-	create_effect(move |_| match token_info.get() {
+	Effect::new(move |_| match token_info.get() {
 		Some(Ok(data)) => {
 			token_info_signal.set(Some(data.token.clone()));
 			token_permissions.set(Some(data.token.permissions.clone()));
@@ -140,11 +131,6 @@ pub fn EditApiToken() -> impl IntoView {
 
 		spawn_local(async move {
 			if let Some(token_info) = token_info_signal.get() {
-				logging::log!(
-					"token_info_signal {:?} {:?}",
-					token_info,
-					token_permissions.get()
-				);
 				let res = update_api_token(
 					access_token.get_untracked().get_access_token(),
 					token_id.get_untracked(),
@@ -157,7 +143,6 @@ pub fn EditApiToken() -> impl IntoView {
 					},
 				)
 				.await;
-				logging::log!("x {:?} {:?}", res, token_info.permissions.clone());
 			}
 		});
 	};

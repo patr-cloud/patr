@@ -20,7 +20,7 @@ pub fn Popover(
 	trigger_children: View,
 	/// Classes to be applied to the trigger
 	#[prop(into, optional)]
-	trigger_class: MaybeSignal<String>,
+	trigger_class: Signal<String>,
 	/// The Content of the popover, e.g. a description of what this button does
 	#[prop(into)]
 	popover_content: View,
@@ -28,7 +28,7 @@ pub fn Popover(
 	#[prop(into, optional)]
 	popover_placement: PopoverPlacement,
 ) -> impl IntoView {
-	let show_popover = create_rw_signal(false);
+	let show_popover = RwSignal::new(false);
 	let on_mouse_enter = move |_| {
 		show_popover.set(true);
 	};
@@ -144,17 +144,16 @@ pub fn Popover(
 	view! {
 		<div
 			class={trigger_class}
-			ref={trigger_ref}
+			r#ref={trigger_ref}
 			on:mouseenter={on_mouse_enter}
 			on:mouseleave={on_mouse_leave}
 		>
 			{trigger_children}
 			<Portal>
 				<div
-					ref={popover_ref}
+					r#ref={popover_ref}
 					style={
 						let (top, left) = get_popover_position();
-						logging::log!("{}, {}", top, left);
 						format!("top:{top}px;left:{left}px;")
 					}
 				>

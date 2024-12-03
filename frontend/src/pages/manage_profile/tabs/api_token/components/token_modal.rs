@@ -6,10 +6,10 @@ use crate::prelude::*;
 pub fn TokenModal(
 	/// Whether the API Token is regenerated, or freshly created
 	#[prop(into)]
-	is_regenerated: MaybeSignal<bool>,
+	is_regenerated: Signal<bool>,
 	/// The Generated Token
 	#[prop(into)]
-	token: MaybeSignal<String>,
+	token: Signal<String>,
 ) -> impl IntoView {
 	let UseClipboardReturn {
 		is_supported,

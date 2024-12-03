@@ -39,7 +39,7 @@ fn RunnerDropdown() -> impl IntoView {
 pub fn DeploymentDetails(
 	/// The Errors For This Page
 	#[prop(into)]
-	errors: MaybeSignal<DetailsPageError>,
+	errors: Signal<DetailsPageError>,
 ) -> impl IntoView {
 	let app_type = expect_context::<AppType>();
 	let deployment_info = expect_context::<RwSignal<DeploymentInfo>>();

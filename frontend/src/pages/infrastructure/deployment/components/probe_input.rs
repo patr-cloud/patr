@@ -28,12 +28,12 @@ impl ProbeInputType {
 pub fn ProbeInput(
 	/// Additional class names to apply to the outer div, if any.
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// The type of the input
 	probe_type: ProbeInputType,
 	/// List of all available Ports
 	#[prop(into, optional, default = vec![].into())]
-	available_ports: MaybeSignal<Vec<u16>>,
+	available_ports: Signal<Vec<u16>>,
 	/// On Select Port
 	#[prop(into, optional, default = Callback::new(|_| ()))]
 	on_select_port: Callback<(String, String)>,
@@ -49,14 +49,14 @@ pub fn ProbeInput(
 ) -> impl IntoView {
 	let outer_div_class = class.with(|cname| format!("flex w-full {}", cname));
 
-	let probe_port = create_rw_signal(
+	let probe_port = RwSignal::new(
 		if let Some(probe_value) = probe_value.get_untracked() {
 			probe_value.port.to_string()
 		} else {
 			"".to_owned()
 		},
 	);
-	let probe_path = create_rw_signal(
+	let probe_path = RwSignal::new(
 		if let Some(probe_value) = probe_value.get_untracked() {
 			probe_value.path
 		} else {

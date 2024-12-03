@@ -6,7 +6,7 @@ use crate::imports::*;
 pub fn ContainerMain(
 	/// Additional class names to apply to the outer header, if any
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// The Children of the component
 	children: Children,
 ) -> impl IntoView {

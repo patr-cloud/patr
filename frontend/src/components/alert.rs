@@ -32,12 +32,12 @@ impl AlertType {
 
 #[component]
 pub fn Alert(
-	/// The Type of the elert
+	/// The Type of the alert
 	#[prop(into)]
 	r#type: AlertType,
 	/// Additional classes to apply
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// The Message
 	children: ChildrenFn,
 ) -> impl IntoView {

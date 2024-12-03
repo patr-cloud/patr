@@ -7,7 +7,7 @@ pub fn ContainerBody(
 	children: Children,
 	/// Additional Classnames to be given to the outer div
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 ) -> impl IntoView {
 	let class = move || {
 		format!(

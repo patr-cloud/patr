@@ -27,7 +27,7 @@ pub struct DomainItemType {
 
 #[component]
 pub fn DomainsDashboard() -> impl IntoView {
-	let data = create_rw_signal(vec![
+	let data = RwSignal::new(vec![
 		DomainItemType {
 			id: "124".to_owned(),
 			name: "onpatr.cloud".to_owned(),

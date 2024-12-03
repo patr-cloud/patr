@@ -7,11 +7,11 @@ use crate::prelude::*;
 #[component]
 pub fn ConfirmSignUpPage() -> impl IntoView {
 	let (_, set_auth_state) = AuthState::load();
-	let confirm_action = create_server_action::<ConfirmOtp>();
+	let confirm_action = ServerAction::<ConfirmOtp>::new();
 
-	let otp_error = create_rw_signal("".to_owned());
-	let username_error = create_rw_signal("".to_owned());
-	let otp = create_rw_signal("".to_string());
+	let otp_error = RwSignal::new("".to_owned());
+	let username_error = RwSignal::new("".to_owned());
+	let otp = RwSignal::new("".to_string());
 
 	let pending = confirm_action.pending();
 	let response = confirm_action.value();
@@ -28,7 +28,7 @@ pub fn ConfirmSignUpPage() -> impl IntoView {
 		}
 	};
 
-	create_effect(move |_| {
+	Effect::new(move |_| {
 		if let Some(resp) = response.get() {
 			match resp {
 				Ok(CompleteSignUpResponse {
@@ -42,7 +42,6 @@ pub fn ConfirmSignUpPage() -> impl IntoView {
 					}));
 				}
 				Err(err) => {
-					logging::log!("{:#?}", err);
 					handle_errors(err);
 				}
 			}

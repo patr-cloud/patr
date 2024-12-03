@@ -6,15 +6,15 @@ use crate::prelude::*;
 
 #[component]
 pub fn PasswordSection() -> impl IntoView {
-	let show_create_password_fields = create_rw_signal(false);
+	let show_create_password_fields = RwSignal::new(false);
 
-	let change_password_action = create_server_action::<ChangePasswordFn>();
+	let change_password_action = ServerAction::<ChangePasswordFn>::new();
 	let response = change_password_action.value();
 	let access_token = AuthState::load().0.get_untracked().get_access_token();
 
-	let current_password_error = create_rw_signal("".to_owned());
-	let _new_password_error = create_rw_signal("".to_owned());
-	let confirm_password_error = create_rw_signal("".to_owned());
+	let current_password_error = RwSignal::new("".to_owned());
+	let _new_password_error = RwSignal::new("".to_owned());
+	let confirm_password_error = RwSignal::new("".to_owned());
 
 	let handle_errors = move |error: ServerFnError<ErrorType>| match error {
 		ServerFnError::WrappedServerError(err) => match err {
@@ -30,14 +30,13 @@ pub fn PasswordSection() -> impl IntoView {
 		}
 	};
 
-	let open_mfa_modal = create_rw_signal(false);
+	let open_mfa_modal = RwSignal::new(false);
 
-	create_effect(move |_| {
+	Effect::new(move |_| {
 		if let Some(resp) = response.get() {
 			match resp {
 				Ok(ChangePasswordResponse {}) => {}
 				Err(err) => {
-					logging::log!("{:#?}", err);
 					handle_errors(err);
 				}
 			}

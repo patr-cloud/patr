@@ -3,7 +3,7 @@ use crate::{pages::TokenParams, prelude::*};
 
 #[component]
 pub fn RevokeApiToken() -> impl IntoView {
-	let revoke_api_token_action = create_server_action::<RevokeApiTokenFn>();
+	let revoke_api_token_action = ServerAction::<RevokeApiTokenFn>::new();
 	let access_token = move || AuthState::load().0.get().get_access_token();
 
 	let params = use_params::<TokenParams>();
@@ -16,7 +16,7 @@ pub fn RevokeApiToken() -> impl IntoView {
 		})
 	});
 
-	let show_revoke_modal = create_rw_signal(false);
+	let show_revoke_modal = RwSignal::new(false);
 
 	view! {
 		<Show when={move || show_revoke_modal.get()}>
@@ -59,11 +59,11 @@ pub fn RevokeApiToken() -> impl IntoView {
 
 #[component]
 pub fn RegenerateApiToken() -> impl IntoView {
-	let regenerate_api_token_action = create_server_action::<RegenerateApiTokenFn>();
+	let regenerate_api_token_action = ServerAction::<RegenerateApiTokenFn>::new();
 	let (access_token, _) = AuthState::load();
 
 	let params = use_params::<TokenParams>();
-	let token_id = create_rw_signal(params.with(|params| {
+	let token_id = RwSignal::new(params.with(|params| {
 		params
 			.as_ref()
 			.map(|param| param.token_id.clone().unwrap_or_default())
@@ -77,7 +77,6 @@ pub fn RegenerateApiToken() -> impl IntoView {
 			Some(data) => {
 				match data {
 					Ok(data) => {
-						logging::log!("logging response get {:#?}", data);
 						view! { <TokenModal is_regenerated=true token={data.token} /> }.into_view()
 					}
 					Err(_) => view! {}.into_view(),

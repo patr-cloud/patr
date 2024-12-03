@@ -42,7 +42,7 @@ impl DatabaseType {
 pub fn DatabaseTypeCard(
 	/// The Type of database
 	#[prop(into)]
-	database_type: MaybeSignal<DatabaseEngine>,
+	database_type: Signal<DatabaseEngine>,
 	/// The Version number
 	version: f64,
 	/// On clicking a card
@@ -50,7 +50,7 @@ pub fn DatabaseTypeCard(
 	on_click: Callback<DatabaseEngine>,
 	/// Current Selected Card
 	#[prop(into, optional, default = false.into())]
-	is_selected: MaybeSignal<bool>,
+	is_selected: Signal<bool>,
 ) -> impl IntoView {
 	view! {
 		<div

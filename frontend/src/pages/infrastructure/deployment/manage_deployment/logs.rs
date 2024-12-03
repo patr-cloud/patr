@@ -13,10 +13,10 @@ pub fn ManageDeploymentsLogs() -> impl IntoView {
 	let deployment_info = expect_context::<DeploymentInfoContext>().0;
 	let (state, _) = AuthState::load();
 
-	let logs_list = create_rw_signal::<Vec<DeploymentLog>>(vec![]);
+	let logs_list = RwSignal::<Vec<DeploymentLog>>::new(vec![]);
 
-	let end_time = create_rw_signal(OffsetDateTime::now_utc());
-	let deployment_logs = create_resource(
+	let end_time = RwSignal::new(OffsetDateTime::now_utc());
+	let deployment_logs = Resource::new(
 		move || {
 			(
 				state.get().get_access_token(),
@@ -36,7 +36,7 @@ pub fn ManageDeploymentsLogs() -> impl IntoView {
 		},
 	);
 
-	create_effect(move |_| match deployment_logs.get() {
+	Effect::new(move |_| match deployment_logs.get() {
 		Some(Ok(new_logs)) => logs_list.update(|logs| {
 			logs.extend(new_logs.logs.into_iter());
 			// REMOVE THIS FROM HERE

@@ -68,7 +68,7 @@ pub fn create_deployment_query(
 	let access_token = state.get().get_access_token();
 	let workspace_id = state.get().get_last_used_workspace_id();
 
-	create_action(move |request: &CreateDeploymentRequest| {
+	Action::new(move |request: &CreateDeploymentRequest| {
 		let request = request.clone();
 		let navigate = use_navigate();
 
@@ -102,7 +102,7 @@ pub fn delete_deployment_query(
 	let access_token = state.get().get_access_token();
 	let workspace_id = state.get().get_last_used_workspace_id();
 
-	create_action(move |deployment_id: &Uuid| {
+	Action::new(move |deployment_id: &Uuid| {
 		let navigate = use_navigate();
 		let access_token = access_token.clone();
 
@@ -128,7 +128,7 @@ pub fn start_deployment_query(
 	let access_token = state.get().get_access_token();
 	let workspace_id = state.get().get_last_used_workspace_id().unwrap();
 
-	create_action(move |deployment_id: &Uuid| {
+	Action::new(move |deployment_id: &Uuid| {
 		let access_token = access_token.clone();
 
 		let deployment_id = deployment_id.clone();
@@ -145,7 +145,7 @@ pub fn stop_deployment_query(
 	let access_token = state.get().get_access_token();
 	let workspace_id = state.get().get_last_used_workspace_id().unwrap();
 
-	create_action(move |deployment_id: &Uuid| {
+	Action::new(move |deployment_id: &Uuid| {
 		let access_token = access_token.clone();
 
 		let deployment_id = deployment_id.clone();
@@ -203,7 +203,7 @@ pub fn update_deployment_query() -> Action<
 	let access_token = state.get().get_access_token();
 	let workspace_id = state.get().get_last_used_workspace_id();
 
-	create_action(
+	Action::new(
 		move |(deployment_id, request): &(Uuid, UpdateDeploymentRequest)| {
 			let request = request.clone();
 

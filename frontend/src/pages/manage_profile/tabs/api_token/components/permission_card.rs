@@ -13,7 +13,7 @@ use crate::prelude::*;
 fn ListPermissions(
 	/// The Permission Items
 	#[prop(into)]
-	permissions: MaybeSignal<Option<WorkspacePermission>>,
+	permissions: Signal<Option<WorkspacePermission>>,
 ) -> impl IntoView {
 	match permissions.get() {
 		Some(WorkspacePermission::Member { permissions }) => permissions
@@ -30,10 +30,10 @@ fn ListPermissions(
 pub fn PermissionCard(
 	/// Additional classes
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// The workspace data to show
 	#[prop(into)]
-	workspace: MaybeSignal<WithId<Workspace>>,
+	workspace: Signal<WithId<Workspace>>,
 ) -> impl IntoView {
 	let outer_class = class.with(|cname| {
 		format!(

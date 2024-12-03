@@ -25,7 +25,7 @@ pub fn ContainerRegistry() -> impl IntoView {
 
 #[component]
 pub fn ContainerRegistryDashboard() -> impl IntoView {
-	let data = create_rw_signal(vec![
+	let data = RwSignal::new(vec![
 		ContainerRegistryItem {
 			id: "12".to_owned(),
 			name: "smart-tools-demo".to_owned(),

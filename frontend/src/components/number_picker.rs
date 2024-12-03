@@ -6,7 +6,7 @@ use crate::imports::*;
 pub fn NumberPicker(
 	/// Additional classes to apply to the outer div if any
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// Secondary Color Variant
 	#[prop(optional, default = SecondaryColorVariant::Light)]
 	style_variant: SecondaryColorVariant,

@@ -26,7 +26,7 @@ pub fn ManageDatabase() -> impl IntoView {
 		})
 	});
 
-	let database_info = create_resource(
+	let database_info = Resource::new(
 		move || (access_token(), current_workspace_id(), database_id.get()),
 		move |(access_token, workspace_id, database_id)| async move {
 			get_database(access_token, Some(database_id), workspace_id).await

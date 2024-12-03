@@ -42,7 +42,7 @@ pub fn ManageDeploymentsContent(
 ) -> impl IntoView {
 	let deployment_info = get_deployment_query(deployment_id);
 
-	let deployment_info_signal = create_rw_signal::<Option<GetDeploymentInfoResponse>>(None);
+	let deployment_info_signal = RwSignal::<Option<GetDeploymentInfoResponse>>::new(None);
 	provide_context(DeploymentInfoContext(deployment_info_signal));
 
 	view! {

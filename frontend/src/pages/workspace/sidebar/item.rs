@@ -6,7 +6,7 @@ use crate::prelude::*;
 pub fn WorkspaceItem(
 	/// The Workspace Info
 	#[prop(into)]
-	workspace: MaybeSignal<WithId<Workspace>>,
+	workspace: Signal<WithId<Workspace>>,
 	/// Set the Current Workspace ID
 	#[prop(into)]
 	set_workspace_id: WriteSignal<Option<Uuid>>,

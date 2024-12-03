@@ -10,13 +10,13 @@ use crate::prelude::*;
 
 #[component]
 pub fn UrlDashboard() -> impl IntoView {
-	let show_create = create_rw_signal(false);
+	let show_create = RwSignal::new(false);
 
 	let (state, _) = AuthState::load();
 	let access_token = Signal::derive(move || state.get().get_access_token());
 	let current_workspace_id = Signal::derive(move || state.get().get_last_used_workspace_id());
 
-	let managed_url_list = create_resource(
+	let managed_url_list = Resource::new(
 		move || (access_token.get(), current_workspace_id.get()),
 		move |(access_token, workspace_id)| async move {
 			list_managed_urls(workspace_id, access_token).await
@@ -25,10 +25,6 @@ pub fn UrlDashboard() -> impl IntoView {
 
 	let table_rows = move || match managed_url_list.get() {
 		Some(Ok(data)) => {
-			// let x = data.urls.get(0).expect("").data;
-			logging::log!(
-				"delete this line frontend/src/pages/domain/managed_url/dashboard/mod.rs:35"
-			);
 			view! {
 				<For each={move || data.urls.clone()} key={|state| state.id} let:url>
 					<ManagedUrls

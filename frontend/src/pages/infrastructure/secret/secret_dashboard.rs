@@ -11,7 +11,7 @@ pub struct SecretListItem {
 
 #[component]
 pub fn SecretsDashboard() -> impl IntoView {
-	let data = create_rw_signal(vec![
+	let data = RwSignal::new(vec![
 		SecretListItem {
 			id: "1244".to_owned(),
 			name: "Email".to_owned(),

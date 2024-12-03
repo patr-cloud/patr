@@ -5,7 +5,7 @@ use crate::prelude::*;
 pub fn DomainCard(
 	/// Additional classes to apply to the outer <tr /> if any
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// The Domain Data to populate the table with
 	domain_item: DomainItemType,
 ) -> impl IntoView {

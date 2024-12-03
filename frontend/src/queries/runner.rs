@@ -58,7 +58,7 @@ pub fn create_runner_query(
 	let access_token = state.get().get_access_token();
 	let workspace_id = state.get().get_last_used_workspace_id();
 
-	create_action(move |runner_name: &String| {
+	Action::new(move |runner_name: &String| {
 		let navigate = use_navigate();
 
 		let access_token = access_token.clone();
@@ -89,7 +89,7 @@ pub fn delete_runner_query() -> Action<Uuid, Result<DeleteRunnerResponse, Server
 	let access_token = state.get().get_access_token();
 	let workspace_id = state.get().get_last_used_workspace_id();
 
-	create_action(move |runner_id: &Uuid| {
+	Action::new(move |runner_id: &Uuid| {
 		let navigate = use_navigate();
 
 		let access_token = access_token.clone();

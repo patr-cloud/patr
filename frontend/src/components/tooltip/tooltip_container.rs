@@ -2,7 +2,7 @@ use crate::imports::*;
 
 #[component]
 pub fn ToolTipContainer(
-	/// The Conetent of the tooltip
+	/// The content of the tooltip
 	#[prop(into, optional)]
 	content: String,
 	/// The label of the display in the container
@@ -23,10 +23,10 @@ pub fn ToolTipContainer(
 	#[prop(optional, default = 16.)]
 	tooltip_width: f64,
 ) -> impl IntoView {
-	let container_ref = create_node_ref::<html::Span>();
+	let container_ref = NodeRef::<html::Span>::new();
 	view! {
 		<span
-			ref={container_ref}
+			r#ref={container_ref}
 			class={format!("fr-ct-ct pos-rel br-sm mx-xxs tooltip-container {class}")}
 		>
 

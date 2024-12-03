@@ -18,13 +18,13 @@ pub struct InputDropdownOption {
 pub fn InputDropdown(
 	/// The List of options to display
 	#[prop(into, optional, default = vec![].into())]
-	options: MaybeSignal<Vec<InputDropdownOption>>,
+	options: Signal<Vec<InputDropdownOption>>,
 	/// On Selecting an Input
 	#[prop(into, optional, default = Callback::new(|_| {}))]
 	on_select: Callback<String>,
 	/// Additional class names to apply to the outer div, if any.
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// The color variant of the component
 	#[prop(optional, default = SecondaryColorVariant::Light)]
 	variant: SecondaryColorVariant,
@@ -34,24 +34,24 @@ pub fn InputDropdown(
 	value: RwSignal<String>,
 	/// Placeholder to show if value is empty
 	#[prop(into, optional, default = "Type Here...".to_owned().into())]
-	placeholder: MaybeSignal<String>,
-	/// Whether the componenet is disabled or not
+	placeholder: Signal<String>,
+	/// Whether the component is disabled or not
 	#[prop(optional, into, default = false.into())]
-	disabled: MaybeSignal<bool>,
-	/// Whether the componenet is in loading state or not
+	disabled: Signal<bool>,
+	/// Whether the component is in loading state or not
 	#[prop(optional, into, default = false.into())]
-	loading: MaybeSignal<bool>,
+	loading: Signal<bool>,
 	/// Additional View to add at the end of the list
 	#[prop(optional, default = None)]
 	additional_view: Option<View>,
 	/// Additional Classes for the list item surrounding the action view
 	#[prop(into, optional, default = "".to_string().into())]
-	additional_view_class: MaybeSignal<String>,
+	additional_view_class: Signal<String>,
 	/// Message to display when there's no item in the list
 	#[prop(into, optional, default = "No Item in the List".to_string().into())]
-	empty_fallback: MaybeSignal<String>,
+	empty_fallback: Signal<String>,
 ) -> impl IntoView {
-	let show_dropdown = create_rw_signal(false);
+	let show_dropdown = RwSignal::new(false);
 
 	let outer_div_class = class.with(|cname| {
 		format!(
@@ -85,7 +85,7 @@ pub fn InputDropdown(
 	};
 
 	let store_options = store_value(options);
-	let store_placehoder = store_value(placeholder.clone());
+	let store_placeholder = store_value(placeholder.clone());
 	let store_empty_fallback = store_value(empty_fallback);
 	let store_additional_view_class = store_value(additional_view_class);
 
@@ -94,7 +94,7 @@ pub fn InputDropdown(
 			"w-full h-full font-medium pl-sm mr-sm py-xxs br-sm {}",
 			if disabled.get() ||
 				(value.with(|val| val.is_empty()) &&
-					store_placehoder.with_value(|placeholder| !placeholder.get().is_empty()))
+					store_placeholder.with_value(|placeholder| !placeholder.get().is_empty()))
 			{
 				"text-disabled"
 			} else {
@@ -103,7 +103,7 @@ pub fn InputDropdown(
 		)
 	};
 
-	let label = create_memo(move |_| {
+	let label = Memo::new(move |_| {
 		store_options.with_value(|options| {
 			options
 				.get()
@@ -152,7 +152,7 @@ pub fn InputDropdown(
 				{
 					move || {
 						if value.get().is_empty() || disabled.get() {
-							store_placehoder.with_value(|placeholder| placeholder.get().into_view())
+							store_placeholder.with_value(|placeholder| placeholder.get().into_view())
 						} else {
 							label.get().into_view()
 						}

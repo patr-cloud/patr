@@ -7,15 +7,15 @@ pub fn CreateManagedUrlDashboard(
 	#[prop(into)]
 	show_create: RwSignal<bool>,
 ) -> impl IntoView {
-	let url = create_rw_signal("".to_string());
-	let path = create_rw_signal("".to_string());
-	let domain = create_rw_signal("".to_string());
-	let url_type = create_rw_signal("".to_string());
-	let sub_domain = create_rw_signal("".to_string());
+	let url = RwSignal::new("".to_string());
+	let path = RwSignal::new("".to_string());
+	let domain = RwSignal::new("".to_string());
+	let url_type = RwSignal::new("".to_string());
+	let sub_domain = RwSignal::new("".to_string());
 
-	let port = create_rw_signal(0);
-	let http_only = create_rw_signal(false);
-	let perma_redirect = create_rw_signal(false);
+	let port = RwSignal::new(0);
+	let http_only = RwSignal::new(false);
+	let perma_redirect = RwSignal::new(false);
 
 	let (state, _) = AuthState::load();
 	let access_token = Signal::derive(move || state.get().get_access_token());

@@ -11,7 +11,7 @@ pub fn ManagedUrls(
 	managed_url: Signal<WithId<ManagedUrl>>,
 	/// The class names to add to the outer table row
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 ) -> impl IntoView {
 	let class = move || {
 		format!(
@@ -20,7 +20,7 @@ pub fn ManagedUrls(
 		)
 	};
 
-	let expanded_urls = create_rw_signal(false);
+	let expanded_urls = RwSignal::new(false);
 
 	let icon_type = move || {
 		if expanded_urls.get() {

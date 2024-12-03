@@ -79,13 +79,13 @@ pub fn LoginForm(
 	let (_, set_state) = AuthState::load();
 	let app_type = expect_context::<AppType>();
 
-	let username = create_rw_signal(user_id.unwrap_or_default());
-	let password = create_rw_signal("".to_owned());
+	let username = RwSignal::new(user_id.unwrap_or_default());
+	let password = RwSignal::new("".to_owned());
 
-	let username_error = create_rw_signal("".to_owned());
-	let password_error = create_rw_signal("".to_owned());
+	let username_error = RwSignal::new("".to_owned());
+	let password_error = RwSignal::new("".to_owned());
 
-	let loading = create_rw_signal(false);
+	let loading = RwSignal::new(false);
 
 	let on_submit_login = move |ev: SubmitEvent| {
 		ev.prevent_default();

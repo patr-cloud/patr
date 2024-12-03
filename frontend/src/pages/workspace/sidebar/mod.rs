@@ -11,9 +11,9 @@ use crate::{prelude::*, queries::list_workspaces_query, utils::AuthState};
 pub fn WorkspaceSidebarComponent() -> impl IntoView {
 	let workspace_list = list_workspaces_query();
 	let (state, set_state) = AuthState::load();
-	let (current_workspace, set_current_workspace) = create_signal(None);
+	let (current_workspace, set_current_workspace) = signal(None);
 
-	create_effect(move |_| {
+	Effect::new(move |_| {
 		if let Some(current_workspace) = current_workspace.get() {
 			set_state.update(|state| {
 				if let Some(AuthState::LoggedIn {

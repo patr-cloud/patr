@@ -51,7 +51,7 @@ pub fn SignUpForm(
 
 	let app_type = expect_context::<AppType>();
 
-	let first_name = create_rw_signal(first_name.unwrap_or_else(|| "".to_owned()));
+	let first_name = RwSignal::new(first_name.unwrap_or_else(|| "".to_owned()));
 	let name_error = Signal::derive(move || {
 		first_name
 			.get()
@@ -60,11 +60,11 @@ pub fn SignUpForm(
 			.unwrap_or_default()
 	});
 
-	let last_name = create_rw_signal(last_name.unwrap_or_else(|| "".to_owned()));
+	let last_name = RwSignal::new(last_name.unwrap_or_else(|| "".to_owned()));
 
-	let email = create_rw_signal(email.unwrap_or_else(|| "".to_owned()));
-	let email_error = create_rw_signal("".to_owned());
-	// let email_checking = create_resource(
+	let email = RwSignal::new(email.unwrap_or_else(|| "".to_owned()));
+	let email_error = RwSignal::new("".to_owned());
+	// let email_checking = Resource::new(
 	// 	move || {
 	// 		signal_debounced_with_options(
 	// 			email,
@@ -103,9 +103,9 @@ pub fn SignUpForm(
 	// 	},
 	// );
 
-	let username = create_rw_signal(username.unwrap_or_else(|| "".to_owned()));
-	let username_error = create_rw_signal("".to_owned());
-	// let username_checking = create_resource(
+	let username = RwSignal::new(username.unwrap_or_else(|| "".to_owned()));
+	let username_error = RwSignal::new("".to_owned());
+	// let username_checking = Resource::new(
 	// 	move || {
 	// 		signal_debounced_with_options(
 	// 			username,
@@ -146,15 +146,15 @@ pub fn SignUpForm(
 	// 	},
 	// );
 
-	let password = create_rw_signal("".to_owned());
-	let password_error = create_rw_signal("".to_owned());
+	let password = RwSignal::new("".to_owned());
+	let password_error = RwSignal::new("".to_owned());
 	let password_valid = Signal::derive(move || password.get().len() >= 8);
 
-	let password_confirm = create_rw_signal("".to_owned());
-	let password_confirm_error = create_rw_signal("".to_owned());
+	let password_confirm = RwSignal::new("".to_owned());
+	let password_confirm_error = RwSignal::new("".to_owned());
 	let passwords_match = Signal::derive(move || password.get() != password_confirm.get());
 
-	let loading = create_rw_signal(false);
+	let loading = RwSignal::new(false);
 
 	let on_submit_sign_up = move |ev: SubmitEvent| {
 		ev.prevent_default();

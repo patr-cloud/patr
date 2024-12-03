@@ -12,7 +12,7 @@ pub fn ManageDeploymentDetailsTab() -> impl IntoView {
 	let deployment_info = expect_context::<DeploymentInfoContext>().0;
 	let app_type = expect_context::<AppType>();
 
-	let update_deployment_body = create_rw_signal(UpdateDeploymentRequest::new());
+	let update_deployment_body = RwSignal::new(UpdateDeploymentRequest::new());
 
 	let update_deployment_action = update_deployment_query();
 

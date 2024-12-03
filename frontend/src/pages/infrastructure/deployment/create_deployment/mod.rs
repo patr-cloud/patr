@@ -16,7 +16,7 @@ pub use super::utils::{DeploymentInfo, DetailsPageError, Page, RunnerPageError, 
 #[component]
 pub fn CreateDeployment() -> impl IntoView {
 	let app_type = expect_context::<AppType>();
-	let deployment_info = create_rw_signal(DeploymentInfo {
+	let deployment_info = RwSignal::new(DeploymentInfo {
 		name: None,
 		registry_name: Some("docker.io".to_string()),
 		image_tag: None,
@@ -39,21 +39,20 @@ pub fn CreateDeployment() -> impl IntoView {
 
 	provide_context(deployment_info);
 
-	let page = create_rw_signal(Page::Details);
+	let page = RwSignal::new(Page::Details);
 
-	let details_error = create_rw_signal(DetailsPageError::new());
-	let runner_error = create_rw_signal(RunnerPageError::new());
-	let scale_page_error = create_rw_signal(ScalePageError::new());
+	let details_error = RwSignal::new(DetailsPageError::new());
+	let runner_error = RwSignal::new(RunnerPageError::new());
+	let scale_page_error = RwSignal::new(ScalePageError::new());
 
 	let create_deployment_action = create_deployment_query();
 
 	let on_submit = move |ev: MouseEvent| {
 		ev.prevent_default();
-		if let Some(deployment_info) = deployment_info.get().convert_to_deployment_req() {
-			create_deployment_action.dispatch(deployment_info);
-		} else {
-			logging::error!("Invalid deployment info");
-		}
+		let Some(deployment_info) = deployment_info.get().convert_to_deployment_req() else {
+			return;
+		};
+		create_deployment_action.dispatch(deployment_info);
 	};
 
 	let on_click_next = move |ev: MouseEvent| {

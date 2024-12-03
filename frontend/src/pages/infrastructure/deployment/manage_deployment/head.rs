@@ -15,17 +15,17 @@ use crate::{
 pub fn DeleteDialog(
 	/// The Deployment Name
 	#[prop(into)]
-	deployment_name: MaybeSignal<String>,
+	deployment_name: Signal<String>,
 	/// The Deployment Id
 	#[prop(into)]
-	deployment_id: MaybeSignal<Uuid>,
+	deployment_id: Signal<Uuid>,
 	/// The Modal Control Signal
 	#[prop(into)]
 	show_delete_dialog: RwSignal<bool>,
 ) -> impl IntoView {
 	let delete_deployment_action = delete_deployment_query();
 
-	let input_value = create_rw_signal("".to_string());
+	let input_value = RwSignal::new("".to_string());
 	let deployment_name = Signal::derive(move || deployment_name.get());
 
 	let is_name_matching = Signal::derive(move || input_value.get() == deployment_name.get());
@@ -87,7 +87,7 @@ pub fn DeleteDialog(
 pub fn StartStopButton() -> impl IntoView {
 	let deployment_info = expect_context::<DeploymentInfoContext>().0;
 
-	let show_delete_dialog = create_rw_signal(false);
+	let show_delete_dialog = RwSignal::new(false);
 
 	let start_deployment_action = start_deployment_query();
 	let stop_deployment_action = stop_deployment_query();

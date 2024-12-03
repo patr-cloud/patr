@@ -5,7 +5,7 @@ use crate::prelude::*;
 #[component]
 pub fn ProfileSettings() -> impl IntoView {
 	let access_token_signal = move || AuthState::load().0.get().get_access_token();
-	let user_data = create_resource(access_token_signal, move |value| async move {
+	let user_data = Resource::new(access_token_signal, move |value| async move {
 		load_user_data(value).await
 	});
 
@@ -14,7 +14,6 @@ pub fn ProfileSettings() -> impl IntoView {
 			<Transition>
 				{move || match user_data.get() {
 					Some(user_data) => {
-						logging::log!("{:#?}", user_data);
 						match user_data {
 							Ok(data) => {
 								view! {

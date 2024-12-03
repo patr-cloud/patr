@@ -5,10 +5,10 @@ use crate::prelude::*;
 pub fn StaticSiteCard(
 	/// The static site info
 	#[prop(into)]
-	static_site: MaybeSignal<StaticSiteItemType>,
+	static_site: Signal<StaticSiteItemType>,
 	/// Additional Classes to add to the outer div, if any.
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 ) -> impl IntoView {
 	let class = move || {
 		format!(

@@ -49,7 +49,7 @@ time = { workspace = true, features = ["default", "serde-human-readable"] }
 uuid = { workspace = true, features = ["default", "v1", "v4"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-leptos = { workspace = true, features = ["default"] }
+leptos = { workspace = true, features = [] }
 time = { workspace = true, features = [
 	"default",
 	"serde-human-readable",

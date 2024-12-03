@@ -12,10 +12,10 @@ pub fn ManagedURLForm(
 	/// The class names to add to the outer table row
 	#[prop(into, optional)]
 	#[allow(unused)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// Is Create Mode or Update Mode, True is Create Mode
 	#[prop(into)]
-	is_create_mode: MaybeSignal<bool>,
+	is_create_mode: Signal<bool>,
 	/// Toggle Modal Signal if in Create Mode
 	#[prop(into)]
 	show_form: RwSignal<bool>,
@@ -51,11 +51,11 @@ pub fn ManagedURLForm(
 	let access_token = Signal::derive(move || state.get().get_access_token());
 	let current_workspace_id = Signal::derive(move || state.get().get_last_used_workspace_id());
 
-	let port_string = create_rw_signal(format!("{:?}", port.get_untracked()));
+	let port_string = RwSignal::new(format!("{:?}", port.get_untracked()));
 
 	let deployment_list = get_deployments();
 
-	let domains = create_resource(
+	let domains = Resource::new(
 		move || (access_token.get(), current_workspace_id.get()),
 		move |(access_token, workspace_id)| async move {
 			list_domains(access_token, workspace_id).await
@@ -128,7 +128,7 @@ pub fn ManagedURLForm(
 				</div>
 			</div>
 			<div class="flex items-start justify-start gap-md w-full">
-				{logging::log!("{:?}", url_type.get())} <div class="flex-3">
+				<div class="flex-3">
 					<InputDropdown
 						value={url_type.with(|val| val.to_case(Case::Snake))}
 						on_select={move |variant: String| { url_type.set(variant.clone()) }}

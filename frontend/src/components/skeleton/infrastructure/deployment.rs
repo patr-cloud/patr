@@ -4,7 +4,7 @@ use crate::imports::*;
 pub fn DeploymentSkeletonCard(
 	/// Additional class names to apply to the outer div, if any
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 ) -> impl IntoView {
 	let class = move || {
 		format!(

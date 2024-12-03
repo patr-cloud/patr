@@ -87,7 +87,7 @@ impl ToastBuilder {
 			expiry: self.expiry,
 			dismissible: self.dismissible,
 			message: self.message,
-			clear: create_rw_signal(false),
+			clear: RwSignal::new(false),
 		}
 	}
 }
@@ -103,7 +103,7 @@ impl Default for ToasterContext {
 	/// The Default Context
 	fn default() -> Self {
 		ToasterContext {
-			queue: create_rw_signal(Vec::new()),
+			queue: RwSignal::new(Vec::new()),
 		}
 	}
 }

@@ -8,10 +8,10 @@ use crate::prelude::*;
 pub fn VolumeInput(
 	/// Additional class names to apply to the outer div, if any.
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// List of ports already present
 	#[prop(into, optional, default = BTreeMap::new().into())]
-	volumes_list: MaybeSignal<BTreeMap<Uuid, String>>,
+	volumes_list: Signal<BTreeMap<Uuid, String>>,
 	/// On Pressing Delete Button
 	#[prop(into, optional, default = Callback::new(|_| ()))]
 	on_delete: Callback<(MouseEvent, Uuid)>,
@@ -22,8 +22,8 @@ pub fn VolumeInput(
 	let outer_div_class = class.with(|cname| format!("flex w-full {}", cname));
 	let store_volumes = store_value(volumes_list.clone());
 
-	let vol_path = create_rw_signal("".to_string());
-	let vol_size = create_rw_signal("".to_string());
+	let vol_path = RwSignal::new("".to_string());
+	let vol_size = RwSignal::new("".to_string());
 	view! {
 		<div class={outer_div_class}>
 			<div class="flex-2 flex items-center justify-start mb-auto mt-md">

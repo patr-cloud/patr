@@ -18,8 +18,8 @@ pub fn Tooltip(
 	/// The Width of the tooltip
 	width: f64,
 ) -> impl IntoView {
-	let tooltip_ref = create_node_ref::<html::Span>();
-	let is_visible = create_rw_signal(false);
+	let tooltip_ref = NodeRef::<html::Span>::new();
+	let is_visible = RwSignal::new(false);
 
 	let show_tooltip = move || is_visible.set(true);
 
@@ -129,11 +129,10 @@ pub fn Tooltip(
 			<span
 				style={move || {
 					let (top, left, width) = get_tooltip_dimensions();
-					logging::log!("{}, {}, {}", top, left, width);
 					format!("top: {top}px; width: {width}px; left: {left}px")
 				}}
 
-				ref={tooltip_ref}
+				r#ref={tooltip_ref}
 				class={move || {
 					format!(
 						"tooltip pos-fix br-sm {} {}",

@@ -16,10 +16,10 @@ pub struct CardItem {
 pub fn DatabaseCard(
 	/// The Database Info
 	#[prop(into)]
-	database: MaybeSignal<WithId<Database>>,
+	database: Signal<WithId<Database>>,
 	/// Additional Classes to add to the outer div, if any.:w
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 ) -> impl IntoView {
 	let class = move || {
 		format!(

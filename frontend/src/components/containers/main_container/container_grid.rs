@@ -20,13 +20,13 @@ pub fn ContainerGrid(
 	children: Children,
 	/// Additional Classnames to be given to the outer div
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// Minimum Width of the Grid Item, Defaults to 300px.
 	#[prop(into, optional, default = "300px".into())]
-	min_width: MaybeSignal<String>,
+	min_width: Signal<String>,
 	/// Minimum Width of the Grid Item, Defaults to 1fr.
 	#[prop(into, optional, default = "1fr".into())]
-	max_width: MaybeSignal<String>,
+	max_width: Signal<String>,
 	/// The Fit of the Grid Item, Defaults to Fill.
 	#[prop(into, optional, default = AutoSizing::Fill)]
 	auto_sizing: AutoSizing,

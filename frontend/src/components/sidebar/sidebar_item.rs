@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use leptos_router::{use_location, use_navigate};
+use leptos_router::hooks::{use_location, use_navigate};
 
 use crate::imports::*;
 
@@ -31,16 +31,16 @@ pub fn SidebarExpanded(
 pub fn SidebarItem(
 	/// Link info of the link item
 	#[prop(into)]
-	link: MaybeSignal<LinkItem>,
+	link: Signal<LinkItem>,
 	/// Additional classes to add to the sidebar if necessary
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// Whether is the Sidebar Item is nested or root
 	#[prop(into, optional, default = false.into())]
-	is_nested: MaybeSignal<bool>,
+	is_nested: Signal<bool>,
 ) -> impl IntoView {
 	let store_link = store_value(link.clone());
-	let is_expanded = create_rw_signal(false);
+	let is_expanded = RwSignal::new(false);
 	let navigate = use_navigate();
 	let location = use_location();
 

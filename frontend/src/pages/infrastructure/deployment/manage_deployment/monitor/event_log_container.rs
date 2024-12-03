@@ -16,7 +16,7 @@ pub struct EventLog {
 
 #[component]
 pub fn EventLogContainer() -> impl IntoView {
-	let data = create_rw_signal(vec![WithId::new(
+	let data = RwSignal::new(vec![WithId::new(
 		Uuid::new_v4(),
 		EventLog {
 			event: "Something".to_string(),

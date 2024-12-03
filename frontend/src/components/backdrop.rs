@@ -6,9 +6,9 @@ pub fn Backdrop(
 	children: ChildrenFn,
 	/// Color variant of the backdrop
 	variant: SecondaryColorVariant,
-	/// Additional classnames to apply to the outer div, if any
+	/// Additional class names to apply to the outer div, if any
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 ) -> impl IntoView {
 	let class = move || {
 		class.with(|classname| {

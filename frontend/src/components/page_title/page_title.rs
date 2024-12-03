@@ -7,7 +7,7 @@ use crate::imports::*;
 pub fn TitleContainer(
 	/// Additional class names to apply to the outer div, if any
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// The Children of the component
 	children: Children,
 ) -> impl IntoView {
@@ -46,18 +46,18 @@ pub enum PageTitleIconPosition {
 pub fn PageTitle(
 	/// Specifies where to put the arrow.
 	#[prop(into, optional)]
-	icon_position: MaybeSignal<PageTitleIconPosition>,
+	icon_position: Signal<PageTitleIconPosition>,
 	/// Additional class names to pass to the link component, if any
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// The Children of the component
 	children: ChildrenFn,
 	/// Title Text Style
 	#[prop(into, optional)]
-	variant: MaybeSignal<PageTitleVariant>,
+	variant: Signal<PageTitleVariant>,
 	/// The Page to navigate to
 	#[prop(into, optional)]
-	to: MaybeSignal<String>,
+	to: Signal<String>,
 ) -> impl IntoView {
 	let class = format!(
 		"p-xxs fr-fs-ct {} {}",

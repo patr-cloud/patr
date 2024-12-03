@@ -10,7 +10,7 @@ use crate::imports::*;
 pub fn DoubleInputSlider(
 	/// Additional class names to apply to the outer div, if any
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// The Minimum value of the slider
 	#[prop(into)]
 	min: RwSignal<u16>,
@@ -30,9 +30,6 @@ pub fn DoubleInputSlider(
 	});
 
 	let get_percent = move |val: u16| ((val - min_limit) / (max_limit - min_limit)) * 100;
-	create_effect(move |_| {
-		logging::log!("{} {}", get_percent(min.get()), get_percent(max.get()));
-	});
 
 	view! {
 		<div class={outer_div_class}>
@@ -40,14 +37,14 @@ pub fn DoubleInputSlider(
 				type="range"
 				prop:value={min}
 				min={min_limit}
-				min={max_limit}
+				max={max_limit}
 				class="thumb w-full absolute left"
 			/>
 			<input
 				type="range"
 				prop:value={max}
 				min={min_limit}
-				min={max_limit}
+				max={max_limit}
 				class="thumb w-full absolute right"
 			/>
 

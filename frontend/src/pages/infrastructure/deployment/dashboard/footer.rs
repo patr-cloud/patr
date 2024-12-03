@@ -20,7 +20,7 @@ pub fn DeploymentDashboardFooter(
 	/// Current Page
 	#[prop(into)]
 	current_page: RwSignal<usize>,
-	#[prop(into)] total_count: MaybeSignal<usize>,
+	#[prop(into)] total_count: Signal<usize>,
 ) -> impl IntoView {
 	let total_pages = Signal::derive(move || get_num_pages(total_count.get()));
 

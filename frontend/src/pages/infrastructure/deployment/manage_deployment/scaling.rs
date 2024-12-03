@@ -20,9 +20,9 @@ fn UpdateScale(
 ) -> impl IntoView {
 	let store_deployment = store_value(deployment_info.clone());
 	let min_horizontal_value =
-		create_rw_signal(deployment_info.running_details.min_horizontal_scale);
+		RwSignal::new(deployment_info.running_details.min_horizontal_scale);
 	let max_horizontal_value =
-		create_rw_signal(deployment_info.running_details.max_horizontal_scale);
+		RwSignal::new(deployment_info.running_details.max_horizontal_scale);
 
 	let deployment_info_context = expect_context::<DeploymentInfoContext>().0;
 
@@ -121,7 +121,7 @@ pub fn ManageDeploymentScaling() -> impl IntoView {
 	let app_type = expect_context::<AppType>();
 	let deployment_info = expect_context::<DeploymentInfoContext>().0;
 
-	let update_deployment_body = create_rw_signal(UpdateDeploymentRequest::new());
+	let update_deployment_body = RwSignal::new(UpdateDeploymentRequest::new());
 
 	let update_deployment_action = update_deployment_query();
 

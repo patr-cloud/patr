@@ -4,11 +4,11 @@ use crate::prelude::*;
 pub fn ManageDatabaseHeader(
 	/// The name of the database
 	#[prop(into, optional)]
-	name: MaybeSignal<String>,
+	name: Signal<String>,
 	/// The ID of the database
 	#[prop(into, optional, default = None.into())]
 	#[allow(unused)]
-	id: MaybeSignal<Option<Uuid>>,
+	id: Signal<Option<Uuid>>,
 ) -> impl IntoView {
 	view! {
 		<ContainerHead>

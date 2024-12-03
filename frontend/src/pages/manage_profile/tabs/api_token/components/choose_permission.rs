@@ -20,10 +20,10 @@ pub enum ApplyToOptions {
 	/// Apply the permissions to all resources.
 	AllResource,
 	/// Apply the permissions to a specific set of resources. Specified in a
-	/// seperate InputDropdown.
+	/// separate InputDropdown.
 	Specific,
 	/// Apply the permissions to all resources except a specific set of
-	/// resources. Specified in a seperate InputDropdown.
+	/// resources. Specified in a separate InputDropdown.
 	Except,
 }
 
@@ -70,14 +70,14 @@ impl FromStr for ApplyToOptions {
 pub fn ChoosePermission(
 	/// Additional class names to apply to the, if any.
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// How many columns are there in the grid, can be "auto" or a number as a
 	/// String
 	#[prop(into, optional, default = "auto".to_string().into())]
-	grid_columns: MaybeSignal<String>,
+	grid_columns: Signal<String>,
 	/// The workspace id of the workspace
 	#[prop(into)]
-	workspace_id: MaybeSignal<Uuid>,
+	workspace_id: Signal<Uuid>,
 ) -> impl IntoView {
 	let div_class = class.with(|cname| {
 		format!(
@@ -89,10 +89,10 @@ pub fn ChoosePermission(
 
 	let api_token_permissions = expect_context::<ApiTokenPermissions>().0;
 
-	let input_resource_type = create_rw_signal("".to_string());
-	let input_apply_to = create_rw_signal("all".to_string());
-	let input_resources = create_rw_signal::<Vec<String>>(vec![]);
-	let input_permissions = create_rw_signal::<Vec<String>>(vec![]);
+	let input_resource_type = RwSignal::new("".to_string());
+	let input_apply_to = RwSignal::new("all".to_string());
+	let input_resources = RwSignal::<Vec<String>>::new(vec![]);
+	let input_permissions = RwSignal::<Vec<String>>::new(vec![]);
 
 	let resource_type_values = ResourceType::VARIANTS
 		.iter()
@@ -103,7 +103,7 @@ pub fn ChoosePermission(
 		})
 		.collect::<Vec<InputDropdownOption>>();
 
-	let show_resource_type = create_memo(move |_| {
+	let show_resource_type = Memo::new(move |_| {
 		match ResourceType::from_str(input_resource_type.get().to_case(Case::Camel).as_str()) {
 			Ok(ResourceType::DnsRecord) => false,
 			Ok(ResourceType::Workspace) => false,

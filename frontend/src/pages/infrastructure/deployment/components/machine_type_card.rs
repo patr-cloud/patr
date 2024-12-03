@@ -6,10 +6,10 @@ use crate::prelude::*;
 pub fn MachineTypeCard(
 	/// Additional classes to apply to the outer div if any
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// Machine Type Info
 	#[prop(into)]
-	machine_type: MaybeSignal<WithId<DeploymentMachineType>>,
+	machine_type: Signal<WithId<DeploymentMachineType>>,
 	/// On Selecting an Input
 	#[prop(into, optional, default = Callback::new(|_| {}))]
 	on_select: Callback<Uuid>,

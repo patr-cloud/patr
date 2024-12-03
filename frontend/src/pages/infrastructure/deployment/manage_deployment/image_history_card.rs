@@ -6,13 +6,13 @@ use crate::{pages::*, prelude::*};
 pub fn ImageHistoryCard(
 	/// Additional Classes to add to the outer div, if any.:w
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// Whether the card is active or not
 	#[prop(into, optional, default = false.into())]
-	active: MaybeSignal<bool>,
+	active: Signal<bool>,
 	/// The Deployment Info
 	#[prop(into)]
-	deploy_history: MaybeSignal<DeploymentDeployHistory>,
+	deploy_history: Signal<DeploymentDeployHistory>,
 ) -> impl IntoView {
 	let class = move || {
 		class.with(|cname| format!(

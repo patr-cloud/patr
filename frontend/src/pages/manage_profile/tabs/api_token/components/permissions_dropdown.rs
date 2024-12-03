@@ -12,7 +12,7 @@ use crate::{prelude::*, queries::get_all_permissions_query};
 pub fn PermissionsDropdown(
 	/// The workspace id of the workspace
 	#[prop(into)]
-	workspace_id: MaybeSignal<Uuid>,
+	workspace_id: Signal<Uuid>,
 	/// The Input Permissions
 	input_permissions: RwSignal<Vec<String>>,
 	/// Input Resource Type
@@ -20,7 +20,7 @@ pub fn PermissionsDropdown(
 ) -> impl IntoView {
 	let all_permissions = get_all_permissions_query();
 
-	let filtered_permissions = create_memo(move |_| {
+	let filtered_permissions = Memo::new(move |_| {
 		let permissions = all_permissions.get();
 		match permissions {
 			Some(Ok(permissions)) => permissions
@@ -57,7 +57,6 @@ pub fn PermissionsDropdown(
 				})
 				.collect::<Vec<WithId<ParsedPermission>>>(),
 			_ => {
-				logging::log!("error fetching permissions");
 				vec![]
 			}
 		}

@@ -8,10 +8,10 @@ use crate::prelude::*;
 pub fn ApiTokenCard(
 	/// Additional class names to apply to the row, if any.
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// The User API Token
 	#[prop(into)]
-	token: MaybeSignal<WithId<UserApiToken>>,
+	token: Signal<WithId<UserApiToken>>,
 ) -> impl IntoView {
 	let outer_class = class.with(|cname| {
 		format!(
@@ -51,7 +51,6 @@ pub fn ApiTokenCard(
 
 	let on_click_link = move |ev: MouseEvent| {
 		ev.prevent_default();
-		logging::log!("/user/api-tokens/{}", token_id.get());
 		navigate(
 			format!("/user/api-tokens/{}", token_id.get()).as_str(),
 			Default::default(),
@@ -59,7 +58,7 @@ pub fn ApiTokenCard(
 	};
 
 	view! {
-		<tr on:click={on_click_link} tab_index=0 class={outer_class} aria_label="Select API Token">
+		<tr on:click={on_click_link} tabindex=0 class={outer_class} aria_label="Select API Token">
 			<td class="flex-4 flex items-center justify-center">
 				{move || store_token.with_value(|token| token.get().name.clone())}
 			</td>

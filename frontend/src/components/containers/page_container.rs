@@ -5,7 +5,7 @@ use crate::imports::*;
 pub fn PageContainer(
 	/// Additional classnames to appy to the outer div, if any
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// The contents of the page
 	children: Children,
 ) -> impl IntoView {

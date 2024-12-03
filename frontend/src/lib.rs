@@ -4,8 +4,8 @@
 
 /// Prelude module. Used to re-export commonly used items.
 pub mod prelude {
-	pub use leptos::*;
-	pub use leptos_router::*;
+	pub use leptos::prelude::*;
+	pub use leptos_router::prelude::*;
 	pub use leptos_use::use_cookie;
 	pub use models::prelude::*;
 
@@ -71,7 +71,7 @@ pub mod components;
 pub mod pages;
 /// All the Leptos Queries and Tags used in the API routes
 pub mod queries;
-/// The Routes module. This contains all the routes used in the applica.
+/// The Routes module. This contains all the routes used in the application.
 /// Routes are what defines the URL for each and every page.
 pub mod routes;
 /// The utils module. This contains all the utility functions and other things

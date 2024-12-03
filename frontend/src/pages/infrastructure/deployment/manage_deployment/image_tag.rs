@@ -4,7 +4,7 @@ use crate::prelude::*;
 pub fn ImageTag(
 	/// Additional Classes to add to the outer div, if any.:w
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// The Tag content
 	tag: String,
 ) -> impl IntoView {

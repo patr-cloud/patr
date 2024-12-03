@@ -884,22 +884,22 @@ impl Display for IconType {
 pub fn icon(
 	/// name of the icon to display
 	#[prop(into)]
-	icon: MaybeSignal<IconType>,
+	icon: Signal<IconType>,
 	/// class name to apply to the icon
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// text color of the icon
 	#[prop(into, optional, default = Color::White.into())]
-	color: MaybeSignal<Color>,
+	color: Signal<Color>,
 	/// fill color of the icon
 	#[prop(into, optional)]
-	fill: MaybeSignal<Color>,
+	fill: Signal<Color>,
 	/// size of the icon
 	#[prop(into, optional)]
-	size: MaybeSignal<Size>,
+	size: Signal<Size>,
 	/// Whether to enable the pulse animation
 	#[prop(into, optional, default = false.into())]
-	enable_pulse: MaybeSignal<bool>,
+	enable_pulse: Signal<bool>,
 	/// click handler
 	#[prop(optional)]
 	on_click: Option<ClickHandler>,

@@ -16,39 +16,36 @@ pub fn UpdateManagedUrl(
 	/// The class names to add to the outer table row
 	#[prop(into, optional)]
 	#[allow(unused)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 ) -> impl IntoView {
 	let store_managed_url = store_value(managed_url);
 	let managed_url_id = Signal::derive(move || managed_url.clone().get().id);
 
-	let url_type = create_rw_signal(
-		store_managed_url.with_value(|val| val.get_untracked().url_type.to_string()),
-	);
-	let sub_domain = create_rw_signal(
-		store_managed_url.with_value(|val| val.get_untracked().sub_domain.clone()),
-	);
-	let domain = create_rw_signal(
+	let url_type =
+		RwSignal::new(store_managed_url.with_value(|val| val.get_untracked().url_type.to_string()));
+	let sub_domain =
+		RwSignal::new(store_managed_url.with_value(|val| val.get_untracked().sub_domain.clone()));
+	let domain = RwSignal::new(
 		store_managed_url.with_value(|val| val.get_untracked().domain_id.to_string()),
 	);
-	let path =
-		create_rw_signal(store_managed_url.with_value(|val| val.get_untracked().path.clone()));
-	let url =
-		create_rw_signal(
-			store_managed_url.with_value(|val| match &val.get_untracked().url_type {
-				ManagedUrlType::ProxyDeployment { deployment_id, .. } => deployment_id.to_string(),
-				ManagedUrlType::ProxyStaticSite { static_site_id } => static_site_id.to_string(),
-				ManagedUrlType::Redirect { url, .. } => url.clone(),
-				ManagedUrlType::ProxyUrl { url, .. } => url.clone(),
-			}),
-		);
-	let port = create_rw_signal::<u16>(store_managed_url.with_value(|val| {
-		match val.get_untracked().url_type {
-			ManagedUrlType::ProxyDeployment { port, .. } => port,
-			_ => 0,
-		}
-	}));
+	let path = RwSignal::new(store_managed_url.with_value(|val| val.get_untracked().path.clone()));
+	let url = RwSignal::new(store_managed_url.with_value(
+		|val| match &val.get_untracked().url_type {
+			ManagedUrlType::ProxyDeployment { deployment_id, .. } => deployment_id.to_string(),
+			ManagedUrlType::ProxyStaticSite { static_site_id } => static_site_id.to_string(),
+			ManagedUrlType::Redirect { url, .. } => url.clone(),
+			ManagedUrlType::ProxyUrl { url, .. } => url.clone(),
+		},
+	));
+	let port =
+		RwSignal::<u16>::new(store_managed_url.with_value(
+			|val| match val.get_untracked().url_type {
+				ManagedUrlType::ProxyDeployment { port, .. } => port,
+				_ => 0,
+			},
+		));
 	let http_only =
-		create_rw_signal(
+		RwSignal::new(
 			store_managed_url.with_value(|val| match val.get_untracked().url_type {
 				ManagedUrlType::Redirect { http_only, .. } => http_only,
 				ManagedUrlType::ProxyUrl { http_only, .. } => http_only,
@@ -56,7 +53,7 @@ pub fn UpdateManagedUrl(
 			}),
 		);
 	let permanent_redirect =
-		create_rw_signal(
+		RwSignal::new(
 			store_managed_url.with_value(|val| match val.get_untracked().url_type {
 				ManagedUrlType::Redirect {
 					permanent_redirect, ..
@@ -71,8 +68,6 @@ pub fn UpdateManagedUrl(
 
 	let on_submit_update = move |_: SubmitEvent| {
 		spawn_local(async move {
-			logging::log!("{} {}", url.get(), url_type.get());
-
 			let resp = update_managed_url(
 				current_workspace_id
 					.get_untracked()

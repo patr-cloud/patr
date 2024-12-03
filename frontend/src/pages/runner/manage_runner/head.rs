@@ -6,7 +6,7 @@ use crate::{prelude::*, queries::delete_runner_query};
 pub fn RunnerManageHead(
 	/// Runner Info
 	#[prop(into)]
-	runner_info: MaybeSignal<WithId<Runner>>,
+	runner_info: Signal<WithId<Runner>>,
 ) -> impl IntoView {
 	let delete_runner_action = delete_runner_query();
 

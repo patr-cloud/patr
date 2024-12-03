@@ -13,10 +13,10 @@ pub struct TabItem {
 pub fn Tabs(
 	/// Additional class names to apply to the external div
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// The Tab Item
 	#[prop(into, optional)]
-	tab_items: MaybeSignal<Vec<TabItem>>,
+	tab_items: Signal<Vec<TabItem>>,
 ) -> impl IntoView {
 	let class = class.with(|cname| format!("flex justify-start items-end {cname}"));
 

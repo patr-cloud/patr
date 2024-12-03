@@ -7,7 +7,7 @@ use crate::prelude::*;
 pub fn WorkspaceSwitcher(
 	/// List of workspaces
 	#[prop(into)]
-	workspaces: MaybeSignal<Vec<WithId<Workspace>>>,
+	workspaces: Signal<Vec<WithId<Workspace>>>,
 	/// Set the Current Workspace ID
 	#[prop(into)]
 	set_workspace_id: WriteSignal<Option<Uuid>>,
@@ -20,10 +20,9 @@ pub fn WorkspaceSwitcher(
 	view! {
 		<Portal>
 			<div
-				tab_index={-1}
-				class="
-				text-white bg-secondary-light border border-border-color rounded-sm
-				flex flex-col itmes-start justify-start workspace-switcher pt-md "
+				tabindex={-1}
+				class="text-white bg-secondary-light border border-border-color rounded-sm
+				flex flex-col items-start justify-start workspace-switcher pt-md"
 			>
 				<p class="mx-xl text-md mb-sm">"Workspaces"</p>
 				<div class="fc-fs-fs w-full ul-light pb-xs">

@@ -30,7 +30,7 @@ impl StringExt for &str {
 	}
 }
 
-/// An extention trait that maps a Signal from one type to another
+/// An extension trait that maps a Signal from one type to another
 pub trait SignalMapExt<T>
 where
 	T: Clone,
@@ -38,17 +38,17 @@ where
 	/// Maps a signal from one type to another
 	fn map<U, F>(self, f: F) -> Signal<U>
 	where
-		U: Clone,
+		U: Clone + Send + Sync + 'static,
 		F: Fn(T) -> U + 'static;
 }
 
 impl<T> SignalMapExt<T> for Signal<T>
 where
-	T: Clone,
+	T: Clone + Send + Sync + 'static,
 {
 	fn map<U, F>(self, f: F) -> Signal<U>
 	where
-		U: Clone,
+		U: Clone + Send + Sync + 'static,
 		F: Fn(T) -> U + 'static,
 	{
 		Signal::derive(move || f(self.get()))

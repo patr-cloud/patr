@@ -9,7 +9,7 @@ pub fn DatabaseDashboard() -> impl IntoView {
 	let access_token = move || state.get().get_access_token();
 	let current_workspace_id = move || state.get().get_last_used_workspace_id();
 
-	let database_list = create_resource(
+	let database_list = Resource::new(
 		move || (access_token(), current_workspace_id()),
 		move |(access_token, workspace_id)| async move {
 			list_database(access_token, workspace_id).await

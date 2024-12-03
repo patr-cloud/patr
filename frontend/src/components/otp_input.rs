@@ -7,7 +7,7 @@ use crate::imports::*;
 pub fn OtpInput(
 	/// Additional classes to apply to the outer div, if any.
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// OTP Value
 	#[prop(into)]
 	otp: RwSignal<String>,
@@ -23,7 +23,7 @@ pub fn OtpInput(
 
 	let input_refs = store_value(
 		(0..length)
-			.map(|_| create_node_ref::<Input>())
+			.map(|_| NodeRef::<Input>::new())
 			.collect::<Vec<_>>(),
 	);
 
@@ -63,7 +63,6 @@ pub fn OtpInput(
 						.last()
 						.map(|x| x.to_string())
 						.unwrap_or("".to_string());
-					logging::log!("{}", y);
 					y
 				} else {
 					x.to_owned()
@@ -130,7 +129,7 @@ pub fn OtpInput(
 							class="full-width fr-ct-ct gap-xs"
 						>
 							<input
-								_ref={_ref}
+								r#ref={_ref}
 								class="full-width px-xxs txt-center row-card br-sm txt-white txt-lg outline-primary-focus bg-secondary-light"
 								type="number"
 								placeholder="0"

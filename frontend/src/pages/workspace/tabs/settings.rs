@@ -6,7 +6,7 @@ use crate::prelude::*;
 fn ShowWorkspaceInfo(
 	/// The workspace data to show
 	#[prop(into)]
-	workspace: MaybeSignal<WithId<Workspace>>,
+	workspace: Signal<WithId<Workspace>>,
 ) -> impl IntoView {
 	view! {
 		<div class="flex flex-col items-start justify-start w-full">
@@ -57,7 +57,7 @@ fn ShowWorkspaceInfo(
 						"Alert Email(s)"
 					</label>
 					<span class="text-grey">
-						"These are a list of emails that will recieve a notification whenever a deployment crashes"
+						"These are a list of emails that will receive a notification whenever a deployment crashes"
 					</span>
 				</div>
 
@@ -77,7 +77,7 @@ fn ShowWorkspaceInfo(
 pub fn ManageWorkspaceSettingsTab() -> impl IntoView {
 	let (state, _) = AuthState::load();
 
-	let workspace_list = create_resource(
+	let workspace_list = Resource::new(
 		move || state.get().get_access_token(),
 		move |value| async move {
 			if let Some(value) = value {

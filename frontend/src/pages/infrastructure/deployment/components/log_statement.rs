@@ -9,7 +9,7 @@ use crate::prelude::*;
 pub fn LogStatement(
 	/// Additional class names to apply to the outer div, if any
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// The Log Details
 	log: Signal<DeploymentLog>,
 ) -> impl IntoView {
@@ -21,7 +21,7 @@ pub fn LogStatement(
 	});
 
 	let store_log = store_value(log);
-	let date_formater = format_description!("[year]-[month]-[day] [hour]:[minute]");
+	let date_formatter = format_description!("[year]-[month]-[day] [hour]:[minute]");
 
 	view! {
 		<div
@@ -30,7 +30,7 @@ pub fn LogStatement(
 		>
 			<Icon icon={IconType::ChevronRight} size={Size::ExtraSmall} color={Color::Grey} />
 
-			{move || match store_log.with_value(|log| log.get().timestamp.format(&date_formater)) {
+			{move || match store_log.with_value(|log| log.get().timestamp.format(&date_formatter)) {
 				Ok(date_time) => {
 					view! {
 						<time date_time={date_time.clone()} class="text-xxs pr-sm">

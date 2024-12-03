@@ -14,7 +14,7 @@ pub struct StaticSiteItemType {
 
 #[component]
 pub fn StaticSiteDashboard() -> impl IntoView {
-	let data = create_rw_signal(vec![
+	let data = RwSignal::new(vec![
 		StaticSiteItemType {
 			id: "1213123qa".to_owned(),
 			name: "Site One".to_owned(),

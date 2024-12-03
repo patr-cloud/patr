@@ -10,13 +10,13 @@ use crate::prelude::*;
 pub fn PortInput(
 	/// Additional class names to apply to the outer div, if any.
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// List of ports already present
 	#[prop(into, optional, default = BTreeMap::new().into())]
-	ports_list: MaybeSignal<BTreeMap<StringifiedU16, ExposedPortType>>,
+	ports_list: Signal<BTreeMap<StringifiedU16, ExposedPortType>>,
 	/// Whether updating, or viewing details.
 	#[prop(into, optional, default = false.into())]
-	is_update_screen: MaybeSignal<bool>,
+	is_update_screen: Signal<bool>,
 	/// On Pressing Delete Button
 	#[prop(into, optional, default = Callback::new(|_| ()))]
 	on_delete: Callback<String>,
@@ -25,7 +25,7 @@ pub fn PortInput(
 	on_add: Callback<(String, String)>,
 	/// The Error For Port Input
 	#[prop(into, optional)]
-	error: MaybeSignal<String>,
+	error: Signal<String>,
 ) -> impl IntoView {
 	let outer_div_class = class.with(|cname| format!("flex w-full {}", cname));
 
@@ -39,8 +39,8 @@ pub fn PortInput(
 		})
 		.collect::<Vec<_>>();
 
-	let port_type = create_rw_signal("".to_string());
-	let port_number = create_rw_signal("".to_string());
+	let port_type = RwSignal::new("".to_string());
+	let port_number = RwSignal::new("".to_string());
 
 	let store_error = store_value(error);
 

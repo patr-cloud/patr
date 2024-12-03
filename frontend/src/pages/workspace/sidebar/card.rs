@@ -9,15 +9,15 @@ use crate::prelude::*;
 pub fn WorkspaceCard(
 	/// The Workspace
 	#[prop(into)]
-	workspaces: MaybeSignal<Vec<WithId<Workspace>>>,
+	workspaces: Signal<Vec<WithId<Workspace>>>,
 	/// The Currently Selected Workspace
 	#[prop(into, optional)]
-	current_workspace: MaybeSignal<Option<WithId<Workspace>>>,
+	current_workspace: Signal<Option<WithId<Workspace>>>,
 	/// Set the Current Workspace ID
 	#[prop(into)]
 	set_workspace_id: WriteSignal<Option<Uuid>>,
 ) -> impl IntoView {
-	let show_workspace_switcher = create_rw_signal(false);
+	let show_workspace_switcher = RwSignal::new(false);
 	let _navigate = use_navigate();
 
 	view! {
@@ -30,7 +30,7 @@ pub fn WorkspaceCard(
 				<p class="text-sm text-white w-[20ch] text-ellipsis overflow-hidden">
 					{move || match current_workspace.get() {
 						Some(workspace) => format!("{}", workspace.name).into_view(),
-						None => "Select A Workspace".into_view(),
+						None => "Select A Workspace".to_string().into_view(),
 					}}
 				</p>
 			</div>

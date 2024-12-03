@@ -9,10 +9,10 @@ use crate::prelude::*;
 pub fn EnvInput(
 	/// Additional class names to apply to the outer div, if any.
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// List of ports already present
 	#[prop(into, optional, default = BTreeMap::new().into())]
-	envs_list: MaybeSignal<BTreeMap<String, EnvironmentVariableValue>>,
+	envs_list: Signal<BTreeMap<String, EnvironmentVariableValue>>,
 	/// On Pressing Delete Button
 	#[prop(into, optional, default = Callback::new(|_| ()))]
 	on_delete: Callback<String>,
@@ -23,8 +23,8 @@ pub fn EnvInput(
 	let outer_div_class = class.with(|cname| format!("flex full-width {}", cname));
 	let store_envs = store_value(envs_list.clone());
 
-	let env_name = create_rw_signal("".to_string());
-	let env_value = create_rw_signal("".to_string());
+	let env_name = RwSignal::new("".to_string());
+	let env_value = RwSignal::new("".to_string());
 
 	view! {
 		<div class={outer_div_class}>

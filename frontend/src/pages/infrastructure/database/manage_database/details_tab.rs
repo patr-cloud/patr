@@ -5,16 +5,16 @@ use crate::{pages::*, prelude::*};
 
 #[component]
 fn CopyButton(// #[prop(into)]
-	// value: MaybeSignal<String>
+	// value: Signal<String>
 ) -> impl IntoView {
-	let show_button = create_rw_signal(false);
-	let copy_data = create_rw_signal(false);
+	let show_button = RwSignal::new(false);
+	let copy_data = RwSignal::new(false);
 
 	let _on_copy = move |_: MouseEvent| {
 		copy_data.set(true);
 	};
 
-	create_effect(move |_| {
+	Effect::new(move |_| {
 		show_button.set(true);
 	});
 
@@ -40,9 +40,9 @@ fn CopyButton(// #[prop(into)]
 pub fn ManageDatabaseDetailsTab(
 	/// The Database Item
 	#[prop(into)]
-	database_info: MaybeSignal<WithId<Database>>,
+	database_info: Signal<WithId<Database>>,
 ) -> impl IntoView {
-	let store_datbase = store_value(database_info.clone());
+	let store_database = store_value(database_info.clone());
 	view! {
 		<div class="full-width px-md fc-fs-fs fit-wide-screen mx-auto my-xl txt-white">
 
@@ -53,7 +53,7 @@ pub fn ManageDatabaseDetailsTab(
 					<DatabaseTypeCard
 						version=4.
 						database_type={Signal::derive(move || {
-							store_datbase.clone().with_value(|db| db.get().engine.clone())
+							store_database.clone().with_value(|db| db.get().engine.clone())
 						})}
 					/>
 				</div>
@@ -68,7 +68,7 @@ pub fn ManageDatabaseDetailsTab(
 				<div class="flex-col-10 fc-fs-fs pl-xs">
 					<div class="fr-fs-ct br-sm bg-secondary-light full-width py-sm px-xl">
 						<span class="pl-sm">
-							{move || store_datbase.with_value(|db| db.get().name.clone())}
+							{move || store_database.with_value(|db| db.get().name.clone())}
 						</span>
 					</div>
 				</div>
@@ -83,7 +83,7 @@ pub fn ManageDatabaseDetailsTab(
 				<div class="flex-col-10 pl-xs">
 					<div class="fr-fs-ct br-sm bg-secondary-light full-width py-sm px-xl">
 						<span class="pl-sm">
-							{move || store_datbase.with_value(|db| db.get().region.to_string())}
+							{move || store_database.with_value(|db| db.get().region.to_string())}
 						</span>
 					</div>
 				</div>
@@ -99,7 +99,7 @@ pub fn ManageDatabaseDetailsTab(
 					<div class="fr-sb-ct br-sm bg-secondary-light full-width py-sm px-xl">
 						<span class="pl-sm">
 							{move || {
-								store_datbase
+								store_database
 									.with_value(|db| db.get().public_connection.username.clone())
 							}}
 						</span>
@@ -139,7 +139,7 @@ pub fn ManageDatabaseDetailsTab(
 					<div class="fr-sb-ct br-sm bg-secondary-light full-width py-sm px-xl">
 						<span class="pl-sm">
 							{move || {
-								store_datbase
+								store_database
 									.with_value(|db| db.get().public_connection.host.clone())
 							}}
 						</span>
@@ -157,7 +157,7 @@ pub fn ManageDatabaseDetailsTab(
 				<div class="flex-col-10 pl-xs">
 					<div class="fr-sb-ct br-sm bg-secondary-light full-width py-sm px-xl">
 						<span class="pl-sm">
-							{move || store_datbase.with_value(|db| db.get().public_connection.port)}
+							{move || store_database.with_value(|db| db.get().public_connection.port)}
 						</span>
 						<CopyButton />
 					</div>
@@ -174,7 +174,7 @@ pub fn ManageDatabaseDetailsTab(
 					<div class="fr-sb-ct br-sm bg-secondary-light full-width py-sm px-xl">
 						<span class="pl-sm">
 							{move || {
-								store_datbase
+								store_database
 									.with_value(|_db| {
 										format!(
 											"{}://{}:<DATABASE_PASSWORD>@{}:{}/staging",

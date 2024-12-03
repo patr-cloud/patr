@@ -7,7 +7,7 @@ pub fn SecretCard(
 	secret_item: SecretListItem,
 	/// The class names to add to the outer table row
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 ) -> impl IntoView {
 	let class = move || {
 		format!(

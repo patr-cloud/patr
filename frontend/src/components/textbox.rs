@@ -4,19 +4,19 @@ use crate::imports::*;
 pub fn Textbox(
 	/// The Start Icon if any
 	#[prop(into, optional)]
-	start_icon: MaybeSignal<Option<IconProps>>,
+	start_icon: Signal<Option<IconProps>>,
 	/// The End Icon if any
 	#[prop(into, optional)]
-	end_icon: MaybeSignal<Option<IconProps>>,
+	end_icon: Signal<Option<IconProps>>,
 	/// Additional class names to apply to the outer div, if any.
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	#[prop(optional)]
 	/// The Color Variant of the textbox
 	color_variant: SecondaryColorVariant,
 	/// Whether the textbox is disable.
 	#[prop(into, optional)]
-	disabled: MaybeSignal<bool>,
+	disabled: Signal<bool>,
 	/// A Default Value, passed to the span,
 	/// Takes first priority
 	#[prop(into, optional, default = None)]
@@ -24,7 +24,7 @@ pub fn Textbox(
 	/// A placeholder for the "input", takes 3rd priority
 	/// after value,
 	#[prop(into, optional)]
-	placeholder: MaybeSignal<String>,
+	placeholder: Signal<String>,
 	// on_click: Option<Rc<dyn Fn(&ev::MouseEvent)>>,
 	/// The length, use 0 to not use any ellipsis, defaults to 0
 	#[prop(optional, default = 0)]

@@ -4,7 +4,7 @@ use crate::imports::*;
 pub fn CustomSkeleton(
 	/// Additional class names to apply to the outer table, if any.
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 ) -> impl IntoView {
 	let class = move || class.with(|classname| format!("custom-skeleton {}", classname));
 

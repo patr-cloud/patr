@@ -6,22 +6,22 @@ use models::api::workspace::managed_url::*;
 
 use crate::{pages::*, prelude::*};
 
-/// Indivisual URL Card Item
+/// Individual URL Card Item
 #[component]
 pub fn ManagedUrlCard(
 	/// Whether to have borders rounded on the top.
 	#[prop(into, optional, default = false.into())]
-	enable_radius_on_top: MaybeSignal<bool>,
+	enable_radius_on_top: Signal<bool>,
 	/// The class names to add to the outer table row
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// Managed URL Item
 	#[prop(into)]
-	managed_url: MaybeSignal<WithId<ManagedUrl>>,
+	managed_url: Signal<WithId<ManagedUrl>>,
 ) -> impl IntoView {
-	let show_update_url = create_rw_signal(false);
+	let show_update_url = RwSignal::new(false);
 
-	let show_delete_dialogue = create_rw_signal(false);
+	let show_delete_dialogue = RwSignal::new(false);
 
 	let class = move || {
 		class.with(|classname| {
@@ -53,7 +53,7 @@ pub fn ManagedUrlCard(
 	let current_workspace_id = Signal::derive(move || state.get().get_last_used_workspace_id());
 
 	let store_managed_url = store_value(managed_url.clone());
-	let domain = create_resource(
+	let domain = Resource::new(
 		move || {
 			(
 				access_token.get(),

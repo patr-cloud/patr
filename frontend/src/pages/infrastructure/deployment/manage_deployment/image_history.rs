@@ -8,7 +8,7 @@ pub fn ManageDeploymentImageHistory() -> impl IntoView {
 	let access_token = move || state.get().get_access_token();
 	let current_workspace_id = move || state.get().get_last_used_workspace_id();
 
-	let image_history_list = create_resource(
+	let image_history_list = Resource::new(
 		move || {
 			(
 				access_token(),

@@ -20,25 +20,24 @@ pub fn CreateDatabase() -> impl IntoView {
 	let access_token = Signal::derive(move || state.get().get_access_token());
 	let current_workspace_id = Signal::derive(move || state.get().get_last_used_workspace_id());
 
-	let selected_runner = create_rw_signal("".to_string());
-	let database_info = create_rw_signal(DatabaseInfo {
+	let selected_runner = RwSignal::new("".to_string());
+	let database_info = RwSignal::new(DatabaseInfo {
 		name: None,
 		database_type: None,
 	});
 
-	let runner_list = create_resource(
+	let runner_list = Resource::new(
 		move || (access_token.get(), current_workspace_id.get()),
 		move |(access_token, workspace_id)| async move {
 			list_runners(access_token, workspace_id.unwrap()).await
 		},
 	);
 
-	let name_error = create_rw_signal("".to_string());
-	let db_type_error = create_rw_signal("".to_string());
-	let runner_error = create_rw_signal("".to_string());
+	let name_error = RwSignal::new("".to_string());
+	let db_type_error = RwSignal::new("".to_string());
+	let runner_error = RwSignal::new("".to_string());
 
 	let on_submit = move || {
-		logging::log!("{:?}\n{}", database_info.get(), selected_runner.get());
 		database_info.with(|info| {
 			name_error.set("".to_string());
 			db_type_error.set("".to_string());

@@ -84,16 +84,16 @@ impl Status {
 pub fn StatusBadge(
 	/// Additional Classed to add, if any
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// The Text of the status Badge
 	#[prop(into, optional, default = None.into())]
-	text: MaybeSignal<Option<String>>,
+	text: Signal<Option<String>>,
 	/// The Color of the status Badge
 	#[prop(into, optional, default = None.into())]
-	color: MaybeSignal<Option<Color>>,
+	color: Signal<Option<Color>>,
 	/// Status of the component
 	#[prop(into, optional, default = None.into())]
-	status: MaybeSignal<Option<Status>>,
+	status: Signal<Option<Status>>,
 ) -> impl IntoView {
 	// let store_text = store_value(text);
 

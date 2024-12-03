@@ -1,4 +1,4 @@
-use leptos_router::{Outlet, ProtectedRoute};
+use leptos_router::components::{Outlet, ProtectedRoute};
 
 use crate::{prelude::*, utils::AuthState};
 
@@ -8,18 +8,16 @@ pub fn LoggedInRoutesView() -> impl IntoView {
 	let (state, _) = AuthState::load();
 
 	move || match state.get() {
-		AuthState::LoggedOut => view! {
+		AuthState::LoggedOut => Either::Left(view! {
 			<PageContainer class="bg-image">
 				<Outlet />
 			</PageContainer>
-		}
-		.into_view(),
-		AuthState::LoggedIn { .. } => view! {
+		}),
+		AuthState::LoggedIn { .. } => Either::Right(view! {
 			<div class="fr-fs-fs full-width full-height bg-secondary">
 				<Outlet />
 			</div>
-		}
-		.into_view(),
+		}),
 	}
 }
 
