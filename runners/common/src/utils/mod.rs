@@ -9,6 +9,8 @@ pub mod config;
 pub mod delayed_future;
 /// Extensions traits for the `Either` type.
 pub mod ext_traits;
+/// The resource executor that will be used to manage the resources.
+pub mod resource_executor;
 
 /// Contains the extension traits that will be used with the axum [`Router`][1]
 /// to mount the various endpoints on the router.

@@ -1,9 +1,9 @@
-use std::{future::IntoFuture, net::SocketAddr, pin::pin};
+use std::{net::SocketAddr, pin::pin};
 
+use dashmap::DashMap;
 use futures::{
-	future::{self, BoxFuture, Either},
+	future::{self, Either},
 	stream::BoxStream,
-	FutureExt,
 	StreamExt,
 };
 use models::{api::workspace::runner::*, rbac::ResourceType};
@@ -21,7 +21,7 @@ use tracing_subscriber::{
 	Layer,
 };
 
-use crate::{db, prelude::*, utils::delayed_future::DelayedFuture};
+use crate::{db, prelude::*, utils::resource_executor::ResourceExecutorTask};
 
 /// All deployment related functions for the runner
 mod deployment;
@@ -34,18 +34,10 @@ pub struct Runner<E>
 where
 	E: RunnerExecutor,
 {
-	/// The executor for the runner. This is the main trait that the runner
-	/// needs to implement to run the resources.
-	executor: E,
-	/// The app state for the runner. This contains the database connection pool
-	/// and the configuration for the runner.
+	/// Runner task registry
+	registry: DashMap<Uuid, ResourceExecutorTask>,
+	/// State and configuration for the runner
 	state: AppState<E>,
-	/// A list of resources that need to be reconciled at a later time
-	/// This is used to retry resources that failed to reconcile
-	reconciliation_list: Vec<DelayedFuture<Uuid>>,
-	/// The future that will resolve to the next resource that needs to be
-	/// reconciled
-	next_reconcile_future: BoxFuture<'static, Uuid>,
 }
 
 impl<E> Runner<E>
@@ -58,10 +50,53 @@ where
 	/// is responsible for. This function will run forever until the runner is
 	/// stopped.
 	pub async fn run() {
-		let (mut runner, mut runner_changes_receiver) = Self::init().await;
+		let config = RunnerSettings::<E::Settings>::parse(E::RUNNER_INTERNAL_NAME)
+			.expect("Failed to parse settings");
 
-		// Run the server here
+		tracing::dispatcher::set_global_default(Dispatch::new(
+			tracing_subscriber::registry().with(
+				FmtLayer::new()
+					.with_span_events(FmtSpan::NONE)
+					.event_format(
+						tracing_subscriber::fmt::format()
+							.with_ansi(true)
+							.with_file(false)
+							.without_time()
+							.compact(),
+					)
+					.with_filter(
+						tracing_subscriber::filter::Targets::new()
+							.with_target(E::RUNNER_INTERNAL_NAME, LevelFilter::TRACE)
+							.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
+							.with_target("models", LevelFilter::TRACE),
+					)
+					.with_filter(LevelFilter::from_level(
+						if config.environment == RunningEnvironment::Development {
+							Level::TRACE
+						} else {
+							Level::DEBUG
+						},
+					)),
+			),
+		))
+		.expect("Failed to set global default subscriber");
+
+		let database = db::connect(&config.database).await;
+
+		let (runner_changes_sender, runner_changes_receiver) = unbounded_channel();
+		let mut runner_changes_receiver = UnboundedReceiverStream::new(runner_changes_receiver);
+
+		let mut runner = Self {
+			registry: DashMap::new(),
+			state: AppState {
+				database,
+				runner_changes_sender,
+				config,
+			},
+		};
+
 		let state = runner.state.clone();
+		// Run the server here
 		let server_task = task::spawn(async move {
 			let tcp_listener = TcpListener::bind(state.config.bind_address).await.unwrap();
 
@@ -122,7 +157,6 @@ where
 
 			info!("Reconciling all resources before starting");
 			// Reconcile all resources at the start (or when reconnecting to the websocket)
-			runner.reconciliation_list.clear();
 			runner.reconcile_all().await;
 
 			// Reconcile all resources at a fixed interval
@@ -132,10 +166,7 @@ where
 			'message: loop {
 				let Some(reconcile_all_or_one) = future::select(
 					&mut exit_signal,
-					future::select(
-						reconcile_all.as_mut(),
-						future::select(pinned_stream.next(), &mut runner.next_reconcile_future),
-					),
+					future::select(reconcile_all.as_mut(), pinned_stream.next()),
 				)
 				.await
 				.into_right() else {
@@ -147,7 +178,6 @@ where
 					// Reconcile all resources
 					Either::Left(_) => {
 						reconcile_all = Box::pin(time::sleep(E::FULL_RECONCILIATION_INTERVAL));
-						runner.reconciliation_list.clear();
 						runner.reconcile_all().await;
 						continue 'message;
 					}
@@ -155,13 +185,11 @@ where
 				};
 
 				match reconcile_message {
-					// Reconcile a resource from the server
-					Either::Left((Some(Ok(response)), _)) => {
-						// Reconcile the resource
+					Some(Ok(response)) => {
 						runner.handle_server_message(response).await;
 					}
-					// Data from the websocket failed
-					Either::Left((Some(Err(err)), _)) => {
+					Some(Err(err)) => {
+						// Data from the websocket failed
 						error!("Failed to connect to the server: {:?}", err);
 						error!("Retrying in 1 second");
 						// Retry after 5 seconds, but break if the exit signal is received
@@ -178,8 +206,8 @@ where
 
 						continue 'main;
 					}
-					// Websocket disconnected. Reconnect
-					Either::Left((None, _)) => {
+					None => {
+						// Websocket disconnected. Reconnect
 						error!("Connection to server closed");
 						error!("Retrying in 2 seconds");
 						// Retry after 5 seconds, but break if the exit signal is received
@@ -196,10 +224,6 @@ where
 
 						continue 'main;
 					}
-					// A specific resource needs to be reconciled again
-					Either::Right((deployment_id, _)) => {
-						runner.reconcile_deployment(deployment_id).await;
-					}
 				}
 			}
 		}
@@ -207,74 +231,6 @@ where
 		info!("Runner stopped. Waiting for server to exit");
 		_ = server_task.await;
 		info!("Server exited. Exiting runner...");
-	}
-
-	/// Initialize the runner. This function will create a new database
-	/// connection pool and set up the global default subscriber for the runner.
-	async fn init() -> (
-		Self,
-		UnboundedReceiverStream<StreamRunnerDataForWorkspaceServerMsg>,
-	) {
-		let config = RunnerSettings::<E::Settings>::parse(E::RUNNER_INTERNAL_NAME)
-			.expect("Failed to parse settings");
-
-		let executor = E::create(&config).await;
-
-		tracing::dispatcher::set_global_default(Dispatch::new(
-			tracing_subscriber::registry().with(
-				FmtLayer::new()
-					.with_span_events(FmtSpan::NONE)
-					.event_format(
-						tracing_subscriber::fmt::format()
-							.with_ansi(true)
-							.with_file(false)
-							.without_time()
-							.compact(),
-					)
-					.with_filter(
-						tracing_subscriber::filter::Targets::new()
-							.with_target(E::RUNNER_INTERNAL_NAME, LevelFilter::TRACE)
-							.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
-							.with_target("models", LevelFilter::TRACE),
-					)
-					.with_filter(LevelFilter::from_level(
-						if config.environment == RunningEnvironment::Development {
-							Level::TRACE
-						} else {
-							Level::DEBUG
-						},
-					)),
-			),
-		))
-		.expect("Failed to set global default subscriber");
-
-		let reconciliation_list = Vec::new();
-		let next_reconcile_future = future::pending().boxed();
-
-		let database = db::connect(&config.database).await;
-
-		let (runner_changes_sender, runner_changes_receiver) = unbounded_channel();
-		let runner_changes_receiver = UnboundedReceiverStream::new(runner_changes_receiver);
-
-		let state = AppState {
-			database,
-			runner_changes_sender,
-			config,
-		};
-
-		db::initialize(&state)
-			.await
-			.expect("unable to initialize database");
-
-		(
-			Self {
-				executor,
-				state,
-				reconciliation_list,
-				next_reconcile_future,
-			},
-			runner_changes_receiver,
-		)
 	}
 
 	/// Reconcile all the resources that the runner is responsible for. This
@@ -347,24 +303,6 @@ where
 			.await
 			.map(StreamExt::boxed),
 		}
-	}
-
-	/// Get the next reconcile future from the list of futures. This function
-	/// will get the future that resolves to the earliest reconciliation future
-	/// and set that to `next_reconcile_future`.
-	fn recheck_next_reconcile_future(&mut self) {
-		self.next_reconcile_future = self
-			.reconciliation_list
-			.iter()
-			.reduce(|a, b| {
-				if a.resolve_at() < b.resolve_at() {
-					a
-				} else {
-					b
-				}
-			})
-			.map(|message| message.clone().into_future().boxed())
-			.unwrap_or_else(|| future::pending().boxed());
 	}
 }
 
