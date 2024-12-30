@@ -45,6 +45,7 @@ config = { version = "0.14", default-features = false }
 console_error_panic_hook = { version = "0.1", default-features = false }
 convert_case = { version = "0.6" }
 cookie = { version = "0.18", default-features = false }
+dashmap = { version = "6", default-features = false }
 dirs = { version = "5", default-features = false }
 either = { version = "1", default-features = false }
 frontend = { path = "frontend", default-features = false }
@@ -94,7 +95,7 @@ thiserror = { version = "2", default-features = false }
 time = { version = "0.3", default-features = false }
 tokio = { version = "1", default-features = false }
 tokio-stream = { version = "0.1", default-features = false }
-tokio-tungstenite = { version = "0.24", default-features = false }
+tokio-tungstenite = { version = "0.25", default-features = false }
 totp-rs = { version = "5", default-features = false }
 tower = { version = "0.5", default-features = false }
 tower-http = { version = "0.6", default-features = false }
@@ -109,7 +110,7 @@ wasm-bindgen = { version = "0.2", default-features = false }
 wasm-logger = { version = "0.2", default-features = false }
 web-sys = { version = "0.3", default-features = false }
 woothee = { version = "0.13", default-features = false }
-worker = { version = "0.4", default-features = false }
+worker = { version = "0.5", default-features = false }
 
 [workspace.dev-dependencies]
 k8s-openapi = { features = ["latest"] }

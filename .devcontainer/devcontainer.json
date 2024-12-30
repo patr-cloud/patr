@@ -11,6 +11,7 @@
 			"settings": {
 				// runs rust analyzer in different folder so that cargo build won't wait to start compiling
 				"rust-analyzer.cargo.targetDir": "./target/rust-analyzer",
+				"evenBetterToml.formatter.reorderKeys": true,
 				"files.watcherExclude": {
 					"**/target/**": true,
 					"./devcontainer/volume/**": true

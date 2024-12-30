@@ -238,16 +238,16 @@ where
 			match msg {
 				Ok(msg) => match msg {
 					Message::Text(text) => Some(
-						serde_json::from_str(&text)
+						serde_json::from_str(text.as_str())
 							.inspect_err(|err| warn!("Error parsing text as JSON: {}", err))
 							.map_err(ErrorType::server_error),
 					),
 					Message::Binary(bin) => Some(
-						serde_json::from_slice(&bin)
+						serde_json::from_slice(bin.as_slice())
 							.inspect_err(|err| {
 								warn!(
 									"Error parsing binary `{}` as JSON: {}",
-									String::from_utf8_lossy(&bin),
+									String::from_utf8_lossy(bin.as_slice()),
 									err
 								)
 							})
