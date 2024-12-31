@@ -119,18 +119,15 @@ pub async fn stream_deployment_logs(
 							break;
 						};
 
-						let bytes = match data {
-							RawMessage::Text(text) => text.into_bytes(),
-							RawMessage::Binary(bin) => bin,
+						let Ok(message) = match data {
+							RawMessage::Text(text) => serde_json::from_str::<LokiResponse>(&text),
+							RawMessage::Binary(bin) => serde_json::from_slice::<LokiResponse>(&bin),
 							RawMessage::Close(_) => break,
 							_ => continue,
-						};
-
-						let Ok(message) = serde_json::from_slice::<LokiResponse>(&bytes)
-							.inspect_err(|err| {
-								debug!("Failed to parse Loki message: {}", err);
-							})
-						else {
+						}
+						.inspect_err(|err| {
+							debug!("Failed to parse Loki message: {}", err);
+						}) else {
 							break;
 						};
 

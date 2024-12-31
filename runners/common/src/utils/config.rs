@@ -24,7 +24,6 @@ pub struct RunnerSettings<D> {
 	/// The configuration for the database to connect to
 	pub database: DatabaseConfig,
 	/// The address to listen on
-	#[serde(alias = "bindaddress")]
 	pub bind_address: SocketAddr,
 	/// Additional settings for the runner.
 	#[serde(flatten)]
@@ -102,10 +101,8 @@ pub enum RunnerMode {
 	#[serde(rename_all = "camelCase")]
 	SelfHosted {
 		/// The Pepper used to hash passwords
-		#[serde(alias = "passwordpepper")]
 		password_pepper: String,
 		/// The secret used to sign JWTs
-		#[serde(alias = "jwtsecret")]
 		jwt_secret: String,
 	},
 	/// This runner is running in managed mode. This means that the runner will
@@ -113,13 +110,10 @@ pub enum RunnerMode {
 	#[serde(rename_all = "camelCase")]
 	Managed {
 		/// The workspace ID to connect the runner for.
-		#[serde(alias = "workspaceid")]
 		workspace_id: Uuid,
 		/// The runner ID to connect the runner for.
-		#[serde(alias = "runnerid")]
 		runner_id: Uuid,
 		/// The bearer token for the runner to access the API
-		#[serde(alias = "apitoken")]
 		api_token: BearerToken,
 		/// The user agent that the runner uses to access the API
 		#[serde(skip, default = "get_user_agent")]
@@ -180,6 +174,5 @@ pub struct DatabaseConfig {
 	/// The location of the sqlite database file
 	pub file: String,
 	/// The maximum number of connections to the database
-	#[serde(alias = "connectionlimit")]
 	pub connection_limit: u32,
 }
