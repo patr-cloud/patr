@@ -24,8 +24,8 @@ macros = { workspace = true, features = [] }
 matchit = { workspace = true, features = ["default"] }
 models = { workspace = true, features = [] }
 preprocess = { workspace = true, features = [] }
-reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 rand = { workspace = true, features = [] }
+reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 semver = { workspace = true, features = [] }
 serde = { workspace = true, features = ["default", "derive"] }
 serde_json = { workspace = true, features = ["default"] }
@@ -44,6 +44,8 @@ web-sys = { workspace = true, features = [
     "File",
     "FileList",
     "HtmlInputElement",
+    "Element",
+    "DomRect",
 ] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
