@@ -1,45 +1,49 @@
-use leptos_query::*;
 use models::api::workspace::runner::*;
 
 use crate::prelude::*;
 
-/// Tag for Listing All Runners query
-#[derive(Debug, Hash, Eq, PartialEq, Clone)]
-pub struct AllRunnersTag;
-
 /// Query to list all runners for a workspace
-pub fn list_runners_query(
-) -> QueryScope<AllRunnersTag, Result<ListRunnersForWorkspaceResponse, ServerFnError<ErrorType>>> {
+pub fn list_runners_query() -> Resource<
+	(Option<String>, Option<Uuid>),
+	Result<ListRunnersForWorkspaceResponse, ServerFnError<ErrorType>>,
+> {
 	let (state, _) = AuthState::load();
-	let access_token = state.get().get_access_token();
-	// TODO remove this unwrap
-	let workspace_id = state.get().get_last_used_workspace_id().unwrap();
 
-	create_query(
-		move |_| {
-			let access_token = access_token.clone();
-			async move { list_runners(workspace_id, access_token.clone()).await }
+	create_resource(
+		move || {
+			(
+				state.get().get_access_token(),
+				state.get().get_last_used_workspace_id(),
+			)
 		},
-		QueryOptions {
-			..Default::default()
+		move |(access_token, workspace_id)| async move {
+			if let Some(workspace_id) = workspace_id {
+				list_runners(access_token, workspace_id).await
+			} else {
+				Err(ServerFnError::WrappedServerError(ErrorType::Unauthorized))
+			}
 		},
 	)
 }
 
 /// Query to get a runner by id
 pub fn get_runner_query(
-) -> QueryScope<Uuid, Result<GetRunnerInfoResponse, ServerFnError<ErrorType>>> {
+	runner_id: Signal<Uuid>,
+) -> Resource<
+	(Option<String>, Option<Uuid>, Uuid),
+	Result<GetRunnerInfoResponse, ServerFnError<ErrorType>>,
+> {
 	let (state, _) = AuthState::load();
-	let access_token = state.get().get_access_token();
-	let workspace_id = state.get().get_last_used_workspace_id();
-
-	create_query(
-		move |runner_id| {
-			let access_token = access_token.clone();
-			async move { get_runner(access_token, workspace_id, runner_id).await }
+	create_resource(
+		move || {
+			(
+				state.get().get_access_token(),
+				state.get().get_last_used_workspace_id(),
+				runner_id.get(),
+			)
 		},
-		QueryOptions {
-			..Default::default()
+		move |(access_token, workspace_id, runner_id)| async move {
+			get_runner(access_token, workspace_id, runner_id).await
 		},
 	)
 }
@@ -60,13 +64,10 @@ pub fn create_runner_query(
 		let access_token = access_token.clone();
 		let runner_name = runner_name.clone();
 
-		let runners_list_query = list_runners_query();
-
 		async move {
 			let response = create_runner(access_token, workspace_id, runner_name).await;
 
 			if let Ok(ref response) = response {
-				runners_list_query.invalidate_query(AllRunnersTag);
 				navigate(
 					format!("/runners/{}", response.id.id.to_string()).as_str(),
 					Default::default(),
@@ -94,16 +95,10 @@ pub fn delete_runner_query() -> Action<Uuid, Result<DeleteRunnerResponse, Server
 		let access_token = access_token.clone();
 		let runner_id = runner_id.clone();
 
-		let runners_list_query = list_runners_query();
-		let runner_query = get_runner_query();
-
 		async move {
 			let response = delete_runner(access_token, workspace_id, runner_id).await;
 
 			if let Ok(_) = response {
-				let _ = runners_list_query.invalidate_query(AllRunnersTag);
-				let _ = runner_query.invalidate_query(runner_id);
-
 				navigate("/runners", Default::default());
 			}
 

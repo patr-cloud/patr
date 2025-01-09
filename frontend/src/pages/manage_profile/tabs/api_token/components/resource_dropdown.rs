@@ -2,13 +2,9 @@ use std::str::FromStr;
 
 use convert_case::{Case, Casing};
 use ev::MouseEvent;
-use leptos_query::QueryResult;
 use models::rbac::ResourceType;
 
-use crate::{
-	prelude::*,
-	queries::{list_deployments_query, AllDeploymentsTag},
-};
+use crate::{prelude::*, queries::list_deployments_query};
 
 #[component]
 pub fn ResourceDropdownOptions(
@@ -18,10 +14,7 @@ pub fn ResourceDropdownOptions(
 	input_resources: RwSignal<Vec<String>>,
 ) -> impl IntoView {
 	let current_page = create_rw_signal::<usize>(0);
-	let QueryResult {
-		data: deployments_list,
-		..
-	} = list_deployments_query().use_query(move || AllDeploymentsTag(current_page.get()));
+	let deployments_list = list_deployments_query(current_page.into());
 
 	let resource_list_options = create_rw_signal::<Vec<InputDropdownOption>>(vec![]);
 

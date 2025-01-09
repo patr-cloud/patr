@@ -4,8 +4,8 @@ use crate::prelude::*;
 
 #[server(ListRunnersFn, endpoint = "/infrastructure/runner/list")]
 pub async fn list_runners(
-	workspace_id: Uuid,
 	access_token: Option<String>,
+	workspace_id: Uuid,
 ) -> Result<ListRunnersForWorkspaceResponse, ServerFnError<ErrorType>> {
 	use std::str::FromStr;
 

@@ -1,9 +1,4 @@
-use leptos_query::*;
-
-use crate::{
-	prelude::*,
-	queries::{list_api_tokens_query, AllApiTokensTag},
-};
+use crate::{prelude::*, queries::list_api_tokens_query};
 
 mod components;
 mod create_token;
@@ -26,9 +21,7 @@ pub fn ApiTokensTab() -> impl IntoView {
 /// List all the API tokens
 #[component]
 pub fn ListApiTokens() -> impl IntoView {
-	let QueryResult {
-		data: token_list, ..
-	} = list_api_tokens_query().use_query(move || AllApiTokensTag);
+	let token_list = list_api_tokens_query();
 
 	view! {
 		<Link r#type={Variant::Link} style_variant={LinkStyleVariant::Contained} to="create">

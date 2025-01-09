@@ -1,14 +1,13 @@
 use std::{f32::consts::E, rc::Rc};
 
 use ev::MouseEvent;
-use leptos_query::QueryResult;
 use models::api::workspace::deployment::*;
 
 use super::DeploymentInfoContext;
 use crate::{
 	pages::infrastructure::deployment::components::MachineTypeCard,
 	prelude::*,
-	queries::{list_machines_query, update_deployment_query, AllMachinesTag},
+	queries::{list_machines_query, update_deployment_query},
 };
 
 #[component]
@@ -71,9 +70,7 @@ fn UpdateMachineType(
 	/// Update Deployment Info Body
 	update_deployment_body: RwSignal<UpdateDeploymentRequest>,
 ) -> impl IntoView {
-	let QueryResult {
-		data: machine_list, ..
-	} = list_machines_query().use_query(move || AllMachinesTag);
+	let machine_list = list_machines_query();
 
 	let store_deployment = store_value(deployment_info.clone());
 	let deployment_info = expect_context::<DeploymentInfoContext>().0;

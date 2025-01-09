@@ -1,17 +1,13 @@
 mod head;
 mod runner_card;
 
-use leptos_query::QueryResult;
-
 pub use self::{head::*, runner_card::*};
 use crate::{prelude::*, queries::*};
 
 /// The Runner Dashboard page
 #[component]
 pub fn RunnerDashboard() -> impl IntoView {
-	let QueryResult {
-		data: runners_list, ..
-	} = list_runners_query().use_query(move || AllRunnersTag);
+	let runners_list = list_runners_query();
 
 	view! {
 		<RunnerDashboardHead />

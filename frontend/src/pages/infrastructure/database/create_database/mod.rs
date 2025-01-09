@@ -29,7 +29,7 @@ pub fn CreateDatabase() -> impl IntoView {
 	let runner_list = create_resource(
 		move || (access_token.get(), current_workspace_id.get()),
 		move |(access_token, workspace_id)| async move {
-			list_runners(workspace_id.unwrap(), access_token).await
+			list_runners(access_token, workspace_id.unwrap()).await
 		},
 	);
 

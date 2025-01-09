@@ -1,11 +1,5 @@
-use leptos_query::QueryResult;
-
 use super::super::components::*;
-use crate::{
-	pages::DeploymentInfo,
-	prelude::*,
-	queries::{list_machines_query, AllMachinesTag},
-};
+use crate::{pages::DeploymentInfo, prelude::*, queries::list_machines_query};
 
 /// A component that allows the user to scale their deployment
 #[component]
@@ -15,9 +9,7 @@ pub fn ScaleDeployment() -> impl IntoView {
 
 	let deployment_info = expect_context::<RwSignal<DeploymentInfo>>();
 
-	let QueryResult {
-		data: machine_list, ..
-	} = list_machines_query().use_query(move || AllMachinesTag);
+	let machine_list = list_machines_query();
 
 	view! {
 		<div class="fc-fs-fs w-full px-xl mt-xl text-white text-sm fit-wide-screen mx-auto gap-md">

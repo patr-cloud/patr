@@ -2,7 +2,6 @@ use std::rc::Rc;
 
 use convert_case::*;
 use ev::MouseEvent;
-use leptos_query::QueryResult;
 use models::api::workspace::deployment::{
 	Deployment,
 	DeploymentRegistry,
@@ -12,7 +11,7 @@ use models::api::workspace::deployment::{
 
 use crate::{
 	prelude::*,
-	queries::{list_machines_query, start_deployment_query, stop_deployment_query, AllMachinesTag},
+	queries::{list_machines_query, start_deployment_query, stop_deployment_query},
 };
 
 /// A Deployment Card Item Type for the list of options,
@@ -63,9 +62,7 @@ pub fn DeploymentCard(
 		)
 	};
 
-	let QueryResult {
-		data: machine_list, ..
-	} = list_machines_query().use_query(move || AllMachinesTag);
+	let machine_list = list_machines_query();
 
 	let machine_type_string = Signal::derive({
 		// let deployment = deployment.clone();
