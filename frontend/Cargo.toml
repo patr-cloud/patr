@@ -19,14 +19,13 @@ console_error_panic_hook = { workspace = true, features = [] }
 convert_case = { workspace = true, features = [] }
 cookie = { workspace = true, features = [] }
 http = { workspace = true, features = ["default"] }
-leptos_query_devtools = { workspace = true, features = ["csr"] }
 log = { workspace = true, features = [] }
 macros = { workspace = true, features = [] }
 matchit = { workspace = true, features = ["default"] }
 models = { workspace = true, features = [] }
 preprocess = { workspace = true, features = [] }
-reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 rand = { workspace = true, features = [] }
+reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 semver = { workspace = true, features = [] }
 serde = { workspace = true, features = ["default", "derive"] }
 serde_json = { workspace = true, features = ["default"] }
@@ -45,6 +44,8 @@ web-sys = { workspace = true, features = [
     "File",
     "FileList",
     "HtmlInputElement",
+    "Element",
+    "DomRect",
 ] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -60,7 +61,6 @@ leptos-use = { workspace = true, features = [
     "use_clipboard",
 ] }
 leptos_meta = { workspace = true, features = ["hydrate"] }
-leptos_query = { workspace = true, features = ["csr", "hydrate"] }
 leptos_router = { workspace = true, features = ["hydrate"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -79,5 +79,4 @@ leptos-use = { workspace = true, features = [
 ] }
 leptos_axum = { workspace = true, features = ["default"] }
 leptos_meta = { workspace = true, features = ["ssr"] }
-leptos_query = { workspace = true, features = ["ssr"] }
 leptos_router = { workspace = true, features = ["ssr"] }

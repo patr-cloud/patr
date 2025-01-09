@@ -2,14 +2,10 @@ mod footer;
 mod head;
 
 use convert_case::*;
-use leptos_query::QueryResult;
 
 use self::{footer::*, head::*};
 use super::{components::*, utils::*};
-use crate::{
-	prelude::*,
-	queries::{list_deployments_query, AllDeploymentsTag},
-};
+use crate::{prelude::*, queries::list_deployments_query};
 
 /// The Shell Outer for Deployment Page
 #[component]
@@ -52,10 +48,7 @@ pub fn DeploymentDashboard() -> impl IntoView {
 		);
 	});
 
-	let QueryResult {
-		data: deployment_list,
-		..
-	} = list_deployments_query().use_query(move || AllDeploymentsTag(deployment_page.get()));
+	let deployment_list = list_deployments_query(deployment_page.into());
 
 	let total_count = Signal::derive(move || match deployment_list.get() {
 		Some(Ok((count, _))) => count,

@@ -9,7 +9,6 @@ mod scaling;
 mod urls;
 
 use convert_case::*;
-use leptos_query::QueryResult;
 use models::api::workspace::deployment::*;
 
 pub use self::{
@@ -41,10 +40,7 @@ pub fn ManageDeploymentsContent(
 	#[prop(into)]
 	deployment_id: Signal<Uuid>,
 ) -> impl IntoView {
-	let QueryResult {
-		data: deployment_info,
-		..
-	} = get_deployment_query().use_query(move || deployment_id.get());
+	let deployment_info = get_deployment_query(deployment_id);
 
 	let deployment_info_signal = create_rw_signal::<Option<GetDeploymentInfoResponse>>(None);
 	provide_context(DeploymentInfoContext(deployment_info_signal));
@@ -108,7 +104,6 @@ pub fn ManageDeployments() -> impl IntoView {
 			view! { <ManageDeploymentsContent deployment_id={Signal::derive(move || deployment_id)} /> }
 		}
 		.into_view(),
-		None => view! { <ErrorPage title="Deployment ID is not a valid UUID" /> }
-		.into_view(),
+		None => view! { <ErrorPage title="Deployment ID is not a valid UUID" /> }.into_view(),
 	}
 }

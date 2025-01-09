@@ -5,7 +5,7 @@ use server_fn::codec::FromRes;
 
 use crate::prelude::*;
 
-/// List Dpeloyments
+/// List Deployments
 #[server(ListDeploymentFn, endpoint = "/infrastructure/deployment/list")]
 pub async fn list_deployments(
 	access_token: Option<String>,

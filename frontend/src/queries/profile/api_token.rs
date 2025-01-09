@@ -1,57 +1,52 @@
-use leptos_query::*;
 use models::api::{user::*, workspace::rbac::ListAllPermissionsResponse};
 
 use crate::prelude::*;
 
-/// Tag for Listing All API Tokens query
-#[derive(Debug, Hash, Eq, PartialEq, Clone)]
-pub struct AllApiTokensTag;
-
 /// Query to list all API tokens
 pub fn list_api_tokens_query(
-) -> QueryScope<AllApiTokensTag, Result<ListApiTokensResponse, ServerFnError<ErrorType>>> {
+) -> Resource<Option<String>, Result<ListApiTokensResponse, ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
 	let access_token = state.get().get_access_token();
 
-	create_query(
-		move |_| {
-			let access_token = access_token.clone();
-			async move { load_api_tokens_list(access_token.clone()).await }
-		},
-		QueryOptions {
-			..Default::default()
-		},
+	create_resource(
+		move || state.get().get_access_token(),
+		move |access_token| async move { load_api_tokens_list(access_token).await },
 	)
 }
 
 /// Query to get a single API token
 pub fn get_api_token_query(
-) -> QueryScope<Uuid, Result<GetApiTokenInfoResponse, ServerFnError<ErrorType>>> {
+	token_id: Signal<Uuid>,
+) -> Resource<(Option<String>, Uuid), Result<GetApiTokenInfoResponse, ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
-	let access_token = state.get().get_access_token();
 
-	create_query(
-		move |token_id| {
-			let access_token = access_token.clone();
-			async move { get_api_token(access_token.clone(), token_id).await }
-		},
-		QueryOptions {
-			..Default::default()
-		},
+	create_resource(
+		move || (state.get().get_access_token(), token_id.get()),
+		move |(access_token, token_id)| async move { get_api_token(access_token, token_id).await },
 	)
 }
 
 /// Query to get all permissions
-pub fn get_all_permissions_query(
-) -> QueryScope<Uuid, Result<ListAllPermissionsResponse, ServerFnError<ErrorType>>> {
+pub fn get_all_permissions_query() -> Resource<
+	(Option<String>, Option<Uuid>),
+	Result<ListAllPermissionsResponse, ServerFnError<ErrorType>>,
+> {
 	let (state, _) = AuthState::load();
 
-	create_query(
-		move |workspace_id| {
-			let access_token = state.get().get_access_token();
-			async move { list_all_permissions(access_token, workspace_id).await }
+	create_resource(
+		move || {
+			(
+				state.get().get_access_token(),
+				state.get().get_last_used_workspace_id(),
+			)
 		},
-		Default::default(),
+		move |(access_token, workspace_id)| async move {
+			if let Some(workspace_id) = workspace_id {
+				list_all_permissions(access_token, workspace_id).await
+			} else {
+				Err(ServerFnError::WrappedServerError(ErrorType::Unauthorized))
+			}
+		},
 	)
 }
 
@@ -65,16 +60,6 @@ pub fn create_api_token_query(
 		let request = request.clone();
 		let access_token = access_token.clone();
 
-		let api_tokens_list_query = list_api_tokens_query();
-
-		async move {
-			let response = create_api_token(access_token.clone(), request.clone()).await;
-
-			if let Ok(_) = response {
-				api_tokens_list_query.invalidate_query(AllApiTokensTag);
-			}
-
-			response
-		}
+		async move { create_api_token(access_token.clone(), request.clone()).await }
 	})
 }

@@ -79,7 +79,6 @@ pub mod routes;
 pub mod utils;
 
 use leptos_meta::{provide_meta_context, Link as MetaLink, Meta, Stylesheet, Title};
-use leptos_query::provide_query_client;
 use prelude::*;
 
 /// The main hydrate function. Called when the application starts to hydrate
@@ -102,7 +101,6 @@ pub fn render() -> impl IntoView {
 	use app::App;
 
 	provide_meta_context();
-	provide_query_client();
 
 	view! {
 		<>

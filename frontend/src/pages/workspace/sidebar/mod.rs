@@ -1,24 +1,15 @@
-use leptos_query::QueryResult;
-
 mod card;
 mod item;
 mod switcher;
 
 use card::WorkspaceCard;
 
-use crate::{
-	prelude::*,
-	queries::{list_workspaces_query, AllWorkspacesTag},
-	utils::AuthState,
-};
+use crate::{prelude::*, queries::list_workspaces_query, utils::AuthState};
 
 /// The Component that renders the workspace viewer and switcher in sidebar
 #[component]
 pub fn WorkspaceSidebarComponent() -> impl IntoView {
-	let QueryResult {
-		data: workspace_list,
-		..
-	} = list_workspaces_query().use_query(|| AllWorkspacesTag);
+	let workspace_list = list_workspaces_query();
 	let (state, set_state) = AuthState::load();
 	let (current_workspace, set_current_workspace) = create_signal(None);
 

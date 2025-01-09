@@ -2,7 +2,6 @@ use std::str::FromStr;
 
 use convert_case::{Case, Casing};
 use ev::MouseEvent;
-use leptos_query::QueryResult;
 use models::rbac::ResourceType;
 
 use super::ParsedPermission;
@@ -19,10 +18,7 @@ pub fn PermissionsDropdown(
 	/// Input Resource Type
 	input_resource_type: RwSignal<String>,
 ) -> impl IntoView {
-	let QueryResult {
-		data: all_permissions,
-		..
-	} = get_all_permissions_query().use_query(move || workspace_id.get());
+	let all_permissions = get_all_permissions_query();
 
 	let filtered_permissions = create_memo(move |_| {
 		let permissions = all_permissions.get();

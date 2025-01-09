@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use ev::MouseEvent;
-use leptos_query::QueryResult;
 use models::{
 	api::user::{UpdateApiTokenRequest, UserApiToken},
 	rbac::WorkspacePermission,
@@ -118,9 +117,7 @@ pub fn EditApiToken() -> impl IntoView {
 		})
 	});
 
-	let QueryResult {
-		data: token_info, ..
-	} = get_api_token_query().use_query(move || token_id.get());
+	let token_info = get_api_token_query(token_id);
 
 	let token_info_signal = create_rw_signal::<Option<WithId<UserApiToken>>>(None);
 	let api_token_changes = create_rw_signal(CreateApiTokenInfo::new());

@@ -1,12 +1,6 @@
-use leptos_query::QueryResult;
 use leptos_router::{Outlet, ProtectedRoute};
 
-use crate::{
-	pages::*,
-	prelude::*,
-	queries::{list_workspaces_query, AllWorkspacesTag},
-	utils::AuthState,
-};
+use crate::{pages::*, prelude::*, queries::list_workspaces_query, utils::AuthState};
 
 /// The view for the Workspaced Routes
 #[component]
@@ -27,10 +21,7 @@ pub fn WorkspacedRouteView() -> impl IntoView {
 pub fn WorkspacedRoutes() -> impl IntoView {
 	let (state, set_state) = AuthState::load();
 
-	let QueryResult {
-		data: workspace_list,
-		..
-	} = list_workspaces_query().use_query(|| AllWorkspacesTag);
+	let workspace_list = list_workspaces_query();
 
 	let current_workspace_id =
 		Signal::derive(move || match state.get().get_last_used_workspace_id() {

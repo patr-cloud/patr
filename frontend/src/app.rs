@@ -1,4 +1,3 @@
-use leptos_query_devtools::LeptosQueryDevtools;
 use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};
 
 use crate::{pages::*, prelude::*, utils::AuthState};
@@ -77,7 +76,6 @@ pub fn App() -> impl IntoView {
 	provide_toaster();
 
 	view! {
-		<LeptosQueryDevtools />
 		<Toaster />
 
 		<Router>

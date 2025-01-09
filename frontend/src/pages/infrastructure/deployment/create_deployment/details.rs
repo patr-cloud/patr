@@ -1,18 +1,10 @@
-use leptos_query::QueryResult;
-
 use super::{DeploymentInfo, DetailsPageError};
-use crate::{
-	prelude::*,
-	queries::{list_runners_query, AllRunnersTag},
-};
+use crate::{prelude::*, queries::list_runners_query};
 
 #[component]
 fn RunnerDropdown() -> impl IntoView {
 	let deployment_info = expect_context::<RwSignal<DeploymentInfo>>();
-
-	let QueryResult {
-		data: runners_list, ..
-	} = list_runners_query().use_query(move || AllRunnersTag);
+	let runners_list = list_runners_query();
 
 	view! {
 		<InputDropdown

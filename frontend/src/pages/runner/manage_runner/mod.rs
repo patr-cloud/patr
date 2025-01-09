@@ -1,7 +1,6 @@
 mod head;
 
 use convert_case::*;
-use leptos_query::QueryResult;
 
 pub use self::head::*;
 use crate::{prelude::*, queries::get_runner_query};
@@ -19,9 +18,7 @@ fn ManageRunnerContent(
 	#[prop(into)]
 	runner_id: Signal<Uuid>,
 ) -> impl IntoView {
-	let QueryResult {
-		data: runner_info, ..
-	} = get_runner_query().use_query(move || runner_id.get());
+	let runner_info = get_runner_query(runner_id);
 
 	view! {
 		<Transition>
@@ -95,8 +92,10 @@ pub fn ManageRunner() -> impl IntoView {
 	});
 
 	move || match runner_id.get() {
-		Some(runner_id) => view! { <ManageRunnerContent runner_id={Signal::derive(move || runner_id)} /> }
-		.into_view(),
+		Some(runner_id) => {
+			view! { <ManageRunnerContent runner_id={Signal::derive(move || runner_id)} /> }
+				.into_view()
+		}
 		None => view! {
 			<ErrorPage
 				title="Invalid Runner ID"
