@@ -3,10 +3,7 @@ use models::api::workspace::deployment::ListDeploymentResponse;
 use crate::prelude::*;
 
 /// Get the list of deployments as a resource
-pub fn get_deployments() -> Resource<
-	(Option<String>, Option<Uuid>),
-	Result<ListDeploymentResponse, ServerFnError<ErrorType>>,
-> {
+pub fn get_deployments() -> Resource<Result<ListDeploymentResponse, ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
 	let access_token = state.get().get_access_token();
 	let workspace_id = state.get().get_last_used_workspace_id();

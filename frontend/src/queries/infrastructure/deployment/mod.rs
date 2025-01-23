@@ -6,10 +6,7 @@ use crate::prelude::*;
 /// Query to list all deployments for a workspace
 pub fn list_deployments_query(
 	page: Signal<usize>,
-) -> Resource<
-	(Option<String>, Option<Uuid>, usize),
-	Result<(usize, ListDeploymentResponse), ServerFnError<ErrorType>>,
-> {
+) -> Resource<Result<(usize, ListDeploymentResponse), ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
 
 	create_resource(
@@ -41,10 +38,7 @@ pub fn list_deployments_query(
 /// Query to get deployment info by id
 pub fn get_deployment_query(
 	deployment_id: Signal<Uuid>,
-) -> Resource<
-	(Option<String>, Option<Uuid>, Uuid),
-	Result<GetDeploymentInfoResponse, ServerFnError<ErrorType>>,
-> {
+) -> Resource<Result<GetDeploymentInfoResponse, ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
 	create_resource(
 		move || {
@@ -156,8 +150,7 @@ pub fn stop_deployment_query(
 
 /// Query to list all machines for a workspace
 pub fn list_machines_query(
-) -> Resource<Option<Uuid>, Result<ListAllDeploymentMachineTypeResponse, ServerFnError<ErrorType>>>
-{
+) -> Resource<Result<ListAllDeploymentMachineTypeResponse, ServerFnError<ErrorType>>> {
 	create_resource(
 		move || AuthState::load().0.get().get_last_used_workspace_id(),
 		move |workspace_id| async move { list_all_machines(workspace_id).await },
@@ -169,10 +162,7 @@ pub fn get_deployment_logs_query(
 	deployment_id: Signal<Uuid>,
 	limit: Option<u32>,
 	end_time: Signal<Option<OffsetDateTime>>,
-) -> Resource<
-	(Option<String>, Option<Uuid>, Uuid, Option<OffsetDateTime>),
-	Result<GetDeploymentLogsResponse, ServerFnError<ErrorType>>,
-> {
+) -> Resource<Result<GetDeploymentLogsResponse, ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
 
 	let access_token = state.get().get_access_token();

@@ -38,14 +38,14 @@ base32 = { version = "0.5", default-features = false }
 base64 = { version = "0.22", default-features = false }
 bollard = { version = "0.18", default-features = false }
 clap = { version = "4", default-features = false }
-codee = { version = "0.2", default-features = false }
+codee = { version = "0.3", default-features = false }
 comfy-table = { version = "7", default-features = false }
 common = { path = "runners/common", default-features = false }
 config = { version = "0.15", default-features = false }
 console_error_panic_hook = { version = "0.1", default-features = false }
-convert_case = { version = "0.6" }
+convert_case = { version = "0.7" }
 cookie = { version = "0.18", default-features = false }
-dirs = { version = "5", default-features = false }
+dirs = { version = "6", default-features = false }
 either = { version = "1", default-features = false }
 frontend = { path = "frontend", default-features = false }
 futures = { version = "0.3", default-features = false }

@@ -1,4 +1,4 @@
-use leptos_router::components::{Outlet, ProtectedRoute};
+use leptos_router::components::{Outlet, ProtectedParentRoute};
 
 use crate::{pages::*, prelude::*, queries::list_workspaces_query, utils::AuthState};
 
@@ -53,15 +53,15 @@ pub fn WorkspacedRoutes() -> impl IntoView {
 		});
 
 	view! {
-		<ProtectedRoute
+		<ProtectedParentRoute
 			path={AppRoutes::Empty}
 			view={WorkspacedRouteView}
-			redirect_path={AppRoutes::LoggedInRoute(LoggedInRoute::UserProfile)}
-			condition={move || current_workspace_id.get().is_some()}
+			redirect_path={|| AppRoutes::LoggedInRoute(LoggedInRoute::UserProfile)}
+			condition={move || Some(current_workspace_id.get().is_some())}
 		>
 			<InfrastructureRoutes />
 			<DomainConfigurationRoutes />
 			<RunnerRoutes />
-		</ProtectedRoute>
+		</ProtectedParentRoute>
 	}
 }

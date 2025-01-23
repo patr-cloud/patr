@@ -1,4 +1,4 @@
-use leptos_router::{Outlet, ProtectedRoute, Route, Router, Routes};
+use leptos_router::components::{Outlet, ParentRoute, ProtectedRoute, Route, Router, Routes};
 
 use crate::{pages::*, prelude::*, utils::AuthState};
 
@@ -15,7 +15,7 @@ pub fn AppOutletView() -> impl IntoView {
 				<Outlet />
 			</PageContainer>
 		}
-		.into_view(),
+		.into_any(),
 		AuthState::LoggedIn { .. } => view! {
 			<div class="fr-fs-fs full-width full-height bg-secondary">
 				<Sidebar sidebar_items={get_sidebar_items(
@@ -37,28 +37,28 @@ pub fn AppOutletView() -> impl IntoView {
 				</main>
 			</div>
 		}
-		.into_view(),
+		.into_any(),
 	}
 }
 
 #[component(transparent)]
 fn RunnerWorkspaceRoutes() -> impl IntoView {
 	view! {
-		<Route path="" view={Outlet}>
-			<Route path={LoggedInRoute::Runners} view={RunnerPage}>
+		<ParentRoute path="" view={Outlet}>
+			<ParentRoute path={LoggedInRoute::Runners} view={RunnerPage}>
 				<Route path="create" view={CreateRunner} />
 				<Route path=":runner_id" view={ManageRunner} />
 				<Route path={AppRoutes::Empty} view={RunnerDashboard} />
-			</Route>
-			<Route path={AppRoutes::Empty} view={|| view! { <Outlet /> }}>
-				<Route path={LoggedInRoute::Workspace} view={WorkspacePage}>
-					<Route path={AppRoutes::Empty} view={ManageWorkspace}>
+			</ParentRoute>
+			<ParentRoute path={AppRoutes::Empty} view={|| view! { <Outlet /> }}>
+				<ParentRoute path={LoggedInRoute::Workspace} view={WorkspacePage}>
+					<ParentRoute path={AppRoutes::Empty} view={ManageWorkspace}>
 						<Route path="" view={ManageWorkspaceSettingsTab} />
-					</Route>
+					</ParentRoute>
 					<Route path="/create" view={CreateWorkspace} />
-				</Route>
-			</Route>
-		</Route>
+				</ParentRoute>
+			</ParentRoute>
+		</ParentRoute>
 	}
 }
 
@@ -84,15 +84,15 @@ pub fn App() -> impl IntoView {
 				<ProtectedRoute
 					path={AppRoutes::Empty}
 					view={AppOutletView}
-					redirect_path={AppRoutes::LoggedOutRoute(LoggedOutRoute::Login)}
+					redirect_path={|| AppRoutes::LoggedOutRoute(LoggedOutRoute::Login)}
 					condition={move || state.get().is_logged_in()}
 				>
 					<ProfileRoutes />
 					<InfrastructureRoutes />
-					<Route path={LoggedInRoute::ManagedUrl} view={ManagedUrlPage}>
+					<ParentRoute path={LoggedInRoute::ManagedUrl} view={ManagedUrlPage}>
 						<Route path="create" view={|| view! { <div>"create"</div> }} />
 						<Route path={AppRoutes::Empty} view={UrlDashboard} />
-					</Route>
+					</ParentRoute>
 					<Route path={LoggedInRoute::Domain} view={DomainsDashboard} />
 					{app_type.is_managed().then(RunnerWorkspaceRoutes)}
 					<Route
@@ -102,7 +102,7 @@ pub fn App() -> impl IntoView {
 				</ProtectedRoute>
 				<ProtectedRoute
 					path={"".to_string()}
-					redirect_path={AppRoutes::LoggedInRoute(LoggedInRoute::Home).to_string()}
+					redirect_path={|| AppRoutes::LoggedInRoute(LoggedInRoute::Home).to_string()}
 					view={AppOutletView}
 					condition={move || state.get().is_logged_out()}
 				>

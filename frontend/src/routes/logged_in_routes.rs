@@ -1,4 +1,4 @@
-use leptos_router::components::{Outlet, ProtectedRoute};
+use leptos_router::components::{Outlet, ProtectedParentRoute};
 
 use crate::{prelude::*, utils::AuthState};
 
@@ -27,14 +27,14 @@ pub fn LoggedInRoutesComponent() -> impl IntoView {
 	let (state, _) = AuthState::load();
 
 	view! {
-		<ProtectedRoute
+		<ProtectedParentRoute
 			path={AppRoutes::Empty}
 			view={LoggedInRoutesView}
-			redirect_path={AppRoutes::LoggedOutRoute(LoggedOutRoute::Login)}
-			condition={move || state.get().is_logged_in()}
+			redirect_path={|| AppRoutes::LoggedOutRoute(LoggedOutRoute::Login)}
+			condition={move || Some(state.get().is_logged_in())}
 		>
 			<WorkspacedRoutes />
 			<NotWorkspacedRoutes />
-		</ProtectedRoute>
+		</ProtectedParentRoute>
 	}
 }

@@ -3,10 +3,8 @@ use models::api::workspace::runner::*;
 use crate::prelude::*;
 
 /// Query to list all runners for a workspace
-pub fn list_runners_query() -> Resource<
-	(Option<String>, Option<Uuid>),
-	Result<ListRunnersForWorkspaceResponse, ServerFnError<ErrorType>>,
-> {
+pub fn list_runners_query(
+) -> Resource<Result<ListRunnersForWorkspaceResponse, ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
 
 	create_resource(
@@ -29,10 +27,7 @@ pub fn list_runners_query() -> Resource<
 /// Query to get a runner by id
 pub fn get_runner_query(
 	runner_id: Signal<Uuid>,
-) -> Resource<
-	(Option<String>, Option<Uuid>, Uuid),
-	Result<GetRunnerInfoResponse, ServerFnError<ErrorType>>,
-> {
+) -> Resource<Result<GetRunnerInfoResponse, ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
 	create_resource(
 		move || {
