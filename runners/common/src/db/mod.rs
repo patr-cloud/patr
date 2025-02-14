@@ -16,7 +16,7 @@ pub(super) use self::{initializer::initialize, meta_data::*, workspace::*};
 
 /// Connects to the database based on a config. Not much to say here.
 #[instrument(skip(config))]
-pub async fn connect(config: &DatabaseConfig) -> Pool<DatabaseType> {
+pub async fn connect(config: &DatabaseConfig) -> Result<Pool<DatabaseType>, RunnerError> {
 	info!("Connecting to database: `{}`", config.file);
 	PoolOptions::<DatabaseType>::new()
 		.max_connections(config.connection_limit)
@@ -27,5 +27,5 @@ pub async fn connect(config: &DatabaseConfig) -> Pool<DatabaseType> {
 				.create_if_missing(true),
 		)
 		.await
-		.expect("Failed to connect to database")
+		.map_err(Into::into)
 }

@@ -10,6 +10,10 @@ mod app;
 /// The database module contains all the database related functions. Such as
 /// initializing the database, getting the connection, etc.
 mod db;
+/// The error module contains all the error types that are used in the runner.
+/// This includes the error type for the runner, the error type for the
+/// database, etc.
+mod error;
 /// The executor module contains the trait that the runner needs to implement
 /// to run the resources.
 mod executor;
@@ -31,6 +35,7 @@ pub mod prelude {
 
 	pub use crate::{
 		app::{AppRequest, AppState, ProcessedApiRequest},
+		error::RunnerError,
 		executor::RunnerExecutor,
 		runner::Runner,
 		utils::{client, config::*, constants, ext_traits::*},

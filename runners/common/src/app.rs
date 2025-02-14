@@ -14,8 +14,6 @@ where
 {
 	/// The database connection.
 	pub database: sqlx::Pool<DatabaseType>,
-	/// The channel to notify the runner of changes to a particular resource.
-	pub runner_changes_sender: UnboundedSender<StreamRunnerDataForWorkspaceServerMsg>,
 	/// The application configuration.
 	pub config: RunnerSettings<E::Settings>,
 }
@@ -27,7 +25,6 @@ where
 	fn clone(&self) -> Self {
 		Self {
 			database: self.database.clone(),
-			runner_changes_sender: self.runner_changes_sender.clone(),
 			config: self.config.clone(),
 		}
 	}

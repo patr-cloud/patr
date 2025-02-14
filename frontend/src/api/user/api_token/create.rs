@@ -4,7 +4,7 @@ use models::api::user::*;
 use crate::prelude::*;
 
 #[server(
-	CreateApiTokenFn, 
+	CreateApiTokenFn,
 	endpoint = "/user/api-token/create", 
 	input = Json
 )]

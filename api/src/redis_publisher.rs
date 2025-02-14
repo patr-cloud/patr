@@ -28,7 +28,7 @@ pub async fn run(state: &AppState) {
 			futures::future::select(&mut exit_signal, pin!(listener.recv())).await
 		else {
 			// Left branch is the exit signal
-			info!("Received SIGINT, shutting down");
+			info!("Received SIGINT, quitting");
 			break;
 		};
 
@@ -39,4 +39,5 @@ pub async fn run(state: &AppState) {
 				.await;
 		}
 	}
+	info!("Shutdown signal received, shutting down server gracefully");
 }

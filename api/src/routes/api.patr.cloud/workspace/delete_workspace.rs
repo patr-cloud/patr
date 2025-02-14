@@ -50,7 +50,7 @@ pub async fn delete_workspace(
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
 	// Make sure the workspace is owned by the user
-	if workspace.super_admin_id != user_data.id.into() {
+	if workspace.super_admin_id != Into::<sqlx::types::Uuid>::into(user_data.id) {
 		return Err(ErrorType::ResourceDoesNotExist);
 	}
 

@@ -6,7 +6,7 @@ use crate::prelude::*;
 
 /// Initializes the database, and performs migrations if necessary
 #[instrument(skip(app))]
-pub async fn initialize<E>(app: &AppState<E>) -> Result<(), ErrorType>
+pub async fn initialize<E>(app: &AppState<E>) -> Result<(), sqlx::Error>
 where
 	E: RunnerExecutor,
 {
@@ -96,7 +96,7 @@ where
 
 		match version.cmp(&constants::DATABASE_VERSION) {
 			Ordering::Greater => {
-				error!("Database version is higher than what's recognised. Exiting...");
+				error!("Database version is higher than what's recognized. Exiting...");
 				panic!();
 			}
 			Ordering::Less => {

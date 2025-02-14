@@ -39,9 +39,7 @@ struct DockerRunner {
 impl RunnerExecutor for DockerRunner {
 	type Settings = DockerSettings;
 
-	const RUNNER_INTERNAL_NAME: &'static str = env!("CARGO_CRATE_NAME");
-
-	async fn create(_: &RunnerSettings<Self::Settings>) -> Self {
+	async fn new(_: &RunnerSettings<Self::Settings>) -> Self {
 		let docker = Docker::connect_with_local_defaults().unwrap();
 		Self { docker }
 	}
@@ -314,5 +312,10 @@ impl RunnerExecutor for DockerRunner {
 
 #[tokio::main]
 async fn main() {
-	Runner::<DockerRunner>::run().await;
+	Runner::<DockerRunner>::init()
+		.await
+		.unwrap()
+		.run()
+		.await
+		.unwrap();
 }
