@@ -243,11 +243,11 @@ where
 							.map_err(ErrorType::server_error),
 					),
 					Message::Binary(bin) => Some(
-						serde_json::from_slice(bin.as_slice())
+						serde_json::from_slice(bin.as_ref())
 							.inspect_err(|err| {
 								warn!(
 									"Error parsing binary `{}` as JSON: {}",
-									String::from_utf8_lossy(bin.as_slice()),
+									String::from_utf8_lossy(bin.as_ref()),
 									err
 								)
 							})

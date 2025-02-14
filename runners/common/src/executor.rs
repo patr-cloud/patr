@@ -16,16 +16,32 @@ pub trait RunnerExecutor: Sized {
 
 	/// The internal name of the runner. This is used to identify the runner in
 	/// tracing and logs.
-	const RUNNER_INTERNAL_NAME: &'static str;
+	fn runner_internal_name() -> String {
+		std::env::current_exe()
+			.ok()
+			.and_then(|pb| pb.file_name().map(|f| f.to_string_lossy().to_string()))
+			.unwrap_or("unknown".to_string())
+	}
 
 	/// The settings type for the runner. This is used to store any additional
 	/// settings needed for the runner.
 	type Settings: Serialize + DeserializeOwned + Clone + Send + Sync;
 
-	/// This function is called when the runner is constructed. This is where
+	/// This function is called when the runner is initialized. This is where
 	/// the runner should initialize any resources it needs to run the
-	/// deployments.
-	fn create(settings: &RunnerSettings<Self::Settings>) -> impl Future<Output = Self>;
+	/// resources. This function is guaranteed to be called only once.
+	fn initialize(
+		_: &RunnerSettings<Self::Settings>,
+	) -> impl Future<Output = Result<(), RunnerError>> {
+		async { Ok(()) }
+	}
+
+	/// This function is called when the runner is constructed. This function
+	/// will be called multiple times when data needs to be extracted from the
+	/// runner. So this function should be lightweight and quick to run. Any
+	/// heavy initialization should be done in the
+	/// [`initialize`][RunnerExecutor::initialize] function.
+	fn new(settings: &RunnerSettings<Self::Settings>) -> impl Future<Output = Self>;
 
 	/// This function is called when a deployment is created, or updated.
 	/// The runner should return an error with a duration if the deployment

@@ -37,6 +37,7 @@ sqlx = { workspace = true, features = [
 	"time",
 	"sqlite",
 ] }
+thiserror = { workspace = true, features = [] }
 time = { workspace = true, features = ["default", "serde-human-readable"] }
 tokio = { workspace = true, features = ["full"] }
 tokio-stream = { workspace = true, features = ["default", "sync"] }

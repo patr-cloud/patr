@@ -1,3 +1,5 @@
+use std::future::Future;
+
 use futures::future::Either;
 
 /// Extension trait for [`Either`] that provides additional methods. This trait
@@ -39,5 +41,31 @@ impl<L, NL, R, NR> EitherExt<L, R> for Either<(L, NL), (R, NR)> {
 
 	fn is_right(&self) -> bool {
 		matches!(self, Either::Right(_))
+	}
+}
+
+/// Extension trait for [`Future`] that provides additional methods. This trait
+/// is used to add methods to the [`Future`] type for working with the future
+/// and an exit signal, for the sake of convenience.
+pub trait Exitable<T> {
+	/// Returns the value of the future if it completes before the exit signal
+	/// is triggered. If the exit signal is triggered before the future
+	/// completes, then this function will return [`None`].
+	fn some_if_not_exit<E>(self, exit_signal: &mut E) -> impl Future<Output = Option<T>>
+	where
+		E: Future<Output = ()> + Unpin;
+}
+
+impl<T, F> Exitable<T> for F
+where
+	F: Future<Output = T>,
+{
+	async fn some_if_not_exit<E>(self, exit_signal: &mut E) -> Option<T>
+	where
+		E: Future<Output = ()> + Unpin,
+	{
+		futures::future::select(std::pin::pin!(self), exit_signal)
+			.await
+			.into_left()
 	}
 }

@@ -5,8 +5,6 @@ pub mod access_token_data;
 pub mod client;
 /// The configuration for the runner.
 pub mod config;
-/// A utility that returns a value after a delay.
-pub mod delayed_future;
 /// Extensions traits for the `Either` type.
 pub mod ext_traits;
 /// The resource executor that will be used to manage the resources.
@@ -51,7 +49,7 @@ pub mod constants {
 	pub const PATR_JWT_AUDIENCE: &str = "patr.cloud";
 	/// The expiry time for the access token. This is set to 7 days.
 	pub const ACCESS_TOKEN_VALIDITY: time::Duration = time::Duration::days(7);
-	/// The user_id key to be useed in the meta_data table. This is used to
+	/// The user_id key to be used in the meta_data table. This is used to
 	/// store the user_id of the user that is currently logged in.
 	pub const USER_ID_KEY: &str = "user_id";
 	/// The Password Hash key to be used in the meta_data table. This is used to

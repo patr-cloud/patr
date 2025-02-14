@@ -31,7 +31,7 @@ pub struct Paginated<T = ()> {
 	pub page: usize,
 }
 
-impl<T> Paginated<T> {
+impl Paginated<()> {
 	/// The default page size that should be used if no page size is specified.
 	/// This is currently set to 25. So if no page size is specified, the API
 	/// will return a maximum of 25 items, starting from the first item.
@@ -42,7 +42,7 @@ impl<T> Paginated<T> {
 /// specified. This is currently set to 25. So if no page size is specified,
 /// the API will return a maximum of 25 items, starting from the first item.
 const fn default_page_size() -> usize {
-	Paginated::<()>::DEFAULT_PAGE_SIZE
+	Paginated::DEFAULT_PAGE_SIZE
 }
 
 impl<T> Default for Paginated<T>
@@ -52,7 +52,7 @@ where
 	fn default() -> Self {
 		Self {
 			data: T::default(),
-			count: Self::DEFAULT_PAGE_SIZE,
+			count: Paginated::DEFAULT_PAGE_SIZE,
 			page: 0,
 		}
 	}

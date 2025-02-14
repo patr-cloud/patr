@@ -199,5 +199,4 @@ async fn exit_signal() {
 		_ = ctrl_c => (),
 		_ = terminate => (),
 	}
-	tracing::info!("Shutdown signal received, shutting down server gracefully");
 }

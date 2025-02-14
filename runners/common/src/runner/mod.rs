@@ -1,19 +1,12 @@
 use std::{net::SocketAddr, pin::pin};
 
 use dashmap::DashMap;
-use futures::{
-	future::{self, Either},
-	stream::BoxStream,
-	StreamExt,
-};
+use futures::{future, StreamExt};
 use models::{api::workspace::runner::*, rbac::ResourceType};
 use tokio::{
 	net::TcpListener,
-	sync::mpsc::unbounded_channel,
-	task,
 	time::{self, Duration},
 };
-use tokio_stream::wrappers::UnboundedReceiverStream;
 use tracing::{level_filters::LevelFilter, Dispatch, Level};
 use tracing_subscriber::{
 	fmt::{format::FmtSpan, Layer as FmtLayer},
@@ -44,14 +37,11 @@ impl<E> Runner<E>
 where
 	E: RunnerExecutor + Clone + 'static,
 {
-	/// Initializes and runs the runner. This function will create a new
+	/// Initializes the runner. This function will create a new
 	/// database connection pool and set up the global default subscriber for
-	/// the runner, then start the runner and run the resources that the runner
-	/// is responsible for. This function will run forever until the runner is
-	/// stopped.
-	pub async fn run() {
-		let config = RunnerSettings::<E::Settings>::parse(E::RUNNER_INTERNAL_NAME)
-			.expect("Failed to parse settings");
+	/// the runner. It returns an instance of the runner.
+	pub async fn init() -> Result<Self, RunnerError> {
+		let config = RunnerSettings::<E::Settings>::parse(&E::runner_internal_name())?;
 
 		tracing::dispatcher::set_global_default(Dispatch::new(
 			tracing_subscriber::registry().with(
@@ -66,7 +56,7 @@ where
 					)
 					.with_filter(
 						tracing_subscriber::filter::Targets::new()
-							.with_target(E::RUNNER_INTERNAL_NAME, LevelFilter::TRACE)
+							.with_target(E::runner_internal_name(), LevelFilter::TRACE)
 							.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
 							.with_target("models", LevelFilter::TRACE),
 					)
@@ -78,60 +68,107 @@ where
 						},
 					)),
 			),
-		))
-		.expect("Failed to set global default subscriber");
+		))?;
 
-		let database = db::connect(&config.database).await;
+		let database = db::connect(&config.database).await?;
 
-		let (runner_changes_sender, runner_changes_receiver) = unbounded_channel();
-		let mut runner_changes_receiver = UnboundedReceiverStream::new(runner_changes_receiver);
+		let state = AppState { database, config };
 
-		let mut runner = Self {
+		db::initialize(&state).await?;
+
+		Ok(Self {
 			registry: DashMap::new(),
-			state: AppState {
-				database,
-				runner_changes_sender,
-				config,
-			},
+			state,
+		})
+	}
+
+	/// Run the runner. This function will start the runner and run the server
+	/// and the resource reconciliation. It will return a result with the error
+	/// if the runner fails to start. The runner will run until the exit signal
+	/// is received.
+	pub async fn run(self) -> Result<(), RunnerError> {
+		let tcp_listener = TcpListener::bind(self.state.config.bind_address).await?;
+
+		E::initialize(&self.state.config).await?;
+
+		future::join3(
+			self.run_server(tcp_listener),
+			self.sync_local_database(),
+			self.monitor_resources(),
+		)
+		.await;
+
+		info!("Runner stopped. Waiting for server to exit...");
+		info!("Server exited. Exiting runner");
+		Ok(())
+	}
+
+	/// Run the server. This function will start the server and listen for
+	/// incoming HTTP connections. It will return a result with the error if the
+	/// server fails to start. The server will run until the exit signal is
+	/// received.
+	async fn run_server(&self, tcp_listener: TcpListener) {
+		info!(
+			"Listening for connections on http://{}",
+			tcp_listener.local_addr().unwrap()
+		);
+
+		axum::serve(
+			tcp_listener,
+			crate::routes::setup_routes(&self.state)
+				.await
+				.into_make_service_with_connect_info::<SocketAddr>(),
+		)
+		.with_graceful_shutdown(exit_signal())
+		.await
+		.expect("Unable to start server");
+	}
+
+	/// Sync the local database with the upstream APIs. This function will
+	/// connect to the server and listen for messages from the server. It will
+	/// notify the runner to reconcile the resources that are changed on the
+	/// server. This function will only run if the runner is running in managed
+	/// mode.
+	async fn sync_local_database(&self) {
+		let RunnerMode::Managed {
+			workspace_id,
+			runner_id,
+			api_token,
+			user_agent,
+		} = self.state.config.mode.clone()
+		else {
+			// If the runner is running in self-hosted mode, return early. The run function
+			// uses a join of all the futures so early return here will not stop the runner
+			// from running
+			return;
 		};
 
-		let state = runner.state.clone();
-		// Run the server here
-		let server_task = task::spawn(async move {
-			let tcp_listener = TcpListener::bind(state.config.bind_address).await.unwrap();
+		info!("Syncing local database with upstream APIs");
 
-			info!(
-				"Listening for connections on http://{}",
-				tcp_listener.local_addr().unwrap()
-			);
-
-			axum::serve(
-				tcp_listener,
-				crate::routes::setup_routes(&state)
-					.await
-					.into_make_service_with_connect_info::<SocketAddr>(),
-			)
-			.with_graceful_shutdown(exit_signal())
-			.await
-			.unwrap();
-		});
-
-		info!("Runner started");
-
-		let mut exit_signal = pin!(exit_signal());
+		let exit_signal = &mut pin!(exit_signal());
 		debug!("Exit signal listener started");
 
 		info!("Connecting to the server");
 		// Connect to the server infinitely until the exit signal is received
 		'main: loop {
-			// Initialize the runner changes receiver
-			let Some(response) = futures::future::select(
-				&mut exit_signal,
-				pin!(runner.get_update_resources_stream(&mut runner_changes_receiver)),
+			let Some(response) = client::stream_request(
+				ApiRequest::<StreamRunnerDataForWorkspaceRequest>::builder()
+					.path(StreamRunnerDataForWorkspacePath {
+						workspace_id,
+						runner_id,
+					})
+					.headers(StreamRunnerDataForWorkspaceRequestHeaders {
+						authorization: api_token.clone(),
+						user_agent: user_agent.clone(),
+					})
+					.query(())
+					.body(Default::default())
+					.build(),
 			)
+			.some_if_not_exit(exit_signal)
 			.await
-			.into_right() else {
-				// Left branch is the exit signal
+			else {
+				// None signifies exit signal
 				warn!("Exit signal received. Stopping runner");
 				break 'main;
 			};
@@ -145,11 +182,12 @@ where
 				.map_err(|err| err.body)
 			else {
 				// Retry after 5 seconds, but break if the exit signal is received
-				if future::select(&mut exit_signal, pin!(time::sleep(Duration::from_secs(5))))
+				if time::sleep(Duration::from_secs(5))
+					.some_if_not_exit(exit_signal)
 					.await
-					.is_left()
+					.is_none()
 				{
-					// Left branch is the exit signal
+					// None signifies exit signal
 					break 'main;
 				};
 				continue 'main;
@@ -157,94 +195,87 @@ where
 
 			info!("Reconciling all resources before starting");
 			// Reconcile all resources at the start (or when reconnecting to the websocket)
-			runner.reconcile_all().await;
+			while let Err(err) = self.resync_all().await {
+				error!("Failed to resync all resources: {:?}", err);
+				error!("Retrying in 1 second");
+				time::sleep(Duration::from_secs(1)).await;
+			}
 
-			// Reconcile all resources at a fixed interval
-			let mut reconcile_all = Box::pin(time::sleep(E::FULL_RECONCILIATION_INTERVAL));
 			let mut pinned_stream = pin!(stream);
 
 			'message: loop {
-				let Some(reconcile_all_or_one) = future::select(
-					&mut exit_signal,
-					future::select(reconcile_all.as_mut(), pinned_stream.next()),
-				)
-				.await
-				.into_right() else {
-					// Left branch is the exit signal
+				let Some(reconcile_message) =
+					pinned_stream.next().some_if_not_exit(exit_signal).await
+				else {
+					// None signifies exit signal
 					break 'main;
-				};
-
-				let reconcile_message = match reconcile_all_or_one {
-					// Reconcile all resources
-					Either::Left(_) => {
-						reconcile_all = Box::pin(time::sleep(E::FULL_RECONCILIATION_INTERVAL));
-						runner.reconcile_all().await;
-						continue 'message;
-					}
-					Either::Right((actionable_message, _)) => actionable_message,
 				};
 
 				match reconcile_message {
 					Some(Ok(response)) => {
-						runner.handle_server_message(response).await;
+						self.handle_server_message(response).await;
 					}
 					Some(Err(err)) => {
 						// Data from the websocket failed
 						error!("Failed to connect to the server: {:?}", err);
 						error!("Retrying in 1 second");
-						// Retry after 5 seconds, but break if the exit signal is received
-						if future::select(
-							&mut exit_signal,
-							pin!(time::sleep(Duration::from_secs(1))),
-						)
-						.await
-						.is_right()
+						// Retry after 1 second, but break if the exit signal is received
+						if time::sleep(Duration::from_secs(1))
+							.some_if_not_exit(exit_signal)
+							.await
+							.is_none()
 						{
-							// Left branch is the exit signal
+							// None signifies exit signal
 							break 'main;
 						};
 
-						continue 'main;
+						break 'message;
 					}
 					None => {
 						// Websocket disconnected. Reconnect
 						error!("Connection to server closed");
 						error!("Retrying in 2 seconds");
-						// Retry after 5 seconds, but break if the exit signal is received
-						if future::select(
-							&mut exit_signal,
-							pin!(time::sleep(Duration::from_secs(2))),
-						)
-						.await
-						.is_right()
+						// Retry after 2 seconds, but break if the exit signal is received
+						if time::sleep(Duration::from_secs(2))
+							.some_if_not_exit(exit_signal)
+							.await
+							.is_none()
 						{
-							// Left branch is the exit signal
+							// None signifies exit signal
 							break 'main;
 						};
 
-						continue 'main;
+						break 'message;
 					}
 				}
 			}
 		}
-
-		info!("Runner stopped. Waiting for server to exit");
-		_ = server_task.await;
-		info!("Server exited. Exiting runner...");
 	}
 
-	/// Reconcile all the resources that the runner is responsible for. This
-	/// function will run the reconciliation for all the resources that the
-	/// runner is responsible for.
-	async fn reconcile_all(&mut self) {
+	async fn monitor_resources(&self) {
+		info!("Monitoring all running resources");
+		loop {
+			// Every few seconds, ensure that all resources in self.registry are running and
+			// is in sync with the resources in the database
+
+			future::select_all(self.registry.iter().map(|item| pin!(item.value().task))).await;
+		}
+	}
+
+	/// Resync all the resources that the runner is responsible for. This
+	/// function will sync the resources that are running with the resources
+	/// that should be running.
+	async fn resync_all(&self) -> Result<(), RunnerError> {
 		// Reconcile all resources
-		self.reconcile_all_deployments().await;
+		self.resync_all_deployments().await?;
+
+		Ok(())
 	}
 
 	/// Handle a message from the server. This function will handle the message
 	/// from the server and run the reconciliation for the resource that the
 	/// message is for.
-	async fn handle_server_message(&mut self, msg: StreamRunnerDataForWorkspaceServerMsg) {
+	async fn handle_server_message(&self, msg: StreamRunnerDataForWorkspaceServerMsg) {
 		info!("Handling server message: {:?}", msg);
 		// if this resource is already queued for reconciliation, remove that
 		let resource_id = get_resource_id_from_message(&msg);
@@ -256,52 +287,6 @@ where
 			_ => {
 				warn!("Unknown resource type: {:?}", msg);
 			}
-		}
-	}
-
-	/// Get the stream of updates for the runner.
-	///
-	/// If the runner is running in self-hosted mode, this function will return
-	/// the stream of updates from the runner changes receiver. If the runner is
-	/// running in managed mode, this function will return the stream of updates
-	/// from the websocket endpoint to the Patr API.
-	async fn get_update_resources_stream<'a>(
-		&mut self,
-		runner_changes_receiver: &'a mut UnboundedReceiverStream<
-			StreamRunnerDataForWorkspaceServerMsg,
-		>,
-	) -> Result<
-		BoxStream<'a, Result<StreamRunnerDataForWorkspaceServerMsg, ErrorType>>,
-		ApiErrorResponse,
-	> {
-		match &self.state.config.mode {
-			RunnerMode::SelfHosted {
-				password_pepper: _,
-				jwt_secret: _,
-			} => Ok(runner_changes_receiver
-				.map(|msg| Ok::<_, ErrorType>(msg))
-				.boxed()),
-			RunnerMode::Managed {
-				workspace_id,
-				runner_id,
-				api_token,
-				user_agent,
-			} => client::stream_request(
-				ApiRequest::<StreamRunnerDataForWorkspaceRequest>::builder()
-					.path(StreamRunnerDataForWorkspacePath {
-						workspace_id: *workspace_id,
-						runner_id: *runner_id,
-					})
-					.headers(StreamRunnerDataForWorkspaceRequestHeaders {
-						authorization: api_token.clone(),
-						user_agent: user_agent.clone(),
-					})
-					.query(())
-					.body(Default::default())
-					.build(),
-			)
-			.await
-			.map(StreamExt::boxed),
 		}
 	}
 }
