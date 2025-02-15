@@ -23,6 +23,27 @@ impl ResourceExecutorTask {
 			task: tokio::spawn(async move {
 				let resource_id = resource_id;
 				let resource_type = resource_type;
+
+				match resource_type {
+					ResourceType::Deployment => {
+						// Keep checking for the status of the deployment and
+						// update the database
+					}
+
+					ResourceType::Workspace |
+					ResourceType::Project |
+					ResourceType::Runner |
+					ResourceType::Volume |
+					ResourceType::Database |
+					ResourceType::StaticSite |
+					ResourceType::ContainerRegistryRepository |
+					ResourceType::Secret |
+					ResourceType::Domain |
+					ResourceType::DnsRecord |
+					ResourceType::ManagedURL => {
+						todo!()
+					}
+				}
 			}),
 		}
 	}
