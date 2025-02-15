@@ -255,10 +255,8 @@ where
 	async fn monitor_resources(&self) {
 		info!("Monitoring all running resources");
 		loop {
-			// Every few seconds, ensure that all resources in self.registry are running and
-			// is in sync with the resources in the database
-
-			future::select_all(self.registry.iter().map(|item| pin!(item.value().task))).await;
+			// Every few seconds, ensure that all resources in self.registry are
+			// running and is in sync with the resources in the database
 		}
 	}
 
