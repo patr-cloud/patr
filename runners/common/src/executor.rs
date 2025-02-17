@@ -25,23 +25,29 @@ pub trait RunnerExecutor: Sized {
 
 	/// The settings type for the runner. This is used to store any additional
 	/// settings needed for the runner.
-	type Settings: Serialize + DeserializeOwned + Clone + Send + Sync;
+	type Settings: Serialize + DeserializeOwned + Clone + Send + Sync + 'static;
+
+	/// The type that the runner will initialize in the
+	/// [`initialize`][RunnerExecutor::initialize] function, and will be passed
+	/// to the [`new`][RunnerExecutor::new] function upon each instantiation.
+	type InitializedState: Clone + Send + Sync + 'static;
 
 	/// This function is called when the runner is initialized. This is where
 	/// the runner should initialize any resources it needs to run the
 	/// resources. This function is guaranteed to be called only once.
 	fn initialize(
 		_: &RunnerSettings<Self::Settings>,
-	) -> impl Future<Output = Result<(), RunnerError>> {
-		async { Ok(()) }
-	}
+	) -> impl Future<Output = Result<Self::InitializedState, RunnerError>> + Send;
 
 	/// This function is called when the runner is constructed. This function
 	/// will be called multiple times when data needs to be extracted from the
 	/// runner. So this function should be lightweight and quick to run. Any
 	/// heavy initialization should be done in the
 	/// [`initialize`][RunnerExecutor::initialize] function.
-	fn new(settings: &RunnerSettings<Self::Settings>) -> impl Future<Output = Self>;
+	fn new(
+		settings: &RunnerSettings<Self::Settings>,
+		state: Self::InitializedState,
+	) -> impl Future<Output = Self> + Send;
 
 	/// This function is called when a deployment is created, or updated.
 	/// The runner should return an error with a duration if the deployment
@@ -51,14 +57,27 @@ pub trait RunnerExecutor: Sized {
 		&self,
 		deployment: WithId<Deployment>,
 		running_details: DeploymentRunningDetails,
-	) -> impl Future<Output = Result<(), Duration>>;
+	) -> impl Future<Output = Result<(), Duration>> + Send;
 
 	/// This function is called when a deployment is deleted. The runner should
 	/// return an error with a duration if the deployment failed to delete. This
 	/// will be used to retry the deployment after the given duration.
-	fn delete_deployment(&self, deployment_id: Uuid) -> impl Future<Output = Result<(), Duration>>;
+	fn delete_deployment(
+		&self,
+		deployment_id: Uuid,
+	) -> impl Future<Output = Result<(), Duration>> + Send;
 
 	/// This function should return a stream of all the running deployment IDs
 	/// in the runner, sorted by the deployment ID.
-	fn list_running_deployments<'a>(&self) -> impl Future<Output = impl Stream<Item = Uuid> + 'a>;
+	fn list_running_deployments<'a>(
+		&self,
+	) -> impl Future<Output = impl Stream<Item = Uuid> + 'a> + Send;
+
+	/// This function should return the status of the deployment. This function
+	/// will be called when the runner is reconciling the deployments to get the
+	/// status of the deployment.
+	fn get_deployment_status(
+		&self,
+		deployment_id: Uuid,
+	) -> impl Future<Output = Result<DeploymentStatus, RunnerError>> + Send;
 }

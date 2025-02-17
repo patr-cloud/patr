@@ -1,9 +1,10 @@
 FROM ubuntu:noble
 
 RUN apt update
-RUN apt install -y libssl-dev pkg-config bash-completion git sudo curl htop nano vim build-essential postgresql-client clang
+RUN apt install -y libssl-dev pkg-config bash-completion git sudo curl htop nano vim build-essential postgresql-client clang docker-compose
 RUN adduser vscode
 RUN adduser vscode sudo
+RUN adduser vscode docker
 RUN echo vscode ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/vscode
 RUN chmod 0440 /etc/sudoers.d/vscode
 USER vscode

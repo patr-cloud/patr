@@ -1,11 +1,9 @@
-use std::{cmp::Ordering, pin::pin};
+use std::cmp::Ordering;
 
 use futures::{stream, Stream, StreamExt};
-use models::api::workspace::deployment::*;
-use sqlx::sqlite::SqliteRow;
-use tokio::time::Duration;
+use models::{api::workspace::deployment::*, rbac::ResourceType};
 
-use crate::prelude::*;
+use crate::{prelude::*, utils::resource_executor::ResourceExecutorTask};
 
 impl<E> super::Runner<E>
 where
@@ -326,8 +324,9 @@ where
 			transaction.commit().await?;
 		}
 
-		let mut running_deployments = stream::iter(self.registry.iter().map(|item| *item.key()));
-		let mut database_deployments = self.get_all_local_deployment_ids();
+		let mut running_deployments =
+			stream::iter(self.registry.iter().map(|item| item.value().resource_id()));
+		let mut database_deployments = self.get_all_local_deployment_ids().await;
 
 		let mut current_running_deployment = running_deployments.next().await;
 		let mut current_database_deployment = database_deployments.next().await;
@@ -337,9 +336,18 @@ where
 				(Some(running_deployment), Some(Ok(database_deployment))) => {
 					match running_deployment.cmp(&database_deployment) {
 						Ordering::Less => {
+							// The running deployment is not in the database. We
+							// need to delete it
+							self.delete_deployment(running_deployment).await?;
+
 							current_running_deployment = running_deployments.next().await;
+							current_database_deployment = Some(Ok(database_deployment));
 						}
 						Ordering::Greater => {
+							// The database deployment is not running. We need to
+							// create it
+							self.create_deployment(database_deployment).await?;
+
 							current_database_deployment = database_deployments.next().await;
 						}
 						Ordering::Equal => {
@@ -349,21 +357,24 @@ where
 					}
 				}
 				(Some(running_deployment), None) => {
-					current_running_deployment = running_deployments.next().await;
-					current_database_deployment = None;
 					// The database is exhausted. We need to delete the running
 					// deployment
 					self.delete_deployment(running_deployment).await?;
+
+					current_database_deployment = None;
+					current_running_deployment = running_deployments.next().await;
 				}
 				(None, Some(Ok(database_deployment))) => {
-					current_database_deployment = database_deployments.next().await;
 					// The running deployments are exhausted. Create the
 					// deployment that is in the database
+					self.create_deployment(database_deployment).await?;
+
+					current_database_deployment = database_deployments.next().await;
 				}
 				(_, Some(Err(err))) => {
 					// There was an error fetching the database deployment. We
 					// should retry or exit
-					break;
+					return Err(Into::into(err));
 				}
 				(None, None) => {
 					// Both are exhausted. We're done
@@ -375,9 +386,18 @@ where
 		Ok(())
 	}
 
+	async fn create_deployment(&self, deployment_id: Uuid) -> Result<(), RunnerError> {
+		self.registry.insert(
+			deployment_id,
+			ResourceExecutorTask::new(deployment_id, ResourceType::Deployment, &self.state),
+		);
+
+		Ok(())
+	}
+
 	/// Get all the local deployments. This function will get all the local
 	/// deployments from the SQLite database.
-	fn get_all_local_deployment_ids(&self) -> impl Stream<Item = Result<Uuid, sqlx::Error>> {
+	async fn get_all_local_deployment_ids(&self) -> impl Stream<Item = Result<Uuid, sqlx::Error>> {
 		query(
 			r#"
 				SELECT
@@ -404,7 +424,7 @@ where
 			"#,
 		)
 		.bind(id)
-		.execute(&mut *transaction)
+		.execute(&self.state.database)
 		.await?;
 
 		query(
@@ -416,7 +436,7 @@ where
 			"#,
 		)
 		.bind(id)
-		.execute(&mut *transaction)
+		.execute(&self.state.database)
 		.await?;
 
 		query(
@@ -428,7 +448,7 @@ where
 			"#,
 		)
 		.bind(id)
-		.execute(&mut *transaction)
+		.execute(&self.state.database)
 		.await?;
 
 		query(
@@ -440,7 +460,7 @@ where
 			"#,
 		)
 		.bind(id)
-		.execute(&mut *transaction)
+		.execute(&self.state.database)
 		.await?;
 
 		query(
@@ -455,9 +475,8 @@ where
 		.execute(&self.state.database)
 		.await?;
 
-		if let Some(item) = self.registry.get(&id) {
-			item.value().stop().await;
-			self.registry.remove(&id);
+		if let Some((_, item)) = self.registry.remove(&id) {
+			item.stop().await;
 		}
 
 		Ok(())

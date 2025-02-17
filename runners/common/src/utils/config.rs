@@ -131,6 +131,15 @@ impl RunnerMode {
 	pub fn is_managed(&self) -> bool {
 		matches!(self, RunnerMode::Managed { .. })
 	}
+
+	/// Get the runner ID for the runner, if it is running in managed mode
+	/// otherwise return a nil UUID
+	pub fn get_runner_id(&self) -> Uuid {
+		match self {
+			Self::Managed { runner_id, .. } => *runner_id,
+			_ => Uuid::nil(),
+		}
+	}
 }
 
 /// Get the user agent for the runner
