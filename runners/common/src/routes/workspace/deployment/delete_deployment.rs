@@ -22,7 +22,6 @@ pub async fn delete_deployment(
 				body: DeleteDeploymentRequestProcessed,
 			},
 		database,
-		runner_changes_sender,
 		config: _,
 	}: AppRequest<'_, DeleteDeploymentRequest>,
 ) -> Result<AppResponse<DeleteDeploymentRequest>, ErrorType> {
@@ -102,10 +101,6 @@ pub async fn delete_deployment(
 	})?;
 
 	trace!("Deployment deleted");
-
-	runner_changes_sender
-		.send(StreamRunnerDataForWorkspaceServerMsg::DeploymentDeleted { id: deployment_id })
-		.expect("Failed to send deployment created message");
 
 	trace!("Changes sent to runner");
 

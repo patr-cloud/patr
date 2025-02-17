@@ -112,7 +112,6 @@ where
 			let UnprocessedAppRequest {
 				request,
 				database,
-				runner_changes_sender,
 				config,
 			} = req;
 			let req = AppRequest {
@@ -126,7 +125,6 @@ where
 					},
 				)?,
 				database,
-				runner_changes_sender,
 				config,
 			};
 			inner.call(req).await

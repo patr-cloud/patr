@@ -28,7 +28,7 @@ where
 	E: RunnerExecutor,
 {
 	/// Runner task registry
-	registry: DashMap<Uuid, ResourceExecutorTask>,
+	registry: DashMap<Uuid, ResourceExecutorTask<E>>,
 	/// State and configuration for the runner
 	state: AppState<E>,
 }
@@ -72,7 +72,13 @@ where
 
 		let database = db::connect(&config.database).await?;
 
-		let state = AppState { database, config };
+		let runner_state = E::initialize(&config).await?;
+
+		let state = AppState {
+			database,
+			config,
+			runner_state,
+		};
 
 		db::initialize(&state).await?;
 
@@ -88,8 +94,6 @@ where
 	/// is received.
 	pub async fn run(self) -> Result<(), RunnerError> {
 		let tcp_listener = TcpListener::bind(self.state.config.bind_address).await?;
-
-		E::initialize(&self.state.config).await?;
 
 		future::join3(
 			self.run_server(tcp_listener),
@@ -189,7 +193,7 @@ where
 				{
 					// None signifies exit signal
 					break 'main;
-				};
+				}
 				continue 'main;
 			};
 
@@ -227,7 +231,7 @@ where
 						{
 							// None signifies exit signal
 							break 'main;
-						};
+						}
 
 						break 'message;
 					}
@@ -243,7 +247,7 @@ where
 						{
 							// None signifies exit signal
 							break 'main;
-						};
+						}
 
 						break 'message;
 					}
@@ -254,9 +258,9 @@ where
 
 	async fn monitor_resources(&self) {
 		info!("Monitoring all running resources");
+
 		loop {
-			// Every few seconds, ensure that all resources in self.registry are
-			// running and is in sync with the resources in the database
+			time::sleep(Duration::from_secs(5)).await;
 		}
 	}
 
@@ -280,7 +284,7 @@ where
 
 		match msg.resource_type() {
 			ResourceType::Deployment => {
-				self.reconcile_deployment(resource_id).await;
+				// self.reconcile_deployment(resource_id).await;
 			}
 			_ => {
 				warn!("Unknown resource type: {:?}", msg);

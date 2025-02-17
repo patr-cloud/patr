@@ -69,7 +69,7 @@ pub async fn list_volumes(
 			row.id,
 			DeploymentVolume {
 				name: row.name,
-				size: row.volume_size.unsigned_abs().into(),
+				size: row.volume_size.unsigned_abs(),
 				deployment_id: row.deployment_id.map(Into::into),
 			},
 		)

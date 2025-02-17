@@ -3,6 +3,9 @@ use models::api::workspace::volume::*;
 
 use crate::prelude::*;
 
+/// This function updates the volume with the given ID. It will update the
+/// volume's name and size. If the size is reduced, it will return an error. It
+/// can be used to grow the size of a volume or rename it.
 pub async fn update_volume(
 	AuthenticatedAppRequest {
 		request:

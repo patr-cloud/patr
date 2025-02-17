@@ -37,10 +37,16 @@ struct DockerRunner {
 }
 
 impl RunnerExecutor for DockerRunner {
+	type InitializedState = Docker;
 	type Settings = DockerSettings;
 
-	async fn new(_: &RunnerSettings<Self::Settings>) -> Self {
-		let docker = Docker::connect_with_local_defaults().unwrap();
+	async fn initialize(
+		_: &RunnerSettings<Self::Settings>,
+	) -> Result<Self::InitializedState, RunnerError> {
+		Ok(Docker::connect_with_local_defaults().unwrap())
+	}
+
+	async fn new(_: &RunnerSettings<Self::Settings>, docker: Self::InitializedState) -> Self {
 		Self { docker }
 	}
 

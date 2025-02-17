@@ -22,7 +22,6 @@ pub async fn stop_deployment(
 				body: StopDeploymentRequestProcessed,
 			},
 		database,
-		runner_changes_sender: _,
 		config: _,
 	}: AppRequest<'_, StopDeploymentRequest>,
 ) -> Result<AppResponse<StopDeploymentRequest>, ErrorType> {
