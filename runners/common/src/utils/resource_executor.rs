@@ -1,7 +1,4 @@
-use std::{
-	hash::{Hash, Hasher},
-	marker::PhantomData,
-};
+use std::marker::PhantomData;
 
 use models::rbac::ResourceType;
 use tokio::task::JoinHandle;
@@ -12,7 +9,7 @@ use crate::prelude::*;
 /// will be used to spawn the tasks that will be used to manage the resources.
 pub struct ResourceExecutorTask<E>
 where
-	E: RunnerExecutor,
+	E: RunnerExecutor + Send + 'static,
 {
 	/// The ID of the resource that will be managed.
 	resource_id: Uuid,
@@ -24,27 +21,47 @@ where
 
 impl<E> ResourceExecutorTask<E>
 where
-	E: RunnerExecutor,
+	E: RunnerExecutor + Send + 'static,
 {
 	/// Creates a new resource executor task.
 	pub(crate) fn new(resource_id: Uuid, resource_type: ResourceType, state: &AppState<E>) -> Self {
-		let runner_state = state.runner_state.clone();
-		let config = state.config.clone();
+		let state = state.clone();
 		Self {
 			resource_id,
 			runner_executor: PhantomData,
 			task: tokio::spawn(async move {
 				let resource_id = resource_id;
 				let resource_type = resource_type;
-				let state = runner_state;
-				let config = config;
+				let state = state;
 
-				let executor = E::new(&config, state).await;
+				let executor = E::new(&state.config, state.runner_state.clone()).await;
 
 				match resource_type {
 					ResourceType::Deployment => {
 						// Keep checking for the status of the deployment and
 						// update the database
+						loop {
+							let Ok(status) = executor.get_deployment_status(resource_id).await
+							else {
+								continue;
+							};
+
+							// Update the status of the deployment in the database
+							let _ = query(
+								r#"
+								UPDATE
+									deployment
+								SET
+									status = $1
+								WHERE
+									id = $2;
+								"#,
+							)
+							.bind(status)
+							.bind(resource_id)
+							.execute(&state.database)
+							.await;
+						}
 					}
 
 					ResourceType::Workspace |

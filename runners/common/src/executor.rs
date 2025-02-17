@@ -9,10 +9,14 @@ use crate::prelude::*;
 /// This trait is the main trait that the runner needs to implement to run the
 /// resources.
 pub trait RunnerExecutor: Sized {
-	/// The reconciliation interval for the runner. This is the interval at
-	/// which the runner will reconcile ALL the resources with the server. The
-	/// default is 10 minutes.
-	const FULL_RECONCILIATION_INTERVAL: Duration = Duration::from_secs(10 * 60);
+	/// The settings type for the runner. This is used to store any additional
+	/// settings needed for the runner.
+	type Settings: Serialize + DeserializeOwned + Clone + Send + Sync + 'static;
+
+	/// The type that the runner will initialize in the
+	/// [`initialize`][RunnerExecutor::initialize] function, and will be passed
+	/// to the [`new`][RunnerExecutor::new] function upon each instantiation.
+	type InitializedState: Clone + Send + Sync + 'static;
 
 	/// The internal name of the runner. This is used to identify the runner in
 	/// tracing and logs.
@@ -22,15 +26,6 @@ pub trait RunnerExecutor: Sized {
 			.and_then(|pb| pb.file_name().map(|f| f.to_string_lossy().to_string()))
 			.unwrap_or("unknown".to_string())
 	}
-
-	/// The settings type for the runner. This is used to store any additional
-	/// settings needed for the runner.
-	type Settings: Serialize + DeserializeOwned + Clone + Send + Sync + 'static;
-
-	/// The type that the runner will initialize in the
-	/// [`initialize`][RunnerExecutor::initialize] function, and will be passed
-	/// to the [`new`][RunnerExecutor::new] function upon each instantiation.
-	type InitializedState: Clone + Send + Sync + 'static;
 
 	/// This function is called when the runner is initialized. This is where
 	/// the runner should initialize any resources it needs to run the

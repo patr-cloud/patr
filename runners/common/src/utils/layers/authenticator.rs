@@ -22,6 +22,7 @@ pub struct AuthenticationLayer<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	E::RequestHeaders: HasHeader<BearerToken>,
 {
 	/// The endpoint type that this layer will handle
 	endpoint: PhantomData<E>,
@@ -31,6 +32,7 @@ impl<E> AuthenticationLayer<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	E::RequestHeaders: HasHeader<BearerToken>,
 {
 	/// Helper function to initialize an authentication layer
 	pub fn new() -> Self {
@@ -44,7 +46,8 @@ impl<E, S> Layer<S> for AuthenticationLayer<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
-	for<'a> S: Service<AppRequest<'a, E>>,
+	E::RequestHeaders: HasHeader<BearerToken>,
+	for<'b> S: Service<AppRequest<'b, E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
 {
 	type Service = AuthenticationService<E::Authenticator, E, S>;
 
@@ -61,6 +64,7 @@ impl<E> Clone for AuthenticationLayer<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	E::RequestHeaders: HasHeader<BearerToken>,
 {
 	fn clone(&self) -> Self {
 		Self {
@@ -74,6 +78,8 @@ pub struct AuthenticationService<A, E, S>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	E::RequestHeaders: HasHeader<BearerToken>,
+	for<'b> S: Service<AppRequest<'b, E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
 {
 	/// The inner service that will be called after the request is authenticated
 	inner: S,
@@ -180,6 +186,7 @@ impl<A, E, S> Clone for AuthenticationService<A, E, S>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	E::RequestHeaders: HasHeader<BearerToken>,
 	for<'b> S: Service<AppRequest<'b, E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
 {
 	fn clone(&self) -> Self {

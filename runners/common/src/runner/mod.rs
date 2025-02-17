@@ -25,7 +25,7 @@ mod deployment;
 /// the runner. The runner is created using the [`Runner::new`] function.
 pub struct Runner<E>
 where
-	E: RunnerExecutor,
+	E: RunnerExecutor + Send + 'static,
 {
 	/// Runner task registry
 	registry: DashMap<Uuid, ResourceExecutorTask<E>>,
@@ -35,7 +35,7 @@ where
 
 impl<E> Runner<E>
 where
-	E: RunnerExecutor + Clone + 'static,
+	E: RunnerExecutor + Send + 'static,
 {
 	/// Initializes the runner. This function will create a new
 	/// database connection pool and set up the global default subscriber for
@@ -52,13 +52,16 @@ where
 							.with_ansi(true)
 							.with_file(false)
 							.without_time()
+							.with_target(false)
+							.with_source_location(false)
 							.compact(),
 					)
 					.with_filter(
 						tracing_subscriber::filter::Targets::new()
 							.with_target(E::runner_internal_name(), LevelFilter::TRACE)
 							.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
-							.with_target("models", LevelFilter::TRACE),
+							.with_target("models", LevelFilter::TRACE)
+							.with_target("frontend", LevelFilter::TRACE),
 					)
 					.with_filter(LevelFilter::from_level(
 						if config.environment == RunningEnvironment::Development {

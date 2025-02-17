@@ -7,7 +7,7 @@ use crate::{prelude::*, utils::resource_executor::ResourceExecutorTask};
 
 impl<E> super::Runner<E>
 where
-	E: RunnerExecutor + Clone + 'static,
+	E: RunnerExecutor + Send + 'static,
 {
 	/// Resync all the deployments that the runner is responsible for. This
 	/// function will sync the deployments that are running with the deployments

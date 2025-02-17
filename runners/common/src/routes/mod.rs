@@ -16,7 +16,7 @@ use crate::prelude::*;
 #[instrument(skip(state))]
 pub async fn setup_routes<E>(state: &AppState<E>) -> Router
 where
-	E: RunnerExecutor + Clone + 'static,
+	E: RunnerExecutor + Send + 'static,
 {
 	let config = leptos::get_configuration(
 		if option_env!("LEPTOS_OUTPUT_NAME").is_some() {

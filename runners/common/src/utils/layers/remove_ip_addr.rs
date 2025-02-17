@@ -12,7 +12,6 @@ use tower::{Layer, Service};
 /// A [`tower::Layer`] that can be used to parse the request and call the inner
 /// service with the parsed request. Ideally, this will automatically be done by
 /// [`RouterExt::mount_endpoint`], and you should not need to use this directly.
-#[derive(Clone)]
 pub struct RemoveIpAddrLayer<E>
 where
 	E: ApiEndpoint,
@@ -41,9 +40,9 @@ where
 
 impl<S, E> Layer<S> for RemoveIpAddrLayer<E>
 where
-	for<'a> S: Service<ApiRequest<E>>,
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	for<'a> S: Service<ApiRequest<E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
 {
 	type Service = RemoveIpAddrService<S, E>;
 
@@ -55,16 +54,27 @@ where
 	}
 }
 
+impl<E> Clone for RemoveIpAddrLayer<E>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+{
+	fn clone(&self) -> Self {
+		Self {
+			phantom: PhantomData,
+		}
+	}
+}
+
 /// A [`tower::Service`] that can be used to parse the request and call the
 /// inner service with the parsed request. Ideally, this will automatically be
 /// done by [`RouterExt::mount_endpoint`], and you should not need to use this
 /// directly.
-#[derive(Clone)]
 pub struct RemoveIpAddrService<S, E>
 where
-	for<'a> S: Service<ApiRequest<E>>,
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	for<'a> S: Service<ApiRequest<E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
 {
 	/// The inner service that will be called with the parsed request.
 	inner: S,
@@ -74,9 +84,9 @@ where
 
 impl<S, E> Service<(ApiRequest<E>, IpAddr)> for RemoveIpAddrService<S, E>
 where
-	for<'a> S: Service<ApiRequest<E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	for<'a> S: Service<ApiRequest<E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
 {
 	type Error = ErrorType;
 	type Response = AppResponse<E>;
@@ -93,5 +103,19 @@ where
 	fn call(&mut self, (request, _): (ApiRequest<E>, IpAddr)) -> Self::Future {
 		let mut inner = self.inner.clone();
 		async move { inner.call(request).await }
+	}
+}
+
+impl<S, E> Clone for RemoveIpAddrService<S, E>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+	for<'a> S: Service<ApiRequest<E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
+{
+	fn clone(&self) -> Self {
+		Self {
+			inner: self.inner.clone(),
+			phantom: PhantomData,
+		}
 	}
 }

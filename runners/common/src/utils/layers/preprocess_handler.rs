@@ -52,7 +52,7 @@ impl<E, S> Layer<S> for PreprocessLayer<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
-	for<'a> S: Service<AppRequest<'a, E>>,
+	for<'a> S: Service<AppRequest<'a, E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
 {
 	type Service = PreprocessService<E, S>;
 
@@ -136,7 +136,7 @@ impl<E, S> Clone for PreprocessService<E, S>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
-	for<'b> S: Service<AppRequest<'b, E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
+	for<'a> S: Service<AppRequest<'a, E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
 {
 	fn clone(&self) -> Self {
 		Self {

@@ -77,7 +77,7 @@ fn ShowWorkspaceInfo(
 pub fn ManageWorkspaceSettingsTab() -> impl IntoView {
 	let (state, _) = AuthState::load();
 
-	let workspace_list = create_resource(
+	let workspace_list = create_resource_with_initial_value(
 		move || state.get().get_access_token(),
 		move |value| async move {
 			if let Some(value) = value {
@@ -86,6 +86,7 @@ pub fn ManageWorkspaceSettingsTab() -> impl IntoView {
 				Err(ServerFnError::WrappedServerError(ErrorType::Unauthorized))
 			}
 		},
+		None,
 	);
 
 	let current_workspace_id =
