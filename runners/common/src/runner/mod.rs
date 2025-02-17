@@ -147,6 +147,7 @@ where
 			// If the runner is running in self-hosted mode, return early. The run function
 			// uses a join of all the futures so early return here will not stop the runner
 			// from running
+			// TODO reconcile all before quitting
 			return;
 		};
 

@@ -6,7 +6,7 @@ mod get_volume_info;
 mod list_volumes;
 mod update_volume;
 
-pub use self::{
+use self::{
 	create_volume::*,
 	delete_volume::*,
 	get_volume_info::*,

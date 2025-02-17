@@ -4,7 +4,7 @@ mod list_web_logins;
 
 use axum::Router;
 
-pub use self::{delete_web_login::*, get_web_login_info::*, list_web_logins::*};
+use self::{delete_web_login::*, get_web_login_info::*, list_web_logins::*};
 use crate::prelude::*;
 
 /// Sets up the web logins routes

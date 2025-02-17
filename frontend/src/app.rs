@@ -5,7 +5,7 @@ use crate::{pages::*, prelude::*, utils::AuthState};
 /// The View for the App Component, it encapsulates the whole application, and
 /// adds the sidebar or header if necessary
 #[component]
-pub fn AppOutletView() -> impl IntoView {
+pub fn AppOutlet() -> impl IntoView {
 	let (state, _) = AuthState::load();
 	let app_type = expect_context::<AppType>();
 
@@ -83,7 +83,7 @@ pub fn App() -> impl IntoView {
 				// Logged in routes
 				<ProtectedRoute
 					path={AppRoutes::Empty}
-					view={AppOutletView}
+					view={AppOutlet}
 					redirect_path={AppRoutes::LoggedOutRoute(LoggedOutRoute::Login)}
 					condition={move || state.get().is_logged_in()}
 				>
@@ -103,7 +103,7 @@ pub fn App() -> impl IntoView {
 				<ProtectedRoute
 					path={"".to_string()}
 					redirect_path={AppRoutes::LoggedInRoute(LoggedInRoute::Home).to_string()}
-					view={AppOutletView}
+					view={AppOutlet}
 					condition={move || state.get().is_logged_out()}
 				>
 					<AppRoute<LoginRoute, _, _> view={|query, _| LoginForm(LoginFormProps { query })} />

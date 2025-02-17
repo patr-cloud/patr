@@ -25,7 +25,7 @@ pub fn LoggedInRoutesView() -> impl IntoView {
 
 /// Contains all the routes for when the user is logged in
 #[component(transparent)]
-pub fn LoggedInRoutesComponent() -> impl IntoView {
+pub fn LoggedInRoutes() -> impl IntoView {
 	let (state, _) = AuthState::load();
 
 	view! {

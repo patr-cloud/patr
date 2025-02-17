@@ -14,7 +14,7 @@ mod update_user_info;
 #[allow(unreachable_code, unused_variables)]
 mod web_logins;
 
-pub use self::{
+use self::{
 	change_password::*,
 	get_user_details::*,
 	get_user_info::*,
