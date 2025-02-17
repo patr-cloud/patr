@@ -40,7 +40,7 @@ where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
 		E: ApiEndpoint<Authenticator = NoAuthentication> + Sync,
 		<E::RequestBody as Preprocessable>::Processed: Send,
-		R: RunnerExecutor + Clone + 'static;
+		R: RunnerExecutor + Send + 'static;
 
 	/// Mount an API endpoint directly along with the required request parser,
 	/// Rate limiter, Audit logger and Auth middlewares, using tower layers.
@@ -51,7 +51,7 @@ where
 		E: ApiEndpoint<Authenticator = AppAuthentication<E>> + Sync,
 		<E::RequestBody as Preprocessable>::Processed: Send,
 		E::RequestHeaders: HasHeader<BearerToken>,
-		R: RunnerExecutor + Clone + 'static;
+		R: RunnerExecutor + Send + 'static;
 }
 
 impl<S> RouterExt<S> for Router<S>
@@ -64,7 +64,7 @@ where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
 		E: ApiEndpoint<Authenticator = NoAuthentication> + Sync,
 		<E::RequestBody as Preprocessable>::Processed: Send,
-		R: RunnerExecutor + Clone + 'static,
+		R: RunnerExecutor + Send + 'static,
 	{
 		frontend::utils::API_CALL_REGISTRY
 			.get_or_init(|| RwLock::new(Default::default()))
@@ -106,7 +106,7 @@ where
 		E: ApiEndpoint<Authenticator = AppAuthentication<E>> + Sync,
 		<E::RequestBody as Preprocessable>::Processed: Send,
 		E::RequestHeaders: HasHeader<BearerToken>,
-		R: RunnerExecutor + Clone + 'static,
+		R: RunnerExecutor + Send + 'static,
 	{
 		frontend::utils::API_CALL_REGISTRY
 			.get_or_init(|| RwLock::new(Default::default()))

@@ -13,7 +13,6 @@ use crate::{app::UnprocessedAppRequest, prelude::*};
 /// A [`tower::Layer`] that can be used to parse the request and call the inner
 /// service with the parsed request. Ideally, this will automatically be done by
 /// [`RouterExt::mount_endpoint`], and you should not need to use this directly.
-#[derive(Clone)]
 pub struct DataStoreConnectionLayer<E, R>
 where
 	E: ApiEndpoint,
@@ -50,10 +49,11 @@ where
 
 impl<S, E, R> Layer<S> for DataStoreConnectionLayer<E, R>
 where
-	for<'a> S: Service<UnprocessedAppRequest<'a, E>>,
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 	R: RunnerExecutor,
+	for<'a> S:
+		Service<UnprocessedAppRequest<'a, E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
 {
 	type Service = DataStoreConnectionService<S, E, R>;
 
@@ -66,17 +66,31 @@ where
 	}
 }
 
+impl<E, R> Clone for DataStoreConnectionLayer<E, R>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+	R: RunnerExecutor,
+{
+	fn clone(&self) -> Self {
+		Self {
+			state: self.state.clone(),
+			phantom: PhantomData,
+		}
+	}
+}
+
 /// A [`tower::Service`] that can be used to parse the request and call the
 /// inner service with the parsed request. Ideally, this will automatically be
 /// done by [`RouterExt::mount_endpoint`], and you should not need to use this
 /// directly.
-#[derive(Clone)]
 pub struct DataStoreConnectionService<S, E, R>
 where
-	for<'a> S: Service<UnprocessedAppRequest<'a, E>>,
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 	R: RunnerExecutor,
+	for<'a> S:
+		Service<UnprocessedAppRequest<'a, E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
 {
 	/// The inner service that will be called with the parsed request.
 	inner: S,
@@ -91,11 +105,11 @@ where
 
 impl<S, E, R> Service<ApiRequest<E>> for DataStoreConnectionService<S, E, R>
 where
-	for<'a> S:
-		Service<UnprocessedAppRequest<'a, E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 	R: RunnerExecutor,
+	for<'a> S:
+		Service<UnprocessedAppRequest<'a, E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
 {
 	type Error = ErrorType;
 	type Response = AppResponse<E>;
@@ -150,6 +164,23 @@ where
 					Err(error)
 				}
 			}
+		}
+	}
+}
+
+impl<S, E, R> Clone for DataStoreConnectionService<S, E, R>
+where
+	E: ApiEndpoint,
+	<E::RequestBody as Preprocessable>::Processed: Send,
+	R: RunnerExecutor,
+	for<'a> S:
+		Service<UnprocessedAppRequest<'a, E>, Response = AppResponse<E>, Error = ErrorType> + Clone,
+{
+	fn clone(&self) -> Self {
+		Self {
+			inner: self.inner.clone(),
+			state: self.state.clone(),
+			phantom: PhantomData,
 		}
 	}
 }

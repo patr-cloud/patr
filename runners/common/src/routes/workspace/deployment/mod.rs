@@ -32,7 +32,7 @@ use crate::{prelude::*, utils::RouterExt};
 #[instrument(skip(state))]
 pub async fn setup_routes<E>(state: &AppState<E>) -> Router
 where
-	E: RunnerExecutor + Clone + 'static,
+	E: RunnerExecutor + Send + 'static,
 {
 	Router::new()
 		.mount_auth_endpoint(list_deployment, state)

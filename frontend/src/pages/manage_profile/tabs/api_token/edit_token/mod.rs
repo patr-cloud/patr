@@ -61,7 +61,7 @@ fn EditApiTokenPermission() -> impl IntoView {
 	let (access_token, _) = AuthState::load();
 	let api_token = expect_context::<ApiTokenInfo>().0;
 
-	let workspace_list = create_resource(
+	let workspace_list = create_resource_with_initial_value(
 		move || access_token.get().get_access_token(),
 		move |value| async move {
 			if let Some(value) = value {
@@ -70,6 +70,7 @@ fn EditApiTokenPermission() -> impl IntoView {
 				Err(ServerFnError::WrappedServerError(ErrorType::Unauthorized))
 			}
 		},
+		None,
 	);
 
 	move || match api_token.get() {

@@ -21,7 +21,7 @@ use crate::{
 #[component]
 pub fn CreateApiToken() -> impl IntoView {
 	let (state, _) = AuthState::load();
-	let workspace_list = create_resource(
+	let workspace_list = create_resource_with_initial_value(
 		move || state.get().get_access_token(),
 		move |value| async move {
 			if let Some(value) = value {
@@ -30,6 +30,7 @@ pub fn CreateApiToken() -> impl IntoView {
 				Err(ServerFnError::WrappedServerError(ErrorType::Unauthorized))
 			}
 		},
+		None,
 	);
 
 	let create_api_token_action = create_api_token_query();

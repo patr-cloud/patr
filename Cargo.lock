@@ -2348,8 +2348,9 @@ dependencies = [
 
 [[package]]
 name = "ipinfo"
-version = "3.1.0"
-source = "git+https://github.com/rakshith-ravi/ipinfo-rust?branch=feature/upgrade-reqwest#f59af1ad4e887b67cb1829b83659ef082c62fd06"
+version = "3.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61031aa1769b7e17ec5c21e1ab9f5c71df0e210eea80327cbef176f96f2a62a7"
 dependencies = [
  "ipnetwork",
  "lazy_static",

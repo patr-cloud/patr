@@ -27,10 +27,10 @@ where
 
 impl<'req, F, Fut, E> EndpointHandler<'req, E> for F
 where
-	F: FnOnce(AppRequest<'req, E>) -> Fut,
-	Fut: Future<Output = Result<AppResponse<E>, ErrorType>> + Send,
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	F: FnOnce(AppRequest<'req, E>) -> Fut,
+	Fut: Future<Output = Result<AppResponse<E>, ErrorType>> + Send,
 {
 	type Future = Fut;
 
@@ -44,9 +44,9 @@ where
 /// and you should not need to use this directly.
 pub struct EndpointLayer<H, E>
 where
-	for<'req> H: EndpointHandler<'req, E> + Clone + Send,
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	for<'req> H: EndpointHandler<'req, E> + Clone + Send,
 {
 	/// The function or closure that will be used to handle the endpoint.
 	handler: H,
@@ -56,9 +56,9 @@ where
 
 impl<H, E> EndpointLayer<H, E>
 where
-	for<'req> H: EndpointHandler<'req, E> + Clone + Send,
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	for<'req> H: EndpointHandler<'req, E> + Clone + Send,
 {
 	/// Create a new instance of the [`EndpointLayer`] with the given endpoint
 	/// handler.
@@ -72,9 +72,9 @@ where
 
 impl<S, H, E> Layer<S> for EndpointLayer<H, E>
 where
-	for<'req> H: EndpointHandler<'req, E> + Clone + Send,
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	for<'req> H: EndpointHandler<'req, E> + Clone + Send,
 {
 	type Service = EndpointService<H, E>;
 
@@ -88,9 +88,9 @@ where
 
 impl<H, E> Clone for EndpointLayer<H, E>
 where
-	for<'req> H: EndpointHandler<'req, E> + Clone + Send,
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	for<'req> H: EndpointHandler<'req, E> + Clone + Send,
 {
 	fn clone(&self) -> Self {
 		Self {
@@ -103,9 +103,9 @@ where
 /// A [`tower::Service`] that can be used mount the endpoint to the router.
 pub struct EndpointService<H, E>
 where
-	for<'req> H: EndpointHandler<'req, E> + Clone + Send,
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	for<'req> H: EndpointHandler<'req, E> + Clone + Send,
 {
 	/// The function or closure that will be used to handle the endpoint.
 	handler: H,
@@ -115,9 +115,9 @@ where
 
 impl<'req, H, E> Service<AppRequest<'req, E>> for EndpointService<H, E>
 where
-	for<'anon> H: EndpointHandler<'anon, E> + Clone + Send,
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	for<'anon> H: EndpointHandler<'anon, E> + Clone + Send,
 {
 	type Error = ErrorType;
 	type Response = AppResponse<E>;
@@ -137,9 +137,9 @@ where
 
 impl<H, E> Clone for EndpointService<H, E>
 where
-	for<'req> H: EndpointHandler<'req, E> + Clone + Send,
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	for<'req> H: EndpointHandler<'req, E> + Clone + Send,
 {
 	fn clone(&self) -> Self {
 		Self {
