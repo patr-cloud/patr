@@ -5,7 +5,7 @@ mod verify_user_phone_number;
 
 use axum::Router;
 
-pub use self::{
+use self::{
 	update_user_email::*,
 	update_user_phone_number::*,
 	verify_user_email::*,

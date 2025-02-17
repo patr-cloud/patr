@@ -17,7 +17,7 @@ mod stop_deployment;
 /// The handler for updating a deployment.
 mod update_deployment;
 
-pub use self::{
+use self::{
 	create_deployment::*,
 	delete_deployment::*,
 	get_deployment_info::*,
@@ -27,7 +27,7 @@ pub use self::{
 	stop_deployment::*,
 	update_deployment::*,
 };
-use crate::{prelude::*, utils::RouterExt};
+use crate::prelude::*;
 
 #[instrument(skip(state))]
 pub async fn setup_routes<E>(state: &AppState<E>) -> Router

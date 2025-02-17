@@ -1,8 +1,10 @@
 /// All handlers for authentication and authorization.
-pub mod auth;
+mod auth;
+/// All handlers for user related data.
+mod user;
 /// All handlers for resources that would, in the managed version, be part of
 /// the workspace.
-pub mod workspace;
+mod workspace;
 
 use axum::Router;
 use leptos::*;

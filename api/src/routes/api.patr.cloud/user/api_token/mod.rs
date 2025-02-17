@@ -7,7 +7,7 @@ mod update_api_token;
 
 use axum::Router;
 
-pub use self::{
+use self::{
 	create_api_token::*,
 	get_api_token_info::*,
 	list_api_tokens::*,

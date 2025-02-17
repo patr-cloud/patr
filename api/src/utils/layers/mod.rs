@@ -24,7 +24,7 @@ mod request_parser;
 /// be accessed by the API are only accessed by the web dashboard
 mod user_agent_validation_layer;
 
-pub use self::{
+use self::{
 	auth_endpoint_handler::*,
 	authenticator::*,
 	data_store_connection_handler::*,

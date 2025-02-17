@@ -4,7 +4,7 @@ mod get_mfa_secret;
 
 use axum::Router;
 
-pub use self::{activate_mfa::*, deactivate_mfa::*, get_mfa_secret::*};
+use self::{activate_mfa::*, deactivate_mfa::*, get_mfa_secret::*};
 use crate::prelude::*;
 
 /// Sets up the MFA routes
