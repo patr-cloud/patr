@@ -31,8 +31,7 @@ pub fn CreateWorkspace() -> impl IntoView {
 		<ContainerBody class="px-xl py-lg overflow-y-auto text-white">
 			<ActionForm
 				action={create_workspace_action}
-				class="w-full h-full px-md fit-wide-screen \
-				gap-md flex flex-col items-start justify-start"
+				class="w-full h-full px-md fit-wide-screen gap-md flex flex-col items-start justify-start"
 			>
 				<input
 					type="hidden"

@@ -1,6 +1,6 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
-use ev::MouseEvent;
+use leptos::ev::MouseEvent;
 use models::api::workspace::deployment::*;
 
 use super::DeploymentInfoContext;
@@ -46,7 +46,7 @@ pub fn DeleteDialog(
 				<div class="flex justify-between items-center w-full">
 					<h1 class="text-md text-primary">"Delete "{deployment_name}</h1>
 					<Link
-						on_click={Rc::new(move |_| {
+						on_click={Arc::new(move |_| {
 							show_delete_dialog.set(false);
 						})}
 					>
@@ -68,7 +68,7 @@ pub fn DeleteDialog(
 					/>
 				</label>
 				<Link
-					on_click={Rc::new(on_click_delete)}
+					on_click={Arc::new(on_click_delete)}
 					r#type={Variant::Button}
 					disabled={Signal::derive(move || !is_name_matching.get())}
 					style_variant={LinkStyleVariant::Contained}
@@ -119,7 +119,7 @@ pub fn StartStopButton() -> impl IntoView {
 			<Link
 				clone:deployment_info
 				r#type={Variant::Button}
-				on_click={Rc::new(move |ev: &MouseEvent| {
+				on_click={Arc::new(move |ev: &MouseEvent| {
 					on_click_start_stop(ev);
 				})}
 				style_variant={LinkStyleVariant::Contained}
@@ -168,8 +168,8 @@ pub fn StartStopButton() -> impl IntoView {
 				/>
 			</Show>
 		}
-		.into_view(),
-		None => ().into_view(),
+		.into_any(),
+		None => ().into_any(),
 	}
 }
 
@@ -206,7 +206,7 @@ pub fn ManageDeploymentHeader() -> impl IntoView {
 					}
 				])}
 				action_buttons={
-					Some(view! { <StartStopButton /> }.into_view())
+					Some(view! { <StartStopButton /> }.into_any())
 				}
 			>
 			</PageTitleContainer>

@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use ev::MouseEvent;
+use leptos::ev::MouseEvent;
 use models::api::workspace::deployment::{EnvironmentVariableValue, ExposedPortType};
 
 use super::{super::components::*, RunnerPageError};

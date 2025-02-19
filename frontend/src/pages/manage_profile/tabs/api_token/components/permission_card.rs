@@ -21,8 +21,9 @@ fn ListPermissions(
 			.map(|permission| {
 				view! { <PermissionItem permission={permission} /> }
 			})
-			.collect_view(),
-		_ => view! { <></> }.into_view(),
+			.collect_view()
+			.into_any(),
+		_ => view! { <></> }.into_any(),
 	}
 }
 
@@ -92,7 +93,7 @@ pub fn PermissionCard(
 
 			<label
 				class="flex items-center justify-start text-grey cursor-pointer"
-				html_for="super_admin"
+				for="super_admin"
 			>
 				<input
 					class="mr-xs"
@@ -123,9 +124,9 @@ pub fn PermissionCard(
 							<ChoosePermission workspace_id={workspace.get().id} />
 						</div>
 					}
-						.into_view()
+						.into_any()
 				} else {
-					view! { <></> }.into_view()
+					view! { <></> }.into_any()
 				}
 			}}
 		</div>

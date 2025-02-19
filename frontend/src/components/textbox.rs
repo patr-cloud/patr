@@ -20,7 +20,7 @@ pub fn Textbox(
 	/// A Default Value, passed to the span,
 	/// Takes first priority
 	#[prop(into, optional, default = None)]
-	value: Option<View>,
+	value: Option<AnyView>,
 	/// A placeholder for the "input", takes 3rd priority
 	/// after value,
 	#[prop(into, optional)]

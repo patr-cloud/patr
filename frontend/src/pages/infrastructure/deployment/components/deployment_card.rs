@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use convert_case::*;
-use ev::MouseEvent;
+use leptos::ev::MouseEvent;
 use models::api::workspace::deployment::{
 	Deployment,
 	DeploymentRegistry,

@@ -85,7 +85,7 @@ pub fn App() -> impl IntoView {
 					path={AppRoutes::Empty}
 					view={AppOutletView}
 					redirect_path={|| AppRoutes::LoggedOutRoute(LoggedOutRoute::Login)}
-					condition={move || state.get().is_logged_in()}
+					condition={move || Some(state.get().is_logged_in())}
 				>
 					<ProfileRoutes />
 					<InfrastructureRoutes />
@@ -104,7 +104,7 @@ pub fn App() -> impl IntoView {
 					path={"".to_string()}
 					redirect_path={|| AppRoutes::LoggedInRoute(LoggedInRoute::Home).to_string()}
 					view={AppOutletView}
-					condition={move || state.get().is_logged_out()}
+					condition={move || Some(state.get().is_logged_out())}
 				>
 					<AppRoute<LoginRoute, _, _> view={|query, _| LoginForm(LoginFormProps { query })} />
 					<AppRoute<SignUpRoute, _, _> view={|query, _| SignUpForm(SignUpFormProps { query })} />

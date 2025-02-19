@@ -23,6 +23,7 @@ pub fn RunnerCard(
 								color={Some(Color::Grey)}
 							/>
 						}
+						.into_any()
 					}
 					None => {
 						view! {
@@ -31,7 +32,7 @@ pub fn RunnerCard(
 								color={Some(Color::Success)}
 							/>
 						}
-							.into_view()
+							.into_any()
 					}
 				}}
 				<StatusBadge />
@@ -42,9 +43,9 @@ pub fn RunnerCard(
 					<small class="letter-sp-md text-xxs text-grey">"LAST SEEN"</small>
 					<p class="text-primary w-[15ch] text-ellipsis overflow-hidden">
 						{match runner.get().last_seen {
-							Some(date) => date.to_string().into_view(),
-							None => "Just Now".into_view(),
-						}}
+							Some(date) => date.to_string(),
+							None => "Just Now".to_string(),
+						}.into_view()}
 					</p>
 				</div>
 			</div>

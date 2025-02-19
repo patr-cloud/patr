@@ -1,4 +1,4 @@
-use ev::MouseEvent;
+use leptos::ev::MouseEvent;
 use leptos_use::{use_timeout_fn, UseTimeoutFnReturn};
 
 use crate::imports::*;
@@ -16,7 +16,7 @@ pub fn Toaster() -> impl IntoView {
 			<Show
 				when=move || !is_container_empty()
 			>
-				 <div class="toaster-container">
+				<div class="toaster-container">
 					<div class="toaster">
 						<For
 							each=move || toaster.queue.get()

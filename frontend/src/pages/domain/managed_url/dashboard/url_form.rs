@@ -1,7 +1,7 @@
 use std::{rc::Rc, str::FromStr};
 
 use convert_case::{Case, Casing};
-use ev::SubmitEvent;
+use leptos::ev::SubmitEvent;
 use models::api::workspace::managed_url::*;
 use strum::VariantNames;
 

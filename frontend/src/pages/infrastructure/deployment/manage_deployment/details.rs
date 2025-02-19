@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use ev::MouseEvent;
+use leptos::ev::MouseEvent;
 use models::api::workspace::deployment::*;
 
 use super::{super::components::*, DeploymentInfoContext};

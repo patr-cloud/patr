@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use models::api::user::ChangePasswordResponse;
 
@@ -77,7 +77,7 @@ pub fn PasswordSection() -> impl IntoView {
 
 							<div>
 								<Link
-									on_click={Rc::new(move |_| { open_mfa_modal.set(false) })}
+									on_click={Arc::new(move |_| { open_mfa_modal.set(false) })}
 
 									style_variant={LinkStyleVariant::Plain}
 									should_submit=false
@@ -106,7 +106,7 @@ pub fn PasswordSection() -> impl IntoView {
 						</p>
 
 						<Link
-							on_click={Rc::new(move |_| { open_mfa_modal.set(true) })}
+							on_click={Arc::new(move |_| { open_mfa_modal.set(true) })}
 
 							style_variant={LinkStyleVariant::Contained}
 						>
@@ -219,7 +219,7 @@ pub fn PasswordSection() -> impl IntoView {
 						view! {
 							<div class="full-width fr-fe-ct pt-md">
 								<Link
-									on_click={Rc::new(move |_| {
+									on_click={Arc::new(move |_| {
 										show_create_password_fields.update(|val| *val = !*val)
 									})}
 
@@ -235,7 +235,7 @@ pub fn PasswordSection() -> impl IntoView {
 
 					<div class="full-width fr-fe-ct pt-md gap-md">
 						<Link
-							on_click={Rc::new(move |_| {
+							on_click={Arc::new(move |_| {
 								show_create_password_fields.update(|val| *val = !*val)
 							})}
 

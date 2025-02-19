@@ -28,13 +28,13 @@ pub fn ContactInfo(
 									<InputDropdown
 										variant={SecondaryColorVariant::Medium}
 										placeholder={"Current Email".to_owned()}
-										value={email}
+										value={RwSignal::new(email)}
 										options={vec![]}
 									/>
 								}
-									.into_view()
+									.into_any()
 							}
-							None => view! {}.into_view(),
+							None => view! {}.into_any(),
 						}}
 
 					// <small class="txt-xxs txt-grey mt-xs">

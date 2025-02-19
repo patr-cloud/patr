@@ -4,7 +4,7 @@ use std::{
 };
 
 use convert_case::{Case, Casing};
-use ev::MouseEvent;
+use leptos::ev::MouseEvent;
 use models::rbac::{ResourcePermissionType, ResourceType, WorkspacePermission};
 use strum::VariantNames;
 

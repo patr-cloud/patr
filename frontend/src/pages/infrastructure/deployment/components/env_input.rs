@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, rc::Rc};
 
-use ev::MouseEvent;
+use leptos::ev::MouseEvent;
 use models::api::workspace::deployment::EnvironmentVariableValue;
 
 use crate::prelude::*;

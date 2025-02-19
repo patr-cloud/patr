@@ -26,7 +26,7 @@ pub fn RunnerDashboardHead() -> impl IntoView {
 				description_link={
 					Some("https://docs.patr.cloud/ci-cd/#choosing-a-runner".to_owned())
 				}
-				action_buttons={Some(view! {
+				action_buttons={view! {
 					<Link
 						r#type={Variant::Link}
 						to={"create".to_owned()}
@@ -40,7 +40,7 @@ pub fn RunnerDashboardHead() -> impl IntoView {
 							color={Color::Black}
 						/>
 					</Link>
-				}.into_view())}
+				}.into_any()}
 			/>
 		</ContainerHead>
 	}

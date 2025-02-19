@@ -43,9 +43,9 @@ pub fn ListApiTokens() -> impl IntoView {
 								<TableDashboard
 									column_grids={vec![4, 4, 4]}
 									headings={vec![
-										"Name".into_view(),
-										"Expiry".into_view(),
-										"Created At".into_view(),
+										"Name".into_any(),
+										"Expiry".into_any(),
+										"Created At".into_any(),
 									]}
 									render_rows={
 										view! {
@@ -57,15 +57,15 @@ pub fn ListApiTokens() -> impl IntoView {
 												<ApiTokenCard token={child} />
 											</For>
 										}
-										.into_view()
+										.into_any()
 									}
 								/>
-							}
+							}.into_any()
 						}
-						Err(_) => view! {}.into_view(),
+						Err(_) => view! {}.into_any(),
 					}
 				}
-				None => view! {}.into_view(),
+				None => view! {}.into_any(),
 			}}
 		</Transition>
 	}

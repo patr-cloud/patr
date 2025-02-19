@@ -16,7 +16,7 @@ pub fn PermissionItem(
 				"permission will be applied to "
 				<strong class="text-white text-bold">"{permission.name}"</strong>
 			}
-				.into_view()} />
+				.into_any()} />
 
 			<div class="flex items-center justify-center pl-md">
 				<Link class="p-xs">

@@ -32,18 +32,18 @@ pub fn EventLogContainer() -> impl IntoView {
 			<TableDashboard
 				column_grids={vec![2, 2, 2, 3, 3]}
 				headings={vec![
-					"Event".into_view(),
-					"Status".into_view(),
-					"User".into_view(),
-					"IP Address".into_view(),
-					"Date".into_view(),
+					"Event".into_any(),
+					"Status".into_any(),
+					"User".into_any(),
+					"IP Address".into_any(),
+					"Date".into_any(),
 				]}
 				render_rows={view! {
 					<For each={move || data.get().clone()} key={move |v| v.id} let:child>
 						<EventLogCard event={child.clone()} />
 					</For>
 				}
-					.into_view()}
+					.into_any()}
 			/>
 		</div>
 	}

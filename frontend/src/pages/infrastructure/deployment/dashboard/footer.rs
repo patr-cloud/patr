@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use ev::MouseEvent;
+use leptos::ev::MouseEvent;
 
 use crate::prelude::*;
 

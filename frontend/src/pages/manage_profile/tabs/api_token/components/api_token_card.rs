@@ -1,4 +1,4 @@
-use ev::MouseEvent;
+use leptos::ev::MouseEvent;
 use models::{api::user::UserApiToken, prelude::*};
 use time::format_description;
 
@@ -34,16 +34,16 @@ pub fn ApiTokenCard(
 
 		token.get().data.created.clone().format(&format.clone())
 	}) {
-		Ok(date) => date.into_view(),
-		Err(_) => "Invalid Date".into_view(),
+		Ok(date) => date.into_any(),
+		Err(_) => "Invalid Date".into_any(),
 	};
 
 	let expiry = move || match store_token.with_value(|token| token.get().data.token_exp) {
 		Some(expiry) => match expiry.format(&format.clone()) {
-			Ok(date) => date.into_view(),
-			Err(_) => "Invalid Date".into_view(),
+			Ok(date) => date.into_any(),
+			Err(_) => "Invalid Date".into_any(),
 		},
-		None => "Never".into_view(),
+		None => "Never".into_any(),
 	};
 
 	let token_id =

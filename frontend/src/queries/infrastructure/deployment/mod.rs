@@ -9,7 +9,7 @@ pub fn list_deployments_query(
 ) -> Resource<Result<(usize, ListDeploymentResponse), ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
 
-	create_resource(
+	Resource::new(
 		move || {
 			(
 				state.get().get_access_token(),
@@ -40,7 +40,7 @@ pub fn get_deployment_query(
 	deployment_id: Signal<Uuid>,
 ) -> Resource<Result<GetDeploymentInfoResponse, ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
-	create_resource(
+	Resource::new(
 		move || {
 			(
 				state.get().get_access_token(),
@@ -151,7 +151,7 @@ pub fn stop_deployment_query(
 /// Query to list all machines for a workspace
 pub fn list_machines_query(
 ) -> Resource<Result<ListAllDeploymentMachineTypeResponse, ServerFnError<ErrorType>>> {
-	create_resource(
+	Resource::new(
 		move || AuthState::load().0.get().get_last_used_workspace_id(),
 		move |workspace_id| async move { list_all_machines(workspace_id).await },
 	)
@@ -168,7 +168,7 @@ pub fn get_deployment_logs_query(
 	let access_token = state.get().get_access_token();
 	let workspace_id = state.get().get_last_used_workspace_id();
 
-	create_resource(
+	Resource::new(
 		move || {
 			(
 				state.get().get_access_token(),

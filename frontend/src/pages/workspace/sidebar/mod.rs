@@ -85,12 +85,12 @@ pub fn WorkspaceSidebarComponent() -> impl IntoView {
 									workspaces={data.clone().workspaces}
 								/>
 							}
-								.into_view()
+								.into_any()
 						}
-						Err(err) => format!("Error Loading, {:?}", err).into_view(),
+						Err(err) => format!("Error Loading, {:?}", err).into_any(),
 					}
 				}
-				None => view! { "loading..." }.into_view(),
+				None => view! { "loading..." }.into_any(),
 			}}
 		</Transition>
 	}

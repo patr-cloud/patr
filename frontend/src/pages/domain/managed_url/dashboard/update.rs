@@ -1,5 +1,5 @@
 use convert_case::*;
-use ev::SubmitEvent;
+use leptos::ev::SubmitEvent;
 use models::api::workspace::managed_url::*;
 
 use crate::{pages::ManagedURLForm, prelude::*};

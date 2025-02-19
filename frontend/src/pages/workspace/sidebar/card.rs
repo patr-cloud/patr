@@ -1,4 +1,4 @@
-use leptos_router::use_navigate;
+use leptos_router::hooks::use_navigate;
 use models::api::workspace::Workspace;
 
 use super::switcher::WorkspaceSwitcher;

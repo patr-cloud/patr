@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::prelude::*;
 
 #[component]
@@ -13,7 +15,7 @@ pub fn ManageWorkspace() -> impl IntoView {
 						variant: PageTitleVariant::Heading,
 					},
 				]}
-				action_buttons={Some(view! {
+				action_buttons={view! {
 					<Link
 						class="gap-xxs"
 						r#type={Variant::Link}
@@ -23,7 +25,7 @@ pub fn ManageWorkspace() -> impl IntoView {
 						"CREATE WORKSPACE"
 						<Icon icon={IconType::Plus} size={Size::ExtraSmall} color={Color::Black} />
 					</Link>
-				}.into_view())}
+				}.into_any()}
 			/>
 
 			<Tabs tab_items={vec![

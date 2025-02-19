@@ -1,6 +1,6 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
-use ev::MouseEvent;
+use leptos::ev::MouseEvent;
 use models::api::workspace::deployment::DeploymentLog;
 use time::{macros::format_description, Duration, OffsetDateTime};
 
@@ -68,7 +68,7 @@ pub fn ManageDeploymentsLogs() -> impl IntoView {
 							view! {
 								<div class="w-full pb-xxs flex justify-between items-center mb-xs gap-xl">
 									<Link
-										on_click={Rc::new(on_click_load)}
+										on_click={Arc::new(on_click_load)}
 									>
 										"LOAD MORE"
 									</Link>
@@ -87,10 +87,10 @@ pub fn ManageDeploymentsLogs() -> impl IntoView {
 										/>
 									</For>
 								</div>
-							}.into_view()
+							}.into_any()
 						}
-						Some(Err(_)) => view! { "error loading logs" }.into_view(),
-						None => view! { "loading logs..." }.into_view(),
+						Some(Err(_)) => view! { "error loading logs" }.into_any(),
+						None => view! { "loading logs..." }.into_any(),
 					}
 				}
 			</div>

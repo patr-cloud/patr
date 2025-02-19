@@ -7,7 +7,7 @@ pub fn list_runners_query(
 ) -> Resource<Result<ListRunnersForWorkspaceResponse, ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
 
-	create_resource(
+	Resource::new(
 		move || {
 			(
 				state.get().get_access_token(),
@@ -29,7 +29,7 @@ pub fn get_runner_query(
 	runner_id: Signal<Uuid>,
 ) -> Resource<Result<GetRunnerInfoResponse, ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
-	create_resource(
+	Resource::new(
 		move || {
 			(
 				state.get().get_access_token(),

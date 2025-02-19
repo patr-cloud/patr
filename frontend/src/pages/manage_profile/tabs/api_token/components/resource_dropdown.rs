@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use convert_case::{Case, Casing};
-use ev::MouseEvent;
+use leptos::ev::MouseEvent;
 use models::rbac::ResourceType;
 
 use crate::{prelude::*, queries::list_deployments_query};
@@ -16,7 +16,7 @@ pub fn ResourceDropdownOptions(
 	let current_page = create_rw_signal::<usize>(0);
 	let deployments_list = list_deployments_query(current_page.into());
 
-	let resource_list_options = RwSignal::<Vec<InputDropdownOption>>(vec![]);
+	let resource_list_options = RwSignal::new(vec![]);
 
 	Effect::new(move |_| {
 		let resource_type =
@@ -85,7 +85,7 @@ pub fn ResourceDropdownOptions(
 				}
 				value={Signal::derive(move || input_resources.get())}
 				options={resource_list_options}
-				on_select={move |(_, id): (MouseEvent, String)| {
+				on_select={move |_, id: String| {
 					if input_resources.get().iter().any(|e| e.to_owned() == id)
 					{
 						input_resources

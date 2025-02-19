@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use axum_extra::routing::TypedPath;
 use leptos_router::{
-	components::Route,
+	components::ParentRoute,
 	hooks::{use_params as use_router_params, use_query as use_router_query},
 	params::Params,
 };
@@ -38,7 +38,7 @@ pub fn AppRoute<R, F, V>(
 	/// The view for the route
 	view: F,
 	/// The Children of the route
-	#[prop(optional, default = Box::new(|| Fragment::new(vec![])))]
+	#[prop(optional, default = Box::new(|| ().into_any()))]
 	children: Children,
 ) -> impl IntoView
 where
@@ -52,8 +52,8 @@ where
 		.expect("cannot parse params");
 
 	view! {
-		<Route view={move || view(query.clone(), params.clone())} path={<R as TypedPath>::PATH}>
+		<ParentRoute view={move || view(query.clone(), params.clone())} path={<R as TypedPath>::PATH}>
 			{children()}
-		</Route>
+		</ParentRoute>
 	}
 }

@@ -8,7 +8,7 @@ pub fn list_api_tokens_query() -> Resource<Result<ListApiTokensResponse, ServerF
 	let (state, _) = AuthState::load();
 	let access_token = state.get().get_access_token();
 
-	create_resource(
+	Resource::new(
 		move || state.get().get_access_token(),
 		move |access_token| async move { load_api_tokens_list(access_token).await },
 	)
@@ -20,7 +20,7 @@ pub fn get_api_token_query(
 ) -> Resource<Result<GetApiTokenInfoResponse, ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
 
-	create_resource(
+	Resource::new(
 		move || (state.get().get_access_token(), token_id.get()),
 		move |(access_token, token_id)| async move { get_api_token(access_token, token_id).await },
 	)
@@ -31,7 +31,7 @@ pub fn get_all_permissions_query(
 ) -> Resource<Result<ListAllPermissionsResponse, ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
 
-	create_resource(
+	Resource::new(
 		move || {
 			(
 				state.get().get_access_token(),

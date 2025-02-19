@@ -15,14 +15,14 @@ pub fn ManageDeploymentUrls() -> impl IntoView {
 			class="px-xl"
 			column_grids={[4, 1, 4, 2, 1]}
 			headings={vec![
-				"Managed URL".into_view(),
-				"Type".into_view(),
-				"Target".into_view(),
-				"".into_view(),
-				"".into_view(),
+				"Managed URL".into_any(),
+				"Type".into_any(),
+				"Target".into_any(),
+				"".into_any(),
+				"".into_any(),
 			]}
 
-			render_rows={view! { <div></div> }.into_view()}
+			render_rows={view! { <div></div> }.into_any()}
 		/>
 	}
 }

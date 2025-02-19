@@ -37,9 +37,9 @@ pub fn ManageDeploymentImageHistory() -> impl IntoView {
 									<ImageHistoryCard deploy_history={child.clone()} />
 								</For>
 							}
-								.into_view()
+								.into_any()
 						}
-						_ => view! { "loading" }.into_view(),
+						_ => view! { "loading" }.into_any(),
 					}}
 				</Transition>
 			</div>

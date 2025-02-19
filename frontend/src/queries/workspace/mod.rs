@@ -5,7 +5,7 @@ use crate::{get_workspace_info, list_user_workspace, prelude::*};
 /// Query to list all workspaces
 pub fn list_workspaces_query(
 ) -> Resource<Result<ListUserWorkspacesResponse, ServerFnError<ErrorType>>> {
-	create_resource(
+	Resource::new(
 		move || AuthState::load().0.get().get_access_token(),
 		move |access_token| async move {
 			if let Some(access_token) = access_token {
@@ -21,7 +21,7 @@ pub fn list_workspaces_query(
 pub fn get_workspace_query(
 	workspace_id: Signal<Uuid>,
 ) -> Resource<Result<GetWorkspaceInfoResponse, ServerFnError<ErrorType>>> {
-	create_resource(
+	Resource::new(
 		move || {
 			(
 				AuthState::load().0.get().get_access_token(),

@@ -1,4 +1,4 @@
-use leptos_router::A;
+use leptos_router::components::A;
 
 use super::ContainerRegistryItem;
 use crate::prelude::*;

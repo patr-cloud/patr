@@ -64,7 +64,7 @@ fn ShowWorkspaceInfo(
 				<div class="flex-10 flex flex-col items-start justify-start">
 					<div class="w-full flex items-center justify-start mb-xs">
 						<div class="flex-11">
-							<Textbox value={"ac380012@gmail.com".into_view()} />
+							<Textbox value={"ac380012@gmail.com".into_any()} />
 						</div>
 					</div>
 				</div>
@@ -118,9 +118,9 @@ pub fn ManageWorkspaceSettingsTab() -> impl IntoView {
 				{move || match current_workspace.get() {
 					Some(current_workspace) => {
 						view! { <ShowWorkspaceInfo workspace={current_workspace.clone()} /> }
-							.into_view()
+							.into_any()
 					}
-					None => view! {}.into_view(),
+					None => view! {}.into_any(),
 				}}
 			</Transition>
 		</div>

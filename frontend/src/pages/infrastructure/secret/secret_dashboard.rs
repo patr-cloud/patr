@@ -44,7 +44,7 @@ pub fn SecretsDashboard() -> impl IntoView {
 					description_link={
 						Some("https://docs.patr.cloud/features/secrets/".to_owned())
 					}
-					action_buttons={Some(view! {
+					action_buttons={view! {
 						<Link
 							r#type={Variant::Button}
 							style_variant={LinkStyleVariant::Contained}
@@ -57,7 +57,7 @@ pub fn SecretsDashboard() -> impl IntoView {
 								color={Color::Black}
 							/>
 						</Link>
-					}.into_view())}
+					}.into_any()}
 				/>
 			</ContainerHead>
 
@@ -65,8 +65,8 @@ pub fn SecretsDashboard() -> impl IntoView {
 				<TableDashboard
 					column_grids={vec![11, 1]}
 					headings={vec![
-						view! { <p class="txt-sm txt-medium mr-auto">"Name"</p> }.into_view(),
-						"".into_view(),
+						view! { <p class="txt-sm txt-medium mr-auto">"Name"</p> }.into_any(),
+						"".into_any(),
 					]}
 
 					render_rows={view! {
@@ -74,7 +74,7 @@ pub fn SecretsDashboard() -> impl IntoView {
 							<SecretCard secret_item={child} />
 						</For>
 					}
-						.into_view()}
+						.into_any()}
 				/>
 			</ContainerBody>
 		</ContainerMain>

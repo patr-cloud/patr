@@ -20,7 +20,7 @@ pub fn NumberPicker(
 	#[prop(into)]
 	value: RwSignal<u16>,
 	/// Function to call on changing the value
-	#[prop(into, optional, default = Callback::new(|_| {}))]
+	#[prop(into, optional, default = Callback::new(|| {}))]
 	on_change: Callback<()>,
 ) -> impl IntoView {
 	let outer_div_class = move || {

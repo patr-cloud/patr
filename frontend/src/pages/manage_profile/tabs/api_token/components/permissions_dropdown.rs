@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use convert_case::{Case, Casing};
-use ev::MouseEvent;
+use leptos::ev::MouseEvent;
 use models::rbac::ResourceType;
 
 use super::ParsedPermission;
@@ -80,7 +80,7 @@ pub fn PermissionsDropdown(
 				placeholder={"Select Permissions".to_string()}
 				options={permission_options}
 				value={Signal::derive(move || input_permissions.get())}
-				on_select={move |(_, id): (MouseEvent, String)| {
+				on_select={move |_, id: String| {
 					if input_permissions.get().iter().any(|e| e.to_owned() == id) {
 						input_permissions
 							.update(|options| options.retain(|e| e.to_owned() != id));

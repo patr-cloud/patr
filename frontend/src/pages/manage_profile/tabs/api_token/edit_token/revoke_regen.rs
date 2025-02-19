@@ -77,12 +77,12 @@ pub fn RegenerateApiToken() -> impl IntoView {
 			Some(data) => {
 				match data {
 					Ok(data) => {
-						view! { <TokenModal is_regenerated=true token={data.token} /> }.into_view()
+						view! { <TokenModal is_regenerated=true token={data.token} /> }.into_any()
 					}
-					Err(_) => view! {}.into_view(),
+					Err(_) => view! {}.into_any(),
 				}
 			}
-			None => view! {}.into_view(),
+			None => view! {}.into_any(),
 		}}
 		<ActionForm action={regenerate_api_token_action}>
 			<input

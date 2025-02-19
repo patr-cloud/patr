@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use ev::SubmitEvent;
+use leptos::ev::SubmitEvent;
 use models::{
 	api::user::{CreateApiTokenRequest, UserApiToken},
 	rbac::WorkspacePermission,
@@ -36,8 +36,7 @@ pub fn CreateApiToken() -> impl IntoView {
 	let response = create_api_token_action.value();
 
 	let api_token_info = RwSignal::new(CreateApiTokenInfo::new());
-	let api_token_permissions =
-		RwSignal::<Option<BTreeMap<Uuid, WorkspacePermission>>>(Some(BTreeMap::new()));
+	let api_token_permissions = RwSignal::new(Some(BTreeMap::new()));
 
 	provide_context(api_token_info);
 	provide_context(ApiTokenPermissions(api_token_permissions));
@@ -175,11 +174,12 @@ pub fn CreateApiToken() -> impl IntoView {
 										}.into_view()
 									})
 									.collect_view()
+									.into_any()
 							}
 							Some(Err(_)) => {
-								view! { <div>"Error loading workspaces"</div> }.into_view()
+								view! { <div>"Error loading workspaces"</div> }.into_any()
 							}
-							None => view! { <div>"Loading workspaces..."</div> }.into_view(),
+							None => view! { <div>"Loading workspaces..."</div> }.into_any(),
 						}}
 					</Transition>
 				</div>

@@ -7,13 +7,13 @@ pub fn TableDashboard(
 	column_grids: Vec<i32>,
 	/// Headings of the Table
 	#[prop(into)]
-	headings: Vec<View>,
+	headings: Vec<AnyView>,
 	/// Additional class names to apply to the outer table, if any.
 	#[prop(into, optional)]
 	class: Signal<String>,
 	/// All the rows to be rendered, does not iterate,
 	/// send the <For /> component or all the rows in the component.
-	render_rows: View,
+	render_rows: AnyView,
 ) -> impl IntoView {
 	let class = move || {
 		format!(

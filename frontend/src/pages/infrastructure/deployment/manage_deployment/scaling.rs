@@ -1,6 +1,6 @@
-use std::{f32::consts::E, rc::Rc};
+use std::{f32::consts::E, rc::Rc, sync::Arc};
 
-use ev::MouseEvent;
+use leptos::ev::MouseEvent;
 use models::api::workspace::deployment::*;
 
 use super::DeploymentInfoContext;
@@ -19,10 +19,8 @@ fn UpdateScale(
 	update_deployment_body: RwSignal<UpdateDeploymentRequest>,
 ) -> impl IntoView {
 	let store_deployment = store_value(deployment_info.clone());
-	let min_horizontal_value =
-		RwSignal::new(deployment_info.running_details.min_horizontal_scale);
-	let max_horizontal_value =
-		RwSignal::new(deployment_info.running_details.max_horizontal_scale);
+	let min_horizontal_value = RwSignal::new(deployment_info.running_details.min_horizontal_scale);
+	let max_horizontal_value = RwSignal::new(deployment_info.running_details.max_horizontal_scale);
 
 	let deployment_info_context = expect_context::<DeploymentInfoContext>().0;
 
@@ -52,7 +50,7 @@ fn UpdateScale(
 				<NumberPicker
 					value={max_horizontal_value}
 					style_variant={SecondaryColorVariant::Medium}
-					on_change={move |_| update_deployment_body.update(|body| {
+					on_change={move || update_deployment_body.update(|body| {
 						body.max_horizontal_scale = Some(max_horizontal_value.get());
 					})}
 				/>
@@ -103,13 +101,13 @@ fn UpdateMachineType(
 											info.deployment.data.machine_type = id.clone();
 										}
 									});
-								}}
+								}.into()}
 							/>
 						</For>
 					}
-						.into_view()
+						.into_any()
 				}
-				_ => "Loading...".into_view(),
+				_ => "Loading...".into_any(),
 			}}
 		</Transition>
 	}
@@ -154,10 +152,10 @@ pub fn ManageDeploymentScaling() -> impl IntoView {
 									deployment_info={deployment_info}
 									update_deployment_body={update_deployment_body}
 								/>
-							}.into_view(),
+							}.into_any(),
 							None => view! {
 								<div>"Loading..."</div>
-							}.into_view()
+							}.into_any()
 						}
 					}
 				</div>
@@ -183,10 +181,10 @@ pub fn ManageDeploymentScaling() -> impl IntoView {
 											deployment_info={deployment_info}
 											update_deployment_body={update_deployment_body}
 										/>
-									}.into_view(),
+									}.into_any(),
 									None => view! {
 										<div>"Loading..."</div>
-									}.into_view()
+									}.into_any()
 								}
 							}
 						</div>
@@ -228,7 +226,7 @@ pub fn ManageDeploymentScaling() -> impl IntoView {
 				style_variant={LinkStyleVariant::Contained}
 				r#type={Variant::Button}
 				should_submit=true
-				on_click={Rc::new(on_submit)}
+				on_click={Arc::new(on_submit)}
 			>
 				"UPDATE"
 			</Link>

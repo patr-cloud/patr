@@ -55,7 +55,7 @@ pub fn StaticSiteDashboard() -> impl IntoView {
 					description_link={
 						Some("https://docs.patr.cloud/features/static-sites/".to_owned())
 					}
-					action_buttons={Some(view! {
+					action_buttons={view! {
 						<Link
 							r#type={Variant::Button}
 							style_variant={LinkStyleVariant::Contained}
@@ -68,7 +68,7 @@ pub fn StaticSiteDashboard() -> impl IntoView {
 								color={Color::Black}
 							/>
 						</Link>
-					}.into_view())}
+					}.into_any()}
 				/>
 			</ContainerHead>
 

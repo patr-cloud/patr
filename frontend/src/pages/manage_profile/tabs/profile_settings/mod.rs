@@ -20,12 +20,12 @@ pub fn ProfileSettings() -> impl IntoView {
 									<BasicInfo basic_user_info={data.clone().basic_user_info} />
 									<ContactInfo user_email={data.clone().recovery_email} />
 								}
-									.into_view()
+									.into_any()
 							}
-							Err(_) => view! {}.into_view(),
+							Err(_) => view! {}.into_any(),
 						}
 					}
-					None => view! {}.into_view(),
+					None => view! {}.into_any(),
 				}}
 
 			</Transition>

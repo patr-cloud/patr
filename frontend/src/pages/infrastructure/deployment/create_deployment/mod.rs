@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, rc::Rc};
 
-use ev::MouseEvent;
+use leptos::ev::MouseEvent;
 
 use crate::{prelude::*, queries::create_deployment_query};
 

@@ -27,10 +27,10 @@ pub fn RunnerDashboard() -> impl IntoView {
 										<RunnerCard runner={runner} />
 									</For>
 								}
-									.into_view()
+									.into_any()
 							}
-							Some(Err(_)) => view! {}.into_view(),
-							None => view! { <RunnerCardSkeleton /> }.into_view(),
+							Some(Err(_)) => ().into_any(),
+							None => view! { <RunnerCardSkeleton /> }.into_any(),
 						}}
 					</Transition>
 				}

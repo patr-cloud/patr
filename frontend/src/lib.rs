@@ -1,4 +1,5 @@
 #![feature(impl_trait_in_assoc_type)]
+#![allow(warnings)]
 
 //! Main dashboard console for Patr
 
@@ -44,11 +45,11 @@ pub mod prelude {
 /// The imports module. This is basically similar to a prelude, but for within
 /// the crate
 mod imports {
-	use std::rc::Rc;
+	use std::sync::Arc;
 
 	/// The handler for the click event on a component. This can be either a
 	/// function or a closure that takes a MouseEvent as an argument.
-	pub(crate) type ClickHandler = Rc<dyn Fn(&ev::MouseEvent)>;
+	pub(crate) type ClickHandler = Arc<dyn Fn(&ev::MouseEvent) + Send + Sync>;
 
 	pub use leptos::*;
 	pub use leptos_router::components::A;
