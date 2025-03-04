@@ -51,8 +51,9 @@ where
 				Router::new().nest(
 					"/api2",
 					Router::new()
-						.merge(workspace::setup_routes(state).await)
-						.merge(auth::setup_routes(state).await),
+						.merge(auth::setup_routes(state).await)
+						.merge(user::setup_routes(state).await)
+						.merge(workspace::setup_routes(state).await),
 				)
 			} else {
 				Router::new()
