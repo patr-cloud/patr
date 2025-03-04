@@ -1,5 +1,4 @@
 use axum::Router;
-use http::StatusCode;
 
 use crate::prelude::*;
 

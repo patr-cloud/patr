@@ -41,7 +41,8 @@ pub async fn list_deployment(
 			current_live_digest
 		FROM
 			deployment
-		LIMIT $1 OFFSET $2;
+		LIMIT $1
+		OFFSET $2;
 		"#,
 	)
 	.bind(u32::try_from(count)?)
