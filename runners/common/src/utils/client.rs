@@ -23,6 +23,7 @@ use crate::prelude::*;
 static REQUEST_CLIENT: OnceLock<Client> = OnceLock::new();
 
 /// Make an API request to an endpoint
+#[instrument(skip_all, fields(route = format!("{} {}", E::METHOD, path)))]
 pub async fn make_request<E>(
 	ApiRequest {
 		path,
@@ -147,6 +148,7 @@ where
 }
 
 /// Send a streaming request to the API to listen for messages.
+#[instrument(skip(request), fields(route = format!("{} {}", E::METHOD, request.path)))]
 pub async fn stream_request<E, ServerMsg, ClientMsg>(
 	request: ApiRequest<E>,
 ) -> Result<impl Stream<Item = Result<ServerMsg, ErrorType>>, ApiErrorResponse>

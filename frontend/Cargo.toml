@@ -24,7 +24,7 @@ macros = { workspace = true, features = [] }
 matchit = { workspace = true, features = ["default"] }
 models = { workspace = true, features = [] }
 preprocess = { workspace = true, features = [] }
-rand = { workspace = true, features = [] }
+rand = { workspace = true, features = ["default"] }
 reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 semver = { workspace = true, features = [] }
 serde = { workspace = true, features = ["default", "derive"] }

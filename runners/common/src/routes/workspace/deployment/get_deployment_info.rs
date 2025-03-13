@@ -7,6 +7,7 @@ use crate::prelude::*;
 
 /// The handler to get the deployment info. This will return the deployment
 /// details for the given deployment ID.
+#[instrument(skip(database))]
 pub async fn get_deployment_info(
 	AppRequest {
 		request:

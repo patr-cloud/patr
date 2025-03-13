@@ -50,6 +50,18 @@ pub async fn delete_deployment(
 	query!(
 		r#"
 		DELETE FROM
+			deployment_volume_mount
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id as _
+	)
+	.execute(&mut **database)
+	.await?;
+
+	query!(
+		r#"
+		DELETE FROM
 			deployment_environment_variable
 		WHERE
 			deployment_id = $1;

@@ -29,9 +29,9 @@ pub enum RunnerError {
 	/// The runner does not support this operation
 	#[error("operation not supported by the runner")]
 	Unsupported,
-	/// Unknown error
-	#[error("unknown error: {0}")]
-	Unknown(String),
+	/// The runner was stopped by an exit signal
+	#[error("runner quitting. exit signal received")]
+	ExitSignalReceived,
 }
 
 impl From<ErrorType> for RunnerError {

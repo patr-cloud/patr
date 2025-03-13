@@ -36,12 +36,10 @@ impl RunnerExecutor for DockerRunner {
 		_: &RunnerSettings<Self::Settings>,
 	) -> Result<Self::InitializedState, RunnerError> {
 		let docker = Docker::connect_with_local_defaults()
-			.map_err(|err| err.to_string())
-			.map_err(RunnerError::Unknown)?
+			.map_err(|_| RunnerError::Unsupported)?
 			.negotiate_version()
 			.await
-			.map_err(|err| err.to_string())
-			.map_err(RunnerError::Unknown)?;
+			.map_err(|_| RunnerError::Unsupported)?;
 
 		Ok(docker)
 	}

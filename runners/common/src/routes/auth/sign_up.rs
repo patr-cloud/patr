@@ -5,6 +5,7 @@ use models::api::auth::*;
 use crate::prelude::*;
 
 /// The `sign_up` endpoint is used to create a new account.
+#[instrument(skip(database, config, password))]
 pub async fn sign_up(
 	AppRequest {
 		request:

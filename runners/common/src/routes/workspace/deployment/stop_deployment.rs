@@ -5,6 +5,7 @@ use crate::prelude::*;
 
 /// The handler to stop a deployment. This will stop the deployment. In case the
 /// deployment is already stopped, it will do nothing.
+#[instrument(skip(database))]
 pub async fn stop_deployment(
 	AppRequest {
 		request:

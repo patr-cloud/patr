@@ -5,6 +5,7 @@ use crate::prelude::*;
 
 /// The handler to delete a deployment. This will delete the deployment, and
 /// remove all resources associated with the deployment.
+#[instrument(skip(database))]
 pub async fn delete_deployment(
 	AppRequest {
 		request:
@@ -26,6 +27,20 @@ pub async fn delete_deployment(
 	}: AppRequest<'_, DeleteDeploymentRequest>,
 ) -> Result<AppResponse<DeleteDeploymentRequest>, ErrorType> {
 	info!("Deleting deployment: {deployment_id}");
+
+	query(
+		r#"
+		DELETE FROM
+			deployment_volume_mount
+		WHERE
+			deployment_id = $1;
+		"#,
+	)
+	.bind(deployment_id)
+	.execute(&mut **database)
+	.await?;
+
+	trace!("Volume mounts deleted");
 
 	query(
 		r#"
@@ -55,19 +70,19 @@ pub async fn delete_deployment(
 
 	trace!("Config mounts deleted");
 
-	// query(
-	// 	r#"
-	// 	DELETE FROM
-	// 		deployment_deploy_history
-	// 	WHERE
-	// 		deployment_id = $1;
-	// 	"#,
-	// )
-	// .bind(deployment_id)
-	// .execute(&mut **database)
-	// .await?;
+	query(
+		r#"
+		DELETE FROM
+			deployment_deploy_history
+		WHERE
+			deployment_id = $1;
+		"#,
+	)
+	.bind(deployment_id)
+	.execute(&mut **database)
+	.await?;
 
-	// trace!("Deploy history deleted");
+	trace!("Deploy history deleted");
 
 	query(
 		r#"
@@ -102,6 +117,7 @@ pub async fn delete_deployment(
 
 	trace!("Deployment deleted");
 
+	// TODO - Send changes to runner
 	trace!("Changes sent to runner");
 
 	AppResponse::builder()

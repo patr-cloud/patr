@@ -44,11 +44,13 @@ url = { workspace = true, features = ["default"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 axum-typed-websockets = { workspace = true, features = ["default"] }
+getrandom = { workspace = true, features = [] }
 sqlx = { workspace = true, features = ["uuid", "postgres", "sqlite", "macros"] }
 time = { workspace = true, features = ["default", "serde-human-readable"] }
 uuid = { workspace = true, features = ["default", "v1", "v4"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { workspace = true, features = ["wasm_js"] }
 leptos = { workspace = true, features = ["default"] }
 time = { workspace = true, features = [
 	"default",

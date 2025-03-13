@@ -3,6 +3,10 @@ use models::api::{user::*, workspace::Workspace, WithId};
 
 use crate::prelude::*;
 
+/// The handler to list all the workspaces of the user. This will return the
+/// default workspace, since this will only be called in self hosted mode and
+/// there is no concept of workspaces in self hosted mode.
+#[instrument]
 pub async fn list_workspaces(
 	AppRequest {
 		request:

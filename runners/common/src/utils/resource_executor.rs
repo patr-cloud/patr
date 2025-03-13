@@ -24,6 +24,7 @@ where
 	E: RunnerExecutor + Send + 'static,
 {
 	/// Creates a new resource executor task.
+	#[tracing::instrument(skip(state))]
 	pub(crate) fn new(resource_id: Uuid, resource_type: ResourceType, state: &AppState<E>) -> Self {
 		let state = state.clone();
 		Self {
@@ -34,7 +35,7 @@ where
 				let resource_type = resource_type;
 				let state = state;
 
-				let executor = E::new(&state.config, state.runner_state.clone()).await;
+				let executor = E::new(&state.config, state.runner_state).await;
 
 				match resource_type {
 					ResourceType::Deployment => {
@@ -82,12 +83,10 @@ where
 		}
 	}
 
-	pub(crate) async fn stop(&self) {
+	/// Stops the resource executor task.
+	#[tracing::instrument(skip(self), fields(resource_id = %self.resource_id))]
+	pub(crate) async fn stop(&self) -> Result<(), RunnerError> {
 		todo!()
-	}
-
-	pub(crate) fn is_running(&self) -> bool {
-		!self.task.is_finished()
 	}
 
 	pub(crate) fn resource_id(&self) -> Uuid {

@@ -29,6 +29,7 @@ use self::{
 };
 use crate::prelude::*;
 
+/// Sets up the deployment routes
 #[instrument(skip(state))]
 pub async fn setup_routes<E>(state: &AppState<E>) -> Router
 where
