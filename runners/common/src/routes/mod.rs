@@ -14,7 +14,7 @@ use tower_http::services::ServeFile;
 
 use crate::prelude::*;
 
-/// Sets up the routes for the API, across all domains.
+/// Sets up the routes for the entire application
 #[instrument(skip(state))]
 pub async fn setup_routes<E>(state: &AppState<E>) -> Router
 where
@@ -46,19 +46,9 @@ where
 		)
 		.with_state(config.leptos_options)
 		.with_state(state.clone())
-		.merge(
-			if cfg!(debug_assertions) {
-				Router::new().nest(
-					"/api2",
-					Router::new()
-						.merge(auth::setup_routes(state).await)
-						.merge(user::setup_routes(state).await)
-						.merge(workspace::setup_routes(state).await),
-				)
-			} else {
-				Router::new()
-			},
-		)
+		.merge(auth::setup_routes(state).await)
+		.merge(user::setup_routes(state).await)
+		.merge(workspace::setup_routes(state).await)
 }
 
 /// Reads all files in a directory and its subdirectories

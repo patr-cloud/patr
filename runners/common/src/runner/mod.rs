@@ -2,7 +2,7 @@ use std::{net::SocketAddr, pin::pin};
 
 use dashmap::DashMap;
 use futures::{future, StreamExt};
-use models::{api::workspace::runner::*, rbac::ResourceType};
+use models::api::workspace::runner::*;
 use tokio::{
 	net::TcpListener,
 	time::{self, Duration},
@@ -40,6 +40,7 @@ where
 	/// Initializes the runner. This function will create a new
 	/// database connection pool and set up the global default subscriber for
 	/// the runner. It returns an instance of the runner.
+	#[instrument]
 	pub async fn init() -> Result<Self, RunnerError> {
 		let config = RunnerSettings::<E::Settings>::parse(&E::runner_internal_name())?;
 
@@ -73,6 +74,8 @@ where
 			),
 		))?;
 
+		trace!("Initialized global logger");
+
 		let database = db::connect(&config.database).await?;
 
 		let runner_state = E::initialize(&config).await?;
@@ -95,29 +98,36 @@ where
 	/// and the resource reconciliation. It will return a result with the error
 	/// if the runner fails to start. The runner will run until the exit signal
 	/// is received.
-	pub async fn run(self) -> Result<(), RunnerError> {
+	#[instrument(skip(self))]
+	pub async fn run(self) -> Result<!, RunnerError> {
+		debug!("Attempting to listen on {}", self.state.config.bind_address);
 		let tcp_listener = TcpListener::bind(self.state.config.bind_address).await?;
 
-		future::join3(
+		let (server_setup, sync_database, resource_monitor) = future::join3(
 			self.run_server(tcp_listener),
 			self.sync_local_database(),
 			self.monitor_resources(),
 		)
 		.await;
 
+		server_setup?;
+
 		info!("Runner stopped. Waiting for server to exit...");
 		info!("Server exited. Exiting runner");
-		Ok(())
+		sync_database.or(resource_monitor)
 	}
 
 	/// Run the server. This function will start the server and listen for
 	/// incoming HTTP connections. It will return a result with the error if the
 	/// server fails to start. The server will run until the exit signal is
 	/// received.
-	async fn run_server(&self, tcp_listener: TcpListener) {
+	#[instrument(skip(self))]
+	async fn run_server(&self, tcp_listener: TcpListener) -> Result<(), RunnerError> {
 		info!(
 			"Listening for connections on http://{}",
-			tcp_listener.local_addr().unwrap()
+			tcp_listener
+				.local_addr()
+				.map_err(RunnerError::ServerSetupError)?
 		);
 
 		axum::serve(
@@ -128,15 +138,16 @@ where
 		)
 		.with_graceful_shutdown(exit_signal())
 		.await
-		.expect("Unable to start server");
+		.map_err(RunnerError::ServerSetupError)
 	}
 
 	/// Sync the local database with the upstream APIs. This function will
 	/// connect to the server and listen for messages from the server. It will
 	/// notify the runner to reconcile the resources that are changed on the
 	/// server. This function will only run if the runner is running in managed
-	/// mode.
-	async fn sync_local_database(&self) {
+	/// mode. This function will exit if the exit signal is received.
+	#[instrument(skip(self))]
+	async fn sync_local_database(&self) -> Result<!, RunnerError> {
 		let RunnerMode::Managed {
 			workspace_id,
 			runner_id,
@@ -147,8 +158,8 @@ where
 			// If the runner is running in self-hosted mode, return early. The run function
 			// uses a join of all the futures so early return here will not stop the runner
 			// from running
-			// TODO reconcile all before quitting
-			return;
+			debug!("Runner is running in self-hosted mode. Skipping sync");
+			return Err(RunnerError::Unsupported);
 		};
 
 		info!("Syncing local database with upstream APIs");
@@ -159,7 +170,7 @@ where
 		info!("Connecting to the server");
 		// Connect to the server infinitely until the exit signal is received
 		'main: loop {
-			let Some(response) = client::stream_request(
+			let response = client::stream_request(
 				ApiRequest::<StreamRunnerDataForWorkspaceRequest>::builder()
 					.path(StreamRunnerDataForWorkspacePath {
 						workspace_id,
@@ -173,14 +184,8 @@ where
 					.body(Default::default())
 					.build(),
 			)
-			.some_if_not_exit(exit_signal)
-			.await
-			else {
-				// None signifies exit signal
-				warn!("Exit signal received. Stopping runner");
-				break 'main;
-			};
-			info!("Connected to the server");
+			.if_not_exit(exit_signal)
+			.await?;
 
 			let Ok(stream) = response
 				.inspect_err(|err| {
@@ -190,52 +195,70 @@ where
 				.map_err(|err| err.body)
 			else {
 				// Retry after 5 seconds, but break if the exit signal is received
-				if time::sleep(Duration::from_secs(5))
-					.some_if_not_exit(exit_signal)
-					.await
-					.is_none()
-				{
-					// None signifies exit signal
-					break 'main;
-				}
+				time::sleep(Duration::from_secs(5))
+					.if_not_exit(exit_signal)
+					.await?;
 				continue 'main;
 			};
+			info!("Connected to the server");
 
-			info!("Reconciling all resources before starting");
-			// Reconcile all resources at the start (or when reconnecting to the websocket)
-			while let Err(err) = self.resync_all().await {
-				error!("Failed to resync all resources: {:?}", err);
+			trace!("Syncing all resources before starting streaming");
+			while let Err(err) = self
+				.resync_all_resources_with_upstream(
+					workspace_id,
+					runner_id,
+					&api_token,
+					&user_agent,
+				)
+				.if_not_exit(exit_signal)
+				.await?
+			{
+				error!("Failed to sync all resources: {:?}", err);
 				error!("Retrying in 1 second");
-				time::sleep(Duration::from_secs(1)).await;
+				// Retry after 1 seconds, but break if the exit signal is received
+				time::sleep(Duration::from_secs(1))
+					.if_not_exit(exit_signal)
+					.await?;
 			}
+			info!("All resources synced successfully");
 
 			let mut pinned_stream = pin!(stream);
 
 			'message: loop {
-				let Some(reconcile_message) =
-					pinned_stream.next().some_if_not_exit(exit_signal).await
-				else {
-					// None signifies exit signal
-					break 'main;
-				};
+				let reconcile_message = pinned_stream.next().if_not_exit(exit_signal).await?;
 
 				match reconcile_message {
 					Some(Ok(response)) => {
-						self.handle_server_message(response).await;
+						let mut try_count = 0;
+						while let Err(err) = self
+							.handle_server_message(response.clone())
+							.if_not_exit(exit_signal)
+							.await?
+						{
+							// Failed to handle the message. Retry after 1 second
+							error!("Failed to handle the message: {err}");
+							warn!("Retrying in 1 second...");
+							time::sleep(Duration::from_secs(1))
+								.if_not_exit(exit_signal)
+								.await?;
+							try_count += 1;
+
+							if try_count >= 5 {
+								error!("Handing server message failed more than 5 times.");
+								error!("Restarting connection to server");
+								continue 'main;
+							}
+						}
 					}
 					Some(Err(err)) => {
 						// Data from the websocket failed
 						error!("Failed to connect to the server: {:?}", err);
 						error!("Retrying in 1 second");
+
 						// Retry after 1 second, but break if the exit signal is received
-						if time::sleep(Duration::from_secs(1))
-							.some_if_not_exit(exit_signal)
-							.await
-							.is_none()
-						{
-							// None signifies exit signal
-							break 'main;
-						}
+						time::sleep(Duration::from_secs(1))
+							.if_not_exit(exit_signal)
+							.await?;
 
 						break 'message;
 					}
@@ -244,14 +267,9 @@ where
 						error!("Connection to server closed");
 						error!("Retrying in 2 seconds");
 						// Retry after 2 seconds, but break if the exit signal is received
-						if time::sleep(Duration::from_secs(2))
-							.some_if_not_exit(exit_signal)
-							.await
-							.is_none()
-						{
-							// None signifies exit signal
-							break 'main;
-						}
+						time::sleep(Duration::from_secs(2))
+							.if_not_exit(exit_signal)
+							.await?;
 
 						break 'message;
 					}
@@ -260,20 +278,28 @@ where
 		}
 	}
 
-	async fn monitor_resources(&self) {
-		info!("Monitoring all running resources");
-
+	#[instrument(skip(self))]
+	async fn monitor_resources(&self) -> Result<!, RunnerError> {
+		let exit_signal = &mut pin!(exit_signal());
 		loop {
-			time::sleep(Duration::from_secs(5)).await;
+			time::sleep(Duration::MAX).if_not_exit(exit_signal).await?;
 		}
 	}
 
 	/// Resync all the resources that the runner is responsible for. This
-	/// function will sync the resources that are running with the resources
-	/// that should be running.
-	async fn resync_all(&self) -> Result<(), RunnerError> {
+	/// function will sync the local database with the upstream API, making sure
+	/// both are in sync.
+	#[instrument(skip(self, api_token))]
+	async fn resync_all_resources_with_upstream(
+		&self,
+		workspace_id: Uuid,
+		runner_id: Uuid,
+		api_token: &BearerToken,
+		user_agent: &UserAgent,
+	) -> Result<(), RunnerError> {
 		// Reconcile all resources
-		self.resync_all_deployments().await?;
+		self.resync_all_deployments_with_upstream(workspace_id, runner_id, api_token, user_agent)
+			.await?;
 
 		Ok(())
 	}
@@ -281,24 +307,44 @@ where
 	/// Handle a message from the server. This function will handle the message
 	/// from the server and run the reconciliation for the resource that the
 	/// message is for.
-	async fn handle_server_message(&self, msg: StreamRunnerDataForWorkspaceServerMsg) {
-		info!("Handling server message: {:?}", msg);
-		// if this resource is already queued for reconciliation, remove that
-		let resource_id = get_resource_id_from_message(&msg);
+	#[instrument(skip(self))]
+	async fn handle_server_message(
+		&self,
+		msg: StreamRunnerDataForWorkspaceServerMsg,
+	) -> Result<(), RunnerError> {
+		use StreamRunnerDataForWorkspaceServerMsg::*;
 
-		match msg.resource_type() {
-			ResourceType::Deployment => {
-				// self.reconcile_deployment(resource_id).await;
+		let mut transaction = self.state.database.begin().await?;
+
+		match msg {
+			DeploymentCreated {
+				deployment,
+				running_details,
+			} => {
+				self.create_deployment_in_database(&mut transaction, deployment, running_details)
+					.await?;
 			}
-			_ => {
-				warn!("Unknown resource type: {:?}", msg);
+			DeploymentUpdated {
+				deployment,
+				running_details,
+			} => {
+				self.delete_deployment_in_database(&mut transaction, deployment.id)
+					.await?;
+				self.create_deployment_in_database(&mut transaction, deployment, running_details)
+					.await?;
+			}
+			DeploymentDeleted { id } => {
+				self.delete_deployment_in_database(&mut transaction, id)
+					.await?;
 			}
 		}
+
+		Ok(())
 	}
 }
 
 /// Listen for the exit signal and stop the runner when the signal is received.
-#[tracing::instrument]
+#[instrument]
 async fn exit_signal() {
 	let ctrl_c = async {
 		tokio::signal::ctrl_c()
@@ -322,14 +368,4 @@ async fn exit_signal() {
 		_ = terminate => (),
 	}
 	info!("Shutdown signal received, shutting down server gracefully");
-}
-
-/// For a given message, get the resource ID from the message
-fn get_resource_id_from_message(message: &StreamRunnerDataForWorkspaceServerMsg) -> Uuid {
-	use StreamRunnerDataForWorkspaceServerMsg::*;
-	match message {
-		DeploymentCreated { deployment, .. } => deployment.id,
-		DeploymentUpdated { deployment, .. } => deployment.id,
-		DeploymentDeleted { id } => *id,
-	}
 }

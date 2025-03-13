@@ -9,6 +9,7 @@ mod get_workspace_info;
 
 use self::get_workspace_info::*;
 
+/// Sets up the workspace routes
 #[instrument(skip(state))]
 pub async fn setup_routes<E>(state: &AppState<E>) -> Router
 where

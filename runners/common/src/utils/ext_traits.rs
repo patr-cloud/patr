@@ -2,6 +2,8 @@ use std::future::Future;
 
 use futures::future::Either;
 
+use crate::error::RunnerError;
+
 /// Extension trait for [`Either`] that provides additional methods. This trait
 /// is used to add methods to the [`Either`] type for working with the left and
 /// right variants, for the sake of convenience.
@@ -51,7 +53,7 @@ pub trait Exitable<T> {
 	/// Returns the value of the future if it completes before the exit signal
 	/// is triggered. If the exit signal is triggered before the future
 	/// completes, then this function will return [`None`].
-	fn some_if_not_exit<E>(self, exit_signal: &mut E) -> impl Future<Output = Option<T>>
+	fn if_not_exit<E>(self, exit_signal: &mut E) -> impl Future<Output = Result<T, RunnerError>>
 	where
 		E: Future<Output = ()> + Unpin;
 }
@@ -60,12 +62,13 @@ impl<T, F> Exitable<T> for F
 where
 	F: Future<Output = T>,
 {
-	async fn some_if_not_exit<E>(self, exit_signal: &mut E) -> Option<T>
+	async fn if_not_exit<E>(self, exit_signal: &mut E) -> Result<T, RunnerError>
 	where
 		E: Future<Output = ()> + Unpin,
 	{
 		futures::future::select(std::pin::pin!(self), exit_signal)
 			.await
 			.into_left()
+			.ok_or(RunnerError::ExitSignalReceived)
 	}
 }

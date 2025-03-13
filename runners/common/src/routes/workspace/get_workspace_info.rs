@@ -5,6 +5,7 @@ use crate::prelude::*;
 
 /// The handler to get the information of a workspace. This includes the
 /// workspace's name, the user who created it, and the date it was created.
+#[instrument]
 pub async fn get_workspace_info(
 	AppRequest {
 		request:

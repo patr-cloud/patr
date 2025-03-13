@@ -9,6 +9,7 @@ mod sign_up;
 
 use self::{login::*, sign_up::*};
 
+/// Sets up the auth routes
 #[instrument(skip(state))]
 pub async fn setup_routes<E>(state: &AppState<E>) -> Router
 where

@@ -11,6 +11,7 @@ use crate::{
 /// type, deploy on push, min horizontal scale, max horizontal scale, ports,
 /// environment variables, startup probe, liveness probe, config mounts, and
 /// volumes. At least one of the values must be updated.
+#[instrument(skip(database))]
 pub async fn update_deployment(
 	AppRequest {
 		request:

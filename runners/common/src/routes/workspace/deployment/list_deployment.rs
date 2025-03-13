@@ -5,6 +5,7 @@ use crate::prelude::*;
 
 /// The handler to list all deployments in the workspace. This will return
 /// all the deployments.
+#[instrument(skip(database))]
 pub async fn list_deployment(
 	AppRequest {
 		request:
