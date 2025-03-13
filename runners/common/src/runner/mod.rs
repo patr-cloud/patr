@@ -1,12 +1,14 @@
-use std::{net::SocketAddr, pin::pin};
+use std::{net::SocketAddr, pin::pin, sync::OnceLock};
 
 use dashmap::DashMap;
 use futures::{future, StreamExt};
 use models::api::workspace::runner::*;
 use tokio::{
 	net::TcpListener,
+	task,
 	time::{self, Duration},
 };
+use tokio_util::sync::CancellationToken;
 use tracing::{level_filters::LevelFilter, Dispatch, Level};
 use tracing_subscriber::{
 	fmt::{format::FmtSpan, Layer as FmtLayer},
@@ -15,6 +17,8 @@ use tracing_subscriber::{
 };
 
 use crate::{db, prelude::*, utils::resource_executor::ResourceExecutorTask};
+
+pub(super) static GLOBAL_CANCEL_TOKEN: OnceLock<CancellationToken> = OnceLock::new();
 
 /// All deployment related functions for the runner
 mod deployment;
@@ -103,6 +107,23 @@ where
 		debug!("Attempting to listen on {}", self.state.config.bind_address);
 		let tcp_listener = TcpListener::bind(self.state.config.bind_address).await?;
 
+		task::spawn(async move {
+			info!("Listening for exit signal");
+			exit_signal().await;
+
+			warn!("Exit signal received. Gracefully stopping runner...");
+			GLOBAL_CANCEL_TOKEN
+				.get_or_init(CancellationToken::new)
+				.cancel();
+
+			time::sleep(Duration::from_secs(5)).await;
+			info!("Runner has not quit gracefully for 5 seconds");
+			info!("Send the exit signal again to force quit (data integrity not guaranteed)");
+
+			exit_signal().await;
+			std::process::exit(1);
+		});
+
 		let (server_setup, sync_database, resource_monitor) = future::join3(
 			self.run_server(tcp_listener),
 			self.sync_local_database(),
@@ -164,9 +185,6 @@ where
 
 		info!("Syncing local database with upstream APIs");
 
-		let exit_signal = &mut pin!(exit_signal());
-		debug!("Exit signal listener started");
-
 		info!("Connecting to the server");
 		// Connect to the server infinitely until the exit signal is received
 		'main: loop {
@@ -184,7 +202,7 @@ where
 					.body(Default::default())
 					.build(),
 			)
-			.if_not_exit(exit_signal)
+			.with_cancel_check()
 			.await?;
 
 			let Ok(stream) = response
@@ -196,7 +214,7 @@ where
 			else {
 				// Retry after 5 seconds, but break if the exit signal is received
 				time::sleep(Duration::from_secs(5))
-					.if_not_exit(exit_signal)
+					.with_cancel_check()
 					.await?;
 				continue 'main;
 			};
@@ -210,14 +228,13 @@ where
 					&api_token,
 					&user_agent,
 				)
-				.if_not_exit(exit_signal)
-				.await?
+				.await
 			{
 				error!("Failed to sync all resources: {:?}", err);
 				error!("Retrying in 1 second");
 				// Retry after 1 seconds, but break if the exit signal is received
 				time::sleep(Duration::from_secs(1))
-					.if_not_exit(exit_signal)
+					.with_cancel_check()
 					.await?;
 			}
 			info!("All resources synced successfully");
@@ -225,21 +242,17 @@ where
 			let mut pinned_stream = pin!(stream);
 
 			'message: loop {
-				let reconcile_message = pinned_stream.next().if_not_exit(exit_signal).await?;
+				let reconcile_message = pinned_stream.next().with_cancel_check().await?;
 
 				match reconcile_message {
 					Some(Ok(response)) => {
 						let mut try_count = 0;
-						while let Err(err) = self
-							.handle_server_message(response.clone())
-							.if_not_exit(exit_signal)
-							.await?
-						{
+						while let Err(err) = self.handle_server_message(response.clone()).await {
 							// Failed to handle the message. Retry after 1 second
 							error!("Failed to handle the message: {err}");
 							warn!("Retrying in 1 second...");
 							time::sleep(Duration::from_secs(1))
-								.if_not_exit(exit_signal)
+								.with_cancel_check()
 								.await?;
 							try_count += 1;
 
@@ -257,7 +270,7 @@ where
 
 						// Retry after 1 second, but break if the exit signal is received
 						time::sleep(Duration::from_secs(1))
-							.if_not_exit(exit_signal)
+							.with_cancel_check()
 							.await?;
 
 						break 'message;
@@ -268,7 +281,7 @@ where
 						error!("Retrying in 2 seconds");
 						// Retry after 2 seconds, but break if the exit signal is received
 						time::sleep(Duration::from_secs(2))
-							.if_not_exit(exit_signal)
+							.with_cancel_check()
 							.await?;
 
 						break 'message;
@@ -280,9 +293,14 @@ where
 
 	#[instrument(skip(self))]
 	async fn monitor_resources(&self) -> Result<!, RunnerError> {
-		let exit_signal = &mut pin!(exit_signal());
+		let full_sync_interval = if cfg!(debug_assertions) {
+			Duration::from_secs(10)
+		} else {
+			Duration::from_secs(60 * 10) // 10 minutes
+		};
+
 		loop {
-			time::sleep(Duration::MAX).if_not_exit(exit_signal).await?;
+			time::sleep(full_sync_interval).with_cancel_check().await?;
 		}
 	}
 

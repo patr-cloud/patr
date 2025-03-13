@@ -97,7 +97,8 @@ where
 					.body(ListDeploymentRequest)
 					.build(),
 			)
-			.await
+			.with_cancel_check()
+			.await?
 			.map_err(|err| err.body.error)?;
 
 			if page * Paginated::DEFAULT_PAGE_SIZE >= response.headers.total_count.0 {
@@ -129,7 +130,8 @@ where
 						.body(GetDeploymentInfoRequest)
 						.build(),
 				)
-				.await
+				.with_cancel_check()
+				.await?
 				.map_err(|err| err.body.error)?
 				.body;
 
@@ -449,8 +451,9 @@ where
 			stream::iter(self.registry.iter().map(|item| item.value().resource_id()));
 		let mut database_deployments = self.get_all_local_deployment_ids().await;
 
-		let mut current_running_deployment = running_deployments.next().await;
-		let mut current_database_deployment = database_deployments.next().await;
+		let mut current_running_deployment = running_deployments.next().with_cancel_check().await?;
+		let mut current_database_deployment =
+			database_deployments.next().with_cancel_check().await?;
 
 		// Okay, so the plan is simple:
 		//
@@ -486,7 +489,8 @@ where
 							// need to delete it
 							self.delete_running_deployment(running_deployment).await?;
 
-							current_running_deployment = running_deployments.next().await;
+							current_running_deployment =
+								running_deployments.next().with_cancel_check().await?;
 							current_database_deployment = Some(Ok(database_deployment));
 						}
 						Ordering::Greater => {
@@ -494,11 +498,14 @@ where
 							// create it
 							self.create_deployment(database_deployment).await?;
 
-							current_database_deployment = database_deployments.next().await;
+							current_database_deployment =
+								database_deployments.next().with_cancel_check().await?;
 						}
 						Ordering::Equal => {
-							current_running_deployment = running_deployments.next().await;
-							current_database_deployment = database_deployments.next().await;
+							current_running_deployment =
+								running_deployments.next().with_cancel_check().await?;
+							current_database_deployment =
+								database_deployments.next().with_cancel_check().await?;
 						}
 					}
 				}
@@ -508,14 +515,16 @@ where
 					self.delete_running_deployment(running_deployment).await?;
 
 					current_database_deployment = None;
-					current_running_deployment = running_deployments.next().await;
+					current_running_deployment =
+						running_deployments.next().with_cancel_check().await?;
 				}
 				(None, Some(Ok(database_deployment))) => {
 					// The running deployments are exhausted. Create the
 					// deployment that is in the database
 					self.create_deployment(database_deployment).await?;
 
-					current_database_deployment = database_deployments.next().await;
+					current_database_deployment =
+						database_deployments.next().with_cancel_check().await?;
 				}
 				(_, Some(Err(err))) => {
 					// There was an error fetching the database deployment. We
@@ -559,7 +568,7 @@ where
 			return Ok(());
 		};
 
-		task.stop().await?;
+		task.stop().with_cancel_check().await??;
 
 		Ok(())
 	}
