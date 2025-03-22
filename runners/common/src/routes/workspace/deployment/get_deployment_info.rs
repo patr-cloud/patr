@@ -138,7 +138,7 @@ pub async fn get_deployment_info(
 	})
 	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
 
-	let deployment = query(
+	let row = query(
 		r#"
 		SELECT
 			id,
@@ -166,26 +166,41 @@ pub async fn get_deployment_info(
 		"#,
 	)
 	.bind(deployment_id)
-	.fetch_optional(&mut **database)
-	.await?
-	.map(|row| {
-		let deployment_id = row.try_get::<Uuid, _>("id")?;
-		let name = row.try_get::<String, _>("name")?;
-		let image_tag = row.try_get::<String, _>("image_tag")?;
-		let status = row.try_get::<DeploymentStatus, _>("status")?;
-		let registry = row.try_get::<String, _>("registry")?;
-		let image_name = row.try_get::<String, _>("image_name")?;
-		let machine_type = row.try_get::<Uuid, _>("machine_type")?;
-		let current_live_digest = row.try_get::<Option<String>, _>("current_live_digest")?;
+	.fetch_one(&mut **database)
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::RowNotFound => ErrorType::ResourceDoesNotExist,
+		err => err.into(),
+	})?;
 
-		let deploy_on_push = row.try_get::<bool, _>("deploy_on_push")?;
-		let min_horizontal_scale = row.try_get::<u16, _>("min_horizontal_scale")?;
-		let max_horizontal_scale = row.try_get::<u16, _>("max_horizontal_scale")?;
+	let id = row.try_get::<Uuid, _>("id")?;
+	let name = row.try_get::<String, _>("name")?;
+	let image_tag = row.try_get::<String, _>("image_tag")?;
+	let status = row.try_get::<DeploymentStatus, _>("status")?;
+	let registry = row.try_get::<String, _>("registry")?;
+	let image_name = row.try_get::<String, _>("image_name")?;
+	let machine_type = row.try_get::<Uuid, _>("machine_type")?;
+	let current_live_digest = row.try_get::<Option<String>, _>("current_live_digest")?;
 
-		Ok::<_, ErrorType>(GetDeploymentInfoResponse {
-			deployment: WithId::new(
-				deployment_id,
-				Deployment {
+	let deploy_on_push = row.try_get::<bool, _>("deploy_on_push")?;
+	let min_horizontal_scale = row.try_get::<u16, _>("min_horizontal_scale")?;
+	let max_horizontal_scale = row.try_get::<u16, _>("max_horizontal_scale")?;
+
+	let startup_probe = row
+		.try_get::<Option<u16>, _>("startup_probe_port")?
+		.zip(row.try_get::<Option<String>, _>("startup_probe_path")?)
+		.map(|(port, path)| DeploymentProbe { port, path });
+
+	let liveness_probe = row
+		.try_get::<Option<u16>, _>("liveness_probe_port")?
+		.zip(row.try_get::<Option<String>, _>("liveness_probe_path")?)
+		.map(|(port, path)| DeploymentProbe { port, path });
+
+	AppResponse::builder()
+		.body(GetDeploymentInfoResponse {
+			deployment: WithId {
+				id,
+				data: Deployment {
 					name,
 					image_tag,
 					status,
@@ -198,30 +213,19 @@ pub async fn get_deployment_info(
 					current_live_digest,
 					machine_type,
 				},
-			),
+			},
 			running_details: DeploymentRunningDetails {
 				deploy_on_push,
 				min_horizontal_scale,
 				max_horizontal_scale,
 				ports,
 				environment_variables,
-				startup_probe: row
-					.try_get::<Option<u16>, _>("startup_probe_port")?
-					.zip(row.try_get::<Option<String>, _>("startup_probe_path")?)
-					.map(|(port, path)| DeploymentProbe { port, path }),
-				liveness_probe: row
-					.try_get::<Option<u16>, _>("liveness_probe_port")?
-					.zip(row.try_get::<Option<String>, _>("liveness_probe_path")?)
-					.map(|(port, path)| DeploymentProbe { port, path }),
+				startup_probe,
+				liveness_probe,
 				config_mounts,
 				volumes,
 			},
 		})
-	})
-	.ok_or(ErrorType::ResourceDoesNotExist)??;
-
-	AppResponse::builder()
-		.body(deployment)
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()

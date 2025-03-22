@@ -1,4 +1,4 @@
-use std::io;
+use std::{fmt::Display, io};
 
 use thiserror::Error;
 use tracing::subscriber::SetGlobalDefaultError;
@@ -32,6 +32,16 @@ pub enum RunnerError {
 	/// The runner was stopped by an exit signal
 	#[error("runner quitting. exit signal received")]
 	ExitSignalReceived,
+	/// There was an error while running something on the host
+	#[error("error with host: {0}")]
+	HostError(String),
+}
+
+impl RunnerError {
+	/// Create a new error with the given message
+	pub fn host(message: impl Display) -> Self {
+		Self::HostError(message.to_string())
+	}
 }
 
 impl From<ErrorType> for RunnerError {

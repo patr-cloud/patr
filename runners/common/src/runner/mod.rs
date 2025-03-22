@@ -1,19 +1,23 @@
 use std::{net::SocketAddr, pin::pin, sync::OnceLock};
 
 use dashmap::DashMap;
-use futures::{future, StreamExt};
+use futures::{
+	StreamExt,
+	future::{self, Either},
+};
 use models::api::workspace::runner::*;
 use tokio::{
 	net::TcpListener,
+	sync::mpsc::{self, UnboundedReceiver},
 	task,
 	time::{self, Duration},
 };
 use tokio_util::sync::CancellationToken;
-use tracing::{level_filters::LevelFilter, Dispatch, Level};
+use tracing::{Dispatch, Level, level_filters::LevelFilter};
 use tracing_subscriber::{
-	fmt::{format::FmtSpan, Layer as FmtLayer},
-	layer::SubscriberExt,
 	Layer,
+	fmt::{Layer as FmtLayer, format::FmtSpan},
+	layer::SubscriberExt,
 };
 
 use crate::{db, prelude::*, utils::resource_executor::ResourceExecutorTask};
@@ -84,10 +88,13 @@ where
 
 		let runner_state = E::initialize(&config).await?;
 
+		let (change_publisher, _) = mpsc::unbounded_channel();
+
 		let state = AppState {
 			database,
 			config,
 			runner_state,
+			change_publisher,
 		};
 
 		db::initialize(&state).await?;
@@ -103,9 +110,12 @@ where
 	/// if the runner fails to start. The runner will run until the exit signal
 	/// is received.
 	#[instrument(skip(self))]
-	pub async fn run(self) -> Result<!, RunnerError> {
+	pub async fn run(mut self) -> Result<!, RunnerError> {
 		debug!("Attempting to listen on {}", self.state.config.bind_address);
 		let tcp_listener = TcpListener::bind(self.state.config.bind_address).await?;
+
+		let (sender, receiver) = mpsc::unbounded_channel();
+		self.state.change_publisher = sender;
 
 		task::spawn(async move {
 			info!("Listening for exit signal");
@@ -127,7 +137,7 @@ where
 		let (server_setup, sync_database, resource_monitor) = future::join3(
 			self.run_server(tcp_listener),
 			self.sync_local_database(),
-			self.monitor_resources(),
+			self.monitor_resources(receiver),
 		)
 		.await;
 
@@ -292,14 +302,70 @@ where
 	}
 
 	#[instrument(skip(self))]
-	async fn monitor_resources(&self) -> Result<!, RunnerError> {
+	async fn monitor_resources(
+		&self,
+		mut change_publisher: UnboundedReceiver<StreamRunnerDataForWorkspaceServerMsg>,
+	) -> Result<!, RunnerError> {
 		let full_sync_interval = if cfg!(debug_assertions) {
 			Duration::from_secs(10)
 		} else {
 			Duration::from_secs(60 * 10) // 10 minutes
 		};
 
+		let runner = E::new(&self.state.config, self.state.runner_state.clone()).await;
+		let mut sleep_future = Box::pin(time::sleep(full_sync_interval));
+
 		loop {
+			match future::select(sleep_future, pin!(change_publisher.recv())).await {
+				Either::Left(((), _)) => {
+					let Ok(()) = self.reconcile_deployments().await else {
+						time::sleep(Duration::from_secs(1))
+							.with_cancel_check()
+							.await?;
+						sleep_future = Box::pin(time::sleep(Duration::from_millis(0)));
+						continue;
+					};
+					sleep_future = Box::pin(time::sleep(full_sync_interval));
+				}
+				Either::Right((update, next_sleep)) => {
+					sleep_future = next_sleep;
+
+					let Some(update) = update else {
+						continue;
+					};
+
+					use StreamRunnerDataForWorkspaceServerMsg::*;
+
+					match update {
+						DeploymentCreated {
+							deployment,
+							running_details,
+						} |
+						DeploymentUpdated {
+							deployment,
+							running_details,
+						} => {
+							if let Err(err) = runner
+								.upsert_deployment(deployment.clone(), running_details.clone())
+								.await
+							{
+								error!("Failed to create deployment: {err}");
+								_ = self.state.change_publisher.send(DeploymentCreated {
+									deployment,
+									running_details,
+								});
+							}
+						}
+						DeploymentDeleted { id } => {
+							if let Err(err) = runner.delete_deployment(id).await {
+								error!("Failed to create deployment: {err}");
+								_ = self.state.change_publisher.send(DeploymentDeleted { id });
+							}
+						}
+					}
+				}
+			}
+
 			time::sleep(full_sync_interval).with_cancel_check().await?;
 		}
 	}

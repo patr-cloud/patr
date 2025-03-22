@@ -1,6 +1,6 @@
 use std::future::Future;
 
-use futures::future::Either;
+use futures::{future::Either, Stream, StreamExt};
 use tokio_util::sync::CancellationToken;
 
 use crate::error::RunnerError;
@@ -50,14 +50,14 @@ impl<L, NL, R, NR> EitherExt<L, R> for Either<(L, NL), (R, NR)> {
 /// Extension trait for [`Future`] that provides additional methods. This trait
 /// is used to add methods to the [`Future`] type for working with the future
 /// and an exit signal, for the sake of convenience.
-pub trait Exitable<T> {
+pub trait ExitableFuture<T> {
 	/// Returns the value of the future if it completes before the exit signal
 	/// is triggered. If the exit signal is triggered before the future
 	/// completes, then this function will return [`None`].
 	fn with_cancel_check(self) -> impl Future<Output = Result<T, RunnerError>>;
 }
 
-impl<T, F> Exitable<T> for F
+impl<T, F> ExitableFuture<T> for F
 where
 	F: Future<Output = T>,
 {
@@ -71,5 +71,28 @@ where
 		.await
 		.into_left()
 		.ok_or(RunnerError::ExitSignalReceived)
+	}
+}
+
+/// Extension trait for [`Stream`] that provides additional methods. This trait
+/// is used to add methods to the [`Stream`] type for working with the stream
+/// and an exit signal, for the sake of convenience.
+pub trait ExitableStream<T> {
+	/// Iterates through the stream and if the cancel signal is triggered
+	/// between items, then the stream will be terminated early. The cancel
+	/// signal is not checked while an item is being processed.
+	fn with_cancel_check(self) -> impl Stream<Item = T>;
+}
+
+impl<T, S> ExitableStream<T> for S
+where
+	S: Stream<Item = T>,
+{
+	fn with_cancel_check(self) -> impl Stream<Item = T> {
+		self.take_until(
+			crate::runner::GLOBAL_CANCEL_TOKEN
+				.get_or_init(CancellationToken::new)
+				.cancelled(),
+		)
 	}
 }

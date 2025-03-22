@@ -112,7 +112,7 @@ impl ToasterContext {
 	/// Add a toast to the queue.
 	pub fn toast(&self, toast_builder: ToastBuilder) {
 		let mut rng = rand::thread_rng();
-		let toast_id = rng.gen::<u64>();
+		let toast_id = rng.r#gen::<u64>();
 
 		let toast = toast_builder.build(toast_id);
 		self.queue.update(|queue| {

@@ -5,8 +5,6 @@
 //! incoming WebSocket connections from the Patr API. The runner is responsible
 //! for creating, updating, and deleting deployments in the given runner.
 
-use std::time::Duration;
-
 use bollard::Docker;
 use common::prelude::*;
 use futures::Stream;
@@ -36,10 +34,10 @@ impl RunnerExecutor for DockerRunner {
 		_: &RunnerSettings<Self::Settings>,
 	) -> Result<Self::InitializedState, RunnerError> {
 		let docker = Docker::connect_with_local_defaults()
-			.map_err(|_| RunnerError::Unsupported)?
+			.map_err(RunnerError::host)?
 			.negotiate_version()
 			.await
-			.map_err(|_| RunnerError::Unsupported)?;
+			.map_err(RunnerError::host)?;
 
 		Ok(docker)
 	}
@@ -52,7 +50,7 @@ impl RunnerExecutor for DockerRunner {
 		&self,
 		deployment: WithId<Deployment>,
 		running_details: DeploymentRunningDetails,
-	) -> Result<(), Duration> {
+	) -> Result<(), RunnerError> {
 		deployment::upsert(self, deployment, running_details).await
 	}
 
@@ -60,7 +58,7 @@ impl RunnerExecutor for DockerRunner {
 		deployment::list_running(self).await
 	}
 
-	async fn delete_deployment(&self, id: Uuid) -> Result<(), Duration> {
+	async fn delete_deployment(&self, id: Uuid) -> Result<(), RunnerError> {
 		deployment::delete(self, id).await
 	}
 

@@ -13,6 +13,10 @@ where
 {
 	/// The ID of the resource that will be managed.
 	resource_id: Uuid,
+	/// The type of the resource that will be managed.
+	resource_type: ResourceType,
+	/// The state of the application that will be used to manage the resources.
+	state: AppState<E>,
 	/// The task that will be used to manage the resources.
 	task: JoinHandle<()>,
 	/// The type of runner executor that will be used to manage the resources.
@@ -25,62 +29,19 @@ where
 {
 	/// Creates a new resource executor task.
 	#[tracing::instrument(skip(state))]
-	pub(crate) fn new(resource_id: Uuid, resource_type: ResourceType, state: &AppState<E>) -> Self {
-		let state = state.clone();
+	pub(crate) fn new(resource_id: Uuid, resource_type: ResourceType, state: AppState<E>) -> Self {
+		let task = Self::start_task(resource_id, resource_type, state.clone());
 		Self {
 			resource_id,
 			runner_executor: PhantomData,
-			task: tokio::spawn(async move {
-				let resource_id = resource_id;
-				let resource_type = resource_type;
-				let state = state;
-
-				let executor = E::new(&state.config, state.runner_state).await;
-
-				match resource_type {
-					ResourceType::Deployment => {
-						// Keep checking for the status of the deployment and
-						// update the database
-						loop {
-							let Ok(status) = executor.get_deployment_status(resource_id).await
-							else {
-								continue;
-							};
-
-							// Update the status of the deployment in the database
-							let _ = query(
-								r#"
-								UPDATE
-									deployment
-								SET
-									status = $1
-								WHERE
-									id = $2;
-								"#,
-							)
-							.bind(status)
-							.bind(resource_id)
-							.execute(&state.database)
-							.await;
-						}
-					}
-
-					ResourceType::Workspace |
-					ResourceType::Project |
-					ResourceType::Runner |
-					ResourceType::Volume |
-					ResourceType::Database |
-					ResourceType::StaticSite |
-					ResourceType::ContainerRegistryRepository |
-					ResourceType::Secret |
-					ResourceType::Domain |
-					ResourceType::DnsRecord |
-					ResourceType::ManagedURL => {
-						todo!()
-					}
-				}
-			}),
+			resource_type,
+			state,
+			task,
 		}
+	}
+
+	pub(crate) fn new_deployment(deployment_id: Uuid, state: AppState<E>) -> Self {
+		Self::new(deployment_id, ResourceType::Deployment, state)
 	}
 
 	/// Stops the resource executor task.
@@ -91,5 +52,69 @@ where
 
 	pub(crate) fn resource_id(&self) -> Uuid {
 		self.resource_id
+	}
+
+	pub(crate) fn ensure_running(&mut self) -> Result<(), RunnerError> {
+		// Ensure that the task is running. If it is not running, then start it.
+		if self.task.is_finished() {
+			self.task = Self::start_task(self.resource_id, self.resource_type, self.state.clone());
+		}
+		Ok(())
+	}
+
+	fn start_task(
+		resource_id: Uuid,
+		resource_type: ResourceType,
+		state: AppState<E>,
+	) -> JoinHandle<()> {
+		tokio::spawn(async move {
+			let resource_id = resource_id;
+			let resource_type = resource_type;
+			let state = state;
+
+			let executor = E::new(&state.config, state.runner_state).await;
+
+			match resource_type {
+				ResourceType::Deployment => {
+					// Keep checking for the status of the deployment and
+					// update the database
+					loop {
+						let Ok(status) = executor.get_deployment_status(resource_id).await else {
+							continue;
+						};
+
+						// Update the status of the deployment in the database
+						let _ = query(
+							r#"
+							UPDATE
+								deployment
+							SET
+								status = $1
+							WHERE
+								id = $2;
+							"#,
+						)
+						.bind(status)
+						.bind(resource_id)
+						.execute(&state.database)
+						.await;
+					}
+				}
+
+				ResourceType::Workspace |
+				ResourceType::Project |
+				ResourceType::Runner |
+				ResourceType::Volume |
+				ResourceType::Database |
+				ResourceType::StaticSite |
+				ResourceType::ContainerRegistryRepository |
+				ResourceType::Secret |
+				ResourceType::Domain |
+				ResourceType::DnsRecord |
+				ResourceType::ManagedURL => {
+					todo!()
+				}
+			}
+		})
 	}
 }

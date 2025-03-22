@@ -1,4 +1,4 @@
-use std::{future::Future, time::Duration};
+use std::future::Future;
 
 use futures::Stream;
 use models::api::workspace::deployment::*;
@@ -45,22 +45,21 @@ pub trait RunnerExecutor: Sized {
 	) -> impl Future<Output = Self> + Send;
 
 	/// This function is called when a deployment is created, or updated.
-	/// The runner should return an error with a duration if the deployment
-	/// failed to reconcile. This will be used to retry the deployment after
-	/// the given duration.
+	/// The runner should return an error if the deployment failed to start.
+	/// This will be used to retry the deployment.
 	fn upsert_deployment(
 		&self,
 		deployment: WithId<Deployment>,
 		running_details: DeploymentRunningDetails,
-	) -> impl Future<Output = Result<(), Duration>> + Send;
+	) -> impl Future<Output = Result<(), RunnerError>> + Send;
 
 	/// This function is called when a deployment is deleted. The runner should
-	/// return an error with a duration if the deployment failed to delete. This
-	/// will be used to retry the deployment after the given duration.
+	/// return an error if the deployment failed to delete. This will be used to
+	/// retry the deletion.
 	fn delete_deployment(
 		&self,
 		deployment_id: Uuid,
-	) -> impl Future<Output = Result<(), Duration>> + Send;
+	) -> impl Future<Output = Result<(), RunnerError>> + Send;
 
 	/// This function should return a stream of all the running deployment IDs
 	/// in the runner, sorted by the deployment ID.
