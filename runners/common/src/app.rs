@@ -1,4 +1,6 @@
+use models::api::workspace::runner::StreamRunnerDataForWorkspaceServerMsg;
 use preprocess::Preprocessable;
+use tokio::sync::mpsc::UnboundedSender;
 use typed_builder::TypedBuilder;
 
 use crate::prelude::*;
@@ -17,6 +19,9 @@ where
 	/// The initialized state of the runner. This will be used to create new
 	/// instances of the runner.
 	pub runner_state: E::InitializedState,
+	/// The publisher to notify the runner that the configuration for a resource
+	/// has changed.
+	pub change_publisher: UnboundedSender<StreamRunnerDataForWorkspaceServerMsg>,
 }
 
 impl<E> Clone for AppState<E>
@@ -28,6 +33,7 @@ where
 			database: self.database.clone(),
 			config: self.config.clone(),
 			runner_state: self.runner_state.clone(),
+			change_publisher: self.change_publisher.clone(),
 		}
 	}
 }

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Duration};
+use std::collections::HashMap;
 
 use bollard::{
 	container::{
@@ -34,8 +34,8 @@ pub(crate) async fn upsert(
 	}: WithId<Deployment>,
 	DeploymentRunningDetails {
 		deploy_on_push: _,
-		min_horizontal_scale: _,
-		max_horizontal_scale: _,
+		min_horizontal_scale,
+		max_horizontal_scale,
 		ports,
 		environment_variables,
 		startup_probe,
@@ -43,7 +43,7 @@ pub(crate) async fn upsert(
 		config_mounts,
 		volumes,
 	}: DeploymentRunningDetails,
-) -> Result<(), Duration> {
+) -> Result<(), RunnerError> {
 	// Check if the container exists, first.
 	let container = docker
 		.list_containers(Some(ListContainersOptions {
@@ -56,7 +56,7 @@ pub(crate) async fn upsert(
 		.await
 		.map_err(|err| {
 			error!("Error listing containers: {:?}", err);
-			Duration::from_secs(5)
+			RunnerError::host(err)
 		})?
 		.into_iter()
 		.next();
@@ -70,7 +70,7 @@ pub(crate) async fn upsert(
 			.await
 			.map_err(|err| {
 				error!("Error stopping container: {:?}", err);
-				Duration::from_secs(5)
+				RunnerError::host(err)
 			})?;
 		docker
 			.remove_container(
@@ -84,7 +84,7 @@ pub(crate) async fn upsert(
 			.await
 			.map_err(|err| {
 				error!("Error removing container: {:?}", err);
-				Duration::from_secs(5)
+				RunnerError::host(err)
 			})?;
 	}
 
@@ -120,7 +120,7 @@ pub(crate) async fn upsert(
 	let container = docker
 		.create_container(
 			Some(CreateContainerOptions {
-				name: name.clone(),
+				name: id.to_string(),
 				..Default::default()
 			}),
 			Config {
@@ -177,7 +177,7 @@ pub(crate) async fn upsert(
 		.await
 		.map_err(|err| {
 			error!("Error creating container: {:?}", err);
-			Duration::from_secs(5)
+			RunnerError::host(err)
 		})?;
 	info!("Container created");
 
@@ -186,26 +186,22 @@ pub(crate) async fn upsert(
 		.await
 		.map_err(|err| {
 			error!("Error starting container: {:?}", err);
-			Duration::from_secs(5)
+			RunnerError::host(err)
 		})?;
 	info!("Container started");
 
 	Ok(())
 }
 
-pub(crate) async fn list_running(
+pub(crate) async fn list_running<'a>(
 	DockerRunner { docker }: &DockerRunner,
-) -> impl Stream<Item = Uuid> {
+) -> impl Stream<Item = Uuid> + 'a {
 	let Ok(mut containers) = docker
 		.list_containers(Some(ListContainersOptions::<String> {
 			filters: HashMap::new(),
 			..Default::default()
 		}))
 		.await
-		.map_err(|err| {
-			error!("Error listing containers: {:?}", err);
-			Duration::from_secs(5)
-		})
 	else {
 		return futures::stream::empty().boxed();
 	};
@@ -237,7 +233,7 @@ pub(crate) async fn list_running(
 pub(crate) async fn delete(
 	DockerRunner { docker }: &DockerRunner,
 	id: Uuid,
-) -> Result<(), Duration> {
+) -> Result<(), RunnerError> {
 	// Check if the container exists, first.
 	let container = docker
 		.list_containers(Some(ListContainersOptions {
@@ -250,7 +246,7 @@ pub(crate) async fn delete(
 		.await
 		.map_err(|err| {
 			error!("Error listing containers: {:?}", err);
-			Duration::from_secs(5)
+			RunnerError::host(err)
 		})?
 		.into_iter()
 		.next();
@@ -268,7 +264,7 @@ pub(crate) async fn delete(
 			.await
 			.map_err(|err| {
 				error!("Error removing container: {:?}", err);
-				Duration::from_secs(5)
+				RunnerError::host(err)
 			})?;
 	}
 

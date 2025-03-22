@@ -140,7 +140,7 @@ impl ErrorType {
 
 	/// Returns the message that should be used for this error. This is the
 	/// message that is user-friendly and can be shown to the user
-	pub fn message(&self) -> impl Into<String> {
+	pub fn message(&self) -> impl Into<String> + use<> {
 		match self {
 			Self::InvalidEmail => "Invalid email",
 			Self::UserNotFound => "No user exists with those credentials",

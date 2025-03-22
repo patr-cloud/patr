@@ -15,7 +15,7 @@ pub fn HomePage() -> impl IntoView {
 				<button
 					on:click=move |ev| {
 						ev.prevent_default();
-						let random = rng.gen::<u32>();
+						let random = rng.r#gen::<u32>();
 						toaster.toast(
 							ToastData::builder()
 								.message(format!("Hello World {}", random).as_str())
