@@ -47,7 +47,7 @@ pub async fn get_mfa_secret(
 	redis
 		.setex(
 			redis::user_mfa_secret(&user_data.id),
-			Duration::minutes(5).whole_seconds() as u64,
+			Duration::minutes(5).whole_seconds().unsigned_abs(),
 			secret.clone(),
 		)
 		.await
