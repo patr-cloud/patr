@@ -111,9 +111,7 @@ pub async fn get_deployment_logs(
 	}) = serde_json::from_str::<LokiResponse>(&loki_response)
 	else {
 		error!("Cannot parse Loki response: {}", loki_response);
-		return Err(ErrorType::server_error(format!(
-			"Failed to parse Loki response"
-		)));
+		return Err(ErrorType::server_error("Failed to parse Loki response"));
 	};
 
 	let logs = result

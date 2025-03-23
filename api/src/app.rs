@@ -4,7 +4,7 @@ use std::{
 };
 
 use axum::extract::FromRef;
-use models::{prelude::*, RequestUserData};
+use models::{RequestUserData, prelude::*};
 use preprocess::Preprocessable;
 use rustis::client::Client as RedisClient;
 use tokio::net::TcpListener;
@@ -39,7 +39,7 @@ pub async fn serve(state: &AppState) {
 			async {
 				axum::serve(
 					api_listener,
-					crate::routes::api_patr_cloud::setup_routes(&state)
+					crate::routes::api_patr_cloud::setup_routes(state)
 						.await
 						.into_make_service_with_connect_info::<SocketAddr>(),
 				)
@@ -50,7 +50,7 @@ pub async fn serve(state: &AppState) {
 			async {
 				axum::serve(
 					app_listener,
-					crate::routes::app_patr_cloud::setup_routes(&state)
+					crate::routes::app_patr_cloud::setup_routes(state)
 						.await
 						.into_make_service_with_connect_info::<SocketAddr>(),
 				)

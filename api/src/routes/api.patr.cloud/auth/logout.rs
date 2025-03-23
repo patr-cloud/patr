@@ -118,7 +118,10 @@ pub async fn logout(
 	redis
 		.setex(
 			redis::login_id_revocation_timestamp(&login_id),
-			constants::CACHED_PERMISSIONS_VALIDITY.whole_seconds() as u64 + 100,
+			constants::CACHED_PERMISSIONS_VALIDITY
+				.whole_seconds()
+				.unsigned_abs() +
+				100,
 			OffsetDateTime::now_utc().unix_timestamp(),
 		)
 		.await

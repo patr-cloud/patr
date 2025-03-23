@@ -102,9 +102,7 @@ pub async fn get_deployment_metric(
 	}) = serde_json::from_str::<MimirResponse>(&mimir_response)
 	else {
 		error!("Cannot parse Mimir response: {}", mimir_response);
-		return Err(ErrorType::server_error(format!(
-			"Failed to parse Mimir response"
-		)));
+		return Err(ErrorType::server_error("Failed to parse Mimir response"));
 	};
 
 	let metrics = result
