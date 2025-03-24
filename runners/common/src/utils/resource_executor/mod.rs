@@ -73,7 +73,12 @@ where
 	pub(crate) fn ensure_running(&mut self) -> Result<(), RunnerError> {
 		// Ensure that the task is running. If it is not running, then start it.
 		if self.task.is_finished() {
-			self.task = Self::start_task(self.resource_id, self.resource_type, self.state.clone());
+			self.task = Self::start_task(
+				self.resource_id,
+				self.resource_type,
+				self.state.clone(),
+				self.cancellation_token.clone(),
+			);
 		}
 		Ok(())
 	}
@@ -88,6 +93,7 @@ where
 			let resource_id = resource_id;
 			let resource_type = resource_type;
 			let state = state;
+			let cancellation_token = cancellation_token;
 
 			let executor = E::new(&state.config, state.runner_state).await;
 

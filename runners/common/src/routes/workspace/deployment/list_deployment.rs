@@ -24,6 +24,7 @@ pub async fn list_deployment(
 				body: ListDeploymentRequestProcessed,
 			},
 		database,
+		change_publisher: _,
 		config: _,
 	}: AppRequest<'_, ListDeploymentRequest>,
 ) -> Result<AppResponse<ListDeploymentRequest>, ErrorType> {

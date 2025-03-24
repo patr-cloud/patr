@@ -1,5 +1,5 @@
 use axum::http::StatusCode;
-use models::api::{user::*, workspace::Workspace, WithId};
+use models::api::{WithId, user::*, workspace::Workspace};
 
 use crate::prelude::*;
 
@@ -21,6 +21,7 @@ pub async fn list_workspaces(
 				body: ListUserWorkspacesRequestProcessed,
 			},
 		database: _,
+		change_publisher: _,
 		config: _,
 	}: AppRequest<'_, ListUserWorkspacesRequest>,
 ) -> Result<AppResponse<ListUserWorkspacesRequest>, ErrorType> {

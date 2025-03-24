@@ -1,5 +1,5 @@
 use http::StatusCode;
-use models::api::workspace::deployment::*;
+use models::api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg::*};
 
 use crate::prelude::*;
 
@@ -40,6 +40,7 @@ pub async fn create_deployment(
 					},
 			},
 		database,
+		change_publisher,
 		config: _,
 	}: AppRequest<'_, CreateDeploymentRequest>,
 ) -> Result<AppResponse<CreateDeploymentRequest>, ErrorType> {
@@ -225,6 +226,32 @@ pub async fn create_deployment(
 	}
 
 	trace!("Inserted volume mounts for deployment");
+
+	change_publisher.send(DeploymentCreated {
+		deployment: WithId {
+			id: deployment_id,
+			data: Deployment {
+				name: name.to_string(),
+				registry,
+				image_tag: image_tag.to_string(),
+				status,
+				runner: Uuid::nil(),
+				machine_type,
+				current_live_digest: None,
+			},
+		},
+		running_details: DeploymentRunningDetails {
+			deploy_on_push,
+			min_horizontal_scale,
+			max_horizontal_scale,
+			ports,
+			environment_variables,
+			startup_probe,
+			liveness_probe,
+			config_mounts,
+			volumes,
+		},
+	})?;
 
 	AppResponse::builder()
 		.body(CreateDeploymentResponse {

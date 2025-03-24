@@ -17,6 +17,7 @@ pub async fn list_all_deployment_machine_types(
 				body: ListAllDeploymentMachineTypeRequestProcessed,
 			},
 		database,
+		change_publisher: _,
 		config: _,
 	}: AppRequest<'_, ListAllDeploymentMachineTypeRequest>,
 ) -> Result<AppResponse<ListAllDeploymentMachineTypeRequest>, ErrorType> {

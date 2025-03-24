@@ -23,36 +23,11 @@ pub async fn start_deployment(
 				body: StartDeploymentRequestProcessed,
 			},
 		database,
+		change_publisher: _,
 		config: _,
 	}: AppRequest<'_, StartDeploymentRequest>,
 ) -> Result<AppResponse<StartDeploymentRequest>, ErrorType> {
 	trace!("Starting deployment: {}", deployment_id);
-
-	let _ = query(
-		r#"
-		SELECT 
-			registry,
-			image_name,
-			image_tag
-		FROM
-			deployment
-		WHERE
-			id = $1 AND
-			deleted IS NULL;
-		"#,
-	)
-	.bind(deployment_id)
-	.fetch_optional(&mut **database)
-	.await?
-	.map(|row| {
-		let registry = row.try_get::<String, _>("registry")?;
-		let image_tag = row.try_get::<String, _>("image_tag")?;
-		let image_name = row.try_get::<String, _>("image_name")?;
-
-		Ok::<_, ErrorType>((registry, image_tag, image_name))
-	})
-	.transpose()?
-	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
 	query(
 		r#"
@@ -61,7 +36,10 @@ pub async fn start_deployment(
 		SET
 			status = 'deploying'
 		WHERE
-			id = $1
+			id = $1 AND (
+				status != 'running' OR
+				status != 'deploying'
+			);
 		"#,
 	)
 	.bind(deployment_id)

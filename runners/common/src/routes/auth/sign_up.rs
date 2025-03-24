@@ -1,4 +1,4 @@
-use argon2::{password_hash::SaltString, Algorithm, PasswordHasher, Version};
+use argon2::{Algorithm, PasswordHasher, Version, password_hash::SaltString};
 use http::StatusCode;
 use models::api::auth::*;
 
@@ -23,6 +23,7 @@ pub async fn sign_up(
 					},
 			},
 		database,
+		change_publisher: _,
 		config,
 	}: AppRequest<'_, CreateAccountRequest>,
 ) -> Result<AppResponse<CreateAccountRequest>, ErrorType> {
