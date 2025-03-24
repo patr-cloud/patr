@@ -312,7 +312,6 @@ where
 			Duration::from_secs(60 * 10) // 10 minutes
 		};
 
-		let runner = E::new(&self.state.config, self.state.runner_state.clone()).await;
 		let mut sleep_future = Box::pin(time::sleep(full_sync_interval));
 
 		loop {
@@ -345,11 +344,8 @@ where
 							deployment,
 							running_details,
 						} => {
-							if let Err(err) = runner
-								.upsert_deployment(deployment.clone(), running_details.clone())
-								.await
-							{
-								error!("Failed to create deployment: {err}");
+							if let Err(err) = self.upsert_running_deployment(deployment.id).await {
+								error!("Failed to upsert deployment: {err}");
 								_ = self.state.change_publisher.send(DeploymentCreated {
 									deployment,
 									running_details,
@@ -357,8 +353,8 @@ where
 							}
 						}
 						DeploymentDeleted { id } => {
-							if let Err(err) = runner.delete_deployment(id).await {
-								error!("Failed to create deployment: {err}");
+							if let Err(err) = self.delete_running_deployment(id).await {
+								error!("Failed to delete deployment: {err}");
 								_ = self.state.change_publisher.send(DeploymentDeleted { id });
 							}
 						}
