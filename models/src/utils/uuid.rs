@@ -1,7 +1,7 @@
 use std::{borrow::Cow, fmt::Display, str::FromStr};
 
 use schemars::JsonSchema;
-use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
 use time::{Duration, OffsetDateTime};
 
 use super::constants;
@@ -110,6 +110,12 @@ impl FromStr for Uuid {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		Self::parse_str(s)
+	}
+}
+
+impl PartialEq<Uuid> for uuid::Uuid {
+	fn eq(&self, other: &Uuid) -> bool {
+		self == &other.0
 	}
 }
 

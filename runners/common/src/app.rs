@@ -98,6 +98,9 @@ where
 	pub database: &'a mut DatabaseTransaction,
 	/// The Application Config.
 	pub config: RunnerSettings<()>,
+	/// The publisher to notify the runner that the configuration for a resource
+	/// has changed.
+	pub change_publisher: UnboundedSender<StreamRunnerDataForWorkspaceServerMsg>,
 }
 
 /// A request object that is passed through the tower layers and services for
@@ -115,4 +118,7 @@ where
 	pub database: &'a mut DatabaseTransaction,
 	/// The Application Config.
 	pub config: RunnerSettings<()>,
+	/// The publisher to notify the runner that the configuration for a resource
+	/// has changed.
+	pub change_publisher: UnboundedSender<StreamRunnerDataForWorkspaceServerMsg>,
 }

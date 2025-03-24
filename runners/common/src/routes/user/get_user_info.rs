@@ -1,5 +1,5 @@
 use axum::http::StatusCode;
-use models::api::{user::*, WithId};
+use models::api::{WithId, user::*};
 use time::OffsetDateTime;
 
 use crate::prelude::*;
@@ -18,6 +18,7 @@ pub async fn get_user_info(
 				body: GetUserInfoRequestProcessed,
 			},
 		database,
+		change_publisher: _,
 		config: _,
 	}: AppRequest<'_, GetUserInfoRequest>,
 ) -> Result<AppResponse<GetUserInfoRequest>, ErrorType> {
