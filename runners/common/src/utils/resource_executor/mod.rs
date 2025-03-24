@@ -2,6 +2,7 @@ use std::marker::PhantomData;
 
 use models::rbac::ResourceType;
 use tokio::task::JoinHandle;
+use tokio_util::sync::CancellationToken;
 
 use crate::prelude::*;
 
@@ -21,6 +22,8 @@ where
 	task: JoinHandle<()>,
 	/// The type of runner executor that will be used to manage the resources.
 	runner_executor: PhantomData<E>,
+	/// The cancellation token that will be used to cancel the task.
+	cancellation_token: CancellationToken,
 }
 
 impl<E> ResourceExecutorTask<E>
@@ -30,18 +33,31 @@ where
 	/// Creates a new resource executor task.
 	#[tracing::instrument(skip(state))]
 	pub(crate) fn new(resource_id: Uuid, resource_type: ResourceType, state: AppState<E>) -> Self {
-		let task = Self::start_task(resource_id, resource_type, state.clone());
+		let cancellation_token = crate::runner::GLOBAL_CANCEL_TOKEN
+			.get_or_init(CancellationToken::new)
+			.child_token();
+		let task = Self::start_task(
+			resource_id,
+			resource_type,
+			state.clone(),
+			cancellation_token.clone(),
+		);
 		Self {
 			resource_id,
 			runner_executor: PhantomData,
 			resource_type,
 			state,
 			task,
+			cancellation_token,
 		}
 	}
 
 	pub(crate) fn new_deployment(deployment_id: Uuid, state: AppState<E>) -> Self {
 		Self::new(deployment_id, ResourceType::Deployment, state)
+	}
+
+	pub(crate) fn cancel(&self) {
+		self.cancellation_token.cancel();
 	}
 
 	/// Stops the resource executor task.
@@ -66,6 +82,7 @@ where
 		resource_id: Uuid,
 		resource_type: ResourceType,
 		state: AppState<E>,
+		cancellation_token: CancellationToken,
 	) -> JoinHandle<()> {
 		tokio::spawn(async move {
 			let resource_id = resource_id;

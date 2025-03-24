@@ -496,7 +496,7 @@ where
 						Ordering::Greater => {
 							// The database deployment is not running. We need to
 							// create it
-							self.create_running_deployment(database_deployment).await?;
+							self.upsert_running_deployment(database_deployment).await?;
 
 							current_database_deployment =
 								database_deployments.next().with_cancel_check().await?;
@@ -521,7 +521,7 @@ where
 				(None, Some(Ok(database_deployment))) => {
 					// The running deployments are exhausted. Create the
 					// deployment that is in the database
-					self.create_running_deployment(database_deployment).await?;
+					self.upsert_running_deployment(database_deployment).await?;
 
 					current_database_deployment =
 						database_deployments.next().with_cancel_check().await?;
@@ -762,7 +762,10 @@ where
 	/// Delete a running deployment. This function will delete a running
 	/// deployment from the host.
 	#[instrument(skip(self))]
-	async fn delete_running_deployment(&self, deployment_id: Uuid) -> Result<(), RunnerError> {
+	pub(super) async fn delete_running_deployment(
+		&self,
+		deployment_id: Uuid,
+	) -> Result<(), RunnerError> {
 		let Some(task) = self.registry.get(&deployment_id) else {
 			return Ok(());
 		};
@@ -772,11 +775,14 @@ where
 		Ok(())
 	}
 
-	/// Create a deployment. This function will create a deployment on the host.
+	/// Upsert a deployment. This function will create a deployment on the host.
 	/// This runner executor task will be responsible for updating the database
 	/// with the status of the deployment.
 	#[instrument(skip(self))]
-	async fn create_running_deployment(&self, deployment_id: Uuid) -> Result<(), RunnerError> {
+	pub(super) async fn upsert_running_deployment(
+		&self,
+		deployment_id: Uuid,
+	) -> Result<(), RunnerError> {
 		self.registry
 			.entry(deployment_id)
 			.or_insert_with(|| {
