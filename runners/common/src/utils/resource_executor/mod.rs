@@ -62,8 +62,10 @@ where
 
 	/// Stops the resource executor task.
 	#[tracing::instrument(skip(self), fields(resource_id = %self.resource_id))]
-	pub(crate) async fn stop(&self) -> Result<(), RunnerError> {
-		todo!()
+	pub(crate) async fn stop(self) -> Result<(), RunnerError> {
+		self.cancel();
+		_ = self.task.await;
+		Ok(())
 	}
 
 	pub(crate) fn resource_id(&self) -> Uuid {

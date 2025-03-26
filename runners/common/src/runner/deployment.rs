@@ -766,7 +766,7 @@ where
 		&self,
 		deployment_id: Uuid,
 	) -> Result<(), RunnerError> {
-		let Some(task) = self.registry.get(&deployment_id) else {
+		let Some((_, task)) = self.registry.remove(&deployment_id) else {
 			return Ok(());
 		};
 

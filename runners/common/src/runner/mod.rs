@@ -144,6 +144,14 @@ where
 		server_setup?;
 
 		info!("Runner stopped. Waiting for server to exit...");
+
+		GLOBAL_CANCEL_TOKEN
+			.get_or_init(CancellationToken::new)
+			.cancel();
+		for (_, task) in self.registry {
+			_ = task.stop().await;
+		}
+
 		info!("Server exited. Exiting runner");
 		sync_database.or(resource_monitor)
 	}
