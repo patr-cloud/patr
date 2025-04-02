@@ -15,7 +15,7 @@ package.description = "Patr API and all it's dependencies"
 package.edition = "2024"
 package.rust-version = "1.85"
 package.version = "0.18.0"
-resolver = "2"
+resolver = "3"
 
 [workspace.lints.rust]
 missing_docs = "warn"
