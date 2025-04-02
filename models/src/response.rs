@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use axum::{http::StatusCode, response::IntoResponse, Json};
+use axum::{Json, http::StatusCode, response::IntoResponse};
 use preprocess::Preprocessable;
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;

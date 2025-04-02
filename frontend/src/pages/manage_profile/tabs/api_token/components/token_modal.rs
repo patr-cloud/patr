@@ -1,4 +1,4 @@
-use leptos_use::{use_clipboard, UseClipboardReturn};
+use leptos_use::{UseClipboardReturn, use_clipboard};
 
 use crate::prelude::*;
 

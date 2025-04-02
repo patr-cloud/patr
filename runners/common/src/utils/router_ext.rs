@@ -3,13 +3,13 @@ use std::{net::IpAddr, sync::RwLock};
 use axum::Router;
 use axum_extra::routing::TypedPath;
 use models::{
-	utils::{HasHeader, NoAuthentication},
 	ApiEndpoint,
+	utils::{HasHeader, NoAuthentication},
 };
 use preprocess::Preprocessable;
 use tower::{
-	util::{BoxCloneService, BoxLayer},
 	ServiceBuilder,
+	util::{BoxCloneService, BoxLayer},
 };
 
 use crate::{

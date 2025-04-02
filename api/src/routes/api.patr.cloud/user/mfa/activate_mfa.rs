@@ -1,5 +1,5 @@
 use axum::http::StatusCode;
-use models::{api::user::*, RequestUserData};
+use models::{RequestUserData, api::user::*};
 use rustis::commands::StringCommands;
 use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};
 

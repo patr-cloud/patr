@@ -1,5 +1,5 @@
 use axum::http::StatusCode;
-use models::api::{user::*, WithId};
+use models::api::{WithId, user::*};
 
 use crate::prelude::*;
 

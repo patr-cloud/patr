@@ -9,10 +9,10 @@
 use std::{marker::PhantomData, str::FromStr, sync::Arc};
 
 use ::models::{
+	ApiRequest,
 	api::workspace::runner::*,
 	prelude::UserAgent,
 	utils::{BearerToken, WebSocketUpgrade},
-	ApiRequest,
 };
 use app::AppState;
 use futures::StreamExt;

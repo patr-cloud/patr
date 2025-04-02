@@ -12,10 +12,10 @@ use matchit::Router;
 use models::{ApiEndpoint, ApiRequest, AppResponse, ErrorType};
 use preprocess::Preprocessable;
 use tower::{
-	service_fn,
-	util::{BoxCloneService, BoxLayer},
 	ServiceBuilder,
 	ServiceExt,
+	service_fn,
+	util::{BoxCloneService, BoxLayer},
 };
 
 /// The type used for the [`API_CALL_REGISTRY`] static. This is a map of all the

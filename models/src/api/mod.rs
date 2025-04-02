@@ -68,7 +68,7 @@ where
 
 #[cfg(test)]
 mod test {
-	use serde_test::{assert_tokens, Token};
+	use serde_test::{Token, assert_tokens};
 
 	use super::WithId;
 	use crate::prelude::Uuid;

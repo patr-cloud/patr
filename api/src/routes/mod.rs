@@ -1,9 +1,9 @@
 use axum::{
+	Router,
 	body::Body,
 	extract::Host,
 	http::{Request, Response, StatusCode},
 	routing::any,
-	Router,
 };
 use tower::ServiceExt;
 

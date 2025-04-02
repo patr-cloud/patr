@@ -198,7 +198,7 @@ pub struct UserWebLogin {
 mod test {
 	use std::net::{IpAddr, Ipv4Addr};
 
-	use serde_test::{assert_tokens, Configure, Token};
+	use serde_test::{Configure, Token, assert_tokens};
 	use time::OffsetDateTime;
 
 	use super::UserWebLogin;

@@ -24,6 +24,13 @@ pub mod prelude {
 
 	pub(crate) use crate as models;
 	pub use crate::{
+		ApiEndpoint,
+		ApiErrorResponse,
+		ApiRequest,
+		ApiSuccessResponse,
+		ApiSuccessResponseBody,
+		AppResponse,
+		ErrorType,
 		api::WithId,
 		rbac::{
 			BillingPermission,
@@ -52,13 +59,6 @@ pub mod prelude {
 			TotalCountHeader,
 			Uuid,
 		},
-		ApiEndpoint,
-		ApiErrorResponse,
-		ApiRequest,
-		ApiSuccessResponse,
-		ApiSuccessResponseBody,
-		AppResponse,
-		ErrorType,
 	};
 }
 

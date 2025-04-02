@@ -1,4 +1,4 @@
-use sqlx::{pool::PoolOptions, Pool};
+use sqlx::{Pool, pool::PoolOptions};
 
 use crate::{prelude::*, utils::config::DatabaseConfig};
 

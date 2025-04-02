@@ -1,7 +1,7 @@
 use std::{fmt::Debug, future::Future};
 
 use either::Either;
-use kube::{api::DeleteParams, core::Status, error::ErrorResponse, Api, Error};
+use kube::{Api, Error, api::DeleteParams, core::Status, error::ErrorResponse};
 use serde::de::DeserializeOwned;
 
 /// Constants used in the Controller

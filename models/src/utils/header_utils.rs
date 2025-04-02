@@ -1,7 +1,6 @@
 use std::str::FromStr;
 
 use headers::{
-	authorization::{Bearer, Credentials},
 	AcceptRanges,
 	AccessControlAllowCredentials,
 	AccessControlAllowHeaders,
@@ -55,6 +54,7 @@ use headers::{
 	Upgrade,
 	UserAgent,
 	Vary,
+	authorization::{Bearer, Credentials},
 };
 use http::{HeaderMap, HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
@@ -371,8 +371,12 @@ impl_has_headers!(H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11);
 impl_has_headers!(H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12);
 impl_has_headers!(H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13);
 impl_has_headers!(H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13, H14);
-impl_has_headers!(H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13, H14, H15);
-impl_has_headers!(H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13, H14, H15, H16);
+impl_has_headers!(
+	H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13, H14, H15
+);
+impl_has_headers!(
+	H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13, H14, H15, H16
+);
 
 /// This trait is implemented for all types that can be used as a header in a
 /// request to the API. This struct is used in conjunction with the

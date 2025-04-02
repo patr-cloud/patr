@@ -1,11 +1,11 @@
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
-	parse::{Parse, ParseStream},
-	parse_macro_input,
 	Expr,
 	LitStr,
 	Token,
+	parse::{Parse, ParseStream},
+	parse_macro_input,
 };
 
 /// A SQL query and a list of parameters to pass to it.

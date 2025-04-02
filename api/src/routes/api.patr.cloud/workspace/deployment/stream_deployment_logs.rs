@@ -11,7 +11,7 @@ use models::{
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
-use tokio_tungstenite::tungstenite::{client::IntoClientRequest, Message as RawMessage};
+use tokio_tungstenite::tungstenite::{Message as RawMessage, client::IntoClientRequest};
 
 use crate::prelude::*;
 

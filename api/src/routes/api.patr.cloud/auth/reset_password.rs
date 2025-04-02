@@ -1,10 +1,10 @@
 use argon2::{
-	password_hash::SaltString,
 	Algorithm,
 	PasswordHash,
 	PasswordHasher,
 	PasswordVerifier,
 	Version,
+	password_hash::SaltString,
 };
 use axum::http::StatusCode;
 use models::api::auth::*;
@@ -81,9 +81,7 @@ pub async fn reset_password(
 		return Err(ErrorType::InvalidPasswordResetToken);
 	}
 
-	if user_data.password_reset_attempts.unwrap_or(0) >
-		constants::MAX_PASSWORD_RESET_ATTEMPTS.into()
-	{
+	if user_data.password_reset_attempts.unwrap_or(0) > constants::MAX_PASSWORD_RESET_ATTEMPTS {
 		debug!("Password reset attempts exceeded");
 		return Err(ErrorType::InvalidPasswordResetToken);
 	}

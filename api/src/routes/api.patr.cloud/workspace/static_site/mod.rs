@@ -1,4 +1,4 @@
-use axum::{http::StatusCode, Router};
+use axum::{Router, http::StatusCode};
 use models::api::workspace::static_site::*;
 
 use crate::prelude::*;

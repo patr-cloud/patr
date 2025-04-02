@@ -31,6 +31,9 @@ pub mod prelude {
 	pub use anyhow::Context;
 	pub use macros::query;
 	pub use models::{
+		ApiEndpoint,
+		AppResponse,
+		ErrorType,
 		api::WithId,
 		rbac::{
 			BillingPermission,
@@ -46,9 +49,6 @@ pub mod prelude {
 			StaticSitePermission,
 		},
 		utils::{OneOrMore, Paginated, Uuid},
-		ApiEndpoint,
-		AppResponse,
-		ErrorType,
 	};
 	pub use tracing::{debug, error, info, instrument, trace, warn};
 
@@ -61,7 +61,7 @@ pub mod prelude {
 			UnprocessedAppRequest,
 		},
 		redis,
-		utils::{constants, RouterExt, TimeoutExt},
+		utils::{RouterExt, TimeoutExt, constants},
 	};
 
 	/// The type of the database connection. A mutable reference to this should
@@ -91,14 +91,14 @@ pub mod prelude {
 #[tracing::instrument]
 async fn main() {
 	use app::AppState;
-	use opentelemetry::{trace::TracerProvider as _, KeyValue};
+	use opentelemetry::trace::TracerProvider as _;
 	use opentelemetry_otlp::{Protocol, SpanExporter, WithExportConfig};
-	use opentelemetry_sdk::{runtime::Tokio as OtelTokioRuntime, trace::TracerProvider, Resource};
+	use opentelemetry_sdk::{Resource, trace::SdkTracerProvider};
 	use tracing::Level;
 	use tracing_opentelemetry::OpenTelemetryLayer;
 	use tracing_subscriber::{
 		filter::LevelFilter,
-		fmt::{format::FmtSpan, Layer as FmtLayer},
+		fmt::{Layer as FmtLayer, format::FmtSpan},
 		prelude::*,
 	};
 
@@ -133,7 +133,7 @@ async fn main() {
 		)
 		.with(
 			OpenTelemetryLayer::new(
-				TracerProvider::builder()
+				SdkTracerProvider::builder()
 					.with_batch_exporter(
 						SpanExporter::builder()
 							.with_tonic()
@@ -141,9 +141,8 @@ async fn main() {
 							.with_protocol(Protocol::Grpc)
 							.build()
 							.expect("Failed to install OpenTelemetry tracing pipeline"),
-						OtelTokioRuntime,
 					)
-					.with_resource(Resource::new([KeyValue::new("service.name", "Patr API")]))
+					.with_resource(Resource::builder().with_service_name("Patr API").build())
 					.build()
 					.tracer("Patr API"),
 			)

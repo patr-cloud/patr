@@ -12,21 +12,13 @@ pub trait StringExt: Sized {
 
 impl StringExt for String {
 	fn some_if_not_empty(self) -> Option<Self> {
-		if self.is_empty() {
-			None
-		} else {
-			Some(self)
-		}
+		if self.is_empty() { None } else { Some(self) }
 	}
 }
 
 impl StringExt for &str {
 	fn some_if_not_empty(self) -> Option<Self> {
-		if self.is_empty() {
-			None
-		} else {
-			Some(self)
-		}
+		if self.is_empty() { None } else { Some(self) }
 	}
 }
 

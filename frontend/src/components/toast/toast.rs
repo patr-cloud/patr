@@ -1,5 +1,5 @@
 use ev::MouseEvent;
-use leptos_use::{use_timeout_fn, UseTimeoutFnReturn};
+use leptos_use::{UseTimeoutFnReturn, use_timeout_fn};
 
 use crate::imports::*;
 

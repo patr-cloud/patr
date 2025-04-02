@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use syn::{parse_macro_input, spanned::Spanned, Data, DataStruct, DeriveInput, Error, Field};
+use syn::{Data, DataStruct, DeriveInput, Error, Field, parse_macro_input, spanned::Spanned};
 
 /// Provides a derive macro for the `HasHeaders` trait.
 pub fn parse(input: TokenStream) -> TokenStream {
@@ -11,12 +11,12 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		Data::Enum(data) => {
 			return Error::new(data.enum_token.span(), "expected struct")
 				.into_compile_error()
-				.into()
+				.into();
 		}
 		Data::Union(data) => {
 			return Error::new(data.union_token.span(), "expected struct")
 				.into_compile_error()
-				.into()
+				.into();
 		}
 	};
 

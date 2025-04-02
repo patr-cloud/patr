@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
 
 /// A type that can be used to represent a constant `false` boolean.
 #[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
@@ -100,7 +100,7 @@ impl AsRef<bool> for False {
 
 #[cfg(test)]
 mod tests {
-	use serde_test::{assert_tokens, Token};
+	use serde_test::{Token, assert_tokens};
 
 	use super::{False, True};
 

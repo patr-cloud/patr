@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, fmt::Display, str::FromStr};
 
-use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
 use time::OffsetDateTime;
 
 /// The history of a deployment's deploys. This contains the image digest and

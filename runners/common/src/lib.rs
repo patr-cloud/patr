@@ -31,14 +31,14 @@ mod utils;
 pub mod prelude {
 	pub use macros::version;
 	pub use models::prelude::*;
-	pub use sqlx::{query, Row};
+	pub use sqlx::{Row, query};
 
 	pub use crate::{
 		app::{AppRequest, AppState, ProcessedApiRequest},
 		error::RunnerError,
 		executor::RunnerExecutor,
 		runner::Runner,
-		utils::{client, config::*, constants, ext_traits::*, RouterExt},
+		utils::{RouterExt, client, config::*, constants, ext_traits::*},
 	};
 
 	/// The type of the database connection. A mutable reference to this should

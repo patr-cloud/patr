@@ -92,7 +92,7 @@ impl AccessTokenData {
 
 /// A module to help serialize and deserialize `OffsetDateTime` as seconds
 mod datetime_as_seconds {
-	use serde::{de::Error, Deserialize, Deserializer, Serializer};
+	use serde::{Deserialize, Deserializer, Serializer, de::Error};
 	use time::OffsetDateTime;
 
 	/// Serialize an `OffsetDateTime` as seconds

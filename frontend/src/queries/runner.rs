@@ -51,8 +51,8 @@ pub fn get_runner_query(
 /// Query to create a runner, Returns an action to be dispatched on submit.
 /// The action will navigate to the created runner and invalidate the runners
 /// list.
-pub fn create_runner_query(
-) -> Action<String, Result<AddRunnerToWorkspaceResponse, ServerFnError<ErrorType>>> {
+pub fn create_runner_query()
+-> Action<String, Result<AddRunnerToWorkspaceResponse, ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
 
 	let access_token = state.get().get_access_token();

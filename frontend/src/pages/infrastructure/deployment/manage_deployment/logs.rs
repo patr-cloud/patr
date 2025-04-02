@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use ev::MouseEvent;
 use models::api::workspace::deployment::DeploymentLog;
-use time::{macros::format_description, Duration, OffsetDateTime};
+use time::{Duration, OffsetDateTime, macros::format_description};
 
 use super::{super::components::*, DeploymentInfoContext};
 use crate::prelude::*;

@@ -1,12 +1,12 @@
 use std::{num::ParseFloatError, ops::Add};
 
 use argon2::{
-	password_hash::SaltString,
 	Algorithm,
 	PasswordHash,
 	PasswordHasher,
 	PasswordVerifier,
 	Version,
+	password_hash::SaltString,
 };
 use axum::http::StatusCode;
 use jsonwebtoken::EncodingKey;

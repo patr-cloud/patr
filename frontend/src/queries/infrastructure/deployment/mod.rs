@@ -61,8 +61,8 @@ pub fn get_deployment_query(
 }
 
 /// Query to create a deployment, Returns an action to be dispatched on submit.
-pub fn create_deployment_query(
-) -> Action<CreateDeploymentRequest, Result<CreateDeploymentResponse, ServerFnError<ErrorType>>> {
+pub fn create_deployment_query()
+-> Action<CreateDeploymentRequest, Result<CreateDeploymentResponse, ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
 
 	let access_token = state.get().get_access_token();
@@ -95,8 +95,8 @@ pub fn create_deployment_query(
 }
 
 /// Query to delete a deployment, Returns an action to be dispatched on submit.
-pub fn delete_deployment_query(
-) -> Action<Uuid, Result<DeleteDeploymentResponse, ServerFnError<ErrorType>>> {
+pub fn delete_deployment_query()
+-> Action<Uuid, Result<DeleteDeploymentResponse, ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
 
 	let access_token = state.get().get_access_token();
@@ -121,8 +121,8 @@ pub fn delete_deployment_query(
 }
 
 /// Query to start a deployment, Returns an action to be dispatched on submit.
-pub fn start_deployment_query(
-) -> Action<Uuid, Result<StartDeploymentResponse, ServerFnError<ErrorType>>> {
+pub fn start_deployment_query()
+-> Action<Uuid, Result<StartDeploymentResponse, ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
 
 	let access_token = state.get().get_access_token();
@@ -138,8 +138,8 @@ pub fn start_deployment_query(
 }
 
 /// Query to stop a deployment, Returns an action to be dispatched on submit.
-pub fn stop_deployment_query(
-) -> Action<Uuid, Result<StopDeploymentResponse, ServerFnError<ErrorType>>> {
+pub fn stop_deployment_query()
+-> Action<Uuid, Result<StopDeploymentResponse, ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
 
 	let access_token = state.get().get_access_token();
@@ -155,9 +155,8 @@ pub fn stop_deployment_query(
 }
 
 /// Query to list all machines for a workspace
-pub fn list_machines_query(
-) -> Resource<Option<Uuid>, Result<ListAllDeploymentMachineTypeResponse, ServerFnError<ErrorType>>>
-{
+pub fn list_machines_query()
+-> Resource<Option<Uuid>, Result<ListAllDeploymentMachineTypeResponse, ServerFnError<ErrorType>>> {
 	create_resource(
 		move || AuthState::load().0.get().get_last_used_workspace_id(),
 		move |workspace_id| async move { list_all_machines(workspace_id).await },

@@ -3,8 +3,8 @@ use models::api::{user::ListUserWorkspacesResponse, workspace::GetWorkspaceInfoR
 use crate::{get_workspace_info, list_user_workspace, prelude::*};
 
 /// Query to list all workspaces
-pub fn list_workspaces_query(
-) -> Resource<Option<String>, Result<ListUserWorkspacesResponse, ServerFnError<ErrorType>>> {
+pub fn list_workspaces_query()
+-> Resource<Option<String>, Result<ListUserWorkspacesResponse, ServerFnError<ErrorType>>> {
 	create_resource(
 		move || AuthState::load().0.get().get_access_token(),
 		move |(access_token)| async move {

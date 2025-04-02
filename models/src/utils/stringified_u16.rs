@@ -1,7 +1,7 @@
 use std::{fmt::Display, num::ParseIntError, ops::Deref, str::FromStr};
 
 use schemars::JsonSchema;
-use serde::{de::Error, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::Error};
 
 /// A wrapper around a `u16` that serializes and deserializes as a string.
 /// Mostly used as keys in maps.
@@ -76,7 +76,7 @@ impl AsRef<u16> for StringifiedU16 {
 
 #[cfg(test)]
 mod tests {
-	use serde_test::{assert_tokens, Token};
+	use serde_test::{Token, assert_tokens};
 
 	use super::StringifiedU16;
 

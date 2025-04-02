@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use models::{api::auth::*, prelude::*, ApiErrorResponse, ApiSuccessResponseBody};
+use models::{ApiErrorResponse, ApiSuccessResponseBody, api::auth::*, prelude::*};
 
 use crate::prelude::*;
 

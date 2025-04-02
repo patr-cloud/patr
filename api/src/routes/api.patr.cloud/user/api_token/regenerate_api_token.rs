@@ -1,4 +1,4 @@
-use argon2::{password_hash::SaltString, Algorithm, PasswordHasher, Version};
+use argon2::{Algorithm, PasswordHasher, Version, password_hash::SaltString};
 use models::api::user::*;
 use reqwest::StatusCode;
 

@@ -1,16 +1,16 @@
 use std::{str::FromStr, sync::OnceLock};
 
 use models::{
-	prelude::*,
-	utils::{False, Headers},
 	ApiErrorResponse,
 	ApiErrorResponseBody,
 	ApiResponseBody,
 	ApiSuccessResponseBody,
+	prelude::*,
+	utils::{False, Headers},
 };
 use preprocess::Preprocessable;
 use reqwest::Client;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use url::Url;
 
 /// A reqwest client that can be used to make requests to the API

@@ -1,18 +1,18 @@
 use std::{net::IpAddr, sync::RwLock};
 
 use axum::{
-	routing::{MethodFilter, MethodRouter},
 	Router,
+	routing::{MethodFilter, MethodRouter},
 };
 use axum_extra::routing::TypedPath;
 use models::{
-	utils::{AppAuthentication, BearerToken, HasHeader, NoAuthentication},
 	ApiRequest,
+	utils::{AppAuthentication, BearerToken, HasHeader, NoAuthentication},
 };
 use preprocess::Preprocessable;
 use tower::{
-	util::{BoxCloneService, BoxLayer},
 	ServiceBuilder,
+	util::{BoxCloneService, BoxLayer},
 };
 
 use super::layers::{

@@ -1,6 +1,6 @@
 use std::future::Future;
 
-use futures::{future::Either, Stream, StreamExt};
+use futures::{Stream, StreamExt, future::Either};
 use tokio_util::sync::CancellationToken;
 
 use crate::error::RunnerError;
@@ -64,9 +64,11 @@ where
 	async fn with_cancel_check(self) -> Result<T, RunnerError> {
 		futures::future::select(
 			std::pin::pin!(self),
-			std::pin::pin!(crate::runner::GLOBAL_CANCEL_TOKEN
-				.get_or_init(CancellationToken::new)
-				.cancelled()),
+			std::pin::pin!(
+				crate::runner::GLOBAL_CANCEL_TOKEN
+					.get_or_init(CancellationToken::new)
+					.cancelled()
+			),
 		)
 		.await
 		.into_left()

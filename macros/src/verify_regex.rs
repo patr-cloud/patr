@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use regex::Regex;
-use syn::{parse::Parse, LitStr};
+use syn::{LitStr, parse::Parse};
 
 /// Input for the `verify_regex` macro.
 struct VerifyRegexInput {

@@ -3,18 +3,18 @@ use std::{str::FromStr, sync::OnceLock};
 use futures::{Stream, StreamExt};
 use http::{StatusCode, Uri};
 use models::{
-	utils::{constants, False, Headers, WebSocketUpgrade},
 	ApiErrorResponse,
 	ApiErrorResponseBody,
 	ApiResponseBody,
+	utils::{False, Headers, WebSocketUpgrade, constants},
 };
 use preprocess::Preprocessable;
 use reqwest::{Client, Url};
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use tokio_tungstenite::tungstenite::{
-	client::IntoClientRequest,
 	Error as TungsteniteError,
 	Message,
+	client::IntoClientRequest,
 };
 
 use crate::prelude::*;

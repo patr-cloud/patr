@@ -1,12 +1,12 @@
 use std::future::Future;
 
 use axum::{
-	body::{Body, HttpBody},
-	http::Request,
 	Json,
 	RequestExt,
+	body::{Body, HttpBody},
+	http::Request,
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 
 use crate::ErrorType;
 

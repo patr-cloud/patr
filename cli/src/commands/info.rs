@@ -1,5 +1,5 @@
 use comfy_table::Table;
-use models::{api::user::*, prelude::*, ApiErrorResponse, ApiSuccessResponseBody};
+use models::{ApiErrorResponse, ApiSuccessResponseBody, api::user::*, prelude::*};
 
 use super::GlobalArgs;
 use crate::prelude::*;

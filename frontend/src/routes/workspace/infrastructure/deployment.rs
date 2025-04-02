@@ -2,6 +2,7 @@ use models::{api::workspace::deployment::DeploymentStatus, prelude::*};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+	CommonQueryParams,
 	pages::{
 		CreateDeployment,
 		DeploymentDashboard,
@@ -15,7 +16,6 @@ use crate::{
 		ManageDeploymentsMonitoring,
 	},
 	prelude::*,
-	CommonQueryParams,
 };
 
 /// Columns that can be filtered by,

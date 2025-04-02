@@ -12,9 +12,9 @@ pub fn ContainerMain(
 ) -> impl IntoView {
 	let class = move || {
 		format!(
-            "flex flex-col items-start justify-start bg-secondary-dark w-full h-full mb-md br-sm overflow-hidden {}",
-            class.get()
-        )
+			"flex flex-col items-start justify-start bg-secondary-dark w-full h-full mb-md br-sm overflow-hidden {}",
+			class.get()
+		)
 	};
 
 	view! { <section class={class}>{children()}</section> }

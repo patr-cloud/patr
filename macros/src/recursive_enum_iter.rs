@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use proc_macro::TokenStream;
-use syn::{parse::Parse, Ident, ItemEnum, Type};
+use syn::{Ident, ItemEnum, Type, parse::Parse};
 
 /// Struct that represents the input to the `RecursiveEnumIter` derive macro.
 pub struct RecursiveEnumIter {

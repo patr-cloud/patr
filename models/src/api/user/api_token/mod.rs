@@ -87,7 +87,7 @@ mod test {
 	};
 
 	use ipnetwork::IpNetwork;
-	use serde_test::{assert_tokens, Configure, Token};
+	use serde_test::{Configure, Token, assert_tokens};
 	use time::OffsetDateTime;
 
 	use super::UserApiToken;

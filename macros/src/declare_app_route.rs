@@ -1,8 +1,6 @@
 use proc_macro::TokenStream;
 use quote::format_ident;
 use syn::{
-	parse::{Parse, ParseStream},
-	parse_macro_input,
 	Attribute,
 	Error,
 	Expr,
@@ -11,6 +9,8 @@ use syn::{
 	Lit,
 	LitStr,
 	Token,
+	parse::{Parse, ParseStream},
+	parse_macro_input,
 };
 
 /// A helper struct to parse an App endpoint for the frontend

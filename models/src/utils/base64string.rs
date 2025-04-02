@@ -5,7 +5,7 @@ use std::{
 
 use base64::prelude::*;
 use schemars::JsonSchema;
-use serde::{de::Error, Serialize};
+use serde::{Serialize, de::Error};
 
 /// A wrapper around a `Vec<u8>` that implements `Display` and `Serialize` to
 /// encode the data as base64. Mostly used for config mount values.

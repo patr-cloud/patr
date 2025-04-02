@@ -1,8 +1,8 @@
 use axum::{
-	response::{IntoResponse, Response},
 	Json,
+	response::{IntoResponse, Response},
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 
 use super::{RequiresRequestHeaders, RequiresResponseHeaders, True};
 use crate::ApiSuccessResponseBody;

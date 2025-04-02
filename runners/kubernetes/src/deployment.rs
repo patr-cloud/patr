@@ -1,7 +1,8 @@
 use std::{collections::BTreeMap, str::FromStr, sync::Arc, time::Duration};
 
-use futures::{future, StreamExt};
+use futures::{StreamExt, future};
 use k8s_openapi::{
+	ByteString,
 	api::{
 		apps::v1::{
 			Deployment as KubeDeployment,
@@ -22,9 +23,10 @@ use k8s_openapi::{
 		apis::meta::v1::LabelSelector,
 		util::intstr::IntOrString,
 	},
-	ByteString,
 };
 use kube::{
+	Api,
+	Client,
 	api::{DeleteParams, Patch, PatchParams, PropagationPolicy, Resource},
 	core::ObjectMeta,
 	runtime::{
@@ -32,8 +34,6 @@ use kube::{
 		reflector::ObjectRef,
 		watcher,
 	},
-	Api,
-	Client,
 };
 use models::{
 	api::workspace::{container_registry::*, deployment::*, volume::*},

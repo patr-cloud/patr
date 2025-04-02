@@ -78,7 +78,7 @@ pub mod routes;
 /// needed to make the application work.
 pub mod utils;
 
-use leptos_meta::{provide_meta_context, Link as MetaLink, Meta, Stylesheet, Title};
+use leptos_meta::{Link as MetaLink, Meta, Stylesheet, Title, provide_meta_context};
 use prelude::*;
 
 /// The main hydrate function. Called when the application starts to hydrate

@@ -99,5 +99,5 @@ pub mod constants {
 
 	/// The maximum number of times a user can attempt to reset a password
 	/// before getting banned altogether
-	pub const MAX_PASSWORD_RESET_ATTEMPTS: u16 = 5;
+	pub const MAX_PASSWORD_RESET_ATTEMPTS: i32 = 5;
 }

@@ -1,9 +1,9 @@
 use models::utils::Uuid;
 
 use crate::{
+	CommonQueryParams,
 	pages::{CreateRunner, ManageRunner, RunnerDashboard, RunnerPage},
 	prelude::*,
-	CommonQueryParams,
 };
 
 ::macros::declare_app_route! {

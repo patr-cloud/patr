@@ -171,7 +171,9 @@ impl ErrorType {
 			Self::ResourceAlreadyExists => "Resource already exists with the given details",
 			Self::ResourceInUse => "Resource is currently in use",
 			Self::WorkspaceNameAlreadyExists => "A workspace with that name already exists",
-			Self::WorkspaceNotEmpty => "A workspace cannot be deleted until all the resources in the workspaces have been deleted",
+			Self::WorkspaceNotEmpty => {
+				"A workspace cannot be deleted until all the resources in the workspaces have been deleted"
+			}
 			Self::CannotReduceVolumeSize => "The deployment volume size cannot be reduced",
 			Self::CannotAddNewVolume => "New volume cannot be added",
 			Self::CannotRemoveVolume => "The volume cannot be removed",
@@ -181,8 +183,12 @@ impl ErrorType {
 			Self::ApiTokenDoesNotExist => "The API token does not exist",
 			Self::ApiTokenAlreadyExists => "An API token with that name already exists",
 			Self::RoleInUse => "The role is currently assigned to users and cannot be deleted",
-			Self::RunnerAlreadyConnected => "Another instance of the same runner ID is already connected",
-			Self::InvalidRunnerMode => "That operation is not allowed in the mode the runner is currently in",
+			Self::RunnerAlreadyConnected => {
+				"Another instance of the same runner ID is already connected"
+			}
+			Self::InvalidRunnerMode => {
+				"That operation is not allowed in the mode the runner is currently in"
+			}
 		}
 	}
 

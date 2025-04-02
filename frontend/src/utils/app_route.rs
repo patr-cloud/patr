@@ -3,12 +3,12 @@ use std::marker::PhantomData;
 use axum_extra::routing::TypedPath;
 use leptos::*;
 use leptos_router::{
-	use_params as use_router_params,
-	use_query as use_router_query,
 	Params,
 	Route,
+	use_params as use_router_params,
+	use_query as use_router_query,
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 
 /// A trait for types that can be used as a route in the application.
 /// It also provides the path as well as the query parameters for the route.

@@ -2,10 +2,10 @@ use std::{io::IsTerminal, str::FromStr};
 
 use clap::Args;
 use models::{
-	api::{auth::*, user::*},
-	prelude::*,
 	ApiErrorResponse,
 	ApiSuccessResponseBody,
+	api::{auth::*, user::*},
+	prelude::*,
 };
 
 use crate::prelude::*;

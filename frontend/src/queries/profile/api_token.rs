@@ -3,8 +3,8 @@ use models::api::{user::*, workspace::rbac::ListAllPermissionsResponse};
 use crate::prelude::*;
 
 /// Query to list all API tokens
-pub fn list_api_tokens_query(
-) -> Resource<Option<String>, Result<ListApiTokensResponse, ServerFnError<ErrorType>>> {
+pub fn list_api_tokens_query()
+-> Resource<Option<String>, Result<ListApiTokensResponse, ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
 	let access_token = state.get().get_access_token();
 
@@ -51,8 +51,8 @@ pub fn get_all_permissions_query() -> Resource<
 }
 
 /// Query to create a new API token
-pub fn create_api_token_query(
-) -> Action<CreateApiTokenRequest, Result<CreateApiTokenResponse, ServerFnError<ErrorType>>> {
+pub fn create_api_token_query()
+-> Action<CreateApiTokenRequest, Result<CreateApiTokenResponse, ServerFnError<ErrorType>>> {
 	let (state, _) = AuthState::load();
 	let access_token = state.get().get_access_token();
 

@@ -2,7 +2,7 @@ use std::future::Future;
 
 use futures::Stream;
 use models::api::workspace::deployment::*;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 
 use crate::prelude::*;
 

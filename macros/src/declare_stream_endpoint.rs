@@ -1,9 +1,6 @@
 use proc_macro::TokenStream;
 use quote::format_ident;
 use syn::{
-	braced,
-	parse::{Parse, ParseStream},
-	parse_macro_input,
 	Attribute,
 	Block,
 	Error,
@@ -15,6 +12,9 @@ use syn::{
 	LitStr,
 	Token,
 	Variant,
+	braced,
+	parse::{Parse, ParseStream},
+	parse_macro_input,
 };
 
 /// A helper struct to parse an API endpoint

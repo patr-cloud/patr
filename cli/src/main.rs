@@ -23,7 +23,7 @@ pub mod prelude {
 	pub use crate::{
 		app::{CommandExecutor, CommandOutput, OutputType},
 		commands::{AppArgs, GlobalArgs, GlobalCommands},
-		utils::{constants, make_request, AppState, ToJsonValue},
+		utils::{AppState, ToJsonValue, constants, make_request},
 	};
 }
 

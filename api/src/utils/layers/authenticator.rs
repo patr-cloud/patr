@@ -9,9 +9,9 @@ use std::{
 use argon2::{Algorithm, Argon2, PasswordHash, PasswordVerifier, Version};
 use jsonwebtoken::{DecodingKey, TokenData, Validation};
 use models::{
+	RequestUserData,
 	rbac::{ResourcePermissionType, WorkspacePermission},
 	utils::{AppAuthentication, BearerToken, HasHeader},
-	RequestUserData,
 };
 use preprocess::Preprocessable;
 use rustis::{

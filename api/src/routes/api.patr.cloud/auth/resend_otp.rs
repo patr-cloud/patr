@@ -1,10 +1,10 @@
 use argon2::{
-	password_hash::SaltString,
 	Algorithm,
 	PasswordHash,
 	PasswordHasher,
 	PasswordVerifier,
 	Version,
+	password_hash::SaltString,
 };
 use axum::http::StatusCode;
 use models::api::auth::*;
