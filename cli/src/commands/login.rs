@@ -2,7 +2,6 @@ use std::{io::IsTerminal, str::FromStr};
 
 use clap::Args;
 use models::{
-	ApiErrorResponse,
 	ApiSuccessResponseBody,
 	api::{auth::*, user::*},
 	prelude::*,
@@ -31,9 +30,11 @@ pub(super) async fn execute(
 	args: LoginArgs,
 	global_args: GlobalArgs,
 	_: AppState,
-) -> Result<CommandOutput, ApiErrorResponse> {
-	if let Some(ref token) = global_args.token {
-		make_request(
+) -> Result<CommandOutput, AppError> {
+	// If there is a token provided, we will use that to login instead of the
+	// username and password.
+	if let Some(token) = &global_args.token {
+		let response = make_request(
 			ApiRequest::<GetUserInfoRequest>::builder()
 				.path(GetUserInfoPath)
 				.query(())
@@ -45,8 +46,23 @@ pub(super) async fn execute(
 				.build(),
 		)
 		.await?;
+
+		return CommandOutput::builder()
+			.text(format!(
+				"Logged in with an API token as `{}`. Hello {} {}!",
+				response.body.basic_user_info.data.username,
+				response.body.basic_user_info.data.first_name,
+				response.body.basic_user_info.data.last_name
+			))
+			.json(ApiSuccessResponseBody::empty().to_json_value())
+			.build()
+			.into_result();
 	}
 
+	// If there is no token provided, we will use the username and password to
+	// login. If the user is not logged in, we will prompt them for their
+	// username and password. But we can't do that if the user is not using an
+	// interactive terminal.
 	if !std::io::stdin().is_terminal() {
 		eprintln!(concat!(
 			"In order to login to Patr, you either need to use an interactive terminal, ",
@@ -128,13 +144,17 @@ pub(super) async fn execute(
 	}
 	.save()?;
 
-	CommandOutput {
-		text: format!("Logged in as `{username}`. Hello {first_name} {last_name}!"),
-		json: ApiSuccessResponseBody::new(LoginResponse {
-			access_token,
-			refresh_token,
-		})
-		.to_json_value(),
-	}
-	.into_result()
+	CommandOutput::builder()
+		.text(format!(
+			"Logged in as `{username}`. Hello {first_name} {last_name}!"
+		))
+		.json(
+			ApiSuccessResponseBody::new(LoginResponse {
+				access_token,
+				refresh_token,
+			})
+			.to_json_value(),
+		)
+		.build()
+		.into_result()
 }

@@ -1,14 +1,11 @@
 use std::str::FromStr;
 
-use models::{ApiErrorResponse, ApiSuccessResponseBody, api::auth::*, prelude::*};
+use models::{ApiSuccessResponseBody, api::auth::*, prelude::*};
 
 use crate::prelude::*;
 
 /// A command that logs the user out of their Patr account.
-pub(super) async fn execute(
-	args: GlobalArgs,
-	state: AppState,
-) -> Result<CommandOutput, ApiErrorResponse> {
+pub(super) async fn execute(args: GlobalArgs, state: AppState) -> Result<CommandOutput, AppError> {
 	if args.token.is_some() {
 		return CommandOutput {
 			text: concat!(

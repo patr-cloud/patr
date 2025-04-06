@@ -1,5 +1,5 @@
 use comfy_table::Table;
-use models::{ApiErrorResponse, ApiSuccessResponseBody, api::user::*, prelude::*};
+use models::{ApiSuccessResponseBody, api::user::*, prelude::*};
 
 use super::GlobalArgs;
 use crate::prelude::*;
@@ -8,7 +8,7 @@ use crate::prelude::*;
 pub(super) async fn execute(
 	global_args: GlobalArgs,
 	state: AppState,
-) -> Result<CommandOutput, ApiErrorResponse> {
+) -> Result<CommandOutput, AppError> {
 	if global_args.token.is_some() {
 		return CommandOutput {
 			text: "The --token flag is not supported for this command.".to_owned(),
@@ -24,11 +24,7 @@ pub(super) async fn execute(
 			current_workspace: _,
 		} => (token, refresh_token),
 		AppState::LoggedOut => {
-			return Err(ApiErrorResponse::error_with_message(
-				ErrorType::Unauthorized,
-				"You are not logged in. Run `patr login` to sign in to your Patr account."
-					.to_owned(),
-			));
+			return Err(AppError::NotLoggedIn);
 		}
 	};
 
@@ -60,43 +56,47 @@ pub(super) async fn execute(
 	.await?
 	.body;
 
-	CommandOutput {
-		text: Table::new()
-			.set_header(["Data", "Value"])
-			.add_row(["ID".to_owned(), id.to_string()])
-			.add_row(["First Name", first_name.as_str()])
-			.add_row(["Last Name", last_name.as_str()])
-			.add_row(["Username", username.as_str()])
-			.add_row(["Created At", created.to_string().as_str()])
-			.add_row([
-				"Recovery Email",
-				recovery_email.as_deref().unwrap_or_default(),
-			])
-			.add_row([
-				"Recovery Phone Number",
-				recovery_phone_number
-					.as_ref()
-					.map(|number| format!("+{} {}", number.country_code, number.phone_number))
-					.unwrap_or_default()
-					.as_str(),
-			])
-			.add_row(["2FA Enabled", is_mfa_enabled.to_string().as_str()])
-			.to_string(),
-		json: GetUserInfoResponse {
-			basic_user_info: WithId {
-				id,
-				data: BasicUserInfo {
-					first_name: first_name.to_owned(),
-					last_name: last_name.to_owned(),
-					username: username.to_owned(),
+	CommandOutput::builder()
+		.text(
+			Table::new()
+				.set_header(["Data", "Value"])
+				.add_row(["ID".to_owned(), id.to_string()])
+				.add_row(["First Name", first_name.as_str()])
+				.add_row(["Last Name", last_name.as_str()])
+				.add_row(["Username", username.as_str()])
+				.add_row(["Created At", created.to_string().as_str()])
+				.add_row([
+					"Recovery Email",
+					recovery_email.as_deref().unwrap_or_default(),
+				])
+				.add_row([
+					"Recovery Phone Number",
+					recovery_phone_number
+						.as_ref()
+						.map(|number| format!("+{} {}", number.country_code, number.phone_number))
+						.unwrap_or_default()
+						.as_str(),
+				])
+				.add_row(["2FA Enabled", is_mfa_enabled.to_string().as_str()])
+				.to_string(),
+		)
+		.json(
+			GetUserInfoResponse {
+				basic_user_info: WithId {
+					id,
+					data: BasicUserInfo {
+						first_name: first_name.to_owned(),
+						last_name: last_name.to_owned(),
+						username: username.to_owned(),
+					},
 				},
-			},
-			created,
-			recovery_email,
-			recovery_phone_number,
-			is_mfa_enabled,
-		}
-		.to_json_value(),
-	}
-	.into_result()
+				created,
+				recovery_email,
+				recovery_phone_number,
+				is_mfa_enabled,
+			}
+			.to_json_value(),
+		)
+		.build()
+		.into_result()
 }

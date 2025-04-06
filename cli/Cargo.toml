@@ -17,21 +17,36 @@ path = "src/main.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = { workspace = true, features = ["default"] }
-clap = { workspace = true, features = ["default", "derive"] }
+clap = { workspace = true, features = [
+    "default",
+    "cargo",
+    "derive",
+    "env",
+    "string",
+] }
 comfy-table = { workspace = true, features = ["default"] }
 config = { workspace = true, features = ["default"] }
 dirs = { workspace = true, features = [] }
 futures = { workspace = true, features = ["default"] }
+headers = { workspace = true, features = [] }
 http = { workspace = true, features = ["default"] }
+inquire = { workspace = true, features = [
+    "default",
+    "date",
+    "editor",
+    "console",
+] }
+macros = { workspace = true, features = [] }
 models = { workspace = true, features = [] }
 open = { workspace = true, features = [] }
 preprocess = { workspace = true, features = [] }
 reqwest = { workspace = true, features = ["default", "json"] }
 serde = { workspace = true, features = ["default", "derive"] }
 serde_json = { workspace = true, features = ["default"] }
+thiserror = { workspace = true, features = ["default"] }
 tokio = { workspace = true, features = ["default", "full"] }
 tracing = { workspace = true, features = ["default", "async-await"] }
 tracing-log = { workspace = true, features = ["default"] }
 tracing-subscriber = { workspace = true, features = ["default"] }
+typed-builder = { workspace = true, features = [] }
 url = { workspace = true, features = ["default"] }

@@ -4,20 +4,16 @@ use models::api::user::*;
 use crate::prelude::*;
 
 pub(super) async fn execute(
-	global_args: GlobalArgs,
-	(): (),
+	_global_args: GlobalArgs,
 	state: AppState,
-) -> Result<CommandOutput, ApiErrorResponse> {
+) -> Result<CommandOutput, AppError> {
 	let AppState::LoggedIn {
 		token,
-		refresh_token,
+		refresh_token: _,
 		current_workspace: _,
 	} = state
 	else {
-		return Err(ApiErrorResponse::error_with_message(
-			ErrorType::Unauthorized,
-			"You are not logged in. Please log in to list workspaces.",
-		));
+		return Err(AppError::NotLoggedIn);
 	};
 
 	let workspaces = make_request(

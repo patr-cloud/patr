@@ -1,6 +1,6 @@
 use std::{path::PathBuf, str::FromStr};
 
-use anyhow::Context;
+use config::ConfigError;
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
@@ -15,10 +15,8 @@ pub enum AppState {
 		/// The user's access token
 		token: BearerToken,
 		/// The user's refresh token
-		#[serde(rename = "refreshtoken")]
 		refresh_token: String,
 		/// The current workspace that is selected by the user
-		#[serde(rename = "currentworkspace")]
 		current_workspace: Option<Uuid>,
 	},
 	/// The state of the CLI when the user is logged out
@@ -35,7 +33,7 @@ impl AppState {
 	/// - The environment variable `CONFIG_PATH` if it is set
 	/// - The user specific config location independent of the current platform
 	/// - The system wide config location independent of the current platform
-	pub fn load() -> Result<Self, anyhow::Error> {
+	pub fn load() -> Result<Self, AppError> {
 		if let Ok(config_path) = std::env::var("CONFIG_PATH") {
 			config::Config::builder()
 				.add_source(config::File::with_name(&config_path).required(false))
@@ -54,17 +52,15 @@ impl AppState {
 			config::File::with_name(&crate::utils::config_local_dir().to_string_lossy())
 				.required(false),
 		)
-		.build()?
+		.build()
+		.map_err(AppError::ConfigReadError)?
 		.try_deserialize()
-		.inspect_err(|err| {
-			eprintln!("{}", err);
-		})
-		.context("Failed to deserialize the CLI state")
+		.map_err(AppError::ConfigReadError)
 	}
 
 	/// Save the state to the config file. If the config file does not exist, it
 	/// will be created.
-	pub fn save(self) -> Result<(), std::io::Error> {
+	pub fn save(self) -> Result<(), AppError> {
 		let config_dir = PathBuf::from_str(
 			std::env::var("CONFIG_PATH").ok().as_deref().unwrap_or(
 				if cfg!(debug_assertions) {
@@ -78,11 +74,13 @@ impl AppState {
 			),
 		)
 		.unwrap();
-		std::fs::create_dir_all(config_dir.parent().unwrap())?;
+		std::fs::create_dir_all(config_dir.parent().unwrap())
+			.map_err(|err| AppError::ConfigWriteError(ConfigError::Message(err.to_string())))?;
 		std::fs::write(
 			config_dir,
 			serde_json::to_vec(&self).expect("Failed to serialize the CLI state"),
 		)
+		.map_err(|err| AppError::ConfigWriteError(ConfigError::Message(err.to_string())))
 	}
 
 	/// Returns true if the user is logged in, false otherwise.

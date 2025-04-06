@@ -1,7 +1,6 @@
 use clap::{Args, Parser, Subcommand};
-use models::ApiErrorResponse;
 
-use self::{login::LoginArgs, workspaced::WorkspacedCommands};
+use self::{login::LoginArgs, workspaced::WorkspacedCommand};
 use crate::prelude::*;
 
 /// The command to get information about the current logged in user.
@@ -19,27 +18,33 @@ mod workspaced;
 pub struct AppArgs {
 	/// All global arguments that can be used across all commands.
 	#[command(flatten)]
-	pub global_args: GlobalArgs,
+	pub args: GlobalArgs,
 	/// A command that is called on the CLI.
 	#[command(subcommand)]
-	pub command: GlobalCommands,
+	pub command: GlobalCommand,
 }
 
 /// A global list of all the arguments that can be passed to the CLI.
 #[derive(Debug, Clone, Args)]
 pub struct GlobalArgs {
 	/// The output type of each command. Defaults to text.
-	#[arg(short = 'o', default_value_t = OutputType::Text)]
+	#[arg(
+		short = 'o',
+		long = "output-type",
+		env = "PATR_OUTPUT_TYPE",
+		default_value_t = OutputType::default(),
+	)]
 	pub output: OutputType,
 	/// The token used to authenticate with the API, instead of the login
 	/// credentials
+	#[arg(short = 't', long = "token", env = "PATR_TOKEN")]
 	pub token: Option<String>,
 }
 
 /// A list of all the commands that can be called on the CLI.
 #[derive(Debug, Clone, Subcommand)]
 #[command(rename_all = "kebab-case")]
-pub enum GlobalCommands {
+pub enum GlobalCommand {
 	/// Login to your Patr account.
 	#[command(alias = "signin", alias = "sign-in")]
 	Login(LoginArgs),
@@ -50,20 +55,20 @@ pub enum GlobalCommands {
 	Info,
 	/// All the commands that are meant for a workspace
 	#[command(flatten)]
-	Workspaced(WorkspacedCommands),
+	Workspaced(WorkspacedCommand),
 }
 
-impl CommandExecutor for GlobalCommands {
-	async fn execute(
-		self,
-		global_args: GlobalArgs,
-		state: AppState,
-	) -> Result<CommandOutput, ApiErrorResponse> {
-		match self {
-			Self::Login(args) => login::execute(args, global_args, state).await,
-			Self::Logout => logout::execute(global_args, state).await,
-			Self::Info => info::execute(global_args, state).await,
-			Self::Workspaced(commands) => commands.execute(global_args, state).await,
+pub async fn execute(
+	command: GlobalCommand,
+	global_args: GlobalArgs,
+	state: AppState,
+) -> Result<CommandOutput, AppError> {
+	match command {
+		GlobalCommand::Login(args) => login::execute(args, global_args, state).await,
+		GlobalCommand::Logout => logout::execute(global_args, state).await,
+		GlobalCommand::Info => info::execute(global_args, state).await,
+		GlobalCommand::Workspaced(commands) => {
+			workspaced::execute(commands, global_args, state).await
 		}
 	}
 }

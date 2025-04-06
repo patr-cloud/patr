@@ -1,5 +1,4 @@
 use clap::Subcommand;
-use models::ApiErrorResponse;
 
 use self::{create::CreateArgs, rename::RenameArgs, switch::SwitchArgs};
 use crate::prelude::*;
@@ -11,9 +10,9 @@ mod switch;
 
 #[derive(Debug, Clone, Subcommand)]
 #[command(rename_all = "kebab-case")]
-pub enum WorkspaceCommands {
+pub enum WorkspaceCommand {
 	#[command(subcommand, name = "workspace")]
-	WorkspaceAction(WorkspaceActionCommands),
+	WorkspaceAction(WorkspaceActionCommand),
 	#[command(subcommand)]
 	Context(ContextCommands),
 	#[command(name = "workspaces")]
@@ -22,7 +21,7 @@ pub enum WorkspaceCommands {
 
 #[derive(Debug, Clone, Subcommand)]
 #[command(rename_all = "kebab-case")]
-pub enum WorkspaceActionCommands {
+pub enum WorkspaceActionCommand {
 	Create(CreateArgs),
 	Switch(SwitchArgs),
 	List,
@@ -32,42 +31,24 @@ pub enum WorkspaceActionCommands {
 #[derive(Debug, Clone, Subcommand)]
 #[command(rename_all = "kebab-case")]
 pub enum ContextCommands {
-	Switch { name: String },
+	Switch(SwitchArgs),
 }
 
-impl CommandExecutor for WorkspaceCommands {
-	async fn execute(
-		self,
-		global_args: GlobalArgs,
-		state: AppState,
-	) -> Result<CommandOutput, ApiErrorResponse> {
-		match self {
-			Self::WorkspaceAction(commands) => commands.execute(global_args, state).await,
-			Self::Context(ContextCommands::Switch { name }) => {
-				WorkspaceActionCommands::Switch(SwitchArgs { name })
-					.execute(global_args, state)
-					.await
-			}
-			Self::ListWorkspaces => {
-				WorkspaceActionCommands::List
-					.execute(global_args, state)
-					.await
-			}
+pub async fn execute(
+	command: WorkspaceCommand,
+	global_args: GlobalArgs,
+	state: AppState,
+) -> Result<CommandOutput, AppError> {
+	match command {
+		WorkspaceCommand::WorkspaceAction(command) => match command {
+			WorkspaceActionCommand::Create(args) => create::execute(global_args, args, state).await,
+			WorkspaceActionCommand::Switch(args) => switch::execute(global_args, args, state).await,
+			WorkspaceActionCommand::List => list::execute(global_args, state).await,
+			WorkspaceActionCommand::Rename(args) => rename::execute(global_args, args, state).await,
+		},
+		WorkspaceCommand::Context(ContextCommands::Switch(args)) => {
+			switch::execute(global_args, args, state).await
 		}
-	}
-}
-
-impl CommandExecutor for WorkspaceActionCommands {
-	async fn execute(
-		self,
-		global_args: GlobalArgs,
-		state: AppState,
-	) -> Result<CommandOutput, ApiErrorResponse> {
-		match self {
-			Self::Create(args) => create::execute(global_args, args, state).await,
-			Self::Switch(args) => switch::execute(global_args, args, state).await,
-			Self::List => list::execute(global_args, (), state).await,
-			Self::Rename(args) => rename::execute(global_args, args, state).await,
-		}
+		WorkspaceCommand::ListWorkspaces => list::execute(global_args, state).await,
 	}
 }

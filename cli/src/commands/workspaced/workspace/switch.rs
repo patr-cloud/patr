@@ -15,17 +15,14 @@ pub(super) async fn execute(
 	_: GlobalArgs,
 	args: SwitchArgs,
 	state: AppState,
-) -> Result<CommandOutput, ApiErrorResponse> {
+) -> Result<CommandOutput, AppError> {
 	let AppState::LoggedIn {
 		token,
 		refresh_token,
 		current_workspace: _,
 	} = state
 	else {
-		return Err(ApiErrorResponse::error_with_message(
-			ErrorType::Unauthorized,
-			"You are not logged in. Please log in to switch to a workspace.",
-		));
+		return Err(AppError::NotLoggedIn);
 	};
 
 	let workspace = make_request(

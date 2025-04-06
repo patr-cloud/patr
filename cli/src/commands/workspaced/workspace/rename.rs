@@ -1,5 +1,4 @@
 use clap::Args;
-use models::ApiErrorResponse;
 
 use crate::prelude::*;
 
@@ -15,9 +14,9 @@ pub struct RenameArgs {
 }
 
 pub(super) async fn execute(
-	global_args: GlobalArgs,
-	args: RenameArgs,
-	state: AppState,
-) -> Result<CommandOutput, ApiErrorResponse> {
+	_global_args: GlobalArgs,
+	_args: RenameArgs,
+	_state: AppState,
+) -> Result<CommandOutput, AppError> {
 	todo!()
 }
