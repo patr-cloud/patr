@@ -15,9 +15,8 @@ mod app_route;
 mod color;
 /// A module containing extension traits for various types
 mod ext_traits;
-/// Contains all the routes in enum form
+mod hooks;
 mod routes;
-/// Contains All The SideItems for the Sidebar
 mod sidebar_items;
 /// The size enum. This enum is used to specify the size of a component. We
 /// currently have:
@@ -39,6 +38,7 @@ pub use self::{
 	app_route::*,
 	color::*,
 	ext_traits::*,
+	hooks::*,
 	routes::*,
 	sidebar_items::*,
 	size::*,
