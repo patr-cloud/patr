@@ -7,25 +7,24 @@ use crate::prelude::*;
 /// A command that logs the user out of their Patr account.
 pub(super) async fn execute(args: GlobalArgs, state: AppState) -> Result<CommandOutput, AppError> {
 	if args.token.is_some() {
-		return CommandOutput {
-			text: concat!(
+		return CommandOutput::builder()
+			.text(concat!(
 				"You are logged in with an API token. You cannot log out. ",
 				"If you would like to delete your API token, you can do so at ",
 				"https://app.patr.cloud/user/api-token"
-			)
-			.to_string(),
-			json: ApiSuccessResponseBody::empty().to_json_value(),
-		}
-		.into_result();
+			))
+			.json(ApiSuccessResponseBody::empty().to_json_value())
+			.build()
+			.into_result();
 	}
 
 	let (_, refresh_token) = match state {
 		AppState::LoggedOut => {
-			return CommandOutput {
-				text: "You are already logged out.".to_string(),
-				json: ApiSuccessResponseBody::empty().to_json_value(),
-			}
-			.into_result();
+			return CommandOutput::builder()
+				.text("You are already logged out.")
+				.json(ApiSuccessResponseBody::empty().to_json_value())
+				.build()
+				.into_result();
 		}
 		AppState::LoggedIn {
 			token,
@@ -48,9 +47,9 @@ pub(super) async fn execute(args: GlobalArgs, state: AppState) -> Result<Command
 	.await?
 	.body;
 
-	CommandOutput {
-		text: "You have been logged out.".to_string(),
-		json: ApiSuccessResponseBody::empty().to_json_value(),
-	}
-	.into_result()
+	CommandOutput::builder()
+		.text("You have been logged out.")
+		.json(ApiSuccessResponseBody::empty().to_json_value())
+		.build()
+		.into_result()
 }

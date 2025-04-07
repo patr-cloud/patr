@@ -29,7 +29,6 @@ cast_sign_loss = "warn"
 missing_docs_in_private_items = "warn"
 
 [workspace.dependencies]
-anyhow = { version = "1", default-features = false }
 argon2 = { version = "0.5", default-features = false }
 axum = { version = "0.7", default-features = false }
 axum-extra = { version = "0.9", default-features = false }

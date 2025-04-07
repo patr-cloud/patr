@@ -11,7 +11,6 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-anyhow = { workspace = true, features = ["default"] }
 argon2 = { workspace = true, features = ["default"] }
 axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
 axum-extra = { workspace = true, features = ["default", "typed-routing"] }

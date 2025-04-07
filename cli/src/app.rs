@@ -10,8 +10,10 @@ use crate::prelude::*;
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct CommandOutput {
 	/// The table / text version of a command's output
+	#[builder(setter(into))]
 	pub text: String,
 	/// The JSON output of a command
+	#[builder(setter(into))]
 	pub json: Value,
 }
 

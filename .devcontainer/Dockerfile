@@ -12,3 +12,4 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --defau
 RUN /home/vscode/.cargo/bin/cargo install --locked cargo-leptos@0.2.25
 RUN /home/vscode/.cargo/bin/cargo install --locked cargo-audit
 RUN /home/vscode/.cargo/bin/cargo install --locked sqlx-cli
+RUN echo "alias patr='cargo patr'" >> /home/vscode/.bashrc

@@ -1,7 +1,13 @@
 use std::{io::IsTerminal, str::FromStr};
 
 use clap::Args;
+use inquire::{
+	Password,
+	Text,
+	validator::{ErrorMessage, Validation},
+};
 use models::{
+	ApiErrorResponseBody,
 	ApiSuccessResponseBody,
 	api::{auth::*, user::*},
 	prelude::*,
@@ -15,11 +21,11 @@ pub struct LoginArgs {
 	/// Email address or username to login with. Use `patr` as a username to
 	/// login with your API token as a password.
 	#[arg(short = 'u', long = "username", alias = "email")]
-	pub user_id: String,
+	pub user_id: Option<String>,
 	/// The password to login with. If you are using an API token, use `patr`
 	/// as the username and your API token as the password.
 	#[arg(short = 'p', long)]
-	pub password: String,
+	pub password: Option<String>,
 	/// The OTP provided by the MFA method, if any
 	#[arg(long = "mfa")]
 	pub mfa_otp: Option<String>,
@@ -72,10 +78,21 @@ pub(super) async fn execute(
 		std::process::ExitCode::FAILURE.exit_process();
 	}
 
-	let LoginResponse {
-		access_token,
-		refresh_token,
-	} = make_request(
+	let user_id = args.user_id.unwrap_or_else(|| {
+		Text::new("Username or email address:")
+			.with_help_message("The email address or username used to log into Patr")
+			.prompt()
+			.expect("Unable to read username or email address")
+	});
+	let password = args.password.unwrap_or_else(|| {
+		Password::new("Password")
+			.with_help_message("The password used to log into Patr")
+			.without_confirmation()
+			.prompt()
+			.expect("Unable to read password")
+	});
+
+	let response = make_request(
 		ApiRequest::<LoginRequest>::builder()
 			.query(())
 			.headers(LoginRequestHeaders {
@@ -83,14 +100,70 @@ pub(super) async fn execute(
 			})
 			.path(LoginPath)
 			.body(LoginRequest {
-				user_id: args.user_id,
-				password: args.password,
-				mfa_otp: args.mfa_otp,
+				user_id: user_id.clone(),
+				password: password.clone(),
+				mfa_otp: None,
 			})
 			.build(),
 	)
-	.await?
-	.body;
+	.await;
+
+	let response = if let Err(ApiErrorResponse {
+		body: ApiErrorResponseBody {
+			error: ErrorType::MfaRequired,
+			..
+		},
+		..
+	}) = response
+	{
+		let mfa_otp = args.mfa_otp.unwrap_or_else(|| {
+			Text::new("Two-factor authentication code")
+				.with_help_message("The OTP provided by the MFA method")
+				.with_validator(|value: &str| {
+					if !value
+						.chars()
+						.filter(|char| *char != '-')
+						.all(|c| c.is_ascii_digit())
+					{
+						return Ok(Validation::Invalid(ErrorMessage::Custom(
+							"The OTP must be a 6 or 7 digit number".to_string(),
+						)));
+					}
+
+					if value.chars().filter(|char| *char != '-').count() != 6 {
+						return Ok(Validation::Invalid(ErrorMessage::Custom(
+							"The OTP must be a 6 digit number".to_string(),
+						)));
+					}
+
+					Ok(Validation::Valid)
+				})
+				.prompt()
+				.expect("Unable to read MFA OTP")
+		});
+		make_request(
+			ApiRequest::<LoginRequest>::builder()
+				.query(())
+				.headers(LoginRequestHeaders {
+					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+				})
+				.path(LoginPath)
+				.body(LoginRequest {
+					user_id,
+					password,
+					mfa_otp: Some(mfa_otp),
+				})
+				.build(),
+		)
+		.await
+	} else {
+		response
+	};
+
+	let LoginResponse {
+		access_token,
+		refresh_token,
+	} = response?.body;
 
 	let token = BearerToken::from_str(&access_token)?;
 

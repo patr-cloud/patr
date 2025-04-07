@@ -10,11 +10,11 @@ pub(super) async fn execute(
 	state: AppState,
 ) -> Result<CommandOutput, AppError> {
 	if global_args.token.is_some() {
-		return CommandOutput {
-			text: "The --token flag is not supported for this command.".to_owned(),
-			json: ApiSuccessResponseBody::empty().to_json_value(),
-		}
-		.into_result();
+		return CommandOutput::builder()
+			.text("The --token flag is not supported for this command.")
+			.json(ApiSuccessResponseBody::empty().to_json_value())
+			.build()
+			.into_result();
 	}
 
 	let (access_token, _) = match state {
