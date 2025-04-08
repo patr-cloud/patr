@@ -37,5 +37,6 @@
 		"logs:3100",
 		"tracing:16686",
 		"grafana:3000"
-	]
+	],
+	"postAttachCommand": "sudo chown :docker /var/run/docker.sock || exit 0"
 }
