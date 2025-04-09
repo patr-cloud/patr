@@ -28,7 +28,6 @@ pub mod utils;
 
 /// A prelude that re-exports commonly used items.
 pub mod prelude {
-	pub use anyhow::Context;
 	pub use macros::query;
 	pub use models::{
 		ApiEndpoint,
