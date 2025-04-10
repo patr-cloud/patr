@@ -18,7 +18,7 @@ mod ext_traits;
 /// Contains all the routes in enum form
 mod routes;
 /// Contains All The SideItems for the Sidebar
-mod sidebar_items;
+// mod sidebar_items;
 /// The size enum. This enum is used to specify the size of a component. We
 /// currently have:
 /// - ExtraExtraLarge
@@ -40,7 +40,7 @@ pub use self::{
 	color::*,
 	ext_traits::*,
 	routes::*,
-	sidebar_items::*,
+	// sidebar_items::*,
 	size::*,
 	storage::*,
 	variant::*,

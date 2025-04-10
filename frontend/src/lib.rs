@@ -9,7 +9,7 @@ pub mod prelude {
 	pub use leptos_use::use_cookie;
 	pub use models::prelude::*;
 
-	pub use crate::utils::*;
+	pub use crate::{components::*, pages::*, utils::*};
 }
 
 /// The imports module. This is basically similar to a prelude, but for within
@@ -22,7 +22,6 @@ mod imports {
 	pub(crate) type ClickHandler = Rc<dyn Fn(&ev::MouseEvent)>;
 
 	pub use leptos::*;
-	pub use leptos_router::A;
 
 	pub use crate::prelude::*;
 }
@@ -33,6 +32,12 @@ mod imports {
 /// The application logic code. This contains the routers and all the routing
 /// logic
 pub mod app;
+/// The components module. This module contains all the components that are used
+/// across all applications in the Patr ecosystem.
+pub mod components;
+/// The pages module. This contains all the pages used in the application.
+/// Pages are the main views that are rendered when a route is matched.
+pub mod pages;
 /// The utils module. This contains all the utility functions and other things
 /// needed to make the application work.
 pub mod utils;
