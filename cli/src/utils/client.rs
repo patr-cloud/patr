@@ -44,29 +44,21 @@ where
 	let builder = REQUEST_CLIENT
 		.get_or_init(initialize_client)
 		.request(
-			reqwest::Method::from_str(E::METHOD.as_ref()).unwrap(),
+			E::METHOD,
 			Url::from_str(super::constants::API_BASE_URL)
-				.unwrap()
+				.expect("Failed to parse API base URL")
 				.join(path.to_string().as_str())
-				.unwrap(),
+				.expect("Failed to parse API URL"),
 		)
 		.query(&query)
-		.headers(
+		.headers({
+			let mut headers = headers.to_header_map();
+			headers.insert(
+				reqwest::header::CONTENT_TYPE,
+				reqwest::header::HeaderValue::from_static("application/json"),
+			);
 			headers
-				.to_header_map()
-				.into_iter()
-				.filter_map(|(key, value)| {
-					Some((
-						reqwest::header::HeaderName::from_str(key?.as_str()).unwrap(),
-						reqwest::header::HeaderValue::from_str(value.to_str().unwrap()).unwrap(),
-					))
-				})
-				.chain([(
-					reqwest::header::CONTENT_TYPE,
-					reqwest::header::HeaderValue::from_static("application/json"),
-				)])
-				.collect(),
-		);
+		});
 
 	let response = if body.is_null() {
 		builder
@@ -91,18 +83,7 @@ where
 	};
 
 	let status_code = response.status();
-	let Ok(headers) = E::ResponseHeaders::from_header_map(
-		&response
-			.headers()
-			.into_iter()
-			.map(|(key, value)| {
-				(
-					http::HeaderName::from_str(key.as_str()).unwrap(),
-					http::header::HeaderValue::from_str(value.to_str().unwrap()).unwrap(),
-				)
-			})
-			.collect(),
-	) else {
+	let Ok(headers) = E::ResponseHeaders::from_header_map(response.headers()) else {
 		return Err(ApiErrorResponse {
 			status_code: http::StatusCode::INTERNAL_SERVER_ERROR,
 			body: ApiErrorResponseBody {
@@ -118,12 +99,14 @@ where
 			success: _,
 			response: body,
 		})) => Ok(ApiSuccessResponse {
-			status_code: http::StatusCode::from_u16(status_code.as_u16()).unwrap(),
+			status_code: http::StatusCode::from_u16(status_code.as_u16())
+				.expect("Status code is not valid"),
 			headers,
 			body,
 		}),
 		Ok(ApiResponseBody::Error(error)) => Err(ApiErrorResponse {
-			status_code: http::StatusCode::from_u16(status_code.as_u16()).unwrap(),
+			status_code: http::StatusCode::from_u16(status_code.as_u16())
+				.expect("Status code is not valid"),
 			body: error,
 		}),
 		Err(error) => {

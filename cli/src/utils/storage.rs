@@ -74,7 +74,7 @@ impl AppState {
 			),
 		)
 		.unwrap();
-		std::fs::create_dir_all(config_dir.parent().unwrap())
+		std::fs::create_dir_all(config_dir.parent().expect("Failed to get parent directory"))
 			.map_err(|err| AppError::ConfigWriteError(ConfigError::Message(err.to_string())))?;
 		std::fs::write(
 			config_dir,

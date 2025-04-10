@@ -8,10 +8,6 @@ mod app;
 mod commands;
 /// The errors thrown by the CLI.
 mod error;
-/// Parsers for the CLI arguments. This module contains all the parsers
-/// for the CLI arguments and subcommands that can be used to interface with
-/// [`inquire`].
-mod parsers;
 /// Utilities module for helper functions, structs, and enums.
 mod utils;
 
@@ -24,8 +20,7 @@ pub mod prelude {
 		app::{CommandOutput, OutputType},
 		commands::{AppArgs, GlobalArgs, GlobalCommand},
 		error::AppError,
-		parsers::*,
-		utils::{AppState, ToJsonValue, constants, make_request},
+		utils::{AppState, ToJsonValue, TtyExpectable, constants, make_request},
 	};
 }
 
@@ -66,10 +61,11 @@ async fn main() -> std::process::ExitCode {
 						err.to_string()
 					}
 					OutputType::Json => {
-						serde_json::to_string(&error_response).unwrap()
+						serde_json::to_string(&error_response).expect("Failed to serialize error")
 					}
 					OutputType::PrettyJson => {
-						serde_json::to_string_pretty(&error_response).unwrap()
+						serde_json::to_string_pretty(&error_response)
+							.expect("Failed to serialize error")
 					}
 				}
 			)
@@ -83,10 +79,16 @@ async fn main() -> std::process::ExitCode {
 			eprintln!("{}", output.text)
 		}
 		OutputType::Json => {
-			println!("{}", serde_json::to_string(&output.json).unwrap());
+			println!(
+				"{}",
+				serde_json::to_string(&output.json).expect("Failed to serialize")
+			);
 		}
 		OutputType::PrettyJson => {
-			println!("{}", serde_json::to_string_pretty(&output.json).unwrap());
+			println!(
+				"{}",
+				serde_json::to_string_pretty(&output.json).expect("Failed to serialize")
+			);
 		}
 	}
 

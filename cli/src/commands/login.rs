@@ -82,14 +82,14 @@ pub(super) async fn execute(
 		Text::new("Username or email address:")
 			.with_help_message("The email address or username used to log into Patr")
 			.prompt()
-			.expect("Unable to read username or email address")
+			.expect_tty("Unable to read username or email address")
 	});
 	let password = args.password.unwrap_or_else(|| {
 		Password::new("Password")
 			.with_help_message("The password used to log into Patr")
 			.without_confirmation()
 			.prompt()
-			.expect("Unable to read password")
+			.expect_tty("Unable to read password")
 	});
 
 	let response = make_request(
@@ -139,7 +139,7 @@ pub(super) async fn execute(
 					Ok(Validation::Valid)
 				})
 				.prompt()
-				.expect("Unable to read MFA OTP")
+				.expect_tty("Unable to read MFA OTP")
 		});
 		make_request(
 			ApiRequest::<LoginRequest>::builder()

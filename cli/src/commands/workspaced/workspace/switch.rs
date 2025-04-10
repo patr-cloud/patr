@@ -7,10 +7,11 @@ use crate::prelude::*;
 #[derive(Debug, Clone, Args)]
 pub struct SwitchArgs {
 	/// Name of the workspace to switch to
-	#[arg(short = 'n', long = "name")]
+	#[arg()]
 	pub name: String,
 }
 
+/// The command to switch between workspace contexts
 pub(super) async fn execute(
 	_: GlobalArgs,
 	args: SwitchArgs,

@@ -1,10 +1,13 @@
 /// The client used to make requests to the Patr API
 mod client;
+/// The module that contains the extension traits that are used to extend
+/// functionalities to help make it easier to work with the CLI code
+mod ext_trait;
 /// The storage module, used to store data between CLI sessions such as the
 /// user's API token or access token + refresh token
 mod storage;
 
-pub use self::{client::*, storage::*};
+pub use self::{client::*, ext_trait::*, storage::*};
 
 /// Constants used in the CLI
 pub mod constants {

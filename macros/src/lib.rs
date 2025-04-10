@@ -1,5 +1,4 @@
 #![forbid(unsafe_code)]
-#![warn(missing_docs, clippy::all)]
 
 //! This crate contains the macros used in this project. It is not intended to
 //! be used outside of this project. However, this crate is intended to be a

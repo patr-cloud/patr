@@ -100,7 +100,7 @@ impl Header for TotalCountHeader {
 		E: Extend<HeaderValue>,
 	{
 		values.extend(std::iter::once(
-			HeaderValue::from_str(&self.0.to_string()).unwrap(),
+			HeaderValue::from_str(&self.0.to_string()).expect("HeaderValue should be valid UTF-8"),
 		))
 	}
 }

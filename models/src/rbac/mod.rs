@@ -806,9 +806,9 @@ impl WorkspacePermission {
 	name(ResourcePermissionTypeDiscriminant),
 	derive(strum::Display),
 	strum(serialize_all = "snake_case"),
-	cfg_attr(not(target_arch = "wasm32"), derive(sqlx::Type)),
 	cfg_attr(
 		not(target_arch = "wasm32"),
+		derive(sqlx::Type),
 		sqlx(type_name = "PERMISSION_TYPE", rename_all = "snake_case")
 	)
 )]

@@ -36,7 +36,7 @@ where
 	T: Serialize + DeserializeOwned,
 {
 	fn into_axum_response(self) -> Response {
-		match serde_json::to_value(self).unwrap() {
+		match serde_json::to_value(self).expect("Failed to serialize response") {
 			serde_json::Value::Null => Json(ApiSuccessResponseBody {
 				success: True,
 				response: (),

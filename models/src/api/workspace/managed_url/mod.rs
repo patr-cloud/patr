@@ -70,9 +70,9 @@ pub struct ManagedUrl {
 	name(ManagedUrlTypeDiscriminant),
 	derive(strum::Display, EnumString),
 	strum(serialize_all = "snake_case"),
-	cfg_attr(not(target_arch = "wasm32"), derive(sqlx::Type)),
 	cfg_attr(
 		not(target_arch = "wasm32"),
+		derive(sqlx::Type),
 		sqlx(type_name = "MANAGED_URL_TYPE", rename_all = "snake_case")
 	)
 )]

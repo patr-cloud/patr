@@ -1,4 +1,5 @@
 use clap::Args;
+use inquire::Text;
 use models::{ApiSuccessResponseBody, api::workspace::*, prelude::*};
 
 use crate::prelude::*;
@@ -8,9 +9,10 @@ use crate::prelude::*;
 pub struct CreateArgs {
 	/// Name of the workspace to be created
 	#[arg(short = 'n', long = "name")]
-	pub name: String,
+	pub name: Option<String>,
 }
 
+/// The command to create a new workspace
 pub(super) async fn execute(
 	_: GlobalArgs,
 	args: CreateArgs,
@@ -24,13 +26,19 @@ pub(super) async fn execute(
 	else {
 		return Err(AppError::NotLoggedIn);
 	};
+
+	// Check if the workspace name is provided
+	let name = args.name.unwrap_or_else(|| {
+		Text::new("Enter the name of the workspace:")
+			.prompt()
+			.expect_tty("Unable to read input")
+	});
+
 	let CreateWorkspaceResponse { id } = make_request(
 		ApiRequest::<CreateWorkspaceRequest>::builder()
 			.path(CreateWorkspacePath)
 			.query(())
-			.body(CreateWorkspaceRequest {
-				name: args.name.clone(),
-			})
+			.body(CreateWorkspaceRequest { name: name.clone() })
 			.headers(CreateWorkspaceRequestHeaders {
 				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 				authorization: token,
@@ -40,9 +48,9 @@ pub(super) async fn execute(
 	.await?
 	.body;
 
-	CommandOutput {
-		text: format!("Workspace `{}` created with ID `{}`", args.name, id.id),
-		json: ApiSuccessResponseBody::new(CreateWorkspaceResponse { id }).to_json_value(),
-	}
-	.into_result()
+	CommandOutput::builder()
+		.text(format!("Workspace `{}` created with ID `{}`", name, id.id))
+		.json(ApiSuccessResponseBody::new(CreateWorkspaceResponse { id }).to_json_value())
+		.build()
+		.into_result()
 }

@@ -3,6 +3,7 @@ use models::api::user::*;
 
 use crate::prelude::*;
 
+/// The command to list all workspaces that the user is a part of
 pub(super) async fn execute(
 	_global_args: GlobalArgs,
 	state: AppState,
