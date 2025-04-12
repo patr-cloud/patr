@@ -1,7 +1,6 @@
 use clap::Subcommand;
 
-use self::workspace::WorkspaceCommand;
-use super::GlobalArgs;
+use self::{infrastructure::InfrastructureCommand, workspace::WorkspaceCommand};
 use crate::prelude::*;
 
 /// All infrastructure related commands (e.g. deployments, databases, etc.)
@@ -16,8 +15,9 @@ pub enum WorkspacedCommand {
 	/// All commands that can be executed on a workspace
 	#[command(flatten)]
 	WorkspaceCommands(WorkspaceCommand),
-	// #[command(flatten)]
-	// InfrastructureCommands(InfrastructureCommands),
+	/// All infrastructure related commands (e.g. deployments, databases, etc.)
+	#[command(flatten)]
+	InfrastructureCommands(InfrastructureCommand),
 	// #[command(flatten)]
 	// DomainConfigurationCommands(DomainConfigurationCommands),
 }
@@ -31,10 +31,10 @@ pub async fn execute(
 	match command {
 		WorkspacedCommand::WorkspaceCommands(commands) => {
 			workspace::execute(commands, global_args, state).await
-		} /* Self::InfrastructureCommands(commands) => {
-		   * 	commands.execute(global_args, writer).await
-		   * }
-		   * Self::DomainConfigurationCommands(commands) => {
+		}
+		WorkspacedCommand::InfrastructureCommands(commands) => {
+			infrastructure::execute(commands, global_args, state).await
+		} /* Self::DomainConfigurationCommands(commands) => {
 		   * 	commands.execute(global_args, writer).await
 		   * } */
 	}

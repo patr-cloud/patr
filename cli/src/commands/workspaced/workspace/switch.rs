@@ -7,7 +7,7 @@ use crate::prelude::*;
 #[derive(Debug, Clone, Args)]
 pub struct SwitchArgs {
 	/// Name of the workspace to switch to
-	#[arg()]
+	#[arg(short = 'w', alias = "workspace")]
 	pub name: String,
 }
 

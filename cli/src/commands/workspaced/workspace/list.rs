@@ -59,12 +59,14 @@ pub(super) async fn execute(
 		]);
 	}
 
-	CommandOutput {
-		text: Table::new()
-			.set_header(["ID", "Name", "Super Admin"])
-			.add_rows(formatted_workspaces)
-			.to_string(),
-		json: ListUserWorkspacesResponse { workspaces }.to_json_value(),
-	}
-	.into_result()
+	CommandOutput::builder()
+		.text(
+			Table::new()
+				.set_header(["ID", "Name", "Super Admin"])
+				.add_rows(formatted_workspaces)
+				.to_string(),
+		)
+		.json(ListUserWorkspacesResponse { workspaces }.to_json_value())
+		.build()
+		.into_result()
 }

@@ -11,6 +11,9 @@ pub enum AppError {
 	/// The user is not logged in.
 	#[error("user is not logged in")]
 	NotLoggedIn,
+	/// The user is not logged in to a workspace.
+	#[error("user is not logged in to a workspace")]
+	NoWorkspace,
 	/// An upstream error that occurred while making a request to the API.
 	#[error("API error: {0}")]
 	ApiError(ErrorType),

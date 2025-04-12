@@ -1,7 +1,6 @@
 use comfy_table::Table;
 use models::{ApiSuccessResponseBody, api::user::*, prelude::*};
 
-use super::GlobalArgs;
 use crate::prelude::*;
 
 /// A command that gets information about the current logged in user.

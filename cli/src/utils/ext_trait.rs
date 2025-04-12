@@ -30,3 +30,17 @@ impl<T> TtyExpectable<T> for Result<T, InquireError> {
 		}
 	}
 }
+
+/// Trait to extend the `String` type with helper methods
+pub trait StringExt {
+	/// Returns a `String` if the string is not empty, otherwise returns `None`.
+	/// This is useful for converting a string to an `Option<String>` based on
+	/// its contents.
+	fn some_if_not_empty(self) -> Option<String>;
+}
+
+impl StringExt for String {
+	fn some_if_not_empty(self) -> Option<String> {
+		if self.is_empty() { None } else { Some(self) }
+	}
+}

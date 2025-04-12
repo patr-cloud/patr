@@ -39,6 +39,15 @@ pub struct GlobalArgs {
 	/// credentials
 	#[arg(short = 't', long = "token", env = "PATR_TOKEN")]
 	pub token: Option<String>,
+	/// The workspace to use for the command. If not specified, the current
+	/// workspace will be used.
+	#[arg(
+		short = 'w',
+		long = "workspace",
+		value_name = "WORKSPACE-ID-OR-NAME",
+		env = "PATR_WORKSPACE"
+	)]
+	pub workspace: Option<String>,
 }
 
 /// A list of all the commands that can be called on the CLI.

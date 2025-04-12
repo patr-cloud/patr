@@ -1,3 +1,5 @@
+/// The module that contains the authentication logic for the CLI
+mod authenticator;
 /// The client used to make requests to the Patr API
 mod client;
 /// The module that contains the extension traits that are used to extend
@@ -7,7 +9,7 @@ mod ext_trait;
 /// user's API token or access token + refresh token
 mod storage;
 
-pub use self::{client::*, ext_trait::*, storage::*};
+pub use self::{authenticator::*, client::*, ext_trait::*, storage::*};
 
 /// Constants used in the CLI
 pub mod constants {

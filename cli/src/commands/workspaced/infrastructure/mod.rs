@@ -1,17 +1,37 @@
 use clap::Subcommand;
 
-/// A list of all the commands that can be called on a workspace.
+use self::deployment::DeploymentCommand;
+use crate::prelude::*;
+
+/// All deployment related commands (e.g. list, create, etc.)
+mod deployment;
+
+/// All infrastructure related commands (e.g. deployments, databases, etc.)
 #[derive(Debug, Clone, Subcommand)]
 #[command(rename_all = "kebab-case")]
-pub enum InfrastructureCommands {
+pub enum InfrastructureCommand {
+	/// All deployment related commands
+	#[command(flatten)]
+	DeploymentCommand(DeploymentCommand),
 	// #[command(flatten)]
-	// DeploymentCommands(DeploymentCommands),
+	// DatabaseCommand(DatabaseCommand),
 	// #[command(flatten)]
-	// DatabaseCommands(DatabaseCommands),
+	// ContainerRegistryCommand(ContainerRegistryCommand),
 	// #[command(flatten)]
-	// ContainerRegistryCommands(ContainerRegistryCommands),
+	// StaticSiteCommand(StaticSiteCommand),
 	// #[command(flatten)]
-	// StaticSiteCommands(StaticSiteCommands),
-	// #[command(flatten)]
-	// SecretCommands(SecretCommands),
+	// SecretCommand(SecretCommand),
+}
+
+/// All commands that are executed on workspace related stuff
+pub async fn execute(
+	command: InfrastructureCommand,
+	global_args: GlobalArgs,
+	state: AppState,
+) -> Result<CommandOutput, AppError> {
+	match command {
+		InfrastructureCommand::DeploymentCommand(command) => {
+			deployment::execute(command, global_args, state).await
+		}
+	}
 }
