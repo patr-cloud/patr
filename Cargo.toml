@@ -37,7 +37,7 @@ base32 = { version = "0.5", default-features = false }
 base64 = { version = "0.22", default-features = false }
 bollard = { version = "0.18", default-features = false }
 clap = { version = "4", default-features = false }
-codee = { version = "0.2", default-features = false }
+codee = { version = "0.3", default-features = false }
 comfy-table = { version = "7", default-features = false }
 common = { path = "runners/common", default-features = false }
 config = { version = "0.15", default-features = false }

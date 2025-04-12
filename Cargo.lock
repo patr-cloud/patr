@@ -758,17 +758,6 @@ dependencies = [
 
 [[package]]
 name = "codee"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d3ad3122b0001c7f140cf4d605ef9a9e2c24d96ab0b4fb4347b76de2425f445"
-dependencies = [
- "serde",
- "serde_json",
- "thiserror 1.0.69",
-]
-
-[[package]]
-name = "codee"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f18d705321923b1a9358e3fc3c57c3b50171196827fc7f5f10b053242aca627"
@@ -1532,7 +1521,7 @@ version = "0.18.0"
 dependencies = [
  "axum",
  "axum-extra",
- "codee 0.2.0",
+ "codee",
  "console_error_panic_hook",
  "convert_case 0.8.0",
  "cookie",
@@ -2687,7 +2676,7 @@ checksum = "e612389629007497d1e90deecf5bddd790e59e32358546fa7beaf88a68d2067b"
 dependencies = [
  "cfg-if",
  "chrono",
- "codee 0.3.0",
+ "codee",
  "cookie",
  "default-struct-builder",
  "http",
@@ -2873,7 +2862,7 @@ checksum = "66985242812ec95e224fb48effe651ba02728beca92c461a9464c811a71aab11"
 dependencies = [
  "any_spawner",
  "base64 0.22.1",
- "codee 0.3.0",
+ "codee",
  "futures",
  "hydration_context",
  "or_poisoned",
@@ -3116,6 +3105,7 @@ dependencies = [
  "axum-typed-websockets",
  "base32",
  "base64 0.22.1",
+ "getrandom 0.2.15",
  "getrandom 0.3.2",
  "headers",
  "hex",

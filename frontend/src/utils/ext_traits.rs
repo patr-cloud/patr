@@ -25,23 +25,23 @@ impl StringExt for &str {
 /// An extention trait that maps a Signal from one type to another
 pub trait SignalMapExt<T>
 where
-	T: Clone,
+	T: Clone + Sync + Send + 'static,
 {
 	/// Maps a signal from one type to another
 	fn map<U, F>(self, f: F) -> Signal<U>
 	where
-		U: Clone,
-		F: Fn(T) -> U + 'static;
+		U: Clone + Send + Sync + 'static,
+		F: Send + Sync + 'static + Fn(T) -> U;
 }
 
 impl<T> SignalMapExt<T> for Signal<T>
 where
-	T: Clone,
+	T: Clone + Sync + Send + 'static,
 {
 	fn map<U, F>(self, f: F) -> Signal<U>
 	where
-		U: Clone,
-		F: Fn(T) -> U + 'static,
+		U: Clone + Send + Sync + 'static,
+		F: Send + Sync + 'static + Fn(T) -> U,
 	{
 		Signal::derive(move || f(self.get()))
 	}
