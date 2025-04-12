@@ -147,8 +147,7 @@ site-root = "target/dashboard"
 # The site-root relative folder where all compiled output (JS, WASM and CSS) is written
 site-pkg-dir = "pkg"
 style-file = "frontend/assets/styles/index.scss"
-tailwind-config-file = "config/tailwind.config.js"
-tailwind-input-file = "frontend/assets/styles/index.scss"
+tailwind-input-file = "frontend/assets/styles/global.css"
 # Assets source dir. All files found here will be copied and synchronized to site-root.
 # The assets-dir cannot have a sub directory with the same name/path as site-pkg-dir.
 assets-dir = "frontend/assets"
@@ -170,8 +169,7 @@ site-root = "target/docker-runner"
 # The site-root relative folder where all compiled output (JS, WASM and CSS) is written
 site-pkg-dir = "pkg"
 style-file = "frontend/assets/styles/index.scss"
-tailwind-config-file = "config/tailwind.config.js"
-tailwind-input-file = "frontend/assets/styles/index.scss"
+tailwind-input-file = "frontend/assets/styles/global.css"
 # Assets source dir. All files found here will be copied and synchronized to site-root.
 # The assets-dir cannot have a sub directory with the same name/path as site-pkg-dir.
 assets-dir = "frontend/assets"

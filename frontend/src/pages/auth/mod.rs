@@ -1,6 +1,3 @@
-use crate::prelude::*;
+mod login;
 
-#[component]
-pub fn LoginForm() -> impl IntoView {
-	view! {<div></div>}
-}
+pub use self::login::*;

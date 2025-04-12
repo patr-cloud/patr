@@ -1,4 +1,7 @@
-use std::fmt::{self, Display, Formatter};
+use std::{
+	fmt::{self, Display, Formatter},
+	string::ToString,
+};
 
 /// The Color variants supported by the app.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
@@ -19,7 +22,7 @@ impl Display for SecondaryColorVariant {
 }
 
 impl SecondaryColorVariant {
-	/// Returns the css class name correspoding to the variant
+	/// Returns the css class name corresponding to the variant
 	pub const fn as_css_name(self) -> &'static str {
 		match self {
 			Self::Light => "light",
@@ -37,6 +40,18 @@ pub enum Variant {
 	Button,
 	/// A Link. To be used with the Link Component
 	Link,
+}
+
+/// Button Type
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, strum::Display)]
+pub enum ButtonType {
+	/// A Normal Button.
+	#[default]
+	Button,
+	/// Reset All From Values
+	Reset,
+	/// Submit Form
+	Submit,
 }
 
 /// The Type of Link to use. A contained link is a button with a background,

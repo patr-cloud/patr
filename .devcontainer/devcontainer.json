@@ -15,6 +15,9 @@
         "files.watcherExclude": {
           "**/target/**": true,
           "./devcontainer/volume/**": true
+        },
+        "tailwindCSS.includeLanguages": {
+          "rust": "html"
         }
       },
       "extensions": [
@@ -26,7 +29,8 @@
         "GitHub.vscode-pull-request-github",
         "naumovs.color-highlight",
         "streetsidesoftware.code-spell-checker",
-        "patr-cloud.patr-theme"
+        "patr-cloud.patr-theme",
+        "bradlc.vscode-tailwindcss"
       ]
     }
   },
@@ -37,5 +41,6 @@
     "logs:3100",
     "tracing:16686",
     "grafana:3000"
-  ]
+  ],
+  "postAttachCommand": "sudo chown :docker /var/run/docker.sock || exit 0"
 }

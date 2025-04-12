@@ -30,6 +30,7 @@
         "optionalable",
         "otlp",
         "padawan",
+        "Patr",
         "PKCE",
         "preprocess",
         "Preprocessable",
@@ -43,6 +44,7 @@
         "Stylesheet",
         "TIMESTAMPTZ",
         "tungstenite",
+        "Unsync",
         "wayy",
         "Workspaced"
     ],

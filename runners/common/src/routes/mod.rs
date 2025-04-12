@@ -7,8 +7,8 @@ mod user;
 mod workspace;
 
 use axum::Router;
-use leptos::*;
-use leptos_axum::LeptosRoutes;
+use leptos::prelude::*;
+use leptos_axum::{LeptosRoutes, generate_route_list};
 use tokio::fs;
 use tower_http::services::ServeFile;
 
@@ -20,14 +20,13 @@ pub async fn setup_routes<E>(state: &AppState<E>) -> Router
 where
 	E: RunnerExecutor + Send + 'static,
 {
-	let config = leptos::get_configuration(
+	let config = get_configuration(
 		if option_env!("LEPTOS_OUTPUT_NAME").is_some() {
 			None
 		} else {
 			Some(concat!(env!("CARGO_MANIFEST_DIR"), "/../Cargo.toml"))
 		},
 	)
-	.await
 	.expect("failed to get configuration");
 
 	read_files(&config.leptos_options.site_root)
@@ -35,14 +34,20 @@ where
 		.into_iter()
 		.fold(Router::new(), |router, file| {
 			router.route_service(
-				file.trim_start_matches(config.leptos_options.site_root.as_str()),
+				file.trim_start_matches(config.leptos_options.site_root.as_ref()),
 				ServeFile::new(file.as_str()),
 			)
 		})
 		.leptos_routes(
 			&config.leptos_options,
-			leptos_axum::generate_route_list(frontend::render),
-			frontend::render,
+			{
+				let leptos_options = config.leptos_options.clone();
+				leptos_axum::generate_route_list(move || frontend::render(leptos_options.clone()))
+			},
+			{
+				let leptos_options = config.leptos_options.clone();
+				move || frontend::render(leptos_options.clone())
+			},
 		)
 		.with_state(config.leptos_options)
 		.with_state(state.clone())

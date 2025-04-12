@@ -1,4 +1,6 @@
-use crate::imports::*;
+use leptos::ev::Event;
+
+use crate::prelude::*;
 
 /// The Type of the input
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -26,7 +28,7 @@ pub enum InputType {
 	/// An input which allows for the uploading of a file. Will be rendered as
 	/// a button with a file picker dialog.
 	File,
-	/// A Callender like date picker
+	/// A Calender like date picker
 	Date,
 	/// Hidden input, doesn't render on the dom, but it's name field
 	/// will still be accessed by the _Ancestor Form Element_.
@@ -51,64 +53,93 @@ impl InputType {
 	}
 }
 
-// #[component]
-// pub fn Input(
-// 	/// Name of the form control. Submitted with the form as part of a
-// 	/// name/value pair
-// 	#[prop(into, optional)]
-// 	name: Signal<String>,
-// 	/// The type of input
-// 	#[prop(into, optional, default = InputType::Text.into())]
-// 	r#type: InputType,
-// 	/// Input event handler
-// 	// #[prop(optional, into, default = Callback::new(|(_)| {}))]
-// 	// on_input: Callback<(MouseEvent,)>,
-// 	/// Additional class names to apply to the outer div, if any.
-// 	#[prop(into, optional)]
-// 	class: String,
-// 	/// Specifies whether the form field needs to be filled in before it can
-// 	/// be submitted, doesn't use javascript, defaults to false
-// 	#[prop(into, optional, default = false.into())]
-// 	required: bool,
-// 	/// The ID of the input.
-// 	#[prop(into, optional)]
-// 	id: Signal<String>,
-// 	/// The form id of the input.
-// 	#[prop(into, optional, default = None.into())]
-// 	form: Signal<Option<String>>,
-// 	/// Placeholder text for the input.
-// 	#[prop(into, optional)]
-// 	placeholder: Signal<String>,
-// 	/// Whether the input is disabled.
-// 	#[prop(into, optional, default = false.into())]
-// 	disabled: Signal<bool>,
-// 	/// The Color Variant of the input
-// 	#[prop(into, optional)]
-// 	variant: Signal<SecondaryColorVariant>,
-// 	/// Label for the input, an empty string doesn't render the label,
-// 	/// defaults to empty string
-// 	#[prop(into, optional, default = "".into())]
-// 	label: Signal<String>,
-// 	/// The Initial Value of the input
-// 	#[prop(into, optional)]
-// 	value: Signal<String>,
-// 	/// The End Icon if any
-// 	#[prop(into, optional)]
-// 	end_icon: Signal<Option<IconProps>>,
-// 	/// The End Text, if any
-// 	#[prop(into, optional)]
-// 	end_text: Signal<Option<String>>,
-// 	/// The Start Icon if any
-// 	#[prop(into, optional)]
-// 	start_icon: Signal<Option<IconProps>>,
-// 	/// The Start Text, if any
-// 	#[prop(into, optional)]
-// 	start_text: Signal<Option<String>>,
-// ) -> impl IntoView {
-// 	view! {
-// 		<div>
-// 			<input type={r#type.get().as_html_attribute()}/>
-// 			{move || end_text.get()}
-// 		</div>
-// 	}
-// }
+#[component]
+pub fn Input(
+	/// Name of the form control. Submitted with the form as part of a
+	/// name/value pair
+	#[prop(into, optional)]
+	name: Signal<String>,
+	/// The type of input
+	#[prop(into, optional, default = InputType::Text.into())]
+	r#type: Signal<InputType>,
+	/// Input event handler
+	#[prop(optional, into, default = Callback::new(|_| {}))]
+	on_input: Callback<Event>,
+	/// Additional class names to apply to the outer div, if any.
+	#[prop(into, optional)]
+	class: String,
+	/// Specifies whether the form field needs to be filled in before it can
+	/// be submitted, doesn't use javascript, defaults to false
+	#[prop(into, optional, default = false.into())]
+	required: bool,
+	/// The ID of the input.
+	#[prop(into, optional)]
+	id: Signal<String>,
+	/// The form id of the input.
+	#[prop(into, optional, default = None.into())]
+	form: Signal<Option<String>>,
+	/// Placeholder text for the input.
+	#[prop(into, optional)]
+	placeholder: Signal<String>,
+	/// Whether the input is disabled.
+	#[prop(into, optional, default = false.into())]
+	disabled: Signal<bool>,
+	/// The Color Variant of the input
+	#[prop(into, optional)]
+	variant: Signal<SecondaryColorVariant>,
+	/// Label for the input, an empty string doesn't render the label,
+	/// defaults to empty string
+	#[prop(into, optional, default = "".into())]
+	label: Signal<String>,
+	/// The Initial Value of the input
+	#[prop(into, optional)]
+	value: Signal<String>,
+	/// The End Icon if any
+	#[prop(into, optional)]
+	end_icon: ViewFn,
+	/// The End Text, if any
+	#[prop(into, optional)]
+	end_text: Signal<Option<String>>,
+	/// The Start Icon if any
+	#[prop(into, optional)]
+	start_icon: ViewFn,
+	/// The Start Text, if any
+	#[prop(into, optional)]
+	start_text: Signal<Option<String>>,
+) -> impl IntoView {
+	let class = move || {
+		format!(
+			"input flex justify-start items-center row-card bg-secondary-{} {}",
+			variant.get().as_css_name(),
+			class
+		)
+	};
+
+	view! {
+		<div class={class}>
+			<Show when={
+				move || label.with(|lbl| !lbl.is_empty())
+			}>
+				<label>{move || label.get()}</label>
+			</Show>
+			{move || start_text.get()}
+			{move || start_icon.run()}
+			<input
+				form={move || form.get()}
+				id={move || id.get()}
+				class="mx-md overflow-hidden text-ellipsis"
+				type={move || r#type.read().as_html_attribute()}
+				name={move || name.get()}
+				placeholder={move || placeholder.get()}
+				disabled={move || disabled.get()}
+				required={required}
+				on:input={move |e| {
+					on_input.run(e)
+				}}
+				prop:value={value}
+			/>
+			{move || end_text.get()}
+			{move || end_icon.run()}
+		</div>
+	}
+}
