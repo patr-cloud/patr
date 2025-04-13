@@ -4,6 +4,8 @@ use crate::prelude::*;
 #[component]
 pub fn App() -> impl IntoView {
 	view! {
-		<LoginPage />
+		<TempPageContainer>
+			<DeploymentDashboard />
+		</TempPageContainer>
 	}
 }
