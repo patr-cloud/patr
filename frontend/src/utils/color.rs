@@ -1,7 +1,4 @@
-use std::{
-	fmt::{self, Display, Formatter},
-	string::ToString,
-};
+use std::fmt::{self, Display, Formatter};
 
 /// All colors supported by CSS class names in the app.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]

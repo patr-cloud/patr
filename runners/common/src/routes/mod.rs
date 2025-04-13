@@ -8,7 +8,7 @@ mod workspace;
 
 use axum::Router;
 use leptos::prelude::*;
-use leptos_axum::{LeptosRoutes, generate_route_list};
+use leptos_axum::LeptosRoutes;
 use tokio::fs;
 use tower_http::services::ServeFile;
 

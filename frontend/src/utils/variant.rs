@@ -1,7 +1,4 @@
-use std::{
-	fmt::{self, Display, Formatter},
-	string::ToString,
-};
+use std::fmt::{self, Display, Formatter};
 
 /// The Color variants supported by the app.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
