@@ -10,8 +10,8 @@ pub fn PasswordInput(
 	#[prop(into, optional)]
 	name: Signal<String>,
 	/// Input event handler
-	#[prop(optional, into, default = Callback::new(|_| {}))]
-	on_input: Callback<Event>,
+	#[prop(optional, into, default = UnsyncCallback::new(|_| {}))]
+	on_input: UnsyncCallback<(Event,)>,
 	/// Additional class names to apply to the outer div, if any.
 	#[prop(into, optional)]
 	class: String,
@@ -63,6 +63,7 @@ pub fn PasswordInput(
 	view! {
 		<Input
 			name={name}
+			label={label}
 			class={class}
 			on_input={on_input}
 			required={required}

@@ -18,6 +18,9 @@ pub fn Link(
 	/// Color of the link
 	#[prop(into, optional)]
 	color: Signal<Color>,
+	/// The Target of the Link
+	#[prop(optional)]
+	target: LinkTarget,
 ) -> impl IntoView {
 	let class = move || {
 		format!(
@@ -32,6 +35,6 @@ pub fn Link(
 	};
 
 	view! {
-		<a class={class} href={to}>{children()}</a>
+		<a target={target.to_string()} class={class} href={to}>{children()}</a>
 	}
 }

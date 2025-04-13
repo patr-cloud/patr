@@ -63,8 +63,8 @@ pub fn Input(
 	#[prop(into, optional, default = InputType::Text.into())]
 	r#type: Signal<InputType>,
 	/// Input event handler
-	#[prop(optional, into, default = Callback::new(|_| {}))]
-	on_input: Callback<Event>,
+	#[prop(optional, into, default = UnsyncCallback::new(|_| {}))]
+	on_input: UnsyncCallback<(Event,)>,
 	/// Additional class names to apply to the outer div, if any.
 	#[prop(into, optional)]
 	class: String,
@@ -134,7 +134,7 @@ pub fn Input(
 				disabled={move || disabled.get()}
 				required={required}
 				on:input={move |e| {
-					on_input.run(e)
+					on_input.run((e,))
 				}}
 				prop:value={value}
 			/>

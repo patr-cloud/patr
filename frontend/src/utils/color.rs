@@ -1,4 +1,7 @@
-use std::fmt::{self, Display, Formatter};
+use std::{
+	fmt::{self, Display, Formatter},
+	string::ToString,
+};
 
 /// All colors supported by CSS class names in the app.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
@@ -81,4 +84,29 @@ impl TextColor {
 			Color::Disabled => "text-disabled",
 		}
 	}
+}
+
+/// All Tailwind variants that take colors
+#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::Display)]
+#[strum(serialize_all = "kebab-case")]
+pub enum TailwindClass {
+	/// Border
+	Border,
+	/// Background
+	#[strum(serialize = "bg")]
+	Background,
+	/// Text Color
+	Text,
+	/// placeholder
+	Placeholder,
+	/// Shadow Ring
+	Ring,
+	/// Shadow
+	Shadow,
+	/// Accent color, like when you highlight stuff
+	Accent,
+	/// Decoration Color, for underline etc.
+	Decoration,
+	/// Caret Color
+	Caret,
 }
