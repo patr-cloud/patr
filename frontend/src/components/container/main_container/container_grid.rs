@@ -13,7 +13,8 @@ pub enum AutoSizing {
 	Fit,
 }
 
-/// The Body of the dashboard. Wraps around the main content of the page.
+/// A Grid container, used in the Dashboard to show multiple items in a grid,
+/// such as the Deployments Dashboard
 #[component]
 pub fn ContainerGrid(
 	/// The Children of the component

@@ -9,6 +9,7 @@ pub struct TabItem {
 	pub path: String,
 }
 
+/// Various Tabs to navigate to different pages in the same group
 #[component]
 pub fn Tabs(
 	/// Additional class names to apply to the external div

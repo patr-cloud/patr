@@ -1,3 +1,6 @@
+/// The Deployment Components, such as the Deployment Card, inputs, etc.
+mod components;
+/// The Deployment Dashboard Page
 mod dashboard;
 
 pub use self::dashboard::*;

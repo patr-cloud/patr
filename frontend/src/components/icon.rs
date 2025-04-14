@@ -882,7 +882,9 @@ impl Display for IconType {
 	}
 }
 
-/// The Icon Component
+/// The Icon Component, All the Icons are from feather icons, there's a huge
+/// icons sprite in [assets](frontend/assets/icons/sprite/feather-sprite.svg),
+/// and the component gets the icon from the sprite
 #[component]
 pub fn Icon(
 	/// The IconType of the Icon

@@ -53,6 +53,7 @@ impl InputType {
 	}
 }
 
+/// Wraps around HTML input, with additional props for styling and such
 #[component]
 pub fn Input(
 	/// Name of the form control. Submitted with the form as part of a

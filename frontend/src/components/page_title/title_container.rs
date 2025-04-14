@@ -14,6 +14,7 @@ pub struct PageTitleItem {
 	pub variant: PageTitleVariant,
 }
 
+/// Encapsulates the Title and Description of the Page
 #[component]
 pub fn PageTitleContainer(
 	/// Page Title Items

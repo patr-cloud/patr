@@ -1,7 +1,8 @@
-mod components;
+/// The Deployment Dashboard Head
 mod head;
 
-use self::{components::*, head::*};
+use self::head::*;
+use super::components::*;
 use crate::prelude::*;
 
 /// The Deployment Dashboard

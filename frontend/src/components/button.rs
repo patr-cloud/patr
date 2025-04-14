@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+/// The Button Component, similar to the HTML Button, just with a few extra
+/// props to match patr's theme
 #[component]
 pub fn Button(
 	/// Button Variant i.e. a button or a Link,

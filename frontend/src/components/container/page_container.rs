@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-/// A Single Page container, typically used for LoggedOut set of Routes
+/// A Single Page container, typically will wrap around all pages
 #[component]
 pub fn PageContainer(
 	/// Additional Class Names to apply to the outer div, if any

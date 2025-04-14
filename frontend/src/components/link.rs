@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
-/// Link component to navigate to other pages
+/// Link component to navigate to other pages, wraps around HTML a tag, with
+/// additional props for styling and such
 #[component]
 pub fn Link(
 	/// The Children of the Link, usually a \<p\> tag or simply

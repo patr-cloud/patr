@@ -41,8 +41,8 @@ pub enum PageTitleIconPosition {
 	Start,
 }
 
-#[component]
 /// Specifies each individual page title,
+#[component]
 pub fn PageTitle(
 	/// Specifies where to put the arrow.
 	#[prop(into, optional)]
