@@ -166,7 +166,6 @@ pub struct CloudflareConfig {
 	/// The API key to use to connect to Cloudflare
 	pub api_key: String,
 	/// The account ID to use to connect to Cloudflare
-	#[serde(alias = "accountid")]
 	pub account_id: String,
 }
 
