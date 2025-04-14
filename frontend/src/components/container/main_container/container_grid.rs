@@ -37,7 +37,7 @@ pub fn ContainerGrid(
 	let style = move || {
 		format!(
 			"grid-template-columns: repeat({}, minmax({}, {}));",
-			auto_sizing.to_string(),
+			auto_sizing,
 			min_width.get(),
 			max_width.get()
 		)

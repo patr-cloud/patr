@@ -1,3 +1,6 @@
+/// The client module. This module is used to communicate with the server
+/// and fetch data from the server. It is used to make API calls for the
+/// backend.
 #[cfg(not(target_arch = "wasm32"))]
 mod client;
 
@@ -29,6 +32,8 @@ mod routes;
 /// - ExtraSmall
 /// - ExtraExtraSmall
 mod size;
+/// The storage module. This module is used to store the state of the app in the
+/// local storage.
 mod storage;
 /// The variant enum. This enum is used to specify the variant of a component
 /// and the color variant.
