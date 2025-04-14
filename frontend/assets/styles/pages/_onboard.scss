@@ -13,7 +13,7 @@
 
   box-shadow: $shadow-medium;
   border-radius: map.get($border-radii, "sm");
-  background-color: map.get($background-colors, "secondary-dark");
+  background-color: $secondary-dark;
 
   &.feedback-modal {
     padding: 2rem 2.5rem;

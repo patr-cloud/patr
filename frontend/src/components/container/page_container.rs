@@ -18,7 +18,7 @@ pub fn PageContainer(
 
 	view! {
 		<div class={class}>
-			<main class="flex flex-col items-center justify-center w-full px-lg">{children()}</main>
+			<main class="flex flex-col items-center justify-center w-full px-lg h-full">{children()}</main>
 		</div>
 	}
 }

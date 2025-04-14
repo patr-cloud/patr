@@ -13,7 +13,12 @@ pub fn PageDescription(
 	#[prop(into, optional)]
 	doc_link: Signal<Option<String>>,
 ) -> impl IntoView {
-	let class = move || format!("flex justify-start fr-fs-bl txt-grey mx-md {}", class.get());
+	let class = move || {
+		format!(
+			"flex justify-start items-baseline fr-fs-bl text-grey mx-md text-sm {}",
+			class.get()
+		)
+	};
 
 	let doc_link = move || {
 		doc_link.get().map(|link| {

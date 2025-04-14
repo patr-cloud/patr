@@ -21,13 +21,13 @@
     & label {
       &:focus-visible {
         background-color: lighten(
-          map.get($background-colors, "secondary-light"),
+          $secondary-light,
           8%
         );
       }
       &:hover {
         background-color: lighten(
-          map.get($background-colors, "secondary-light"),
+          $secondary-light,
           3%
         );
       }

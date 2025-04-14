@@ -9,7 +9,7 @@
   min-height: 2.2rem;
   background-color: transparent;
   border-radius: 50%;
-  border: 3px solid map.get($background-colors, "primary");
+  border: 3px solid $primary-main;
   border-bottom-color: transparent;
   position: relative;
   animation: spin 1s linear infinite;
@@ -24,7 +24,7 @@
     height: 1.35rem;
     min-width: 1.35rem;
     min-height: 1.35rem;
-    border: 2px solid map.get($background-colors, "primary");
+    border: 2px solid $primary-main;
     border-bottom-color: transparent;
   }
   &-xxs {
@@ -32,7 +32,7 @@
     height: 0.95rem;
     min-width: 0.95rem;
     min-height: 0.95rem;
-    border: 1px solid map.get($background-colors, "primary");
+    border: 1px solid $primary-main;
     border-bottom-color: transparent;
   }
 }

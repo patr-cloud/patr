@@ -1,3 +1,4 @@
+@use "sass:color";
 @use "sass:map";
 @use "../helpers/maps" as *;
 @use "../base/variables" as *;
@@ -7,7 +8,7 @@
   width: 9.5rem;
   height: 8.5rem;
   transition: transform 200ms;
-  @include btn-secondary-focus("info");
+  @include btn-secondary-focus($info-main);
 }
 
 .deployment-card {
@@ -43,11 +44,11 @@
   font-family: $font-log;
 
   &:hover {
-    background-color: transparentize(map.get($text-colors, "grey"), 0.6);
+    background-color: color.adjust($text-grey, $alpha: -0.6);
   }
 
   & *::selection {
-    background-color: map.get($text-colors, "disabled");
+    background-color: $text-disabled;
   }
 }
 

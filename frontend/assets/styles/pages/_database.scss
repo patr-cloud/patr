@@ -4,7 +4,7 @@
 .database-plan-card {
   width: 13rem;
   min-height: 8rem;
-  @include btn-secondary-focus("info");
+  @include btn-secondary-focus($info-main);
 }
 
 .database-card {

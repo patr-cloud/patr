@@ -1,5 +1,4 @@
-@use "sass:map";
-@use "../helpers/maps" as *;
+@use "../base/variables" as *;
 
 .slider {
   .track,
@@ -43,7 +42,7 @@
   }
 
   .thumb::-webkit-slider-thumb {
-    background-color: map.get($background-colors, "primary");
+    background-color: $primary-main;
     border: none;
     border-radius: 50%;
     cursor: pointer;
@@ -55,7 +54,7 @@
   }
 
   .thumb::-moz-range-thumb {
-    background-color: map.get($background-colors, "primary");
+    background-color: $primary-main;
     border: none;
     border-radius: 50%;
     cursor: pointer;

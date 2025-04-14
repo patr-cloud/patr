@@ -1,3 +1,5 @@
+@use "sass:color";
+
 //colors
 $primary-main: #f89b41;
 $primary-light: #f89b4180;
@@ -76,8 +78,8 @@ $billing-card-bg-gradient: radial-gradient(
 
 $gradient-top-to-bottom: linear-gradient(
   10deg,
-  transparentize($secondary-light, 0.1) 60%,
-  transparentize($primary-main, 0.75)
+  color.adjust($secondary-light, $alpha: -0.1) 60%,
+  color.adjust($primary-main, $alpha: -0.75)
 );
 
 //image urls

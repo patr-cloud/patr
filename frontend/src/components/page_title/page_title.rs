@@ -60,7 +60,7 @@ pub fn PageTitle(
 	to: Signal<String>,
 ) -> impl IntoView {
 	let class = format!(
-		"p-xxs fr-fs-ct {} {}",
+		"p-xxs flex items-start justify-center {} {}",
 		match variant.get() {
 			PageTitleVariant::Heading => "text-xl",
 			PageTitleVariant::SubHeading => "text-md text-white",
