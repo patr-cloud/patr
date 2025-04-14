@@ -16,8 +16,8 @@ mod input;
 /// Link component to navigate to other pages, wraps around HTML a tag, with
 /// additional props for styling and such
 mod link;
-/// The Title for each page. Contains the Title, Description and Tabs.
-mod page_title;
+/// The header for each page. Contains the Title, Description and Tabs.
+mod page_header;
 /// A Extension of Input, to accommodate features specific to passwords
 mod password_input;
 /// Status Badge to indicate status of resource
@@ -30,7 +30,7 @@ pub use self::{
 	icon::*,
 	input::*,
 	link::*,
-	page_title::*,
+	page_header::*,
 	password_input::*,
 	status_badge::*,
 };

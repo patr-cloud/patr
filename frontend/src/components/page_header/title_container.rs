@@ -51,15 +51,13 @@ pub fn PageTitleContainer(
 				</TitleContainer>
 
 				{
-					description_title.get().and_then(|title| {
-						Some(
-							view! {
-								<PageDescription
-									description={title}
-									doc_link={description_link.get()}
-								/>
-							}.into_view()
-						)
+					description_title.get().map(|title| {
+						view! {
+							<PageDescription
+								description={title}
+								doc_link={description_link.get()}
+							/>
+						}
 					})
 				}
 			</div>
