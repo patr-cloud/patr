@@ -1,13 +1,13 @@
 /// TODO: GIVE BETTER DOC STRING
-use crate::imports::*;
+use crate::prelude::*;
 
-/// Contains all the page titles, and wraps around indivisual <PageTitle />
+/// Contains all the page titles, and wraps around individual <PageTitle />
 /// components
 #[component]
 pub fn TitleContainer(
 	/// Additional class names to apply to the outer div, if any
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// The Children of the component
 	children: Children,
 ) -> impl IntoView {
@@ -37,27 +37,27 @@ pub enum PageTitleIconPosition {
 	/// Put the arrow in the end, implying that there are more breadcrumbs to
 	/// follow
 	End,
-	/// Put the arrow in the start, implying that this is the last breadcumb
+	/// Put the arrow in the start, implying that this is the last breadcrumb
 	Start,
 }
 
-#[component]
 /// Specifies each individual page title,
+#[component]
 pub fn PageTitle(
 	/// Specifies where to put the arrow.
 	#[prop(into, optional)]
-	icon_position: MaybeSignal<PageTitleIconPosition>,
+	icon_position: Signal<PageTitleIconPosition>,
 	/// Additional class names to pass to the link component, if any
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// The Children of the component
 	children: ChildrenFn,
 	/// Title Text Style
 	#[prop(into, optional)]
-	variant: MaybeSignal<PageTitleVariant>,
+	variant: Signal<PageTitleVariant>,
 	/// The Page to navigate to
 	#[prop(into, optional)]
-	to: MaybeSignal<String>,
+	to: Signal<String>,
 ) -> impl IntoView {
 	let class = format!(
 		"p-xxs fr-fs-ct {} {}",
@@ -81,7 +81,8 @@ pub fn PageTitle(
 
 	view! {
 		<>
-			{start_icon} <Link to={to.get()} r#type={Variant::Link} class={class}>
+			{start_icon}
+			<Link to={to.get()} class={class}>
 				{children()}
 			</Link> {end_icon}
 		</>

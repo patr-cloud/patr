@@ -1,4 +1,4 @@
-use crate::imports::*;
+use crate::prelude::*;
 
 /// A Tab Item
 #[derive(Clone, PartialEq, Eq)]
@@ -9,38 +9,37 @@ pub struct TabItem {
 	pub path: String,
 }
 
+/// Various Tabs to navigate to different pages in the same group
 #[component]
 pub fn Tabs(
 	/// Additional class names to apply to the external div
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// The Tab Item
 	#[prop(into, optional)]
-	tab_items: MaybeSignal<Vec<TabItem>>,
+	tab_items: Signal<Vec<TabItem>>,
 ) -> impl IntoView {
 	let class = class.with(|cname| format!("flex justify-start items-end {cname}"));
 
 	view! {
 		<div class={class}>
-
 			{tab_items
 				.get()
 				.into_iter()
 				.map(|n| {
 					view! {
 						<Link
-							r#type={Variant::Link}
 							to={n.clone().path}
 							class="tab-item mx-xl"
-							style_variant={LinkStyleVariant::Plain}
+							variant={LinkStyleVariant::Plain}
 							color={Color::Grey}
 						>
 							{n.clone().name}
 						</Link>
 					}
 				})
-				.collect_view()}
-
+				.collect_view()
+			}
 		</div>
 	}
 }

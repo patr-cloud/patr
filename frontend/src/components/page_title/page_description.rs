@@ -1,17 +1,17 @@
-use crate::imports::*;
+use crate::prelude::*;
 
-/// Provides a breif description of the page, and optionally the doc link
+/// Provides a brief description of the page, and optionally the doc link
 #[component]
 pub fn PageDescription(
-	/// Additional classnames to appy to the \<p/> tag, if any
+	/// Additional Class Names to apply to the \<p/> tag, if any
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// Description of the page content
 	#[prop(into)]
 	description: String,
 	/// Link to the documentation
 	#[prop(into, optional)]
-	doc_link: MaybeSignal<Option<String>>,
+	doc_link: Signal<Option<String>>,
 ) -> impl IntoView {
 	let class = move || format!("flex justify-start fr-fs-bl txt-grey mx-md {}", class.get());
 

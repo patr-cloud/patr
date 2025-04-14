@@ -1,47 +1,28 @@
-use std::fmt::{self, Display, Formatter};
+use crate::prelude::*;
 
-use crate::imports::*;
-
-/// The type of alert to show.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum AlertType {
-	/// Show an error Alert, with a red background
-	Error,
-	/// Show a warning Alert, with a yellow background
-	Warning,
-	/// Show a success Alert, with a green background
-	Success,
-}
-
-impl Display for AlertType {
-	fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-		write!(f, "{}", self.as_css_name())
-	}
-}
-
-impl AlertType {
-	/// Returns the CSS name of the color.
-	pub const fn as_css_name(self) -> &'static str {
-		match self {
-			Self::Error => "error",
-			Self::Warning => "warning",
-			Self::Success => "success",
-		}
-	}
-}
-
+/// Alert Component, used to show inline alert in forms and such,
+/// e.g., if the user doesn't fill the username while logging in
 #[component]
 pub fn Alert(
-	/// The Type of the elert
-	#[prop(into)]
+	/// The Type of Alert
 	r#type: AlertType,
-	/// Additional classes to apply
+	/// Additional Classes
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// The Message
-	children: ChildrenFn,
+	children: Children,
 ) -> impl IntoView {
-	let message_class = move || format!("ml-xxs text-{}", r#type);
+	let message_class = move || {
+		format!(
+			"ml-xxs {}",
+			match r#type {
+				AlertType::Success => "text-success",
+				AlertType::Error => "text-error",
+				AlertType::Warning => "text-warning",
+			}
+		)
+	};
+
 	let outer_class = move || {
 		format!(
 			"flex flex-row items-start justify-start text-white {}",
@@ -50,7 +31,9 @@ pub fn Alert(
 	};
 
 	view! {
-		<span class={outer_class}>
+		<span
+			class={outer_class}
+		>
 			{match r#type {
 				AlertType::Success => {
 					view! {
@@ -60,7 +43,6 @@ pub fn Alert(
 							color={Color::Success}
 						/>
 					}
-						.into_view()
 				}
 				AlertType::Warning => {
 					view! {
@@ -70,7 +52,6 @@ pub fn Alert(
 							color={Color::Warning}
 						/>
 					}
-						.into_view()
 				}
 				AlertType::Error => {
 					view! {

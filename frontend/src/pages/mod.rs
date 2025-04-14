@@ -1,17 +1,9 @@
+/// The Auth Pages, such as Login, Register, and Forgot Password
 mod auth;
-mod domain;
+/// The Deployments set of page, contains, create, list, and update deployments
+/// pages
+mod deployment;
+/// The Home page
 mod home;
-mod infrastructure;
-mod manage_profile;
-mod runner;
-mod workspace;
 
-pub use self::{
-	auth::*,
-	domain::*,
-	home::*,
-	infrastructure::*,
-	manage_profile::*,
-	runner::*,
-	workspace::*,
-};
+pub use self::{auth::*, deployment::*, home::*};

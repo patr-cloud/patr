@@ -1,7 +1,7 @@
-use crate::imports::*;
+use crate::prelude::*;
 
 /// Page Title Item, used to specify the title Segments of the Page Title
-/// Mulitple Segements can be used as breadcrumbs.
+/// Multiple Segments can be used as breadcrumbs.
 #[derive(Clone)]
 pub struct PageTitleItem {
 	/// Title of the Title Segment
@@ -14,21 +14,22 @@ pub struct PageTitleItem {
 	pub variant: PageTitleVariant,
 }
 
+/// Encapsulates the Title and Description of the Page
 #[component]
 pub fn PageTitleContainer(
 	/// Page Title Items
 	#[prop(into)]
-	page_title_items: MaybeSignal<Vec<PageTitleItem>>,
+	page_title_items: Signal<Vec<PageTitleItem>>,
 	/// The Title of the description, Set this to None if no description is
 	/// required
 	#[prop(into, optional, default = None.into())]
-	description_title: MaybeSignal<Option<String>>,
+	description_title: Signal<Option<String>>,
 	/// The Link for the description.
 	#[prop(into, optional, default = None.into())]
-	description_link: MaybeSignal<Option<String>>,
+	description_link: Signal<Option<String>>,
 	/// Contains Action buttons, such as a create, or start/stop button.
-	#[prop(into, optional, default = None.into())]
-	action_buttons: MaybeSignal<Option<View>>,
+	#[prop(into, optional)]
+	action_buttons: ViewFn,
 ) -> impl IntoView {
 	view! {
 		<div class="w-full flex justify-between items-center">
@@ -65,7 +66,7 @@ pub fn PageTitleContainer(
 
 			<div class="flex items-center justify-center">
 				{
-					action_buttons.get().into_view()
+					action_buttons.run()
 				}
 			</div>
 		</div>

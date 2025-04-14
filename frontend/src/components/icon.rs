@@ -1,6 +1,8 @@
 use std::fmt::Display;
 
-use crate::imports::*;
+use leptos::ev::MouseEvent;
+
+use crate::prelude::*;
 
 /// The kind of icon to display. This is taken directly from the Feather icon
 /// set.
@@ -880,34 +882,44 @@ impl Display for IconType {
 	}
 }
 
+/// The Icon Component, All the Icons are from feather icons, there's a huge
+/// icons sprite in [assets](frontend/assets/icons/sprite/feather-sprite.svg),
+/// and the component gets the icon from the sprite
 #[component]
-pub fn icon(
-	/// name of the icon to display
+pub fn Icon(
+	/// The IconType of the Icon
 	#[prop(into)]
-	icon: MaybeSignal<IconType>,
+	icon: Signal<IconType>,
 	/// class name to apply to the icon
 	#[prop(into, optional)]
-	class: MaybeSignal<String>,
+	class: Signal<String>,
 	/// text color of the icon
 	#[prop(into, optional, default = Color::White.into())]
-	color: MaybeSignal<Color>,
+	color: Signal<Color>,
 	/// fill color of the icon
 	#[prop(into, optional)]
-	fill: MaybeSignal<Color>,
+	fill: Signal<Color>,
 	/// size of the icon
 	#[prop(into, optional)]
-	size: MaybeSignal<Size>,
+	size: Signal<Size>,
 	/// Whether to enable the pulse animation
 	#[prop(into, optional, default = false.into())]
-	enable_pulse: MaybeSignal<bool>,
+	enable_pulse: Signal<bool>,
 	/// click handler
-	#[prop(optional)]
-	on_click: Option<ClickHandler>,
+	#[prop(into, optional, default = UnsyncCallback::new(|_| {}))]
+	on_click: UnsyncCallback<(MouseEvent,)>,
+	/// Show Click Indicator
+	#[prop(into, optional, default = false.into())]
+	is_clickable: Signal<bool>,
 ) -> impl IntoView {
-	let is_clickable = on_click.is_some();
-
 	view! {
 		<svg
+			on:click={
+				move |e| {
+					on_click.run((e,))
+				}
+			}
+			id="icon"
 			class={move || {
 				format!(
 					"icon {} {} icon-fill-{} icon-{} {} {}",
@@ -915,18 +927,10 @@ pub fn icon(
 					color.get().as_text_color().as_css_color(),
 					fill.get().as_css_name(),
 					size.get().as_css_name(),
-					if is_clickable { "cursor-pointer" } else { "" },
+					if is_clickable.get() { "cursor-pointer" } else { "" },
 					class.get(),
 				)
-			}}
-
-			on:click={move |e| {
-				if let Some(click) = on_click.clone() {
-					click(&e)
-				}
-			}}
-		>
-
+			}}	>
 			<use_ href={move || format!("{}#{}", constants::FEATHER_IMG, icon.get())}></use_>
 		</svg>
 	}

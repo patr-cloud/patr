@@ -9,15 +9,16 @@ pub use self::client::*;
 mod alignment;
 /// A module containing the custom [`AppRoute`].
 /// The App Route Enum. This Enum is used to specify the route of the app.
-mod app_route;
+// mod app_route;
 /// The color enum. This enum is used to specify the color of a component. These
 /// include the primary and secondary colors of the app.
 mod color;
 /// A module containing extension traits for various types
 mod ext_traits;
-mod hooks;
+/// Contains all the routes in enum form
 mod routes;
-mod sidebar_items;
+/// Contains All The SideItems for the Sidebar
+// mod sidebar_items;
 /// The size enum. This enum is used to specify the size of a component. We
 /// currently have:
 /// - ExtraExtraLarge
@@ -35,12 +36,11 @@ mod variant;
 
 pub use self::{
 	alignment::*,
-	app_route::*,
+	// app_route::*,
 	color::*,
 	ext_traits::*,
-	hooks::*,
 	routes::*,
-	sidebar_items::*,
+	// sidebar_items::*,
 	size::*,
 	storage::*,
 	variant::*,
