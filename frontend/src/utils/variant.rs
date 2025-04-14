@@ -65,28 +65,33 @@ pub enum LinkStyleVariant {
 	Plain,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, strum::Display)]
 /// The Link Target Types [MDN Doc](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/a#target)
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, strum::Display)]
 pub enum LinkTarget {
 	/// The current browsing context. (Default)
 	#[default]
+	#[strum(to_string = "_self")]
 	_Self,
 	/// Usually a new tab, but users can configure browsers to open a new window
 	/// instead.
-	_Blank,
+	#[strum(to_string = "_blank")]
+	Blank,
 	/// The parent browsing context of the current one. If no parent, behaves as
 	/// _self.
-	_Parent,
+	#[strum(to_string = "_parent")]
+	Parent,
 	/// The topmost browsing context. To be specific, this means the "highest"
 	/// context that's an ancestor of the current one. If no ancestors, behaves
 	/// as _self.
-	_Top,
+	#[strum(to_string = "_top")]
+	Top,
 	/// Allows embedded fenced frames to navigate the top-level frame (i.e.,
 	/// traversing beyond the root of the fenced frame, unlike other reserved
 	/// destinations). Note that the navigation will still succeed if this is
 	/// used outside of a fenced frame context, but it will not act like a
 	/// reserved keyword.
-	_UnreferencedTop,
+	#[strum(to_string = "_unfencedTop")]
+	UnfencedTop,
 }
 
 /// The type of alert to show.
