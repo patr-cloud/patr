@@ -34,7 +34,7 @@ where
 		.into_iter()
 		.fold(Router::new(), |router, file| {
 			router.route_service(
-				file.trim_start_matches(&config.leptos_options.site_root),
+				file.trim_start_matches(config.leptos_options.site_root.as_ref()),
 				ServeFile::new(file.as_str()),
 			)
 		})

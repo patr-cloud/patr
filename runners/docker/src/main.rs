@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs, clippy::all)]
+#![feature(never_type)]
 
 //! The Docker runner is a service that runs on a machine and listens for
 //! incoming WebSocket connections from the Patr API. The runner is responsible
@@ -71,11 +72,6 @@ impl RunnerExecutor for DockerRunner {
 }
 
 #[tokio::main]
-async fn main() {
-	Runner::<DockerRunner>::init()
-		.await
-		.unwrap()
-		.run()
-		.await
-		.unwrap();
+async fn main() -> Result<!, RunnerError> {
+	Runner::<DockerRunner>::init().await?.run().await
 }
