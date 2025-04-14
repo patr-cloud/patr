@@ -29,6 +29,7 @@ pub mod pages;
 /// needed to make the application work.
 pub mod utils;
 
+use leptos_meta::{Title, provide_meta_context};
 use prelude::*;
 
 #[cfg(target_arch = "wasm32")]
@@ -50,6 +51,8 @@ pub fn hydrate() {
 /// from the client side.
 pub fn render(options: LeptosOptions) -> impl IntoView {
 	use app::App;
+
+	provide_meta_context();
 
 	view! {
 		<!DOCTYPE html>
@@ -79,7 +82,9 @@ pub fn render(options: LeptosOptions) -> impl IntoView {
 				<AutoReload options=options.clone() />
 				<HydrationScripts options/>
 
-				<title>"Patr"</title>
+				<Title
+					text="Patr"
+				/>
 			</head>
 
 			<body>
