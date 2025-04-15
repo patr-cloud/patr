@@ -15,7 +15,7 @@ pub fn PageDescription(
 ) -> impl IntoView {
 	let class = move || {
 		format!(
-			"flex justify-start items-baseline fr-fs-bl text-grey mx-md text-sm {}",
+			"flex justify-start items-baseline text-grey mx-md text-sm {}",
 			class.get()
 		)
 	};

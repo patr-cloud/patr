@@ -110,7 +110,7 @@
   background-color: $secondary-main;
 
   &:hover {
-    @include button-hover($primary-main);
+    @include button-hover($secondary-main);
   }
 
   &:disabled {
