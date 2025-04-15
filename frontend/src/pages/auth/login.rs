@@ -71,7 +71,7 @@ pub fn LoginForm() -> impl IntoView {
 		<form on:submit={on_submit_login} class="box-onboard text-white">
 			<div class="flex justify-between items-baseline mb-lg w-full">
 				<h1 class="text-primary text-xl text-medium">"Sign In"</h1>
-				<div class="text-white text-thin flex items-start justify-start">
+				<div class="text-white text-thin flex items-start justify-start text-sm">
 					<p>"New User? "</p>
 					<Link to={"/sign-up".to_owned()}>
 						"Sign Up"

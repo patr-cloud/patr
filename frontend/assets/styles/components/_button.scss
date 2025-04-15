@@ -1,3 +1,4 @@
+@use "sass:color";
 @use "sass:map";
 
 @use "../helpers/maps" as *;
@@ -10,7 +11,7 @@
 
   padding: map.get($paddings, "xs") map.get($paddings, "xl");
   font-size: map.get($font-sizes, "sm");
-  font-weight: map.get($font-weights, "medium");
+  font-weight: $font-medium;
   border-radius: map.get($border-radii, "xl");
 
   transition: background 200ms;
@@ -21,53 +22,53 @@
 }
 
 .btn-outline {
-  font-weight: map.get($font-weights, "medium");
+  font-weight: $font-medium;
   border-radius: 50%;
   padding: map.get($paddings, "xs") map.get($paddings, "md");
-  border: 2px solid map.get($background-colors, "primary");
+  border: 2px solid $primary-main;
   transition: all 150ms;
   aspect-ratio: 1;
 
   &,
   & * {
-    color: map.get($background-colors, "primary");
+    color: $primary-main;
   }
 
   &:is(:hover, :focus) {
     border: 2px solid transparent;
-    background-color: map.get($background-colors, "primary");
+    background-color: $primary-main;
 
     &,
     & * {
-      color: map.get($background-colors, "secondary");
+      color: $secondary-main;
     }
   }
 }
 
 .btn-primary {
-  background-color: map.get($background-colors, "primary");
-  color: map.get($text-colors, "secondary");
+  background-color: $primary-main;
+  color: $secondary-main;
 
   &:hover {
     @include button-hover;
   }
 
   &:disabled {
-    background-color: map.get($background-colors, "primary-light");
+    background-color: $primary-light;
   }
 
   &:focus-visible {
     animation: ripple 1200ms linear infinite;
-    color: map.get($text-colors, "secondary");
+    color: $secondary-main;
   }
 }
 
 .btn-plain {
-  color: map.get($text-colors, "primary");
+  color: $primary-main;
   padding: 0 map.get($paddings, "xxs");
 
   &:disabled {
-    color: map.get($background-colors, "primary-light");
+    color: $primary-light;
   }
 
   &:focus-visible {
@@ -76,8 +77,8 @@
 }
 
 .btn-error {
-  background-color: map.get($background-colors, "error");
-  color: map.get($text-colors, "white");
+  background-color: $error-main;
+  color: $text-white;
 
   &:disabled {
     background-color: $error-light;
@@ -85,36 +86,36 @@
 }
 
 .btn-secondary {
-  font-weight: map.get($font-weights, "bold");
+  font-weight: $font-bold;
 
-  color: map.get($text-colors, "primary");
-  background-color: map.get($background-colors, "secondary-light");
+  color: $primary-main;
+  background-color: $secondary-light;
 }
 
 .btn-light {
-  color: map.get($text-colors, "black");
-  background-color: map.get($text-colors, "white");
+  color: $text-black;
+  background-color: $text-white;
 
   &:hover {
-    @include button-hover($text-colors, "white");
+    @include button-hover($text-white);
   }
 
   &:disabled {
-    background-color: map.get($text-colors, "disabled");
+    background-color: $text-disabled;
   }
 }
 
 .btn-dark {
-  color: map.get($text-colors, "white");
-  background-color: map.get($background-colors, "secondary");
+  color: $text-white;
+  background-color: $secondary-main;
 
   &:hover {
-    @include button-hover($text-colors, "secondary");
+    @include button-hover($secondary-main);
   }
 
   &:disabled {
-    background-color: map.get($text-colors, "secondary-light");
-    color: map.get($text-colors, "grey");
+    background-color: $secondary-light;
+    color: $text-grey;
   }
 }
 
@@ -134,7 +135,7 @@
 
 .btn-dark,
 .btn-light {
-  @include btn-secondary-focus("info");
+  @include btn-secondary-focus($info-main);
 }
 
 .btn-drift {
@@ -143,10 +144,10 @@
   transition: filter 700ms;
 
   & .drift-icon {
-    background-color: map.get($background-colors, "primary");
+    background-color: $primary-main;
 
     &:hover {
-      @include button-hover();
+      @include button-hover;
     }
   }
 
@@ -172,7 +173,7 @@
     & .loader {
       opacity: 1;
       border: 4px solid transparent;
-      border-top-color: map.get($background-colors, "primary");
+      border-top-color: $primary-main;
       animation: drift-btn-rotate 1s linear infinite;
     }
   }
@@ -187,30 +188,29 @@
 }
 
 .btn-upload-primary {
-  font-weight: map.get($font-weights, "medium");
+  font-weight: $font-medium;
   border-radius: map.get($border-radii, "sm");
   padding: map.get($paddings, "xs") map.get($paddings, "md");
-  border: 2px dashed map.get($background-colors, "primary");
+  border: 2px dashed $primary-main;
   transition: all 150ms;
 
   &,
   & * {
-    color: map.get($background-colors, "primary");
+    color: $primary-main;;
   }
 
   &:is(:hover, :focus) {
     border: 2px solid transparent;
-    background-color: map.get($background-colors, "primary");
+    background-color: $primary-main;;
 
     &,
     & * {
-      color: map.get($background-colors, "secondary");
+      color: $secondary-main;;
     }
   }
 
   &.drag {
-    border: 2px solid map.get($background-colors, "primary");
-    background-color: transparentize(map.get($background-colors, "primary"),
-        0.85);
+    border: 2px solid $primary-main;
+    background-color: color.adjust($primary-main, $alpha: -0.85);
   }
 }

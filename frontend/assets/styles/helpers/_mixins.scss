@@ -1,6 +1,4 @@
-@use "sass:map";
-
-@use "./maps" as *;
+@use "../base/variables" as *;
 
 @mixin flex($direction: row, $justify: flex-start, $align: flex-start) {
   display: flex;
@@ -10,15 +8,15 @@
   align-content: flex-start;
 }
 
-@mixin media-query($bp: "xs") {
-  @media screen and (min-width: map.get($break-points, $bp)) {
+@mixin media-query($bp: $bp-xs) {
+  @media screen and (min-width: $bp) {
     @content;
   }
 }
 
-@mixin btn-secondary-focus($color: "primary") {
+@mixin btn-secondary-focus($color: $primary-main) {
   &:focus-visible {
-    outline: 2px solid map-get($background-colors, $color);
+    outline: 2px solid $color;
   }
 }
 
@@ -27,11 +25,11 @@
   height: $size;
 }
 
-@mixin button-hover($map: $background-colors, $color: "primary") {
+@mixin button-hover($color: $primary-main) {
   @if ($color == "secondary") {
-    background-color: lighten(map.get($map, $color), 2%);
+    background-color: lighten($color, 2%);
   } @else {
-    background-color: darken(map.get($map, $color), 2%);
+    background-color: darken($color, 2%);
   }
 }
 

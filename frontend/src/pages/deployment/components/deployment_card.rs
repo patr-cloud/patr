@@ -64,7 +64,7 @@ pub fn DeploymentCard(
 									<span class="tracking-[1px] text-xxs text-grey">
 										{item.label}
 									</span>
-									<span class="text-primary w-[15ch] h-4 text-ellipsis overflow-hidden">
+									<span class="text-primary text-xs w-[15ch] h-4 text-ellipsis overflow-hidden">
 										{item.value}
 									</span>
 								</div>

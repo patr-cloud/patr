@@ -17,7 +17,7 @@
   & .workspace-item:hover,
   & .active {
     background-color: lighten(
-      map-get($background-colors, "secondary-light"),
+      $secondary-light,
       10%
     );
     transition: 150ms;
@@ -38,7 +38,7 @@
       scroll-snap-align: start;
       height: 4.5rem;
       min-height: 4.5rem;
-      padding-bottom: map-get($map: $paddings, $key: "xxs");
+      padding-bottom: map.get($paddings, $key: "xxs");
     }
   }
 }

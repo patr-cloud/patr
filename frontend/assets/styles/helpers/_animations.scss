@@ -7,17 +7,17 @@
 
 @keyframes ripple {
   0% {
-    box-shadow: 0 4px 10px transparentize(map.get($background-colors, "primary"), 0.8),
-      0 0 0 0 transparentize(map.get($background-colors, "primary"), 0.8),
-      0 0 0 5px transparentize(map.get($background-colors, "primary"), 0.8),
-      0 0 0 10px transparentize(map.get($background-colors, "primary"), 0.8);
+    box-shadow: 0 4px 10px color.adjust($primary-main, $alpha: -0.8),
+      0 0 0 0 color.adjust($primary-main, $alpha: -0.8),
+      0 0 0 5px color.adjust($primary-main, $alpha: -0.8),
+      0 0 0 10px color.adjust($primary-main, $alpha: -0.8);
   }
 
   100% {
-    box-shadow: 0 4px 10px transparentize(map.get($background-colors, "primary"), 0.8),
-      0 0 0 5px transparentize(map.get($background-colors, "primary"), 0.8),
-      0 0 0 10px transparentize(map.get($background-colors, "primary"), 0.8),
-      0 0 0 20px transparentize(map.get($background-colors, "primary"), 1);
+    box-shadow: 0 4px 10px color.adjust($primary-main, $alpha: -0.8),
+      0 0 0 5px color.adjust($primary-main, $alpha: -0.8),
+      0 0 0 10px color.adjust($primary-main, $alpha: -0.8),
+      0 0 0 20px color.adjust($primary-main, $alpha: -1);
   }
 }
 

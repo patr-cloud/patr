@@ -7,35 +7,6 @@ font-sizes, paddings, margins and border-radii are calculated as
 */
 @use "../base/variables" as *;
 
-$background-colors: (
-  "primary": $primary-main,
-  "primary-light": $primary-light,
-  "primary-dark": $primary-dark,
-  "secondary": $secondary-main,
-  "secondary-dark": $secondary-dark,
-  "secondary-medium": $secondary-medium,
-  "secondary-light": $secondary-light,
-  "success": $success-main,
-  "warning": $warning-main,
-  "error": $error-main,
-  "info": $info-main,
-  "grey": $text-grey,
-  "white": $text-white,
-  "code": $bg-code-snippet,
-);
-$text-colors: (
-  "primary": $primary-main,
-  "secondary": $secondary-main,
-  "white": $text-white,
-  "black": $text-black,
-  "grey": $text-grey,
-  "success": $success-main,
-  "warning": $warning-main,
-  "error": $error-main,
-  "info": $info-main,
-  "disabled": $text-disabled,
-  "code": $txt-code-snippet,
-);
 $font-sizes: (
   //base is 1rem. 10px 12px 13px 16px 18px 24px 33px
   "xxs": $base-font-size * 0.625,
@@ -45,13 +16,6 @@ $font-sizes: (
   "lg": $base-font-size * 1.125,
   "xl": $base-font-size * 1.5,
   "xxl": $base-font-size * 2.0625
-);
-$font-weights: (
-  //300 400 500 600
-  "thin": $font-thin,
-  "regular": $font-regular,
-  "medium": $font-medium,
-  "bold": $font-bold
 );
 $paddings: (
   //base is .3125rem. 6px 8px 11px 16px 20px 24px 33px
@@ -93,90 +57,6 @@ $border-radii: (
 );
 
 //utility Map with the above Maps combined into one.
-
-$utility-map: (
-  "padding": (
-    "prefix": "p",
-    "values": $paddings,
-  ),
-  "padding-left": (
-    "prefix": "pl",
-    "values": $paddings,
-  ),
-  "padding-top": (
-    "prefix": "pt",
-    "values": $paddings,
-  ),
-  "padding-right": (
-    "prefix": "pr",
-    "values": $paddings,
-  ),
-  "padding-bottom": (
-    "prefix": "pb",
-    "values": $paddings,
-  ),
-  "margin": (
-    "prefix": "m",
-    "values": $margins,
-  ),
-  "margin-left": (
-    "prefix": "ml",
-    "values": $margins,
-  ),
-  "margin-top": (
-    "prefix": "mt",
-    "values": $margins,
-  ),
-  "margin-right": (
-    "prefix": "mr",
-    "values": $margins,
-  ),
-  "margin-bottom": (
-    "prefix": "mb",
-    "values": $margins,
-  ),
-  "gap": (
-    "prefix": "gap",
-    "values": $grid-gaps,
-  ),
-  "border-radius": (
-    "prefix": "br",
-    "values": $border-radii,
-  ),
-  "border-top-right-radius": (
-    "prefix": "br-tr",
-    "values": $border-radii,
-  ),
-  "border-top-left-radius": (
-    "prefix": "br-tl",
-    "values": $border-radii,
-  ),
-  "border-bottom-right-radius": (
-    "prefix": "br-br",
-    "values": $border-radii,
-  ),
-  "border-bottom-left-radius": (
-    "prefix": "br-bl",
-    "values": $border-radii,
-  ),
-  "background-color": (
-    "prefix": "bg",
-    "values": $background-colors,
-  ),
-  "color": (
-    "prefix": "txt",
-    "values": $text-colors,
-  ),
-  "font-size": (
-    "prefix": "txt",
-    "values": $font-sizes,
-  ),
-  "font-weight": (
-    "prefix": "txt",
-    "values": $font-weights,
-  ),
-);
-
 $icon-sizes: (
   //base is 1.25rem. 15px 20px 24px 30px 35px
   "xxs": $base-icon-size * 0.6,
@@ -186,67 +66,4 @@ $icon-sizes: (
   "lg": $base-icon-size * 1.6,
   "xl": $base-icon-size * 1.9,
   "xxl": $base-icon-size * 4.5
-);
-$avatar-sizes: (
-  //base is 2rem. 24px 28px 32px 36px 76px
-  "xs": $base-avatar-sizes * 0.75,
-  "sm": $base-avatar-sizes * 0.875,
-  "md": $base-avatar-sizes,
-  "lg": $base-avatar-sizes * 1.125,
-  "xl": $base-avatar-sizes * 2.375,
-  "xxl": $base-avatar-sizes * 2.65
-);
-
-$flex-directions: (
-  "fr": row,
-  "fc": column,
-);
-$flex-justify: (
-  "fs": flex-start,
-  "fe": flex-end,
-  "ct": center,
-  "sb": space-between,
-  "sa": space-around,
-  "se": space-evenly,
-);
-$flex-align: (
-  "fs": flex-start,
-  "fe": flex-end,
-  "ct": center,
-  "bl": baseline,
-);
-
-//media query break points
-$break-points: (
-  "xxs": $bp-xxs,
-  "xs": $bp-xs,
-  "sm": $bp-sm,
-  "md": $bp-md,
-  "lg": $bp-lg,
-  "xl": $bp-xl,
-  "xxl": $bp-xxl,
-);
-
-$grid-item-loc: (
-  "grid-col-start": grid-column-start,
-  "grid-col-end": grid-column-start,
-  "grid-row-start": grid-column-start,
-  "grid-row-end": grid-column-start,
-);
-
-$grid-items: (
-  "st": start,
-  "end": end,
-  "ct": center,
-  "stretch": stretch,
-);
-
-$grid-content: (
-  "st": start,
-  "end": end,
-  "ct": center,
-  "sb": space-between,
-  "sa": space-around,
-  "se": space-evenly,
-  "stretch": stretch,
 );

@@ -4,7 +4,7 @@
 
 .tooltip-container {
   &.enable-focus:focus-within {
-    outline: 2px solid map.get($background-colors, "primary");
+    outline: 2px solid $primary-main;
   }
 }
 
@@ -30,24 +30,24 @@
   }
 
   &.light {
-    background-color: map.get($background-colors, "secondary-light");
+    background-color: $secondary-light;
     & > .tip::before {
-      border-bottom: 1rem solid map.get($background-colors, "secondary-light");
+      border-bottom: 1rem solid $secondary-light;
     }
   }
 
   &.medium {
-    background-color: map.get($background-colors, "secondary-medium");
+    background-color: $secondary-medium;
     & > .tip::before {
-      border-bottom: 1rem solid map.get($background-colors, "secondary-medium");
+      border-bottom: 1rem solid $secondary-medium;
     }
   }
 
   &.dark {
-    background-color: map.get($background-colors, "secondary-dark");
+    background-color: $secondary-dark;
 
     & > .tip::before {
-      border-bottom: 1rem solid map.get($background-colors, "secondary-dark");
+      border-bottom: 1rem solid $secondary-dark;
     }
   }
 }

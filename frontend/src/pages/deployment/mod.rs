@@ -10,12 +10,14 @@ use crate::prelude::*;
 #[component]
 pub fn TempPageContainer(children: Children) -> impl IntoView {
 	view! {
-		<main class="flex items-start justify-start w-full h-full bg-secondary">
+		<div class="font-primary flex items-start justify-start w-full h-full bg-secondary {}">
 			<aside class="sidebar flex flex-col items-start justify-start pb-xl">
 				<div></div>
 			</aside>
-			{children()}
-		</main>
+			<main class="flex flex-col w-full px-lg min-h-screen">
+				{children()}
+			</main>
+		</div>
 	}
 }
 
