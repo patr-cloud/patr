@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand};
 
-use self::{login::LoginArgs, workspaced::WorkspacedCommand};
+use self::{login::LoginArgs, setup::SetupArgs, workspaced::WorkspacedCommand};
 use crate::prelude::*;
 
 /// The command to get information about the current logged in user.
@@ -9,6 +9,8 @@ mod info;
 mod login;
 /// The command to logout of your Patr account.
 mod logout;
+/// The command to setup the CLI's configuration settings for first time use.
+mod setup;
 /// All commands that are meant for a workspace.
 mod workspaced;
 
@@ -65,6 +67,9 @@ pub enum GlobalCommand {
 	/// All the commands that are meant for a workspace
 	#[command(flatten)]
 	Workspaced(WorkspacedCommand),
+	/// Setup the CLI's configuration settings for first time use.
+	#[command(alias = "configure")]
+	Setup(SetupArgs),
 }
 
 pub async fn execute(
@@ -79,5 +84,6 @@ pub async fn execute(
 		GlobalCommand::Workspaced(commands) => {
 			workspaced::execute(commands, global_args, state).await
 		}
+		GlobalCommand::Setup(args) => setup::execute(args, global_args, state).await,
 	}
 }

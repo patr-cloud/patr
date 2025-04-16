@@ -1,4 +1,5 @@
 use axum::Router;
+use frontend::utils::AppType;
 use leptos::prelude::*;
 use leptos_axum::LeptosRoutes;
 use tokio::fs;
@@ -23,7 +24,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.into_iter()
 		.fold(Router::new(), |router, file| {
 			router.route_service(
-				file.trim_start_matches(&config.leptos_options.site_root),
+				file.trim_start_matches(config.leptos_options.site_root.as_ref()),
 				ServeFile::new(file.as_str()),
 			)
 		})
@@ -31,11 +32,13 @@ pub async fn setup_routes(state: &AppState) -> Router {
 			&config.leptos_options,
 			{
 				let leptos_options = config.leptos_options.clone();
-				leptos_axum::generate_route_list(move || frontend::render(leptos_options.clone()))
+				leptos_axum::generate_route_list(move || {
+					frontend::render(leptos_options.clone(), AppType::Managed)
+				})
 			},
 			{
 				let leptos_options = config.leptos_options.clone();
-				move || frontend::render(leptos_options.clone())
+				move || frontend::render(leptos_options.clone(), AppType::Managed)
 			},
 		)
 		.with_state(config.leptos_options)

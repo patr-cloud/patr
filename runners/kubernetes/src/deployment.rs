@@ -259,7 +259,7 @@ async fn reconcile(
 		volumes.push(Volume {
 			name: "config-mounts".to_string(),
 			config_map: Some(ConfigMapVolumeSource {
-				name: Some(format!("config-mount-{}", spec.deployment.id)),
+				name: format!("config-mount-{}", spec.deployment.id),
 				items: Some(
 					spec.running_details
 						.config_mounts
@@ -596,7 +596,7 @@ async fn reconcile(
 					// for user clusters, need to create a separate
 					// secret for each private repo in future
 					vec![LocalObjectReference {
-						name: Some("patr-regcred".to_string()),
+						name: "patr-regcred".to_string(),
 					}]
 				}),
 				..PodSpec::default()

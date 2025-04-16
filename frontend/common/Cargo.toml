@@ -15,7 +15,6 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 axum-extra = { workspace = true, features = ["typed-routing", "cookie"] }
-console_error_panic_hook = { workspace = true, features = [] }
 convert_case = { workspace = true, features = [] }
 cookie = { workspace = true, features = [] }
 http = { workspace = true, features = ["default"] }

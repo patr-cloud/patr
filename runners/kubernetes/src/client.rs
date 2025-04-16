@@ -167,8 +167,8 @@ where
 		status_code: StatusCode::INTERNAL_SERVER_ERROR,
 		body: ApiErrorResponseBody {
 			success: False,
-			error: ErrorType::server_error(err),
 			message: err.to_string(),
+			error: ErrorType::server_error(err),
 		},
 	})?;
 	for (header, value) in request.headers.to_header_map().iter() {
@@ -200,8 +200,8 @@ where
 				status_code: StatusCode::INTERNAL_SERVER_ERROR,
 				body: ApiErrorResponseBody {
 					success: False,
-					error: ErrorType::server_error(err),
 					message: err.to_string(),
+					error: ErrorType::server_error(err),
 				},
 			},
 		})?
