@@ -6,7 +6,7 @@
 //! respective cluster. The controller will periodically check with the API and
 //! make sure that the cluster's state is up to date with the API's state.
 
-use std::{marker::PhantomData, str::FromStr, sync::Arc};
+use std::{str::FromStr, sync::Arc};
 
 use ::models::{
 	ApiRequest,
@@ -66,7 +66,7 @@ async fn main() {
 				authorization: BearerToken::from_str(state.patr_token.as_str()).unwrap(),
 				user_agent: UserAgent::from_static("deployment-controller"),
 			})
-			.body(WebSocketUpgrade::new())
+			.body(WebSocketUpgrade::default())
 			.build(),
 	)
 	.await

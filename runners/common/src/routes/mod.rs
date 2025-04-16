@@ -7,6 +7,7 @@ mod user;
 mod workspace;
 
 use axum::Router;
+use frontend::utils::AppType;
 use leptos::prelude::*;
 use leptos_axum::LeptosRoutes;
 use tokio::fs;
@@ -42,11 +43,13 @@ where
 			&config.leptos_options,
 			{
 				let leptos_options = config.leptos_options.clone();
-				leptos_axum::generate_route_list(move || frontend::render(leptos_options.clone()))
+				leptos_axum::generate_route_list(move || {
+					frontend::render(leptos_options.clone(), AppType::SelfHosted)
+				})
 			},
 			{
 				let leptos_options = config.leptos_options.clone();
-				move || frontend::render(leptos_options.clone())
+				move || frontend::render(leptos_options.clone(), AppType::SelfHosted)
 			},
 		)
 		.with_state(config.leptos_options)

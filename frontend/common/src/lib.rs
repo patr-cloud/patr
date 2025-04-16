@@ -29,29 +29,12 @@ pub mod utils;
 use leptos_meta::{Title, provide_meta_context};
 use prelude::*;
 
-#[cfg(target_arch = "wasm32")]
-/// The main hydrate function. Called when the application starts to hydrate
-/// from the server side.
-#[wasm_bindgen::prelude::wasm_bindgen]
-pub fn hydrate() {
-	wasm_logger::init(wasm_logger::Config::default());
-
-	if cfg!(debug_assertions) {
-		console_error_panic_hook::set_once();
-	}
-
-	// Comment the below line to disable JS and test the app in pure SSR mode
-	leptos::mount::hydrate_body(app::App);
-}
-
 /// The main render function. Called when the application starts to render
 /// from the client side.
-pub fn render(options: LeptosOptions) -> impl IntoView {
+pub fn render(options: LeptosOptions, app_type: AppType) -> impl IntoView {
 	use app::App;
 
 	provide_meta_context();
-
-	provide_context(APP_TYPE.get().copied().expect("APP_TYPE not set"));
 
 	view! {
 		<!DOCTYPE html>
@@ -87,7 +70,7 @@ pub fn render(options: LeptosOptions) -> impl IntoView {
 			</head>
 
 			<body>
-				<App />
+				<App app_type />
 			</body>
 		</html>
 	}
