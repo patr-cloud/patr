@@ -15,6 +15,8 @@ pub struct WorkspacedArgs {
 }
 
 impl WorkspacedArgs {
+	/// Generates the workspace arguments from the global arguments and the
+	/// state
 	pub async fn generate(global_args: &GlobalArgs, state: &AppState) -> Result<Self, AppError> {
 		let token = if let Some(token) = &global_args.token {
 			BearerToken::from_str(token).map_err(|err| AppError::ParseError(err.to_string()))?

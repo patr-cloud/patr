@@ -1,10 +1,10 @@
 use std::io::IsTerminal;
 
-use clap::Args;
+use clap::{ArgAction, Args};
 use inquire::{Confirm, Select, Text};
 use models::api::{
 	user::*,
-	workspace::{container_registry::*, deployment::*},
+	workspace::{container_registry::*, deployment::*, runner::*},
 };
 
 use crate::{prelude::*, utils::StringExt};
@@ -43,9 +43,28 @@ pub struct CreateArgs {
 		env = "PATR_DEPLOYMENT_TAG"
 	)]
 	pub tag: Option<String>,
-	/// The environment to use for the deployment
-	#[arg(short = 'e', long = "environment", value_name = "ENVIRONMENT")]
-	pub environment: Option<Vec<String>>,
+	/// The machine type to use for the deployment
+	#[arg(
+		short = 'm',
+		long = "machine-type",
+		value_name = "MACHINE-TYPE",
+		env = "PATR_DEPLOYMENT_MACHINE_TYPE"
+	)]
+	pub machine_type: Option<String>,
+	/// The runner to use for the deployment
+	#[arg(
+		long = "runner",
+		value_name = "RUNNER-NAME-OR-ID",
+		env = "PATR_DEPLOYMENT_RUNNER"
+	)]
+	pub runner: Option<String>,
+	/// Whether to deploy on push
+	#[arg(
+		long = "deploy-on-push",
+		env = "PATR_DEPLOYMENT_DEPLOY_ON_PUSH",
+		action = ArgAction::SetTrue,
+	)]
+	pub deploy_on_push: Option<bool>,
 }
 
 pub async fn execute(
@@ -202,6 +221,113 @@ pub async fn execute(
 		.some_if_not_empty()
 		.unwrap_or_else(|| "latest".to_string());
 
+	let runners = make_request(
+		ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
+			.path(ListRunnersForWorkspacePath { workspace_id })
+			.query(Paginated::default())
+			.headers(ListRunnersForWorkspaceRequestHeaders {
+				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+				authorization: token.clone(),
+			})
+			.body(ListRunnersForWorkspaceRequest)
+			.build(),
+	)
+	.await?
+	.body
+	.runners;
+
+	let runner = args
+		.runner
+		.map(|runner| {
+			runners
+				.iter()
+				.find(|r| r.id.to_string() == runner || r.name == runner)
+				.expect(&format!("No runner found with ID or name: `{}`", runner))
+				.id
+		})
+		.unwrap_or_else(|| {
+			Select::new(
+				"Select the runner to use: ",
+				runners.iter().map(|runner| runner.id).collect(),
+			)
+			.with_formatter(&|runner_id| {
+				runners
+					.get(runner_id.index)
+					.map(|runner| format!("{} ({})", runner.name, runner.id))
+					.unwrap_or_else(|| runner_id.to_string())
+			})
+			.with_help_message("The runner to use for the deployment")
+			.prompt()
+			.expect_tty("Failed to read runner ID")
+		});
+
+	let machine_types = make_request(
+		ApiRequest::<ListAllDeploymentMachineTypeRequest>::builder()
+			.path(ListAllDeploymentMachineTypePath { workspace_id })
+			.query(())
+			.headers(ListAllDeploymentMachineTypeRequestHeaders {
+				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+			})
+			.body(ListAllDeploymentMachineTypeRequest)
+			.build(),
+	)
+	.await?
+	.body
+	.machine_types;
+
+	let machine_type = args
+		.machine_type
+		.map(|machine_type| {
+			machine_types
+				.iter()
+				.find(|mt| mt.id.to_string() == machine_type)
+				.expect(&format!(
+					"No machine type found with ID: `{}`",
+					machine_type
+				))
+				.id
+		})
+		.unwrap_or_else(|| {
+			Select::new(
+				"Select the machine type: ",
+				machine_types
+					.iter()
+					.map(|machine_type| machine_type.id)
+					.collect(),
+			)
+			.with_formatter(&|mt| {
+				machine_types
+					.get(mt.index)
+					.map(|machine_type| {
+						format!(
+							"{}: {} vCPU, {} GiB RAM",
+							machine_type.id,
+							machine_type.cpu_count,
+							machine_type.memory_count / 4
+						)
+					})
+					.unwrap_or_else(|| mt.to_string())
+			})
+			.with_help_message("The machine type to use for the deployment")
+			.prompt()
+			.expect_tty("Failed to read machine type")
+		});
+
+	let deploy_on_push = if registry.is_patr_registry() {
+		args.deploy_on_push.unwrap_or_else(|| {
+			Confirm::new("Deploy on push?")
+				.with_help_message(concat!(
+					"If yes, the deployment will automatically update",
+					" when a new image is pushed to the registry with the same tag.",
+				))
+				.with_default(true)
+				.prompt()
+				.expect_tty("Failed to read deploy on push")
+		})
+	} else {
+		false
+	};
+
 	if std::io::stdout().is_terminal() {
 		let confirmed = Confirm::new("Create the deployment?")
 			.with_default(true)
@@ -228,10 +354,10 @@ pub async fn execute(
 				name,
 				registry,
 				image_tag,
-				runner: todo!(),
-				machine_type: todo!(),
+				runner,
+				machine_type,
 				running_details: DeploymentRunningDetails {
-					deploy_on_push: todo!(),
+					deploy_on_push,
 					min_horizontal_scale: todo!(),
 					max_horizontal_scale: todo!(),
 					ports: todo!(),
