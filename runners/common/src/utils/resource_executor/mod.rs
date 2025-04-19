@@ -56,10 +56,12 @@ where
 		}
 	}
 
+	/// Creates a new resource executor task for a deployment.
 	pub(crate) fn new_deployment(deployment_id: Uuid, state: AppState<E>) -> Self {
 		Self::new(deployment_id, ResourceType::Deployment, state)
 	}
 
+	/// Cancels the resource executor task.
 	pub(crate) fn cancel(&self) {
 		self.cancellation_token.cancel();
 	}
@@ -72,10 +74,12 @@ where
 		Ok(())
 	}
 
+	/// Returns the resource ID of the resource executor task.
 	pub(crate) fn resource_id(&self) -> Uuid {
 		self.resource_id
 	}
 
+	/// Ensures that the task is running. If it is not running, then start it.
 	pub(crate) fn ensure_running(&mut self) -> Result<(), RunnerError> {
 		// Ensure that the task is running. If it is not running, then start it.
 		if self.task.is_finished() {
@@ -89,6 +93,8 @@ where
 		Ok(())
 	}
 
+	/// Starts the resource executor task. This will be used to start the task
+	/// that will be used to manage the resource.
 	fn start_task(
 		resource_id: Uuid,
 		resource_type: ResourceType,

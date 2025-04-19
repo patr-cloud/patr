@@ -1,4 +1,7 @@
+/// Get the user info that was registered with the user
 mod get_user_info;
+/// Get the list of workspaces that the user is a member of. For self hosted
+/// mode, this is just the default workspace.
 mod list_workspaces;
 
 use axum::Router;

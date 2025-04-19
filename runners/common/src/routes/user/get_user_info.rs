@@ -4,6 +4,7 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
+/// Get the user info that was registered when the runner was setup
 pub async fn get_user_info(
 	AppRequest {
 		request:

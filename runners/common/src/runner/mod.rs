@@ -22,6 +22,9 @@ use tracing_subscriber::{
 
 use crate::{db, prelude::*, utils::resource_executor::ResourceExecutorTask};
 
+/// The global cancellation token that will be used to cancel the tasks
+/// when the runner is stopped. This token will be used to cancel all the
+/// tasks that are running in the runner.
 pub(super) static GLOBAL_CANCEL_TOKEN: OnceLock<CancellationToken> = OnceLock::new();
 
 /// All deployment related functions for the runner

@@ -2,6 +2,8 @@ use tokio_util::sync::CancellationToken;
 
 use crate::prelude::*;
 
+/// The resource executor task that will be used to specifically manage the
+/// deployments of the runner.
 pub(super) async fn handle_deployment<E>(
 	resource_id: Uuid,
 	executor: E,
