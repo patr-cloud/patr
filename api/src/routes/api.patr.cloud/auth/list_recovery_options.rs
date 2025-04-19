@@ -24,8 +24,8 @@ pub async fn list_recovery_options(
 		r#"
 		SELECT
 			"user".recovery_email,
-            phone_number_country_code.phone_code AS "recovery_phone_code",
-            "user".recovery_phone_number
+			phone_number_country_code.phone_code AS "recovery_phone_code",
+			"user".recovery_phone_number
 		FROM
 			"user"
 		LEFT JOIN

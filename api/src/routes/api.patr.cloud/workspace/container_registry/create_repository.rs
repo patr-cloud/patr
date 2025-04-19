@@ -65,7 +65,7 @@ pub async fn create_repository(
 				id,
 				workspace_id,
 				name,
-                deleted
+				deleted
 			)
 		VALUES
 			($1, $2, $3, NULL);

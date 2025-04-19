@@ -34,12 +34,12 @@ pub async fn remove_user_from_workspace(
 
 	query!(
 		r#"
-        DELETE FROM
-            workspace_user
-        WHERE
-            workspace_id = $1 AND
-            user_id = $2;
-        "#,
+		DELETE FROM
+			workspace_user
+		WHERE
+			workspace_id = $1 AND
+			user_id = $2;
+		"#,
 		workspace_id as _,
 		user_id as _
 	)

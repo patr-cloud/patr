@@ -35,10 +35,10 @@ pub async fn forgot_password(
 			"user".id,
 			"user".username,
 			"user".password,
-            "user".recovery_email,
-            "user".recovery_phone_country_code,
-            "user".recovery_phone_number,
-            "user".password_reset_token_expiry
+			"user".recovery_email,
+			"user".recovery_phone_country_code,
+			"user".recovery_phone_number,
+			"user".password_reset_token_expiry
 		FROM
 			"user"
 		LEFT JOIN
@@ -128,15 +128,15 @@ pub async fn forgot_password(
 
 	query!(
 		r#"
-        UPDATE
-            "user"
-        SET
-            password_reset_token = $1,
-            password_reset_token_expiry = $2,
-            password_reset_attempts = 0
-        WHERE
-            id = $3;
-        "#,
+		UPDATE
+			"user"
+		SET
+			password_reset_token = $1,
+			password_reset_token_expiry = $2,
+			password_reset_attempts = 0
+		WHERE
+			id = $3;
+		"#,
 		hashed_password_reset_token,
 		password_reset_token_expiry,
 		user_data.id,

@@ -37,7 +37,7 @@ pub async fn get_runner_info(
 			runner
 		WHERE
 			id = $1 AND
-            workspace_id = $2 AND
+			workspace_id = $2 AND
 			deleted IS NULL;
 		"#,
 		&runner_id as _,

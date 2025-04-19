@@ -38,19 +38,19 @@ pub async fn update_managed_url(
 	// Check to make sure that the Managed URL exist
 	query!(
 		r#"
-        SELECT
-            managed_url.id
-        FROM
-            managed_url
-        INNER JOIN
-            resource
-        ON
-            managed_url.id = resource.id
-        WHERE
-            managed_url.id = $1 AND
-            managed_url.deleted IS NULL AND
-            resource.owner_id = $2;
-        "#,
+		SELECT
+			managed_url.id
+		FROM
+			managed_url
+		INNER JOIN
+			resource
+		ON
+			managed_url.id = resource.id
+		WHERE
+			managed_url.id = $1 AND
+			managed_url.deleted IS NULL AND
+			resource.owner_id = $2;
+		"#,
 		managed_url_id as _,
 		workspace_id as _,
 	)

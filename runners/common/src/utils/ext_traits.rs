@@ -55,6 +55,21 @@ pub trait ExitableFuture<T> {
 	/// is triggered. If the exit signal is triggered before the future
 	/// completes, then this function will return [`None`].
 	fn with_cancel_check(self) -> impl Future<Output = Result<T, RunnerError>>;
+
+	/// Returns the value of the future if it completes before the exit signal
+	/// is triggered. If the exit signal is triggered before the future
+	/// completes, then this function will return [`None`].
+	/// This function takes a [`CancellationToken`] as an argument, which
+	/// allows you to specify a custom cancellation token for the future.
+	/// This is basically the same as
+	/// [`with_cancel_check`][1] but with a
+	/// different cancellation token than the global one.
+	///
+	/// [1]: ExitableFuture::with_cancel_check
+	fn with_cancel_check_of(
+		self,
+		cancellation_token: &CancellationToken,
+	) -> impl Future<Output = Result<T, RunnerError>>;
 }
 
 impl<T, F> ExitableFuture<T> for F
@@ -62,13 +77,19 @@ where
 	F: Future<Output = T>,
 {
 	async fn with_cancel_check(self) -> Result<T, RunnerError> {
+		self.with_cancel_check_of(
+			crate::runner::GLOBAL_CANCEL_TOKEN.get_or_init(CancellationToken::new),
+		)
+		.await
+	}
+
+	async fn with_cancel_check_of(
+		self,
+		cancellation_token: &CancellationToken,
+	) -> Result<T, RunnerError> {
 		futures::future::select(
 			std::pin::pin!(self),
-			std::pin::pin!(
-				crate::runner::GLOBAL_CANCEL_TOKEN
-					.get_or_init(CancellationToken::new)
-					.cancelled()
-			),
+			std::pin::pin!(cancellation_token.cancelled()),
 		)
 		.await
 		.into_left()

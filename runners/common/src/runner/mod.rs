@@ -322,10 +322,18 @@ where
 
 		let mut sleep_future = Box::pin(time::sleep(full_sync_interval));
 
+		// Remember: The point of this loop is not to update the database or the
+		// resource. Our job is simple: Make sure that for every resource in the
+		// database, there is a task running. It's the task's job to update the
+		// resource. As long as it's running, we are happy. So NO updating the
+		// resource here whatsoever. All that happens in the task.
 		loop {
 			match future::select(sleep_future, pin!(change_publisher.recv())).await {
 				Either::Left(((), _)) => {
-					let Ok(()) = self.reconcile_deployments().await else {
+					// Regularly (every 10 minutes in prod and 10 seconds in dev) reconcile all the
+					// deployments. Check all resources in the local database and make sure they are
+					// running on the runner.
+					let Ok(()) = self.reconcile_resources().await else {
 						time::sleep(Duration::from_secs(1))
 							.with_cancel_check()
 							.await?;

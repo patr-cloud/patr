@@ -33,17 +33,17 @@ pub async fn get_api_token_info(
 	let mut token = query!(
 		r#"
 		SELECT
-            token_id,
-            name,
-            token_nbf,
-            token_exp,
-            allowed_ips,
-            created
+			token_id,
+			name,
+			token_nbf,
+			token_exp,
+			allowed_ips,
+			created
 		FROM
 			user_api_token
 		WHERE
 			token_id = $1 AND
-            user_id = $2 AND
+			user_id = $2 AND
 			revoked IS NULL;
 		"#,
 		token_id as _,
@@ -94,12 +94,12 @@ pub async fn get_api_token_info(
 	query!(
 		r#"
 		SELECT
-            workspace_id,
-            resource_id,
-            permission_id
+			workspace_id,
+			resource_id,
+			permission_id
 		FROM
 			user_api_token_resource_permissions_exclude
-        WHERE
+		WHERE
 			token_id = $1;
 		"#,
 		token_id as _
@@ -140,12 +140,12 @@ pub async fn get_api_token_info(
 	query!(
 		r#"
 		SELECT
-            workspace_id,
-            resource_id,
-            permission_id
+			workspace_id,
+			resource_id,
+			permission_id
 		FROM
 			user_api_token_resource_permissions_include
-        WHERE
+		WHERE
 			token_id = $1;
 		"#,
 		token_id as _

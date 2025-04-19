@@ -18,7 +18,7 @@ pub fn ImageHistoryCard(
 		class.with(|cname| format!(
 			"w-full px-xl py-md bg-secondary-light rounded-sm flex flex-col items-start justify-start pos-rel deploy-summary-card text-white {}",
 			cname
-    	))
+		))
 	};
 
 	view! {

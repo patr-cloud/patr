@@ -32,11 +32,11 @@ impl<T> AddTuple<T> for () {
 /// below if you really need it. But if you need more than 16, you should
 /// probably rethink your design.
 macro_rules! impl_add_tuples {
-    ($($header:ident),+ $(,)?) => {
-        impl<H, $($header,)*> AddTuple<H> for ($($header,)*) {
-            type ResultantTuple = ($($header,)* H);
-        }
-    };
+	($($header:ident),+ $(,)?) => {
+		impl<H, $($header,)*> AddTuple<H> for ($($header,)*) {
+			type ResultantTuple = ($($header,)* H);
+		}
+	};
 }
 
 impl_add_tuples!(H1,);

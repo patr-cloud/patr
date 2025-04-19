@@ -29,13 +29,13 @@ pub async fn is_name_available(
 
 	let available = query!(
 		r#"
-        SELECT
-            *
-        FROM
-            workspace
-        WHERE
-            name = $1;
-        "#,
+		SELECT
+			*
+		FROM
+			workspace
+		WHERE
+			name = $1;
+		"#,
 		&name,
 	)
 	.fetch_optional(&mut **database)

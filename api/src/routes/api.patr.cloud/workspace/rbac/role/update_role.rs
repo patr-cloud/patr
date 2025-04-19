@@ -53,14 +53,14 @@ pub async fn update_role(
 
 	query!(
 		r#"
-        UPDATE
-            role
-        SET
-            name = COALESCE($1, name),
-            description = COALESCE($2, description)
-        WHERE
-            id = $3;
-        "#,
+		UPDATE
+			role
+		SET
+			name = COALESCE($1, name),
+			description = COALESCE($2, description)
+		WHERE
+			id = $3;
+		"#,
 		name.as_deref(),
 		description.as_deref(),
 		role_id as _,
@@ -73,11 +73,11 @@ pub async fn update_role(
 	if let Some(permissions) = permissions {
 		query!(
 			r#"
-            DELETE FROM
-                role_resource_permissions_include
-            WHERE
-                role_id = $1;
-            "#,
+			DELETE FROM
+				role_resource_permissions_include
+			WHERE
+				role_id = $1;
+			"#,
 			role_id as _
 		)
 		.execute(&mut **database)
@@ -87,11 +87,11 @@ pub async fn update_role(
 
 		query!(
 			r#"
-            DELETE FROM
-                role_resource_permissions_exclude
-            WHERE
-                role_id = $1;
-            "#,
+			DELETE FROM
+				role_resource_permissions_exclude
+			WHERE
+				role_id = $1;
+			"#,
 			role_id as _
 		)
 		.execute(&mut **database)
@@ -101,11 +101,11 @@ pub async fn update_role(
 
 		query!(
 			r#"
-            DELETE FROM
-                role_resource_permissions_type
-            WHERE
-                role_id = $1;
-            "#,
+			DELETE FROM
+				role_resource_permissions_type
+			WHERE
+				role_id = $1;
+			"#,
 			role_id as _
 		)
 		.execute(&mut **database)
@@ -117,19 +117,19 @@ pub async fn update_role(
 			let permission_type = ResourcePermissionTypeDiscriminant::from(&permission);
 			query!(
 				r#"
-                INSERT INTO
-                    role_resource_permissions_type(
-                        role_id,
-                        permission_id,
-                        permission_type
-                    )
-                VALUES
-                    (
-                        $1,
-                        $2,
-                        $3
-                    );
-                "#,
+				INSERT INTO
+					role_resource_permissions_type(
+						role_id,
+						permission_id,
+						permission_type
+					)
+				VALUES
+					(
+						$1,
+						$2,
+						$3
+					);
+				"#,
 				role_id as _,
 				permission_id as _,
 				permission_type as _,
@@ -140,21 +140,21 @@ pub async fn update_role(
 				ResourcePermissionType::Include(resources) => {
 					query!(
 						r#"
-                        INSERT INTO
-                            role_resource_permissions_include(
-                                role_id,
-                                permission_id,
-                                resource_id,
-                                permission_type
-                            )
-                        VALUES
-                            (
-                                $1,
-                                $2,
-                                UNNEST($3::UUID[]),
-                                DEFAULT
-                            );
-                        "#,
+						INSERT INTO
+							role_resource_permissions_include(
+								role_id,
+								permission_id,
+								resource_id,
+								permission_type
+							)
+						VALUES
+							(
+								$1,
+								$2,
+								UNNEST($3::UUID[]),
+								DEFAULT
+							);
+						"#,
 						role_id as _,
 						permission_id as _,
 						&resources.into_iter().map(|r| r.into()).collect::<Vec<_>>(),
@@ -165,21 +165,21 @@ pub async fn update_role(
 				ResourcePermissionType::Exclude(resources) => {
 					query!(
 						r#"
-                        INSERT INTO
-                            role_resource_permissions_exclude(
-                                role_id,
-                                permission_id,
-                                resource_id,
-                                permission_type
-                            )
-                        VALUES
-                            (
-                                $1,
-                                $2,
-                                UNNEST($3::UUID[]),
-                                DEFAULT
-                            );
-                        "#,
+						INSERT INTO
+							role_resource_permissions_exclude(
+								role_id,
+								permission_id,
+								resource_id,
+								permission_type
+							)
+						VALUES
+							(
+								$1,
+								$2,
+								UNNEST($3::UUID[]),
+								DEFAULT
+							);
+						"#,
 						role_id as _,
 						permission_id as _,
 						&resources.into_iter().map(|r| r.into()).collect::<Vec<_>>(),

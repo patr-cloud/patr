@@ -37,18 +37,18 @@ pub async fn list_all_roles(
 	let mut total_count = 0;
 	let roles = query!(
 		r#"
-        SELECT
-            *,
-            COUNT(*) OVER() AS "total_count!"
-        FROM
-            role
-        WHERE
-            owner_id = $1
+		SELECT
+			*,
+			COUNT(*) OVER() AS "total_count!"
+		FROM
+			role
+		WHERE
+			owner_id = $1
 		ORDER BY
 			id
-        LIMIT $2
-        OFFSET $3;
-        "#,
+		LIMIT $2
+		OFFSET $3;
+		"#,
 		workspace_id as _,
 		count as i64,
 		(page * count) as i64,

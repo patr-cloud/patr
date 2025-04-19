@@ -38,14 +38,14 @@ pub async fn complete_sign_up(
 
 	let row = query!(
 		r#"
-        SELECT
-            *
-        FROM
-            user_to_sign_up
-        WHERE
-            username = $1 AND
+		SELECT
+			*
+		FROM
+			user_to_sign_up
+		WHERE
+			username = $1 AND
 			otp_expiry > NOW();
-        "#,
+		"#,
 		&username
 	)
 	.fetch_optional(&mut **database)
@@ -100,41 +100,41 @@ pub async fn complete_sign_up(
 
 	query!(
 		r#"
-        INSERT INTO
-            "user"(
-                id,
-                username,
-                password,
-                first_name,
-                last_name,
-                created,
-                recovery_email,
-                recovery_phone_country_code,
-                recovery_phone_number,
-                workspace_limit,
-                password_reset_token,
-                password_reset_token_expiry,
-                password_reset_attempts,
-                mfa_secret
-            )
-        VALUES
-            (
-                $1,
-                $2,
-                $3,
-                $4,
-                $5,
-                $6,
-                $7,
-                $8,
-                $9,
-                $10,
-                NULL,
-                NULL,
-                NULL,
-                NULL
-            );
-        "#,
+		INSERT INTO
+			"user"(
+				id,
+				username,
+				password,
+				first_name,
+				last_name,
+				created,
+				recovery_email,
+				recovery_phone_country_code,
+				recovery_phone_number,
+				workspace_limit,
+				password_reset_token,
+				password_reset_token_expiry,
+				password_reset_attempts,
+				mfa_secret
+			)
+		VALUES
+			(
+				$1,
+				$2,
+				$3,
+				$4,
+				$5,
+				$6,
+				$7,
+				$8,
+				$9,
+				$10,
+				NULL,
+				NULL,
+				NULL,
+				NULL
+			);
+		"#,
 		user_id as _,
 		&username,
 		row.password,

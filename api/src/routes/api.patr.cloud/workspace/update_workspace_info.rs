@@ -63,13 +63,13 @@ pub async fn update_workspace_info(
 
 	query!(
 		r#"
-        UPDATE
-            workspace
-        SET
-            name = COALESCE($1, name)
+		UPDATE
+			workspace
+		SET
+			name = COALESCE($1, name)
 		WHERE
 			id = $2;
-        "#,
+		"#,
 		name.as_deref(),
 		&workspace_id as _,
 	)

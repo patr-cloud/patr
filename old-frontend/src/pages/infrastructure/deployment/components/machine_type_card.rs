@@ -19,7 +19,7 @@ pub fn MachineTypeCard(
 	let outer_div_class = move || {
 		class.with(|cname| {
 			format!(
-                "px-xl py-lg bg-secondary-medium cursor-pointer rounded-sm flex flex-col items-start justify-start machine-type-card {} {}",
+				"px-xl py-lg bg-secondary-medium cursor-pointer rounded-sm flex flex-col items-start justify-start machine-type-card {} {}",
 				cname,
 				if is_selected.get() { "bd-primary" } else { "bd-none" }
 			)

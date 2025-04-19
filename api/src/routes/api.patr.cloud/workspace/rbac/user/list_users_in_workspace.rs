@@ -36,18 +36,18 @@ pub async fn list_users_in_workspace(
 	let mut total_count = 0;
 	let users = query!(
 		r#"
-        SELECT
-            *,
-            COUNT(*) OVER() AS "total_count!"
-        FROM
-            workspace_user
-        WHERE
-            workspace_id = $1
-        ORDER BY
-            user_id, role_id
-        LIMIT $2
-        OFFSET $3;
-        "#,
+		SELECT
+			*,
+			COUNT(*) OVER() AS "total_count!"
+		FROM
+			workspace_user
+		WHERE
+			workspace_id = $1
+		ORDER BY
+			user_id, role_id
+		LIMIT $2
+		OFFSET $3;
+		"#,
 		workspace_id as _,
 		count as i64,
 		(count * page) as i64,

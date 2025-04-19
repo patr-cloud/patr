@@ -28,7 +28,7 @@ pub async fn initialize_user_login_tables(
 		CREATE TABLE user_login(
 			login_id UUID NOT NULL,
 			user_id UUID NOT NULL,
-            login_type USER_LOGIN_TYPE NOT NULL,
+			login_type USER_LOGIN_TYPE NOT NULL,
 			created TIMESTAMPTZ NOT NULL
 		);
 		"#

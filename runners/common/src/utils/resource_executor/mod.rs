@@ -6,6 +6,10 @@ use tokio_util::sync::CancellationToken;
 
 use crate::prelude::*;
 
+/// The resource executor task that will be used to specifically manage the
+/// deployments of the runner.
+mod deployment;
+
 /// The resource executor task that will be used to manage the resources. This
 /// will be used to spawn the tasks that will be used to manage the resources.
 pub struct ResourceExecutorTask<E>
@@ -97,35 +101,21 @@ where
 			let state = state;
 			let cancellation_token = cancellation_token;
 
-			let executor = E::new(&state.config, state.runner_state).await;
+			let executor = E::new(&state.config, state.runner_state.clone()).await;
 
 			match resource_type {
 				ResourceType::Deployment => {
-					// Keep checking for the status of the deployment and
-					// update the database
-					loop {
-						let Ok(status) = executor.get_deployment_status(resource_id).await else {
-							continue;
-						};
-
-						// Update the status of the deployment in the database
-						let _ = query(
-							r#"
-							UPDATE
-								deployment
-							SET
-								status = $1
-							WHERE
-								id = $2;
-							"#,
-						)
-						.bind(status)
-						.bind(resource_id)
-						.execute(&state.database)
-						.await;
-					}
+					_ = deployment::handle_deployment(
+						resource_id,
+						executor,
+						state,
+						cancellation_token,
+					)
+					.await
+					.inspect_err(|err| {
+						tracing::error!("Failed to handle deployment resource: {}", err);
+					});
 				}
-
 				ResourceType::Workspace |
 				ResourceType::Project |
 				ResourceType::Runner |

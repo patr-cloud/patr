@@ -42,7 +42,7 @@ pub async fn list_runners_for_workspace(
 		r#"
 		SELECT
 			runner.id,
-            name,
+			name,
 			COUNT(*) OVER() AS "total_count!"
 		FROM
 			runner

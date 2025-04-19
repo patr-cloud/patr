@@ -60,11 +60,11 @@ pub async fn delete_role(
 
 	query!(
 		r#"
-        DELETE FROM
-            role_resource_permissions_include
-        WHERE
-            role_id = $1;
-        "#,
+		DELETE FROM
+			role_resource_permissions_include
+		WHERE
+			role_id = $1;
+		"#,
 		role_id as _
 	)
 	.execute(&mut **database)
@@ -74,11 +74,11 @@ pub async fn delete_role(
 
 	query!(
 		r#"
-        DELETE FROM
-            role_resource_permissions_exclude
-        WHERE
-            role_id = $1;
-        "#,
+		DELETE FROM
+			role_resource_permissions_exclude
+		WHERE
+			role_id = $1;
+		"#,
 		role_id as _
 	)
 	.execute(&mut **database)
@@ -88,11 +88,11 @@ pub async fn delete_role(
 
 	query!(
 		r#"
-        DELETE FROM
-            role_resource_permissions_type
-        WHERE
-            role_id = $1;
-        "#,
+		DELETE FROM
+			role_resource_permissions_type
+		WHERE
+			role_id = $1;
+		"#,
 		role_id as _
 	)
 	.execute(&mut **database)
@@ -102,11 +102,11 @@ pub async fn delete_role(
 
 	query!(
 		r#"
-        DELETE FROM
-            role
-        WHERE
-            id = $1;
-        "#,
+		DELETE FROM
+			role
+		WHERE
+			id = $1;
+		"#,
 		role_id as _
 	)
 	.execute(&mut **database)

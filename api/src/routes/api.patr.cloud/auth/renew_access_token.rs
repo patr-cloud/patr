@@ -46,14 +46,14 @@ pub async fn renew_access_token(
 
 	let row = query!(
 		r#"
-        SELECT
-            token_expiry,
+		SELECT
+			token_expiry,
 			refresh_token
-        FROM
-            web_login
-        WHERE
-            login_id = $1;
-        "#,
+		FROM
+			web_login
+		WHERE
+			login_id = $1;
+		"#,
 		login_id as _,
 	)
 	.fetch_optional(&mut **database)
