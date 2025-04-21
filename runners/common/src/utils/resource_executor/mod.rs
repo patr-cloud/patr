@@ -107,20 +107,9 @@ where
 			let state = state;
 			let cancellation_token = cancellation_token;
 
-			let executor = E::new(&state.config, state.runner_state.clone()).await;
-
 			match resource_type {
 				ResourceType::Deployment => {
-					_ = deployment::handle_deployment(
-						resource_id,
-						executor,
-						state,
-						cancellation_token,
-					)
-					.await
-					.inspect_err(|err| {
-						tracing::error!("Failed to handle deployment resource: {}", err);
-					});
+					deployment::handle_deployment(resource_id, state, cancellation_token).await;
 				}
 				ResourceType::Workspace |
 				ResourceType::Project |

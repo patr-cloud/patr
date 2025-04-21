@@ -179,18 +179,21 @@ pub async fn execute(
 					.map(|repo| repo.id)
 			})
 			.unwrap_or_else(|| {
-				Select::new(
+				let name = Select::new(
 					"Please select the repository to use:",
-					repositories.iter().map(|repo| repo.id).collect(),
+					repositories.iter().map(|repo| &repo.name).collect(),
 				)
 				.with_formatter(&|repo_id| {
-					repositories
-						.get(repo_id.index)
-						.map(|repo| format!("registry.patr.cloud/{workspace_id}/{}", repo.name))
-						.unwrap_or_else(|| repo_id.to_string())
+					format!("registry.patr.cloud/{workspace_id}/{}", repo_id.value)
 				})
 				.prompt()
-				.expect_tty("Failed to read repository ID")
+				.expect_tty("Failed to read repository ID");
+
+				repositories
+					.iter()
+					.find(|&repo| &repo.name == name)
+					.expect(&format!("No repository found with name: `{}`", name))
+					.id
 			});
 
 		DeploymentRegistry::PatrRegistry {
@@ -246,19 +249,19 @@ pub async fn execute(
 				.id
 		})
 		.unwrap_or_else(|| {
-			Select::new(
+			let name = Select::new(
 				"Select the runner to use: ",
-				runners.iter().map(|runner| runner.id).collect(),
+				runners.iter().map(|runner| &runner.name).collect(),
 			)
-			.with_formatter(&|runner_id| {
-				runners
-					.get(runner_id.index)
-					.map(|runner| format!("{} ({})", runner.name, runner.id))
-					.unwrap_or_else(|| runner_id.to_string())
-			})
 			.with_help_message("The runner to use for the deployment")
 			.prompt()
-			.expect_tty("Failed to read runner ID")
+			.expect_tty("Failed to read runner ID");
+
+			runners
+				.iter()
+				.find(|&runner| &runner.name == name)
+				.expect(&format!("No runner found with name: `{}`", name))
+				.id
 		});
 
 	let machine_types = make_request(
@@ -288,29 +291,34 @@ pub async fn execute(
 				.id
 		})
 		.unwrap_or_else(|| {
-			Select::new(
+			let name = Select::new(
 				"Select the machine type: ",
 				machine_types
 					.iter()
-					.map(|machine_type| machine_type.id)
-					.collect(),
-			)
-			.with_formatter(&|mt| {
-				machine_types
-					.get(mt.index)
 					.map(|machine_type| {
 						format!(
-							"{}: {} vCPU, {} GiB RAM",
-							machine_type.id,
+							"{} vCPU, {} GiB RAM",
 							machine_type.cpu_count,
 							machine_type.memory_count / 4
 						)
 					})
-					.unwrap_or_else(|| mt.to_string())
-			})
+					.collect(),
+			)
 			.with_help_message("The machine type to use for the deployment")
 			.prompt()
-			.expect_tty("Failed to read machine type")
+			.expect_tty("Failed to read machine type");
+
+			machine_types
+				.iter()
+				.find(|&machine_type| {
+					format!(
+						"{} vCPU, {} GiB RAM",
+						machine_type.cpu_count,
+						machine_type.memory_count / 4
+					) == name
+				})
+				.expect(&format!("No machine type found with name: `{}`", name))
+				.id
 		});
 
 	let deploy_on_push = if registry.is_patr_registry() {
