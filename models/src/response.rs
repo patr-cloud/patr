@@ -1,12 +1,10 @@
 use std::fmt::Display;
 
 use axum::{Json, http::StatusCode, response::IntoResponse};
-use leptos::{
+use leptos::server_fn::{
 	ServerFnError,
-	server_fn::{
-		codec::{FromRes, IntoRes},
-		response::{ClientRes, browser::BrowserResponse},
-	},
+	codec::{FromRes, IntoRes},
+	response::{ClientRes, browser::BrowserResponse},
 };
 use preprocess::Preprocessable;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};

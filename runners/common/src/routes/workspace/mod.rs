@@ -17,5 +17,5 @@ where
 {
 	Router::new()
 		.merge(deployment::setup_routes(state).await)
-		.mount_auth_endpoint(get_workspace_info, state)
+		.mount_auth_json_endpoint(get_workspace_info, state)
 }

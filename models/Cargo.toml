@@ -25,7 +25,7 @@ headers           = { workspace = true, features = [] }
 hex               = { workspace = true, features = ["default"] }
 http              = { workspace = true, features = ["default"] }
 ipnetwork         = { workspace = true, features = ["default"] }
-leptos            = { workspace = true, features = ["default"] }
+leptos            = { workspace = true, default-features = false }
 macros            = { workspace = true, features = [] }
 preprocess        = { workspace = true, features = [] }
 regex             = { workspace = true, features = ["default"] }
@@ -39,7 +39,7 @@ strum             = { workspace = true, features = ["default", "derive"] }
 thiserror         = { workspace = true, features = [] }
 tokio             = { workspace = true, features = [] }
 tokio-tungstenite = { workspace = true, features = [] }
-tower             = { workspace = true }
+tower             = { workspace = true, features = [] }
 tracing           = { workspace = true, features = ["attributes"] }
 typed-builder     = { workspace = true, features = [] }
 url               = { workspace = true, features = ["default"] }
@@ -54,6 +54,5 @@ uuid                  = { workspace = true, features = ["default", "v1", "v4"] }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom_02 = { workspace = true, features = ["js"] }
 getrandom_03 = { workspace = true, features = ["wasm_js"] }
-leptos       = { workspace = true, features = [] }
 time         = { workspace = true, features = ["default", "serde-human-readable", "wasm-bindgen"] }
 uuid         = { workspace = true, features = ["default", "js", "v1", "v4"] }

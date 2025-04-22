@@ -6,11 +6,11 @@ use crate::prelude::*;
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
-		.mount_endpoint(all_database_plan, state)
-		.mount_auth_endpoint(create_database, state)
-		.mount_auth_endpoint(delete_database, state)
-		.mount_auth_endpoint(get_database, state)
-		.mount_auth_endpoint(list_database, state)
+		.mount_json_endpoint(all_database_plan, state)
+		.mount_auth_json_endpoint(create_database, state)
+		.mount_auth_json_endpoint(delete_database, state)
+		.mount_auth_json_endpoint(get_database, state)
+		.mount_auth_json_endpoint(list_database, state)
 }
 
 async fn all_database_plan(

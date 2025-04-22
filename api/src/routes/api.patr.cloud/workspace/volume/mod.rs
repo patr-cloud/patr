@@ -18,9 +18,9 @@ use crate::prelude::*;
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
-		.mount_auth_endpoint(create_volume, state)
-		.mount_auth_endpoint(delete_volume, state)
-		.mount_auth_endpoint(get_volume_info, state)
-		.mount_auth_endpoint(list_volumes, state)
-		.mount_auth_endpoint(update_volume, state)
+		.mount_auth_json_endpoint(create_volume, state)
+		.mount_auth_json_endpoint(delete_volume, state)
+		.mount_auth_json_endpoint(get_volume_info, state)
+		.mount_auth_json_endpoint(list_volumes, state)
+		.mount_auth_json_endpoint(update_volume, state)
 }

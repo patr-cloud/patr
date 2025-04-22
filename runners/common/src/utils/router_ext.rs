@@ -7,6 +7,7 @@ use models::{
 	utils::{HasHeader, NoAuthentication},
 };
 use preprocess::Preprocessable;
+use serde::{Serialize, de::DeserializeOwned};
 use tower::{
 	ServiceBuilder,
 	util::{BoxCloneService, BoxLayer},
@@ -32,6 +33,18 @@ pub trait RouterExt<S>
 where
 	S: Clone + Send + Sync + 'static,
 {
+	/// Mount a JSON API endpoint directly along with the required request
+	/// parser, and endpoint handler, using tower layers.
+	#[track_caller]
+	fn mount_json_endpoint<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
+	where
+		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
+		E: ApiEndpoint<Authenticator = NoAuthentication> + Sync,
+		<E::RequestBody as Preprocessable>::Processed: Send,
+		E::RequestBody: Serialize + DeserializeOwned,
+		E::ResponseBody: Serialize + DeserializeOwned,
+		R: RunnerExecutor + Send + 'static;
+
 	/// Mount an API endpoint directly along with the required request parser,
 	/// and endpoint handler, using tower layers.
 	#[track_caller]
@@ -41,6 +54,20 @@ where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
 		E: ApiEndpoint<Authenticator = NoAuthentication> + Sync,
 		<E::RequestBody as Preprocessable>::Processed: Send,
+		R: RunnerExecutor + Send + 'static;
+
+	/// Mount a JSON API endpoint directly along with the required request
+	/// parser, Rate limiter, Audit logger and Auth middlewares, using tower
+	/// layers.
+	#[track_caller]
+	fn mount_auth_json_endpoint<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
+	where
+		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
+		E: ApiEndpoint<Authenticator = AppAuthentication<E>> + Sync,
+		<E::RequestBody as Preprocessable>::Processed: Send,
+		E::RequestHeaders: HasHeader<BearerToken>,
+		E::RequestBody: Serialize + DeserializeOwned,
+		E::ResponseBody: Serialize + DeserializeOwned,
 		R: RunnerExecutor + Send + 'static;
 
 	/// Mount an API endpoint directly along with the required request parser,
@@ -98,9 +125,38 @@ where
 				);
 			});
 
-		hosted_frontend::utils::register_request::<E>();
-
 		self
+	}
+
+	#[instrument(skip_all)]
+	fn mount_json_endpoint<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
+	where
+		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
+		E: ApiEndpoint<Authenticator = NoAuthentication> + Sync,
+		<E::RequestBody as Preprocessable>::Processed: Send,
+		E::RequestBody: Serialize + DeserializeOwned,
+		E::ResponseBody: Serialize + DeserializeOwned,
+		R: RunnerExecutor + Send + 'static,
+	{
+		frontend::utils::register_api_call::<E>();
+
+		Self::mount_endpoint(self, handler, state)
+	}
+
+	#[instrument(skip_all)]
+	fn mount_auth_json_endpoint<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
+	where
+		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
+		E: ApiEndpoint<Authenticator = AppAuthentication<E>> + Sync,
+		<E::RequestBody as Preprocessable>::Processed: Send,
+		E::RequestHeaders: HasHeader<BearerToken>,
+		E::RequestBody: Serialize + DeserializeOwned,
+		E::ResponseBody: Serialize + DeserializeOwned,
+		R: RunnerExecutor + Send + 'static,
+	{
+		frontend::utils::register_api_call::<E>();
+
+		Self::mount_auth_endpoint(self, handler, state)
 	}
 
 	#[instrument(skip_all)]

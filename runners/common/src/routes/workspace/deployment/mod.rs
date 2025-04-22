@@ -36,12 +36,12 @@ where
 	E: RunnerExecutor + Send + 'static,
 {
 	Router::new()
-		.mount_auth_endpoint(list_deployment, state)
-		.mount_auth_endpoint(delete_deployment, state)
-		.mount_auth_endpoint(update_deployment, state)
-		.mount_auth_endpoint(create_deployment, state)
-		.mount_auth_endpoint(get_deployment_info, state)
-		.mount_auth_endpoint(start_deployment, state)
-		.mount_auth_endpoint(stop_deployment, state)
-		.mount_endpoint(list_all_deployment_machine_types, state)
+		.mount_auth_json_endpoint(list_deployment, state)
+		.mount_auth_json_endpoint(delete_deployment, state)
+		.mount_auth_json_endpoint(update_deployment, state)
+		.mount_auth_json_endpoint(create_deployment, state)
+		.mount_auth_json_endpoint(get_deployment_info, state)
+		.mount_auth_json_endpoint(start_deployment, state)
+		.mount_auth_json_endpoint(stop_deployment, state)
+		.mount_json_endpoint(list_all_deployment_machine_types, state)
 }

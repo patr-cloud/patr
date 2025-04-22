@@ -47,8 +47,8 @@ use self::{authorize::*, introspect::*, revoke::*, token::*};
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
-		.mount_endpoint(authorize, state)
-		.mount_endpoint(introspect, state)
-		.mount_endpoint(revoke, state)
-		.mount_endpoint(token, state)
+		.mount_json_endpoint(authorize, state)
+		.mount_json_endpoint(introspect, state)
+		.mount_json_endpoint(revoke, state)
+		.mount_json_endpoint(token, state)
 }
