@@ -1,11 +1,5 @@
-/// The client module. This module is used to communicate with the server
-/// and fetch data from the server. It is used to make API calls for the
-/// backend.
-#[cfg(not(target_arch = "wasm32"))]
+/// A module containing the client that is used to make requests to the backend
 mod client;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use self::client::*;
 
 /// The alignment enum. This enum is used to specify the alignment of a
 /// component of left, right, or center.
@@ -41,11 +35,10 @@ mod variant;
 
 pub use self::{
 	alignment::*,
-	// app_route::*,
+	client::*,
 	color::*,
 	ext_traits::*,
 	routes::*,
-	// sidebar_items::*,
 	size::*,
 	storage::*,
 	variant::*,
