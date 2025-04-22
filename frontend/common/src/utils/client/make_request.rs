@@ -165,7 +165,7 @@ where
 	E::ResponseBody: Serialize + DeserializeOwned,
 {
 	async fn from_req(
-		req: leptos::server_fn::request::BrowserMockReq,
+		_: leptos::server_fn::request::BrowserMockReq,
 	) -> Result<Self, ServerFnError<ErrorType>> {
 		unreachable!()
 	}

@@ -7,9 +7,10 @@ use std::{
 
 #[cfg(not(target_arch = "wasm32"))]
 use matchit::Router;
+#[cfg(not(target_arch = "wasm32"))]
 use models::prelude::*;
 #[cfg(not(target_arch = "wasm32"))]
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 
 pub use self::{make_request::make_request, stream_request::stream_request};
 
@@ -33,6 +34,7 @@ pub static API_CALL_REGISTRY: ApiCallRegistryData = OnceLock::new();
 /// backend so that it can be used by the frontend. This is used internally and
 /// should not be used by any other part of the code.
 #[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
 pub fn register_api_call<E>()
 where
 	E: ApiEndpoint,
