@@ -35,6 +35,7 @@ serde             = { workspace = true, features = ["default", "derive"] }
 serde_json        = { workspace = true, features = ["default"] }
 serde_test        = { workspace = true, features = [] }
 serde_urlencoded  = { workspace = true, features = [] }
+server_fn         = { workspace = true, features = ["reqwest"] }
 strum             = { workspace = true, features = ["default", "derive"] }
 thiserror         = { workspace = true, features = [] }
 tokio             = { workspace = true, features = [] }

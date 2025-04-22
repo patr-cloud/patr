@@ -4,9 +4,10 @@ use axum::{Json, http::StatusCode, response::IntoResponse};
 use leptos::server_fn::{
 	ServerFnError,
 	codec::{FromRes, IntoRes},
-	response::{ClientRes, browser::BrowserResponse},
+	response::ClientRes,
 };
 use preprocess::Preprocessable;
+use reqwest::Response as ReqwestResponse;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use typed_builder::TypedBuilder;
 
@@ -89,18 +90,18 @@ where
 	}
 }
 
-impl<E> FromRes<ApiEncoding<E>, BrowserResponse, ErrorType> for AppResponse<E>
+impl<E> FromRes<ApiEncoding<E>, ReqwestResponse, ErrorType> for AppResponse<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 	E::RequestBody: Serialize + DeserializeOwned,
 	E::ResponseBody: Serialize + DeserializeOwned,
 {
-	async fn from_res(res: BrowserResponse) -> Result<Self, ServerFnError<ErrorType>> {
-		let status_code = <BrowserResponse as ClientRes<ErrorType>>::status(&res);
+	async fn from_res(res: ReqwestResponse) -> Result<Self, ServerFnError<ErrorType>> {
+		let status_code = <ReqwestResponse as ClientRes<ErrorType>>::status(&res);
 		let status_code = StatusCode::from_u16(status_code)
 			.map_err(|err| ServerFnError::Response(err.to_string()))?;
-		let headers = E::ResponseHeaders::from_header_map(todo!())
+		let headers = E::ResponseHeaders::from_header_map(res.headers())
 			.map_err(|err| ServerFnError::Response(err.to_string()))?;
 		let body = res.try_into_string().await?;
 		let body = serde_urlencoded::from_str(&body)

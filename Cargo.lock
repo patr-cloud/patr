@@ -715,9 +715,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.38"
+version = "1.2.39"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80f41ae168f955c12fb8960b057d70d0ca153fb83182b57d86380443527be7e9"
+checksum = "e1354349954c6fc9cb0deab020f27f783cf0b604e8bb754dc4658ecf0d29c35f"
 dependencies = [
  "find-msvc-tools",
  "jobserver",
@@ -2297,7 +2297,7 @@ dependencies = [
  "or_poisoned",
  "pin-project-lite",
  "serde",
- "throw_error",
+ "throw_error 0.3.0",
  "wasm-bindgen",
 ]
 
@@ -2986,11 +2986,11 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_qs",
- "server_fn",
+ "server_fn 0.8.7",
  "slotmap",
  "tachys",
  "thiserror 2.0.16",
- "throw_error",
+ "throw_error 0.3.0",
  "tracing",
  "typed-builder 0.21.2",
  "typed-builder-macro 0.21.2",
@@ -3044,7 +3044,7 @@ dependencies = [
  "leptos_meta",
  "leptos_router",
  "parking_lot",
- "server_fn",
+ "server_fn 0.8.7",
  "tachys",
  "tokio",
  "tower",
@@ -3131,7 +3131,7 @@ dependencies = [
  "quote",
  "rstml",
  "rustc_version",
- "server_fn_macro",
+ "server_fn_macro 0.8.7",
  "syn",
  "tracing",
  "uuid",
@@ -3205,7 +3205,7 @@ dependencies = [
  "send_wrapper",
  "serde",
  "serde_json",
- "server_fn",
+ "server_fn 0.8.7",
  "tachys",
  "tracing",
 ]
@@ -3472,9 +3472,9 @@ dependencies = [
  "base32",
  "base64 0.22.1",
  "either",
+ "futures",
  "getrandom 0.2.16",
  "getrandom 0.3.3",
- "futures",
  "headers",
  "hex",
  "http",
@@ -3489,6 +3489,7 @@ dependencies = [
  "serde_json",
  "serde_test",
  "serde_urlencoded",
+ "server_fn 0.7.8",
  "sqlx",
  "strum",
  "thiserror 2.0.16",
@@ -5216,6 +5217,29 @@ dependencies = [
 
 [[package]]
 name = "server_fn"
+version = "0.7.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8d05a9e3fd8d7404985418db38c6617cc793a1a27f398d4fbc9dfe8e41b804e6"
+dependencies = [
+ "bytes",
+ "const_format",
+ "dashmap",
+ "futures",
+ "http",
+ "once_cell",
+ "pin-project-lite",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "server_fn_macro_default 0.7.8",
+ "thiserror 2.0.16",
+ "throw_error 0.2.0",
+ "url",
+ "xxhash-rust",
+]
+
+[[package]]
+name = "server_fn"
 version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f77e178602e84703fd88cc3633b11bfcdcca51def9004ed467387a52e1434ba"
@@ -5240,9 +5264,9 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_qs",
- "server_fn_macro_default",
+ "server_fn_macro_default 0.8.5",
  "thiserror 2.0.16",
- "throw_error",
+ "throw_error 0.3.0",
  "tokio",
  "tower",
  "tower-layer",
@@ -5251,6 +5275,20 @@ dependencies = [
  "wasm-bindgen-futures",
  "wasm-streams",
  "web-sys",
+ "xxhash-rust",
+]
+
+[[package]]
+name = "server_fn_macro"
+version = "0.7.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "504b35e883267b3206317b46d02952ed7b8bf0e11b2e209e2eb453b609a5e052"
+dependencies = [
+ "const_format",
+ "convert_case 0.6.0",
+ "proc-macro2",
+ "quote",
+ "syn",
  "xxhash-rust",
 ]
 
@@ -5271,11 +5309,21 @@ dependencies = [
 
 [[package]]
 name = "server_fn_macro_default"
+version = "0.7.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb8b274f568c94226a8045668554aace8142a59b8bca5414ac5a79627c825568"
+dependencies = [
+ "server_fn_macro 0.7.8",
+ "syn",
+]
+
+[[package]]
+name = "server_fn_macro_default"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "63eb08f80db903d3c42f64e60ebb3875e0305be502bdc064ec0a0eab42207f00"
 dependencies = [
- "server_fn_macro",
+ "server_fn_macro 0.8.7",
  "syn",
 ]
 
@@ -5784,7 +5832,7 @@ dependencies = [
  "rustc_version",
  "send_wrapper",
  "slotmap",
- "throw_error",
+ "throw_error 0.3.0",
  "tracing",
  "wasm-bindgen",
  "web-sys",
@@ -5861,6 +5909,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f60246a4944f24f6e018aa17cdeffb7818b76356965d03b07d6a9886e8962185"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "throw_error"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4ef8bf264c6ae02a065a4a16553283f0656bd6266fc1fcb09fd2e6b5e91427b"
+dependencies = [
+ "pin-project-lite",
 ]
 
 [[package]]
