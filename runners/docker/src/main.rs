@@ -65,9 +65,23 @@ impl RunnerExecutor for DockerRunner {
 
 	async fn get_deployment_status(
 		&self,
-		_deployment_id: Uuid,
+		deployment_id: Uuid,
 	) -> Result<DeploymentStatus, RunnerError> {
-		todo!()
+		// TODO improve this
+		Ok(self
+			.docker
+			.inspect_container(&deployment_id.to_string(), None)
+			.await
+			.ok()
+			.and_then(|container| container.state)
+			.map(|state| {
+				if state.running.unwrap_or(false) {
+					DeploymentStatus::Running
+				} else {
+					DeploymentStatus::Stopped
+				}
+			})
+			.unwrap_or(DeploymentStatus::Stopped))
 	}
 }
 

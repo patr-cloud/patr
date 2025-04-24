@@ -17,7 +17,7 @@ pub(super) async fn handle_deployment<E>(
 {
 	loop {
 		let executor = E::new(&state.config, state.runner_state.clone()).await;
-		let result = handle_deployment_with_error(
+		let Err(error) = handle_deployment_with_error(
 			deployment_id,
 			executor,
 			state.clone(),
@@ -25,10 +25,14 @@ pub(super) async fn handle_deployment<E>(
 		)
 		.await;
 
-		if let Err(RunnerError::ExitSignalReceived) = result {
+		if let RunnerError::ExitSignalReceived = error {
 			// If the task was cancelled, we need to stop the task
 			// and return an error
 			return;
+		} else {
+			// If the task was not cancelled, we need to log the error
+			// and continue the loop
+			error!("Error while handling deployment: {}", error);
 		}
 
 		// Try again in a second
