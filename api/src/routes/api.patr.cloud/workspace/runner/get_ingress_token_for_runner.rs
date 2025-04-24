@@ -1,7 +1,7 @@
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use cloudflare::{
 	endpoints::cfd_tunnel::*,
-	framework::{async_api::Client, auth::Credentials, response::ApiSuccess, Environment},
+	framework::{Environment, auth::Credentials, client::async_api::Client, response::ApiSuccess},
 };
 use models::api::workspace::runner::*;
 
@@ -21,7 +21,7 @@ pub async fn get_ingress_token_for_runner(
 						authorization: _,
 						user_agent: _,
 					},
-				body: GetIngressTokenForRunnerRequestProcessed,
+				body: GetIngressTokenForRunnerRequestProcessed {},
 			},
 		database,
 		redis: _,
@@ -60,10 +60,6 @@ pub async fn get_ingress_token_for_runner(
 			"https://api.cloudflare.com/client/v4/accounts/{}/cfd_tunnel/{}",
 			account_id, tunnel_id
 		))
-		.header(
-			HeaderName::from_static("x-auth-email"),
-			HeaderValue::from_str(&config.cloudflare.email)?,
-		)
 		.bearer_auth(&config.cloudflare.api_key)
 		.send()
 		.await?
@@ -76,9 +72,8 @@ pub async fn get_ingress_token_for_runner(
 	if tunnel.map_or(true, |tunnel| tunnel.deleted_at.is_some()) {
 		// The tunnel does not exist. Create one
 		Client::new(
-			Credentials::UserAuthKey {
-				email: config.cloudflare.email.clone(),
-				key: config.cloudflare.api_key.clone(),
+			Credentials::UserAuthToken {
+				token: config.cloudflare.api_key.clone(),
 			},
 			Default::default(),
 			Environment::Production,
