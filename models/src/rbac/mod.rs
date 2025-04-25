@@ -42,7 +42,7 @@ pub enum ResourceType {
 	/// and provide users permissions only on those specific resources,
 	Project,
 	/// A runner within a workspace. A runner is used to run deployments,
-	/// databases, StaticSites, Secrets, Domains, etc.
+	/// databases, static sites, secrets, domains, etc.
 	Runner,
 	/// A deployment within a workspace. A deployment is a running instance of a
 	/// container image. It can be scaled horizontally, and can be configured to
@@ -53,7 +53,7 @@ pub enum ResourceType {
 	/// persist across deployments.
 	Volume,
 	/// A database within a workspace. A database is a running instance of a
-	/// database server, such as MySQL, PostgreSQL, etc. It can be scaled
+	/// database server, such as `MySQL`, `PostgreSQL`, etc. It can be scaled
 	/// and persists data across deployments. It can also be shelled into for
 	/// debugging purposes.
 	Database,
@@ -578,12 +578,18 @@ pub enum Permission {
 
 impl Permission {
 	/// Returns a list of all permissions that can be granted on a resource.
+	#[must_use]
 	pub fn list_all_permissions() -> Vec<Self> {
 		Self::iter().collect()
 	}
 
 	/// Returns the description of the permission, as per the documentation of
 	/// the permission.
+	///
+	/// # Panics
+	/// Panics if the permission does not have a documentation. This should
+	/// not happen, as all permissions should have a documentation.
+	#[must_use]
 	pub fn description(&self) -> String {
 		match self {
 			Permission::Domain(permission) => permission.get_documentation(),
@@ -597,9 +603,9 @@ impl Permission {
 			Permission::StaticSite(permission) => permission.get_documentation(),
 			Permission::Secret(permission) => permission.get_documentation(),
 			Permission::Volume(permission) => permission.get_documentation(),
-			Permission::ViewRoles => self.get_documentation(),
-			Permission::ModifyRoles => self.get_documentation(),
-			Permission::EditWorkspace => self.get_documentation(),
+			Permission::ViewRoles | Permission::ModifyRoles | Permission::EditWorkspace => {
+				self.get_documentation()
+			}
 		}
 		.expect("Documentation not found")
 		.to_string()
@@ -693,17 +699,20 @@ pub enum WorkspacePermission {
 
 impl WorkspacePermission {
 	/// Returns true if the user is a super admin of the workspace.
+	#[must_use]
 	pub fn is_super_admin(&self) -> bool {
 		matches!(self, WorkspacePermission::SuperAdmin)
 	}
 
 	/// Returns true if the user is a member of the workspace.
+	#[must_use]
 	pub fn is_member(&self) -> bool {
 		matches!(self, WorkspacePermission::Member { .. })
 	}
 
 	/// Returns true if the current [`WorkspacePermission`] instance has more or
 	/// equal permissions than the other [`WorkspacePermission`] instance.
+	#[must_use]
 	pub fn is_superset_of(&self, other: &WorkspacePermission) -> bool {
 		match (self, other) {
 			// If you're a super admin, you have all permissions. So go ahead, regardless of what
@@ -832,10 +841,7 @@ impl ResourcePermissionType {
 	/// instance based on the type of permission.
 	pub fn insert(&mut self, resource_id: Uuid) {
 		match self {
-			Self::Include(resources) => {
-				resources.insert(resource_id);
-			}
-			Self::Exclude(resources) => {
+			Self::Include(resources) | Self::Exclude(resources) => {
 				resources.insert(resource_id);
 			}
 		}

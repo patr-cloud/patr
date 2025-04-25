@@ -122,6 +122,7 @@ where
 
 	/// The authenticator that should be used for this endpoint. This should be
 	/// a struct that implements the [`HasAuthentication`] trait
+	#[must_use]
 	fn get_authenticator() -> Self::Authenticator
 	where
 		Self::Authenticator: Default,

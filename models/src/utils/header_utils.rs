@@ -112,7 +112,7 @@ impl Header for BearerToken {
 	where
 		E: Extend<HeaderValue>,
 	{
-		values.extend(std::iter::once(self.0.encode()))
+		values.extend(std::iter::once(self.0.encode()));
 	}
 }
 
@@ -177,7 +177,7 @@ impl Header for LoginId {
 	{
 		values.extend(std::iter::once(
 			HeaderValue::from_str(&self.0.to_string()).expect("HeaderValue should be valid UTF-8"),
-		))
+		));
 	}
 }
 
@@ -272,8 +272,8 @@ where
 /// }
 /// ```
 ///
-/// Now, we can make a function that requires a RequestHeader to have these two
-/// headers necessarily by using the [`HasHeaders`] trait:
+/// Now, we can make a function that requires a `RequestHeader` to have these
+/// two headers necessarily by using the [`HasHeaders`] trait:
 /// ```rust
 /// # use headers::{AcceptRanges, ContentType};
 /// # use models::utils::{HasHeaders, HasHeader};
@@ -454,6 +454,10 @@ pub trait Headers: Sized {
 	fn to_header_map(&self) -> HeaderMap;
 	/// Convert the struct from a [`HeaderMap`], returning a [`None`] if the
 	/// conversion fails.
+	///
+	/// # Errors
+	/// Returns an error if the conversion fails, or if the header map is
+	/// invalid.
 	fn from_header_map(map: &HeaderMap) -> Result<Self, headers::Error>;
 }
 

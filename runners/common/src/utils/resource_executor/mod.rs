@@ -80,7 +80,7 @@ where
 	}
 
 	/// Ensures that the task is running. If it is not running, then start it.
-	pub(crate) fn ensure_running(&mut self) -> Result<(), RunnerError> {
+	pub(crate) fn ensure_running(&mut self) {
 		// Ensure that the task is running. If it is not running, then start it.
 		if self.task.is_finished() {
 			self.task = Self::start_task(
@@ -90,7 +90,6 @@ where
 				self.cancellation_token.clone(),
 			);
 		}
-		Ok(())
 	}
 
 	/// Starts the resource executor task. This will be used to start the task

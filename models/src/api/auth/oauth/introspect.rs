@@ -6,7 +6,7 @@ use crate::{
 	utils::{False, True},
 };
 
-/// The response from the OAuthIntrospect endpoint
+/// The response from the [`OAuthIntrospect`][OAuthIntrospectRequest] endpoint
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", untagged)]
 pub enum OAuthIntrospectResponseType {

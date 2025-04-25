@@ -29,11 +29,10 @@ pub(super) async fn handle_deployment<E>(
 			// If the task was cancelled, we need to stop the task
 			// and return an error
 			return;
-		} else {
-			// If the task was not cancelled, we need to log the error
-			// and continue the loop
-			error!("Error while handling deployment: {}", error);
 		}
+		// If the task was not cancelled, we need to log the error
+		// and continue the loop
+		error!("Error while handling deployment: {}", error);
 
 		// Try again in a second
 		time::sleep(Duration::from_secs(1)).await;
@@ -55,7 +54,7 @@ where
 
 		let status = executor
 			.get_deployment_status(deployment_id)
-			.with_cancel_check_of(&cancellation_token)
+			.with_cancel_check_of(cancellation_token)
 			.await??;
 
 		let (deployment, running_details) =

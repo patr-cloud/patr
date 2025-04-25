@@ -10,11 +10,13 @@ pub struct StringifiedU16(u16);
 
 impl StringifiedU16 {
 	/// Create a new instance of the [`StringifiedU16`] with the given value.
+	#[must_use]
 	pub fn new(value: u16) -> Self {
 		Self(value)
 	}
 
 	/// Get the value of the [`StringifiedU16`].
+	#[must_use]
 	pub fn value(&self) -> u16 {
 		self.0
 	}

@@ -44,10 +44,10 @@ where
 			(Self::One(lhs), Self::One(rhs)) => lhs == rhs,
 			(Self::Multiple(lhs), Self::Multiple(rhs)) => lhs == rhs,
 			(Self::One(one), Self::Multiple(many)) if many.len() == 1 => {
-				many.first().map(|first| one == first).unwrap_or(false)
+				many.first().is_some_and(|first| one == first)
 			}
 			(Self::Multiple(many), Self::One(one)) if many.len() == 1 => {
-				many.first().map(|first| one == first).unwrap_or(false)
+				many.first().is_some_and(|first| one == first)
 			}
 			_ => false,
 		}
@@ -73,14 +73,12 @@ where
 		match (self, other) {
 			(Self::One(lhs), Self::One(rhs)) => lhs.partial_cmp(rhs),
 			(Self::Multiple(lhs), Self::Multiple(rhs)) => lhs.partial_cmp(rhs),
-			(Self::One(one), Self::Multiple(many)) => many
-				.first()
-				.map(|first| one.partial_cmp(first))
-				.unwrap_or(None),
-			(Self::Multiple(many), Self::One(one)) => many
-				.first()
-				.map(|first| first.partial_cmp(one))
-				.unwrap_or(None),
+			(Self::One(one), Self::Multiple(many)) => {
+				many.first().and_then(|first| one.partial_cmp(first))
+			}
+			(Self::Multiple(many), Self::One(one)) => {
+				many.first().and_then(|first| first.partial_cmp(one))
+			}
 		}
 	}
 }

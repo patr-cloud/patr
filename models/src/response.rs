@@ -32,6 +32,11 @@ where
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// Convert the response into a Result
+	///
+	/// # Errors
+	/// This function will always return Ok(self) as the response is always
+	/// successful. This is used to convert the response into a Result type
+	/// for ease of use.
 	pub fn into_result(self) -> Result<Self, ErrorType> {
 		Ok(self)
 	}
@@ -97,6 +102,7 @@ impl<T> ApiSuccessResponseBody<T> {
 
 impl ApiSuccessResponseBody<()> {
 	/// Creates a new [`ApiSuccessResponseBody`] with an empty response.
+	#[must_use]
 	pub fn empty() -> Self {
 		Self {
 			success: True,
@@ -119,6 +125,7 @@ pub struct ApiErrorResponse {
 impl ApiErrorResponse {
 	/// Creates a new [`ApiErrorResponse`] with the given [`ErrorType`], using
 	/// the default status code.
+	#[must_use]
 	pub fn error(error: ErrorType) -> Self {
 		Self {
 			status_code: error.default_status_code(),

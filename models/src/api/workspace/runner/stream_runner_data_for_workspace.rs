@@ -55,10 +55,11 @@ macros::declare_stream_endpoint!(
 
 impl StreamRunnerDataForWorkspaceServerMsg {
 	/// Get the resource type that this message is related to
+	#[must_use]
 	pub fn resource_type(&self) -> ResourceType {
 		match self {
-			Self::DeploymentCreated { .. } => ResourceType::Deployment,
-			Self::DeploymentUpdated { .. } => ResourceType::Deployment,
+			Self::DeploymentCreated { .. } |
+			Self::DeploymentUpdated { .. } |
 			Self::DeploymentDeleted { .. } => ResourceType::Deployment,
 		}
 	}

@@ -513,7 +513,7 @@ where
 						Ordering::Greater => {
 							// The database deployment is not running. We need to
 							// create it
-							self.upsert_running_deployment(database_deployment).await?;
+							self.upsert_running_deployment(database_deployment).await;
 
 							current_database_deployment =
 								database_deployments.next().with_cancel_check().await?;
@@ -538,7 +538,7 @@ where
 				(None, Some(Ok(database_deployment))) => {
 					// The running deployments are exhausted. Create the
 					// deployment that is in the database
-					self.upsert_running_deployment(database_deployment).await?;
+					self.upsert_running_deployment(database_deployment).await;
 
 					current_database_deployment =
 						database_deployments.next().with_cancel_check().await?;
@@ -597,10 +597,7 @@ where
 	/// This runner executor task will be responsible for updating the database
 	/// with the status of the deployment.
 	#[instrument(skip(self))]
-	pub(super) async fn upsert_running_deployment(
-		&self,
-		deployment_id: Uuid,
-	) -> Result<(), RunnerError> {
+	pub(super) async fn upsert_running_deployment(&self, deployment_id: Uuid) {
 		self.registry
 			.entry(deployment_id)
 			.or_insert_with(|| {
@@ -608,6 +605,6 @@ where
 				ResourceExecutorTask::new_deployment(deployment_id, self.state.clone())
 			})
 			.value_mut()
-			.ensure_running()
+			.ensure_running();
 	}
 }

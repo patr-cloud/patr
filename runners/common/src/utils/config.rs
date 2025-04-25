@@ -46,7 +46,7 @@ where
 		match env.as_ref() {
 			"prod" | "production" => Config::builder()
 				.add_source(File::with_name("config").required(false))
-				.add_source(File::with_name(&format!("config.{}", name)).required(false))
+				.add_source(File::with_name(&format!("config.{name}")).required(false))
 				.add_source(File::with_name(name).required(false))
 				.set_default("environment", "production")?,
 			"dev" | "development" => Config::builder()
@@ -137,7 +137,7 @@ impl RunnerMode {
 	pub fn get_runner_id(&self) -> Uuid {
 		match self {
 			Self::Managed { runner_id, .. } => *runner_id,
-			_ => Uuid::nil(),
+			Self::SelfHosted { .. } => Uuid::nil(),
 		}
 	}
 }

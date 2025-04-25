@@ -28,7 +28,7 @@ pub use self::{
 /// reconnected at any time. This struct represents the state of a runner. Since
 /// runners are arbitrary code that executes the deployments, they can execute
 /// the deployments in any way they want. This includes running the deployments
-/// on a VM, kubernetes, or even on other PaaS providers.
+/// on a VM, kubernetes, or even on other `PaaS` providers.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Runner {
