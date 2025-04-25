@@ -69,6 +69,9 @@ pub use self::{
 /// - One uppercase letter
 /// - One lowercase letter
 /// - One special character (!@#$%^&*?)
+///
+/// # Errors
+/// Returns an error if the password does not meet any of the requirements.
 pub fn validate_password(value: Cow<'_, str>) -> Result<Cow<'_, str>, preprocess::Error> {
 	use preprocess::Error;
 
@@ -128,7 +131,7 @@ pub mod constants {
 	/// Patr's container registry URL
 	pub const CONTAINER_REGISTRY_URL: &str = "registry.patr.cloud";
 
-	/// A NodeID for Uuid v1.
+	/// A `NodeID` for Uuid v1.
 	/// Spells "*Patr*" in bytes
 	pub const UUID_NODE_ID: [u8; 6] = [42, 80, 97, 116, 114, 42];
 

@@ -68,11 +68,13 @@ pub struct WorkspaceDomain {
 
 impl WorkspaceDomain {
 	/// To check if the nameserver is internal
+	#[must_use]
 	pub fn is_ns_internal(&self) -> bool {
 		self.nameserver_type.is_internal()
 	}
 
 	/// To check if the nameserver is external
+	#[must_use]
 	pub fn is_ns_external(&self) -> bool {
 		self.nameserver_type.is_external()
 	}
@@ -132,31 +134,37 @@ pub enum DnsRecordValue {
 
 impl DnsRecordValue {
 	/// To check if the record is of type A
+	#[must_use]
 	pub fn is_a_record(&self) -> bool {
 		matches!(self, DnsRecordValue::A { .. })
 	}
 
 	/// To check if the record is of type AAAA
+	#[must_use]
 	pub fn is_aaaa_record(&self) -> bool {
 		matches!(self, DnsRecordValue::AAAA { .. })
 	}
 
 	/// To check if the record is of type CNAME
+	#[must_use]
 	pub fn is_cname_record(&self) -> bool {
 		matches!(self, DnsRecordValue::CNAME { .. })
 	}
 
 	/// To check if the record is of type MX
+	#[must_use]
 	pub fn is_mx_record(&self) -> bool {
 		matches!(self, DnsRecordValue::MX { .. })
 	}
 
 	/// To check if the record is of type TXT
+	#[must_use]
 	pub fn is_txt_record(&self) -> bool {
 		matches!(self, DnsRecordValue::TXT { .. })
 	}
 
 	/// To return as of type some
+	#[must_use]
 	pub fn as_a_record(&self) -> Option<(&Ipv4Addr, bool)> {
 		match self {
 			DnsRecordValue::A { target, proxied } => Some((target, *proxied)),
@@ -165,6 +173,7 @@ impl DnsRecordValue {
 	}
 
 	/// To return as of type some
+	#[must_use]
 	pub fn as_aaaa_record(&self) -> Option<(&Ipv6Addr, bool)> {
 		match self {
 			DnsRecordValue::AAAA { target, proxied } => Some((target, *proxied)),
@@ -173,6 +182,7 @@ impl DnsRecordValue {
 	}
 
 	/// To return as of type some
+	#[must_use]
 	pub fn as_cname_record(&self) -> Option<(&str, bool)> {
 		match self {
 			DnsRecordValue::CNAME { target, proxied } => Some((target, *proxied)),
@@ -181,6 +191,7 @@ impl DnsRecordValue {
 	}
 
 	/// To return as of type some
+	#[must_use]
 	pub fn as_mx_record(&self) -> Option<(u16, &str)> {
 		match self {
 			DnsRecordValue::MX { priority, target } => Some((*priority, target)),
@@ -189,6 +200,7 @@ impl DnsRecordValue {
 	}
 
 	/// To return as of type some
+	#[must_use]
 	pub fn as_txt_record(&self) -> Option<&str> {
 		match self {
 			DnsRecordValue::TXT { target } => Some(target),
@@ -226,11 +238,13 @@ pub enum DomainNameserverType {
 
 impl DomainNameserverType {
 	/// To check if external
+	#[must_use]
 	pub fn is_external(&self) -> bool {
 		matches!(self, DomainNameserverType::External)
 	}
 
 	/// To check if internal
+	#[must_use]
 	pub fn is_internal(&self) -> bool {
 		matches!(self, DomainNameserverType::Internal)
 	}

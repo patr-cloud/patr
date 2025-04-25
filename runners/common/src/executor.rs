@@ -20,6 +20,7 @@ pub trait RunnerExecutor: Sized {
 
 	/// The internal name of the runner. This is used to identify the runner in
 	/// tracing and logs.
+	#[must_use]
 	fn runner_internal_name() -> String {
 		std::env::current_exe()
 			.ok()

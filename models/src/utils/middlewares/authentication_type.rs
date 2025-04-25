@@ -35,6 +35,7 @@ impl RequiresRequestHeaders for NoAuthentication {
 /// [2]: AppAuthentication::WorkspaceSuperAdminAuthenticator
 /// [3]: AppAuthentication::WorkspaceMembershipAuthenticator
 /// [4]: AppAuthentication::ResourcePermissionAuthenticator
+#[derive(Clone, Copy)]
 pub enum AppAuthentication<E>
 where
 	E: ApiEndpoint,
@@ -76,23 +77,6 @@ where
 		/// The permission that the user needs to have on the resource.
 		permission: Permission,
 	},
-}
-
-impl<E> Clone for AppAuthentication<E>
-where
-	E: ApiEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-{
-	fn clone(&self) -> Self {
-		*self
-	}
-}
-
-impl<E> Copy for AppAuthentication<E>
-where
-	E: ApiEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-{
 }
 
 impl<E> RequiresRequestHeaders for AppAuthentication<E>

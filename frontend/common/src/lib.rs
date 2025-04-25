@@ -31,6 +31,7 @@ use prelude::*;
 
 /// The main render function. Called when the application starts to render
 /// from the client side.
+#[must_use]
 pub fn render(options: LeptosOptions, app_type: AppType) -> impl IntoView {
 	use app::App;
 

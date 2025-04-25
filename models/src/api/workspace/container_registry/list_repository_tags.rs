@@ -3,7 +3,9 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
-/// The response body for the ListContainerRepositories endpoint.
+/// The response body for the
+/// [`ListContainerRepositoriesRequest`][super::ListContainerRepositoriesRequest]
+/// endpoint.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ContainerRepositoryTagAndDigestInfo {
 	/// The tag of the repository

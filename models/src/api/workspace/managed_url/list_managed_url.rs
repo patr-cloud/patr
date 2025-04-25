@@ -1,4 +1,4 @@
-use super::*;
+use super::{ListOrderBy, ManagedUrl};
 use crate::prelude::*;
 
 macros::declare_api_endpoint!(

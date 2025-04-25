@@ -201,7 +201,7 @@ where
 				message: err.to_string(),
 			},
 		})?;
-	for (header, value) in request.headers.to_header_map().iter() {
+	for (header, value) in &request.headers.to_header_map() {
 		client_request
 			.headers_mut()
 			.insert(header.clone(), value.clone());
@@ -251,7 +251,7 @@ where
 									"Error parsing binary `{}` as JSON: {}",
 									String::from_utf8_lossy(bin.as_ref()),
 									err
-								)
+								);
 							})
 							.map_err(ErrorType::server_error),
 					),

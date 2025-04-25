@@ -66,7 +66,8 @@ macros::declare_api_endpoint!(
 );
 
 impl UpdateDeploymentRequest {
-	/// Creates a new UpdateDeploymentRequest
+	/// Creates a new [`UpdateDeploymentRequest`]
+	#[must_use]
 	pub const fn new() -> Self {
 		Self {
 			name: None,
@@ -85,6 +86,7 @@ impl UpdateDeploymentRequest {
 	}
 
 	/// Returns true if all fields are None
+	#[must_use]
 	pub fn is_none(&self) -> bool {
 		self.name
 			.as_ref()

@@ -17,10 +17,10 @@ impl<'de> Deserialize<'de> for False {
 	{
 		let value = bool::deserialize(deserializer)?;
 
-		if !value {
-			Ok(False)
-		} else {
+		if value {
 			Err(D::Error::custom("bool is not false"))
+		} else {
+			Ok(False)
 		}
 	}
 }

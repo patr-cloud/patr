@@ -1,4 +1,4 @@
-use std::{net::IpAddr, sync::RwLock};
+use std::{collections::HashMap, net::IpAddr, sync::RwLock};
 
 use axum::Router;
 use axum_extra::routing::TypedPath;
@@ -35,6 +35,7 @@ where
 	/// Mount an API endpoint directly along with the required request parser,
 	/// and endpoint handler, using tower layers.
 	#[track_caller]
+	#[must_use]
 	fn mount_endpoint<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
 	where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
@@ -45,6 +46,7 @@ where
 	/// Mount an API endpoint directly along with the required request parser,
 	/// Rate limiter, Audit logger and Auth middlewares, using tower layers.
 	#[track_caller]
+	#[must_use]
 	fn mount_auth_endpoint<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
 	where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
@@ -67,7 +69,7 @@ where
 		R: RunnerExecutor + Send + 'static,
 	{
 		frontend::utils::API_CALL_REGISTRY
-			.get_or_init(|| RwLock::new(Default::default()))
+			.get_or_init(|| RwLock::new(HashMap::default()))
 			.write()
 			.expect("API call registry poisoned")
 			.entry(E::METHOD)
@@ -109,7 +111,7 @@ where
 		R: RunnerExecutor + Send + 'static,
 	{
 		frontend::utils::API_CALL_REGISTRY
-			.get_or_init(|| RwLock::new(Default::default()))
+			.get_or_init(|| RwLock::new(HashMap::default()))
 			.write()
 			.expect("API call registry poisoned")
 			.entry(E::METHOD)

@@ -117,8 +117,8 @@ impl Parse for AppEndpoint {
 			name,
 			path,
 			path_body,
-			login_required,
 			query,
+			login_required,
 		})
 	}
 }

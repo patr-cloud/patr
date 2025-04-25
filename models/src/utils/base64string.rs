@@ -17,6 +17,7 @@ pub struct Base64String {
 
 impl Base64String {
 	/// Convert the `Base64String` into a `Vec<u8>`.
+	#[must_use]
 	pub fn into_vec(self) -> Vec<u8> {
 		self.data
 	}
@@ -91,7 +92,7 @@ impl<'de> serde::Deserialize<'de> for Base64String {
 		let string = String::deserialize(deserializer)?;
 		BASE64_STANDARD
 			.decode(&string)
-			.map_err(|_| Error::custom(format!("unable to decode {} as base64", string)))
+			.map_err(|_| Error::custom(format!("unable to decode {string} as base64")))
 			.map(|data| Base64String { data })
 	}
 }

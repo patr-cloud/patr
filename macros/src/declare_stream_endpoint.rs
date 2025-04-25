@@ -200,8 +200,8 @@ impl Parse for ApiEndpoint {
 
 			query,
 			paginate_query,
-			request_headers,
 			client_msg,
+			request_headers,
 
 			response_headers,
 			server_msg,
@@ -308,8 +308,16 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		quote::quote!()
 	};
 
-	let (auth_type, auth_impl) = auth
-		.map(|block| {
+	let (auth_type, auth_impl) = auth.map_or_else(
+		|| {
+			(
+				quote::quote! {
+					NoAuthentication
+				},
+				quote::quote! {},
+			)
+		},
+		|block| {
 			(
 				quote::quote! {
 					AppAuthentication::<Self>
@@ -318,15 +326,8 @@ pub fn parse(input: TokenStream) -> TokenStream {
 					fn get_authenticator() -> Self::Authenticator #block
 				},
 			)
-		})
-		.unwrap_or_else(|| {
-			(
-				quote::quote! {
-					NoAuthentication
-				},
-				quote::quote! {},
-			)
-		});
+		},
+	);
 
 	let request_headers_name = if request_headers.is_some() {
 		let ident = format_ident!("{}RequestHeaders", name);

@@ -33,9 +33,9 @@ pub struct AccessTokenData {
 	/// the claim does not identify itself with a value in the "aud" claim when
 	/// this claim is present, then the JWT MUST be rejected.  In the general
 	/// case, the "aud" value is an array of case-sensitive strings, each
-	/// containing a StringOrURI value.  In the special case when the JWT has
+	/// containing a `StringOrURI` value.  In the special case when the JWT has
 	/// one audience, the "aud" value MAY be a single case-sensitive string
-	/// containing a StringOrURI value.
+	/// containing a `StringOrURI` value.
 	///
 	/// I'm guessing this is the list of clients that are allowed to process
 	/// this JWT. Since this is the self hosted version of patr, the audience

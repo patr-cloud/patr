@@ -31,7 +31,7 @@ impl Parse for RecursiveEnumIter {
 				(variant.ident, fields)
 			})
 			.collect();
-		Ok(Self { variants, name })
+		Ok(Self { name, variants })
 	}
 }
 

@@ -140,16 +140,19 @@ pub enum EnvironmentVariableValue {
 
 impl EnvironmentVariableValue {
 	/// Check if the environment variable is a raw string
+	#[must_use]
 	pub fn is_string(&self) -> bool {
 		matches!(self, Self::String { .. })
 	}
 
 	/// Check if the environment variable is a secret
+	#[must_use]
 	pub fn is_secret(&self) -> bool {
 		matches!(self, Self::Secret { .. })
 	}
 
 	/// Get the secret ID
+	#[must_use]
 	pub fn secret_id(&self) -> Option<Uuid> {
 		match self {
 			Self::String(_) => None,
@@ -158,6 +161,7 @@ impl EnvironmentVariableValue {
 	}
 
 	/// Get the string value, if it is a raw string
+	#[must_use]
 	pub fn value(&self) -> Option<&String> {
 		match self {
 			Self::String(value) => Some(value),
@@ -268,16 +272,19 @@ pub enum DeploymentRegistry {
 
 impl DeploymentRegistry {
 	/// Patr registry
+	#[must_use]
 	pub fn is_patr_registry(&self) -> bool {
 		matches!(self, Self::PatrRegistry { .. })
 	}
 
 	/// External registry
+	#[must_use]
 	pub fn is_external_registry(&self) -> bool {
 		matches!(self, Self::ExternalRegistry { .. })
 	}
 
 	/// Get the registry URL
+	#[must_use]
 	pub fn registry_url(&self) -> String {
 		match self {
 			Self::PatrRegistry { registry, .. } => format!("{registry}"),
@@ -286,6 +293,7 @@ impl DeploymentRegistry {
 	}
 
 	/// Get the registry's repository ID
+	#[must_use]
 	pub fn repository_id(&self) -> Option<Uuid> {
 		match self {
 			Self::PatrRegistry { repository_id, .. } => Some(*repository_id),
@@ -294,6 +302,7 @@ impl DeploymentRegistry {
 	}
 
 	/// Get the registry's image name
+	#[must_use]
 	pub fn image_name(&self) -> Option<String> {
 		match self {
 			Self::PatrRegistry { .. } => None,

@@ -2,7 +2,7 @@ use std::ops::Add;
 
 use argon2::{Algorithm, Argon2, PasswordHash, PasswordVerifier, Version};
 use http::StatusCode;
-use jsonwebtoken::EncodingKey;
+use jsonwebtoken::{EncodingKey, Header};
 use models::api::auth::*;
 use time::OffsetDateTime;
 
@@ -121,7 +121,7 @@ pub async fn login(
 	};
 
 	let access_token = jsonwebtoken::encode(
-		&Default::default(),
+		&Header::default(),
 		&access_token,
 		&EncodingKey::from_secret(jwt_secret.as_ref()),
 	)
@@ -130,7 +130,7 @@ pub async fn login(
 	AppResponse::builder()
 		.body(LoginResponse {
 			access_token,
-			refresh_token: "".to_string(),
+			refresh_token: String::new(),
 		})
 		.headers(())
 		.status_code(StatusCode::ACCEPTED)

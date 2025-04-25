@@ -19,32 +19,40 @@ pub struct Uuid(uuid::Uuid);
 impl Uuid {
 	/// Create a new v1 (sequencially generated) [`Uuid`] with the current
 	/// timestamp
+	#[must_use]
 	pub fn now_v1() -> Self {
 		Self(uuid::Uuid::now_v1(&constants::UUID_NODE_ID))
 	}
 
 	/// Creates a new v4 (randomly generated) [`Uuid`]
+	#[must_use]
 	pub fn new_v4() -> Self {
 		Self(uuid::Uuid::new_v4())
 	}
 
 	/// Creates a new nil [`Uuid`] (all zeroes).
+	#[must_use]
 	pub const fn nil() -> Self {
 		Self(uuid::Uuid::nil())
 	}
 
 	/// Parses a [`Uuid`] from a string of hexadecimal digits with optional
 	/// hyphens.
+	///
+	/// # Errors
+	/// Returns an error if the string is not a valid UUID.
 	pub fn parse_str(input: &str) -> Result<Self, uuid::Error> {
 		uuid::Uuid::try_parse(input).map(Self)
 	}
 
 	/// A helper function to check if the [`Uuid`] is nil (all zeroes).
+	#[must_use]
 	pub const fn is_nil(&self) -> bool {
 		self.0.is_nil()
 	}
 
 	/// Gets the timestamp of the Uuid if it is a v1 Uuid.
+	#[must_use]
 	pub fn get_timestamp(&self) -> Option<OffsetDateTime> {
 		self.0.get_timestamp().and_then(|ts| {
 			let (secs, nanos) = ts.to_unix();
@@ -56,11 +64,13 @@ impl Uuid {
 	}
 
 	/// Returns a 128-bit number representing the [`Uuid`].
+	#[must_use]
 	pub const fn as_u128(&self) -> u128 {
 		self.0.as_u128()
 	}
 
 	/// Returns a 16-element byte array representing the [`Uuid`].
+	#[must_use]
 	pub const fn as_bytes(&self) -> &[u8; 16] {
 		self.0.as_bytes()
 	}

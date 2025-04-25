@@ -5,7 +5,7 @@ use futures::{
 	StreamExt,
 	future::{self, Either},
 };
-use models::api::workspace::runner::*;
+use models::{api::workspace::runner::*, utils::WebSocketUpgrade};
 use tokio::{
 	net::TcpListener,
 	sync::mpsc::{self, UnboundedReceiver},
@@ -220,7 +220,7 @@ where
 						user_agent: user_agent.clone(),
 					})
 					.query(())
-					.body(Default::default())
+					.body(WebSocketUpgrade::default())
 					.build(),
 			)
 			.with_cancel_check()
@@ -346,30 +346,24 @@ where
 					sleep_future = Box::pin(time::sleep(full_sync_interval));
 				}
 				Either::Right((update, next_sleep)) => {
+					use StreamRunnerDataForWorkspaceServerMsg::*;
+
 					sleep_future = next_sleep;
 
 					let Some(update) = update else {
 						continue;
 					};
 
-					use StreamRunnerDataForWorkspaceServerMsg::*;
-
 					match update {
 						DeploymentCreated {
 							deployment,
-							running_details,
+							running_details: _,
 						} |
 						DeploymentUpdated {
 							deployment,
-							running_details,
+							running_details: _,
 						} => {
-							if let Err(err) = self.upsert_running_deployment(deployment.id).await {
-								error!("Failed to upsert deployment: {err}");
-								_ = self.state.change_publisher.send(DeploymentCreated {
-									deployment,
-									running_details,
-								});
-							}
+							self.upsert_running_deployment(deployment.id).await;
 						}
 						DeploymentDeleted { id } => {
 							if let Err(err) = self.delete_running_deployment(id).await {
@@ -448,7 +442,7 @@ async fn exit_signal() {
 	let ctrl_c = async {
 		tokio::signal::ctrl_c()
 			.await
-			.expect("Failed to listen for SIGINT")
+			.expect("Failed to listen for SIGINT");
 	};
 
 	#[cfg(unix)]
@@ -463,8 +457,8 @@ async fn exit_signal() {
 	let terminate = std::future::pending::<()>();
 
 	tokio::select! {
-		_ = ctrl_c => (),
-		_ = terminate => (),
+		() = ctrl_c => (),
+		() = terminate => (),
 	}
 	info!("Shutdown signal received, shutting down server gracefully");
 }
