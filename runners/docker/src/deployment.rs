@@ -95,7 +95,11 @@ pub(crate) async fn upsert(
 				"{}/{}{}{}",
 				registry.registry_url(),
 				registry.image_name().unwrap(),
-				current_live_digest.is_some().then_some('@').unwrap_or(':'),
+				if current_live_digest.is_some() {
+					'@'
+				} else {
+					':'
+				},
 				current_live_digest.as_deref().unwrap_or(&image_tag)
 			),
 			..Default::default()
@@ -129,7 +133,11 @@ pub(crate) async fn upsert(
 					"{}/{}{}{}",
 					registry.registry_url(),
 					registry.image_name().unwrap(),
-					current_live_digest.is_some().then_some('@').unwrap_or(':'),
+					if current_live_digest.is_some() {
+						'@'
+					} else {
+						':'
+					},
 					current_live_digest.as_deref().unwrap_or(&image_tag)
 				)),
 				exposed_ports: Some(
