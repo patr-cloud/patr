@@ -30,7 +30,6 @@ impl Status {
 	/// Convert from deployment status to [`Status`]
 	pub const fn from_deployment_status(deployment_status: DeploymentStatus) -> Self {
 		match deployment_status {
-			DeploymentStatus::Created => Self::Created,
 			DeploymentStatus::Deploying => Self::Deploying,
 			DeploymentStatus::Errored => Self::Errored,
 			DeploymentStatus::Running => Self::Running,

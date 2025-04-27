@@ -60,6 +60,46 @@ where
 		let (deployment, running_details) =
 			get_local_deployment_info(&state.database, deployment_id).await?;
 
+		// TODO is this really the right way?
+		match (status, deployment.status) {
+			(DeploymentStatus::Deploying, DeploymentStatus::Deploying) |
+			(DeploymentStatus::Errored, DeploymentStatus::Errored) |
+			(DeploymentStatus::Running, DeploymentStatus::Running) |
+			(DeploymentStatus::Stopped, DeploymentStatus::Stopped) |
+			(DeploymentStatus::Unreachable, DeploymentStatus::Unreachable) => {
+				// If the status is the same, we don't need to do anything
+				// just continue the loop
+			}
+			(_, DeploymentStatus::Unreachable) => todo!(),
+			// If the running status is unreachable, we need to update the db regardless of what it
+			// currently is
+			(DeploymentStatus::Unreachable, _) |
+			// If the db thinks it's currently running but it's still deploying or errored
+			(
+				DeploymentStatus::Deploying | DeploymentStatus::Errored,
+				DeploymentStatus::Running,
+			) |
+			// If the db thinks it's errored but the deployment is coming back up
+			(DeploymentStatus::Deploying, DeploymentStatus::Errored) |
+			// If the db thinks it's deploying or errored but the deployment is up and running
+			(
+				DeploymentStatus::Running,
+				DeploymentStatus::Deploying | DeploymentStatus::Errored,
+			) => {
+				// TODO force the db to be as per deployment
+			}
+			// If the deployment is just created or stopped, we need to update the db
+			(
+				DeploymentStatus::Stopped,
+				DeploymentStatus::Deploying | DeploymentStatus::Errored | DeploymentStatus::Running,
+			) |
+			(
+				_,
+				DeploymentStatus::Stopped | DeploymentStatus::Deploying,
+			) => {
+				// TODO force the deployment to be as per DB
+			}
+		}
 		if deployment.status == DeploymentStatus::Running ||
 			deployment.status == DeploymentStatus::Deploying
 		{

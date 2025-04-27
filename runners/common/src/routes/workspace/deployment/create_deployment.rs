@@ -49,9 +49,9 @@ pub async fn create_deployment(
 	let deployment_id = Uuid::new_v4();
 
 	let status = if deploy_on_create {
-		DeploymentStatus::Running
+		DeploymentStatus::Deploying
 	} else {
-		DeploymentStatus::Created
+		DeploymentStatus::Stopped
 	};
 	query(
 		r#"

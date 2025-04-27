@@ -150,7 +150,6 @@ pub(super) async fn execute(
 			match deployment.status {
 				DeploymentStatus::Running => "✅ Running",
 				DeploymentStatus::Deploying => "🟡 Deploying",
-				DeploymentStatus::Created => "➕ Created",
 				DeploymentStatus::Stopped => "🟧 Stopped",
 				DeploymentStatus::Errored => "❌ Errored",
 				DeploymentStatus::Unreachable => "❓ Unreachable",

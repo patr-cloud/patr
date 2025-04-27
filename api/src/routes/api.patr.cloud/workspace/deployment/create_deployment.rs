@@ -148,9 +148,9 @@ pub async fn create_deployment(
 		registry.image_name(),
 		image_tag.as_ref(),
 		if deploy_on_create {
-			DeploymentStatus::Running
+			DeploymentStatus::Deploying
 		} else {
-			DeploymentStatus::Created
+			DeploymentStatus::Stopped
 		} as _,
 		workspace_id as _,
 		runner as _,

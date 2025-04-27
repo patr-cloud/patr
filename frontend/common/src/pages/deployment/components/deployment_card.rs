@@ -50,7 +50,7 @@ pub fn DeploymentCard(
 					"Deployment Name"
 				</h4>
 
-				<StatusBadge status={Status::Created} />
+				<StatusBadge status={Status::Stopped} />
 			</div>
 
 			<div class="deployment-card-items grid-cols-[1fr_1fr] text-white w-full">

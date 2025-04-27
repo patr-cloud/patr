@@ -13,6 +13,7 @@
         "Autoscaler",
         "banzaicloud",
         "BYOC",
+        "BYTEA",
         "Citext",
         "DATETIME",
         "DTO",

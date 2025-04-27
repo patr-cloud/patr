@@ -321,8 +321,6 @@ impl DeploymentRegistry {
 	sqlx(type_name = "DEPLOYMENT_STATUS", rename_all = "lowercase")
 )]
 pub enum DeploymentStatus {
-	/// Deployment has been created
-	Created,
 	/// Deployment is deploying
 	Deploying,
 	/// Deployment is running
@@ -338,7 +336,6 @@ pub enum DeploymentStatus {
 impl Display for DeploymentStatus {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			Self::Created => write!(f, "created"),
 			Self::Deploying => write!(f, "deploying"),
 			Self::Running => write!(f, "running"),
 			Self::Stopped => write!(f, "stopped"),
@@ -354,7 +351,6 @@ impl FromStr for DeploymentStatus {
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		let s = s.to_lowercase();
 		match s.as_str() {
-			"created" => Ok(Self::Created),
 			"deploying" => Ok(Self::Deploying),
 			"running" => Ok(Self::Running),
 			"stopped" => Ok(Self::Stopped),

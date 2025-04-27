@@ -9,8 +9,6 @@ pub enum Status {
 	Deleted,
 	/// Indicates that the component has faced an error
 	Errored,
-	/// Indicates that the component has been created
-	Created,
 	/// Indicates that the component has been pushed
 	Pushed,
 	/// Indicates that the component has been stopped
@@ -30,7 +28,6 @@ impl Status {
 	/// Convert from deployment status to [`Status`]
 	pub const fn from_deployment_status(deployment_status: DeploymentStatus) -> Self {
 		match deployment_status {
-			DeploymentStatus::Created => Self::Created,
 			DeploymentStatus::Deploying => Self::Deploying,
 			DeploymentStatus::Errored => Self::Errored,
 			DeploymentStatus::Running => Self::Running,
@@ -55,7 +52,6 @@ impl Status {
 			Self::Deleted => "bg-error",
 			Self::Unreachable => "bg-error",
 			Self::Errored => "bg-error",
-			Self::Created => "bg-info",
 			Self::Pushed => "bg-info",
 			Self::Stopped => "bg-grey",
 			Self::Deploying => "bg-warning",
@@ -70,7 +66,6 @@ impl Status {
 			Self::Deleted => "deleted",
 			Self::Unreachable => "error",
 			Self::Errored => "error",
-			Self::Created => "created",
 			Self::Pushed => "pushed",
 			Self::Stopped => "stopped",
 			Self::Deploying => "deploying",

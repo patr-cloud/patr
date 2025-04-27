@@ -101,7 +101,7 @@ pub fn StartStopButton() -> impl IntoView {
 				DeploymentStatus::Running => {
 					stop_deployment_action.dispatch(deployment_info.deployment.id.clone());
 				}
-				DeploymentStatus::Created | DeploymentStatus::Stopped => {
+				DeploymentStatus::Stopped => {
 					start_deployment_action.dispatch(deployment_info.deployment.id.clone());
 				}
 				_ => {}
@@ -125,7 +125,6 @@ pub fn StartStopButton() -> impl IntoView {
 				style_variant={LinkStyleVariant::Contained}
 				disabled={match deployment_info.deployment.status {
 					DeploymentStatus::Running
-					| DeploymentStatus::Created
 					| DeploymentStatus::Stopped => false,
 					_ => true,
 				}}

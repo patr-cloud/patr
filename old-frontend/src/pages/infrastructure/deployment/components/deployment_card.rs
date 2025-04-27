@@ -48,7 +48,7 @@ pub fn DeploymentCard(
 			DeploymentStatus::Running => {
 				stop_deployment_action.dispatch(deployment_id);
 			}
-			DeploymentStatus::Created | DeploymentStatus::Stopped => {
+			DeploymentStatus::Stopped => {
 				start_deployment_action.dispatch(deployment_id);
 			}
 			_ => {}
