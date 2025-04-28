@@ -21,6 +21,10 @@ macros::declare_api_endpoint!(
 			permission: Permission::Runner(RunnerPermission::RegenerateToken),
 		}
 	},
+	request = {
+		/// The port that the runner is listening on
+		pub runner_port: u16,
+	},
 	response = {
 		/// The runner ingress token
 		pub token: String,

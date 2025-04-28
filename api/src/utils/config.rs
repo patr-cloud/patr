@@ -52,6 +52,9 @@ pub struct AppConfig {
 	pub password_pepper: String,
 	/// The secret used to sign JWTs
 	pub jwt_secret: String,
+	/// This is the primary domain that all deployments and all user-facing URLs
+	/// will be hosted on
+	pub primary_hosted_domain: String,
 	/// The environment the application is running in. This is set at runtime
 	/// based on an environment variable and if the application is compiled with
 	/// debug mode.
@@ -161,8 +164,6 @@ fn default_redis_database() -> u8 {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CloudflareConfig {
-	/// The email to use to connect to Cloudflare
-	pub email: String,
 	/// The API key to use to connect to Cloudflare
 	pub api_key: String,
 	/// The account ID to use to connect to Cloudflare

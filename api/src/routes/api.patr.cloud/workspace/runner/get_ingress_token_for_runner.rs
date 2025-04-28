@@ -1,11 +1,37 @@
-use axum::http::{HeaderName, HeaderValue, StatusCode};
+use axum::http::StatusCode;
 use cloudflare::{
 	endpoints::cfd_tunnel::*,
 	framework::{Environment, auth::Credentials, client::async_api::Client, response::ApiSuccess},
 };
 use models::api::workspace::runner::*;
+use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
+
+/// The configuration for the tunnel
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct TunnelConfigRequest {
+	/// This is the configuration that will be sent to Cloudflare
+	config: TunnelConfigRequestConfig,
+}
+
+/// The list of ingress rules for the tunnel
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct TunnelConfigRequestConfig {
+	/// The list of ingress rules for the tunnel
+	ingress: Vec<TunnelConfigRequestConfigIngress>,
+}
+
+/// The ingress rule for the tunnel
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct TunnelConfigRequestConfigIngress {
+	/// The hostname for the ingress rule
+	#[serde(skip_serializing_if = "String::is_empty")]
+	hostname: String,
+	/// The service for the ingress rule. This is where the hostname will be
+	/// pointed to
+	service: String,
+}
 
 pub async fn get_ingress_token_for_runner(
 	AuthenticatedAppRequest {
@@ -21,7 +47,7 @@ pub async fn get_ingress_token_for_runner(
 						authorization: _,
 						user_agent: _,
 					},
-				body: GetIngressTokenForRunnerRequestProcessed {},
+				body: GetIngressTokenForRunnerRequestProcessed { runner_port },
 			},
 		database,
 		redis: _,
@@ -65,11 +91,12 @@ pub async fn get_ingress_token_for_runner(
 		.await?
 		.json::<ApiSuccess<Option<Tunnel>>>()
 		.await?
-		.result;
+		.result
+		.filter(|tunnel| tunnel.deleted_at.is_none());
 
-	// If None, return true.
-	// If Some, return true if deleted_at is Some
-	if tunnel.map_or(true, |tunnel| tunnel.deleted_at.is_some()) {
+	let tunnel = if let Some(tunnel) = tunnel {
+		tunnel
+	} else {
 		// The tunnel does not exist. Create one
 		Client::new(
 			Credentials::UserAuthToken {
@@ -83,23 +110,58 @@ pub async fn get_ingress_token_for_runner(
 			params: create_tunnel::Params {
 				config_src: &ConfigurationSrc::Cloudflare,
 				name: &format!("Runner: {}", runner_id),
-				tunnel_secret: &Default::default(),
+				tunnel_secret: &b"default".to_vec(),
 				metadata: None,
 			},
 		})
 		.await?
-		.result;
-	}
+		.result
+	};
+
+	query!(
+		r#"
+		UPDATE
+			runner
+		SET
+			cloudflare_tunnel_id = $1
+		WHERE
+			id = $2;
+		"#,
+		tunnel.id.to_string(),
+		runner_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	client
+		.put(format!(
+			"https://api.cloudflare.com/client/v4/accounts/{}/cfd_tunnel/{}/configurations",
+			account_id, tunnel.id
+		))
+		.bearer_auth(&config.cloudflare.api_key)
+		.json(&TunnelConfigRequest {
+			config: TunnelConfigRequestConfig {
+				ingress: vec![
+					TunnelConfigRequestConfigIngress {
+						hostname: format!("{}.{}", runner_id, config.primary_hosted_domain),
+						service: format!("http://localhost:{}", runner_port),
+					},
+					TunnelConfigRequestConfigIngress {
+						hostname: String::new(),
+						service: "http_status:404".to_string(),
+					},
+				],
+			},
+		})
+		.send()
+		.await?
+		.error_for_status()?;
 
 	let token = client
 		.get(format!(
 			"https://api.cloudflare.com/client/v4/accounts/{}/cfd_tunnel/{}/token",
-			account_id, tunnel_id
+			account_id, tunnel.id
 		))
-		.header(
-			HeaderName::from_static("x-auth-email"),
-			HeaderValue::from_str(&config.cloudflare.email)?,
-		)
 		.bearer_auth(&config.cloudflare.api_key)
 		.send()
 		.await?

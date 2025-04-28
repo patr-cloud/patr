@@ -1,4 +1,4 @@
-use std::{net::SocketAddr, pin::pin, sync::OnceLock};
+use std::{net::SocketAddr, pin::pin, process::Stdio, sync::OnceLock};
 
 use dashmap::DashMap;
 use futures::{
@@ -8,6 +8,7 @@ use futures::{
 use models::{api::workspace::runner::*, utils::WebSocketUpgrade};
 use tokio::{
 	net::TcpListener,
+	process::Command,
 	sync::mpsc::{self, UnboundedReceiver},
 	task,
 	time::{self, Duration},
@@ -20,7 +21,11 @@ use tracing_subscriber::{
 	layer::SubscriberExt,
 };
 
-use crate::{db, prelude::*, utils::resource_executor::ResourceExecutorTask};
+use crate::{
+	db,
+	prelude::*,
+	utils::{client::make_request, resource_executor::ResourceExecutorTask},
+};
 
 /// The global cancellation token that will be used to cancel the tasks
 /// when the runner is stopped. This token will be used to cancel all the
@@ -137,9 +142,10 @@ where
 			std::process::exit(1);
 		});
 
-		let (server_setup, sync_database, resource_monitor) = future::join3(
+		let (server_setup, sync_database, run_tunnel, resource_monitor) = future::join4(
 			self.run_server(tcp_listener),
 			self.sync_local_database(),
+			self.run_cloudflare_tunnel(),
 			self.monitor_resources(receiver),
 		)
 		.await;
@@ -156,7 +162,7 @@ where
 		}
 
 		info!("Server exited. Exiting runner");
-		sync_database.or(resource_monitor)
+		sync_database.or(run_tunnel).or(resource_monitor)
 	}
 
 	/// Run the server. This function will start the server and listen for
@@ -308,6 +314,132 @@ where
 						break 'message;
 					}
 				}
+			}
+		}
+	}
+
+	/// Run the cloudflare tunnel. This function will start the cloudflare
+	/// tunnel and listen for incoming connections. It will return a result
+	/// with the error if the tunnel fails to start. The tunnel will run until
+	/// the exit signal is received.
+	#[instrument(skip(self))]
+	async fn run_cloudflare_tunnel(&self) -> Result<!, RunnerError> {
+		let RunnerMode::Managed {
+			workspace_id,
+			runner_id,
+			api_token,
+			user_agent,
+		} = self.state.config.mode.clone()
+		else {
+			// If the runner is running in self-hosted mode, return early. The run function
+			// uses a join of all the futures so early return here will not stop the runner
+			// from running
+			debug!("Runner is running in self-hosted mode. Skipping cloudflare tunnel");
+			return Err(RunnerError::Unsupported);
+		};
+
+		info!("Running cloudflare tunnel to expose the runner");
+		loop {
+			let tunnel_token = make_request(
+				ApiRequest::<GetIngressTokenForRunnerRequest>::builder()
+					.path(GetIngressTokenForRunnerPath {
+						workspace_id,
+						runner_id,
+					})
+					.query(())
+					.headers(GetIngressTokenForRunnerRequestHeaders {
+						authorization: api_token.clone(),
+						user_agent: user_agent.clone(),
+					})
+					.body(GetIngressTokenForRunnerRequest {
+						runner_port: self.state.config.bind_address.port(),
+					})
+					.build(),
+			)
+			.with_cancel_check()
+			.await?;
+
+			let Ok(tunnel_token) = tunnel_token
+				.inspect_err(|err| {
+					error!("Failed to connect to the server: {:?}", err);
+					error!("Retrying in 5 second");
+				})
+				.map_err(|err| err.body)
+			else {
+				// Retry after 5 seconds, but break if the exit signal is received
+				time::sleep(Duration::from_secs(5))
+					.with_cancel_check()
+					.await?;
+				continue;
+			};
+
+			let Ok(mut child) = Command::new("cloudflared")
+				.arg("tunnel")
+				.arg("run")
+				.arg("--token")
+				.arg(tunnel_token.body.token)
+				.stdin(Stdio::piped())
+				.stdout(Stdio::piped())
+				.stderr(Stdio::piped())
+				.kill_on_drop(true)
+				.spawn()
+				.inspect_err(|err| {
+					error!("Failed to start cloudflare tunnel: {:?}", err);
+					error!("Retrying in 5 second");
+				})
+			else {
+				// Retry after 5 seconds, but break if the exit signal is received
+				time::sleep(Duration::from_secs(5))
+					.with_cancel_check()
+					.await?;
+				continue;
+			};
+
+			let status = match child.wait().with_cancel_check().await {
+				Ok(status) => status,
+				Err(err) => {
+					// Exit signal received. Kill the child process and exit
+					child.kill().await?;
+					child.wait().await?;
+					return Err(err);
+				}
+			};
+
+			let Ok(status) = status.map_err(|err| {
+				error!("Error waiting for cloudflared process: {}", err);
+				error!("Retrying in 5 second");
+			}) else {
+				// Retry after 5 seconds, but break if the exit signal is received
+				if let Err(RunnerError::ExitSignalReceived) = time::sleep(Duration::from_secs(5))
+					.with_cancel_check()
+					.await
+				{
+					// Exit signal received. Kill the child process and exit
+					child.kill().await?;
+					child.wait().await?;
+					return Err(RunnerError::ExitSignalReceived);
+				}
+				continue;
+			};
+
+			if status.success() {
+				warn!("Cloudflare tunnel exited successfully");
+				warn!("This should not happen. Restarting tunnel");
+				continue;
+			} else {
+				error!("Cloudflare tunnel exited with status: {}", status);
+				error!("Retrying in 2 second");
+				// Retry after 2 seconds, but break if the exit signal is received
+				if let Err(RunnerError::ExitSignalReceived) = time::sleep(Duration::from_secs(2))
+					.with_cancel_check()
+					.await
+				{
+					// Exit signal received. Kill the child process and exit
+					child.kill().await?;
+					child.wait().await?;
+					return Err(RunnerError::ExitSignalReceived);
+				}
+				continue;
 			}
 		}
 	}

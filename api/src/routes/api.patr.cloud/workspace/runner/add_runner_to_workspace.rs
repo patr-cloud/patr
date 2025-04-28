@@ -67,7 +67,7 @@ pub async fn add_runner_to_workspace(
 				$1,
 				$2,
 				$3,
-				'qwertyuiop'
+				''
 			);
 		"#,
 		id as _,
