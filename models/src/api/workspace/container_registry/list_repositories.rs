@@ -4,7 +4,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to get list of all container repositories in a workspace
 	ListContainerRepositories,
-	GET "/workspace/:workspace_id/container-registry" {
+	GET "/workspace/{workspace_id}/container-registry" {
 		/// The workspace ID to list the container registry repositories in
 		pub workspace_id: Uuid
 	},

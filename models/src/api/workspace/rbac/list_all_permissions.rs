@@ -15,7 +15,7 @@ pub struct Permission {
 macros::declare_api_endpoint!(
 	/// Route to list all the permissions
 	ListAllPermissions,
-	GET "/workspace/:workspace_id/rbac/permission" {
+	GET "/workspace/{workspace_id}/rbac/permission" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid
 	},

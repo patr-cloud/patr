@@ -15,7 +15,7 @@ pub struct ResourceType {
 macros::declare_api_endpoint!(
 	/// Route to list all resource types
 	ListAllResourceTypes,
-	GET "/workspace/:workspace_id/rbac/resource-type" {
+	GET "/workspace/{workspace_id}/rbac/resource-type" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid
 	},

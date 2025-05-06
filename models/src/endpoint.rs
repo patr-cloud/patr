@@ -59,7 +59,7 @@ where
 
 	/// The path that should be used for this endpoint. This should be a valid
 	/// HTML URL Path and can contain URL parameters as a struct. For example,
-	/// `/users/:id` would be a valid path. However, the provided struct must
+	/// `/users/{id}` would be a valid path. However, the provided struct must
 	/// implement [`serde::Deserialize`] and [`serde::Serialize`], in order to
 	/// parse and serialize the URL parameters. This is internally implemented
 	/// using [`axum_extra::routing::TypedPath`]

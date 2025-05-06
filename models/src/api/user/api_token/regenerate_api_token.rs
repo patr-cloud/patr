@@ -5,7 +5,7 @@ macros::declare_api_endpoint!(
 	/// token is compromised, or if the user wants to rotate their tokens. A new token will be
 	/// generated, and sent in the response.
 	RegenerateApiToken,
-	POST "/user/api-token/:token_id/regenerate" {
+	POST "/user/api-token/{token_id}/regenerate" {
 		/// The ID of the token to regenerate
 		pub token_id: Uuid,
 	},

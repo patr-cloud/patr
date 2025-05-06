@@ -5,7 +5,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Gets the details of a container repository's image in the workspace.
 	GetContainerRepositoryImageDetails,
-	GET "/workspace/:workspace_id/container-registry/:repository_id/image/:digest_or_tag" {
+	GET "/workspace/{workspace_id}/container-registry/{repository_id}/image/{digest_or_tag}" {
 		/// The workspace to get the container repository in.
 		pub workspace_id: Uuid,
 		/// The id of the repository to get the image details of.

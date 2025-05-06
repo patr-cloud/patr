@@ -18,7 +18,6 @@ pub struct ClientIP(
 	pub IpAddr,
 );
 
-#[axum::async_trait]
 impl FromRequestParts<()> for ClientIP {
 	type Rejection = Infallible;
 

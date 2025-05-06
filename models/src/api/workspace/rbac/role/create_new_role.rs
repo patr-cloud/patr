@@ -5,7 +5,7 @@ use crate::{prelude::*, rbac::ResourcePermissionType, utils::constants::RESOURCE
 macros::declare_api_endpoint!(
 	/// Route to create a new role
 	CreateNewRole,
-	POST "/workspaces/:workspace_id/rbac/role" {
+	POST "/workspace/{workspace_id}/rbac/role" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid
 	},

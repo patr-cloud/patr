@@ -4,7 +4,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// List all API tokens for a particular user.
 	GetApiTokenInfo,
-	GET "/user/api-token/:token_id" {
+	GET "/user/api-token/{token_id}" {
 		/// The ID of the API token to retrieve
 		pub token_id: Uuid,
 	},

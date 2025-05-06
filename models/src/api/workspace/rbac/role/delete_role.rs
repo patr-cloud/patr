@@ -3,7 +3,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to delete a role
 	DeleteRole,
-	DELETE "/workspaces/:workspace_id/rbac/role/:role_id" {
+	DELETE "/workspace/{workspace_id}/rbac/role/{role_id}" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid,
 		/// The role ID to delete

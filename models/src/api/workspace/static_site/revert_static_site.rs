@@ -5,7 +5,7 @@ macros::declare_api_endpoint!(
 	/// This route will revert the static site to an older release
 	/// and will update the index.html file
 	RevertStaticSite,
-	POST "/workspace/:workspace_id/infrastructure/static-site/:static_site_id/upload/:upload_id/revert" {
+	POST "/workspace/{workspace_id}/infrastructure/static-site/{static_site_id}/upload/{upload_id}/revert" {
 		/// The workspace ID of the user
 		pub workspace_id: Uuid,
 		/// The static site to revert

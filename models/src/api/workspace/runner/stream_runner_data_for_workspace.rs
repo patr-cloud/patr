@@ -7,7 +7,7 @@ use crate::{
 macros::declare_stream_endpoint!(
 	/// Subscribe to the changes for a particular runner in a workspace
 	StreamRunnerDataForWorkspace,
-	GET "/workspace/:workspace_id/runner/:runner_id/stream" {
+	GET "/workspace/{workspace_id}/runner/{runner_id}/stream" {
 		/// The workspace the runners belongs to
 		pub workspace_id: Uuid,
 		/// The runner to subscribe to

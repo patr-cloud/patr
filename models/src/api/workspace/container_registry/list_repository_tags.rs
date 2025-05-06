@@ -19,7 +19,7 @@ pub struct ContainerRepositoryTagAndDigestInfo {
 macros::declare_api_endpoint!(
 	/// Route to get list of all container repositories in a workspace
 	ListContainerRepositoryTags,
-	GET "/workspace/:workspace_id/container-registry/:repository_id/tag" {
+	GET "/workspace/{workspace_id}/container-registry/{repository_id}/tag" {
 		/// The workspace ID to list the container registry repositories in
 		pub workspace_id: Uuid,
 		/// The container repository ID to list the tags of

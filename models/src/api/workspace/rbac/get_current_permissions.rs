@@ -3,7 +3,7 @@ use crate::{prelude::*, rbac::WorkspacePermission};
 macros::declare_api_endpoint!(
 	/// Route to get current permissions
 	GetCurrentPermissions,
-	GET "/workspace/:workspace_id/rbac/current-permissions" {
+	GET "/workspace/{workspace_id}/rbac/current-permissions" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid
 	},

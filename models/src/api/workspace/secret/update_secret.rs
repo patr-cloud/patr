@@ -3,7 +3,7 @@ use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 macros::declare_api_endpoint!(
 	/// Route to update a secret
 	UpdateSecret,
-	PATCH "/workspace/:workspace_id/secret/:secret_id" {
+	PATCH "/workspace/{workspace_id}/secret/{secret_id}" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid,
 		/// The ID of the secret to be deleted

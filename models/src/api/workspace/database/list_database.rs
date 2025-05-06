@@ -4,7 +4,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to get list of all database in a workspace
 	ListDatabase,
-	GET "/workspace/:workspace_id/infrastructure/database" {
+	GET "/workspace/{workspace_id}/infrastructure/database" {
 		/// The workspace ID of the user
 		pub workspace_id: Uuid
 	},
