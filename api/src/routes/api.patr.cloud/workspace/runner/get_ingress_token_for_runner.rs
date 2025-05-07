@@ -82,7 +82,6 @@ pub async fn get_ingress_token_for_runner(
 	.await?
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
-	let account_id = config.cloudflare.account_id;
 	let tunnel_id = runner.cloudflare_tunnel_id;
 
 	let client = reqwest::Client::new();
@@ -97,7 +96,7 @@ pub async fn get_ingress_token_for_runner(
 	let tunnel = client
 		.get(format!(
 			"https://api.cloudflare.com/client/v4/accounts/{}/cfd_tunnel/{}",
-			account_id, tunnel_id
+			config.cloudflare.account_id, tunnel_id
 		))
 		.bearer_auth(&config.cloudflare.api_key)
 		.send()
@@ -115,7 +114,7 @@ pub async fn get_ingress_token_for_runner(
 		info!("Tunnel does not exist. Creating tunnel");
 		cf_client
 			.request(&create_tunnel::CreateTunnel {
-				account_identifier: &account_id,
+				account_identifier: &config.cloudflare.account_id,
 				params: create_tunnel::Params {
 					config_src: &ConfigurationSrc::Cloudflare,
 					name: &format!("Runner: {}", runner_id),
@@ -147,7 +146,7 @@ pub async fn get_ingress_token_for_runner(
 	client
 		.put(format!(
 			"https://api.cloudflare.com/client/v4/accounts/{}/cfd_tunnel/{}/configurations",
-			account_id, tunnel.id
+			config.cloudflare.account_id, tunnel.id
 		))
 		.bearer_auth(&config.cloudflare.api_key)
 		.json(&TunnelConfigRequest {
@@ -173,7 +172,7 @@ pub async fn get_ingress_token_for_runner(
 	let token = client
 		.get(format!(
 			"https://api.cloudflare.com/client/v4/accounts/{}/cfd_tunnel/{}/token",
-			account_id, tunnel.id
+			config.cloudflare.account_id, tunnel.id
 		))
 		.bearer_auth(&config.cloudflare.api_key)
 		.send()

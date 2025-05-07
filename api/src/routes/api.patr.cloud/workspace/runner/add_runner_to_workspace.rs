@@ -1,4 +1,8 @@
 use axum::http::StatusCode;
+use cloudflare::{
+	endpoints::cfd_tunnel::*,
+	framework::{Environment, auth::Credentials, client::async_api::Client},
+};
 use models::{api::workspace::runner::*, prelude::*};
 
 use crate::prelude::*;
@@ -19,7 +23,7 @@ pub async fn add_runner_to_workspace(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
+		config,
 		user_data: _,
 	}: AuthenticatedAppRequest<'_, AddRunnerToWorkspaceRequest>,
 ) -> Result<AppResponse<AddRunnerToWorkspaceRequest>, ErrorType> {
@@ -53,6 +57,27 @@ pub async fn add_runner_to_workspace(
 	})?
 	.id;
 
+	let tunnel_id = Client::new(
+		Credentials::UserAuthToken {
+			token: config.cloudflare.api_key.clone(),
+		},
+		Default::default(),
+		Environment::Production,
+	)?
+	.request(&create_tunnel::CreateTunnel {
+		account_identifier: &config.cloudflare.account_id,
+		params: create_tunnel::Params {
+			config_src: &ConfigurationSrc::Cloudflare,
+			name: &format!("Runner: {}", id),
+			tunnel_secret: &b"default".to_vec(),
+			metadata: None,
+		},
+	})
+	.await?
+	.result
+	.id
+	.to_string();
+
 	query!(
 		r#"
 		INSERT INTO
@@ -67,12 +92,13 @@ pub async fn add_runner_to_workspace(
 				$1,
 				$2,
 				$3,
-				''
+				$4
 			);
 		"#,
 		id as _,
 		name.as_ref(),
 		workspace_id as _,
+		tunnel_id,
 	)
 	.execute(&mut **database)
 	.await?;
