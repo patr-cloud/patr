@@ -10,47 +10,10 @@ version.workspace      = true
 [lints]
 workspace = true
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
 [dependencies]
-axum-extra       = { workspace = true, features = ["cookie", "typed-routing"] }
-convert_case     = { workspace = true, features = [] }
-cookie           = { workspace = true, features = [] }
-http             = { workspace = true, features = ["default"] }
-log              = { workspace = true, features = [] }
-macros           = { workspace = true, features = [] }
-matchit          = { workspace = true, features = ["default"] }
-models           = { workspace = true, features = [] }
-preprocess       = { workspace = true, features = [] }
-rand             = { workspace = true, features = ["default"] }
-reqwest          = { workspace = true, features = ["json", "rustls-tls"] }
-semver           = { workspace = true, features = [] }
-serde            = { workspace = true, features = ["default", "derive"] }
-serde_json       = { workspace = true, features = ["default"] }
-serde_urlencoded = { workspace = true, features = [] }
-strum            = { workspace = true, features = ["default", "derive"] }
-time             = { workspace = true, features = ["default"] }
-tower            = { workspace = true, features = ["util"] }
-tracing          = { workspace = true, features = ["attributes"] }
-url              = { workspace = true, features = ["default"] }
-wasm-bindgen     = { workspace = true, features = ["default"] }
-wasm-logger      = { workspace = true, features = [] }
-web-sys          = { workspace = true, features = ["Clipboard", "DataTransfer", "File", "FileList"] }
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-axum          = { workspace = true, features = ["macros"] }
-codee         = { workspace = true, features = ["json_serde"] }
-leptos        = { workspace = true, features = ["hydrate", "tracing"] }
-leptos-use    = { workspace = true, features = ["default"] }
-leptos_meta   = { workspace = true, features = [] }
-leptos_router = { workspace = true, features = [] }
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-axum          = { workspace = true, features = ["default", "macros", "tracing", "ws"] }
-codee         = { workspace = true, features = ["json_serde"] }
-leptos        = { workspace = true, features = ["ssr", "tracing"] }
-leptos-use    = { workspace = true, features = ["axum", "default", "ssr"] }
-leptos_axum   = { workspace = true, features = ["default"] }
-leptos_meta   = { workspace = true, features = ["ssr"] }
-leptos_router = { workspace = true, features = ["ssr"] }
+dioxus     = { workspace = true, features = ["default", "router", "web"] }
+dioxus-sdk = { workspace = true, features = ["storage"] }
+macros     = { workspace = true }
+models     = { workspace = true }
+semver     = { workspace = true }
+serde      = { workspace = true, features = ["derive"] }

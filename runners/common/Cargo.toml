@@ -28,8 +28,6 @@ fslock                = { workspace = true, features = ["default"] }
 futures               = { workspace = true }
 http                  = { workspace = true, features = ["default"] }
 jsonwebtoken          = { workspace = true, features = ["default"] }
-leptos                = { workspace = true, features = ["ssr"] }
-leptos_axum           = { workspace = true, features = ["default"] }
 macros                = { workspace = true }
 models                = { workspace = true }
 nix                   = { workspace = true, features = ["user"] }
@@ -41,8 +39,7 @@ semver                = { workspace = true, features = ["default"] }
 serde                 = { workspace = true, features = ["derive"] }
 serde_json            = { workspace = true }
 serde_urlencoded      = { workspace = true, features = [] }
-sqlx                  = { workspace = true, features = ["runtime-tokio-rustls", "sqlite", "time", "uuid"] }
-tempfile              = { workspace = true, features = ["default"] }
+sqlx                  = { workspace = true, features = ["runtime-tokio", "sqlite", "time", "tls-rustls", "uuid"] }
 thiserror             = { workspace = true, features = [] }
 time                  = { workspace = true, features = ["default", "serde-human-readable"] }
 tokio                 = { workspace = true, features = ["full"] }

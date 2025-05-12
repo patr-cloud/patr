@@ -1,7 +1,7 @@
-use codee::string::JsonSerdeCodec;
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
+pub use dioxus_sdk::storage::use_singleton_persistent;
 
 /// The Type of the App, whether it is hosted or self hosted
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -52,10 +52,8 @@ pub enum AuthState {
 impl AuthState {
 	/// A function that parses the cookie and returns a read and write signal
 	/// for the [`AuthState`] object
-	pub fn load() -> (Signal<AuthState>, WriteSignal<Option<AuthState>>) {
-		let (read, write) = use_cookie::<_, JsonSerdeCodec>(constants::AUTH_STATE);
-
-		(read.map(Option::unwrap_or_default), write)
+	pub fn load() -> Signal<AuthState> {
+		use_singleton_persistent::<Self>(|| Default::default())
 	}
 
 	/// Get the access token if the user is logged in

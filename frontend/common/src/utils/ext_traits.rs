@@ -1,5 +1,3 @@
-use crate::prelude::*;
-
 /// A trait to extend the [`String`] type with some useful methods that are not
 /// available in the standard library. This is useful for adding utility methods
 /// to the [`String`] type without polluting the global namespace.
@@ -19,30 +17,5 @@ impl StringExt for String {
 impl StringExt for &str {
 	fn some_if_not_empty(self) -> Option<Self> {
 		if self.is_empty() { None } else { Some(self) }
-	}
-}
-
-/// An extention trait that maps a Signal from one type to another
-pub trait SignalMapExt<T>
-where
-	T: Clone + Sync + Send + 'static,
-{
-	/// Maps a signal from one type to another
-	fn map<U, F>(self, f: F) -> Signal<U>
-	where
-		U: Clone + Send + Sync + 'static,
-		F: Send + Sync + 'static + Fn(T) -> U;
-}
-
-impl<T> SignalMapExt<T> for Signal<T>
-where
-	T: Clone + Sync + Send + 'static,
-{
-	fn map<U, F>(self, f: F) -> Signal<U>
-	where
-		U: Clone + Send + Sync + 'static,
-		F: Send + Sync + 'static + Fn(T) -> U,
-	{
-		Signal::derive(move || f(self.get()))
 	}
 }

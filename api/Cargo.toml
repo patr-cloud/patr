@@ -25,8 +25,6 @@ futures               = { workspace = true, features = ["default"] }
 headers               = { workspace = true, features = [] }
 ipinfo                = { workspace = true, features = [] }
 jsonwebtoken          = { workspace = true, features = ["default"] }
-leptos                = { workspace = true, features = ["ssr"] }
-leptos_axum           = { workspace = true, features = ["default"] }
 macros                = { workspace = true, features = [] }
 matchit               = { workspace = true, features = ["default"] }
 models                = { workspace = true, features = ["axum"] }
@@ -40,13 +38,13 @@ rand                  = { workspace = true, features = ["default"] }
 regex                 = { workspace = true, features = ["default"] }
 reqwest               = { workspace = true, features = ["default", "json", "multipart"] }
 rust-s3               = { workspace = true, features = ["default", "with-tokio"] }
-rustis                = { workspace = true, features = ["default", "pool", "tokio-tls"] }
+rustis                = { workspace = true, features = ["default", "pool", "tls", "tokio-tls"] }
 semver                = { workspace = true, features = ["default"] }
 serde                 = { workspace = true, features = ["default", "derive"] }
 serde_json            = { workspace = true, features = ["default"] }
 serde_urlencoded      = { workspace = true, features = [] }
 sha2                  = { workspace = true, features = ["default"] }
-sqlx                  = { workspace = true, features = ["ipnetwork", "macros", "postgres", "runtime-tokio", "time", "tls-rustls", "uuid"] }
+sqlx                  = { workspace = true, features = ["ipnetwork", "macros", "postgres", "runtime-tokio-rustls", "time", "uuid"] }
 time                  = { workspace = true, features = ["default", "serde-human-readable"] }
 tokio                 = { workspace = true, features = ["default", "full"] }
 tokio-tungstenite     = { workspace = true, features = ["default"] }

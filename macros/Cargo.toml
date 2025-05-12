@@ -20,13 +20,12 @@ regex       = { workspace = true, features = ["default"] }
 syn         = { workspace = true, features = ["default", "full"] }
 
 [dev-dependencies]
-axum          = { workspace = true }
-axum-extra    = { workspace = true }
-headers       = { workspace = true }
-http          = { workspace = true }
-leptos_router = { workspace = true }
-models        = { workspace = true }
-preprocess    = { workspace = true }
-serde         = { workspace = true, features = ["derive"] }
-serde_json    = { workspace = true }
-tracing       = { workspace = true }
+axum       = { workspace = true }
+axum-extra = { workspace = true }
+headers    = { workspace = true }
+http       = { workspace = true }
+models     = { workspace = true }
+preprocess = { workspace = true }
+serde      = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tracing    = { workspace = true }

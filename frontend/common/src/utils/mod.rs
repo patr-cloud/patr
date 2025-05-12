@@ -1,37 +1,14 @@
-/// The client module. This module is used to communicate with the server
-/// and fetch data from the server. It is used to make API calls for the
-/// backend.
-#[cfg(not(target_arch = "wasm32"))]
-mod client;
+// /// The client module. This module is used to communicate with the server
+// /// and fetch data from the server. It is used to make API calls for the
+// /// backend.
+// #[cfg(not(target_arch = "wasm32"))]
+// mod client;
 
-#[cfg(not(target_arch = "wasm32"))]
-pub use self::client::*;
+// #[cfg(not(target_arch = "wasm32"))]
+// pub use self::client::*;
 
-/// The alignment enum. This enum is used to specify the alignment of a
-/// component of left, right, or center.
-mod alignment;
-/// A module containing the custom [`AppRoute`].
-/// The App Route Enum. This Enum is used to specify the route of the app.
-// mod app_route;
-/// The color enum. This enum is used to specify the color of a component. These
-/// include the primary and secondary colors of the app.
-mod color;
 /// A module containing extension traits for various types
 mod ext_traits;
-/// Contains all the routes in enum form
-mod routes;
-/// Contains All The SideItems for the Sidebar
-// mod sidebar_items;
-/// The size enum. This enum is used to specify the size of a component. We
-/// currently have:
-/// - ExtraExtraLarge
-/// - ExtraLarge
-/// - Large
-/// - Medium
-/// - Small
-/// - ExtraSmall
-/// - ExtraExtraSmall
-mod size;
 /// The storage module. This module is used to store the state of the app in the
 /// local storage.
 mod storage;
@@ -39,30 +16,23 @@ mod storage;
 /// and the color variant.
 mod variant;
 
-pub use self::{
-	alignment::*,
-	// app_route::*,
-	color::*,
-	ext_traits::*,
-	routes::*,
-	// sidebar_items::*,
-	size::*,
-	storage::*,
-	variant::*,
-};
+pub use self::{ext_traits::*, storage::*, variant::*};
 
 /// A module containing constants that are used throughout the application.
 pub mod constants {
+	use dioxus::prelude::*;
 	use semver::Version;
 
 	/// The version of the application
 	pub const VERSION: Version = macros::version!();
-	/// The name of the cookie that stores the auth state
-	pub const AUTH_STATE: &str = "authState";
 	/// The Number of resources to fetch per page
 	pub const RESOURCES_PER_PAGE: usize = 2;
 	/// The path to the feather icons sprite
 	pub const FEATHER_IMG: &str = "/icons/sprite/feather-sprite.svg";
+	/// The path to the favicon image
+	pub const FAVICON: Asset = asset!("/assets/favicon.svg");
+	/// The path to the CSS file for the dashboard
+	pub const GLOBAL_CSS: Asset = asset!("/assets/styles/global.css");
 	/// The default debounce time for input fields
 	pub const DEFAULT_DEBOUNCE_TIME: f64 = 750.0;
 	/// The max wait time for the input field debounce

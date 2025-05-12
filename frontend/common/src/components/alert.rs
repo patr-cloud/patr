@@ -7,11 +7,12 @@ pub fn Alert(
 	/// The Type of Alert
 	r#type: AlertType,
 	/// Additional Classes
-	#[prop(into, optional)]
+	#[props(into)]
 	class: Signal<String>,
 	/// The Message
+	#[props(into)]
 	children: Children,
-) -> impl IntoView {
+) -> Element {
 	let message_class = move || {
 		format!(
 			"ml-xxs {}",
@@ -23,43 +24,47 @@ pub fn Alert(
 		)
 	};
 
-	let outer_class = move || {
-		format!(
-			"flex flex-row items-start justify-start text-white {}",
-			class.get()
-		)
-	};
-
-	view! {
-		<span
-			class={outer_class}
-		>
-			{match r#type {
-				AlertType::Success => {
-					view! {
-						<Icon
-							size={Size::Small}
-							icon={IconType::CheckCircle}
-							color={Color::Success}
-						/>
+	rsx! {
+		span {
+			class: move || format!(
+				"flex flex-row items-start justify-start text-white {}",
+				class.read()
+			),
+			{
+				match r#type {
+					AlertType::Success => {
+						rsx! {
+							Icon {
+								size: Size::Small,
+								icon: IconType::CheckCircle,
+								color: Color::Success
+							}
+						}
+					}
+					AlertType::Warning => {
+						rsx! {
+							Icon {
+								size: Size::Small,
+								icon: IconType::AlertCircle,
+								color: Color::Warning,
+							}
+						}
+					}
+					AlertType::Error => {
+						rsx! {
+							Icon {
+								size: Size::Small,
+								icon: IconType::AlertCircle,
+								color: Color::Error,
+							}
+						}
 					}
 				}
-				AlertType::Warning => {
-					view! {
-						<Icon
-							size={Size::Small}
-							icon={IconType::AlertCircle}
-							color={Color::Warning}
-						/>
-					}
+				span {
+					class: message_class,
+					children()
 				}
-				AlertType::Error => {
-					view! {
-						<Icon size={Size::Small} icon={IconType::AlertCircle} color={Color::Error}/>
-					}
-				}
-			}}
-			<span class={message_class}>{children()}</span>
-		</span>
+			}
+		}
 	}
 }

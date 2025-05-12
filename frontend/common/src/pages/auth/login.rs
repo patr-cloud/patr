@@ -1,58 +1,59 @@
-use leptos::ev::{Event, SubmitEvent};
-
 use crate::prelude::*;
 
 /// The Login Page
 #[component]
-pub fn LoginPage() -> impl IntoView {
-	view! {
-		<PageContainer class="bg-onboard">
-			<LoginForm />
-		</PageContainer>
+pub fn LoginPage() -> Element {
+	rsx! {
+		PageContainer {
+			class: "bg-onboard",
+			LoginForm {}
+		}
 	}
 }
 
 /// The login form component. This is the form that the user uses to log in to
 /// the application.
 #[component]
-pub fn LoginForm() -> impl IntoView {
-	let username = RwSignal::new("".to_owned());
-	let password = RwSignal::new("".to_owned());
+pub fn LoginForm() -> Element {
+	let username = use_signal(|| "".to_owned());
+	let password = use_signal(|| "".to_owned());
 
-	let username_error = RwSignal::new("".to_owned());
-	let password_error = RwSignal::new("".to_owned());
+	let username_error = use_signal(|| "".to_owned());
+	let password_error = use_signal(|| "".to_owned());
 
-	let loading = RwSignal::new(false);
+	let loading = use_signal(|| false);
 
-	let on_submit_login = move |ev: SubmitEvent| {
+	let on_submit_login = move |ev: FormEvent| {
 		ev.prevent_default();
 
 		loading.set(true);
 		username_error.set("".to_owned());
 		password_error.set("".to_owned());
 
-		if username.get().is_empty() {
-			log::error!("no email");
+		if username.read().is_empty() {
+			error!("no email");
 			username_error.set("Username cannot be empty".to_owned());
 			loading.set(false);
 		}
 
-		if password.get().is_empty() {
-			log::error!("no password");
+		if password.read().is_empty() {
+			error!("no password");
 			password_error.set("Password cannot be empty".to_owned());
 			loading.set(false);
 		}
 
 		// TODO: Submit Form Here
-		log::info!("Submit Form");
+		info!("Submit Form");
 	};
 
 	let username_error_alert = move || {
-		username_error.get().some_if_not_empty().map(|val| {
-			view! {
-				<Alert r#type={AlertType::Error} class="mt-xs">
+		username_error.read().some_if_not_empty().map(|val| {
+			rsx! {
+				Alert {
+					r#type: AlertType::Error,
+					class: "mt-xs",
 					{val}
-				</Alert>
+				} 
 			}
 		})
 	};

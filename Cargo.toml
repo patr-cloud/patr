@@ -20,9 +20,9 @@ missing_docs_in_private_items = "warn"
 
 [workspace.dependencies]
 argon2                   = { default-features = false, version = "0.5" }
-axum                     = { default-features = false, version = "0.8" }
-axum-extra               = { default-features = false, version = "0.10" }
-axum-typed-websockets    = { default-features = false, git = "https://github.com/morenol/axum-typed-websockets.git", branch = "patch-1" }
+axum                     = { default-features = false, version = "0.7" }
+axum-extra               = { default-features = false, version = "0.9" }
+axum-typed-websockets    = { default-features = false, version = "0.6" }          # git = "https://github.com/morenol/axum-typed-websockets.git", branch = "patch-1" }
 base32                   = { default-features = false, version = "0.5" }
 base64                   = { default-features = false, version = "0.22" }
 bollard                  = { default-features = false, version = "0.18" }
@@ -37,14 +37,15 @@ console_error_panic_hook = { default-features = false, version = "0.1" }
 convert_case             = { default-features = false, version = "0.8" }
 cookie                   = { default-features = false, version = "0.18" }
 dashmap                  = { default-features = false, version = "6" }
+dioxus                   = { default-features = false, version = "0.6.0" }
+dioxus-sdk               = { default-features = false, version = "0.6.0" }
 dirs                     = { default-features = false, version = "6" }
 either                   = { default-features = false, version = "1" }
 flate2                   = { default-features = false, version = "1" }
 frontend                 = { default-features = false, path = "frontend/common" }
 fslock                   = { default-features = false, version = "0.2" }
 futures                  = { default-features = false, version = "0.3" }
-getrandom_02             = { default-features = false, package = "getrandom", version = "0.2" }
-getrandom_03             = { default-features = false, package = "getrandom", version = "0.3" }
+getrandom                = { default-features = false, version = "0.3" }
 headers                  = { default-features = false, version = "0.4" }
 hex                      = { default-features = false, version = "0.4" }
 http                     = { default-features = false, version = "1" }
@@ -55,11 +56,6 @@ ipnetwork                = { default-features = false, version = "0.20" }
 jsonwebtoken             = { default-features = false, version = "9" }
 k8s-openapi              = { default-features = false, version = "0.25" }
 kube                     = { default-features = false, version = "1" }
-leptos                   = { default-features = false, version = "0.8" }
-leptos-use               = { default-features = false, version = "0.16" }
-leptos_axum              = { default-features = false, version = "0.8" }
-leptos_meta              = { default-features = false, version = "0.8" }
-leptos_router            = { default-features = false, version = "0.8" }
 log                      = { default-features = false, version = "0.4" }
 macros                   = { default-features = false, path = "macros" }
 matchit                  = { default-features = false, version = "0.8" }
@@ -74,7 +70,7 @@ opentelemetry_sdk        = { default-features = false, version = "0.30" }
 preprocess               = { default-features = false, version = "0.5" }
 proc-macro2              = { default-features = false, version = "1" }
 quote                    = { default-features = false, version = "1" }
-rand                     = { default-features = false, version = "0.8" }
+rand                     = { default-features = false, version = "0.9" }
 regex                    = { default-features = false, version = "1" }
 reqwest                  = { default-features = false, version = "0.12" }
 rust-embed               = { default-features = false, version = "8" }
@@ -134,6 +130,16 @@ panic         = "abort"
 inherits  = "release"
 opt-level = 's'
 strip     = true
+
+[profile.wasm-dev]
+inherits  = "dev"
+opt-level = 1
+
+[profile.server-dev]
+inherits = "dev"
+
+[profile.android-dev]
+inherits = "dev"
 
 [[workspace.metadata.leptos]]
 # The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name
