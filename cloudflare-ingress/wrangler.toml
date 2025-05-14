@@ -3,11 +3,11 @@ main = "build/worker/shim.mjs"
 name = "patr-ingress"
 
 kv_namespaces = [
-    { binding = "INGRESS_KV", id = "96c1b29aded04e53895eaf80f2f1d56f" },
+  { binding = "INGRESS_KV", id = "96c1b29aded04e53895eaf80f2f1d56f" },
 ]
 
 r2_buckets = [
-    { binding = "STATIC_SITE_BUCKET", bucket_name = "patr-static-site-storage" },
+  { binding = "STATIC_SITE_BUCKET", bucket_name = "patr-static-site-storage" },
 ]
 
 [build]

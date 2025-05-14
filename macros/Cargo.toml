@@ -1,10 +1,10 @@
 [package]
-authors.workspace = true
-description.workspace = true
-edition.workspace = true
-name = "macros"
+authors.workspace      = true
+description.workspace  = true
+edition.workspace      = true
+name                   = "macros"
 rust-version.workspace = true
-version.workspace = true
+version.workspace      = true
 
 [lints]
 workspace = true
@@ -14,18 +14,18 @@ proc-macro = true
 
 [dependencies]
 proc-macro2 = { workspace = true, features = ["default"] }
-quote = { workspace = true, features = ["default"] }
-regex = { workspace = true, features = ["default"] }
-syn = { workspace = true, features = ["default", "full"] }
+quote       = { workspace = true, features = ["default"] }
+regex       = { workspace = true, features = ["default"] }
+syn         = { workspace = true, features = ["default", "full"] }
 
 [dev-dependencies]
-axum = { workspace = true }
-axum-extra = { workspace = true }
-headers = { workspace = true }
-http = { workspace = true }
+axum          = { workspace = true }
+axum-extra    = { workspace = true }
+headers       = { workspace = true }
+http          = { workspace = true }
 leptos_router = { workspace = true }
-models = { workspace = true }
-preprocess = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
-tracing = { workspace = true }
+models        = { workspace = true }
+preprocess    = { workspace = true }
+serde         = { workspace = true, features = ["derive"] }
+serde_json    = { workspace = true }
+tracing       = { workspace = true }

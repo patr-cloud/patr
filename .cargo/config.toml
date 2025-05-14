@@ -1,37 +1,37 @@
 [target.x86_64-unknown-linux-gnu]
 rustflags = [
-    "--cfg",
-    "web_sys_unstable_apis",
-    "--cfg",
-    "erase_components",
-    "-C",
-    "link-arg=-fuse-ld=/usr/local/bin/mold",
+	"--cfg",
+	"erase_components",
+	"--cfg",
+	"link-arg=-fuse-ld=/usr/local/bin/mold",
+	"--cfg",
+	"web_sys_unstable_apis",
 ]
 
 [target.aarch64-apple-darwin]
 rustflags = [
-    "--cfg",
-    "web_sys_unstable_apis",
-    "--cfg",
-    "erase_components",
-    "-C",
-    "link-arg=-fuse-ld=/usr/local/bin/mold",
+	"--cfg",
+	"erase_components",
+	"--cfg",
+	"link-arg=-fuse-ld=/usr/local/bin/mold",
+	"--cfg",
+	"web_sys_unstable_apis",
 ]
 
 [target.wasm32-unknown-unknown]
 rustflags = [
-    "--cfg",
-    "web_sys_unstable_apis",
-    '--cfg',
-    'getrandom_backend="wasm_js"',
-    "--cfg",
-    "erase_components",
+	"--cfg",
+	"erase_components",
+	"--cfg",
+	"web_sys_unstable_apis",
+	'--cfg',
+	'getrandom_backend="wasm_js"',
 ]
 
 [alias]
-api = "leptos serve -p dashboard"
-docker = "leptos serve -p docker"
-patr = "run -p cli --"
-prepare = "sqlx prepare --workspace"
-watch-api = "leptos watch -p dashboard --hot-reload"
+api          = "leptos serve -p dashboard"
+docker       = "leptos serve -p docker"
+patr         = "run -p cli --"
+prepare      = "sqlx prepare --workspace"
+watch-api    = "leptos watch -p dashboard --hot-reload"
 watch-docker = "leptos watch -p docker --hot-reload"

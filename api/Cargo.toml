@@ -1,76 +1,61 @@
 [package]
 name = "api"
 
-authors.workspace = true
-description.workspace = true
-edition.workspace = true
+authors.workspace      = true
+description.workspace  = true
+edition.workspace      = true
 rust-version.workspace = true
-version.workspace = true
+version.workspace      = true
 
 [lints]
 workspace = true
 
+[features]
+default = ["sqlx/ipnetwork"]
+
 [dependencies]
-argon2 = { workspace = true, features = ["default"] }
-axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
-axum-extra = { workspace = true, features = ["default", "typed-routing"] }
+argon2                = { workspace = true, features = ["default"] }
+axum                  = { workspace = true, features = ["default", "macros", "tracing", "ws"] }
+axum-extra            = { workspace = true, features = ["default", "typed-routing"] }
 axum-typed-websockets = { workspace = true, features = ["default"] }
-base32 = { workspace = true, features = [] }
-base64 = { workspace = true, features = ["default"] }
-config = { workspace = true, features = ["default"] }
-frontend = { workspace = true, features = [] }
-futures = { workspace = true, features = ["default"] }
-headers = { workspace = true, features = [] }
-ipinfo = { workspace = true, features = [] }
-jsonwebtoken = { workspace = true, features = ["default"] }
-leptos = { workspace = true, features = ["ssr"] }
-leptos_axum = { workspace = true, features = ["default"] }
-macros = { workspace = true, features = [] }
-matchit = { workspace = true, features = ["default"] }
-models = { workspace = true, features = ["axum"] }
-monostate = { workspace = true, features = [] }
-opentelemetry = { workspace = true, features = ["default"] }
-opentelemetry-otlp = { workspace = true, features = ["default", "grpc-tonic"] }
-opentelemetry_sdk = { workspace = true, features = ["default", "rt-tokio"] }
-preprocess = { workspace = true, features = [] }
-rand = { workspace = true, features = ["default"] }
-regex = { workspace = true, features = ["default"] }
-reqwest = { workspace = true, features = ["default", "json", "multipart"] }
-rust-s3 = { workspace = true, features = ["default", "with-tokio"] }
-rustis = { workspace = true, features = [
-    "default",
-    "pool",
-    "tls",
-    "redis-json",
-    "tokio-tls",
-] }
-semver = { workspace = true, features = ["default"] }
-serde = { workspace = true, features = ["default", "derive"] }
-serde_json = { workspace = true, features = ["default"] }
-serde_urlencoded = { workspace = true, features = [] }
-sha2 = { workspace = true, features = ["default"] }
-sqlx = { workspace = true, features = [
-    "runtime-tokio",
-    "tls-rustls",
-    "macros",
-    "uuid",
-    "time",
-    "ipnetwork",
-    "postgres",
-] }
-time = { workspace = true, features = ["default", "serde-human-readable"] }
-tokio = { workspace = true, features = ["default", "full"] }
-tokio-tungstenite = { workspace = true, features = [
-    "default",
-    "rustls-tls-webpki-roots",
-    "rustls",
-] }
-totp-rs = { workspace = true, features = ["default", "gen_secret"] }
-tower = { workspace = true, features = ["full"] }
-tower-http = { workspace = true, features = ["fs"] }
-tracing = { workspace = true, features = ["default", "async-await"] }
-tracing-log = { workspace = true, features = ["default"] }
+base32                = { workspace = true, features = [] }
+base64                = { workspace = true, features = ["default"] }
+config                = { workspace = true, features = ["default"] }
+frontend              = { workspace = true, features = [] }
+futures               = { workspace = true, features = ["default"] }
+headers               = { workspace = true, features = [] }
+ipinfo                = { workspace = true, features = [] }
+jsonwebtoken          = { workspace = true, features = ["default"] }
+leptos                = { workspace = true, features = ["ssr"] }
+leptos_axum           = { workspace = true, features = ["default"] }
+macros                = { workspace = true, features = [] }
+matchit               = { workspace = true, features = ["default"] }
+models                = { workspace = true, features = ["axum"] }
+monostate             = { workspace = true, features = [] }
+opentelemetry         = { workspace = true, features = ["default"] }
+opentelemetry-otlp    = { workspace = true, features = ["default", "grpc-tonic"] }
+opentelemetry_sdk     = { workspace = true, features = ["default", "rt-tokio"] }
+preprocess            = { workspace = true, features = [] }
+rand                  = { workspace = true, features = ["default"] }
+regex                 = { workspace = true, features = ["default"] }
+reqwest               = { workspace = true, features = ["default", "json", "multipart"] }
+rust-s3               = { workspace = true, features = ["default", "with-tokio"] }
+rustis                = { workspace = true, features = ["default", "pool", "redis-json", "tokio-tls"] }
+semver                = { workspace = true, features = ["default"] }
+serde                 = { workspace = true, features = ["default", "derive"] }
+serde_json            = { workspace = true, features = ["default"] }
+serde_urlencoded      = { workspace = true, features = [] }
+sha2                  = { workspace = true, features = ["default"] }
+sqlx                  = { workspace = true, features = ["macros", "postgres", "runtime-tokio", "time", "uuid"] }
+time                  = { workspace = true, features = ["default", "serde-human-readable"] }
+tokio                 = { workspace = true, features = ["default", "full"] }
+tokio-tungstenite     = { workspace = true, features = ["default", "rustls-tls-webpki-roots"] }
+totp-rs               = { workspace = true, features = ["default", "gen_secret"] }
+tower                 = { workspace = true, features = ["full"] }
+tower-http            = { workspace = true, features = ["fs"] }
+tracing               = { workspace = true, features = ["async-await", "default"] }
+tracing-log           = { workspace = true, features = ["default"] }
 tracing-opentelemetry = { workspace = true, features = ["default"] }
-tracing-subscriber = { workspace = true, features = ["default"] }
-typed-builder = { workspace = true, features = [] }
-woothee = { workspace = true, features = ["default"] }
+tracing-subscriber    = { workspace = true, features = ["default"] }
+typed-builder         = { workspace = true, features = [] }
+woothee               = { workspace = true, features = ["default"] }

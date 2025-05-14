@@ -1,52 +1,47 @@
 [package]
-authors.workspace = true
-description.workspace = true
-edition.workspace = true
 name = "common"
+
+authors.workspace      = true
+description.workspace  = true
+edition.workspace      = true
 rust-version.workspace = true
-version.workspace = true
+version.workspace      = true
 
 [lints]
 workspace = true
 
 [dependencies]
-argon2 = { workspace = true, features = ["default"] }
-axum = { workspace = true, features = ["default", "tracing", "ws", "macros"] }
-axum-extra = { workspace = true, features = ["default", "typed-routing"] }
-config = { workspace = true }
-dashmap = { workspace = true, features = [] }
-frontend = { workspace = true, features = [] }
-futures = { workspace = true }
-http = { workspace = true, features = ["default"] }
-jsonwebtoken = { workspace = true, features = ["default"] }
-leptos = { workspace = true, features = ["ssr"] }
-leptos_axum = { workspace = true, features = ["default"] }
-macros = { workspace = true }
-models = { workspace = true }
-preprocess = { workspace = true, features = [] }
-rand = { workspace = true, features = ["default"] }
-reqwest = { workspace = true, features = ["json", "rustls-tls"] }
-semver = { workspace = true, features = ["default"] }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
-serde_urlencoded = { workspace = true, features = [] }
-sqlx = { workspace = true, features = [
-	"runtime-tokio",
-	"tls-rustls",
-	"uuid",
-	"time",
-	"sqlite",
-] }
-thiserror = { workspace = true, features = [] }
-time = { workspace = true, features = ["default", "serde-human-readable"] }
-tokio = { workspace = true, features = ["full"] }
-tokio-stream = { workspace = true, features = ["default", "sync"] }
-tokio-tungstenite = { workspace = true, features = ["default"] }
-tokio-util = { workspace = true, features = ["rt"] }
-tower = { workspace = true }
-tower-http = { workspace = true, features = ["fs"] }
-tracing = { workspace = true, features = ["default", "async-await"] }
-tracing-log = { workspace = true, features = ["default"] }
+argon2                = { workspace = true, features = ["default"] }
+axum                  = { workspace = true, features = ["default", "macros", "tracing", "ws"] }
+axum-extra            = { workspace = true, features = ["default", "typed-routing"] }
+config                = { workspace = true }
+dashmap               = { workspace = true, features = [] }
+frontend              = { workspace = true, features = [] }
+futures               = { workspace = true }
+http                  = { workspace = true, features = ["default"] }
+jsonwebtoken          = { workspace = true, features = ["default"] }
+leptos                = { workspace = true, features = ["ssr"] }
+leptos_axum           = { workspace = true, features = ["default"] }
+macros                = { workspace = true }
+models                = { workspace = true }
+preprocess            = { workspace = true, features = [] }
+rand                  = { workspace = true, features = ["default"] }
+reqwest               = { workspace = true, features = ["json", "rustls-tls"] }
+semver                = { workspace = true, features = ["default"] }
+serde                 = { workspace = true, features = ["derive"] }
+serde_json            = { workspace = true }
+serde_urlencoded      = { workspace = true, features = [] }
+sqlx                  = { workspace = true, features = ["runtime-tokio-rustls", "sqlite", "time", "uuid"] }
+thiserror             = { workspace = true, features = [] }
+time                  = { workspace = true, features = ["default", "serde-human-readable"] }
+tokio                 = { workspace = true, features = ["full"] }
+tokio-stream          = { workspace = true, features = ["default", "sync"] }
+tokio-tungstenite     = { workspace = true, features = ["default"] }
+tokio-util            = { workspace = true, features = ["rt"] }
+tower                 = { workspace = true }
+tower-http            = { workspace = true, features = ["fs"] }
+tracing               = { workspace = true, features = ["async-await", "default"] }
+tracing-log           = { workspace = true, features = ["default"] }
 tracing-opentelemetry = { workspace = true, features = ["default"] }
-tracing-subscriber = { workspace = true, features = ["default"] }
-typed-builder = { workspace = true, features = [] }
+tracing-subscriber    = { workspace = true, features = ["default"] }
+typed-builder         = { workspace = true, features = [] }

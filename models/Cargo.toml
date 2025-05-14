@@ -1,60 +1,60 @@
 [package]
 name = "models"
 
-authors.workspace = true
-description.workspace = true
-edition.workspace = true
+authors.workspace      = true
+description.workspace  = true
+edition.workspace      = true
 rust-version.workspace = true
-version.workspace = true
+version.workspace      = true
 
 [lints]
 workspace = true
 
 [features]
-axum = []
+axum    = []
 default = []
 
 [dependencies]
-axum = { workspace = true, features = ["json"] }
-axum-extra = { workspace = true, features = ["typed-routing"] }
-base32 = { workspace = true, features = [] }
-base64 = { workspace = true, features = ["default"] }
-headers = { workspace = true, features = [] }
-hex = { workspace = true, features = ["default"] }
-http = { workspace = true, features = ["default"] }
-ipnetwork = { workspace = true, features = ["default"] }
-macros = { workspace = true, features = [] }
-preprocess = { workspace = true, features = [] }
-regex = { workspace = true, features = ["default"] }
-reqwest = { workspace = true, features = ["default", "rustls-tls", "json"] }
-schemars = { workspace = true, features = ["default", "uuid1"] }
-serde = { workspace = true, features = ["default", "derive"] }
-serde_json = { workspace = true, features = ["default"] }
-serde_test = { workspace = true, features = [] }
-serde_urlencoded = { workspace = true, features = [] }
-strum = { workspace = true, features = ["default", "derive"] }
-thiserror = { workspace = true, features = [] }
-tokio = { workspace = true, features = [] }
+axum              = { workspace = true, features = ["json"] }
+axum-extra        = { workspace = true, features = ["typed-routing"] }
+base32            = { workspace = true, features = [] }
+base64            = { workspace = true, features = ["default"] }
+headers           = { workspace = true, features = [] }
+hex               = { workspace = true, features = ["default"] }
+http              = { workspace = true, features = ["default"] }
+ipnetwork         = { workspace = true, features = ["default"] }
+macros            = { workspace = true, features = [] }
+preprocess        = { workspace = true, features = [] }
+regex             = { workspace = true, features = ["default"] }
+reqwest           = { workspace = true, features = ["default", "json", "rustls-tls"] }
+schemars          = { workspace = true, features = ["default", "uuid1"] }
+serde             = { workspace = true, features = ["default", "derive"] }
+serde_json        = { workspace = true, features = ["default"] }
+serde_test        = { workspace = true, features = [] }
+serde_urlencoded  = { workspace = true, features = [] }
+strum             = { workspace = true, features = ["default", "derive"] }
+thiserror         = { workspace = true, features = [] }
+tokio             = { workspace = true, features = [] }
 tokio-tungstenite = { workspace = true, features = [] }
-tower = { workspace = true }
-tracing = { workspace = true, features = ["attributes"] }
-typed-builder = { workspace = true, features = [] }
-url = { workspace = true, features = ["default"] }
+tower             = { workspace = true }
+tracing           = { workspace = true, features = ["attributes"] }
+typed-builder     = { workspace = true, features = [] }
+url               = { workspace = true, features = ["default"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 axum-typed-websockets = { workspace = true, features = ["default"] }
-getrandom_03 = { workspace = true, features = [] }
-sqlx = { workspace = true, features = ["uuid", "postgres", "sqlite", "macros"] }
-time = { workspace = true, features = ["default", "serde-human-readable"] }
-uuid = { workspace = true, features = ["default", "v1", "v4"] }
+getrandom_03          = { workspace = true, features = [] }
+sqlx                  = { workspace = true, features = ["macros", "postgres", "sqlite", "uuid"] }
+time                  = { workspace = true, features = ["default", "serde-human-readable"] }
+uuid                  = { workspace = true, features = ["default", "v1", "v4"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom_03 = { workspace = true, features = ["wasm_js"] }
 getrandom_02 = { workspace = true, features = ["js"] }
+getrandom_03 = { workspace = true, features = ["wasm_js"] }
 leptos = { workspace = true, features = [] }
 time = { workspace = true, features = [
-	"default",
-	"serde-human-readable",
-	"wasm-bindgen",
+  "default",
+  "serde-human-readable",
+  "wasm-bindgen",
 ] }
-uuid = { workspace = true, features = ["default", "v1", "v4", "js"] }
+uuid = { workspace = true, features = ["default", "js", "v1", "v4"] }
