@@ -8,7 +8,7 @@ pub fn ContainerBody(
 	/// Additional Class Names to be given to the outer div
 	#[prop(into, optional)]
 	class: Signal<String>,
-) -> impl IntoView {
+) -> Element {
 	let class = move || {
 		format!(
 			"relative flex flex-col items-center justify-start w-full h-full overflow-y-auto container-body {}",

@@ -10,6 +10,9 @@ version.workspace      = true
 [lints]
 workspace = true
 
+[features]
+# default = ["dioxus/fullstack", "dioxus/liveview", "dioxus/server", "dioxus/ssr"]
+
 [dependencies]
 dioxus     = { workspace = true, features = ["default", "router", "web"] }
 dioxus-sdk = { workspace = true, features = ["storage"] }
@@ -17,3 +20,4 @@ macros     = { workspace = true }
 models     = { workspace = true }
 semver     = { workspace = true }
 serde      = { workspace = true, features = ["derive"] }
+strum      = { workspace = true }

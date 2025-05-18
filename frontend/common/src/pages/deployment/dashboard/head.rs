@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 /// The Deployment Dashboard Header
 #[component]
-pub fn DeploymentDashboardHead() -> impl IntoView {
+pub fn DeploymentDashboardHead() -> Element {
 	view! {
 		<ContainerHead>
 			<PageTitleContainer

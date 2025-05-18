@@ -8,7 +8,7 @@ use crate::prelude::*;
 
 /// Temporary Page Container
 #[component]
-pub fn TempPageContainer(children: Children) -> impl IntoView {
+pub fn TempPageContainer(children: Children) -> Element {
 	view! {
 		<div class="font-primary flex items-start justify-start w-full h-full bg-secondary {}">
 			<aside class="sidebar flex flex-col items-start justify-start pb-xl">
@@ -23,7 +23,7 @@ pub fn TempPageContainer(children: Children) -> impl IntoView {
 
 /// The Outer Shell for All Deployment Pages
 #[component]
-pub fn DeploymentPage(children: Children) -> impl IntoView {
+pub fn DeploymentPage(children: Children) -> Element {
 	view! {
 		<ContainerMain class="w-full h-full my-md">
 			{children()}

@@ -1,5 +1,3 @@
-use leptos::ev::Event;
-
 use crate::prelude::*;
 
 /// The Type of the input
@@ -58,89 +56,80 @@ impl InputType {
 pub fn Input(
 	/// Name of the form control. Submitted with the form as part of a
 	/// name/value pair
-	#[prop(into, optional)]
-	name: Signal<String>,
+	#[props(into, optional)]
+	name: String,
 	/// The type of input
-	#[prop(into, optional, default = InputType::Text.into())]
-	r#type: Signal<InputType>,
+	#[props(into, optional, default = InputType::Text)]
+	r#type: InputType,
 	/// Input event handler
-	#[prop(optional, into, default = UnsyncCallback::new(|_| {}))]
-	on_input: UnsyncCallback<(Event,)>,
+	#[props(optional, into, default = EventHandler::new(|_| {}))]
+	oninput: EventHandler<Event<FormData>>,
 	/// Additional class names to apply to the outer div, if any.
-	#[prop(into, optional)]
+	#[props(into, optional)]
 	class: String,
 	/// Specifies whether the form field needs to be filled in before it can
 	/// be submitted, doesn't use javascript, defaults to false
-	#[prop(into, optional, default = false.into())]
+	#[props(into, optional, default = false)]
 	required: bool,
 	/// The ID of the input.
-	#[prop(into, optional)]
-	id: Signal<String>,
+	#[props(into, optional)]
+	id: String,
 	/// The form id of the input.
-	#[prop(into, optional, default = None.into())]
-	form: Signal<Option<String>>,
+	#[props(into, optional, default = None)]
+	form: Option<String>,
 	/// Placeholder text for the input.
-	#[prop(into, optional)]
-	placeholder: Signal<String>,
+	#[props(into, optional)]
+	placeholder: String,
 	/// Whether the input is disabled.
-	#[prop(into, optional, default = false.into())]
-	disabled: Signal<bool>,
+	#[props(into, optional, default = false)]
+	disabled: bool,
 	/// The Color Variant of the input
-	#[prop(into, optional)]
-	variant: Signal<SecondaryColorVariant>,
+	#[props(into, optional)]
+	variant: SecondaryColorVariant,
 	/// Label for the input, an empty string doesn't render the label,
 	/// defaults to empty string
-	#[prop(into, optional, default = "".into())]
-	label: Signal<String>,
+	#[props(into, optional, default = "")]
+	label: String,
 	/// The Initial Value of the input
-	#[prop(into, optional)]
-	value: Signal<String>,
+	#[props(into, optional)]
+	value: String,
 	/// The End Icon if any
-	#[prop(into, optional)]
-	end_icon: ViewFn,
+	#[props(into, optional, default = VNode::empty())]
+	end_icon: Element,
 	/// The End Text, if any
-	#[prop(into, optional)]
-	end_text: Signal<Option<String>>,
+	#[props(into, optional)]
+	end_text: Option<String>,
 	/// The Start Icon if any
-	#[prop(into, optional)]
-	start_icon: ViewFn,
+	#[props(into, optional, default = VNode::empty())]
+	start_icon: Element,
 	/// The Start Text, if any
-	#[prop(into, optional)]
-	start_text: Signal<Option<String>>,
-) -> impl IntoView {
-	let class = move || {
-		format!(
-			"input flex justify-start items-center row-card bg-secondary-{} {}",
-			variant.get().as_css_name(),
-			class
-		)
-	};
+	#[props(into, optional)]
+	start_text: Option<String>,
+) -> Element {
+	rsx! {
+		div { class: "input flex justify-start items-center row-card bg-secondary-{variant.as_css_name()} {class}",
+			if !label.is_empty() {
+				label { {label} }
+			}
 
-	view! {
-		<div class={class}>
-			<Show when={
-				move || label.with(|lbl| !lbl.is_empty())
-			}>
-				<label>{move || label.get()}</label>
-			</Show>
-			{move || start_text.get()}
-			{move || start_icon.run()}
-			<input
-				form={move || form.get()}
-				id={move || id.get()}
-				class="mx-md overflow-hidden text-ellipsis"
-				type={move || r#type.read().as_html_attribute()}
-				name={move || name.get()}
-				placeholder={move || placeholder.get()}
-				disabled={move || disabled.get()}
-				required={required}
-				on:input={move |e| {
-					on_input.run((e,))
-				}}
-				prop:value={value}
-			/>
-			{move || end_text.get()}
-			{move || end_icon.run()}
-		</div>
+			{start_text}
+			{start_icon}
+
+			input {
+				form,
+				id,
+				class: "mx-md overflow-hidden text-ellipsis",
+				r#type: r#type.as_html_attribute(),
+				name,
+				placeholder,
+				disabled,
+				required,
+				value,
+				oninput: move |e| oninput.call(e),
+			}
+
+			{end_text}
+			{end_icon}
+		}
 	}
 }

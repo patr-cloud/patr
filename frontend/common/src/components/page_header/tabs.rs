@@ -18,7 +18,7 @@ pub fn Tabs(
 	/// The Tab Item
 	#[prop(into, optional)]
 	tab_items: Signal<Vec<TabItem>>,
-) -> impl IntoView {
+) -> Element {
 	let class = class.with(|cname| format!("flex justify-start items-end {cname}"));
 
 	view! {

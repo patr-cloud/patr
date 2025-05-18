@@ -3,7 +3,7 @@ use log::info;
 
 /// Home Page
 #[component]
-pub fn HomePage() -> impl IntoView {
+pub fn HomePage() -> Element {
 	info!("hello");
 	view! {
 		<div class="pt-[25vh] w-full flex justify-center items-center">

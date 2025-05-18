@@ -10,7 +10,7 @@ pub fn TitleContainer(
 	class: Signal<String>,
 	/// The Children of the component
 	children: Children,
-) -> impl IntoView {
+) -> Element {
 	let class = move || format!("p-xxs flex justify-start items-center {}", class.get());
 
 	view! { <div class={class}>{children()}</div> }
@@ -58,7 +58,7 @@ pub fn PageTitle(
 	/// The Page to navigate to
 	#[prop(into, optional)]
 	to: Signal<String>,
-) -> impl IntoView {
+) -> Element {
 	let class = format!(
 		"p-xxs flex items-start justify-center {} {}",
 		match variant.get() {

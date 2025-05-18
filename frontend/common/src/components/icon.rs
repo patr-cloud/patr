@@ -1,7 +1,5 @@
 use std::fmt::Display;
 
-use leptos::ev::MouseEvent;
-
 use crate::prelude::*;
 
 /// The kind of icon to display. This is taken directly from the Feather icon
@@ -888,50 +886,44 @@ impl Display for IconType {
 #[component]
 pub fn Icon(
 	/// The IconType of the Icon
-	#[prop(into)]
-	icon: Signal<IconType>,
+	#[props(into)]
+	icon: IconType,
 	/// class name to apply to the icon
-	#[prop(into, optional)]
-	class: Signal<String>,
+	#[props(into, optional)]
+	class: String,
 	/// text color of the icon
-	#[prop(into, optional, default = Color::White.into())]
-	color: Signal<Color>,
+	#[props(into, optional, default = Color::White)]
+	color: Color,
 	/// fill color of the icon
-	#[prop(into, optional)]
-	fill: Signal<Color>,
+	#[props(into, optional)]
+	fill: Color,
 	/// size of the icon
-	#[prop(into, optional)]
-	size: Signal<Size>,
+	#[props(into, optional)]
+	size: Size,
 	/// Whether to enable the pulse animation
-	#[prop(into, optional, default = false.into())]
-	enable_pulse: Signal<bool>,
+	#[props(into, optional, default = false)]
+	enable_pulse: bool,
 	/// click handler
-	#[prop(into, optional, default = UnsyncCallback::new(|_| {}))]
-	on_click: UnsyncCallback<(MouseEvent,)>,
+	#[props(into, optional, default = EventHandler::new(|_| {}))]
+	onclick: EventHandler<MouseEvent>,
 	/// Show Click Indicator
-	#[prop(into, optional, default = false.into())]
-	is_clickable: Signal<bool>,
-) -> impl IntoView {
-	view! {
-		<svg
-			on:click={
-				move |e| {
-					on_click.run((e,))
-				}
-			}
-			id="icon"
-			class={move || {
-				format!(
-					"icon {} {} icon-fill-{} icon-{} {} {}",
-					if enable_pulse.get() { "pulse" } else { "" },
-					color.get().as_text_color().as_css_color(),
-					fill.get().as_css_name(),
-					size.get().as_css_name(),
-					if is_clickable.get() { "cursor-pointer" } else { "" },
-					class.get(),
-				)
-			}}	>
-			<use_ href={move || format!("{}#{}", constants::FEATHER_IMG, icon.get())}></use_>
-		</svg>
+	#[props(into, optional, default = false)]
+	is_clickable: bool,
+) -> Element {
+	rsx! {
+		svg {
+			id: "icon",
+			onclick: move |e| { onclick.call(e) },
+			class: format!(
+			    "icon {} {} icon-fill-{} icon-{} {} {}",
+			    if enable_pulse { "pulse" } else { "" },
+			    color.as_text_color().as_css_color(),
+			    fill.as_css_name(),
+			    size.as_css_name(),
+			    if is_clickable { "cursor-pointer" } else { "" },
+			    class,
+			),
+			r#use { href: "{constants::FEATHER_IMG}#{icon}" }
+		}
 	}
 }

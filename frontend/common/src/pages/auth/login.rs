@@ -4,10 +4,7 @@ use crate::prelude::*;
 #[component]
 pub fn LoginPage() -> Element {
 	rsx! {
-		PageContainer {
-			class: "bg-onboard",
-			LoginForm {}
-		}
+		PageContainer { class: "bg-onboard", LoginForm {} }
 	}
 }
 
@@ -15,13 +12,13 @@ pub fn LoginPage() -> Element {
 /// the application.
 #[component]
 pub fn LoginForm() -> Element {
-	let username = use_signal(|| "".to_owned());
-	let password = use_signal(|| "".to_owned());
+	let mut username = use_signal(|| "".to_owned());
+	let mut password = use_signal(|| "".to_owned());
 
-	let username_error = use_signal(|| "".to_owned());
-	let password_error = use_signal(|| "".to_owned());
+	let mut username_error = use_signal(|| "".to_owned());
+	let mut password_error = use_signal(|| "".to_owned());
 
-	let loading = use_signal(|| false);
+	let mut loading = use_signal(|| false);
 
 	let on_submit_login = move |ev: FormEvent| {
 		ev.prevent_default();
@@ -46,97 +43,73 @@ pub fn LoginForm() -> Element {
 		info!("Submit Form");
 	};
 
-	let username_error_alert = move || {
-		username_error.read().some_if_not_empty().map(|val| {
-			rsx! {
-				Alert {
-					r#type: AlertType::Error,
-					class: "mt-xs",
-					{val}
-				} 
-			}
-		})
+	let username_start_icon = rsx! {
+		Icon { icon: IconType::User, size: Size::ExtraSmall }
 	};
 
-	let password_error_alert = move || {
-		password_error.get().some_if_not_empty().map(|val| {
-			view! {
-				<Alert r#type={AlertType::Error} class="mt-xs">
-					{val}
-				</Alert>
-			}
-		})
+	let password_start_icon = rsx! {
+		Icon { icon: IconType::Shield, size: Size::ExtraSmall }
 	};
 
-	view! {
-		<form on:submit={on_submit_login} class="box-onboard text-white">
-			<div class="flex justify-between items-baseline mb-lg w-full">
-				<h1 class="text-primary text-xl text-medium">"Sign In"</h1>
-				<div class="text-white text-thin flex items-start justify-start text-sm">
-					<p>"New User? "</p>
-					<Link to={"/sign-up".to_owned()}>
-						"Sign Up"
-					</Link>
-				</div>
-			</div>
+	rsx! {
+		form { class: "box-onboard text-white", onsubmit: on_submit_login,
+			div { class: "flex justify-between items-baseline mb-lg w-full",
+				h1 { class: "text-primary text-xl text-medium", "Sign In" }
+				div { class: "text-white text-thin flex items-start justify-start text-sm",
+					p { "New User? " }
+					AppLink { to: "/sign-up", "Sign Up" }
+				}
+			}
 
-			<div class="flex flex-col items-start justify-start w-full gap-md">
-				<Input
-					value={username}
-					on_input={move |ev: Event| {
-						username.set(event_target_value(&ev));
-					}}
-					id="user_id"
-					name="user_id"
-					class="w-full"
-					r#type={InputType::Text}
-					placeholder="Username / Email"
-					disabled={false}
-					start_icon={|| view! {
-						<Icon
-							icon={IconType::User}
-							size={Size::ExtraSmall}
-						/>
-					}}
-				/>
+			div { class: "flex flex-col items-start justify-start w-full gap-md",
+				Input {
+					id: "user_id",
+					name: "user_id",
+					value: username.read().clone(),
+					oninput: move |ev: Event<FormData>| {
+					    username.set(ev.value());
+					},
+					class: "w-full",
+					r#type: InputType::Text,
+					placeholder: "Username / Email",
+					disabled: false,
+					start_icon: username_start_icon,
+				}
 
-				{username_error_alert}
+				if let Some(value) = username_error.read().clone().some_if_not_empty() {
+					Alert { r#type: AlertType::Error, class: "mt-xs", {value} }
+				}
 
-				<PasswordInput
-					on_input={move |ev| {
-						password.set(event_target_value(&ev));
-					}}
-					class="w-full"
-					id="password"
-					placeholder="Password"
-					start_icon={|| view! {
-						<Icon
-							icon={IconType::Shield}
-							size={Size::ExtraSmall}
-						/>
-					}}
-				/>
+				PasswordInput {
+					id: "password",
+					name: "password",
+					value: password.read().clone(),
+					oninput: move |ev: Event<FormData>| {
+					    password.set(ev.value());
+					},
+					class: "w-full",
+					placeholder: "Password",
+					disabled: false,
+					start_icon: password_start_icon,
+				}
 
-				<input name="mfa_otp" type="hidden" />
+				input { name: "mfa_otp", r#type: "hidden" }
 
-				{password_error_alert}
-			</div>
+				if let Some(value) = password_error.read().clone().some_if_not_empty() {
+					Alert { r#type: AlertType::Error, class: "mt-xs", {value} }
+				}
+			}
 
-
-			<Show
-				when={move || !loading.get()}
-				fallback={|| view! {
-					<p>"Loading..."</p>
-				}}
-			>
-				<Button
-					r#type={ButtonType::Submit}
-					class="btn ml-auto mt-md"
-					variant={LinkStyleVariant::Contained}
-				>
+			if *loading.read() {
+				Button {
+					r#type: ButtonType::Submit,
+					class: "btn ml-auto mt-md",
+					variant: LinkStyleVariant::Contained,
 					"LOGIN"
-				</Button>
-			</Show>
-		</form>
+				}
+			} else {
+				p { "Loading..." }
+			}
+		}
 	}
 }

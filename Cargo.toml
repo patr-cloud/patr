@@ -25,7 +25,7 @@ axum-extra               = { default-features = false, version = "0.9" }
 axum-typed-websockets    = { default-features = false, version = "0.6" }          # git = "https://github.com/morenol/axum-typed-websockets.git", branch = "patch-1" }
 base32                   = { default-features = false, version = "0.5" }
 base64                   = { default-features = false, version = "0.22" }
-bollard                  = { default-features = false, version = "0.18" }
+bollard                  = { default-features = false, version = "0.19" }
 build-print              = { default-features = false, version = "1" }
 clap                     = { default-features = false, version = "4" }
 cloudflare               = { default-features = false, version = "0.14" }
@@ -133,52 +133,4 @@ strip     = true
 
 [profile.wasm-dev]
 inherits  = "dev"
-opt-level = 1
-
-[profile.server-dev]
-inherits = "dev"
-
-[profile.android-dev]
-inherits = "dev"
-
-[[workspace.metadata.leptos]]
-# The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name
-bin-package = "api"
-lib-package = "managed-frontend"
-name        = "dashboard"
-output-name = "dashboard"
-# The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
-site-root = "target/dashboard"
-# The site-root relative folder where all compiled output (JS, WASM and CSS) is written
-site-pkg-dir        = "pkg"
-style-file          = "assets/frontend/styles/index.scss"
-tailwind-input-file = "assets/frontend/styles/global.css"
-# Assets source dir. All files found here will be copied and synchronized to site-root.
-# The assets-dir cannot have a sub directory with the same name/path as site-pkg-dir.
-assets-dir = "assets/frontend/public"
-#  The browserlist query used for optimizing the CSS.
-browserquery = "defaults"
-# The port to use for the live reload server
-reload-port = 8080
-
-[[workspace.metadata.leptos]]
-# The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name
-bin-package = "docker"
-lib-package = "self-hosted-frontend"
-name        = "docker"
-output-name = "dashboard"
-# The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
-site-root = "target/docker-runner"
-# The site-root relative folder where all compiled output (JS, WASM and CSS) is written
-site-pkg-dir        = "pkg"
-style-file          = "assets/frontend/styles/index.scss"
-tailwind-input-file = "assets/frontend/styles/global.css"
-# Assets source dir. All files found here will be copied and synchronized to site-root.
-# The assets-dir cannot have a sub directory with the same name/path as site-pkg-dir.
-assets-dir = "assets/frontend/public"
-#  The browserlist query used for optimizing the CSS.
-browserquery = "defaults"
-# The profile to use for the lib target when compiling for release
-lib-profile-release = "frontend"
-# The port to use for the live reload server
-reload-port = 8080
+opt-level = 0

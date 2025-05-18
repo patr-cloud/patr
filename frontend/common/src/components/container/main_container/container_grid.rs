@@ -31,7 +31,7 @@ pub fn ContainerGrid(
 	/// The Fit of the Grid Item, Defaults to Fill.
 	#[prop(into, optional, default = AutoSizing::Fill)]
 	auto_sizing: AutoSizing,
-) -> impl IntoView {
+) -> Element {
 	let class = move || format!("grid gap-lg justify-start content-start {}", class.get());
 
 	let style = move || {

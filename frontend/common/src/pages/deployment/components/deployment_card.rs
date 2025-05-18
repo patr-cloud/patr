@@ -14,7 +14,7 @@ pub fn DeploymentCard(
 	/// Additional Classes to add to the outer div, if any.:w
 	#[prop(into, optional)]
 	class: Signal<String>,
-) -> impl IntoView {
+) -> Element {
 	let class = move || {
 		format!(
 			"bg-secondary-light rounded-sm p-lg flex flex-col items-start justify-between gap-md deployment-card {}",

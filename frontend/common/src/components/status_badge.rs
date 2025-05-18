@@ -90,7 +90,7 @@ pub fn StatusBadge(
 	/// Status of the component
 	#[prop(into, optional, default = None.into())]
 	status: Signal<Option<Status>>,
-) -> impl IntoView {
+) -> Element {
 	// let store_text = store_value(text);
 
 	let class = move || {

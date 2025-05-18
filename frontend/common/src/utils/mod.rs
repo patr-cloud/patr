@@ -7,8 +7,21 @@
 // #[cfg(not(target_arch = "wasm32"))]
 // pub use self::client::*;
 
+/// The color enum. This enum is used to specify the color of a component. These
+/// include the primary and secondary colors of the app.
+mod color;
 /// A module containing extension traits for various types
 mod ext_traits;
+/// The size enum. This enum is used to specify the size of a component. We
+/// currently have:
+/// - ExtraExtraLarge
+/// - ExtraLarge
+/// - Large
+/// - Medium
+/// - Small
+/// - ExtraSmall
+/// - ExtraExtraSmall
+mod size;
 /// The storage module. This module is used to store the state of the app in the
 /// local storage.
 mod storage;
@@ -16,7 +29,7 @@ mod storage;
 /// and the color variant.
 mod variant;
 
-pub use self::{ext_traits::*, storage::*, variant::*};
+pub use self::{color::*, ext_traits::*, size::*, storage::*, variant::*};
 
 /// A module containing constants that are used throughout the application.
 pub mod constants {
@@ -32,7 +45,7 @@ pub mod constants {
 	/// The path to the favicon image
 	pub const FAVICON: Asset = asset!("/assets/favicon.svg");
 	/// The path to the CSS file for the dashboard
-	pub const GLOBAL_CSS: Asset = asset!("/assets/styles/global.css");
+	pub const GLOBAL_CSS: Asset = asset!("/assets/styles/index.scss");
 	/// The default debounce time for input fields
 	pub const DEFAULT_DEBOUNCE_TIME: f64 = 750.0;
 	/// The max wait time for the input field debounce

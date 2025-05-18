@@ -6,43 +6,35 @@ use crate::prelude::*;
 pub fn Button(
 	/// Button Variant i.e. a button or a Link,
 	/// Defaults to Button
-	#[prop(into, optional)]
-	r#type: Signal<ButtonType>,
+	#[props(into, optional)]
+	r#type: ButtonType,
 	/// Additional class names to apply to the link, if any
-	#[prop(into, optional)]
-	class: Signal<String>,
+	#[props(into, optional)]
+	class: String,
 	/// Color of the link
-	#[prop(into, optional)]
-	color: Signal<Color>,
+	#[props(into, optional)]
+	color: Color,
+	/// Whether the button is disabled or not
+	#[props(into, optional)]
+	disabled: bool,
+	/// Variant of the Link
+	#[props(into, optional)]
+	variant: LinkStyleVariant,
 	/// The Children of the Link, usually a \<p\> tag or simply
 	/// the link text
-	children: ChildrenFn,
-	/// Whether the button is disabled or not
-	#[prop(into, optional)]
-	disabled: Signal<bool>,
-	/// Variant of the Link
-	#[prop(into, optional)]
-	variant: Signal<LinkStyleVariant>,
-) -> impl IntoView {
-	let class = move || {
-		format!(
-			"flex items-center justify-center {} {}",
-			class.get(),
-			match variant.get() {
-				LinkStyleVariant::Outlined => "btn-outline".to_string(),
-				LinkStyleVariant::Contained => format!("btn btn-{}", color.get()),
-				_ => format!("btn-plain text-{}", color.get()).to_string(),
-			},
-		)
-	};
+	children: Element,
+) -> Element {
+	let class = format!(
+		"flex items-center justify-center {} {}",
+		class,
+		match variant {
+			LinkStyleVariant::Outlined => "btn-outline".to_string(),
+			LinkStyleVariant::Contained => format!("btn btn-{}", color),
+			_ => format!("btn-plain text-{}", color).to_string(),
+		},
+	);
 
-	view! {
-		<button
-			type={r#type.with(|val| val.to_string())}
-			disabled={disabled}
-			class={class}
-		>
-			{children()}
-		</button>
+	rsx! {
+		button { r#type: r#type.to_string(), disabled, class, {children} }
 	}
 }

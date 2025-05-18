@@ -7,7 +7,7 @@ use crate::prelude::*;
 
 /// The Deployment Dashboard
 #[component]
-pub fn DeploymentDashboard() -> impl IntoView {
+pub fn DeploymentDashboard() -> Element {
 	let deployments = vec![
 		"Deployment 1".to_owned(),
 		"Deployment 2".to_owned(),

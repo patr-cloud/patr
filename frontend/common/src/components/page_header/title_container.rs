@@ -30,7 +30,7 @@ pub fn PageTitleContainer(
 	/// Contains Action buttons, such as a create, or start/stop button.
 	#[prop(into, optional)]
 	action_buttons: ViewFn,
-) -> impl IntoView {
+) -> Element {
 	view! {
 		<div class="w-full flex justify-between items-center">
 			<div class="flex flex-col justify-between items-start">
