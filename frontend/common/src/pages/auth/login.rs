@@ -57,7 +57,8 @@ pub fn LoginForm() -> Element {
 				h1 { class: "text-primary text-xl text-medium", "Sign In" }
 				div { class: "text-white text-thin flex items-start justify-start text-sm",
 					p { "New User? " }
-					AppLink { to: "/sign-up", "Sign Up" }
+					a { href: "/sign-up", "Sign Up" }
+					// AppLink { to: "/sign-up", "Sign Up" }
 				}
 			}
 
@@ -67,7 +68,7 @@ pub fn LoginForm() -> Element {
 					name: "user_id",
 					value: username.read().clone(),
 					oninput: move |ev: Event<FormData>| {
-					    username.set(ev.value());
+						username.set(ev.value());
 					},
 					class: "w-full",
 					r#type: InputType::Text,
@@ -77,7 +78,7 @@ pub fn LoginForm() -> Element {
 				}
 
 				if let Some(value) = username_error.read().clone().some_if_not_empty() {
-					Alert { r#type: AlertType::Error, class: "mt-xs", {value} }
+					Alert { class: "mt-xs", r#type: AlertType::Error, {value} }
 				}
 
 				PasswordInput {
@@ -85,7 +86,7 @@ pub fn LoginForm() -> Element {
 					name: "password",
 					value: password.read().clone(),
 					oninput: move |ev: Event<FormData>| {
-					    password.set(ev.value());
+						password.set(ev.value());
 					},
 					class: "w-full",
 					placeholder: "Password",
@@ -96,7 +97,7 @@ pub fn LoginForm() -> Element {
 				input { name: "mfa_otp", r#type: "hidden" }
 
 				if let Some(value) = password_error.read().clone().some_if_not_empty() {
-					Alert { r#type: AlertType::Error, class: "mt-xs", {value} }
+					Alert { class: "mt-xs", r#type: AlertType::Error, {value} }
 				}
 			}
 

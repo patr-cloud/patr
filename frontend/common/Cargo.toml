@@ -14,10 +14,14 @@ workspace = true
 # default = ["dioxus/fullstack", "dioxus/liveview", "dioxus/server", "dioxus/ssr"]
 
 [dependencies]
-dioxus     = { workspace = true, features = ["default", "router", "web"] }
-dioxus-sdk = { workspace = true, features = ["storage"] }
-macros     = { workspace = true }
-models     = { workspace = true }
-semver     = { workspace = true }
-serde      = { workspace = true, features = ["derive"] }
-strum      = { workspace = true }
+console_error_panic_hook = { workspace = true }
+dioxus                   = { workspace = true, features = ["default", "router", "web"] }
+dioxus-sdk               = { workspace = true, features = ["storage"] }
+log                      = { workspace = true, features = ["std"] }
+macros                   = { workspace = true }
+models                   = { workspace = true }
+semver                   = { workspace = true }
+serde                    = { workspace = true, features = ["derive"] }
+strum                    = { workspace = true }
+tracing-wasm             = { workspace = true }
+wasm-logger              = { workspace = true }

@@ -134,7 +134,7 @@ dependencies = [
  "ipinfo",
  "jsonwebtoken",
  "macros",
- "matchit 0.8.6",
+ "matchit",
  "models",
  "monostate",
  "oci-spec",
@@ -327,7 +327,7 @@ dependencies = [
  "hyper",
  "hyper-util",
  "itoa",
- "matchit 0.7.3",
+ "matchit",
  "memchr",
  "mime",
  "percent-encoding",
@@ -2021,13 +2021,17 @@ dependencies = [
 name = "frontend"
 version = "0.18.0"
 dependencies = [
+ "console_error_panic_hook",
  "dioxus",
  "dioxus-sdk",
+ "log",
  "macros",
  "models",
  "semver",
  "serde",
  "strum",
+ "tracing-wasm",
+ "wasm-logger",
 ]
 
 [[package]]
@@ -3270,12 +3274,6 @@ name = "matchit"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e7465ac9959cc2b1404e8e2367b43684a6d13790fe23056cc8c6c5a6b7bcb94"
-
-[[package]]
-name = "matchit"
-version = "0.8.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f926ade0c4e170215ae43342bf13b9310a437609c81f29f86c5df6657582ef9"
 
 [[package]]
 name = "maybe-async"
@@ -6815,7 +6813,7 @@ dependencies = [
  "http",
  "http-body",
  "js-sys",
- "matchit 0.7.3",
+ "matchit",
  "pin-project",
  "serde",
  "serde-wasm-bindgen 0.6.5",

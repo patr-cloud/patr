@@ -29,13 +29,11 @@ bollard                  = { default-features = false, version = "0.19" }
 build-print              = { default-features = false, version = "1" }
 clap                     = { default-features = false, version = "4" }
 cloudflare               = { default-features = false, version = "0.14" }
-codee                    = { default-features = false, version = "0.3" }
 comfy-table              = { default-features = false, version = "7" }
 common                   = { default-features = false, path = "runners/common" }
 config                   = { default-features = false, version = "0.15" }
 console_error_panic_hook = { default-features = false, version = "0.1" }
 convert_case             = { default-features = false, version = "0.8" }
-cookie                   = { default-features = false, version = "0.18" }
 dashmap                  = { default-features = false, version = "6" }
 dioxus                   = { default-features = false, version = "0.6.0" }
 dioxus-sdk               = { default-features = false, version = "0.6.0" }
@@ -58,7 +56,7 @@ k8s-openapi              = { default-features = false, version = "0.25" }
 kube                     = { default-features = false, version = "1" }
 log                      = { default-features = false, version = "0.4" }
 macros                   = { default-features = false, path = "macros" }
-matchit                  = { default-features = false, version = "0.8" }
+matchit                  = { default-features = false, version = "0.7" }
 models                   = { default-features = false, path = "models" }
 monostate                = { default-features = false, version = "0.1" }
 nix                      = { default-features = false, version = "0.30" }
@@ -101,6 +99,7 @@ tracing                  = { default-features = false, version = "0.1" }
 tracing-log              = { default-features = false, version = "0.2" }
 tracing-opentelemetry    = { default-features = false, version = "0.31" }
 tracing-subscriber       = { default-features = false, version = "0.3" }
+tracing-wasm             = { default-features = false, version = "0.2" }
 typed-builder            = { default-features = false, version = "0.21" }
 url                      = { default-features = false, version = "2" }
 uuid                     = { default-features = false, version = "1" }
@@ -134,3 +133,9 @@ strip     = true
 [profile.wasm-dev]
 inherits  = "dev"
 opt-level = 0
+
+[profile.server-dev]
+inherits = "dev"
+
+[profile.android-dev]
+inherits = "dev"
