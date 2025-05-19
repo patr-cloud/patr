@@ -1,5 +1,4 @@
 #![forbid(unsafe_code)]
-#![warn(missing_docs, clippy::missing_docs_in_private_items)]
 
 //! This crate is the worker that runs on cloudflare before a request is sent to
 //! any one of Patr's Kubernetes clusters.

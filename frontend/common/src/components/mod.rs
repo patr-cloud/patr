@@ -20,6 +20,13 @@ mod input;
 // mod page_header;
 /// A Extension of Input, to accommodate features specific to passwords
 mod password_input;
+/// The spinner component.
+///
+/// The spinner component is used to display a loading spinner. It is used to
+/// show the user that something is loading, and that they should wait. This is
+/// not needed for situations when javascript / WASM hasn't loaded yet, but can
+/// be kept since those situations do a full page reload anyway.
+mod spinner;
 // /// Status Badge to indicate status of resource
 // mod status_badge;
 
@@ -33,4 +40,5 @@ pub use self::{
 	// 	page_header::*,
 	password_input::*,
 	// 	status_badge::*,
+	spinner::*,
 };

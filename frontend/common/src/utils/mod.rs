@@ -45,7 +45,7 @@ pub mod constants {
 	/// The path to the favicon image
 	pub const FAVICON: Asset = asset!("/assets/favicon.svg");
 	/// The path to the CSS file for the dashboard
-	pub const GLOBAL_CSS: Asset = asset!("/assets/styles/index.scss");
+	pub const GLOBAL_CSS: Asset = asset!("/assets/styles/dashboard.css");
 	/// The default debounce time for input fields
 	pub const DEFAULT_DEBOUNCE_TIME: f64 = 750.0;
 	/// The max wait time for the input field debounce

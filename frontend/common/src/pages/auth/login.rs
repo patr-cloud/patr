@@ -58,7 +58,7 @@ pub fn LoginForm() -> Element {
 				div { class: "text-white text-thin flex items-start justify-start text-sm",
 					p { "New User? " }
 					a { href: "/sign-up", "Sign Up" }
-					// AppLink { to: "/sign-up", "Sign Up" }
+								// AppLink { to: "/sign-up", "Sign Up" }
 				}
 			}
 
@@ -102,14 +102,14 @@ pub fn LoginForm() -> Element {
 			}
 
 			if *loading.read() {
+				Spinner { class: "ml-auto" }
+			} else {
 				Button {
 					r#type: ButtonType::Submit,
 					class: "btn ml-auto mt-md",
 					variant: LinkStyleVariant::Contained,
 					"LOGIN"
 				}
-			} else {
-				p { "Loading..." }
 			}
 		}
 	}

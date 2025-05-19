@@ -25,12 +25,11 @@ pub fn Button(
 	children: Element,
 ) -> Element {
 	let class = format!(
-		"flex items-center justify-center {} {}",
-		class,
+		"flex items-center justify-center {class} {}",
 		match variant {
 			LinkStyleVariant::Outlined => "btn-outline".to_string(),
-			LinkStyleVariant::Contained => format!("btn btn-{}", color),
-			_ => format!("btn-plain text-{}", color).to_string(),
+			LinkStyleVariant::Contained => format!("btn btn-{color}"),
+			_ => format!("btn-plain text-{color}"),
 		},
 	);
 
