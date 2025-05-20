@@ -5,8 +5,11 @@ use wasm_logger::Config;
 
 fn main() {
 	console_error_panic_hook::set_once();
-	wasm_logger::init(Config::new(Level::Trace).message_on_new_line());
-	tracing_wasm::set_as_global_default();
+	wasm_logger::init(
+		Config::new(Level::Trace)
+			.message_on_new_line()
+			.module_prefix("common"),
+	);
 
 	dioxus::LaunchBuilder::web().launch(frontend::app::App);
 }

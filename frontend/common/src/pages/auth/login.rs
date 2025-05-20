@@ -56,8 +56,8 @@ pub fn LoginForm() -> Element {
 			div { class: "flex justify-between items-baseline mb-lg w-full",
 				h1 { class: "text-primary text-xl text-medium", "Sign In" }
 				div { class: "text-white text-thin flex items-start justify-start text-sm",
-					p { "New User? " }
-					a { href: "/sign-up", "Sign Up" }
+					p { class: "mr-xs", "New User?" }
+					button { r#type: "submit", "Sign Up" }
 								// AppLink { to: "/sign-up", "Sign Up" }
 				}
 			}

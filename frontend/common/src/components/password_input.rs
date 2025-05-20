@@ -50,21 +50,14 @@ pub fn PasswordInput(
 	start_text: Option<String>,
 ) -> Element {
 	let mut show_password = Signal::new(false);
-	let input_type = Signal::memo(move || {
-		if *show_password.read() {
-			InputType::Text
-		} else {
-			InputType::Password
-		}
-	});
 
 	let end_icon = rsx! {
 		Icon {
 			class: "text-white font-primary",
 			color: Color::White,
-			size: Size::Medium,
+			size: Size::Small,
 			onclick: move |_| {
-			    show_password.toggle();
+				show_password.toggle();
 			},
 			icon: if *show_password.read() { IconType::Eye } else { IconType::EyeOff },
 		}
@@ -82,7 +75,7 @@ pub fn PasswordInput(
 			form,
 			placeholder,
 			disabled,
-			r#type: *input_type.read(),
+			r#type: if *show_password.read() { InputType::Text } else { InputType::Password },
 			start_icon,
 			start_text,
 			end_text,

@@ -913,15 +913,17 @@ pub fn Icon(
 	rsx! {
 		svg {
 			id: "icon",
-			onclick: move |e| { onclick.call(e) },
+			onclick: move |e| {
+				onclick.call(e);
+			},
 			class: format!(
-			    "icon {} {} icon-fill-{} icon-{} {} {}",
-			    if enable_pulse { "pulse" } else { "" },
-			    color.as_text_color().as_css_color(),
-			    fill.as_css_name(),
-			    size.as_css_name(),
-			    if is_clickable { "cursor-pointer" } else { "" },
-			    class,
+				"icon {} {} icon-fill-{} icon-{} {} {}",
+				if enable_pulse { "pulse" } else { "" },
+				color.as_text_color().as_css_color(),
+				fill.as_css_name(),
+				size.as_css_name(),
+				if is_clickable { "cursor-pointer" } else { "" },
+				class,
 			),
 			r#use { href: "{constants::FEATHER_IMG}#{icon}" }
 		}

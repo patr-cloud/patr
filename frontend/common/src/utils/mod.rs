@@ -41,11 +41,11 @@ pub mod constants {
 	/// The Number of resources to fetch per page
 	pub const RESOURCES_PER_PAGE: usize = 2;
 	/// The path to the feather icons sprite
-	pub const FEATHER_IMG: &str = "/icons/sprite/feather-sprite.svg";
+	pub const FEATHER_IMG: Asset = asset!("assets/icons/sprite/feather-sprite.svg");
 	/// The path to the favicon image
-	pub const FAVICON: Asset = asset!("/assets/favicon.svg");
+	pub const FAVICON: Asset = asset!("assets/favicon.svg");
 	/// The path to the CSS file for the dashboard
-	pub const GLOBAL_CSS: Asset = asset!("/assets/styles/dashboard.css");
+	pub const GLOBAL_CSS: Asset = asset!("assets/styles/dashboard.css");
 	/// The default debounce time for input fields
 	pub const DEFAULT_DEBOUNCE_TIME: f64 = 750.0;
 	/// The max wait time for the input field debounce
