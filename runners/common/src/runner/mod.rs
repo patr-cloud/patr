@@ -142,11 +142,12 @@ where
 			std::process::exit(1);
 		});
 
-		let (server_setup, sync_database, run_tunnel, resource_monitor) = future::join4(
+		let (server_setup, sync_database, run_tunnel, resource_monitor) = future::join5(
 			self.run_server(tcp_listener),
 			self.sync_local_database(),
 			self.run_cloudflare_tunnel(),
 			self.monitor_resources(receiver),
+			self.run_nginx(),
 		)
 		.await;
 
@@ -444,6 +445,10 @@ where
 		}
 	}
 
+	/// Monitor the resources and make sure that they are running. This function
+	/// will listen for changes in the resources and make sure that they are
+	/// running. The job of this function is to make sure that whatever is
+	/// running is exactly as per what's in the database.
 	#[instrument(skip(self))]
 	async fn monitor_resources(
 		&self,
@@ -508,6 +513,36 @@ where
 			}
 
 			time::sleep(full_sync_interval).with_cancel_check().await?;
+		}
+	}
+
+	/// Run nginx. This function will start nginx and listen for incoming
+	/// connections. It will return a result with the error if nginx fails
+	/// to start. Nginx will run until the exit signal is received.
+	#[instrument(skip(self))]
+	async fn run_nginx(&self) -> Result<!, RunnerError> {
+		let mut child = Command::new("nginx")
+			.arg("-g")
+			.arg("daemon off;")
+			.stdin(Stdio::piped())
+			.stdout(Stdio::piped())
+			.stderr(Stdio::piped())
+			.kill_on_drop(true)
+			.spawn()
+			.map_err(|err| {
+				error!("Failed to start nginx: {:?}", err);
+				err
+			})?;
+
+		let status = child.wait().await?;
+
+		if status.success() {
+			warn!("Nginx exited successfully");
+			warn!("This should not happen. Restarting nginx");
+			return Err(RunnerError::NginxExited);
+		} else {
+			error!("Nginx exited with status: {}", status);
+			return Err(RunnerError::NginxExited);
 		}
 	}
 
