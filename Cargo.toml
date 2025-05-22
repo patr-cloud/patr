@@ -3,7 +3,7 @@ members              = ["api", "cli", "cloudflare-ingress", "frontend/common", "
 package.authors      = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
 package.description  = "Patr API and all it's dependencies"
 package.edition      = "2024"
-package.rust-version = "1.85"
+package.rust-version = "1.88"
 package.version      = "0.18.0"
 resolver             = "3"
 
@@ -35,8 +35,8 @@ config                   = { default-features = false, version = "0.15" }
 console_error_panic_hook = { default-features = false, version = "0.1" }
 convert_case             = { default-features = false, version = "0.8" }
 dashmap                  = { default-features = false, version = "6" }
-dioxus                   = { default-features = false, version = "0.6.0" }
-dioxus-sdk               = { default-features = false, version = "0.6.0" }
+dioxus                   = { default-features = false, version = "0.6" }
+dioxus-sdk               = { default-features = false, version = "0.6" }
 dirs                     = { default-features = false, version = "6" }
 either                   = { default-features = false, version = "1" }
 flate2                   = { default-features = false, version = "1" }
