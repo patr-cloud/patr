@@ -5,7 +5,8 @@ RUN mkdir -p --mode=0755 /usr/share/keyrings
 RUN apt update && apt install -y curl
 RUN curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg > /usr/share/keyrings/cloudflare-main.gpg
 RUN echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared noble main' > /etc/apt/sources.list.d/cloudflared.list
-RUN apt update && apt install -y \
+RUN apt update
+RUN apt install -y \
         libssl-dev \
         pkg-config \
         bash-completion \
@@ -21,7 +22,11 @@ RUN apt update && apt install -y \
         docker-compose \
         sqlite3 \
         cmake \
-        cloudflared
+        cloudflared \
+        musl-tools \
+        libpcre3-dev \
+        zlib1g-dev \
+        nginx
 
 # Setup non-root user with sudo permissions
 RUN adduser vscode

@@ -11,3 +11,4 @@
 .[Dd][Ss]_[Ss]tore
 
 *.db
+*.lock

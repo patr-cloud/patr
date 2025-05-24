@@ -1,6 +1,3 @@
-#![forbid(unsafe_code)]
-#![warn(missing_docs, clippy::all)]
-
 //! This project generates a controller that can be installed in the user's
 //! Kubernetes cluster. Each controller will be responsible for managing the
 //! respective cluster. The controller will periodically check with the API and
@@ -16,7 +13,6 @@ use ::models::{
 };
 use app::AppState;
 use futures::StreamExt;
-use prelude::*;
 use tokio::{sync::broadcast, time::Duration};
 
 /// A prelude that re-exports commonly used items.

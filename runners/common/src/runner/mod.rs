@@ -1,4 +1,11 @@
-use std::{net::SocketAddr, pin::pin, process::Stdio, sync::OnceLock};
+use std::{
+	fs::Permissions,
+	net::SocketAddr,
+	os::unix::fs::PermissionsExt,
+	pin::pin,
+	process::Stdio,
+	sync::OnceLock,
+};
 
 use dashmap::DashMap;
 use futures::{
@@ -6,7 +13,9 @@ use futures::{
 	future::{self, Either},
 };
 use models::{api::workspace::runner::*, utils::WebSocketUpgrade};
+use tempdir::TempDir;
 use tokio::{
+	fs,
 	net::TcpListener,
 	process::Command,
 	sync::mpsc::{self, UnboundedReceiver},
@@ -47,12 +56,20 @@ where
 	registry: DashMap<Uuid, ResourceExecutorTask<E>>,
 	/// State and configuration for the runner
 	state: AppState<E>,
+	/// Temporary directory for the runner to store binary artifacts
+	temp_dir: TempDir,
 }
 
 impl<E> Runner<E>
 where
 	E: RunnerExecutor + Send + 'static,
 {
+	/// If this is set to true, the runner will use the embedded binaries for
+	/// cloudflared and nginx instead of using the system binaries. This is
+	/// useful for keeping the code for the embedded binaries before the feature
+	/// gets released.
+	const USE_EMBEDDED_BINARIES: bool = false;
+
 	/// Initializes the runner. This function will create a new
 	/// database connection pool and set up the global default subscriber for
 	/// the runner. It returns an instance of the runner.
@@ -110,6 +127,7 @@ where
 		Ok(Self {
 			registry: DashMap::new(),
 			state,
+			temp_dir: TempDir::new("patr")?,
 		})
 	}
 
@@ -142,12 +160,42 @@ where
 			std::process::exit(1);
 		});
 
-		let (server_setup, sync_database, run_tunnel, resource_monitor) = future::join5(
+		if Self::USE_EMBEDDED_BINARIES {
+			// Write the cloudflare tunnel binary to the temp directory
+			fs::write(
+				self.temp_dir.path().join("cloudflared"),
+				Binaries::get("cloudflared")
+					.expect("Failed to get cloudflared binary")
+					.data,
+			)
+			.await?;
+			fs::set_permissions(
+				self.temp_dir.path().join("cloudflared"),
+				Permissions::from_mode(0o755),
+			)
+			.await?;
+
+			// Write the nginx binary to the temp directory
+			fs::write(
+				self.temp_dir.path().join("nginx"),
+				Binaries::get("nginx")
+					.expect("Failed to get cloudflared binary")
+					.data,
+			)
+			.await?;
+			fs::set_permissions(
+				self.temp_dir.path().join("nginx"),
+				Permissions::from_mode(0o755),
+			)
+			.await?;
+		}
+
+		let (server_setup, sync_database, run_tunnel, run_nginx, resource_monitor) = future::join5(
 			self.run_server(tcp_listener),
 			self.sync_local_database(),
 			self.run_cloudflare_tunnel(),
-			self.monitor_resources(receiver),
 			self.run_nginx(),
+			self.monitor_resources(receiver),
 		)
 		.await;
 
@@ -163,7 +211,10 @@ where
 		}
 
 		info!("Server exited. Exiting runner");
-		sync_database.or(run_tunnel).or(resource_monitor)
+		sync_database
+			.or(run_tunnel)
+			.or(run_nginx)
+			.or(resource_monitor)
 	}
 
 	/// Run the server. This function will start the server and listen for
@@ -379,6 +430,14 @@ where
 				.arg("run")
 				.arg("--token")
 				.arg(tunnel_token.body.token)
+				.env(
+					"PATH",
+					format!(
+						"{}:{}",
+						self.temp_dir.path().display(),
+						std::env::var("PATH").unwrap_or_default()
+					),
+				)
 				.stdin(Stdio::piped())
 				.stdout(Stdio::piped())
 				.stderr(Stdio::piped())
@@ -441,6 +500,48 @@ where
 					return Err(RunnerError::ExitSignalReceived);
 				}
 				continue;
+			}
+		}
+	}
+
+	/// Run nginx. This function will start nginx and listen for incoming
+	/// connections. It will return a result with the error if nginx fails
+	/// to start. Nginx will run until the exit signal is received.
+	#[instrument(skip(self))]
+	async fn run_nginx(&self) -> Result<!, RunnerError> {
+		loop {
+			let mut child = Command::new("nginx")
+				.arg("-g")
+				.arg("daemon off;")
+				.arg("-p")
+				.arg("./conf/nginx/html")
+				.arg("-c")
+				.arg("./conf/nginx/nginx.conf")
+				.env(
+					"PATH",
+					format!(
+						"{}:{}",
+						self.temp_dir.path().display(),
+						std::env::var("PATH").unwrap_or_default()
+					),
+				)
+				.stdin(Stdio::piped())
+				.stdout(Stdio::piped())
+				.stderr(Stdio::piped())
+				.kill_on_drop(true)
+				.spawn()
+				.map_err(|err| {
+					error!("Failed to start nginx: {:?}", err);
+					err
+				})?;
+
+			let status = child.wait().await?;
+
+			if status.success() {
+				warn!("Nginx exited successfully");
+				warn!("This should not happen. Restarting nginx");
+			} else {
+				error!("Nginx exited with status: {}", status);
 			}
 		}
 	}
@@ -513,36 +614,6 @@ where
 			}
 
 			time::sleep(full_sync_interval).with_cancel_check().await?;
-		}
-	}
-
-	/// Run nginx. This function will start nginx and listen for incoming
-	/// connections. It will return a result with the error if nginx fails
-	/// to start. Nginx will run until the exit signal is received.
-	#[instrument(skip(self))]
-	async fn run_nginx(&self) -> Result<!, RunnerError> {
-		let mut child = Command::new("nginx")
-			.arg("-g")
-			.arg("daemon off;")
-			.stdin(Stdio::piped())
-			.stdout(Stdio::piped())
-			.stderr(Stdio::piped())
-			.kill_on_drop(true)
-			.spawn()
-			.map_err(|err| {
-				error!("Failed to start nginx: {:?}", err);
-				err
-			})?;
-
-		let status = child.wait().await?;
-
-		if status.success() {
-			warn!("Nginx exited successfully");
-			warn!("This should not happen. Restarting nginx");
-			return Err(RunnerError::NginxExited);
-		} else {
-			error!("Nginx exited with status: {}", status);
-			return Err(RunnerError::NginxExited);
 		}
 	}
 
