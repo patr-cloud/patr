@@ -78,10 +78,10 @@ impl Display for AppRoutes {
 		match self {
 			Self::Empty => write!(f, "/"),
 			Self::LoggedInRoute(logged_in_routes) => {
-				write!(f, "{}", logged_in_routes)
+				write!(f, "{logged_in_routes}")
 			}
 			Self::LoggedOutRoute(logged_out_routes) => {
-				write!(f, "{}", logged_out_routes)
+				write!(f, "{logged_out_routes}")
 			}
 		}
 	}

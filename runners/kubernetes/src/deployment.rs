@@ -713,7 +713,7 @@ async fn reconcile(
 			spec: Some(StatefulSetSpec {
 				replicas,
 				selector,
-				service_name: format!("service-{}", spec.deployment.id),
+				service_name: Some(format!("service-{}", spec.deployment.id)),
 				template,
 				update_strategy: Some(StatefulSetUpdateStrategy {
 					type_: Some("RollingUpdate".to_owned()),

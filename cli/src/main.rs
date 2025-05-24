@@ -37,7 +37,7 @@ async fn main() -> std::process::ExitCode {
 
 	let state = AppState::load()
 		.inspect_err(|err| {
-			eprintln!("{}", err);
+			eprintln!("{err}");
 			eprintln!("Loading default state...");
 		})
 		.unwrap_or_default();

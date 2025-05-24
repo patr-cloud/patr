@@ -21,7 +21,7 @@ use tokio::{sync::broadcast, time::Duration};
 
 /// A prelude that re-exports commonly used items.
 pub mod prelude {
-	use models::prelude::*;
+	pub use models::prelude::*;
 	pub use tracing::{debug, error, info, instrument, trace, warn};
 
 	pub use crate::{

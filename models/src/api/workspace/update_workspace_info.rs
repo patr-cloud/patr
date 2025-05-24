@@ -3,7 +3,7 @@ use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 macros::declare_api_endpoint!(
 	/// Route to update a workspace's info based on the ID
 	UpdateWorkspaceInfo,
-	PATCH "/workspace/:workspace_id" {
+	PATCH "/workspace/{workspace_id}" {
 		/// The ID of the workspace to update
 		pub workspace_id: Uuid,
 	},

@@ -1,23 +1,11 @@
 [workspace]
-members = [
-  "api",
-  "cli",
-  "cloudflare-ingress",
-  "frontend/common",
-  "frontend/managed",
-  "frontend/self-hosted",
-  "macros",
-  "models",
-  "runners/common",
-  "runners/docker",
-  "runners/kubernetes",
-]
-package.authors = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
-package.description = "Patr API and all it's dependencies"
-package.edition = "2024"
+members              = ["api", "cli", "cloudflare-ingress", "frontend/common", "frontend/managed", "frontend/self-hosted", "macros", "models", "runners/common", "runners/docker", "runners/kubernetes"]
+package.authors      = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
+package.description  = "Patr API and all it's dependencies"
+package.edition      = "2024"
 package.rust-version = "1.85"
-package.version = "0.18.0"
-resolver = "3"
+package.version      = "0.18.0"
+resolver             = "3"
 
 [workspace.lints.rust]
 missing_docs = "warn"
@@ -32,9 +20,9 @@ missing_docs_in_private_items = "warn"
 
 [workspace.dependencies]
 argon2                   = { default-features = false, version = "0.5" }
-axum                     = { default-features = false, version = "0.7" }
-axum-extra               = { default-features = false, version = "0.9" }
-axum-typed-websockets    = { default-features = false, version = "0.6" }
+axum                     = { default-features = false, version = "0.8" }
+axum-extra               = { default-features = false, version = "0.10" }
+axum-typed-websockets    = { default-features = false, git = "https://github.com/morenol/axum-typed-websockets.git", branch = "patch-1" }
 base32                   = { default-features = false, version = "0.5" }
 base64                   = { default-features = false, version = "0.22" }
 bollard                  = { default-features = false, version = "0.18" }
@@ -61,16 +49,16 @@ inquire                  = { default-features = false, version = "0.7" }
 ipinfo                   = { default-features = false, version = "3" }
 ipnetwork                = { default-features = false, version = "0.20" }
 jsonwebtoken             = { default-features = false, version = "9" }
-k8s-openapi              = { default-features = false, version = "0.24" }
-kube                     = { default-features = false, version = "0.99" }
-leptos                   = { default-features = false, version = "0.7" }
-leptos-use               = { default-features = false, version = "0.15" }
-leptos_axum              = { default-features = false, version = "0.7" }
-leptos_meta              = { default-features = false, version = "0.7" }
-leptos_router            = { default-features = false, version = "0.7" }
+k8s-openapi              = { default-features = false, version = "0.25" }
+kube                     = { default-features = false, version = "1" }
+leptos                   = { default-features = false, version = "0.8" }
+leptos-use               = { default-features = false, version = "0.16.0-beta" }
+leptos_axum              = { default-features = false, version = "0.8" }
+leptos_meta              = { default-features = false, version = "0.8" }
+leptos_router            = { default-features = false, version = "0.8" }
 log                      = { default-features = false, version = "0.4" }
 macros                   = { default-features = false, path = "macros" }
-matchit                  = { default-features = false, version = "0.7" }
+matchit                  = { default-features = false, version = "0.8" }
 models                   = { default-features = false, path = "models" }
 monostate                = { default-features = false, version = "0.1" }
 open                     = { default-features = false, version = "5" }
@@ -108,7 +96,7 @@ tracing                  = { default-features = false, version = "0.1" }
 tracing-log              = { default-features = false, version = "0.2" }
 tracing-opentelemetry    = { default-features = false, version = "0.30" }
 tracing-subscriber       = { default-features = false, version = "0.3" }
-typed-builder            = { default-features = false, version = "0.20" }
+typed-builder            = { default-features = false, version = "0.21" }
 url                      = { default-features = false, version = "2" }
 uuid                     = { default-features = false, version = "1" }
 wasm-bindgen             = { default-features = false, version = "0.2" }
@@ -140,13 +128,10 @@ strip     = true
 
 [[workspace.metadata.leptos]]
 # The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name
-bin-features = ["default"]
-bin-package  = "api"
-lib-package  = "managed-frontend"
-name         = "dashboard"
-output-name  = "dashboard"
-# The profile to use for the lib target when compiling for release
-lib-profile-release = "frontend"
+bin-package = "api"
+lib-package = "managed-frontend"
+name        = "dashboard"
+output-name = "dashboard"
 # The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
 site-root = "target/dashboard"
 # The site-root relative folder where all compiled output (JS, WASM and CSS) is written

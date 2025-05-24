@@ -4,7 +4,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to get Runner information
 	GetRunnerInfo,
-	GET "/workspace/:workspace_id/runner/:runner_id" {
+	GET "/workspace/{workspace_id}/runner/{runner_id}" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid,
 		/// The runner ID

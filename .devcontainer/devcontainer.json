@@ -57,7 +57,8 @@
 				"evenBetterToml.formatter.reorderKeys": true,
 				"evenBetterToml.formatter.alignEntries": true,
 				"evenBetterToml.formatter.reorderInlineTables": true,
-				"evenBetterToml.formatter.columnWidth": 100,
+				"evenBetterToml.formatter.reorderArrays": false,
+				"evenBetterToml.formatter.columnWidth": 200,
 				"files.watcherExclude": {
 					"**/target/**": true,
 					"./devcontainer/volume/**": true

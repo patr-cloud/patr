@@ -4,7 +4,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Get information about a specific web login.
 	GetWebLoginInfo,
-	GET "/user/login/:login_id" {
+	GET "/user/login/{login_id}" {
 		/// The login ID to get information about.
 		pub login_id: Uuid,
 	},

@@ -3,7 +3,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to delete a secret
 	DeleteSecret,
-	DELETE "/workspace/:workspace_id/secret/:secret_id" {
+	DELETE "/workspace/{workspace_id}/secret/{secret_id}" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid,
 		/// The ID of the secret to be deleted

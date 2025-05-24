@@ -9,7 +9,7 @@ macros::declare_api_endpoint!(
 	/// Update an API token. The older token will still be valid, but the details of the token will
 	/// be updated.
 	UpdateApiToken,
-	PATCH "/user/api-token/:token_id" {
+	PATCH "/user/api-token/{token_id}" {
 		/// The ID of the token to update
 		pub token_id: Uuid,
 	},

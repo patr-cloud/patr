@@ -3,7 +3,7 @@ use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 macros::declare_api_endpoint!(
 	/// Route to update a static site
 	UpdateStaticSite,
-	PATCH "/workspace/:workspace_id/infrastructure/static-site/:static_site_id" {
+	PATCH "/workspace/{workspace_id}/infrastructure/static-site/{static_site_id}" {
 		/// The workspace ID of the user
 		pub workspace_id: Uuid,
 		/// The static site ID of static site to update

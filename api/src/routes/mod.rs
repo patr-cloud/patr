@@ -1,10 +1,10 @@
 use axum::{
 	Router,
 	body::Body,
-	extract::Host,
 	http::{Request, Response, StatusCode},
 	routing::any,
 };
+use axum_extra::extract::Host;
 use tower::ServiceExt;
 
 use crate::prelude::*;

@@ -6,7 +6,7 @@ use crate::{prelude::*, rbac::ResourcePermissionType};
 macros::declare_api_endpoint!(
 	/// Route to get the role info
 	GetRoleInfo,
-	GET "/workspaces/:workspace_id/rbac/role/:role_id" {
+	GET "/workspace/{workspace_id}/rbac/role/{role_id}" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid,
 		/// The role ID to get the info of
