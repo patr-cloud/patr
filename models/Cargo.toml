@@ -51,10 +51,6 @@ uuid                  = { workspace = true, features = ["default", "v1", "v4"] }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom_02 = { workspace = true, features = ["js"] }
 getrandom_03 = { workspace = true, features = ["wasm_js"] }
-leptos = { workspace = true, features = [] }
-time = { workspace = true, features = [
-  "default",
-  "serde-human-readable",
-  "wasm-bindgen",
-] }
-uuid = { workspace = true, features = ["default", "js", "v1", "v4"] }
+leptos       = { workspace = true, features = [] }
+time         = { workspace = true, features = ["default", "serde-human-readable", "wasm-bindgen"] }
+uuid         = { workspace = true, features = ["default", "js", "v1", "v4"] }

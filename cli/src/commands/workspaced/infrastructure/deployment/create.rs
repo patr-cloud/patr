@@ -108,7 +108,7 @@ pub async fn execute(
 		.find(|workspace| {
 			workspace.id.to_string() == workspace_name || workspace.name == workspace_name
 		})
-		.unwrap_or_else(|| panic!("No workspace found with ID or name: `{}`", workspace_name))
+		.unwrap_or_else(|| panic!("No workspace found with ID or name: `{workspace_name}`"))
 		.id
 	};
 

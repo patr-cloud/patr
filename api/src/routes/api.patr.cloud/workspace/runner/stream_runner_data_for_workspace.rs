@@ -63,7 +63,7 @@ pub async fn stream_runner_data_for_workspace(
 		.body(GenericResponse(
 			upgrade
 				.on_upgrade(move |mut websocket| async move {
-					let redis_channel = format!("{}/runner/{}/stream", workspace_id, runner_id);
+					let redis_channel = format!("{workspace_id}/runner/{runner_id}/stream");
 					let mut pub_sub = redis.create_pub_sub();
 
 					let Ok(()) = pub_sub

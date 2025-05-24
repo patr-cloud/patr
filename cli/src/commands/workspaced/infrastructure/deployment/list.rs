@@ -133,9 +133,11 @@ pub(super) async fn execute(
 			} => {
 				format!(
 					"{}{}:{}",
-					(registry != "docker.io")
-						.then(|| format!("{}/", registry))
-						.unwrap_or_default(),
+					if registry != "docker.io" {
+						format!("{registry}/")
+					} else {
+						Default::default()
+					},
 					image_name,
 					deployment.data.image_tag
 				)

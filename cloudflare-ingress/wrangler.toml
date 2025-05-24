@@ -1,14 +1,10 @@
 compatibility_date = "2023-03-22"
-main = "build/worker/shim.mjs"
-name = "patr-ingress"
+main               = "build/worker/shim.mjs"
+name               = "patr-ingress"
 
-kv_namespaces = [
-  { binding = "INGRESS_KV", id = "96c1b29aded04e53895eaf80f2f1d56f" },
-]
+kv_namespaces = [{ binding = "INGRESS_KV", id = "96c1b29aded04e53895eaf80f2f1d56f" }]
 
-r2_buckets = [
-  { binding = "STATIC_SITE_BUCKET", bucket_name = "patr-static-site-storage" },
-]
+r2_buckets = [{ binding = "STATIC_SITE_BUCKET", bucket_name = "patr-static-site-storage" }]
 
 [build]
 command = "worker-build --release"

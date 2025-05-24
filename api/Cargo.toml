@@ -10,9 +10,6 @@ version.workspace      = true
 [lints]
 workspace = true
 
-[features]
-default = ["sqlx/ipnetwork"]
-
 [dependencies]
 argon2                = { workspace = true, features = ["default"] }
 axum                  = { workspace = true, features = ["default", "macros", "tracing", "ws"] }
@@ -46,7 +43,7 @@ serde                 = { workspace = true, features = ["default", "derive"] }
 serde_json            = { workspace = true, features = ["default"] }
 serde_urlencoded      = { workspace = true, features = [] }
 sha2                  = { workspace = true, features = ["default"] }
-sqlx                  = { workspace = true, features = ["macros", "postgres", "runtime-tokio", "time", "uuid"] }
+sqlx                  = { workspace = true, features = ["ipnetwork", "macros", "postgres", "runtime-tokio", "time", "tls-rustls", "uuid"] }
 time                  = { workspace = true, features = ["default", "serde-human-readable"] }
 tokio                 = { workspace = true, features = ["default", "full"] }
 tokio-tungstenite     = { workspace = true, features = ["default", "rustls-tls-webpki-roots"] }

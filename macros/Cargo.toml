@@ -1,8 +1,9 @@
 [package]
+name = "macros"
+
 authors.workspace      = true
 description.workspace  = true
 edition.workspace      = true
-name                   = "macros"
 rust-version.workspace = true
 version.workspace      = true
 

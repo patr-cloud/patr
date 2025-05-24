@@ -5,7 +5,23 @@ RUN mkdir -p --mode=0755 /usr/share/keyrings
 RUN apt update && apt install -y curl
 RUN curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg > /usr/share/keyrings/cloudflare-main.gpg
 RUN echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared noble main' > /etc/apt/sources.list.d/cloudflared.list
-RUN apt update && apt install -y libssl-dev pkg-config bash-completion git sudo curl htop nano vim build-essential postgresql-client clang docker-compose sqlite3 cmake cloudflared
+RUN apt update && apt install -y \
+        libssl-dev \
+        pkg-config \
+        bash-completion \
+        git \
+        sudo \
+        curl \
+        htop \
+        nano \
+        vim \
+        build-essential \
+        postgresql-client \
+        clang \
+        docker-compose \
+        sqlite3 \
+        cmake \
+        cloudflared
 
 # Setup non-root user with sudo permissions
 RUN adduser vscode

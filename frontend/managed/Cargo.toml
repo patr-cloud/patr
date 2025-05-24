@@ -1,11 +1,11 @@
 [package]
 description = "The managed dashboard for Patr"
-name = "managed-frontend"
+name        = "managed-frontend"
 
-authors.workspace = true
-edition.workspace = true
+authors.workspace      = true
+edition.workspace      = true
 rust-version.workspace = true
-version.workspace = true
+version.workspace      = true
 
 [lints]
 workspace = true
@@ -15,9 +15,9 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 console_error_panic_hook = { workspace = true, features = [] }
-frontend = { workspace = true }
-wasm-bindgen = { workspace = true, features = ["default"] }
-wasm-logger = { workspace = true, features = [] }
+frontend                 = { workspace = true }
+wasm-bindgen             = { workspace = true, features = ["default"] }
+wasm-logger              = { workspace = true, features = [] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-leptos = { workspace = true, features = ["tracing", "hydrate"] }
+leptos = { workspace = true, features = ["hydrate", "tracing"] }

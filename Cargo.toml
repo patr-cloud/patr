@@ -62,13 +62,13 @@ matchit                  = { default-features = false, version = "0.8" }
 models                   = { default-features = false, path = "models" }
 monostate                = { default-features = false, version = "0.1" }
 open                     = { default-features = false, version = "5" }
-opentelemetry            = { default-features = false, version = "0.30" }
-opentelemetry-otlp       = { default-features = false, version = "0.30" }
-opentelemetry_sdk        = { default-features = false, version = "0.30" }
+opentelemetry            = { default-features = false, version = "0.29" }
+opentelemetry-otlp       = { default-features = false, version = "0.29" }
+opentelemetry_sdk        = { default-features = false, version = "0.29" }
 preprocess               = { default-features = false, version = "0.5" }
 proc-macro2              = { default-features = false, version = "1" }
 quote                    = { default-features = false, version = "1" }
-rand                     = { default-features = false, version = "0.9" }
+rand                     = { default-features = false, version = "0.8" }
 regex                    = { default-features = false, version = "1" }
 reqwest                  = { default-features = false, version = "0.12" }
 rust-s3                  = { default-features = false, version = "0.36.0-beta" }
@@ -128,13 +128,10 @@ strip     = true
 
 [[workspace.metadata.leptos]]
 # The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name
-bin-features = ["default"]
-bin-package  = "api"
-lib-package  = "managed-frontend"
-name         = "dashboard"
-output-name  = "dashboard"
-# The profile to use for the lib target when compiling for release
-lib-profile-release = "frontend"
+bin-package = "api"
+lib-package = "managed-frontend"
+name        = "dashboard"
+output-name = "dashboard"
 # The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
 site-root = "target/dashboard"
 # The site-root relative folder where all compiled output (JS, WASM and CSS) is written
