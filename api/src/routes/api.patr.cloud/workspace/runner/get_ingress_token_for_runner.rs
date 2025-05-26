@@ -31,9 +31,6 @@ struct TunnelConfigRequestConfig {
 /// The ingress rule for the tunnel
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct TunnelConfigRequestConfigIngress {
-	/// The hostname for the ingress rule
-	#[serde(skip_serializing_if = "String::is_empty")]
-	hostname: String,
 	/// The service for the ingress rule. This is where the hostname will be
 	/// pointed to
 	service: String,
@@ -53,7 +50,7 @@ pub async fn get_ingress_token_for_runner(
 						authorization: _,
 						user_agent: _,
 					},
-				body: GetIngressTokenForRunnerRequestProcessed { runner_port },
+				body: GetIngressTokenForRunnerRequestProcessed,
 			},
 		database,
 		redis: _,
@@ -151,16 +148,9 @@ pub async fn get_ingress_token_for_runner(
 		.bearer_auth(&config.cloudflare.api_key)
 		.json(&TunnelConfigRequest {
 			config: TunnelConfigRequestConfig {
-				ingress: vec![
-					TunnelConfigRequestConfigIngress {
-						hostname: format!("{}.{}", runner_id, config.primary_hosted_domain),
-						service: format!("http://localhost:{}", runner_port),
-					},
-					TunnelConfigRequestConfigIngress {
-						hostname: String::new(),
-						service: "http_status:404".to_string(),
-					},
-				],
+				ingress: vec![TunnelConfigRequestConfigIngress {
+					service: "unix://./data/nginx/nginx.sock".to_string(),
+				}],
 			},
 		})
 		.send()

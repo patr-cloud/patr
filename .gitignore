@@ -10,5 +10,7 @@
 .localData
 .[Dd][Ss]_[Ss]tore
 
+/data/*
+
 *.db
 *.lock

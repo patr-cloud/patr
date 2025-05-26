@@ -127,7 +127,7 @@ where
 		Ok(Self {
 			registry: DashMap::new(),
 			state,
-			temp_dir: TempDir::new("patr")?,
+			temp_dir: TempDir::new("patr").map_err(RunnerError::ServerSetupError)?,
 		})
 	}
 
@@ -138,7 +138,9 @@ where
 	#[instrument(skip(self))]
 	pub async fn run(mut self) -> Result<!, RunnerError> {
 		debug!("Attempting to listen on {}", self.state.config.bind_address);
-		let tcp_listener = TcpListener::bind(self.state.config.bind_address).await?;
+		let tcp_listener = TcpListener::bind(self.state.config.bind_address)
+			.await
+			.map_err(RunnerError::ServerSetupError)?;
 
 		let (sender, receiver) = mpsc::unbounded_channel();
 		self.state.change_publisher = sender;
@@ -168,12 +170,14 @@ where
 					.expect("Failed to get cloudflared binary")
 					.data,
 			)
-			.await?;
+			.await
+			.map_err(RunnerError::CloudflareTunnelSetupError)?;
 			fs::set_permissions(
 				self.temp_dir.path().join("cloudflared"),
 				Permissions::from_mode(0o755),
 			)
-			.await?;
+			.await
+			.map_err(RunnerError::CloudflareTunnelSetupError)?;
 
 			// Write the nginx binary to the temp directory
 			fs::write(
@@ -182,12 +186,14 @@ where
 					.expect("Failed to get cloudflared binary")
 					.data,
 			)
-			.await?;
+			.await
+			.map_err(RunnerError::NginxSetupError)?;
 			fs::set_permissions(
 				self.temp_dir.path().join("nginx"),
 				Permissions::from_mode(0o755),
 			)
-			.await?;
+			.await
+			.map_err(RunnerError::NginxSetupError)?;
 		}
 
 		let (server_setup, sync_database, run_tunnel, run_nginx, resource_monitor) = future::join5(
@@ -403,9 +409,7 @@ where
 						authorization: api_token.clone(),
 						user_agent: user_agent.clone(),
 					})
-					.body(GetIngressTokenForRunnerRequest {
-						runner_port: self.state.config.bind_address.port(),
-					})
+					.body(GetIngressTokenForRunnerRequest)
 					.build(),
 			)
 			.with_cancel_check()
@@ -459,13 +463,19 @@ where
 				Ok(status) => status,
 				Err(err) => {
 					// Exit signal received. Kill the child process and exit
-					child.kill().await?;
-					child.wait().await?;
+					child
+						.kill()
+						.await
+						.map_err(RunnerError::CloudflareTunnelExecError)?;
+					child
+						.wait()
+						.await
+						.map_err(RunnerError::CloudflareTunnelExecError)?;
 					return Err(err);
 				}
 			};
 
-			let Ok(status) = status.map_err(|err| {
+			let Ok(status) = status.inspect_err(|err| {
 				error!("Error waiting for cloudflared process: {}", err);
 				error!("Retrying in 5 second");
 			}) else {
@@ -475,8 +485,14 @@ where
 					.await
 				{
 					// Exit signal received. Kill the child process and exit
-					child.kill().await?;
-					child.wait().await?;
+					child
+						.kill()
+						.await
+						.map_err(RunnerError::CloudflareTunnelExecError)?;
+					child
+						.wait()
+						.await
+						.map_err(RunnerError::CloudflareTunnelExecError)?;
 					return Err(RunnerError::ExitSignalReceived);
 				}
 				continue;
@@ -484,22 +500,15 @@ where
 
 			if status.success() {
 				warn!("Cloudflare tunnel exited successfully");
+				future::ready(()).with_cancel_check().await?;
 				warn!("This should not happen. Restarting tunnel");
-				continue;
 			} else {
 				error!("Cloudflare tunnel exited with status: {}", status);
-				error!("Retrying in 2 second");
-				// Retry after 2 seconds, but break if the exit signal is received
-				if let Err(RunnerError::ExitSignalReceived) = time::sleep(Duration::from_secs(2))
+				error!("Retrying in 1 second");
+				// Retry after a second, but break if the exit signal is received
+				time::sleep(Duration::from_secs(1))
 					.with_cancel_check()
-					.await
-				{
-					// Exit signal received. Kill the child process and exit
-					child.kill().await?;
-					child.wait().await?;
-					return Err(RunnerError::ExitSignalReceived);
-				}
-				continue;
+					.await?;
 			}
 		}
 	}
@@ -509,14 +518,30 @@ where
 	/// to start. Nginx will run until the exit signal is received.
 	#[instrument(skip(self))]
 	async fn run_nginx(&self) -> Result<!, RunnerError> {
+		fs::create_dir_all("./data/nginx")
+			.await
+			.map_err(RunnerError::NginxSetupError)?;
+
+		fs::write(
+			"./data/nginx/nginx.conf",
+			include_str!(concat!(
+				env!("CARGO_MANIFEST_DIR"),
+				"/../../assets/runner/nginx.conf"
+			)),
+		)
+		.await
+		.map_err(RunnerError::NginxSetupError)?;
+
 		loop {
-			let mut child = Command::new("nginx")
+			let Ok(mut child) = Command::new("nginx")
 				.arg("-g")
 				.arg("daemon off;")
 				.arg("-p")
-				.arg("./conf/nginx/html")
+				.arg(".")
+				.arg("-e")
+				.arg("./data/nginx/error.log")
 				.arg("-c")
-				.arg("./conf/nginx/nginx.conf")
+				.arg("./data/nginx/nginx.conf")
 				.env(
 					"PATH",
 					format!(
@@ -530,12 +555,18 @@ where
 				.stderr(Stdio::piped())
 				.kill_on_drop(true)
 				.spawn()
-				.map_err(|err| {
+				.inspect_err(|err| {
 					error!("Failed to start nginx: {:?}", err);
-					err
-				})?;
+				})
+			else {
+				// Retry after 5 seconds, but break if the exit signal is received
+				time::sleep(Duration::from_secs(5))
+					.with_cancel_check()
+					.await?;
+				continue;
+			};
 
-			let status = child.wait().await?;
+			let status = child.wait().await.map_err(RunnerError::NginxExecError)?;
 
 			if status.success() {
 				warn!("Nginx exited successfully");

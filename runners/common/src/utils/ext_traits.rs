@@ -88,11 +88,11 @@ where
 		cancellation_token: &CancellationToken,
 	) -> Result<T, RunnerError> {
 		futures::future::select(
-			std::pin::pin!(self),
 			std::pin::pin!(cancellation_token.cancelled()),
+			std::pin::pin!(self),
 		)
 		.await
-		.into_left()
+		.into_right()
 		.ok_or(RunnerError::ExitSignalReceived)
 	}
 }

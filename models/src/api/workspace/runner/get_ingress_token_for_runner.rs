@@ -3,7 +3,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to get Runner information
 	GetIngressTokenForRunner,
-	GET "/workspace/:workspace_id/runner/:runner_id/ingress-token" {
+	GET "/workspace/{workspace_id}/runner/{runner_id}/ingress-token" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid,
 		/// The runner ID
@@ -20,10 +20,6 @@ macros::declare_api_endpoint!(
 			extract_resource_id: |req| req.path.runner_id,
 			permission: Permission::Runner(RunnerPermission::RegenerateToken),
 		}
-	},
-	request = {
-		/// The port that the runner is listening on
-		pub runner_port: u16,
 	},
 	response = {
 		/// The runner ingress token
