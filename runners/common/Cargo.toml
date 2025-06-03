@@ -31,6 +31,7 @@ leptos                = { workspace = true, features = ["ssr"] }
 leptos_axum           = { workspace = true, features = ["default"] }
 macros                = { workspace = true }
 models                = { workspace = true }
+nix                   = { workspace = true, features = ["user"] }
 preprocess            = { workspace = true, features = [] }
 rand                  = { workspace = true, features = ["default"] }
 reqwest               = { workspace = true, features = ["json", "rustls-tls"] }
@@ -40,7 +41,7 @@ serde                 = { workspace = true, features = ["derive"] }
 serde_json            = { workspace = true }
 serde_urlencoded      = { workspace = true, features = [] }
 sqlx                  = { workspace = true, features = ["runtime-tokio-rustls", "sqlite", "time", "uuid"] }
-tempdir               = { workspace = true, features = [] }
+tempfile              = { workspace = true, features = ["default"] }
 thiserror             = { workspace = true, features = [] }
 time                  = { workspace = true, features = ["default", "serde-human-readable"] }
 tokio                 = { workspace = true, features = ["full"] }

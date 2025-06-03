@@ -135,7 +135,7 @@ async fn main() {
 				SdkTracerProvider::builder()
 					.with_batch_exporter(
 						SpanExporter::builder()
-							.with_tonic()
+							.with_http()
 							.with_endpoint(&config.opentelemetry.tracing.endpoint)
 							.with_protocol(Protocol::Grpc)
 							.build()

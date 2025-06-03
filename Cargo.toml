@@ -64,10 +64,11 @@ macros                   = { default-features = false, path = "macros" }
 matchit                  = { default-features = false, version = "0.8" }
 models                   = { default-features = false, path = "models" }
 monostate                = { default-features = false, version = "0.1" }
+nix                      = { default-features = false, version = "0.30" }
 open                     = { default-features = false, version = "5" }
-opentelemetry            = { default-features = false, version = "0.29" }
-opentelemetry-otlp       = { default-features = false, version = "0.29" }
-opentelemetry_sdk        = { default-features = false, version = "0.29" }
+opentelemetry            = { default-features = false, version = "0.30" }
+opentelemetry-otlp       = { default-features = false, version = "0.30" }
+opentelemetry_sdk        = { default-features = false, version = "0.30" }
 preprocess               = { default-features = false, version = "0.5" }
 proc-macro2              = { default-features = false, version = "1" }
 quote                    = { default-features = false, version = "1" }
@@ -88,7 +89,7 @@ sqlx                     = { default-features = false, version = "0.8" }
 strum                    = { default-features = false, version = "0.27" }
 syn                      = { default-features = false, version = "2" }
 tar                      = { default-features = false, version = "0.4" }
-tempdir                  = { default-features = false, version = "0.3" }
+tempfile                 = { default-features = false, version = "3" }
 thiserror                = { default-features = false, version = "2" }
 time                     = { default-features = false, version = "0.3" }
 tokio                    = { default-features = false, version = "1" }
@@ -100,7 +101,7 @@ tower                    = { default-features = false, version = "0.5" }
 tower-http               = { default-features = false, version = "0.6" }
 tracing                  = { default-features = false, version = "0.1" }
 tracing-log              = { default-features = false, version = "0.2" }
-tracing-opentelemetry    = { default-features = false, version = "0.30" }
+tracing-opentelemetry    = { default-features = false, version = "0.31" }
 tracing-subscriber       = { default-features = false, version = "0.3" }
 typed-builder            = { default-features = false, version = "0.21" }
 url                      = { default-features = false, version = "2" }

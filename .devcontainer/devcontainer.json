@@ -48,7 +48,8 @@
 					"tungstenite",
 					"Unsync",
 					"wayy",
-					"Workspaced"
+					"Workspaced",
+					"cloudflared"
 				],
 				"editor.formatOnSave": true,
 				"editor.rulers": [

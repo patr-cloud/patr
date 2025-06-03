@@ -13,7 +13,7 @@ use futures::{
 	future::{self, Either},
 };
 use models::{api::workspace::runner::*, utils::WebSocketUpgrade};
-use tempdir::TempDir;
+use tempfile::TempDir;
 use tokio::{
 	fs,
 	net::TcpListener,
@@ -77,6 +77,17 @@ where
 	pub async fn init() -> Result<Self, RunnerError> {
 		let config = RunnerSettings::<E::Settings>::parse(&E::runner_internal_name())?;
 
+		Self::init_with_config(config).await
+	}
+
+	/// Initializes the runner with the given configuration. This function will
+	/// set up the global default subscriber for the runner, connect to the
+	/// database, and initialize the runner state. It returns an instance of the
+	/// runner.
+	#[instrument(skip(config))]
+	pub async fn init_with_config(
+		config: RunnerSettings<E::Settings>,
+	) -> Result<Self, RunnerError> {
 		tracing::dispatcher::set_global_default(Dispatch::new(
 			tracing_subscriber::registry().with(
 				FmtLayer::new()
@@ -127,7 +138,7 @@ where
 		Ok(Self {
 			registry: DashMap::new(),
 			state,
-			temp_dir: TempDir::new("patr").map_err(RunnerError::ServerSetupError)?,
+			temp_dir: TempDir::with_prefix("patr").map_err(RunnerError::ServerSetupError)?,
 		})
 	}
 
@@ -431,6 +442,8 @@ where
 
 			let Ok(mut child) = Command::new("cloudflared")
 				.arg("tunnel")
+				.arg("--logfile")
+				.arg("./data/cloudflared.log")
 				.arg("run")
 				.arg("--token")
 				.arg(tunnel_token.body.token)
@@ -533,6 +546,8 @@ where
 		.map_err(RunnerError::NginxSetupError)?;
 
 		loop {
+			// TODO: remove the nginx socket file if it exists based on a lockfile
+
 			let Ok(mut child) = Command::new("nginx")
 				.arg("-g")
 				.arg("daemon off;")
