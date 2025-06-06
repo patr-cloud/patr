@@ -41,6 +41,7 @@ dirs                     = { default-features = false, version = "6" }
 either                   = { default-features = false, version = "1" }
 flate2                   = { default-features = false, version = "1" }
 frontend                 = { default-features = false, path = "frontend/common" }
+fslock                   = { default-features = false, version = "0.2" }
 futures                  = { default-features = false, version = "0.3" }
 getrandom_02             = { default-features = false, package = "getrandom", version = "0.2" }
 getrandom_03             = { default-features = false, package = "getrandom", version = "0.3" }

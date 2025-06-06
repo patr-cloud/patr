@@ -1,5 +1,6 @@
 use std::{
 	fs::Permissions,
+	io,
 	net::SocketAddr,
 	os::unix::fs::PermissionsExt,
 	pin::pin,
@@ -8,6 +9,7 @@ use std::{
 };
 
 use dashmap::DashMap;
+use fslock::LockFile;
 use futures::{
 	StreamExt,
 	future::{self, Either},
@@ -407,6 +409,12 @@ where
 			return Err(RunnerError::Unsupported);
 		};
 
+		let runner_exposure_type = E::runner_exposure_type();
+
+		if !runner_exposure_type.requires_tunnel() {
+			return Err(RunnerError::Unsupported);
+		}
+
 		info!("Running cloudflare tunnel to expose the runner");
 		loop {
 			let tunnel_token = make_request(
@@ -536,7 +544,7 @@ where
 			.map_err(RunnerError::NginxSetupError)?;
 
 		fs::write(
-			"./data/nginx/nginx.conf",
+			constants::NGINX_CONFIG_PATH,
 			include_str!(concat!(
 				env!("CARGO_MANIFEST_DIR"),
 				"/../../assets/runner/nginx.conf"
@@ -546,7 +554,33 @@ where
 		.map_err(RunnerError::NginxSetupError)?;
 
 		loop {
-			// TODO: remove the nginx socket file if it exists based on a lockfile
+			let mut lock_file = LockFile::open(constants::NGINX_LOCK_FILE_PATH)
+				.map_err(RunnerError::NginxSetupError)?;
+
+			if !lock_file.owns_lock() {
+				// remove the nginx socket file if it exists based on a lockfile
+				let locked = lock_file.try_lock().map_err(RunnerError::NginxSetupError)?;
+				if !locked {
+					error!("Failed to acquire lock for nginx. Another instance might be running");
+					time::sleep(Duration::from_secs(5))
+						.with_cancel_check()
+						.await?;
+					continue;
+				}
+
+				if fs::try_exists(constants::NGINX_SOCKET_PATH)
+					.await
+					.map_err(RunnerError::NginxSetupError)?
+				{
+					warn!("Removing existing nginx socket file");
+					fs::remove_file(constants::NGINX_SOCKET_PATH)
+						.await
+						.map_err(RunnerError::NginxSetupError)
+						.inspect_err(|err| {
+							error!("Failed to remove nginx socket file: {:?}", err);
+						})?;
+				}
+			}
 
 			let Ok(mut child) = Command::new("nginx")
 				.arg("-g")
@@ -556,7 +590,7 @@ where
 				.arg("-e")
 				.arg("./data/nginx/error.log")
 				.arg("-c")
-				.arg("./data/nginx/nginx.conf")
+				.arg(constants::NGINX_CONFIG_PATH)
 				.env(
 					"PATH",
 					format!(
@@ -585,11 +619,58 @@ where
 
 			if status.success() {
 				warn!("Nginx exited successfully");
+				future::ready(()).with_cancel_check().await?;
 				warn!("This should not happen. Restarting nginx");
 			} else {
 				error!("Nginx exited with status: {}", status);
 			}
 		}
+	}
+
+	/// Reload nginx configuration. This function will send a reload signal to
+	/// nginx, causing it to reload its configuration. It will return a result
+	/// with the error if nginx fails to reload. This function is useful when
+	/// the nginx configuration is changed and needs to be reloaded without
+	/// restarting the nginx process.
+	#[instrument(skip(self))]
+	async fn reload_nginx(&self) -> Result<(), RunnerError> {
+		let output = Command::new("nginx")
+			.arg("-s")
+			.arg("reload")
+			.arg("-p")
+			.arg(".")
+			.arg("-e")
+			.arg("./data/nginx/error.log")
+			.arg("-c")
+			.arg(constants::NGINX_CONFIG_PATH)
+			.env(
+				"PATH",
+				format!(
+					"{}:{}",
+					self.temp_dir.path().display(),
+					std::env::var("PATH").unwrap_or_default()
+				),
+			)
+			.stdin(Stdio::piped())
+			.stdout(Stdio::piped())
+			.stderr(Stdio::piped())
+			.output()
+			.await
+			.inspect_err(|err| {
+				error!("Failed to reload nginx: {:?}", err);
+			})
+			.map_err(RunnerError::NginxExecError)?;
+
+		if !output.status.success() {
+			let stderr = String::from_utf8_lossy(&output.stderr);
+			error!("Nginx reload failed: {}", stderr);
+			return Err(RunnerError::NginxExecError(io::Error::new(
+				io::ErrorKind::Other,
+				"Failed to reload nginx",
+			)));
+		}
+
+		Ok(())
 	}
 
 	/// Monitor the resources and make sure that they are running. This function

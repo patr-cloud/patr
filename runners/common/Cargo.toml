@@ -24,6 +24,7 @@ axum-extra            = { workspace = true, features = ["default", "typed-routin
 config                = { workspace = true }
 dashmap               = { workspace = true, features = [] }
 frontend              = { workspace = true, features = [] }
+fslock                = { workspace = true, features = ["default"] }
 futures               = { workspace = true }
 http                  = { workspace = true, features = ["default"] }
 jsonwebtoken          = { workspace = true, features = ["default"] }
