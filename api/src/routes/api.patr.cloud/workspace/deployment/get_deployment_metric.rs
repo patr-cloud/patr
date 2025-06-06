@@ -14,7 +14,7 @@ struct MimirResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct MimirData {
-	result: Option<[MimirMatrixResult; 1]>,
+	result: Vec<MimirMatrixResult>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -106,7 +106,9 @@ pub async fn get_deployment_metric(
 	};
 
 	let metrics = result
-		.map(|[MimirMatrixResult { values }]| {
+		.into_iter()
+		.next()
+		.map(|MimirMatrixResult { values }| {
 			values
 				.into_iter()
 				.map(|(timestamp, metric)| DeploymentMetric {

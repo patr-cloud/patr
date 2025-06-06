@@ -179,6 +179,7 @@ where
 			volumes,
 		}: DeploymentRunningDetails,
 	) -> Result<(), RunnerError> {
+		trace!("Creating deployment in database with ID: {}", deployment_id);
 		query(
 			r#"
 			INSERT INTO
@@ -214,13 +215,13 @@ where
 					$8,
 					$9,
 					$10,
+					NULL,
+					NULL,
+					NULL,
+					NULL,
+					NULL,
+					NULL,
 					$11,
-					$12,
-					$13,
-					$14,
-					$15,
-					$16,
-					$17,
 					NULL
 				);
 			"#,
@@ -235,12 +236,6 @@ where
 		.bind(min_horizontal_scale)
 		.bind(max_horizontal_scale)
 		.bind(deploy_on_push)
-		.bind(startup_probe.as_ref().map(|probe| probe.port))
-		.bind(startup_probe.as_ref().map(|probe| probe.path.as_str()))
-		.bind(startup_probe.as_ref().map(|_| ExposedPortType::Http))
-		.bind(liveness_probe.as_ref().map(|probe| probe.port))
-		.bind(liveness_probe.as_ref().map(|probe| probe.path.as_str()))
-		.bind(liveness_probe.as_ref().map(|_| ExposedPortType::Http))
 		.bind(current_live_digest)
 		.execute(&mut *connection)
 		.await?;
@@ -272,6 +267,33 @@ where
 		}
 
 		trace!("Inserted exposed ports for deployment");
+
+		query(
+			r#"
+			UPDATE
+				deployment
+			SET
+				startup_probe_port = $2,
+				startup_probe_path = $3,
+				startup_probe_port_type = $4,
+				liveness_probe_port = $5,
+				liveness_probe_path = $6,
+				liveness_probe_port_type = $7
+			WHERE
+				id = $1;
+			"#,
+		)
+		.bind(deployment_id)
+		.bind(startup_probe.as_ref().map(|probe| probe.port))
+		.bind(startup_probe.as_ref().map(|probe| probe.path.as_str()))
+		.bind(startup_probe.as_ref().map(|_| ExposedPortType::Http))
+		.bind(liveness_probe.as_ref().map(|probe| probe.port))
+		.bind(liveness_probe.as_ref().map(|probe| probe.path.as_str()))
+		.bind(liveness_probe.as_ref().map(|_| ExposedPortType::Http))
+		.execute(&mut *connection)
+		.await?;
+
+		trace!("Updated deployment probes in database");
 
 		for (name, value) in &environment_variables {
 			query(

@@ -38,7 +38,15 @@ pub mod prelude {
 		error::RunnerError,
 		executor::RunnerExecutor,
 		runner::Runner,
-		utils::{RouterExt, client, config::*, constants, ext_traits::*},
+		utils::{
+			RouterExt,
+			RunnerExposureType,
+			assets::*,
+			client,
+			config::*,
+			constants,
+			ext_traits::*,
+		},
 	};
 
 	/// The type of the database connection. A mutable reference to this should

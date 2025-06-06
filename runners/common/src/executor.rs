@@ -28,6 +28,11 @@ pub trait RunnerExecutor: Sized {
 			.unwrap_or("unknown".to_string())
 	}
 
+	/// The exposure type of the runner. This is used to determine how the
+	/// runner will expose the resources to the outside world.
+	#[must_use]
+	fn runner_exposure_type() -> RunnerExposureType;
+
 	/// This function is called when the runner is initialized. This is where
 	/// the runner should initialize any resources it needs to run the
 	/// resources. This function is guaranteed to be called only once.

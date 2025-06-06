@@ -1,5 +1,7 @@
 /// The endpoint to add a runner to a workspace
 mod add_runner_to_workspace;
+/// Get the token to use for the ingress tunnel for this runner
+mod get_ingress_token_for_runner;
 /// The endpoint to get the details of a runner in a workspace
 mod get_runner_info;
 /// The endpoint to list all the runners in a workspace
@@ -14,6 +16,7 @@ use time::OffsetDateTime;
 
 pub use self::{
 	add_runner_to_workspace::*,
+	get_ingress_token_for_runner::*,
 	get_runner_info::*,
 	list_runners_for_workspace::*,
 	remove_runner_from_workspace::*,

@@ -3,6 +3,7 @@
 	"apiBasePath": "/",
 	"passwordPepper": "keyboard cat",
 	"jwtSecret": "keyboard cat",
+	"primaryHostedDomain": "onpatr.cloud",
 	"database": {
 		"host": "postgres",
 		"port": 5432,
@@ -36,8 +37,8 @@
 		"password": "password"
 	},
 	"cloudflare": {
-		"email": "test@example.com",
-		"apiKey": "<cloudflare-api-key>"
+		"apiKey": "<cloudflare-api-key>",
+		"accountId": "accountId"
 	},
 	"opentelemetry": {
 		"tracing": {

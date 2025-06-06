@@ -26,7 +26,9 @@ axum-typed-websockets    = { default-features = false, git = "https://github.com
 base32                   = { default-features = false, version = "0.5" }
 base64                   = { default-features = false, version = "0.22" }
 bollard                  = { default-features = false, version = "0.18" }
+build-print              = { default-features = false, version = "1" }
 clap                     = { default-features = false, version = "4" }
+cloudflare               = { default-features = false, version = "0.14" }
 codee                    = { default-features = false, version = "0.3" }
 comfy-table              = { default-features = false, version = "7" }
 common                   = { default-features = false, path = "runners/common" }
@@ -37,7 +39,9 @@ cookie                   = { default-features = false, version = "0.18" }
 dashmap                  = { default-features = false, version = "6" }
 dirs                     = { default-features = false, version = "6" }
 either                   = { default-features = false, version = "1" }
+flate2                   = { default-features = false, version = "1" }
 frontend                 = { default-features = false, path = "frontend/common" }
+fslock                   = { default-features = false, version = "0.2" }
 futures                  = { default-features = false, version = "0.3" }
 getrandom_02             = { default-features = false, package = "getrandom", version = "0.2" }
 getrandom_03             = { default-features = false, package = "getrandom", version = "0.3" }
@@ -61,16 +65,18 @@ macros                   = { default-features = false, path = "macros" }
 matchit                  = { default-features = false, version = "0.8" }
 models                   = { default-features = false, path = "models" }
 monostate                = { default-features = false, version = "0.1" }
+nix                      = { default-features = false, version = "0.30" }
 open                     = { default-features = false, version = "5" }
-opentelemetry            = { default-features = false, version = "0.29" }
-opentelemetry-otlp       = { default-features = false, version = "0.29" }
-opentelemetry_sdk        = { default-features = false, version = "0.29" }
+opentelemetry            = { default-features = false, version = "0.30" }
+opentelemetry-otlp       = { default-features = false, version = "0.30" }
+opentelemetry_sdk        = { default-features = false, version = "0.30" }
 preprocess               = { default-features = false, version = "0.5" }
 proc-macro2              = { default-features = false, version = "1" }
 quote                    = { default-features = false, version = "1" }
 rand                     = { default-features = false, version = "0.8" }
 regex                    = { default-features = false, version = "1" }
 reqwest                  = { default-features = false, version = "0.12" }
+rust-embed               = { default-features = false, version = "8" }
 rust-s3                  = { default-features = false, version = "0.36.0-beta" }
 rustis                   = { default-features = false, version = "0.13" }
 schemars                 = { default-features = false, version = "0.8" }
@@ -83,6 +89,8 @@ sha2                     = { default-features = false, version = "0.10" }
 sqlx                     = { default-features = false, version = "0.8" }
 strum                    = { default-features = false, version = "0.27" }
 syn                      = { default-features = false, version = "2" }
+tar                      = { default-features = false, version = "0.4" }
+tempfile                 = { default-features = false, version = "3" }
 thiserror                = { default-features = false, version = "2" }
 time                     = { default-features = false, version = "0.3" }
 tokio                    = { default-features = false, version = "1" }
@@ -94,7 +102,7 @@ tower                    = { default-features = false, version = "0.5" }
 tower-http               = { default-features = false, version = "0.6" }
 tracing                  = { default-features = false, version = "0.1" }
 tracing-log              = { default-features = false, version = "0.2" }
-tracing-opentelemetry    = { default-features = false, version = "0.30" }
+tracing-opentelemetry    = { default-features = false, version = "0.31" }
 tracing-subscriber       = { default-features = false, version = "0.3" }
 typed-builder            = { default-features = false, version = "0.21" }
 url                      = { default-features = false, version = "2" }
@@ -136,11 +144,11 @@ output-name = "dashboard"
 site-root = "target/dashboard"
 # The site-root relative folder where all compiled output (JS, WASM and CSS) is written
 site-pkg-dir        = "pkg"
-style-file          = "frontend/common/assets/styles/index.scss"
-tailwind-input-file = "frontend/common/assets/styles/global.css"
+style-file          = "assets/frontend/styles/index.scss"
+tailwind-input-file = "assets/frontend/styles/global.css"
 # Assets source dir. All files found here will be copied and synchronized to site-root.
 # The assets-dir cannot have a sub directory with the same name/path as site-pkg-dir.
-assets-dir = "frontend/common/assets"
+assets-dir = "assets/frontend/public"
 #  The browserlist query used for optimizing the CSS.
 browserquery = "defaults"
 # The port to use for the live reload server
@@ -156,11 +164,11 @@ output-name = "dashboard"
 site-root = "target/docker-runner"
 # The site-root relative folder where all compiled output (JS, WASM and CSS) is written
 site-pkg-dir        = "pkg"
-style-file          = "frontend/common/assets/styles/index.scss"
-tailwind-input-file = "frontend/common/assets/styles/global.css"
+style-file          = "assets/frontend/styles/index.scss"
+tailwind-input-file = "assets/frontend/styles/global.css"
 # Assets source dir. All files found here will be copied and synchronized to site-root.
 # The assets-dir cannot have a sub directory with the same name/path as site-pkg-dir.
-assets-dir = "frontend/common/assets"
+assets-dir = "assets/frontend/public"
 #  The browserlist query used for optimizing the CSS.
 browserquery = "defaults"
 # The profile to use for the lib target when compiling for release

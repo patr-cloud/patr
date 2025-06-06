@@ -27,7 +27,7 @@ pub async fn get_runner_info(
 		user_data: _,
 	}: AuthenticatedAppRequest<'_, GetRunnerInfoRequest>,
 ) -> Result<AppResponse<GetRunnerInfoRequest>, ErrorType> {
-	info!("Getting information about the workspace `{workspace_id}`");
+	info!("Getting information about the runner `{runner_id}`");
 
 	let runner = query!(
 		r#"

@@ -2,6 +2,11 @@
 
 Patr is a tool that helps you deploy your applications to multiple environments with ease. It is designed to be simple to use and easy to integrate with your existing CI/CD pipelines.
 
+<center>
+    <a href="https://deepwiki.com/patr-cloud/patr"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+    <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/patr-cloud/patr">
+</center>
+
 # WORK IN PROGRESS
 
 This project is still in the early stages of development.
@@ -26,7 +31,7 @@ Copy `./config/api.sample.json` to `./config/api.json` and fill in the required 
 ### Run the project
 
 ```bash
-cargo leptos serve
+cargo api
 ```
 
 ### ???
@@ -47,7 +52,7 @@ Here are some of the features that we plan to implement:
 - ✅ Create runners to run your deployments.
 - ✅ Create and manage users.
 - ✅ Create and manage roles.
-- 🚧 Implement the runner to manage the deployments on the server.
+- ✅ Implement the runner to manage the deployments on the server.
 - 🚧 Audit log for all actions that are performed on Patr. (Help needed: What's the data that needs to be stored and how do I store it?)
 - [ ] Create and manage secrets.
 - [ ] Create and manage databases.
