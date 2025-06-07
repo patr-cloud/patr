@@ -3,7 +3,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to check if the domain is personal
 	IsDomainPersonal,
-	GET "/workspace/{workspace_id}/is-domain-personal" {
+	GET "/workspace/:workspace_id/is-domain-personal" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid,
 	},

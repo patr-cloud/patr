@@ -5,7 +5,7 @@ use crate::{api::workspace::deployment::ExposedPortType, prelude::*};
 macros::declare_api_endpoint!(
 	/// Gets the exposed ports of a container repository in the workspace.
 	GetContainerRepositoryExposedPorts,
-	GET "/workspace/{workspace_id}/container-registry/{repository_id}/image/{digest_or_tag}/exposed-ports" {
+	GET "/workspace/:workspace_id/container-registry/:repository_id/image/:digest_or_tag/exposed-ports" {
 		/// The workspace to get the container repository in.
 		pub workspace_id: Uuid,
 		/// The id of the repository to get the exposed ports of.

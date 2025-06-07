@@ -5,7 +5,7 @@ macros::declare_api_endpoint!(
 	/// Route to get information of a static site
 	/// This route will return the metadata of the static site along with details like metrics
 	GetStaticSiteInfo,
-	GET "/workspace/{workspace_id}/infrastructure/static-site/{static_site_id}" {
+	GET "/workspace/:workspace_id/infrastructure/static-site/:static_site_id" {
 		/// The workspace ID of the user
 		pub workspace_id: Uuid,
 		/// The static site ID to get the information of

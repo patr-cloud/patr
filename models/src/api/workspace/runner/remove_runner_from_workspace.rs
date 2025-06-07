@@ -3,7 +3,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to delete a runner
 	DeleteRunner,
-	DELETE "/workspace/{workspace_id}/runner/{runner_id}" {
+	DELETE "/workspace/:workspace_id/runner/:runner_id" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid,
 		/// The ID of the runner

@@ -5,7 +5,7 @@ macros::declare_api_endpoint!(
 	/// Definition of a route to create a new static site
 	/// This route will allow users to upload a new index.html which would go live
 	CreateStaticSite,
-	POST "/workspace/{workspace_id}/infrastructure/static-site" {
+	POST "/workspace/:workspace_id/infrastructure/static-site" {
 		/// The workspace ID of the user
 		pub workspace_id: Uuid
 	},

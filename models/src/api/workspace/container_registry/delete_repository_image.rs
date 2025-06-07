@@ -3,7 +3,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Deletes a container repository's image in the workspace.
 	DeleteContainerRepositoryImage,
-	DELETE "/workspace/{workspace_id}/docker-registry/{repository_id}/image/{digest}" {
+	DELETE "/workspace/:workspace_id/docker-registry/:repository_id/image/:digest" {
 		/// The workspace to delete the container repository in.
 		pub workspace_id: Uuid,
 		/// The id of the repository to delete.

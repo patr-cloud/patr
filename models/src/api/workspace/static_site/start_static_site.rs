@@ -3,7 +3,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to start a static site
 	StartStaticSite,
-	POST "/workspace/{workspace_id}/infrastructure/static-site/{static_site_id}/start" {
+	POST "/workspace/:workspace_id/infrastructure/static-site/:static_site_id/start" {
 		/// The workspace ID of the user
 		pub workspace_id: Uuid,
 		/// The static site ID of static site to start

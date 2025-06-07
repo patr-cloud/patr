@@ -3,7 +3,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to delete a DNS record
 	DeleteDNSRecord,
-	DELETE "/workspace/{workspace_id}/domain/{domain_id}/dns-record/{record_id}" {
+	DELETE "/workspace/:workspace_id/domain/:domain_id/dns-record/:record_id" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid,
 		/// The domain ID of the record

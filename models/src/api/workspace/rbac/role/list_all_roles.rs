@@ -4,7 +4,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to list all the roles
 	ListAllRoles,
-	GET "/workspace/{workspace_id}/rbac/role" {
+	GET "/workspace/:workspace_id/rbac/role" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid
 	},

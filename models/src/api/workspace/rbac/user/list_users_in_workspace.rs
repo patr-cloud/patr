@@ -5,7 +5,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to list all users and their role in a workspace
 	ListUsersInWorkspace,
-	GET "/workspace/{workspace_id}/rbac/user" {
+	GET "/workspace/:workspace_id/rbac/user" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid
 	},

@@ -4,7 +4,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to create a new volume
 	GetVolumeInfo,
-	GET "/workspace/{workspace_id}/volume/{volume_id}" {
+	GET "/workspace/:workspace_id/volume/:volume_id" {
 		/// The workspace ID of the user
 		pub workspace_id: Uuid,
 		/// The volume ID of the volume to delete

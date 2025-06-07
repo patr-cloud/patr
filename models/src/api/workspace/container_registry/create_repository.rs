@@ -3,7 +3,7 @@ use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 macros::declare_api_endpoint!(
 	/// Creates a new container repository in the workspace.
 	CreateContainerRepository,
-	POST "/workspace/{workspace_id}/container-registry" {
+	POST "/workspace/:workspace_id/container-registry" {
 		/// The workspace to create the container repository in.
 		pub workspace_id: Uuid,
 	},

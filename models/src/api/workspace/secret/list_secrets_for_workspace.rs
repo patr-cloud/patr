@@ -4,7 +4,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to list all the secrets in a workspace
 	ListSecretsForWorkspace,
-	GET "/workspace/{workspace_id}/secret" {
+	GET "/workspace/:workspace_id/secret" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid
 	},

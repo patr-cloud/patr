@@ -3,7 +3,7 @@ use crate::{api::workspace::Workspace, prelude::*};
 macros::declare_api_endpoint!(
 	/// Route to get a workspace's info based on the ID
 	GetWorkspaceInfo,
-	GET "/workspace/{workspace_id}" {
+	GET "/workspace/:workspace_id" {
 		/// The ID of the workspace to get the info of
 		pub workspace_id: Uuid,
 	},

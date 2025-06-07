@@ -3,7 +3,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to delete a workspace. Only the super admin of a workspace can delete a workspace
 	DeleteWorkspace,
-	DELETE "/workspace/{workspace_id}" {
+	DELETE "/workspace/:workspace_id" {
 		/// The ID of the workspace to be deleted
 		pub workspace_id: Uuid,
 	},

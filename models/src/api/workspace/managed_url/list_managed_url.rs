@@ -4,7 +4,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to list all managed URLs
 	ListManagedURL,
-	GET "/workspace/{workspace_id}/infrastructure/managed-url" {
+	GET "/workspace/:workspace_id/infrastructure/managed-url" {
 		/// The workspace ID of the user
 		pub workspace_id: Uuid,
 	},

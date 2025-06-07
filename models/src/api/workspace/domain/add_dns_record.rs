@@ -4,7 +4,7 @@ use crate::{prelude::*, utils::constants::DNS_RECORD_NAME_REGEX};
 macros::declare_api_endpoint!(
 	/// Route to add new DNS record
 	AddDNSRecord,
-	POST "/workspace/{workspace_id}/domain/{domain_id}/dns-record" {
+	POST "/workspace/:workspace_id/domain/:domain_id/dns-record" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid,
 		/// The ID of the domain to add the DNS record for

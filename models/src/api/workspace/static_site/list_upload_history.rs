@@ -4,7 +4,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to get all upload history of a static site
 	ListStaticSiteUploadHistory,
-	GET "/workspace/{workspace_id}/infrastructure/static-site/{static_site_id}/upload" {
+	GET "/workspace/:workspace_id/infrastructure/static-site/:static_site_id/upload" {
 		/// The workspace ID of the user
 		pub workspace_id: Uuid,
 		/// The static site ID to get history of

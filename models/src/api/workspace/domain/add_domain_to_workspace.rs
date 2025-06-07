@@ -4,7 +4,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to add domain to a workspace
 	AddDomainToWorkspace,
-	POST "/workspace/{workspace_id}/domain" {
+	POST "/workspace/:workspace_id/domain" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid,
 	},

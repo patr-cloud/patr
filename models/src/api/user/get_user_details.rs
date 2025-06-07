@@ -5,7 +5,7 @@ macros::declare_api_endpoint!(
 	/// Get a user's details by userId. This will return the user's basic info,
 	/// such as their username, first name, last name, etc.
 	GetUserDetails,
-	GET "/user/{user_id}" {
+	GET "/user/:user_id" {
 		/// The userId of the user whose details are being requested.
 		pub user_id: Uuid,
 	},

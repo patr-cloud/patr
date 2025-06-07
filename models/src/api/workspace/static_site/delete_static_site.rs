@@ -5,7 +5,7 @@ macros::declare_api_endpoint!(
 	/// This route will permanently delete the static site including it's history
 	/// and the current index.html file
 	DeleteStaticSite,
-	DELETE "/workspace/{workspace_id}/infrastructure/static-site/{static_site_id}" {
+	DELETE "/workspace/:workspace_id/infrastructure/static-site/:static_site_id" {
 		/// The workspace ID of the user
 		pub workspace_id: Uuid,
 		/// The static site ID to be deleted
