@@ -43,14 +43,6 @@ pub fn LoginForm() -> Element {
 		info!("Submit Form");
 	};
 
-	let username_start_icon = rsx! {
-		Icon { icon: IconType::User, size: Size::ExtraSmall }
-	};
-
-	let password_start_icon = rsx! {
-		Icon { icon: IconType::Shield, size: Size::ExtraSmall }
-	};
-
 	rsx! {
 		form { class: "box-onboard text-white", onsubmit: on_submit_login,
 			div { class: "flex justify-between items-baseline mb-lg w-full",
@@ -68,13 +60,15 @@ pub fn LoginForm() -> Element {
 					name: "user_id",
 					value: username.read().clone(),
 					oninput: move |ev: Event<FormData>| {
-						username.set(ev.value());
+					    username.set(ev.value());
 					},
 					class: "w-full",
 					r#type: InputType::Text,
 					placeholder: "Username / Email",
 					disabled: false,
-					start_icon: username_start_icon,
+					start_icon: rsx! {
+						Icon { icon: IconType::User, size: Size::ExtraSmall }
+					},
 				}
 
 				if let Some(value) = username_error.read().clone().some_if_not_empty() {
@@ -86,12 +80,14 @@ pub fn LoginForm() -> Element {
 					name: "password",
 					value: password.read().clone(),
 					oninput: move |ev: Event<FormData>| {
-						password.set(ev.value());
+					    password.set(ev.value());
 					},
 					class: "w-full",
 					placeholder: "Password",
 					disabled: false,
-					start_icon: password_start_icon,
+					start_icon: rsx! {
+						Icon { icon: IconType::Shield, size: Size::ExtraSmall }
+					},
 				}
 
 				input { name: "mfa_otp", r#type: "hidden" }

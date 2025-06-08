@@ -15,8 +15,8 @@ workspace = true
 
 [dependencies]
 console_error_panic_hook = { workspace = true }
-dioxus                   = { workspace = true, features = ["default", "router", "web"] }
-dioxus-sdk               = { workspace = true, features = ["storage"] }
+dioxus                   = { workspace = true, features = ["default", "router", "web", "document"] }
+dioxus-sdk               = { workspace = true, features = ["storage", "timing"] }
 log                      = { workspace = true, features = ["std"] }
 macros                   = { workspace = true }
 models                   = { workspace = true }

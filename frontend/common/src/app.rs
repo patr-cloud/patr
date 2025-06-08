@@ -10,47 +10,41 @@ pub fn App() -> Element {
 	let auth_state = AuthState::load();
 
 	rsx! {
-        head {
-            meta { charset: "utf-8" }
-            link {
-                href: constants::FAVICON,
-                "type_": "image/svg+xml",
-                rel: "shortcut icon",
-            }
-            link { href: constants::FAVICON, rel: "apple-touch-icon" }
-            meta {
-                content: "width=device-width, initial-scale=1",
-                name: "viewport",
-            }
-            meta { content: "#000000", name: "theme-color" }
-            meta {
-                name: "description",
-                content: "Patr: A code Deployment Platform that helps you scale what you build. You build, we scale",
-            }
-            link { href: "https://fonts.gstatic.com", rel: "preconnect" }
-            link { href: "https://fonts.googleapis.com", rel: "preconnect" }
-            link {
-                crossorigin: "",
-                rel: "preconnect",
-                href: "https://fonts.gstatic.com",
-            }
-            link {
-                href: "https://fonts.googleapis.com/css2?family=PT+Serif:wght@700&family=Source+Code+Pro:wght@300;400&family=Poppins:wght@300;400;500;600;700&display=swap",
-                rel: "stylesheet",
-            }
-            link {
-                rel: "stylesheet",
-                href: "https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css",
-            }
-            link { href: constants::GLOBAL_CSS, rel: "stylesheet" }
-            title { "Patr" }
+        document::Meta { charset: "utf-8" }
+        document::Link {
+            href: constants::FAVICON,
+            r#type: "image/svg+xml",
+            rel: "shortcut icon",
         }
-        body {
-            if auth_state.read().is_logged_in() {
-                "Dashboard"
-            } else {
-                LoginPage {}
-            }
+        document::Link { href: constants::FAVICON, rel: "apple-touch-icon" }
+        document::Meta { content: "width=device-width, initial-scale=1", name: "viewport" }
+        document::Meta { content: "#000000", name: "theme-color" }
+        document::Meta {
+            name: "description",
+            content: "Patr: A code Deployment Platform that helps you scale what you build. You build, we scale",
+        }
+        document::Link { href: "https://fonts.gstatic.com", rel: "preconnect" }
+        document::Link { href: "https://fonts.googleapis.com", rel: "preconnect" }
+        document::Link {
+            crossorigin: "",
+            rel: "preconnect",
+            href: "https://fonts.gstatic.com",
+        }
+        document::Link {
+            href: "https://fonts.googleapis.com/css2?family=PT+Serif:wght@700&family=Source+Code+Pro:wght@300;400&family=Poppins:wght@300;400;500;600;700&display=swap",
+            rel: "stylesheet",
+        }
+        document::Link {
+            rel: "stylesheet",
+            href: "https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css",
+        }
+        document::Link { href: constants::GLOBAL_CSS, rel: "stylesheet" }
+        document::Title { "Patr" }
+
+        if auth_state.read().is_logged_in() {
+            "Dashboard"
+        } else {
+            LoginPage {}
         }
     }
 }

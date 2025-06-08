@@ -8,7 +8,7 @@ pub fn PasswordInput(
 	#[props(into, optional)]
 	name: String,
 	/// Input event handler
-	#[props(optional, into, default = EventHandler::new(|_| {}))]
+	#[props(optional, into, default)]
 	oninput: EventHandler<Event<FormData>>,
 	/// Additional class names to apply to the outer div, if any.
 	#[props(into, optional)]
@@ -49,19 +49,7 @@ pub fn PasswordInput(
 	#[props(into, optional)]
 	start_text: Option<String>,
 ) -> Element {
-	let mut show_password = Signal::new(false);
-
-	let end_icon = rsx! {
-		Icon {
-			class: "text-white font-primary",
-			color: Color::White,
-			size: Size::Small,
-			onclick: move |_| {
-				show_password.toggle();
-			},
-			icon: if *show_password.read() { IconType::Eye } else { IconType::EyeOff },
-		}
-	};
+	let mut show_password = use_signal(|| false);
 
 	rsx! {
 		Input {
@@ -80,7 +68,17 @@ pub fn PasswordInput(
 			start_text,
 			end_text,
 			variant,
-			end_icon,
+			end_icon: rsx! {
+				Icon {
+					class: "text-white font-primary",
+					color: Color::White,
+					size: Size::Small,
+					onclick: move |_| {
+					    show_password.toggle();
+					},
+					icon: if *show_password.read() { IconType::Eye } else { IconType::EyeOff },
+				}
+			},
 		}
 	}
 }

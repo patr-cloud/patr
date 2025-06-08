@@ -41,7 +41,7 @@ pub mod constants {
 	/// The Number of resources to fetch per page
 	pub const RESOURCES_PER_PAGE: usize = 2;
 	/// The path to the feather icons sprite
-	pub const FEATHER_IMG: Asset = asset!("assets/icons/sprite/feather-sprite.svg");
+	pub const FEATHER_IMG: Asset = asset!("assets/icons/feather-sprite.svg");
 	/// The path to the favicon image
 	pub const FAVICON: Asset = asset!("assets/favicon.svg");
 	/// The path to the CSS file for the dashboard
