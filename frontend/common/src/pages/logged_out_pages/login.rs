@@ -1,8 +1,18 @@
+use models::api::auth::*;
+
 use crate::prelude::*;
+
+// pub async fn login(
+// 	username: String,
+// 	password: String,
+// 	mfa_otp: Option<String>,
+// ) -> Result<(), ServerFnError> {
+
+// }
 
 /// The Login Page
 #[component]
-pub fn LoginPage() -> Element {
+pub fn LoginPage(to: String) -> Element {
 	rsx! {
 		PageContainer { class: "bg-onboard", LoginForm {} }
 	}
@@ -20,36 +30,70 @@ pub fn LoginForm() -> Element {
 
 	let mut loading = use_signal(|| false);
 
-	let on_submit_login = move |ev: FormEvent| {
-		ev.prevent_default();
-
+	let on_submit_login = move |ev: Event<FormData>| {
 		loading.set(true);
 		username_error.set("".to_owned());
 		password_error.set("".to_owned());
 
-		if username.read().is_empty() {
+		let LoginRequest {
+			user_id,
+			password,
+			mfa_otp,
+		} = serde_json::from_value(
+			// serde_json::to_value(ev.values())
+			// 	.expect("failed to parse login request. Most likely the form values are not
+			// valid"),
+			Default::default(),
+		)
+		.expect("failed to parse login request");
+
+		if user_id.is_empty() {
 			error!("no email");
 			username_error.set("Username cannot be empty".to_owned());
 			loading.set(false);
 		}
 
-		if password.read().is_empty() {
+		if password.is_empty() {
 			error!("no password");
 			password_error.set("Password cannot be empty".to_owned());
 			loading.set(false);
 		}
 
-		// TODO: Submit Form Here
-		info!("Submit Form");
+		spawn(async move {
+			_ = make_request(
+				ApiRequest::<LoginRequest>::builder()
+					.path(LoginPath)
+					.query(())
+					.headers(LoginRequestHeaders {
+						user_agent: UserAgent::from_static("TODO"),
+					})
+					.body(LoginRequest {
+						user_id,
+						password,
+						mfa_otp,
+					})
+					.build(),
+			)
+			.await
+			.map(|response| {
+				use_context::<Signal<AuthState>>().set(AuthState::LoggedIn {
+					access_token: response.body.access_token,
+					refresh_token: response.body.refresh_token,
+					last_used_workspace_id: None,
+				});
+			});
+		});
+
+		loading.set(false);
 	};
 
 	rsx! {
-		form { class: "box-onboard text-white", onsubmit: on_submit_login,
+		form { onsubmit: on_submit_login, class: "box-onboard text-white",
 			div { class: "flex justify-between items-baseline mb-lg w-full",
 				h1 { class: "text-primary text-xl text-medium", "Sign In" }
 				div { class: "text-white text-thin flex items-start justify-start text-sm",
 					p { class: "mr-xs", "New User?" }
-					button { r#type: "submit", "Sign Up" }
+					button { class: "text-primary text-thin", "Sign Up" }
 								// AppLink { to: "/sign-up", "Sign Up" }
 				}
 			}
@@ -60,7 +104,7 @@ pub fn LoginForm() -> Element {
 					name: "user_id",
 					value: username.read().clone(),
 					oninput: move |ev: Event<FormData>| {
-					    username.set(ev.value());
+						username.set(ev.value());
 					},
 					class: "w-full",
 					r#type: InputType::Text,
@@ -80,7 +124,7 @@ pub fn LoginForm() -> Element {
 					name: "password",
 					value: password.read().clone(),
 					oninput: move |ev: Event<FormData>| {
-					    password.set(ev.value());
+						password.set(ev.value());
 					},
 					class: "w-full",
 					placeholder: "Password",

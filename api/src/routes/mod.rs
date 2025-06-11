@@ -1,10 +1,10 @@
 use axum::{
 	Router,
 	body::Body,
+	extract::Host,
 	http::{Request, Response, StatusCode},
 	routing::any,
 };
-use axum_extra::extract::Host;
 use tower::ServiceExt;
 
 use crate::prelude::*;
@@ -30,14 +30,18 @@ pub async fn setup_routes(state: &AppState) -> Router {
 
 	Router::new()
 		.fallback(any(|Host(hostname), request: Request<Body>| async move {
-			match hostname.as_str() {
-				"api.patr.cloud" => api_router.oneshot(request).await,
-				"app.patr.cloud" => app_router.oneshot(request).await,
-				// "registry.patr.cloud" => registry_router.oneshot(request).await,
-				_ => Ok(Response::builder()
-					.status(StatusCode::NOT_FOUND)
-					.body(Body::empty())
-					.unwrap()),
+			if cfg!(debug_assertions) {
+				api_router.oneshot(request).await
+			} else {
+				match hostname.as_str() {
+					"api.patr.cloud" => api_router.oneshot(request).await,
+					"app.patr.cloud" => app_router.oneshot(request).await,
+					// "registry.patr.cloud" => registry_router.oneshot(request).await,
+					_ => Ok(Response::builder()
+						.status(StatusCode::NOT_FOUND)
+						.body(Body::empty())
+						.unwrap()),
+				}
 			}
 		}))
 		.with_state(state.clone())

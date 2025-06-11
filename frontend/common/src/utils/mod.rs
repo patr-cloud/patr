@@ -1,12 +1,7 @@
-// /// The client module. This module is used to communicate with the server
-// /// and fetch data from the server. It is used to make API calls for the
-// /// backend.
-// #[cfg(not(target_arch = "wasm32"))]
-// mod client;
-
-// #[cfg(not(target_arch = "wasm32"))]
-// pub use self::client::*;
-
+/// The client module. This module is used to communicate with the server
+/// and fetch data from the server. It is used to make API calls for the
+/// backend.
+mod client;
 /// The color enum. This enum is used to specify the color of a component. These
 /// include the primary and secondary colors of the app.
 mod color;
@@ -29,13 +24,19 @@ mod storage;
 /// and the color variant.
 mod variant;
 
-pub use self::{color::*, ext_traits::*, size::*, storage::*, variant::*};
+pub use self::{client::*, color::*, ext_traits::*, size::*, storage::*, variant::*};
 
 /// A module containing constants that are used throughout the application.
 pub mod constants {
 	use dioxus::prelude::*;
 	use semver::Version;
 
+	/// The base URL for the backend
+	pub const API_BASE_URL: &str = if cfg!(debug_assertions) {
+		"http://localhost:3000"
+	} else {
+		"https://api.patr.cloud"
+	};
 	/// The version of the application
 	pub const VERSION: Version = macros::version!();
 	/// The Number of resources to fetch per page

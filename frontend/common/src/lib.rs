@@ -5,7 +5,7 @@ pub(crate) mod prelude {
 	pub use dioxus::prelude::*;
 	pub use models::prelude::*;
 
-	pub use crate::{components::*, utils::*};
+	pub use crate::{components::*, pages::*, utils::*};
 }
 
 /// The main app that gets launched when the application starts.

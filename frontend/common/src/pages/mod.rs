@@ -1,13 +1,10 @@
-/// The Auth Pages, such as Login, Register, and Forgot Password
-mod auth;
-// /// The Deployments set of page, contains, create, list, and update deployments
-// /// pages
-// mod deployment;
-// /// The Home page
-// mod home;
+/// The list of all pages in the application that require the user to be logged
+/// in
+mod logged_in_pages;
+/// The list of all pages in the application that does not require the user to
+/// be logged in
+mod logged_out_pages;
+/// The Not Found page
+mod not_found;
 
-pub use self::{
-    auth::*,
-    // deployment::*,
-    // home::*
-};
+pub use self::{logged_in_pages::*, logged_out_pages::*, not_found::*};

@@ -142,7 +142,7 @@ dependencies = [
  "opentelemetry-otlp",
  "opentelemetry_sdk",
  "preprocess",
- "rand 0.9.1",
+ "rand 0.8.5",
  "regex",
  "reqwest",
  "rust-s3",
@@ -802,7 +802,7 @@ dependencies = [
  "models",
  "nix",
  "preprocess",
- "rand 0.9.1",
+ "rand 0.8.5",
  "reqwest",
  "rust-embed",
  "semver",
@@ -2026,13 +2026,18 @@ dependencies = [
  "console_error_panic_hook",
  "dioxus",
  "dioxus-sdk",
+ "http",
  "log",
  "macros",
  "models",
+ "reqwest",
  "semver",
  "serde",
+ "serde_json",
+ "serde_urlencoded",
  "strum",
  "tracing-wasm",
+ "url",
  "wasm-logger",
 ]
 
@@ -6189,6 +6194,7 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
+ "serde",
 ]
 
 [[package]]
