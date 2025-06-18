@@ -10,17 +10,15 @@ version.workspace      = true
 [lints]
 workspace = true
 
-[features]
-# default = ["dioxus/fullstack", "dioxus/liveview", "dioxus/server", "dioxus/ssr"]
-
 [dependencies]
 console_error_panic_hook = { workspace = true }
-dioxus                   = { workspace = true, features = ["default", "router", "web", "document"] }
+dioxus-html              = { workspace = true, features = ["serialize"] }
 dioxus-sdk               = { workspace = true, features = ["storage", "timing"] }
 http                     = { workspace = true, features = ["default"] }
 log                      = { workspace = true, features = ["std"] }
 macros                   = { workspace = true }
 models                   = { workspace = true }
+preprocess               = { workspace = true }
 reqwest                  = { workspace = true, features = ["default", "json"] }
 semver                   = { workspace = true }
 serde                    = { workspace = true, features = ["derive"] }
@@ -30,3 +28,15 @@ strum                    = { workspace = true }
 tracing-wasm             = { workspace = true }
 url                      = { workspace = true, features = ["serde"] }
 wasm-logger              = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+axum       = { workspace = true, features = ["default"] }
+axum-extra = { workspace = true, features = ["default"] }
+dioxus     = { workspace = true, features = ["default", "router", "web", "document", "fullstack", "server"] }
+http       = { workspace = true, features = ["default"] }
+matchit    = { workspace = true, features = ["default"] }
+tokio      = { workspace = true, features = ["full"] }
+tower      = { workspace = true, features = [] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+dioxus = { workspace = true, features = ["default", "router", "web", "document", "fullstack"] }

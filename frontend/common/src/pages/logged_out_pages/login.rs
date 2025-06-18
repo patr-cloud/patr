@@ -1,32 +1,67 @@
 use models::api::auth::*;
+use serde_json::Value;
 
 use crate::prelude::*;
 
-// pub async fn login(
-// 	username: String,
-// 	password: String,
-// 	mfa_otp: Option<String>,
-// ) -> Result<(), ServerFnError> {
+#[server]
+pub async fn login(
+	user_id: String,
+	password: String,
+	mfa_otp: Option<String>,
+) -> Result<LoginResponse, ServerFnError<ErrorType>> {
+	use axum::http::request::Parts;
+	use models::utils::Headers;
 
-// }
+	let Ok(parts) = extract::<Parts, _>().await;
+
+	// Add cookie to response
+	let response = make_api_call(
+		ApiRequest::<LoginRequest>::builder()
+			.path(LoginPath)
+			.query(())
+			.headers(
+				LoginRequestHeaders::from_header_map(&parts.headers)
+					.map_err(|err| ServerFnError::Request(err.to_string()))?,
+			)
+			.body(LoginRequest {
+				user_id,
+				password,
+				mfa_otp,
+			})
+			.build(),
+	)
+	.await?;
+
+	Ok(LoginResponse {
+		access_token: response.body.access_token,
+		refresh_token: response.body.refresh_token,
+	})
+}
 
 /// The Login Page
 #[component]
-pub fn LoginPage(to: String) -> Element {
+pub fn LoginPage(
+	to: String,
+	username_error: String,
+	password_error: String,
+	show_mfa_input: bool,
+) -> Element {
 	rsx! {
-		PageContainer { class: "bg-onboard", LoginForm {} }
+		PageContainer { class: "bg-onboard",
+			LoginForm { username_error, password_error, show_mfa_input }
+		}
 	}
 }
 
 /// The login form component. This is the form that the user uses to log in to
 /// the application.
 #[component]
-pub fn LoginForm() -> Element {
+pub fn LoginForm(username_error: String, password_error: String, show_mfa_input: bool) -> Element {
 	let mut username = use_signal(|| "".to_owned());
 	let mut password = use_signal(|| "".to_owned());
 
-	let mut username_error = use_signal(|| "".to_owned());
-	let mut password_error = use_signal(|| "".to_owned());
+	let mut username_error = use_signal(|| username_error);
+	let mut password_error = use_signal(|| password_error);
 
 	let mut loading = use_signal(|| false);
 
@@ -35,56 +70,45 @@ pub fn LoginForm() -> Element {
 		username_error.set("".to_owned());
 		password_error.set("".to_owned());
 
-		let LoginRequest {
-			user_id,
-			password,
-			mfa_otp,
-		} = serde_json::from_value(
-			// serde_json::to_value(ev.values())
-			// 	.expect("failed to parse login request. Most likely the form values are not
-			// valid"),
-			Default::default(),
+		let Ok(request) = serde_json::from_value::<LoginRequest>(
+			ev.values()
+				.into_iter()
+				.filter_map(|(key, value)| Some((key, value.0.into_iter().next()?)))
+				.collect::<Value>(),
 		)
-		.expect("failed to parse login request");
+		.inspect_err(|err| {
+			error!("failed to parse login request: {}", err);
+		}) else {
+			loading.set(false);
+			return;
+		};
+		info!("login request: {:?}", request);
 
-		if user_id.is_empty() {
+		if request.user_id.is_empty() {
 			error!("no email");
 			username_error.set("Username cannot be empty".to_owned());
 			loading.set(false);
 		}
 
-		if password.is_empty() {
+		if request.password.is_empty() {
 			error!("no password");
 			password_error.set("Password cannot be empty".to_owned());
 			loading.set(false);
 		}
 
 		spawn(async move {
-			_ = make_request(
-				ApiRequest::<LoginRequest>::builder()
-					.path(LoginPath)
-					.query(())
-					.headers(LoginRequestHeaders {
-						user_agent: UserAgent::from_static("TODO"),
-					})
-					.body(LoginRequest {
-						user_id,
-						password,
-						mfa_otp,
-					})
-					.build(),
-			)
-			.await
-			.map(|response| {
-				use_context::<Signal<AuthState>>().set(AuthState::LoggedIn {
-					access_token: response.body.access_token,
-					refresh_token: response.body.refresh_token,
-					last_used_workspace_id: None,
+			_ = login(request.user_id, request.password, request.mfa_otp)
+				.await
+				.map(|response| {
+					use_context::<Signal<AuthState>>().set(AuthState::LoggedIn {
+						access_token: response.access_token,
+						refresh_token: response.refresh_token,
+						last_used_workspace_id: None,
+					});
 				});
-			});
-		});
 
-		loading.set(false);
+			loading.set(false);
+		});
 	};
 
 	rsx! {
@@ -101,7 +125,7 @@ pub fn LoginForm() -> Element {
 			div { class: "flex flex-col items-start justify-start w-full gap-md",
 				Input {
 					id: "user_id",
-					name: "user_id",
+					name: "userId",
 					value: username.read().clone(),
 					oninput: move |ev: Event<FormData>| {
 						username.set(ev.value());
@@ -134,7 +158,7 @@ pub fn LoginForm() -> Element {
 					},
 				}
 
-				input { name: "mfa_otp", r#type: "hidden" }
+				input { name: "mfaOtp", r#type: "hidden" }
 
 				if let Some(value) = password_error.read().clone().some_if_not_empty() {
 					Alert { class: "mt-xs", r#type: AlertType::Error, {value} }

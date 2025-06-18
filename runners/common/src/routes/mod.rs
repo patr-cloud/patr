@@ -7,11 +7,7 @@ mod user;
 mod workspace;
 
 use axum::Router;
-use frontend::utils::AppType;
-use leptos::prelude::*;
-use leptos_axum::LeptosRoutes;
 use tokio::fs;
-use tower_http::services::ServeFile;
 
 use crate::prelude::*;
 
@@ -21,38 +17,7 @@ pub async fn setup_routes<E>(state: &AppState<E>) -> Router
 where
 	E: RunnerExecutor + Send + 'static,
 {
-	let config = get_configuration(
-		if option_env!("LEPTOS_OUTPUT_NAME").is_some() {
-			None
-		} else {
-			Some(concat!(env!("CARGO_MANIFEST_DIR"), "/../Cargo.toml"))
-		},
-	)
-	.expect("failed to get configuration");
-
-	read_files(&config.leptos_options.site_root)
-		.await
-		.into_iter()
-		.fold(Router::new(), |router, file| {
-			router.route_service(
-				file.trim_start_matches(config.leptos_options.site_root.as_ref()),
-				ServeFile::new(file.as_str()),
-			)
-		})
-		.leptos_routes(
-			&config.leptos_options,
-			{
-				let leptos_options = config.leptos_options.clone();
-				leptos_axum::generate_route_list(move || {
-					frontend::render(leptos_options.clone(), AppType::SelfHosted)
-				})
-			},
-			{
-				let leptos_options = config.leptos_options.clone();
-				move || frontend::render(leptos_options.clone(), AppType::SelfHosted)
-			},
-		)
-		.with_state(config.leptos_options)
+	Router::new()
 		.with_state(state.clone())
 		.merge(auth::setup_routes(state).await)
 		.merge(user::setup_routes(state).await)

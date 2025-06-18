@@ -71,11 +71,6 @@ pub fn App() -> Element {
 		document::Link { href: constants::GLOBAL_CSS, rel: "stylesheet" }
 		document::Title { "Patr" }
 
-		Router::<AppRoute> { config: || RouterConfig::default().on_update(|_| on_router_update()) }
+		Router::<AppRoute> {}
 	}
-}
-
-fn on_router_update() -> Option<NavigationTarget<AppRoute>> {
-	// TODO refresh auth state here
-	None
 }

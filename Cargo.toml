@@ -25,7 +25,7 @@ axum-extra               = { default-features = false, version = "0.9" }
 axum-typed-websockets    = { default-features = false, version = "0.6" }          # git = "https://github.com/morenol/axum-typed-websockets.git", branch = "patch-1" }
 base32                   = { default-features = false, version = "0.5" }
 base64                   = { default-features = false, version = "0.22" }
-bollard                  = { default-features = false, version = "0.19" }
+bollard                  = { default-features = false, version = "0.18" }
 build-print              = { default-features = false, version = "1" }
 clap                     = { default-features = false, version = "4" }
 cloudflare               = { default-features = false, version = "0.14" }
@@ -36,6 +36,7 @@ console_error_panic_hook = { default-features = false, version = "0.1" }
 convert_case             = { default-features = false, version = "0.8" }
 dashmap                  = { default-features = false, version = "6" }
 dioxus                   = { default-features = false, version = "0.6" }
+dioxus-html              = { default-features = false, version = "0.6" }
 dioxus-sdk               = { default-features = false, version = "0.6" }
 dirs                     = { default-features = false, version = "6" }
 either                   = { default-features = false, version = "1" }

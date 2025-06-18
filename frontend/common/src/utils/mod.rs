@@ -1,3 +1,4 @@
+#[cfg(not(target_arch = "wasm32"))]
 /// The client module. This module is used to communicate with the server
 /// and fetch data from the server. It is used to make API calls for the
 /// backend.
@@ -24,7 +25,9 @@ mod storage;
 /// and the color variant.
 mod variant;
 
-pub use self::{client::*, color::*, ext_traits::*, size::*, storage::*, variant::*};
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::client::*;
+pub use self::{color::*, ext_traits::*, size::*, storage::*, variant::*};
 
 /// A module containing constants that are used throughout the application.
 pub mod constants {
