@@ -1,15 +1,30 @@
+use std::str::FromStr;
+
 use axum::{
 	Json,
 	extract::{Path, State},
 	http::{HeaderValue, Method, StatusCode, header},
 	response::IntoResponse,
 };
+use axum_extra::either::Either;
 use monostate::MustBe;
+use oci_spec::{
+	distribution::{ErrorCode, ErrorInfoBuilder, ErrorResponseBuilder},
+	image::{
+		Arch,
+		DescriptorBuilder,
+		Digest,
+		ImageIndexBuilder,
+		ImageManifestBuilder,
+		MediaType,
+		PlatformBuilder,
+	},
+};
 use preprocess::Preprocessable;
 use s3::Bucket;
 use serde::{Deserialize, Serialize};
 
-use super::{Error, ErrorItem, RegistryError};
+use super::{Error, internal_server_error_response};
 use crate::prelude::*;
 
 #[preprocess::sync]
@@ -29,90 +44,6 @@ pub struct PathParams {
 		regex = r"$([a-f0-9]+)|([a-zA-Z0-9_][a-zA-Z0-9._-]{0,127})^"
 	)]
 	reference: String,
-}
-
-/// The response to a request to get information about a manifest
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum ManifestType {
-	#[serde(rename_all = "camelCase")]
-	/// The manifest is a single image manifest
-	Manifest {
-		/// The schema version of the manifest. Always 2
-		schema_version: MustBe!(2u32),
-		/// The media type of the manifest. Always
-		/// application/vnd.oci.image.manifest.v1+json
-		media_type: MustBe!("application/vnd.oci.image.manifest.v1+json"),
-		/// The configuration object for the image
-		config: ManifestConfig,
-		/// The layers of the image
-		layers: Vec<ManifestLayer>,
-	},
-	#[serde(rename_all = "camelCase")]
-	/// The manifest is a multi-platform manifest
-	Index {
-		/// The schema version of the manifest. Always 2
-		schema_version: MustBe!(2u32),
-		/// The media type of the manifest. Always
-		/// application/vnd.oci.image.index.v1+json
-		media_type: MustBe!("application/vnd.oci.image.index.v1+json"),
-		/// The manifests for different platforms
-		manifests: Vec<PlatformManifest>,
-	},
-}
-
-/// The configuration object for a manifest
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ManifestConfig {
-	/// The media type of the configuration. Always
-	/// application/vnd.oci.image.config.v1+json
-	media_type: MustBe!("application/vnd.oci.image.config.v1+json"),
-	/// The size of the configuration object
-	size: u64,
-	/// The digest of the configuration object
-	digest: String,
-}
-
-/// A layer in a manifest
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ManifestLayer {
-	/// The media type of the layer. Always
-	/// application/vnd.oci.image.layer.v1.tar+gzip
-	media_type: MustBe!("application/vnd.oci.image.layer.v1.tar+gzip"),
-	/// The size of the layer
-	size: u64,
-	/// The digest of the layer
-	digest: String,
-}
-
-/// A platform in a multi-platform manifest
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PlatformManifest {
-	/// The digest of the manifest
-	digest: String,
-	/// The media type of the manifest. Always
-	/// application/vnd.oci.image.manifest.v1+json
-	media_type: MustBe!("application/vnd.oci.image.manifest.v1+json"),
-	/// The platform information
-	platform: PlatformInfo,
-	/// The size of the manifest
-	size: u64,
-}
-
-/// Information about a platform
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PlatformInfo {
-	/// The architecture of the platform
-	architecture: String,
-	/// The operating system of the platform
-	os: String,
-	#[serde(skip_serializing_if = "Option::is_none")]
-	/// The variant of the platform
-	variant: Option<String>,
 }
 
 /*
@@ -347,18 +278,28 @@ pub(super) async fn handle(
 	State(state): State<AppState>,
 ) -> Result<impl IntoResponse, Error> {
 	let Ok(path) = path.preprocess() else {
-		return Err(Error {
-			errors: [ErrorItem {
-				code: RegistryError::BlobUnknown,
-				message: "Invalid repository name".to_string(),
-				detail: "".to_string(),
-			}],
-			status_code: StatusCode::NOT_FOUND,
-		});
+		return Err((
+			StatusCode::NOT_FOUND,
+			Json(
+				ErrorResponseBuilder::default()
+					.errors([ErrorInfoBuilder::default()
+						.code(ErrorCode::BlobUnknown)
+						.message("Invalid repository name".to_string())
+						.detail("".to_string())
+						.build()
+						.unwrap()])
+					.build()
+					.unwrap(),
+			),
+		));
 	};
 
 	let workspace_id = path.workspace_id;
-	let mut database = state.database.begin().await?;
+	let mut database = state
+		.database
+		.begin()
+		.await
+		.map_err(internal_server_error_response)?;
 
 	// Check if the workspace exists
 	let row = query!(
@@ -374,17 +315,24 @@ pub(super) async fn handle(
 		workspace_id as _
 	)
 	.fetch_optional(&mut *database)
-	.await?;
+	.await
+	.map_err(internal_server_error_response)?;
 
 	let Some(_) = row else {
-		return Err(Error {
-			errors: [ErrorItem {
-				code: RegistryError::BlobUnknown,
-				message: "Invalid repository name".to_string(),
-				detail: "".to_string(),
-			}],
-			status_code: StatusCode::NOT_FOUND,
-		});
+		return Err((
+			StatusCode::NOT_FOUND,
+			Json(
+				ErrorResponseBuilder::default()
+					.errors([ErrorInfoBuilder::default()
+						.code(ErrorCode::BlobUnknown)
+						.message("Invalid repository name".to_string())
+						.detail("".to_string())
+						.build()
+						.unwrap()])
+					.build()
+					.unwrap(),
+			),
+		));
 	};
 
 	let manifests = query!(
@@ -396,7 +344,8 @@ pub(super) async fn handle(
 		LEFT JOIN
 			container_registry_repository_tag
 		ON
-			container_registry_repository_manifest.repository_id = container_registry_repository_tag.repository_id
+			container_registry_repository_manifest.repository_id =
+				container_registry_repository_tag.repository_id
 		WHERE
 			container_registry_repository_manifest.manifest_digest = $1 OR
 			container_registry_repository_tag.tag = $1;
@@ -404,7 +353,8 @@ pub(super) async fn handle(
 		path.reference as _,
 	)
 	.fetch_all(&mut *database)
-	.await?;
+	.await
+	.map_err(internal_server_error_response)?;
 
 	let mut manifest_data = Vec::with_capacity(manifests.len());
 
@@ -443,12 +393,16 @@ pub(super) async fn handle(
 			manifest.manifest_digest as _,
 		)
 		.fetch_all(&mut *database)
-		.await?
+		.await
+		.map_err(internal_server_error_response)?
 		.into_iter()
-		.map(|row| ManifestLayer {
-			media_type: Default::default(),
-			size: row.size as u64,
-			digest: row.blob_digest,
+		.map(|row| {
+			DescriptorBuilder::default()
+				.media_type(MediaType::ImageLayerGzip)
+				.size(row.size as u64)
+				.digest(Digest::from_str(&row.blob_digest).unwrap())
+				.build()
+				.unwrap()
 		})
 		.collect::<Vec<_>>();
 
@@ -456,14 +410,20 @@ pub(super) async fn handle(
 	}
 
 	if let 0 = manifest_data.len() {
-		return Err(Error {
-			errors: [ErrorItem {
-				code: RegistryError::BlobUnknown,
-				message: "Repository not found".to_string(),
-				detail: "".to_string(),
-			}],
-			status_code: StatusCode::NOT_FOUND,
-		});
+		return Err((
+			StatusCode::NOT_FOUND,
+			Json(
+				ErrorResponseBuilder::default()
+					.errors([ErrorInfoBuilder::default()
+						.code(ErrorCode::BlobUnknown)
+						.message("Repository not found".to_string())
+						.detail("".to_string())
+						.build()
+						.unwrap()])
+					.build()
+					.unwrap(),
+			),
+		));
 	}
 
 	let bucket = Bucket::new(
@@ -479,9 +439,11 @@ pub(super) async fn handle(
 				None,
 				None,
 				None,
-			)?
+			)
+			.map_err(internal_server_error_response)?
 		},
-	)?;
+	)
+	.map_err(internal_server_error_response)?;
 
 	// Ehh. Is there a better way to do this?
 	let (content_type, body) = if let (Some((manifest, layers)), true, true) = (
@@ -491,72 +453,99 @@ pub(super) async fn handle(
 	) {
 		(
 			"application/vnd.oci.image.index.v1+json",
-			ManifestType::Manifest {
-				schema_version: Default::default(),
-				media_type: Default::default(),
-				config: ManifestConfig {
-					media_type: Default::default(),
-					size: {
-						let s3_key = super::get_s3_object_name_for_blob(&manifest.manifest_digest);
+			Either::E1(Json(
+				ImageManifestBuilder::default()
+					.schema_version(Default::default())
+					.media_type(Default::default())
+					.config(
+						DescriptorBuilder::default()
+							.media_type(Default::default())
+							.size({
+								let s3_key =
+									super::get_s3_object_name_for_blob(&manifest.manifest_digest);
 
-						let (head, _) = bucket.head_object(&s3_key).await?;
+								let (head, _) = bucket
+									.head_object(&s3_key)
+									.await
+									.map_err(internal_server_error_response)?;
 
-						head.content_length.unwrap_or(2) as u64
-					},
-					digest: manifest.manifest_digest.clone(),
-				},
-				layers: layers.clone(),
-			},
+								head.content_length.unwrap_or(2) as u64
+							})
+							.digest(Digest::from_str(&manifest.manifest_digest).unwrap())
+							.build()
+							.unwrap(),
+					)
+					.layers(layers.clone())
+					.build()
+					.unwrap(),
+			)),
 		)
 	} else {
 		(
 			"application/vnd.oci.image.manifest.v1+json",
-			ManifestType::Index {
-				schema_version: Default::default(),
-				media_type: Default::default(),
-				manifests: {
-					let mut manifests = vec![];
-					for (manifest, layers) in manifest_data {
-						manifests.push(PlatformManifest {
-							digest: manifest.manifest_digest.clone(),
-							media_type: Default::default(),
-							platform: PlatformInfo {
-								architecture: manifest.architecture,
-								os: manifest.os,
-								variant: Some(manifest.variant),
-							},
-							size: serde_json::to_string(&ManifestType::Manifest {
-								schema_version: Default::default(),
-								media_type: Default::default(),
-								config: ManifestConfig {
-									media_type: Default::default(),
-									size: {
-										let s3_key = super::get_s3_object_name_for_blob(
-											&manifest.manifest_digest,
-										);
+			Either::E2(Json(
+				ImageIndexBuilder::default()
+					.schema_version(2)
+					.media_type(MediaType::ImageIndex)
+					.manifests({
+						let mut manifests = vec![];
+						for (manifest, layers) in manifest_data {
+							manifests.push(
+								DescriptorBuilder::default()
+									.digest(Digest::from_str(&manifest.manifest_digest).unwrap())
+									.media_type(MediaType::ImageManifest)
+									.platform(
+										PlatformBuilder::default()
+											.architecture(Arch::from(
+												manifest.architecture.as_str(),
+											))
+											.os(manifest.os)
+											.variant(Some(manifest.variant))
+											.build()
+											.unwrap(),
+									)
+									.size(
+										serde_json::to_string(&ManifestType::Manifest {
+											schema_version: Default::default(),
+											media_type: Default::default(),
+											config: ManifestConfig {
+												media_type: Default::default(),
+												size: {
+													let s3_key = super::get_s3_object_name_for_blob(
+														&manifest.manifest_digest,
+													);
 
-										let (head, _) = bucket.head_object(&s3_key).await?;
+													let (head, _) = bucket
+														.head_object(&s3_key)
+														.await
+														.map_err(internal_server_error_response)?;
 
-										head.content_length.unwrap_or(2) as u64
-									},
-									digest: manifest.manifest_digest.clone(),
-								},
-								layers,
-							})?
-							.chars()
-							.count() as u64,
-						});
-					}
+													head.content_length.unwrap_or(2) as u64
+												},
+												digest: manifest.manifest_digest.clone(),
+											},
+											layers,
+										})
+										.map_err(internal_server_error_response)?
+										.chars()
+										.count() as u64,
+									)
+									.build()
+									.unwrap(),
+							);
+						}
 
-					manifests
-				},
-			},
+						manifests
+					})
+					.build()
+					.unwrap(),
+			)),
 		)
 	};
 
 	Ok((
 		StatusCode::OK,
 		[(header::CONTENT_TYPE, HeaderValue::from_static(content_type))],
-		Json(body),
+		body,
 	))
 }

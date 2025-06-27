@@ -1,4 +1,5 @@
 use axum::{
+	Json,
 	body::Body,
 	extract::{Path, State},
 	http::{
@@ -7,16 +8,16 @@ use axum::{
 		HeaderValue,
 		Method,
 		StatusCode,
-		header,
-		header::InvalidHeaderValue,
+		header::{self, InvalidHeaderValue},
 	},
 	response::IntoResponse,
 };
+use oci_spec::distribution::{ErrorCode, ErrorInfoBuilder, ErrorResponseBuilder};
 use preprocess::Preprocessable;
 use s3::Bucket;
 use serde::{Deserialize, Serialize};
 
-use super::{Error, ErrorItem, RegistryError};
+use super::{Error, internal_server_error_response};
 use crate::prelude::*;
 
 #[preprocess::sync]
@@ -41,18 +42,28 @@ pub(super) async fn handle(
 	State(state): State<AppState>,
 ) -> Result<impl IntoResponse, Error> {
 	let Ok(path) = path.preprocess() else {
-		return Err(Error {
-			errors: [ErrorItem {
-				code: RegistryError::BlobUnknown,
-				message: "Invalid repository name".to_string(),
-				detail: "".to_string(),
-			}],
-			status_code: StatusCode::NOT_FOUND,
-		});
+		return Err((
+			StatusCode::NOT_FOUND,
+			Json(
+				ErrorResponseBuilder::default()
+					.errors([ErrorInfoBuilder::default()
+						.code(ErrorCode::BlobUnknown)
+						.message("Invalid repository name".to_string())
+						.detail("".to_string())
+						.build()
+						.unwrap()])
+					.build()
+					.unwrap(),
+			),
+		));
 	};
 
 	let workspace_id = path.workspace_id;
-	let mut database = state.database.begin().await?;
+	let mut database = state
+		.database
+		.begin()
+		.await
+		.map_err(internal_server_error_response)?;
 
 	// Check if the workspace exists
 	let row = query!(
@@ -68,17 +79,24 @@ pub(super) async fn handle(
 		workspace_id as _
 	)
 	.fetch_optional(&mut *database)
-	.await?;
+	.await
+	.map_err(internal_server_error_response)?;
 
 	let Some(_) = row else {
-		return Err(Error {
-			errors: [ErrorItem {
-				code: RegistryError::BlobUnknown,
-				message: "Invalid repository name".to_string(),
-				detail: "".to_string(),
-			}],
-			status_code: StatusCode::NOT_FOUND,
-		});
+		return Err((
+			StatusCode::NOT_FOUND,
+			Json(
+				ErrorResponseBuilder::default()
+					.errors([ErrorInfoBuilder::default()
+						.code(ErrorCode::BlobUnknown)
+						.message("Invalid repository name".to_string())
+						.detail("".to_string())
+						.build()
+						.unwrap()])
+					.build()
+					.unwrap(),
+			),
+		));
 	};
 
 	let bucket = Bucket::new(
@@ -94,12 +112,17 @@ pub(super) async fn handle(
 				None,
 				None,
 				None,
-			)?
+			)
+			.map_err(internal_server_error_response)?
 		},
-	)?;
+	)
+	.map_err(internal_server_error_response)?;
 
 	let s3_key = super::get_s3_object_name_for_blob(&path.digest);
-	let (head, _) = bucket.head_object(&s3_key).await?;
+	let (head, _) = bucket
+		.head_object(&s3_key)
+		.await
+		.map_err(internal_server_error_response)?;
 
 	let headers = [
 		(
@@ -127,14 +150,18 @@ pub(super) async fn handle(
 	.into_iter()
 	.filter_map(|(name, value)| value.map(|value| (name, value)))
 	.map(|(name, value)| Ok::<_, InvalidHeaderValue>((name, HeaderValue::from_str(&value)?)))
-	.collect::<Result<HeaderMap, _>>()?;
+	.collect::<Result<HeaderMap, _>>()
+	.map_err(internal_server_error_response)?;
 
 	if matches!(method, Method::HEAD) {
 		// HEAD request. head the blob from S3 and set the headers
 		Ok((StatusCode::OK, headers).into_response())
 	} else {
 		// GET request. return the blob from S3
-		let object = bucket.get_object_stream(&s3_key).await?;
+		let object = bucket
+			.get_object_stream(&s3_key)
+			.await
+			.map_err(internal_server_error_response)?;
 		if !(200..300).contains(&object.status_code) {
 			return Ok(StatusCode::INTERNAL_SERVER_ERROR.into_response());
 		}
