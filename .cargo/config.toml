@@ -8,9 +8,7 @@ rustflags = ["--cfg", "web_sys_unstable_apis", "--cfg", "link-arg=-fuse-ld=/usr/
 rustflags = ["--cfg", "web_sys_unstable_apis", '--cfg', 'getrandom_backend="wasm_js"']
 
 [alias]
-api          = "leptos serve -p dashboard"
-docker       = "leptos serve -p docker"
-patr         = "run -p cli --"
-prepare      = "sqlx prepare --workspace"
-watch-api    = "leptos watch -p dashboard --hot-reload"
-watch-docker = "leptos watch -p docker --hot-reload"
+api     = "execute dx serve --platform web --package frontend"
+docker  = "execute dx serve --platform web --package docker"
+patr    = "run -p cli --"
+prepare = "sqlx prepare --workspace"

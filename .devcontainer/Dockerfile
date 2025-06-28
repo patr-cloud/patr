@@ -53,6 +53,7 @@ RUN /home/vscode/.cargo/bin/cargo install --locked cargo-audit
 RUN /home/vscode/.cargo/bin/cargo install --locked sqlx-cli
 RUN /home/vscode/.cargo/bin/cargo install --locked wasm-pack
 RUN /home/vscode/.cargo/bin/cargo install --locked worker-build
+RUN /home/vscode/.cargo/bin/cargo install --locked cargo-execute
 
 # `patr` should build and run the local CLI
 RUN echo "alias patr='cargo patr'" >> /home/vscode/.bashrc
