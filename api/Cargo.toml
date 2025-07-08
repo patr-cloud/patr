@@ -38,7 +38,7 @@ rand                  = { workspace = true, features = ["default"] }
 regex                 = { workspace = true, features = ["default"] }
 reqwest               = { workspace = true, features = ["default", "json", "multipart"] }
 rust-s3               = { workspace = true, features = ["default", "with-tokio"] }
-rustis                = { workspace = true, features = ["default", "pool", "tls", "tokio-tls"] }
+rustis                = { workspace = true, features = ["default", "pool", "tokio-rustls"] }
 semver                = { workspace = true, features = ["default"] }
 serde                 = { workspace = true, features = ["default", "derive"] }
 serde_json            = { workspace = true, features = ["default"] }
