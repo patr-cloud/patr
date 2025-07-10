@@ -6,6 +6,7 @@
 /config/*
 !/config/*.sample.*
 !/config/tailwind.config.js
+!/config/grafana.ini
 .env
 .localData
 .[Dd][Ss]_[Ss]tore

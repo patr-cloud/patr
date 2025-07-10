@@ -1,11 +1,12 @@
-use std::io::IsTerminal;
+use std::{collections::BTreeMap, io::IsTerminal};
 
 use clap::{ArgAction, Args};
-use inquire::{Confirm, Select, Text};
+use inquire::{Confirm, CustomType, Select, Text, validator::Validation};
 use models::api::{
 	user::*,
 	workspace::{container_registry::*, deployment::*, runner::*},
 };
+use time::OffsetDateTime;
 
 use crate::{prelude::*, utils::StringExt};
 
@@ -65,6 +66,51 @@ pub struct CreateArgs {
 		action = ArgAction::SetTrue,
 	)]
 	pub deploy_on_push: Option<bool>,
+	/// The minimum horizontal scale for the deployment
+	#[arg(
+		alias = "min",
+		alias = "min-scale",
+		long = "min-horizontal-scale",
+		value_name = "MIN-HORIZONTAL-SCALE",
+		env = "PATR_DEPLOYMENT_MIN_HORIZONTAL_SCALE"
+	)]
+	pub min_horizontal_scale: Option<u16>,
+	/// The maximum horizontal scale for the deployment
+	#[arg(
+		alias = "max",
+		alias = "max-scale",
+		long = "max-horizontal-scale",
+		value_name = "MAX-HORIZONTAL-SCALE",
+		env = "PATR_DEPLOYMENT_MAX_HORIZONTAL_SCALE"
+	)]
+	pub max_horizontal_scale: Option<u16>,
+	/// The ports to expose for the deployment. This should be of the format
+	/// `PORT:TYPE`, where `TYPE` is one of `http`, `tcp`, or `udp`.
+	#[arg(
+		short = 'p',
+		long = "ports",
+		value_name = "PORTS",
+		env = "PATR_DEPLOYMENT_PORTS",
+		multiple = true
+	)]
+	pub ports: Option<Vec<String>>,
+	/// The environment variables to set for the deployment. This should be of
+	/// the format `KEY=VALUE`.
+	#[arg(
+		short = 'e',
+		alias = "env",
+		long = "environment",
+		value_name = "ENVIRONMENT-VARIABLE",
+		multiple = true
+	)]
+	pub environment_variables: Option<Vec<String>>,
+	/// Whether to deploy on create
+	#[arg(
+		long = "deploy-on-create",
+		env = "PATR_DEPLOYMENT_DEPLOY_ON_CREATE",
+		action = ArgAction::SetTrue,
+	)]
+	pub deploy_on_create: Option<bool>,
 }
 
 pub async fn execute(
@@ -175,7 +221,7 @@ pub async fn execute(
 				let id = Uuid::parse_str(&image).ok();
 				repositories
 					.iter()
-					.find(|repo| repo.name == image || id.filter(|id| repo.id == *id).is_some())
+					.find(|r| r.id.to_string() == image || r.name == image)
 					.map(|repo| repo.id)
 			})
 			.unwrap_or_else(|| {
@@ -224,20 +270,35 @@ pub async fn execute(
 		.some_if_not_empty()
 		.unwrap_or_else(|| "latest".to_string());
 
-	let runners = make_request(
-		ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
-			.path(ListRunnersForWorkspacePath { workspace_id })
-			.query(Paginated::default())
-			.headers(ListRunnersForWorkspaceRequestHeaders {
-				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
-				authorization: token.clone(),
-			})
-			.body(ListRunnersForWorkspaceRequest)
-			.build(),
-	)
-	.await?
-	.body
-	.runners;
+	let mut runners = vec![];
+	let mut start = 0;
+
+	loop {
+		let response = make_request(
+			ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
+				.path(ListRunnersForWorkspacePath { workspace_id })
+				.query(Paginated {
+					page: start / Paginated::DEFAULT_PAGE_SIZE,
+					count: Paginated::DEFAULT_PAGE_SIZE,
+					data: (),
+				})
+				.headers(ListRunnersForWorkspaceRequestHeaders {
+					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+					authorization: token.clone(),
+				})
+				.body(ListRunnersForWorkspaceRequest)
+				.build(),
+		)
+		.await?;
+
+		start += response.body.runners.len();
+
+		runners.extend(response.body.runners);
+
+		if start >= response.headers.total_count.0 {
+			break;
+		}
+	}
 
 	let runner = args
 		.runner
@@ -336,6 +397,184 @@ pub async fn execute(
 		false
 	};
 
+	let min_horizontal_scale = args.min_horizontal_scale.unwrap_or_else(|| {
+		CustomType::<u16>::new("Minimum horizontal scale")
+			.with_help_message("The minimum number of instances to run for the deployment")
+			.with_default(1)
+			.with_validator(|input: &u16| {
+				if *input < 1 {
+					Ok(Validation::Invalid(inquire::validator::ErrorMessage::from(
+						"Minimum horizontal scale must be at least 1",
+					)))
+				} else {
+					Ok(Validation::Valid)
+				}
+			})
+			.prompt()
+			.expect_tty("Failed to read minimum horizontal scale")
+	});
+
+	let max_horizontal_scale = args.max_horizontal_scale.unwrap_or_else(|| {
+		CustomType::<u16>::new("Maximum horizontal scale")
+			.with_help_message("The maximum number of instances to run for the deployment")
+			.with_default(1)
+			.with_validator(move |input: &u16| {
+				if *input < min_horizontal_scale {
+					Ok(Validation::Invalid(inquire::validator::ErrorMessage::from(
+						"Maximum horizontal scale must be at least the minimum horizontal scale",
+					)))
+				} else {
+					Ok(Validation::Valid)
+				}
+			})
+			.prompt()
+			.expect_tty("Failed to read maximum horizontal scale")
+	});
+
+	let ports = args
+		.ports
+		.map(|ports| {
+			ports
+				.into_iter()
+				.map(|port| {
+					let Some((port_number, port_type)) = port.split_once(':') else {
+						return Err(AppError::ParseError(format!(
+							"Invalid port format: `{}`. Expected format is `PORT:TYPE`.",
+							port
+						)));
+					};
+
+					let port_number = port_number.parse::<u16>().map_err(|_| {
+						AppError::ParseError(format!("Invalid port number: `{}`", port_number))
+					})?;
+
+					let port_type = match port_type.to_lowercase().as_str() {
+						"http" => ExposedPortType::Http,
+						"tcp" => ExposedPortType::Tcp,
+						"udp" => ExposedPortType::Udp,
+						_ => {
+							return Err(AppError::ParseError(format!(
+								"Invalid port type: `{}`. Expected one of `http`, `tcp`, or `udp`.",
+								port_type
+							)));
+						}
+					};
+
+					Ok((port_number, port_type))
+				})
+				.collect::<Result<_, AppError>>()
+		})
+		.transpose()?
+		.unwrap_or_else(|| {
+			let mut ports = BTreeMap::new();
+
+			loop {
+				let Some(port) = CustomType::<u16>::new("Port")
+					.with_help_message("Press Enter to finish adding ports")
+					.with_placeholder("The port of the deployment to expose")
+					.with_parser(&|input: &str| {
+						if input.is_empty() {
+							Ok(0)
+						} else {
+							input.parse::<u16>().map_err(|_| ())
+						}
+					})
+					.prompt_skippable()
+					.expect_tty("Failed to read port")
+				else {
+					break ports;
+				};
+
+				if port == 0 {
+					break ports;
+				}
+
+				let port_type = Select::new(
+					"Port type",
+					vec![
+						ExposedPortType::Http,
+						ExposedPortType::Tcp,
+						ExposedPortType::Udp,
+					],
+				)
+				.with_help_message("The type of the port to expose")
+				.with_formatter(&|input| input.value.to_string().to_lowercase())
+				.prompt()
+				.expect_tty("Failed to read port type");
+
+				ports.insert(port.into(), port_type);
+			}
+		});
+
+	let environment_variables = args
+		.environment_variables
+		.map(|environment_variables| {
+			environment_variables
+				.into_iter()
+				.map(|env_var| {
+					let Some((key, value)) = env_var.split_once('=') else {
+						return Err(AppError::ParseError(format!(
+							"Invalid environment variable format: `{}`. Expected format is `KEY=VALUE`.",
+							env_var
+						)));
+					};
+
+					if key.is_empty() || value.is_empty() {
+						return Err(AppError::ParseError(format!(
+							"Environment variable key or value cannot be empty: `{}`",
+							env_var
+						)));
+					}
+
+					Ok((
+						key.to_string(),
+						EnvironmentVariableValue::String(value.to_string()),
+					))
+				})
+				.collect::<Result<_, AppError>>()
+		})
+		.transpose()?
+		.unwrap_or_else(|| {
+			let mut environment_variables = BTreeMap::new();
+
+			loop {
+				let Some(key) = Text::new("Environment variable(s): Key")
+					.with_help_message("Press Enter to finish adding environment variables")
+					.prompt_skippable()
+					.expect_tty("Failed to read environment variable key")
+				else {
+					break environment_variables;
+				};
+
+				if key.is_empty() {
+					break environment_variables;
+				}
+
+				let value = Text::new("Environment variable(s): Value")
+					.with_help_message("The value of the environment variable")
+					.prompt()
+					.expect_tty("Failed to read environment variable value");
+
+				environment_variables.insert(key, EnvironmentVariableValue::String(value));
+			}
+		});
+
+	let startup_probe = None; // TODO: Implement startup probe
+	let liveness_probe = None; // TODO: Implement liveness probe
+	let config_mounts = BTreeMap::new(); // TODO: Implement config mounts
+	let volumes = BTreeMap::new(); // TODO: Implement volumes
+
+	let deploy_on_create = args.deploy_on_create.unwrap_or_else(|| {
+		Confirm::new("Deploy on create?")
+			.with_help_message(concat!(
+				"If yes, the deployment will be created and deployed immediately.",
+				" If no, the deployment will be created but not deployed.",
+			))
+			.with_default(true)
+			.prompt()
+			.expect_tty("Failed to read deploy on create")
+	});
+
 	if std::io::stdout().is_terminal() {
 		let confirmed = Confirm::new("Create the deployment?")
 			.with_default(true)
@@ -366,16 +605,16 @@ pub async fn execute(
 				machine_type,
 				running_details: DeploymentRunningDetails {
 					deploy_on_push,
-					min_horizontal_scale: todo!(),
-					max_horizontal_scale: todo!(),
-					ports: todo!(),
-					environment_variables: todo!(),
-					startup_probe: todo!(),
-					liveness_probe: todo!(),
-					config_mounts: todo!(),
-					volumes: todo!(),
+					min_horizontal_scale,
+					max_horizontal_scale,
+					ports,
+					environment_variables,
+					startup_probe,
+					liveness_probe,
+					config_mounts,
+					volumes,
 				},
-				deploy_on_create: todo!(),
+				deploy_on_create,
 			})
 			.build(),
 	)

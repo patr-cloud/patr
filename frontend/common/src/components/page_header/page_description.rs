@@ -20,7 +20,6 @@ pub fn PageDescription(
 		)
 	};
 
-
 	let doc_link = move || {
 		doc_link.get().map(|link| {
 			view! {

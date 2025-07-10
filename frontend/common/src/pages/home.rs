@@ -1,5 +1,6 @@
-use crate::prelude::*;
 use log::info;
+
+use crate::prelude::*;
 
 /// Home Page
 #[component]

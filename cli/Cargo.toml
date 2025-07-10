@@ -33,6 +33,7 @@ reqwest            = { workspace = true, features = ["default", "json"] }
 serde              = { workspace = true, features = ["default", "derive"] }
 serde_json         = { workspace = true, features = ["default"] }
 thiserror          = { workspace = true, features = ["default"] }
+time               = { workspace = true, features = ["default", "serde-human-readable"] }
 tokio              = { workspace = true, features = ["default", "full"] }
 tracing            = { workspace = true, features = ["async-await", "default"] }
 tracing-log        = { workspace = true, features = ["default"] }

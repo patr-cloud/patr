@@ -97,11 +97,15 @@ services:
           - metrics
 
   grafana:
-    image: grafana/grafana-oss:11.2.2
+    image: grafana/grafana-enterprise:12.0.2-ubuntu
     restart: unless-stopped
     expose:
       - 3000
+    environment:
+      - GF_PATHS_CONFIG=/etc/grafana/grafana.ini
+      - GF_PATHS_DATA=/var/lib/grafana
     volumes:
+      - ../config/grafana.ini:/etc/grafana/grafana.ini:ro
       - grafana-data:/var/lib/grafana
     hostname: grafana
     networks:
