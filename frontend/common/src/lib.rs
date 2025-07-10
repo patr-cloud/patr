@@ -19,3 +19,18 @@ pub mod pages;
 /// The utils module. This contains all the utility functions and other things
 /// needed to make the application work.
 pub mod utils;
+
+#[cfg(target_arch = "wasm32")]
+pub fn start() {
+	use log::Level;
+	use wasm_logger::Config;
+
+	console_error_panic_hook::set_once();
+	wasm_logger::init(
+		Config::new(Level::Trace)
+			.message_on_new_line()
+			.module_prefix("common"),
+	);
+
+	dioxus::LaunchBuilder::web().launch(app::App);
+}

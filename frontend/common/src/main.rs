@@ -1,23 +1,15 @@
 //! Main dashboard console for Patr
 
 #[cfg(target_arch = "wasm32")]
-fn main() {
-	use log::Level;
-	use wasm_logger::Config;
-
-	console_error_panic_hook::set_once();
-	wasm_logger::init(
-		Config::new(Level::Trace)
-			.message_on_new_line()
-			.module_prefix("common"),
-	);
-
-	dioxus::LaunchBuilder::web().launch(frontend::app::App);
+pub fn main() {
+	frontend::start();
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 #[tokio::main]
 async fn main() {
+	use std::net::SocketAddr;
+
 	use dioxus::{cli_config, prelude::*};
 
 	axum::serve(
@@ -26,7 +18,7 @@ async fn main() {
 			.unwrap(),
 		axum::Router::new()
 			.serve_dioxus_application(ServeConfigBuilder::new(), frontend::app::App)
-			.into_make_service(),
+			.into_make_service_with_connect_info::<SocketAddr>(),
 	)
 	.await
 	.unwrap();
