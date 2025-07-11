@@ -6,7 +6,6 @@ use models::api::{
 	user::*,
 	workspace::{container_registry::*, deployment::*, runner::*},
 };
-use time::OffsetDateTime;
 
 use crate::{prelude::*, utils::StringExt};
 
@@ -91,7 +90,7 @@ pub struct CreateArgs {
 		long = "ports",
 		value_name = "PORTS",
 		env = "PATR_DEPLOYMENT_PORTS",
-		multiple = true
+		action = ArgAction::Append,
 	)]
 	pub ports: Option<Vec<String>>,
 	/// The environment variables to set for the deployment. This should be of
@@ -101,7 +100,7 @@ pub struct CreateArgs {
 		alias = "env",
 		long = "environment",
 		value_name = "ENVIRONMENT-VARIABLE",
-		multiple = true
+		action = ArgAction::Append,
 	)]
 	pub environment_variables: Option<Vec<String>>,
 	/// Whether to deploy on create
@@ -221,7 +220,7 @@ pub async fn execute(
 				let id = Uuid::parse_str(&image).ok();
 				repositories
 					.iter()
-					.find(|r| r.id.to_string() == image || r.name == image)
+					.find(|r| r.name == image || id.filter(|id| r.id == *id).is_some())
 					.map(|repo| repo.id)
 			})
 			.unwrap_or_else(|| {
@@ -444,9 +443,12 @@ pub async fn execute(
 						)));
 					};
 
-					let port_number = port_number.parse::<u16>().map_err(|_| {
-						AppError::ParseError(format!("Invalid port number: `{}`", port_number))
-					})?;
+					let port_number = port_number
+						.parse::<u16>()
+						.map_err(|_| {
+							AppError::ParseError(format!("Invalid port number: `{}`", port_number))
+						})?
+						.into();
 
 					let port_type = match port_type.to_lowercase().as_str() {
 						"http" => ExposedPortType::Http,
