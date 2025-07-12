@@ -1,12 +1,13 @@
 FROM ubuntu:noble
 
 # Install dependencies
-RUN mkdir -p --mode=0755 /usr/share/keyrings
-RUN apt update && apt install -y curl
-RUN curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg > /usr/share/keyrings/cloudflare-main.gpg
-RUN echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared noble main' > /etc/apt/sources.list.d/cloudflared.list
-RUN apt update
-RUN apt install -y \
+RUN mkdir -p --mode=0755 /usr/share/keyrings && \
+    apt update && \
+    apt install -y curl && \
+    curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg > /usr/share/keyrings/cloudflare-main.gpg && \
+    echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared noble main' > /etc/apt/sources.list.d/cloudflared.list && \
+    apt update && \
+    apt install -y \
         libssl-dev \
         pkg-config \
         bash-completion \
@@ -26,22 +27,23 @@ RUN apt install -y \
         musl-tools \
         libpcre3-dev \
         zlib1g-dev \
-        nginx
+        nginx && \
+    rm -rf /var/lib/apt/lists/*
 
 # Setup non-root user with sudo permissions
-RUN adduser vscode
-RUN adduser vscode sudo
-RUN adduser vscode docker
-RUN echo vscode ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/vscode
-RUN chmod 0440 /etc/sudoers.d/vscode
+RUN adduser vscode && \
+	adduser vscode sudo && \
+	adduser vscode docker && \
+	echo vscode ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/vscode && \
+	chmod 0440 /etc/sudoers.d/vscode
 
 # Install mold linker for faster builds
 WORKDIR /tmp/mold
-RUN git clone --branch stable https://github.com/rui314/mold.git .
-RUN cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=c++ -B build
-RUN cmake --build build -j$(nproc)
-RUN cmake --build build --target install
-RUN rm -rf /tmp/mold
+RUN git clone --branch stable https://github.com/rui314/mold.git . && \
+	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=c++ -B build && \
+	cmake --build build -j$(nproc) && \
+	cmake --build build --target install && \
+	rm -rf /tmp/mold
 
 # Install Rust and tools
 USER vscode

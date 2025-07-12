@@ -1,6 +1,6 @@
 [package]
 description = "The cloudflare worker script that proxies requests to the right cluster"
-name        = "cloudflare-ingress"
+name        = "ingress"
 
 authors.workspace      = true
 edition.workspace      = true

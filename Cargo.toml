@@ -1,5 +1,5 @@
 [workspace]
-members              = ["api", "cli", "cloudflare-ingress", "frontend/common", "frontend/managed", "frontend/self-hosted", "macros", "models", "runners/common", "runners/docker", "runners/kubernetes"]
+members              = ["api", "cli", "ingress", "frontend/common", "frontend/managed", "frontend/self-hosted", "macros", "models", "runners/common", "runners/docker", "runners/kubernetes"]
 package.authors      = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
 package.description  = "Patr API and all it's dependencies"
 package.edition      = "2024"

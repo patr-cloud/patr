@@ -1,5 +1,4 @@
-#![forbid(unsafe_code)]
-#![warn(missing_docs, clippy::missing_docs_in_private_items)]
+#![allow(missing_docs, clippy::missing_docs_in_private_items)]
 
 //! This crate is the worker that runs on cloudflare before a request is sent to
 //! any one of Patr's Kubernetes clusters.
@@ -136,21 +135,15 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 			let bucket = env.bucket(constants::STATIC_SITE_BUCKET)?;
 
 			for file_to_try in [
-				format!("{}/{}/{}", static_site_id, upload_id, requested_path),
-				format!("{}/{}/{}.html", static_site_id, upload_id, requested_path),
-				format!("{}/{}/{}.htm", static_site_id, upload_id, requested_path),
-				format!("{}/{}/{}.shtml", static_site_id, upload_id, requested_path),
-				format!(
-					"{}/{}/{}/index.html",
-					static_site_id, upload_id, requested_path
-				),
-				format!(
-					"{}/{}/{}/index.htm",
-					static_site_id, upload_id, requested_path
-				),
-				format!("{}/{}/404.html", static_site_id, upload_id),
-				format!("{}/{}/index.html", static_site_id, upload_id),
-				format!("{}/{}/index.htm", static_site_id, upload_id),
+				format!("{static_site_id}/{upload_id}/{requested_path}"),
+				format!("{static_site_id}/{upload_id}/{requested_path}.html"),
+				format!("{static_site_id}/{upload_id}/{requested_path}.htm"),
+				format!("{static_site_id}/{upload_id}/{requested_path}.shtml"),
+				format!("{static_site_id}/{upload_id}/{requested_path}/index.html"),
+				format!("{static_site_id}/{upload_id}/{requested_path}/index.htm"),
+				format!("{static_site_id}/{upload_id}/404.html"),
+				format!("{static_site_id}/{upload_id}/index.html"),
+				format!("{static_site_id}/{upload_id}/index.htm"),
 			] {
 				let Some(file) = bucket.get(file_to_try).execute().await? else {
 					continue;
@@ -164,7 +157,7 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 				if let Some(stripped) = url.path().strip_suffix("/index.html") {
 					// /contacts/index.html will be redirected to /contacts/
 					let mut response = Response::redirect({
-						let new_path = format!("{}/", stripped);
+						let new_path = format!("{stripped}/");
 						let mut url = url;
 
 						url.set_path(&new_path);
@@ -212,7 +205,7 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 					}
 				}?
 				.with_headers({
-					let mut headers = Headers::new();
+					let headers = Headers::new();
 
 					headers.set("etag", file.etag().as_str())?;
 					headers.set("content-length", file.size().to_string().as_str())?;
@@ -279,10 +272,10 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 							"kmz" => "application/vnd.google-earth.kmz",
 							"xls" => "application/vnd.ms-excel",
 							"ppt" => "application/vnd.ms-powerpoint",
-							"odg" => concat!("application/", "vnd.oasis.opendocument.graphics"),
-							"odp" => concat!("application/vnd.oasis", ".opendocument.presentation"),
-							"ods" => concat!("application/vnd.oasis", ".opendocument.spreadsheet"),
-							"odt" => concat!("application/vnd.oasis", ".opendocument.text"),
+							"odg" => "application/vnd.oasis.opendocument.graphics",
+							"odp" => "application/vnd.oasis.opendocument.presentation",
+							"ods" => "application/vnd.oasis.opendocument.spreadsheet",
+							"odt" => "application/vnd.oasis.opendocument.text",
 							"pptx" => concat!(
 								"application/vnd.openxmlformats",
 								"-officedocument.presentationml.presentation"
