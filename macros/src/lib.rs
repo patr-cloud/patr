@@ -14,15 +14,14 @@ mod declare_app_route;
 /// The proc macro for declaring a streaming endpoint. A streaming endpoint is
 /// basically a websocket endpoint.
 mod declare_stream_endpoint;
+/// A macro to generate the same struct but with all fields optional.
+mod generate_optional;
 /// A derive macro for the `HasHeaders` trait.
 mod has_headers;
 /// A proc macro for stripping whitespaces and newlines from SQL queries.
 mod query;
 /// A macro to generate a recursive enum iterator.
 mod recursive_enum_iter;
-/// An attribute that expands to other attributes for a server fn, adding
-/// middlewares to it.
-mod server_fn;
 /// A macro to verify if a given string is a valid regex at compile time.
 mod verify_regex;
 /// A macro to get the current crate version.
@@ -43,7 +42,7 @@ mod version;
 /// macros::declare_api_endpoint!(
 ///     /// The documentation for the endpoint.
 ///     EndpointName,
-///     POST "/:workspace_id/URL/:url_body" {
+///     POST "/{workspace_id}/URL/{url_body}" {
 ///         pub workspace_id: Uuid,
 ///         pub url_body: String,
 ///     },
@@ -92,7 +91,7 @@ pub fn declare_api_endpoint(input: TokenStream) -> TokenStream {
 /// macros::declare_app_route!(
 ///     /// The documentation for the endpoint.
 ///     Login,
-///     "/login/:param1" {
+///     "/login/{param1}" {
 ///         pub param1: i32
 ///     },
 ///     requires_login = true,
@@ -121,7 +120,7 @@ pub fn declare_app_route(input: TokenStream) -> TokenStream {
 /// macros::declare_stream_endpoint!(
 ///     /// The documentation for the endpoint.
 ///     EndpointName,
-///     GET "/:workspace_id/URL/:url_body" {
+///     GET "/{workspace_id}/URL/{url_body}" {
 ///         pub workspace_id: Uuid,
 ///         pub url_body: String,
 ///     },
@@ -221,16 +220,24 @@ pub fn verify_regex(input: TokenStream) -> TokenStream {
 	verify_regex::parse(input)
 }
 
-/// An attribute that expands to other attributes for a server fn, adding
-/// middlewares to it.
+/// A macro to generate the same struct but with all fields optional.
+/// This is useful for creating a struct that can be used to update an existing
+/// struct, where all fields are optional.
 /// ## Example usage:
 /// ```rust
-/// #[server_fn]
-/// pub async fn server_fn<E>() -> Result<E::Response, Rejection> where E: ApiEndpoint {
-///    Ok(warp::reply::json(&"Hello, World!"))
+/// # use ::macros::generate_optional;
+/// #[generate_optional]
+/// pub struct User {
+///     pub name: String,
+///     pub age: u32,
 /// }
 /// ```
+/// This will generate a struct `UserOptional` with all fields optional.
+/// The generated struct will have the same fields as the original struct, but
+/// all fields will be wrapped in `Option`. The generated struct will also
+/// have a few utility methods, such as `any_field_set` to check if any field is
+/// set, `all_fields_set` to check if all fields are set.
 #[proc_macro_attribute]
-pub fn server_fn(args: TokenStream, input: TokenStream) -> TokenStream {
-	server_fn::parse(args, input)
+pub fn generate_optional(args: TokenStream, input: TokenStream) -> TokenStream {
+	generate_optional::parse(args, input)
 }

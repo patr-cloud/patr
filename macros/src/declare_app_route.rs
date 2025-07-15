@@ -171,8 +171,8 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			#[serde(rename_all = "camelCase")]
 			pub struct #query_name #query
 
-			impl ::leptos_router::Params for #query_name {
-				fn from_map(map: &::leptos_router::ParamsMap) -> Result<Self, ::leptos_router::ParamsError>{
+			impl ::leptos_router::params::Params for #query_name {
+				fn from_map(map: &::leptos_router::params::ParamsMap) -> Result<Self, ::leptos_router::params::ParamsError>{
 					let Ok(value) = ::serde_json::to_value(map.clone()) else {
 						return Ok(Self::default());
 					};
@@ -206,13 +206,13 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			type Query = #query_name;
 		}
 
-		impl ::leptos_router::Params for #route_name {
-			fn from_map(map: &::leptos_router::ParamsMap) -> Result<Self, ::leptos_router::ParamsError>{
+		impl ::leptos_router::params::Params for #route_name {
+			fn from_map(map: &::leptos_router::params::ParamsMap) -> Result<Self, ::leptos_router::params::ParamsError>{
 				let value = ::serde_json::to_value(map.clone()).map_err(|err| {
-					::leptos_router::ParamsError::Params(::std::sync::Arc::new(err))
+					::leptos_router::params::ParamsError::Params(::std::sync::Arc::new(err))
 				})?;
 				Ok(::serde_json::from_value(value).map_err(|err| {
-					::leptos_router::ParamsError::Params(::std::sync::Arc::new(err))
+					::leptos_router::params::ParamsError::Params(::std::sync::Arc::new(err))
 				})?)
 			}
 		}

@@ -52,7 +52,7 @@ where
 		// Keep checking for the status of the deployment and
 		// update the database
 
-		let status = executor
+		let running_status = executor
 			.get_deployment_status(deployment_id)
 			.with_cancel_check_of(cancellation_token)
 			.await??;
@@ -61,7 +61,7 @@ where
 			get_local_deployment_info(&state.database, deployment_id).await?;
 
 		// TODO is this really the right way?
-		match (status, deployment.status) {
+		match (running_status, deployment.status) {
 			(DeploymentStatus::Deploying, DeploymentStatus::Deploying) |
 			(DeploymentStatus::Errored, DeploymentStatus::Errored) |
 			(DeploymentStatus::Running, DeploymentStatus::Running) |
@@ -70,7 +70,11 @@ where
 				// If the status is the same, we don't need to do anything
 				// just continue the loop
 			}
-			(_, DeploymentStatus::Unreachable) => todo!(),
+			// If the db status is unreachable but the deployment is anything else,
+			// we need to update the db
+			(running_status, DeploymentStatus::Unreachable) => {
+				todo!("Update the db to {running_status}");
+			}
 			// If the running status is unreachable, we need to update the db regardless of what it
 			// currently is
 			(DeploymentStatus::Unreachable, _) |
@@ -86,7 +90,21 @@ where
 				DeploymentStatus::Running,
 				DeploymentStatus::Deploying | DeploymentStatus::Errored,
 			) => {
-				// TODO force the db to be as per deployment
+				// force the db to be as per deployment
+				query(
+					r#"
+					UPDATE
+						deployment
+					SET
+						status = $1
+					WHERE
+						id = $2;
+					"#,
+				)
+				.bind(running_status.to_string())
+				.bind(deployment_id)
+				.execute(&state.database)
+				.await?;
 			}
 			// If the deployment is just created or stopped, we need to update the db
 			(
@@ -107,22 +125,6 @@ where
 				.upsert_deployment(WithId::new(deployment_id, deployment), running_details)
 				.await?;
 		}
-
-		// Update the status of the deployment in the database
-		query(
-			r#"
-			UPDATE
-				deployment
-			SET
-				status = $1
-			WHERE
-				id = $2;
-			"#,
-		)
-		.bind(status.to_string())
-		.bind(deployment_id)
-		.execute(&state.database)
-		.await?;
 
 		if cancellation_token.is_cancelled() {
 			return Err(RunnerError::ExitSignalReceived);
