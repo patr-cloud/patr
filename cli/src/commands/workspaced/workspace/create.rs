@@ -1,12 +1,12 @@
-use clap::Args;
+use clap::Args as ClapArgs;
 use inquire::Text;
 use models::{ApiSuccessResponseBody, api::workspace::*, prelude::*};
 
 use crate::prelude::*;
 
 /// The arguments that can be passed to the create workspace command.
-#[derive(Debug, Clone, Args)]
-pub struct CreateArgs {
+#[derive(Debug, Clone, ClapArgs)]
+pub struct Args {
 	/// Name of the workspace to be created
 	#[arg(short = 'n', long = "name")]
 	pub name: Option<String>,
@@ -15,7 +15,7 @@ pub struct CreateArgs {
 /// The command to create a new workspace
 pub(super) async fn execute(
 	_: GlobalArgs,
-	args: CreateArgs,
+	args: Args,
 	state: AppState,
 ) -> Result<CommandOutput, AppError> {
 	let AppState::LoggedIn {

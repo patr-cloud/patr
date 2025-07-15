@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, io::IsTerminal};
 
-use clap::{ArgAction, Args};
+use clap::{ArgAction, Args as ClapArgs};
 use inquire::{Confirm, CustomType, Select, Text, validator::Validation};
 use models::api::{
 	user::*,
@@ -9,8 +9,8 @@ use models::api::{
 
 use crate::{prelude::*, utils::StringExt};
 
-#[derive(Debug, Clone, Args)]
-pub struct CreateArgs {
+#[derive(Debug, Clone, ClapArgs)]
+pub struct Args {
 	/// The name of the deployment
 	#[arg(
 		short = 'n',
@@ -113,7 +113,7 @@ pub struct CreateArgs {
 }
 
 pub async fn execute(
-	args: CreateArgs,
+	args: Args,
 	global_args: GlobalArgs,
 	state: AppState,
 ) -> Result<CommandOutput, AppError> {

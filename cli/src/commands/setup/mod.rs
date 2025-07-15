@@ -1,17 +1,17 @@
-use clap::Args;
+use clap::Args as ClapArgs;
 use models::{ApiErrorResponseBody, utils::False};
 
 use crate::prelude::*;
 
-#[derive(Debug, Clone, Args)]
-pub struct SetupArgs {
+#[derive(Debug, Clone, ClapArgs)]
+pub struct Args {
 	/// Force the setup even if the CLI is already configured
 	#[arg(short = 'f', long = "force")]
 	pub force: bool,
 }
 
 pub async fn execute(
-	args: SetupArgs,
+	args: Args,
 	global_args: GlobalArgs,
 	_: AppState,
 ) -> Result<CommandOutput, AppError> {

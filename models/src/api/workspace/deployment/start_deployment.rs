@@ -5,6 +5,10 @@ const fn is_false(force_restart: &bool) -> bool {
 	!*force_restart
 }
 
+const fn default_force_restart() -> bool {
+	false
+}
+
 macros::declare_api_endpoint!(
 	/// Route to start a deployment
 	StartDeployment,
@@ -17,7 +21,7 @@ macros::declare_api_endpoint!(
 	query = {
 		/// If true, the deployment will be force-restarted, even
 		/// if it is already running
-		#[serde(skip_serializing_if = "is_false")]
+		#[serde(default = "default_force_restart", skip_serializing_if = "is_false")]
 		pub force_restart: bool,
 	},
 	request_headers = {

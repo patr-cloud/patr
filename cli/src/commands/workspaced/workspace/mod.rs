@@ -1,6 +1,5 @@
 use clap::Subcommand;
 
-use self::{create::CreateArgs, rename::RenameArgs, switch::SwitchArgs};
 use crate::prelude::*;
 
 /// The command to create a new workspace
@@ -33,14 +32,14 @@ pub enum WorkspaceCommand {
 pub enum WorkspaceActionCommand {
 	/// The command to create a new workspace
 	#[command(alias = "new")]
-	Create(CreateArgs),
+	Create(create::Args),
 	/// The command to switch between workspace contexts
-	Switch(SwitchArgs),
+	Switch(switch::Args),
 	/// The command to list all workspaces that the user is a part of
 	#[command(alias = "ls")]
 	List,
 	/// The command to rename a workspace
-	Rename(RenameArgs),
+	Rename(rename::Args),
 }
 
 /// The utility command to switch between workspace contexts
@@ -48,7 +47,7 @@ pub enum WorkspaceActionCommand {
 #[command(rename_all = "kebab-case")]
 pub enum ContextCommand {
 	/// The command to switch between workspace contexts
-	Switch(SwitchArgs),
+	Switch(switch::Args),
 }
 
 /// The list of all commands that can be executed on a workspace

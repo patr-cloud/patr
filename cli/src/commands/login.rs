@@ -1,6 +1,6 @@
 use std::{io::IsTerminal, str::FromStr};
 
-use clap::Args;
+use clap::Args as ClapArgs;
 use inquire::{
 	Password,
 	Text,
@@ -16,8 +16,8 @@ use models::{
 use crate::prelude::*;
 
 /// The arguments that can be passed to the login command.
-#[derive(Debug, Clone, Args)]
-pub struct LoginArgs {
+#[derive(Debug, Clone, ClapArgs)]
+pub struct Args {
 	/// Email address or username to login with. Use `patr` as a username to
 	/// login with your API token as a password.
 	#[arg(short = 'u', long = "username", alias = "email")]
@@ -33,7 +33,7 @@ pub struct LoginArgs {
 
 /// A command that logs the user into their Patr account.
 pub(super) async fn execute(
-	args: LoginArgs,
+	args: Args,
 	global_args: GlobalArgs,
 	_: AppState,
 ) -> Result<CommandOutput, AppError> {

@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand};
 
-use self::{login::LoginArgs, setup::SetupArgs, workspaced::WorkspacedCommand};
+use self::workspaced::WorkspacedCommand;
 use crate::prelude::*;
 
 /// The command to get information about the current logged in user.
@@ -58,7 +58,7 @@ pub struct GlobalArgs {
 pub enum GlobalCommand {
 	/// Login to your Patr account.
 	#[command(alias = "signin", alias = "sign-in")]
-	Login(LoginArgs),
+	Login(login::Args),
 	/// Logout of your Patr account.
 	Logout,
 	/// Get information about the current logged in user.
@@ -69,7 +69,7 @@ pub enum GlobalCommand {
 	Workspaced(WorkspacedCommand),
 	/// Setup the CLI's configuration settings for first time use.
 	#[command(alias = "configure")]
-	Setup(SetupArgs),
+	Setup(setup::Args),
 }
 
 pub async fn execute(

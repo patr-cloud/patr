@@ -14,9 +14,6 @@ pub struct Args {
 		env = "PATR_DEPLOYMENT_NAME"
 	)]
 	pub name: Option<String>,
-	/// If set, forces the deployment to restart even if it is already running
-	#[arg(short = 'f', long = "force-restart", default_value_t = false)]
-	pub force_restart: bool,
 }
 
 pub async fn execute(
@@ -105,7 +102,7 @@ pub async fn execute(
 		})
 		.unwrap_or_else(|| {
 			let name = Select::new(
-				"Please select the deployment to start:",
+				"Please select the deployment to stop:",
 				deployments
 					.iter()
 					.map(|deployment| &deployment.name)
@@ -123,19 +120,17 @@ pub async fn execute(
 		});
 
 	let response = make_request(
-		ApiRequest::<StartDeploymentRequest>::builder()
-			.path(StartDeploymentPath {
+		ApiRequest::<StopDeploymentRequest>::builder()
+			.path(StopDeploymentPath {
 				workspace_id,
 				deployment_id,
 			})
-			.query(StartDeploymentQuery {
-				force_restart: args.force_restart,
-			})
-			.headers(StartDeploymentRequestHeaders {
+			.query(())
+			.headers(StopDeploymentRequestHeaders {
 				authorization: token.clone(),
 				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 			})
-			.body(StartDeploymentRequest)
+			.body(StopDeploymentRequest)
 			.build(),
 	)
 	.await?
@@ -143,7 +138,7 @@ pub async fn execute(
 
 	CommandOutput::builder()
 		.text(format!(
-			"Started deployment `{}` successfully",
+			"Stopped deployment `{}` successfully",
 			deployment_id
 		))
 		.json(response.to_json_value())

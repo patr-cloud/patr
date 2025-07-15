@@ -1,11 +1,11 @@
-use clap::Args;
+use clap::Args as ClapArgs;
 use models::api::user::*;
 
 use crate::prelude::*;
 
 /// The arguments that can be passed to the switch workspace command.
-#[derive(Debug, Clone, Args)]
-pub struct SwitchArgs {
+#[derive(Debug, Clone, ClapArgs)]
+pub struct Args {
 	/// Name of the workspace to switch to
 	#[arg(short = 'w', alias = "workspace")]
 	pub name: String,
@@ -14,7 +14,7 @@ pub struct SwitchArgs {
 /// The command to switch between workspace contexts
 pub(super) async fn execute(
 	_: GlobalArgs,
-	args: SwitchArgs,
+	args: Args,
 	state: AppState,
 ) -> Result<CommandOutput, AppError> {
 	let AppState::LoggedIn {
