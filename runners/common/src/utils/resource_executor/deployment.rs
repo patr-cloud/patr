@@ -48,6 +48,7 @@ async fn handle_deployment_with_error<E>(
 where
 	E: RunnerExecutor + Send + 'static,
 {
+	// TODO: Get notified when the deployment is updated on the db
 	loop {
 		// Keep checking for the status of the deployment and
 		// update the database
