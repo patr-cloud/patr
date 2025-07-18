@@ -688,7 +688,11 @@ where
 			Duration::from_secs(60 * 10) // 10 minutes
 		};
 
-		let mut sleep_future = Box::pin(time::sleep(full_sync_interval));
+		// This is set to zero intentionally so that during the first iteration
+		// of the loop, we don't wait for the full sync interval. The first sync should
+		// happen immediately and then after that we start waiting for the full sync
+		// interval.
+		let mut sleep_future = Box::pin(time::sleep(Duration::from_secs(0)));
 
 		// Remember: The point of this loop is not to update the database or the
 		// resource. Our job is simple: Make sure that for every resource in the
@@ -774,28 +778,45 @@ where
 
 		let mut transaction = self.state.database.begin().await?;
 
-		match msg {
+		let resource_type = msg.resource_type();
+		let resource_id = match msg {
 			DeploymentCreated {
 				deployment,
 				running_details,
 			} => {
+				let deployment_id = deployment.id;
 				self.create_deployment_in_database(&mut transaction, deployment, running_details)
 					.await?;
+				deployment_id
 			}
 			DeploymentUpdated {
 				deployment,
 				running_details,
 			} => {
+				let deployment_id = deployment.id;
 				self.delete_deployment_in_database(&mut transaction, deployment.id)
 					.await?;
 				self.create_deployment_in_database(&mut transaction, deployment, running_details)
 					.await?;
+				deployment_id
 			}
 			DeploymentDeleted { id } => {
 				self.delete_deployment_in_database(&mut transaction, id)
 					.await?;
+				id
 			}
-		}
+		};
+
+		transaction.commit().await?;
+
+		self.registry
+			.entry(resource_id)
+			.or_insert_with(|| {
+				ResourceExecutorTask::new(resource_id, resource_type, self.state.clone())
+			})
+			.value_mut()
+			.ensure_running()
+			.notify_update();
 
 		Ok(())
 	}

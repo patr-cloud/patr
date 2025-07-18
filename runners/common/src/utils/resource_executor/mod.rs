@@ -1,7 +1,7 @@
-use std::marker::PhantomData;
+use std::{marker::PhantomData, sync::Arc};
 
 use models::rbac::ResourceType;
-use tokio::task::JoinHandle;
+use tokio::{sync::Notify, task::JoinHandle};
 use tokio_util::sync::CancellationToken;
 
 use crate::prelude::*;
@@ -28,6 +28,9 @@ where
 	runner_executor: PhantomData<E>,
 	/// The cancellation token that will be used to cancel the task.
 	cancellation_token: CancellationToken,
+	/// The update notifier that will be used to notify the task when the
+	/// resource is updated.
+	update_notifier: Arc<Notify>, // TODO: Is there any way to not use an Arc here?
 }
 
 impl<E> ResourceExecutorTask<E>
@@ -40,19 +43,22 @@ where
 		let cancellation_token = crate::runner::GLOBAL_CANCEL_TOKEN
 			.get_or_init(CancellationToken::new)
 			.child_token();
+		let update_notifier = Arc::new(Notify::new());
 		let task = Self::start_task(
 			resource_id,
 			resource_type,
 			state.clone(),
 			cancellation_token.clone(),
+			update_notifier.clone(),
 		);
 		Self {
 			resource_id,
-			runner_executor: PhantomData,
 			resource_type,
 			state,
 			task,
+			runner_executor: PhantomData,
 			cancellation_token,
+			update_notifier,
 		}
 	}
 
@@ -80,7 +86,7 @@ where
 	}
 
 	/// Ensures that the task is running. If it is not running, then start it.
-	pub(crate) fn ensure_running(&mut self) {
+	pub(crate) fn ensure_running(&mut self) -> &mut Self {
 		// Ensure that the task is running. If it is not running, then start it.
 		if self.task.is_finished() {
 			self.task = Self::start_task(
@@ -88,8 +94,17 @@ where
 				self.resource_type,
 				self.state.clone(),
 				self.cancellation_token.clone(),
+				self.update_notifier.clone(),
 			);
 		}
+		self
+	}
+
+	/// Notifies the task that the resource has been updated.
+	/// This will wake up the task and it will check for updates.
+	#[tracing::instrument(skip(self), fields(resource_id = %self.resource_id))]
+	pub(crate) fn notify_update(&self) {
+		self.update_notifier.notify_waiters();
 	}
 
 	/// Starts the resource executor task. This will be used to start the task
@@ -99,16 +114,24 @@ where
 		resource_type: ResourceType,
 		state: AppState<E>,
 		cancellation_token: CancellationToken,
+		update_notifier: Arc<Notify>,
 	) -> JoinHandle<()> {
 		tokio::spawn(async move {
 			let resource_id = resource_id;
 			let resource_type = resource_type;
 			let state = state;
 			let cancellation_token = cancellation_token;
+			let update_notifier = update_notifier;
 
 			match resource_type {
 				ResourceType::Deployment => {
-					deployment::handle_deployment(resource_id, state, cancellation_token).await;
+					deployment::handle_deployment(
+						resource_id,
+						state,
+						cancellation_token,
+						update_notifier,
+					)
+					.await;
 				}
 				ResourceType::Workspace |
 				ResourceType::Project |

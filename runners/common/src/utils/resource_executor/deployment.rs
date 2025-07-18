@@ -1,7 +1,8 @@
-use std::{collections::BTreeMap, time::Duration};
+use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
+use futures::future::{self, Either};
 use models::api::workspace::deployment::*;
-use tokio::time;
+use tokio::{sync::Notify, time};
 use tokio_util::sync::CancellationToken;
 
 use crate::prelude::*;
@@ -12,6 +13,7 @@ pub(super) async fn handle_deployment<E>(
 	deployment_id: Uuid,
 	state: AppState<E>,
 	cancellation_token: CancellationToken,
+	update_notifier: Arc<Notify>,
 ) where
 	E: RunnerExecutor + Send + 'static,
 {
@@ -22,6 +24,7 @@ pub(super) async fn handle_deployment<E>(
 			executor,
 			state.clone(),
 			&cancellation_token,
+			&update_notifier,
 		)
 		.await;
 
@@ -44,25 +47,56 @@ async fn handle_deployment_with_error<E>(
 	executor: E,
 	state: AppState<E>,
 	cancellation_token: &CancellationToken,
+	update_notifier: &Notify,
 ) -> Result<!, RunnerError>
 where
 	E: RunnerExecutor + Send + 'static,
 {
-	// TODO: Get notified when the deployment is updated on the db
+	let mut get_deployment_status_future = Box::pin(executor.next_deployment_status(deployment_id));
+	let mut update_notifier_future = Box::pin(update_notifier.notified());
+
 	loop {
-		// Keep checking for the status of the deployment and
-		// update the database
+		// Keep checking for the status of the deployment and update the database
+		trace!("Checking deployment status for {}", deployment_id);
 
-		let running_status = executor
-			.get_deployment_status(deployment_id)
+		let running_status = future::select(get_deployment_status_future, update_notifier_future)
 			.with_cancel_check_of(cancellation_token)
-			.await??;
+			.await?;
 
-		let (deployment, running_details) =
-			get_local_deployment_info(&state.database, deployment_id).await?;
+		// What is it right now?
+		let running_status = match running_status {
+			Either::Left((status, future)) => {
+				// The running deployment has changed. Check what's on the db and update
+				// accordingly.
+
+				get_deployment_status_future =
+					Box::pin(executor.next_deployment_status(deployment_id));
+				update_notifier_future = future;
+
+				status
+			}
+			Either::Right(((), future)) => {
+				// The notifier told us that the db has changed. Get the current running status
+				// and check that against the db
+
+				get_deployment_status_future = future;
+				update_notifier_future = Box::pin(update_notifier.notified());
+
+				executor.get_deployment_status(deployment_id).await
+			}
+		}?;
+
+		// What is it supposed to be as per the db?
+		// TODO handle deletes
+		let deployment_status = get_local_deployment_status(&state.database, deployment_id).await?;
+
+		debug!(
+			"Deployment {} is currently {} but is supposed to be {} as per the database",
+			deployment_id, running_status, deployment_status
+		);
 
 		// TODO is this really the right way?
-		match (running_status, deployment.status) {
+		match (running_status, deployment_status) {
 			(DeploymentStatus::Deploying, DeploymentStatus::Deploying) |
 			(DeploymentStatus::Errored, DeploymentStatus::Errored) |
 			(DeploymentStatus::Running, DeploymentStatus::Running) |
@@ -70,27 +104,38 @@ where
 			(DeploymentStatus::Unreachable, DeploymentStatus::Unreachable) => {
 				// If the status is the same, we don't need to do anything
 				// just continue the loop
+				continue;
 			}
-			// If the db status is unreachable but the deployment is anything else,
-			// we need to update the db
 			(running_status, DeploymentStatus::Unreachable) => {
-				todo!("Update the db to {running_status}");
+				// If the db status is unreachable but the deployment is anything else,
+				// we need to update the db
+				todo!("Update the db to {running_status} along with upstream, if managed");
 			}
-			// If the running status is unreachable, we need to update the db regardless of what it
-			// currently is
 			(DeploymentStatus::Unreachable, _) |
-			// If the db thinks it's currently running but it's still deploying or errored
+			(DeploymentStatus::Errored, DeploymentStatus::Deploying) |
+			(DeploymentStatus::Deploying, DeploymentStatus::Errored) |
 			(
 				DeploymentStatus::Deploying | DeploymentStatus::Errored,
 				DeploymentStatus::Running,
 			) |
-			// If the db thinks it's errored but the deployment is coming back up
-			(DeploymentStatus::Deploying, DeploymentStatus::Errored) |
-			// If the db thinks it's deploying or errored but the deployment is up and running
 			(
 				DeploymentStatus::Running,
 				DeploymentStatus::Deploying | DeploymentStatus::Errored,
 			) => {
+				// If the running status is unreachable, we need to update the db regardless of
+				// what it currently is
+				// OR
+				// If the db thinks it's currently running but it's still deploying or errored
+				// OR
+				// If the db thinks it's errored but the deployment is coming back up
+				// OR
+				// If the db thinks it's deploying or errored but the deployment is up and
+				// running,
+				// OR
+				// If the deployment is errored, but the db says it's deploying, then:
+
+				info!("Updating database to {}", running_status);
+
 				// force the db to be as per deployment
 				query(
 					r#"
@@ -107,30 +152,69 @@ where
 				.execute(&state.database)
 				.await?;
 			}
-			// If the deployment is just created or stopped, we need to update the db
+			(
+				DeploymentStatus::Deploying | DeploymentStatus::Running | DeploymentStatus::Errored,
+				DeploymentStatus::Stopped,
+			) => {
+				// If the db says it's stopped, but the deployment is either deploying or
+				// running or errored, stop it
+
+				info!("Deleting the deployment");
+
+				executor.delete_deployment(deployment_id).await?;
+			}
 			(
 				DeploymentStatus::Stopped,
-				DeploymentStatus::Deploying | DeploymentStatus::Errored | DeploymentStatus::Running,
+				DeploymentStatus::Deploying | DeploymentStatus::Running,
 			) |
-			(
-				_,
-				DeploymentStatus::Stopped | DeploymentStatus::Deploying,
-			) => {
-				// TODO force the deployment to be as per DB
+			(DeploymentStatus::Stopped, DeploymentStatus::Errored) => {
+				// If the deployment is stopped, but the db says it's supposed to be deploying
+				// or running, we need to start the deployment
+				// If the deployment is stopped, but the db says it's supposed to be errored,
+				// then the deployment was supposed to be running in the first place (or it
+				// couldn't have gotten into an errored state). So start the deployment
+
+				info!("Running the deployment");
+
+				let (deployment, running_details) =
+					get_local_deployment_info(&state.database, deployment_id).await?;
+				executor
+					.upsert_deployment(WithId::new(deployment_id, deployment), running_details)
+					.await?;
 			}
-		}
-		if deployment.status == DeploymentStatus::Running ||
-			deployment.status == DeploymentStatus::Deploying
-		{
-			executor
-				.upsert_deployment(WithId::new(deployment_id, deployment), running_details)
-				.await?;
 		}
 
 		if cancellation_token.is_cancelled() {
 			return Err(RunnerError::ExitSignalReceived);
 		}
 	}
+}
+
+async fn get_local_deployment_status(
+	database: &sqlx::Pool<DatabaseType>,
+	deployment_id: Uuid,
+) -> Result<DeploymentStatus, RunnerError> {
+	let row = query(
+		r#"
+		SELECT
+			status
+		FROM
+			deployment
+		WHERE
+			id = $1 AND
+			deleted IS NULL;
+		"#,
+	)
+	.bind(deployment_id)
+	.fetch_one(database)
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::RowNotFound => ErrorType::ResourceDoesNotExist,
+		err => err.into(),
+	})?;
+
+	row.try_get::<DeploymentStatus, _>("status")
+		.map_err(Into::into)
 }
 
 async fn get_local_deployment_info(

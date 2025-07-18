@@ -2,6 +2,8 @@
 //! incoming WebSocket connections from the Patr API. The runner is responsible
 //! for creating, updating, and deleting deployments in the given runner.
 
+use std::time::Duration;
+
 use bollard::Docker;
 use common::prelude::*;
 use futures::Stream;
@@ -82,5 +84,13 @@ impl RunnerExecutor for DockerRunner {
 				}
 			})
 			.unwrap_or(DeploymentStatus::Stopped))
+	}
+
+	async fn next_deployment_status(
+		&self,
+		deployment_id: Uuid,
+	) -> Result<DeploymentStatus, RunnerError> {
+		tokio::time::sleep(Duration::from_secs(5)).await;
+		self.get_deployment_status(deployment_id).await
 	}
 }

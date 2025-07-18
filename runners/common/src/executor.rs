@@ -80,4 +80,12 @@ pub trait RunnerExecutor: Sized {
 		&self,
 		deployment_id: Uuid,
 	) -> impl Future<Output = Result<DeploymentStatus, RunnerError>> + Send;
+
+	/// This function listens for changes to the deployment status and returns
+	/// the new status when it's updated. This can be used to watch for status
+	/// changes without polling.
+	fn next_deployment_status(
+		&self,
+		deployment_id: Uuid,
+	) -> impl Future<Output = Result<DeploymentStatus, RunnerError>> + Send;
 }

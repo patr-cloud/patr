@@ -627,6 +627,7 @@ where
 				ResourceExecutorTask::new_deployment(deployment_id, self.state.clone())
 			})
 			.value_mut()
-			.ensure_running();
+			.ensure_running()
+			.notify_update();
 	}
 }
