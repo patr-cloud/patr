@@ -3,10 +3,9 @@
 
 **/dist/
 
-/config/*
-!/config/*.sample.*
+/config/*.json
+!/config/*.sample.json
 !/config/tailwind.config.js
-!/config/grafana.ini
 .env
 .localData
 .[Dd][Ss]_[Ss]tore

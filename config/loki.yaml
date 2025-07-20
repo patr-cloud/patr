@@ -1,0 +1,65 @@
+
+auth_enabled: false
+
+target: all
+
+server:
+  http_listen_address: "0.0.0.0"
+  http_listen_port: 3100
+
+common:
+  path_prefix: /var/lib/loki
+  replication_factor: 1
+
+memberlist:
+  join_members: []
+
+ingester:
+  lifecycler:
+    address: 127.0.0.1
+    ring:
+      kvstore:
+        store: inmemory
+      replication_factor: 1
+    final_sleep: 0s
+  chunk_idle_period: 1h
+  max_chunk_age: 1h
+  chunk_target_size: 1048576
+  chunk_retain_period: 30s
+
+storage_config:
+  tsdb_shipper:
+    active_index_directory: /var/lib/loki/tsdb_shipper/active_index
+    cache_location: /var/lib/loki/tsdb_shipper/cache
+  filesystem:
+    directory: /var/lib/loki/chunks
+
+compactor:
+  working_directory: /var/lib/loki/compactor
+
+schema_config:
+  configs:
+    - from: 2023-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  retention_period: 168h
+  allow_structured_metadata: true
+  ingestion_rate_mb: 64
+  ingestion_burst_size_mb: 128
+  volume_enabled: true
+
+ruler:
+  storage:
+    type: local
+    local:
+      directory: /var/lib/loki/rules
+  rule_path: /var/lib/loki/rules-temp
+  ring:
+    kvstore:
+      store: inmemory

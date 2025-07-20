@@ -87,12 +87,12 @@ pub mod prelude {
 }
 
 #[tokio::main]
-#[tracing::instrument]
 async fn main() {
 	use app::AppState;
-	use opentelemetry::trace::TracerProvider as _;
-	use opentelemetry_otlp::{Protocol, SpanExporter, WithExportConfig};
-	use opentelemetry_sdk::{Resource, trace::SdkTracerProvider};
+	use opentelemetry::{global, trace::TracerProvider as _};
+	use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
+	use opentelemetry_otlp::{LogExporter, Protocol, SpanExporter, WithExportConfig};
+	use opentelemetry_sdk::{Resource, logs::SdkLoggerProvider, trace::SdkTracerProvider};
 	use tracing::Level;
 	use tracing_opentelemetry::OpenTelemetryLayer;
 	use tracing_subscriber::{
@@ -105,6 +105,32 @@ async fn main() {
 
 	let config = utils::config::parse_config();
 
+	let logger_exporter = LogExporter::builder()
+		.with_tonic()
+		.with_endpoint(&config.opentelemetry.logs.endpoint)
+		.with_protocol(Protocol::Grpc)
+		.build()
+		.expect("Failed to build OpenTelemetry logging pipeline");
+
+	let logger_provider = SdkLoggerProvider::builder()
+		.with_batch_exporter(logger_exporter)
+		.with_resource(Resource::builder().with_service_name("Patr API").build())
+		.build();
+
+	let span_exporter = SpanExporter::builder()
+		.with_tonic()
+		.with_endpoint(&config.opentelemetry.tracing.endpoint)
+		.with_protocol(Protocol::Grpc)
+		.build()
+		.expect("Failed to install OpenTelemetry tracing pipeline");
+
+	let tracer_provider = SdkTracerProvider::builder()
+		.with_batch_exporter(span_exporter)
+		.with_resource(Resource::builder().with_service_name("Patr API").build())
+		.build();
+
+	global::set_tracer_provider(tracer_provider.clone());
+
 	tracing_subscriber::registry()
 		.with(
 			FmtLayer::new()
@@ -114,6 +140,8 @@ async fn main() {
 						.with_ansi(true)
 						.with_file(false)
 						.without_time()
+						.with_target(false)
+						.with_source_location(false)
 						.compact(),
 				)
 				.with_filter(
@@ -131,21 +159,15 @@ async fn main() {
 				)),
 		)
 		.with(
-			OpenTelemetryLayer::new(
-				SdkTracerProvider::builder()
-					.with_batch_exporter(
-						SpanExporter::builder()
-							.with_http()
-							.with_endpoint(&config.opentelemetry.tracing.endpoint)
-							.with_protocol(Protocol::Grpc)
-							.build()
-							.expect("Failed to install OpenTelemetry tracing pipeline"),
-					)
-					.with_resource(Resource::builder().with_service_name("Patr API").build())
-					.build()
-					.tracer("Patr API"),
-			)
-			.with_filter(
+			OpenTelemetryLayer::new(tracer_provider.tracer("Patr API")).with_filter(
+				tracing_subscriber::filter::Targets::new()
+					.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
+					.with_target("frontend", LevelFilter::TRACE)
+					.with_target("models", LevelFilter::TRACE),
+			),
+		)
+		.with(
+			OpenTelemetryTracingBridge::new(&logger_provider).with_filter(
 				tracing_subscriber::filter::Targets::new()
 					.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
 					.with_target("frontend", LevelFilter::TRACE)
@@ -171,6 +193,11 @@ async fn main() {
 		.expect("error initializing database");
 
 	futures::future::join(app::serve(&state), redis_publisher::run(&state)).await;
+
+	_ = logger_provider.force_flush();
+	_ = tracer_provider.force_flush();
+	_ = logger_provider.shutdown();
+	_ = tracer_provider.shutdown();
 }
 
 /// Listen for the exit signal and stop the server when the signal is received.

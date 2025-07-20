@@ -4,6 +4,8 @@ networks:
 volumes:
   postgres-data:
   grafana-data:
+  tempo-data:
+  loki-data:
 
 services:
   app:
@@ -62,28 +64,57 @@ services:
           - redis
 
   tracing:
-    image: jaegertracing/all-in-one:1
+    image: grafana/tempo:latest
+    command: "-target=scalable-single-binary -config.file=/etc/tempo/tempo.yaml"
+    user: root
     restart: unless-stopped
     expose:
+      - 3200
+      - 9095
       - 4317
       - 4318
-      - 16686
+    volumes:
+      - ../config/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo-data:/var/lib/tempo
     hostname: tracing
     networks:
       vpc:
         aliases:
           - tracing
 
+  # Forwards OpenTelemetry logs to Loki
   logs:
-    image: grafana/loki:3.2.0
+    image: otel/opentelemetry-collector:latest
     restart: unless-stopped
+    command: "--config=/etc/otel/config.yaml"
     expose:
-      - 3100
+      - 4317
+      - 4318
+    volumes:
+      - ../config/otel-collector-config.yaml:/etc/otel/config.yaml:ro
     hostname: logs
     networks:
       vpc:
         aliases:
           - logs
+    depends_on:
+      - loki
+
+  loki:
+    image: grafana/loki:3.2.0
+    restart: unless-stopped
+    command: "-config.file=/etc/loki/loki.yaml"
+    user: root
+    expose:
+      - 3100
+    volumes:
+      - ../config/loki.yaml:/etc/loki/loki.yaml:ro
+      - loki-data:/var/lib/loki
+    hostname: loki
+    networks:
+      vpc:
+        aliases:
+          - loki
 
   metrics:
     image: grafana/mimir:2.13.0
@@ -104,6 +135,7 @@ services:
     environment:
       - GF_PATHS_CONFIG=/etc/grafana/grafana.ini
       - GF_PATHS_DATA=/var/lib/grafana
+      - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor
     volumes:
       - ../config/grafana.ini:/etc/grafana/grafana.ini:ro
       - grafana-data:/var/lib/grafana

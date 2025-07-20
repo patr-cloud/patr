@@ -128,7 +128,7 @@ pub async fn stream_runner_data_for_workspace(
 								else {
 									return;
 								};
-								debug!("Sending data down the pipe: {:#?}", data);
+								trace!("Sending data down the pipe: {:?}", data);
 								let Ok(_) = websocket.send(Message::Item(data)).await else {
 									debug!("Failed to send data to websocket");
 									break;

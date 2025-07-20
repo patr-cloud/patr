@@ -42,10 +42,10 @@
 	},
 	"opentelemetry": {
 		"tracing": {
-			"endpoint": "http://tracing:4317"
+			"endpoint": "http://tracing:4317/v1/traces"
 		},
 		"logs": {
-			"endpoint": "http://logs:3100"
+			"endpoint": "http://logs:4317/v1/logs"
 		},
 		"metrics": {
 			"endpoint": "http://metrics:8080",
