@@ -53,7 +53,7 @@ pub struct ManagedUrl {
 	pub is_configured: bool,
 }
 
-/// Manageg URL types
+/// Managed URL types
 #[derive(
 	Display,
 	Debug,
@@ -74,7 +74,8 @@ pub struct ManagedUrl {
 		not(target_arch = "wasm32"),
 		derive(sqlx::Type),
 		sqlx(type_name = "MANAGED_URL_TYPE", rename_all = "snake_case")
-	)
+	),
+	doc = "Managed URL types"
 )]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum ManagedUrlType {

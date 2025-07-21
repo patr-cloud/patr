@@ -819,7 +819,8 @@ impl WorkspacePermission {
 		not(target_arch = "wasm32"),
 		derive(sqlx::Type),
 		sqlx(type_name = "PERMISSION_TYPE", rename_all = "snake_case")
-	)
+	),
+	doc = "Represents the type of permission that is granted on a set of Resource IDs."
 )]
 pub enum ResourcePermissionType {
 	/// The user is allowed to access a set of Resource IDs. Any other
