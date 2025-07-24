@@ -20,6 +20,7 @@ use crate::prelude::*;
 /// A list of all possible resource types in Patr.
 #[derive(
 	Eq,
+	Ord,
 	Copy,
 	Hash,
 	Debug,
@@ -28,6 +29,7 @@ use crate::prelude::*;
 	EnumIter,
 	PartialEq,
 	Serialize,
+	PartialOrd,
 	EnumString,
 	EnumMessage,
 	Deserialize,

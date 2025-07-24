@@ -33,6 +33,16 @@ where
 			Self::Multiple(many) => many.contains(value),
 		}
 	}
+
+	/// Converts the `OneOrMore` into a vector. If it is a single value, it will
+	/// be wrapped in a vector. If it is already a list, it will be returned
+	/// as is.
+	pub fn into_vec(self) -> Vec<T> {
+		match self {
+			Self::One(one) => vec![one],
+			Self::Multiple(many) => many,
+		}
+	}
 }
 
 impl<T> PartialEq for OneOrMore<T>

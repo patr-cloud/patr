@@ -3,7 +3,7 @@ members              = ["api", "cli", "ingress", "frontend/common", "frontend/ma
 package.authors      = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
 package.description  = "Patr API and all it's dependencies"
 package.edition      = "2024"
-package.rust-version = "1.85"
+package.rust-version = "1.88"
 package.version      = "0.18.0"
 resolver             = "3"
 
@@ -67,6 +67,7 @@ matchit                        = { default-features = false, version = "0.8" }
 models                         = { default-features = false, path = "models" }
 monostate                      = { default-features = false, version = "0.1" }
 nix                            = { default-features = false, version = "0.30" }
+oci-client                     = { default-features = false, version = "0.15" }
 oci-spec                       = { default-features = false, version = "0.8" }
 open                           = { default-features = false, version = "5" }
 opentelemetry                  = { default-features = false, version = "0.30" }
@@ -88,6 +89,7 @@ serde                          = { default-features = false, version = "1" }
 serde_json                     = { default-features = false, version = "1" }
 serde_test                     = { default-features = false, version = "1" }
 serde_urlencoded               = { default-features = false, version = "0.7" }
+serde_yaml2                    = { default-features = false, version = "0.1" }
 sha2                           = { default-features = false, version = "0.10" }
 sqlx                           = { default-features = false, version = "0.8" }
 strum                          = { default-features = false, version = "0.27" }

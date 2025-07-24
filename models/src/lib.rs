@@ -7,8 +7,8 @@ pub mod api;
 pub mod ci;
 /// Any data that is sent to or from cloudflare (mostly KV)
 pub mod cloudflare;
-// / All infrastructure as code related structs and formats
-// pub mod iaac;
+/// All infrastructure as code related structs and formats
+pub mod iaac;
 /// All data related to permissions and RBAC data representation
 pub mod rbac;
 /// Utility functions and structs
@@ -50,6 +50,7 @@ pub mod prelude {
 			AppAuthentication,
 			Base64String,
 			BearerToken,
+			DeduplicatedIaacResourceExt,
 			GeoLocation,
 			ListOrder,
 			LoginId,

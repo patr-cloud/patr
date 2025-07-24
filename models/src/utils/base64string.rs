@@ -21,6 +21,14 @@ impl Base64String {
 	pub fn into_vec(self) -> Vec<u8> {
 		self.data
 	}
+
+	/// Create a new `Base64String` from a `String`.
+	#[must_use]
+	pub fn from_string(data: String) -> Self {
+		Self {
+			data: data.into_bytes(),
+		}
+	}
 }
 
 impl From<Vec<u8>> for Base64String {

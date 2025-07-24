@@ -1,4 +1,10 @@
-use std::{collections::BTreeMap, convert::Infallible};
+use std::{
+	collections::BTreeMap,
+	convert::Infallible,
+	fmt::Display,
+	hash::{Hash, Hasher},
+	str::FromStr,
+};
 
 use either::Either;
 use serde::{Deserialize, Serialize};
@@ -10,15 +16,25 @@ use crate::{
 		ExposedPortType,
 		PatrRegistry,
 	},
+	iaac::MaybeExternallySourced,
 	prelude::*,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+/// The IaaC definition for a deployment. This is basically the same as the
+/// [`Deployment`] struct, but with a few fields (like status, current live
+/// digest) not present, as they are not needed for the Iaac file, as well as
+/// other utilities for parsing strings easier.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct IaacDeployment {
-	pub name: String,
-	pub image: IaacDeploymentImage,
-	pub region: String,
+	/// The name of the deployment
+	pub name: MaybeExternallySourced<String>,
+	/// The image to use for the deployment. This can be a Patr registry image
+	/// or an external registry image.
+	pub image: MaybeExternallySourced<IaacDeploymentImage>,
+	/// Which runner to deploy the deployment to.
+	pub runner: MaybeExternallySourced<String>,
+	/// The machine type to use for the deployment.
 	#[serde(
 		alias = "spec",
 		alias = "specs",
@@ -26,56 +42,111 @@ pub struct IaacDeployment {
 		alias = "limits",
 		default
 	)]
-	pub machine_type: IaacDeploymentMachineType,
+	pub machine_type: MaybeExternallySourced<IaacDeploymentMachineType>,
+	/// Whether the deployment should be deployed on push to the repository
 	#[serde(default = "default_deploy_on_push")]
-	pub deploy_on_push: bool,
+	pub deploy_on_push: MaybeExternallySourced<bool>,
+	/// The minimum number of instances to run for the deployment.
 	#[serde(alias = "min-scale", alias = "minscale", default = "default_min_scale")]
-	pub min_horizontal_scale: u8,
+	pub min_horizontal_scale: MaybeExternallySourced<u16>,
+	/// The maximum number of instances to run for the deployment.
 	#[serde(alias = "max-scale", alias = "maxscale", default = "default_max_scale")]
-	pub max_horizontal_scale: u8,
+	pub max_horizontal_scale: MaybeExternallySourced<u16>,
+	/// The ports that the deployment exposes. This is a map of port numbers to
+	/// the type of port (HTTP, HTTPS, TCP, etc.).
 	#[serde(alias = "port")]
 	pub ports: IaacDeploymentPorts,
+	/// The environment variables that the deployment has. This is a map of
+	/// environment variable names to their values.
 	#[serde(default, alias = "env", alias = "envVars")]
 	pub environment_variables: IaacDeploymentEnvVars,
+	/// The startup probe for the deployment. This is used to check if the
+	/// deployment is ready to serve traffic.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub startup_probe: Option<DeploymentProbe>,
+	/// The liveness probe for the deployment. This is used to check if the
+	/// deployment is still alive and should be restarted if it is not.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub liveness_probe: Option<DeploymentProbe>,
+	/// The config mounts for the deployment. This is a map of config names to
+	/// the paths where the configs should be mounted in the deployment.
 	#[serde(alias = "configs", default, skip_serializing_if = "BTreeMap::is_empty")]
 	pub config_mounts: BTreeMap<String, String>,
 }
 
-fn default_deploy_on_push() -> bool {
-	true
+impl Hash for IaacDeployment {
+	fn hash<H: Hasher>(&self, state: &mut H) {
+		self.name.hash(state);
+	}
 }
 
-fn default_min_scale() -> u8 {
-	1
+/// The default value for the `deploy_on_push` field in the IaacDeployment.
+/// This is set to `true` by default, meaning that the deployment will be
+/// deployed on push to the repository.
+fn default_deploy_on_push() -> MaybeExternallySourced<bool> {
+	MaybeExternallySourced::Value(true)
 }
 
-fn default_max_scale() -> u8 {
-	2
+/// The default value for the `min_horizontal_scale` field in the
+/// IaacDeployment. This is set to `1` by default, meaning that the deployment
+/// will have at least one instance running.
+fn default_min_scale() -> MaybeExternallySourced<u16> {
+	MaybeExternallySourced::Value(1)
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+/// The default value for the `max_horizontal_scale` field in the
+/// IaacDeployment. This is set to `2` by default, meaning that the deployment
+/// will have at most two instances running.
+fn default_max_scale() -> MaybeExternallySourced<u16> {
+	MaybeExternallySourced::Value(2)
+}
+
+/// The Iaac deployment image that is used in the Iaac file. This can either be
+/// a Patr registry image or an external registry image. The Patr registry image
+/// is used for images that are hosted on the Patr registry, while the external
+/// registry image is used for images that are hosted on an external registry,
+/// such as Docker Hub.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(try_from = "&str", rename_all = "snake_case", untagged)]
 pub enum IaacDeploymentImage {
+	/// A Patr registry image, which is an image that is hosted on the Patr
+	/// registry.
 	PatrRegistry {
+		/// The Patr registry that the image is hosted on. This is always
+		/// `registry.patr.cloud`.
 		#[serde(alias = "server")]
 		registry: PatrRegistry,
+		/// The repository of the image. This can either be a UUID or a name.
 		#[serde(alias = "repo", with = "either::serde_untagged")]
 		repository: Either<Uuid, String>,
+		/// The tag of the image. This is always `latest` if not specified.
+		#[serde(default = "default_image_tag")]
 		tag: String,
 	},
+	/// An external registry image, which is an image that is hosted on an
+	/// external registry, such as Docker Hub.
 	ExternalRegistry {
+		/// The registry that the image is hosted on. This can be any valid
+		/// Docker registry, such as Docker Hub or a private registry.
 		#[serde(alias = "server")]
 		registry: String,
+		/// The repository of the image
 		#[serde(alias = "repo")]
 		repository: String,
+		/// The tag of the image. This is always `latest` if not specified.
+		#[serde(default = "default_image_tag")]
 		tag: String,
 	},
 }
 
+/// The default tag for the IaacDeploymentImage. This is set to `latest` by
+/// default, meaning that the image will be pulled with the `latest` tag if no
+/// tag is specified.
+fn default_image_tag() -> String {
+	"latest".to_string()
+}
+
+#[allow(clippy::infallible_try_from)]
 impl TryFrom<&str> for IaacDeploymentImage {
 	type Error = Infallible;
 
@@ -96,35 +167,44 @@ impl TryFrom<&str> for IaacDeploymentImage {
 			(first, second)
 		};
 
-		let (repository, tag) = if let Some(split) = repository.split_once(':') {
-			split
+		let (repository, tag) = if let Some((repo, tag)) = repository.split_once(':') {
+			(repo, tag.to_string())
 		} else {
-			(repository, "latest")
+			(repository, default_image_tag())
 		};
 
 		Ok(match registry {
 			"registry.patr.cloud" => IaacDeploymentImage::PatrRegistry {
 				registry: PatrRegistry,
-				repository: if let Ok(uuid) = Uuid::parse_str(repository) {
-					Either::Left(uuid)
-				} else {
-					Either::Right(repository.to_string())
-				},
-				tag: tag.to_string(),
+				repository: Either::Right(repository.to_string()),
+				tag,
 			},
 			registry => IaacDeploymentImage::ExternalRegistry {
 				registry: registry.to_string(),
 				repository: repository.to_string(),
-				tag: tag.to_string(),
+				tag,
 			},
 		})
 	}
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[allow(clippy::infallible_try_from)]
+impl FromStr for IaacDeploymentImage {
+	type Err = Infallible;
+
+	fn from_str(value: &str) -> Result<Self, Self::Err> {
+		IaacDeploymentImage::try_from(value)
+	}
+}
+
+/// The machine type for a deployment. This is used to define the CPU and RAM
+/// requirements for the deployment
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(try_from = "&str", rename_all = "snake_case", deny_unknown_fields)]
 pub struct IaacDeploymentMachineType {
+	/// The CPU requirement for the deployment.
 	pub cpu: IaacDeploymentCpu,
+	/// The RAM requirement for the deployment.
 	pub ram: IaacDeploymentRam,
 }
 
@@ -143,6 +223,20 @@ impl TryFrom<&str> for IaacDeploymentMachineType {
 	}
 }
 
+impl FromStr for IaacDeploymentMachineType {
+	type Err = &'static str;
+
+	fn from_str(value: &str) -> Result<Self, Self::Err> {
+		IaacDeploymentMachineType::try_from(value)
+	}
+}
+
+impl Display for IaacDeploymentMachineType {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{} {}", self.cpu, self.ram)
+	}
+}
+
 impl Default for IaacDeploymentMachineType {
 	fn default() -> Self {
 		Self {
@@ -152,7 +246,8 @@ impl Default for IaacDeploymentMachineType {
 	}
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+/// The CPU requirement for a deployment.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(try_from = "String", into = "String", deny_unknown_fields)]
 pub struct IaacDeploymentCpu(String);
 
@@ -161,42 +256,49 @@ impl TryFrom<String> for IaacDeploymentCpu {
 
 	fn try_from(value: String) -> Result<Self, Self::Error> {
 		if let Ok(num) = value.parse::<u8>() {
-			return Ok(Self(format!("{}vCPU", num)));
+			return Ok(Self(format!("{num}vCPU")));
 		}
 
 		if let Ok(num) = value.parse::<f32>() {
-			return Ok(Self(format!("{:.1}vCPU", num)));
+			return Ok(Self(format!("{num:.1}vCPU")));
 		}
 
 		let value = value.to_lowercase();
 
 		if let Some(Ok(num)) = value.strip_suffix("vcpu").map(|num| num.parse::<u8>()) {
-			return Ok(Self(format!("{}vCPU", num)));
+			return Ok(Self(format!("{num}vCPU")));
 		}
 
 		if let Some(Ok(num)) = value.strip_suffix("vcpu").map(|num| num.parse::<f32>()) {
-			return Ok(Self(format!("{:.1}vCPU", num)));
+			return Ok(Self(format!("{num:.1}vCPU")));
 		}
 
 		if let Some(Ok(num)) = value.strip_suffix("cpu").map(|num| num.parse::<u8>()) {
-			return Ok(Self(format!("{}vCPU", num)));
+			return Ok(Self(format!("{num}vCPU")));
 		}
 
 		if let Some(Ok(num)) = value.strip_suffix("cpu").map(|num| num.parse::<f32>()) {
-			return Ok(Self(format!("{:.1}vCPU", num)));
+			return Ok(Self(format!("{num:.1}vCPU")));
 		}
 
 		Err("invalid cpu requirement. Must be of the format `1vCPU`")
 	}
 }
 
-impl Into<String> for IaacDeploymentCpu {
-	fn into(self) -> String {
-		self.0
+impl From<IaacDeploymentCpu> for String {
+	fn from(cpu: IaacDeploymentCpu) -> String {
+		cpu.0
 	}
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+impl Display for IaacDeploymentCpu {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.0)
+	}
+}
+
+/// The RAM requirement for a deployment.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(try_from = "String", into = "String", deny_unknown_fields)]
 pub struct IaacDeploymentRam(u64);
 
@@ -258,18 +360,18 @@ impl TryFrom<String> for IaacDeploymentRam {
 	}
 }
 
-impl Into<String> for IaacDeploymentRam {
-	fn into(self) -> String {
-		let Self(bytes) = self;
+impl From<IaacDeploymentRam> for String {
+	fn from(ram: IaacDeploymentRam) -> String {
+		let IaacDeploymentRam(bytes) = ram;
 
 		// GB
-		if bytes % 1000_000_000 == 0 {
-			return format!("{}GB RAM", bytes / 1000_000_000);
+		if bytes.is_multiple_of(1_000_000_000) {
+			return format!("{}GB RAM", bytes / 1_000_000_000);
 		}
 
 		// GiB
 		if bytes >= (1024 * 1024 * 1024) {
-			return if bytes % (1024 * 1024 * 1024) == 0 {
+			return if bytes.is_multiple_of(1024 * 1024 * 1024) {
 				format!("{}GiB RAM", bytes / (1024 * 1024 * 1024))
 			} else {
 				format!(
@@ -280,13 +382,13 @@ impl Into<String> for IaacDeploymentRam {
 		}
 
 		// MB
-		if bytes % 1000_000 == 0 {
-			return format!("{}MB RAM", bytes / 1000_000);
+		if bytes.is_multiple_of(1_000_000) {
+			return format!("{}MB RAM", bytes / 1_000_000);
 		}
 
 		// MiB
 		if bytes >= (1024 * 1024) {
-			return if bytes % (1024 * 1024) == 0 {
+			return if bytes.is_multiple_of(1024 * 1024) {
 				format!("{}MiB RAM", bytes / (1024 * 1024))
 			} else {
 				format!("{:.1}MiB RAM", (bytes as f64) / (1024f64 * 1024f64))
@@ -294,26 +396,63 @@ impl Into<String> for IaacDeploymentRam {
 		}
 
 		// KB
-		if bytes % 1000 == 0 {
+		if bytes.is_multiple_of(1000) {
 			return format!("{}KB RAM", bytes / 1000);
 		}
 
 		// KiB
 		if bytes >= (1024) {
-			return if bytes % 1024 == 0 {
+			return if bytes.is_multiple_of(1024) {
 				format!("{}KiB RAM", bytes / 1024)
 			} else {
 				format!("{:.1}KiB RAM", (bytes as f64) / 1024f64)
 			};
 		}
 
-		format!("{}B RAM", bytes)
+		format!("{bytes}B RAM")
 	}
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+impl Display for IaacDeploymentRam {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.0)
+	}
+}
+
+/// A helper type to parse the ports of a deployment. This is a map of port
+/// numbers to the type of port (HTTP, HTTPS, TCP, etc.). The port numbers
+/// are stored as `StringifiedU16`, which is a wrapper around `u16`
+/// that implements `Serialize` and `Deserialize` to ensure that the port
+/// numbers are always serialized as strings.
+///
+/// The allowed formats for the ports are:
+/// - `8080: http`
+/// - `8080=HTTP`
+/// - `8080/http`
+/// - `8080` (defaults to HTTP)
+///
+/// The type of the port can be one of:
+/// - `http`
+/// - `tcp`
+/// - `udp`
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(try_from = "OneOrMore<String>")]
 pub struct IaacDeploymentPorts(BTreeMap<StringifiedU16, ExposedPortType>);
+
+impl IaacDeploymentPorts {
+	/// Get the inner map of the IaacDeploymentPorts.
+	pub fn into_inner(self) -> BTreeMap<StringifiedU16, ExposedPortType> {
+		self.0
+	}
+}
+
+impl FromStr for IaacDeploymentPorts {
+	type Err = &'static str;
+
+	fn from_str(value: &str) -> Result<Self, Self::Err> {
+		IaacDeploymentPorts::try_from(OneOrMore::One(value.to_string()))
+	}
+}
 
 impl TryFrom<OneOrMore<String>> for IaacDeploymentPorts {
 	type Error = &'static str;
@@ -339,45 +478,75 @@ impl TryFrom<OneOrMore<String>> for IaacDeploymentPorts {
 
 			if let Some((port, r#type)) = port.split_once('=') {
 				return Ok((
-					port.parse::<u16>()
+					port.trim()
+						.parse::<u16>()
 						.map_err(|_| "port must be of the format 8080=http")?,
 					r#type
+						.trim()
 						.to_lowercase()
 						.parse::<ExposedPortType>()
 						.map_err(|_| "port must be of the format 8080=http")?,
 				));
 			}
 
-			Err("port must be of the format 8080: http or 8080=HTTP")
+			if let Some((port, r#type)) = port.split_once('/') {
+				return Ok((
+					port.trim()
+						.parse::<u16>()
+						.map_err(|_| "port must be of the format 8080/http")?,
+					r#type
+						.trim()
+						.to_lowercase()
+						.parse::<ExposedPortType>()
+						.map_err(|_| "port must be of the format 8080/http")?,
+				));
+			}
+
+			Err("port must be of the format 8080: http, 8080=HTTP or 8080/http")
 		}
 
-		match value {
-			OneOrMore::One(string) => {
-				vec![string]
-			}
-			OneOrMore::Multiple(many) => many,
-		}
-		.into_iter()
-		.map(parse_one_port)
-		.map(|port| port.map(|(port, r#type)| (StringifiedU16::from(port), r#type)))
-		.collect::<Result<_, _>>()
-		.map(Self)
+		value
+			.into_iter()
+			.map(parse_one_port)
+			.map(|port| port.map(|(port, r#type)| (StringifiedU16::from(port), r#type)))
+			.collect::<Result<_, _>>()
+			.map(Self)
 	}
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+/// A helper type to parse the environment variables of a deployment. This is a
+/// map of environment variable names to their values. The environment variables
+/// can be defined in the Iaac file in the following formats:
+/// - `KEY=VALUE`
+///
+/// An environment variable value can be either a raw string or a reference to a
+/// secret.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(try_from = "Vec<String>")]
-pub struct IaacDeploymentEnvVars(BTreeMap<String, EnvironmentVariableValue>);
+pub struct IaacDeploymentEnvVars(
+	BTreeMap<String, MaybeExternallySourced<EnvironmentVariableValue>>,
+);
+
+impl IaacDeploymentEnvVars {
+	/// Get the inner map of the IaacDeploymentEnvVars.
+	pub fn into_inner(self) -> BTreeMap<String, MaybeExternallySourced<EnvironmentVariableValue>> {
+		self.0
+	}
+}
 
 impl TryFrom<Vec<String>> for IaacDeploymentEnvVars {
 	type Error = &'static str;
 
 	fn try_from(value: Vec<String>) -> Result<Self, Self::Error> {
-		fn parse_one_env(env: String) -> Result<(String, EnvironmentVariableValue), &'static str> {
+		fn parse_one_env(
+			env: String,
+		) -> Result<(String, MaybeExternallySourced<EnvironmentVariableValue>), &'static str> {
 			if let Some((key, value)) = env.split_once('=') {
 				return Ok((
 					key.trim().to_string(),
-					EnvironmentVariableValue::String(value.trim().to_string()),
+					MaybeExternallySourced::Value(EnvironmentVariableValue::String(
+						value.trim().to_string(),
+					)),
 				));
 			}
 
@@ -396,11 +565,7 @@ impl TryFrom<Vec<String>> for IaacDeploymentEnvVars {
 mod tests {
 	use either::Either;
 
-	use crate::{
-		iaac::IaacDeploymentImage,
-		models::workspace::deployment::PatrRegistry,
-		utils::Uuid,
-	};
+	use crate::{api::workspace::deployment::PatrRegistry, iaac::IaacDeploymentImage, utils::Uuid};
 
 	#[test]
 	fn assert_iaac_deployment_image_parsing_works() {
@@ -477,7 +642,7 @@ mod tests {
 				"api:stable",
 				IaacDeploymentImage::ExternalRegistry {
 					registry: "docker.io".to_string(),
-					repository: "api".to_string(),
+					repository: "library/api".to_string(),
 					tag: "stable".to_string(),
 				},
 			),
@@ -485,7 +650,7 @@ mod tests {
 				"api",
 				IaacDeploymentImage::ExternalRegistry {
 					registry: "docker.io".to_string(),
-					repository: "api".to_string(),
+					repository: "library/api".to_string(),
 					tag: "latest".to_string(),
 				},
 			),

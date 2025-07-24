@@ -20,7 +20,15 @@ pub mod prelude {
 		app::{CommandOutput, OutputType},
 		commands::{AppArgs, GlobalArgs, GlobalCommand},
 		error::AppError,
-		utils::{AppState, ToJsonValue, TtyExpectable, WorkspacedArgs, constants, make_request},
+		utils::{
+			AppState,
+			IaacResolverExt,
+			ToJsonValue,
+			TtyExpectable,
+			WorkspacedArgs,
+			constants,
+			make_request,
+		},
 	};
 }
 

@@ -1,6 +1,6 @@
 use config::ConfigError;
 use headers::Error as HeaderError;
-use models::{ApiErrorResponse, ErrorType};
+use models::{ApiErrorResponse, ErrorType, iaac::IaacError};
 use reqwest::Error as ReqwestError;
 
 /// The error type for the CLI application. This is used to handle errors that
@@ -29,6 +29,12 @@ pub enum AppError {
 	/// An error that occurred while trying to save the CLI state.
 	#[error("error saving CLI state: {0}")]
 	ConfigWriteError(ConfigError),
+	/// An error that occurred while trying to parse an Iaac file.
+	#[error("error parsing Iaac file: {0}")]
+	IaacParseError(String),
+	/// An error that occurred while applying an Iaac file.
+	#[error("error applying Iaac file: {0}")]
+	IaacError(#[from] IaacError),
 }
 
 impl From<ApiErrorResponse> for AppError {

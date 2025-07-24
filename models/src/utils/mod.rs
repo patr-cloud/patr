@@ -15,6 +15,10 @@ mod base64string;
 /// A set of constant booleans that are used to ensure that the values are
 /// forced to be either true or false.
 mod bools;
+/// A set of extension traits that provide additional functionality to the
+/// [`IaacResource`] type, such as deduplication of resources based on their
+/// names.
+mod ext_trait;
 /// Represents a location on the planet. This is used to represent the location
 /// of a user, a login, etc. Basically just a latitude and longitude.
 mod geo_location;
@@ -52,6 +56,7 @@ pub use self::{
 	axum_response::*,
 	base64string::*,
 	bools::*,
+	ext_trait::*,
 	geo_location::*,
 	header_utils::*,
 	middlewares::*,

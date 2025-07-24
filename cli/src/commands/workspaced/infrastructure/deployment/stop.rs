@@ -1,5 +1,5 @@
 use clap::Args as ClapArgs;
-use inquire::{Select, Text};
+use inquire::Select;
 use models::api::{user::*, workspace::deployment::*};
 
 use crate::prelude::*;
@@ -33,13 +33,7 @@ pub async fn execute(
 	let workspace_id = if let Some(workspace_id) = current_workspace {
 		workspace_id
 	} else {
-		let workspace_name = global_args.workspace.unwrap_or_else(|| {
-			Text::new("Please enter the workspace you want to use:")
-				.prompt()
-				.expect_tty("Failed to read workspace ID")
-		});
-
-		make_request(
+		let workspaces = make_request(
 			ApiRequest::<ListUserWorkspacesRequest>::builder()
 				.path(ListUserWorkspacesPath)
 				.headers(ListUserWorkspacesRequestHeaders {
@@ -52,13 +46,27 @@ pub async fn execute(
 		)
 		.await?
 		.body
-		.workspaces
-		.into_iter()
-		.find(|workspace| {
-			workspace.id.to_string() == workspace_name || workspace.name == workspace_name
-		})
-		.unwrap_or_else(|| panic!("No workspace found with ID or name: `{workspace_name}`"))
-		.id
+		.workspaces;
+
+		let workspace_name = global_args.workspace.unwrap_or_else(|| {
+			Select::new(
+				"Please select a workspace to use",
+				workspaces
+					.iter()
+					.map(|workspace| workspace.name.clone())
+					.collect(),
+			)
+			.prompt()
+			.expect_tty("Failed to read workspace ID")
+		});
+
+		workspaces
+			.into_iter()
+			.find(|workspace| {
+				workspace.id.to_string() == workspace_name || workspace.name == workspace_name
+			})
+			.unwrap_or_else(|| panic!("No workspace found with ID or name: `{workspace_name}`"))
+			.id
 	};
 
 	let mut deployments = vec![];
@@ -108,7 +116,6 @@ pub async fn execute(
 					.map(|deployment| &deployment.name)
 					.collect(),
 			)
-			.with_formatter(&|deployment| deployment.value.to_string())
 			.prompt()
 			.expect_tty("Failed to read deployment ID");
 

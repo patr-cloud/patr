@@ -21,6 +21,7 @@ clap               = { workspace = true, features = ["cargo", "default", "derive
 comfy-table        = { workspace = true, features = ["default"] }
 config             = { workspace = true, features = ["default"] }
 dirs               = { workspace = true, features = [] }
+either             = { workspace = true, features = ["serde"] }
 futures            = { workspace = true, features = ["default"] }
 headers            = { workspace = true, features = [] }
 http               = { workspace = true, features = ["default"] }
@@ -32,6 +33,7 @@ preprocess         = { workspace = true, features = [] }
 reqwest            = { workspace = true, features = ["default", "json"] }
 serde              = { workspace = true, features = ["default", "derive"] }
 serde_json         = { workspace = true, features = ["default"] }
+serde_yaml2        = { workspace = true, features = [] }
 thiserror          = { workspace = true, features = ["default"] }
 time               = { workspace = true, features = ["default", "serde-human-readable"] }
 tokio              = { workspace = true, features = ["default", "full"] }

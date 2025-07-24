@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, fmt::Display, str::FromStr};
+use std::{collections::BTreeMap, convert::Infallible, fmt::Display, str::FromStr};
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
 use time::OffsetDateTime;
@@ -167,6 +167,14 @@ impl EnvironmentVariableValue {
 			Self::String(value) => Some(value),
 			Self::Secret { .. } => None,
 		}
+	}
+}
+
+impl FromStr for EnvironmentVariableValue {
+	type Err = Infallible;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		Ok(Self::String(s.to_string()))
 	}
 }
 
