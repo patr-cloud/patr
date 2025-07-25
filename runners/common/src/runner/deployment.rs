@@ -86,9 +86,11 @@ where
 				ApiRequest::<ListDeploymentRequest>::builder()
 					.path(ListDeploymentPath { workspace_id })
 					.query(ListResourceQuery {
-						data: (),
+						sort: Default::default(),
+						search: (),
 						count: ListResourceQuery::DEFAULT_PAGE_SIZE,
 						page,
+						additional_query: (),
 					})
 					.headers(ListDeploymentRequestHeaders {
 						authorization: api_token.clone(),

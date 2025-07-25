@@ -97,7 +97,9 @@ impl IaacResolverExt<CreateDeploymentRequest> for IaacDeployment {
 									.query(ListResourceQuery {
 										page: start / ListResourceQuery::DEFAULT_PAGE_SIZE,
 										count: ListResourceQuery::DEFAULT_PAGE_SIZE,
-										data: (),
+										search: (),
+										sort: Default::default(),
+										additional_query: (),
 									})
 									.body(ListContainerRepositoriesRequest)
 									.build(),
@@ -160,7 +162,9 @@ impl IaacResolverExt<CreateDeploymentRequest> for IaacDeployment {
 					.query(ListResourceQuery {
 						page: start / ListResourceQuery::DEFAULT_PAGE_SIZE,
 						count: ListResourceQuery::DEFAULT_PAGE_SIZE,
-						data: (),
+						search: (),
+						sort: Default::default(),
+						additional_query: (),
 					})
 					.headers(ListRunnersForWorkspaceRequestHeaders {
 						user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
