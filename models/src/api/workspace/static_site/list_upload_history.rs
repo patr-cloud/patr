@@ -22,7 +22,7 @@ macros::declare_api_endpoint!(
 			permission: Permission::StaticSite(StaticSitePermission::View),
 		}
 	},
-	pagination = true,
+	listable_resource = StaticSiteUploadHistory,
 	response_headers = {
 		/// The total number of databases in the requested workspace
 		pub total_count: TotalCountHeader,

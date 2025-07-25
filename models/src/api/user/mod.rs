@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::prelude::*;
+
 /// All endpoints related to API tokens
 mod api_token;
 /// The endpoint to change the password of a user
@@ -50,7 +52,7 @@ pub struct UserPhoneNumber {
 /// This is not the entire user object, but only the information that is allowed
 /// to be public. For privacy reasons, things like their email address and phone
 /// number are not public.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
 #[serde(rename_all = "camelCase")]
 pub struct BasicUserInfo {
 	/// The username of the user. This is unique to the user.

@@ -14,7 +14,7 @@ macros::declare_api_endpoint!(
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,
 	},
-	pagination = true,
+	listable_resource = Secret,
 	authentication = {
 		AppAuthentication::<Self>::WorkspaceMembershipAuthenticator {
 			extract_workspace_id: |req| req.path.workspace_id

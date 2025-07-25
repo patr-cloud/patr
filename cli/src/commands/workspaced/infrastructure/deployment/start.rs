@@ -83,9 +83,9 @@ pub async fn execute(
 					authorization: token.clone(),
 					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 				})
-				.query(Paginated {
-					page: start / Paginated::DEFAULT_PAGE_SIZE,
-					count: Paginated::DEFAULT_PAGE_SIZE,
+				.query(ListResourceQuery {
+					page: start / ListResourceQuery::DEFAULT_PAGE_SIZE,
+					count: ListResourceQuery::DEFAULT_PAGE_SIZE,
 					data: (),
 				})
 				.body(ListDeploymentRequest)

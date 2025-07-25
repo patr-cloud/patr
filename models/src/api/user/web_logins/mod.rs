@@ -162,7 +162,7 @@ use crate::prelude::*;
 /// user's data gets leaked. That's a huge problem. So we need to make sure that
 /// we not only secure things for our users, but also inform them about security
 /// events that might affect their account.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ListableResource)]
 #[serde(rename_all = "camelCase")]
 pub struct UserWebLogin {
 	/// The time at which this login expires. If the expiry has elapsed the user

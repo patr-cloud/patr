@@ -12,11 +12,14 @@ pub async fn list_users_in_workspace(
 		request:
 			ProcessedApiRequest {
 				path: ListUsersInWorkspacePath { workspace_id },
-				query: Paginated {
-					data: (),
-					count,
-					page,
-				},
+				query:
+					ListResourceQuery {
+						sort: sort_order,
+						search: filter,
+						count,
+						page,
+						additional_query: (),
+					},
 				headers:
 					ListUsersInWorkspaceRequestHeaders {
 						authorization: _,

@@ -10,7 +10,7 @@ macros::declare_api_endpoint!(
 		/// The domain ID
 		pub domain_id: Uuid,
 	},
-	pagination = true,
+	listable_resource = PatrDomainDnsRecord,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

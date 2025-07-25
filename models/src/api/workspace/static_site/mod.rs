@@ -35,10 +35,10 @@ pub use self::{
 	upload_static_site::*,
 };
 use super::deployment::DeploymentStatus;
-use crate::utils::Uuid;
+use crate::prelude::*;
 
 /// Static site
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
 #[serde(rename_all = "camelCase")]
 pub struct StaticSite {
 	/// Name of the static site
@@ -67,7 +67,7 @@ pub struct StaticSiteDetails {
 }
 
 /// Static site upload history
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
 #[serde(rename_all = "camelCase")]
 pub struct StaticSiteUploadHistory {
 	/// The upload ID

@@ -21,7 +21,7 @@ pub use self::{
 /// Patr secrets which only contains the secret name and not the
 /// secret value. This is to ensure that Patr does not have
 /// access to any user sensitive information.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
 #[serde(rename_all = "camelCase")]
 pub struct Secret {
 	/// The name of the secret

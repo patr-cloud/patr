@@ -6,7 +6,8 @@ use crate::prelude::*;
 /// The response body for the
 /// [`ListContainerRepositoriesRequest`][super::ListContainerRepositoriesRequest]
 /// endpoint.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
+#[serde(rename_all = "camelCase")]
 pub struct ContainerRepositoryTagAndDigestInfo {
 	/// The tag of the repository
 	pub tag: String,
@@ -37,7 +38,7 @@ macros::declare_api_endpoint!(
 			permission: Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::View),
 		}
 	},
-	pagination = true,
+	listable_resource = ContainerRepositoryTagAndDigestInfo,
 	response_headers = {
 		/// The total number of container repositories in the requested workspace
 		pub total_count: TotalCountHeader,

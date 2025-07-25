@@ -38,6 +38,7 @@ convert_case                   = { default-features = false, version = "0.8" }
 cookie                         = { default-features = false, version = "0.18" }
 dashmap                        = { default-features = false, version = "6" }
 dirs                           = { default-features = false, version = "6" }
+docker                         = { default-features = false, path = "runners/docker" }
 either                         = { default-features = false, version = "1" }
 flate2                         = { default-features = false, version = "1" }
 frontend                       = { default-features = false, path = "frontend/common" }
@@ -143,7 +144,7 @@ strip     = true
 # The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name
 bin-package = "api"
 lib-package = "managed-frontend"
-name        = "dashboard"
+name        = "api"
 output-name = "dashboard"
 # The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
 site-root = "target/dashboard"

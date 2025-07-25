@@ -94,9 +94,9 @@ impl IaacResolverExt<CreateDeploymentRequest> for IaacDeployment {
 											constants::USER_AGENT_STRING,
 										),
 									})
-									.query(Paginated {
-										page: start / Paginated::DEFAULT_PAGE_SIZE,
-										count: Paginated::DEFAULT_PAGE_SIZE,
+									.query(ListResourceQuery {
+										page: start / ListResourceQuery::DEFAULT_PAGE_SIZE,
+										count: ListResourceQuery::DEFAULT_PAGE_SIZE,
 										data: (),
 									})
 									.body(ListContainerRepositoriesRequest)
@@ -157,9 +157,9 @@ impl IaacResolverExt<CreateDeploymentRequest> for IaacDeployment {
 			let response = make_request(
 				ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
 					.path(ListRunnersForWorkspacePath { workspace_id })
-					.query(Paginated {
-						page: start / Paginated::DEFAULT_PAGE_SIZE,
-						count: Paginated::DEFAULT_PAGE_SIZE,
+					.query(ListResourceQuery {
+						page: start / ListResourceQuery::DEFAULT_PAGE_SIZE,
+						count: ListResourceQuery::DEFAULT_PAGE_SIZE,
 						data: (),
 					})
 					.headers(ListRunnersForWorkspaceRequestHeaders {
@@ -193,6 +193,7 @@ impl IaacResolverExt<CreateDeploymentRequest> for IaacDeployment {
 			image_tag,
 			deploy_on_create: false,
 			runner,
+			// TODO how will machine type work?
 			machine_type: Uuid::parse_str(&self.machine_type.resolve_value()?.to_string()).unwrap(),
 			running_details: DeploymentRunningDetails {
 				deploy_on_push: self.deploy_on_push.resolve_value()?,

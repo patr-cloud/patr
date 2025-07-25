@@ -22,6 +22,7 @@ pub use self::{
 	remove_runner_from_workspace::*,
 	stream_runner_data_for_workspace::*,
 };
+use crate::prelude::*;
 
 /// Represents a runner for a Patr workspace.
 ///
@@ -32,7 +33,7 @@ pub use self::{
 /// runners are arbitrary code that executes the deployments, they can execute
 /// the deployments in any way they want. This includes running the deployments
 /// on a VM, kubernetes, or even on other `PaaS` providers.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
 #[serde(rename_all = "camelCase")]
 pub struct Runner {
 	/// The name of the runner

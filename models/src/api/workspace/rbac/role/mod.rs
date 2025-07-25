@@ -21,9 +21,10 @@ pub use self::{
 	list_users_for_role::*,
 	update_role::*,
 };
+use crate::prelude::*;
 
 /// The role metadata
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
 #[serde(rename_all = "camelCase")]
 pub struct Role {
 	/// The name of the role

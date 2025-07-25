@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumDiscriminants, EnumString, VariantNames};
 
+use crate::prelude::*;
+
 /// The endpoint to create a managed URL
 mod create_managed_url;
 /// The endpoint to delete a managed URL
@@ -21,23 +23,8 @@ pub use self::{
 };
 use crate::utils::Uuid;
 
-/// Which field to order the list by for paginated requests
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum ListOrderBy {
-	/// Order the list by the status of the resource
-	Status,
-	/// Order the list by the name of the resource
-	Name,
-	/// Order the list by when the resource was last updated
-	LastUpdated,
-	/// Order the list by when the resource was created
-	#[default]
-	Created,
-}
-
 /// Managed URL information
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagedUrl {
 	/// Subdomain of the URL

@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
+use crate::prelude::*;
+
 /// The endpoint to create a repository
 mod create_repository;
 /// The endpoint to delete a repository
@@ -50,7 +52,7 @@ pub struct ContainerRepositoryImageInfo {
 }
 /// Represents a repository of container images in Patr's in-build container
 /// registry.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
 #[serde(rename_all = "camelCase")]
 pub struct ContainerRepository {
 	/// The name of the repository.

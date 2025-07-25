@@ -63,7 +63,7 @@ pub struct DeploymentMachineType {
 }
 
 /// Deployment information
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct Deployment {

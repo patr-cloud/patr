@@ -47,7 +47,7 @@ pub mod prelude {
 			SecretPermission,
 			StaticSitePermission,
 		},
-		utils::{OneOrMore, Paginated, Uuid},
+		utils::{ListResourceQuery, OneOrMore, Uuid},
 	};
 	pub use tracing::{debug, error, info, instrument, trace, warn};
 

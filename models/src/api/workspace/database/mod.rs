@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::prelude::Uuid;
+use crate::prelude::*;
 
 /// The endpoint to create a database
 mod create_database;
@@ -87,7 +87,7 @@ pub enum DatabaseStatus {
 }
 
 /// Database information
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
 #[serde(rename_all = "camelCase")]
 pub struct Database {
 	/// Name of database entered by the user

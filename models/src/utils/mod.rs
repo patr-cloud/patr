@@ -26,6 +26,11 @@ mod geo_location;
 /// headers are present in a struct as well as provide what headers are required
 /// for an endpoint.
 mod header_utils;
+/// A set of utilities to parse a query param for the list route API. This route
+/// enforces a response header to be present, which provides the total number of
+/// items in the response, as well as adding other params like sorting,
+/// filtering, etc.
+mod list_resource_query;
 /// A set of middlewares that are used by the API to perform certain tasks, like
 /// authentication, audit logging, etc.
 mod middlewares;
@@ -33,10 +38,6 @@ mod middlewares;
 /// a value that can be either a single value or a list of values, such as
 /// audience in a JWT, a dependency string in a CI yaml file, etc.
 mod one_or_many;
-/// A set of utilities to parse a paginated response from the API. A paginated
-/// request enforces a response header to be present, which provides the total
-/// number of items in the response.
-mod paginated;
 /// A helper type that serializes and deserializes u16 values as strings. This
 /// is used for using u16 values as keys in a JSON object.
 mod stringified_u16;
@@ -59,14 +60,39 @@ pub use self::{
 	ext_trait::*,
 	geo_location::*,
 	header_utils::*,
+	list_resource_query::*,
 	middlewares::*,
 	one_or_many::*,
-	paginated::*,
 	stringified_u16::*,
 	tuple_utils::*,
 	uuid::*,
 	websocket::*,
 };
+
+/// Ordering of the list for paginated requests
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SortOrder {
+	/// Ascending order
+	Ascending,
+	/// Descending order
+	#[default]
+	Descending,
+}
+
+/// A trait that represents a type that can be checked for emptiness.
+/// This is used to provide a common interface for types that can be checked
+/// for emptiness, for not serializing empty values
+pub trait IsEmpty {
+	/// Returns true if the value is empty, false otherwise.
+	fn is_empty(&self) -> bool;
+}
+
+impl IsEmpty for () {
+	fn is_empty(&self) -> bool {
+		true
+	}
+}
 
 /// The function to validate if a password has:
 /// - A minimum of 8 characters
@@ -178,15 +204,4 @@ pub mod constants {
 	pub const DNS_RECORD_NAME_REGEX: &str = macros::verify_regex!(
 		r"^((([a-z0-9].)([a-z0-9\-]*){0,63}([a-z0-9].).)(\.([a-z0-9].)([a-z0-9\-_]*){0,63}([a-z0-9]*)))|\@$"
 	);
-}
-
-/// Ordering of the list for paginated requests
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum ListOrder {
-	/// Ascending order
-	Ascending,
-	/// Descending order
-	#[default]
-	Descending,
 }

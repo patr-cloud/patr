@@ -18,6 +18,9 @@ mod declare_stream_endpoint;
 mod generate_optional;
 /// A derive macro for the `HasHeaders` trait.
 mod has_headers;
+/// A derive macro to generate an enum of all fields and a search struct
+/// for a given struct.
+mod listable_resource;
 /// A proc macro for stripping whitespaces and newlines from SQL queries.
 mod query;
 /// A macro to generate a recursive enum iterator.
@@ -158,6 +161,34 @@ pub fn declare_app_route(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn declare_stream_endpoint(input: TokenStream) -> TokenStream {
 	declare_stream_endpoint::parse(input)
+}
+
+/// A derive macro that makes it easy to implement `ListableResource` for a
+/// struct. This macro generates an enum of all fields and a search struct for
+/// a given struct. The generated enum can be used to filter the results of a
+/// paginated request. The generated search struct can be used to filter the
+/// results of a paginated request as well.
+/// 
+/// ## Example usage:
+/// ```rust
+/// # use models::prelude::*;
+/// #[derive(ListableResource)]
+/// pub struct User {
+///     pub name: String,
+///     pub age: u32,
+/// }
+/// ```
+/// 
+/// This will generate an enum `UserFieldList` with the variants `Name` and `Age`,
+/// and a struct `UserSearch` with the fields `name` and `age`. The
+/// `UserFieldList` enum can be used to filter the results of a paginated request
+/// and the `UserSearch` struct can be used to filter the results of a paginated
+/// request as well. The generated enum and struct will also implement the
+/// `ListableResource` trait, which can be used to define the fields that can be
+/// used to sort the resource in a paginated request.
+#[proc_macro_derive(ListableResource)]
+pub fn listable_resource(input: TokenStream) -> TokenStream {
+	listable_resource::parse(input)
 }
 
 /// A derive macro that makes it easy to implement `HasHeader` for every single

@@ -10,11 +10,14 @@ pub async fn list_api_tokens(
 		request:
 			ProcessedApiRequest {
 				path: ListApiTokensPath,
-				query: Paginated {
-					data: (),
-					count,
-					page,
-				},
+				query:
+					ListResourceQuery {
+						sort: sort_order,
+						search: filter,
+						count,
+						page,
+						additional_query: (),
+					},
 				headers:
 					ListApiTokensRequestHeaders {
 						authorization: _,

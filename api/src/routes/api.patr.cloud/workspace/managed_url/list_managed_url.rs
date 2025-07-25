@@ -11,15 +11,12 @@ pub async fn list_managed_url(
 			ProcessedApiRequest {
 				path: ListManagedURLPath { workspace_id },
 				query:
-					Paginated {
-						data:
-							ListManagedURLQuery {
-								order, // TODO implement these
-								order_by,
-								filter,
-							},
+					ListResourceQuery {
+						sort: sort_order,
+						search: filter,
 						count,
 						page,
+						additional_query: (),
 					},
 				headers:
 					ListManagedURLRequestHeaders {

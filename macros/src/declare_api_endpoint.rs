@@ -37,7 +37,7 @@ pub struct ApiEndpoint {
 	/// The query params for the endpoint
 	query: Option<FieldsNamed>,
 	/// Whether the query is paginated or not.
-	paginate_query: Option<bool>,
+	listable_resource: Option<Ident>,
 	/// The body of the request.
 	request: Option<FieldsNamed>,
 	/// The required request headers for the endpoint.
@@ -85,7 +85,7 @@ impl Parse for ApiEndpoint {
 
 		let mut auth = None;
 		let mut query = None;
-		let mut paginate_query = None;
+		let mut listable_resource = None;
 		let mut request = None;
 		let mut request_headers = None;
 		let mut response_headers = None;
@@ -103,17 +103,13 @@ impl Parse for ApiEndpoint {
 
 					query = Some(input.parse()?);
 				}
-				"pagination" => {
-					if paginate_query.is_some() {
+				"listable_resource" => {
+					if listable_resource.is_some() {
 						return Err(Error::new(ident.span(), "Duplicate field"));
 					}
 					input.parse::<Token![=]>()?;
 
-					let Lit::Bool(lit) = input.parse()? else {
-						return Err(Error::new(input.span(), "Expected boolean value"));
-					};
-
-					paginate_query = Some(lit.value);
+					listable_resource = Some(input.parse()?);
 				}
 				"request_headers" => {
 					if request_headers.is_some() {
@@ -183,7 +179,7 @@ impl Parse for ApiEndpoint {
 			api_allowed,
 
 			query,
-			paginate_query,
+			listable_resource,
 			request,
 			request_headers,
 
@@ -207,7 +203,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 
 		auth,
 		query,
-		paginate_query,
+		listable_resource,
 		request_headers,
 		request,
 
@@ -247,18 +243,18 @@ pub fn parse(input: TokenStream) -> TokenStream {
 
 	let query_type_name = format_ident!("{}Query", name);
 	let query_name = if query.is_some() {
-		if paginate_query.unwrap_or(false) {
+		if let Some(ident) = listable_resource {
 			quote::quote! {
-				models::api::Paginated<#query_type_name>
+				models::api::ListResourceQuery<#ident, #query_type_name>
 			}
 		} else {
 			quote::quote! {
 				#query_type_name
 			}
 		}
-	} else if paginate_query.unwrap_or(false) {
+	} else if let Some(ident) = listable_resource {
 		quote::quote! {
-			models::api::Paginated<()>
+			models::api::ListResourceQuery<#ident, ()>
 		}
 	} else {
 		quote::quote! {

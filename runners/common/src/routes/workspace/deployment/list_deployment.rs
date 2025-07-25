@@ -11,7 +11,7 @@ pub async fn list_deployment(
 		request:
 			ProcessedApiRequest {
 				path: ListDeploymentPath { workspace_id: _ },
-				query: Paginated {
+				query: ListResourceQuery {
 					data: (),
 					count,
 					page,

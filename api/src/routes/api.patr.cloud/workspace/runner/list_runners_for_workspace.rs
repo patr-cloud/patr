@@ -9,11 +9,14 @@ pub async fn list_runners_for_workspace(
 		request:
 			ProcessedApiRequest {
 				path: ListRunnersForWorkspacePath { workspace_id },
-				query: Paginated {
-					data: (),
-					count,
-					page,
-				},
+				query:
+					ListResourceQuery {
+						sort: sort_order,
+						search: filter,
+						count,
+						page,
+						additional_query: (),
+					},
 				headers:
 					ListRunnersForWorkspaceRequestHeaders {
 						authorization: _,

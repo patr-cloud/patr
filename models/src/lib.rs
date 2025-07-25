@@ -19,6 +19,7 @@ pub mod utils;
 /// of things from different modules.
 pub mod prelude {
 	pub use headers::UserAgent;
+	pub(crate) use macros::ListableResource;
 	pub use preprocess;
 	pub use tracing::{debug, error, info, instrument, trace, warn};
 
@@ -52,10 +53,11 @@ pub mod prelude {
 			BearerToken,
 			DeduplicatedIaacResourceExt,
 			GeoLocation,
-			ListOrder,
+			IsEmpty,
+			ListResourceQuery,
 			LoginId,
 			OneOrMore,
-			Paginated,
+			SortOrder,
 			StringifiedU16,
 			TotalCountHeader,
 			Uuid,

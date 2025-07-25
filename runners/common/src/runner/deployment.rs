@@ -85,9 +85,9 @@ where
 			let response = client::make_request(
 				ApiRequest::<ListDeploymentRequest>::builder()
 					.path(ListDeploymentPath { workspace_id })
-					.query(Paginated {
+					.query(ListResourceQuery {
 						data: (),
-						count: Paginated::DEFAULT_PAGE_SIZE,
+						count: ListResourceQuery::DEFAULT_PAGE_SIZE,
 						page,
 					})
 					.headers(ListDeploymentRequestHeaders {
@@ -101,7 +101,7 @@ where
 			.await?
 			.map_err(|err| err.body.error)?;
 
-			if page * Paginated::DEFAULT_PAGE_SIZE >= response.headers.total_count.0 {
+			if page * ListResourceQuery::DEFAULT_PAGE_SIZE >= response.headers.total_count.0 {
 				break;
 			}
 

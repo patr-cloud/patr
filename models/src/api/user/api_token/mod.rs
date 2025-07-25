@@ -41,7 +41,7 @@ use crate::rbac::WorkspacePermission;
 ///
 /// I mean, if we're anyway gonna store everything in the audit log, then why
 /// store anything in the login ID table? Ehh, idk.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
 #[serde(rename_all = "camelCase")]
 pub struct UserApiToken {
 	/// A user-friendly name for the token. This is used to identify the token

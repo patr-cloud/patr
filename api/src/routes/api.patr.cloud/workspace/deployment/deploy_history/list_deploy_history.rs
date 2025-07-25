@@ -13,11 +13,14 @@ pub async fn list_deploy_history(
 					workspace_id,
 					deployment_id,
 				},
-				query: Paginated {
-					data: (),
-					count,
-					page,
-				},
+				query:
+					ListResourceQuery {
+						sort: sort_order,
+						search: filter,
+						count,
+						page,
+						additional_query: (),
+					},
 				headers:
 					ListDeploymentDeployHistoryRequestHeaders {
 						authorization: _,

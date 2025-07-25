@@ -13,11 +13,14 @@ pub async fn list_all_roles(
 		request:
 			ProcessedApiRequest {
 				path: ListAllRolesPath { workspace_id },
-				query: Paginated {
-					data: (),
-					count,
-					page,
-				},
+				query:
+					ListResourceQuery {
+						sort: sort_order,
+						search: filter,
+						count,
+						page,
+						additional_query: (),
+					},
 				headers:
 					ListAllRolesRequestHeaders {
 						authorization: _,

@@ -54,7 +54,7 @@ pub struct Domain {
 }
 
 /// The domain information in a workspace
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkspaceDomain {
 	/// The domain metadata
@@ -273,7 +273,7 @@ impl FromStr for DomainNameserverType {
 }
 
 /// The DNS record information of patr domain
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
 #[serde(rename_all = "camelCase")]
 pub struct PatrDomainDnsRecord {
 	/// The domain ID

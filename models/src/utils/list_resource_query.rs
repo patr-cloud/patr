@@ -1,8 +1,42 @@
+use std::{collections::BTreeMap, fmt::Debug};
+
 use headers::{Error, Header};
 use http::{HeaderName, HeaderValue};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 use super::{AddTuple, RequiresResponseHeaders};
+use crate::prelude::*;
+
+/// A trait that represents a resource that can be listed. This is used to
+/// define the fields that can be used to sort the resource in a paginated
+/// request. The `FieldsList` associated type should be a type that can be used
+/// to represent the fields that can be used to sort the resource. This is
+/// typically an enum that contains the fields that can be used to sort the
+/// resource.
+pub trait ListableResource {
+	/// The type that represents the fields that can be used to sort the
+	/// resource in a paginated request. This is typically an enum that contains
+	/// the fields that can be used to sort the resource.
+	type FieldList: Debug + Clone + Serialize + DeserializeOwned + PartialEq + Eq + PartialOrd + Ord;
+
+	/// The type that represents the search query that can be used to filter the
+	/// resource in a paginated request. This is typically a struct that
+	/// contains the fields that can be used to filter the resource.
+	type SearchStruct: Debug
+		+ IsEmpty
+		+ Clone
+		+ Serialize
+		+ DeserializeOwned
+		+ PartialEq
+		+ Eq
+		+ PartialOrd
+		+ Ord;
+}
+
+impl ListableResource for () {
+	type FieldList = ();
+	type SearchStruct = ();
+}
 
 /// This struct represents a paginated query parameter for the API.
 ///
@@ -17,10 +51,17 @@ use super::{AddTuple, RequiresResponseHeaders};
 /// index of the first item that should be returned and the count is the number
 /// of items that should be returned.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
-pub struct Paginated<T = ()> {
-	/// Any other query parameters that should be included in the request.
-	#[serde(flatten)]
-	pub data: T,
+pub struct ListResourceQuery<R, Q = ()>
+where
+	R: ListableResource,
+{
+	/// Sort order of the items.
+	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+	pub sort: BTreeMap<R::FieldList, SortOrder>,
+	/// Search query that can be used to filter items in the list based on the
+	/// fields that are available in the resource.
+	#[serde(default, skip_serializing_if = "IsEmpty::is_empty")]
+	pub search: R::SearchStruct,
 	/// The number of items that should be returned per page.
 	#[serde(default = "default_page_size")]
 	pub count: usize,
@@ -29,9 +70,12 @@ pub struct Paginated<T = ()> {
 	/// you should set this to 1, etc.
 	#[serde(default)]
 	pub page: usize,
+	/// Any other query parameters that should be included in the request.
+	#[serde(flatten)]
+	pub additional_query: Q,
 }
 
-impl Paginated<()> {
+impl ListResourceQuery<()> {
 	/// The default page size that should be used if no page size is specified.
 	/// This is currently set to 25. So if no page size is specified, the API
 	/// will return a maximum of 25 items, starting from the first item.
@@ -42,27 +86,32 @@ impl Paginated<()> {
 /// specified. This is currently set to 25. So if no page size is specified,
 /// the API will return a maximum of 25 items, starting from the first item.
 const fn default_page_size() -> usize {
-	Paginated::DEFAULT_PAGE_SIZE
+	ListResourceQuery::DEFAULT_PAGE_SIZE
 }
 
-impl<T> Default for Paginated<T>
+impl<T, Q> Default for ListResourceQuery<T, Q>
 where
-	T: Default,
+	T: ListableResource,
+	T::SearchStruct: Default,
+	Q: Default,
 {
 	fn default() -> Self {
 		Self {
-			data: T::default(),
-			count: Paginated::DEFAULT_PAGE_SIZE,
+			search: T::SearchStruct::default(),
+			sort: BTreeMap::new(),
+			additional_query: Q::default(),
+			count: ListResourceQuery::DEFAULT_PAGE_SIZE,
 			page: 0,
 		}
 	}
 }
 
-impl<T> RequiresResponseHeaders for Paginated<T>
+impl<T, Q> RequiresResponseHeaders for ListResourceQuery<T, Q>
 where
-	T: AddTuple<TotalCountHeader>,
+	T: ListableResource,
+	Q: AddTuple<TotalCountHeader>,
 {
-	type RequiredResponseHeaders = <T as AddTuple<TotalCountHeader>>::ResultantTuple;
+	type RequiredResponseHeaders = <Q as AddTuple<TotalCountHeader>>::ResultantTuple;
 }
 
 /// This struct represents the total count of items that are available for the
