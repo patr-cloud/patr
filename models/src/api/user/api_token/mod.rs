@@ -52,8 +52,8 @@ pub struct UserApiToken {
 	/// can have multiple permissions across different workspaces. But all the
 	/// actions performed by the token will be logged as the user who created
 	/// the token.
-	#[serde(skip_serializing_if = "BTreeMap::is_empty")]
-	#[serde(default)]
+	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+	#[search(skip)]
 	pub permissions: BTreeMap<Uuid, WorkspacePermission>,
 	/// Any token that is used before the nbf (not before) should be rejected.
 	/// Tokens are only valid after this time.

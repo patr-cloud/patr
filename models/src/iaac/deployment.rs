@@ -9,16 +9,7 @@ use std::{
 use either::Either;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-	api::workspace::deployment::{
-		DeploymentProbe,
-		EnvironmentVariableValue,
-		ExposedPortType,
-		PatrRegistry,
-	},
-	iaac::MaybeExternallySourced,
-	prelude::*,
-};
+use crate::{api::workspace::deployment::*, iaac::MaybeExternallySourced, prelude::*};
 
 /// The IaaC definition for a deployment. This is basically the same as the
 /// [`Deployment`] struct, but with a few fields (like status, current live

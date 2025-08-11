@@ -149,7 +149,7 @@ use crate::prelude::*;
 /// that now. I've documented enough already. This is now a problem for future
 /// Rakshith. (PS - If I ever do figure it out and forget to update this
 /// documentation, you'll find the mechanism for that somewhere in the
-/// [`api-token`](super::api_token) module)
+/// api-token module)
 ///
 /// "Now hold on a minute, Rakshith", I hear you ask. "Why the heck are we even
 /// bothering with all this? Why not just do a simple authentication system and
@@ -175,6 +175,7 @@ pub struct UserWebLogin {
 	/// The geo-location of the IP address from which this login was created.
 	/// We'll probably need something like ipinfo.io for getting this
 	/// information.
+	#[search(r#type = "custom", name = GeoLocation)]
 	pub created_location: GeoLocation,
 	/// The user-agent of the browser that was used to create this login. We'll
 	/// need some strict CORS settings to make sure that people can't call our

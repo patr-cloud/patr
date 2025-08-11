@@ -64,7 +64,7 @@ use super::Uuid;
 /// This struct represents a bearer token. It is used to authenticate a user's
 /// request to the API. It is used as a header in requests to the API.
 ///
-/// This is a wrapper around [`headers::Token68`].
+/// This is a wrapper around [`Bearer`].
 /// Example: Authorization: Bearer *token*
 #[derive(Debug, Clone, PartialEq)]
 pub struct BearerToken(pub Bearer);

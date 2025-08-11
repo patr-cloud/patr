@@ -124,9 +124,12 @@ k8s-openapi = { features = ["latest"] }
 models      = { features = ["default"] }
 
 [profile.dev]
+debug     = "none"
+lto       = false
 opt-level = 0
 
 [profile.dev.package."*"]
+debug     = "none"
 opt-level = 0
 
 [profile.release]

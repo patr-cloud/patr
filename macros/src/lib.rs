@@ -168,7 +168,7 @@ pub fn declare_stream_endpoint(input: TokenStream) -> TokenStream {
 /// a given struct. The generated enum can be used to filter the results of a
 /// paginated request. The generated search struct can be used to filter the
 /// results of a paginated request as well.
-/// 
+///
 /// ## Example usage:
 /// ```rust
 /// # use models::prelude::*;
@@ -178,15 +178,15 @@ pub fn declare_stream_endpoint(input: TokenStream) -> TokenStream {
 ///     pub age: u32,
 /// }
 /// ```
-/// 
-/// This will generate an enum `UserFieldList` with the variants `Name` and `Age`,
-/// and a struct `UserSearch` with the fields `name` and `age`. The
-/// `UserFieldList` enum can be used to filter the results of a paginated request
-/// and the `UserSearch` struct can be used to filter the results of a paginated
-/// request as well. The generated enum and struct will also implement the
-/// `ListableResource` trait, which can be used to define the fields that can be
-/// used to sort the resource in a paginated request.
-#[proc_macro_derive(ListableResource)]
+///
+/// This will generate an enum `UserFieldList` with the variants `Name` and
+/// `Age`, and a struct `UserSearch` with the fields `name` and `age`. The
+/// `UserFieldList` enum can be used to filter the results of a paginated
+/// request and the `UserSearch` struct can be used to filter the results of a
+/// paginated request as well. The generated enum and struct will also implement
+/// the `ListableResource` trait, which can be used to define the fields that
+/// can be used to sort the resource in a paginated request.
+#[proc_macro_derive(ListableResource, attributes(sortable, search))]
 pub fn listable_resource(input: TokenStream) -> TokenStream {
 	listable_resource::parse(input)
 }

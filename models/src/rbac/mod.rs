@@ -1,5 +1,6 @@
 use std::{
 	collections::{BTreeMap, BTreeSet},
+	marker::ConstParamTy,
 	str::FromStr,
 };
 
@@ -34,6 +35,7 @@ use crate::prelude::*;
 	EnumMessage,
 	Deserialize,
 	VariantNames,
+	ConstParamTy,
 )]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]

@@ -19,8 +19,7 @@ impl DeduplicatedIaacResourceExt for Vec<IaacResource> {
 			let resource_name = resource.name().clone().resolve_value()?;
 			if !deduplicated.insert(resource) {
 				return Err(IaacError::DuplicateResource(format!(
-					"Duplicate resource found: {} `{}`",
-					resource_type, resource_name,
+					"Duplicate resource found: {resource_type} `{resource_name}`",
 				)));
 			}
 		}

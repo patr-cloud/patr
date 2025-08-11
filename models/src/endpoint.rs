@@ -71,8 +71,7 @@ where
 	/// The request headers that should be used for this endpoint. This should
 	/// be a struct that implements [`Headers`]. For ease of use, a derive macro
 	/// is provided for this trait ([`macros::HasHeaders`]). Each field in this
-	/// struct should be a valid header and should implement
-	/// [`typed_headers::Header`]
+	/// struct should be a valid header and should implement [`HasHeaders`]
 	type RequestHeaders;
 	/// The request body that should be used for this endpoint. This should be a
 	/// struct that implements [`serde::Deserialize`] and [`serde::Serialize`].
@@ -81,8 +80,7 @@ where
 	/// TODO: Later on, allow stream requests, such as `multipart/form-data`
 	type RequestBody;
 
-	/// The authenticator that should be used for this endpoint. This should be
-	/// a struct that implements the [`HasAuthentication`] trait. This is a
+	/// The authenticator that should be used for this endpoint. This is a
 	/// sealed trait, meaning it cannot be implemented outside of this crate.
 	/// There are two structs provided that implement this trait and no other
 	/// structs can implement this trait. These structs are:
@@ -112,16 +110,14 @@ where
 	/// The response headers that should be used for this endpoint. This should
 	/// be a struct that implements [`Headers`]. For ease of use, a derive macro
 	/// is provided for this trait ([`macros::HasHeaders`]). Each field in this
-	/// struct should be a valid header and should implement
-	/// [`typed_headers::Header`]
+	/// struct should be a valid header and should implement [`HasHeaders`].
 	type ResponseHeaders;
 	/// The response body that should be used for this endpoint. This should be
 	/// a struct that implements [`IntoAxumResponse`]. This can either be a JSON
 	/// response or a stream response, such as websockets.
 	type ResponseBody;
 
-	/// The authenticator that should be used for this endpoint. This should be
-	/// a struct that implements the [`HasAuthentication`] trait
+	/// The authenticator that should be used for this endpoint.
 	#[must_use]
 	fn get_authenticator() -> Self::Authenticator
 	where

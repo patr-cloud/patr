@@ -5,7 +5,7 @@ use http::{HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 use super::{AddTuple, RequiresResponseHeaders};
-use crate::prelude::*;
+use crate::{prelude::*, rbac::ResourceType};
 
 /// A trait that represents a resource that can be listed. This is used to
 /// define the fields that can be used to sort the resource in a paginated
@@ -112,6 +112,17 @@ where
 	Q: AddTuple<TotalCountHeader>,
 {
 	type RequiredResponseHeaders = <Q as AddTuple<TotalCountHeader>>::ResultantTuple;
+}
+
+/// This struct represents a search query for a resource. It contains the
+/// resource ID that should be used to search for the resource. This is used
+/// to filter the resources that are returned in a paginated request.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResourceSearcher<const R: ResourceType> {
+	/// The ID of the resource that should be searched for. This is used to
+	/// filter the resources that are returned in a paginated request.
+	pub resource_id: Uuid,
 }
 
 /// This struct represents the total count of items that are available for the
