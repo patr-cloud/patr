@@ -1,19 +1,20 @@
 use std::collections::HashMap;
 
 use bollard::{
-	container::{
-		Config,
-		CreateContainerOptions,
-		ListContainersOptions,
-		RemoveContainerOptions,
-		StopContainerOptions,
+	models::ContainerCreateBody,
+	query_parameters::{
+		CreateContainerOptionsBuilder,
+		CreateImageOptionsBuilder,
+		ListContainersOptionsBuilder,
+		RemoveContainerOptionsBuilder,
+		StartContainerOptions,
+		StopContainerOptionsBuilder,
 	},
-	image::CreateImageOptions,
 	secret::CreateImageInfo,
 };
 use common::prelude::*;
 use futures::{Stream, StreamExt};
-use models::api::workspace::deployment::{Deployment, DeploymentRunningDetails, *};
+use models::api::workspace::deployment::*;
 
 use crate::DockerRunner;
 
@@ -23,7 +24,7 @@ pub(crate) async fn upsert(
 		id,
 		data:
 			Deployment {
-				name,
+				name: _,
 				registry,
 				image_tag,
 				status,
@@ -46,13 +47,15 @@ pub(crate) async fn upsert(
 ) -> Result<(), RunnerError> {
 	// Check if the container exists, first.
 	let container = docker
-		.list_containers(Some(ListContainersOptions {
-			filters: HashMap::from([(
-				String::from("label"),
-				vec![format!("patr.deploymentId={}", id)],
-			)]),
-			..Default::default()
-		}))
+		.list_containers(Some(
+			ListContainersOptionsBuilder::new()
+				.all(true)
+				.filters(&HashMap::from([(
+					"label",
+					vec![format!("patr.deploymentId={}", id)],
+				)]))
+				.build(),
+		))
 		.await
 		.map_err(|err| {
 			error!("Error listing containers: {:?}", err);
@@ -65,7 +68,7 @@ pub(crate) async fn upsert(
 		docker
 			.stop_container(
 				container.id.as_deref().unwrap(),
-				Some(StopContainerOptions { t: 30 }),
+				Some(StopContainerOptionsBuilder::new().t(30).build()),
 			)
 			.await
 			.map_err(|err| {
@@ -75,11 +78,12 @@ pub(crate) async fn upsert(
 		docker
 			.remove_container(
 				container.id.as_deref().unwrap_or_default(),
-				Some(RemoveContainerOptions {
-					force: true,
-					v: false,
-					..Default::default()
-				}),
+				Some(
+					RemoveContainerOptionsBuilder::new()
+						.force(true)
+						.v(false)
+						.build(),
+				),
 			)
 			.await
 			.map_err(|err| {
@@ -90,20 +94,21 @@ pub(crate) async fn upsert(
 
 	info!("Pulling latest image...");
 	let mut pull_image = docker.create_image(
-		Some(CreateImageOptions {
-			from_image: format!(
-				"{}/{}{}{}",
-				registry.registry_url(),
-				registry.image_name().unwrap(),
-				if current_live_digest.is_some() {
-					'@'
-				} else {
-					':'
-				},
-				current_live_digest.as_deref().unwrap_or(&image_tag)
-			),
-			..Default::default()
-		}),
+		Some(
+			CreateImageOptionsBuilder::new()
+				.from_image(&format!(
+					"{}/{}{}{}",
+					registry.registry_url(),
+					registry.image_name().unwrap(),
+					if current_live_digest.is_some() {
+						'@'
+					} else {
+						':'
+					},
+					current_live_digest.as_deref().unwrap_or(&image_tag)
+				))
+				.build(),
+		),
 		None,
 		None,
 	);
@@ -123,11 +128,12 @@ pub(crate) async fn upsert(
 
 	let container = docker
 		.create_container(
-			Some(CreateContainerOptions {
-				name: id.to_string(),
-				..Default::default()
-			}),
-			Config {
+			Some(
+				CreateContainerOptionsBuilder::new()
+					.name(&id.to_string())
+					.build(),
+			),
+			ContainerCreateBody {
 				hostname: Some(format!("{}.onpatr.cloud", id)),
 				image: Some(format!(
 					"{}/{}{}{}",
@@ -190,7 +196,7 @@ pub(crate) async fn upsert(
 	info!("Container created");
 
 	docker
-		.start_container::<String>(&container.id, None)
+		.start_container(&container.id, None::<StartContainerOptions>)
 		.await
 		.map_err(|err| {
 			error!("Error starting container: {:?}", err);
@@ -205,10 +211,12 @@ pub(crate) async fn list_running<'a>(
 	DockerRunner { docker }: &DockerRunner,
 ) -> impl Stream<Item = Uuid> + 'a {
 	let Ok(mut containers) = docker
-		.list_containers(Some(ListContainersOptions::<String> {
-			filters: HashMap::new(),
-			..Default::default()
-		}))
+		.list_containers(Some(
+			ListContainersOptionsBuilder::new()
+				.all(true)
+				.filters(&HashMap::<String, Vec<String>>::new())
+				.build(),
+		))
 		.await
 	else {
 		return futures::stream::empty().boxed();
@@ -244,13 +252,15 @@ pub(crate) async fn delete(
 ) -> Result<(), RunnerError> {
 	// Check if the container exists, first.
 	let container = docker
-		.list_containers(Some(ListContainersOptions {
-			filters: HashMap::from([(
-				String::from("label"),
-				vec![format!("patr.deploymentId={}", id)],
-			)]),
-			..Default::default()
-		}))
+		.list_containers(Some(
+			ListContainersOptionsBuilder::new()
+				.all(true)
+				.filters(&HashMap::from([(
+					"label",
+					vec![format!("patr.deploymentId={}", id)],
+				)]))
+				.build(),
+		))
 		.await
 		.map_err(|err| {
 			error!("Error listing containers: {:?}", err);
@@ -263,11 +273,12 @@ pub(crate) async fn delete(
 		docker
 			.remove_container(
 				container.id.as_deref().unwrap_or_default(),
-				Some(RemoveContainerOptions {
-					force: true,
-					v: false,
-					..Default::default()
-				}),
+				Some(
+					RemoveContainerOptionsBuilder::new()
+						.force(true)
+						.v(false)
+						.build(),
+				),
 			)
 			.await
 			.map_err(|err| {

@@ -43,26 +43,18 @@ pub use self::{
 	verify_domain_in_workspace::*,
 };
 
-/// The domain metadata information
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct Domain {
-	/// The name of the domain
-	pub name: String,
-	/// Last verified time of the domain
-	pub last_unverified: Option<OffsetDateTime>,
-}
-
 /// The domain information in a workspace
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkspaceDomain {
-	/// The domain metadata
-	#[serde(flatten)]
-	pub domain: Domain,
+	/// The name of the domain
+	pub name: String,
+	/// Last verified time of the domain
+	pub last_unverified: Option<OffsetDateTime>,
 	/// Whether or not the domain is verified
 	pub is_verified: bool,
 	/// The domain nameserver type
+	#[search(ty = "enum", name = "DomainNameserverType")]
 	pub nameserver_type: DomainNameserverType,
 }
 
@@ -277,12 +269,15 @@ impl FromStr for DomainNameserverType {
 #[serde(rename_all = "camelCase")]
 pub struct PatrDomainDnsRecord {
 	/// The domain ID
+	#[search(ty = "resource", resource = "Domain")]
 	pub domain_id: Uuid,
 	/// The domain name
 	pub name: String,
 	/// The domain type
 	#[serde(flatten)]
+	#[search(ty = "custom", name = "DnsRecordValue")]
 	pub r#type: DnsRecordValue,
 	/// The time to live
+	#[search(skip)]
 	pub ttl: u32,
 }

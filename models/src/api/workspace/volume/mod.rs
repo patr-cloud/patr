@@ -28,7 +28,9 @@ pub struct DeploymentVolume {
 	/// The path of the volume attached
 	pub name: String,
 	/// The size of the volume
+	#[search(ty = "range")]
 	pub size: u64,
 	/// The deployment that the volume is attached to, if any
+	#[search(ty = "resource", resource = "Deployment")]
 	pub deployment_id: Option<Uuid>,
 }

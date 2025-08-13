@@ -72,7 +72,10 @@ impl RunnerExecutor for DockerRunner {
 		// TODO improve this
 		Ok(self
 			.docker
-			.inspect_container(&deployment_id.to_string(), None)
+			.inspect_container(
+				&deployment_id.to_string(),
+				None::<bollard::query_parameters::InspectContainerOptions>,
+			)
 			.await
 			.ok()
 			.and_then(|container| container.state)

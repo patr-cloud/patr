@@ -53,8 +53,10 @@ pub struct StaticSite {
 	/// - Stopped,
 	/// - Errored,
 	/// - Deleted,
+	#[search(ty = "enum", name = "DeploymentStatus")]
 	pub status: DeploymentStatus,
 	/// The current index.html file running
+	#[search(skip)]
 	pub current_live_upload: Option<Uuid>, /* add more details about the
 	                                        * static site */
 }
@@ -71,10 +73,12 @@ pub struct StaticSiteDetails {
 #[serde(rename_all = "camelCase")]
 pub struct StaticSiteUploadHistory {
 	/// The upload ID
+	#[search(skip)]
 	pub upload_id: Uuid,
 	/// The release message the static site was uploaded with
 	pub message: String,
 	/// The user ID of the user who uploaded
+	#[search(skip)]
 	pub uploaded_by: Uuid,
 	/// The timestamp of when the static site was created
 	pub created: OffsetDateTime,

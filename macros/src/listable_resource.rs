@@ -6,14 +6,16 @@ use syn::{
 	DataStruct,
 	DeriveInput,
 	Error,
-	Ident,
-	LitStr,
-	Meta,
-	MetaList,
+	Expr,
+	ExprLit,
+	Lit,
+	MetaNameValue,
 	Path,
+	Token,
 	Type,
 	parse::Parse,
 	parse_macro_input,
+	punctuated::Punctuated,
 	spanned::Spanned,
 };
 
@@ -21,37 +23,42 @@ use syn::{
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 enum SearchType {
 	/// Search by a resource identifier
-	Resource(Ident),
+	Resource(Path),
 	/// Search by a set of enum values
-	Enum(Ident),
+	Enum(Path),
 	/// Search by a range (e.g., a date range)
-	Range,
+	Range(Path),
 	/// Search by a boolean value
 	Bool,
 	/// Search by a string value
 	String,
 	/// Search by a custom type
-	Custom(Ident),
+	Custom(Path),
 }
 
 impl SearchType {
 	/// Get the type to search by
 	fn get_ty(&self) -> syn::Type {
 		match self {
-			Self::Resource(ident) => {
-				syn::parse_str(format!("models::utils::ResourceSearcher<{}>", ident).as_str())
-					.expect("Failed to parse resource searcher type")
-			}
-			Self::Enum(ident) => syn::parse_str(&format!("{}Discriminants", ident))
-				.expect("Failed to parse enum discriminants type"),
-			Self::Range => {
-				syn::parse_str("::std::ops::RangeInclusive").expect("Failed to parse range type")
-			}
+			Self::Resource(ident) => syn::parse_str(
+				format!(
+					"models::utils::ResourceSearcher<{{ models::rbac::ResourceType::{} }}>",
+					ident.to_token_stream()
+				)
+				.as_str(),
+			)
+			.expect("Failed to parse resource searcher type"),
+			Self::Enum(ident) => syn::parse_str(&format!("Vec<{}>", ident.to_token_stream()))
+				.expect("Failed to parse enum type"),
+			Self::Range(ident) => syn::parse_str(&format!(
+				"::std::ops::RangeInclusive<{}>",
+				ident.to_token_stream()
+			))
+			.expect("Failed to parse range type"),
 			Self::Bool => syn::parse_str("bool").expect("Failed to parse bool type"),
 			Self::String => syn::parse_str("String").expect("Failed to parse string type"),
-			Self::Custom(ident) => {
-				syn::parse_str(&format!("{}", ident)).expect("Failed to parse custom search type")
-			}
+			Self::Custom(ident) => syn::parse_str(&format!("{}", ident.to_token_stream()))
+				.expect("Failed to parse custom search type"),
 		}
 	}
 }
@@ -130,7 +137,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 					.to_case(Case::Pascal)
 			);
 			let field_string = field.to_string();
-			let original_field_string = format!("{}::{}", ident_string, name.to_string());
+			let original_field_string = format!("{ident_string}::{name}");
 
 			Some(Ok(quote::quote! {
 				#[doc = "This field represents the [`"]
@@ -188,6 +195,14 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			let mut search_type = None;
 			let mut name_ident = None;
 			let mut resource_ident = None;
+			let Type::Path(path) = &field.ty else {
+				return Err(Error::new(
+					field.span(),
+					"cannot infer search type. Please use `search(type = \"..\")` attribute",
+				)
+				.to_compile_error());
+			};
+			let r#type = path.path.to_token_stream().to_string().replace(" ", "");
 
 			for attr in &field.attrs {
 				/*
@@ -203,59 +218,94 @@ pub fn parse(input: TokenStream) -> TokenStream {
 					continue; // Skip attributes that are not `search`
 				}
 
-				let meta = attr
-					.parse_args::<Meta>()
+				let list = attr
+					.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
 					.map_err(|err| err.to_compile_error())?;
 
-				let list = meta
-					.require_list()
-					.map_err(|err| err.to_compile_error())?
-					.parse_args_with(MetaList::parse)
-					.map_err(|err| err.to_compile_error())?;
+				// Parse the list of items in the `search` attribute
+				// and check for the `ty`, `resource`, and `name` attributes.
+				for list_item in list {
+					if list_item.path.is_ident("ty") {
+						if search_type.is_some() {
+							return Err(Error::new(
+								attr.span(),
+								"multiple `search(ty)` attributes found",
+							)
+							.to_compile_error());
+						}
 
-				if list.path.is_ident("type") {
-					if search_type.is_some() {
-						return Err(Error::new(
-							attr.span(),
-							"multiple `search(type)` attributes found",
-						)
-						.to_compile_error());
+						let Expr::Lit(ExprLit {
+							lit: Lit::Str(str), ..
+						}) = list_item.value
+						else {
+							return Err(Error::new(
+								attr.span(),
+								"expected `search(ty = \"..\")` attribute",
+							)
+							.to_compile_error());
+						};
+
+						search_type = Some(str);
+						continue;
 					}
 
-					search_type = Some(
-						list.parse_args::<LitStr>()
-							.map_err(|err| err.to_compile_error())?,
-					);
-				}
+					if list_item.path.is_ident("resource") {
+						if resource_ident.is_some() {
+							return Err(Error::new(
+								attr.span(),
+								"multiple `search(resource)` attributes found",
+							)
+							.to_compile_error());
+						}
 
-				if list.path.is_ident("resource") {
-					if resource_ident.is_some() {
-						return Err(Error::new(
-							attr.span(),
-							"multiple `search(resource)` attributes found",
-						)
-						.to_compile_error());
+						let Expr::Lit(ExprLit {
+							lit: Lit::Str(str), ..
+						}) = list_item.value
+						else {
+							return Err(Error::new(
+								attr.span(),
+								"expected `search(resource = \"..\")` attribute",
+							)
+							.to_compile_error());
+						};
+
+						resource_ident = Some(
+							syn::parse_str(str.value().as_str()).expect("Failed to parse name"),
+						);
+						continue;
 					}
 
-					resource_ident = Some(
-						list.parse_args::<Ident>()
-							.map_err(|err| err.to_compile_error())?,
-					);
-				}
+					if list_item.path.is_ident("name") {
+						if name_ident.is_some() {
+							return Err(Error::new(
+								attr.span(),
+								"multiple `search(name)` attributes found",
+							)
+							.to_compile_error());
+						}
 
-				if list.path.is_ident("name") {
-					if name_ident.is_some() {
-						return Err(Error::new(
-							attr.span(),
-							"multiple `search(name)` attributes found",
-						)
-						.to_compile_error());
+						let Expr::Lit(ExprLit {
+							lit: Lit::Str(str), ..
+						}) = list_item.value
+						else {
+							return Err(Error::new(
+								attr.span(),
+								"expected `search(name = \"..\")` attribute",
+							)
+							.to_compile_error());
+						};
+
+						name_ident = Some(
+							syn::parse_str(str.value().as_str()).expect("Failed to parse name"),
+						);
+						continue;
 					}
 
-					name_ident = Some(
-						list.parse_args::<Ident>()
-							.map_err(|err| err.to_compile_error())?,
-					);
+					return Err(Error::new(
+						attr.span(),
+						"unknown search attribute. Expected `search(ty = \"..\")` or `search(resource = ..)`",
+					)
+					.to_compile_error());
 				}
 			}
 
@@ -281,7 +331,15 @@ pub fn parse(input: TokenStream) -> TokenStream {
 						};
 						SearchType::Enum(name_ident)
 					}
-					"range" => SearchType::Range,
+					"range" => SearchType::Range(
+						syn::parse_str(
+							r#type
+								.strip_prefix("Option<")
+								.map(|value| value.trim_end_matches(">"))
+								.unwrap_or(&r#type),
+						)
+						.expect("Failed to parse range type"),
+					),
 					"custom" => {
 						let Some(name_ident) = name_ident else {
 							return Err(Error::new(
@@ -300,23 +358,18 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				}
 			} else {
 				// Try to figure out the search type based on the field type
-				let Type::Path(path) = &field.ty else {
-					return Err(Error::new(
-						field.span(),
-						"cannot infer search type. Please use `search(type = \"..\")` attribute",
-					)
-					.to_compile_error());
-				};
-				let r#type = path.path.to_token_stream().to_string().replace(" ", "");
 				match r#type.as_str() {
 					"bool" => SearchType::Bool,
 					"String" | "Option<String>" | "::std::borrow::Cow<'static,str>" => {
 						SearchType::String
 					}
-					"OffsetDateTime" | "Option<OffsetDateTime>" => SearchType::Range,
-					"Option<Vec<IpNetwork>>" | "IpAddr" => {
-						SearchType::Custom(format_ident!("IpNetwork"))
-					}
+					"OffsetDateTime" | "Option<OffsetDateTime>" => SearchType::Range(
+						syn::parse_str("OffsetDateTime").expect("Failed to parse range type"),
+					),
+					"Option<Vec<IpNetwork>>" | "IpAddr" => SearchType::Custom(
+						syn::parse_str("::ipnetwork::IpNetwork")
+							.expect("Failed to parse custom type"),
+					),
 					_ => {
 						return Err(Error::new(
 							field.span(),
@@ -327,13 +380,12 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				}
 			};
 
-			let name = format_ident!(
-				"{}",
-				name.to_string()
-					.as_str()
-					.trim_start_matches("r#")
-					.to_case(Case::Camel)
-			);
+			let name = if name == "r#type" {
+				format_ident!("r#{}", name.to_string().as_str().trim_start_matches("r#"))
+			} else {
+				format_ident!("{}", name.to_string().as_str().trim_start_matches("r#"))
+			};
+
 			let name_string = name.to_string();
 
 			let search_ty = search_type.get_ty();
@@ -344,6 +396,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				#[doc = "`] field of the [`"]
 				#[doc = #ident_string]
 				#[doc = "`] struct that can be used to search resources."]
+				#[serde(default, skip_serializing_if = "Option::is_none")]
 				pub #name: Option<#search_ty>,
 			})
 		})
@@ -369,6 +422,16 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		impl models::utils::ListableResource for #ident {
 			type FieldList = #fields_name;
 			type SearchStruct = ();
+		}
+
+		#[doc = "This struct represents the search parameters for the [`"]
+		#[doc = #ident_string]
+		#[doc = "`] struct that can be used to search resources."]
+		#[doc = "It is automatically generated by the `ListableResource` derive macro."]
+		#[derive(Debug, Clone, PartialEq, ::serde::Serialize, ::serde::Deserialize)]
+		#[serde(rename_all = "camelCase")]
+		#vis struct #search_struct_name {
+			#(#search_struct_fields)*
 		}
 	}
 	.into()

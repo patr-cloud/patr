@@ -30,11 +30,13 @@ pub struct ManagedUrl {
 	/// Subdomain of the URL
 	pub sub_domain: String,
 	/// Domain ID of the domain stored in Patr in-house database
+	#[search(ty = "resource", resource = "Domain")]
 	pub domain_id: Uuid,
 	/// Entire path of the URL
 	pub path: String,
 	/// Type of URL
 	#[serde(flatten)]
+	#[search(ty = "custom", name = "ManagedUrlType")]
 	pub url_type: ManagedUrlType,
 	/// Verify if the URL is
 	pub is_configured: bool,

@@ -175,7 +175,7 @@ pub struct UserWebLogin {
 	/// The geo-location of the IP address from which this login was created.
 	/// We'll probably need something like ipinfo.io for getting this
 	/// information.
-	#[search(r#type = "custom", name = GeoLocation)]
+	#[search(ty = "custom", name = "GeoLocation")]
 	pub created_location: GeoLocation,
 	/// The user-agent of the browser that was used to create this login. We'll
 	/// need some strict CORS settings to make sure that people can't call our

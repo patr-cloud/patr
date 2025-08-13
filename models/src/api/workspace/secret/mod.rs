@@ -28,5 +28,6 @@ pub struct Secret {
 	pub name: String,
 	/// The deployment the secret is attached to
 	#[serde(skip_serializing_if = "Option::is_none")]
+	#[search(ty = "resource", resource = "Deployment")]
 	pub deployment_id: Option<Uuid>,
 }

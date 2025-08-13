@@ -57,6 +57,7 @@ pub struct ContainerRepositoryImageInfo {
 pub struct ContainerRepository {
 	/// The name of the repository.
 	pub name: String,
+	#[search(ty = "range")]
 	/// The size of the repository in bytes.
 	pub size: u64,
 	/// The last time the repository was either created, updated or a tag was

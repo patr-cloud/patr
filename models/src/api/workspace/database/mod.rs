@@ -93,18 +93,24 @@ pub struct Database {
 	/// Name of database entered by the user
 	pub name: String,
 	/// Database engine the instance is running
+	#[search(ty = "enum", name = "DatabaseEngine")]
 	pub engine: DatabaseEngine,
 	/// Version of the database engine
 	pub version: String,
 	/// Number of database instances supposed to be running
+	#[search(ty = "range")]
 	pub num_nodes: u16,
 	/// Database plan ID selected by the user
+	#[search(skip)]
 	pub database_plan_id: Uuid,
 	/// The region the database is deployed on
+	#[search(ty = "resource", resource = "Runner")]
 	pub region: Uuid,
 	/// The current status of the database
+	#[search(ty = "enum", name = "DatabaseStatus")]
 	pub status: DatabaseStatus,
 	/// The connection configuration for the user to connect to the database
 	/// instance
+	#[search(skip)]
 	pub public_connection: DatabaseConnection,
 }

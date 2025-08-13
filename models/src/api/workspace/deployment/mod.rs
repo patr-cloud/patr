@@ -74,16 +74,20 @@ pub struct Deployment {
 	/// the repository ID will be provided, else the registry URL and image name
 	/// will be provided
 	#[serde(flatten)]
+	#[search(ty = "custom", name = "DeploymentRegistry")]
 	pub registry: DeploymentRegistry,
 	/// The image tag of the deployment
 	/// Example: 'latest', 'stable'
 	pub image_tag: String,
 	/// The status of the deployment
+	#[search(ty = "enum", name = "DeploymentStatus")]
 	pub status: DeploymentStatus,
 	/// The runner the deployment is running on
+	#[search(ty = "resource", resource = "Runner")]
 	pub runner: Uuid,
 	/// The deployment machine type ID
 	/// Machine type can be classified by CPU and Memory nodes
+	#[search(skip)]
 	pub machine_type: Uuid,
 	/// The current image digest the deployment is running
 	pub current_live_digest: Option<String>,

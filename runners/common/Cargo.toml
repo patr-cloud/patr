@@ -41,7 +41,7 @@ semver                = { workspace = true, features = ["default"] }
 serde                 = { workspace = true, features = ["derive"] }
 serde_json            = { workspace = true }
 serde_urlencoded      = { workspace = true, features = [] }
-sqlx                  = { workspace = true, features = ["runtime-tokio-rustls", "sqlite", "time", "uuid"] }
+sqlx                  = { workspace = true, features = ["runtime-tokio-rustls", "sqlite", "sqlite-preupdate-hook", "time", "uuid"] }
 tempfile              = { workspace = true, features = ["default"] }
 thiserror             = { workspace = true, features = [] }
 time                  = { workspace = true, features = ["default", "serde-human-readable"] }
