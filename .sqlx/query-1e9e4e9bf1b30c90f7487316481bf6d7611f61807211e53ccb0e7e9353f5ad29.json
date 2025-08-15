@@ -1,0 +1,168 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id AS \"id: Uuid\", name, registry, image_name, image_tag, runner AS \"runner: Uuid\", status AS \"status: DeploymentStatus\", repository_id AS \"repository_id: Uuid\", min_horizontal_scale, max_horizontal_scale, machine_type AS \"machine_type: Uuid\", deploy_on_push, startup_probe_port, startup_probe_path, startup_probe_port_type AS \"startup_probe_port_type: Option<ExposedPortType>\", liveness_probe_port, liveness_probe_path, liveness_probe_port_type AS \"liveness_probe_port_type: Option<ExposedPortType>\", current_live_digest FROM deployment WHERE id = $1 AND deleted IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "registry",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "image_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "image_tag",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "runner: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "status: DeploymentStatus",
+        "type_info": {
+          "Custom": {
+            "name": "deployment_status",
+            "kind": {
+              "Enum": [
+                "created",
+                "pushed",
+                "deploying",
+                "running",
+                "stopped",
+                "errored",
+                "deleted"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "repository_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "min_horizontal_scale",
+        "type_info": "Int2"
+      },
+      {
+        "ordinal": 9,
+        "name": "max_horizontal_scale",
+        "type_info": "Int2"
+      },
+      {
+        "ordinal": 10,
+        "name": "machine_type: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 11,
+        "name": "deploy_on_push",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 12,
+        "name": "startup_probe_port",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 13,
+        "name": "startup_probe_path",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 14,
+        "name": "startup_probe_port_type: Option<ExposedPortType>",
+        "type_info": {
+          "Custom": {
+            "name": "exposed_port_type",
+            "kind": {
+              "Enum": [
+                "http"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "liveness_probe_port",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 16,
+        "name": "liveness_probe_path",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 17,
+        "name": "liveness_probe_port_type: Option<ExposedPortType>",
+        "type_info": {
+          "Custom": {
+            "name": "exposed_port_type",
+            "kind": {
+              "Enum": [
+                "http"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "current_live_digest",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "1e9e4e9bf1b30c90f7487316481bf6d7611f61807211e53ccb0e7e9353f5ad29"
+}
