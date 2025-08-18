@@ -70,10 +70,21 @@ pub async fn initialize_container_registry_tables(
 		r#"
 			CREATE TABLE container_registry_layer_blob (
 				digest TEXT PRIMARY KEY,
-				size BIGINT NOT NULL,
-				manifest_digest TEXT NOT NULL,
+				size BIGINT NOT NULL
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
-				FOREIGN KEY (manifest_digest) REFERENCES container_registry_manifest(digest)
+	query!(
+		r#"
+			CREATE TABLE container_registry_layer_manifest (
+				manifest_digest TEXT NOT NULL,
+				layer_blob_digest TEXT NOT NULL,
+
+				FOREIGN KEY (manifest_digest) REFERENCES container_registry_manifest(digest),
+				FOREIGN KEY (layer_blob_digest) REFERENCES container_registry_layer_blob(digest)
 			);
 		"#
 	)
