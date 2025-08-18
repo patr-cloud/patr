@@ -6,6 +6,7 @@ RUN mkdir -p --mode=0755 /usr/share/keyrings && \
     apt install -y curl && \
     curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg > /usr/share/keyrings/cloudflare-main.gpg && \
     echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared noble main' > /etc/apt/sources.list.d/cloudflared.list && \
+    apt update && \
     apt install -y \
         libssl-dev \
         pkg-config \
