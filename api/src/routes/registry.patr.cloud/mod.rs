@@ -6,6 +6,8 @@ use reqwest::StatusCode;
 
 use crate::prelude::*;
 
+/// Get all blob routes
+mod blobs;
 /// Download a specific blob, given its digest.
 mod get_blob_info;
 /// Get the manifest for a specific reference.
@@ -39,6 +41,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 					get(get_manifest_info::handle),
 				),
 		)
+		.layer(ServiceBuilder::new())
 		.with_state(state.clone())
 }
 
