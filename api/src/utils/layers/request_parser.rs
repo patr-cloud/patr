@@ -72,7 +72,7 @@ where
 #[derive(Clone, Debug)]
 pub struct RequestParserService<S, E>
 where
-	for<'a> S: Service<(ApiRequest<E>, IpAddr)>,
+	S: Service<(ApiRequest<E>, IpAddr)>,
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
@@ -84,8 +84,7 @@ where
 
 impl<S, E> Service<Request<Body>> for RequestParserService<S, E>
 where
-	for<'a> S:
-		Service<(ApiRequest<E>, IpAddr), Response = AppResponse<E>, Error = ErrorType> + Clone,
+	S: Service<(ApiRequest<E>, IpAddr), Response = AppResponse<E>, Error = ErrorType> + Clone,
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
