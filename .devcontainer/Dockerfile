@@ -27,6 +27,7 @@ RUN mkdir -p --mode=0755 /usr/share/keyrings && \
         musl-tools \
         libpcre3-dev \
         zlib1g-dev \
+        mold \
         nginx && \
     rm -rf /var/lib/apt/lists/*
 
@@ -36,14 +37,6 @@ RUN adduser vscode && \
 	adduser vscode docker && \
 	echo vscode ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/vscode && \
 	chmod 0440 /etc/sudoers.d/vscode
-
-# Install mold linker for faster builds
-WORKDIR /tmp/mold
-RUN git clone --branch stable https://github.com/rui314/mold.git . && \
-	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=c++ -B build && \
-	cmake --build build -j$(nproc) && \
-	cmake --build build --target install && \
-	rm -rf /tmp/mold
 
 # Install Rust and tools
 USER vscode

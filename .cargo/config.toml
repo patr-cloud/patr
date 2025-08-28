@@ -1,8 +1,8 @@
 [target.x86_64-unknown-linux-gnu]
-rustflags = ["--cfg", "erase_components", "--cfg", "link-arg=-fuse-ld=/usr/local/bin/mold", "--cfg", "web_sys_unstable_apis"]
+rustflags = ["--cfg", "erase_components", "-C", "link-arg=-fuse-ld=mold", "--cfg", "web_sys_unstable_apis"]
 
 [target.aarch64-apple-darwin]
-rustflags = ["--cfg", "erase_components", "--cfg", "link-arg=-fuse-ld=/usr/local/bin/mold", "--cfg", "web_sys_unstable_apis"]
+rustflags = ["--cfg", "erase_components", "-C", "link-arg=-fuse-ld=mold", "--cfg", "web_sys_unstable_apis"]
 
 [target.wasm32-unknown-unknown]
 rustflags = ["--cfg", "erase_components", '--cfg', 'getrandom_backend="wasm_js"', "--cfg", "web_sys_unstable_apis"]
