@@ -51,7 +51,7 @@ sqlx                           = { workspace = true, features = ["ipnetwork", "m
 time                           = { workspace = true, features = ["default", "serde-human-readable"] }
 tokio                          = { workspace = true, features = ["default", "full"] }
 tokio-tungstenite              = { workspace = true, features = ["default"] }
-tokio-util                     = { workspace = true, features = ["default"] }
+tokio-util                     = { workspace = true, features = ["compat"] }
 totp-rs                        = { workspace = true, features = ["default", "gen_secret"] }
 tower                          = { workspace = true, features = ["full"] }
 tower-http                     = { workspace = true, features = ["fs"] }
