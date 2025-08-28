@@ -50,11 +50,12 @@ USER vscode
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain nightly -y --target wasm32-unknown-unknown
 
 # Install rust-based additional tools
-RUN /home/vscode/.cargo/bin/cargo install --locked cargo-leptos
-RUN /home/vscode/.cargo/bin/cargo install --locked cargo-audit
-RUN /home/vscode/.cargo/bin/cargo install --locked sqlx-cli
-RUN /home/vscode/.cargo/bin/cargo install --locked wasm-pack
-RUN /home/vscode/.cargo/bin/cargo install --locked worker-build
+RUN /home/vscode/.cargo/bin/cargo install --locked cargo-binstall
+RUN /home/vscode/.cargo/bin/cargo binstall --locked cargo-leptos
+RUN /home/vscode/.cargo/bin/cargo binstall --locked cargo-audit
+RUN /home/vscode/.cargo/bin/cargo binstall --locked sqlx-cli
+RUN /home/vscode/.cargo/bin/cargo binstall --locked wasm-pack
+RUN /home/vscode/.cargo/bin/cargo binstall --locked worker-build
 
 # `patr` should build and run the local CLI
 RUN echo "alias patr='cargo patr'" >> /home/vscode/.bashrc
