@@ -19,4 +19,4 @@ ENV LEPTOS_SITE_ROOT=/app
 COPY --from=build /app/target/dashboard /app/.
 COPY --from=build /app/target/release/api .
 
-CMD ["cargo", "leptos", "serve"]
+CMD ["dumb-init", "./api"]

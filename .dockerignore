@@ -5,9 +5,20 @@
 .[Dd][Ss]_[Ss]tore
 
 /config/*
-!/config/tailwind.config.js
 .env
-Dockerfile
 .dockerignore
+/api/Dockerfile
+/cli/Dockerfile
+/runners/docker/Dockerfile
+/runners/kubernetes/Dockerfile
 
 /.devcontainer
+/data
+
+README.md
+LICENSE
+.vscode
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+SECURITY.md
+ARCHITECTURE.md
