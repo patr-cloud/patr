@@ -17,9 +17,9 @@ pub mod api_patr_cloud;
 #[path = "app.patr.cloud/mod.rs"]
 pub mod app_patr_cloud;
 
-// /// The routes for serving https://registry.patr.cloud as a docker registry
-// #[path = "registry.patr.cloud/mod.rs"]
-// mod registry_patr_cloud;
+/// The routes for serving https://registry.patr.cloud as a docker registry
+#[path = "registry.patr.cloud/mod.rs"]
+mod registry_patr_cloud;
 
 /// Sets up the routes for the API, across all domains.
 #[instrument(skip(state))]

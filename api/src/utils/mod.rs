@@ -8,6 +8,9 @@ pub mod config;
 /// [2]: axum::Router
 pub mod layers;
 
+/// Helper functions
+pub mod helper;
+
 /// Contains the [`extractor`][1]s that will be used with [`tower`] mounted on
 /// the axum [`Router`][2]
 ///

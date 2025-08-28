@@ -14,11 +14,10 @@ use axum::{
 };
 use oci_spec::distribution::{ErrorCode, ErrorInfoBuilder, ErrorResponseBuilder};
 use preprocess::Preprocessable;
-use s3::Bucket;
 use serde::{Deserialize, Serialize};
 
 use super::{Error, internal_server_error_response};
-use crate::prelude::*;
+use crate::{prelude::*, utils::helper::get_s3_bucket};
 
 #[preprocess::sync]
 /// The parameters that are passed in the path of the request
@@ -99,24 +98,7 @@ pub(super) async fn handle(
 		));
 	};
 
-	let bucket = Bucket::new(
-		state.config.s3.bucket.as_str(),
-		s3::Region::Custom {
-			region: state.config.s3.region,
-			endpoint: state.config.s3.endpoint,
-		},
-		{
-			s3::creds::Credentials::new(
-				Some(&state.config.s3.key),
-				Some(&state.config.s3.secret),
-				None,
-				None,
-				None,
-			)
-			.map_err(internal_server_error_response)?
-		},
-	)
-	.map_err(internal_server_error_response)?;
+	let bucket = get_s3_bucket(state.config.clone())?;
 
 	let s3_key = super::get_s3_object_name_for_blob(&path.digest);
 	let (head, _) = bucket

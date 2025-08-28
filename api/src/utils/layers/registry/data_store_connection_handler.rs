@@ -1,14 +1,31 @@
-use std::task::{Context, Poll};
+use std::{
+	convert::Infallible,
+	task::{Context, Poll},
+};
 
-use axum::extract::Request;
+use axum::{RequestExt, body::Body, extract::Request, response::Response};
 use tower::{Layer, Service};
 
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	utils::{extractors::ClientIP, layers::RegistryRequest},
+};
 
 /// A [`tower::Layer`] that can be used to mount the workspace to the router
 #[derive(Clone)]
 pub struct RegistryDataStoreConnectionLayer {
 	state: AppState,
+}
+
+impl RegistryDataStoreConnectionLayer {
+	/// Create a new instance of the [`RegistryDataStoreConnectionLayer`] with
+	/// the given state. This state will be used to parse the request, create a
+	/// database transaction, and call the inner service. If the inner service
+	/// fails, the database transaction will be automatically rolled back,
+	/// otherwise it will be committed.
+	pub fn with_state(state: AppState) -> Self {
+		Self { state }
+	}
 }
 
 impl<S> Layer<S> for RegistryDataStoreConnectionLayer {
@@ -29,12 +46,12 @@ pub struct RegistryDataStoreConnectionService<S> {
 	state: AppState,
 }
 
-impl<S, B> Service<Request<B>> for RegistryDataStoreConnectionService<S>
+impl<S> Service<Request<Body>> for RegistryDataStoreConnectionService<S>
 where
-	S: Service<Request<B>> + Clone,
+	for<'a> S: Service<RegistryRequest<'a>, Response = Response, Error = Infallible> + Clone,
 {
-	type Error = S::Error;
-	type Response = S::Response;
+	type Error = Infallible;
+	type Response = Response;
 
 	type Future = impl Future<Output = Result<Self::Response, Self::Error>>;
 
@@ -44,14 +61,22 @@ where
 			.map_err(|_| unreachable!("Layers must always be ready"))
 	}
 
-	fn call(&mut self, req: Request<B>) -> Self::Future {
+	fn call(&mut self, mut req: Request<Body>) -> Self::Future {
 		let mut inner = self.inner.clone();
 		let state = self.state.clone();
 
 		async move {
-			let Ok(database) = state.database.begin().await else {
+			let Ok(mut database) = state.database.begin().await else {
 				debug!("Failed to begin database transaction");
 				panic!();
+			};
+
+			let Ok(ClientIP(client_ip)) = req.extract_parts().await;
+
+			let req = RegistryRequest {
+				request: req,
+				database: &mut database,
+				client_ip,
 			};
 
 			info!("Calling inner Service");

@@ -171,6 +171,7 @@ dependencies = [
  "time",
  "tokio",
  "tokio-tungstenite 0.27.0",
+ "tokio-util",
  "totp-rs",
  "tower",
  "tower-http",

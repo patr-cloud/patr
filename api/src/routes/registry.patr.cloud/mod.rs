@@ -14,6 +14,8 @@ mod get_blob_info;
 mod get_manifest_info;
 /// Get the status of the registry.
 mod get_registry_status;
+/// Get All Manifest Routes
+mod manifest;
 
 type Error = (StatusCode, Json<ErrorResponse>);
 
@@ -31,21 +33,25 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.nest(
 			"/v2",
 			Router::new()
-				.route("/", get(get_registry_status::handle))
-				.route(
-					"/:workspaceId/:repoName/blobs/:digest",
-					get(get_blob_info::handle).head(get_blob_info::handle),
-				)
-				.route(
-					"/:workspaceId/:repoName/manifests/:reference",
-					get(get_manifest_info::handle),
+				.route("/v2", get(get_registry_status::handle))
+				.nest(
+					"/:workspaceId/:repoName",
+					Router::new().nest("/blobs", blobs::setup_routes(state).await),
 				),
 		)
-		.layer(ServiceBuilder::new())
-		.with_state(state.clone())
+		.with_state(())
 }
 
 /// Get the S3 object name for a blob.
 fn get_s3_object_name_for_blob(blob: &str) -> String {
 	format!("registry/blobs/{blob}")
 }
+
+// .route(
+// 	"/:workspaceId/:repoName/blobs/:digest",
+// 	get(get_blob_info::handle).head(get_blob_info::handle),
+// )
+// .route(
+// 	"/:workspaceId/:repoName/manifests/:reference",
+// 	get(get_manifest_info::handle),
+// ),
