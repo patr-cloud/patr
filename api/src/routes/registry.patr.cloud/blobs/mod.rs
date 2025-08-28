@@ -1,4 +1,7 @@
-use axum::{Router, routing::get};
+use axum::{
+	Router,
+	routing::{get, post},
+};
 
 use crate::prelude::*;
 
@@ -10,6 +13,6 @@ mod uploads;
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
 		.route("/:digest", get(digest::handle).head(digest::handle))
-		// .route("/upload", )
+		.route("/upload", post(uploads::handle))
 		.with_state(state.clone())
 }

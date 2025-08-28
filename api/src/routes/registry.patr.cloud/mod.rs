@@ -8,10 +8,6 @@ use crate::prelude::*;
 
 /// Get all blob routes
 mod blobs;
-/// Download a specific blob, given its digest.
-mod get_blob_info;
-/// Get the manifest for a specific reference.
-mod get_manifest_info;
 /// Get the status of the registry.
 mod get_registry_status;
 /// Get All Manifest Routes
@@ -36,7 +32,9 @@ pub async fn setup_routes(state: &AppState) -> Router {
 				.route("/v2", get(get_registry_status::handle))
 				.nest(
 					"/:workspaceId/:repoName",
-					Router::new().nest("/blobs", blobs::setup_routes(state).await),
+					Router::new()
+						.nest("/blobs", blobs::setup_routes(state).await)
+						.nest("/manifests", manifest::setup_routes(state).await),
 				),
 		)
 		.with_state(())
@@ -45,6 +43,10 @@ pub async fn setup_routes(state: &AppState) -> Router {
 /// Get the S3 object name for a blob.
 fn get_s3_object_name_for_blob(blob: &str) -> String {
 	format!("registry/blobs/{blob}")
+}
+
+fn get_s3_object_name_for_manifest(manifest: &str) -> String {
+	format!("registry/manifest/{manifest}")
 }
 
 // .route(

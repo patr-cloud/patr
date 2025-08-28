@@ -3,8 +3,6 @@ use axum::{
 	response::IntoResponse,
 };
 
-use crate::utils::layers::RegistryRequest;
-
 /// Handles the `GET /v2/` route.
 #[axum::debug_handler]
 pub(super) async fn handle() -> impl IntoResponse {
