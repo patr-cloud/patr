@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE container_registry_session(id UUID NOT NULL, user_id UUID NOT NULL, aws_session_id UUID, blob_digest TEXT, updated_at TIMESTAMPTZ NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "ca5d41705065780502e65914cec359caf68347325459c3468a5d9553685b9973"
+}

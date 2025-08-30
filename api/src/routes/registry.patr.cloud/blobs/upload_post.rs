@@ -56,20 +56,53 @@ pub(super) async fn handle(
 	let workspace_id = path.workspace_id;
 	check_workspace(workspace_id, state.clone()).await?;
 
-	let digest = query.digest;
-	if digest.is_empty() {
-		todo!();
-	}
-
 	let mut database = state
 		.database
 		.begin()
 		.await
 		.map_err(internal_server_error_response)?;
 
-	// if !digest.to_string() {
-	// 	todo!("Create this later")
-	// }
+	let digest = query.digest;
+	if digest.is_empty() {
+		let session_id = query!(
+			r#"
+			INSERT INTO container_registry_session(
+				id,
+				user_id
+			) VALUES (
+			 	$1,
+				$2
+			) RETURNING id;
+			"#,
+			Uuid::new_v4() as _,
+			Uuid::nil() as _,
+		)
+		.fetch_one(&mut *database)
+		.await
+		.map_err(internal_server_error_response)?
+		.id;
+
+		let headers = [
+			(
+				HeaderName::from_static("Docker-Distribution-API-Version"),
+				Some(String::from("registry/2.0")),
+			),
+			(
+				HeaderName::from_static("Location"),
+				Some(format!(
+					"https://registry.patr.cloud/v2/{}/{}/blobs/uploads/{}",
+					path.workspace_id, path.repo_name, session_id
+				)),
+			),
+		]
+		.into_iter()
+		.filter_map(|(name, value)| value.map(|value| (name, value)))
+		.map(|(name, value)| Ok::<_, InvalidHeaderValue>((name, HeaderValue::from_str(&value)?)))
+		.collect::<Result<HeaderMap, _>>()
+		.map_err(internal_server_error_response)?;
+
+		return Ok((StatusCode::CREATED, headers).into_response());
+	}
 
 	let header_content_length = header
 		.get("Content-Length")

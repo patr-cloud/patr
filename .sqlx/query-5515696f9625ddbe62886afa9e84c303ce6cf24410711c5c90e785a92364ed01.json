@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT tags.name FROM container_registry_tag AS tags INNER JOIN container_registry_repository AS repo ON tags.repository_id = repo.id WHERE repo.workspace_id = $1 AND repo.name = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5515696f9625ddbe62886afa9e84c303ce6cf24410711c5c90e785a92364ed01"
+}

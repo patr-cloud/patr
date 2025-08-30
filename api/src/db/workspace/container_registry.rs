@@ -66,7 +66,8 @@ pub async fn initialize_container_registry_tables(
 		r#"
 		CREATE TABLE container_registry_layer_blob(
 			digest TEXT NOT NULL,
-			size BIGINT NOT NULL
+			size BIGINT NOT NULL,
+			annotations JSONB
 		);
 		"#
 	)
@@ -80,6 +81,32 @@ pub async fn initialize_container_registry_tables(
 			ordinal INT NOT NULL,
 			manifest_digest TEXT NOT NULL,
 			layer_blob_digest TEXT NOT NULL
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE container_registry_tag(
+			name TEXT NOT NULL,
+			repository_id UUID NOT NULL,
+			manifest_digest TEXT NOT NULL
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE container_registry_session(
+			id UUID NOT NULL,
+			user_id UUID NOT NULL,
+			aws_session_id UUID,
+			blob_digest TEXT,
+			updated_at TIMESTAMPTZ NOT NULL
 		);
 		"#
 	)
@@ -168,6 +195,16 @@ pub async fn initialize_container_registry_constraints(
 
 	query!(
 		r#"
+		ALTER TABLE container_registry_tag
+		ADD CONSTRAINT container_registry_tag_pk
+		PRIMARY KEY(name, repository_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		ALTER TABLE container_registry_repository
 			ADD CONSTRAINT container_registry_repository_chk_name
 				CHECK(name ~ '[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*(\/[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*)*');
@@ -233,6 +270,22 @@ pub async fn initialize_container_registry_constraints(
 			ADD CONSTRAINT container_registry_layer_manifest_fk_layer_blob_digest
 				FOREIGN KEY(layer_blob_digest)
 					REFERENCES container_registry_layer_blob(digest);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE container_registry_tag
+			ADD CONSTRAINT container_registry_tag_chk_name
+				CHECK(name ~ '[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}'),
+			ADD CONSTRAINT container_registry_tag_fk_repository_id
+				FOREIGN KEY(repository_id)
+					REFERENCES container_registry_repository(id),
+			ADD CONSTRAINT container_registry_tag_fk_manifest_digest
+				FOREIGN KEY(manifest_digest)
+					REFERENCES container_registry_manifest(digest);
 		"#
 	)
 	.execute(&mut *connection)
