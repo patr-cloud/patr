@@ -247,14 +247,13 @@ where
 					}
 					trace!("Token passed revoked timestamp check");
 
-					if let Some(allowed_ips) = token.allowed_ips {
-						if !allowed_ips
+					if let Some(allowed_ips) = token.allowed_ips &&
+						!allowed_ips
 							.iter()
 							.any(|ip_network| ip_network.contains(req.client_ip))
-						{
-							info!("API token not accessed from an allowed IP Address");
-							return Err(ErrorType::DisallowedIpAddressForApiToken);
-						}
+					{
+						info!("API token not accessed from an allowed IP Address");
+						return Err(ErrorType::DisallowedIpAddressForApiToken);
 					}
 
 					let Ok(password_hash) = PasswordHash::new(&token.token_hash) else {

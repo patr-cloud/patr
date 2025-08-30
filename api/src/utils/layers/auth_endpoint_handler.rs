@@ -42,10 +42,8 @@ where
 
 /// A [`tower::Layer`] that can be used to parse the request and call the inner
 /// service with the parsed request. Ideally, this will automatically be done by
-/// [`RouterExt::mount_auth_endpoint`][1], and you should not need to use this
+/// [`RouterExt::mount_auth_endpoint`], and you should not need to use this
 /// directly.
-///
-/// [1]: crate::utils::RouterExt::mount_auth_endpoint
 pub struct AuthEndpointLayer<H, E>
 where
 	for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send,
@@ -105,10 +103,8 @@ where
 }
 
 /// The [`Service`] used by the [`AuthEndpointLayer`]. Ideally, this will
-/// automatically be done by [`RouterExt::mount_auth_endpoint`][1], and you
+/// automatically be done by [`RouterExt::mount_auth_endpoint`], and you
 /// should not need to use this directly.
-///
-/// [1]: crate::utils::RouterExt::mount_auth_endpoint
 pub struct AuthEndpointService<H, E>
 where
 	for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send,

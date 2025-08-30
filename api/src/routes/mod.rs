@@ -9,15 +9,15 @@ use tower::ServiceExt;
 
 use crate::prelude::*;
 
-/// The routes for serving https://api.patr.cloud
+/// The routes for serving <https://api.patr.cloud>
 #[path = "api.patr.cloud/mod.rs"]
 pub mod api_patr_cloud;
 
-/// The routes for serving https://app.patr.cloud
+/// The routes for serving <https://app.patr.cloud>
 #[path = "app.patr.cloud/mod.rs"]
 pub mod app_patr_cloud;
 
-// /// The routes for serving https://registry.patr.cloud as a docker registry
+// /// The routes for serving <https://registry.patr.cloud> as a docker registry
 // #[path = "registry.patr.cloud/mod.rs"]
 // mod registry_patr_cloud;
 

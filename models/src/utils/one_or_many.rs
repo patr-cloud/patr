@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 /// serializing and deserializing JSON values that can be either a single
 /// object or an array of objects.
 ///
-/// The default implementation is [`OneOrMore::One(Default::default())`].
+/// The default implementation is `OneOrMore::One(Default::default())`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum OneOrMore<T> {

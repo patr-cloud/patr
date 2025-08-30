@@ -51,10 +51,10 @@ pub async fn update_volume(
 	.body
 	.volume;
 
-	if let Some(size) = size {
-		if volume.size > size {
-			return Err(ErrorType::CannotReduceVolumeSize);
-		}
+	if let Some(size) = size &&
+		volume.size > size
+	{
+		return Err(ErrorType::CannotReduceVolumeSize);
 	}
 
 	query!(

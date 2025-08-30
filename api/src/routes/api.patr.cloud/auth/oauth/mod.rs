@@ -38,7 +38,7 @@ mod revoke;
 /// third-party app will use to access the user’s data on the API. This endpoint
 /// is used to exchange a temporary code for an access token and a
 /// refresh token. The temporary code is obtained by authorizing a user using
-/// the [`authorize`] endpoint.
+/// the [`authorize()`] endpoint.
 mod token;
 
 use self::{authorize::*, introspect::*, revoke::*, token::*};

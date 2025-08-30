@@ -22,15 +22,7 @@ pub trait ListableResource {
 	/// The type that represents the search query that can be used to filter the
 	/// resource in a paginated request. This is typically a struct that
 	/// contains the fields that can be used to filter the resource.
-	type SearchStruct: Debug
-		+ IsEmpty
-		+ Clone
-		+ Serialize
-		+ DeserializeOwned
-		+ PartialEq
-		+ Eq
-		+ PartialOrd
-		+ Ord;
+	type SearchStruct: Debug + IsEmpty + Clone + Serialize + DeserializeOwned + PartialEq;
 }
 
 impl ListableResource for () {
