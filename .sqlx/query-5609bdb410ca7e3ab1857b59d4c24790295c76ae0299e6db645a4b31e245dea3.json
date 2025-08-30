@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE container_registry_tag(name TEXT NOT NULL, repository_id UUID NOT NULL, manifest_digest TEXT NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "5609bdb410ca7e3ab1857b59d4c24790295c76ae0299e6db645a4b31e245dea3"
+}

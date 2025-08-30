@@ -12,6 +12,8 @@ mod blobs;
 mod get_registry_status;
 /// Get All Manifest Routes
 mod manifest;
+/// Get All Tag Routes
+mod tags;
 
 type Error = (StatusCode, Json<ErrorResponse>);
 
@@ -26,18 +28,14 @@ fn internal_server_error_response(error: impl Display) -> Error {
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
+		.route("/v2", get(get_registry_status::handle))
 		.nest(
-			"/v2",
+			"/:workspaceId/:repoName",
 			Router::new()
-				.route("/v2", get(get_registry_status::handle))
-				.nest(
-					"/:workspaceId/:repoName",
-					Router::new()
-						.nest("/blobs", blobs::setup_routes(state).await)
-						.nest("/manifests", manifest::setup_routes(state).await),
-				),
+				.nest("/blobs", blobs::setup_routes(state).await)
+				.nest("/manifests", manifest::setup_routes(state).await)
+				.nest("/tags", tags::setup_routes(state).await),
 		)
-		.with_state(())
 }
 
 /// Get the S3 object name for a blob.
