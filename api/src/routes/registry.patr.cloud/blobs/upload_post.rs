@@ -51,13 +51,16 @@ pub(super) async fn handle(
 	State(state): State<AppState>,
 	body: Body,
 ) -> Result<impl IntoResponse, Error> {
+	info!("Handling blob upload POST request");
 	let path = preprocess_stuff(path)?;
 	let query = preprocess_stuff(query)?;
 
 	let workspace_id = path.workspace_id;
 	check_workspace(workspace_id, state.clone()).await?;
 
+	trace!("Getting bucket details");
 	let bucket = get_s3_bucket(state.config.clone())?;
+	trace!("Got bucket details");
 	let mut database = state
 		.database
 		.begin()

@@ -1,10 +1,10 @@
-use axum::{
-	http::{HeaderMap, HeaderName, HeaderValue, StatusCode},
-	response::IntoResponse,
-};
+use axum::{http::StatusCode, response::IntoResponse};
+
+use crate::prelude::*;
 
 /// Handles the `GET /v2/` route.
 #[axum::debug_handler]
 pub(super) async fn handle() -> impl IntoResponse {
-	(StatusCode::OK, [].into_iter().collect::<HeaderMap>()).into_response()
+	trace!("Registry status check");
+	StatusCode::OK
 }
