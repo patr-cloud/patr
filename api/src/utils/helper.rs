@@ -16,6 +16,24 @@ fn internal_server_error_response(error: impl Display) -> Error {
 	)
 }
 
+/// Helper function to get the required header value from headers object
+pub fn get_header(headers: &axum::http::HeaderMap, key: &str) -> Result<String, Error> {
+	let header_value = headers
+		.get(key)
+		.ok_or_else(|| {
+			convert_oci_error(
+				StatusCode::BAD_REQUEST,
+				ErrorCode::BlobUploadInvalid,
+				format!("{} header is required", key),
+			)
+		})?
+		.to_str()
+		.map_err(internal_server_error_response)?;
+
+	Ok(header_value.to_string())
+}
+
+/// Create an OCI Error to return
 pub fn convert_oci_error(status: StatusCode, oci_code: ErrorCode, message: String) -> Error {
 	return (
 		status,
@@ -33,6 +51,7 @@ pub fn convert_oci_error(status: StatusCode, oci_code: ErrorCode, message: Strin
 	);
 }
 
+/// Get The s3 bucket object
 pub fn get_s3_bucket(config: AppConfig) -> Result<Box<Bucket>, Error> {
 	Bucket::new(
 		config.s3.bucket.as_str(),
@@ -54,6 +73,7 @@ pub fn get_s3_bucket(config: AppConfig) -> Result<Box<Bucket>, Error> {
 	.map_err(internal_server_error_response)
 }
 
+/// Preprocess the request, can preprocess stuff like path, query, body
 pub fn preprocess_stuff<T>(data: T) -> Result<T::Processed, Error>
 where
 	T: Preprocessable + Send,
@@ -68,6 +88,7 @@ where
 	Ok(process_data)
 }
 
+/// Check if the given workspace exists
 pub async fn check_workspace(workspace_id: Uuid, app_state: AppState) -> Result<(), Error> {
 	let mut tx = app_state
 		.database

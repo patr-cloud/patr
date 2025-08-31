@@ -14,6 +14,7 @@ use crate::{
 	routes::registry_patr_cloud::{
 		Error,
 		get_s3_object_name_for_blob,
+		get_s3_object_name_for_session,
 		internal_server_error_response,
 	},
 	utils::helper::{check_workspace, convert_oci_error, get_s3_bucket, preprocess_stuff},
@@ -56,6 +57,7 @@ pub(super) async fn handle(
 	let workspace_id = path.workspace_id;
 	check_workspace(workspace_id, state.clone()).await?;
 
+	let bucket = get_s3_bucket(state.config.clone())?;
 	let mut database = state
 		.database
 		.begin()
@@ -81,6 +83,28 @@ pub(super) async fn handle(
 		.await
 		.map_err(internal_server_error_response)?
 		.id;
+
+		let s3_key = get_s3_object_name_for_session(session_id.to_string().as_str());
+		let s3_session = bucket
+			.initiate_multipart_upload(&s3_key, "application/octet-stream")
+			.await
+			.map_err(internal_server_error_response)?;
+
+		query!(
+			r#"
+			UPDATE
+				container_registry_session
+			SET
+				aws_session_id = $1
+			WHERE
+				id = $2
+			"#,
+			s3_session.upload_id as _,
+			session_id as _,
+		)
+		.execute(&mut *database)
+		.await
+		.map_err(internal_server_error_response)?;
 
 		let headers = [
 			(
@@ -144,7 +168,6 @@ pub(super) async fn handle(
 		.into_async_read()
 		.compat();
 
-	let bucket = get_s3_bucket(state.config.clone())?;
 	let s3_key = get_s3_object_name_for_blob(&digest);
 
 	// TODO match the content length

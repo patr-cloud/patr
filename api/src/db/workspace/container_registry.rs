@@ -101,11 +101,25 @@ pub async fn initialize_container_registry_tables(
 
 	query!(
 		r#"
+		CREATE TYPE container_registry_session_parts AS (
+			part_number   INT,
+			etag TEXT
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE container_registry_session(
 			id UUID NOT NULL,
 			user_id UUID NOT NULL,
 			aws_session_id UUID,
 			blob_digest TEXT,
+			current_part INT,
+			last_byte INT,
+			parts container_registry_session_parts[],
 			updated_at TIMESTAMPTZ NOT NULL
 		);
 		"#
@@ -198,6 +212,16 @@ pub async fn initialize_container_registry_constraints(
 		ALTER TABLE container_registry_tag
 		ADD CONSTRAINT container_registry_tag_pk
 		PRIMARY KEY(name, repository_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE container_registry_session
+		ADD CONSTRAINT container_registry_session_pk
+		PRIMARY KEY(id);
 		"#
 	)
 	.execute(&mut *connection)
