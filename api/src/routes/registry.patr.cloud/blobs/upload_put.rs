@@ -1,16 +1,30 @@
 use axum::{
-	body::{Body, HttpBody},
+	body::{Body, HttpBody, to_bytes},
 	extract::{Path, Query, State},
 	http::{HeaderMap, HeaderName, HeaderValue, StatusCode},
 	response::IntoResponse,
 };
+use futures::TryStreamExt;
 use oci_spec::distribution::ErrorCode;
+use s3::serde_types::Part;
 use serde::{Deserialize, Serialize};
+use tokio_util::compat::FuturesAsyncReadCompatExt;
 
 use crate::{
 	prelude::*,
-	routes::registry_patr_cloud::{Error, internal_server_error_response},
-	utils::helper::{check_workspace, convert_oci_error, preprocess_stuff},
+	routes::registry_patr_cloud::{
+		Error,
+		get_s3_object_name_for_blob,
+		get_s3_object_name_for_session,
+		internal_server_error_response,
+	},
+	utils::helper::{
+		check_workspace,
+		convert_oci_error,
+		get_header,
+		get_s3_bucket,
+		preprocess_stuff,
+	},
 };
 
 #[preprocess::sync]
@@ -52,30 +66,45 @@ pub(super) async fn handle(
 	let workspace_id = path.workspace_id;
 	check_workspace(workspace_id, state.clone()).await?;
 
+	let digest = query.digest;
+
+	let header_content_length = get_header(&header, "Content-Length")?;
+	let header_content_range = get_header(&header, "Content-Range")?;
+	let last_byte = header_content_range
+		.split('-')
+		.nth(1)
+		.ok_or_else(|| {
+			convert_oci_error(
+				StatusCode::BAD_REQUEST,
+				ErrorCode::BlobUploadInvalid,
+				"Invalid Content-Range header format".to_string(),
+			)
+		})?
+		.trim()
+		.parse::<u32>()
+		.map_err(|_| {
+			convert_oci_error(
+				StatusCode::BAD_REQUEST,
+				ErrorCode::BlobUploadInvalid,
+				"Invalid Content-Range last byte value".to_string(),
+			)
+		})?;
+
 	let mut database = state
 		.database
 		.begin()
 		.await
 		.map_err(internal_server_error_response)?;
 
-	let digest = query.digest;
+	let bucket = get_s3_bucket(state.config.clone())?;
+	let s3_key = get_s3_object_name_for_blob(&digest);
 
-	let header_content_length = header
-		.get("Content-Length")
-		.ok_or_else(|| {
-			convert_oci_error(
-				StatusCode::BAD_REQUEST,
-				ErrorCode::BlobUploadInvalid,
-				"Content-Length header is required".to_string(),
-			)
-		})?
-		.to_str()
-		.map_err(internal_server_error_response)?;
-
-	let is_multipart = query!(
+	let local_session = query!(
 		r#"
             SELECT 
-                aws_session_id AS "aws_session_id?"
+                aws_session_id AS "aws_session_id?",
+				current_part,
+				last_byte
             FROM 
                 container_registry_session
             WHERE 
@@ -85,20 +114,112 @@ pub(super) async fn handle(
 	)
 	.fetch_one(&mut *database)
 	.await
-	.map_err(internal_server_error_response)?
-	.aws_session_id
-	.is_some();
+	.map_err(internal_server_error_response)?;
+
+	let s3_session_id = local_session.aws_session_id;
 
 	if body.is_end_stream() {
-		if !is_multipart {
+		if !s3_session_id.is_some() {
 			return Err(convert_oci_error(
 				StatusCode::BAD_REQUEST,
 				ErrorCode::BlobUploadInvalid,
 				"Request body is empty".to_string(),
 			));
 		}
+	}
 
-		todo!("upload body here")
+	let session_parts = query!(
+		r#"
+		SELECT
+			(UNNEST(parts)).part_number,
+			(UNNEST(parts)).etag
+		FROM
+			container_registry_session;
+		"#
+	)
+	.fetch_all(&mut *database)
+	.await
+	.map_err(internal_server_error_response)?
+	.into_iter()
+	.map(|r| Part {
+		// TODO: FIX THIS UNWRAP
+		part_number: r.part_number.unwrap() as u32,
+		etag: r.etag.unwrap(),
+	})
+	.collect::<Vec<_>>();
+
+	// Upload to S3
+	// Is there a better way to do this?
+	if s3_session_id.is_some() {
+		let s3_session_id = s3_session_id.expect("Session ID to be there");
+		let s3_session_key = get_s3_object_name_for_session(path.session_id.to_string().as_str());
+
+		if !body.is_end_stream() {
+			let body_stream = to_bytes(body, usize::MAX)
+				.await
+				.map_err(internal_server_error_response)?;
+
+			let mut buffer: &mut &[u8] = &mut body_stream.as_ref();
+
+			bucket
+				.put_multipart_stream(
+					&mut buffer,
+					s3_session_key.as_str(),
+					last_byte as _,
+					s3_session_id.to_string().as_str(),
+					"application/octet-stream",
+				)
+				.await
+				.map_err(internal_server_error_response)?;
+		}
+
+		bucket
+			.complete_multipart_upload(
+				s3_session_key.as_str(),
+				// Using unwrap here cause already checking for is_some above
+				s3_session_id.to_string().as_str(),
+				session_parts,
+			)
+			.await
+			.map_err(internal_server_error_response)?;
+
+		bucket
+			.copy_object_internal(s3_session_key.as_str(), &s3_key)
+			.await
+			.map_err(internal_server_error_response)?;
+	} else {
+		let mut body_stream = body
+			.into_data_stream()
+			.map_err(std::io::Error::other)
+			.into_async_read()
+			.compat();
+
+		bucket
+			.put_object_stream_with_content_type(
+				&mut body_stream,
+				&s3_key,
+				"application/octet-stream",
+			)
+			.await
+			.map_err(internal_server_error_response)?;
+
+		// TODO match the content length
+		let status = bucket
+			.put_object_stream_with_content_type(
+				&mut body_stream,
+				&s3_key,
+				"application/octet-stream",
+			)
+			.await
+			.map_err(internal_server_error_response)?;
+
+		if !(200..300).contains(&status.status_code()) {
+			return Err(convert_oci_error(
+				StatusCode::BAD_REQUEST,
+				ErrorCode::ManifestInvalid,
+				"Failed to push manifest to S3".to_string(),
+			));
+		}
 	}
 
 	query!(
