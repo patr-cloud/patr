@@ -13,7 +13,8 @@ pub async fn initialize_container_registry_tables(
 			workspace_id UUID NOT NULL,
 			name TEXT NOT NULL,
 			created_at TIMESTAMPTZ NOT NULL,
-			updated_at TIMESTAMPTZ NOT NULL
+			updated_at TIMESTAMPTZ NOT NULL,
+			deleted TIMESTAMPTZ
 		);
 		"#
 	)
@@ -102,8 +103,8 @@ pub async fn initialize_container_registry_tables(
 	query!(
 		r#"
 		CREATE TYPE container_registry_session_parts AS (
-			part_number   INT,
-			etag TEXT
+			part_number	INT,
+			etag		TEXT
 		);
 		"#
 	)
@@ -150,8 +151,10 @@ pub async fn initialize_container_registry_constraints(
 	query!(
 		r#"
 		ALTER TABLE container_registry_repository
-		ADD CONSTRAINT container_registry_repository_pk
-		PRIMARY KEY(id);
+			ADD CONSTRAINT container_registry_repository_pk
+				PRIMARY KEY(id),
+			ADD CONSTRAINT container_registry_repository_fk_id_workspace_id_deleted
+				FOREIGN KEY(id, workspace_id, deleted) REFERENCES resource(id, owner_id, deleted);
 		"#
 	)
 	.execute(&mut *connection)

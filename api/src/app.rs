@@ -35,7 +35,19 @@ pub async fn serve(state: &AppState) {
 			app_listener.local_addr().unwrap()
 		);
 
-		futures::future::join(
+		let registry_listener = TcpListener::bind(SocketAddr::from((
+			state.config.bind_address.ip(),
+			state.config.bind_address.port() + 2,
+		)))
+		.await
+		.unwrap();
+
+		info!(
+			"Registry server running on http://{}",
+			registry_listener.local_addr().unwrap()
+		);
+
+		futures::future::join3(
 			async {
 				axum::serve(
 					api_listener,
@@ -51,6 +63,17 @@ pub async fn serve(state: &AppState) {
 				axum::serve(
 					app_listener,
 					crate::routes::app_patr_cloud::setup_routes(state)
+						.await
+						.into_make_service_with_connect_info::<SocketAddr>(),
+				)
+				.with_graceful_shutdown(crate::exit_signal())
+				.await
+				.unwrap();
+			},
+			async {
+				axum::serve(
+					registry_listener,
+					crate::routes::registry_patr_cloud::setup_routes(state)
 						.await
 						.into_make_service_with_connect_info::<SocketAddr>(),
 				)

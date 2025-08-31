@@ -1,4 +1,5 @@
 use axum::{Router, routing::get};
+use axum_extra::routing::RouterExt;
 
 use crate::prelude::*;
 
@@ -7,6 +8,6 @@ mod list;
 
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
-		.route("/{list}", get(list::handle))
+		.route_with_tsr("/{list}", get(list::handle))
 		.with_state(state.clone())
 }

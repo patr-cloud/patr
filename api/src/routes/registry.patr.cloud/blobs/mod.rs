@@ -2,6 +2,7 @@ use axum::{
 	Router,
 	routing::{get, head, patch, post, put},
 };
+use axum_extra::routing::RouterExt;
 
 use crate::prelude::*;
 
@@ -16,10 +17,11 @@ mod upload_put;
 
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
-		.route("/{digest}", get(digest::handle))
-		.route("/{digest}", head(digest::handle))
-		.route("/upload", post(upload_post::handle))
-		.route("/upload/{reference}", put(upload_put::handle))
-		.route("/upload/{reference}", patch(upload_patch::handle))
+		.route_with_tsr("/{digest}", get(digest::handle).head(digest::handle))
+		.route_with_tsr("/upload", post(upload_post::handle))
+		.route_with_tsr(
+			"/upload/{reference}",
+			patch(upload_patch::handle).put(upload_put::handle),
+		)
 		.with_state(state.clone())
 }

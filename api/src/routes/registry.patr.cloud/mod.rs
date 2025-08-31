@@ -1,8 +1,14 @@
 use std::fmt::Display;
 
-use axum::{Json, Router, routing::get};
+use axum::{
+	Json,
+	Router,
+	extract::Path,
+	routing::{any, get},
+};
+use axum_extra::routing::RouterExt;
 use oci_spec::distribution::{ErrorResponse, ErrorResponseBuilder};
-use reqwest::StatusCode;
+use reqwest::{Method, StatusCode};
 
 use crate::prelude::*;
 
@@ -29,7 +35,7 @@ fn internal_server_error_response(error: impl Display) -> Error {
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
-		.route("/v2", get(get_registry_status::handle))
+		.route_with_tsr("/v2", get(get_registry_status::handle))
 		.nest(
 			"/{workspaceId}/{repoName}",
 			Router::new()
@@ -37,6 +43,13 @@ pub async fn setup_routes(state: &AppState) -> Router {
 				.nest("/manifests", manifest::setup_routes(state).await)
 				.nest("/tags", tags::setup_routes(state).await),
 		)
+		.fallback(|Path::<String>(path), method: Method| async move {
+			warn!("No route found for {method} /{path}");
+			(
+				StatusCode::NOT_FOUND,
+				Json(ErrorResponseBuilder::default().errors([]).build().unwrap()),
+			)
+		})
 }
 
 /// Get the S3 object name for a blob.

@@ -1,4 +1,5 @@
 use axum::{Router, routing::put};
+use axum_extra::routing::RouterExt;
 
 use crate::prelude::*;
 
@@ -7,6 +8,6 @@ mod push;
 
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
-		.route("/{reference}", put(push::handle))
+		.route_with_tsr("/{reference}", put(push::handle))
 		.with_state(state.clone())
 }

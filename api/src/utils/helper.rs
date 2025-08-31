@@ -78,7 +78,9 @@ pub fn preprocess_stuff<T>(data: T) -> Result<T::Processed, Error>
 where
 	T: Preprocessable + Send,
 {
-	let Ok(process_data) = data.preprocess() else {
+	let Ok(process_data) = data.preprocess().inspect_err(|err| {
+		error!("Failed to preprocess data: {}", err);
+	}) else {
 		return Err(convert_oci_error(
 			StatusCode::NOT_FOUND,
 			ErrorCode::BlobUnknown,
@@ -113,6 +115,7 @@ pub async fn check_workspace(workspace_id: Uuid, app_state: AppState) -> Result<
 	.map_err(internal_server_error_response)?;
 
 	let Some(_) = row else {
+		warn!("Workspace {workspace_id} not found");
 		return Err(convert_oci_error(
 			StatusCode::NOT_FOUND,
 			ErrorCode::BlobUnknown,
