@@ -147,3 +147,39 @@ pub async fn check_workspace(workspace_id: Uuid, app_state: AppState) -> Result<
 
 	Ok(())
 }
+
+/// Check if the given repository exists
+pub async fn check_repository(repository_name: &str, app_state: AppState) -> Result<Uuid, Error> {
+	let mut tx = app_state
+		.database
+		.begin()
+		.await
+		.map_err(internal_server_error_response)?;
+
+	let row = query!(
+		r#"
+		SELECT
+			id
+		FROM
+			container_registry_repository
+		WHERE
+			name = $1
+		"#,
+		repository_name as _
+	)
+	.fetch_optional(&mut *tx)
+	.await
+	.map_err(internal_server_error_response)?
+	.map(|rec| rec.id);
+
+	let Some(id) = row else {
+		warn!("Repository {repository_name} not found");
+		return Err(convert_oci_error(
+			StatusCode::NOT_FOUND,
+			ErrorCode::BlobUnknown,
+			"Invalid repository name".to_string(),
+		));
+	};
+
+	Ok(Uuid::from(id))
+}

@@ -14,7 +14,13 @@ use crate::{
 		get_s3_object_name_for_blob,
 		internal_server_error_response,
 	},
-	utils::helper::{check_workspace, convert_oci_error, get_s3_bucket, preprocess_stuff},
+	utils::helper::{
+		check_repository,
+		check_workspace,
+		convert_oci_error,
+		get_s3_bucket,
+		preprocess_stuff,
+	},
 };
 
 #[preprocess::sync]
@@ -43,6 +49,9 @@ pub(super) async fn handle(
 
 	let workspace_id = path.workspace_id;
 	check_workspace(workspace_id, state.clone()).await?;
+
+	let repository_name = path.repo_name;
+	check_repository(&repository_name, state.clone()).await?;
 
 	let mut database = state
 		.database

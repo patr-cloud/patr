@@ -1,7 +1,7 @@
 use axum::{
 	body::{Body, HttpBody, to_bytes},
 	extract::{Path, Query, State},
-	http::{HeaderMap, HeaderName, HeaderValue, StatusCode},
+	http::{HeaderMap, StatusCode},
 	response::IntoResponse,
 };
 use futures::TryStreamExt;
@@ -19,6 +19,7 @@ use crate::{
 		internal_server_error_response,
 	},
 	utils::helper::{
+		check_repository,
 		check_workspace,
 		convert_oci_error,
 		get_header,
@@ -65,6 +66,9 @@ pub(super) async fn handle(
 
 	let workspace_id = path.workspace_id;
 	check_workspace(workspace_id, state.clone()).await?;
+
+	let repository_name = path.repo_name;
+	check_repository(&repository_name, state.clone()).await?;
 
 	let digest = query.digest;
 
@@ -254,12 +258,7 @@ pub(super) async fn handle(
 	.map_err(internal_server_error_response)?;
 
 	Ok((
-		[(
-			HeaderName::from_static("Docker-Distribution-API-Version"),
-			HeaderValue::from_static("registry/2.0"),
-		)]
-		.into_iter()
-		.collect::<HeaderMap>(),
+		[("Docker-Distribution-API-Version", "registry/2.0")],
 		StatusCode::OK,
 	)
 		.into_response())

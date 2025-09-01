@@ -15,6 +15,7 @@ use crate::{
 		internal_server_error_response,
 	},
 	utils::helper::{
+		check_repository,
 		check_workspace,
 		convert_oci_error,
 		get_header,
@@ -50,6 +51,9 @@ pub(super) async fn handle(
 	let workspace_id = path.workspace_id;
 	let session_id = path.session_id;
 	check_workspace(workspace_id, state.clone()).await?;
+
+	let repository_name = path.repo_name;
+	check_repository(&repository_name, state.clone()).await?;
 
 	let header_content_range = get_header(&header, "Content-Range")?;
 	let last_byte = header_content_range

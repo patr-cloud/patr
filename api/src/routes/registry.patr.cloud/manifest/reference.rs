@@ -16,6 +16,7 @@ use crate::{
 	},
 	utils::helper::{
 		Referrer,
+		check_repository,
 		check_workspace,
 		convert_oci_error,
 		get_referrer,
@@ -48,6 +49,8 @@ pub(super) async fn handle(
 ) -> Result<impl IntoResponse, Error> {
 	let path = preprocess_stuff(path)?;
 
+	let repository_name = path.repo_name;
+	check_repository(&repository_name, state.clone()).await?;
 	let workspace_id = path.workspace_id;
 	check_workspace(workspace_id, state.clone()).await?;
 

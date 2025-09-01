@@ -18,6 +18,7 @@ use crate::{
 	},
 	utils::helper::{
 		Referrer,
+		check_repository,
 		check_workspace,
 		convert_oci_error,
 		get_header,
@@ -52,8 +53,11 @@ pub(super) async fn handle(
 ) -> Result<impl IntoResponse, Error> {
 	let path = preprocess_stuff(path)?;
 
+	let repository_name = path.repo_name;
 	let workspace_id = path.workspace_id;
 	check_workspace(workspace_id, state.clone()).await?;
+	let repository_id = check_repository(&repository_name, state.clone()).await?;
+
 	let mut database = state
 		.database
 		.begin()
@@ -61,13 +65,6 @@ pub(super) async fn handle(
 		.map_err(internal_server_error_response)?;
 
 	let content_type = get_header(&header, "Content-Type")?;
-	if !(content_type == "application/vnd.oci.image.manifest.v1+json") {
-		return Err(convert_oci_error(
-			StatusCode::BAD_REQUEST,
-			oci_spec::distribution::ErrorCode::ManifestInvalid,
-			"Unsupported Content-Type".to_string(),
-		));
-	}
 
 	let referrer = get_referrer(&path.referrer);
 	let manifest = match referrer {
@@ -117,66 +114,6 @@ pub(super) async fn handle(
 		)
 	})?;
 
-	if !(200..300).contains(&status.status_code()) {
-		return Err(convert_oci_error(
-			StatusCode::BAD_REQUEST,
-			ErrorCode::ManifestInvalid,
-			"Failed to push manifest to S3".to_string(),
-		));
-	}
-
-	let index_manifest_digest = match referrer {
-		Referrer::Digest(digest) => query!(
-			r#"
-				SELECT
-					digest
-				FROM
-					container_registry_manifest_index AS index
-				INNER JOIN
-					container_registry_manifest AS mani
-				ON
-					index.digest = mani.index_digest
-				WHERE
-					digest = $1
-				;
-				"#,
-			digest
-		)
-		.fetch_optional(&mut *database)
-		.await
-		.map_err(internal_server_error_response)?
-		.map(|rec| rec.digest),
-		Referrer::Tag(tag) => {}
-	};
-
-	let index_manifest = query!(
-		r#"
-		SELECT
-			digest
-		FROM
-			container_registry_manifest_index
-		;
-		"#
-	)
-	.fetch_optional(&mut *database)
-	.await
-	.map_err(internal_server_error_response)?
-	.map(|rec| rec.digest);
-
-	if (index_manifest.is_none()) {
-		query!(
-			r#"
-				INSERT INTO
-					container_registry_manifest_index (digest)
-				VALUES ($1)
-			"#,
-			digest
-		)
-		.execute(&mut *database)
-		.await
-		.map_err(internal_server_error_response)?;
-	}
-
 	let mut body_stream = body
 		.into_data_stream()
 		.map_err(std::io::Error::other)
@@ -191,13 +128,62 @@ pub(super) async fn handle(
 		.await
 		.map_err(internal_server_error_response)?;
 
+	if !(200..300).contains(&status.status_code()) {
+		return Err(convert_oci_error(
+			StatusCode::BAD_REQUEST,
+			ErrorCode::ManifestInvalid,
+			"Failed to push manifest to S3".to_string(),
+		));
+	}
+
+	query!(
+		r#"
+		INSERT INTO container_registry_manifest(
+			digest,
+			size,
+			created_at,
+			content_type
+		) VALUES (
+		 	$1,
+			$2,
+			NOW(),
+			$3
+		);
+		"#,
+		digest,
+		size as _,
+		content_type
+	)
+	.execute(&mut *database)
+	.await
+	.map_err(internal_server_error_response)?;
+
+	query!(
+		r#"
+		INSERT INTO container_registry_repository_manifest(
+			repository_id,
+			manifest_digest,
+			created_at
+		) VALUES (
+			$1,
+			$2,
+			NOW()
+		);
+		"#,
+		repository_id as _,
+		digest
+	)
+	.execute(&mut *database)
+	.await
+	.map_err(internal_server_error_response)?;
+
 	let headers = [
 		("Docker-Distribution-API-Version", "registry/2.0"),
 		(
 			"Location",
 			&format!(
 				"https://registry.patr.cloud/v2/{}/{}/manifests/{}",
-				path.workspace_id, path.repo_name, &digest
+				path.workspace_id, repository_name, &digest
 			),
 		),
 	];

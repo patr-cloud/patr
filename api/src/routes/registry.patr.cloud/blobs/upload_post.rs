@@ -1,7 +1,7 @@
 use axum::{
 	body::Body,
 	extract::{Path, Query, State},
-	http::{HeaderMap, HeaderName, HeaderValue, StatusCode, header::InvalidHeaderValue},
+	http::{HeaderMap, StatusCode},
 	response::IntoResponse,
 };
 use futures::TryStreamExt;
@@ -17,7 +17,13 @@ use crate::{
 		get_s3_object_name_for_session,
 		internal_server_error_response,
 	},
-	utils::helper::{check_workspace, convert_oci_error, get_s3_bucket, preprocess_stuff},
+	utils::helper::{
+		check_repository,
+		check_workspace,
+		convert_oci_error,
+		get_s3_bucket,
+		preprocess_stuff,
+	},
 };
 
 #[preprocess::sync]
@@ -57,6 +63,9 @@ pub(super) async fn handle(
 
 	let workspace_id = path.workspace_id;
 	check_workspace(workspace_id, state.clone()).await?;
+
+	let repository_name = path.repo_name;
+	check_repository(&repository_name, state.clone()).await?;
 
 	trace!("Getting bucket details");
 	let bucket = get_s3_bucket(state.config.clone())?;
@@ -109,24 +118,14 @@ pub(super) async fn handle(
 		.await
 		.map_err(internal_server_error_response)?;
 
+		let location = format!(
+			"https://registry.patr.cloud/v2/{}/{}/blobs/uploads/{}",
+			&workspace_id, &repository_name, &session_id
+		);
 		let headers = [
-			(
-				HeaderName::from_static("Docker-Distribution-API-Version"),
-				Some(String::from("registry/2.0")),
-			),
-			(
-				HeaderName::from_static("Location"),
-				Some(format!(
-					"https://registry.patr.cloud/v2/{}/{}/blobs/uploads/{}",
-					path.workspace_id, path.repo_name, session_id
-				)),
-			),
-		]
-		.into_iter()
-		.filter_map(|(name, value)| value.map(|value| (name, value)))
-		.map(|(name, value)| Ok::<_, InvalidHeaderValue>((name, HeaderValue::from_str(&value)?)))
-		.collect::<Result<HeaderMap, _>>()
-		.map_err(internal_server_error_response)?;
+			("Docker-Distribution-API-Version", "registry/2.0"),
+			("Location", location.as_str()),
+		];
 
 		return Ok((StatusCode::CREATED, headers).into_response());
 	}
@@ -204,28 +203,15 @@ pub(super) async fn handle(
 	.await
 	.map_err(internal_server_error_response)?;
 
+	let location = format!(
+		"https://registry.patr.cloud/v2/{}/{}/blobs/upload/{}",
+		path.workspace_id, repository_name, digest
+	);
 	let headers = [
-		(
-			HeaderName::from_static("Docker-Distribution-API-Version"),
-			Some(String::from("registry/2.0")),
-		),
-		(
-			HeaderName::from_static("Docker-Content-Digest"),
-			Some(digest.to_string()),
-		),
-		(
-			HeaderName::from_static("Location"),
-			Some(format!(
-				"https://registry.patr.cloud/v2/{}/{}/blobs/{}",
-				path.workspace_id, path.repo_name, digest
-			)),
-		),
-	]
-	.into_iter()
-	.filter_map(|(name, value)| value.map(|value| (name, value)))
-	.map(|(name, value)| Ok::<_, InvalidHeaderValue>((name, HeaderValue::from_str(&value)?)))
-	.collect::<Result<HeaderMap, _>>()
-	.map_err(internal_server_error_response)?;
+		("Docker-Distribution-API-Version", "registry/2.0"),
+		("Docker-Content-Digest", &digest.to_string()),
+		("Location", &location),
+	];
 
 	Ok((StatusCode::OK, headers).into_response())
 }
