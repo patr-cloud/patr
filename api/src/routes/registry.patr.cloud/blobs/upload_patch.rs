@@ -82,14 +82,14 @@ pub(super) async fn handle(
 
 	let s3_session = query!(
 		r#"
-            SELECT 
-                aws_session_id AS "aws_session_id?",
-				last_byte
-            FROM 
-                container_registry_session
-            WHERE 
-                id = $1
-            "#,
+		SELECT 
+			aws_session_id AS "aws_session_id?",
+			last_byte
+		FROM 
+			container_registry_session
+		WHERE 
+			id = $1
+		"#,
 		path.session_id as _
 	)
 	.fetch_one(&mut *database)

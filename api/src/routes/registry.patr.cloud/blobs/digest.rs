@@ -1,20 +1,10 @@
 use axum::{
-	Json,
 	body::Body,
 	extract::{Path, State},
-	http::{
-		HeaderMap,
-		HeaderName,
-		HeaderValue,
-		Method,
-		StatusCode,
-		header::{self, InvalidHeaderValue},
-	},
+	http::{Method, StatusCode},
 	response::IntoResponse,
 };
-use oci_spec::distribution::{ErrorCode, ErrorInfoBuilder, ErrorResponseBuilder};
-use preprocess::Preprocessable;
-use s3::Bucket;
+use oci_spec::distribution::ErrorCode;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -24,7 +14,7 @@ use crate::{
 		get_s3_object_name_for_blob,
 		internal_server_error_response,
 	},
-	utils::helper::check_workspace,
+	utils::helper::{check_workspace, convert_oci_error, get_s3_bucket, preprocess_stuff},
 };
 
 #[preprocess::sync]
@@ -49,79 +39,49 @@ pub(super) async fn handle(
 	Path(path): Path<PathParams>,
 	State(state): State<AppState>,
 ) -> Result<impl IntoResponse, Error> {
-	let Ok(path) = path.preprocess() else {
-		return Err((
-			StatusCode::NOT_FOUND,
-			Json(
-				ErrorResponseBuilder::default()
-					.errors([ErrorInfoBuilder::default()
-						.code(ErrorCode::BlobUnknown)
-						.message("Invalid repository name".to_string())
-						.detail("".to_string())
-						.build()
-						.unwrap()])
-					.build()
-					.unwrap(),
-			),
-		));
-	};
+	let path = preprocess_stuff(path)?;
 
 	let workspace_id = path.workspace_id;
 	check_workspace(workspace_id, state.clone()).await?;
 
-	let bucket = Bucket::new(
-		state.config.s3.bucket.as_str(),
-		s3::Region::Custom {
-			region: state.config.s3.region,
-			endpoint: state.config.s3.endpoint,
-		},
-		{
-			s3::creds::Credentials::new(
-				Some(&state.config.s3.key),
-				Some(&state.config.s3.secret),
-				None,
-				None,
-				None,
-			)
-			.map_err(internal_server_error_response)?
-		},
-	)
-	.map_err(internal_server_error_response)?;
-
-	let s3_key = get_s3_object_name_for_blob(&path.digest);
-	let (head, _) = bucket
-		.head_object(&s3_key)
+	let mut database = state
+		.database
+		.begin()
 		.await
 		.map_err(internal_server_error_response)?;
+	let bucket = get_s3_bucket(state.config.clone())?;
+
+	let s3_key = get_s3_object_name_for_blob(&path.digest);
+
+	let size = query!(
+		r#"
+		SELECT
+			*
+		FROM
+			container_registry_layer_blob
+		WHERE
+			digest = $1
+		"#,
+		&path.digest
+	)
+	.fetch_optional(&mut *database)
+	.await
+	.map_err(internal_server_error_response)?
+	.map(|rec| rec.size);
+
+	let size = size.ok_or_else(|| {
+		convert_oci_error(
+			StatusCode::NOT_FOUND,
+			ErrorCode::ManifestUnknown,
+			"Manifest not found".to_string(),
+		)
+	})?;
 
 	let headers = [
-		(
-			HeaderName::from_static("Docker-Distribution-API-Version"),
-			Some(String::from("registry/2.0")),
-		),
-		(
-			HeaderName::from_static("Docker-Content-Digest"),
-			Some(path.digest.to_string()),
-		),
-		(header::ACCEPT_RANGES, head.accept_ranges),
-		(header::CACHE_CONTROL, head.cache_control),
-		(header::CONTENT_DISPOSITION, head.content_disposition),
-		(header::CONTENT_ENCODING, head.content_encoding),
-		(header::CONTENT_LANGUAGE, head.content_language),
-		(
-			header::CONTENT_LENGTH,
-			head.content_length.map(|length| length.to_string()),
-		),
-		(header::CONTENT_TYPE, head.content_type),
-		(header::ETAG, head.e_tag),
-		(header::EXPIRES, head.expires),
-		(header::LAST_MODIFIED, head.last_modified),
-	]
-	.into_iter()
-	.filter_map(|(name, value)| value.map(|value| (name, value)))
-	.map(|(name, value)| Ok::<_, InvalidHeaderValue>((name, HeaderValue::from_str(&value)?)))
-	.collect::<Result<HeaderMap, _>>()
-	.map_err(internal_server_error_response)?;
+		("Docker-Distribution-API-Version", "registry/2.0"),
+		("Docker-Content-Digest", &path.digest),
+		("Content-Length", &size.to_string()),
+	];
 
 	if matches!(method, Method::HEAD) {
 		// HEAD request. head the blob from S3 and set the headers

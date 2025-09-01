@@ -3,9 +3,31 @@ use std::fmt::Display;
 use axum::{Json, http::StatusCode};
 use oci_spec::distribution::{ErrorCode, ErrorInfoBuilder, ErrorResponse, ErrorResponseBuilder};
 use preprocess::Preprocessable;
+use regex::Regex;
 use s3::Bucket;
 
 use crate::{prelude::*, utils::config::AppConfig};
+
+/// Referrer Type, Can be a Digest or a Tag
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Referrer {
+	/// Referrer is of type Digest, i.e. it matches the regex
+	/// `[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+`
+	Digest(String),
+	/// Referrer is of type Tag
+	Tag(String),
+}
+
+/// Get Referrer Type from string
+pub fn get_referrer(referrer: &str) -> Referrer {
+	// Check if referrer is a digest (sha256:...)
+	let re = Regex::new(r"[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+").unwrap();
+	if re.is_match(referrer) {
+		return Referrer::Digest(referrer.to_string());
+	}
+
+	Referrer::Tag(referrer.to_string())
+}
 
 type Error = (StatusCode, Json<ErrorResponse>);
 fn internal_server_error_response(error: impl Display) -> Error {

@@ -38,8 +38,8 @@ pub async fn initialize_container_registry_tables(
 		CREATE TABLE container_registry_manifest(
 			digest TEXT NOT NULL,
 			annotations JSONB,
-			config JSONB NOT NULL,
-			platform JSONB NOT NULL,
+			config JSONB,
+			platform JSONB,
 			size BIGINT NOT NULL,
 			created_at TIMESTAMPTZ NOT NULL,
 			index_digest TEXT NOT NULL
