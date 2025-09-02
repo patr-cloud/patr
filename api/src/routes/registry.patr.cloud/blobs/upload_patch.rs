@@ -18,7 +18,6 @@ use crate::{
 		check_repository,
 		check_workspace,
 		convert_oci_error,
-		get_header,
 		get_s3_bucket,
 		preprocess_stuff,
 	},
@@ -128,6 +127,8 @@ pub(super) async fn handle(
 		)
 	})?;
 
+	trace!("Current Part: {}", current_part);
+
 	// dunno if this is right
 	// if s3_session
 	// 	.last_byte
@@ -150,14 +151,14 @@ pub(super) async fn handle(
 			error!("Error reading body stream: {}", error);
 		})
 		.map_err(internal_server_error_response)?;
-	let size = body_stream.len();
+	let body_size = body_stream.len();
 
 	let buffer: &mut &[u8] = &mut body_stream.as_ref();
 	let chunk_part = bucket
 		.put_multipart_stream(
 			buffer,
 			s3_key.as_str(),
-			current_part as _,
+			(current_part + 1) as _,
 			s3_session_id.to_string().as_str(),
 			"application/octet-stream",
 		)
@@ -172,12 +173,13 @@ pub(super) async fn handle(
 
 	trace!("uploaded body chunk");
 
+	trace!("Patch Part: {current_part} {}", chunk_part.part_number);
 	query!(
 		r#"
 		UPDATE
 			container_registry_session
 		SET
-			parts = parts || ($1, $2)::container_registry_session_parts,
+			parts = ARRAY_APPEND(parts, ($1, $2)::container_registry_session_parts),
 			current_part = current_part + 1,
 			last_byte = $3,
 			updated_at = NOW()
@@ -202,12 +204,12 @@ pub(super) async fn handle(
 		"/v2/{}/{}/blobs/uploads/{}",
 		path.workspace_id, repository_name, &session_id
 	);
+
 	Ok((
 		StatusCode::ACCEPTED,
 		[
-			("Docker-Distribution-API-Version", "registry/2.0"),
 			("Location", &location),
-			("Range", &format!("0-{}", size)),
+			("Range", &format!("0-{}", body_size)),
 		],
 	)
 		.into_response())

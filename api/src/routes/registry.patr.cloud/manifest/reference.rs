@@ -1,7 +1,7 @@
 use axum::{
 	body::Body,
 	extract::{Path, State},
-	http::{Method, StatusCode},
+	http::{HeaderMap, Method, StatusCode},
 	response::IntoResponse,
 };
 use oci_spec::distribution::ErrorCode;
@@ -37,25 +37,27 @@ pub struct PathParams {
 	repo_name: String,
 	/// The digest of the blob
 	#[preprocess(trim)]
-	referrer: String,
+	reference: String,
 }
 
 /// Handles the `HEAD /v2/<name>/manifests/<reference>` route. [`end-3`](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pulling-blobs)
 #[axum::debug_handler]
 pub(super) async fn handle(
+	header: HeaderMap,
 	method: Method,
 	Path(path): Path<PathParams>,
 	State(state): State<AppState>,
 ) -> Result<impl IntoResponse, Error> {
 	trace!("HEAD/GET called on get manifest");
 	let path = preprocess_stuff(path)?;
+	trace!("Headers: {:#?}", header);
 
 	let repository_name = path.repo_name;
 	check_repository(&repository_name, state.clone()).await?;
 	let workspace_id = path.workspace_id;
 	check_workspace(workspace_id, state.clone()).await?;
 
-	let referrer = get_referrer(&path.referrer);
+	let referrer = get_referrer(&path.reference);
 	let mut database = state
 		.database
 		.begin()
@@ -67,7 +69,8 @@ pub(super) async fn handle(
 			r#"
 				SELECT
 					mani.digest,
-					mani.size
+					mani.size,
+					mani.content_type
 				FROM
 					container_registry_manifest AS mani
 				WHERE
@@ -78,12 +81,13 @@ pub(super) async fn handle(
 		.fetch_optional(&mut *database)
 		.await
 		.map_err(internal_server_error_response)?
-		.map(|mani| (mani.digest, mani.size)),
+		.map(|mani| (mani.digest, mani.size, mani.content_type)),
 		Referrer::Tag(tag) => query!(
 			r#"
 				SELECT 
 					mani.digest,
-					mani.size 
+					mani.size,
+					mani.content_type
 				FROM 
 					container_registry_manifest AS mani
 				INNER JOIN
@@ -98,10 +102,10 @@ pub(super) async fn handle(
 		.fetch_optional(&mut *database)
 		.await
 		.map_err(internal_server_error_response)?
-		.map(|mani| (mani.digest, mani.size)),
+		.map(|mani| (mani.digest, mani.size, mani.content_type)),
 	};
 
-	let (digest, size) = manifest.ok_or_else(|| {
+	let (digest, size, content_type) = manifest.ok_or_else(|| {
 		convert_oci_error(
 			StatusCode::NOT_FOUND,
 			ErrorCode::ManifestUnknown,
@@ -116,6 +120,7 @@ pub(super) async fn handle(
 			[
 				("Docker-Distribution-API-Version", "registry/2.0"),
 				("Docker-Content-Digest", &digest),
+				("Content-Type", &content_type),
 				("Content-Length", &size.to_string()),
 			],
 		)

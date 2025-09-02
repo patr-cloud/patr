@@ -84,12 +84,14 @@ pub(super) async fn handle(
 				id,
 				user_id,
 				updated_at,
+				parts,
 				current_part
 			) VALUES (
 			 	$1,
 				$2,
 				NOW(),
-				1
+				ARRAY[]::container_registry_session_parts[],
+				0
 			)
 			RETURNING id AS "id: Uuid";
 			"#,

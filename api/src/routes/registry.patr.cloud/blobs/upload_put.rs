@@ -162,6 +162,8 @@ pub(super) async fn handle(
 	})
 	.collect::<Vec<_>>();
 
+	trace!("Parts: {:#?}", session_parts);
+
 	let s3_session_key = get_s3_object_name_for_session(&reference.to_string().as_str());
 
 	if !body.is_end_stream() {
@@ -217,9 +219,9 @@ pub(super) async fn handle(
 
 	query!(
 		r#"
-        DELETE FROM container_registry_session
-        WHERE id = $1;
-        "#,
+	    DELETE FROM container_registry_session
+	    WHERE id = $1;
+	    "#,
 		&reference as _
 	)
 	.execute(&mut *database)
