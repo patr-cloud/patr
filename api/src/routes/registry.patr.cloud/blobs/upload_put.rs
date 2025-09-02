@@ -148,8 +148,11 @@ pub(super) async fn handle(
 			(UNNEST(parts)).part_number,
 			(UNNEST(parts)).etag
 		FROM
-			container_registry_session;
-		"#
+			container_registry_session
+		WHERE
+			id = $1;
+		"#,
+		&reference as _
 	)
 	.fetch_all(&mut *database)
 	.await
