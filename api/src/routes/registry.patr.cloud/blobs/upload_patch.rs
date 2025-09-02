@@ -1,7 +1,7 @@
 use axum::{
 	body::{Body, to_bytes},
 	extract::{Path, State},
-	http::{HeaderMap, HeaderName, HeaderValue, StatusCode},
+	http::{HeaderMap, StatusCode},
 	response::IntoResponse,
 };
 use oci_spec::distribution::ErrorCode;
@@ -35,10 +35,10 @@ pub struct PathParams {
 	#[preprocess(regex = r"[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*")]
 	repo_name: String,
 	/// Reference, The Session ID
-	session_id: Uuid,
+	reference: String,
 }
 
-/// Handles the `GET /v2/<name>/blobs/uploads/<reference>?digest=<digest>` route. [`end-6`](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#post-then-put)
+/// Handles the `PATCH /v2/<name>/blobs/uploads/<reference>?digest=<digest>` route. [`end-6`](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#post-then-put)
 #[axum::debug_handler]
 pub(super) async fn handle(
 	header: HeaderMap,
@@ -46,35 +46,46 @@ pub(super) async fn handle(
 	State(state): State<AppState>,
 	body: Body,
 ) -> Result<impl IntoResponse, Error> {
+	trace!("PATCH upload called on get blob");
 	let path = preprocess_stuff(path)?;
 
 	let workspace_id = path.workspace_id;
-	let session_id = path.session_id;
+	let session_id = Uuid::parse_str(path.reference.as_str()).map_err(|_| {
+		convert_oci_error(
+			StatusCode::BAD_REQUEST,
+			ErrorCode::BlobUploadInvalid,
+			"Invalid reference, reference should be Uuid".to_string(),
+		)
+	})?;
 	check_workspace(workspace_id, state.clone()).await?;
 
 	let repository_name = path.repo_name;
 	check_repository(&repository_name, state.clone()).await?;
 
-	let header_content_range = get_header(&header, "Content-Range")?;
-	let last_byte = header_content_range
-		.split('-')
-		.nth(1)
-		.ok_or_else(|| {
-			convert_oci_error(
-				StatusCode::BAD_REQUEST,
-				ErrorCode::BlobUploadInvalid,
-				"Invalid Content-Range header format".to_string(),
-			)
-		})?
-		.trim()
-		.parse::<u32>()
-		.map_err(|_| {
-			convert_oci_error(
-				StatusCode::BAD_REQUEST,
-				ErrorCode::BlobUploadInvalid,
-				"Invalid Content-Range last byte value".to_string(),
-			)
-		})?;
+	debug!("{:#?}", &header);
+
+	// let header_content_range = get_header(&header, "Content-Range")?;
+	// let last_byte = header_content_range
+	// 	.split('-')
+	// 	.nth(1)
+	// 	.ok_or_else(|| {
+	// 		convert_oci_error(
+	// 			StatusCode::RANGE_NOT_SATISFIABLE,
+	// 			ErrorCode::BlobUploadInvalid,
+	// 			"Invalid Content-Range header format".to_string(),
+	// 		)
+	// 	})?
+	// 	.trim()
+	// 	.parse::<u32>()
+	// 	.map_err(|_| {
+	// 		convert_oci_error(
+	// 			StatusCode::RANGE_NOT_SATISFIABLE,
+	// 			ErrorCode::BlobUploadInvalid,
+	// 			"Invalid Content-Range last byte value".to_string(),
+	// 		)
+	// 	})?;
+
+	// trace!("chunk upload last byte: {last_byte}");
 
 	let mut database = state
 		.database
@@ -88,13 +99,14 @@ pub(super) async fn handle(
 		r#"
 		SELECT 
 			aws_session_id AS "aws_session_id?",
+			current_part,
 			last_byte
 		FROM 
 			container_registry_session
 		WHERE 
 			id = $1
 		"#,
-		path.session_id as _
+		session_id as _
 	)
 	.fetch_one(&mut *database)
 	.await
@@ -102,9 +114,17 @@ pub(super) async fn handle(
 
 	let s3_session_id = s3_session.aws_session_id.ok_or_else(|| {
 		convert_oci_error(
-			StatusCode::BAD_REQUEST,
+			StatusCode::NOT_FOUND,
 			ErrorCode::BlobUploadInvalid,
 			"Invalid S3 session ID".to_string(),
+		)
+	})?;
+
+	let current_part = s3_session.current_part.ok_or_else(|| {
+		convert_oci_error(
+			StatusCode::INTERNAL_SERVER_ERROR,
+			ErrorCode::SizeInvalid,
+			"Cannot Extract Current Part".to_string(),
 		)
 	})?;
 
@@ -130,12 +150,14 @@ pub(super) async fn handle(
 		.put_multipart_stream(
 			&mut buffer,
 			s3_key.as_str(),
-			last_byte as _,
+			current_part as _,
 			s3_session_id.to_string().as_str(),
 			"application/octet-stream",
 		)
 		.await
 		.map_err(internal_server_error_response)?;
+
+	trace!("uploaded body chunk");
 
 	query!(
 		r#"
@@ -144,27 +166,36 @@ pub(super) async fn handle(
 		SET
 			parts = parts || ($1, $2)::container_registry_session_parts,
 			current_part = current_part + 1,
-			last_byte = $3
+			last_byte = $3,
+			updated_at = NOW()
 		WHERE
 			id = $4
 		"#,
 		chunk_part.part_number as i32,
 		chunk_part.etag,
-		last_byte as i32,
+		32i32,
 		s3_session_id as _
 	)
 	.execute(&mut *database)
 	.await
 	.map_err(internal_server_error_response)?;
 
+	database
+		.commit()
+		.await
+		.map_err(internal_server_error_response)?;
+
+	let location = format!(
+		"https://registry.patr.cloud/v2/{}/{}/blobs/upload/{}",
+		path.workspace_id, repository_name, &session_id
+	);
 	Ok((
-		[(
-			HeaderName::from_static("Docker-Distribution-API-Version"),
-			HeaderValue::from_static("registry/2.0"),
-		)]
-		.into_iter()
-		.collect::<HeaderMap>(),
-		StatusCode::OK,
+		StatusCode::ACCEPTED,
+		[
+			("Docker-Distribution-API-Version", "registry/2.0"),
+			("Location", &location),
+			// ("Range", &format!("0-{}", last_byte)),
+		],
 	)
 		.into_response())
 }

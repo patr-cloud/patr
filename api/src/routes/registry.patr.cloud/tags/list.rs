@@ -33,6 +33,7 @@ pub(super) async fn handle(
 	Path(path): Path<PathParams>,
 	State(state): State<AppState>,
 ) -> Result<impl IntoResponse, Error> {
+	trace!("GET tags called on get tags");
 	let path = preprocess_stuff(path)?;
 	let repo_name = path.repo_name;
 

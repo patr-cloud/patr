@@ -6,5 +6,12 @@ use crate::prelude::*;
 #[axum::debug_handler]
 pub(super) async fn handle() -> impl IntoResponse {
 	trace!("Registry status check");
-	StatusCode::OK
+	(
+		StatusCode::OK,
+		[(
+			"Docker-Distribution-Api-Version".to_string(),
+			"registry/2.0".to_string(),
+		)],
+	)
+		.into_response()
 }

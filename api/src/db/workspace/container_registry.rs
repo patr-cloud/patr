@@ -101,7 +101,7 @@ pub async fn initialize_container_registry_tables(
 		CREATE TABLE container_registry_session(
 			id UUID NOT NULL,
 			user_id UUID NOT NULL,
-			aws_session_id UUID,
+			aws_session_id TEXT,
 			blob_digest TEXT,
 			current_part INT,
 			last_byte INT,

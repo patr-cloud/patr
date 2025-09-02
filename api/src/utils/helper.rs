@@ -5,6 +5,7 @@ use oci_spec::distribution::{ErrorCode, ErrorInfoBuilder, ErrorResponse, ErrorRe
 use preprocess::Preprocessable;
 use regex::Regex;
 use s3::Bucket;
+use serde_json::to_string;
 
 use crate::{prelude::*, utils::config::AppConfig};
 
@@ -57,6 +58,7 @@ pub fn get_header(headers: &axum::http::HeaderMap, key: &str) -> Result<String, 
 
 /// Create an OCI Error to return
 pub fn convert_oci_error(status: StatusCode, oci_code: ErrorCode, message: String) -> Error {
+	warn!("{:#?} {:#?} {:#?}", status, oci_code, message);
 	return (
 		status,
 		Json(
@@ -64,7 +66,7 @@ pub fn convert_oci_error(status: StatusCode, oci_code: ErrorCode, message: Strin
 				.errors([ErrorInfoBuilder::default()
 					.code(oci_code)
 					.message(message)
-					.detail("".to_string())
+					.detail("{}".to_string())
 					.build()
 					.unwrap()])
 				.build()

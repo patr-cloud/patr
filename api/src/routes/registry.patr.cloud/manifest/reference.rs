@@ -40,13 +40,14 @@ pub struct PathParams {
 	referrer: String,
 }
 
-/// Handles the `HEAD /v2/v2/<name>/manifests/<reference>` route. [`end-3`](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pulling-blobs)
+/// Handles the `HEAD /v2/<name>/manifests/<reference>` route. [`end-3`](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pulling-blobs)
 #[axum::debug_handler]
 pub(super) async fn handle(
 	method: Method,
 	Path(path): Path<PathParams>,
 	State(state): State<AppState>,
 ) -> Result<impl IntoResponse, Error> {
+	trace!("HEAD/GET called on get manifest");
 	let path = preprocess_stuff(path)?;
 
 	let repository_name = path.repo_name;

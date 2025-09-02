@@ -3,12 +3,13 @@ use std::fmt::Display;
 use axum::{
 	Json,
 	Router,
-	extract::Path,
-	routing::{any, get},
+	extract::Request,
+	middleware::{Next, from_fn},
+	routing::get,
 };
 use axum_extra::routing::RouterExt;
 use oci_spec::distribution::{ErrorResponse, ErrorResponseBuilder};
-use reqwest::{Method, StatusCode};
+use reqwest::StatusCode;
 
 use crate::prelude::*;
 
@@ -37,19 +38,32 @@ pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
 		.route_with_tsr("/v2", get(get_registry_status::handle))
 		.nest(
-			"/{workspaceId}/{repoName}",
+			"/v2/{workspaceId}/{repoName}",
 			Router::new()
 				.nest("/blobs", blobs::setup_routes(state).await)
 				.nest("/manifests", manifest::setup_routes(state).await)
 				.nest("/tags", tags::setup_routes(state).await),
 		)
-		.fallback(|Path::<String>(path), method: Method| async move {
-			warn!("No route found for {method} /{path}");
+		.fallback(|request: Request| async move {
+			let method = request.method();
+			let path = request.uri().path();
+			warn!("No route found for {method} {path}");
 			(
 				StatusCode::NOT_FOUND,
 				Json(ErrorResponseBuilder::default().errors([]).build().unwrap()),
 			)
 		})
+		.layer(from_fn(async |req: Request, next: Next| {
+			let method = req.method();
+			let path = req.uri().path();
+
+			trace!("[{method}] {path} called");
+
+			let response = next.run(req).await;
+			trace!("Response status: {:?}", response.status());
+
+			response
+		}))
 }
 
 /// Get the S3 object name for a blob.
@@ -64,5 +78,5 @@ fn get_s3_object_name_for_manifest(manifest: &str) -> String {
 
 /// Get the S3 object for a session
 fn get_s3_object_name_for_session(session_id: &str) -> String {
-	format!("registry/session/${session_id}")
+	format!("registry/session/{session_id}")
 }

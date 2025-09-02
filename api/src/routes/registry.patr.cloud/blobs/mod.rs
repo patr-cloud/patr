@@ -18,9 +18,9 @@ mod upload_put;
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
 		.route_with_tsr("/{digest}", get(digest::handle).head(digest::handle))
-		.route_with_tsr("/upload", post(upload_post::handle))
+		.route_with_tsr("/uploads", post(upload_post::handle))
 		.route_with_tsr(
-			"/upload/{reference}",
+			"/uploads/{reference}",
 			put(upload_put::handle).patch(upload_patch::handle),
 		)
 		.with_state(state.clone())

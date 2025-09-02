@@ -57,7 +57,7 @@ pub(super) async fn handle(
 	State(state): State<AppState>,
 	body: Body,
 ) -> Result<impl IntoResponse, Error> {
-	info!("Handling blob upload POST request");
+	trace!("Handling blob upload POST request");
 	let path = preprocess_stuff(path)?;
 	let query = preprocess_stuff(query)?;
 
@@ -76,16 +76,20 @@ pub(super) async fn handle(
 		.await
 		.map_err(internal_server_error_response)?;
 
-	let digest = query.digest;
+	let digest: std::borrow::Cow<'static, str> = query.digest;
 	if digest.is_empty() {
 		let session_id = query!(
 			r#"
 			INSERT INTO container_registry_session(
 				id,
-				user_id
+				user_id,
+				updated_at,
+				current_part
 			) VALUES (
 			 	$1,
-				$2
+				$2,
+				NOW(),
+				1
 			) RETURNING id;
 			"#,
 			Uuid::new_v4() as _,
@@ -107,27 +111,39 @@ pub(super) async fn handle(
 			UPDATE
 				container_registry_session
 			SET
-				aws_session_id = $1
+				aws_session_id = $1,
+				updated_at = NOW()
 			WHERE
 				id = $2
 			"#,
-			s3_session.upload_id as _,
+			&s3_session.upload_id as _,
 			session_id as _,
 		)
 		.execute(&mut *database)
 		.await
 		.map_err(internal_server_error_response)?;
 
+		debug!(
+			"Created S3 multipart upload session: {}",
+			&s3_session.upload_id
+		);
+
 		let location = format!(
-			"https://registry.patr.cloud/v2/{}/{}/blobs/uploads/{}",
+			"/v2/{}/{}/blobs/uploads/{}",
 			&workspace_id, &repository_name, &session_id
 		);
 		let headers = [
 			("Docker-Distribution-API-Version", "registry/2.0"),
+			("content-length", "0"),
 			("Location", location.as_str()),
 		];
+		trace!("Created blob upload session at {}", location);
+		database
+			.commit()
+			.await
+			.map_err(internal_server_error_response)?;
 
-		return Ok((StatusCode::CREATED, headers).into_response());
+		return Ok((StatusCode::ACCEPTED, headers).into_response());
 	}
 
 	let header_content_length = header
@@ -204,7 +220,7 @@ pub(super) async fn handle(
 	.map_err(internal_server_error_response)?;
 
 	let location = format!(
-		"https://registry.patr.cloud/v2/{}/{}/blobs/upload/{}",
+		"/v2/{}/{}/blobs/upload/{}",
 		path.workspace_id, repository_name, digest
 	);
 	let headers = [
@@ -213,5 +229,10 @@ pub(super) async fn handle(
 		("Location", &location),
 	];
 
-	Ok((StatusCode::OK, headers).into_response())
+	database
+		.commit()
+		.await
+		.map_err(internal_server_error_response)?;
+
+	Ok((StatusCode::CREATED, headers).into_response())
 }

@@ -45,6 +45,7 @@ pub(super) async fn handle(
 	Path(path): Path<PathParams>,
 	State(state): State<AppState>,
 ) -> Result<impl IntoResponse, Error> {
+	trace!("GET/HEAD called on get blob");
 	let path = preprocess_stuff(path)?;
 
 	let workspace_id = path.workspace_id;
@@ -58,14 +59,16 @@ pub(super) async fn handle(
 		.begin()
 		.await
 		.map_err(internal_server_error_response)?;
+	info!("Database Initiated");
 	let bucket = get_s3_bucket(state.config.clone())?;
+	info!("s3 bucket Initiated");
 
 	let s3_key = get_s3_object_name_for_blob(&path.digest);
 
 	let size = query!(
 		r#"
 		SELECT
-			*
+			size
 		FROM
 			container_registry_layer_blob
 		WHERE

@@ -51,6 +51,7 @@ pub(super) async fn handle(
 	State(state): State<AppState>,
 	body: Body,
 ) -> Result<impl IntoResponse, Error> {
+	trace!("PUT called on get manifest");
 	let path = preprocess_stuff(path)?;
 
 	let repository_name = path.repo_name;
@@ -177,12 +178,17 @@ pub(super) async fn handle(
 	.await
 	.map_err(internal_server_error_response)?;
 
+	database
+		.commit()
+		.await
+		.map_err(internal_server_error_response)?;
+
 	let headers = [
 		("Docker-Distribution-API-Version", "registry/2.0"),
 		(
 			"Location",
 			&format!(
-				"https://registry.patr.cloud/v2/{}/{}/manifests/{}",
+				"/v2/{}/{}/manifests/{}",
 				path.workspace_id, repository_name, &digest
 			),
 		),
