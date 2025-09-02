@@ -79,26 +79,26 @@ pub(super) async fn handle(
 	})?;
 
 	let header_content_length = get_header(&header, "Content-Length")?;
-	let header_content_range = get_header(&header, "Content-Range")?;
-	let last_byte = header_content_range
-		.split('-')
-		.nth(1)
-		.ok_or_else(|| {
-			convert_oci_error(
-				StatusCode::BAD_REQUEST,
-				ErrorCode::BlobUploadInvalid,
-				"Invalid Content-Range header format".to_string(),
-			)
-		})?
-		.trim()
-		.parse::<u32>()
-		.map_err(|_| {
-			convert_oci_error(
-				StatusCode::BAD_REQUEST,
-				ErrorCode::BlobUploadInvalid,
-				"Invalid Content-Range last byte value".to_string(),
-			)
-		})?;
+	// let header_content_range = get_header(&header, "Content-Range")?;
+	// let last_byte = header_content_range
+	// 	.split('-')
+	// 	.nth(1)
+	// 	.ok_or_else(|| {
+	// 		convert_oci_error(
+	// 			StatusCode::BAD_REQUEST,
+	// 			ErrorCode::BlobUploadInvalid,
+	// 			"Invalid Content-Range header format".to_string(),
+	// 		)
+	// 	})?
+	// 	.trim()
+	// 	.parse::<u32>()
+	// 	.map_err(|_| {
+	// 		convert_oci_error(
+	// 			StatusCode::BAD_REQUEST,
+	// 			ErrorCode::BlobUploadInvalid,
+	// 			"Invalid Content-Range last byte value".to_string(),
+	// 		)
+	// 	})?;
 
 	let mut database = state
 		.database
@@ -131,6 +131,14 @@ pub(super) async fn handle(
 			StatusCode::BAD_REQUEST,
 			ErrorCode::BlobUploadInvalid,
 			"Invalid S3 session ID".to_string(),
+		)
+	})?;
+
+	let current_part = local_session.current_part.ok_or_else(|| {
+		convert_oci_error(
+			StatusCode::INTERNAL_SERVER_ERROR,
+			ErrorCode::SizeInvalid,
+			"Cannot Extract Current Part".to_string(),
 		)
 	})?;
 
@@ -167,7 +175,7 @@ pub(super) async fn handle(
 			.put_multipart_stream(
 				&mut buffer,
 				s3_session_key.as_str(),
-				last_byte as _,
+				current_part as _,
 				s3_session_id.to_string().as_str(),
 				"application/octet-stream",
 			)

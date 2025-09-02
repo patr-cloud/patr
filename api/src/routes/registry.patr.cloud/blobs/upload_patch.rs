@@ -143,18 +143,31 @@ pub(super) async fn handle(
 	let s3_key = get_s3_object_name_for_session(session_id.to_string().as_str());
 	let body_stream = to_bytes(body, usize::MAX)
 		.await
+		.inspect(|body| {
+			trace!("body chunk size: {}", body.len());
+		})
+		.inspect_err(|error| {
+			error!("Error reading body stream: {}", error);
+		})
 		.map_err(internal_server_error_response)?;
+	let size = body_stream.len();
 
-	let mut buffer: &mut &[u8] = &mut body_stream.as_ref();
+	let buffer: &mut &[u8] = &mut body_stream.as_ref();
 	let chunk_part = bucket
 		.put_multipart_stream(
-			&mut buffer,
+			buffer,
 			s3_key.as_str(),
 			current_part as _,
 			s3_session_id.to_string().as_str(),
 			"application/octet-stream",
 		)
 		.await
+		.inspect(|body| {
+			trace!("chunk count: {}", body.part_number);
+		})
+		.inspect_err(|error| {
+			error!("Error reading chunk stream: {}", error);
+		})
 		.map_err(internal_server_error_response)?;
 
 	trace!("uploaded body chunk");
@@ -174,7 +187,7 @@ pub(super) async fn handle(
 		chunk_part.part_number as i32,
 		chunk_part.etag,
 		32i32,
-		s3_session_id as _
+		session_id as _
 	)
 	.execute(&mut *database)
 	.await
@@ -186,7 +199,7 @@ pub(super) async fn handle(
 		.map_err(internal_server_error_response)?;
 
 	let location = format!(
-		"https://registry.patr.cloud/v2/{}/{}/blobs/upload/{}",
+		"/v2/{}/{}/blobs/uploads/{}",
 		path.workspace_id, repository_name, &session_id
 	);
 	Ok((
@@ -194,7 +207,7 @@ pub(super) async fn handle(
 		[
 			("Docker-Distribution-API-Version", "registry/2.0"),
 			("Location", &location),
-			// ("Range", &format!("0-{}", last_byte)),
+			("Range", &format!("0-{}", size)),
 		],
 	)
 		.into_response())

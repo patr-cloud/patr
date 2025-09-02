@@ -161,7 +161,7 @@ pub async fn check_repository(repository_name: &str, app_state: AppState) -> Res
 	let row = query!(
 		r#"
 		SELECT
-			id
+			id AS "id: Uuid"
 		FROM
 			container_registry_repository
 		WHERE

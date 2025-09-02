@@ -90,7 +90,8 @@ pub(super) async fn handle(
 				$2,
 				NOW(),
 				1
-			) RETURNING id;
+			)
+			RETURNING id AS "id: Uuid";
 			"#,
 			Uuid::new_v4() as _,
 			Uuid::nil() as _,
