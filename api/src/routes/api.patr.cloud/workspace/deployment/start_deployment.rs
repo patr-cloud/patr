@@ -84,7 +84,7 @@ pub async fn start_deployment(
 			WHERE
 				repository_id = $1
 			ORDER BY
-				created DESC
+				created_at DESC
 			LIMIT 1;
 			"#,
 			repository_id as _
