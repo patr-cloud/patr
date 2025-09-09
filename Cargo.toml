@@ -55,8 +55,8 @@ inquire                        = { default-features = false, version = "0.7" }
 ipinfo                         = { default-features = false, version = "3" }
 ipnetwork                      = { default-features = false, version = "0.20" }
 jsonwebtoken                   = { default-features = false, version = "9" }
-k8s-openapi                    = { default-features = false, version = "0.25" }
-kube                           = { default-features = false, version = "1" }
+k8s-openapi                    = { default-features = false, version = "0.26" }
+kube                           = { default-features = false, version = "2" }
 leptos                         = { default-features = false, version = "0.8" }
 leptos-use                     = { default-features = false, version = "0.16" }
 leptos_axum                    = { default-features = false, version = "0.8" }

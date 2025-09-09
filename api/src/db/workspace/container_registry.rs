@@ -160,7 +160,7 @@ pub async fn initialize_container_registry_constraints(
 		r#"
 		ALTER TABLE container_registry_layer_manifest
 		ADD CONSTRAINT container_registry_layer_manifest_pk
-		PRIMARY KEY(manifest_digest, layer_blob_digest, digest);
+		PRIMARY KEY(manifest_digest, layer_blob_digest);
 		"#
 	)
 	.execute(&mut *connection)
