@@ -87,7 +87,7 @@ where
 					.path(ListDeploymentPath { workspace_id })
 					.query(ListResourceQuery {
 						sort: Default::default(),
-						search: (),
+						search: Default::default(),
 						count: ListResourceQuery::DEFAULT_PAGE_SIZE,
 						page,
 						additional_query: (),

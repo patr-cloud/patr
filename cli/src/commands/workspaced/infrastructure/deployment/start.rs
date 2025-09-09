@@ -86,7 +86,7 @@ pub async fn execute(
 				.query(ListResourceQuery {
 					page: start / ListResourceQuery::DEFAULT_PAGE_SIZE,
 					count: ListResourceQuery::DEFAULT_PAGE_SIZE,
-					search: (),
+					search: Default::default(),
 					sort: Default::default(),
 					additional_query: (),
 				})
