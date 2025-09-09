@@ -1,15 +1,15 @@
 use comfy_table::Table;
 use inquire::Select;
-use models::api::{
-	user::*, workspace::runner::*
-};
+use models::api::{user::*, workspace::runner::*};
+
 use crate::prelude::*;
 
-pub(super)async fn execute(
+/// The command to list all runners in a workspace
+pub(super) async fn execute(
 	global_args: GlobalArgs,
 	state: AppState,
-)->Result<CommandOutput, AppError> {
-    let AppState::LoggedIn {
+) -> Result<CommandOutput, AppError> {
+	let AppState::LoggedIn {
 		token,
 		refresh_token: _,
 		current_workspace,
@@ -59,14 +59,14 @@ pub(super)async fn execute(
 
 	let runners = make_request(
 		ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
-		.path(ListRunnersForWorkspacePath {workspace_id})
-		.headers(ListRunnersForWorkspaceRequestHeaders{
-			authorization:token.clone(),
-			user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
-		})
-		.query(Default::default())
-		.body(ListRunnersForWorkspaceRequest)
-		.build(),
+			.path(ListRunnersForWorkspacePath { workspace_id })
+			.headers(ListRunnersForWorkspaceRequestHeaders {
+				authorization: token.clone(),
+				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+			})
+			.query(Default::default())
+			.body(ListRunnersForWorkspaceRequest)
+			.build(),
 	)
 	.await?
 	.body
@@ -74,20 +74,20 @@ pub(super)async fn execute(
 
 	let mut formatted_runners = Vec::with_capacity(runners.len());
 
-	for runner in &runners{
+	for runner in &runners {
 		let connected = make_request(
 			ApiRequest::<GetRunnerInfoRequest>::builder()
-			.path(GetRunnerInfoPath{
-				workspace_id,
-				runner_id:runner.id
-			})
-			.headers(GetRunnerInfoRequestHeaders{
-				authorization:token.clone(),
-				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
-			})
-			.query(())
-			.body(GetRunnerInfoRequest)
-			.build()
+				.path(GetRunnerInfoPath {
+					workspace_id,
+					runner_id: runner.id,
+				})
+				.headers(GetRunnerInfoRequestHeaders {
+					authorization: token.clone(),
+					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+				})
+				.query(())
+				.body(GetRunnerInfoRequest)
+				.build(),
 		)
 		.await?
 		.body
@@ -97,27 +97,22 @@ pub(super)async fn execute(
 		formatted_runners.push([
 			runner.id.to_string(),
 			runner.name.clone(),
-			match connected{
+			match connected {
 				true => "✅ Connected",
-				false => "❌ Disconnected"
+				false => "❌ Disconnected",
 			}
-			.to_owned()
+			.to_owned(),
 		])
 	}
 
 	CommandOutput::builder()
-	.text(Table::new()
-			.set_header([
-				"ID",
-				"Name",
-				"Connected"
-			])
-			.add_rows(formatted_runners)
-			.to_string(),
-	)
-	.json(ListRunnersForWorkspaceResponse{runners}.to_json_value())
-	.build()
-	.into_result()
-
-
+		.text(
+			Table::new()
+				.set_header(["ID", "Name", "Connected"])
+				.add_rows(formatted_runners)
+				.to_string(),
+		)
+		.json(ListRunnersForWorkspaceResponse { runners }.to_json_value())
+		.build()
+		.into_result()
 }

@@ -73,7 +73,7 @@ pub enum GlobalCommand {
 	#[command(flatten)]
 	Workspaced(WorkspacedCommand),
 	/// All the commands that are related to setting up a runner
-	#[command(subcommand, name = "runner")]
+	#[command(flatten)]
 	RunnerCommands(RunnerCommand),
 }
 
