@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE container_registry_repository ADD CONSTRAINT container_registry_repository_pk PRIMARY KEY(id), ADD CONSTRAINT container_registry_repository_uq_id_workspace_id UNIQUE(id, workspace_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "be5c0e2464df4f74284b1763650d2b89105971ef3aa493b2fbb10f4654d5bf5a"
+}
