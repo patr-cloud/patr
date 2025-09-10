@@ -90,9 +90,9 @@ pub async fn initialize_container_registry_tables(
 }
 
 /// Initializes all container registry related indices
-#[instrument(skip(connection))]
+#[instrument(skip(_connection))]
 pub async fn initialize_container_registry_indices(
-	connection: &mut DatabaseConnection,
+	_connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
 	info!("Setting up container registry indices");
 

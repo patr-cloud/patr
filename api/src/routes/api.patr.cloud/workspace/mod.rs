@@ -3,17 +3,17 @@ use axum::Router;
 use crate::prelude::*;
 
 // mod container_registry;
-#[allow(unreachable_code, unused_variables)]
+#[expect(unreachable_code, unused_variables)]
 mod database;
 mod deployment;
-#[allow(unreachable_code, unused_variables)]
+#[expect(unreachable_code, unused_variables)]
 mod domain;
 mod managed_url;
 mod rbac;
 mod runner;
-#[allow(unreachable_code, unused_variables)]
+#[expect(unreachable_code, unused_variables)]
 mod secret;
-#[allow(unreachable_code, unused_variables)]
+#[expect(unreachable_code, unused_variables)]
 mod static_site;
 mod volume;
 

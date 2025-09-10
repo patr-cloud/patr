@@ -317,50 +317,50 @@ pub async fn create_deployment(
 		err => ErrorType::server_error(err),
 	})?;
 
-	if let DeploymentRegistry::PatrRegistry { repository_id, .. } = &registry {
-		let digest = query!(
-			r#"
-			SELECT
-				manifest_digest
-			FROM
-				container_registry_repository_manifest
-			WHERE
-				repository_id = $1
-			ORDER BY
-				created_at DESC
-			LIMIT 1;
-			"#,
-			repository_id as _
-		)
-		.fetch_optional(&mut **database)
-		.await?
-		.map(|row| row.manifest_digest);
+	// if let DeploymentRegistry::PatrRegistry { repository_id, .. } = &registry {
+	// 	let digest = query!(
+	// 		r#"
+	// 		SELECT
+	// 			digest
+	// 		FROM
+	// 			container_registry_manifest
+	// 		WHERE
+	// 			repository_id = $1
+	// 		ORDER BY
+	// 			created_at DESC
+	// 		LIMIT 1;
+	// 		"#,
+	// 		repository_id as _
+	// 	)
+	// 	.fetch_optional(&mut **database)
+	// 	.await?
+	// 	.map(|row| row.manifest_digest);
 
-		if let Some(digest) = digest {
-			query!(
-				r#"
-				INSERT INTO
-					deployment_deploy_history(
-						deployment_id,
-						image_digest,
-						repository_id,
-						created
-					)
-				VALUES
-					($1, $2, $3, $4)
-				ON CONFLICT
-					(deployment_id, image_digest)
-				DO NOTHING;
-				"#,
-				deployment_id as _,
-				digest as _,
-				repository_id as _,
-				now as _,
-			)
-			.execute(&mut **database)
-			.await?;
-		}
-	}
+	// 	if let Some(digest) = digest {
+	// 		query!(
+	// 			r#"
+	// 			INSERT INTO
+	// 				deployment_deploy_history(
+	// 					deployment_id,
+	// 					image_digest,
+	// 					repository_id,
+	// 					created
+	// 				)
+	// 			VALUES
+	// 				($1, $2, $3, $4)
+	// 			ON CONFLICT
+	// 				(deployment_id, image_digest)
+	// 			DO NOTHING;
+	// 			"#,
+	// 			deployment_id as _,
+	// 			digest as _,
+	// 			repository_id as _,
+	// 			now as _,
+	// 		)
+	// 		.execute(&mut **database)
+	// 		.await?;
+	// 	}
+	// }
 
 	// TODO Temporary workaround until audit logs and triggers are implemented
 	redis

@@ -74,69 +74,69 @@ pub async fn start_deployment(
 	})
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
-	if let DeploymentRegistry::PatrRegistry { repository_id, .. } = &registry {
-		let digest = query!(
-			r#"
-			SELECT
-				manifest_digest
-			FROM
-				container_registry_repository_manifest
-			WHERE
-				repository_id = $1
-			ORDER BY
-				created_at DESC
-			LIMIT 1;
-			"#,
-			repository_id as _
-		)
-		.fetch_optional(&mut **database)
-		.await?
-		.map(|row| row.manifest_digest);
+	// if let DeploymentRegistry::PatrRegistry { repository_id, .. } = &registry {
+	// 	let digest = query!(
+	// 		r#"
+	// 		SELECT
+	// 			digest
+	// 		FROM
+	// 			container_registry_manifest
+	// 		WHERE
+	// 			repository_id = $1
+	// 		ORDER BY
+	// 			created_at DESC
+	// 		LIMIT 1;
+	// 		"#,
+	// 		repository_id as _
+	// 	)
+	// 	.fetch_optional(&mut **database)
+	// 	.await?
+	// 	.map(|row| row.manifest_digest);
 
-		if let Some(digest) = digest {
-			// Check if digest is already in deployment_deploy_history table
-			let deployment_deploy_history = query!(
-				r#"
-				SELECT
-					image_digest,
-					created
-				FROM
-					deployment_deploy_history
-				WHERE
-					image_digest = $1;
-				"#,
-				digest as _,
-			)
-			.fetch_optional(&mut **database)
-			.await?;
+	// 	if let Some(digest) = digest {
+	// 		// Check if digest is already in deployment_deploy_history table
+	// 		let deployment_deploy_history = query!(
+	// 			r#"
+	// 			SELECT
+	// 				image_digest,
+	// 				created
+	// 			FROM
+	// 				deployment_deploy_history
+	// 			WHERE
+	// 				image_digest = $1;
+	// 			"#,
+	// 			digest as _,
+	// 		)
+	// 		.fetch_optional(&mut **database)
+	// 		.await?;
 
-			// If not, add it to the table
-			if deployment_deploy_history.is_none() {
-				query!(
-					r#"
-					INSERT INTO
-						deployment_deploy_history(
-							deployment_id,
-							image_digest,
-							repository_id,
-							created
-						)
-					VALUES
-						($1, $2, $3, $4)
-					ON CONFLICT
-						(deployment_id, image_digest)
-					DO NOTHING;
-					"#,
-					deployment_id as _,
-					digest as _,
-					repository_id as _,
-					now as _,
-				)
-				.execute(&mut **database)
-				.await?;
-			}
-		}
-	}
+	// 		// If not, add it to the table
+	// 		if deployment_deploy_history.is_none() {
+	// 			query!(
+	// 				r#"
+	// 				INSERT INTO
+	// 					deployment_deploy_history(
+	// 						deployment_id,
+	// 						image_digest,
+	// 						repository_id,
+	// 						created
+	// 					)
+	// 				VALUES
+	// 					($1, $2, $3, $4)
+	// 				ON CONFLICT
+	// 					(deployment_id, image_digest)
+	// 				DO NOTHING;
+	// 				"#,
+	// 				deployment_id as _,
+	// 				digest as _,
+	// 				repository_id as _,
+	// 				now as _,
+	// 			)
+	// 			.execute(&mut **database)
+	// 			.await?;
+	// 		}
+	// 	}
+	// }
 
 	// Update status to deploying
 	query!(
