@@ -14,7 +14,7 @@ use futures::{
 	StreamExt,
 	future::{self, Either},
 };
-use models::{api::workspace::runner::*, utils::WebSocketUpgrade};
+use models::{api::workspace::runner::*, rbac::ResourceType, utils::WebSocketUpgrade};
 use tempfile::TempDir;
 use tokio::{
 	fs,
@@ -208,6 +208,16 @@ where
 			.await
 			.map_err(RunnerError::NginxSetupError)?;
 		}
+
+		// When the database notifies us of a change, notify the registry to update that
+		// task.
+		self.state
+			.database
+			.acquire()
+			.await?
+			.lock_handle()
+			.await?
+			.set_update_hook(|_hook| {});
 
 		let (server_setup, sync_database, run_tunnel, run_nginx, resource_monitor) = future::join5(
 			self.run_server(tcp_listener),
@@ -715,6 +725,8 @@ where
 					sleep_future = Box::pin(time::sleep(full_sync_interval));
 				}
 				Either::Right((update, next_sleep)) => {
+					// Change publisher received an update. Handle it. If it requires reloading
+					// nginx, reload it.
 					use StreamRunnerDataForWorkspaceServerMsg::*;
 
 					sleep_future = next_sleep;
@@ -723,7 +735,7 @@ where
 						continue;
 					};
 
-					match update {
+					match update.clone() {
 						DeploymentCreated {
 							deployment,
 							running_details: _,
@@ -740,6 +752,17 @@ where
 								_ = self.state.change_publisher.send(DeploymentDeleted { id });
 							}
 						}
+					}
+
+					if let ResourceType::Deployment |
+					ResourceType::StaticSite |
+					ResourceType::ManagedURL = update.resource_type()
+					{
+						if let Err(err) = self.reload_nginx().with_cancel_check().await? {
+							error!("Failed to reload nginx: {err}");
+							_ = self.state.change_publisher.send(update);
+							continue;
+						};
 					}
 				}
 			}
