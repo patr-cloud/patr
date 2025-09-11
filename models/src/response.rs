@@ -55,9 +55,7 @@ where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
-	async fn into_res(
-		self,
-	) -> Result<leptos::server_fn::response::BrowserMockRes, ServerFnError<ErrorType>> {
+	async fn into_res(self) -> Result<leptos::server_fn::response::BrowserMockRes, ErrorType> {
 		unreachable!()
 	}
 }
@@ -68,7 +66,7 @@ where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
-	async fn into_res(self) -> Result<http::Response<axum::body::Body>, ServerFnError<ErrorType>> {
+	async fn into_res(self) -> Result<http::Response<axum::body::Body>, ErrorType> {
 		let AppResponse {
 			status_code,
 			headers,
@@ -85,7 +83,7 @@ where
 
 		response
 			.body(body.into_axum_response().into_body())
-			.map_err(|err| ServerFnError::Response(err.to_string()))
+			.map_err(ErrorType::server_error)
 	}
 }
 
@@ -96,11 +94,11 @@ where
 	E::RequestBody: Serialize + DeserializeOwned,
 	E::ResponseBody: Serialize + DeserializeOwned,
 {
-	async fn from_res(res: BrowserResponse) -> Result<Self, ServerFnError<ErrorType>> {
+	async fn from_res(res: BrowserResponse) -> Result<Self, ErrorType> {
 		let status_code = <BrowserResponse as ClientRes<ErrorType>>::status(&res);
 		let status_code = StatusCode::from_u16(status_code)
 			.map_err(|err| ServerFnError::Response(err.to_string()))?;
-		let headers = E::ResponseHeaders::from_header_map(res.headers())
+		let headers = E::ResponseHeaders::from_header_map(&res.generate_headers())
 			.map_err(|err| ServerFnError::Response(err.to_string()))?;
 		let body = res.try_into_string().await?;
 		let body = serde_urlencoded::from_str(&body)

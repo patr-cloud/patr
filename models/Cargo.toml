@@ -25,7 +25,7 @@ headers           = { workspace = true, features = [] }
 hex               = { workspace = true, features = ["default"] }
 http              = { workspace = true, features = ["default"] }
 ipnetwork         = { workspace = true, features = ["default"] }
-leptos            = { workspace = true, default-features = false }
+leptos            = { workspace = true, features = [] }
 macros            = { workspace = true, features = [] }
 preprocess        = { workspace = true, features = [] }
 regex             = { workspace = true, features = ["default"] }
@@ -35,7 +35,6 @@ serde             = { workspace = true, features = ["default", "derive"] }
 serde_json        = { workspace = true, features = ["default"] }
 serde_test        = { workspace = true, features = [] }
 serde_urlencoded  = { workspace = true, features = [] }
-server_fn         = { workspace = true, features = ["reqwest"] }
 strum             = { workspace = true, features = ["default", "derive"] }
 thiserror         = { workspace = true, features = [] }
 tokio             = { workspace = true, features = [] }
@@ -48,6 +47,7 @@ url               = { workspace = true, features = ["default"] }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 axum-typed-websockets = { workspace = true, features = ["default"] }
 getrandom_03          = { workspace = true, features = [] }
+server_fn             = { workspace = true, features = ["reqwest"] }
 sqlx                  = { workspace = true, features = ["macros", "postgres", "sqlite", "uuid"] }
 time                  = { workspace = true, features = ["default", "serde-human-readable"] }
 uuid                  = { workspace = true, features = ["default", "v1", "v4"] }

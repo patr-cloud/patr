@@ -1,7 +1,10 @@
 use std::marker::PhantomData;
 
 use http::Method;
-use leptos::server_fn::codec::{Encoding, GetUrl};
+use leptos::server_fn::{
+	ContentType,
+	codec::{Encoding, GetUrl},
+};
 use preprocess::Preprocessable;
 use typed_builder::TypedBuilder;
 
@@ -13,7 +16,7 @@ pub struct ApiEncoding<E>(PhantomData<E>)
 where
 	E: ApiEndpoint;
 
-impl<E> Encoding for ApiEncoding<E>
+impl<E> ContentType for ApiEncoding<E>
 where
 	E: ApiEndpoint,
 {
@@ -24,6 +27,12 @@ where
 		// of the response. So we just return the default content type of binary data.
 		"application/octet-stream"
 	};
+}
+
+impl<E> Encoding for ApiEncoding<E>
+where
+	E: ApiEndpoint,
+{
 	const METHOD: Method = E::FRONTEND_API_METHOD;
 }
 
