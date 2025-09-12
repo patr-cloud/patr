@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT (UNNEST(parts)).part_number, (UNNEST(parts)).etag FROM container_registry_session WHERE id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "part_number",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "etag",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "655e302715c6213d9d1d50fdb7a4067ee80490d83a010d154d619f9b459695f7"
+}

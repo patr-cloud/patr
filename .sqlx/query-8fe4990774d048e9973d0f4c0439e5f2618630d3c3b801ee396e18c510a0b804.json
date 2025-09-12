@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT aws_session_id AS \"aws_session_id?\", current_part, last_byte FROM container_registry_session WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "aws_session_id?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "current_part",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "last_byte",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "8fe4990774d048e9973d0f4c0439e5f2618630d3c3b801ee396e18c510a0b804"
+}

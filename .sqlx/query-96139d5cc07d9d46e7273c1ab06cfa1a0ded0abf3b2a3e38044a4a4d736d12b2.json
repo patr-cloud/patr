@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT image_digest, created FROM deployment_deploy_history WHERE image_digest = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "image_digest",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "created",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "96139d5cc07d9d46e7273c1ab06cfa1a0ded0abf3b2a3e38044a4a4d736d12b2"
+}

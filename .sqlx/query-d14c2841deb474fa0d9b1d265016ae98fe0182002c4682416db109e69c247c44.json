@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE container_registry_session SET parts = ARRAY_APPEND(parts, ($1, $2)::container_registry_session_parts), current_part = current_part + 1, last_byte = $3, updated_at = NOW() WHERE id = $4",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Int4",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d14c2841deb474fa0d9b1d265016ae98fe0182002c4682416db109e69c247c44"
+}

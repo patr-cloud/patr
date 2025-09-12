@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE container_registry_repository_manifest(repository_id UUID NOT NULL, manifest_digest TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "ca4c3a43321ad2724f897fbf107d6d19550a5bd5fc80eb6ac738f1a198796899"
+}
