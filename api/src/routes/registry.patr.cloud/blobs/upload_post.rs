@@ -77,6 +77,9 @@ pub(super) async fn handle(
 		.map_err(internal_server_error_response)?;
 
 	let digest: std::borrow::Cow<'static, str> = query.digest;
+	// TODO: We don't support single POST updates, so this should be the default
+	// flow rather, any body should be ignored with a 202 Accepted along with a
+	// Location header to the upload session
 	if digest.is_empty() {
 		let session_id = query!(
 			r#"
