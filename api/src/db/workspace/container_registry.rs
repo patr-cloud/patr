@@ -136,12 +136,8 @@ pub async fn initialize_container_registry_constraints(
 	query!(
 		r#"
 		ALTER TABLE container_registry_repository
-			ADD CONSTRAINT container_registry_repository_pk
-				PRIMARY KEY(id),
-			ADD CONSTRAINT container_registry_repository_uq_id_workspace_id
-				UNIQUE(id, workspace_id),
-			ADD CONSTRAINT container_registry_repository_fk_id_workspace_id_deleted
-				FOREIGN KEY(id, workspace_id, deleted) REFERENCES resource(id, owner_id, deleted);
+		ADD CONSTRAINT container_registry_repository_pk
+		PRIMARY KEY(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -212,6 +208,8 @@ pub async fn initialize_container_registry_constraints(
 		ALTER TABLE container_registry_repository
 			ADD CONSTRAINT container_registry_repository_chk_name
 				CHECK(name ~ '[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*(\/[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*)*'),
+			ADD CONSTRAINT container_registry_repository_uq_id_workspace_id
+				UNIQUE(id, workspace_id),
 			ADD CONSTRAINT container_registry_repository_fk_id_workspace_id_deleted
 				FOREIGN KEY(id, workspace_id, deleted) REFERENCES resource(id, owner_id, deleted);
 		"#

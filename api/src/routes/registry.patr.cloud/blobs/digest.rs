@@ -1,7 +1,7 @@
 use axum::{
 	body::Body,
 	extract::{Path, State},
-	http::{Method, StatusCode},
+	http::{Method, Response, StatusCode},
 	response::IntoResponse,
 };
 use oci_spec::distribution::ErrorCode;
@@ -101,12 +101,23 @@ pub(super) async fn handle(
 	} else {
 		// GET request. return the blob from S3
 		let object = bucket
-			.get_object_stream(&s3_key)
+			.get_object(&s3_key)
 			.await
 			.map_err(internal_server_error_response)?;
-		if !(200..300).contains(&object.status_code) {
+
+		if !(200..300).contains(&object.status_code()) {
 			return Ok(StatusCode::INTERNAL_SERVER_ERROR.into_response());
 		}
-		Ok((StatusCode::OK, headers, Body::from_stream(object.bytes)).into_response())
+
+		let body = object.into_bytes();
+		let size = body.len().to_string();
+
+		let headers = [
+			("Docker-Distribution-API-Version", "registry/2.0"),
+			("Docker-Content-Digest", &path.digest),
+			("Content-Length", &size),
+		];
+
+		Ok((StatusCode::OK, headers, Body::from(body)).into_response())
 	}
 }

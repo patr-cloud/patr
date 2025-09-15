@@ -193,8 +193,6 @@ pub(super) async fn handle(
 		.await
 		.map_err(internal_server_error_response)?;
 
-	let canonical_digest = format!("sha256:{:x}", Sha256::digest(&body_bytes));
-	trace!("digest: {canonical_digest}");
 	let headers = [
 		("Docker-Distribution-API-Version", "registry/2.0"),
 		(
@@ -204,7 +202,7 @@ pub(super) async fn handle(
 				path.workspace_id, repository_name, &digest
 			),
 		),
-		("Docker-Content-Digest", &canonical_digest),
+		("Docker-Content-Digest", &digest),
 	];
 
 	Ok((StatusCode::CREATED, headers).into_response())

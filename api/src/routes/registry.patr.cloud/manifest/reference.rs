@@ -1,7 +1,7 @@
 use axum::{
 	body::Body,
 	extract::{Path, State},
-	http::{HeaderMap, Method, StatusCode},
+	http::{HeaderMap, Method, Response, StatusCode},
 	response::IntoResponse,
 };
 use oci_spec::distribution::ErrorCode;
@@ -67,15 +67,15 @@ pub(super) async fn handle(
 	let manifest = match referrer {
 		Referrer::Digest(digest) => query!(
 			r#"
-				SELECT
-					mani.digest,
-					mani.size,
-					mani.content_type
-				FROM
-					container_registry_manifest AS mani
-				WHERE
-					digest = $1;
-				"#,
+			SELECT
+				mani.digest,
+				mani.size,
+				mani.content_type
+			FROM
+				container_registry_manifest AS mani
+			WHERE
+				digest = $1;
+			"#,
 			digest
 		)
 		.fetch_optional(&mut *database)
@@ -84,19 +84,19 @@ pub(super) async fn handle(
 		.map(|mani| (mani.digest, mani.size, mani.content_type)),
 		Referrer::Tag(tag) => query!(
 			r#"
-				SELECT 
-					mani.digest,
-					mani.size,
-					mani.content_type
-				FROM 
-					container_registry_manifest AS mani
-				INNER JOIN
-					container_registry_tag AS tag
-				ON
-					mani.digest = tag.manifest_digest
-				WHERE
-					tag.name = $1;
-				"#,
+			SELECT 
+				mani.digest,
+				mani.size,
+				mani.content_type
+			FROM 
+				container_registry_manifest AS mani
+			INNER JOIN
+				container_registry_tag AS tag
+			ON
+				mani.digest = tag.manifest_digest
+			WHERE
+				tag.name = $1;
+			"#,
 			tag
 		)
 		.fetch_optional(&mut *database)
@@ -129,11 +129,11 @@ pub(super) async fn handle(
 		let bucket = get_s3_bucket(state.config.clone())?;
 		let s3_key = get_s3_object_name_for_manifest(&digest);
 		let object = bucket
-			.get_object_stream(&s3_key)
+			.get_object(&s3_key)
 			.await
 			.map_err(internal_server_error_response)?;
 
-		if !(200..300).contains(&object.status_code) {
+		if !(200..300).contains(&object.status_code()) {
 			return Err(convert_oci_error(
 				StatusCode::NOT_FOUND,
 				ErrorCode::BlobUnknown,
@@ -141,14 +141,13 @@ pub(super) async fn handle(
 			));
 		}
 
-		return Ok((
-			StatusCode::OK,
-			[
-				("Docker-Distribution-API-Version", "registry/2.0"),
-				("Docker-Content-Digest", &digest),
-			],
-			Body::from_stream(object.bytes),
-		)
-			.into_response());
+		return Ok(Response::builder()
+			.status(StatusCode::OK)
+			.header("Docker-Distribution-API-Version", "registry/2.0")
+			.header("Docker-Content-Digest", &digest)
+			.header("Content-Type", &content_type)
+			.header("Content-Length", &size.to_string())
+			.body(Body::from(object.into_bytes()))
+			.map_err(internal_server_error_response)?);
 	}
 }
