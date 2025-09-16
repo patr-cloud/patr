@@ -19,7 +19,7 @@ tar         = { workspace = true, features = ["default"] }
 
 [dependencies]
 argon2                = { workspace = true, features = ["default"] }
-axum                  = { workspace = true, features = ["default", "macros", "tracing", "ws"] }
+axum                  = { workspace = true, features = ["default", "macros", "tracing"] }
 axum-extra            = { workspace = true, features = ["default", "typed-routing"] }
 config                = { workspace = true }
 dashmap               = { workspace = true, features = [] }

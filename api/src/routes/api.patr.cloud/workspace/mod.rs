@@ -3,7 +3,7 @@ use axum::Router;
 use crate::prelude::*;
 
 // mod container_registry;
-#[expect(unreachable_code, unused_variables)]
+#[expect(unused_variables)]
 mod database;
 mod deployment;
 #[expect(unreachable_code, unused_variables)]

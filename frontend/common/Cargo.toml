@@ -47,7 +47,7 @@ leptos_meta   = { workspace = true, features = [] }
 leptos_router = { workspace = true, features = [] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-axum          = { workspace = true, features = ["default", "macros", "tracing", "ws"] }
+axum          = { workspace = true, features = ["default", "macros", "tracing"] }
 codee         = { workspace = true, features = ["json_serde"] }
 leptos        = { workspace = true, features = ["ssr", "tracing"] }
 leptos-use    = { workspace = true, features = ["axum", "default", "ssr"] }
