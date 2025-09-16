@@ -51,7 +51,7 @@ hex                            = { default-features = false, version = "0.4" }
 http                           = { default-features = false, version = "1" }
 httparse                       = { default-features = false, version = "1" }
 hyper                          = { default-features = false, version = "1" }
-inquire                        = { default-features = false, version = "0.7" }
+inquire                        = { default-features = false, version = "0.9" }
 ipinfo                         = { default-features = false, version = "3" }
 ipnetwork                      = { default-features = false, version = "0.20" }
 jsonwebtoken                   = { default-features = false, version = "9" }
@@ -110,7 +110,7 @@ tracing                        = { default-features = false, version = "0.1" }
 tracing-log                    = { default-features = false, version = "0.2" }
 tracing-opentelemetry          = { default-features = false, version = "0.31" }
 tracing-subscriber             = { default-features = false, version = "0.3" }
-typed-builder                  = { default-features = false, version = "0.21" }
+typed-builder                  = { default-features = false, version = "0.22" }
 url                            = { default-features = false, version = "2" }
 uuid                           = { default-features = false, version = "1" }
 wasm-bindgen                   = { default-features = false, version = "0.2" }
