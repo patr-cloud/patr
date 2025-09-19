@@ -62,7 +62,7 @@ pub async fn list_volumes(
 		WHERE
 			resource.owner_id = $1 AND
 			($4::TEXT IS NULL OR deployment_volume.name ILIKE '%' || $4 || '%') AND
-			($5::INT IS NULL OR (
+			(($5::INT IS NULL AND $6::INT IS NULL) OR (
 				deployment_volume.volume_size >= $5 AND
 				deployment_volume.volume_size <= $6
 			)) AND
