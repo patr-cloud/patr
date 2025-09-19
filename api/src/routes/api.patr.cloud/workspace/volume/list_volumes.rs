@@ -1,3 +1,5 @@
+use std::ops::RangeInclusive;
+
 use axum::http::StatusCode;
 use models::{api::workspace::volume::*, utils::TotalCountHeader};
 
@@ -11,7 +13,12 @@ pub async fn list_volumes(
 				query:
 					ListResourceQuery {
 						sort: sort_order,
-						search: filter,
+						search:
+							DeploymentVolumeSearchParams {
+								name: name_filter,
+								size: size_filter,
+								deployment_id: deployment_id_filter,
+							},
 						count,
 						page,
 						additional_query: (),
@@ -53,7 +60,20 @@ pub async fn list_volumes(
 		ON
 			deployment_volume.id = resource.id
 		WHERE
-			resource.owner_id = $1
+			resource.owner_id = $1 AND
+			($4::TEXT IS NULL OR deployment_volume.name ILIKE '%' || $4 || '%') AND
+			($5::INT IS NULL OR (
+				deployment_volume.volume_size >= $5 AND
+				deployment_volume.volume_size <= $6
+			)) AND
+			($7::UUID IS NULL OR deployment_volume.id IN (
+				SELECT
+					volume_id
+				FROM
+					deployment_volume_mount
+				WHERE
+					deployment_id = $7
+			))
 		ORDER BY
 			resource.created DESC
 		LIMIT $2
@@ -61,7 +81,11 @@ pub async fn list_volumes(
 		"#,
 		workspace_id as _,
 		count as i32,
-		(page * count) as i32
+		(page * count) as i32,
+		name_filter as _,
+		size_filter.as_ref().map(|size| *size.start() as i64) as _,
+		size_filter.as_ref().map(|size| *size.end() as i64) as _,
+		deployment_id_filter as _,
 	)
 	.fetch_all(&mut **database)
 	.await?

@@ -13,7 +13,15 @@ pub async fn list_deployment(
 				query:
 					ListResourceQuery {
 						sort: sort_order,
-						search: filter,
+						search:
+							DeploymentSearchParams {
+								name: name_filter,
+								registry: registry_filter,
+								image_tag: image_tag_filter,
+								status: status_filter,
+								runner: runner_filter,
+								current_live_digest: current_live_digest_filter,
+							},
 						count,
 						page,
 						additional_query: (),
@@ -57,7 +65,12 @@ pub async fn list_deployment(
 			deployment.id = resource.id
 		WHERE
 			workspace_id = $1 AND
-			deployment.deleted IS NULL
+			deployment.deleted IS NULL AND
+			($6::TEXT IS NULL OR deployment.name ILIKE '%' || $6 || '%') AND
+			($7::TEXT IS NULL OR deployment.image_tag = $7) AND
+			($8::DEPLOYMENT_STATUS IS NULL OR deployment.status = $8) AND
+			($9::UUID IS NULL OR deployment.runner = $9) AND
+			($10::TEXT IS NULL OR deployment.current_live_digest = $10)
 		ORDER BY
 			resource.created DESC
 		LIMIT $4
@@ -68,6 +81,11 @@ pub async fn list_deployment(
 		Permission::Deployment(DeploymentPermission::View) as _,
 		count as i32,
 		(count * page) as i32,
+		name_filter as _,
+		image_tag_filter as _,
+		status_filter as _,
+		runner_filter as _,
+		current_live_digest_filter as _,
 	)
 	.fetch_all(&mut **database)
 	.await?

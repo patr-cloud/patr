@@ -117,6 +117,71 @@ pub struct ResourceSearcher<const R: ResourceType> {
 	pub resource_id: Uuid,
 }
 
+// For backend
+#[cfg(not(target_arch = "wasm32"))]
+impl<const R: ResourceType> sqlx::Type<sqlx::Sqlite> for ResourceSearcher<R> {
+	fn type_info() -> <sqlx::Sqlite as sqlx::Database>::TypeInfo {
+		<Uuid as sqlx::Type<sqlx::Sqlite>>::type_info()
+	}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<const R: ResourceType> sqlx::Type<sqlx::Postgres> for ResourceSearcher<R> {
+	fn type_info() -> <sqlx::Postgres as sqlx::Database>::TypeInfo {
+		<Uuid as sqlx::Type<sqlx::Postgres>>::type_info()
+	}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<'a, const R: ResourceType> sqlx::Encode<'a, sqlx::Sqlite> for ResourceSearcher<R>
+where
+	Uuid: sqlx::Encode<'a, sqlx::Sqlite>,
+{
+	fn encode_by_ref(
+		&self,
+		buf: &mut <sqlx::Sqlite as sqlx::Database>::ArgumentBuffer<'a>,
+	) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+		self.resource_id.encode_by_ref(buf)
+	}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<'a, const R: ResourceType> sqlx::Encode<'a, sqlx::Postgres> for ResourceSearcher<R>
+where
+	Uuid: sqlx::Encode<'a, sqlx::Postgres>,
+{
+	fn encode_by_ref(
+		&self,
+		buf: &mut <sqlx::Postgres as sqlx::Database>::ArgumentBuffer<'a>,
+	) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+		self.resource_id.encode_by_ref(buf)
+	}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<'a, const R: ResourceType> sqlx::Decode<'a, sqlx::Sqlite> for ResourceSearcher<R>
+where
+	Uuid: sqlx::Decode<'a, sqlx::Sqlite>,
+{
+	fn decode(
+		value: <sqlx::Sqlite as sqlx::Database>::ValueRef<'a>,
+	) -> Result<Self, sqlx::error::BoxDynError> {
+		Uuid::decode(value).map(|resource_id| Self { resource_id })
+	}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<'a, const R: ResourceType> sqlx::Decode<'a, sqlx::Postgres> for ResourceSearcher<R>
+where
+	Uuid: sqlx::Decode<'a, sqlx::Postgres>,
+{
+	fn decode(
+		value: <sqlx::Postgres as sqlx::Database>::ValueRef<'a>,
+	) -> Result<Self, sqlx::error::BoxDynError> {
+		Uuid::decode(value).map(|resource_id| Self { resource_id })
+	}
+}
+
 /// This struct represents the total count of items that are available for the
 /// query. This is used to set the `X-Total-Count` header in the response.
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
