@@ -22,7 +22,8 @@ mod page_header;
 mod password_input;
 /// Status Badge to indicate status of resource
 mod status_badge;
-
+/// The table component
+mod table;
 pub use self::{
 	alert::*,
 	button::*,
@@ -33,4 +34,5 @@ pub use self::{
 	page_header::*,
 	password_input::*,
 	status_badge::*,
+	table::*,
 };

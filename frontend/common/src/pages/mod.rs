@@ -5,5 +5,7 @@ mod auth;
 mod deployment;
 /// The Home page
 mod home;
+/// The runner page
+mod runner;
 
-pub use self::{auth::*, deployment::*, home::*};
+pub use self::{auth::*, deployment::*, home::*, runner::*};

@@ -39,10 +39,14 @@ mod storage;
 /// and the color variant.
 mod variant;
 
+/// A custom error type for the application.
+mod error;
+
 pub use self::{
 	alignment::*,
 	// app_route::*,
 	color::*,
+	error::*,
 	ext_traits::*,
 	routes::*,
 	// sidebar_items::*,

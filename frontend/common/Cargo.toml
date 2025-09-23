@@ -14,6 +14,7 @@ workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+thiserror        = { workspace = true, features = []}
 axum-extra       = { workspace = true, features = ["cookie", "typed-routing"] }
 convert_case     = { workspace = true, features = [] }
 cookie           = { workspace = true, features = [] }
@@ -37,7 +38,6 @@ url              = { workspace = true, features = ["default"] }
 wasm-bindgen     = { workspace = true, features = ["default"] }
 wasm-logger      = { workspace = true, features = [] }
 web-sys          = { workspace = true, features = ["Clipboard", "DataTransfer", "File", "FileList"] }
-
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 axum          = { workspace = true, features = ["macros"] }
 codee         = { workspace = true, features = ["json_serde"] }
@@ -45,6 +45,7 @@ leptos        = { workspace = true, features = ["hydrate", "tracing"] }
 leptos-use    = { workspace = true, features = ["default"] }
 leptos_meta   = { workspace = true, features = [] }
 leptos_router = { workspace = true, features = [] }
+
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 axum          = { workspace = true, features = ["default", "macros", "tracing", "ws"] }

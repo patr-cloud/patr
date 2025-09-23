@@ -10,7 +10,8 @@ pub mod prelude {
 
 	pub use crate::{components::*, pages::*, utils::*};
 }
-
+/// All api's for frontend is listed here
+pub mod api;
 /// The application logic code. This contains the routers and all the routing
 /// logic
 pub mod app;
@@ -23,7 +24,9 @@ pub mod pages;
 /// The utils module. This contains all the utility functions and other things
 /// needed to make the application work.
 pub mod utils;
-
+/// The queries module. This contain all the query function used for fetching 
+/// resources from database
+pub mod queries;
 use leptos_meta::{Title, provide_meta_context};
 use prelude::*;
 
