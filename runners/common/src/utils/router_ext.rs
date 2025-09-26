@@ -36,7 +36,7 @@ where
 	/// Mount a JSON API endpoint directly along with the required request
 	/// parser, and endpoint handler, using tower layers.
 	#[track_caller]
-	fn mount_json_endpoint<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
+	fn mount_endpoint<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
 	where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
 		E: ApiEndpoint<Authenticator = NoAuthentication> + Sync,
@@ -49,7 +49,7 @@ where
 	/// and endpoint handler, using tower layers.
 	#[track_caller]
 	#[must_use]
-	fn mount_endpoint<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
+	fn mount_endpoint_stream<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
 	where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
 		E: ApiEndpoint<Authenticator = NoAuthentication> + Sync,
@@ -60,7 +60,7 @@ where
 	/// parser, Rate limiter, Audit logger and Auth middlewares, using tower
 	/// layers.
 	#[track_caller]
-	fn mount_auth_json_endpoint<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
+	fn mount_auth_endpoint<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
 	where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
 		E: ApiEndpoint<Authenticator = AppAuthentication<E>> + Sync,
@@ -74,7 +74,7 @@ where
 	/// Rate limiter, Audit logger and Auth middlewares, using tower layers.
 	#[track_caller]
 	#[must_use]
-	fn mount_auth_endpoint<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
+	fn mount_auth_endpoint_stream<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
 	where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
 		E: ApiEndpoint<Authenticator = AppAuthentication<E>> + Sync,
@@ -88,7 +88,7 @@ where
 	S: Clone + Send + Sync + 'static,
 {
 	#[instrument(skip_all)]
-	fn mount_endpoint<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
+	fn mount_endpoint_stream<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
 	where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
 		E: ApiEndpoint<Authenticator = NoAuthentication> + Sync,
@@ -129,7 +129,7 @@ where
 	}
 
 	#[instrument(skip_all)]
-	fn mount_json_endpoint<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
+	fn mount_endpoint<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
 	where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
 		E: ApiEndpoint<Authenticator = NoAuthentication> + Sync,
@@ -140,11 +140,11 @@ where
 	{
 		frontend::utils::register_api_call::<E>();
 
-		Self::mount_endpoint(self, handler, state)
+		Self::mount_endpoint_stream(self, handler, state)
 	}
 
 	#[instrument(skip_all)]
-	fn mount_auth_json_endpoint<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
+	fn mount_auth_endpoint<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
 	where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
 		E: ApiEndpoint<Authenticator = AppAuthentication<E>> + Sync,
@@ -156,11 +156,11 @@ where
 	{
 		frontend::utils::register_api_call::<E>();
 
-		Self::mount_auth_endpoint(self, handler, state)
+		Self::mount_auth_endpoint_stream(self, handler, state)
 	}
 
 	#[instrument(skip_all)]
-	fn mount_auth_endpoint<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
+	fn mount_auth_endpoint_stream<E, H, R>(self, handler: H, state: &AppState<R>) -> Self
 	where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
 		E: ApiEndpoint<Authenticator = AppAuthentication<E>> + Sync,

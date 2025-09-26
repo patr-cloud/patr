@@ -3,6 +3,7 @@ use std::sync::Arc;
 use axum_extra::routing::TypedPath;
 use http::Method;
 use leptos::server_fn::{
+	ContentType as _,
 	ServerFn,
 	ServerFnError,
 	client::browser::BrowserClient,

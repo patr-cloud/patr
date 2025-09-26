@@ -87,20 +87,21 @@ where
 	}
 }
 
-impl<E> FromRes<ApiEncoding<E>, BrowserResponse, ErrorType> for AppResponse<E>
+impl<E> FromRes<ApiEncoding<E>, BrowserResponse, ServerFnError<ErrorType>> for AppResponse<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 	E::RequestBody: Serialize + DeserializeOwned,
 	E::ResponseBody: Serialize + DeserializeOwned,
 {
-	async fn from_res(res: BrowserResponse) -> Result<Self, ErrorType> {
-		let status_code = <BrowserResponse as ClientRes<ErrorType>>::status(&res);
+	async fn from_res(res: BrowserResponse) -> Result<Self, ServerFnError<ErrorType>> {
+		let status_code = <BrowserResponse as ClientRes<ServerFnError<ErrorType>>>::status(&res);
 		let status_code = StatusCode::from_u16(status_code)
 			.map_err(|err| ServerFnError::Response(err.to_string()))?;
 		let headers = E::ResponseHeaders::from_header_map(&res.generate_headers())
 			.map_err(|err| ServerFnError::Response(err.to_string()))?;
-		let body = res.try_into_string().await?;
+		let body =
+			<BrowserResponse as ClientRes<ServerFnError<ErrorType>>>::try_into_string(res).await?;
 		let body = serde_urlencoded::from_str(&body)
 			.map_err(|err| ServerFnError::Response(err.to_string()))?;
 

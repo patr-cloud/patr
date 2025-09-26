@@ -6,16 +6,16 @@ use crate::prelude::*;
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
-		.mount_auth_json_endpoint(create_static_site, state)
-		.mount_auth_json_endpoint(delete_static_site, state)
-		.mount_auth_json_endpoint(get_static_site_info, state)
-		.mount_auth_json_endpoint(list_static_site, state)
-		.mount_auth_json_endpoint(list_upload_history, state)
-		.mount_auth_json_endpoint(revert_static_site, state)
-		.mount_auth_json_endpoint(start_static_site, state)
-		.mount_auth_json_endpoint(stop_static_site, state)
-		.mount_auth_json_endpoint(update_static_site, state)
-		.mount_auth_json_endpoint(upload_static_site, state)
+		.mount_auth_endpoint(create_static_site, state)
+		.mount_auth_endpoint(delete_static_site, state)
+		.mount_auth_endpoint(get_static_site_info, state)
+		.mount_auth_endpoint(list_static_site, state)
+		.mount_auth_endpoint(list_upload_history, state)
+		.mount_auth_endpoint(revert_static_site, state)
+		.mount_auth_endpoint(start_static_site, state)
+		.mount_auth_endpoint(stop_static_site, state)
+		.mount_auth_endpoint(update_static_site, state)
+		.mount_auth_endpoint(upload_static_site, state)
 }
 
 async fn create_static_site(

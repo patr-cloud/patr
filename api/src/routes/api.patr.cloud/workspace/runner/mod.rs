@@ -27,5 +27,5 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.mount_auth_endpoint(get_runner_info, state)
 		.mount_auth_endpoint(list_runners_for_workspace, state)
 		.mount_auth_endpoint(remove_runner_from_workspace, state)
-		.mount_auth_endpoint(stream_runner_data_for_workspace, state)
+		.mount_auth_endpoint_stream(stream_runner_data_for_workspace, state)
 }

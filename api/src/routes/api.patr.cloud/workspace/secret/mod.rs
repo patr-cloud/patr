@@ -6,10 +6,10 @@ use crate::prelude::*;
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
-		.mount_auth_json_endpoint(create_secret, state)
-		.mount_auth_json_endpoint(delete_secret, state)
-		.mount_auth_json_endpoint(list_secrets_for_workspace, state)
-		.mount_auth_json_endpoint(update_secret, state)
+		.mount_auth_endpoint(create_secret, state)
+		.mount_auth_endpoint(delete_secret, state)
+		.mount_auth_endpoint(list_secrets_for_workspace, state)
+		.mount_auth_endpoint(update_secret, state)
 		.with_state(state.clone())
 }
 

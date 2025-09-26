@@ -20,9 +20,9 @@ use self::{
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
-		.mount_auth_json_endpoint(create_managed_url, state)
-		.mount_auth_json_endpoint(delete_managed_url, state)
-		.mount_auth_json_endpoint(list_managed_url, state)
-		.mount_auth_json_endpoint(update_managed_url, state)
-		.mount_auth_json_endpoint(verify_configuration, state)
+		.mount_auth_endpoint(create_managed_url, state)
+		.mount_auth_endpoint(delete_managed_url, state)
+		.mount_auth_endpoint(list_managed_url, state)
+		.mount_auth_endpoint(update_managed_url, state)
+		.mount_auth_endpoint(verify_configuration, state)
 }

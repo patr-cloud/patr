@@ -11,7 +11,7 @@ use crate::prelude::*;
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
-		.mount_auth_json_endpoint(activate_mfa, state)
-		.mount_auth_json_endpoint(deactivate_mfa, state)
-		.mount_auth_json_endpoint(get_mfa_secret, state)
+		.mount_auth_endpoint(activate_mfa, state)
+		.mount_auth_endpoint(deactivate_mfa, state)
+		.mount_auth_endpoint(get_mfa_secret, state)
 }

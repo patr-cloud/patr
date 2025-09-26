@@ -16,6 +16,6 @@ where
 	E: RunnerExecutor + Send + 'static,
 {
 	Router::new()
-		.mount_json_endpoint(login, state)
-		.mount_json_endpoint(sign_up, state)
+		.mount_endpoint(login, state)
+		.mount_endpoint(sign_up, state)
 }

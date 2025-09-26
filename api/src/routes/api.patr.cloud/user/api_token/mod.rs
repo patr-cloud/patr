@@ -21,10 +21,10 @@ use crate::prelude::*;
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
-		.mount_auth_json_endpoint(create_api_token, state)
-		.mount_auth_json_endpoint(get_api_token_info, state)
-		.mount_auth_json_endpoint(list_api_tokens, state)
-		.mount_auth_json_endpoint(regenerate_api_token, state)
-		.mount_auth_json_endpoint(revoke_api_token, state)
-		.mount_auth_json_endpoint(update_api_token, state)
+		.mount_auth_endpoint(create_api_token, state)
+		.mount_auth_endpoint(get_api_token_info, state)
+		.mount_auth_endpoint(list_api_tokens, state)
+		.mount_auth_endpoint(regenerate_api_token, state)
+		.mount_auth_endpoint(revoke_api_token, state)
+		.mount_auth_endpoint(update_api_token, state)
 }
