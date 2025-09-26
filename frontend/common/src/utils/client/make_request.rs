@@ -7,7 +7,7 @@ use leptos::server_fn::{
 	ServerFn,
 	ServerFnError,
 	client::browser::BrowserClient,
-	codec::{Encoding, FromReq, GetUrl, IntoReq, PostUrl},
+	codec::{FromReq, GetUrl, IntoReq, PostUrl},
 	middleware::Layer,
 	request::{ClientReq, browser::BrowserRequest},
 };
@@ -35,7 +35,7 @@ where
 	E::ResponseBody: Serialize + DeserializeOwned,
 {
 	type Client = BrowserClient;
-	type Error = ErrorType;
+	type Error = ServerFnError<ErrorType>;
 	type InputEncoding = ApiEncoding<E>;
 	type Output = AppResponse<E>;
 	type OutputEncoding = ApiEncoding<E>;
@@ -51,7 +51,7 @@ where
 	const PATH: &'static str = <E::RequestPath as TypedPath>::PATH;
 
 	#[cfg(not(target_arch = "wasm32"))]
-	async fn run_body(self) -> Result<Self::Output, ServerFnError<Self::Error>> {
+	async fn run_body(self) -> Result<Self::Output, Self::Error> {
 		use std::net::{IpAddr, SocketAddr};
 
 		use axum::extract::ConnectInfo;
@@ -65,7 +65,8 @@ where
 
 		let ConnectInfo(socket_addr) = leptos_axum::extract::<ConnectInfo<SocketAddr>>()
 			.await
-			.map_err(ErrorType::server_error)?;
+			.map_err(ErrorType::server_error)
+			.map_err(ServerFnError::WrappedServerError)?;
 		let layer = super::API_CALL_REGISTRY
 			.get()
 			.expect("API call registry not initialized")
@@ -100,7 +101,7 @@ where
 	}
 
 	#[cfg(target_arch = "wasm32")]
-	async fn run_body(self) -> Result<Self::Output, ServerFnError<Self::Error>> {
+	async fn run_body(self) -> Result<Self::Output, Self::Error> {
 		unreachable!()
 	}
 
@@ -109,7 +110,7 @@ where
 	}
 }
 
-impl<E> IntoReq<ApiEncoding<E>, BrowserRequest, ErrorType> for MakeRequest<E>
+impl<E> IntoReq<ApiEncoding<E>, BrowserRequest, ServerFnError<ErrorType>> for MakeRequest<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
@@ -142,7 +143,8 @@ where
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-impl<E> FromReq<ApiEncoding<E>, http::Request<axum::body::Body>, ErrorType> for MakeRequest<E>
+impl<E> FromReq<ApiEncoding<E>, http::Request<axum::body::Body>, ServerFnError<ErrorType>>
+	for MakeRequest<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
@@ -157,7 +159,8 @@ where
 }
 
 #[cfg(target_arch = "wasm32")]
-impl<E> FromReq<ApiEncoding<E>, leptos::server_fn::request::BrowserMockReq, ErrorType>
+impl<E>
+	FromReq<ApiEncoding<E>, leptos::server_fn::request::BrowserMockReq, ServerFnError<ErrorType>>
 	for MakeRequest<E>
 where
 	E: ApiEndpoint,

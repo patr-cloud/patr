@@ -21,7 +21,6 @@ use self::{
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
-		.mount_auth_stream(stream_runner_data_for_workspace, state)
 		.mount_auth_endpoint(add_runner_to_workspace, state)
 		.mount_auth_endpoint(get_ingress_token_for_runner, state)
 		.mount_auth_endpoint(get_runner_info, state)
