@@ -1,26 +1,12 @@
-use std::{
-	fs::Permissions,
-	io,
-	net::SocketAddr,
-	os::unix::fs::PermissionsExt,
-	pin::pin,
-	process::Stdio,
-	sync::OnceLock,
-};
+use std::{fs::Permissions, net::SocketAddr, os::unix::fs::PermissionsExt, sync::OnceLock};
 
 use dashmap::DashMap;
-use fslock::LockFile;
-use futures::{
-	StreamExt,
-	future::{self, Either},
-};
-use models::{api::workspace::runner::*, utils::WebSocketUpgrade};
+use futures::future;
 use tempfile::TempDir;
 use tokio::{
 	fs,
 	net::TcpListener,
-	process::Command,
-	sync::mpsc::{self, UnboundedReceiver},
+	sync::mpsc,
 	task,
 	time::{self, Duration},
 };
@@ -32,19 +18,37 @@ use tracing_subscriber::{
 	layer::SubscriberExt,
 };
 
-use crate::{
-	db,
-	prelude::*,
-	utils::{client::make_request, resource_executor::ResourceExecutorTask},
-};
+use crate::{db, prelude::*, utils::resource_executor::ResourceExecutorTask};
 
 /// The global cancellation token that will be used to cancel the tasks
 /// when the runner is stopped. This token will be used to cancel all the
 /// tasks that are running in the runner.
 pub(super) static GLOBAL_CANCEL_TOKEN: OnceLock<CancellationToken> = OnceLock::new();
 
+/// The part of the runner that handles the Cloudflare tunnel.
+/// This is used to expose the runner to the internet when the runner is
+/// running in managed mode and the runner exposure type requires a tunnel.
+mod cloudflare_tunnel;
+/// The part of the runner that syncs the local database with the upstream APIs.
+///
+/// This is only used when the runner is running in managed mode. This connects
+/// to the server and listens for changes to the resources. When a change is
+/// detected, it updates the local database and notifies the resource monitor
+/// to reconcile the resources.
+mod database_sync;
 /// All deployment related functions for the runner
 mod deployment;
+/// The part of the runner that monitors resources.
+///
+/// The job of this is simple: Make sure that for every resource in the
+/// database, there is a task running. If the database updates, notify the task
+/// that something has changed. That's it. It's the task's job to update the
+/// resource. As long as it's running, we are happy. So NO updating the
+/// resource here whatsoever. All that happens in the executor task.
+mod monitor_resources;
+/// The part of the runner that handles the embedded nginx server.
+/// This is used to proxy requests from the tunnel to the actual deployments.
+mod nginx;
 
 /// The runner is the main struct that is used to run the resources.
 ///
@@ -64,7 +68,7 @@ where
 
 impl<E> Runner<E>
 where
-	E: RunnerExecutor + Send + 'static,
+	E: RunnerExecutor + Send + Sync + 'static,
 {
 	/// If this is set to true, the runner will use the embedded binaries for
 	/// cloudflared and nginx instead of using the system binaries. This is
@@ -126,13 +130,10 @@ where
 
 		let runner_state = E::initialize(&config).await?;
 
-		let (change_publisher, _) = mpsc::unbounded_channel();
-
 		let state = AppState {
 			database,
 			config,
 			runner_state,
-			change_publisher,
 		};
 
 		db::initialize(&state).await?;
@@ -149,14 +150,13 @@ where
 	/// if the runner fails to start. The runner will run until the exit signal
 	/// is received.
 	#[instrument(skip(self))]
-	pub async fn run(mut self) -> Result<!, RunnerError> {
+	pub async fn run(self) -> Result<!, RunnerError> {
 		debug!("Attempting to listen on {}", self.state.config.bind_address);
 		let tcp_listener = TcpListener::bind(self.state.config.bind_address)
 			.await
 			.map_err(RunnerError::ServerSetupError)?;
 
 		let (sender, receiver) = mpsc::unbounded_channel();
-		self.state.change_publisher = sender;
 
 		task::spawn(async move {
 			info!("Listening for exit signal");
@@ -209,12 +209,24 @@ where
 			.map_err(RunnerError::NginxSetupError)?;
 		}
 
+		info!("Installing SQLite hook for updates");
+		let update_sender = sender.clone();
+		self.state
+			.database
+			.acquire()
+			.await?
+			.lock_handle()
+			.await?
+			.set_update_hook(move |params| {
+				_ = update_sender.send(params.into());
+			});
+
 		let (server_setup, sync_database, run_tunnel, run_nginx, resource_monitor) = future::join5(
 			self.run_server(tcp_listener),
 			self.sync_local_database(),
 			self.run_cloudflare_tunnel(),
 			self.run_nginx(),
-			self.monitor_resources(receiver),
+			self.monitor_resources(sender, receiver),
 		)
 		.await;
 
@@ -258,567 +270,6 @@ where
 		.with_graceful_shutdown(exit_signal())
 		.await
 		.map_err(RunnerError::ServerSetupError)
-	}
-
-	/// Sync the local database with the upstream APIs. This function will
-	/// connect to the server and listen for messages from the server. It will
-	/// notify the runner to reconcile the resources that are changed on the
-	/// server. This function will only run if the runner is running in managed
-	/// mode. This function will exit if the exit signal is received.
-	#[instrument(skip(self))]
-	async fn sync_local_database(&self) -> Result<!, RunnerError> {
-		let RunnerMode::Managed {
-			workspace_id,
-			runner_id,
-			api_token,
-			user_agent,
-		} = self.state.config.mode.clone()
-		else {
-			// If the runner is running in self-hosted mode, return early. The run function
-			// uses a join of all the futures so early return here will not stop the runner
-			// from running
-			debug!("Runner is running in self-hosted mode. Skipping sync");
-			return Err(RunnerError::Unsupported);
-		};
-
-		info!("Syncing local database with upstream APIs");
-
-		info!("Connecting to the server");
-		// Connect to the server infinitely until the exit signal is received
-		'main: loop {
-			let response = client::stream_request(
-				ApiRequest::<StreamRunnerDataForWorkspaceRequest>::builder()
-					.path(StreamRunnerDataForWorkspacePath {
-						workspace_id,
-						runner_id,
-					})
-					.headers(StreamRunnerDataForWorkspaceRequestHeaders {
-						authorization: api_token.clone(),
-						user_agent: user_agent.clone(),
-					})
-					.query(())
-					.body(WebSocketUpgrade::default())
-					.build(),
-			)
-			.with_cancel_check()
-			.await?;
-
-			let Ok(stream) = response
-				.inspect_err(|err| {
-					error!("Failed to connect to the server: {:?}", err);
-					error!("Retrying in 5 second");
-				})
-				.map_err(|err| err.body)
-			else {
-				// Retry after 5 seconds, but break if the exit signal is received
-				time::sleep(Duration::from_secs(5))
-					.with_cancel_check()
-					.await?;
-				continue 'main;
-			};
-			info!("Connected to the server");
-
-			trace!("Syncing all resources before starting streaming");
-			while let Err(err) = self
-				.resync_all_resources_with_upstream(
-					workspace_id,
-					runner_id,
-					&api_token,
-					&user_agent,
-				)
-				.await
-			{
-				error!("Failed to sync all resources: {:?}", err);
-				error!("Retrying in 1 second");
-				// Retry after 1 seconds, but break if the exit signal is received
-				time::sleep(Duration::from_secs(1))
-					.with_cancel_check()
-					.await?;
-			}
-			info!("All resources synced successfully");
-
-			let mut pinned_stream = pin!(stream);
-
-			'message: loop {
-				let reconcile_message = pinned_stream.next().with_cancel_check().await?;
-
-				match reconcile_message {
-					Some(Ok(response)) => {
-						let mut try_count = 0;
-						while let Err(err) = self.handle_server_message(response.clone()).await {
-							// Failed to handle the message. Retry after 1 second
-							error!("Failed to handle the message: {err}");
-							warn!("Retrying in 1 second...");
-							time::sleep(Duration::from_secs(1))
-								.with_cancel_check()
-								.await?;
-							try_count += 1;
-
-							if try_count >= 5 {
-								error!("Handing server message failed more than 5 times.");
-								error!("Restarting connection to server");
-								continue 'main;
-							}
-						}
-					}
-					Some(Err(err)) => {
-						// Data from the websocket failed
-						error!("Failed to connect to the server: {:?}", err);
-						error!("Retrying in 1 second");
-
-						// Retry after 1 second, but break if the exit signal is received
-						time::sleep(Duration::from_secs(1))
-							.with_cancel_check()
-							.await?;
-
-						break 'message;
-					}
-					None => {
-						// Websocket disconnected. Reconnect
-						error!("Connection to server closed");
-						error!("Retrying in 2 seconds");
-						// Retry after 2 seconds, but break if the exit signal is received
-						time::sleep(Duration::from_secs(2))
-							.with_cancel_check()
-							.await?;
-
-						break 'message;
-					}
-				}
-			}
-		}
-	}
-
-	/// Run the cloudflare tunnel. This function will start the cloudflare
-	/// tunnel and listen for incoming connections. It will return a result
-	/// with the error if the tunnel fails to start. The tunnel will run until
-	/// the exit signal is received.
-	#[instrument(skip(self))]
-	async fn run_cloudflare_tunnel(&self) -> Result<!, RunnerError> {
-		let RunnerMode::Managed {
-			workspace_id,
-			runner_id,
-			api_token,
-			user_agent,
-		} = self.state.config.mode.clone()
-		else {
-			// If the runner is running in self-hosted mode, return early. The run function
-			// uses a join of all the futures so early return here will not stop the runner
-			// from running
-			debug!("Runner is running in self-hosted mode. Skipping cloudflare tunnel");
-			return Err(RunnerError::Unsupported);
-		};
-
-		let runner_exposure_type = E::runner_exposure_type();
-
-		if !runner_exposure_type.requires_tunnel() {
-			return Err(RunnerError::Unsupported);
-		}
-
-		info!("Running cloudflare tunnel to expose the runner");
-		loop {
-			let tunnel_token = make_request(
-				ApiRequest::<GetIngressTokenForRunnerRequest>::builder()
-					.path(GetIngressTokenForRunnerPath {
-						workspace_id,
-						runner_id,
-					})
-					.query(())
-					.headers(GetIngressTokenForRunnerRequestHeaders {
-						authorization: api_token.clone(),
-						user_agent: user_agent.clone(),
-					})
-					.body(GetIngressTokenForRunnerRequest)
-					.build(),
-			)
-			.with_cancel_check()
-			.await?;
-
-			let Ok(tunnel_token) = tunnel_token
-				.inspect_err(|err| {
-					error!("Failed to connect to the server: {:?}", err);
-					error!("Retrying in 5 second");
-				})
-				.map_err(|err| err.body)
-			else {
-				// Retry after 5 seconds, but break if the exit signal is received
-				time::sleep(Duration::from_secs(5))
-					.with_cancel_check()
-					.await?;
-				continue;
-			};
-
-			let Ok(mut child) = Command::new("cloudflared")
-				.arg("tunnel")
-				.arg("--logfile")
-				.arg("./data/cloudflared.log")
-				.arg("run")
-				.arg("--token")
-				.arg(tunnel_token.body.token)
-				.env(
-					"PATH",
-					format!(
-						"{}:{}",
-						self.temp_dir.path().display(),
-						std::env::var("PATH").unwrap_or_default()
-					),
-				)
-				.stdin(Stdio::piped())
-				.stdout(Stdio::piped())
-				.stderr(Stdio::piped())
-				.kill_on_drop(true)
-				.spawn()
-				.inspect_err(|err| {
-					error!("Failed to start cloudflare tunnel: {:?}", err);
-					error!("Retrying in 5 second");
-				})
-			else {
-				// Retry after 5 seconds, but break if the exit signal is received
-				time::sleep(Duration::from_secs(5))
-					.with_cancel_check()
-					.await?;
-				continue;
-			};
-
-			let status = match child.wait().with_cancel_check().await {
-				Ok(status) => status,
-				Err(err) => {
-					// Exit signal received. Kill the child process and exit
-					child
-						.kill()
-						.await
-						.map_err(RunnerError::CloudflareTunnelExecError)?;
-					child
-						.wait()
-						.await
-						.map_err(RunnerError::CloudflareTunnelExecError)?;
-					return Err(err);
-				}
-			};
-
-			let Ok(status) = status.inspect_err(|err| {
-				error!("Error waiting for cloudflared process: {}", err);
-				error!("Retrying in 5 second");
-			}) else {
-				// Retry after 5 seconds, but break if the exit signal is received
-				if let Err(RunnerError::ExitSignalReceived) = time::sleep(Duration::from_secs(5))
-					.with_cancel_check()
-					.await
-				{
-					// Exit signal received. Kill the child process and exit
-					child
-						.kill()
-						.await
-						.map_err(RunnerError::CloudflareTunnelExecError)?;
-					child
-						.wait()
-						.await
-						.map_err(RunnerError::CloudflareTunnelExecError)?;
-					return Err(RunnerError::ExitSignalReceived);
-				}
-				continue;
-			};
-
-			if status.success() {
-				warn!("Cloudflare tunnel exited successfully");
-				future::ready(()).with_cancel_check().await?;
-				warn!("This should not happen. Restarting tunnel");
-			} else {
-				error!("Cloudflare tunnel exited with status: {}", status);
-				error!("Retrying in 1 second");
-				// Retry after a second, but break if the exit signal is received
-				time::sleep(Duration::from_secs(1))
-					.with_cancel_check()
-					.await?;
-			}
-		}
-	}
-
-	/// Run nginx. This function will start nginx and listen for incoming
-	/// connections. It will return a result with the error if nginx fails
-	/// to start. Nginx will run until the exit signal is received.
-	#[instrument(skip(self))]
-	async fn run_nginx(&self) -> Result<!, RunnerError> {
-		fs::create_dir_all("./data/nginx")
-			.await
-			.map_err(RunnerError::NginxSetupError)?;
-
-		fs::write(
-			constants::NGINX_CONFIG_PATH,
-			include_str!(concat!(
-				env!("CARGO_MANIFEST_DIR"),
-				"/../../assets/runner/nginx.conf"
-			)),
-		)
-		.await
-		.map_err(RunnerError::NginxSetupError)?;
-
-		loop {
-			let mut lock_file = LockFile::open(constants::NGINX_LOCK_FILE_PATH)
-				.map_err(RunnerError::NginxSetupError)?;
-
-			if !lock_file.owns_lock() {
-				// remove the nginx socket file if it exists based on a lockfile
-				let locked = lock_file.try_lock().map_err(RunnerError::NginxSetupError)?;
-				if !locked {
-					error!("Failed to acquire lock for nginx. Another instance might be running");
-					time::sleep(Duration::from_secs(5))
-						.with_cancel_check()
-						.await?;
-					continue;
-				}
-
-				if fs::try_exists(constants::NGINX_SOCKET_PATH)
-					.await
-					.map_err(RunnerError::NginxSetupError)?
-				{
-					warn!("Removing existing nginx socket file");
-					fs::remove_file(constants::NGINX_SOCKET_PATH)
-						.await
-						.map_err(RunnerError::NginxSetupError)
-						.inspect_err(|err| {
-							error!("Failed to remove nginx socket file: {:?}", err);
-						})?;
-				}
-			}
-
-			let Ok(mut child) = Command::new("nginx")
-				.arg("-g")
-				.arg("daemon off;")
-				.arg("-p")
-				.arg(".")
-				.arg("-e")
-				.arg("./data/nginx/error.log")
-				.arg("-c")
-				.arg(constants::NGINX_CONFIG_PATH)
-				.env(
-					"PATH",
-					format!(
-						"{}:{}",
-						self.temp_dir.path().display(),
-						std::env::var("PATH").unwrap_or_default()
-					),
-				)
-				.stdin(Stdio::piped())
-				.stdout(Stdio::piped())
-				.stderr(Stdio::piped())
-				.kill_on_drop(true)
-				.spawn()
-				.inspect_err(|err| {
-					error!("Failed to start nginx: {:?}", err);
-				})
-			else {
-				// Retry after 5 seconds, but break if the exit signal is received
-				time::sleep(Duration::from_secs(5))
-					.with_cancel_check()
-					.await?;
-				continue;
-			};
-
-			let status = child.wait().await.map_err(RunnerError::NginxExecError)?;
-
-			if status.success() {
-				warn!("Nginx exited successfully");
-				future::ready(()).with_cancel_check().await?;
-				warn!("This should not happen. Restarting nginx");
-			} else {
-				error!("Nginx exited with status: {}", status);
-			}
-		}
-	}
-
-	/// Reload nginx configuration. This function will send a reload signal to
-	/// nginx, causing it to reload its configuration. It will return a result
-	/// with the error if nginx fails to reload. This function is useful when
-	/// the nginx configuration is changed and needs to be reloaded without
-	/// restarting the nginx process.
-	#[instrument(skip(self))]
-	async fn reload_nginx(&self) -> Result<(), RunnerError> {
-		let output = Command::new("nginx")
-			.arg("-s")
-			.arg("reload")
-			.arg("-p")
-			.arg(".")
-			.arg("-e")
-			.arg("./data/nginx/error.log")
-			.arg("-c")
-			.arg(constants::NGINX_CONFIG_PATH)
-			.env(
-				"PATH",
-				format!(
-					"{}:{}",
-					self.temp_dir.path().display(),
-					std::env::var("PATH").unwrap_or_default()
-				),
-			)
-			.stdin(Stdio::piped())
-			.stdout(Stdio::piped())
-			.stderr(Stdio::piped())
-			.output()
-			.await
-			.inspect_err(|err| {
-				error!("Failed to reload nginx: {:?}", err);
-			})
-			.map_err(RunnerError::NginxExecError)?;
-
-		if !output.status.success() {
-			let stderr = String::from_utf8_lossy(&output.stderr);
-			error!("Nginx reload failed: {}", stderr);
-			return Err(RunnerError::NginxExecError(io::Error::new(
-				io::ErrorKind::Other,
-				"Failed to reload nginx",
-			)));
-		}
-
-		Ok(())
-	}
-
-	/// Monitor the resources and make sure that they are running. This function
-	/// will listen for changes in the resources and make sure that they are
-	/// running. The job of this function is to make sure that whatever is
-	/// running is exactly as per what's in the database.
-	#[instrument(skip(self))]
-	async fn monitor_resources(
-		&self,
-		mut change_publisher: UnboundedReceiver<StreamRunnerDataForWorkspaceServerMsg>,
-	) -> Result<!, RunnerError> {
-		let full_sync_interval = if cfg!(debug_assertions) {
-			Duration::from_secs(10)
-		} else {
-			Duration::from_secs(60 * 10) // 10 minutes
-		};
-
-		// This is set to zero intentionally so that during the first iteration
-		// of the loop, we don't wait for the full sync interval. The first sync should
-		// happen immediately and then after that we start waiting for the full sync
-		// interval.
-		let mut sleep_future = Box::pin(time::sleep(Duration::from_secs(0)));
-
-		// Remember: The point of this loop is not to update the database or the
-		// resource. Our job is simple: Make sure that for every resource in the
-		// database, there is a task running. It's the task's job to update the
-		// resource. As long as it's running, we are happy. So NO updating the
-		// resource here whatsoever. All that happens in the task.
-		loop {
-			match future::select(sleep_future, pin!(change_publisher.recv())).await {
-				Either::Left(((), _)) => {
-					// Regularly (every 10 minutes in prod and 10 seconds in dev) reconcile all the
-					// deployments. Check all resources in the local database and make sure they are
-					// running on the runner.
-					let Ok(()) = self.reconcile_resources().await else {
-						time::sleep(Duration::from_secs(1))
-							.with_cancel_check()
-							.await?;
-						sleep_future = Box::pin(time::sleep(Duration::from_millis(0)));
-						continue;
-					};
-					sleep_future = Box::pin(time::sleep(full_sync_interval));
-				}
-				Either::Right((update, next_sleep)) => {
-					use StreamRunnerDataForWorkspaceServerMsg::*;
-
-					sleep_future = next_sleep;
-
-					let Some(update) = update else {
-						continue;
-					};
-
-					match update {
-						DeploymentCreated {
-							deployment,
-							running_details: _,
-						} |
-						DeploymentUpdated {
-							deployment,
-							running_details: _,
-						} => {
-							self.upsert_running_deployment(deployment.id).await;
-						}
-						DeploymentDeleted { id } => {
-							if let Err(err) = self.delete_running_deployment(id).await {
-								error!("Failed to delete deployment: {err}");
-								_ = self.state.change_publisher.send(DeploymentDeleted { id });
-							}
-						}
-					}
-				}
-			}
-
-			time::sleep(full_sync_interval).with_cancel_check().await?;
-		}
-	}
-
-	/// Resync all the resources that the runner is responsible for. This
-	/// function will sync the local database with the upstream API, making sure
-	/// both are in sync.
-	#[instrument(skip(self, api_token))]
-	async fn resync_all_resources_with_upstream(
-		&self,
-		workspace_id: Uuid,
-		runner_id: Uuid,
-		api_token: &BearerToken,
-		user_agent: &UserAgent,
-	) -> Result<(), RunnerError> {
-		// Reconcile all resources
-		self.resync_all_deployments_with_upstream(workspace_id, runner_id, api_token, user_agent)
-			.await?;
-
-		Ok(())
-	}
-
-	/// Handle a message from the server. This function will handle the message
-	/// from the server and run the reconciliation for the resource that the
-	/// message is for.
-	#[instrument(skip(self))]
-	async fn handle_server_message(
-		&self,
-		msg: StreamRunnerDataForWorkspaceServerMsg,
-	) -> Result<(), RunnerError> {
-		use StreamRunnerDataForWorkspaceServerMsg::*;
-
-		let mut transaction = self.state.database.begin().await?;
-
-		let resource_type = msg.resource_type();
-		let resource_id = match msg {
-			DeploymentCreated {
-				deployment,
-				running_details,
-			} => {
-				let deployment_id = deployment.id;
-				self.create_deployment_in_database(&mut transaction, deployment, running_details)
-					.await?;
-				deployment_id
-			}
-			DeploymentUpdated {
-				deployment,
-				running_details,
-			} => {
-				let deployment_id = deployment.id;
-				self.delete_deployment_in_database(&mut transaction, deployment.id)
-					.await?;
-				self.create_deployment_in_database(&mut transaction, deployment, running_details)
-					.await?;
-				deployment_id
-			}
-			DeploymentDeleted { id } => {
-				self.delete_deployment_in_database(&mut transaction, id)
-					.await?;
-				id
-			}
-		};
-
-		transaction.commit().await?;
-
-		self.registry
-			.entry(resource_id)
-			.or_insert_with(|| {
-				ResourceExecutorTask::new(resource_id, resource_type, self.state.clone())
-			})
-			.value_mut()
-			.ensure_running()
-			.notify_update();
-
-		Ok(())
 	}
 }
 

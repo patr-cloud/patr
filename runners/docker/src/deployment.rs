@@ -18,6 +18,8 @@ use models::api::workspace::deployment::*;
 
 use crate::DockerRunner;
 
+/// Upsert (create or update) a deployment. This will create the container if
+/// it does not exist, or update the container if it does exist.
 pub(crate) async fn upsert(
 	DockerRunner { docker }: &DockerRunner,
 	WithId {
@@ -207,6 +209,9 @@ pub(crate) async fn upsert(
 	Ok(())
 }
 
+/// List all running deployments. This will return a stream of deployment IDs.
+/// The stream will yield deployment IDs as they are found. If no deployments
+/// are found, the stream will be empty.
 pub(crate) async fn list_running<'a>(
 	DockerRunner { docker }: &DockerRunner,
 ) -> impl Stream<Item = Uuid> + 'a {
@@ -246,6 +251,8 @@ pub(crate) async fn list_running<'a>(
 	.boxed()
 }
 
+/// Delete the deployment with the given ID. This will stop and remove the
+/// container if it is running.
 pub(crate) async fn delete(
 	DockerRunner { docker }: &DockerRunner,
 	id: Uuid,

@@ -528,7 +528,7 @@ where
 						Ordering::Less => {
 							// The running deployment is not in the database. We
 							// need to delete it
-							self.delete_running_deployment(running_deployment).await?;
+							self.delete_running_deployment(running_deployment).await;
 
 							current_running_deployment =
 								running_deployments.next().with_cancel_check().await?;
@@ -553,7 +553,7 @@ where
 				(Some(running_deployment), None) => {
 					// The database is exhausted. We need to delete the running
 					// deployment
-					self.delete_running_deployment(running_deployment).await?;
+					self.delete_running_deployment(running_deployment).await;
 
 					current_database_deployment = None;
 					current_running_deployment =
@@ -604,17 +604,10 @@ where
 	/// Delete a running deployment. This function will delete a running
 	/// deployment from the host.
 	#[instrument(skip(self))]
-	pub(super) async fn delete_running_deployment(
-		&self,
-		deployment_id: Uuid,
-	) -> Result<(), RunnerError> {
-		let Some((_, task)) = self.registry.remove(&deployment_id) else {
-			return Ok(());
-		};
-
-		task.stop().await?;
-
-		Ok(())
+	pub(super) async fn delete_running_deployment(&self, deployment_id: Uuid) {
+		if let Some((_, task)) = self.registry.remove(&deployment_id) {
+			task.stop().await;
+		}
 	}
 
 	/// Upsert a deployment. This function will create a deployment on the host.

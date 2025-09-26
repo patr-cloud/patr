@@ -19,7 +19,6 @@ pub async fn get_user_info(
 				body: GetUserInfoRequestProcessed,
 			},
 		database,
-		change_publisher: _,
 		config: _,
 	}: AppRequest<'_, GetUserInfoRequest>,
 ) -> Result<AppResponse<GetUserInfoRequest>, ErrorType> {

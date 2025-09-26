@@ -23,9 +23,6 @@ pub enum RunnerError {
 	/// Error while setting the global default subscriber for tracing
 	#[error("error setting the global default subscriber: {0}")]
 	TracingSubscriberError(#[from] SetGlobalDefaultError),
-	/// No resource found for the given ID
-	#[error("no resource found for the given ID")]
-	NoResourceFound,
 	/// The runner does not support this operation
 	#[error("operation not supported by the runner")]
 	Unsupported,

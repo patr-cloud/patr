@@ -23,7 +23,6 @@ pub async fn sign_up(
 					},
 			},
 		database,
-		change_publisher: _,
 		config,
 	}: AppRequest<'_, CreateAccountRequest>,
 ) -> Result<AppResponse<CreateAccountRequest>, ErrorType> {

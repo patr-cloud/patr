@@ -68,7 +68,10 @@ pub async fn list_deployment(
 			deployment.deleted IS NULL AND
 			($6::TEXT IS NULL OR deployment.name ILIKE '%' || $6 || '%') AND
 			($7::TEXT IS NULL OR deployment.image_tag = $7) AND
-			($8::DEPLOYMENT_STATUS IS NULL OR deployment.status = $8) AND
+			(
+				$8::DEPLOYMENT_STATUS[] IS NULL OR
+				deployment.status = ANY($8)
+			) AND
 			($9::UUID IS NULL OR deployment.runner = $9) AND
 			($10::TEXT IS NULL OR deployment.current_live_digest = $10)
 		ORDER BY

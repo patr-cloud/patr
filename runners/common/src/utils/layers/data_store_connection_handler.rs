@@ -138,7 +138,6 @@ where
 				request,
 				database: &mut database,
 				config: state.config.clone().into_base(),
-				change_publisher: state.change_publisher.clone(),
 			};
 
 			info!("Calling inner service");

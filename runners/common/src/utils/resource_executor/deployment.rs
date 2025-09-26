@@ -28,9 +28,11 @@ pub(super) async fn handle_deployment<E>(
 		)
 		.await;
 
-		if let RunnerError::ExitSignalReceived = error {
-			// If the task was cancelled, we need to stop the task
-			// and return an error
+		if let RunnerError::UpstreamServerError(ErrorType::ResourceDoesNotExist) |
+		RunnerError::ExitSignalReceived = error
+		{
+			// If the task was cancelled or if the deployment was deleted, we need to stop
+			// the task and return an error
 			return;
 		}
 		// If the task was not cancelled, we need to log the error
@@ -42,6 +44,10 @@ pub(super) async fn handle_deployment<E>(
 	}
 }
 
+/// Handle the deployment with the given ID. This will keep checking the status
+/// of the deployment and update the database accordingly. If the deployment is
+/// deleted, this function will return. If the exit signal is received, this
+/// function will return.
 async fn handle_deployment_with_error<E>(
 	deployment_id: Uuid,
 	executor: E,
@@ -63,7 +69,7 @@ where
 			.with_cancel_check_of(cancellation_token)
 			.await?;
 
-		// What is it right now?
+		// What is the status right now?
 		let running_status = match running_status {
 			Either::Left((status, future)) => {
 				// The running deployment has changed. Check what's on the db and update
@@ -87,7 +93,8 @@ where
 		}?;
 
 		// What is it supposed to be as per the db?
-		// TODO handle deletes
+		// If it's deleted, it'll return an ErrorType::ResourceDoesNotExist, and that's
+		// handled above to stop the task
 		let deployment_status = get_local_deployment_status(&state.database, deployment_id).await?;
 
 		debug!(
@@ -190,6 +197,7 @@ where
 	}
 }
 
+/// Get the current status of the deployment from the local database.
 async fn get_local_deployment_status(
 	database: &sqlx::Pool<DatabaseType>,
 	deployment_id: Uuid,
@@ -217,6 +225,7 @@ async fn get_local_deployment_status(
 		.map_err(Into::into)
 }
 
+/// Get the deployment and its running details from the local database.
 async fn get_local_deployment_info(
 	database: &sqlx::Pool<DatabaseType>,
 	deployment_id: Uuid,

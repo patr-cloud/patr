@@ -101,7 +101,7 @@ thiserror                      = { default-features = false, version = "2" }
 time                           = { default-features = false, version = "0.3" }
 tokio                          = { default-features = false, version = "1" }
 tokio-stream                   = { default-features = false, version = "0.1" }
-tokio-tungstenite              = { default-features = false, version = "0.27" }
+tokio-tungstenite              = { default-features = false, version = "0.26" }
 tokio-util                     = { default-features = false, version = "0.7" }
 totp-rs                        = { default-features = false, version = "5" }
 tower                          = { default-features = false, version = "0.5" }
@@ -113,7 +113,7 @@ tracing-subscriber             = { default-features = false, version = "0.3" }
 typed-builder                  = { default-features = false, version = "0.22" }
 url                            = { default-features = false, version = "2" }
 uuid                           = { default-features = false, version = "1" }
-wasm-bindgen                   = { default-features = false, version = "0.2" }
+wasm-bindgen                   = { default-features = false, version = "=0.2.101" }
 wasm-logger                    = { default-features = false, version = "0.2" }
 web-sys                        = { default-features = false, version = "0.3" }
 woothee                        = { default-features = false, version = "0.13" }

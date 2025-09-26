@@ -192,6 +192,74 @@ pub async fn initialize_deployment_tables(
 	.execute(&mut *connection)
 	.await?;
 
+	query(
+		r#"
+		CREATE TABLE deployment_update_log(
+			deployment_id TEXT NOT NULL,
+			update_type TEXT NOT NULL,
+			deleted_at DATETIME,
+
+			PRIMARY KEY(deployment_id)
+		);
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query(
+		r#"
+		CREATE TRIGGER deployment_tg_before_insert_update_log
+		AFTER INSERT ON deployment
+		BEGIN
+			INSERT OR REPLACE INTO deployment_update_log(
+				deployment_id,
+				update_type,
+				deleted_at
+			)
+			VALUES
+				(NEW.id, 'insert', NULL);
+		END;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query(
+		r#"
+		CREATE TRIGGER deployment_tg_before_update_update_log
+		AFTER UPDATE ON deployment
+		BEGIN
+			INSERT OR REPLACE INTO deployment_update_log(
+				deployment_id,
+				update_type,
+				deleted_at
+			)
+			VALUES
+				(NEW.id, 'update', NULL);
+		END;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query(
+		r#"
+		CREATE TRIGGER deployment_tg_before_delete_update_log
+		AFTER DELETE ON deployment
+		BEGIN
+			INSERT OR REPLACE INTO deployment_update_log(
+				deployment_id,
+				update_type,
+				deleted_at
+			)
+			VALUES
+				(OLD.id, 'delete', CURRENT_TIMESTAMP);
+		END;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 

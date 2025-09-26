@@ -43,7 +43,6 @@ pub async fn update_deployment(
 					},
 			},
 		database,
-		change_publisher,
 		config: _,
 	}: AppRequest<'_, UpdateDeploymentRequest>,
 ) -> Result<AppResponse<UpdateDeploymentRequest>, ErrorType> {

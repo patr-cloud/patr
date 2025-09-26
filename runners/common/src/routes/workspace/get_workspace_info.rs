@@ -20,7 +20,7 @@ pub async fn get_workspace_info(
 				body: GetWorkspaceInfoRequestProcessed,
 			},
 		database: _,
-		change_publisher: _,
+
 		config: _,
 	}: AppRequest<'_, GetWorkspaceInfoRequest>,
 ) -> Result<AppResponse<GetWorkspaceInfoRequest>, ErrorType> {

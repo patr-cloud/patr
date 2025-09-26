@@ -43,6 +43,7 @@ fn main() {
 	);
 }
 
+/// Download the cloudflared binaries if they do not exist.
 fn download_cloudflare_binaries(client: &reqwest::blocking::Client) {
 	const CLOUDFLARED_URL: &str =
 		"https://github.com/cloudflare/cloudflared/releases/latest/2025.5.0/";
@@ -81,16 +82,16 @@ fn download_cloudflare_binaries(client: &reqwest::blocking::Client) {
 				"{}/../../assets/binaries/{binary}",
 				env!("CARGO_MANIFEST_DIR")
 			))
-			.expect(&format!("Failed to remove file: {binary}"));
+			.unwrap_or_else(|err| panic!("Failed to remove file: {binary}: {err}"));
 		}
 		custom_println!("Fetching", green, "binary `{binary}`");
 
 		let mut response = client
 			.get(&url)
 			.send()
-			.expect(&format!("Failed to download file: {url}"))
+			.unwrap_or_else(|err| panic!("Failed to download file: {url}: {err}"))
 			.error_for_status()
-			.expect(&format!("Failed to download file: {url}"));
+			.unwrap_or_else(|err| panic!("Failed to download file: {url}: {err}"));
 
 		if binary.ends_with(".tgz") {
 			Archive::new(GzDecoder::new(response))
@@ -98,7 +99,7 @@ fn download_cloudflare_binaries(client: &reqwest::blocking::Client) {
 					"{}/../../assets/binaries/",
 					env!("CARGO_MANIFEST_DIR")
 				))
-				.expect(&format!("Failed to unpack file: {binary}"));
+				.unwrap_or_else(|err| panic!("Failed to unpack file: {binary}: {err}"));
 			fs::rename(
 				format!(
 					"{}/../../assets/binaries/cloudflared",
@@ -110,10 +111,12 @@ fn download_cloudflare_binaries(client: &reqwest::blocking::Client) {
 					binary.trim_end_matches(".tgz")
 				),
 			)
-			.expect(&format!(
-				"Failed to rename file: {}",
-				binary.trim_end_matches(".tgz")
-			));
+			.unwrap_or_else(|err| {
+				panic!(
+					"Failed to rename file: {}: {err}",
+					binary.trim_end_matches(".tgz")
+				)
+			});
 		} else {
 			let mut file = File::options()
 				.append(true)
@@ -123,7 +126,7 @@ fn download_cloudflare_binaries(client: &reqwest::blocking::Client) {
 					"{}/../../assets/binaries/{binary}",
 					env!("CARGO_MANIFEST_DIR")
 				))
-				.expect(&format!("Failed to open file: {binary}"));
+				.unwrap_or_else(|err| panic!("Failed to open file: {binary}: {err}"));
 
 			custom_println!(
 				"Downloaded",
@@ -131,12 +134,13 @@ fn download_cloudflare_binaries(client: &reqwest::blocking::Client) {
 				"wrote {} bytes.",
 				response
 					.copy_to(&mut file)
-					.expect(&format!("Failed to write file: {binary}"))
+					.unwrap_or_else(|err| panic!("Failed to write file: {binary}: {err}"))
 			);
 		}
 	}
 }
 
+/// Download the nginx binaries if they do not exist.
 fn download_nginx_binaries(client: &reqwest::blocking::Client) {
 	client
 		.get("https://nginx.org/download/nginx-1.28.0.tar.gz")

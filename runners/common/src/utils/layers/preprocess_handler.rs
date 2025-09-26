@@ -113,7 +113,6 @@ where
 				request,
 				database,
 				config,
-				change_publisher,
 			} = req;
 			let req = AppRequest {
 				request: ProcessedApiRequest::try_from(request).map_err(
@@ -127,7 +126,6 @@ where
 				)?,
 				database,
 				config,
-				change_publisher,
 			};
 			inner.call(req).await
 		}

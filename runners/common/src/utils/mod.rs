@@ -27,6 +27,8 @@ mod router_ext;
 /// The type of exposure that the runner will use to expose the resources.
 mod runner_exposure_type;
 
+use sqlx::sqlite::{SqliteOperation, UpdateHookResult};
+
 pub use self::{router_ext::*, runner_exposure_type::*};
 
 /// The constants module contains all the constants that are used throughout
@@ -87,4 +89,32 @@ pub mod constants {
 	/// acquired the lock). So we can safely delete the socket file and start
 	/// nginx.
 	pub const NGINX_LOCK_FILE_PATH: &str = "./data/nginx/nginx.lock";
+}
+
+/// The data that is returned by the SQLite update hook. This contains the same
+/// fields as [`UpdateHookResult`][1] but has owned strings for being able to
+/// send it across threads and tasks.
+///
+/// [1]: sqlx::sqlite::UpdateHookResult
+#[derive(Debug, Clone)]
+pub struct SqliteUpdateHook {
+	/// The operation that was performed on the database.
+	pub operation: SqliteOperation,
+	/// The database that was modified.
+	pub database: String,
+	/// The table that was modified.
+	pub table: String,
+	/// The row ID of the modified row.
+	pub row_id: i64,
+}
+
+impl From<UpdateHookResult<'_>> for SqliteUpdateHook {
+	fn from(value: UpdateHookResult<'_>) -> Self {
+		Self {
+			operation: value.operation,
+			database: value.database.to_string(),
+			table: value.table.to_string(),
+			row_id: value.rowid,
+		}
+	}
 }

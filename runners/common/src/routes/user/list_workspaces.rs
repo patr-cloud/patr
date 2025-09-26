@@ -21,7 +21,6 @@ pub async fn list_workspaces(
 				body: ListUserWorkspacesRequestProcessed,
 			},
 		database: _,
-		change_publisher: _,
 		config: _,
 	}: AppRequest<'_, ListUserWorkspacesRequest>,
 ) -> Result<AppResponse<ListUserWorkspacesRequest>, ErrorType> {

@@ -1,5 +1,5 @@
 use axum::http::StatusCode;
-use models::api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg::*};
+use models::api::workspace::deployment::*;
 
 use crate::prelude::*;
 
@@ -23,7 +23,6 @@ pub async fn delete_deployment(
 				body: DeleteDeploymentRequestProcessed,
 			},
 		database,
-		change_publisher,
 		config: _,
 	}: AppRequest<'_, DeleteDeploymentRequest>,
 ) -> Result<AppResponse<DeleteDeploymentRequest>, ErrorType> {
@@ -117,9 +116,6 @@ pub async fn delete_deployment(
 	})?;
 
 	trace!("Deployment deleted");
-
-	change_publisher.send(DeploymentDeleted { id: deployment_id })?;
-	trace!("Changes sent to runner");
 
 	AppResponse::builder()
 		.body(DeleteDeploymentResponse)

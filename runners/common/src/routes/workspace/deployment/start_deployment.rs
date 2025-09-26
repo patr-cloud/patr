@@ -23,7 +23,6 @@ pub async fn start_deployment(
 				body: StartDeploymentRequestProcessed,
 			},
 		database,
-		change_publisher: _,
 		config: _,
 	}: AppRequest<'_, StartDeploymentRequest>,
 ) -> Result<AppResponse<StartDeploymentRequest>, ErrorType> {

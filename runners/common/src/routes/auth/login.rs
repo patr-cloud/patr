@@ -25,7 +25,6 @@ pub async fn login(
 				},
 			},
 		database,
-		change_publisher: _,
 		config,
 	}: AppRequest<'_, LoginRequest>,
 ) -> Result<AppResponse<LoginRequest>, ErrorType> {
