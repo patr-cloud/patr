@@ -1,5 +1,5 @@
 [workspace]
-members              = ["api", "cli", "ingress", "frontend/common", "frontend/managed", "frontend/self-hosted", "macros", "models", "runners/common", "runners/docker", "runners/kubernetes"]
+members              = ["api", "cli", "ingress", "frontend/common", "frontend/managed", "frontend/self-hosted", "macros", "models", "runners/common", "runners/docker", "runners/kubernetes", "frontend/isolated"]
 package.authors      = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
 package.description  = "Patr API and all it's dependencies"
 package.edition      = "2024"
@@ -184,3 +184,25 @@ browserquery = "defaults"
 lib-profile-release = "frontend"
 # The port to use for the live reload server
 reload-port = 8080
+
+[[workspace.metadata.leptos]]
+# The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name
+bin-package = "isolated"
+lib-package = "self-hosted-frontend"
+name        = "frontend"
+output-name = "isolated"
+# The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
+site-root = "target/isolated"
+# The site-root relative folder where all compiled output (JS, WASM and CSS) is written
+site-pkg-dir        = "pkg"
+style-file          = "assets/frontend/styles/index.scss"
+tailwind-input-file = "assets/frontend/styles/global.css"
+# Assets source dir. All files found here will be copied and synchronized to site-root.
+# The assets-dir cannot have a sub directory with the same name/path as site-pkg-dir.
+assets-dir = "assets/frontend/public"
+#  The browserlist query used for optimizing the CSS.
+browserquery = "defaults"
+# The profile to use for the lib target when compiling for release
+lib-profile-release = "frontend"
+# The port to use for the live reload server
+reload-port = 8081

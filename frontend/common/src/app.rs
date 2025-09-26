@@ -9,9 +9,17 @@ pub fn App(
 ) -> impl IntoView {
 	provide_context(app_type);
 
-	view! {
-		<TempPageContainer>
-			<DeploymentDashboard />
-		</TempPageContainer>
+	let auth_state = AuthState::load();
+
+	move || {
+		if auth_state.get().is_logged_in() {
+			Either::Left(view! {
+				<LoggedInContent />
+			})
+		} else {
+			Either::Right(view! {
+				<LoggedOutContent />
+			})
+		}
 	}
 }

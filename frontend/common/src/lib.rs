@@ -4,11 +4,11 @@
 
 /// Prelude module. Used to re-export commonly used items.
 pub mod prelude {
-	pub use leptos::prelude::*;
+	pub use leptos::{either::*, prelude::*};
 	pub use leptos_use::use_cookie;
 	pub use models::prelude::*;
 
-	pub use crate::{components::*, pages::*, utils::*};
+	pub use crate::{components::*, pages::*, routes::*, utils::*};
 }
 
 /// The application logic code. This contains the routers and all the routing
@@ -20,6 +20,9 @@ pub mod components;
 /// The pages module. This contains all the pages used in the application.
 /// Pages are the main views that are rendered when a route is matched.
 pub mod pages;
+/// The routes module. This contains all the parent components for the routes
+/// inside the application.
+pub mod routes;
 /// The utils module. This contains all the utility functions and other things
 /// needed to make the application work.
 pub mod utils;
