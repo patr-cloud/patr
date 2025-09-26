@@ -78,7 +78,7 @@ where
 						continue;
 					};
 
-					if !update.table.ends_with("_update_log") && update.database != "main" {
+					if !update.table.ends_with("_update_log") || update.database != "main" {
 						continue;
 					}
 					if update.operation == SqliteOperation::Delete {
@@ -105,7 +105,9 @@ where
 					.bind(update.row_id)
 					.fetch_optional(&self.state.database)
 					.await
-					else {
+					.inspect_err(|err| {
+						error!("Failed to fetch deployment update log: {}", err);
+					}) else {
 						_ = change_publisher
 							.send(update)
 							.inspect_err(|err| error!("Unable to resend database update: {}", err));
@@ -118,14 +120,12 @@ where
 							row.get::<String, _>("update_type"),
 						)
 					}) else {
-						// Deployment not found. It was probably deleted.
-						warn!(
-							"Deployment for updated row `{}` not found in database",
+						// Deployment not found. It was probably deleted or the row was updated
+						// subsequently with some other value.
+						debug!(
+							"Deployment for updated row `{}` not found in database. Skipping...",
 							update.row_id
 						);
-						_ = change_publisher
-							.send(update)
-							.inspect_err(|err| error!("Unable to resend database update: {}", err));
 						continue;
 					};
 

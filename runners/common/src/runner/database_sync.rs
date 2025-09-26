@@ -1,6 +1,6 @@
 use std::pin::pin;
 
-use futures::StreamExt;
+use futures::{StreamExt, future};
 use models::{api::workspace::runner::*, utils::WebSocketUpgrade};
 use tokio::time::{self, Duration};
 
@@ -69,28 +69,47 @@ where
 			info!("Connected to the server");
 
 			trace!("Syncing all resources before starting streaming");
-			while let Err(err) = self
-				.resync_all_resources_with_upstream(
-					workspace_id,
-					runner_id,
-					&api_token,
-					&user_agent,
-				)
-				.await
-			{
-				error!("Failed to sync all resources: {:?}", err);
-				error!("Retrying in 1 second");
-				// Retry after 1 seconds, but break if the exit signal is received
-				time::sleep(Duration::from_secs(1))
-					.with_cancel_check()
-					.await?;
-			}
-			info!("All resources synced successfully");
-
 			let mut pinned_stream = pin!(stream);
+			// Intentionally set to zero so that we sync immediately upon start
+			let mut pinned_sleeper = Box::pin(time::sleep(Duration::from_secs(0)));
 
 			'message: loop {
-				let reconcile_message = pinned_stream.next().with_cancel_check().await?;
+				let Some(reconcile_message) =
+					future::select(pinned_stream.next(), &mut pinned_sleeper)
+						.with_cancel_check()
+						.await?
+						.into_left()
+				else {
+					// Every 2 hours, resync all resources to make sure everything is fine
+					info!("Resyncing all resources with upstream to make sure everything is fine");
+					while let Err(err) = self
+						.resync_all_resources_with_upstream(
+							workspace_id,
+							runner_id,
+							&api_token,
+							&user_agent,
+						)
+						.await
+					{
+						error!("Failed to sync all resources: {:?}", err);
+						error!("Retrying in 1 second");
+						// Retry after 1 seconds, but break if the exit signal is received
+						time::sleep(Duration::from_secs(1))
+							.with_cancel_check()
+							.await?;
+					}
+					info!("All resources synced successfully");
+
+					pinned_sleeper = Box::pin(time::sleep(
+						if cfg!(debug_assertions) {
+							Duration::from_secs(30) // 30 seconds in debug mode
+						} else {
+							Duration::from_hours(2)
+						},
+					));
+
+					continue 'message;
+				};
 
 				match reconcile_message {
 					Some(Ok(response)) => {
