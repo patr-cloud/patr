@@ -5,5 +5,7 @@ mod auth;
 mod deployment;
 /// The Home page
 mod home;
+/// The 404 not found page when no other route is matched
+mod not_found;
 
-pub use self::{auth::*, deployment::*, home::*};
+pub use self::{auth::*, deployment::*, home::*, not_found::*};

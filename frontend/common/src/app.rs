@@ -1,3 +1,8 @@
+use leptos_router::{
+	components::{Outlet, ProtectedParentRoute, Router, Routes},
+	path,
+};
+
 use crate::prelude::*;
 
 /// The Entry Point for the whole app, here's where routers and all are defined
@@ -11,15 +16,26 @@ pub fn App(
 
 	let auth_state = AuthState::load();
 
-	move || {
-		if auth_state.get().is_logged_in() {
-			Either::Left(view! {
-				<LoggedInContent />
-			})
-		} else {
-			Either::Right(view! {
-				<LoggedOutContent />
-			})
-		}
+	view! {
+		<Router>
+			<Routes fallback=NotFoundPage>
+				<ProtectedParentRoute
+					path=path!("")
+					view=LoggedInHolder
+					condition=move || Some(!auth_state.get().is_logged_in())
+					redirect_path=|| "/"
+				>
+					<LoggedOutContent />
+				</ProtectedParentRoute>
+				<ProtectedParentRoute
+					path=path!("")
+					view=Outlet
+					condition=move || Some(auth_state.get().is_logged_in())
+					redirect_path=|| "/login"
+				>
+					<LoggedInContent />
+				</ProtectedParentRoute>
+			</Routes>
+		</Router>
 	}
 }

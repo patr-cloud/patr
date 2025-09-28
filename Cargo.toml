@@ -190,7 +190,7 @@ reload-port = 8080
 bin-package = "isolated"
 lib-package = "self-hosted-frontend"
 name        = "frontend"
-output-name = "isolated"
+output-name = "dashboard"
 # The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
 site-root = "target/isolated"
 # The site-root relative folder where all compiled output (JS, WASM and CSS) is written

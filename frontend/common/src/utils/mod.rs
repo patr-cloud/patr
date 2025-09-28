@@ -12,6 +12,9 @@ pub use self::client::*;
 mod alignment;
 /// A module containing the custom [`AppRoute`].
 /// The App Route Enum. This Enum is used to specify the route of the app.
+mod app_route;
+/// A module containing the custom [`AppRoute`].
+/// The App Route Enum. This Enum is used to specify the route of the app.
 // mod app_route;
 /// The color enum. This enum is used to specify the color of a component. These
 /// include the primary and secondary colors of the app.
@@ -41,7 +44,7 @@ mod variant;
 
 pub use self::{
 	alignment::*,
-	// app_route::*,
+	app_route::*,
 	color::*,
 	ext_traits::*,
 	routes::*,

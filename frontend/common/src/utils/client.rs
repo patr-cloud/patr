@@ -9,7 +9,7 @@ use axum::extract::ConnectInfo;
 use axum_extra::routing::TypedPath;
 use http::Method;
 use matchit::Router;
-use models::{ApiEndpoint, ApiRequest, AppResponse, ErrorType};
+use models::{ApiRequest, AppResponse, ErrorType, api::ApiEndpoint};
 use preprocess::Preprocessable;
 use tower::{
 	ServiceBuilder,

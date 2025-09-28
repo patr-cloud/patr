@@ -1,3 +1,5 @@
+use leptos_router::components::A;
+
 use crate::prelude::*;
 
 /// Link component to navigate to other pages, wraps around HTML a tag, with
@@ -36,6 +38,6 @@ pub fn Link(
 	};
 
 	view! {
-		<a target={target.to_string()} class={class} href={to}>{children()}</a>
+		<A target={target.to_string()} attr:class={class} href={move || to.get()}>{children()}</A>
 	}
 }

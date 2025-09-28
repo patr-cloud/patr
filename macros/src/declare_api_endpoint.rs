@@ -453,7 +453,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			type RequiredResponseHeaders = ();
 		}
 
-		impl models::ApiEndpoint for #request_name {
+		impl models::api::ApiEndpoint for #request_name {
 			const METHOD: ::http::Method = ::http::Method::#method;
 			const API_ALLOWED: bool = #api_allowed;
 

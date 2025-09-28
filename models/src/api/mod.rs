@@ -7,6 +7,11 @@ pub mod user;
 /// All endpoints that can be performed on a workspace
 pub mod workspace;
 
+/// Contains the trait that is used to represent all the data that will be sent
+/// to an endpoint in the API. This trait is implemented for all the endpoints
+/// in the API. Since it is a large trait, a helper macro is provided to
+/// generate a request. See: [`macros::declare_api_endpoint`]
+mod api_endpoint;
 /// The endpoint to get the version of the API
 mod get_version;
 
@@ -15,7 +20,7 @@ use std::ops::Deref;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-pub use self::get_version::*;
+pub use self::{api_endpoint::*, get_version::*};
 use crate::prelude::*;
 
 /// A wrapper for any type that contains an ID.

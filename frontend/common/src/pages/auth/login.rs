@@ -1,21 +1,64 @@
 use leptos::ev::{Event, SubmitEvent};
+use models::frontend::auth::*;
 
 use crate::prelude::*;
 
-/// The Login Page
-#[component]
-pub fn LoginPage() -> impl IntoView {
-	view! {
-		<PageContainer class="bg-onboard">
-			<LoginForm />
-		</PageContainer>
-	}
+/// The server function to log in the user. This will set the access token
+/// cookie on the response.
+#[server]
+async fn login_action(user_id: String, password: String) -> Result<(), ServerFnError<ErrorType>> {
+	use cookie::CookieBuilder;
+	use leptos_axum::ResponseOptions;
+	use models::api::auth::*;
+
+	let response = make_api_call(
+		ApiRequest::<LoginRequest>::builder()
+			.path(LoginPath)
+			.headers(LoginRequestHeaders {
+				user_agent: UserAgent::from_static("TODO"),
+			})
+			.query(())
+			.body(LoginRequest {
+				user_id,
+				password,
+				mfa_otp: None,
+			})
+			.build(),
+	)
+	.await?;
+
+	let response_options = expect_context::<ResponseOptions>();
+	response_options.set_status(response.status_code);
+
+	response_options.append_header(
+		http::header::SET_COOKIE,
+		http::HeaderValue::from_str(
+			&CookieBuilder::new(
+				constants::AUTH_STATE,
+				serde_json::to_string(&AuthState::LoggedIn {
+					access_token: response.body.access_token,
+					refresh_token: response.body.refresh_token,
+					last_used_workspace_id: None,
+				})
+				.map_err(|err| ServerFnError::Deserialization(err.to_string()))?,
+			)
+			.http_only(true)
+			.secure(if cfg!(debug_assertions) { false } else { true })
+			.build()
+			.to_string(),
+		)
+		.map_err(|err| ServerFnError::Response(err.to_string()))?,
+	);
+
+	leptos_axum::redirect("login?usernameError=Username%20or%20password%20is%20incorrect");
+
+	Ok(())
 }
 
-/// The login form component. This is the form that the user uses to log in to
+/// The login page component. This is the form that the user uses to log in to
 /// the application.
-#[component]
-pub fn LoginForm() -> impl IntoView {
+#[allow(non_snake_case)]
+pub fn LoginPage(query: LoginQuery, path: LoginRoute) -> impl IntoView {
 	let username = RwSignal::new("".to_owned());
 	let password = RwSignal::new("".to_owned());
 
@@ -68,7 +111,7 @@ pub fn LoginForm() -> impl IntoView {
 	};
 
 	view! {
-		<form on:submit={on_submit_login} class="box-onboard text-white">
+		<ActionForm action={ServerAction::<LoginAction>::new()} attr:class="box-onboard text-white">
 			<div class="flex justify-between items-baseline mb-lg w-full">
 				<h1 class="text-primary text-xl text-medium">"Sign In"</h1>
 				<div class="text-white text-thin flex items-start justify-start text-sm">
@@ -107,6 +150,7 @@ pub fn LoginForm() -> impl IntoView {
 					}}
 					class="w-full"
 					id="password"
+					name="password"
 					placeholder="Password"
 					start_icon={|| view! {
 						<Icon
@@ -136,6 +180,6 @@ pub fn LoginForm() -> impl IntoView {
 					"LOGIN"
 				</Button>
 			</Show>
-		</form>
+		</ActionForm>
 	}
 }
