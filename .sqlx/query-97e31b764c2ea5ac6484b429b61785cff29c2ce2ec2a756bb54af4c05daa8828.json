@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT deployment.id, name, registry, repository_id, image_name, image_tag, status AS \"status: DeploymentStatus\", runner, machine_type, current_live_digest, COUNT(*) OVER() AS \"total_count!\" FROM deployment INNER JOIN RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource ON deployment.id = resource.id WHERE workspace_id = $1 AND deployment.deleted IS NULL ORDER BY resource.created DESC LIMIT $4 OFFSET $5;",
+  "query": "SELECT deployment.id, name, registry, repository_id, image_name, image_tag, status AS \"status: DeploymentStatus\", runner, machine_type, current_live_digest, COUNT(*) OVER() AS \"total_count!\" FROM deployment INNER JOIN RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource ON deployment.id = resource.id WHERE workspace_id = $1 AND deployment.deleted IS NULL AND ($6::TEXT IS NULL OR deployment.name ILIKE '%' || $6 || '%') AND ($7::TEXT IS NULL OR deployment.image_tag = $7) AND ($8::DEPLOYMENT_STATUS[] IS NULL OR deployment.status = ANY($8)) AND ($9::UUID IS NULL OR deployment.runner = $9) AND ($10::TEXT IS NULL OR deployment.current_live_digest = $10) ORDER BY resource.created DESC LIMIT $4 OFFSET $5;",
   "describe": {
     "columns": [
       {
@@ -85,7 +85,34 @@
         "Uuid",
         "Text",
         "Int8",
-        "Int8"
+        "Int8",
+        "Text",
+        "Text",
+        {
+          "Custom": {
+            "name": "deployment_status[]",
+            "kind": {
+              "Array": {
+                "Custom": {
+                  "name": "deployment_status",
+                  "kind": {
+                    "Enum": [
+                      "created",
+                      "pushed",
+                      "deploying",
+                      "running",
+                      "stopped",
+                      "errored",
+                      "deleted"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "Uuid",
+        "Text"
       ]
     },
     "nullable": [
@@ -102,5 +129,5 @@
       null
     ]
   },
-  "hash": "ecbc7198e14c587995102aba2ba9c78854a873abe253fc91a48820d063b34886"
+  "hash": "97e31b764c2ea5ac6484b429b61785cff29c2ce2ec2a756bb54af4c05daa8828"
 }

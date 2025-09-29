@@ -1,6 +1,4 @@
-use codee::string::JsonSerdeCodec;
 use leptos::ev::Event;
-use leptos_use::{UseCookieOptions, use_cookie_with_options};
 use models::frontend::auth::*;
 
 use crate::prelude::*;
@@ -14,7 +12,9 @@ async fn login_action(
 	mfa_otp: Option<String>,
 	next: Option<String>,
 ) -> Result<(), ServerFnError<ErrorType>> {
-	use cookie::Cookie;
+	use codee::{Encoder, string::JsonSerdeCodec};
+	use cookie::CookieBuilder;
+	use http::{HeaderValue, header};
 	use leptos_axum::ResponseOptions;
 	use models::api::auth::*;
 
@@ -35,20 +35,27 @@ async fn login_action(
 	.await?;
 
 	let response_options = expect_context::<ResponseOptions>();
-	response_options.set_status(response.status_code);
-
-	use_cookie_with_options::<AuthState, JsonSerdeCodec>(
-		constants::AUTH_STATE,
-		UseCookieOptions::default()
+	// TODO return the right ServerFnError
+	response_options.append_header(
+		header::SET_COOKIE,
+		HeaderValue::from_str(
+			&CookieBuilder::new(
+				constants::AUTH_STATE,
+				JsonSerdeCodec::encode(&AuthState::LoggedIn {
+					access_token: response.body.access_token,
+					refresh_token: response.body.refresh_token,
+					last_used_workspace_id: None,
+				})
+				.map_err(|err| ServerFnError::Deserialization(err.to_string()))?,
+			)
 			.http_only(false)
-			.secure(if cfg!(debug_assertions) { false } else { true }),
-	)
-	.1
-	.set(Some(AuthState::LoggedIn {
-		access_token: response.body.access_token,
-		refresh_token: response.body.refresh_token,
-		last_used_workspace_id: None,
-	}));
+			.secure(if cfg!(debug_assertions) { false } else { true })
+			.path("/")
+			.build()
+			.to_string(),
+		)
+		.map_err(|err| ServerFnError::Deserialization(err.to_string()))?,
+	);
 
 	leptos_axum::redirect(
 		if let Some(next) = next.as_deref() {

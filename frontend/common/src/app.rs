@@ -25,6 +25,8 @@ pub fn App(
 	.0
 	.map(|value| value.unwrap_or_default());
 
+	// TODO force refresh auth state once login is done
+
 	// Provide the auth state to the context
 	provide_context(auth_state);
 
