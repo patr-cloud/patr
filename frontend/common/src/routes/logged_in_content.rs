@@ -6,17 +6,6 @@ use leptos_router::{
 
 use crate::prelude::*;
 
-/// The parent component for ALL logged in routes. All logged in content will be
-/// nested inside this component
-#[component]
-pub fn LoggedInHolder() -> impl IntoView {
-	view! {
-		<PageContainer class="bg-onboard">
-			<Outlet/>
-		</PageContainer>
-	}
-}
-
 /// The content to show when the user is logged in
 #[component(transparent)]
 pub fn LoggedInContent() -> impl MatchNestedRoutes + Clone {

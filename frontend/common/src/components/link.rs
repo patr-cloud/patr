@@ -37,7 +37,13 @@ pub fn Link(
 		)
 	};
 
-	view! {
-		<A target={target.to_string()} attr:class={class} href={move || to.get()}>{children()}</A>
+	if target == LinkTarget::_Self {
+		Either::Left(view! {
+			<A attr:class={class} href={move || to.get()}>{children()}</A>
+		})
+	} else {
+		Either::Right(view! {
+			<A target={target.to_string()} attr:class={class} href={move || to.get()}>{children()}</A>
+		})
 	}
 }

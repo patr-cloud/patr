@@ -206,8 +206,8 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			type Path = Self;
 			type Query = #query_name;
 
-			fn leptos_path() -> impl ::leptos_router::PossibleRouteMatch + ::std::default::Default + Clone + Send + Sync + 'static {
-				::leptos_router::path!(#path);
+			fn leptos_path() -> impl ::leptos_router::PossibleRouteMatch + Clone + Send + Sync + 'static {
+				::leptos_router::path!(#path)
 			}
 		}
 

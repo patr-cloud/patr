@@ -21,7 +21,7 @@ pub fn App(
 			<Routes fallback=NotFoundPage>
 				<ProtectedParentRoute
 					path=path!("")
-					view=LoggedInHolder
+					view=Outlet
 					condition=move || Some(!auth_state.get().is_logged_in())
 					redirect_path=|| "/"
 				>
@@ -29,7 +29,7 @@ pub fn App(
 				</ProtectedParentRoute>
 				<ProtectedParentRoute
 					path=path!("")
-					view=Outlet
+					view=LoggedOutHolder
 					condition=move || Some(auth_state.get().is_logged_in())
 					redirect_path=|| "/login"
 				>

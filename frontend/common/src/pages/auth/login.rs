@@ -50,16 +50,16 @@ async fn login_action(user_id: String, password: String) -> Result<(), ServerFnE
 		.map_err(|err| ServerFnError::Response(err.to_string()))?,
 	);
 
-	leptos_axum::redirect("login?usernameError=Username%20or%20password%20is%20incorrect");
-
 	Ok(())
 }
 
 /// The login page component. This is the form that the user uses to log in to
 /// the application.
 #[allow(non_snake_case)]
-pub fn LoginPage(query: LoginQuery, path: LoginRoute) -> impl IntoView {
-	let username = RwSignal::new("".to_owned());
+pub fn LoginPage(query: LoginQuery, _: LoginRoute) -> impl IntoView {
+	let LoginQuery { user_id, next } = query;
+
+	let username = RwSignal::new(user_id.clone().unwrap_or_default());
 	let password = RwSignal::new("".to_owned());
 
 	let username_error = RwSignal::new("".to_owned());

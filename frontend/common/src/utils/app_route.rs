@@ -25,13 +25,15 @@ where
 	F: Fn(R::Query, R::Path) -> V + Clone + Send + 'static,
 	V: IntoView,
 {
-	let query: R::Query = use_router_query().get_untracked().unwrap_or_default();
-	let params: R::Path = use_router_params()
-		.get_untracked()
-		.expect("cannot parse params");
-
 	view! {
-		<Route view={move || view(query.clone(), params.clone())} path={R::leptos_path()} />
+		<Route view={move || {
+			let query: R::Query = use_router_query().get_untracked().unwrap_or_default();
+			let params: R::Path = use_router_params()
+				.get_untracked()
+				.expect("cannot parse params");
+
+			view(query.clone(), params.clone())
+		}} path={R::leptos_path()} />
 	}
 	.into_inner()
 }

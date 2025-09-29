@@ -1,3 +1,5 @@
+use leptos::ev::MouseEvent;
+
 use crate::prelude::*;
 
 /// The Button Component, similar to the HTML Button, just with a few extra
@@ -23,6 +25,9 @@ pub fn Button(
 	/// Variant of the Link
 	#[prop(into, optional)]
 	variant: Signal<LinkStyleVariant>,
+	/// on_click callback for the button
+	#[prop(into, optional, default = UnsyncCallback::new(|_| {}))]
+	on_click: UnsyncCallback<(MouseEvent,)>,
 ) -> impl IntoView {
 	let class = move || {
 		format!(
@@ -41,6 +46,7 @@ pub fn Button(
 			type={r#type.with(|val| val.to_string())}
 			disabled={disabled}
 			class={class}
+			on:click={move |ev| on_click.run((ev,))}
 		>
 			{children()}
 		</button>

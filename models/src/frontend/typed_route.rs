@@ -25,7 +25,8 @@ pub trait TypedRoute {
 	///
 	/// [1]: leptos_router::path
 	/// [2]: axum_extra::routing::TypedPath
-	fn leptos_path() -> impl PossibleRouteMatch + Default + Clone + Send + Sync + 'static;
+	#[doc(hidden)]
+	fn leptos_path() -> impl PossibleRouteMatch + Clone + Send + Sync + 'static;
 
 	/// The query parameters for the route.
 	type Query: Params

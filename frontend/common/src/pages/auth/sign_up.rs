@@ -1,7 +1,7 @@
 use leptos::{ev::SubmitEvent, task::spawn_local};
 use leptos_router::hooks::use_navigate;
 use leptos_use::{signal_debounced_with_options, utils::DebounceOptions};
-use models::api::auth::*;
+use models::{api::auth::*, frontend::auth::*};
 
 use crate::prelude::*;
 
@@ -37,20 +37,17 @@ pub async fn sign_up(
 	Ok(())
 }
 
-#[component]
-pub fn SignUpPage() -> impl IntoView {
-	// let SignUpQuery {
-	// 	next,
-	// 	first_name,
-	// 	last_name,
-	// 	username,
-	// 	email,
-	// } = query;
-	let first_name = None;
-	let last_name = None;
-	let username = None;
-	let email = None;
-	let next = None::<String>;
+/// The sign up page component. This is the form that the user uses to sign up
+/// for the application.
+#[allow(non_snake_case)]
+pub fn SignUpPage(query: SignUpQuery, _: SignUpRoute) -> impl IntoView {
+	let SignUpQuery {
+		next,
+		first_name,
+		last_name,
+		username,
+		email,
+	} = query;
 
 	let app_type = expect_context::<AppType>();
 
