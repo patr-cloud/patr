@@ -1,7 +1,9 @@
+use codee::string::JsonSerdeCodec;
 use leptos_router::{
 	components::{Outlet, ProtectedParentRoute, Router, Routes},
 	path,
 };
+use leptos_use::{UseCookieOptions, use_cookie_with_options};
 
 use crate::prelude::*;
 
@@ -14,22 +16,32 @@ pub fn App(
 ) -> impl IntoView {
 	provide_context(app_type);
 
-	let auth_state = AuthState::load();
+	let auth_state = use_cookie_with_options::<AuthState, JsonSerdeCodec>(
+		constants::AUTH_STATE,
+		UseCookieOptions::default()
+			.http_only(false)
+			.secure(if cfg!(debug_assertions) { false } else { true }),
+	)
+	.0
+	.map(|value| value.unwrap_or_default());
+
+	// Provide the auth state to the context
+	provide_context(auth_state);
 
 	view! {
 		<Router>
 			<Routes fallback=NotFoundPage>
 				<ProtectedParentRoute
 					path=path!("")
-					view=Outlet
-					condition=move || Some(!auth_state.get().is_logged_in())
+					view=LoggedOutHolder
+					condition=move || Some(auth_state.get().is_logged_out())
 					redirect_path=|| "/"
 				>
 					<LoggedOutContent />
 				</ProtectedParentRoute>
 				<ProtectedParentRoute
 					path=path!("")
-					view=LoggedOutHolder
+					view=Outlet
 					condition=move || Some(auth_state.get().is_logged_in())
 					redirect_path=|| "/login"
 				>

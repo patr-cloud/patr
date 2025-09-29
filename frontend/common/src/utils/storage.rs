@@ -1,5 +1,3 @@
-use codee::string::JsonSerdeCodec;
-use leptos_use::{UseCookieOptions, use_cookie_with_options};
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
@@ -51,21 +49,6 @@ pub enum AuthState {
 }
 
 impl AuthState {
-	/// A function that parses the cookie and returns a read signal for the
-	/// [`AuthState`] object. The cookie can only be set by the server as it is
-	/// HTTP only, and is secure in production.
-	pub fn load() -> Signal<AuthState> {
-		use_cookie_with_options::<_, JsonSerdeCodec>(
-			constants::AUTH_STATE,
-			UseCookieOptions::default()
-				.http_only(true)
-				.secure(if cfg!(debug_assertions) { false } else { true })
-				.readonly(true),
-		)
-		.0
-		.map(|value| value.unwrap_or_default())
-	}
-
 	/// Get the access token if the user is logged in
 	pub fn get_access_token(&self) -> Option<String> {
 		match self {

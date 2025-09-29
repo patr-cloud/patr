@@ -1,4 +1,6 @@
-use leptos::ev::{Event, SubmitEvent};
+use codee::string::JsonSerdeCodec;
+use leptos::ev::Event;
+use leptos_use::{UseCookieOptions, use_cookie_with_options};
 use models::frontend::auth::*;
 
 use crate::prelude::*;
@@ -6,8 +8,13 @@ use crate::prelude::*;
 /// The server function to log in the user. This will set the access token
 /// cookie on the response.
 #[server]
-async fn login_action(user_id: String, password: String) -> Result<(), ServerFnError<ErrorType>> {
-	use cookie::CookieBuilder;
+async fn login_action(
+	user_id: String,
+	password: String,
+	mfa_otp: Option<String>,
+	next: Option<String>,
+) -> Result<(), ServerFnError<ErrorType>> {
+	use cookie::Cookie;
 	use leptos_axum::ResponseOptions;
 	use models::api::auth::*;
 
@@ -30,24 +37,25 @@ async fn login_action(user_id: String, password: String) -> Result<(), ServerFnE
 	let response_options = expect_context::<ResponseOptions>();
 	response_options.set_status(response.status_code);
 
-	response_options.append_header(
-		http::header::SET_COOKIE,
-		http::HeaderValue::from_str(
-			&CookieBuilder::new(
-				constants::AUTH_STATE,
-				serde_json::to_string(&AuthState::LoggedIn {
-					access_token: response.body.access_token,
-					refresh_token: response.body.refresh_token,
-					last_used_workspace_id: None,
-				})
-				.map_err(|err| ServerFnError::Deserialization(err.to_string()))?,
-			)
-			.http_only(true)
-			.secure(if cfg!(debug_assertions) { false } else { true })
-			.build()
-			.to_string(),
-		)
-		.map_err(|err| ServerFnError::Response(err.to_string()))?,
+	use_cookie_with_options::<AuthState, JsonSerdeCodec>(
+		constants::AUTH_STATE,
+		UseCookieOptions::default()
+			.http_only(false)
+			.secure(if cfg!(debug_assertions) { false } else { true }),
+	)
+	.1
+	.set(Some(AuthState::LoggedIn {
+		access_token: response.body.access_token,
+		refresh_token: response.body.refresh_token,
+		last_used_workspace_id: None,
+	}));
+
+	leptos_axum::redirect(
+		if let Some(next) = next.as_deref() {
+			next
+		} else {
+			"/"
+		},
 	);
 
 	Ok(())
@@ -66,29 +74,6 @@ pub fn LoginPage(query: LoginQuery, _: LoginRoute) -> impl IntoView {
 	let password_error = RwSignal::new("".to_owned());
 
 	let loading = RwSignal::new(false);
-
-	let on_submit_login = move |ev: SubmitEvent| {
-		ev.prevent_default();
-
-		loading.set(true);
-		username_error.set("".to_owned());
-		password_error.set("".to_owned());
-
-		if username.get().is_empty() {
-			log::error!("no email");
-			username_error.set("Username cannot be empty".to_owned());
-			loading.set(false);
-		}
-
-		if password.get().is_empty() {
-			log::error!("no password");
-			password_error.set("Password cannot be empty".to_owned());
-			loading.set(false);
-		}
-
-		// TODO: Submit Form Here
-		log::info!("Submit Form");
-	};
 
 	let username_error_alert = move || {
 		username_error.get().some_if_not_empty().map(|val| {
@@ -161,6 +146,8 @@ pub fn LoginPage(query: LoginQuery, _: LoginRoute) -> impl IntoView {
 				/>
 
 				<input name="mfa_otp" type="hidden" />
+
+				<input name="next" type="hidden" value={next.clone()} />
 
 				{password_error_alert}
 			</div>
