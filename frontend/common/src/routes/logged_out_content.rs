@@ -1,6 +1,6 @@
 use leptos_router::{
 	MatchNestedRoutes,
-	components::{Outlet, ParentRoute, Route},
+	components::{Outlet, ParentRoute},
 	path,
 };
 use models::frontend::auth::*;
@@ -25,14 +25,8 @@ pub fn LoggedOutContent() -> impl MatchNestedRoutes + Clone {
 		<ParentRoute path=path!("") view=Outlet>
 			<AppRoute<LoginRoute, _, _> view=LoginPage />
 			<AppRoute<SignUpRoute, _, _> view=SignUpPage />
-			// <Route
-			// 	view=ForgotPasswordPage
-			// 	path=path!("/forgot-password")
-			// />
-			// <Route
-			// 	view=ConfirmSignUpPage
-			// 	path=path!("/confirm-sign-up")
-			// />
+			// <AppRoute<VerifySignUpRoute, _, _> view=VerifySignUpPage />
+			// <AppRoute<ForgotPasswordRoute, _, _> view=ForgotPasswordPage />
 		</ParentRoute>
 	}
 	.into_inner()

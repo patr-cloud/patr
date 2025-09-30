@@ -21,29 +21,49 @@ pub fn Link(
 	/// Color of the link
 	#[prop(into, optional)]
 	color: Signal<Color>,
+	/// Whether the link is disabled or not
+	#[prop(into, optional)]
+	disabled: Signal<bool>,
 	/// The Target of the Link
 	#[prop(optional)]
 	target: LinkTarget,
 ) -> impl IntoView {
 	let class = move || {
 		format!(
-			"flex items-center justify-center {} {}",
+			"flex items-center justify-center {} {} {}",
 			class.get(),
 			match variant.get() {
 				LinkStyleVariant::Outlined => "btn-outline".to_string(),
 				LinkStyleVariant::Contained => format!("btn btn-{}", color.get()),
 				_ => format!("btn-plain text-{}", color.get()).to_string(),
 			},
+			disabled
+				.get()
+				.then(|| "opacity-50 cursor-not-allowed")
+				.unwrap_or_default()
 		)
 	};
 
 	if target == LinkTarget::_Self {
 		Either::Left(view! {
-			<A attr:class={class} href={move || to.get()}>{children()}</A>
+			<A
+				attr:class={class}
+				attr:disabled={disabled}
+				href={move || to.get()}
+			>
+				{children()}
+			</A>
 		})
 	} else {
 		Either::Right(view! {
-			<A target={target.to_string()} attr:class={class} href={move || to.get()}>{children()}</A>
+			<A
+				target={target.to_string()}
+				attr:disabled={disabled}
+				attr:class={class}
+				href={move || to.get()}
+			>
+				{children()}
+			</A>
 		})
 	}
 }

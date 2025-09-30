@@ -74,7 +74,7 @@ async fn login_action(
 pub fn LoginPage(query: LoginQuery, _: LoginRoute) -> impl IntoView {
 	let LoginQuery { user_id, next } = query;
 
-	let username = RwSignal::new(user_id.clone().unwrap_or_default());
+	let username = RwSignal::new(user_id.unwrap_or_default());
 	let password = RwSignal::new("".to_owned());
 
 	let username_error = RwSignal::new("".to_owned());

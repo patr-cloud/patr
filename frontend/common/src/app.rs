@@ -16,14 +16,21 @@ pub fn App(
 ) -> impl IntoView {
 	provide_context(app_type);
 
-	let auth_state = use_cookie_with_options::<AuthState, JsonSerdeCodec>(
+	let (auth_state_reader, _) = use_cookie_with_options::<AuthState, JsonSerdeCodec>(
 		constants::AUTH_STATE,
 		UseCookieOptions::default()
 			.http_only(false)
 			.secure(if cfg!(debug_assertions) { false } else { true }),
-	)
-	.0
-	.map(|value| value.unwrap_or_default());
+	);
+	let auth_state = RwSignal::new(auth_state_reader.get_untracked().unwrap_or_default());
+
+	Effect::new(move |_| {
+		auth_state.set(
+			auth_state_reader
+				.map(|value| value.unwrap_or_default())
+				.get(),
+		);
+	});
 
 	// TODO force refresh auth state once login is done
 
