@@ -16,7 +16,11 @@ pub async fn list_deploy_history(
 				query:
 					ListResourceQuery {
 						sort: sort_order,
-						search: filter,
+						search:
+							DeploymentDeployHistorySearchParams {
+								image_digest: image_digest_filter,
+								created: created_filter,
+							},
 						count,
 						page,
 						additional_query: (),
@@ -66,13 +70,21 @@ pub async fn list_deploy_history(
 		FROM
 			deployment_deploy_history
 		WHERE
-			deployment_id = $1
+			deployment_id = $1 AND
+			($2::TEXT IS NULL OR image_digest = $2) AND
+			(($3::TIMESTAMPTZ IS NULL AND $4::TIMESTAMPTZ IS NULL) OR (
+				deployment_deploy_history.created >= $3 AND
+				deployment_deploy_history.created <= $4
+			))
 		ORDER BY
 			created DESC
-		LIMIT $2
-		OFFSET $3;
+		LIMIT $5
+		OFFSET $6;
 		"#,
 		deployment_id as _,
+		image_digest_filter as _,
+		created_filter.as_ref().map(|created_at| created_at.start()) as _,
+		created_filter.as_ref().map(|created_at| created_at.end()) as _,
 		count as i32,
 		(page & count) as i32
 	)

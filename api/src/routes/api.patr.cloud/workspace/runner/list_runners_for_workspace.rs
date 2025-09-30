@@ -12,7 +12,12 @@ pub async fn list_runners_for_workspace(
 				query:
 					ListResourceQuery {
 						sort: sort_order,
-						search: filter,
+						search:
+							RunnerSearchParams {
+								name: name_filter,
+								connected: connected_filter,
+								last_seen: last_seen_filter,
+							},
 						count,
 						page,
 						additional_query: (),
@@ -55,15 +60,17 @@ pub async fn list_runners_for_workspace(
 			runner.id = resource.id
 		WHERE
 			workspace_id = $1 AND
-			runner.deleted IS NULL
+			runner.deleted IS NULL AND
+			($4::TEXT IS NULL OR name ILIKE '%' || $4 || '%')
 		ORDER BY
 			resource.created DESC
-		LIMIT $4
-		OFFSET $5;
+		LIMIT $5
+		OFFSET $6;
 		"#,
 		workspace_id as _,
 		user_data.login_id as _,
 		Permission::Runner(RunnerPermission::View) as _,
+		name_filter,
 		count as i32,
 		(count * page) as i32,
 	)

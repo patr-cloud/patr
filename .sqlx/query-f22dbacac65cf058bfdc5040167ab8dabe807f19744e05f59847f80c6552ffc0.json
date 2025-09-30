@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT *, COUNT(*) OVER() AS \"total_count!\" FROM workspace_user WHERE workspace_id = $1 ORDER BY user_id, role_id LIMIT $2 OFFSET $3;",
+  "query": "SELECT workspace_user.*, COUNT(*) OVER() AS \"total_count!\" FROM workspace_user INNER JOIN \"user\" ON workspace_user.user_id = \"user\".id WHERE workspace_id = $1 AND ($2::TEXT IS NULL OR \"user\".username ILIKE '%' || $2::TEXT || '%') AND ($3::TEXT IS NULL OR \"user\".first_name ILIKE '%' || $3::TEXT || '%') AND ($4::TEXT IS NULL OR \"user\".last_name ILIKE '%' || $4::TEXT || '%') ORDER BY workspace_user.user_id LIMIT $5 OFFSET $6;",
   "describe": {
     "columns": [
       {
@@ -27,6 +27,9 @@
     "parameters": {
       "Left": [
         "Uuid",
+        "Text",
+        "Text",
+        "Text",
         "Int8",
         "Int8"
       ]
@@ -38,5 +41,5 @@
       null
     ]
   },
-  "hash": "c0452dc8ec8550484ee8919b9709d06c62497d0b23bda0c5459174f6fe7c6b55"
+  "hash": "f22dbacac65cf058bfdc5040167ab8dabe807f19744e05f59847f80c6552ffc0"
 }

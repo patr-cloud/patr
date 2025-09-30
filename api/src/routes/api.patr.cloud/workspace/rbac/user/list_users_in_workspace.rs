@@ -1,7 +1,10 @@
 use std::collections::BTreeMap;
 
 use axum::http::StatusCode;
-use models::{api::workspace::rbac::user::*, utils::TotalCountHeader};
+use models::{
+	api::{user::BasicUserInfoSearchParams, workspace::rbac::user::*},
+	utils::TotalCountHeader,
+};
 
 use crate::prelude::*;
 
@@ -15,7 +18,12 @@ pub async fn list_users_in_workspace(
 				query:
 					ListResourceQuery {
 						sort: sort_order,
-						search: filter,
+						search:
+							BasicUserInfoSearchParams {
+								username: username_filter,
+								first_name: first_name_filter,
+								last_name: last_name_filter,
+							},
 						count,
 						page,
 						additional_query: (),
@@ -40,18 +48,29 @@ pub async fn list_users_in_workspace(
 	let users = query!(
 		r#"
 		SELECT
-			*,
+			workspace_user.*,
 			COUNT(*) OVER() AS "total_count!"
 		FROM
 			workspace_user
+		INNER JOIN
+			"user"
+		ON
+			workspace_user.user_id = "user".id
 		WHERE
-			workspace_id = $1
+			workspace_user.workspace_id = $1 AND
+			($2::TEXT IS NULL OR "user".username ILIKE '%' || $2::TEXT || '%') AND
+			($3::TEXT IS NULL OR "user".first_name ILIKE '%' || $3::TEXT || '%') AND
+			($4::TEXT IS NULL OR "user".last_name ILIKE '%' || $4::TEXT || '%')
 		ORDER BY
-			user_id, role_id
-		LIMIT $2
-		OFFSET $3;
+			workspace_user.user_id,
+			workspace_user.role_id
+		LIMIT $5
+		OFFSET $6;
 		"#,
 		workspace_id as _,
+		username_filter,
+		first_name_filter,
+		last_name_filter,
 		count as i64,
 		(count * page) as i64,
 	)

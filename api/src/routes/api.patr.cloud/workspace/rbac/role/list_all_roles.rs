@@ -16,7 +16,11 @@ pub async fn list_all_roles(
 				query:
 					ListResourceQuery {
 						sort: sort_order,
-						search: filter,
+						search:
+							RoleSearchParams {
+								name: name_filter,
+								description: description_filter,
+							},
 						count,
 						page,
 						additional_query: (),
@@ -46,13 +50,17 @@ pub async fn list_all_roles(
 		FROM
 			role
 		WHERE
-			owner_id = $1
+			owner_id = $1 AND
+			($2::TEXT IS NULL OR name ILIKE '%' || $2::TEXT || '%') AND
+			($3::TEXT IS NULL OR description ILIKE '%' || $3::TEXT || '%')
 		ORDER BY
 			id
-		LIMIT $2
-		OFFSET $3;
+		LIMIT $4
+		OFFSET $5;
 		"#,
 		workspace_id as _,
+		name_filter,
+		description_filter,
 		count as i64,
 		(page * count) as i64,
 	)
