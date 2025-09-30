@@ -355,6 +355,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "879b6c89592deb404ba4dc0ae6b58ffd1795c78991cbb5b8bc441c48a070440d"
 dependencies = [
  "aws-lc-sys",
+ "untrusted 0.7.1",
  "zeroize",
 ]
 
@@ -698,9 +699,9 @@ checksum = "d71b6127be86fdcfddb610f7182ac57211d4b18a3e9c82eb2d17662f2227ad6a"
 
 [[package]]
 name = "camino"
-version = "1.2.0"
+version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1de8bc0aa9e9385ceb3bf0c152e3a9b9544f6c4a912c8ae504e80c1f0368603"
+checksum = "276a59bf2b2c967788139340c9f0c5b12d7fd6630315c15c217e559de85d2609"
 
 [[package]]
 name = "castaway"
@@ -2818,16 +2819,18 @@ dependencies = [
 
 [[package]]
 name = "jsonwebtoken"
-version = "9.3.1"
+version = "10.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a87cc7a48537badeae96744432de36f4be2b4a34a05a5ef32e9dd8a1c169dde"
+checksum = "f1417155a38e99d7704ddb3ea7445fe57fdbd5d756d727740a9ed8b9ebaed6e1"
 dependencies = [
+ "aws-lc-rs",
  "base64 0.22.1",
+ "getrandom 0.2.16",
  "js-sys",
  "pem",
- "ring",
  "serde",
  "serde_json",
+ "signature",
  "simple_asn1",
 ]
 
@@ -2970,9 +2973,9 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "leptos"
-version = "0.8.9"
+version = "0.8.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "52efe8eff3278b12f7897a15bdf067bbbb02212773e379d6fc121592752eb718"
+checksum = "de48e23f7d411ab2f048e2b8f34839c81f6db88489377b045c1099e7e828149e"
 dependencies = [
  "any_spawner",
  "base64 0.22.1",
@@ -3077,9 +3080,9 @@ dependencies = [
 
 [[package]]
 name = "leptos_dom"
-version = "0.8.6"
+version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e920c8b2fd202b25786b0c72a00c745a6962fa923e600df6f3ec352d844be91"
+checksum = "78f4330c88694c5575e0bfe4eecf81b045d14e76a4f8b00d5fd2a63f8779f895"
 dependencies = [
  "js-sys",
  "or_poisoned",
@@ -3111,9 +3114,9 @@ dependencies = [
 
 [[package]]
 name = "leptos_integration_utils"
-version = "0.8.5"
+version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea02f77bee8de1e9dd4c7ef1c401dd3a1afef8dab6e240af6f7d6f73403a259f"
+checksum = "b530341b8fa93a33b590efe4d235ea109a1fd08b7676b503e9aa3d35f575edfb"
 dependencies = [
  "futures",
  "hydration_context",
@@ -3126,9 +3129,9 @@ dependencies = [
 
 [[package]]
 name = "leptos_macro"
-version = "0.8.8"
+version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a84c7e53895c786f1128e91c36a708435e301f487338d19f2f6b5b67bb39ece2"
+checksum = "bb2ef164285bdd94acb91a57a47f26c4ee3f37fc351e67a67642efb74bc3e198"
 dependencies = [
  "attribute-derive",
  "cfg-if",
@@ -3165,9 +3168,9 @@ dependencies = [
 
 [[package]]
 name = "leptos_router"
-version = "0.8.7"
+version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a35447cd0ffcd6fcee0c4e424186c3e967507f36d9d4aaff4ab9976e5faab68"
+checksum = "cfd675546710e67855983437202e09b137ea60588dbb86e7fc0671f618577b73"
 dependencies = [
  "any_spawner",
  "either_of",
@@ -4413,9 +4416,9 @@ dependencies = [
 
 [[package]]
 name = "reactive_graph"
-version = "0.2.7"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37b9e227617c8e257900ea3c9aa536319b138bf961e950a258214edea3c2d591"
+checksum = "2e907f9b4c1ba69f3cd47c85f0d8cacafe681ff2b7cda91ff7d3c1a26432d249"
 dependencies = [
  "any_spawner",
  "async-lock",
@@ -4593,7 +4596,7 @@ dependencies = [
  "cfg-if",
  "getrandom 0.2.16",
  "libc",
- "untrusted",
+ "untrusted 0.9.0",
  "windows-sys 0.52.0",
 ]
 
@@ -4839,7 +4842,7 @@ dependencies = [
  "aws-lc-rs",
  "ring",
  "rustls-pki-types",
- "untrusted",
+ "untrusted 0.9.0",
 ]
 
 [[package]]
@@ -5768,9 +5771,9 @@ dependencies = [
 
 [[package]]
 name = "tachys"
-version = "0.2.8"
+version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5db6367a7dfbdb427d421ada82425d804bee78ed5297a7c467c10cc993037923"
+checksum = "8b7c22c0a3e8ab7afc9ac34448031316f2e9416f4d489431c5d997a47075fa95"
 dependencies = [
  "any_spawner",
  "async-trait",
@@ -6432,6 +6435,12 @@ name = "unsafe-libyaml"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "673aac59facbab8a9007c7f6108d11f63b603f7cabff99fabf650fea5c32b861"
+
+[[package]]
+name = "untrusted"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a156c684c91ea7d62626509bce3cb4e1d9ed5c4d978f7b4352658f96a4c26b4a"
 
 [[package]]
 name = "untrusted"
@@ -7367,9 +7376,9 @@ dependencies = [
 
 [[package]]
 name = "zeroize"
-version = "1.8.1"
+version = "1.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ced3678a2879b30306d323f4542626697a464a97c0a07c9aebf7ebca65cd4dde"
+checksum = "b97154e67e32c85465826e8bcc1c59429aaaf107c1e4a9e53c8d8ccd5eff88d0"
 
 [[package]]
 name = "zerotrie"

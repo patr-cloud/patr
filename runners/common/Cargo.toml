@@ -27,7 +27,7 @@ frontend              = { workspace = true, features = [] }
 fslock                = { workspace = true, features = ["default"] }
 futures               = { workspace = true }
 http                  = { workspace = true, features = ["default"] }
-jsonwebtoken          = { workspace = true, features = ["default"] }
+jsonwebtoken          = { workspace = true, features = ["default", "aws_lc_rs"] }
 leptos                = { workspace = true, features = ["ssr"] }
 leptos_axum           = { workspace = true, features = ["default"] }
 macros                = { workspace = true }

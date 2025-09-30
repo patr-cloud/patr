@@ -23,7 +23,7 @@ frontend                       = { workspace = true, features = [] }
 futures                        = { workspace = true, features = ["default"] }
 headers                        = { workspace = true, features = [] }
 ipinfo                         = { workspace = true, features = [] }
-jsonwebtoken                   = { workspace = true, features = ["default"] }
+jsonwebtoken                   = { workspace = true, features = ["default", "aws_lc_rs"] }
 leptos                         = { workspace = true, features = ["ssr"] }
 leptos_axum                    = { workspace = true, features = ["default"] }
 macros                         = { workspace = true, features = [] }

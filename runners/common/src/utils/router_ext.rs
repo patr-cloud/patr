@@ -3,7 +3,7 @@ use std::{collections::HashMap, net::IpAddr, sync::RwLock};
 use axum::Router;
 use axum_extra::routing::TypedPath;
 use models::{
-	ApiEndpoint,
+	api::ApiEndpoint,
 	utils::{HasHeader, NoAuthentication},
 };
 use preprocess::Preprocessable;

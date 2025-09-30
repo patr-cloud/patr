@@ -3,7 +3,7 @@ members              = ["api", "cli", "ingress", "frontend/common", "frontend/ma
 package.authors      = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
 package.description  = "Patr API and all it's dependencies"
 package.edition      = "2024"
-package.rust-version = "1.88"
+package.rust-version = "1.91"
 package.version      = "0.18.0"
 resolver             = "3"
 
@@ -54,7 +54,7 @@ hyper                          = { default-features = false, version = "1" }
 inquire                        = { default-features = false, version = "0.9" }
 ipinfo                         = { default-features = false, version = "3" }
 ipnetwork                      = { default-features = false, version = "0.20" }
-jsonwebtoken                   = { default-features = false, version = "9" }
+jsonwebtoken                   = { default-features = false, version = "10" }
 k8s-openapi                    = { default-features = false, version = "0.26" }
 kube                           = { default-features = false, version = "2" }
 leptos                         = { default-features = false, version = "0.8" }

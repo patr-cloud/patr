@@ -556,7 +556,7 @@ impl TryFrom<Vec<String>> for IaacDeploymentEnvVars {
 mod tests {
 	use either::Either;
 
-	use crate::{api::workspace::deployment::PatrRegistry, iaac::IaacDeploymentImage, utils::Uuid};
+	use crate::{api::workspace::deployment::PatrRegistry, iaac::IaacDeploymentImage};
 
 	#[test]
 	fn assert_iaac_deployment_image_parsing_works() {
@@ -597,9 +597,7 @@ mod tests {
 				"registry.patr.cloud/01234567890123456789abcdefabcdef:stable",
 				IaacDeploymentImage::PatrRegistry {
 					registry: PatrRegistry,
-					repository: Either::Left(
-						Uuid::parse_str("01234567890123456789abcdefabcdef").unwrap(),
-					),
+					repository: Either::Right("01234567890123456789abcdefabcdef".to_string()),
 					tag: "stable".to_string(),
 				},
 			),
@@ -607,9 +605,7 @@ mod tests {
 				"registry.patr.cloud/01234567890123456789abcdefabcdef",
 				IaacDeploymentImage::PatrRegistry {
 					registry: PatrRegistry,
-					repository: Either::Left(
-						Uuid::parse_str("01234567890123456789abcdefabcdef").unwrap(),
-					),
+					repository: Either::Right("01234567890123456789abcdefabcdef".to_string()),
 					tag: "latest".to_string(),
 				},
 			),
@@ -633,7 +629,7 @@ mod tests {
 				"api:stable",
 				IaacDeploymentImage::ExternalRegistry {
 					registry: "docker.io".to_string(),
-					repository: "library/api".to_string(),
+					repository: "api".to_string(),
 					tag: "stable".to_string(),
 				},
 			),
@@ -641,7 +637,7 @@ mod tests {
 				"api",
 				IaacDeploymentImage::ExternalRegistry {
 					registry: "docker.io".to_string(),
-					repository: "library/api".to_string(),
+					repository: "api".to_string(),
 					tag: "latest".to_string(),
 				},
 			),
