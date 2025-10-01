@@ -7,8 +7,8 @@ use models::frontend::auth::*;
 
 use crate::prelude::*;
 
-/// The parent component for ALL logged in routes. All logged in content will be
-/// nested inside this component
+/// The parent component for ALL logged out routes. All logged out content will
+/// be nested inside this component
 #[component]
 pub fn LoggedOutHolder() -> impl IntoView {
 	view! {

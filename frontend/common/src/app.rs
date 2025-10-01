@@ -48,7 +48,7 @@ pub fn App(
 				</ProtectedParentRoute>
 				<ProtectedParentRoute
 					path=path!("")
-					view=Outlet
+					view=LoggedInHolder
 					condition=move || Some(auth_state.get().is_logged_in())
 					redirect_path=|| "/login"
 				>
