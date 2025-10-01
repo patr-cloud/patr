@@ -32,8 +32,6 @@ pub fn App(
 		);
 	});
 
-	// TODO force refresh auth state once login is done
-
 	// Provide the auth state to the context
 	provide_context(auth_state);
 
