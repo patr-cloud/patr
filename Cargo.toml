@@ -71,10 +71,10 @@ nix                            = { default-features = false, version = "0.30" }
 oci-client                     = { default-features = false, version = "0.15" }
 oci-spec                       = { default-features = false, version = "0.8" }
 open                           = { default-features = false, version = "5" }
-opentelemetry                  = { default-features = false, version = "0.30" }
-opentelemetry-appender-tracing = { default-features = false, version = "0.30" }
-opentelemetry-otlp             = { default-features = false, version = "0.30" }
-opentelemetry_sdk              = { default-features = false, version = "0.30" }
+opentelemetry                  = { default-features = false, version = "0.31" }
+opentelemetry-appender-tracing = { default-features = false, version = "0.31" }
+opentelemetry-otlp             = { default-features = false, version = "0.31" }
+opentelemetry_sdk              = { default-features = false, version = "0.31" }
 preprocess                     = { default-features = false, version = "0.5" }
 proc-macro2                    = { default-features = false, version = "1" }
 quote                          = { default-features = false, version = "1" }
@@ -108,7 +108,7 @@ tower                          = { default-features = false, version = "0.5" }
 tower-http                     = { default-features = false, version = "0.6" }
 tracing                        = { default-features = false, version = "0.1" }
 tracing-log                    = { default-features = false, version = "0.2" }
-tracing-opentelemetry          = { default-features = false, version = "0.31" }
+tracing-opentelemetry          = { default-features = false, version = "0.32" }
 tracing-subscriber             = { default-features = false, version = "0.3" }
 typed-builder                  = { default-features = false, version = "0.22" }
 url                            = { default-features = false, version = "2" }
