@@ -182,11 +182,13 @@ pub async fn create_deployment(
 				port,
 				port_type
 			)
-		VALUES
-			(
-				UNNEST($1::UUID[]),
-				UNNEST($2::INTEGER[]),
-				UNNEST($3::EXPOSED_PORT_TYPE[])
+		SELECT
+			*
+		FROM
+			UNNEST(
+				$1::UUID[],
+				$2::INTEGER[],
+				$3::EXPOSED_PORT_TYPE[]
 			);
 		"#,
 		&ports.iter().map(|_| deployment_id).collect::<Vec<_>>(),
@@ -224,12 +226,14 @@ pub async fn create_deployment(
 				value,
 				secret_id
 			)
-		VALUES
-			(
-				UNNEST($1::UUID[]),
-				UNNEST($2::TEXT[]),
-				UNNEST($3::TEXT[]),
-				UNNEST($4::UUID[])
+		SELECT
+			*
+		FROM
+			UNNEST(
+				$1::UUID[],
+				$2::TEXT[],
+				$3::TEXT[],
+				$4::UUID[]
 			);
 		"#,
 		&environment_variables
@@ -262,11 +266,13 @@ pub async fn create_deployment(
 				path,
 				file
 			)
-		VALUES
-			(
-				UNNEST($1::UUID[]),
-				UNNEST($2::TEXT[]),
-				UNNEST($3::BYTEA[])
+		SELECT
+			*
+		FROM
+			UNNEST(
+				$1::UUID[],
+				$2::TEXT[],
+				$3::BYTEA[]
 			);
 		"#,
 		&config_mounts
@@ -293,11 +299,13 @@ pub async fn create_deployment(
 				volume_id,
 				volume_mount_path
 			)
-		VALUES
-			(
-				UNNEST($1::UUID[]),
-				UNNEST($2::UUID[]),
-				UNNEST($3::TEXT[])
+		SELECT
+			*
+		FROM
+			UNNEST(
+				$1::UUID[],
+				$2::UUID[],
+				$3::TEXT[]
 			);
 		"#,
 		&volumes.iter().map(|_| deployment_id).collect::<Vec<_>>(),

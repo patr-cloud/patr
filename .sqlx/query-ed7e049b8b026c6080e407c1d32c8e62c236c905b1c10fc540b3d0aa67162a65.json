@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO deployment_exposed_port(deployment_id, port, port_type) VALUES (UNNEST($1::UUID[]), UNNEST($2::INTEGER[]), UNNEST($3::EXPOSED_PORT_TYPE[]));",
+  "query": "INSERT INTO deployment_exposed_port(deployment_id, port, port_type) SELECT * FROM UNNEST($1::UUID[], $2::INTEGER[], $3::EXPOSED_PORT_TYPE[]);",
   "describe": {
     "columns": [],
     "parameters": {
@@ -28,5 +28,5 @@
     },
     "nullable": []
   },
-  "hash": "5c9ece82ec20962f2de8bfc27004184ffda8b37058ed6e1b8dcbe3aba74c20af"
+  "hash": "ed7e049b8b026c6080e407c1d32c8e62c236c905b1c10fc540b3d0aa67162a65"
 }

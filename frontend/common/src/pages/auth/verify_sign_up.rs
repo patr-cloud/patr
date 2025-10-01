@@ -1,7 +1,8 @@
-use models::api::auth::CompleteSignUpResponse;
+use models::{api::auth::*, frontend::auth::*};
 
 use crate::prelude::*;
 
+/// The server action to confirm the OTP and complete the sign-up process
 #[server(ConfirmOtp)]
 pub async fn confirm_action() -> Result<CompleteSignUpResponse, ServerFnError<ErrorType>> {
 	todo!()
@@ -9,12 +10,17 @@ pub async fn confirm_action() -> Result<CompleteSignUpResponse, ServerFnError<Er
 
 /// This page is shown to the user when they have signed up and need to confirm
 /// their OTP to complete the sign-up process.
-#[component]
-pub fn VerifySignUpPage() -> impl IntoView {
+#[allow(non_snake_case)]
+pub fn VerifySignUpPage(query: VerifySignUpQuery, _: VerifySignUpRoute) -> impl IntoView {
+	let VerifySignUpQuery {
+		user_id,
+		signup_token,
+	} = query;
+
 	let auth_state = expect_context::<RwSignal<AuthState>>();
 	let confirm_action = ServerAction::<ConfirmOtp>::new();
 
-	let otp = RwSignal::new("".to_string());
+	let otp = RwSignal::new(signup_token.unwrap_or_default());
 	let otp_error = RwSignal::new("".to_owned());
 	let username_error = RwSignal::new("".to_owned());
 
@@ -43,7 +49,6 @@ pub fn VerifySignUpPage() -> impl IntoView {
 					auth_state.set(AuthState::LoggedIn {
 						access_token,
 						refresh_token,
-						last_used_workspace_id: None,
 					});
 				}
 				Err(err) => {
@@ -74,6 +79,7 @@ pub fn VerifySignUpPage() -> impl IntoView {
 					name="username"
 					placeholder="Username"
 					id="username"
+					value={user_id.unwrap_or_default()}
 					class="w-full"
 					r#type={InputType::Text}
 					required=true

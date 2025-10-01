@@ -25,7 +25,7 @@ pub fn LoggedOutContent() -> impl MatchNestedRoutes + Clone {
 		<ParentRoute path=path!("") view=Outlet>
 			<AppRoute<LoginRoute, _, _> view=LoginPage />
 			<AppRoute<SignUpRoute, _, _> view=SignUpPage />
-			// <AppRoute<VerifySignUpRoute, _, _> view=VerifySignUpPage />
+			<AppRoute<VerifySignUpRoute, _, _> view=VerifySignUpPage />
 			// <AppRoute<ForgotPasswordRoute, _, _> view=ForgotPasswordPage />
 		</ParentRoute>
 	}

@@ -1,4 +1,6 @@
+use codee::string::JsonSerdeCodec;
 use leptos::ev::Event;
+use leptos_use::{UseCookieOptions, use_cookie_with_options};
 use models::frontend::auth::*;
 
 use crate::prelude::*;
@@ -44,9 +46,8 @@ async fn login_action(
 				JsonSerdeCodec::encode(&AuthState::LoggedIn {
 					access_token: response.body.access_token,
 					refresh_token: response.body.refresh_token,
-					last_used_workspace_id: None,
 				})
-				.map_err(|err| ServerFnError::Deserialization(err.to_string()))?,
+				.map_err(|err| ServerFnError::ServerError(err.to_string()))?,
 			)
 			.http_only(false)
 			.secure(if cfg!(debug_assertions) { false } else { true })
@@ -54,7 +55,7 @@ async fn login_action(
 			.build()
 			.to_string(),
 		)
-		.map_err(|err| ServerFnError::Deserialization(err.to_string()))?,
+		.map_err(|err| ServerFnError::ServerError(err.to_string()))?,
 	);
 
 	leptos_axum::redirect(
@@ -82,6 +83,15 @@ pub fn LoginPage(query: LoginQuery, _: LoginRoute) -> impl IntoView {
 
 	let loading = RwSignal::new(false);
 
+	let login_action = ServerAction::<LoginAction>::new();
+
+	let (auth_state_reader, _) = use_cookie_with_options::<AuthState, JsonSerdeCodec>(
+		constants::AUTH_STATE,
+		UseCookieOptions::default()
+			.http_only(false)
+			.secure(if cfg!(debug_assertions) { false } else { true }),
+	);
+
 	let username_error_alert = move || {
 		username_error.get().some_if_not_empty().map(|val| {
 			view! {
@@ -102,8 +112,21 @@ pub fn LoginPage(query: LoginQuery, _: LoginRoute) -> impl IntoView {
 		})
 	};
 
+	Effect::new(move |_| {
+		if login_action
+			.value()
+			.get()
+			.map(|value| value.ok())
+			.flatten()
+			.is_some()
+		{
+			expect_context::<RwSignal<AuthState>>()
+				.set(auth_state_reader.get().unwrap_or_default());
+		}
+	});
+
 	view! {
-		<ActionForm action={ServerAction::<LoginAction>::new()} attr:class="box-onboard text-white">
+		<ActionForm action={login_action} attr:class="box-onboard text-white">
 			<div class="flex justify-between items-baseline mb-lg w-full">
 				<h1 class="text-primary text-xl text-medium">"Sign In"</h1>
 				<div class="text-white text-thin flex items-start justify-start text-sm">
