@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::prelude::*;
 
 /// The type of request that the third-party app is making.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, ts_rs::TS)]
 #[serde(rename_all = "snake_case")]
 pub enum OAuthAuthorizeResponseType {
 	/// The third-party app is requesting a temporary authorization code.
@@ -13,7 +13,7 @@ pub enum OAuthAuthorizeResponseType {
 }
 
 /// The method used to hash the code challenge.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "snake_case")]
 pub enum CodeChallengeHashMethod {
 	/// The code challenge is hashed using the SHA-256 algorithm.

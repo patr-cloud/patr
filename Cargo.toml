@@ -102,6 +102,7 @@ tracing                        = { default-features = false, version = "0.1" }
 tracing-log                    = { default-features = false, version = "0.2" }
 tracing-opentelemetry          = { default-features = false, version = "0.32" }
 tracing-subscriber             = { default-features = false, version = "0.3" }
+ts-rs                          = { default-features = false, version = "11" }
 typed-builder                  = { default-features = false, version = "0.22" }
 url                            = { default-features = false, version = "2" }
 uuid                           = { default-features = false, version = "1" }

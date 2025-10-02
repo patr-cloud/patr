@@ -33,6 +33,7 @@ macros::declare_api_endpoint!(
 		/// The creation date of the container repository's image.
 		///
 		/// TODO: Change this to audit log
+		#[ts(type = "Date")]
 		pub created: OffsetDateTime,
 		/// The tags of the container repository's image.
 		pub tags: Vec<String>,

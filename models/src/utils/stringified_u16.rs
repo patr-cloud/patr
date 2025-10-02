@@ -122,6 +122,31 @@ impl AsRef<u16> for StringifiedU16 {
 	}
 }
 
+impl ts_rs::TS for StringifiedU16 {
+	type OptionInnerType = <u16 as ts_rs::TS>::OptionInnerType;
+	type WithoutGenerics = <u16 as ts_rs::TS>::WithoutGenerics;
+
+	fn decl() -> String {
+		<u16 as ts_rs::TS>::decl()
+	}
+
+	fn decl_concrete() -> String {
+		<u16 as ts_rs::TS>::decl_concrete()
+	}
+
+	fn name() -> String {
+		<u16 as ts_rs::TS>::name()
+	}
+
+	fn inline() -> String {
+		<u16 as ts_rs::TS>::inline()
+	}
+
+	fn inline_flattened() -> String {
+		<u16 as ts_rs::TS>::inline_flattened()
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use serde_test::{Token, assert_tokens};

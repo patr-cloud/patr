@@ -4,6 +4,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
 use sqlx::prelude::*;
 use time::OffsetDateTime;
+use ts_rs::TS;
 
 /// The history of a deployment's deploys. This contains the image digest and
 /// the timestamp of when the deploy was created
@@ -95,7 +96,7 @@ pub struct Deployment {
 }
 
 /// Deployment running details
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentRunningDetails {
 	/// if the deployment should deploy as soon as a new image digest is pushed
@@ -128,7 +129,7 @@ pub struct DeploymentRunningDetails {
 
 /// The type of environment variable
 /// The keys can either have a string as a value or a secret
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, JsonSchema, TS)]
 #[serde(untagged)]
 pub enum EnvironmentVariableValue {
 	/// String
@@ -195,6 +196,7 @@ impl FromStr for EnvironmentVariableValue {
 	strum::EnumString,
 	strum::Display,
 	strum::VariantNames,
+	TS,
 )]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
@@ -209,7 +211,7 @@ pub enum ExposedPortType {
 }
 
 /// The deployment startup/liveness probe
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentProbe {
 	/// The port the probe will be using
@@ -219,7 +221,7 @@ pub struct DeploymentProbe {
 }
 
 /// Patr registry
-#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, JsonSchema)]
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, JsonSchema, TS)]
 pub struct PatrRegistry;
 
 impl Display for PatrRegistry {
@@ -255,7 +257,7 @@ impl Serialize for PatrRegistry {
 }
 
 /// Deployment registry
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema, TS)]
 #[serde(untagged)]
 pub enum DeploymentRegistry {
 	/// Patr registry offered by patr
@@ -364,10 +366,11 @@ impl FromStr for DeploymentStatus {
 }
 
 /// Deployment metrics
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentMetric {
 	/// The timestamp of the metric
+	#[ts(type = "Date")]
 	pub timestamp: OffsetDateTime,
 	/// The cpu usage of a pod
 	pub cpu_usage: String,
@@ -380,10 +383,11 @@ pub struct DeploymentMetric {
 }
 
 /// Deployment logs
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentLog {
 	/// Timestamp of a deployment log
+	#[ts(type = "Date")]
 	pub timestamp: OffsetDateTime,
 	/// The logs of a deployment
 	pub log: String,

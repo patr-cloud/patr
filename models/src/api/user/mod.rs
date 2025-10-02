@@ -35,7 +35,7 @@ pub use self::{
 
 /// The phone number of a user. This is used to send OTPs, notifications, etc to
 /// the user.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
 pub struct UserPhoneNumber {
 	/// The country code of the phone number. This is a 2 letter code, such as

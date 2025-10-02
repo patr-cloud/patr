@@ -231,14 +231,22 @@ pub fn parse(input: TokenStream) -> TokenStream {
 	let path_name = format_ident!("{}Path", name);
 
 	let request_name = format_ident!("{}Request", name);
-	let request_body = if let Some(body) = request {
-		quote::quote! {
-			#body
-		}
+	let (request_rename_attr, request_body) = if let Some(body) = request {
+		(
+			quote::quote! {
+				#[serde(rename_all = "camelCase")]
+			},
+			quote::quote! {
+				#body
+			},
+		)
 	} else {
-		quote::quote! {
-			;
-		}
+		(
+			quote::quote! {},
+			quote::quote! {
+				;
+			},
+		)
 	};
 
 	let query_type_name = format_ident!("{}Query", name);
@@ -273,10 +281,10 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				Debug,
 				Clone,
 				PartialEq,
+				::ts_rs::TS,
 				serde::Serialize,
 				serde::Deserialize,
 			)]
-			#[serde(rename_all = "camelCase")]
 			pub struct #query_type_name #query
 
 			impl models::utils::RequiresResponseHeaders for #query_name {
@@ -371,14 +379,22 @@ pub fn parse(input: TokenStream) -> TokenStream {
 	};
 
 	let response_name = format_ident!("{}Response", name);
-	let response_body = if let Some(body) = response {
-		quote::quote! {
-			#body
-		}
+	let (response_rename_attr, response_body) = if let Some(body) = response {
+		(
+			quote::quote! {
+				#[serde(rename_all = "camelCase")]
+			},
+			quote::quote! {
+				#body
+			},
+		)
 	} else {
-		quote::quote! {
-			;
-		}
+		(
+			quote::quote! {},
+			quote::quote! {
+				;
+			},
+		)
 	};
 
 	quote::quote! {
@@ -393,11 +409,13 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			#path_default_impl
 			PartialEq,
 			PartialOrd,
+			::ts_rs::TS,
 			serde::Serialize,
 			serde::Deserialize,
 			axum_extra::routing::TypedPath,
 		)]
 		#[typed_path(#path)]
+		#[ts(export)]
 		pub struct #path_name #path_body
 
 		impl models::utils::RequiresResponseHeaders for #path_name {
@@ -414,10 +432,12 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			Debug,
 			Clone,
 			PartialEq,
+			::ts_rs::TS,
 			serde::Serialize,
 			serde::Deserialize,
 		)]
-		#[serde(rename_all = "camelCase")]
+		#request_rename_attr
+		#[ts(export)]
 		pub struct #request_name #request_body
 
 		impl models::utils::RequiresResponseHeaders for #request_name {
@@ -439,10 +459,12 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			Debug,
 			Clone,
 			PartialEq,
+			::ts_rs::TS,
 			serde::Serialize,
 			serde::Deserialize,
 		)]
-		#[serde(rename_all = "camelCase")]
+		#response_rename_attr
+		#[ts(export)]
 		pub struct #response_name #response_body
 
 		impl models::utils::RequiresRequestHeaders for #response_name {

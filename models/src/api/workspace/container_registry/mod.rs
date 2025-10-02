@@ -52,7 +52,7 @@ pub struct ContainerRepositoryImageInfo {
 }
 /// Represents a repository of container images in Patr's in-build container
 /// registry.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
 pub struct ContainerRepository {
 	/// The name of the repository.
@@ -64,10 +64,12 @@ pub struct ContainerRepository {
 	/// updated.
 	///
 	/// TODO: Change this to audit log
+	#[ts(type = "Date")]
 	pub last_updated: OffsetDateTime,
 	/// The time the repository was created.nlas
 	///
 	/// TODO: Change this to audit log
+	#[ts(type = "Date")]
 	pub created: OffsetDateTime,
 }
 

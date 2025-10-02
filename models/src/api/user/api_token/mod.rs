@@ -41,7 +41,7 @@ use crate::rbac::WorkspacePermission;
 ///
 /// I mean, if we're anyway gonna store everything in the audit log, then why
 /// store anything in the login ID table? Ehh, idk.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
 pub struct UserApiToken {
 	/// A user-friendly name for the token. This is used to identify the token
@@ -58,18 +58,22 @@ pub struct UserApiToken {
 	/// Any token that is used before the nbf (not before) should be rejected.
 	/// Tokens are only valid after this time.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
+	#[ts(type = "Date")]
 	pub token_nbf: Option<OffsetDateTime>,
 	/// Any token that is used after the exp (expiry) should be rejected. Tokens
 	/// are only valid before this time.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
+	#[ts(type = "Date")]
 	pub token_exp: Option<OffsetDateTime>,
 	/// The IP addresses that are allowed to use this token. If this is not
 	/// specified, then any IP address can use this token. This can also take a
 	/// CIDR range, to allow a range of IP addresses.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
+	#[ts(type = "Array<string>")]
 	pub allowed_ips: Option<Vec<IpNetwork>>,
 	/// The time at which this token was created.
 	#[serde(default = "default_created")]
+	#[ts(type = "Date")]
 	pub created: OffsetDateTime,
 }
 

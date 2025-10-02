@@ -7,7 +7,7 @@ use crate::{
 };
 
 /// The response from the [`OAuthIntrospect`][OAuthIntrospectRequest] endpoint
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ts_rs::TS)]
 #[serde(rename_all = "camelCase", untagged)]
 pub enum OAuthIntrospectResponseType {
 	/// If the access token is valid
@@ -23,6 +23,7 @@ pub enum OAuthIntrospectResponseType {
 		scope: String,
 		/// The expiry time of the access token
 		#[serde(with = "time::serde::timestamp")]
+		#[ts(type = "Date")]
 		expires_at: OffsetDateTime,
 	},
 	/// If the access token is invalid
