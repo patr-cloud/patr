@@ -31,6 +31,7 @@ opentelemetry-otlp             = { workspace = true, features = ["default", "ton
 opentelemetry_sdk              = { workspace = true, features = ["default", "rt-tokio"] }
 preprocess                     = { workspace = true, features = [] }
 rand                           = { workspace = true, features = ["default"] }
+regex                          = { workspace = true, features = ["default"] }
 reqwest                        = { workspace = true, features = ["default", "json", "multipart", "blocking"] }
 rust-s3                        = { workspace = true, features = ["default", "with-tokio"] }
 rustis                         = { workspace = true, features = ["default", "pool", "tokio-rustls"] }

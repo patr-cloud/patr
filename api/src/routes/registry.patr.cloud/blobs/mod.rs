@@ -6,6 +6,8 @@ use axum_extra::routing::RouterExt;
 
 use crate::prelude::*;
 
+/// Delete Blob
+mod delete;
 /// Get and Head routes for blob digest
 mod digest;
 /// PATCH request for blob upload
@@ -17,7 +19,12 @@ mod upload_put;
 
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
-		.route_with_tsr("/{digest}", get(digest::handle).head(digest::handle))
+		.route_with_tsr(
+			"/{digest}",
+			get(digest::handle)
+				.head(digest::handle)
+				.delete(delete::handle),
+		)
 		.route_with_tsr("/uploads", post(upload_post::handle))
 		.route_with_tsr(
 			"/uploads/{reference}",
