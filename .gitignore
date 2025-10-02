@@ -14,3 +14,5 @@
 
 *.db
 *.lock
+
+dump*.sql
