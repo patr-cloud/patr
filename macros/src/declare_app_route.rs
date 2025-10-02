@@ -136,6 +136,10 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		query,
 	} = parse_macro_input!(input as AppEndpoint);
 
+	// Capture anything within `{}` as a path parameter and replace it with `:param` using regex
+	// Example: `/user/{user_id}/post/{post_id}` -> `/user/:user_id/post/:post_id`
+	let leptos_path = LitStr::new(&path.value().replace('{', ":").replace('}', ""), path.span());
+
 	let route_name = format_ident!("{}Route", name);
 	let path_body = if let Some(body) = path_body {
 		quote::quote! {
@@ -207,7 +211,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			type Query = #query_name;
 
 			fn leptos_path() -> impl ::leptos_router::PossibleRouteMatch + Clone + Send + Sync + 'static {
-				::leptos_router::path!(#path)
+				::leptos_router::path!(#leptos_path)
 			}
 		}
 
