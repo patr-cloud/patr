@@ -1,9 +1,3 @@
-/// The Deployments set of page, contains, create, list, and update deployments
-/// pages
-mod deployment;
-/// The Home page
-mod home;
-
 use leptos_router::{
 	MatchNestedRoutes,
 	components::{Outlet, ParentRoute},
@@ -11,8 +5,7 @@ use leptos_router::{
 };
 use models::frontend::workspace::deployment::*;
 
-use self::deployment::*;
-use crate::prelude::*;
+use crate::{pages::deployment::*, prelude::*};
 
 /// A holder component for all workspaced related routes
 #[component]

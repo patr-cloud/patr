@@ -3,6 +3,7 @@ use leptos_router::{
 	components::{Outlet, ParentRoute, ProtectedParentRoute},
 	path,
 };
+use models::frontend::workspace::{deployment::ListDeploymentsRoute, *};
 
 use crate::prelude::*;
 
@@ -29,14 +30,14 @@ pub fn LoggedInContent() -> impl MatchNestedRoutes + Clone {
 
 	view! {
 		<ParentRoute path=path!("") view=Outlet>
-			// <ProtectedParentRoute
-			// 	path=path!("")
-			// 	view=NoWorkspaceHolder
-			// 	condition=move || Some(!has_workspaces)
-			// 	redirect_path=|| "/"
-			// >
-			// 	<NoWorkspaceContent />
-			// </ProtectedParentRoute>
+			<ProtectedParentRoute
+				path=path!("")
+				view=NoWorkspaceHolder
+				condition=move || Some(!has_workspaces)
+				redirect_path=|| "/"
+			>
+				<NoWorkspaceContent />
+			</ProtectedParentRoute>
 			<ProtectedParentRoute
 				path=path!("")
 				view=WorkspacedHolder

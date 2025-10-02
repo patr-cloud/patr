@@ -1,7 +1,7 @@
 /// The Deployment Components, such as the Deployment Card, inputs, etc.
 mod components;
-/// The Deployment Dashboard Page
-mod dashboard;
+// / The Deployment Dashboard Page where all the deployments are listed
+// mod dashboard;
 
 use models::frontend::workspace::deployment::{
 	CreateDeploymentQuery,
@@ -12,7 +12,6 @@ use models::frontend::workspace::deployment::{
 	ListDeploymentsRoute,
 };
 
-pub use self::dashboard::*;
 use crate::prelude::*;
 
 /// Temporary Page Container

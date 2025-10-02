@@ -20,6 +20,9 @@ pub mod components;
 /// The pages module. This contains all the pages used in the application.
 /// Pages are the main views that are rendered when a route is matched.
 pub mod pages;
+/// The routes module. This contains all the route definitions for the
+/// application.
+pub mod routes;
 /// The utils module. This contains all the utility functions and other things
 /// needed to make the application work.
 pub mod utils;

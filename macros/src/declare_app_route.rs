@@ -136,9 +136,13 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		query,
 	} = parse_macro_input!(input as AppEndpoint);
 
-	// Capture anything within `{}` as a path parameter and replace it with `:param` using regex
-	// Example: `/user/{user_id}/post/{post_id}` -> `/user/:user_id/post/:post_id`
-	let leptos_path = LitStr::new(&path.value().replace('{', ":").replace('}', ""), path.span());
+	// Capture anything within `{}` as a path parameter and replace it with `:param`
+	// using regex Example: `/user/{user_id}/post/{post_id}` ->
+	// `/user/:user_id/post/:post_id`
+	let leptos_path = LitStr::new(
+		&path.value().replace('{', ":").replace('}', ""),
+		path.span(),
+	);
 
 	let route_name = format_ident!("{}Route", name);
 	let path_body = if let Some(body) = path_body {
@@ -206,7 +210,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 
 		impl models::frontend::TypedRoute for #route_name {
 			const REQUIRES_LOGIN: bool = #login_required;
-			
+
 			type Path = Self;
 			type Query = #query_name;
 

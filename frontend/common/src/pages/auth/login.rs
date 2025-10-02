@@ -37,7 +37,6 @@ async fn login_action(
 	.await?;
 
 	let response_options = expect_context::<ResponseOptions>();
-	// TODO return the right ServerFnError
 	response_options.append_header(
 		header::SET_COOKIE,
 		HeaderValue::from_str(

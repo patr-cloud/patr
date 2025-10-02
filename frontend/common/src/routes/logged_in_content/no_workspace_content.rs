@@ -3,7 +3,7 @@ use leptos_router::{
 	components::{Outlet, ParentRoute},
 	path,
 };
-use models::frontend::auth::*;
+use models::frontend::workspace::*;
 
 use crate::prelude::*;
 
@@ -21,8 +21,7 @@ pub fn NoWorkspaceContent() -> impl MatchNestedRoutes + Clone {
 	view! {
 		<ParentRoute path=path!("") view=Outlet>
 			// TODO: Show create workspace page when ready
-			// <AppRoute<CreateWorkspaceRoute, _, _> />
-			<AppRoute<LoginRoute, _, _> view=LoginPage />
+			<AppRoute<CreateWorkspaceRoute, _, _> view=CreateWorkspacePage />
 		</ParentRoute>
 	}
 	.into_inner()

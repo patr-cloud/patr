@@ -7,11 +7,6 @@ use models::frontend::auth::*;
 
 use crate::prelude::*;
 
-/// The Auth Pages, such as Login, Register, and Forgot Password
-mod auth;
-
-pub use self::auth::*;
-
 /// The parent component for ALL logged out routes. All logged out content will
 /// be nested inside this component
 #[component]

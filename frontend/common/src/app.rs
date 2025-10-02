@@ -1,11 +1,11 @@
 use codee::string::JsonSerdeCodec;
 use leptos_router::{
-	components::{Outlet, ProtectedParentRoute, Router, Routes},
+	components::{ProtectedParentRoute, Router, Routes},
 	path,
 };
 use leptos_use::{UseCookieOptions, use_cookie_with_options};
 
-use crate::prelude::*;
+use crate::{prelude::*, routes::*};
 
 /// The Entry Point for the whole app, here's where routers and all are defined
 #[component]
