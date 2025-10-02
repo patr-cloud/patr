@@ -11,7 +11,7 @@ use crate::{
 /// Recovery method options provided to the user when they forget their
 /// passsword and request a password change by hitting the ForgetPassword API
 /// endpoint. The curent recovery options are email and phone number.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(untagged)]
 #[preprocess::sync]
 pub enum RecoveryMethod {

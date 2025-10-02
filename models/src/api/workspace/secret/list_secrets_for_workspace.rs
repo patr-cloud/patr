@@ -28,7 +28,6 @@ macros::declare_api_endpoint!(
 		/// The list of secrets that contains:
 		///     name - The secret name
 		///     deployment_id - The deployment this secret is attached to
-		#[serde(flatten)]
 		pub secrets: Vec<WithId<Secret>>
 	}
 );

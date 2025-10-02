@@ -3,11 +3,11 @@ use std::ops::Deref;
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
 
 /// A type that can be used to represent a constant `false` boolean.
-#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, ts_rs::TS)]
 pub struct False;
 
 /// A type that can be used to represent a constant `true` boolean.
-#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, ts_rs::TS)]
 pub struct True;
 
 impl<'de> Deserialize<'de> for False {

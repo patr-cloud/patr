@@ -8,7 +8,7 @@ use crate::prelude::*;
 /// [`ForgotPassword`][ForgotPasswordRequest] API endpoint, these are the
 /// options presented to them. The current recovery options are email and phone
 /// number.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
 pub enum PreferredRecoveryOption {
 	/// Send OTP to phone number

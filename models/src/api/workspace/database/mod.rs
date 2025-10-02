@@ -58,6 +58,7 @@ pub struct DatabaseConnection {
 	strum::VariantNames,
 	strum::EnumString,
 	strum::Display,
+	ts_rs::TS,
 )]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]

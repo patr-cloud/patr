@@ -55,6 +55,7 @@ pub struct ManagedUrl {
 	EnumDiscriminants,
 	EnumString,
 	VariantNames,
+	ts_rs::TS,
 )]
 #[strum_discriminants(
 	name(ManagedUrlTypeDiscriminant),

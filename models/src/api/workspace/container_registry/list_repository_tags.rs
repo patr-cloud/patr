@@ -6,7 +6,7 @@ use crate::prelude::*;
 /// The response body for the
 /// [`ListContainerRepositoriesRequest`][super::ListContainerRepositoriesRequest]
 /// endpoint.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
 pub struct ContainerRepositoryTagAndDigestInfo {
 	/// The tag of the repository
@@ -14,6 +14,7 @@ pub struct ContainerRepositoryTagAndDigestInfo {
 	/// The digest that this tag points to
 	pub digest: String,
 	/// The last updated time of the tag
+	#[ts(type = "Date")]
 	pub last_updated: OffsetDateTime,
 }
 

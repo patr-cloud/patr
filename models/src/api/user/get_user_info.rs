@@ -21,6 +21,7 @@ macros::declare_api_endpoint!(
 		#[serde(flatten)]
 		pub basic_user_info: WithId<BasicUserInfo>,
 		/// When the user account was created
+		#[ts(type = "Date")]
 		pub created: OffsetDateTime,
 		/// The primary recovery email of the user
 		pub recovery_email: Option<String>,

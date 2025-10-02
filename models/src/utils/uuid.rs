@@ -4,6 +4,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
 use sqlx::{encode::IsNull, error::BoxDynError, prelude::*};
 use time::{Duration, OffsetDateTime};
+use ts_rs::TS;
 
 use super::constants;
 
@@ -130,7 +131,33 @@ impl PartialEq<Uuid> for uuid::Uuid {
 	}
 }
 
-impl Type<sqlx::Sqlite> for Uuid {
+impl TS for Uuid {
+	type OptionInnerType = <uuid::Uuid as TS>::OptionInnerType;
+	type WithoutGenerics = <uuid::Uuid as TS>::WithoutGenerics;
+
+	fn decl() -> String {
+		<uuid::Uuid as TS>::decl()
+	}
+
+	fn decl_concrete() -> String {
+		<uuid::Uuid as TS>::decl_concrete()
+	}
+
+	fn name() -> String {
+		<uuid::Uuid as TS>::name()
+	}
+
+	fn inline() -> String {
+		<uuid::Uuid as TS>::inline()
+	}
+
+	fn inline_flattened() -> String {
+		<uuid::Uuid as TS>::inline_flattened()
+	}
+}
+
+// For backend
+impl sqlx::Type<sqlx::Sqlite> for Uuid {
 	fn type_info() -> <sqlx::Sqlite as sqlx::Database>::TypeInfo {
 		<uuid::fmt::Simple as Type<sqlx::Sqlite>>::type_info()
 	}

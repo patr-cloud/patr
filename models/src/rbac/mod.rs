@@ -684,7 +684,7 @@ where
 }
 
 /// Represents the kind of permission that is granted on a workspace.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum WorkspacePermission {
 	/// The user is the super admin of the workspace.
@@ -805,7 +805,7 @@ impl WorkspacePermission {
 }
 
 /// Represents the type of permission that is granted on a set of Resource IDs.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, EnumDiscriminants)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, EnumDiscriminants, ts_rs::TS)]
 #[serde(
 	rename_all = "camelCase",
 	tag = "permissionType",
