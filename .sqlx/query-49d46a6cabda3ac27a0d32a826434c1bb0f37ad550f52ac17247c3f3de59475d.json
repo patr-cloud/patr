@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT token_id, name, token_nbf, token_exp, allowed_ips, created, COUNT(*) OVER() AS \"total_count!\" FROM user_api_token WHERE user_id = $1 AND revoked IS NULL ORDER BY created DESC LIMIT $2 OFFSET $3;",
+  "query": "SELECT token_id, name, token_nbf, token_exp, allowed_ips, created, COUNT(*) OVER() AS \"total_count!\" FROM user_api_token WHERE user_id = $1 AND revoked IS NULL AND ($2::TEXT IS NULL OR name ILIKE '%' || $2 || '%') AND (($3::TIMESTAMPTZ IS NULL AND $4::TIMESTAMPTZ IS NULL) OR (token_nbf >= $3 AND token_nbf <= $4)) AND (($5::TIMESTAMPTZ IS NULL AND $6::TIMESTAMPTZ IS NULL) OR (token_exp >= $5 AND token_exp <= $6)) AND ($7::INET IS NULL OR $7::INET <<= ANY(allowed_ips)) AND (($8::TIMESTAMPTZ IS NULL AND $9::TIMESTAMPTZ IS NULL) OR (created >= $8 AND created <= $9)) ORDER BY created DESC LIMIT $10 OFFSET $11;",
   "describe": {
     "columns": [
       {
@@ -42,6 +42,14 @@
     "parameters": {
       "Left": [
         "Uuid",
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Timestamptz",
+        "Timestamptz",
+        "Inet",
+        "Timestamptz",
+        "Timestamptz",
         "Int8",
         "Int8"
       ]
@@ -56,5 +64,5 @@
       null
     ]
   },
-  "hash": "41a4faa025d932dd82a4a3a1b86acef6916a6b6b0c0190b1098a28c4e54272b5"
+  "hash": "49d46a6cabda3ac27a0d32a826434c1bb0f37ad550f52ac17247c3f3de59475d"
 }

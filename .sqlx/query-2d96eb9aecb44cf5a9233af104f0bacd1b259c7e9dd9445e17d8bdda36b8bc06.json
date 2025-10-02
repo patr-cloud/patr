@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT runner.id, name, COUNT(*) OVER() AS \"total_count!\" FROM runner INNER JOIN RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource ON runner.id = resource.id WHERE workspace_id = $1 AND runner.deleted IS NULL ORDER BY resource.created DESC LIMIT $4 OFFSET $5;",
+  "query": "SELECT runner.id, name, COUNT(*) OVER() AS \"total_count!\" FROM runner INNER JOIN RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource ON runner.id = resource.id WHERE workspace_id = $1 AND runner.deleted IS NULL AND ($4::TEXT IS NULL OR name ILIKE '%' || $4 || '%') ORDER BY resource.created DESC LIMIT $5 OFFSET $6;",
   "describe": {
     "columns": [
       {
@@ -24,6 +24,7 @@
         "Uuid",
         "Uuid",
         "Text",
+        "Text",
         "Int8",
         "Int8"
       ]
@@ -34,5 +35,5 @@
       null
     ]
   },
-  "hash": "133950893d7b31e457a41f7602b903a10a31e3dbe8fd8243a37f18abea49ac58"
+  "hash": "2d96eb9aecb44cf5a9233af104f0bacd1b259c7e9dd9445e17d8bdda36b8bc06"
 }

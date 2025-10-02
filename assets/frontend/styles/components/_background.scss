@@ -31,9 +31,11 @@
   background-color: #00000080;
   backdrop-filter: blur(9px);
   -webkit-backdrop-filter: blur(9px);
+
   &.backdrop-medium {
     backdrop-filter: blur(6px);
   }
+
   &.backdrop-light {
     backdrop-filter: blur(3px);
   }
@@ -86,5 +88,7 @@
 }
 
 .bg-onboard {
-  background-image: $image-overlay-dark, url($onboard);
+  background-image: url($planet), url($astronaut), $image-overlay-dark, url($onboard);
+  background-position: 115% -20%, -15% 115%, center, center;
+  background-size: auto, auto, auto, cover;
 }

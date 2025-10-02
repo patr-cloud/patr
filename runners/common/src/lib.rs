@@ -55,6 +55,7 @@ pub mod prelude {
 	///
 	/// Example:
 	/// ```rust
+	/// # use common::prelude::*;
 	/// pub fn database_fn(connection: &mut DatabaseConnection) {
 	///     // Do something with `connection` ....
 	/// }

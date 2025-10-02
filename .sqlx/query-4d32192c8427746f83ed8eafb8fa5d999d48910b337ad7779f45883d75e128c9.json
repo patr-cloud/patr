@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO deployment_config_mounts(deployment_id, path, file) SELECT * FROM UNNEST($1::UUID[], $2::TEXT[], $3::BYTEA[]);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "TextArray",
+        "ByteaArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4d32192c8427746f83ed8eafb8fa5d999d48910b337ad7779f45883d75e128c9"
+}

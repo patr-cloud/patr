@@ -173,17 +173,18 @@ pub fn parse(input: TokenStream) -> TokenStream {
 
 			impl ::leptos_router::params::Params for #query_name {
 				fn from_map(map: &::leptos_router::params::ParamsMap) -> Result<Self, ::leptos_router::params::ParamsError>{
-					let Ok(value) = ::serde_json::to_value(map.clone()) else {
-						return Ok(Self::default());
-					};
-					Ok(::serde_json::from_value(value).unwrap_or_default())
+					let mut serde_map = ::serde_json::Map::new();
+					for (key, value) in map.clone().into_iter() {
+						serde_map.insert(key.to_string(), ::serde_json::Value::String(value.to_string()));
+					}
+					let map = ::serde_json::Value::Object(serde_map);
+					Ok(::serde_json::from_value(map).unwrap_or_default())
 				}
 			}
 		}
 	});
 
 	quote::quote! {
-
 		#[doc = #documentation]
 		#[derive(
 			Debug,
@@ -199,21 +200,25 @@ pub fn parse(input: TokenStream) -> TokenStream {
 
 		#query
 
-		// TODO: Change this to not use crate::
-		impl crate::utils::TypedRoute for #route_name {
+		impl models::frontend::TypedRoute for #route_name {
 			const REQUIRES_LOGIN: bool = #login_required;
-
+			
+			type Path = Self;
 			type Query = #query_name;
+
+			fn leptos_path() -> impl ::leptos_router::PossibleRouteMatch + Clone + Send + Sync + 'static {
+				::leptos_router::path!(#path)
+			}
 		}
 
 		impl ::leptos_router::params::Params for #route_name {
 			fn from_map(map: &::leptos_router::params::ParamsMap) -> Result<Self, ::leptos_router::params::ParamsError>{
-				let value = ::serde_json::to_value(map.clone()).map_err(|err| {
-					::leptos_router::params::ParamsError::Params(::std::sync::Arc::new(err))
-				})?;
-				Ok(::serde_json::from_value(value).map_err(|err| {
-					::leptos_router::params::ParamsError::Params(::std::sync::Arc::new(err))
-				})?)
+				let mut serde_map = ::serde_json::Map::new();
+				for (key, value) in map.clone().into_iter() {
+					serde_map.insert(key.to_string(), ::serde_json::Value::String(value.to_string()));
+				}
+				let map = ::serde_json::Value::Object(serde_map);
+				::serde_json::from_value(map).map_err(|err| ::leptos_router::params::ParamsError::MissingParam(err.to_string()))
 			}
 		}
 	}

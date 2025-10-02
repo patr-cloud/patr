@@ -1,5 +1,8 @@
 use axum::http::StatusCode;
-use models::{api::workspace::rbac::role::*, utils::TotalCountHeader};
+use models::{
+	api::{user::BasicUserInfoSearchParams, workspace::rbac::role::*},
+	utils::TotalCountHeader,
+};
 
 use crate::prelude::*;
 
@@ -16,7 +19,12 @@ pub async fn list_users_for_role(
 				query:
 					ListResourceQuery {
 						sort: sort_order,
-						search: filter,
+						search:
+							BasicUserInfoSearchParams {
+								username: username_filter,
+								first_name: first_name_filter,
+								last_name: last_name_filter,
+							},
 						count,
 						page,
 						additional_query: (),
@@ -45,14 +53,24 @@ pub async fn list_users_for_role(
 			COUNT(*) OVER() AS "total_count!"
 		FROM
 			workspace_user
+		INNER JOIN
+			"user"
+		ON
+			workspace_user.user_id = "user".id
 		WHERE
-			workspace_id = $1
+			workspace_id = $1 AND
+			($2::TEXT IS NULL OR "user".username ILIKE '%' || $2::TEXT || '%') AND
+			($3::TEXT IS NULL OR "user".first_name ILIKE '%' || $3::TEXT || '%') AND
+			($4::TEXT IS NULL OR "user".last_name ILIKE '%' || $4::TEXT || '%')
 		ORDER BY
 			workspace_user.user_id
-		LIMIT $2
-		OFFSET $3;
+		LIMIT $5
+		OFFSET $6;
 		"#,
 		workspace_id as _,
+		username_filter,
+		first_name_filter,
+		last_name_filter,
 		count as i64,
 		(page * count) as i64,
 	)

@@ -13,7 +13,14 @@ pub async fn list_api_tokens(
 				query:
 					ListResourceQuery {
 						sort: sort_order,
-						search: filter,
+						search:
+							UserApiTokenSearchParams {
+								name: name_filter,
+								token_nbf: token_nbf_filter,
+								token_exp: token_exp_filter,
+								allowed_ips: allowed_ips_filter,
+								created: created_filter,
+							},
 						count,
 						page,
 						additional_query: (),
@@ -49,13 +56,35 @@ pub async fn list_api_tokens(
 			user_api_token
 		WHERE
 			user_id = $1 AND
-			revoked IS NULL
+			revoked IS NULL AND
+			($2::TEXT IS NULL OR name ILIKE '%' || $2 || '%') AND
+			(($3::TIMESTAMPTZ IS NULL AND $4::TIMESTAMPTZ IS NULL) OR (
+				token_nbf >= $3 AND
+				token_nbf <= $4
+			)) AND
+			(($5::TIMESTAMPTZ IS NULL AND $6::TIMESTAMPTZ IS NULL) OR (
+				token_exp >= $5 AND
+				token_exp <= $6
+			)) AND
+			($7::INET IS NULL OR $7::INET <<= ANY(allowed_ips)) AND
+			(($8::TIMESTAMPTZ IS NULL AND $9::TIMESTAMPTZ IS NULL) OR (
+				created >= $8 AND
+				created <= $9
+			))
 		ORDER BY
 			created DESC
-		LIMIT $2
-		OFFSET $3;
+		LIMIT $10
+		OFFSET $11;
 		"#,
 		user_data.id as _,
+		name_filter,
+		token_nbf_filter.as_ref().map(|token_nbf| token_nbf.start()) as _,
+		token_nbf_filter.as_ref().map(|token_nbf| token_nbf.end()) as _,
+		token_exp_filter.as_ref().map(|token_exp| token_exp.start()) as _,
+		token_exp_filter.as_ref().map(|token_exp| token_exp.end()) as _,
+		allowed_ips_filter,
+		created_filter.as_ref().map(|created_at| created_at.start()) as _,
+		created_filter.as_ref().map(|created_at| created_at.end()) as _,
 		count as i32,
 		(count * page) as i32,
 	)

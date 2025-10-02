@@ -478,7 +478,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			#client_msg_body
 		}
 
-		impl models::ApiEndpoint for #request_name {
+		impl models::api::ApiEndpoint for #request_name {
 			const METHOD: ::http::Method = ::http::Method::#method;
 			const API_ALLOWED: bool = #api_allowed;
 

@@ -4,7 +4,7 @@
 
 /// Prelude module. Used to re-export commonly used items.
 pub mod prelude {
-	pub use leptos::prelude::*;
+	pub use leptos::{either::*, prelude::*};
 	pub use leptos_use::use_cookie;
 	pub use models::prelude::*;
 

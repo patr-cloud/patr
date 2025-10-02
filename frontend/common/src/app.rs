@@ -1,3 +1,10 @@
+use codee::string::JsonSerdeCodec;
+use leptos_router::{
+	components::{Outlet, ProtectedParentRoute, Router, Routes},
+	path,
+};
+use leptos_use::{UseCookieOptions, use_cookie_with_options};
+
 use crate::prelude::*;
 
 /// The Entry Point for the whole app, here's where routers and all are defined
@@ -9,9 +16,45 @@ pub fn App(
 ) -> impl IntoView {
 	provide_context(app_type);
 
+	let (auth_state_reader, _) = use_cookie_with_options::<AuthState, JsonSerdeCodec>(
+		constants::AUTH_STATE,
+		UseCookieOptions::default()
+			.http_only(false)
+			.secure(if cfg!(debug_assertions) { false } else { true }),
+	);
+	let auth_state = RwSignal::new(auth_state_reader.get_untracked().unwrap_or_default());
+
+	Effect::new(move |_| {
+		auth_state.set(
+			auth_state_reader
+				.map(|value| value.unwrap_or_default())
+				.get(),
+		);
+	});
+
+	// Provide the auth state to the context
+	provide_context(auth_state);
+
 	view! {
-		<TempPageContainer>
-			<DeploymentDashboard />
-		</TempPageContainer>
+		<Router>
+			<Routes fallback=NotFoundPage>
+				<ProtectedParentRoute
+					path=path!("")
+					view=LoggedOutHolder
+					condition=move || Some(auth_state.get().is_logged_out())
+					redirect_path=|| "/"
+				>
+					<LoggedOutContent />
+				</ProtectedParentRoute>
+				<ProtectedParentRoute
+					path=path!("")
+					view=LoggedInHolder
+					condition=move || Some(auth_state.get().is_logged_in())
+					redirect_path=|| "/login"
+				>
+					<LoggedInContent />
+				</ProtectedParentRoute>
+			</Routes>
+		</Router>
 	}
 }

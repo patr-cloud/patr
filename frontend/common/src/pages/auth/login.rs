@@ -1,22 +1,81 @@
-use leptos::ev::{Event, SubmitEvent};
+use codee::string::JsonSerdeCodec;
+use leptos::ev::Event;
+use leptos_use::{UseCookieOptions, use_cookie_with_options};
+use models::frontend::auth::*;
 
 use crate::prelude::*;
 
-/// The Login Page
-#[component]
-pub fn LoginPage() -> impl IntoView {
-	view! {
-		<PageContainer class="bg-onboard">
-			<LoginForm />
-		</PageContainer>
-	}
+/// The server function to log in the user. This will set the access token
+/// cookie on the response.
+#[server]
+async fn login_action(
+	user_id: String,
+	password: String,
+	mfa_otp: Option<String>,
+	next: Option<String>,
+) -> Result<(), ServerFnError<ErrorType>> {
+	use codee::{Encoder, string::JsonSerdeCodec};
+	use cookie::CookieBuilder;
+	use http::{HeaderValue, header};
+	use leptos_axum::ResponseOptions;
+	use models::api::auth::*;
+
+	let response = make_api_call(
+		ApiRequest::<LoginRequest>::builder()
+			.path(LoginPath)
+			.headers(LoginRequestHeaders {
+				user_agent: UserAgent::from_static("TODO"),
+			})
+			.query(())
+			.body(LoginRequest {
+				user_id,
+				password,
+				mfa_otp: None,
+			})
+			.build(),
+	)
+	.await?;
+
+	let response_options = expect_context::<ResponseOptions>();
+	// TODO return the right ServerFnError
+	response_options.append_header(
+		header::SET_COOKIE,
+		HeaderValue::from_str(
+			&CookieBuilder::new(
+				constants::AUTH_STATE,
+				JsonSerdeCodec::encode(&AuthState::LoggedIn {
+					access_token: response.body.access_token,
+					refresh_token: response.body.refresh_token,
+				})
+				.map_err(|err| ServerFnError::ServerError(err.to_string()))?,
+			)
+			.http_only(false)
+			.secure(if cfg!(debug_assertions) { false } else { true })
+			.path("/")
+			.build()
+			.to_string(),
+		)
+		.map_err(|err| ServerFnError::ServerError(err.to_string()))?,
+	);
+
+	leptos_axum::redirect(
+		if let Some(next) = next.as_deref() {
+			next
+		} else {
+			"/"
+		},
+	);
+
+	Ok(())
 }
 
-/// The login form component. This is the form that the user uses to log in to
+/// The login page component. This is the form that the user uses to log in to
 /// the application.
-#[component]
-pub fn LoginForm() -> impl IntoView {
-	let username = RwSignal::new("".to_owned());
+#[allow(non_snake_case)]
+pub fn LoginPage(query: LoginQuery, _: LoginRoute) -> impl IntoView {
+	let LoginQuery { user_id, next } = query;
+
+	let username = RwSignal::new(user_id.unwrap_or_default());
 	let password = RwSignal::new("".to_owned());
 
 	let username_error = RwSignal::new("".to_owned());
@@ -24,28 +83,14 @@ pub fn LoginForm() -> impl IntoView {
 
 	let loading = RwSignal::new(false);
 
-	let on_submit_login = move |ev: SubmitEvent| {
-		ev.prevent_default();
+	let login_action = ServerAction::<LoginAction>::new();
 
-		loading.set(true);
-		username_error.set("".to_owned());
-		password_error.set("".to_owned());
-
-		if username.get().is_empty() {
-			log::error!("no email");
-			username_error.set("Username cannot be empty".to_owned());
-			loading.set(false);
-		}
-
-		if password.get().is_empty() {
-			log::error!("no password");
-			password_error.set("Password cannot be empty".to_owned());
-			loading.set(false);
-		}
-
-		// TODO: Submit Form Here
-		log::info!("Submit Form");
-	};
+	let (auth_state_reader, _) = use_cookie_with_options::<AuthState, JsonSerdeCodec>(
+		constants::AUTH_STATE,
+		UseCookieOptions::default()
+			.http_only(false)
+			.secure(if cfg!(debug_assertions) { false } else { true }),
+	);
 
 	let username_error_alert = move || {
 		username_error.get().some_if_not_empty().map(|val| {
@@ -67,8 +112,21 @@ pub fn LoginForm() -> impl IntoView {
 		})
 	};
 
+	Effect::new(move |_| {
+		if login_action
+			.value()
+			.get()
+			.map(|value| value.ok())
+			.flatten()
+			.is_some()
+		{
+			expect_context::<RwSignal<AuthState>>()
+				.set(auth_state_reader.get().unwrap_or_default());
+		}
+	});
+
 	view! {
-		<form on:submit={on_submit_login} class="box-onboard text-white">
+		<ActionForm action={login_action} attr:class="box-onboard text-white">
 			<div class="flex justify-between items-baseline mb-lg w-full">
 				<h1 class="text-primary text-xl text-medium">"Sign In"</h1>
 				<div class="text-white text-thin flex items-start justify-start text-sm">
@@ -107,6 +165,7 @@ pub fn LoginForm() -> impl IntoView {
 					}}
 					class="w-full"
 					id="password"
+					name="password"
 					placeholder="Password"
 					start_icon={|| view! {
 						<Icon
@@ -117,6 +176,8 @@ pub fn LoginForm() -> impl IntoView {
 				/>
 
 				<input name="mfa_otp" type="hidden" />
+
+				<input name="next" type="hidden" value={next.clone()} />
 
 				{password_error_alert}
 			</div>
@@ -136,6 +197,6 @@ pub fn LoginForm() -> impl IntoView {
 					"LOGIN"
 				</Button>
 			</Show>
-		</form>
+		</ActionForm>
 	}
 }

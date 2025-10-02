@@ -30,10 +30,9 @@ pub mod utils;
 pub mod prelude {
 	pub use macros::query;
 	pub use models::{
-		ApiEndpoint,
 		AppResponse,
 		ErrorType,
-		api::WithId,
+		api::{ApiEndpoint, WithId},
 		rbac::{
 			BillingPermission,
 			ContainerRegistryRepositoryPermission,

@@ -9,6 +9,8 @@ pub mod api;
 pub mod ci;
 /// Any data that is sent to or from cloudflare (mostly KV)
 pub mod cloudflare;
+/// All the URL routes that the frontend renders
+pub mod frontend;
 /// All infrastructure as code related structs and formats
 pub mod iaac;
 /// All data related to permissions and RBAC data representation
@@ -27,14 +29,13 @@ pub mod prelude {
 
 	pub(crate) use crate as models;
 	pub use crate::{
-		ApiEndpoint,
 		ApiErrorResponse,
 		ApiRequest,
 		ApiSuccessResponse,
 		ApiSuccessResponseBody,
 		AppResponse,
 		ErrorType,
-		api::WithId,
+		api::{ApiEndpoint, WithId},
 		rbac::{
 			BillingPermission,
 			ContainerRegistryRepositoryPermission,
@@ -78,11 +79,6 @@ mod private {
 	pub trait Sealed {}
 }
 
-/// Contains the trait that is used to represent all the data that will be sent
-/// to an endpoint in the API. This trait is implemented for all the endpoints
-/// in the API. Since it is a large trait, a helper macro is provided to
-/// generate a request. See: [`macros::declare_api_endpoint`]
-mod endpoint;
 /// Contains the enum used to represent an error response from the API. This is
 /// an exhaustive list of all the possible error types and the status codes for
 /// the error variant
@@ -101,4 +97,4 @@ mod response;
 /// itself.
 mod user_data;
 
-pub use self::{endpoint::*, error::*, request::*, response::*, user_data::*};
+pub use self::{error::*, request::*, response::*, user_data::*};

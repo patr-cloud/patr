@@ -59,31 +59,32 @@ pub async fn list_volumes(
 			deployment_volume.id = resource.id
 		WHERE
 			resource.owner_id = $1 AND
-			($4::TEXT IS NULL OR deployment_volume.name ILIKE '%' || $4 || '%') AND
-			(($5::INT IS NULL AND $6::INT IS NULL) OR (
-				deployment_volume.volume_size >= $5 AND
-				deployment_volume.volume_size <= $6
+			deployment_volume.deleted IS NULL AND
+			($2::TEXT IS NULL OR deployment_volume.name ILIKE '%' || $2 || '%') AND
+			(($3::INT IS NULL AND $4::INT IS NULL) OR (
+				deployment_volume.volume_size >= $3 AND
+				deployment_volume.volume_size <= $4
 			)) AND
-			($7::UUID IS NULL OR deployment_volume.id IN (
+			($5::UUID IS NULL OR deployment_volume.id IN (
 				SELECT
 					volume_id
 				FROM
 					deployment_volume_mount
 				WHERE
-					deployment_id = $7
+					deployment_id = $5
 			))
 		ORDER BY
 			resource.created DESC
-		LIMIT $2
-		OFFSET $3;
+		LIMIT $6
+		OFFSET $7;
 		"#,
 		workspace_id as _,
-		count as i32,
-		(page * count) as i32,
 		name_filter as _,
 		size_filter.as_ref().map(|size| *size.start() as i64) as _,
 		size_filter.as_ref().map(|size| *size.end() as i64) as _,
 		deployment_id_filter as _,
+		count as i32,
+		(page * count) as i32,
 	)
 	.fetch_all(&mut **database)
 	.await?

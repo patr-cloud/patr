@@ -3,7 +3,7 @@ members              = ["api", "cli", "ingress", "frontend/common", "frontend/ma
 package.authors      = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
 package.description  = "Patr API and all it's dependencies"
 package.edition      = "2024"
-package.rust-version = "1.88"
+package.rust-version = "1.91"
 package.version      = "0.18.0"
 resolver             = "3"
 
@@ -54,7 +54,7 @@ hyper                          = { default-features = false, version = "1" }
 inquire                        = { default-features = false, version = "0.9" }
 ipinfo                         = { default-features = false, version = "3" }
 ipnetwork                      = { default-features = false, version = "0.20" }
-jsonwebtoken                   = { default-features = false, version = "9" }
+jsonwebtoken                   = { default-features = false, version = "10" }
 k8s-openapi                    = { default-features = false, version = "0.26" }
 kube                           = { default-features = false, version = "2" }
 leptos                         = { default-features = false, version = "0.8" }
@@ -66,15 +66,15 @@ log                            = { default-features = false, version = "0.4" }
 macros                         = { default-features = false, path = "macros" }
 matchit                        = { default-features = false, version = "0.8" }
 models                         = { default-features = false, path = "models" }
-monostate                      = { default-features = false, version = "0.1" }
+monostate                      = { default-features = false, version = "1" }
 nix                            = { default-features = false, version = "0.30" }
 oci-client                     = { default-features = false, version = "0.15" }
 oci-spec                       = { default-features = false, version = "0.8" }
 open                           = { default-features = false, version = "5" }
-opentelemetry                  = { default-features = false, version = "0.30" }
-opentelemetry-appender-tracing = { default-features = false, version = "0.30" }
-opentelemetry-otlp             = { default-features = false, version = "0.30" }
-opentelemetry_sdk              = { default-features = false, version = "0.30" }
+opentelemetry                  = { default-features = false, version = "0.31" }
+opentelemetry-appender-tracing = { default-features = false, version = "0.31" }
+opentelemetry-otlp             = { default-features = false, version = "0.31" }
+opentelemetry_sdk              = { default-features = false, version = "0.31" }
 preprocess                     = { default-features = false, version = "0.5" }
 proc-macro2                    = { default-features = false, version = "1" }
 quote                          = { default-features = false, version = "1" }
@@ -101,19 +101,19 @@ thiserror                      = { default-features = false, version = "2" }
 time                           = { default-features = false, version = "0.3" }
 tokio                          = { default-features = false, version = "1" }
 tokio-stream                   = { default-features = false, version = "0.1" }
-tokio-tungstenite              = { default-features = false, version = "0.26" }
+tokio-tungstenite              = { default-features = false, version = "0.28" }
 tokio-util                     = { default-features = false, version = "0.7" }
 totp-rs                        = { default-features = false, version = "5" }
 tower                          = { default-features = false, version = "0.5" }
 tower-http                     = { default-features = false, version = "0.6" }
 tracing                        = { default-features = false, version = "0.1" }
 tracing-log                    = { default-features = false, version = "0.2" }
-tracing-opentelemetry          = { default-features = false, version = "0.31" }
+tracing-opentelemetry          = { default-features = false, version = "0.32" }
 tracing-subscriber             = { default-features = false, version = "0.3" }
 typed-builder                  = { default-features = false, version = "0.22" }
 url                            = { default-features = false, version = "2" }
 uuid                           = { default-features = false, version = "1" }
-wasm-bindgen                   = { default-features = false, version = "=0.2.101" }
+wasm-bindgen                   = { default-features = false, version = "=0.2.103" }
 wasm-logger                    = { default-features = false, version = "0.2" }
 web-sys                        = { default-features = false, version = "0.3" }
 woothee                        = { default-features = false, version = "0.13" }
