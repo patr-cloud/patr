@@ -29,22 +29,22 @@ pub fn LoggedInContent() -> impl MatchNestedRoutes + Clone {
 
 	view! {
 		<ParentRoute path=path!("") view=Outlet>
-			<ProtectedParentRoute
-				path=path!("")
-				view=NoWorkspaceHolder
-				condition=move || Some(!has_workspaces)
-				redirect_path=|| "/"
-			>
-				<NoWorkspaceContent />
-			</ProtectedParentRoute>
 			// <ProtectedParentRoute
 			// 	path=path!("")
-			// 	view=WorkspacedHolder
-			// 	condition=move || Some(has_workspaces)
+			// 	view=NoWorkspaceHolder
+			// 	condition=move || Some(!has_workspaces)
 			// 	redirect_path=|| "/"
 			// >
-			// 	<WorkspacedContent />
+			// 	<NoWorkspaceContent />
 			// </ProtectedParentRoute>
+			<ProtectedParentRoute
+				path=path!("")
+				view=WorkspacedHolder
+				condition=move || Some(has_workspaces)
+				redirect_path=|| "/"
+			>
+				<WorkspacedContent />
+			</ProtectedParentRoute>
 		</ParentRoute>
 	}
 	.into_inner()
