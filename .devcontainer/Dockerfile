@@ -53,8 +53,9 @@ RUN /home/vscode/.cargo/bin/cargo binstall --locked worker-build
 
 RUN curl -fsSL https://fnm.vercel.app/install | bash
 RUN ~/.local/share/fnm/fnm install --lts
-# RUN ~/.local/share/fnm/node-versions/v22.20.0/installation/lib/node_modules/npm install --global corepack@latest
-# RUN ~/.local/share/fnm/node-versions/v22.20.0/installation/lib/node_modules/corepack enable pnpm
+ENV PATH="/home/vscode/.local/share/fnm/node-versions/v22.20.0/installation/bin:$PATH"
+RUN npm install --global corepack@latest
+RUN corepack enable pnpm
 
 # `patr` should build and run the local CLI
 RUN echo "alias patr='cargo patr'" >> /home/vscode/.bashrc
