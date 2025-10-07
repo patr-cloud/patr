@@ -1,8 +1,8 @@
 import { Route, Router } from "@solidjs/router";
 import { createSignal, Suspense } from "solid-js";
 import "./app.css";
-import Login from "./routes/login";
-import LoggedOutRoutes from "./routes/logged-out-routes";
+import LoggedOutRoutes from "./routes/logged-out-routes/index";
+import NotFound from "./routes/not_found";
 
 export default function App() {
   const [loggedIn, _] = createSignal(false);
@@ -15,11 +15,8 @@ export default function App() {
         </>
       )}
     >
-      {loggedIn() ? (
-        <Route path="/" component={() => <div>Home</div>} />
-      ) : (
-        <LoggedOutRoutes />
-      )}
+      <LoggedOutRoutes />
+      <Route path="*" component={NotFound} />
     </Router>
   );
 }
