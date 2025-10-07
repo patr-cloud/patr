@@ -1,6 +1,5 @@
 use std::{collections::BTreeMap, fmt::Display};
 
-use either::Either;
 use inquire::InquireError;
 use models::{
 	api::workspace::{container_registry::*, deployment::*, runner::*},
@@ -78,56 +77,35 @@ impl IaacResolverExt<CreateDeploymentRequest> for IaacDeployment {
 				repository,
 				tag,
 			} => {
-				let repository_id = match repository {
-					Either::Left(id) => id,
-					Either::Right(name) => {
-						let mut repositories = vec![];
-						let mut start = 0;
-
-						loop {
-							let response = make_request(
-								ApiRequest::<ListContainerRepositoriesRequest>::builder()
-									.path(ListContainerRepositoriesPath { workspace_id })
-									.headers(ListContainerRepositoriesRequestHeaders {
-										authorization: api_token.clone(),
-										user_agent: UserAgent::from_static(
-											constants::USER_AGENT_STRING,
-										),
-									})
-									.query(ListResourceQuery {
-										page: start / ListResourceQuery::DEFAULT_PAGE_SIZE,
-										count: ListResourceQuery::DEFAULT_PAGE_SIZE,
-										search: Default::default(),
-										sort: Default::default(),
-										additional_query: (),
-									})
-									.body(ListContainerRepositoriesRequest)
-									.build(),
-							)
-							.await?;
-
-							start += response.body.repositories.len();
-
-							repositories.extend(response.body.repositories);
-
-							if start >= response.headers.total_count.0 {
-								break;
-							}
-						}
-
-						let id = Uuid::parse_str(&name).ok();
-						repositories
-							.iter()
-							.find(|r| r.name == name || id.filter(|id| r.id == *id).is_some())
-							.map(|repo| repo.id)
-							.ok_or_else(|| {
-								AppError::IaacParseError(format!(
-									"No container repository found with ID or name: `{}`",
-									name
-								))
-							})?
-					}
-				};
+				let repository_id = make_request(
+					ApiRequest::<ListContainerRepositoriesRequest>::builder()
+						.path(ListContainerRepositoriesPath { workspace_id })
+						.headers(ListContainerRepositoriesRequestHeaders {
+							authorization: api_token.clone(),
+							user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+						})
+						.query(ListResourceQuery {
+							search: ContainerRepositorySearchParams {
+								name: Some(repository.clone()),
+								..Default::default()
+							},
+							..Default::default()
+						})
+						.body(ListContainerRepositoriesRequest)
+						.build(),
+				)
+				.await?
+				.body
+				.repositories
+				.into_iter()
+				.next()
+				.map(|repo| repo.id)
+				.ok_or_else(|| {
+					AppError::IaacParseError(format!(
+						"No container repository found with name: `{}`",
+						repository
+					))
+				})?;
 
 				(
 					DeploymentRegistry::PatrRegistry {
@@ -198,7 +176,7 @@ impl IaacResolverExt<CreateDeploymentRequest> for IaacDeployment {
 			deploy_on_create: false,
 			runner,
 			// TODO how will machine type work?
-			machine_type: Uuid::parse_str(&self.machine_type.resolve_value()?.to_string()).unwrap(),
+			machine_type: Uuid::parse_str("0be608bc0dfd4e2a8ece90252d3c9bce").unwrap(), /* Uuid::parse_str(&self.machine_type.resolve_value()?.to_string()).unwrap(), */
 			running_details: DeploymentRunningDetails {
 				deploy_on_push: self.deploy_on_push.resolve_value()?,
 				min_horizontal_scale: self.min_horizontal_scale.resolve_value()?,

@@ -113,7 +113,7 @@ pub enum MaybeExternallySourced<T> {
 	/// A raw value. This is used when the value is a simple string or number.
 	Value(T),
 	/// A value that is sourced from an environment variable.
-	#[serde(rename_all = "snake_case")]
+	#[serde(rename_all = "snake_case", alias = "from_env")]
 	FromEnvironment {
 		/// The name of the environment variable to source the value from.
 		#[serde(alias = "env")]
@@ -147,5 +147,11 @@ where
 {
 	fn default() -> Self {
 		Self::Value(T::default())
+	}
+}
+
+impl<T> From<T> for MaybeExternallySourced<T> {
+	fn from(value: T) -> Self {
+		Self::Value(value)
 	}
 }

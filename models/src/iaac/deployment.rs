@@ -6,7 +6,6 @@ use std::{
 	str::FromStr,
 };
 
-use either::Either;
 use serde::{Deserialize, Serialize};
 
 use crate::{api::workspace::deployment::*, iaac::MaybeExternallySourced, prelude::*};
@@ -18,6 +17,10 @@ use crate::{api::workspace::deployment::*, iaac::MaybeExternallySourced, prelude
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct IaacDeployment {
+	/// The ID of the deployment that needs to be patched (used to identify the
+	/// deployment if the name has changed)
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub id: Option<Uuid>,
 	/// The name of the deployment
 	pub name: MaybeExternallySourced<String>,
 	/// The image to use for the deployment. This can be a Patr registry image
@@ -67,7 +70,9 @@ pub struct IaacDeployment {
 
 impl Hash for IaacDeployment {
 	fn hash<H: Hasher>(&self, state: &mut H) {
-		self.name.hash(state);
+		self.id
+			.map(|id| id.hash(state))
+			.unwrap_or_else(|| self.name.hash(state));
 	}
 }
 
@@ -108,8 +113,8 @@ pub enum IaacDeploymentImage {
 		#[serde(alias = "server")]
 		registry: PatrRegistry,
 		/// The repository of the image. This can either be a UUID or a name.
-		#[serde(alias = "repo", with = "either::serde_untagged")]
-		repository: Either<Uuid, String>,
+		#[serde(alias = "repo")]
+		repository: String,
 		/// The tag of the image. This is always `latest` if not specified.
 		#[serde(default = "default_image_tag")]
 		tag: String,
@@ -133,15 +138,12 @@ pub enum IaacDeploymentImage {
 /// The default tag for the IaacDeploymentImage. This is set to `latest` by
 /// default, meaning that the image will be pulled with the `latest` tag if no
 /// tag is specified.
-fn default_image_tag() -> String {
-	"latest".to_string()
+fn default_image_tag() -> &'static str {
+	"latest"
 }
 
-#[allow(clippy::infallible_try_from)]
-impl TryFrom<&str> for IaacDeploymentImage {
-	type Error = Infallible;
-
-	fn try_from(value: &str) -> Result<Self, Self::Error> {
+impl From<&str> for IaacDeploymentImage {
+	fn from(value: &str) -> Self {
 		let (first, second) = if let Some(split) = value.split_once('/') {
 			split
 		} else {
@@ -159,23 +161,23 @@ impl TryFrom<&str> for IaacDeploymentImage {
 		};
 
 		let (repository, tag) = if let Some((repo, tag)) = repository.split_once(':') {
-			(repo, tag.to_string())
+			(repo, tag)
 		} else {
 			(repository, default_image_tag())
 		};
 
-		Ok(match registry {
+		match registry {
 			"registry.patr.cloud" => IaacDeploymentImage::PatrRegistry {
 				registry: PatrRegistry,
-				repository: Either::Right(repository.to_string()),
-				tag,
+				repository: repository.to_string(),
+				tag: tag.to_string(),
 			},
 			registry => IaacDeploymentImage::ExternalRegistry {
 				registry: registry.to_string(),
 				repository: repository.to_string(),
-				tag,
+				tag: tag.to_string(),
 			},
-		})
+		}
 	}
 }
 
@@ -554,8 +556,6 @@ impl TryFrom<Vec<String>> for IaacDeploymentEnvVars {
 
 #[cfg(test)]
 mod tests {
-	use either::Either;
-
 	use crate::{api::workspace::deployment::PatrRegistry, iaac::IaacDeploymentImage};
 
 	#[test]
@@ -565,7 +565,7 @@ mod tests {
 				"registry.patr.cloud/workspace-id/api:stable",
 				IaacDeploymentImage::PatrRegistry {
 					registry: PatrRegistry,
-					repository: Either::Right("workspace-id/api".to_string()),
+					repository: "workspace-id/api".to_string(),
 					tag: "stable".to_string(),
 				},
 			),
@@ -573,7 +573,7 @@ mod tests {
 				"registry.patr.cloud/workspace-id/api",
 				IaacDeploymentImage::PatrRegistry {
 					registry: PatrRegistry,
-					repository: Either::Right("workspace-id/api".to_string()),
+					repository: "workspace-id/api".to_string(),
 					tag: "latest".to_string(),
 				},
 			),
@@ -581,7 +581,7 @@ mod tests {
 				"registry.patr.cloud/api:stable",
 				IaacDeploymentImage::PatrRegistry {
 					registry: PatrRegistry,
-					repository: Either::Right("api".to_string()),
+					repository: "api".to_string(),
 					tag: "stable".to_string(),
 				},
 			),
@@ -589,7 +589,7 @@ mod tests {
 				"registry.patr.cloud/api",
 				IaacDeploymentImage::PatrRegistry {
 					registry: PatrRegistry,
-					repository: Either::Right("api".to_string()),
+					repository: "api".to_string(),
 					tag: "latest".to_string(),
 				},
 			),
@@ -597,7 +597,7 @@ mod tests {
 				"registry.patr.cloud/01234567890123456789abcdefabcdef:stable",
 				IaacDeploymentImage::PatrRegistry {
 					registry: PatrRegistry,
-					repository: Either::Right("01234567890123456789abcdefabcdef".to_string()),
+					repository: "01234567890123456789abcdefabcdef".to_string(),
 					tag: "stable".to_string(),
 				},
 			),
@@ -605,7 +605,7 @@ mod tests {
 				"registry.patr.cloud/01234567890123456789abcdefabcdef",
 				IaacDeploymentImage::PatrRegistry {
 					registry: PatrRegistry,
-					repository: Either::Right("01234567890123456789abcdefabcdef".to_string()),
+					repository: "01234567890123456789abcdefabcdef".to_string(),
 					tag: "latest".to_string(),
 				},
 			),

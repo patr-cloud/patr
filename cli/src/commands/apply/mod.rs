@@ -81,8 +81,9 @@ pub async fn execute(
 		.await
 		.map_err(|err| AppError::IaacParseError(err.to_string()))?;
 
-	let resources = serde_yaml2::from_str::<Vec<IaacResource>>(&file)
+	let resources = serde_yaml2::from_str::<OneOrMore<IaacResource>>(&file)
 		.map_err(|err| AppError::IaacParseError(err.to_string()))?
+		.into_vec()
 		.deduplicated()?;
 
 	for resource in resources {
