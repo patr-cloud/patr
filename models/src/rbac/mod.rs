@@ -6,6 +6,7 @@ use std::{
 
 use macros::RecursiveEnumIter;
 use serde::{Deserialize, Serialize};
+use sqlx::{encode::IsNull, error::BoxDynError, prelude::*};
 use strum::{
 	Display,
 	EnumDiscriminants,
@@ -644,45 +645,40 @@ impl FromStr for Permission {
 	}
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-impl<DB> sqlx::Type<DB> for Permission
+impl<DB> Type<DB> for Permission
 where
 	DB: sqlx::Database,
-	String: sqlx::Type<DB>,
+	String: Type<DB>,
 {
 	fn type_info() -> <DB as sqlx::Database>::TypeInfo {
-		<String as sqlx::Type<DB>>::type_info()
+		String::type_info()
 	}
 
 	fn compatible(ty: &<DB as sqlx::Database>::TypeInfo) -> bool {
-		<String as sqlx::Type<DB>>::compatible(ty)
+		String::compatible(ty)
 	}
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-impl<'q, DB> sqlx::Encode<'q, DB> for Permission
+impl<'q, DB> Encode<'q, DB> for Permission
 where
 	DB: sqlx::Database,
-	String: sqlx::Encode<'q, DB>,
+	String: Encode<'q, DB>,
 {
 	fn encode_by_ref(
 		&self,
 		buf: &mut <DB as sqlx::Database>::ArgumentBuffer<'q>,
-	) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
-		<String as sqlx::Encode<'q, DB>>::encode(self.to_string(), buf)
+	) -> Result<IsNull, sqlx::error::BoxDynError> {
+		String::encode(self.to_string(), buf)
 	}
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 impl<'q, DB> sqlx::Decode<'q, DB> for Permission
 where
 	DB: sqlx::Database,
-	String: sqlx::Decode<'q, DB>,
+	String: Decode<'q, DB>,
 {
-	fn decode(
-		value: <DB as sqlx::Database>::ValueRef<'q>,
-	) -> Result<Self, sqlx::error::BoxDynError> {
-		let permission = <String as sqlx::Decode<'q, DB>>::decode(value)?;
+	fn decode(value: <DB as sqlx::Database>::ValueRef<'q>) -> Result<Self, BoxDynError> {
+		let permission = <String as Decode<'q, DB>>::decode(value)?;
 		Ok(FromStr::from_str(&permission)?)
 	}
 }
@@ -819,11 +815,8 @@ impl WorkspacePermission {
 	name(ResourcePermissionTypeDiscriminant),
 	derive(strum::Display),
 	strum(serialize_all = "snake_case"),
-	cfg_attr(
-		not(target_arch = "wasm32"),
-		derive(sqlx::Type),
-		sqlx(type_name = "PERMISSION_TYPE", rename_all = "snake_case")
-	),
+	derive(Type),
+	sqlx(type_name = "PERMISSION_TYPE", rename_all = "snake_case"),
 	doc = "Represents the type of permission that is granted on a set of Resource IDs."
 )]
 pub enum ResourcePermissionType {

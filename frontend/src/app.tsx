@@ -1,19 +1,25 @@
-import { Router } from "@solidjs/router";
-import { FileRoutes } from "@solidjs/start/router";
-import { Suspense } from "solid-js";
-import Nav from "~/components/Nav";
+import { Route, Router } from "@solidjs/router";
+import { createSignal, Suspense } from "solid-js";
 import "./app.css";
+import Login from "./routes/login";
+import LoggedOutRoutes from "./routes/logged-out-routes";
 
 export default function App() {
+  const [loggedIn, _] = createSignal(false);
+
   return (
     <Router
-      root={props => (
+      root={(props) => (
         <>
           <Suspense>{props.children}</Suspense>
         </>
       )}
     >
-      <FileRoutes />
+      {loggedIn() ? (
+        <Route path="/" component={() => <div>Home</div>} />
+      ) : (
+        <LoggedOutRoutes />
+      )}
     </Router>
   );
 }

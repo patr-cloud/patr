@@ -47,17 +47,7 @@ pub async fn serve(state: &AppState) {
 				.await
 				.unwrap();
 			},
-			async {
-				axum::serve(
-					app_listener,
-					crate::routes::app_patr_cloud::setup_routes(state)
-						.await
-						.into_make_service_with_connect_info::<SocketAddr>(),
-				)
-				.with_graceful_shutdown(crate::exit_signal())
-				.await
-				.unwrap();
-			},
+			async {},
 		)
 		.await;
 	} else {

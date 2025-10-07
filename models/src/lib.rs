@@ -9,8 +9,6 @@ pub mod api;
 pub mod ci;
 /// Any data that is sent to or from cloudflare (mostly KV)
 pub mod cloudflare;
-/// All the URL routes that the frontend renders
-pub mod frontend;
 /// All infrastructure as code related structs and formats
 pub mod iaac;
 /// All data related to permissions and RBAC data representation

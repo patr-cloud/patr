@@ -1,6 +1,8 @@
 use std::{collections::BTreeMap, convert::Infallible, fmt::Display, str::FromStr};
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
+use sqlx::prelude::*;
 use time::OffsetDateTime;
 
 /// The history of a deployment's deploys. This contains the image digest and
@@ -63,8 +65,7 @@ pub struct DeploymentMachineType {
 }
 
 /// Deployment information
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Deployment {
 	/// Name of the deployment
@@ -94,8 +95,7 @@ pub struct Deployment {
 }
 
 /// Deployment running details
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentRunningDetails {
 	/// if the deployment should deploy as soon as a new image digest is pushed
@@ -128,8 +128,7 @@ pub struct DeploymentRunningDetails {
 
 /// The type of environment variable
 /// The keys can either have a string as a value or a secret
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, JsonSchema)]
 #[serde(untagged)]
 pub enum EnvironmentVariableValue {
 	/// String
@@ -184,24 +183,22 @@ impl FromStr for EnvironmentVariableValue {
 
 /// The type of exposed port
 #[derive(
+	Eq,
+	Hash,
+	Type,
 	Debug,
 	Clone,
-	Serialize,
-	Deserialize,
 	PartialEq,
-	Eq,
+	Serialize,
+	JsonSchema,
+	Deserialize,
 	strum::EnumString,
 	strum::Display,
 	strum::VariantNames,
-	Hash,
 )]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
-#[cfg_attr(not(target_arch = "wasm32"), derive(sqlx::Type, schemars::JsonSchema))]
-#[cfg_attr(
-	not(target_arch = "wasm32"),
-	sqlx(type_name = "EXPOSED_PORT_TYPE", rename_all = "lowercase")
-)]
+#[sqlx(type_name = "EXPOSED_PORT_TYPE", rename_all = "lowercase")]
 pub enum ExposedPortType {
 	/// TCP
 	Tcp,
@@ -212,8 +209,7 @@ pub enum ExposedPortType {
 }
 
 /// The deployment startup/liveness probe
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentProbe {
 	/// The port the probe will be using
@@ -223,8 +219,7 @@ pub struct DeploymentProbe {
 }
 
 /// Patr registry
-#[derive(Debug, Copy, Clone, Default, PartialEq, Eq)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, JsonSchema)]
 pub struct PatrRegistry;
 
 impl Display for PatrRegistry {
@@ -260,8 +255,7 @@ impl Serialize for PatrRegistry {
 }
 
 /// Deployment registry
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(untagged)]
 pub enum DeploymentRegistry {
 	/// Patr registry offered by patr
@@ -325,13 +319,9 @@ impl DeploymentRegistry {
 
 /// All the possible deployment status a deployment can be
 /// in during its life cycle
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(sqlx::Type, schemars::JsonSchema))]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Type, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[cfg_attr(
-	not(target_arch = "wasm32"),
-	sqlx(type_name = "DEPLOYMENT_STATUS", rename_all = "lowercase")
-)]
+#[sqlx(type_name = "DEPLOYMENT_STATUS", rename_all = "lowercase")]
 pub enum DeploymentStatus {
 	/// Deployment is deploying
 	Deploying,
