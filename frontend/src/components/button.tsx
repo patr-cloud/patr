@@ -1,0 +1,69 @@
+import { ParentProps, Accessor, mergeProps } from "solid-js";
+import { Color, ButtonVariantEnum, ButtonVariant } from "~/utils/color";
+import { PropWithChildren } from "~/utils/helperInterfaces";
+
+interface ButtonProps {
+  /**
+   * The Type of the button, defaults to 'button'.
+   */
+  type?: "button" | "submit" | "reset";
+  /**
+   * Additional Classes for the button.
+   */
+  class?: Accessor<string | undefined> | string | undefined;
+  /**
+   * The color of the button, defaults to Color.Primary.
+   */
+  color?: Color;
+  /**
+   * Whether the button is disabled or not
+   */
+  disabled?: boolean;
+  /**
+   * Button Variant, defaults to ButtonVariant.Plain
+   */
+  variant?: ButtonVariantEnum;
+}
+
+const Button = (rawProps: ParentProps<ButtonProps>) => {
+  const props = mergeProps(
+    {
+      disabled: false,
+      class: () => "",
+      color: Color.Primary,
+      variant: ButtonVariant.Plain,
+    },
+    rawProps
+  );
+
+  let derivedClass = () => {
+    const variant = () => {
+      switch (props.variant) {
+        case ButtonVariant.Outlined:
+          return "font-medium ";
+        case ButtonVariant.Plain:
+          return "bg-transparent";
+        case ButtonVariant.Contained:
+          return `bg-primary text-secondary py-xs px-md rounded-xl font-medium border-2 border-primary
+            hover:border-primary hover:cursor-pointer hover:bg-secondary hover:text-primary
+            disabled:opacity-50 disabled:cursor-not-allowed`;
+      }
+    };
+
+    const classValue =
+      typeof props.class === "function" ? props.class() : props.class;
+    return `flex items-center ${variant()} justify-center ${classValue ?? ""}`;
+  };
+
+  return (
+    <button
+      disabled={props.disabled}
+      type={props.type}
+      class={`${derivedClass()} bg-${props.color}`}
+    >
+      {props.children}
+    </button>
+  );
+};
+
+export default Button;
