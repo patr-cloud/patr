@@ -5,7 +5,6 @@ use crate::prelude::*;
 
 /// The handler to delete a deployment. This will delete the deployment, and
 /// remove all resources associated with the deployment.
-#[instrument(skip(database))]
 pub async fn delete_deployment(
 	AppRequest {
 		request:

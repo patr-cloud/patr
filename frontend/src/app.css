@@ -1,6 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import "tailwindcss";
-
 
 @theme {
   /* font */
@@ -24,7 +23,6 @@
   --color-success-light: #47c96c80;
   --color-info: #007bff;
   --color-info-light: #007bff80;
-
 
   --color-white: #ffffff;
   --color-black: #000000;
@@ -95,7 +93,32 @@
 }
 
 * {
-  font-family: 'Poppins', 'Roboto', 'Helvetica', 'Arial', 'sans-serif';
+  font-family: "Poppins", "Roboto", "Helvetica", "Arial", "sans-serif";
+}
+
+input,
+textarea,
+select {
+  @apply bg-transparent text-white border border-primary rounded-full px-md py-sm;
+  @apply focus:outline-none focus:border-primary focus:ring-0;
+  transition: all 0.2s ease;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  @apply bg-secondary-light;
+}
+
+input::placeholder,
+textarea::placeholder {
+  @apply text-grey;
+}
+
+input:disabled,
+textarea:disabled,
+select:disabled {
+  @apply bg-secondary-medium text-disabled cursor-not-allowed;
 }
 
 .btn {
@@ -108,11 +131,11 @@
 
 .btn-outline,
 .btn-outline * {
-  @apply text-primary
+  @apply text-primary;
 }
 
 .btn-outline:hover {
-  @apply bg-primary
+  @apply bg-primary;
 }
 
 .btn-outline:hover,
@@ -200,4 +223,17 @@
 .btn-dark,
 .btn-light {
   /* TODO: Replace @include btn-secondary-focus($info-main) with actual focus styles */
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  33% {
+    transform: translate(3rem, 0rem);
+  }
+  66% {
+    transform: translate(1.5rem, -1rem);
+  }
 }

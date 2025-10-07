@@ -5,7 +5,6 @@ use crate::prelude::*;
 
 /// The handler to start a deployment. This will start the deployment. In case
 /// the deployment is already running, it will do nothing.
-#[instrument(skip(database))]
 pub async fn start_deployment(
 	AppRequest {
 		request:

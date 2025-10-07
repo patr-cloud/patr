@@ -186,29 +186,43 @@ const Input = (rawProps: InputProps) => {
   const props = mergeProps(
     {
       type: InputVariants.Text,
-      class: "",
+      class: () => "",
       styleVariant: "light",
     },
     rawProps
   );
 
-  let containerClass = `
-    rounded-sm p-sm
-    flex justify-start items-center bg-secondary-${props.styleVariant}
-  `;
+  const containerClass = `rounded-xs flex justify-start
+    items-center border border-secondary-medium px-sm
+    transition-all duration-250
+    focus-within:border-primary focus-within:shadow-md
+    bg-secondary-light ${props.class()}`;
+
+  const paddingClass = () => {
+    const hasStart = props.startIcon || props.startText;
+    const hasEnd = props.endIcon || props.endText;
+
+    if (hasStart && hasEnd) return "py-xs px-xs";
+    if (hasStart) return "py-xs pl-xs pr-md";
+    if (hasEnd) return "py-xs pl-md pr-xs";
+    return "py-xs px-lg";
+  };
 
   return (
     <div class={containerClass}>
       {props.label && <label>{props.label()}</label>}
-      {props.startText && <span>{props.startText}</span>}
+      {props.startText && (
+        <span class="text-gray-400 text-sm pl-md">{props.startText}</span>
+      )}
       {props.startIcon && <>{props.startIcon}</>}
       <input
-        class="overflow-hidden mx-md text-ellipsis w-full text-white border-none font-medium bg-inherit disabled:text-disabled focus:outline-2 focus:outline-primary"
+        class={`overflow-hidden text-sm text-ellipsis w-full text-white font-thin border-none bg-transparent disabled:text-disabled focus:outline-none placeholder:text-grey ${paddingClass()}`}
         onInput={props.onInput}
         onChange={props.onChange}
         placeholder={props.placeholder}
         disabled={props.disabled}
         id={props.id}
+        name={props.name}
         value={typeof props.value === "function" ? props.value() : props.value}
         type={props.type}
       />

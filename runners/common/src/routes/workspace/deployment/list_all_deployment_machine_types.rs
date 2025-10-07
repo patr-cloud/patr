@@ -6,7 +6,6 @@ use crate::prelude::*;
 /// List all deployment machine types. This is a public endpoint. No
 /// authentication is required. This endpoint is used to list all the machine
 /// types that are available for deployments.
-#[instrument(skip(database))]
 pub async fn list_all_deployment_machine_types(
 	AppRequest {
 		request:
