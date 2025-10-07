@@ -86,7 +86,8 @@
 				"naumovs.color-highlight",
 				"streetsidesoftware.code-spell-checker",
 				"patr-cloud.patr-theme",
-				"bradlc.vscode-tailwindcss"
+				"bradlc.vscode-tailwindcss",
+				"esbenp.prettier-vscode"
 			]
 		}
 	},

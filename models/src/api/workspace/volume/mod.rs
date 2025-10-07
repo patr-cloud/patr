@@ -1,3 +1,4 @@
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// The endpoint to create a volume
@@ -21,8 +22,7 @@ pub use self::{
 use crate::prelude::*;
 
 /// Deployment volume detail
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(schemars::JsonSchema))]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentVolume {
 	/// The path of the volume attached

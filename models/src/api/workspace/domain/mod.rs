@@ -5,6 +5,7 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
+use sqlx::prelude::*;
 use time::OffsetDateTime;
 
 use crate::prelude::*;
@@ -214,13 +215,9 @@ impl Display for DnsRecordValue {
 }
 
 /// Type of domain nameserver
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(sqlx::Type))]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Type)]
 #[serde(rename_all = "camelCase")]
-#[cfg_attr(
-	not(target_arch = "wasm32"),
-	sqlx(type_name = "DOMAIN_NAMESERVER_TYPE", rename_all = "lowercase")
-)]
+#[sqlx(type_name = "DOMAIN_NAMESERVER_TYPE", rename_all = "lowercase")]
 pub enum DomainNameserverType {
 	/// Internal
 	Internal,

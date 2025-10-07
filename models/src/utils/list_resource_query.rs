@@ -3,6 +3,7 @@ use std::{collections::BTreeMap, fmt::Debug};
 use headers::{Error, Header};
 use http::{HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use sqlx::{encode::IsNull, error::BoxDynError, prelude::*};
 
 use super::{AddTuple, RequiresResponseHeaders};
 use crate::{prelude::*, rbac::ResourceType};
@@ -118,66 +119,58 @@ pub struct ResourceSearcher<const R: ResourceType> {
 }
 
 // For backend
-#[cfg(not(target_arch = "wasm32"))]
-impl<const R: ResourceType> sqlx::Type<sqlx::Sqlite> for ResourceSearcher<R> {
+impl<const R: ResourceType> Type<sqlx::Sqlite> for ResourceSearcher<R> {
 	fn type_info() -> <sqlx::Sqlite as sqlx::Database>::TypeInfo {
-		<Uuid as sqlx::Type<sqlx::Sqlite>>::type_info()
+		<Uuid as Type<sqlx::Sqlite>>::type_info()
 	}
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-impl<const R: ResourceType> sqlx::Type<sqlx::Postgres> for ResourceSearcher<R> {
+impl<const R: ResourceType> Type<sqlx::Postgres> for ResourceSearcher<R> {
 	fn type_info() -> <sqlx::Postgres as sqlx::Database>::TypeInfo {
-		<Uuid as sqlx::Type<sqlx::Postgres>>::type_info()
+		<Uuid as Type<sqlx::Postgres>>::type_info()
 	}
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-impl<'a, const R: ResourceType> sqlx::Encode<'a, sqlx::Sqlite> for ResourceSearcher<R>
+impl<'a, const R: ResourceType> Encode<'a, sqlx::Sqlite> for ResourceSearcher<R>
 where
-	Uuid: sqlx::Encode<'a, sqlx::Sqlite>,
+	Uuid: Encode<'a, sqlx::Sqlite>,
 {
 	fn encode_by_ref(
 		&self,
 		buf: &mut <sqlx::Sqlite as sqlx::Database>::ArgumentBuffer<'a>,
-	) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+	) -> Result<IsNull, BoxDynError> {
 		self.resource_id.encode_by_ref(buf)
 	}
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-impl<'a, const R: ResourceType> sqlx::Encode<'a, sqlx::Postgres> for ResourceSearcher<R>
+impl<'a, const R: ResourceType> Encode<'a, sqlx::Postgres> for ResourceSearcher<R>
 where
-	Uuid: sqlx::Encode<'a, sqlx::Postgres>,
+	Uuid: Encode<'a, sqlx::Postgres>,
 {
 	fn encode_by_ref(
 		&self,
 		buf: &mut <sqlx::Postgres as sqlx::Database>::ArgumentBuffer<'a>,
-	) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+	) -> Result<IsNull, BoxDynError> {
 		self.resource_id.encode_by_ref(buf)
 	}
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-impl<'a, const R: ResourceType> sqlx::Decode<'a, sqlx::Sqlite> for ResourceSearcher<R>
+impl<'a, const R: ResourceType> Decode<'a, sqlx::Sqlite> for ResourceSearcher<R>
 where
-	Uuid: sqlx::Decode<'a, sqlx::Sqlite>,
+	Uuid: Decode<'a, sqlx::Sqlite>,
 {
-	fn decode(
-		value: <sqlx::Sqlite as sqlx::Database>::ValueRef<'a>,
-	) -> Result<Self, sqlx::error::BoxDynError> {
+	fn decode(value: <sqlx::Sqlite as sqlx::Database>::ValueRef<'a>) -> Result<Self, BoxDynError> {
 		Uuid::decode(value).map(|resource_id| Self { resource_id })
 	}
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-impl<'a, const R: ResourceType> sqlx::Decode<'a, sqlx::Postgres> for ResourceSearcher<R>
+impl<'a, const R: ResourceType> Decode<'a, sqlx::Postgres> for ResourceSearcher<R>
 where
-	Uuid: sqlx::Decode<'a, sqlx::Postgres>,
+	Uuid: Decode<'a, sqlx::Postgres>,
 {
 	fn decode(
 		value: <sqlx::Postgres as sqlx::Database>::ValueRef<'a>,
-	) -> Result<Self, sqlx::error::BoxDynError> {
+	) -> Result<Self, BoxDynError> {
 		Uuid::decode(value).map(|resource_id| Self { resource_id })
 	}
 }

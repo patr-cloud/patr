@@ -1,18 +1,14 @@
-use std::{net::IpAddr, sync::RwLock};
-
 use axum::{
 	Router,
 	routing::{MethodFilter, MethodRouter},
 };
 use axum_extra::routing::TypedPath;
 use models::{
-	ApiRequest,
 	utils::{AppAuthentication, BearerToken, HasHeader, NoAuthentication},
 };
 use preprocess::Preprocessable;
 use tower::{
 	ServiceBuilder,
-	util::{BoxCloneService, BoxLayer},
 };
 
 use super::layers::{
@@ -71,37 +67,6 @@ where
 		E: ApiEndpoint<Authenticator = NoAuthentication> + Sync,
 		<E::RequestBody as Preprocessable>::Processed: Send,
 	{
-		frontend::utils::API_CALL_REGISTRY
-			.get_or_init(|| RwLock::new(Default::default()))
-			.write()
-			.expect("API call registry poisoned")
-			.entry(E::METHOD)
-			.or_default()
-			.insert(
-				<E::RequestPath as TypedPath>::PATH,
-				Box::new(BoxLayer::<
-					BoxCloneService<(ApiRequest<E>, IpAddr), AppResponse<E>, ErrorType>,
-					(ApiRequest<E>, IpAddr),
-					AppResponse<E>,
-					ErrorType,
-				>::new(
-					ServiceBuilder::new()
-						// .layer(todo!("Add rate limiter checker middleware here")),
-						.layer(DataStoreConnectionLayer::<E>::with_state(state.clone()))
-						.layer(PreprocessLayer::new())
-						.layer(UserAgentValidationLayer::new())
-						// .layer(todo!("Add rate limiter value updater middleware here"))
-						.layer(EndpointLayer::new(handler.clone())),
-				)),
-			)
-			.unwrap_or_else(|_| {
-				panic!(
-					"API endpoint `{} {}` already registered",
-					E::METHOD,
-					<E::RequestPath as TypedPath>::PATH
-				);
-			});
-
 		// Setup the layers for the backend
 		if <E as ApiEndpoint>::API_ALLOWED || cfg!(debug_assertions) {
 			self.route(
@@ -135,40 +100,6 @@ where
 		<E::RequestBody as Preprocessable>::Processed: Send,
 		E::RequestHeaders: HasHeader<BearerToken>,
 	{
-		frontend::utils::API_CALL_REGISTRY
-			.get_or_init(|| RwLock::new(Default::default()))
-			.write()
-			.expect("API call registry poisoned")
-			.entry(E::METHOD)
-			.or_default()
-			.insert(
-				<E::RequestPath as TypedPath>::PATH,
-				Box::new(BoxLayer::<
-					BoxCloneService<(ApiRequest<E>, IpAddr), AppResponse<E>, ErrorType>,
-					(ApiRequest<E>, IpAddr),
-					AppResponse<E>,
-					ErrorType,
-				>::new(
-					ServiceBuilder::new()
-						// .layer(todo!("Add rate limiter checker middleware here")),
-						.layer(DataStoreConnectionLayer::with_state(state.clone()))
-						.layer(PreprocessLayer::new())
-						.layer(UserAgentValidationLayer::new())
-						.layer(AuthenticationLayer::new(ClientType::WebDashboard))
-						// .layer(todo!("Add permission checker middleware here"))
-						// .layer(todo!("Add rate limiter value updater middleware here"))
-						// .layer(todo!("Add audit logger middleware here"))
-						.layer(AuthEndpointLayer::new(handler.clone())),
-				)),
-			)
-			.unwrap_or_else(|_| {
-				panic!(
-					"API endpoint `{} {}` already registered",
-					E::METHOD,
-					<E::RequestPath as TypedPath>::PATH
-				);
-			});
-
 		// Setup the layers for the backend
 		if <E as ApiEndpoint>::API_ALLOWED || cfg!(debug_assertions) {
 			self.route(
