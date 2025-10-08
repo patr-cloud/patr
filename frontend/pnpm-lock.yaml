@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@solid-primitives/cookies':
+        specifier: ^0.0.3
+        version: 0.0.3(solid-js@1.9.9)
       '@solidjs/router':
         specifier: ^0.15.0
         version: 0.15.3(solid-js@1.9.9)
@@ -709,6 +712,11 @@ packages:
   '@sindresorhus/merge-streams@2.3.0':
     resolution: {integrity: sha512-LtoMMhxAlorcGhmFYI+LhPgbPZCkgP6ra1YL604EeF6U98pLlQ3iWIGMdWSC+vWmPBWBNgmDBAhnAobLROJmwg==}
     engines: {node: '>=18'}
+
+  '@solid-primitives/cookies@0.0.3':
+    resolution: {integrity: sha512-SU8MDM2zckbNxItASjjJsfWUa7Su7/ldEfkOBQzjht0jMuNztXxRGqq/FyqnDfrOJ7/hAXRJJ5Qv7zeck9d5fQ==}
+    peerDependencies:
+      solid-js: ^1.8.18
 
   '@solidjs/router@0.15.3':
     resolution: {integrity: sha512-iEbW8UKok2Oio7o6Y4VTzLj+KFCmQPGEpm1fS3xixwFBdclFVBvaQVeibl1jys4cujfAK5Kn6+uG2uBm3lxOMw==}
@@ -3209,6 +3217,10 @@ snapshots:
   '@sindresorhus/is@7.1.0': {}
 
   '@sindresorhus/merge-streams@2.3.0': {}
+
+  '@solid-primitives/cookies@0.0.3(solid-js@1.9.9)':
+    dependencies:
+      solid-js: 1.9.9
 
   '@solidjs/router@0.15.3(solid-js@1.9.9)':
     dependencies:

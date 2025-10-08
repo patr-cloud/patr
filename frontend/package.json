@@ -7,6 +7,7 @@
     "start": "vinxi start"
   },
   "dependencies": {
+    "@solid-primitives/cookies": "^0.0.3",
     "@solidjs/router": "^0.15.0",
     "@solidjs/start": "^1.1.0",
     "js-cookie": "^3.0.5",
