@@ -1,21 +1,22 @@
 import { Route, Router } from "@solidjs/router";
-import { createSignal, Suspense } from "solid-js";
 import "./app.css";
 import LoggedOutRoutes from "./routes/logged-out-routes/index";
 import NotFound from "./routes/not_found";
+import LoggedInRoutes from "./routes/logged-in-routes";
+import Cookies from "js-cookie";
+import { createSignal, onMount } from "solid-js";
 
 export default function App() {
-  const [loggedIn, _] = createSignal(false);
+  const [isLoggedIn, setIsLoggedIn] = createSignal(false);
+
+  onMount(() => {
+    const token = Cookies.get("authToken");
+    setIsLoggedIn(!!token);
+  });
 
   return (
-    <Router
-      root={(props) => (
-        <>
-          <Suspense>{props.children}</Suspense>
-        </>
-      )}
-    >
-      <LoggedOutRoutes />
+    <Router>
+      {isLoggedIn() ? <LoggedInRoutes /> : <LoggedOutRoutes />}
       <Route path="*" component={NotFound} />
     </Router>
   );

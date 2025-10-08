@@ -1,24 +1,30 @@
-import { A, action } from "@solidjs/router";
-import { createSignal, onMount } from "solid-js";
+import { A, action, redirect } from "@solidjs/router";
+import { createSignal } from "solid-js";
 import Button from "~/components/button";
-import Icon from "~/components/icon";
 import Input, { InputVariants } from "~/components/input";
 import { ButtonVariant } from "~/utils/color";
+import Cookies from "js-cookie";
 
 const loginAction = action(async (formData: FormData) => {
   "use server";
-  const email = formData.get("email") as string;
+  const userId = formData.get("userId") as string;
   const password = formData.get("password") as string;
 
   // Handle login logic here
-  console.log("Logging in with", { email, password });
+  console.log("Logging in with", { userId, password });
 
-  // Add your authentication logic here
-  // e.g., API call, validation, redirect on success
+  if (userId === "user" && password === "password") {
+    // Mock authentication success
+    Cookies.set("authToken", "mock-token");
+    redirect("/");
+  } else {
+    // Mock authentication failure
+    return new Response("Invalid credentials", { status: 401 });
+  }
 });
 
 const Login = () => {
-  const [email, setEmail] = createSignal("");
+  const [userId, setUserId] = createSignal("");
   const [password, setPassword] = createSignal("");
 
   // Generate random stars
@@ -38,6 +44,7 @@ const Login = () => {
   return (
     <form
       action={loginAction}
+      method="post"
       class="min-h-screen w-full bg-secondary flex items-center justify-center p-4 relative overflow-hidden"
       style={{
         "background-image": "url('/images/starry-sky.svg')",
@@ -110,13 +117,13 @@ const Login = () => {
         {/* Form */}
         <div>
           <Input
-            type={InputVariants.Email}
+            type={InputVariants.Text}
             placeholder="Username or Email"
-            name="email"
-            value={email}
+            name="userId"
+            value={userId}
             class={() => "mt-4"}
             onInput={(e: Event) =>
-              setEmail((e.currentTarget as HTMLInputElement).value)
+              setUserId((e.currentTarget as HTMLInputElement).value)
             }
             styleVariant="medium"
           />
