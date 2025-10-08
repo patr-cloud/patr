@@ -1,30 +1,12 @@
-import { createServerCookie } from "@solid-primitives/cookies";
-import { A, action, redirect } from "@solidjs/router";
+import { A, useNavigate } from "@solidjs/router";
 import Button from "~/components/button";
 import Input, { InputVariants } from "~/components/input";
 import { ButtonVariant } from "~/utils/color";
-
-const loginAction = action(async (formData: FormData) => {
-  "use server";
-  const userId = formData.get("userId") as string;
-  const password = formData.get("password") as string;
-
-  const [_, setAuthState] = createServerCookie("authState");
-
-  // Handle login logic here
-  console.log("Logging in with", { userId, password });
-
-  if (userId === "user" && password === "password") {
-    // Mock authentication success
-    setAuthState("loggedIn");
-    return redirect("/");
-  } else {
-    // Mock authentication failure
-    return new Response("Invalid credentials", { status: 401 });
-  }
-});
+import { useAuthState } from "~/utils/state";
 
 const Login = () => {
+  const navigate = useNavigate();
+
   // Generate random stars
   const stars = Array.from({ length: 25 }, () => ({
     top: `${Math.random() * 100}%`,
@@ -41,8 +23,29 @@ const Login = () => {
 
   return (
     <form
-      action={loginAction}
-      method="post"
+      on:submit={(e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target as HTMLFormElement);
+        const userId = formData.get("userId") as string;
+        const password = formData.get("password") as string;
+
+        const [_, setAuthState] = useAuthState();
+
+        // Handle login logic here
+        console.log("Logging in with", { userId, password });
+
+        if (userId === "user" && password === "password") {
+          // Mock authentication success
+          setAuthState({
+            type: "LoggedIn",
+            accessToken: "something",
+            refreshToken: "something-else",
+          });
+          navigate("/");
+        } else {
+          // Mock authentication failure
+        }
+      }}
       class="min-h-screen w-full bg-secondary flex items-center justify-center p-4 relative overflow-hidden"
       style={{
         "background-image": "url('/images/starry-sky.svg')",
