@@ -1,22 +1,23 @@
+import { createServerCookie } from "@solid-primitives/cookies";
 import { A, action, redirect } from "@solidjs/router";
-import { createSignal } from "solid-js";
 import Button from "~/components/button";
 import Input, { InputVariants } from "~/components/input";
 import { ButtonVariant } from "~/utils/color";
-import Cookies from "js-cookie";
 
 const loginAction = action(async (formData: FormData) => {
   "use server";
   const userId = formData.get("userId") as string;
   const password = formData.get("password") as string;
 
+  const [_, setAuthState] = createServerCookie("authState");
+
   // Handle login logic here
   console.log("Logging in with", { userId, password });
 
   if (userId === "user" && password === "password") {
     // Mock authentication success
-    Cookies.set("authToken", "mock-token");
-    redirect("/");
+    setAuthState("loggedIn");
+    return redirect("/");
   } else {
     // Mock authentication failure
     return new Response("Invalid credentials", { status: 401 });
@@ -24,9 +25,6 @@ const loginAction = action(async (formData: FormData) => {
 });
 
 const Login = () => {
-  const [userId, setUserId] = createSignal("");
-  const [password, setPassword] = createSignal("");
-
   // Generate random stars
   const stars = Array.from({ length: 25 }, () => ({
     top: `${Math.random() * 100}%`,
@@ -120,11 +118,7 @@ const Login = () => {
             type={InputVariants.Text}
             placeholder="Username or Email"
             name="userId"
-            value={userId}
             class={() => "mt-4"}
-            onInput={(e: Event) =>
-              setUserId((e.currentTarget as HTMLInputElement).value)
-            }
             styleVariant="medium"
           />
 
@@ -132,11 +126,7 @@ const Login = () => {
             type={InputVariants.Password}
             placeholder="Password"
             name="password"
-            value={password}
             class={() => "mt-4"}
-            onInput={(e: Event) =>
-              setPassword((e.currentTarget as HTMLInputElement).value)
-            }
             styleVariant="medium"
           />
 
