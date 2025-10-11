@@ -1,11 +1,27 @@
 import { A, useNavigate } from "@solidjs/router";
+import { createSignal, Show } from "solid-js";
 import Button from "~/components/button";
 import Input, { InputVariants } from "~/components/input";
+import LoadingSpinner from "~/components/loading-spinner";
+import ErrorMessage from "~/components/error-message";
 import { ButtonVariant } from "~/utils/color";
 import { useAuthState } from "~/utils/state";
+import { api, type LoginCredentials } from "~/utils/api";
+import { ValidationUtil } from "~/utils/validation";
 
 const Login = () => {
   const navigate = useNavigate();
+  const [_, setAuthState] = useAuthState();
+
+  // Form state
+  const [userId, setUserId] = createSignal("");
+  const [password, setPassword] = createSignal("");
+  const [isLoading, setIsLoading] = createSignal(false);
+  const [error, setError] = createSignal<string | null>(null);
+  const [fieldErrors, setFieldErrors] = createSignal<{
+    userId?: string;
+    password?: string;
+  }>({});
 
   // Generate random stars
   const stars = Array.from({ length: 25 }, () => ({
@@ -21,31 +37,79 @@ const Login = () => {
     element.style.animationDuration = `${newDuration}s`;
   };
 
+  // Validation functions
+  const validateUserId = (value: string) => {
+    if (!value.trim()) {
+      return "Username or email is required";
+    }
+    return null;
+  };
+
+  const validatePassword = (value: string) => {
+    if (!value.trim()) {
+      return "Password is required";
+    }
+    return null;
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: Event) => {
+    e.preventDefault();
+    
+    // Clear previous errors
+    setError(null);
+    setFieldErrors({});
+
+    // Validate form
+    const userIdError = validateUserId(userId());
+    const passwordError = validatePassword(password());
+
+    if (userIdError || passwordError) {
+      setFieldErrors({
+        userId: userIdError || undefined,
+        password: passwordError || undefined,
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const credentials: LoginCredentials = {
+        userId: userId().trim(),
+        password: password(),
+      };
+
+      const result = await api.login(credentials);
+
+      if (result.success) {
+        // Store tokens in auth state (which uses cookies)
+        api.setAuthTokens({
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+        });
+        
+        // Redirect to create workspace page
+        navigate("/create-workspace");
+      } else {
+        setError(result.message || "Login failed. Please try again.");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle retry
+  const handleRetry = () => {
+    setError(null);
+    handleSubmit(new Event('submit'));
+  };
+
   return (
     <form
-      on:submit={(e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target as HTMLFormElement);
-        const userId = formData.get("userId") as string;
-        const password = formData.get("password") as string;
-
-        const [_, setAuthState] = useAuthState();
-
-        // Handle login logic here
-        console.log("Logging in with", { userId, password });
-
-        if (userId === "user" && password === "password") {
-          // Mock authentication success
-          setAuthState({
-            type: "LoggedIn",
-            accessToken: "something",
-            refreshToken: "something-else",
-          });
-          navigate("/");
-        } else {
-          // Mock authentication failure
-        }
-      }}
+      onSubmit={handleSubmit}
       class="min-h-screen w-full bg-secondary flex items-center justify-center p-4 relative overflow-hidden"
       style={{
         "background-image": "url('/images/starry-sky.svg')",
@@ -54,7 +118,7 @@ const Login = () => {
       }}
     >
       {/* Scattered stars */}
-      {stars.map((star, i) => (
+      {stars.map((star) => (
         <div
           ref={(el) => {
             el.addEventListener("animationiteration", () =>
@@ -115,23 +179,65 @@ const Login = () => {
           </div>
         </div>
 
+        {/* Error Message */}
+        <Show when={error()}>
+          <ErrorMessage
+            message={error()!}
+            dismissible={true}
+            showRetry={true}
+            onRetry={handleRetry}
+            onDismiss={() => setError(null)}
+            class="mb-6"
+          />
+        </Show>
+
         {/* Form */}
         <div>
-          <Input
-            type={InputVariants.Text}
-            placeholder="Username or Email"
-            name="userId"
-            class={() => "mt-4"}
-            styleVariant="medium"
-          />
+          <div>
+            <Input
+              type={InputVariants.Text}
+              placeholder="Username or Email"
+              name="userId"
+              value={userId()}
+              onInput={(e) => {
+                const target = e.currentTarget as HTMLInputElement;
+                setUserId(target.value);
+                // Clear field error when user starts typing
+                if (fieldErrors().userId) {
+                  setFieldErrors(prev => ({ ...prev, userId: undefined }));
+                }
+              }}
+              class={() => "mt-4"}
+              styleVariant="medium"
+              disabled={isLoading()}
+            />
+            <Show when={fieldErrors().userId}>
+              <p class="text-error text-sm mt-1 ml-1">{fieldErrors().userId}</p>
+            </Show>
+          </div>
 
-          <Input
-            type={InputVariants.Password}
-            placeholder="Password"
-            name="password"
-            class={() => "mt-4"}
-            styleVariant="medium"
-          />
+          <div>
+            <Input
+              type={InputVariants.Password}
+              placeholder="Password"
+              name="password"
+              value={password()}
+              onInput={(e) => {
+                const target = e.currentTarget as HTMLInputElement;
+                setPassword(target.value);
+                // Clear field error when user starts typing
+                if (fieldErrors().password) {
+                  setFieldErrors(prev => ({ ...prev, password: undefined }));
+                }
+              }}
+              class={() => "mt-4"}
+              styleVariant="medium"
+              disabled={isLoading()}
+            />
+            <Show when={fieldErrors().password}>
+              <p class="text-error text-sm mt-1 ml-1">{fieldErrors().password}</p>
+            </Show>
+          </div>
 
           {/* Login Button */}
           <div class="pt-8 w-full flex flex-row items-center justify-between">
@@ -143,10 +249,14 @@ const Login = () => {
             </A>
             <Button
               variant={ButtonVariant.Contained}
-              class="py-4 text-base font-semibold px-xxl flex-end transition-all duration-200"
+              class="py-4 text-base font-semibold px-xxl flex-end transition-all duration-200 flex items-center gap-2"
               type="submit"
+              disabled={isLoading()}
             >
-              Login
+              <Show when={isLoading()}>
+                <LoadingSpinner size="sm" />
+              </Show>
+              {isLoading() ? "Logging in..." : "Login"}
             </Button>
           </div>
         </div>
