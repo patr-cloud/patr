@@ -3,13 +3,9 @@ use axum::{
 	routing::{MethodFilter, MethodRouter},
 };
 use axum_extra::routing::TypedPath;
-use models::{
-	utils::{AppAuthentication, BearerToken, HasHeader, NoAuthentication},
-};
+use models::utils::{AppAuthentication, BearerToken, HasHeader, NoAuthentication};
 use preprocess::Preprocessable;
-use tower::{
-	ServiceBuilder,
-};
+use tower::ServiceBuilder;
 
 use super::layers::{
 	AuthenticationLayer,
@@ -39,7 +35,12 @@ where
 	/// Mount an API endpoint directly along with the required request parser,
 	/// Rate limiter using tower layers.
 	#[track_caller]
-	fn mount_endpoint<E, H>(self, handler: H, state: &AppState) -> Self
+	fn mount_endpoint<E, H>(
+		self,
+		handler: H,
+		state: &AppState,
+		allowed_client_type: ClientType,
+	) -> Self
 	where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
 		E: ApiEndpoint<Authenticator = NoAuthentication> + Sync,
@@ -48,7 +49,12 @@ where
 	/// Mount an API endpoint directly along with the required request parser,
 	/// Rate limiter, Audit logger and Auth middlewares, using tower layers.
 	#[track_caller]
-	fn mount_auth_endpoint<E, H>(self, handler: H, state: &AppState) -> Self
+	fn mount_auth_endpoint<E, H>(
+		self,
+		handler: H,
+		state: &AppState,
+		allowed_client_type: ClientType,
+	) -> Self
 	where
 		for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send + Sync + 'static,
 		E: ApiEndpoint<Authenticator = AppAuthentication<E>> + Sync,
@@ -61,14 +67,25 @@ where
 	S: Clone + Send + Sync + 'static,
 {
 	#[instrument(skip_all)]
-	fn mount_endpoint<E, H>(self, handler: H, state: &AppState) -> Self
+	fn mount_endpoint<E, H>(
+		self,
+		handler: H,
+		state: &AppState,
+		allowed_client_type: ClientType,
+	) -> Self
 	where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
 		E: ApiEndpoint<Authenticator = NoAuthentication> + Sync,
 		<E::RequestBody as Preprocessable>::Processed: Send,
 	{
 		// Setup the layers for the backend
-		if <E as ApiEndpoint>::API_ALLOWED || cfg!(debug_assertions) {
+
+		if allowed_client_type == ClientType::ApiToken && !<E as ApiEndpoint>::API_ALLOWED {
+			// If the client type is API token and the endpoint is not allowed for API
+			// tokens, skip mounting the endpoint
+			self
+		} else {
+			// For all other cases, mount the endpoint
 			self.route(
 				<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH,
 				MethodRouter::<S>::new()
@@ -87,13 +104,16 @@ where
 							.layer(EndpointLayer::new(handler)),
 					),
 			)
-		} else {
-			self
 		}
 	}
 
 	#[instrument(skip_all)]
-	fn mount_auth_endpoint<E, H>(self, handler: H, state: &AppState) -> Self
+	fn mount_auth_endpoint<E, H>(
+		self,
+		handler: H,
+		state: &AppState,
+		allowed_client_type: ClientType,
+	) -> Self
 	where
 		for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send + Sync + 'static,
 		E: ApiEndpoint<Authenticator = AppAuthentication<E>> + Sync,
@@ -101,7 +121,12 @@ where
 		E::RequestHeaders: HasHeader<BearerToken>,
 	{
 		// Setup the layers for the backend
-		if <E as ApiEndpoint>::API_ALLOWED || cfg!(debug_assertions) {
+
+		if allowed_client_type == ClientType::ApiToken && !<E as ApiEndpoint>::API_ALLOWED {
+			// If the client type is API token and the endpoint is not allowed for API
+			// tokens, skip mounting the endpoint
+			self
+		} else {
 			self.route(
 				<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH,
 				MethodRouter::<S>::new()
@@ -123,8 +148,6 @@ where
 							.layer(AuthEndpointLayer::new(handler)),
 					),
 			)
-		} else {
-			self
 		}
 	}
 }
