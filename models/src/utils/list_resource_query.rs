@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, fmt::Debug};
+use std::fmt::Debug;
 
 use headers::{Error, Header};
 use http::{HeaderName, HeaderValue};
@@ -43,14 +43,14 @@ impl ListableResource for () {
 /// 14 (assuming the items are zero-indexed). This means that the offset is the
 /// index of the first item that should be returned and the count is the number
 /// of items that should be returned.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ListResourceQuery<R, Q = ()>
 where
 	R: ListableResource,
 {
 	/// Sort order of the items.
-	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-	pub sort: BTreeMap<R::FieldList, SortOrder>,
+	#[serde(flatten, default = "None", skip_serializing_if = "Option::is_none")]
+	pub sort: Option<SortDetails<R>>,
 	/// Search query that can be used to filter items in the list based on the
 	/// fields that are available in the resource.
 	#[serde(default, skip_serializing_if = "IsEmpty::is_empty")]
@@ -91,7 +91,7 @@ where
 	fn default() -> Self {
 		Self {
 			search: T::SearchStruct::default(),
-			sort: BTreeMap::new(),
+			sort: None,
 			additional_query: Q::default(),
 			count: ListResourceQuery::DEFAULT_PAGE_SIZE,
 			page: 0,
@@ -105,6 +105,23 @@ where
 	Q: AddTuple<TotalCountHeader>,
 {
 	type RequiredResponseHeaders = <Q as AddTuple<TotalCountHeader>>::ResultantTuple;
+}
+
+/// This struct represents the sorting details for a resource. It contains the
+/// field that should be used to sort the resource and the order in which the
+/// resource should be sorted.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SortDetails<R>
+where
+	R: ListableResource,
+{
+	/// The field that should be used to sort the resource. This is typically
+	/// an enum that contains the fields that can be used to sort the resource.
+	pub sort_by: R::FieldList,
+	/// The order in which the resource should be sorted. This can be either
+	/// ascending or descending.
+	pub sort_order: SortOrder,
 }
 
 /// This struct represents a search query for a resource. It contains the

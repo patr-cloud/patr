@@ -4,18 +4,18 @@ use models::api::workspace::domain::*;
 use crate::prelude::*;
 
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState) -> Router {
+pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
 	Router::new()
-		.mount_endpoint(is_domain_personal, state)
-		.mount_auth_endpoint(add_dns_record, state)
-		.mount_auth_endpoint(add_domain_to_workspace, state)
-		.mount_auth_endpoint(delete_dns_record, state)
-		.mount_auth_endpoint(delete_domain_in_workspace, state)
-		.mount_auth_endpoint(get_doamin_dns_record, state)
-		.mount_auth_endpoint(get_domain_info_in_workspace, state)
-		.mount_auth_endpoint(get_domains_for_workspace, state)
-		.mount_auth_endpoint(update_domain_dns_record, state)
-		.mount_auth_endpoint(verify_domain_in_workspace, state)
+		.mount_endpoint(is_domain_personal, state, allowed_client_type)
+		.mount_auth_endpoint(add_dns_record, state, allowed_client_type)
+		.mount_auth_endpoint(add_domain_to_workspace, state, allowed_client_type)
+		.mount_auth_endpoint(delete_dns_record, state, allowed_client_type)
+		.mount_auth_endpoint(delete_domain_in_workspace, state, allowed_client_type)
+		.mount_auth_endpoint(get_doamin_dns_record, state, allowed_client_type)
+		.mount_auth_endpoint(get_domain_info_in_workspace, state, allowed_client_type)
+		.mount_auth_endpoint(get_domains_for_workspace, state, allowed_client_type)
+		.mount_auth_endpoint(update_domain_dns_record, state, allowed_client_type)
+		.mount_auth_endpoint(verify_domain_in_workspace, state, allowed_client_type)
 }
 
 async fn is_domain_personal(

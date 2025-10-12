@@ -1,63 +1,58 @@
-use axum::Router;
-use frontend::utils::AppType;
-use leptos::prelude::*;
-use leptos_axum::LeptosRoutes;
-use tokio::fs;
-use tower_http::services::ServeFile;
+use axum::{Router, body::Body, http::Request, response::Response, routing::get};
 
-use crate::prelude::*;
+use crate::{prelude::*, routes::api_patr_cloud};
 
 /// Sets up the routes for the web dashboard
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
-	let config = get_configuration(
-		if option_env!("LEPTOS_OUTPUT_NAME").is_some() {
-			None
-		} else {
-			Some(concat!(env!("CARGO_MANIFEST_DIR"), "/../Cargo.toml"))
-		},
-	)
-	.expect("failed to get configuration");
-
-	read_files(&config.leptos_options.site_root)
-		.await
-		.into_iter()
-		.fold(Router::new(), |router, file| {
-			router.route_service(
-				file.trim_start_matches(config.leptos_options.site_root.as_ref()),
-				ServeFile::new(file.as_str()),
-			)
-		})
-		.leptos_routes(
-			&config.leptos_options,
-			{
-				let leptos_options = config.leptos_options.clone();
-				leptos_axum::generate_route_list(move || {
-					frontend::render(leptos_options.clone(), AppType::Managed)
-				})
-			},
-			{
-				let leptos_options = config.leptos_options.clone();
-				move || frontend::render(leptos_options.clone(), AppType::Managed)
-			},
-		)
-		.with_state(config.leptos_options)
+	Router::new()
 		.with_state(state.clone())
+		.nest(
+			"/api",
+			api_patr_cloud::setup_routes(state, ClientType::WebDashboard).await,
+		)
+		.route("/{*any}", get(proxy))
 }
 
-/// Reads all files in a directory and its subdirectories
-async fn read_files(path: &str) -> Vec<String> {
-	let mut files = Vec::new();
-	let mut read_dir = fs::read_dir(path)
+#[axum::debug_handler]
+async fn proxy(req: Request<Body>) -> Response {
+	let Ok(response) = reqwest::Client::new()
+		.get(format!(
+			"http://localhost:3030{}",
+			req.uri()
+				.path_and_query()
+				.map(|v| v.as_str())
+				.unwrap_or_default()
+		))
+		.headers(req.headers().clone())
+		.body(reqwest::Body::wrap_stream(
+			req.into_body().into_data_stream(),
+		))
+		.send()
 		.await
-		.unwrap_or_else(|_| panic!("failed to read directory: `{path}`"));
-	while let Some(entry) = read_dir.next_entry().await.expect("failed to read entry") {
-		let path = entry.path();
-		if path.is_dir() {
-			files.extend(Box::pin(read_files(path.to_str().unwrap())).await);
-		} else {
-			files.push(path.to_str().unwrap().to_string());
-		}
+		.inspect_err(|err| {
+			error!("Error proxying request to frontend: {}", err);
+		})
+	else {
+		return Response::builder()
+			.status(502)
+			.body(Body::from("Bad Gateway"))
+			.unwrap();
+	};
+
+	let mut builder = Response::builder().status(response.status());
+
+	for (key, value) in response.headers() {
+		builder = builder.header(key, value);
 	}
-	files
+
+	let Ok(body) = response.bytes().await.inspect_err(|err| {
+		error!("Error reading response body from frontend: {}", err);
+	}) else {
+		return Response::builder()
+			.status(502)
+			.body(Body::from("Bad Gateway"))
+			.unwrap();
+	};
+	builder.body(Body::from(body)).unwrap()
 }

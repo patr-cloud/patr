@@ -59,7 +59,7 @@ pub mod prelude {
 			UnprocessedAppRequest,
 		},
 		redis,
-		utils::{RouterExt, TimeoutExt, constants},
+		utils::{RouterExt, TimeoutExt, constants, layers::ClientType},
 	};
 
 	/// The type of the database connection. A mutable reference to this should

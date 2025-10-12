@@ -45,10 +45,10 @@ use self::{authorize::*, introspect::*, revoke::*, token::*};
 
 /// Sets up the oauth routes
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState) -> Router {
+pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
 	Router::new()
-		.mount_endpoint(authorize, state)
-		.mount_endpoint(introspect, state)
-		.mount_endpoint(revoke, state)
-		.mount_endpoint(token, state)
+		.mount_endpoint(authorize, state, allowed_client_type)
+		.mount_endpoint(introspect, state, allowed_client_type)
+		.mount_endpoint(revoke, state, allowed_client_type)
+		.mount_endpoint(token, state, allowed_client_type)
 }

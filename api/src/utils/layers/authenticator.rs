@@ -33,7 +33,7 @@ use crate::{
 /// and some are only accessible by third party applications. For example, you
 /// cannot change your password, or create a new user using the API token, but
 /// you can do so using the web dashboard.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ClientType {
 	/// The request is authenticated using a JWT from the web dashboard
 	WebDashboard,

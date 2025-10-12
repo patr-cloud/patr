@@ -32,18 +32,18 @@ use self::{
 
 /// Sets up the auth routes
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState) -> Router {
+pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
 	Router::new()
-		.merge(oauth::setup_routes(state).await)
-		.mount_endpoint(login, state)
-		.mount_auth_endpoint(logout, state)
-		.mount_endpoint(create_account, state)
-		.mount_endpoint(renew_access_token, state)
-		.mount_endpoint(forgot_password, state)
-		.mount_endpoint(is_email_valid, state)
-		.mount_endpoint(is_username_valid, state)
-		.mount_endpoint(complete_sign_up, state)
-		.mount_endpoint(list_recovery_options, state)
-		.mount_endpoint(resend_otp, state)
-		.mount_endpoint(reset_password, state)
+		.merge(oauth::setup_routes(state, allowed_client_type).await)
+		.mount_endpoint(login, state, allowed_client_type)
+		.mount_auth_endpoint(logout, state, allowed_client_type)
+		.mount_endpoint(create_account, state, allowed_client_type)
+		.mount_endpoint(renew_access_token, state, allowed_client_type)
+		.mount_endpoint(forgot_password, state, allowed_client_type)
+		.mount_endpoint(is_email_valid, state, allowed_client_type)
+		.mount_endpoint(is_username_valid, state, allowed_client_type)
+		.mount_endpoint(complete_sign_up, state, allowed_client_type)
+		.mount_endpoint(list_recovery_options, state, allowed_client_type)
+		.mount_endpoint(resend_otp, state, allowed_client_type)
+		.mount_endpoint(reset_password, state, allowed_client_type)
 }
