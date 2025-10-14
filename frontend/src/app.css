@@ -61,11 +61,12 @@
   --shadow-light: 5px 0px 10px #00000040;
 
   /* Border Radius */
-  --radius-sm: 10px;
-  --radius-DEFAULT: 14px;
-  --radius-md: 14px;
-  --radius-lg: 18px;
-  --radius-xl: 20px;
+  --radius-xs: 0.25rem; /* 4px */
+  --radius-sm: 0.625rem; /* 10px */
+  --radius-DEFAULT: 0.875rem; /* 14px */
+  --radius-md: 0.875rem; /* 14px */
+  --radius-lg: 1.125rem; /* 18px */
+  --radius-xl: 1.25rem; /* 20px */
 
   /* Spacing */
   --spacing-xxs: 6px;
@@ -90,6 +91,10 @@
   --flex-10: 0 1 83.333%;
   --flex-11: 0 1 91.6666%;
   --flex-12: 0 1 100%;
+}
+
+html, body {
+  height: 100%;
 }
 
 * {
@@ -119,6 +124,15 @@ input:disabled,
 textarea:disabled,
 select:disabled {
   @apply bg-secondary-medium text-disabled cursor-not-allowed;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  background-color: var(--color-primary);
+  border-radius: 50%;
+  padding: 4px;
+  cursor: pointer;
 }
 
 .btn {

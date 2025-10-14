@@ -1,7 +1,7 @@
 import { A } from "@solidjs/router";
 import { createSignal } from "solid-js";
 import Button from "~/components/button";
-import Input, { InputVariants } from "~/components/input";
+import Input, { InputType } from "~/components/input";
 import { ButtonVariant } from "~/utils/color";
 
 const ForgotPassword = () => {
@@ -104,7 +104,7 @@ const ForgotPassword = () => {
                   Email Address
                 </label>
                 <Input
-                  type={InputVariants.Email}
+                  type={InputType.Email}
                   placeholder="Enter your email"
                   value={email}
                   onInput={(e: Event) =>

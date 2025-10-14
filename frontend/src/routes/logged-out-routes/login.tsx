@@ -1,6 +1,6 @@
 import { A, useNavigate } from "@solidjs/router";
 import Button from "~/components/button";
-import Input, { InputVariants } from "~/components/input";
+import Input, { InputType } from "~/components/input";
 import { ButtonVariant } from "~/utils/color";
 import { useAuthState } from "~/utils/state";
 
@@ -118,7 +118,7 @@ const Login = () => {
         {/* Form */}
         <div>
           <Input
-            type={InputVariants.Text}
+            type={InputType.Text}
             placeholder="Username or Email"
             name="userId"
             class={() => "mt-4"}
@@ -126,7 +126,7 @@ const Login = () => {
           />
 
           <Input
-            type={InputVariants.Password}
+            type={InputType.Password}
             placeholder="Password"
             name="password"
             class={() => "mt-4"}

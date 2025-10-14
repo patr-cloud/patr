@@ -1,6 +1,7 @@
 import { ParentProps, Accessor, mergeProps } from "solid-js";
 import { Color, ButtonVariantEnum, ButtonVariant } from "~/utils/color";
-import { PropWithChildren } from "~/utils/helperInterfaces";
+import get from "~/utils/func";
+import { MaybeAccessor } from "~/utils/types";
 
 interface ButtonProps {
   /**
@@ -10,7 +11,7 @@ interface ButtonProps {
   /**
    * Additional Classes for the button.
    */
-  class?: Accessor<string | undefined> | string | undefined;
+  class?: MaybeAccessor<string | undefined>;
   /**
    * The color of the button, defaults to Color.Primary.
    */
@@ -33,8 +34,7 @@ const Button = (rawProps: ParentProps<ButtonProps>) => {
   const props = mergeProps(
     {
       disabled: false,
-      class: () => "",
-      color: Color.Primary,
+      class: "",
       variant: ButtonVariant.Plain,
     },
     rawProps
@@ -54,9 +54,9 @@ const Button = (rawProps: ParentProps<ButtonProps>) => {
       }
     };
 
-    const classValue =
-      typeof props.class === "function" ? props.class() : props.class;
-    return `flex items-center ${variant()} justify-center ${classValue ?? ""}`;
+    return `flex items-center ${variant()} justify-center ${
+      get(props.class) ?? ""
+    }`;
   };
 
   return (
