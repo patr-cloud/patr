@@ -52,7 +52,13 @@ pub struct IaacDeployment {
 	pub ports: IaacDeploymentPorts,
 	/// The environment variables that the deployment has. This is a map of
 	/// environment variable names to their values.
-	#[serde(default, alias = "env", alias = "envVars")]
+	#[serde(
+		default,
+		alias = "env",
+		alias = "envs",
+		alias = "envVars",
+		skip_serializing_if = "IaacDeploymentEnvVars::is_empty"
+	)]
 	pub environment_variables: IaacDeploymentEnvVars,
 	/// The startup probe for the deployment. This is used to check if the
 	/// deployment is ready to serve traffic.
@@ -64,7 +70,12 @@ pub struct IaacDeployment {
 	pub liveness_probe: Option<DeploymentProbe>,
 	/// The config mounts for the deployment. This is a map of config names to
 	/// the paths where the configs should be mounted in the deployment.
-	#[serde(alias = "configs", default, skip_serializing_if = "BTreeMap::is_empty")]
+	#[serde(
+		alias = "configs",
+		alias = "config",
+		default,
+		skip_serializing_if = "BTreeMap::is_empty"
+	)]
 	pub config_mounts: BTreeMap<String, String>,
 }
 
@@ -524,6 +535,12 @@ impl IaacDeploymentEnvVars {
 	/// Get the inner map of the IaacDeploymentEnvVars.
 	pub fn into_inner(self) -> BTreeMap<String, MaybeExternallySourced<EnvironmentVariableValue>> {
 		self.0
+	}
+
+	/// Check if the IaacDeploymentEnvVars is empty. Returns `true` if the
+	/// inner map is empty, `false` otherwise.
+	pub fn is_empty(&self) -> bool {
+		self.0.is_empty()
 	}
 }
 

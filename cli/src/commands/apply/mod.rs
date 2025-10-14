@@ -1,12 +1,17 @@
+use std::collections::BTreeMap;
+
 use clap::Args as ClapArgs;
 use inquire::Select;
 use models::{
-	api::{user::*, workspace::deployment::*},
+	api::{user::*, workspace::deployment::ExposedPortType},
 	iaac::*,
 };
 use tokio::fs;
 
 use crate::prelude::*;
+
+/// The module to apply a deployment configuration file to the current workspace
+mod deployment;
 
 #[derive(Debug, Clone, ClapArgs)]
 pub struct Args {
@@ -81,30 +86,19 @@ pub async fn execute(
 		.await
 		.map_err(|err| AppError::IaacParseError(err.to_string()))?;
 
-	let resources = serde_yaml2::from_str::<OneOrMore<IaacResource>>(&file)
-		.map_err(|err| AppError::IaacParseError(err.to_string()))?
-		.into_vec()
-		.deduplicated()?;
+	let deserializer = &mut serde_yaml2::de::YamlDeserializer::from_str(&file).unwrap();
+
+	let resources = vec![
+		serde_path_to_error::deserialize::<_, IaacResource>(deserializer)
+			.map_err(|err| AppError::IaacParseError(format!("{} at `{}`", err, err.path())))?,
+	]
+	.deduplicated()?;
 
 	for resource in resources {
 		// Apply the resource
 		match resource.data {
 			IaacResourceData::Deployment(deployment) => {
-				let request = deployment
-					.resolve_value(workspace_id, token.clone())
-					.await?;
-				make_request(
-					ApiRequest::<CreateDeploymentRequest>::builder()
-						.path(CreateDeploymentPath { workspace_id })
-						.headers(CreateDeploymentRequestHeaders {
-							authorization: token.clone(),
-							user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
-						})
-						.query(())
-						.body(request)
-						.build(),
-				)
-				.await?;
+				deployment::apply(workspace_id, token.clone(), deployment).await?;
 			}
 		}
 	}
@@ -114,4 +108,33 @@ pub async fn execute(
 		.json(ApiSuccessResponseBody::empty().to_json_value())
 		.build()
 		.into_result()
+}
+
+#[test]
+fn test() {
+	println!(
+		"{}",
+		serde_yaml2::to_string(&OneOrMore::One(IaacResource {
+			depends_on: None,
+			data: IaacResourceData::Deployment(IaacDeployment {
+				id: None,
+				name: MaybeExternallySourced::Value("my-deployment".to_string()),
+				image: MaybeExternallySourced::Value("grafana/grafana-oss:latest".parse().unwrap()),
+				runner: MaybeExternallySourced::Value("Test runner".to_string()),
+				machine_type: MaybeExternallySourced::Value("2vCPU 4GB".parse().unwrap()),
+				deploy_on_push: MaybeExternallySourced::Value(true),
+				ports: IaacDeploymentPorts(BTreeMap::from([(
+					StringifiedU16::new(3000),
+					ExposedPortType::Http
+				)])),
+				min_horizontal_scale: MaybeExternallySourced::Value(1),
+				max_horizontal_scale: MaybeExternallySourced::Value(1),
+				environment_variables: IaacDeploymentEnvVars::default(),
+				startup_probe: None,
+				liveness_probe: None,
+				config_mounts: BTreeMap::new(),
+			}),
+		}))
+		.unwrap()
+	);
 }

@@ -12,4 +12,7 @@ pub enum IaacError {
 	/// A duplicate resource was found in the Iaac file.
 	#[error("duplicate resource found: {0}")]
 	DuplicateResource(String),
+	/// A resource was not found in the Iaac file.
+	#[error("resource not found: {0}")]
+	ResourceNotFound(String),
 }
