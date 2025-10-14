@@ -56,15 +56,29 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		.into_iter()
 		.map(|field| {
 			let Field { ident, ty, .. } = field;
-			quote::quote! {
-				#ident: ::headers::HeaderMapExt::typed_get::<#ty>(map)
-					.ok_or_else(|| {
-						tracing::debug!(
-							"Failed to parse header `{}`",
-							<#ty as ::headers::Header>::name().as_str()
-						);
-						::headers::Error::invalid()
-					})?,
+
+			// Check if the type is OptionalCookieValue to handle it specially
+			let ty_string = quote::quote!(#ty).to_string();
+			if ty_string.contains("OptionalCookieValue") {
+				// For OptionalCookieValue, provide a default None value if header is missing
+				quote::quote! {
+					#ident: ::headers::HeaderMapExt::typed_get::<#ty>(map)
+						.unwrap_or_else(|| {
+							// Create empty OptionalCookieValue when header is missing
+							models::utils::OptionalCookieValue(None)
+						}),
+				}
+			} else {
+				quote::quote! {
+					#ident: ::headers::HeaderMapExt::typed_get::<#ty>(map)
+						.ok_or_else(|| {
+							tracing::debug!(
+								"Failed to parse header `{}`",
+								<#ty as ::headers::Header>::name().as_str()
+							);
+							::headers::Error::invalid()
+						})?,
+				}
 			}
 		})
 		.collect::<TokenStream2>();

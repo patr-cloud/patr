@@ -1,6 +1,11 @@
+use std::cmp::Eq;
+
 use serde::{Deserialize, Serialize};
 
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	utils::{Location, OptionalCookieValue},
+};
 
 /// The type of request that the third-party app is making.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
@@ -35,21 +40,34 @@ macros::declare_api_endpoint!(
 	/// refresh token.
 	OAuthAuthorize,
 	GET "/auth/oauth/authorize",
+	request_headers = {
+		/// The cookie header value containing session cookies (optional)
+		pub cookie: OptionalCookieValue,
+	},
 	query = {
+		#[serde(rename = "response_type")]
 		/// The request type that the third-party app is making
 		pub response_type: OAuthAuthorizeResponseType,
+		#[serde(rename = "client_id")]
 		/// The client ID of the third-party app
 		pub client_id: String,
 		/// The redirect URI of the third-party app
-		#[serde(default, skip_serializing_if = "Option::is_none")]
+		#[serde(default, skip_serializing_if = "Option::is_none", rename = "redirect_uri")]
 		pub redirect_uri: Option<String>,
 		/// The scopes requested by the third-party app
 		pub scope: String,
 		/// The state of the request, if any
 		pub state: Option<String>,
+		#[serde(rename = "code_challenge")]
 		/// The hashed value of a code challenge (as per PKCE)
 		pub code_challenge: String,
+		#[serde(rename = "code_challenge_method")]
 		/// The method used to hash the code challenge
 		pub code_challenge_method: CodeChallengeHashMethod,
+	},
+	response_headers = {
+		/// The URL to redirect the user to
+		pub redirect_url: Location,
 	}
+
 );

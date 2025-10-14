@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 use headers::{
 	AcceptRanges,
@@ -35,7 +35,6 @@ use headers::{
 	IfRange,
 	IfUnmodifiedSince,
 	LastModified,
-	Location,
 	Origin,
 	Pragma,
 	ProxyAuthorization,
@@ -58,6 +57,7 @@ use headers::{
 };
 use http::{HeaderMap, HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 use super::Uuid;
 
@@ -134,6 +134,121 @@ impl<'de> Deserialize<'de> for BearerToken {
 			.map_err(serde::de::Error::custom)
 			.map(|Authorization(val)| val)
 			.map(Self)
+	}
+}
+
+/// This struct represents the Cookie header value as a string.
+///
+/// It allows extracting and parsing cookies from the Cookie header.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Default)]
+pub struct CookieValue(pub String);
+
+impl CookieValue {
+	/// Get a cookie value by name from the cookie string
+	/// Uses the cookie crate to properly parse cookie values including URL
+	/// encoding
+	pub fn get(&self, name: &str) -> Option<String> {
+		// Split the cookie header by semicolons as each cookie is separated that way
+		for cookie_str in self.0.split(';') {
+			let cookie_str = cookie_str.trim();
+			// Try to parse each cookie
+			if let Ok(cookie) = cookie::Cookie::parse(cookie_str) {
+				if cookie.name() == name {
+					return Some(cookie.value().to_string());
+				}
+			}
+		}
+		None
+	}
+}
+
+impl Header for CookieValue {
+	fn name() -> &'static HeaderName {
+		&http::header::COOKIE
+	}
+
+	fn decode<'i, I>(values: &mut I) -> Result<Self, Error>
+	where
+		Self: Sized,
+		I: Iterator<Item = &'i HeaderValue>,
+	{
+		// If no cookie header is present, return an empty CookieValue instead of an
+		// error
+		let Some(value) = values.next() else {
+			return Ok(Self(String::new()));
+		};
+
+		let cookie_str = value
+			.to_str()
+			.map_err(|_| headers::Error::invalid())?
+			.to_string();
+
+		Ok(Self(cookie_str))
+	}
+
+	fn encode<E>(&self, values: &mut E)
+	where
+		E: Extend<HeaderValue>,
+	{
+		if let Ok(value) = HeaderValue::from_str(&self.0) {
+			values.extend(std::iter::once(value));
+		}
+	}
+}
+
+/// Wrapper for optional cookie headers
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OptionalCookieValue(pub Option<CookieValue>);
+
+impl OptionalCookieValue {
+	/// Get a cookie value by name from the cookie string if present
+	pub fn get(&self, name: &str) -> Option<String> {
+		self.0.as_ref()?.get(name)
+	}
+	
+	/// Check if cookie header is present
+	pub fn is_some(&self) -> bool {
+		self.0.is_some()
+	}
+	
+	/// Check if cookie header is absent
+	pub fn is_none(&self) -> bool {
+		self.0.is_none()
+	}
+}
+
+impl Header for OptionalCookieValue {
+	fn name() -> &'static HeaderName {
+		&http::header::COOKIE
+	}
+
+	fn decode<'i, I>(values: &mut I) -> Result<Self, Error>
+	where
+		Self: Sized,
+		I: Iterator<Item = &'i HeaderValue>,
+	{
+		// If no cookie header is present, return None
+		let Some(value) = values.next() else {
+			return Ok(Self(None));
+		};
+
+		let cookie_str = value
+			.to_str()
+			.map_err(|_| headers::Error::invalid())?
+			.to_string();
+
+		Ok(Self(Some(CookieValue(cookie_str))))
+	}
+
+	fn encode<E>(&self, values: &mut E)
+	where
+		E: Extend<HeaderValue>,
+	{
+		if let Some(cookie_value) = &self.0 {
+			if let Ok(value) = HeaderValue::from_str(&cookie_value.0) {
+				values.extend(std::iter::once(value));
+			}
+		}
 	}
 }
 
@@ -421,7 +536,6 @@ impl_has_headers_for_standard_header![
 	IfRange,
 	IfUnmodifiedSince,
 	LastModified,
-	Location,
 	Origin,
 	Pragma,
 	Range,
@@ -501,4 +615,75 @@ pub trait RequiresRequestHeaders {
 
 impl RequiresRequestHeaders for () {
 	type RequiredRequestHeaders = ();
+}
+
+/// Location header, defined in
+/// [RFC7231](https://datatracker.ietf.org/doc/html/rfc7231#section-7.1.2)
+///
+/// The Location header field is used in some responses to refer to a
+/// specific resource in relation to the response.  The type of
+/// relationship is defined by the combination of request method and
+/// status code semantics.
+///
+/// # ABNF
+///
+///
+/// Location = URI-reference
+///
+///
+/// # Example values
+/// * /People.html#tim
+/// * `http://www.example.net/index.html`
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Location(HeaderValue);
+
+impl Header for Location {
+	fn name() -> &'static HeaderName {
+		headers::Location::name()
+	}
+
+	fn decode<'i, I>(values: &mut I) -> Result<Self, Error>
+	where
+		Self: Sized,
+		I: Iterator<Item = &'i HeaderValue>,
+	{
+		let value = values.next().ok_or_else(headers::Error::invalid)?;
+
+		let url = value
+			.to_str()
+			.map_err(|_| headers::Error::invalid())
+			.map(Url::parse)
+			.map_err(|_| headers::Error::invalid())?
+			.map_err(|_| headers::Error::invalid())?;
+
+		Ok(Self(
+			HeaderValue::from_str(url.as_str()).map_err(|_| headers::Error::invalid())?,
+		))
+	}
+
+	fn encode<E>(&self, values: &mut E)
+	where
+		E: Extend<HeaderValue>,
+	{
+		values.extend(std::iter::once(self.0.clone()));
+	}
+}
+
+impl FromStr for Location {
+	type Err = headers::Error;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		let url = Url::parse(s).map_err(|_| headers::Error::invalid())?;
+
+		Ok(Self(
+			HeaderValue::from_str(url.as_str()).map_err(|_| headers::Error::invalid())?,
+		))
+	}
+}
+
+impl Display for Location {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.0.to_str().map_err(|_| std::fmt::Error)?)
+	}
 }

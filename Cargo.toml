@@ -27,6 +27,7 @@ base32                         = { default-features = false, version = "0.5" }
 base64                         = { default-features = false, version = "0.22" }
 bollard                        = { default-features = false, version = "0.19" }
 build-print                    = { default-features = false, version = "1" }
+chrono                         = { default-features = false, version = "0.4" }
 clap                           = { default-features = false, version = "4" }
 cloudflare                     = { default-features = false, version = "0.14" }
 codee                          = { default-features = false, version = "0.3" }
@@ -113,7 +114,7 @@ tracing-subscriber             = { default-features = false, version = "0.3" }
 typed-builder                  = { default-features = false, version = "0.21" }
 url                            = { default-features = false, version = "2" }
 uuid                           = { default-features = false, version = "1" }
-wasm-bindgen                   = { default-features = false, version = "0.2" }
+wasm-bindgen                   = { default-features = false, version = "=0.2.103" }
 wasm-logger                    = { default-features = false, version = "0.2" }
 web-sys                        = { default-features = false, version = "0.3" }
 woothee                        = { default-features = false, version = "0.13" }
