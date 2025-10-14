@@ -1,7 +1,7 @@
 import { A } from "@solidjs/router";
 import { createSignal } from "solid-js";
 import Button from "~/components/button";
-import Input, { InputVariants } from "~/components/input";
+import Input, { InputType } from "~/components/input";
 import { ButtonVariant } from "~/utils/color";
 
 const SignUp = () => {
@@ -38,7 +38,7 @@ const SignUp = () => {
               Full Name
             </label>
             <Input
-              type={InputVariants.Text}
+              type={InputType.Text}
               placeholder="Enter your full name"
               value={name}
               onInput={(e: Event) =>
@@ -54,7 +54,7 @@ const SignUp = () => {
               Email Address
             </label>
             <Input
-              type={InputVariants.Email}
+              type={InputType.Email}
               placeholder="Enter your email"
               value={email}
               onInput={(e: Event) =>
@@ -70,7 +70,7 @@ const SignUp = () => {
               Password
             </label>
             <Input
-              type={InputVariants.Password}
+              type={InputType.Password}
               placeholder="Create a password"
               value={password}
               onInput={(e: Event) =>
@@ -86,7 +86,7 @@ const SignUp = () => {
               Confirm Password
             </label>
             <Input
-              type={InputVariants.Password}
+              type={InputType.Password}
               placeholder="Confirm your password"
               value={confirmPassword}
               onInput={(e: Event) =>

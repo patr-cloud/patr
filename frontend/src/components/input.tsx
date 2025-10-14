@@ -1,8 +1,10 @@
-import { Accessor, mergeProps } from "solid-js";
+import { mergeProps } from "solid-js";
 import { JSX } from "solid-js/h/jsx-runtime";
+import get from "~/utils/func";
+import { MaybeAccessor } from "~/utils/types";
 
 /// The Type of the input
-const InputVariants = {
+const InputType = {
   /**
    * The default value. A single-line text field. Line-breaks are
    * automatically removed from the input value.
@@ -102,8 +104,7 @@ const InputVariants = {
   Month: "month",
 };
 
-export type InputVariantEnum =
-  (typeof InputVariants)[keyof typeof InputVariants];
+export type InputVariantEnum = (typeof InputType)[keyof typeof InputType];
 
 interface InputProps {
   /**
@@ -111,7 +112,7 @@ interface InputProps {
    */
   name?: string;
   /**
-   * The Type of the input, defaults to InputVariants.Text
+   * The Type of the input, defaults to InputType.Text
    */
   type?: InputVariantEnum;
   /**
@@ -121,7 +122,7 @@ interface InputProps {
   /**
    * Additional Classes for the input.
    */
-  class?: Accessor<string>;
+  class?: MaybeAccessor<string>;
   /**
    * Specifies whether the form field needs to be filled in before it can
    * be submitted, doesn't use javascript.
@@ -150,16 +151,11 @@ interface InputProps {
   /**
    * Label for the input, if undefined, no label is rendered.
    */
-  label?: Accessor<string>;
+  label?: MaybeAccessor<string>;
   /**
    * The value of the input, this is used to set the initial value of the input.
    */
-  value?:
-    | Accessor<string | number | string[] | undefined>
-    | string
-    | number
-    | string[]
-    | undefined;
+  value?: MaybeAccessor<string | number | string[] | undefined>;
   /**
    * The Color Variant of the input
    */
@@ -185,7 +181,7 @@ interface InputProps {
 const Input = (rawProps: InputProps) => {
   const props = mergeProps(
     {
-      type: InputVariants.Text,
+      type: InputType.Text,
       class: () => "",
       styleVariant: "light",
     },
@@ -196,7 +192,7 @@ const Input = (rawProps: InputProps) => {
     items-center border border-secondary-medium px-sm
     transition-all duration-250
     focus-within:border-primary focus-within:shadow-md
-    bg-secondary-light ${props.class()}`;
+    bg-secondary-light ${get(props.class)}`;
 
   const paddingClass = () => {
     const hasStart = props.startIcon || props.startText;
@@ -210,7 +206,7 @@ const Input = (rawProps: InputProps) => {
 
   return (
     <div class={containerClass}>
-      {props.label && <label>{props.label()}</label>}
+      {props.label && <label>{get(props.label)}</label>}
       {props.startText && (
         <span class="text-gray-400 text-sm pl-md">{props.startText}</span>
       )}
@@ -223,7 +219,7 @@ const Input = (rawProps: InputProps) => {
         disabled={props.disabled}
         id={props.id}
         name={props.name}
-        value={typeof props.value === "function" ? props.value() : props.value}
+        value={get(props.value) ?? ""}
         type={props.type}
       />
       {props.endText && <span>{props.endText}</span>}
@@ -232,5 +228,5 @@ const Input = (rawProps: InputProps) => {
   );
 };
 
-export { InputVariants };
+export { InputType };
 export default Input;
