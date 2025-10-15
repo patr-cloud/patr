@@ -4,6 +4,7 @@ import PageContainerHead from "~/components/page/head";
 import Button from "~/components/button";
 import Input, { InputType } from "~/components/input";
 import InputLabel from "~/components/input-label";
+import InputDropdown from "~/components/input-dropdown";
 import { ButtonVariant } from "~/utils/color";
 import Table from "~/components/table";
 
@@ -16,5 +17,6 @@ export {
   Input,
   InputType,
   InputLabel,
+  InputDropdown,
   Table,
 };
