@@ -13,6 +13,7 @@ use syn::{
 	Token,
 	parse::{Parse, ParseStream},
 	parse_macro_input,
+	punctuated::Punctuated,
 };
 
 /// A helper struct to parse an API endpoint
@@ -285,6 +286,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				serde::Serialize,
 				serde::Deserialize,
 			)]
+			#[ts(optional_fields)]
 			pub struct #query_type_name #query
 
 			impl models::utils::RequiresResponseHeaders for #query_name {
@@ -327,6 +329,19 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		}
 	};
 	let request_headers_decl = if let Some(headers) = request_headers {
+		let headers = FieldsNamed {
+			brace_token: headers.brace_token,
+			named: headers
+				.named
+				.into_iter()
+				.map(|mut field| {
+					field.attrs.push(syn::parse_quote! {
+						#[ts(type = "string")]
+					});
+					field
+				})
+				.collect::<Punctuated<_, _>>(),
+		};
 		quote::quote! {
 			/// The required request headers for the #name endpoint.
 			///
@@ -337,8 +352,10 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				Debug,
 				Clone,
 				PartialEq,
+				::ts_rs::TS,
 				macros::HasHeaders,
 			)]
+			#[ts(export, rename_all = "camelCase")]
 			pub struct #request_headers_name #headers
 
 			impl models::utils::RequiresResponseHeaders for #request_headers_name {
@@ -360,6 +377,19 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		}
 	};
 	let response_headers_decl = if let Some(headers) = response_headers {
+		let headers = FieldsNamed {
+			brace_token: headers.brace_token,
+			named: headers
+				.named
+				.into_iter()
+				.map(|mut field| {
+					field.attrs.push(syn::parse_quote! {
+						#[ts(type = "string")]
+					});
+					field
+				})
+				.collect::<Punctuated<_, _>>(),
+		};
 		quote::quote! {
 			/// The required response headers for the #name endpoint.
 			///
@@ -370,8 +400,10 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				Debug,
 				Clone,
 				PartialEq,
+				::ts_rs::TS,
 				macros::HasHeaders,
 			)]
+			#[ts(export, rename_all = "camelCase")]
 			pub struct #response_headers_name #headers
 		}
 	} else {
@@ -415,7 +447,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			axum_extra::routing::TypedPath,
 		)]
 		#[typed_path(#path)]
-		#[ts(export)]
+		#[ts(export, optional_fields)]
 		pub struct #path_name #path_body
 
 		impl models::utils::RequiresResponseHeaders for #path_name {
@@ -437,7 +469,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			serde::Deserialize,
 		)]
 		#request_rename_attr
-		#[ts(export)]
+		#[ts(export, optional_fields)]
 		pub struct #request_name #request_body
 
 		impl models::utils::RequiresResponseHeaders for #request_name {
@@ -464,7 +496,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			serde::Deserialize,
 		)]
 		#response_rename_attr
-		#[ts(export)]
+		#[ts(export, optional_fields)]
 		pub struct #response_name #response_body
 
 		impl models::utils::RequiresRequestHeaders for #response_name {
