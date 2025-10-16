@@ -1,5 +1,9 @@
 [alias]
-api     = "run -p api"
-docker  = "run -p docker"
-patr    = "run -p cli --"
-prepare = "sqlx prepare --workspace"
+api      = "run -p api"
+bindings = "test -p models export_bindings"
+docker   = "run -p docker"
+patr     = "run -p cli --"
+prepare  = "sqlx prepare --workspace"
+
+[env]
+TS_RS_EXPORT_DIR = { value = "frontend/src/bindings", relative = true }

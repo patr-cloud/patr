@@ -27,4 +27,6 @@ gitignore
 .DS_Store
 Thumbs.db
 
-bindings/
+src/bindings/*
+!src/bindings/index.ts
+!src/bindings/.gitkeep

@@ -58,6 +58,7 @@ use headers::{
 };
 use http::{HeaderMap, HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 use super::Uuid;
 
@@ -501,4 +502,42 @@ pub trait RequiresRequestHeaders {
 
 impl RequiresRequestHeaders for () {
 	type RequiredRequestHeaders = ();
+}
+
+/// A wrapper struct that is used to export the headers of a struct using
+/// [`ts_rs`].
+///
+/// This is used in the [`macros::declare_api_endpoint`] macro to export the
+/// request and response headers of an endpoint with the header name as the
+/// field key and the type as string.
+pub struct HeaderExporter<T>(pub T)
+where
+	T: Header;
+
+impl<T> TS for HeaderExporter<T>
+where
+	T: Header,
+{
+	type OptionInnerType = Self;
+	type WithoutGenerics = String;
+
+	fn decl() -> String {
+		"string".to_string()
+	}
+
+	fn decl_concrete() -> String {
+		"string".to_string()
+	}
+
+	fn name() -> String {
+		"string".to_string()
+	}
+
+	fn inline() -> String {
+		panic!("HeaderExporter cannot be inlined")
+	}
+
+	fn inline_flattened() -> String {
+		format!("\"{}\": string,", <T as Header>::name().as_str())
+	}
 }
