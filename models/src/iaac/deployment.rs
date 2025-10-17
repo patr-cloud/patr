@@ -114,20 +114,22 @@ fn default_max_scale() -> MaybeExternallySourced<u16> {
 /// registry image is used for images that are hosted on an external registry,
 /// such as Docker Hub.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(try_from = "&str", rename_all = "snake_case", untagged)]
+#[serde(
+	try_from = "String",
+	into = "String",
+	rename_all = "snake_case",
+	untagged
+)]
 pub enum IaacDeploymentImage {
 	/// A Patr registry image, which is an image that is hosted on the Patr
 	/// registry.
 	PatrRegistry {
 		/// The Patr registry that the image is hosted on. This is always
 		/// `registry.patr.cloud`.
-		#[serde(alias = "server")]
 		registry: PatrRegistry,
 		/// The repository of the image. This can either be a UUID or a name.
-		#[serde(alias = "repo")]
 		repository: String,
 		/// The tag of the image. This is always `latest` if not specified.
-		#[serde(default = "default_image_tag")]
 		tag: String,
 	},
 	/// An external registry image, which is an image that is hosted on an
@@ -135,13 +137,10 @@ pub enum IaacDeploymentImage {
 	ExternalRegistry {
 		/// The registry that the image is hosted on. This can be any valid
 		/// Docker registry, such as Docker Hub or a private registry.
-		#[serde(alias = "server")]
 		registry: String,
 		/// The repository of the image
-		#[serde(alias = "repo")]
 		repository: String,
 		/// The tag of the image. This is always `latest` if not specified.
-		#[serde(default = "default_image_tag")]
 		tag: String,
 	},
 }
@@ -153,8 +152,18 @@ fn default_image_tag() -> &'static str {
 	"latest"
 }
 
-impl From<&str> for IaacDeploymentImage {
-	fn from(value: &str) -> Self {
+impl From<String> for IaacDeploymentImage {
+	fn from(value: String) -> Self {
+		let Ok(parsed) = value.parse();
+		parsed
+	}
+}
+
+#[allow(clippy::infallible_try_from)]
+impl FromStr for IaacDeploymentImage {
+	type Err = Infallible;
+
+	fn from_str(value: &str) -> Result<Self, Self::Err> {
 		let (first, second) = if let Some(split) = value.split_once('/') {
 			split
 		} else {
@@ -177,7 +186,7 @@ impl From<&str> for IaacDeploymentImage {
 			(repository, default_image_tag())
 		};
 
-		match registry {
+		Ok(match registry {
 			"registry.patr.cloud" => IaacDeploymentImage::PatrRegistry {
 				registry: PatrRegistry,
 				repository: repository.to_string(),
@@ -188,23 +197,40 @@ impl From<&str> for IaacDeploymentImage {
 				repository: repository.to_string(),
 				tag: tag.to_string(),
 			},
-		}
+		})
 	}
 }
 
-#[allow(clippy::infallible_try_from)]
-impl FromStr for IaacDeploymentImage {
-	type Err = Infallible;
-
-	fn from_str(value: &str) -> Result<Self, Self::Err> {
-		IaacDeploymentImage::try_from(value)
+impl Into<String> for IaacDeploymentImage {
+	fn into(self) -> String {
+		match self {
+			IaacDeploymentImage::PatrRegistry {
+				registry,
+				repository,
+				tag,
+			} => {
+				format!("{}/{}/{}", registry, repository, tag)
+			}
+			IaacDeploymentImage::ExternalRegistry {
+				registry,
+				repository,
+				tag,
+			} => {
+				format!("{}/{}/{}", registry, repository, tag)
+			}
+		}
 	}
 }
 
 /// The machine type for a deployment. This is used to define the CPU and RAM
 /// requirements for the deployment
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(try_from = "&str", rename_all = "snake_case", deny_unknown_fields)]
+#[serde(
+	try_from = "String",
+	into = "String",
+	rename_all = "snake_case",
+	deny_unknown_fields
+)]
 pub struct IaacDeploymentMachineType {
 	/// The CPU requirement for the deployment.
 	pub cpu: IaacDeploymentCpu,
@@ -212,10 +238,18 @@ pub struct IaacDeploymentMachineType {
 	pub ram: IaacDeploymentRam,
 }
 
-impl TryFrom<&str> for IaacDeploymentMachineType {
+impl TryFrom<String> for IaacDeploymentMachineType {
 	type Error = &'static str;
 
-	fn try_from(value: &str) -> Result<Self, Self::Error> {
+	fn try_from(value: String) -> Result<Self, Self::Error> {
+		value.parse()
+	}
+}
+
+impl FromStr for IaacDeploymentMachineType {
+	type Err = &'static str;
+
+	fn from_str(value: &str) -> Result<Self, Self::Err> {
 		let Some((cpu, ram)) = value.split_once(' ') else {
 			return Err("machine type must be of the format: `1vCPU 1GB RAM`");
 		};
@@ -227,11 +261,9 @@ impl TryFrom<&str> for IaacDeploymentMachineType {
 	}
 }
 
-impl FromStr for IaacDeploymentMachineType {
-	type Err = &'static str;
-
-	fn from_str(value: &str) -> Result<Self, Self::Err> {
-		IaacDeploymentMachineType::try_from(value)
+impl Into<String> for IaacDeploymentMachineType {
+	fn into(self) -> String {
+		format!("{}", self)
 	}
 }
 
@@ -439,14 +471,31 @@ impl Display for IaacDeploymentRam {
 /// - `http`
 /// - `tcp`
 /// - `udp`
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(try_from = "OneOrMore<String>")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IaacDeploymentPorts(BTreeMap<StringifiedU16, ExposedPortType>);
 
 impl IaacDeploymentPorts {
 	/// Get the inner map of the IaacDeploymentPorts.
 	pub fn into_inner(self) -> BTreeMap<StringifiedU16, ExposedPortType> {
 		self.0
+	}
+}
+
+impl Serialize for IaacDeploymentPorts {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: serde::Serializer,
+	{
+		self.0.serialize(serializer)
+	}
+}
+
+impl<'de> Deserialize<'de> for IaacDeploymentPorts {
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where
+		D: serde::Deserializer<'de>,
+	{
+		BTreeMap::<StringifiedU16, ExposedPortType>::deserialize(deserializer).map(Self)
 	}
 }
 
@@ -525,8 +574,7 @@ impl TryFrom<OneOrMore<String>> for IaacDeploymentPorts {
 ///
 /// An environment variable value can be either a raw string or a reference to a
 /// secret.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(try_from = "Vec<String>")]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct IaacDeploymentEnvVars(
 	BTreeMap<String, MaybeExternallySourced<EnvironmentVariableValue>>,
 );
@@ -541,6 +589,24 @@ impl IaacDeploymentEnvVars {
 	/// inner map is empty, `false` otherwise.
 	pub fn is_empty(&self) -> bool {
 		self.0.is_empty()
+	}
+}
+
+impl Serialize for IaacDeploymentEnvVars {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: serde::Serializer,
+	{
+		self.0.serialize(serializer)
+	}
+}
+
+impl<'de> Deserialize<'de> for IaacDeploymentEnvVars {
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where
+		D: serde::Deserializer<'de>,
+	{
+		BTreeMap::<String, _>::deserialize(deserializer).map(Self)
 	}
 }
 
@@ -573,6 +639,8 @@ impl TryFrom<Vec<String>> for IaacDeploymentEnvVars {
 
 #[cfg(test)]
 mod tests {
+	use serde_test::{Token, assert_tokens};
+
 	use crate::{api::workspace::deployment::PatrRegistry, iaac::IaacDeploymentImage};
 
 	#[test]
@@ -659,8 +727,53 @@ mod tests {
 				},
 			),
 		] {
-			let parsed: IaacDeploymentImage = string.try_into().unwrap();
+			let parsed: IaacDeploymentImage = string.parse().unwrap();
 			assert_eq!(parsed, value);
 		}
+	}
+
+	#[test]
+	fn assert_serialization_of_iaac_deployment_image() {
+		assert_tokens(
+			&IaacDeploymentImage::PatrRegistry {
+				registry: PatrRegistry,
+				repository: "workspace-id/api".to_string(),
+				tag: "stable".to_string(),
+			},
+			&[
+				Token::Struct {
+					name: "IaacDeploymentImage",
+					len: 3,
+				},
+				Token::Str("registry"),
+				Token::Str("registry.patr.cloud"),
+				Token::Str("repository"),
+				Token::Str("workspace-id/api"),
+				Token::Str("tag"),
+				Token::Str("stable"),
+				Token::StructEnd,
+			],
+		);
+
+		assert_tokens(
+			&IaacDeploymentImage::ExternalRegistry {
+				registry: "docker.io".to_string(),
+				repository: "grafana/grafana-oss".to_string(),
+				tag: "latest".to_string(),
+			},
+			&[
+				Token::Struct {
+					name: "IaacDeploymentImage",
+					len: 3,
+				},
+				Token::Str("registry"),
+				Token::Str("docker.io"),
+				Token::Str("repository"),
+				Token::Str("grafana/grafana-oss"),
+				Token::Str("tag"),
+				Token::Str("latest"),
+				Token::StructEnd,
+			],
+		);
 	}
 }

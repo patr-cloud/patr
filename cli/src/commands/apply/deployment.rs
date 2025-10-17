@@ -174,7 +174,7 @@ pub async fn apply(
 	if let Some(deployment_id) = id.or(deployment_id) {
 		info!("Updating existing deployment `{name}` with ID `{deployment_id}`");
 
-		let response = make_request(
+		make_request(
 			ApiRequest::<UpdateDeploymentRequest>::builder()
 				.path(UpdateDeploymentPath {
 					workspace_id,

@@ -1,24 +1,16 @@
 type: Deployment
 name: "Grafana"
-image:
-  registry: 'docker.io'
-  repository: 'grafana/grafana-oss'
-  tag: 'latest'
-# "grafana/grafana-oss:12"
+image: "grafana/grafana-oss:12"
 runner: "Test runner"
-machineType:
-  cpu: '2vCPU'
-  ram: '4GB RAM'
-# "2vCPU 4GB"
+machine_type: "2vCPU 4GB"
 deploy_on_push: true
 min_horizontal_scale: 1
 max_horizontal_scale: 1
 ports:
-  "3000":
-   http: ~
-# env:
-#   GF_PATHS_CONFIG: /etc/grafana/grafana.ini
-#   GF_PATHS_DATA: /var/lib/grafana
-#   GF_FEATURE_TOGGLES_ENABLE: traceqlEditor
-# configs:
-#   "/etc/grafana/grafana.ini": "../config/grafana.ini"
+  3000: http
+env:
+  GF_PATHS_CONFIG: /etc/grafana/grafana.ini
+  GF_PATHS_DATA: /var/lib/grafana
+  GF_FEATURE_TOGGLES_ENABLE: traceqlEditor
+configs:
+  "/etc/grafana/grafana.ini": "../config/grafana.ini"

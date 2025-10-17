@@ -1,11 +1,6 @@
-use std::collections::BTreeMap;
-
 use clap::Args as ClapArgs;
 use inquire::Select;
-use models::{
-	api::{user::*, workspace::deployment::ExposedPortType},
-	iaac::*,
-};
+use models::{api::user::*, iaac::*};
 use tokio::fs;
 
 use crate::prelude::*;
@@ -108,33 +103,4 @@ pub async fn execute(
 		.json(ApiSuccessResponseBody::empty().to_json_value())
 		.build()
 		.into_result()
-}
-
-#[test]
-fn test() {
-	println!(
-		"{}",
-		serde_yaml2::to_string(&OneOrMore::One(IaacResource {
-			depends_on: None,
-			data: IaacResourceData::Deployment(IaacDeployment {
-				id: None,
-				name: MaybeExternallySourced::Value("my-deployment".to_string()),
-				image: MaybeExternallySourced::Value("grafana/grafana-oss:latest".parse().unwrap()),
-				runner: MaybeExternallySourced::Value("Test runner".to_string()),
-				machine_type: MaybeExternallySourced::Value("2vCPU 4GB".parse().unwrap()),
-				deploy_on_push: MaybeExternallySourced::Value(true),
-				ports: IaacDeploymentPorts(BTreeMap::from([(
-					StringifiedU16::new(3000),
-					ExposedPortType::Http
-				)])),
-				min_horizontal_scale: MaybeExternallySourced::Value(1),
-				max_horizontal_scale: MaybeExternallySourced::Value(1),
-				environment_variables: IaacDeploymentEnvVars::default(),
-				startup_probe: None,
-				liveness_probe: None,
-				config_mounts: BTreeMap::new(),
-			}),
-		}))
-		.unwrap()
-	);
 }
