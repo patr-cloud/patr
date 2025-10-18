@@ -71,6 +71,59 @@ where
 	}
 }
 
+impl<T> ts_rs::TS for WithId<T> {
+	type OptionInnerType = Self;
+	type WithoutGenerics = WithId<()>;
+
+	fn decl() -> String {
+		format!(
+			r#"
+			type WithId<T> = {{
+				id: string;
+			}} & T;
+			"#
+		)
+	}
+
+	fn decl_concrete() -> String {
+		format!(
+			r#"
+			type WithId<{}> = {{
+				id: string;
+			}} & {};
+			"#,
+			std::any::type_name::<T>(),
+			std::any::type_name::<T>()
+		)
+	}
+
+	fn name() -> String {
+		format!("WithId<{}>", std::any::type_name::<T>())
+	}
+
+	fn inline() -> String {
+		format!(
+			r#"
+			{{
+				id: string;
+			}} & {}
+			"#,
+			std::any::type_name::<T>()
+		)
+	}
+
+	fn inline_flattened() -> String {
+		format!(
+			r#"
+			{{
+				id: string;
+			}} & {}
+			"#,
+			std::any::type_name::<T>()
+		)
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use serde_test::{Token, assert_tokens};

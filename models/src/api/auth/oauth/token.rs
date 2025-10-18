@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::prelude::*;
 
 /// The grant type for the request
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "snake_case")]
 pub enum OAuthTokenGrantType {
 	/// The request is for a temporary authorization code that will be exchanged

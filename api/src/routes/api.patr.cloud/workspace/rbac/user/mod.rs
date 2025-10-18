@@ -13,9 +13,9 @@ use self::{
 };
 
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState) -> Router {
+pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
 	Router::new()
-		.mount_auth_endpoint(list_users_in_workspace, state)
-		.mount_auth_endpoint(remove_user_from_workspace, state)
-		.mount_auth_endpoint(update_user_roles_in_workspace, state)
+		.mount_auth_endpoint(list_users_in_workspace, state, allowed_client_type)
+		.mount_auth_endpoint(remove_user_from_workspace, state, allowed_client_type)
+		.mount_auth_endpoint(update_user_roles_in_workspace, state, allowed_client_type)
 }

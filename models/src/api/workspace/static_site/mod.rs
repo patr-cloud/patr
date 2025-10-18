@@ -62,7 +62,7 @@ pub struct StaticSite {
 }
 
 /// Static site details
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(ts_rs::TS, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct StaticSiteDetails {
 	// add more details here, like metrics, etc.

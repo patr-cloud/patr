@@ -1,0 +1,28 @@
+{
+  "name": "patr-frontend",
+  "type": "module",
+  "scripts": {
+    "dev": "vinxi dev --port 3030",
+    "build": "vinxi build",
+    "start": "vinxi start"
+  },
+  "dependencies": {
+    "@solid-primitives/cookies": "^0.0.3",
+    "@solidjs/router": "^0.15.3",
+    "@solidjs/start": "^1.2.0",
+    "js-cookie": "^3.0.5",
+    "solid-icons": "^1.1.0",
+    "solid-js": "^1.9.9"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.14",
+    "@types/js-cookie": "^3.0.6",
+    "@types/node": "^24.8.1",
+    "tailwindcss": "^4.1.14",
+    "vinxi": "^0.5.8"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@9.15.3+sha512.1f79bc245a66eb0b07c5d4d83131240774642caaa86ef7d0434ab47c0d16f66b04e21e0c086eb61e62c77efc4d7f7ec071afad3796af64892fae66509173893a"
+}

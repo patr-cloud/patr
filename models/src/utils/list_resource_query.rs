@@ -1,8 +1,9 @@
-use std::{collections::BTreeMap, fmt::Debug};
+use std::fmt::Debug;
 
 use headers::{Error, Header};
 use http::{HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use sqlx::{encode::IsNull, error::BoxDynError, prelude::*};
 
 use super::{AddTuple, RequiresResponseHeaders};
 use crate::{prelude::*, rbac::ResourceType};
@@ -42,14 +43,14 @@ impl ListableResource for () {
 /// 14 (assuming the items are zero-indexed). This means that the offset is the
 /// index of the first item that should be returned and the count is the number
 /// of items that should be returned.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ListResourceQuery<R, Q = ()>
 where
 	R: ListableResource,
 {
 	/// Sort order of the items.
-	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-	pub sort: BTreeMap<R::FieldList, SortOrder>,
+	#[serde(flatten, default = "None", skip_serializing_if = "Option::is_none")]
+	pub sort: Option<SortDetails<R>>,
 	/// Search query that can be used to filter items in the list based on the
 	/// fields that are available in the resource.
 	#[serde(default, skip_serializing_if = "IsEmpty::is_empty")]
@@ -90,7 +91,7 @@ where
 	fn default() -> Self {
 		Self {
 			search: T::SearchStruct::default(),
-			sort: BTreeMap::new(),
+			sort: None,
 			additional_query: Q::default(),
 			count: ListResourceQuery::DEFAULT_PAGE_SIZE,
 			page: 0,
@@ -106,6 +107,23 @@ where
 	type RequiredResponseHeaders = <Q as AddTuple<TotalCountHeader>>::ResultantTuple;
 }
 
+/// This struct represents the sorting details for a resource. It contains the
+/// field that should be used to sort the resource and the order in which the
+/// resource should be sorted.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SortDetails<R>
+where
+	R: ListableResource,
+{
+	/// The field that should be used to sort the resource. This is typically
+	/// an enum that contains the fields that can be used to sort the resource.
+	pub sort_by: R::FieldList,
+	/// The order in which the resource should be sorted. This can be either
+	/// ascending or descending.
+	pub sort_order: SortOrder,
+}
+
 /// This struct represents a search query for a resource. It contains the
 /// resource ID that should be used to search for the resource. This is used
 /// to filter the resources that are returned in a paginated request.
@@ -118,66 +136,58 @@ pub struct ResourceSearcher<const R: ResourceType> {
 }
 
 // For backend
-#[cfg(not(target_arch = "wasm32"))]
-impl<const R: ResourceType> sqlx::Type<sqlx::Sqlite> for ResourceSearcher<R> {
+impl<const R: ResourceType> Type<sqlx::Sqlite> for ResourceSearcher<R> {
 	fn type_info() -> <sqlx::Sqlite as sqlx::Database>::TypeInfo {
-		<Uuid as sqlx::Type<sqlx::Sqlite>>::type_info()
+		<Uuid as Type<sqlx::Sqlite>>::type_info()
 	}
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-impl<const R: ResourceType> sqlx::Type<sqlx::Postgres> for ResourceSearcher<R> {
+impl<const R: ResourceType> Type<sqlx::Postgres> for ResourceSearcher<R> {
 	fn type_info() -> <sqlx::Postgres as sqlx::Database>::TypeInfo {
-		<Uuid as sqlx::Type<sqlx::Postgres>>::type_info()
+		<Uuid as Type<sqlx::Postgres>>::type_info()
 	}
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-impl<'a, const R: ResourceType> sqlx::Encode<'a, sqlx::Sqlite> for ResourceSearcher<R>
+impl<'a, const R: ResourceType> Encode<'a, sqlx::Sqlite> for ResourceSearcher<R>
 where
-	Uuid: sqlx::Encode<'a, sqlx::Sqlite>,
+	Uuid: Encode<'a, sqlx::Sqlite>,
 {
 	fn encode_by_ref(
 		&self,
 		buf: &mut <sqlx::Sqlite as sqlx::Database>::ArgumentBuffer<'a>,
-	) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+	) -> Result<IsNull, BoxDynError> {
 		self.resource_id.encode_by_ref(buf)
 	}
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-impl<'a, const R: ResourceType> sqlx::Encode<'a, sqlx::Postgres> for ResourceSearcher<R>
+impl<'a, const R: ResourceType> Encode<'a, sqlx::Postgres> for ResourceSearcher<R>
 where
-	Uuid: sqlx::Encode<'a, sqlx::Postgres>,
+	Uuid: Encode<'a, sqlx::Postgres>,
 {
 	fn encode_by_ref(
 		&self,
 		buf: &mut <sqlx::Postgres as sqlx::Database>::ArgumentBuffer<'a>,
-	) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+	) -> Result<IsNull, BoxDynError> {
 		self.resource_id.encode_by_ref(buf)
 	}
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-impl<'a, const R: ResourceType> sqlx::Decode<'a, sqlx::Sqlite> for ResourceSearcher<R>
+impl<'a, const R: ResourceType> Decode<'a, sqlx::Sqlite> for ResourceSearcher<R>
 where
-	Uuid: sqlx::Decode<'a, sqlx::Sqlite>,
+	Uuid: Decode<'a, sqlx::Sqlite>,
 {
-	fn decode(
-		value: <sqlx::Sqlite as sqlx::Database>::ValueRef<'a>,
-	) -> Result<Self, sqlx::error::BoxDynError> {
+	fn decode(value: <sqlx::Sqlite as sqlx::Database>::ValueRef<'a>) -> Result<Self, BoxDynError> {
 		Uuid::decode(value).map(|resource_id| Self { resource_id })
 	}
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-impl<'a, const R: ResourceType> sqlx::Decode<'a, sqlx::Postgres> for ResourceSearcher<R>
+impl<'a, const R: ResourceType> Decode<'a, sqlx::Postgres> for ResourceSearcher<R>
 where
-	Uuid: sqlx::Decode<'a, sqlx::Postgres>,
+	Uuid: Decode<'a, sqlx::Postgres>,
 {
 	fn decode(
 		value: <sqlx::Postgres as sqlx::Database>::ValueRef<'a>,
-	) -> Result<Self, sqlx::error::BoxDynError> {
+	) -> Result<Self, BoxDynError> {
 		Uuid::decode(value).map(|resource_id| Self { resource_id })
 	}
 }

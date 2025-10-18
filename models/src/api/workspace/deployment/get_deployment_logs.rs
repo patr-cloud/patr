@@ -26,6 +26,7 @@ macros::declare_api_endpoint!(
 	},
 	query = {
 		/// The time up until which the deployment logs should be fetched
+		#[ts(type = "Date")]
 		pub end_time: Option<OffsetDateTime>,
 		/// The limit of logs to fetch. Defaults to 100
 		#[preprocess(range(max = Some(500)))]

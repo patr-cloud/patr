@@ -35,14 +35,17 @@ macros::declare_api_endpoint!(
 		/// Change the time when the token becomes valid
 		#[serde(skip_serializing_if = "Option::is_none")]
 		#[preprocess(none)]
+		#[ts(type = "Date")]
 		pub token_nbf: Option<OffsetDateTime>,
 		/// Change the time when the token expires
 		#[serde(skip_serializing_if = "Option::is_none")]
 		#[preprocess(none)]
+		#[ts(type = "Date")]
 		pub token_exp: Option<OffsetDateTime>,
 		/// Change the list of allowed IPs for the token
 		#[serde(skip_serializing_if = "Option::is_none")]
 		#[preprocess(none)]
+		#[ts(type = "Array<string>")]
 		pub allowed_ips: Option<Vec<IpNetwork>>,
 	}
 );

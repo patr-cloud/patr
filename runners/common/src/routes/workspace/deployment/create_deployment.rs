@@ -5,7 +5,6 @@ use crate::prelude::*;
 
 /// The handler to create a deployment. This will create a new deployment, and
 /// return the ID of the deployment.
-#[instrument(skip(database))]
 pub async fn create_deployment(
 	AppRequest {
 		request:

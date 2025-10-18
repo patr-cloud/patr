@@ -5,7 +5,9 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
+use sqlx::prelude::*;
 use time::OffsetDateTime;
+use ts_rs::TS;
 
 use crate::prelude::*;
 
@@ -44,12 +46,13 @@ pub use self::{
 };
 
 /// The domain information in a workspace
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkspaceDomain {
 	/// The name of the domain
 	pub name: String,
 	/// Last verified time of the domain
+	#[ts(type = "Date")]
 	pub last_unverified: Option<OffsetDateTime>,
 	/// Whether or not the domain is verified
 	pub is_verified: bool,
@@ -85,7 +88,7 @@ pub struct PatrControlledDomain {
 }
 
 /// The DNS record type of a domain
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[allow(clippy::upper_case_acronyms)]
 #[serde(tag = "type")]
 pub enum DnsRecordValue {
@@ -214,13 +217,9 @@ impl Display for DnsRecordValue {
 }
 
 /// Type of domain nameserver
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(sqlx::Type))]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Type, TS)]
 #[serde(rename_all = "camelCase")]
-#[cfg_attr(
-	not(target_arch = "wasm32"),
-	sqlx(type_name = "DOMAIN_NAMESERVER_TYPE", rename_all = "lowercase")
-)]
+#[sqlx(type_name = "DOMAIN_NAMESERVER_TYPE", rename_all = "lowercase")]
 pub enum DomainNameserverType {
 	/// Internal
 	Internal,

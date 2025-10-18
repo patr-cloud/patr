@@ -1,0 +1,253 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import "tailwindcss";
+
+@theme {
+  /* font */
+  --font-poppins: "Poppins", "Roboto", "Helvetica", "Arial", "sans-serif";
+
+  /* colors */
+  --color-primary: #f89b41;
+  --color-primary-light: #f89b4180;
+  --color-primary-dark: #f89b41;
+
+  --color-secondary-dark: #191131;
+  --color-secondary: #0d0526;
+  --color-secondary-medium: #2e2450;
+  --color-secondary-light: #23203e;
+
+  --color-error: #d62b36;
+  --color-error-light: #d62b3680;
+  --color-warning: #fdd13a;
+  --color-warning-light: #fdd13a80;
+  --color-success: #47c96c;
+  --color-success-light: #47c96c80;
+  --color-info: #007bff;
+  --color-info-light: #007bff80;
+
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-grey: #ffffffac;
+  --color-disabled: #ffffff60;
+
+  --color-txt-code-snippet: #a5c5ff;
+  --color-bg-code-snippet: #78a7ff1a;
+
+  --color-border-color: #414245;
+
+  --color-tooltip-color: #333333;
+
+  /* Fonts */
+  --font-primary: "Poppins", "Roboto", "Helvetica", "Arial", "sans-serif";
+  --font-log: "Source Code Pro", "monospace";
+
+  /* Text Sizes */
+  --text-xxs: 10px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 24px;
+  --text-xxl: 33px;
+
+  /* Font Weights */
+  --font-weight-thin: 300;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 600;
+
+  /* Box Shadows */
+  --shadow-high: 4px 4px 10px #000000f0;
+  --shadow-medium: 4px 4px 10px #00000080;
+  --shadow-light: 5px 0px 10px #00000040;
+
+  /* Border Radius */
+  --radius-xs: 0.25rem; /* 4px */
+  --radius-sm: 0.625rem; /* 10px */
+  --radius-DEFAULT: 0.875rem; /* 14px */
+  --radius-md: 0.875rem; /* 14px */
+  --radius-lg: 1.125rem; /* 18px */
+  --radius-xl: 1.25rem; /* 20px */
+
+  /* Spacing */
+  --spacing-xxs: 6px;
+  --spacing-xs: 8px;
+  --spacing-sm: 11px;
+  --spacing-md: 16px;
+  --spacing-lg: 20px;
+  --spacing-xl: 24px;
+  --spacing-xxl: 33px;
+  --spacing-auto: auto;
+
+  /* Flex Utils */
+  --flex-1: 0 1 8.3333%;
+  --flex-2: 0 1 16.6666%;
+  --flex-3: 0 1 25%;
+  --flex-4: 0 1 33.3333%;
+  --flex-5: 0 1 41.6666%;
+  --flex-6: 0 1 50%;
+  --flex-7: 0 1 58.3333%;
+  --flex-8: 0 1 66.6666%;
+  --flex-9: 0 1 75%;
+  --flex-10: 0 1 83.333%;
+  --flex-11: 0 1 91.6666%;
+  --flex-12: 0 1 100%;
+}
+
+html, body {
+  height: 100%;
+}
+
+* {
+  font-family: "Poppins", "Roboto", "Helvetica", "Arial", "sans-serif";
+}
+
+input,
+textarea,
+select {
+  @apply bg-transparent text-white border border-primary rounded-full px-md py-sm;
+  @apply focus:outline-none focus:border-primary focus:ring-0;
+  transition: all 0.2s ease;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  @apply bg-secondary-light;
+}
+
+input::placeholder,
+textarea::placeholder {
+  @apply text-grey;
+}
+
+input:disabled,
+textarea:disabled,
+select:disabled {
+  @apply bg-secondary-medium text-disabled cursor-not-allowed;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  background-color: var(--color-primary);
+  border-radius: 50%;
+  padding: 4px;
+  cursor: pointer;
+}
+
+.btn {
+  @apply cursor-pointer text-sm font-medium rounded-xl transition-[background] duration-200;
+}
+
+.btn-outline {
+  @apply font-medium rounded-[50%] py-xs px-md border border-primary transition-all duration-150 aspect-square;
+}
+
+.btn-outline,
+.btn-outline * {
+  @apply text-primary;
+}
+
+.btn-outline:hover {
+  @apply bg-primary;
+}
+
+.btn-outline:hover,
+.btn-outline:hover * {
+  @apply text-secondary;
+}
+
+.btn-primary {
+  @apply bg-primary text-secondary;
+}
+
+.btn-primary:hover {
+  /* TODO: Replace @include button-hover with actual hover styles */
+}
+
+.btn-primary:disabled {
+  @apply bg-primary-light;
+}
+
+.btn-primary:focus-visible {
+  animation: ripple 1200ms linear infinite;
+  @apply text-secondary;
+}
+
+.btn-plain {
+  @apply text-primary py-0 px-xxs;
+  padding: 0 var(--spacing-xxs); /* TODO: Replace map.get($paddings, "xxs") */
+}
+
+.btn-plain:disabled {
+  @apply text-primary-light;
+}
+
+.btn-plain:focus-visible {
+  @apply rounded-sm;
+}
+
+.btn-error {
+  @apply bg-error text-white;
+}
+
+.btn-error:disabled {
+  @apply bg-error-light;
+}
+
+.btn-secondary {
+  @apply font-bold text-primary bg-secondary-light;
+}
+
+.btn-light {
+  @apply text-black bg-white;
+}
+
+.btn-light:hover {
+  /* TODO: Replace @include button-hover($text-white) with actual hover styles */
+}
+
+.btn-light:disabled {
+  @apply bg-disabled;
+}
+
+.btn-dark {
+  @apply text-white bg-secondary;
+}
+
+.btn-dark:hover {
+  /* TODO: Replace @include button-hover($secondary-main) with actual hover styles */
+}
+
+.btn-dark:disabled {
+  @apply bg-secondary-light text-grey;
+}
+
+.btn-icon {
+  @apply p-1 rounded-full flex items-center justify-center;
+}
+
+.btn-secondary,
+.btn-error,
+.btn-plain,
+.btn-icon {
+  /* TODO: Replace @include btn-secondary-focus with actual focus styles */
+}
+
+.btn-dark,
+.btn-light {
+  /* TODO: Replace @include btn-secondary-focus($info-main) with actual focus styles */
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  33% {
+    transform: translate(3rem, 0rem);
+  }
+  66% {
+    transform: translate(1.5rem, -1rem);
+  }
+}

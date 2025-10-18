@@ -15,10 +15,10 @@ use crate::prelude::*;
 
 /// Sets up the recovery options routes
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState) -> Router {
+pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
 	Router::new()
-		.mount_auth_endpoint(update_user_email, state)
-		.mount_auth_endpoint(update_user_phone_number, state)
-		.mount_auth_endpoint(verify_user_email, state)
-		.mount_auth_endpoint(verify_user_phone_number, state)
+		.mount_auth_endpoint(update_user_email, state, allowed_client_type)
+		.mount_auth_endpoint(update_user_phone_number, state, allowed_client_type)
+		.mount_auth_endpoint(verify_user_email, state, allowed_client_type)
+		.mount_auth_endpoint(verify_user_phone_number, state, allowed_client_type)
 }

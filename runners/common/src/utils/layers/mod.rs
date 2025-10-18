@@ -10,13 +10,14 @@ mod data_store_connection_handler;
 mod endpoint_handler;
 /// Preprocesses the request and forwards it to the next layer
 mod preprocess_handler;
-/// Removes an IP address from the request and forwards it to the next layer
-mod remove_ip_addr;
+/// Handles the parsing of the request in the required format and passes a
+/// [`ApiRequest`][ApiRequest] to the next layer
+mod request_parser;
 
 pub use self::{
 	authenticator::*,
 	data_store_connection_handler::*,
 	endpoint_handler::*,
 	preprocess_handler::*,
-	remove_ip_addr::*,
+	request_parser::*,
 };

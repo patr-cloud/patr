@@ -28,6 +28,7 @@ macros::declare_api_endpoint!(
 	query = {
 		/// The duration for when the deployment metrics are fetched
 		#[preprocess(range(max = Some(Duration::days(14))))]
+		#[ts(type = "Number")]
 		pub interval: Option<Duration>,
 	},
 	response = {

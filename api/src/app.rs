@@ -39,7 +39,7 @@ pub async fn serve(state: &AppState) {
 			async {
 				axum::serve(
 					api_listener,
-					crate::routes::api_patr_cloud::setup_routes(state)
+					crate::routes::api_patr_cloud::setup_routes(state, ClientType::ApiToken)
 						.await
 						.into_make_service_with_connect_info::<SocketAddr>(),
 				)

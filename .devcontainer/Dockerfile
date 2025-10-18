@@ -17,6 +17,7 @@ RUN mkdir -p --mode=0755 /usr/share/keyrings && \
         htop \
         nano \
         vim \
+        unzip \
         build-essential \
         postgresql-client \
         clang \
@@ -49,6 +50,12 @@ RUN /home/vscode/.cargo/bin/cargo binstall --locked cargo-audit
 RUN /home/vscode/.cargo/bin/cargo binstall --locked sqlx-cli
 RUN /home/vscode/.cargo/bin/cargo binstall --locked wasm-pack
 RUN /home/vscode/.cargo/bin/cargo binstall --locked worker-build
+
+RUN curl -fsSL https://fnm.vercel.app/install | bash
+RUN ~/.local/share/fnm/fnm install --lts
+ENV PATH="/home/vscode/.local/share/fnm/node-versions/v22.20.0/installation/bin:$PATH"
+RUN npm install --global corepack@latest
+RUN corepack enable pnpm
 
 # `patr` should build and run the local CLI
 RUN echo "alias patr='cargo patr'" >> /home/vscode/.bashrc

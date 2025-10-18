@@ -86,7 +86,8 @@
 				"naumovs.color-highlight",
 				"streetsidesoftware.code-spell-checker",
 				"patr-cloud.patr-theme",
-				"bradlc.vscode-tailwindcss"
+				"bradlc.vscode-tailwindcss",
+				"esbenp.prettier-vscode"
 			]
 		}
 	},
@@ -94,7 +95,8 @@
 		3000,
 		3001,
 		4000,
-		"grafana:3000"
+		"grafana:3000",
+		22300
 	],
 	"postAttachCommand": "sudo chown :docker /var/run/docker.sock || exit 0"
 }
