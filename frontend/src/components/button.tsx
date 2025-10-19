@@ -1,6 +1,6 @@
 import { ParentProps, Accessor, mergeProps } from "solid-js";
 import { Color, ButtonVariantEnum, ButtonVariant } from "~/utils/color";
-import get from "~/utils/func";
+import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
 interface ButtonProps {
@@ -27,7 +27,7 @@ interface ButtonProps {
   /**
    * Click handler for the button
    */
-  onClick?: () => void;
+  onClick?: (event: Event) => void;
 }
 
 const Button = (rawProps: ParentProps<ButtonProps>) => {

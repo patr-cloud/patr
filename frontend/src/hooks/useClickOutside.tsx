@@ -1,5 +1,5 @@
-import { Accessor, createEffect, onCleanup } from "solid-js";
-import get from "~/utils/func";
+import { createEffect, onCleanup } from "solid-js";
+import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
 export interface Callback<T extends Event = Event> {

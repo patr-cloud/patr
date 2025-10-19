@@ -9,9 +9,15 @@ import {
   InputDropdown,
 } from "~/components";
 import EnvInput from "./env-input";
+import { FiChevronDown } from "solid-icons/fi";
+import { Jsx } from "~/utils/func";
+import { EnvironmentVariableValue } from "~/bindings";
 
 const CreateDeploymentPage = () => {
   const [registry, setRegistry] = createSignal<string>("");
+  const [envList, setEnvList] = createSignal<
+    { key: string; value: EnvironmentVariableValue }[]
+  >([{ key: "SAMPLE_KEY", value: "And Mand ka tola" }]);
 
   return (
     <PageContainer>
@@ -29,7 +35,7 @@ const CreateDeploymentPage = () => {
             <Input
               class="flex-10"
               name="deployment-name"
-              placeholder="Enter Token Name"
+              placeholder="Enter Deployment Name (e.g., andi-mandi-shandi)"
               type={InputType.Text}
             />
           </div>
@@ -40,37 +46,47 @@ const CreateDeploymentPage = () => {
               for="deployment-registry"
               label="Registry"
             />
-            <InputDropdown
-              options={[
-                { value: "patr-registry", label: "Patr Registry" },
-                { value: "docker-hub", label: "Docker Hub" },
-              ]}
-              value={registry()}
-              onSelect={setRegistry}
-              class="flex-10"
-              name="deployment-registry"
-              placeholder="Select Deployment Registry"
-            />
-          </div>
+            <div class="flex-10 flex items-center gap-4 w-full">
+              <InputDropdown
+                options={[
+                  { value: "patr-registry", label: "Patr Registry" },
+                  { value: "docker-hub", label: "Docker Hub" },
+                ]}
+                endIcon={Jsx(
+                  <button>
+                    <FiChevronDown size={16} />
+                  </button>
+                )}
+                value={registry()}
+                onSelect={setRegistry}
+                class="flex-4"
+                name="deployment-registry"
+                placeholder="Select Registry"
+              />
 
-          <div class="flex gap-8 items-center w-full">
-            <InputLabel parentClass="flex-2" label="Image Details" />
-
-            <div class="flex items-center flex-10 gap-8">
               <Input
-                class="flex-8"
-                placeholder="Enter Deployment Image Name"
+                class="flex-6"
+                placeholder="Image Name"
                 type={InputType.Text}
               />
+
               <Input
-                class="flex-4"
-                placeholder="Enter Deployment Image Tag"
+                class="flex-2"
+                placeholder="Image Tag"
                 type={InputType.Text}
               />
             </div>
           </div>
 
-          <EnvInput onAdd={() => {}} onDelete={() => {}} />
+          <EnvInput
+            envList={envList}
+            onAdd={(key, value) => {
+              setEnvList((prev) => [...prev, { key, value }]);
+            }}
+            onDelete={(key) => {
+              setEnvList((prev) => prev.filter((env) => env.key !== key));
+            }}
+          />
         </div>
       </PageContainerBody>
     </PageContainer>

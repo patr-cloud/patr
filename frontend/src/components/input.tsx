@@ -1,6 +1,6 @@
 import { mergeProps } from "solid-js";
 import { JSX } from "solid-js/h/jsx-runtime";
-import get from "~/utils/func";
+import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
 /// The Type of the input
@@ -147,35 +147,17 @@ interface InputProps {
   /**
    * Whether the input is disabled or not
    */
-  disabled?: boolean;
-  /**
-   * Label for the input, if undefined, no label is rendered.
-   */
+  disabled?: MaybeAccessor<boolean>;
+  /** Label for the input, if undefined, no label is rendered. */
   label?: MaybeAccessor<string>;
-  /**
-   * The value of the input, this is used to set the initial value of the input.
-   */
+  /** The value of the input, this is used to set the initial value of the input.  */
   value?: MaybeAccessor<string | number | string[] | undefined>;
-  /**
-   * The Color Variant of the input
-   */
+  /** The Color Variant of the input */
   styleVariant?: "light" | "medium" | "dark";
-  /**
-   * The End Icon of the input
-   */
-  endIcon?: JSX.Element;
-  /**
-   * End Text of the input
-   */
-  endText?: string;
-  /**
-   * The Start Icon of the input
-   */
-  startIcon?: JSX.Element;
-  /**
-   * Start Text of the input
-   */
-  startText?: string;
+  /** The End Icon of the input */
+  endIcon?: () => JSX.Element;
+  /** The Start Icon of the input */
+  startIcon?: () => JSX.Element;
 }
 
 const Input = (rawProps: InputProps) => {
@@ -192,11 +174,13 @@ const Input = (rawProps: InputProps) => {
     items-center border border-secondary-medium px-sm
     transition-all duration-250
     focus-within:border-primary focus-within:shadow-md
-    bg-secondary-light ${get(props.class)}`;
+    bg-secondary-light ${get(props.class)} ${
+    get(props.disabled) ? "bg-secondary-medium cursor-not-allowed" : ""
+  }`;
 
   const paddingClass = () => {
-    const hasStart = props.startIcon || props.startText;
-    const hasEnd = props.endIcon || props.endText;
+    const hasStart = props.startIcon;
+    const hasEnd = props.endIcon;
 
     if (hasStart && hasEnd) return "py-xs px-xs";
     if (hasStart) return "py-xs pl-xs pr-md";
@@ -207,23 +191,19 @@ const Input = (rawProps: InputProps) => {
   return (
     <div class={containerClass}>
       {props.label && <label>{get(props.label)}</label>}
-      {props.startText && (
-        <span class="text-gray-400 text-sm pl-md">{props.startText}</span>
-      )}
-      {props.startIcon && <>{props.startIcon}</>}
+      {props.startIcon && <>{props.startIcon()}</>}
       <input
         class={`overflow-hidden text-sm text-ellipsis w-full text-white font-thin border-none bg-transparent disabled:text-disabled focus:outline-none placeholder:text-grey ${paddingClass()}`}
         onInput={props.onInput}
         onChange={props.onChange}
         placeholder={props.placeholder}
-        disabled={props.disabled}
+        disabled={get(props.disabled)}
         id={props.id}
         name={props.name}
         value={get(props.value) ?? ""}
         type={props.type}
       />
-      {props.endText && <span>{props.endText}</span>}
-      {props.endIcon && <>{props.endIcon}</>}
+      {props.endIcon && <>{props.endIcon()}</>}
     </div>
   );
 };
