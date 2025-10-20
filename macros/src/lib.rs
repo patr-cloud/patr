@@ -11,8 +11,6 @@ use proc_macro::TokenStream;
 mod declare_api_endpoint;
 /// The proc macro for declaring an App endpoint for the frontend.
 mod declare_app_route;
-/// The proc macro for declaring a registry endpoint.
-mod declare_registry_endpoint;
 /// The proc macro for declaring a streaming endpoint. A streaming endpoint is
 /// basically a websocket endpoint.
 mod declare_stream_endpoint;
@@ -108,39 +106,6 @@ pub fn declare_api_endpoint(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn declare_app_route(input: TokenStream) -> TokenStream {
 	declare_app_route::parse(input)
-}
-
-/// Declares a registry endpoint.
-///
-/// This macro allows easy definition of a registry endpoint along with the
-/// request URL, headers, query, body as well as the response headers and body.
-/// Generates the required structs for the endpoint. Generates the OCI compliant
-/// structs for the endpoint.
-///
-/// ## Example usage:
-/// ```rust
-/// # use headers::AcceptRanges;
-/// # use models::prelude::*;
-/// // In the root
-/// macros::declare_registry_endpoint!(
-///     /// The documentation for the endpoint.
-///     GetManifest,
-///     GET "/v2/{workspace_id}/{name}/manifests/{reference}" {
-/// 		pub workspace_id: Uuid,
-///         pub name: String,
-///         pub reference: String,
-///     },
-///     request_headers = {
-///         pub token: BearerToken,
-///     },
-///     request = {
-///         pub body_param1: String,
-///    	},
-/// );
-/// ```
-#[proc_macro]
-pub fn declare_registry_endpoint(input: TokenStream) -> TokenStream {
-	declare_registry_endpoint::parse(input)
 }
 
 /// Declares a stream endpoint.
