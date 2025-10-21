@@ -1,6 +1,6 @@
 import { Route, Router } from "@solidjs/router";
 import "./app.css";
-// import LoggedOutRoutes from "./routes/logged-out-routes/index";
+import LoggedOutRoutes from "./routes/logged-out-routes/index";
 import NotFound from "./routes/not-found";
 import LoggedInRoutes from "./routes/logged-in-routes";
 import { useAuthState } from "./utils/state";
@@ -10,11 +10,11 @@ export default function App() {
 
   return (
     <Router>
-      {/* {authState().type === "LoggedIn" ? (
+      {authState().type === "LoggedIn" ? (
+        <LoggedInRoutes />
       ) : (
         <LoggedOutRoutes />
-      )} */}
-      <LoggedInRoutes />
+      )}
       <Route path="*" component={NotFound} />
     </Router>
   );

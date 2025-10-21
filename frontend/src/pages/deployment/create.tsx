@@ -11,13 +11,18 @@ import {
 import EnvInput from "./env-input";
 import { FiChevronDown } from "solid-icons/fi";
 import { Jsx } from "~/utils/func";
-import { EnvironmentVariableValue } from "~/bindings";
+import { EnvironmentVariableValue, ExposedPortType } from "~/bindings";
+import PortInput from "./port";
 
 const CreateDeploymentPage = () => {
   const [registry, setRegistry] = createSignal<string>("");
   const [envList, setEnvList] = createSignal<
     { key: string; value: EnvironmentVariableValue }[]
   >([{ key: "SAMPLE_KEY", value: "And Mand ka tola" }]);
+
+  const [portList, setPortList] = createSignal<{
+    [key: string]: ExposedPortType;
+  }>({});
 
   return (
     <PageContainer>
@@ -86,6 +91,21 @@ const CreateDeploymentPage = () => {
             onDelete={(key) => {
               setEnvList((prev) => prev.filter((env) => env.key !== key));
             }}
+          />
+
+          <PortInput
+            onAdd={(key, value) => {
+              console.log();
+              setPortList((prev) => ({ ...prev, [key]: value }));
+            }}
+            onDelete={(key) => {
+              setPortList((prev) => {
+                const newPorts = { ...prev };
+                delete newPorts[key];
+                return newPorts;
+              });
+            }}
+            portList={portList}
           />
         </div>
       </PageContainerBody>

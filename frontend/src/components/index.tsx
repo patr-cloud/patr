@@ -7,11 +7,15 @@ import InputLabel from "~/components/input-label";
 import InputDropdown from "~/components/input-dropdown";
 import { ButtonVariant } from "~/utils/color";
 import Table from "~/components/table";
+import StatusBadge from "~/components/status-badge";
+import ContainerGrid from "~/components/container-grid";
+import BgOnboard from "~/components/bg-onboard";
 
 export {
   PageContainer,
   PageContainerBody,
   PageContainerHead,
+  BgOnboard,
   Button,
   ButtonVariant,
   Input,
@@ -19,4 +23,6 @@ export {
   InputLabel,
   InputDropdown,
   Table,
+  StatusBadge,
+  ContainerGrid,
 };

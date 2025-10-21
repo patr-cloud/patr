@@ -1,5 +1,6 @@
 import { A, useNavigate } from "@solidjs/router";
-import Button from "~/components/button";
+import BgOnboard from "~/components/bg-onboard";
+import { Button } from "~/components";
 import Input, { InputType } from "~/components/input";
 import { ButtonVariant } from "~/utils/color";
 import { useAuthState } from "~/utils/state";
@@ -23,7 +24,7 @@ const Login = () => {
 
   return (
     <form
-      on:submit={(e) => {
+      onSubmit={(e) => {
         e.preventDefault();
         const formData = new FormData(e.target as HTMLFormElement);
         const userId = formData.get("userId") as string;
@@ -53,49 +54,7 @@ const Login = () => {
         "background-position": "center",
       }}
     >
-      {/* Scattered stars */}
-      {stars.map((star, i) => (
-        <div
-          ref={(el) => {
-            el.addEventListener("animationiteration", () =>
-              randomizeDuration(el)
-            );
-          }}
-          class="absolute bg-white rounded-full animate-pulse"
-          style={{
-            top: star.top,
-            left: star.left,
-            width: `${star.size}px`,
-            height: `${star.size}px`,
-            "animation-delay": star.delay,
-            "animation-duration": star.duration,
-          }}
-        />
-      ))}
-      <img
-        src="/images/astronaut.svg"
-        alt="Floating Astronaut"
-        class="absolute bottom-0 left-0 pointer-events-none z-0"
-      />
-      <img
-        src="/images/planet.svg"
-        alt="Purple Planet"
-        class="absolute top-[-10%] right-[-5%] pointer-events-none z-0 w-[15%]"
-      />
-      <img
-        src="/images/spaceship.svg"
-        alt="Spaceship"
-        class="
-          absolute top-[5%] right-[5%] pointer-events-none 
-          z-0 w-[15%] animate-[float_25s_ease-in-out_infinite]
-          rotate-[-20deg] scale-x-[-1]
-        "
-      />
-      <img
-        src="/images/patr.svg"
-        alt="Patr Logo"
-        class="absolute top-0 left-0 pointer-events-none z-0 mt-6 ml-4 w-[15%]"
-      />
+      <BgOnboard />
 
       {/* Login Card */}
       <section class="bg-secondary p-12 rounded-sm shadow-2xl w-full max-w-[32rem] relative z-10 border border-secondary-medium">
