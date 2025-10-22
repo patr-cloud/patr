@@ -1,52 +1,81 @@
-import { A, useNavigate } from "@solidjs/router";
-import BgOnboard from "~/components/bg-onboard";
+import { A, query, redirect } from "@solidjs/router";
 import { Button } from "~/components";
-import Input, { InputType } from "~/components/input";
+import { InputType, BgOnboard, Input } from "~/components";
 import { ButtonVariant } from "~/utils/color";
-import { useAuthState } from "~/utils/state";
+import { JSX } from "solid-js";
+import { getRequestEvent } from "solid-js/web";
+import { LoginRequest, LoginResponse } from "~/bindings";
+
+const loginFn = query(async (data: LoginRequest) => {
+  "use server";
+
+  const event = getRequestEvent();
+
+  if (!event) throw new Error("Expect Request Event");
+
+  const userAgent = event.request.headers.get("user-agent");
+
+  // const body = await event.request.json();
+  // console.log("Request Body:", body);
+
+  // const loginResponse = await doFetch("Login", {
+  //   body: {
+  //     userId: data.userId,
+  //     password: data.password,
+  //     mfaOtp: data.mfaOtp,
+  //   },
+  // });
+
+  const loginResponse = await fetch("http://localhost:3001/api/auth/sign-in", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "User-Agent": userAgent || "",
+    },
+    body: JSON.stringify({
+      userId: data.userId,
+      password: data.password,
+      mfaOtp: data.mfaOtp,
+    }),
+  }).then((res) => res.json() as Promise<LoginResponse>);
+
+  console.log("Login Response Status:", loginResponse);
+
+  event.response.headers.append(
+    "Set-Cookie",
+    `authState=${JSON.stringify({
+      type: "LoggedIn",
+      accessToken: loginResponse.accessToken,
+      refreshToken: loginResponse.refreshToken,
+    })}; Path=/; SameSite=Strict;Max-Age=604800` // 7 days
+  );
+
+  // Don't mind the throw, it's just to redirect after setting the cookie
+  // and apparently that's how it's done in solid-start and TS
+  throw redirect("/");
+}, "login");
 
 const Login = () => {
-  const navigate = useNavigate();
+  const onSubmitLogin: JSX.EventHandler<HTMLFormElement, SubmitEvent> = async (
+    e
+  ) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    const userId = formData.get("userId") as string;
+    const password = formData.get("password") as string;
 
-  // Generate random stars
-  const stars = Array.from({ length: 25 }, () => ({
-    top: `${Math.random() * 100}%`,
-    left: `${Math.random() * 100}%`,
-    size: Math.random() * 5,
-    delay: `${Math.random() * 3}s`,
-    duration: `${Math.random() * 2 + 1.5}s`,
-  }));
+    // Handle login logic here
+    console.log("Logging in with", { userId });
 
-  const randomizeDuration = (element: HTMLDivElement) => {
-    const newDuration = Math.random() * 2 + 1.5; // Random duration between 1.5-3.5s
-    element.style.animationDuration = `${newDuration}s`;
+    await loginFn({
+      userId,
+      password,
+      mfaOtp: "123456",
+    });
   };
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target as HTMLFormElement);
-        const userId = formData.get("userId") as string;
-        const password = formData.get("password") as string;
-
-        const [_, setAuthState] = useAuthState();
-
-        // Handle login logic here
-        console.log("Logging in with", { userId, password });
-
-        if (userId === "user" && password === "password") {
-          // Mock authentication success
-          setAuthState({
-            type: "LoggedIn",
-            accessToken: "something",
-            refreshToken: "something-else",
-          });
-          navigate("/");
-        } else {
-          // Mock authentication failure
-        }
-      }}
+    <main
       class="min-h-screen w-full bg-secondary flex items-center justify-center p-4 relative overflow-hidden"
       style={{
         "background-image": "url('/images/starry-sky.svg')",
@@ -57,7 +86,10 @@ const Login = () => {
       <BgOnboard />
 
       {/* Login Card */}
-      <section class="bg-secondary p-12 rounded-sm shadow-2xl w-full max-w-[32rem] relative z-10 border border-secondary-medium">
+      <form
+        onSubmit={onSubmitLogin}
+        class="bg-secondary p-12 rounded-sm shadow-2xl w-full max-w-[32rem] relative z-10 border border-secondary-medium"
+      >
         {/* Header */}
         <div class="mb-10 items-center justify-between flex flex-row">
           <h1 class="font-bold text-2xl text-white">Login</h1>
@@ -109,13 +141,13 @@ const Login = () => {
             </Button>
           </div>
         </div>
-      </section>
+      </form>
 
       {/* Footer */}
       <div class="absolute bottom-6 left-0 right-0 text-center">
         <p class="text-gray-500 text-xs">© 2025 Patr. All rights reserved.</p>
       </div>
-    </form>
+    </main>
   );
 };
 

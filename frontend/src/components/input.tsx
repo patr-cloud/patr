@@ -139,7 +139,7 @@ interface InputProps {
   /**
    * On Input Handler
    */
-  onInput?: (e: Event) => void;
+  onInput?: (e: InputEvent & { currentTarget: HTMLInputElement }) => void;
   /**
    * On Change Handler
    */

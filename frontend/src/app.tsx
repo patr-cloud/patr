@@ -8,13 +8,12 @@ import { useAuthState } from "./utils/state";
 export default function App() {
   const [authState, _] = useAuthState();
 
+  console.log("Auth State:", authState());
+
   return (
     <Router>
-      {authState().type === "LoggedIn" ? (
-        <LoggedInRoutes />
-      ) : (
-        <LoggedOutRoutes />
-      )}
+      <LoggedInRoutes />
+      <LoggedOutRoutes />
       <Route path="*" component={NotFound} />
     </Router>
   );

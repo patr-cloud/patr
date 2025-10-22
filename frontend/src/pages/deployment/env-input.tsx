@@ -40,7 +40,7 @@ const EnvInput = (props: EnvInputProps) => {
               type={InputType.Text}
               value={env.key}
               onInput={(e) => {
-                setEnvName((e.target as HTMLInputElement).value);
+                setEnvName(e.currentTarget.value);
               }}
             />
             <Input
@@ -51,7 +51,7 @@ const EnvInput = (props: EnvInputProps) => {
               value={env.value as string}
               type={InputType.Text}
               onInput={(e) => {
-                setEnvValue((e.target as HTMLInputElement).value);
+                setEnvValue(e.currentTarget.value);
               }}
             />
 
@@ -73,7 +73,7 @@ const EnvInput = (props: EnvInputProps) => {
             type={InputType.Text}
             value={envName()}
             onInput={(e) => {
-              setEnvName((e.target as HTMLInputElement).value);
+              setEnvName(e.currentTarget.value);
             }}
           />
           <Input
@@ -82,7 +82,7 @@ const EnvInput = (props: EnvInputProps) => {
             value={envValue()}
             type={InputType.Text}
             onInput={(e) => {
-              setEnvValue((e.target as HTMLInputElement).value);
+              setEnvValue(e.currentTarget.value);
             }}
           />
 

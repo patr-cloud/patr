@@ -3,6 +3,7 @@ import {
   PageContainer,
   PageContainerBody,
   PageContainerHead,
+  Table,
 } from "~/components";
 import RunnerCard from "./runner-card";
 
@@ -11,10 +12,31 @@ const ListRunnersPage = () => {
     <PageContainer>
       <PageContainerHead title="Runner" subTitle="List" />
       <PageContainerBody class="flex flex-col justify-between gap-8">
-        <ContainerGrid
-          renderCard={() => <RunnerCard />}
-          items={["hi", "hello"]}
+        <Table
+          column_grids={["flex-4", "flex-4", "flex-4"]}
+          renderRow={(item) => {
+            return (
+              <>
+                <td>{item.name}</td>
+                <td>Status</td>
+                <td>Created At</td>
+              </>
+            );
+          }}
+          headings={["Runner Name", "Status", "Created At"]}
+          rows={[
+            { name: "hi" },
+            { name: "hello" },
+            { name: "hey" },
+            { name: "greetings" },
+            { name: "salutations" },
+          ]}
         />
+        {/* <ContainerGrid
+          renderCard={() => <RunnerCard />}
+          items={[
+          ]}
+        /> */}
       </PageContainerBody>
     </PageContainer>
   );

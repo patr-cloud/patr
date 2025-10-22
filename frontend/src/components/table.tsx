@@ -1,3 +1,4 @@
+import { TiThMenu } from "solid-icons/ti";
 import { JSX, mergeProps } from "solid-js";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
@@ -15,7 +16,28 @@ interface TableProps<TItem> {
   renderRow?: (item: TItem, index: number) => JSX.Element;
 }
 
-const Table = <TItem,>(rawProps: TableProps<TItem>) => {
+const TableRow = <TItem extends Record<string, unknown>>(props: {
+  item: TItem;
+  column_grids: string[];
+}) => {
+  return (
+    <>
+      {Object.values(props.item).map((row, index) => (
+        <td
+          class={`flex items-center justify-center ${
+            props.column_grids.at(index) ?? ""
+          }`}
+        >
+          {row as string}
+        </td>
+      ))}
+    </>
+  );
+};
+
+const Table = <TItem extends Record<string, unknown>>(
+  rawProps: TableProps<TItem>
+) => {
   const props = mergeProps(
     {
       class: "",
@@ -54,4 +76,5 @@ const Table = <TItem,>(rawProps: TableProps<TItem>) => {
   );
 };
 
+export { TableRow };
 export default Table;

@@ -141,7 +141,7 @@ where
 							.layer(DataStoreConnectionLayer::with_state(state.clone()))
 							.layer(PreprocessLayer::new())
 							.layer(UserAgentValidationLayer::new())
-							.layer(AuthenticationLayer::new(ClientType::ApiToken))
+							.layer(AuthenticationLayer::new(allowed_client_type))
 							// .layer(todo!("Add permission checker middleware here"))
 							// .layer(todo!("Add rate limiter value updater middleware here"))
 							// .layer(todo!("Add audit logger middleware here"))

@@ -52,7 +52,7 @@ const PortInput = (props: PortInputProps) => {
 
         <div class="flex items-center flex-10 gap-4 w-full">
           <Input
-            onInput={(e) => setPortNumber((e.target as HTMLInputElement).value)}
+            onInput={(e) => setPortNumber(e.currentTarget.value)}
             class="flex-6"
             placeholder="Enter Port Number"
           />
