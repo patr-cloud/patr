@@ -4,11 +4,9 @@ use axum::{
 	http::{HeaderMap, StatusCode},
 	response::IntoResponse,
 };
-use futures::TryStreamExt;
 use oci_spec::distribution::ErrorCode;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use tokio_util::compat::FuturesAsyncReadCompatExt;
 
 use super::super::Error;
 use crate::{

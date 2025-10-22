@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM container_registry_tag WHERE manifest_digest = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b8aa92531a6674a550057d4c5ceaa86962a3568169f3c8cb94e691f20c3a7f2d"
+}

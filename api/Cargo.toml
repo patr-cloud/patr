@@ -20,6 +20,7 @@ cloudflare                     = { workspace = true, features = ["default"] }
 config                         = { workspace = true, features = ["default"] }
 futures                        = { workspace = true, features = ["default"] }
 headers                        = { workspace = true, features = [] }
+http                           = { workspace = true, features = ["default"] }
 ipinfo                         = { workspace = true, features = [] }
 jsonwebtoken                   = { workspace = true, features = ["default", "aws_lc_rs"] }
 macros                         = { workspace = true, features = [] }

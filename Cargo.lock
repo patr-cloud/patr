@@ -114,6 +114,7 @@ dependencies = [
  "config",
  "futures",
  "headers",
+ "http",
  "ipinfo",
  "jsonwebtoken",
  "macros",

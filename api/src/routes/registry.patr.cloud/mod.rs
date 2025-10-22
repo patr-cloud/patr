@@ -11,7 +11,7 @@ use axum_extra::routing::RouterExt;
 use oci_spec::distribution::{ErrorResponse, ErrorResponseBuilder};
 use reqwest::StatusCode;
 
-use crate::{prelude::*, utils::RouterExt};
+use crate::prelude::*;
 
 /// Get all blob routes
 mod blobs;
@@ -21,8 +21,10 @@ mod get_registry_status;
 mod manifest;
 /// Get All Tag Routes
 mod tags;
+/// The type of request, response and errors that is parsed in Axum
+mod types;
 
-use self::{blobs::*, get_registry_status::*, manifest::*, tags::*};
+use self::get_registry_status::*;
 
 type Error = (StatusCode, Json<ErrorResponse>);
 
@@ -38,7 +40,7 @@ fn internal_server_error_response(error: impl Display) -> Error {
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
-		.mount_with_tsr("/", get(get_registry_status))
+		.route_with_tsr("/v2/", get(get_registry_status))
 		.nest(
 			"/v2/{workspaceId}/{repoName}",
 			Router::new()

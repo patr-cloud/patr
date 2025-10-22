@@ -4,7 +4,7 @@ use std::{
 };
 
 use axum::extract::FromRef;
-use models::{RequestUserData, prelude::*, registry::RegistryEndpoint};
+use models::{RequestUserData, prelude::*};
 use preprocess::Preprocessable;
 use rustis::client::Client as RedisClient;
 use tokio::net::TcpListener;
@@ -181,28 +181,6 @@ where
 {
 	/// The Endpoint that the request is being made for. This would ideally be
 	/// parsed to have all the data needed to process a request
-	pub request: ProcessedApiRequest<E>,
-	/// The database transaction for the request. In case the request returns
-	/// an Error, this transaction will be automatically rolled back.
-	pub database: &'a mut DatabaseTransaction,
-	/// The redis transaction for the request. In case the request returns
-	/// an Error, this transaction will be automatically rolled back.
-	pub redis: &'a mut RedisClient,
-	/// The IP address of the client that made the request.
-	pub client_ip: IpAddr,
-	/// The user data of the current authenticated user.
-	pub user_data: RequestUserData,
-	/// The application configuration.
-	pub config: AppConfig,
-}
-
-/// A request object that is passed through the tower layers and services for
-/// registry endpoints.
-pub struct RegistryAppRequest<'a, E>
-where
-	E: RegistryEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-{
 	pub request: ProcessedApiRequest<E>,
 	/// The database transaction for the request. In case the request returns
 	/// an Error, this transaction will be automatically rolled back.

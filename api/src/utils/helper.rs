@@ -5,7 +5,6 @@ use oci_spec::distribution::{ErrorCode, ErrorInfoBuilder, ErrorResponse, ErrorRe
 use preprocess::Preprocessable;
 use regex::Regex;
 use s3::Bucket;
-use serde_json::to_string;
 
 use crate::{prelude::*, utils::config::AppConfig};
 

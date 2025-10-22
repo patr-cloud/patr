@@ -1,7 +1,7 @@
 use axum::{
 	body::Body,
 	extract::{Path, State},
-	http::{Method, Response, StatusCode},
+	http::{Method, StatusCode},
 	response::IntoResponse,
 };
 use oci_spec::distribution::ErrorCode;
