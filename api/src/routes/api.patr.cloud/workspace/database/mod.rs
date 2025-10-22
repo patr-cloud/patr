@@ -77,12 +77,10 @@ async fn create_database(
 	info!("Starting: Create database");
 
 	// LOGIC
-	let id = Uuid::parse_str("a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8")?;
+	let id = Uuid::parse_str("a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8")?.into();
 
 	AppResponse::builder()
-		.body(CreateDatabaseResponse {
-			id: WithId::new(id, ()),
-		})
+		.body(CreateDatabaseResponse { id })
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
