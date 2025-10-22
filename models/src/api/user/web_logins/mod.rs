@@ -9,6 +9,7 @@ use std::net::IpAddr;
 
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
+use ts_rs::TS;
 
 pub use self::{delete_web_login::*, get_web_login_info::*, list_web_logins::*};
 use crate::prelude::*;
@@ -162,13 +163,15 @@ use crate::prelude::*;
 /// user's data gets leaked. That's a huge problem. So we need to make sure that
 /// we not only secure things for our users, but also inform them about security
 /// events that might affect their account.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ListableResource)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ListableResource, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct UserWebLogin {
 	/// The time at which this login expires. If the expiry has elapsed the user
 	/// should be automatically logged out.
+	#[ts(type = "Date")]
 	pub token_expiry: OffsetDateTime,
 	/// When this login was created.
+	#[ts(type = "Date")]
 	pub created: OffsetDateTime,
 	/// Which IP address this login was created from
 	pub created_ip: IpAddr,

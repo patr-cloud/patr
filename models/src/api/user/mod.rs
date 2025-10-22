@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 use crate::prelude::*;
 
@@ -52,7 +53,7 @@ pub struct UserPhoneNumber {
 /// This is not the entire user object, but only the information that is allowed
 /// to be public. For privacy reasons, things like their email address and phone
 /// number are not public.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct BasicUserInfo {
 	/// The username of the user. This is unique to the user.

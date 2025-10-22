@@ -12,6 +12,7 @@ mod list_users_for_role;
 mod update_role;
 
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 pub use self::{
 	create_new_role::*,
@@ -24,7 +25,7 @@ pub use self::{
 use crate::prelude::*;
 
 /// The role metadata
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct Role {
 	/// The name of the role

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
+use ts_rs::TS;
 
 /// The endpoint to create a static site
 mod create_static_site;
@@ -38,7 +39,7 @@ use super::deployment::DeploymentStatus;
 use crate::prelude::*;
 
 /// Static site
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct StaticSite {
 	/// Name of the static site
@@ -62,14 +63,14 @@ pub struct StaticSite {
 }
 
 /// Static site details
-#[derive(ts_rs::TS, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct StaticSiteDetails {
 	// add more details here, like metrics, etc.
 }
 
 /// Static site upload history
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct StaticSiteUploadHistory {
 	/// The upload ID
@@ -81,7 +82,9 @@ pub struct StaticSiteUploadHistory {
 	#[search(skip)]
 	pub uploaded_by: Uuid,
 	/// The timestamp of when the static site was created
+	#[ts(type = "Date")]
 	pub created: OffsetDateTime,
 	/// The timestamp of when the static site was processed
+	#[ts(type = "Date | null")]
 	pub processed: Option<OffsetDateTime>,
 }

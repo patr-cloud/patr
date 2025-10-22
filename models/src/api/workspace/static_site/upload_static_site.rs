@@ -33,6 +33,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// The upload ID of the new upload
 		#[serde(flatten)]
-		pub upload_id: WithId<()>
+		pub upload_id: OnlyId
 	}
 );

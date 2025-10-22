@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use time::OffsetDateTime;
+use ts_rs::TS;
 
 use crate::prelude::*;
 
@@ -47,7 +48,7 @@ pub use self::{
 
 /// The details of a workspace. A workspace contains all the resources that will
 /// be created. A resource cannot exist outside of a workspace.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct Workspace {
 	/// The name of the workspace. This must be unique across Patr. This is used

@@ -21,6 +21,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// The ID of the newly created workspace
 		#[serde(flatten)]
-		pub id: WithId<()>,
+		pub id: OnlyId,
 	},
 );

@@ -30,6 +30,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// The ID of the created volume
 		#[serde(flatten)]
-		pub id: WithId<()>,
+		pub id: OnlyId,
 	}
 );

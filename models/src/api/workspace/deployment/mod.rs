@@ -53,7 +53,7 @@ use crate::{prelude::*, utils::constants};
 /// This can be classified by the number of CPU and Memory allocated to the
 /// deployment. The machine type can be used to classify the deployment based on
 /// the resources it requires.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
 pub struct DeploymentMachineType {
 	/// The number of CPU nodes allocated to the deployment. This is the number
 	/// of vCPUs in case of cloud deployments and the number of physical CPUs in
@@ -66,7 +66,7 @@ pub struct DeploymentMachineType {
 }
 
 /// Deployment information
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, JsonSchema, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct Deployment {
 	/// Name of the deployment
@@ -321,7 +321,7 @@ impl DeploymentRegistry {
 
 /// All the possible deployment status a deployment can be
 /// in during its life cycle
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Type, JsonSchema)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Type, JsonSchema, TS)]
 #[serde(rename_all = "camelCase")]
 #[sqlx(type_name = "DEPLOYMENT_STATUS", rename_all = "lowercase")]
 pub enum DeploymentStatus {

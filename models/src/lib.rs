@@ -33,7 +33,7 @@ pub mod prelude {
 		ApiSuccessResponseBody,
 		AppResponse,
 		ErrorType,
-		api::{ApiEndpoint, WithId},
+		api::{ApiEndpoint, OnlyId, WithId},
 		rbac::{
 			BillingPermission,
 			ContainerRegistryRepositoryPermission,

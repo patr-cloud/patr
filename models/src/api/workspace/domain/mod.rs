@@ -88,7 +88,7 @@ pub struct PatrControlledDomain {
 }
 
 /// The DNS record type of a domain
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
 #[allow(clippy::upper_case_acronyms)]
 #[serde(tag = "type")]
 pub enum DnsRecordValue {
@@ -264,7 +264,7 @@ impl FromStr for DomainNameserverType {
 }
 
 /// The DNS record information of patr domain
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct PatrDomainDnsRecord {
 	/// The domain ID

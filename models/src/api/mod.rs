@@ -15,13 +15,17 @@ mod api_endpoint;
 /// The endpoint to get the version of the API
 mod get_version;
 
-use std::ops::Deref;
+use std::{collections::BTreeMap, ops::Deref};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 pub use self::{api_endpoint::*, get_version::*};
 use crate::prelude::*;
+
+/// A type alias for a map that only contains an ID.
+pub type OnlyId = WithId<BTreeMap<String, String>>;
 
 /// A wrapper for any type that contains an ID.
 ///
@@ -30,7 +34,7 @@ use crate::prelude::*;
 /// `WithId<Deployment>`. This means that the `Deployment` struct should not
 /// contain the ID field, or it will panic. The struct contained in the `WithId`
 /// struct can be reused in multiple places.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd, Hash, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd, Hash, JsonSchema, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct WithId<T> {
 	/// The ID of the object. For example, in case of a deployment, this would
@@ -54,6 +58,13 @@ impl<T> WithId<T> {
 	}
 }
 
+impl OnlyId {
+	/// Create a new [`OnlyId`] struct with the given Id.
+	pub fn only_id(id: impl Into<Uuid>) -> Self {
+		Self::new(id.into(), BTreeMap::new())
+	}
+}
+
 impl<T> Deref for WithId<T> {
 	type Target = T;
 
@@ -62,65 +73,12 @@ impl<T> Deref for WithId<T> {
 	}
 }
 
-impl<ID> From<ID> for WithId<()>
+impl<ID> From<ID> for OnlyId
 where
 	ID: Into<Uuid>,
 {
 	fn from(id: ID) -> Self {
-		Self::new(id.into(), ())
-	}
-}
-
-impl<T> ts_rs::TS for WithId<T> {
-	type OptionInnerType = Self;
-	type WithoutGenerics = WithId<()>;
-
-	fn decl() -> String {
-		format!(
-			r#"
-			type WithId<T> = {{
-				id: string;
-			}} & T;
-			"#
-		)
-	}
-
-	fn decl_concrete() -> String {
-		format!(
-			r#"
-			type WithId<{}> = {{
-				id: string;
-			}} & {};
-			"#,
-			std::any::type_name::<T>(),
-			std::any::type_name::<T>()
-		)
-	}
-
-	fn name() -> String {
-		format!("WithId<{}>", std::any::type_name::<T>())
-	}
-
-	fn inline() -> String {
-		format!(
-			r#"
-			{{
-				id: string;
-			}} & {}
-			"#,
-			std::any::type_name::<T>()
-		)
-	}
-
-	fn inline_flattened() -> String {
-		format!(
-			r#"
-			{{
-				id: string;
-			}} & {}
-			"#,
-			std::any::type_name::<T>()
-		)
+		Self::new(id.into(), Default::default())
 	}
 }
 
