@@ -36,8 +36,6 @@ pub(super) async fn execute(
 
 	let CreateWorkspaceResponse { id } = make_request(
 		ApiRequest::<CreateWorkspaceRequest>::builder()
-			.path(CreateWorkspacePath)
-			.query(())
 			.body(CreateWorkspaceRequest { name: name.clone() })
 			.headers(CreateWorkspaceRequestHeaders {
 				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),

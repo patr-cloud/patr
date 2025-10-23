@@ -33,19 +33,15 @@ pub(super) async fn execute(args: GlobalArgs, state: AppState) -> Result<Command
 		} => (token, refresh_token),
 	};
 
-	LogoutResponse = make_request(
+	_ = make_request(
 		ApiRequest::<LogoutRequest>::builder()
-			.path(LogoutPath)
 			.headers(LogoutRequestHeaders {
 				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 				refresh_token: BearerToken::from_str(refresh_token.as_str())?,
 			})
-			.query(())
-			.body(LogoutRequest)
 			.build(),
 	)
-	.await?
-	.body;
+	.await;
 
 	CommandOutput::builder()
 		.text("You have been logged out.")

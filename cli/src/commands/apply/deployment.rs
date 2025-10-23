@@ -50,7 +50,6 @@ pub async fn apply(
 						page: 0,
 						additional_query: (),
 					})
-					.body(ListContainerRepositoriesRequest)
 					.build(),
 			)
 			.await?
@@ -103,7 +102,6 @@ pub async fn apply(
 				page: 0,
 				additional_query: (),
 			})
-			.body(ListRunnersForWorkspaceRequest)
 			.build(),
 	)
 	.await?
@@ -124,8 +122,6 @@ pub async fn apply(
 			.headers(ListAllDeploymentMachineTypeRequestHeaders {
 				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 			})
-			.query(())
-			.body(ListAllDeploymentMachineTypeRequest)
 			.build(),
 	)
 	.await?
@@ -159,7 +155,6 @@ pub async fn apply(
 				page: 0,
 				additional_query: (),
 			})
-			.body(ListDeploymentRequest)
 			.build(),
 	)
 	.await?
@@ -184,7 +179,6 @@ pub async fn apply(
 					authorization: token.clone(),
 					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 				})
-				.query(())
 				.body(UpdateDeploymentRequest {
 					name: Some(name.clone()),
 					runner: Some(runner),
@@ -234,7 +228,6 @@ pub async fn apply(
 					authorization: token.clone(),
 					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 				})
-				.query(())
 				.body(CreateDeploymentRequest {
 					name: name.clone(),
 					registry,

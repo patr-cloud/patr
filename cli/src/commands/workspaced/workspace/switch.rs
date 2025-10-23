@@ -34,13 +34,10 @@ pub(super) async fn execute(
 
 	let workspaces = make_request(
 		ApiRequest::<ListUserWorkspacesRequest>::builder()
-			.path(ListUserWorkspacesPath)
 			.headers(ListUserWorkspacesRequestHeaders {
 				authorization: token.clone(),
 				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 			})
-			.query(())
-			.body(ListUserWorkspacesRequest)
 			.build(),
 	)
 	.await?

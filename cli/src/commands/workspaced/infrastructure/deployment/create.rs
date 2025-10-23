@@ -133,13 +133,10 @@ pub async fn execute(
 	} else {
 		let workspaces = make_request(
 			ApiRequest::<ListUserWorkspacesRequest>::builder()
-				.path(ListUserWorkspacesPath)
 				.headers(ListUserWorkspacesRequestHeaders {
 					authorization: token.clone(),
 					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 				})
-				.query(())
-				.body(ListUserWorkspacesRequest)
 				.build(),
 		)
 		.await?
@@ -212,7 +209,6 @@ pub async fn execute(
 						sort: Default::default(),
 						additional_query: (),
 					})
-					.body(ListContainerRepositoriesRequest)
 					.build(),
 			)
 			.await?;
@@ -299,7 +295,6 @@ pub async fn execute(
 					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 					authorization: token.clone(),
 				})
-				.body(ListRunnersForWorkspaceRequest)
 				.build(),
 		)
 		.await?;
@@ -341,11 +336,9 @@ pub async fn execute(
 	let machine_types = make_request(
 		ApiRequest::<ListAllDeploymentMachineTypeRequest>::builder()
 			.path(ListAllDeploymentMachineTypePath { workspace_id })
-			.query(())
 			.headers(ListAllDeploymentMachineTypeRequestHeaders {
 				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 			})
-			.body(ListAllDeploymentMachineTypeRequest)
 			.build(),
 	)
 	.await?
@@ -612,7 +605,6 @@ pub async fn execute(
 				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 				authorization: token.clone(),
 			})
-			.query(())
 			.body(CreateDeploymentRequest {
 				name,
 				registry,

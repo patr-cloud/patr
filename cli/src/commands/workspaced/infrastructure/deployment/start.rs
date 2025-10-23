@@ -38,13 +38,10 @@ pub async fn execute(
 	} else {
 		let workspaces = make_request(
 			ApiRequest::<ListUserWorkspacesRequest>::builder()
-				.path(ListUserWorkspacesPath)
 				.headers(ListUserWorkspacesRequestHeaders {
 					authorization: token.clone(),
 					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 				})
-				.query(())
-				.body(ListUserWorkspacesRequest)
 				.build(),
 		)
 		.await?
@@ -90,7 +87,6 @@ pub async fn execute(
 					sort: Default::default(),
 					additional_query: (),
 				})
-				.body(ListDeploymentRequest)
 				.build(),
 		)
 		.await?;
@@ -144,7 +140,6 @@ pub async fn execute(
 				authorization: token.clone(),
 				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 			})
-			.body(StartDeploymentRequest)
 			.build(),
 	)
 	.await?

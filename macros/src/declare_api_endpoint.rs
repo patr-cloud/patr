@@ -212,7 +212,9 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		response,
 	} = parse_macro_input!(input as ApiEndpoint);
 
-	let (path_default_impl, path_body) = if let Some(body) = path_body {
+	let (path_default_impl, path_body) = if let Some(body) = path_body &&
+		!body.named.is_empty()
+	{
 		(
 			quote::quote! {},
 			quote::quote! {
@@ -232,7 +234,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 	let path_name = format_ident!("{}Path", name);
 
 	let request_name = format_ident!("{}Request", name);
-	let (request_rename_attr, request_body) = if let Some(body) = request {
+	let (request_rename_attr, request_body, request_default_impl) = if let Some(body) = request {
 		(
 			quote::quote! {
 				#[serde(rename_all = "camelCase")]
@@ -240,6 +242,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			quote::quote! {
 				#body
 			},
+			quote::quote! {},
 		)
 	} else {
 		(
@@ -247,28 +250,45 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			quote::quote! {
 				;
 			},
+			quote::quote! {
+				Default,
+			},
 		)
 	};
 
 	let query_type_name = format_ident!("{}Query", name);
-	let query_name = if query.is_some() {
+	let (query_name, query_default_impl) = if query.is_some() {
 		if let Some(ident) = listable_resource {
-			quote::quote! {
-				models::api::ListResourceQuery<#ident, #query_type_name>
-			}
+			(
+				quote::quote! {
+					models::api::ListResourceQuery<#ident, #query_type_name>
+				},
+				quote::quote! {},
+			)
 		} else {
-			quote::quote! {
-				#query_type_name
-			}
+			(
+				quote::quote! {
+					#query_type_name
+				},
+				quote::quote! {},
+			)
 		}
 	} else if let Some(ident) = listable_resource {
-		quote::quote! {
-			models::api::ListResourceQuery<#ident, ()>
-		}
+		(
+			quote::quote! {
+				models::api::ListResourceQuery<#ident, ()>
+			},
+			quote::quote! {},
+		)
 	} else {
-		quote::quote! {
-			()
-		}
+		(
+			quote::quote! {
+				()
+			},
+			quote::quote! {
+				Default,
+			},
+		)
 	};
 	let query_decl = if let Some(query) = query {
 		quote::quote! {
@@ -285,6 +305,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				::ts_rs::TS,
 				serde::Serialize,
 				serde::Deserialize,
+				#query_default_impl
 			)]
 			#[ts(optional_fields)]
 			pub struct #query_type_name #query
@@ -342,6 +363,15 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				})
 				.collect::<Punctuated<_, _>>(),
 		};
+
+		let default_impl = if headers.named.is_empty() {
+			quote::quote! {
+				Default,
+			}
+		} else {
+			quote::quote! {}
+		};
+
 		quote::quote! {
 			/// The required request headers for the #name endpoint.
 			///
@@ -354,6 +384,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				PartialEq,
 				::ts_rs::TS,
 				macros::HasHeaders,
+				#default_impl
 			)]
 			#[ts(export, rename_all = "camelCase")]
 			pub struct #request_headers_name #headers
@@ -390,6 +421,15 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				})
 				.collect::<Punctuated<_, _>>(),
 		};
+
+		let default_impl = if headers.named.is_empty() {
+			quote::quote! {
+				Default,
+			}
+		} else {
+			quote::quote! {}
+		};
+
 		quote::quote! {
 			/// The required response headers for the #name endpoint.
 			///
@@ -402,6 +442,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				PartialEq,
 				::ts_rs::TS,
 				macros::HasHeaders,
+				#default_impl
 			)]
 			#[ts(export, rename_all = "camelCase")]
 			pub struct #response_headers_name #headers
@@ -411,7 +452,8 @@ pub fn parse(input: TokenStream) -> TokenStream {
 	};
 
 	let response_name = format_ident!("{}Response", name);
-	let (response_rename_attr, response_body) = if let Some(body) = response {
+	let (response_rename_attr, response_body, response_default_impl) = if let Some(body) = response
+	{
 		(
 			quote::quote! {
 				#[serde(rename_all = "camelCase")]
@@ -419,12 +461,16 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			quote::quote! {
 				#body
 			},
+			quote::quote! {},
 		)
 	} else {
 		(
 			quote::quote! {},
 			quote::quote! {
 				;
+			},
+			quote::quote! {
+				Default,
 			},
 		)
 	};
@@ -438,13 +484,13 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		#[derive(
 			Debug,
 			Clone,
-			#path_default_impl
 			PartialEq,
 			PartialOrd,
 			::ts_rs::TS,
 			serde::Serialize,
 			serde::Deserialize,
 			axum_extra::routing::TypedPath,
+			#path_default_impl
 		)]
 		#[typed_path(#path)]
 		#[ts(export, optional_fields)]
@@ -467,6 +513,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			::ts_rs::TS,
 			serde::Serialize,
 			serde::Deserialize,
+			#request_default_impl
 		)]
 		#request_rename_attr
 		#[ts(export, optional_fields)]
@@ -494,6 +541,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			::ts_rs::TS,
 			serde::Serialize,
 			serde::Deserialize,
+			#response_default_impl
 		)]
 		#response_rename_attr
 		#[ts(export, optional_fields)]

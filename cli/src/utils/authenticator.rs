@@ -63,8 +63,6 @@ impl WorkspacedArgs {
 					authorization: token.clone(),
 					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 				})
-				.query(())
-				.body(GetWorkspaceInfoRequest)
 				.build(),
 		)
 		.await?

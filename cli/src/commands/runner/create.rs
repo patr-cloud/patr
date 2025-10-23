@@ -31,13 +31,10 @@ pub async fn execute(
 	} else {
 		let workspaces = make_request(
 			ApiRequest::<ListUserWorkspacesRequest>::builder()
-				.path(ListUserWorkspacesPath)
 				.headers(ListUserWorkspacesRequestHeaders {
 					authorization: token.clone(),
 					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 				})
-				.query(())
-				.body(ListUserWorkspacesRequest)
 				.build(),
 		)
 		.await?
@@ -73,7 +70,6 @@ pub async fn execute(
 	let AddRunnerToWorkspaceResponse { id } = make_request(
 		ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
 			.path(AddRunnerToWorkspacePath { workspace_id })
-			.query(())
 			.headers(AddRunnerToWorkspaceRequestHeaders {
 				authorization: token,
 				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),

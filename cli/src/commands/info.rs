@@ -43,13 +43,10 @@ pub(super) async fn execute(
 		is_mfa_enabled,
 	} = make_request(
 		ApiRequest::<GetUserInfoRequest>::builder()
-			.path(GetUserInfoPath)
-			.query(())
 			.headers(GetUserInfoRequestHeaders {
 				authorization: access_token.clone(),
 				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 			})
-			.body(GetUserInfoRequest)
 			.build(),
 	)
 	.await?

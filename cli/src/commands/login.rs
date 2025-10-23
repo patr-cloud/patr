@@ -42,9 +42,6 @@ pub(super) async fn execute(
 	if let Some(token) = &global_args.token {
 		let response = make_request(
 			ApiRequest::<GetUserInfoRequest>::builder()
-				.path(GetUserInfoPath)
-				.query(())
-				.body(GetUserInfoRequest)
 				.headers(GetUserInfoRequestHeaders {
 					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 					authorization: BearerToken::from_str(token)?,
@@ -94,11 +91,9 @@ pub(super) async fn execute(
 
 	let response = make_request(
 		ApiRequest::<LoginRequest>::builder()
-			.query(())
 			.headers(LoginRequestHeaders {
 				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 			})
-			.path(LoginPath)
 			.body(LoginRequest {
 				user_id: user_id.clone(),
 				password: password.clone(),
@@ -143,11 +138,9 @@ pub(super) async fn execute(
 		});
 		make_request(
 			ApiRequest::<LoginRequest>::builder()
-				.query(())
 				.headers(LoginRequestHeaders {
 					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 				})
-				.path(LoginPath)
 				.body(LoginRequest {
 					user_id,
 					password,
@@ -180,13 +173,10 @@ pub(super) async fn execute(
 		..
 	} = make_request(
 		ApiRequest::<GetUserInfoRequest>::builder()
-			.path(GetUserInfoPath)
-			.query(())
 			.headers(GetUserInfoRequestHeaders {
 				authorization: token.clone(),
 				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 			})
-			.body(GetUserInfoRequest)
 			.build(),
 	)
 	.await?
@@ -194,13 +184,10 @@ pub(super) async fn execute(
 
 	let current_workspace = make_request(
 		ApiRequest::<ListUserWorkspacesRequest>::builder()
-			.path(ListUserWorkspacesPath)
 			.headers(ListUserWorkspacesRequestHeaders {
 				authorization: token.clone(),
 				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 			})
-			.query(())
-			.body(ListUserWorkspacesRequest)
 			.build(),
 	)
 	.await?

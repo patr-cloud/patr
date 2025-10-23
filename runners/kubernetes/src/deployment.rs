@@ -201,7 +201,6 @@ async fn reconcile(
 			.headers(ListAllDeploymentMachineTypeRequestHeaders {
 				user_agent: UserAgent::from_static("deployment-controller"),
 			})
-			.query(())
 			.body(ListAllDeploymentMachineTypeRequest)
 			.build(),
 	)

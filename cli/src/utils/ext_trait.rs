@@ -91,7 +91,6 @@ impl IaacResolverExt<CreateDeploymentRequest> for IaacDeployment {
 							},
 							..Default::default()
 						})
-						.body(ListContainerRepositoriesRequest)
 						.build(),
 				)
 				.await?
@@ -148,7 +147,6 @@ impl IaacResolverExt<CreateDeploymentRequest> for IaacDeployment {
 						user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 						authorization: api_token.clone(),
 					})
-					.body(ListRunnersForWorkspaceRequest)
 					.build(),
 			)
 			.await?;
