@@ -1,5 +1,10 @@
 import { createServerCookie } from "@solid-primitives/cookies";
-import { Signal } from "solid-js";
+import {
+  makePersisted,
+  cookieStorage,
+  CookieOptions,
+} from "@solid-primitives/storage";
+import { createSignal, Signal } from "solid-js";
 
 /// The authentication state of the user. This is what gets stored in the cookie
 export type AuthState =
@@ -13,16 +18,16 @@ export type AuthState =
     };
 
 export function useAuthState(): Signal<AuthState> {
-  return createServerCookie<AuthState>("authState", {
-    serialize: (value) => {
-      console.log(value);
-      return JSON.stringify(value);
-    },
-    deserialize: (value) =>
-      value
-        ? JSON.parse(value)
-        : {
-            type: "LoggedOut",
-          },
-  });
+  const [getter, setter] = makePersisted(
+    createSignal<AuthState>({ type: "LoggedOut" }),
+    {
+      storage: cookieStorage.withOptions({
+        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7 days
+        path: "/",
+        sameSite: "Lax",
+      }),
+    }
+  );
+
+  return [getter, setter];
 }

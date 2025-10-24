@@ -5,6 +5,7 @@ import {
   PageContainerBody,
   PageContainerHead,
 } from "~/components";
+import Table, { TableRow } from "~/components/table";
 import { doFetch } from "~/utils/do-fetch";
 import { useAuthState } from "~/utils/state";
 
@@ -40,19 +41,19 @@ const ListWorkspaces = () => {
           )}
         >
           <Suspense fallback={<div>Loading...</div>}>
-            {workspace() ? (
-              <pre>{JSON.stringify(workspace(), null, 2)}</pre>
-            ) : (
-              <p>No workspaces found.</p>
-            )}
+            <Table
+              column_grids={["flex-1", "flex-1", "flex-1"]}
+              headings={["Name", "Description", "Actions"]}
+              rows={workspace()?.workspaces || []}
+              renderRow={(item) => (
+                <TableRow
+                  item={item}
+                  column_classes={["flex-4", "flex-4", "flex-4"]}
+                />
+              )}
+            />
           </Suspense>
         </ErrorBoundary>
-        <div>workspace list page</div>
-        {/* <Table
-          column_grids={["flex-1", "flex-1", "flex-1"]}
-          headings={["Name", "Description", "Actions"]}
-          rows={[]}
-        /> */}
       </PageContainerBody>
     </PageContainer>
   );

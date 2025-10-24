@@ -54,6 +54,7 @@ const CreateApiTokens = () => {
     const auth = authState();
     const requestBody: CreateApiTokenRequest = {
       name: name(),
+      created: new Date(),
       tokenNbf: fromDate() || undefined,
       tokenExp: toDate() || undefined,
       permissions: Object.fromEntries(

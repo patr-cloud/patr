@@ -15,17 +15,6 @@ const loginFn = query(async (data: LoginRequest) => {
 
   const userAgent = event.request.headers.get("user-agent");
 
-  // const body = await event.request.json();
-  // console.log("Request Body:", body);
-
-  // const loginResponse = await doFetch("Login", {
-  //   body: {
-  //     userId: data.userId,
-  //     password: data.password,
-  //     mfaOtp: data.mfaOtp,
-  //   },
-  // });
-
   const loginResponse = await fetch("http://localhost:3001/api/auth/sign-in", {
     method: "POST",
     headers: {
@@ -47,7 +36,7 @@ const loginFn = query(async (data: LoginRequest) => {
       type: "LoggedIn",
       accessToken: loginResponse.accessToken,
       refreshToken: loginResponse.refreshToken,
-    })}; Path=/; SameSite=Strict;Max-Age=604800` // 7 days
+    })};Path=/;SameSite=Lax;Max-Age=604800` // 7 days
   );
 
   // Don't mind the throw, it's just to redirect after setting the cookie

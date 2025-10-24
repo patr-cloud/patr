@@ -1,11 +1,9 @@
 import {
-  ContainerGrid,
   PageContainer,
   PageContainerBody,
   PageContainerHead,
   Table,
 } from "~/components";
-import RunnerCard from "./runner-card";
 
 const ListRunnersPage = () => {
   return (
@@ -32,11 +30,6 @@ const ListRunnersPage = () => {
             { name: "salutations" },
           ]}
         />
-        {/* <ContainerGrid
-          renderCard={() => <RunnerCard />}
-          items={[
-          ]}
-        /> */}
       </PageContainerBody>
     </PageContainer>
   );
