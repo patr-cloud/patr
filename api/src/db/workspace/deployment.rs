@@ -380,7 +380,7 @@ pub async fn initialize_deployment_constraints(
 		r#"
 		ALTER TABLE deployment_config_mounts
 			ADD CONSTRAINT deployment_config_mounts_chk_path_valid
-				CHECK(path ~ '^[a-zA-Z0-9_\-\.\(\)]+$'),
+				CHECK(path ~ '^[a-zA-Z0-9_\-\.\(\)/]+$'),
 			ADD CONSTRAINT deployment_config_mounts_fk_deployment_id
 				FOREIGN KEY(deployment_id) REFERENCES deployment(id);
 		"#

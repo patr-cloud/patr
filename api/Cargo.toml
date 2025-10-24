@@ -36,7 +36,7 @@ rustis                         = { workspace = true, features = ["default", "poo
 semver                         = { workspace = true, features = ["default"] }
 serde                          = { workspace = true, features = ["default", "derive"] }
 serde_json                     = { workspace = true, features = ["default"] }
-serde_urlencoded               = { workspace = true, features = [] }
+serde_qs                       = { workspace = true, features = [] }
 sha2                           = { workspace = true, features = ["default"] }
 sqlx                           = { workspace = true, features = ["ipnetwork", "macros", "postgres", "runtime-tokio", "time", "tls-rustls", "uuid"] }
 time                           = { workspace = true, features = ["default", "serde-human-readable"] }

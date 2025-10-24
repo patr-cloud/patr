@@ -88,7 +88,7 @@ pub async fn stream_deployment_logs(
 		)
 		.path_and_query(format!(
 			"/loki/api/v1/tail?{}",
-			serde_urlencoded::to_string(&[(
+			serde_qs::to_string(&[(
 				"start",
 				start_time
 					.unwrap_or(OffsetDateTime::now_utc())

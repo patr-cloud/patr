@@ -35,6 +35,7 @@ reqwest             = { workspace = true, features = ["default", "json"] }
 serde               = { workspace = true, features = ["default", "derive"] }
 serde_json          = { workspace = true, features = ["default"] }
 serde_path_to_error = { workspace = true, features = [] }
+serde_qs            = { workspace = true, features = [] }
 serde_yaml2         = { workspace = true, features = [] }
 thiserror           = { workspace = true, features = ["default"] }
 time                = { workspace = true, features = ["default", "serde-human-readable"] }

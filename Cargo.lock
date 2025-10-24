@@ -130,7 +130,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "serde_urlencoded",
+ "serde_qs",
  "sha2",
  "sqlx",
  "time",
@@ -725,6 +725,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_path_to_error",
+ "serde_qs",
  "serde_yaml2",
  "thiserror 2.0.17",
  "time",
@@ -805,7 +806,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "serde_urlencoded",
+ "serde_qs",
  "sqlx",
  "tar",
  "tempfile",
@@ -958,6 +959,7 @@ dependencies = [
  "schemars 1.0.4",
  "serde",
  "serde_json",
+ "serde_qs",
  "sha2",
  "thiserror 2.0.17",
  "tokio",
@@ -2842,8 +2844,8 @@ dependencies = [
  "schemars 1.0.4",
  "serde",
  "serde_json",
+ "serde_qs",
  "serde_test",
- "serde_urlencoded",
  "sqlx",
  "strum",
  "thiserror 2.0.17",
@@ -4237,6 +4239,17 @@ dependencies = [
  "itoa",
  "serde",
  "serde_core",
+]
+
+[[package]]
+name = "serde_qs"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3faaf9e727533a19351a43cc5a8de957372163c7d35cc48c90b75cdda13c352"
+dependencies = [
+ "percent-encoding",
+ "serde",
+ "thiserror 2.0.17",
 ]
 
 [[package]]

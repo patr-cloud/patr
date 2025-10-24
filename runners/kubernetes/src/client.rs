@@ -46,16 +46,19 @@ where
 				message: err,
 			},
 		})?;
+	let query = serde_qs::to_string(&query)?;
 	let builder = REQUEST_CLIENT
 		.get_or_init(initialize_client)
 		.request(
-			reqwest::Method::from_str(E::METHOD.as_ref()).unwrap(),
-			Url::from_str(crate::utils::constants::API_BASE_URL)
-				.unwrap()
-				.join(path.to_string().as_str())
-				.unwrap(),
+			E::METHOD,
+			format!(
+				"{}{}{}{}",
+				crate::utils::constants::API_BASE_URL,
+				path.to_string(),
+				if query.is_empty() { "" } else { "?" },
+				query
+			),
 		)
-		.query(&query)
 		.headers(
 			headers
 				.to_header_map()

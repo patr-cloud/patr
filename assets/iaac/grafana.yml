@@ -1,7 +1,7 @@
 type: Deployment
 name: "Grafana"
 image: "grafana/grafana-oss:12"
-runner: "Test runner"
+runner: "test-runner"
 machine_type: "2vCPU 4GB"
 deploy_on_push: true
 min_horizontal_scale: 1
