@@ -7,7 +7,7 @@ use crate::prelude::*;
 /// roles that are available in the workspace, not just the roles of the user.
 /// To get the roles of the user, use the [`get_current_permissions`][1] route.
 ///
-/// [1]: super::super::permission::get_current_permissions
+/// [1]: models::api::workspace::rbac::GetCurrentPermissionsRequest
 pub async fn list_all_roles(
 	AuthenticatedAppRequest {
 		request:

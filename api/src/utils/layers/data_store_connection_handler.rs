@@ -34,11 +34,13 @@ where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
-	/// Create a new instance of the [`RequestParserLayer`] with the given
+	/// Create a new instance of the [`RequestParserLayer`][1] with the given
 	/// state. This state will be used to parse the request, create a database
 	/// transaction, and call the inner service. If the inner service fails, the
 	/// database transaction will be automatically rolled back, otherwise it
 	/// will be committed.
+	///
+	/// [1]: super::RequestParserLayer
 	pub fn with_state(state: AppState) -> Self {
 		Self {
 			phantom: PhantomData,
