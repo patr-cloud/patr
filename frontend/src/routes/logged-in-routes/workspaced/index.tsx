@@ -5,7 +5,7 @@ import CreateRunnerPage from "~/pages/runner/create";
 import ListRunnersPage from "~/pages/runner/list";
 
 const WorkspacedLayout = (props: ParentProps<{}>) => {
-  return <> {props.children} </>;
+  return <>{props.children}</>;
 };
 
 export default function WorkspacedRoutes() {

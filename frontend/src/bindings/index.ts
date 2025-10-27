@@ -9,6 +9,9 @@ import { ListUserWorkspacesRequest } from "./ListUserWorkspacesRequest";
 import { ListUserWorkspacesResponse } from "./ListUserWorkspacesResponse";
 import { CreateApiTokenRequest } from "~/bindings/CreateApiTokenRequest";
 import { CreateApiTokenResponse } from "~/bindings/CreateApiTokenResponse";
+import { AddRunnerToWorkspaceRequest } from "./AddRunnerToWorkspaceRequest";
+import { AddRunnerToWorkspaceResponse } from "./AddRunnerToWorkspaceResponse";
+import { ListRunnersForWorkspaceResponse } from "./ListRunnersForWorkspaceResponse";
 
 export type {
   EnvironmentVariableValue,
@@ -22,4 +25,7 @@ export type {
   ListUserWorkspacesResponse,
   CreateApiTokenRequest,
   CreateApiTokenResponse,
+  AddRunnerToWorkspaceRequest,
+  AddRunnerToWorkspaceResponse,
+  ListRunnersForWorkspaceResponse,
 };

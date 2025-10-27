@@ -1,5 +1,8 @@
-import { createSignal } from "solid-js/types/server/reactive.js";
+import { createSignal } from "solid-js";
+import { AddRunnerToWorkspaceResponse } from "~/bindings";
 import {
+  Button,
+  ButtonVariant,
   Input,
   InputLabel,
   InputType,
@@ -7,47 +10,81 @@ import {
   PageContainerBody,
   PageContainerHead,
 } from "~/components";
+import { useAuthState } from "~/hooks";
+import { useLastWorkspaceId } from "~/hooks/state-hooks";
+import { doFetch } from "~/utils/do-fetch";
 
 const CreateRunnerPage = () => {
   const [name, setName] = createSignal<string>("");
-  const onSubmit = (e: SubmitEvent) => {
+  const [authState] = useAuthState();
+  const [workspaceId] = useLastWorkspaceId();
+
+  const onSubmit = async (e: SubmitEvent) => {
     e.preventDefault();
-  }
+    const auth = authState();
+    const currentWorkspaceId = workspaceId();
+    if (!auth || auth.type !== "LoggedIn" || !currentWorkspaceId) {
+      console.error("User is not logged in");
+      return;
+    }
+
+    console.log("Creating Runner with name:", name());
+    const response = await doFetch<AddRunnerToWorkspaceResponse>(
+      `http://localhost:3001/api/workspace/${currentWorkspaceId}/runner`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${auth.accessToken}`,
+        },
+        body: JSON.stringify({
+          name: name(),
+        }),
+      }
+    );
+
+    setName("");
+    console.log("Runner created successfully:", response.data);
+  };
 
   return (
     <PageContainer>
       <PageContainerHead title="Runner" subTitle="New" />
       <PageContainerBody class="flex flex-col justify-between gap-8">
-        <div class="flex flex-col gap-6 items-start w-full">
-          <h1 class="text-md">Create Runner</h1>
-
         <form
           onSubmit={onSubmit}
-          class="flex w-full flex-col justify-between gap-8 h-full flex-1"
+          class="flex flex-col gap-8 items-start w-full justify-between flex-1"
         >
-          <div class="flex flex-col gap-6 items-start w-full">
-            <h1 class="text-md">Create API Tokens</h1>
+          <div class="flex w-full flex-col justify-between gap-6 h-full flex-1">
+            <div class="flex flex-col gap-6 items-start w-full">
+              <h1 class="text-md">Create Runner</h1>
 
-            <div class="flex gap-8 items-center w-full">
-              <InputLabel
-                parentClass="flex-2"
-                for="token-name"
-                label="Token Name"
-              />
-              <Input
-                value={name()}
-                onInput={(e) => {
-                  setName(e.currentTarget.value);
-                }}
-                class="flex-10"
-                name="token-name"
-                placeholder="Enter Token Name"
-                type={InputType.Text}
-              />
+              <div class="flex gap-8 items-center w-full">
+                <InputLabel
+                  parentClass="flex-2"
+                  for="runner-name"
+                  label="Runner Name"
+                />
+                <Input
+                  value={name()}
+                  onInput={(e) => {
+                    setName(e.currentTarget.value);
+                  }}
+                  class="flex-10"
+                  name="runner-name"
+                  placeholder="Enter Runner Name"
+                  type={InputType.Text}
+                />
+              </div>
             </div>
-            </div></form>
+          </div>
 
-        </div>
+          <div class="w-full flex justify-end">
+            <Button variant={ButtonVariant.Contained} type="submit">
+              Create Runner
+            </Button>
+          </div>
+        </form>
       </PageContainerBody>
     </PageContainer>
   );

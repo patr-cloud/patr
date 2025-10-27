@@ -1,29 +1,55 @@
-import { Route } from "@solidjs/router";
-import WorkspacedRoutes from "./workspaced";
-import NonWorkspacedRoutes from "./non-workspaced";
-import { createResource, ParentProps } from "solid-js";
-import { useAuthState } from "~/utils/state";
+import { Route, useNavigate } from "@solidjs/router";
+import { useLastWorkspaceId } from "~/hooks/state-hooks";
+import { createEffect, createResource, ParentProps } from "solid-js";
+import { useAuthState } from "~/hooks";
 import { doFetch } from "~/utils/do-fetch";
 import { ListUserWorkspacesResponse } from "~/bindings";
 
+import WorkspacedRoutes from "./workspaced";
+import NonWorkspacedRoutes from "./non-workspaced";
+
 export const PageWrapper = (props: ParentProps<{}>) => {
   const [authState, _] = useAuthState();
+  const [workspaceId, setWorkspaceId] = useLastWorkspaceId();
+  const navigate = useNavigate();
 
-  const [workspace] = createResource<ListUserWorkspacesResponse>(async () => {
+  createEffect(() => {
     const auth = authState();
+    const currentWorkspace = workspaceId();
+    console.log(auth, currentWorkspace);
+    if (auth === null) {
+      return;
+    }
+    if (auth.type !== "LoggedIn") {
+      navigate("/login");
+    }
+  });
+
+  const [workspaceResource] = createResource(authState, async (auth) => {
+    if (auth === null || auth.type !== "LoggedIn") {
+      return { workspaces: [] };
+    }
     const response = await doFetch<ListUserWorkspacesResponse>(
       "http://localhost:3001/api/user/workspaces",
       {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${
-            auth.type === "LoggedIn" ? auth.accessToken : ""
-          }`,
+          Authorization: `Bearer ${auth.accessToken}`,
         },
       }
     );
+
     return response.data;
+  });
+
+  createEffect(() => {
+    if (!workspaceId()) {
+      const workspaces = workspaceResource();
+      if (workspaces && workspaces.workspaces.length > 0) {
+        setWorkspaceId(workspaces.workspaces[0].id);
+      }
+    }
   });
 
   return (

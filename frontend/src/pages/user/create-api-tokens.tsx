@@ -10,7 +10,7 @@ import {
   PageContainerHead,
 } from "~/components";
 import { doFetch } from "~/utils/do-fetch";
-import { useAuthState } from "~/utils/state";
+import { useAuthState } from "~/hooks";
 import {
   CreateApiTokenRequest,
   CreateApiTokenResponse,
@@ -19,8 +19,7 @@ import {
 
 const CreateApiTokens = () => {
   const [authState, _] = useAuthState();
-  const [workspace] = createResource<ListUserWorkspacesResponse>(async () => {
-    const auth = authState();
+  const [workspace] = createResource(authState, async (auth) => {
     const response = await doFetch<ListUserWorkspacesResponse>(
       "http://localhost:3001/api/user/workspaces",
       {
@@ -43,6 +42,11 @@ const CreateApiTokens = () => {
 
   const onSubmit = async (e: Event) => {
     e.preventDefault();
+    const auth = authState();
+    if (!auth || auth.type !== "LoggedIn") {
+      console.error("User is not logged in");
+      return;
+    }
 
     console.log("Creating API Token with details:", {
       name: name(),
@@ -51,7 +55,6 @@ const CreateApiTokens = () => {
       workspaces: workspaces(),
     });
 
-    const auth = authState();
     const requestBody: CreateApiTokenRequest = {
       name: name(),
       created: new Date(),

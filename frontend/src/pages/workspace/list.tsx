@@ -7,12 +7,12 @@ import {
 } from "~/components";
 import Table, { TableRow } from "~/components/table";
 import { doFetch } from "~/utils/do-fetch";
-import { useAuthState } from "~/utils/state";
+import { useAuthState } from "~/hooks";
 
 const ListWorkspaces = () => {
   const [authState, _] = useAuthState();
-  const [workspace] = createResource<ListUserWorkspacesResponse>(async () => {
-    const auth = authState();
+
+  const [workspace] = createResource(authState, async (auth) => {
     const response = await doFetch<ListUserWorkspacesResponse>(
       "http://localhost:3001/api/user/workspaces",
       {
@@ -20,7 +20,7 @@ const ListWorkspaces = () => {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${
-            auth.type === "LoggedIn" ? auth.accessToken : ""
+            auth.type === "LoggedIn" ? auth.accessToken : " "
           }`,
         },
       }

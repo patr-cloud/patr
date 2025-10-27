@@ -1,35 +1,78 @@
+import { createMemo, createResource, ErrorBoundary, Suspense } from "solid-js";
+import { ListRunnersForWorkspaceResponse } from "~/bindings";
 import {
   PageContainer,
   PageContainerBody,
   PageContainerHead,
   Table,
 } from "~/components";
+import { TableRow } from "~/components/table";
+import { useAuthState } from "~/hooks";
+import { useLastWorkspaceId } from "~/hooks/state-hooks";
+import { doFetch } from "~/utils/do-fetch";
 
 const ListRunnersPage = () => {
+  const [authState, _] = useAuthState();
+  const [workspaceId] = useLastWorkspaceId();
+
+  const fetchParams = createMemo(() => {
+    return [authState(), workspaceId()] as const;
+  });
+
+  const [runners] = createResource(fetchParams, async ([auth, wsId]) => {
+    if (!wsId || !auth || auth.type !== "LoggedIn") {
+      return { runners: [] };
+    }
+    const response = await doFetch<ListRunnersForWorkspaceResponse>(
+      `http://localhost:3001/api/workspace/${wsId}/runner`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${auth.accessToken}`,
+        },
+      }
+    );
+    console.log("Fetched runners:", response.data);
+    return response.data;
+  });
+
   return (
     <PageContainer>
       <PageContainerHead title="Runner" subTitle="List" />
       <PageContainerBody class="flex flex-col justify-between gap-8">
-        <Table
-          column_grids={["flex-4", "flex-4", "flex-4"]}
-          renderRow={(item) => {
-            return (
-              <>
-                <td>{item.name}</td>
-                <td>Status</td>
-                <td>Created At</td>
-              </>
-            );
-          }}
-          headings={["Runner Name", "Status", "Created At"]}
-          rows={[
-            { name: "hi" },
-            { name: "hello" },
-            { name: "hey" },
-            { name: "greetings" },
-            { name: "salutations" },
-          ]}
-        />
+        <ErrorBoundary
+          fallback={(err, reset) => (
+            <div>
+              <p>Error loading runners: {err.message}</p>
+              <button onClick={reset}>Retry</button>
+            </div>
+          )}
+        >
+          <Suspense fallback={<div>Loading...</div>}>
+            <Table
+              column_grids={["flex-4", "flex-4", "flex-4"]}
+              rows={runners()?.runners || []}
+              headings={["Runner Name", "Status", "Last Seen"]}
+              renderRow={(item) => (
+                <tr
+                  class="border border-border-color min-h-10 cursor-pointer flex items-center justify-center w-full px-xl
+                  bg-secondary-light last-of-type:rounded-b-xs"
+                >
+                  <td class="flex items-center justify-center flex-1">
+                    {item.name}
+                  </td>
+                  <td class="flex items-center justify-center flex-1">
+                    {item.connected ? "Connected" : "Disconnected"}
+                  </td>
+                  <td class="flex items-center justify-center flex-1">
+                    {item.lastSeen ? item.lastSeen.toLocaleString() : "N/A"}
+                  </td>
+                </tr>
+              )}
+            />
+          </Suspense>
+        </ErrorBoundary>
       </PageContainerBody>
     </PageContainer>
   );
