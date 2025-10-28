@@ -113,5 +113,4 @@ async function makeRequest<K extends Key>(
   return (await resp.json()) as Promise<ResponseType<K>>;
 }
 
-export { doFetch };
-export default makeRequest;
+export { doFetch, makeRequest };

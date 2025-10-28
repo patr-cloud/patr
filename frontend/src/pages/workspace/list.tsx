@@ -42,14 +42,14 @@ const ListWorkspaces = () => {
         >
           <Suspense fallback={<div>Loading...</div>}>
             <Table
-              column_grids={["flex-1", "flex-1", "flex-1"]}
-              headings={["Name", "Description", "Actions"]}
+              column_grids={["flex-1", "flex-1"]}
+              headings={["Id", "Name"]}
               rows={workspace()?.workspaces || []}
               renderRow={(item) => (
-                <TableRow
-                  item={item}
-                  column_classes={["flex-4", "flex-4", "flex-4"]}
-                />
+                <tr class="table-row">
+                  <td class="flex-1">{item.id}</td>
+                  <td class="flex-1">{item.name}</td>
+                </tr>
               )}
             />
           </Suspense>

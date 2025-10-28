@@ -10,14 +10,14 @@ import {
 
 export default function App() {
   return (
-    <LastWorkspaceIdProvider>
-      <AuthStateProvider>
+    <AuthStateProvider>
+      <LastWorkspaceIdProvider>
         <Router>
           <LoggedInRoutes />
           <LoggedOutRoutes />
           <Route path="*" component={NotFound} />
         </Router>
-      </AuthStateProvider>
-    </LastWorkspaceIdProvider>
+      </LastWorkspaceIdProvider>
+    </AuthStateProvider>
   );
 }

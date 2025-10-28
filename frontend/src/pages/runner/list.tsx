@@ -6,13 +6,12 @@ import {
   PageContainerHead,
   Table,
 } from "~/components";
-import { TableRow } from "~/components/table";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { doFetch } from "~/utils/do-fetch";
 
 const ListRunnersPage = () => {
-  const [authState, _] = useAuthState();
+  const [authState] = useAuthState();
   const [workspaceId] = useLastWorkspaceId();
 
   const fetchParams = createMemo(() => {

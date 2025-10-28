@@ -12,6 +12,8 @@ import { CreateApiTokenResponse } from "~/bindings/CreateApiTokenResponse";
 import { AddRunnerToWorkspaceRequest } from "./AddRunnerToWorkspaceRequest";
 import { AddRunnerToWorkspaceResponse } from "./AddRunnerToWorkspaceResponse";
 import { ListRunnersForWorkspaceResponse } from "./ListRunnersForWorkspaceResponse";
+import { ListDeploymentResponse } from "./ListDeploymentResponse";
+import { ListDeploymentRequest } from "./ListDeploymentRequest";
 
 export type {
   EnvironmentVariableValue,
@@ -28,4 +30,6 @@ export type {
   AddRunnerToWorkspaceRequest,
   AddRunnerToWorkspaceResponse,
   ListRunnersForWorkspaceResponse,
+  ListDeploymentResponse,
+  ListDeploymentRequest,
 };

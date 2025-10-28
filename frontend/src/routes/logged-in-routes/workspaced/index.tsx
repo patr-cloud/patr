@@ -1,6 +1,7 @@
 import { Route } from "@solidjs/router";
 import { ParentProps } from "solid-js";
 import CreateDeploymentPage from "~/pages/deployment/create";
+import ListDeploymentsPage from "~/pages/deployment/list";
 import CreateRunnerPage from "~/pages/runner/create";
 import ListRunnersPage from "~/pages/runner/list";
 
@@ -13,6 +14,7 @@ export default function WorkspacedRoutes() {
     <Route path="/" component={WorkspacedLayout}>
       <Route path="/" component={() => <div>Home</div>} />
       <Route path="/deployments">
+        <Route path="/" component={ListDeploymentsPage} />
         <Route path="/new" component={CreateDeploymentPage} />
       </Route>
       <Route path="/runners">
