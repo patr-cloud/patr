@@ -1,4 +1,5 @@
 import { ParentProps, Accessor, mergeProps } from "solid-js";
+import { JSX } from "solid-js/h/jsx-runtime";
 import { Color, ButtonVariantEnum, ButtonVariant } from "~/utils/color";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
@@ -27,7 +28,7 @@ interface ButtonProps {
   /**
    * Click handler for the button
    */
-  onClick?: (event: Event) => void;
+  onClick?: (event: MouseEvent & { currentTarget: HTMLButtonElement }) => void;
 }
 
 const Button = (rawProps: ParentProps<ButtonProps>) => {
@@ -48,8 +49,8 @@ const Button = (rawProps: ParentProps<ButtonProps>) => {
         case ButtonVariant.Plain:
           return "bg-transparent";
         case ButtonVariant.Contained:
-          return `bg-primary text-secondary py-xs px-md rounded-xs font-thin border-2 border-primary
-            hover:border-primary hover:cursor-pointer hover:bg-secondary hover:text-primary
+          return `bg-primary text-secondary py-xs px-md rounded-xs font-thin border-2 border-primary \
+            hover:border-primary hover:cursor-pointer hover:bg-secondary hover:text-primary \
             disabled:opacity-50 disabled:cursor-not-allowed`;
       }
     };
@@ -63,7 +64,7 @@ const Button = (rawProps: ParentProps<ButtonProps>) => {
     <button
       disabled={props.disabled}
       type={props.type}
-      class={`${derivedClass()} bg-${props.color}`}
+      class={`${derivedClass()} ${get(props.class)} bg-${props.color}`}
       onClick={props.onClick}
     >
       {props.children}

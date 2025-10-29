@@ -14,6 +14,10 @@ import { AddRunnerToWorkspaceResponse } from "./AddRunnerToWorkspaceResponse";
 import { ListRunnersForWorkspaceResponse } from "./ListRunnersForWorkspaceResponse";
 import { ListDeploymentResponse } from "./ListDeploymentResponse";
 import { ListDeploymentRequest } from "./ListDeploymentRequest";
+import { GetDeploymentInfoRequest } from "./GetDeploymentInfoRequest";
+import { GetDeploymentInfoResponse } from "./GetDeploymentInfoResponse";
+import { GetRunnerInfoResponse } from "./GetRunnerInfoResponse";
+import { DeploymentStatus } from "./DeploymentStatus";
 
 export type {
   EnvironmentVariableValue,
@@ -32,4 +36,8 @@ export type {
   ListRunnersForWorkspaceResponse,
   ListDeploymentResponse,
   ListDeploymentRequest,
+  GetDeploymentInfoRequest,
+  GetDeploymentInfoResponse,
+  GetRunnerInfoResponse,
+  DeploymentStatus,
 };

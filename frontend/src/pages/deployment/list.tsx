@@ -1,3 +1,4 @@
+import { useNavigate } from "@solidjs/router";
 import { createMemo, createResource, ErrorBoundary, Suspense } from "solid-js";
 import { ListDeploymentResponse } from "~/bindings";
 import {
@@ -12,6 +13,7 @@ import { doFetch } from "~/utils/do-fetch";
 const ListDeploymentsPage = () => {
   const [authState] = useAuthState();
   const [workspaceId] = useLastWorkspaceId();
+  const navigate = useNavigate();
 
   const fetchParams = createMemo(() => {
     return [authState(), workspaceId()] as const;
@@ -53,11 +55,17 @@ const ListDeploymentsPage = () => {
         >
           <Suspense fallback={<div>Loading deployments...</div>}>
             <Table
-              column_grids={["flex-4", "flex-4", "flex-4"]}
+              column_grids={["flex-4", "flex-4", "flex-4", "flex-4"]}
               rows={deployments()?.deployments || []}
-              headings={["Deployment Name", "Status", "Runner ID"]}
+              headings={["ID", "Deployment Name", "Status", "Runner ID"]}
               renderRow={(item) => (
-                <tr class="table-row">
+                <tr
+                  onClick={() => {
+                    navigate(`/deployments/${item.id}`);
+                  }}
+                  class="table-row"
+                >
+                  <td class="flex-4">{item.id}</td>
                   <td class="flex-4">{item.name}</td>
                   <td class="flex-4">{item.status}</td>
                   <td class="flex-4">{item.runner}</td>
