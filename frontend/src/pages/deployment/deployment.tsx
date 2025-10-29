@@ -136,6 +136,38 @@ const DeploymentInfo = () => {
     console.log("Stop deployment response:", resp);
   };
 
+  const onClickDelete = async (
+    e: MouseEvent & {
+      currentTarget: HTMLButtonElement;
+    }
+  ) => {
+    e.preventDefault();
+
+    const auth = authState();
+    const currentWorkspace = workspaceId();
+    const deployment = deploymentInfo();
+
+    if (!auth || auth.type !== "LoggedIn" || !currentWorkspace || !deployment) {
+      console.error("User not logged in or workspace ID missing");
+      return;
+    }
+
+    console.log("Delete deployment clicked");
+    const resp = await doFetch(
+      `http://localhost:3001/api/workspace/${workspaceId()}/deployment/${
+        deployment.id
+      }`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${auth.accessToken}`,
+        },
+      }
+    );
+    console.log("Delete deployment response:", resp);
+  };
+
   const Cta = () => {
     switch (deploymentInfo()?.status) {
       case "running":
@@ -150,11 +182,11 @@ const DeploymentInfo = () => {
         );
 
       case "deploying":
-        return <span>Deploying...</span>;
+        return <span class="text-white">Deploying...</span>;
       case "errored":
-        return <span>Error occurred</span>;
+        return <span class="text-white">Error occurred</span>;
       case "unreachable":
-        return <span>Unreachable</span>;
+        return <span class="text-white">Unreachable</span>;
       case "stopped":
         return (
           <Button
@@ -172,29 +204,34 @@ const DeploymentInfo = () => {
 
   return (
     <PageContainer>
-      <ErrorBoundary
-        fallback={(err, reset) => (
-          <div>
-            <p>Error loading deployment info: {err.message}</p>
-            <button onClick={reset}>Retry</button>
-          </div>
-        )}
+      <PageContainerHead
+        title="Deployment"
+        class="justify-between items-center"
+        subTitle={`${
+          deploymentInfo
+            ? deploymentInfo?.loading
+              ? "Loading..."
+              : deploymentInfo()?.name
+            : "No deployment found"
+        }`}
       >
-        <Suspense fallback={<div>Loading deployment info...</div>}>
-          <PageContainerHead
-            title="Deployment"
-            class="justify-between items-center"
-            subTitle={`${
-              deploymentInfo
-                ? deploymentInfo?.loading
-                  ? "Loading..."
-                  : deploymentInfo()?.name
-                : "No deployment found"
-            }`}
-          >
-            {Cta()}
-          </PageContainerHead>
-          <PageContainerBody class="flex flex-col justify-between gap-8">
+        <div class="flex items-center justify-end gap-8">
+          {Cta()}
+          <Button onClick={onClickDelete} variant={ButtonVariant.Contained}>
+            DELETE
+          </Button>
+        </div>
+      </PageContainerHead>
+      <PageContainerBody class="flex flex-col justify-between gap-8">
+        <ErrorBoundary
+          fallback={(err, reset) => (
+            <div>
+              <p>Error loading deployment info: {err.message}</p>
+              <button onClick={reset}>Retry</button>
+            </div>
+          )}
+        >
+          <Suspense fallback={<div>Loading deployment info...</div>}>
             <form class="flex flex-col gap-6 justify-between w-full flex-1">
               <div class="flex flex-col gap-4 items-start w-full">
                 <div class="flex gap-8 items-center w-full">
@@ -286,9 +323,9 @@ const DeploymentInfo = () => {
                 </div>
               </div>
             </form>
-          </PageContainerBody>
-        </Suspense>
-      </ErrorBoundary>
+          </Suspense>
+        </ErrorBoundary>
+      </PageContainerBody>
     </PageContainer>
   );
 };
