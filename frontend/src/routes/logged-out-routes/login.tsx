@@ -30,13 +30,14 @@ const loginFn = query(async (data: LoginRequest) => {
 
   console.log("Login Response Status:", loginResponse);
 
+  /// FIXME: use the hook
   event.response.headers.append(
     "Set-Cookie",
     `authState=${JSON.stringify({
       type: "LoggedIn",
       accessToken: loginResponse.accessToken,
       refreshToken: loginResponse.refreshToken,
-    })};Path=/;SameSite=Lax;Max-Age=604800` // 7 days
+    })};Path=/;SameSite=Strict;Max-Age=604800` // 7 days
   );
 
   // Don't mind the throw, it's just to redirect after setting the cookie

@@ -64,7 +64,7 @@ const Button = (rawProps: ParentProps<ButtonProps>) => {
     <button
       disabled={props.disabled}
       type={props.type}
-      class={`${derivedClass()} ${get(props.class)} bg-${props.color}`}
+      class={`${derivedClass()} bg-${props.color}`}
       onClick={props.onClick}
     >
       {props.children}

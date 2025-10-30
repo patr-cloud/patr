@@ -222,7 +222,6 @@ const CreateDeploymentPage = () => {
 
             <PortInput
               onAdd={(key, value) => {
-                console.log();
                 setPortList((prev) => ({ ...prev, [key]: value }));
               }}
               onDelete={(key) => {

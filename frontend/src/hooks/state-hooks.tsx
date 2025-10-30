@@ -33,7 +33,7 @@ export const AuthStateProvider = (props: ParentProps<{}>) => {
       storage: cookieStorage.withOptions({
         expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7 days
         path: "/",
-        sameSite: "Lax",
+        sameSite: "Strict",
       }),
     }
   );
@@ -63,7 +63,7 @@ export const LastWorkspaceIdProvider = (props: ParentProps<{}>) => {
     storage: cookieStorage.withOptions({
       expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7 days
       path: "/",
-      sameSite: "Lax",
+      sameSite: "Strict",
     }),
   });
 

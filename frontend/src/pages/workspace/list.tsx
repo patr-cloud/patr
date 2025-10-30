@@ -5,7 +5,7 @@ import {
   PageContainerBody,
   PageContainerHead,
 } from "~/components";
-import Table, { TableRow } from "~/components/table";
+import Table from "~/components/table";
 import { doFetch } from "~/utils/do-fetch";
 import { useAuthState } from "~/hooks";
 

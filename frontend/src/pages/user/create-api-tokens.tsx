@@ -141,7 +141,9 @@ const CreateApiTokens = () => {
                 <Input
                   class="flex-10"
                   value={
-                    fromDate() ? fromDate()!.toISOString().split("T")[0] : ""
+                    fromDate()
+                      ? fromDate()?.toISOString().split("T")[0] ?? ""
+                      : ""
                   }
                   onInput={(e) => {
                     setFromDate(e.currentTarget.valueAsDate);

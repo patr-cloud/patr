@@ -63,6 +63,9 @@ type ResponseType<K extends Key> = EndpointMap[K] extends { response: infer R }
   : never;
 
 /// utility wrapper
+/**
+ * @deprecated Use doFetch instead
+ */
 async function makeRequest<K extends Key>(
   key: K,
   options: {
