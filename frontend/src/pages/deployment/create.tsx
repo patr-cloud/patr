@@ -23,6 +23,7 @@ import PortInput from "./port";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { doFetch } from "~/utils/do-fetch";
+import { Uuid } from "~/utils/func";
 
 const CreateDeploymentPage = () => {
   const [authState] = useAuthState();
@@ -37,7 +38,7 @@ const CreateDeploymentPage = () => {
       return { runners: [] };
     }
     const response = await doFetch<ListRunnersForWorkspaceResponse>(
-      `http://localhost:3001/api/workspace/${wsId}/runner`,
+      `${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner`,
       {
         method: "GET",
         headers: {
@@ -84,7 +85,7 @@ const CreateDeploymentPage = () => {
       imageTag: imageTag(),
       registry: registry(),
       runner: runner(),
-      machineType: "0be608bc-0dfd-4e2a-8ece-90252d3c9bce".replaceAll("-", ""),
+      machineType: Uuid("0be608bc-0dfd-4e2a-8ece-90252d3c9bce"),
       minHorizontalScale: 1,
       maxHorizontalScale: 2,
       environmentVariables: Object.fromEntries(
@@ -98,7 +99,7 @@ const CreateDeploymentPage = () => {
     console.log(requestBody);
 
     const response = await doFetch<CreateDeploymentRequest>(
-      `http://localhost:3001/api/workspace/${lastUsedWorkspaceId()}/deployment`,
+      `${import.meta.env.VITE_BASE_URL}/api/workspace/${lastUsedWorkspaceId()}/deployment`,
       {
         method: "POST",
         headers: {

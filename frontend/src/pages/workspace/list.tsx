@@ -14,7 +14,7 @@ const ListWorkspaces = () => {
 
   const [workspace] = createResource(authState, async (auth) => {
     const response = await doFetch<ListUserWorkspacesResponse>(
-      "http://localhost:3001/api/user/workspaces",
+      `${import.meta.env.VITE_BASE_URL}/api/user/workspaces`,
       {
         method: "GET",
         headers: {

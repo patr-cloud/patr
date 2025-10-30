@@ -1,8 +1,8 @@
-import { mergeProps, ParentProps } from "solid-js";
+import { JSX, mergeProps, ParentProps } from "solid-js";
 
 interface PageContainerHeadProps {
   title: string;
-  subTitle: string;
+  subTitle: JSX.Element | string;
   class?: string;
 }
 

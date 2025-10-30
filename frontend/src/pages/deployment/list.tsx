@@ -25,7 +25,7 @@ const ListDeploymentsPage = () => {
     }
 
     const response = await doFetch<ListDeploymentResponse>(
-      `http://localhost:3001/api/workspace/${wsId}/deployment`,
+      `${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment`,
       {
         method: "GET",
         headers: {

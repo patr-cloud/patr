@@ -23,7 +23,7 @@ const ListRunnersPage = () => {
       return { runners: [] };
     }
     const response = await doFetch<ListRunnersForWorkspaceResponse>(
-      `http://localhost:3001/api/workspace/${wsId}/runner`,
+      `${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner`,
       {
         method: "GET",
         headers: {

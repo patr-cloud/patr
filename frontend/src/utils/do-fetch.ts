@@ -27,7 +27,7 @@ const doFetch = async <T>(url: string, options?: RequestInit) => {
 interface EndpointMap {
   Login: {
     method: "POST";
-    path: "http://localhost:3001/api/auth/sign-in";
+    path: string;
     body: LoginRequest;
     response: LoginResponse;
   };
@@ -41,7 +41,7 @@ const endpointConfig: {
 } = {
   Login: {
     method: "POST",
-    path: "http://localhost:3001/api/auth/sign-in",
+    path: `${import.meta.env.VITE_BASE_URL}/api/auth/sign-in`,
   },
 };
 

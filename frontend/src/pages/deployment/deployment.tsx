@@ -32,7 +32,9 @@ const DeploymentInfo = () => {
         return undefined;
       }
       const response = await doFetch<GetDeploymentInfoResponse>(
-        `http://localhost:3001/api/workspace/${wsId}/deployment/${id}`,
+        `${
+          import.meta.env.VITE_BASE_URL
+        }/api/workspace/${wsId}/deployment/${id}`,
         {
           method: "GET",
           headers: {
@@ -63,7 +65,9 @@ const DeploymentInfo = () => {
         return undefined;
       }
       const response = await doFetch<GetRunnerInfoResponse>(
-        `http://localhost:3001/api/workspace/${wsId}/runner/${runnerId}`,
+        `${
+          import.meta.env.VITE_BASE_URL
+        }/api/workspace/${wsId}/runner/${runnerId}`,
         {
           method: "GET",
           headers: {
@@ -81,6 +85,7 @@ const DeploymentInfo = () => {
     e: MouseEvent & { currentTarget: HTMLButtonElement }
   ) => {
     e.preventDefault();
+
     const auth = authState();
     const currentWorkspace = workspaceId();
     const deployment = deploymentInfo();
@@ -92,9 +97,9 @@ const DeploymentInfo = () => {
 
     console.log("Start deployment clicked");
     const resp = await doFetch(
-      `http://localhost:3001/api/workspace/${workspaceId()}/deployment/${
-        deployment.id
-      }/start`,
+      `${
+        import.meta.env.VITE_BASE_URL
+      }/api/workspace/${workspaceId()}/deployment/${deployment.id}/start`,
       {
         method: "POST",
         headers: {
@@ -122,9 +127,9 @@ const DeploymentInfo = () => {
 
     console.log("Stop deployment clicked");
     const resp = await doFetch(
-      `http://localhost:3001/api/workspace/${workspaceId()}/deployment/${
-        deployment.id
-      }/stop`,
+      `${
+        import.meta.env.VITE_BASE_URL
+      }/api/workspace/${workspaceId()}/deployment/${deployment.id}/stop`,
       {
         method: "POST",
         headers: {
@@ -154,9 +159,9 @@ const DeploymentInfo = () => {
 
     console.log("Delete deployment clicked");
     const resp = await doFetch(
-      `http://localhost:3001/api/workspace/${workspaceId()}/deployment/${
-        deployment.id
-      }`,
+      `${
+        import.meta.env.VITE_BASE_URL
+      }/api/workspace/${workspaceId()}/deployment/${deployment.id}`,
       {
         method: "DELETE",
         headers: {
@@ -207,19 +212,19 @@ const DeploymentInfo = () => {
       <PageContainerHead
         title="Deployment"
         class="justify-between items-center"
-        subTitle={`${
-          deploymentInfo
-            ? deploymentInfo?.loading
-              ? "Loading..."
-              : deploymentInfo()?.name
-            : "No deployment found"
-        }`}
+        subTitle={
+          <Suspense fallback={<div>loading...</div>}>
+            {deploymentInfo()?.name || "No Deployment Found"}
+          </Suspense>
+        }
       >
         <div class="flex items-center justify-end gap-8">
-          {Cta()}
-          <Button onClick={onClickDelete} variant={ButtonVariant.Contained}>
-            DELETE
-          </Button>
+          <Suspense fallback={<div>Loading actions...</div>}>
+            {Cta()}
+            <Button onClick={onClickDelete} variant={ButtonVariant.Contained}>
+              DELETE
+            </Button>
+          </Suspense>
         </div>
       </PageContainerHead>
       <PageContainerBody class="flex flex-col justify-between gap-8">

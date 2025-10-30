@@ -15,7 +15,7 @@ const loginFn = query(async (data: LoginRequest) => {
 
   const userAgent = event.request.headers.get("user-agent");
 
-  const loginResponse = await fetch("http://localhost:3001/api/auth/sign-in", {
+  const loginResponse = await fetch(`${import.meta.env.VITE_BASE_URL}/api/auth/sign-in`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

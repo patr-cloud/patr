@@ -7,4 +7,8 @@ const Jsx = (element: JSX.Element) => {
   return () => element;
 };
 
-export { get, Jsx };
+function Uuid(value: string) {
+  return value.replaceAll("-", "");
+}
+
+export { get, Jsx, Uuid };

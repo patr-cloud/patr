@@ -30,7 +30,9 @@ const CreateRunnerPage = () => {
 
     console.log("Creating Runner with name:", name());
     const response = await doFetch<AddRunnerToWorkspaceResponse>(
-      `http://localhost:3001/api/workspace/${currentWorkspaceId}/runner`,
+      `${
+        import.meta.env.VITE_BASE_URL
+      }/api/workspace/${currentWorkspaceId}/runner`,
       {
         method: "POST",
         headers: {
