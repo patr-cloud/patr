@@ -36,7 +36,7 @@ interface InputDropdownProps {
   name?: string;
   /** End Icon */
   endIcon?: () => JSX.Element;
-  /** Start Icon */
+  /** On Click End Icon */
   onClickEndIcon?: () => void;
 }
 
