@@ -70,7 +70,7 @@ const ConfirmSignUp = () => {
       {/* Confirm OTP */}
       <div class="space-y-2">
         <label class="text-white text-sm font-medium block pl-1">
-          Confirm Password
+          OTP
         </label>
         <Input
           type={InputType.Text}
