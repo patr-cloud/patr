@@ -18,6 +18,8 @@ import { GetDeploymentInfoRequest } from "./GetDeploymentInfoRequest";
 import { GetDeploymentInfoResponse } from "./GetDeploymentInfoResponse";
 import { GetRunnerInfoResponse } from "./GetRunnerInfoResponse";
 import { DeploymentStatus } from "./DeploymentStatus";
+import { CreateAccountRequest } from "./CreateAccountRequest";
+import { CompleteSignUpRequest } from "./CompleteSignUpRequest";
 
 export type {
   EnvironmentVariableValue,
@@ -40,4 +42,6 @@ export type {
   GetDeploymentInfoResponse,
   GetRunnerInfoResponse,
   DeploymentStatus,
+  CreateAccountRequest,
+  CompleteSignUpRequest,
 };

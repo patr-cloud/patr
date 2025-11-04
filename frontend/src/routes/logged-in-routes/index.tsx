@@ -1,4 +1,4 @@
-import { Route, useNavigate } from "@solidjs/router";
+import { Route, Navigate } from "@solidjs/router";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { createEffect, createResource, ParentProps } from "solid-js";
 import { useAuthState } from "~/hooks";
@@ -7,11 +7,22 @@ import { ListUserWorkspacesResponse } from "~/bindings";
 
 import WorkspacedRoutes from "./workspaced";
 import NonWorkspacedRoutes from "./non-workspaced";
+import Home from "~/pages/home";
 
 export const PageWrapper = (props: ParentProps<{}>) => {
   const [authState, _] = useAuthState();
   const [workspaceId, setWorkspaceId] = useLastWorkspaceId();
-  const navigate = useNavigate();
+
+  console.log(
+    "Rendering PageWrapper with authState:",
+    authState(),
+    authState()?.type === "LoggedOut"
+  );
+
+  if (!authState() || authState()?.type === "LoggedOut") {
+    console.log("Navigating to /login due to LoggedOut state");
+    return <Navigate href="/login" />;
+  }
 
   createEffect(() => {
     const auth = authState();
@@ -21,7 +32,7 @@ export const PageWrapper = (props: ParentProps<{}>) => {
       return;
     }
     if (auth.type !== "LoggedIn") {
-      navigate("/login");
+      return <Navigate href="/login" />;
     }
   });
 
@@ -63,7 +74,7 @@ export const PageWrapper = (props: ParentProps<{}>) => {
 export default function LoggedInRoutes() {
   return (
     <Route path="/" component={PageWrapper}>
-      <Route path="/" />
+      <Route path="/" component={Home} />
       <WorkspacedRoutes />
       <NonWorkspacedRoutes />
     </Route>

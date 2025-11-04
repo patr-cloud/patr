@@ -1,3 +1,4 @@
+// import { clientOnly } from "@solidjs/start";
 import { Route, Router } from "@solidjs/router";
 import "./app.css";
 import LoggedOutRoutes from "./routes/logged-out-routes/index";
@@ -8,7 +9,7 @@ import {
   LastWorkspaceIdProvider,
 } from "~/hooks/state-hooks";
 
-export default function App() {
+function App() {
   return (
     <AuthStateProvider>
       <LastWorkspaceIdProvider>
@@ -21,3 +22,6 @@ export default function App() {
     </AuthStateProvider>
   );
 }
+
+// export default clientOnly(async () => ({ default: App }), { lazy: true });
+export default App;

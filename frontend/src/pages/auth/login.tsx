@@ -1,55 +1,72 @@
-import { A, query, redirect } from "@solidjs/router";
+import { A, query, redirect, useNavigate } from "@solidjs/router";
 import { Button } from "~/components";
-import { InputType, BgOnboard, Input } from "~/components";
+import { InputType, Input } from "~/components";
 import { ButtonVariant } from "~/utils/color";
 import { JSX } from "solid-js";
 import { getRequestEvent } from "solid-js/web";
 import { LoginRequest, LoginResponse } from "~/bindings";
+import { doFetch } from "~/utils/do-fetch";
+import { useAuthState } from "~/hooks";
 
+/**
+ * @deprecated Not using a server function, cause that limits Client Side Only Capabilities,
+ * keeping it here in case we decide to backtrack on it later.
+ */
 const loginFn = query(async (data: LoginRequest) => {
   "use server";
 
   const event = getRequestEvent();
-
   if (!event) throw new Error("Expect Request Event");
 
   const userAgent = event.request.headers.get("user-agent");
 
-  const loginResponse = await fetch(`${import.meta.env.VITE_BASE_URL}/api/auth/sign-in`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "User-Agent": userAgent || "",
-    },
-    body: JSON.stringify({
-      userId: data.userId,
-      password: data.password,
-      mfaOtp: data.mfaOtp,
-    }),
-  }).then((res) => res.json() as Promise<LoginResponse>);
-
-  console.log("Login Response Status:", loginResponse);
-
-  /// FIXME: use the hook
-  event.response.headers.append(
-    "Set-Cookie",
-    `authState=${JSON.stringify({
-      type: "LoggedIn",
-      accessToken: loginResponse.accessToken,
-      refreshToken: loginResponse.refreshToken,
-    })};Path=/;SameSite=Strict;Max-Age=604800` // 7 days
+  const loginResponse = await doFetch<LoginResponse>(
+    `${import.meta.env.VITE_BASE_URL}/api/auth/sign-in`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": userAgent || "",
+      },
+      body: JSON.stringify({
+        userId: data.userId,
+        password: data.password,
+        mfaOtp: data.mfaOtp,
+      }),
+    }
   );
 
-  // Don't mind the throw, it's just to redirect after setting the cookie
-  // and apparently that's how it's done in solid-start and TS
-  throw redirect("/");
+  console.log("Login Response Status:", loginResponse);
+  if (loginResponse.ok) {
+    event.response.headers.append(
+      "Set-Cookie",
+      `authState=${JSON.stringify({
+        type: "LoggedIn",
+        accessToken: loginResponse.data.accessToken,
+        refreshToken: loginResponse.data.refreshToken,
+      })};Path=/;SameSite=Strict;Max-Age=604800` // 7 days
+    );
+
+    // Don't mind the throw, it's just to redirect after setting the cookie
+    // and apparently that's how it's done in solid-start and TS
+    throw redirect("/");
+  } else {
+    console.error("Login failed:", loginResponse.statusText);
+    event.response.status = 401;
+    // FIXME: as well so this needs some proper error handling, for now just return false
+    return false;
+  }
 }, "login");
 
 const Login = () => {
+  const [, setAuthState] = useAuthState();
+  const navigate = useNavigate();
+
   const onSubmitLogin: JSX.EventHandler<HTMLFormElement, SubmitEvent> = async (
     e
   ) => {
     e.preventDefault();
+
     const formData = new FormData(e.target as HTMLFormElement);
     const userId = formData.get("userId") as string;
     const password = formData.get("password") as string;
@@ -57,24 +74,34 @@ const Login = () => {
     // Handle login logic here
     console.log("Logging in with", { userId });
 
-    await loginFn({
-      userId,
-      password,
-      mfaOtp: "123456",
+    const loginResp = await doFetch<LoginResponse>("/api/auth/sign-in", {
+      method: "POST",
+      body: JSON.stringify({
+        userId,
+        password,
+      }),
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
+
+    if (loginResp.ok) {
+      console.log("Login successful");
+      setAuthState({
+        type: "LoggedIn",
+        accessToken: loginResp.data.accessToken,
+        refreshToken: loginResp.data.refreshToken,
+      });
+      navigate("/", { replace: true });
+    } else {
+      console.error("Error during login:", loginResp.statusText);
+      alert("Error during login: " + loginResp.statusText);
+      return;
+    }
   };
 
   return (
-    <main
-      class="min-h-screen w-full bg-secondary flex items-center justify-center p-4 relative overflow-hidden"
-      style={{
-        "background-image": "url('/images/starry-sky.svg')",
-        "background-size": "cover",
-        "background-position": "center",
-      }}
-    >
-      <BgOnboard />
-
+    <>
       {/* Login Card */}
       <form
         onSubmit={onSubmitLogin}
@@ -102,7 +129,7 @@ const Login = () => {
             type={InputType.Text}
             placeholder="Username or Email"
             name="userId"
-            class={() => "mt-4"}
+            class="mt-4"
             styleVariant="medium"
           />
 
@@ -110,7 +137,7 @@ const Login = () => {
             type={InputType.Password}
             placeholder="Password"
             name="password"
-            class={() => "mt-4"}
+            class="mt-4"
             styleVariant="medium"
           />
 
@@ -137,7 +164,7 @@ const Login = () => {
       <div class="absolute bottom-6 left-0 right-0 text-center">
         <p class="text-gray-500 text-xs">© 2025 Patr. All rights reserved.</p>
       </div>
-    </main>
+    </>
   );
 };
 

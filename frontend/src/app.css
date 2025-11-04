@@ -104,7 +104,7 @@ html, body {
 input,
 textarea,
 select {
-  @apply bg-transparent text-white border border-primary rounded-full px-md py-sm;
+  @apply bg-transparent text-white border border-primary px-lg py-sm rounded-xs;
   @apply focus:outline-none focus:border-primary focus:ring-0;
   transition: all 0.2s ease;
 }

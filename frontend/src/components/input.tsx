@@ -158,6 +158,8 @@ interface InputProps {
   endIcon?: () => JSX.Element;
   /** The Start Icon of the input */
   startIcon?: () => JSX.Element;
+  /** The pattern attribute of the input */
+  pattern?: string;
 }
 
 const Input = (rawProps: InputProps) => {
@@ -171,7 +173,7 @@ const Input = (rawProps: InputProps) => {
   );
 
   const containerClass = `rounded-xs flex justify-start
-    items-center border border-secondary-medium px-sm
+    items-center border border-secondary-medium
     transition-all duration-250
     focus-within:border-primary focus-within:shadow-md
     bg-secondary-light ${get(props.class)} ${
@@ -193,7 +195,10 @@ const Input = (rawProps: InputProps) => {
       {props.label && <label>{get(props.label)}</label>}
       {props.startIcon && <>{props.startIcon()}</>}
       <input
+        form={props.form}
+        required={props.required}
         class={`overflow-hidden text-sm text-ellipsis w-full text-white font-thin border-none bg-transparent disabled:text-disabled focus:outline-none placeholder:text-grey ${paddingClass()}`}
+        pattern={props.pattern}
         onInput={props.onInput}
         onChange={props.onChange}
         placeholder={props.placeholder}

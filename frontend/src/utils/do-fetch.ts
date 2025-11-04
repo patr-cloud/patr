@@ -10,10 +10,11 @@ const doFetch = async <T>(url: string, options?: RequestInit) => {
   });
 
   if (!resp.ok) {
-    throw new Error(`HTTP error! status: ${resp.status}`);
+    console.error(`HTTP error! status: ${resp.status}`);
   }
 
   const data = (await resp.json()) as T;
+  console.log(data);
 
   return {
     data,
