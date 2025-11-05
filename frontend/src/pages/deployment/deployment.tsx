@@ -311,9 +311,11 @@ const DeploymentInfo = () => {
                         const info = deploymentInfo();
                         if (!info) return "";
                         if (info.registry === "registry.patr.cloud") {
-                          return (info as any).repositoryId ?? "";
+                          return "repositoryId" in info
+                            ? info.repositoryId
+                            : "";
                         }
-                        return (info as any).imageName ?? "";
+                        return "imageName" in info ? info.imageName : "";
                       })()}
                     />
 

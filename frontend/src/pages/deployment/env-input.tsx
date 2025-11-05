@@ -22,6 +22,10 @@ interface EnvInputProps {
   envList: MaybeAccessor<{ key: string; value: EnvironmentVariableValue }[]>;
 }
 
+const parseEnvValue = (value: EnvironmentVariableValue): string => {
+  return typeof value === "string" ? value : JSON.stringify(value);
+};
+
 const EnvInput = (props: EnvInputProps) => {
   const [envName, setEnvName] = createSignal<string>("");
   const [envValue, setEnvValue] = createSignal<string>("");
@@ -47,8 +51,7 @@ const EnvInput = (props: EnvInputProps) => {
               disabled={true}
               class="flex-7"
               placeholder="Enter Env Value"
-              // FIXME: Type casting, need to handle other types too
-              value={env.value as string}
+              value={parseEnvValue(env.value)}
               type={InputType.Text}
               onInput={(e) => {
                 setEnvValue(e.currentTarget.value);

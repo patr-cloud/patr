@@ -114,7 +114,7 @@ async function makeRequest<K extends Key>(
     throw new Error(`HTTP error! status: ${resp.status}`);
   }
 
-  return (await resp.json()) as Promise<ResponseType<K>>;
+  return (await resp.json()) as ResponseType<K>;
 }
 
 export { doFetch, makeRequest };
