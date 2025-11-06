@@ -49,7 +49,7 @@ const ForgotPassword = () => {
                 Check Your Email
               </h1>
               <p class="text-gray-400 text-sm">
-                We've sent password reset instructions to{" "}
+                We've sent password reset instructions to
                 <span class="text-primary font-medium">{email()}</span>
               </p>
             </div>

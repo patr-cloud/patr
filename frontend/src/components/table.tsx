@@ -1,5 +1,6 @@
+import { TiThMenu } from "solid-icons/ti";
 import { JSX, mergeProps } from "solid-js";
-import get from "~/utils/func";
+import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
 interface TableProps<TItem> {
@@ -15,7 +16,32 @@ interface TableProps<TItem> {
   renderRow?: (item: TItem, index: number) => JSX.Element;
 }
 
-const Table = <TItem,>(rawProps: TableProps<TItem>) => {
+const TableRow = <TItem extends Record<string, unknown>>(props: {
+  item: TItem;
+  class?: MaybeAccessor<string>;
+  column_classes: string[];
+}) => {
+  return (
+    <tr
+      class={`border border-border-color min-h-10 cursor-pointer flex items-center justify-center w-full px-xl
+        bg-secondary-light last-of-type:rounded-b-xs ${get(props.class)}`}
+    >
+      {Object.values(props.item).map((row, index) => (
+        <td
+          class={`flex items-center justify-center ${
+            props.column_classes.at(index) ?? ""
+          }`}
+        >
+          {row as string}
+        </td>
+      ))}
+    </tr>
+  );
+};
+
+const Table = <TItem extends Record<string, unknown>>(
+  rawProps: TableProps<TItem>
+) => {
   const props = mergeProps(
     {
       class: "",
@@ -45,13 +71,12 @@ const Table = <TItem,>(rawProps: TableProps<TItem>) => {
           </tr>
         )}
         {get(props.rows).map((row, index) => (
-          <tr class="border-b border-grey last-of-type:rounded-b-xs">
-            {props.renderRow ? props.renderRow(row, index) : null}
-          </tr>
+          <>{props.renderRow ? props.renderRow(row, index) : null}</>
         ))}
       </tbody>
     </table>
   );
 };
 
+export { TableRow };
 export default Table;

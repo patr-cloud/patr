@@ -1,3 +1,4 @@
-import useClickOutside from "./useClickOutside";
+import useClickOutside from "./use-click-outside";
+import { useAuthState } from "./state-hooks";
 
-export { useClickOutside };
+export { useClickOutside, useAuthState };
