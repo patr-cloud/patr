@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 use crate::prelude::*;
 
@@ -22,7 +23,7 @@ pub use self::{
 };
 
 /// Information of all the different database plans currently supported
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct DatabasePlan {
 	/// The number of CPU nodes
@@ -34,7 +35,7 @@ pub struct DatabasePlan {
 }
 
 /// Information for the user to connect to the database instance
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct DatabaseConnection {
 	/// The database host IP
@@ -74,7 +75,7 @@ pub enum DatabaseEngine {
 }
 
 /// All the possible status the database pod can be in during it's lifetime
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum DatabaseStatus {
 	/// Database is deploying
@@ -88,7 +89,7 @@ pub enum DatabaseStatus {
 }
 
 /// Database information
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct Database {
 	/// Name of database entered by the user

@@ -50,7 +50,6 @@ pub async fn apply(
 						page: 0,
 						additional_query: (),
 					})
-					.body(ListContainerRepositoriesRequest)
 					.build(),
 			)
 			.await?
@@ -103,7 +102,6 @@ pub async fn apply(
 				page: 0,
 				additional_query: (),
 			})
-			.body(ListRunnersForWorkspaceRequest)
 			.build(),
 	)
 	.await?
@@ -124,8 +122,6 @@ pub async fn apply(
 			.headers(ListAllDeploymentMachineTypeRequestHeaders {
 				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 			})
-			.query(())
-			.body(ListAllDeploymentMachineTypeRequest)
 			.build(),
 	)
 	.await?
@@ -159,7 +155,6 @@ pub async fn apply(
 				page: 0,
 				additional_query: (),
 			})
-			.body(ListDeploymentRequest)
 			.build(),
 	)
 	.await?
@@ -172,7 +167,7 @@ pub async fn apply(
 	// If an ID is provided, specifically use that. Otherwise, use the found
 	// deployment ID by name.
 	if let Some(deployment_id) = id.or(deployment_id) {
-		info!("Updating existing deployment `{name}` with ID `{deployment_id}`");
+		println!("Updating existing deployment `{name}` with ID `{deployment_id}`");
 
 		make_request(
 			ApiRequest::<UpdateDeploymentRequest>::builder()
@@ -184,7 +179,6 @@ pub async fn apply(
 					authorization: token.clone(),
 					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 				})
-				.query(())
 				.body(UpdateDeploymentRequest {
 					name: Some(name.clone()),
 					runner: Some(runner),
@@ -221,11 +215,11 @@ pub async fn apply(
 		)
 		.await?;
 
-		info!("Deployment `{name}` (with ID `{deployment_id}`) updated");
+		println!("Deployment `{name}` (with ID `{deployment_id}`) updated");
 	} else {
 		// If no ID is provided and no deployment is found by name, create a new
 		// deployment.
-		info!("Creating new deployment `{name}`");
+		println!("Creating new deployment `{name}`");
 
 		let response = make_request(
 			ApiRequest::<CreateDeploymentRequest>::builder()
@@ -234,7 +228,6 @@ pub async fn apply(
 					authorization: token.clone(),
 					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 				})
-				.query(())
 				.body(CreateDeploymentRequest {
 					name: name.clone(),
 					registry,
@@ -272,7 +265,7 @@ pub async fn apply(
 		)
 		.await?;
 
-		info!(
+		println!(
 			"Deployment `{name}` created with ID `{}`",
 			response.body.id.id
 		);

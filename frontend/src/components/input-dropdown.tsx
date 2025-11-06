@@ -1,6 +1,6 @@
-import { createSignal } from "solid-js";
+import { createSignal, JSX } from "solid-js";
 import { useClickOutside } from "~/hooks";
-import get from "~/utils/func";
+import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
 export interface InputDropdownOption {
@@ -30,14 +30,14 @@ interface InputDropdownProps {
    * be submitted, doesn't use javascript.
    */
   required?: boolean;
-  /**
-   * The ID of the input, this is used to identify the input in the DOM.
-   */
+  /** The ID of the input, this is used to identify the input in the DOM. */
   id?: string;
-  /**
-   * The name of the input, this is used to identify the input in a form submission.
-   */
+  /** The name of the input, this is used to identify the input in a form submission. */
   name?: string;
+  /** End Icon */
+  endIcon?: () => JSX.Element;
+  /** On Click End Icon */
+  onClickEndIcon?: () => void;
 }
 
 const InputDropdown = (props: InputDropdownProps) => {

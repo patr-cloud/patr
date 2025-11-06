@@ -66,7 +66,7 @@ where
 	type RequestPath;
 	/// The query that should be used for this endpoint. This should be a valid
 	/// HTML URL Query and can contain any query parameters that can be
-	/// serialized and deserialized by [`serde_urlencoded`]
+	/// serialized and deserialized by [`serde_qs`]
 	type RequestQuery;
 	/// The request headers that should be used for this endpoint. This should
 	/// be a struct that implements [`Headers`]. For ease of use, a derive macro
@@ -76,7 +76,9 @@ where
 	/// The request body that should be used for this endpoint. This should be a
 	/// struct that implements [`serde::Deserialize`] and [`serde::Serialize`].
 	/// Any request should be of JSON type. For non-JSON requests, such as
-	/// file uploads, this should be the [`GenericResponse`] struct.
+	/// file uploads, this should be the [`GenericResponse`][1] struct.
+	///
+	/// [1]: crate::utils::GenericResponse
 	type RequestBody;
 
 	/// The authenticator that should be used for this endpoint. This is a

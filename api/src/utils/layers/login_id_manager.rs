@@ -12,7 +12,7 @@ use crate::prelude::*;
 /// The [`tower::Layer`] used to preprocess requests. This will parse the
 /// use the [`preprocess`] crate to validate requests. All subsequent
 /// underlying layers will recieve an [`AuthenticatedAppRequest`] with the
-/// appropriate [`PreprocessApiRequest`].
+/// appropriate [`ProcessedApiRequest`].
 pub struct LoginIdLayer<E>
 where
 	E: ApiEndpoint,

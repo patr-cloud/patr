@@ -28,13 +28,10 @@ pub(super) async fn execute(
 	} else {
 		let workspaces = make_request(
 			ApiRequest::<ListUserWorkspacesRequest>::builder()
-				.path(ListUserWorkspacesPath)
 				.headers(ListUserWorkspacesRequestHeaders {
 					authorization: token.clone(),
 					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 				})
-				.query(())
-				.body(ListUserWorkspacesRequest)
 				.build(),
 		)
 		.await?
@@ -69,8 +66,6 @@ pub(super) async fn execute(
 				authorization: token.clone(),
 				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 			})
-			.query(Default::default())
-			.body(ListDeploymentRequest)
 			.build(),
 	)
 	.await?
@@ -94,8 +89,6 @@ pub(super) async fn execute(
 						authorization: token.clone(),
 						user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 					})
-					.query(())
-					.body(GetRunnerInfoRequest)
 					.build(),
 			)
 			.await?
@@ -124,8 +117,6 @@ pub(super) async fn execute(
 							authorization: token.clone(),
 							user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 						})
-						.query(())
-						.body(GetContainerRepositoryInfoRequest)
 						.build(),
 				)
 				.await?

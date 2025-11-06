@@ -47,12 +47,10 @@ where
 						workspace_id,
 						runner_id,
 					})
-					.query(())
 					.headers(GetIngressTokenForRunnerRequestHeaders {
 						authorization: api_token.clone(),
 						user_agent: user_agent.clone(),
 					})
-					.body(GetIngressTokenForRunnerRequest)
 					.build(),
 			)
 			.with_cancel_check()

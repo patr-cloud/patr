@@ -16,7 +16,9 @@ mod login_id_manager;
 /// request body and returning the error if the request body is invalid
 mod preprocess_handler;
 /// Handles the parsing of the request in the required format and passes a
-/// [`ApiRequest`][ApiRequest] to the next layer
+/// [`ApiRequest`][1] to the next layer
+///
+/// [1]: models::prelude::ApiRequest
 mod request_parser;
 /// The layer that validates the user agent of the request and makes sure that
 /// the user agent is a browser and not a bot in case the user is accessing from

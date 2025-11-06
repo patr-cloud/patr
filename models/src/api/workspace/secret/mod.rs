@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 use crate::prelude::*;
 
@@ -21,7 +22,7 @@ pub use self::{
 /// Patr secrets which only contains the secret name and not the
 /// secret value. This is to ensure that Patr does not have
 /// access to any user sensitive information.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct Secret {
 	/// The name of the secret

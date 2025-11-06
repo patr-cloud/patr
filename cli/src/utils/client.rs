@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::OnceLock};
+use std::sync::OnceLock;
 
 use models::{
 	ApiErrorResponse,
@@ -11,7 +11,6 @@ use models::{
 use preprocess::Preprocessable;
 use reqwest::Client;
 use serde::{Serialize, de::DeserializeOwned};
-use url::Url;
 
 /// A reqwest client that can be used to make requests to the API
 static REQUEST_CLIENT: OnceLock<Client> = OnceLock::new();
@@ -41,16 +40,19 @@ where
 				message: err,
 			},
 		})?;
+	let query = serde_qs::to_string(&query)?;
 	let builder = REQUEST_CLIENT
 		.get_or_init(initialize_client)
 		.request(
 			E::METHOD,
-			Url::from_str(super::constants::API_BASE_URL)
-				.expect("Failed to parse API base URL")
-				.join(path.to_string().as_str())
-				.expect("Failed to parse API URL"),
+			format!(
+				"{}{}{}{}",
+				super::constants::API_BASE_URL,
+				path.to_string(),
+				if query.is_empty() { "" } else { "?" },
+				query
+			),
 		)
-		.query(&query)
 		.headers({
 			let mut headers = headers.to_header_map();
 			headers.insert(

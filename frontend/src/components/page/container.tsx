@@ -1,5 +1,5 @@
 import { mergeProps, ParentProps } from "solid-js";
-import get from "~/utils/func";
+import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
 interface PageContainerProps {

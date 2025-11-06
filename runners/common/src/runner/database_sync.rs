@@ -1,7 +1,7 @@
 use std::pin::pin;
 
 use futures::{StreamExt, future};
-use models::{api::workspace::runner::*, utils::WebSocketUpgrade};
+use models::api::workspace::runner::*;
 use tokio::time::{self, Duration};
 
 use crate::prelude::*;
@@ -46,8 +46,6 @@ where
 						authorization: api_token.clone(),
 						user_agent: user_agent.clone(),
 					})
-					.query(())
-					.body(WebSocketUpgrade::default())
 					.build(),
 			)
 			.with_cancel_check()

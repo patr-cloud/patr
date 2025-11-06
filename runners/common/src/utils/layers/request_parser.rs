@@ -114,8 +114,8 @@ where
 				.into_response());
 			};
 
-			let Ok(query) = serde_urlencoded::from_str(req.uri().query().unwrap_or_default())
-				.inspect_err(|err| {
+			let Ok(query) =
+				serde_qs::from_str(req.uri().query().unwrap_or_default()).inspect_err(|err| {
 					debug!("Failed to parse query `{:?}`: {}", req.uri().query(), err);
 				})
 			else {

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::*;
 use strum::{Display, EnumDiscriminants, EnumString, VariantNames};
+use ts_rs::TS;
 
 use crate::prelude::*;
 
@@ -25,7 +26,7 @@ pub use self::{
 use crate::utils::Uuid;
 
 /// Managed URL information
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagedUrl {
 	/// Subdomain of the URL

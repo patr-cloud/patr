@@ -80,8 +80,8 @@ semver                         = { default-features = false, version = "1" }
 serde                          = { default-features = false, version = "1" }
 serde_json                     = { default-features = false, version = "1" }
 serde_path_to_error            = { default-features = false, version = "0.1" }
+serde_qs                       = { default-features = false, version = "0.15" }
 serde_test                     = { default-features = false, version = "1" }
-serde_urlencoded               = { default-features = false, version = "0.7" }
 serde_yaml2                    = { default-features = false, version = "0.1" }
 sha2                           = { default-features = false, version = "0.10" }
 sqlx                           = { default-features = false, version = "0.8" }
@@ -103,7 +103,7 @@ tracing-log                    = { default-features = false, version = "0.2" }
 tracing-opentelemetry          = { default-features = false, version = "0.32" }
 tracing-subscriber             = { default-features = false, version = "0.3" }
 ts-rs                          = { default-features = false, version = "11" }
-typed-builder                  = { default-features = false, version = "0.22" }
+typed-builder                  = { default-features = false, version = "0.23" }
 url                            = { default-features = false, version = "2" }
 uuid                           = { default-features = false, version = "1" }
 woothee                        = { default-features = false, version = "0.13" }

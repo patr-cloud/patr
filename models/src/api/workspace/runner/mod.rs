@@ -13,6 +13,7 @@ mod stream_runner_data_for_workspace;
 
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
+use ts_rs::TS;
 
 pub use self::{
 	add_runner_to_workspace::*,
@@ -33,7 +34,7 @@ use crate::prelude::*;
 /// runners are arbitrary code that executes the deployments, they can execute
 /// the deployments in any way they want. This includes running the deployments
 /// on a VM, kubernetes, or even on other `PaaS` providers.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct Runner {
 	/// The name of the runner
@@ -41,5 +42,6 @@ pub struct Runner {
 	/// Whether the runner is connected to the Patr API currently or not
 	pub connected: bool,
 	/// The last timestamp the runner was seen online
+	#[ts(type = "Date | null")]
 	pub last_seen: Option<OffsetDateTime>,
 }
