@@ -1,4 +1,4 @@
-import { useNavigate } from "@solidjs/router";
+import { A, useNavigate } from "@solidjs/router";
 import {
   createMemo,
   createResource,
@@ -9,10 +9,12 @@ import {
 import { FiCheck, FiCopy } from "solid-icons/fi";
 import { ListDeploymentResponse } from "~/bindings";
 import {
+  Button,
   PageContainer,
   PageContainerBody,
   PageContainerHead,
   Table,
+  useToast,
 } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { doFetch } from "~/utils/do-fetch";
@@ -50,6 +52,7 @@ const ListDeploymentsPage = () => {
   const [authState] = useAuthState();
   const [workspaceId] = useLastWorkspaceId();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const fetchParams = createMemo(() => {
     return [authState(), workspaceId()] as const;
@@ -71,6 +74,12 @@ const ListDeploymentsPage = () => {
       }
     );
 
+    if (!response.ok) {
+      console.error("Failed to fetch deployments:", response.data.error);
+      toast("Failed to fetch deployments", "error");
+      return { deployments: [] };
+    }
+
     console.log("Fetched deployments:", response.data);
 
     // Fetch deployments logic goes here
@@ -79,7 +88,17 @@ const ListDeploymentsPage = () => {
 
   return (
     <PageContainer>
-      <PageContainerHead title="Deployments" subTitle="List of Deployments" />
+      <PageContainerHead title="Deployments" subTitle="List of Deployments">
+        <A href="/deployments/new">CREATE NEW DEPLOYMENT</A>
+        <Button
+          onClick={() => {
+            toast("This is a message from the underworld", "success");
+          }}
+        >
+          Toast
+        </Button>
+      </PageContainerHead>
+
       <PageContainerBody>
         <ErrorBoundary
           fallback={(err, reset) => (

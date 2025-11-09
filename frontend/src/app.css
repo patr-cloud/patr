@@ -16,12 +16,16 @@
   --color-secondary-light: #23203e;
 
   --color-error: #d62b36;
+  --color-error-dark: #e74c3c;
   --color-error-light: #d62b3680;
   --color-warning: #fdd13a;
+  --color-warning-dark: #f1c40f;
   --color-warning-light: #fdd13a80;
   --color-success: #47c96c;
+  --color-success-dark: #07bc0c;
   --color-success-light: #47c96c80;
   --color-info: #007bff;
+  --color-info-dark: #3498db;
   --color-info-light: #007bff80;
 
   --color-white: #ffffff;

@@ -10,6 +10,7 @@ import {
   PageContainer,
   PageContainerBody,
   PageContainerHead,
+  useToast,
 } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
@@ -20,6 +21,7 @@ const DeploymentInfo = () => {
 
   const [authState] = useAuthState();
   const [workspaceId] = useLastWorkspaceId();
+  const toast = useToast();
 
   const resourceParamsDeployment = createMemo(() => {
     return [authState(), workspaceId(), params.id] as const;
@@ -44,6 +46,12 @@ const DeploymentInfo = () => {
         }
       );
       console.log("Fetched deployment info:", response.data);
+      if (!response.ok) {
+        console.error("Failed to fetch deployment info:", response.data.error);
+        toast("Failed to fetch deployment info", "error");
+        return undefined;
+      }
+
       return response.data;
     }
   );
@@ -77,6 +85,13 @@ const DeploymentInfo = () => {
         }
       );
       console.log("Fetched runner info:", response.data);
+
+      if (!response.ok) {
+        console.error("Failed to fetch runner info:", response.data.error);
+        toast("Failed to fetch runner info", "error");
+        return undefined;
+      }
+
       return response.data.runner;
     }
   );

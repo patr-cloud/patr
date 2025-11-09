@@ -24,10 +24,12 @@ import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { doFetch } from "~/utils/do-fetch";
 import { Uuid } from "~/utils/func";
+import { useToast } from "~/components";
 
 const CreateDeploymentPage = () => {
   const [authState] = useAuthState();
   const [lastUsedWorkspaceId] = useLastWorkspaceId();
+  const toast = useToast();
 
   const fetchParams = createMemo(() => {
     return [authState(), lastUsedWorkspaceId()] as const;
@@ -47,6 +49,13 @@ const CreateDeploymentPage = () => {
         },
       }
     );
+
+    if (!response.ok) {
+      console.error("Failed to fetch runners:", response.data.error);
+      toast("Failed to fetch runners", "error");
+      return { runners: [] };
+    }
+
     console.log("Fetched runners:", response.data);
     return response.data;
   });

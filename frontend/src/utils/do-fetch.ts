@@ -1,28 +1,65 @@
 import { LoginRequest, LoginResponse } from "~/bindings";
+import { ErrorResponse, FetchResult } from "./types";
 
-const doFetch = async <T>(url: string, options?: RequestInit) => {
-  const resp = await fetch(url, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    ...options,
-  });
+const doFetch = async <T>(
+  url: string,
+  options?: RequestInit
+): Promise<FetchResult<T>> => {
+  try {
+    const resp = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      ...options,
+    });
 
-  if (!resp.ok) {
-    console.error(`HTTP error! status: ${resp.status}`);
+    // Handle empty responses (204 No Content, etc.)
+    const contentType = resp.headers.get("content-type");
+    const hasJsonContent = contentType?.includes("application/json");
+
+    let data;
+    if (hasJsonContent && resp.body) {
+      data = await resp.json();
+    } else {
+      data = {};
+    }
+
+    console.log(data);
+
+    if (!resp.ok) {
+      console.error(`HTTP error! status: ${resp.status}`);
+      return {
+        data: data as ErrorResponse,
+        headers: resp.headers,
+        ok: resp.ok,
+        status: resp.status,
+        statusText: resp.statusText,
+      };
+    }
+
+    return {
+      data: data as T,
+      headers: resp.headers,
+      ok: resp.ok,
+      status: resp.status,
+      statusText: resp.statusText,
+    };
+  } catch (error) {
+    console.error("Fetch error:", error);
+
+    // Return a proper error response structure for network errors
+    return {
+      data: {
+        error:
+          error instanceof Error ? error.message : "Network request failed",
+      } as ErrorResponse,
+      headers: new Headers(),
+      ok: false,
+      status: 0,
+      statusText: "Network Error",
+    };
   }
-
-  const data = (await resp.json()) as T;
-  console.log(data);
-
-  return {
-    data,
-    headers: resp.headers,
-    ok: resp.ok,
-    status: resp.status,
-    statusText: resp.statusText,
-  };
 };
 
 interface EndpointMap {

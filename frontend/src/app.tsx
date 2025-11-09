@@ -8,16 +8,19 @@ import {
   AuthStateProvider,
   LastWorkspaceIdProvider,
 } from "~/hooks/state-hooks";
+import { ToastProvider } from "./components";
 
 function App() {
   return (
     <AuthStateProvider>
       <LastWorkspaceIdProvider>
-        <Router>
-          <LoggedOutRoutes />
-          <LoggedInRoutes />
-          <Route path="*" component={NotFound} />
-        </Router>
+        <ToastProvider>
+          <Router>
+            <LoggedOutRoutes />
+            <LoggedInRoutes />
+            <Route path="*" component={NotFound} />
+          </Router>
+        </ToastProvider>
       </LastWorkspaceIdProvider>
     </AuthStateProvider>
   );

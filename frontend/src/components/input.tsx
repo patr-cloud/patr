@@ -1,4 +1,4 @@
-import { mergeProps } from "solid-js";
+import { createSignal, mergeProps } from "solid-js";
 import { JSX } from "solid-js/h/jsx-runtime";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
@@ -105,56 +105,32 @@ const InputType = {
 };
 
 export type InputVariantEnum = (typeof InputType)[keyof typeof InputType];
+export type InputEventT = InputEvent & { currentTarget: HTMLInputElement };
 
 interface InputProps {
-  /**
-   * The name of the input, this is used to identify the input in a form submission.
-   */
+  /** The name of the input, this is used to identify the input in a form submission. */
   name?: string;
-  /**
-   * The Type of the input, defaults to InputType.Text
-   */
+  /** The Type of the input, defaults to InputType.Text */
   type?: InputVariantEnum;
-  /**
-   * The ID of the input, this is used to identify the input in the DOM.
-   */
+  /** The ID of the input, this is used to identify the input in the DOM.  */
   id?: string;
-  /**
-   * Additional Classes for the input.
-   */
+  /** Additional Classes for the input. */
   class?: MaybeAccessor<string>;
-  /**
-   * Specifies whether the form field needs to be filled in before it can
-   * be submitted, doesn't use javascript.
-   */
+  /** Specifies whether the form field needs to be filled in before it can be submitted, doesn't use javascript.  */
   required?: boolean;
-  /**
-   * The placeholder text for the input
-   */
+  /** The placeholder text for the input */
   placeholder?: string;
-  /**
-   * The Form Id of the input
-   */
+  /** The Form Id of the input */
   form?: string;
-  /**
-   * On Input Handler
-   */
-  onInput?: (e: InputEvent & { currentTarget: HTMLInputElement }) => void;
-  /**
-   * On Change Handler
-   */
+  /** On Input Handler */
+  onInput?: (e: InputEventT) => void;
+  /** On Change Handler */
   onChange?: (e: Event) => void;
-  /**
-   * On KeyDown Handler
-   */
+  /** On KeyDown Handler */
   onKeyDown?: (e: KeyboardEvent & { currentTarget: HTMLInputElement }) => void;
-  /**
-   * On Paste Handler
-   */
+  /** On Paste Handler */
   onPaste?: (e: ClipboardEvent & { currentTarget: HTMLInputElement }) => void;
-  /**
-   * Whether the input is disabled or not
-   */
+  /** Whether the input is disabled or not */
   disabled?: MaybeAccessor<boolean>;
   /** Label for the input, if undefined, no label is rendered. */
   label?: MaybeAccessor<string>;
@@ -172,6 +148,12 @@ interface InputProps {
   maxLength?: number;
   /** Additional classes for the inner input element */
   innerClass?: MaybeAccessor<string>;
+  /**
+   * Global attribute valid for all elements, including all input types, containing a text representing advisory information related to the element it belongs to.
+   * {@link https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/input#title MDN Documentation}
+   */
+
+  title?: string;
 }
 
 const Input = (rawProps: InputProps) => {
@@ -207,6 +189,7 @@ const Input = (rawProps: InputProps) => {
       {props.label && <label>{get(props.label)}</label>}
       {props.startIcon && <>{props.startIcon()}</>}
       <input
+        title={props.title}
         form={props.form}
         required={props.required}
         class={`overflow-hidden text-ellipsis w-full text-white border-none bg-transparent disabled:text-disabled focus:outline-none placeholder:text-grey text-sm font-thin ${paddingClass()} ${get(
@@ -230,5 +213,24 @@ const Input = (rawProps: InputProps) => {
   );
 };
 
+export const PasswordInput = (props: InputProps) => {
+  const [showPassword, setShowPassword] = createSignal<boolean>(false);
+
+  return (
+    <Input
+      {...props}
+      type={showPassword() ? InputType.Text : InputType.Password}
+      endIcon={() => (
+        <button
+          type="button"
+          onClick={() => setShowPassword(!showPassword())}
+          class="text-primary"
+        >
+          {showPassword() ? "Hide" : "Show"}
+        </button>
+      )}
+    />
+  );
+};
 export { InputType };
 export default Input;

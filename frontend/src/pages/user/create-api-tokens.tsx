@@ -16,9 +16,11 @@ import {
   CreateApiTokenResponse,
   ListUserWorkspacesResponse,
 } from "~/bindings";
+import { useToast } from "~/components/toast";
 
 const CreateApiTokens = () => {
   const [authState, _] = useAuthState();
+  const toast = useToast();
   const [workspace] = createResource(authState, async (auth) => {
     const response = await doFetch<ListUserWorkspacesResponse>(
       `${import.meta.env.VITE_BASE_URL}/api/user/workspaces`,
@@ -32,6 +34,13 @@ const CreateApiTokens = () => {
         },
       }
     );
+
+    if (!response.ok) {
+      console.error("Failed to fetch workspaces:", response.data.error);
+      toast("Failed to fetch workspaces", "error");
+      return { workspaces: [] };
+    }
+
     return response.data;
   });
 

@@ -1,9 +1,13 @@
 import { JSX, mergeProps, ParentProps } from "solid-js";
 
 interface PageContainerHeadProps {
+  /** The title of the page head */
   title: string;
+  /** Optional URL to redirect to when title is clicked */
   titleUrl?: string;
+  /** The subtitle of the page head */
   subTitle: JSX.Element | string;
+  /** Additional CSS classes for the header */
   class?: string;
 }
 
