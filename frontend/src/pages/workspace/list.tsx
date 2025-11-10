@@ -4,6 +4,7 @@ import {
   PageContainer,
   PageContainerBody,
   PageContainerHead,
+  useToast,
 } from "~/components";
 import Table from "~/components/table";
 import { httpRequest } from "~/utils/http-request";
@@ -11,6 +12,7 @@ import { useAuthState } from "~/hooks";
 
 const ListWorkspaces = () => {
   const [authState, _] = useAuthState();
+  const toast = useToast();
 
   const [workspace] = createResource(authState, async (auth) => {
     const response = await httpRequest<ListUserWorkspacesResponse>(
@@ -25,6 +27,13 @@ const ListWorkspaces = () => {
         },
       }
     );
+
+    if (!response.ok) {
+      console.error("Failed to fetch workspaces:", response.data.error);
+      toast("Failed to fetch workspaces", "error");
+      return { workspaces: [] };
+    }
+
     return response.data;
   });
 

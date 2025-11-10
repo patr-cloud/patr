@@ -8,6 +8,7 @@ import { ListUserWorkspacesResponse } from "~/bindings";
 import WorkspacedRoutes from "./workspaced";
 import NonWorkspacedRoutes from "./non-workspaced";
 import Home from "~/pages/home";
+import { useToast } from "~/components";
 
 import Sidebar from "~/components/sidebar";
 import TopBar from "~/components/top-bar";
@@ -15,6 +16,7 @@ import TopBar from "~/components/top-bar";
 export const PageWrapper = (props: ParentProps<{}>) => {
   const [authState, _] = useAuthState();
   const [workspaceId, setWorkspaceId] = useLastWorkspaceId();
+  const toast = useToast();
 
   console.log(
     "Rendering PageWrapper with authState:",
@@ -53,6 +55,12 @@ export const PageWrapper = (props: ParentProps<{}>) => {
         },
       }
     );
+
+    if (!response.ok) {
+      console.error("Failed to fetch workspaces:", response.data.error);
+      toast("Failed to fetch workspaces", "error");
+      return { workspaces: [] };
+    }
 
     return response.data;
   });
