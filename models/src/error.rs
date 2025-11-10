@@ -8,10 +8,22 @@ use crate::prelude::*;
 
 /// A list of all the possible errors that can be returned by the API
 #[derive(
-	Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Display, EnumIter,
+	Debug,
+	Clone,
+	Copy,
+	PartialEq,
+	Eq,
+	PartialOrd,
+	Ord,
+	Serialize,
+	Deserialize,
+	Display,
+	EnumIter,
+	::ts_rs::TS,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
+#[ts(export, rename_all = "camelCase")]
 pub enum ErrorType {
 	/// The email provided is invalid
 	InvalidEmail,

@@ -1,6 +1,18 @@
 import { LoginRequest, LoginResponse } from "~/bindings";
 import { ErrorResponse, FetchResult } from "./types";
 
+/**
+ * A wrapper around the Fetch API, adds a few things, such as:
+ * - Default headers, including Content-Type application/json
+ * - JSON response parsing
+ * - Error handling
+ * - Type safety with generics
+ *
+ * @param url {string} The URL of the request
+ * @param options {RequestInit} The options for the request
+ * @returns {Promise<FetchResult<T>>} Returns a promise that resolves to a FetchResult<T>, if the request succeeds,
+ * then `resp.data` will be of type `T` else it will be of type [`ErrorResponse`](./types.ts)
+ */
 const doFetch = async <T>(
   url: string,
   options?: RequestInit

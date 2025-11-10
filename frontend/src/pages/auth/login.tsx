@@ -1,5 +1,5 @@
 import { A, query, redirect, useNavigate } from "@solidjs/router";
-import { Alert, Button, InputEventT } from "~/components";
+import { Alert, Button, InputEventT, useToast } from "~/components";
 import { InputType, Input } from "~/components";
 import { ButtonVariant } from "~/utils/color";
 import { createSignal, JSX, Show } from "solid-js";
@@ -73,6 +73,7 @@ interface InputFields {
 const Login = () => {
   const [, setAuthState] = useAuthState();
   const navigate = useNavigate();
+  const toast = useToast();
   const [inputs, setInputs] = createSignal<InputFields>({
     userId: "",
     password: "",
@@ -172,7 +173,7 @@ const Login = () => {
           break;
         default:
           // Generic error handling
-          alert("Error during login: " + loginResp.statusText);
+          toast("Error during login: " + loginResp.statusText, "error");
           break;
       }
       return;
