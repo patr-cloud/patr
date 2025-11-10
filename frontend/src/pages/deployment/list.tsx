@@ -17,7 +17,7 @@ import {
   useToast,
 } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
-import { doFetch } from "~/utils/do-fetch";
+import { httpRequest } from "~/utils/http-request";
 
 const CopyButton = (props: { text: string }) => {
   const [copied, setCopied] = createSignal(false);
@@ -63,7 +63,7 @@ const ListDeploymentsPage = () => {
       return { deployments: [] };
     }
 
-    const response = await doFetch<ListDeploymentResponse>(
+    const response = await httpRequest<ListDeploymentResponse>(
       `${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment`,
       {
         method: "GET",

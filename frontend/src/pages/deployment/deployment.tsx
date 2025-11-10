@@ -14,7 +14,7 @@ import {
 } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { doFetch } from "~/utils/do-fetch";
+import { httpRequest } from "~/utils/http-request";
 
 const DeploymentInfo = () => {
   const params = useParams();
@@ -33,7 +33,7 @@ const DeploymentInfo = () => {
       if (!wsId || !auth || auth.type !== "LoggedIn" || id === "") {
         return undefined;
       }
-      const response = await doFetch<GetDeploymentInfoResponse>(
+      const response = await httpRequest<GetDeploymentInfoResponse>(
         `${
           import.meta.env.VITE_BASE_URL
         }/api/workspace/${wsId}/deployment/${id}`,
@@ -72,7 +72,7 @@ const DeploymentInfo = () => {
       ) {
         return undefined;
       }
-      const response = await doFetch<GetRunnerInfoResponse>(
+      const response = await httpRequest<GetRunnerInfoResponse>(
         `${
           import.meta.env.VITE_BASE_URL
         }/api/workspace/${wsId}/runner/${runnerId}`,
@@ -111,7 +111,7 @@ const DeploymentInfo = () => {
     }
 
     console.log("Start deployment clicked");
-    const resp = await doFetch(
+    const resp = await httpRequest(
       `${
         import.meta.env.VITE_BASE_URL
       }/api/workspace/${workspaceId()}/deployment/${deployment.id}/start`,
@@ -141,7 +141,7 @@ const DeploymentInfo = () => {
     }
 
     console.log("Stop deployment clicked");
-    const resp = await doFetch(
+    const resp = await httpRequest(
       `${
         import.meta.env.VITE_BASE_URL
       }/api/workspace/${workspaceId()}/deployment/${deployment.id}/stop`,
@@ -173,7 +173,7 @@ const DeploymentInfo = () => {
     }
 
     console.log("Delete deployment clicked");
-    const resp = await doFetch(
+    const resp = await httpRequest(
       `${
         import.meta.env.VITE_BASE_URL
       }/api/workspace/${workspaceId()}/deployment/${deployment.id}`,

@@ -6,14 +6,14 @@ import {
   PageContainerHead,
 } from "~/components";
 import Table from "~/components/table";
-import { doFetch } from "~/utils/do-fetch";
+import { httpRequest } from "~/utils/http-request";
 import { useAuthState } from "~/hooks";
 
 const ListWorkspaces = () => {
   const [authState, _] = useAuthState();
 
   const [workspace] = createResource(authState, async (auth) => {
-    const response = await doFetch<ListUserWorkspacesResponse>(
+    const response = await httpRequest<ListUserWorkspacesResponse>(
       `${import.meta.env.VITE_BASE_URL}/api/user/workspaces`,
       {
         method: "GET",

@@ -9,7 +9,7 @@ import {
 import { useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { doFetch } from "~/utils/do-fetch";
+import { httpRequest } from "~/utils/http-request";
 
 const ListRunnersPage = () => {
   const [authState] = useAuthState();
@@ -24,7 +24,7 @@ const ListRunnersPage = () => {
     if (!wsId || !auth || auth.type !== "LoggedIn") {
       return { runners: [] };
     }
-    const response = await doFetch<ListRunnersForWorkspaceResponse>(
+    const response = await httpRequest<ListRunnersForWorkspaceResponse>(
       `${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner`,
       {
         method: "GET",

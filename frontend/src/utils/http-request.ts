@@ -13,7 +13,7 @@ import { ErrorResponse, FetchResult } from "./types";
  * @returns {Promise<FetchResult<T>>} Returns a promise that resolves to a FetchResult<T>, if the request succeeds,
  * then `resp.data` will be of type `T` else it will be of type [`ErrorResponse`](./types.ts)
  */
-const doFetch = async <T>(
+const httpRequest = async <T>(
   url: string,
   options?: RequestInit
 ): Promise<FetchResult<T>> => {
@@ -114,7 +114,7 @@ type ResponseType<K extends Key> = EndpointMap[K] extends { response: infer R }
 
 /// utility wrapper
 /**
- * @deprecated Use doFetch instead
+ * @deprecated Use [httpRequest](./http-request.ts) instead
  */
 async function makeRequest<K extends Key>(
   key: K,
@@ -166,4 +166,4 @@ async function makeRequest<K extends Key>(
   return (await resp.json()) as ResponseType<K>;
 }
 
-export { doFetch, makeRequest };
+export { httpRequest, makeRequest };

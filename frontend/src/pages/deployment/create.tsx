@@ -22,7 +22,7 @@ import {
 import PortInput from "./port";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { doFetch } from "~/utils/do-fetch";
+import { httpRequest } from "~/utils/http-request";
 import { Uuid } from "~/utils/func";
 import { useToast } from "~/components";
 
@@ -39,7 +39,7 @@ const CreateDeploymentPage = () => {
     if (!wsId || !auth || auth.type !== "LoggedIn") {
       return { runners: [] };
     }
-    const response = await doFetch<ListRunnersForWorkspaceResponse>(
+    const response = await httpRequest<ListRunnersForWorkspaceResponse>(
       `${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner`,
       {
         method: "GET",
@@ -107,7 +107,7 @@ const CreateDeploymentPage = () => {
 
     console.log(requestBody);
 
-    const response = await doFetch<CreateDeploymentRequest>(
+    const response = await httpRequest<CreateDeploymentRequest>(
       `${
         import.meta.env.VITE_BASE_URL
       }/api/workspace/${lastUsedWorkspaceId()}/deployment`,

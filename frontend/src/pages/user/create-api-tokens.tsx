@@ -9,7 +9,7 @@ import {
   PageContainerBody,
   PageContainerHead,
 } from "~/components";
-import { doFetch } from "~/utils/do-fetch";
+import { httpRequest } from "~/utils/http-request";
 import { useAuthState } from "~/hooks";
 import {
   CreateApiTokenRequest,
@@ -22,7 +22,7 @@ const CreateApiTokens = () => {
   const [authState, _] = useAuthState();
   const toast = useToast();
   const [workspace] = createResource(authState, async (auth) => {
-    const response = await doFetch<ListUserWorkspacesResponse>(
+    const response = await httpRequest<ListUserWorkspacesResponse>(
       `${import.meta.env.VITE_BASE_URL}/api/user/workspaces`,
       {
         method: "GET",
@@ -73,7 +73,7 @@ const CreateApiTokens = () => {
         workspaces().map((wsId) => [wsId, { type: "superAdmin" }])
       ),
     };
-    const response = await doFetch<CreateApiTokenResponse>(
+    const response = await httpRequest<CreateApiTokenResponse>(
       `${import.meta.env.VITE_BASE_URL}/api/user/api-token`,
       {
         method: "POST",

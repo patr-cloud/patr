@@ -4,7 +4,7 @@ import { CreateAccountRequest } from "~/bindings";
 import Button from "~/components/button";
 import Input, { InputType } from "~/components/input";
 import { ButtonVariant } from "~/utils/color";
-import { doFetch } from "~/utils/do-fetch";
+import { httpRequest } from "~/utils/http-request";
 
 const SignUp = () => {
   const [username, setUsername] = createSignal("");
@@ -27,7 +27,7 @@ const SignUp = () => {
     };
 
     console.log("Sign Up Request:", requestBody);
-    const resp = await doFetch("/api/auth/sign-up", {
+    const resp = await httpRequest("/api/auth/sign-up", {
       method: "POST",
       body: JSON.stringify(requestBody),
       headers: {

@@ -2,7 +2,7 @@ import { Route, Navigate } from "@solidjs/router";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { createEffect, createResource, ParentProps } from "solid-js";
 import { useAuthState } from "~/hooks";
-import { doFetch } from "~/utils/do-fetch";
+import { httpRequest } from "~/utils/http-request";
 import { ListUserWorkspacesResponse } from "~/bindings";
 
 import WorkspacedRoutes from "./workspaced";
@@ -43,7 +43,7 @@ export const PageWrapper = (props: ParentProps<{}>) => {
     if (auth === null || auth.type !== "LoggedIn") {
       return { workspaces: [] };
     }
-    const response = await doFetch<ListUserWorkspacesResponse>(
+    const response = await httpRequest<ListUserWorkspacesResponse>(
       `${import.meta.env.VITE_BASE_URL}/api/user/workspaces`,
       {
         method: "GET",

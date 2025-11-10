@@ -5,7 +5,7 @@ import { ButtonVariant } from "~/utils/color";
 import { createSignal, JSX, Show } from "solid-js";
 import { getRequestEvent } from "solid-js/web";
 import { LoginRequest, LoginResponse } from "~/bindings";
-import { doFetch } from "~/utils/do-fetch";
+import { httpRequest } from "~/utils/http-request";
 import { useAuthState } from "~/hooks";
 import {
   USERNAME_VALIDITY_PATTERN,
@@ -26,7 +26,7 @@ const loginFn = query(async (data: LoginRequest) => {
 
   const userAgent = event.request.headers.get("user-agent");
 
-  const loginResponse = await doFetch<LoginResponse>(
+  const loginResponse = await httpRequest<LoginResponse>(
     `${import.meta.env.VITE_BASE_URL}/api/auth/sign-in`,
     {
       method: "POST",
@@ -136,7 +136,7 @@ const Login = () => {
     console.log("Submitting login for", { userId, password });
     if (!validateInputs()) return;
 
-    const loginResp = await doFetch<LoginResponse>("/api/auth/sign-in", {
+    const loginResp = await httpRequest<LoginResponse>("/api/auth/sign-in", {
       method: "POST",
       body: JSON.stringify({
         userId,
