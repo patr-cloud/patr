@@ -47,7 +47,17 @@ pub mod prelude {
 			SecretPermission,
 			StaticSitePermission,
 		},
-		utils::{ListResourceQuery, OneOrMore, Uuid},
+		utils::{
+			BearerToken,
+			DockerContentDigest,
+			DockerDistributionApiVersion,
+			Link,
+			ListResourceQuery,
+			LoginId,
+			OneOrMore,
+			OptionalHeader,
+			Uuid,
+		},
 	};
 	pub use tracing::{debug, error, info, instrument, trace, warn};
 

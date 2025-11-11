@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO container_registry_tag (name, repository_id, manifest_digest) VALUES ($1, $2, $3) ON CONFLICT (name, repository_id) DO UPDATE SET manifest_digest = EXCLUDED.manifest_digest",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bc1ee71da89595aba3df45023b54900965a3311c13875b90f39c3c0d40b14afd"
+}

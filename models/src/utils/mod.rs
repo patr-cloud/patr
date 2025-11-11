@@ -25,7 +25,7 @@ mod geo_location;
 /// A set of utilities to parse headers from a request, ensure that certain
 /// headers are present in a struct as well as provide what headers are required
 /// for an endpoint.
-mod header_utils;
+mod headers;
 /// A set of utilities to parse a query param for the list route API. This route
 /// enforces a response header to be present, which provides the total number of
 /// items in the response, as well as adding other params like sorting,
@@ -59,7 +59,7 @@ pub use self::{
 	bools::*,
 	ext_trait::*,
 	geo_location::*,
-	header_utils::*,
+	headers::*,
 	list_resource_query::*,
 	middlewares::*,
 	one_or_many::*,

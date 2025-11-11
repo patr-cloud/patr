@@ -17,7 +17,7 @@ mod endpoint_handler;
 mod login_id_manager;
 /// Handles the preprocessing of the request, such as the validation of the
 /// request body and returning the error if the request body is invalid
-mod preprocess_handler;
+mod preprocess_layer;
 /// Handles the parsing of the request in the required format and passes a
 /// [`ApiRequest`][ApiRequest] to the next layer
 mod request_parser;
@@ -27,6 +27,9 @@ mod request_parser;
 /// be accessed by the API are only accessed by the web dashboard
 mod user_agent_validation_layer;
 
+/// All layers that are used by the Patr Registry.
+pub mod registry;
+
 pub use self::{
 	auth_endpoint_handler::*,
 	authenticator::*,
@@ -34,7 +37,7 @@ pub use self::{
 	data_store_connection_handler::*,
 	endpoint_handler::*,
 	login_id_manager::*,
-	preprocess_handler::*,
+	preprocess_layer::*,
 	request_parser::*,
 	user_agent_validation_layer::*,
 };

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO container_registry_manifest (digest, size, created_at, content_type) VALUES ($1, $2, NOW(), $3) ON CONFLICT (digest) DO UPDATE SET content_type = EXCLUDED.content_type",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2b58d00403e72f05780769d7c8b452eadf41e0c53e313582dc5d6cab4c6731b3"
+}

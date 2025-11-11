@@ -12,11 +12,12 @@ use syn::{
 	Token,
 	parse::{Parse, ParseStream},
 	parse_macro_input,
+	punctuated::Punctuated,
 };
 
 /// A helper struct to parse a registry endpoint
 pub struct RegistryEndpoint {
-	/// The documentation for the API endpoint. This is used for all the
+	/// The documentation for the registry endpoint. This is used for all the
 	/// generated structs, along with some pre-text.
 	documentation: String,
 	/// The name of the endpoint. All generated structs will be prefixed with
@@ -28,8 +29,8 @@ pub struct RegistryEndpoint {
 	path: LitStr,
 	/// The body of the URL path. This is used for typed paths.
 	path_body: Option<FieldsNamed>,
-	/// Should this route be authenticated
-	authenticated: bool,
+	/// Whether this endpoint requires authentication
+	auth: bool,
 
 	/// The query params for the endpoint
 	query: Option<FieldsNamed>,
@@ -74,10 +75,10 @@ impl Parse for RegistryEndpoint {
 			Some(body)
 		};
 
+		let mut auth = None;
 		let mut query = None;
 		let mut request_headers = None;
 		let mut response_headers = None;
-		let mut authenticated = None;
 
 		while !input.is_empty() {
 			let ident = input.parse::<Ident>()?;
@@ -106,13 +107,13 @@ impl Parse for RegistryEndpoint {
 
 					response_headers = Some(input.parse()?);
 				}
-				"authenticated" => {
-					if authenticated.is_some() {
+				"auth" => {
+					if auth.is_some() {
 						return Err(Error::new(ident.span(), "Duplicate field"));
 					}
 					input.parse::<Token![=]>()?;
 
-					authenticated = Some(input.parse::<LitBool>()?.value);
+					auth = Some(input.parse::<LitBool>()?.value);
 				}
 				_ => {
 					return Err(Error::new(ident.span(), "Unknown field"));
@@ -122,7 +123,7 @@ impl Parse for RegistryEndpoint {
 				input.parse::<Token![,]>()?;
 			}
 		}
-		let authenticated = authenticated.unwrap_or(false);
+		let auth = auth.unwrap_or(true);
 
 		Ok(Self {
 			documentation,
@@ -130,7 +131,7 @@ impl Parse for RegistryEndpoint {
 			method,
 			path,
 			path_body,
-			authenticated,
+			auth,
 
 			query,
 			request_headers,
@@ -140,9 +141,10 @@ impl Parse for RegistryEndpoint {
 	}
 }
 
-/// Declares an API endpoint. This macro allows easy definition of an API
-/// endpoint along with the request URL, headers, query, body as well as the
-/// response headers and body. Generates the required structs for the endpoint.
+/// Declares a registry endpoint. This macro allows easy definition of a
+/// registry endpoint along with the request URL, headers, query as well as the
+/// response headers. Generates the required structs for the endpoint following
+/// the OCI Distribution Specification.
 pub fn parse(input: TokenStream) -> TokenStream {
 	let RegistryEndpoint {
 		documentation,
@@ -150,7 +152,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		method,
 		path,
 		path_body,
-		authenticated,
+		auth,
 
 		query,
 		request_headers,
@@ -177,20 +179,10 @@ pub fn parse(input: TokenStream) -> TokenStream {
 	};
 	let path_name = format_ident!("{}Path", name);
 
-	let authenticated = authenticated
-		.then(|| {
-			quote::quote! { true }
-		})
-		.unwrap_or_else(|| {
-			quote::quote! { false }
-		});
-
-	let request_name = format_ident!("{}Request", name);
-
-	let query_type_name = format_ident!("{}Query", name);
 	let query_name = if query.is_some() {
+		let ident = format_ident!("{}Query", name);
 		quote::quote! {
-			#query_type_name
+			#ident
 		}
 	} else {
 		quote::quote! {
@@ -198,7 +190,9 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		}
 	};
 	let query_decl = if let Some(query) = query {
+		let query_type_name = format_ident!("{}Query", name);
 		quote::quote! {
+			#[::preprocess::sync]
 			/// The query params for the #name endpoint.
 			///
 			/// The documentation for the endpoint is below:
@@ -211,7 +205,6 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				serde::Serialize,
 				serde::Deserialize,
 			)]
-			#[serde(rename_all = "camelCase")]
 			pub struct #query_type_name #query
 		}
 	} else {
@@ -229,6 +222,14 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		}
 	};
 	let request_headers_decl = if let Some(headers) = request_headers {
+		let headers = FieldsNamed {
+			brace_token: headers.brace_token,
+			named: headers
+				.named
+				.into_iter()
+				.map(|field| field)
+				.collect::<Punctuated<_, _>>(),
+		};
 		quote::quote! {
 			/// The required request headers for the #name endpoint.
 			///
@@ -239,7 +240,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				Debug,
 				Clone,
 				PartialEq,
-				::macros::HasHeaders,
+				macros::HasHeaders,
 			)]
 			pub struct #request_headers_name #headers
 		}
@@ -258,6 +259,14 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		}
 	};
 	let response_headers_decl = if let Some(headers) = response_headers {
+		let headers = FieldsNamed {
+			brace_token: headers.brace_token,
+			named: headers
+				.named
+				.into_iter()
+				.map(|field| field)
+				.collect::<Punctuated<_, _>>(),
+		};
 		quote::quote! {
 			/// The required response headers for the #name endpoint.
 			///
@@ -268,7 +277,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				Debug,
 				Clone,
 				PartialEq,
-				::macros::HasHeaders,
+				macros::HasHeaders,
 			)]
 			pub struct #response_headers_name #headers
 		}
@@ -277,6 +286,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 	};
 
 	quote::quote! {
+		#[::preprocess::sync]
 		/// The URL path for the #name endpoint.
 		///
 		/// The documentation for the endpoint is below:
@@ -297,32 +307,19 @@ pub fn parse(input: TokenStream) -> TokenStream {
 
 		#query_decl
 
-		/// The request body for the #name endpoint
-		///
-		/// The documentation for the endpoint is below:
-		///
-		#[doc = #documentation]
-		#[derive(
-			Debug,
-			Clone,
-			PartialEq,
-			serde::Serialize,
-			serde::Deserialize,
-		)]
-		pub struct #request_name ;
-
 		#request_headers_decl
 
 		#response_headers_decl
 
-		impl super::types::RegistryEndpoint for #request_name {
-			const AUTHENTICATED: bool = #authenticated ;
-			const METHOD: ::http::Method = ::http::Method:: #method ;
+		// Note: The RegistryEndpoint trait must be in scope where this macro is used.
+		// Typically this is done via: use crate::routes::registry_patr_cloud::RegistryEndpoint;
+		impl RegistryEndpoint for #path_name {
+			const METHOD: ::http::Method = ::http::Method::#method;
+			const REQUIRES_AUTH: bool = #auth;
 
-			type Path = #path_name;
+			type RequestPath = Self;
 			type RequestQuery = #query_name;
 			type RequestHeaders = #request_headers_name;
-
 			type ResponseHeaders = #response_headers_name;
 		}
 	}

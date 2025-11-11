@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\tINSERT INTO container_registry_repository (id, workspace_id, name, created_at, updated_at, deleted)\n\t\tVALUES ($1, $2, $3, NOW(), NOW(), NULL)\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b593b73a53add67411c6035e96dc21289c212223cfaf0848d2f6d2d15a228394"
+}

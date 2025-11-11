@@ -173,7 +173,7 @@ where
 						.permissions
 						.get(&workspace_id)
 						.map_or(false, |perms| {
-							perms.has_permission(resource_id, permission_id)
+							perms.has_resource_permission(resource_id, permission_id)
 						});
 
 					let has_permission = if !has_permission {
