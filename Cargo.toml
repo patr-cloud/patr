@@ -21,7 +21,7 @@ missing_docs_in_private_items = "warn"
 [workspace.dependencies]
 argon2                         = { default-features = false, version = "0.5" }
 axum                           = { default-features = false, version = "0.8" }
-axum-extra                     = { default-features = false, version = "0.10" }
+axum-extra                     = { default-features = false, version = "0.12" }
 axum-typed-websockets          = { default-features = false, git = "https://github.com/morenol/axum-typed-websockets.git", branch = "patch-1" }
 base32                         = { default-features = false, version = "0.5" }
 base64                         = { default-features = false, version = "0.22" }
@@ -33,7 +33,7 @@ comfy-table                    = { default-features = false, version = "7" }
 common                         = { default-features = false, path = "runners/common" }
 config                         = { default-features = false, version = "0.15" }
 console_error_panic_hook       = { default-features = false, version = "0.1" }
-convert_case                   = { default-features = false, version = "0.8" }
+convert_case                   = { default-features = false, version = "0.9" }
 dashmap                        = { default-features = false, version = "6" }
 dirs                           = { default-features = false, version = "6" }
 docker                         = { default-features = false, path = "runners/docker" }
@@ -55,7 +55,6 @@ jsonwebtoken                   = { default-features = false, version = "10" }
 k8s-openapi                    = { default-features = false, version = "0.26" }
 kube                           = { default-features = false, version = "2" }
 macros                         = { default-features = false, path = "macros" }
-matchit                        = { default-features = false, version = "0.8" }
 models                         = { default-features = false, path = "models" }
 monostate                      = { default-features = false, version = "1" }
 nix                            = { default-features = false, version = "0.30" }
