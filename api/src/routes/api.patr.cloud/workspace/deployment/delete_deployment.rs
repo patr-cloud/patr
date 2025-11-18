@@ -153,11 +153,7 @@ pub async fn delete_deployment(
 		deployment_id as _
 	)
 	.execute(&mut **database)
-	.await
-	.map_err(|err| match err {
-		sqlx::Error::Database(err) if err.is_foreign_key_violation() => ErrorType::ResourceInUse,
-		err => ErrorType::server_error(err),
-	})?;
+	.await?;
 
 	// TODO Temporary workaround until audit logs and triggers are implemented
 	redis

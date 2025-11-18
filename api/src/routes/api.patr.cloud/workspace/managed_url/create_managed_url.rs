@@ -1,4 +1,12 @@
 use axum::http::StatusCode;
+use cloudflare::{
+	endpoints::workerskv::*,
+	framework::{
+		Environment,
+		auth::Credentials,
+		client::{ClientConfig, async_api::Client as CloudflareClient},
+	},
+};
 use models::{api::workspace::managed_url::*, prelude::*};
 
 use crate::prelude::*;
@@ -8,6 +16,7 @@ use crate::prelude::*;
 /// can be a proxy to a deployment, a proxy to a static site, a proxy to a URL,
 /// or a redirect to a URL. The URL type will determine how the managed URL
 /// behaves.
+#[instrument(skip(database, config))]
 pub async fn create_managed_url(
 	AuthenticatedAppRequest {
 		request:
@@ -30,7 +39,7 @@ pub async fn create_managed_url(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
+		config,
 		user_data: _,
 	}: AuthenticatedAppRequest<'_, CreateManagedURLRequest>,
 ) -> Result<AppResponse<CreateManagedURLRequest>, ErrorType> {
@@ -67,8 +76,8 @@ pub async fn create_managed_url(
 
 	info!("Creating ManagedURL: `{}.{}{}`", sub_domain, domain, path);
 
-	let (url_type, deployment_id, port, static_site_id, url, permanent_redirect, http_only) =
-		match url_type {
+	let (url_discriminant, deployment_id, port, static_site_id, url, permanent_redirect, http_only) =
+		match url_type.clone() {
 			ManagedUrlType::ProxyDeployment {
 				deployment_id,
 				port,
@@ -141,7 +150,7 @@ pub async fn create_managed_url(
 	.await
 	.map_err(|e| match e {
 		sqlx::Error::Database(dbe) if dbe.is_unique_violation() => ErrorType::ResourceAlreadyExists,
-		other => other.into(),
+		err => ErrorType::server_error(err),
 	})?
 	.id;
 
@@ -186,7 +195,7 @@ pub async fn create_managed_url(
 		&sub_domain,
 		domain_id as _,
 		path,
-		url_type as _,
+		url_discriminant as _,
 		deployment_id as _,
 		port.map(|port| port as i32),
 		static_site_id as _,
@@ -197,6 +206,73 @@ pub async fn create_managed_url(
 	)
 	.execute(&mut **database)
 	.await?;
+
+	let client = CloudflareClient::new(
+		Credentials::UserAuthToken {
+			token: config.cloudflare.api_key.clone(),
+		},
+		ClientConfig::default(),
+		Environment::Production,
+	)?;
+
+	use models::cloudflare::kv::WorkerManagedUrlKVValue::*;
+
+	let kv_body = match url_type {
+		ManagedUrlType::ProxyDeployment {
+			deployment_id,
+			port,
+		} => {
+			let runner_id = query!(
+				r#"
+				SELECT
+					runner AS "runner: Uuid"
+				FROM
+					deployment
+				WHERE
+					id = $1;
+				"#,
+				deployment_id as _,
+			)
+			.fetch_one(&mut **database)
+			.await?
+			.runner;
+
+			ProxyDeployment {
+				deployment_id,
+				port,
+				runner_id,
+			}
+		}
+		ManagedUrlType::ProxyStaticSite { static_site_id } => ProxyStaticSite { static_site_id },
+		ManagedUrlType::ProxyUrl { url, http_only } => ProxyUrl { url, http_only },
+		ManagedUrlType::Redirect {
+			url,
+			permanent_redirect,
+			http_only,
+		} => Redirect {
+			url,
+			permanent_redirect,
+			http_only,
+		},
+	};
+
+	client
+		.request(&write_key::WriteKey {
+			account_identifier: &config.cloudflare.account_id,
+			namespace_identifier: &config.cloudflare.worker_namespace_id,
+			key: &format!(
+				"{}.{}{}",
+				sub_domain,
+				domain,
+				if path == "/" { "" } else { &path }
+			),
+			params: write_key::WriteKeyParams {
+				expiration: None,
+				expiration_ttl: None,
+			},
+			body: write_key::WriteKeyBody::Value(serde_json::to_vec(&kv_body)?),
+		})
+		.await?;
 
 	AppResponse::builder()
 		.body(CreateManagedURLResponse {

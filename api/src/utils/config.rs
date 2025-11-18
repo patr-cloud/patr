@@ -168,6 +168,8 @@ pub struct CloudflareConfig {
 	pub api_key: String,
 	/// The account ID to use to connect to Cloudflare
 	pub account_id: String,
+	/// The namespace ID to use for Workers KV
+	pub worker_namespace_id: String,
 }
 
 /// The configuration for the SMTP server to use to send emails to users

@@ -73,7 +73,11 @@ pub async fn delete_domain_in_workspace(
 		domain_id as _
 	)
 	.execute(&mut **database)
-	.await?;
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(err) if err.is_foreign_key_violation() => ErrorType::ResourceInUse,
+		err => ErrorType::server_error(err),
+	})?;
 
 	// Mark the resource as deleted in the database
 	query!(

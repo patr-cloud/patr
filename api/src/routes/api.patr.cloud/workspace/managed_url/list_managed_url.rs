@@ -13,7 +13,15 @@ pub async fn list_managed_url(
 				query:
 					ListResourceQuery {
 						sort: sort_order,
-						search: filter,
+						search:
+							ManagedUrlSearchParams {
+								sub_domain: sub_domain_filter,
+								domain_id: domain_id_filter,
+								path: path_filter,
+								// TODO nested search params
+								url_type: url_type_filter,
+								is_configured: is_configured_filter,
+							},
 						count,
 						page,
 						additional_query: (),

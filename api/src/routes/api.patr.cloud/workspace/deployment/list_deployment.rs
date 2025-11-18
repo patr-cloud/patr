@@ -16,6 +16,7 @@ pub async fn list_deployment(
 						search:
 							DeploymentSearchParams {
 								name: name_filter,
+								// TODO nested search params
 								registry: registry_filter,
 								image_tag: image_tag_filter,
 								status: status_filter,

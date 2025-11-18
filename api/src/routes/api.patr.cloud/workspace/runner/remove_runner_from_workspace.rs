@@ -8,7 +8,7 @@ pub async fn remove_runner_from_workspace(
 		request:
 			ProcessedApiRequest {
 				path: DeleteRunnerPath {
-					workspace_id,
+					workspace_id: _,
 					runner_id,
 				},
 				query: (),
@@ -28,65 +28,35 @@ pub async fn remove_runner_from_workspace(
 ) -> Result<AppResponse<DeleteRunnerRequest>, ErrorType> {
 	info!("Deleting runner `{}`", runner_id);
 
-	let runner = query!(
+	query!(
 		r#"
-		SELECT
-			runner.id,
-			runner.workspace_id
-		FROM
+		DELETE FROM
 			runner
-		INNER JOIN
-			resource
-		ON
-			runner.id = resource.id
 		WHERE
-			runner.id = $1 AND
-			runner.deleted IS NULL AND
-			resource.owner_id = $2;
+			id = $1;
 		"#,
 		runner_id as _,
-		workspace_id as _,
 	)
-	.fetch_optional(&mut **database)
+	.execute(&mut **database)
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(dbe) if dbe.is_foreign_key_violation() => ErrorType::ResourceInUse,
+		err => err.into(),
+	})?;
+
+	query!(
+		r#"
+		UPDATE
+			resource
+		SET
+			deleted = NOW()
+		WHERE
+			id = $1;
+		"#,
+		runner_id as _,
+	)
+	.execute(&mut **database)
 	.await?;
-
-	if let Some(runner) = runner {
-		query!(
-			r#"
-			SET CONSTRAINTS ALL DEFERRED;
-			"#
-		)
-		.execute(&mut **database)
-		.await?;
-
-		query!(
-			r#"
-			UPDATE
-				resource
-			SET
-				deleted = NOW()
-			WHERE
-				id = $1;
-			"#,
-			runner.id as _,
-		)
-		.execute(&mut **database)
-		.await?;
-
-		query!(
-			r#"
-			UPDATE
-				runner
-			SET
-				deleted = NOW()
-			WHERE
-				id = $1;
-			"#,
-			runner.id as _,
-		)
-		.execute(&mut **database)
-		.await?;
-	}
 
 	AppResponse::builder()
 		.body(DeleteRunnerResponse)

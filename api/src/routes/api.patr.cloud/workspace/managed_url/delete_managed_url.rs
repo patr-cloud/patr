@@ -1,4 +1,12 @@
 use axum::http::StatusCode;
+use cloudflare::{
+	endpoints::workerskv::*,
+	framework::{
+		Environment,
+		auth::Credentials,
+		client::{ClientConfig, async_api::Client as CloudflareClient},
+	},
+};
 use models::{api::workspace::managed_url::*, prelude::*};
 
 use crate::prelude::*;
@@ -6,6 +14,7 @@ use crate::prelude::*;
 /// The handler to delete a managed URL in a workspace. This will delete the
 /// managed URL and remove it from the workspace. The managed URL must be owned
 /// by the user and not already deleted.
+#[instrument(skip(database, config))]
 pub async fn delete_managed_url(
 	AuthenticatedAppRequest {
 		request:
@@ -25,7 +34,7 @@ pub async fn delete_managed_url(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
+		config,
 		user_data: _,
 	}: AuthenticatedAppRequest<'_, DeleteManagedURLRequest>,
 ) -> Result<AppResponse<DeleteManagedURLRequest>, ErrorType> {
@@ -33,41 +42,78 @@ pub async fn delete_managed_url(
 
 	let managed_url = query!(
 		r#"
+		WITH deleted AS (
+			DELETE FROM
+				managed_url
+			WHERE
+				id = $1
+			RETURNING
+				sub_domain,
+				domain_id,
+				path
+		)
 		SELECT
-			managed_url.id,
-			managed_url.workspace_id
+			deleted.sub_domain,
+			CONCAT(
+				workspace_domain.name,
+				'.',
+				workspace_domain.tld
+			) AS "domain!",
+			deleted.path
 		FROM
-			managed_url
+			deleted
 		INNER JOIN
-			resource
+			workspace_domain
 		ON
-			managed_url.id = resource.id
-		WHERE
-			managed_url.id = $1 AND
-			managed_url.deleted IS NULL AND
-			resource.owner_id = $2;
+			deleted.domain_id = workspace_domain.id;
 		"#,
 		managed_url_id as _,
-		workspace_id as _,
 	)
-	.fetch_optional(&mut **database)
+	.fetch_one(&mut **database)
+	.await
+	.map_err(|e| match e {
+		sqlx::Error::Database(dbe) if dbe.is_foreign_key_violation() => ErrorType::ResourceInUse,
+		err => ErrorType::server_error(err),
+	})?;
+
+	query!(
+		r#"
+		UPDATE
+			resource
+		SET
+			deleted = NOW()
+		WHERE
+			id = $1;
+		"#,
+		managed_url_id as _,
+	)
+	.execute(&mut **database)
 	.await?;
 
-	if let Some(managed_url) = managed_url {
-		query!(
-			r#"
-			UPDATE
-				managed_url
-			SET
-				deleted = NOW()
-			WHERE
-				id = $1;
-			"#,
-			managed_url.id as _,
-		)
-		.execute(&mut **database)
+	let client = CloudflareClient::new(
+		Credentials::UserAuthToken {
+			token: config.cloudflare.api_key.clone(),
+		},
+		ClientConfig::default(),
+		Environment::Production,
+	)?;
+
+	client
+		.request(&delete_key::DeleteKey {
+			account_identifier: &config.cloudflare.account_id,
+			namespace_identifier: &config.cloudflare.worker_namespace_id,
+			key: &format!(
+				"{}.{}{}",
+				managed_url.sub_domain,
+				managed_url.domain,
+				if managed_url.path == "/" {
+					""
+				} else {
+					&managed_url.path
+				}
+			),
+		})
 		.await?;
-	}
 
 	AppResponse::builder()
 		.body(DeleteManagedURLResponse)
