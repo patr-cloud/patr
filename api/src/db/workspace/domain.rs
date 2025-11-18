@@ -36,6 +36,7 @@ pub async fn initialize_domain_tables(
 			workspace_id UUID NOT NULL,
 			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL,
 			is_verified BOOLEAN NOT NULL,
+			last_verified TIMESTAMPTZ,
 			deleted TIMESTAMPTZ
 		);
 		"#

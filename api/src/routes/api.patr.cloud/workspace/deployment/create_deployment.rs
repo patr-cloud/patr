@@ -47,10 +47,7 @@ pub async fn create_deployment(
 		user_data: _,
 	}: AuthenticatedAppRequest<'_, CreateDeploymentRequest>,
 ) -> Result<AppResponse<CreateDeploymentRequest>, ErrorType> {
-	info!(
-		"Creating deployment with name `{}` in workspace: {}",
-		name, workspace_id
-	);
+	info!("Creating deployment with name `{name}` in workspace: {workspace_id}");
 
 	let now = OffsetDateTime::now_utc();
 

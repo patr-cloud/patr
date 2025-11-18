@@ -3,21 +3,32 @@ use models::api::workspace::domain::*;
 
 use crate::prelude::*;
 
+mod add_domain_to_workspace;
+mod delete_domain_in_workspace;
+mod list_domains_in_workspace;
+
+pub use self::{
+	add_domain_to_workspace::*,
+	delete_domain_in_workspace::*,
+	list_domains_in_workspace::*,
+};
+
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
 	Router::new()
+		.mount_auth_endpoint(add_domain_to_workspace, state, allowed_client_type)
+		.mount_auth_endpoint(list_domains_in_workspace, state, allowed_client_type)
+		.mount_auth_endpoint(delete_domain_in_workspace, state, allowed_client_type)
 		.mount_endpoint(is_domain_personal, state, allowed_client_type)
 		.mount_auth_endpoint(add_dns_record, state, allowed_client_type)
-		.mount_auth_endpoint(add_domain_to_workspace, state, allowed_client_type)
 		.mount_auth_endpoint(delete_dns_record, state, allowed_client_type)
-		.mount_auth_endpoint(delete_domain_in_workspace, state, allowed_client_type)
 		.mount_auth_endpoint(get_doamin_dns_record, state, allowed_client_type)
 		.mount_auth_endpoint(get_domain_info_in_workspace, state, allowed_client_type)
-		.mount_auth_endpoint(get_domains_for_workspace, state, allowed_client_type)
 		.mount_auth_endpoint(update_domain_dns_record, state, allowed_client_type)
 		.mount_auth_endpoint(verify_domain_in_workspace, state, allowed_client_type)
 }
 
+#[expect(unreachable_code, unused_variables)]
 async fn is_domain_personal(
 	AppRequest {
 		request: ProcessedApiRequest {
@@ -47,6 +58,7 @@ async fn is_domain_personal(
 		.into_result()
 }
 
+#[expect(unreachable_code, unused_variables)]
 async fn add_dns_record(
 	AuthenticatedAppRequest {
 		request: ProcessedApiRequest {
@@ -74,33 +86,7 @@ async fn add_dns_record(
 		.into_result()
 }
 
-async fn add_domain_to_workspace(
-	AuthenticatedAppRequest {
-		request: ProcessedApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
-		database,
-		redis: _,
-		client_ip: _,
-		config,
-		user_data,
-	}: AuthenticatedAppRequest<'_, AddDomainToWorkspaceRequest>,
-) -> Result<AppResponse<AddDomainToWorkspaceRequest>, ErrorType> {
-	info!("Starting: Add domain to workspace");
-
-	// LOGIC
-
-	AppResponse::builder()
-		.body(AddDomainToWorkspaceResponse { id: todo!() })
-		.headers(())
-		.status_code(StatusCode::OK)
-		.build()
-		.into_result()
-}
-
+#[expect(unused_variables)]
 async fn delete_dns_record(
 	AuthenticatedAppRequest {
 		request: ProcessedApiRequest {
@@ -128,33 +114,7 @@ async fn delete_dns_record(
 		.into_result()
 }
 
-async fn delete_domain_in_workspace(
-	AuthenticatedAppRequest {
-		request: ProcessedApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
-		database,
-		redis: _,
-		client_ip: _,
-		config,
-		user_data,
-	}: AuthenticatedAppRequest<'_, DeleteDomainInWorkspaceRequest>,
-) -> Result<AppResponse<DeleteDomainInWorkspaceRequest>, ErrorType> {
-	info!("Starting: Delete domain in workspace");
-
-	// LOGIC
-
-	AppResponse::builder()
-		.body(DeleteDomainInWorkspaceResponse)
-		.headers(())
-		.status_code(StatusCode::OK)
-		.build()
-		.into_result()
-}
-
+#[expect(unreachable_code, unused_variables)]
 async fn get_doamin_dns_record(
 	AuthenticatedAppRequest {
 		request: ProcessedApiRequest {
@@ -184,6 +144,7 @@ async fn get_doamin_dns_record(
 		.into_result()
 }
 
+#[expect(unreachable_code, unused_variables)]
 async fn get_domain_info_in_workspace(
 	AuthenticatedAppRequest {
 		request: ProcessedApiRequest {
@@ -213,35 +174,7 @@ async fn get_domain_info_in_workspace(
 		.into_result()
 }
 
-async fn get_domains_for_workspace(
-	AuthenticatedAppRequest {
-		request: ProcessedApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
-		database,
-		redis: _,
-		client_ip: _,
-		config,
-		user_data,
-	}: AuthenticatedAppRequest<'_, GetDomainsForWorkspaceRequest>,
-) -> Result<AppResponse<GetDomainsForWorkspaceRequest>, ErrorType> {
-	info!("Starting: Get domains for workspace");
-
-	// LOGIC
-
-	AppResponse::builder()
-		.body(GetDomainsForWorkspaceResponse { domains: todo!() })
-		.headers(GetDomainsForWorkspaceResponseHeaders {
-			total_count: todo!(),
-		})
-		.status_code(StatusCode::OK)
-		.build()
-		.into_result()
-}
-
+#[expect(unused_variables)]
 async fn update_domain_dns_record(
 	AuthenticatedAppRequest {
 		request: ProcessedApiRequest {
@@ -269,6 +202,7 @@ async fn update_domain_dns_record(
 		.into_result()
 }
 
+#[expect(unreachable_code, unused_variables)]
 async fn verify_domain_in_workspace(
 	AuthenticatedAppRequest {
 		request: ProcessedApiRequest {

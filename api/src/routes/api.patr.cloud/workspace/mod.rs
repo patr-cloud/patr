@@ -6,7 +6,6 @@ use crate::prelude::*;
 #[expect(unused_variables)]
 mod database;
 mod deployment;
-#[expect(unreachable_code, unused_variables)]
 mod domain;
 mod managed_url;
 mod rbac;

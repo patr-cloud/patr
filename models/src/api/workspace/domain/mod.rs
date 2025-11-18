@@ -23,10 +23,10 @@ mod delete_domain_in_workspace;
 mod get_domain_dns_record;
 /// The endpoint to get the domain information in a workspace
 mod get_domain_info_in_workspace;
-/// The endpoint to get all the domains in a workspace
-mod get_domains_for_workspace;
 /// The endpoint to check if a domain is personal
 mod is_domain_personal;
+/// The endpoint to get all the domains in a workspace
+mod list_domains_in_workspace;
 /// The endpoint to update a DNS record of a domain
 mod update_domain_dns_record;
 /// The endpoint to verify a domain in a workspace
@@ -39,8 +39,8 @@ pub use self::{
 	delete_domain_in_workspace::*,
 	get_domain_dns_record::*,
 	get_domain_info_in_workspace::*,
-	get_domains_for_workspace::*,
 	is_domain_personal::*,
+	list_domains_in_workspace::*,
 	update_domain_dns_record::*,
 	verify_domain_in_workspace::*,
 };
@@ -53,7 +53,7 @@ pub struct WorkspaceDomain {
 	pub name: String,
 	/// Last verified time of the domain
 	#[ts(type = "Date")]
-	pub last_unverified: Option<OffsetDateTime>,
+	pub last_verified: Option<OffsetDateTime>,
 	/// Whether or not the domain is verified
 	pub is_verified: bool,
 	/// The domain nameserver type

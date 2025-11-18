@@ -1,11 +1,20 @@
 [workspace]
-members              = ["api", "cli", "ingress", "macros", "models", "runners/common", "runners/docker", "runners/kubernetes"]
-package.authors      = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
-package.description  = "Patr API and all it's dependencies"
-package.edition      = "2024"
+members = [
+    "api",
+    "cli",
+    "ingress",
+    "macros",
+    "models",
+    "runners/common",
+    "runners/docker",
+    "runners/kubernetes",
+]
+package.authors = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
+package.description = "Patr API and all it's dependencies"
+package.edition = "2024"
 package.rust-version = "1.91"
-package.version      = "0.18.0"
-resolver             = "3"
+package.version = "0.18.0"
+resolver = "3"
 
 [workspace.lints.rust]
 missing_docs = "warn"
@@ -28,7 +37,7 @@ base64                         = { default-features = false, version = "0.22" }
 bollard                        = { default-features = false, version = "0.19" }
 build-print                    = { default-features = false, version = "1" }
 clap                           = { default-features = false, version = "4" }
-cloudflare                     = { default-features = false, version = "0.14" }
+cloudflare                     = { default-features = false, git = "https://github.com/rakshith-ravi/cloudflare-rs", branch = "patr-must-haves" }
 comfy-table                    = { default-features = false, version = "7" }
 common                         = { default-features = false, path = "runners/common" }
 config                         = { default-features = false, version = "0.15" }

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM user_controlled_domain WHERE domain_id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "50a7f483b9dfc6abb7d1cc0cb5030bfdeb4fd9ccba6d84f83959d181f166824c"
+}

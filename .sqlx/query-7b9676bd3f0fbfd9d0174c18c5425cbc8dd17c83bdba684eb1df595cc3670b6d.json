@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT tld FROM domain_tld WHERE $1 ILIKE '%.' || tld ORDER BY LENGTH(tld) DESC LIMIT 1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "tld",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "7b9676bd3f0fbfd9d0174c18c5425cbc8dd17c83bdba684eb1df595cc3670b6d"
+}

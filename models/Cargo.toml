@@ -16,7 +16,7 @@ default = []
 
 [dependencies]
 axum                  = { workspace = true, features = ["json"] }
-axum-extra            = { workspace = true, features = ["routing"] }
+axum-extra            = { workspace = true, features = ["typed-routing", "routing"] }
 axum-typed-websockets = { workspace = true, features = ["default"], optional = true }
 base64                = { workspace = true, features = ["default"] }
 either                = { workspace = true, features = ["serde"] }
