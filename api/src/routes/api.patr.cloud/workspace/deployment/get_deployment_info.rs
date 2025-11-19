@@ -34,7 +34,7 @@ pub async fn get_deployment_info(
 		r#"
 		SELECT
 			port,
-			port_type as "port_type: ExposedPortType"
+			port_type AS "port_type: ExposedPortType"
 		FROM
 			deployment_exposed_port
 		WHERE
@@ -121,7 +121,7 @@ pub async fn get_deployment_info(
 			repository_id,
 			image_name,
 			image_tag,
-			status as "status: DeploymentStatus",
+			status AS "status: DeploymentStatus",
 			workspace_id,
 			runner,
 			min_horizontal_scale,

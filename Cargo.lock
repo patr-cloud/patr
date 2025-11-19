@@ -2262,9 +2262,8 @@ dependencies = [
 name = "ingress"
 version = "0.18.0"
 dependencies = [
- "serde",
+ "models",
  "url",
- "uuid",
  "worker",
 ]
 
@@ -2823,6 +2822,8 @@ dependencies = [
  "axum-typed-websockets",
  "base64",
  "either",
+ "getrandom 0.2.16",
+ "getrandom 0.3.4",
  "headers",
  "hex",
  "http",

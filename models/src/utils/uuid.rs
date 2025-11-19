@@ -2,7 +2,6 @@ use std::{borrow::Cow, fmt::Display, str::FromStr};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
-use sqlx::{encode::IsNull, error::BoxDynError, prelude::*};
 use time::{Duration, OffsetDateTime};
 use ts_rs::TS;
 
@@ -157,18 +156,25 @@ impl TS for Uuid {
 }
 
 // For backend
+
+#[cfg(not(target_arch = "wasm32"))]
+use sqlx::{encode::IsNull, error::BoxDynError, prelude::*};
+
+#[cfg(not(target_arch = "wasm32"))]
 impl sqlx::Type<sqlx::Sqlite> for Uuid {
 	fn type_info() -> <sqlx::Sqlite as sqlx::Database>::TypeInfo {
 		<uuid::fmt::Simple as Type<sqlx::Sqlite>>::type_info()
 	}
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Type<sqlx::Postgres> for Uuid {
 	fn type_info() -> <sqlx::Postgres as sqlx::Database>::TypeInfo {
 		<uuid::Uuid as Type<sqlx::Postgres>>::type_info()
 	}
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<'a> Encode<'a, sqlx::Sqlite> for Uuid
 where
 	uuid::Uuid: Encode<'a, sqlx::Sqlite>,
@@ -181,6 +187,7 @@ where
 	}
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<'a> Encode<'a, sqlx::Postgres> for Uuid
 where
 	uuid::Uuid: Encode<'a, sqlx::Postgres>,
@@ -193,6 +200,7 @@ where
 	}
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<'a> Decode<'a, sqlx::Sqlite> for Uuid
 where
 	uuid::fmt::Simple: Decode<'a, sqlx::Sqlite>,
@@ -204,6 +212,7 @@ where
 	}
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<'a> Decode<'a, sqlx::Postgres> for Uuid
 where
 	uuid::Uuid: Decode<'a, sqlx::Postgres>,

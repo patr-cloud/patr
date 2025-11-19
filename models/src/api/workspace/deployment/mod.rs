@@ -2,7 +2,6 @@ use std::{collections::BTreeMap, convert::Infallible, fmt::Display, str::FromStr
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
-use sqlx::prelude::*;
 use time::OffsetDateTime;
 use ts_rs::TS;
 
@@ -186,7 +185,6 @@ impl FromStr for EnvironmentVariableValue {
 #[derive(
 	Eq,
 	Hash,
-	Type,
 	Debug,
 	Clone,
 	PartialEq,
@@ -200,7 +198,11 @@ impl FromStr for EnvironmentVariableValue {
 )]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
-#[sqlx(type_name = "EXPOSED_PORT_TYPE", rename_all = "lowercase")]
+#[cfg_attr(
+	not(target_arch = "wasm32"),
+	derive(sqlx::Type),
+	sqlx(type_name = "EXPOSED_PORT_TYPE", rename_all = "lowercase")
+)]
 pub enum ExposedPortType {
 	/// TCP
 	Tcp,
@@ -321,9 +323,13 @@ impl DeploymentRegistry {
 
 /// All the possible deployment status a deployment can be
 /// in during its life cycle
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Type, JsonSchema, TS)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, JsonSchema, TS)]
 #[serde(rename_all = "camelCase")]
-#[sqlx(type_name = "DEPLOYMENT_STATUS", rename_all = "lowercase")]
+#[cfg_attr(
+	not(target_arch = "wasm32"),
+	derive(sqlx::Type),
+	sqlx(type_name = "DEPLOYMENT_STATUS", rename_all = "lowercase")
+)]
 pub enum DeploymentStatus {
 	/// Deployment is deploying
 	Deploying,

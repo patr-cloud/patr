@@ -1,12 +1,4 @@
 use axum::http::StatusCode;
-use cloudflare::{
-	endpoints::workerskv::*,
-	framework::{
-		Environment,
-		auth::Credentials,
-		client::{ClientConfig, async_api::Client as CloudflareClient},
-	},
-};
 use models::{api::workspace::managed_url::*, prelude::*};
 
 use crate::prelude::*;
@@ -83,7 +75,7 @@ pub async fn update_managed_url(
 	let permanent_redirect;
 	let http_only;
 
-	match managed_url_type.clone() {
+	match managed_url_type {
 		ManagedUrlType::ProxyDeployment {
 			deployment_id: managed_url_deployment_id,
 			port: managed_url_port,
@@ -162,72 +154,12 @@ pub async fn update_managed_url(
 	.execute(&mut **database)
 	.await?;
 
-	let client = CloudflareClient::new(
-		Credentials::UserAuthToken {
-			token: config.cloudflare.api_key.clone(),
-		},
-		ClientConfig::default(),
-		Environment::Production,
-	)?;
-
-	use models::cloudflare::kv::WorkerManagedUrlKVValue::*;
-
-	let kv_body = match managed_url_type {
-		ManagedUrlType::ProxyDeployment {
-			deployment_id,
-			port,
-		} => {
-			let runner_id = query!(
-				r#"
-				SELECT
-					runner AS "runner: Uuid"
-				FROM
-					deployment
-				WHERE
-					id = $1;
-				"#,
-				deployment_id as _,
-			)
-			.fetch_one(&mut **database)
-			.await?
-			.runner;
-
-			ProxyDeployment {
-				deployment_id,
-				port,
-				runner_id,
-			}
-		}
-		ManagedUrlType::ProxyStaticSite { static_site_id } => ProxyStaticSite { static_site_id },
-		ManagedUrlType::ProxyUrl { url, http_only } => ProxyUrl { url, http_only },
-		ManagedUrlType::Redirect {
-			url,
-			permanent_redirect,
-			http_only,
-		} => Redirect {
-			url,
-			permanent_redirect,
-			http_only,
-		},
-	};
-
-	client
-		.request(&write_key::WriteKey {
-			account_identifier: &config.cloudflare.account_id,
-			namespace_identifier: &config.cloudflare.worker_namespace_id,
-			key: &format!(
-				"{}.{}{}",
-				managed_url.sub_domain,
-				managed_url.domain,
-				if path == "/" { "" } else { &path }
-			),
-			params: write_key::WriteKeyParams {
-				expiration: None,
-				expiration_ttl: None,
-			},
-			body: write_key::WriteKeyBody::Value(serde_json::to_vec(&kv_body)?),
-		})
-		.await?;
+	super::sync_worker_kv_for_domain(
+		&format!("{}.{}", managed_url.sub_domain, managed_url.domain),
+		&mut **database,
+		&config,
+	)
+	.await?;
 
 	AppResponse::builder()
 		.body(UpdateManagedURLResponse)

@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use sqlx::prelude::*;
 use strum::{Display, EnumDiscriminants, EnumString, VariantNames};
 use ts_rs::TS;
 
@@ -62,15 +61,21 @@ pub struct ManagedUrl {
 	name(ManagedUrlTypeDiscriminant),
 	derive(strum::Display, EnumString),
 	strum(serialize_all = "snake_case"),
-	derive(Type),
-	sqlx(type_name = "MANAGED_URL_TYPE", rename_all = "snake_case"),
+	cfg_attr(
+		not(target_arch = "wasm32"),
+		derive(sqlx::Type),
+		sqlx(type_name = "MANAGED_URL_TYPE", rename_all = "snake_case"),
+	),
 	doc = "Managed URL types"
 )]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum ManagedUrlType {
 	/// URL is pointing to a deployment
 	#[serde(rename_all = "camelCase")]
-	#[strum_discriminants(sqlx(rename = "proxy_to_deployment"))]
+	#[strum_discriminants(cfg_attr(
+		not(target_arch = "wasm32"),
+		sqlx(rename = "proxy_to_deployment")
+	))]
 	ProxyDeployment {
 		/// Deployment ID of the deployment to point to
 		deployment_id: Uuid,
@@ -79,7 +84,10 @@ pub enum ManagedUrlType {
 	},
 	/// URL is pointing to a static site
 	#[serde(rename_all = "camelCase")]
-	#[strum_discriminants(sqlx(rename = "proxy_to_static_site"))]
+	#[strum_discriminants(cfg_attr(
+		not(target_arch = "wasm32"),
+		sqlx(rename = "proxy_to_static_site")
+	))]
 	ProxyStaticSite {
 		/// Static site ID of the static site to point to
 		static_site_id: Uuid,

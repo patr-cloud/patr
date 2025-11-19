@@ -49,7 +49,7 @@ pub async fn get_repository_info(
 	let size = query!(
 		r#"
 		SELECT
-			COALESCE(SUM(size), 0)::BIGINT as "size!"
+			COALESCE(SUM(size), 0)::BIGINT AS "size!"
 		FROM
 			container_registry_repository
 		INNER JOIN
@@ -103,7 +103,7 @@ pub async fn get_repository_info(
 						created DESC
 					LIMIT 1
 				)
-			) as "last_updated!"
+			) AS "last_updated!"
 		FROM
 			resource
 		WHERE

@@ -5,7 +5,7 @@ use crate::prelude::*;
 /// Managed URL types
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
-pub enum WorkerManagedUrlKVValue {
+pub enum IngressKVData {
 	/// URL is pointing to a deployment
 	#[serde(rename_all = "camelCase")]
 	ProxyDeployment {
@@ -21,6 +21,8 @@ pub enum WorkerManagedUrlKVValue {
 	ProxyStaticSite {
 		/// Static site ID of the static site to point to
 		static_site_id: Uuid,
+		/// The upload ID of the static site
+		upload_id: Uuid,
 	},
 	/// URL is a proxy
 	#[serde(rename_all = "camelCase")]
@@ -40,4 +42,11 @@ pub enum WorkerManagedUrlKVValue {
 		/// If the URL is a http only
 		http_only: bool,
 	},
+}
+
+impl IngressKVData {
+	/// Check if the managed URL is a redirect
+	pub fn is_redirect(&self) -> bool {
+		matches!(self, IngressKVData::Redirect { .. })
+	}
 }

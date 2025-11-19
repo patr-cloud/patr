@@ -17,7 +17,6 @@ wasm-opt = false
 crate-type = ["cdylib"]
 
 [dependencies]
-serde  = { workspace = true, features = ["default", "derive"] }
+models = { workspace = true, features = [] }
 url    = { workspace = true, features = ["default"] }
-uuid   = { workspace = true, features = ["js", "serde"] }
 worker = { workspace = true, features = [] }

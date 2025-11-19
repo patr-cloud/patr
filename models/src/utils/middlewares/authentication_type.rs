@@ -46,7 +46,7 @@ where
 	/// Only the super admin of the workspace that is specified in the
 	/// [`extract_workspace_id`][1] function can access this endpoint.
 	///
-	/// [1]: AppAuthentication::<E>::WorkspaceSuperAdminAuthenticator::extract_workspace_id
+	/// [1]: AppAuthentication::WorkspaceSuperAdminAuthenticator::extract_workspace_id
 	WorkspaceSuperAdminAuthenticator {
 		/// This function is used to extract the workspace id from the request.
 		/// The workspace id is then used to check if the user is the super
@@ -56,7 +56,7 @@ where
 	/// Only users that are members of the workspace that is specified in the
 	/// [`extract_workspace_id`][1] function can access this endpoint.
 	///
-	/// [1]: AppAuthentication::<E>::WorkspaceMembershipAuthenticator::extract_workspace_id
+	/// [1]: AppAuthentication::WorkspaceMembershipAuthenticator::extract_workspace_id
 	WorkspaceMembershipAuthenticator {
 		/// This function is used to extract the workspace id from the request.
 		/// The workspace id is then used to check if the user is a member of
@@ -64,16 +64,23 @@ where
 		extract_workspace_id: fn(&ApiRequest<E>) -> Uuid,
 	},
 	/// Only users that have the permission specific by [`permission`][2] on the
-	/// resource that is specified in the [`extract_resource_id`][1] function
-	/// can access this endpoint.
+	/// resource that is specified in the [`extract_resource_id`][1] AND if that
+	/// resource belongs to the workspace specified in the
+	/// [`extract_workspace_id`][3] function can access this endpoint.
 	///
-	/// [1]: AppAuthentication::<E>::ResourcePermissionAuthenticator::extract_resource_id
-	/// [2]: AppAuthentication::<E>::ResourcePermissionAuthenticator::permission
+	/// [1]: AppAuthentication::ResourcePermissionAuthenticator::extract_resource_id
+	/// [2]: AppAuthentication::ResourcePermissionAuthenticator::permission
+	/// [3]: AppAuthentication::ResourcePermissionAuthenticator::extract_workspace_id
 	ResourcePermissionAuthenticator {
 		/// This function is used to extract the resource id from the request.
 		/// The resource id is then used to check if the user has the specified
 		/// permission on the resource.
 		extract_resource_id: fn(&ApiRequest<E>) -> Uuid,
+		/// This function is used to extract the workspace id from the request.
+		/// The workspace id is then used to check if the user has the specified
+		/// permission on the resource AND if the resource belongs to the
+		/// workspace.
+		extract_workspace_id: fn(&ApiRequest<E>) -> Uuid,
 		/// The permission that the user needs to have on the resource.
 		permission: Permission,
 	},

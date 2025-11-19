@@ -3,7 +3,6 @@ use std::fmt::Debug;
 use headers::{Error, Header};
 use http::{HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use sqlx::{encode::IsNull, error::BoxDynError, prelude::*};
 
 use super::{AddTuple, RequiresResponseHeaders};
 use crate::{prelude::*, rbac::ResourceType};
@@ -136,18 +135,25 @@ pub struct ResourceSearcher<const R: ResourceType> {
 }
 
 // For backend
+
+#[cfg(not(target_arch = "wasm32"))]
+use sqlx::{encode::IsNull, error::BoxDynError, prelude::*};
+
+#[cfg(not(target_arch = "wasm32"))]
 impl<const R: ResourceType> Type<sqlx::Sqlite> for ResourceSearcher<R> {
 	fn type_info() -> <sqlx::Sqlite as sqlx::Database>::TypeInfo {
 		<Uuid as Type<sqlx::Sqlite>>::type_info()
 	}
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<const R: ResourceType> Type<sqlx::Postgres> for ResourceSearcher<R> {
 	fn type_info() -> <sqlx::Postgres as sqlx::Database>::TypeInfo {
 		<Uuid as Type<sqlx::Postgres>>::type_info()
 	}
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<'a, const R: ResourceType> Encode<'a, sqlx::Sqlite> for ResourceSearcher<R>
 where
 	Uuid: Encode<'a, sqlx::Sqlite>,
@@ -160,6 +166,7 @@ where
 	}
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<'a, const R: ResourceType> Encode<'a, sqlx::Postgres> for ResourceSearcher<R>
 where
 	Uuid: Encode<'a, sqlx::Postgres>,
@@ -172,6 +179,7 @@ where
 	}
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<'a, const R: ResourceType> Decode<'a, sqlx::Sqlite> for ResourceSearcher<R>
 where
 	Uuid: Decode<'a, sqlx::Sqlite>,
@@ -181,6 +189,7 @@ where
 	}
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<'a, const R: ResourceType> Decode<'a, sqlx::Postgres> for ResourceSearcher<R>
 where
 	Uuid: Decode<'a, sqlx::Postgres>,

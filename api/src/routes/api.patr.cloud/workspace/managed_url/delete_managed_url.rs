@@ -1,12 +1,4 @@
 use axum::http::StatusCode;
-use cloudflare::{
-	endpoints::workerskv::*,
-	framework::{
-		Environment,
-		auth::Credentials,
-		client::{ClientConfig, async_api::Client as CloudflareClient},
-	},
-};
 use models::{api::workspace::managed_url::*, prelude::*};
 
 use crate::prelude::*;
@@ -90,30 +82,12 @@ pub async fn delete_managed_url(
 	.execute(&mut **database)
 	.await?;
 
-	let client = CloudflareClient::new(
-		Credentials::UserAuthToken {
-			token: config.cloudflare.api_key.clone(),
-		},
-		ClientConfig::default(),
-		Environment::Production,
-	)?;
-
-	client
-		.request(&delete_key::DeleteKey {
-			account_identifier: &config.cloudflare.account_id,
-			namespace_identifier: &config.cloudflare.worker_namespace_id,
-			key: &format!(
-				"{}.{}{}",
-				managed_url.sub_domain,
-				managed_url.domain,
-				if managed_url.path == "/" {
-					""
-				} else {
-					&managed_url.path
-				}
-			),
-		})
-		.await?;
+	super::sync_worker_kv_for_domain(
+		&format!("{}.{}", managed_url.sub_domain, managed_url.domain),
+		&mut **database,
+		&config,
+	)
+	.await?;
 
 	AppResponse::builder()
 		.body(DeleteManagedURLResponse)

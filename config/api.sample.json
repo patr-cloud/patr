@@ -38,7 +38,8 @@
 	},
 	"cloudflare": {
 		"apiKey": "<cloudflare-api-key>",
-		"accountId": "accountId"
+		"accountId": "accountId",
+		"workerNamespaceId": "workerNamespaceId"
 	},
 	"opentelemetry": {
 		"tracing": {

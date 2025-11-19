@@ -1,16 +1,14 @@
-#![allow(missing_docs, clippy::missing_docs_in_private_items)]
-
 //! This crate is the worker that runs on cloudflare before a request is sent to
 //! any one of Patr's Kubernetes clusters.
 
 use std::collections::HashMap;
 
+use models::cloudflare::kv::IngressKVData;
 use url::Host;
 use worker::*;
 
-use self::{models::IngressKVData, utils::constants};
+use self::utils::constants;
 
-mod models;
 mod utils;
 
 /// The main function that is called when a request is made to the worker.
@@ -65,12 +63,12 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 
 	match value {
 		IngressKVData::Redirect {
-			to,
+			url,
 			permanent_redirect,
 			http_only,
 		} => Response::redirect_with_status(
 			{
-				let mut url = Url::parse(&to)?;
+				let mut url = Url::parse(&url)?;
 
 				url.set_scheme(if http_only { "http" } else { "https" })
 					.map_err(|_| Error::BadEncoding)?;
@@ -83,13 +81,11 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 				constants::STATUS_CODE_TEMPORAL_REDIRECT
 			},
 		),
-		IngressKVData::Proxy { to, http_only } => {
+		IngressKVData::ProxyUrl { url, http_only } => {
 			Fetch::Request(Request::new_with_init(
 				{
-					let to_url = Url::parse(&to)?;
-					let mut url = url;
+					let mut url = Url::parse(&url)?;
 
-					url.set_host(to_url.host_str())?;
 					url.set_scheme(if http_only { "http" } else { "https" })
 						.map_err(|_| Error::BadEncoding)?;
 
@@ -107,7 +103,7 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 			.send()
 			.await
 		}
-		IngressKVData::StaticSite {
+		IngressKVData::ProxyStaticSite {
 			static_site_id,
 			upload_id,
 		} => {
@@ -118,13 +114,7 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 
 			let cache_store = Cache::default();
 
-			let cache_key = format!(
-				"{}: {}/{}/{}",
-				req.method(),
-				static_site_id,
-				upload_id,
-				requested_path
-			);
+			let cache_key = format!("{}/{}/{}", static_site_id, upload_id, requested_path);
 
 			let cached_object = cache_store.get(&cache_key, true).await?;
 
@@ -353,10 +343,10 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 
 			Response::error("404 not found", 404)
 		}
-		IngressKVData::Deployment {
-			deployment_id,
-			port,
-			region,
+		IngressKVData::ProxyDeployment {
+			deployment_id: _,
+			port: _,
+			runner_id,
 		} => {
 			Fetch::Request(Request::new_with_init(
 				url.as_str(),
@@ -371,10 +361,8 @@ pub async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 						}),
 						polish: Some(PolishConfig::Off),
 						resolve_override: Some(format!(
-							"https://{}-{}.{}.{}",
-							port,
-							deployment_id,
-							region,
+							"https://{}.{}",
+							runner_id,
 							constants::DEFAULT_PATR_DOMAIN
 						)),
 						scrape_shield: Some(true),

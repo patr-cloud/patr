@@ -51,7 +51,7 @@ pub async fn list_managed_url(
 			sub_domain,
 			domain_id,
 			path,
-			url_type as "url_type: ManagedUrlTypeDiscriminant",
+			url_type AS "url_type: ManagedUrlTypeDiscriminant",
 			deployment_id,
 			port,
 			static_site_id,

@@ -16,7 +16,7 @@ default = []
 
 [dependencies]
 axum                  = { workspace = true, features = ["json"] }
-axum-extra            = { workspace = true, features = ["typed-routing", "routing"] }
+axum-extra            = { workspace = true, features = ["routing", "typed-routing"] }
 axum-typed-websockets = { workspace = true, features = ["default"], optional = true }
 base64                = { workspace = true, features = ["default"] }
 either                = { workspace = true, features = ["serde"] }
@@ -33,7 +33,6 @@ serde                 = { workspace = true, features = ["default", "derive"] }
 serde_json            = { workspace = true, features = ["default"] }
 serde_qs              = { workspace = true, features = [] }
 serde_test            = { workspace = true, features = [] }
-sqlx                  = { workspace = true, features = ["macros", "postgres", "sqlite", "uuid"] }
 strum                 = { workspace = true, features = ["default", "derive"] }
 thiserror             = { workspace = true, features = [] }
 time                  = { workspace = true, features = ["default", "serde-human-readable"] }
@@ -44,4 +43,12 @@ tracing               = { workspace = true, features = ["attributes"] }
 ts-rs                 = { workspace = true, features = ["serde-compat", "serde-json-impl", "url-impl", "uuid-impl"] }
 typed-builder         = { workspace = true, features = [] }
 url                   = { workspace = true, features = ["default"] }
-uuid                  = { workspace = true, features = ["default", "v1", "v4"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+sqlx = { workspace = true, features = ["macros", "postgres", "sqlite", "uuid"] }
+uuid = { workspace = true, features = ["default", "v1", "v4"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom_02 = { workspace = true, features = ["js"] }
+getrandom_03 = { workspace = true, features = ["wasm_js"] }
+uuid         = { workspace = true, features = ["default", "js", "v1", "v4"] }
