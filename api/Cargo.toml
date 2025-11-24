@@ -12,6 +12,9 @@ workspace = true
 
 [dependencies]
 argon2                         = { workspace = true, features = ["default"] }
+aws-config                     = { workspace = true, features = [] }
+aws-credential-types           = { workspace = true, features = ["hardcoded-credentials"] }
+aws-sdk-s3                     = { workspace = true, features = ["rt-tokio"] }
 axum                           = { workspace = true, features = ["default", "macros", "tracing"] }
 axum-extra                     = { workspace = true, features = ["default", "typed-routing"] }
 axum-typed-websockets          = { workspace = true, features = ["default"] }
@@ -34,7 +37,6 @@ preprocess                     = { workspace = true, features = [] }
 rand                           = { workspace = true, features = ["default"] }
 regex                          = { workspace = true, features = ["default"] }
 reqwest                        = { workspace = true, features = ["default", "json", "multipart", "blocking"] }
-rust-s3                        = { workspace = true, features = ["default", "with-tokio"] }
 rustis                         = { workspace = true, features = ["default", "pool", "tokio-rustls"] }
 semver                         = { workspace = true, features = ["default"] }
 serde                          = { workspace = true, features = ["default", "derive"] }
@@ -45,7 +47,7 @@ sqlx                           = { workspace = true, features = ["ipnetwork", "m
 time                           = { workspace = true, features = ["default", "serde-human-readable"] }
 tokio                          = { workspace = true, features = ["default", "full"] }
 tokio-tungstenite              = { workspace = true, features = ["default"] }
-tokio-util                     = { workspace = true, features = ["compat"] }
+tokio-util                     = { workspace = true, features = ["io"] }
 totp-rs                        = { workspace = true, features = ["default", "gen_secret"] }
 tower                          = { workspace = true, features = ["full"] }
 tower-http                     = { workspace = true, features = ["fs"] }

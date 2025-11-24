@@ -24,6 +24,8 @@ mod optional_header;
 /// A submodule for implementing the [`RequiresRequestHeaders`] and
 /// [`RequiresResponseHeaders`] traits.
 mod requires_headers;
+/// The header that represents the total count of items in a paginated response.
+mod total_count_header;
 
 pub use self::{
 	bearer_token::*,
@@ -34,6 +36,7 @@ pub use self::{
 	login_id::*,
 	optional_header::*,
 	requires_headers::*,
+	total_count_header::*,
 };
 
 /// This trait is used to convert a struct to and from a [`HeaderMap`].

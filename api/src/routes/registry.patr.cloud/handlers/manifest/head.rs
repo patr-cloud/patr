@@ -4,7 +4,9 @@
 //! without the manifest body. It's used by clients to verify manifest existence
 //! and get size information before downloading.
 
-use headers::{ContentLength, ContentType};
+use std::{str::FromStr, time::Duration};
+
+use headers::{CacheControl, ContentLength, ContentType, ETag};
 
 use crate::routes::registry_patr_cloud::prelude::*;
 
@@ -31,11 +33,15 @@ macros::declare_registry_endpoint!(
 	auth = true,
 	response_headers = {
 		/// The content type of the manifest
-		pub content_type: headers::ContentType,
+		pub content_type: ContentType,
 		/// The digest of the manifest
 		pub docker_content_digest: DockerContentDigest,
 		/// The size of the manifest in bytes
-		pub content_length: headers::ContentLength,
+		pub content_length: ContentLength,
+		/// The E-Tag header
+		pub etag: ETag,
+		/// The cache control header
+		pub cache_control: CacheControl,
 	}
 );
 
@@ -48,7 +54,7 @@ macros::declare_registry_endpoint!(
 /// 4. Queries the database for manifest metadata
 /// 5. Returns headers only (no body) with Content-Length and
 ///    Docker-Content-Digest
-#[instrument(skip(database, s3))]
+#[instrument(skip(database))]
 pub async fn check_manifest(
 	AuthenticatedRegistryAppRequest {
 		request:
@@ -65,12 +71,14 @@ pub async fn check_manifest(
 			},
 		database,
 		redis: _,
-		s3,
+		s3: _,
 		client_ip,
 		user_data: _,
 		config: _,
 	}: AuthenticatedRegistryAppRequest<'_, HeadManifestPath>,
 ) -> Result<RegistryResponse<HeadManifestPath>, RegistryError> {
+	// TODO check permission
+
 	let manifest_record = query!(
 		r#"
 		SELECT DISTINCT
@@ -126,17 +134,8 @@ pub async fn check_manifest(
 		"Found manifest in database"
 	);
 
-	let s3_key = format!("manifests/{}", manifest_record.digest);
+	let s3_key = format!("manifests/{}", &manifest_record.digest);
 	debug!(s3_key = %s3_key, "Streaming manifest from S3");
-
-	let head = s3.head_object(&s3_key).await.map_err(|e| {
-		error!(error = %e, "Failed to head manifest object in S3");
-		RegistryError::builder()
-			.status(StatusCode::INTERNAL_SERVER_ERROR)
-			.message("Failed to access manifest storage")
-			.code(ErrorCode::Unsupported)
-			.build()
-	})?;
 
 	// Parse content type
 	let content_type = manifest_record
@@ -144,12 +143,27 @@ pub async fn check_manifest(
 		.parse()
 		.unwrap_or_else(|_| ContentType::octet_stream());
 
+	let etag = ETag::from_str(&manifest_record.digest).map_err(|err| {
+		error!(%err, "Failed to parse ETag from manifest digest");
+		RegistryError::with_status(
+			ErrorCode::ManifestInvalid,
+			"Failed to parse ETag",
+			StatusCode::INTERNAL_SERVER_ERROR,
+		)
+	})?;
+	let cache_control = CacheControl::new()
+		.with_immutable()
+		.with_private()
+		.with_max_age(Duration::from_hours(90 * 24));
+
 	RegistryResponse::builder()
 		.status_code(StatusCode::OK)
 		.headers(HeadManifestResponseHeaders {
 			content_type,
 			docker_content_digest: DockerContentDigest(manifest_record.digest),
 			content_length: ContentLength(manifest_record.size as u64),
+			etag,
+			cache_control,
 		})
 		.body(Body::empty())
 		.build()

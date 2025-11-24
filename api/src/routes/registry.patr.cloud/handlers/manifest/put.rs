@@ -5,6 +5,7 @@
 
 use axum::body::Body;
 use futures::TryStreamExt;
+use headers::ContentType;
 use http::HeaderValue;
 use oci_spec::image::{ImageIndex, ImageManifest};
 use sha2::{Digest, Sha256};
@@ -65,6 +66,8 @@ macros::declare_registry_endpoint!(
 	request_headers = {
 		/// The authorization header
 		pub authorization: BearerToken,
+		/// The content type of the request body
+		pub content_type: ContentType,
 	},
 	auth = true,
 	response_headers = {
@@ -72,6 +75,8 @@ macros::declare_registry_endpoint!(
 		pub location: Location,
 		/// The digest of the uploaded manifest
 		pub docker_content_digest: DockerContentDigest,
+		/// The docker distribution API version
+		pub docker_distribution_api_version: DockerDistributionApiVersion,
 	}
 );
 
@@ -99,7 +104,10 @@ pub async fn upload_manifest(
 						reference,
 					},
 				query: (),
-				headers: PutManifestRequestHeaders { authorization: _ },
+				headers: PutManifestRequestHeaders {
+					authorization: _,
+					content_type,
+				},
 				body,
 			},
 		database,
@@ -110,6 +118,147 @@ pub async fn upload_manifest(
 		config,
 	}: AuthenticatedRegistryAppRequest<'_, PutManifestPath>,
 ) -> Result<RegistryResponse<PutManifestPath>, RegistryError> {
+	trace!("PUT called on get manifest");
+
+	let repository_name = repo_name;
+	let workspace_id = workspace_id;
+	let repository_id = check_repository(&repository_name, state.clone()).await?;
+
+	// TODO check permission
+
+	let body_bytes = to_bytes(body, usize::MAX)
+		.await
+		.inspect(|body| {
+			trace!("body chunk size: {}", body.len());
+		})
+		.inspect_err(|error| {
+			error!("Error reading body stream: {}", error);
+		})
+		.map_err(internal_server_error_response)?;
+
+	let size = body_bytes.len();
+	let body_stream = body_bytes.to_vec();
+
+	let digest = if let Some((_, digest)) = reference.split_once(':') {
+		digest.to_string()
+	} else {
+		let digest = format!("sha256:{:x}", Sha256::digest(&body_bytes));
+		// Check if tag exists
+		let tag_in_db = query!(
+			r#"
+			SELECT 
+				*
+			FROM
+				container_registry_tag AS tag
+			WHERE
+				repository_id = $1 AND
+				name = $2;
+			"#,
+			repository_id as _,
+			tag
+		)
+		.fetch_optional(&mut **database)
+		.await
+		.map_err(internal_server_error_response)?;
+
+		if tag_in_db.is_none() {
+			query!(
+				r#"
+				INSERT INTO
+					container_registry_tag(
+						repository_id,
+						name,
+						manifest_digest
+					) VALUES (
+						$1,
+						$2,
+						$3
+					);
+				"#,
+				repository_id as _,
+				reference,
+				digest
+			)
+			.execute(&mut **database)
+			.await
+			.map_err(internal_server_error_response)?;
+		}
+
+		digest
+	};
+
+	let s3_key = format!("manifests/{}", &digest);
+	let response = s3
+		.put_object()
+		.bucket(&config.s3.bucket)
+		.key(&s3_key)
+		.body(body_stream.into())
+		.send()
+		.await
+		.map_err(|e| {
+			error!("Failed to head manifest object in S3: {e}");
+			RegistryError::with_status(
+				ErrorCode::ManifestInvalid,
+				"Failed to push manifest to S3",
+				StatusCode::BAD_REQUEST,
+			)
+		})?;
+
+	query!(
+		r#"
+		INSERT INTO container_registry_manifest(
+			digest,
+			size,
+			created_at,
+			content_type
+		) VALUES (
+		 	$1,
+			$2,
+			NOW(),
+			$3
+		);
+		"#,
+		digest,
+		size as i32,
+		content_type
+	)
+	.execute(&mut **database)
+	.await
+	.map_err(internal_server_error_response)?;
+
+	query!(
+		r#"
+		INSERT INTO container_registry_repository_manifest(
+			repository_id,
+			manifest_digest,
+			created_at
+		) VALUES (
+			$1,
+			$2,
+			NOW()
+		);
+		"#,
+		repository_id as _,
+		digest
+	)
+	.execute(&mut **database)
+	.await
+	.map_err(internal_server_error_response)?;
+
+	RegistryResponse::builder()
+		.status_code(StatusCode::CREATED)
+		.headers(PutManifestResponseHeaders {
+			location: Location::new(format!(
+				"/v2/{}/{}/manifests/{}",
+				workspace_id, repository_name, &digest
+			)),
+			docker_content_digest: DockerContentDigest(digest),
+			docker_distribution_api_version: DockerDistributionApiVersion,
+		})
+		.body(Body::empty())
+		.build()
+		.into_result();
+
 	// Read manifest from streaming request body
 	debug!("Reading manifest from request body");
 
@@ -188,9 +337,7 @@ pub async fn upload_manifest(
 	);
 
 	// 5. Compute SHA256 digest of manifest
-	let mut hasher = Sha256::new();
-	hasher.update(&manifest_bytes);
-	let digest_bytes = hasher.finalize();
+	let digest_bytes = Sha256::new().chain_update(&manifest_bytes).finalize();
 	let manifest_digest = format!("sha256:{:x}", digest_bytes);
 
 	info!(digest = %manifest_digest, "Computed manifest digest");

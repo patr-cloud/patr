@@ -1,20 +1,11 @@
 [workspace]
-members = [
-    "api",
-    "cli",
-    "ingress",
-    "macros",
-    "models",
-    "runners/common",
-    "runners/docker",
-    "runners/kubernetes",
-]
-package.authors = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
-package.description = "Patr API and all it's dependencies"
-package.edition = "2024"
+members              = ["api", "cli", "ingress", "macros", "models", "runners/common", "runners/docker", "runners/kubernetes"]
+package.authors      = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
+package.description  = "Patr API and all it's dependencies"
+package.edition      = "2024"
 package.rust-version = "1.91"
-package.version = "0.18.0"
-resolver = "3"
+package.version      = "0.18.0"
+resolver             = "3"
 
 [workspace.lints.rust]
 missing_docs = "warn"
@@ -29,6 +20,9 @@ missing_docs_in_private_items = "warn"
 
 [workspace.dependencies]
 argon2                         = { default-features = false, version = "0.5" }
+aws-config                     = { default-features = false, version = "1" }
+aws-credential-types           = { default-features = false, version = "1" }
+aws-sdk-s3                     = { default-features = false, version = "1" }
 axum                           = { default-features = false, version = "0.8" }
 axum-extra                     = { default-features = false, version = "0.12" }
 axum-typed-websockets          = { default-features = false, git = "https://github.com/morenol/axum-typed-websockets.git", branch = "patch-1" }
@@ -42,7 +36,7 @@ comfy-table                    = { default-features = false, version = "7" }
 common                         = { default-features = false, path = "runners/common" }
 config                         = { default-features = false, version = "0.15" }
 console_error_panic_hook       = { default-features = false, version = "0.1" }
-convert_case                   = { default-features = false, version = "0.9" }
+convert_case                   = { default-features = false, version = "0.10" }
 dashmap                        = { default-features = false, version = "6" }
 dirs                           = { default-features = false, version = "6" }
 docker                         = { default-features = false, path = "runners/docker" }

@@ -14,6 +14,9 @@ use std::{
 	task::{Context, Poll},
 };
 
+use aws_config::{ConfigLoader, Region};
+use aws_credential_types::Credentials;
+use aws_sdk_s3::Client as S3Client;
 use oci_spec::distribution::ErrorCode;
 use preprocess::Preprocessable;
 use tower::{Layer, Service};
@@ -148,44 +151,19 @@ where
 			// Get Redis client
 			let redis = &mut state.redis;
 
-			let Ok(s3) = s3::Bucket::new(
-				&state.config.s3.bucket,
-				s3::Region::Custom {
-					region: state.config.s3.region.clone(),
-					endpoint: state.config.s3.endpoint.clone(),
-				},
-				s3::creds::Credentials::new(
-					Some(&state.config.s3.key),
-					Some(&state.config.s3.secret),
-					None,
-					None,
-					None,
+			let s3 = ConfigLoader::default()
+				.region(Region::new(state.config.s3.region.clone()))
+				.endpoint_url(state.config.s3.endpoint.clone())
+				.credentials_provider(
+					Credentials::builder()
+						.access_key_id(&state.config.s3.key)
+						.secret_access_key(&state.config.s3.secret)
+						.provider_name("Static")
+						.build(),
 				)
-				.map_err(|err| {
-					error!("Failed to create S3 bucket: {}", err);
-					RegistryError::new(
-						ErrorCode::Unsupported,
-						if cfg!(debug_assertions) {
-							"Internal server error: unable to create S3 credentials"
-						} else {
-							"Internal server error"
-						},
-					)
-				})?,
-			)
-			.inspect_err(|err| {
-				error!("Failed to create S3 bucket: {}", err);
-			}) else {
-				// Handle S3 bucket creation failure
-				return Err(RegistryError::new(
-					ErrorCode::Unsupported,
-					if cfg!(debug_assertions) {
-						"Internal server error: unable to create S3 bucket"
-					} else {
-						"Internal server error"
-					},
-				));
-			};
+				.load()
+				.await;
+			let s3 = S3Client::new(&s3);
 
 			let config = state.config.clone();
 

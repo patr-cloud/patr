@@ -5,6 +5,7 @@
 //! appropriate OCI-compliant headers.
 
 use headers::{ContentLength, ContentType};
+use tokio_util::io::ReaderStream;
 
 use crate::routes::registry_patr_cloud::prelude::*;
 
@@ -68,9 +69,11 @@ pub async fn get_manifest(
 		s3,
 		client_ip,
 		user_data: _,
-		config: _,
+		config,
 	}: AuthenticatedRegistryAppRequest<'_, GetManifestPath>,
 ) -> Result<RegistryResponse<GetManifestPath>, RegistryError> {
+	// TODO check permission
+
 	let manifest_record = query!(
 		r#"
 		SELECT DISTINCT
@@ -119,24 +122,22 @@ pub async fn get_manifest(
 		RegistryError::manifest_unknown(&reference)
 	})?;
 
-	info!(
-		digest = %manifest_record.digest,
-		size = manifest_record.size,
-		content_type = %manifest_record.content_type,
-		"Found manifest in database"
-	);
+	info!("Found manifest in database");
 
-	let s3_key = format!("manifests/{}", manifest_record.digest);
-	debug!(s3_key = %s3_key, "Streaming manifest from S3");
-
-	let head = s3.head_object(&s3_key).await.map_err(|e| {
-		error!(error = %e, "Failed to head manifest object in S3");
-		RegistryError::builder()
-			.status(StatusCode::INTERNAL_SERVER_ERROR)
-			.message("Failed to access manifest storage")
-			.code(ErrorCode::Unsupported)
-			.build()
-	})?;
+	let object = s3
+		.get_object()
+		.bucket(&config.s3.bucket)
+		.key(format!("manifests/{}", manifest_record.digest))
+		.send()
+		.await
+		.map_err(|e| {
+			error!("Failed to head manifest object in S3: {e}");
+			RegistryError::builder()
+				.status(StatusCode::INTERNAL_SERVER_ERROR)
+				.message("Failed to access manifest storage")
+				.code(ErrorCode::Unsupported)
+				.build()
+		})?;
 
 	// Parse content type
 	let content_type = manifest_record
@@ -151,7 +152,9 @@ pub async fn get_manifest(
 			docker_content_digest: DockerContentDigest(manifest_record.digest),
 			content_length: ContentLength(manifest_record.size as u64),
 		})
-		.body(Body::from_stream(s3.get_object_stream(s3_key).await?.bytes))
+		.body(Body::from_stream(ReaderStream::new(
+			object.body.into_async_read(),
+		)))
 		.build()
 		.into_result()
 }

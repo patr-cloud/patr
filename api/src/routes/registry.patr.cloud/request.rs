@@ -1,5 +1,6 @@
 use std::net::IpAddr;
 
+use aws_sdk_s3::Client as S3Client;
 use axum::body::Body;
 use models::RequestUserData;
 use preprocess::Preprocessable;
@@ -92,7 +93,7 @@ where
 	/// an Error, this transaction will be automatically rolled back.
 	pub redis: &'a mut RedisClient,
 	/// The S3 bucket to put objects and take from.
-	pub s3: Box<s3::Bucket>,
+	pub s3: S3Client,
 	/// The IP address of the client that made the request.
 	pub client_ip: IpAddr,
 	/// The application configuration.
@@ -119,7 +120,7 @@ where
 	/// an Error, this transaction will be automatically rolled back.
 	pub redis: &'a mut RedisClient,
 	/// The S3 bucket to put objects and take from.
-	pub s3: Box<s3::Bucket>,
+	pub s3: S3Client,
 	/// The IP address of the client that made the request.
 	pub client_ip: IpAddr,
 	/// The application configuration.
@@ -146,7 +147,7 @@ where
 	/// an Error, this transaction will be automatically rolled back.
 	pub redis: &'a mut RedisClient,
 	/// The S3 bucket to put objects and take from.
-	pub s3: Box<s3::Bucket>,
+	pub s3: S3Client,
 	/// The IP address of the client that made the request.
 	pub client_ip: IpAddr,
 	/// The user data of the current authenticated user.

@@ -268,8 +268,8 @@ impl From<oci_spec::OciSpecError> for RegistryError {
 	}
 }
 
-impl From<s3::error::S3Error> for RegistryError {
-	fn from(err: s3::error::S3Error) -> Self {
+impl From<aws_sdk_s3::Error> for RegistryError {
+	fn from(err: aws_sdk_s3::Error) -> Self {
 		error!("S3 error: {}", err);
 		// Use Unsupported as a generic internal error code
 		Self::with_status(
