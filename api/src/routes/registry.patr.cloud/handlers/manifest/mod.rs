@@ -1,21 +1,19 @@
 //! Manifest handlers for the OCI registry.
-//!
-//! This module contains handlers for manifest operations:
-//! - GET: Retrieve a manifest by tag or digest
-//! - HEAD: Check if a manifest exists and get metadata
-//! - PUT: Upload a new manifest
-//! - DELETE: Delete a manifest
 
 use axum::Router;
 
 use crate::routes::registry_patr_cloud::prelude::*;
 
-// mod delete;
+/// Delete a manifest
+mod delete;
+/// Retrieve a manifest by tag or digest
 mod get;
+/// Check if a manifest exists and get metadata
 mod head;
+/// Upload a new manifest
 mod put;
 
-pub use self::{get::*, head::*, put::*};
+pub use self::{delete::*, get::*, head::*, put::*};
 
 /// Setup the tags routes.
 pub async fn setup_routes(state: &AppState) -> Router {
@@ -29,6 +27,6 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.mount_auth_registry_endpoint(check_manifest, state)
 		// PUT /v2/{name}/manifests/{reference} - Upload manifest
 		.mount_auth_registry_endpoint(upload_manifest, state)
-	// DELETE /v2/{name}/manifests/{reference} - Delete manifest
-	// .mount_auth_registry_endpoint(delete_manifest, state)
+		// DELETE /v2/{name}/manifests/{reference} - Delete manifest
+		.mount_auth_registry_endpoint(delete_manifest, state)
 }

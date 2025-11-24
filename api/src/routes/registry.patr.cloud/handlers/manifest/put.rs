@@ -58,9 +58,11 @@ macros::declare_registry_endpoint!(
 	PUT "/v2/{workspace_id}/{repo_name}/manifests/{reference}" {
 		/// The workspace ID
 		pub workspace_id: Uuid,
-		/// The repository name in the format workspace_id/repo_name
+		/// The repository name
+		#[preprocess(lowercase, regex = "^[a-z0-9]+([._-][a-z0-9]+)*$", length(max = 255))]
 		pub repo_name: String,
 		/// The manifest reference (tag name or digest)
+		#[preprocess(regex = "^[A-Za-z0-9._\\+-]+(:[A-Za-z0-9._\\=-]+)?$")]
 		pub reference: String,
 	},
 	request_headers = {
@@ -120,9 +122,8 @@ pub async fn upload_manifest(
 ) -> Result<RegistryResponse<PutManifestPath>, RegistryError> {
 	trace!("PUT called on get manifest");
 
-	let repository_name = repo_name;
 	let workspace_id = workspace_id;
-	let repository_id = check_repository(&repository_name, state.clone()).await?;
+	let repository_id = check_repository(&repo_name, state.clone()).await?;
 
 	// TODO check permission
 
@@ -250,7 +251,7 @@ pub async fn upload_manifest(
 		.headers(PutManifestResponseHeaders {
 			location: Location::new(format!(
 				"/v2/{}/{}/manifests/{}",
-				workspace_id, repository_name, &digest
+				workspace_id, repo_name, &digest
 			)),
 			docker_content_digest: DockerContentDigest(digest),
 			docker_distribution_api_version: DockerDistributionApiVersion,
@@ -445,6 +446,7 @@ pub async fn upload_manifest(
 		.headers(PutManifestResponseHeaders {
 			location: Location::new(location_url),
 			docker_content_digest: DockerContentDigest(manifest_digest),
+			docker_distribution_api_version: DockerDistributionApiVersion,
 		})
 		.body(Body::empty())
 		.build()
