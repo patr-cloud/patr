@@ -204,4 +204,18 @@ impl WorkspacePermission {
 				}),
 		}
 	}
+
+	/// Returns true if the user has the specified permission on the given
+	/// resource.
+	#[must_use]
+	pub fn has_permission(&self, resource_id: Uuid, permission_id: Uuid) -> bool {
+		match self {
+			Self::SuperAdmin => true,
+			Self::Member { permissions } => permissions
+				.get(&permission_id)
+				.map_or(false, |resource_permissions| {
+					resource_permissions.has_resource(&resource_id)
+				}),
+		}
+	}
 }

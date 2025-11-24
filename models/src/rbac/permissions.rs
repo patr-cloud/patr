@@ -7,6 +7,7 @@ use strum::{Display, EnumIter, EnumMessage, EnumString, IntoEnumIterator, Varian
 /// A list of all permissions that can be granted on a Database.
 #[derive(
 	Eq,
+	Ord,
 	Copy,
 	Hash,
 	Debug,
@@ -15,6 +16,7 @@ use strum::{Display, EnumIter, EnumMessage, EnumString, IntoEnumIterator, Varian
 	EnumIter,
 	PartialEq,
 	Serialize,
+	PartialOrd,
 	EnumString,
 	EnumMessage,
 	Deserialize,
@@ -45,6 +47,7 @@ pub enum DatabasePermission {
 /// A list of all permissions that can be granted on a DNS record.
 #[derive(
 	Eq,
+	Ord,
 	Copy,
 	Hash,
 	Debug,
@@ -53,6 +56,7 @@ pub enum DatabasePermission {
 	EnumIter,
 	PartialEq,
 	Serialize,
+	PartialOrd,
 	EnumString,
 	EnumMessage,
 	Deserialize,
@@ -77,6 +81,7 @@ pub enum DnsRecordPermission {
 /// A list of all permissions that can be granted on a domain.
 #[derive(
 	Eq,
+	Ord,
 	Copy,
 	Hash,
 	Debug,
@@ -85,6 +90,7 @@ pub enum DnsRecordPermission {
 	EnumIter,
 	PartialEq,
 	Serialize,
+	PartialOrd,
 	EnumString,
 	EnumMessage,
 	Deserialize,
@@ -114,6 +120,7 @@ pub enum DomainPermission {
 /// A list of all permissions that can be granted on a Managed URL.
 #[derive(
 	Eq,
+	Ord,
 	Copy,
 	Hash,
 	Debug,
@@ -122,6 +129,7 @@ pub enum DomainPermission {
 	EnumIter,
 	PartialEq,
 	Serialize,
+	PartialOrd,
 	EnumString,
 	EnumMessage,
 	Deserialize,
@@ -155,6 +163,7 @@ pub enum ManagedURLPermission {
 /// A list of all permissions that can be granted on a Runner.
 #[derive(
 	Eq,
+	Ord,
 	Copy,
 	Hash,
 	Debug,
@@ -163,6 +172,7 @@ pub enum ManagedURLPermission {
 	EnumIter,
 	PartialEq,
 	Serialize,
+	PartialOrd,
 	EnumString,
 	EnumMessage,
 	Deserialize,
@@ -195,6 +205,7 @@ pub enum RunnerPermission {
 /// A list of all permissions that can be granted on a deployment
 #[derive(
 	Eq,
+	Ord,
 	Copy,
 	Hash,
 	Debug,
@@ -203,6 +214,7 @@ pub enum RunnerPermission {
 	EnumIter,
 	PartialEq,
 	Serialize,
+	PartialOrd,
 	EnumString,
 	EnumMessage,
 	Deserialize,
@@ -238,6 +250,7 @@ pub enum DeploymentPermission {
 /// repository.
 #[derive(
 	Eq,
+	Ord,
 	Copy,
 	Hash,
 	Debug,
@@ -246,6 +259,7 @@ pub enum DeploymentPermission {
 	EnumIter,
 	PartialEq,
 	Serialize,
+	PartialOrd,
 	EnumString,
 	EnumMessage,
 	Deserialize,
@@ -286,6 +300,7 @@ pub enum ContainerRegistryRepositoryPermission {
 /// A list of all permissions that can be granted on a static site
 #[derive(
 	Eq,
+	Ord,
 	Copy,
 	Hash,
 	Debug,
@@ -294,6 +309,7 @@ pub enum ContainerRegistryRepositoryPermission {
 	EnumIter,
 	PartialEq,
 	Serialize,
+	PartialOrd,
 	EnumString,
 	EnumMessage,
 	Deserialize,
@@ -335,6 +351,7 @@ pub enum StaticSitePermission {
 /// A list of all permissions that can be used for a secret
 #[derive(
 	Eq,
+	Ord,
 	Copy,
 	Hash,
 	Debug,
@@ -343,6 +360,7 @@ pub enum StaticSitePermission {
 	EnumIter,
 	PartialEq,
 	Serialize,
+	PartialOrd,
 	EnumString,
 	EnumMessage,
 	Deserialize,
@@ -368,6 +386,7 @@ pub enum SecretPermission {
 /// A list of all permissions that can be used for workspace billing stuff.
 #[derive(
 	Eq,
+	Ord,
 	Copy,
 	Hash,
 	Debug,
@@ -376,6 +395,7 @@ pub enum SecretPermission {
 	EnumIter,
 	PartialEq,
 	Serialize,
+	PartialOrd,
 	EnumString,
 	EnumMessage,
 	Deserialize,
@@ -400,6 +420,7 @@ pub enum BillingPermission {
 /// A list of all permissions that can be granted on a volume.
 #[derive(
 	Eq,
+	Ord,
 	Copy,
 	Hash,
 	Debug,
@@ -408,6 +429,7 @@ pub enum BillingPermission {
 	EnumIter,
 	PartialEq,
 	Serialize,
+	PartialOrd,
 	EnumString,
 	EnumMessage,
 	Deserialize,
@@ -433,6 +455,7 @@ pub enum VolumePermission {
 /// A list of all permissions that can be granted on a resource.
 #[derive(
 	Eq,
+	Ord,
 	Copy,
 	Hash,
 	Debug,
@@ -441,6 +464,7 @@ pub enum VolumePermission {
 	PartialEq,
 	Serialize,
 	Deserialize,
+	PartialOrd,
 	EnumMessage,
 	VariantNames,
 	RecursiveEnumIter,

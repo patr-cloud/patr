@@ -120,10 +120,5 @@ where
 
 	/// The authenticator that should be used for this endpoint.
 	#[must_use]
-	fn get_authenticator() -> Self::Authenticator
-	where
-		Self::Authenticator: Default,
-	{
-		Self::Authenticator::default()
-	}
+	fn get_authenticator() -> Self::Authenticator;
 }

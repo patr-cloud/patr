@@ -324,7 +324,9 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				quote::quote! {
 					NoAuthentication
 				},
-				quote::quote! {},
+				quote::quote! {
+					models::utils::NoAuthentication
+				},
 			)
 		},
 		|block| {
@@ -333,7 +335,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 					AppAuthentication::<Self>
 				},
 				quote::quote! {
-					fn get_authenticator() -> Self::Authenticator #block
+					#block
 				},
 			)
 		},
@@ -565,7 +567,9 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			type RequestBody = Self;
 			type Authenticator = models::utils::#auth_type;
 
-			#auth_impl
+			fn get_authenticator() -> Self::Authenticator {
+				#auth_impl
+			}
 
 			type ResponseHeaders = #response_headers_name;
 			type ResponseBody = #response_name;

@@ -51,7 +51,7 @@ where
 		/// This function is used to extract the workspace id from the request.
 		/// The workspace id is then used to check if the user is the super
 		/// admin of the workspace.
-		extract_workspace_id: fn(&ApiRequest<E>) -> Uuid,
+		extract_workspace_id: fn(&ProcessedApiRequest<E>) -> Uuid,
 	},
 	/// Only users that are members of the workspace that is specified in the
 	/// [`extract_workspace_id`][1] function can access this endpoint.
@@ -61,7 +61,7 @@ where
 		/// This function is used to extract the workspace id from the request.
 		/// The workspace id is then used to check if the user is a member of
 		/// the workspace.
-		extract_workspace_id: fn(&ApiRequest<E>) -> Uuid,
+		extract_workspace_id: fn(&ProcessedApiRequest<E>) -> Uuid,
 	},
 	/// Only users that have the permission specific by [`permission`][2] on the
 	/// resource that is specified in the [`extract_resource_id`][1] AND if that
@@ -75,12 +75,12 @@ where
 		/// This function is used to extract the resource id from the request.
 		/// The resource id is then used to check if the user has the specified
 		/// permission on the resource.
-		extract_resource_id: fn(&ApiRequest<E>) -> Uuid,
+		extract_resource_id: fn(&ProcessedApiRequest<E>) -> Uuid,
 		/// This function is used to extract the workspace id from the request.
 		/// The workspace id is then used to check if the user has the specified
 		/// permission on the resource AND if the resource belongs to the
 		/// workspace.
-		extract_workspace_id: fn(&ApiRequest<E>) -> Uuid,
+		extract_workspace_id: fn(&ProcessedApiRequest<E>) -> Uuid,
 		/// The permission that the user needs to have on the resource.
 		permission: Permission,
 	},

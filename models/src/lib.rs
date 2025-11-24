@@ -33,6 +33,7 @@ pub mod prelude {
 		ApiSuccessResponseBody,
 		AppResponse,
 		ErrorType,
+		ProcessedApiRequest,
 		api::{ApiEndpoint, OnlyId, WithId},
 		rbac::{
 			BillingPermission,

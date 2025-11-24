@@ -48,4 +48,14 @@ impl ResourcePermissionType {
 			}
 		}
 	}
+
+	/// Returns true if the current [`ResourcePermissionType`] instance has
+	/// access to a specific resource ID.
+	#[must_use]
+	pub fn has_resource(&self, resource_id: &Uuid) -> bool {
+		match self {
+			Self::Include(resources) => resources.contains(resource_id),
+			Self::Exclude(resources) => !resources.contains(resource_id),
+		}
+	}
 }

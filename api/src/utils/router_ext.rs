@@ -9,6 +9,7 @@ use tower::ServiceBuilder;
 
 use super::layers::{
 	AuthenticationLayer,
+	AuthorizationLayer,
 	ClientType,
 	PreprocessLayer,
 	RequestParserLayer,
@@ -142,7 +143,7 @@ where
 							.layer(PreprocessLayer::new())
 							.layer(UserAgentValidationLayer::new())
 							.layer(AuthenticationLayer::new(allowed_client_type))
-							// .layer(todo!("Add permission checker middleware here"))
+							.layer(AuthorizationLayer::new())
 							// .layer(todo!("Add rate limiter value updater middleware here"))
 							// .layer(todo!("Add audit logger middleware here"))
 							.layer(AuthEndpointLayer::new(handler)),

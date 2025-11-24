@@ -2,6 +2,9 @@
 mod auth_endpoint_handler;
 /// Handles the authentication of the requests in case the route is protected
 mod authenticator;
+/// Handles the authorization of the requests in case the route requires
+/// specific permissions
+mod authorizer;
 /// Handles the creation of a database transaction and a redis connection and
 /// passes it to the next layer
 mod data_store_connection_handler;
@@ -29,6 +32,7 @@ mod user_agent_validation_layer;
 pub use self::{
 	auth_endpoint_handler::*,
 	authenticator::*,
+	authorizer::*,
 	data_store_connection_handler::*,
 	endpoint_handler::*,
 	login_id_manager::*,

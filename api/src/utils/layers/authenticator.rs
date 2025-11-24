@@ -27,9 +27,11 @@ pub enum ClientType {
 
 /// The [`tower::Layer`] used to authenticate requests. This will parse the
 /// [`BearerToken`] header and verify it against the database. If the token is
-/// valid, the [`RequestUserData`] will be added to the request. All subsequent
-/// underlying layers will recieve an [`AuthenticatedAppRequest`] with the
-/// appropriate [`RequestUserData`] filled.
+/// valid, the [`RequestUserData`][1] will be added to the request. All
+/// subsequent underlying layers will recieve an [`AuthenticatedAppRequest`]
+/// with the appropriate [`RequestUserData`][1] filled.
+///
+/// [1]: ::models::RequestUserData
 pub struct AuthenticationLayer<E>
 where
 	E: ApiEndpoint,
@@ -61,13 +63,12 @@ where
 	<E::RequestBody as Preprocessable>::Processed: Send,
 	for<'a> S: Service<AuthenticatedAppRequest<'a, E>>,
 {
-	type Service = AuthenticationService<E::Authenticator, E, S>;
+	type Service = AuthenticationService<E, S>;
 
 	fn layer(&self, inner: S) -> Self::Service {
 		AuthenticationService {
 			inner,
 			client_type: self.client_type,
-			authenticator: PhantomData,
 			endpoint: PhantomData,
 		}
 	}
@@ -87,7 +88,7 @@ where
 }
 
 /// The underlying service that runs when the [`AuthenticationLayer`] is used.
-pub struct AuthenticationService<A, E, S>
+pub struct AuthenticationService<E, S>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
@@ -96,13 +97,11 @@ where
 	inner: S,
 	/// The type of client that is allowed to make the request
 	client_type: ClientType,
-	/// The type of authenticator that will be used to authenticate the request
-	authenticator: PhantomData<A>,
 	/// The endpoint type that this layer will handle
 	endpoint: PhantomData<E>,
 }
 
-impl<'a, E, S> Service<AppRequest<'a, E>> for AuthenticationService<AppAuthentication<E>, E, S>
+impl<'a, E, S> Service<AppRequest<'a, E>> for AuthenticationService<E, S>
 where
 	E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
 	<E::RequestBody as Preprocessable>::Processed: Send,
@@ -158,7 +157,7 @@ where
 	}
 }
 
-impl<A, E, S> Clone for AuthenticationService<A, E, S>
+impl<E, S> Clone for AuthenticationService<E, S>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
@@ -169,7 +168,6 @@ where
 		Self {
 			inner: self.inner.clone(),
 			client_type: self.client_type,
-			authenticator: PhantomData,
 			endpoint: PhantomData,
 		}
 	}

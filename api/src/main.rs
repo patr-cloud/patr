@@ -32,6 +32,7 @@ pub mod prelude {
 	pub use models::{
 		AppResponse,
 		ErrorType,
+		ProcessedApiRequest,
 		api::{ApiEndpoint, WithId},
 		rbac::{
 			BillingPermission,
@@ -51,13 +52,7 @@ pub mod prelude {
 	pub use tracing::{debug, error, info, instrument, trace, warn};
 
 	pub use crate::{
-		app::{
-			AppRequest,
-			AppState,
-			AuthenticatedAppRequest,
-			ProcessedApiRequest,
-			UnprocessedAppRequest,
-		},
+		app::{AppRequest, AppState, AuthenticatedAppRequest, UnprocessedAppRequest},
 		redis,
 		utils::{RouterExt, TimeoutExt, constants, layers::ClientType},
 	};
