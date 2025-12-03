@@ -109,7 +109,7 @@ where
 		self.inner.poll_ready(cx)
 	}
 
-	#[instrument(skip(self, req), name = "PreprocessService")]
+	#[instrument(skip(self, req), name = "RegistryPreprocessService")]
 	fn call(&mut self, req: RegistryUnprocessedAppRequest<'a, E>) -> Self::Future {
 		let mut inner = self.inner.clone();
 		async move {

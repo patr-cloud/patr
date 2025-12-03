@@ -80,14 +80,13 @@ pub async fn start_deployment(
 			SELECT
 				manifest_digest
 			FROM
-				container_registry_repository_manifest
+				container_registry_tag
 			WHERE
-				repository_id = $1
-			ORDER BY
-				created_at DESC
-			LIMIT 1;
+				repository_id = $1 AND
+				name = $2;
 			"#,
-			repository_id as _
+			repository_id as _,
+			image_tag as _
 		)
 		.fetch_optional(&mut **database)
 		.await?
@@ -95,46 +94,29 @@ pub async fn start_deployment(
 
 		if let Some(digest) = digest {
 			// Check if digest is already in deployment_deploy_history table
-			let deployment_deploy_history = query!(
-				r#"
-				SELECT
-					image_digest,
-					created
-				FROM
-					deployment_deploy_history
-				WHERE
-					image_digest = $1;
-				"#,
-				digest as _,
-			)
-			.fetch_optional(&mut **database)
-			.await?;
-
 			// If not, add it to the table
-			if deployment_deploy_history.is_none() {
-				query!(
-					r#"
-					INSERT INTO
-						deployment_deploy_history(
-							deployment_id,
-							image_digest,
-							repository_id,
-							created
-						)
-					VALUES
-						($1, $2, $3, $4)
-					ON CONFLICT
-						(deployment_id, image_digest)
-					DO NOTHING;
-					"#,
-					deployment_id as _,
-					digest as _,
-					repository_id as _,
-					now as _,
-				)
-				.execute(&mut **database)
-				.await?;
-			}
+			query!(
+				r#"
+				INSERT INTO
+					deployment_deploy_history(
+						deployment_id,
+						image_digest,
+						repository_id,
+						created
+					)
+				VALUES
+					($1, $2, $3, $4)
+				ON CONFLICT
+					(deployment_id, image_digest)
+				DO NOTHING;
+				"#,
+				deployment_id as _,
+				digest as _,
+				repository_id as _,
+				now as _,
+			)
+			.execute(&mut **database)
+			.await?;
 		}
 	}
 

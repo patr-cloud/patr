@@ -328,14 +328,13 @@ pub async fn create_deployment(
 			SELECT
 				manifest_digest
 			FROM
-				container_registry_repository_manifest
+				container_registry_tag
 			WHERE
-				repository_id = $1
-			ORDER BY
-				created_at DESC
-			LIMIT 1;
+				repository_id = $1 AND
+				name = $2;
 			"#,
-			repository_id as _
+			repository_id as _,
+			image_tag as _
 		)
 		.fetch_optional(&mut **database)
 		.await?
