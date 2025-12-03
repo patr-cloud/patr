@@ -12,7 +12,6 @@ use axum::{
 	response::{IntoResponse, Response},
 };
 use oci_spec::distribution::{ErrorCode, ErrorInfoBuilder, ErrorResponseBuilder};
-use s3::error::S3Error;
 use typed_builder::TypedBuilder;
 
 use crate::routes::registry_patr_cloud::prelude::*;
@@ -168,18 +167,6 @@ impl From<PresigningConfigError> for RegistryError {
 					"internal server error"
 				},
 			)
-			.status(StatusCode::INTERNAL_SERVER_ERROR)
-			.build()
-	}
-}
-
-impl From<S3Error> for RegistryError {
-	fn from(err: S3Error) -> Self {
-		error!("S3 error: {}", err);
-		// Use Unsupported as a generic internal error code
-		Self::builder()
-			.code(ErrorCode::Unsupported)
-			.message("internal server error: S3 operation failed")
 			.status(StatusCode::INTERNAL_SERVER_ERROR)
 			.build()
 	}
