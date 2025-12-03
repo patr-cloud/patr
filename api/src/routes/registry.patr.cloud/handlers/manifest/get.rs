@@ -19,17 +19,16 @@ macros::declare_registry_endpoint!(
 		/// The workspace ID
 		pub workspace_id: Uuid,
 		/// The repository name
-		#[preprocess(lowercase, regex = "^[a-z0-9]+([._-][a-z0-9]+)*$", length(max = 255))]
+		#[preprocess(lowercase, regex = constants::REGISTRY_REPO_NAME_REGEX, length(max = 255))]
 		pub repo_name: String,
 		/// The manifest reference (tag name or digest)
-		#[preprocess(regex = "^[A-Za-z0-9._\\+-]+(:[A-Za-z0-9._\\=-]+)?$")]
+		#[preprocess(regex = constants::REGISTRY_TAG_OR_DIGEST_REGEX)]
 		pub reference: String,
 	},
 	request_headers = {
 		/// The authorization header
 		pub authorization: BearerToken,
 	},
-	auth = true,
 	response_headers = {
 		/// The content type of the manifest
 		pub content_type: ContentType,
@@ -49,7 +48,7 @@ macros::declare_registry_endpoint!(
 /// 4. Queries the database for manifest metadata
 /// 5. Streams the manifest content from S3
 /// 6. Returns with appropriate headers
-#[instrument(skip(database, s3))]
+#[instrument(skip(database, s3, user_data))]
 pub async fn get_manifest(
 	AuthenticatedRegistryAppRequest {
 		request:
@@ -68,11 +67,60 @@ pub async fn get_manifest(
 		redis: _,
 		s3,
 		client_ip,
-		user_data: _,
+		user_data,
 		config,
 	}: AuthenticatedRegistryAppRequest<'_, GetManifestPath>,
 ) -> Result<RegistryResponse<GetManifestPath>, RegistryError> {
-	// TODO check permission
+	// Check that the user can pull from this repository
+	let (repository_id, permission_id) = query!(
+		r#"
+		SELECT
+			id AS "resource_id: Uuid",
+			(
+				SELECT
+					id
+				FROM
+					permission
+				WHERE
+					name = $3
+			) AS "permission_id!: Uuid"
+		FROM
+			container_registry_repository
+		WHERE
+			workspace_id = $1 AND
+			name = $2 AND
+			deleted IS NULL;
+		"#,
+		workspace_id as _,
+		&repo_name,
+		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Pull)
+			.to_string(),
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	.ok_or_else(|| {
+		warn!("Repository `{workspace_id}/{repo_name}` not found");
+		RegistryError::builder()
+			.status(StatusCode::NOT_FOUND)
+			.message("Repository not found")
+			.code(ErrorCode::NameUnknown)
+			.build()
+	})
+	.map(|row| (row.resource_id, row.permission_id))?;
+
+	let authorized =
+		user_data.has_permission_on_resource(workspace_id, repository_id, permission_id);
+
+	if !authorized {
+		// Intentionally return a 404 to avoid leaking repository existence
+		debug!("User not authorized to access repository");
+		return RegistryError::builder()
+			.status(StatusCode::NOT_FOUND)
+			.message("Repository not found")
+			.code(ErrorCode::NameUnknown)
+			.build()
+			.into_result();
+	}
 
 	let manifest_record = query!(
 		r#"
@@ -119,7 +167,11 @@ pub async fn get_manifest(
 			repository = %repo_name,
 			"Manifest not found"
 		);
-		RegistryError::manifest_unknown(&reference)
+		RegistryError::builder()
+			.status(StatusCode::NOT_FOUND)
+			.message(format!("Manifest `{reference}` not found"))
+			.code(ErrorCode::ManifestUnknown)
+			.build()
 	})?;
 
 	info!("Found manifest in database");
@@ -130,13 +182,8 @@ pub async fn get_manifest(
 		.key(format!("manifests/{}", manifest_record.digest))
 		.send()
 		.await
-		.map_err(|e| {
-			error!("Failed to head manifest object in S3: {e}");
-			RegistryError::builder()
-				.status(StatusCode::INTERNAL_SERVER_ERROR)
-				.message("Failed to access manifest storage")
-				.code(ErrorCode::Unsupported)
-				.build()
+		.inspect_err(|e| {
+			error!("Failed to get manifest object in S3: {e}");
 		})?;
 
 	// Parse content type

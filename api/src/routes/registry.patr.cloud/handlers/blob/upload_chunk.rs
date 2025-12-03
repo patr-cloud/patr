@@ -4,265 +4,308 @@
 //! large blobs in multiple parts using the OCI Distribution API's chunked
 //! upload protocol.
 
-use axum::body::Body;
-use futures::StreamExt as _;
-use tokio::io::AsyncReadExt;
-use tokio_util::io::StreamReader;
+use std::{self, str::FromStr, time::Duration};
 
-use crate::{
-	prelude::*,
-	routes::registry_patr_cloud::{
-		AuthenticatedRegistryRequest,
-		RegistryEndpoint,
-		RegistryError,
-		RegistryResponse,
-		handlers::blob::initiate_upload::{DockerUploadUuid, Location, RangeHeader},
-		types::RepositoryName,
-		utils::{repository::verify_workspace_access, s3::upload_part_to_s3},
-	},
-};
+use axum::body::Body;
+use headers::{ContentRange, ContentType};
+use http_body::Body as _;
+use models::utils::{DockerUploadUuid, Range};
+use rustis::commands::StringCommands;
+
+use crate::{redis::keys, routes::registry_patr_cloud::prelude::*};
 
 macros::declare_registry_endpoint!(
 	/// PATCH blob upload chunk endpoint.
 	///
 	/// Uploads a chunk of data to an ongoing blob upload session.
 	UploadBlobChunk,
-	PATCH "/v2/{name}/blobs/uploads/{uuid}" {
-		/// The repository name in the format workspace_id/repo_name
-		pub name: String,
+	PATCH "/v2/{workspace_id}/{repo_name}/blobs/uploads/{session_id}" {
+		/// The workspace ID
+		pub workspace_id: Uuid,
+		/// The repository name
+		#[preprocess(lowercase, regex = constants::REGISTRY_REPO_NAME_REGEX, length(max = 255))]
+		pub repo_name: String,
 		/// The upload session UUID
-		pub uuid: String,
+		pub session_id: Uuid,
 	},
-	auth = true,
+	request_headers = {
+		/// The authorization header
+		pub authorization: BearerToken,
+		/// The content type header
+		pub content_type: ContentType,
+		/// The content range header
+		pub content_range: OptionalHeader<ContentRange>,
+	},
 	response_headers = {
 		/// Location header pointing to the upload URL
 		pub location: Location,
 		/// The UUID for this upload session
 		pub docker_upload_uuid: DockerUploadUuid,
 		/// The current byte range after this chunk
-		pub range: RangeHeader,
+		pub range: Range,
 	}
 );
 
-/// Handler for PATCH /v2/{name}/blobs/uploads/{uuid}
+/// Handler for PATCH /v2/{workspace_id}/{repo_name}/blobs/uploads/{session_id}
 ///
 /// This handler:
-/// 1. Parses and validates the repository name
-/// 2. Verifies workspace access
-/// 3. Retrieves upload session from database
-/// 4. Reads chunk from streaming request body
-/// 5. Uploads part to S3 using multipart upload
-/// 6. Updates session in database with part number and ETag
-/// 7. Updates last_byte position
-/// 8. Returns 202 Accepted with Location, Range, and Docker-Upload-UUID headers
-///
-/// # Requirements
-/// - 6.2: Upload blob chunks incrementally to S3
-/// - 6.4: Upload parts to S3 incrementally
-/// - 6.6: Track upload progress
-/// - 12.1: Use database transaction
-pub async fn handler(
-	req: AuthenticatedRegistryRequest<'_, UploadBlobChunkPath>,
+/// - Verifies workspace access
+/// - Retrieves upload session from redis
+/// - Reads chunk from streaming request body
+/// - Uploads part to S3 using multipart upload
+/// - Updates session in redis with part number and ETag
+/// - Updates last_byte position
+/// - Returns 202 Accepted with Location, Range, and Docker-Upload-UUID headers
+pub async fn upload_chunk(
+	AuthenticatedRegistryAppRequest {
+		request:
+			RegistryProcessedApiRequest {
+				path:
+					UploadBlobChunkPathProcessed {
+						workspace_id,
+						repo_name,
+						session_id,
+					},
+				query: (),
+				headers:
+					UploadBlobChunkRequestHeaders {
+						authorization: _,
+						content_type,
+						content_range,
+					},
+				body,
+			},
+		database,
+		redis,
+		s3,
+		client_ip,
+		user_data,
+		config,
+	}: AuthenticatedRegistryAppRequest<'_, UploadBlobChunkPath>,
 ) -> Result<RegistryResponse<UploadBlobChunkPath>, RegistryError> {
-	info!(
-		repository = %req.path.name,
-		uuid = %req.path.uuid,
-		user_id = %req.user_data.id,
-		"PATCH blob upload chunk request"
-	);
-
-	// 1. Parse repository name
-	let repo_name = RepositoryName::parse(&req.path.name)?;
-	debug!(
-		workspace_id = %repo_name.workspace_id(),
-		repo_name = %repo_name.name(),
-		"Parsed repository name"
-	);
-
-	// 2. Verify workspace access
-	verify_workspace_access(&req.user_data, repo_name.workspace_id())?;
-	debug!("Workspace access verified");
-
-	// 3. Parse UUID
-	let session_id = Uuid::parse_str(&req.path.uuid).map_err(|_| {
-		warn!(uuid = %req.path.uuid, "Invalid upload session UUID");
-		RegistryError::blob_upload_invalid(format!(
-			"Invalid upload session UUID: {}",
-			req.path.uuid
-		))
-	})?;
-
-	#[derive(Debug, sqlx::Type)]
-	#[sqlx(type_name = "container_registry_session_parts")]
-	struct SessionPart {
-		part_number: i32,
-		etag: String,
-	}
-
-	let session = sqlx::query!(
+	info!("PATCH blob upload chunk request");
+	// Check that the user can push to this repository
+	let (repository_id, permission_id) = query!(
 		r#"
-		SELECT 
-			aws_session_id,
-			current_part AS "current_part!",
-			last_byte as "last_byte!",
-			parts AS "parts: Vec<SessionPart>"
-		FROM container_registry_session
-		WHERE id = $1
-			AND user_id = $2
+		SELECT
+			id AS "resource_id: Uuid",
+			(
+				SELECT
+					id
+				FROM
+					permission
+				WHERE
+					name = $3
+			) AS "permission_id!: Uuid"
+		FROM
+			container_registry_repository
+		WHERE
+			workspace_id = $1 AND
+			name = $2 AND
+			deleted IS NULL;
 		"#,
-		session_id as _,
-		req.user_data.id as _
+		workspace_id as _,
+		&repo_name,
+		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Push)
+			.to_string(),
 	)
-	.fetch_optional(&mut **req.database)
+	.fetch_optional(&mut **database)
 	.await?
 	.ok_or_else(|| {
-		warn!(
-			session_id = %session_id,
-			user_id = %req.user_data.id,
-			"Upload session not found"
-		);
-		RegistryError::blob_upload_unknown(session_id.to_string())
-	})?;
+		warn!("Repository `{workspace_id}/{repo_name}` not found");
+		RegistryError::builder()
+			.status(StatusCode::NOT_FOUND)
+			.message("Repository not found")
+			.code(ErrorCode::NameUnknown)
+			.build()
+	})
+	.map(|row| (row.resource_id, row.permission_id))?;
 
-	let upload_id = session.aws_session_id.ok_or_else(|| {
-		error!(
-			session_id = %session_id,
-			"Upload session missing AWS session ID"
-		);
-		RegistryError::blob_upload_invalid("Upload session is not properly initialized".to_string())
-	})?;
+	let authorized =
+		user_data.has_permission_on_resource(workspace_id, repository_id, permission_id);
 
-	debug!(
-		session_id = %session_id,
-		upload_id = %upload_id,
-		current_part = session.current_part,
-		last_byte = session.last_byte,
-		"Retrieved upload session"
-	);
-
-	// 5. Read chunk from streaming request body
-	// Convert the Body into an AsyncRead stream
-	let body_stream = req.body;
-	let stream_reader = StreamReader::new(
-		body_stream
-			.into_data_stream()
-			.map(|result| result.map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))),
-	);
-
-	// Read the chunk data
-	let mut chunk_data = Vec::new();
-	let mut reader = Box::pin(stream_reader);
-	reader.read_to_end(&mut chunk_data).await.map_err(|e| {
-		error!(
-			session_id = %session_id,
-			error = %e,
-			"Failed to read chunk data from request body"
-		);
-		RegistryError::from(e)
-	})?;
-
-	let chunk_size = chunk_data.len();
-	info!(
-		session_id = %session_id,
-		chunk_size = chunk_size,
-		"Read chunk data from request body"
-	);
-
-	if chunk_size == 0 {
-		warn!(
-			session_id = %session_id,
-			"Received empty chunk"
-		);
-		return Err(RegistryError::blob_upload_invalid(
-			"Cannot upload empty chunk".to_string(),
-		));
+	if !authorized {
+		// Intentionally return a 404 to avoid leaking repository existence
+		debug!("User not authorized to access repository");
+		return RegistryError::builder()
+			.status(StatusCode::NOT_FOUND)
+			.message("Repository not found")
+			.code(ErrorCode::NameUnknown)
+			.build()
+			.into_result();
 	}
 
-	// 6. Upload part to S3 using multipart upload
-	let bucket = req.s3_bucket;
-	let s3_key = format!("uploads/{}", session_id);
-	let next_part_number = (session.current_part + 1) as u32;
+	let session = serde_json::from_str::<S3UploadSession>(
+		&redis
+			.get::<_, String>(keys::registry_blob_upload_part_prefix(&session_id))
+			.await?,
+	)?;
 
-	debug!(
-		session_id = %session_id,
-		s3_key = %s3_key,
-		part_number = next_part_number,
-		chunk_size = chunk_size,
-		"Uploading part to S3"
-	);
+	if user_data.login_id != session.initiated_by_login {
+		warn!(
+			"User login `{}` does not match upload session initiator `{}`",
+			user_data.login_id, session.initiated_by_login
+		);
+		return RegistryError::builder()
+			.status(StatusCode::NOT_FOUND)
+			.message("Repository not found")
+			.code(ErrorCode::NameUnknown)
+			.build()
+			.into_result();
+	}
 
-	let upload_part = upload_part_to_s3(&bucket, &s3_key, &upload_id, next_part_number, chunk_data)
-		.await
-		.map_err(|e| {
-			error!(
-				session_id = %session_id,
-				part_number = next_part_number,
-				error = %e,
-				"Failed to upload part to S3"
+	if client_ip != session.initiated_by_ip {
+		warn!(
+			"Client IP `{}` does not match upload session initiator IP `{}`",
+			client_ip, session.initiated_by_ip
+		);
+		return RegistryError::builder()
+			.status(StatusCode::UNAUTHORIZED)
+			.message("Your IP address has changed since the upload was initiated")
+			.code(ErrorCode::Unauthorized)
+			.build()
+			.into_result();
+	}
+
+	debug!("Retrieved upload session");
+
+	if content_type != ContentType::octet_stream() {
+		warn!(
+			"Invalid Content-Type for single blob upload: {}",
+			content_type
+		);
+		return RegistryError::builder()
+			.code(ErrorCode::BlobUploadInvalid)
+			.message("Content-Type must be application/octet-stream for single blob upload")
+			.status(StatusCode::BAD_REQUEST)
+			.build()
+			.into_result();
+	}
+
+	if body.is_end_stream() {
+		warn!("Empty body provided for single blob upload");
+		return RegistryError::builder()
+			.code(ErrorCode::BlobUploadInvalid)
+			.message("Body must not be empty for single blob upload")
+			.status(StatusCode::BAD_REQUEST)
+			.build()
+			.into_result();
+	}
+
+	if let Some(content_range) = content_range.into_option() {
+		let start_range = content_range
+			.bytes_range()
+			.map(|range| range.0)
+			.unwrap_or_default();
+		if start_range != session.total_bytes_uploaded {
+			warn!(
+				"Content-Range start is {start_range} but last byte position is {}",
+				session.total_bytes_uploaded
 			);
-			e
-		})?;
+			return RegistryError::builder()
+				.code(ErrorCode::BlobUploadInvalid)
+				.message("Content-Range start does not match expected byte position")
+				.status(StatusCode::RANGE_NOT_SATISFIABLE)
+				.build()
+				.into_result();
+		}
+	}
 
 	info!(
-		session_id = %session_id,
-		part_number = upload_part.part_number,
-		etag = %upload_part.etag,
-		"Successfully uploaded part to S3"
+		"Uploading part {} to S3",
+		session.uploaded_parts_etags.len() + 1
 	);
 
-	// 7. Update session in database with part number and ETag
-	let new_last_byte = session.last_byte + chunk_size as i32;
-	let mut updated_parts = session.parts;
-	updated_parts.push(SessionPart {
-		part_number: upload_part.part_number as i32,
-		etag: upload_part.etag.clone(),
-	});
+	info!("Uploading bytes to S3");
 
-	sqlx::query!(
-		r#"
-		UPDATE container_registry_session
-		SET 
-			current_part = $1,
-			last_byte = $2,
-			parts = $3,
-			updated_at = NOW()
-		WHERE id = $4
-		"#,
-		next_part_number as i32,
-		new_last_byte,
-		&updated_parts as &[SessionPart],
-		session_id as _
-	)
-	.execute(&mut **req.database)
-	.await?;
+	let response = s3
+		.upload_part()
+		.bucket(&config.s3.bucket)
+		.key(&format!("uploads/{}", session_id))
+		.upload_id(&session.upload_id)
+		.part_number(session.uploaded_parts_etags.len() as i32 + 1)
+		.body(BodyStreamWrapper::new(body.into_data_stream()).into_byte_stream())
+		.send()
+		.await?;
 
-	info!(
-		session_id = %session_id,
-		current_part = next_part_number,
-		last_byte = new_last_byte,
-		"Updated upload session in database"
-	);
+	info!("Uploaded part to S3 successfully");
 
-	// 8. Build Location header
-	let location_url = format!("/v2/{}/blobs/uploads/{}", req.path.name, session_id);
+	let content_length = s3
+		.list_parts()
+		.bucket(&config.s3.bucket)
+		.key(&format!("uploads/{}", session_id))
+		.upload_id(&session.upload_id)
+		.max_parts(1)
+		.part_number_marker(session.uploaded_parts_etags.len().to_string())
+		.send()
+		.await?
+		.parts
+		.and_then(|vec| vec.into_iter().next())
+		.ok_or_else(|| {
+			RegistryError::builder()
+				.code(ErrorCode::Unsupported)
+				.message("Failed to retrieve uploaded part information from S3")
+				.status(StatusCode::INTERNAL_SERVER_ERROR)
+				.build()
+		})?
+		.size
+		.unwrap_or_default() as u64;
 
-	// 9. Return 202 Accepted with headers
-	info!(
-		session_id = %session_id,
-		location = %location_url,
-		range = format!("0-{}", new_last_byte),
-		"Returning upload chunk response"
-	);
+	info!("Retrieved uploaded part information from S3");
 
-	Ok(RegistryResponse::new(
-		UploadBlobChunkResponseHeaders {
-			location: Location::new(location_url),
-			docker_upload_uuid: DockerUploadUuid::new(session_id.to_string()),
-			range: RangeHeader::new(0, new_last_byte as u64),
+	let session = S3UploadSession {
+		upload_id: session.upload_id,
+		uploaded_parts_etags: {
+			let mut etags = session.uploaded_parts_etags;
+
+			etags.push(response.e_tag.ok_or_else(|| {
+				RegistryError::builder()
+					.code(ErrorCode::BlobUploadInvalid)
+					.message("Missing or invalid ETag header in S3 response")
+					.status(StatusCode::INTERNAL_SERVER_ERROR)
+					.build()
+			})?);
+
+			etags
 		},
-		Body::empty(),
-		http::StatusCode::ACCEPTED,
-	))
+		total_bytes_uploaded: session.total_bytes_uploaded + content_length as u64,
+		initiated_by_login: session.initiated_by_login,
+		initiated_by_ip: session.initiated_by_ip,
+	};
+
+	redis
+		.setex(
+			keys::registry_blob_upload_part_prefix(&session_id),
+			Duration::from_hours(24).as_secs(),
+			serde_json::to_string(&session)?,
+		)
+		.await?;
+
+	RegistryResponse::builder()
+		.status_code(StatusCode::ACCEPTED)
+		.headers(UploadBlobChunkResponseHeaders {
+			location: Location::from_str(&format!(
+				"/v2/{workspace_id}/{repo_name}/blobs/uploads/{session_id}"
+			))?,
+			docker_upload_uuid: DockerUploadUuid::new(session_id),
+			range: Range::new(0..session.total_bytes_uploaded).map_err(|err| {
+				error!("Invalid range error: {}", err);
+				RegistryError::builder()
+					.code(ErrorCode::SizeInvalid)
+					.message(
+						if cfg!(debug_assertions) {
+							format!("invalid range specified: {}", err)
+						} else {
+							"invalid range specified".to_string()
+						},
+					)
+					.status(StatusCode::INTERNAL_SERVER_ERROR)
+					.build()
+			})?,
+		})
+		.body(Body::empty())
+		.build()
+		.into_result()
 }
 
 /// Create an S3 Bucket client

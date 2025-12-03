@@ -4,55 +4,9 @@
 //! the blob body. It's used by clients to verify blob existence and get
 //! size information before downloading.
 
-use http::HeaderValue;
+use headers::{AcceptRanges, ContentLength, ContentType};
 
-use crate::{
-	prelude::*,
-	routes::registry_patr_cloud::{
-		AuthenticatedRegistryRequest,
-		RegistryEndpoint,
-		RegistryError,
-		RegistryResponse,
-		types::RepositoryName,
-		utils::repository::verify_workspace_access,
-	},
-};
-
-/// Custom header for Docker content digest
-#[derive(Debug, Clone, PartialEq)]
-pub struct DockerContentDigest(String);
-
-impl DockerContentDigest {
-	pub fn new(digest: String) -> Self {
-		Self(digest)
-	}
-}
-
-impl headers::Header for DockerContentDigest {
-	fn name() -> &'static headers::HeaderName {
-		static NAME: headers::HeaderName =
-			headers::HeaderName::from_static("docker-content-digest");
-		&NAME
-	}
-
-	fn decode<'i, I>(values: &mut I) -> Result<Self, headers::Error>
-	where
-		I: Iterator<Item = &'i HeaderValue>,
-	{
-		let value = values.next().ok_or_else(headers::Error::invalid)?;
-		let digest = value
-			.to_str()
-			.map_err(|_| headers::Error::invalid())?
-			.to_string();
-		Ok(Self(digest))
-	}
-
-	fn encode<E: Extend<HeaderValue>>(&self, values: &mut E) {
-		if let Ok(value) = HeaderValue::from_str(&self.0) {
-			values.extend(std::iter::once(value));
-		}
-	}
-}
+use crate::routes::registry_patr_cloud::prelude::*;
 
 macros::declare_registry_endpoint!(
 	/// HEAD blob endpoint.
@@ -60,128 +14,179 @@ macros::declare_registry_endpoint!(
 	/// Checks if a blob exists and returns metadata headers without the body.
 	/// Used for verifying blob existence and getting size information.
 	HeadBlob,
-	HEAD "/v2/{name}/blobs/{digest}" {
-		/// The repository name in the format workspace_id/repo_name
-		pub name: String,
-		/// The blob digest (sha256:...)
+	HEAD "/v2/{workspace_id}/{repo_name}/blobs/{digest}" {
+		/// The workspace ID
+		pub workspace_id: Uuid,
+		/// The repository name
+		#[preprocess(lowercase, regex = constants::REGISTRY_REPO_NAME_REGEX, length(max = 255))]
+		pub repo_name: String,
+		/// The blob digest
+		#[preprocess(regex = constants::REGISTRY_DIGEST_REGEX)]
 		pub digest: String,
 	},
-	auth = true,
+	request_headers = {
+		/// The Authorization header
+		pub authorization: BearerToken,
+		/// Optional Range header for partial downloads
+		pub range: OptionalHeader<Range>,
+	},
 	response_headers = {
 		/// The content type of the blob
-		pub content_type: headers::ContentType,
+		pub content_type: ContentType,
 		/// The digest of the blob
 		pub docker_content_digest: DockerContentDigest,
-		/// The size of the blob in bytes
-		pub content_length: headers::ContentLength,
+		/// The size of the blob in bytes (or range size)
+		pub content_length: ContentLength,
+		/// Accept-Ranges header to indicate range support
+		pub accept_ranges: AcceptRanges,
 	}
 );
 
-/// Handler for HEAD /v2/{name}/blobs/{digest}
+/// Handler for HEAD "/v2/{workspace_id}/{repo_name}/blobs/{digest}"
 ///
 /// This handler:
-/// 1. Parses and validates the repository name
-/// 2. Verifies workspace access
-/// 3. Validates digest format
-/// 4. Queries the database for blob metadata
-/// 5. Returns headers with Content-Length and Docker-Content-Digest
-///
-/// # Requirements
-/// - 9.2: Return headers with Content-Length and Docker-Content-Digest
-/// - 12.1: Use database transaction
-pub async fn handler(
-	req: AuthenticatedRegistryRequest<'_, HeadBlobPath>,
+/// - Verifies workspace access
+/// - Queries the database for blob metadata
+/// - Returns headers with Content-Length and Docker-Content-Digest
+pub async fn head_blob(
+	AuthenticatedRegistryAppRequest {
+		request:
+			RegistryProcessedApiRequest {
+				path: HeadBlobPathProcessed {
+					workspace_id,
+					repo_name,
+					digest,
+				},
+				query: (),
+				headers: HeadBlobRequestHeaders {
+					authorization: _,
+					range,
+				},
+				body: _,
+			},
+		database,
+		redis: _,
+		s3,
+		client_ip: _,
+		user_data,
+		config,
+	}: AuthenticatedRegistryAppRequest<'_, HeadBlobPath>,
 ) -> Result<RegistryResponse<HeadBlobPath>, RegistryError> {
-	info!(
-		repository = %req.path.name,
-		digest = %req.path.digest,
-		user_id = %req.user_data.id,
-		"HEAD blob request"
-	);
+	info!("HEAD blob request");
 
-	// 1. Parse repository name
-	let repo_name = RepositoryName::parse(&req.path.name)?;
-	debug!(
-		workspace_id = %repo_name.workspace_id(),
-		repo_name = %repo_name.name(),
-		"Parsed repository name"
-	);
-
-	// 2. Verify workspace access
-	verify_workspace_access(&req.user_data, repo_name.workspace_id())?;
-	debug!("Workspace access verified");
-
-	// 3. Validate digest format
-	if !req.path.digest.starts_with("sha256:") {
-		warn!(
-			digest = %req.path.digest,
-			"Invalid digest format"
-		);
-		return Err(RegistryError::digest_invalid(&req.path.digest));
-	}
-	debug!("Digest format validated");
-
-	// 4. Query database for blob metadata
-	#[derive(Debug)]
-	struct BlobRecord {
-		digest: String,
-		size: i64,
-	}
-
-	let blob_record: BlobRecord = sqlx::query_as!(
-		BlobRecord,
+	// Check that the user can pull from this repository
+	let (repository_id, permission_id) = query!(
 		r#"
-		SELECT 
-			b.digest,
-			b.size
-		FROM container_registry_layer_blob b
-		INNER JOIN container_registry_layer_manifest lm 
-			ON b.digest = lm.layer_blob_digest
-		INNER JOIN container_registry_repository_manifest rm 
-			ON lm.manifest_digest = rm.manifest_digest
-		INNER JOIN container_registry_repository r 
-			ON rm.repository_id = r.id
-		WHERE b.digest = $1
-			AND r.workspace_id = $2
-			AND r.name = $3
-			AND r.deleted IS NULL
-		LIMIT 1
+		SELECT
+			id AS "resource_id: Uuid",
+			(
+				SELECT
+					id
+				FROM
+					permission
+				WHERE
+					name = $3
+			) AS "permission_id!: Uuid"
+		FROM
+			container_registry_repository
+		WHERE
+			workspace_id = $1 AND
+			name = $2 AND
+			deleted IS NULL;
 		"#,
-		req.path.digest,
-		repo_name.workspace_id() as _,
-		repo_name.name()
+		workspace_id as _,
+		&repo_name,
+		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Pull)
+			.to_string(),
 	)
-	.fetch_optional(&mut **req.database)
+	.fetch_optional(&mut **database)
 	.await?
 	.ok_or_else(|| {
-		warn!(
-			digest = %req.path.digest,
-			repository = %req.path.name,
-			"Blob not found"
-		);
-		RegistryError::blob_unknown(&req.path.digest)
-	})?;
+		warn!("Repository `{workspace_id}/{repo_name}` not found");
+		RegistryError::builder()
+			.status(StatusCode::NOT_FOUND)
+			.message("Repository not found")
+			.code(ErrorCode::NameUnknown)
+			.build()
+	})
+	.map(|row| (row.resource_id, row.permission_id))?;
 
-	info!(
-		digest = %blob_record.digest,
-		size = blob_record.size,
-		"Found blob in database"
-	);
+	let authorized =
+		user_data.has_permission_on_resource(workspace_id, repository_id, permission_id);
 
-	// 5. Return response with headers only (no body)
-	info!("Returning blob metadata headers");
+	if !authorized {
+		// Intentionally return a 404 to avoid leaking repository existence
+		debug!("User not authorized to access repository");
+		return RegistryError::builder()
+			.status(StatusCode::NOT_FOUND)
+			.message("Repository not found")
+			.code(ErrorCode::NameUnknown)
+			.build()
+			.into_result();
+	}
 
-	// ContentType for octet-stream
-	let content_type = headers::ContentType::octet_stream();
+	let exists = query!(
+		r#"
+		SELECT EXISTS(
+			SELECT
+				1
+			FROM
+				container_registry_repository
+			INNER JOIN
+				container_registry_repository_manifest
+			ON
+				container_registry_repository.id = container_registry_repository_manifest.repository_id
+			INNER JOIN
+				container_registry_manifest_blob
+			ON
+				container_registry_repository_manifest.manifest_digest = container_registry_manifest_blob.manifest_digest
+			WHERE
+				container_registry_manifest_blob.blob_digest = $1 AND
+				container_registry_repository.workspace_id = $2 AND
+				container_registry_repository.name = $3 AND
+				container_registry_repository.deleted IS NULL
+		) AS "exists!";
+		"#,
+		digest,
+		workspace_id as _,
+		&repo_name,
+	)
+	.fetch_one(&mut **database)
+	.await?
+	.exists;
 
-	Ok(RegistryResponse::empty(
-		HeadBlobResponseHeaders {
-			content_type,
-			docker_content_digest: DockerContentDigest::new(blob_record.digest),
-			content_length: headers::ContentLength(blob_record.size as u64),
-		},
-		http::StatusCode::OK,
-	))
+	if !exists {
+		warn!("Blob not found");
+		return RegistryError::builder()
+			.status(StatusCode::NOT_FOUND)
+			.message("Blob not found as a part of this repository")
+			.code(ErrorCode::ManifestBlobUnknown)
+			.build()
+			.into_result();
+	}
+
+	info!("Found blob in database");
+
+	// Use S3 bucket from request (pre-initialized in AppState)
+	let object = s3
+		.head_object()
+		.bucket(&config.s3.bucket)
+		.key(format!("blobs/{digest}"))
+		.set_range(range.into_option().map(|range| range.to_string()))
+		.send()
+		.await?;
+
+	RegistryResponse::builder()
+		.status_code(StatusCode::OK)
+		.headers(HeadBlobResponseHeaders {
+			content_type: ContentType::octet_stream(),
+			docker_content_digest: DockerContentDigest(digest),
+			content_length: ContentLength(object.content_length.unwrap_or_default() as u64),
+			accept_ranges: AcceptRanges::bytes(),
+		})
+		.body(Body::empty())
+		.build()
+		.into_result()
 }
 
 #[cfg(test)]

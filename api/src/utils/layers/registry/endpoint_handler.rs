@@ -31,12 +31,12 @@ where
 	type Future: Future<Output = Result<RegistryResponse<E>, RegistryError>> + Send;
 
 	/// Call the endpoint handler with the given request.
-	fn call(self, req: RegistryAppRequest<'req, E>) -> Self::Future;
+	fn call(self, req: AuthenticatedRegistryAppRequest<'req, E>) -> Self::Future;
 }
 
 impl<'req, F, Fut, E> RegistryEndpointHandler<'req, E> for F
 where
-	F: FnOnce(RegistryAppRequest<'req, E>) -> Fut,
+	F: FnOnce(AuthenticatedRegistryAppRequest<'req, E>) -> Fut,
 	Fut: Future<Output = Result<RegistryResponse<E>, RegistryError>> + Send,
 	E: RegistryEndpoint,
 	<E::RequestPath as Preprocessable>::Processed: Send,
@@ -44,7 +44,7 @@ where
 {
 	type Future = Fut;
 
-	fn call(self, req: RegistryAppRequest<'req, E>) -> Self::Future {
+	fn call(self, req: AuthenticatedRegistryAppRequest<'req, E>) -> Self::Future {
 		self(req)
 	}
 }
@@ -137,7 +137,7 @@ where
 	endpoint: PhantomData<E>,
 }
 
-impl<'req, H, E> Service<RegistryAppRequest<'req, E>> for RegistryEndpointService<H, E>
+impl<'req, H, E> Service<AuthenticatedRegistryAppRequest<'req, E>> for RegistryEndpointService<H, E>
 where
 	for<'anon> H: RegistryEndpointHandler<'anon, E> + Clone + Send,
 	E: RegistryEndpoint,
@@ -154,7 +154,7 @@ where
 	}
 
 	#[instrument(skip(self, req), name = "RegistryEndpointService")]
-	fn call(&mut self, req: RegistryAppRequest<'req, E>) -> Self::Future {
+	fn call(&mut self, req: AuthenticatedRegistryAppRequest<'req, E>) -> Self::Future {
 		trace!("Calling registry endpoint handler");
 		self.handler.clone().call(req)
 	}

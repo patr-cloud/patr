@@ -18,15 +18,12 @@ pub use self::{delete::*, get::*, head::*, put::*};
 /// Setup the tags routes.
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
-		// ============================================================
-		// 5. Manifest Operations (Authenticated)
-		// ============================================================
 		// GET /v2/{name}/manifests/{reference} - Get manifest by tag or digest
-		.mount_auth_registry_endpoint(get_manifest, state)
+		.mount_registry_endpoint(get_manifest, state)
 		// HEAD /v2/{name}/manifests/{reference} - Check manifest existence
-		.mount_auth_registry_endpoint(check_manifest, state)
+		.mount_registry_endpoint(check_manifest, state)
 		// PUT /v2/{name}/manifests/{reference} - Upload manifest
-		.mount_auth_registry_endpoint(upload_manifest, state)
+		.mount_registry_endpoint(upload_manifest, state)
 		// DELETE /v2/{name}/manifests/{reference} - Delete manifest
-		.mount_auth_registry_endpoint(delete_manifest, state)
+		.mount_registry_endpoint(delete_manifest, state)
 }

@@ -1,5 +1,3 @@
-/// Handles functions that processes authenticated requests for the registry
-mod auth_endpoint_handler;
 /// Handles the authentication of the requests in case the route is protected
 mod authenticator;
 /// Handles the creation of a database transaction and a redis connection and
@@ -15,7 +13,6 @@ mod preprocess_layer;
 mod request_parser;
 
 pub use self::{
-	auth_endpoint_handler::*,
 	authenticator::*,
 	data_store_connection_handler::*,
 	endpoint_handler::*,

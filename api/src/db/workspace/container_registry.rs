@@ -50,7 +50,7 @@ pub async fn initialize_container_registry_tables(
 	// Blob Digest and Size
 	query!(
 		r#"
-		CREATE TABLE container_registry_layer_blob(
+		CREATE TABLE container_registry_blob(
 			digest TEXT NOT NULL,
 			size BIGINT NOT NULL,
 			annotations JSONB
@@ -63,10 +63,10 @@ pub async fn initialize_container_registry_tables(
 	// Create Link table between layer blob and manifest
 	query!(
 		r#"
-		CREATE TABLE container_registry_layer_manifest(
+		CREATE TABLE container_registry_manifest_blob(
 			ordinal INT NOT NULL,
 			manifest_digest TEXT NOT NULL,
-			layer_blob_digest TEXT NOT NULL
+			blob_digest TEXT NOT NULL
 		);
 		"#
 	)
@@ -79,34 +79,6 @@ pub async fn initialize_container_registry_tables(
 			name TEXT NOT NULL,
 			repository_id UUID NOT NULL,
 			manifest_digest TEXT NOT NULL
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TYPE container_registry_session_parts AS (
-			part_number	INT,
-			etag		TEXT
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE container_registry_session(
-			id UUID NOT NULL,
-			user_id UUID NOT NULL,
-			aws_session_id TEXT,
-			blob_digest TEXT,
-			current_part INT,
-			last_byte INT,
-			parts container_registry_session_parts[],
-			updated_at TIMESTAMPTZ NOT NULL
 		);
 		"#
 	)
@@ -165,8 +137,8 @@ pub async fn initialize_container_registry_constraints(
 
 	query!(
 		r#"
-		ALTER TABLE container_registry_layer_blob
-		ADD CONSTRAINT container_registry_layer_blob_pk
+		ALTER TABLE container_registry_blob
+		ADD CONSTRAINT container_registry_blob_pk
 		PRIMARY KEY(digest);
 		"#
 	)
@@ -175,9 +147,9 @@ pub async fn initialize_container_registry_constraints(
 
 	query!(
 		r#"
-		ALTER TABLE container_registry_layer_manifest
-		ADD CONSTRAINT container_registry_layer_manifest_pk
-		PRIMARY KEY(manifest_digest, layer_blob_digest);
+		ALTER TABLE container_registry_manifest_blob
+		ADD CONSTRAINT container_registry_manifest_blob_pk
+		PRIMARY KEY(manifest_digest, blob_digest);
 		"#
 	)
 	.execute(&mut *connection)
@@ -188,16 +160,6 @@ pub async fn initialize_container_registry_constraints(
 		ALTER TABLE container_registry_tag
 		ADD CONSTRAINT container_registry_tag_pk
 		PRIMARY KEY(name, repository_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE container_registry_session
-		ADD CONSTRAINT container_registry_session_pk
-		PRIMARY KEY(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -247,10 +209,10 @@ pub async fn initialize_container_registry_constraints(
 
 	query!(
 		r#"
-		ALTER TABLE container_registry_layer_blob
-			ADD CONSTRAINT container_registry_layer_blob_chk_sha_digest
+		ALTER TABLE container_registry_blob
+			ADD CONSTRAINT container_registry_blob_chk_sha_digest
 				CHECK(digest ~ '^sha256:[a-f0-9]{64}$'),
-			ADD CONSTRAINT container_registry_layer_blob_chk_size_positive
+			ADD CONSTRAINT container_registry_blob_chk_size_positive
 				CHECK(size > 0);
 		"#
 	)
@@ -259,17 +221,17 @@ pub async fn initialize_container_registry_constraints(
 
 	query!(
 		r#"
-		ALTER TABLE container_registry_layer_manifest
-			ADD CONSTRAINT container_registry_layer_manifest_chk_sha_manifest_digest
+		ALTER TABLE container_registry_manifest_blob
+			ADD CONSTRAINT container_registry_manifest_blob_chk_sha_manifest_digest
 				CHECK(manifest_digest ~ '^sha256:[a-f0-9]{64}$'),
-			ADD CONSTRAINT container_registry_layer_manifest_chk_sha_layer_blob
-				CHECK(layer_blob_digest ~ '^sha256:[a-f0-9]{64}$'),
-			ADD CONSTRAINT container_registry_layer_manifest_fk_manifest_digest
+			ADD CONSTRAINT container_registry_manifest_blob_chk_sha_layer_blob
+				CHECK(blob_digest ~ '^sha256:[a-f0-9]{64}$'),
+			ADD CONSTRAINT container_registry_manifest_blob_fk_manifest_digest
 				FOREIGN KEY(manifest_digest)
 					REFERENCES container_registry_manifest(digest),
-			ADD CONSTRAINT container_registry_layer_manifest_fk_layer_blob_digest
-				FOREIGN KEY(layer_blob_digest)
-					REFERENCES container_registry_layer_blob(digest);
+			ADD CONSTRAINT container_registry_manifest_blob_fk_blob_digest
+				FOREIGN KEY(blob_digest)
+					REFERENCES container_registry_blob(digest);
 		"#
 	)
 	.execute(&mut *connection)

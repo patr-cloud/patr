@@ -13,6 +13,10 @@ use tower::{Layer, Service};
 
 use crate::prelude::*;
 
+/// A global map of Permission -> PermissionID for all permissions.
+/// This is used to cache the permission IDs for faster lookup instead of
+/// fetching it from the database every time.
+#[doc(hidden)]
 static PERMISSION_TO_ID_MAP: OnceCell<BTreeMap<Permission, Uuid>> = OnceCell::const_new();
 
 /// The [`tower::Layer`] used to authorize requests. This will check the
@@ -168,13 +172,11 @@ where
 
 					// Check if the user has the required permission for the resource in the
 					// workspace
-					let has_permission = req
-						.user_data
-						.permissions
-						.get(&workspace_id)
-						.map_or(false, |perms| {
-							perms.has_resource_permission(resource_id, permission_id)
-						});
+					let has_permission = req.user_data.has_permission_on_resource(
+						workspace_id,
+						resource_id,
+						permission_id,
+					);
 
 					let has_permission = if !has_permission {
 						warn!(

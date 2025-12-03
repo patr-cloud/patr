@@ -21,9 +21,6 @@ where
 	/// The HTTP method for this endpoint
 	const METHOD: http::Method;
 
-	/// Whether this endpoint requires authentication
-	const REQUIRES_AUTH: bool;
-
 	/// Request path type (e.g., /v2/{name}/manifests/{reference})
 	type RequestPath;
 

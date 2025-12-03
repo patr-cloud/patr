@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO container_registry_repository_manifest(repository_id, manifest_digest, created_at) VALUES ($1, $2, NOW());",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f103c4b6788f8883891c26610b1cabdfa6da68f8cc86cd73aebb975998950b27"
+}

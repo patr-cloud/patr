@@ -119,10 +119,11 @@ where
 				request,
 				database,
 				redis,
-				client_ip,
 				s3,
+				client_ip,
 				config,
 			} = req;
+
 			let req = RegistryAppRequest {
 				request: RegistryProcessedApiRequest::try_from(request).map_err(
 					|err: preprocess::Error| {
@@ -142,8 +143,8 @@ where
 				)?,
 				database,
 				redis,
-				client_ip,
 				s3,
+				client_ip,
 				config,
 			};
 			inner.call(req).await

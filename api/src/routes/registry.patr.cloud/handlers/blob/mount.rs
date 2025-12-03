@@ -113,9 +113,9 @@ pub async fn handle_blob_mount(
 		SELECT 
 			b.digest,
 			b.size
-		FROM container_registry_layer_blob b
-		INNER JOIN container_registry_layer_manifest lm 
-			ON b.digest = lm.layer_blob_digest
+		FROM container_registry_blob b
+		INNER JOIN container_registry_manifest_blob lm 
+			ON b.digest = lm.blob_digest
 		INNER JOIN container_registry_repository_manifest rm 
 			ON lm.manifest_digest = rm.manifest_digest
 		INNER JOIN container_registry_repository r 

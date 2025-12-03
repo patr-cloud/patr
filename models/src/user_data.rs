@@ -29,20 +29,17 @@ pub struct RequestUserData {
 }
 
 impl RequestUserData {
-	/// Check if the user has specific permission access to a given resource in
-	/// a workspace. Returns true if the user has the required permission, false
-	/// otherwise.
+	/// Checks if the user has the specified permission on the specified
+	/// resource in the specified workspace.
 	#[must_use]
-	pub fn has_resource_permission(
+	pub fn has_permission_on_resource(
 		&self,
 		workspace_id: Uuid,
 		resource_id: Uuid,
-		required_permission: Uuid,
+		permission_id: Uuid,
 	) -> bool {
-		self.permissions
-			.get(&workspace_id)
-			.map_or(false, |permission| {
-				permission.has_resource_permission(resource_id, required_permission)
-			})
+		self.permissions.get(&workspace_id).map_or(false, |perms| {
+			perms.has_permission_on_resource(resource_id, permission_id)
+		})
 	}
 }

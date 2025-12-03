@@ -12,9 +12,11 @@ use axum::Router;
 
 use crate::prelude::*;
 
-// mod blob;
+/// Blob handlers for the OCI registry.
+mod blob;
+/// Manifest handlers for the OCI registry.
 mod manifest;
-// mod tags;
+/// Version check handler for the OCI registry.
 mod version_check;
 
 pub use self::version_check::*;
@@ -34,41 +36,13 @@ pub use self::version_check::*;
 /// ## Path Conflict Prevention
 ///
 /// The order is important to prevent path conflicts:
-/// - `/v2/{name}/tags/list` must be mounted before
-///   `/v2/{name}/manifests/{reference}`
-/// - `/v2/{name}/blobs/uploads/` must be mounted before
-///   `/v2/{name}/blobs/{digest}`
-///
-/// ## Requirements
-///
-/// - 1.4: Use RouterExt trait for consistency
-/// - 1.6: Organize code with separate handler modules
-/// - 12.1: All handlers receive database transaction
+/// - `/v2/{workspace_id}/{repo_name}/tags/list` must be mounted before
+///   `/v2/{workspace_id}/{repo_name}/manifests/{reference}`
+/// - `/v2/{workspace_id}/{repo_name}/blobs/uploads/` must be mounted before
+///   `/v2/{workspace_id}/{repo_name}/blobs/{digest}`
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
 		.mount_registry_endpoint(version_check, state)
 		.merge(manifest::setup_routes(state).await)
-	// // ============================================================
-	// // 4. Blob Upload Operations (Authenticated)
-	// // ============================================================
-	// // POST /v2/{name}/blobs/uploads/ - Initiate blob upload or mount blob
-	// // Note: Handles both new uploads and cross-repository blob mounting
-	// .mount_auth_registry_endpoint(blob::initiate_upload::handler, state)
-	// // GET /v2/{name}/blobs/uploads/{uuid} - Get upload status
-	// .mount_auth_registry_endpoint(blob::get_upload_status::handler, state)
-	// // PATCH /v2/{name}/blobs/uploads/{uuid} - Upload blob chunk
-	// .mount_auth_registry_endpoint(blob::upload_chunk::handler, state)
-	// // PUT /v2/{name}/blobs/uploads/{uuid} - Complete blob upload
-	// .mount_auth_registry_endpoint(blob::complete_upload::handler, state)
-	// // DELETE /v2/{name}/blobs/uploads/{uuid} - Cancel blob upload
-	// .mount_auth_registry_endpoint(blob::cancel_upload::handler, state)
-	// // ============================================================
-	// // 6. Blob Operations (Authenticated)
-	// // ============================================================
-	// // HEAD /v2/{name}/blobs/{digest} - Check blob existence
-	// .mount_auth_registry_endpoint(blob::head::handler, state)
-	// // GET /v2/{name}/blobs/{digest} - Download blob
-	// .mount_auth_registry_endpoint(blob::get::handler, state)
-	// // DELETE /v2/{name}/blobs/{digest} - Delete blob
-	// .mount_auth_registry_endpoint(blob::delete::handler, state)
+		.merge(blob::setup_routes(state).await)
 }

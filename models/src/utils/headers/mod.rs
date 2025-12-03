@@ -1,4 +1,4 @@
-use headers::*;
+use headers::Header;
 use http::HeaderMap;
 use ts_rs::TS;
 
@@ -12,15 +12,21 @@ mod docker_content_digest;
 /// This is used in the version check endpoint to indicate the version of the
 /// Docker Distribution API that the registry supports.
 mod docker_distribution_api_version;
+/// The header that represents the Docker upload UUID for blob uploads.
+mod docker_upload_uuid;
 /// A submodule for implementing the [`HasHeaders`] trait.
 mod has_headers;
 /// The header that represents a Link header for pagination.
 mod link;
+/// The header that represents the `Location` header.
+mod location;
 /// The header that represents a Login ID.
 mod login_id;
 /// A submodule for implementing an optional header that may or may not be
 /// present in the request/response.
 mod optional_header;
+/// The header that represents an HTTP `Range` header.
+mod range;
 /// A submodule for implementing the [`RequiresRequestHeaders`] and
 /// [`RequiresResponseHeaders`] traits.
 mod requires_headers;
@@ -31,10 +37,13 @@ pub use self::{
 	bearer_token::*,
 	docker_content_digest::*,
 	docker_distribution_api_version::*,
+	docker_upload_uuid::*,
 	has_headers::*,
 	link::*,
+	location::*,
 	login_id::*,
 	optional_header::*,
+	range::*,
 	requires_headers::*,
 	total_count_header::*,
 };
@@ -53,7 +62,7 @@ pub trait Headers: Sized {
 	/// # Errors
 	/// Returns an error if the conversion fails, or if the header map is
 	/// invalid.
-	fn from_header_map(map: &HeaderMap) -> Result<Self, headers::Error>;
+	fn from_header_map(map: HeaderMap) -> Result<Self, headers::Error>;
 }
 
 impl Headers for () {
@@ -61,7 +70,7 @@ impl Headers for () {
 		HeaderMap::new()
 	}
 
-	fn from_header_map(_: &HeaderMap) -> Result<Self, headers::Error> {
+	fn from_header_map(_: HeaderMap) -> Result<Self, headers::Error> {
 		Ok(())
 	}
 }

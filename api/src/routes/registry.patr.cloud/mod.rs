@@ -21,10 +21,13 @@ mod response;
 mod error;
 /// OCI Distribution API endpoint handlers.
 mod handlers;
-// / Utility functions for S3 streaming and repository validation.
-// mod utils;
+/// Utility functions for registry operations.
+mod utils;
 
-use axum::Router;
+use std::convert::Infallible;
+
+use axum::{Router, body::Body, response::IntoResponse};
+use http::{Request, StatusCode};
 
 use crate::prelude::*;
 
@@ -49,6 +52,7 @@ pub mod prelude {
 				RegistryUnprocessedAppRequest,
 			},
 			response::RegistryResponse,
+			utils::{BodyStreamWrapper, S3UploadSession},
 		},
 		utils::RouterExt,
 	};
@@ -73,5 +77,10 @@ pub mod prelude {
 ///   `/v2/{workspace_id}/{name}/blobs/{digest}`
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
-	handlers::setup_routes(state).await
+	handlers::setup_routes(state)
+		.await
+		.fallback(async |req: Request<Body>| {
+			warn!("Unhandled registry request: {} {}", req.method(), req.uri());
+			Ok::<_, Infallible>((StatusCode::NOT_FOUND, "Not Found").into_response())
+		})
 }

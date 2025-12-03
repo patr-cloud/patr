@@ -18,10 +18,9 @@ macros::declare_registry_endpoint!(
 		#[preprocess(length(max = 255))]
 		pub repo_name: String,
 		/// The manifest reference (tag name or digest)
-		#[preprocess(regex = "^[A-Za-z0-9._\\+-]+(:[A-Za-z0-9._\\=-]+)?$")]
+		#[preprocess(regex = constants::REGISTRY_TAG_OR_DIGEST_REGEX)]
 		pub reference: String,
 	},
-	auth = true,
 	request_headers = {
 		/// Authorization header with Bearer token
 		pub authorization: BearerToken,

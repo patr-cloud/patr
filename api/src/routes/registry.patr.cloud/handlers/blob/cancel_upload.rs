@@ -4,153 +4,139 @@
 //! multipart upload and cleaning up the session from the database.
 
 use axum::body::Body;
+use rustis::commands::GenericCommands;
 
-use crate::{
-	prelude::*,
-	routes::registry_patr_cloud::{
-		AuthenticatedRegistryRequest,
-		RegistryEndpoint,
-		RegistryError,
-		RegistryResponse,
-		types::RepositoryName,
-		utils::{repository::verify_workspace_access, s3::abort_multipart_upload},
-	},
-};
+use crate::{redis::keys, routes::registry_patr_cloud::prelude::*};
 
 macros::declare_registry_endpoint!(
 	/// DELETE blob upload cancellation endpoint.
 	///
 	/// Cancels an ongoing blob upload session.
 	CancelBlobUpload,
-	DELETE "/v2/{name}/blobs/uploads/{uuid}" {
-		/// The repository name in the format workspace_id/repo_name
-		pub name: String,
+	DELETE "/v2/{workspace_id}/{repo_name}/blobs/uploads/{session_id}" {
+		/// The workspace ID
+		pub workspace_id: Uuid,
+		/// The repository name
+		#[preprocess(lowercase, regex = constants::REGISTRY_REPO_NAME_REGEX, length(max = 255))]
+		pub repo_name: String,
 		/// The upload session UUID
-		pub uuid: String,
+		pub session_id: Uuid,
 	},
-	auth = true,
+	request_headers = {
+		/// The authorization header
+		pub authorization: BearerToken,
+	},
 	response_headers = {}
 );
 
-/// Handler for DELETE /v2/{name}/blobs/uploads/{uuid}
+/// Handler for DELETE /v2/{workspace_id}/{repo_name}/blobs/uploads/{session_id}
 ///
 /// This handler:
-/// 1. Parses and validates the repository name
-/// 2. Verifies workspace access
-/// 3. Retrieves upload session from database
-/// 4. Aborts S3 multipart upload
-/// 5. Deletes upload session from database
-/// 6. Returns 204 No Content
-///
-/// # Requirements
-/// - 6.5: Abort S3 multipart upload on cancellation
-/// - 6.6: Clean up upload session
-/// - 12.1: Use database transaction
-pub async fn handler(
-	req: AuthenticatedRegistryRequest<'_, CancelBlobUploadPath>,
+/// - Verifies workspace access
+/// - Retrieves upload session from redis
+/// - Aborts S3 multipart upload
+/// - Deletes upload session from redis
+/// - Returns 204 No Content
+#[instrument(skip(database, redis, s3, config))]
+pub async fn cancel_upload(
+	AuthenticatedRegistryAppRequest {
+		request:
+			RegistryProcessedApiRequest {
+				path:
+					CancelBlobUploadPathProcessed {
+						workspace_id,
+						repo_name,
+						session_id,
+					},
+				query: (),
+				headers: CancelBlobUploadRequestHeaders { authorization: _ },
+				body: _,
+			},
+		database,
+		redis,
+		s3,
+		client_ip: _,
+		user_data,
+		config,
+	}: AuthenticatedRegistryAppRequest<'_, CancelBlobUploadPath>,
 ) -> Result<RegistryResponse<CancelBlobUploadPath>, RegistryError> {
-	info!(
-		repository = %req.path.name,
-		uuid = %req.path.uuid,
-		user_id = %req.user_data.id,
-		"DELETE blob upload cancellation request"
-	);
+	info!("DELETE blob upload cancellation request");
 
-	// 1. Parse repository name
-	let repo_name = RepositoryName::parse(&req.path.name)?;
-	debug!(
-		workspace_id = %repo_name.workspace_id(),
-		repo_name = %repo_name.name(),
-		"Parsed repository name"
-	);
-
-	// 2. Verify workspace access
-	verify_workspace_access(&req.user_data, repo_name.workspace_id())?;
-	debug!("Workspace access verified");
-
-	// 3. Parse UUID
-	let session_id = Uuid::parse_str(&req.path.uuid)
-		.map_err(|_| RegistryError::blob_upload_unknown(&req.path.uuid))?;
-
-	// 4. Retrieve upload session from database
-	#[derive(Debug)]
-	struct SessionRecord {
-		aws_session_id: Option<String>,
-	}
-
-	let session = sqlx::query_as!(
-		SessionRecord,
+	// Check that the user can push to this repository
+	let (repository_id, permission_id) = query!(
 		r#"
-		SELECT aws_session_id
-		FROM container_registry_session
-		WHERE id = $1
-			AND user_id = $2
+		SELECT
+			id AS "resource_id: Uuid",
+			(
+				SELECT
+					id
+				FROM
+					permission
+				WHERE
+					name = $3
+			) AS "permission_id!: Uuid"
+		FROM
+			container_registry_repository
+		WHERE
+			workspace_id = $1 AND
+			name = $2 AND
+			deleted IS NULL;
 		"#,
-		session_id as _,
-		req.user_data.id as _
+		workspace_id as _,
+		&repo_name,
+		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Push)
+			.to_string(),
 	)
-	.fetch_optional(&mut **req.database)
+	.fetch_optional(&mut **database)
 	.await?
 	.ok_or_else(|| {
-		warn!(
-			session_id = %session_id,
-			user_id = %req.user_data.id,
-			"Upload session not found"
-		);
-		RegistryError::blob_upload_unknown(&req.path.uuid)
-	})?;
+		warn!("Repository `{workspace_id}/{repo_name}` not found");
+		RegistryError::builder()
+			.status(StatusCode::NOT_FOUND)
+			.message("Repository not found")
+			.code(ErrorCode::NameUnknown)
+			.build()
+	})
+	.map(|row| (row.resource_id, row.permission_id))?;
 
-	let upload_id = session.aws_session_id.ok_or_else(|| {
-		error!(
-			session_id = %session_id,
-			"Upload session missing AWS session ID"
-		);
-		RegistryError::blob_upload_invalid("Upload session is not properly initialized".to_string())
-	})?;
+	let authorized =
+		user_data.has_permission_on_resource(workspace_id, repository_id, permission_id);
 
-	debug!(
-		session_id = %session_id,
-		upload_id = %upload_id,
-		"Retrieved upload session"
-	);
+	if !authorized {
+		// Intentionally return a 404 to avoid leaking repository existence
+		debug!("User not authorized to access repository");
+		return RegistryError::builder()
+			.status(StatusCode::NOT_FOUND)
+			.message("Repository not found")
+			.code(ErrorCode::NameUnknown)
+			.build()
+			.into_result();
+	}
 
-	// 5. Use S3 bucket from request (pre-initialized in AppState)
-	let bucket = req.s3_bucket;
+	debug!("Retrieved upload session");
 
-	// 6. Construct S3 key for the upload
-	let s3_key = format!("uploads/{}", session_id);
+	s3.abort_multipart_upload()
+		.bucket(&config.s3.bucket)
+		.upload_id(format!("uploads/{session_id}"))
+		.send()
+		.await?;
 
-	// 7. Abort S3 multipart upload
-	abort_multipart_upload(&bucket, &s3_key, &upload_id).await?;
-	info!(
-		session_id = %session_id,
-		upload_id = %upload_id,
-		s3_key = %s3_key,
-		"Aborted S3 multipart upload"
-	);
+	info!("Aborted S3 multipart upload");
 
-	// 8. Delete upload session from database
-	sqlx::query!(
-		r#"
-		DELETE FROM container_registry_session
-		WHERE id = $1
-		"#,
-		session_id as _
-	)
-	.execute(&mut **req.database)
-	.await?;
+	// Delete upload session from redis
+	redis
+		.del(keys::registry_blob_upload_part_prefix(&session_id))
+		.await?;
 
-	info!(
-		session_id = %session_id,
-		"Deleted upload session from database"
-	);
+	info!("Deleted upload session from redis");
 
 	// 9. Return 204 No Content
-	Ok(RegistryResponse::new(
-		CancelBlobUploadResponseHeaders {},
-		Body::empty(),
-		http::StatusCode::NO_CONTENT,
-	))
+	RegistryResponse::builder()
+		.status_code(StatusCode::NO_CONTENT)
+		.headers(CancelBlobUploadResponseHeaders {})
+		.body(Body::empty())
+		.build()
+		.into_result()
 }
 
 /// Helper function to create an S3 bucket client from configuration.

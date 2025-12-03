@@ -25,8 +25,6 @@ use crate::{
 		EndpointHandler,
 		EndpointLayer,
 		registry::{
-			AuthRegistryEndpointHandler,
-			AuthRegistryEndpointLayer,
 			RegistryAuthenticationLayer,
 			RegistryDataStoreConnectionLayer,
 			RegistryEndpointHandler,
@@ -73,24 +71,12 @@ where
 		<E::RequestBody as Preprocessable>::Processed: Send,
 		E::RequestHeaders: HasHeader<BearerToken>;
 
-	/// Mount a registry endpoint that does not require authentication.
-	/// This sets up the necessary layers for request parsing and data store
-	/// connection.
+	/// Mount a registry endpoint. This sets up the necessary layers for request
+	/// parsing and data store connection.
 	#[track_caller]
 	fn mount_registry_endpoint<E, H>(self, handler: H, state: &AppState) -> Self
 	where
 		for<'req> H: RegistryEndpointHandler<'req, E> + Clone + Send + Sync + 'static,
-		E: RegistryEndpoint + Sync,
-		<E::RequestPath as Preprocessable>::Processed: Send,
-		<E::RequestQuery as Preprocessable>::Processed: Send;
-
-	/// Mount a registry endpoint that requires authentication.
-	/// This sets up the necessary layers for request parsing, data store
-	/// connection, and authentication.
-	#[track_caller]
-	fn mount_auth_registry_endpoint<E, H>(self, handler: H, state: &AppState) -> Self
-	where
-		for<'req> H: AuthRegistryEndpointHandler<'req, E> + Clone + Send + Sync + 'static,
 		E: RegistryEndpoint + Sync,
 		<E::RequestPath as Preprocessable>::Processed: Send,
 		<E::RequestQuery as Preprocessable>::Processed: Send,
@@ -193,33 +179,6 @@ where
 		E: RegistryEndpoint + Sync,
 		<E::RequestPath as Preprocessable>::Processed: Send,
 		<E::RequestQuery as Preprocessable>::Processed: Send,
-	{
-		self.route(
-			<<E as RegistryEndpoint>::RequestPath as TypedPath>::PATH,
-			MethodRouter::<S>::new()
-				.on(
-					MethodFilter::try_from(<E as RegistryEndpoint>::METHOD).unwrap(),
-					async || {},
-				)
-				.layer(
-					ServiceBuilder::new()
-						// .layer(todo!("Add rate limiter checker middleware here")),
-						.layer(RegistryRequestParserLayer::new())
-						.layer(RegistryDataStoreConnectionLayer::with_state(state.clone()))
-						.layer(RegistryPreprocessLayer::new())
-						// .layer(todo!("Add rate limiter value updater middleware here"))
-						.layer(RegistryEndpointLayer::new(handler)),
-				),
-		)
-	}
-
-	#[instrument(skip_all)]
-	fn mount_auth_registry_endpoint<E, H>(self, handler: H, state: &AppState) -> Self
-	where
-		for<'req> H: AuthRegistryEndpointHandler<'req, E> + Clone + Send + Sync + 'static,
-		E: RegistryEndpoint + Sync,
-		<E::RequestPath as Preprocessable>::Processed: Send,
-		<E::RequestQuery as Preprocessable>::Processed: Send,
 		E::RequestHeaders: HasHeader<BearerToken>,
 	{
 		self.route(
@@ -239,7 +198,7 @@ where
 						// .layer(todo!("Add permission checker middleware here"))
 						// .layer(todo!("Add rate limiter value updater middleware here"))
 						// .layer(todo!("Add audit logger middleware here"))
-						.layer(AuthRegistryEndpointLayer::new(handler)),
+						.layer(RegistryEndpointLayer::new(handler)),
 				),
 		)
 	}

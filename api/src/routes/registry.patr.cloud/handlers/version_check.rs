@@ -8,7 +8,10 @@ macros::declare_registry_endpoint!(
 	/// that the registry is accessible and supports the OCI Distribution API.
 	GetApiVersion,
 	GET "/v2/",
-	auth = false,
+	request_headers = {
+		/// The authentication header
+		pub authorization: BearerToken,
+	},
 	response_headers = {
 		/// The Docker Distribution API version header
 		pub version: DockerDistributionApiVersion,
@@ -21,20 +24,21 @@ macros::declare_registry_endpoint!(
 /// "registry/2.0".
 #[instrument]
 pub async fn version_check(
-	RegistryAppRequest {
+	AuthenticatedRegistryAppRequest {
 		request:
 			RegistryProcessedApiRequest {
 				path: GetApiVersionPathProcessed,
 				query: (),
-				headers: (),
+				headers: GetApiVersionRequestHeaders { authorization: _ },
 				body: _,
 			},
 		database: _,
 		redis: _,
 		s3: _,
 		client_ip: _,
+		user_data: _,
 		config: _,
-	}: RegistryAppRequest<'_, GetApiVersionPath>,
+	}: AuthenticatedRegistryAppRequest<'_, GetApiVersionPath>,
 ) -> Result<RegistryResponse<GetApiVersionPath>, RegistryError> {
 	debug!("Registry version check request");
 

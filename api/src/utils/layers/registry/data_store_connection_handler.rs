@@ -127,7 +127,7 @@ where
 		let mut inner = self.inner.clone();
 
 		async move {
-			debug!("Creating database transaction and Redis connection");
+			trace!("Creating database transaction and Redis connection");
 
 			// Begin a database transaction
 			let mut database = match state.database.begin().await {
@@ -137,14 +137,15 @@ where
 				}
 				Err(err) => {
 					error!("Failed to begin database transaction: {}", err);
-					return Err(RegistryError::new(
+					return RegistryError::new(
 						ErrorCode::Unsupported,
 						if cfg!(debug_assertions) {
 							"Internal server error: unable to begin database transaction"
 						} else {
 							"Internal server error"
 						},
-					));
+					)
+					.into_result();
 				}
 			};
 
@@ -186,10 +187,11 @@ where
 					// Commit the transaction on success
 					if let Err(err) = database.commit().await {
 						error!("Failed to commit database transaction: {}", err);
-						return Err(RegistryError::new(
+						return RegistryError::new(
 							ErrorCode::Unsupported,
 							"Internal server error: unable to commit database transaction",
-						));
+						)
+						.into_result();
 					}
 					debug!("Database transaction committed successfully");
 					Ok(response)

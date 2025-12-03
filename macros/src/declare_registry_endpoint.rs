@@ -7,7 +7,6 @@ use syn::{
 	FieldsNamed,
 	Ident,
 	Lit,
-	LitBool,
 	LitStr,
 	Token,
 	parse::{Parse, ParseStream},
@@ -29,8 +28,6 @@ pub struct RegistryEndpoint {
 	path: LitStr,
 	/// The body of the URL path. This is used for typed paths.
 	path_body: Option<FieldsNamed>,
-	/// Whether this endpoint requires authentication
-	auth: bool,
 
 	/// The query params for the endpoint
 	query: Option<FieldsNamed>,
@@ -75,7 +72,6 @@ impl Parse for RegistryEndpoint {
 			Some(body)
 		};
 
-		let mut auth = None;
 		let mut query = None;
 		let mut request_headers = None;
 		let mut response_headers = None;
@@ -107,14 +103,6 @@ impl Parse for RegistryEndpoint {
 
 					response_headers = Some(input.parse()?);
 				}
-				"auth" => {
-					if auth.is_some() {
-						return Err(Error::new(ident.span(), "Duplicate field"));
-					}
-					input.parse::<Token![=]>()?;
-
-					auth = Some(input.parse::<LitBool>()?.value);
-				}
 				_ => {
 					return Err(Error::new(ident.span(), "Unknown field"));
 				}
@@ -123,7 +111,6 @@ impl Parse for RegistryEndpoint {
 				input.parse::<Token![,]>()?;
 			}
 		}
-		let auth = auth.unwrap_or(true);
 
 		Ok(Self {
 			documentation,
@@ -131,7 +118,6 @@ impl Parse for RegistryEndpoint {
 			method,
 			path,
 			path_body,
-			auth,
 
 			query,
 			request_headers,
@@ -152,7 +138,6 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		method,
 		path,
 		path_body,
-		auth,
 
 		query,
 		request_headers,
@@ -315,7 +300,6 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		// Typically this is done via: use crate::routes::registry_patr_cloud::RegistryEndpoint;
 		impl RegistryEndpoint for #path_name {
 			const METHOD: ::http::Method = ::http::Method::#method;
-			const REQUIRES_AUTH: bool = #auth;
 
 			type RequestPath = Self;
 			type RequestQuery = #query_name;

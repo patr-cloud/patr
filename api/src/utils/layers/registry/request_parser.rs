@@ -23,6 +23,8 @@ use axum::{
 	http::Request,
 	response::{IntoResponse, Response},
 };
+use headers::HeaderMapExt as _;
+use http::{HeaderMap, HeaderValue, header};
 use models::utils::Headers;
 use oci_spec::distribution::ErrorCode;
 use preprocess::Preprocessable;
@@ -129,16 +131,17 @@ where
 			let Ok(Path(path)) = req.extract_parts().await.inspect_err(|err| {
 				debug!("Failed to parse path `{}`: {}", req.uri().path(), err);
 			}) else {
-				return Ok(RegistryError::name_invalid(format!(
-					"Invalid request path: {}",
-					req.uri().path()
-				))
-				.into_response());
+				return Ok(RegistryError::builder()
+					.message(format!("Invalid respository name: {}", req.uri().path()))
+					.code(ErrorCode::NameInvalid)
+					.status(RegistryError::error_code_to_status(&ErrorCode::NameInvalid))
+					.build()
+					.into_response());
 			};
 
 			// Parse query parameters from URL query string
-			let Ok(query) = serde_urlencoded::from_str(req.uri().query().unwrap_or_default())
-				.inspect_err(|err| {
+			let Ok(query) =
+				serde_qs::from_str(req.uri().query().unwrap_or_default()).inspect_err(|err| {
 					debug!("Failed to parse query `{:?}`: {}", req.uri().query(), err);
 				})
 			else {
@@ -149,12 +152,41 @@ where
 				.into_response());
 			};
 
+			// if there is not authorization header, return a WWW-Authenticate challenge
+			if req.headers().typed_get::<BearerToken>().is_none() {
+				debug!("Missing Authorization header");
+				return Ok((
+					{
+						let mut headers = HeaderMap::new();
+						headers.insert(
+							header::WWW_AUTHENTICATE,
+							HeaderValue::from_static(
+								// TODO: make realm and service configurable
+								"Bearer realm=\"http://localhost:3000/auth/docker-login\",service=\"registry.patr.cloud\"",
+							),
+						);
+						headers
+					},
+					RegistryError::builder()
+						.code(ErrorCode::Unauthorized)
+						.message("Missing Authorization header")
+						.status(StatusCode::UNAUTHORIZED)
+						.build()
+						.into_response(),
+				)
+					.into_response());
+			}
+
 			// Parse headers from request header map
-			let Ok(headers) = <E::RequestHeaders as Headers>::from_header_map(req.headers())
-				.inspect_err(|err| {
-					debug!("Failed to parse headers: {err}");
-				})
-			else {
+			let Ok(headers) = <E::RequestHeaders as Headers>::from_header_map(
+				req.headers().clone(),
+			)
+			.inspect_err(|err| {
+				debug!("Failed to parse headers: {err}");
+				if cfg!(debug_assertions) {
+					warn!("Request Headers: {:#?}", req.headers());
+				}
+			}) else {
 				return Ok(
 					RegistryError::new(ErrorCode::Unsupported, format!("Invalid Headers"))
 						.into_response(),

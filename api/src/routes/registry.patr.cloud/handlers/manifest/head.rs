@@ -20,17 +20,16 @@ macros::declare_registry_endpoint!(
 		/// The workspace ID
 		pub workspace_id: Uuid,
 		/// The repository name
-		#[preprocess(lowercase, regex = "^[a-z0-9]+([._-][a-z0-9]+)*$", length(max = 255))]
+		#[preprocess(lowercase, regex = constants::REGISTRY_REPO_NAME_REGEX, length(max = 255))]
 		pub repo_name: String,
 		/// The manifest reference (tag name or digest)
-		#[preprocess(regex = "^[A-Za-z0-9._\\+-]+(:[A-Za-z0-9._\\=-]+)?$")]
+		#[preprocess(regex = constants::REGISTRY_TAG_OR_DIGEST_REGEX)]
 		pub reference: String,
 	},
 	request_headers = {
 		/// The authorization header
 		pub authorization: BearerToken,
 	},
-	auth = true,
 	response_headers = {
 		/// The content type of the manifest
 		pub content_type: ContentType,
@@ -54,7 +53,7 @@ macros::declare_registry_endpoint!(
 /// 4. Queries the database for manifest metadata
 /// 5. Returns headers only (no body) with Content-Length and
 ///    Docker-Content-Digest
-#[instrument(skip(database))]
+#[instrument(skip(database, user_data))]
 pub async fn check_manifest(
 	AuthenticatedRegistryAppRequest {
 		request:
@@ -73,11 +72,60 @@ pub async fn check_manifest(
 		redis: _,
 		s3: _,
 		client_ip,
-		user_data: _,
+		user_data,
 		config: _,
 	}: AuthenticatedRegistryAppRequest<'_, HeadManifestPath>,
 ) -> Result<RegistryResponse<HeadManifestPath>, RegistryError> {
-	// TODO check permission
+	// Check that the user can pull from this repository
+	let (repository_id, permission_id) = query!(
+		r#"
+		SELECT
+			id AS "resource_id: Uuid",
+			(
+				SELECT
+					id
+				FROM
+					permission
+				WHERE
+					name = $3
+			) AS "permission_id!: Uuid"
+		FROM
+			container_registry_repository
+		WHERE
+			workspace_id = $1 AND
+			name = $2 AND
+			deleted IS NULL;
+		"#,
+		workspace_id as _,
+		&repo_name,
+		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Pull)
+			.to_string(),
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	.ok_or_else(|| {
+		warn!("Repository `{workspace_id}/{repo_name}` not found");
+		RegistryError::builder()
+			.status(StatusCode::NOT_FOUND)
+			.message("Repository not found")
+			.code(ErrorCode::NameUnknown)
+			.build()
+	})
+	.map(|row| (row.resource_id, row.permission_id))?;
+
+	let authorized =
+		user_data.has_permission_on_resource(workspace_id, repository_id, permission_id);
+
+	if !authorized {
+		// Intentionally return a 404 to avoid leaking repository existence
+		debug!("User not authorized to access repository");
+		return RegistryError::builder()
+			.status(StatusCode::NOT_FOUND)
+			.message("Repository not found")
+			.code(ErrorCode::NameUnknown)
+			.build()
+			.into_result();
+	}
 
 	let manifest_record = query!(
 		r#"
@@ -124,7 +172,11 @@ pub async fn check_manifest(
 			repository = %repo_name,
 			"Manifest not found"
 		);
-		RegistryError::manifest_unknown(&reference)
+		RegistryError::builder()
+			.status(StatusCode::NOT_FOUND)
+			.message(format!("Manifest `{reference}` not found"))
+			.code(ErrorCode::ManifestUnknown)
+			.build()
 	})?;
 
 	info!(
@@ -145,11 +197,11 @@ pub async fn check_manifest(
 
 	let etag = ETag::from_str(&manifest_record.digest).map_err(|err| {
 		error!(%err, "Failed to parse ETag from manifest digest");
-		RegistryError::with_status(
-			ErrorCode::ManifestInvalid,
-			"Failed to parse ETag",
-			StatusCode::INTERNAL_SERVER_ERROR,
-		)
+		RegistryError::builder()
+			.code(ErrorCode::ManifestInvalid)
+			.message("Failed to parse ETag")
+			.status(StatusCode::INTERNAL_SERVER_ERROR)
+			.build()
 	})?;
 	let cache_control = CacheControl::new()
 		.with_immutable()

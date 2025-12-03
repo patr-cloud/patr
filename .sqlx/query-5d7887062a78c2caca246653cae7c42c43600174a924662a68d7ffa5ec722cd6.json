@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE container_registry_blob ADD CONSTRAINT container_registry_blob_chk_sha_digest CHECK(digest ~ '^sha256:[a-f0-9]{64}$'), ADD CONSTRAINT container_registry_blob_chk_size_positive CHECK(size > 0);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "5d7887062a78c2caca246653cae7c42c43600174a924662a68d7ffa5ec722cd6"
+}

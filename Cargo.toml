@@ -49,6 +49,7 @@ getrandom_03                   = { default-features = false, package = "getrando
 headers                        = { default-features = false, version = "0.4" }
 hex                            = { default-features = false, version = "0.4" }
 http                           = { default-features = false, version = "1" }
+http-body                      = { default-features = false, version = "1" }
 httparse                       = { default-features = false, version = "1" }
 hyper                          = { default-features = false, version = "1" }
 inquire                        = { default-features = false, version = "0.9" }
@@ -89,6 +90,7 @@ sha2                           = { default-features = false, version = "0.10" }
 sqlx                           = { default-features = false, version = "0.8" }
 strum                          = { default-features = false, version = "0.27" }
 syn                            = { default-features = false, version = "2" }
+sync_wrapper                   = { default-features = false, version = "1" }
 tar                            = { default-features = false, version = "0.4" }
 tempfile                       = { default-features = false, version = "3" }
 thiserror                      = { default-features = false, version = "2" }
@@ -109,19 +111,19 @@ typed-builder                  = { default-features = false, version = "0.23" }
 url                            = { default-features = false, version = "2" }
 uuid                           = { default-features = false, version = "1" }
 woothee                        = { default-features = false, version = "0.13" }
-worker                         = { default-features = false, version = "0.6" }
+worker                         = { default-features = false, version = "0.7" }
 
 [workspace.dev-dependencies]
 k8s-openapi = { features = ["latest"] }
 models      = { features = ["default"] }
 
 [profile.dev]
-debug     = "none"
+debug     = true
 lto       = false
 opt-level = 0
 
 [profile.dev.package."*"]
-debug     = "none"
+debug     = true
 opt-level = 0
 
 [profile.release]
