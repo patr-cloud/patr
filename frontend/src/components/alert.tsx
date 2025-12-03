@@ -23,7 +23,7 @@ const Alert = (props: InputProps) => {
       {props.type === "success" && (
         <FiCheckCircle size={16} class="text-success" />
       )}
-      <span class={`text-${props.type}`}>{props.message}</span>
+      <span class={`text-${props.type} text-sm`}>{props.message}</span>
     </span>
   );
 };

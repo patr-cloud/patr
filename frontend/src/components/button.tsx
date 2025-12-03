@@ -1,5 +1,4 @@
-import { ParentProps, Accessor, mergeProps } from "solid-js";
-import { JSX } from "solid-js/h/jsx-runtime";
+import { ParentProps, mergeProps } from "solid-js";
 import { Color, ButtonVariantEnum, ButtonVariant } from "~/utils/color";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";

@@ -1,6 +1,6 @@
-import { createSignal, mergeProps } from "solid-js";
-import { JSX } from "solid-js/h/jsx-runtime";
-import { get } from "~/utils/func";
+import { FiEye, FiEyeOff } from "solid-icons/fi";
+import { createSignal, mergeProps, JSX } from "solid-js";
+import { get, Jsx } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
 /// The Type of the input
@@ -208,7 +208,9 @@ const Input = (rawProps: InputProps) => {
         type={props.type}
         maxLength={props.maxLength}
       />
-      {props.endIcon && <>{props.endIcon()}</>}
+      <div class="pr-5 flex items-center justify-center">
+        {props.endIcon && <div>{props.endIcon()}</div>}
+      </div>
     </div>
   );
 };
@@ -226,7 +228,7 @@ export const PasswordInput = (props: InputProps) => {
           onClick={() => setShowPassword(!showPassword())}
           class="text-primary"
         >
-          {showPassword() ? "Hide" : "Show"}
+          {showPassword() ? <FiEye /> : <FiEyeOff />}
         </button>
       )}
     />

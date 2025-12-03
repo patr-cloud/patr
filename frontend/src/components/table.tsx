@@ -1,4 +1,3 @@
-import { TiThMenu } from "solid-icons/ti";
 import { JSX, mergeProps } from "solid-js";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";

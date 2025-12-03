@@ -22,6 +22,9 @@ import { CreateAccountRequest } from "./CreateAccountRequest";
 import { CompleteSignUpRequest } from "./CompleteSignUpRequest";
 import { AddDomainToWorkspaceRequest } from "./AddDomainToWorkspaceRequest";
 import { AddDomainToWorkspaceResponse } from "./AddDomainToWorkspaceResponse";
+import { DeploymentProbe } from "./DeploymentProbe";
+import { UpdateDeploymentRequest } from "./UpdateDeploymentRequest";
+import { UpdateDeploymentResponse } from "./UpdateDeploymentResponse";
 
 export type {
   EnvironmentVariableValue,
@@ -48,4 +51,7 @@ export type {
   CompleteSignUpRequest,
   AddDomainToWorkspaceRequest,
   AddDomainToWorkspaceResponse,
+  DeploymentProbe,
+  UpdateDeploymentRequest,
+  UpdateDeploymentResponse,
 };

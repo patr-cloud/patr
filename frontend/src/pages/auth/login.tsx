@@ -98,13 +98,13 @@ const Login = () => {
     const { userId, password } = inputs();
 
     // FIXME: Poor regex, improve this
-    if (!USERNAME_VALIDITY_REGEX.test(userId)) {
-      setInputError((prev) => ({
-        ...prev,
-        userId: "Invalid Username format.",
-      }));
-      return false;
-    }
+    // if (!USERNAME_VALIDITY_REGEX.test(userId)) {
+    //   setInputError((prev) => ({
+    //     ...prev,
+    //     userId: "Invalid Username format.",
+    //   }));
+    //   return false;
+    // }
 
     if (password.length === 0) {
       setInputError((prev) => ({

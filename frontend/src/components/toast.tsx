@@ -75,7 +75,9 @@ const Toast = (props: {
 
   return (
     <div
-      class={`${backgroundColor} text-white rounded-xs min-h-16 min-w-60 flex items-center justify-start gap-2 max-h-12 p-sm text-sm`}
+      class={`${backgroundColor} text-white rounded-xs min-h-16 min-w-60 flex items-center justify-start gap-2 max-h-12 p-sm text-sm ${
+        toast.dismissible ? "cursor-pointer" : ""
+      }`}
       onClick={handleClick}
     >
       {toast.level === "success" && (
@@ -119,7 +121,7 @@ const ToastProvider = (props: ParentProps<{}>) => {
     {
       id: 0,
       level: "error",
-      message: "Something",
+      message: "This is not an error toast, just a demo toast!",
       expiry: 5000,
       dismissible: true,
     },

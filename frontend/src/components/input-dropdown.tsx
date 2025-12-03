@@ -42,7 +42,7 @@ interface InputDropdownProps {
 
 const InputDropdown = (props: InputDropdownProps) => {
   const containerClass = `rounded-xs flex justify-start
-    items-center border border-secondary-medium px-sm relative
+    items-center border border-secondary-medium relative
     transition-all duration-250
     focus-within:border-primary focus-within:shadow-md
     bg-secondary-light ${get(props.class)}`;
@@ -83,7 +83,7 @@ const InputDropdown = (props: InputDropdownProps) => {
         id={props.id}
         name={props.name}
         disabled={get(props.disabled)}
-        class={`overflow-hidden text-sm text-ellipsis w-full text-white font-thin border-none bg-transparent disabled:text-disabled focus:outline-none placeholder:text-grey py-xs px-lg`}
+        class={`mx-sm overflow-hidden text-sm text-ellipsis w-full text-white font-thin border-none bg-transparent disabled:text-disabled focus:outline-none placeholder:text-grey py-xs px-lg`}
         type="text"
         placeholder={props.placeholder}
       />
@@ -98,6 +98,9 @@ const InputDropdown = (props: InputDropdownProps) => {
               {option.label}
             </div>
           ))}
+          {get(props.options).length === 0 && (
+            <div class="px-xl py-sm text-grey">No options available.</div>
+          )}
         </div>
       )}
     </div>

@@ -15,6 +15,8 @@ import { FiChevronDown } from "solid-icons/fi";
 import { Jsx } from "~/utils/func";
 import {
   CreateDeploymentRequest,
+  CreateDeploymentResponse,
+  DeploymentProbe,
   EnvironmentVariableValue,
   ExposedPortType,
   ListRunnersForWorkspaceResponse,
@@ -25,6 +27,7 @@ import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import { Uuid } from "~/utils/func";
 import { useToast } from "~/components";
+import ProbeInput from "./probe-input";
 
 const CreateDeploymentPage = () => {
   const [authState] = useAuthState();
@@ -64,6 +67,9 @@ const CreateDeploymentPage = () => {
   const [runner, setRunner] = createSignal<string>("");
   const [imageName, setImageName] = createSignal<string>("");
   const [imageTag, setImageTag] = createSignal<string>("");
+  const [startupProbe, setStartupProbe] = createSignal<
+    DeploymentProbe | undefined
+  >(undefined);
 
   const [registry, setRegistry] = createSignal<string>("");
   const [envList, setEnvList] = createSignal<
@@ -107,7 +113,7 @@ const CreateDeploymentPage = () => {
 
     console.log(requestBody);
 
-    const response = await httpRequest<CreateDeploymentRequest>(
+    const response = await httpRequest<CreateDeploymentResponse>(
       `${
         import.meta.env.VITE_BASE_URL
       }/api/workspace/${lastUsedWorkspaceId()}/deployment`,
@@ -168,7 +174,7 @@ const CreateDeploymentPage = () => {
                     { value: "patr-registry", label: "Patr Registry" },
                     { value: "docker-hub", label: "Docker Hub" },
                   ]}
-                  endIcon={Jsx(
+                  endIcon={() => (
                     <button>
                       <FiChevronDown size={16} />
                     </button>
@@ -212,7 +218,7 @@ const CreateDeploymentPage = () => {
                       label: runner.name,
                     })) ?? []
                   }
-                  endIcon={Jsx(
+                  endIcon={() => (
                     <button>
                       <FiChevronDown size={16} />
                     </button>
@@ -248,6 +254,11 @@ const CreateDeploymentPage = () => {
                 });
               }}
               portList={portList}
+            />
+
+            <ProbeInput
+              probe={[startupProbe, setStartupProbe]}
+              ports={Object.keys(portList()).map((port) => parseInt(port))}
             />
           </div>
 
