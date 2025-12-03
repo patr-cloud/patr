@@ -100,4 +100,22 @@ pub mod constants {
 	/// The maximum number of times a user can attempt to reset a password
 	/// before getting banned altogether
 	pub const MAX_PASSWORD_RESET_ATTEMPTS: i32 = 5;
+
+	/// The regex that a registry repository name must conform to
+	pub const REGISTRY_REPO_NAME_REGEX: &str = macros::verify_regex!(
+		"^[a-z0-9]+((\\.|_|__|-+)[a-z0-9]+)*(\\/[a-z0-9]+((\\.|_|__|-+)[a-z0-9]+)*)*$"
+	);
+
+	/// The regex that a registry digest must conform to
+	pub const REGISTRY_DIGEST_REGEX: &str =
+		macros::verify_regex!("^[A-Za-z][A-Za-z0-9+._-]*:(?:[a-f0-9]{2})+$");
+
+	/// The regex that a registry tag must conform to
+	pub const REGISTRY_TAG_REGEX: &str =
+		macros::verify_regex!("^[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}$");
+
+	/// The regex that a registry tag / digest reference must conform to
+	pub const REGISTRY_TAG_OR_DIGEST_REGEX: &str = macros::verify_regex!(
+		"^(?:[A-Za-z0-9_][A-Za-z0-9._-]{0,127}|[A-Za-z][A-Za-z0-9+._-]*:(?:[a-f0-9]{2})+)$"
+	);
 }

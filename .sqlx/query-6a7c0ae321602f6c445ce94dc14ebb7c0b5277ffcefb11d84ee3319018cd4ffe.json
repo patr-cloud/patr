@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO container_registry_manifest(digest, size, created_at, content_type) VALUES ($1, $2, NOW(), $3);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6a7c0ae321602f6c445ce94dc14ebb7c0b5277ffcefb11d84ee3319018cd4ffe"
+}

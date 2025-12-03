@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT manifest_digest FROM container_registry_repository_manifest WHERE repository_id = $1 ORDER BY created_at DESC LIMIT 1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "manifest_digest",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "92b197e249f5dc5168ecf50b62c9eb3aac82dd7920e6a53e1b306b591f50e857"
+}

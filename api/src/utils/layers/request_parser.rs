@@ -132,11 +132,12 @@ where
 				.into_response());
 			};
 
-			let Ok(headers) = <E::RequestHeaders as Headers>::from_header_map(req.headers())
-				.inspect_err(|err| {
-					debug!("Failed to parse headers: {err}");
-				})
-			else {
+			let Ok(headers) = <E::RequestHeaders as Headers>::from_header_map(
+				req.headers().clone(),
+			)
+			.inspect_err(|err| {
+				debug!("Failed to parse headers: {err}");
+			}) else {
 				return Ok(ApiErrorResponse::error_with_message(
 					ErrorType::WrongParameters,
 					"Invalid Headers",

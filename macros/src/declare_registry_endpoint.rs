@@ -1,0 +1,311 @@
+use proc_macro::TokenStream;
+use quote::format_ident;
+use syn::{
+	Attribute,
+	Error,
+	Expr,
+	FieldsNamed,
+	Ident,
+	Lit,
+	LitStr,
+	Token,
+	parse::{Parse, ParseStream},
+	parse_macro_input,
+	punctuated::Punctuated,
+};
+
+/// A helper struct to parse a registry endpoint
+pub struct RegistryEndpoint {
+	/// The documentation for the registry endpoint. This is used for all the
+	/// generated structs, along with some pre-text.
+	documentation: String,
+	/// The name of the endpoint. All generated structs will be prefixed with
+	/// this name.
+	name: Ident,
+	/// The HTTP method for the endpoint.
+	method: Ident,
+	/// The URL path for the endpoint.
+	path: LitStr,
+	/// The body of the URL path. This is used for typed paths.
+	path_body: Option<FieldsNamed>,
+
+	/// The query params for the endpoint
+	query: Option<FieldsNamed>,
+	/// The required request headers for the endpoint.
+	request_headers: Option<FieldsNamed>,
+
+	/// The required response headers for the endpoint.
+	response_headers: Option<FieldsNamed>,
+}
+
+impl Parse for RegistryEndpoint {
+	fn parse(input: ParseStream) -> Result<Self, Error> {
+		let meta = Attribute::parse_outer(input)?
+			.into_iter()
+			.next()
+			.ok_or_else(|| Error::new(input.span(), "Expected documentation"))?
+			.meta;
+		let Expr::Lit(ref lit) = meta.require_name_value()?.value else {
+			return Err(Error::new(input.span(), "Expected documentation"));
+		};
+
+		let Lit::Str(ref lit_str) = lit.lit else {
+			return Err(Error::new(input.span(), "Expected documentation"));
+		};
+		let documentation = lit_str.value();
+
+		let name = input.parse()?;
+		input.parse::<Token![,]>()?;
+
+		let method = input.parse()?;
+
+		let path = input.parse()?;
+		let path_body = if input.peek(Token![,]) {
+			input.parse::<Token![,]>()?;
+			None
+		} else if input.is_empty() {
+			None
+		} else {
+			let body = input.parse()?;
+			input.parse::<Token![,]>()?;
+
+			Some(body)
+		};
+
+		let mut query = None;
+		let mut request_headers = None;
+		let mut response_headers = None;
+
+		while !input.is_empty() {
+			let ident = input.parse::<Ident>()?;
+			match ident.to_string().as_str() {
+				"query" => {
+					if query.is_some() {
+						return Err(Error::new(ident.span(), "Duplicate field"));
+					}
+					input.parse::<Token![=]>()?;
+
+					query = Some(input.parse()?);
+				}
+				"request_headers" => {
+					if request_headers.is_some() {
+						return Err(Error::new(ident.span(), "Duplicate field"));
+					}
+					input.parse::<Token![=]>()?;
+
+					request_headers = Some(input.parse()?);
+				}
+				"response_headers" => {
+					if response_headers.is_some() {
+						return Err(Error::new(ident.span(), "Duplicate field"));
+					}
+					input.parse::<Token![=]>()?;
+
+					response_headers = Some(input.parse()?);
+				}
+				_ => {
+					return Err(Error::new(ident.span(), "Unknown field"));
+				}
+			}
+			if !input.is_empty() {
+				input.parse::<Token![,]>()?;
+			}
+		}
+
+		Ok(Self {
+			documentation,
+			name,
+			method,
+			path,
+			path_body,
+
+			query,
+			request_headers,
+
+			response_headers,
+		})
+	}
+}
+
+/// Declares a registry endpoint. This macro allows easy definition of a
+/// registry endpoint along with the request URL, headers, query as well as the
+/// response headers. Generates the required structs for the endpoint following
+/// the OCI Distribution Specification.
+pub fn parse(input: TokenStream) -> TokenStream {
+	let RegistryEndpoint {
+		documentation,
+		name,
+		method,
+		path,
+		path_body,
+
+		query,
+		request_headers,
+
+		response_headers,
+	} = parse_macro_input!(input as RegistryEndpoint);
+
+	let (path_default_impl, path_body) = if let Some(body) = path_body {
+		(
+			quote::quote! {},
+			quote::quote! {
+				#body
+			},
+		)
+	} else {
+		(
+			quote::quote! {
+				Default,
+			},
+			quote::quote! {
+				;
+			},
+		)
+	};
+	let path_name = format_ident!("{}Path", name);
+
+	let query_name = if query.is_some() {
+		let ident = format_ident!("{}Query", name);
+		quote::quote! {
+			#ident
+		}
+	} else {
+		quote::quote! {
+			()
+		}
+	};
+	let query_decl = if let Some(query) = query {
+		let query_type_name = format_ident!("{}Query", name);
+		quote::quote! {
+			#[::preprocess::sync]
+			/// The query params for the #name endpoint.
+			///
+			/// The documentation for the endpoint is below:
+			///
+			#[doc = #documentation]
+			#[derive(
+				Debug,
+				Clone,
+				PartialEq,
+				serde::Serialize,
+				serde::Deserialize,
+			)]
+			pub struct #query_type_name #query
+		}
+	} else {
+		quote::quote!()
+	};
+
+	let request_headers_name = if request_headers.is_some() {
+		let ident = format_ident!("{}RequestHeaders", name);
+		quote::quote! {
+			#ident
+		}
+	} else {
+		quote::quote! {
+			()
+		}
+	};
+	let request_headers_decl = if let Some(headers) = request_headers {
+		let headers = FieldsNamed {
+			brace_token: headers.brace_token,
+			named: headers
+				.named
+				.into_iter()
+				.map(|field| field)
+				.collect::<Punctuated<_, _>>(),
+		};
+		quote::quote! {
+			/// The required request headers for the #name endpoint.
+			///
+			/// The documentation for the endpoint is below:
+			///
+			#[doc = #documentation]
+			#[derive(
+				Debug,
+				Clone,
+				PartialEq,
+				macros::HasHeaders,
+			)]
+			pub struct #request_headers_name #headers
+		}
+	} else {
+		quote::quote!()
+	};
+
+	let response_headers_name = if response_headers.is_some() {
+		let ident = format_ident!("{}ResponseHeaders", name);
+		quote::quote! {
+			#ident
+		}
+	} else {
+		quote::quote! {
+			()
+		}
+	};
+	let response_headers_decl = if let Some(headers) = response_headers {
+		let headers = FieldsNamed {
+			brace_token: headers.brace_token,
+			named: headers
+				.named
+				.into_iter()
+				.map(|field| field)
+				.collect::<Punctuated<_, _>>(),
+		};
+		quote::quote! {
+			/// The required response headers for the #name endpoint.
+			///
+			/// The documentation for the endpoint is below:
+			///
+			#[doc = #documentation]
+			#[derive(
+				Debug,
+				Clone,
+				PartialEq,
+				macros::HasHeaders,
+			)]
+			pub struct #response_headers_name #headers
+		}
+	} else {
+		quote::quote!()
+	};
+
+	quote::quote! {
+		#[::preprocess::sync]
+		/// The URL path for the #name endpoint.
+		///
+		/// The documentation for the endpoint is below:
+		///
+		#[doc = #documentation]
+		#[derive(
+			Debug,
+			Clone,
+			#path_default_impl
+			PartialEq,
+			PartialOrd,
+			serde::Serialize,
+			serde::Deserialize,
+			axum_extra::routing::TypedPath,
+		)]
+		#[typed_path(#path)]
+		pub struct #path_name #path_body
+
+		#query_decl
+
+		#request_headers_decl
+
+		#response_headers_decl
+
+		// Note: The RegistryEndpoint trait must be in scope where this macro is used.
+		// Typically this is done via: use crate::routes::registry_patr_cloud::RegistryEndpoint;
+		impl RegistryEndpoint for #path_name {
+			const METHOD: ::http::Method = ::http::Method::#method;
+
+			type RequestPath = Self;
+			type RequestQuery = #query_name;
+			type RequestHeaders = #request_headers_name;
+			type ResponseHeaders = #response_headers_name;
+		}
+	}
+	.into()
+}

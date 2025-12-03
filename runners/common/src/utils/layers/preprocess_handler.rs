@@ -8,7 +8,7 @@ use preprocess::Preprocessable;
 use tower::{Layer, Service};
 
 use crate::{
-	app::{AppRequest, ProcessedApiRequest, UnprocessedAppRequest},
+	app::{AppRequest, UnprocessedAppRequest},
 	prelude::*,
 };
 

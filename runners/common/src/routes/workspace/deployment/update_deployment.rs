@@ -1,10 +1,7 @@
 use axum::http::StatusCode;
 use models::api::workspace::deployment::*;
 
-use crate::{
-	app::{AppRequest, ProcessedApiRequest},
-	prelude::*,
-};
+use crate::{app::AppRequest, prelude::*};
 
 /// Update deployment details. This endpoint is used to update the deployment
 /// details. The deployment details that can be updated are the name, machine

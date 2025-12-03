@@ -17,17 +17,18 @@ mod endpoint_handler;
 mod login_id_manager;
 /// Handles the preprocessing of the request, such as the validation of the
 /// request body and returning the error if the request body is invalid
-mod preprocess_handler;
+mod preprocess_layer;
 /// Handles the parsing of the request in the required format and passes a
-/// [`ApiRequest`][1] to the next layer
-///
-/// [1]: models::prelude::ApiRequest
+/// [`ApiRequest`][ApiRequest] to the next layer
 mod request_parser;
 /// The layer that validates the user agent of the request and makes sure that
 /// the user agent is a browser and not a bot in case the user is accessing from
 /// the web dashboard. This is also used to make sure that requests that cannot
 /// be accessed by the API are only accessed by the web dashboard
 mod user_agent_validation_layer;
+
+/// All layers that are used by the Patr Registry.
+pub mod registry;
 
 pub use self::{
 	auth_endpoint_handler::*,
@@ -36,7 +37,7 @@ pub use self::{
 	data_store_connection_handler::*,
 	endpoint_handler::*,
 	login_id_manager::*,
-	preprocess_handler::*,
+	preprocess_layer::*,
 	request_parser::*,
 	user_agent_validation_layer::*,
 };

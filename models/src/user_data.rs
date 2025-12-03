@@ -27,3 +27,19 @@ pub struct RequestUserData {
 	/// WorkspaceID -> What permissions the user has on that workspace.
 	pub permissions: BTreeMap<Uuid, WorkspacePermission>,
 }
+
+impl RequestUserData {
+	/// Checks if the user has the specified permission on the specified
+	/// resource in the specified workspace.
+	#[must_use]
+	pub fn has_permission_on_resource(
+		&self,
+		workspace_id: Uuid,
+		resource_id: Uuid,
+		permission_id: Uuid,
+	) -> bool {
+		self.permissions.get(&workspace_id).map_or(false, |perms| {
+			perms.has_permission_on_resource(resource_id, permission_id)
+		})
+	}
+}

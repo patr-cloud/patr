@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE container_registry_repository_manifest ADD CONSTRAINT container_registry_repository_manifest_chk_sha_digest CHECK(manifest_digest ~ '^sha256:[a-f0-9]{64}$'), ADD CONSTRAINT container_registry_repository_manifest_fk_repository_id FOREIGN KEY(repository_id) REFERENCES container_registry_repository(id), ADD CONSTRAINT container_registry_repository_manifest_fk_manifest_digest FOREIGN KEY(manifest_digest) REFERENCES container_registry_manifest(digest);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "d7348fe7788415dc188f01763f4b6fd32fd8c4f588ade02295e07439911ebb03"
+}

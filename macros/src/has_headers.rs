@@ -57,13 +57,18 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		.map(|field| {
 			let Field { ident, ty, .. } = field;
 			quote::quote! {
-				#ident: ::headers::HeaderMapExt::typed_get::<#ty>(map)
-					.ok_or_else(|| {
-						tracing::debug!(
-							"Failed to parse header `{}`",
+				#ident: <#ty as ::headers::Header>::decode(
+						&mut (
+							map
+								.get_all(<#ty as ::headers::Header>::name())
+								.iter()
+						)
+					)
+					.inspect_err(|err| {
+						::tracing::debug!(
+							"Failed to parse header `{}`: {err}",
 							<#ty as ::headers::Header>::name().as_str()
 						);
-						::headers::Error::invalid()
 					})?,
 			}
 		})
@@ -79,7 +84,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				map
 			}
 
-			fn from_header_map(map: &::http::HeaderMap) -> Result<Self, ::headers::Error> {
+			fn from_header_map(mut map: ::http::HeaderMap) -> Result<Self, ::headers::Error> {
 				let value = Self {
 					#from_headers_impl
 				};

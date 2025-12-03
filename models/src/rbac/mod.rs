@@ -142,7 +142,13 @@ impl WorkspacePermission {
 						(
 							ResourcePermissionType::Include(self_resources),
 							ResourcePermissionType::Include(other_resources),
-						) => self_resources.is_superset(other_resources),
+						) => {
+							// If you have a set of resources that you can access, and you are
+							// requesting permissions for another set of resources, this is only
+							// allowed if the set of resources you have access to is a superset of
+							// the set of resources you are requesting.
+							self_resources.is_superset(other_resources)
+						}
 						(
 							ResourcePermissionType::Include(_),
 							ResourcePermissionType::Exclude(_),
@@ -208,7 +214,7 @@ impl WorkspacePermission {
 	/// Returns true if the user has the specified permission on the given
 	/// resource.
 	#[must_use]
-	pub fn has_permission(&self, resource_id: Uuid, permission_id: Uuid) -> bool {
+	pub fn has_permission_on_resource(&self, resource_id: Uuid, permission_id: Uuid) -> bool {
 		match self {
 			Self::SuperAdmin => true,
 			Self::Member { permissions } => permissions

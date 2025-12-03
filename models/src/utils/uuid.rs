@@ -158,7 +158,12 @@ impl TS for Uuid {
 // For backend
 
 #[cfg(not(target_arch = "wasm32"))]
-use sqlx::{encode::IsNull, error::BoxDynError, prelude::*};
+use sqlx::{
+	encode::IsNull,
+	error::BoxDynError,
+	postgres::{PgHasArrayType, PgTypeInfo},
+	prelude::*,
+};
 
 #[cfg(not(target_arch = "wasm32"))]
 impl sqlx::Type<sqlx::Sqlite> for Uuid {
@@ -221,5 +226,12 @@ where
 		value: <sqlx::Postgres as sqlx::Database>::ValueRef<'a>,
 	) -> Result<Self, BoxDynError> {
 		uuid::Uuid::decode(value).map(Self)
+	}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl PgHasArrayType for Uuid {
+	fn array_type_info() -> PgTypeInfo {
+		<uuid::Uuid as PgHasArrayType>::array_type_info()
 	}
 }

@@ -5,6 +5,8 @@ pub mod oauth;
 mod complete_sign_up;
 /// The endpoint to create an account (a.k.a. sign up)
 mod create_account;
+/// The endpoint to login using Docker credentials
+mod docker_login;
 /// The endpoint to trigger a forgot password flow
 mod forgot_password;
 /// The endpoint to check if an email is valid
@@ -27,6 +29,7 @@ mod reset_password;
 pub use self::{
 	complete_sign_up::*,
 	create_account::*,
+	docker_login::*,
 	forgot_password::*,
 	is_email_valid::*,
 	is_username_valid::*,
