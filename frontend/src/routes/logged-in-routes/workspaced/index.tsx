@@ -5,6 +5,8 @@ import DeploymentInfo from "~/pages/deployment/deployment";
 import ListDeploymentsPage from "~/pages/deployment/list";
 import CreateRunnerPage from "~/pages/runner/create";
 import ListRunnersPage from "~/pages/runner/list";
+import ListDomainsPage from "~/pages/domain/list";
+import CreateDomainPage from "~/pages/domain/create";
 
 const WorkspacedLayout = (props: ParentProps<{}>) => {
   return <>{props.children}</>;
@@ -22,6 +24,10 @@ export default function WorkspacedRoutes() {
       <Route path="/runners">
         <Route path="/" component={ListRunnersPage} />
         <Route path="/new" component={CreateRunnerPage} />
+      </Route>
+      <Route path="/domains">
+        <Route path="/" component={ListDomainsPage} />
+        <Route path="/new" component={CreateDomainPage} />
       </Route>
     </Route>
   );

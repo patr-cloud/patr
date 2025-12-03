@@ -291,5 +291,45 @@ pub async fn initialize_domain_constraints(
 	.execute(&mut *connection)
 	.await?;
 
+	// Populate the domain_tld table from the icann-public-suffix-list.txt file
+	let psl = include_str!("icann-public-suffix-list.txt");
+	let lines = psl.lines();
+	let total = lines.clone().count();
+	for (line_number, line) in lines.enumerate() {
+		if line_number % 500 == 0 {
+			info!("Initialized {line_number}/{total} TLDs");
+		}
+		let tld = line
+			.trim()
+			.trim_start_matches("*")
+			.trim_start_matches(".")
+			.split_ascii_whitespace()
+			.next()
+			.unwrap_or_default();
+		if tld.is_empty() {
+			continue;
+		}
+		if line.starts_with("//") {
+			continue;
+		}
+		if tld.starts_with("!") {
+			continue;
+		}
+		if !tld.is_ascii() {
+			continue;
+		}
+		sqlx::query!(
+			r#"
+			INSERT INTO
+				domain_tld(tld)
+			VALUES($1)
+			ON CONFLICT DO NOTHING;
+			"#,
+			&tld,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
 	Ok(())
 }

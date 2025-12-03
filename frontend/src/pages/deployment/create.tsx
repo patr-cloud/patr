@@ -99,7 +99,9 @@ const CreateDeploymentPage = () => {
     console.log(requestBody);
 
     const response = await doFetch<CreateDeploymentRequest>(
-      `${import.meta.env.VITE_BASE_URL}/api/workspace/${lastUsedWorkspaceId()}/deployment`,
+      `${
+        import.meta.env.VITE_BASE_URL
+      }/api/workspace/${lastUsedWorkspaceId()}/deployment`,
       {
         method: "POST",
         headers: {
@@ -115,7 +117,11 @@ const CreateDeploymentPage = () => {
 
   return (
     <PageContainer>
-      <PageContainerHead title="Deployment" subTitle="Create Deployment" />
+      <PageContainerHead
+        title="Deployments"
+        titleUrl="/deployments"
+        subTitle="Create Deployment"
+      />
       <PageContainerBody class="flex flex-col justify-between gap-8">
         <form
           onSubmit={onSubmit}

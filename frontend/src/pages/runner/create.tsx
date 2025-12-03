@@ -51,7 +51,7 @@ const CreateRunnerPage = () => {
 
   return (
     <PageContainer>
-      <PageContainerHead title="Runner" subTitle="New" />
+      <PageContainerHead title="Runners" titleUrl="/runners" subTitle="New" />
       <PageContainerBody class="flex flex-col justify-between gap-8">
         <form
           onSubmit={onSubmit}

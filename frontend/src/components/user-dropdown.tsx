@@ -17,7 +17,7 @@ interface UserInfo {
   username: string;
   firstName?: string;
   lastName?: string;
-  email?: string;
+  recoveryEmail?: string;
 }
 
 const UserDropdown: Component = () => {
@@ -74,10 +74,27 @@ const UserDropdown: Component = () => {
     });
   });
 
-  const user = userInfo();
-  const displayName = user
-    ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username
-    : "User";
+  const getDisplayName = () => {
+    const user = userInfo();
+    return user
+      ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username
+      : "User";
+  };
+
+  const getInitials = () => {
+    const user = userInfo();
+    if (!user) return "U";
+    
+    if (user.firstName && user.lastName) {
+      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+    }
+    
+    if (user.username) {
+      return user.username.slice(0, 2).toUpperCase();
+    }
+    
+    return "U";
+  };
 
   return (
     <div class="relative" ref={dropdownRef}>
@@ -88,18 +105,18 @@ const UserDropdown: Component = () => {
         }}
         class="flex items-center gap-2 px-4 py-2 rounded-xs bg-secondary-light hover:bg-secondary-medium transition-colors duration-200 border border-white/10"
       >
-        <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-          <FiUser />
+        <div class="w-8 h-8 rounded-full bg-secondary-dark flex items-center justify-center text-white text-sm font-light">
+          {getInitials()}
         </div>
-        <span class="text-sm font-medium text-white">{displayName}</span>
+        <span class="text-sm font-medium text-white">{getDisplayName()}</span>
       </button>
 
       <Show when={isOpen()}>
         <div class="absolute right-0 mt-2 w-80 bg-secondary-medium border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
           <div class="p-4 border-b border-white/10">
             <div class="flex items-center gap-3 mb-3">
-              <div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary text-lg">
-                <FiUser />
+              <div class="w-12 h-12 rounded-full bg-secondary-dark flex items-center justify-center text-white text-lg font-light">
+                {getInitials()}
               </div>
               <div class="flex-1 min-w-0">
                 <Show
@@ -107,12 +124,12 @@ const UserDropdown: Component = () => {
                   fallback={<div class="text-gray-400 text-sm">Loading...</div>}
                 >
                   <div class="text-white font-medium truncate">
-                    {user?.firstName && user?.lastName
-                      ? `${user.firstName} ${user.lastName}`
-                      : user?.username || "Unknown User"}
+                    {userInfo()?.firstName && userInfo()?.lastName
+                      ? `${userInfo()!.firstName} ${userInfo()!.lastName}`
+                      : userInfo()?.username || "Unknown User"}
                   </div>
                   <div class="text-gray-400 text-sm truncate">
-                    {user?.email || "No email"}
+                    {userInfo()?.recoveryEmail || "No email"}
                   </div>
                 </Show>
               </div>
@@ -121,21 +138,21 @@ const UserDropdown: Component = () => {
             <div class="mb-2">
               <CopyableTextField
                 label="User ID"
-                value={user?.id || ""}
-                disabled={!user?.id}
+                value={userInfo()?.id || ""}
+                disabled={!userInfo()?.id}
               />
             </div>
 
             <CopyableTextField
               label="Username"
-              value={user?.username || ""}
-              disabled={!user?.username}
+              value={userInfo()?.username || ""}
+              disabled={!userInfo()?.username}
             />
           </div>
 
           <div class="p-2">
             <A
-              href="/api-keys"
+              href="/profile/api-tokens"
               class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-gray-300 hover:text-white"
               onClick={() => setIsOpen(false)}
             >

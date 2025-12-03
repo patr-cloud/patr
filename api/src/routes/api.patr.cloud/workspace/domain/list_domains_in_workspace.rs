@@ -44,7 +44,7 @@ pub async fn list_domains_in_workspace(
 		r#"
 		SELECT
 			workspace_domain.id,
-			CONCAT(name, tld) AS "name!",
+			CONCAT(name, '.', tld) AS "name!",
 			nameserver_type AS "nameserver_type: DomainNameserverType",
 			is_verified,
 			last_verified,
@@ -59,7 +59,10 @@ pub async fn list_domains_in_workspace(
 			workspace_id = $1 AND
 			workspace_domain.deleted IS NULL AND
 			($4::TEXT IS NULL OR CONCAT(name, tld) ILIKE '%' || $4::TEXT || '%') AND
-			($5::DOMAIN_NAMESERVER_TYPE IS NULL OR nameserver_type = $5) AND
+			(
+				$5::DOMAIN_NAMESERVER_TYPE[] IS NULL OR
+				nameserver_type = ANY($5)
+			) AND
 			($6::BOOLEAN IS NULL OR is_verified = $6) AND
 			(($7::TIMESTAMPTZ IS NULL AND $8::TIMESTAMPTZ IS NULL) OR (
 				last_verified >= $7::TIMESTAMPTZ AND
