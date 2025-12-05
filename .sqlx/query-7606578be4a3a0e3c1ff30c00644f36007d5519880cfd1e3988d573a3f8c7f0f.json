@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO domain_tld VALUES ($1) ON CONFLICT DO NOTHING;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7606578be4a3a0e3c1ff30c00644f36007d5519880cfd1e3988d573a3f8c7f0f"
+}
