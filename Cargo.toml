@@ -71,6 +71,7 @@ opentelemetry-otlp             = { default-features = false, version = "0.31" }
 opentelemetry_sdk              = { default-features = false, version = "0.31" }
 preprocess                     = { default-features = false, version = "0.5" }
 proc-macro2                    = { default-features = false, version = "1" }
+psl                            = { default-features = false, version = "2" }
 quote                          = { default-features = false, version = "1" }
 rand                           = { default-features = false, version = "0.8" }
 regex                          = { default-features = false, version = "1" }

@@ -92,6 +92,10 @@ pub enum ErrorType {
 	RunnerAlreadyConnected,
 	/// The operation is not allowed in the current runner mode
 	InvalidRunnerMode,
+	/// The domain is not a root domain
+	NotRootDomain,
+	/// The domain is not a domain with an ICANN TLD
+	NotIcannDomain,
 }
 
 impl ErrorType {
@@ -137,6 +141,8 @@ impl ErrorType {
 			Self::RoleInUse => StatusCode::CONFLICT,
 			Self::RunnerAlreadyConnected => StatusCode::CONFLICT,
 			Self::InvalidRunnerMode => StatusCode::FORBIDDEN,
+			Self::NotRootDomain => StatusCode::BAD_REQUEST,
+			Self::NotIcannDomain => StatusCode::BAD_REQUEST,
 		}
 	}
 
@@ -175,7 +181,10 @@ impl ErrorType {
 			Self::ResourceInUse => "Resource is currently in use",
 			Self::WorkspaceNameAlreadyExists => "A workspace with that name already exists",
 			Self::WorkspaceNotEmpty => {
-				"A workspace cannot be deleted until all the resources in the workspaces have been deleted"
+				concat!(
+					"A workspace cannot be deleted until ",
+					"all the resources in the workspaces have been deleted"
+				)
 			}
 			Self::CannotReduceVolumeSize => "The deployment volume size cannot be reduced",
 			Self::CannotAddNewVolume => "New volume cannot be added",
@@ -191,6 +200,21 @@ impl ErrorType {
 			}
 			Self::InvalidRunnerMode => {
 				"That operation is not allowed in the mode the runner is currently in"
+			}
+			Self::NotRootDomain => {
+				concat!(
+					"Not a valid root domain. ",
+					"Please provide a root domain instead of a subdomain ",
+					"(example.com instead of subdomain.example.com). ",
+					"You can add a subdomain later with a Managed URL"
+				)
+			}
+			Self::NotIcannDomain => {
+				concat!(
+					"Not a valid ICANN domain. ",
+					"Please provide a domain with an ICANN TLD instead (.com, .net, etc). ",
+					"Private TLDs are currently not supported ",
+				)
 			}
 		}
 	}

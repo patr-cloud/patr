@@ -17,38 +17,28 @@ import {
   AddDomainToWorkspaceResponse,
 } from "~/bindings";
 
-// Domain extraction and validation logic
-function extractDomain(input: string): {
-  isUrl: boolean;
-  domain: string;
-  original: string;
-} {
-  let url = input.trim();
+// Check if input looks like a URL (has protocol, path, query, etc.)
+function looksLikeUrl(input: string): boolean {
+  const trimmed = input.trim();
+  return (
+    /^https?:\/\//i.test(trimmed) ||
+    trimmed.includes("/") ||
+    trimmed.includes("?") ||
+    trimmed.includes("#")
+  );
+}
 
-  // Add protocol if missing for URL parsing
-  if (!url.match(/^https?:\/\//)) {
-    url = "https://" + url;
-  }
+// Extract hostname from URL-like input
+function extractHostname(input: string): string {
+  let trimmed = input.trim();
 
-  try {
-    const parsed = new URL(url);
-    const hostname = parsed.hostname;
+  // Remove protocol if present
+  trimmed = trimmed.replace(/^https?:\/\//i, "");
 
-    // Check if it's a URL (has protocol, path, query, etc.)
-    const isUrl =
-      input.includes("://") ||
-      input.includes("/") ||
-      input.includes("?") ||
-      input.includes("#");
+  // Remove path, query, and fragment
+  trimmed = trimmed.split(/[/?#]/)[0];
 
-    // Extract base domain (remove subdomains)
-    const parts = hostname.split(".");
-    const domain = parts.length > 2 ? parts.slice(-2).join(".") : hostname;
-
-    return { isUrl, domain, original: input };
-  } catch {
-    return { isUrl: false, domain: input, original: input };
-  }
+  return trimmed;
 }
 
 const CreateDomainPage = () => {
@@ -56,34 +46,91 @@ const CreateDomainPage = () => {
   const [error, setError] = createSignal("");
   const [suggestedDomain, setSuggestedDomain] = createSignal("");
   const [isSubmitting, setIsSubmitting] = createSignal(false);
+  let validationTimeout: number | undefined;
 
   const [authState] = useAuthState();
   const [workspaceId] = useLastWorkspaceId();
   const navigate = useNavigate();
 
-  const validateDomain = (input: string) => {
+  const validateDomain = async (input: string) => {
     if (!input.trim()) {
       setError("");
       setSuggestedDomain("");
       return;
     }
 
-    const result = extractDomain(input);
+    const auth = authState();
+    const wsId = workspaceId();
 
-    if (result.isUrl || result.domain !== result.original) {
+    if (!auth || auth.type !== "LoggedIn" || !wsId) {
+      return;
+    }
+
+    // First check if it looks like a URL
+    if (looksLikeUrl(input)) {
+      const hostname = extractHostname(input);
       setError(
-        "Please enter a valid domain (host + TLD only, no subdomains or URLs)"
+        "Please enter a domain without protocols, paths, or query strings"
       );
-      setSuggestedDomain(result.domain);
-    } else {
-      setError("");
+      setSuggestedDomain(hostname);
+      return;
+    }
+
+    // Call the API to validate the domain
+    try {
+      const response = await doFetch<{ valid: boolean }>(
+        `${
+          import.meta.env.VITE_BASE_URL
+        }/api/workspace/${wsId}/domain/is-valid?domain=${encodeURIComponent(
+          input
+        )}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${auth.accessToken}`,
+          },
+        }
+      );
+
+      if (response.ok && response.data.valid) {
+        setError("");
+        setSuggestedDomain("");
+      } else {
+        // Domain is not valid (likely not a root domain or already exists)
+        setError(
+          "Please enter a valid root domain (e.g., example.com, not subdomain.example.com)"
+        );
+        setSuggestedDomain("");
+      }
+    } catch (err: any) {
+      // Handle API errors
+      if (err?.error === "NotRootDomain" || err?.error === "NotIcannDomain") {
+        setError(
+          err?.message ||
+            "Please enter a root domain (e.g., example.com instead of subdomain.example.com)"
+        );
+      } else if (err?.error === "ResourceAlreadyExists") {
+        setError("This domain already exists in your workspace");
+      } else {
+        setError("Unable to validate domain. Please check your input.");
+      }
       setSuggestedDomain("");
     }
   };
 
   const handleInputChange = (value: string) => {
     setDomainInput(value);
-    validateDomain(value);
+
+    // Clear previous timeout
+    if (validationTimeout) {
+      clearTimeout(validationTimeout);
+    }
+
+    // Debounce the validation to avoid too many API calls
+    validationTimeout = setTimeout(() => {
+      validateDomain(value);
+    }, 500) as unknown as number;
   };
 
   const handleSuggestionClick = () => {
@@ -111,11 +158,18 @@ const CreateDomainPage = () => {
       return;
     }
 
-    // Final validation before submit
-    const result = extractDomain(domain);
-    if (result.isUrl || result.domain !== result.original) {
-      setError("Please use the suggested domain or enter a valid domain");
-      setSuggestedDomain(result.domain);
+    // Quick check for URL-like input before submitting
+    if (looksLikeUrl(domain)) {
+      const hostname = extractHostname(domain);
+      setError(
+        "Please enter a domain without protocols, paths, or query strings"
+      );
+      setSuggestedDomain(hostname);
+      return;
+    }
+
+    // If there's already an error, don't submit
+    if (error()) {
       return;
     }
 

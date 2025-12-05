@@ -73,39 +73,33 @@ pub async fn add_domain_to_workspace(
 	})?
 	.id;
 
-	let (name, tld) = {
-		let tld = query!(
-			r#"
-			SELECT
-				tld
-			FROM
-				domain_tld
-			WHERE
-				$1 ILIKE '%.' || tld
-			ORDER BY
-				LENGTH(tld) DESC
-			LIMIT 1;
-			"#,
-			domain as _
-		)
-		.fetch_optional(&mut **database)
-		.await?
-		.ok_or_else(|| {
-			info!("Failed to extract TLD from domain");
-			ErrorType::WrongParameters
-		})?
-		.tld;
+	let suffix = psl::Psl::suffix(&psl::List, domain.as_bytes())
+		.ok_or(ErrorType::NotRootDomain)?
+		.trim();
+	let tld = String::from_utf8_lossy(suffix.as_bytes());
+	let name = domain.trim_end_matches(&format!(".{tld}"));
 
-		let name = domain
-			.strip_suffix(&format!(".{}", tld))
-			.ok_or_else(|| ErrorType::WrongParameters)
-			.inspect_err(|err| {
-				info!("Failed to strip TLD from domain: {}", err);
-			})?
-			.to_string();
+	if suffix.typ() != Some(psl::Type::Icann) {
+		return Err(ErrorType::NotIcannDomain);
+	}
 
-		(name, tld)
-	};
+	let contains_dot = name.contains('.');
+	if contains_dot {
+		return Err(ErrorType::NotRootDomain);
+	}
+
+	query!(
+		r#"
+		INSERT INTO
+			domain_tld
+		VALUES
+			($1)
+		ON CONFLICT DO NOTHING;
+		"#,
+		tld as _,
+	)
+	.execute(&mut **database)
+	.await?;
 
 	query!(
 		r#"
