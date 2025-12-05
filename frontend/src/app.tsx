@@ -14,8 +14,8 @@ function App() {
     <AuthStateProvider>
       <LastWorkspaceIdProvider>
         <Router>
-          <LoggedInRoutes />
           <LoggedOutRoutes />
+          <LoggedInRoutes />
           <Route path="*" component={NotFound} />
         </Router>
       </LastWorkspaceIdProvider>

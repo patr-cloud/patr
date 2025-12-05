@@ -51,7 +51,7 @@ const Button = (rawProps: ParentProps<ButtonProps>) => {
         case ButtonVariant.Contained:
           return `bg-primary text-secondary py-xs px-md rounded-xs font-thin border-2 border-primary \
             hover:border-primary hover:cursor-pointer hover:bg-secondary hover:text-primary \
-            disabled:opacity-50 disabled:cursor-not-allowed`;
+            disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200`;
       }
     };
 

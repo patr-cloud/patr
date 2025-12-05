@@ -80,7 +80,6 @@ export const PageWrapper = (props: ParentProps<{}>) => {
 export default function LoggedInRoutes() {
   return (
     <Route path="/" component={PageWrapper}>
-      <Route path="/" component={Home} />
       <WorkspacedRoutes />
       <NonWorkspacedRoutes />
     </Route>

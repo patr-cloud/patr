@@ -145,6 +145,14 @@ interface InputProps {
    */
   onChange?: (e: Event) => void;
   /**
+   * On KeyDown Handler
+   */
+  onKeyDown?: (e: KeyboardEvent & { currentTarget: HTMLInputElement }) => void;
+  /**
+   * On Paste Handler
+   */
+  onPaste?: (e: ClipboardEvent & { currentTarget: HTMLInputElement }) => void;
+  /**
    * Whether the input is disabled or not
    */
   disabled?: MaybeAccessor<boolean>;
@@ -160,6 +168,10 @@ interface InputProps {
   startIcon?: () => JSX.Element;
   /** The pattern attribute of the input */
   pattern?: string;
+  /** Maximum length of the input value */
+  maxLength?: number;
+  /** Additional classes for the inner input element */
+  innerClass?: MaybeAccessor<string>;
 }
 
 const Input = (rawProps: InputProps) => {
@@ -197,16 +209,21 @@ const Input = (rawProps: InputProps) => {
       <input
         form={props.form}
         required={props.required}
-        class={`overflow-hidden text-sm text-ellipsis w-full text-white font-thin border-none bg-transparent disabled:text-disabled focus:outline-none placeholder:text-grey ${paddingClass()}`}
+        class={`overflow-hidden text-ellipsis w-full text-white border-none bg-transparent disabled:text-disabled focus:outline-none placeholder:text-grey text-sm font-thin ${paddingClass()} ${get(
+          props.innerClass
+        )}`}
         pattern={props.pattern}
         onInput={props.onInput}
         onChange={props.onChange}
+        onKeyDown={props.onKeyDown}
+        onPaste={props.onPaste}
         placeholder={props.placeholder}
         disabled={get(props.disabled)}
         id={props.id}
         name={props.name}
         value={get(props.value) ?? ""}
         type={props.type}
+        maxLength={props.maxLength}
       />
       {props.endIcon && <>{props.endIcon()}</>}
     </div>
