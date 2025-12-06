@@ -113,6 +113,7 @@ dependencies = [
  "axum-extra",
  "axum-typed-websockets",
  "base32",
+ "base64 0.22.1",
  "cloudflare",
  "config",
  "futures",
@@ -151,6 +152,7 @@ dependencies = [
  "tracing-opentelemetry",
  "tracing-subscriber",
  "typed-builder",
+ "urlencoding",
  "woothee",
 ]
 

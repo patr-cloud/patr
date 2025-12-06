@@ -51,4 +51,5 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 		.mount_endpoint(introspect, state, allowed_client_type)
 		.mount_endpoint(revoke, state, allowed_client_type)
 		.mount_endpoint(token, state, allowed_client_type)
+		.mount_endpoint(authorize_post, state, allowed_client_type)
 }

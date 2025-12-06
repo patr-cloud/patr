@@ -58,6 +58,8 @@ pub enum ErrorType {
 	PhoneUnavailable,
 	/// The reset token used to reset the given user's password is invalid.
 	InvalidPasswordResetToken,
+	/// The response type provided in the OAuth2.1 authorize request is not
+	InvalidResponseType,
 	/// The resource that the user is trying to access does not exist.
 	ResourceDoesNotExist,
 	/// The resource already exists
@@ -92,6 +94,10 @@ pub enum ErrorType {
 	RunnerAlreadyConnected,
 	/// The operation is not allowed in the current runner mode
 	InvalidRunnerMode,
+	/// The grant type provided in the OAuth2.1 token request is not supported
+	InvalidGrantType,
+	/// Authorization code provided in the OAuth2.1 token request is invalid
+	InvalidAuthorizationCode,
 }
 
 impl ErrorType {
@@ -121,6 +127,7 @@ impl ErrorType {
 			Self::EmailUnavailable => StatusCode::CONFLICT,
 			Self::PhoneUnavailable => StatusCode::CONFLICT,
 			Self::InvalidPasswordResetToken => StatusCode::BAD_REQUEST,
+			Self::InvalidResponseType => StatusCode::BAD_REQUEST,
 			Self::ResourceDoesNotExist => StatusCode::NOT_FOUND,
 			Self::ResourceAlreadyExists => StatusCode::CONFLICT,
 			Self::ResourceInUse => StatusCode::UNPROCESSABLE_ENTITY,
@@ -137,6 +144,8 @@ impl ErrorType {
 			Self::RoleInUse => StatusCode::CONFLICT,
 			Self::RunnerAlreadyConnected => StatusCode::CONFLICT,
 			Self::InvalidRunnerMode => StatusCode::FORBIDDEN,
+			Self::InvalidGrantType => StatusCode::BAD_REQUEST,
+			Self::InvalidAuthorizationCode => StatusCode::BAD_REQUEST,
 		}
 	}
 
@@ -191,6 +200,15 @@ impl ErrorType {
 			}
 			Self::InvalidRunnerMode => {
 				"That operation is not allowed in the mode the runner is currently in"
+			}
+			Self::InvalidResponseType => {
+				"The response type provided in the OAuth2.1 authorize request is not supported"
+			}
+			Self::InvalidGrantType => {
+				"The grant type provided in the OAuth2.1 token request is not supported"
+			}
+			Self::InvalidAuthorizationCode => {
+				"The authorization code provided in the OAuth2.1 token request is invalid"
 			}
 		}
 	}
