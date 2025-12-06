@@ -1,5 +1,11 @@
 import { useParams } from "@solidjs/router";
-import { createMemo, createResource, ErrorBoundary, Suspense } from "solid-js";
+import {
+  createMemo,
+  createResource,
+  createSignal,
+  ErrorBoundary,
+  Suspense,
+} from "solid-js";
 import {
   GetDeploymentInfoResponse,
   GetRunnerInfoResponse,
@@ -31,6 +37,8 @@ const DeploymentInfo = () => {
   const resourceParamsDeployment = createMemo(() => {
     return [authState(), workspaceId(), params.id] as const;
   });
+
+  const [hasUpdated, setHasUpdated] = createSignal(false);
 
   const [
     deploymentInfo,
@@ -334,6 +342,7 @@ const DeploymentInfo = () => {
                   <Input
                     value={deploymentInfo.latest?.name}
                     onInput={(e) => {
+                      setHasUpdated((prev) => prev || true);
                       mutateDeploymentInfo((prev) => {
                         return prev
                           ? {

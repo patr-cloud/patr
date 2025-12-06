@@ -90,13 +90,6 @@ const ListDeploymentsPage = () => {
     <PageContainer>
       <PageContainerHead title="Deployments" subTitle="List of Deployments">
         <A href="/deployments/new">CREATE NEW DEPLOYMENT</A>
-        <Button
-          onClick={() => {
-            toast("This is a message from the underworld", "success");
-          }}
-        >
-          Toast
-        </Button>
       </PageContainerHead>
 
       <PageContainerBody>

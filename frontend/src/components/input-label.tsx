@@ -26,7 +26,7 @@ const InputLabel = (rawProps: InputLabelProps) => {
   );
 
   return (
-    <div class={`flex flex-col flex-2 ${get(props.parentClass) ?? ""}`}>
+    <div class={`flex flex-col ${get(props.parentClass) ?? ""}`}>
       <label class={get(props.labelClass)} for={props.for}>
         {props.label}
       </label>

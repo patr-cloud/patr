@@ -11,11 +11,11 @@ import {
   Button,
 } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
-import { doFetch } from "~/utils/do-fetch";
 import {
   AddDomainToWorkspaceRequest,
   AddDomainToWorkspaceResponse,
 } from "~/bindings";
+import { httpRequest } from "~/utils/http-request";
 
 // Check if input looks like a URL (has protocol, path, query, etc.)
 function looksLikeUrl(input: string): boolean {
@@ -78,7 +78,7 @@ const CreateDomainPage = () => {
 
     // Call the API to validate the domain
     try {
-      const response = await doFetch<{ valid: boolean }>(
+      const response = await httpRequest<{ valid: boolean }>(
         `${
           import.meta.env.VITE_BASE_URL
         }/api/workspace/${wsId}/domain/is-valid?domain=${encodeURIComponent(
@@ -181,7 +181,7 @@ const CreateDomainPage = () => {
         nameserverType: "external",
       };
 
-      const response = await doFetch<AddDomainToWorkspaceResponse>(
+      const response = await httpRequest<AddDomainToWorkspaceResponse>(
         `${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain`,
         {
           method: "POST",

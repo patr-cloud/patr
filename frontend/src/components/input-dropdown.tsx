@@ -83,7 +83,7 @@ const InputDropdown = (props: InputDropdownProps) => {
         id={props.id}
         name={props.name}
         disabled={get(props.disabled)}
-        class={`mx-sm overflow-hidden text-sm text-ellipsis w-full text-white font-thin border-none bg-transparent disabled:text-disabled focus:outline-none placeholder:text-grey py-xs px-lg`}
+        class={`overflow-hidden text-sm text-ellipsis w-full text-white font-thin border-none bg-transparent disabled:text-disabled focus:outline-none placeholder:text-grey py-xs px-lg`}
         type="text"
         placeholder={props.placeholder}
       />
