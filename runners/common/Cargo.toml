@@ -31,7 +31,7 @@ macros             = { workspace = true }
 models             = { workspace = true }
 preprocess         = { workspace = true, features = [] }
 rand               = { workspace = true, features = ["default"] }
-reqwest            = { workspace = true, features = ["json", "rustls-tls"] }
+reqwest            = { workspace = true, features = ["json", "rustls-tls", "stream"] }
 rust-embed         = { workspace = true }
 semver             = { workspace = true, features = ["default"] }
 serde              = { workspace = true, features = ["derive"] }

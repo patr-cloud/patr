@@ -4,6 +4,8 @@ use axum::{Router, body::Body, http::Request, response::Response};
 
 use crate::{prelude::*, routes::api_patr_cloud};
 
+/// A static reqwest client for proxying requests
+#[doc(hidden)]
 static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 
 /// Sets up the routes for the web dashboard
