@@ -19,7 +19,7 @@ const PageContainerBody = (rawProps: ParentProps<PageContainerBodyProps>) => {
 
   return (
     <section
-      class={`h-full bg-secondary-dark p-xl pl-[2.25rem] pt-[2.25rem] rounded-b-xs text-white flex-1 text-sm ${get(
+      class={`h-full bg-secondary-dark p-md rounded-b-xs text-white flex-1 text-sm ${get(
         props.class
       )}`}
     >

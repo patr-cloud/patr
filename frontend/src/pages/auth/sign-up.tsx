@@ -38,7 +38,7 @@ const SignUp = () => {
     if (resp.ok) {
       // Handle successful sign-up (e.g., redirect to login or dashboard)
       console.log("Account created successfully");
-      throw redirect("/confirm-signup");
+      redirect("/confirm-signup?username=" + encodeURIComponent(username()));
     } else {
       // Handle sign-up errors
       console.error("Error creating account:", resp.statusText);
@@ -49,161 +49,109 @@ const SignUp = () => {
   return (
     <>
       {/* Sign Up Card */}
-      <section class="bg-secondary p-12 rounded-2xl shadow-2xl w-full max-w-[520px] relative z-10 border border-secondary-medium">
-        {/* Logo */}
-        <div class="flex justify-center mb-6">
-          <div class="text-primary text-4xl font-bold">PATR</div>
-        </div>
-
+      <form
+        onSubmit={onSubmit}
+        class="bg-secondary p-12 rounded-sm shadow-2xl w-full max-w-[32rem] relative z-10 border border-secondary-medium"
+      >
         {/* Header */}
-        <div class="text-center mb-8">
-          <h1 class="text-4xl font-bold text-white mb-3">Create Account</h1>
-          <p class="text-gray-400 text-base">Join Patr to get started</p>
+        <div class="mb-10 items-center justify-between flex flex-row">
+          <h1 class="font-bold text-2xl text-white">Sign Up</h1>
+          <div class="flex flex-row items-end">
+            <div class="text-gray-400 font-extralight text-sm mr-2">
+              Already a User?
+            </div>
+            <A
+              class="text-primary font-thin text-sm hover:underline"
+              href="/login"
+            >
+              Login
+            </A>
+          </div>
         </div>
 
         {/* Form */}
-        <form onSubmit={onSubmit} class="space-y-5">
-          {/* Username Input */}
-          <div class="space-y-2">
-            <label
-              for="username"
-              class="text-white text-sm font-medium block pl-1"
-            >
-              User name
-            </label>
+        <div>
+          <Input
+            type={InputType.Text}
+            placeholder="Username"
+            name="username"
+            id="username"
+            value={username}
+            onInput={(e) => setUsername(e.currentTarget.value)}
+            styleVariant="medium"
+          />
+
+          {/* Name Inputs */}
+          <div class="flex items-center gap-4 mt-4">
             <Input
               type={InputType.Text}
-              placeholder="Enter your username"
-              name="username"
-              id="username"
-              value={username}
-              onInput={(e) => setUsername(e.currentTarget.value)}
+              placeholder="First Name"
+              required={true}
+              name="first-name"
+              id="first-name"
+              value={firstName}
+              onInput={(e) => setFirstName(e.currentTarget.value)}
               styleVariant="medium"
+              class="flex-1"
             />
-          </div>
-
-          {/* Name Input */}
-          <div class="flex items-center justify-center gap-4">
-            <div class="flex-6 mb-0 space-y-2">
-              <label
-                for="first-name"
-                class="text-white text-sm font-medium block pl-1"
-              >
-                First Name
-              </label>
-              <Input
-                type={InputType.Text}
-                placeholder="Enter your first name"
-                required={true}
-                name="first-name"
-                id="first-name"
-                value={firstName}
-                onInput={(e) => setFirstName(e.currentTarget.value)}
-                styleVariant="medium"
-              />
-            </div>
-
-            <div class="flex-6 space-y-2">
-              <label
-                for="last-name"
-                class="text-white text-sm font-medium block pl-1"
-              >
-                Last Name
-              </label>
-              <Input
-                type={InputType.Text}
-                placeholder="Enter your last name"
-                required={true}
-                name="last-name"
-                id="last-name"
-                value={lastName}
-                onInput={(e) => setLastName(e.currentTarget.value)}
-                styleVariant="medium"
-              />
-            </div>
-          </div>
-
-          {/* Email Input */}
-          <div class="space-y-2">
-            <label class="text-white text-sm font-medium block pl-1">
-              Email Address
-            </label>
             <Input
-              type={InputType.Email}
-              placeholder="Enter your email"
-              value={email}
-              onInput={(e) => setEmail(e.currentTarget.value)}
+              type={InputType.Text}
+              placeholder="Last Name"
+              required={true}
+              name="last-name"
+              id="last-name"
+              value={lastName}
+              onInput={(e) => setLastName(e.currentTarget.value)}
               styleVariant="medium"
+              class="flex-1"
             />
           </div>
 
-          {/* Password Input */}
-          <div class="space-y-2">
-            <label class="text-white text-sm font-medium block pl-1">
-              Password
-            </label>
-            <Input
-              type={InputType.Password}
-              placeholder="Create a password"
-              value={password}
-              onInput={(e) => setPassword(e.currentTarget.value)}
-              styleVariant="medium"
-            />
-          </div>
+          <Input
+            type={InputType.Email}
+            placeholder="Email Address"
+            value={email}
+            onInput={(e) => setEmail(e.currentTarget.value)}
+            class="mt-4"
+            styleVariant="medium"
+          />
 
-          {/* Confirm Password Input */}
-          <div class="space-y-2">
-            <label class="text-white text-sm font-medium block pl-1">
-              Confirm Password
-            </label>
-            <Input
-              type={InputType.Password}
-              placeholder="Confirm your password"
-              value={confirmPassword}
-              onInput={(e) => setConfirmPassword(e.currentTarget.value)}
-              styleVariant="medium"
-            />
-          </div>
+          <Input
+            type={InputType.Password}
+            placeholder="Password"
+            value={password}
+            onInput={(e) => setPassword(e.currentTarget.value)}
+            class="mt-4"
+            styleVariant="medium"
+          />
+
+          <Input
+            type={InputType.Password}
+            placeholder="Confirm Password"
+            value={confirmPassword}
+            onInput={(e) => setConfirmPassword(e.currentTarget.value)}
+            class="mt-4"
+            styleVariant="medium"
+          />
 
           {/* Sign Up Button */}
-          <div class="pt-4">
+          <div class="pt-8 w-full flex flex-row items-center justify-between">
+            <A
+              href="/confirm-signup"
+              class="text-primary text-xs hover:underline font-light"
+            >
+              Have an OTP?
+            </A>
             <Button
               variant={ButtonVariant.Contained}
-              class="w-full py-4 text-base font-semibold"
+              class="py-4 text-base font-semibold px-xxl flex-end"
+              type="submit"
             >
-              Create Account
+              Sign Up
             </Button>
           </div>
-        </form>
-
-        <div class="pt-4">
-          <A
-            href="/confirm-signup"
-            class="w-full text-white py-4 text-base font-semibold"
-          >
-            Have an OTP?
-          </A>
         </div>
-
-        {/* Divider */}
-        <div class="flex items-center my-8">
-          <div class="flex-1 border-t border-gray-600"></div>
-          <span class="px-4 text-gray-500 text-xs uppercase tracking-wider">
-            OR
-          </span>
-          <div class="flex-1 border-t border-gray-600"></div>
-        </div>
-
-        {/* Sign In Link */}
-        <div class="text-center">
-          <p class="text-gray-400 text-sm">
-            Already have an account?{" "}
-            <A href="/login" class="text-primary font-semibold hover:underline">
-              Sign In
-            </A>
-          </p>
-        </div>
-      </section>
+      </form>
 
       {/* Footer */}
       <div class="absolute bottom-6 left-0 right-0 text-center">

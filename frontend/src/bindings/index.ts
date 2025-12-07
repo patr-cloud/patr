@@ -20,6 +20,8 @@ import { GetRunnerInfoResponse } from "./GetRunnerInfoResponse";
 import { DeploymentStatus } from "./DeploymentStatus";
 import { CreateAccountRequest } from "./CreateAccountRequest";
 import { CompleteSignUpRequest } from "./CompleteSignUpRequest";
+import { AddDomainToWorkspaceRequest } from "./AddDomainToWorkspaceRequest";
+import { AddDomainToWorkspaceResponse } from "./AddDomainToWorkspaceResponse";
 
 export type {
   EnvironmentVariableValue,
@@ -44,4 +46,6 @@ export type {
   DeploymentStatus,
   CreateAccountRequest,
   CompleteSignUpRequest,
+  AddDomainToWorkspaceRequest,
+  AddDomainToWorkspaceResponse,
 };

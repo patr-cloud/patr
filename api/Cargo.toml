@@ -35,6 +35,7 @@ opentelemetry-appender-tracing = { workspace = true, features = ["default"] }
 opentelemetry-otlp             = { workspace = true, features = ["default", "tonic", "tokio", "reqwest-client", "reqwest-rustls-webpki-roots", "grpc-tonic", "http-json"] }
 opentelemetry_sdk              = { workspace = true, features = ["default", "rt-tokio"] }
 preprocess                     = { workspace = true, features = [] }
+psl                            = { workspace = true, features = ["default"] }
 rand                           = { workspace = true, features = ["default"] }
 regex                          = { workspace = true, features = ["default"] }
 reqwest                        = { workspace = true, features = ["default", "json", "multipart", "blocking", "stream"] }

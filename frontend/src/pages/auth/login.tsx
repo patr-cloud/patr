@@ -151,7 +151,7 @@ const Login = () => {
             </A>
             <Button
               variant={ButtonVariant.Contained}
-              class="py-4 text-base font-semibold px-xxl flex-end transition-all duration-200"
+              class="py-4 text-base font-semibold px-xxl flex-end"
               type="submit"
             >
               Login

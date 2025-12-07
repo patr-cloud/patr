@@ -24,6 +24,8 @@ mod get_domain_dns_record;
 mod get_domain_info_in_workspace;
 /// The endpoint to check if a domain is personal
 mod is_domain_personal;
+/// The endpoint to check if a domain is valid and can be added to a workspace
+mod is_domain_valid;
 /// The endpoint to get all the domains in a workspace
 mod list_domains_in_workspace;
 /// The endpoint to update a DNS record of a domain
@@ -39,6 +41,7 @@ pub use self::{
 	get_domain_dns_record::*,
 	get_domain_info_in_workspace::*,
 	is_domain_personal::*,
+	is_domain_valid::*,
 	list_domains_in_workspace::*,
 	update_domain_dns_record::*,
 	verify_domain_in_workspace::*,

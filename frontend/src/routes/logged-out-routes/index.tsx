@@ -11,7 +11,7 @@ const AuthPageWrapper = (props: ParentProps<{}>) => {
   const [authState] = useAuthState();
 
   if (authState()?.type === "LoggedIn") {
-    return <Navigate href="/deployments" />;
+    return <Navigate href="/" />;
   }
 
   return (

@@ -173,6 +173,17 @@ const DeploymentInfo = () => {
     console.log("Delete deployment response:", resp);
   };
 
+  const imageName = createMemo((): string => {
+    const info = deploymentInfo();
+    if (!info) return "";
+    if (info.registry === "registry.patr.cloud") {
+      return "repositoryId" in info
+        ? String((info as any).repositoryId ?? "")
+        : "";
+    }
+    return "imageName" in info ? String((info as any).imageName ?? "") : "";
+  });
+
   const Cta = () => {
     switch (deploymentInfo()?.status) {
       case "running":
@@ -210,7 +221,8 @@ const DeploymentInfo = () => {
   return (
     <PageContainer>
       <PageContainerHead
-        title="Deployment"
+        title="Deployments"
+        titleUrl="/deployments"
         class="justify-between items-center"
         subTitle={
           <Suspense fallback={<div>loading...</div>}>
@@ -307,16 +319,7 @@ const DeploymentInfo = () => {
                       disabled={true}
                       placeholder="Image Name"
                       type={InputType.Text}
-                      value={(() => {
-                        const info = deploymentInfo();
-                        if (!info) return "";
-                        if (info.registry === "registry.patr.cloud") {
-                          return "repositoryId" in info
-                            ? info.repositoryId
-                            : "";
-                        }
-                        return "imageName" in info ? info.imageName : "";
-                      })()}
+                      value={imageName}
                     />
 
                     <Input

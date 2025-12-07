@@ -9,6 +9,9 @@ import WorkspacedRoutes from "./workspaced";
 import NonWorkspacedRoutes from "./non-workspaced";
 import Home from "~/pages/home";
 
+import Sidebar from "~/components/sidebar";
+import TopBar from "~/components/top-bar";
+
 export const PageWrapper = (props: ParentProps<{}>) => {
   const [authState, _] = useAuthState();
   const [workspaceId, setWorkspaceId] = useLastWorkspaceId();
@@ -65,8 +68,11 @@ export const PageWrapper = (props: ParentProps<{}>) => {
 
   return (
     <main class="bg-secondary w-full min-h-screen h-screen flex">
-      <aside class="bg-secondary w-64 h-screen shadow-xl/30"></aside>
-      <div class="flex-1">{props.children}</div>
+      <Sidebar />
+      <div class="flex-1 flex flex-col overflow-hidden">
+        <TopBar />
+        <div class="flex-1 overflow-auto">{props.children}</div>
+      </div>
     </main>
   );
 };
@@ -74,7 +80,6 @@ export const PageWrapper = (props: ParentProps<{}>) => {
 export default function LoggedInRoutes() {
   return (
     <Route path="/" component={PageWrapper}>
-      <Route path="/" component={Home} />
       <WorkspacedRoutes />
       <NonWorkspacedRoutes />
     </Route>
