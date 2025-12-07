@@ -1,4 +1,4 @@
-import { useNavigate } from "@solidjs/router";
+import { A, useNavigate } from "@solidjs/router";
 import {
   createMemo,
   createResource,
@@ -9,13 +9,15 @@ import {
 import { FiCheck, FiCopy } from "solid-icons/fi";
 import { ListDeploymentResponse } from "~/bindings";
 import {
+  Button,
   PageContainer,
   PageContainerBody,
   PageContainerHead,
   Table,
+  useToast,
 } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
-import { doFetch } from "~/utils/do-fetch";
+import { httpRequest } from "~/utils/http-request";
 
 const CopyButton = (props: { text: string }) => {
   const [copied, setCopied] = createSignal(false);
@@ -50,6 +52,7 @@ const ListDeploymentsPage = () => {
   const [authState] = useAuthState();
   const [workspaceId] = useLastWorkspaceId();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const fetchParams = createMemo(() => {
     return [authState(), workspaceId()] as const;
@@ -60,7 +63,7 @@ const ListDeploymentsPage = () => {
       return { deployments: [] };
     }
 
-    const response = await doFetch<ListDeploymentResponse>(
+    const response = await httpRequest<ListDeploymentResponse>(
       `${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment`,
       {
         method: "GET",
@@ -71,6 +74,12 @@ const ListDeploymentsPage = () => {
       }
     );
 
+    if (!response.ok) {
+      console.error("Failed to fetch deployments:", response.data.error);
+      toast("Failed to fetch deployments", "error");
+      return { deployments: [] };
+    }
+
     console.log("Fetched deployments:", response.data);
 
     // Fetch deployments logic goes here
@@ -79,7 +88,10 @@ const ListDeploymentsPage = () => {
 
   return (
     <PageContainer>
-      <PageContainerHead title="Deployments" subTitle="List of Deployments" />
+      <PageContainerHead title="Deployments" subTitle="All Deployments">
+        <A href="/deployments/new">CREATE NEW DEPLOYMENT</A>
+      </PageContainerHead>
+
       <PageContainerBody>
         <ErrorBoundary
           fallback={(err, reset) => (

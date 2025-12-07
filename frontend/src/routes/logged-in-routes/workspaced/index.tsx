@@ -3,6 +3,8 @@ import { ParentProps } from "solid-js";
 import CreateDeploymentPage from "~/pages/deployment/create";
 import DeploymentInfo from "~/pages/deployment/deployment";
 import ListDeploymentsPage from "~/pages/deployment/list";
+import DomainInfo from "~/pages/domain/domain-info";
+import ManagedUrlPage from "~/pages/managed-url";
 import CreateRunnerPage from "~/pages/runner/create";
 import ListRunnersPage from "~/pages/runner/list";
 import ListDomainsPage from "~/pages/domain/list";
@@ -25,9 +27,13 @@ export default function WorkspacedRoutes() {
         <Route path="/" component={ListRunnersPage} />
         <Route path="/new" component={CreateRunnerPage} />
       </Route>
+      <Route path="/managed-urls">
+        <Route path="/" component={ManagedUrlPage} />
+      </Route>
       <Route path="/domains">
         <Route path="/" component={ListDomainsPage} />
         <Route path="/new" component={CreateDomainPage} />
+        <Route path="/:id" component={DomainInfo} />
       </Route>
     </Route>
   );

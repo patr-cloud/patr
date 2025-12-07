@@ -1,12 +1,18 @@
 import { A, query, redirect, useNavigate } from "@solidjs/router";
-import { Button } from "~/components";
+import { Alert, Button, InputEventT, useToast } from "~/components";
 import { InputType, Input } from "~/components";
 import { ButtonVariant } from "~/utils/color";
-import { JSX } from "solid-js";
+import { createSignal, JSX, Show } from "solid-js";
 import { getRequestEvent } from "solid-js/web";
 import { LoginRequest, LoginResponse } from "~/bindings";
-import { doFetch } from "~/utils/do-fetch";
+import { httpRequest } from "~/utils/http-request";
 import { useAuthState } from "~/hooks";
+import {
+  USERNAME_VALIDITY_PATTERN,
+  USERNAME_VALIDITY_REGEX,
+  validatePassword,
+} from "~/utils/validation";
+import { PasswordInput } from "~/components";
 
 /**
  * @deprecated Not using a server function, cause that limits Client Side Only Capabilities,
@@ -20,7 +26,7 @@ const loginFn = query(async (data: LoginRequest) => {
 
   const userAgent = event.request.headers.get("user-agent");
 
-  const loginResponse = await doFetch<LoginResponse>(
+  const loginResponse = await httpRequest<LoginResponse>(
     `${import.meta.env.VITE_BASE_URL}/api/auth/sign-in`,
     {
       method: "POST",
@@ -58,23 +64,77 @@ const loginFn = query(async (data: LoginRequest) => {
   }
 }, "login");
 
+interface InputFields {
+  userId: string;
+  password: string;
+  mfaOtp: string;
+}
+
 const Login = () => {
   const [, setAuthState] = useAuthState();
   const navigate = useNavigate();
+  const toast = useToast();
+  const [inputs, setInputs] = createSignal<InputFields>({
+    userId: "",
+    password: "",
+    mfaOtp: "",
+  });
+  const [inputError, setInputError] = createSignal<InputFields>({
+    userId: "",
+    password: "",
+    mfaOtp: "",
+  });
+
+  const handleInput = (e: InputEventT) => {
+    e.preventDefault();
+
+    const { id, value } = e.currentTarget;
+
+    setInputs((prev) => ({ ...prev, [id]: value }));
+    setInputError((prev) => ({ ...prev, [id]: "" }));
+  };
+
+  const validateInputs = (): boolean => {
+    const { userId, password } = inputs();
+
+    // FIXME: Poor regex, improve this
+    // if (!USERNAME_VALIDITY_REGEX.test(userId)) {
+    //   setInputError((prev) => ({
+    //     ...prev,
+    //     userId: "Invalid Username format.",
+    //   }));
+    //   return false;
+    // }
+
+    if (password.length === 0) {
+      setInputError((prev) => ({
+        ...prev,
+        password: "Password cannot be empty.",
+      }));
+      return false;
+    }
+
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      setInputError((prev) => ({
+        ...prev,
+        password: passwordValidation.error || "Invalid password.",
+      }));
+      return false;
+    }
+
+    return true;
+  };
 
   const onSubmitLogin: JSX.EventHandler<HTMLFormElement, SubmitEvent> = async (
     e
   ) => {
     e.preventDefault();
 
-    const formData = new FormData(e.target as HTMLFormElement);
-    const userId = formData.get("userId") as string;
-    const password = formData.get("password") as string;
+    const { userId, password } = inputs();
+    if (!validateInputs()) return;
 
-    // Handle login logic here
-    console.log("Logging in with", { userId });
-
-    const loginResp = await doFetch<LoginResponse>("/api/auth/sign-in", {
+    const loginResp = await httpRequest<LoginResponse>("/api/auth/sign-in", {
       method: "POST",
       body: JSON.stringify({
         userId,
@@ -94,8 +154,26 @@ const Login = () => {
       });
       navigate("/", { replace: true });
     } else {
-      console.error("Error during login:", loginResp.statusText);
-      alert("Error during login: " + loginResp.statusText);
+      console.error("Error during login:", loginResp);
+      switch (loginResp.data.error) {
+        case "invalidPassword":
+          setInputError((prev) => ({
+            ...prev,
+            password: "Incorrect password. Please try again.",
+          }));
+          break;
+        case "userNotFound":
+        case "invalidUsername":
+          setInputError((prev) => ({
+            ...prev,
+            userId: "User not found. Please check your username.",
+          }));
+          break;
+        default:
+          // Generic error handling
+          toast("Error during login: " + loginResp.statusText, "error");
+          break;
+      }
       return;
     }
   };
@@ -125,21 +203,41 @@ const Login = () => {
 
         {/* Form */}
         <div>
+          {/** TODO: add min max values for input */}
           <Input
+            required={true}
             type={InputType.Text}
-            placeholder="Username or Email"
+            placeholder="Username"
+            pattern={USERNAME_VALIDITY_PATTERN}
+            title="Username must start and end with an alphanumeric character and can contain underscores, dots, or hyphens in between."
+            id="userId"
             name="userId"
             class="mt-4"
             styleVariant="medium"
+            value={inputs().userId}
+            onInput={handleInput}
           />
+          <Show when={inputError().userId}>
+            <div class="flex justify-start items-center mt-1">
+              <Alert message={inputError().userId} type="error" />
+            </div>
+          </Show>
 
-          <Input
-            type={InputType.Password}
+          <PasswordInput
+            required={true}
             placeholder="Password"
+            id="password"
             name="password"
             class="mt-4"
             styleVariant="medium"
+            value={inputs().password}
+            onInput={handleInput}
           />
+          <Show when={inputError().password}>
+            <div class="flex justify-start items-center mt-1">
+              <Alert message={inputError().password} type="error" />
+            </div>
+          </Show>
 
           {/* Login Button */}
           <div class="pt-8 w-full flex flex-row items-center justify-between">

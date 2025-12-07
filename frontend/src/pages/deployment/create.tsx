@@ -15,6 +15,8 @@ import { FiChevronDown } from "solid-icons/fi";
 import { Jsx } from "~/utils/func";
 import {
   CreateDeploymentRequest,
+  CreateDeploymentResponse,
+  DeploymentProbe,
   EnvironmentVariableValue,
   ExposedPortType,
   ListRunnersForWorkspaceResponse,
@@ -22,12 +24,15 @@ import {
 import PortInput from "./port";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { doFetch } from "~/utils/do-fetch";
+import { httpRequest } from "~/utils/http-request";
 import { Uuid } from "~/utils/func";
+import { useToast } from "~/components";
+import ProbeInput from "./probe-input";
 
 const CreateDeploymentPage = () => {
   const [authState] = useAuthState();
   const [lastUsedWorkspaceId] = useLastWorkspaceId();
+  const toast = useToast();
 
   const fetchParams = createMemo(() => {
     return [authState(), lastUsedWorkspaceId()] as const;
@@ -37,7 +42,7 @@ const CreateDeploymentPage = () => {
     if (!wsId || !auth || auth.type !== "LoggedIn") {
       return { runners: [] };
     }
-    const response = await doFetch<ListRunnersForWorkspaceResponse>(
+    const response = await httpRequest<ListRunnersForWorkspaceResponse>(
       `${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner`,
       {
         method: "GET",
@@ -47,6 +52,13 @@ const CreateDeploymentPage = () => {
         },
       }
     );
+
+    if (!response.ok) {
+      console.error("Failed to fetch runners:", response.data.error);
+      toast("Failed to fetch runners", "error");
+      return { runners: [] };
+    }
+
     console.log("Fetched runners:", response.data);
     return response.data;
   });
@@ -55,6 +67,9 @@ const CreateDeploymentPage = () => {
   const [runner, setRunner] = createSignal<string>("");
   const [imageName, setImageName] = createSignal<string>("");
   const [imageTag, setImageTag] = createSignal<string>("");
+  const [startupProbe, setStartupProbe] = createSignal<
+    DeploymentProbe | undefined
+  >(undefined);
 
   const [registry, setRegistry] = createSignal<string>("");
   const [envList, setEnvList] = createSignal<
@@ -98,7 +113,7 @@ const CreateDeploymentPage = () => {
 
     console.log(requestBody);
 
-    const response = await doFetch<CreateDeploymentRequest>(
+    const response = await httpRequest<CreateDeploymentResponse>(
       `${
         import.meta.env.VITE_BASE_URL
       }/api/workspace/${lastUsedWorkspaceId()}/deployment`,
@@ -159,7 +174,7 @@ const CreateDeploymentPage = () => {
                     { value: "patr-registry", label: "Patr Registry" },
                     { value: "docker-hub", label: "Docker Hub" },
                   ]}
-                  endIcon={Jsx(
+                  endIcon={() => (
                     <button>
                       <FiChevronDown size={16} />
                     </button>
@@ -203,7 +218,7 @@ const CreateDeploymentPage = () => {
                       label: runner.name,
                     })) ?? []
                   }
-                  endIcon={Jsx(
+                  endIcon={() => (
                     <button>
                       <FiChevronDown size={16} />
                     </button>
@@ -239,6 +254,11 @@ const CreateDeploymentPage = () => {
                 });
               }}
               portList={portList}
+            />
+
+            <ProbeInput
+              probe={[startupProbe, setStartupProbe]}
+              ports={Object.keys(portList()).map((port) => parseInt(port))}
             />
           </div>
 

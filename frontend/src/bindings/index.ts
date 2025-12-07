@@ -22,6 +22,17 @@ import { CreateAccountRequest } from "./CreateAccountRequest";
 import { CompleteSignUpRequest } from "./CompleteSignUpRequest";
 import { AddDomainToWorkspaceRequest } from "./AddDomainToWorkspaceRequest";
 import { AddDomainToWorkspaceResponse } from "./AddDomainToWorkspaceResponse";
+import { DeploymentProbe } from "./DeploymentProbe";
+import { UpdateDeploymentRequest } from "./UpdateDeploymentRequest";
+import { UpdateDeploymentResponse } from "./UpdateDeploymentResponse";
+import { AddDomainToWorkspaceRequest } from "./AddDomainToWorkspaceRequest";
+import { AddDomainToWorkspaceResponse } from "./AddDomainToWorkspaceResponse";
+import { DomainNameserverType } from "./DomainNameserverType";
+import { GetDomainsForWorkspaceRequest } from "./GetDomainsForWorkspaceRequest";
+import { GetDomainsForWorkspaceResponse } from "./GetDomainsForWorkspaceResponse";
+import { WorkspaceDomain } from "./WorkspaceDomain";
+import { GetDomainInfoInWorkspaceRequest } from "./GetDomainInfoInWorkspaceRequest";
+import { GetDomainInfoInWorkspaceResponse } from "./GetDomainInfoInWorkspaceResponse";
 
 export type {
   EnvironmentVariableValue,
@@ -48,4 +59,15 @@ export type {
   CompleteSignUpRequest,
   AddDomainToWorkspaceRequest,
   AddDomainToWorkspaceResponse,
+  DeploymentProbe,
+  UpdateDeploymentRequest,
+  UpdateDeploymentResponse,
+  AddDomainToWorkspaceRequest,
+  AddDomainToWorkspaceResponse,
+  DomainNameserverType,
+  GetDomainsForWorkspaceRequest,
+  GetDomainsForWorkspaceResponse,
+  WorkspaceDomain,
+  GetDomainInfoInWorkspaceRequest,
+  GetDomainInfoInWorkspaceResponse,
 };

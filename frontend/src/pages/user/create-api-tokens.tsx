@@ -9,18 +9,20 @@ import {
   PageContainerBody,
   PageContainerHead,
 } from "~/components";
-import { doFetch } from "~/utils/do-fetch";
+import { httpRequest } from "~/utils/http-request";
 import { useAuthState } from "~/hooks";
 import {
   CreateApiTokenRequest,
   CreateApiTokenResponse,
   ListUserWorkspacesResponse,
 } from "~/bindings";
+import { useToast } from "~/components/toast";
 
 const CreateApiTokens = () => {
   const [authState, _] = useAuthState();
+  const toast = useToast();
   const [workspace] = createResource(authState, async (auth) => {
-    const response = await doFetch<ListUserWorkspacesResponse>(
+    const response = await httpRequest<ListUserWorkspacesResponse>(
       `${import.meta.env.VITE_BASE_URL}/api/user/workspaces`,
       {
         method: "GET",
@@ -32,6 +34,13 @@ const CreateApiTokens = () => {
         },
       }
     );
+
+    if (!response.ok) {
+      console.error("Failed to fetch workspaces:", response.data.error);
+      toast("Failed to fetch workspaces", "error");
+      return { workspaces: [] };
+    }
+
     return response.data;
   });
 
@@ -64,7 +73,7 @@ const CreateApiTokens = () => {
         workspaces().map((wsId) => [wsId, { type: "superAdmin" }])
       ),
     };
-    const response = await doFetch<CreateApiTokenResponse>(
+    const response = await httpRequest<CreateApiTokenResponse>(
       `${import.meta.env.VITE_BASE_URL}/api/user/api-token`,
       {
         method: "POST",
@@ -83,7 +92,11 @@ const CreateApiTokens = () => {
 
   return (
     <PageContainer>
-      <PageContainerHead title="Create API Tokens" subTitle="subtitle" />
+      <PageContainerHead
+        title="API Tokens"
+        titleUrl="/profile/api-tokens/new"
+        subTitle="Create New Token"
+      />
       <PageContainerBody class="flex flex-col justify-between gap-8">
         <form
           onSubmit={onSubmit}

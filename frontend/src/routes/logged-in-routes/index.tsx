@@ -2,12 +2,13 @@ import { Route, Navigate } from "@solidjs/router";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { createEffect, createResource, ParentProps } from "solid-js";
 import { useAuthState } from "~/hooks";
-import { doFetch } from "~/utils/do-fetch";
+import { httpRequest } from "~/utils/http-request";
 import { ListUserWorkspacesResponse } from "~/bindings";
 
 import WorkspacedRoutes from "./workspaced";
 import NonWorkspacedRoutes from "./non-workspaced";
 import Home from "~/pages/home";
+import { useToast } from "~/components";
 
 import Sidebar from "~/components/sidebar";
 import TopBar from "~/components/top-bar";
@@ -15,6 +16,7 @@ import TopBar from "~/components/top-bar";
 export const PageWrapper = (props: ParentProps<{}>) => {
   const [authState, _] = useAuthState();
   const [workspaceId, setWorkspaceId] = useLastWorkspaceId();
+  const toast = useToast();
 
   console.log(
     "Rendering PageWrapper with authState:",
@@ -43,7 +45,7 @@ export const PageWrapper = (props: ParentProps<{}>) => {
     if (auth === null || auth.type !== "LoggedIn") {
       return { workspaces: [] };
     }
-    const response = await doFetch<ListUserWorkspacesResponse>(
+    const response = await httpRequest<ListUserWorkspacesResponse>(
       `${import.meta.env.VITE_BASE_URL}/api/user/workspaces`,
       {
         method: "GET",
@@ -53,6 +55,12 @@ export const PageWrapper = (props: ParentProps<{}>) => {
         },
       }
     );
+
+    if (!response.ok) {
+      console.error("Failed to fetch workspaces:", response.data.error);
+      toast("Failed to fetch workspaces", "error");
+      return { workspaces: [] };
+    }
 
     return response.data;
   });

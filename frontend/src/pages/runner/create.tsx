@@ -12,7 +12,7 @@ import {
 } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { doFetch } from "~/utils/do-fetch";
+import { httpRequest } from "~/utils/http-request";
 
 const CreateRunnerPage = () => {
   const [name, setName] = createSignal<string>("");
@@ -29,7 +29,7 @@ const CreateRunnerPage = () => {
     }
 
     console.log("Creating Runner with name:", name());
-    const response = await doFetch<AddRunnerToWorkspaceResponse>(
+    const response = await httpRequest<AddRunnerToWorkspaceResponse>(
       `${
         import.meta.env.VITE_BASE_URL
       }/api/workspace/${currentWorkspaceId}/runner`,
@@ -51,7 +51,11 @@ const CreateRunnerPage = () => {
 
   return (
     <PageContainer>
-      <PageContainerHead title="Runners" titleUrl="/runners" subTitle="New" />
+      <PageContainerHead
+        title="Runners"
+        titleUrl="/runners"
+        subTitle="New Runner"
+      />
       <PageContainerBody class="flex flex-col justify-between gap-8">
         <form
           onSubmit={onSubmit}

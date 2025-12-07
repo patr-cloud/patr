@@ -1,6 +1,16 @@
 import { useParams } from "@solidjs/router";
-import { createMemo, createResource, ErrorBoundary, Suspense } from "solid-js";
-import { GetDeploymentInfoResponse, GetRunnerInfoResponse } from "~/bindings";
+import {
+  createMemo,
+  createResource,
+  createSignal,
+  ErrorBoundary,
+  Suspense,
+} from "solid-js";
+import {
+  GetDeploymentInfoResponse,
+  GetRunnerInfoResponse,
+  UpdateDeploymentResponse,
+} from "~/bindings";
 import {
   Button,
   ButtonVariant,
@@ -10,43 +20,89 @@ import {
   PageContainer,
   PageContainerBody,
   PageContainerHead,
+  useToast,
 } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { doFetch } from "~/utils/do-fetch";
+import { httpRequest } from "~/utils/http-request";
+import { EventT } from "~/utils/types";
 
 const DeploymentInfo = () => {
   const params = useParams();
 
   const [authState] = useAuthState();
   const [workspaceId] = useLastWorkspaceId();
+  const toast = useToast();
 
   const resourceParamsDeployment = createMemo(() => {
     return [authState(), workspaceId(), params.id] as const;
   });
 
-  const [deploymentInfo] = createResource(
-    resourceParamsDeployment,
-    async ([auth, wsId, id]) => {
-      if (!wsId || !auth || auth.type !== "LoggedIn" || id === "") {
-        return undefined;
-      }
-      const response = await doFetch<GetDeploymentInfoResponse>(
-        `${
-          import.meta.env.VITE_BASE_URL
-        }/api/workspace/${wsId}/deployment/${id}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${auth.accessToken}`,
-          },
-        }
-      );
-      console.log("Fetched deployment info:", response.data);
-      return response.data;
+  const [hasUpdated, setHasUpdated] = createSignal(false);
+
+  const [
+    deploymentInfo,
+    { mutate: mutateDeploymentInfo, refetch: refetchDeploymentInfo },
+  ] = createResource(resourceParamsDeployment, async ([auth, wsId, id]) => {
+    if (!wsId || !auth || auth.type !== "LoggedIn" || id === "") {
+      return undefined;
     }
-  );
+    const response = await httpRequest<GetDeploymentInfoResponse>(
+      `${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment/${id}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${auth.accessToken}`,
+        },
+      }
+    );
+    console.log("Fetched deployment info:", response.data);
+    if (!response.ok) {
+      console.error("Failed to fetch deployment info:", response.data.error);
+      toast("Failed to fetch deployment info", "error");
+      return undefined;
+    }
+
+    return response.data;
+  });
+
+  const onSubmitUpdate = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
+    e.preventDefault();
+    console.log("Update deployment form submitted");
+    const auth = authState();
+    if (!auth || auth.type !== "LoggedIn") {
+      console.error("User not logged in");
+      toast("User not logged in", "error");
+      return;
+    }
+
+    const response = await httpRequest<UpdateDeploymentResponse>(
+      `${
+        import.meta.env.VITE_BASE_URL
+      }/api/workspace/${workspaceId()}/deployment/${deploymentInfo()?.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${auth.accessToken}`,
+        },
+        body: JSON.stringify({
+          name: deploymentInfo()?.name,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      console.error("Failed to update deployment:", response.data.error);
+      toast("Failed to update deployment", "error");
+      return;
+    }
+
+    console.log("Deployment updated successfully:", response.data);
+    toast("Deployment updated successfully", "success");
+    refetchDeploymentInfo();
+  };
 
   const resourceParamsRunner = createMemo(() => {
     return [authState(), workspaceId(), deploymentInfo()?.runner] as const;
@@ -64,7 +120,7 @@ const DeploymentInfo = () => {
       ) {
         return undefined;
       }
-      const response = await doFetch<GetRunnerInfoResponse>(
+      const response = await httpRequest<GetRunnerInfoResponse>(
         `${
           import.meta.env.VITE_BASE_URL
         }/api/workspace/${wsId}/runner/${runnerId}`,
@@ -77,6 +133,13 @@ const DeploymentInfo = () => {
         }
       );
       console.log("Fetched runner info:", response.data);
+
+      if (!response.ok) {
+        console.error("Failed to fetch runner info:", response.data.error);
+        toast("Failed to fetch runner info", "error");
+        return undefined;
+      }
+
       return response.data.runner;
     }
   );
@@ -96,7 +159,7 @@ const DeploymentInfo = () => {
     }
 
     console.log("Start deployment clicked");
-    const resp = await doFetch(
+    const resp = await httpRequest(
       `${
         import.meta.env.VITE_BASE_URL
       }/api/workspace/${workspaceId()}/deployment/${deployment.id}/start`,
@@ -126,7 +189,7 @@ const DeploymentInfo = () => {
     }
 
     console.log("Stop deployment clicked");
-    const resp = await doFetch(
+    const resp = await httpRequest(
       `${
         import.meta.env.VITE_BASE_URL
       }/api/workspace/${workspaceId()}/deployment/${deployment.id}/stop`,
@@ -158,7 +221,7 @@ const DeploymentInfo = () => {
     }
 
     console.log("Delete deployment clicked");
-    const resp = await doFetch(
+    const resp = await httpRequest(
       `${
         import.meta.env.VITE_BASE_URL
       }/api/workspace/${workspaceId()}/deployment/${deployment.id}`,
@@ -249,7 +312,10 @@ const DeploymentInfo = () => {
           )}
         >
           <Suspense fallback={<div>Loading deployment info...</div>}>
-            <form class="flex flex-col gap-6 justify-between w-full flex-1">
+            <form
+              onSubmit={onSubmitUpdate}
+              class="flex flex-col gap-6 justify-between w-full flex-1"
+            >
               <div class="flex flex-col gap-4 items-start w-full">
                 <div class="flex gap-8 items-center w-full">
                   <InputLabel
@@ -258,7 +324,7 @@ const DeploymentInfo = () => {
                     label="ID"
                   />
                   <Input
-                    value={deploymentInfo()?.id}
+                    value={deploymentInfo.latest?.id}
                     disabled={true}
                     class="flex-10"
                     name="deployment-id"
@@ -274,8 +340,18 @@ const DeploymentInfo = () => {
                     label="Name"
                   />
                   <Input
-                    value={deploymentInfo()?.name}
-                    disabled={true}
+                    value={deploymentInfo.latest?.name}
+                    onInput={(e) => {
+                      setHasUpdated((prev) => prev || true);
+                      mutateDeploymentInfo((prev) => {
+                        return prev
+                          ? {
+                              ...prev,
+                              name: e.currentTarget.value,
+                            }
+                          : undefined;
+                      });
+                    }}
                     class="flex-10"
                     name="deployment-name"
                     placeholder="Deployment Name"
@@ -290,7 +366,7 @@ const DeploymentInfo = () => {
                     label="Runner"
                   />
                   <Input
-                    value={runnerInfo()?.name}
+                    value={runnerInfo.latest?.name}
                     disabled={true}
                     class="flex-10"
                     name="deployment-runner"
@@ -307,7 +383,7 @@ const DeploymentInfo = () => {
                   />
                   <div class="flex-10 flex items-center gap-4 w-full">
                     <Input
-                      value={deploymentInfo()?.registry ?? ""}
+                      value={deploymentInfo.latest?.registry ?? ""}
                       disabled={true}
                       class="flex-4"
                       name="deployment-registry"
@@ -319,7 +395,16 @@ const DeploymentInfo = () => {
                       disabled={true}
                       placeholder="Image Name"
                       type={InputType.Text}
-                      value={imageName}
+                      value={(() => {
+                        const info = deploymentInfo.latest;
+                        if (!info) return "";
+                        if (info.registry === "registry.patr.cloud") {
+                          return "repositoryId" in info
+                            ? info.repositoryId
+                            : "";
+                        }
+                        return "imageName" in info ? info.imageName : "";
+                      })()}
                     />
 
                     <Input
@@ -327,10 +412,18 @@ const DeploymentInfo = () => {
                       disabled={true}
                       placeholder="Image Tag"
                       type={InputType.Text}
-                      value={deploymentInfo()?.imageTag ?? "N/A"}
+                      value={deploymentInfo.latest?.imageTag ?? "N/A"}
                     />
                   </div>
                 </div>
+
+                {/* <PortInput /> */}
+              </div>
+
+              <div class="w-full flex justify-end items-center">
+                <Button type="submit" variant="contained">
+                  UPDATE
+                </Button>
               </div>
             </form>
           </Suspense>

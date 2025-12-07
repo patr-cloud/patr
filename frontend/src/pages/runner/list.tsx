@@ -6,13 +6,15 @@ import {
   PageContainerHead,
   Table,
 } from "~/components";
+import { useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { doFetch } from "~/utils/do-fetch";
+import { httpRequest } from "~/utils/http-request";
 
 const ListRunnersPage = () => {
   const [authState] = useAuthState();
   const [workspaceId] = useLastWorkspaceId();
+  const toast = useToast();
 
   const fetchParams = createMemo(() => {
     return [authState(), workspaceId()] as const;
@@ -22,7 +24,7 @@ const ListRunnersPage = () => {
     if (!wsId || !auth || auth.type !== "LoggedIn") {
       return { runners: [] };
     }
-    const response = await doFetch<ListRunnersForWorkspaceResponse>(
+    const response = await httpRequest<ListRunnersForWorkspaceResponse>(
       `${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner`,
       {
         method: "GET",
@@ -32,13 +34,21 @@ const ListRunnersPage = () => {
         },
       }
     );
+
+    if (!response.ok) {
+      console.error("Failed to fetch runners:", response.data.error);
+      toast("Failed to fetch runners", "error");
+
+      return { runners: [] };
+    }
+
     console.log("Fetched runners:", response.data);
     return response.data;
   });
 
   return (
     <PageContainer>
-      <PageContainerHead title="Runner" subTitle="List" />
+      <PageContainerHead title="Runner" subTitle="All Runners" />
       <PageContainerBody class="flex flex-col justify-between gap-8">
         <ErrorBoundary
           fallback={(err, reset) => (

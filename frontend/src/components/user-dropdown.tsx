@@ -9,7 +9,7 @@ import {
 } from "solid-js";
 import { FiUser, FiKey, FiSettings, FiLogOut } from "solid-icons/fi";
 import { useAuthState } from "~/hooks";
-import { doFetch } from "~/utils/do-fetch";
+import { httpRequest } from "~/utils/http-request";
 import CopyableTextField from "./copyable-text-field";
 
 interface UserInfo {
@@ -32,9 +32,9 @@ const UserDropdown: Component = () => {
       console.log("Auth is null or LoggedOut, returning null");
       return null;
     }
+
     try {
-      console.log("Fetching user info...");
-      const response = await doFetch<UserInfo>(
+      const response = await httpRequest<UserInfo>(
         `${import.meta.env.VITE_BASE_URL}/api/user`,
         {
           method: "GET",
@@ -44,7 +44,19 @@ const UserDropdown: Component = () => {
           },
         }
       );
-      console.log("User info response:", response.data);
+
+      if (!response.ok) {
+        console.error("Failed to fetch workspaces:", response.data.error);
+        toast("Failed to fetch workspaces", "error");
+        return {
+          id: "Unknown",
+          username: "unknown",
+          firstName: "",
+          lastName: "",
+          recoveryEmail: "",
+        };
+      }
+
       return response.data;
     } catch (error) {
       console.error("Failed to fetch user info:", error);
@@ -52,7 +64,14 @@ const UserDropdown: Component = () => {
     }
   });
 
-  console.log("UserDropdown render - userInfo:", userInfo(), "loading:", userInfo.loading, "error:", userInfo.error);
+  console.log(
+    "UserDropdown render - userInfo:",
+    userInfo(),
+    "loading:",
+    userInfo.loading,
+    "error:",
+    userInfo.error
+  );
 
   const handleLogout = () => {
     setAuthState({ type: "LoggedOut" });
@@ -67,7 +86,7 @@ const UserDropdown: Component = () => {
         setIsOpen(false);
       }
     };
-    
+
     document.addEventListener("click", handleClick);
     onCleanup(() => {
       document.removeEventListener("click", handleClick);
@@ -84,15 +103,15 @@ const UserDropdown: Component = () => {
   const getInitials = () => {
     const user = userInfo();
     if (!user) return "U";
-    
+
     if (user.firstName && user.lastName) {
       return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
     }
-    
+
     if (user.username) {
       return user.username.slice(0, 2).toUpperCase();
     }
-    
+
     return "U";
   };
 
@@ -185,3 +204,6 @@ const UserDropdown: Component = () => {
 };
 
 export default UserDropdown;
+function toast(arg0: string, arg1: string) {
+  throw new Error("Function not implemented.");
+}

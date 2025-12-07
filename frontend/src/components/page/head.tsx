@@ -1,9 +1,13 @@
 import { JSX, mergeProps, ParentProps } from "solid-js";
 
 interface PageContainerHeadProps {
+  /** The title of the page head */
   title: string;
+  /** Optional URL to redirect to when title is clicked */
   titleUrl?: string;
+  /** The subtitle of the page head */
   subTitle: JSX.Element | string;
+  /** Additional CSS classes for the header */
   class?: string;
 }
 
@@ -17,7 +21,7 @@ const PageContainerHead = (rawProps: ParentProps<PageContainerHeadProps>) => {
 
   return (
     <header
-      class={`h-full bg-secondary-light flex gap-2 rounded-t-xs p-xl py-lg ${props.class}`}
+      class={`h-full bg-secondary-light flex justify-between items-center gap-2 rounded-t-xs p-xl py-lg ${props.class}`}
     >
       <div class="flex flex-col gap-2 justify-start">
         <div class="flex gap-4 items-center select-none">
@@ -41,7 +45,7 @@ const PageContainerHead = (rawProps: ParentProps<PageContainerHeadProps>) => {
         </p>
       </div>
 
-      {props.children}
+      <div>{props.children}</div>
     </header>
   );
 };

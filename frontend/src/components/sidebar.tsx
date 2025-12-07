@@ -1,148 +1,148 @@
 import { A, useLocation } from "@solidjs/router";
 import {
-  FiHome,
-  FiBox,
-  FiDatabase,
-  FiCpu,
-  FiGlobe,
-  FiSettings,
-  FiChevronDown,
-  FiChevronRight,
+	FiHome,
+	FiBox,
+	FiDatabase,
+	FiCpu,
+	FiGlobe,
+	FiSettings,
+	FiChevronDown,
+	FiChevronRight,
 } from "solid-icons/fi";
 import { Component, createSignal, For, JSX, Show } from "solid-js";
 
 interface SidebarItemProps {
-  label: string;
-  href?: string;
-  icon: Component;
-  children?: SidebarItemProps[];
+	label: string;
+	href?: string;
+	icon: Component;
+	children?: SidebarItemProps[];
 }
 
 const SidebarItem: Component<{ item: SidebarItemProps }> = (props) => {
-  const location = useLocation();
-  const [isOpen, setIsOpen] = createSignal(false);
+	const location = useLocation();
+	const [isOpen, setIsOpen] = createSignal(false);
 
-  const isActive = () => {
-    if (props.item.href) {
-      return location.pathname === props.item.href;
-    }
-    return props.item.children?.some((child) => child.href === location.pathname);
-  };
+	const isActive = () => {
+		if (props.item.href) {
+			return location.pathname === props.item.href;
+		}
+		return props.item.children?.some(
+			(child) => child.href === location.pathname
+		);
+	};
 
-  const handleClick = (e: MouseEvent) => {
-    if (props.item.children) {
-      e.preventDefault();
-      setIsOpen(!isOpen());
-    }
-  };
+	const handleClick = (e: MouseEvent) => {
+		if (props.item.children) {
+			e.preventDefault();
+			setIsOpen(!isOpen());
+		}
+	};
 
-  return (
-    <div class="w-full">
-      <A
-        href={props.item.href || "#"}
-        class={`flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors duration-200 ${
-          isActive()
-            ? "text-white bg-primary/10 border-r-2 border-primary"
-            : "text-gray-400 hover:text-white hover:bg-white/5"
-        }`}
-        onClick={handleClick}
-      >
-        <div class="flex items-center gap-3">
-          <div class="w-[18px] h-[18px] flex items-center justify-center">
-            <props.item.icon />
-          </div>
-          <span>{props.item.label}</span>
-        </div>
-        <Show when={props.item.children}>
-          <div class="text-gray-500">
-            {isOpen() ? <FiChevronDown /> : <FiChevronRight />}
-          </div>
-        </Show>
-      </A>
-      <Show when={props.item.children && isOpen()}>
-        <div class="bg-black/20">
-          <For each={props.item.children}>
-            {(child) => (
-              <A
-                href={child.href || "#"}
-                class={`flex items-center gap-3 pl-11 pr-4 py-2 text-sm transition-colors duration-200 ${
-                  location.pathname === child.href
-                    ? "text-white bg-white/5"
-                    : "text-gray-400 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <span>{child.label}</span>
-              </A>
-            )}
-          </For>
-        </div>
-      </Show>
-    </div>
-  );
+	return (
+		<div class="w-full">
+			<A
+				href={props.item.href || "#"}
+				class={`flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors duration-200 ${
+					isActive()
+						? "text-white bg-primary/10 border-r-2 border-primary"
+						: "text-gray-400 hover:text-white hover:bg-white/5"
+				}`}
+				onClick={handleClick}
+			>
+				<div class="flex items-center gap-3">
+					<div class="w-[18px] h-[18px] flex items-center justify-center">
+						<props.item.icon />
+					</div>
+					<span>{props.item.label}</span>
+				</div>
+				<Show when={props.item.children}>
+					<div class="text-gray-500">
+						{isOpen() ? <FiChevronDown /> : <FiChevronRight />}
+					</div>
+				</Show>
+			</A>
+			<Show when={props.item.children && isOpen()}>
+				<div class="bg-black/20">
+					<For each={props.item.children}>
+						{(child) => (
+							<A
+								href={child.href || "#"}
+								class={`flex items-center gap-3 pl-11 pr-4 py-2 text-sm transition-colors duration-200 ${
+									location.pathname === child.href
+										? "text-white bg-white/5"
+										: "text-gray-400 hover:text-white hover:bg-white/5"
+								}`}
+							>
+								<span>{child.label}</span>
+							</A>
+						)}
+					</For>
+				</div>
+			</Show>
+		</div>
+	);
 };
 
 const Sidebar: Component = () => {
-  const items: SidebarItemProps[] = [
-    {
-      label: "Home",
-      href: "/",
-      icon: FiHome,
-    },
-    {
-      label: "Deployments",
-      href: "/deployments",
-      icon: FiBox,
-    },
-    {
-      label: "Databases",
-      href: "/databases",
-      icon: FiDatabase,
-    },
-    {
-      label: "Runners",
-      href: "/runners",
-      icon: FiCpu,
-    },
-    {
-      label: "Domain Configuration",
-      icon: FiGlobe,
-      children: [
-        {
-          label: "Domains",
-          href: "/domains",
-          icon: FiGlobe, // Placeholder, not strictly needed for sub-items if not shown
-        },
-        {
-          label: "URLs",
-          href: "/urls",
-          icon: FiGlobe, // Placeholder
-        },
-      ],
-    },
-    {
-      label: "Workspace Settings",
-      href: "/settings",
-      icon: FiSettings,
-    },
-  ];
+	const items: SidebarItemProps[] = [
+		{
+			label: "Home",
+			href: "/",
+			icon: FiHome,
+		},
+		{
+			label: "Deployments",
+			href: "/deployments",
+			icon: FiBox,
+		},
+		{
+			label: "Databases",
+			href: "/databases",
+			icon: FiDatabase,
+		},
+		{
+			label: "Runners",
+			href: "/runners",
+			icon: FiCpu,
+		},
+		{
+			label: "Domain Configuration",
+			icon: FiGlobe,
+			children: [
+				{
+					label: "Domains",
+					href: "/domains",
+					icon: FiGlobe, // Placeholder, not strictly needed for sub-items if not shown
+				},
+				{
+					label: "URLs",
+					href: "/urls",
+					icon: FiGlobe, // Placeholder
+				},
+			],
+		},
+		{
+			label: "Workspace Settings",
+			href: "/settings",
+			icon: FiSettings,
+		},
+	];
 
-  return (
-    <aside class="w-64 h-screen bg-secondary border-r border-white/5 flex flex-col">
-      <div class="p-6 flex items-center gap-3">
-        <img src="/images/patr.svg" alt="Patr Cloud" class="h-8 w-auto" />
-      </div>
-      
-      <nav class="flex-1 overflow-y-auto py-4">
-        <For each={items}>{(item) => <SidebarItem item={item} />}</For>
-      </nav>
+	return (
+		<aside class="w-64 h-screen bg-secondary border-r border-white/5 flex flex-col">
+			<div class="p-6 flex items-center gap-3">
+				<img src="/images/patr.svg" alt="Patr Cloud" class="h-8 w-auto" />
+			</div>
 
-      <div class="p-4 border-t border-white/5">
-        <div class="text-xs text-gray-500 text-center">
-          v1.0.0
-        </div>
-      </div>
-    </aside>
-  );
+			<nav class="flex-1 overflow-y-auto py-4">
+				<For each={items}>{(item) => <SidebarItem item={item} />}</For>
+			</nav>
+
+			<div class="p-4 border-t border-white/5">
+				<div class="text-xs text-gray-500 text-center">v1.0.0</div>
+			</div>
+		</aside>
+	);
 };
 
 export default Sidebar;

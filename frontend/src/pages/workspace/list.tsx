@@ -4,16 +4,18 @@ import {
   PageContainer,
   PageContainerBody,
   PageContainerHead,
+  useToast,
 } from "~/components";
 import Table from "~/components/table";
-import { doFetch } from "~/utils/do-fetch";
+import { httpRequest } from "~/utils/http-request";
 import { useAuthState } from "~/hooks";
 
 const ListWorkspaces = () => {
   const [authState, _] = useAuthState();
+  const toast = useToast();
 
   const [workspace] = createResource(authState, async (auth) => {
-    const response = await doFetch<ListUserWorkspacesResponse>(
+    const response = await httpRequest<ListUserWorkspacesResponse>(
       `${import.meta.env.VITE_BASE_URL}/api/user/workspaces`,
       {
         method: "GET",
@@ -25,12 +27,19 @@ const ListWorkspaces = () => {
         },
       }
     );
+
+    if (!response.ok) {
+      console.error("Failed to fetch workspaces:", response.data.error);
+      toast("Failed to fetch workspaces", "error");
+      return { workspaces: [] };
+    }
+
     return response.data;
   });
 
   return (
     <PageContainer>
-      <PageContainerHead title="Workspaces" subTitle="list" />
+      <PageContainerHead title="Workspaces" subTitle="All Workspaces" />
       <PageContainerBody class="flex flex-col justify-between gap-8">
         <ErrorBoundary
           fallback={(err, reset) => (

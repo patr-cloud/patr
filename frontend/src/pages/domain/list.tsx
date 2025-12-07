@@ -15,9 +15,10 @@ import {
   Table,
   Button,
   ButtonVariant,
+  useToast,
 } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
-import { doFetch } from "~/utils/do-fetch";
+import { httpRequest } from "~/utils/http-request";
 
 // Type definitions based on API bindings
 type WorkspaceDomain = {
@@ -115,6 +116,7 @@ const ListDomainsPage = () => {
   const [authState] = useAuthState();
   const [workspaceId] = useLastWorkspaceId();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const fetchParams = createMemo(() => {
     return [authState(), workspaceId()] as const;
@@ -125,7 +127,7 @@ const ListDomainsPage = () => {
       return { domains: [] };
     }
 
-    const response = await doFetch<GetDomainsForWorkspaceResponse>(
+    const response = await httpRequest<GetDomainsForWorkspaceResponse>(
       `${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain`,
       {
         method: "GET",
@@ -136,16 +138,19 @@ const ListDomainsPage = () => {
       }
     );
 
+    if (!response.ok) {
+      console.error("Failed to fetch domains:", response.data.error);
+      toast("Failed to fetch domains", "error");
+      return { domains: [] };
+    }
+
     console.log("Fetched domains:", response.data);
     return { domains: response.data.domains || [] };
   });
 
   return (
     <PageContainer>
-      <PageContainerHead
-        title="Domains"
-        subTitle="Manage your workspace domains"
-      >
+      <PageContainerHead title="Domains" subTitle="All Domains">
         <div class="ml-auto">
           <Button
             variant={ButtonVariant.Contained}
