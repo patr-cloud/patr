@@ -3,78 +3,78 @@ import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
 interface TableProps<TItem> {
-  /** Flex Grid ratio */
-  column_grids: string[];
-  /** Additional Classes for the table.  */
-  class?: MaybeAccessor<string>;
-  /** Table Headings */
-  headings: JSX.Element[];
-  /** Table Rows */
-  rows: MaybeAccessor<TItem[]>;
-  /** Table Row Render Function */
-  renderRow?: (item: TItem, index: number) => JSX.Element;
+	/** Flex Grid ratio */
+	column_grids: string[];
+	/** Additional Classes for the table.  */
+	class?: MaybeAccessor<string>;
+	/** Table Headings */
+	headings: JSX.Element[];
+	/** Table Rows */
+	rows: MaybeAccessor<TItem[]>;
+	/** Table Row Render Function */
+	renderRow?: (item: TItem, index: number) => JSX.Element;
 }
 
 const TableRow = <TItem extends Record<string, unknown>>(props: {
-  item: TItem;
-  class?: MaybeAccessor<string>;
-  column_classes: string[];
+	item: TItem;
+	class?: MaybeAccessor<string>;
+	column_classes: string[];
 }) => {
-  return (
-    <tr
-      class={`border border-border-color min-h-10 cursor-pointer flex items-center justify-center w-full px-xl
+	return (
+		<tr
+			class={`border border-border-color min-h-10 cursor-pointer flex items-center justify-center w-full px-xl
         bg-secondary-light last-of-type:rounded-b-xs ${get(props.class)}`}
-    >
-      {Object.values(props.item).map((row, index) => (
-        <td
-          class={`flex items-center justify-center ${
-            props.column_classes.at(index) ?? ""
-          }`}
-        >
-          {row as string}
-        </td>
-      ))}
-    </tr>
-  );
+		>
+			{Object.values(props.item).map((row, index) => (
+				<td
+					class={`flex items-center justify-center ${
+						props.column_classes.at(index) ?? ""
+					}`}
+				>
+					{row as string}
+				</td>
+			))}
+		</tr>
+	);
 };
 
 const Table = <TItem extends Record<string, unknown>>(
-  rawProps: TableProps<TItem>
+	rawProps: TableProps<TItem>
 ) => {
-  const props = mergeProps(
-    {
-      class: "",
-    },
-    rawProps
-  );
-  return (
-    <table class={`rounded-xs w-full text-white ${get(props.class)}`}>
-      <thead class="flex items-center justify-center py-sm bg-secondary-medium w-full rounded-t-xs">
-        <tr class="flex items-center justify-center px-xl w-full">
-          {props.headings.map((heading, index) => (
-            <th
-              class={`flex items-center justify-center text-sm font-medium ${
-                props.column_grids.at(index) ?? ""
-              }`}
-            >
-              {heading}
-            </th>
-          ))}
-        </tr>
-      </thead>
+	const props = mergeProps(
+		{
+			class: "",
+		},
+		rawProps
+	);
+	return (
+		<table class={`rounded-xs w-full text-white ${get(props.class)}`}>
+			<thead class="flex items-center justify-center py-sm bg-secondary-medium w-full rounded-t-xs">
+				<tr class="flex items-center justify-center px-xl w-full">
+					{props.headings.map((heading, index) => (
+						<th
+							class={`flex items-center justify-center text-sm font-medium ${
+								props.column_grids.at(index) ?? ""
+							}`}
+						>
+							{heading}
+						</th>
+					))}
+				</tr>
+			</thead>
 
-      <tbody class="w-full h-full flex flex-col justify-start items-start rounded-b-xs">
-        {get(props.rows).length === 0 && (
-          <tr class="w-full flex justify-center items-center p-md text-grey bg-secondary-light rounded-b-xs">
-            <td>No data found.</td>
-          </tr>
-        )}
-        {get(props.rows).map((row, index) => (
-          <>{props.renderRow ? props.renderRow(row, index) : null}</>
-        ))}
-      </tbody>
-    </table>
-  );
+			<tbody class="w-full h-full flex flex-col justify-start items-start rounded-b-xs">
+				{get(props.rows).length === 0 && (
+					<tr class="w-full flex justify-center items-center p-md text-grey bg-secondary-light rounded-b-xs">
+						<td>No data found.</td>
+					</tr>
+				)}
+				{get(props.rows).map((row, index) => (
+					<>{props.renderRow ? props.renderRow(row, index) : null}</>
+				))}
+			</tbody>
+		</table>
+	);
 };
 
 export { TableRow };

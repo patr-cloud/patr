@@ -26,7 +26,6 @@ const SignUp = () => {
       recoveryEmail: email(),
     };
 
-    console.log("Sign Up Request:", requestBody);
     const resp = await httpRequest("/api/auth/sign-up", {
       method: "POST",
       body: JSON.stringify(requestBody),

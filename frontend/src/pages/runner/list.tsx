@@ -48,7 +48,7 @@ const ListRunnersPage = () => {
 
   return (
     <PageContainer>
-      <PageContainerHead title="Runner" subTitle="List" />
+      <PageContainerHead title="Runner" subTitle="All Runners" />
       <PageContainerBody class="flex flex-col justify-between gap-8">
         <ErrorBoundary
           fallback={(err, reset) => (

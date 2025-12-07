@@ -150,10 +150,7 @@ const ListDomainsPage = () => {
 
   return (
     <PageContainer>
-      <PageContainerHead
-        title="Domains"
-        subTitle="Manage your workspace domains"
-      >
+      <PageContainerHead title="Domains" subTitle="All Domains">
         <div class="ml-auto">
           <Button
             variant={ButtonVariant.Contained}

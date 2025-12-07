@@ -11,7 +11,11 @@ import {
 const CreateWorkspace = () => {
   return (
     <PageContainer>
-      <PageContainerHead title="Create Workspace" subTitle="subtitle" />
+      <PageContainerHead
+        title="Workspaces"
+        titleUrl="/workspace"
+        subTitle="Create New Workspace"
+      />
       <PageContainerBody class="flex flex-col justify-between gap-8">
         <div class="flex gap-4 items-center">
           <InputLabel

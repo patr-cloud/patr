@@ -60,7 +60,11 @@ const DomainInfo = () => {
         )}
       >
         <Suspense fallback={<div>Loading...</div>}>
-          <PageContainerHead title="Domain" subTitle={domainInfo()?.name} />
+          <PageContainerHead
+            title="Domains"
+            titleUrl="/domains"
+            subTitle={domainInfo()?.name}
+          />
         </Suspense>
       </ErrorBoundary>
     </PageContainer>

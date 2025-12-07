@@ -132,8 +132,6 @@ const Login = () => {
     e.preventDefault();
 
     const { userId, password } = inputs();
-    // TODO: remove debug log as it exposes the password in console
-    console.log("Submitting login for", { userId, password });
     if (!validateInputs()) return;
 
     const loginResp = await httpRequest<LoginResponse>("/api/auth/sign-in", {

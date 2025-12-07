@@ -88,7 +88,7 @@ const ListDeploymentsPage = () => {
 
   return (
     <PageContainer>
-      <PageContainerHead title="Deployments" subTitle="List of Deployments">
+      <PageContainerHead title="Deployments" subTitle="All Deployments">
         <A href="/deployments/new">CREATE NEW DEPLOYMENT</A>
       </PageContainerHead>
 

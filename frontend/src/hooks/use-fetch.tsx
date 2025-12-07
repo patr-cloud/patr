@@ -3,7 +3,7 @@ import { useAuthState, useLastWorkspaceId } from "./state-hooks";
 import { createMemo, createResource } from "solid-js";
 
 interface UseFetchProps {
-  id: MaybeAccessor<string>;
+	id: MaybeAccessor<string>;
 }
 
 /**
@@ -13,14 +13,14 @@ interface UseFetchProps {
 
  */
 const useFetch = (props: UseFetchProps) => {
-  const [authState] = useAuthState();
-  const [workspaceId] = useLastWorkspaceId();
+	const [authState] = useAuthState();
+	const [workspaceId] = useLastWorkspaceId();
 
-  const fetchParams = createMemo(() => {
-    return [authState(), workspaceId()] as const;
-  });
+	const fetchParams = createMemo(() => {
+		return [authState(), workspaceId()] as const;
+	});
 
-  return { fetchParams };
+	return { fetchParams };
 };
 
 export default useFetch;

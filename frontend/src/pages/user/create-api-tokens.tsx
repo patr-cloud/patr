@@ -92,7 +92,11 @@ const CreateApiTokens = () => {
 
   return (
     <PageContainer>
-      <PageContainerHead title="Create API Tokens" subTitle="subtitle" />
+      <PageContainerHead
+        title="API Tokens"
+        titleUrl="/profile/api-tokens/new"
+        subTitle="Create New Token"
+      />
       <PageContainerBody class="flex flex-col justify-between gap-8">
         <form
           onSubmit={onSubmit}

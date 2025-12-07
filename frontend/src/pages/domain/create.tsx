@@ -206,8 +206,9 @@ const CreateDomainPage = () => {
   return (
     <PageContainer>
       <PageContainerHead
-        title="Add Domain"
-        subTitle="Add a new domain to your workspace"
+        title="Domains"
+        titleUrl="/domains"
+        subTitle="Add Domain"
       />
       <PageContainerBody>
         <form onSubmit={onSubmit} class="space-y-6">

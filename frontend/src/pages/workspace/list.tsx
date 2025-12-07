@@ -39,7 +39,7 @@ const ListWorkspaces = () => {
 
   return (
     <PageContainer>
-      <PageContainerHead title="Workspaces" subTitle="list" />
+      <PageContainerHead title="Workspaces" subTitle="All Workspaces" />
       <PageContainerBody class="flex flex-col justify-between gap-8">
         <ErrorBoundary
           fallback={(err, reset) => (
