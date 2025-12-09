@@ -55,3 +55,11 @@ pub fn runner_connection_lock_prefix() -> String {
 pub fn registry_blob_upload_part_prefix(session_id: &Uuid) -> String {
 	format!("registryBlobUploadPart:{}", session_id)
 }
+/// The prefix used for authorization_code for oauth
+pub fn oauth_authorization_code_prefix(authorization_code: &str) -> String {
+	format!("auth_code:{}", authorization_code)
+}
+/// The prefix used for refresh_token for oauth
+pub fn oauth_refresh_token_prefix(refresh_token: &str) -> String {
+	format!("refresh_token:{}", refresh_token)
+}

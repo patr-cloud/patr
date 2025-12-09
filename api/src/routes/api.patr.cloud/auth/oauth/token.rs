@@ -40,11 +40,11 @@ pub async fn token(
 		grant_type,
 		OAuthTokenGrantType::AuthorizationCode | OAuthTokenGrantType::RefreshToken
 	) {
-		return Err(ErrorType::InvalidGrantType);
+		return Err(ErrorType::OAuthInvalidGrantType);
 	}
 	if grant_type == OAuthTokenGrantType::AuthorizationCode {
 		// Handle authorization code grant type
-		let key = format!("auth_code:{}", code);
+		let key = redis::keys::oauth_authorization_code_prefix(&code);
 		let auth_code_string: Option<String> = redis.get(&key).await.inspect_err(|err| {
 			error!(
 				"Error retrieving authorization code from Redis: {}",
@@ -53,24 +53,24 @@ pub async fn token(
 		})?;
 		_ = redis.del(&key).await;
 		if auth_code_string.is_none() {
-			return Err(ErrorType::InvalidAuthorizationCode);
+			return Err(ErrorType::OAuthInvalidAuthorizationCode);
 		}
 		let auth_code_data: AuthCodeData = serde_json::from_str(&auth_code_string.unwrap())
-			.map_err(|_| ErrorType::InvalidAuthorizationCode)?;
+			.map_err(|_| ErrorType::OAuthInvalidAuthorizationCode)?;
 		if auth_code_data.code_challenge_method == CodeChallengeHashMethod::SHA256 {
 			let result = Sha256::digest(code_verifier.as_bytes());
 			let code_verifier_hashed = URL_SAFE_NO_PAD.encode(&result);
 			if code_verifier_hashed != auth_code_data.code_challenge {
-				return Err(ErrorType::InvalidGrantType);
+				return Err(ErrorType::OAuthInvalidAuthorizationCode);
 			}
 		} else {
 			if code_verifier != auth_code_data.code_challenge {
-				return Err(ErrorType::InvalidGrantType);
+				return Err(ErrorType::OAuthInvalidAuthorizationCode);
 			}
 		}
 	} else if grant_type == OAuthTokenGrantType::RefreshToken {
 		// Handle refresh token grant type
-		let key = format!("refresh_token:{}", refresh_token.unwrap());
+		let key = redis::keys::oauth_refresh_token_prefix(&refresh_token.unwrap());
 		let user_id: Option<String> = redis.get(&key).await.inspect_err(|err| {
 			error!(
 				"Error retrieving refresh token from Redis: {}",
@@ -79,14 +79,17 @@ pub async fn token(
 		})?;
 		let _ = redis.del(&key).await;
 		if user_id.is_none() {
-			return Err(ErrorType::InvalidGrantType);
+			return Err(ErrorType::OAuthInvalidRefreshToken);
 		}
 	}
 	let access_token = Uuid::new_v4().to_string();
 	let refresh_token = Uuid::new_v4().to_string();
-	let key = format!("refresh_token:{}", refresh_token);
 	redis
-		.setex(&key, 3600, "some_user_id")
+		.setex(
+			redis::keys::oauth_refresh_token_prefix(&refresh_token),
+			3600,
+			"some_user_id",
+		)
 		.await
 		.inspect_err(|err| {
 			error!("Error storing refresh token in Redis: {}", err.to_string());

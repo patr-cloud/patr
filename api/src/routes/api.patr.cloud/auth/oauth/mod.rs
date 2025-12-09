@@ -11,6 +11,8 @@ use crate::prelude::*;
 /// returns a temporary code that can be exchanged for an access token and a
 /// refresh token.
 mod authorize;
+/// The endpoint to submit user credentials and get an authorization code.
+mod authorize_post;
 /// The endpoint to get details about the access token and refresh token.
 ///
 /// The third-party app can call this endpoint to get information about the
@@ -41,7 +43,7 @@ mod revoke;
 /// the [`authorize()`] endpoint.
 mod token;
 
-use self::{authorize::*, introspect::*, revoke::*, token::*};
+use self::{authorize::*, authorize_post::*, introspect::*, revoke::*, token::*};
 
 /// Sets up the oauth routes
 #[instrument(skip(state))]
