@@ -171,8 +171,8 @@ const CreateDeploymentPage = () => {
               <div class="flex-10 flex items-center gap-4 w-full">
                 <InputDropdown
                   options={[
-                    { value: "patr-registry", label: "Patr Registry" },
-                    { value: "docker-hub", label: "Docker Hub" },
+                    { value: "registry.patr.cloud", label: "Patr Registry" },
+                    { value: "docker.io", label: "Docker Hub" },
                   ]}
                   endIcon={() => (
                     <button>

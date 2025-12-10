@@ -400,7 +400,7 @@ const DeploymentInfo = () => {
                         if (!info) return "";
                         if (info.registry === "registry.patr.cloud") {
                           return "repositoryId" in info
-                            ? info.repositoryId
+                            ? (info.repositoryId as string)
                             : "";
                         }
                         return "imageName" in info ? info.imageName : "";
