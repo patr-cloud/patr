@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE deployment SET status = $1 WHERE id = $2 AND status != $1 AND (($1 = 'errored' AND status = 'deploying') OR ($1 = 'deploying' AND status = 'errored') OR ($1 IN ('deploying', 'errored') AND status = 'running') OR ($1 = 'running' AND status IN ('deploying', 'errored')));",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "deployment_status",
+            "kind": {
+              "Enum": [
+                "created",
+                "pushed",
+                "deploying",
+                "running",
+                "stopped",
+                "errored",
+                "deleted"
+              ]
+            }
+          }
+        },
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "490eaf45f3d53614b267a6c6fed1a4a5b9b7fe9f3ccf868a87b304ab198636e0"
+}

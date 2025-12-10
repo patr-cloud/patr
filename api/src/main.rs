@@ -192,6 +192,35 @@ async fn main() {
 
 	tracing::info!("Config parsed. Running in {} mode", config.environment);
 
+	tokio::spawn(async move {
+		let ctrl_c = async {
+			tokio::signal::ctrl_c()
+				.await
+				.expect("Failed to listen for SIGINT")
+		};
+
+		#[cfg(unix)]
+		let terminate = async {
+			tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+				.expect("failed to install signal handler")
+				.recv()
+				.await;
+		};
+
+		#[cfg(not(unix))]
+		let terminate = std::future::pending::<()>();
+
+		tokio::select! {
+			_ = ctrl_c => (),
+			_ = terminate => (),
+		}
+
+		tracing::info!("Received shutdown signal, cancelling all connections");
+		GLOBAL_CANCEL_TOKEN
+			.get_or_init(CancellationToken::new)
+			.cancel();
+	});
+
 	let database = db::connect(&config.database).await;
 
 	let redis = redis::connect(&config.redis).await;
@@ -214,31 +243,12 @@ async fn main() {
 	_ = tracer_provider.shutdown();
 }
 
-/// Listen for the exit signal and stop the server when the signal is received.
+/// Returns a future that completes when the global cancellation token is
+/// cancelled. Use this for graceful shutdown handlers.
 #[tracing::instrument]
 async fn exit_signal() {
-	let ctrl_c = async {
-		tokio::signal::ctrl_c()
-			.await
-			.expect("Failed to listen for SIGINT")
-	};
-
-	#[cfg(unix)]
-	let terminate = async {
-		tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-			.expect("failed to install signal handler")
-			.recv()
-			.await;
-	};
-
-	#[cfg(not(unix))]
-	let terminate = std::future::pending::<()>();
-
-	tokio::select! {
-		_ = ctrl_c => (),
-		_ = terminate => (),
-	}
 	GLOBAL_CANCEL_TOKEN
 		.get_or_init(CancellationToken::new)
-		.cancel();
+		.cancelled()
+		.await
 }
