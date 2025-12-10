@@ -31,7 +31,7 @@ pub async fn update_api_token(
 		redis,
 		client_ip: _,
 		user_data,
-		config: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, UpdateApiTokenRequest>,
 ) -> Result<AppResponse<UpdateApiTokenRequest>, ErrorType> {
 	trace!("Updating API token: {}", token_id);

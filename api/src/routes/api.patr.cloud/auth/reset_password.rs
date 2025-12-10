@@ -29,7 +29,7 @@ pub async fn reset_password(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
+		state,
 	}: AppRequest<'_, ResetPasswordRequest>,
 ) -> Result<AppResponse<ResetPasswordRequest>, ErrorType> {
 	info!("Resetting password for user: `{user_id}`");
@@ -106,7 +106,7 @@ pub async fn reset_password(
 	};
 
 	let success = argon2::Argon2::new_with_secret(
-		config.password_pepper.as_ref(),
+		state.config.password_pepper.as_ref(),
 		Algorithm::Argon2id,
 		Version::V0x13,
 		constants::HASHING_PARAMS,
@@ -129,7 +129,7 @@ pub async fn reset_password(
 	}
 
 	let hashed_password = argon2::Argon2::new_with_secret(
-		config.password_pepper.as_ref(),
+		state.config.password_pepper.as_ref(),
 		Algorithm::Argon2id,
 		Version::V0x13,
 		constants::HASHING_PARAMS,

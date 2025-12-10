@@ -25,8 +25,8 @@ async fn create_secret(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, CreateSecretRequest>,
 ) -> Result<AppResponse<CreateSecretRequest>, ErrorType> {
 	info!("Starting: Create secret");
@@ -56,8 +56,8 @@ async fn delete_secret(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, DeleteSecretRequest>,
 ) -> Result<AppResponse<DeleteSecretRequest>, ErrorType> {
 	info!("Starting: Delete secret");
@@ -83,8 +83,8 @@ async fn list_secrets_for_workspace(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, ListSecretsForWorkspaceRequest>,
 ) -> Result<AppResponse<ListSecretsForWorkspaceRequest>, ErrorType> {
 	info!("Starting: List secrets for a workspace");
@@ -112,8 +112,8 @@ async fn update_secret(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, UpdateSecretRequest>,
 ) -> Result<AppResponse<UpdateSecretRequest>, ErrorType> {
 	info!("Starting: Update secret");

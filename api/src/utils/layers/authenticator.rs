@@ -131,7 +131,7 @@ where
 				req.database,
 				req.redis,
 				allowed_client_type,
-				&req.config,
+				&req.state.config,
 				req.client_ip,
 				token,
 			)
@@ -142,14 +142,14 @@ where
 				database,
 				redis,
 				client_ip,
-				config,
+				state,
 			} = req;
 			let req = AuthenticatedAppRequest {
 				request,
 				database,
 				redis,
 				client_ip,
-				config,
+				state,
 				user_data,
 			};
 			inner.call(req).await

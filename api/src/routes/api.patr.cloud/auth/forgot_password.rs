@@ -24,7 +24,7 @@ pub async fn forgot_password(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
+		state,
 	}: AppRequest<'_, ForgotPasswordRequest>,
 ) -> Result<AppResponse<ForgotPasswordRequest>, ErrorType> {
 	info!("Initiating forgot password request for user: `{user_id}`");
@@ -74,7 +74,7 @@ pub async fn forgot_password(
 		.to_string();
 	let password_reset_token_expiry = now.add(constants::OTP_VALIDITY);
 	let hashed_password_reset_token = argon2::Argon2::new_with_secret(
-		config.password_pepper.as_ref(),
+		state.config.password_pepper.as_ref(),
 		Algorithm::Argon2id,
 		Version::V0x13,
 		constants::HASHING_PARAMS,

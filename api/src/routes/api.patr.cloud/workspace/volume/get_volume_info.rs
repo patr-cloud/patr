@@ -22,8 +22,8 @@ pub async fn get_volume_info(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, GetVolumeInfoRequest>,
 ) -> Result<AppResponse<GetVolumeInfoRequest>, ErrorType> {
 	trace!("Getting volume info: {}", volume_id);

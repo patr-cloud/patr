@@ -43,7 +43,7 @@ async fn is_domain_personal(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
+		state,
 	}: AppRequest<'_, IsDomainPersonalRequest>,
 ) -> Result<AppResponse<IsDomainPersonalRequest>, ErrorType> {
 	info!("Starting: Check for is domain personal");
@@ -73,8 +73,8 @@ async fn add_dns_record(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, AddDNSRecordRequest>,
 ) -> Result<AppResponse<AddDNSRecordRequest>, ErrorType> {
 	info!("Starting: Add DNS record");
@@ -101,8 +101,8 @@ async fn delete_dns_record(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, DeleteDNSRecordRequest>,
 ) -> Result<AppResponse<DeleteDNSRecordRequest>, ErrorType> {
 	info!("Starting: Delete DNS record");
@@ -128,9 +128,9 @@ async fn get_doamin_dns_record(
 		},
 		database,
 		redis: _,
-		client_ip: _,
-		config,
+		client_ip,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, GetDomainDNSRecordRequest>,
 ) -> Result<AppResponse<GetDomainDNSRecordRequest>, ErrorType> {
 	info!("Starting: Get domain DNS record");
@@ -157,10 +157,10 @@ async fn get_domain_info_in_workspace(
 			body,
 		},
 		database,
-		redis: _,
-		client_ip: _,
-		config,
+		redis,
+		client_ip,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, GetDomainInfoInWorkspaceRequest>,
 ) -> Result<AppResponse<GetDomainInfoInWorkspaceRequest>, ErrorType> {
 	info!("Starting: Get domain info in workspace");
@@ -187,10 +187,10 @@ async fn update_domain_dns_record(
 			body,
 		},
 		database,
-		redis: _,
-		client_ip: _,
-		config,
+		redis,
+		client_ip,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, UpdateDomainDNSRecordRequest>,
 ) -> Result<AppResponse<UpdateDomainDNSRecordRequest>, ErrorType> {
 	info!("Starting: Update domain DNS record");
@@ -217,8 +217,8 @@ async fn verify_domain_in_workspace(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, VerifyDomainInWorkspaceRequest>,
 ) -> Result<AppResponse<VerifyDomainInWorkspaceRequest>, ErrorType> {
 	info!("Starting: Check to verify domain in workspace");

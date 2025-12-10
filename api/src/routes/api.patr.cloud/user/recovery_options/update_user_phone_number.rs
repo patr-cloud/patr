@@ -14,7 +14,7 @@ pub async fn update_user_phone_number(
 		redis,
 		client_ip,
 		user_data,
-		config,
+		state,
 	}: AuthenticatedAppRequest<'_, UpdateUserPhoneNumberRequest>,
 ) -> Result<AppResponse<UpdateUserPhoneNumberRequest>, ErrorType> {
 	todo!()

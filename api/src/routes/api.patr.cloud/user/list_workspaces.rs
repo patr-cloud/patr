@@ -19,8 +19,8 @@ pub async fn list_workspaces(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data,
+		state: _,
 	}: AuthenticatedAppRequest<'_, ListUserWorkspacesRequest>,
 ) -> Result<AppResponse<ListUserWorkspacesRequest>, ErrorType> {
 	info!("Listing all user workspaces");

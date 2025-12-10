@@ -111,7 +111,7 @@ where
 				database,
 				redis,
 				client_ip,
-				config,
+				state,
 			} = req;
 			let req = AppRequest {
 				request: ProcessedApiRequest::try_from(request).map_err(
@@ -126,7 +126,7 @@ where
 				database,
 				redis,
 				client_ip,
-				config,
+				state,
 			};
 			inner.call(req).await
 		}

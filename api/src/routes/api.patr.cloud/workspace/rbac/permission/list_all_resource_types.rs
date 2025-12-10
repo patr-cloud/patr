@@ -29,8 +29,8 @@ pub async fn list_all_resource_types(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, ListAllResourceTypesRequest>,
 ) -> Result<AppResponse<ListAllResourceTypesRequest>, ErrorType> {
 	info!("Listing all resource types in the database");

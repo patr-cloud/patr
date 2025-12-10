@@ -22,7 +22,7 @@ pub async fn logout(
 		redis,
 		client_ip: _,
 		user_data,
-		config,
+		state,
 	}: AuthenticatedAppRequest<'_, LogoutRequest>,
 ) -> Result<AppResponse<LogoutRequest>, ErrorType> {
 	info!("Logging out user: {}", user_data.id);
@@ -56,7 +56,7 @@ pub async fn logout(
 	};
 
 	let success = argon2::Argon2::new_with_secret(
-		config.password_pepper.as_bytes(),
+		state.config.password_pepper.as_bytes(),
 		Algorithm::Argon2id,
 		Version::V0x13,
 		constants::HASHING_PARAMS,

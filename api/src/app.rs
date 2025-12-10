@@ -145,8 +145,8 @@ where
 	pub redis: &'a mut RedisClient,
 	/// The IP address of the client that made the request.
 	pub client_ip: IpAddr,
-	/// The application configuration.
-	pub config: AppConfig,
+	/// The application state
+	pub state: AppState,
 }
 
 /// A request object that is passed through the tower layers and services for
@@ -167,8 +167,8 @@ where
 	pub redis: &'a mut RedisClient,
 	/// The IP address of the client that made the request.
 	pub client_ip: IpAddr,
-	/// The application configuration.
-	pub config: AppConfig,
+	/// The application state
+	pub state: AppState,
 }
 
 /// A request object that is passed through the tower layers and services for
@@ -192,6 +192,6 @@ where
 	pub client_ip: IpAddr,
 	/// The user data of the current authenticated user.
 	pub user_data: RequestUserData,
-	/// The application configuration.
-	pub config: AppConfig,
+	/// The application state
+	pub state: AppState,
 }

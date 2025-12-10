@@ -26,8 +26,8 @@ pub async fn change_password(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, ChangePasswordRequest>,
 ) -> Result<AppResponse<ChangePasswordRequest>, ErrorType> {
 	info!("Changing user password");
@@ -48,7 +48,7 @@ pub async fn change_password(
 	.await?;
 
 	let success = argon2::Argon2::new_with_secret(
-		config.password_pepper.as_ref(),
+		state.config.password_pepper.as_ref(),
 		Algorithm::Argon2id,
 		Version::V0x13,
 		constants::HASHING_PARAMS,

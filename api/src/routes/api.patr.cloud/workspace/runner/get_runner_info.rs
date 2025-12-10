@@ -23,8 +23,8 @@ pub async fn get_runner_info(
 		database,
 		redis,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, GetRunnerInfoRequest>,
 ) -> Result<AppResponse<GetRunnerInfoRequest>, ErrorType> {
 	info!("Getting information about the runner `{runner_id}`");

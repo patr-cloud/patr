@@ -19,7 +19,7 @@ pub async fn get_user_details(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
+		state: _,
 		user_data,
 	}: AuthenticatedAppRequest<'_, GetUserDetailsRequest>,
 ) -> Result<AppResponse<GetUserDetailsRequest>, ErrorType> {

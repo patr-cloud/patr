@@ -14,7 +14,7 @@ pub async fn verify_user_email(
 		redis,
 		client_ip,
 		user_data,
-		config,
+		state,
 	}: AuthenticatedAppRequest<'_, VerifyUserEmailRequest>,
 ) -> Result<AppResponse<VerifyUserEmailRequest>, ErrorType> {
 	todo!()

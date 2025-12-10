@@ -36,7 +36,7 @@ pub async fn create_api_token(
 		redis: _,
 		client_ip: _,
 		user_data,
-		config,
+		state,
 	}: AuthenticatedAppRequest<'_, CreateApiTokenRequest>,
 ) -> Result<AppResponse<CreateApiTokenRequest>, ErrorType> {
 	info!("Creating API token");
@@ -45,7 +45,7 @@ pub async fn create_api_token(
 
 	let refresh_token = Uuid::new_v4();
 	let hashed_refresh_token = argon2::Argon2::new_with_secret(
-		config.password_pepper.as_ref(),
+		state.config.password_pepper.as_ref(),
 		Algorithm::Argon2id,
 		Version::V0x13,
 		constants::HASHING_PARAMS,

@@ -18,7 +18,7 @@ pub async fn get_mfa_secret(
 		database,
 		redis,
 		client_ip: _,
-		config: _,
+		state: _,
 		user_data,
 	}: AuthenticatedAppRequest<'_, GetMfaSecretRequest>,
 ) -> Result<AppResponse<GetMfaSecretRequest>, ErrorType> {

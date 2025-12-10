@@ -15,7 +15,7 @@ pub async fn list_recovery_options(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
+		state: _,
 	}: AppRequest<'_, ListRecoveryOptionsRequest>,
 ) -> Result<AppResponse<ListRecoveryOptionsRequest>, ErrorType> {
 	info!("Listing recovery options for user by query: `{user_id}`");

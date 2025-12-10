@@ -21,7 +21,7 @@ pub async fn revoke_api_token(
 		redis,
 		client_ip: _,
 		user_data: _,
-		config: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, RevokeApiTokenRequest>,
 ) -> Result<AppResponse<RevokeApiTokenRequest>, ErrorType> {
 	trace!("Revoke API token: {}", token_id);

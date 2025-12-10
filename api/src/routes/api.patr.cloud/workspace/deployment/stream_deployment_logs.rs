@@ -48,8 +48,8 @@ pub async fn stream_deployment_logs(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data: _,
+		state,
 	}: AuthenticatedAppRequest<'_, StreamDeploymentLogsRequest>,
 ) -> Result<AppResponse<StreamDeploymentLogsRequest>, ErrorType> {
 	info!("Streaming logs for deployment: {}", deployment_id);
@@ -72,14 +72,21 @@ pub async fn stream_deployment_logs(
 
 	let mut client_request = Uri::builder()
 		.scheme(
-			if config.opentelemetry.logs.endpoint.starts_with("https") {
+			if state
+				.config
+				.opentelemetry
+				.logs
+				.endpoint
+				.starts_with("https")
+			{
 				"wss"
 			} else {
 				"ws"
 			},
 		)
 		.authority(
-			config
+			state
+				.config
 				.opentelemetry
 				.logs
 				.endpoint

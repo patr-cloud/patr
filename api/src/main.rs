@@ -64,7 +64,7 @@ pub mod prelude {
 	pub use crate::{
 		app::{AppRequest, AppState, AuthenticatedAppRequest, UnprocessedAppRequest},
 		redis,
-		utils::{RouterExt, TimeoutExt, constants, layers::ClientType},
+		utils::{EitherExt, RouterExt, TimeoutExt, constants, layers::ClientType},
 	};
 
 	/// The type of the database connection. A mutable reference to this should
@@ -89,6 +89,16 @@ pub mod prelude {
 	/// A type alias is used here so that it can be referenced everywhere easily
 	pub type DatabaseType = sqlx::Postgres;
 }
+
+use std::sync::OnceLock;
+
+use tokio_util::sync::CancellationToken;
+
+/// The global cancellation token that will be used to cancel the connections
+/// when the runner is stopped. This token will be used to cancel all the
+/// connections that are open in the runner.
+#[doc(hidden)]
+static GLOBAL_CANCEL_TOKEN: OnceLock<CancellationToken> = OnceLock::new();
 
 #[tokio::main]
 async fn main() {
@@ -228,4 +238,7 @@ async fn exit_signal() {
 		_ = ctrl_c => (),
 		_ = terminate => (),
 	}
+	GLOBAL_CANCEL_TOKEN
+		.get_or_init(CancellationToken::new)
+		.cancel();
 }

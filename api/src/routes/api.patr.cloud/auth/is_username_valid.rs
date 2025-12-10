@@ -15,7 +15,7 @@ pub async fn is_username_valid(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
+		state: _,
 	}: AppRequest<'_, IsUsernameValidRequest>,
 ) -> Result<AppResponse<IsUsernameValidRequest>, ErrorType> {
 	info!("Checking for validity of username: `{username}`");

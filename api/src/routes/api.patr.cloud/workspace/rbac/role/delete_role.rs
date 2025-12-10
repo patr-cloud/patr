@@ -27,8 +27,8 @@ pub async fn delete_role(
 		database,
 		redis,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, DeleteRoleRequest>,
 ) -> Result<AppResponse<DeleteRoleRequest>, ErrorType> {
 	info!("Deleting role: {} in workspace: {}", role_id, workspace_id);

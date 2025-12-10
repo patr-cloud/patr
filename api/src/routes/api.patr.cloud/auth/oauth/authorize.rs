@@ -13,7 +13,7 @@ pub async fn authorize(
 						client_id,
 						redirect_uri,
 						scope,
-						state,
+						state: oauth_state,
 						code_challenge,
 						code_challenge_method,
 					},
@@ -23,7 +23,7 @@ pub async fn authorize(
 		database,
 		redis: _,
 		client_ip,
-		config,
+		state,
 	}: AppRequest<'_, OAuthAuthorizeRequest>,
 ) -> Result<AppResponse<OAuthAuthorizeRequest>, ErrorType> {
 	todo!()

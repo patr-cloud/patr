@@ -6,7 +6,7 @@ use crate::prelude::*;
 /// The handler to update a managed URL. At the moment, only the URL can be
 /// updated. However, this will be expanded in the future. At least one
 /// parameter must be provided for the update.
-#[instrument(skip(database, config))]
+#[instrument(skip(database, state))]
 pub async fn update_managed_url(
 	AuthenticatedAppRequest {
 		request:
@@ -30,8 +30,8 @@ pub async fn update_managed_url(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data: _,
+		state,
 	}: AuthenticatedAppRequest<'_, UpdateManagedURLRequest>,
 ) -> Result<AppResponse<UpdateManagedURLRequest>, ErrorType> {
 	info!("Updating ManagedURL with ID: `{}`", managed_url_id);
@@ -157,7 +157,7 @@ pub async fn update_managed_url(
 	super::sync_worker_kv_for_domain(
 		&format!("{}.{}", managed_url.sub_domain, managed_url.domain),
 		&mut **database,
-		&config,
+		&state.config,
 	)
 	.await?;
 

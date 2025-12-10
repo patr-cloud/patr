@@ -1,7 +1,7 @@
-use std::{io, process::Stdio};
+use std::{io, pin::pin, process::Stdio};
 
 use fslock::LockFile;
-use futures::future;
+use futures::{TryFutureExt, future};
 use tokio::{
 	fs,
 	process::Command,
@@ -19,6 +19,8 @@ where
 	/// to start. Nginx will run until the exit signal is received.
 	#[instrument(skip(self))]
 	pub(super) async fn run_nginx(&self) -> Result<!, RunnerError> {
+		let mut receiver = self.state.nginx_reload_sender.subscribe();
+
 		fs::create_dir_all("./data/nginx")
 			.await
 			.map_err(RunnerError::NginxSetupError)?;
@@ -95,7 +97,24 @@ where
 				continue;
 			};
 
-			let status = child.wait().await.map_err(RunnerError::NginxExecError)?;
+			let status = loop {
+				let Some(status) = future::select(
+					pin!(child.wait().map_err(RunnerError::NginxExecError)),
+					pin!(receiver.changed()),
+				)
+				.with_cancel_check()
+				.await?
+				.into_left() else {
+					info!("Reloading nginx configuration");
+					if let Err(err) = self.reload_nginx().await {
+						error!("Failed to reload nginx: {:?}", err);
+					} else {
+						info!("Nginx configuration reloaded successfully");
+					}
+					continue;
+				};
+				break status?;
+			};
 
 			if status.success() {
 				warn!("Nginx exited successfully");
@@ -112,7 +131,6 @@ where
 	/// with the error if nginx fails to reload. This function is useful when
 	/// the nginx configuration is changed and needs to be reloaded without
 	/// restarting the nginx process.
-	#[expect(dead_code)]
 	#[instrument(skip(self))]
 	pub(super) async fn reload_nginx(&self) -> Result<(), RunnerError> {
 		let output = Command::new("nginx")

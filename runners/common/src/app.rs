@@ -1,6 +1,21 @@
+use models::api::workspace::deployment::DeploymentStatus;
 use preprocess::Preprocessable;
+use tokio::sync::{mpsc::UnboundedSender, watch};
 
 use crate::prelude::*;
+
+/// Represents a deployment status update event that is sent from the
+/// resource executor task to the main runner.
+#[derive(Debug, Clone)]
+pub enum ExecutorStatusUpdate {
+	/// A deployment's status has been updated.
+	DeploymentStatusUpdated {
+		/// The ID of the deployment that was updated.
+		deployment_id: Uuid,
+		/// The new status of the deployment.
+		status: DeploymentStatus,
+	},
+}
 
 /// The global state of the application.
 /// This will contain the database connection and other configuration.
@@ -16,6 +31,15 @@ where
 	/// The initialized state of the runner. This will be used to create new
 	/// instances of the runner.
 	pub runner_state: E::InitializedState,
+	/// Channel sender for deployment status updates. When a resource executor
+	/// task updates a deployment's status, it sends a signal through this
+	/// channel so the main runner can react to the change.
+	pub task_status_sender: UnboundedSender<ExecutorStatusUpdate>,
+	/// Channel sender for reloading nginx configuration. When a resource
+	/// executor task updates a deployment that requires nginx configuration
+	/// change, it sends a signal through this channel so the nginx server can
+	/// reload its configuration.
+	pub nginx_reload_sender: watch::Sender<()>,
 }
 
 impl<E> Clone for AppState<E>
@@ -27,6 +51,8 @@ where
 			database: self.database.clone(),
 			config: self.config.clone(),
 			runner_state: self.runner_state.clone(),
+			task_status_sender: self.task_status_sender.clone(),
+			nginx_reload_sender: self.nginx_reload_sender.clone(),
 		}
 	}
 }

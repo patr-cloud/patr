@@ -158,6 +158,15 @@ where
 				.bind(deployment_id)
 				.execute(&state.database)
 				.await?;
+
+				// Send status update signal to upstream Patr server to update the status there
+				let _ =
+					state
+						.task_status_sender
+						.send(ExecutorStatusUpdate::DeploymentStatusUpdated {
+							deployment_id,
+							status: running_status,
+						});
 			}
 			(
 				DeploymentStatus::Deploying | DeploymentStatus::Running | DeploymentStatus::Errored,

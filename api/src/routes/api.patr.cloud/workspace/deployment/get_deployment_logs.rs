@@ -49,8 +49,8 @@ pub async fn get_deployment_logs(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data: _,
+		state,
 	}: AuthenticatedAppRequest<'_, GetDeploymentLogsRequest>,
 ) -> Result<AppResponse<GetDeploymentLogsRequest>, ErrorType> {
 	info!("Getting logs for deployment: {}", deployment_id);
@@ -74,7 +74,7 @@ pub async fn get_deployment_logs(
 	let loki_response = reqwest::Client::new()
 		.get(format!(
 			"{}/loki/api/v1/query_range",
-			config.opentelemetry.logs.endpoint
+			state.config.opentelemetry.logs.endpoint
 		))
 		.query(&[
 			("limit", limit.unwrap_or(100).to_string()),

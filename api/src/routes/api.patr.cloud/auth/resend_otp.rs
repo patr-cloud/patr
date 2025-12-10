@@ -24,7 +24,7 @@ pub async fn resend_otp(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
+		state,
 	}: AppRequest<'_, ResendOtpRequest>,
 ) -> Result<AppResponse<ResendOtpRequest>, ErrorType> {
 	info!("Resending OTP to username: `{username}`");
@@ -45,7 +45,7 @@ pub async fn resend_otp(
 
 	if let Some(user_data) = row {
 		let success = argon2::Argon2::new_with_secret(
-			config.password_pepper.as_ref(),
+			state.config.password_pepper.as_ref(),
 			Algorithm::Argon2id,
 			Version::V0x13,
 			constants::HASHING_PARAMS,
@@ -66,7 +66,7 @@ pub async fn resend_otp(
 		if success {
 			let otp = format!("{:06}", rand::thread_rng().gen_range(constants::OTP_RANGE));
 			let hashed_otp = argon2::Argon2::new_with_secret(
-				config.password_pepper.as_ref(),
+				state.config.password_pepper.as_ref(),
 				Algorithm::Argon2id,
 				Version::V0x13,
 				constants::HASHING_PARAMS,

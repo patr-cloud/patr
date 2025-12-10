@@ -14,7 +14,7 @@ pub async fn verify_user_phone_number(
 		redis,
 		client_ip,
 		user_data,
-		config,
+		state,
 	}: AuthenticatedAppRequest<'_, VerifyUserPhoneNumberRequest>,
 ) -> Result<AppResponse<VerifyUserPhoneNumberRequest>, ErrorType> {
 	todo!()

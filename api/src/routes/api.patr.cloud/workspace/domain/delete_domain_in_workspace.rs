@@ -11,7 +11,7 @@ use reqwest::StatusCode;
 
 use crate::prelude::*;
 
-#[instrument(skip(database, config))]
+#[instrument(skip(database))]
 pub async fn delete_domain_in_workspace(
 	AuthenticatedAppRequest {
 		request:
@@ -31,8 +31,8 @@ pub async fn delete_domain_in_workspace(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data: _,
+		state,
 	}: AuthenticatedAppRequest<'_, DeleteDomainInWorkspaceRequest>,
 ) -> Result<AppResponse<DeleteDomainInWorkspaceRequest>, ErrorType> {
 	info!("Deleting domain `{domain_id}` in workspace `{workspace_id}`");
@@ -97,7 +97,7 @@ pub async fn delete_domain_in_workspace(
 	if let Some(zone) = zone {
 		CloudflareClient::new(
 			Credentials::UserAuthToken {
-				token: config.cloudflare.api_key.clone(),
+				token: state.config.cloudflare.api_key.clone(),
 			},
 			ClientConfig::default(),
 			Environment::Production,

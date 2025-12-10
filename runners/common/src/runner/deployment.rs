@@ -4,7 +4,7 @@ use futures::{Stream, StreamExt};
 use models::api::workspace::deployment::*;
 use tokio_stream as stream;
 
-use crate::{prelude::*, utils::resource_executor::ResourceExecutorTask};
+use crate::{prelude::*, resource_executor::ResourceExecutorTask};
 
 impl<E> super::Runner<E>
 where

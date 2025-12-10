@@ -22,8 +22,8 @@ pub async fn update_workspace_info(
 		database,
 		redis,
 		client_ip,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, UpdateWorkspaceInfoRequest>,
 ) -> Result<AppResponse<UpdateWorkspaceInfoRequest>, ErrorType> {
 	info!("Updating information for workspace `{workspace_id}`");
@@ -46,11 +46,11 @@ pub async fn update_workspace_info(
 				},
 				body: IsWorkspaceNameAvailableRequestProcessed,
 			},
-			client_ip,
-			config,
 			database,
 			redis,
+			client_ip,
 			user_data,
+			state,
 		})
 		.await?
 		.body

@@ -21,8 +21,8 @@ pub async fn get_workspace_info(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, GetWorkspaceInfoRequest>,
 ) -> Result<AppResponse<GetWorkspaceInfoRequest>, ErrorType> {
 	info!("Getting information about the workspace `{workspace_id}`");

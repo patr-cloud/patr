@@ -23,8 +23,8 @@ pub async fn delete_repository(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, DeleteContainerRepositoryRequest>,
 ) -> Result<AppResponse<DeleteContainerRepositoryRequest>, ErrorType> {
 	info!(

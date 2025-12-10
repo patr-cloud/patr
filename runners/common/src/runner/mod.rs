@@ -1,12 +1,12 @@
 use std::{fs::Permissions, net::SocketAddr, os::unix::fs::PermissionsExt, sync::OnceLock};
 
 use dashmap::DashMap;
-use futures::future;
+use futures::{FutureExt, future};
 use tempfile::TempDir;
 use tokio::{
 	fs,
 	net::TcpListener,
-	sync::mpsc,
+	sync::{mpsc, watch},
 	task,
 	time::{self, Duration},
 };
@@ -18,11 +18,12 @@ use tracing_subscriber::{
 	layer::SubscriberExt,
 };
 
-use crate::{db, prelude::*, utils::resource_executor::ResourceExecutorTask};
+use crate::{db, prelude::*, resource_executor::ResourceExecutorTask};
 
 /// The global cancellation token that will be used to cancel the tasks
 /// when the runner is stopped. This token will be used to cancel all the
 /// tasks that are running in the runner.
+#[doc(hidden)]
 pub(super) static GLOBAL_CANCEL_TOKEN: OnceLock<CancellationToken> = OnceLock::new();
 
 /// The part of the runner that handles the Cloudflare tunnel.
@@ -130,10 +131,16 @@ where
 
 		let runner_state = E::initialize(&config).await?;
 
+		// Create the channel for deployment status updates
+		let (task_status_sender, _) = mpsc::unbounded_channel();
+		let (nginx_reload_sender, _) = watch::channel(());
+
 		let state = AppState {
 			database,
 			config,
 			runner_state,
+			task_status_sender,
+			nginx_reload_sender,
 		};
 
 		db::initialize(&state).await?;
@@ -150,13 +157,14 @@ where
 	/// if the runner fails to start. The runner will run until the exit signal
 	/// is received.
 	#[instrument(skip(self))]
-	pub async fn run(self) -> Result<!, RunnerError> {
+	pub async fn run(mut self) -> Result<!, RunnerError> {
 		debug!("Attempting to listen on {}", self.state.config.bind_address);
 		let tcp_listener = TcpListener::bind(self.state.config.bind_address)
 			.await
 			.map_err(RunnerError::ServerSetupError)?;
 
 		let (sender, receiver) = mpsc::unbounded_channel();
+		self.state.task_status_sender = sender;
 
 		task::spawn(async move {
 			info!("Listening for exit signal");
@@ -209,24 +217,22 @@ where
 			.map_err(RunnerError::NginxSetupError)?;
 		}
 
-		info!("Installing SQLite hook for updates");
-		let update_sender = sender.clone();
-		self.state
-			.database
-			.acquire()
-			.await?
-			.lock_handle()
-			.await?
-			.set_update_hook(move |params| {
-				_ = update_sender.send(params.into());
-			});
-
 		let (server_setup, sync_database, run_tunnel, run_nginx, resource_monitor) = future::join5(
-			self.run_server(tcp_listener),
-			self.sync_local_database(),
-			self.run_cloudflare_tunnel(),
-			self.run_nginx(),
-			self.monitor_resources(sender, receiver),
+			self.run_server(tcp_listener).inspect(|_| {
+				debug!("Server has shut down");
+			}),
+			self.sync_local_database(receiver).inspect(|_| {
+				debug!("Database sync has stopped");
+			}),
+			self.run_cloudflare_tunnel().inspect(|_| {
+				debug!("Cloudflare tunnel has stopped");
+			}),
+			self.run_nginx().inspect(|_| {
+				debug!("Nginx has stopped");
+			}),
+			self.monitor_resources().inspect(|_| {
+				debug!("Resource monitor has stopped");
+			}),
 		)
 		.await;
 
@@ -234,9 +240,6 @@ where
 
 		info!("Runner stopped. Waiting for server to exit...");
 
-		GLOBAL_CANCEL_TOKEN
-			.get_or_init(CancellationToken::new)
-			.cancel();
 		for (_, task) in self.registry {
 			_ = task.stop().await;
 		}
@@ -297,5 +300,8 @@ async fn exit_signal() {
 		() = ctrl_c => (),
 		() = terminate => (),
 	}
+	GLOBAL_CANCEL_TOKEN
+		.get_or_init(CancellationToken::new)
+		.cancel();
 	info!("Shutdown signal received, shutting down server gracefully");
 }

@@ -20,7 +20,7 @@ pub async fn docker_login(
 		database: _,
 		redis: _,
 		client_ip: _,
-		config: _,
+		state: _,
 	}: AppRequest<'_, DockerLoginRequest>,
 ) -> Result<AppResponse<DockerLoginRequest>, ErrorType> {
 	trace!("Logging in user to docker: {}", authorization.username());

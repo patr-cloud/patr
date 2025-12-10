@@ -32,8 +32,8 @@ pub async fn start_deployment(
 		database,
 		redis,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, StartDeploymentRequest>,
 ) -> Result<AppResponse<StartDeploymentRequest>, ErrorType> {
 	info!("Starting deployment: {}", deployment_id);

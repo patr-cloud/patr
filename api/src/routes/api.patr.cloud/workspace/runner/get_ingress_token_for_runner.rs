@@ -36,6 +36,7 @@ struct TunnelConfigRequestConfigIngress {
 	service: String,
 }
 
+#[instrument(skip(database, state))]
 pub async fn get_ingress_token_for_runner(
 	AuthenticatedAppRequest {
 		request:
@@ -55,8 +56,8 @@ pub async fn get_ingress_token_for_runner(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data: _,
+		state,
 	}: AuthenticatedAppRequest<'_, GetIngressTokenForRunnerRequest>,
 ) -> Result<AppResponse<GetIngressTokenForRunnerRequest>, ErrorType> {
 	info!("Getting ingress token for runner `{runner_id}`");
@@ -84,7 +85,7 @@ pub async fn get_ingress_token_for_runner(
 	let client = reqwest::Client::new();
 	let cf_client = Client::new(
 		Credentials::UserAuthToken {
-			token: config.cloudflare.api_key.clone(),
+			token: state.config.cloudflare.api_key.clone(),
 		},
 		Default::default(),
 		Environment::Production,
@@ -93,9 +94,9 @@ pub async fn get_ingress_token_for_runner(
 	let tunnel = client
 		.get(format!(
 			"https://api.cloudflare.com/client/v4/accounts/{}/cfd_tunnel/{}",
-			config.cloudflare.account_id, tunnel_id
+			state.config.cloudflare.account_id, tunnel_id
 		))
-		.bearer_auth(&config.cloudflare.api_key)
+		.bearer_auth(&state.config.cloudflare.api_key)
 		.send()
 		.await?
 		.json::<ApiSuccess<Option<Tunnel>>>()
@@ -111,7 +112,7 @@ pub async fn get_ingress_token_for_runner(
 		info!("Tunnel does not exist. Creating tunnel");
 		cf_client
 			.request(&create_tunnel::CreateTunnel {
-				account_identifier: &config.cloudflare.account_id,
+				account_identifier: &state.config.cloudflare.account_id,
 				params: create_tunnel::Params {
 					config_src: &ConfigurationSrc::Cloudflare,
 					name: &format!("Runner: {}", runner_id),
@@ -143,9 +144,9 @@ pub async fn get_ingress_token_for_runner(
 	client
 		.put(format!(
 			"https://api.cloudflare.com/client/v4/accounts/{}/cfd_tunnel/{}/configurations",
-			config.cloudflare.account_id, tunnel.id
+			state.config.cloudflare.account_id, tunnel.id
 		))
-		.bearer_auth(&config.cloudflare.api_key)
+		.bearer_auth(&state.config.cloudflare.api_key)
 		.json(&TunnelConfigRequest {
 			config: TunnelConfigRequestConfig {
 				ingress: vec![TunnelConfigRequestConfigIngress {
@@ -162,9 +163,9 @@ pub async fn get_ingress_token_for_runner(
 	let token = client
 		.get(format!(
 			"https://api.cloudflare.com/client/v4/accounts/{}/cfd_tunnel/{}/token",
-			config.cloudflare.account_id, tunnel.id
+			state.config.cloudflare.account_id, tunnel.id
 		))
-		.bearer_auth(&config.cloudflare.api_key)
+		.bearer_auth(&state.config.cloudflare.api_key)
 		.send()
 		.await?
 		.json::<ApiSuccess<String>>()
@@ -176,7 +177,7 @@ pub async fn get_ingress_token_for_runner(
 	let zone_id = cf_client
 		.request(&ListZones {
 			params: ListZonesParams {
-				name: Some(config.primary_hosted_domain.clone()),
+				name: Some(state.config.primary_hosted_domain.clone()),
 				status: Some(Status::Active),
 				search_match: Some(SearchMatch::All),
 				..Default::default()
@@ -190,7 +191,7 @@ pub async fn get_ingress_token_for_runner(
 		.inspect_err(|_| {
 			error!(
 				"No zone exists for the domain `{}`",
-				config.primary_hosted_domain
+				state.config.primary_hosted_domain
 			);
 		})?
 		.id;
@@ -199,7 +200,10 @@ pub async fn get_ingress_token_for_runner(
 		.request(&ListDnsRecords {
 			zone_identifier: &zone_id,
 			params: ListDnsRecordsParams {
-				name: Some(format!("{}.{}", runner_id, config.primary_hosted_domain)),
+				name: Some(format!(
+					"{}.{}",
+					runner_id, state.config.primary_hosted_domain
+				)),
 				..Default::default()
 			},
 		})
@@ -214,7 +218,7 @@ pub async fn get_ingress_token_for_runner(
 				zone_identifier: &zone_id,
 				identifier: &record.id,
 				params: UpdateDnsRecordParams {
-					name: &format!("{}.{}", runner_id, config.primary_hosted_domain),
+					name: &format!("{}.{}", runner_id, state.config.primary_hosted_domain),
 					ttl: Some(0),
 					proxied: Some(true),
 					content: DnsContent::CNAME {
@@ -229,7 +233,7 @@ pub async fn get_ingress_token_for_runner(
 			.request(&CreateDnsRecord {
 				zone_identifier: &zone_id,
 				params: CreateDnsRecordParams {
-					name: &format!("{}.{}", runner_id, config.primary_hosted_domain),
+					name: &format!("{}.{}", runner_id, state.config.primary_hosted_domain),
 					ttl: Some(0),
 					proxied: Some(true),
 					priority: None,

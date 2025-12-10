@@ -30,8 +30,8 @@ pub async fn create_new_role(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, CreateNewRoleRequest>,
 ) -> Result<AppResponse<CreateNewRoleRequest>, ErrorType> {
 	info!("Creating new role: {} in workspace: {}", name, workspace_id);

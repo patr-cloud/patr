@@ -3,6 +3,7 @@ use std::pin::pin;
 use futures::future::Either;
 use rustis::commands::PubSubCommands;
 use sqlx::postgres::PgListener;
+use tokio_util::sync::CancellationToken;
 
 use crate::prelude::*;
 
@@ -21,7 +22,11 @@ pub async fn run(state: &AppState) {
 		.await
 		.expect("unable to listen to the notification channel");
 
-	let mut exit_signal = pin!(crate::exit_signal());
+	let mut exit_signal = pin!(
+		crate::GLOBAL_CANCEL_TOKEN
+			.get_or_init(CancellationToken::new)
+			.cancelled()
+	);
 
 	loop {
 		let Either::Right((message, _)) =

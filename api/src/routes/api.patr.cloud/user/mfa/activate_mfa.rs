@@ -17,7 +17,7 @@ pub async fn activate_mfa(
 		database,
 		redis,
 		client_ip: _,
-		config: _,
+		state: _,
 		user_data: RequestUserData { id, .. },
 	}: AuthenticatedAppRequest<'_, ActivateMfaRequest>,
 ) -> Result<AppResponse<ActivateMfaRequest>, ErrorType> {

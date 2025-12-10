@@ -27,8 +27,8 @@ pub async fn delete_workspace(
 		database,
 		redis,
 		client_ip: _,
-		config: _,
 		user_data,
+		state: _,
 	}: AuthenticatedAppRequest<'_, DeleteWorkspaceRequest>,
 ) -> Result<AppResponse<DeleteWorkspaceRequest>, ErrorType> {
 	info!("Deleting workspace `{workspace_id}`");

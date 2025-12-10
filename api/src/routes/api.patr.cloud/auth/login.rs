@@ -35,7 +35,7 @@ pub async fn login(
 		database,
 		redis: _,
 		client_ip,
-		config,
+		state,
 	}: AppRequest<'_, LoginRequest>,
 ) -> Result<AppResponse<LoginRequest>, ErrorType> {
 	trace!("Logging in user: {}", user_id);
@@ -79,7 +79,7 @@ pub async fn login(
 	trace!("Found user with ID: {}", user_data.id);
 
 	let success = argon2::Argon2::new_with_secret(
-		config.password_pepper.as_ref(),
+		state.config.password_pepper.as_ref(),
 		Algorithm::Argon2id,
 		Version::V0x13,
 		constants::HASHING_PARAMS,
@@ -150,7 +150,7 @@ pub async fn login(
 
 	let refresh_token = Uuid::new_v4();
 	let hashed_refresh_token = argon2::Argon2::new_with_secret(
-		config.password_pepper.as_ref(),
+		state.config.password_pepper.as_ref(),
 		Algorithm::Argon2id,
 		Version::V0x13,
 		constants::HASHING_PARAMS,
@@ -171,7 +171,7 @@ pub async fn login(
 	let refresh_token_expiry = now.add(constants::INACTIVE_REFRESH_TOKEN_VALIDITY);
 
 	let ip_info = ipinfo::IpInfo::new(ipinfo::IpInfoConfig {
-		token: { Some(config.ipinfo.token) },
+		token: { Some(state.config.ipinfo.token) },
 		..Default::default()
 	})
 	.inspect_err(|err| {
@@ -314,7 +314,7 @@ pub async fn login(
 	let access_token = jsonwebtoken::encode(
 		&Default::default(),
 		&access_token,
-		&EncodingKey::from_secret(config.jwt_secret.as_ref()),
+		&EncodingKey::from_secret(state.config.jwt_secret.as_ref()),
 	)
 	.inspect_err(|err| {
 		error!("Error encoding JWT: `{}`", err);

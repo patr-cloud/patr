@@ -41,8 +41,8 @@ pub async fn update_deployment(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, UpdateDeploymentRequest>,
 ) -> Result<AppResponse<UpdateDeploymentRequest>, ErrorType> {
 	info!("Updating deployment: {}", deployment_id);

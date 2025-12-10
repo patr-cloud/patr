@@ -36,8 +36,8 @@ pub async fn list_managed_url(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data,
+		state: _,
 	}: AuthenticatedAppRequest<'_, ListManagedURLRequest>,
 ) -> Result<AppResponse<ListManagedURLRequest>, ErrorType> {
 	info!("Listing ManagedURLs in workspace `{}`", workspace_id);

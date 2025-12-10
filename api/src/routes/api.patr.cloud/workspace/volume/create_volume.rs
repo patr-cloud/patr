@@ -20,8 +20,8 @@ pub async fn create_volume(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, CreateVolumeRequest>,
 ) -> Result<AppResponse<CreateVolumeRequest>, ErrorType> {
 	trace!("Creating volume with name: {name}");

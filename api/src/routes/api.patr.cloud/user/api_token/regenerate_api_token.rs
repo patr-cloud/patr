@@ -21,14 +21,14 @@ pub async fn regenerate_api_token(
 		redis: _,
 		client_ip: _,
 		user_data,
-		config,
+		state,
 	}: AuthenticatedAppRequest<'_, RegenerateApiTokenRequest>,
 ) -> Result<AppResponse<RegenerateApiTokenRequest>, ErrorType> {
 	trace!("Regenerating API token: {}", token_id);
 
 	let refresh_token = Uuid::new_v4();
 	let hashed_refresh_token = argon2::Argon2::new_with_secret(
-		config.password_pepper.as_ref(),
+		state.config.password_pepper.as_ref(),
 		Algorithm::Argon2id,
 		Version::V0x13,
 		constants::HASHING_PARAMS,

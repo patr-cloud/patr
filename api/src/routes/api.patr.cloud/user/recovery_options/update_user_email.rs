@@ -14,7 +14,7 @@ pub async fn update_user_email(
 		redis,
 		client_ip,
 		user_data,
-		config,
+		state,
 	}: AuthenticatedAppRequest<'_, UpdateUserEmailRequest>,
 ) -> Result<AppResponse<UpdateUserEmailRequest>, ErrorType> {
 	todo!()

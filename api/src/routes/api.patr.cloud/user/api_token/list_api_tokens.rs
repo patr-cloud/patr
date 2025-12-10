@@ -36,7 +36,7 @@ pub async fn list_api_tokens(
 		redis: _,
 		client_ip: _,
 		user_data,
-		config: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, ListApiTokensRequest>,
 ) -> Result<AppResponse<ListApiTokensRequest>, ErrorType> {
 	trace!("Listing API tokens for user: {}", user_data.id);

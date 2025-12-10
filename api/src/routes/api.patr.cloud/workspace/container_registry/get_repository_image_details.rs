@@ -24,8 +24,8 @@ pub async fn get_repository_image_details(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, GetContainerRepositoryImageDetailsRequest>,
 ) -> Result<AppResponse<GetContainerRepositoryImageDetailsRequest>, ErrorType> {
 	info!("Starting: Get image details");

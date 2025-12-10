@@ -111,7 +111,7 @@ where
 		let mut state = self.state.clone();
 		let mut inner = self.inner.clone();
 		async {
-			let redis = &mut state.redis;
+			let (state, redis) = (state.clone(), &mut state.redis);
 
 			let Ok(mut database) = state.database.begin().await else {
 				debug!("Failed to begin database transaction");
@@ -125,7 +125,7 @@ where
 				database: &mut database,
 				redis,
 				client_ip,
-				config: state.config.clone(),
+				state,
 			};
 
 			info!("Calling inner service");

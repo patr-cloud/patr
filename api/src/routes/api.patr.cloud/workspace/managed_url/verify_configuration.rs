@@ -31,8 +31,8 @@ pub async fn verify_configuration(
 		database: _,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, VerifyManagedURLConfigurationRequest>,
 ) -> Result<AppResponse<VerifyManagedURLConfigurationRequest>, ErrorType> {
 	info!("Verifying configuration of ManagedURL");

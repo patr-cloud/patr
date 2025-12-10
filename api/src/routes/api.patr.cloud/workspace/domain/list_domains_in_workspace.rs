@@ -33,8 +33,8 @@ pub async fn list_domains_in_workspace(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data,
+		state: _,
 	}: AuthenticatedAppRequest<'_, ListDomainsInWorkspaceRequest>,
 ) -> Result<AppResponse<ListDomainsInWorkspaceRequest>, ErrorType> {
 	info!("Listing all domains in workspace: {}", workspace_id);

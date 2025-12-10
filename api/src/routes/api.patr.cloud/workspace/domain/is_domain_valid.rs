@@ -20,8 +20,8 @@ pub async fn is_domain_valid(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, IsDomainValidRequest>,
 ) -> Result<AppResponse<IsDomainValidRequest>, ErrorType> {
 	info!("Checking if domain `{domain}` is valid in workspace `{workspace_id}`");

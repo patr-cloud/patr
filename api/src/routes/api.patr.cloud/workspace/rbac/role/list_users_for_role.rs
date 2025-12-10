@@ -39,8 +39,8 @@ pub async fn list_users_for_role(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, ListUsersForRoleRequest>,
 ) -> Result<AppResponse<ListUsersForRoleRequest>, ErrorType> {
 	info!("Listing all users for role: {}", role_id);

@@ -35,8 +35,8 @@ pub async fn list_deploy_history(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, ListDeploymentDeployHistoryRequest>,
 ) -> Result<AppResponse<ListDeploymentDeployHistoryRequest>, ErrorType> {
 	info!("Listing deployment history");

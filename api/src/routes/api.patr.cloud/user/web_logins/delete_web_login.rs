@@ -14,7 +14,7 @@ pub async fn delete_web_login(
 		redis,
 		client_ip,
 		user_data,
-		config,
+		state,
 	}: AuthenticatedAppRequest<'_, DeleteWebLoginRequest>,
 ) -> Result<AppResponse<DeleteWebLoginRequest>, ErrorType> {
 	todo!()

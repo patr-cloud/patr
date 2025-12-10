@@ -14,7 +14,7 @@ pub async fn revoke(
 		database,
 		redis: _,
 		client_ip,
-		config,
+		state,
 	}: AppRequest<'_, OAuthRevokeTokenRequest>,
 ) -> Result<AppResponse<OAuthRevokeTokenRequest>, ErrorType> {
 	todo!()

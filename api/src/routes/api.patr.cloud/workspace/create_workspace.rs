@@ -19,8 +19,8 @@ pub async fn create_workspace(
 		database,
 		redis,
 		client_ip,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, CreateWorkspaceRequest>,
 ) -> Result<AppResponse<CreateWorkspaceRequest>, ErrorType> {
 	info!("Creating workspace: `{name}`");
@@ -38,11 +38,11 @@ pub async fn create_workspace(
 			},
 			body: IsWorkspaceNameAvailableRequestProcessed,
 		},
-		client_ip,
-		config,
 		database,
 		redis,
+		client_ip,
 		user_data,
+		state,
 	})
 	.await?
 	.body

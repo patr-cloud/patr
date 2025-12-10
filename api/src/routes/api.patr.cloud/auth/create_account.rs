@@ -27,7 +27,7 @@ pub async fn create_account(
 		database,
 		redis,
 		client_ip,
-		config,
+		state,
 	}: AppRequest<'_, CreateAccountRequest>,
 ) -> Result<AppResponse<CreateAccountRequest>, ErrorType> {
 	info!("Creating account");
@@ -48,7 +48,7 @@ pub async fn create_account(
 			.build(),
 		database,
 		redis,
-		config: config.clone(),
+		state: state.clone(),
 	})
 	.await
 	.inspect_err(|err| {
@@ -84,7 +84,7 @@ pub async fn create_account(
 					.build(),
 				database,
 				redis,
-				config: config.clone(),
+				state: state.clone(),
 			})
 			.await
 			.inspect_err(|err| {
@@ -102,7 +102,7 @@ pub async fn create_account(
 	let now = OffsetDateTime::now_utc();
 	let otp = format!("{:06}", rand::thread_rng().gen_range(constants::OTP_RANGE));
 	let hashed_otp = argon2::Argon2::new_with_secret(
-		config.password_pepper.as_ref(),
+		state.config.password_pepper.as_ref(),
 		Algorithm::Argon2id,
 		Version::V0x13,
 		constants::HASHING_PARAMS,
@@ -123,7 +123,7 @@ pub async fn create_account(
 	let otp_expiry = now.add(constants::OTP_VALIDITY);
 
 	let hashed_password = argon2::Argon2::new_with_secret(
-		config.password_pepper.as_ref(),
+		state.config.password_pepper.as_ref(),
 		Algorithm::Argon2id,
 		Version::V0x13,
 		constants::HASHING_PARAMS,

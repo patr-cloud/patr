@@ -22,8 +22,8 @@ pub async fn update_user_info(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data,
+		state: _,
 	}: AuthenticatedAppRequest<'_, UpdateUserInfoRequest>,
 ) -> Result<AppResponse<UpdateUserInfoRequest>, ErrorType> {
 	info!("Updating user info");

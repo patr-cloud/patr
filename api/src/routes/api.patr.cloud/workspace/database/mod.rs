@@ -25,7 +25,7 @@ async fn all_database_plan(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
+		state,
 	}: AppRequest<'_, ListAllDatabaseMachineTypeRequest>,
 ) -> Result<AppResponse<ListAllDatabaseMachineTypeRequest>, ErrorType> {
 	info!("Starting: Get database plans");
@@ -70,8 +70,8 @@ async fn create_database(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, CreateDatabaseRequest>,
 ) -> Result<AppResponse<CreateDatabaseRequest>, ErrorType> {
 	info!("Starting: Create database");
@@ -102,8 +102,8 @@ async fn delete_database(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, DeleteDatabaseRequest>,
 ) -> Result<AppResponse<DeleteDatabaseRequest>, ErrorType> {
 	info!("Starting: Delete database");
@@ -133,8 +133,8 @@ async fn get_database(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, GetDatabaseRequest>,
 ) -> Result<AppResponse<GetDatabaseRequest>, ErrorType> {
 	info!("Starting: Get database");
@@ -190,8 +190,8 @@ async fn list_database(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, ListDatabaseRequest>,
 ) -> Result<AppResponse<ListDatabaseRequest>, ErrorType> {
 	info!("Starting: List database");

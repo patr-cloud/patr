@@ -15,7 +15,7 @@ pub async fn is_email_valid(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
+		state: _,
 	}: AppRequest<'_, IsEmailValidRequest>,
 ) -> Result<AppResponse<IsEmailValidRequest>, ErrorType> {
 	info!("Checking for validity of Email: `{email}`");

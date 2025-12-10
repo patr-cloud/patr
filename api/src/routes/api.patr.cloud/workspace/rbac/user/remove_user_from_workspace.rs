@@ -26,8 +26,8 @@ pub async fn remove_user_from_workspace(
 		database,
 		redis,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, RemoveUserFromWorkspaceRequest>,
 ) -> Result<AppResponse<RemoveUserFromWorkspaceRequest>, ErrorType> {
 	info!("Removing user `{user_id}` from workspace `{workspace_id}`");

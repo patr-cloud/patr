@@ -29,8 +29,8 @@ async fn create_static_site(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, CreateStaticSiteRequest>,
 ) -> Result<AppResponse<CreateStaticSiteRequest>, ErrorType> {
 	info!("Starting: Create static site");
@@ -56,8 +56,8 @@ async fn delete_static_site(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, DeleteStaticSiteRequest>,
 ) -> Result<AppResponse<DeleteStaticSiteRequest>, ErrorType> {
 	info!("Starting: Delete static site");
@@ -83,8 +83,8 @@ async fn get_static_site_info(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, GetStaticSiteInfoRequest>,
 ) -> Result<AppResponse<GetStaticSiteInfoRequest>, ErrorType> {
 	info!("Starting: Get static site info");
@@ -113,8 +113,8 @@ async fn list_static_site(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, ListStaticSiteRequest>,
 ) -> Result<AppResponse<ListStaticSiteRequest>, ErrorType> {
 	info!("Starting: List static site");
@@ -144,8 +144,8 @@ async fn list_upload_history(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, ListStaticSiteUploadHistoryRequest>,
 ) -> Result<AppResponse<ListStaticSiteUploadHistoryRequest>, ErrorType> {
 	info!("Starting: List static site upload history");
@@ -173,8 +173,8 @@ async fn revert_static_site(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, RevertStaticSiteRequest>,
 ) -> Result<AppResponse<RevertStaticSiteRequest>, ErrorType> {
 	info!("Starting: Revert static site");
@@ -200,8 +200,8 @@ async fn start_static_site(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, StartStaticSiteRequest>,
 ) -> Result<AppResponse<StartStaticSiteRequest>, ErrorType> {
 	info!("Starting: Start static site");
@@ -227,8 +227,8 @@ async fn stop_static_site(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, StopStaticSiteRequest>,
 ) -> Result<AppResponse<StopStaticSiteRequest>, ErrorType> {
 	info!("Starting: Stop static site");
@@ -254,8 +254,8 @@ async fn update_static_site(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, UpdateStaticSiteRequest>,
 ) -> Result<AppResponse<UpdateStaticSiteRequest>, ErrorType> {
 	info!("Starting: Update static site");
@@ -281,8 +281,8 @@ async fn upload_static_site(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, UploadStaticSiteRequest>,
 ) -> Result<AppResponse<UploadStaticSiteRequest>, ErrorType> {
 	info!("Starting: Upload static site");

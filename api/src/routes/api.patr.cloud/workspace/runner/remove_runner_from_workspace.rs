@@ -22,8 +22,8 @@ pub async fn remove_runner_from_workspace(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, DeleteRunnerRequest>,
 ) -> Result<AppResponse<DeleteRunnerRequest>, ErrorType> {
 	info!("Deleting runner `{}`", runner_id);

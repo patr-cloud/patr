@@ -38,8 +38,8 @@ pub async fn list_users_in_workspace(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, ListUsersInWorkspaceRequest>,
 ) -> Result<AppResponse<ListUsersInWorkspaceRequest>, ErrorType> {
 	info!("Listing all users in workspace `{workspace_id}`");

@@ -3,7 +3,7 @@ use std::pin::pin;
 use futures::future::{self, Either};
 use sqlx::sqlite::SqliteOperation;
 use tokio::{
-	sync::mpsc::{UnboundedReceiver, UnboundedSender},
+	sync::mpsc,
 	time::{self, Duration},
 };
 
@@ -17,13 +17,22 @@ where
 	/// will listen for changes in the resources and make sure that they are
 	/// running. The job of this function is to make sure that whatever is
 	/// running is exactly as per what's in the database.
-	#[instrument(skip(self, change_publisher, change_subscriber))]
-	pub(super) async fn monitor_resources(
-		&self,
-		// To resend messages if there's an error
-		change_publisher: UnboundedSender<SqliteUpdateHook>,
-		mut change_subscriber: UnboundedReceiver<SqliteUpdateHook>,
-	) -> Result<!, RunnerError> {
+	#[instrument(skip(self))]
+	pub(super) async fn monitor_resources(&self) -> Result<!, RunnerError> {
+		let (sender, mut receiver) = mpsc::unbounded_channel::<SqliteUpdateHook>();
+
+		info!("Installing SQLite hook for updates");
+		let update_sender = sender.clone();
+		self.state
+			.database
+			.acquire()
+			.await?
+			.lock_handle()
+			.await?
+			.set_update_hook(move |params| {
+				_ = update_sender.send(params.into());
+			});
+
 		let full_sync_interval = if cfg!(debug_assertions) {
 			Duration::from_secs(10)
 		} else {
@@ -42,7 +51,7 @@ where
 		// resource. As long as it's running, we are happy. So NO updating the
 		// resource here whatsoever. All that happens in the task.
 		loop {
-			match future::select(sleep_future, pin!(change_subscriber.recv())).await {
+			match future::select(sleep_future, pin!(receiver.recv())).await {
 				Either::Left(((), _)) => {
 					// Regularly (every 10 minutes in prod and 10 seconds in dev) reconcile all the
 					// deployments. Check all resources in the local database and make sure they are
@@ -108,7 +117,7 @@ where
 					.inspect_err(|err| {
 						error!("Failed to fetch deployment update log: {}", err);
 					}) else {
-						_ = change_publisher
+						_ = sender
 							.send(update)
 							.inspect_err(|err| error!("Unable to resend database update: {}", err));
 						continue;

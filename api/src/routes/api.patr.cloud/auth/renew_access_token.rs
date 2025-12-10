@@ -24,7 +24,7 @@ pub async fn renew_access_token(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
+		state,
 	}: AppRequest<'_, RenewAccessTokenRequest>,
 ) -> Result<AppResponse<RenewAccessTokenRequest>, ErrorType> {
 	info!(
@@ -69,7 +69,7 @@ pub async fn renew_access_token(
 	}
 
 	let success = argon2::Argon2::new_with_secret(
-		config.password_pepper.as_ref(),
+		state.config.password_pepper.as_ref(),
 		Algorithm::Argon2id,
 		Version::V0x13,
 		constants::HASHING_PARAMS,
@@ -105,7 +105,7 @@ pub async fn renew_access_token(
 	let access_token = jsonwebtoken::encode(
 		&Default::default(),
 		&access_token,
-		&EncodingKey::from_secret(config.jwt_secret.as_ref()),
+		&EncodingKey::from_secret(state.config.jwt_secret.as_ref()),
 	)
 	.inspect_err(|err| {
 		error!("Error encoding JWT: `{}`", err);

@@ -45,8 +45,8 @@ pub async fn get_deployment_metric(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data: _,
+		state,
 	}: AuthenticatedAppRequest<'_, GetDeploymentMetricRequest>,
 ) -> Result<AppResponse<GetDeploymentMetricRequest>, ErrorType> {
 	info!(
@@ -73,7 +73,7 @@ pub async fn get_deployment_metric(
 	let mimir_response = reqwest::Client::new()
 		.get(format!(
 			"{}/mimir/api/v1/query_range",
-			config.opentelemetry.logs.endpoint
+			state.config.opentelemetry.logs.endpoint
 		))
 		.query(&[
 			(

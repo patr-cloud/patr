@@ -26,8 +26,8 @@ pub async fn delete_deployment(
 		database,
 		redis,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, DeleteDeploymentRequest>,
 ) -> Result<AppResponse<DeleteDeploymentRequest>, ErrorType> {
 	info!("Deleting deployment: {deployment_id}");

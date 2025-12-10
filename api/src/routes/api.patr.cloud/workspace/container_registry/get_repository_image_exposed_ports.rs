@@ -6,7 +6,7 @@ use models::{
 	api::workspace::{container_registry::*, infrastructure::deployment::ExposedPortType},
 	prelude::*,
 };
-use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use rand::{Rng, distributions::Alphanumeric, thread_rng};
 use sha2::{Digest, Sha256};
 use time::{Duration, OffsetDateTime};
 
@@ -33,8 +33,8 @@ pub async fn get_repository_image_exposed_ports(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data,
+		state: _,
 	}: AuthenticatedAppRequest<'_, GetContainerRepositoryExposedPortsRequest>,
 ) -> Result<AppResponse<GetContainerRepositoryExposedPortsRequest>, ErrorType> {
 	info!("Starting: Get exposed ports");

@@ -85,7 +85,7 @@ where
 	};
 
 	let status_code = response.status();
-	let Ok(headers) = E::ResponseHeaders::from_header_map(response.headers()) else {
+	let Ok(headers) = E::ResponseHeaders::from_header_map(response.headers().clone()) else {
 		return Err(ApiErrorResponse {
 			status_code: http::StatusCode::INTERNAL_SERVER_ERROR,
 			body: ApiErrorResponseBody {

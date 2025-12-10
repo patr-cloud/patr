@@ -15,17 +15,21 @@ pub mod layers;
 /// [2]: axum::Router
 pub mod extractors;
 
+/// Extensions traits for the `Either` type.
+mod either_ext;
+/// Contains the extension traits that will be used to add exit signal handling
+/// to futures.
+mod exitable_ext;
 /// Contains the extension traits that will be used with the axum [`Router`][1]
 /// to mount the various endpoints on the router.
 ///
 /// [1]: axum::Router
 mod router_ext;
-
 /// Contains the extension traits that will be used to timeout futures as
 /// they're executing.
 mod timeout_ext;
 
-pub use self::{router_ext::RouterExt, timeout_ext::TimeoutExt};
+pub use self::{either_ext::*, exitable_ext::*, router_ext::*, timeout_ext::*};
 
 /// A list of constants that will be used throughout the application. This is
 /// mostly kept to prevent typos.

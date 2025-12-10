@@ -24,8 +24,8 @@ pub async fn update_volume(
 		database,
 		redis,
 		client_ip,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, UpdateVolumeRequest>,
 ) -> Result<AppResponse<UpdateVolumeRequest>, ErrorType> {
 	let volume = super::get_volume_info(AuthenticatedAppRequest {
@@ -44,8 +44,8 @@ pub async fn update_volume(
 		database,
 		redis,
 		client_ip,
-		config: config.clone(),
-		user_data: user_data.clone(),
+		user_data,
+		state,
 	})
 	.await?
 	.body

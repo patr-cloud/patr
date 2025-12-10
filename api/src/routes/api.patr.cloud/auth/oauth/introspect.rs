@@ -14,7 +14,7 @@ pub async fn introspect(
 		database,
 		redis: _,
 		client_ip,
-		config,
+		state,
 	}: AppRequest<'_, OAuthIntrospectRequest>,
 ) -> Result<AppResponse<OAuthIntrospectRequest>, ErrorType> {
 	todo!()

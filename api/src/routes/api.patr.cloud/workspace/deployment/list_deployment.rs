@@ -37,8 +37,8 @@ pub async fn list_deployment(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data,
+		state: _,
 	}: AuthenticatedAppRequest<'_, ListDeploymentRequest>,
 ) -> Result<AppResponse<ListDeploymentRequest>, ErrorType> {
 	info!("Listing all deployments in workspace: {}", workspace_id);

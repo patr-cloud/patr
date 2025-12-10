@@ -43,8 +43,8 @@ pub async fn create_deployment(
 		database,
 		redis,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, CreateDeploymentRequest>,
 ) -> Result<AppResponse<CreateDeploymentRequest>, ErrorType> {
 	info!("Creating deployment with name `{name}` in workspace: {workspace_id}");

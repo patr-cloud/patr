@@ -23,8 +23,8 @@ pub async fn list_repositories(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data,
+		state: _,
 	}: AuthenticatedAppRequest<'_, ListContainerRepositoriesRequest>,
 ) -> Result<AppResponse<ListContainerRepositoriesRequest>, ErrorType> {
 	info!("Listing container registry repositories");

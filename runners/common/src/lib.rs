@@ -17,6 +17,8 @@ mod error;
 /// The executor module contains the trait that the runner needs to implement
 /// to run the resources.
 mod executor;
+/// The resource executor that will be used to manage the resources.
+mod resource_executor;
 /// All the Routes for the self-hosted Patr is defined here.
 mod routes;
 /// All the runner related structs and functions.
@@ -34,7 +36,7 @@ pub mod prelude {
 	pub use sqlx::{Row, query};
 
 	pub use crate::{
-		app::{AppRequest, AppState},
+		app::{AppRequest, AppState, ExecutorStatusUpdate},
 		error::RunnerError,
 		executor::RunnerExecutor,
 		runner::Runner,

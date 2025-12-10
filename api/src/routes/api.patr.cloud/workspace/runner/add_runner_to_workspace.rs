@@ -7,6 +7,7 @@ use models::{api::workspace::runner::*, prelude::*};
 
 use crate::prelude::*;
 
+#[instrument(skip(database, state))]
 pub async fn add_runner_to_workspace(
 	AuthenticatedAppRequest {
 		request:
@@ -23,8 +24,8 @@ pub async fn add_runner_to_workspace(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data: _,
+		state,
 	}: AuthenticatedAppRequest<'_, AddRunnerToWorkspaceRequest>,
 ) -> Result<AppResponse<AddRunnerToWorkspaceRequest>, ErrorType> {
 	info!("Creating Runner with name: `{name}`");
@@ -59,13 +60,13 @@ pub async fn add_runner_to_workspace(
 
 	let tunnel_id = Client::new(
 		Credentials::UserAuthToken {
-			token: config.cloudflare.api_key.clone(),
+			token: state.config.cloudflare.api_key.clone(),
 		},
 		Default::default(),
 		Environment::Production,
 	)?
 	.request(&create_tunnel::CreateTunnel {
-		account_identifier: &config.cloudflare.account_id,
+		account_identifier: &state.config.cloudflare.account_id,
 		params: create_tunnel::Params {
 			config_src: &ConfigurationSrc::Cloudflare,
 			name: &format!("Runner: {}", id),

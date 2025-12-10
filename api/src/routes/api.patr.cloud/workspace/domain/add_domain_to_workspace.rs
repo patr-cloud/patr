@@ -13,7 +13,7 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
-#[instrument(skip(database, config))]
+#[instrument(skip(database))]
 pub async fn add_domain_to_workspace(
 	AuthenticatedAppRequest {
 		request:
@@ -34,8 +34,8 @@ pub async fn add_domain_to_workspace(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data: _,
+		state,
 	}: AuthenticatedAppRequest<'_, AddDomainToWorkspaceRequest>,
 ) -> Result<AppResponse<AddDomainToWorkspaceRequest>, ErrorType> {
 	info!("Adding domain `{domain}` to workspace `{workspace_id}`");
@@ -141,7 +141,7 @@ pub async fn add_domain_to_workspace(
 		DomainNameserverType::Internal => {
 			let client = CloudflareClient::new(
 				Credentials::UserAuthToken {
-					token: config.cloudflare.api_key.clone(),
+					token: state.config.cloudflare.api_key.clone(),
 				},
 				ClientConfig::default(),
 				Environment::Production,
@@ -165,7 +165,7 @@ pub async fn add_domain_to_workspace(
 					.request(&CreateZone {
 						params: CreateZoneParams {
 							name: &domain,
-							account: &config.cloudflare.account_id,
+							account: &state.config.cloudflare.account_id,
 							jump_start: None,
 							zone_type: Some(ZoneType::Full),
 						},

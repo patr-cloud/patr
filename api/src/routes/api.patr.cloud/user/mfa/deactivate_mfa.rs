@@ -16,7 +16,7 @@ pub async fn deactivate_mfa(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
+		state: _,
 		user_data,
 	}: AuthenticatedAppRequest<'_, DeactivateMfaRequest>,
 ) -> Result<AppResponse<DeactivateMfaRequest>, ErrorType> {

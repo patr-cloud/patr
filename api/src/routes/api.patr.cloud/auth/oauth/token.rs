@@ -22,7 +22,7 @@ pub async fn token(
 		database,
 		redis: _,
 		client_ip,
-		config,
+		state,
 	}: AppRequest<'_, OAuthTokenRequest>,
 ) -> Result<AppResponse<OAuthTokenRequest>, ErrorType> {
 	todo!()

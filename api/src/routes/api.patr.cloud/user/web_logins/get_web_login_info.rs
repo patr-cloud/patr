@@ -14,7 +14,7 @@ pub async fn get_web_login_info(
 		redis,
 		client_ip,
 		user_data,
-		config,
+		state,
 	}: AuthenticatedAppRequest<'_, GetWebLoginInfoRequest>,
 ) -> Result<AppResponse<GetWebLoginInfoRequest>, ErrorType> {
 	todo!()

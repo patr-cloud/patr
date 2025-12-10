@@ -24,8 +24,8 @@ pub async fn delete_repository_image(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data,
+		state,
 	}: AuthenticatedAppRequest<'_, DeleteContainerRepositoryImageRequest>,
 ) -> Result<AppResponse<DeleteContainerRepositoryImageRequest>, ErrorType> {
 	info!("Starting: Delete container repository image");

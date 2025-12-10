@@ -27,8 +27,8 @@ pub async fn update_user_roles_in_workspace(
 		database,
 		redis,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, UpdateUserRolesInWorkspaceRequest>,
 ) -> Result<AppResponse<UpdateUserRolesInWorkspaceRequest>, ErrorType> {
 	info!("Updating user `{user_id}`'s roles in workspace `{workspace_id}`");

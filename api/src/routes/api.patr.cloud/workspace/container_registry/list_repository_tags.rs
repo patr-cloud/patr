@@ -27,8 +27,8 @@ pub async fn list_repository_tags(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, ListContainerRepositoryTagsRequest>,
 ) -> Result<AppResponse<ListContainerRepositoryTagsRequest>, ErrorType> {
 	info!("Listing tags for repository: {}", repository_id);

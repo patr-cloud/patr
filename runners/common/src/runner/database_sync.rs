@@ -1,8 +1,15 @@
 use std::pin::pin;
 
-use futures::{StreamExt, future};
+use futures::{
+	SinkExt,
+	StreamExt,
+	future::{self, Either},
+};
 use models::api::workspace::runner::*;
-use tokio::time::{self, Duration};
+use tokio::{
+	sync::mpsc,
+	time::{self, Duration},
+};
 
 use crate::prelude::*;
 
@@ -15,8 +22,11 @@ where
 	/// notify the runner to reconcile the resources that are changed on the
 	/// server. This function will only run if the runner is running in managed
 	/// mode. This function will exit if the exit signal is received.
-	#[instrument(skip(self))]
-	pub(super) async fn sync_local_database(&self) -> Result<!, RunnerError> {
+	#[instrument(skip(self, receiver))]
+	pub(super) async fn sync_local_database(
+		&self,
+		mut receiver: mpsc::UnboundedReceiver<ExecutorStatusUpdate>,
+	) -> Result<!, RunnerError> {
 		let RunnerMode::Managed {
 			workspace_id,
 			runner_id,
@@ -51,6 +61,11 @@ where
 			.with_cancel_check()
 			.await?;
 
+			// Clear any queued messages in the receiver to avoid processing stale updates
+			// TODO: These messages will be handled in the full reconcile with the server
+			let queued_messages = receiver.len();
+			receiver.recv_many(&mut vec![], queued_messages).await;
+
 			let Ok(stream) = response
 				.inspect_err(|err| {
 					error!("Failed to connect to the server: {:?}", err);
@@ -72,12 +87,13 @@ where
 			let mut pinned_sleeper = Box::pin(time::sleep(Duration::from_secs(0)));
 
 			'message: loop {
-				let Some(reconcile_message) =
-					future::select(pinned_stream.next(), &mut pinned_sleeper)
-						.with_cancel_check()
-						.await?
-						.into_left()
-				else {
+				let Some(stream_message) = future::select(
+					&mut pinned_sleeper,
+					future::select(pinned_stream.next(), Box::pin(receiver.recv())),
+				)
+				.with_cancel_check()
+				.await?
+				.into_right() else {
 					// Every 2 hours, resync all resources to make sure everything is fine
 					info!("Resyncing all resources with upstream to make sure everything is fine");
 					while let Err(err) = self
@@ -107,6 +123,38 @@ where
 					));
 
 					continue 'message;
+				};
+
+				let reconcile_message = match stream_message {
+					Either::Left((reconcile_message, _)) => reconcile_message,
+					Either::Right((executor_message, _)) => {
+						let Some(executor_message) = executor_message else {
+							// The executor message channel has been closed. This should not happen
+							error!("Executor message channel has been closed");
+							continue 'message;
+						};
+						let client_msg = match executor_message {
+							ExecutorStatusUpdate::DeploymentStatusUpdated {
+								deployment_id,
+								status,
+							} => StreamRunnerDataForWorkspaceClientMsg::DeploymentStatusUpdated {
+								id: deployment_id,
+								status,
+							},
+						};
+						let Ok(()) = pinned_stream.send(client_msg).await.inspect_err(|err| {
+							error!("Failed to send client message: {:?}", err);
+							error!("Retrying connection to server");
+						}) else {
+							// Retry after 5 seconds, but break if the exit signal is received
+							time::sleep(Duration::from_secs(5))
+								.with_cancel_check()
+								.await?;
+							continue 'main;
+						};
+
+						continue 'message;
+					}
 				};
 
 				match reconcile_message {

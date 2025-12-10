@@ -10,17 +10,17 @@
     "@solid-primitives/cookies": "^0.0.3",
     "@solid-primitives/storage": "^4.3.3",
     "@solidjs/meta": "^0.29.4",
-    "@solidjs/router": "^0.15.3",
+    "@solidjs/router": "^0.15.4",
     "@solidjs/start": "^1.2.0",
     "js-cookie": "^3.0.5",
     "solid-icons": "^1.1.0",
-    "solid-js": "^1.9.9"
+    "solid-js": "^1.9.10"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.1.14",
+    "@tailwindcss/vite": "^4.1.17",
     "@types/js-cookie": "^3.0.6",
-    "@types/node": "^24.8.1",
-    "tailwindcss": "^4.1.14",
+    "@types/node": "^24.10.1",
+    "tailwindcss": "^4.1.17",
     "vinxi": "^0.5.8"
   },
   "engines": {

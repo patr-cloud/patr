@@ -31,8 +31,8 @@ pub async fn list_volumes(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, ListVolumesInWorkspaceRequest>,
 ) -> Result<AppResponse<ListVolumesInWorkspaceRequest>, ErrorType> {
 	trace!("Listing volumes in workspace ID: `{workspace_id}`");

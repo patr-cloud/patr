@@ -18,7 +18,7 @@ pub async fn machine_type(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
+		state: _,
 	}: AppRequest<'_, ListAllDeploymentMachineTypeRequest>,
 ) -> Result<AppResponse<ListAllDeploymentMachineTypeRequest>, ErrorType> {
 	info!("Listing all deployment machine types");

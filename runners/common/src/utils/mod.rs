@@ -10,8 +10,6 @@ pub mod client;
 pub mod config;
 /// Extensions traits for the `Either` type.
 pub mod ext_traits;
-/// The resource executor that will be used to manage the resources.
-pub mod resource_executor;
 
 /// Contains the [`layer`][1]s that will be used with [`tower`] mounted on the
 /// axum [`Router`][2]

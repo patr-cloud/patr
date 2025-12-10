@@ -8,7 +8,7 @@ use crate::prelude::*;
 /// can be a proxy to a deployment, a proxy to a static site, a proxy to a URL,
 /// or a redirect to a URL. The URL type will determine how the managed URL
 /// behaves.
-#[instrument(skip(database, config))]
+#[instrument(skip(database, state))]
 pub async fn create_managed_url(
 	AuthenticatedAppRequest {
 		request:
@@ -31,8 +31,8 @@ pub async fn create_managed_url(
 		database,
 		redis: _,
 		client_ip: _,
-		config,
 		user_data: _,
+		state,
 	}: AuthenticatedAppRequest<'_, CreateManagedURLRequest>,
 ) -> Result<AppResponse<CreateManagedURLRequest>, ErrorType> {
 	info!(
@@ -202,7 +202,7 @@ pub async fn create_managed_url(
 	super::sync_worker_kv_for_domain(
 		&format!("{}.{}", sub_domain, domain),
 		&mut **database,
-		&config,
+		&state.config,
 	)
 	.await?;
 

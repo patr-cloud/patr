@@ -32,8 +32,8 @@ pub async fn list_runners_for_workspace(
 		database,
 		redis,
 		client_ip: _,
-		config: _,
 		user_data,
+		state: _,
 	}: AuthenticatedAppRequest<'_, ListRunnersForWorkspaceRequest>,
 ) -> Result<AppResponse<ListRunnersForWorkspaceRequest>, ErrorType> {
 	info!("Listing runners in workspace `{}`", workspace_id);

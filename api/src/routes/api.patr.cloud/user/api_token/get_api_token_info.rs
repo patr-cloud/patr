@@ -25,7 +25,7 @@ pub async fn get_api_token_info(
 		redis: _,
 		client_ip: _,
 		user_data,
-		config: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, GetApiTokenInfoRequest>,
 ) -> Result<AppResponse<GetApiTokenInfoRequest>, ErrorType> {
 	trace!("Getting info for API token: {}", token_id);

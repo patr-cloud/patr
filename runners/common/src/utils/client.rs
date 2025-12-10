@@ -1,6 +1,11 @@
-use std::{str::FromStr, sync::OnceLock};
+use std::{
+	fmt::Debug,
+	io::{Error as IoError, ErrorKind},
+	str::FromStr,
+	sync::OnceLock,
+};
 
-use futures::{Stream, StreamExt};
+use futures::{Sink, SinkExt, Stream, StreamExt};
 use http::{StatusCode, Uri};
 use models::{
 	ApiErrorResponse,
@@ -154,7 +159,10 @@ where
 #[instrument(skip(request), fields(route = format!("{} {}", E::METHOD, request.path)))]
 pub async fn stream_request<E, ServerMsg, ClientMsg>(
 	request: ApiRequest<E>,
-) -> Result<impl Stream<Item = Result<ServerMsg, ErrorType>>, ApiErrorResponse>
+) -> Result<
+	impl Stream<Item = Result<ServerMsg, ErrorType>> + Sink<ClientMsg, Error: Debug>,
+	ApiErrorResponse,
+>
 where
 	E: ApiEndpoint<RequestBody = WebSocketUpgrade<ServerMsg, ClientMsg>>,
 	<E::RequestBody as Preprocessable>::Processed: Send,
@@ -239,32 +247,38 @@ where
 			},
 		})?
 		.0
-		.filter_map(|msg| async move {
-			match msg {
-				Ok(msg) => match msg {
-					Message::Text(text) => Some(
-						serde_json::from_str(text.as_str())
-							.inspect_err(|err| warn!("Error parsing text as JSON: {}", err))
-							.map_err(ErrorType::server_error),
-					),
-					Message::Binary(bin) => Some(
-						serde_json::from_slice(bin.as_ref())
-							.inspect_err(|err| {
-								warn!(
-									"Error parsing binary `{}` as JSON: {}",
-									String::from_utf8_lossy(bin.as_ref()),
-									err
-								);
-							})
-							.map_err(ErrorType::server_error),
-					),
-					_ => None,
-				},
-				Err(err) => {
-					warn!("Error from websocket stream: {}", err);
-					Some(Err(ErrorType::server_error(err)))
-				}
+		.filter_map(async |msg| match msg {
+			Ok(msg) => match msg {
+				Message::Text(text) => Some(
+					serde_json::from_str(text.as_str())
+						.inspect_err(|err| warn!("Error parsing text as JSON: {}", err))
+						.map_err(ErrorType::server_error),
+				),
+				Message::Binary(bin) => Some(
+					serde_json::from_slice(bin.as_ref())
+						.inspect_err(|err| {
+							warn!(
+								"Error parsing binary `{}` as JSON: {}",
+								String::from_utf8_lossy(bin.as_ref()),
+								err
+							);
+						})
+						.map_err(ErrorType::server_error),
+				),
+				_ => None,
+			},
+			Err(err) => {
+				warn!("Error from websocket stream: {}", err);
+				Some(Err(ErrorType::server_error(err)))
 			}
+		})
+		.with(async |message| {
+			Ok::<Message, TungsteniteError>(Message::Binary(
+				serde_json::to_vec(&message)
+					.inspect_err(|err| warn!("Error serializing message to JSON: {}", err))
+					.map_err(|err| TungsteniteError::Io(IoError::new(ErrorKind::Other, err)))?
+					.into(),
+			))
 		});
 
 	Ok(stream)

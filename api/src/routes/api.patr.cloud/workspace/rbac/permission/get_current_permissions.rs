@@ -21,8 +21,8 @@ pub async fn get_current_permissions(
 		database: _,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data,
+		state: _,
 	}: AuthenticatedAppRequest<'_, GetCurrentPermissionsRequest>,
 ) -> Result<AppResponse<GetCurrentPermissionsRequest>, ErrorType> {
 	info!("Get permissions of current request");

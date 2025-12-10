@@ -1,5 +1,5 @@
 use crate::{
-	api::workspace::deployment::{Deployment, DeploymentRunningDetails},
+	api::workspace::deployment::{Deployment, DeploymentRunningDetails, DeploymentStatus},
 	prelude::*,
 	rbac::ResourceType,
 };
@@ -51,7 +51,15 @@ macros::declare_stream_endpoint!(
 			id: Uuid
 		},
 	},
-	client_msg = {},
+	client_msg = {
+		/// A deployment has updated with the following new status
+		DeploymentStatusUpdated {
+			/// The ID of the deployment that was updated
+			id: Uuid,
+			/// The new status of the deployment
+			status: DeploymentStatus,
+		},
+	},
 );
 
 impl StreamRunnerDataForWorkspaceServerMsg {

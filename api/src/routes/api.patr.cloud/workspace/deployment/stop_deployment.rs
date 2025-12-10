@@ -31,8 +31,8 @@ pub async fn stop_deployment(
 		database,
 		redis,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, StopDeploymentRequest>,
 ) -> Result<AppResponse<StopDeploymentRequest>, ErrorType> {
 	info!("Starting: Stop deployment");

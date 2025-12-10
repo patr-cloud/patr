@@ -35,8 +35,8 @@ pub async fn list_all_roles(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, ListAllRolesRequest>,
 ) -> Result<AppResponse<ListAllRolesRequest>, ErrorType> {
 	info!("Listing all roles for workspace: {}", workspace_id);

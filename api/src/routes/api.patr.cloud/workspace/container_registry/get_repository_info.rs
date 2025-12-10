@@ -22,8 +22,8 @@ pub async fn get_repository_info(
 		database,
 		redis: _,
 		client_ip: _,
-		config: _,
 		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, GetContainerRepositoryInfoRequest>,
 ) -> Result<AppResponse<GetContainerRepositoryInfoRequest>, ErrorType> {
 	info!("Starting: Get repository info");
