@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-#[allow(clippy::trivially_copy_pass_by_ref)]
+#[expect(clippy::trivially_copy_pass_by_ref)]
 const fn is_false(force_restart: &bool) -> bool {
 	!*force_restart
 }

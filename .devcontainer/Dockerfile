@@ -45,6 +45,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --defau
 ENV PATH="/home/vscode/.cargo/bin:${PATH}"
 ENV RUSTUP_HOME="/home/vscode/.rustup"
 ENV CARGO_HOME="/home/vscode/.cargo"
+RUN rustup component add rustc-codegen-cranelift-preview --toolchain nightly
 
 # Install rust-based additional tools
 RUN cargo install --locked cargo-binstall

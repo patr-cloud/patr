@@ -11,7 +11,6 @@ use crate::error::RunnerError;
 pub trait EitherExt<L, R> {
 	/// Extracts the left value from the [`Either`] if it is [`Either::Left`],
 	/// otherwise returns [`None`].
-	#[allow(dead_code)]
 	fn into_left(self) -> Option<L>;
 	/// Returns `true` if the [`Either`] is [`Either::Left`], `false` otherwise.
 	fn is_left(&self) -> bool;

@@ -17,7 +17,7 @@ mod create_managed_url;
 mod delete_managed_url;
 mod list_managed_url;
 mod update_managed_url;
-#[allow(unreachable_code, unused_variables)]
+#[expect(unreachable_code)]
 mod verify_configuration;
 
 use self::{

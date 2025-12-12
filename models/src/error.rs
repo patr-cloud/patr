@@ -114,7 +114,7 @@ impl ErrorType {
 	/// Returns the status code that should be used for this error. Note that
 	/// this is only the default status code and specific endpoints can override
 	/// this if needed
-	#[allow(clippy::match_same_arms)]
+	#[expect(clippy::match_same_arms)]
 	#[must_use]
 	pub fn default_status_code(&self) -> StatusCode {
 		match self {

@@ -1,9 +1,4 @@
-use std::{
-	fmt::Debug,
-	io::{Error as IoError, ErrorKind},
-	str::FromStr,
-	sync::OnceLock,
-};
+use std::{fmt::Debug, io::Error as IoError, str::FromStr, sync::OnceLock};
 
 use futures::{Sink, SinkExt, Stream, StreamExt};
 use http::{StatusCode, Uri};
@@ -25,6 +20,7 @@ use tokio_tungstenite::tungstenite::{
 use crate::prelude::*;
 
 /// A reqwest client that can be used to make requests to the API
+#[doc(hidden)]
 static REQUEST_CLIENT: OnceLock<Client> = OnceLock::new();
 
 /// Make an API request to an endpoint
@@ -276,7 +272,7 @@ where
 			Ok::<Message, TungsteniteError>(Message::Binary(
 				serde_json::to_vec(&message)
 					.inspect_err(|err| warn!("Error serializing message to JSON: {}", err))
-					.map_err(|err| TungsteniteError::Io(IoError::new(ErrorKind::Other, err)))?
+					.map_err(|err| TungsteniteError::Io(IoError::other(err)))?
 					.into(),
 			))
 		});

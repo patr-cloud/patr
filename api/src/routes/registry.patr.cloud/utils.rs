@@ -9,7 +9,7 @@
 //! - Background cleanup tasks
 
 use std::{
-	io::{Error as IoError, ErrorKind},
+	io::Error as IoError,
 	net::IpAddr,
 	pin::Pin,
 	task::{Context, Poll},
@@ -50,7 +50,7 @@ impl http_body::Body for BodyStreamWrapper {
 		Pin::new(&mut self.0)
 			.get_pin_mut()
 			.poll_frame(cx)
-			.map_err(|e| IoError::new(ErrorKind::Other, Box::new(e)))
+			.map_err(IoError::other)
 	}
 }
 

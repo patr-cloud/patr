@@ -159,7 +159,7 @@ impl From<String> for IaacDeploymentImage {
 	}
 }
 
-#[allow(clippy::infallible_try_from)]
+#[expect(clippy::infallible_try_from)]
 impl FromStr for IaacDeploymentImage {
 	type Err = Infallible;
 
