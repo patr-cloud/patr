@@ -21,6 +21,7 @@ axum-typed-websockets          = { workspace = true, features = ["default"] }
 base32                         = { workspace = true, features = [] }
 cloudflare                     = { workspace = true, features = ["default"] }
 config                         = { workspace = true, features = ["default"] }
+console-subscriber             = { workspace = true, features = ["default"] }
 futures                        = { workspace = true, features = ["default"] }
 headers                        = { workspace = true, features = [] }
 http                           = { workspace = true, features = ["default"] }
@@ -48,7 +49,7 @@ sha2                           = { workspace = true, features = ["default"] }
 sqlx                           = { workspace = true, features = ["ipnetwork", "macros", "postgres", "runtime-tokio", "time", "tls-rustls", "uuid", "json"] }
 sync_wrapper                   = { workspace = true, features = [] }
 time                           = { workspace = true, features = ["default", "serde-human-readable"] }
-tokio                          = { workspace = true, features = ["default", "full"] }
+tokio                          = { workspace = true, features = ["default", "full", "tracing"] }
 tokio-tungstenite              = { workspace = true, features = ["default"] }
 tokio-util                     = { workspace = true, features = ["io"] }
 totp-rs                        = { workspace = true, features = ["default", "gen_secret"] }

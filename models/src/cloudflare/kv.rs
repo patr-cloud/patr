@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
 
-use crate::prelude::*;
+use crate::{api::workspace::deployment::DeploymentStatus, prelude::*};
 
 /// Managed URL types
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
-pub enum IngressKVData {
+pub enum ManagedUrlKVData {
 	/// URL is pointing to a deployment
 	#[serde(rename_all = "camelCase")]
 	ProxyDeployment {
@@ -44,9 +44,21 @@ pub enum IngressKVData {
 	},
 }
 
-impl IngressKVData {
+impl ManagedUrlKVData {
 	/// Check if the managed URL is a redirect
 	pub fn is_redirect(&self) -> bool {
-		matches!(self, IngressKVData::Redirect { .. })
+		matches!(self, ManagedUrlKVData::Redirect { .. })
 	}
+}
+
+/// Deployment KV Data stored in Cloudflare KV
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DeploymentKVData {
+	/// The ports of the deployment whose data is being stored
+	pub ports: Vec<u16>,
+	/// The runner ID running the deployment
+	pub runner_id: Uuid,
+	/// The status of the deployment
+	pub status: DeploymentStatus,
 }

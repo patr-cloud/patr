@@ -1,8 +1,17 @@
 use std::collections::BTreeMap;
 
 use axum::http::StatusCode;
+use cloudflare::{
+	endpoints::workerskv::write_key,
+	framework::{
+		Environment,
+		auth::Credentials,
+		client::{ClientConfig, async_api::Client as CloudflareClient},
+	},
+};
 use models::{
 	api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg},
+	cloudflare::kv::DeploymentKVData,
 	utils::{Base64String, StringifiedU16},
 };
 use rustis::commands::PubSubCommands;
@@ -32,7 +41,7 @@ pub async fn stop_deployment(
 		redis,
 		client_ip: _,
 		user_data: _,
-		state: _,
+		state,
 	}: AuthenticatedAppRequest<'_, StopDeploymentRequest>,
 ) -> Result<AppResponse<StopDeploymentRequest>, ErrorType> {
 	info!("Starting: Stop deployment");
@@ -221,6 +230,29 @@ pub async fn stop_deployment(
 				port: port as u16,
 				path,
 			});
+
+	CloudflareClient::new(
+		Credentials::UserAuthToken {
+			token: state.config.cloudflare.api_key.clone(),
+		},
+		ClientConfig::default(),
+		Environment::Production,
+	)?
+	.request(&write_key::WriteKey {
+		account_identifier: &state.config.cloudflare.account_id,
+		namespace_identifier: &state.config.cloudflare.worker_namespace_id,
+		key: &deployment_id.to_string(),
+		params: write_key::WriteKeyParams {
+			expiration: None,
+			expiration_ttl: None,
+		},
+		body: write_key::WriteKeyBody::Value(serde_json::to_vec(&DeploymentKVData {
+			ports: ports.iter().map(|(port, _)| port.value()).collect(),
+			runner_id: runner,
+			status: DeploymentStatus::Deploying,
+		})?),
+	})
+	.await?;
 
 	redis
 		.publish(

@@ -1,4 +1,12 @@
 use axum::http::StatusCode;
+use cloudflare::{
+	endpoints::workerskv::delete_key,
+	framework::{
+		Environment,
+		auth::Credentials,
+		client::{ClientConfig, async_api::Client as CloudflareClient},
+	},
+};
 use models::api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg};
 use rustis::commands::PubSubCommands;
 
@@ -27,7 +35,7 @@ pub async fn delete_deployment(
 		redis,
 		client_ip: _,
 		user_data: _,
-		state: _,
+		state,
 	}: AuthenticatedAppRequest<'_, DeleteDeploymentRequest>,
 ) -> Result<AppResponse<DeleteDeploymentRequest>, ErrorType> {
 	info!("Deleting deployment: {deployment_id}");
@@ -153,6 +161,20 @@ pub async fn delete_deployment(
 		deployment_id as _
 	)
 	.execute(&mut **database)
+	.await?;
+
+	CloudflareClient::new(
+		Credentials::UserAuthToken {
+			token: state.config.cloudflare.api_key.clone(),
+		},
+		ClientConfig::default(),
+		Environment::Production,
+	)?
+	.request(&delete_key::DeleteKey {
+		account_identifier: &state.config.cloudflare.account_id,
+		namespace_identifier: &state.config.cloudflare.worker_namespace_id,
+		key: &deployment_id.to_string(),
+	})
 	.await?;
 
 	// TODO Temporary workaround until audit logs and triggers are implemented

@@ -1,0 +1,55 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO deployment_exposed_port(deployment_id, port, port_type) SELECT * FROM UNNEST($1::UUID[], $2::INTEGER[], $3::EXPOSED_PORT_TYPE[]) RETURNING port, port_type AS \"port_type: ExposedPortType\";",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "port",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "port_type: ExposedPortType",
+        "type_info": {
+          "Custom": {
+            "name": "exposed_port_type",
+            "kind": {
+              "Enum": [
+                "http"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Int4Array",
+        {
+          "Custom": {
+            "name": "exposed_port_type[]",
+            "kind": {
+              "Array": {
+                "Custom": {
+                  "name": "exposed_port_type",
+                  "kind": {
+                    "Enum": [
+                      "http"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "6fc3c66feb8fed7b8ab0bfd14ab9b92fa08ce14dccdaa03d7fe60d49275150f6"
+}

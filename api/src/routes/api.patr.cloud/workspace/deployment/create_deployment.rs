@@ -1,5 +1,16 @@
 use axum::http::StatusCode;
-use models::api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg};
+use cloudflare::{
+	endpoints::workerskv::write_key,
+	framework::{
+		Environment,
+		auth::Credentials,
+		client::{ClientConfig, async_api::Client as CloudflareClient},
+	},
+};
+use models::{
+	api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg},
+	cloudflare::kv::*,
+};
 use rustis::commands::PubSubCommands;
 use time::OffsetDateTime;
 
@@ -44,7 +55,7 @@ pub async fn create_deployment(
 		redis,
 		client_ip: _,
 		user_data: _,
-		state: _,
+		state,
 	}: AuthenticatedAppRequest<'_, CreateDeploymentRequest>,
 ) -> Result<AppResponse<CreateDeploymentRequest>, ErrorType> {
 	info!("Creating deployment with name `{name}` in workspace: {workspace_id}");
@@ -69,7 +80,7 @@ pub async fn create_deployment(
 				$2,
 				NULL
 			)
-		RETURNING id;
+		RETURNING id AS "id: Uuid";
 		"#,
 		workspace_id as _,
 		now as _,
@@ -188,7 +199,10 @@ pub async fn create_deployment(
 				$3::EXPOSED_PORT_TYPE[]
 			);
 		"#,
-		&ports.iter().map(|_| deployment_id).collect::<Vec<_>>(),
+		&ports
+			.iter()
+			.map(|_| deployment_id.into())
+			.collect::<Vec<_>>(),
 		&ports
 			.iter()
 			.map(|(port, _)| port.value() as i32)
@@ -235,7 +249,7 @@ pub async fn create_deployment(
 		"#,
 		&environment_variables
 			.iter()
-			.map(|_| deployment_id)
+			.map(|_| deployment_id.into())
 			.collect::<Vec<_>>(),
 		&environment_variables
 			.iter()
@@ -274,7 +288,7 @@ pub async fn create_deployment(
 		"#,
 		&config_mounts
 			.iter()
-			.map(|_| deployment_id)
+			.map(|_| deployment_id.into())
 			.collect::<Vec<_>>(),
 		&config_mounts
 			.iter()
@@ -305,7 +319,10 @@ pub async fn create_deployment(
 				$3::TEXT[]
 			);
 		"#,
-		&volumes.iter().map(|_| deployment_id).collect::<Vec<_>>(),
+		&volumes
+			.iter()
+			.map(|_| deployment_id.into())
+			.collect::<Vec<_>>(),
 		&volumes
 			.iter()
 			.map(|(volume_id, _)| (*volume_id).into())
@@ -365,6 +382,29 @@ pub async fn create_deployment(
 			.await?;
 		}
 	}
+
+	CloudflareClient::new(
+		Credentials::UserAuthToken {
+			token: state.config.cloudflare.api_key.clone(),
+		},
+		ClientConfig::default(),
+		Environment::Production,
+	)?
+	.request(&write_key::WriteKey {
+		account_identifier: &state.config.cloudflare.account_id,
+		namespace_identifier: &state.config.cloudflare.worker_namespace_id,
+		key: &deployment_id.to_string(),
+		params: write_key::WriteKeyParams {
+			expiration: None,
+			expiration_ttl: None,
+		},
+		body: write_key::WriteKeyBody::Value(serde_json::to_vec(&DeploymentKVData {
+			ports: ports.iter().map(|(port, _)| port.value()).collect(),
+			runner_id: runner,
+			status: DeploymentStatus::Deploying,
+		})?),
+	})
+	.await?;
 
 	// TODO Temporary workaround until audit logs and triggers are implemented
 	redis

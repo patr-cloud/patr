@@ -147,6 +147,13 @@ async fn main() {
 
 	tracing_subscriber::registry()
 		.with(
+			if config.environment == RunningEnvironment::Development {
+				Some(console_subscriber::spawn())
+			} else {
+				None
+			},
+		)
+		.with(
 			FmtLayer::new()
 				.with_span_events(FmtSpan::NONE)
 				.event_format(

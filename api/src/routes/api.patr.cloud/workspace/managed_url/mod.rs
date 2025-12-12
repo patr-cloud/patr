@@ -43,7 +43,7 @@ async fn sync_worker_kv_for_domain(
 	database: &mut DatabaseConnection,
 	config: &AppConfig,
 ) -> Result<(), ErrorType> {
-	use models::cloudflare::kv::IngressKVData::*;
+	use models::cloudflare::kv::ManagedUrlKVData::*;
 
 	let client = CloudflareClient::new(
 		Credentials::UserAuthToken {

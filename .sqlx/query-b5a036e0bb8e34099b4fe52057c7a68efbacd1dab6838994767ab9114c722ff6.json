@@ -1,0 +1,37 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE deployment SET name = COALESCE($1, name), machine_type = COALESCE($2, machine_type), deploy_on_push = COALESCE($3, deploy_on_push), runner = COALESCE($4, runner), min_horizontal_scale = COALESCE($5, min_horizontal_scale), max_horizontal_scale = COALESCE($6, max_horizontal_scale), startup_probe_port = (CASE WHEN $7 = 0 THEN NULL ELSE $7 END), startup_probe_path = (CASE WHEN $7 = 0 THEN NULL ELSE $8 END), startup_probe_port_type = (CASE WHEN $7 = 0 THEN NULL WHEN $7 IS NULL THEN startup_probe_port_type ELSE 'http'::EXPOSED_PORT_TYPE END), liveness_probe_port = (CASE WHEN $9 = 0 THEN NULL ELSE $9 END), liveness_probe_path = (CASE WHEN $9 = 0 THEN NULL ELSE $10 END), liveness_probe_port_type = (CASE WHEN $9 = 0 THEN NULL WHEN $9 IS NULL THEN liveness_probe_port_type ELSE 'http'::EXPOSED_PORT_TYPE END) WHERE id = $11 RETURNING runner AS \"runner: Uuid\";",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "runner: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        },
+        "Uuid",
+        "Bool",
+        "Uuid",
+        "Int2",
+        "Int2",
+        "Int4",
+        "Text",
+        "Int4",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b5a036e0bb8e34099b4fe52057c7a68efbacd1dab6838994767ab9114c722ff6"
+}

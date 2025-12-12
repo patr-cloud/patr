@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT registry, repository_id, image_name, image_tag, runner FROM deployment WHERE id = $1 AND deleted IS NULL;",
+  "query": "SELECT registry, repository_id, image_name, image_tag FROM deployment WHERE id = $1 AND deleted IS NULL;",
   "describe": {
     "columns": [
       {
@@ -22,11 +22,6 @@
         "ordinal": 3,
         "name": "image_tag",
         "type_info": "Varchar"
-      },
-      {
-        "ordinal": 4,
-        "name": "runner",
-        "type_info": "Uuid"
       }
     ],
     "parameters": {
@@ -38,9 +33,8 @@
       false,
       true,
       true,
-      false,
       false
     ]
   },
-  "hash": "e37397fb3ce937e30a52887872818e7f5c7ecf824936f271d7d7387dc95dd59e"
+  "hash": "b69239c161822c20c4a8d0f6c40b59fa9f61d9304c8aff5f1d0c0590ca6e355a"
 }

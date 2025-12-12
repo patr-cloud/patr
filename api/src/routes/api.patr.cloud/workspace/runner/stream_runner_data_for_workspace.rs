@@ -136,8 +136,9 @@ async fn handle_websocket(
 		)
 		.await
 		.into_left() else {
-			_ = websocket.close().await;
-			return;
+			// Global cancellation triggered
+			debug!("Global cancellation triggered, closing websocket");
+			break;
 		};
 
 		let Some(reader_writer) = actionable_future.into_left() else {
@@ -174,13 +175,19 @@ async fn handle_websocket(
 
 		match reader_writer {
 			Either::Left((publish_data, _)) => {
-				let Some(Ok(data)) = publish_data else {
+				let Some(data) = publish_data else {
+					// pub_sub stream ended
+					debug!("Redis pub/sub stream ended");
+					break;
+				};
+				let Ok(data) = data else {
+					// Error on pub_sub, continue to try again
 					continue;
 				};
 				let Ok(data) = serde_json::from_slice(&data.payload)
 					.inspect_err(|err| error!("Error streaming runner data: {:?}", err))
 				else {
-					return;
+					break;
 				};
 				trace!("Sending data down the pipe: {:?}", data);
 				let Ok(_) = websocket.send(Message::Item(data)).await else {
@@ -189,13 +196,19 @@ async fn handle_websocket(
 				};
 			}
 			Either::Right((client_message, _)) => {
-				let Some(Ok(message)) = client_message else {
+				let Some(message) = client_message else {
+					// Websocket stream ended (client disconnected)
+					debug!("Websocket client disconnected");
+					break;
+				};
+				let Ok(message) = message else {
+					// Error on websocket, continue to try again
 					continue;
 				};
-				trace!("Received message from websocket: {:?}", message);
 				let Message::Item(message) = message else {
 					continue;
 				};
+				trace!("Received message from websocket: {:?}", message);
 
 				match message {
 					DeploymentStatusUpdated { id, status } => {
@@ -222,6 +235,7 @@ async fn handle_websocket(
 		.unsubscribe(&redis_channel)
 		.await
 		.inspect_err(|err| error!("Error streaming runner data: {:?}", err));
+	_ = websocket.close().await;
 }
 
 async fn update_deployment_status(
@@ -247,12 +261,14 @@ async fn update_deployment_status(
 				) OR (
 				 	$1 = 'running' AND status IN ('deploying', 'errored')
 				)
-			);
+			)
+		RETURNING
+			status AS "status: DeploymentStatus";
 		"#,
 		status as _,
 		id as _,
 	)
-	.execute(database)
+	.fetch_one(database)
 	.await?;
 
 	Ok(())

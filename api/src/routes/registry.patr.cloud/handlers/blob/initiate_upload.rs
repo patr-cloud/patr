@@ -145,7 +145,7 @@ pub async fn initiate_upload(
 	}
 
 	// Check for mount query parameters
-	if let Some((mount, from)) = mount.zip(from) {
+	if let Some((_mount, _from)) = mount.zip(from) {
 		info!("Attempting cross-repository blob mount");
 
 		// Handle cross-repository blob mounting

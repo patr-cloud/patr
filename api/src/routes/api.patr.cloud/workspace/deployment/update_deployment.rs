@@ -1,5 +1,19 @@
+use std::collections::BTreeMap;
+
 use axum::http::StatusCode;
-use models::api::workspace::deployment::*;
+use cloudflare::{
+	endpoints::workerskv::write_key,
+	framework::{
+		Environment,
+		auth::Credentials,
+		client::{ClientConfig, async_api::Client as CloudflareClient},
+	},
+};
+use models::{
+	api::workspace::deployment::*,
+	cloudflare::kv::DeploymentKVData,
+	utils::StringifiedU16,
+};
 
 use crate::prelude::*;
 
@@ -42,7 +56,7 @@ pub async fn update_deployment(
 		redis: _,
 		client_ip: _,
 		user_data: _,
-		state: _,
+		state,
 	}: AuthenticatedAppRequest<'_, UpdateDeploymentRequest>,
 ) -> Result<AppResponse<UpdateDeploymentRequest>, ErrorType> {
 	info!("Updating deployment: {}", deployment_id);
@@ -96,7 +110,7 @@ pub async fn update_deployment(
 	.execute(&mut **database)
 	.await?;
 
-	if let Some(ports) = ports {
+	let ports = if let Some(ports) = ports {
 		if ports.is_empty() {
 			return Err(ErrorType::WrongParameters);
 		}
@@ -129,7 +143,10 @@ pub async fn update_deployment(
 					$1::UUID[],
 					$2::INTEGER[],
 					$3::EXPOSED_PORT_TYPE[]
-				);
+				)
+			RETURNING
+				port,
+				port_type AS "port_type: ExposedPortType";
 			"#,
 			&ports
 				.iter()
@@ -144,12 +161,44 @@ pub async fn update_deployment(
 				.map(|(_, port_type)| port_type.to_string())
 				.collect::<Vec<String>>() as _,
 		)
-		.execute(&mut **database)
-		.await?;
-	}
+		.fetch_all(&mut **database)
+		.await?
+		.into_iter()
+		.map(|row| {
+			let port = row.port as u16;
+			let port_type = row.port_type;
+
+			(StringifiedU16::new(port), port_type)
+		})
+		.collect::<BTreeMap<_, _>>()
+	} else {
+		// Fetch existing ports from database
+		query!(
+			r#"
+			SELECT
+				port,
+				port_type AS "port_type: ExposedPortType"
+			FROM
+				deployment_exposed_port
+			WHERE
+				deployment_id = $1;
+			"#,
+			deployment_id as _
+		)
+		.fetch_all(&mut **database)
+		.await?
+		.into_iter()
+		.map(|row| {
+			let port = row.port as u16;
+			let port_type = row.port_type;
+
+			(StringifiedU16::new(port), port_type)
+		})
+		.collect::<BTreeMap<_, _>>()
+	};
 
 	// Updating deployment details
-	query!(
+	let runner_id = query!(
 		r#"
 		UPDATE
 			deployment
@@ -213,7 +262,9 @@ pub async fn update_deployment(
 				END
 			)
 		WHERE
-			id = $11;
+			id = $11
+		RETURNING
+			runner AS "runner: Uuid";
 		"#,
 		name as _,
 		machine_type as _,
@@ -227,8 +278,9 @@ pub async fn update_deployment(
 		liveness_probe.as_ref().map(|probe| probe.path.as_str()),
 		deployment_id as _
 	)
-	.execute(&mut **database)
-	.await?;
+	.fetch_one(&mut **database)
+	.await?
+	.runner;
 
 	// END DEFERRED CONSTRAINT
 	query!(
@@ -392,6 +444,29 @@ pub async fn update_deployment(
 			err => ErrorType::server_error(err),
 		})?;
 	}
+
+	CloudflareClient::new(
+		Credentials::UserAuthToken {
+			token: state.config.cloudflare.api_key.clone(),
+		},
+		ClientConfig::default(),
+		Environment::Production,
+	)?
+	.request(&write_key::WriteKey {
+		account_identifier: &state.config.cloudflare.account_id,
+		namespace_identifier: &state.config.cloudflare.worker_namespace_id,
+		key: &deployment_id.to_string(),
+		params: write_key::WriteKeyParams {
+			expiration: None,
+			expiration_ttl: None,
+		},
+		body: write_key::WriteKeyBody::Value(serde_json::to_vec(&DeploymentKVData {
+			ports: ports.iter().map(|(port, _)| port.value()).collect(),
+			runner_id,
+			status: DeploymentStatus::Deploying,
+		})?),
+	})
+	.await?;
 
 	AppResponse::builder()
 		.body(UpdateDeploymentResponse)
