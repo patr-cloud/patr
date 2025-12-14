@@ -26,6 +26,8 @@ mod geo_location;
 /// headers are present in a struct as well as provide what headers are required
 /// for an endpoint.
 mod headers;
+/// Extension traits for iterators.
+mod iterator_ext;
 /// A set of utilities to parse a query param for the list route API. This route
 /// enforces a response header to be present, which provides the total number of
 /// items in the response, as well as adding other params like sorting,
@@ -60,6 +62,7 @@ pub use self::{
 	ext_trait::*,
 	geo_location::*,
 	headers::*,
+	iterator_ext::*,
 	list_resource_query::*,
 	middlewares::*,
 	one_or_many::*,

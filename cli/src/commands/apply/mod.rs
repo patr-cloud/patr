@@ -85,7 +85,8 @@ pub async fn execute(
 		serde_path_to_error::deserialize::<_, IaacResource>(deserializer)
 			.map_err(|err| AppError::IaacParseError(format!("{} at `{}`", err, err.path())))?,
 	]
-	.deduplicated()?;
+	.deduplicated()?
+	.ordered()?;
 
 	for resource in resources {
 		// Apply the resource

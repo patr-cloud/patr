@@ -15,4 +15,10 @@ pub enum IaacError {
 	/// A resource was not found in the Iaac file.
 	#[error("resource not found: {0}")]
 	ResourceNotFound(String),
+	/// A resource has a dependency that is not satisfied.
+	#[error("none of the resources ({0:?}) has a dependency that is satisfiable")]
+	ResourceDependencyNotSatisfied(Vec<String>),
+	/// An unsupported operation was attempted.
+	#[error("unsupported operation: {0}")]
+	Unsupported(String),
 }
