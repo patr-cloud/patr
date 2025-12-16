@@ -1,11 +1,20 @@
 import { A, redirect, useNavigate, useSearchParams } from "@solidjs/router";
 import { createSignal, For, onMount, Show } from "solid-js";
 import { CompleteSignUpRequest } from "~/bindings";
-import { Button, ButtonVariant, Input, InputType } from "~/components";
+import {
+  Button,
+  ButtonVariant,
+  Input,
+  InputType,
+  useToast,
+  Turnstile,
+} from "~/components";
 
 const ConfirmSignUp = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [searchParams] = useSearchParams<{ username?: string; otp?: string }>();
+  const [turnstileToken, setTurnstileToken] = createSignal<string>("");
 
   // Get username from URL params or navigation state
   const initialUsername = searchParams.username || "";
@@ -95,10 +104,16 @@ const ConfirmSignUp = () => {
 
   const onSubmit = async (e: Event) => {
     e.preventDefault();
-    // Handle sign-up logic here
+
+    if (!turnstileToken()) {
+      toast("Please complete the security verification", "error");
+      return;
+    }
+
     const body: CompleteSignUpRequest = {
       username: username(),
       verificationToken: otpDigits().join(""),
+      cfTurnstileToken: turnstileToken(),
     };
     const resp = await fetch("/api/auth/join", {
       method: "POST",
@@ -115,13 +130,14 @@ const ConfirmSignUp = () => {
     } else {
       // Handle sign-up errors
       console.error("Error confirming account:", resp.statusText);
+      toast("Error confirming account", "error");
     }
   };
 
   return (
     <form
       onSubmit={onSubmit}
-      class="bg-secondary p-12 rounded-sm shadow-2xl w-full max-w-[32rem] relative z-10 border border-secondary-medium"
+      class="bg-secondary p-12 rounded-sm shadow-2xl w-full max-w-128 relative z-10 border border-secondary-medium"
     >
       {/* Header */}
       <div class="mb-10 items-center justify-between flex flex-row">
@@ -180,6 +196,16 @@ const ConfirmSignUp = () => {
             )}
           </For>
         </div>
+      </div>
+
+      {/* Turnstile Widget */}
+      <div class="mt-6 flex justify-center">
+        <Turnstile
+          onVerify={setTurnstileToken}
+          onExpire={() => setTurnstileToken("")}
+          onError={() => setTurnstileToken("")}
+          action="complete-sign-up"
+        />
       </div>
 
       {/* Sign Up Button */}

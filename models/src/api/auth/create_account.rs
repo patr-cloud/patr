@@ -68,5 +68,8 @@ macros::declare_api_endpoint!(
 		/// The recovery method the user would recover their account with
 		#[serde(flatten)]
 		pub recovery_method: RecoveryMethod,
+		/// The Cloudflare Turnstile token to verify that the request is made by a human
+		#[preprocess(trim, length(min = 1))]
+		pub cf_turnstile_token: String,
 	},
 );

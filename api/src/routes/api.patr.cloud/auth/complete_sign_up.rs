@@ -9,6 +9,7 @@ use argon2::{
 	password_hash::SaltString,
 };
 use axum::http::StatusCode;
+use cf_turnstile::{SiteVerifyRequest, TurnstileClient};
 use jsonwebtoken::EncodingKey;
 use models::api::auth::*;
 use sqlx::types::ipnetwork::IpNetwork;
@@ -23,10 +24,12 @@ pub async fn complete_sign_up(
 				path: CompleteSignUpPath,
 				query: (),
 				headers: CompleteSignUpRequestHeaders { user_agent },
-				body: CompleteSignUpRequestProcessed {
-					username,
-					verification_token,
-				},
+				body:
+					CompleteSignUpRequestProcessed {
+						username,
+						verification_token,
+						cf_turnstile_token,
+					},
 			},
 		database,
 		redis: _,
@@ -34,6 +37,27 @@ pub async fn complete_sign_up(
 		state,
 	}: AppRequest<'_, CompleteSignUpRequest>,
 ) -> Result<AppResponse<CompleteSignUpRequest>, ErrorType> {
+	trace!("Validating Cloudflare Turnstile token");
+	let turnstile_client = TurnstileClient::new(state.config.cloudflare.turnstile_secret.into());
+	let cf_turnstile_response = turnstile_client
+		.siteverify(SiteVerifyRequest {
+			response: cf_turnstile_token.to_string(),
+			remote_ip: Some(client_ip.to_string()),
+			..Default::default()
+		})
+		.await
+		.inspect_err(|err| {
+			error!("Error verifying Cloudflare Turnstile token: `{}`", err);
+		})?;
+
+	if cf_turnstile_response.success != true {
+		return Err(ErrorType::TurnstileVerificationFailed);
+	}
+
+	if cf_turnstile_response.action != "complete-sign-up" {
+		return Err(ErrorType::TurnstileVerificationActionMismatch);
+	}
+
 	info!("Completing sign up for user: `{username}`");
 
 	let row = query!(

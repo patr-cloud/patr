@@ -9,6 +9,7 @@ use argon2::{
 	password_hash::SaltString,
 };
 use axum::http::StatusCode;
+use cf_turnstile::{SiteVerifyRequest, TurnstileClient};
 use jsonwebtoken::EncodingKey;
 use models::api::auth::*;
 use sqlx::types::ipnetwork::IpNetwork;
@@ -26,11 +27,13 @@ pub async fn login(
 				path: LoginPath,
 				query: (),
 				headers: LoginRequestHeaders { user_agent },
-				body: LoginRequestProcessed {
-					user_id,
-					password,
-					mfa_otp,
-				},
+				body:
+					LoginRequestProcessed {
+						user_id,
+						password,
+						mfa_otp,
+						cf_turnstile_token,
+					},
 			},
 		database,
 		redis: _,
@@ -38,6 +41,27 @@ pub async fn login(
 		state,
 	}: AppRequest<'_, LoginRequest>,
 ) -> Result<AppResponse<LoginRequest>, ErrorType> {
+	trace!("Validating Cloudflare Turnstile token");
+	let turnstile_client = TurnstileClient::new(state.config.cloudflare.turnstile_secret.into());
+	let cf_turnstile_response = turnstile_client
+		.siteverify(SiteVerifyRequest {
+			response: cf_turnstile_token.to_string(),
+			remote_ip: Some(client_ip.to_string()),
+			..Default::default()
+		})
+		.await
+		.inspect_err(|err| {
+			error!("Error verifying Cloudflare Turnstile token: `{}`", err);
+		})?;
+
+	if cf_turnstile_response.success != true {
+		return Err(ErrorType::TurnstileVerificationFailed);
+	}
+
+	if cf_turnstile_response.action != "login" {
+		return Err(ErrorType::TurnstileVerificationActionMismatch);
+	}
+
 	trace!("Logging in user: {}", user_id);
 
 	let user_data = query!(

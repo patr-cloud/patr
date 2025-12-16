@@ -113,6 +113,7 @@ dependencies = [
  "axum-extra",
  "axum-typed-websockets",
  "base32",
+ "cf-turnstile",
  "cloudflare",
  "config",
  "console-subscriber",
@@ -940,6 +941,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6fac387a98bb7c37292057cffc56d62ecb629900026402633ae9160df93a8766"
 dependencies = [
  "nom",
+]
+
+[[package]]
+name = "cf-turnstile"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b3e7381ca451b439579a09feb1d41d4b07c0e903bf8c74602b9e95219c40e47b"
+dependencies = [
+ "http-body-util",
+ "hyper 1.8.1",
+ "hyper-rustls 0.27.7",
+ "hyper-util",
+ "secrecy 0.8.0",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -2954,7 +2971,7 @@ dependencies = [
  "kube-core",
  "pem",
  "rustls 0.23.35",
- "secrecy",
+ "secrecy 0.10.3",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -4472,6 +4489,15 @@ checksum = "da046153aa2352493d6cb7da4b6e5c0c057d8a1d0a9aa8560baffdd945acd414"
 dependencies = [
  "ring",
  "untrusted 0.9.0",
+]
+
+[[package]]
+name = "secrecy"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9bd1c54ea06cfd2f6b63219704de0b9b4f72dcc2b8fdef820be6cd799780e91e"
+dependencies = [
+ "zeroize",
 ]
 
 [[package]]

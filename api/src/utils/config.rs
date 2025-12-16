@@ -170,6 +170,8 @@ pub struct CloudflareConfig {
 	pub account_id: String,
 	/// The namespace ID to use for Workers KV
 	pub worker_namespace_id: String,
+	/// The secret key to use for Cloudflare Turnstile
+	pub turnstile_secret: String,
 }
 
 /// The configuration for the SMTP server to use to send emails to users

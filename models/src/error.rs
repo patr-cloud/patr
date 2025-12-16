@@ -108,6 +108,12 @@ pub enum ErrorType {
 	NotRootDomain,
 	/// The domain is not a domain with an ICANN TLD
 	NotIcannDomain,
+	/// The user tried to access the API but is not a human. This can happen
+	/// when the Cloudflare Turnstile verification fails
+	TurnstileVerificationFailed,
+	/// The cloudflare turnstile verification action did not match the expected
+	/// action
+	TurnstileVerificationActionMismatch,
 }
 
 impl ErrorType {
@@ -155,6 +161,8 @@ impl ErrorType {
 			Self::InvalidRunnerMode => StatusCode::FORBIDDEN,
 			Self::NotRootDomain => StatusCode::BAD_REQUEST,
 			Self::NotIcannDomain => StatusCode::BAD_REQUEST,
+			Self::TurnstileVerificationFailed => StatusCode::FORBIDDEN,
+			Self::TurnstileVerificationActionMismatch => StatusCode::FORBIDDEN,
 		}
 	}
 
@@ -227,6 +235,10 @@ impl ErrorType {
 					"Please provide a domain with an ICANN TLD instead (.com, .net, etc). ",
 					"Private TLDs are currently not supported ",
 				)
+			}
+			Self::TurnstileVerificationFailed => "Human verification failed. Please try again.",
+			Self::TurnstileVerificationActionMismatch => {
+				"Human verification action mismatch. Please try again (Turnstile action mismatch)."
 			}
 		}
 	}

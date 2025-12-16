@@ -1,5 +1,5 @@
 import { A, query, redirect, useNavigate } from "@solidjs/router";
-import { Alert, Button, InputEventT, useToast } from "~/components";
+import { Alert, Button, InputEventT, useToast, Turnstile } from "~/components";
 import { InputType, Input } from "~/components";
 import { ButtonVariant } from "~/utils/color";
 import { createSignal, JSX, Show } from "solid-js";
@@ -9,7 +9,6 @@ import { httpRequest } from "~/utils/http-request";
 import { useAuthState } from "~/hooks";
 import {
   USERNAME_VALIDITY_PATTERN,
-  USERNAME_VALIDITY_REGEX,
   validatePassword,
 } from "~/utils/validation";
 import { PasswordInput } from "~/components";
@@ -74,6 +73,7 @@ const Login = () => {
   const [, setAuthState] = useAuthState();
   const navigate = useNavigate();
   const toast = useToast();
+  const [turnstileToken, setTurnstileToken] = createSignal<string>("");
   const [inputs, setInputs] = createSignal<InputFields>({
     userId: "",
     password: "",
@@ -123,6 +123,11 @@ const Login = () => {
       return false;
     }
 
+    if (!turnstileToken()) {
+      toast("Please complete the security verification", "error");
+      return false;
+    }
+
     return true;
   };
 
@@ -139,6 +144,7 @@ const Login = () => {
       body: JSON.stringify({
         userId,
         password,
+        cfTurnstileToken: turnstileToken(),
       }),
       headers: {
         "Content-Type": "application/json",
@@ -183,7 +189,7 @@ const Login = () => {
       {/* Login Card */}
       <form
         onSubmit={onSubmitLogin}
-        class="bg-secondary p-12 rounded-sm shadow-2xl w-full max-w-[32rem] relative z-10 border border-secondary-medium"
+        class="bg-secondary p-12 rounded-sm shadow-2xl w-full max-w-128 relative z-10 border border-secondary-medium"
       >
         {/* Header */}
         <div class="mb-10 items-center justify-between flex flex-row">
@@ -238,6 +244,16 @@ const Login = () => {
               <Alert message={inputError().password} type="error" />
             </div>
           </Show>
+
+          {/* Turnstile Widget */}
+          <div class="mt-6 flex justify-center">
+            <Turnstile
+              onVerify={setTurnstileToken}
+              onExpire={() => setTurnstileToken("")}
+              onError={() => setTurnstileToken("")}
+              action="login"
+            />
+          </div>
 
           {/* Login Button */}
           <div class="pt-8 w-full flex flex-row items-center justify-between">

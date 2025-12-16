@@ -30,6 +30,9 @@ macros::declare_api_endpoint!(
 		/// of the user
 		#[preprocess(optional(trim, length(min = 6, max = 7), regex = OTP_VERIFICATION_TOKEN_REGEX))]
 		pub mfa_otp: Option<String>,
+		/// The Cloudflare Turnstile token to verify that the request is made by a human
+		#[preprocess(trim, length(min = 1))]
+		pub cf_turnstile_token: String,
 	},
 	response = {
 		/// The access token is used to authenticate the user, implying that the user is logged in

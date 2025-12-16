@@ -4,9 +4,9 @@ import PageContainerBody from "~/components/page/body";
 import PageContainerHead from "~/components/page/head";
 import Button from "~/components/button";
 import Input, {
-	InputType,
-	InputEventT,
-	PasswordInput,
+  InputType,
+  InputEventT,
+  PasswordInput,
 } from "~/components/input";
 import InputLabel from "~/components/input-label";
 import InputDropdown from "~/components/input-dropdown";
@@ -16,24 +16,26 @@ import StatusBadge from "~/components/status-badge";
 import ContainerGrid from "~/components/container-grid";
 import BgOnboard from "~/components/bg-onboard";
 import { ToastProvider, useToast } from "~/components/toast";
+import Turnstile from "~/components/turnstile";
 
 export {
-	Alert,
-	PageContainer,
-	PageContainerBody,
-	PageContainerHead,
-	BgOnboard,
-	Button,
-	ButtonVariant,
-	Input,
-	InputType,
-	PasswordInput,
-	InputLabel,
-	InputDropdown,
-	Table,
-	StatusBadge,
-	ContainerGrid,
-	ToastProvider,
-	useToast,
-	type InputEventT,
+  Alert,
+  PageContainer,
+  PageContainerBody,
+  PageContainerHead,
+  BgOnboard,
+  Button,
+  ButtonVariant,
+  Input,
+  InputType,
+  PasswordInput,
+  InputLabel,
+  InputDropdown,
+  Table,
+  StatusBadge,
+  ContainerGrid,
+  ToastProvider,
+  useToast,
+  Turnstile,
+  type InputEventT,
 };

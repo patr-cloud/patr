@@ -21,6 +21,9 @@ macros::declare_api_endpoint!(
 		/// The OTP which will validate the verification
 		#[preprocess(trim, length(min = 6, max = 7), regex = OTP_VERIFICATION_TOKEN_REGEX)]
 		pub verification_token: String,
+		/// The Cloudflare Turnstile token to verify that the request is made by a human
+		#[preprocess(trim, length(min = 1))]
+		pub cf_turnstile_token: String,
 	},
 	response = {
 		/// Upon login, the route responds with an access token and a refresh token.
