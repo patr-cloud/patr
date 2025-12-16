@@ -2,10 +2,10 @@ use axum::http::StatusCode;
 use models::api::auth::oauth::*;
 use rustis::commands::StringCommands;
 use serde::Serialize;
-use serde_json::json;
 
-use crate::prelude::*;
+use crate::{prelude::*, routes::api_patr_cloud::auth::oauth::token::AuthCodeData};
 
+/// The query parameters for the redirect URL after authorization.
 #[derive(Serialize)]
 struct RedirectQueryParams {
 	code: String,
@@ -13,7 +13,7 @@ struct RedirectQueryParams {
 	state: Option<String>,
 }
 
-pub async fn authorize_post(
+pub async fn login(
 	AppRequest {
 		request:
 			ProcessedApiRequest {
@@ -41,19 +41,23 @@ pub async fn authorize_post(
 		"Generated authorization code `{}` for client_id `{}`",
 		authorization_code, client_id
 	);
-	let metadata = json!({
-		"code_challenge": code_challenge,
-		"code_challenge_method": code_challenge_method,
-	});
+	let metadata: AuthCodeData = AuthCodeData {
+		code_challenge,
+		code_challenge_method,
+	};
 
 	// Store the authorization code and its metadata in the redis with an expiration
 	// time.
 	let exp_time = 600;
+	let metadata_json = serde_json::to_string(&metadata).map_err(|e| {
+		error!("Error serializing authorization code metadata: {}", e);
+		ErrorType::server_error(e)
+	})?;
 	redis
 		.setex(
 			redis::keys::oauth_authorization_code_prefix(&authorization_code),
 			exp_time,
-			metadata.to_string(),
+			metadata_json,
 		)
 		.await
 		.inspect_err(|err| {

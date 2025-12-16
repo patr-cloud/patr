@@ -8,9 +8,9 @@ use sha2::{Digest, Sha256};
 use crate::prelude::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct AuthCodeData {
-	code_challenge: String,
-	code_challenge_method: CodeChallengeHashMethod,
+pub struct AuthCodeData {
+	pub code_challenge: String,
+	pub code_challenge_method: CodeChallengeHashMethod,
 }
 
 pub async fn token(

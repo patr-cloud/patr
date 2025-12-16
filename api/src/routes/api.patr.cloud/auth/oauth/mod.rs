@@ -11,8 +11,6 @@ use crate::prelude::*;
 /// returns a temporary code that can be exchanged for an access token and a
 /// refresh token.
 mod authorize;
-/// The endpoint to submit user credentials and get an authorization code.
-mod authorize_post;
 /// The endpoint to get details about the access token and refresh token.
 ///
 /// The third-party app can call this endpoint to get information about the
@@ -22,6 +20,8 @@ mod authorize_post;
 /// information about the token, such as the user ID, the scopes, and the expiry
 /// time.
 mod introspect;
+/// The endpoint to submit user credentials and get an authorization code.
+mod login;
 /// The endpoint to revoke an access token.
 ///
 /// If the user or the third-party app wants to stop the app’s access (like
@@ -43,7 +43,7 @@ mod revoke;
 /// the [`authorize()`] endpoint.
 mod token;
 
-use self::{authorize::*, authorize_post::*, introspect::*, revoke::*, token::*};
+use self::{authorize::*, introspect::*, login::*, revoke::*, token::*};
 
 /// Sets up the oauth routes
 #[instrument(skip(state))]
@@ -53,5 +53,5 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 		.mount_endpoint(introspect, state, allowed_client_type)
 		.mount_endpoint(revoke, state, allowed_client_type)
 		.mount_endpoint(token, state, allowed_client_type)
-		.mount_endpoint(authorize_post, state, allowed_client_type)
+		.mount_endpoint(login, state, allowed_client_type)
 }

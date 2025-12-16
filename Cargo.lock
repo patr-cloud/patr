@@ -152,7 +152,6 @@ dependencies = [
  "tracing-opentelemetry",
  "tracing-subscriber",
  "typed-builder",
- "urlencoding",
  "woothee",
 ]
 

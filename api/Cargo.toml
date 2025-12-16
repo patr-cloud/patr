@@ -58,5 +58,4 @@ tracing                        = { workspace = true, features = ["async-await", 
 tracing-opentelemetry          = { workspace = true, features = ["default"] }
 tracing-subscriber             = { workspace = true, features = ["default"] }
 typed-builder                  = { workspace = true, features = [] }
-urlencoding                    = { workspace = true, features = [] }
 woothee                        = { workspace = true, features = ["default"] }

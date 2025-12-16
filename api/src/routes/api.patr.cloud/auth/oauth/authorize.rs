@@ -4,6 +4,7 @@ use serde::Serialize;
 
 use crate::prelude::*;
 
+/// The query parameters the user will be redirected to frontend login page.
 #[derive(Serialize)]
 struct LoginQueryParams {
 	response_type: String,
@@ -26,6 +27,7 @@ pub async fn authorize(
 					OAuthAuthorizeQuery {
 						response_type,
 						client_id,
+						client_secret,
 						redirect_uri,
 						scope,
 						state,
@@ -43,6 +45,30 @@ pub async fn authorize(
 ) -> Result<AppResponse<OAuthAuthorizeRequest>, ErrorType> {
 	if response_type != OAuthAuthorizeResponseType::AuthorizationCode {
 		return Err(ErrorType::OAuthInvalidResponseType);
+	}
+	let client = query!(
+		r#"
+		SELECT
+			secret, redirect_uri
+		FROM
+			oauth_clients
+		WHERE
+			id = $1;
+		"#,
+		client_id
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	.ok_or(ErrorType::OAuthInvalidClient)
+	.inspect_err(|_| {
+		info!("Could not find a row with the given client_id");
+	})?;
+
+	if client.secret != client_secret {
+		return Err(ErrorType::OAuthInvalidClient);
+	}
+	if client.redirect_uri != redirect_uri {
+		return Err(ErrorType::OAuthInvalidClient);
 	}
 
 	let params = LoginQueryParams {

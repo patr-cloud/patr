@@ -49,6 +49,8 @@ macros::declare_api_endpoint!(
 		pub response_type: OAuthAuthorizeResponseType,
 		/// The client ID of the third-party app
 		pub client_id: String,
+		/// The secret associatded with the client
+		pub client_secret: String,
 		/// The redirect URI of the third-party app
 		#[serde(default, skip_serializing_if = "Option::is_none")]
 		pub redirect_uri: Option<String>,

@@ -2,6 +2,9 @@ use sqlx::{Pool, pool::PoolOptions};
 
 use crate::{prelude::*, utils::config::DatabaseConfig};
 
+/// The oauth client module for the database. This is used to handle the oauth
+/// clients and their data.
+pub(super) mod client;
 /// The initializer for the database. This will create the database pool and
 /// initialize the database with the necessary tables and data.
 pub(super) mod initializer;
@@ -19,7 +22,7 @@ pub(super) mod user;
 pub(super) mod workspace;
 
 pub use self::initializer::initialize;
-pub(super) use self::{meta_data::*, rbac::*, user::*, workspace::*};
+pub(super) use self::{client::*, meta_data::*, rbac::*, user::*, workspace::*};
 
 /// Connects to the database based on a config. Not much to say here.
 #[instrument(skip(config))]

@@ -34,7 +34,6 @@
 /// returns a temporary code that can be exchanged for an access token and a
 /// refresh token.
 mod authorize;
-mod authorize_post;
 /// The endpoint to get details about the access token and refresh token.
 ///
 /// The third-party app can call this endpoint to get information about the
@@ -44,6 +43,8 @@ mod authorize_post;
 /// information about the token, such as the user ID, the scopes, and the expiry
 /// time.
 mod introspect;
+///  The endpoint to submit user credentials and get an authorization code.
+mod login;
 /// The endpoint to revoke an access token.
 ///
 /// If the user or the third-party app wants to stop the app’s access (like
@@ -65,4 +66,4 @@ mod revoke;
 /// the [`authorize`] endpoint.
 mod token;
 
-pub use self::{authorize::*, authorize_post::*, introspect::*, revoke::*, token::*};
+pub use self::{authorize::*, introspect::*, login::*, revoke::*, token::*};

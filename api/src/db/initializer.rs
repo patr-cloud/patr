@@ -71,6 +71,8 @@ pub async fn initialize(app: &AppState) -> Result<(), ErrorType> {
 		super::initialize_workspace_constraints(&mut transaction).await?;
 		super::initialize_rbac_constraints(&mut transaction).await?;
 
+		super::initialize_client(&mut transaction).await?;
+
 		// Set the database schema version
 		query!(
 			r#"
