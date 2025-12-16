@@ -100,6 +100,8 @@ pub enum ErrorType {
 	OAuthInvalidAuthorizationCode,
 	/// The refresh token provided in the OAuth2.1 token request is invalid
 	OAuthInvalidRefreshToken,
+	/// Client of the OAuth2.1 request is invalid
+	OAuthInvalidClient,
 }
 
 impl ErrorType {
@@ -149,6 +151,7 @@ impl ErrorType {
 			Self::OAuthInvalidGrantType => StatusCode::BAD_REQUEST,
 			Self::OAuthInvalidAuthorizationCode => StatusCode::BAD_REQUEST,
 			Self::OAuthInvalidRefreshToken => StatusCode::BAD_REQUEST,
+			Self::OAuthInvalidClient => StatusCode::BAD_REQUEST,
 		}
 	}
 
@@ -216,6 +219,7 @@ impl ErrorType {
 			Self::OAuthInvalidRefreshToken => {
 				"The refresh token provided in the OAuth2.1 token request is invalid"
 			}
+			Self::OAuthInvalidClient => "The client provided in the OAuth2.1 request is invalid",
 		}
 	}
 
