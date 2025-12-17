@@ -20,8 +20,6 @@ import { GetRunnerInfoResponse } from "./GetRunnerInfoResponse";
 import { DeploymentStatus } from "./DeploymentStatus";
 import { CreateAccountRequest } from "./CreateAccountRequest";
 import { CompleteSignUpRequest } from "./CompleteSignUpRequest";
-import { AddDomainToWorkspaceRequest } from "./AddDomainToWorkspaceRequest";
-import { AddDomainToWorkspaceResponse } from "./AddDomainToWorkspaceResponse";
 import { DeploymentProbe } from "./DeploymentProbe";
 import { UpdateDeploymentRequest } from "./UpdateDeploymentRequest";
 import { UpdateDeploymentResponse } from "./UpdateDeploymentResponse";
@@ -57,8 +55,6 @@ export type {
   DeploymentStatus,
   CreateAccountRequest,
   CompleteSignUpRequest,
-  AddDomainToWorkspaceRequest,
-  AddDomainToWorkspaceResponse,
   DeploymentProbe,
   UpdateDeploymentRequest,
   UpdateDeploymentResponse,

@@ -1,4 +1,4 @@
-import { A, redirect, useNavigate, useSearchParams } from "@solidjs/router";
+import { A, useNavigate, useSearchParams } from "@solidjs/router";
 import { createSignal, For, onMount, Show } from "solid-js";
 import { CompleteSignUpRequest } from "~/bindings";
 import {
@@ -126,7 +126,7 @@ const ConfirmSignUp = () => {
     if (resp.ok) {
       // Handle successful sign-up (e.g., redirect to login or dashboard)
       console.log("Account confirmed successfully");
-      redirect("/login");
+      navigate("/login");
     } else {
       // Handle sign-up errors
       console.error("Error confirming account:", resp.statusText);

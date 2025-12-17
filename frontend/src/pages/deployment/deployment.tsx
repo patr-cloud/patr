@@ -10,11 +10,13 @@ import {
   GetDeploymentInfoResponse,
   GetRunnerInfoResponse,
   UpdateDeploymentResponse,
+  ListRunnersForWorkspaceResponse,
 } from "~/bindings";
 import {
   Button,
   ButtonVariant,
   Input,
+  InputDropdown,
   InputLabel,
   InputType,
   PageContainer,
@@ -26,6 +28,9 @@ import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
+import EnvInput from "./env-input";
+import PortInput from "./port";
+import { FiChevronDown } from "solid-icons/fi";
 
 const DeploymentInfo = () => {
   const params = useParams();
@@ -88,7 +93,7 @@ const DeploymentInfo = () => {
           Authorization: `Bearer ${auth.accessToken}`,
         },
         body: JSON.stringify({
-          name: deploymentInfo()?.name,
+          ...deploymentInfo(),
         }),
       }
     );
@@ -96,6 +101,7 @@ const DeploymentInfo = () => {
     if (!response.ok) {
       console.error("Failed to update deployment:", response.data.error);
       toast("Failed to update deployment", "error");
+      refetchDeploymentInfo();
       return;
     }
 
@@ -141,6 +147,38 @@ const DeploymentInfo = () => {
       }
 
       return response.data.runner;
+    }
+  );
+
+  const resourceParamsRunnerList = createMemo(() => {
+    return [authState(), workspaceId()] as const;
+  });
+
+  const [runnerList] = createResource(
+    resourceParamsRunnerList,
+    async ([auth, wsId]) => {
+      if (!wsId || !auth || auth.type !== "LoggedIn") {
+        return { runners: [] };
+      }
+      const response = await httpRequest<ListRunnersForWorkspaceResponse>(
+        `${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${auth.accessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error("Failed to fetch runner list:", response.data.error);
+        toast("Failed to fetch runner list", "error");
+        return { runners: [] };
+      }
+
+      console.log("Fetched runner list:", response.data);
+      return response.data;
     }
   );
 
@@ -342,7 +380,7 @@ const DeploymentInfo = () => {
                   <Input
                     value={deploymentInfo.latest?.name}
                     onInput={(e) => {
-                      setHasUpdated((prev) => prev || true);
+                      setHasUpdated(true);
                       mutateDeploymentInfo((prev) => {
                         return prev
                           ? {
@@ -365,13 +403,34 @@ const DeploymentInfo = () => {
                     for="deployment-runner"
                     label="Runner"
                   />
-                  <Input
-                    value={runnerInfo.latest?.name}
-                    disabled={true}
+
+                  <InputDropdown
+                    options={
+                      runnerList.latest?.runners.map((runner) => ({
+                        value: runner.id,
+                        label: runner.name,
+                      })) ?? []
+                    }
+                    endIcon={() => (
+                      <button>
+                        <FiChevronDown size={16} />
+                      </button>
+                    )}
+                    value={deploymentInfo.latest?.runner ?? ""}
+                    onSelect={(runnerId) => {
+                      setHasUpdated(true);
+                      mutateDeploymentInfo((prev) => {
+                        return prev
+                          ? {
+                              ...prev,
+                              runner: runnerId,
+                            }
+                          : undefined;
+                      });
+                    }}
                     class="flex-10"
                     name="deployment-runner"
-                    placeholder="Runner"
-                    type={InputType.Text}
+                    placeholder="Select Runner"
                   />
                 </div>
 
@@ -392,9 +451,19 @@ const DeploymentInfo = () => {
 
                     <Input
                       class="flex-6"
-                      disabled={true}
                       placeholder="Image Name"
                       type={InputType.Text}
+                      onInput={(e) => {
+                        setHasUpdated(true);
+                        mutateDeploymentInfo((prev) => {
+                          return prev
+                            ? {
+                                ...prev,
+                                imageName: e.currentTarget.value,
+                              }
+                            : undefined;
+                        });
+                      }}
                       value={(() => {
                         const info = deploymentInfo.latest;
                         if (!info) return "";
@@ -409,15 +478,86 @@ const DeploymentInfo = () => {
 
                     <Input
                       class="flex-2"
-                      disabled={true}
                       placeholder="Image Tag"
                       type={InputType.Text}
                       value={deploymentInfo.latest?.imageTag ?? "N/A"}
+                      onInput={(e) => {
+                        setHasUpdated(true);
+                        mutateDeploymentInfo((prev) => {
+                          return prev
+                            ? {
+                                ...prev,
+                                imageTag: e.currentTarget.value,
+                              }
+                            : undefined;
+                        });
+                      }}
                     />
                   </div>
                 </div>
 
-                {/* <PortInput /> */}
+                <EnvInput
+                  envList={Object.entries(
+                    deploymentInfo.latest?.environmentVariables || {}
+                  ).map(([key, value]) => ({ key, value }))}
+                  onAdd={(key, value) => {
+                    setHasUpdated(true);
+                    mutateDeploymentInfo((prev) => {
+                      return prev
+                        ? {
+                            ...prev,
+                            environmentVariables: {
+                              ...prev.environmentVariables,
+                              [key]: value,
+                            },
+                          }
+                        : undefined;
+                    });
+                  }}
+                  onDelete={(key) => {
+                    setHasUpdated(true);
+                    mutateDeploymentInfo((prev) => {
+                      if (!prev) return undefined;
+                      const newEnv = { ...prev.environmentVariables };
+                      delete newEnv[key];
+                      return {
+                        ...prev,
+                        environmentVariables: newEnv,
+                      };
+                    });
+                  }}
+                />
+
+                <PortInput
+                  onAdd={(key, value) => {
+                    setHasUpdated(true);
+                    console.log(key, value);
+                    mutateDeploymentInfo((prev) => {
+                      return prev
+                        ? {
+                            ...prev,
+                            ports: {
+                              ...prev.ports,
+                              [Number(key)]: value,
+                            },
+                          }
+                        : undefined;
+                    });
+                  }}
+                  onDelete={(key) => {
+                    setHasUpdated(true);
+                    mutateDeploymentInfo((prev) => {
+                      if (!prev) return undefined;
+                      const newPorts = { ...prev.ports };
+                      delete newPorts[Number(key)];
+                      return {
+                        ...prev,
+                        ports: newPorts,
+                      };
+                    });
+                  }}
+                  portList={deploymentInfo.latest?.ports || {}}
+                />
               </div>
 
               <div class="w-full flex justify-end items-center">

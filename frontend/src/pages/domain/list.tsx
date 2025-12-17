@@ -175,7 +175,10 @@ const ListDomainsPage = () => {
               rows={domains()?.domains || []}
               headings={["Domain ID", "Domain Name", "Type", "Verified"]}
               renderRow={(item) => (
-                <tr class="table-row">
+                <tr
+                  onClick={() => navigate(`/domains/${item.id}`)}
+                  class="table-row"
+                >
                   <td class="flex-3 flex items-center justify-center">
                     <span class="truncate">{item.id}</span>
                     <CopyButton text={item.id} />

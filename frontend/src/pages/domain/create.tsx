@@ -128,9 +128,9 @@ const CreateDomainPage = () => {
     }
 
     // Debounce the validation to avoid too many API calls
-    validationTimeout = setTimeout(() => {
-      validateDomain(value);
-    }, 500) as unknown as number;
+    // validationTimeout = setTimeout(() => {
+    //   validateDomain(value);
+    // }, 500) as unknown as number;
   };
 
   const handleSuggestionClick = () => {
