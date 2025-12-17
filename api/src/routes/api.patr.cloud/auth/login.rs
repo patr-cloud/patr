@@ -9,14 +9,17 @@ use argon2::{
 	password_hash::SaltString,
 };
 use axum::http::StatusCode;
-use cf_turnstile::{SiteVerifyRequest, TurnstileClient};
 use jsonwebtoken::EncodingKey;
 use models::api::auth::*;
 use sqlx::types::ipnetwork::IpNetwork;
 use time::OffsetDateTime;
 use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};
 
-use crate::{models::access_token_data::AccessTokenData, prelude::*};
+use crate::{
+	models::access_token_data::AccessTokenData,
+	prelude::*,
+	utils::validate_turnstile_token,
+};
 
 /// The handler to login the user. This will return the access token and the
 /// refresh token.
@@ -42,23 +45,21 @@ pub async fn login(
 	}: AppRequest<'_, LoginRequest>,
 ) -> Result<AppResponse<LoginRequest>, ErrorType> {
 	trace!("Validating Cloudflare Turnstile token");
-	let turnstile_client = TurnstileClient::new(state.config.cloudflare.turnstile_secret.into());
-	let cf_turnstile_response = turnstile_client
-		.siteverify(SiteVerifyRequest {
-			response: cf_turnstile_token.to_string(),
-			remote_ip: Some(client_ip.to_string()),
-			..Default::default()
-		})
-		.await
-		.inspect_err(|err| {
-			error!("Error verifying Cloudflare Turnstile token: `{}`", err);
-		})?;
+	let cf_turnstile_response = validate_turnstile_token(
+		&state.config.cloudflare.turnstile_secret,
+		&cf_turnstile_token,
+		Some(client_ip),
+	)
+	.await
+	.inspect_err(|err| {
+		error!("Error verifying Cloudflare Turnstile token: `{}`", err);
+	})?;
 
 	if cf_turnstile_response.success != true {
 		return Err(ErrorType::TurnstileVerificationFailed);
 	}
 
-	if cf_turnstile_response.action != "login" {
+	if &cf_turnstile_response.action != "login" {
 		return Err(ErrorType::TurnstileVerificationActionMismatch);
 	}
 

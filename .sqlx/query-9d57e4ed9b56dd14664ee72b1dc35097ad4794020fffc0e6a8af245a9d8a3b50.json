@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT managed_url.id, sub_domain, domain_id, path, url_type AS \"url_type: ManagedUrlTypeDiscriminant\", deployment_id, port, static_site_id, url, is_configured, permanent_redirect, http_only, COUNT(*) OVER() AS \"total_count!\" FROM managed_url INNER JOIN RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource ON managed_url.id = resource.id WHERE workspace_id = $1 AND managed_url.deleted IS NULL ORDER BY resource.created DESC LIMIT $4 OFFSET $5;",
+  "query": "SELECT managed_url.id, sub_domain, domain_id, path, url_type AS \"url_type: ManagedUrlTypeDiscriminant\", deployment_id, port, static_site_id, url, is_configured, permanent_redirect, http_only, COUNT(*) OVER() AS \"total_count!\" FROM managed_url INNER JOIN RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource ON managed_url.id = resource.id WHERE workspace_id = $1 AND managed_url.deleted IS NULL AND ($4::TEXT IS NULL OR managed_url.sub_domain ILIKE '%' || $4 || '%') AND ($5::UUID IS NULL OR managed_url.domain_id = $5) AND ($6::TEXT IS NULL OR managed_url.path ILIKE '%' || $6 || '%') AND ($7::MANAGED_URL_TYPE IS NULL OR managed_url.url_type = $7) AND ($8::BOOLEAN IS NULL OR managed_url.is_configured = $8) ORDER BY resource.created DESC LIMIT $9 OFFSET $10;",
   "describe": {
     "columns": [
       {
@@ -86,6 +86,23 @@
         "Uuid",
         "Uuid",
         "Text",
+        "Text",
+        "Uuid",
+        "Text",
+        {
+          "Custom": {
+            "name": "managed_url_type",
+            "kind": {
+              "Enum": [
+                "proxy_to_deployment",
+                "proxy_to_static_site",
+                "proxy_url",
+                "redirect"
+              ]
+            }
+          }
+        },
+        "Bool",
         "Int8",
         "Int8"
       ]
@@ -106,5 +123,5 @@
       null
     ]
   },
-  "hash": "bb9cd23930d121bda667259eb36844ac473d35f4d0e1ddb776d0a451cdf9e77c"
+  "hash": "9d57e4ed9b56dd14664ee72b1dc35097ad4794020fffc0e6a8af245a9d8a3b50"
 }

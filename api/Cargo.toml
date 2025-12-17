@@ -19,7 +19,6 @@ axum                           = { workspace = true, features = ["default", "mac
 axum-extra                     = { workspace = true, features = ["default", "typed-routing"] }
 axum-typed-websockets          = { workspace = true, features = ["default"] }
 base32                         = { workspace = true, features = [] }
-cf-turnstile                   = { workspace = true, features = ["default"] }
 cloudflare                     = { workspace = true, features = ["default"] }
 config                         = { workspace = true, features = ["default"] }
 console-subscriber             = { workspace = true, features = ["default"] }

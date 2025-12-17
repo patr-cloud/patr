@@ -30,7 +30,6 @@ base32                         = { default-features = false, version = "0.5" }
 base64                         = { default-features = false, version = "0.22" }
 bollard                        = { default-features = false, version = "0.19" }
 build-print                    = { default-features = false, version = "1" }
-cf-turnstile                   = { default-features = false, version = "0.2" }
 clap                           = { default-features = false, version = "4" }
 cloudflare                     = { default-features = false, git = "https://github.com/rakshith-ravi/cloudflare-rs", branch = "patr-must-haves" }
 comfy-table                    = { default-features = false, version = "7" }

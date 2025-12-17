@@ -15,6 +15,10 @@ pub mod layers;
 /// [2]: axum::Router
 pub mod extractors;
 
+/// A Cloudflare Turnstile validator utility module. This contains the client
+/// and request/response types needed to validate Turnstile tokens.
+mod cf_turnstile_validator;
+
 /// Extensions traits for the `Either` type.
 mod either_ext;
 /// Contains the extension traits that will be used to add exit signal handling
@@ -29,7 +33,13 @@ mod router_ext;
 /// they're executing.
 mod timeout_ext;
 
-pub use self::{either_ext::*, exitable_ext::*, router_ext::*, timeout_ext::*};
+pub use self::{
+	cf_turnstile_validator::*,
+	either_ext::*,
+	exitable_ext::*,
+	router_ext::*,
+	timeout_ext::*,
+};
 
 /// A list of constants that will be used throughout the application. This is
 /// mostly kept to prevent typos.

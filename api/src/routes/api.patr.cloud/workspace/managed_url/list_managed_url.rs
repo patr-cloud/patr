@@ -68,15 +68,25 @@ pub async fn list_managed_url(
 			managed_url.id = resource.id
 		WHERE
 			workspace_id = $1 AND
-			managed_url.deleted IS NULL
+			managed_url.deleted IS NULL AND
+			($4::TEXT IS NULL OR managed_url.sub_domain ILIKE '%' || $4 || '%') AND
+			($5::UUID IS NULL OR managed_url.domain_id = $5) AND
+			($6::TEXT IS NULL OR managed_url.path ILIKE '%' || $6 || '%') AND
+			($7::MANAGED_URL_TYPE IS NULL OR managed_url.url_type = $7) AND
+			($8::BOOLEAN IS NULL OR managed_url.is_configured = $8)
 		ORDER BY
 			resource.created DESC
-		LIMIT $4
-		OFFSET $5;
+		LIMIT $9
+		OFFSET $10;
 		"#,
 		workspace_id as _,
 		user_data.login_id as _,
 		Permission::ManagedURL(ManagedURLPermission::View) as _,
+		sub_domain_filter as _,
+		domain_id_filter as _,
+		path_filter as _,
+		url_type_filter as _,
+		is_configured_filter as _,
 		count as i32,
 		(count * page) as i32,
 	)

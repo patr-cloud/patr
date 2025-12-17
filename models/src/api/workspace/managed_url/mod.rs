@@ -37,7 +37,7 @@ pub struct ManagedUrl {
 	pub path: String,
 	/// Type of URL
 	#[serde(flatten)]
-	#[search(ty = "custom", name = "ManagedUrlType")]
+	#[search(ty = "custom", name = "ManagedUrlTypeDiscriminant")]
 	pub url_type: ManagedUrlType,
 	/// Verify if the URL is
 	pub is_configured: bool,
@@ -59,7 +59,7 @@ pub struct ManagedUrl {
 )]
 #[strum_discriminants(
 	name(ManagedUrlTypeDiscriminant),
-	derive(strum::Display, EnumString),
+	derive(Serialize, Deserialize, strum::Display, EnumString),
 	strum(serialize_all = "snake_case"),
 	cfg_attr(
 		not(target_arch = "wasm32"),

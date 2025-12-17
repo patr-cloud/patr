@@ -2,12 +2,11 @@ use std::ops::Add;
 
 use argon2::{Algorithm, PasswordHasher, Version, password_hash::SaltString};
 use axum::http::StatusCode;
-use cf_turnstile::{SiteVerifyRequest, TurnstileClient};
 use models::api::auth::*;
 use rand::Rng;
 use time::OffsetDateTime;
 
-use crate::prelude::*;
+use crate::{prelude::*, utils::validate_turnstile_token};
 
 pub async fn create_account(
 	AppRequest {
@@ -33,24 +32,21 @@ pub async fn create_account(
 	}: AppRequest<'_, CreateAccountRequest>,
 ) -> Result<AppResponse<CreateAccountRequest>, ErrorType> {
 	trace!("Validating Cloudflare Turnstile token");
-	let turnstile_client =
-		TurnstileClient::new(state.config.cloudflare.turnstile_secret.clone().into());
-	let cf_turnstile_response = turnstile_client
-		.siteverify(SiteVerifyRequest {
-			response: cf_turnstile_token.to_string(),
-			remote_ip: Some(client_ip.to_string()),
-			..Default::default()
-		})
-		.await
-		.inspect_err(|err| {
-			error!("Error verifying Cloudflare Turnstile token: `{}`", err);
-		})?;
+	let cf_turnstile_response = validate_turnstile_token(
+		&state.config.cloudflare.turnstile_secret,
+		&cf_turnstile_token,
+		Some(client_ip),
+	)
+	.await
+	.inspect_err(|err| {
+		error!("Error verifying Cloudflare Turnstile token: `{}`", err);
+	})?;
 
 	if cf_turnstile_response.success != true {
 		return Err(ErrorType::TurnstileVerificationFailed);
 	}
 
-	if cf_turnstile_response.action != "sign-up" {
+	if &cf_turnstile_response.action != "sign-up" {
 		return Err(ErrorType::TurnstileVerificationActionMismatch);
 	}
 

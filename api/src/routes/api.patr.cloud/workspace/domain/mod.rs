@@ -5,12 +5,14 @@ use crate::prelude::*;
 
 mod add_domain_to_workspace;
 mod delete_domain_in_workspace;
+mod get_domain_info_in_workspace;
 mod is_domain_valid;
 mod list_domains_in_workspace;
 
 pub use self::{
 	add_domain_to_workspace::*,
 	delete_domain_in_workspace::*,
+	get_domain_info_in_workspace::*,
 	is_domain_valid::*,
 	list_domains_in_workspace::*,
 };
@@ -142,36 +144,6 @@ async fn get_doamin_dns_record(
 		.headers(GetDomainDNSRecordResponseHeaders {
 			total_count: todo!(),
 		})
-		.status_code(StatusCode::OK)
-		.build()
-		.into_result()
-}
-
-#[expect(unreachable_code, unused_variables)]
-async fn get_domain_info_in_workspace(
-	AuthenticatedAppRequest {
-		request: ProcessedApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
-		database,
-		redis,
-		client_ip,
-		user_data,
-		state,
-	}: AuthenticatedAppRequest<'_, GetDomainInfoInWorkspaceRequest>,
-) -> Result<AppResponse<GetDomainInfoInWorkspaceRequest>, ErrorType> {
-	info!("Starting: Get domain info in workspace");
-
-	// LOGIC
-
-	AppResponse::builder()
-		.body(GetDomainInfoInWorkspaceResponse {
-			workspace_domain: todo!(),
-		})
-		.headers(())
 		.status_code(StatusCode::OK)
 		.build()
 		.into_result()
