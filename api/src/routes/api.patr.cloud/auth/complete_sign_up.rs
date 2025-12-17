@@ -55,7 +55,7 @@ pub async fn complete_sign_up(
 		return Err(ErrorType::TurnstileVerificationFailed);
 	}
 
-	if cfg!(debug_assertions) || &cf_turnstile_response.action != "complete-sign-up" {
+	if !cfg!(debug_assertions) && &cf_turnstile_response.action != "complete-sign-up" {
 		return Err(ErrorType::TurnstileVerificationActionMismatch);
 	}
 

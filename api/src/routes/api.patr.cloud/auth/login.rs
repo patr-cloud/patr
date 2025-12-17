@@ -59,7 +59,7 @@ pub async fn login(
 		return Err(ErrorType::TurnstileVerificationFailed);
 	}
 
-	if cfg!(debug_assertions) || &cf_turnstile_response.action != "login" {
+	if !cfg!(debug_assertions) && &cf_turnstile_response.action != "login" {
 		return Err(ErrorType::TurnstileVerificationActionMismatch);
 	}
 
