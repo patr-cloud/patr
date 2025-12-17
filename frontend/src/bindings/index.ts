@@ -31,6 +31,9 @@ import { GetDomainsForWorkspaceResponse } from "./GetDomainsForWorkspaceResponse
 import { WorkspaceDomain } from "./WorkspaceDomain";
 import { GetDomainInfoInWorkspaceRequest } from "./GetDomainInfoInWorkspaceRequest";
 import { GetDomainInfoInWorkspaceResponse } from "./GetDomainInfoInWorkspaceResponse";
+import { ListManagedURLResponse } from "./ListManagedURLResponse";
+import { ManagedUrl } from "./ManagedUrl";
+import { CreateManagedURLRequest } from "./CreateManagedURLRequest";
 
 export type {
   EnvironmentVariableValue,
@@ -66,4 +69,7 @@ export type {
   WorkspaceDomain,
   GetDomainInfoInWorkspaceRequest,
   GetDomainInfoInWorkspaceResponse,
+  ListManagedURLResponse,
+  ManagedUrl,
+  CreateManagedURLRequest,
 };
