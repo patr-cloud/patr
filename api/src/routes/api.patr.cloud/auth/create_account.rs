@@ -46,7 +46,7 @@ pub async fn create_account(
 		return Err(ErrorType::TurnstileVerificationFailed);
 	}
 
-	if &cf_turnstile_response.action != "sign-up" {
+	if cfg!(debug_assertions) || &cf_turnstile_response.action != "sign-up" {
 		return Err(ErrorType::TurnstileVerificationActionMismatch);
 	}
 
