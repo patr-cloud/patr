@@ -73,7 +73,9 @@ const Login = () => {
   const [, setAuthState] = useAuthState();
   const navigate = useNavigate();
   const toast = useToast();
-  const [turnstileToken, setTurnstileToken] = createSignal<string>("");
+  const [turnstileToken, setTurnstileToken] = createSignal<string>(
+    "something_or.the_other"
+  );
   const [inputs, setInputs] = createSignal<InputFields>({
     userId: "",
     password: "",

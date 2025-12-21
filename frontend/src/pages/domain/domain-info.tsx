@@ -7,8 +7,11 @@ import {
   Suspense,
 } from "solid-js";
 import {
+  CreateManagedURLRequest,
+  CreateManagedURLResponse,
   GetDomainInfoInWorkspaceResponse,
   ListManagedURLResponse,
+  ManagedUrlType,
 } from "~/bindings";
 import {
   Button,
@@ -24,6 +27,9 @@ import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
+import DeploymentOption from "./deploymentOption";
+
+type urlTypeT = "proxyUrl" | "redirect" | "proxyDeployment" | "proxyStaticSite";
 
 const DomainInfo = () => {
   const params = useParams();
@@ -32,6 +38,12 @@ const DomainInfo = () => {
   const [workspaceId] = useLastWorkspaceId();
   const toast = useToast();
   const [isVerifying, setIsVerifying] = createSignal(false);
+
+  const [subDomain, setSubDomain] = createSignal("");
+  const [path, setPath] = createSignal("");
+  const [urlType, setUrlType] = createSignal<urlTypeT | null>(null);
+  const [target, setTarget] = createSignal<string | null>(null);
+  const [deploymentPort, setDeploymentPort] = createSignal<number | null>(null);
 
   const resourceParams = createMemo(() => {
     return [authState(), workspaceId(), params.id] as const;
@@ -104,6 +116,61 @@ const DomainInfo = () => {
     }
   );
 
+  const onSubmitCreateManagedUrl = async (
+    e: EventT<SubmitEvent, HTMLFormElement>
+  ) => {
+    e.preventDefault();
+    // Create managed URL logic goes here
+
+    const auth = authState();
+    const wsId = workspaceId();
+    const domainId = params.id;
+
+    if (!domainId || !wsId || !auth || auth.type !== "LoggedIn") {
+      toast("Domain ID is missing", "error");
+      return;
+    }
+
+    const urlTypeVal = urlType();
+    const targetVal = target();
+    if (!urlTypeVal || !subDomain() || !targetVal) {
+      toast("Please fill in all required fields", "error");
+      return;
+    }
+
+    const requestBody: CreateManagedURLRequest = {
+      domainId,
+      subDomain: subDomain(),
+      path: path(),
+      urlType: {
+        type: "proxyDeployment",
+        deploymentId: targetVal,
+        port: deploymentPort() || 80,
+      },
+    };
+    const response = await httpRequest<CreateManagedURLResponse>(
+      `/workspace/${wsId}/infrastructure/managed-url`,
+      {
+        method: "POST",
+        body: JSON.stringify(requestBody),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${auth.accessToken}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error("Failed to create managed URL:", response.data.error);
+      toast("Failed to create managed URL", "error");
+      return;
+    }
+
+    toast("Managed URL created successfully", "success");
+
+    refetchManagedUrls();
+  };
+
   const onVerifyClick = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
     // Verify domain logic goes here
     toast("Domain verified successfully", "success");
@@ -121,7 +188,7 @@ const DomainInfo = () => {
           </div>
         )}
       >
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<div class="text-red-500">Loading...</div>}>
           <PageContainerHead
             title="Domains"
             titleUrl="/domains"
@@ -143,34 +210,50 @@ const DomainInfo = () => {
               Managed URLs For {domainInfo.latest?.name}
             </h1>
 
-            <form class="mb-2" onSubmit={() => {}}>
+            <form class="mb-2" onSubmit={onSubmitCreateManagedUrl}>
               <div class="flex items-center justify-center gap-2 w-full">
-                <Input class="flex-2" placeholder="Sub-domain" />
+                <Input
+                  onInput={(e) => setSubDomain(e.currentTarget.value)}
+                  value={subDomain()}
+                  class="flex-2"
+                  placeholder="Sub-domain"
+                />
                 <span class="h-full">.</span>
-                <Input class="flex-4" placeholder="Domain" />
+                <Input
+                  disabled={true}
+                  value={domainInfo.latest?.name}
+                  class="flex-4"
+                  placeholder="Domain"
+                />
                 <span>/</span>
-                <Input class="flex-2" placeholder="Path" />
+                <Input
+                  onInput={(e) => setPath(e.currentTarget.value)}
+                  value={path()}
+                  class="flex-2"
+                  placeholder="Path"
+                />
                 <p class="mx-2">Will point to</p>
                 <InputDropdown
-                  onSelect={() => {}}
+                  onSelect={(value) => setUrlType(value as urlTypeT)}
+                  value={urlType() || undefined}
                   options={[
                     {
                       label: "Deployments",
-                      value: "deployment",
-                    },
-                    {
-                      label: "Redirection",
-                      value: "redirection",
-                    },
-                    {
-                      label: "Proxy",
-                      value: "proxy",
+                      value: "proxyDeployment",
                     },
                   ]}
                   class="flex-2 m-0"
                   placeholder="Type"
                 />
-                <Input class="flex-4" placeholder="Domain" />
+                {urlType() === "proxyDeployment" && (
+                  <DeploymentOption
+                    deployment={target()}
+                    onSelectDeployment={(value) => setTarget(value)}
+                    port={deploymentPort() || 80}
+                    onPortChange={(port) => setDeploymentPort(port)}
+                  />
+                )}
+                <Button variant={ButtonVariant.Contained}>Create</Button>
               </div>
             </form>
 
@@ -183,8 +266,7 @@ const DomainInfo = () => {
                   <span class="h-full">/</span>
                   <span class="h-full">{url.path}</span>
                   <p class="mx-2">Points to</p>
-                  {/* <span class="h-full">{url.urlType}</span>
-                  <span class="h-full">{url.destination || "N/A"}</span> */}
+                  {/* <span class="h-full">{url.urlType}</span> */}
                 </div>
               ))}
             </div>
