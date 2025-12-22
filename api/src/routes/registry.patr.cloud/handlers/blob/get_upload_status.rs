@@ -119,7 +119,7 @@ pub async fn get_upload_status(
 
 	let session = serde_json::from_str::<S3UploadSession>(
 		&redis
-			.get::<_, String>(keys::registry_blob_upload_part_prefix(&session_id))
+			.get::<String>(keys::registry_blob_upload_part_prefix(&session_id))
 			.await?,
 	)?;
 

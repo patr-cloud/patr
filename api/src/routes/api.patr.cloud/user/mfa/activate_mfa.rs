@@ -43,7 +43,7 @@ pub async fn activate_mfa(
 	}
 
 	let Some(secret) = redis
-		.get::<_, Option<String>>(redis::user_mfa_secret(&id))
+		.get::<Option<String>>(redis::user_mfa_secret(&id))
 		.await?
 	else {
 		error!("MFA secret not found for userId `{}`", id);

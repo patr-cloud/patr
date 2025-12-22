@@ -74,7 +74,7 @@ async fn get_permissions_for_login_id(
 		// Check user revocation, then loginId revocation, then workspace ID revocation
 		'is_valid: {
 			let revoked = redis_connection
-				.get::<_, Option<i64>>(redis::keys::user_id_revocation_timestamp(user_id))
+				.get::<Option<i64>>(redis::keys::user_id_revocation_timestamp(user_id))
 				.await?
 				.and_then(|time| OffsetDateTime::from_unix_timestamp(time).ok())
 				.filter(|time| {
@@ -89,7 +89,7 @@ async fn get_permissions_for_login_id(
 			}
 
 			let revoked = redis_connection
-				.get::<_, Option<i64>>(redis::keys::login_id_revocation_timestamp(login_id))
+				.get::<Option<i64>>(redis::keys::login_id_revocation_timestamp(login_id))
 				.await?
 				.and_then(|time| OffsetDateTime::from_unix_timestamp(time).ok())
 				.filter(|time| {
@@ -108,7 +108,7 @@ async fn get_permissions_for_login_id(
 
 			for workspace_id in data.permission.keys() {
 				let revoked = redis_connection
-					.get::<_, Option<i64>>(redis::keys::workspace_id_revocation_timestamp(
+					.get::<Option<i64>>(redis::keys::workspace_id_revocation_timestamp(
 						workspace_id,
 					))
 					.await?
@@ -129,7 +129,7 @@ async fn get_permissions_for_login_id(
 			}
 
 			let revoked = redis_connection
-				.get::<_, Option<i64>>(redis::keys::global_revocation_timestamp())
+				.get::<Option<i64>>(redis::keys::global_revocation_timestamp())
 				.await?
 				.and_then(|time| OffsetDateTime::from_unix_timestamp(time).ok())
 				.filter(|time| {

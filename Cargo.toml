@@ -79,7 +79,7 @@ regex                          = { default-features = false, version = "1" }
 reqwest                        = { default-features = false, version = "0.12" }
 rust-embed                     = { default-features = false, version = "8" }
 rust-s3                        = { default-features = false, version = "0.37" }
-rustis                         = { default-features = false, version = "0.16" }
+rustis                         = { default-features = false, version = "0.17" }
 schemars                       = { default-features = false, version = "1" }
 semver                         = { default-features = false, version = "1" }
 serde                          = { default-features = false, version = "1" }

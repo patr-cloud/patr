@@ -48,7 +48,7 @@ pub async fn get_runner_info(
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
 	let connected = redis
-		.get::<_, Option<String>>(redis::keys::runner_connection_lock(&runner_id))
+		.get::<Option<String>>(redis::keys::runner_connection_lock(&runner_id))
 		.await?
 		.is_some();
 

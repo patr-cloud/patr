@@ -35,8 +35,7 @@ pub async fn initialize_managed_url_tables(
 			is_configured BOOLEAN NOT NULL,
 			deleted TIMESTAMPTZ,
 			permanent_redirect BOOLEAN,
-			http_only BOOLEAN,
-			cloudflare_custom_hostname_id TEXT NOT NULL
+			http_only BOOLEAN
 		);
 		"#
 	)

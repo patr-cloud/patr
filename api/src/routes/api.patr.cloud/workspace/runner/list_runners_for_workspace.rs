@@ -38,10 +38,12 @@ pub async fn list_runners_for_workspace(
 ) -> Result<AppResponse<ListRunnersForWorkspaceRequest>, ErrorType> {
 	info!("Listing runners in workspace `{}`", workspace_id);
 
-	let (_, connected_runners) = redis
-		.scan::<_, Vec<String>>(
+	let connected_runners = redis
+		.scan::<Vec<String>>(
 			0,
-			ScanOptions::default().match_pattern(redis::keys::runner_connection_lock_prefix()),
+			ScanOptions::default()
+				.count(count)
+				.match_pattern(redis::keys::runner_connection_lock_prefix()),
 		)
 		.await?;
 
