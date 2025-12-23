@@ -20,6 +20,7 @@ pub async fn sign_up(
 						username,
 						password,
 						recovery_method: _,
+						cf_turnstile_token: _,
 					},
 			},
 		database,

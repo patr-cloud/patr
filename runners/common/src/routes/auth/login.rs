@@ -18,11 +18,13 @@ pub async fn login(
 				path: LoginPath,
 				query: (),
 				headers: LoginRequestHeaders { user_agent: _ },
-				body: LoginRequestProcessed {
-					user_id,
-					password,
-					mfa_otp: _,
-				},
+				body:
+					LoginRequestProcessed {
+						user_id,
+						password,
+						mfa_otp: _,
+						cf_turnstile_token: _,
+					},
 			},
 		database,
 		config,
