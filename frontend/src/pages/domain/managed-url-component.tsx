@@ -211,11 +211,9 @@ const ManagedUrlComponent = (props: ManagedUrlComponentProps) => {
 
     const requestBody: UpdateManagedURLRequest = {
       path: path(),
-      urlType: {
-        type: "proxyDeployment",
-        deploymentId: targetVal,
-        port: deploymentPort() || 80,
-      },
+      type: "proxyDeployment",
+      deploymentId: targetVal,
+      port: deploymentPort() || 80,
     };
 
     const response = await httpRequest<UpdateManagedURLResponse>(
