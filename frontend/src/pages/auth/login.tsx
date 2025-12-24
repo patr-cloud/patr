@@ -73,7 +73,9 @@ const Login = () => {
   const [, setAuthState] = useAuthState();
   const navigate = useNavigate();
   const toast = useToast();
-  const [turnstileToken, setTurnstileToken] = createSignal<string>("");
+  const [turnstileToken, setTurnstileToken] = createSignal<string>(
+    import.meta.env.VITE_TURNSTILE_SITE_KEY
+  );
   const [inputs, setInputs] = createSignal<InputFields>({
     userId: "",
     password: "",

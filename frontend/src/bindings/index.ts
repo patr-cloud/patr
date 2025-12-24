@@ -20,8 +20,6 @@ import { GetRunnerInfoResponse } from "./GetRunnerInfoResponse";
 import { DeploymentStatus } from "./DeploymentStatus";
 import { CreateAccountRequest } from "./CreateAccountRequest";
 import { CompleteSignUpRequest } from "./CompleteSignUpRequest";
-import { AddDomainToWorkspaceRequest } from "./AddDomainToWorkspaceRequest";
-import { AddDomainToWorkspaceResponse } from "./AddDomainToWorkspaceResponse";
 import { DeploymentProbe } from "./DeploymentProbe";
 import { UpdateDeploymentRequest } from "./UpdateDeploymentRequest";
 import { UpdateDeploymentResponse } from "./UpdateDeploymentResponse";
@@ -33,6 +31,14 @@ import { GetDomainsForWorkspaceResponse } from "./GetDomainsForWorkspaceResponse
 import { WorkspaceDomain } from "./WorkspaceDomain";
 import { GetDomainInfoInWorkspaceRequest } from "./GetDomainInfoInWorkspaceRequest";
 import { GetDomainInfoInWorkspaceResponse } from "./GetDomainInfoInWorkspaceResponse";
+import { ListManagedURLResponse } from "./ListManagedURLResponse";
+import { ManagedUrl } from "./ManagedUrl";
+import { CreateManagedURLRequest } from "./CreateManagedURLRequest";
+import { CreateManagedURLResponse } from "./CreateManagedURLResponse";
+import { ManagedUrlType } from "./ManagedUrlType";
+import { WithId } from "./WithId";
+import { UpdateManagedURLResponse } from "./UpdateManagedURLResponse";
+import { UpdateManagedURLRequest } from "./UpdateManagedURLRequest";
 
 export type {
   EnvironmentVariableValue,
@@ -57,8 +63,6 @@ export type {
   DeploymentStatus,
   CreateAccountRequest,
   CompleteSignUpRequest,
-  AddDomainToWorkspaceRequest,
-  AddDomainToWorkspaceResponse,
   DeploymentProbe,
   UpdateDeploymentRequest,
   UpdateDeploymentResponse,
@@ -70,4 +74,12 @@ export type {
   WorkspaceDomain,
   GetDomainInfoInWorkspaceRequest,
   GetDomainInfoInWorkspaceResponse,
+  ListManagedURLResponse,
+  ManagedUrl,
+  ManagedUrlType,
+  WithId,
+  CreateManagedURLRequest,
+  CreateManagedURLResponse,
+  UpdateManagedURLRequest,
+  UpdateManagedURLResponse,
 };

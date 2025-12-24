@@ -19,6 +19,7 @@ import {
 } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
+import InfoPopup from "~/components/info-popup";
 
 // Type definitions based on API bindings
 type WorkspaceDomain = {
@@ -62,29 +63,16 @@ const CopyButton = (props: { text: string }) => {
 };
 
 const VerificationIcon = (props: { domain: WorkspaceDomain }) => {
-  const [showInstructions, setShowInstructions] = createSignal(false);
-
   if (props.domain.isVerified) {
     return null;
   }
 
   return (
-    <div class="relative inline-block">
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setShowInstructions(!showInstructions());
-        }}
-        class="p-1 rounded hover:bg-white/10 transition-colors"
-        title="Click for verification instructions"
-      >
-        <FiAlertCircle size={16} class="text-yellow-500" />
-      </button>
-      <Show when={showInstructions()}>
-        <div class="absolute z-10 mt-2 p-4 bg-secondary-light border border-white/10 rounded-lg shadow-lg w-80 right-0">
-          <h4 class="text-white font-semibold mb-2">
-            Verification Instructions
-          </h4>
+    <InfoPopup
+      triggerIcon={() => <FiAlertCircle size={16} class="text-yellow-500" />}
+      title="Verification Instructions"
+      content={(close) => (
+        <>
           <p class="text-gray-300 text-sm mb-2">
             To verify your domain, add the following DNS record:
           </p>
@@ -97,18 +85,9 @@ const VerificationIcon = (props: { domain: WorkspaceDomain }) => {
             After adding the DNS record, it may take up to 48 hours to
             propagate.
           </p>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowInstructions(false);
-            }}
-            class="mt-2 text-primary text-sm hover:underline"
-          >
-            Close
-          </button>
-        </div>
-      </Show>
-    </div>
+        </>
+      )}
+    />
   );
 };
 
@@ -175,7 +154,10 @@ const ListDomainsPage = () => {
               rows={domains()?.domains || []}
               headings={["Domain ID", "Domain Name", "Type", "Verified"]}
               renderRow={(item) => (
-                <tr class="table-row">
+                <tr
+                  onClick={() => navigate(`/domains/${item.id}`)}
+                  class="table-row"
+                >
                   <td class="flex-3 flex items-center justify-center">
                     <span class="truncate">{item.id}</span>
                     <CopyButton text={item.id} />

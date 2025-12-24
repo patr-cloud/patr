@@ -11,4 +11,17 @@ function Uuid(value: string) {
   return value.replaceAll("-", "");
 }
 
-export { get, Jsx, Uuid };
+function variantBgClass(styleVariant: string) {
+  switch (styleVariant) {
+    case "light":
+      return "bg-secondary-light";
+    case "medium":
+      return "bg-secondary-medium";
+    case "dark":
+      return "bg-secondary-dark";
+    default:
+      return "bg-secondary-light";
+  }
+}
+
+export { get, Jsx, Uuid, variantBgClass };

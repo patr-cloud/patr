@@ -80,9 +80,11 @@ const PortInput = (props: PortInputProps) => {
           />
 
           <Button
+            type="button"
             variant={ButtonVariant.Contained}
             class="flex-1 h-full flex items-center gap-2"
-            onClick={() => {
+            onClick={(e) => {
+              e.preventDefault();
               const envVal = get(portType);
               if (!envVal) {
                 return;

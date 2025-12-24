@@ -90,9 +90,11 @@ const EnvInput = (props: EnvInputProps) => {
           />
 
           <Button
+            type="button"
             variant={ButtonVariant.Contained}
             class="flex-1 h-full flex items-center gap-2"
-            onClick={() => {
+            onClick={(e) => {
+              e.preventDefault();
               props.onAdd(envName(), envValue());
               setEnvName("");
               setEnvValue("");

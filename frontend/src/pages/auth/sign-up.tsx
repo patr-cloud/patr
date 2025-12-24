@@ -1,4 +1,4 @@
-import { A, redirect } from "@solidjs/router";
+import { A, useNavigate } from "@solidjs/router";
 import { createSignal } from "solid-js";
 import { CreateAccountRequest } from "~/bindings";
 import { Button, Input, InputType, useToast, Turnstile } from "~/components";
@@ -14,6 +14,7 @@ const SignUp = () => {
   const [password, setPassword] = createSignal("");
   const [confirmPassword, setConfirmPassword] = createSignal("");
   const [turnstileToken, setTurnstileToken] = createSignal<string>("");
+  const navigate = useNavigate();
 
   const onSubmit = async (e: Event) => {
     e.preventDefault();
@@ -43,11 +44,11 @@ const SignUp = () => {
     if (resp.ok) {
       // Handle successful sign-up (e.g., redirect to login or dashboard)
       console.log("Account created successfully");
-      redirect("/confirm-signup?username=" + encodeURIComponent(username()));
+      navigate("/confirm-signup?username=" + encodeURIComponent(username()));
     } else {
       // Handle sign-up errors
       console.error("Error creating account:", resp.statusText);
-      alert("Error creating account: " + resp.statusText);
+      toast("Error creating account: " + resp.statusText, "error");
     }
   };
 

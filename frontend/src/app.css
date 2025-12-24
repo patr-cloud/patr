@@ -267,7 +267,7 @@ input:-webkit-autofill:active{
 }
 
 .table-row {
-  @apply border border-border-color min-h-10 cursor-pointer 
+  @apply border border-border-color min-h-10
     flex items-center justify-center w-full px-xl 
     bg-secondary-light last-of-type:rounded-b-xs;
 }

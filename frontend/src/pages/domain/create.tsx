@@ -128,9 +128,9 @@ const CreateDomainPage = () => {
     }
 
     // Debounce the validation to avoid too many API calls
-    validationTimeout = setTimeout(() => {
-      validateDomain(value);
-    }, 500) as unknown as number;
+    // validationTimeout = setTimeout(() => {
+    //   validateDomain(value);
+    // }, 500) as unknown as number;
   };
 
   const handleSuggestionClick = () => {
@@ -212,7 +212,7 @@ const CreateDomainPage = () => {
       />
       <PageContainerBody>
         <form onSubmit={onSubmit} class="space-y-6">
-          <div class="bg-secondary-light p-6 rounded-lg border border-white/5">
+          <div class="bg-secondary-light p-6 rounded-xs border border-white/5">
             <div class="space-y-4">
               <div class="flex flex-col gap-2">
                 <InputLabel
@@ -221,6 +221,7 @@ const CreateDomainPage = () => {
                   label="Domain Name"
                 />
                 <Input
+                  styleVariant="dark"
                   id="domain-name"
                   class="flex-10"
                   name="domain-name"
@@ -248,7 +249,7 @@ const CreateDomainPage = () => {
                 </Show>
               </div>
 
-              <div class="bg-black/20 p-4 rounded border border-white/5">
+              <div class="bg-secondary-dark p-4 rounded border border-white/5">
                 <h4 class="text-white text-sm font-semibold mb-2">
                   Domain Requirements:
                 </h4>
