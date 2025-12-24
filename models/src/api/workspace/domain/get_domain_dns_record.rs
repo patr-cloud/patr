@@ -32,7 +32,6 @@ macros::declare_api_endpoint!(
 	},
 	response = {
 		/// The list of records containing:
-		/// - domain_id - The domain ID
 		/// - name - The domain name
 		/// - type - The domain type
 		/// - ttl - The time to live

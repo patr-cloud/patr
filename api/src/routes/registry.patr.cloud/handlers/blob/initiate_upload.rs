@@ -61,7 +61,6 @@ macros::declare_registry_endpoint!(
 /// - Initiates S3 multipart upload
 /// - Stores session in redis with S3 upload ID
 /// - Returns 202 Accepted with Location, Docker-Upload-UUID, and Range headers
-#[instrument(skip(database, redis, s3, body, config))]
 pub async fn initiate_upload(
 	AuthenticatedRegistryAppRequest {
 		request:

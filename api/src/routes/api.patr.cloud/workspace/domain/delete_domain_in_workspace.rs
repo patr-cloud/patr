@@ -1,5 +1,8 @@
 use cloudflare::{
-	endpoints::zones::zone::*,
+	endpoints::{
+		workers::*,
+		zones::{custom_hostnames::*, zone::*},
+	},
 	framework::{
 		Environment,
 		auth::Credentials,
@@ -11,7 +14,6 @@ use reqwest::StatusCode;
 
 use crate::prelude::*;
 
-#[instrument(skip(database))]
 pub async fn delete_domain_in_workspace(
 	AuthenticatedAppRequest {
 		request:
@@ -63,21 +65,45 @@ pub async fn delete_domain_in_workspace(
 	.await?
 	.map(|r| r.zone_identifier);
 
-	query!(
+	let row = query!(
 		r#"
 		DELETE FROM
 			workspace_domain
 		WHERE
-			id = $1;
+			id = $1
+		RETURNING
+			cloudflare_worker_route_id,
+			cloudflare_custom_hostname_id;
 		"#,
 		domain_id as _
 	)
-	.execute(&mut **database)
+	.fetch_one(&mut **database)
 	.await
 	.map_err(|err| match err {
 		sqlx::Error::Database(err) if err.is_foreign_key_violation() => ErrorType::ResourceInUse,
 		err => ErrorType::server_error(err),
 	})?;
+
+	let client = CloudflareClient::new(
+		Credentials::UserAuthToken {
+			token: state.config.cloudflare.api_key.clone(),
+		},
+		ClientConfig::default(),
+		Environment::Production,
+	)?;
+
+	client
+		.request(&DeleteRoute {
+			zone_identifier: &state.config.cloudflare.primary_hosted_zone_id,
+			identifier: &row.cloudflare_worker_route_id,
+		})
+		.await?;
+	client
+		.request(&DeleteCustomHostname {
+			zone_identifier: &state.config.cloudflare.primary_hosted_zone_id,
+			custom_hostname_id: &row.cloudflare_custom_hostname_id,
+		})
+		.await?;
 
 	// Mark the resource as deleted in the database
 	query!(
@@ -95,15 +121,7 @@ pub async fn delete_domain_in_workspace(
 	.await?;
 
 	if let Some(zone) = zone {
-		CloudflareClient::new(
-			Credentials::UserAuthToken {
-				token: state.config.cloudflare.api_key.clone(),
-			},
-			ClientConfig::default(),
-			Environment::Production,
-		)?
-		.request(&DeleteZone { identifier: &zone })
-		.await?;
+		client.request(&DeleteZone { identifier: &zone }).await?;
 	}
 
 	AppResponse::builder()

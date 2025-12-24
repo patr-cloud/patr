@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE workspace_domain SET is_verified = TRUE, last_verified = NOW() WHERE id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4605f0d45a71afdf0ffc586506145abced1a46c6714bb55357dc222a46f9c5b7"
+}

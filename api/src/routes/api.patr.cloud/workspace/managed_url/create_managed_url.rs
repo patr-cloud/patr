@@ -8,7 +8,6 @@ use crate::prelude::*;
 /// can be a proxy to a deployment, a proxy to a static site, a proxy to a URL,
 /// or a redirect to a URL. The URL type will determine how the managed URL
 /// behaves.
-#[instrument(skip(database, state))]
 pub async fn create_managed_url(
 	AuthenticatedAppRequest {
 		request:

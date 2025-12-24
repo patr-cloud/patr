@@ -38,9 +38,11 @@
 	},
 	"cloudflare": {
 		"apiKey": "<cloudflare-api-key>",
-		"accountId": "accountId",
-		"workerNamespaceId": "workerNamespaceId",
-		"turnstileSecret": "1x0000000000000000000000000000000AA"
+		"accountId": "<account-id>",
+		"workerNamespaceId": "<worker-namespace-id>",
+		"turnstileSecret": "1x0000000000000000000000000000000AA",
+		"primaryHostedZoneId": "<primary-hosted-zone-id>",
+		"ingressScriptName": "<ingress-script-name>"
 	},
 	"opentelemetry": {
 		"tracing": {

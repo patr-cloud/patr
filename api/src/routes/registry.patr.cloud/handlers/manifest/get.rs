@@ -48,7 +48,6 @@ macros::declare_registry_endpoint!(
 /// 4. Queries the database for manifest metadata
 /// 5. Streams the manifest content from S3
 /// 6. Returns with appropriate headers
-#[instrument(skip(database, s3, user_data))]
 pub async fn get_manifest(
 	AuthenticatedRegistryAppRequest {
 		request:
@@ -66,7 +65,7 @@ pub async fn get_manifest(
 		database,
 		redis: _,
 		s3,
-		client_ip,
+		client_ip: _,
 		user_data,
 		config,
 	}: AuthenticatedRegistryAppRequest<'_, GetManifestPath>,

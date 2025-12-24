@@ -3,7 +3,6 @@ use models::api::workspace::domain::*;
 
 use crate::prelude::*;
 
-#[instrument(skip(database))]
 pub async fn get_domain_info_in_workspace(
 	AuthenticatedAppRequest {
 		request:

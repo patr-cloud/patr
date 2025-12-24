@@ -6,13 +6,12 @@ use crate::prelude::*;
 /// The handler to delete a managed URL in a workspace. This will delete the
 /// managed URL and remove it from the workspace. The managed URL must be owned
 /// by the user and not already deleted.
-#[instrument(skip(database, state))]
 pub async fn delete_managed_url(
 	AuthenticatedAppRequest {
 		request:
 			ProcessedApiRequest {
 				path: DeleteManagedURLPath {
-					workspace_id,
+					workspace_id: _,
 					managed_url_id,
 				},
 				query: (),

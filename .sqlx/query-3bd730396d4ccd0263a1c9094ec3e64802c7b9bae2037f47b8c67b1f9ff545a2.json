@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE workspace_domain SET cloudflare_worker_route_id = $2, cloudflare_custom_hostname_id = $3 WHERE id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3bd730396d4ccd0263a1c9094ec3e64802c7b9bae2037f47b8c67b1f9ff545a2"
+}

@@ -22,6 +22,9 @@ mod delete_domain_in_workspace;
 mod get_domain_dns_record;
 /// The endpoint to get the domain information in a workspace
 mod get_domain_info_in_workspace;
+/// The endpoint to get the verification records for a domain, if the domain is
+/// not verified
+mod get_verification_records_for_domain;
 /// The endpoint to check if a domain is personal
 mod is_domain_personal;
 /// The endpoint to check if a domain is valid and can be added to a workspace
@@ -40,6 +43,7 @@ pub use self::{
 	delete_domain_in_workspace::*,
 	get_domain_dns_record::*,
 	get_domain_info_in_workspace::*,
+	get_verification_records_for_domain::*,
 	is_domain_personal::*,
 	is_domain_valid::*,
 	list_domains_in_workspace::*,
@@ -273,9 +277,6 @@ impl FromStr for DomainNameserverType {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct PatrDomainDnsRecord {
-	/// The domain ID
-	#[search(ty = "resource", resource = "Domain")]
-	pub domain_id: Uuid,
 	/// The domain name
 	pub name: String,
 	/// The domain type

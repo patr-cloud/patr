@@ -7,7 +7,6 @@ use models::{api::workspace::runner::*, prelude::*};
 
 use crate::prelude::*;
 
-#[instrument(skip(database, state))]
 pub async fn add_runner_to_workspace(
 	AuthenticatedAppRequest {
 		request:

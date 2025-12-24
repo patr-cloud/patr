@@ -58,7 +58,6 @@ macros::declare_registry_endpoint!(
 /// 8. Stores manifest metadata in database
 /// 9. Creates or updates tag if reference is a tag name
 /// 10. Returns 201 Created with Location and Docker-Content-Digest headers
-#[instrument(skip(database, s3, body, config))]
 pub async fn upload_manifest(
 	AuthenticatedRegistryAppRequest {
 		request:

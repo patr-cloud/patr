@@ -1,5 +1,11 @@
 use cloudflare::{
-	endpoints::zones::zone::{Type as ZoneType, *},
+	endpoints::{
+		workers::*,
+		zones::{
+			custom_hostnames::*,
+			zone::{Type as ZoneType, *},
+		},
+	},
 	framework::{
 		Environment,
 		SearchMatch,
@@ -13,7 +19,6 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
-#[instrument(skip(database))]
 pub async fn add_domain_to_workspace(
 	AuthenticatedAppRequest {
 		request:
@@ -110,6 +115,8 @@ pub async fn add_domain_to_workspace(
                 tld,
                 workspace_id,
                 nameserver_type,
+				cloudflare_worker_route_id,
+				cloudflare_custom_hostname_id,
                 is_verified,
                 deleted
 			)
@@ -120,6 +127,8 @@ pub async fn add_domain_to_workspace(
 				$3,
 				$4,
 				$5,
+				'undefined',
+				'undefined',
 				FALSE,
 				NULL
 			);
@@ -137,16 +146,66 @@ pub async fn add_domain_to_workspace(
 		err => ErrorType::server_error(err),
 	})?;
 
+	let client = CloudflareClient::new(
+		Credentials::UserAuthToken {
+			token: state.config.cloudflare.api_key.clone(),
+		},
+		ClientConfig::default(),
+		Environment::Production,
+	)?;
+
+	let worker_route_id = client
+		.request(&CreateRoute {
+			zone_identifier: &state.config.cloudflare.primary_hosted_zone_id,
+			params: CreateRouteParams {
+				pattern: format!("*.{domain}/*"),
+				script: Some(state.config.cloudflare.ingress_script_name.clone()),
+			},
+		})
+		.await?
+		.result
+		.id;
+
+	let custom_hostname_id = client
+		.request(&AddCustomHostname {
+			zone_identifier: &state.config.cloudflare.primary_hosted_zone_id,
+			params: AddCustomHostnameParams {
+				hostname: domain.clone(),
+				ssl: Some(CustomHostnameSsl {
+					bundle_method: Some(CustomHostnameSslBundleMethod::Ubiquitous),
+					certificate_authority: Some(CustomHostnameSslCertificateAuthority::Google),
+					type_: Some(CustomHostnameSslType::DV),
+					method: Some(CustomHostnameSslMethod::Txt),
+					validation_records: None,
+					settings: None,
+					wildcard: Some(true),
+				}),
+				custom_metadata: None,
+			},
+		})
+		.await?
+		.result
+		.id;
+
+	query!(
+		r#"
+		UPDATE
+			workspace_domain
+		SET
+			cloudflare_worker_route_id = $2,
+			cloudflare_custom_hostname_id = $3
+		WHERE
+			id = $1;
+		"#,
+		domain_id as _,
+		worker_route_id,
+		custom_hostname_id,
+	)
+	.execute(&mut **database)
+	.await?;
+
 	match nameserver_type {
 		DomainNameserverType::Internal => {
-			let client = CloudflareClient::new(
-				Credentials::UserAuthToken {
-					token: state.config.cloudflare.api_key.clone(),
-				},
-				ClientConfig::default(),
-				Environment::Production,
-			)?;
-
 			let zone = client
 				.request(&ListZones {
 					params: ListZonesParams {

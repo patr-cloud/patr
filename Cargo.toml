@@ -49,6 +49,7 @@ getrandom_02                   = { default-features = false, package = "getrando
 getrandom_03                   = { default-features = false, package = "getrandom", version = "0.3" }
 headers                        = { default-features = false, version = "0.4" }
 hex                            = { default-features = false, version = "0.4" }
+hickory-resolver               = { default-features = false, version = "0.25" }
 http                           = { default-features = false, version = "1" }
 http-body                      = { default-features = false, version = "1" }
 httparse                       = { default-features = false, version = "1" }

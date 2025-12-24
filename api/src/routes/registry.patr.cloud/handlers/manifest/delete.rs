@@ -32,7 +32,6 @@ macros::declare_registry_endpoint!(
 /// This handler will return a constant 405 Method Not Allowed response,
 /// as manifest deletion is currently disabled. Manifest deletions are done
 /// through the Patr API directly.
-#[instrument(skip(user_data))]
 pub async fn delete_manifest(
 	AuthenticatedRegistryAppRequest {
 		request:

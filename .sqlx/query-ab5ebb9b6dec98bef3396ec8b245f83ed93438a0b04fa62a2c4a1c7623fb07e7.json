@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO workspace_domain(id, name, tld, workspace_id, nameserver_type, is_verified, deleted) VALUES ($1, $2, $3, $4, $5, FALSE, NULL);",
+  "query": "INSERT INTO workspace_domain(id, name, tld, workspace_id, nameserver_type, cloudflare_worker_route_id, cloudflare_custom_hostname_id, is_verified, deleted) VALUES ($1, $2, $3, $4, $5, 'undefined', 'undefined', FALSE, NULL);",
   "describe": {
     "columns": [],
     "parameters": {
@@ -24,5 +24,5 @@
     },
     "nullable": []
   },
-  "hash": "2af56a66a0dbb3d8b71246f3fc631f614271cbdda670a4959178c571e23d0e0d"
+  "hash": "ab5ebb9b6dec98bef3396ec8b245f83ed93438a0b04fa62a2c4a1c7623fb07e7"
 }

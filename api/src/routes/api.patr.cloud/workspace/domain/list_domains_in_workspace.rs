@@ -3,7 +3,6 @@ use reqwest::StatusCode;
 
 use crate::prelude::*;
 
-#[instrument(skip(database))]
 pub async fn list_domains_in_workspace(
 	AuthenticatedAppRequest {
 		request:

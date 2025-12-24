@@ -53,7 +53,6 @@ macros::declare_registry_endpoint!(
 /// 4. Queries the database for manifest metadata
 /// 5. Returns headers only (no body) with Content-Length and
 ///    Docker-Content-Digest
-#[instrument(skip(database, user_data))]
 pub async fn check_manifest(
 	AuthenticatedRegistryAppRequest {
 		request:
@@ -71,7 +70,7 @@ pub async fn check_manifest(
 		database,
 		redis: _,
 		s3: _,
-		client_ip,
+		client_ip: _,
 		user_data,
 		config: _,
 	}: AuthenticatedRegistryAppRequest<'_, HeadManifestPath>,

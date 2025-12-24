@@ -36,7 +36,6 @@ struct TunnelConfigRequestConfigIngress {
 	service: String,
 }
 
-#[instrument(skip(database, state))]
 pub async fn get_ingress_token_for_runner(
 	AuthenticatedAppRequest {
 		request:

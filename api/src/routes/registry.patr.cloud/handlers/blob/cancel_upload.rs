@@ -37,7 +37,6 @@ macros::declare_registry_endpoint!(
 /// - Aborts S3 multipart upload
 /// - Deletes upload session from redis
 /// - Returns 204 No Content
-#[instrument(skip(database, redis, s3, config))]
 pub async fn cancel_upload(
 	AuthenticatedRegistryAppRequest {
 		request:

@@ -3,7 +3,6 @@ use reqwest::StatusCode;
 
 use crate::prelude::*;
 
-#[instrument(skip(database))]
 pub async fn is_domain_valid(
 	AuthenticatedAppRequest {
 		request:

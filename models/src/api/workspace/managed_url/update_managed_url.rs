@@ -25,11 +25,12 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The new path of the updated URL
-		#[preprocess(trim, lowercase)]
-		pub path: String,
+		#[preprocess(optional(trim, lowercase))]
+		pub path: Option<String>,
 		/// The new type of the updated URL which can be
 		/// Deployment, Static Site, Proxy or Redirect
-		#[preprocess(none)]
-		pub url_type: ManagedUrlType,
+		#[serde(flatten)]
+		#[preprocess(optional(none))]
+		pub url_type: Option<ManagedUrlType>,
 	},
 );
