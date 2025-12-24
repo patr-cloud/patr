@@ -45,7 +45,7 @@ pub async fn revoke_api_token(
 		.await?;
 
 	AppResponse::builder()
-		.status_code(StatusCode::RESET_CONTENT)
+		.status_code(StatusCode::ACCEPTED)
 		.headers(())
 		.body(RevokeApiTokenResponse)
 		.build()

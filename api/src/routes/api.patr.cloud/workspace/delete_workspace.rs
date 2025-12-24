@@ -108,7 +108,7 @@ pub async fn delete_workspace(
 	AppResponse::builder()
 		.body(DeleteWorkspaceResponse)
 		.headers(())
-		.status_code(StatusCode::RESET_CONTENT)
+		.status_code(StatusCode::ACCEPTED)
 		.build()
 		.into_result()
 }

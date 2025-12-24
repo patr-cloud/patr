@@ -127,7 +127,7 @@ pub async fn delete_domain_in_workspace(
 	AppResponse::builder()
 		.body(DeleteDomainInWorkspaceResponse)
 		.headers(())
-		.status_code(StatusCode::RESET_CONTENT)
+		.status_code(StatusCode::ACCEPTED)
 		.build()
 		.into_result()
 }

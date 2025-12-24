@@ -91,7 +91,7 @@ pub async fn delete_managed_url(
 	AppResponse::builder()
 		.body(DeleteManagedURLResponse)
 		.headers(())
-		.status_code(StatusCode::RESET_CONTENT)
+		.status_code(StatusCode::ACCEPTED)
 		.build()
 		.into_result()
 }

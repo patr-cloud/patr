@@ -64,7 +64,7 @@ pub async fn is_domain_valid(
 	AppResponse::builder()
 		.body(IsDomainValidResponse { valid: true })
 		.headers(())
-		.status_code(StatusCode::RESET_CONTENT)
+		.status_code(StatusCode::OK)
 		.build()
 		.into_result()
 }

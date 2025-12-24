@@ -61,7 +61,7 @@ pub async fn remove_runner_from_workspace(
 	AppResponse::builder()
 		.body(DeleteRunnerResponse)
 		.headers(())
-		.status_code(StatusCode::RESET_CONTENT)
+		.status_code(StatusCode::ACCEPTED)
 		.build()
 		.into_result()
 }

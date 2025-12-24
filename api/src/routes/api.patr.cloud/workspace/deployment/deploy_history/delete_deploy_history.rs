@@ -57,7 +57,7 @@ pub async fn delete_deploy_history(
 	AppResponse::builder()
 		.body(DeleteDeploymentDeployHistoryResponse)
 		.headers(())
-		.status_code(StatusCode::RESET_CONTENT)
+		.status_code(StatusCode::ACCEPTED)
 		.build()
 		.into_result()
 }

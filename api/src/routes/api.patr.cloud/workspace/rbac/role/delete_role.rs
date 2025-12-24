@@ -132,7 +132,7 @@ pub async fn delete_role(
 	AppResponse::builder()
 		.body(DeleteRoleResponse)
 		.headers(())
-		.status_code(StatusCode::RESET_CONTENT)
+		.status_code(StatusCode::ACCEPTED)
 		.build()
 		.into_result()
 }

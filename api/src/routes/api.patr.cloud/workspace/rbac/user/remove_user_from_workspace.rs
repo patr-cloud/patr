@@ -64,7 +64,7 @@ pub async fn remove_user_from_workspace(
 	AppResponse::builder()
 		.body(RemoveUserFromWorkspaceResponse)
 		.headers(())
-		.status_code(StatusCode::RESET_CONTENT)
+		.status_code(StatusCode::ACCEPTED)
 		.build()
 		.into_result()
 }

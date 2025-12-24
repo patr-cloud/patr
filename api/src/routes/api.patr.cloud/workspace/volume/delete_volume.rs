@@ -66,7 +66,7 @@ pub async fn delete_volume(
 	AppResponse::builder()
 		.body(DeleteVolumeResponse)
 		.headers(())
-		.status_code(StatusCode::RESET_CONTENT)
+		.status_code(StatusCode::ACCEPTED)
 		.build()
 		.into_result()
 }
