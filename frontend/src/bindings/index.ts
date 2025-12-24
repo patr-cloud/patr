@@ -36,6 +36,9 @@ import { ManagedUrl } from "./ManagedUrl";
 import { CreateManagedURLRequest } from "./CreateManagedURLRequest";
 import { CreateManagedURLResponse } from "./CreateManagedURLResponse";
 import { ManagedUrlType } from "./ManagedUrlType";
+import { WithId } from "./WithId";
+import { UpdateManagedURLResponse } from "./UpdateManagedURLResponse";
+import { UpdateManagedURLRequest } from "./UpdateManagedURLRequest";
 
 export type {
   EnvironmentVariableValue,
@@ -74,6 +77,9 @@ export type {
   ListManagedURLResponse,
   ManagedUrl,
   ManagedUrlType,
+  WithId,
   CreateManagedURLRequest,
   CreateManagedURLResponse,
+  UpdateManagedURLRequest,
+  UpdateManagedURLResponse,
 };

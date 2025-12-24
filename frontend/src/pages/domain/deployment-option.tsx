@@ -90,6 +90,7 @@ const DeploymentOption = (props: DeploymentOptionProps) => {
           onSelect={(value) => {
             props.onSelectDeployment(value);
           }}
+          styleVariant="medium"
           value={props.deployment || undefined}
           options={
             deployments.latest?.deployments.map((deployment) => ({
@@ -109,6 +110,7 @@ const DeploymentOption = (props: DeploymentOptionProps) => {
           {deploymentInfo.latest && (
             <InputDropdown
               class="flex-2"
+              styleVariant="medium"
               onSelect={(value) => {
                 props.onPortChange(Number(value));
               }}
