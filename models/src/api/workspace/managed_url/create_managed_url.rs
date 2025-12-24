@@ -32,6 +32,7 @@ macros::declare_api_endpoint!(
 		#[preprocess(trim, lowercase)]
 		pub path: String,
 		/// The URL type (Deployment, Static Site, Proxy or Redirect)
+		#[serde(flatten)]
 		#[preprocess(none)]
 		pub url_type: ManagedUrlType,
 	},
