@@ -116,7 +116,7 @@ const DeploymentOption = (props: DeploymentOptionProps) => {
               options={
                 Object.keys(deploymentInfo.latest?.ports || {}).map((port) => ({
                   value: String(port),
-                  label: `Port ${port}`,
+                  label: `${port}`,
                 })) || []
               }
             />

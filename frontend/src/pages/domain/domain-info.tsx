@@ -11,7 +11,6 @@ import {
   CreateManagedURLResponse,
   GetDomainInfoInWorkspaceResponse,
   ListManagedURLResponse,
-  ManagedUrlType,
 } from "~/bindings";
 import {
   Button,
@@ -27,7 +26,7 @@ import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
-import DeploymentOption from "./deploymentOption";
+import DeploymentOption from "./deployment-option";
 
 type urlTypeT = "proxyUrl" | "redirect" | "proxyDeployment" | "proxyStaticSite";
 
@@ -149,7 +148,9 @@ const DomainInfo = () => {
       },
     };
     const response = await httpRequest<CreateManagedURLResponse>(
-      `/workspace/${wsId}/infrastructure/managed-url`,
+      `${
+        import.meta.env.VITE_BASE_URL
+      }/api/workspace/${wsId}/infrastructure/managed-url`,
       {
         method: "POST",
         body: JSON.stringify(requestBody),
@@ -222,7 +223,7 @@ const DomainInfo = () => {
                 <Input
                   disabled={true}
                   value={domainInfo.latest?.name}
-                  class="flex-4"
+                  class="flex-2"
                   placeholder="Domain"
                 />
                 <span>/</span>
