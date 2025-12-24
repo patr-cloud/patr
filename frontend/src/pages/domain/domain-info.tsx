@@ -34,7 +34,6 @@ type urlTypeT = "proxyUrl" | "redirect" | "proxyDeployment" | "proxyStaticSite";
 
 const DomainInfo = () => {
   const params = useParams();
-  const navigate = useNavigate();
 
   const [authState] = useAuthState();
   const [workspaceId] = useLastWorkspaceId();
@@ -97,7 +96,7 @@ const DomainInfo = () => {
       const resource = await httpRequest<ListManagedURLResponse>(
         `${
           import.meta.env.VITE_BASE_URL
-        }/api/workspace/${wsId}/infrastructure/managed-url?domain_id=${domainId}`,
+        }/api/workspace/${wsId}/infrastructure/managed-url?domainId=${domainId}`,
         {
           method: "GET",
           headers: {
@@ -144,11 +143,9 @@ const DomainInfo = () => {
       domainId,
       subDomain: subDomain(),
       path: path(),
-      urlType: {
-        type: "proxyDeployment",
-        deploymentId: targetVal,
-        port: deploymentPort() || 80,
-      },
+      type: "proxyDeployment",
+      deploymentId: targetVal,
+      port: deploymentPort() || 80,
     };
     const response = await httpRequest<CreateManagedURLResponse>(
       `${

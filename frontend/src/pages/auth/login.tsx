@@ -74,7 +74,7 @@ const Login = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const [turnstileToken, setTurnstileToken] = createSignal<string>(
-    "something_or.the_other"
+    import.meta.env.VITE_TURNSTILE_SITE_KEY
   );
   const [inputs, setInputs] = createSignal<InputFields>({
     userId: "",

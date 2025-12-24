@@ -3,13 +3,13 @@ const domainTypeToTitle = (domainType: string) => {
     case "proxyDeployment":
       return "Deployment";
     case "proxyStaticSite":
-      return "Managed Domain";
+      return "Static Site";
     case "proxyUrl":
       return "Proxy URL";
     case "redirect":
       return "Redirect";
     default:
-      return "Domain";
+      return "Select A URL Type";
   }
 };
 
