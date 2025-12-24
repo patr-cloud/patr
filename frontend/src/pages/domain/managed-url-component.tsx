@@ -34,6 +34,45 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
   const [openEdit, setOpenEdit] = createSignal(false);
   const [shouldDelete, setShouldDelete] = createSignal(false);
 
+  const [authState] = useAuthState();
+  const [workspaceId] = useLastWorkspaceId();
+  const toast = useToast();
+
+  const onDelete = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
+    e.stopPropagation();
+
+    const auth = authState();
+    const wsId = workspaceId();
+
+    if (!wsId || !auth || auth.type !== "LoggedIn") {
+      toast("Authentication required", "error");
+      return;
+    }
+
+    const response = await httpRequest<void>(
+      `${
+        import.meta.env.VITE_BASE_URL
+      }/api/workspace/${wsId}/infrastructure/managed-url/${
+        props.managedUrl.id
+      }`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${auth.accessToken}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error("Failed to delete managed URL:", response.data.error);
+      toast("Failed to delete managed URL", "error");
+      return;
+    }
+
+    toast("Managed URL deleted successfully", "success");
+    props.onUpdate?.();
+  };
+
   return (
     <>
       {openEdit() ? (
@@ -90,18 +129,35 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
                   )}
                 />
               )}
-              <button
-                onClick={() => {
-                  console.log("Edit clicked");
-                  setOpenEdit(true);
-                }}
-                class="text-gray-400 hover:bg-white/10 p-1 rounded transition-colors cursor-pointer"
-              >
-                <FiEdit2 size={18} />
-              </button>
-              <button class="text-red-500 hover:bg-white/10 p-1 rounded transition-colors cursor-pointer">
-                <FiTrash size={18} />
-              </button>
+              {shouldDelete() ? (
+                <>
+                  <button onClick={onDelete} class="text-red-500">
+                    Delete
+                  </button>
+                  <button onClick={() => setShouldDelete(false)}>Cancel</button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      console.log("Edit clicked");
+                      setOpenEdit(true);
+                    }}
+                    class="text-gray-400 hover:bg-white/10 p-1 rounded transition-colors cursor-pointer"
+                  >
+                    <FiEdit2 size={18} />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShouldDelete(true);
+                    }}
+                    class="text-red-500 hover:bg-white/10 p-1 rounded transition-colors cursor-pointer"
+                  >
+                    <FiTrash size={18} />
+                  </button>
+                </>
+              )}
             </div>
           </td>
         </tr>
