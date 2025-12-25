@@ -94,7 +94,7 @@ pub async fn stream_deployment_logs(
 				.trim_start_matches("http://"),
 		)
 		.path_and_query(format!(
-			"/loki/api/v1/tail?{}",
+			"/api/v1/tail?{}",
 			serde_qs::to_string(&[(
 				"start",
 				start_time
