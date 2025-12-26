@@ -25,6 +25,10 @@ pub async fn search_for_user(
 		state: _,
 	}: AuthenticatedAppRequest<'_, SearchForUserRequest>,
 ) -> Result<AppResponse<SearchForUserRequest>, ErrorType> {
+	if user_id.trim().len() < 3 {
+		return Err(ErrorType::WrongParameters);
+	}
+
 	let users = query!(
 		r#"
 		SELECT
