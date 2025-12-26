@@ -19,7 +19,7 @@ interface PortInputProps {
   /** On Remove Port Type Handler */
   onDelete: (key: string) => void;
   /** Port List */
-  portList: MaybeAccessor<{ [key: string]: ExposedPortType }>;
+  portList: MaybeAccessor<{ [key: string]: ExposedPortType | undefined }>;
 }
 
 const PortInput = (props: PortInputProps) => {

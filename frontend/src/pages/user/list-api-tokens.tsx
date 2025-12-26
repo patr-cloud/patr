@@ -8,7 +8,7 @@ import {
 const ListApiTokens = () => {
   return (
     <PageContainer>
-      <PageContainerHead title="API Tokens" subTitle="All Tokens" />
+      <PageContainerHead title="User" subTitle="API Tokens" />
       <PageContainerBody class="flex flex-col gap-8">
         <Table
           column_grids={["flex-4", "flex-4", "flex-4"]}

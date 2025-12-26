@@ -1,16 +1,11 @@
 import { A } from "@solidjs/router";
-import {
-  Component,
-  createSignal,
-  Show,
-  onCleanup,
-  createResource,
-  onMount,
-} from "solid-js";
-import { FiUser, FiKey, FiSettings, FiLogOut } from "solid-icons/fi";
-import { useAuthState } from "~/hooks";
+import { createSignal, Show, createResource, Suspense } from "solid-js";
+import { FiKey, FiSettings, FiLogOut } from "solid-icons/fi";
+import { useAuthState, useClickOutside } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
 import CopyableTextField from "./copyable-text-field";
+import { useToast } from "~/components/toast";
+import { GetUserInfoResponse } from "~/bindings";
 
 interface UserInfo {
   id: string;
@@ -20,21 +15,24 @@ interface UserInfo {
   recoveryEmail?: string;
 }
 
-const UserDropdown: Component = () => {
+const UserDropdown = () => {
   const [isOpen, setIsOpen] = createSignal(false);
   const [authState, setAuthState] = useAuthState();
-  let dropdownRef: HTMLDivElement | undefined;
+  const [dropdownRef, setDropdownRef] = createSignal<HTMLDivElement>();
+  const toast = useToast();
 
-  // Fetch user info
-  const [userInfo] = createResource(authState, async (auth) => {
-    console.log("createResource triggered with auth:", auth);
+  useClickOutside(dropdownRef, () => {
+    setIsOpen(false);
+  });
+
+  const [userInfo] = createResource(authState(), async (auth) => {
     if (auth === null || auth.type !== "LoggedIn") {
       console.log("Auth is null or LoggedOut, returning null");
       return null;
     }
 
     try {
-      const response = await httpRequest<UserInfo>(
+      const response = await httpRequest<GetUserInfoResponse>(
         `${import.meta.env.VITE_BASE_URL}/api/user`,
         {
           method: "GET",
@@ -64,35 +62,12 @@ const UserDropdown: Component = () => {
     }
   });
 
-  console.log(
-    "UserDropdown render - userInfo:",
-    userInfo(),
-    "loading:",
-    userInfo.loading,
-    "error:",
-    userInfo.error
-  );
-
   const handleLogout = () => {
     setAuthState({ type: "LoggedOut" });
     window.location.href = "/login";
   };
 
   // Add click outside listener with onMount
-  onMount(() => {
-    console.log("UserDropdown mounted");
-    const handleClick = (e: MouseEvent) => {
-      if (dropdownRef && !dropdownRef.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener("click", handleClick);
-    onCleanup(() => {
-      document.removeEventListener("click", handleClick);
-    });
-  });
-
   const getDisplayName = () => {
     const user = userInfo();
     return user
@@ -116,94 +91,103 @@ const UserDropdown: Component = () => {
   };
 
   return (
-    <div class="relative" ref={dropdownRef}>
-      <button
-        onClick={() => {
-          console.log("User button clicked, current isOpen:", isOpen());
-          setIsOpen(!isOpen());
-        }}
-        class="flex items-center gap-2 px-4 py-2 rounded-xs bg-secondary-light hover:bg-secondary-medium transition-colors duration-200 border border-white/10"
-      >
-        <div class="w-8 h-8 rounded-full bg-secondary-dark flex items-center justify-center text-white text-sm font-light">
-          {getInitials()}
-        </div>
-        <span class="text-sm font-medium text-white">{getDisplayName()}</span>
-      </button>
-
-      <Show when={isOpen()}>
-        <div class="absolute right-0 mt-2 w-80 bg-secondary-medium border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
-          <div class="p-4 border-b border-white/10">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="w-12 h-12 rounded-full bg-secondary-dark flex items-center justify-center text-white text-lg font-light">
-                {getInitials()}
-              </div>
-              <div class="flex-1 min-w-0">
-                <Show
-                  when={!userInfo.loading}
-                  fallback={<div class="text-gray-400 text-sm">Loading...</div>}
-                >
-                  <div class="text-white font-medium truncate">
-                    {userInfo()?.firstName && userInfo()?.lastName
-                      ? `${userInfo()!.firstName} ${userInfo()!.lastName}`
-                      : userInfo()?.username || "Unknown User"}
-                  </div>
-                  <div class="text-gray-400 text-sm truncate">
-                    {userInfo()?.recoveryEmail || "No email"}
-                  </div>
-                </Show>
-              </div>
+    <div class="relative" ref={setDropdownRef}>
+      <Suspense
+        fallback={
+          <button class="flex items-center gap-2 px-4 py-2 rounded-xs bg-secondary-light hover:bg-secondary-medium transition-colors duration-200 border border-white/10">
+            <div class="w-8 h-8 rounded-full bg-secondary-dark flex items-center justify-center text-white text-sm font-light">
+              U
             </div>
+            <span class="text-sm font-medium text-white">User</span>
+          </button>
+        }
+      >
+        <button
+          onClick={() => {
+            setIsOpen(!isOpen());
+          }}
+          class="flex items-center gap-2 px-4 py-2 rounded-xs bg-secondary-light hover:bg-secondary-medium transition-colors duration-200 border border-white/10 cursor-pointer"
+        >
+          <div class="w-8 h-8 rounded-full bg-secondary-dark flex items-center justify-center text-white text-sm font-light">
+            {getInitials()}
+          </div>
+          <span class="text-sm font-medium text-white">{getDisplayName()}</span>
+        </button>
 
-            <div class="mb-2">
+        <Show when={isOpen()}>
+          <div class="absolute right-0 mt-2 w-80 bg-secondary-medium border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
+            <div class="p-4 border-b border-white/10">
+              <div class="flex items-center gap-3 mb-3">
+                <div class="w-12 h-12 rounded-full bg-secondary-dark flex items-center justify-center text-white text-lg font-light">
+                  {getInitials()}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <Show
+                    when={!userInfo.loading}
+                    fallback={
+                      <div class="text-gray-400 text-sm">Loading...</div>
+                    }
+                  >
+                    <div class="text-white font-medium truncate">
+                      {userInfo()?.firstName && userInfo()?.lastName
+                        ? `${userInfo()!.firstName} ${userInfo()!.lastName}`
+                        : userInfo()?.username || "Unknown User"}
+                    </div>
+                    <div class="text-gray-400 text-sm truncate">
+                      {userInfo()?.recoveryEmail || "No email"}
+                    </div>
+                  </Show>
+                </div>
+              </div>
+
+              <div class="mb-2">
+                <CopyableTextField
+                  label="User ID"
+                  value={userInfo()?.id || ""}
+                  disabled={!userInfo()?.id}
+                />
+              </div>
+
               <CopyableTextField
-                label="User ID"
-                value={userInfo()?.id || ""}
-                disabled={!userInfo()?.id}
+                label="Username"
+                value={userInfo()?.username || ""}
+                disabled={!userInfo()?.username}
               />
             </div>
 
-            <CopyableTextField
-              label="Username"
-              value={userInfo()?.username || ""}
-              disabled={!userInfo()?.username}
-            />
-          </div>
+            <div class="p-2">
+              <A
+                href="/profile/api-tokens"
+                class="flex items-center gap-3 px-3 py-2 rounded-xs hover:bg-white/5 transition-colors text-gray-300 hover:text-white"
+                onClick={() => setIsOpen(false)}
+              >
+                <FiKey size={16} />
+                <span class="text-sm">API Keys</span>
+              </A>
+              <A
+                href="/profile"
+                class="flex items-center gap-3 px-3 py-2 rounded-xs hover:bg-white/5 transition-colors text-gray-300 hover:text-white"
+                onClick={() => setIsOpen(false)}
+              >
+                <FiSettings size={16} />
+                <span class="text-sm">User Settings</span>
+              </A>
+            </div>
 
-          <div class="p-2">
-            <A
-              href="/profile/api-tokens"
-              class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-gray-300 hover:text-white"
-              onClick={() => setIsOpen(false)}
-            >
-              <FiKey size={16} />
-              <span class="text-sm">API Keys</span>
-            </A>
-            <A
-              href="/user-settings"
-              class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-gray-300 hover:text-white"
-              onClick={() => setIsOpen(false)}
-            >
-              <FiSettings size={16} />
-              <span class="text-sm">User Settings</span>
-            </A>
+            <div class="p-2 border-t border-white/10">
+              <button
+                onClick={handleLogout}
+                class="w-full flex items-center gap-3 px-3 py-2 rounded-xs hover:bg-red-500/10 transition-colors text-gray-300 hover:text-red-400"
+              >
+                <FiLogOut size={16} />
+                <span class="text-sm">Logout</span>
+              </button>
+            </div>
           </div>
-
-          <div class="p-2 border-t border-white/10">
-            <button
-              onClick={handleLogout}
-              class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-red-500/10 transition-colors text-gray-300 hover:text-red-400"
-            >
-              <FiLogOut size={16} />
-              <span class="text-sm">Logout</span>
-            </button>
-          </div>
-        </div>
-      </Show>
+        </Show>
+      </Suspense>
     </div>
   );
 };
 
 export default UserDropdown;
-function toast(arg0: string, arg1: string) {
-  throw new Error("Function not implemented.");
-}

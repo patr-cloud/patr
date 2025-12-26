@@ -14,6 +14,9 @@ importers:
       '@solid-primitives/storage':
         specifier: ^4.3.3
         version: 4.3.3(solid-js@1.9.10)
+      '@solid-primitives/websocket':
+        specifier: ^1.3.1
+        version: 1.3.1(solid-js@1.9.10)
       '@solidjs/meta':
         specifier: ^0.29.4
         version: 0.29.4(solid-js@1.9.10)
@@ -30,7 +33,7 @@ importers:
         specifier: ^1.1.0
         version: 1.1.0(solid-js@1.9.10)
       solid-js:
-        specifier: ^1.9.10
+        specifier: ^1.9.9
         version: 1.9.10
     devDependencies:
       '@tailwindcss/vite':
@@ -738,6 +741,11 @@ packages:
 
   '@solid-primitives/utils@6.3.2':
     resolution: {integrity: sha512-hZ/M/qr25QOCcwDPOHtGjxTD8w2mNyVAYvcfgwzBHq2RwNqHNdDNsMZYap20+ruRwW4A3Cdkczyoz0TSxLCAPQ==}
+    peerDependencies:
+      solid-js: ^1.6.12
+
+  '@solid-primitives/websocket@1.3.1':
+    resolution: {integrity: sha512-F06tA2FKa5VsnS4E4WEc3jHpsJfXRlMTGOtolugTzCqV3JmJTyvk9UVg1oz6PgGHKGi1CQ91OP8iW34myyJgaQ==}
     peerDependencies:
       solid-js: ^1.6.12
 
@@ -3283,6 +3291,10 @@ snapshots:
       solid-js: 1.9.10
 
   '@solid-primitives/utils@6.3.2(solid-js@1.9.10)':
+    dependencies:
+      solid-js: 1.9.10
+
+  '@solid-primitives/websocket@1.3.1(solid-js@1.9.10)':
     dependencies:
       solid-js: 1.9.10
 

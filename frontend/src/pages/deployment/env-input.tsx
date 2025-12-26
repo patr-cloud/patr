@@ -19,7 +19,7 @@ interface EnvInputProps {
   /** On Remove Value Handler */
   onDelete: (key: string) => void;
   /** Env List */
-  envList: MaybeAccessor<{ key: string; value: EnvironmentVariableValue }[]>;
+  envList: MaybeAccessor<{ key: string; value?: EnvironmentVariableValue }[]>;
 }
 
 const parseEnvValue = (value: EnvironmentVariableValue): string => {
@@ -51,7 +51,7 @@ const EnvInput = (props: EnvInputProps) => {
               disabled={true}
               class="flex-7"
               placeholder="Enter Env Value"
-              value={parseEnvValue(env.value)}
+              value={env.value ? parseEnvValue(env.value) : ""}
               type={InputType.Text}
               onInput={(e) => {
                 setEnvValue(e.currentTarget.value);

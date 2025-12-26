@@ -129,16 +129,20 @@ const ListDomainsPage = () => {
 
   return (
     <PageContainer>
-      <PageContainerHead title="Domains" subTitle="All Domains">
-        <div class="ml-auto">
-          <Button
-            variant={ButtonVariant.Contained}
-            onClick={() => navigate("/domains/new")}
-          >
-            Add Domain
-          </Button>
-        </div>
-      </PageContainerHead>
+      <PageContainerHead
+        title="Domains"
+        subTitle="All Domains"
+        actions={() => (
+          <div class="ml-auto">
+            <Button
+              variant={ButtonVariant.Contained}
+              onClick={() => navigate("/domains/new")}
+            >
+              Add Domain
+            </Button>
+          </div>
+        )}
+      />
       <PageContainerBody>
         <ErrorBoundary
           fallback={(err, reset) => (
