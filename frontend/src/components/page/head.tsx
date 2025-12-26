@@ -53,9 +53,7 @@ const PageContainerHead = (rawProps: PageContainerHeadProps) => {
         <div>{props.actions?.()}</div>
       </header>
       {props.bottomContent && (
-        <div class="bg-secondary-light px-xl pt-sm">
-          {props.bottomContent?.()}
-        </div>
+        <div class="bg-secondary-light px-xl">{props.bottomContent?.()}</div>
       )}
     </>
   );

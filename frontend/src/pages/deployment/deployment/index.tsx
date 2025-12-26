@@ -15,11 +15,6 @@ import { httpRequest } from "~/utils/http-request";
 import DeploymentInfoUpdate from "~/pages/deployment/deployment/info";
 import DeploymentLogs from "./logs";
 
-const DEPLOYMENT_TABS = [
-  { name: "Info", href: "", current: true },
-  { name: "Logs", href: "logs", current: false },
-];
-
 const DeploymentInfo = () => {
   const params = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -50,7 +45,6 @@ const DeploymentInfo = () => {
         },
       }
     );
-    console.log("Fetched deployment info:", response.data);
     if (!response.ok) {
       console.error("Failed to fetch deployment info:", response.data.error);
       toast("Failed to fetch deployment info", "error");
@@ -233,7 +227,7 @@ const DeploymentInfo = () => {
               onClick={() => {
                 setSearchParams({ tab: "" });
               }}
-              class={`pb-2 border-b-2 ${
+              class={`pb-2 px-2 border-b-2 ${
                 tab() === "info" || tab() === ""
                   ? "border-primary"
                   : "border-none"
@@ -245,7 +239,7 @@ const DeploymentInfo = () => {
               onClick={() => {
                 setSearchParams({ tab: "logs" });
               }}
-              class={`pb-2 border-b-2 ${
+              class={`pb-2 px-2 border-b-2 ${
                 tab() === "logs" ? "border-primary" : "border-none"
               }`}
             >

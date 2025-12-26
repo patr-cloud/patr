@@ -12,7 +12,7 @@ const PageContainer = (rawProps: ParentProps<PageContainerProps>) => {
 
   return (
     <div
-      class={`min-h-screen ${get(
+      class={`min-h-[calc(100vh-64px)] ${get(
         props.class
       )} bg-secondary p-sm pl-0 ml-sm flex flex-col`}
     >

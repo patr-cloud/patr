@@ -41,7 +41,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
   const [workspaceId] = useLastWorkspaceId();
   const toast = useToast();
 
-  const [hasUpdated, setHasUpdated] = createSignal(false);
+  const [, setHasUpdated] = createSignal(false);
 
   const resourceParamsRunnerList = createMemo(() => {
     return [authState(), workspaceId()] as const;
@@ -70,7 +70,6 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
         return { runners: [] };
       }
 
-      console.log("Fetched runner list:", response.data);
       return response.data;
     }
   );
@@ -110,7 +109,6 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
       return;
     }
 
-    console.log("Deployment updated successfully:", response.data);
     toast("Deployment updated successfully", "success");
     props.refetchDeploymentInfo();
   };
