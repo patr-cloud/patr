@@ -98,19 +98,18 @@
   --flex-12: 0 1 100%;
 }
 
+html, body {
+  height: 100%;
+  font-family: "Poppins", "Roboto", "Helvetica", "Arial", "sans-serif";
+}
+
+
 @layer base {
-  html, body {
-    height: 100%;
-  }
-
-  * {
-    font-family: "Poppins", "Roboto", "Helvetica", "Arial", "sans-serif";
-  }
-
   input,
   textarea,
   select {
-    @apply bg-transparent text-white border border-primary px-lg py-sm rounded-xs;
+    background-color: transparent;
+    @apply text-white border border-primary px-lg py-sm rounded-xs;
     @apply focus:outline-none focus:border-primary focus:ring-0;
     transition: all 0.2s ease;
   }
@@ -120,18 +119,18 @@
   select:focus {
     @apply bg-secondary-light;
   }
-
+  
   input::placeholder,
   textarea::placeholder {
     @apply text-grey;
   }
-
+  
   input:disabled,
   textarea:disabled,
   select:disabled {
     @apply bg-secondary-medium text-disabled cursor-not-allowed;
   }
-
+  
   input[type="date"]::-webkit-calendar-picker-indicator,
   input[type="time"]::-webkit-calendar-picker-indicator,
   input[type="datetime-local"]::-webkit-calendar-picker-indicator {
@@ -140,7 +139,7 @@
     padding: 4px;
     cursor: pointer;
   }
-
+  
   input:-webkit-autofill,
   input:-webkit-autofill:hover, 
   input:-webkit-autofill:focus, 

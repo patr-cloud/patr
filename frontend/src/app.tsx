@@ -1,6 +1,5 @@
-// import { clientOnly } from "@solidjs/start";
-import { Route, Router } from "@solidjs/router";
 import "./app.css";
+import { Route, Router } from "@solidjs/router";
 import LoggedOutRoutes from "./routes/logged-out-routes/index";
 import NotFound from "./routes/not-found";
 import LoggedInRoutes from "./routes/logged-in-routes";
@@ -26,5 +25,4 @@ function App() {
   );
 }
 
-// export default clientOnly(async () => ({ default: App }), { lazy: true });
 export default App;

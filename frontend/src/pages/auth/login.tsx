@@ -12,6 +12,7 @@ import {
   validatePassword,
 } from "~/utils/validation";
 import { PasswordInput } from "~/components";
+import OtpInput from "~/components/otp-input";
 
 /**
  * @deprecated Not using a server function, cause that limits Client Side Only Capabilities,
@@ -73,6 +74,8 @@ const Login = () => {
   const [, setAuthState] = useAuthState();
   const navigate = useNavigate();
   const toast = useToast();
+  const [showMfa, setShowMfa] = createSignal(false);
+  const [mfaOtp, setMfaOtp] = createSignal("");
   const [turnstileToken, setTurnstileToken] = createSignal<string>(
     import.meta.env.VITE_TURNSTILE_SITE_KEY
   );
@@ -141,13 +144,16 @@ const Login = () => {
     const { userId, password } = inputs();
     if (!validateInputs()) return;
 
+    const requestBody: LoginRequest = {
+      userId,
+      password,
+      mfaOtp: showMfa() && mfaOtp() !== "" ? mfaOtp() : undefined,
+      cfTurnstileToken: turnstileToken(),
+    };
+
     const loginResp = await httpRequest<LoginResponse>("/api/auth/sign-in", {
       method: "POST",
-      body: JSON.stringify({
-        userId,
-        password,
-        cfTurnstileToken: turnstileToken(),
-      }),
+      body: JSON.stringify(requestBody),
       headers: {
         "Content-Type": "application/json",
       },
@@ -176,6 +182,9 @@ const Login = () => {
             ...prev,
             userId: "User not found. Please check your username.",
           }));
+          break;
+        case "mfaRequired":
+          setShowMfa(true);
           break;
         default:
           // Generic error handling
@@ -245,6 +254,15 @@ const Login = () => {
             <div class="flex justify-start items-center mt-1">
               <Alert message={inputError().password} type="error" />
             </div>
+          </Show>
+
+          <Show when={showMfa()}>
+            <OtpInput
+              outerClass="mt-4"
+              inputVariant="medium"
+              otpDigits={() => mfaOtp().split("")}
+              setOtpDigits={(digits) => setMfaOtp(digits.join(""))}
+            />
           </Show>
 
           {/* Turnstile Widget */}

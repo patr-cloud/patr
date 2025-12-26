@@ -1,7 +1,7 @@
 import { For } from "solid-js";
-import Input, { InputType } from "./input";
+import { InputType } from "./input";
 import { MaybeAccessor } from "~/utils/types";
-import { get } from "~/utils/func";
+import { get, variantBgClass } from "~/utils/func";
 
 interface OtpInputProps {
   outerClass?: string;
@@ -79,20 +79,25 @@ const OtpInput = (props: OtpInputProps) => {
   };
 
   return (
-    <div class={`${props.outerClass ?? "flex gap-3"}`}>
+    <div class={`flex gap-3 ${props.outerClass ?? ""}`}>
       <For each={[0, 1, 2, 3, 4, 5]}>
         {(index) => (
-          <Input
-            styleVariant={props.inputVariant}
+          <input
             id={`otp-${index}`}
             type={InputType.Tel}
             maxLength={1}
-            value={() => get(props.otpDigits)[index]}
+            value={get(props.otpDigits).at(index) ?? ""}
             onInput={(e) => handleOtpInput(index, e.currentTarget.value)}
             onKeyDown={(e) => handleOtpKeyDown(index, e)}
             onPaste={handleOtpPaste}
-            class={props.inputClass ?? "flex-1"}
-            innerClass="text-center text-xl font-medium"
+            class={`${
+              props.inputClass ?? ""
+            } w-full text-center text-xl font-medium flex-1 border-none \
+              focus:outline focus:outline-solid focus:outline-primary transition-none ${
+                props.inputVariant
+                  ? variantBgClass(props.inputVariant)
+                  : "bg-secondary-light"
+              }`}
           />
         )}
       </For>

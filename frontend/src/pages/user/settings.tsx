@@ -177,6 +177,7 @@ const UserSettingsPage = () => {
                   )}
                   renderModalContent={(close) => (
                     <TwoFactorAuthModal
+                      isMfaEnabled={!!userInfo.latest?.isMfaEnabled}
                       refetchUserInfo={refetchUserInfo}
                       closeFn={close}
                     />
