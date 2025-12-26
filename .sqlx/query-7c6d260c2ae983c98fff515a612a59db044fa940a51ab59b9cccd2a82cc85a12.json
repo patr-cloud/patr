@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT \"user\".id, \"user\".username, \"user\".first_name, \"user\".last_name, (CASE WHEN \"user\".username = $1 THEN 1 WHEN user_email.email = $1 THEN 1 WHEN CONCAT('+', phone_number_country_code.phone_code, user_phone_number.number) = $1 THEN 1 ELSE 0 END) AS score FROM \"user\" LEFT JOIN user_email ON user_email.user_id = \"user\".id LEFT JOIN user_phone_number ON user_phone_number.user_id = \"user\".id LEFT JOIN phone_number_country_code ON phone_number_country_code.country_code = user_phone_number.country_code WHERE \"user\".username ILIKE '%' || $1 || '%' OR user_email.email = $1 OR CONCAT('+', phone_number_country_code.phone_code, user_phone_number.number) = $1 ORDER BY score DESC LIMIT 5;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "first_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "last_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "score",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "7c6d260c2ae983c98fff515a612a59db044fa940a51ab59b9cccd2a82cc85a12"
+}

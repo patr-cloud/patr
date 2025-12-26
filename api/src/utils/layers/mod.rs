@@ -26,6 +26,11 @@ mod request_parser;
 /// the web dashboard. This is also used to make sure that requests that cannot
 /// be accessed by the API are only accessed by the web dashboard
 mod user_agent_validation_layer;
+/// The layer that manages the auth cookie for web dashboard requests. This
+/// layer is responsible for setting the auth cookie and automatically
+/// refreshing it, along with setting it as the authentication header for
+/// downstream layers.
+mod web_dashboard_auth_cookie_layer;
 
 /// All layers that are used by the Patr Registry.
 pub mod registry;
@@ -40,4 +45,5 @@ pub use self::{
 	preprocess_layer::*,
 	request_parser::*,
 	user_agent_validation_layer::*,
+	web_dashboard_auth_cookie_layer::*,
 };

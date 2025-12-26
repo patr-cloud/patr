@@ -14,6 +14,7 @@ use super::layers::{
 	PreprocessLayer,
 	RequestParserLayer,
 	UserAgentValidationLayer,
+	WebDashboardAuthCookieLayer,
 };
 use crate::{
 	prelude::*,
@@ -158,6 +159,17 @@ where
 					.layer(
 						ServiceBuilder::new()
 							// .layer(todo!("Add rate limiter checker middleware here")),
+							.option_layer(
+								if allowed_client_type == ClientType::WebDashboard {
+									// For web dashboard, we need to extract the
+									// auth state cookie and set that as the
+									// Bearer token so that the
+									// AuthenticationLayer can pick it up
+									Some(WebDashboardAuthCookieLayer::new())
+								} else {
+									None
+								},
+							)
 							.layer(RequestParserLayer::new())
 							.layer(DataStoreConnectionLayer::with_state(state.clone()))
 							.layer(PreprocessLayer::new())

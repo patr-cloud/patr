@@ -1,5 +1,6 @@
 import { LoginRequest, LoginResponse } from "~/bindings";
 import { ErrorResponse, FetchResult } from "./types";
+import { getRequestEvent } from "solid-js/web";
 
 /**
  * A wrapper around the Fetch API, adds a few things, such as:
@@ -18,12 +19,15 @@ const httpRequest = async <T>(
   options?: RequestInit
 ): Promise<FetchResult<T>> => {
   try {
+    const event = getRequestEvent();
     const resp = await fetch(url, {
       method: "GET",
+      credentials: "include",
+      ...options,
       headers: {
+        ...(event?.request.headers ? Object.fromEntries(event.request.headers) : {}),
         "Content-Type": "application/json",
       },
-      ...options,
     });
 
     // Handle empty responses (204 No Content, etc.)

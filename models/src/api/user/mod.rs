@@ -17,6 +17,8 @@ mod list_user_workspaces;
 mod mfa;
 /// All endpoints related to recovery options
 mod recovery_options;
+/// The endpoint to search for users
+mod search_for_user;
 /// The endpoint to update the information of a user
 mod update_user_info;
 /// All endpoints related to web logins
@@ -30,6 +32,7 @@ pub use self::{
 	list_user_workspaces::*,
 	mfa::*,
 	recovery_options::*,
+	search_for_user::*,
 	update_user_info::*,
 	web_logins::*,
 };
