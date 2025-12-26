@@ -18,6 +18,8 @@ import BgOnboard from "~/components/bg-onboard";
 import { ToastProvider, useToast } from "~/components/toast";
 import Turnstile from "~/components/turnstile";
 import { UserSearchInput } from "~/components/user-search-input";
+import ToggleSwitch from "~/components/toggle-switch";
+import Modal from "./modal";
 
 export {
   Alert,
@@ -39,5 +41,7 @@ export {
   useToast,
   Turnstile,
   UserSearchInput,
+  ToggleSwitch,
+  Modal,
   type InputEventT,
 };

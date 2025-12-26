@@ -6,6 +6,7 @@ import {
   Input,
   InputLabel,
   InputType,
+  Modal,
   PageContainer,
   PageContainerBody,
   PageContainerHead,
@@ -14,6 +15,7 @@ import {
 import { useAuthState } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
+import TwoFactorAuthModal from "./two-fa";
 
 const UserSettingsPage = () => {
   const [authState] = useAuthState();
@@ -140,15 +142,47 @@ const UserSettingsPage = () => {
               </Button>
             </form>
 
-            <form class="flex gap-4 items-center w-full">
+            <div class="flex gap-4 items-center w-full">
+              <InputLabel parentClass="flex-1" for="first-name" label="Email" />
+
+              <Input
+                value={userInfo.latest?.recoveryEmail || ""}
+                class="flex-11"
+                name="recovery-email"
+                placeholder="Recovery Email"
+                type={InputType.Text}
+                disabled
+              />
+            </div>
+
+            <form class="flex gap-4 items-start w-full">
               <InputLabel
                 parentClass="flex-1"
                 for="2-fa"
                 label="Two-Factor Authentication"
               />
-              <Button type="button" variant={ButtonVariant.Contained}>
-                ENABLE 2-FA
-              </Button>
+
+              <div class="flex-11">
+                <Modal
+                  renderTrigger={(open) => (
+                    <Button
+                      variant={ButtonVariant.Contained}
+                      type="button"
+                      class="text-primary"
+                      onClick={() => open(true)}
+                    >
+                      {userInfo.latest?.isMfaEnabled ? "Disable" : "Enable"} 2FA
+                      Settings
+                    </Button>
+                  )}
+                  renderModalContent={(close) => (
+                    <TwoFactorAuthModal
+                      refetchUserInfo={refetchUserInfo}
+                      closeFn={close}
+                    />
+                  )}
+                />
+              </div>
             </form>
           </div>
         </Suspense>
