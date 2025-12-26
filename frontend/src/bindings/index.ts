@@ -39,6 +39,10 @@ import { ManagedUrlType } from "./ManagedUrlType";
 import { WithId } from "./WithId";
 import { UpdateManagedURLResponse } from "./UpdateManagedURLResponse";
 import { UpdateManagedURLRequest } from "./UpdateManagedURLRequest";
+import { GetDeploymentLogsRequest } from "./GetDeploymentLogsRequest";
+import { GetDeploymentLogsResponse } from "./GetDeploymentLogsResponse";
+import { GetUserInfoResponse } from "./GetUserInfoResponse";
+import { DeploymentLog } from "./DeploymentLog";
 
 export type {
   EnvironmentVariableValue,
@@ -82,4 +86,8 @@ export type {
   CreateManagedURLResponse,
   UpdateManagedURLRequest,
   UpdateManagedURLResponse,
+  GetDeploymentLogsRequest,
+  GetDeploymentLogsResponse,
+  GetUserInfoResponse,
+  DeploymentLog,
 };

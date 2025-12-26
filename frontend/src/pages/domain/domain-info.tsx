@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "@solidjs/router";
+import { useParams } from "@solidjs/router";
 import {
   createMemo,
   createResource,
@@ -213,18 +213,19 @@ const DomainInfo = () => {
             title="Domains"
             titleUrl="/domains"
             subTitle={domainInfo.latest?.name}
-          >
-            {!domainInfo.latest?.isVerified ? (
-              <Button
-                type="button"
-                onClick={onVerifyClick}
-                variant={ButtonVariant.Contained}
-                disabled={isVerifying()}
-              >
-                {isVerifying() ? "Verifying..." : "Verify"}
-              </Button>
-            ) : null}
-          </PageContainerHead>
+            actions={() =>
+              !domainInfo.latest?.isVerified ? (
+                <Button
+                  type="button"
+                  onClick={onVerifyClick}
+                  variant={ButtonVariant.Contained}
+                  disabled={isVerifying()}
+                >
+                  {isVerifying() ? "Verifying..." : "Verify"}
+                </Button>
+              ) : undefined
+            }
+          />
           <PageContainerBody>
             <form
               class="mb-2 p-lg bg-secondary-light rounded-xs"

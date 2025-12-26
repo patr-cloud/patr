@@ -88,9 +88,11 @@ const ListDeploymentsPage = () => {
 
   return (
     <PageContainer>
-      <PageContainerHead title="Deployments" subTitle="All Deployments">
-        <A href="/deployments/new">CREATE NEW DEPLOYMENT</A>
-      </PageContainerHead>
+      <PageContainerHead
+        title="Deployments"
+        subTitle="All Deployments"
+        actions={() => <A href="/deployments/new">CREATE NEW DEPLOYMENT</A>}
+      />
 
       <PageContainerBody>
         <ErrorBoundary
