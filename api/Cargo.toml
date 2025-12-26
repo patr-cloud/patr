@@ -52,7 +52,7 @@ time                           = { workspace = true, features = ["default", "ser
 tokio                          = { workspace = true, features = ["default", "full", "tracing"] }
 tokio-tungstenite              = { workspace = true, features = ["default"] }
 tokio-util                     = { workspace = true, features = ["io"] }
-totp-rs                        = { workspace = true, features = ["default", "gen_secret"] }
+totp-rs                        = { workspace = true, features = ["default", "gen_secret", "otpauth", "qr"] }
 tower                          = { workspace = true, features = ["full"] }
 tower-http                     = { workspace = true, features = ["fs"] }
 tracing                        = { workspace = true, features = ["async-await", "default"] }

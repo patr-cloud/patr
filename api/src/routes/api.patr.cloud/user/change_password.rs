@@ -89,6 +89,8 @@ pub async fn change_password(
 				);
 				ErrorType::server_error(err)
 			})?,
+			Some(constants::TOTP_ISSUER.to_string()),
+			user_data.username,
 		)
 		.inspect_err(|err| {
 			error!(

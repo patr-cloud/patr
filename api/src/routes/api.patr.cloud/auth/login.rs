@@ -147,6 +147,8 @@ pub async fn login(
 					err.to_string()
 				);
 			})?,
+			Some(constants::TOTP_ISSUER.to_string()),
+			user_data.username,
 		)
 		.inspect_err(|err| {
 			error!(

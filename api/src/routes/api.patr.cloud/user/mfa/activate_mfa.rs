@@ -1,5 +1,5 @@
 use axum::http::StatusCode;
-use models::{RequestUserData, api::user::*};
+use models::api::user::*;
 use rustis::commands::StringCommands;
 use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};
 
@@ -18,7 +18,7 @@ pub async fn activate_mfa(
 		redis,
 		client_ip: _,
 		state: _,
-		user_data: RequestUserData { id, .. },
+		user_data,
 	}: AuthenticatedAppRequest<'_, ActivateMfaRequest>,
 ) -> Result<AppResponse<ActivateMfaRequest>, ErrorType> {
 	info!("Activating MFA for user");
@@ -32,7 +32,7 @@ pub async fn activate_mfa(
 		WHERE
 			id = $1;
 		"#,
-		id as _,
+		user_data.id as _,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -43,10 +43,10 @@ pub async fn activate_mfa(
 	}
 
 	let Some(secret) = redis
-		.get::<Option<String>>(redis::user_mfa_secret(&id))
+		.get::<Option<String>>(redis::user_mfa_secret(&user_data.id))
 		.await?
 	else {
-		error!("MFA secret not found for userId `{}`", id);
+		error!("MFA secret not found for userId `{}`", user_data.id);
 		return Err(ErrorType::MfaRequired);
 	};
 
@@ -60,15 +60,17 @@ pub async fn activate_mfa(
 			.inspect_err(|err| {
 				error!(
 					"Unable to parse MFA secret for userId `{}`: {}",
-					id,
+					user_data.id,
 					err.to_string()
 				);
 			})?,
+		Some(constants::TOTP_ISSUER.to_string()),
+		user_data.username,
 	)
 	.inspect_err(|err| {
 		error!(
 			"Unable to parse TOTP for userId `{}`: {}",
-			id,
+			user_data.id,
 			err.to_string()
 		);
 	})?
@@ -87,7 +89,7 @@ pub async fn activate_mfa(
 		WHERE
 			id = $1;
 		"#,
-		id as _,
+		user_data.id as _,
 		secret
 	)
 	.execute(&mut **database)

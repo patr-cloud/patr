@@ -132,4 +132,7 @@ pub mod constants {
 	pub const REGISTRY_TAG_OR_DIGEST_REGEX: &str = macros::verify_regex!(
 		"^(?:[A-Za-z0-9_][A-Za-z0-9._-]{0,127}|[A-Za-z][A-Za-z0-9+._-]*:(?:[a-f0-9]{2})+)$"
 	);
+
+	/// The issuer to be used for TOTP generation
+	pub const TOTP_ISSUER: &str = "app.patr.cloud";
 }

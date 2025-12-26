@@ -12,7 +12,7 @@ macros::declare_api_endpoint!(
 		AppAuthentication::<Self>::PlainTokenAuthenticator
 	},
 	response = {
-		/// The MFA secret used to verify
-		pub secret: String,
+		/// The MFA secret QR code URL
+		pub qr: String,
 	},
 );
