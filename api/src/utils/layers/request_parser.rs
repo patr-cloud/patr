@@ -13,6 +13,7 @@ use axum::{
 	http::Request,
 	response::{IntoResponse, Response},
 };
+use axum_extra::routing::TypedPath;
 use models::{
 	ApiErrorResponse,
 	prelude::*,
@@ -20,6 +21,7 @@ use models::{
 };
 use preprocess::Preprocessable;
 use tower::{Layer, Service};
+use tracing::{Span, field::display};
 
 use crate::utils::extractors::ClientIP;
 
@@ -104,7 +106,17 @@ where
 			.map_err(|_| unreachable!("Layers must always be ready"))
 	}
 
-	#[instrument(skip(self, req), name = "RequestParserService")]
+	#[instrument(name = "RequestParserService", skip(self, req), fields(
+		http.request.method = %req.method(),
+		url.path = %req.uri(),
+		http.route = %<E::RequestPath as TypedPath>::PATH,
+		user_agent.original = %req.headers()
+			.get("User-Agent")
+			.and_then(|v| v.to_str().ok())
+			.unwrap_or(""),
+		http.response.status_code,
+		http.request.client_ip,
+	))]
 	fn call(&mut self, mut req: Request<Body>) -> Self::Future {
 		let mut inner = self.inner.clone();
 		async {
@@ -146,6 +158,7 @@ where
 			};
 
 			let Ok(ClientIP(client_ip)) = req.extract_parts().await;
+			Span::current().record("http.request.client_ip", display(client_ip));
 
 			let Ok(body) =
 				<<E as ApiEndpoint>::RequestBody as FromAxumRequest>::from_axum_request(req)
@@ -194,6 +207,8 @@ where
 					}
 					ApiErrorResponse::error(error).into_response()
 				});
+
+			Span::current().record("http.response.status_code", &response.status().as_u16());
 
 			Ok(response)
 		}

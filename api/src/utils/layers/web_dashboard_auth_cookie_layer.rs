@@ -10,6 +10,7 @@ use http::header;
 use models::prelude::*;
 use serde::{Deserialize, Serialize};
 use tower::{Layer, Service};
+use tracing::Span;
 
 /// The authentication state extracted from the auth state cookie.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -88,7 +89,9 @@ where
 			.map_err(|_| unreachable!("Layers must always be ready"))
 	}
 
-	#[instrument(skip(self, req), name = "RequestParserService")]
+	#[instrument(name = "RequestParserService", skip(self, req), fields(
+		http.request.auth_header_injected = %false
+	))]
 	fn call(&mut self, mut req: Request<Body>) -> Self::Future {
 		let mut inner = self.inner.clone();
 		async {
@@ -113,6 +116,7 @@ where
 				}) {
 					req.headers_mut()
 						.insert(header::AUTHORIZATION, access_token.0.encode());
+					Span::current().record("http.request.auth_header_injected", true);
 				}
 			} else {
 				warn!("No valid authState cookie found; proceeding without Authorization header");

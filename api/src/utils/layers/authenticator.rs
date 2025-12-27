@@ -1,4 +1,5 @@
 use std::{
+	fmt::Display,
 	future::Future,
 	marker::PhantomData,
 	task::{Context, Poll},
@@ -7,6 +8,7 @@ use std::{
 use models::utils::{AppAuthentication, BearerToken, HasHeader};
 use preprocess::Preprocessable;
 use tower::{Layer, Service};
+use tracing::{Span, field::display};
 
 use crate::{models::permissions, prelude::*};
 
@@ -23,6 +25,15 @@ pub enum ClientType {
 	WebDashboard,
 	/// The request is authenticated using an API token
 	ApiToken,
+}
+
+impl Display for ClientType {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::WebDashboard => write!(f, "WebDashboard"),
+			Self::ApiToken => write!(f, "ApiToken"),
+		}
+	}
 }
 
 /// The [`tower::Layer`] used to authenticate requests. This will parse the
@@ -118,10 +129,15 @@ where
 		self.inner.poll_ready(cx)
 	}
 
-	#[instrument(skip(self, req), name = "AuthenticatorService")]
+	#[instrument(skip(self, req), name = "AuthenticatorService", fields(
+		patr.allowed_client_type,
+		patr.user_id,
+		patr.login_id,
+	))]
 	fn call(&mut self, req: AppRequest<'a, E>) -> Self::Future {
 		let mut inner = self.inner.clone();
 		let allowed_client_type = self.client_type;
+		Span::current().record("patr.allowed_client_type", display(allowed_client_type));
 		async move {
 			trace!("Authenticating request");
 			let BearerToken(token) = req.request.headers.get_header();
@@ -136,6 +152,9 @@ where
 				token,
 			)
 			.await?;
+
+			Span::current().record("patr.user_id", display(user_data.id));
+			Span::current().record("patr.login_id", display(user_data.login_id));
 
 			let AppRequest {
 				request,
