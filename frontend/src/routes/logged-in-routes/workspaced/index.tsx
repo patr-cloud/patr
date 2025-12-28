@@ -9,6 +9,10 @@ import CreateRunnerPage from "~/pages/runner/create";
 import ListRunnersPage from "~/pages/runner/list";
 import ListDomainsPage from "~/pages/domain/list";
 import CreateDomainPage from "~/pages/domain/create";
+import ManageWorkspace from "~/pages/workspace/manage-workspace";
+import ListWorkspaces from "~/pages/workspace/list";
+import ManageRoles from "~/pages/workspace/manage-roles";
+import CreateRoles from "~/pages/workspace/create-roles";
 
 const WorkspacedLayout = (props: ParentProps<{}>) => {
   return <>{props.children}</>;
@@ -34,6 +38,12 @@ export default function WorkspacedRoutes() {
         <Route path="/" component={ListDomainsPage} />
         <Route path="/new" component={CreateDomainPage} />
         <Route path="/:id" component={DomainInfo} />
+      </Route>
+      <Route path="/workspaces">
+        <Route path="/" component={ListWorkspaces} />
+        <Route path="/:id" component={ManageWorkspace} />
+        <Route path="/:id/roles" component={ManageRoles} />
+        <Route path="/:id/roles/new" component={CreateRoles} />
       </Route>
     </Route>
   );

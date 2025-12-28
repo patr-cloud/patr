@@ -9,10 +9,12 @@ import {
 import Table from "~/components/table";
 import { httpRequest } from "~/utils/http-request";
 import { useAuthState } from "~/hooks";
+import { useNavigate } from "@solidjs/router";
 
 const ListWorkspaces = () => {
   const [authState, _] = useAuthState();
   const toast = useToast();
+  const navigate = useNavigate();
 
   const [workspace] = createResource(authState, async (auth) => {
     const response = await httpRequest<ListUserWorkspacesResponse>(
@@ -21,9 +23,8 @@ const ListWorkspaces = () => {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${
-            auth.type === "LoggedIn" ? auth.accessToken : " "
-          }`,
+          Authorization: `Bearer ${auth.type === "LoggedIn" ? auth.accessToken : " "
+            }`,
         },
       }
     );
@@ -55,7 +56,7 @@ const ListWorkspaces = () => {
               headings={["Id", "Name"]}
               rows={workspace()?.workspaces || []}
               renderRow={(item) => (
-                <tr class="table-row">
+                <tr class="table-row" onClick={() => { navigate(`/workspaces/${item.id}`) }}>
                   <td class="flex-1">{item.id}</td>
                   <td class="flex-1">{item.name}</td>
                 </tr>
