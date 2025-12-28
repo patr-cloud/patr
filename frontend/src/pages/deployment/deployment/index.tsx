@@ -4,6 +4,7 @@ import { GetDeploymentInfoResponse } from "~/bindings";
 import {
   Button,
   ButtonVariant,
+  HeadTab,
   PageContainer,
   PageContainerBody,
   PageContainerHead,
@@ -70,7 +71,8 @@ const DeploymentInfo = () => {
 
     console.log("Start deployment clicked");
     const resp = await httpRequest(
-      `${import.meta.env.VITE_BASE_URL
+      `${
+        import.meta.env.VITE_BASE_URL
       }/api/workspace/${workspaceId()}/deployment/${deployment.id}/start`,
       {
         method: "POST",
@@ -99,7 +101,8 @@ const DeploymentInfo = () => {
 
     console.log("Stop deployment clicked");
     const resp = await httpRequest(
-      `${import.meta.env.VITE_BASE_URL
+      `${
+        import.meta.env.VITE_BASE_URL
       }/api/workspace/${workspaceId()}/deployment/${deployment.id}/stop`,
       {
         method: "POST",
@@ -130,7 +133,8 @@ const DeploymentInfo = () => {
 
     console.log("Delete deployment clicked");
     const resp = await httpRequest(
-      `${import.meta.env.VITE_BASE_URL
+      `${
+        import.meta.env.VITE_BASE_URL
       }/api/workspace/${workspaceId()}/deployment/${deployment.id}`,
       {
         method: "DELETE",
@@ -219,28 +223,23 @@ const DeploymentInfo = () => {
           </div>
         )}
         bottomContent={() => (
-          <div class="w-full text-white flex gap-4">
-            <button
-              onClick={() => {
-                setSearchParams({ tab: "" });
-              }}
-              class={`pb-2 px-2 border-b-2 ${tab() === "info" || tab() === ""
-                  ? "border-primary"
-                  : "border-none"
-                }`}
-            >
-              Info
-            </button>
-            <button
-              onClick={() => {
-                setSearchParams({ tab: "logs" });
-              }}
-              class={`pb-2 px-2 border-b-2 ${tab() === "logs" ? "border-primary" : "border-none"
-                }`}
-            >
-              Logs
-            </button>
-          </div>
+          <HeadTab
+            tab={tab}
+            searchParams={searchParams}
+            setSearchParams={setSearchParams}
+            tabItems={[
+              {
+                label: "Info",
+                value: "",
+                onClick: (value) => setSearchParams({ tab: value }),
+              },
+              {
+                label: "Logs",
+                value: "logs",
+                onClick: (value) => setSearchParams({ tab: value }),
+              },
+            ]}
+          />
         )}
       />
       <PageContainerBody class="flex flex-col justify-between gap-8">

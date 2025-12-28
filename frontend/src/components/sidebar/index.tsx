@@ -10,6 +10,7 @@ import {
   FiChevronRight,
 } from "solid-icons/fi";
 import { Component, createSignal, For, Show } from "solid-js";
+import WorkspaceSwitcher from "./workspace-switcher";
 
 interface SidebarItemProps {
   label: string;
@@ -126,7 +127,7 @@ const Sidebar: Component = () => {
       </nav>
 
       <div class="p-4 border-t border-white/5">
-        <div class="text-xs text-gray-500 text-center">v1.0.0</div>
+        <WorkspaceSwitcher />
       </div>
     </aside>
   );

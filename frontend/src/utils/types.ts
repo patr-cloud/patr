@@ -1,5 +1,10 @@
 import { Accessor } from "solid-js";
 
+export type SearchParams = Record<string, string | string[] | undefined>;
+export type SetSearchParams = Record<
+  string,
+  string | string[] | number | number[] | boolean | boolean[] | null | undefined
+>;
 export type MaybeAccessor<T> = T | Accessor<T>;
 export type EventT<T, E> = T & { currentTarget: E };
 export type ErrorResponse = {

@@ -2,6 +2,7 @@ import Alert from "~/components/alert";
 import PageContainer from "~/components/page/container";
 import PageContainerBody from "~/components/page/body";
 import PageContainerHead from "~/components/page/head";
+import { HeadTab } from "~/components/page/head";
 import Button from "~/components/button";
 import Input, {
   InputType,
@@ -26,6 +27,7 @@ export {
   PageContainer,
   PageContainerBody,
   PageContainerHead,
+  HeadTab,
   BgOnboard,
   Button,
   ButtonVariant,
