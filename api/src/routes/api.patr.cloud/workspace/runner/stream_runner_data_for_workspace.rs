@@ -102,6 +102,24 @@ async fn handle_websocket(
 	random_connection_id: Uuid,
 	database: sqlx::Pool<DatabaseType>,
 ) {
+	let Ok(_) = query!(
+		r#"
+		UPDATE
+			runner
+		SET
+			is_connected = TRUE,
+			last_seen = NULL
+		WHERE
+			id = $1;
+		"#,
+		runner_id as _,
+	)
+	.execute(&database)
+	.await
+	.inspect_err(|err| error!("Failed to set runner as connected: {:?}", err)) else {
+		return;
+	};
+
 	let redis_channel = format!("{workspace_id}/runner/{runner_id}/stream");
 	let mut pub_sub = redis.create_pub_sub();
 
@@ -229,6 +247,21 @@ async fn handle_websocket(
 			}
 		}
 	}
+
+	_ = query!(
+		r#"
+		UPDATE
+			runner
+		SET
+			is_connected = FALSE,
+			last_seen = NOW()
+		WHERE
+			id = $1;
+		"#,
+		runner_id as _,
+	)
+	.execute(&database)
+	.await;
 
 	trace!("Websocket closed, unsubscribing from runner data stream");
 	_ = pub_sub

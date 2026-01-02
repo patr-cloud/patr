@@ -1,6 +1,5 @@
 use axum::http::StatusCode;
 use models::{api::workspace::runner::*, prelude::*};
-use rustis::commands::GenericCommands;
 
 use crate::prelude::*;
 
@@ -30,7 +29,7 @@ pub async fn list_runners_for_workspace(
 				body: ListRunnersForWorkspaceRequestProcessed,
 			},
 		database,
-		redis,
+		redis: _,
 		client_ip: _,
 		user_data,
 		state: _,
@@ -38,17 +37,14 @@ pub async fn list_runners_for_workspace(
 ) -> Result<AppResponse<ListRunnersForWorkspaceRequest>, ErrorType> {
 	info!("Listing runners in workspace `{}`", workspace_id);
 
-	// TODO: change this to DB
-	let connected_runners = redis
-		.keys::<Vec<String>>(redis::keys::runner_connection_lock_prefix())
-		.await?;
-
 	let mut total_count = 0;
 	let runners = query!(
 		r#"
 		SELECT
 			runner.id,
 			name,
+			is_connected,
+			last_seen,
 			COUNT(*) OVER() AS "total_count!"
 		FROM
 			runner
@@ -59,16 +55,24 @@ pub async fn list_runners_for_workspace(
 		WHERE
 			workspace_id = $1 AND
 			runner.deleted IS NULL AND
-			($4::TEXT IS NULL OR name ILIKE '%' || $4 || '%')
+			($4::TEXT IS NULL OR name ILIKE '%' || $4 || '%') AND
+			($5::BOOLEAN IS NULL OR is_connected = $5) AND
+			(($6::TIMESTAMPTZ IS NULL AND $7::TIMESTAMPTZ IS NULL) OR (
+				last_seen >= $6 AND
+				last_seen <= $7
+			))
 		ORDER BY
 			resource.created DESC
-		LIMIT $5
-		OFFSET $6;
+		LIMIT $8
+		OFFSET $9;
 		"#,
 		workspace_id as _,
 		user_data.login_id as _,
 		Permission::Runner(RunnerPermission::View) as _,
 		name_filter,
+		connected_filter,
+		last_seen_filter.as_ref().map(|last_seen| last_seen.start()) as _,
+		last_seen_filter.as_ref().map(|last_seen| last_seen.end()) as _,
 		count as i32,
 		(count * page) as i32,
 	)
@@ -81,9 +85,8 @@ pub async fn list_runners_for_workspace(
 			row.id,
 			Runner {
 				name: row.name,
-				connected: connected_runners
-					.contains(&redis::keys::runner_connection_lock(&row.id.into())),
-				last_seen: None, // TODO
+				connected: row.is_connected,
+				last_seen: row.last_seen,
 			},
 		)
 	})

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE runner SET is_connected = FALSE, last_seen = NOW() WHERE id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "15f9b059bb989a568dfc34eafa4b9943305586db8a5acb72161e25531578815d"
+}

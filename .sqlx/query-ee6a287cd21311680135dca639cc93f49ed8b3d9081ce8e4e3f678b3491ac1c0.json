@@ -27,6 +27,16 @@
         "ordinal": 4,
         "name": "deleted",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "is_connected",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "last_seen",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
@@ -39,6 +49,8 @@
       false,
       false,
       false,
+      false,
+      true,
       false,
       true
     ]
