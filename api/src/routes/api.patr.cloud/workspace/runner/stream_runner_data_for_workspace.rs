@@ -261,7 +261,8 @@ async fn handle_websocket(
 		runner_id as _,
 	)
 	.execute(&database)
-	.await;
+	.await
+	.inspect_err(|err| error!("Failed to set runner as disconnected: {:?}", err));
 
 	trace!("Websocket closed, unsubscribing from runner data stream");
 	_ = pub_sub
