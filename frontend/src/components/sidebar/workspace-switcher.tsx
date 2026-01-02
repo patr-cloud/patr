@@ -22,7 +22,7 @@ const WorkspaceSwitcher = () => {
   const [workspaceRef, setWorkspaceRef] = createSignal<HTMLDivElement>();
   useClickOutside(workspaceRef, () => setShowSwitcher(false));
 
-  const [showSwitcher, setShowSwitcher] = createSignal(true);
+  const [showSwitcher, setShowSwitcher] = createSignal(false);
 
   const listWorkspacesParams = createMemo(() => {
     return [authState()] as const;
@@ -61,7 +61,7 @@ const WorkspaceSwitcher = () => {
   };
 
   return (
-    <div class="relative" ref={setWorkspaceRef}>
+    <div class="relative select-none" ref={setWorkspaceRef}>
       <div
         class="flex justify-between items-center py-sm px-md cursor-pointer hover:bg-secondary-dark rounded-xs w-full br-sm bg-secondary-dark gap-xxs"
         onClick={() => setShowSwitcher(!showSwitcher())}
@@ -76,7 +76,7 @@ const WorkspaceSwitcher = () => {
           </Suspense>
         </div>
 
-        <A href="/workspace" class="text-xs text-gray-400">
+        <A href="/workspaces" class="text-xs text-gray-400">
           <FiSettings />
         </A>
       </div>
