@@ -7,7 +7,6 @@ import { ListUserWorkspacesResponse } from "~/bindings";
 
 import WorkspacedRoutes from "./workspaced";
 import NonWorkspacedRoutes from "./non-workspaced";
-import Home from "~/pages/home";
 import { useToast } from "~/components";
 
 import Sidebar from "~/components/sidebar";

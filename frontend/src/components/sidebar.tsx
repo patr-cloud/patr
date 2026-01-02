@@ -110,7 +110,7 @@ const Sidebar: Component = () => {
     },
     {
       label: "Workspace Settings",
-      href: "/settings",
+      href: "/workspaces",
       icon: FiSettings,
     },
   ];

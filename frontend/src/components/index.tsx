@@ -17,7 +17,6 @@ import ContainerGrid from "~/components/container-grid";
 import BgOnboard from "~/components/bg-onboard";
 import { ToastProvider, useToast } from "~/components/toast";
 import Turnstile from "~/components/turnstile";
-import WorkspaceHeader from "~/components/workspace-header";
 import { UserSearchInput } from "~/components/user-search-input";
 
 export {
@@ -39,7 +38,6 @@ export {
   ToastProvider,
   useToast,
   Turnstile,
-  WorkspaceHeader,
   UserSearchInput,
   type InputEventT,
 };
