@@ -1,4 +1,11 @@
-use argon2::{Algorithm, PasswordHash, PasswordVerifier, Version};
+use argon2::{
+	Algorithm,
+	PasswordHash,
+	PasswordHasher,
+	PasswordVerifier,
+	Version,
+	password_hash::SaltString,
+};
 use axum::http::StatusCode;
 use models::api::user::*;
 use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};
@@ -116,6 +123,26 @@ pub async fn change_password(
 		}
 	}
 
+	let hashed_password = argon2::Argon2::new_with_secret(
+		state.config.password_pepper.as_ref(),
+		Algorithm::Argon2id,
+		Version::V0x13,
+		constants::HASHING_PARAMS,
+	)
+	.inspect_err(|err| {
+		error!("Error creating Argon2: `{}`", err);
+	})
+	.map_err(ErrorType::server_error)?
+	.hash_password(
+		new_password.as_bytes(),
+		SaltString::generate(&mut rand::thread_rng()).as_salt(),
+	)
+	.inspect_err(|err| {
+		error!("Error hashing password: `{}`", err);
+	})
+	.map_err(ErrorType::server_error)?
+	.to_string();
+
 	query!(
 		r#"
 		UPDATE
@@ -125,7 +152,7 @@ pub async fn change_password(
 		WHERE
 			id = $2;
 		"#,
-		&new_password,
+		&hashed_password,
 		user_data.id as _,
 	)
 	.execute(&mut **database)

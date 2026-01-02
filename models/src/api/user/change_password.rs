@@ -19,7 +19,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The current password of the user.
-		#[preprocess(trim, length(min = 8), custom = "validate_password")]
+		#[preprocess(trim)]
 		pub current_password: String,
 		/// The new password of the user.
 		#[preprocess(trim, length(min = 8), custom = "validate_password")]
