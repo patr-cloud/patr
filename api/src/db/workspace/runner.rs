@@ -11,6 +11,8 @@ pub async fn initialize_runner_tables(
 		CREATE TABLE runner(
 			id UUID NOT NULL,
 			name TEXT NOT NULL,
+			is_connected BOOLEAN NOT NULL,
+			last_seen TIMESTAMPTZ,
 			workspace_id UUID NOT NULL,
 			cloudflare_tunnel_id TEXT NOT NULL,
 			deleted TIMESTAMPTZ
