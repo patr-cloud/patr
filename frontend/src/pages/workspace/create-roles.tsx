@@ -306,7 +306,7 @@ const CreateRoles = () => {
                 <div class="text-gray-400 text-sm">Loading permissions...</div>
               }
             >
-              <div class="grid grid-cols-4 gap-6 mb-4">
+              <div class="grid grid-cols-4 gap-3">
                 {/* Column 1: Resource Types */}
                 <div class="flex flex-col gap-3">
                   <div class="text-white font-medium border-b border-border-color pb-2">

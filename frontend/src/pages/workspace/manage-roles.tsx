@@ -84,20 +84,20 @@ const ManageRoles = () => {
         <div class="flex flex-col gap-6">
           <Suspense fallback={<div class="text-white">Loading roles...</div>}>
             <Show
-              when={roles()?.roles && roles()!.roles.length > 0}
+              when={(roles()?.roles || []).length > 0}
               fallback={<div class="text-white">No roles found</div>}
             >
-              <Table<Record<string, unknown>>
+              <Table
                 column_grids={["flex-1", "flex-2", "flex-1", "flex-[0.5]"]}
                 headings={["Role Name", "Description", "Action", ""]}
-                rows={roles()!.roles as unknown as Record<string, unknown>[]}
-                renderRow={(role, index) => (
+                rows={roles()?.roles || []}
+                renderRow={(role) => (
                   <tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
                     <td class="flex items-center justify-center flex-1">
-                      {(role as any).name}
+                      {role.name}
                     </td>
                     <td class="flex items-center justify-center flex-2">
-                      {(role as any).description || "No description"}
+                      {role.description || "No description"}
                     </td>
                     <td class="flex items-center justify-center flex-1">
                       <span class="text-primary cursor-pointer hover:underline">
@@ -107,7 +107,7 @@ const ManageRoles = () => {
                     <td class="flex items-center justify-center flex-[0.5]">
                       <Button
                         onClick={() => {
-                          console.log("Delete role:", (role as any).id);
+                          console.log("Delete role:", role.id);
                         }}
                         variant={ButtonVariant.Contained}
                         class="h-full flex items-center gap-2 bg-error"

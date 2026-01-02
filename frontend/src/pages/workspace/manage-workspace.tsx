@@ -1,4 +1,4 @@
-import { createResource, createSignal, Show } from "solid-js";
+import { createResource, createSignal, Show, Suspense } from "solid-js";
 import { useParams } from "@solidjs/router";
 import {
   Button,
@@ -21,6 +21,7 @@ import { WithId } from "~/bindings/WithId";
 import { BasicUserInfo } from "~/bindings/BasicUserInfo";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "~/pages/workspace/workspace-header";
+import { EventT } from "~/utils/types";
 
 interface TeamMember {
   userId: string;
@@ -171,7 +172,9 @@ const ManageWorkspace = () => {
     setSelectedUser(user);
   };
 
-  const handleAddMember = async () => {
+  const handleAddMember = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
+    e.preventDefault();
+
     const user = selectedUser();
     const roleId = currentRoleId().trim();
     const auth = authState();
@@ -236,84 +239,98 @@ const ManageWorkspace = () => {
       <PageContainerBody class="flex flex-col justify-between gap-8">
         <div class="flex flex-col gap-6">
           <div class="flex flex-col gap-4">
-            <div class="text-lg text-white">Add Members</div>
-
-            <div class="flex gap-4 items-center">
-              <Show
-                when={authState() && authState()!.type === "LoggedIn"}
-                fallback={<div class="flex-2" />}
-              >
-                <UserSearchInput
-                  placeholder="Search for user by name or username..."
-                  class="flex-2"
-                  accessToken={(authState()! as any).accessToken}
-                  onUserSelect={handleUserSelect}
-                />
-              </Show>
-              <InputDropdown
-                placeholder="Add Roles"
-                class="flex-1"
-                options={
-                  roles()?.roles.map((role) => ({
-                    label: role.name,
-                    value: role.id,
-                  })) || []
-                }
-                value={currentRoleId()}
-                onSelect={(value) => setCurrentRoleId(value)}
-              />
-              <Button
-                type="button"
-                variant={ButtonVariant.Contained}
-                class="h-full flex items-center gap-2"
-                onClick={handleAddMember}
-                disabled={isSubmitting()}
-              >
-                <FiPlus size={16} />
-              </Button>
-            </div>
-
-            <Show
-              when={
-                !workspaceMembers.loading &&
-                workspaceMembers() &&
-                workspaceMembers()!.length > 0
-              }
+            <form
+              class="p-lg bg-secondary-light rounded-xs"
+              onSubmit={handleAddMember}
             >
-              <div class="mt-4">
-                <div class="text-white text-sm font-medium mb-2">
-                  Workspace Members
-                </div>
-                <Table<Record<string, unknown>>
-                  column_grids={["flex-2", "flex-1"]}
-                  headings={["User", "Roles"]}
-                  rows={
-                    workspaceMembers()! as unknown as Record<string, unknown>[]
-                  }
-                  renderRow={(member) => {
-                    const memberRoleIds = (member.roleIds as string[]) || [];
-                    const memberRoleNames = memberRoleIds
-                      .map(
-                        (roleId) =>
-                          roles()?.roles.find((r) => r.id === roleId)?.name
-                      )
-                      .filter(Boolean)
-                      .join(", ");
+              <h1 class="text-lg mb-3">Create New Managed URL</h1>
 
+              <div class="flex flex-col items-start justify-center gap-2 w-full">
+                <div class="flex items-center justify-center gap-3 w-full">
+                  <Show
+                    when={authState() && authState()!.type === "LoggedIn"}
+                    fallback={<div class="flex-2" />}
+                  >
+                    <UserSearchInput
+                      placeholder="Search for user by name or username..."
+                      class="flex-2"
+                      accessToken={(authState()! as any).accessToken}
+                      onUserSelect={handleUserSelect}
+                    />
+                  </Show>
+                  <InputDropdown
+                    placeholder="Add Roles"
+                    styleVariant="medium"
+                    class="flex-1"
+                    options={
+                      roles()?.roles.map((role) => ({
+                        label: role.name,
+                        value: role.id,
+                      })) || []
+                    }
+                    value={currentRoleId()}
+                    onSelect={(value) => setCurrentRoleId(value)}
+                  />
+                </div>
+              </div>
+
+              <div class="w-full flex justify-end mt-4">
+                <Button
+                  type="submit"
+                  variant={ButtonVariant.Contained}
+                  class="h-full flex items-center gap-2"
+                  disabled={isSubmitting()}
+                >
+                  <FiPlus size={16} />
+                </Button>
+              </div>
+            </form>
+
+            <Suspense
+              fallback={<div class="text-white">Loading members...</div>}
+            >
+              <Table
+                column_grids={["flex-2", "flex-1"]}
+                headings={["User", "Roles"]}
+                rows={workspaceMembers() || []}
+                renderRow={(member) => {
+                  const memberRoleIds = member.roleIds;
+                  const memberRoleNames = memberRoleIds
+                    .map(
+                      (roleId) =>
+                        roles()?.roles.find((r) => r.id === roleId)?.name
+                    )
+                    .filter(Boolean)
+                    .join(", ");
+
+                  if (workspaceMembers.loading) {
                     return (
                       <tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
-                        <td class="flex items-center justify-center flex-2">
-                          {member.userName as string}
-                        </td>
-                        <td class="flex items-center justify-center flex-1">
-                          {memberRoleNames || "No roles"}
-                        </td>
+                        Loading...
                       </tr>
                     );
-                  }}
-                />
-              </div>
-            </Show>
+                  }
+
+                  if (!workspaceMembers() || workspaceMembers()!.length <= 0) {
+                    return (
+                      <tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
+                        No members found.
+                      </tr>
+                    );
+                  }
+                  return (
+                    <tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
+                      <td class="flex items-center justify-center flex-2">
+                        {member.userName}
+                      </td>
+                      <td class="flex items-center justify-center flex-1">
+                        {memberRoleNames || "No roles"}
+                      </td>
+                    </tr>
+                  );
+                }}
+              />
+            </Suspense>
           </div>
         </div>
       </PageContainerBody>
