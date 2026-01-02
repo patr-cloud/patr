@@ -22,9 +22,7 @@ const ListWorkspaces = () => {
       {
         method: "GET",
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${auth.type === "LoggedIn" ? auth.accessToken : " "
-            }`,
+          "Content-Type": "application/json"
         },
       }
     );
