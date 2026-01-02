@@ -43,6 +43,15 @@ import { GetDeploymentLogsRequest } from "./GetDeploymentLogsRequest";
 import { GetDeploymentLogsResponse } from "./GetDeploymentLogsResponse";
 import { GetUserInfoResponse } from "./GetUserInfoResponse";
 import { DeploymentLog } from "./DeploymentLog";
+import { ActivateMfaRequest } from "./ActivateMfaRequest";
+import { DeactivateMfaRequest } from "./DeactivateMfaRequest";
+import { GetMfaSecretResponse } from "./GetMfaSecretResponse";
+import { GetMfaSecretRequest } from "./GetMfaSecretRequest";
+import { ChangePasswordRequest } from "./ChangePasswordRequest";
+import { ChangePasswordResponse } from "./ChangePasswordResponse";
+import { CreateWorkspaceRequest } from "./CreateWorkspaceRequest";
+import { CreateWorkspaceResponse } from "./CreateWorkspaceResponse";
+import { Workspace } from "./Workspace";
 
 export type {
   EnvironmentVariableValue,
@@ -90,4 +99,13 @@ export type {
   GetDeploymentLogsResponse,
   GetUserInfoResponse,
   DeploymentLog,
+  ActivateMfaRequest,
+  DeactivateMfaRequest,
+  GetMfaSecretResponse,
+  GetMfaSecretRequest,
+  ChangePasswordRequest,
+  ChangePasswordResponse,
+  Workspace,
+  CreateWorkspaceRequest,
+  CreateWorkspaceResponse,
 };

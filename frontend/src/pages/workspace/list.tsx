@@ -10,6 +10,7 @@ import Table from "~/components/table";
 import { httpRequest } from "~/utils/http-request";
 import { useAuthState } from "~/hooks";
 import { useNavigate } from "@solidjs/router";
+import { A } from "@solidjs/router";
 
 const ListWorkspaces = () => {
   const [authState, _] = useAuthState();
@@ -22,7 +23,7 @@ const ListWorkspaces = () => {
       {
         method: "GET",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
       }
     );
@@ -38,7 +39,12 @@ const ListWorkspaces = () => {
 
   return (
     <PageContainer>
-      <PageContainerHead title="Workspaces" subTitle="All Workspaces" />
+      <PageContainerHead
+        title="Workspaces"
+        titleUrl="/workspaces"
+        subTitle="All Workspaces"
+        actions={() => <A href="/workspaces/new">Create Workspace</A>}
+      />
       <PageContainerBody class="flex flex-col justify-between gap-8">
         <ErrorBoundary
           fallback={(err, reset) => (
@@ -54,7 +60,12 @@ const ListWorkspaces = () => {
               headings={["Id", "Name"]}
               rows={workspace()?.workspaces || []}
               renderRow={(item) => (
-                <tr class="table-row" onClick={() => { navigate(`/workspaces/${item.id}`) }}>
+                <tr
+                  class="table-row"
+                  onClick={() => {
+                    navigate(`/workspaces/${item.id}`);
+                  }}
+                >
                   <td class="flex-1">{item.id}</td>
                   <td class="flex-1">{item.name}</td>
                 </tr>

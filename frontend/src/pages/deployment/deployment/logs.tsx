@@ -21,7 +21,7 @@ const DeploymentLogs = (props: DeploymentLogsProps) => {
   const ws = createWS(
     `ws://localhost:3001/api/workspace/${workspaceId()}/deployment/${
       props.deploymentId
-    }/logs`
+    }/logs/stream`
   );
   const [, setLogs] = createStore<WSMessage[]>([]);
 

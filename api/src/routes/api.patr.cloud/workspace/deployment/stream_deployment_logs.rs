@@ -1,3 +1,5 @@
+use std::{str::FromStr, time::Duration};
+
 use axum::{
 	http::{HeaderName, HeaderValue, StatusCode, Uri},
 	response::IntoResponse,
@@ -70,41 +72,35 @@ pub async fn stream_deployment_logs(
 	.await?
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
-	let mut client_request = Uri::builder()
-		.scheme(
-			if state
-				.config
-				.opentelemetry
-				.logs
-				.endpoint
-				.starts_with("https")
-			{
-				"wss"
-			} else {
-				"ws"
-			},
-		)
-		.authority(
-			state
-				.config
-				.opentelemetry
-				.logs
-				.endpoint
-				.trim_start_matches("https://")
-				.trim_start_matches("http://"),
-		)
-		.path_and_query(format!(
-			"/api/v1/tail?{}",
-			serde_qs::to_string(&[(
-				"start",
-				start_time
-					.unwrap_or(OffsetDateTime::now_utc())
-					.unix_timestamp_nanos()
-					.to_string(),
-			)])?
-		))
-		.build()?
-		.into_client_request()?;
+	let mut client_request = Uri::from_str(&dbg!(format!(
+		"{}://{}/api/v1/tail?{}",
+		if state
+			.config
+			.opentelemetry
+			.logs
+			.endpoint
+			.starts_with("https")
+		{
+			"wss"
+		} else {
+			"ws"
+		},
+		state
+			.config
+			.opentelemetry
+			.logs
+			.endpoint
+			.trim_start_matches("http://")
+			.trim_start_matches("https://"),
+		serde_qs::to_string(&[(
+			"start",
+			start_time
+				.unwrap_or(OffsetDateTime::now_utc())
+				.unix_timestamp_nanos()
+				.to_string(),
+		)])?
+	)))?
+	.into_client_request()?;
 	client_request.headers_mut().insert(
 		HeaderName::from_static("X-Scope-OrgID"),
 		HeaderValue::from_str(&workspace_id.to_string()).unwrap(),
@@ -119,48 +115,63 @@ pub async fn stream_deployment_logs(
 		.body(GenericResponse(
 			upgrade
 				.on_upgrade(move |mut websocket| async move {
-					while let Some(data) = stream.next().await {
-						let Ok(data) = data.inspect_err(|err| {
-							debug!("Failed to get data from Loki: {}", err);
-						}) else {
-							break;
-						};
-
-						let Ok(message) = match data {
-							RawMessage::Text(text) => serde_json::from_str::<LokiResponse>(&text),
-							RawMessage::Binary(bin) => serde_json::from_slice::<LokiResponse>(&bin),
-							RawMessage::Close(_) => break,
-							_ => continue,
-						}
-						.inspect_err(|err| {
-							debug!("Failed to parse Loki message: {}", err);
-						}) else {
-							break;
-						};
-
-						let logs = message
-							.streams
-							.values
-							.into_iter()
-							.map(|(timestamp, log)| DeploymentLog {
-								timestamp: OffsetDateTime::from_unix_timestamp_nanos(timestamp)
-									.unwrap_or(OffsetDateTime::UNIX_EPOCH),
-								log,
-							})
-							.collect();
-
+					loop {
+						tokio::time::sleep(Duration::from_secs(1)).await;
 						let Ok(()) = websocket
 							.send(Message::Item(StreamDeploymentLogsServerMsg::LogData {
-								logs,
+								logs: vec![DeploymentLog {
+									timestamp: OffsetDateTime::now_utc(),
+									log: "Heartbeat - keeping connection alive".to_string(),
+								}],
 							}))
 							.await
-							.inspect_err(|err| {
-								debug!("Failed to send logs to client: {}", err);
-							})
 						else {
+							debug!("Failed to send heartbeat to client");
 							break;
 						};
 					}
+					// while let Some(data) = stream.next().await {
+					// 	let Ok(data) = data.inspect_err(|err| {
+					// 		debug!("Failed to get data from Loki: {}", err);
+					// 	}) else {
+					// 		break;
+					// 	};
+
+					// 	let Ok(message) = match data {
+					// 		RawMessage::Text(text) => serde_json::from_str::<LokiResponse>(&text),
+					// 		RawMessage::Binary(bin) => serde_json::from_slice::<LokiResponse>(&bin),
+					// 		RawMessage::Close(_) => break,
+					// 		_ => continue,
+					// 	}
+					// 	.inspect_err(|err| {
+					// 		debug!("Failed to parse Loki message: {}", err);
+					// 	}) else {
+					// 		break;
+					// 	};
+
+					// 	let logs = message
+					// 		.streams
+					// 		.values
+					// 		.into_iter()
+					// 		.map(|(timestamp, log)| DeploymentLog {
+					// 			timestamp: OffsetDateTime::from_unix_timestamp_nanos(timestamp)
+					// 				.unwrap_or(OffsetDateTime::UNIX_EPOCH),
+					// 			log,
+					// 		})
+					// 		.collect();
+
+					// 	let Ok(()) = websocket
+					// 		.send(Message::Item(StreamDeploymentLogsServerMsg::LogData {
+					// 			logs,
+					// 		}))
+					// 		.await
+					// 		.inspect_err(|err| {
+					// 			debug!("Failed to send logs to client: {}", err);
+					// 		})
+					// 	else {
+					// 		break;
+					// 	};
+					// }
 					_ = websocket.send(Message::Close(None)).await;
 					_ = websocket.close().await;
 				})

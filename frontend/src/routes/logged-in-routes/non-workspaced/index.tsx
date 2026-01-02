@@ -8,7 +8,7 @@ import ListWorkspaces from "~/pages/workspace/list";
 export default function NonWorkspacedRoutes() {
   return (
     <>
-      <Route path="/workspace">
+      <Route path="/workspaces">
         <Route path="/" component={ListWorkspaces} />
         <Route path="/new" component={CreateWorkspace} />
       </Route>

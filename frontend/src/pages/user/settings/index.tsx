@@ -1,23 +1,25 @@
 import { createResource, Suspense } from "solid-js";
+import { useSearchParams } from "@solidjs/router";
 import { GetUserInfoResponse } from "~/bindings";
 import {
-  Button,
-  ButtonVariant,
-  Input,
-  InputLabel,
-  InputType,
   PageContainer,
   PageContainerBody,
   PageContainerHead,
   useToast,
+  HeadTab,
 } from "~/components";
 import { useAuthState } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
+import UserSettingsInfoTab from "~/pages/user/settings/info";
+import ChangePasswordTab from "./change-password";
 
 const UserSettingsPage = () => {
   const [authState] = useAuthState();
   const toast = useToast();
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = () => (searchParams.tab as string) || "";
 
   const [userInfo, { mutate: mutateUserInfo, refetch: refetchUserInfo }] =
     createResource(authState(), async (auth) => {
@@ -92,64 +94,46 @@ const UserSettingsPage = () => {
 
   return (
     <PageContainer>
-      <PageContainerHead title="User" subTitle="Settings" />
+      <PageContainerHead
+        title="User"
+        subTitle="Settings"
+        bottomContent={() => (
+          <HeadTab
+            tab={tab}
+            searchParams={searchParams}
+            setSearchParams={setSearchParams}
+            tabItems={[
+              {
+                label: "Info",
+                value: "",
+                onClick: (value) => setSearchParams({ tab: value }),
+              },
+              {
+                label: "Change Password",
+                value: "password",
+                onClick: (value) => setSearchParams({ tab: value }),
+              },
+            ]}
+          />
+        )}
+      />
       <PageContainerBody class="flex flex-col gap-8">
         <Suspense fallback={<div>Loading user info...</div>}>
-          <div class="flex flex-col gap-6 items-start w-full">
-            <form
-              onSubmit={onUpdateName}
-              class="flex gap-4 items-center w-full"
-            >
-              <InputLabel parentClass="flex-1" for="first-name" label="Name" />
-              <Input
-                value={userInfo.latest?.firstName || ""}
-                class="flex-5"
-                name="first-name"
-                placeholder="First Name"
-                type={InputType.Text}
-                onInput={(e) => {
-                  mutateUserInfo((prev) => {
-                    return prev
-                      ? {
-                          ...prev,
-                          firstName: e.currentTarget.value,
-                        }
-                      : undefined;
-                  });
-                }}
+          <div class="flex flex-1 flex-col gap-6 items-start w-full">
+            {tab() === "" && (
+              <UserSettingsInfoTab
+                userInfo={userInfo}
+                mutateUserInfo={mutateUserInfo}
+                refetchUserInfo={refetchUserInfo}
               />
-              <Input
-                value={userInfo.latest?.lastName || ""}
-                class="flex-5"
-                name="last-name"
-                placeholder="Last Name"
-                type={InputType.Text}
-                onInput={(e) => {
-                  mutateUserInfo((prev) => {
-                    return prev
-                      ? {
-                          ...prev,
-                          lastName: e.currentTarget.value,
-                        }
-                      : undefined;
-                  });
-                }}
+            )}
+            {tab() === "password" && (
+              <ChangePasswordTab
+                mutateUserInfo={mutateUserInfo}
+                userInfo={userInfo}
+                refetchUserInfo={refetchUserInfo}
               />
-              <Button type="submit" variant={ButtonVariant.Contained}>
-                UPDATE
-              </Button>
-            </form>
-
-            <form class="flex gap-4 items-center w-full">
-              <InputLabel
-                parentClass="flex-1"
-                for="2-fa"
-                label="Two-Factor Authentication"
-              />
-              <Button type="button" variant={ButtonVariant.Contained}>
-                ENABLE 2-FA
-              </Button>
-            </form>
+            )}
           </div>
         </Suspense>
       </PageContainerBody>

@@ -2,6 +2,7 @@ import Alert from "~/components/alert";
 import PageContainer from "~/components/page/container";
 import PageContainerBody from "~/components/page/body";
 import PageContainerHead from "~/components/page/head";
+import { HeadTab } from "~/components/page/head";
 import Button from "~/components/button";
 import Input, {
   InputType,
@@ -18,12 +19,15 @@ import BgOnboard from "~/components/bg-onboard";
 import { ToastProvider, useToast } from "~/components/toast";
 import Turnstile from "~/components/turnstile";
 import { UserSearchInput } from "~/components/user-search-input";
+import ToggleSwitch from "~/components/toggle-switch";
+import Modal from "./modal";
 
 export {
   Alert,
   PageContainer,
   PageContainerBody,
   PageContainerHead,
+  HeadTab,
   BgOnboard,
   Button,
   ButtonVariant,
@@ -39,5 +43,7 @@ export {
   useToast,
   Turnstile,
   UserSearchInput,
+  ToggleSwitch,
+  Modal,
   type InputEventT,
 };
