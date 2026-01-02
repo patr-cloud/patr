@@ -108,7 +108,7 @@ async fn handle_websocket(
 			runner
 		SET
 			is_connected = TRUE,
-			last_seen = NULL
+			last_seen = NOW()
 		WHERE
 			id = $1;
 		"#,
