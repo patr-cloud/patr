@@ -20,6 +20,10 @@ missing_docs_in_private_items = "warn"
 
 [workspace.dependencies]
 anyhow                         = { default-features = false, version = "1" }
+apalis                         = { default-features = false, version = "1.0.0-rc.1" }
+apalis-codec                   = { default-features = false, version = "0.1.0-rc.1" }
+apalis-cron                    = { default-features = false, version = "1.0.0-rc.1" }
+apalis-postgres                = { default-features = false, version = "1.0.0-rc.3" }
 argon2                         = { default-features = false, version = "0.6.0-rc.7" }
 aws-config                     = { default-features = false, version = "1" }
 aws-credential-types           = { default-features = false, version = "1" }
@@ -40,6 +44,7 @@ config                         = { default-features = false, version = "0.15" }
 console-subscriber             = { default-features = false, version = "0.5" }
 console_error_panic_hook       = { default-features = false, version = "0.1" }
 convert_case                   = { default-features = false, version = "0.11" }
+cron                           = { default-features = false, version = "0.15" }
 dashmap                        = { default-features = false, version = "6" }
 dirs                           = { default-features = false, version = "6" }
 docker                         = { default-features = false, path = "runners/docker" }

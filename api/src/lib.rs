@@ -25,6 +25,10 @@ pub mod routes;
 /// like the config parser, the [`tower::Layer`]s that are used to parse the
 /// requests.
 pub mod utils;
+/// The background worker that processes long-running tasks, or cron jobs for
+/// frequently used tasks. This uses [`apalis`] under the hood and all the
+/// worker tasks are defined here.
+pub mod worker;
 
 /// A prelude that re-exports commonly used items.
 pub mod prelude {
@@ -110,10 +114,13 @@ pub async fn build_state(config: AppConfig) -> AppState {
 
 	let redis = redis::connect(&config.redis).await;
 
+	let worker = worker::setup(&database).await;
+
 	AppState {
 		database,
 		redis,
 		config,
+		worker,
 	}
 }
 

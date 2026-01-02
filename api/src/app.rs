@@ -3,6 +3,9 @@ use std::{
 	net::{IpAddr, SocketAddr},
 };
 
+use apalis_codec::json::JsonCodec;
+use apalis_cron::Tick;
+use apalis_postgres::{PgNotify, PostgresStorage};
 use axum::extract::FromRef;
 use models::{RequestUserData, prelude::*};
 use preprocess::Preprocessable;
@@ -139,6 +142,8 @@ pub struct AppState {
 	pub redis: RedisClient,
 	/// The application configuration.
 	pub config: AppConfig,
+	/// The background worker storage.
+	pub worker: PostgresStorage<Tick, Vec<u8>, JsonCodec<Vec<u8>>, PgNotify>,
 }
 
 impl Debug for AppState {

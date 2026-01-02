@@ -12,6 +12,10 @@ version.workspace      = true
 workspace = true
 
 [dependencies]
+apalis                         = { workspace = true, features = ["tracing"] }
+apalis-codec                   = { workspace = true, features = ["json"] }
+apalis-cron                    = { workspace = true, features = ["cron", "serde"] }
+apalis-postgres                = { workspace = true, features = ["migrate", "tokio"] }
 argon2                         = { workspace = true, features = ["default"] }
 aws-config                     = { workspace = true, features = [] }
 aws-credential-types           = { workspace = true, features = ["hardcoded-credentials"] }
@@ -24,6 +28,7 @@ base64                         = { workspace = true, features = ["default"] }
 cloudflare                     = { workspace = true, features = ["rustls-tls"] }
 config                         = { workspace = true, features = ["default"] }
 console-subscriber             = { workspace = true, features = ["default"] }
+cron                           = { workspace = true, features = [] }
 futures                        = { workspace = true, features = ["default"] }
 headers                        = { workspace = true, features = [] }
 hex                            = { workspace = true, features = [] }

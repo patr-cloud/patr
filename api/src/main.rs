@@ -48,7 +48,16 @@ async fn main() {
 		.await
 		.expect("error initializing database");
 
-	futures::future::join(app::serve(&state), redis_publisher::run(&state)).await;
+	PostgresStorage::setup(&state.database)
+		.await
+		.expect("error setting up apalis database");
+
+	futures::future::join3(
+		app::serve(&state),
+		redis_publisher::run(&state),
+		worker::run(&state),
+	)
+	.await;
 
 	utils::flush_tracing(logger_provider, tracer_provider);
 }
