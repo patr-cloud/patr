@@ -557,8 +557,10 @@ impl FromStr for Permission {
 	type Err = strum::ParseError;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		let Some((permission_type, permission)) = s.split_once("::") else {
-			return Err(strum::ParseError::VariantNotFound);
+		let (permission_type, permission) = if let Some(split) = s.split_once("::") {
+			split
+		} else {
+			(s, "")
 		};
 
 		Ok(match permission_type {

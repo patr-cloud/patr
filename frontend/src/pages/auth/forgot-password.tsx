@@ -16,7 +16,7 @@ const ForgotPassword = () => {
     <main class="min-h-screen w-full bg-secondary flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background decorative elements */}
       <div class="absolute inset-0 overflow-hidden pointer-events-none">
-        <div class="absolute inset-0 w-full h-full bg-gradient-to-br from-secondary via-secondary-dark to-secondary opacity-50"></div>
+        <div class="absolute inset-0 w-full h-full bg-linear-to-br from-secondary via-secondary-dark to-secondary opacity-50"></div>
       </div>
 
       {/* Forgot Password Card */}
