@@ -1,6 +1,6 @@
 use axum::http::StatusCode;
 use models::{api::workspace::runner::*, prelude::*};
-use rustis::commands::{GenericCommands, ScanOptions};
+use rustis::commands::GenericCommands;
 
 use crate::prelude::*;
 
@@ -38,13 +38,9 @@ pub async fn list_runners_for_workspace(
 ) -> Result<AppResponse<ListRunnersForWorkspaceRequest>, ErrorType> {
 	info!("Listing runners in workspace `{}`", workspace_id);
 
+	// TODO: change this to DB
 	let connected_runners = redis
-		.scan::<Vec<String>>(
-			0,
-			ScanOptions::default()
-				.count(count)
-				.match_pattern(redis::keys::runner_connection_lock_prefix()),
-		)
+		.keys::<Vec<String>>(redis::keys::runner_connection_lock_prefix())
 		.await?;
 
 	let mut total_count = 0;
