@@ -11,6 +11,7 @@ import Input, {
 } from "~/components/input";
 import InputLabel from "~/components/input-label";
 import InputDropdown from "~/components/input-dropdown";
+import InputDropdownCheckBox from "~/components/input-dropdown-checkbox";
 import { ButtonVariant } from "~/utils/color";
 import Table from "~/components/table";
 import StatusBadge from "~/components/status-badge";
@@ -36,6 +37,7 @@ export {
   PasswordInput,
   InputLabel,
   InputDropdown,
+  InputDropdownCheckBox,
   Table,
   StatusBadge,
   ContainerGrid,

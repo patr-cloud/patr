@@ -24,4 +24,19 @@ function variantBgClass(styleVariant: string) {
   }
 }
 
-export { get, Jsx, Uuid, variantBgClass };
+// Helper to parse permission names like "deployment::view" into { resourceType: "deployment", action: "view" }
+const parsePermissionName = (name: string) => {
+  const parts = name.split("::");
+  return {
+    resourceType: parts[0] || "",
+    action: parts[1] || name,
+  };
+};
+
+const parseCamelCase = (str: string) => {
+  return str
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/^./, (char) => char.toUpperCase());
+};
+
+export { get, Jsx, Uuid, variantBgClass, parseCamelCase, parsePermissionName };

@@ -1,3 +1,4 @@
+import { A } from "@solidjs/router";
 import {
   PageContainer,
   PageContainerBody,
@@ -8,7 +9,12 @@ import {
 const ListApiTokens = () => {
   return (
     <PageContainer>
-      <PageContainerHead title="User" subTitle="API Tokens" />
+      <PageContainerHead
+        titleUrl="/profile"
+        title="User"
+        subTitle="API Tokens"
+        actions={() => <A href="/profile/api-tokens/new">Create API Token</A>}
+      />
       <PageContainerBody class="flex flex-col gap-8">
         <Table
           column_grids={["flex-4", "flex-4", "flex-4"]}
