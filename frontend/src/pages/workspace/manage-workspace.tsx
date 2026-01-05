@@ -10,18 +10,20 @@ import {
     useToast,
     UserSearchInput,
 } from "~/components";
-import { FiPlus } from "solid-icons/fi";
+import { FiEdit2, FiPlus, FiTrash } from "solid-icons/fi";
 import { useAuthState } from "~/hooks";
 import { GetWorkspaceInfoResponse } from "~/bindings/GetWorkspaceInfoResponse";
 import { ListAllRolesResponse } from "~/bindings/ListAllRolesResponse";
 import { ListUsersInWorkspaceResponse } from "~/bindings/ListUsersInWorkspaceResponse";
 import { GetUserDetailsResponse } from "~/bindings/GetUserDetailsResponse";
 import { UpdateUserRolesInWorkspaceRequest } from "~/bindings/UpdateUserRolesInWorkspaceRequest";
+import { RemoveUserFromWorkspaceResponse } from "~/bindings/RemoveUserFromWorkspaceResponse";
 import { WithId } from "~/bindings/WithId";
 import { BasicUserInfo } from "~/bindings/BasicUserInfo";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "~/pages/workspace/workspace-header";
 import { EventT } from "~/utils/types";
+import { EditRoles } from "~/pages/workspace/edit-roles";
 
 
 const ManageWorkspace = () => {
@@ -155,12 +157,57 @@ const ManageWorkspace = () => {
             return userDetails.filter((user) => user !== null);
         }
     );
+    const onDelete = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
+        e.stopPropagation();
+        const wsId = params.id;
+        const userId = userToDelete();
+        const auth = authState();
 
+        if (!userId) {
+            toast("No user selected for deletion", "error");
+            return;
+        }
+
+        if (!auth || auth.type !== "LoggedIn") {
+            toast("Authentication required", "error");
+            return;
+        }
+
+        try {
+            const response = await httpRequest<RemoveUserFromWorkspaceResponse>(
+                `${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/user/${userId}`,
+                {
+                    method: "DELETE"
+                }
+            );
+
+            if (!response.ok) {
+                console.error("Failed to delete user:", response.data.error);
+                toast("Failed to delete user", "error");
+                return;
+            }
+
+            toast("User removed successfully", "success");
+            setShouldDelete(false);
+            setUserToDelete(null);
+            refetchMembers();
+        } catch (error) {
+            console.error("Error deleting user:", error);
+            toast("An error occurred while removing the user", "error");
+        }
+    };
     // Separate state for input fields and added members
     const [selectedUser, setSelectedUser] =
         createSignal<WithId<BasicUserInfo> | null>(null);
     const [currentRoleId, setCurrentRoleId] = createSignal("");
     const [isSubmitting, setIsSubmitting] = createSignal(false);
+    const [shouldDelete, setShouldDelete] = createSignal(false);
+    const [userToDelete, setUserToDelete] = createSignal<string | null>(null);
+    const [editingMember, setEditingMember] = createSignal<{
+        userId: string;
+        userName: string;
+        roleIds: string[];
+    } | null>(null);
 
     const handleUserSelect = (user: WithId<BasicUserInfo>) => {
         setSelectedUser(user);
@@ -197,7 +244,6 @@ const ManageWorkspace = () => {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${auth.accessToken}`,
                     },
                     body: JSON.stringify(requestBody),
                 }
@@ -221,6 +267,11 @@ const ManageWorkspace = () => {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleSaveRoles = async (roleIds: string[]) => {
+        setEditingMember(null);
+        refetchMembers();
     };
 
     return (
@@ -283,8 +334,8 @@ const ManageWorkspace = () => {
                             fallback={<div class="text-white">Loading members...</div>}
                         >
                             <Table
-                                column_grids={["flex-2", "flex-1"]}
-                                headings={["User", "Roles"]}
+                                column_grids={["flex-2", "flex-1", "flex-1"]}
+                                headings={["User", "Roles", "Actions"]}
                                 rows={workspaceMembers() || []}
                                 renderRow={(member) => {
                                     const memberRoleIds = member.roleIds;
@@ -311,15 +362,91 @@ const ManageWorkspace = () => {
                                             </tr>
                                         );
                                     }
+
+                                    const isEditing = editingMember()?.userId === member.userId;
+
                                     return (
-                                        <tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
-                                            <td class="flex items-center justify-center flex-2">
-                                                {member.userName}
-                                            </td>
-                                            <td class="flex items-center justify-center flex-1">
-                                                {memberRoleNames || "No roles"}
-                                            </td>
-                                        </tr>
+                                        <>
+                                            {isEditing ? (
+                                                <tr class="table-row">
+                                                    <td class="w-full" colspan={3}>
+                                                        <EditRoles
+                                                            userName={editingMember()!.userName}
+                                                            userId={editingMember()!.userId}
+                                                            workspaceId={params.id || ""}
+                                                            currentRoles={
+                                                                editingMember()!.roleIds.map((roleId) => {
+                                                                    const role = roles()?.roles.find((r) => r.id === roleId);
+                                                                    return {
+                                                                        id: roleId,
+                                                                        name: role?.name || roleId,
+                                                                    };
+                                                                }) || []
+                                                            }
+                                                            availableRoles={
+                                                                roles()?.roles.map((role) => ({
+                                                                    id: role.id,
+                                                                    name: role.name,
+                                                                })) || []
+                                                            }
+                                                            onSave={handleSaveRoles}
+                                                            onClose={() => {
+                                                                setEditingMember(null);
+                                                            }}
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                <tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
+                                                    <td class="flex items-center justify-center flex-2">
+                                                        {member.userName}
+                                                    </td>
+                                                    <td class="flex items-center justify-center flex-1">
+                                                        {memberRoleNames || "No roles"}
+                                                    </td>
+                                                    <td class="flex items-center justify-center flex-1">
+                                                        {shouldDelete() && userToDelete() === member.userId ? (
+                                                            <>
+                                                                <div class="flex gap-2" >
+                                                                    <button class="text-red-500" onClick={onDelete}>
+                                                                        Delete
+                                                                    </button>
+                                                                    <button onClick={() => {
+                                                                        setShouldDelete(false);
+                                                                        setUserToDelete(null);
+                                                                    }}>Cancel</button>
+                                                                </div>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setEditingMember({
+                                                                            userId: member.userId,
+                                                                            userName: member.userName,
+                                                                            roleIds: member.roleIds,
+                                                                        });
+                                                                    }}
+                                                                    class="text-gray-400 hover:bg-white/10 p-1 rounded transition-colors cursor-pointer"
+                                                                >
+                                                                    <FiEdit2 size={18} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setUserToDelete(member.userId);
+                                                                        setShouldDelete(true);
+                                                                    }}
+                                                                    class="text-red-500 hover:bg-white/10 p-1 rounded transition-colors cursor-pointer"
+                                                                >
+                                                                    <FiTrash size={18} />
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </>
                                     );
                                 }}
                             />
