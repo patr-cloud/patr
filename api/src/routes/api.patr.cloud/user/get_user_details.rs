@@ -20,7 +20,7 @@ pub async fn get_user_details(
 		redis: _,
 		client_ip: _,
 		state: _,
-		user_data,
+		user_data: _,
 	}: AuthenticatedAppRequest<'_, GetUserDetailsRequest>,
 ) -> Result<AppResponse<GetUserDetailsRequest>, ErrorType> {
 	info!("Getting user details by UserID");
@@ -42,7 +42,7 @@ pub async fn get_user_details(
 	.await?
 	.map(|row| GetUserDetailsResponse {
 		basic_user_info: WithId::new(
-			user_data.id,
+			user_id,
 			BasicUserInfo {
 				username: row.username,
 				first_name: row.first_name,

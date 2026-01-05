@@ -4,7 +4,7 @@ use axum::{
 	http::{Request, Response, StatusCode},
 	routing::any,
 };
-use axum_extra::extract::Host;
+use headers::{HeaderMapExt, Host};
 use tower::ServiceExt;
 
 use crate::prelude::*;
@@ -29,8 +29,13 @@ pub async fn setup_routes(state: &AppState) -> Router {
 	let registry_router = registry_patr_cloud::setup_routes(state).await;
 
 	Router::new()
-		.fallback(any(|Host(hostname), request: Request<Body>| async move {
-			match hostname.as_str() {
+		.fallback(any(async |request: Request<Body>| {
+			let hostname = request.headers().typed_get::<Host>();
+			let hostname = hostname
+				.as_ref()
+				.map(|host| host.hostname())
+				.unwrap_or_default();
+			match hostname {
 				"api.patr.cloud" => api_router.oneshot(request).await,
 				"app.patr.cloud" => app_router.oneshot(request).await,
 				"registry.patr.cloud" => registry_router.oneshot(request).await,
