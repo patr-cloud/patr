@@ -74,11 +74,11 @@ export const EditRoles = (props: EditRolesProps) => {
     };
 
     return (
-        <div class="w-full mb-2 p-lg bg-secondary-light rounded-xs">
+        <div class="w-full p-md pb-sm bg-secondary-light rounded-xs">
             <div class="flex items-center justify-between pb-4">
                 <div class="flex gap-2">
-                    <h2 class="text-lg text-white">Edit Roles</h2>
-                    <p class="text-white text-lg">Of User {props.userName}</p>
+                    <h2 class="text-lg text-white">Editing Roles</h2>
+                    <p class="text-white text-lg">of {props.userName}</p>
                 </div>
                 <button
                     onClick={props.onClose}
