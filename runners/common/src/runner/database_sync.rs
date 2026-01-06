@@ -81,11 +81,26 @@ where
 			};
 			info!("Connected to the server");
 
-			trace!("Syncing all resources before starting streaming");
 			let mut pinned_stream = pin!(stream);
 			// Intentionally set to zero so that we sync immediately upon start
 			let mut pinned_sleeper = Box::pin(time::sleep(Duration::from_secs(0)));
 
+			let Ok(()) = pinned_stream
+				.send(
+					StreamRunnerDataForWorkspaceClientMsg::SetRunnerExposureType {
+						exposure_type: E::runner_exposure_type(),
+					},
+				)
+				.await
+			else {
+				// Retry after 5 seconds, but break if the exit signal is received
+				time::sleep(Duration::from_secs(5))
+					.with_cancel_check()
+					.await?;
+				continue 'main;
+			};
+
+			trace!("Syncing all resources before starting streaming");
 			'message: loop {
 				let Some(stream_message) = future::select(
 					&mut pinned_sleeper,
@@ -236,6 +251,9 @@ where
 			DeploymentDeleted { id } => {
 				self.delete_deployment_in_database(&mut transaction, id)
 					.await?;
+			}
+			ExposureTypeRequired => {
+				warn!("Server requested exposure type to be set again");
 			}
 		}
 

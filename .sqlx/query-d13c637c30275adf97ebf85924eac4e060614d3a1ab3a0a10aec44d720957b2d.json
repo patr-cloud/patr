@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE runner SET cloudflare_tunnel_id = $1 WHERE id = $2 AND workspace_id = $3 AND deleted IS NULL;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d13c637c30275adf97ebf85924eac4e060614d3a1ab3a0a10aec44d720957b2d"
+}

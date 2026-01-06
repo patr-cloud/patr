@@ -1,13 +1,7 @@
 use axum::http::StatusCode;
 use cloudflare::{
-	endpoints::{cfd_tunnel::*, dns::dns::*, zones::zone::*},
-	framework::{
-		Environment,
-		SearchMatch,
-		auth::Credentials,
-		client::async_api::Client,
-		response::ApiSuccess,
-	},
+	endpoints::cfd_tunnel::*,
+	framework::{Environment, auth::Credentials, client::async_api::Client, response::ApiSuccess},
 };
 use models::api::workspace::runner::*;
 use serde::{Deserialize, Serialize};
@@ -69,7 +63,7 @@ pub async fn get_ingress_token_for_runner(
 			runner
 		WHERE
 			id = $1 AND
-            workspace_id = $2 AND
+			workspace_id = $2 AND
 			deleted IS NULL;
 		"#,
 		&runner_id as _,
@@ -170,79 +164,6 @@ pub async fn get_ingress_token_for_runner(
 		.json::<ApiSuccess<String>>()
 		.await?
 		.result;
-
-	trace!("Updating DNS record for the tunnel");
-
-	let zone_id = cf_client
-		.request(&ListZones {
-			params: ListZonesParams {
-				name: Some(state.config.primary_hosted_domain.clone()),
-				status: Some(Status::Active),
-				search_match: Some(SearchMatch::All),
-				..Default::default()
-			},
-		})
-		.await?
-		.result
-		.into_iter()
-		.next()
-		.ok_or(ErrorType::ResourceDoesNotExist)
-		.inspect_err(|_| {
-			error!(
-				"No zone exists for the domain `{}`",
-				state.config.primary_hosted_domain
-			);
-		})?
-		.id;
-
-	if let Some(record) = cf_client
-		.request(&ListDnsRecords {
-			zone_identifier: &zone_id,
-			params: ListDnsRecordsParams {
-				name: Some(format!(
-					"{}.{}",
-					runner_id, state.config.primary_hosted_domain
-				)),
-				..Default::default()
-			},
-		})
-		.await?
-		.result
-		.into_iter()
-		.next()
-	{
-		info!("DNS record for the runner exists. Updating it");
-		cf_client
-			.request(&UpdateDnsRecord {
-				zone_identifier: &zone_id,
-				identifier: &record.id,
-				params: UpdateDnsRecordParams {
-					name: &format!("{}.{}", runner_id, state.config.primary_hosted_domain),
-					ttl: Some(0),
-					proxied: Some(true),
-					content: DnsContent::CNAME {
-						content: format!("{}.cfargotunnel.com", tunnel.id),
-					},
-				},
-			})
-			.await?;
-	} else {
-		info!("DNS record for the runner does not exist. Creating a new one");
-		cf_client
-			.request(&CreateDnsRecord {
-				zone_identifier: &zone_id,
-				params: CreateDnsRecordParams {
-					name: &format!("{}.{}", runner_id, state.config.primary_hosted_domain),
-					ttl: Some(0),
-					proxied: Some(true),
-					priority: None,
-					content: DnsContent::CNAME {
-						content: format!("{}.cfargotunnel.com", tunnel.id),
-					},
-				},
-			})
-			.await?;
-	}
 
 	AppResponse::builder()
 		.body(GetIngressTokenForRunnerResponse { token })

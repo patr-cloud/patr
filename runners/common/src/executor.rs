@@ -1,7 +1,7 @@
 use std::future::Future;
 
 use futures::Stream;
-use models::api::workspace::deployment::*;
+use models::api::workspace::{deployment::*, runner::RunnerExposureType};
 use serde::{Serialize, de::DeserializeOwned};
 
 use crate::prelude::*;

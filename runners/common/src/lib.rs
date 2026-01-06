@@ -32,7 +32,7 @@ mod utils;
 /// started with the runner.
 pub mod prelude {
 	pub use macros::version;
-	pub use models::prelude::*;
+	pub use models::{api::workspace::runner::RunnerExposureType, prelude::*};
 	pub use sqlx::{Row, query};
 
 	pub use crate::{
@@ -40,15 +40,7 @@ pub mod prelude {
 		error::RunnerError,
 		executor::RunnerExecutor,
 		runner::Runner,
-		utils::{
-			RouterExt,
-			RunnerExposureType,
-			assets::*,
-			client,
-			config::*,
-			constants,
-			ext_traits::*,
-		},
+		utils::{RouterExt, assets::*, client, config::*, constants, ext_traits::*},
 	};
 
 	/// The type of the database connection. A mutable reference to this should

@@ -22,12 +22,10 @@ mod layers;
 ///
 /// [1]: axum::Router
 mod router_ext;
-/// The type of exposure that the runner will use to expose the resources.
-mod runner_exposure_type;
 
 use sqlx::sqlite::{SqliteOperation, UpdateHookResult};
 
-pub use self::{router_ext::*, runner_exposure_type::*};
+pub use self::router_ext::*;
 
 /// The constants module contains all the constants that are used throughout
 /// the runner Project.

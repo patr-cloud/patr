@@ -1,7 +1,18 @@
-use std::time::Duration;
+use std::{net::IpAddr, time::Duration};
 
 use axum::{http::StatusCode, response::IntoResponse};
 use axum_typed_websockets::{Message, WebSocket};
+use cloudflare::{
+	endpoints::{cfd_tunnel::*, dns::dns::*, zones::zone::*},
+	framework::{
+		Environment,
+		OrderDirection,
+		SearchMatch,
+		auth::Credentials,
+		client::async_api::Client as CloudflareClient,
+		response::ApiSuccess,
+	},
+};
 use futures::{
 	future::{self, Either},
 	prelude::stream::*,
@@ -79,7 +90,7 @@ pub async fn stream_runner_data_for_workspace(
 						runner_id,
 						redis,
 						random_connection_id,
-						state.database,
+						state,
 					)
 					.await
 				})
@@ -100,8 +111,59 @@ async fn handle_websocket(
 	runner_id: Uuid,
 	redis: RedisClient,
 	random_connection_id: Uuid,
-	database: sqlx::Pool<DatabaseType>,
+	state: AppState,
 ) {
+	let exposure_type;
+
+	loop {
+		let Some(message) = websocket.next().await else {
+			debug!("Websocket client disconnected before setting exposure type");
+			return;
+		};
+		let Ok(message) = message else {
+			// Error on websocket, continue to try again
+			continue;
+		};
+		let Message::Item(message) = message else {
+			continue;
+		};
+
+		trace!("Received message from websocket: {:?}", message);
+		let SetRunnerExposureType {
+			exposure_type: new_exposure_type,
+		} = message
+		else {
+			// Ignore other messages until exposure type is set
+			let Ok(()) = websocket
+				.send(Message::Item(
+					StreamRunnerDataForWorkspaceServerMsg::ExposureTypeRequired,
+				))
+				.await
+			else {
+				debug!("Failed to send exposure type required message to websocket");
+				continue;
+			};
+			continue;
+		};
+
+		exposure_type = new_exposure_type;
+
+		break;
+	}
+
+	let Ok(()) = update_runner_exposure_type(runner_id, workspace_id, exposure_type, &state)
+		.await
+		.inspect_err(|err| {
+			error!(
+				"Failed to update runner exposure type for runner ID: {}: {:?}",
+				runner_id, err
+			);
+		})
+	else {
+		error!("Failed to update runner exposure type for runner ID: {runner_id}");
+		return;
+	};
+
 	let Ok(_) = query!(
 		r#"
 		UPDATE
@@ -114,7 +176,7 @@ async fn handle_websocket(
 		"#,
 		runner_id as _,
 	)
-	.execute(&database)
+	.execute(&state.database)
 	.await
 	.inspect_err(|err| error!("Failed to set runner as connected: {:?}", err)) else {
 		return;
@@ -230,7 +292,7 @@ async fn handle_websocket(
 
 				match message {
 					DeploymentStatusUpdated { id, status } => {
-						let Ok(()) = update_deployment_status(id, status, &database)
+						let Ok(()) = update_deployment_status(id, status, &state.database)
 							.await
 							.inspect_err(|err| {
 								error!(
@@ -240,6 +302,26 @@ async fn handle_websocket(
 							})
 						else {
 							error!("Failed to update deployment status for deployment ID: {id}");
+							continue;
+						};
+					}
+					SetRunnerExposureType { exposure_type } => {
+						let Ok(()) = update_runner_exposure_type(
+							runner_id,
+							workspace_id,
+							exposure_type,
+							&state,
+						)
+						.await
+						.inspect_err(|err| {
+							error!(
+								"Failed to update runner exposure type for runner ID: {}: {:?}",
+								runner_id, err
+							);
+						}) else {
+							error!(
+								"Failed to update runner exposure type for runner ID: {runner_id}"
+							);
 							continue;
 						};
 					}
@@ -260,7 +342,7 @@ async fn handle_websocket(
 		"#,
 		runner_id as _,
 	)
-	.execute(&database)
+	.execute(&state.database)
 	.await
 	.inspect_err(|err| error!("Failed to set runner as disconnected: {:?}", err));
 
@@ -304,6 +386,208 @@ async fn update_deployment_status(
 	)
 	.fetch_one(database)
 	.await?;
+
+	Ok(())
+}
+
+async fn update_runner_exposure_type(
+	runner_id: Uuid,
+	workspace_id: Uuid,
+	exposure_type: RunnerExposureType,
+	state: &AppState,
+) -> Result<(), ErrorType> {
+	let client = CloudflareClient::new(
+		Credentials::UserAuthToken {
+			token: state.config.cloudflare.api_key.clone(),
+		},
+		Default::default(),
+		Environment::Production,
+	)?;
+
+	let zone_id = client
+		.request(&ListZones {
+			params: ListZonesParams {
+				name: Some(state.config.primary_hosted_domain.clone()),
+				status: Some(Status::Active),
+				search_match: Some(SearchMatch::All),
+				..Default::default()
+			},
+		})
+		.await?
+		.result
+		.into_iter()
+		.next()
+		.ok_or(ErrorType::ResourceDoesNotExist)
+		.inspect_err(|_| {
+			error!(
+				"No zone exists for the domain `{}`",
+				state.config.primary_hosted_domain
+			);
+		})?
+		.id;
+
+	let mut records_to_create = match exposure_type {
+		RunnerExposureType::Private => {
+			trace!("Updating DNS record for the tunnel");
+
+			let tunnel_id = query!(
+				r#"
+				SELECT
+					*
+				FROM
+					runner
+				WHERE
+					id = $1 AND
+					workspace_id = $2 AND
+					deleted IS NULL;
+				"#,
+				&runner_id as _,
+				&workspace_id as _,
+			)
+			.fetch_optional(&state.database)
+			.await?
+			.ok_or(ErrorType::ResourceDoesNotExist)?
+			.cloudflare_tunnel_id;
+
+			let tunnel = reqwest::Client::new()
+				.get(format!(
+					"https://api.cloudflare.com/client/v4/accounts/{}/cfd_tunnel/{}",
+					state.config.cloudflare.account_id, tunnel_id
+				))
+				.bearer_auth(&state.config.cloudflare.api_key)
+				.send()
+				.await?
+				.json::<ApiSuccess<Option<Tunnel>>>()
+				.await?
+				.result
+				.filter(|tunnel| tunnel.deleted_at.is_none());
+
+			let tunnel = if let Some(tunnel) = tunnel {
+				info!("Tunnel exists. Updating tunnel `{}`", tunnel.id);
+				tunnel
+			} else {
+				// The tunnel does not exist. Create one
+				info!("Tunnel does not exist. Creating tunnel");
+				let tunnel = client
+					.request(&create_tunnel::CreateTunnel {
+						account_identifier: &state.config.cloudflare.account_id,
+						params: create_tunnel::Params {
+							config_src: &ConfigurationSrc::Cloudflare,
+							name: &format!("Runner: {}", runner_id),
+							tunnel_secret: &b"default".to_vec(),
+							metadata: None,
+						},
+					})
+					.await?
+					.result;
+
+				query!(
+					r#"
+					UPDATE
+						runner
+					SET
+						cloudflare_tunnel_id = $1
+					WHERE
+						id = $2 AND
+						workspace_id = $3 AND
+						deleted IS NULL;
+					"#,
+					&tunnel.id as _,
+					&runner_id as _,
+					&workspace_id as _,
+				)
+				.execute(&state.database)
+				.await?;
+
+				tunnel
+			};
+
+			vec![DnsContent::CNAME {
+				content: format!("{}.cfargotunnel.com", tunnel.id),
+			}]
+		}
+		RunnerExposureType::PublicIP { mut ip_addresses } => {
+			ip_addresses.sort();
+
+			ip_addresses
+				.into_iter()
+				.map(|ip| match ip {
+					IpAddr::V4(ip) => DnsContent::A { content: ip },
+					IpAddr::V6(ip) => DnsContent::AAAA { content: ip },
+				})
+				.collect::<Vec<_>>()
+		}
+		RunnerExposureType::PublicDNS { dns_name } => vec![DnsContent::CNAME { content: dns_name }],
+	}
+	.into_iter();
+
+	let existing_records = client
+		.request(&ListDnsRecords {
+			zone_identifier: &zone_id,
+			params: ListDnsRecordsParams {
+				name: Some(format!(
+					"{}.{}",
+					runner_id, state.config.primary_hosted_domain
+				)),
+				order: Some(ListDnsRecordsOrder::Content),
+				direction: Some(OrderDirection::Ascending),
+				per_page: Some(100),
+				..Default::default()
+			},
+		})
+		.await?
+		.result;
+
+	// Update all existing records with the new content
+	for existing_record in existing_records {
+		let new_record = records_to_create.next();
+		if let Some(content) = new_record {
+			debug!(
+				"Updating existing DNS record `{}` for runner `{}`",
+				existing_record.id, runner_id
+			);
+			client
+				.request(&UpdateDnsRecord {
+					zone_identifier: &zone_id,
+					identifier: &existing_record.id,
+					params: UpdateDnsRecordParams {
+						name: &format!("{}.{}", runner_id, state.config.primary_hosted_domain),
+						ttl: Some(0),
+						proxied: Some(true),
+						content,
+					},
+				})
+				.await?;
+		} else {
+			debug!(
+				"Deleting extra DNS record `{}` for runner `{}`",
+				existing_record.id, runner_id
+			);
+			client
+				.request(&DeleteDnsRecord {
+					zone_identifier: &zone_id,
+					identifier: &existing_record.id,
+				})
+				.await?;
+		}
+	}
+
+	// If there are still pending DNS records to be updated, create them
+	for content in records_to_create {
+		info!("DNS record for the runner does not exist. Creating a new one");
+		client
+			.request(&CreateDnsRecord {
+				zone_identifier: &zone_id,
+				params: CreateDnsRecordParams {
+					name: &format!("{}.{}", runner_id, state.config.primary_hosted_domain),
+					ttl: Some(0),
+					proxied: Some(true),
+					priority: None,
+					content,
+				},
+			})
+			.await?;
+	}
 
 	Ok(())
 }
