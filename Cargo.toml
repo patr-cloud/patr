@@ -77,7 +77,7 @@ psl                            = { default-features = false, version = "2" }
 quote                          = { default-features = false, version = "1" }
 rand                           = { default-features = false, version = "0.8" }
 regex                          = { default-features = false, version = "1" }
-reqwest                        = { default-features = false, version = "0.12" }
+reqwest                        = { default-features = false, version = "0.13" }
 rust-embed                     = { default-features = false, version = "8" }
 rust-s3                        = { default-features = false, version = "0.37" }
 rustis                         = { default-features = false, version = "0.17" }

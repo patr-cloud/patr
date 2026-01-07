@@ -19,7 +19,7 @@ k8s-openapi       = { workspace = true, features = ["latest"] }
 kube              = { workspace = true, features = ["default", "derive", "runtime", "unstable-runtime", "ws"] }
 models            = { workspace = true, features = [] }
 preprocess        = { workspace = true, features = [] }
-reqwest           = { workspace = true, features = ["json", "rustls-tls"] }
+reqwest           = { workspace = true, features = ["json", "rustls"] }
 schemars          = { workspace = true, features = ["default"] }
 serde             = { workspace = true, features = ["default", "derive"] }
 serde_json        = { workspace = true, features = ["default"] }

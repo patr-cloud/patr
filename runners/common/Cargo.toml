@@ -14,7 +14,7 @@ workspace = true
 build-print = { workspace = true }
 flate2      = { workspace = true, features = ["default"] }
 futures     = { workspace = true, features = ["default"] }
-reqwest     = { workspace = true, features = ["blocking", "rustls-tls", "stream"] }
+reqwest     = { workspace = true, features = ["blocking", "rustls", "stream"] }
 tar         = { workspace = true, features = ["default"] }
 
 [dependencies]
@@ -31,7 +31,7 @@ macros             = { workspace = true }
 models             = { workspace = true }
 preprocess         = { workspace = true, features = [] }
 rand               = { workspace = true, features = ["default"] }
-reqwest            = { workspace = true, features = ["json", "rustls-tls", "stream"] }
+reqwest            = { workspace = true, features = ["json", "rustls", "stream"] }
 rust-embed         = { workspace = true }
 semver             = { workspace = true, features = ["default"] }
 serde              = { workspace = true, features = ["derive"] }

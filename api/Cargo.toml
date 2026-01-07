@@ -39,7 +39,7 @@ preprocess                     = { workspace = true, features = [] }
 psl                            = { workspace = true, features = ["default"] }
 rand                           = { workspace = true, features = ["default"] }
 regex                          = { workspace = true, features = ["default"] }
-reqwest                        = { workspace = true, features = ["default", "json", "multipart", "blocking", "stream"] }
+reqwest                        = { workspace = true, features = ["default", "json", "multipart", "blocking", "stream", "query", "form"] }
 rustis                         = { workspace = true, features = ["default", "pool", "tokio-rustls"] }
 semver                         = { workspace = true, features = ["default"] }
 serde                          = { workspace = true, features = ["default", "derive"] }
