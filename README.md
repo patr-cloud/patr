@@ -1,17 +1,20 @@
-# Patr - Open Source, AI powered, DevOps platform
-
-Patr is a tool that helps you deploy your applications to multiple environments with ease. It is designed to be simple to use and easy to integrate with your existing CI/CD pipelines.
+# Patr
 
 <center>
     <a href="https://deepwiki.com/patr-cloud/patr"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
     <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/patr-cloud/patr">
 </center>
 
-# WORK IN PROGRESS
+**Patr** is an open-source, production-grade DevOps automation platform built for fast-moving teams.
 
-This project is still in the early stages of development.
+It lets developers deploy and manage services without needing to understand or operate traditional DevOps infrastructure. No Kubernetes expertise required. No bespoke CI/CD glue. No hand-rolled observability stacks.
 
-Would LOVE to have contributors onboard, but please be aware that the project is not yet ready for production use.
+Patr is designed to feel closer to a _control plane_ than a hosting provider.
+
+> ⚠️ **Early Beta**  
+> Patr is still in the early stages of development. APIs and resource models may change.  
+> Not recommended for mission-critical production workloads yet.
+> We would LOVE to have contributors onboard, but please be aware that the project is not yet ready for production use.
 
 # Running the project
 
@@ -38,7 +41,7 @@ cargo api
 
 ### Profit!
 
-You can now access the project at `http://localhost:3000`.
+You can now access the project at `http://localhost:3001`.
 
 # Features
 
