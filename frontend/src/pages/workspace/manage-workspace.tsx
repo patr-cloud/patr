@@ -287,7 +287,7 @@ const ManageWorkspace = () => {
                             class="p-lg bg-secondary-light rounded-xs"
                             onSubmit={handleAddMember}
                         >
-                            <h1 class="text-lg mb-3">Create New Managed URL</h1>
+                            <h1 class="text-lg mb-3">Add a User to Workspace</h1>
 
                             <div class="flex flex-col items-start justify-center gap-2 w-full">
                                 <div class="flex items-center justify-center gap-3 w-full">
