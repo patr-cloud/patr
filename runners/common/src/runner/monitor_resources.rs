@@ -51,7 +51,11 @@ where
 		// resource. As long as it's running, we are happy. So NO updating the
 		// resource here whatsoever. All that happens in the task.
 		loop {
-			match future::select(sleep_future, pin!(receiver.recv())).await {
+			let receive_future = pin!(receiver.recv());
+			let monitor_future = future::select(sleep_future, receive_future)
+				.with_cancel_check()
+				.await?;
+			match monitor_future {
 				Either::Left(((), _)) => {
 					// Regularly (every 10 minutes in prod and 10 seconds in dev) reconcile all the
 					// deployments. Check all resources in the local database and make sure they are

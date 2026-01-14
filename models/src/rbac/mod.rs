@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, marker::ConstParamTy};
 
 use serde::{Deserialize, Serialize};
-use strum::{Display, EnumIter, EnumMessage, EnumString, VariantNames};
+use strum::{Display, EnumIter, EnumMessage, EnumString, VariantArray};
 
 use crate::prelude::*;
 
@@ -28,7 +28,7 @@ pub use self::{permissions::*, resource_permission_type::*};
 	EnumString,
 	EnumMessage,
 	Deserialize,
-	VariantNames,
+	VariantArray,
 	ConstParamTy,
 )]
 #[strum(serialize_all = "camelCase")]
@@ -83,6 +83,27 @@ pub enum ResourceType {
 	/// managed by Patr, and is automatically updated when the deployment /
 	/// static site is updated.
 	ManagedURL,
+}
+
+impl ResourceType {
+	/// Returns a list of all resource types.
+	#[must_use]
+	pub fn list_all() -> Vec<Self> {
+		Self::VARIANTS.iter().copied().collect()
+	}
+
+	/// Returns the description of the resource type, as per the documentation
+	/// of the resource type.
+	///
+	/// # Panics
+	/// Panics if the resource type does not have a documentation. This should
+	/// not happen, as all resource types should have a documentation.
+	#[must_use]
+	pub fn description(&self) -> String {
+		self.get_documentation()
+			.expect("Documentation not found")
+			.to_string()
+	}
 }
 
 /// Represents the kind of permission that is granted on a workspace.

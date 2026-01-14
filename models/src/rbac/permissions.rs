@@ -520,7 +520,7 @@ pub enum Permission {
 impl Permission {
 	/// Returns a list of all permissions that can be granted on a resource.
 	#[must_use]
-	pub fn list_all_permissions() -> Vec<Self> {
+	pub fn list_all() -> Vec<Self> {
 		Self::iter().collect()
 	}
 

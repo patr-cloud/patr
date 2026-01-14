@@ -1,4 +1,4 @@
-use models::rbac::Permission;
+use models::rbac::{Permission, ResourceType};
 
 use crate::prelude::*;
 
@@ -349,7 +349,7 @@ pub async fn initialize_rbac_constraints(
 	.await?;
 
 	// Insert all permissions into the database
-	for permission in Permission::list_all_permissions() {
+	for permission in Permission::list_all() {
 		trace!("Inserting permission: {}", permission);
 		query!(
 			r#"
@@ -365,6 +365,28 @@ pub async fn initialize_rbac_constraints(
 			Uuid::new_v4() as _,
 			permission.to_string(),
 			permission.description()
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	// Insert all resource types into the database
+	for resource_type in ResourceType::list_all() {
+		trace!("Inserting resource type: {}", resource_type);
+		query!(
+			r#"
+			INSERT INTO
+				resource_type(
+					id,
+					name,
+					description
+				)
+			VALUES
+				($1, $2, $3);
+			"#,
+			Uuid::new_v4() as _,
+			resource_type.to_string(),
+			resource_type.description()
 		)
 		.execute(&mut *connection)
 		.await?;
