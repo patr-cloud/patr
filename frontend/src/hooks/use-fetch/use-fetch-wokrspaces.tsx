@@ -29,15 +29,14 @@ const useFetchWorkspaces = () => {
 
       if (!response.ok) {
         console.error("Failed to fetch workspaces:", response.data.error);
-        toast("Failed to fetch workspaces", "error");
-        return { workspaces: [] };
+        throw new Error("Failed to fetch workspaces");
       }
 
       return response.data;
     } catch (error) {
       console.error("Error fetching workspaces:", error);
       toast("Failed to load workspaces", "error");
-      return { workspaces: [] };
+      throw error;
     }
   });
 

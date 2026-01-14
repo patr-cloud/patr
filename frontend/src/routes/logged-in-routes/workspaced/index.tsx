@@ -19,7 +19,8 @@ const WorkspacedLayout = (props: ParentProps<{}>) => {
   const [workspaces] = useFetchWorkspaces();
 
   createEffect(() => {
-    if (!workspaces.loading) {
+    if (workspaces.state === "ready") {
+      console.log("workspaces:", workspaces());
       const workspaceLength = workspaces()?.workspaces?.length || 0;
       if (workspaceLength === 0) {
         return <Navigate href="/onboard" />;

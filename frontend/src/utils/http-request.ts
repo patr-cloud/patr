@@ -5,11 +5,7 @@ import {
 } from "~/bindings";
 import { ErrorResponse, FetchResult } from "./types";
 import { getRequestEvent } from "solid-js/web";
-import {
-  CookieOptions,
-  cookieStorage,
-  SyncStorageWithOptions,
-} from "@solid-primitives/storage";
+import { cookieStorage } from "@solid-primitives/storage";
 import type { AuthState } from "~/hooks/state-hooks";
 
 /**
@@ -54,86 +50,9 @@ const httpRequest = async <T>(
       data = {};
     }
 
-    if (!resp.ok) {
-      console.error(`HTTP error! status: ${resp.status}`, data);
-      if (hasJsonContent) {
-        const errorData = data as ErrorResponse;
-        if (errorData.error === "malformedAccessToken") {
-          console.log("Access token malformed, redirecting to login...", data);
-          cookieStorage.removeItem("authState");
-          window.location.href = "/login";
-          return {
-            data: data as ErrorResponse,
-            headers: resp.headers,
-            ok: resp.ok,
-            status: resp.status,
-            statusText: resp.statusText,
-          };
-        } else if (errorData.error === "authorizationTokenInvalid") {
-          console.log("Access token invalid, attempting to refresh...", data);
-          const authState = JSON.parse(
-            cookieStorage.getItem("authState") || "null"
-          ) as AuthState | null;
-          if (!authState || authState.type !== "LoggedIn") {
-            window.location.href = "/login";
-            return {
-              data: data as ErrorResponse,
-              headers: resp.headers,
-              ok: resp.ok,
-              status: resp.status,
-              statusText: resp.statusText,
-            };
-          }
-
-          const refreshResp = await fetch(
-            `${import.meta.env.VITE_BASE_URL}/api/auth/access-token`,
-            {
-              method: "GET",
-              headers: {
-                Authorization: `Bearer ${authState.refreshToken}`,
-              },
-            }
-          );
-          console.log("Refresh response:", refreshResp);
-
-          if (!refreshResp.ok) {
-            cookieStorage.removeItem("authState");
-            window.location.href = "/login";
-            return {
-              data: (await refreshResp.json()) as ErrorResponse,
-              headers: refreshResp.headers,
-              ok: refreshResp.ok,
-              status: refreshResp.status,
-              statusText: refreshResp.statusText,
-            };
-          }
-
-          const refreshData =
-            (await refreshResp.json()) as RenewAccessTokenResponse;
-          const newAccessToken = refreshData.accessToken;
-
-          const currentAuthState = cookieStorage.getItem("authState");
-          if (currentAuthState) {
-            const authState: AuthState = JSON.parse(currentAuthState);
-            if (authState && authState.type === "LoggedIn") {
-              cookieStorage.setItem(
-                "authState",
-                JSON.stringify({
-                  ...authState,
-                  accessToken: newAccessToken,
-                }),
-                {
-                  expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7 days
-                  path: "/",
-                  sameSite: "Strict",
-                }
-              );
-            }
-          }
-        }
-      }
+    if (resp.ok) {
       return {
-        data: data as ErrorResponse,
+        data: data as T,
         headers: resp.headers,
         ok: resp.ok,
         status: resp.status,
@@ -141,8 +60,100 @@ const httpRequest = async <T>(
       };
     }
 
+    const errorData = data as ErrorResponse;
+    const defaultErrorReturn = {
+      data: data as ErrorResponse,
+      headers: resp.headers,
+      ok: resp.ok,
+      status: resp.status,
+      statusText: resp.statusText,
+    };
+
+    if (errorData.error === "malformedAccessToken") {
+      console.log("Access token malformed, redirecting to login...", data);
+      cookieStorage.removeItem("authState");
+      window.location.href = "/login";
+      return defaultErrorReturn;
+    }
+
+    if (errorData.error === "authorizationTokenInvalid") {
+      const currentAuthState = cookieStorage.getItem("authState");
+      if (!currentAuthState) {
+        return defaultErrorReturn;
+      }
+
+      const authState = JSON.parse(
+        cookieStorage.getItem("authState") || "null"
+      ) as AuthState | null;
+
+      if (!authState || authState.type !== "LoggedIn") {
+        window.location.href = "/login";
+        return defaultErrorReturn;
+      }
+
+      const refreshResp = await fetch(
+        `${import.meta.env.VITE_BASE_URL}/api/auth/access-token`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${authState.refreshToken}`,
+          },
+        }
+      );
+
+      if (!refreshResp.ok) {
+        cookieStorage.removeItem("authState");
+        window.location.href = "/login";
+        return defaultErrorReturn;
+      }
+
+      const refreshData =
+        (await refreshResp.json()) as RenewAccessTokenResponse;
+
+      cookieStorage.setItem(
+        "authState",
+        JSON.stringify({
+          ...authState,
+          accessToken: refreshData.accessToken,
+        }),
+        {
+          expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7 days
+          path: "/",
+          sameSite: "Strict",
+        }
+      );
+
+      // Retry the original request with the new access token
+      const retryResp = await fetch(url, {
+        ...options,
+        headers: {
+          ...(options?.headers || {}),
+          Authorization: `Bearer ${refreshData.accessToken}`,
+        },
+      });
+
+      const retryData = hasJsonContent ? await retryResp.json() : {};
+
+      if (retryResp.ok) {
+        return {
+          data: retryData as T,
+          headers: retryResp.headers,
+          ok: true,
+          status: retryResp.status,
+          statusText: retryResp.statusText,
+        };
+      } else {
+        return {
+          data: retryData as ErrorResponse,
+          headers: retryResp.headers,
+          ok: false,
+          status: retryResp.status,
+          statusText: retryResp.statusText,
+        };
+      }
+    }
     return {
-      data: data as T,
+      data: data as ErrorResponse,
       headers: resp.headers,
       ok: resp.ok,
       status: resp.status,
