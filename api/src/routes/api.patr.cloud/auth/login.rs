@@ -175,7 +175,7 @@ pub async fn login(
 
 	let now = OffsetDateTime::now_utc();
 
-	let refresh_token = Uuid::new_v4();
+	let refresh_token = Uuid::new_v4().to_string();
 	let hashed_refresh_token = argon2::Argon2::new_with_secret(
 		state.config.password_pepper.as_ref(),
 		Algorithm::Argon2id,
@@ -187,7 +187,7 @@ pub async fn login(
 	})
 	.map_err(ErrorType::server_error)?
 	.hash_password(
-		refresh_token.as_bytes(),
+		refresh_token.as_ref(),
 		SaltString::generate(&mut rand::thread_rng()).as_salt(),
 	)
 	.inspect_err(|err| {

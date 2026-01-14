@@ -26,7 +26,7 @@ pub async fn initialize_rbac_tables(
 		r#"
 		CREATE TABLE resource(
 			id UUID NOT NULL,
-			resource_type_id UUID,
+			resource_type_id UUID NOT NULL,
 			owner_id UUID NOT NULL,
 			created TIMESTAMPTZ NOT NULL,
 			deleted TIMESTAMPTZ
