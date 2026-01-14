@@ -52,6 +52,9 @@ import { ChangePasswordResponse } from "./ChangePasswordResponse";
 import { CreateWorkspaceRequest } from "./CreateWorkspaceRequest";
 import { CreateWorkspaceResponse } from "./CreateWorkspaceResponse";
 import { Workspace } from "./Workspace";
+import { ListAllPermissionsRequest } from "./ListAllPermissionsRequest";
+import { ListAllPermissionsResponse } from "./ListAllPermissionsResponse";
+import { WorkspacePermission } from "./WorkspacePermission";
 
 export type {
   EnvironmentVariableValue,
@@ -90,7 +93,6 @@ export type {
   ListManagedURLResponse,
   ManagedUrl,
   ManagedUrlType,
-  WithId,
   CreateManagedURLRequest,
   CreateManagedURLResponse,
   UpdateManagedURLRequest,
@@ -106,6 +108,10 @@ export type {
   ChangePasswordRequest,
   ChangePasswordResponse,
   Workspace,
+  WithId,
   CreateWorkspaceRequest,
   CreateWorkspaceResponse,
+  ListAllPermissionsRequest,
+  ListAllPermissionsResponse,
+  WorkspacePermission,
 };

@@ -1,25 +1,21 @@
-import { FiChevronDown } from "solid-icons/fi";
-import { createSignal, JSX, mergeProps } from "solid-js";
-import { useClickOutside } from "~/hooks";
-import { get, variantBgClass } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
+import { InputDropdownOption } from "./input-dropdown";
+import { createSignal, JSX, mergeProps } from "solid-js";
+import { get, variantBgClass } from "~/utils/func";
+import { FiChevronDown } from "solid-icons/fi";
+import { useClickOutside } from "~/hooks";
 
-export interface InputDropdownOption {
-  /** The Label of to be rendered */
-  label: string;
-  /** The Value of the option, e.g. id, index etc */
-  value: string;
-}
-
-interface InputDropdownProps {
+interface InputDropdownCheckboxProps {
   /** Dropdown Options */
   options: MaybeAccessor<InputDropdownOption[]>;
-  /** On Select Option */
-  onSelect: (value: string) => void;
+  /** List of checked checkboxes */
+  checked: MaybeAccessor<string[]>;
+  /** Callback when a checkbox is toggled */
+  onToggle: (value: string) => void;
   /** Additional Classes for the input.  */
   class?: MaybeAccessor<string>;
   /** The placeholder text for the input */
-  placeholder?: string;
+  placeholder?: MaybeAccessor<string>;
   /** The currently selected value */
   value?: MaybeAccessor<string | undefined>;
   /** The Color Variant of the input */
@@ -39,9 +35,11 @@ interface InputDropdownProps {
   endIcon?: () => JSX.Element;
   /** On Click End Icon */
   onClickEndIcon?: () => void;
+  /** Text to put in start */
+  startText?: MaybeAccessor<string>;
 }
 
-const InputDropdown = (rawProps: InputDropdownProps) => {
+const InputDropdownCheckbox = (rawProps: InputDropdownCheckboxProps) => {
   const props = mergeProps(
     {
       class: () => "",
@@ -58,32 +56,20 @@ const InputDropdown = (rawProps: InputDropdownProps) => {
 
   useClickOutside(dropdownRef, () => {
     setShowDropdown(false);
-    setHighlightedIndex(-1);
   });
-
-  const onSelectItem = (e: MouseEvent, value: string) => {
-    e.stopPropagation();
-    props.onSelect(value);
-    setShowDropdown(false);
-    setInputValue(""); // Reset filter after selection
-  };
 
   const containerClass = () => `rounded-xs flex justify-start
 		items-center border border-secondary-medium relative
 		transition-all duration-250
-		focus-within:border-primary focus-within:shadow-md focus-within:bg-secondary-light ${
-      showDropdown() ? "rounded-b-none" : ""
-    }
-		${variantBgClass(get(props.styleVariant))} ${get(props.class)}
-	`;
+    ${showDropdown() ? "border-primary shadow-md bg-secondary-light" : ""}
+		focus-within:border-primary focus-within:shadow-md focus-within:bg-secondary-light
+		${variantBgClass(get(props.styleVariant))} ${get(props.class)} ${
+    showDropdown() ? "rounded-b-none" : ""
+  }`;
 
-  const dropdownValue = () => {
-    const dropdownOptions = get(props.options);
-    const selectedValue = get(props.value);
-
-    return (
-      dropdownOptions.find((opt) => opt.value === selectedValue)?.label || ""
-    );
+  const onSelectItem = (e: MouseEvent, value: string) => {
+    e.stopPropagation();
+    props.onToggle(value);
   };
 
   const filteredOptions = () => {
@@ -105,6 +91,7 @@ const InputDropdown = (rawProps: InputDropdownProps) => {
     const target = e.target as HTMLInputElement;
     setInputValue(target.value);
     setShowDropdown(true);
+
     setHighlightedIndex(-1);
   };
 
@@ -134,10 +121,8 @@ const InputDropdown = (rawProps: InputDropdownProps) => {
       case "Enter":
         e.preventDefault();
         if (highlightedIndex() >= 0 && highlightedIndex() < options.length) {
-          props.onSelect(options[highlightedIndex()].value);
-          setShowDropdown(false);
+          props.onToggle(options[highlightedIndex()].value);
           setInputValue("");
-          setHighlightedIndex(-1);
         }
         break;
       case "Escape":
@@ -167,7 +152,7 @@ const InputDropdown = (rawProps: InputDropdownProps) => {
       <input
         ref={setInputRef}
         required={props.required}
-        value={showDropdown() ? inputValue() : dropdownValue()}
+        value={showDropdown() ? inputValue() : ""}
         onInput={onInputChange}
         onKeyDown={onKeyDown}
         id={props.id}
@@ -175,7 +160,7 @@ const InputDropdown = (rawProps: InputDropdownProps) => {
         disabled={get(props.disabled)}
         class={`overflow-hidden text-sm text-ellipsis w-full text-white font-thin border-none bg-transparent disabled:text-disabled focus:outline-none placeholder:text-grey py-xs px-lg`}
         type="text"
-        placeholder={props.placeholder}
+        placeholder={get(props.placeholder)}
       />
 
       <FiChevronDown class="mr-sm" />
@@ -189,11 +174,14 @@ const InputDropdown = (rawProps: InputDropdownProps) => {
           {filteredOptions().map((option, index) => (
             <div
               onClick={(e) => onSelectItem(e, option.value)}
-              onMouseEnter={() => setHighlightedIndex(index)}
-              class={`border-b last-of-type:border-0 border-border-color hover:bg-secondary-dark px-xl py-sm cursor-pointer ${
+              class={`border-b last-of-type:border-0 border-border-color px-xl py-sm cursor-pointer flex items-center gap-3 ${
                 highlightedIndex() === index ? "bg-secondary-dark" : ""
               }`}
             >
+              <input
+                checked={get(props.checked).includes(option.value)}
+                type="checkbox"
+              />
               {option.label}
             </div>
           ))}
@@ -206,4 +194,4 @@ const InputDropdown = (rawProps: InputDropdownProps) => {
   );
 };
 
-export default InputDropdown;
+export default InputDropdownCheckbox;

@@ -1,13 +1,21 @@
-import { createResource, createSignal, Suspense } from "solid-js";
+import {
+  createMemo,
+  createResource,
+  createSignal,
+  Show,
+  Suspense,
+} from "solid-js";
 import {
   Button,
   ButtonVariant,
   Input,
+  InputDropdown,
   InputLabel,
   InputType,
   PageContainer,
   PageContainerBody,
   PageContainerHead,
+  Table,
 } from "~/components";
 import { httpRequest } from "~/utils/http-request";
 import { useAuthState } from "~/hooks";
@@ -15,13 +23,20 @@ import {
   CreateApiTokenRequest,
   CreateApiTokenResponse,
   ListUserWorkspacesResponse,
+  WithId,
+  WorkspacePermission,
 } from "~/bindings";
 import { useToast } from "~/components/toast";
+import WorkspaceRoles from "./workspace-roles";
+
+export interface WorkspacePermissions {
+  [workspaceId: string]: WorkspacePermission;
+}
 
 const CreateApiTokens = () => {
   const [authState, _] = useAuthState();
   const toast = useToast();
-  const [workspace] = createResource(authState, async (auth) => {
+  const [workspaces] = createResource(authState, async (auth) => {
     const response = await httpRequest<ListUserWorkspacesResponse>(
       `${import.meta.env.VITE_BASE_URL}/api/user/workspaces`,
       {
@@ -47,12 +62,24 @@ const CreateApiTokens = () => {
   const [name, setName] = createSignal<string>("");
   const [fromDate, setFromDate] = createSignal<Date | null>(null);
   const [toDate, setToDate] = createSignal<Date | null>(null);
-  const [workspaces, setWorkspaces] = createSignal<string[]>([]);
+  const [selectedWorkspace, setSelectedWorkspace] = createSignal<
+    string | undefined
+  >(undefined);
+
+  const [workspacePermissions, setWorkspacePermissions] =
+    createSignal<WorkspacePermissions>();
+
+  const selectedWorkspaceInfo = createMemo(() => {
+    return workspaces()?.workspaces?.find(
+      (ws) => ws.id === selectedWorkspace()
+    );
+  });
 
   const onSubmit = async (e: Event) => {
     e.preventDefault();
     const auth = authState();
     if (!auth || auth.type !== "LoggedIn") {
+      toast("User is not logged in", "error");
       console.error("User is not logged in");
       return;
     }
@@ -61,7 +88,6 @@ const CreateApiTokens = () => {
       name: name(),
       fromDate: fromDate(),
       toDate: toDate(),
-      workspaces: workspaces(),
     });
 
     const requestBody: CreateApiTokenRequest = {
@@ -69,9 +95,7 @@ const CreateApiTokens = () => {
       created: new Date(),
       tokenNbf: fromDate() || undefined,
       tokenExp: toDate() || undefined,
-      permissions: Object.fromEntries(
-        workspaces().map((wsId) => [wsId, { type: "superAdmin" }])
-      ),
+      permissions: workspacePermissions(),
     };
     const response = await httpRequest<CreateApiTokenResponse>(
       `${import.meta.env.VITE_BASE_URL}/api/user/api-token`,
@@ -184,38 +208,70 @@ const CreateApiTokens = () => {
               </div>
             </div>
 
-            <div class="flex gap-8 items-center w-full">
-              <InputLabel parentClass="flex-2" label="Workspace" />
+            <div class="flex flex-col gap-2 items-center w-full">
+              <div class="flex gap-8 items-start justify-center w-full">
+                <InputLabel parentClass="flex-2" label="Workspace" />
+                <InputDropdown
+                  placeholder="Select Workspace Type"
+                  class="flex-10"
+                  onSelect={(val) => setSelectedWorkspace(val)}
+                  value={selectedWorkspace()}
+                  options={() =>
+                    workspaces()?.workspaces.map((ws) => ({
+                      label: ws.name,
+                      value: ws.id,
+                    })) || []
+                  }
+                />
+              </div>
 
-              <div class="flex flex-10">
+              <div class="flex flex-col items-start justify-center gap-2 w-full">
+                <InputLabel parentClass="flex-2" label="Workspace Roles" />
+                <input
+                  class="flex-10"
+                  type={InputType.Checkbox}
+                  checked={false}
+                />
+              </div>
+
+              <div class="flex flex-col items-start justify-center gap-2 w-full">
+                <InputLabel parentClass="flex-2" label="Workspace Roles" />
                 <Suspense fallback={<div>Loading...</div>}>
-                  {workspace() ? (
-                    <ul>
-                      {workspace()!.workspaces.map((ws) => {
-                        return (
-                          <li>
-                            <label>{ws.name}</label>
-                            <input
-                              onInput={(e) => {
-                                if (e.currentTarget.checked) {
-                                  setWorkspaces((prev) => [...prev, ws.id]);
-                                } else {
-                                  setWorkspaces((prev) =>
-                                    prev.filter((id) => id !== ws.id)
-                                  );
-                                }
-                              }}
-                              type="checkbox"
-                              value={ws.id}
-                            />
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  ) : (
-                    <div>No workspaces found</div>
-                  )}
+                  <Show
+                    when={selectedWorkspaceInfo()}
+                    fallback={
+                      <div class="w-full flex-10">No Workspace Selected</div>
+                    }
+                  >
+                    {(workspace) => (
+                      <WorkspaceRoles
+                        class="w-full flex-10"
+                        workspace={workspace()}
+                      />
+                    )}
+                  </Show>
                 </Suspense>
+              </div>
+
+              <div class="flex items-start justify-center gap-8 w-full">
+                <Table
+                  column_grids={["flex-4", "flex-4", "flex-4"]}
+                  rows={[]}
+                  headings={["Workspace ID", "Workspace Name", "Role"]}
+                  renderRow={() => (
+                    <tr class="table-row">
+                      {/* <td class="flex-4 flex items-center justify-center">
+                        <span class="truncate">{item.id}</span>
+                      </td>
+                      <td class="flex-4 flex items-center justify-center">
+                        {item.name}
+                      </td>
+                      <td class="flex-4 flex items-center justify-center">
+                        {item.role}
+                      </td> */}
+                    </tr>
+                  )}
+                />
               </div>
             </div>
           </div>

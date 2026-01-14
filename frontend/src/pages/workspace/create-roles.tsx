@@ -1,27 +1,47 @@
-import { createMemo, createResource, createSignal, For, Show } from "solid-js";
+import {
+  createMemo,
+  createResource,
+  createSignal,
+  For,
+  Show,
+  Suspense,
+} from "solid-js";
 import { useNavigate, useParams } from "@solidjs/router";
 import {
   Button,
   ButtonVariant,
   Input,
+  InputDropdown,
+  InputDropdownCheckBox,
   PageContainer,
   PageContainerBody,
   useToast,
 } from "~/components";
 import { useAuthState } from "~/hooks";
 import { GetWorkspaceInfoResponse } from "~/bindings/GetWorkspaceInfoResponse";
-import { ListDeploymentResponse } from "~/bindings/ListDeploymentResponse";
-import { ListAllPermissionsResponse } from "~/bindings/ListAllPermissionsResponse";
 import { CreateNewRoleRequest } from "~/bindings/CreateNewRoleRequest";
 import { CreateNewRoleResponse } from "~/bindings/CreateNewRoleResponse";
 import { ResourcePermissionType } from "~/bindings/ResourcePermissionType";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "~/pages/workspace/workspace-header";
+import useFetchPermissions from "../../hooks/use-fetch/use-fetch-permissions";
+import { parsePermissionName, parseCamelCase } from "~/utils/func";
 
-interface PermissionCategory {
-  title: string;
-  permissionIds: string[];
-}
+// Map resource types to their API endpoints
+const getResourceEndpoint = (type: string) => {
+  const endpointMap: Record<string, string> = {
+    "deployment": "deployment",
+    "containerRegistry": "container-registry",
+    "runner": "runner",
+    "staticSite": "static-site",
+    "volume": "volume",
+    "database": "database",
+    "secret": "secret",
+    "domain": "domain",
+    "mangagedUrl": "managed-url",
+  };
+  return endpointMap[type];
+};
 
 const CreateRoles = () => {
   const params = useParams();
@@ -36,22 +56,13 @@ const CreateRoles = () => {
   >(new Set());
   const [selectedResourceType, setSelectedResourceType] =
     createSignal<string>("");
-  const [selectedDeployments, setSelectedDeployments] = createSignal<
+  const [selectedResources, setSelectedResources] = createSignal<
     Set<string>
   >(new Set());
   const [isSubmitting, setIsSubmitting] = createSignal(false);
   const [includeExcludeMode, setIncludeExcludeMode] = createSignal<
     "all" | "include" | "exclude"
   >("all");
-
-  // Helper to parse permission names like "deployment::view" into { resourceType: "deployment", action: "view" }
-  const parsePermissionName = (name: string) => {
-    const parts = name.split("::");
-    return {
-      resourceType: parts[0] || "",
-      action: parts[1] || name,
-    };
-  };
 
   const resourceParamsWorkspace = () => {
     return [authState(), params.id] as const;
@@ -82,86 +93,7 @@ const CreateRoles = () => {
     }
   );
 
-  const fetchParams = createMemo(() => {
-    return [authState(), params.id] as const;
-  });
-
-  const [deployments] = createResource(fetchParams, async ([auth, wsId]) => {
-    if (!wsId || !auth || auth.type !== "LoggedIn") {
-      return { deployments: [] };
-    }
-
-    const response = await httpRequest<ListDeploymentResponse>(
-      `${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${auth.accessToken}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      console.error("Failed to fetch deployments:", response.data.error);
-      toast("Failed to fetch deployments", "error");
-      return { deployments: [] };
-    }
-
-    return response.data;
-  });
-
-  const [permissions] = createResource(fetchParams, async ([auth, wsId]) => {
-    if (!wsId || !auth || auth.type !== "LoggedIn") {
-      return { permissions: [] };
-    }
-
-    try {
-      const response = await httpRequest<ListAllPermissionsResponse>(
-        `${
-          import.meta.env.VITE_BASE_URL
-        }/api/workspace/${wsId}/rbac/permission`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${auth.accessToken}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        console.error("Failed to fetch permissions:", response.data.error);
-        toast(
-          "Failed to fetch permissions. Please ensure permissions are properly configured in the database.",
-          "error"
-        );
-        return { permissions: [] };
-      }
-
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching permissions:", error);
-      toast("Failed to load permissions", "error");
-      return { permissions: [] };
-    }
-  });
-
-  // Permission categories - we'll dynamically populate these with actual permissions
-  const permissionCategories: PermissionCategory[] = [
-    {
-      title: "Workspace",
-      permissionIds: [],
-    },
-    {
-      title: "Permissions",
-      permissionIds: [],
-    },
-    {
-      title: "Include/Exclude",
-      permissionIds: [],
-    },
-  ];
+  const [permissions] = useFetchPermissions(params.id);
 
   const togglePermissionId = (permissionId: string) => {
     const newSet = new Set(selectedPermissionIds());
@@ -173,14 +105,14 @@ const CreateRoles = () => {
     setSelectedPermissionIds(newSet);
   };
 
-  const toggleDeployment = (deploymentId: string) => {
-    const newSet = new Set(selectedDeployments());
-    if (newSet.has(deploymentId)) {
-      newSet.delete(deploymentId);
+  const toggleResource = (resourceId: string) => {
+    const newSet = new Set(selectedResources());
+    if (newSet.has(resourceId)) {
+      newSet.delete(resourceId);
     } else {
-      newSet.add(deploymentId);
+      newSet.add(resourceId);
     }
-    setSelectedDeployments(newSet);
+    setSelectedResources(newSet);
   };
 
   const handleSubmit = async () => {
@@ -215,15 +147,15 @@ const CreateRoles = () => {
             permissionType: "include",
             resources: [],
           };
-        } else if (mode === "include" && selectedDeployments().size > 0) {
+        } else if (mode === "include" && selectedResources().size > 0) {
           permissions[permissionId] = {
             permissionType: "include",
-            resources: Array.from(selectedDeployments()),
+            resources: Array.from(selectedResources()),
           };
-        } else if (mode === "exclude" && selectedDeployments().size > 0) {
+        } else if (mode === "exclude" && selectedResources().size > 0) {
           permissions[permissionId] = {
             permissionType: "exclude",
-            resources: Array.from(selectedDeployments()),
+            resources: Array.from(selectedResources()),
           };
         } else {
           permissions[permissionId] = {
@@ -267,6 +199,13 @@ const CreateRoles = () => {
     }
   };
 
+  const permissionActions = createMemo(() => {
+    return (permissions()?.permissions || []).filter((p) => {
+      const parsed = parsePermissionName(p.name);
+      return parsed.action !== "" ? parsed.resourceType === selectedResourceType() : null;
+    });
+  });
+
   return (
     <PageContainer>
       <WorkspaceHeader
@@ -300,191 +239,114 @@ const CreateRoles = () => {
           <div class="flex flex-col gap-4">
             <div class="text-white text-sm font-medium">Permissions</div>
 
-            <Show
-              when={!permissions.loading && permissions()}
+            <Suspense
               fallback={
                 <div class="text-gray-400 text-sm">Loading permissions...</div>
               }
             >
-              <div class="grid grid-cols-4 gap-3">
-                {/* Column 1: Resource Types */}
-                <div class="flex flex-col gap-3">
-                  <div class="text-white font-medium border-b border-border-color pb-2">
-                    Resource Type
-                  </div>
-                  <div class="flex flex-col gap-2.5">
-                    <For
-                      each={Array.from(
-                        new Set(
-                          (permissions()?.permissions || [])
-                            .map(
-                              (p) => parsePermissionName(p.name).resourceType
-                            )
-                            .filter((r) => r)
-                        )
-                      )}
-                    >
-                      {(resourceType) => (
-                        <label class="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="resourceType"
-                            checked={selectedResourceType() === resourceType}
-                            onChange={() =>
-                              setSelectedResourceType(resourceType)
-                            }
-                            class="w-4 h-4"
-                          />
-                          <span class="text-white text-sm capitalize">
-                            {resourceType}
-                          </span>
-                        </label>
-                      )}
-                    </For>
-                  </div>
+              <div class="flex gap-3">
+                {/* column 1: resource types */}
+                <div class="flex flex-col gap-3 w-full">
+                  <InputDropdown
+                    onSelect={(val) => {
+                      console.log(val);
+                      setSelectedResourceType(val);
+                      setIncludeExcludeMode("all");
+                      setSelectedPermissionIds(new Set<string>([]));
+                    }}
+                    placeholder="Select Resource Type"
+                    value={selectedResourceType}
+                    options={Array.from(
+                      new Set(
+                        (permissions()?.permissions || [])
+                          .map((p) => parsePermissionName(p.name).resourceType)
+                          .filter((r) => r)
+                      )
+                    ).map((resourceType) => ({
+                      label: parseCamelCase(resourceType),
+                      value: resourceType,
+                    }))}
+                  />
                 </div>
 
-                {/* Column 2: Permission Actions (filtered by selected resource type) */}
-                <div class="flex flex-col gap-3">
-                  <div class="text-white font-medium border-b border-border-color pb-2">
-                    Permissions
-                  </div>
-                  <div class="flex flex-col gap-2.5">
-                    <Show when={selectedResourceType()}>
-                      <For
-                        each={(permissions()?.permissions || []).filter((p) => {
+                {/* Column 2: Permission Actions (only visible if permissions available) */}
+                <Show when={selectedResourceType() && permissionActions().length > 0}>
+                  <div class="flex flex-col gap-3 w-full">
+                    <InputDropdownCheckBox
+                      onToggle={(val) => togglePermissionId(val)}
+                      checked={() => Array.from(selectedPermissionIds())}
+                      placeholder={() =>
+                        Array.from(selectedPermissionIds())
+                          .map(
+                            (s) =>
+                              permissionActions().find((p) => p.id === s)?.name
+                          )
+                          .map((val) =>
+                            val
+                              ? parseCamelCase(parsePermissionName(val).action)
+                              : undefined
+                          )
+                          .join(", ") || "Select Permissions"
+                      }
+                      options={() =>
+                        permissionActions().map((p) => {
                           const parsed = parsePermissionName(p.name);
-                          return parsed.resourceType === selectedResourceType();
-                        })}
-                      >
-                        {(permission) => {
-                          const parsed = parsePermissionName(permission.name);
-                          return (
-                            <label class="flex items-center gap-2 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={selectedPermissionIds().has(
-                                  permission.id
-                                )}
-                                onChange={() =>
-                                  togglePermissionId(permission.id)
-                                }
-                                class="w-4 h-4 rounded border-border-color bg-secondary-light checked:bg-primary"
-                              />
-                              <span class="text-white text-sm">
-                                {parsed.action}
-                              </span>
-                            </label>
-                          );
-                        }}
-                      </For>
-                    </Show>
-                    <Show when={!selectedResourceType()}>
-                      <span class="text-gray-400 text-sm">
-                        Select a resource type first
-                      </span>
-                    </Show>
+                          return {
+                            label: `${parseCamelCase(parsed.action)}`,
+                            value: p.id,
+                          };
+                        })
+                      }
+                    />
                   </div>
-                </div>
+                </Show>
 
-                {/* Column 3: Include/Exclude */}
-                <div class="flex flex-col gap-3">
-                  <div class="text-white font-medium border-b border-border-color pb-2">
-                    Include/Exclude
+                {/* Column 3: Include/Exclude (visible when resource type is selected) */}
+                <Show when={selectedResourceType() && getResourceEndpoint(selectedResourceType())}>
+                  <div class="flex flex-col gap-3 w-full">
+                    <InputDropdown
+                      onSelect={(val) =>
+                        setIncludeExcludeMode(
+                          val as "all" | "include" | "exclude"
+                        )
+                      }
+                      placeholder="Select Include/Exclude Mode"
+                      value={includeExcludeMode}
+                      options={[
+                        {
+                          label: `All ${parseCamelCase(selectedResourceType())}(s)`,
+                          value: "all",
+                        },
+                        {
+                          label: `Include Specific ${parseCamelCase(
+                            selectedResourceType()
+                          )}(s)`,
+                          value: "include",
+                        },
+                        {
+                          label: `Exclude Specific ${parseCamelCase(
+                            selectedResourceType()
+                          )}(s)`,
+                          value: "exclude",
+                        },
+                      ]}
+                    />
                   </div>
-                  <div class="flex flex-col gap-2.5">
-                    <label class="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="includeExclude"
-                        checked={includeExcludeMode() === "all"}
-                        onChange={() => setIncludeExcludeMode("all")}
-                        class="w-4 h-4"
-                      />
-                      <span class="text-white text-sm">All deployment</span>
-                    </label>
-                    <label class="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="includeExclude"
-                        checked={includeExcludeMode() === "include"}
-                        onChange={() => setIncludeExcludeMode("include")}
-                        class="w-4 h-4"
-                      />
-                      <span class="text-white text-sm">Include deployment</span>
-                    </label>
-                    <label class="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="includeExclude"
-                        checked={includeExcludeMode() === "exclude"}
-                        onChange={() => setIncludeExcludeMode("exclude")}
-                        class="w-4 h-4"
-                      />
-                      <span class="text-white text-sm">Exclude deployment</span>
-                    </label>
-                  </div>
-                </div>
+                </Show>
 
-                {/* Column 4: List of Deployments */}
-                <div class="flex flex-col gap-3">
-                  <div class="text-white font-medium border-b border-border-color pb-2">
-                    List of deployment
+                {/* Column 4: List of Resources */}
+                <Show when={selectedResourceType() && includeExcludeMode() !== "all" && getResourceEndpoint(selectedResourceType())}>
+                  <div class="flex flex-col gap-3 w-full">
+                    <ListResources
+                      resourceType={selectedResourceType()}
+                      includeExcludeMode={includeExcludeMode()}
+                      selectedResources={selectedResources()}
+                      toggleResource={toggleResource}
+                    />
                   </div>
-                  <div class="flex flex-col gap-2.5 max-h-[300px] overflow-y-auto">
-                    <Show when={includeExcludeMode() !== "all"}>
-                      {typeof window !== "undefined" && (
-                        <Show
-                          when={!deployments.loading && deployments()}
-                          fallback={
-                            <span class="text-gray-400 text-sm">
-                              Loading...
-                            </span>
-                          }
-                        >
-                          <Show
-                            when={
-                              deployments()?.deployments &&
-                              deployments()!.deployments.length > 0
-                            }
-                            fallback={
-                              <span class="text-gray-400 text-sm">
-                                No deployments
-                              </span>
-                            }
-                          >
-                            <For each={deployments()!.deployments}>
-                              {(deployment) => (
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedDeployments().has(
-                                      deployment.id
-                                    )}
-                                    onChange={() =>
-                                      toggleDeployment(deployment.id)
-                                    }
-                                    class="w-4 h-4 rounded border-border-color bg-secondary-light checked:bg-primary"
-                                  />
-                                  <span class="text-white text-sm truncate">
-                                    {deployment.name}
-                                  </span>
-                                </label>
-                              )}
-                            </For>
-                          </Show>
-                        </Show>
-                      )}
-                    </Show>
-                    <Show when={includeExcludeMode() === "all"}>
-                      <span class="text-gray-400 text-sm">
-                        Select include/exclude first
-                      </span>
-                    </Show>
-                  </div>
-                </div>
+                </Show>
               </div>
-            </Show>
+            </Suspense>
           </div>
         </div>
 
@@ -510,3 +372,147 @@ const CreateRoles = () => {
 };
 
 export default CreateRoles;
+
+const ListResources = ({
+  resourceType,
+  includeExcludeMode,
+  selectedResources,
+  toggleResource,
+}: {
+  resourceType: string;
+  includeExcludeMode: "all" | "include" | "exclude";
+  selectedResources: Set<string>;
+  toggleResource: (resourceId: string) => void;
+}) => {
+  const params = useParams();
+  const [authState] = useAuthState();
+
+  const fetchParams = createMemo(() => {
+    return [authState(), params.id, resourceType] as const;
+  });
+
+  const [resources] = createResource(fetchParams, async ([auth, wsId, type]) => {
+    if (!wsId || !auth || auth.type !== "LoggedIn" || !type) {
+      return null;
+    }
+
+    const endpoint = getResourceEndpoint(type);
+    console.log("Fetching resources for type:", type, "using endpoint:", endpoint);
+    if (!endpoint) {
+      return null;
+    }
+
+    const response = await httpRequest<any>(
+      `${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/${endpoint}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${auth.accessToken}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error(`Failed to fetch ${type}:`, response.data.error);
+      return null;
+    }
+
+    console.log("Fetched data for", type, ":", response.data);
+    return { data: response.data, type }; // Include type to track which resource this data is for
+  });
+  // Helper to get the resource list from the response
+  const getResourceList = () => {
+    const resourceData = resources();
+    if (!resourceData) return [];
+
+    // Check if the data is for the current resource type
+    if (resourceData.type !== resourceType) {
+      return []; // Return empty if data doesn't match current type
+    }
+
+    const data = resourceData.data;
+    if (!data) return [];
+
+    // Handle different response structures
+    if (data.deployments) return data.deployments;
+    if (data.runners) return data.runners;
+    if (data.repositories) return data.repositories;
+    if (data.staticSites) return data.staticSites;
+    if (data.volumes) return data.volumes;
+    if (data.databases) return data.databases;
+    if (data.secrets) return data.secrets;
+
+    return [];
+  };
+
+  // Get resource type label
+  const getResourceTypeLabel = () => {
+    if (!resourceType) return "Resources";
+    return parseCamelCase(resourceType);
+  };
+
+
+  return (
+    <div class="flex flex-col gap-3">
+      <div class="text-white font-medium border-b border-border-color pb-2">
+        List of {getResourceTypeLabel()}
+      </div>
+      <div class="flex flex-col gap-2.5 max-h-[300px] overflow-y-auto">
+        <Show when={!resourceType}>
+          <span class="text-gray-400 text-sm">
+            Select a resource type first
+          </span>
+        </Show>
+        <Show when={resourceType}>
+          <Show when={includeExcludeMode !== "all"}>
+            {typeof window !== "undefined" && (
+              <Show
+                when={!resources.loading && resources()}
+                fallback={
+                  <span class="text-gray-400 text-sm">
+                    Loading...
+                  </span>
+                }
+              >
+                <Show
+                  when={getResourceList().length > 0}
+                  fallback={
+                    <span class="text-gray-400 text-sm">
+                      No {getResourceTypeLabel().toLowerCase()} found
+                    </span>
+                  }
+                >
+                  <For each={getResourceList()}>
+                    {(resource: any) => (
+                      <label class="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedResources.has(
+                            resource.id
+                          )}
+                          onChange={() =>
+                            toggleResource(resource.id)
+                          }
+                          class="w-4 h-4 rounded border-border-color bg-secondary-light checked:bg-primary"
+                        />
+                        <span class="text-white text-sm truncate">
+                          {resource.name || resource.username || resource.id}
+                        </span>
+                      </label>
+                    )}
+                  </For>
+                </Show>
+              </Show>
+            )}
+          </Show>
+          <Show when={includeExcludeMode === "all"}>
+            <span class="text-gray-400 text-sm">
+              Select include/exclude first
+            </span>
+          </Show>
+        </Show>
+      </div>
+    </div>
+  )
+}

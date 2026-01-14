@@ -44,9 +44,9 @@ const Button = (rawProps: ParentProps<ButtonProps>) => {
 		const variant = () => {
 			switch (props.variant) {
 				case ButtonVariant.Outlined:
-					return "font-medium ";
+					return "border-2 font-medium border-primary py-xs px-md text-primary rounded-xs";
 				case ButtonVariant.Plain:
-					return "bg-transparent";
+					return "bg-transparent text-primary";
 				case ButtonVariant.Contained:
 					return `bg-primary text-secondary py-xs px-md rounded-xs font-thin border-2 border-primary \
 						hover:border-primary hover:cursor-pointer hover:bg-transparent hover:text-primary \
@@ -54,9 +54,8 @@ const Button = (rawProps: ParentProps<ButtonProps>) => {
 			}
 		};
 
-		return `flex items-center ${variant()} justify-center ${
-			get(props.class) ?? ""
-		}`;
+		return `flex items-center ${variant()} justify-center ${get(props.class) ?? ""
+			}`;
 	};
 
 	return (

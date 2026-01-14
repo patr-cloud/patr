@@ -121,16 +121,6 @@ const ManageRoles = () => {
             </Show>
           </Suspense>
         </div>
-
-        <div class="flex justify-end w-full items-center">
-          <Button
-            variant={ButtonVariant.Contained}
-            class="bg-primary flex items-center gap-2"
-            onClick={() => navigate(`/workspaces/${params.id}/roles/new`)}
-          >
-            <FiPlus size={16} />
-          </Button>
-        </div>
       </PageContainerBody>
     </PageContainer>
   );
