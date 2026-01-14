@@ -7,7 +7,7 @@ import { BgOnboard } from "~/components";
 import ConfirmSignUp from "~/pages/auth/confirm-sign-up";
 import { useAuthState } from "~/hooks";
 
-const AuthPageWrapper = (props: ParentProps<{}>) => {
+export const AuthPageWrapper = (props: ParentProps<{}>) => {
   const [authState] = useAuthState();
 
   if (authState()?.type === "LoggedIn") {
