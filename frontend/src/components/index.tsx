@@ -22,6 +22,7 @@ import Turnstile from "~/components/turnstile";
 import { UserSearchInput } from "~/components/user-search-input";
 import ToggleSwitch from "~/components/toggle-switch";
 import Modal from "./modal";
+import Link from "./link";
 
 export {
   Alert,
@@ -47,5 +48,6 @@ export {
   UserSearchInput,
   ToggleSwitch,
   Modal,
+  Link,
   type InputEventT,
 };

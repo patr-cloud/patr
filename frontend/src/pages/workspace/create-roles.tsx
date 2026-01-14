@@ -27,6 +27,22 @@ import WorkspaceHeader from "~/pages/workspace/workspace-header";
 import useFetchPermissions from "../../hooks/use-fetch/use-fetch-permissions";
 import { parsePermissionName, parseCamelCase } from "~/utils/func";
 
+// Map resource types to their API endpoints
+const getResourceEndpoint = (type: string) => {
+  const endpointMap: Record<string, string> = {
+    "deployment": "deployment",
+    "containerRegistry": "container-registry",
+    "runner": "runner",
+    "staticSite": "static-site",
+    "volume": "volume",
+    "database": "database",
+    "secret": "secret",
+    "domain": "domain",
+    "mangagedUrl": "managed-url",
+  };
+  return endpointMap[type];
+};
+
 const CreateRoles = () => {
   const params = useParams();
   const [authState] = useAuthState();
@@ -186,7 +202,7 @@ const CreateRoles = () => {
   const permissionActions = createMemo(() => {
     return (permissions()?.permissions || []).filter((p) => {
       const parsed = parsePermissionName(p.name);
-      return parsed.resourceType === selectedResourceType();
+      return parsed.action !== "" ? parsed.resourceType === selectedResourceType() : null;
     });
   });
 
@@ -228,9 +244,9 @@ const CreateRoles = () => {
                 <div class="text-gray-400 text-sm">Loading permissions...</div>
               }
             >
-              <div class="grid grid-cols-4 gap-3">
+              <div class="flex gap-3">
                 {/* column 1: resource types */}
-                <div class="flex flex-col gap-3">
+                <div class="flex flex-col gap-3 w-full">
                   <InputDropdown
                     onSelect={(val) => {
                       console.log(val);
@@ -253,83 +269,82 @@ const CreateRoles = () => {
                   />
                 </div>
 
-                {/* Column 2: Permission Actions (filtered by selected resource type) */}
-                <div class="flex flex-col gap-3">
-                  <InputDropdownCheckBox
-                    onToggle={(val) => togglePermissionId(val)}
-                    checked={() => Array.from(selectedPermissionIds())}
-                    placeholder={() =>
-                      Array.from(selectedPermissionIds())
-                        .map(
-                          (s) =>
-                            permissionActions().find((p) => p.id === s)?.name
-                        )
-                        .map((val) =>
-                          val
-                            ? parseCamelCase(parsePermissionName(val).action)
-                            : undefined
-                        )
-                        .join(", ") || "Select Permissions"
-                    }
-                    options={() =>
-                      permissionActions().map((p) => {
-                        const parsed = parsePermissionName(p.name);
-                        return {
-                          label: `${parseCamelCase(parsed.action)}`,
-                          value: p.id,
-                        };
-                      })
-                    }
-                  />
-                </div>
-
-                {/* Column 3: Include/Exclude */}
-                <div class="flex flex-col gap-3">
-                  <InputDropdown
-                    onSelect={(val) =>
-                      setIncludeExcludeMode(
-                        val as "all" | "include" | "exclude"
-                      )
-                    }
-                    placeholder="Select Include/Exclude Mode"
-                    value={includeExcludeMode}
-                    options={[
-                      {
-                        label: selectedResourceType()
-                          ? `All ${parseCamelCase(selectedResourceType())}(s)`
-                          : "All Resources",
-                        value: "all",
-                      },
-                      {
-                        label: selectedResourceType()
-                          ? `Include Specific ${parseCamelCase(
-                            selectedResourceType()
-                          )}(s)`
-                          : "Include Specific Resources",
-                        value: "include",
-                      },
-                      {
-                        label: selectedResourceType()
-                          ? `Exclude Specific ${parseCamelCase(
-                            selectedResourceType()
-                          )}(s)`
-                          : "Exclude Specific Resources",
-                        value: "exclude",
-                      },
-                    ]}
-                  />
-                </div>
-
-                {/* Column 4: List of Resources */}
-                <Show when={selectedResourceType() !== "" && selectedResourceType() !== "billing" && selectedResourceType() !== "workspace" && selectedResourceType() !== "user" && includeExcludeMode() !== "all"}>
-                  <ListResources
-                    resourceType={selectedResourceType()}
-                    includeExcludeMode={includeExcludeMode()}
-                    selectedResources={selectedResources()}
-                    toggleResource={toggleResource}
-                  />
+                {/* Column 2: Permission Actions (only visible if permissions available) */}
+                <Show when={selectedResourceType() && permissionActions().length > 0}>
+                  <div class="flex flex-col gap-3 w-full">
+                    <InputDropdownCheckBox
+                      onToggle={(val) => togglePermissionId(val)}
+                      checked={() => Array.from(selectedPermissionIds())}
+                      placeholder={() =>
+                        Array.from(selectedPermissionIds())
+                          .map(
+                            (s) =>
+                              permissionActions().find((p) => p.id === s)?.name
+                          )
+                          .map((val) =>
+                            val
+                              ? parseCamelCase(parsePermissionName(val).action)
+                              : undefined
+                          )
+                          .join(", ") || "Select Permissions"
+                      }
+                      options={() =>
+                        permissionActions().map((p) => {
+                          const parsed = parsePermissionName(p.name);
+                          return {
+                            label: `${parseCamelCase(parsed.action)}`,
+                            value: p.id,
+                          };
+                        })
+                      }
+                    />
+                  </div>
                 </Show>
 
+                {/* Column 3: Include/Exclude (visible when resource type is selected) */}
+                <Show when={selectedResourceType() && getResourceEndpoint(selectedResourceType())}>
+                  <div class="flex flex-col gap-3 w-full">
+                    <InputDropdown
+                      onSelect={(val) =>
+                        setIncludeExcludeMode(
+                          val as "all" | "include" | "exclude"
+                        )
+                      }
+                      placeholder="Select Include/Exclude Mode"
+                      value={includeExcludeMode}
+                      options={[
+                        {
+                          label: `All ${parseCamelCase(selectedResourceType())}(s)`,
+                          value: "all",
+                        },
+                        {
+                          label: `Include Specific ${parseCamelCase(
+                            selectedResourceType()
+                          )}(s)`,
+                          value: "include",
+                        },
+                        {
+                          label: `Exclude Specific ${parseCamelCase(
+                            selectedResourceType()
+                          )}(s)`,
+                          value: "exclude",
+                        },
+                      ]}
+                    />
+                  </div>
+                </Show>
+
+                {/* Column 4: List of Resources */}
+                <Show when={selectedResourceType() && includeExcludeMode() !== "all" && getResourceEndpoint(selectedResourceType())}>
+                  <div class="flex flex-col gap-3 w-full">
+                    <ListResources
+                      resourceType={selectedResourceType()}
+                      includeExcludeMode={includeExcludeMode()}
+                      selectedResources={selectedResources()}
+                      toggleResource={toggleResource}
+                    />
+                  </div>
+                </Show>
               </div>
             </Suspense>
           </div>
@@ -375,22 +390,6 @@ const ListResources = ({
   const fetchParams = createMemo(() => {
     return [authState(), params.id, resourceType] as const;
   });
-
-  // Map resource types to their API endpoints
-  const getResourceEndpoint = (type: string) => {
-    const endpointMap: Record<string, string> = {
-      "deployment": "deployment",
-      "containerRegistry": "container-registry",
-      "runner": "runner",
-      "staticSite": "static-site",
-      "volume": "volume",
-      "database": "database",
-      "secret": "secret",
-      "domain": "domain",
-      "mangagedUrl": "managed-url",
-    };
-    return endpointMap[type];
-  };
 
   const [resources] = createResource(fetchParams, async ([auth, wsId, type]) => {
     if (!wsId || !auth || auth.type !== "LoggedIn" || !type) {

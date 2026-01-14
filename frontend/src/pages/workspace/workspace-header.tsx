@@ -1,5 +1,5 @@
-import { A, useNavigate, useParams } from "@solidjs/router";
-import { Button, ButtonVariant, PageContainerHead } from "~/components";
+import { A, useNavigate, useParams, useLocation } from "@solidjs/router";
+import { Button, ButtonVariant, Link, PageContainerHead } from "~/components";
 
 interface WorkspaceHeaderProps {
   workspaceName?: string;
@@ -9,6 +9,7 @@ interface WorkspaceHeaderProps {
 const WorkspaceHeader = (props: WorkspaceHeaderProps) => {
   const navigate = useNavigate();
   const params = useParams();
+  const location = useLocation();
 
   return (
     <PageContainerHead
@@ -16,14 +17,14 @@ const WorkspaceHeader = (props: WorkspaceHeaderProps) => {
       titleUrl="/workspaces"
       subTitle={props.workspaceName || "Loading..."}
       actions={() => (
-        props.activeTab === "roles" && (
-          <Button
-            variant={ButtonVariant.Contained}
-            class="bg-primary flex items-center gap-2"
-            onClick={() => navigate(`/workspaces/${params.id}/roles/new`)}
+        props.activeTab === "roles" && !location.pathname.includes("/new") && (
+          <Link
+            href={`/workspaces/${params.id}/roles/new`}
+            buttonVariant={ButtonVariant.Contained}
+            external={false}
           >
             Create New Role
-          </Button>
+          </Link>
         )
 
       )}

@@ -29,7 +29,7 @@ const parsePermissionName = (name: string) => {
   const parts = name.split("::");
   return {
     resourceType: parts[0] || "",
-    action: parts[1] || name,
+    action: parts[1] || "",
   };
 };
 
