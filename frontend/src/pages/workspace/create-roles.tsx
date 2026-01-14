@@ -13,6 +13,7 @@ import {
   Input,
   InputDropdown,
   InputDropdownCheckBox,
+  ListResources,
   PageContainer,
   PageContainerBody,
   useToast,
@@ -25,26 +26,17 @@ import { ResourcePermissionType } from "~/bindings/ResourcePermissionType";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "~/pages/workspace/workspace-header";
 import useFetchPermissions from "../../hooks/use-fetch/use-fetch-permissions";
-import { parsePermissionName, parseCamelCase } from "~/utils/func";
-
-// Map resource types to their API endpoints
-const getResourceEndpoint = (type: string) => {
-  const endpointMap: Record<string, string> = {
-    "deployment": "deployment",
-    "containerRegistry": "container-registry",
-    "runner": "runner",
-    "staticSite": "static-site",
-    "volume": "volume",
-    "database": "database",
-    "secret": "secret",
-    "domain": "domain",
-    "mangagedUrl": "managed-url",
-  };
-  return endpointMap[type];
-};
+import {
+  parsePermissionName,
+  parseCamelCase,
+  getResourceEndpoint,
+} from "~/utils/func";
 
 const CreateRoles = () => {
   const params = useParams();
+  if (!params.id) {
+    throw new Error("Workspace ID is required in the URL parameters");
+  }
   const [authState] = useAuthState();
   const toast = useToast();
   const navigate = useNavigate();
@@ -56,9 +48,9 @@ const CreateRoles = () => {
   >(new Set());
   const [selectedResourceType, setSelectedResourceType] =
     createSignal<string>("");
-  const [selectedResources, setSelectedResources] = createSignal<
-    Set<string>
-  >(new Set());
+  const [selectedResources, setSelectedResources] = createSignal<Set<string>>(
+    new Set()
+  );
   const [isSubmitting, setIsSubmitting] = createSignal(false);
   const [includeExcludeMode, setIncludeExcludeMode] = createSignal<
     "all" | "include" | "exclude"
@@ -202,7 +194,9 @@ const CreateRoles = () => {
   const permissionActions = createMemo(() => {
     return (permissions()?.permissions || []).filter((p) => {
       const parsed = parsePermissionName(p.name);
-      return parsed.action !== "" ? parsed.resourceType === selectedResourceType() : null;
+      return parsed.action !== ""
+        ? parsed.resourceType === selectedResourceType()
+        : null;
     });
   });
 
@@ -270,7 +264,11 @@ const CreateRoles = () => {
                 </div>
 
                 {/* Column 2: Permission Actions (only visible if permissions available) */}
-                <Show when={selectedResourceType() && permissionActions().length > 0}>
+                <Show
+                  when={
+                    selectedResourceType() && permissionActions().length > 0
+                  }
+                >
                   <div class="flex flex-col gap-3 w-full">
                     <InputDropdownCheckBox
                       onToggle={(val) => togglePermissionId(val)}
@@ -302,7 +300,12 @@ const CreateRoles = () => {
                 </Show>
 
                 {/* Column 3: Include/Exclude (visible when resource type is selected) */}
-                <Show when={selectedResourceType() && getResourceEndpoint(selectedResourceType())}>
+                <Show
+                  when={
+                    selectedResourceType() &&
+                    getResourceEndpoint(selectedResourceType())
+                  }
+                >
                   <div class="flex flex-col gap-3 w-full">
                     <InputDropdown
                       onSelect={(val) =>
@@ -314,7 +317,9 @@ const CreateRoles = () => {
                       value={includeExcludeMode}
                       options={[
                         {
-                          label: `All ${parseCamelCase(selectedResourceType())}(s)`,
+                          label: `All ${parseCamelCase(
+                            selectedResourceType()
+                          )}(s)`,
                           value: "all",
                         },
                         {
@@ -335,11 +340,17 @@ const CreateRoles = () => {
                 </Show>
 
                 {/* Column 4: List of Resources */}
-                <Show when={selectedResourceType() && includeExcludeMode() !== "all" && getResourceEndpoint(selectedResourceType())}>
+                <Show
+                  when={
+                    selectedResourceType() &&
+                    includeExcludeMode() !== "all" &&
+                    getResourceEndpoint(selectedResourceType())
+                  }
+                >
                   <div class="flex flex-col gap-3 w-full">
                     <ListResources
+                      workspaceId={params.id}
                       resourceType={selectedResourceType()}
-                      includeExcludeMode={includeExcludeMode()}
                       selectedResources={selectedResources()}
                       toggleResource={toggleResource}
                     />
@@ -372,147 +383,3 @@ const CreateRoles = () => {
 };
 
 export default CreateRoles;
-
-const ListResources = ({
-  resourceType,
-  includeExcludeMode,
-  selectedResources,
-  toggleResource,
-}: {
-  resourceType: string;
-  includeExcludeMode: "all" | "include" | "exclude";
-  selectedResources: Set<string>;
-  toggleResource: (resourceId: string) => void;
-}) => {
-  const params = useParams();
-  const [authState] = useAuthState();
-
-  const fetchParams = createMemo(() => {
-    return [authState(), params.id, resourceType] as const;
-  });
-
-  const [resources] = createResource(fetchParams, async ([auth, wsId, type]) => {
-    if (!wsId || !auth || auth.type !== "LoggedIn" || !type) {
-      return null;
-    }
-
-    const endpoint = getResourceEndpoint(type);
-    console.log("Fetching resources for type:", type, "using endpoint:", endpoint);
-    if (!endpoint) {
-      return null;
-    }
-
-    const response = await httpRequest<any>(
-      `${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/${endpoint}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${auth.accessToken}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      console.error(`Failed to fetch ${type}:`, response.data.error);
-      return null;
-    }
-
-    console.log("Fetched data for", type, ":", response.data);
-    return { data: response.data, type }; // Include type to track which resource this data is for
-  });
-  // Helper to get the resource list from the response
-  const getResourceList = () => {
-    const resourceData = resources();
-    if (!resourceData) return [];
-
-    // Check if the data is for the current resource type
-    if (resourceData.type !== resourceType) {
-      return []; // Return empty if data doesn't match current type
-    }
-
-    const data = resourceData.data;
-    if (!data) return [];
-
-    // Handle different response structures
-    if (data.deployments) return data.deployments;
-    if (data.runners) return data.runners;
-    if (data.repositories) return data.repositories;
-    if (data.staticSites) return data.staticSites;
-    if (data.volumes) return data.volumes;
-    if (data.databases) return data.databases;
-    if (data.secrets) return data.secrets;
-
-    return [];
-  };
-
-  // Get resource type label
-  const getResourceTypeLabel = () => {
-    if (!resourceType) return "Resources";
-    return parseCamelCase(resourceType);
-  };
-
-
-  return (
-    <div class="flex flex-col gap-3">
-      <div class="text-white font-medium border-b border-border-color pb-2">
-        List of {getResourceTypeLabel()}
-      </div>
-      <div class="flex flex-col gap-2.5 max-h-[300px] overflow-y-auto">
-        <Show when={!resourceType}>
-          <span class="text-gray-400 text-sm">
-            Select a resource type first
-          </span>
-        </Show>
-        <Show when={resourceType}>
-          <Show when={includeExcludeMode !== "all"}>
-            {typeof window !== "undefined" && (
-              <Show
-                when={!resources.loading && resources()}
-                fallback={
-                  <span class="text-gray-400 text-sm">
-                    Loading...
-                  </span>
-                }
-              >
-                <Show
-                  when={getResourceList().length > 0}
-                  fallback={
-                    <span class="text-gray-400 text-sm">
-                      No {getResourceTypeLabel().toLowerCase()} found
-                    </span>
-                  }
-                >
-                  <For each={getResourceList()}>
-                    {(resource: any) => (
-                      <label class="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedResources.has(
-                            resource.id
-                          )}
-                          onChange={() =>
-                            toggleResource(resource.id)
-                          }
-                          class="w-4 h-4 rounded border-border-color bg-secondary-light checked:bg-primary"
-                        />
-                        <span class="text-white text-sm truncate">
-                          {resource.name || resource.username || resource.id}
-                        </span>
-                      </label>
-                    )}
-                  </For>
-                </Show>
-              </Show>
-            )}
-          </Show>
-          <Show when={includeExcludeMode === "all"}>
-            <span class="text-gray-400 text-sm">
-              Select include/exclude first
-            </span>
-          </Show>
-        </Show>
-      </div>
-    </div>
-  )
-}

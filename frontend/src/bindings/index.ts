@@ -58,6 +58,8 @@ import { WorkspacePermission } from "./WorkspacePermission";
 import { ErrorType } from "./ErrorType";
 import { RenewAccessTokenRequest } from "./RenewAccessTokenRequest";
 import { RenewAccessTokenResponse } from "./RenewAccessTokenResponse";
+import { ListApiTokensRequest } from "./ListApiTokensRequest";
+import { ListApiTokensResponse } from "./ListApiTokensResponse";
 
 export type {
   EnvironmentVariableValue,
@@ -120,4 +122,6 @@ export type {
   ErrorType,
   RenewAccessTokenRequest,
   RenewAccessTokenResponse,
+  ListApiTokensRequest,
+  ListApiTokensResponse,
 };

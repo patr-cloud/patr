@@ -39,4 +39,20 @@ const parseCamelCase = (str: string) => {
     .replace(/^./, (char) => char.toUpperCase());
 };
 
-export { get, Jsx, Uuid, variantBgClass, parseCamelCase, parsePermissionName };
+// Map resource types to their API endpoints
+const getResourceEndpoint = (type: string) => {
+  const endpointMap: Record<string, string> = {
+    "deployment": "deployment",
+    "containerRegistry": "container-registry",
+    "runner": "runner",
+    "staticSite": "static-site",
+    "volume": "volume",
+    "database": "database",
+    "secret": "secret",
+    "domain": "domain",
+    "mangagedUrl": "managed-url",
+  };
+  return endpointMap[type];
+};
+
+export { get, Jsx, Uuid, variantBgClass, parseCamelCase, parsePermissionName, getResourceEndpoint };

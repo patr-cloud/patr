@@ -23,6 +23,7 @@ import { UserSearchInput } from "~/components/user-search-input";
 import ToggleSwitch from "~/components/toggle-switch";
 import Modal from "./modal";
 import Link from "./link";
+import ListResources from "./list-resources";
 
 export {
   Alert,
@@ -50,4 +51,5 @@ export {
   Modal,
   Link,
   type InputEventT,
+  ListResources,
 };

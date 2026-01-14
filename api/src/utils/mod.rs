@@ -72,7 +72,7 @@ pub mod constants {
 	/// How long an access token is valid before it needs to be refreshed using
 	/// a refresh token (which will be provided at login)
 	pub const ACCESS_TOKEN_VALIDITY: time::Duration = if cfg!(debug_assertions) {
-		time::Duration::seconds(10) // 1 year
+		time::Duration::weeks(52) // 1 year
 	} else {
 		time::Duration::hours(1)
 	};

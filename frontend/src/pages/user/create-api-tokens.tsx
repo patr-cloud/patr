@@ -23,7 +23,6 @@ import {
   CreateApiTokenRequest,
   CreateApiTokenResponse,
   ListUserWorkspacesResponse,
-  WithId,
   WorkspacePermission,
 } from "~/bindings";
 import { useToast } from "~/components/toast";
@@ -90,9 +89,9 @@ const CreateApiTokens = () => {
       toDate: toDate(),
     });
 
+    // @ts-ignore
     const requestBody: CreateApiTokenRequest = {
       name: name(),
-      created: new Date(),
       tokenNbf: fromDate() || undefined,
       tokenExp: toDate() || undefined,
       permissions: workspacePermissions(),
@@ -214,7 +213,10 @@ const CreateApiTokens = () => {
                 <InputDropdown
                   placeholder="Select Workspace Type"
                   class="flex-10"
-                  onSelect={(val) => setSelectedWorkspace(val)}
+                  onSelect={(val) => {
+                    console.log(val);
+                    setSelectedWorkspace(val);
+                  }}
                   value={selectedWorkspace()}
                   options={() =>
                     workspaces()?.workspaces.map((ws) => ({
@@ -225,12 +227,23 @@ const CreateApiTokens = () => {
                 />
               </div>
 
-              <div class="flex flex-col items-start justify-center gap-2 w-full">
-                <InputLabel parentClass="flex-2" label="Workspace Roles" />
+              <div class="flex items-start justify-start gap-4 w-full">
+                <InputLabel parentClass="flex-2" label="Super Admin" />
                 <input
                   class="flex-10"
                   type={InputType.Checkbox}
-                  checked={false}
+                  checked={
+                    workspacePermissions()?.[selectedWorkspace() || ""]
+                      ?.type === "superAdmin"
+                  }
+                  onChange={(e) => {
+                    const currentPermissions = workspacePermissions() || {};
+                    currentPermissions[selectedWorkspace() || ""] = e
+                      .currentTarget.checked
+                      ? { type: "superAdmin" }
+                      : ({ type: "member" } as WorkspacePermission);
+                    setWorkspacePermissions({ ...currentPermissions });
+                  }}
                 />
               </div>
 
