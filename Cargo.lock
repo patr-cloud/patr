@@ -1128,6 +1128,7 @@ dependencies = [
  "axum-extra",
  "build-print",
  "config",
+ "console-subscriber",
  "dashmap",
  "flate2",
  "fslock",

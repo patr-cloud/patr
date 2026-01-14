@@ -146,6 +146,8 @@ where
 					todo!()
 				}
 			}
+
+			debug!("Resource executor task completed for resource {resource_id}");
 		})
 	}
 }

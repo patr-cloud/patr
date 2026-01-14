@@ -84,6 +84,7 @@ pub async fn add_runner_to_workspace(
 			runner(
 				id,
 				name,
+				is_connected,
 				workspace_id,
 				cloudflare_tunnel_id
 			)
@@ -91,6 +92,7 @@ pub async fn add_runner_to_workspace(
 			(
 				$1,
 				$2,
+				FALSE,
 				$3,
 				$4
 			);

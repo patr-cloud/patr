@@ -96,33 +96,49 @@ where
 		config: RunnerSettings<E::Settings>,
 	) -> Result<Self, RunnerError> {
 		tracing::dispatcher::set_global_default(Dispatch::new(
-			tracing_subscriber::registry().with(
-				FmtLayer::new()
-					.with_span_events(FmtSpan::NONE)
-					.event_format(
-						tracing_subscriber::fmt::format()
-							.with_ansi(true)
-							.with_file(false)
-							.without_time()
-							.with_target(false)
-							.with_source_location(false)
-							.compact(),
-					)
-					.with_filter(
-						tracing_subscriber::filter::Targets::new()
-							.with_target(E::runner_internal_name(), LevelFilter::TRACE)
-							.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
-							.with_target("models", LevelFilter::TRACE)
-							.with_target("frontend", LevelFilter::TRACE),
-					)
-					.with_filter(LevelFilter::from_level(
-						if config.environment == RunningEnvironment::Development {
-							Level::TRACE
-						} else {
-							Level::DEBUG
-						},
-					)),
-			),
+			tracing_subscriber::registry()
+				.with(
+					if config.environment == RunningEnvironment::Development {
+						Some(
+							console_subscriber::Builder::default()
+								.with_default_env()
+								.server_addr((
+									console_subscriber::Server::DEFAULT_IP,
+									console_subscriber::Server::DEFAULT_PORT + 1,
+								))
+								.spawn(),
+						)
+					} else {
+						None
+					},
+				)
+				.with(
+					FmtLayer::new()
+						.with_span_events(FmtSpan::NONE)
+						.event_format(
+							tracing_subscriber::fmt::format()
+								.with_ansi(true)
+								.with_file(false)
+								.without_time()
+								.with_target(false)
+								.with_source_location(false)
+								.compact(),
+						)
+						.with_filter(
+							tracing_subscriber::filter::Targets::new()
+								.with_target(E::runner_internal_name(), LevelFilter::TRACE)
+								.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
+								.with_target("models", LevelFilter::TRACE)
+								.with_target("frontend", LevelFilter::TRACE),
+						)
+						.with_filter(LevelFilter::from_level(
+							if config.environment == RunningEnvironment::Development {
+								Level::TRACE
+							} else {
+								Level::DEBUG
+							},
+						)),
+				),
 		))?;
 
 		trace!("Initialized global logger");

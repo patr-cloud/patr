@@ -22,6 +22,7 @@ argon2             = { workspace = true, features = ["default"] }
 axum               = { workspace = true, features = ["default", "macros", "tracing"] }
 axum-extra         = { workspace = true, features = ["default", "typed-routing"] }
 config             = { workspace = true, features = ["json"] }
+console-subscriber = { workspace = true, features = ["default"] }
 dashmap            = { workspace = true, features = [] }
 fslock             = { workspace = true, features = ["default"] }
 futures            = { workspace = true }
