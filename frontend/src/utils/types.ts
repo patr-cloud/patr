@@ -1,4 +1,5 @@
 import { Accessor } from "solid-js";
+import { ErrorType } from "~/bindings";
 
 export type SearchParams = Record<string, string | string[] | undefined>;
 export type SetSearchParams = Record<
@@ -10,7 +11,7 @@ export type EventT<T, E> = T & { currentTarget: E };
 export type ErrorResponse = {
   message: string;
   success: false;
-  error: string;
+  error: ErrorType;
 };
 
 /**

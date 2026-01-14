@@ -1,6 +1,16 @@
-import { LoginRequest, LoginResponse } from "~/bindings";
+import {
+  LoginRequest,
+  LoginResponse,
+  RenewAccessTokenResponse,
+} from "~/bindings";
 import { ErrorResponse, FetchResult } from "./types";
 import { getRequestEvent } from "solid-js/web";
+import {
+  CookieOptions,
+  cookieStorage,
+  SyncStorageWithOptions,
+} from "@solid-primitives/storage";
+import type { AuthState } from "~/hooks/state-hooks";
 
 /**
  * A wrapper around the Fetch API, adds a few things, such as:
@@ -25,8 +35,11 @@ const httpRequest = async <T>(
       credentials: "include",
       ...options,
       headers: {
-        ...(event?.request.headers ? Object.fromEntries(event.request.headers) : {}),
         "Content-Type": "application/json",
+        ...(options?.headers || {}),
+        ...(event?.request.headers
+          ? Object.fromEntries(event.request.headers)
+          : {}),
       },
     });
 
@@ -41,10 +54,84 @@ const httpRequest = async <T>(
       data = {};
     }
 
-    console.log(data);
-
     if (!resp.ok) {
-      console.error(`HTTP error! status: ${resp.status}`);
+      console.error(`HTTP error! status: ${resp.status}`, data);
+      if (hasJsonContent) {
+        const errorData = data as ErrorResponse;
+        if (errorData.error === "malformedAccessToken") {
+          console.log("Access token malformed, redirecting to login...", data);
+          cookieStorage.removeItem("authState");
+          window.location.href = "/login";
+          return {
+            data: data as ErrorResponse,
+            headers: resp.headers,
+            ok: resp.ok,
+            status: resp.status,
+            statusText: resp.statusText,
+          };
+        } else if (errorData.error === "authorizationTokenInvalid") {
+          console.log("Access token invalid, attempting to refresh...", data);
+          const authState = JSON.parse(
+            cookieStorage.getItem("authState") || "null"
+          ) as AuthState | null;
+          if (!authState || authState.type !== "LoggedIn") {
+            window.location.href = "/login";
+            return {
+              data: data as ErrorResponse,
+              headers: resp.headers,
+              ok: resp.ok,
+              status: resp.status,
+              statusText: resp.statusText,
+            };
+          }
+
+          const refreshResp = await fetch(
+            `${import.meta.env.VITE_BASE_URL}/api/auth/access-token`,
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${authState.refreshToken}`,
+              },
+            }
+          );
+          console.log("Refresh response:", refreshResp);
+
+          if (!refreshResp.ok) {
+            cookieStorage.removeItem("authState");
+            window.location.href = "/login";
+            return {
+              data: (await refreshResp.json()) as ErrorResponse,
+              headers: refreshResp.headers,
+              ok: refreshResp.ok,
+              status: refreshResp.status,
+              statusText: refreshResp.statusText,
+            };
+          }
+
+          const refreshData =
+            (await refreshResp.json()) as RenewAccessTokenResponse;
+          const newAccessToken = refreshData.accessToken;
+
+          const currentAuthState = cookieStorage.getItem("authState");
+          if (currentAuthState) {
+            const authState: AuthState = JSON.parse(currentAuthState);
+            if (authState && authState.type === "LoggedIn") {
+              cookieStorage.setItem(
+                "authState",
+                JSON.stringify({
+                  ...authState,
+                  accessToken: newAccessToken,
+                }),
+                {
+                  expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7 days
+                  path: "/",
+                  sameSite: "Strict",
+                }
+              );
+            }
+          }
+        }
+      }
       return {
         data: data as ErrorResponse,
         headers: resp.headers,

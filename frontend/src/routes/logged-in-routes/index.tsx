@@ -17,12 +17,6 @@ export const PageWrapper = (props: ParentProps<{}>) => {
   const [workspaceId, setWorkspaceId] = useLastWorkspaceId();
   const toast = useToast();
 
-  console.log(
-    "Rendering PageWrapper with authState:",
-    authState(),
-    authState()?.type === "LoggedOut"
-  );
-
   if (!authState() || authState()?.type === "LoggedOut") {
     console.log("Navigating to /login due to LoggedOut state");
     return <Navigate href="/login" />;

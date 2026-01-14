@@ -55,6 +55,9 @@ import { Workspace } from "./Workspace";
 import { ListAllPermissionsRequest } from "./ListAllPermissionsRequest";
 import { ListAllPermissionsResponse } from "./ListAllPermissionsResponse";
 import { WorkspacePermission } from "./WorkspacePermission";
+import { ErrorType } from "./ErrorType";
+import { RenewAccessTokenRequest } from "./RenewAccessTokenRequest";
+import { RenewAccessTokenResponse } from "./RenewAccessTokenResponse";
 
 export type {
   EnvironmentVariableValue,
@@ -114,4 +117,7 @@ export type {
   ListAllPermissionsRequest,
   ListAllPermissionsResponse,
   WorkspacePermission,
+  ErrorType,
+  RenewAccessTokenRequest,
+  RenewAccessTokenResponse,
 };

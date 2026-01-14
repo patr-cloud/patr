@@ -13,8 +13,11 @@ import ManageWorkspace from "~/pages/workspace/manage-workspace";
 import ListWorkspaces from "~/pages/workspace/list";
 import ManageRoles from "~/pages/workspace/manage-roles";
 import CreateRoles from "~/pages/workspace/create-roles";
+import { useLastWorkspaceId } from "~/hooks/state-hooks";
 
 const WorkspacedLayout = (props: ParentProps<{}>) => {
+  const [workspaceId, setWorkspaceId] = useLastWorkspaceId();
+
   return <>{props.children}</>;
 };
 
