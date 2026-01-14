@@ -33,7 +33,7 @@ where
 				_ = update_sender.send(params.into());
 			});
 
-		let full_sync_interval = if cfg!(debug_assertions) {
+		const FULL_SYNC_INTERVAL: Duration = if cfg!(debug_assertions) {
 			Duration::from_secs(10)
 		} else {
 			Duration::from_secs(60 * 10) // 10 minutes
@@ -82,7 +82,7 @@ where
 					.inspect_err(|err| {
 						error!("Failed to clean up deployment update log: {}", err);
 					});
-					sleep_future = Box::pin(time::sleep(full_sync_interval));
+					sleep_future = Box::pin(time::sleep(FULL_SYNC_INTERVAL));
 				}
 				Either::Right((update, next_sleep)) => {
 					sleep_future = next_sleep;

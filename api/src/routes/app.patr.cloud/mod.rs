@@ -1,6 +1,8 @@
 use std::sync::OnceLock;
 
 use axum::{Router, body::Body, http::Request, response::Response};
+use http::StatusCode;
+use models::{ApiErrorResponse, ApiErrorResponseBody, utils::False};
 
 use crate::{prelude::*, routes::api_patr_cloud};
 
@@ -15,7 +17,16 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.with_state(state.clone())
 		.nest(
 			"/api",
-			api_patr_cloud::setup_routes(state, ClientType::WebDashboard).await,
+			api_patr_cloud::setup_routes(state, ClientType::WebDashboard)
+				.await
+				.fallback(async |req: Request<Body>| ApiErrorResponse {
+					status_code: StatusCode::NOT_FOUND,
+					body: ApiErrorResponseBody {
+						success: False,
+						error: ErrorType::WrongParameters,
+						message: format!("No API route found for {}", req.uri().path()),
+					},
+				}),
 		)
 		.fallback(proxy)
 }
@@ -23,7 +34,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 #[axum::debug_handler]
 async fn proxy(req: Request<Body>) -> Response {
 	let Ok(response) = CLIENT
-		.get_or_init(|| reqwest::Client::new())
+		.get_or_init(reqwest::Client::new)
 		.request(
 			req.method().clone(),
 			format!(

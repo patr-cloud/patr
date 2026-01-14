@@ -18,6 +18,9 @@ pub(super) async fn handle_deployment<E>(
 	E: RunnerExecutor + Send + 'static,
 {
 	loop {
+		if cancellation_token.is_cancelled() {
+			return;
+		}
 		let executor = E::new(&state.config, state.runner_state.clone()).await;
 		let Err(error) = handle_deployment_with_error(
 			deployment_id,
@@ -40,7 +43,12 @@ pub(super) async fn handle_deployment<E>(
 		error!("Error while handling deployment: {}", error);
 
 		// Try again in a second
-		time::sleep(Duration::from_secs(1)).await;
+		let Ok(()) = time::sleep(Duration::from_secs(1))
+			.with_cancel_check_of(&cancellation_token)
+			.await
+		else {
+			return;
+		};
 	}
 }
 
@@ -190,13 +198,21 @@ where
 				// then the deployment was supposed to be running in the first place (or it
 				// couldn't have gotten into an errored state). So start the deployment
 
-				info!("Running the deployment");
+				info!("Running deployment {deployment_id}");
 
 				let (deployment, running_details) =
 					get_local_deployment_info(&state.database, deployment_id).await?;
 				executor
 					.upsert_deployment(WithId::new(deployment_id, deployment), running_details)
-					.await?;
+					.await
+					.inspect_err(|_| {
+						let _ = state.task_status_sender.send(
+							ExecutorStatusUpdate::DeploymentStatusUpdated {
+								deployment_id,
+								status: DeploymentStatus::Errored,
+							},
+						);
+					})?;
 			}
 		}
 
@@ -293,9 +309,9 @@ async fn get_local_deployment_info(
 			(None, Some(secret)) => Some(secret),
 			_ => None,
 		}
-		.ok_or(ErrorType::server_error(
-			"corrupted deployment, cannot find environment variable value",
-		))?;
+		.ok_or_else(|| {
+			ErrorType::server_error("corrupted deployment, cannot find environment variable value")
+		})?;
 
 		Ok((name, value))
 	})

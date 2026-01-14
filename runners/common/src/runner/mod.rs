@@ -270,7 +270,11 @@ where
 				.await
 				.into_make_service_with_connect_info::<SocketAddr>(),
 		)
-		.with_graceful_shutdown(exit_signal())
+		.with_graceful_shutdown(
+			GLOBAL_CANCEL_TOKEN
+				.get_or_init(CancellationToken::new)
+				.cancelled(),
+		)
 		.await
 		.map_err(RunnerError::ServerSetupError)
 	}
