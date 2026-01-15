@@ -244,6 +244,7 @@ const DomainInfo = () => {
     }
 
     toast("Domain deleted successfully", "success");
+    navigate("/domains");
   };
 
   const urlInput = () => {
