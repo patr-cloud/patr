@@ -60,7 +60,7 @@ pub struct GlobalArgs {
 pub enum GlobalCommand {
 	/// Login to your Patr account.
 	#[command(alias = "signin", alias = "sign-in")]
-	Login(login::Args),
+	Login,
 	/// Logout of your Patr account.
 	Logout,
 	/// Get information about the current logged in user.
@@ -83,7 +83,7 @@ pub async fn execute(
 	state: AppState,
 ) -> Result<CommandOutput, AppError> {
 	match command {
-		GlobalCommand::Login(args) => login::execute(args, global_args, state).await,
+		GlobalCommand::Login => login::execute(state).await,
 		GlobalCommand::Logout => logout::execute(global_args, state).await,
 		GlobalCommand::Info => info::execute(global_args, state).await,
 		GlobalCommand::Apply(args) => apply::execute(args, global_args, state).await,

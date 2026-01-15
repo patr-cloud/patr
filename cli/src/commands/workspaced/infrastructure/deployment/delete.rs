@@ -23,7 +23,6 @@ pub async fn execute(
 ) -> Result<CommandOutput, AppError> {
 	let AppState::LoggedIn {
 		token,
-		refresh_token: _,
 		current_workspace,
 	} = state
 	else {

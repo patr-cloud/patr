@@ -1,72 +1,39 @@
-use std::{io::IsTerminal, str::FromStr};
+use std::str::FromStr;
 
-use clap::Args as ClapArgs;
 use inquire::Password;
 use models::{ApiSuccessResponseBody, api::user::*, prelude::*};
 
 use crate::prelude::*;
 
-/// The arguments that can be passed to the login command.
-#[derive(Debug, Clone, ClapArgs)]
-pub struct Args {
-	/// The API token to login with. If not provided, you will be redirected
-	/// to create one in your browser.
-	#[arg(short = 't', long = "token")]
-	pub token: Option<String>,
-}
-
 /// A command that logs the user into their Patr account.
-pub(super) async fn execute(
-	args: Args,
-	global_args: GlobalArgs,
-	_: AppState,
-) -> Result<CommandOutput, AppError> {
+pub(super) async fn execute(_: AppState) -> Result<CommandOutput, AppError> {
 	// Determine the base URL for the app
+	let app_base_url = std::env::var("FRONTEND_BASE_URL");
+
 	let app_base_url = if cfg!(debug_assertions) {
-		"http://localhost:3001"
+		app_base_url.unwrap_or_default()
 	} else {
-		"https://app.patr.cloud"
+		app_base_url.expect("FRONTEND_BASE_URL environment variable is not set")
 	};
 
-	// Check if a token is provided via args or global args
-	let token: Option<String> = args
-		.token
-		.or_else(|| global_args.token.clone())
-		.or_else(|| {
-			// If no token provided and we're in an interactive terminal,
-			// open the browser to the API token creation page
-			if std::io::stdin().is_terminal() {
-				let token_url = format!("{}/profile/api-tokens/new", app_base_url);
+	let token_url = format!("{}/profile/api-tokens/new", app_base_url);
 
-				println!("Opening your browser to create a new API token...");
-				match open::that(&token_url) {
-					Ok(()) => println!("Opened '{}' successfully.", token_url),
-					Err(err) => {
-						eprintln!("An error occurred when opening '{}': {}", token_url, err)
-					}
-				}
-				println!("URL: {}", token_url);
+	println!("Opening your browser to create a new API token...");
+	match open::that(&token_url) {
+		Ok(()) => println!("Opened '{}' successfully.", token_url),
+		Err(_err) => {
+			println!("If the browser did not open, please visit '{}'", token_url)
+		}
+	}
 
-				// Try to open the browser, but don't fail if it doesn't work
-				if let Err(e) = open::that(&token_url) {
-					eprintln!("Failed to open browser: {}", e);
-					eprintln!("Please manually visit: {}", token_url);
-				}
+	println!();
 
-				println!();
-
-				// Prompt for the token
-				let token_input = Password::new("Paste your API token here:")
-					.with_help_message("Create an API token in your browser and paste it here")
-					.without_confirmation()
-					.prompt()
-					.expect_tty("Unable to read API token");
-
-				Some(token_input)
-			} else {
-				None
-			}
-		});
+	// Prompt for the token
+	let token: Option<String> = Password::new("Paste your API token here:")
+		.with_help_message("Create an API token in your browser and paste it here")
+		.without_confirmation()
+		.prompt()
+		.ok();
 
 	// If we still don't have a token, exit with an error
 	let token = match token {
@@ -129,7 +96,6 @@ pub(super) async fn execute(
 	// Save the authenticated state
 	AppState::LoggedIn {
 		token: BearerToken::from_str(&token)?,
-		refresh_token: String::new(), // API tokens don't have refresh tokens
 		current_workspace,
 	}
 	.save()?;

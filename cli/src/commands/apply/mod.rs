@@ -38,7 +38,6 @@ pub async fn execute(
 ) -> Result<CommandOutput, AppError> {
 	let AppState::LoggedIn {
 		token,
-		refresh_token: _,
 		current_workspace,
 	} = state
 	else {
@@ -86,21 +85,9 @@ pub async fn execute(
 		.await
 		.map_err(|err| AppError::IaacParseError(err.to_string()))?;
 
-	let mut resources = Vec::new();
-
-	// Split YAML documents by "---" separator
-	for doc_str in file.split("\n---\n") {
-		let doc_str = doc_str.trim();
-		if doc_str.is_empty() {
-			continue;
-		}
-
-		let resource: IaacResource = serde_yaml2::from_str(doc_str)
-			.map_err(|err| AppError::IaacParseError(format!("Failed to parse YAML: {}", err)))?;
-		resources.push(resource);
-	}
-
-	let resources = resources.deduplicated()?.ordered()?;
+	let deserializer = &mut serde_yaml2::de::YamlDeserializer::from_str(&file).unwrap();
+	let resources = serde_path_to_error::deserialize::<_, Vec<IaacResource>>(deserializer)
+		.map_err(|err| AppError::IaacParseError(err.to_string()))?;
 
 	for resource in resources {
 		// Apply the resource

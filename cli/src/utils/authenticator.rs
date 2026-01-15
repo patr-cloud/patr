@@ -23,7 +23,6 @@ impl WorkspacedArgs {
 		} else {
 			let AppState::LoggedIn {
 				token,
-				refresh_token: _,
 				current_workspace: _,
 			} = state
 			else {
@@ -40,7 +39,6 @@ impl WorkspacedArgs {
 		} else {
 			let AppState::LoggedIn {
 				token: _,
-				refresh_token: _,
 				current_workspace,
 			} = state
 			else {

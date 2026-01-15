@@ -1,12 +1,7 @@
-use std::{
-	fmt::Display,
-	hash::{Hash, Hasher},
-	str::FromStr,
-};
+use std::hash::{Hash, Hasher};
 
 use serde::{Deserialize, Serialize};
 
-use super::IaacError;
 use crate::{iaac::MaybeExternallySourced, prelude::*};
 
 /// The IaaC definition for a managed URL. This is similar to the
@@ -81,39 +76,4 @@ pub enum IaacManagedUrlType {
 		#[serde(default)]
 		http_only: bool,
 	},
-}
-
-impl Display for IaacManagedUrlType {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Self::ProxyDeployment { deployment, port } => {
-				write!(f, "ProxyDeployment({}:{})", deployment, port)
-			}
-			Self::ProxyStaticSite { static_site } => {
-				write!(f, "ProxyStaticSite({})", static_site)
-			}
-			Self::ProxyUrl { url, http_only } => {
-				write!(f, "ProxyUrl({}, http_only={})", url, http_only)
-			}
-			Self::Redirect {
-				url,
-				permanent_redirect,
-				http_only,
-			} => write!(
-				f,
-				"Redirect({}, permanent={}, http_only={})",
-				url, permanent_redirect, http_only
-			),
-		}
-	}
-}
-
-impl FromStr for IaacManagedUrlType {
-	type Err = IaacError;
-
-	fn from_str(_s: &str) -> Result<Self, Self::Err> {
-		Err(IaacError::Unsupported(
-			"IaacManagedUrlType cannot be parsed from string".to_string(),
-		))
-	}
 }

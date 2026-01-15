@@ -206,76 +206,8 @@ pub async fn add_domain_to_workspace(
 
 	match nameserver_type {
 		DomainNameserverType::Internal => {
-			let zone = client
-				.request(&ListZones {
-					params: ListZonesParams {
-						name: Some(domain.clone()),
-						search_match: Some(SearchMatch::Any),
-						..Default::default()
-					},
-				})
-				.await?
-				.result
-				.into_iter()
-				.next();
-
-			if zone.is_none() {
-				client
-					.request(&CreateZone {
-						params: CreateZoneParams {
-							name: &domain,
-							account: &state.config.cloudflare.account_id,
-							jump_start: None,
-							zone_type: Some(ZoneType::Full),
-						},
-					})
-					.await?;
-			}
-
-			let zone_identifier = client
-				.request(&ListZones {
-					params: ListZonesParams {
-						name: Some(domain.clone()),
-						search_match: Some(SearchMatch::Any),
-						..Default::default()
-					},
-				})
-				.await?
-				.result
-				.into_iter()
-				.next()
-				.ok_or_else(|| {
-					ErrorType::server_error("Failed to create or retrieve zone from Cloudflare")
-				})?
-				.id;
-
-			query!(
-				r#"
-                INSERT INTO
-                    patr_controlled_domain(
-                        domain_id,
-                        zone_identifier,
-                        nameserver_type
-                    )
-                VALUES
-                    (
-                        $1,
-                        $2,
-                        $3
-                    );
-                "#,
-				domain_id as _,
-				zone_identifier,
-				nameserver_type as _,
-			)
-			.execute(&mut **database)
-			.await
-			.map_err(|err| match err {
-				sqlx::Error::Database(err) if err.is_unique_violation() => {
-					ErrorType::ResourceAlreadyExists
-				}
-				err => ErrorType::server_error(err),
-			})?;
+			print!("Internal nameservers are not yet supported.");
+			return Err(ErrorType::InternalServerError);
 		}
 		DomainNameserverType::External => {
 			query!(

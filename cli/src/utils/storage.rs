@@ -14,8 +14,6 @@ pub enum AppState {
 	LoggedIn {
 		/// The user's access token
 		token: BearerToken,
-		/// The user's refresh token
-		refresh_token: String,
 		/// The current workspace that is selected by the user
 		current_workspace: Option<Uuid>,
 	},

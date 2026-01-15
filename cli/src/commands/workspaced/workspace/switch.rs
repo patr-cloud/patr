@@ -25,7 +25,6 @@ pub(super) async fn execute(
 ) -> Result<CommandOutput, AppError> {
 	let AppState::LoggedIn {
 		token,
-		refresh_token,
 		current_workspace: _,
 	} = state
 	else {
@@ -71,7 +70,6 @@ pub(super) async fn execute(
 
 	AppState::LoggedIn {
 		token,
-		refresh_token,
 		current_workspace: Some(workspace.id),
 	}
 	.save()?;

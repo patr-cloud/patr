@@ -71,7 +71,7 @@ pub async fn apply(
 		// If the nameserver is external, provide verification instructions
 		if nameserver_type.is_external() {
 			println!(
-				"\nTo verify this domain, you need to add the verification records to your DNS provider."
+				"To verify this domain, you need to add the verification records to your DNS provider."
 			);
 			println!(
 				"Run `patr domain verify {}` for verification instructions.",
