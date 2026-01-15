@@ -9,6 +9,7 @@ import {
 import {
   CreateManagedURLRequest,
   CreateManagedURLResponse,
+  DeleteDomainInWorkspaceResponse,
   GetDomainInfoInWorkspaceResponse,
   ListManagedURLResponse,
 } from "~/bindings";
@@ -29,6 +30,7 @@ import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 import DeploymentOption from "./deployment-option";
 import ManageUrlRow from "./managed-url-component";
+import { Color } from "~/utils/color";
 
 type urlTypeT = "proxyUrl" | "redirect" | "proxyDeployment" | "proxyStaticSite";
 
@@ -50,7 +52,7 @@ const DomainInfo = () => {
     return [authState(), workspaceId(), params.id] as const;
   });
 
-  const [domainInfo] = createResource(
+  const [domainInfo, { refetch: refetchDomainInfo }] = createResource(
     resourceParams,
     async ([auth, wsId, domainId]) => {
       if (!wsId || !auth || auth.type !== "LoggedIn" || !domainId) {
@@ -174,7 +176,35 @@ const DomainInfo = () => {
 
   const onVerifyClick = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
     // Verify domain logic goes here
-    toast("Domain verified successfully", "success");
+    const auth = authState();
+    const wsId = workspaceId();
+    const domainId = params.id;
+
+    if (!wsId || !auth || auth.type !== "LoggedIn" || !domainId) {
+      toast("Unable to verify domain", "error");
+      return;
+    }
+
+    const verifyResp = await httpRequest<GetDomainInfoInWorkspaceResponse>(
+      `${
+        import.meta.env.VITE_BASE_URL
+      }/api/workspace/${wsId}/domain/${domainId}/verify`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!verifyResp.ok) {
+      console.error("Failed to verify domain:", verifyResp.data.error);
+      toast("Failed to verify domain", "error");
+      return;
+    }
+
+    toast("Domain verification initiated", "success");
+    refetchDomainInfo();
 
     setIsVerifying(true);
   };
@@ -198,6 +228,45 @@ const DomainInfo = () => {
     }
   };
 
+  const onClickDelete = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
+    // Delete domain logic goes here
+    const auth = authState();
+    const wsId = workspaceId();
+    const domainId = params.id;
+
+    if (!wsId || !auth || auth.type !== "LoggedIn" || !domainId) {
+      toast("Unable to delete domain", "error");
+      return;
+    }
+
+    const deleteDomainResp = await httpRequest<DeleteDomainInWorkspaceResponse>(
+      `${
+        import.meta.env.VITE_BASE_URL
+      }/api/workspace/${wsId}/domain/${domainId}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!deleteDomainResp.ok) {
+      console.error("Failed to delete domain:", deleteDomainResp.data.error);
+      if (deleteDomainResp.data.error === "resourceInUse") {
+        toast(
+          "Cannot delete domain: Domain is in use by managed URL(s)",
+          "error"
+        );
+        return;
+      }
+      toast("Failed to delete domain", "error");
+      return;
+    }
+
+    toast("Domain deleted successfully", "success");
+  };
+
   return (
     <PageContainer>
       <ErrorBoundary
@@ -213,18 +282,29 @@ const DomainInfo = () => {
             title="Domains"
             titleUrl="/domains"
             subTitle={domainInfo.latest?.name}
-            actions={() =>
-              !domainInfo.latest?.isVerified ? (
+            actions={() => (
+              <>
                 <Button
                   type="button"
-                  onClick={onVerifyClick}
+                  onClick={onClickDelete}
                   variant={ButtonVariant.Contained}
+                  color={Color.Error}
                   disabled={isVerifying()}
                 >
-                  {isVerifying() ? "Verifying..." : "Verify"}
+                  DELETE
                 </Button>
-              ) : undefined
-            }
+                {!domainInfo.latest?.isVerified ? (
+                  <Button
+                    type="button"
+                    onClick={onVerifyClick}
+                    variant={ButtonVariant.Contained}
+                    disabled={isVerifying()}
+                  >
+                    {isVerifying() ? "Verifying..." : "Verify"}
+                  </Button>
+                ) : undefined}
+              </>
+            )}
           />
           <PageContainerBody>
             <form

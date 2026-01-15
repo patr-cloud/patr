@@ -12,8 +12,8 @@ import {
 } from "~/components";
 import EnvInput from "./env-input";
 import { FiChevronDown } from "solid-icons/fi";
-import { Jsx } from "~/utils/func";
 import {
+  Base64String,
   CreateDeploymentRequest,
   CreateDeploymentResponse,
   DeploymentProbe,
@@ -25,9 +25,10 @@ import PortInput from "./port";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
-import { Uuid } from "~/utils/func";
+import { convertFileToNumbers, Uuid } from "~/utils/func";
 import { useToast } from "~/components";
-import ProbeInput from "./probe-input";
+import ProbeInput from "~/pages/deployment/probe-input";
+import ConfigMount, { ConfigMountT } from "~/pages/deployment/config-mount";
 
 const CreateDeploymentPage = () => {
   const [authState] = useAuthState();
@@ -67,6 +68,7 @@ const CreateDeploymentPage = () => {
   const [runner, setRunner] = createSignal<string>("");
   const [imageName, setImageName] = createSignal<string>("");
   const [imageTag, setImageTag] = createSignal<string>("");
+  const [configFiles, setConfigFiles] = createSignal<ConfigMountT>({});
   const [startupProbe, setStartupProbe] = createSignal<
     DeploymentProbe | undefined
   >(undefined);
@@ -94,6 +96,12 @@ const CreateDeploymentPage = () => {
       return;
     }
 
+    let configMounts: Record<string, Base64String> = {};
+    for (const [key, file] of Object.entries(configFiles())) {
+      const byteArray = await convertFileToNumbers(file);
+      configMounts[key] = { data: byteArray };
+    }
+
     const requestBody: CreateDeploymentRequest = {
       name: name(),
       imageName: imageName(),
@@ -109,6 +117,7 @@ const CreateDeploymentPage = () => {
       ports: portList(),
       deployOnCreate: false,
       deployOnPush: false,
+      configMounts,
     };
 
     console.log(requestBody);
@@ -259,6 +268,11 @@ const CreateDeploymentPage = () => {
             <ProbeInput
               probe={[startupProbe, setStartupProbe]}
               ports={Object.keys(portList()).map((port) => parseInt(port))}
+            />
+
+            <ConfigMount
+              selectedFiles={configFiles}
+              setSelectedFiles={setConfigFiles}
             />
           </div>
 

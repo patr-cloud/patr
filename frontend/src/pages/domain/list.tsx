@@ -160,7 +160,7 @@ const ListDomainsPage = () => {
               renderRow={(item) => (
                 <tr
                   onClick={() => navigate(`/domains/${item.id}`)}
-                  class="table-row"
+                  class="table-row cursor-pointer"
                 >
                   <td class="flex-3 flex items-center justify-center">
                     <span class="truncate">{item.id}</span>

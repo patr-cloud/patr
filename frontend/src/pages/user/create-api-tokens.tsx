@@ -96,6 +96,7 @@ const CreateApiTokens = () => {
       tokenExp: toDate() || undefined,
       permissions: workspacePermissions(),
     };
+
     const response = await httpRequest<CreateApiTokenResponse>(
       `${import.meta.env.VITE_BASE_URL}/api/user/api-token`,
       {
@@ -227,37 +228,52 @@ const CreateApiTokens = () => {
                 />
               </div>
 
-              <div class="flex items-start justify-start gap-4 w-full">
-                <InputLabel parentClass="flex-2" label="Super Admin" />
-                <input
-                  class="flex-10"
-                  type={InputType.Checkbox}
-                  checked={
-                    workspacePermissions()?.[selectedWorkspace() || ""]
-                      ?.type === "superAdmin"
-                  }
-                  onChange={(e) => {
-                    const currentPermissions = workspacePermissions() || {};
-                    currentPermissions[selectedWorkspace() || ""] = e
-                      .currentTarget.checked
-                      ? { type: "superAdmin" }
-                      : ({ type: "member" } as WorkspacePermission);
-                    setWorkspacePermissions({ ...currentPermissions });
-                  }}
-                />
-              </div>
+              <Show when={selectedWorkspace()}>
+                <div class="flex items-start justify-start gap-4 w-full">
+                  <InputLabel parentClass="flex-2" label="Super Admin" />
+                  <input
+                    class="flex-10"
+                    type={InputType.Checkbox}
+                    checked={
+                      workspacePermissions()?.[selectedWorkspace() || ""]
+                        ?.type === "superAdmin"
+                    }
+                    onChange={(e) => {
+                      const currentPermissions = workspacePermissions() || {};
+                      currentPermissions[selectedWorkspace() || ""] = e
+                        .currentTarget.checked
+                        ? { type: "superAdmin" }
+                        : ({ type: "member" } as WorkspacePermission);
+                      setWorkspacePermissions({ ...currentPermissions });
+                    }}
+                  />
+                </div>
+              </Show>
 
               <div class="flex flex-col items-start justify-center gap-2 w-full">
                 <InputLabel parentClass="flex-2" label="Workspace Roles" />
                 <Suspense fallback={<div>Loading...</div>}>
                   <Show
-                    when={selectedWorkspaceInfo()}
-                    fallback={
-                      <div class="w-full flex-10">No Workspace Selected</div>
+                    when={
+                      (workspacePermissions()?.[selectedWorkspace() || ""]
+                        ?.type === "member" ||
+                        !workspacePermissions()?.[selectedWorkspace() || ""]) &&
+                      selectedWorkspaceInfo()
                     }
                   >
                     {(workspace) => (
                       <WorkspaceRoles
+                        addPermission={(val) => {
+                          const selectedWS = selectedWorkspace();
+                          const currentPermissions =
+                            workspacePermissions() || {};
+                          if (!selectedWS) return;
+
+                          setWorkspacePermissions({
+                            ...currentPermissions,
+                            [selectedWS]: val,
+                          });
+                        }}
                         class="w-full flex-10"
                         workspace={workspace()}
                       />

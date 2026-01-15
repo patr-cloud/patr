@@ -60,6 +60,9 @@ import { RenewAccessTokenRequest } from "./RenewAccessTokenRequest";
 import { RenewAccessTokenResponse } from "./RenewAccessTokenResponse";
 import { ListApiTokensRequest } from "./ListApiTokensRequest";
 import { ListApiTokensResponse } from "./ListApiTokensResponse";
+import { Base64String } from "./Base64String";
+import { DeleteDomainInWorkspaceRequest } from "./DeleteDomainInWorkspaceRequest";
+import { DeleteDomainInWorkspaceResponse } from "./DeleteDomainInWorkspaceResponse";
 
 export type {
   EnvironmentVariableValue,
@@ -124,4 +127,7 @@ export type {
   RenewAccessTokenResponse,
   ListApiTokensRequest,
   ListApiTokensResponse,
+  Base64String,
+  DeleteDomainInWorkspaceRequest,
+  DeleteDomainInWorkspaceResponse,
 };

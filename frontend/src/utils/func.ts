@@ -42,17 +42,53 @@ const parseCamelCase = (str: string) => {
 // Map resource types to their API endpoints
 const getResourceEndpoint = (type: string) => {
   const endpointMap: Record<string, string> = {
-    "deployment": "deployment",
-    "containerRegistry": "container-registry",
-    "runner": "runner",
-    "staticSite": "static-site",
-    "volume": "volume",
-    "database": "database",
-    "secret": "secret",
-    "domain": "domain",
-    "mangagedUrl": "managed-url",
+    deployment: "deployment",
+    containerRegistry: "container-registry",
+    runner: "runner",
+    staticSite: "static-site",
+    volume: "volume",
+    database: "database",
+    secret: "secret",
+    domain: "domain",
+    mangagedUrl: "managed-url",
   };
   return endpointMap[type];
 };
 
-export { get, Jsx, Uuid, variantBgClass, parseCamelCase, parsePermissionName, getResourceEndpoint };
+const convertFileToNumbers = (file: File): Promise<Array<number>> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const result = reader.result;
+
+      if (result && typeof result === "string") {
+        const b64String = (reader.result as string).replace(
+          /^data:.+;base64,/,
+          ""
+        );
+        const byteArray = Array.from(
+          atob(result)
+            .split("")
+            .map((char) => char.charCodeAt(0))
+        );
+        resolve(byteArray);
+      } else {
+        reject("Failed to read file");
+      }
+    };
+    reader.onerror = () => reject("Error reading file");
+    reader.readAsDataURL(file);
+  });
+};
+
+export {
+  get,
+  Jsx,
+  Uuid,
+  variantBgClass,
+  parseCamelCase,
+  parsePermissionName,
+  getResourceEndpoint,
+  convertFileToNumbers,
+};

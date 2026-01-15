@@ -1,6 +1,6 @@
 import { FiPlus } from "solid-icons/fi";
 import { createMemo, createSignal, mergeProps, Show, Suspense } from "solid-js";
-import { Workspace, type WithId } from "~/bindings";
+import { Workspace, WorkspacePermission, type WithId } from "~/bindings";
 import {
   Button,
   ButtonVariant,
@@ -20,6 +20,8 @@ import { MaybeAccessor } from "~/utils/types";
 interface WorkspaceRolesProps {
   /** The Workspace Info */
   workspace: WithId<Workspace>;
+  /** Add Permission */
+  addPermission: (permission: WorkspacePermission) => void;
   /** Additional Classes to apply */
   class?: MaybeAccessor<string>;
 }
@@ -67,6 +69,49 @@ const WorkspaceRoles = (rawProps: WorkspaceRolesProps) => {
       newSet.add(permissionId);
     }
     setSelectedPermissionIds(newSet);
+  };
+
+  const onClickAdd = () => {
+    console.log("Adding role with details:");
+    console.log("Resource Type:", selectedResourceType());
+    console.log("Permission IDs:", Array.from(selectedPermissionIds()));
+    console.log("Include/Exclude Mode:", includeExcludeMode());
+    console.log("Selected Resources:", Array.from(selectedResources()));
+
+    const workspacePerm = Object.fromEntries(
+      [...selectedPermissionIds()].map((permId) => {
+        const includeMode = includeExcludeMode();
+        let permissionObj;
+        switch (includeMode) {
+          case "all":
+            permissionObj = {
+              permissionType: "exclude" as const,
+              resources: [],
+            };
+            break;
+          case "include":
+            permissionObj = {
+              permissionType: "include" as const,
+              resources: Array.from(selectedResources()),
+            };
+            break;
+          case "exclude":
+            permissionObj = {
+              permissionType: "exclude" as const,
+              resources: Array.from(selectedResources()),
+            };
+            break;
+        }
+        return [permId, permissionObj];
+      })
+    );
+
+    const workspacePermObj = {
+      type: "member" as const,
+      ...workspacePerm,
+    };
+    console.log("Constructed Workspace Permission Object:", workspacePermObj);
+    props.addPermission(workspacePermObj as WorkspacePermission);
   };
 
   return (
@@ -191,7 +236,11 @@ const WorkspaceRoles = (rawProps: WorkspaceRolesProps) => {
           </Show>
 
           <div class="flex items-end justify-center flex-[0.5]">
-            <Button type="button" variant={ButtonVariant.Contained}>
+            <Button
+              onClick={onClickAdd}
+              type="button"
+              variant={ButtonVariant.Contained}
+            >
               <FiPlus />
             </Button>
           </div>
