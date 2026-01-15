@@ -27,7 +27,7 @@ import {
   WorkspacePermission,
 } from "~/bindings";
 import { useToast } from "~/components/toast";
-import WorkspaceRoles from "./workspace-roles";
+import WorkspaceRoles from "~/pages/user/workspace-roles";
 import { FiCopy } from "solid-icons/fi";
 import { ModalContainer } from "~/components/modal";
 import { useNavigate } from "@solidjs/router";

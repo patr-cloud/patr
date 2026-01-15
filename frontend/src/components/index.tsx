@@ -21,9 +21,10 @@ import { ToastProvider, useToast } from "~/components/toast";
 import Turnstile from "~/components/turnstile";
 import { UserSearchInput } from "~/components/user-search-input";
 import ToggleSwitch from "~/components/toggle-switch";
-import Modal from "./modal";
-import Link from "./link";
-import ListResources from "./list-resources";
+import Modal from "~/components/modal";
+import Link from "~/components/link";
+import ListResources from "~/components/list-resources";
+import DeleteModal from "~/components/modal/delete-resource-modal";
 
 export {
   Alert,
@@ -52,4 +53,5 @@ export {
   Link,
   type InputEventT,
   ListResources,
+  DeleteModal,
 };

@@ -19,11 +19,13 @@ import { MaybeAccessor } from "~/utils/types";
 
 interface WorkspaceRolesProps {
   /** The Workspace Info */
-  workspace: WithId<Workspace>;
+  workspace: MaybeAccessor<string>;
   /** Add Permission */
   addPermission: (permission: WorkspacePermission) => void;
   /** Additional Classes to apply */
   class?: MaybeAccessor<string>;
+  /** Existing Permission */
+  existingPermission?: MaybeAccessor<WorkspacePermission>;
 }
 
 const WorkspaceRoles = (rawProps: WorkspaceRolesProps) => {
@@ -38,7 +40,7 @@ const WorkspaceRoles = (rawProps: WorkspaceRolesProps) => {
     new Set()
   );
 
-  const [permissions] = useFetchPermissions(props.workspace.id);
+  const [permissions] = useFetchPermissions(get(props.workspace));
   const [includeExcludeMode, setIncludeExcludeMode] = createSignal<
     "all" | "include" | "exclude"
   >("all");
@@ -121,9 +123,9 @@ const WorkspaceRoles = (rawProps: WorkspaceRolesProps) => {
           <div class="text-gray-400 text-sm">Loading permissions...</div>
         }
       >
-        <div class={`flex gap-3 ${get(props.class)}`}>
+        <div class={`flex gap-3 items-center ${get(props.class)}`}>
           {/* column 1: resource types */}
-          <div class="flex flex-[2.5] flex-col gap-3">
+          <div class={`flex flex-[2.5] flex-col gap-3`}>
             <InputDropdown
               onSelect={(val) => {
                 console.log(val);
@@ -227,7 +229,7 @@ const WorkspaceRoles = (rawProps: WorkspaceRolesProps) => {
           >
             <div class="flex flex-col gap-[2.5]">
               <ListResources
-                workspaceId={() => props.workspace.id}
+                workspaceId={props.workspace}
                 resourceType={selectedResourceType}
                 selectedResources={selectedResources}
                 toggleResource={toggleResource}
@@ -235,7 +237,7 @@ const WorkspaceRoles = (rawProps: WorkspaceRolesProps) => {
             </div>
           </Show>
 
-          <div class="flex items-end justify-center flex-[0.5]">
+          <div class="flex items-end justify-center">
             <Button
               onClick={onClickAdd}
               type="button"

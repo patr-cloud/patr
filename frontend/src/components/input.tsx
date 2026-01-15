@@ -222,7 +222,9 @@ export const FileInput = (props: InputProps) => {
     <Input
       innerClass="input-file"
       startIcon={() => (
-        <p class="w-full flex items-center bg-secondary-medium">Choose File</p>
+        <p class="w-3/4 h-full p-xs flex items-center justify-center bg-secondary-medium">
+          Choose File
+        </p>
       )}
       {...props}
       type={InputType.File}

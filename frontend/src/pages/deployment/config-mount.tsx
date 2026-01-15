@@ -1,4 +1,4 @@
-import { FiPlus } from "solid-icons/fi";
+import { FiPlus, FiTrash } from "solid-icons/fi";
 import { Accessor, createSignal, For, Setter } from "solid-js";
 import {
   Button,
@@ -9,7 +9,9 @@ import {
   InputType,
 } from "~/components";
 import { FileInput } from "~/components/input";
-import { EventT } from "~/utils/types";
+import { Color } from "~/utils/color";
+import { get } from "~/utils/func";
+import { EventT, MaybeAccessor } from "~/utils/types";
 
 const MAX_SIZE_BYTES = 1 * 1024 * 1024; // 1 MB
 
@@ -19,7 +21,7 @@ export interface ConfigMountT {
 
 interface ConfigMountProps {
   /** The current value */
-  selectedFiles: Accessor<ConfigMountT>;
+  selectedFiles: MaybeAccessor<ConfigMountT>;
   setSelectedFiles: Setter<ConfigMountT>;
 }
 
@@ -36,12 +38,14 @@ const ConfigMount = (props: ConfigMountProps) => {
       const file = files[0];
 
       if (file && file.size <= MAX_SIZE_BYTES) setNewFileContent(file);
+
+      if (newFileName() && newFileContent()) {
+        addConfig();
+      }
     }
   };
 
-  const addConfig = (e: EventT<MouseEvent, HTMLButtonElement>) => {
-    e.preventDefault();
-
+  const addConfig = () => {
     const fileContent = newFileContent();
     const fileName = newFileName().trim();
 
@@ -56,16 +60,19 @@ const ConfigMount = (props: ConfigMountProps) => {
     }
 
     props.setSelectedFiles({
-      ...props.selectedFiles(),
+      ...get(props.selectedFiles),
       [fileName]: fileContent,
     });
+
+    setNewFileName("");
+    setNewFileContent(null);
   };
 
   return (
     <div class="flex flex-col gap-0 w-full">
       <div class="flex gap-8 items-center w-full">
         <InputLabel parentClass="flex-2" label="Config File" />
-        <div class="flex-10 flex items-center gap-4 w-full">
+        <section class="flex-10 flex items-center gap-3 w-full">
           <Input
             type={InputType.Text}
             onInput={(e) => setNewFileName(e.currentTarget.value)}
@@ -87,24 +94,29 @@ const ConfigMount = (props: ConfigMountProps) => {
             type="button"
             variant={ButtonVariant.Contained}
             class="flex-1"
-            onClick={addConfig}
+            onClick={(e) => {
+              e.preventDefault();
+              addConfig();
+            }}
           >
             <FiPlus size={16} />
           </Button>
-        </div>
+        </section>
       </div>
 
-      <For each={Object.entries(props.selectedFiles())}>
+      {error() ? <p class="text-sm text-error mt-1 ml-20">{error()}</p> : <></>}
+
+      <For each={Object.entries(get(props.selectedFiles))}>
         {([fileName, file]) => (
-          <div class="flex gap-8 items-center w-full mt-4">
+          <div class="flex gap-8 items-center w-full mt-3">
             <div class="flex-2"></div>
-            <section class="flex-10 flex items-center gap-4 w-full">
+            <section class="flex-10 flex items-center gap-3 w-full">
               <Input
                 type={InputType.Text}
                 onInput={(e) => {
                   const newFileName = e.currentTarget.value;
 
-                  const currentFiles = props.selectedFiles();
+                  const currentFiles = get(props.selectedFiles);
                   const newFiles = { ...currentFiles };
 
                   // Remove old key and add new key
@@ -126,6 +138,26 @@ const ConfigMount = (props: ConfigMountProps) => {
                 placeholder="Select Config File"
                 disabled
               />
+
+              <Button
+                type="button"
+                variant={ButtonVariant.Contained}
+                color={Color.Error}
+                class="flex-1"
+                onClick={(e) => {
+                  e.preventDefault();
+
+                  const currentFiles = get(props.selectedFiles);
+                  const newFiles = { ...currentFiles };
+
+                  // Remove the selected file
+                  delete newFiles[fileName];
+
+                  props.setSelectedFiles(newFiles);
+                }}
+              >
+                <FiTrash size={16} />
+              </Button>
             </section>
           </div>
         )}

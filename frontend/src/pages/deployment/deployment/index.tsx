@@ -1,9 +1,16 @@
-import { useParams, useSearchParams } from "@solidjs/router";
-import { createMemo, createResource, ErrorBoundary, Suspense } from "solid-js";
+import { useNavigate, useParams, useSearchParams } from "@solidjs/router";
+import {
+  createMemo,
+  createResource,
+  createSignal,
+  ErrorBoundary,
+  Suspense,
+} from "solid-js";
 import { GetDeploymentInfoResponse } from "~/bindings";
 import {
   Button,
   ButtonVariant,
+  DeleteModal,
   HeadTab,
   PageContainer,
   PageContainerBody,
@@ -24,6 +31,7 @@ const DeploymentInfo = () => {
   const [authState] = useAuthState();
   const [workspaceId] = useLastWorkspaceId();
   const toast = useToast();
+  const navigate = useNavigate();
 
   const resourceParamsDeployment = createMemo(() => {
     return [authState(), workspaceId(), params.id] as const;
@@ -145,6 +153,13 @@ const DeploymentInfo = () => {
       }
     );
     console.log("Delete deployment response:", resp);
+    if (!resp.ok) {
+      toast("Failed to delete deployment", "error");
+      return;
+    }
+
+    toast("Deployment deleted successfully", "success");
+    navigate("/deployments");
   };
 
   const Cta = () => {
@@ -213,12 +228,19 @@ const DeploymentInfo = () => {
           </Suspense>
         }
         actions={() => (
-          <div class="flex items-center justify-end gap-8">
+          <div class="flex items-center justify-end gap-3">
             <Suspense fallback={<div>Loading actions...</div>}>
               {Cta()}
-              <Button onClick={onClickDelete} variant={ButtonVariant.Contained}>
-                DELETE
-              </Button>
+
+              {deploymentInfo() &&
+                deploymentInfo()?.name &&
+                deploymentInfo()!.status === "stopped" && (
+                  <DeleteModal
+                    title="Do You Really Want to Delete This Deployment?"
+                    resourceName={deploymentInfo()?.name || ""}
+                    onClickDelete={onClickDelete}
+                  />
+                )}
             </Suspense>
           </div>
         )}

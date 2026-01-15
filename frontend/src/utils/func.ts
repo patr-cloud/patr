@@ -55,7 +55,7 @@ const getResourceEndpoint = (type: string) => {
   return endpointMap[type];
 };
 
-const convertFileToNumbers = (file: File): Promise<Array<number>> => {
+const convertFileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
@@ -63,16 +63,10 @@ const convertFileToNumbers = (file: File): Promise<Array<number>> => {
       const result = reader.result;
 
       if (result && typeof result === "string") {
-        const b64String = (reader.result as string).replace(
-          /^data:.+;base64,/,
-          ""
-        );
-        const byteArray = Array.from(
-          atob(result)
-            .split("")
-            .map((char) => char.charCodeAt(0))
-        );
-        resolve(byteArray);
+        // Remove the data URL prefix to get just the base64 string
+        const b64String = result.replace(/^data:.+;base64,/, "");
+        
+        resolve(b64String);
       } else {
         reject("Failed to read file");
       }
@@ -90,5 +84,5 @@ export {
   parseCamelCase,
   parsePermissionName,
   getResourceEndpoint,
-  convertFileToNumbers,
+  convertFileToBase64,
 };

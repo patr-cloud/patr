@@ -1,10 +1,21 @@
 import { FiX } from "solid-icons/fi";
-import { JSX, ParentProps, createSignal, mergeProps } from "solid-js";
+import {
+  Accessor,
+  JSX,
+  ParentProps,
+  Setter,
+  createSignal,
+  mergeProps,
+} from "solid-js";
 import { Portal } from "solid-js/web";
 
 interface ModalProps {
   renderTrigger: (setClose: (prev: boolean) => void) => JSX.Element;
   renderModalContent: (setClose: (prev: boolean) => void) => JSX.Element;
+  /** External signal to control modal open/closed state (optional) */
+  isOpen?: Accessor<boolean>;
+  /** External setter to control modal open/closed state (optional) */
+  setIsOpen?: Setter<boolean>;
 }
 
 interface ModalContainerProps {
@@ -31,7 +42,7 @@ const ModalContainer = (rawProps: ParentProps<ModalContainerProps>) => {
         height: props.height || "auto",
         ...props.style,
       }}
-      class={`relative bg-secondary-light rounded-xs p-6 w-full mx-4 min-h-[200px] min-w-[300px] shadow-lg ${props.class}`}
+      class={`relative bg-secondary-light rounded-xs p-6 w-full mx-4 min-w-75 shadow-lg ${props.class}`}
     >
       <button
         onClick={() => props.closeFn(false)}
@@ -44,8 +55,17 @@ const ModalContainer = (rawProps: ParentProps<ModalContainerProps>) => {
   );
 };
 
-const Modal = ({ renderTrigger, renderModalContent }: ModalProps) => {
-  const [isOpen, setIsOpen] = createSignal(false);
+const Modal = ({
+  renderTrigger,
+  renderModalContent,
+  isOpen: externalIsOpen,
+  setIsOpen: externalSetIsOpen,
+}: ModalProps) => {
+  const [internalIsOpen, internalSetIsOpen] = createSignal(false);
+
+  // Use external state if provided, otherwise use internal state
+  const isOpen = externalIsOpen || internalIsOpen;
+  const setIsOpen = externalSetIsOpen || internalSetIsOpen;
 
   return (
     <>
