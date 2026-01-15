@@ -75,7 +75,7 @@ const Toast = (props: {
 
   return (
     <div
-      class={`${backgroundColor} text-white rounded-xs min-h-16 min-w-60 flex items-center justify-start gap-2 max-h-12 p-sm text-sm ${
+      class={`${backgroundColor} text-white rounded-xs min-h-16 min-w-60 flex items-center justify-start gap-2 max-h-12 p-sm pr-md text-sm ${
         toast.dismissible ? "cursor-pointer" : ""
       }`}
       onClick={handleClick}

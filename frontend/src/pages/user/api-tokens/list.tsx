@@ -1,4 +1,4 @@
-import { A } from "@solidjs/router";
+import { A, useNavigate } from "@solidjs/router";
 import { createMemo, createResource, Suspense } from "solid-js";
 import { ListApiTokensResponse } from "~/bindings";
 import {
@@ -16,6 +16,7 @@ const ListApiTokens = () => {
   const [authState] = useAuthState();
   const [workspaceId] = useLastWorkspaceId();
   const toast = useToast();
+  const navigate = useNavigate();
 
   const fetchParams = createMemo(() => {
     return [authState(), workspaceId()] as const;
@@ -39,9 +40,6 @@ const ListApiTokens = () => {
       return { tokens: [] };
     }
 
-    console.log("Fetched API Tokens:", response.data);
-
-    // Fetch deployments logic goes here
     return { tokens: response.data.tokens };
   });
 
@@ -60,7 +58,12 @@ const ListApiTokens = () => {
             headings={["Token Name", "Created", "Expiry"]}
             rows={apiTokens()?.tokens || []}
             renderRow={(token) => (
-              <tr class="table-row">
+              <tr
+                onClick={() => {
+                  navigate(`/profile/api-tokens/${token.id}`);
+                }}
+                class="table-row cursor-pointer"
+              >
                 <td class="flex-4 flex items-center justify-center">
                   {token.name}
                 </td>

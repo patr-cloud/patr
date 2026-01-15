@@ -1,4 +1,4 @@
-import { useParams } from "@solidjs/router";
+import { useNavigate, useParams } from "@solidjs/router";
 import {
   createMemo,
   createResource,
@@ -16,6 +16,7 @@ import {
 import {
   Button,
   ButtonVariant,
+  DeleteModal,
   Input,
   InputDropdown,
   PageContainer,
@@ -30,7 +31,6 @@ import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 import DeploymentOption from "./deployment-option";
 import ManageUrlRow from "./managed-url-component";
-import { Color } from "~/utils/color";
 
 type urlTypeT = "proxyUrl" | "redirect" | "proxyDeployment" | "proxyStaticSite";
 
@@ -40,6 +40,7 @@ const DomainInfo = () => {
   const [authState] = useAuthState();
   const [workspaceId] = useLastWorkspaceId();
   const toast = useToast();
+  const navigate = useNavigate();
   const [isVerifying, setIsVerifying] = createSignal(false);
 
   const [subDomain, setSubDomain] = createSignal("");
@@ -68,7 +69,6 @@ const DomainInfo = () => {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${auth.accessToken}`,
           },
         }
       );
@@ -79,7 +79,6 @@ const DomainInfo = () => {
         return;
       }
 
-      console.log("Fetched domain info:", resource.data);
       return resource.data;
     }
   );
@@ -103,7 +102,6 @@ const DomainInfo = () => {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${auth.accessToken}`,
           },
         }
       );
@@ -114,7 +112,6 @@ const DomainInfo = () => {
         return;
       }
 
-      console.log("Fetched managed URLs:", resource.data);
       return resource.data;
     }
   );
@@ -158,7 +155,6 @@ const DomainInfo = () => {
         body: JSON.stringify(requestBody),
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${auth.accessToken}`,
         },
       }
     );
@@ -209,25 +205,6 @@ const DomainInfo = () => {
     setIsVerifying(true);
   };
 
-  const urlInput = () => {
-    const urlTypeVal = urlType();
-    switch (urlTypeVal) {
-      case "proxyDeployment":
-        return (
-          <DeploymentOption
-            deployment={target()}
-            onSelectDeployment={(value) => setTarget(value)}
-            port={deploymentPort() || 80}
-            onPortChange={(port) => setDeploymentPort(port)}
-          />
-        );
-      default:
-        return (
-          <Input disabled={true} placeholder="Select URL Type" class="flex-4" />
-        );
-    }
-  };
-
   const onClickDelete = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
     // Delete domain logic goes here
     const auth = authState();
@@ -258,13 +235,34 @@ const DomainInfo = () => {
           "Cannot delete domain: Domain is in use by managed URL(s)",
           "error"
         );
+        navigate("/domains");
         return;
       }
       toast("Failed to delete domain", "error");
+      navigate("/domains");
       return;
     }
 
     toast("Domain deleted successfully", "success");
+  };
+
+  const urlInput = () => {
+    const urlTypeVal = urlType();
+    switch (urlTypeVal) {
+      case "proxyDeployment":
+        return (
+          <DeploymentOption
+            deployment={target()}
+            onSelectDeployment={(value) => setTarget(value)}
+            port={deploymentPort() || 80}
+            onPortChange={(port) => setDeploymentPort(port)}
+          />
+        );
+      default:
+        return (
+          <Input disabled={true} placeholder="Select URL Type" class="flex-4" />
+        );
+    }
   };
 
   return (
@@ -284,15 +282,11 @@ const DomainInfo = () => {
             subTitle={domainInfo.latest?.name}
             actions={() => (
               <div class="flex items-center justify-center gap-2">
-                <Button
-                  type="button"
-                  onClick={onClickDelete}
-                  variant={ButtonVariant.Contained}
-                  color={Color.Error}
-                  disabled={isVerifying()}
-                >
-                  DELETE
-                </Button>
+                <DeleteModal
+                  title="Delete Domain"
+                  onClickDelete={onClickDelete}
+                  resourceName={domainInfo.latest?.name || ""}
+                />
                 {!domainInfo.latest?.isVerified ? (
                   <Button
                     type="button"

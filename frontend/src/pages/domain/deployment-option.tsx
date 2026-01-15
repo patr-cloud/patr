@@ -31,7 +31,6 @@ const DeploymentOption = (props: DeploymentOptionProps) => {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${auth.accessToken}`,
         },
       }
     );
@@ -40,8 +39,6 @@ const DeploymentOption = (props: DeploymentOptionProps) => {
       console.error("Failed to fetch deployments:", response.data.error);
       return { deployments: [] };
     }
-
-    console.log("Fetched deployments:", response.data);
 
     // Fetch deployments logic goes here
     return { deployments: response.data.deployments };

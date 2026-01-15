@@ -137,8 +137,8 @@ const CreateApiTokens = () => {
   return (
     <PageContainer>
       <PageContainerHead
-        title="User"
-        titleUrl="/profile/api-tokens/new"
+        title="API Tokens"
+        titleUrl="/profile/api-tokens"
         subTitle="Create API Token"
       />
       <PageContainerBody class="flex flex-col justify-between gap-8">
