@@ -1233,6 +1233,7 @@ packages:
 
   dax-sh@0.43.2:
     resolution: {integrity: sha512-uULa1sSIHgXKGCqJ/pA0zsnzbHlVnuq7g8O2fkHokWFNwEGIhh5lAJlxZa1POG5En5ba7AU4KcBAvGQWMMf8rg==}
+    deprecated: This package has moved to simply be 'dax' instead of 'dax-sh'
 
   db0@0.3.4:
     resolution: {integrity: sha512-RiXXi4WaNzPTHEOu8UPQKMooIbqOEyqA1t7Z6MsdxSCeb8iUC9ko3LcmsLmeUt2SM5bctfArZKkRQggKZz7JNw==}
@@ -1320,8 +1321,8 @@ packages:
   devlop@1.1.0:
     resolution: {integrity: sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==}
 
-  diff@8.0.2:
-    resolution: {integrity: sha512-sSuxWU5j5SR9QQji/o2qMvqRNYRDOcBTgsJ/DeCf4iSN4gW+gNMXM7wFIP+fdXZxoNiAnHUTGjCr+TSWXdRDKg==}
+  diff@8.0.3:
+    resolution: {integrity: sha512-qejHi7bcSD4hQAZE0tNAawRK1ZtafHDmMTMkrrIGgSLl7hTnQHmKCeB45xAcbfTqK2zowkM3j3bHt/4b/ARbYQ==}
     engines: {node: '>=0.3.1'}
 
   dijkstrajs@1.0.3:
@@ -3509,7 +3510,7 @@ snapshots:
       '@babel/parser': 7.28.5
       '@babel/preset-typescript': 7.28.5(@babel/core@7.28.5)
       ansis: 4.2.0
-      diff: 8.0.2
+      diff: 8.0.3
       pathe: 2.0.3
       tinyglobby: 0.2.15
     transitivePeerDependencies:
@@ -3963,7 +3964,7 @@ snapshots:
     dependencies:
       dequal: 2.0.3
 
-  diff@8.0.2: {}
+  diff@8.0.3: {}
 
   dijkstrajs@1.0.3: {}
 
