@@ -55,6 +55,18 @@ import { Workspace } from "./Workspace";
 import { ListAllPermissionsRequest } from "./ListAllPermissionsRequest";
 import { ListAllPermissionsResponse } from "./ListAllPermissionsResponse";
 import { WorkspacePermission } from "./WorkspacePermission";
+import { ErrorType } from "./ErrorType";
+import { RenewAccessTokenRequest } from "./RenewAccessTokenRequest";
+import { RenewAccessTokenResponse } from "./RenewAccessTokenResponse";
+import { ListApiTokensRequest } from "./ListApiTokensRequest";
+import { ListApiTokensResponse } from "./ListApiTokensResponse";
+import { Base64String } from "./Base64String";
+import { DeleteDomainInWorkspaceRequest } from "./DeleteDomainInWorkspaceRequest";
+import { DeleteDomainInWorkspaceResponse } from "./DeleteDomainInWorkspaceResponse";
+import { GetApiTokenInfoRequest } from "./GetApiTokenInfoRequest";
+import { GetApiTokenInfoResponse } from "./GetApiTokenInfoResponse";
+import { RevokeApiTokenResponse } from "./RevokeApiTokenResponse";
+import { RevokeApiTokenRequest } from "./RevokeApiTokenRequest";
 
 export type {
   EnvironmentVariableValue,
@@ -114,4 +126,16 @@ export type {
   ListAllPermissionsRequest,
   ListAllPermissionsResponse,
   WorkspacePermission,
+  ErrorType,
+  RenewAccessTokenRequest,
+  RenewAccessTokenResponse,
+  ListApiTokensRequest,
+  ListApiTokensResponse,
+  Base64String,
+  DeleteDomainInWorkspaceRequest,
+  DeleteDomainInWorkspaceResponse,
+  GetApiTokenInfoRequest,
+  GetApiTokenInfoResponse,
+  RevokeApiTokenRequest,
+  RevokeApiTokenResponse,
 };

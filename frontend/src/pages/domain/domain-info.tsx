@@ -1,4 +1,4 @@
-import { useParams } from "@solidjs/router";
+import { useNavigate, useParams } from "@solidjs/router";
 import {
   createMemo,
   createResource,
@@ -9,12 +9,14 @@ import {
 import {
   CreateManagedURLRequest,
   CreateManagedURLResponse,
+  DeleteDomainInWorkspaceResponse,
   GetDomainInfoInWorkspaceResponse,
   ListManagedURLResponse,
 } from "~/bindings";
 import {
   Button,
   ButtonVariant,
+  DeleteModal,
   Input,
   InputDropdown,
   PageContainer,
@@ -38,6 +40,7 @@ const DomainInfo = () => {
   const [authState] = useAuthState();
   const [workspaceId] = useLastWorkspaceId();
   const toast = useToast();
+  const navigate = useNavigate();
   const [isVerifying, setIsVerifying] = createSignal(false);
 
   const [subDomain, setSubDomain] = createSignal("");
@@ -50,7 +53,7 @@ const DomainInfo = () => {
     return [authState(), workspaceId(), params.id] as const;
   });
 
-  const [domainInfo] = createResource(
+  const [domainInfo, { refetch: refetchDomainInfo }] = createResource(
     resourceParams,
     async ([auth, wsId, domainId]) => {
       if (!wsId || !auth || auth.type !== "LoggedIn" || !domainId) {
@@ -66,7 +69,6 @@ const DomainInfo = () => {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${auth.accessToken}`,
           },
         }
       );
@@ -77,7 +79,6 @@ const DomainInfo = () => {
         return;
       }
 
-      console.log("Fetched domain info:", resource.data);
       return resource.data;
     }
   );
@@ -101,7 +102,6 @@ const DomainInfo = () => {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${auth.accessToken}`,
           },
         }
       );
@@ -112,7 +112,6 @@ const DomainInfo = () => {
         return;
       }
 
-      console.log("Fetched managed URLs:", resource.data);
       return resource.data;
     }
   );
@@ -156,7 +155,6 @@ const DomainInfo = () => {
         body: JSON.stringify(requestBody),
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${auth.accessToken}`,
         },
       }
     );
@@ -174,9 +172,79 @@ const DomainInfo = () => {
 
   const onVerifyClick = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
     // Verify domain logic goes here
-    toast("Domain verified successfully", "success");
+    const auth = authState();
+    const wsId = workspaceId();
+    const domainId = params.id;
+
+    if (!wsId || !auth || auth.type !== "LoggedIn" || !domainId) {
+      toast("Unable to verify domain", "error");
+      return;
+    }
+
+    const verifyResp = await httpRequest<GetDomainInfoInWorkspaceResponse>(
+      `${
+        import.meta.env.VITE_BASE_URL
+      }/api/workspace/${wsId}/domain/${domainId}/verify`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!verifyResp.ok) {
+      console.error("Failed to verify domain:", verifyResp.data.error);
+      toast("Failed to verify domain", "error");
+      return;
+    }
+
+    toast("Domain verification initiated", "success");
+    refetchDomainInfo();
 
     setIsVerifying(true);
+  };
+
+  const onClickDelete = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
+    // Delete domain logic goes here
+    const auth = authState();
+    const wsId = workspaceId();
+    const domainId = params.id;
+
+    if (!wsId || !auth || auth.type !== "LoggedIn" || !domainId) {
+      toast("Unable to delete domain", "error");
+      return;
+    }
+
+    const deleteDomainResp = await httpRequest<DeleteDomainInWorkspaceResponse>(
+      `${
+        import.meta.env.VITE_BASE_URL
+      }/api/workspace/${wsId}/domain/${domainId}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!deleteDomainResp.ok) {
+      console.error("Failed to delete domain:", deleteDomainResp.data.error);
+      if (deleteDomainResp.data.error === "resourceInUse") {
+        toast(
+          "Cannot delete domain: Domain is in use by managed URL(s)",
+          "error"
+        );
+        navigate("/domains");
+        return;
+      }
+      toast("Failed to delete domain", "error");
+      navigate("/domains");
+      return;
+    }
+
+    toast("Domain deleted successfully", "success");
+    navigate("/domains");
   };
 
   const urlInput = () => {
@@ -213,18 +281,25 @@ const DomainInfo = () => {
             title="Domains"
             titleUrl="/domains"
             subTitle={domainInfo.latest?.name}
-            actions={() =>
-              !domainInfo.latest?.isVerified ? (
-                <Button
-                  type="button"
-                  onClick={onVerifyClick}
-                  variant={ButtonVariant.Contained}
-                  disabled={isVerifying()}
-                >
-                  {isVerifying() ? "Verifying..." : "Verify"}
-                </Button>
-              ) : undefined
-            }
+            actions={() => (
+              <div class="flex items-center justify-center gap-2">
+                <DeleteModal
+                  title="Delete Domain"
+                  onClickDelete={onClickDelete}
+                  resourceName={domainInfo.latest?.name || ""}
+                />
+                {!domainInfo.latest?.isVerified ? (
+                  <Button
+                    type="button"
+                    onClick={onVerifyClick}
+                    variant={ButtonVariant.Contained}
+                    disabled={isVerifying()}
+                  >
+                    {isVerifying() ? "Verifying..." : "Verify"}
+                  </Button>
+                ) : undefined}
+              </div>
+            )}
           />
           <PageContainerBody>
             <form

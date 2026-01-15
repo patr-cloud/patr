@@ -2,6 +2,7 @@ import {
   createMemo,
   createResource,
   createSignal,
+  For,
   Show,
   Suspense,
 } from "solid-js";
@@ -12,10 +13,10 @@ import {
   InputDropdown,
   InputLabel,
   InputType,
+  Modal,
   PageContainer,
   PageContainerBody,
   PageContainerHead,
-  Table,
 } from "~/components";
 import { httpRequest } from "~/utils/http-request";
 import { useAuthState } from "~/hooks";
@@ -23,11 +24,13 @@ import {
   CreateApiTokenRequest,
   CreateApiTokenResponse,
   ListUserWorkspacesResponse,
-  WithId,
   WorkspacePermission,
 } from "~/bindings";
 import { useToast } from "~/components/toast";
-import WorkspaceRoles from "./workspace-roles";
+import WorkspaceRoles from "~/pages/user/workspace-roles";
+import { FiCopy } from "solid-icons/fi";
+import { ModalContainer } from "~/components/modal";
+import { useNavigate } from "@solidjs/router";
 
 export interface WorkspacePermissions {
   [workspaceId: string]: WorkspacePermission;
@@ -36,6 +39,11 @@ export interface WorkspacePermissions {
 const CreateApiTokens = () => {
   const [authState, _] = useAuthState();
   const toast = useToast();
+  const navigate = useNavigate();
+
+  const [openCopyModal, setOpenCopyModal] = createSignal<boolean>(false);
+  const [apiToken, setApiToken] = createSignal<string>("");
+
   const [workspaces] = createResource(authState, async (auth) => {
     const response = await httpRequest<ListUserWorkspacesResponse>(
       `${import.meta.env.VITE_BASE_URL}/api/user/workspaces`,
@@ -90,13 +98,14 @@ const CreateApiTokens = () => {
       toDate: toDate(),
     });
 
+    // @ts-ignore
     const requestBody: CreateApiTokenRequest = {
       name: name(),
-      created: new Date(),
       tokenNbf: fromDate() || undefined,
       tokenExp: toDate() || undefined,
       permissions: workspacePermissions(),
     };
+
     const response = await httpRequest<CreateApiTokenResponse>(
       `${import.meta.env.VITE_BASE_URL}/api/user/api-token`,
       {
@@ -112,13 +121,24 @@ const CreateApiTokens = () => {
     );
 
     console.log("API Token created successfully:", response.data);
+
+    if (!response.ok) {
+      console.error("Failed to create API token:", response.data.error);
+      toast("Failed to create API token", "error");
+      return;
+    }
+
+    if (response?.data?.token) {
+      setOpenCopyModal(true);
+      setApiToken(response.data.token);
+    }
   };
 
   return (
     <PageContainer>
       <PageContainerHead
-        title="User"
-        titleUrl="/profile/api-tokens/new"
+        title="API Tokens"
+        titleUrl="/profile/api-tokens"
         subTitle="Create API Token"
       />
       <PageContainerBody class="flex flex-col justify-between gap-8">
@@ -209,12 +229,16 @@ const CreateApiTokens = () => {
             </div>
 
             <div class="flex flex-col gap-2 items-center w-full">
-              <div class="flex gap-8 items-start justify-center w-full">
+              {/* Workspace Selection Section */}
+              <div class="flex gap-8 items-center justify-center w-full">
                 <InputLabel parentClass="flex-2" label="Workspace" />
                 <InputDropdown
                   placeholder="Select Workspace Type"
                   class="flex-10"
-                  onSelect={(val) => setSelectedWorkspace(val)}
+                  onSelect={(val) => {
+                    console.log(val);
+                    setSelectedWorkspace(val);
+                  }}
                   value={selectedWorkspace()}
                   options={() =>
                     workspaces()?.workspaces.map((ws) => ({
@@ -225,53 +249,87 @@ const CreateApiTokens = () => {
                 />
               </div>
 
-              <div class="flex flex-col items-start justify-center gap-2 w-full">
-                <InputLabel parentClass="flex-2" label="Workspace Roles" />
-                <input
-                  class="flex-10"
-                  type={InputType.Checkbox}
-                  checked={false}
-                />
-              </div>
+              <div class="flex flex-col items-start justify-center gap-4 w-full">
+                {/* Member / Super Admin Section */}
+                <Show when={selectedWorkspaceInfo()}>
+                  <div class="flex items-center justify-start gap-8 w-full h-9">
+                    <InputLabel
+                      parentClass="flex-2 "
+                      label={`Permissions for workspace ${
+                        selectedWorkspaceInfo()?.name || ""
+                      }`}
+                    />
+                    <div class="flex-10 flex items-center justify-start gap-8 w-full h-9">
+                      <label
+                        id="workspace-member-role"
+                        class="flex-10 flex items-center gap-4"
+                      >
+                        <input
+                          class=""
+                          id="workspace-member-role"
+                          type={InputType.Checkbox}
+                          checked={
+                            workspacePermissions()?.[selectedWorkspace() || ""]
+                              ?.type === "superAdmin"
+                          }
+                          onChange={(e) => {
+                            const currentPermissions =
+                              workspacePermissions() || {};
+                            currentPermissions[selectedWorkspace() || ""] = e
+                              .currentTarget.checked
+                              ? { type: "superAdmin" }
+                              : ({ type: "member" } as WorkspacePermission);
+                            setWorkspacePermissions({ ...currentPermissions });
+                          }}
+                        />
+                        <p>Super Admin</p>
+                      </label>
+                    </div>
+                  </div>
+                </Show>
 
-              <div class="flex flex-col items-start justify-center gap-2 w-full">
-                <InputLabel parentClass="flex-2" label="Workspace Roles" />
                 <Suspense fallback={<div>Loading...</div>}>
                   <Show
-                    when={selectedWorkspaceInfo()}
-                    fallback={
-                      <div class="w-full flex-10">No Workspace Selected</div>
+                    when={
+                      (workspacePermissions()?.[selectedWorkspace() || ""]
+                        ?.type === "member" ||
+                        !workspacePermissions()?.[selectedWorkspace() || ""]) &&
+                      selectedWorkspaceInfo()
                     }
                   >
                     {(workspace) => (
-                      <WorkspaceRoles
-                        class="w-full flex-10"
-                        workspace={workspace()}
-                      />
+                      <>
+                        <WorkspaceRoles
+                          addPermission={(val) => {
+                            const selectedWS = selectedWorkspace();
+                            const currentPermissions =
+                              workspacePermissions() || {};
+                            if (!selectedWS) return;
+
+                            setWorkspacePermissions({
+                              ...currentPermissions,
+                              [selectedWS]: val,
+                            });
+                          }}
+                          class="w-full flex-10"
+                          workspace={() => workspace().id}
+                        />
+
+                        <For
+                          each={Object.entries(workspacePermissions() || {})}
+                        >
+                          {([wsId, perm]) => (
+                            <div>
+                              <pre class="text-xs text-gray-400">
+                                {wsId}: {JSON.stringify(perm)}
+                              </pre>
+                            </div>
+                          )}
+                        </For>
+                      </>
                     )}
                   </Show>
                 </Suspense>
-              </div>
-
-              <div class="flex items-start justify-center gap-8 w-full">
-                <Table
-                  column_grids={["flex-4", "flex-4", "flex-4"]}
-                  rows={[]}
-                  headings={["Workspace ID", "Workspace Name", "Role"]}
-                  renderRow={() => (
-                    <tr class="table-row">
-                      {/* <td class="flex-4 flex items-center justify-center">
-                        <span class="truncate">{item.id}</span>
-                      </td>
-                      <td class="flex-4 flex items-center justify-center">
-                        {item.name}
-                      </td>
-                      <td class="flex-4 flex items-center justify-center">
-                        {item.role}
-                      </td> */}
-                    </tr>
-                  )}
-                />
               </div>
             </div>
           </div>
@@ -282,6 +340,40 @@ const CreateApiTokens = () => {
             </Button>
           </div>
         </form>
+        <Modal
+          isOpen={openCopyModal}
+          renderTrigger={() => <></>}
+          renderModalContent={() => (
+            <ModalContainer
+              closeFn={() => {
+                setOpenCopyModal(false);
+                navigate("/profile/api-tokens");
+              }}
+              class="w-200 p-6 bg-secondary-medium rounded shadow-lg"
+            >
+              <h2 class="text-md mb-4 text-primary">
+                API Token Created Successfully
+              </h2>
+              <p class="mb-3 text-sm text-white">
+                Please copy your API token now. You won't be able to see it
+                again!
+              </p>
+              <div class="bg-secondary-light text-white text-sm px-4 py-2 rounded-xs flex items-center justify-between">
+                <pre class="break-all">{apiToken()}</pre>
+
+                <button
+                  class="p-2 rounded-xs flex items-center hover:bg-secondary-dark/80 transition"
+                  onClick={() => {
+                    navigator.clipboard.writeText(apiToken());
+                    toast("API Token copied to clipboard", "success");
+                  }}
+                >
+                  <FiCopy size={16} />
+                </button>
+              </div>
+            </ModalContainer>
+          )}
+        />
       </PageContainerBody>
     </PageContainer>
   );

@@ -125,7 +125,7 @@ interface InputProps {
   /** On Input Handler */
   onInput?: (e: InputEventT) => void;
   /** On Change Handler */
-  onChange?: (e: Event) => void;
+  onChange?: (e: Event & { currentTarget: HTMLInputElement }) => void;
   /** On KeyDown Handler */
   onKeyDown?: (e: KeyboardEvent & { currentTarget: HTMLInputElement }) => void;
   /** On Paste Handler */
@@ -166,7 +166,7 @@ const Input = (rawProps: InputProps) => {
     rawProps
   );
 
-  const containerClass = `rounded-xs flex justify-start
+  const containerClass = `relative rounded-xs flex justify-start
     items-center border border-secondary-medium
     transition-all duration-250
     focus-within:border-primary focus-within:shadow-md focus-within:bg-secondary-light
@@ -204,7 +204,9 @@ const Input = (rawProps: InputProps) => {
         disabled={get(props.disabled)}
         id={props.id}
         name={props.name}
-        value={get(props.value) ?? ""}
+        {...(props.type !== InputType.File && {
+          value: get(props.value) ?? "",
+        })}
         type={props.type}
         maxLength={props.maxLength}
       />
@@ -212,6 +214,21 @@ const Input = (rawProps: InputProps) => {
         {props.endIcon && <div>{props.endIcon()}</div>}
       </div>
     </div>
+  );
+};
+
+export const FileInput = (props: InputProps) => {
+  return (
+    <Input
+      innerClass="input-file"
+      startIcon={() => (
+        <p class="w-3/4 h-full p-xs flex items-center justify-center bg-secondary-medium">
+          Choose File
+        </p>
+      )}
+      {...props}
+      type={InputType.File}
+    />
   );
 };
 

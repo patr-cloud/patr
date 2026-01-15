@@ -12,8 +12,8 @@ import {
 } from "~/components";
 import EnvInput from "./env-input";
 import { FiChevronDown } from "solid-icons/fi";
-import { Jsx } from "~/utils/func";
 import {
+  Base64String,
   CreateDeploymentRequest,
   CreateDeploymentResponse,
   DeploymentProbe,
@@ -25,9 +25,11 @@ import PortInput from "./port";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
-import { Uuid } from "~/utils/func";
+import { convertFileToBase64, Uuid } from "~/utils/func";
 import { useToast } from "~/components";
-import ProbeInput from "./probe-input";
+import ProbeInput from "~/pages/deployment/probe-input";
+import ConfigMount, { ConfigMountT } from "~/pages/deployment/config-mount";
+import { useNavigate } from "@solidjs/router";
 
 const CreateDeploymentPage = () => {
   const [authState] = useAuthState();
@@ -63,10 +65,12 @@ const CreateDeploymentPage = () => {
     return response.data;
   });
 
+  const navigate = useNavigate();
   const [name, setName] = createSignal<string>("");
   const [runner, setRunner] = createSignal<string>("");
   const [imageName, setImageName] = createSignal<string>("");
   const [imageTag, setImageTag] = createSignal<string>("");
+  const [configFiles, setConfigFiles] = createSignal<ConfigMountT>({});
   const [startupProbe, setStartupProbe] = createSignal<
     DeploymentProbe | undefined
   >(undefined);
@@ -94,6 +98,12 @@ const CreateDeploymentPage = () => {
       return;
     }
 
+    let configMounts: Record<string, Base64String> = {};
+    for (const [key, file] of Object.entries(configFiles())) {
+      const byteArray = await convertFileToBase64(file);
+      configMounts[key] = byteArray;
+    }
+
     const requestBody: CreateDeploymentRequest = {
       name: name(),
       imageName: imageName(),
@@ -109,6 +119,7 @@ const CreateDeploymentPage = () => {
       ports: portList(),
       deployOnCreate: false,
       deployOnPush: false,
+      configMounts,
     };
 
     console.log(requestBody);
@@ -127,6 +138,15 @@ const CreateDeploymentPage = () => {
       }
     );
 
+    if (!response.ok) {
+      console.error("Failed to create deployment:", response.data.error);
+      toast("Failed to create deployment", "error");
+      return;
+    }
+
+    toast("Deployment created successfully", "success");
+
+    navigate(`/deployments/${response.data.id}`);
     console.log("Deployment created:", response.data);
   };
 
@@ -142,7 +162,7 @@ const CreateDeploymentPage = () => {
           onSubmit={onSubmit}
           class="flex flex-col gap-6 justify-between w-full flex-1"
         >
-          <div class="flex flex-col gap-6  items-start w-full">
+          <div class="flex flex-col gap-5  items-start w-full">
             <div class="flex gap-8 items-center w-full">
               <InputLabel
                 parentClass="flex-2"
@@ -259,6 +279,11 @@ const CreateDeploymentPage = () => {
             <ProbeInput
               probe={[startupProbe, setStartupProbe]}
               ports={Object.keys(portList()).map((port) => parseInt(port))}
+            />
+
+            <ConfigMount
+              selectedFiles={configFiles}
+              setSelectedFiles={setConfigFiles}
             />
           </div>
 

@@ -1,0 +1,8 @@
+node_modules
+dist
+.vinxi
+.output
+pnpm-lock.yaml
+package-lock.json
+*.min.js
+*.min.css

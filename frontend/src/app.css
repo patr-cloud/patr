@@ -290,3 +290,9 @@ html, body {
     background: var(--color-border-color);
   }
 }
+
+.input-file {
+  &::file-selector-button {
+    @apply hidden;
+  }
+}

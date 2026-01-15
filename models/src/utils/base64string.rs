@@ -10,6 +10,7 @@ use serde::{Serialize, de::Error};
 /// A wrapper around a `Vec<u8>` that implements `Display` and `Serialize` to
 /// encode the data as base64. Mostly used for config mount values.
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, JsonSchema, ts_rs::TS)]
+#[ts(as = "String")]
 pub struct Base64String {
 	/// The data that is being wrapped.
 	data: Vec<u8>,

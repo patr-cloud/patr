@@ -1,5 +1,5 @@
-import { Route } from "@solidjs/router";
-import { ParentProps } from "solid-js";
+import { Navigate, Route } from "@solidjs/router";
+import { createEffect, ParentProps } from "solid-js";
 import CreateDeploymentPage from "~/pages/deployment/create";
 import DeploymentInfo from "~/pages/deployment/deployment";
 import ListDeploymentsPage from "~/pages/deployment/list";
@@ -13,8 +13,21 @@ import ManageWorkspace from "~/pages/workspace/manage-workspace";
 import ListWorkspaces from "~/pages/workspace/list";
 import ManageRoles from "~/pages/workspace/manage-roles";
 import CreateRoles from "~/pages/workspace/create-roles";
+import useFetchWorkspaces from "~/hooks/use-fetch/use-fetch-wokrspaces";
 
 const WorkspacedLayout = (props: ParentProps<{}>) => {
+  const [workspaces] = useFetchWorkspaces();
+
+  createEffect(() => {
+    if (workspaces.state === "ready") {
+      console.log("workspaces:", workspaces());
+      const workspaceLength = workspaces()?.workspaces?.length || 0;
+      if (workspaceLength === 0) {
+        return <Navigate href="/onboard" />;
+      }
+    }
+  });
+
   return <>{props.children}</>;
 };
 
