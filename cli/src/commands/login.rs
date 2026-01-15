@@ -1,34 +1,18 @@
 use std::{io::IsTerminal, str::FromStr};
 
 use clap::Args as ClapArgs;
-use inquire::{
-	Password,
-	Text,
-	validator::{ErrorMessage, Validation},
-};
-use models::{
-	ApiErrorResponseBody,
-	ApiSuccessResponseBody,
-	api::{auth::*, user::*},
-	prelude::*,
-};
+use inquire::Password;
+use models::{ApiSuccessResponseBody, api::user::*, prelude::*};
 
 use crate::prelude::*;
 
 /// The arguments that can be passed to the login command.
 #[derive(Debug, Clone, ClapArgs)]
 pub struct Args {
-	/// Email address or username to login with. Use `patr` as a username to
-	/// login with your API token as a password.
-	#[arg(short = 'u', long = "username", alias = "email")]
-	pub user_id: Option<String>,
-	/// The password to login with. If you are using an API token, use `patr`
-	/// as the username and your API token as the password.
-	#[arg(short = 'p', long)]
-	pub password: Option<String>,
-	/// The OTP provided by the MFA method, if any
-	#[arg(long = "mfa")]
-	pub mfa_otp: Option<String>,
+	/// The API token to login with. If not provided, you will be redirected
+	/// to create one in your browser.
+	#[arg(short = 't', long = "token")]
+	pub token: Option<String>,
 }
 
 /// A command that logs the user into their Patr account.
@@ -37,128 +21,81 @@ pub(super) async fn execute(
 	global_args: GlobalArgs,
 	_: AppState,
 ) -> Result<CommandOutput, AppError> {
-	// If there is a token provided, we will use that to login instead of the
-	// username and password.
-	if let Some(token) = &global_args.token {
-		let response = make_request(
-			ApiRequest::<GetUserInfoRequest>::builder()
-				.headers(GetUserInfoRequestHeaders {
-					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
-					authorization: BearerToken::from_str(token)?,
-				})
-				.build(),
-		)
-		.await?;
+	// Determine the base URL for the app
+	let app_base_url = if cfg!(debug_assertions) {
+		"http://localhost:3001"
+	} else {
+		"https://app.patr.cloud"
+	};
 
-		return CommandOutput::builder()
-			.text(format!(
-				"Logged in with an API token as `{}`. Hello {} {}!",
-				response.body.basic_user_info.data.username,
-				response.body.basic_user_info.data.first_name,
-				response.body.basic_user_info.data.last_name
-			))
-			.json(ApiSuccessResponseBody::empty().to_json_value())
-			.build()
-			.into_result();
-	}
+	// Check if a token is provided via args or global args
+	let token: Option<String> = args
+		.token
+		.or_else(|| global_args.token.clone())
+		.or_else(|| {
+			// If no token provided and we're in an interactive terminal,
+			// open the browser to the API token creation page
+			if std::io::stdin().is_terminal() {
+				let token_url = format!("{}/profile/api-tokens/new", app_base_url);
 
-	// If there is no token provided, we will use the username and password to
-	// login. If the user is not logged in, we will prompt them for their
-	// username and password. But we can't do that if the user is not using an
-	// interactive terminal.
-	if !std::io::stdin().is_terminal() {
-		eprintln!(concat!(
-			"In order to login to Patr, you either need to use an interactive terminal, ",
-			"or provide an API token with the `--token` flag using an API token generated ",
-			"at https://app.patr.cloud/user/api-token"
-		));
-		std::process::ExitCode::FAILURE.exit_process();
-	}
+				println!("Opening your browser to create a new API token...");
+				match open::that(&token_url) {
+					Ok(()) => println!("Opened '{}' successfully.", token_url),
+					Err(err) => {
+						eprintln!("An error occurred when opening '{}': {}", token_url, err)
+					}
+				}
+				println!("URL: {}", token_url);
 
-	let user_id = args.user_id.unwrap_or_else(|| {
-		Text::new("Username or email address:")
-			.with_help_message("The email address or username used to log into Patr")
-			.prompt()
-			.expect_tty("Unable to read username or email address")
-	});
-	let password = args.password.unwrap_or_else(|| {
-		Password::new("Password")
-			.with_help_message("The password used to log into Patr")
-			.without_confirmation()
-			.prompt()
-			.expect_tty("Unable to read password")
-	});
+				// Try to open the browser, but don't fail if it doesn't work
+				if let Err(e) = open::that(&token_url) {
+					eprintln!("Failed to open browser: {}", e);
+					eprintln!("Please manually visit: {}", token_url);
+				}
 
+				println!();
+
+				// Prompt for the token
+				let token_input = Password::new("Paste your API token here:")
+					.with_help_message("Create an API token in your browser and paste it here")
+					.without_confirmation()
+					.prompt()
+					.expect_tty("Unable to read API token");
+
+				Some(token_input)
+			} else {
+				None
+			}
+		});
+
+	// If we still don't have a token, exit with an error
+	let token = match token {
+		Some(t) => t,
+		None => {
+			eprintln!(
+				concat!(
+					"In order to login to Patr, you need to provide an API token.\n",
+					"You can either:\n",
+					"  1. Run this command in an interactive terminal\n",
+					"  2. Provide the token with the `--token` flag\n",
+					"  3. Create an API token at {}/profile/api-tokens/new"
+				),
+				app_base_url
+			);
+			std::process::ExitCode::FAILURE.exit_process();
+		}
+	};
+
+	// Verify the token by fetching user info
 	let response = make_request(
-		ApiRequest::<LoginRequest>::builder()
-			.headers(LoginRequestHeaders {
+		ApiRequest::<GetUserInfoRequest>::builder()
+			.headers(GetUserInfoRequestHeaders {
 				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
-			})
-			.body(LoginRequest {
-				user_id: user_id.clone(),
-				password: password.clone(),
-				mfa_otp: None,
+				authorization: BearerToken::from_str(&token)?,
 			})
 			.build(),
 	)
-	.await;
-
-	let response = if let Err(ApiErrorResponse {
-		body: ApiErrorResponseBody {
-			error: ErrorType::MfaRequired,
-			..
-		},
-		..
-	}) = response
-	{
-		let mfa_otp = args.mfa_otp.unwrap_or_else(|| {
-			Text::new("Two-factor authentication code")
-				.with_help_message("The OTP provided by the MFA method")
-				.with_validator(|value: &str| {
-					if !value
-						.chars()
-						.filter(|char| *char != '-')
-						.all(|c| c.is_ascii_digit())
-					{
-						return Ok(Validation::Invalid(ErrorMessage::Custom(
-							"The OTP must be a 6 or 7 digit number".to_string(),
-						)));
-					}
-
-					if value.chars().filter(|char| *char != '-').count() != 6 {
-						return Ok(Validation::Invalid(ErrorMessage::Custom(
-							"The OTP must be a 6 digit number".to_string(),
-						)));
-					}
-
-					Ok(Validation::Valid)
-				})
-				.prompt()
-				.expect_tty("Unable to read MFA OTP")
-		});
-		make_request(
-			ApiRequest::<LoginRequest>::builder()
-				.headers(LoginRequestHeaders {
-					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
-				})
-				.body(LoginRequest {
-					user_id,
-					password,
-					mfa_otp: Some(mfa_otp),
-				})
-				.build(),
-		)
-		.await
-	} else {
-		response
-	};
-
-	let LoginResponse {
-		access_token,
-		refresh_token,
-	} = response?.body;
-
-	let token = BearerToken::from_str(&access_token)?;
+	.await?;
 
 	let GetUserInfoResponse {
 		basic_user_info:
@@ -171,21 +108,13 @@ pub(super) async fn execute(
 				},
 			},
 		..
-	} = make_request(
-		ApiRequest::<GetUserInfoRequest>::builder()
-			.headers(GetUserInfoRequestHeaders {
-				authorization: token.clone(),
-				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
-			})
-			.build(),
-	)
-	.await?
-	.body;
+	} = response.body;
 
+	// Get the user's first workspace
 	let current_workspace = make_request(
 		ApiRequest::<ListUserWorkspacesRequest>::builder()
 			.headers(ListUserWorkspacesRequestHeaders {
-				authorization: token.clone(),
+				authorization: BearerToken::from_str(&token)?,
 				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
 			})
 			.build(),
@@ -197,9 +126,10 @@ pub(super) async fn execute(
 	.next()
 	.map(|workspace| workspace.id);
 
+	// Save the authenticated state
 	AppState::LoggedIn {
-		token,
-		refresh_token: refresh_token.clone(),
+		token: BearerToken::from_str(&token)?,
+		refresh_token: String::new(), // API tokens don't have refresh tokens
 		current_workspace,
 	}
 	.save()?;
@@ -208,13 +138,7 @@ pub(super) async fn execute(
 		.text(format!(
 			"Logged in as `{username}`. Hello {first_name} {last_name}!"
 		))
-		.json(
-			ApiSuccessResponseBody::new(LoginResponse {
-				access_token,
-				refresh_token,
-			})
-			.to_json_value(),
-		)
+		.json(ApiSuccessResponseBody::empty().to_json_value())
 		.build()
 		.into_result()
 }

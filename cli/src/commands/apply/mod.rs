@@ -8,6 +8,13 @@ use crate::prelude::*;
 /// The module to apply a deployment configuration file to the current workspace
 mod deployment;
 
+/// The module to apply a domain configuration file to the current workspace
+mod domain;
+
+/// The module to apply a managed URL configuration file to the current
+/// workspace
+mod managed_url;
+
 #[derive(Debug, Clone, ClapArgs)]
 pub struct Args {
 	/// The filename of the configuration file to apply
@@ -79,20 +86,33 @@ pub async fn execute(
 		.await
 		.map_err(|err| AppError::IaacParseError(err.to_string()))?;
 
-	let deserializer = &mut serde_yaml2::de::YamlDeserializer::from_str(&file).unwrap();
+	let mut resources = Vec::new();
 
-	let resources = vec![
-		serde_path_to_error::deserialize::<_, IaacResource>(deserializer)
-			.map_err(|err| AppError::IaacParseError(format!("{} at `{}`", err, err.path())))?,
-	]
-	.deduplicated()?
-	.ordered()?;
+	// Split YAML documents by "---" separator
+	for doc_str in file.split("\n---\n") {
+		let doc_str = doc_str.trim();
+		if doc_str.is_empty() {
+			continue;
+		}
+
+		let resource: IaacResource = serde_yaml2::from_str(doc_str)
+			.map_err(|err| AppError::IaacParseError(format!("Failed to parse YAML: {}", err)))?;
+		resources.push(resource);
+	}
+
+	let resources = resources.deduplicated()?.ordered()?;
 
 	for resource in resources {
 		// Apply the resource
 		match resource.data {
 			IaacResourceData::Deployment(deployment) => {
 				deployment::apply(workspace_id, token.clone(), deployment).await?;
+			}
+			IaacResourceData::Domain(domain) => {
+				domain::apply(workspace_id, token.clone(), domain).await?;
+			}
+			IaacResourceData::ManagedUrl(managed_url) => {
+				managed_url::apply(workspace_id, token.clone(), managed_url).await?;
 			}
 		}
 	}

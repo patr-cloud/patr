@@ -7,15 +7,19 @@ use std::{
 use either::Either;
 use serde::{Deserialize, Serialize};
 
-pub use self::{database::*, deployment::*, error::*};
+pub use self::{database::*, deployment::*, domain::*, error::*, managed_url::*};
 use crate::{prelude::*, rbac::ResourceType};
 
 /// All database related IaaC structs and functions.
 mod database;
 /// All deployment related IaaC structs and functions.
 mod deployment;
+/// All domain related IaaC structs and functions.
+mod domain;
 /// All Iaac related error types.
 mod error;
+/// All managed URL related IaaC structs and functions.
+mod managed_url;
 
 /// Any resource that can be defined in an Iaac file.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -68,6 +72,11 @@ impl Hash for IaacResource {
 pub enum IaacResourceData {
 	/// A deployment resource, which is a containerized application.
 	Deployment(IaacDeployment),
+	/// A domain resource, which is a DNS domain.
+	Domain(IaacDomain),
+	/// A managed URL resource, which routes traffic to deployments or other
+	/// URLs.
+	ManagedUrl(IaacManagedUrl),
 }
 
 impl IaacResourceData {
@@ -75,6 +84,8 @@ impl IaacResourceData {
 	pub fn get_resource_type(&self) -> ResourceType {
 		match self {
 			Self::Deployment(_) => ResourceType::Deployment,
+			Self::Domain(_) => ResourceType::Domain,
+			Self::ManagedUrl(_) => ResourceType::ManagedURL,
 		}
 	}
 
@@ -83,6 +94,8 @@ impl IaacResourceData {
 	pub fn name(&self) -> &MaybeExternallySourced<String> {
 		match self {
 			Self::Deployment(deployment) => &deployment.name,
+			Self::Domain(domain) => &domain.name,
+			Self::ManagedUrl(managed_url) => &managed_url.sub_domain,
 		}
 	}
 }

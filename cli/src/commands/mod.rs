@@ -7,8 +7,8 @@ use crate::{commands::runner::RunnerCommand, prelude::*};
 mod apply;
 /// The command to get information about the current logged in user.
 mod info;
-// /// The command to login to your Patr account.
-// mod login;
+/// The command to login to your Patr account.
+mod login;
 /// The command to logout of your Patr account.
 mod logout;
 /// All commands to setup / run a runner
@@ -58,9 +58,9 @@ pub struct GlobalArgs {
 #[derive(Debug, Clone, Subcommand)]
 #[command(rename_all = "kebab-case")]
 pub enum GlobalCommand {
-	// /// Login to your Patr account.
-	// #[command(alias = "signin", alias = "sign-in")]
-	// Login(login::Args),
+	/// Login to your Patr account.
+	#[command(alias = "signin", alias = "sign-in")]
+	Login(login::Args),
 	/// Logout of your Patr account.
 	Logout,
 	/// Get information about the current logged in user.
@@ -83,7 +83,7 @@ pub async fn execute(
 	state: AppState,
 ) -> Result<CommandOutput, AppError> {
 	match command {
-		// GlobalCommand::Login(args) => login::execute(args, global_args, state).await,
+		GlobalCommand::Login(args) => login::execute(args, global_args, state).await,
 		GlobalCommand::Logout => logout::execute(global_args, state).await,
 		GlobalCommand::Info => info::execute(global_args, state).await,
 		GlobalCommand::Apply(args) => apply::execute(args, global_args, state).await,
