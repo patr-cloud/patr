@@ -283,7 +283,7 @@ const DomainInfo = () => {
             titleUrl="/domains"
             subTitle={domainInfo.latest?.name}
             actions={() => (
-              <>
+              <div class="flex items-center justify-center gap-2">
                 <Button
                   type="button"
                   onClick={onClickDelete}
@@ -303,7 +303,7 @@ const DomainInfo = () => {
                     {isVerifying() ? "Verifying..." : "Verify"}
                   </Button>
                 ) : undefined}
-              </>
+              </div>
             )}
           />
           <PageContainerBody>
