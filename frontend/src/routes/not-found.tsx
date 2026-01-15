@@ -72,7 +72,7 @@ export default function NotFound() {
 				class="absolute top-[15%] left-[5%] pointer-events-none z-0 w-[15%]"
 			/>
 			<img
-				src="/images/patr.svg"
+				src="/images/patr-lowercase.png"
 				alt="Patr Logo"
 				class="absolute top-0 left-0 pointer-events-none z-0 mt-6 ml-4 w-[15%]"
 			/>
@@ -126,18 +126,18 @@ export default function NotFound() {
 
 			{/* Fun floating animation */}
 			<style>{`
-        @keyframes float {
-          0%, 100% {
-            transform: translateY(0px) rotate(0deg);
-          }
-          50% {
-            transform: translateY(-20px) rotate(5deg);
-          }
-        }
-        .animate-float {
-          animation: float 6s ease-in-out infinite;
-        }
-      `}</style>
+				@keyframes float {
+					0%, 100% {
+						transform: translateY(0px) rotate(0deg);
+					}
+					50% {
+						transform: translateY(-20px) rotate(5deg);
+					}
+				}
+				.animate-float {
+					animation: float 6s ease-in-out infinite;
+				}
+			`}</style>
 		</main>
 	);
 }

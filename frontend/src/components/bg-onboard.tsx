@@ -59,9 +59,9 @@ const BgOnboard = (rawProps: BgOnboardProps) => {
         "
 			/>
 			<img
-				src="/images/patr.svg"
+				src="/images/patr-lowercase.png"
 				alt="Patr Logo"
-				class="absolute top-0 left-0 pointer-events-none z-0 mt-6 ml-4 w-[15%]"
+				class="absolute top-0 left-0 pointer-events-none z-0 mt-6 ml-4 w-[15%] p-5"
 			/>
 		</>
 	);

@@ -119,7 +119,11 @@ const Sidebar: Component = () => {
   return (
     <aside class="w-64 h-screen bg-secondary border-r border-white/5 flex flex-col">
       <div class="p-6 flex items-center gap-3">
-        <img src="/images/patr.svg" alt="Patr Cloud" class="h-8 w-auto" />
+        <img
+          src="/images/patr-lowercase.png"
+          alt="Patr Cloud"
+          class="h-8 w-auto"
+        />
       </div>
 
       <nav class="flex-1 overflow-y-auto py-4">
