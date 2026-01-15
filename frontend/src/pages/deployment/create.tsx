@@ -145,15 +145,6 @@ const CreateDeploymentPage = () => {
     }
 
     toast("Deployment created successfully", "success");
-    setName("");
-    setImageName("");
-    setImageTag("");
-    setRegistry("");
-    setRunner("");
-    setEnvList([]);
-    setPortList({});
-    setStartupProbe(undefined);
-    setConfigFiles({});
 
     navigate(`/deployments/${response.data.id}`);
     console.log("Deployment created:", response.data);
