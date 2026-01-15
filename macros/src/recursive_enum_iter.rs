@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use proc_macro::TokenStream;
-use syn::{Ident, ItemEnum, Type, parse::Parse};
+use syn::{Error, Ident, ItemEnum, Type, parse::Parse};
 
 /// Struct that represents the input to the `RecursiveEnumIter` derive macro.
 pub struct RecursiveEnumIter {
@@ -44,24 +44,45 @@ pub fn parse(input: TokenStream) -> TokenStream {
 	let iter = variants
 		.into_iter()
 		.enumerate()
-		.flat_map(|(index, (variant, types))| {
-			types
-				.into_iter()
-				.enumerate()
-				.map(|(type_index, r#type)| {
-					if index == 0 && type_index == 0 {
-						quote::quote! {
-							#r#type::iter().map(Self::#variant)
-						}
-					} else {
-						quote::quote! {
-							.chain(#r#type::iter().map(Self::#variant))
-						}
+		.map(|(index, (variant, types))| {
+			let mut types = types.into_iter();
+			let r#type = types.next();
+
+			let Some(r#type) = r#type else {
+				return Ok(if index == 0 {
+					quote::quote! {
+						::std::iter::once(Self::#variant)
 					}
-				})
-				.collect::<Vec<_>>()
+				} else {
+					quote::quote! {
+						.chain(::std::iter::once(Self::#variant))
+					}
+				});
+			};
+
+			let None = types.next() else {
+				return Err(Error::new(
+					variant.span(),
+					"RecursiveEnumIter only supports variants with zero or one field",
+				));
+			};
+
+			Ok(if index == 0 {
+				quote::quote! {
+					#r#type::iter().map(Self::#variant)
+				}
+			} else {
+				quote::quote! {
+					.chain(#r#type::iter().map(Self::#variant))
+				}
+			})
 		})
-		.collect::<Vec<_>>();
+		.collect::<Result<Vec<_>, _>>();
+
+	let iter = match iter {
+		Ok(iter) => iter,
+		Err(err) => return err.to_compile_error().into(),
+	};
 
 	quote::quote! {
 		impl #name {
