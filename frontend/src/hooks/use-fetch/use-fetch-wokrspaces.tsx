@@ -6,41 +6,41 @@ import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { ListUserWorkspacesResponse } from "~/bindings";
 
 const useFetchWorkspaces = () => {
-  const [authState] = useAuthState();
-  const [workspaceId] = useLastWorkspaceId();
-  const toast = useToast();
+	const [authState] = useAuthState();
+	const [workspaceId] = useLastWorkspaceId();
+	const toast = useToast();
 
-  const fetchParams = createMemo(() => {
-    return [authState(), workspaceId] as const;
-  });
+	const fetchParams = createMemo(() => {
+		return [authState(), workspaceId] as const;
+	});
 
-  const resource = createResource(fetchParams, async ([auth, wsId]) => {
-    if (!wsId || !auth || auth.type !== "LoggedIn") {
-      return { workspaces: [] };
-    }
+	const resource = createResource(fetchParams, async ([auth, wsId]) => {
+		if (!wsId || !auth || auth.type !== "LoggedIn") {
+			return { workspaces: [] };
+		}
 
-    try {
-      const response = await httpRequest<ListUserWorkspacesResponse>(
-        `${import.meta.env.VITE_BASE_URL}/api/user/workspaces`,
-        {
-          method: "GET",
-        }
-      );
+		try {
+			const response = await httpRequest<ListUserWorkspacesResponse>(
+				`${import.meta.env.VITE_BASE_URL}/api/user/workspaces`,
+				{
+					method: "GET",
+				}
+			);
 
-      if (!response.ok) {
-        console.error("Failed to fetch workspaces:", response.data.error);
-        throw new Error("Failed to fetch workspaces");
-      }
+			if (!response.ok) {
+				console.error("Failed to fetch workspaces:", response.data.error);
+				throw new Error("Failed to fetch workspaces");
+			}
 
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching workspaces:", error);
-      toast("Failed to load workspaces", "error");
-      throw error;
-    }
-  });
+			return response.data;
+		} catch (error) {
+			console.error("Error fetching workspaces:", error);
+			toast("Failed to load workspaces", "error");
+			throw error;
+		}
+	});
 
-  return resource;
+	return resource;
 };
 
 export default useFetchWorkspaces;

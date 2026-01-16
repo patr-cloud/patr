@@ -4,11 +4,7 @@ import PageContainerBody from "~/components/page/body";
 import PageContainerHead from "~/components/page/head";
 import { HeadTab } from "~/components/page/head";
 import Button from "~/components/button";
-import Input, {
-  InputType,
-  InputEventT,
-  PasswordInput,
-} from "~/components/input";
+import Input, { InputType, InputEventT, PasswordInput } from "~/components/input";
 import InputLabel from "~/components/input-label";
 import InputDropdown from "~/components/input-dropdown";
 import InputDropdownCheckBox from "~/components/input-dropdown-checkbox";
@@ -27,31 +23,31 @@ import ListResources from "~/components/list-resources";
 import DeleteModal from "~/components/modal/delete-resource-modal";
 
 export {
-  Alert,
-  PageContainer,
-  PageContainerBody,
-  PageContainerHead,
-  HeadTab,
-  BgOnboard,
-  Button,
-  ButtonVariant,
-  Input,
-  InputType,
-  PasswordInput,
-  InputLabel,
-  InputDropdown,
-  InputDropdownCheckBox,
-  Table,
-  StatusBadge,
-  ContainerGrid,
-  ToastProvider,
-  useToast,
-  Turnstile,
-  UserSearchInput,
-  ToggleSwitch,
-  Modal,
-  Link,
-  type InputEventT,
-  ListResources,
-  DeleteModal,
+	Alert,
+	PageContainer,
+	PageContainerBody,
+	PageContainerHead,
+	HeadTab,
+	BgOnboard,
+	Button,
+	ButtonVariant,
+	Input,
+	InputType,
+	PasswordInput,
+	InputLabel,
+	InputDropdown,
+	InputDropdownCheckBox,
+	Table,
+	StatusBadge,
+	ContainerGrid,
+	ToastProvider,
+	useToast,
+	Turnstile,
+	UserSearchInput,
+	ToggleSwitch,
+	Modal,
+	Link,
+	type InputEventT,
+	ListResources,
+	DeleteModal,
 };

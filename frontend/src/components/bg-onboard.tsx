@@ -24,9 +24,7 @@ const BgOnboard = (rawProps: BgOnboardProps) => {
 			{stars.map((star, i) => (
 				<div
 					ref={(el) => {
-						el.addEventListener("animationiteration", () =>
-							randomizeDuration(el)
-						);
+						el.addEventListener("animationiteration", () => randomizeDuration(el));
 					}}
 					class="absolute bg-white rounded-full animate-pulse"
 					style={{

@@ -1,11 +1,5 @@
 import { makePersisted, cookieStorage } from "@solid-primitives/storage";
-import {
-	createContext,
-	createSignal,
-	ParentProps,
-	Signal,
-	useContext,
-} from "solid-js";
+import { createContext, createSignal, ParentProps, Signal, useContext } from "solid-js";
 
 const AuthStateContext = createContext<Signal<AuthState | null>>();
 const LastWorkspaceIdContext = createContext<Signal<string | null>>();
@@ -26,23 +20,16 @@ export type AuthState =
  * A Component that provides the AuthState context to its children
  */
 export const AuthStateProvider = (props: ParentProps<{}>) => {
-	const [authState, setAuthState] = makePersisted(
-		createSignal<AuthState | null>(null),
-		{
-			name: "authState",
-			storage: cookieStorage.withOptions({
-				expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7 days
-				path: "/",
-				sameSite: "Strict",
-			}),
-		}
-	);
+	const [authState, setAuthState] = makePersisted(createSignal<AuthState | null>(null), {
+		name: "authState",
+		storage: cookieStorage.withOptions({
+			expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7 days
+			path: "/",
+			sameSite: "Strict",
+		}),
+	});
 
-	return (
-		<AuthStateContext.Provider value={[authState, setAuthState]}>
-			{props.children}
-		</AuthStateContext.Provider>
-	);
+	return <AuthStateContext.Provider value={[authState, setAuthState]}>{props.children}</AuthStateContext.Provider>;
 };
 
 export function useAuthState(): Signal<AuthState | null> {
@@ -67,19 +54,13 @@ export const LastWorkspaceIdProvider = (props: ParentProps<{}>) => {
 		}),
 	});
 
-	return (
-		<LastWorkspaceIdContext.Provider value={[getter, setter]}>
-			{props.children}
-		</LastWorkspaceIdContext.Provider>
-	);
+	return <LastWorkspaceIdContext.Provider value={[getter, setter]}>{props.children}</LastWorkspaceIdContext.Provider>;
 };
 
 export function useLastWorkspaceId(): Signal<string | null> {
 	const signal = useContext(LastWorkspaceIdContext);
 	if (!signal) {
-		throw new Error(
-			"useLastWorkspaceId must be used within a LastWorkspaceIdProvider"
-		);
+		throw new Error("useLastWorkspaceId must be used within a LastWorkspaceIdProvider");
 	}
 
 	return signal;

@@ -8,27 +8,27 @@ import ConfirmSignUp from "~/pages/auth/confirm-sign-up";
 import { useAuthState } from "~/hooks";
 
 export const AuthPageWrapper = (props: ParentProps<{}>) => {
-  const [authState] = useAuthState();
+	const [authState] = useAuthState();
 
-  if (authState()?.type === "LoggedIn") {
-    return <Navigate href="/" />;
-  }
+	if (authState()?.type === "LoggedIn") {
+		return <Navigate href="/" />;
+	}
 
-  return (
-    <main class="min-h-screen w-full bg-secondary flex items-center justify-center p-4 relative overflow-hidden">
-      <BgOnboard />
-      {props.children}
-    </main>
-  );
+	return (
+		<main class="min-h-screen w-full bg-secondary flex items-center justify-center p-4 relative overflow-hidden">
+			<BgOnboard />
+			{props.children}
+		</main>
+	);
 };
 
 export default function LoggedOutRoutes() {
-  return (
-    <Route path="/" component={AuthPageWrapper}>
-      <Route path="/login" component={Login} />
-      <Route path="/sign-up" component={SignUp} />
-      <Route path="/forgot-password" component={ForgotPassword} />
-      <Route path="/confirm-signup" component={ConfirmSignUp} />
-    </Route>
-  );
+	return (
+		<Route path="/" component={AuthPageWrapper}>
+			<Route path="/login" component={Login} />
+			<Route path="/sign-up" component={SignUp} />
+			<Route path="/forgot-password" component={ForgotPassword} />
+			<Route path="/confirm-signup" component={ConfirmSignUp} />
+		</Route>
+	);
 }

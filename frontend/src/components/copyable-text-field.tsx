@@ -26,9 +26,7 @@ const CopyableTextField: Component<CopyableTextFieldProps> = (props) => {
 		<div>
 			<div class="text-xs text-gray-500 mb-1 select-none">{props.label}</div>
 			<div class="flex items-center gap-2 bg-black/20 rounded px-3 py-2">
-				<span class="text-sm text-gray-300 flex-1 truncate font-mono">
-					{props.value || "Not available"}
-				</span>
+				<span class="text-sm text-gray-300 flex-1 truncate font-mono">{props.value || "Not available"}</span>
 				<button
 					onClick={handleCopy}
 					class={`transition-colors text-gray-400 ${copied() ? "" : "hover:text-white"}`}
