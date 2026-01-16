@@ -19,81 +19,81 @@ const USERNAME_VALIDITY_PATTERN = "[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]";
  * @returns An object with `valid` boolean and optional `error` message
  */
 export function validatePassword(value: string): {
-  valid: boolean;
-  error?: string;
+	valid: boolean;
+	error?: string;
 } {
-  const specialChars = new Set([
-    "@",
-    "!",
-    "#",
-    "$",
-    "%",
-    "^",
-    "&",
-    "*",
-    "?",
-    "/",
-    "\\",
-    "|",
-    "~",
-    "`",
-    ".",
-    ",",
-    ";",
-    ":",
-    "<",
-    ">",
-    "[",
-    "]",
-    "{",
-    "}",
-  ]);
+	const specialChars = new Set([
+		"@",
+		"!",
+		"#",
+		"$",
+		"%",
+		"^",
+		"&",
+		"*",
+		"?",
+		"/",
+		"\\",
+		"|",
+		"~",
+		"`",
+		".",
+		",",
+		";",
+		":",
+		"<",
+		">",
+		"[",
+		"]",
+		"{",
+		"}",
+	]);
 
-  let hasDigit = false;
-  let hasUppercase = false;
-  let hasLowercase = false;
-  let hasSpecial = false;
+	let hasDigit = false;
+	let hasUppercase = false;
+	let hasLowercase = false;
+	let hasSpecial = false;
 
-  for (const char of value) {
-    if (/\d/.test(char)) hasDigit = true;
-    if (/[A-Z]/.test(char)) hasUppercase = true;
-    if (/[a-z]/.test(char)) hasLowercase = true;
-    if (specialChars.has(char)) hasSpecial = true;
-  }
+	for (const char of value) {
+		if (/\d/.test(char)) hasDigit = true;
+		if (/[A-Z]/.test(char)) hasUppercase = true;
+		if (/[a-z]/.test(char)) hasLowercase = true;
+		if (specialChars.has(char)) hasSpecial = true;
+	}
 
-  if (!hasDigit) {
-    return { valid: false, error: "Password must contain at least one digit" };
-  }
+	if (!hasDigit) {
+		return { valid: false, error: "Password must contain at least one digit" };
+	}
 
-  if (!hasLowercase) {
-    return {
-      valid: false,
-      error: "Password must contain at least one lowercase",
-    };
-  }
+	if (!hasLowercase) {
+		return {
+			valid: false,
+			error: "Password must contain at least one lowercase",
+		};
+	}
 
-  if (!hasUppercase) {
-    return {
-      valid: false,
-      error: "Password must contain at least one uppercase",
-    };
-  }
+	if (!hasUppercase) {
+		return {
+			valid: false,
+			error: "Password must contain at least one uppercase",
+		};
+	}
 
-  if (!hasSpecial) {
-    return {
-      valid: false,
-      error: "Password must contain at least one special character",
-    };
-  }
+	if (!hasSpecial) {
+		return {
+			valid: false,
+			error: "Password must contain at least one special character",
+		};
+	}
 
-  return { valid: true };
+	return { valid: true };
 }
 
 export {
-  RESOURCE_NAME_REGEX,
-  PHONE_NUMBER_REGEX,
-  USERNAME_VALIDITY_REGEX,
-  RESOURCE_NAME_PATTERN,
-  PHONE_NUMBER_PATTERN,
-  USERNAME_VALIDITY_PATTERN,
+	RESOURCE_NAME_REGEX,
+	PHONE_NUMBER_REGEX,
+	USERNAME_VALIDITY_REGEX,
+	RESOURCE_NAME_PATTERN,
+	PHONE_NUMBER_PATTERN,
+	USERNAME_VALIDITY_PATTERN,
 };

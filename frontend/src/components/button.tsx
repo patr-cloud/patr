@@ -54,8 +54,7 @@ const Button = (rawProps: ParentProps<ButtonProps>) => {
 			}
 		};
 
-		return `flex items-center ${variant()} justify-center ${get(props.class) ?? ""
-			}`;
+		return `flex items-center ${variant()} justify-center ${get(props.class) ?? ""}`;
 	};
 
 	return (

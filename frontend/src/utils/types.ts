@@ -3,15 +3,15 @@ import { ErrorType } from "~/bindings";
 
 export type SearchParams = Record<string, string | string[] | undefined>;
 export type SetSearchParams = Record<
-  string,
-  string | string[] | number | number[] | boolean | boolean[] | null | undefined
+	string,
+	string | string[] | number | number[] | boolean | boolean[] | null | undefined
 >;
 export type MaybeAccessor<T> = T | Accessor<T>;
 export type EventT<T, E> = T & { currentTarget: E };
 export type ErrorResponse = {
-  message: string;
-  success: false;
-  error: ErrorType;
+	message: string;
+	success: false;
+	error: ErrorType;
 };
 
 /**
@@ -34,17 +34,17 @@ export type ErrorResponse = {
  * ```
  */
 export type FetchResult<T> =
-  | {
-      ok: false;
-      status: number;
-      statusText: string;
-      headers: Headers;
-      data: ErrorResponse;
-    }
-  | {
-      ok: true;
-      status: number;
-      statusText: string;
-      headers: Headers;
-      data: T;
-    };
+	| {
+			ok: false;
+			status: number;
+			statusText: string;
+			headers: Headers;
+			data: ErrorResponse;
+	  }
+	| {
+			ok: true;
+			status: number;
+			statusText: string;
+			headers: Headers;
+			data: T;
+	  };

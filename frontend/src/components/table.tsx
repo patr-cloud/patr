@@ -26,21 +26,13 @@ const TableRow = <TItem extends Record<string, unknown>>(props: {
         bg-secondary-light last-of-type:rounded-b-xs ${get(props.class)}`}
 		>
 			{Object.values(props.item).map((row, index) => (
-				<td
-					class={`flex items-center justify-center ${
-						props.column_classes.at(index) ?? ""
-					}`}
-				>
-					{row as string}
-				</td>
+				<td class={`flex items-center justify-center ${props.column_classes.at(index) ?? ""}`}>{row as string}</td>
 			))}
 		</tr>
 	);
 };
 
-const Table = <TItem extends Record<string, unknown>>(
-	rawProps: TableProps<TItem>
-) => {
+const Table = <TItem extends Record<string, unknown>>(rawProps: TableProps<TItem>) => {
 	const props = mergeProps(
 		{
 			class: "",
@@ -52,11 +44,7 @@ const Table = <TItem extends Record<string, unknown>>(
 			<thead class="flex items-center justify-center py-sm bg-secondary-medium w-full rounded-t-xs">
 				<tr class="flex items-center justify-center px-xl w-full">
 					{props.headings.map((heading, index) => (
-						<th
-							class={`flex items-center justify-center text-sm font-medium ${
-								props.column_grids.at(index) ?? ""
-							}`}
-						>
+						<th class={`flex items-center justify-center text-sm font-medium ${props.column_grids.at(index) ?? ""}`}>
 							{heading}
 						</th>
 					))}

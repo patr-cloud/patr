@@ -20,9 +20,7 @@ const StatusBadge = (rawProps: StatusBadgeProps) => {
 		rawProps
 	);
 	return (
-		<span class="relative text-secondary cursor-default py-0.25 px-1.5 rounded-xl bg-info">
-			{get(props.text)}
-		</span>
+		<span class="relative text-secondary cursor-default py-0.25 px-1.5 rounded-xl bg-info">{get(props.text)}</span>
 	);
 };
 

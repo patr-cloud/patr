@@ -11,18 +11,10 @@ interface AlertProps {
 
 const Alert = (props: AlertProps) => {
 	return (
-		<span
-			class={`${
-				props.class ?? ""
-			} text-white flex items-center gap-2 justify-start`}
-		>
+		<span class={`${props.class ?? ""} text-white flex items-center gap-2 justify-start`}>
 			{props.type === "error" && <FiAlertCircle size={16} class="text-error" />}
-			{props.type === "warning" && (
-				<FiAlertCircle size={16} class="text-warning" />
-			)}
-			{props.type === "success" && (
-				<FiCheckCircle size={16} class="text-success" />
-			)}
+			{props.type === "warning" && <FiAlertCircle size={16} class="text-warning" />}
+			{props.type === "success" && <FiCheckCircle size={16} class="text-success" />}
 			<span class={`text-${props.type} text-sm`}>{props.message}</span>
 		</span>
 	);

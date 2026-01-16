@@ -2,133 +2,126 @@ import { useNavigate, useParams } from "@solidjs/router";
 import { createMemo, createResource, Suspense } from "solid-js";
 import { GetApiTokenInfoResponse } from "~/bindings";
 import {
-  DeleteModal,
-  Input,
-  InputLabel,
-  InputType,
-  PageContainer,
-  PageContainerBody,
-  PageContainerHead,
-  useToast,
+	DeleteModal,
+	Input,
+	InputLabel,
+	InputType,
+	PageContainer,
+	PageContainerBody,
+	PageContainerHead,
+	useToast,
 } from "~/components";
 import { useAuthState } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 
 const ApiTokenInfo = () => {
-  const [authState] = useAuthState();
-  const toast = useToast();
-  const navigate = useNavigate();
-  const params = useParams();
+	const [authState] = useAuthState();
+	const toast = useToast();
+	const navigate = useNavigate();
+	const params = useParams();
 
-  if (!params.id) {
-    return <div>Invalid API Token ID</div>;
-  }
+	if (!params.id) {
+		return <div>Invalid API Token ID</div>;
+	}
 
-  const fetchParams = createMemo(() => {
-    return [authState()] as const;
-  });
+	const fetchParams = createMemo(() => {
+		return [authState()] as const;
+	});
 
-  const [apiTokenInfo] = createResource(fetchParams, async ([auth]) => {
-    if (!auth || auth.type !== "LoggedIn") {
-      return undefined;
-    }
+	const [apiTokenInfo] = createResource(fetchParams, async ([auth]) => {
+		if (!auth || auth.type !== "LoggedIn") {
+			return undefined;
+		}
 
-    const response = await httpRequest<GetApiTokenInfoResponse>(
-      `${import.meta.env.VITE_BASE_URL}/api/user/api-token/${params.id}`,
-      {
-        method: "GET",
-      }
-    );
+		const response = await httpRequest<GetApiTokenInfoResponse>(
+			`${import.meta.env.VITE_BASE_URL}/api/user/api-token/${params.id}`,
+			{
+				method: "GET",
+			}
+		);
 
-    if (!response.ok) {
-      console.error("Failed to fetch API Token Info:", response.data.error);
-      toast("Failed to fetch API Token Info", "error");
-      return undefined;
-    }
+		if (!response.ok) {
+			console.error("Failed to fetch API Token Info:", response.data.error);
+			toast("Failed to fetch API Token Info", "error");
+			return undefined;
+		}
 
-    return { ...response.data };
-  });
+		return { ...response.data };
+	});
 
-  const onClickDelete = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
-    e.preventDefault();
+	const onClickDelete = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
+		e.preventDefault();
 
-    const auth = authState();
+		const auth = authState();
 
-    if (!auth || auth.type !== "LoggedIn") {
-      toast("You must be logged in to delete an API Token", "error");
-      return;
-    }
+		if (!auth || auth.type !== "LoggedIn") {
+			toast("You must be logged in to delete an API Token", "error");
+			return;
+		}
 
-    const response = await httpRequest<void>(
-      `${import.meta.env.VITE_BASE_URL}/api/user/api-token/${params.id}`,
-      {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+		const response = await httpRequest<void>(`${import.meta.env.VITE_BASE_URL}/api/user/api-token/${params.id}`, {
+			method: "DELETE",
+			headers: {
+				"Content-Type": "application/json",
+			},
+		});
 
-    if (!response.ok) {
-      console.error("Failed to delete API Token:", response.data.error);
-      toast("Failed to delete API Token", "error");
-      return;
-    }
+		if (!response.ok) {
+			console.error("Failed to delete API Token:", response.data.error);
+			toast("Failed to delete API Token", "error");
+			return;
+		}
 
-    toast("API Token deleted successfully", "success");
-    navigate("/profile/api-tokens");
-  };
+		toast("API Token deleted successfully", "success");
+		navigate("/profile/api-tokens");
+	};
 
-  return (
-    <PageContainer>
-      <Suspense fallback={<div>Loading API Token Info...</div>}>
-        <PageContainerHead
-          title="API Tokens"
-          titleUrl="/profile/api-tokens"
-          subTitle={apiTokenInfo()?.name || ""}
-          actions={() => (
-            <DeleteModal
-              title="Delete API Token"
-              onClickDelete={onClickDelete}
-              resourceName={apiTokenInfo()?.name || ""}
-            />
-          )}
-        />
-        <PageContainerBody class="flex flex-col gap-8">
-          <div class="flex flex-col gap-4 items-start w-full">
-            <div class="flex gap-8 items-center w-full">
-              <InputLabel parentClass="flex-2" for="deployment-id" label="ID" />
-              <Input
-                value={apiTokenInfo()?.id || ""}
-                disabled={true}
-                class="flex-10"
-                name="deployment-id"
-                placeholder="Deployment ID"
-                type={InputType.Text}
-              />
-            </div>
+	return (
+		<PageContainer>
+			<Suspense fallback={<div>Loading API Token Info...</div>}>
+				<PageContainerHead
+					title="API Tokens"
+					titleUrl="/profile/api-tokens"
+					subTitle={apiTokenInfo()?.name || ""}
+					actions={() => (
+						<DeleteModal
+							title="Delete API Token"
+							onClickDelete={onClickDelete}
+							resourceName={apiTokenInfo()?.name || ""}
+						/>
+					)}
+				/>
+				<PageContainerBody class="flex flex-col gap-8">
+					<div class="flex flex-col gap-4 items-start w-full">
+						<div class="flex gap-8 items-center w-full">
+							<InputLabel parentClass="flex-2" for="deployment-id" label="ID" />
+							<Input
+								value={apiTokenInfo()?.id || ""}
+								disabled={true}
+								class="flex-10"
+								name="deployment-id"
+								placeholder="Deployment ID"
+								type={InputType.Text}
+							/>
+						</div>
 
-            <div class="flex gap-8 items-center w-full">
-              <InputLabel
-                parentClass="flex-2"
-                for="deployment-name"
-                label="Name"
-              />
-              <Input
-                value={apiTokenInfo()?.name || ""}
-                class="flex-10"
-                name="deployment-name"
-                placeholder="Deployment Name"
-                type={InputType.Text}
-                disabled={true}
-              />
-            </div>
-          </div>
-        </PageContainerBody>
-      </Suspense>
-    </PageContainer>
-  );
+						<div class="flex gap-8 items-center w-full">
+							<InputLabel parentClass="flex-2" for="deployment-name" label="Name" />
+							<Input
+								value={apiTokenInfo()?.name || ""}
+								class="flex-10"
+								name="deployment-name"
+								placeholder="Deployment Name"
+								type={InputType.Text}
+								disabled={true}
+							/>
+						</div>
+					</div>
+				</PageContainerBody>
+			</Suspense>
+		</PageContainer>
+	);
 };
 
 export default ApiTokenInfo;
