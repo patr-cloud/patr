@@ -22,6 +22,7 @@ import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import DeploymentInfoUpdate from "~/pages/deployment/deployment/info";
 import DeploymentLogs from "./logs";
+import DeploymentHistory from "./deployment-history";
 
 const DeploymentInfo = () => {
   const params = useParams();
@@ -79,8 +80,7 @@ const DeploymentInfo = () => {
 
     console.log("Start deployment clicked");
     const resp = await httpRequest(
-      `${
-        import.meta.env.VITE_BASE_URL
+      `${import.meta.env.VITE_BASE_URL
       }/api/workspace/${workspaceId()}/deployment/${deployment.id}/start`,
       {
         method: "POST",
@@ -109,8 +109,7 @@ const DeploymentInfo = () => {
 
     console.log("Stop deployment clicked");
     const resp = await httpRequest(
-      `${
-        import.meta.env.VITE_BASE_URL
+      `${import.meta.env.VITE_BASE_URL
       }/api/workspace/${workspaceId()}/deployment/${deployment.id}/stop`,
       {
         method: "POST",
@@ -141,8 +140,7 @@ const DeploymentInfo = () => {
 
     console.log("Delete deployment clicked");
     const resp = await httpRequest(
-      `${
-        import.meta.env.VITE_BASE_URL
+      `${import.meta.env.VITE_BASE_URL
       }/api/workspace/${workspaceId()}/deployment/${deployment.id}`,
       {
         method: "DELETE",
@@ -211,6 +209,10 @@ const DeploymentInfo = () => {
             mutateDeploymentInfo={mutateDeploymentInfo}
           />
         );
+      case "deployment-history":
+        return (
+          <DeploymentHistory />
+        )
       default:
         return <div class="text-white">No such tab</div>;
     }
@@ -260,6 +262,11 @@ const DeploymentInfo = () => {
                 value: "logs",
                 onClick: (value) => setSearchParams({ tab: value }),
               },
+              {
+                label: "Deployment History",
+                value: "deployment-history",
+                onClick: (value) => setSearchParams({ tab: value }),
+              }
             ]}
           />
         )}
