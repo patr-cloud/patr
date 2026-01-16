@@ -1,5 +1,9 @@
+use std::ops::Add;
+
 use axum::http::StatusCode;
 use models::api::workspace::*;
+use rustis::commands::StringCommands;
+use time::OffsetDateTime;
 
 use crate::prelude::*;
 
@@ -131,6 +135,21 @@ pub async fn create_workspace(
 	)
 	.execute(&mut **database)
 	.await?;
+
+	// Revoke the token of the user who created the workspace
+	redis
+		.setex(
+			redis::keys::user_id_revocation_timestamp(&user_id),
+			constants::CACHED_PERMISSIONS_VALIDITY
+				.whole_seconds()
+				.unsigned_abs()
+				.add(300),
+			OffsetDateTime::now_utc().unix_timestamp(),
+		)
+		.await
+		.inspect_err(|err| {
+			error!("Error setting the revocation timestamp: `{}`", err);
+		})?;
 
 	AppResponse::builder()
 		.body(CreateWorkspaceResponse {
