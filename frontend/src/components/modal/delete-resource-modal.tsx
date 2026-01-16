@@ -1,18 +1,26 @@
-import { createSignal } from "solid-js";
+import { Accessor, createSignal, Setter } from "solid-js";
 import Modal, { ModalContainer } from "~/components/modal";
 import Input, { InputType } from "~/components/input";
 import Button from "~/components/button";
-import { ButtonVariant } from "~/utils/color";
+import { ButtonVariant, Color } from "~/utils/color";
 
 const DeleteModal = (props: {
 	onClickDelete: (e: MouseEvent & { currentTarget: HTMLButtonElement }) => void;
 	resourceName: string;
 	title: string;
+	isOpen: Accessor<boolean>;
+	setIsOpen: Setter<boolean>;
 }) => {
 	const [resourceNameInput, setResourceNameInput] = createSignal("");
+	const [internalIsOpen, internalSetIsOpen] = createSignal(false);
 
+	// Use external state if provided, otherwise use internal state
+	const isOpen = props.isOpen || internalIsOpen;
+	const setIsOpen = props.setIsOpen || internalSetIsOpen;
 	return (
 		<Modal
+			isOpen={isOpen}
+			setIsOpen={setIsOpen}
 			renderModalContent={(close) => (
 				<ModalContainer closeFn={() => close(false)} class="w-full">
 					<form class="w-full">
@@ -31,10 +39,11 @@ const DeleteModal = (props: {
 						/>
 						<div class="flex w-full justify-end items-center">
 							<Button
-								variant={ButtonVariant.Contained}
+								variant={ButtonVariant.Outlined}
 								type="submit"
 								onClick={props.onClickDelete}
 								disabled={resourceNameInput() !== props.resourceName}
+								color={Color.Error}
 							>
 								DELETE
 							</Button>
@@ -43,7 +52,7 @@ const DeleteModal = (props: {
 				</ModalContainer>
 			)}
 			renderTrigger={(open) => (
-				<Button onClick={() => open(true)} variant={ButtonVariant.Contained}>
+				<Button onClick={() => open(true)} variant={ButtonVariant.Outlined} color={Color.Error}>
 					DELETE
 				</Button>
 			)}

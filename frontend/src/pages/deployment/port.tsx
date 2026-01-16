@@ -2,6 +2,7 @@ import { FiPlus, FiTrash2 } from "solid-icons/fi";
 import { createSignal } from "solid-js";
 import { ExposedPortType } from "~/bindings";
 import { Button, ButtonVariant, Input, InputDropdown, InputLabel } from "~/components";
+import { Color } from "~/utils/color";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
@@ -34,8 +35,9 @@ const PortInput = (props: PortInputProps) => {
 							onClick={() => {
 								props.onDelete(key);
 							}}
-							variant={ButtonVariant.Contained}
-							class="flex-1 h-full flex items-center gap-2 bg-error"
+							variant={ButtonVariant.Outlined}
+							class="flex-1 h-full flex items-center gap-2"
+							color={Color.Error}
 						>
 							<FiTrash2 size={16} />
 						</Button>

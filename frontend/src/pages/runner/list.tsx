@@ -1,6 +1,6 @@
 import { createMemo, createResource, ErrorBoundary, Suspense } from "solid-js";
 import { ListRunnersForWorkspaceResponse } from "~/bindings";
-import { PageContainer, PageContainerBody, PageContainerHead, Table } from "~/components";
+import { ButtonVariant, Link, PageContainer, PageContainerBody, PageContainerHead, Table } from "~/components";
 import { useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
@@ -43,7 +43,9 @@ const ListRunnersPage = () => {
 
 	return (
 		<PageContainer>
-			<PageContainerHead title="Runner" subTitle="All Runners" />
+			<PageContainerHead title="Runner" subTitle="All Runners"
+				actions={() => <Link href="/runners/new" buttonVariant={ButtonVariant.Contained} external={false}>CREATE RUNNER</Link>}
+			/>
 			<PageContainerBody class="flex flex-col justify-between gap-8">
 				<ErrorBoundary
 					fallback={(err, reset) => (

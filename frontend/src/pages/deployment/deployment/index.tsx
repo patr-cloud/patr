@@ -16,6 +16,7 @@ import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import DeploymentInfoUpdate from "~/pages/deployment/deployment/info";
 import DeploymentLogs from "./logs";
+import { Color } from "~/utils/color";
 
 const DeploymentInfo = () => {
 	const params = useParams();
@@ -26,6 +27,7 @@ const DeploymentInfo = () => {
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const navigate = useNavigate();
+	const [isDeleteModalOpen, setIsDeleteModalOpen] = createSignal(false);
 
 	const resourceParamsDeployment = createMemo(() => {
 		return [authState(), workspaceId(), params.id] as const;
@@ -150,7 +152,7 @@ const DeploymentInfo = () => {
 		switch (deploymentInfo()?.status) {
 			case "running":
 				return (
-					<Button onClick={onClickStop} class="h-10" variant={ButtonVariant.Outlined}>
+					<Button onClick={onClickStop} class="h-10" variant={ButtonVariant.Outlined} color={Color.Error}>
 						STOP
 					</Button>
 				);
@@ -209,6 +211,8 @@ const DeploymentInfo = () => {
 									title="Do You Really Want to Delete This Deployment?"
 									resourceName={deploymentInfo()?.name || ""}
 									onClickDelete={onClickDelete}
+									isOpen={isDeleteModalOpen}
+									setIsOpen={setIsDeleteModalOpen}
 								/>
 							)}
 						</Suspense>
