@@ -456,6 +456,7 @@ pub async fn initialize_rbac_constraints(
 		) AS $$
 		DECLARE
 			local_permission_id UUID;
+			permission_type TEXT;
 		BEGIN
 			SELECT
 				permission.id
@@ -469,6 +470,33 @@ pub async fn initialize_rbac_constraints(
 			IF local_permission_id IS NULL THEN
 				RAISE EXCEPTION 'Permission `%` not found', permission_name;
 			END IF;
+
+			SELECT
+				COALESCE(
+					user_api_token_resource_permissions_type.resource_permission_type,
+					role_resource_permissions_type.permission_type
+				)
+			INTO
+				permission_type
+			FROM
+				user_login
+			LEFT JOIN
+				user_api_token_resource_permissions_type
+			ON
+				user_login.login_type = 'api_token' AND
+				user_api_token_resource_permissions_type.token_id = user_login.login_id AND
+				user_api_token_resource_permissions_type.permission_id = local_permission_id
+			LEFT JOIN
+				workspace_user
+			ON
+				workspace_user.user_id = user_login.user_id
+			LEFT JOIN
+				role_resource_permissions_type
+			ON
+				role_resource_permissions_type.role_id = workspace_user.role_id AND
+				role_resource_permissions_type.permission_id = local_permission_id
+			WHERE
+				user_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id;
 
 			RETURN QUERY SELECT
 				resource.*
@@ -495,62 +523,66 @@ pub async fn initialize_rbac_constraints(
 						workspace.super_admin_id = user_login.user_id
 					WHERE
 						user_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
-				) OR resource.id IN (
-					SELECT
-						COALESCE(
-							user_api_token_resource_permissions_include.resource_id,
-							role_resource_permissions_include.resource_id
-						)
-					FROM
-						user_login
-					LEFT JOIN
-						user_api_token_resource_permissions_include
-					ON
-						user_login.login_type = 'api_token' AND
-						user_api_token_resource_permissions_include.token_id = user_login.login_id
-					LEFT JOIN
-						workspace_user
-					ON
-						workspace_user.user_id = user_login.user_id
-					LEFT JOIN
-						role_resource_permissions_include
-					ON
-						role_resource_permissions_include.role_id = workspace_user.role_id
-					WHERE
-						user_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
-						role_resource_permissions_include.permission_id = local_permission_id AND
-						resource.owner_id = COALESCE(
-							user_api_token_resource_permissions_include.workspace_id,
-							workspace_user.workspace_id
-						)
-				) OR resource.id NOT IN (
-					SELECT
-						COALESCE(
-							user_api_token_resource_permissions_exclude.resource_id,
-							role_resource_permissions_exclude.resource_id
-						)
-					FROM
-						user_login
-					LEFT JOIN
-						user_api_token_resource_permissions_exclude
-					ON
-						user_login.login_type = 'api_token' AND
-						user_api_token_resource_permissions_exclude.token_id = user_login.login_id
-					LEFT JOIN
-						workspace_user
-					ON
-						workspace_user.user_id = user_login.user_id
-					LEFT JOIN
-						role_resource_permissions_exclude
-					ON
-						role_resource_permissions_exclude.role_id = workspace_user.role_id
-					WHERE
-						user_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
-						role_resource_permissions_exclude.permission_id = local_permission_id AND
-						resource.owner_id = COALESCE(
-							user_api_token_resource_permissions_exclude.workspace_id,
-							workspace_user.workspace_id
-						)
+				) OR (
+					permission_type = 'include' AND resource.id IN (
+						SELECT
+							COALESCE(
+								user_api_token_resource_permissions_include.resource_id,
+								role_resource_permissions_include.resource_id
+							)
+						FROM
+							user_login
+						LEFT JOIN
+							user_api_token_resource_permissions_include
+						ON
+							user_login.login_type = 'api_token' AND
+							user_api_token_resource_permissions_include.token_id = user_login.login_id
+						LEFT JOIN
+							workspace_user
+						ON
+							workspace_user.user_id = user_login.user_id
+						LEFT JOIN
+							role_resource_permissions_include
+						ON
+							role_resource_permissions_include.role_id = workspace_user.role_id
+						WHERE
+							user_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
+							role_resource_permissions_include.permission_id = local_permission_id AND
+							resource.owner_id = COALESCE(
+								user_api_token_resource_permissions_include.workspace_id,
+								workspace_user.workspace_id
+							)
+					)
+				) OR (
+					permission_type = 'exclude' AND resource.id NOT IN (
+						SELECT
+							COALESCE(
+								user_api_token_resource_permissions_exclude.resource_id,
+								role_resource_permissions_exclude.resource_id
+							)
+						FROM
+							user_login
+						LEFT JOIN
+							user_api_token_resource_permissions_exclude
+						ON
+							user_login.login_type = 'api_token' AND
+							user_api_token_resource_permissions_exclude.token_id = user_login.login_id
+						LEFT JOIN
+							workspace_user
+						ON
+							workspace_user.user_id = user_login.user_id
+						LEFT JOIN
+							role_resource_permissions_exclude
+						ON
+							role_resource_permissions_exclude.role_id = workspace_user.role_id
+						WHERE
+							user_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
+							role_resource_permissions_exclude.permission_id = local_permission_id AND
+							resource.owner_id = COALESCE(
+								user_api_token_resource_permissions_exclude.workspace_id,
+								workspace_user.workspace_id
+							)
+					)
 				);
 		END;
 		$$ LANGUAGE plpgsql;

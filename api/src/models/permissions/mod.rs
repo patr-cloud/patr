@@ -157,32 +157,44 @@ async fn get_permissions_for_login_id(
 
 	query!(
 		r#"
-		SELECT DISTINCT
-			COALESCE(
-				user_api_token_workspace_super_admin.workspace_id,
-				workspace.id
-			) AS "workspace_id"
-		FROM
-			user_login
-		LEFT JOIN
-			user_api_token_workspace_super_admin
-		ON
-			user_login.login_type = 'api_token' AND
-			user_api_token_workspace_super_admin.token_id = user_login.login_id
-		LEFT JOIN
-			workspace
-		ON
-			user_login.login_type = 'web_login' AND
-			workspace.super_admin_id = user_login.user_id
-		WHERE
-			user_login.login_id = $1;
+		SELECT
+			workspace_id AS "workspace_id!"
+		FROM (
+			/* API token super-admin permissions */
+			SELECT
+				user_api_token_workspace_super_admin.workspace_id
+			FROM
+				user_login
+			INNER JOIN
+				user_api_token_workspace_super_admin
+			ON
+				user_api_token_workspace_super_admin.token_id = user_login.login_id
+			WHERE
+				user_login.login_id = $1 AND
+				user_login.login_type = 'api_token'
+
+			UNION ALL
+
+			/* Web login super-admin permissions (workspace owners) */
+			SELECT
+				workspace.id AS workspace_id
+			FROM
+				user_login
+			INNER JOIN
+				workspace
+			ON
+				workspace.super_admin_id = user_login.user_id
+			WHERE
+				user_login.login_id = $1 AND
+				user_login.login_type = 'web_login'
+		) AS super_admins;
 		"#,
 		login_id as _
 	)
 	.fetch_all(&mut *db_connection)
 	.await?
 	.into_iter()
-	.filter_map(|row| row.workspace_id)
+	.map(|row| row.workspace_id)
 	.for_each(|workspace_id| {
 		workspace_permissions.insert(workspace_id.into(), WorkspacePermission::SuperAdmin);
 	});
@@ -191,48 +203,69 @@ async fn get_permissions_for_login_id(
 	query!(
 		r#"
 		SELECT
-			COALESCE(
-				user_api_token_resource_permissions_exclude.workspace_id,
-				workspace_user.workspace_id
-			) AS "workspace_id",
-			COALESCE(
-				user_api_token_resource_permissions_exclude.resource_id,
+			workspace_id AS "workspace_id!",
+			permission_id AS "permission_id!",
+			resource_id
+		FROM (
+			/* API token exclude permissions */
+			SELECT
+				user_api_token_resource_permissions_type.workspace_id,
+				user_api_token_resource_permissions_type.permission_id,
+				user_api_token_resource_permissions_exclude.resource_id
+			FROM
+				user_login
+			INNER JOIN
+				user_api_token_resource_permissions_type
+			ON
+				user_api_token_resource_permissions_type.token_id = user_login.login_id AND
+				user_api_token_resource_permissions_type.resource_permission_type = 'exclude'
+			LEFT JOIN
+				user_api_token_resource_permissions_exclude
+			ON
+				user_api_token_resource_permissions_exclude.token_id = user_login.login_id
+			WHERE
+				user_login.login_id = $1 AND
+				user_login.login_type = 'api_token'
+
+			UNION ALL
+
+			/* Role-based exclude permissions */
+			SELECT
+				workspace_user.workspace_id,
+				role_resource_permissions_type.permission_id,
 				role_resource_permissions_exclude.resource_id
-			) AS "resource_id",
-			COALESCE(
-				user_api_token_resource_permissions_exclude.permission_id,
-				role_resource_permissions_exclude.permission_id
-			) AS "permission_id"
-		FROM
-			user_login
-		LEFT JOIN
-			user_api_token_resource_permissions_exclude
-		ON
-			user_login.login_type = 'api_token' AND
-			user_api_token_resource_permissions_exclude.token_id = user_login.login_id
-		LEFT JOIN
-			workspace_user
-		ON
-			workspace_user.user_id = user_login.user_id
-		LEFT JOIN
-			role_resource_permissions_exclude
-		ON
-			role_resource_permissions_exclude.role_id = workspace_user.role_id
-		WHERE
-			user_login.login_id = $1;
+			FROM
+				user_login
+			INNER JOIN
+				workspace_user
+			ON
+				workspace_user.user_id = user_login.user_id
+			INNER JOIN
+				role_resource_permissions_type
+			ON
+				role_resource_permissions_type.role_id = workspace_user.role_id AND
+				role_resource_permissions_type.permission_type = 'exclude'
+			LEFT JOIN
+				role_resource_permissions_exclude
+			ON
+				role_resource_permissions_exclude.role_id = workspace_user.role_id
+			WHERE
+				user_login.login_id = $1
+		) AS excludes;
 		"#,
 		login_id as _
 	)
 	.fetch_all(&mut *db_connection)
 	.await?
 	.into_iter()
-	.filter_map(|row| row.workspace_id.zip(row.resource_id).zip(row.permission_id))
-	.for_each(|((workspace_id, resource_id), permission_id)| {
+	.map(|row| (row.workspace_id, row.permission_id, row.resource_id))
+	.for_each(|(workspace_id, permission_id, resource_id)| {
 		let permissions = workspace_permissions
 			.entry(workspace_id.into())
 			.or_insert_with(|| WorkspacePermission::Member {
 				permissions: BTreeMap::new(),
 			});
+
 		match permissions {
 			WorkspacePermission::SuperAdmin => {
 				error!("SuperAdmin found when Member expected. This shouldn't be possible!");
@@ -248,6 +281,10 @@ async fn get_permissions_for_login_id(
 						);
 					}
 					ResourcePermissionType::Exclude(resources) => {
+						let Some(resource_id) = resource_id else {
+							return;
+						};
+
 						resources.insert(resource_id.into());
 					}
 				}
@@ -258,48 +295,73 @@ async fn get_permissions_for_login_id(
 	query!(
 		r#"
 		SELECT
-			COALESCE(
-				user_api_token_resource_permissions_include.workspace_id,
-				workspace_user.workspace_id
-			) AS "workspace_id",
-			COALESCE(
-				user_api_token_resource_permissions_include.resource_id,
+			workspace_id AS "workspace_id!",
+			permission_id AS "permission_id!",
+			resource_id
+		FROM (
+			/* API token include permissions */
+			SELECT
+				user_api_token_resource_permissions_type.workspace_id,
+				user_api_token_resource_permissions_type.permission_id,
+				user_api_token_resource_permissions_include.resource_id
+			FROM
+				user_login
+			INNER JOIN
+				user_api_token_resource_permissions_type
+			ON
+				user_api_token_resource_permissions_type.token_id = user_login.login_id AND
+				user_api_token_resource_permissions_type.resource_permission_type = 'include'
+			LEFT JOIN
+				user_api_token_resource_permissions_include
+			ON
+				user_api_token_resource_permissions_include.token_id = user_login.login_id
+			WHERE
+				user_login.login_id = $1 AND
+				user_login.login_type = 'api_token'
+
+			UNION ALL
+
+			/* Role-based include permissions */
+			SELECT
+				workspace_user.workspace_id,
+				role_resource_permissions_type.permission_id,
 				role_resource_permissions_include.resource_id
-			) AS "resource_id",
-			COALESCE(
-				user_api_token_resource_permissions_include.permission_id,
-				role_resource_permissions_include.permission_id
-			) AS "permission_id"
-		FROM
-			user_login
-		LEFT JOIN
-			user_api_token_resource_permissions_include
-		ON
-			user_login.login_type = 'api_token' AND
-			user_api_token_resource_permissions_include.token_id = user_login.login_id
-		LEFT JOIN
-			workspace_user
-		ON
-			workspace_user.user_id = user_login.user_id
-		LEFT JOIN
-			role_resource_permissions_include
-		ON
-			role_resource_permissions_include.role_id = workspace_user.role_id
-		WHERE
-			user_login.login_id = $1;
+			FROM
+				user_login
+			INNER JOIN
+				workspace_user
+			ON
+				workspace_user.user_id = user_login.user_id
+			INNER JOIN
+				role_resource_permissions_type
+			ON
+				role_resource_permissions_type.role_id = workspace_user.role_id AND
+				role_resource_permissions_type.permission_type = 'include'
+			LEFT JOIN
+				role_resource_permissions_include
+			ON
+				role_resource_permissions_include.role_id = workspace_user.role_id
+			WHERE
+				user_login.login_id = $1
+		) AS includes;
 		"#,
 		login_id as _
 	)
 	.fetch_all(&mut *db_connection)
 	.await?
 	.into_iter()
-	.filter_map(|row| row.workspace_id.zip(row.resource_id).zip(row.permission_id))
-	.for_each(|((workspace_id, resource_id), permission_id)| {
+	.map(|row| (row.workspace_id, row.permission_id, row.resource_id))
+	.for_each(|(workspace_id, permission_id, resource_id)| {
 		let permissions = workspace_permissions
 			.entry(workspace_id.into())
 			.or_insert_with(|| WorkspacePermission::Member {
 				permissions: BTreeMap::new(),
 			});
+
+		let Some(resource_id) = resource_id else {
+			return;
+		};
+
 		match permissions {
 			WorkspacePermission::SuperAdmin => {
 				error!("SuperAdmin found when Member expected. This shouldn't be possible!");
