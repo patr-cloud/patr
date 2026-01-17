@@ -74,7 +74,7 @@ pub async fn list_domains_in_workspace(
 		"#,
 		workspace_id as _,
 		user_data.login_id as _,
-		Permission::Deployment(DeploymentPermission::View) as _,
+		Permission::Domain(DomainPermission::View) as _,
 		name_filter as _,
 		nameserver_type_filter as _,
 		is_verified_filter as _,
