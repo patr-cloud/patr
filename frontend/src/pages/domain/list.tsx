@@ -13,6 +13,7 @@ import {
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import InfoPopup from "~/components/info-popup";
+import useIsAllowed from "~/hooks/use-fetch/use-allowed";
 
 // Type definitions based on API bindings
 type WorkspaceDomain = {
@@ -81,6 +82,8 @@ const ListDomainsPage = () => {
 	const navigate = useNavigate();
 	const toast = useToast();
 
+	const [isAllowedCreate] = useIsAllowed("domain", "create");
+
 	const fetchParams = createMemo(() => {
 		return [authState(), workspaceId()] as const;
 	});
@@ -116,13 +119,15 @@ const ListDomainsPage = () => {
 			<PageContainerHead
 				title="Domains"
 				subTitle="All Domains"
-				actions={() => (
-					<div class="ml-auto">
-						<Button variant={ButtonVariant.Contained} onClick={() => navigate("/domains/new")}>
-							Add Domain
-						</Button>
-					</div>
-				)}
+				actions={() =>
+					isAllowedCreate && (
+						<div class="ml-auto">
+							<Button variant={ButtonVariant.Contained} onClick={() => navigate("/domains/new")}>
+								Add Domain
+							</Button>
+						</div>
+					)
+				}
 			/>
 			<PageContainerBody>
 				<ErrorBoundary

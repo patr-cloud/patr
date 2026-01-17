@@ -5,7 +5,7 @@ import { BgOnboard, useToast } from "~/components";
 import Button from "~/components/button";
 import Input, { InputType } from "~/components/input";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
-import useFetchWorkspaces from "~/hooks/use-fetch/use-fetch-wokrspaces";
+import useFetchWorkspaces from "~/hooks/use-fetch/use-fetch-workspaces";
 import { ButtonVariant } from "~/utils/color";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
@@ -68,7 +68,7 @@ const WorkspaceOnboard = () => {
 
 				<form
 					onSubmit={onCreateWorkspace}
-					class="bg-secondary-dark p-12 rounded-xs shadow-2xl w-full max-w-[520px] relative flex flex-col items-start justify-start gap-3 z-10 border border-secondary-medium"
+					class="bg-secondary-dark p-12 rounded-xs shadow-2xl w-full max-w-130 relative flex flex-col items-start justify-start gap-3 z-10 border border-secondary-medium"
 				>
 					<div class="text-left">
 						<h1 class="text-xl font-bold text-primary">Create Workspace</h1>

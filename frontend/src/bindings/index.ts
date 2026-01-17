@@ -67,6 +67,8 @@ import { GetApiTokenInfoRequest } from "./GetApiTokenInfoRequest";
 import { GetApiTokenInfoResponse } from "./GetApiTokenInfoResponse";
 import { RevokeApiTokenResponse } from "./RevokeApiTokenResponse";
 import { RevokeApiTokenRequest } from "./RevokeApiTokenRequest";
+import { GetCurrentPermissionsRequest } from "./GetCurrentPermissionsRequest";
+import { GetCurrentPermissionsResponse } from "./GetCurrentPermissionsResponse";
 
 export type {
 	EnvironmentVariableValue,
@@ -138,4 +140,6 @@ export type {
 	GetApiTokenInfoResponse,
 	RevokeApiTokenRequest,
 	RevokeApiTokenResponse,
+	GetCurrentPermissionsRequest,
+	GetCurrentPermissionsResponse,
 };

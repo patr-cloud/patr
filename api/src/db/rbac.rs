@@ -444,7 +444,7 @@ pub async fn initialize_rbac_constraints(
 
 	query!(
 		r#"
-		CREATE FUNCTION RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID(
+		CREATE OR REPLACE FUNCTION RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID(
 			login_id UUID,
 			permission_name TEXT
 		) RETURNS TABLE(

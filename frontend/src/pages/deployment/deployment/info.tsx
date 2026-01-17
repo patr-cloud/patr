@@ -12,6 +12,7 @@ import PortInput from "~/pages/deployment/port";
 interface DeploymentInfoProps {
 	deploymentInfo: Resource<GetDeploymentInfoResponse | undefined>;
 	mutateDeploymentInfo: Setter<GetDeploymentInfoResponse | undefined>;
+	hasEditPermission?: boolean;
 	refetchDeploymentInfo: () =>
 		| GetDeploymentInfoResponse
 		| Promise<GetDeploymentInfoResponse | undefined>
@@ -25,6 +26,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	const toast = useToast();
 
 	const [, setHasUpdated] = createSignal(false);
+	const hasEditPermission = true;
 
 	const resourceParamsRunnerList = createMemo(() => {
 		return [authState(), workspaceId()] as const;
@@ -108,6 +110,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 					<InputLabel parentClass="flex-2" for="deployment-name" label="Name" />
 					<Input
 						value={props.deploymentInfo.latest?.name}
+						disabled={!hasEditPermission}
 						onInput={(e) => {
 							setHasUpdated(true);
 							props.mutateDeploymentInfo((prev) => {
@@ -130,6 +133,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 					<InputLabel parentClass="flex-2" for="deployment-runner" label="Runner" />
 
 					<InputDropdown
+						disabled={!hasEditPermission}
 						options={
 							runnerList.latest?.runners.map((runner) => ({
 								value: runner.id,
@@ -172,6 +176,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 
 						<Input
 							class="flex-6"
+							disabled={!hasEditPermission}
 							placeholder="Image Name"
 							type={InputType.Text}
 							onInput={(e) => {
@@ -197,6 +202,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 
 						<Input
 							class="flex-2"
+							disabled={!hasEditPermission}
 							placeholder="Image Tag"
 							type={InputType.Text}
 							value={props.deploymentInfo.latest?.imageTag ?? "N/A"}
@@ -221,6 +227,11 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						value,
 					}))}
 					onAdd={(key, value) => {
+						if (!hasEditPermission) {
+							toast("You do not have permission to edit environment variables", "warn");
+							return;
+						}
+
 						setHasUpdated(true);
 						props.mutateDeploymentInfo((prev) => {
 							return prev
@@ -235,6 +246,10 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						});
 					}}
 					onDelete={(key) => {
+						if (!hasEditPermission) {
+							toast("You do not have permission to edit environment variables", "warn");
+							return;
+						}
 						setHasUpdated(true);
 						props.mutateDeploymentInfo((prev) => {
 							if (!prev) return undefined;
@@ -250,6 +265,10 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 
 				<PortInput
 					onAdd={(key, value) => {
+						if (!hasEditPermission) {
+							toast("You do not have permission to edit environment variables", "warn");
+							return;
+						}
 						setHasUpdated(true);
 						console.log(key, value);
 						props.mutateDeploymentInfo((prev) => {
@@ -265,6 +284,10 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						});
 					}}
 					onDelete={(key) => {
+						if (!hasEditPermission) {
+							toast("You do not have permission to edit environment variables", "warn");
+							return;
+						}
 						setHasUpdated(true);
 						props.mutateDeploymentInfo((prev) => {
 							if (!prev) return undefined;
@@ -280,11 +303,13 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				/>
 			</div>
 
-			<div class="w-full flex justify-end items-center">
-				<Button type="submit" variant="contained">
-					UPDATE
-				</Button>
-			</div>
+			{hasEditPermission && (
+				<div class="w-full flex justify-end items-center">
+					<Button type="submit" variant="contained">
+						UPDATE
+					</Button>
+				</div>
+			)}
 		</form>
 	);
 };

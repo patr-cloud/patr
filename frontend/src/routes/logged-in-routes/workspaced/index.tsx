@@ -1,22 +1,26 @@
 import { Navigate, Route } from "@solidjs/router";
-import { createEffect, ParentProps } from "solid-js";
-import CreateDeploymentPage from "~/pages/deployment/create";
+import { createEffect, lazy, ParentProps } from "solid-js";
+import useFetchWorkspaces from "~/hooks/use-fetch/use-fetch-workspaces";
+import useFetchUserPermissions from "~/hooks/use-fetch/use-user-permissions";
 import DeploymentInfo from "~/pages/deployment/deployment";
-import ListDeploymentsPage from "~/pages/deployment/list";
-import DomainInfo from "~/pages/domain/domain-info";
-import ManagedUrlPage from "~/pages/managed-url";
-import CreateRunnerPage from "~/pages/runner/create";
-import ListRunnersPage from "~/pages/runner/list";
-import ListDomainsPage from "~/pages/domain/list";
-import CreateDomainPage from "~/pages/domain/create";
-import ManageWorkspace from "~/pages/workspace/manage-workspace";
-import ListWorkspaces from "~/pages/workspace/list";
-import ManageRoles from "~/pages/workspace/manage-roles";
-import CreateRoles from "~/pages/workspace/create-roles";
-import useFetchWorkspaces from "~/hooks/use-fetch/use-fetch-wokrspaces";
+
+const CreateDeploymentPage = lazy(() => import("~/pages/deployment/create"));
+// const DeploymentInfo = lazy(() => import("~/pages/deployment/deployment"));
+const ListDeploymentsPage = lazy(() => import("~/pages/deployment/list"));
+const DomainInfo = lazy(() => import("~/pages/domain/domain-info"));
+const ManagedUrlPage = lazy(() => import("~/pages/managed-url"));
+const CreateRunnerPage = lazy(() => import("~/pages/runner/create"));
+const ListRunnersPage = lazy(() => import("~/pages/runner/list"));
+const ListDomainsPage = lazy(() => import("~/pages/domain/list"));
+const CreateDomainPage = lazy(() => import("~/pages/domain/create"));
+const ManageWorkspace = lazy(() => import("~/pages/workspace/manage-workspace"));
+const ListWorkspaces = lazy(() => import("~/pages/workspace/list"));
+const ManageRoles = lazy(() => import("~/pages/workspace/manage-roles"));
+const CreateRoles = lazy(() => import("~/pages/workspace/create-roles"));
 
 const WorkspacedLayout = (props: ParentProps<{}>) => {
 	const [workspaces] = useFetchWorkspaces();
+	useFetchUserPermissions();
 
 	createEffect(() => {
 		if (workspaces.state === "ready") {

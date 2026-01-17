@@ -1,10 +1,12 @@
 import { Route } from "@solidjs/router";
-import CreateApiTokens from "~/pages/user/api-tokens/create";
-import ApiTokenInfo from "~/pages/user/api-tokens/info";
-import ListApiTokens from "~/pages/user/api-tokens/list";
-import UserSettingsPage from "~/pages/user/settings";
-import CreateWorkspace from "~/pages/workspace/create";
-import ListWorkspaces from "~/pages/workspace/list";
+import { lazy } from "solid-js";
+
+const CreateApiTokens = lazy(() => import("~/pages/user/api-tokens/create"));
+const ApiTokenInfo = lazy(() => import("~/pages/user/api-tokens/info"));
+const ListApiTokens = lazy(() => import("~/pages/user/api-tokens/list"));
+const UserSettingsPage = lazy(() => import("~/pages/user/settings"));
+const CreateWorkspace = lazy(() => import("~/pages/workspace/create"));
+const ListWorkspaces = lazy(() => import("~/pages/workspace/list"));
 
 export default function NonWorkspacedRoutes() {
 	return (

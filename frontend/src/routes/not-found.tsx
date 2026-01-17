@@ -75,10 +75,10 @@ export default function NotFound() {
 			/>
 
 			{/* 404 Content Card */}
-			<section class="bg-[#1a0f2e]/70 backdrop-blur-md p-12 rounded-3xl shadow-2xl w-full max-w-[500px] relative z-10 border border-[#2a1f3d] text-center">
+			<section class="bg-[#1a0f2e]/70 backdrop-blur-md p-12 rounded-3xl shadow-2xl w-full max-w-125 relative z-10 border border-[#2a1f3d] text-center">
 				{/* 404 Number */}
 				<div class="mb-6">
-					<h1 class="text-[120px] font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary via-orange-400 to-primary leading-none animate-pulse">
+					<h1 class="text-[120px] font-bold text-transparent bg-clip-text bg-linear-to-r from-primary via-orange-400 to-primary leading-none animate-pulse">
 						404
 					</h1>
 				</div>
@@ -108,7 +108,7 @@ export default function NotFound() {
 				</div>
 
 				{/* Help Text */}
-				<div class="mt-8 pt-6 border-t border-[#2e2450]">
+				<div class="mt-8 pt-6 border-t border-secondary-medium">
 					<p class="text-gray-500 text-sm">
 						Need help?{" "}
 						<A href="/contact" class="text-primary hover:underline">

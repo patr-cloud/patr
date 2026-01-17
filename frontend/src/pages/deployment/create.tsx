@@ -9,6 +9,7 @@ import {
 	InputDropdown,
 	ButtonVariant,
 	Button,
+	NoPermissionPage,
 } from "~/components";
 import EnvInput from "./env-input";
 import { FiChevronDown } from "solid-icons/fi";
@@ -30,6 +31,7 @@ import { useToast } from "~/components";
 import ProbeInput from "~/pages/deployment/probe-input";
 import ConfigMount, { ConfigMountT } from "~/pages/deployment/config-mount";
 import { useNavigate } from "@solidjs/router";
+import useIsAllowed from "~/hooks/use-fetch/use-allowed";
 
 const CreateDeploymentPage = () => {
 	const [authState] = useAuthState();
@@ -80,12 +82,30 @@ const CreateDeploymentPage = () => {
 		[key: string]: ExposedPortType;
 	}>({});
 
+	const [isAllowedCreate] = useIsAllowed("deployment", "create");
+
+	if (!isAllowedCreate) {
+		return (
+			<NoPermissionPage
+				title="Deployments"
+				titleUrl="/deployments"
+				subTitle="New Deployment"
+				message="You do not have permission to create a deployment."
+			/>
+		);
+	}
+
 	const onSubmit = async (
 		e: SubmitEvent & {
 			currentTarget: HTMLFormElement;
 		}
 	) => {
 		e.preventDefault();
+
+		if (!isAllowedCreate) {
+			toast("You do not have permission to create a deployment.", "error");
+			return;
+		}
 
 		const auth = authState();
 		const currentWorkspaceId = lastUsedWorkspaceId();

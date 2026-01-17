@@ -6,21 +6,44 @@ import {
 	Input,
 	InputLabel,
 	InputType,
+	NoPermissionPage,
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
+	useToast,
 } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
+import useIsAllowed from "~/hooks/use-fetch/use-allowed";
 import { httpRequest } from "~/utils/http-request";
 
 const CreateRunnerPage = () => {
 	const [name, setName] = createSignal<string>("");
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
+	const toast = useToast();
+
+	const [isAllowedCreate] = useIsAllowed("runner", "create");
+
+	if (!isAllowedCreate) {
+		return (
+			<NoPermissionPage
+				title="Runners"
+				titleUrl="/runners"
+				subTitle="New Runner"
+				message="You do not have permission to create a runner."
+			/>
+		);
+	}
 
 	const onSubmit = async (e: SubmitEvent) => {
 		e.preventDefault();
+
+		if (!isAllowedCreate) {
+			toast("You do not have permission to create a runner.", "error");
+			return;
+		}
+
 		const auth = authState();
 		const currentWorkspaceId = workspaceId();
 		if (!auth || auth.type !== "LoggedIn" || !currentWorkspaceId) {

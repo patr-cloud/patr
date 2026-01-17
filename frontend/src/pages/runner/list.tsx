@@ -4,12 +4,14 @@ import { ButtonVariant, Link, PageContainer, PageContainerBody, PageContainerHea
 import { useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
+import useIsAllowed from "~/hooks/use-fetch/use-allowed";
 import { httpRequest } from "~/utils/http-request";
 
 const ListRunnersPage = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
+	const [isAllowedCreate] = useIsAllowed("runner", "create");
 
 	const fetchParams = createMemo(() => {
 		return [authState(), workspaceId()] as const;
@@ -43,8 +45,14 @@ const ListRunnersPage = () => {
 
 	return (
 		<PageContainer>
-			<PageContainerHead title="Runner" subTitle="All Runners"
-				actions={() => <Link href="/runners/new" buttonVariant={ButtonVariant.Contained} external={false}>CREATE RUNNER</Link>}
+			<PageContainerHead
+				title="Runner"
+				subTitle="All Runners"
+				actions={() => (
+					<Link href="/runners/new" buttonVariant={ButtonVariant.Contained} external={false}>
+						CREATE RUNNER
+					</Link>
+				)}
 			/>
 			<PageContainerBody class="flex flex-col justify-between gap-8">
 				<ErrorBoundary
@@ -62,7 +70,7 @@ const ListRunnersPage = () => {
 							headings={["Runner Name", "Status", "Last Seen"]}
 							renderRow={(item) => (
 								<tr
-									class="border border-border-color min-h-10 cursor-pointer flex items-center justify-center w-full px-xl
+									class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl
                   bg-secondary-light last-of-type:rounded-b-xs"
 								>
 									<td class="flex items-center justify-center flex-1">{item.name}</td>

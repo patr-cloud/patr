@@ -9,10 +9,13 @@ import {
 	PageContainerHead,
 	ButtonVariant,
 	Button,
+	useToast,
+	NoPermissionPage,
 } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { AddDomainToWorkspaceRequest, AddDomainToWorkspaceResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
+import useIsAllowed from "~/hooks/use-fetch/use-allowed";
 
 // Check if input looks like a URL (has protocol, path, query, etc.)
 function looksLikeUrl(input: string): boolean {
@@ -39,6 +42,9 @@ const CreateDomainPage = () => {
 	const [suggestedDomain, setSuggestedDomain] = createSignal("");
 	const [isSubmitting, setIsSubmitting] = createSignal(false);
 	let validationTimeout: number | undefined;
+	const toast = useToast();
+
+	const [isAllowedCreate] = useIsAllowed("domain", "create");
 
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
@@ -123,6 +129,11 @@ const CreateDomainPage = () => {
 
 	const onSubmit = async (e: SubmitEvent) => {
 		e.preventDefault();
+
+		if (!isAllowedCreate) {
+			toast("You do not have permission to create a domain", "error");
+			return;
+		}
 
 		const auth = authState();
 		const wsId = workspaceId();

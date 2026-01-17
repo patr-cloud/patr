@@ -25,6 +25,7 @@ import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 import DeploymentOption from "./deployment-option";
 import ManageUrlRow from "./managed-url-component";
+import useIsAllowed, { useResourceIdPermissions } from "~/hooks/use-fetch/use-allowed";
 
 type urlTypeT = "proxyUrl" | "redirect" | "proxyDeployment" | "proxyStaticSite";
 
@@ -42,6 +43,9 @@ const DomainInfo = () => {
 	const [urlType, setUrlType] = createSignal<urlTypeT | null>(null);
 	const [target, setTarget] = createSignal<string | null>(null);
 	const [deploymentPort, setDeploymentPort] = createSignal<number | null>(null);
+
+	const permissions = useResourceIdPermissions("domain", () => params.id!);
+	const [isAllowedCreateManagedUrl] = useIsAllowed("managedUrl", "create");
 
 	const resourceParams = createMemo(() => {
 		return [authState(), workspaceId(), params.id] as const;
@@ -157,6 +161,11 @@ const DomainInfo = () => {
 	};
 
 	const onVerifyClick = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
+		if (!permissions().verify) {
+			toast("You do not have permission to verify this domain", "error");
+			return;
+		}
+
 		// Verify domain logic goes here
 		const auth = authState();
 		const wsId = workspaceId();
@@ -262,12 +271,14 @@ const DomainInfo = () => {
 						subTitle={domainInfo.latest?.name}
 						actions={() => (
 							<div class="flex items-center justify-center gap-2">
-								<DeleteModal
-									title="Delete Domain"
-									onClickDelete={onClickDelete}
-									resourceName={domainInfo.latest?.name || ""}
-								/>
-								{!domainInfo.latest?.isVerified ? (
+								{true && (
+									<DeleteModal
+										title="Delete Domain"
+										onClickDelete={onClickDelete}
+										resourceName={domainInfo.latest?.name || ""}
+									/>
+								)}
+								{true && !domainInfo.latest?.isVerified ? (
 									<Button
 										type="button"
 										onClick={onVerifyClick}
@@ -281,51 +292,53 @@ const DomainInfo = () => {
 						)}
 					/>
 					<PageContainerBody>
-						<form class="mb-2 p-lg bg-secondary-light rounded-xs" onSubmit={onSubmitCreateManagedUrl}>
-							<h1 class="text-lg mb-3">Create New Managed URL</h1>
-							<div class="flex flex-col items-start justify-center gap-2 w-full">
-								<div class="flex items-center justify-center gap-3 w-full">
-									<Input
-										onInput={(e) => setSubDomain(e.currentTarget.value)}
-										value={subDomain()}
-										styleVariant="medium"
-										class="flex-2"
-										placeholder="Sub-domain"
-									/>
-									<span class="h-full">.</span>
-									<Input disabled={true} value={domainInfo.latest?.name} class="flex-2" placeholder="Domain" />
-									<span>/</span>
-									<Input
-										styleVariant="medium"
-										onInput={(e) => setPath(e.currentTarget.value)}
-										value={path()}
-										class="flex-2"
-										placeholder="Path"
-									/>
-								</div>
-								<p class="mx-2">Will point to</p>
-								<div class="flex items-center justify-center gap-2 w-full">
-									<InputDropdown
-										onSelect={(value) => setUrlType(value as urlTypeT)}
-										value={urlType() || undefined}
-										options={[
-											{
-												label: "Deployments",
-												value: "proxyDeployment",
-											},
-										]}
-										class="flex-2 m-0"
-										styleVariant="medium"
-										placeholder="Type"
-									/>
-									<div class="flex-10">{urlInput()}</div>
-								</div>
+						{true && (
+							<form class="mb-2 p-lg bg-secondary-light rounded-xs" onSubmit={onSubmitCreateManagedUrl}>
+								<h1 class="text-lg mb-3">Create New Managed URL</h1>
+								<div class="flex flex-col items-start justify-center gap-2 w-full">
+									<div class="flex items-center justify-center gap-3 w-full">
+										<Input
+											onInput={(e) => setSubDomain(e.currentTarget.value)}
+											value={subDomain()}
+											styleVariant="medium"
+											class="flex-2"
+											placeholder="Sub-domain"
+										/>
+										<span class="h-full">.</span>
+										<Input disabled={true} value={domainInfo.latest?.name} class="flex-2" placeholder="Domain" />
+										<span>/</span>
+										<Input
+											styleVariant="medium"
+											onInput={(e) => setPath(e.currentTarget.value)}
+											value={path()}
+											class="flex-2"
+											placeholder="Path"
+										/>
+									</div>
+									<p class="mx-2">Will point to</p>
+									<div class="flex items-center justify-center gap-2 w-full">
+										<InputDropdown
+											onSelect={(value) => setUrlType(value as urlTypeT)}
+											value={urlType() || undefined}
+											options={[
+												{
+													label: "Deployments",
+													value: "proxyDeployment",
+												},
+											]}
+											class="flex-2 m-0"
+											styleVariant="medium"
+											placeholder="Type"
+										/>
+										<div class="flex-10">{urlInput()}</div>
+									</div>
 
-								<div class="w-full flex justify-end mt-4">
-									<Button variant={ButtonVariant.Contained}>Create</Button>
+									<div class="w-full flex justify-end mt-4">
+										<Button variant={ButtonVariant.Contained}>Create</Button>
+									</div>
 								</div>
-							</div>
-						</form>
+							</form>
+						)}
 
 						<div class="flex flex-col gap-2 items-start w-5/5 mt-4">
 							<Table

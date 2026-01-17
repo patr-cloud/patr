@@ -1,11 +1,12 @@
 import { Route, Navigate } from "@solidjs/router";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { createEffect, createResource, onMount, ParentProps } from "solid-js";
+import { createEffect, createResource, onMount, ParentProps, Suspense } from "solid-js";
 import { useAuthState } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
 import { ListUserWorkspacesResponse } from "~/bindings";
-
 import WorkspacedRoutes from "./workspaced";
+
+// import WorkspacedRoutes from "./workspaced";
 import NonWorkspacedRoutes from "./non-workspaced";
 import { useToast } from "~/components";
 
@@ -84,7 +85,9 @@ export default function LoggedInRoutes() {
 		<Route path="/">
 			<Route path="/" component={PageWrapper}>
 				<WorkspacedRoutes />
-				<NonWorkspacedRoutes />
+				<Suspense fallback={<div>Loading...</div>}>
+					<NonWorkspacedRoutes />
+				</Suspense>
 			</Route>
 			<Route path="/onboard" component={WorkspaceOnboardPage} />
 		</Route>

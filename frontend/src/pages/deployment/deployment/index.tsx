@@ -17,12 +17,17 @@ import { httpRequest } from "~/utils/http-request";
 import DeploymentInfoUpdate from "~/pages/deployment/deployment/info";
 import DeploymentLogs from "./logs";
 import { Color } from "~/utils/color";
+import { useResourceIdPermissions } from "~/hooks/use-fetch/use-allowed";
 
 const DeploymentInfo = () => {
 	const params = useParams();
 	const [searchParams, setSearchParams] = useSearchParams();
 	const tab = () => (searchParams.tab as string) || "";
-
+	// if (!params.id) {
+	// 	return <div class="text-white">No deployment ID provided in URL</div>;
+	// }
+	// const [isAllowedView] = useIsAllowed("deployment", "view", () => params.id!);
+	const permissions = useResourceIdPermissions("deployment", () => params.id!);
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
@@ -118,6 +123,11 @@ const DeploymentInfo = () => {
 	) => {
 		e.preventDefault();
 
+		if (!permissions()?.delete) {
+			toast("You do not have permission to delete this deployment", "error");
+			return;
+		}
+
 		const auth = authState();
 		const currentWorkspace = workspaceId();
 		const deployment = deploymentInfo();
@@ -151,12 +161,15 @@ const DeploymentInfo = () => {
 	const Cta = () => {
 		switch (deploymentInfo()?.status) {
 			case "running":
+				if (!permissions()?.edit) {
+					return null;
+				}
+
 				return (
 					<Button onClick={onClickStop} class="h-10" variant={ButtonVariant.Outlined} color={Color.Error}>
 						STOP
 					</Button>
 				);
-
 			case "deploying":
 				return <span class="text-white">Deploying...</span>;
 			case "errored":
@@ -164,6 +177,10 @@ const DeploymentInfo = () => {
 			case "unreachable":
 				return <span class="text-white">Unreachable</span>;
 			case "stopped":
+				if (!permissions()?.edit) {
+					return null;
+				}
+
 				return (
 					<Button onClick={onClickStart} class="h-10" variant={ButtonVariant.Contained}>
 						START
@@ -182,6 +199,7 @@ const DeploymentInfo = () => {
 			case "":
 				return (
 					<DeploymentInfoUpdate
+						hasEditPermission={permissions()?.edit || false}
 						deploymentInfo={deploymentInfo}
 						refetchDeploymentInfo={refetchDeploymentInfo}
 						mutateDeploymentInfo={mutateDeploymentInfo}
