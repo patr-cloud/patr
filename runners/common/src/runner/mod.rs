@@ -1,12 +1,17 @@
-use std::{fs::Permissions, net::SocketAddr, os::unix::fs::PermissionsExt, sync::OnceLock};
+use std::{
+	collections::BTreeMap,
+	fs::Permissions,
+	net::SocketAddr,
+	os::unix::fs::PermissionsExt,
+	sync::OnceLock,
+};
 
-use dashmap::DashMap;
 use futures::{FutureExt, future};
 use tempfile::TempDir;
 use tokio::{
 	fs,
 	net::TcpListener,
-	sync::{mpsc, watch},
+	sync::{Mutex, mpsc, watch},
 	task,
 	time::{self, Duration},
 };
@@ -60,7 +65,7 @@ where
 	E: RunnerExecutor + Send + 'static,
 {
 	/// Runner task registry
-	registry: DashMap<Uuid, ResourceExecutorTask<E>>,
+	registry: Mutex<BTreeMap<Uuid, ResourceExecutorTask<E>>>,
 	/// State and configuration for the runner
 	state: AppState<E>,
 	/// Temporary directory for the runner to store binary artifacts
@@ -162,7 +167,7 @@ where
 		db::initialize(&state).await?;
 
 		Ok(Self {
-			registry: DashMap::new(),
+			registry: Mutex::new(BTreeMap::new()),
 			state,
 			temp_dir: TempDir::with_prefix("patr").map_err(RunnerError::ServerSetupError)?,
 		})
@@ -256,7 +261,7 @@ where
 
 		info!("Runner stopped. Waiting for server to exit...");
 
-		for (_, task) in self.registry {
+		for (_, task) in self.registry.into_inner() {
 			_ = task.stop().await;
 		}
 

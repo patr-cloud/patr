@@ -9,11 +9,7 @@ use cloudflare::{
 		client::{ClientConfig, async_api::Client as CloudflareClient},
 	},
 };
-use models::{
-	api::workspace::deployment::*,
-	cloudflare::kv::DeploymentKVData,
-	utils::StringifiedU16,
-};
+use models::{api::workspace::deployment::*, cloudflare::kv::*, utils::StringifiedU16};
 
 use crate::prelude::*;
 
@@ -460,7 +456,7 @@ pub async fn update_deployment(
 			expiration: None,
 			expiration_ttl: None,
 		},
-		body: write_key::WriteKeyBody::Value(serde_json::to_vec(&DeploymentKVData {
+		body: write_key::WriteKeyBody::Value(serde_json::to_vec(&InternalKVData::Deployment {
 			ports: ports.iter().map(|(port, _)| port.value()).collect(),
 			runner_id,
 			status: DeploymentStatus::Deploying,

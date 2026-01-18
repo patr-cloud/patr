@@ -398,7 +398,7 @@ pub async fn create_deployment(
 			expiration: None,
 			expiration_ttl: None,
 		},
-		body: write_key::WriteKeyBody::Value(serde_json::to_vec(&DeploymentKVData {
+		body: write_key::WriteKeyBody::Value(serde_json::to_vec(&InternalKVData::Deployment {
 			ports: ports.iter().map(|(port, _)| port.value()).collect(),
 			runner_id: runner,
 			status: DeploymentStatus::Deploying,

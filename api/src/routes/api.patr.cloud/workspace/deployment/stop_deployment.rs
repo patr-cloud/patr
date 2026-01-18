@@ -11,7 +11,7 @@ use cloudflare::{
 };
 use models::{
 	api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg},
-	cloudflare::kv::DeploymentKVData,
+	cloudflare::kv::*,
 	utils::{Base64String, StringifiedU16},
 };
 use rustis::commands::PubSubCommands;
@@ -246,7 +246,7 @@ pub async fn stop_deployment(
 			expiration: None,
 			expiration_ttl: None,
 		},
-		body: write_key::WriteKeyBody::Value(serde_json::to_vec(&DeploymentKVData {
+		body: write_key::WriteKeyBody::Value(serde_json::to_vec(&InternalKVData::Deployment {
 			ports: ports.iter().map(|(port, _)| port.value()).collect(),
 			runner_id: runner,
 			status: DeploymentStatus::Deploying,

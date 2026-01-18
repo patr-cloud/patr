@@ -53,12 +53,19 @@ impl ManagedUrlKVData {
 
 /// Deployment KV Data stored in Cloudflare KV
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct DeploymentKVData {
-	/// The ports of the deployment whose data is being stored
-	pub ports: Vec<u16>,
-	/// The runner ID running the deployment
-	pub runner_id: Uuid,
-	/// The status of the deployment
-	pub status: DeploymentStatus,
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum InternalKVData {
+	/// The URL is pointing a deployment
+	#[serde(rename_all = "camelCase")]
+	Deployment {
+		/// The ports of the deployment whose data is being stored
+		ports: Vec<u16>,
+		/// The runner ID running the deployment
+		runner_id: Uuid,
+		/// The status of the deployment
+		status: DeploymentStatus,
+	},
+	/// The URL is pointing to a runner
+	#[serde(rename_all = "camelCase")]
+	Runner,
 }

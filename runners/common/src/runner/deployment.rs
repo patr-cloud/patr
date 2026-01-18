@@ -488,8 +488,14 @@ where
 	/// stopped.
 	#[instrument(skip(self))]
 	pub(super) async fn reconcile_deployments(&self) -> Result<(), RunnerError> {
-		let mut running_deployments =
-			stream::iter(self.registry.iter().map(|item| item.value().resource_id()));
+		let mut running_deployments = stream::iter(
+			self.registry
+				.lock()
+				.await
+				.values()
+				.map(|item| item.resource_id())
+				.collect::<Vec<_>>(),
+		);
 		let mut database_deployments = self.get_all_local_deployment_ids().await;
 
 		let mut current_running_deployment = running_deployments.next().with_cancel_check().await?;
@@ -605,7 +611,7 @@ where
 	/// deployment from the host.
 	#[instrument(skip(self))]
 	pub(super) async fn delete_running_deployment(&self, deployment_id: Uuid) {
-		if let Some((_, task)) = self.registry.remove(&deployment_id) {
+		if let Some(task) = self.registry.lock().await.remove(&deployment_id) {
 			task.stop().await;
 		}
 	}
@@ -616,12 +622,13 @@ where
 	#[instrument(skip(self))]
 	pub(super) async fn upsert_running_deployment(&self, deployment_id: Uuid) {
 		self.registry
+			.lock()
+			.await
 			.entry(deployment_id)
 			.or_insert_with(|| {
 				// Create the task for the deployment
 				ResourceExecutorTask::new_deployment(deployment_id, self.state.clone())
 			})
-			.value_mut()
 			.ensure_running()
 			.notify_update();
 	}

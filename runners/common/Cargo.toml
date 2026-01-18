@@ -23,7 +23,6 @@ axum               = { workspace = true, features = ["default", "macros", "traci
 axum-extra         = { workspace = true, features = ["default", "typed-routing"] }
 config             = { workspace = true, features = ["json"] }
 console-subscriber = { workspace = true, features = ["default"] }
-dashmap            = { workspace = true, features = [] }
 fslock             = { workspace = true, features = ["default"] }
 futures            = { workspace = true }
 http               = { workspace = true, features = ["default"] }

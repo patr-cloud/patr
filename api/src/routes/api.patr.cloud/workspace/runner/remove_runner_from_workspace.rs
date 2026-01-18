@@ -1,4 +1,12 @@
 use axum::http::StatusCode;
+use cloudflare::{
+	endpoints::workerskv::delete_key,
+	framework::{
+		Environment,
+		auth::Credentials,
+		client::{ClientConfig, async_api::Client as CloudflareClient},
+	},
+};
 use models::{api::workspace::runner::*, prelude::*};
 
 use crate::prelude::*;
@@ -23,7 +31,7 @@ pub async fn remove_runner_from_workspace(
 		redis: _,
 		client_ip: _,
 		user_data: _,
-		state: _,
+		state,
 	}: AuthenticatedAppRequest<'_, DeleteRunnerRequest>,
 ) -> Result<AppResponse<DeleteRunnerRequest>, ErrorType> {
 	info!("Deleting runner `{}`", runner_id);
@@ -56,6 +64,20 @@ pub async fn remove_runner_from_workspace(
 		runner_id as _,
 	)
 	.execute(&mut **database)
+	.await?;
+
+	CloudflareClient::new(
+		Credentials::UserAuthToken {
+			token: state.config.cloudflare.api_key.clone(),
+		},
+		ClientConfig::default(),
+		Environment::Production,
+	)?
+	.request(&delete_key::DeleteKey {
+		account_identifier: &state.config.cloudflare.account_id,
+		namespace_identifier: &state.config.cloudflare.worker_namespace_id,
+		key: &runner_id.to_string(),
+	})
 	.await?;
 
 	AppResponse::builder()
