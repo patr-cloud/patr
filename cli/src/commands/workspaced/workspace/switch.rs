@@ -25,7 +25,6 @@ pub(super) async fn execute(
 ) -> Result<CommandOutput, AppError> {
 	let AppState::LoggedIn {
 		token,
-		refresh_token,
 		current_workspace: _,
 	} = state
 	else {
@@ -36,7 +35,7 @@ pub(super) async fn execute(
 		ApiRequest::<ListUserWorkspacesRequest>::builder()
 			.headers(ListUserWorkspacesRequestHeaders {
 				authorization: token.clone(),
-				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+				user_agent: constants::USER_AGENT,
 			})
 			.build(),
 	)
@@ -71,7 +70,6 @@ pub(super) async fn execute(
 
 	AppState::LoggedIn {
 		token,
-		refresh_token,
 		current_workspace: Some(workspace.id),
 	}
 	.save()?;

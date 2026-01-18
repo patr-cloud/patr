@@ -223,7 +223,7 @@ impl Display for DnsRecordValue {
 }
 
 /// Type of domain nameserver
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS, Hash)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(
 	not(target_arch = "wasm32"),

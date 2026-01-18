@@ -16,12 +16,11 @@ pub(super) async fn execute(
 			.into_result();
 	}
 
-	let (access_token, _) = match state {
+	let access_token = match state {
 		AppState::LoggedIn {
 			token,
-			refresh_token,
 			current_workspace: _,
-		} => (token, refresh_token),
+		} => token,
 		AppState::LoggedOut => {
 			return Err(AppError::NotLoggedIn);
 		}
@@ -45,7 +44,7 @@ pub(super) async fn execute(
 		ApiRequest::<GetUserInfoRequest>::builder()
 			.headers(GetUserInfoRequestHeaders {
 				authorization: access_token.clone(),
-				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+				user_agent: constants::USER_AGENT,
 			})
 			.build(),
 	)

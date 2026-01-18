@@ -1,10 +1,12 @@
 use clap::Subcommand;
 
-use self::deployment::DeploymentCommand;
+use self::{deployment::DeploymentCommand, runner::RunnerCommand};
 use crate::prelude::*;
 
 /// All deployment related commands (e.g. list, create, etc.)
 mod deployment;
+/// All commands to setup / run a runner
+mod runner;
 
 /// All infrastructure related commands (e.g. deployments, databases, etc.)
 #[derive(Debug, Clone, Subcommand)]
@@ -13,6 +15,9 @@ pub enum InfrastructureCommand {
 	/// All deployment related commands
 	#[command(flatten)]
 	DeploymentCommand(DeploymentCommand),
+	/// All the commands that are related to setting up a runner
+	#[command(flatten)]
+	RunnerCommands(RunnerCommand),
 	// #[command(flatten)]
 	// DatabaseCommand(DatabaseCommand),
 	// #[command(flatten)]
@@ -32,6 +37,9 @@ pub async fn execute(
 	match command {
 		InfrastructureCommand::DeploymentCommand(command) => {
 			deployment::execute(command, global_args, state).await
+		}
+		InfrastructureCommand::RunnerCommands(commands) => {
+			runner::execute(commands, global_args, state).await
 		}
 	}
 }

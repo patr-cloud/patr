@@ -13,6 +13,8 @@ pub use self::{authenticator::*, client::*, ext_trait::*, storage::*};
 
 /// Constants used in the CLI
 pub mod constants {
+	use headers::UserAgent;
+
 	/// The base URL for the Patr API
 	pub const API_BASE_URL: &str = if cfg!(debug_assertions) {
 		"http://localhost:3000"
@@ -20,15 +22,22 @@ pub mod constants {
 		"https://api.patr.cloud"
 	};
 
+	/// The base URL for the Patr Frontend
+	pub const FRONTEND_BASE_URL: &str = if cfg!(debug_assertions) {
+		"http://localhost:3001"
+	} else {
+		"https://app.patr.cloud"
+	};
+
 	/// The user agent for the CLI
-	pub const USER_AGENT_STRING: &str = concat!(
+	pub const USER_AGENT: UserAgent = UserAgent::from_static(concat!(
 		"patr-cli/",
 		env!("CARGO_PKG_VERSION_MAJOR"),
 		".",
 		env!("CARGO_PKG_VERSION_MINOR"),
 		".",
 		env!("CARGO_PKG_VERSION_PATCH"),
-	);
+	));
 }
 
 /// The location for config files for the CLI

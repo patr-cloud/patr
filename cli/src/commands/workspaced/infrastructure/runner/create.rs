@@ -20,7 +20,6 @@ pub async fn execute(
 ) -> Result<CommandOutput, AppError> {
 	let AppState::LoggedIn {
 		token,
-		refresh_token: _,
 		current_workspace,
 	} = state
 	else {
@@ -33,7 +32,7 @@ pub async fn execute(
 			ApiRequest::<ListUserWorkspacesRequest>::builder()
 				.headers(ListUserWorkspacesRequestHeaders {
 					authorization: token.clone(),
-					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+					user_agent: constants::USER_AGENT,
 				})
 				.build(),
 		)
@@ -72,7 +71,7 @@ pub async fn execute(
 			.path(AddRunnerToWorkspacePath { workspace_id })
 			.headers(AddRunnerToWorkspaceRequestHeaders {
 				authorization: token,
-				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+				user_agent: constants::USER_AGENT,
 			})
 			.body(AddRunnerToWorkspaceRequest { name: name.clone() })
 			.build(),

@@ -1,12 +1,18 @@
 use clap::Args as ClapArgs;
 use inquire::Select;
 use models::{api::user::*, iaac::*};
+use serde_yaml2::de::YamlDeserializer;
 use tokio::fs;
 
 use crate::prelude::*;
 
 /// The module to apply a deployment configuration file to the current workspace
 mod deployment;
+/// The module to apply a domain configuration file to the current workspace
+mod domain;
+/// The module to apply a managed URL configuration file to the current
+/// workspace
+mod managed_url;
 
 #[derive(Debug, Clone, ClapArgs)]
 pub struct Args {
@@ -31,7 +37,6 @@ pub async fn execute(
 ) -> Result<CommandOutput, AppError> {
 	let AppState::LoggedIn {
 		token,
-		refresh_token: _,
 		current_workspace,
 	} = state
 	else {
@@ -46,7 +51,7 @@ pub async fn execute(
 				.path(ListUserWorkspacesPath)
 				.headers(ListUserWorkspacesRequestHeaders {
 					authorization: token.clone(),
-					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+					user_agent: constants::USER_AGENT,
 				})
 				.build(),
 		)
@@ -78,21 +83,22 @@ pub async fn execute(
 	let file = fs::read_to_string(&args.file)
 		.await
 		.map_err(|err| AppError::IaacParseError(err.to_string()))?;
-
-	let deserializer = &mut serde_yaml2::de::YamlDeserializer::from_str(&file).unwrap();
-
-	let resources = vec![
-		serde_path_to_error::deserialize::<_, IaacResource>(deserializer)
-			.map_err(|err| AppError::IaacParseError(format!("{} at `{}`", err, err.path())))?,
-	]
-	.deduplicated()?
-	.ordered()?;
+	let resources = serde_path_to_error::deserialize::<_, Vec<IaacResource>>(
+		&mut YamlDeserializer::from_str(&file).unwrap(),
+	)
+	.map_err(|err| AppError::IaacParseError(err.to_string()))?;
 
 	for resource in resources {
 		// Apply the resource
 		match resource.data {
 			IaacResourceData::Deployment(deployment) => {
 				deployment::apply(workspace_id, token.clone(), deployment).await?;
+			}
+			IaacResourceData::Domain(domain) => {
+				domain::apply(workspace_id, token.clone(), domain).await?;
+			}
+			IaacResourceData::ManagedUrl(managed_url) => {
+				managed_url::apply(workspace_id, token.clone(), managed_url).await?;
 			}
 		}
 	}
