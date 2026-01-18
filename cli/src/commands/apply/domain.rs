@@ -19,10 +19,13 @@ pub async fn apply(
 			.path(ListDomainsInWorkspacePath { workspace_id })
 			.headers(ListDomainsInWorkspaceRequestHeaders {
 				authorization: token.clone(),
-				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+				user_agent: constants::USER_AGENT,
 			})
 			.query(ListResourceQuery {
-				search: Default::default(),
+				search: WorkspaceDomainSearchParams {
+					name: Some(name.clone()),
+					..Default::default()
+				},
 				sort: Default::default(),
 				count: ListResourceQuery::DEFAULT_PAGE_SIZE,
 				page: 0,
@@ -43,20 +46,22 @@ pub async fn apply(
 	// If an ID is provided, specifically use that. Otherwise, use the found
 	// domain ID by name.
 	if let Some(domain_id) = id.or(domain_id) {
-		println!("Domain `{name}` with ID `{domain_id}` already exists");
-		println!(
+		eprintln!("Domain `{name}` with ID `{domain_id}` already exists");
+		eprintln!(
 			"Note: Domains cannot be updated once created. To modify a domain, delete and recreate it."
 		);
+
+		return Ok(());
 	} else {
 		// If no ID is provided and no domain is found by name, create a new domain.
-		println!("Creating new domain `{name}`");
+		eprintln!("Creating new domain `{name}`");
 
 		let response = make_request(
 			ApiRequest::<AddDomainToWorkspaceRequest>::builder()
 				.path(AddDomainToWorkspacePath { workspace_id })
 				.headers(AddDomainToWorkspaceRequestHeaders {
 					authorization: token.clone(),
-					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+					user_agent: constants::USER_AGENT,
 				})
 				.body(AddDomainToWorkspaceRequest {
 					domain: name.clone(),
@@ -66,17 +71,16 @@ pub async fn apply(
 		)
 		.await?;
 
-		println!("Domain `{name}` created with ID `{}`", response.body.id.id);
+		eprintln!("Domain `{name}` created with ID `{}`", response.body.id.id);
 
 		// If the nameserver is external, provide verification instructions
 		if nameserver_type.is_external() {
-			println!(
+			eprintln!(
 				"To verify this domain, you need to add the verification records to your DNS provider."
 			);
-			println!(
-				"Run `patr domain verify {}` for verification instructions.",
-				response.body.id.id
-			);
+			eprintln!("Run `patr domain verify {name}` for verification instructions.",);
+		} else {
+			eprintln!("Internal domains are currently not supported.")
 		}
 	}
 

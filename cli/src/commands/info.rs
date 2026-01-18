@@ -44,7 +44,7 @@ pub(super) async fn execute(
 		ApiRequest::<GetUserInfoRequest>::builder()
 			.headers(GetUserInfoRequestHeaders {
 				authorization: access_token.clone(),
-				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+				user_agent: constants::USER_AGENT,
 			})
 			.build(),
 	)

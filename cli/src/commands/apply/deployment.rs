@@ -38,7 +38,7 @@ pub async fn apply(
 					.path(ListContainerRepositoriesPath { workspace_id })
 					.headers(ListContainerRepositoriesRequestHeaders {
 						authorization: token.clone(),
-						user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+						user_agent: constants::USER_AGENT,
 					})
 					.query(ListResourceQuery {
 						search: ContainerRepositorySearchParams {
@@ -90,7 +90,7 @@ pub async fn apply(
 			.path(ListRunnersForWorkspacePath { workspace_id })
 			.headers(ListRunnersForWorkspaceRequestHeaders {
 				authorization: token.clone(),
-				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+				user_agent: constants::USER_AGENT,
 			})
 			.query(ListResourceQuery {
 				search: RunnerSearchParams {
@@ -120,7 +120,7 @@ pub async fn apply(
 		ApiRequest::<ListAllDeploymentMachineTypeRequest>::builder()
 			.path(ListAllDeploymentMachineTypePath { workspace_id })
 			.headers(ListAllDeploymentMachineTypeRequestHeaders {
-				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+				user_agent: constants::USER_AGENT,
 			})
 			.build(),
 	)
@@ -143,7 +143,7 @@ pub async fn apply(
 			.path(ListDeploymentPath { workspace_id })
 			.headers(ListDeploymentRequestHeaders {
 				authorization: token.clone(),
-				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+				user_agent: constants::USER_AGENT,
 			})
 			.query(ListResourceQuery {
 				search: DeploymentSearchParams {
@@ -167,7 +167,7 @@ pub async fn apply(
 	// If an ID is provided, specifically use that. Otherwise, use the found
 	// deployment ID by name.
 	if let Some(deployment_id) = id.or(deployment_id) {
-		println!("Updating existing deployment `{name}` with ID `{deployment_id}`");
+		eprintln!("Updating existing deployment `{name}` with ID `{deployment_id}`");
 
 		make_request(
 			ApiRequest::<UpdateDeploymentRequest>::builder()
@@ -177,7 +177,7 @@ pub async fn apply(
 				})
 				.headers(UpdateDeploymentRequestHeaders {
 					authorization: token.clone(),
-					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+					user_agent: constants::USER_AGENT,
 				})
 				.body(UpdateDeploymentRequest {
 					name: Some(name.clone()),
@@ -215,18 +215,18 @@ pub async fn apply(
 		)
 		.await?;
 
-		println!("Deployment `{name}` (with ID `{deployment_id}`) updated");
+		eprintln!("Deployment `{name}` (with ID `{deployment_id}`) updated");
 	} else {
 		// If no ID is provided and no deployment is found by name, create a new
 		// deployment.
-		println!("Creating new deployment `{name}`");
+		eprintln!("Creating new deployment `{name}`");
 
 		let response = make_request(
 			ApiRequest::<CreateDeploymentRequest>::builder()
 				.path(CreateDeploymentPath { workspace_id })
 				.headers(CreateDeploymentRequestHeaders {
 					authorization: token.clone(),
-					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+					user_agent: constants::USER_AGENT,
 				})
 				.body(CreateDeploymentRequest {
 					name: name.clone(),
@@ -265,7 +265,7 @@ pub async fn apply(
 		)
 		.await?;
 
-		println!(
+		eprintln!(
 			"Deployment `{name}` created with ID `{}`",
 			response.body.id.id
 		);

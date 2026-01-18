@@ -1,16 +1,15 @@
 use clap::Args as ClapArgs;
 use inquire::Select;
 use models::{api::user::*, iaac::*};
+use serde_yaml2::de::YamlDeserializer;
 use tokio::fs;
 
 use crate::prelude::*;
 
 /// The module to apply a deployment configuration file to the current workspace
 mod deployment;
-
 /// The module to apply a domain configuration file to the current workspace
 mod domain;
-
 /// The module to apply a managed URL configuration file to the current
 /// workspace
 mod managed_url;
@@ -52,7 +51,7 @@ pub async fn execute(
 				.path(ListUserWorkspacesPath)
 				.headers(ListUserWorkspacesRequestHeaders {
 					authorization: token.clone(),
-					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+					user_agent: constants::USER_AGENT,
 				})
 				.build(),
 		)
@@ -84,10 +83,10 @@ pub async fn execute(
 	let file = fs::read_to_string(&args.file)
 		.await
 		.map_err(|err| AppError::IaacParseError(err.to_string()))?;
-
-	let deserializer = &mut serde_yaml2::de::YamlDeserializer::from_str(&file).unwrap();
-	let resources = serde_path_to_error::deserialize::<_, Vec<IaacResource>>(deserializer)
-		.map_err(|err| AppError::IaacParseError(err.to_string()))?;
+	let resources = serde_path_to_error::deserialize::<_, Vec<IaacResource>>(
+		&mut YamlDeserializer::from_str(&file).unwrap(),
+	)
+	.map_err(|err| AppError::IaacParseError(err.to_string()))?;
 
 	for resource in resources {
 		// Apply the resource

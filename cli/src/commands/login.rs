@@ -6,64 +6,30 @@ use models::{ApiSuccessResponseBody, api::user::*, prelude::*};
 use crate::prelude::*;
 
 /// A command that logs the user into their Patr account.
-pub(super) async fn execute(_: AppState) -> Result<CommandOutput, AppError> {
-	// Determine the base URL for the app
-	let app_base_url = std::env::var("FRONTEND_BASE_URL");
-
-	let app_base_url = if cfg!(debug_assertions) {
-		app_base_url.unwrap_or_default()
-	} else {
-		app_base_url.expect("FRONTEND_BASE_URL environment variable is not set")
-	};
-
-	let token_url = format!("{}/profile/api-tokens/new", app_base_url);
-
-	println!("Opening your browser to create a new API token...");
-	match open::that(&token_url) {
-		Ok(()) => println!("Opened '{}' successfully.", token_url),
-		Err(_err) => {
-			println!("If the browser did not open, please visit '{}'", token_url)
-		}
-	}
-
-	println!();
-
+pub(super) async fn execute(
+	global_args: GlobalArgs,
+	_: AppState,
+) -> Result<CommandOutput, AppError> {
 	// Prompt for the token
-	let token: Option<String> = Password::new("Paste your API token here:")
-		.with_help_message("Create an API token in your browser and paste it here")
-		.without_confirmation()
-		.prompt()
-		.ok();
+	let token = global_args.token.unwrap_or_else(|| {
+		let token_url = format!("{}/profile/api-tokens/new", constants::FRONTEND_BASE_URL);
 
-	// If we still don't have a token, exit with an error
-	let token = match token {
-		Some(t) => t,
-		None => {
-			eprintln!(
-				concat!(
-					"In order to login to Patr, you need to provide an API token.\n",
-					"You can either:\n",
-					"  1. Run this command in an interactive terminal\n",
-					"  2. Provide the token with the `--token` flag\n",
-					"  3. Create an API token at {}/profile/api-tokens/new"
-				),
-				app_base_url
-			);
-			std::process::ExitCode::FAILURE.exit_process();
+		eprintln!("Opening your browser to create a new API token...");
+		match open::that(&token_url) {
+			Ok(()) => eprintln!("Opened '{}' successfully.", token_url),
+			Err(_err) => {
+				eprintln!("If the browser did not open, please visit '{}'", token_url)
+			}
 		}
-	};
+
+		Password::new("Paste your API token here:")
+			.with_help_message("Create an API token in your browser and paste it here")
+			.without_confirmation()
+			.prompt()
+			.expect_tty("Failed to read API token")
+	});
 
 	// Verify the token by fetching user info
-	let response = make_request(
-		ApiRequest::<GetUserInfoRequest>::builder()
-			.headers(GetUserInfoRequestHeaders {
-				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
-				authorization: BearerToken::from_str(&token)?,
-			})
-			.build(),
-	)
-	.await?;
-
 	let GetUserInfoResponse {
 		basic_user_info:
 			WithId {
@@ -75,14 +41,23 @@ pub(super) async fn execute(_: AppState) -> Result<CommandOutput, AppError> {
 				},
 			},
 		..
-	} = response.body;
+	} = make_request(
+		ApiRequest::<GetUserInfoRequest>::builder()
+			.headers(GetUserInfoRequestHeaders {
+				user_agent: constants::USER_AGENT,
+				authorization: BearerToken::from_str(&token)?,
+			})
+			.build(),
+	)
+	.await?
+	.body;
 
 	// Get the user's first workspace
 	let current_workspace = make_request(
 		ApiRequest::<ListUserWorkspacesRequest>::builder()
 			.headers(ListUserWorkspacesRequestHeaders {
 				authorization: BearerToken::from_str(&token)?,
-				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+				user_agent: constants::USER_AGENT,
 			})
 			.build(),
 	)

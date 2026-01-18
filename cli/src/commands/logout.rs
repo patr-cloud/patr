@@ -4,7 +4,7 @@ use crate::prelude::*;
 
 /// A command that logs the user out of their Patr account.
 pub(super) async fn execute(_args: GlobalArgs, state: AppState) -> Result<CommandOutput, AppError> {
-	let AppState::LoggedIn { token, .. } = state else {
+	let AppState::LoggedIn { .. } = state else {
 		return CommandOutput::builder()
 			.text("You are not logged in.")
 			.json(ApiSuccessResponseBody::empty().to_json_value())
@@ -16,7 +16,7 @@ pub(super) async fn execute(_args: GlobalArgs, state: AppState) -> Result<Comman
 	AppState::LoggedOut.save()?;
 
 	CommandOutput::builder()
-		.text("You have been logged out and your API token has been revoked.")
+		.text("You have been logged out. Don't forget to revoke your API token!")
 		.json(ApiSuccessResponseBody::empty().to_json_value())
 		.build()
 		.into_result()

@@ -134,7 +134,7 @@ pub async fn execute(
 			ApiRequest::<ListUserWorkspacesRequest>::builder()
 				.headers(ListUserWorkspacesRequestHeaders {
 					authorization: token.clone(),
-					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+					user_agent: constants::USER_AGENT,
 				})
 				.build(),
 		)
@@ -199,7 +199,7 @@ pub async fn execute(
 					.path(ListContainerRepositoriesPath { workspace_id })
 					.headers(ListContainerRepositoriesRequestHeaders {
 						authorization: token.clone(),
-						user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+						user_agent: constants::USER_AGENT,
 					})
 					.query(ListResourceQuery {
 						page: start / ListResourceQuery::DEFAULT_PAGE_SIZE,
@@ -291,7 +291,7 @@ pub async fn execute(
 					additional_query: (),
 				})
 				.headers(ListRunnersForWorkspaceRequestHeaders {
-					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+					user_agent: constants::USER_AGENT,
 					authorization: token.clone(),
 				})
 				.build(),
@@ -336,7 +336,7 @@ pub async fn execute(
 		ApiRequest::<ListAllDeploymentMachineTypeRequest>::builder()
 			.path(ListAllDeploymentMachineTypePath { workspace_id })
 			.headers(ListAllDeploymentMachineTypeRequestHeaders {
-				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+				user_agent: constants::USER_AGENT,
 			})
 			.build(),
 	)
@@ -601,7 +601,7 @@ pub async fn execute(
 		ApiRequest::<CreateDeploymentRequest>::builder()
 			.path(CreateDeploymentPath { workspace_id })
 			.headers(CreateDeploymentRequestHeaders {
-				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+				user_agent: constants::USER_AGENT,
 				authorization: token.clone(),
 			})
 			.body(CreateDeploymentRequest {

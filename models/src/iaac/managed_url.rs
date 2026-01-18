@@ -41,7 +41,7 @@ impl Hash for IaacManagedUrl {
 #[serde(tag = "to", rename_all = "snake_case")]
 pub enum IaacManagedUrlType {
 	/// URL is pointing to a deployment
-	#[serde(alias = "deployment", rename_all = "snake_case")]
+	#[serde(rename = "deployment")]
 	ProxyDeployment {
 		/// Name of the deployment to point to
 		deployment: String,

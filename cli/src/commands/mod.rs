@@ -1,7 +1,7 @@
 use clap::{Args, Parser, Subcommand};
 
 use self::workspaced::WorkspacedCommand;
-use crate::{commands::runner::RunnerCommand, prelude::*};
+use crate::prelude::*;
 
 /// The command to apply a configuration to a workspace.
 mod apply;
@@ -11,8 +11,6 @@ mod info;
 mod login;
 /// The command to logout of your Patr account.
 mod logout;
-/// All commands to setup / run a runner
-mod runner;
 /// All commands that are meant for a workspace.
 mod workspaced;
 
@@ -72,9 +70,6 @@ pub enum GlobalCommand {
 	/// All the commands that are meant for a workspace
 	#[command(flatten)]
 	Workspaced(WorkspacedCommand),
-	/// All the commands that are related to setting up a runner
-	#[command(flatten)]
-	RunnerCommands(RunnerCommand),
 }
 
 pub async fn execute(
@@ -83,15 +78,12 @@ pub async fn execute(
 	state: AppState,
 ) -> Result<CommandOutput, AppError> {
 	match command {
-		GlobalCommand::Login => login::execute(state).await,
+		GlobalCommand::Login => login::execute(global_args, state).await,
 		GlobalCommand::Logout => logout::execute(global_args, state).await,
 		GlobalCommand::Info => info::execute(global_args, state).await,
 		GlobalCommand::Apply(args) => apply::execute(args, global_args, state).await,
 		GlobalCommand::Workspaced(commands) => {
 			workspaced::execute(commands, global_args, state).await
-		}
-		GlobalCommand::RunnerCommands(commands) => {
-			runner::execute(commands, global_args, state).await
 		}
 	}
 }

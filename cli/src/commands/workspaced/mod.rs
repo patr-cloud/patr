@@ -34,8 +34,6 @@ pub async fn execute(
 		}
 		WorkspacedCommand::InfrastructureCommands(commands) => {
 			infrastructure::execute(commands, global_args, state).await
-		} /* Self::DomainConfigurationCommands(commands) => {
-		   * 	commands.execute(global_args, writer).await
-		   * } */
+		}
 	}
 }

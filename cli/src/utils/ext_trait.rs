@@ -82,7 +82,7 @@ impl IaacResolverExt<CreateDeploymentRequest> for IaacDeployment {
 						.path(ListContainerRepositoriesPath { workspace_id })
 						.headers(ListContainerRepositoriesRequestHeaders {
 							authorization: api_token.clone(),
-							user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+							user_agent: constants::USER_AGENT,
 						})
 						.query(ListResourceQuery {
 							search: ContainerRepositorySearchParams {
@@ -144,7 +144,7 @@ impl IaacResolverExt<CreateDeploymentRequest> for IaacDeployment {
 						additional_query: (),
 					})
 					.headers(ListRunnersForWorkspaceRequestHeaders {
-						user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+						user_agent: constants::USER_AGENT,
 						authorization: api_token.clone(),
 					})
 					.build(),

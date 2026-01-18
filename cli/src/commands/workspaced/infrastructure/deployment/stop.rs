@@ -36,7 +36,7 @@ pub async fn execute(
 			ApiRequest::<ListUserWorkspacesRequest>::builder()
 				.headers(ListUserWorkspacesRequestHeaders {
 					authorization: token.clone(),
-					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+					user_agent: constants::USER_AGENT,
 				})
 				.build(),
 		)
@@ -74,7 +74,7 @@ pub async fn execute(
 				.path(ListDeploymentPath { workspace_id })
 				.headers(ListDeploymentRequestHeaders {
 					authorization: token.clone(),
-					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+					user_agent: constants::USER_AGENT,
 				})
 				.query(ListResourceQuery {
 					page: start / ListResourceQuery::DEFAULT_PAGE_SIZE,
@@ -131,7 +131,7 @@ pub async fn execute(
 			})
 			.headers(StopDeploymentRequestHeaders {
 				authorization: token.clone(),
-				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+				user_agent: constants::USER_AGENT,
 			})
 			.build(),
 	)

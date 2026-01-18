@@ -59,7 +59,7 @@ impl WorkspacedArgs {
 				.path(GetWorkspaceInfoPath { workspace_id })
 				.headers(GetWorkspaceInfoRequestHeaders {
 					authorization: token.clone(),
-					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+					user_agent: constants::USER_AGENT,
 				})
 				.build(),
 		)

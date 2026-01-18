@@ -1,5 +1,5 @@
 use models::{
-	api::workspace::{deployment::*, domain::*, managed_url::*, static_site::*},
+	api::workspace::{deployment::*, domain::*, managed_url::*},
 	iaac::*,
 	utils::{BearerToken, ResourceSearcher},
 };
@@ -27,10 +27,13 @@ pub async fn apply(
 			.path(ListDomainsInWorkspacePath { workspace_id })
 			.headers(ListDomainsInWorkspaceRequestHeaders {
 				authorization: token.clone(),
-				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+				user_agent: constants::USER_AGENT,
 			})
 			.query(ListResourceQuery {
-				search: Default::default(),
+				search: WorkspaceDomainSearchParams {
+					name: Some(domain.clone()),
+					..Default::default()
+				},
 				sort: Default::default(),
 				count: ListResourceQuery::DEFAULT_PAGE_SIZE,
 				page: 0,
@@ -59,7 +62,7 @@ pub async fn apply(
 					.path(ListDeploymentPath { workspace_id })
 					.headers(ListDeploymentRequestHeaders {
 						authorization: token.clone(),
-						user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+						user_agent: constants::USER_AGENT,
 					})
 					.query(ListResourceQuery {
 						search: DeploymentSearchParams {
@@ -85,45 +88,65 @@ pub async fn apply(
 				)))
 			})?;
 
-			ManagedUrlType::ProxyDeployment {
-				deployment_id,
-				port,
-			}
-		}
-		IaacManagedUrlType::ProxyStaticSite { static_site } => {
-			// Find static site by name
-			let static_site_id = make_request(
-				ApiRequest::<ListStaticSiteRequest>::builder()
-					.path(ListStaticSitePath { workspace_id })
-					.headers(ListStaticSiteRequestHeaders {
-						authorization: token.clone(),
-						user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+			let ports = make_request(
+				ApiRequest::<GetDeploymentInfoRequest>::builder()
+					.path(GetDeploymentInfoPath {
+						workspace_id,
+						deployment_id,
 					})
-					.query(ListResourceQuery {
-						search: StaticSiteSearchParams {
-							name: Some(static_site.clone()),
-							..Default::default()
-						},
-						sort: Default::default(),
-						count: ListResourceQuery::DEFAULT_PAGE_SIZE,
-						page: 0,
-						additional_query: (),
+					.headers(GetDeploymentInfoRequestHeaders {
+						authorization: token.clone(),
+						user_agent: constants::USER_AGENT,
 					})
 					.build(),
 			)
 			.await?
 			.body
-			.static_sites
-			.into_iter()
-			.find(|s| s.name == static_site)
-			.map(|s| s.id)
-			.ok_or_else(|| {
-				AppError::IaacError(IaacError::ResourceNotFound(format!(
-					"Static site '{static_site}' not found in workspace",
-				)))
-			})?;
+			.running_details
+			.ports;
 
-			ManagedUrlType::ProxyStaticSite { static_site_id }
+			let port = ports
+				.iter()
+				.filter(|(_, port_type)| matches!(port_type, ExposedPortType::Http))
+				.filter(|(exposed_port, _)| *exposed_port.as_ref() == port)
+				.next()
+				.ok_or_else(|| {
+					AppError::IaacError(IaacError::ResourceNotFound(format!(
+						concat!(
+							"Error while applying the Managed URL `{}`, ",
+							"you have chosen port `{}` for deployment `{}`, ",
+							"but the deployment `{}` doesn't expose that port. ",
+							"Available ports are: [{}]"
+						),
+						if sub_domain == "@" {
+							format!("{sub_domain}.{domain}/{path}")
+						} else {
+							format!("{domain}/{path}")
+						},
+						port,
+						deployment,
+						deployment,
+						ports
+							.keys()
+							.map(ToString::to_string)
+							.collect::<Vec<_>>()
+							.join(", ")
+					)))
+				})?
+				.0
+				.value();
+
+			ManagedUrlType::ProxyDeployment {
+				deployment_id,
+				port,
+			}
+		}
+		IaacManagedUrlType::ProxyStaticSite { static_site: _ } => {
+			// Find static site by name
+
+			return Err(AppError::IaacError(IaacError::Unsupported(format!(
+				"Static sites are not supported yet"
+			))));
 		}
 		IaacManagedUrlType::ProxyUrl { url, http_only } => {
 			ManagedUrlType::ProxyUrl { url, http_only }
@@ -145,7 +168,7 @@ pub async fn apply(
 			.path(ListManagedURLPath { workspace_id })
 			.headers(ListManagedURLRequestHeaders {
 				authorization: token.clone(),
-				user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+				user_agent: constants::USER_AGENT,
 			})
 			.query(ListResourceQuery {
 				search: ManagedUrlSearchParams {
@@ -153,6 +176,7 @@ pub async fn apply(
 					domain_id: Some(ResourceSearcher {
 						resource_id: domain_id,
 					}),
+					path: Some(path.clone()),
 					..Default::default()
 				},
 				sort: Default::default(),
@@ -172,8 +196,8 @@ pub async fn apply(
 	// If an ID is provided, specifically use that. Otherwise, use the found
 	// managed URL ID by subdomain and domain.
 	if let Some(managed_url_id) = id.or(managed_url_id) {
-		println!(
-			"Updating existing managed URL `{}.{}{}` with ID `{}`",
+		eprintln!(
+			"Updating existing managed URL `{}.{}/{}` with ID `{}`",
 			sub_domain, domain, path, managed_url_id
 		);
 
@@ -185,7 +209,7 @@ pub async fn apply(
 				})
 				.headers(UpdateManagedURLRequestHeaders {
 					authorization: token.clone(),
-					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+					user_agent: constants::USER_AGENT,
 				})
 				.body(UpdateManagedURLRequest {
 					path: Some(path.clone()),
@@ -195,14 +219,14 @@ pub async fn apply(
 		)
 		.await?;
 
-		println!(
+		eprintln!(
 			"Managed URL `{}.{}{}` (with ID `{}`) updated",
 			sub_domain, domain, path, managed_url_id
 		);
 	} else {
 		// If no ID is provided and no managed URL is found, create a new one.
-		println!(
-			"Creating new managed URL `{}.{}{}`",
+		eprintln!(
+			"Creating new managed URL `{}.{}/{}`",
 			sub_domain, domain, path
 		);
 
@@ -211,7 +235,7 @@ pub async fn apply(
 				.path(CreateManagedURLPath { workspace_id })
 				.headers(CreateManagedURLRequestHeaders {
 					authorization: token.clone(),
-					user_agent: UserAgent::from_static(constants::USER_AGENT_STRING),
+					user_agent: constants::USER_AGENT,
 				})
 				.body(CreateManagedURLRequest {
 					sub_domain: sub_domain.clone(),
@@ -223,8 +247,8 @@ pub async fn apply(
 		)
 		.await?;
 
-		println!(
-			"Managed URL `{}.{}{}` created with ID `{}`",
+		eprintln!(
+			"Managed URL `{}.{}/{}` created with ID `{}`",
 			sub_domain, domain, path, response.body.id.id
 		);
 	}
