@@ -28,7 +28,7 @@ axum-extra                     = { default-features = false, version = "0.12" }
 axum-typed-websockets          = { default-features = false, git = "https://github.com/cachix/axum-typed-websockets" }
 base32                         = { default-features = false, version = "0.5" }
 base64                         = { default-features = false, version = "0.22" }
-bollard                        = { default-features = false, version = "0.19" }
+bollard                        = { default-features = false, version = "0.20" }
 build-print                    = { default-features = false, version = "1" }
 clap                           = { default-features = false, version = "4" }
 cloudflare                     = { default-features = false, git = "https://github.com/rakshith-ravi/cloudflare-rs", branch = "patr-must-haves" }
@@ -58,8 +58,8 @@ inquire                        = { default-features = false, version = "0.9" }
 ipinfo                         = { default-features = false, version = "3" }
 ipnetwork                      = { default-features = false, version = "0.20" }
 jsonwebtoken                   = { default-features = false, version = "10" }
-k8s-openapi                    = { default-features = false, version = "0.26" }
-kube                           = { default-features = false, version = "2" }
+k8s-openapi                    = { default-features = false, version = "0.27" }
+kube                           = { default-features = false, version = "3" }
 macros                         = { default-features = false, path = "macros" }
 models                         = { default-features = false, path = "models" }
 monostate                      = { default-features = false, version = "1" }
@@ -80,7 +80,7 @@ regex                          = { default-features = false, version = "1" }
 reqwest                        = { default-features = false, version = "0.13" }
 rust-embed                     = { default-features = false, version = "8" }
 rust-s3                        = { default-features = false, version = "0.37" }
-rustis                         = { default-features = false, version = "0.17" }
+rustis                         = { default-features = false, version = "0.18" }
 schemars                       = { default-features = false, version = "1" }
 semver                         = { default-features = false, version = "1" }
 serde                          = { default-features = false, version = "1" }

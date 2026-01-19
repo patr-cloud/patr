@@ -152,19 +152,14 @@ pub(crate) async fn upsert(
 					ports
 						.into_iter()
 						.map(|(port, port_type)| {
-							{
-								(
-									format!(
-										"{}/{}",
-										port,
-										match port_type {
-											ExposedPortType::Tcp | ExposedPortType::Http => "tcp",
-											ExposedPortType::Udp => "udp",
-										}
-									),
-									HashMap::<(), ()>::new(),
-								)
-							}
+							format!(
+								"{}/{}",
+								port,
+								match port_type {
+									ExposedPortType::Tcp | ExposedPortType::Http => "tcp",
+									ExposedPortType::Udp => "udp",
+								}
+							)
 						})
 						.collect(),
 				),

@@ -71,7 +71,6 @@ pub async fn stream_runner_data_for_workspace(
 					}
 				},
 			),
-			false,
 		)
 		.await
 	else {
@@ -243,7 +242,6 @@ async fn handle_websocket(
 							}
 						},
 					),
-					false,
 				)
 				.await
 			else {
