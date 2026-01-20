@@ -69,6 +69,8 @@ import { RevokeApiTokenResponse } from "./RevokeApiTokenResponse";
 import { RevokeApiTokenRequest } from "./RevokeApiTokenRequest";
 import { GetCurrentPermissionsRequest } from "./GetCurrentPermissionsRequest";
 import { GetCurrentPermissionsResponse } from "./GetCurrentPermissionsResponse";
+import { GetVerificationRecordsForDomainResponse } from "./GetVerificationRecordsForDomainResponse";
+import { PatrDomainDnsRecord } from "./PatrDomainDnsRecord";
 
 export type {
 	EnvironmentVariableValue,
@@ -142,4 +144,6 @@ export type {
 	RevokeApiTokenResponse,
 	GetCurrentPermissionsRequest,
 	GetCurrentPermissionsResponse,
+	GetVerificationRecordsForDomainResponse,
+	PatrDomainDnsRecord,
 };

@@ -176,20 +176,9 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 
 						<Input
 							class="flex-6"
-							disabled={!hasEditPermission}
+							disabled={true}
 							placeholder="Image Name"
 							type={InputType.Text}
-							onInput={(e) => {
-								setHasUpdated(true);
-								props.mutateDeploymentInfo((prev) => {
-									return prev
-										? {
-												...prev,
-												imageName: e.currentTarget.value,
-											}
-										: undefined;
-								});
-							}}
 							value={(() => {
 								const info = props.deploymentInfo.latest;
 								if (!info) return "";

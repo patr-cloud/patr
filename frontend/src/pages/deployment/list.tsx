@@ -51,13 +51,13 @@ const DeploymentListRow = (props: { item: WithId<Deployment> }) => {
 			}}
 			class="table-row"
 		>
-			<td class="flex-4 flex items-center justify-center">
-				<span class="truncate">{props.item.id}</span>
+			<td class="flex-3 flex items-center justify-center min-w-0">
+				<span class="truncate max-w-full">{props.item.id}</span>
 				<CopyButton text={props.item.id} />
 			</td>
-			<td class="flex-4 flex items-center justify-center">{props.item.name}</td>
-			<td class="flex-4 flex items-center justify-center">{props.item.status}</td>
-			<td class="flex-4 flex items-center justify-center">{props.item.runner}</td>
+			<td class="flex-5 flex items-center justify-center">{props.item.name}</td>
+			<td class="flex-3 flex items-center justify-center">{props.item.status}</td>
+			<td class="flex-3 flex items-center justify-center">{props.item.runner}</td>
 		</tr>
 	);
 };
@@ -120,7 +120,7 @@ const ListDeploymentsPage = () => {
 				>
 					<Suspense fallback={<div>Loading deployments...</div>}>
 						<Table
-							column_grids={["flex-4", "flex-4", "flex-4", "flex-4"]}
+							column_grids={["flex-3", "flex-5", "flex-3", "flex-3"]}
 							rows={deployments()?.deployments || []}
 							headings={["ID", "Deployment Name", "Status", "Runner"]}
 							renderRow={(item) => <DeploymentListRow item={item} />}

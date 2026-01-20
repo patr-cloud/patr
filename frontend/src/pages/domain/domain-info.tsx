@@ -211,30 +211,31 @@ const DomainInfo = () => {
 			return;
 		}
 
-		const deleteDomainResp = await httpRequest<DeleteDomainInWorkspaceResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain/${domainId}`,
-			{
-				method: "DELETE",
-				headers: {
-					"Content-Type": "application/json",
-				},
-			}
-		);
+		const url = `${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain/${domainId}`;
+		console.log("Deleting domain with url:", url);
+		const response = await fetch(url, {
+			method: "DELETE",
+			headers: {
+				"Content-Type": "application/json",
+			},
+		});
 
-		if (!deleteDomainResp.ok) {
-			console.error("Failed to delete domain:", deleteDomainResp.data.error);
-			if (deleteDomainResp.data.error === "resourceInUse") {
+		const deleteDomainResp = await response.json();
+
+		console.log(deleteDomainResp);
+
+		if (!response.ok) {
+			console.error("Failed to delete domain:", deleteDomainResp.error);
+			if (deleteDomainResp.error === "resourceInUse") {
 				toast("Cannot delete domain: Domain is in use by managed URL(s)", "error");
-				navigate("/domains");
 				return;
 			}
 			toast("Failed to delete domain", "error");
-			navigate("/domains");
 			return;
 		}
 
 		toast("Domain deleted successfully", "success");
-		navigate("/domains");
+		// navigate("/domains");
 	};
 
 	const urlInput = () => {
