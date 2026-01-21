@@ -5,8 +5,16 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+const isCSR = process.env.VITE_BUILD_TARGET === "csr";
+
 export default defineConfig({
-  vite: ({ router }) => ({
+  ssr: !isCSR,
+  server: isCSR ? ({
+    preset: "static",
+  }) : undefined,
+  vite: ({ router }: { router: any }) => isCSR ? ({
+    plugins: [tailwindcss()],
+  }) : ({
     plugins: [tailwindcss()],
     publicDir: resolve(__dirname, "../assets/frontend/public"),
     server: {

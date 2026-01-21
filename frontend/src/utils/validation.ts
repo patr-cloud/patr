@@ -1,6 +1,6 @@
-const RESOURCE_NAME_REGEX = /^[a-zA-Z0-9\-_ \.]{4,255}$/g;
+const RESOURCE_NAME_REGEX = /^[a-zA-Z0-9\-_ .]{4,255}$/g;
 const PHONE_NUMBER_REGEX = /^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/g;
-const USERNAME_VALIDITY_REGEX = /^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$/g;
+const USERNAME_VALIDITY_REGEX = /^[a-z0-9_][a-z0-9_.-]*[a-z0-9_]$/g;
 
 // Pattern strings for HTML input pattern attribute (without delimiters and flags)
 const RESOURCE_NAME_PATTERN = "[a-zA-Z0-9\\-_ \\.]{4,255}";

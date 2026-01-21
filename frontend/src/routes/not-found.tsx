@@ -1,4 +1,5 @@
 import { A } from "@solidjs/router";
+import { For } from "solid-js";
 import Button from "~/components/button";
 import { ButtonVariant } from "~/utils/color";
 
@@ -24,22 +25,24 @@ export default function NotFound() {
 				<img src="/images/starry-sky.svg" alt="Starry Sky" class="w-full h-full object-cover opacity-60" />
 			</div>
 			{/* Scattered stars */}
-			{stars.map((star, i) => (
-				<div
-					ref={(el) => {
-						el.addEventListener("animationiteration", () => randomizeDuration(el));
-					}}
-					class="absolute bg-white rounded-full animate-pulse"
-					style={{
-						top: star.top,
-						left: star.left,
-						width: `${star.size}px`,
-						height: `${star.size}px`,
-						"animation-delay": star.delay,
-						"animation-duration": star.duration,
-					}}
-				/>
-			))}
+			<For each={stars}>
+				{(star) => (
+					<div
+						ref={(el) => {
+							el.addEventListener("animationiteration", () => randomizeDuration(el));
+						}}
+						class="absolute bg-white rounded-full animate-pulse"
+						style={{
+							top: star.top,
+							left: star.left,
+							width: `${star.size}px`,
+							height: `${star.size}px`,
+							"animation-delay": star.delay,
+							"animation-duration": star.duration,
+						}}
+					/>
+				)}
+			</For>
 
 			<img
 				src="/images/astronaut.svg"

@@ -3,7 +3,7 @@ members              = ["api", "cli", "ingress", "macros", "models", "runners/co
 package.authors      = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
 package.description  = "Patr API and all it's dependencies"
 package.edition      = "2024"
-package.rust-version = "1.91"
+package.rust-version = "1.94"
 package.version      = "0.18.0"
 resolver             = "3"
 

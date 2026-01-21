@@ -84,7 +84,7 @@ const CreateApiTokens = () => {
 			toDate: toDate(),
 		});
 
-		// @ts-ignore
+		// @ts-expect-error
 		const requestBody: CreateApiTokenRequest = {
 			name: name(),
 			tokenNbf: fromDate() || undefined,

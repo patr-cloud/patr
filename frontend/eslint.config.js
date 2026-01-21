@@ -3,6 +3,7 @@ import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import solidPlugin from "eslint-plugin-solid";
 import prettierConfig from "eslint-config-prettier";
+import globals from "globals";
 
 export default [
 	{
@@ -19,9 +20,9 @@ export default [
 				project: "./tsconfig.json",
 			},
 			globals: {
-				browser: true,
-				es2021: true,
-				node: true,
+				...globals.browser,
+				...globals.es2021,
+				...globals.node,
 			},
 		},
 		plugins: {
