@@ -1,6 +1,8 @@
+use std::sync::Arc;
+
 use models::api::workspace::deployment::DeploymentStatus;
 use preprocess::Preprocessable;
-use tokio::sync::{mpsc::UnboundedSender, watch};
+use tokio::sync::{Notify, mpsc::UnboundedSender};
 
 use crate::prelude::*;
 
@@ -39,7 +41,7 @@ where
 	/// executor task updates a deployment that requires nginx configuration
 	/// change, it sends a signal through this channel so the nginx server can
 	/// reload its configuration.
-	pub nginx_reload_sender: watch::Sender<()>,
+	pub nginx_reload_notifier: Arc<Notify>,
 }
 
 impl<E> Clone for AppState<E>
@@ -52,7 +54,7 @@ where
 			config: self.config.clone(),
 			runner_state: self.runner_state.clone(),
 			task_status_sender: self.task_status_sender.clone(),
-			nginx_reload_sender: self.nginx_reload_sender.clone(),
+			nginx_reload_notifier: self.nginx_reload_notifier.clone(),
 		}
 	}
 }

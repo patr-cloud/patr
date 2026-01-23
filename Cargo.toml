@@ -63,7 +63,7 @@ kube                           = { default-features = false, version = "3" }
 macros                         = { default-features = false, path = "macros" }
 models                         = { default-features = false, path = "models" }
 monostate                      = { default-features = false, version = "1" }
-nix                            = { default-features = false, version = "0.30" }
+nix                            = { default-features = false, version = "0.31" }
 oci-client                     = { default-features = false, version = "0.15" }
 oci-spec                       = { default-features = false, version = "0.8" }
 open                           = { default-features = false, version = "5" }
@@ -80,7 +80,7 @@ regex                          = { default-features = false, version = "1" }
 reqwest                        = { default-features = false, version = "0.13" }
 rust-embed                     = { default-features = false, version = "8" }
 rust-s3                        = { default-features = false, version = "0.37" }
-rustis                         = { default-features = false, version = "0.18" }
+rustis                         = { default-features = false, version = "0.19" }
 schemars                       = { default-features = false, version = "1" }
 semver                         = { default-features = false, version = "1" }
 serde                          = { default-features = false, version = "1" }

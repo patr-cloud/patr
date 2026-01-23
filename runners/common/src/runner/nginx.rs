@@ -19,8 +19,6 @@ where
 	/// to start. Nginx will run until the exit signal is received.
 	#[instrument(skip(self))]
 	pub(super) async fn run_nginx(&self) -> Result<!, RunnerError> {
-		let mut receiver = self.state.nginx_reload_sender.subscribe();
-
 		fs::create_dir_all("./data/nginx")
 			.await
 			.map_err(RunnerError::NginxSetupError)?;
@@ -36,6 +34,8 @@ where
 		.map_err(RunnerError::NginxSetupError)?;
 
 		loop {
+			let mut receiver = self.state.nginx_reload_notifier.notified();
+
 			let mut lock_file = LockFile::open(constants::NGINX_LOCK_FILE_PATH)
 				.map_err(RunnerError::NginxSetupError)?;
 
@@ -100,7 +100,7 @@ where
 			let status = loop {
 				let Some(status) = future::select(
 					pin!(child.wait().map_err(RunnerError::NginxExecError)),
-					pin!(receiver.changed()),
+					pin!(receiver),
 				)
 				.with_cancel_check()
 				.await?
@@ -111,6 +111,7 @@ where
 					} else {
 						info!("Nginx configuration reloaded successfully");
 					}
+					receiver = self.state.nginx_reload_notifier.notified();
 					continue;
 				};
 				break status?;

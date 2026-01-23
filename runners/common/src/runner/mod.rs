@@ -3,7 +3,7 @@ use std::{
 	fs::Permissions,
 	net::SocketAddr,
 	os::unix::fs::PermissionsExt,
-	sync::OnceLock,
+	sync::{Arc, OnceLock},
 };
 
 use futures::{FutureExt, future};
@@ -11,7 +11,7 @@ use tempfile::TempDir;
 use tokio::{
 	fs,
 	net::TcpListener,
-	sync::{Mutex, mpsc, watch},
+	sync::{Mutex, Notify, mpsc},
 	task,
 	time::{self, Duration},
 };
@@ -154,14 +154,14 @@ where
 
 		// Create the channel for deployment status updates
 		let (task_status_sender, _) = mpsc::unbounded_channel();
-		let (nginx_reload_sender, _) = watch::channel(());
+		let nginx_reload_notifier = Arc::new(Notify::new());
 
 		let state = AppState {
 			database,
 			config,
 			runner_state,
 			task_status_sender,
-			nginx_reload_sender,
+			nginx_reload_notifier,
 		};
 
 		db::initialize(&state).await?;
