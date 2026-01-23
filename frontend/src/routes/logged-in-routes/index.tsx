@@ -1,6 +1,6 @@
 import { Route, Navigate } from "@solidjs/router";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { createEffect, createResource, onMount, ParentProps } from "solid-js";
+import { createEffect, createResource, onMount, ParentProps, Show } from "solid-js";
 import { useAuthState } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
 import { ListUserWorkspacesResponse } from "~/bindings";
@@ -13,15 +13,10 @@ import Sidebar from "~/components/sidebar";
 import TopBar from "~/components/top-bar";
 import WorkspaceOnboardPage from "~/pages/workspace/onboard";
 
-export const PageWrapper = (props: ParentProps<{}>) => {
+export const PageWrapper = (props: ParentProps) => {
 	const [authState, _] = useAuthState();
 	const [workspaceId, setWorkspaceId] = useLastWorkspaceId();
 	const toast = useToast();
-
-	if (!authState() || authState()?.type === "LoggedOut") {
-		console.log("Navigating to /login due to LoggedOut state");
-		return <Navigate href="/login" />;
-	}
 
 	onMount(() => {
 		const auth = authState();
@@ -69,13 +64,15 @@ export const PageWrapper = (props: ParentProps<{}>) => {
 	});
 
 	return (
-		<main class="bg-secondary w-full min-h-screen h-screen flex">
-			<Sidebar />
-			<div class="flex-1 flex flex-col overflow-hidden">
-				<TopBar />
-				<div class="flex-1 overflow-auto">{props.children}</div>
-			</div>
-		</main>
+		<Show when={authState()?.type === "LoggedIn"} fallback={<Navigate href="/login" />}>
+			<main class="bg-secondary w-full min-h-screen h-screen flex">
+				<Sidebar />
+				<div class="flex-1 flex flex-col overflow-hidden">
+					<TopBar />
+					<div class="flex-1 overflow-auto">{props.children}</div>
+				</div>
+			</main>
+		</Show>
 	);
 };
 

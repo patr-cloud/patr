@@ -1,10 +1,10 @@
 import { FiPlus, FiTrash } from "solid-icons/fi";
-import { Accessor, createSignal, For, Setter } from "solid-js";
-import { Button, ButtonVariant, Input, InputEventT, InputLabel, InputType } from "~/components";
+import { createSignal, For, Setter } from "solid-js";
+import { Button, ButtonVariant, Input, InputLabel, InputType } from "~/components";
 import { FileInput } from "~/components/input";
 import { Color } from "~/utils/color";
 import { get } from "~/utils/func";
-import { EventT, MaybeAccessor } from "~/utils/types";
+import { MaybeAccessor } from "~/utils/types";
 
 const MAX_SIZE_BYTES = 1 * 1024 * 1024; // 1 MB
 
@@ -102,7 +102,7 @@ const ConfigMount = (props: ConfigMountProps) => {
 			<For each={Object.entries(get(props.selectedFiles))}>
 				{([fileName, file]) => (
 					<div class="flex gap-8 items-center w-full mt-3">
-						<div class="flex-2"></div>
+						<div class="flex-2" />
 						<section class="flex-10 flex items-center gap-3 w-full">
 							<Input
 								type={InputType.Text}

@@ -1,5 +1,5 @@
 import { A, useLocation } from "@solidjs/router";
-import { FiHome, FiBox, FiDatabase, FiCpu, FiGlobe, FiSettings, FiChevronDown, FiChevronRight } from "solid-icons/fi";
+import { FiHome, FiBox, FiCpu, FiGlobe, FiSettings, FiChevronDown, FiChevronRight } from "solid-icons/fi";
 import { Component, createSignal, For, Show } from "solid-js";
 import WorkspaceSwitcher from "./workspace-switcher";
 

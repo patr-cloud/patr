@@ -1,5 +1,5 @@
 import { useNavigate, useParams, useSearchParams } from "@solidjs/router";
-import { createMemo, createResource, createSignal, ErrorBoundary, Suspense } from "solid-js";
+import { createMemo, createResource, ErrorBoundary, Match, Suspense, Switch } from "solid-js";
 import { GetDeploymentInfoResponse } from "~/bindings";
 import {
 	Button,
@@ -148,31 +148,29 @@ const DeploymentInfo = () => {
 		navigate("/deployments");
 	};
 
-	const Cta = () => {
-		switch (deploymentInfo()?.status) {
-			case "running":
-				return (
-					<Button onClick={onClickStop} class="h-10" variant={ButtonVariant.Outlined} color={Color.Error}>
-						STOP
-					</Button>
-				);
-
-			case "deploying":
-				return <span class="text-white">Deploying...</span>;
-			case "errored":
-				return <span class="text-white">Error occurred</span>;
-			case "unreachable":
-				return <span class="text-white">Unreachable</span>;
-			case "stopped":
-				return (
-					<Button onClick={onClickStart} class="h-10" variant={ButtonVariant.Contained}>
-						START
-					</Button>
-				);
-			default:
-				return <span>where status?</span>;
-		}
-	};
+	const Cta = () => (
+		<Switch fallback={<span>where status?</span>}>
+			<Match when={deploymentInfo()?.status === "running"}>
+				<Button onClick={onClickStop} class="h-10" variant={ButtonVariant.Outlined} color={Color.Error}>
+					STOP
+				</Button>
+			</Match>
+			<Match when={deploymentInfo()?.status === "deploying"}>
+				<span class="text-white">Deploying...</span>
+			</Match>
+			<Match when={deploymentInfo()?.status === "errored"}>
+				<span class="text-white">Error occurred</span>
+			</Match>
+			<Match when={deploymentInfo()?.status === "unreachable"}>
+				<span class="text-white">Unreachable</span>
+			</Match>
+			<Match when={deploymentInfo()?.status === "stopped"}>
+				<Button onClick={onClickStart} class="h-10" variant={ButtonVariant.Contained}>
+					START
+				</Button>
+			</Match>
+		</Switch>
+	);
 
 	const renderTab = () => {
 		switch (tab()) {

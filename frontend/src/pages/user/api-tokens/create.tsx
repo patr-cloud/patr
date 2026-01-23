@@ -83,7 +83,7 @@ const CreateApiTokens = () => {
 			toDate: toDate(),
 		});
 
-		// @ts-expect-error
+		// @ts-expect-error we are not using the `created` field for create requests
 		const requestBody: CreateApiTokenRequest = {
 			name: name(),
 			tokenNbf: fromDate() || undefined,

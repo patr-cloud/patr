@@ -15,7 +15,7 @@ import OtpInput from "~/components/otp-input";
  * @deprecated Not using a server function, cause that limits Client Side Only Capabilities,
  * keeping it here in case we decide to backtrack on it later.
  */
-const loginFn = query(async (data: LoginRequest) => {
+const _loginFn = query(async (data: LoginRequest) => {
 	"use server";
 
 	const event = getRequestEvent();
@@ -93,7 +93,7 @@ const Login = () => {
 	};
 
 	const validateInputs = (): boolean => {
-		const { userId, password } = inputs();
+		const { userId: _, password } = inputs();
 
 		// FIXME: Poor regex, improve this
 		// if (!USERNAME_VALIDITY_REGEX.test(userId)) {
@@ -171,7 +171,6 @@ const Login = () => {
 					}));
 					break;
 				case "userNotFound":
-				case "invalidEmail":
 					setInputError((prev) => ({
 						...prev,
 						userId: "User not found. Please check your username.",
@@ -278,7 +277,7 @@ const Login = () => {
 						>
 							<Show when={isLoading()} fallback="Login">
 								<div class="flex items-center gap-2">
-								<LoadingSpinner size={20} />
+									<LoadingSpinner size={20} />
 									<span>Logging in...</span>
 								</div>
 							</Show>

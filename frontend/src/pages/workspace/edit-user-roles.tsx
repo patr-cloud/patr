@@ -1,4 +1,4 @@
-import { createSignal, For, Show } from "solid-js";
+import { createEffect, createSignal, For, Show } from "solid-js";
 import { Button, ButtonVariant, InputDropdown, useToast } from "~/components";
 import { FiX, FiTrash2 } from "solid-icons/fi";
 import { httpRequest } from "~/utils/http-request";
@@ -71,6 +71,10 @@ export const EditUserRoles = (props: EditRolesProps) => {
 		}
 	};
 
+	createEffect(() => {
+		setSelectedRoles(props.currentRoles.map((r) => r.id));
+	});
+
 	return (
 		<div class="w-full p-md pb-sm bg-secondary-light rounded-xs">
 			<div class="flex items-center justify-between pb-4">
@@ -78,7 +82,7 @@ export const EditUserRoles = (props: EditRolesProps) => {
 					<h2 class="text-lg text-white">Editing Roles</h2>
 					<p class="text-white text-lg">of {props.userName}</p>
 				</div>
-				<button onClick={props.onClose} class="text-primary text-sm hover:underline cursor-pointer">
+				<button onClick={() => props.onClose()} class="text-primary text-sm hover:underline cursor-pointer">
 					<FiX size={18} />
 				</button>
 			</div>

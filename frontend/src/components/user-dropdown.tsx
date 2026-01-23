@@ -7,7 +7,7 @@ import CopyableTextField from "./copyable-text-field";
 import { useToast } from "~/components/toast";
 import { GetUserInfoResponse } from "~/bindings";
 
-interface UserInfo {
+interface _UserInfo {
 	id: string;
 	username: string;
 	firstName?: string;

@@ -1,5 +1,5 @@
 import { A } from "@solidjs/router";
-import { ParentProps, mergeProps, JSX } from "solid-js";
+import { ParentProps, Show, mergeProps } from "solid-js";
 import { Color, ButtonVariantEnum, ButtonVariant } from "~/utils/color";
 import { get, getColorClasses } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
@@ -61,18 +61,19 @@ const Link = (rawProps: ParentProps<LinkProps>) => {
 		return `flex items-center ${variant()} justify-center ${get(props.class) ?? ""}`;
 	};
 
-	if (props.external) {
-		return (
-			<a target={props.target} href={props.href} class={derivedClass()}>
-				{props.children}
-			</a>
-		);
-	}
-
 	return (
-		<A target={props.target} href={props.href} class={derivedClass()}>
-			{props.children}
-		</A>
+		<Show
+			when={!props.external}
+			fallback={
+				<a target={props.target} href={props.href} class={derivedClass()}>
+					{props.children}
+				</a>
+			}
+		>
+			<A target={props.target} href={props.href} class={derivedClass()}>
+				{props.children}
+			</A>
+		</Show>
 	);
 };
 

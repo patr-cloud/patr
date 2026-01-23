@@ -1,17 +1,11 @@
-import { useParams } from "@solidjs/router";
-import { createMemo, createResource, For, Show, Suspense } from "solid-js";
+import { createMemo, createResource, Show, Suspense } from "solid-js";
 import { useAuthState } from "~/hooks";
 import { get, getResourceEndpoint, parseCamelCase } from "~/utils/func";
 import { httpRequest } from "~/utils/http-request";
 import InputDropdownCheckbox from "./input-dropdown-checkbox";
 import { MaybeAccessor } from "~/utils/types";
 
-const ListResources = ({
-	workspaceId,
-	resourceType,
-	selectedResources,
-	toggleResource,
-}: {
+const ListResources = (props: {
 	workspaceId: MaybeAccessor<string>;
 	resourceType: MaybeAccessor<string>;
 	selectedResources: MaybeAccessor<Set<string>>;
@@ -20,7 +14,7 @@ const ListResources = ({
 	const [authState] = useAuthState();
 
 	const fetchParams = createMemo(() => {
-		return [authState(), get(workspaceId), get(resourceType)] as const;
+		return [authState(), get(props.workspaceId), get(props.resourceType)] as const;
 	});
 
 	const [resources] = createResource(fetchParams, async ([auth, wsId, type]) => {
@@ -56,8 +50,8 @@ const ListResources = ({
 		if (!resourceData) return [];
 
 		// Check if the data is for the current resource type
-		if (resourceData.type !== get(resourceType)) {
-			console.log("mismatch", get(resourceType), resourceData.type);
+		if (resourceData.type !== get(props.resourceType)) {
+			console.log("mismatch", get(props.resourceType), resourceData.type);
 			return []; // Return empty if data doesn't match current type
 		}
 
@@ -78,8 +72,8 @@ const ListResources = ({
 
 	// Get resource type label
 	const getResourceTypeLabel = () => {
-		if (!resourceType) return "Resources";
-		return parseCamelCase(get(resourceType));
+		if (!props.resourceType) return "Resources";
+		return parseCamelCase(get(props.resourceType));
 	};
 
 	return (
@@ -89,8 +83,8 @@ const ListResources = ({
 				fallback={<span class="text-gray-400 text-sm">No {getResourceTypeLabel().toLowerCase()} found</span>}
 			>
 				<InputDropdownCheckbox
-					onToggle={toggleResource}
-					checked={() => Array.from(get(selectedResources))}
+					onToggle={props.toggleResource}
+					checked={() => Array.from(get(props.selectedResources))}
 					placeholder={`Select ${getResourceTypeLabel()}`}
 					options={() =>
 						getResourceList().map((resource: any) => ({

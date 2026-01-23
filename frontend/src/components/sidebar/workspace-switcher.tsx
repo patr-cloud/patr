@@ -1,6 +1,6 @@
 import { A } from "@solidjs/router";
 import { FiSettings } from "solid-icons/fi";
-import { createEffect, createMemo, createResource, createSignal, For, Show, Suspense } from "solid-js";
+import { createMemo, createResource, createSignal, For, Show, Suspense } from "solid-js";
 import { ListUserWorkspacesResponse } from "~/bindings";
 import { Button, useToast } from "~/components";
 import { useAuthState, useClickOutside } from "~/hooks";
@@ -93,7 +93,7 @@ const WorkspaceSwitcher = () => {
 								<For each={listWorkspacesResource.latest?.workspaces || []}>
 									{(workspace, index) => (
 										<Button
-											onClick={async () => {
+											onClick={() => {
 												console.log("Switching to workspace:", workspace.id);
 												setShowSwitcher(false);
 												setWorkspaceId(workspace.id);

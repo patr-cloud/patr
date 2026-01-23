@@ -44,7 +44,7 @@ const CreateDomainPage = () => {
 	const [workspaceId] = useLastWorkspaceId();
 	const navigate = useNavigate();
 
-	const validateDomain = async (input: string) => {
+	const _validateDomain = async (input: string) => {
 		if (!input.trim()) {
 			setError("");
 			setSuggestedDomain("");

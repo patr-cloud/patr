@@ -12,7 +12,7 @@ interface UseFetchProps {
  * Removal planned for during cleanup
 
  */
-const useFetch = (props: UseFetchProps) => {
+const useFetch = (_: UseFetchProps) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 

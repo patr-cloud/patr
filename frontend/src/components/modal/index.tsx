@@ -32,7 +32,7 @@ const ModalContainer = (rawProps: ParentProps<ModalContainerProps>) => {
 
 	return (
 		<div
-			onClick={e => {
+			onClick={(e) => {
 				e.stopPropagation();
 				props.onClick?.(e);
 			}}
@@ -54,18 +54,13 @@ const ModalContainer = (rawProps: ParentProps<ModalContainerProps>) => {
 	);
 };
 
-const Modal = ({
-	renderTrigger,
-	renderModalContent,
-	isOpen: externalIsOpen,
-	setIsOpen: externalSetIsOpen,
-}: ModalProps) => {
+const Modal = (props: ModalProps) => {
 	const [internalIsOpen, internalSetIsOpen] = createSignal(false);
 	const [containerRef, setContainerRef] = createSignal<HTMLDivElement>();
 
 	// Use external state if provided, otherwise use internal state
-	const isOpen = externalIsOpen || internalIsOpen;
-	const setIsOpen = externalSetIsOpen || internalSetIsOpen;
+	const isOpen = props.isOpen || internalIsOpen;
+	const setIsOpen = props.setIsOpen || internalSetIsOpen;
 
 	useClickOutside(containerRef, () => {
 		if (isOpen()) {
@@ -75,15 +70,18 @@ const Modal = ({
 
 	return (
 		<>
-			{renderTrigger(setIsOpen)}
+			{props.renderTrigger(setIsOpen)}
 			{isOpen() && (
 				<Portal>
-					<div 
-						ref={setContainerRef} 
-						onClick={(e) => {e.stopPropagation(); setIsOpen(false);}} 
+					<div
+						ref={setContainerRef}
+						onClick={(e) => {
+							e.stopPropagation();
+							setIsOpen(false);
+						}}
 						class="w-full min-h-screen fixed top-0 left-0 bg-black/50 flex justify-center items-center z-50 backdrop-blur-sm"
 					>
-						{renderModalContent(setIsOpen)}
+						{props.renderModalContent(setIsOpen)}
 					</div>
 				</Portal>
 			)}

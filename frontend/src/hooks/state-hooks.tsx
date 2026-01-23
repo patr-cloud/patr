@@ -4,22 +4,25 @@ import { createContext, createSignal, ParentProps, Signal, useContext } from "so
 const AuthStateContext = createContext<Signal<AuthState | null>>();
 const LastWorkspaceIdContext = createContext<Signal<string | null>>();
 
+/// The authentication state when the user is logged in
+export type LoggedInAuthState = {
+	type: "LoggedIn";
+	accessToken: string;
+	refreshToken: string;
+};
+
+/// The authentication state when the user is logged out
+export type LoggedOutAuthState = {
+	type: "LoggedOut";
+};
+
 /// The authentication state of the user. This is what gets stored in the cookie
-export type AuthState =
-	| {
-			type: "LoggedIn";
-			accessToken: string;
-			refreshToken: string;
-	  }
-	| {
-			type: "LoggedOut";
-	  }
-	| null;
+export type AuthState = LoggedInAuthState | LoggedOutAuthState;
 
 /**
  * A Component that provides the AuthState context to its children
  */
-export const AuthStateProvider = (props: ParentProps<{}>) => {
+export const AuthStateProvider = (props: ParentProps) => {
 	const [authState, setAuthState] = makePersisted(createSignal<AuthState | null>(null), {
 		name: "authState",
 		storage: cookieStorage.withOptions({
@@ -44,7 +47,7 @@ export function useAuthState(): Signal<AuthState | null> {
 /**
  * A Component that provides the LastWorkspaceId context to its children
  */
-export const LastWorkspaceIdProvider = (props: ParentProps<{}>) => {
+export const LastWorkspaceIdProvider = (props: ParentProps) => {
 	const [getter, setter] = makePersisted(createSignal<string | null>(null), {
 		name: "lastWorkspaceId",
 		storage: cookieStorage.withOptions({

@@ -43,7 +43,7 @@ const UserSettingsPage = () => {
 		}
 	});
 
-	const onUpdateName = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
+	const _onUpdateName = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
 		e.preventDefault();
 		const auth = authState();
 

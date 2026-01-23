@@ -191,10 +191,6 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 };
 
 const VerificationIcon = (props: { domain: WorkspaceDomain }) => {
-	if (props.domain.isVerified) {
-		return null;
-	}
-
 	return (
 		<Modal
 			renderTrigger={(setOpen) => (

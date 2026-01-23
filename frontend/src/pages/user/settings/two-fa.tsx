@@ -152,9 +152,9 @@ const TwoFactorAuthModal = (props: ModalContainerProps) => {
 					</div>
 
 					<div class="w-full flex items-center gap-2">
-						<div class="h-px w-full bg-grey/20"></div>
+						<div class="h-px w-full bg-grey/20" />
 						<span class="text-white">THEN</span>
-						<div class="h-px w-full bg-grey/20"></div>
+						<div class="h-px w-full bg-grey/20" />
 					</div>
 				</>
 			)}

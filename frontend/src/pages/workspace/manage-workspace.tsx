@@ -24,6 +24,7 @@ import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "~/pages/workspace/workspace-header";
 import { EventT } from "~/utils/types";
 import { EditUserRoles } from "~/pages/workspace/edit-user-roles";
+import { LoggedInAuthState } from "~/hooks/state-hooks";
 
 const ManageWorkspace = () => {
 	const [authState] = useAuthState();
@@ -244,7 +245,7 @@ const ManageWorkspace = () => {
 		}
 	};
 
-	const handleSaveRoles = async (roleIds: string[]) => {
+	const handleSaveRoles = async (_: string[]) => {
 		setEditingMember(null);
 		refetchMembers();
 	};
@@ -260,11 +261,11 @@ const ManageWorkspace = () => {
 
 							<div class="flex flex-col items-start justify-center gap-2 w-full">
 								<div class="flex items-center justify-center gap-3 w-full">
-									<Show when={authState() && authState()!.type === "LoggedIn"} fallback={<div class="flex-2" />}>
+									<Show when={authState()?.type === "LoggedIn"} fallback={<div class="flex-2" />}>
 										<UserSearchInput
 											placeholder="Search for user by name or username..."
 											class="flex-2"
-											accessToken={(authState()! as any).accessToken}
+											accessToken={(authState()! as LoggedInAuthState).accessToken}
 											onUserSelect={handleUserSelect}
 										/>
 									</Show>

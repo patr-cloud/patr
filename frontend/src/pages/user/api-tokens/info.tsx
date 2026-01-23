@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "@solidjs/router";
-import { createMemo, createResource, createSignal, Suspense } from "solid-js";
+import { createMemo, createResource, Show, Suspense, createSignal } from "solid-js";
 import { GetApiTokenInfoResponse } from "~/bindings";
 import {
 	DeleteModal,
@@ -27,9 +27,6 @@ const ApiTokenInfo = () => {
 	const [isRegenerateModalOpen, setIsRegenerateModalOpen] = createSignal(false);
 	const [isApiTokenModalOpen, setIsApiTokenModalOpen] = createSignal(false);
 	const [newApiToken, setNewApiToken] = createSignal<string>("");
-	if (!params.id) {
-		return <div>Invalid API Token ID</div>;
-	}
 
 	const fetchParams = createMemo(() => {
 		return [authState()] as const;
@@ -93,12 +90,15 @@ const ApiTokenInfo = () => {
 			return;
 		}
 
-		const response = await httpRequest<RegenerateApiTokenResponse>(`${import.meta.env.VITE_BASE_URL}/api/user/api-token/${params.id}/regenerate`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
-		});
+		const response = await httpRequest<RegenerateApiTokenResponse>(
+			`${import.meta.env.VITE_BASE_URL}/api/user/api-token/${params.id}/regenerate`,
+			{
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+			}
+		);
 
 		if (!response.ok) {
 			console.error("Failed to regenerate API Token:", response.data.error);
@@ -113,67 +113,75 @@ const ApiTokenInfo = () => {
 	};
 
 	return (
-		<PageContainer>
-			<Suspense fallback={<div>Loading API Token Info...</div>}>
-				<PageContainerHead
-					title="API Tokens"
-					titleUrl="/profile/api-tokens"
-					subTitle={apiTokenInfo()?.name || ""}
-					actions={() => (
-						<div class="flex gap-2 px-2">
-							<RegenerateModal
-								title="Regenerate API Token"
-								onClickRegenerate={onClickRegenerate}
-								resourceName={apiTokenInfo()?.name || ""}
-								isOpen={isRegenerateModalOpen}
-								setIsOpen={setIsRegenerateModalOpen}
-							/>
-							<DeleteModal
-								title="Delete API Token"
-								onClickDelete={onClickDelete}
-								resourceName={apiTokenInfo()?.name || ""}
-								isOpen={isDeleteModalOpen}
-								setIsOpen={setIsDeleteModalOpen}
-							/>
-						</div>
-					)}
+		<Show when={!!params.id} fallback={<div>Invalid API Token ID</div>}>
+			<PageContainer>
+				<Suspense fallback={<div>Loading API Token Info...</div>}>
+					<PageContainerHead
+						breadcrumbs={[
+							{
+								label: "API Tokens",
+								url: "/profile/api-tokens",
+							},
+							{
+								label: apiTokenInfo()?.name || "",
+							},
+						]}
+						subText="API Tokens can be used to interact with the Patr API on your behalf."
+						actions={() => (
+							<div class="flex gap-2 px-2">
+								<RegenerateModal
+									title="Regenerate API Token"
+									onClickRegenerate={onClickRegenerate}
+									resourceName={apiTokenInfo()?.name || ""}
+									isOpen={isRegenerateModalOpen}
+									setIsOpen={setIsRegenerateModalOpen}
+								/>
+								<DeleteModal
+									title="Delete API Token"
+									onClickDelete={onClickDelete}
+									resourceName={apiTokenInfo()?.name || ""}
+									isOpen={isDeleteModalOpen}
+									setIsOpen={setIsDeleteModalOpen}
+								/>
+							</div>
+						)}
+					/>
+					<PageContainerBody class="flex flex-col gap-8">
+						<div class="flex flex-col gap-4 items-start w-full">
+							<div class="flex gap-8 items-center w-full">
+								<InputLabel parentClass="flex-2" for="deployment-id" label="ID" />
+								<Input
+									value={apiTokenInfo()?.id || ""}
+									disabled={true}
+									class="flex-10"
+									name="deployment-id"
+									placeholder="Deployment ID"
+									type={InputType.Text}
+								/>
+							</div>
 
+							<div class="flex gap-8 items-center w-full">
+								<InputLabel parentClass="flex-2" for="deployment-name" label="Name" />
+								<Input
+									value={apiTokenInfo()?.name || ""}
+									class="flex-10"
+									name="deployment-name"
+									placeholder="Deployment Name"
+									type={InputType.Text}
+									disabled={true}
+								/>
+							</div>
+						</div>
+					</PageContainerBody>
+				</Suspense>
+				<ApiTokenModal
+					isOpen={isApiTokenModalOpen}
+					setIsOpen={setIsApiTokenModalOpen}
+					token={newApiToken}
+					onClose={() => navigate("/profile/api-tokens")}
 				/>
-				<PageContainerBody class="flex flex-col gap-8">
-					<div class="flex flex-col gap-4 items-start w-full">
-						<div class="flex gap-8 items-center w-full">
-							<InputLabel parentClass="flex-2" for="deployment-id" label="ID" />
-							<Input
-								value={apiTokenInfo()?.id || ""}
-								disabled={true}
-								class="flex-10"
-								name="deployment-id"
-								placeholder="Deployment ID"
-								type={InputType.Text}
-							/>
-						</div>
-
-						<div class="flex gap-8 items-center w-full">
-							<InputLabel parentClass="flex-2" for="deployment-name" label="Name" />
-							<Input
-								value={apiTokenInfo()?.name || ""}
-								class="flex-10"
-								name="deployment-name"
-								placeholder="Deployment Name"
-								type={InputType.Text}
-								disabled={true}
-							/>
-						</div>
-					</div>
-				</PageContainerBody>
-			</Suspense>
-			<ApiTokenModal
-				isOpen={isApiTokenModalOpen}
-				setIsOpen={setIsApiTokenModalOpen}
-				token={newApiToken}
-				onClose={() => navigate("/profile/api-tokens")}
-			/>
-		</PageContainer>
+			</PageContainer>
+		</Show>
 	);
 };
 

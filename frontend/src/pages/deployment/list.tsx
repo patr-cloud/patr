@@ -2,15 +2,8 @@ import { useNavigate } from "@solidjs/router";
 import { createMemo, createResource, createSignal, ErrorBoundary, Suspense } from "solid-js";
 import { FiCheck, FiCopy } from "solid-icons/fi";
 import { ListDeploymentResponse, WithId, Deployment } from "~/bindings";
-import {
-	ButtonVariant,
-	Link,
-	PageContainer,
-	PageContainerBody,
-	PageContainerHead,
-	Table,
-	useToast,
-} from "~/components";
+import { ButtonVariant, Link } from "~/components";
+import { PageContainer, PageContainerBody, PageContainerHead, Table, useToast } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import useIsAllowed from "~/hooks/use-is-allowed";

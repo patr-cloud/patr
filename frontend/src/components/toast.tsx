@@ -94,7 +94,7 @@ type ToastContextType = [
 
 const ToastContext = createContext<ToastContextType | null>(null);
 
-const ToastProvider = (props: ParentProps<{}>) => {
+const ToastProvider = (props: ParentProps) => {
 	const [toasts, setToasts] = createStore<ToastData[]>([]);
 
 	const createToast: CreateToastFn = (message, level, dismissible = true, expiry = 5000) => {

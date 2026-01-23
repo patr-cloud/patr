@@ -36,7 +36,7 @@ const ManagedUrlPage = () => {
 						/>
 						<Input class="flex-4" placeholder="Domain" />
 					</div>
-					<div class="flex items-center justify-center gap-2 w-full"></div>
+					<div class="flex items-center justify-center gap-2 w-full" />
 				</div>
 			</PageContainerBody>
 		</PageContainer>

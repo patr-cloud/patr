@@ -1,5 +1,5 @@
 import { FiChevronDown } from "solid-icons/fi";
-import { createSignal, JSX, mergeProps } from "solid-js";
+import { createSignal, For, JSX, mergeProps } from "solid-js";
 import { useClickOutside } from "~/hooks";
 import { get, variantBgClass } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
@@ -176,17 +176,19 @@ const InputDropdown = (rawProps: InputDropdownProps) => {
 						get(props.styleVariant)
 					)} border border-border-color absolute z-10 top-[2.22rem] -left-px w-[calc(100%+2px)] rounded-xs rounded-t-none shadow-lg overflow-y-scroll max-h-60`}
 				>
-					{filteredOptions().map((option, index) => (
-						<div
-							onClick={(e) => onSelectItem(e, option.value)}
-							onMouseEnter={() => setHighlightedIndex(index)}
-							class={`border-b last-of-type:border-0 border-border-color hover:bg-secondary-dark px-xl py-sm cursor-pointer ${
-								highlightedIndex() === index ? "bg-secondary-dark" : ""
-							}`}
-						>
-							{option.label}
-						</div>
-					))}
+					<For each={filteredOptions()}>
+						{(option, index) => (
+							<div
+								onClick={(e) => onSelectItem(e, option.value)}
+								onMouseEnter={() => setHighlightedIndex(index())}
+								class={`border-b last-of-type:border-0 border-border-color hover:bg-secondary-dark px-xl py-sm cursor-pointer ${
+									highlightedIndex() === index() ? "bg-secondary-dark" : ""
+								}`}
+							>
+								{option.label}
+							</div>
+						)}
+					</For>
 					{filteredOptions().length === 0 && <div class="px-xl py-sm text-grey">No options available.</div>}
 				</div>
 			)}

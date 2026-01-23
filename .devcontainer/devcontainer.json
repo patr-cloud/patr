@@ -19,7 +19,8 @@
 				"streetsidesoftware.code-spell-checker",
 				"patr-cloud.patr-theme",
 				"bradlc.vscode-tailwindcss",
-				"esbenp.prettier-vscode"
+				"esbenp.prettier-vscode",
+				"dbaeumer.vscode-eslint"
 			]
 		}
 	},

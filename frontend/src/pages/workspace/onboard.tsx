@@ -1,5 +1,5 @@
 import { Navigate } from "@solidjs/router";
-import { createSignal, ParentProps, Suspense } from "solid-js";
+import { createSignal, ParentProps, Show, Suspense } from "solid-js";
 import { CreateWorkspaceResponse } from "~/bindings";
 import { BgOnboard, useToast } from "~/components";
 import Button from "~/components/button";
@@ -10,7 +10,7 @@ import { ButtonVariant } from "~/utils/color";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 
-const WorkspaceOnboardPage = (props: ParentProps<{}>) => {
+const WorkspaceOnboardPage = (_: ParentProps) => {
 	return <WorkspaceOnboard />;
 };
 
@@ -21,10 +21,6 @@ const WorkspaceOnboard = () => {
 
 	const [, setWorkspaceId] = useLastWorkspaceId();
 	const [workspaces] = useFetchWorkspaces();
-
-	if ((workspaces()?.workspaces?.length || 0) > 0) {
-		return <Navigate href="/" />;
-	}
 
 	const onCreateWorkspace = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
 		e.preventDefault();
@@ -62,44 +58,46 @@ const WorkspaceOnboard = () => {
 	};
 
 	return (
-		<Suspense fallback={<div>Loading...</div>}>
-			<main class="min-h-screen w-full bg-secondary flex items-center justify-center p-4 relative overflow-hidden">
-				<BgOnboard />
+		<Show when={(workspaces()?.workspaces?.length || 0) > 0} fallback={<Navigate href="/" />}>
+			<Suspense fallback={<div>Loading...</div>}>
+				<main class="min-h-screen w-full bg-secondary flex items-center justify-center p-4 relative overflow-hidden">
+					<BgOnboard />
 
-				<form
-					onSubmit={onCreateWorkspace}
-					class="bg-secondary-dark p-12 rounded-xs shadow-2xl w-full max-w-[520px] relative flex flex-col items-start justify-start gap-3 z-10 border border-secondary-medium"
-				>
-					<div class="text-left">
-						<h1 class="text-xl font-bold text-primary">Create Workspace</h1>
-						<p class="text-gray-400 text-sm">Set up your workspace to get started with Patr.</p>
-					</div>
-
-					<div class="w-full">
-						<div class="w-full mb-4">
-							<Input
-								type={InputType.Text}
-								placeholder="Enter your workspace name"
-								value={workspaceName}
-								onInput={(e: Event) => setWorkspaceName((e.currentTarget as HTMLInputElement).value)}
-								styleVariant="medium"
-							/>
+					<form
+						onSubmit={onCreateWorkspace}
+						class="bg-secondary-dark p-12 rounded-xs shadow-2xl w-full max-w-[520px] relative flex flex-col items-start justify-start gap-3 z-10 border border-secondary-medium"
+					>
+						<div class="text-left">
+							<h1 class="text-xl font-bold text-primary">Create Workspace</h1>
+							<p class="text-gray-400 text-sm">Set up your workspace to get started with Patr.</p>
 						</div>
 
-						<div class="flex items-center justify-end">
-							<Button variant={ButtonVariant.Contained} class="w-full py-4 text-base font-semibold" type="submit">
-								Create Workspace
-							</Button>
-						</div>
-					</div>
-				</form>
+						<div class="w-full">
+							<div class="w-full mb-4">
+								<Input
+									type={InputType.Text}
+									placeholder="Enter your workspace name"
+									value={workspaceName}
+									onInput={(e: Event) => setWorkspaceName((e.currentTarget as HTMLInputElement).value)}
+									styleVariant="medium"
+								/>
+							</div>
 
-				{/* Footer */}
-				<div class="absolute bottom-6 left-0 right-0 text-center">
-					<p class="text-gray-500 text-xs">© 2025 Patr. All rights reserved.</p>
-				</div>
-			</main>
-		</Suspense>
+							<div class="flex items-center justify-end">
+								<Button variant={ButtonVariant.Contained} class="w-full py-4 text-base font-semibold" type="submit">
+									Create Workspace
+								</Button>
+							</div>
+						</div>
+					</form>
+
+					{/* Footer */}
+					<div class="absolute bottom-6 left-0 right-0 text-center">
+						<p class="text-gray-500 text-xs">© 2025 Patr. All rights reserved.</p>
+					</div>
+				</main>
+			</Suspense>
+		</Show>
 	);
 };
 

@@ -24,7 +24,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 
-	const [, setHasUpdated] = createSignal(false);
+	const [_, setHasUpdated] = createSignal(false);
 
 	const resourceParamsRunnerList = createMemo(() => {
 		return [authState(), workspaceId()] as const;

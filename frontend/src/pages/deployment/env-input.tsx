@@ -1,5 +1,5 @@
 import { FiPlus, FiTrash2 } from "solid-icons/fi";
-import { createSignal } from "solid-js";
+import { createSignal, For } from "solid-js";
 import { EnvironmentVariableValue } from "~/bindings";
 import { Button, ButtonVariant, Input, InputLabel, InputType } from "~/components";
 import { Color } from "~/utils/color";
@@ -30,7 +30,7 @@ const EnvInput = (props: EnvInputProps) => {
 			<InputLabel parentClass="flex-2 pt-3" label="Environment Variables" />
 
 			<div class="flex flex-col flex-10 gap-4 w-full">
-				{get(props.envList).map((env) => (
+				<For each={get(props.envList)}>{(env) => (
 					<div class="flex items-center flex-10 gap-4">
 						<Input
 							disabled={true}
@@ -64,7 +64,7 @@ const EnvInput = (props: EnvInputProps) => {
 							<FiTrash2 size={16} />
 						</Button>
 					</div>
-				))}
+				)}</For>
 				<div class="flex items-center flex-10 gap-4">
 					<Input
 						class="flex-4"

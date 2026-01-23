@@ -1,4 +1,4 @@
-import { JSX, mergeProps } from "solid-js";
+import { For, JSX, mergeProps } from "solid-js";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
@@ -23,11 +23,13 @@ const TableRow = <TItem extends Record<string, unknown>>(props: {
 	return (
 		<tr
 			class={`border border-border-color min-h-10 cursor-pointer flex items-center justify-center w-full px-xl
-        bg-secondary-light last-of-type:rounded-b-xs ${get(props.class)}`}
+		bg-secondary-light last-of-type:rounded-b-xs ${get(props.class)}`}
 		>
-			{Object.values(props.item).map((row, index) => (
-				<td class={`flex items-center justify-center ${props.column_classes.at(index) ?? ""}`}>{row as string}</td>
-			))}
+			<For each={Object.values(props.item)}>
+				{(row, index) => (
+					<td class={`flex items-center justify-center ${props.column_classes.at(index()) ?? ""}`}>{row as string}</td>
+				)}
+			</For>
 		</tr>
 	);
 };
@@ -43,11 +45,15 @@ const Table = <TItem extends Record<string, unknown>>(rawProps: TableProps<TItem
 		<table class={`rounded-xs w-full text-white ${get(props.class)}`}>
 			<thead class="flex items-center justify-center py-sm bg-secondary-medium w-full rounded-t-xs">
 				<tr class="flex items-center justify-center px-xl w-full">
-					{props.headings.map((heading, index) => (
-						<th class={`flex items-center justify-center text-sm font-medium ${props.column_grids.at(index) ?? ""}`}>
-							{heading}
-						</th>
-					))}
+					<For each={props.headings}>
+						{(heading, index) => (
+							<th
+								class={`flex items-center justify-center text-sm font-medium ${props.column_grids.at(index()) ?? ""}`}
+							>
+								{heading}
+							</th>
+						)}
+					</For>
 				</tr>
 			</thead>
 
@@ -57,9 +63,9 @@ const Table = <TItem extends Record<string, unknown>>(rawProps: TableProps<TItem
 						<td>No data found.</td>
 					</tr>
 				)}
-				{get(props.rows).map((row, index) => (
-					<>{props.renderRow ? props.renderRow(row, index) : null}</>
-				))}
+				<For each={get(props.rows)}>
+					{(row, index) => <>{props.renderRow ? props.renderRow(row, index()) : null}</>}
+				</For>
 			</tbody>
 		</table>
 	);

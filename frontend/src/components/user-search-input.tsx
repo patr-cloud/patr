@@ -1,4 +1,4 @@
-import { createSignal, createResource, For, Show, onMount, onCleanup, Suspense } from "solid-js";
+import { createSignal, createResource, For, Show, onMount, Suspense } from "solid-js";
 import { SearchForUserResponse } from "~/bindings/SearchForUserResponse";
 import { WithId } from "~/bindings/WithId";
 import { BasicUserInfo } from "~/bindings/BasicUserInfo";

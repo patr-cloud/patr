@@ -17,7 +17,7 @@ import RoleInfo from "~/pages/workspace/roles/role-info";
 import useFetchWorkspaces from "~/hooks/use-fetch/use-fetch-wokrspaces";
 import useFetchUserPermissions from "~/hooks/use-fetch/use-fetch-user-permissions";
 
-const WorkspacedLayout = (props: ParentProps<{}>) => {
+const WorkspacedLayout = (props: ParentProps) => {
 	const [workspaces] = useFetchWorkspaces();
 	useFetchUserPermissions();
 

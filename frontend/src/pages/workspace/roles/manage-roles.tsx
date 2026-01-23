@@ -1,5 +1,4 @@
 import { createResource, createSignal, Show, Suspense } from "solid-js";
-import { useNavigate, useParams } from "@solidjs/router";
 import { Button, ButtonVariant, Link, PageContainer, PageContainerBody, Table, useToast } from "~/components";
 import { FiTrash2 } from "solid-icons/fi";
 import { useAuthState } from "~/hooks";
@@ -133,7 +132,6 @@ const ManageRoles = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
-	const navigate = useNavigate();
 	const resourceParamsWorkspace = () => {
 		return [authState(), workspaceId()] as const;
 	};

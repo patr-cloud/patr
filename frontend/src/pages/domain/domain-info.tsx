@@ -156,7 +156,8 @@ const DomainInfo = () => {
 		refetchManagedUrls();
 	};
 
-	const onVerifyClick = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
+	const onVerifyClick = async (_: EventT<MouseEvent, HTMLButtonElement>) => {
+		// Verify domain logic goes here
 		const auth = authState();
 		const wsId = workspaceId();
 		const domainId = params.id;
