@@ -190,6 +190,8 @@ const DomainInfo = () => {
 	};
 
 	const onClickDelete = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
+		e.preventDefault();
+
 		// Delete domain logic goes here
 		const auth = authState();
 		const wsId = workspaceId();

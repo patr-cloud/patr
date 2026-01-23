@@ -167,7 +167,6 @@ const Login = () => {
 					}));
 					break;
 				case "userNotFound":
-				case "invalidUsername":
 					setInputError((prev) => ({
 						...prev,
 						userId: "User not found. Please check your username.",
@@ -189,6 +188,7 @@ const Login = () => {
 		<>
 			{/* Login Card */}
 			<form
+				method="post"
 				onSubmit={onSubmitLogin}
 				class="bg-secondary p-12 rounded-sm shadow-2xl w-full max-w-128 relative z-10 border border-secondary-medium"
 			>

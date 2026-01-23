@@ -311,7 +311,7 @@ const ManageWorkspace = () => {
 									if (workspaceMembers.loading) {
 										return (
 											<tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
-												Loading...
+												<td colspan="3">Loading...</td>
 											</tr>
 										);
 									}
@@ -319,7 +319,7 @@ const ManageWorkspace = () => {
 									if (!workspaceMembers() || workspaceMembers()!.length <= 0) {
 										return (
 											<tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
-												No members found.
+												<td colspan="3">No members found.</td>
 											</tr>
 										);
 									}
