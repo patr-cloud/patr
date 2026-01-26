@@ -60,30 +60,24 @@ pub async fn get_role_info(
 	let permissions = query!(
 		r#"
 		SELECT
+			type.permission_id AS "permission_id!",
+			type.permission_type AS "permission_type!: ResourcePermissionTypeDiscriminant",
 			COALESCE(
 				include.resource_id,
 				exclude.resource_id
-			) AS "permission_id!",
-			COALESCE(
-				role_resource_permissions_type.permission_type,
-				role_resource_permissions_type.permission_type
-			) AS "permission_type!: ResourcePermissionTypeDiscriminant",
-			COALESCE(
-				include.resource_id,
-				exclude.resource_id
-			) AS "resource_id!"
+			) AS "resource_id: Uuid"
 		FROM
-			role_resource_permissions_type
+			role_resource_permissions_type type
 		LEFT JOIN
 			role_resource_permissions_include include
 		ON
-			role_resource_permissions_type.permission_id = include.permission_id
+			type.permission_id = include.permission_id
 		LEFT JOIN
 			role_resource_permissions_exclude exclude
 		ON
-			role_resource_permissions_type.permission_id = exclude.permission_id
+			type.permission_id = exclude.permission_id
 		WHERE
-			role_resource_permissions_type.role_id = $1;
+			type.role_id = $1;
 		"#,
 		role_id as _
 	)
@@ -100,7 +94,7 @@ pub async fn get_role_info(
 					ResourcePermissionType::Exclude(Default::default())
 				}
 			})
-			.insert(row.resource_id.into());
+			.insert_if_some(row.resource_id);
 		map
 	});
 

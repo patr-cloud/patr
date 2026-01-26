@@ -257,38 +257,24 @@ pub fn parse(input: TokenStream) -> TokenStream {
 	};
 
 	let query_type_name = format_ident!("{}Query", name);
-	let (query_name, query_default_impl) = if query.is_some() {
+	let query_name = if query.is_some() {
 		if let Some(ident) = listable_resource {
-			(
-				quote::quote! {
-					models::api::ListResourceQuery<#ident, #query_type_name>
-				},
-				quote::quote! {},
-			)
+			quote::quote! {
+				models::api::ListResourceQuery<#ident, #query_type_name>
+			}
 		} else {
-			(
-				quote::quote! {
-					#query_type_name
-				},
-				quote::quote! {},
-			)
+			quote::quote! {
+				#query_type_name
+			}
 		}
 	} else if let Some(ident) = listable_resource {
-		(
-			quote::quote! {
-				models::api::ListResourceQuery<#ident, ()>
-			},
-			quote::quote! {},
-		)
+		quote::quote! {
+			models::api::ListResourceQuery<#ident, ()>
+		}
 	} else {
-		(
-			quote::quote! {
-				()
-			},
-			quote::quote! {
-				Default,
-			},
-		)
+		quote::quote! {
+			()
+		}
 	};
 	let query_decl = if let Some(query) = query {
 		quote::quote! {
@@ -301,13 +287,14 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			#[derive(
 				Debug,
 				Clone,
+				Default,
 				PartialEq,
 				::ts_rs::TS,
 				serde::Serialize,
-				serde::Deserialize,
-				#query_default_impl
+				serde::Deserialize
 			)]
 			#[ts(optional_fields)]
+			#[serde(rename_all = "camelCase")]
 			pub struct #query_type_name #query
 
 			impl models::utils::RequiresResponseHeaders for #query_name {

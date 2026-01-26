@@ -49,6 +49,14 @@ impl ResourcePermissionType {
 		}
 	}
 
+	/// Inserts a new resource ID into the current [`ResourcePermissionType`]
+	/// instance based on the type of permission, if the option is [`Some`].
+	pub fn insert_if_some(&mut self, resource_id: Option<Uuid>) {
+		if let Some(resource_id) = resource_id {
+			self.insert(resource_id);
+		}
+	}
+
 	/// Returns true if the current [`ResourcePermissionType`] instance has
 	/// access to a specific resource ID.
 	#[must_use]

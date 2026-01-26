@@ -293,6 +293,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			#[derive(
 				Debug,
 				Clone,
+				Default,
 				PartialEq,
 				serde::Serialize,
 				serde::Deserialize,

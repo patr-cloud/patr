@@ -13,11 +13,12 @@ pub enum OAuthAuthorizeResponseType {
 }
 
 /// The method used to hash the code challenge.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "snake_case")]
 pub enum CodeChallengeHashMethod {
 	/// The code challenge is hashed using the SHA-256 algorithm.
 	#[serde(rename = "S256")]
+	#[default]
 	SHA256,
 	/// The code challenge is not hashed (plain text).
 	#[serde(rename = "plain")]

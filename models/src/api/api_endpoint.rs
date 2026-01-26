@@ -27,7 +27,7 @@ where
 	Self::RequestPath:
 		TypedPath + ResponseHeaders + Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 	Self::RequestQuery:
-		ResponseHeaders + Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+		ResponseHeaders + Serialize + DeserializeOwned + Default + Clone + Send + Sync + 'static,
 	Self::RequestHeaders: Headers
 		+ ResponseHeaders
 		+ HasHeaders<<Self::ResponseBody as RequestHeaders>::RequiredRequestHeaders>

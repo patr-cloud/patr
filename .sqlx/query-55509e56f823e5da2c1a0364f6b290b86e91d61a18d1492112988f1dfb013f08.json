@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT type.permission_id AS \"permission_id!\", type.permission_type AS \"permission_type!: ResourcePermissionTypeDiscriminant\", COALESCE(include.resource_id, exclude.resource_id) AS \"resource_id: Uuid\" FROM role_resource_permissions_type type LEFT JOIN role_resource_permissions_include include ON type.permission_id = include.permission_id LEFT JOIN role_resource_permissions_exclude exclude ON type.permission_id = exclude.permission_id WHERE type.role_id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "permission_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "permission_type!: ResourcePermissionTypeDiscriminant",
+        "type_info": {
+          "Custom": {
+            "name": "permission_type",
+            "kind": {
+              "Enum": [
+                "include",
+                "exclude"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "resource_id: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "55509e56f823e5da2c1a0364f6b290b86e91d61a18d1492112988f1dfb013f08"
+}
