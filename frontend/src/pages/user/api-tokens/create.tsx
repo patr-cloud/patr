@@ -21,9 +21,8 @@ import {
 } from "~/bindings";
 import { useToast } from "~/components/toast";
 import WorkspaceRoles from "~/pages/user/workspace-roles";
-import { FiCopy } from "solid-icons/fi";
-import { ModalContainer } from "~/components/modal";
 import { useNavigate } from "@solidjs/router";
+import ApiTokenModal from "./api-token-modal";
 
 export interface WorkspacePermissions {
 	[workspaceId: string]: WorkspacePermission;
@@ -284,34 +283,11 @@ const CreateApiTokens = () => {
 						</Button>
 					</div>
 				</form>
-				<Modal
+				<ApiTokenModal
 					isOpen={openCopyModal}
-					renderTrigger={() => <></>}
-					renderModalContent={() => (
-						<ModalContainer
-							closeFn={() => {
-								setOpenCopyModal(false);
-								navigate("/profile/api-tokens");
-							}}
-							class="w-200 p-6 bg-secondary-medium rounded shadow-lg"
-						>
-							<h2 class="text-md mb-4 text-primary">API Token Created Successfully</h2>
-							<p class="mb-3 text-sm text-white">Please copy your API token now. You won't be able to see it again!</p>
-							<div class="bg-secondary-light text-white text-sm px-4 py-2 rounded-xs flex items-center justify-between">
-								<pre class="break-all">{apiToken()}</pre>
-
-								<button
-									class="p-2 rounded-xs flex items-center hover:bg-secondary-dark/80 transition"
-									onClick={() => {
-										navigator.clipboard.writeText(apiToken());
-										toast("API Token copied to clipboard", "success");
-									}}
-								>
-									<FiCopy size={16} />
-								</button>
-							</div>
-						</ModalContainer>
-					)}
+					setIsOpen={setOpenCopyModal}
+					token={apiToken}
+					onClose={() => navigate("/profile/api-tokens")}
 				/>
 			</PageContainerBody>
 		</PageContainer>

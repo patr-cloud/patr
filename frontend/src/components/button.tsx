@@ -1,6 +1,6 @@
 import { ParentProps, mergeProps } from "solid-js";
 import { Color, ButtonVariantEnum, ButtonVariant } from "~/utils/color";
-import { get } from "~/utils/func";
+import { get, getColorClasses } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
 interface ButtonProps {
@@ -36,20 +36,23 @@ const Button = (rawProps: ParentProps<ButtonProps>) => {
 			disabled: false,
 			class: "",
 			variant: ButtonVariant.Plain,
+			color: Color.Primary,
 		},
 		rawProps
 	);
 
 	let derivedClass = () => {
 		const variant = () => {
+			const colors = getColorClasses(props.color);
+
 			switch (props.variant) {
 				case ButtonVariant.Outlined:
-					return "border-2 font-medium border-primary py-xs px-md text-primary rounded-xs";
+					return `border-2 font-medium ${colors.border} py-xs px-md ${colors.text} rounded-xs ${colors.hoverBg} hover:text-secondary hover:cursor-pointer transition-all duration-200`;
 				case ButtonVariant.Plain:
-					return "bg-transparent text-primary";
+					return `bg-transparent ${colors.text}`;
 				case ButtonVariant.Contained:
-					return `bg-primary text-secondary py-xs px-md rounded-xs font-thin border-2 border-primary \
-						hover:border-primary hover:cursor-pointer hover:bg-transparent hover:text-primary \
+					return `${colors.bg} text-secondary py-xs px-md rounded-xs font-thin border-2  ${colors.border} \
+						${colors.hoverBorder} hover:cursor-pointer hover:bg-transparent ${colors.hoverText} \
 						disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200`;
 			}
 		};
@@ -58,12 +61,7 @@ const Button = (rawProps: ParentProps<ButtonProps>) => {
 	};
 
 	return (
-		<button
-			disabled={props.disabled}
-			type={props.type}
-			class={`${derivedClass()} bg-${props.color}`}
-			onClick={props.onClick}
-		>
+		<button disabled={props.disabled} type={props.type} class={derivedClass()} onClick={props.onClick}>
 			{props.children}
 		</button>
 	);

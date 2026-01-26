@@ -1,7 +1,7 @@
 import { A } from "@solidjs/router";
 import { ParentProps, mergeProps, JSX } from "solid-js";
 import { Color, ButtonVariantEnum, ButtonVariant } from "~/utils/color";
-import { get } from "~/utils/func";
+import { get, getColorClasses } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
 interface LinkProps {
@@ -21,6 +21,10 @@ interface LinkProps {
 	 * Whether it's an external link (uses <a> instead of <A>)
 	 */
 	external?: boolean;
+	/**
+	 * The color of the link, defaults to Color.Primary.
+	 */
+	color?: Color;
 }
 
 const Link = (rawProps: ParentProps<LinkProps>) => {
@@ -30,24 +34,26 @@ const Link = (rawProps: ParentProps<LinkProps>) => {
 			variant: "link" as const,
 			buttonVariant: ButtonVariant.Plain,
 			external: false,
+			color: Color.Primary,
 		},
 		rawProps
 	);
 
-	const variant = () => {
-		switch (props.buttonVariant) {
-			case ButtonVariant.Outlined:
-				return "border-2 font-medium border-primary py-xs px-md text-primary rounded-xs";
-			case ButtonVariant.Plain:
-				return "bg-transparent text-primary";
-			case ButtonVariant.Contained:
-				return `bg-primary text-secondary py-xs px-md rounded-xs font-thin border-2 border-primary \
-						hover:border-primary hover:cursor-pointer hover:bg-transparent hover:text-primary \
+	let derivedClass = () => {
+		const variant = () => {
+			const colors = getColorClasses(props.color);
+			switch (props.buttonVariant) {
+				case ButtonVariant.Outlined:
+					return `border-2 font-medium ${colors.border} py-xs px-md ${colors.text} rounded-xs ${colors.hoverBg} hover:text-secondary hover:cursor-pointer transition-all duration-200`;
+				case ButtonVariant.Plain:
+					return `bg-transparent ${colors.text}`;
+				case ButtonVariant.Contained:
+					return `${colors.bg} text-secondary py-xs px-md rounded-xs font-thin border-2  ${colors.border} \
+						${colors.hoverBorder} hover:cursor-pointer hover:bg-transparent ${colors.hoverText} \
 						disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200`;
-		}
-	};
+			}
+		};
 
-	const derivedClass = () => {
 		return `flex items-center ${variant()} justify-center ${get(props.class) ?? ""}`;
 	};
 

@@ -1,7 +1,7 @@
 import { A, useNavigate } from "@solidjs/router";
 import { createMemo, createResource, Suspense } from "solid-js";
 import { ListApiTokensResponse } from "~/bindings";
-import { PageContainer, PageContainerBody, PageContainerHead, Table, useToast } from "~/components";
+import { ButtonVariant, Link, PageContainer, PageContainerBody, PageContainerHead, Table, useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
@@ -40,7 +40,7 @@ const ListApiTokens = () => {
 				titleUrl="/profile"
 				title="User"
 				subTitle="API Tokens"
-				actions={() => <A href="/profile/api-tokens/new">Create API Token</A>}
+				actions={() => <Link href="/profile/api-tokens/new" buttonVariant={ButtonVariant.Contained} external={false}>Create API Token</Link>}
 			/>
 			<PageContainerBody class="flex flex-col gap-8">
 				<Suspense fallback={<div>Loading API Tokens...</div>}>

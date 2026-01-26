@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "@solidjs/router";
-import { createMemo, createResource, Suspense } from "solid-js";
+import { createMemo, createResource, createSignal, Suspense } from "solid-js";
 import { GetApiTokenInfoResponse } from "~/bindings";
 import {
 	DeleteModal,
@@ -14,13 +14,19 @@ import {
 import { useAuthState } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
+import RegenerateModal from "./regenerate-modal";
+import { RegenerateApiTokenResponse } from "~/bindings/RegenerateApiTokenResponse";
+import ApiTokenModal from "./api-token-modal";
 
 const ApiTokenInfo = () => {
 	const [authState] = useAuthState();
 	const toast = useToast();
 	const navigate = useNavigate();
 	const params = useParams();
-
+	const [isDeleteModalOpen, setIsDeleteModalOpen] = createSignal(false);
+	const [isRegenerateModalOpen, setIsRegenerateModalOpen] = createSignal(false);
+	const [isApiTokenModalOpen, setIsApiTokenModalOpen] = createSignal(false);
+	const [newApiToken, setNewApiToken] = createSignal<string>("");
 	if (!params.id) {
 		return <div>Invalid API Token ID</div>;
 	}
@@ -77,6 +83,35 @@ const ApiTokenInfo = () => {
 		navigate("/profile/api-tokens");
 	};
 
+	const onClickRegenerate = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
+		e.preventDefault();
+
+		const auth = authState();
+
+		if (!auth || auth.type !== "LoggedIn") {
+			toast("You must be logged in to regenerate an API Token", "error");
+			return;
+		}
+
+		const response = await httpRequest<RegenerateApiTokenResponse>(`${import.meta.env.VITE_BASE_URL}/api/user/api-token/${params.id}/regenerate`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+		});
+
+		if (!response.ok) {
+			console.error("Failed to regenerate API Token:", response.data.error);
+			toast("Failed to regenerate API Token", "error");
+			return;
+		}
+
+		toast("API Token regenerated successfully", "success");
+		setNewApiToken(response.data.token);
+		setIsRegenerateModalOpen(false);
+		setIsApiTokenModalOpen(true);
+	};
+
 	return (
 		<PageContainer>
 			<Suspense fallback={<div>Loading API Token Info...</div>}>
@@ -85,12 +120,24 @@ const ApiTokenInfo = () => {
 					titleUrl="/profile/api-tokens"
 					subTitle={apiTokenInfo()?.name || ""}
 					actions={() => (
-						<DeleteModal
-							title="Delete API Token"
-							onClickDelete={onClickDelete}
-							resourceName={apiTokenInfo()?.name || ""}
-						/>
+						<div class="flex gap-2 px-2">
+							<RegenerateModal
+								title="Regenerate API Token"
+								onClickRegenerate={onClickRegenerate}
+								resourceName={apiTokenInfo()?.name || ""}
+								isOpen={isRegenerateModalOpen}
+								setIsOpen={setIsRegenerateModalOpen}
+							/>
+							<DeleteModal
+								title="Delete API Token"
+								onClickDelete={onClickDelete}
+								resourceName={apiTokenInfo()?.name || ""}
+								isOpen={isDeleteModalOpen}
+								setIsOpen={setIsDeleteModalOpen}
+							/>
+						</div>
 					)}
+
 				/>
 				<PageContainerBody class="flex flex-col gap-8">
 					<div class="flex flex-col gap-4 items-start w-full">
@@ -120,6 +167,12 @@ const ApiTokenInfo = () => {
 					</div>
 				</PageContainerBody>
 			</Suspense>
+			<ApiTokenModal
+				isOpen={isApiTokenModalOpen}
+				setIsOpen={setIsApiTokenModalOpen}
+				token={newApiToken}
+				onClose={() => navigate("/profile/api-tokens")}
+			/>
 		</PageContainer>
 	);
 };

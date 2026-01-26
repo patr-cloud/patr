@@ -2,7 +2,7 @@ import { A, useNavigate } from "@solidjs/router";
 import { createMemo, createResource, createSignal, ErrorBoundary, Suspense } from "solid-js";
 import { FiCheck, FiCopy } from "solid-icons/fi";
 import { ListDeploymentResponse } from "~/bindings";
-import { Button, PageContainer, PageContainerBody, PageContainerHead, Table, useToast } from "~/components";
+import { Button, ButtonVariant, Link, PageContainer, PageContainerBody, PageContainerHead, Table, useToast } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 
@@ -70,7 +70,7 @@ const ListDeploymentsPage = () => {
 			<PageContainerHead
 				title="Deployments"
 				subTitle="All Deployments"
-				actions={() => <A href="/deployments/new">CREATE NEW DEPLOYMENT</A>}
+				actions={() => <Link href="/deployments/new" buttonVariant={ButtonVariant.Contained} external={false}>CREATE NEW DEPLOYMENT</Link>}
 			/>
 
 			<PageContainerBody>

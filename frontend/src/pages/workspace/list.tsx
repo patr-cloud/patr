@@ -1,6 +1,6 @@
 import { createResource, ErrorBoundary, Suspense } from "solid-js";
 import { ListUserWorkspacesResponse } from "~/bindings";
-import { PageContainer, PageContainerBody, PageContainerHead, useToast } from "~/components";
+import { ButtonVariant, Link, PageContainer, PageContainerBody, PageContainerHead, useToast } from "~/components";
 import Table from "~/components/table";
 import { httpRequest } from "~/utils/http-request";
 import { useAuthState } from "~/hooks";
@@ -38,7 +38,7 @@ const ListWorkspaces = () => {
 				title="Workspaces"
 				titleUrl="/workspaces"
 				subTitle="All Workspaces"
-				actions={() => <A href="/workspaces/new">Create Workspace</A>}
+				actions={() => <Link href="/workspaces/new" buttonVariant={ButtonVariant.Contained} external={false}>CREATE WORKSPACE</Link>}
 			/>
 			<PageContainerBody class="flex flex-col justify-between gap-8">
 				<ErrorBoundary
