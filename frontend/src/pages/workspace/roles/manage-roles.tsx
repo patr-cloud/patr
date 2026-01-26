@@ -48,7 +48,7 @@ const EditRole = (props: { role: WithId<Role> }) => {
 	});
 
 	return (
-		<div class="text-white">
+		<div class="w-full text-white">
 			{Object.entries(roleInfo()?.permissions || {}).map(([permissionId, permissionType]) => {
 				return (
 					<div class="flex justify-between items-center border-b border-border-color py-2">
@@ -84,7 +84,7 @@ const RoleRow = (props: {
 		}
 
 		const resp = await httpRequest(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role/${roleId}?removeUsers=false`,
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role/${roleId}?remove_users=false`,
 			{
 				method: "DELETE",
 			}

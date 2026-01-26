@@ -115,7 +115,7 @@ const CreateRoles = () => {
 
 				if (mode === "all") {
 					permissions[permissionId] = {
-						permissionType: "include",
+						permissionType: "exclude",
 						resources: [],
 					};
 				} else if (mode === "include" && selectedResources().size > 0) {
@@ -130,7 +130,7 @@ const CreateRoles = () => {
 					};
 				} else {
 					permissions[permissionId] = {
-						permissionType: "include",
+						permissionType: "exclude",
 						resources: [],
 					};
 				}
