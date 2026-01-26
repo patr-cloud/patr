@@ -71,6 +71,9 @@ import { GetCurrentPermissionsRequest } from "./GetCurrentPermissionsRequest";
 import { GetCurrentPermissionsResponse } from "./GetCurrentPermissionsResponse";
 import { GetVerificationRecordsForDomainResponse } from "./GetVerificationRecordsForDomainResponse";
 import { PatrDomainDnsRecord } from "./PatrDomainDnsRecord";
+import { Role } from "./Role";
+import { ResourcePermissionType } from "./ResourcePermissionType";
+import { GetRoleInfoResponse } from "./GetRoleInfoResponse";
 
 export type {
 	EnvironmentVariableValue,
@@ -146,4 +149,7 @@ export type {
 	GetCurrentPermissionsResponse,
 	GetVerificationRecordsForDomainResponse,
 	PatrDomainDnsRecord,
+	Role,
+	GetRoleInfoResponse,
+	ResourcePermissionType,
 };

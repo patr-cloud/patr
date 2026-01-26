@@ -1,13 +1,157 @@
-import { createResource, Show, Suspense } from "solid-js";
+import { createResource, createSignal, Show, Suspense } from "solid-js";
 import { useNavigate, useParams } from "@solidjs/router";
 import { Button, ButtonVariant, PageContainer, PageContainerBody, Table, useToast } from "~/components";
-import { FiPlus, FiTrash2 } from "solid-icons/fi";
+import { FiTrash2 } from "solid-icons/fi";
 import { useAuthState } from "~/hooks";
 import { GetWorkspaceInfoResponse } from "~/bindings/GetWorkspaceInfoResponse";
 import { ListAllRolesResponse } from "~/bindings/ListAllRolesResponse";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "~/pages/workspace/workspace-header";
 import { Color } from "~/utils/color";
+import { GetRoleInfoResponse, Role, WithId } from "~/bindings";
+
+const EditRole = (props: { role: WithId<Role> }) => {
+	const params = useParams();
+	const [authState] = useAuthState();
+	const toast = useToast();
+
+	const [roleInfo] = createResource(async () => {
+		const auth = authState();
+		if (!auth || auth.type !== "LoggedIn") {
+			return;
+		}
+
+		const workspaceId = params.id;
+		if (!workspaceId) {
+			toast("Workspace ID is missing", "error");
+			return;
+		}
+
+		const response = await httpRequest<GetRoleInfoResponse>(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role/${props.role.id}`,
+			{
+				method: "GET",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${auth.accessToken}`,
+				},
+			}
+		);
+
+		if (!response.ok) {
+			console.error("Failed to fetch role info:", response.data.error);
+			toast("Failed to fetch role info", "error");
+			return;
+		}
+
+		return response.data;
+	});
+
+	return (
+		<div class="text-white">
+			{Object.entries(roleInfo()?.permissions || {}).map(([permissionId, permissionType]) => {
+				return (
+					<div class="flex justify-between items-center border-b border-border-color py-2">
+						<div>{permissionId}</div>
+						<div>{permissionType?.permissionType}</div>
+					</div>
+				);
+			})}
+		</div>
+	);
+};
+
+const RoleRow = (props: {
+	refetch: (info?: unknown) => ListAllRolesResponse | Promise<ListAllRolesResponse | undefined> | null | undefined;
+	role: WithId<Role>;
+}) => {
+	const params = useParams();
+	const [authState] = useAuthState();
+	const toast = useToast();
+	const [showManageRole, setShowManageRole] = createSignal<boolean>(false);
+
+	const onClickDelete = async (roleId: string) => {
+		const auth = authState();
+		if (!auth || auth.type !== "LoggedIn") {
+			toast("You must be logged in to delete a role", "error");
+			return;
+		}
+
+		const workspaceId = params.id;
+		if (!workspaceId) {
+			toast("Workspace ID is missing", "error");
+			return;
+		}
+
+		const resp = await httpRequest(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role/${roleId}?removeUsers=false`,
+			{
+				method: "DELETE",
+			}
+		);
+
+		if (!resp.ok) {
+			console.error("Failed to delete role:", resp.data.error);
+			toast(resp.data.message, "error");
+			return;
+		}
+
+		toast("Role deleted successfully", "success");
+		props.refetch();
+	};
+
+	const onClickManageRole = (roleId: string) => {
+		const workspaceId = params.id;
+
+		if (!workspaceId) {
+			toast("Workspace ID is missing", "error");
+			return;
+		}
+	};
+
+	return (
+		<Show
+			when={showManageRole()}
+			fallback={
+				<tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
+					<td class="flex items-center justify-center flex-1">{props.role.name}</td>
+					<td class="flex items-center justify-center flex-2">{props.role.description || "No description"}</td>
+					<td class="flex items-center justify-center flex-1">
+						<Button
+							onClick={(e) => {
+								e.preventDefault();
+								setShowManageRole(true);
+							}}
+							variant={ButtonVariant.Plain}
+							class="h-full flex items-center gap-2 cursor-pointer"
+						>
+							Manage Role
+						</Button>
+					</td>
+					<td class="flex items-center justify-center flex-[0.5]">
+						<Button
+							onClick={(e) => {
+								e.preventDefault();
+								onClickDelete(props.role.id);
+							}}
+							color={Color.Error}
+							variant={ButtonVariant.Plain}
+							class="h-full flex items-center gap-2 cursor-pointer"
+						>
+							<FiTrash2 size={16} />
+						</Button>
+					</td>
+				</tr>
+			}
+		>
+			<tr class="table-row">
+				<td class="w-full" colSpan={4}>
+					<EditRole role={props.role} />
+				</td>
+			</tr>
+		</Show>
+	);
+};
 
 const ManageRoles = () => {
 	const params = useParams();
@@ -103,27 +247,7 @@ const ManageRoles = () => {
 								column_grids={["flex-1", "flex-2", "flex-1", "flex-[0.5]"]}
 								headings={["Role Name", "Description", "Action", ""]}
 								rows={roles()?.roles || []}
-								renderRow={(role) => (
-									<tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
-										<td class="flex items-center justify-center flex-1">{role.name}</td>
-										<td class="flex items-center justify-center flex-2">{role.description || "No description"}</td>
-										<td class="flex items-center justify-center flex-1">
-											<span class="text-primary cursor-pointer hover:underline">Manage Role</span>
-										</td>
-										<td class="flex items-center justify-center flex-[0.5]">
-											<Button
-												onClick={(e) => {
-													e.preventDefault();
-													onClickDelete(role.id);
-												}}
-												variant={ButtonVariant.Contained}
-												class="h-full flex items-center gap-2 bg-error"
-											>
-												<FiTrash2 size={16} />
-											</Button>
-										</td>
-									</tr>
-								)}
+								renderRow={(role) => <RoleRow role={role} refetch={refetchRoles} />}
 							/>
 						</Show>
 					</Suspense>
