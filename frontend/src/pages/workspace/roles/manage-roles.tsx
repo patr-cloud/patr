@@ -7,6 +7,7 @@ import { GetWorkspaceInfoResponse } from "~/bindings/GetWorkspaceInfoResponse";
 import { ListAllRolesResponse } from "~/bindings/ListAllRolesResponse";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "~/pages/workspace/workspace-header";
+import { Color } from "~/utils/color";
 
 const ManageRoles = () => {
 	const params = useParams();
@@ -39,7 +40,7 @@ const ManageRoles = () => {
 		return response.data;
 	});
 
-	const [roles] = createResource(resourceParamsWorkspace, async ([auth, id]) => {
+	const [roles, { refetch: refetchRoles }] = createResource(resourceParamsWorkspace, async ([auth, id]) => {
 		if (!auth || auth.type !== "LoggedIn" || id === "") {
 			return { roles: [] };
 		}
@@ -61,6 +62,36 @@ const ManageRoles = () => {
 		return response.data;
 	});
 
+	const onClickDelete = async (roleId: string) => {
+		const auth = authState();
+		if (!auth || auth.type !== "LoggedIn") {
+			toast("You must be logged in to delete a role", "error");
+			return;
+		}
+
+		const workspaceId = params.id;
+		if (!workspaceId) {
+			toast("Workspace ID is missing", "error");
+			return;
+		}
+
+		const resp = await httpRequest(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role/${roleId}?removeUsers=false`,
+			{
+				method: "DELETE",
+			}
+		);
+
+		if (!resp.ok) {
+			console.error("Failed to delete role:", resp.data.error);
+			toast(resp.data.message, "error");
+			return;
+		}
+
+		toast("Role deleted successfully", "success");
+		refetchRoles();
+	};
+
 	return (
 		<PageContainer>
 			<WorkspaceHeader workspaceName={workspaceInfo()?.name} activeTab="roles" />
@@ -81,8 +112,9 @@ const ManageRoles = () => {
 										</td>
 										<td class="flex items-center justify-center flex-[0.5]">
 											<Button
-												onClick={() => {
-													console.log("Delete role:", role.id);
+												onClick={(e) => {
+													e.preventDefault();
+													onClickDelete(role.id);
 												}}
 												variant={ButtonVariant.Contained}
 												class="h-full flex items-center gap-2 bg-error"

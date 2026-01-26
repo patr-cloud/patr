@@ -15,7 +15,7 @@ interface EditRolesProps {
 	onClose: () => void;
 }
 
-export const EditRoles = (props: EditRolesProps) => {
+export const EditUserRoles = (props: EditRolesProps) => {
 	const [selectedRoles, setSelectedRoles] = createSignal<string[]>(props.currentRoles.map((r) => r.id));
 	const [newRoleId, setNewRoleId] = createSignal("");
 	const [authState] = useAuthState();

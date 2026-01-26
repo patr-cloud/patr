@@ -18,7 +18,7 @@ import { CreateNewRoleResponse } from "~/bindings/CreateNewRoleResponse";
 import { ResourcePermissionType } from "~/bindings/ResourcePermissionType";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "~/pages/workspace/workspace-header";
-import useFetchPermissions from "../../hooks/use-fetch/use-fetch-permissions";
+import useFetchPermissions from "../../../hooks/use-fetch/use-fetch-permissions";
 import { parsePermissionName, parseCamelCase, getResourceEndpoint } from "~/utils/func";
 
 const CreateRoles = () => {

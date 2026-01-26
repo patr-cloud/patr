@@ -15,8 +15,8 @@ const ListDomainsPage = lazy(() => import("~/pages/domain/list"));
 const CreateDomainPage = lazy(() => import("~/pages/domain/create"));
 const ManageWorkspace = lazy(() => import("~/pages/workspace/manage-workspace"));
 const ListWorkspaces = lazy(() => import("~/pages/workspace/list"));
-const ManageRoles = lazy(() => import("~/pages/workspace/manage-roles"));
-const CreateRoles = lazy(() => import("~/pages/workspace/create-roles"));
+const ManageRoles = lazy(() => import("~/pages/workspace/roles/manage-roles"));
+const CreateRoles = lazy(() => import("~/pages/workspace/roles/create-roles"));
 
 const WorkspacedLayout = (props: ParentProps<{}>) => {
 	const [workspaces] = useFetchWorkspaces();
