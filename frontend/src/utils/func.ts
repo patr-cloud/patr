@@ -23,6 +23,7 @@ function variantBgClass(styleVariant: string) {
 			return "bg-secondary-light";
 	}
 }
+
 const getColorClasses = (color: Color) => {
 	switch (color) {
 		case Color.Primary:
@@ -132,6 +133,15 @@ const parseCamelCase = (str: string) => {
 	return str.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (char) => char.toUpperCase());
 };
 
+const safelyParseJSON = <T>(jsonString: string): T | undefined => {
+	try {
+		return JSON.parse(jsonString) as T;
+	} catch (error) {
+		console.error("Error parsing JSON string:", error);
+		return undefined;
+	}
+};
+
 // Map resource types to their API endpoints
 const getResourceEndpoint = (type: string) => {
 	const endpointMap: Record<string, string> = {
@@ -179,4 +189,5 @@ export {
 	parsePermissionName,
 	getResourceEndpoint,
 	convertFileToBase64,
+	safelyParseJSON,
 };

@@ -21,6 +21,7 @@ import Modal from "~/components/modal";
 import Link from "~/components/link";
 import ListResources from "~/components/list-resources";
 import DeleteModal from "~/components/modal/delete-resource-modal";
+import NoPermissionsPage from "~/components/no-permissions";
 
 export {
 	Alert,
@@ -50,4 +51,5 @@ export {
 	type InputEventT,
 	ListResources,
 	DeleteModal,
+	NoPermissionsPage,
 };

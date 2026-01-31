@@ -8,8 +8,8 @@ const DeleteModal = (props: {
 	onClickDelete: (e: MouseEvent & { currentTarget: HTMLButtonElement }) => void;
 	resourceName: string;
 	title: string;
-	isOpen: Accessor<boolean>;
-	setIsOpen: Setter<boolean>;
+	isOpen?: Accessor<boolean>;
+	setIsOpen?: Setter<boolean>;
 }) => {
 	const [resourceNameInput, setResourceNameInput] = createSignal("");
 	const [internalIsOpen, internalSetIsOpen] = createSignal(false);

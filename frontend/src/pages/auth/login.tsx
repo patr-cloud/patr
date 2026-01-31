@@ -70,6 +70,7 @@ const Login = () => {
 	const toast = useToast();
 	const [showMfa, setShowMfa] = createSignal(false);
 	const [mfaOtp, setMfaOtp] = createSignal("");
+	const [isLoading, setIsLoading] = createSignal(false);
 	const [turnstileToken, setTurnstileToken] = createSignal<string>(import.meta.env.VITE_TURNSTILE_SITE_KEY);
 	const [inputs, setInputs] = createSignal<InputFields>({
 		userId: "",
@@ -134,6 +135,8 @@ const Login = () => {
 		const { userId, password } = inputs();
 		if (!validateInputs()) return;
 
+		setIsLoading(true);
+
 		const requestBody: LoginRequest = {
 			userId,
 			password,
@@ -158,6 +161,7 @@ const Login = () => {
 			});
 			navigate("/", { replace: true });
 		} else {
+			setIsLoading(false);
 			console.error("Error during login:", loginResp);
 			switch (loginResp.data.error) {
 				case "invalidPassword":
@@ -167,6 +171,7 @@ const Login = () => {
 					}));
 					break;
 				case "userNotFound":
+				case "invalidEmail":
 					setInputError((prev) => ({
 						...prev,
 						userId: "User not found. Please check your username.",
@@ -269,8 +274,21 @@ const Login = () => {
 							variant={ButtonVariant.Contained}
 							class="py-4 text-base font-semibold px-xxl flex-end"
 							type="submit"
+							disabled={isLoading()}
 						>
-							Login
+							<Show when={isLoading()} fallback="Login">
+								<div class="flex items-center gap-2">
+									<svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+										<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+										<path
+											class="opacity-75"
+											fill="currentColor"
+											d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+										/>
+									</svg>
+									<span>Logging in...</span>
+								</div>
+							</Show>
 						</Button>
 					</div>
 				</div>

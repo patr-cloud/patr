@@ -11,8 +11,8 @@ import ListDomainsPage from "~/pages/domain/list";
 import CreateDomainPage from "~/pages/domain/create";
 import ManageWorkspace from "~/pages/workspace/manage-workspace";
 import ListWorkspaces from "~/pages/workspace/list";
-import ManageRoles from "~/pages/workspace/manage-roles";
-import CreateRoles from "~/pages/workspace/create-roles";
+import ManageRoles from "~/pages/workspace/roles/manage-roles";
+import CreateRoles from "~/pages/workspace/roles/create-roles";
 import useFetchWorkspaces from "~/hooks/use-fetch/use-fetch-wokrspaces";
 
 const WorkspacedLayout = (props: ParentProps<{}>) => {

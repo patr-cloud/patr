@@ -1,8 +1,17 @@
 import { A, useNavigate } from "@solidjs/router";
 import { createMemo, createResource, createSignal, ErrorBoundary, Suspense } from "solid-js";
 import { FiCheck, FiCopy } from "solid-icons/fi";
-import { ListDeploymentResponse } from "~/bindings";
-import { Button, ButtonVariant, Link, PageContainer, PageContainerBody, PageContainerHead, Table, useToast } from "~/components";
+import { ListDeploymentResponse, WithId, Deployment } from "~/bindings";
+import {
+	Button,
+	ButtonVariant,
+	Link,
+	PageContainer,
+	PageContainerBody,
+	PageContainerHead,
+	Table,
+	useToast,
+} from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 
@@ -28,6 +37,27 @@ const CopyButton = (props: { text: string }) => {
 		>
 			{copied() ? <FiCheck size={14} class="text-gray-400" /> : <FiCopy size={14} class="text-gray-400" />}
 		</button>
+	);
+};
+
+const DeploymentListRow = (props: { item: WithId<Deployment> }) => {
+	const navigate = useNavigate();
+
+	return (
+		<tr
+			onClick={() => {
+				navigate(`/deployments/${props.item.id}`);
+			}}
+			class="table-row"
+		>
+			<td class="flex-4 flex items-center justify-center">
+				<span class="truncate">{props.item.id}</span>
+				<CopyButton text={props.item.id} />
+			</td>
+			<td class="flex-4 flex items-center justify-center">{props.item.name}</td>
+			<td class="flex-4 flex items-center justify-center">{props.item.status}</td>
+			<td class="flex-4 flex items-center justify-center">{props.item.runner}</td>
+		</tr>
 	);
 };
 
@@ -70,7 +100,11 @@ const ListDeploymentsPage = () => {
 			<PageContainerHead
 				title="Deployments"
 				subTitle="All Deployments"
-				actions={() => <Link href="/deployments/new" buttonVariant={ButtonVariant.Contained} external={false}>CREATE NEW DEPLOYMENT</Link>}
+				actions={() => (
+					<Link href="/deployments/new" buttonVariant={ButtonVariant.Contained} external={false}>
+						CREATE NEW DEPLOYMENT
+					</Link>
+				)}
 			/>
 
 			<PageContainerBody>
@@ -87,22 +121,7 @@ const ListDeploymentsPage = () => {
 							column_grids={["flex-4", "flex-4", "flex-4", "flex-4"]}
 							rows={deployments()?.deployments || []}
 							headings={["ID", "Deployment Name", "Status", "Runner"]}
-							renderRow={(item) => (
-								<tr
-									onClick={() => {
-										navigate(`/deployments/${item.id}`);
-									}}
-									class="table-row"
-								>
-									<td class="flex-4 flex items-center justify-center">
-										<span class="truncate">{item.id}</span>
-										<CopyButton text={item.id} />
-									</td>
-									<td class="flex-4 flex items-center justify-center">{item.name}</td>
-									<td class="flex-4 flex items-center justify-center">{item.status}</td>
-									<td class="flex-4 flex items-center justify-center">{item.runner}</td>
-								</tr>
-							)}
+							renderRow={(item) => <DeploymentListRow item={item} />}
 						/>
 					</Suspense>
 				</ErrorBoundary>

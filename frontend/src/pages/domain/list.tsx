@@ -1,5 +1,5 @@
 import { useNavigate } from "@solidjs/router";
-import { createMemo, createResource, createSignal, ErrorBoundary, Suspense, Show } from "solid-js";
+import { createMemo, createResource, createSignal, ErrorBoundary, Suspense, For, Show } from "solid-js";
 import { FiCheck, FiCopy, FiAlertCircle } from "solid-icons/fi";
 import {
 	PageContainer,
@@ -9,10 +9,12 @@ import {
 	Button,
 	ButtonVariant,
 	useToast,
+	Modal,
 } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
-import InfoPopup from "~/components/info-popup";
+import { ModalContainer } from "~/components/modal";
+import { GetVerificationRecordsForDomainResponse } from "~/bindings";
 
 // Type definitions based on API bindings
 type WorkspaceDomain = {
@@ -51,26 +53,92 @@ const CopyButton = (props: { text: string }) => {
 	);
 };
 
+const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void }) => {
+	const [authState] = useAuthState();
+	const [workspaceId] = useLastWorkspaceId();
+
+	const fetchParams = createMemo(() => {
+		return [authState(), workspaceId(), props.domainId] as const;
+	});
+	const [dnsRecord] = createResource(fetchParams, async ([auth, wsId, domainId]) => {
+		if (!wsId || !auth || auth.type !== "LoggedIn") {
+			throw new Error("Not authenticated or workspace ID missing");
+		}
+
+		const response = await httpRequest<GetVerificationRecordsForDomainResponse>(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain/${domainId}/verification-records`,
+			{
+				method: "GET",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${auth.accessToken}`,
+				},
+			}
+		);
+
+		if (!response.ok) {
+			console.error("Failed to fetch DNS records:", response.data.error);
+			throw new Error("Failed to fetch DNS records");
+		}
+
+		return { records: response.data.verificationRecords || [] };
+	});
+
+	return (
+		<ModalContainer closeFn={props.closeFn}>
+			<ErrorBoundary
+				fallback={(err, reset) => (
+					<div class="text-white">
+						<p>Error loading DNS records: {err.message}</p>
+						<Button variant={ButtonVariant.Contained} onClick={reset}>
+							Retry
+						</Button>
+					</div>
+				)}
+			>
+				<Suspense fallback={<>Loading</>}>
+					<Show when={dnsRecord()?.records.length}>
+						<p class="text-primary text-sm mb-2">To verify your domain, add the following DNS record:</p>
+						<For each={dnsRecord()!.records}>
+							{(record) => (
+								<div class="mb-4">
+									<div class="bg-black/30 p-2 rounded text-xs text-gray-400 mb-2">
+										<p>Type: {record.type}</p>
+										<p>Name: {record.name}</p>
+										<p>Value: {record.ttl}</p>
+									</div>
+									<p class="text-gray-400 text-xs">
+										After adding the DNS record, it may take up to 48 hours to propagate.
+									</p>
+								</div>
+							)}
+						</For>
+					</Show>
+				</Suspense>
+			</ErrorBoundary>
+		</ModalContainer>
+	);
+};
+
 const VerificationIcon = (props: { domain: WorkspaceDomain }) => {
 	if (props.domain.isVerified) {
 		return null;
 	}
 
 	return (
-		<InfoPopup
-			triggerIcon={() => <FiAlertCircle size={16} class="text-yellow-500" />}
-			title="Verification Instructions"
-			content={(close) => (
-				<>
-					<p class="text-gray-300 text-sm mb-2">To verify your domain, add the following DNS record:</p>
-					<div class="bg-black/30 p-2 rounded text-xs text-gray-400 mb-2">
-						<p>Type: TXT</p>
-						<p>Name: _patr-verification</p>
-						<p>Value: {props.domain.id}</p>
-					</div>
-					<p class="text-gray-400 text-xs">After adding the DNS record, it may take up to 48 hours to propagate.</p>
-				</>
+		<Modal
+			renderTrigger={(setOpen) => (
+				<Button
+					variant={ButtonVariant.Plain}
+					onClick={(e) => {
+						e.stopPropagation();
+						setOpen(true);
+					}}
+				>
+					<FiAlertCircle size={16} class="text-yellow-500 cursor-pointer" />
+				</Button>
 			)}
+			renderModalContent={(close) => <DNSRecords domainId={props.domain.id} closeFn={close} />}
 		/>
 	);
 };
