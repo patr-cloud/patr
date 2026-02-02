@@ -96,7 +96,7 @@ where
 
 	let status_code = response.status();
 	let Ok(headers) = E::ResponseHeaders::from_header_map(
-		&response
+		response
 			.headers()
 			.into_iter()
 			.map(|(key, value)| {

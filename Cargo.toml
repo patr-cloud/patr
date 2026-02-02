@@ -64,7 +64,6 @@ macros                         = { default-features = false, path = "macros" }
 models                         = { default-features = false, path = "models" }
 monostate                      = { default-features = false, version = "1" }
 nix                            = { default-features = false, version = "0.31" }
-oci-client                     = { default-features = false, version = "0.15" }
 oci-spec                       = { default-features = false, version = "0.8" }
 open                           = { default-features = false, version = "5" }
 opentelemetry                  = { default-features = false, version = "0.31" }
