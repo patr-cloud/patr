@@ -48,3 +48,48 @@ export type FetchResult<T> =
 			headers: Headers;
 			data: T;
 	  };
+
+export type ResourceTypes =
+	| "billing"
+	| "containerRegistryRepository"
+	| "database"
+	| "deployment"
+	| "dnsRecord"
+	| "domain"
+	| "managedUrl"
+	| "runner"
+	| "secret"
+	| "staticSite"
+	| "volume"
+	| "viewRoles"
+	| "modifyRoles"
+	| "editWorkspace";
+
+export type ActionTypes =
+	| "view"
+	| "edit"
+	| "makePayment"
+	| "create"
+	| "delete"
+	| "push"
+	| "pull"
+	| "deleteImage"
+	| "backup"
+	| "restore"
+	| "start"
+	| "stop"
+	| "add"
+	| "verify"
+	| "regenerateToken"
+	| "upload";
+
+export type UserPermissionsT =
+	| {
+			type: "superAdmin";
+	  }
+	| ({
+			type: "member";
+	  } & Record<
+			ResourceTypes,
+			Record<ActionTypes, { permissionType: "include" | "exclude"; resources: Array<string> }>
+	  >);

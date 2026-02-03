@@ -1,5 +1,59 @@
 import { Accessor, JSX } from "solid-js";
 import { Color } from "./color";
+import { ActionTypes, ResourceTypes } from "./types";
+
+const resourceActionMap: Record<ResourceTypes, ActionTypes[]> = {
+	billing: ["view", "edit", "makePayment"],
+	containerRegistryRepository: ["create", "edit", "delete", "view", "push", "pull", "deleteImage"],
+	database: ["view", "edit", "create", "delete", "backup", "restore"],
+	deployment: ["view", "edit", "create", "delete", "start", "stop"],
+	dnsRecord: ["view", "edit", "add", "delete"],
+	domain: ["view", "add", "verify", "delete"],
+	managedUrl: ["view", "edit", "delete", "add", "verify"],
+	runner: ["view", "edit", "create", "delete", "regenerateToken"],
+	secret: ["view", "edit", "create", "delete"],
+	staticSite: ["view", "edit", "create", "delete", "upload", "start", "stop"],
+	volume: ["create", "delete", "view", "edit"],
+	viewRoles: [],
+	modifyRoles: [],
+	editWorkspace: [],
+};
+
+const resourceTypes = [
+	"billing",
+	"containerRegistryRepository",
+	"database",
+	"deployment",
+	"dnsRecord",
+	"domain",
+	"managedUrl",
+	"runner",
+	"secret",
+	"staticSite",
+	"volume",
+	"viewRoles",
+	"modifyRoles",
+	"editWorkspace",
+];
+
+const userActionTypes = [
+	"view",
+	"edit",
+	"makePayment",
+	"create",
+	"delete",
+	"push",
+	"pull",
+	"deleteImage",
+	"backup",
+	"restore",
+	"start",
+	"stop",
+	"add",
+	"verify",
+	"regenerateToken",
+	"upload",
+];
 
 const get = <T>(v: T | Accessor<T>): T => (typeof v === "function" ? (v as Accessor<T>)() : v);
 
@@ -190,4 +244,7 @@ export {
 	getResourceEndpoint,
 	convertFileToBase64,
 	safelyParseJSON,
+	resourceActionMap,
+	resourceTypes,
+	userActionTypes,
 };

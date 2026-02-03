@@ -14,9 +14,11 @@ import ListWorkspaces from "~/pages/workspace/list";
 import ManageRoles from "~/pages/workspace/roles/manage-roles";
 import CreateRoles from "~/pages/workspace/roles/create-roles";
 import useFetchWorkspaces from "~/hooks/use-fetch/use-fetch-wokrspaces";
+import useFetchUserPermissions from "~/hooks/use-fetch/use-fetch-user-permissions";
 
 const WorkspacedLayout = (props: ParentProps<{}>) => {
 	const [workspaces] = useFetchWorkspaces();
+	useFetchUserPermissions();
 
 	createEffect(() => {
 		if (workspaces.state === "ready") {
