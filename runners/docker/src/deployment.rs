@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use bollard::{
 	models::{
-		ConfigSpec,
 		HealthConfig,
 		NetworkAttachmentConfig,
 		ServiceSpec,
@@ -13,10 +12,8 @@ use bollard::{
 	},
 	query_parameters::{
 		CreateImageOptionsBuilder,
-		ListConfigsOptions,
 		ListServicesOptions,
 		ListServicesOptionsBuilder,
-		UpdateConfigOptionsBuilder,
 		UpdateServiceOptionsBuilder,
 	},
 	secret::CreateImageInfo,
@@ -37,9 +34,9 @@ pub(crate) async fn upsert(
 				name: _,
 				registry,
 				image_tag,
-				status: _, // TODO handle paused deployments
-				runner: _,
+				status: _,       // TODO handle paused deployments
 				machine_type: _, // TODO
+				runner: _,
 				current_live_digest,
 			},
 	}: WithId<Deployment>,
@@ -214,61 +211,7 @@ pub(crate) async fn upsert(
 
 	info!("Updating ingress config for deployment: {}", id);
 
-	let mut config = String::new();
-	for (port, _) in ports
-		.into_iter()
-		.filter(|(_, r#type)| matches!(r#type, ExposedPortType::Http))
-	{
-		config.push_str(&ingress::generate_config_for_deployment(id, port.value()));
-	}
-
-	let config = Base64String::from_string(config);
-
-	let config_spec = ConfigSpec {
-		name: Some(format!("ingress-{}", id)),
-		labels: Some(HashMap::from([(
-			String::from("patr.deploymentId"),
-			id.to_string(),
-		)])),
-		data: Some(config.to_string()),
-		templating: None,
-	};
-
-	if let Some((config_id, index)) = docker
-		.list_configs(Some(ListConfigsOptions {
-			filters: Some(HashMap::from([(
-				String::from("label"),
-				vec![format!("patr.deploymentId={}", id)],
-			)])),
-		}))
-		.await
-		.map_err(RunnerError::host)?
-		.into_iter()
-		.next()
-		.and_then(|config| Some((config.id?, config.version?.index?)))
-	{
-		let config_id = config_id;
-		trace!(
-			"Config exists for deployment {}, updating: {}",
-			id, config_id
-		);
-		docker
-			.update_config(
-				&config_id,
-				config_spec,
-				UpdateConfigOptionsBuilder::default()
-					.version(index as i64)
-					.build(),
-			)
-			.await
-			.map_err(RunnerError::host)?;
-	} else {
-		trace!("Creating new config for deployment: {}", id);
-		docker
-			.create_config(config_spec)
-			.await
-			.map_err(RunnerError::host)?;
-	}
+	
 
 	Ok(())
 }

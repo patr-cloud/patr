@@ -1,13 +1,8 @@
-use std::{collections::HashMap, iter};
+use std::collections::HashMap;
 
 use bollard::{
 	Docker,
-	models::ConfigSpec,
-	query_parameters::{
-		ListConfigsOptions,
-		UpdateConfigOptionsBuilder,
-		UpdateServiceOptionsBuilder,
-	},
+	query_parameters::UpdateServiceOptionsBuilder,
 	service::{
 		EndpointPortConfig,
 		EndpointPortConfigProtocolEnum,
@@ -19,8 +14,6 @@ use bollard::{
 		ServiceSpecModeReplicated,
 		TaskSpec,
 		TaskSpecContainerSpec,
-		TaskSpecContainerSpecConfigs,
-		TaskSpecContainerSpecFile1,
 	},
 };
 
@@ -37,99 +30,20 @@ pub async fn update_ingress_configs(
 	docker: &Docker,
 	settings: &DockerSettings,
 ) -> Result<(), RunnerError> {
-	let config_ids = get_deployment_configs(docker).await?;
-
-	let base_ingress_config = include_str!("../../../assets/runner/nginx.conf");
-	let base_config = Base64String::from_string(base_ingress_config.to_string());
-
-	let config_spec = ConfigSpec {
-		name: Some(String::from("patr-ingress-config")),
-		labels: Some(HashMap::from([(
-			String::from("patr.deploymentId"),
-			String::from(constants::INGRESS_SERVICE_NAME),
-		)])),
-		data: Some(base_config.to_string()),
-		templating: None,
-	};
-
-	let ingress_config_id = if let Some((config_id, index)) = docker
-		.list_configs(Some(ListConfigsOptions {
-			filters: Some(HashMap::from([(
-				String::from("label"),
-				vec![format!(
-					"patr.deploymentId={}",
-					constants::INGRESS_SERVICE_NAME
-				)],
-			)])),
-		}))
-		.await
-		.map_err(RunnerError::host)?
-		.into_iter()
-		.next()
-		.and_then(|config| Some((config.id?, config.version?.index?)))
-	{
-		trace!("Config exists for ingress, updating: {}", config_id);
-		docker
-			.update_config(
-				&config_id,
-				config_spec,
-				UpdateConfigOptionsBuilder::default()
-					.version(index as i64)
-					.build(),
-			)
-			.await
-			.map_err(RunnerError::host)?;
-		config_id
-	} else {
-		trace!("Creating new config for ingress");
-		docker
-			.create_config(config_spec)
-			.await
-			.map_err(RunnerError::host)?
-			.id
-	};
-
 	let service_spec = ServiceSpec {
 		name: Some(String::from(constants::INGRESS_SERVICE_NAME)),
 		labels: Some(HashMap::from([(
-			"managed-by".to_string(),
-			"patr".to_string(),
+			String::from("managed-by"),
+			String::from("patr"),
 		)])),
 		task_template: Some(TaskSpec {
 			plugin_spec: None,
 			container_spec: Some(TaskSpecContainerSpec {
-				image: Some("nginx:latest".to_string()),
+				image: Some(String::from("caddy:latest")),
 				labels: Some(HashMap::from([(
-					"managed-by".to_string(),
-					"patr".to_string(),
+					String::from("managed-by"),
+					String::from("patr"),
 				)])),
-				configs: Some(
-					config_ids
-						.into_iter()
-						.map(|(deployment_id, config_id)| TaskSpecContainerSpecConfigs {
-							file: Some(TaskSpecContainerSpecFile1 {
-								name: Some(format!("/etc/nginx/conf.d/{}.conf", deployment_id)),
-								mode: Some(0o444),
-								uid: Some("0".to_string()),
-								gid: Some("0".to_string()),
-							}),
-							config_id: Some(config_id),
-							config_name: Some(format!("ingress-{}", deployment_id)),
-							runtime: None,
-						})
-						.chain(iter::once(TaskSpecContainerSpecConfigs {
-							file: Some(TaskSpecContainerSpecFile1 {
-								name: Some(String::from("/etc/nginx/nginx.conf")),
-								mode: Some(0o444),
-								uid: Some("0".to_string()),
-								gid: Some("0".to_string()),
-							}),
-							config_id: Some(ingress_config_id),
-							config_name: Some(String::from("patr-ingress-config")),
-							runtime: None,
-						}))
-						.collect(),
-				),
 				..Default::default()
 			}),
 			..Default::default()
@@ -165,7 +79,7 @@ pub async fn update_ingress_configs(
 			},
 			NetworkAttachmentConfig {
 				target: Some(String::from("ingress")),
-				aliases: Some(vec![String::from("patr-ingress")]),
+				aliases: Some(vec![String::from("patr-ingress"), String::from("ingress")]),
 				driver_opts: None,
 			},
 		]),
@@ -200,48 +114,4 @@ pub async fn update_ingress_configs(
 	}
 
 	Ok(())
-}
-
-/// Get all ingress configs for deployments.
-///
-/// This is done by first getting all the deployments that are currently
-/// running, then generating the ingress configs for each deployment, writing
-/// the configs to it's own Docker Config, and returning a list of all Config
-/// IDs for the ingress service to use.
-async fn get_deployment_configs(docker: &Docker) -> Result<Vec<(Uuid, String)>, RunnerError> {
-	let config_ids = docker
-		.list_configs(Some(ListConfigsOptions {
-			filters: Some(HashMap::from([(
-				String::from("label"),
-				vec![String::from("patr.deploymentId")],
-			)])),
-		}))
-		.await
-		.map_err(|err| {
-			error!("Error listing configs: {:?}", err);
-			RunnerError::host(err)
-		})?
-		.into_iter()
-		.filter_map(|config| {
-			Some((
-				config
-					.spec?
-					.labels?
-					.get("patr.deploymentId")?
-					.parse()
-					.ok()?,
-				config.id?,
-			))
-		})
-		.collect::<Vec<_>>();
-
-	Ok(config_ids)
-}
-
-pub fn generate_config_for_deployment(deployment_id: Uuid, port: u16) -> String {
-	format!(
-		include_str!("../../../assets/runner/deployment-ingress.conf"),
-		deployment_id = deployment_id,
-		port = port
-	)
 }
