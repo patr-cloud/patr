@@ -17,6 +17,7 @@ interface ModalContainerProps {
 	width?: string;
 	height?: string;
 	closeFn: (prev: boolean) => void;
+	onClick?: (e: MouseEvent) => void;
 }
 
 const ModalContainer = (rawProps: ParentProps<ModalContainerProps>) => {
@@ -30,6 +31,7 @@ const ModalContainer = (rawProps: ParentProps<ModalContainerProps>) => {
 
 	return (
 		<div
+			onClick={props.onClick}
 			style={{
 				width: props.width || "auto",
 				height: props.height || "auto",

@@ -1,6 +1,6 @@
 import { createResource, createSignal, Show, Suspense } from "solid-js";
 import { useNavigate, useParams } from "@solidjs/router";
-import { Button, ButtonVariant, PageContainer, PageContainerBody, Table, useToast } from "~/components";
+import { Button, ButtonVariant, Link, PageContainer, PageContainerBody, Table, useToast } from "~/components";
 import { FiTrash2 } from "solid-icons/fi";
 import { useAuthState } from "~/hooks";
 import { GetWorkspaceInfoResponse } from "~/bindings/GetWorkspaceInfoResponse";
@@ -28,7 +28,7 @@ const EditRole = (props: { role: WithId<Role> }) => {
 		}
 
 		const response = await httpRequest<GetRoleInfoResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role/${props.role.id}?remove_users=false`,
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role/${props.role.id}`,
 			{
 				method: "GET",
 				headers: {
@@ -84,7 +84,7 @@ const RoleRow = (props: {
 		}
 
 		const resp = await httpRequest(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role/${roleId}?removeUsers=false`,
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role/${roleId}`,
 			{
 				method: "DELETE",
 			}
@@ -100,56 +100,34 @@ const RoleRow = (props: {
 		props.refetch();
 	};
 
-	const onClickManageRole = (roleId: string) => {
-		const workspaceId = params.id;
-
-		if (!workspaceId) {
-			toast("Workspace ID is missing", "error");
-			return;
-		}
-	};
-
 	return (
-		<Show
-			when={showManageRole()}
-			fallback={
-				<tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
-					<td class="flex items-center justify-center flex-1">{props.role.name}</td>
-					<td class="flex items-center justify-center flex-2">{props.role.description || "No description"}</td>
-					<td class="flex items-center justify-center flex-1">
-						<Button
-							onClick={(e) => {
-								e.preventDefault();
-								setShowManageRole(true);
-							}}
-							variant={ButtonVariant.Plain}
-							class="h-full flex items-center gap-2 cursor-pointer"
-						>
-							Manage Role
-						</Button>
-					</td>
-					<td class="flex items-center justify-center flex-[0.5]">
-						<Button
-							onClick={(e) => {
-								e.preventDefault();
-								onClickDelete(props.role.id);
-							}}
-							color={Color.Error}
-							variant={ButtonVariant.Plain}
-							class="h-full flex items-center gap-2 cursor-pointer"
-						>
-							<FiTrash2 size={16} />
-						</Button>
-					</td>
-				</tr>
-			}
-		>
-			<tr class="table-row">
-				<td class="w-full" colSpan={4}>
-					<EditRole role={props.role} />
-				</td>
-			</tr>
-		</Show>
+		<tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
+			<td class="flex items-center justify-center flex-1">{props.role.name}</td>
+			<td class="flex items-center justify-center flex-2">{props.role.description || "No description"}</td>
+			<td class="flex items-center justify-center flex-1">
+				<Link
+					external
+					href={`/workspaces/${params.id}/roles/${props.role.id}`}
+					buttonVariant={ButtonVariant.Plain}
+					class="h-full flex items-center gap-2 cursor-pointer"
+				>
+					Manage Role
+				</Link>
+			</td>
+			<td class="flex items-center justify-center flex-[0.5]">
+				<Button
+					onClick={(e) => {
+						e.preventDefault();
+						onClickDelete(props.role.id);
+					}}
+					color={Color.Error}
+					variant={ButtonVariant.Plain}
+					class="h-full flex items-center gap-2 cursor-pointer"
+				>
+					<FiTrash2 size={16} />
+				</Button>
+			</td>
+		</tr>
 	);
 };
 
@@ -205,36 +183,6 @@ const ManageRoles = () => {
 		}
 		return response.data;
 	});
-
-	const onClickDelete = async (roleId: string) => {
-		const auth = authState();
-		if (!auth || auth.type !== "LoggedIn") {
-			toast("You must be logged in to delete a role", "error");
-			return;
-		}
-
-		const workspaceId = params.id;
-		if (!workspaceId) {
-			toast("Workspace ID is missing", "error");
-			return;
-		}
-
-		const resp = await httpRequest(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role/${roleId}?removeUsers=false`,
-			{
-				method: "DELETE",
-			}
-		);
-
-		if (!resp.ok) {
-			console.error("Failed to delete role:", resp.data.error);
-			toast(resp.data.message, "error");
-			return;
-		}
-
-		toast("Role deleted successfully", "success");
-		refetchRoles();
-	};
 
 	return (
 		<PageContainer>

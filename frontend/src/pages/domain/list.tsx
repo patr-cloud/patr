@@ -14,7 +14,8 @@ import {
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import { ModalContainer } from "~/components/modal";
-import { GetVerificationRecordsForDomainResponse } from "~/bindings";
+import { GetDomainInfoInWorkspaceResponse, GetVerificationRecordsForDomainResponse } from "~/bindings";
+import { EventT } from "~/utils/types";
 
 // Type definitions based on API bindings
 type WorkspaceDomain = {
@@ -56,10 +57,13 @@ const CopyButton = (props: { text: string }) => {
 const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void }) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
+	const toast = useToast();
+	const [loading, setLoading] = createSignal(false);
 
 	const fetchParams = createMemo(() => {
 		return [authState(), workspaceId(), props.domainId] as const;
 	});
+
 	const [dnsRecord] = createResource(fetchParams, async ([auth, wsId, domainId]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") {
 			throw new Error("Not authenticated or workspace ID missing");
@@ -84,8 +88,47 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 		return { records: response.data.verificationRecords || [] };
 	});
 
+	const onVerifyClick = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
+		setLoading(true);
+
+		const auth = authState();
+		const wsId = workspaceId();
+		const domainId = props.domainId;
+
+		if (!wsId || !auth || auth.type !== "LoggedIn" || !domainId) {
+			toast("Unable to verify domain", "error");
+			return;
+		}
+
+		const verifyResp = await httpRequest<GetDomainInfoInWorkspaceResponse>(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain/${domainId}/verify`,
+			{
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+			}
+		);
+
+		if (!verifyResp.ok) {
+			console.error("Failed to verify domain:", verifyResp.data.error);
+			toast("Failed to verify domain", "error");
+			setLoading(false);
+			return;
+		}
+
+		setLoading(false);
+		toast("Domain verification initiated", "success");
+		props.closeFn(false);
+	};
+
 	return (
-		<ModalContainer closeFn={props.closeFn}>
+		<ModalContainer
+			onClick={(e) => {
+				e.stopPropagation();
+			}}
+			closeFn={props.closeFn}
+		>
 			<ErrorBoundary
 				fallback={(err, reset) => (
 					<div class="text-white">
@@ -96,23 +139,33 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 					</div>
 				)}
 			>
-				<Suspense fallback={<>Loading</>}>
+				<Suspense
+					fallback={
+						<div class="flex items-center justify-center py-8">
+							<div class="text-gray-400">Loading DNS records...</div>
+						</div>
+					}
+				>
 					<Show when={dnsRecord()?.records.length}>
-						<p class="text-primary text-sm mb-2">To verify your domain, add the following DNS record:</p>
-						<For each={dnsRecord()!.records}>
-							{(record) => (
-								<div class="mb-4">
+						<p class="text-primary text-md mb-2">To verify domain, add the following DNS records:</p>
+						<div>
+							<For each={dnsRecord()!.records}>
+								{(record) => (
 									<div class="bg-black/30 p-2 rounded text-xs text-gray-400 mb-2">
 										<p>Type: {record.type}</p>
 										<p>Name: {record.name}</p>
-										<p>Value: {record.ttl}</p>
+										<p>Value: {record.target}</p>
 									</div>
-									<p class="text-gray-400 text-xs">
-										After adding the DNS record, it may take up to 48 hours to propagate.
-									</p>
-								</div>
-							)}
-						</For>
+								)}
+							</For>
+							<p class="text-gray-400 text-xs">After adding the DNS record, it may take up to 48 hours to propagate.</p>
+
+							<div class="w-full flex items-center justify-end mt-4">
+								<Button variant={ButtonVariant.Contained} onClick={onVerifyClick} disabled={loading()}>
+									{loading() ? "VERIFYING..." : "VERIFY"}
+								</Button>
+							</div>
+						</div>
 					</Show>
 				</Suspense>
 			</ErrorBoundary>
@@ -135,7 +188,10 @@ const VerificationIcon = (props: { domain: WorkspaceDomain }) => {
 						setOpen(true);
 					}}
 				>
-					<FiAlertCircle size={16} class="text-yellow-500 cursor-pointer" />
+					<FiAlertCircle
+						size={22}
+						class="text-yellow-500 cursor-pointer hover:bg-white/10 transition-colors rounded p-1"
+					/>
 				</Button>
 			)}
 			renderModalContent={(close) => <DNSRecords domainId={props.domain.id} closeFn={close} />}
