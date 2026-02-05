@@ -22,8 +22,8 @@ impl RunnerExecutor for DockerRunner {
 	type InitializedState = Docker;
 	type Settings = DockerSettings;
 
-	fn runner_exposure_type() -> RunnerExposureType {
-		RunnerExposureType::Private
+	fn runner_exposure_type(settings: &RunnerSettings<Self::Settings>) -> RunnerExposureType {
+		settings.data.runner_exposure_type.clone()
 	}
 
 	async fn initialize(

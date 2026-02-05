@@ -88,7 +88,7 @@ where
 			let Ok(()) = pinned_stream
 				.send(
 					StreamRunnerDataForWorkspaceClientMsg::SetRunnerExposureType {
-						exposure_type: E::runner_exposure_type(),
+						exposure_type: E::runner_exposure_type(&self.state.config),
 					},
 				)
 				.await
