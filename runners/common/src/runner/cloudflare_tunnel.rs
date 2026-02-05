@@ -33,7 +33,7 @@ where
 			return Err(RunnerError::Unsupported);
 		};
 
-		let runner_exposure_type = E::runner_exposure_type();
+		let runner_exposure_type = E::runner_exposure_type(&self.state.config);
 
 		if !runner_exposure_type.requires_tunnel() {
 			return Err(RunnerError::Unsupported);

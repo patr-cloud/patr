@@ -2,7 +2,7 @@ use std::{collections::HashMap, iter};
 
 use bollard::{
 	Docker,
-	models::ConfigSpec,
+	models::{ConfigSpec, Mount, MountTypeEnum},
 	query_parameters::{
 		ListConfigsOptions,
 		UpdateConfigOptionsBuilder,
@@ -39,7 +39,7 @@ pub async fn update_ingress_configs(
 ) -> Result<(), RunnerError> {
 	let config_ids = get_deployment_configs(docker).await?;
 
-	let base_ingress_config = include_str!("../../../assets/runner/nginx.conf");
+	let base_ingress_config = include_str!("../../../assets/runner/Caddyfile.base");
 	let base_config = Base64String::from_string(base_ingress_config.to_string());
 
 	let config_spec = ConfigSpec {
@@ -92,23 +92,52 @@ pub async fn update_ingress_configs(
 	let service_spec = ServiceSpec {
 		name: Some(String::from(constants::INGRESS_SERVICE_NAME)),
 		labels: Some(HashMap::from([(
-			"managed-by".to_string(),
-			"patr".to_string(),
+			String::from("managed-by"),
+			String::from("patr"),
 		)])),
 		task_template: Some(TaskSpec {
 			plugin_spec: None,
 			container_spec: Some(TaskSpecContainerSpec {
-				image: Some("nginx:latest".to_string()),
+				image: Some(String::from("caddy:2")),
 				labels: Some(HashMap::from([(
-					"managed-by".to_string(),
-					"patr".to_string(),
+					String::from("managed-by"),
+					String::from("patr"),
 				)])),
+				env: Some(vec![
+					format!(
+						"AUTO_HTTPS={}",
+						match settings.runner_exposure_type {
+							RunnerExposureType::Private => "auto_https off",
+							RunnerExposureType::PublicIP { .. } |
+							RunnerExposureType::PublicDNS { .. } => "",
+						}
+					),
+					format!(
+						"HTTP_PREFIX={}",
+						match settings.runner_exposure_type {
+							RunnerExposureType::Private => "http://",
+							RunnerExposureType::PublicIP { .. } |
+							RunnerExposureType::PublicDNS { .. } => "",
+						}
+					),
+					format!(
+						"ACME_CA_URL={}",
+						if cfg!(debug_assertions) {
+							"https://acme-staging-v02.api.letsencrypt.org/directory"
+						} else {
+							"https://acme-v02.api.letsencrypt.org/directory"
+						}
+					),
+				]),
 				configs: Some(
 					config_ids
 						.into_iter()
 						.map(|(deployment_id, config_id)| TaskSpecContainerSpecConfigs {
 							file: Some(TaskSpecContainerSpecFile1 {
-								name: Some(format!("/etc/nginx/conf.d/{}.conf", deployment_id)),
+								name: Some(format!(
+									"/etc/caddy/deployments/{}.caddy",
+									deployment_id
+								)),
 								mode: Some(0o444),
 								uid: Some("0".to_string()),
 								gid: Some("0".to_string()),
@@ -119,7 +148,7 @@ pub async fn update_ingress_configs(
 						})
 						.chain(iter::once(TaskSpecContainerSpecConfigs {
 							file: Some(TaskSpecContainerSpecFile1 {
-								name: Some(String::from("/etc/nginx/nginx.conf")),
+								name: Some(String::from("/etc/caddy/Caddyfile")),
 								mode: Some(0o444),
 								uid: Some("0".to_string()),
 								gid: Some("0".to_string()),
@@ -130,6 +159,15 @@ pub async fn update_ingress_configs(
 						}))
 						.collect(),
 				),
+				// Mount a named volume to store the TLS certs, so they persist across service
+				// updates and restarts
+				mounts: Some(vec![Mount {
+					target: Some(String::from("/data")),
+					source: Some(String::from(constants::INGRESS_TLS_CERTS_VOLUME_NAME)),
+					typ: Some(MountTypeEnum::VOLUME),
+					read_only: Some(false),
+					..Default::default()
+				}]),
 				..Default::default()
 			}),
 			..Default::default()
@@ -165,7 +203,7 @@ pub async fn update_ingress_configs(
 			},
 			NetworkAttachmentConfig {
 				target: Some(String::from("ingress")),
-				aliases: Some(vec![String::from("patr-ingress")]),
+				aliases: Some(vec![String::from("patr-ingress"), String::from("ingress")]),
 				driver_opts: None,
 			},
 		]),
@@ -240,7 +278,7 @@ async fn get_deployment_configs(docker: &Docker) -> Result<Vec<(Uuid, String)>, 
 
 pub fn generate_config_for_deployment(deployment_id: Uuid, port: u16) -> String {
 	format!(
-		include_str!("../../../assets/runner/deployment-ingress.conf"),
+		include_str!("../../../assets/runner/Caddyfile.template"),
 		deployment_id = deployment_id,
 		port = port
 	)

@@ -37,9 +37,9 @@ pub(crate) async fn upsert(
 				name: _,
 				registry,
 				image_tag,
-				status: _, // TODO handle paused deployments
-				runner: _,
+				status: _,       // TODO handle paused deployments
 				machine_type: _, // TODO
+				runner: _,
 				current_live_digest,
 			},
 	}: WithId<Deployment>,
@@ -349,6 +349,28 @@ pub(crate) async fn delete(
 	if service.is_some() {
 		docker.delete_service(&service_name).await.map_err(|err| {
 			error!("Error removing service: {:?}", err);
+			RunnerError::host(err)
+		})?;
+	}
+
+	info!("Removing ingress config for deployment: {}", id);
+
+	// Remove ingress config
+	if let Some((config_id, _)) = docker
+		.list_configs(Some(ListConfigsOptions {
+			filters: Some(HashMap::from([(
+				String::from("label"),
+				vec![format!("patr.deploymentId={}", id)],
+			)])),
+		}))
+		.await
+		.map_err(RunnerError::host)?
+		.into_iter()
+		.next()
+		.and_then(|config| Some((config.id?, config.version?.index?)))
+	{
+		docker.delete_config(&config_id).await.map_err(|err| {
+			error!("Error removing config: {:?}", err);
 			RunnerError::host(err)
 		})?;
 	}

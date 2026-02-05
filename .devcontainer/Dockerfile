@@ -3,9 +3,19 @@ FROM ubuntu:noble
 # Install dependencies
 RUN mkdir -p --mode=0755 /usr/share/keyrings && \
     apt update && \
-    apt install -y curl && \
+    apt install -y debian-keyring debian-archive-keyring apt-transport-https curl && \
+    \
+    # Install Cloudflare
     curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg > /usr/share/keyrings/cloudflare-main.gpg && \
     echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared noble main' > /etc/apt/sources.list.d/cloudflared.list && \
+    \
+    # Install Caddy
+    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg && \
+    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list && \
+    chmod o+r /usr/share/keyrings/caddy-stable-archive-keyring.gpg && \
+    chmod o+r /etc/apt/sources.list.d/caddy-stable.list && \
+    \
+    # Install the rest of the dependencies
     apt update && \
     apt install -y \
     libssl-dev \
@@ -29,7 +39,8 @@ RUN mkdir -p --mode=0755 /usr/share/keyrings && \
     libpcre3-dev \
     zlib1g-dev \
     mold \
-    nginx && \
+    nginx \
+    caddy && \
     rm -rf /var/lib/apt/lists/*
 
 # Setup non-root user with sudo permissions

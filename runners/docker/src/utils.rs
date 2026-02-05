@@ -6,4 +6,6 @@ pub mod constants {
 	pub const INGRESS_NETWORK_NAME: &str = "patr-ingress-network";
 	/// The name of the ingress service.
 	pub const INGRESS_SERVICE_NAME: &str = "patr-ingress";
+	/// The name of the volume used to store TLS certs for the ingress service.
+	pub const INGRESS_TLS_CERTS_VOLUME_NAME: &str = "patr-ingress-data";
 }
