@@ -1,0 +1,13 @@
+{
+	http_port 80
+	https_port 443
+
+	admin off
+	persist_config off
+
+	skip_install_trust
+	{$AUTO_HTTPS}
+	acme_ca {$ACME_CA_URL}
+}
+
+import /etc/caddy/deployments/*.caddy

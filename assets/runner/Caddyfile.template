@@ -1,0 +1,4 @@
+
+{{$HTTP_PREFIX}}{port}-{deployment_id}.onpatr.cloud {{
+	reverse_proxy patr-{deployment_id}:{port}
+}}

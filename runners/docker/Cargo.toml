@@ -14,7 +14,6 @@ workspace = true
 bollard = { workspace = true, features = ["default"] }
 common  = { workspace = true }
 futures = { workspace = true, features = ["default"] }
-macros  = { workspace = true, features = [] }
 models  = { workspace = true, features = [] }
 serde   = { workspace = true, features = ["default", "derive"] }
 tokio   = { workspace = true, features = ["full"] }

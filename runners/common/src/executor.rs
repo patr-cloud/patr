@@ -31,7 +31,7 @@ pub trait RunnerExecutor: Sized {
 	/// The exposure type of the runner. This is used to determine how the
 	/// runner will expose the resources to the outside world.
 	#[must_use]
-	fn runner_exposure_type() -> RunnerExposureType;
+	fn runner_exposure_type(_: &RunnerSettings<Self::Settings>) -> RunnerExposureType;
 
 	/// This function is called when the runner is initialized. This is where
 	/// the runner should initialize any resources it needs to run the

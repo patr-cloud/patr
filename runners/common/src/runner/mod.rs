@@ -1,15 +1,12 @@
 use std::{
 	collections::BTreeMap,
-	fs::Permissions,
 	net::SocketAddr,
-	os::unix::fs::PermissionsExt,
 	sync::{Arc, OnceLock},
 };
 
 use futures::{FutureExt, future};
 use tempfile::TempDir;
 use tokio::{
-	fs,
 	net::TcpListener,
 	sync::{Mutex, Notify, mpsc},
 	task,
@@ -52,9 +49,6 @@ mod deployment;
 /// resource. As long as it's running, we are happy. So NO updating the
 /// resource here whatsoever. All that happens in the executor task.
 mod monitor_resources;
-/// The part of the runner that handles the embedded nginx server.
-/// This is used to proxy requests from the tunnel to the actual deployments.
-mod nginx;
 
 /// The runner is the main struct that is used to run the resources.
 ///
@@ -76,12 +70,6 @@ impl<E> Runner<E>
 where
 	E: RunnerExecutor + Send + Sync + 'static,
 {
-	/// If this is set to true, the runner will use the embedded binaries for
-	/// cloudflared and nginx instead of using the system binaries. This is
-	/// useful for keeping the code for the embedded binaries before the feature
-	/// gets released.
-	const USE_EMBEDDED_BINARIES: bool = false;
-
 	/// Initializes the runner. This function will create a new
 	/// database connection pool and set up the global default subscriber for
 	/// the runner. It returns an instance of the runner.
@@ -204,41 +192,7 @@ where
 			std::process::exit(1);
 		});
 
-		if Self::USE_EMBEDDED_BINARIES {
-			// Write the cloudflare tunnel binary to the temp directory
-			fs::write(
-				self.temp_dir.path().join("cloudflared"),
-				Binaries::get("cloudflared")
-					.expect("Failed to get cloudflared binary")
-					.data,
-			)
-			.await
-			.map_err(RunnerError::CloudflareTunnelSetupError)?;
-			fs::set_permissions(
-				self.temp_dir.path().join("cloudflared"),
-				Permissions::from_mode(0o755),
-			)
-			.await
-			.map_err(RunnerError::CloudflareTunnelSetupError)?;
-
-			// Write the nginx binary to the temp directory
-			fs::write(
-				self.temp_dir.path().join("nginx"),
-				Binaries::get("nginx")
-					.expect("Failed to get cloudflared binary")
-					.data,
-			)
-			.await
-			.map_err(RunnerError::NginxSetupError)?;
-			fs::set_permissions(
-				self.temp_dir.path().join("nginx"),
-				Permissions::from_mode(0o755),
-			)
-			.await
-			.map_err(RunnerError::NginxSetupError)?;
-		}
-
-		let (server_setup, sync_database, run_tunnel, run_nginx, resource_monitor) = future::join5(
+		let (server_setup, sync_database, run_tunnel, resource_monitor) = future::join4(
 			self.run_server(tcp_listener).inspect(|_| {
 				debug!("Server has shut down");
 			}),
@@ -247,9 +201,6 @@ where
 			}),
 			self.run_cloudflare_tunnel().inspect(|_| {
 				debug!("Cloudflare tunnel has stopped");
-			}),
-			self.run_nginx().inspect(|_| {
-				debug!("Nginx has stopped");
 			}),
 			self.monitor_resources().inspect(|_| {
 				debug!("Resource monitor has stopped");
@@ -266,10 +217,7 @@ where
 		}
 
 		info!("Server exited. Exiting runner");
-		sync_database
-			.or(run_tunnel)
-			.or(run_nginx)
-			.or(resource_monitor)
+		sync_database.or(run_tunnel).or(resource_monitor)
 	}
 
 	/// Run the server. This function will start the server and listen for
