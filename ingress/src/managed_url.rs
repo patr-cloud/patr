@@ -76,6 +76,7 @@ pub async fn handle_request(req: Request, env: Env, ctx: Context, host: &str) ->
 					cf: CfProperties::new(),
 					method: req.method(),
 					redirect: RequestRedirect::Manual,
+					cache: None,
 				},
 			)?)
 			.send()
@@ -348,6 +349,7 @@ pub async fn handle_request(req: Request, env: Env, ctx: Context, host: &str) ->
 					},
 					method: req.method(),
 					redirect: RequestRedirect::Manual,
+					cache: None,
 				},
 			)?)
 			.send()

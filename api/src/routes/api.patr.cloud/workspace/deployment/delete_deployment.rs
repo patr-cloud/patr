@@ -43,7 +43,7 @@ pub async fn delete_deployment(
 	let runner = query!(
 		r#"
 		SELECT
-			runner
+			runner AS "runner: Uuid"
 		FROM
 			deployment
 		WHERE
@@ -175,6 +175,13 @@ pub async fn delete_deployment(
 		namespace_identifier: &state.config.cloudflare.worker_namespace_id,
 		key: &deployment_id.to_string(),
 	})
+	.await?;
+
+	super::super::runner::update_cloudflare_config_for_runner(
+		runner,
+		&mut **database,
+		&state.config,
+	)
 	.await?;
 
 	// TODO Temporary workaround until audit logs and triggers are implemented

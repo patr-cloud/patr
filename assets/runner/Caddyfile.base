@@ -6,7 +6,6 @@
 	persist_config off
 
 	skip_install_trust
-	{$AUTO_HTTPS}
 	acme_ca {$ACME_CA_URL}
 }
 

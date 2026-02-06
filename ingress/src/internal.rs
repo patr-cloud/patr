@@ -5,7 +5,7 @@ pub async fn handle_request(req: Request, env: Env, _ctx: Context, host: &str) -
 		.trim_end_matches(constants::DEFAULT_PATR_DOMAIN)
 		.trim_end_matches('.');
 
-	let (port, key) = if let Some((port, deployment_id)) = host.rsplit_once('.') {
+	let (port, key) = if let Some((port, deployment_id)) = host.rsplit_once('-') {
 		(Some(port), deployment_id)
 	} else {
 		(None, host)
@@ -65,6 +65,7 @@ pub async fn handle_request(req: Request, env: Env, _ctx: Context, host: &str) -
 					},
 					method: req.method(),
 					redirect: RequestRedirect::Manual,
+					cache: None,
 				},
 			)?)
 			.send()
@@ -86,6 +87,7 @@ pub async fn handle_request(req: Request, env: Env, _ctx: Context, host: &str) -
 					cf: Default::default(),
 					method: req.method(),
 					redirect: RequestRedirect::Manual,
+					cache: None,
 				},
 			)?)
 			.send()

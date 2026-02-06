@@ -74,12 +74,38 @@ pub async fn update_managed_url(
 	let permanent_redirect;
 	let http_only;
 
+	let mut runner_id_to_update = None;
+
 	if let Some(managed_url_type) = managed_url_type {
 		match managed_url_type {
 			ManagedUrlType::ProxyDeployment {
 				deployment_id: managed_url_deployment_id,
 				port: managed_url_port,
 			} => {
+				let deployment = query!(
+					r#"
+					SELECT
+						deployment.runner AS "runner: Uuid"
+					FROM
+						deployment
+					INNER JOIN
+						resource
+					ON
+						deployment.id = resource.id
+					WHERE
+						deployment.id = $1 AND
+						deployment.deleted IS NULL AND
+						resource.owner_id = $2;
+					"#,
+					managed_url_deployment_id as _,
+					workspace_id as _,
+				)
+				.fetch_optional(&mut **database)
+				.await?
+				.ok_or(ErrorType::WrongParameters)?;
+
+				runner_id_to_update = Some(deployment.runner);
+
 				url_type = Some(ManagedUrlTypeDiscriminant::ProxyDeployment);
 				deployment_id = Some(managed_url_deployment_id);
 				port = Some(managed_url_port);
@@ -188,6 +214,15 @@ pub async fn update_managed_url(
 		&state.config,
 	)
 	.await?;
+
+	if let Some(runner_id) = runner_id_to_update {
+		super::super::runner::update_cloudflare_config_for_runner(
+			runner_id,
+			&mut **database,
+			&state.config,
+		)
+		.await?;
+	}
 
 	AppResponse::builder()
 		.body(UpdateManagedURLResponse)

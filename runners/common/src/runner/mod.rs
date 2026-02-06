@@ -5,7 +5,6 @@ use std::{
 };
 
 use futures::{FutureExt, future};
-use tempfile::TempDir;
 use tokio::{
 	net::TcpListener,
 	sync::{Mutex, Notify, mpsc},
@@ -28,10 +27,6 @@ use crate::{db, prelude::*, resource_executor::ResourceExecutorTask};
 #[doc(hidden)]
 pub(super) static GLOBAL_CANCEL_TOKEN: OnceLock<CancellationToken> = OnceLock::new();
 
-/// The part of the runner that handles the Cloudflare tunnel.
-/// This is used to expose the runner to the internet when the runner is
-/// running in managed mode and the runner exposure type requires a tunnel.
-mod cloudflare_tunnel;
 /// The part of the runner that syncs the local database with the upstream APIs.
 ///
 /// This is only used when the runner is running in managed mode. This connects
@@ -62,8 +57,6 @@ where
 	registry: Mutex<BTreeMap<Uuid, ResourceExecutorTask<E>>>,
 	/// State and configuration for the runner
 	state: AppState<E>,
-	/// Temporary directory for the runner to store binary artifacts
-	temp_dir: TempDir,
 }
 
 impl<E> Runner<E>
@@ -157,7 +150,6 @@ where
 		Ok(Self {
 			registry: Mutex::new(BTreeMap::new()),
 			state,
-			temp_dir: TempDir::with_prefix("patr").map_err(RunnerError::ServerSetupError)?,
 		})
 	}
 
@@ -192,15 +184,12 @@ where
 			std::process::exit(1);
 		});
 
-		let (server_setup, sync_database, run_tunnel, resource_monitor) = future::join4(
+		let (server_setup, sync_database, resource_monitor) = future::join3(
 			self.run_server(tcp_listener).inspect(|_| {
 				debug!("Server has shut down");
 			}),
 			self.sync_local_database(receiver).inspect(|_| {
 				debug!("Database sync has stopped");
-			}),
-			self.run_cloudflare_tunnel().inspect(|_| {
-				debug!("Cloudflare tunnel has stopped");
 			}),
 			self.monitor_resources().inspect(|_| {
 				debug!("Resource monitor has stopped");
@@ -217,7 +206,7 @@ where
 		}
 
 		info!("Server exited. Exiting runner");
-		sync_database.or(run_tunnel).or(resource_monitor)
+		sync_database.or(resource_monitor)
 	}
 
 	/// Run the server. This function will start the server and listen for

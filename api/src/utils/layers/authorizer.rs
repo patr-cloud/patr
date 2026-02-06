@@ -151,7 +151,7 @@ where
 							)
 							.fetch_all(&mut **req.database)
 							.await
-							.unwrap_or_default()
+							.expect("Failed to fetch permissions from the database")
 							.into_iter()
 							.map(|row| {
 								(

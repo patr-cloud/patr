@@ -38,7 +38,11 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 		.mount_auth_endpoint(verify_configuration, state, allowed_client_type)
 }
 
-async fn sync_worker_kv_for_domain(
+/// Sync the Cloudflare Worker KV for a domain. This will query the database for
+/// all managed URLs for the domain, and update the KV with the latest
+/// information. If there are no managed URLs for the domain, the KV will be
+/// deleted.
+pub async fn sync_worker_kv_for_domain(
 	domain: &str,
 	database: &mut DatabaseConnection,
 	config: &AppConfig,

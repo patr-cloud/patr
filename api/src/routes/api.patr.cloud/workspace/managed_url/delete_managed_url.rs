@@ -41,7 +41,8 @@ pub async fn delete_managed_url(
 			RETURNING
 				sub_domain,
 				domain_id,
-				path
+				path,
+				deployment_id
 		)
 		SELECT
 			deleted.sub_domain,
@@ -50,13 +51,18 @@ pub async fn delete_managed_url(
 				'.',
 				workspace_domain.tld
 			) AS "domain!",
-			deleted.path
+			deleted.path,
+			deployment.runner AS "connected_deployment_runner?: Uuid"
 		FROM
 			deleted
 		INNER JOIN
 			workspace_domain
 		ON
-			deleted.domain_id = workspace_domain.id;
+			deleted.domain_id = workspace_domain.id
+		LEFT JOIN
+			deployment
+		ON
+			deployment.id = deleted.deployment_id;
 		"#,
 		managed_url_id as _,
 	)
@@ -87,6 +93,15 @@ pub async fn delete_managed_url(
 		&state.config,
 	)
 	.await?;
+
+	if let Some(runner_id) = managed_url.connected_deployment_runner {
+		super::super::runner::update_cloudflare_config_for_runner(
+			runner_id,
+			&mut **database,
+			&state.config,
+		)
+		.await?;
+	}
 
 	AppResponse::builder()
 		.body(DeleteManagedURLResponse)

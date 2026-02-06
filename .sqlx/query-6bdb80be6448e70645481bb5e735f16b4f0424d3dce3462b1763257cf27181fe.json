@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT deployment.runner AS \"runner: Uuid\" FROM deployment INNER JOIN resource ON deployment.id = resource.id WHERE deployment.id = $1 AND deployment.deleted IS NULL AND resource.owner_id = $2;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "runner: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6bdb80be6448e70645481bb5e735f16b4f0424d3dce3462b1763257cf27181fe"
+}

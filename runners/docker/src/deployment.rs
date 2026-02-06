@@ -174,11 +174,7 @@ pub(crate) async fn upsert(
 		}),
 		networks: Some(vec![NetworkAttachmentConfig {
 			target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
-			aliases: Some(vec![
-				format!("{}.onpatr.cloud", id),
-				format!("patr-{}", id),
-				format!("{}.onpatr.local", id),
-			]),
+			aliases: Some(vec![format!("{}.onpatr.local", id)]),
 			driver_opts: None,
 		}]),
 		..Default::default()

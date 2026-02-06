@@ -406,6 +406,13 @@ pub async fn create_deployment(
 	})
 	.await?;
 
+	super::super::runner::update_cloudflare_config_for_runner(
+		runner,
+		&mut **database,
+		&state.config,
+	)
+	.await?;
+
 	// TODO Temporary workaround until audit logs and triggers are implemented
 	redis
 		.publish(

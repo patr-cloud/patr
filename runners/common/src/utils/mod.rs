@@ -63,28 +63,6 @@ pub mod constants {
 	/// The Last Name key to be used in the `meta_data` table. This is used to
 	/// store the last name of the user that is currently logged in.
 	pub const LAST_NAME_KEY: &str = "last_name";
-
-	// NGINX related constants
-
-	/// The nginx configuration file path. This is used when the runner does not
-	/// support it's own URL mechanism and needs to use nginx to
-	/// serve the runner deployments.
-	pub const NGINX_CONFIG_PATH: &str = "./data/nginx/nginx.conf";
-	/// The socket file path for nginx to bind to. This is where nginx will
-	/// listen for connections on and the cloudflare tunnel should send traffic
-	/// to this path.
-	pub const NGINX_SOCKET_PATH: &str = "./data/nginx/nginx.sock";
-	/// The nginx lock file path. This is used to ensure that only one instance
-	/// of nginx is running at a time. When nginx starts, it will bind to
-	/// [`NGINX_SOCKET_PATH`]. But if the file already exists, nginx will cry.
-	/// But we can't simply delete the file before starting either, because in
-	/// case any other instance is running, we cannot delete the file for that
-	/// instance. So we create a lock file at this path, and acquire an OS lock
-	/// on it. If we have acquired the lock, we know for a fact that we are the
-	/// only instance running (because otherwise the other instance would've
-	/// acquired the lock). So we can safely delete the socket file and start
-	/// nginx.
-	pub const NGINX_LOCK_FILE_PATH: &str = "./data/nginx/nginx.lock";
 }
 
 /// The data that is returned by the SQLite update hook. This contains the same

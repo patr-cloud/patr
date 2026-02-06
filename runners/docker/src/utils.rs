@@ -8,4 +8,9 @@ pub mod constants {
 	pub const INGRESS_SERVICE_NAME: &str = "patr-ingress";
 	/// The name of the volume used to store TLS certs for the ingress service.
 	pub const INGRESS_TLS_CERTS_VOLUME_NAME: &str = "patr-ingress-data";
+	/// The name of the config used to store the cloudflare tunnel token.
+	pub const TUNNEL_TOKEN_CONFIG_NAME: &str = "patr-tunnel-token";
+	/// The name of the config used to store the ingress configuration for the
+	/// runner.
+	pub const INGRESS_CONFIG_NAME: &str = "patr-ingress-config";
 }

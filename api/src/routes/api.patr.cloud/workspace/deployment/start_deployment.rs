@@ -144,7 +144,6 @@ pub async fn start_deployment(
 	.execute(&mut **database)
 	.await?;
 
-	// TODO Temporary workaround until audit logs and triggers are implemented
 	let ports = query!(
 		r#"
 		SELECT
@@ -168,6 +167,69 @@ pub async fn start_deployment(
 	})
 	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
 
+	let row = query!(
+		r#"
+		SELECT
+			id AS "id: Uuid",
+			name,
+			registry,
+			image_name,
+			image_tag,
+			runner AS "runner: Uuid",
+			status AS "status: DeploymentStatus",
+			repository_id AS "repository_id: Uuid",
+			min_horizontal_scale,
+			max_horizontal_scale,
+			machine_type AS "machine_type: Uuid",
+			deploy_on_push,
+			startup_probe_port,
+			startup_probe_path,
+			startup_probe_port_type AS "startup_probe_port_type: Option<ExposedPortType>",
+			liveness_probe_port,
+			liveness_probe_path,
+			liveness_probe_port_type AS "liveness_probe_port_type: Option<ExposedPortType>",
+			current_live_digest
+		FROM
+			deployment
+		WHERE
+			id = $1 AND
+			deleted IS NULL;
+		"#,
+		deployment_id as _
+	)
+	.fetch_one(&mut **database)
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::RowNotFound => ErrorType::ResourceDoesNotExist,
+		err => err.into(),
+	})?;
+
+	let runner = row.runner;
+
+	CloudflareClient::new(
+		Credentials::UserAuthToken {
+			token: state.config.cloudflare.api_key.clone(),
+		},
+		ClientConfig::default(),
+		Environment::Production,
+	)?
+	.request(&write_key::WriteKey {
+		account_identifier: &state.config.cloudflare.account_id,
+		namespace_identifier: &state.config.cloudflare.worker_namespace_id,
+		key: &deployment_id.to_string(),
+		params: write_key::WriteKeyParams {
+			expiration: None,
+			expiration_ttl: None,
+		},
+		body: write_key::WriteKeyBody::Value(serde_json::to_vec(&InternalKVData::Deployment {
+			ports: ports.iter().map(|(port, _)| port.value()).collect(),
+			runner_id: runner,
+			status: DeploymentStatus::Deploying,
+		})?),
+	})
+	.await?;
+
+	// TODO Temporary workaround until audit logs and triggers are implemented
 	let environment_variables = query!(
 		r#"
 		SELECT
@@ -251,47 +313,9 @@ pub async fn start_deployment(
 	})
 	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
 
-	let row = query!(
-		r#"
-		SELECT
-			id AS "id: Uuid",
-			name,
-			registry,
-			image_name,
-			image_tag,
-			runner AS "runner: Uuid",
-			status AS "status: DeploymentStatus",
-			repository_id AS "repository_id: Uuid",
-			min_horizontal_scale,
-			max_horizontal_scale,
-			machine_type AS "machine_type: Uuid",
-			deploy_on_push,
-			startup_probe_port,
-			startup_probe_path,
-			startup_probe_port_type AS "startup_probe_port_type: Option<ExposedPortType>",
-			liveness_probe_port,
-			liveness_probe_path,
-			liveness_probe_port_type AS "liveness_probe_port_type: Option<ExposedPortType>",
-			current_live_digest
-		FROM
-			deployment
-		WHERE
-			id = $1 AND
-			deleted IS NULL;
-		"#,
-		deployment_id as _
-	)
-	.fetch_one(&mut **database)
-	.await
-	.map_err(|err| match err {
-		sqlx::Error::RowNotFound => ErrorType::ResourceDoesNotExist,
-		err => err.into(),
-	})?;
-
 	let name = row.name;
 	let image_tag = row.image_tag;
 	let machine_type = row.machine_type;
-	let runner = row.runner;
 
 	let deploy_on_push = row.deploy_on_push;
 	let min_horizontal_scale = row.min_horizontal_scale as u16;
@@ -312,29 +336,6 @@ pub async fn start_deployment(
 				port: port as u16,
 				path,
 			});
-
-	CloudflareClient::new(
-		Credentials::UserAuthToken {
-			token: state.config.cloudflare.api_key.clone(),
-		},
-		ClientConfig::default(),
-		Environment::Production,
-	)?
-	.request(&write_key::WriteKey {
-		account_identifier: &state.config.cloudflare.account_id,
-		namespace_identifier: &state.config.cloudflare.worker_namespace_id,
-		key: &deployment_id.to_string(),
-		params: write_key::WriteKeyParams {
-			expiration: None,
-			expiration_ttl: None,
-		},
-		body: write_key::WriteKeyBody::Value(serde_json::to_vec(&InternalKVData::Deployment {
-			ports: ports.iter().map(|(port, _)| port.value()).collect(),
-			runner_id: runner,
-			status: DeploymentStatus::Deploying,
-		})?),
-	})
-	.await?;
 
 	redis
 		.publish(

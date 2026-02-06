@@ -67,20 +67,50 @@ pub async fn create_managed_url(
 
 	info!("Creating ManagedURL: `{}.{}{}`", sub_domain, domain, path);
 
+	let mut runner_id_to_update = None;
+
+	// TODO: Check if the user has access to the deployment or static site (ON THE
+	// RIGHT WORKSPACE) if the URL type is a proxy.
 	let (url_discriminant, deployment_id, port, static_site_id, url, permanent_redirect, http_only) =
 		match url_type.clone() {
 			ManagedUrlType::ProxyDeployment {
 				deployment_id,
 				port,
-			} => (
-				ManagedUrlTypeDiscriminant::ProxyDeployment,
-				Some(deployment_id),
-				Some(port),
-				None,
-				None,
-				None,
-				None,
-			),
+			} => {
+				let deployment = query!(
+					r#"
+					SELECT
+						deployment.runner AS "runner: Uuid"
+					FROM
+						deployment
+					INNER JOIN
+						resource
+					ON
+						deployment.id = resource.id
+					WHERE
+						deployment.id = $1 AND
+						deployment.deleted IS NULL AND
+						resource.owner_id = $2;
+					"#,
+					deployment_id as _,
+					workspace_id as _,
+				)
+				.fetch_optional(&mut **database)
+				.await?
+				.ok_or(ErrorType::WrongParameters)?;
+
+				runner_id_to_update = Some(deployment.runner);
+
+				(
+					ManagedUrlTypeDiscriminant::ProxyDeployment,
+					Some(deployment_id),
+					Some(port),
+					None,
+					None,
+					None,
+					None,
+				)
+			}
 			ManagedUrlType::ProxyStaticSite { static_site_id } => (
 				ManagedUrlTypeDiscriminant::ProxyStaticSite,
 				None,
@@ -204,6 +234,15 @@ pub async fn create_managed_url(
 		&state.config,
 	)
 	.await?;
+
+	if let Some(runner_id) = runner_id_to_update {
+		super::super::runner::update_cloudflare_config_for_runner(
+			runner_id,
+			&mut **database,
+			&state.config,
+		)
+		.await?;
+	}
 
 	AppResponse::builder()
 		.body(CreateManagedURLResponse {

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT deployment_exposed_port.deployment_id AS \"deployment_id: Uuid\", deployment_exposed_port.port FROM deployment_exposed_port INNER JOIN deployment ON deployment_exposed_port.deployment_id = deployment.id WHERE deployment.runner = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "deployment_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "port",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "8c2282c08c970293af07a9d5518a69b59781c4d932d32792e0277faf7cdb5c79"
+}

@@ -5,7 +5,7 @@ use bollard::{
 	models::{NetworkCreateRequest, SwarmInitRequest, SwarmSpec},
 };
 use futures::Stream;
-use models::api::workspace::deployment::*;
+use models::api::workspace::{deployment::*, runner::*};
 
 use crate::prelude::*;
 
@@ -15,7 +15,7 @@ pub struct DockerRunner {
 	/// The [`Docker`] client.
 	pub docker: Docker,
 	/// The runner settings.
-	pub settings: DockerSettings,
+	pub settings: RunnerSettings<DockerSettings>,
 }
 
 impl RunnerExecutor for DockerRunner {
@@ -64,27 +64,88 @@ impl RunnerExecutor for DockerRunner {
 				.create_network(NetworkCreateRequest {
 					name: String::from(constants::INGRESS_NETWORK_NAME),
 					driver: Some(String::from("overlay")),
-					scope: None,
-					internal: Some(true),
-					attachable: None,
 					ingress: Some(false),
 					config_only: Some(false),
-					config_from: None,
-					ipam: None,
 					enable_ipv4: Some(true),
 					enable_ipv6: Some(true),
-					options: None,
 					labels: Some(HashMap::from([(
 						"managed-by".to_string(),
 						"patr".to_string(),
 					)])),
+					..Default::default()
 				})
 				.await
 				.map_err(RunnerError::host)?;
 		}
 
+		// None of this is required if the runner is not using a tunnel
+		if settings.data.runner_exposure_type.requires_tunnel() {
+			let RunnerMode::Managed {
+				workspace_id,
+				runner_id,
+				api_token,
+				user_agent,
+			} = settings.mode.clone()
+			else {
+				// If the runner is running in self-hosted mode, throw an error if the runner is
+				// set to use a tunnel, since tunnels are only supported in managed mode
+				debug!(concat!(
+					"Runner is running in self-hosted mode. ",
+					"Please expose the runner to the internet manually, ",
+					"as tunnels are not supported in self-hosted mode."
+				));
+				return Err(RunnerError::Unsupported);
+			};
+
+			let existing_tunnel_token = docker
+				.inspect_config(constants::TUNNEL_TOKEN_CONFIG_NAME)
+				.await
+				.ok()
+				.and_then(|config| config.spec)
+				.and_then(|spec| spec.data);
+
+			let new_tunnel_token = client::make_request(
+				ApiRequest::<GetIngressTokenForRunnerRequest>::builder()
+					.path(GetIngressTokenForRunnerPath {
+						workspace_id,
+						runner_id,
+					})
+					.headers(GetIngressTokenForRunnerRequestHeaders {
+						authorization: api_token.clone(),
+						user_agent: user_agent.clone(),
+					})
+					.build(),
+			)
+			.await
+			.map_err(|err| err.body.error)
+			.map(|response| response.body.token);
+
+			match (existing_tunnel_token, new_tunnel_token) {
+				(None, Err(err)) => {
+					error!(
+						"Cannot get tunnel token for runner: {err}. {}",
+						"Are you connected to the internet?"
+					);
+					return Err(RunnerError::UpstreamServerError(err));
+				}
+				(Some(_), Err(err)) => {
+					warn!("Cannot get tunnel token for runner: {err}");
+					warn!(concat!(
+						"Using existing tunnel token, but this may cause ",
+						"connectivity issues if the token has changed or is invalid."
+					));
+				}
+				(Some(existing), Ok(new)) if existing == new => {
+					debug!("Tunnel token has not changed, using existing token");
+				}
+				(Some(_), Ok(new)) | (None, Ok(new)) => {
+					ingress::update_ingress_tunnel_token(&docker, new).await?;
+				}
+			}
+		}
+
 		// Setup ingress, if it doesn't exist
-		ingress::update_ingress_configs(&docker, &settings.data).await?;
+		ingress::update_ingress_configs(&docker, &settings).await?;
 
 		Ok(docker)
 	}
@@ -95,7 +156,7 @@ impl RunnerExecutor for DockerRunner {
 	) -> Self {
 		Self {
 			docker,
-			settings: settings.data.clone(),
+			settings: settings.clone(),
 		}
 	}
 
