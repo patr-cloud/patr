@@ -124,6 +124,9 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 
 	return (
 		<ModalContainer
+			style={{
+				width: "60rem",
+			}}
 			onClick={(e) => {
 				e.stopPropagation();
 			}}
@@ -148,17 +151,31 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 				>
 					<Show when={dnsRecord()?.records.length}>
 						<p class="text-primary text-md mb-2">To verify domain, add the following DNS records:</p>
-						<div>
-							<For each={dnsRecord()!.records}>
-								{(record) => (
-									<div class="bg-black/30 p-2 rounded text-xs text-gray-400 mb-2">
-										<p>Type: {record.type}</p>
-										<p>Name: {record.name}</p>
-										<p>Value: {record.target}</p>
-									</div>
+						<div class="mb-4">
+							<Table
+								column_grids={["flex-2", "flex-4", "flex-4"]}
+								headings={["Type", "Name", "Value"]}
+								rows={dnsRecord()!.records}
+								renderRow={(record) => (
+									<tr class="table-row text-sm">
+										<td class="flex-2 flex items-center justify-center">
+											<span class="truncate">{record.type}</span>
+											<CopyButton text={record.type} />
+										</td>
+										<td class="flex-4 flex items-center justify-center min-w-0">
+											<span class="truncate max-w-full">{record.name}</span>
+											<CopyButton text={record.name} />
+										</td>
+										<td class="flex-4 flex items-center justify-center min-w-0">
+											<span class="truncate max-w-full">{record.target}</span>
+											<CopyButton text={record.target} />
+										</td>
+									</tr>
 								)}
-							</For>
-							<p class="text-gray-400 text-xs">After adding the DNS record, it may take up to 48 hours to propagate.</p>
+							/>
+							<p class="text-gray-400 text-xs mt-2">
+								After adding the DNS record, it may take up to 48 hours to propagate.
+							</p>
 
 							<div class="w-full flex items-center justify-end mt-4">
 								<Button variant={ButtonVariant.Contained} onClick={onVerifyClick} disabled={loading()}>
