@@ -112,13 +112,13 @@ const HomePage = () => {
 
 	return (
 		<PageContainer>
-			<PageContainerHead title="Home" subTitle="Dashboard" />
+			<PageContainerHead title="Workspace" subText="Here's what you can do to get started" subTitle="Home" />
 
 			<PageContainerBody class="overflow-y-auto">
 				<div class="flex flex-col gap-8 max-w-5xl">
 					{/* Welcome Section */}
 					<div class="flex flex-col gap-2">
-						<h2 class="text-2xl font-semibold text-white">Welcome to Patr</h2>
+						<h2 class="text-2xl font-semibold text-white">Patr</h2>
 						<p class="text-gray-400 text-sm max-w-2xl leading-relaxed">
 							Your DevOps platform for deploying and managing containerized applications. Get started by creating a
 							deployment, setting up a runner, or connecting a domain.

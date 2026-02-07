@@ -1,9 +1,8 @@
-import { A, useNavigate } from "@solidjs/router";
+import { useNavigate } from "@solidjs/router";
 import { createMemo, createResource, createSignal, ErrorBoundary, Suspense } from "solid-js";
 import { FiCheck, FiCopy } from "solid-icons/fi";
 import { ListDeploymentResponse, WithId, Deployment } from "~/bindings";
 import {
-	Button,
 	ButtonVariant,
 	Link,
 	PageContainer,
@@ -103,11 +102,11 @@ const ListDeploymentsPage = () => {
 		<PageContainer>
 			<PageContainerHead
 				title="Deployments"
-				subTitle="All Deployments"
+				subText="A deployment represents a containerized application running on a runner."
 				actions={() =>
 					isAllowedCreate() && (
-						<Link href="/deployments/new" buttonVariant={ButtonVariant.Contained} external={false}>
-							CREATE NEW DEPLOYMENT
+						<Link href="/deployments/new" buttonVariant={ButtonVariant.Plain} external={false}>
+							New Deployment
 						</Link>
 					)
 				}
