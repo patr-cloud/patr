@@ -1,5 +1,6 @@
 import { Navigate, Route } from "@solidjs/router";
 import { createEffect, ParentProps } from "solid-js";
+import HomePage from "~/pages/home";
 import CreateDeploymentPage from "~/pages/deployment/create";
 import DeploymentInfo from "~/pages/deployment/deployment";
 import ListDeploymentsPage from "~/pages/deployment/list";
@@ -37,7 +38,7 @@ const WorkspacedLayout = (props: ParentProps<{}>) => {
 export default function WorkspacedRoutes() {
 	return (
 		<Route path="/" component={WorkspacedLayout}>
-			<Route path="/" component={() => <div>Home</div>} />
+			<Route path="/" component={HomePage} />
 			<Route path="/deployments">
 				<Route path="/" component={ListDeploymentsPage} />
 				<Route path="/new" component={CreateDeploymentPage} />
