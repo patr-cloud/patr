@@ -16,6 +16,7 @@ import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import DeploymentInfoUpdate from "~/pages/deployment/deployment/info";
 import DeploymentLogs from "./logs";
+import DeploymentHistory from "./history";
 import { Color } from "~/utils/color";
 
 const DeploymentInfo = () => {
@@ -178,6 +179,8 @@ const DeploymentInfo = () => {
 		switch (tab()) {
 			case "logs":
 				return <DeploymentLogs deploymentId={deploymentInfo.latest?.id || ""} />;
+			case "deployment-history":
+				return <DeploymentHistory />;
 			case "info":
 			case "":
 				return (
@@ -232,6 +235,11 @@ const DeploymentInfo = () => {
 							{
 								label: "Logs",
 								value: "logs",
+								onClick: (value) => setSearchParams({ tab: value }),
+							},
+							{
+								label: "Deployment History",
+								value: "deployment-history",
 								onClick: (value) => setSearchParams({ tab: value }),
 							},
 						]}
