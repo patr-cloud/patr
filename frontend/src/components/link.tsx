@@ -25,6 +25,10 @@ interface LinkProps {
 	 * The color of the link, defaults to Color.Primary.
 	 */
 	color?: Color;
+	/**
+	 * The target attribute specifies where to open the linked document. Only applies when external is true.
+	 */
+	target?: "_self" | "_blank" | "_parent" | "_top";
 }
 
 const Link = (rawProps: ParentProps<LinkProps>) => {
@@ -59,14 +63,14 @@ const Link = (rawProps: ParentProps<LinkProps>) => {
 
 	if (props.external) {
 		return (
-			<a href={props.href} class={derivedClass()}>
+			<a target={props.target} href={props.href} class={derivedClass()}>
 				{props.children}
 			</a>
 		);
 	}
 
 	return (
-		<A href={props.href} class={derivedClass()}>
+		<A target={props.target} href={props.href} class={derivedClass()}>
 			{props.children}
 		</A>
 	);

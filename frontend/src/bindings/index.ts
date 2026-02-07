@@ -67,6 +67,14 @@ import { GetApiTokenInfoRequest } from "./GetApiTokenInfoRequest";
 import { GetApiTokenInfoResponse } from "./GetApiTokenInfoResponse";
 import { RevokeApiTokenResponse } from "./RevokeApiTokenResponse";
 import { RevokeApiTokenRequest } from "./RevokeApiTokenRequest";
+import { GetCurrentPermissionsRequest } from "./GetCurrentPermissionsRequest";
+import { GetCurrentPermissionsResponse } from "./GetCurrentPermissionsResponse";
+import { Deployment } from "./Deployment";
+import { GetVerificationRecordsForDomainResponse } from "./GetVerificationRecordsForDomainResponse";
+import { PatrDomainDnsRecord } from "./PatrDomainDnsRecord";
+import { Role } from "./Role";
+import { ResourcePermissionType } from "./ResourcePermissionType";
+import { GetRoleInfoResponse } from "./GetRoleInfoResponse";
 
 export type {
 	EnvironmentVariableValue,
@@ -138,4 +146,12 @@ export type {
 	GetApiTokenInfoResponse,
 	RevokeApiTokenRequest,
 	RevokeApiTokenResponse,
+	GetCurrentPermissionsRequest,
+	GetCurrentPermissionsResponse,
+	Deployment,
+	GetVerificationRecordsForDomainResponse,
+	PatrDomainDnsRecord,
+	Role,
+	GetRoleInfoResponse,
+	ResourcePermissionType,
 };

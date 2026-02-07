@@ -1,5 +1,59 @@
 import { Accessor, JSX } from "solid-js";
 import { Color } from "./color";
+import { ActionTypes, ResourceTypes } from "./types";
+
+const resourceActionMap: Record<ResourceTypes, ActionTypes[]> = {
+	billing: ["view", "edit", "makePayment"],
+	containerRegistryRepository: ["create", "edit", "delete", "view", "push", "pull", "deleteImage"],
+	database: ["view", "edit", "create", "delete", "backup", "restore"],
+	deployment: ["view", "edit", "create", "delete", "start", "stop"],
+	dnsRecord: ["view", "edit", "add", "delete"],
+	domain: ["view", "add", "verify", "delete"],
+	managedUrl: ["view", "edit", "delete", "add", "verify"],
+	runner: ["view", "edit", "create", "delete", "regenerateToken"],
+	secret: ["view", "edit", "create", "delete"],
+	staticSite: ["view", "edit", "create", "delete", "upload", "start", "stop"],
+	volume: ["create", "delete", "view", "edit"],
+	viewRoles: [],
+	modifyRoles: [],
+	editWorkspace: [],
+};
+
+const resourceTypes = [
+	"billing",
+	"containerRegistryRepository",
+	"database",
+	"deployment",
+	"dnsRecord",
+	"domain",
+	"managedUrl",
+	"runner",
+	"secret",
+	"staticSite",
+	"volume",
+	"viewRoles",
+	"modifyRoles",
+	"editWorkspace",
+];
+
+const userActionTypes = [
+	"view",
+	"edit",
+	"makePayment",
+	"create",
+	"delete",
+	"push",
+	"pull",
+	"deleteImage",
+	"backup",
+	"restore",
+	"start",
+	"stop",
+	"add",
+	"verify",
+	"regenerateToken",
+	"upload",
+];
 
 const get = <T>(v: T | Accessor<T>): T => (typeof v === "function" ? (v as Accessor<T>)() : v);
 
@@ -23,6 +77,7 @@ function variantBgClass(styleVariant: string) {
 			return "bg-secondary-light";
 	}
 }
+
 const getColorClasses = (color: Color) => {
 	switch (color) {
 		case Color.Primary:
@@ -132,6 +187,15 @@ const parseCamelCase = (str: string) => {
 	return str.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (char) => char.toUpperCase());
 };
 
+const safelyParseJSON = <T>(jsonString: string): T | undefined => {
+	try {
+		return JSON.parse(jsonString) as T;
+	} catch (error) {
+		console.error("Error parsing JSON string:", error);
+		return undefined;
+	}
+};
+
 // Map resource types to their API endpoints
 const getResourceEndpoint = (type: string) => {
 	const endpointMap: Record<string, string> = {
@@ -169,6 +233,50 @@ const convertFileToBase64 = (file: File): Promise<string> => {
 	});
 };
 
+/**
+ * Parses a date string or Date object into a valid Date.
+ * Handles formats like "2026-02-06 21:54:25.712709 +00:00:00" from the API.
+ */
+const parseDate = (date: Date | string): Date | null => {
+	if (date instanceof Date) {
+		return isNaN(date.getTime()) ? null : date;
+	}
+
+	// Handle format like "2026-02-06 21:54:25.712709 +00:00:00"
+	// Convert to ISO format: replace space with 'T' and fix timezone
+	const isoString = date
+		.replace(" ", "T")
+		.replace(/\s*\+(\d{2}):(\d{2}):\d{2}$/, "+$1:$2");
+	const parsed = new Date(isoString);
+
+	return isNaN(parsed.getTime()) ? null : parsed;
+};
+
+/**
+ * Formats a date as a relative time string (e.g., "just now", "5 minutes ago").
+ */
+const formatRelativeTime = (date: Date | string): string => {
+	const d = parseDate(date);
+
+	if (!d) {
+		return "Unknown";
+	}
+
+	const now = new Date();
+	const diffMs = now.getTime() - d.getTime();
+	const diffSec = Math.floor(diffMs / 1000);
+	const diffMin = Math.floor(diffSec / 60);
+	const diffHour = Math.floor(diffMin / 60);
+	const diffDay = Math.floor(diffHour / 24);
+
+	if (diffSec < 60) return "just now";
+	if (diffMin < 60) return `${diffMin} minute${diffMin !== 1 ? "s" : ""} ago`;
+	if (diffHour < 24) return `${diffHour} hour${diffHour !== 1 ? "s" : ""} ago`;
+	if (diffDay < 30) return `${diffDay} day${diffDay !== 1 ? "s" : ""} ago`;
+
+	return d.toLocaleDateString();
+};
+
 export {
 	get,
 	Jsx,
@@ -179,4 +287,10 @@ export {
 	parsePermissionName,
 	getResourceEndpoint,
 	convertFileToBase64,
+	safelyParseJSON,
+	resourceActionMap,
+	resourceTypes,
+	userActionTypes,
+	parseDate,
+	formatRelativeTime,
 };

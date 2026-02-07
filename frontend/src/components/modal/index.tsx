@@ -1,6 +1,7 @@
 import { FiX } from "solid-icons/fi";
 import { Accessor, JSX, ParentProps, Setter, createSignal, mergeProps } from "solid-js";
 import { Portal } from "solid-js/web";
+import { useClickOutside } from "~/hooks";
 
 interface ModalProps {
 	renderTrigger: (setClose: (prev: boolean) => void) => JSX.Element;
@@ -17,6 +18,7 @@ interface ModalContainerProps {
 	width?: string;
 	height?: string;
 	closeFn: (prev: boolean) => void;
+	onClick?: (e: MouseEvent) => void;
 }
 
 const ModalContainer = (rawProps: ParentProps<ModalContainerProps>) => {
@@ -30,6 +32,10 @@ const ModalContainer = (rawProps: ParentProps<ModalContainerProps>) => {
 
 	return (
 		<div
+			onClick={e => {
+				e.stopPropagation();
+				props.onClick?.(e);
+			}}
 			style={{
 				width: props.width || "auto",
 				height: props.height || "auto",
@@ -55,17 +61,28 @@ const Modal = ({
 	setIsOpen: externalSetIsOpen,
 }: ModalProps) => {
 	const [internalIsOpen, internalSetIsOpen] = createSignal(false);
+	const [containerRef, setContainerRef] = createSignal<HTMLDivElement>();
 
 	// Use external state if provided, otherwise use internal state
 	const isOpen = externalIsOpen || internalIsOpen;
 	const setIsOpen = externalSetIsOpen || internalSetIsOpen;
+
+	useClickOutside(containerRef, () => {
+		if (isOpen()) {
+			setIsOpen(false);
+		}
+	});
 
 	return (
 		<>
 			{renderTrigger(setIsOpen)}
 			{isOpen() && (
 				<Portal>
-					<div class="w-full min-h-screen fixed top-0 left-0 bg-black/50 flex justify-center items-center z-50 backdrop-blur-sm">
+					<div 
+						ref={setContainerRef} 
+						onClick={(e) => {e.stopPropagation(); setIsOpen(false);}} 
+						class="w-full min-h-screen fixed top-0 left-0 bg-black/50 flex justify-center items-center z-50 backdrop-blur-sm"
+					>
 						{renderModalContent(setIsOpen)}
 					</div>
 				</Portal>

@@ -1,5 +1,5 @@
 import { A, query, redirect, useNavigate } from "@solidjs/router";
-import { Alert, Button, InputEventT, useToast, Turnstile } from "~/components";
+import { Alert, Button, InputEventT, useToast, Turnstile, LoadingSpinner } from "~/components";
 import { InputType, Input } from "~/components";
 import { ButtonVariant } from "~/utils/color";
 import { createSignal, JSX, Show } from "solid-js";
@@ -70,6 +70,7 @@ const Login = () => {
 	const toast = useToast();
 	const [showMfa, setShowMfa] = createSignal(false);
 	const [mfaOtp, setMfaOtp] = createSignal("");
+	const [isLoading, setIsLoading] = createSignal(false);
 	const [turnstileToken, setTurnstileToken] = createSignal<string>(import.meta.env.VITE_TURNSTILE_SITE_KEY);
 	const [inputs, setInputs] = createSignal<InputFields>({
 		userId: "",
@@ -134,6 +135,8 @@ const Login = () => {
 		const { userId, password } = inputs();
 		if (!validateInputs()) return;
 
+		setIsLoading(true);
+
 		const requestBody: LoginRequest = {
 			userId,
 			password,
@@ -158,6 +161,7 @@ const Login = () => {
 			});
 			navigate("/", { replace: true });
 		} else {
+			setIsLoading(false);
 			console.error("Error during login:", loginResp);
 			switch (loginResp.data.error) {
 				case "invalidPassword":
@@ -167,6 +171,7 @@ const Login = () => {
 					}));
 					break;
 				case "userNotFound":
+				case "invalidEmail":
 					setInputError((prev) => ({
 						...prev,
 						userId: "User not found. Please check your username.",
@@ -269,8 +274,14 @@ const Login = () => {
 							variant={ButtonVariant.Contained}
 							class="py-4 text-base font-semibold px-xxl flex-end"
 							type="submit"
+							disabled={isLoading()}
 						>
-							Login
+							<Show when={isLoading()} fallback="Login">
+								<div class="flex items-center gap-2">
+								<LoadingSpinner size={20} />
+									<span>Logging in...</span>
+								</div>
+							</Show>
 						</Button>
 					</div>
 				</div>

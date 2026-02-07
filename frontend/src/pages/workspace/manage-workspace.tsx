@@ -23,7 +23,7 @@ import { BasicUserInfo } from "~/bindings/BasicUserInfo";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "~/pages/workspace/workspace-header";
 import { EventT } from "~/utils/types";
-import { EditRoles } from "~/pages/workspace/edit-roles";
+import { EditUserRoles } from "~/pages/workspace/edit-user-roles";
 
 const ManageWorkspace = () => {
 	const params = useParams();
@@ -331,7 +331,7 @@ const ManageWorkspace = () => {
 											{isEditing ? (
 												<tr class="table-row">
 													<td class="w-full" colspan={3}>
-														<EditRoles
+														<EditUserRoles
 															userName={editingMember()!.userName}
 															userId={editingMember()!.userId}
 															workspaceId={params.id || ""}

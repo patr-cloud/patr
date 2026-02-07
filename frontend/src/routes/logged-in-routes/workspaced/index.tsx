@@ -11,12 +11,15 @@ import ListDomainsPage from "~/pages/domain/list";
 import CreateDomainPage from "~/pages/domain/create";
 import ManageWorkspace from "~/pages/workspace/manage-workspace";
 import ListWorkspaces from "~/pages/workspace/list";
-import ManageRoles from "~/pages/workspace/manage-roles";
-import CreateRoles from "~/pages/workspace/create-roles";
+import ManageRoles from "~/pages/workspace/roles/manage-roles";
+import CreateRoles from "~/pages/workspace/roles/create-roles";
+import RoleInfo from "~/pages/workspace/roles/role-info";
 import useFetchWorkspaces from "~/hooks/use-fetch/use-fetch-wokrspaces";
+import useFetchUserPermissions from "~/hooks/use-fetch/use-fetch-user-permissions";
 
 const WorkspacedLayout = (props: ParentProps<{}>) => {
 	const [workspaces] = useFetchWorkspaces();
+	useFetchUserPermissions();
 
 	createEffect(() => {
 		if (workspaces.state === "ready") {
@@ -55,7 +58,10 @@ export default function WorkspacedRoutes() {
 			<Route path="/workspaces">
 				<Route path="/" component={ListWorkspaces} />
 				<Route path="/:id" component={ManageWorkspace} />
-				<Route path="/:id/roles" component={ManageRoles} />
+				<Route path="/:id/roles">
+					<Route path="/" component={ManageRoles} />
+					<Route path="/:roleId" component={RoleInfo} />
+				</Route>
 				<Route path="/:id/roles/new" component={CreateRoles} />
 			</Route>
 		</Route>

@@ -1,10 +1,20 @@
 import { A, useNavigate } from "@solidjs/router";
 import { createMemo, createResource, createSignal, ErrorBoundary, Suspense } from "solid-js";
 import { FiCheck, FiCopy } from "solid-icons/fi";
-import { ListDeploymentResponse } from "~/bindings";
-import { Button, ButtonVariant, Link, PageContainer, PageContainerBody, PageContainerHead, Table, useToast } from "~/components";
+import { ListDeploymentResponse, WithId, Deployment } from "~/bindings";
+import {
+	Button,
+	ButtonVariant,
+	Link,
+	PageContainer,
+	PageContainerBody,
+	PageContainerHead,
+	Table,
+	useToast,
+} from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
+import useIsAllowed from "~/hooks/use-is-allowed";
 
 const CopyButton = (props: { text: string }) => {
 	const [copied, setCopied] = createSignal(false);
@@ -31,11 +41,33 @@ const CopyButton = (props: { text: string }) => {
 	);
 };
 
+const DeploymentListRow = (props: { item: WithId<Deployment> }) => {
+	const navigate = useNavigate();
+
+	return (
+		<tr
+			onClick={() => {
+				navigate(`/deployments/${props.item.id}`);
+			}}
+			class="table-row"
+		>
+			<td class="flex-4 flex items-center justify-center">
+				<span class="truncate">{props.item.id}</span>
+				<CopyButton text={props.item.id} />
+			</td>
+			<td class="flex-4 flex items-center justify-center">{props.item.name}</td>
+			<td class="flex-4 flex items-center justify-center">{props.item.status}</td>
+			<td class="flex-4 flex items-center justify-center">{props.item.runner}</td>
+		</tr>
+	);
+};
+
 const ListDeploymentsPage = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const navigate = useNavigate();
 	const toast = useToast();
+	const isAllowedCreate = useIsAllowed("deployment", "create", undefined, false);
+	console.log("User permissions for creating deployment:", isAllowedCreate());
 
 	const fetchParams = createMemo(() => {
 		return [authState(), workspaceId()] as const;
@@ -45,6 +77,8 @@ const ListDeploymentsPage = () => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") {
 			return { deployments: [] };
 		}
+
+		console.log("Fetching deployments with workspace ID:", wsId);
 
 		const response = await httpRequest<ListDeploymentResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment`,
@@ -70,7 +104,13 @@ const ListDeploymentsPage = () => {
 			<PageContainerHead
 				title="Deployments"
 				subTitle="All Deployments"
-				actions={() => <Link href="/deployments/new" buttonVariant={ButtonVariant.Contained} external={false}>CREATE NEW DEPLOYMENT</Link>}
+				actions={() =>
+					isAllowedCreate() && (
+						<Link href="/deployments/new" buttonVariant={ButtonVariant.Contained} external={false}>
+							CREATE NEW DEPLOYMENT
+						</Link>
+					)
+				}
 			/>
 
 			<PageContainerBody>
@@ -87,22 +127,7 @@ const ListDeploymentsPage = () => {
 							column_grids={["flex-4", "flex-4", "flex-4", "flex-4"]}
 							rows={deployments()?.deployments || []}
 							headings={["ID", "Deployment Name", "Status", "Runner"]}
-							renderRow={(item) => (
-								<tr
-									onClick={() => {
-										navigate(`/deployments/${item.id}`);
-									}}
-									class="table-row"
-								>
-									<td class="flex-4 flex items-center justify-center">
-										<span class="truncate">{item.id}</span>
-										<CopyButton text={item.id} />
-									</td>
-									<td class="flex-4 flex items-center justify-center">{item.name}</td>
-									<td class="flex-4 flex items-center justify-center">{item.status}</td>
-									<td class="flex-4 flex items-center justify-center">{item.runner}</td>
-								</tr>
-							)}
+							renderRow={(item) => <DeploymentListRow item={item} />}
 						/>
 					</Suspense>
 				</ErrorBoundary>

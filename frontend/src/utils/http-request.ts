@@ -1,6 +1,6 @@
 import { RenewAccessTokenResponse } from "~/bindings";
 import { ErrorResponse, FetchResult } from "./types";
-import { getRequestEvent } from "solid-js/web";
+import { getRequestEvent, isServer } from "solid-js/web";
 import { cookieStorage } from "@solid-primitives/storage";
 import type { AuthState } from "~/hooks/state-hooks";
 
@@ -107,6 +107,12 @@ const httpRequest = async <T>(url: string, options?: RequestInit): Promise<Fetch
 					sameSite: "Strict",
 				}
 			);
+
+			if (!isServer) {
+				console.log("Access token refreshed, removing stuff from sessionStorage");
+				sessionStorage.clear();
+				console.log("cleared session");
+			}
 
 			// Retry the original request with the new access token
 			const retryResp = await fetch(url, {

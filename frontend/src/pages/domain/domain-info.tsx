@@ -157,7 +157,6 @@ const DomainInfo = () => {
 	};
 
 	const onVerifyClick = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
-		// Verify domain logic goes here
 		const auth = authState();
 		const wsId = workspaceId();
 		const domainId = params.id;
