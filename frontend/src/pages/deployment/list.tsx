@@ -14,6 +14,7 @@ import {
 } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
+import useIsAllowed from "~/hooks/use-is-allowed";
 
 const CopyButton = (props: { text: string }) => {
 	const [copied, setCopied] = createSignal(false);
@@ -64,8 +65,9 @@ const DeploymentListRow = (props: { item: WithId<Deployment> }) => {
 const ListDeploymentsPage = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const navigate = useNavigate();
 	const toast = useToast();
+	const isAllowedCreate = useIsAllowed("deployment", "create", undefined, false);
+	console.log("User permissions for creating deployment:", isAllowedCreate());
 
 	const fetchParams = createMemo(() => {
 		return [authState(), workspaceId()] as const;
@@ -75,6 +77,8 @@ const ListDeploymentsPage = () => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") {
 			return { deployments: [] };
 		}
+
+		console.log("Fetching deployments with workspace ID:", wsId);
 
 		const response = await httpRequest<ListDeploymentResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment`,
@@ -100,11 +104,13 @@ const ListDeploymentsPage = () => {
 			<PageContainerHead
 				title="Deployments"
 				subTitle="All Deployments"
-				actions={() => (
-					<Link href="/deployments/new" buttonVariant={ButtonVariant.Contained} external={false}>
-						CREATE NEW DEPLOYMENT
-					</Link>
-				)}
+				actions={() =>
+					isAllowedCreate() && (
+						<Link href="/deployments/new" buttonVariant={ButtonVariant.Contained} external={false}>
+							CREATE NEW DEPLOYMENT
+						</Link>
+					)
+				}
 			/>
 
 			<PageContainerBody>

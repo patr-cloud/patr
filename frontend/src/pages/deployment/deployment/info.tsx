@@ -171,6 +171,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						/>
 
 						<Input
+							disabled={true}
 							class="flex-6"
 							placeholder="Image Name"
 							type={InputType.Text}
@@ -249,6 +250,8 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				/>
 
 				<PortInput
+					portList={props.deploymentInfo.latest?.ports || {}}
+					deploymentId={props.deploymentInfo.latest?.id}
 					onAdd={(key, value) => {
 						setHasUpdated(true);
 						console.log(key, value);
@@ -276,7 +279,6 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 							};
 						});
 					}}
-					portList={props.deploymentInfo.latest?.ports || {}}
 				/>
 			</div>
 

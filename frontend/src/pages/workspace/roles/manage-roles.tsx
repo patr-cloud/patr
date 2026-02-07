@@ -84,7 +84,7 @@ const RoleRow = (props: {
 		}
 
 		const resp = await httpRequest(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role/${roleId}`,
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role/${roleId}?removeUsers=false`,
 			{
 				method: "DELETE",
 			}

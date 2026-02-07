@@ -77,6 +77,8 @@ const useIsAllowed = (
 		console.log("[useIsAllowed memo] Defaulting to false");
 		return false;
 	});
+	
+	return isAllowed
 };
 
 export default useIsAllowed;

@@ -1,7 +1,7 @@
-import { FiPlus, FiTrash2 } from "solid-icons/fi";
+import { FiExternalLink, FiPlus, FiTrash2 } from "solid-icons/fi";
 import { createSignal } from "solid-js";
 import { ExposedPortType } from "~/bindings";
-import { Button, ButtonVariant, Input, InputDropdown, InputLabel } from "~/components";
+import { Button, ButtonVariant, Input, InputDropdown, InputLabel, Link } from "~/components";
 import { Color } from "~/utils/color";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
@@ -15,6 +15,8 @@ interface PortInputProps {
 	onDelete: (key: string) => void;
 	/** Port List */
 	portList: MaybeAccessor<{ [key: string]: ExposedPortType | undefined }>;
+	/** Deployment ID for HTTP Port URL generation. This should show up only when the deployment is being edited */
+	deploymentId?: string;
 }
 
 const PortInput = (props: PortInputProps) => {
@@ -26,14 +28,28 @@ const PortInput = (props: PortInputProps) => {
 			<InputLabel parentClass="flex-2 pt-3" label="Exposed Ports" />
 
 			<div class="flex flex-col flex-10 gap-4 w-full">
-				{Object.entries(get(props.portList)).map(([key, value]) => (
+				{Object.entries(get(props.portList)).map(([port, portType]) => (
 					<div class="flex items-center flex-10 gap-4 w-full">
-						<Input class="flex-6" disabled={true} value={key} />
-						<Input class="flex-5" disabled={true} value={value} />
+						<Input class="flex-6" disabled={true} value={port} />
+						<Input
+							class={portType === "http" && props.deploymentId ? "flex-3" : "flex-5"}
+							disabled={true}
+							value={portType}
+						/>
+						{portType === "http" && props.deploymentId && (
+							<a
+								class="flex-2 flex items-center justify-start gap-2 rounded-xs bg-secondary-medium py-xs px-lg text-primary"
+								href={`https://${port}-${props.deploymentId}.onpatr.cloud`}
+								target="_blank"
+							>
+								<FiExternalLink size={16} />
+								Visit URL
+							</a>
+						)}
 
 						<Button
 							onClick={() => {
-								props.onDelete(key);
+								props.onDelete(port);
 							}}
 							variant={ButtonVariant.Outlined}
 							class="flex-1 h-full flex items-center gap-2"
