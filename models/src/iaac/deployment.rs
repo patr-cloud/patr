@@ -159,7 +159,6 @@ impl From<String> for IaacDeploymentImage {
 	}
 }
 
-#[expect(clippy::infallible_try_from)]
 impl FromStr for IaacDeploymentImage {
 	type Err = Infallible;
 
@@ -201,9 +200,9 @@ impl FromStr for IaacDeploymentImage {
 	}
 }
 
-impl Into<String> for IaacDeploymentImage {
-	fn into(self) -> String {
-		match self {
+impl From<IaacDeploymentImage> for String {
+	fn from(value: IaacDeploymentImage) -> String {
+		match value {
 			IaacDeploymentImage::PatrRegistry {
 				registry,
 				repository,
@@ -261,9 +260,9 @@ impl FromStr for IaacDeploymentMachineType {
 	}
 }
 
-impl Into<String> for IaacDeploymentMachineType {
-	fn into(self) -> String {
-		format!("{}", self)
+impl From<IaacDeploymentMachineType> for String {
+	fn from(value: IaacDeploymentMachineType) -> String {
+		format!("{}", value)
 	}
 }
 

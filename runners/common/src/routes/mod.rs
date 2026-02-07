@@ -29,10 +29,10 @@ where
 		.merge(user::setup_routes(state).await)
 		.merge(workspace::setup_routes(state).await);
 
-	let router = if cfg!(debug_assertions) {
+	if cfg!(debug_assertions) {
 		router.fallback(async |req: Request<Body>| {
 			let Ok(response) = CLIENT
-				.get_or_init(|| reqwest::Client::new())
+				.get_or_init(reqwest::Client::new)
 				.request(
 					req.method().clone(),
 					format!(
@@ -83,9 +83,7 @@ where
 				)
 			},
 		))
-	};
-
-	router
+	}
 }
 
 /// Reads all files in a directory and its subdirectories

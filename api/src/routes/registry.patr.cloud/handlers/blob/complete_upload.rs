@@ -245,7 +245,7 @@ pub async fn complete_upload(
 		);
 		s3.upload_part()
 			.bucket(&config.s3.bucket)
-			.key(&format!("uploads/{}", session_id))
+			.key(format!("uploads/{}", session_id))
 			.upload_id(&session.upload_id)
 			.content_length(content_length.0 as i64)
 			.part_number(session.uploaded_parts_etags.len() as i32 + 1)
@@ -257,7 +257,7 @@ pub async fn complete_upload(
 	info!("Completing S3 multipart upload");
 	s3.complete_multipart_upload()
 		.bucket(&config.s3.bucket)
-		.key(&format!("uploads/{session_id}"))
+		.key(format!("uploads/{session_id}"))
 		.upload_id(&session.upload_id)
 		.multipart_upload(
 			CompletedMultipartUpload::builder()

@@ -244,7 +244,7 @@ pub async fn execute(
 				repositories
 					.iter()
 					.find(|&repo| &repo.name == name)
-					.expect(&format!("No repository found with name: `{}`", name))
+					.unwrap_or_else(|| panic!("No repository found with name: `{}`", name))
 					.id
 			});
 
@@ -313,7 +313,7 @@ pub async fn execute(
 			runners
 				.iter()
 				.find(|r| r.id.to_string() == runner || r.name == runner)
-				.expect(&format!("No runner found with ID or name: `{}`", runner))
+				.unwrap_or_else(|| panic!("No runner found with ID or name: `{}`", runner))
 				.id
 		})
 		.unwrap_or_else(|| {
@@ -328,7 +328,7 @@ pub async fn execute(
 			runners
 				.iter()
 				.find(|&runner| &runner.name == name)
-				.expect(&format!("No runner found with name: `{}`", name))
+				.unwrap_or_else(|| panic!("No runner found with name: `{}`", name))
 				.id
 		});
 
@@ -350,10 +350,7 @@ pub async fn execute(
 			machine_types
 				.iter()
 				.find(|mt| mt.id.to_string() == machine_type)
-				.expect(&format!(
-					"No machine type found with ID: `{}`",
-					machine_type
-				))
+				.unwrap_or_else(|| panic!("No machine type found with ID: `{}`", machine_type))
 				.id
 		})
 		.unwrap_or_else(|| {
@@ -383,7 +380,7 @@ pub async fn execute(
 						machine_type.memory_count / 4
 					) == name
 				})
-				.expect(&format!("No machine type found with name: `{}`", name))
+				.unwrap_or_else(|| panic!("No machine type found with name: `{}`", name))
 				.id
 		});
 

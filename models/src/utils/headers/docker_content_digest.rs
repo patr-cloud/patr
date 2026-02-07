@@ -5,6 +5,7 @@ use http::{HeaderName, HeaderValue};
 #[derive(Debug, Clone, PartialEq)]
 pub struct DockerContentDigest(pub String);
 
+/// The header name for Docker-Content-Digest
 static HEADER_NAME: HeaderName = HeaderName::from_static("docker-content-digest");
 
 impl Header for DockerContentDigest {

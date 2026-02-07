@@ -95,7 +95,6 @@ pub struct PatrControlledDomain {
 
 /// The DNS record type of a domain
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
-#[expect(clippy::upper_case_acronyms)]
 #[serde(tag = "type")]
 pub enum DnsRecordValue {
 	/// A record for IPv4 addresses

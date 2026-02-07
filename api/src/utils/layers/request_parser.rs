@@ -208,7 +208,7 @@ where
 					ApiErrorResponse::error(error).into_response()
 				});
 
-			Span::current().record("http.response.status_code", &response.status().as_u16());
+			Span::current().record("http.response.status_code", response.status().as_u16());
 
 			Ok(response)
 		}

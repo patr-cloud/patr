@@ -57,7 +57,7 @@ where
 			format!(
 				"{}{}{}{}",
 				models::utils::constants::API_BASE_URL,
-				path.to_string(),
+				path,
 				if query.is_empty() { "" } else { "?" },
 				query
 			),

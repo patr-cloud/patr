@@ -221,7 +221,7 @@ pub async fn upload_chunk(
 	let response = s3
 		.upload_part()
 		.bucket(&config.s3.bucket)
-		.key(&format!("uploads/{}", session_id))
+		.key(format!("uploads/{}", session_id))
 		.upload_id(&session.upload_id)
 		.part_number(session.uploaded_parts_etags.len() as i32 + 1)
 		.body(BodyStreamWrapper::new(body.into_data_stream()).into_byte_stream())
@@ -233,7 +233,7 @@ pub async fn upload_chunk(
 	let content_length = s3
 		.list_parts()
 		.bucket(&config.s3.bucket)
-		.key(&format!("uploads/{}", session_id))
+		.key(format!("uploads/{}", session_id))
 		.upload_id(&session.upload_id)
 		.max_parts(1)
 		.part_number_marker(session.uploaded_parts_etags.len().to_string())
@@ -249,7 +249,8 @@ pub async fn upload_chunk(
 				.build()
 		})?
 		.size
-		.unwrap_or_default() as u64;
+		.unwrap_or_default()
+		.unsigned_abs();
 
 	info!("Retrieved uploaded part information from S3");
 

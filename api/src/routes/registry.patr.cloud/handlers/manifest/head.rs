@@ -212,7 +212,7 @@ pub async fn check_manifest(
 		.headers(HeadManifestResponseHeaders {
 			content_type,
 			docker_content_digest: DockerContentDigest(manifest_record.digest),
-			content_length: ContentLength(manifest_record.size as u64),
+			content_length: ContentLength(manifest_record.size.unsigned_abs()),
 			etag,
 			cache_control,
 		})

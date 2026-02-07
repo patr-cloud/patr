@@ -56,7 +56,7 @@ macros::declare_registry_endpoint!(
 /// This handler:
 /// - Verifies workspace access
 /// - Checks for mount query parameters (mount and from)
-/// 	- If mount requested, handles cross-repository blob mounting
+///     - If mount requested, handles cross-repository blob mounting
 /// - Otherwise, creates new upload session with UUID
 /// - Initiates S3 multipart upload
 /// - Stores session in redis with S3 upload ID

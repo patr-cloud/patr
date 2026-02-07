@@ -128,7 +128,7 @@ where
 					req.user_data
 						.permissions
 						.get(&workspace_id)
-						.map_or(false, |perms| perms.is_super_admin())
+						.is_some_and(|perms| perms.is_super_admin())
 				}
 				AppAuthentication::ResourcePermissionAuthenticator {
 					extract_resource_id,

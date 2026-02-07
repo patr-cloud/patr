@@ -48,7 +48,7 @@ where
 			format!(
 				"{}{}{}{}",
 				super::constants::API_BASE_URL,
-				path.to_string(),
+				path,
 				if query.is_empty() { "" } else { "?" },
 				query
 			),

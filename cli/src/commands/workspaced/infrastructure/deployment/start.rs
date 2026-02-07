@@ -122,7 +122,7 @@ pub async fn execute(
 			deployments
 				.iter()
 				.find(|&deployment| &deployment.name == name)
-				.expect(&format!("No deployment found with name: `{}`", name))
+				.unwrap_or_else(|| panic!("No deployment found with name: `{}`", name))
 				.id
 		});
 

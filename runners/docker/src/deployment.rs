@@ -243,7 +243,6 @@ pub(crate) async fn upsert(
 		.next()
 		.and_then(|config| Some((config.id?, config.version?.index?)))
 	{
-		let config_id = config_id;
 		trace!(
 			"Config exists for deployment {}, updating: {}",
 			id, config_id

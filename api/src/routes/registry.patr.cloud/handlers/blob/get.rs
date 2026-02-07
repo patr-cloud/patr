@@ -186,7 +186,7 @@ pub async fn get_blob(
 		.headers(GetBlobResponseHeaders {
 			content_type: ContentType::octet_stream(),
 			docker_content_digest: DockerContentDigest(digest),
-			content_length: ContentLength(object.content_length.unwrap_or_default() as u64),
+			content_length: ContentLength(object.content_length.unwrap_or_default().unsigned_abs()),
 			accept_ranges: AcceptRanges::bytes(),
 		})
 		.body(Body::from_stream(ReaderStream::new(

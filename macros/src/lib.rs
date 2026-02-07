@@ -126,7 +126,7 @@ pub fn declare_app_route(input: TokenStream) -> TokenStream {
 ///     /// The documentation for the endpoint.
 ///     GetManifest,
 ///     GET "/v2/{workspace_id}/{name}/manifests/{reference}" {
-/// 		pub workspace_id: Uuid,
+///         pub workspace_id: Uuid,
 ///         pub name: String,
 ///         pub reference: String,
 ///     },
@@ -135,7 +135,7 @@ pub fn declare_app_route(input: TokenStream) -> TokenStream {
 ///     },
 ///     request = {
 ///         pub body_param1: String,
-///    	},
+///     },
 /// );
 /// ```
 #[proc_macro]

@@ -16,8 +16,6 @@ mod docker_distribution_api_version;
 mod docker_upload_uuid;
 /// A submodule for implementing the [`HasHeaders`] trait.
 mod has_headers;
-/// The header that represents a Link header for pagination.
-mod link;
 /// The header that represents the `Location` header.
 mod location;
 /// The header that represents a Login ID.
@@ -39,7 +37,6 @@ pub use self::{
 	docker_distribution_api_version::*,
 	docker_upload_uuid::*,
 	has_headers::*,
-	link::*,
 	location::*,
 	login_id::*,
 	optional_header::*,

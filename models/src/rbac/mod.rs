@@ -89,7 +89,7 @@ impl ResourceType {
 	/// Returns a list of all resource types.
 	#[must_use]
 	pub fn list_all() -> Vec<Self> {
-		Self::VARIANTS.iter().copied().collect()
+		Self::VARIANTS.to_vec()
 	}
 
 	/// Returns the description of the resource type, as per the documentation
@@ -238,11 +238,13 @@ impl WorkspacePermission {
 	pub fn has_permission_on_resource(&self, resource_id: Uuid, permission_id: Uuid) -> bool {
 		match self {
 			Self::SuperAdmin => true,
-			Self::Member { permissions } => permissions
-				.get(&permission_id)
-				.map_or(false, |resource_permissions| {
-					resource_permissions.has_resource(&resource_id)
-				}),
+			Self::Member { permissions } => {
+				permissions
+					.get(&permission_id)
+					.is_some_and(|resource_permissions| {
+						resource_permissions.has_resource(&resource_id)
+					})
+			}
 		}
 	}
 }

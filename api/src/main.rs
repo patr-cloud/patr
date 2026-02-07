@@ -51,7 +51,6 @@ pub mod prelude {
 			BearerToken,
 			DockerContentDigest,
 			DockerDistributionApiVersion,
-			Link,
 			ListResourceQuery,
 			LoginId,
 			OneOrMore,

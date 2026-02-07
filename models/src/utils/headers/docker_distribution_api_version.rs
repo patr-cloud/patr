@@ -5,6 +5,7 @@ use http::{HeaderName, HeaderValue};
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct DockerDistributionApiVersion;
 
+/// The header name for Docker-Distribution-API-Version
 static HEADER_NAME: HeaderName = HeaderName::from_static("docker-distribution-api-version");
 
 impl Header for DockerDistributionApiVersion {

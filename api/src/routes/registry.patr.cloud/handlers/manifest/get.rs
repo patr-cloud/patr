@@ -196,7 +196,7 @@ pub async fn get_manifest(
 		.headers(GetManifestResponseHeaders {
 			content_type,
 			docker_content_digest: DockerContentDigest(manifest_record.digest),
-			content_length: ContentLength(manifest_record.size as u64),
+			content_length: ContentLength(manifest_record.size.unsigned_abs()),
 		})
 		.body(Body::from_stream(ReaderStream::new(
 			object.body.into_async_read(),

@@ -64,7 +64,7 @@ pub(super) async fn execute(
 			workspaces
 				.iter()
 				.find(|&workspace| &workspace.name == name)
-				.expect(&format!("No workspace found with name: `{}`", name))
+				.unwrap_or_else(|| panic!("No workspace found with name: `{}`", name))
 				.clone()
 		});
 

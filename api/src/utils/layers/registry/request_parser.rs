@@ -48,6 +48,7 @@ where
 	<E::RequestPath as Preprocessable>::Processed: Send,
 	<E::RequestQuery as Preprocessable>::Processed: Send,
 {
+	/// Phantom data to associate with the endpoint type `E`
 	phantom: PhantomData<E>,
 }
 
@@ -62,6 +63,17 @@ where
 		Self {
 			phantom: PhantomData,
 		}
+	}
+}
+
+impl<E> Default for RegistryRequestParserLayer<E>
+where
+	E: RegistryEndpoint,
+	<E::RequestPath as Preprocessable>::Processed: Send,
+	<E::RequestQuery as Preprocessable>::Processed: Send,
+{
+	fn default() -> Self {
+		Self::new()
 	}
 }
 
@@ -93,7 +105,9 @@ where
 	<E::RequestPath as Preprocessable>::Processed: Send,
 	<E::RequestQuery as Preprocessable>::Processed: Send,
 {
+	/// The inner service that will receive the parsed request components
 	inner: S,
+	/// Phantom data to associate with the endpoint type `E`
 	phantom: PhantomData<E>,
 }
 
@@ -147,7 +161,7 @@ where
 			else {
 				return Ok(RegistryError::new(
 					ErrorCode::Unsupported,
-					format!("Invalid Query Parameters"),
+					String::from("Invalid Query Parameters"),
 				)
 				.into_response());
 			};
@@ -187,10 +201,11 @@ where
 					warn!("Request Headers: {:#?}", req.headers());
 				}
 			}) else {
-				return Ok(
-					RegistryError::new(ErrorCode::Unsupported, format!("Invalid Headers"))
-						.into_response(),
-				);
+				return Ok(RegistryError::new(
+					ErrorCode::Unsupported,
+					String::from("Invalid Headers"),
+				)
+				.into_response());
 			};
 
 			let Ok(ClientIP(client_ip)) = req.extract_parts().await;

@@ -164,7 +164,7 @@ impl IaacResolverExt<CreateDeploymentRequest> for IaacDeployment {
 		let runner = runners
 			.iter()
 			.find(|r| r.name == runner || runner_id.filter(|id| r.id == *id).is_some())
-			.expect(&format!("No runner found with ID or name: `{}`", runner))
+			.unwrap_or_else(|| panic!("No runner found with ID or name: `{}`", runner))
 			.id;
 
 		Ok(CreateDeploymentRequest {

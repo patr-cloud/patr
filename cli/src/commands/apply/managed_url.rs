@@ -107,9 +107,9 @@ pub async fn apply(
 
 			let port = ports
 				.iter()
-				.filter(|(_, port_type)| matches!(port_type, ExposedPortType::Http))
-				.filter(|(exposed_port, _)| *exposed_port.as_ref() == port)
-				.next()
+				.find(|(exposed_port, port_type)| {
+					matches!(port_type, ExposedPortType::Http) && exposed_port.value() == port
+				})
 				.ok_or_else(|| {
 					AppError::IaacError(IaacError::ResourceNotFound(format!(
 						concat!(
@@ -144,8 +144,8 @@ pub async fn apply(
 		IaacManagedUrlType::ProxyStaticSite { static_site: _ } => {
 			// Find static site by name
 
-			return Err(AppError::IaacError(IaacError::Unsupported(format!(
-				"Static sites are not supported yet"
+			return Err(AppError::IaacError(IaacError::Unsupported(String::from(
+				"Static sites are not supported yet",
 			))));
 		}
 		IaacManagedUrlType::ProxyUrl { url, http_only } => {

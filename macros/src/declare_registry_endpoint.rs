@@ -209,11 +209,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 	let request_headers_decl = if let Some(headers) = request_headers {
 		let headers = FieldsNamed {
 			brace_token: headers.brace_token,
-			named: headers
-				.named
-				.into_iter()
-				.map(|field| field)
-				.collect::<Punctuated<_, _>>(),
+			named: headers.named.into_iter().collect::<Punctuated<_, _>>(),
 		};
 		quote::quote! {
 			/// The required request headers for the #name endpoint.
@@ -246,11 +242,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 	let response_headers_decl = if let Some(headers) = response_headers {
 		let headers = FieldsNamed {
 			brace_token: headers.brace_token,
-			named: headers
-				.named
-				.into_iter()
-				.map(|field| field)
-				.collect::<Punctuated<_, _>>(),
+			named: headers.named.into_iter().collect::<Punctuated<_, _>>(),
 		};
 		quote::quote! {
 			/// The required response headers for the #name endpoint.

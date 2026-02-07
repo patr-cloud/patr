@@ -48,6 +48,7 @@ impl FromStr for StringifiedU16 {
 	}
 }
 
+/// The serde visitor for [`StringifiedU16`].
 struct StringifiedU16Visitor;
 
 impl<'de> Visitor<'de> for StringifiedU16Visitor {
@@ -69,26 +70,18 @@ impl<'de> Visitor<'de> for StringifiedU16Visitor {
 	where
 		E: Error,
 	{
-		if v > u16::MAX as u64 {
-			return Err(Error::custom(format!(
-				"number {} is out of range for u16",
-				v
-			)));
-		}
-		Ok(StringifiedU16(v as u16))
+		u16::try_from(v)
+			.map(StringifiedU16)
+			.map_err(|_| Error::custom(format!("number {} is out of range for u16", v)))
 	}
 
 	fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
 	where
 		E: Error,
 	{
-		if v < 0 || v > u16::MAX as i64 {
-			return Err(Error::custom(format!(
-				"number {} is out of range for u16",
-				v
-			)));
-		}
-		Ok(StringifiedU16(v as u16))
+		u16::try_from(v)
+			.map(StringifiedU16)
+			.map_err(|_| Error::custom(format!("number {} is out of range for u16", v)))
 	}
 }
 

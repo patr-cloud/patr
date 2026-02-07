@@ -40,15 +40,14 @@ impl RunnerExecutor for DockerRunner {
 		if swarm.and_then(|swarm| swarm.id).is_none() {
 			docker
 				.init_swarm({
-					let mut request = SwarmInitRequest::default();
-
-					request.listen_addr = Some(settings.data.docker_swarm_listen_addr.clone());
-					request.spec = Some(SwarmSpec {
-						labels: Some([("managed-by".to_string(), "patr".to_string())].into()),
+					SwarmInitRequest {
+						listen_addr: Some(settings.data.docker_swarm_listen_addr.clone()),
+						spec: Some(SwarmSpec {
+							labels: Some([("managed-by".to_string(), "patr".to_string())].into()),
+							..Default::default()
+						}),
 						..Default::default()
-					});
-
-					request
+					}
 				})
 				.await
 				.map_err(RunnerError::host)?;
@@ -145,7 +144,7 @@ impl RunnerExecutor for DockerRunner {
 		}
 
 		// Setup ingress, if it doesn't exist
-		ingress::update_ingress_configs(&docker, &settings).await?;
+		ingress::update_ingress_configs(&docker, settings).await?;
 
 		Ok(docker)
 	}

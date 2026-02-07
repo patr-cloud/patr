@@ -22,6 +22,7 @@ impl Display for DockerUploadUuid {
 	}
 }
 
+/// The header name for Docker-Upload-UUID
 static HEADER_NAME: HeaderName = HeaderName::from_static("docker-upload-uuid");
 
 impl Header for DockerUploadUuid {

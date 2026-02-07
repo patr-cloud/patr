@@ -38,8 +38,8 @@ impl RequestUserData {
 		resource_id: Uuid,
 		permission_id: Uuid,
 	) -> bool {
-		self.permissions.get(&workspace_id).map_or(false, |perms| {
-			perms.has_permission_on_resource(resource_id, permission_id)
-		})
+		self.permissions
+			.get(&workspace_id)
+			.is_some_and(|perms| perms.has_permission_on_resource(resource_id, permission_id))
 	}
 }

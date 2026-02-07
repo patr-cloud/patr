@@ -98,7 +98,7 @@ pub async fn update_ingress_tunnel_token(
 		.await
 		.map_err(RunnerError::host)?
 		.into_iter()
-		.filter(|config| {
+		.find(|config| {
 			config
 				.spec
 				.as_ref()
@@ -106,7 +106,6 @@ pub async fn update_ingress_tunnel_token(
 				.filter(|&name| name == constants::TUNNEL_TOKEN_CONFIG_NAME)
 				.is_some()
 		})
-		.next()
 		.and_then(|config| config.version?.index);
 
 	let config_spec = ConfigSpec {
@@ -213,7 +212,7 @@ async fn get_ingress_spec(
 		.await
 		.map_err(RunnerError::host)?
 		.into_iter()
-		.filter(|config| {
+		.find(|config| {
 			config
 				.spec
 				.as_ref()
@@ -221,7 +220,6 @@ async fn get_ingress_spec(
 				.filter(|&name| name == constants::INGRESS_CONFIG_NAME)
 				.is_some()
 		})
-		.next()
 		.and_then(|config| Some((config.id?, config.version?.index?)))
 	{
 		trace!("Config exists for ingress, updating: {}", config_id);
