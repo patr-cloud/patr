@@ -60,19 +60,19 @@ const ResourceLink = (props: ResourceLinkProps) => {
 const HomePage = () => {
 	const quickActions: QuickActionProps[] = [
 		{
+			title: "Set Up a Runner",
+			description: "Connect your own infrastructure to Patr. Runners execute deployments on your machines or clusters.",
+			href: "/runners/new",
+			icon: FiCpu,
+			color: "bg-info/15 text-info",
+		},
+		{
 			title: "Create a Deployment",
 			description:
 				"Deploy your containerized application in minutes. Configure ports, environment variables, and scaling options.",
 			href: "/deployments/new",
 			icon: FiBox,
 			color: "bg-primary/15 text-primary",
-		},
-		{
-			title: "Set Up a Runner",
-			description: "Connect your own infrastructure to Patr. Runners execute deployments on your machines or clusters.",
-			href: "/runners/new",
-			icon: FiCpu,
-			color: "bg-info/15 text-info",
 		},
 		{
 			title: "Add a Domain",
