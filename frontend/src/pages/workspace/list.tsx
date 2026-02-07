@@ -4,11 +4,12 @@ import { ButtonVariant, Link, PageContainer, PageContainerBody, PageContainerHea
 import Table from "~/components/table";
 import { httpRequest } from "~/utils/http-request";
 import { useAuthState } from "~/hooks";
+import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useNavigate } from "@solidjs/router";
-import { A } from "@solidjs/router";
 
 const ListWorkspaces = () => {
 	const [authState, _] = useAuthState();
+	const [, setWorkspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const navigate = useNavigate();
 
@@ -38,7 +39,11 @@ const ListWorkspaces = () => {
 				title="Workspaces"
 				titleUrl="/workspaces"
 				subTitle="All Workspaces"
-				actions={() => <Link href="/workspaces/new" buttonVariant={ButtonVariant.Contained} external={false}>CREATE WORKSPACE</Link>}
+				actions={() => (
+					<Link href="/workspaces/new" buttonVariant={ButtonVariant.Contained} external={false}>
+						CREATE WORKSPACE
+					</Link>
+				)}
 			/>
 			<PageContainerBody class="flex flex-col justify-between gap-8">
 				<ErrorBoundary
@@ -58,7 +63,8 @@ const ListWorkspaces = () => {
 								<tr
 									class="table-row"
 									onClick={() => {
-										navigate(`/workspaces/${item.id}`);
+										setWorkspaceId(item.id);
+										navigate("/workspace-settings");
 									}}
 								>
 									<td class="flex-1">{item.id}</td>

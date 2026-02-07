@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "@solidjs/router";
 import { httpRequest } from "~/utils/http-request";
 import { UpdateRoleRequest } from "~/bindings/UpdateRoleRequest";
 import { useAuthState } from "~/hooks";
+import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { GetRoleInfoResponse, ResourcePermissionType } from "~/bindings";
 import useFetchPermissions from "~/hooks/use-fetch/use-fetch-permissions";
 
@@ -13,6 +14,7 @@ const EditPermissions = (props: { roleInfo: Resource<GetRoleInfoResponse | undef
 	const [isUpdating, setIsUpdating] = createSignal(false);
 	const [permissionsData, setPermissionsData] = createSignal<{ [key: string]: ResourcePermissionType }>({});
 	const [authState] = useAuthState();
+	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const navigate = useNavigate();
 	const params = useParams();
@@ -28,7 +30,7 @@ const EditPermissions = (props: { roleInfo: Resource<GetRoleInfoResponse | undef
 	});
 
 	// Fetch all permissions for the workspace to map IDs to names
-	const [allPermissions] = useFetchPermissions(params.id);
+	const [allPermissions] = useFetchPermissions(workspaceId()!);
 
 	// Create a map of permission ID to permission name
 	const permissionIdToName = createMemo(() => {
@@ -69,7 +71,7 @@ const EditPermissions = (props: { roleInfo: Resource<GetRoleInfoResponse | undef
 			};
 
 			const response = await httpRequest(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${params.id}/rbac/role/${params.roleId}`,
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId()}/rbac/role/${params.roleId}`,
 				{
 					method: "PATCH",
 					headers: {
@@ -88,7 +90,7 @@ const EditPermissions = (props: { roleInfo: Resource<GetRoleInfoResponse | undef
 
 			toast("Role updated successfully", "success");
 			// Navigate back to roles list
-			navigate(`/workspaces/${params.id}/roles`);
+			navigate("/workspace-settings/roles");
 		} catch (error) {
 			console.error("Error updating role:", error);
 			toast("An error occurred while updating the role", "error");
@@ -106,7 +108,7 @@ const EditPermissions = (props: { roleInfo: Resource<GetRoleInfoResponse | undef
 
 				<div class="flex flex-col gap-4">
 					<PermissionSelector
-						workspaceId={params.id!}
+						workspaceId={workspaceId()!}
 						selectedPermissionIds={selectedPermissionIds()}
 						onPermissionChange={(ids) => setSelectedPermissionIds((prev) => new Set([...prev, ...ids]))}
 						onPermissionsDataChange={setPermissionsData}

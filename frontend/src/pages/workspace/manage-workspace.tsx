@@ -1,5 +1,4 @@
 import { createResource, createSignal, Show, Suspense } from "solid-js";
-import { useParams } from "@solidjs/router";
 import {
 	Button,
 	ButtonVariant,
@@ -12,6 +11,7 @@ import {
 } from "~/components";
 import { FiEdit2, FiPlus, FiTrash } from "solid-icons/fi";
 import { useAuthState } from "~/hooks";
+import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { GetWorkspaceInfoResponse } from "~/bindings/GetWorkspaceInfoResponse";
 import { ListAllRolesResponse } from "~/bindings/ListAllRolesResponse";
 import { ListUsersInWorkspaceResponse } from "~/bindings/ListUsersInWorkspaceResponse";
@@ -26,11 +26,11 @@ import { EventT } from "~/utils/types";
 import { EditUserRoles } from "~/pages/workspace/edit-user-roles";
 
 const ManageWorkspace = () => {
-	const params = useParams();
 	const [authState] = useAuthState();
+	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const resourceParamsWorkspace = () => {
-		return [authState(), params.id] as const;
+		return [authState(), workspaceId()] as const;
 	};
 	const [workspaceInfo] = createResource(resourceParamsWorkspace, async ([auth, id]) => {
 		if (!auth || auth.type !== "LoggedIn" || id === "") {
@@ -139,7 +139,7 @@ const ManageWorkspace = () => {
 	);
 	const onDelete = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
 		e.stopPropagation();
-		const wsId = params.id;
+		const wsId = workspaceId();
 		const userId = userToDelete();
 		const auth = authState();
 
@@ -217,7 +217,7 @@ const ManageWorkspace = () => {
 			};
 
 			const response = await httpRequest(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${params.id}/rbac/user/${user.id}`,
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId()}/rbac/user/${user.id}`,
 				{
 					method: "POST",
 					headers: {
@@ -334,7 +334,7 @@ const ManageWorkspace = () => {
 														<EditUserRoles
 															userName={editingMember()!.userName}
 															userId={editingMember()!.userId}
-															workspaceId={params.id || ""}
+															workspaceId={workspaceId() || ""}
 															currentRoles={
 																editingMember()!.roleIds.map((roleId) => {
 																	const role = roles()?.roles.find((r) => r.id === roleId);

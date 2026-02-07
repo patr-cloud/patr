@@ -11,7 +11,6 @@ import ListRunnersPage from "~/pages/runner/list";
 import ListDomainsPage from "~/pages/domain/list";
 import CreateDomainPage from "~/pages/domain/create";
 import ManageWorkspace from "~/pages/workspace/manage-workspace";
-import ListWorkspaces from "~/pages/workspace/list";
 import ManageRoles from "~/pages/workspace/roles/manage-roles";
 import CreateRoles from "~/pages/workspace/roles/create-roles";
 import RoleInfo from "~/pages/workspace/roles/role-info";
@@ -56,14 +55,13 @@ export default function WorkspacedRoutes() {
 				<Route path="/new" component={CreateDomainPage} />
 				<Route path="/:id" component={DomainInfo} />
 			</Route>
-			<Route path="/workspaces">
-				<Route path="/" component={ListWorkspaces} />
-				<Route path="/:id" component={ManageWorkspace} />
-				<Route path="/:id/roles">
+			<Route path="/workspace-settings">
+				<Route path="/" component={ManageWorkspace} />
+				<Route path="/roles">
 					<Route path="/" component={ManageRoles} />
 					<Route path="/:roleId" component={RoleInfo} />
 				</Route>
-				<Route path="/:id/roles/new" component={CreateRoles} />
+				<Route path="/roles/new" component={CreateRoles} />
 			</Route>
 		</Route>
 	);

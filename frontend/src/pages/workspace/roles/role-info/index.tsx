@@ -2,6 +2,7 @@ import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid
 import { useParams, useSearchParams } from "@solidjs/router";
 import { PageContainer, PageContainerBody, useToast } from "~/components";
 import { useAuthState } from "~/hooks";
+import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { GetRoleInfoResponse } from "~/bindings/GetRoleInfoResponse";
 import { GetWorkspaceInfoResponse } from "~/bindings/GetWorkspaceInfoResponse";
 import { httpRequest } from "~/utils/http-request";
@@ -13,16 +14,17 @@ const RoleInfo = () => {
 	const params = useParams();
 	const [searchParams] = useSearchParams();
 	const [authState] = useAuthState();
+	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 
 	const activeTab = createMemo(() => (searchParams.tab === "users" ? "users" : "permissions"));
 
 	const fetchParams = createMemo(() => {
-		return [authState(), params.id, params.roleId] as const;
+		return [authState(), workspaceId(), params.roleId] as const;
 	});
 
 	const [workspaceInfo] = createResource(
-		() => [authState(), params.id] as const,
+		() => [authState(), workspaceId()] as const,
 		async ([auth, workspaceId]) => {
 			if (!auth || auth.type !== "LoggedIn" || !workspaceId) {
 				return;
