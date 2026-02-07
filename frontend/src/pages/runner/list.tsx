@@ -4,6 +4,7 @@ import { ButtonVariant, Link, PageContainer, PageContainerBody, PageContainerHea
 import { useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
+import { formatRelativeTime } from "~/utils/func";
 import { httpRequest } from "~/utils/http-request";
 
 const ListRunnersPage = () => {
@@ -43,8 +44,14 @@ const ListRunnersPage = () => {
 
 	return (
 		<PageContainer>
-			<PageContainerHead title="Runner" subTitle="All Runners"
-				actions={() => <Link href="/runners/new" buttonVariant={ButtonVariant.Contained} external={false}>CREATE RUNNER</Link>}
+			<PageContainerHead
+				title="Runner"
+				subTitle="All Runners"
+				actions={() => (
+					<Link href="/runners/new" buttonVariant={ButtonVariant.Contained} external={false}>
+						CREATE RUNNER
+					</Link>
+				)}
 			/>
 			<PageContainerBody class="flex flex-col justify-between gap-8">
 				<ErrorBoundary
@@ -70,7 +77,7 @@ const ListRunnersPage = () => {
 										{item.connected ? "Connected" : "Disconnected"}
 									</td>
 									<td class="flex items-center justify-center flex-1">
-										{item.lastSeen ? item.lastSeen.toLocaleString() : "N/A"}
+										{item.lastSeen ? formatRelativeTime(item.lastSeen) : "N/A"}
 									</td>
 								</tr>
 							)}

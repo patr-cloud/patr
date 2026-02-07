@@ -233,6 +233,50 @@ const convertFileToBase64 = (file: File): Promise<string> => {
 	});
 };
 
+/**
+ * Parses a date string or Date object into a valid Date.
+ * Handles formats like "2026-02-06 21:54:25.712709 +00:00:00" from the API.
+ */
+const parseDate = (date: Date | string): Date | null => {
+	if (date instanceof Date) {
+		return isNaN(date.getTime()) ? null : date;
+	}
+
+	// Handle format like "2026-02-06 21:54:25.712709 +00:00:00"
+	// Convert to ISO format: replace space with 'T' and fix timezone
+	const isoString = date
+		.replace(" ", "T")
+		.replace(/\s*\+(\d{2}):(\d{2}):\d{2}$/, "+$1:$2");
+	const parsed = new Date(isoString);
+
+	return isNaN(parsed.getTime()) ? null : parsed;
+};
+
+/**
+ * Formats a date as a relative time string (e.g., "just now", "5 minutes ago").
+ */
+const formatRelativeTime = (date: Date | string): string => {
+	const d = parseDate(date);
+
+	if (!d) {
+		return "Unknown";
+	}
+
+	const now = new Date();
+	const diffMs = now.getTime() - d.getTime();
+	const diffSec = Math.floor(diffMs / 1000);
+	const diffMin = Math.floor(diffSec / 60);
+	const diffHour = Math.floor(diffMin / 60);
+	const diffDay = Math.floor(diffHour / 24);
+
+	if (diffSec < 60) return "just now";
+	if (diffMin < 60) return `${diffMin} minute${diffMin !== 1 ? "s" : ""} ago`;
+	if (diffHour < 24) return `${diffHour} hour${diffHour !== 1 ? "s" : ""} ago`;
+	if (diffDay < 30) return `${diffDay} day${diffDay !== 1 ? "s" : ""} ago`;
+
+	return d.toLocaleDateString();
+};
+
 export {
 	get,
 	Jsx,
@@ -247,4 +291,6 @@ export {
 	resourceActionMap,
 	resourceTypes,
 	userActionTypes,
+	parseDate,
+	formatRelativeTime,
 };
