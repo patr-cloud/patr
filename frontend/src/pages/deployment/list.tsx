@@ -14,6 +14,7 @@ import {
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import useIsAllowed from "~/hooks/use-is-allowed";
+import { useIsMounted } from "~/hooks/use-is-mounted";
 
 const DeploymentListRow = (props: { item: WithId<Deployment>; runnerName: string }) => {
 	const navigate = useNavigate();
@@ -38,6 +39,8 @@ const ListDeploymentsPage = () => {
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const isAllowedCreate = useIsAllowed("deployment", "create", undefined, false);
+	const isMounted = useIsMounted();
+
 	console.log("User permissions for creating deployment:", isAllowedCreate());
 
 	const fetchParams = createMemo(() => {
