@@ -32,7 +32,6 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 		console.log("new set after toggle", newSet);
 
 		props.onPermissionChange(newSet);
-		// updatePermissionsData(newSet);
 	};
 
 	const toggleResource = (resourceId: string) => {
@@ -43,7 +42,6 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 			newSet.add(resourceId);
 		}
 		setSelectedResources(newSet);
-		// updatePermissionsData(props.selectedPermissionIds);
 	};
 
 	const updatePermissionsData = (permissionIds: Set<string>) => {
@@ -154,7 +152,6 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 								if (val === "all") {
 									setSelectedResources(new Set<string>([]));
 								}
-								// updatePermissionsData(props.selectedPermissionIds);
 							}}
 							placeholder="Select Include/Exclude Mode"
 							value={includeExcludeMode}
