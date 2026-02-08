@@ -94,7 +94,7 @@ const CreateRoles = () => {
 			}
 
 			toast("Role created successfully", "success");
-			navigate("/workspace-settings/roles");
+			navigate("/workspace/roles");
 		} catch (error) {
 			console.error("Error creating role:", error);
 			toast("An error occurred while creating the role", "error");
@@ -144,7 +144,7 @@ const CreateRoles = () => {
 				<div class="flex justify-end gap-4 border-t border-border-color pt-4">
 					<Button
 						variant={ButtonVariant.Outlined}
-						onClick={() => navigate("/workspace-settings/roles")}
+						onClick={() => navigate("/workspace/roles")}
 						disabled={isSubmitting()}
 					>
 						CANCEL

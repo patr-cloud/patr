@@ -195,12 +195,17 @@ const DeploymentInfo = () => {
 	return (
 		<PageContainer>
 			<PageContainerHead
-				title="Deployments"
-				titleUrl="/deployments"
+				breadcrumbs={[
+					{
+						label: "Deployments",
+						url: "/deployments",
+					},
+					{
+						label: deploymentInfo() ? deploymentInfo()!.name : "Loading...",
+					},
+				]}
+				subText="A deployment represents a containerized application running on a runner."
 				class="justify-between items-center"
-				subTitle={
-					<Suspense fallback={<div>loading...</div>}>{deploymentInfo()?.name || "No Deployment Found"}</Suspense>
-				}
 				actions={() => (
 					<div class="flex items-center justify-end gap-3">
 						<Suspense fallback={<div>Loading actions...</div>}>

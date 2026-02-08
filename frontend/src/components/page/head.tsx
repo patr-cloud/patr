@@ -1,7 +1,8 @@
 import { NavigateOptions, SearchParams } from "@solidjs/router";
-import { JSX, mergeProps } from "solid-js";
+import { For, JSX, mergeProps, Show } from "solid-js";
 import { get } from "~/utils/func";
 import { MaybeAccessor, SetSearchParams } from "~/utils/types";
+import Link from "../link";
 
 export interface HeadTabProps {
 	/** Additional CSS classes for the tab container */
@@ -59,13 +60,16 @@ const HeadTab = (rawProps: HeadTabProps) => {
 	);
 };
 
+type Breadcrumb = {
+	label: string;
+	url?: string;
+};
+
 interface PageContainerHeadProps {
-	/** The title of the page head */
-	title: string;
-	/** Optional URL to redirect to when title is clicked */
-	titleUrl?: string;
-	/** The subtitle of the page head */
-	subTitle: JSX.Element | string;
+	/** Breadcrumbs to be displayed at the top of the header */
+	breadcrumbs: Breadcrumb[];
+	/** The sub text of the page head */
+	subText: string;
 	/** Additional CSS classes for the header */
 	class?: string;
 	/** Actions to be displayed in the right side of header */
@@ -89,14 +93,29 @@ const PageContainerHead = (rawProps: PageContainerHeadProps) => {
 			>
 				<div class="flex flex-col gap-2 justify-start">
 					<div class="flex gap-4 items-center select-none">
-						<h1 class={`text-2xl text-primary ${props.titleUrl ? "cursor-pointer" : ""}`}>
-							{props.titleUrl ? <a href={props.titleUrl}>{props.title}</a> : props.title}
-						</h1>
-						<span class="text-xl text-white">&gt;</span>
-						<h2 class="text-white text-md">{props.subTitle}</h2>
+						<For each={props.breadcrumbs}>
+							{(crumb, index) => {
+								return (
+									<Show
+										when={index() !== 0}
+										fallback={
+											<h1 class={`text-xl ${crumb.url ? "text-primary cursor-pointer" : "text-white"}`}>
+												{crumb.url ? <Link href={crumb.url}>{crumb.label}</Link> : crumb.label}
+											</h1>
+										}
+									>
+										<span class="text-xl text-white">&gt;</span>
+
+										<h2 class={`text-md ${crumb.url ? "text-primary cursor-pointer" : "text-white"}`}>
+											{crumb.url ? <Link href={crumb.url}>{crumb.label}</Link> : crumb.label}
+										</h2>
+									</Show>
+								);
+							}}
+						</For>
 					</div>
 
-					<p class="text-grey text-xs">Create a new workspace to organize your projects.</p>
+					<p class="text-grey text-xs">{props.subText}</p>
 				</div>
 
 				<div>{props.actions?.()}</div>

@@ -144,7 +144,18 @@ const CreateDeploymentPage = () => {
 
 	return (
 		<PageContainer>
-			<PageContainerHead title="Deployments" titleUrl="/deployments" subTitle="Create Deployment" />
+			<PageContainerHead
+				breadcrumbs={[
+					{
+						label: "Deployments",
+						url: "/deployments",
+					},
+					{
+						label: "New",
+					},
+				]}
+				subText="A deployment represents a containerized application running on a runner."
+			/>
 			<PageContainerBody class="flex flex-col justify-between gap-8">
 				<form onSubmit={onSubmit} class="flex flex-col gap-6 justify-between w-full flex-1">
 					<div class="flex flex-col gap-5  items-start w-full">

@@ -108,7 +108,7 @@ const RoleRow = (props: {
 			<td class="flex items-center justify-center flex-1">
 				<Link
 					external
-					href={`/workspace-settings/roles/${props.role.id}`}
+					href={`/workspace/roles/${props.role.id}`}
 					buttonVariant={ButtonVariant.Plain}
 					class="h-full flex items-center gap-2 cursor-pointer"
 				>

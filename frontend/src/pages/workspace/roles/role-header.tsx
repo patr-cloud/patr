@@ -12,20 +12,27 @@ const RoleHeader = (props: RoleHeaderProps) => {
 
 	return (
 		<PageContainerHead
-			title="Manage Role"
-			titleUrl="/workspace-settings/roles"
-			subTitle={props.roleName || "Loading..."}
+			breadcrumbs={[
+				{
+					label: "Workspace",
+					url: "/",
+				},
+				{
+					label: props.roleName || "Loading...",
+				},
+			]}
+			subText={`Manage the ${props.roleName || ""} role settings, permissions, and assigned users.`}
 			bottomContent={() => (
 				<div class="w-full text-white flex gap-4">
 					<A
-						href={`/workspace-settings/roles/${params.roleId}`}
+						href={`/workspace/roles/${params.roleId}`}
 						class={`pb-2 px-2 border-b-2 ${props.activeTab === "permissions" ? "border-primary" : "border-transparent"}`}
 					>
 						Edit Permissions
 					</A>
 
 					<A
-						href={`/workspace-settings/roles/${params.roleId}?tab=users`}
+						href={`/workspace/roles/${params.roleId}?tab=users`}
 						class={`pb-2 px-2 border-b-2 ${props.activeTab === "users" ? "border-primary" : "border-transparent"}`}
 					>
 						Users

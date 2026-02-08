@@ -48,7 +48,7 @@ const Link = (rawProps: ParentProps<LinkProps>) => {
 			const colors = getColorClasses(props.color);
 			switch (props.buttonVariant) {
 				case ButtonVariant.Outlined:
-					return `border-2 font-medium ${colors.border} py-xs px-md ${colors.text} rounded-xs ${colors.hoverBg} hover:text-secondary hover:cursor-pointer transition-all duration-200`;
+					return `border-2 font-normal ${colors.border} py-xs px-md ${colors.text} rounded-xs ${colors.hoverBg} hover:text-secondary hover:cursor-pointer transition-all duration-200`;
 				case ButtonVariant.Plain:
 					return `bg-transparent ${colors.text}`;
 				case ButtonVariant.Contained:

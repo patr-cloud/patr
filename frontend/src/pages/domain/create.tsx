@@ -184,7 +184,18 @@ const CreateDomainPage = () => {
 
 	return (
 		<PageContainer>
-			<PageContainerHead title="Domains" titleUrl="/domains" subTitle="Add Domain" />
+			<PageContainerHead
+				breadcrumbs={[
+					{
+						label: "Domains",
+						url: "/domains",
+					},
+					{
+						label: "Add",
+					},
+				]}
+				subText="Configure custom domains to route traffic to your deployments."
+			/>
 			<PageContainerBody>
 				<form onSubmit={onSubmit} class="space-y-6">
 					<div class="bg-secondary-light p-6 rounded-xs border border-white/5">
@@ -223,11 +234,11 @@ const CreateDomainPage = () => {
 							<div class="bg-secondary-dark p-4 rounded border border-white/5">
 								<h4 class="text-white text-sm font-semibold mb-2">Domain Requirements:</h4>
 								<ul class="text-gray-400 text-sm space-y-1 list-disc list-inside">
-									<li>Enter only the base domain (e.g., example.com)</li>
-									<li>Do not include subdomains (e.g., www.example.com)</li>
-									<li>Do not include protocols (e.g., https://)</li>
-									<li>Do not include paths or query parameters</li>
-									<li>We currently don't support non-ASCII domains</li>
+									<li>✅ Enter only the base domain (e.g., example.com)</li>
+									<li>❌ Do not include subdomains (e.g., www.example.com)</li>
+									<li>❌ Do not include protocols (e.g., https://example.com)</li>
+									<li>❌ Do not include paths or query parameters (e.g., example.com/path?query=1)</li>
+									<li>⚠️ We currently don't support non-ASCII domains (e.g., èxámplê.com)</li>
 								</ul>
 							</div>
 						</div>

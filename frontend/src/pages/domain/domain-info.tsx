@@ -256,9 +256,16 @@ const DomainInfo = () => {
 			>
 				<Suspense fallback={<div class="text-white">Loading...</div>}>
 					<PageContainerHead
-						title="Domains"
-						titleUrl="/domains"
-						subTitle={domainInfo.latest?.name}
+						breadcrumbs={[
+							{
+								label: "Domains",
+								url: "/domains",
+							},
+							{
+								label: domainInfo.latest?.name || "Loading...",
+							},
+						]}
+						subText="Configure custom domains to route traffic to your deployments."
 						actions={() => (
 							<div class="flex items-center justify-center gap-2">
 								<DeleteModal

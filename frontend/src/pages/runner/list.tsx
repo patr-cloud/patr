@@ -45,11 +45,15 @@ const ListRunnersPage = () => {
 	return (
 		<PageContainer>
 			<PageContainerHead
-				title="Runner"
-				subTitle="All Runners"
+				breadcrumbs={[
+					{
+						label: "Runners",
+					},
+				]}
+				subText="Runners execute deployments on your machines or clusters"
 				actions={() => (
-					<Link href="/runners/new" buttonVariant={ButtonVariant.Contained} external={false}>
-						CREATE RUNNER
+					<Link href="/runners/new" buttonVariant={ButtonVariant.Plain} external={false}>
+						Add Runner
 					</Link>
 				)}
 			/>

@@ -255,11 +255,15 @@ const ListDomainsPage = () => {
 	return (
 		<PageContainer>
 			<PageContainerHead
-				title="Domains"
-				subTitle="All Domains"
+				breadcrumbs={[
+					{
+						label: "Domains",
+					},
+				]}
+				subText="Configure custom domains to route traffic to your deployments."
 				actions={() => (
 					<div class="ml-auto">
-						<Button variant={ButtonVariant.Contained} onClick={() => navigate("/domains/new")}>
+						<Button variant={ButtonVariant.Plain} onClick={() => navigate("/domains/new")}>
 							Add Domain
 						</Button>
 					</div>
