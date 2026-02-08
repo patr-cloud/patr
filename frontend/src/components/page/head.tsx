@@ -59,15 +59,16 @@ const HeadTab = (rawProps: HeadTabProps) => {
 	);
 };
 
+type Breadcrumb = {
+	label: string;
+	url?: string;
+};
+
 interface PageContainerHeadProps {
-	/** The title of the page head */
-	title: string;
-	/** Optional URL to redirect to when title is clicked */
-	titleUrl?: string;
-	/** The subtitle of the page head */
-	subTitle?: JSX.Element | string;
+	/** Breadcrumbs to be displayed at the top of the header */
+	breadcrumbs: Breadcrumb[];
 	/** The sub text of the page head */
-	subText: string;
+	subText: JSX.Element | string;
 	/** Additional CSS classes for the header */
 	class?: string;
 	/** Actions to be displayed in the right side of header */
@@ -91,13 +92,24 @@ const PageContainerHead = (rawProps: PageContainerHeadProps) => {
 			>
 				<div class="flex flex-col gap-2 justify-start">
 					<div class="flex gap-4 items-center select-none">
-						<h1
-							class={`text-xl ${props.subTitle ? "text-primary" : "text-white"} ${props.titleUrl ? "cursor-pointer" : ""}`}
-						>
-							{props.titleUrl ? <a href={props.titleUrl}>{props.title}</a> : props.title}
-						</h1>
-						{props.subTitle && <span class="text-xl text-white">&gt;</span>}
-						{props.subTitle && <h2 class="text-white text-md">{props.subTitle}</h2>}
+						{props.breadcrumbs.map((crumb, index) => {
+							if (index === 0) {
+								return (
+									<h1 class={`text-xl ${crumb.url ? "text-primary cursor-pointer" : "text-white"}`}>
+										{crumb.url ? <a href={crumb.url}>{crumb.label}</a> : crumb.label}
+									</h1>
+								);
+							} else {
+								return (
+									<>
+										{index !== 0 && <span class="text-xl text-white">&gt;</span>}
+										<h2 class={`${crumb.url ? "text-primary cursor-pointer" : "text-white"} text-md`}>
+											{crumb.url ? <a href={crumb.url}>{crumb.label}</a> : crumb.label}
+										</h2>
+									</>
+								);
+							}
+						})}
 					</div>
 
 					<p class="text-grey text-xs">{props.subText}</p>

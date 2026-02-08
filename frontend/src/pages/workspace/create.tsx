@@ -59,7 +59,18 @@ const CreateWorkspace = () => {
 
 	return (
 		<PageContainer>
-			<PageContainerHead title="Workspaces" titleUrl="/workspace" subTitle="Create New Workspace" />
+			<PageContainerHead
+				breadcrumbs={[
+					{
+						label: "Workspace",
+						url: "/workspace",
+					},
+					{
+						label: "Create",
+					},
+				]}
+				subText="Workspaces are a way to organize your projects, deployments, and resources."
+			/>
 			<PageContainerBody class="flex flex-col">
 				<form class="flex flex-1 flex-col justify-between gap-8" onSubmit={onCreateWorkspace}>
 					<div class="flex gap-4 items-center">
@@ -68,7 +79,7 @@ const CreateWorkspace = () => {
 							name="workspace-name"
 							value={workspaceName()}
 							onInput={(e) => setWorkspaceName(e.currentTarget.value)}
-							placeholder="Enter Workspace Name. (Ex: Andi Mandi Shandi)"
+							placeholder="Enter Workspace Name"
 							type="text"
 							class="flex-10"
 						/>

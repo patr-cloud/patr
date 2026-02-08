@@ -255,7 +255,11 @@ const ListDomainsPage = () => {
 	return (
 		<PageContainer>
 			<PageContainerHead
-				title="Domains"
+				breadcrumbs={[
+					{
+						label: "Domains",
+					},
+				]}
 				subText="Configure custom domains to route traffic to your deployments."
 				actions={() => (
 					<div class="ml-auto">

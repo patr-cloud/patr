@@ -185,10 +185,16 @@ const CreateDomainPage = () => {
 	return (
 		<PageContainer>
 			<PageContainerHead
-				title="Domains"
+				breadcrumbs={[
+					{
+						label: "Domains",
+						url: "/domains",
+					},
+					{
+						label: "Add",
+					},
+				]}
 				subText="Configure custom domains to route traffic to your deployments."
-				titleUrl="/domains"
-				subTitle="Add"
 			/>
 			<PageContainerBody>
 				<form onSubmit={onSubmit} class="space-y-6">

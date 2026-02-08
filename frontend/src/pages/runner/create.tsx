@@ -50,10 +50,16 @@ const CreateRunnerPage = () => {
 	return (
 		<PageContainer>
 			<PageContainerHead
-				title="Runners"
+				breadcrumbs={[
+					{
+						label: "Runners",
+						url: "/runners",
+					},
+					{
+						label: "Add",
+					},
+				]}
 				subText="Runners execute deployments on your machines or clusters"
-				titleUrl="/runners"
-				subTitle="Add"
 			/>
 			<PageContainerBody class="flex flex-col justify-between gap-8">
 				<form onSubmit={onSubmit} class="flex flex-col gap-8 items-start w-full justify-between flex-1">

@@ -105,14 +105,25 @@ const HomePage = () => {
 		{
 			title: "Workspace Settings",
 			description: "Manage team members, roles, and permissions",
-			href: "/workspace-settings",
+			href: "/workspace",
 			icon: FiZap,
 		},
 	];
 
 	return (
 		<PageContainer>
-			<PageContainerHead title="Workspace" subText="Here's what you can do to get started" subTitle="Home" />
+			<PageContainerHead
+				breadcrumbs={[
+					{
+						label: "Workspace",
+						url: "/workspace",
+					},
+					{
+						label: "Home",
+					},
+				]}
+				subText="Here's what you can do to get started"
+			/>
 
 			<PageContainerBody class="overflow-y-auto">
 				<div class="flex flex-col gap-8 max-w-5xl">

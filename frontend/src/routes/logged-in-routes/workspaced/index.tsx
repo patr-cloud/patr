@@ -55,7 +55,7 @@ export default function WorkspacedRoutes() {
 				<Route path="/new" component={CreateDomainPage} />
 				<Route path="/:id" component={DomainInfo} />
 			</Route>
-			<Route path="/workspace-settings">
+			<Route path="/workspace">
 				<Route path="/" component={ManageWorkspace} />
 				<Route path="/roles">
 					<Route path="/" component={ManageRoles} />

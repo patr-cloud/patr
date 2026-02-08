@@ -90,7 +90,7 @@ const EditPermissions = (props: { roleInfo: Resource<GetRoleInfoResponse | undef
 
 			toast("Role updated successfully", "success");
 			// Navigate back to roles list
-			navigate("/workspace-settings/roles");
+			navigate("/workspace/roles");
 		} catch (error) {
 			console.error("Error updating role:", error);
 			toast("An error occurred while updating the role", "error");

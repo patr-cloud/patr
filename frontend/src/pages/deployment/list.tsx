@@ -101,7 +101,11 @@ const ListDeploymentsPage = () => {
 	return (
 		<PageContainer>
 			<PageContainerHead
-				title="Deployments"
+				breadcrumbs={[
+					{
+						label: "Deployments",
+					},
+				]}
 				subText="A deployment represents a containerized application running on a runner."
 				actions={() =>
 					isAllowedCreate() && (
