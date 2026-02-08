@@ -115,34 +115,21 @@ const HomePage = () => {
 			<PageContainerHead
 				breadcrumbs={[
 					{
-						label: "Workspace",
-						url: "/workspace",
-					},
-					{
-						label: "Home",
+						label: "Welcome to Patr",
 					},
 				]}
-				subText="Here's what you can do to get started"
+				subText="Your DevOps platform for deploying and managing containerized applications. Get started by creating a deployment, setting up a runner, or connecting a domain."
 			/>
 
 			<PageContainerBody class="overflow-y-auto">
-				<div class="flex flex-col gap-8 max-w-5xl">
-					{/* Welcome Section */}
-					<div class="flex flex-col gap-2">
-						<h2 class="text-2xl font-semibold text-white">Patr</h2>
-						<p class="text-gray-400 text-sm max-w-2xl leading-relaxed">
-							Your DevOps platform for deploying and managing containerized applications. Get started by creating a
-							deployment, setting up a runner, or connecting a domain.
-						</p>
-					</div>
-
+				<div class="flex flex-col gap-8">
 					{/* Quick Actions */}
 					<div class="flex flex-col gap-4">
 						<div class="flex items-center gap-2">
 							<FiPlus class="text-primary" />
 							<h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Quick Actions</h3>
 						</div>
-						<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+						<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 							<For each={quickActions}>{(action) => <QuickActionCard {...action} />}</For>
 						</div>
 					</div>
@@ -153,7 +140,7 @@ const HomePage = () => {
 							<FiBookOpen class="text-primary" />
 							<h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Resources</h3>
 						</div>
-						<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+						<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
 							<For each={resources}>{(resource) => <ResourceLink {...resource} />}</For>
 						</div>
 					</div>
