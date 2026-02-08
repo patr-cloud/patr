@@ -2,6 +2,7 @@ import { NavigateOptions, SearchParams } from "@solidjs/router";
 import { For, JSX, mergeProps, Show } from "solid-js";
 import { get } from "~/utils/func";
 import { MaybeAccessor, SetSearchParams } from "~/utils/types";
+import Link from "../link";
 
 export interface HeadTabProps {
 	/** Additional CSS classes for the tab container */
@@ -99,14 +100,14 @@ const PageContainerHead = (rawProps: PageContainerHeadProps) => {
 										when={index() !== 0}
 										fallback={
 											<h1 class={`text-xl ${crumb.url ? "text-primary cursor-pointer" : "text-white"}`}>
-												{crumb.url ? <a href={crumb.url}>{crumb.label}</a> : crumb.label}
+												{crumb.url ? <Link href={crumb.url}>{crumb.label}</Link> : crumb.label}
 											</h1>
 										}
 									>
 										<span class="text-xl text-white">&gt;</span>
 
 										<h2 class={`text-md ${crumb.url ? "text-primary cursor-pointer" : "text-white"}`}>
-											{crumb.url ? <a href={crumb.url}>{crumb.label}</a> : crumb.label}
+											{crumb.url ? <Link href={crumb.url}>{crumb.label}</Link> : crumb.label}
 										</h2>
 									</Show>
 								);
