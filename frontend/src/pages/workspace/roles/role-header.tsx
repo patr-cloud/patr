@@ -12,9 +12,16 @@ const RoleHeader = (props: RoleHeaderProps) => {
 
 	return (
 		<PageContainerHead
-			title="Manage Role"
-			titleUrl="/workspace/roles"
-			subTitle={props.roleName || "Loading..."}
+			breadcrumbs={[
+				{
+					label: "Workspace",
+					url: "/",
+				},
+				{
+					label: props.roleName || "Loading...",
+				},
+			]}
+			subText={`Manage the ${props.roleName || ""} role settings, permissions, and assigned users.`}
 			bottomContent={() => (
 				<div class="w-full text-white flex gap-4">
 					<A

@@ -68,7 +68,7 @@ interface PageContainerHeadProps {
 	/** Breadcrumbs to be displayed at the top of the header */
 	breadcrumbs: Breadcrumb[];
 	/** The sub text of the page head */
-	subText: JSX.Element | string;
+	subText: string;
 	/** Additional CSS classes for the header */
 	class?: string;
 	/** Actions to be displayed in the right side of header */

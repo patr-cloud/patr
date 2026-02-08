@@ -25,7 +25,7 @@ const WorkspaceHeader = (props: WorkspaceHeaderProps) => {
 			actions={() =>
 				props.activeTab === "roles" &&
 				!location.pathname.includes("/new") && (
-					<Link href="/workspace/roles/new" buttonVariant={ButtonVariant.Contained} external={false}>
+					<Link href="/workspace/roles/new" buttonVariant={ButtonVariant.Plain} external={false}>
 						Create New Role
 					</Link>
 				)
