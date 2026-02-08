@@ -63,7 +63,7 @@ const WorkspaceSwitcher = () => {
 					</Suspense>
 				</div>
 
-				<A href="/workspaces" class="text-xs text-gray-400">
+				<A href="/workspace-settings" class="text-xs text-gray-400">
 					<FiSettings />
 				</A>
 			</div>

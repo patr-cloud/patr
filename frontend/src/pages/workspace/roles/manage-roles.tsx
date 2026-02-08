@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "@solidjs/router";
 import { Button, ButtonVariant, Link, PageContainer, PageContainerBody, Table, useToast } from "~/components";
 import { FiTrash2 } from "solid-icons/fi";
 import { useAuthState } from "~/hooks";
+import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { GetWorkspaceInfoResponse } from "~/bindings/GetWorkspaceInfoResponse";
 import { ListAllRolesResponse } from "~/bindings/ListAllRolesResponse";
 import { httpRequest } from "~/utils/http-request";
@@ -11,8 +12,8 @@ import { Color } from "~/utils/color";
 import { GetRoleInfoResponse, Role, WithId } from "~/bindings";
 
 const EditRole = (props: { role: WithId<Role> }) => {
-	const params = useParams();
 	const [authState] = useAuthState();
+	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 
 	const [roleInfo] = createResource(async () => {
@@ -21,14 +22,14 @@ const EditRole = (props: { role: WithId<Role> }) => {
 			return;
 		}
 
-		const workspaceId = params.id;
-		if (!workspaceId) {
+		const wsId = workspaceId();
+		if (!wsId) {
 			toast("Workspace ID is missing", "error");
 			return;
 		}
 
 		const response = await httpRequest<GetRoleInfoResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role/${props.role.id}`,
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/role/${props.role.id}`,
 			{
 				method: "GET",
 				headers: {
@@ -65,8 +66,8 @@ const RoleRow = (props: {
 	refetch: (info?: unknown) => ListAllRolesResponse | Promise<ListAllRolesResponse | undefined> | null | undefined;
 	role: WithId<Role>;
 }) => {
-	const params = useParams();
 	const [authState] = useAuthState();
+	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const [showManageRole, setShowManageRole] = createSignal<boolean>(false);
 
@@ -77,14 +78,14 @@ const RoleRow = (props: {
 			return;
 		}
 
-		const workspaceId = params.id;
-		if (!workspaceId) {
+		const wsId = workspaceId();
+		if (!wsId) {
 			toast("Workspace ID is missing", "error");
 			return;
 		}
 
 		const resp = await httpRequest(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role/${roleId}?removeUsers=false`,
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/role/${roleId}?removeUsers=false`,
 			{
 				method: "DELETE",
 			}
@@ -107,7 +108,7 @@ const RoleRow = (props: {
 			<td class="flex items-center justify-center flex-1">
 				<Link
 					external
-					href={`/workspaces/${params.id}/roles/${props.role.id}`}
+					href={`/workspace-settings/roles/${props.role.id}`}
 					buttonVariant={ButtonVariant.Plain}
 					class="h-full flex items-center gap-2 cursor-pointer"
 				>
@@ -132,12 +133,12 @@ const RoleRow = (props: {
 };
 
 const ManageRoles = () => {
-	const params = useParams();
 	const [authState] = useAuthState();
+	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const navigate = useNavigate();
 	const resourceParamsWorkspace = () => {
-		return [authState(), params.id] as const;
+		return [authState(), workspaceId()] as const;
 	};
 
 	const [workspaceInfo] = createResource(resourceParamsWorkspace, async ([auth, id]) => {

@@ -4,15 +4,17 @@ import { GetUserDetailsResponse } from "~/bindings/GetUserDetailsResponse";
 import { ListUsersForRoleResponse } from "~/bindings/ListUsersForRoleResponse";
 import { Table, useToast } from "~/components";
 import { useAuthState } from "~/hooks";
+import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 
 const UsersAssignedToRole = () => {
 	const [authState] = useAuthState();
+	const [workspaceId] = useLastWorkspaceId();
 	const params = useParams();
 	const toast = useToast();
 
 	const [usersWithDetails] = createResource(
-		() => [authState(), params.id, params.roleId] as const,
+		() => [authState(), workspaceId(), params.roleId] as const,
 		async ([auth, workspaceId, roleId]) => {
 			if (!auth || auth.type !== "LoggedIn" || !workspaceId || !roleId) {
 				return [];
