@@ -84,11 +84,6 @@ const Sidebar: Component = () => {
 			icon: FiBox,
 		},
 		{
-			label: "Databases",
-			href: "/databases",
-			icon: FiDatabase,
-		},
-		{
 			label: "Runners",
 			href: "/runners",
 			icon: FiCpu,
