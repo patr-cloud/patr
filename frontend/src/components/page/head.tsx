@@ -1,5 +1,5 @@
 import { NavigateOptions, SearchParams } from "@solidjs/router";
-import { JSX, mergeProps } from "solid-js";
+import { For, JSX, mergeProps, Show } from "solid-js";
 import { get } from "~/utils/func";
 import { MaybeAccessor, SetSearchParams } from "~/utils/types";
 
@@ -92,24 +92,26 @@ const PageContainerHead = (rawProps: PageContainerHeadProps) => {
 			>
 				<div class="flex flex-col gap-2 justify-start">
 					<div class="flex gap-4 items-center select-none">
-						{props.breadcrumbs.map((crumb, index) => {
-							if (index === 0) {
+						<For each={props.breadcrumbs}>
+							{(crumb, index) => {
 								return (
-									<h1 class={`text-xl ${crumb.url ? "text-primary cursor-pointer" : "text-white"}`}>
-										{crumb.url ? <a href={crumb.url}>{crumb.label}</a> : crumb.label}
-									</h1>
-								);
-							} else {
-								return (
-									<>
-										{index !== 0 && <span class="text-xl text-white">&gt;</span>}
-										<h2 class={`${crumb.url ? "text-primary cursor-pointer" : "text-white"} text-md`}>
+									<Show
+										when={index() !== 0}
+										fallback={
+											<h1 class={`text-xl ${crumb.url ? "text-primary cursor-pointer" : "text-white"}`}>
+												{crumb.url ? <a href={crumb.url}>{crumb.label}</a> : crumb.label}
+											</h1>
+										}
+									>
+										<span class="text-xl text-white">&gt;</span>
+
+										<h2 class={`text-md ${crumb.url ? "text-primary cursor-pointer" : "text-white"}`}>
 											{crumb.url ? <a href={crumb.url}>{crumb.label}</a> : crumb.label}
 										</h2>
-									</>
+									</Show>
 								);
-							}
-						})}
+							}}
+						</For>
 					</div>
 
 					<p class="text-grey text-xs">{props.subText}</p>
