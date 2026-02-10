@@ -14,8 +14,12 @@ const RoleHeader = (props: RoleHeaderProps) => {
 		<PageContainerHead
 			breadcrumbs={[
 				{
-					label: "Workspace",
-					url: "/",
+					label: "Workspace Settings",
+					url: "/workspace",
+				},
+				{
+					label: "Roles",
+					url: "/workspace/roles",
 				},
 				{
 					label: props.roleName || "Loading...",

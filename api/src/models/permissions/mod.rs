@@ -72,7 +72,7 @@ async fn get_permissions_for_login_id(
 		// after this timestamp, it is considered valid.
 
 		// Check user revocation, then loginId revocation, then workspace ID revocation
-		'is_valid: {
+		let is_valid = 'validity: {
 			let revoked = redis_connection
 				.get::<Option<i64>>(redis::keys::user_id_revocation_timestamp(user_id))
 				.await?
@@ -85,7 +85,7 @@ async fn get_permissions_for_login_id(
 				.is_some();
 
 			if revoked {
-				break 'is_valid;
+				break 'validity false;
 			}
 
 			let revoked = redis_connection
@@ -100,10 +100,7 @@ async fn get_permissions_for_login_id(
 				.is_some();
 
 			if revoked {
-				_ = redis_connection
-					.del(redis::keys::login_id_revocation_timestamp(login_id))
-					.await;
-				break 'is_valid;
+				break 'validity false;
 			}
 
 			for workspace_id in data.permission.keys() {
@@ -121,10 +118,7 @@ async fn get_permissions_for_login_id(
 					.is_some();
 
 				if revoked {
-					_ = redis_connection
-						.del(redis::keys::workspace_id_revocation_timestamp(workspace_id))
-						.await;
-					break 'is_valid;
+					break 'validity false;
 				}
 			}
 
@@ -140,17 +134,25 @@ async fn get_permissions_for_login_id(
 				.is_some();
 
 			if revoked {
-				_ = redis_connection
-					.del(redis::keys::global_revocation_timestamp())
-					.await;
-				break 'is_valid;
+				break 'validity false;
 			}
 
 			// None of the revocation timestamps exist, so the data in Redis is
 			// valid and can be used
+			true
 		};
 
-		return Ok(data.permission);
+		if is_valid {
+			return Ok(data.permission);
+		} else {
+			// The data in redis is not valid anymore. It probably is expired due to a
+			// permission change, so delete it from Redis, and proceed to fetch the
+			// permissions from the database again. This ensures that the permissions are up
+			// to date, even if the cache is stale.
+			_ = redis_connection
+				.del(redis::keys::permission_for_login_id(login_id))
+				.await;
+		}
 	}
 
 	let mut workspace_permissions = BTreeMap::<Uuid, WorkspacePermission>::new();

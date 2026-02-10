@@ -96,20 +96,15 @@ const PageContainerHead = (rawProps: PageContainerHeadProps) => {
 						<For each={props.breadcrumbs}>
 							{(crumb, index) => {
 								return (
-									<Show
-										when={index() !== 0}
-										fallback={
-											<h1 class={`text-xl ${crumb.url ? "text-primary cursor-pointer" : "text-white"}`}>
-												{crumb.url ? <Link href={crumb.url}>{crumb.label}</Link> : crumb.label}
-											</h1>
-										}
-									>
-										<span class="text-xl text-white">&gt;</span>
+									<>
+										<Show when={index() !== 0}>
+											<span class="text-xl text-white">&gt;</span>
+										</Show>
 
-										<h2 class={`text-md ${crumb.url ? "text-primary cursor-pointer" : "text-white"}`}>
+										<h1 class={`text-xl ${crumb.url ? "text-primary cursor-pointer" : "text-white"}`}>
 											{crumb.url ? <Link href={crumb.url}>{crumb.label}</Link> : crumb.label}
-										</h2>
-									</Show>
+										</h1>
+									</>
 								);
 							}}
 						</For>

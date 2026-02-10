@@ -14,12 +14,16 @@ const WorkspaceHeader = (props: WorkspaceHeaderProps) => {
 		<PageContainerHead
 			breadcrumbs={[
 				{
-					label: "Workspace",
-					url: "/",
+					label: "Workspace Settings",
+					url: props.activeTab === "roles" ? "/workspace" : undefined,
 				},
-				{
-					label: props.workspaceName || "Loading...",
-				},
+				...(props.activeTab === "roles"
+					? [
+							{
+								label: "Roles",
+							},
+						]
+					: []),
 			]}
 			subText="Manage your workspace settings, members, and roles."
 			actions={() =>
