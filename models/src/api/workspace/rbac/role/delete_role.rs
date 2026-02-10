@@ -12,7 +12,8 @@ macros::declare_api_endpoint!(
 	query = {
 		/// Whether to remove users from the role. If set to true, all users
 		/// with this role will be removed. If set to false, the role will be
-		/// deleted only if no users have this role.
+		/// deleted only if no users have this role. By default, this is set to false.
+		#[serde(default)]
 		pub remove_users: bool,
 	},
 	request_headers = {

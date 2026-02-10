@@ -84,12 +84,9 @@ const RoleRow = (props: {
 			return;
 		}
 
-		const resp = await httpRequest(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/role/${roleId}?removeUsers=false`,
-			{
-				method: "DELETE",
-			}
-		);
+		const resp = await httpRequest(`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/role/${roleId}`, {
+			method: "DELETE",
+		});
 
 		if (!resp.ok) {
 			console.error("Failed to delete role:", resp.data.error);
