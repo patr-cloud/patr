@@ -36,6 +36,7 @@ pub async fn update_deployment(
 						liveness_probe,
 						config_mounts,
 						volumes,
+						current_live_digest,
 					},
 			},
 		database,
@@ -58,6 +59,7 @@ pub async fn update_deployment(
 		.or(liveness_probe.as_ref().map(|_| 0))
 		.or(config_mounts.as_ref().map(|_| 0))
 		.or(volumes.as_ref().map(|_| 0))
+		.or(current_live_digest.as_ref().map(|_| 0))
 		.is_none()
 	{
 		debug!(

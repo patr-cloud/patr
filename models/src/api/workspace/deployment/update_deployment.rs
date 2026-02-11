@@ -63,6 +63,9 @@ macros::declare_api_endpoint!(
 		/// To update the volumes attached to the deployment
 		#[preprocess(none)]
 		pub volumes: Option<BTreeMap<Uuid, String>>,
+		/// The current live digest of the deployment
+		#[preprocess(none)]
+		pub current_live_digest: Option<String>,
 	}
 );
 
@@ -83,6 +86,7 @@ impl UpdateDeploymentRequest {
 			config_mounts: None,
 			runner: None,
 			volumes: None,
+			current_live_digest: None,
 		}
 	}
 
@@ -103,6 +107,7 @@ impl UpdateDeploymentRequest {
 			.or(self.liveness_probe.as_ref().map(|_| 0))
 			.or(self.config_mounts.as_ref().map(|_| 0))
 			.or(self.volumes.as_ref().map(|_| 0))
+			.or(self.current_live_digest.as_ref().map(|_| 0))
 			.is_none()
 	}
 }

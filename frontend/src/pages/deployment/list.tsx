@@ -16,7 +16,7 @@ import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import useIsAllowed from "~/hooks/use-is-allowed";
 
-const CopyButton = (props: { text: string }) => {
+export const CopyButton = (props: { text: string }) => {
 	const [copied, setCopied] = createSignal(false);
 
 	const handleCopy = async (e: MouseEvent) => {
