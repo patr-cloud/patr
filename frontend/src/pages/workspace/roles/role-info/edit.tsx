@@ -8,10 +8,13 @@ import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { GetRoleInfoResponse, ResourcePermissionType } from "~/bindings";
 import useFetchPermissions from "~/hooks/use-fetch/use-fetch-permissions";
-import { FiPlus, FiTrash2, FiXCircle } from "solid-icons/fi";
+import { FiTrash2, FiXCircle } from "solid-icons/fi";
 import { parsePermissionName } from "~/utils/func";
 
-const EditPermissions = (props: { roleInfo: Resource<GetRoleInfoResponse | undefined> }) => {
+const EditPermissions = (props: {
+	roleInfo: Resource<GetRoleInfoResponse | undefined>;
+	refetchRoleInfo: () => void;
+}) => {
 	const [selectedPermissionIds, setSelectedPermissionIds] = createSignal<Set<string>>(new Set());
 	const [isUpdating, setIsUpdating] = createSignal(false);
 	const [permissionsData, setPermissionsData] = createSignal<{ [key: string]: ResourcePermissionType }>({});
@@ -114,7 +117,7 @@ const EditPermissions = (props: { roleInfo: Resource<GetRoleInfoResponse | undef
 
 			toast("Role updated successfully", "success");
 			// Navigate back to roles list
-			navigate("/workspace/roles");
+			props.refetchRoleInfo();
 		} catch (error) {
 			console.error("Error updating role:", error);
 			toast("An error occurred while updating the role", "error");

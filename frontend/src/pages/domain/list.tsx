@@ -18,6 +18,7 @@ import { httpRequest } from "~/utils/http-request";
 import { ModalContainer } from "~/components/modal";
 import { GetDomainInfoInWorkspaceResponse, GetVerificationRecordsForDomainResponse } from "~/bindings";
 import { EventT } from "~/utils/types";
+import useIsAllowed from "~/hooks/use-is-allowed";
 
 // Type definitions based on API bindings
 type WorkspaceDomain = {
@@ -199,6 +200,8 @@ const ListDomainsPage = () => {
 	const navigate = useNavigate();
 	const toast = useToast();
 
+	const isCreateAllowed = useIsAllowed("domain", "create");
+
 	const fetchParams = createMemo(() => {
 		return [authState(), workspaceId()] as const;
 	});
@@ -238,13 +241,16 @@ const ListDomainsPage = () => {
 					},
 				]}
 				subText="Configure custom domains to route traffic to your deployments."
-				actions={() => (
-					<div class="ml-auto">
-						<Button variant={ButtonVariant.Plain} onClick={() => navigate("/domains/new")}>
-							Add Domain
-						</Button>
-					</div>
-				)}
+				actions={() => {
+					if (!isCreateAllowed()) return null;
+					return (
+						<div class="ml-auto">
+							<Button variant={ButtonVariant.Plain} onClick={() => navigate("/domains/new")}>
+								Add Domain
+							</Button>
+						</div>
+					);
+				}}
 			/>
 			<PageContainerBody class="flex flex-col">
 				<ErrorBoundary

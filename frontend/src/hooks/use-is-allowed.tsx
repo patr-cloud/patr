@@ -1,19 +1,62 @@
 import { ActionTypes, MaybeAccessor, ResourceTypes, UserPermissionsT } from "~/utils/types";
-import { useLastWorkspaceId } from "./state-hooks";
+import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { createMemo } from "solid-js";
 import { get } from "~/utils/func";
-import useFetchUserPermissions from "./use-fetch/use-fetch-user-permissions";
+import useFetchUserPermissions from "~/hooks/use-fetch/use-fetch-user-permissions";
+import { useIsMounted } from "~/hooks/use-is-mounted";
 
-const useIsAllowed = (
-	resourceType: ResourceTypes,
-	action: ActionTypes,
-	resId?: MaybeAccessor<string>,
-	getResourceIds: boolean = false
-) => {
+/**
+ * Custom hook to check what actions a user has for a specific resource.
+ */
+const useGetPermissions = async (resourceType: ResourceTypes, resId: MaybeAccessor<string>) => {
 	const [workspaceId] = useLastWorkspaceId();
 	const [userPermissions] = useFetchUserPermissions();
+	const isMounted = useIsMounted();
+
+	console.log("[useGetPermissions] Initializing with:", {
+		resourceType,
+		resId: get(resId),
+	});
+
+	const permissions = createMemo(() => {
+		// Prevent SSR hydration mismatches by always returning null until mounted
+		if (!isMounted()) return null;
+
+		const resourceId = get(resId);
+		const wsId = get(workspaceId);
+		const permissions = userPermissions() as unknown as UserPermissionsT | null;
+
+		if (!permissions) return null;
+		if (!wsId) return null;
+
+		if (permissions.type === "superAdmin") {
+			return { permissionType: "include", resources: [] };
+		}
+
+		const resourcePermissions = permissions[resourceType];
+
+		if (!resourcePermissions) return null;
+
+		// return resourcePermissions[action];
+	});
+
+	return permissions;
+};
+
+const useIsAllowed = (resourceType: ResourceTypes, action: ActionTypes, resId?: MaybeAccessor<string>) => {
+	const [workspaceId] = useLastWorkspaceId();
+	const [userPermissions] = useFetchUserPermissions();
+	const isMounted = useIsMounted();
+	console.log("[useIsAllowed] Initializing with:", {
+		resourceType,
+		action,
+		resId: get(resId),
+	});
 
 	const isAllowed = createMemo(() => {
+		// Prevent SSR hydration mismatches by always returning false until mounted
+		if (!isMounted()) return false;
+
 		const resourceId = get(resId);
 		const wsId = get(workspaceId);
 		const permissions = userPermissions() as unknown as UserPermissionsT | null;
@@ -45,11 +88,6 @@ const useIsAllowed = (
 				return true;
 			}
 
-			// If getResourceIds is true, we still return true since there are excludes
-			if (getResourceIds) {
-				console.log("[useIsAllowed memo] getResourceIds=true for exclude, returning true");
-				return true;
-			}
 			console.log("[useIsAllowed memo] Exclude check: resource in exclude list or no specific resource");
 		}
 
@@ -66,19 +104,14 @@ const useIsAllowed = (
 				return true;
 			}
 
-			// If getResourceIds is true, we still return true if there are any includes
-			if (getResourceIds) {
-				console.log("[useIsAllowed memo] getResourceIds=true for include, returning true");
-				return true;
-			}
 			console.log("[useIsAllowed memo] Include check: resource not in include list or no specific resource");
 		}
 
 		console.log("[useIsAllowed memo] Defaulting to false");
 		return false;
 	});
-	
-	return isAllowed
+
+	return isAllowed;
 };
 
 export default useIsAllowed;

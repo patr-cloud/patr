@@ -1,5 +1,5 @@
 import { FiExternalLink, FiPlus, FiTrash2 } from "solid-icons/fi";
-import { createSignal } from "solid-js";
+import { createSignal, Show } from "solid-js";
 import { ExposedPortType } from "~/bindings";
 import { Button, ButtonVariant, Input, InputDropdown, InputLabel, Link } from "~/components";
 import { Color } from "~/utils/color";
@@ -17,6 +17,8 @@ interface PortInputProps {
 	portList: MaybeAccessor<{ [key: string]: ExposedPortType | undefined }>;
 	/** Deployment ID for HTTP Port URL generation. This should show up only when the deployment is being edited */
 	deploymentId?: string;
+	/** Disabled state for the input */
+	disabled?: MaybeAccessor<boolean>;
 }
 
 const PortInput = (props: PortInputProps) => {
@@ -47,62 +49,70 @@ const PortInput = (props: PortInputProps) => {
 							</a>
 						)}
 
-						<Button
-							onClick={() => {
-								props.onDelete(port);
-							}}
-							variant={ButtonVariant.Outlined}
-							class="flex-1 h-full flex items-center gap-2"
-							color={Color.Error}
-						>
-							<FiTrash2 size={16} />
-						</Button>
+						<Show when={!get(props.disabled)}>
+							<Button
+								onClick={() => {
+									props.onDelete(port);
+								}}
+								variant={ButtonVariant.Outlined}
+								class="flex-1 h-full flex items-center gap-2"
+								color={Color.Error}
+							>
+								<FiTrash2 size={16} />
+							</Button>
+						</Show>
 					</div>
 				))}
 
-				<div class="flex items-center flex-10 gap-4 w-full">
-					<Input onInput={(e) => setPortNumber(e.currentTarget.value)} class="flex-6" placeholder="Enter Port Number" />
-					<InputDropdown
-						placeholder="Select Port Type"
-						onSelect={(value) => {
-							setPortType(value as ExposedPortType);
-						}}
-						value={portType()}
-						class="flex-5"
-						options={[
-							{
-								value: "udp",
-								label: "UDP",
-							},
-							{
-								value: "tcp",
-								label: "TCP",
-							},
-							{
-								value: "http",
-								label: "HTTP",
-							},
-						]}
-					/>
+				<Show when={!get(props.disabled)}>
+					<div class="flex items-center flex-10 gap-4 w-full">
+						<Input
+							onInput={(e) => setPortNumber(e.currentTarget.value)}
+							class="flex-6"
+							placeholder="Enter Port Number"
+						/>
+						<InputDropdown
+							placeholder="Select Port Type"
+							value={portType()}
+							class="flex-5"
+							onSelect={(value) => {
+								setPortType(value as ExposedPortType);
+							}}
+							options={[
+								{
+									value: "udp",
+									label: "UDP",
+								},
+								{
+									value: "tcp",
+									label: "TCP",
+								},
+								{
+									value: "http",
+									label: "HTTP",
+								},
+							]}
+						/>
 
-					<Button
-						type="button"
-						variant={ButtonVariant.Contained}
-						class="flex-1 h-full flex items-center gap-2"
-						onClick={(e) => {
-							e.preventDefault();
-							const envVal = get(portType);
-							if (!envVal) {
-								return;
-							}
-							props.onAdd(portNumber(), envVal);
-							setPortNumber("");
-							setPortType(undefined);
-						}}
-					>
-						<FiPlus size={16} />
-					</Button>
-				</div>
+						<Button
+							type="button"
+							variant={ButtonVariant.Contained}
+							class="flex-1 h-full flex items-center gap-2"
+							onClick={(e) => {
+								e.preventDefault();
+								const envVal = get(portType);
+								if (!envVal) {
+									return;
+								}
+								props.onAdd(portNumber(), envVal);
+								setPortNumber("");
+								setPortType(undefined);
+							}}
+						>
+							<FiPlus size={16} />
+						</Button>
+					</div>
+				</Show>
 			</div>
 		</div>
 	);

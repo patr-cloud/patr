@@ -51,7 +51,7 @@ const RoleInfo = () => {
 		}
 	);
 
-	const [roleInfo] = createResource(fetchParams, async ([auth, workspaceId, roleId]) => {
+	const [roleInfo, { refetch: refetchRoleInfo }] = createResource(fetchParams, async ([auth, workspaceId, roleId]) => {
 		if (!auth || auth.type !== "LoggedIn" || !workspaceId || !roleId) {
 			return;
 		}
@@ -98,7 +98,7 @@ const RoleInfo = () => {
 						<Show when={roleInfo()} fallback={null}>
 							<div class="flex flex-col gap-4">
 								<Show when={activeTab() === "permissions"}>
-									<EditPermissions roleInfo={roleInfo} />
+									<EditPermissions refetchRoleInfo={refetchRoleInfo} roleInfo={roleInfo} />
 								</Show>
 
 								<Show when={activeTab() === "users"}>

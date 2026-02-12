@@ -1,5 +1,5 @@
 import { FiChevronDown } from "solid-icons/fi";
-import { createMemo, createResource, createSignal, Resource, Setter } from "solid-js";
+import { createMemo, createResource, createSignal, Resource, Setter, Show } from "solid-js";
 import { GetDeploymentInfoResponse, ListRunnersForWorkspaceResponse, UpdateDeploymentResponse } from "~/bindings";
 import { Button, Input, InputDropdown, InputLabel, InputType, useToast } from "~/components";
 import { useAuthState } from "~/hooks";
@@ -8,6 +8,7 @@ import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 import EnvInput from "~/pages/deployment/env-input";
 import PortInput from "~/pages/deployment/port";
+import useIsAllowed from "~/hooks/use-is-allowed";
 
 interface DeploymentInfoProps {
 	deploymentInfo: Resource<GetDeploymentInfoResponse | undefined>;
@@ -23,6 +24,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
+	const isAllowedEdit = useIsAllowed("deployment", "edit", props.deploymentInfo.latest?.id);
 
 	const [, setHasUpdated] = createSignal(false);
 
@@ -107,6 +109,11 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				<div class="flex gap-8 items-center w-full">
 					<InputLabel parentClass="flex-2" for="deployment-name" label="Name" />
 					<Input
+						class="flex-10"
+						name="deployment-name"
+						placeholder="Deployment Name"
+						type={InputType.Text}
+						disabled={!isAllowedEdit()}
 						value={props.deploymentInfo.latest?.name}
 						onInput={(e) => {
 							setHasUpdated(true);
@@ -119,10 +126,6 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 									: undefined;
 							});
 						}}
-						class="flex-10"
-						name="deployment-name"
-						placeholder="Deployment Name"
-						type={InputType.Text}
 					/>
 				</div>
 
@@ -130,18 +133,22 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 					<InputLabel parentClass="flex-2" for="deployment-runner" label="Runner" />
 
 					<InputDropdown
+						class="flex-10"
+						name="deployment-runner"
+						placeholder="Select Runner"
+						disabled={!isAllowedEdit()}
+						value={props.deploymentInfo.latest?.runner ?? ""}
+						endIcon={() => (
+							<button>
+								<FiChevronDown size={16} />
+							</button>
+						)}
 						options={
 							runnerList.latest?.runners.map((runner) => ({
 								value: runner.id,
 								label: runner.name,
 							})) ?? []
 						}
-						endIcon={() => (
-							<button>
-								<FiChevronDown size={16} />
-							</button>
-						)}
-						value={props.deploymentInfo.latest?.runner ?? ""}
 						onSelect={(runnerId) => {
 							setHasUpdated(true);
 							props.mutateDeploymentInfo((prev) => {
@@ -153,9 +160,6 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 									: undefined;
 							});
 						}}
-						class="flex-10"
-						name="deployment-runner"
-						placeholder="Select Runner"
 					/>
 				</div>
 
@@ -198,6 +202,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 
 						<Input
 							class="flex-2"
+							disabled={!isAllowedEdit()}
 							placeholder="Image Tag"
 							type={InputType.Text}
 							value={props.deploymentInfo.latest?.imageTag ?? "N/A"}
@@ -282,11 +287,13 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				/>
 			</div>
 
-			<div class="w-full flex justify-end items-center">
-				<Button type="submit" variant="contained">
-					UPDATE
-				</Button>
-			</div>
+			<Show when={isAllowedEdit()}>
+				<div class="w-full flex justify-end items-center">
+					<Button disabled={!isAllowedEdit()} type="submit" variant="contained">
+						UPDATE
+					</Button>
+				</div>
+			</Show>
 		</form>
 	);
 };

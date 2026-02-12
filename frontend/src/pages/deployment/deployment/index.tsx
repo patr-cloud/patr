@@ -1,11 +1,12 @@
 import { useNavigate, useParams, useSearchParams } from "@solidjs/router";
-import { createMemo, createResource, createSignal, ErrorBoundary, Suspense } from "solid-js";
+import { createMemo, createResource, createSignal, ErrorBoundary, Show, Suspense } from "solid-js";
 import { GetDeploymentInfoResponse } from "~/bindings";
 import {
 	Button,
 	ButtonVariant,
 	DeleteModal,
 	HeadTab,
+	NoPermissionsPage,
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
@@ -17,6 +18,7 @@ import { httpRequest } from "~/utils/http-request";
 import DeploymentInfoUpdate from "~/pages/deployment/deployment/info";
 import DeploymentLogs from "./logs";
 import { Color } from "~/utils/color";
+import useIsAllowed from "~/hooks/use-is-allowed";
 
 const DeploymentInfo = () => {
 	const params = useParams();
@@ -32,6 +34,8 @@ const DeploymentInfo = () => {
 	const resourceParamsDeployment = createMemo(() => {
 		return [authState(), workspaceId(), params.id] as const;
 	});
+
+	const isAllowedResource = useIsAllowed("deployment", "view", params.id!);
 
 	const [deploymentInfo, { refetch: refetchDeploymentInfo, mutate: mutateDeploymentInfo }] = createResource(
 		resourceParamsDeployment,
@@ -193,69 +197,76 @@ const DeploymentInfo = () => {
 	};
 
 	return (
-		<PageContainer>
-			<PageContainerHead
-				breadcrumbs={[
-					{
-						label: "Deployments",
-						url: "/deployments",
-					},
-					{
-						label: deploymentInfo() ? deploymentInfo()!.name : "Loading...",
-					},
-				]}
-				subText="A deployment represents a containerized application running on a runner."
-				class="justify-between items-center"
-				actions={() => (
-					<div class="flex items-center justify-end gap-3">
-						<Suspense fallback={<div>Loading actions...</div>}>
-							{Cta()}
+		<Show
+			when={isAllowedResource()}
+			fallback={
+				<NoPermissionsPage title="Can't View Resource" message="You do not have permission to view this deployment." />
+			}
+		>
+			<PageContainer>
+				<PageContainerHead
+					breadcrumbs={[
+						{
+							label: "Deployments",
+							url: "/deployments",
+						},
+						{
+							label: deploymentInfo() ? deploymentInfo()!.name : "Loading...",
+						},
+					]}
+					subText="A deployment represents a containerized application running on a runner."
+					class="justify-between items-center"
+					actions={() => (
+						<div class="flex items-center justify-end gap-3">
+							<Suspense fallback={<div>Loading actions...</div>}>
+								{Cta()}
 
-							{deploymentInfo() && deploymentInfo()?.name && deploymentInfo()!.status === "stopped" && (
-								<DeleteModal
-									title="Do You Really Want to Delete This Deployment?"
-									resourceName={deploymentInfo()?.name || ""}
-									onClickDelete={onClickDelete}
-									isOpen={isDeleteModalOpen}
-									setIsOpen={setIsDeleteModalOpen}
-								/>
-							)}
-						</Suspense>
-					</div>
-				)}
-				bottomContent={() => (
-					<HeadTab
-						tab={tab}
-						searchParams={searchParams}
-						setSearchParams={setSearchParams}
-						tabItems={[
-							{
-								label: "Info",
-								value: "",
-								onClick: (value) => setSearchParams({ tab: value }),
-							},
-							{
-								label: "Logs",
-								value: "logs",
-								onClick: (value) => setSearchParams({ tab: value }),
-							},
-						]}
-					/>
-				)}
-			/>
-			<PageContainerBody class="flex flex-col justify-between gap-8">
-				<ErrorBoundary
-					fallback={(err, reset) => (
-						<div>
-							<p>Error loading deployment info: {err.message}</p>
-							<button onClick={reset}>Retry</button>
+								{deploymentInfo() && deploymentInfo()?.name && deploymentInfo()!.status === "stopped" && (
+									<DeleteModal
+										title="Do You Really Want to Delete This Deployment?"
+										resourceName={deploymentInfo()?.name || ""}
+										onClickDelete={onClickDelete}
+										isOpen={isDeleteModalOpen}
+										setIsOpen={setIsDeleteModalOpen}
+									/>
+								)}
+							</Suspense>
 						</div>
 					)}
-				>
-					<Suspense fallback={<div>Loading deployment info...</div>}>{renderTab()}</Suspense>
-				</ErrorBoundary>
-			</PageContainerBody>
-		</PageContainer>
+					bottomContent={() => (
+						<HeadTab
+							tab={tab}
+							searchParams={searchParams}
+							setSearchParams={setSearchParams}
+							tabItems={[
+								{
+									label: "Info",
+									value: "",
+									onClick: (value) => setSearchParams({ tab: value }),
+								},
+								{
+									label: "Logs",
+									value: "logs",
+									onClick: (value) => setSearchParams({ tab: value }),
+								},
+							]}
+						/>
+					)}
+				/>
+				<PageContainerBody class="flex flex-col justify-between gap-8">
+					<ErrorBoundary
+						fallback={(err, reset) => (
+							<div>
+								<p>Error loading deployment info: {err.message}</p>
+								<button onClick={reset}>Retry</button>
+							</div>
+						)}
+					>
+						<Suspense fallback={<div>Loading deployment info...</div>}>{renderTab()}</Suspense>
+					</ErrorBoundary>
+				</PageContainerBody>
+			</PageContainer>
+		</Show>
 	);
 };
 
