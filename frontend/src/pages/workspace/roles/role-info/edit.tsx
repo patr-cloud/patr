@@ -87,11 +87,6 @@ const EditPermissions = (props: { roleInfo: Resource<GetRoleInfoResponse | undef
 			return;
 		}
 
-		if (selectedPermissionIds().size === 0) {
-			toast("Please select at least one permission", "error");
-			return;
-		}
-
 		setIsUpdating(true);
 
 		try {
@@ -134,12 +129,6 @@ const EditPermissions = (props: { roleInfo: Resource<GetRoleInfoResponse | undef
 				<div class="flex justify-between items-center">
 					<h3 class="text-lg text-white">Edit Permissions</h3>
 
-					<PermissionSelector
-						workspaceId={workspaceId()!}
-						selectedPermissionIds={selectedPermissionIds()}
-						onPermissionChange={(ids) => setSelectedPermissionIds((prev) => new Set([...prev, ...ids]))}
-						onPermissionsDataChange={setPermissionsData}
-					/>
 					<div class="flex justify-end gap-4">
 						<button
 							onClick={(e) => {
@@ -165,7 +154,7 @@ const EditPermissions = (props: { roleInfo: Resource<GetRoleInfoResponse | undef
 				<div class="flex items-center gap-2">
 					<PermissionSelector
 						class="flex-1"
-						workspaceId={params.id!}
+						workspaceId={workspaceId()!}
 						selectedPermissionIds={selectedPermissionIds()}
 						onPermissionChange={setSelectedPermissionIds}
 						onPermissionsDataChange={(data) => setPermissionsData((prev) => ({ ...prev, ...data }))}

@@ -104,13 +104,14 @@ const ListDeploymentsPage = () => {
 					},
 				]}
 				subText="A deployment represents a containerized application running on a runner."
-				actions={() =>
-					isAllowedCreate() && (
+				actions={() => {
+					if (!isMounted() || !isAllowedCreate()) return null;
+					return (
 						<Link href="/deployments/new" buttonVariant={ButtonVariant.Plain} external={false}>
 							New Deployment
 						</Link>
-					)
-				}
+					);
+				}}
 			/>
 
 			<PageContainerBody class="flex flex-col">
