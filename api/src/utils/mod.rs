@@ -24,6 +24,9 @@ mod either_ext;
 /// Contains the extension traits that will be used to add exit signal handling
 /// to futures.
 mod exitable_ext;
+/// Contains the log formatter for the API. This is used to format the logs in a
+/// specific way, and to remove any fields that are not needed from the logs.
+mod tracing;
 /// Contains the extension traits that will be used with the axum [`Router`][1]
 /// to mount the various endpoints on the router.
 ///
@@ -37,6 +40,7 @@ pub use self::{
 	cf_turnstile_validator::*,
 	either_ext::*,
 	exitable_ext::*,
+	tracing::*,
 	router_ext::*,
 	timeout_ext::*,
 };

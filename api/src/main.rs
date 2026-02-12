@@ -102,99 +102,10 @@ static GLOBAL_CANCEL_TOKEN: OnceLock<CancellationToken> = OnceLock::new();
 #[tokio::main]
 async fn main() {
 	use app::AppState;
-	use opentelemetry::{global, trace::TracerProvider as _};
-	use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
-	use opentelemetry_otlp::{LogExporter, Protocol, SpanExporter, WithExportConfig};
-	use opentelemetry_sdk::{Resource, logs::SdkLoggerProvider, trace::SdkTracerProvider};
-	use tracing::Level;
-	use tracing_opentelemetry::OpenTelemetryLayer;
-	use tracing_subscriber::{
-		filter::LevelFilter,
-		fmt::{Layer as FmtLayer, format::FmtSpan},
-		prelude::*,
-	};
-
-	use crate::utils::config::RunningEnvironment;
 
 	let config = utils::config::parse_config();
 
-	let logger_exporter = LogExporter::builder()
-		.with_tonic()
-		.with_endpoint(&config.opentelemetry.logs.endpoint)
-		.with_protocol(Protocol::Grpc)
-		.build()
-		.expect("Failed to build OpenTelemetry logging pipeline");
-
-	let logger_provider = SdkLoggerProvider::builder()
-		.with_batch_exporter(logger_exporter)
-		.with_resource(Resource::builder().with_service_name("Patr API").build())
-		.build();
-
-	let span_exporter = SpanExporter::builder()
-		.with_tonic()
-		.with_endpoint(&config.opentelemetry.tracing.endpoint)
-		.with_protocol(Protocol::Grpc)
-		.build()
-		.expect("Failed to install OpenTelemetry tracing pipeline");
-
-	let tracer_provider = SdkTracerProvider::builder()
-		.with_batch_exporter(span_exporter)
-		.with_resource(Resource::builder().with_service_name("Patr API").build())
-		.build();
-
-	global::set_tracer_provider(tracer_provider.clone());
-
-	tracing_subscriber::registry()
-		.with(
-			if config.environment == RunningEnvironment::Development {
-				Some(console_subscriber::spawn())
-			} else {
-				None
-			},
-		)
-		.with(
-			FmtLayer::new()
-				.with_span_events(FmtSpan::NONE)
-				.event_format(
-					tracing_subscriber::fmt::format()
-						.with_ansi(true)
-						.with_file(false)
-						.without_time()
-						.with_target(false)
-						.with_source_location(false)
-						.compact(),
-				)
-				.with_filter(
-					tracing_subscriber::filter::Targets::new()
-						.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
-						.with_target("frontend", LevelFilter::TRACE)
-						.with_target("models", LevelFilter::TRACE),
-				)
-				.with_filter(LevelFilter::from_level(
-					if config.environment == RunningEnvironment::Development {
-						Level::TRACE
-					} else {
-						Level::DEBUG
-					},
-				)),
-		)
-		.with(
-			OpenTelemetryLayer::new(tracer_provider.tracer("Patr API")).with_filter(
-				tracing_subscriber::filter::Targets::new()
-					.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
-					.with_target("frontend", LevelFilter::TRACE)
-					.with_target("models", LevelFilter::TRACE),
-			),
-		)
-		.with(
-			OpenTelemetryTracingBridge::new(&logger_provider).with_filter(
-				tracing_subscriber::filter::Targets::new()
-					.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
-					.with_target("frontend", LevelFilter::TRACE)
-					.with_target("models", LevelFilter::TRACE),
-			),
-		)
-		.init();
+	let (logger_provider, tracer_provider) = utils::setup_tracing(&config);
 
 	tracing::info!("Config parsed. Running in {} mode", config.environment);
 
@@ -243,10 +154,7 @@ async fn main() {
 
 	futures::future::join(app::serve(&state), redis_publisher::run(&state)).await;
 
-	_ = logger_provider.force_flush();
-	_ = tracer_provider.force_flush();
-	_ = logger_provider.shutdown();
-	_ = tracer_provider.shutdown();
+	utils::flush_tracing(logger_provider, tracer_provider);
 }
 
 /// Returns a future that completes when the global cancellation token is
