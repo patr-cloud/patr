@@ -8,7 +8,7 @@ export default function Header({ username }: { username: string }) {
   return (
     <>
       <Img
-        src={`${baseUrl}/static/images/header.png`}
+        src={`${baseUrl}/static/header.png`}
         alt="Patr Logo"
         className="w-[100%] mb-6"
       />
