@@ -1,14 +1,10 @@
 import { Img, Text } from "@react-email/components";
 
-const baseUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : "";
-
 export default function Header({ username }: { username: string }) {
   return (
     <>
       <Img
-        src={`${baseUrl}/static/header.png`}
+        src={`/static/header.png`}
         alt="Patr Logo"
         className="w-[100%] mb-6"
       />

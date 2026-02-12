@@ -6,11 +6,11 @@ export default function Footer() {
     <>
       <Hr className="border-secondary-light border-2 my-4" />
       <Text className="px-6 text-white m-0">
-        Join our{" "}
+        Join our&nbsp;
         <EmailLink href="https://patr.cloud/discord">
           Discord Community
-        </EmailLink>{" "}
-        for the latest updates and chat with us{" "}
+        </EmailLink>
+        &nbsp; for the latest updates and chat with us&nbsp;
         <EmailLink href="https://patr.cloud/support">here</EmailLink> for
         instant technical support.
       </Text>
