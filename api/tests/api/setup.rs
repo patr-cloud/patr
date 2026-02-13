@@ -132,13 +132,13 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 		},
 	};
 
-	api::utils::setup_tracing(&config);
+	_ = api::utils::setup_tracing(&config);
 
 	let state = api::build_state(config).await;
 
 	api::db::initialize(&state)
 		.await
-		.expect("error initializing database");
+		.map_err(|e| anyhow::anyhow!("error initializing database: {e}"))?;
 
 	let server = TestServer::builder()
 		.http_transport_with_ip_port(Some(bind_address.ip()), Some(bind_address.port()))

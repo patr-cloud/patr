@@ -1,5 +1,5 @@
 mod setup;
 
-mod login;
+mod auth;
 
 pub use self::setup::setup;

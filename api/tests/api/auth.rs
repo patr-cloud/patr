@@ -11,7 +11,12 @@ use crate::prelude::*;
 pub async fn create_account_works() {
 	let setup = setup().await.expect("failed to setup test server");
 
-	let username = "user1".to_string();
+	let username = rand::thread_rng()
+		.sample_iter(Alphanumeric)
+		.map(char::from)
+		.take(8)
+		.collect::<String>();
+
 	let password = format!(
 		"{}@",
 		rand::thread_rng()
