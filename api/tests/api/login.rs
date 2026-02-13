@@ -8,7 +8,7 @@ use rand::{Rng as _, distributions::Alphanumeric};
 use crate::prelude::*;
 
 #[tokio::test]
-pub async fn test_create_account_works() {
+pub async fn create_account_works() {
 	let setup = setup().await.expect("failed to setup test server");
 
 	let username = "user1".to_string();
