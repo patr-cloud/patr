@@ -19,16 +19,18 @@ cast_sign_loss                = "warn"
 missing_docs_in_private_items = "warn"
 
 [workspace.dependencies]
+anyhow                         = { default-features = false, version = "1" }
 argon2                         = { default-features = false, version = "0.5" }
 aws-config                     = { default-features = false, version = "1" }
 aws-credential-types           = { default-features = false, version = "1" }
 aws-sdk-s3                     = { default-features = false, version = "1" }
 axum                           = { default-features = false, version = "0.8" }
 axum-extra                     = { default-features = false, version = "0.12" }
+axum-test                      = { default-features = false, version = "18" }
 axum-typed-websockets          = { default-features = false, git = "https://github.com/cachix/axum-typed-websockets" }
 base32                         = { default-features = false, version = "0.5" }
 base64                         = { default-features = false, version = "0.22" }
-bollard                        = { default-features = false, version = "0.20" }
+bollard                        = { default-features = false, version = "0.19" }
 build-print                    = { default-features = false, version = "1" }
 clap                           = { default-features = false, version = "4" }
 cloudflare                     = { default-features = false, git = "https://github.com/rakshith-ravi/cloudflare-rs", branch = "patr-must-haves" }
@@ -95,6 +97,8 @@ syn                            = { default-features = false, version = "2" }
 sync_wrapper                   = { default-features = false, version = "1" }
 tar                            = { default-features = false, version = "0.4" }
 tempfile                       = { default-features = false, version = "3" }
+testcontainers                 = { default-features = false, version = "0.26" }
+testcontainers-modules         = { default-features = false, version = "0.14" }
 thiserror                      = { default-features = false, version = "2" }
 time                           = { default-features = false, version = "0.3" }
 tokio                          = { default-features = false, version = "1" }
