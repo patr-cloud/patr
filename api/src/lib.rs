@@ -99,7 +99,7 @@ use crate::{prelude::*, utils::config::AppConfig};
 /// when the runner is stopped. This token will be used to cancel all the
 /// connections that are open in the runner.
 #[doc(hidden)]
-pub static GLOBAL_CANCEL_TOKEN: OnceLock<CancellationToken> = OnceLock::new();
+static GLOBAL_CANCEL_TOKEN: OnceLock<CancellationToken> = OnceLock::new();
 
 /// Builds the application state from the config. This is used in the main
 /// function to build the state that will be passed to the routes and other
@@ -118,10 +118,19 @@ pub async fn build_state(config: AppConfig) -> AppState {
 
 /// Returns a future that completes when the global cancellation token is
 /// cancelled. Use this for graceful shutdown handlers.
-#[tracing::instrument]
 pub async fn exit_signal() {
 	GLOBAL_CANCEL_TOKEN
 		.get_or_init(CancellationToken::new)
 		.cancelled()
 		.await
+}
+
+/// Triggers the shutdown of the application by cancelling the global
+/// cancellation token. This is called when a shutdown signal is received, and
+/// it will cause all the connections to be cancelled and the application to
+/// shut down gracefully.
+pub fn trigger_shutdown() {
+	GLOBAL_CANCEL_TOKEN
+		.get_or_init(CancellationToken::new)
+		.cancel();
 }

@@ -1,7 +1,5 @@
 //! The main API server for Patr.
 
-use tokio_util::sync::CancellationToken;
-
 #[tokio::main]
 async fn main() {
 	use api::{
@@ -41,9 +39,7 @@ async fn main() {
 		}
 
 		tracing::info!("Received shutdown signal, cancelling all connections");
-		api::GLOBAL_CANCEL_TOKEN
-			.get_or_init(CancellationToken::new)
-			.cancel();
+		api::trigger_shutdown();
 	});
 
 	let state = api::build_state(config).await;
