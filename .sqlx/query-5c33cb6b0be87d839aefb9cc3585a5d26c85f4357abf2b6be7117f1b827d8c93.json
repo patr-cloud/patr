@@ -1,11 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT MIN(created_at) AS created_at FROM container_registry_repository_manifest WHERE repository_id = $1;",
+  "query": "SELECT created FROM resource WHERE id = $1;",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "created_at",
+        "name": "created",
         "type_info": "Timestamptz"
       }
     ],
@@ -15,8 +15,8 @@
       ]
     },
     "nullable": [
-      null
+      false
     ]
   },
-  "hash": "30f0700cad92ca34b9eee37ad0372b80a3680a0885d0a115e8510bc1ac1f5033"
+  "hash": "5c33cb6b0be87d839aefb9cc3585a5d26c85f4357abf2b6be7117f1b827d8c93"
 }

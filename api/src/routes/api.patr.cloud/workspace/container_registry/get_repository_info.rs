@@ -7,10 +7,11 @@ pub async fn get_repository_info(
 	AuthenticatedAppRequest {
 		request:
 			ProcessedApiRequest {
-				path: GetContainerRepositoryInfoPath {
-					workspace_id,
-					repository_id,
-				},
+				path:
+					GetContainerRepositoryInfoPath {
+						workspace_id: _,
+						repository_id,
+					},
 				query: (),
 				headers:
 					GetContainerRepositoryInfoRequestHeaders {
@@ -101,18 +102,17 @@ pub async fn get_repository_info(
 	let created = query!(
 		r#"
 		SELECT
-			MIN(created_at) AS created_at
+			created
 		FROM
-			container_registry_repository_manifest
+			resource
 		WHERE
-			repository_id = $1;
+			id = $1;
 		"#,
 		repository_id as _
 	)
 	.fetch_one(&mut **database)
-	.await
-	.map(|repo| repo.created_at)?
-	.ok_or(ErrorType::ResourceDoesNotExist)?;
+	.await?
+	.created;
 
 	AppResponse::builder()
 		.body(GetContainerRepositoryInfoResponse {
