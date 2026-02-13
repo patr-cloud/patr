@@ -9,7 +9,7 @@ pub async fn delete_repository_image(
 			ProcessedApiRequest {
 				path:
 					DeleteContainerRepositoryImagePath {
-						workspace_id,
+						workspace_id: _,
 						repository_id,
 						digest,
 					},
@@ -24,31 +24,11 @@ pub async fn delete_repository_image(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data,
-		state,
+		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, DeleteContainerRepositoryImageRequest>,
 ) -> Result<AppResponse<DeleteContainerRepositoryImageRequest>, ErrorType> {
 	info!("Starting: Delete container repository image");
-
-	// Get repository detail
-	let repository_name = query!(
-		r#"
-		SELECT
-			name
-		FROM
-			container_registry_repository
-		WHERE
-			id = $1 AND
-			deleted IS NULL;
-		"#,
-		repository_id as _
-	)
-	.fetch_optional(&mut **database)
-	.await?
-	.map(|repo| repo.name)
-	.ok_or(ErrorType::ResourceDoesNotExist)?;
-
-	let name = format!("{}/{}", workspace_id, repository_name);
 
 	// Delete all tags for the given image
 	query!(
@@ -80,13 +60,10 @@ pub async fn delete_repository_image(
 	.execute(&mut **database)
 	.await?;
 
-	super::delete_docker_repository_image_in_registry(&name, &user_data.username, &digest, &config)
-		.await?;
-
 	AppResponse::builder()
 		.body(DeleteContainerRepositoryImageResponse)
 		.headers(())
-		.status_code(StatusCode::OK)
+		.status_code(StatusCode::ACCEPTED)
 		.build()
 		.into_result()
 }

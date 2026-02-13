@@ -78,29 +78,29 @@ pub async fn get_repository_info(
 
 	let last_updated = query!(
 		r#"
-		SELECT 
+		SELECT
 			GREATEST(
-				resource.created, 
+				resource.created,
 				(
-					SELECT 
-						COALESCE(created, TO_TIMESTAMP(0)) 
-					FROM 
-						container_registry_repository_manifest 
-					WHERE 
+					SELECT
+						COALESCE(created_at, TO_TIMESTAMP(0))
+					FROM
+						container_registry_repository_manifest
+					WHERE
 						repository_id = $1
 					ORDER BY
-						created DESC
+						created_at DESC
 					LIMIT 1
-				), 
+				),
 				(
-					SELECT 
-						COALESCE(last_updated, TO_TIMESTAMP(0)) 
-					FROM 
-						container_registry_repository_tag 
-					WHERE 
+					SELECT
+						COALESCE(last_updated, TO_TIMESTAMP(0))
+					FROM
+						container_registry_repository_tag
+					WHERE
 						repository_id = $1
 					ORDER BY
-						created DESC
+						last_updated DESC
 					LIMIT 1
 				)
 			) AS "last_updated!"
@@ -118,7 +118,7 @@ pub async fn get_repository_info(
 	let created = query!(
 		r#"
 		SELECT
-			MIN(created) AS created
+			MIN(created_at) AS created_at
 		FROM
 			container_registry_repository_manifest
 		WHERE
@@ -128,7 +128,7 @@ pub async fn get_repository_info(
 	)
 	.fetch_one(&mut **database)
 	.await
-	.map(|repo| repo.created)?
+	.map(|repo| repo.created_at)?
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
 	AppResponse::builder()

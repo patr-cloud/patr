@@ -8,11 +8,20 @@ pub async fn list_repositories(
 		request:
 			ProcessedApiRequest {
 				path: ListContainerRepositoriesPath { workspace_id },
-				query: Paginated {
-					data: (),
-					count,
-					page,
-				},
+				query:
+					ListResourceQuery {
+						sort: sort_order,
+						search:
+							ContainerRepositorySearchParams {
+								name: name_filter,
+								size: size_filter,
+								last_updated: last_updated_filter,
+								created: created_filter,
+							},
+						count,
+						page,
+						additional_query: (),
+					},
 				headers:
 					ListContainerRepositoriesRequestHeaders {
 						authorization: _,
@@ -66,7 +75,7 @@ pub async fn list_repositories(
 				),
 				(
 					SELECT
-						MAX(container_registry_repository_manifest.created)
+						MAX(container_registry_repository_manifest.created_at)
 					FROM
 						container_registry_repository_manifest
 					WHERE
@@ -96,7 +105,7 @@ pub async fn list_repositories(
 		"#,
 		workspace_id as _,
 		user_data.login_id as _,
-		"TODO permission_name",
+		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::View).to_string(),
 		count as i32,
 		(page * count) as i32
 	)

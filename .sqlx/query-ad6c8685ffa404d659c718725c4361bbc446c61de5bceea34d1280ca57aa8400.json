@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COALESCE(SUM(size), 0)::BIGINT AS \"size!\" FROM container_registry_repository INNER JOIN container_registry_repository_manifest ON container_registry_repository.id = container_registry_repository_manifest.repository_id INNER JOIN container_registry_manifest_blob ON container_registry_repository_manifest.manifest_digest = container_registry_manifest_blob.manifest_digest INNER JOIN container_registry_repository_blob ON container_registry_manifest_blob.blob_digest = container_registry_repository_blob.blob_digest WHERE container_registry_repository.workspace_id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "size!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "ad6c8685ffa404d659c718725c4361bbc446c61de5bceea34d1280ca57aa8400"
+}

@@ -2,7 +2,7 @@ use axum::Router;
 
 use crate::prelude::*;
 
-// mod container_registry;
+mod container_registry;
 #[expect(unused_variables)]
 mod database;
 mod deployment;
@@ -45,7 +45,7 @@ use self::{
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
 	Router::new()
-		// .merge(container_registry::setup_routes(state).await)
+		.merge(container_registry::setup_routes(state, allowed_client_type).await)
 		.merge(domain::setup_routes(state, allowed_client_type).await)
 		.merge(database::setup_routes(state, allowed_client_type).await)
 		.merge(deployment::setup_routes(state, allowed_client_type).await)

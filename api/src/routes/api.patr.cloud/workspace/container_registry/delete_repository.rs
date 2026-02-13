@@ -1,6 +1,5 @@
 use axum::http::StatusCode;
 use models::{api::workspace::container_registry::*, prelude::*};
-use time::OffsetDateTime;
 
 use crate::prelude::*;
 
@@ -8,10 +7,11 @@ pub async fn delete_repository(
 	AuthenticatedAppRequest {
 		request:
 			ProcessedApiRequest {
-				path: DeleteContainerRepositoryPath {
-					workspace_id,
-					repository_id,
-				},
+				path:
+					DeleteContainerRepositoryPath {
+						workspace_id: _,
+						repository_id,
+					},
 				query: (),
 				headers:
 					DeleteContainerRepositoryRequestHeaders {
@@ -23,8 +23,8 @@ pub async fn delete_repository(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data,
-		state,
+		user_data: _,
+		state: _,
 	}: AuthenticatedAppRequest<'_, DeleteContainerRepositoryRequest>,
 ) -> Result<AppResponse<DeleteContainerRepositoryRequest>, ErrorType> {
 	info!(
@@ -53,40 +53,6 @@ pub async fn delete_repository(
 		return Err(ErrorType::ResourceInUse);
 	}
 
-	// Delete from container registry
-	let repository_name = query!(
-		r#"
-		SELECT
-			name
-		FROM
-			container_registry_repository
-		WHERE
-			id = $1 AND
-			deleted IS NULL;
-		"#,
-		repository_id as _
-	)
-	.fetch_optional(&mut **database)
-	.await?
-	.ok_or(ErrorType::ResourceDoesNotExist)?
-	.name;
-
-	let name = format!("{}/{}", &workspace_id, repository_name);
-
-	let images = query!(
-		r#"
-		SELECT
-			manifest_digest
-		FROM
-			container_registry_repository_manifest
-		WHERE
-			repository_id = $1;
-		"#,
-		repository_id as _
-	)
-	.fetch_all(&mut **database)
-	.await?;
-
 	// Deleting all tags for the given repository
 	query!(
 		r#"
@@ -113,36 +79,23 @@ pub async fn delete_repository(
 	.execute(&mut **database)
 	.await?;
 
-	// Updating the name of docker repository to deleted
+	// Delete the repository
 	query!(
 		r#"
-		UPDATE
+		DELETE FROM
 			container_registry_repository
-		SET
-			deleted = $2
 		WHERE
 			id = $1;
 		"#,
-		repository_id as _,
-		OffsetDateTime::now_utc()
+		repository_id as _
 	)
 	.execute(&mut **database)
 	.await?;
 
-	for image in images {
-		super::delete_docker_repository_image_in_registry(
-			&name,
-			&user_data.username,
-			&image.manifest_digest,
-			&config,
-		)
-		.await?;
-	}
-
 	AppResponse::builder()
 		.body(DeleteContainerRepositoryResponse)
 		.headers(())
-		.status_code(StatusCode::OK)
+		.status_code(StatusCode::ACCEPTED)
 		.build()
 		.into_result()
 }

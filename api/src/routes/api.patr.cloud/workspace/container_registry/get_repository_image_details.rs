@@ -34,7 +34,7 @@ pub async fn get_repository_image_details(
 		r#"
 		SELECT
 			manifest_digest,
-			created
+			created_at
 		FROM
 			container_registry_repository_manifest
 		WHERE
@@ -46,7 +46,7 @@ pub async fn get_repository_image_details(
 	)
 	.fetch_optional(&mut **database)
 	.await?
-	.map(|image| (image.manifest_digest, image.created))
+	.map(|image| (image.manifest_digest, image.created_at))
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
 	let image_tags = query!(

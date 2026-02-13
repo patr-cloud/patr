@@ -12,11 +12,19 @@ pub async fn list_repository_tags(
 						workspace_id: _,
 						repository_id,
 					},
-				query: Paginated {
-					page,
-					count,
-					data: (),
-				},
+				query:
+					ListResourceQuery {
+						sort: sort_order,
+						search:
+							ContainerRepositoryTagAndDigestInfoSearchParams {
+								tag: tag_filter,
+								digest: digest_filter,
+								last_updated: last_updated_filter,
+							},
+						count,
+						page,
+						additional_query: (),
+					},
 				headers:
 					ListContainerRepositoryTagsRequestHeaders {
 						user_agent: _,

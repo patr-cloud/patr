@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, str::FromStr};
 use axum::http::StatusCode;
 use jsonwebtoken::{Algorithm, Header};
 use models::{
-	api::workspace::{container_registry::*, infrastructure::deployment::ExposedPortType},
+	api::workspace::{container_registry::*, deployment::ExposedPortType},
 	prelude::*,
 };
 use rand::{Rng, distributions::Alphanumeric, thread_rng};
