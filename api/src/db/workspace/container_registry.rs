@@ -75,7 +75,7 @@ pub async fn initialize_container_registry_tables(
 
 	query!(
 		r#"
-		CREATE TABLE container_registry_tag(
+		CREATE TABLE container_registry_repository_tag(
 			name TEXT NOT NULL,
 			repository_id UUID NOT NULL,
 			manifest_digest TEXT NOT NULL
@@ -157,8 +157,8 @@ pub async fn initialize_container_registry_constraints(
 
 	query!(
 		r#"
-		ALTER TABLE container_registry_tag
-		ADD CONSTRAINT container_registry_tag_pk
+		ALTER TABLE container_registry_repository_tag
+		ADD CONSTRAINT container_registry_repository_tag_pk
 		PRIMARY KEY(name, repository_id);
 		"#
 	)
@@ -185,7 +185,7 @@ pub async fn initialize_container_registry_constraints(
 			ADD CONSTRAINT container_registry_manifest_chk_sha_digest
 				CHECK(digest ~ '^sha256:[a-f0-9]{64}$'),
 			ADD CONSTRAINT container_registry_manifest_chk_size_positive 
-				CHECK(size > 0)
+				CHECK(size > 0);
 		"#
 	)
 	.execute(&mut *connection)
@@ -239,13 +239,13 @@ pub async fn initialize_container_registry_constraints(
 
 	query!(
 		r#"
-		ALTER TABLE container_registry_tag
-			ADD CONSTRAINT container_registry_tag_chk_name
+		ALTER TABLE container_registry_repository_tag
+			ADD CONSTRAINT container_registry_repository_tag_chk_name
 				CHECK(name ~ '[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}'),
-			ADD CONSTRAINT container_registry_tag_fk_repository_id
+			ADD CONSTRAINT container_registry_repository_tag_fk_repository_id
 				FOREIGN KEY(repository_id)
 					REFERENCES container_registry_repository(id),
-			ADD CONSTRAINT container_registry_tag_fk_manifest_digest
+			ADD CONSTRAINT container_registry_repository_tag_fk_manifest_digest
 				FOREIGN KEY(manifest_digest)
 					REFERENCES container_registry_manifest(digest);
 		"#

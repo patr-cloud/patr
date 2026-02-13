@@ -259,9 +259,9 @@ pub async fn upload_manifest(
 		query!(
 			r#"
 			INSERT INTO
-				container_registry_tag(
+				container_registry_repository_tag(
 					repository_id,
-					name,
+					tag,
 					manifest_digest
 				)
 			VALUES
@@ -270,7 +270,7 @@ pub async fn upload_manifest(
 					$2,
 					$3
 				)
-			ON CONFLICT (repository_id, name) DO NOTHING;
+			ON CONFLICT (repository_id, tag) DO NOTHING;
 			"#,
 			repository_id as _,
 			reference,

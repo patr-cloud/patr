@@ -88,10 +88,10 @@ pub async fn start_deployment(
 			SELECT
 				manifest_digest
 			FROM
-				container_registry_tag
+				container_registry_repository_tag
 			WHERE
 				repository_id = $1 AND
-				name = $2;
+				tag = $2;
 			"#,
 			repository_id as _,
 			image_tag as _

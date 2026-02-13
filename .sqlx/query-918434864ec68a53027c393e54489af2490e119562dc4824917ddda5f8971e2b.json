@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO container_registry_repository_tag(repository_id, tag, manifest_digest) VALUES ($1, $2, $3) ON CONFLICT (repository_id, tag) DO NOTHING;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "918434864ec68a53027c393e54489af2490e119562dc4824917ddda5f8971e2b"
+}

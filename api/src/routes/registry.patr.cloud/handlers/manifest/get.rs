@@ -143,11 +143,11 @@ pub async fn get_manifest(
 					SELECT
 						1
 					FROM
-						container_registry_tag t 
+						container_registry_repository_tag t
 					WHERE
 						t.repository_id = r.id AND
 						t.manifest_digest = m.digest AND
-						t.name = $1
+						t.tag = $1
 				)
 			) AND
 			r.workspace_id = $2 AND
