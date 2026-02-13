@@ -60,3 +60,9 @@ tracing-opentelemetry          = { workspace = true, features = ["default"] }
 tracing-subscriber             = { workspace = true, features = ["default"] }
 typed-builder                  = { workspace = true, features = [] }
 woothee                        = { workspace = true, features = ["default"] }
+
+[dev-dependencies]
+anyhow                 = { workspace = true, features = ["default"] }
+axum-test              = { workspace = true, features = ["default"] }
+testcontainers         = { workspace = true, features = ["default"] }
+testcontainers-modules = { workspace = true, features = ["default", "postgres", "minio", "redis"] }
