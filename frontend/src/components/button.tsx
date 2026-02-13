@@ -61,7 +61,7 @@ const Button = (rawProps: ParentProps<ButtonProps>) => {
 	};
 
 	return (
-		<button disabled={props.disabled} type={props.type} class={derivedClass()} onClick={props.onClick}>
+		<button disabled={props.disabled} type={props.type} class={derivedClass()} onClick={(e) => props.onClick?.(e)}>
 			{props.children}
 		</button>
 	);

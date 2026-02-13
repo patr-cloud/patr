@@ -119,6 +119,10 @@ const ApiTokenInfo = () => {
 					<PageContainerHead
 						breadcrumbs={[
 							{
+								label: "Settings",
+								url: "/profile",
+							},
+							{
 								label: "API Tokens",
 								url: "/profile/api-tokens",
 							},
@@ -126,7 +130,7 @@ const ApiTokenInfo = () => {
 								label: apiTokenInfo()?.name || "",
 							},
 						]}
-						subText="API Tokens can be used to interact with the Patr API on your behalf."
+						subText="API Tokens can be used to interact with the Patr API programmatically on your behalf."
 						actions={() => (
 							<div class="flex gap-2 px-2">
 								<RegenerateModal

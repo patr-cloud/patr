@@ -1,5 +1,5 @@
 import { useNavigate } from "@solidjs/router";
-import { createMemo, createResource, createSignal, ErrorBoundary, Suspense, For, Show } from "solid-js";
+import { createMemo, createResource, createSignal, ErrorBoundary, Suspense, Show } from "solid-js";
 import { FiCheck, FiCopy, FiAlertCircle } from "solid-icons/fi";
 import {
 	PageContainer,
@@ -88,7 +88,7 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 		return { records: response.data.verificationRecords || [] };
 	});
 
-	const onVerifyClick = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
+	const onVerifyClick = async (_: EventT<MouseEvent, HTMLButtonElement>) => {
 		setLoading(true);
 
 		const auth = authState();

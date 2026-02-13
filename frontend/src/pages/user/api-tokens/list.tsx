@@ -1,7 +1,15 @@
-import { A, useNavigate } from "@solidjs/router";
+import { useNavigate } from "@solidjs/router";
 import { createMemo, createResource, Suspense } from "solid-js";
 import { ListApiTokensResponse } from "~/bindings";
-import { ButtonVariant, Link, PageContainer, PageContainerBody, PageContainerHead, Table, useToast } from "~/components";
+import {
+	ButtonVariant,
+	Link,
+	PageContainer,
+	PageContainerBody,
+	PageContainerHead,
+	Table,
+	useToast,
+} from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
@@ -37,10 +45,21 @@ const ListApiTokens = () => {
 	return (
 		<PageContainer>
 			<PageContainerHead
-				titleUrl="/profile"
-				title="User"
-				subTitle="API Tokens"
-				actions={() => <Link href="/profile/api-tokens/new" buttonVariant={ButtonVariant.Contained} external={false}>Create API Token</Link>}
+				breadcrumbs={[
+					{
+						label: "Settings",
+						url: "/profile",
+					},
+					{
+						label: "API Tokens",
+					},
+				]}
+				subText="API Tokens can be used to interact with the Patr API programmatically on your behalf."
+				actions={() => (
+					<Link href="/profile/api-tokens/new" buttonVariant={ButtonVariant.Contained} external={false}>
+						Create API Token
+					</Link>
+				)}
 			/>
 			<PageContainerBody class="flex flex-col gap-8">
 				<Suspense fallback={<div>Loading API Tokens...</div>}>

@@ -1,4 +1,4 @@
-import { createResource, createSignal, Show, Suspense } from "solid-js";
+import { createResource, Show, Suspense, For } from "solid-js";
 import { Button, ButtonVariant, Link, PageContainer, PageContainerBody, Table, useToast } from "~/components";
 import { FiTrash2 } from "solid-icons/fi";
 import { useAuthState } from "~/hooks";
@@ -49,14 +49,16 @@ const EditRole = (props: { role: WithId<Role> }) => {
 
 	return (
 		<div class="text-white w-full">
-			{Object.entries(roleInfo()?.permissions || {}).map(([permissionId, permissionType]) => {
-				return (
-					<div class="flex justify-between items-center border-b border-border-color py-2">
-						<div>{permissionId}</div>
-						<div>{permissionType?.permissionType}</div>
-					</div>
-				);
-			})}
+			<For each={Object.entries(roleInfo()?.permissions || {})}>
+				{([permissionId, permissionType]) => {
+					return (
+						<div class="flex justify-between items-center border-b border-border-color py-2">
+							<div>{permissionId}</div>
+							<div>{permissionType?.permissionType}</div>
+						</div>
+					);
+				}}
+			</For>
 		</div>
 	);
 };
@@ -68,7 +70,6 @@ const RoleRow = (props: {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
-	const [showManageRole, setShowManageRole] = createSignal<boolean>(false);
 
 	const onClickDelete = async (roleId: string) => {
 		const auth = authState();

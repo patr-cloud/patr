@@ -1,7 +1,7 @@
 import { FiExternalLink, FiPlus, FiTrash2 } from "solid-icons/fi";
 import { createSignal, For } from "solid-js";
 import { ExposedPortType } from "~/bindings";
-import { Button, ButtonVariant, Input, InputDropdown, InputLabel, Link } from "~/components";
+import { Button, ButtonVariant, Input, InputDropdown, InputLabel } from "~/components";
 import { Color } from "~/utils/color";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";

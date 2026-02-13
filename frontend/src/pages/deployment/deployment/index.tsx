@@ -1,5 +1,5 @@
 import { useNavigate, useParams, useSearchParams } from "@solidjs/router";
-import { createMemo, createResource, ErrorBoundary, Match, Suspense, Switch } from "solid-js";
+import { createMemo, createResource, createSignal, ErrorBoundary, Match, Suspense, Switch } from "solid-js";
 import { GetDeploymentInfoResponse } from "~/bindings";
 import {
 	Button,
