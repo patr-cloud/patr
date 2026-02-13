@@ -1,182 +1,116 @@
-import { createMemo, createResource, createSignal, For, Show } from "solid-js";
-import { useNavigate } from "@solidjs/router";
+import { createSignal } from "solid-js";
+import { CreateContainerRepositoryRequest, CreateContainerRepositoryResponse } from "~/bindings";
 import {
-    Button,
-    ButtonVariant,
-    Input,
-    InputLabel,
-    InputType,
-    PageContainer,
-    PageContainerBody,
-    PageContainerHead,
-    Table,
-    ToggleSwitch,
-    useToast,
+	Button,
+	ButtonVariant,
+	Input,
+	InputLabel,
+	InputType,
+	PageContainer,
+	PageContainerBody,
+	PageContainerHead,
+	useToast,
 } from "~/components";
-import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
-import {
-    CreateContainerRepositoryRequest,
-    CreateContainerRepositoryResponse,
-    ListContainerRepositoriesResponse,
-    WithId,
-    ContainerRepository,
-} from "~/bindings";
+import { useAuthState } from "~/hooks";
+import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
-import { formatRelativeTime } from "~/utils/func";
 
 const CreateContainerRepository = () => {
-    const [authState] = useAuthState();
-    const [workspaceId] = useLastWorkspaceId();
-    const toast = useToast();
+	const [authState] = useAuthState();
+	const [workspaceId] = useLastWorkspaceId();
+	const toast = useToast();
 
-    const [repositoryName, setRepositoryName] = createSignal("");
-    const [isSubmitting, setIsSubmitting] = createSignal(false);
+	const [repositoryName, setRepositoryName] = createSignal("");
+	const [isSubmitting, setIsSubmitting] = createSignal(false);
 
-    const resourceParams = createMemo(() => {
-        return [authState(), workspaceId()] as const;
-    });
+	const handleSubmit = async (e: Event) => {
+		e.preventDefault();
 
-    const [repositories, { refetch }] = createResource(resourceParams, async ([auth, wsId]) => {
-        if (!wsId || !auth || auth.type !== "LoggedIn") {
-            return undefined;
-        }
+		const auth = authState();
+		const wsId = workspaceId();
 
-        const response = await httpRequest<ListContainerRepositoriesResponse>(
-            `${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry`,
-            {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${auth.accessToken}`,
-                },
-            }
-        );
+		if (!auth || auth.type !== "LoggedIn" || !wsId) {
+			toast("User not logged in", "error");
+			return;
+		}
 
-        if (!response.ok) {
-            console.error("Failed to fetch repositories:", response.data.error);
-            toast("Failed to fetch repositories", "error");
-            return undefined;
-        }
+		if (!repositoryName().trim()) {
+			toast("Repository name is required", "error");
+			return;
+		}
 
-        return response.data;
-    });
+		setIsSubmitting(true);
 
-    const handleSubmit = async (e: Event) => {
-        e.preventDefault();
-        const auth = authState();
-        const wsId = workspaceId();
+		const requestBody: CreateContainerRepositoryRequest = {
+			name: repositoryName().trim(),
+		};
 
-        if (!auth || auth.type !== "LoggedIn" || !wsId) {
-            toast("User not logged in", "error");
-            return;
-        }
+		const response = await httpRequest<CreateContainerRepositoryResponse>(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry`,
+			{
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(requestBody),
+			}
+		);
 
-        if (!repositoryName().trim()) {
-            toast("Repository name is required", "error");
-            return;
-        }
+		setIsSubmitting(false);
 
-        setIsSubmitting(true);
+		if (!response.ok) {
+			console.error("Failed to create repository:", response.data.error);
+			toast("Failed to create repository", "error");
+			return;
+		}
 
-        const requestBody: CreateContainerRepositoryRequest = {
-            name: repositoryName().trim(),
-        };
+		toast("Repository created successfully", "success");
+		setRepositoryName("");
+	};
+	return (
+		<PageContainer>
+			<PageContainerHead
+				breadcrumbs={[
+					{
+						label: "Repositories",
+						url: "/container-repositories",
+					},
+					{
+						label: "Add",
+					},
+				]}
+				subText="Create Deployments, Databases, Object Storage, Static Sites, Upgrade Paths and manage Repositories"
+			/>
+			<PageContainerBody class="flex flex-col justify-between gap-8">
+				<form onSubmit={handleSubmit} class="flex flex-col gap-8 items-start w-full justify-between flex-1">
+					<div class="flex w-full flex-col justify-between gap-6 h-full flex-1">
+						<div class="flex flex-col gap-6 items-start w-full">
+							<h1 class="text-md">Create Repository</h1>
 
-        const response = await httpRequest<CreateContainerRepositoryResponse>(
-            `${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry`,
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${auth.accessToken}`,
-                },
-                body: JSON.stringify(requestBody),
-            }
-        );
+							<div class="flex gap-8 items-center w-full">
+								<InputLabel parentClass="flex-2" for="repository-name" label="Repository Name" />
+								<Input
+									value={repositoryName()}
+									onInput={(e) => {
+										setRepositoryName(e.currentTarget.value);
+									}}
+									class="flex-10"
+									name="repository-name"
+									placeholder="Enter Repository Name"
+									type={InputType.Text}
+								/>
+							</div>
+						</div>
+					</div>
 
-        setIsSubmitting(false);
-        console.log("Create Repository Response:", response);
-
-        if (!response.ok) {
-            console.error("Failed to create repository:", response.data.error);
-            toast("Failed to create repository", "error");
-            return;
-        }
-
-        toast("Repository created successfully", "success");
-        setRepositoryName("");
-        refetch();
-    };
-
-    return (
-        <PageContainer>
-            <PageContainerHead
-                breadcrumbs={[
-                    {
-                        label: "Repository",
-                    },
-                ]}
-                subText="Create Deployments, Databases, Object Storage, Static Sites, Upgrade Paths and manage Repositories"
-            />
-
-            <PageContainerBody>
-                <div class="w-full flex flex-col gap-6">
-                    {/* Create Repository Form */}
-                    <div class="bg-secondary-light rounded-lg p-6">
-                        <h2 class="text-white text-lg font-medium mb-6">Create New Repository</h2>
-
-                        <form onSubmit={handleSubmit} class="flex flex-col gap-4">
-                            <div class="flex flex-row gap-4 items-center">
-                                <InputLabel for="repository-name" label="Repository Name:" parentClass="w-1/6" />
-                                <Input
-                                    class="w-full"
-                                    id="repository-name"
-                                    type={InputType.Text}
-                                    value={repositoryName()}
-                                    onInput={(e) => setRepositoryName(e.currentTarget.value)}
-                                    placeholder="Enter Name"
-                                    disabled={isSubmitting()}
-                                />
-                            </div>
-
-
-                            <div class="flex justify-end">
-                                <Button type="submit" variant={ButtonVariant.Contained} disabled={isSubmitting()}>
-                                    {isSubmitting() ? "CREATING..." : "CREATE REPOSITORY"}
-                                </Button>
-                            </div>
-                        </form>
-                    </div>
-
-                    {/* Repository Table */}
-                    <div class="w-full">
-                        <Show
-                            when={repositories()?.repositories && repositories()!.repositories.length > 0}
-                            fallback={
-                                <div class="w-full text-center py-16">
-                                    <p class="text-white text-lg">No Repository Exist</p>
-                                </div>
-                            }
-                        >
-                            <Table
-                                column_grids={["flex-1", "flex-1", "flex-1"]}
-                                headings={["Repository", "Visibility", "Date Created"]}
-                                rows={repositories()?.repositories || []}
-                                renderRow={(repo: WithId<ContainerRepository>) => (
-                                    <tr class="table-row">
-                                        <td class="flex-1">
-                                            <span class="truncate">{repo.name}</span>
-                                        </td>
-                                        <td class="flex-1">{formatRelativeTime(repo.created)}</td>
-                                    </tr>
-                                )}
-                            />
-                        </Show>
-                    </div>
-                </div>
-            </PageContainerBody>
-        </PageContainer>
-    );
+					<div class="w-full flex justify-end">
+						<Button variant={ButtonVariant.Contained} type="submit">
+							Create Repository
+						</Button>
+					</div>
+				</form>
+			</PageContainerBody>
+		</PageContainer>
+	);
 };
-
 export default CreateContainerRepository;
