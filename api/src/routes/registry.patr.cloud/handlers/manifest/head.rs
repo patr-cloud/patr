@@ -152,7 +152,7 @@ pub async fn check_manifest(
 					WHERE
 						t.repository_id = r.id AND
 						t.manifest_digest = m.digest AND
-						t.tag = $1
+						t.name = $1
 				)
 			) AND
 			r.workspace_id = $2 AND

@@ -1,0 +1,36 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT m.content_type, m.size, m.digest FROM container_registry_manifest m INNER JOIN container_registry_repository_manifest rm ON m.digest = rm.manifest_digest INNER JOIN container_registry_repository r ON rm.repository_id = r.id WHERE (m.digest = $1 OR EXISTS(SELECT 1 FROM container_registry_repository_tag t WHERE t.repository_id = r.id AND t.manifest_digest = m.digest AND t.name = $1)) AND r.workspace_id = $2 AND r.name = $3 AND r.deleted IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "content_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "size",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "digest",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "66124f84913e54a1b38a50739a91eb7df378ce4a4d10038a4de174f81a0d7eaf"
+}

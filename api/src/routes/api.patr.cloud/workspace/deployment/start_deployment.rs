@@ -91,7 +91,7 @@ pub async fn start_deployment(
 				container_registry_repository_tag
 			WHERE
 				repository_id = $1 AND
-				tag = $2;
+				name = $2;
 			"#,
 			repository_id as _,
 			image_tag as _

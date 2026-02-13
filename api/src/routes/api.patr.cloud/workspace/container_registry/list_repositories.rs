@@ -48,26 +48,23 @@ pub async fn list_repositories(
 			COALESCE(
 				(
 					SELECT
-						SUM(container_registry_repository_blob.size)
+						SUM(container_registry_blob.size)
 					FROM
+						container_registry_blob
+					INNER JOIN
 						container_registry_repository_manifest
-					LEFT JOIN
-						container_registry_manifest_blob
 					ON
-						container_registry_repository_manifest.manifest_digest = container_registry_manifest_blob.manifest_digest
-					LEFT JOIN
-						container_registry_repository_blob
-					ON
-						container_registry_manifest_blob.blob_digest = container_registry_repository_blob.blob_digest
+						container_registry_blob.digest = container_registry_repository_manifest.manifest_digest
 					WHERE
 						container_registry_repository_manifest.repository_id = container_registry_repository.id
 				),
 				0
 			)::BIGINT AS "size!",
 			GREATEST(
+				resource.created,
 				(
 					SELECT
-						MAX(container_registry_repository_tag.last_updated)
+						MAX(last_updated)
 					FROM
 						container_registry_repository_tag
 					WHERE
@@ -75,13 +72,12 @@ pub async fn list_repositories(
 				),
 				(
 					SELECT
-						MAX(container_registry_repository_manifest.created_at)
+						MAX(created_at)
 					FROM
 						container_registry_repository_manifest
 					WHERE
 						repository_id = container_registry_repository.id
-				),
-				resource.created
+				)
 			) AS "last_updated!",
 			resource.created,
 			COUNT(*) OVER () AS "count!"
@@ -105,7 +101,8 @@ pub async fn list_repositories(
 		"#,
 		workspace_id as _,
 		user_data.login_id as _,
-		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::View).to_string(),
+		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::View)
+			.to_string(),
 		count as i32,
 		(page * count) as i32
 	)

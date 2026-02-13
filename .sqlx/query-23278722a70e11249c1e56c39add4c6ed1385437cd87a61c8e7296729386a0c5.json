@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT manifest_digest FROM container_registry_repository_tag WHERE repository_id = $1 AND tag = $2;",
+  "query": "SELECT manifest_digest FROM container_registry_repository_tag WHERE repository_id = $1 AND name = $2;",
   "describe": {
     "columns": [
       {
@@ -19,5 +19,5 @@
       false
     ]
   },
-  "hash": "f4e02e128b4c3b5d117b0329078baf06a88194cd1ebff7119c3039f06a4f804c"
+  "hash": "23278722a70e11249c1e56c39add4c6ed1385437cd87a61c8e7296729386a0c5"
 }

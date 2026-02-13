@@ -15,27 +15,27 @@
       },
       {
         "ordinal": 2,
-        "name": "workspace_id",
-        "type_info": "Uuid"
-      },
-      {
-        "ordinal": 3,
-        "name": "cloudflare_tunnel_id",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 4,
-        "name": "deleted",
-        "type_info": "Timestamptz"
-      },
-      {
-        "ordinal": 5,
         "name": "is_connected",
         "type_info": "Bool"
       },
       {
-        "ordinal": 6,
+        "ordinal": 3,
         "name": "last_seen",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "workspace_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "cloudflare_tunnel_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "deleted",
         "type_info": "Timestamptz"
       }
     ],
@@ -49,8 +49,8 @@
       false,
       false,
       false,
-      false,
       true,
+      false,
       false,
       true
     ]

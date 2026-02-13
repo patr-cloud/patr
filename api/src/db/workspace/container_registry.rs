@@ -78,7 +78,8 @@ pub async fn initialize_container_registry_tables(
 		CREATE TABLE container_registry_repository_tag(
 			name TEXT NOT NULL,
 			repository_id UUID NOT NULL,
-			manifest_digest TEXT NOT NULL
+			manifest_digest TEXT NOT NULL,
+			last_updated TIMESTAMPTZ NOT NULL
 		);
 		"#
 	)

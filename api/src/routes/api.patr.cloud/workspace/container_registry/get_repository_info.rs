@@ -49,32 +49,21 @@ pub async fn get_repository_info(
 	let size = query!(
 		r#"
 		SELECT
-			COALESCE(SUM(size), 0)::BIGINT AS "size!"
+			COALESCE(SUM(container_registry_blob.size), 0)::BIGINT AS "size!"
 		FROM
-			container_registry_repository
+			container_registry_blob
 		INNER JOIN
 			container_registry_repository_manifest
 		ON
-			container_registry_repository.id 
-			= container_registry_repository_manifest.repository_id
-		INNER JOIN
-			container_registry_manifest_blob
-		ON
-			container_registry_repository_manifest.manifest_digest 
-			= container_registry_manifest_blob.manifest_digest
-		INNER JOIN
-			container_registry_repository_blob
-		ON
-			container_registry_manifest_blob.blob_digest 
-			= container_registry_repository_blob.blob_digest
+			container_registry_blob.digest = container_registry_repository_manifest.manifest_digest
 		WHERE
-			container_registry_repository.workspace_id = $1;
+			container_registry_repository_manifest.repository_id = $1;
 		"#,
-		workspace_id as _,
+		repository_id as _,
 	)
 	.fetch_one(&mut **database)
-	.await
-	.map(|repo| repo.size as u64)?;
+	.await?
+	.size as u64;
 
 	let last_updated = query!(
 		r#"
@@ -83,25 +72,19 @@ pub async fn get_repository_info(
 				resource.created,
 				(
 					SELECT
-						COALESCE(created_at, TO_TIMESTAMP(0))
-					FROM
-						container_registry_repository_manifest
-					WHERE
-						repository_id = $1
-					ORDER BY
-						created_at DESC
-					LIMIT 1
-				),
-				(
-					SELECT
-						COALESCE(last_updated, TO_TIMESTAMP(0))
+						MAX(last_updated)
 					FROM
 						container_registry_repository_tag
 					WHERE
 						repository_id = $1
-					ORDER BY
-						last_updated DESC
-					LIMIT 1
+				),
+				(
+					SELECT
+						MAX(created_at)
+					FROM
+						container_registry_repository_manifest
+					WHERE
+						repository_id = $1
 				)
 			) AS "last_updated!"
 		FROM

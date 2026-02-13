@@ -13,12 +13,7 @@
       "Left": [
         "Text",
         "Uuid",
-        {
-          "Custom": {
-            "name": "citext",
-            "kind": "Simple"
-          }
-        }
+        "Text"
       ]
     },
     "nullable": [

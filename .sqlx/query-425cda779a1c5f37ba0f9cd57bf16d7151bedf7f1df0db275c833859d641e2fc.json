@@ -5,13 +5,13 @@
     "columns": [
       {
         "ordinal": 0,
-        "name": "repository_id",
-        "type_info": "Uuid"
+        "name": "name",
+        "type_info": "Text"
       },
       {
         "ordinal": 1,
-        "name": "tag",
-        "type_info": "Text"
+        "name": "repository_id",
+        "type_info": "Uuid"
       },
       {
         "ordinal": 2,

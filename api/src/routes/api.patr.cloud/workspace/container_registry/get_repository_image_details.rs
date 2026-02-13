@@ -52,7 +52,7 @@ pub async fn get_repository_image_details(
 	let image_tags = query!(
 		r#"
 		SELECT
-			tag,
+			name,
 			last_updated
 		FROM
 			container_registry_repository_tag
@@ -66,25 +66,19 @@ pub async fn get_repository_image_details(
 	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
-	.map(|row| row.tag)
+	.map(|row| row.name)
 	.collect();
 
 	let image_size = query!(
 		r#"
 		SELECT
-			COALESCE(SUM(container_registry_repository_blob.size), 0)::BIGINT AS "image_size"
+			COALESCE(SUM(container_registry_blob.size), 0)::BIGINT AS "image_size"
 		FROM
-			container_registry_manifest_blob
-		INNER JOIN
-			container_registry_repository_blob
-		ON
-			container_registry_manifest_blob.blob_digest
-			= container_registry_repository_blob.blob_digest
+			container_registry_blob
 		INNER JOIN
 			container_registry_repository_manifest
 		ON
-			container_registry_manifest_blob.manifest_digest
-			= container_registry_repository_manifest.manifest_digest
+			container_registry_blob.digest = container_registry_repository_manifest.manifest_digest
 		WHERE
 			container_registry_repository_manifest.repository_id = $1 AND
 			container_registry_repository_manifest.manifest_digest = $2;

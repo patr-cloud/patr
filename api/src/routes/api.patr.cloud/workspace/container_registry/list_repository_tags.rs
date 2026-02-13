@@ -66,7 +66,7 @@ pub async fn list_repository_tags(
 	.map(|row| {
 		total_count = row.count;
 		ContainerRepositoryTagAndDigestInfo {
-			tag: row.tag,
+			tag: row.name,
 			last_updated: row.last_updated,
 			digest: row.manifest_digest,
 		}
