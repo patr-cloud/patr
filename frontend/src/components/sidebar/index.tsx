@@ -1,5 +1,5 @@
 import { A, useLocation } from "@solidjs/router";
-import { FiHome, FiBox, FiDatabase, FiCpu, FiGlobe, FiSettings, FiChevronDown, FiChevronRight } from "solid-icons/fi";
+import { FiHome, FiBox, FiDatabase, FiCpu, FiGlobe, FiSettings, FiChevronDown, FiChevronRight, FiPackage } from "solid-icons/fi";
 import { Component, createSignal, For, Show } from "solid-js";
 import WorkspaceSwitcher from "./workspace-switcher";
 
@@ -32,11 +32,10 @@ const SidebarItem = (props: SidebarItemProps) => {
 		<div class="w-full">
 			<A
 				href={props.href || "#"}
-				class={`flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors duration-200 ${
-					isActive()
-						? "text-white bg-primary/10 border-r-2 border-primary"
-						: "text-gray-400 hover:text-white hover:bg-white/5"
-				}`}
+				class={`flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors duration-200 ${isActive()
+					? "text-white bg-primary/10 border-r-2 border-primary"
+					: "text-gray-400 hover:text-white hover:bg-white/5"
+					}`}
 				onClick={handleClick}
 			>
 				<div class="flex items-center gap-3">
@@ -55,11 +54,10 @@ const SidebarItem = (props: SidebarItemProps) => {
 						{(child) => (
 							<A
 								href={child.href || "#"}
-								class={`flex items-center gap-3 pl-11 pr-4 py-2 text-sm transition-colors duration-200 ${
-									location.pathname === child.href
-										? "text-white bg-white/5"
-										: "text-gray-400 hover:text-white hover:bg-white/5"
-								}`}
+								class={`flex items-center gap-3 pl-11 pr-4 py-2 text-sm transition-colors duration-200 ${location.pathname === child.href
+									? "text-white bg-white/5"
+									: "text-gray-400 hover:text-white hover:bg-white/5"
+									}`}
 							>
 								<span>{child.label}</span>
 							</A>
@@ -92,6 +90,11 @@ const Sidebar: Component = () => {
 			label: "Domains",
 			icon: FiGlobe,
 			href: "/domains",
+		},
+		{
+			label: "Container Repositories",
+			icon: FiPackage,
+			href: "/container-repositories",
 		},
 		{
 			label: "Workspace Settings",

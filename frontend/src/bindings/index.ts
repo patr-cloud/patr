@@ -26,8 +26,8 @@ import { UpdateDeploymentResponse } from "./UpdateDeploymentResponse";
 import { AddDomainToWorkspaceRequest } from "./AddDomainToWorkspaceRequest";
 import { AddDomainToWorkspaceResponse } from "./AddDomainToWorkspaceResponse";
 import { DomainNameserverType } from "./DomainNameserverType";
-import { GetDomainsForWorkspaceRequest } from "./GetDomainsForWorkspaceRequest";
-import { GetDomainsForWorkspaceResponse } from "./GetDomainsForWorkspaceResponse";
+// import { GetDomainsForWorkspaceRequest } from "./GetDomainsForWorkspaceRequest";
+// import { GetDomainsForWorkspaceResponse } from "./GetDomainsForWorkspaceResponse";
 import { WorkspaceDomain } from "./WorkspaceDomain";
 import { GetDomainInfoInWorkspaceRequest } from "./GetDomainInfoInWorkspaceRequest";
 import { GetDomainInfoInWorkspaceResponse } from "./GetDomainInfoInWorkspaceResponse";
@@ -75,6 +75,17 @@ import { PatrDomainDnsRecord } from "./PatrDomainDnsRecord";
 import { Role } from "./Role";
 import { ResourcePermissionType } from "./ResourcePermissionType";
 import { GetRoleInfoResponse } from "./GetRoleInfoResponse";
+import { ListContainerRepositoriesResponse } from "./ListContainerRepositoriesResponse";
+import { CreateContainerRepositoryResponse } from "./CreateContainerRepositoryResponse";
+import { CreateContainerRepositoryRequest } from "./CreateContainerRepositoryRequest";
+import { ContainerRepository } from "./ContainerRepository";
+import { GetContainerRepositoryInfoRequest } from "./GetContainerRepositoryInfoRequest";
+import { GetContainerRepositoryInfoResponse } from "./GetContainerRepositoryInfoResponse";
+import { GetContainerRepositoryImageDetailsRequest } from "./GetContainerRepositoryImageDetailsRequest";
+import { GetContainerRepositoryImageDetailsResponse } from "./GetContainerRepositoryImageDetailsResponse";
+import { DeleteContainerRepositoryImageRequest } from "./DeleteContainerRepositoryImageRequest";
+import { DeleteContainerRepositoryImageResponse } from "./DeleteContainerRepositoryImageResponse";
+import { ListContainerRepositoryTagsResponse } from "./ListContainerRepositoryTagsResponse";
 
 export type {
 	EnvironmentVariableValue,
@@ -105,8 +116,8 @@ export type {
 	AddDomainToWorkspaceRequest,
 	AddDomainToWorkspaceResponse,
 	DomainNameserverType,
-	GetDomainsForWorkspaceRequest,
-	GetDomainsForWorkspaceResponse,
+	// GetDomainsForWorkspaceRequest,
+	// GetDomainsForWorkspaceResponse,
 	WorkspaceDomain,
 	GetDomainInfoInWorkspaceRequest,
 	GetDomainInfoInWorkspaceResponse,
@@ -154,4 +165,15 @@ export type {
 	Role,
 	GetRoleInfoResponse,
 	ResourcePermissionType,
+	CreateContainerRepositoryRequest,
+	CreateContainerRepositoryResponse,
+	ListContainerRepositoriesResponse,
+	ContainerRepository,
+	GetContainerRepositoryInfoRequest,
+	GetContainerRepositoryInfoResponse,
+	GetContainerRepositoryImageDetailsRequest,
+	GetContainerRepositoryImageDetailsResponse,
+	DeleteContainerRepositoryImageRequest,
+	DeleteContainerRepositoryImageResponse,
+	ListContainerRepositoryTagsResponse,
 };
