@@ -1,3 +1,4 @@
+import { useNavigate } from "@solidjs/router";
 import { createSignal } from "solid-js";
 import { CreateContainerRepositoryRequest, CreateContainerRepositoryResponse } from "~/bindings";
 import {
@@ -19,6 +20,7 @@ const CreateContainerRepository = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
+	const navigate = useNavigate();
 
 	const [repositoryName, setRepositoryName] = createSignal("");
 	const [isSubmitting, setIsSubmitting] = createSignal(false);
@@ -66,6 +68,7 @@ const CreateContainerRepository = () => {
 
 		toast("Repository created successfully", "success");
 		setRepositoryName("");
+		navigate(`/container-repositories/${response.data.id}`);
 	};
 	return (
 		<PageContainer>

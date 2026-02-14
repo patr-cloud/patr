@@ -1,6 +1,15 @@
-import { useParams, useSearchParams } from "@solidjs/router";
-import { createMemo, createResource, ErrorBoundary, Suspense } from "solid-js";
-import { HeadTab, PageContainer, PageContainerBody, PageContainerHead, useToast } from "~/components";
+import { useNavigate, useParams, useSearchParams } from "@solidjs/router";
+import { createMemo, createResource, createSignal, ErrorBoundary, Suspense } from "solid-js";
+import {
+	Button,
+	ButtonVariant,
+	DeleteModal,
+	HeadTab,
+	PageContainer,
+	PageContainerBody,
+	PageContainerHead,
+	useToast,
+} from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { GetContainerRepositoryInfoResponse, ListContainerRepositoryTagsResponse } from "~/bindings";
@@ -12,9 +21,11 @@ const ContainerInfo = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
+	const navigate = useNavigate();
 	const params = useParams();
 
 	const [searchParams, setSearchParams] = useSearchParams();
+	const [isDeleteModalOpen, setIsDeleteModalOpen] = createSignal(false);
 	const tab = () => (searchParams.tab as string) || "";
 
 	const resourceParams = createMemo(() => {
@@ -25,7 +36,7 @@ const ContainerInfo = () => {
 		if (!wsId || !auth || auth.type !== "LoggedIn" || !repoId) {
 			return undefined;
 		}
-
+		console.log("Fetching repository info for repoId:", wsId, repoId);
 		const response = await httpRequest<GetContainerRepositoryInfoResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${repoId}`,
 			{
@@ -36,7 +47,7 @@ const ContainerInfo = () => {
 				},
 			}
 		);
-
+		console.log("Fetched repository info:", response);
 		if (!response.ok) {
 			console.error("Failed to fetch repository info:", response.data.error);
 			toast("Failed to fetch repository info", "error");
@@ -50,7 +61,7 @@ const ContainerInfo = () => {
 		if (!wsId || !auth || auth.type !== "LoggedIn" || !repoId) {
 			return undefined;
 		}
-
+		console.log("Fetching image tags for repository:", repoId);
 		const response = await httpRequest<ListContainerRepositoryTagsResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${repoId}/tag`,
 			{
@@ -61,7 +72,7 @@ const ContainerInfo = () => {
 				},
 			}
 		);
-
+		console.log("Fetched image tags:", response);
 		if (!response.ok) {
 			console.error("Failed to fetch image tags:", response.data.error);
 			toast("Failed to fetch image tags", "error");
@@ -70,6 +81,42 @@ const ContainerInfo = () => {
 
 		return response.data;
 	});
+
+	const handleDelete = async (
+		e: MouseEvent & {
+			currentTarget: HTMLButtonElement;
+		}
+	) => {
+		e.preventDefault();
+
+		const auth = authState();
+		const currentWorkspace = workspaceId();
+		const repository = repositoryInfo();
+
+		if (!auth || auth.type !== "LoggedIn" || !currentWorkspace || !repository) {
+			console.error("User not logged in or workspace ID missing");
+			return;
+		}
+
+		const resp = await httpRequest(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId()}/docker-registry/${params.id}`,
+			{
+				method: "DELETE",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${auth.accessToken}`,
+				},
+			}
+		);
+		console.log("Delete container-repository response:", resp);
+		if (!resp.ok) {
+			toast("Failed to delete repository", "error");
+			return;
+		}
+
+		toast("Repository deleted successfully", "success");
+		navigate("/container-repositories");
+	};
 
 	const renderTab = () => {
 		switch (tab()) {
@@ -98,6 +145,21 @@ const ContainerInfo = () => {
 				]}
 				subText="View and manage container repository images"
 				class="justify-between items-center"
+				actions={() => (
+					<div class="flex items-center justify-end gap-3">
+						<Suspense fallback={<div>Loading actions...</div>}>
+							{repositoryInfo() && repositoryInfo()?.repository?.name && (
+								<DeleteModal
+									title="Do You Really Want to Delete This Repository?"
+									resourceName={repositoryInfo()?.repository?.name || ""}
+									onClickDelete={handleDelete}
+									isOpen={isDeleteModalOpen}
+									setIsOpen={setIsDeleteModalOpen}
+								/>
+							)}
+						</Suspense>
+					</div>
+				)}
 				bottomContent={() => (
 					<HeadTab
 						tab={tab}

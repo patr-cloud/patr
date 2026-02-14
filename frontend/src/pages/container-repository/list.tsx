@@ -18,6 +18,7 @@ const ListContainerRepository = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
+	const navigate = useNavigate();
 
 	const resourceParams = createMemo(() => {
 		return [authState(), workspaceId()] as const;
@@ -38,7 +39,7 @@ const ListContainerRepository = () => {
 				},
 			}
 		);
-
+		
 		if (!response.ok) {
 			console.error("Failed to fetch repositories:", response.data.error);
 			toast("Failed to fetch repositories", "error");
@@ -76,11 +77,11 @@ const ListContainerRepository = () => {
 							}
 						>
 							<Table
-								column_grids={["flex-1", "flex-1", "flex-1"]}
-								headings={["Repository", "Visibility", "Date Created"]}
+								column_grids={["flex-1", "flex-1"]}
+								headings={["Repository", "Date Created"]}
 								rows={repositories()?.repositories || []}
 								renderRow={(repo: WithId<ContainerRepository>) => (
-									<tr class="table-row">
+									<tr class="table-row" onClick={() => navigate(`/container-repositories/${repo.id}`)}>
 										<td class="flex-1">
 											<span class="truncate">{repo.name}</span>
 										</td>
