@@ -14,12 +14,12 @@ import ManageWorkspace from "~/pages/workspace/manage-workspace";
 import ManageRoles from "~/pages/workspace/roles/manage-roles";
 import CreateRoles from "~/pages/workspace/roles/create-roles";
 import RoleInfo from "~/pages/workspace/roles/role-info";
-import useFetchWorkspaces from "~/hooks/use-fetch/use-fetch-wokrspaces";
-import useFetchUserPermissions from "~/hooks/use-fetch/use-fetch-user-permissions";
 import CreateContainerRepository from "~/pages/container-repository/create";
 import ContainerRepositoryInfo from "~/pages/container-repository/container";
 import ListContainerRepositories from "~/pages/container-repository/list";
 import General from "~/pages/workspace/general";
+import { useFetchWorkspaces } from "~/hooks/fetch";
+import { useFetchUserPermissions } from "~/hooks/fetch";
 
 const WorkspacedLayout = (props: ParentProps<{}>) => {
 	const [workspaces] = useFetchWorkspaces();

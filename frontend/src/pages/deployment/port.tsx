@@ -1,7 +1,7 @@
 import { FiExternalLink, FiPlus, FiTrash2 } from "solid-icons/fi";
 import { createSignal, Show } from "solid-js";
 import { ExposedPortType } from "~/bindings";
-import { Button, ButtonVariant, Input, InputDropdown, InputLabel, Link } from "~/components";
+import { Button, ButtonVariant, Input, InputDropdown, InputLabel, Link, useToast } from "~/components";
 import { Color } from "~/utils/color";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
@@ -24,6 +24,8 @@ interface PortInputProps {
 const PortInput = (props: PortInputProps) => {
 	const [portNumber, setPortNumber] = createSignal<string>("");
 	const [portType, setPortType] = createSignal<ExposedPortType | undefined>(undefined);
+
+	const toast = useToast();
 
 	return (
 		<div class={`${get(props.class)} flex gap-8 items-start w-full`}>
@@ -77,6 +79,14 @@ const PortInput = (props: PortInputProps) => {
 							class="flex-5"
 							onSelect={(value) => {
 								setPortType(value as ExposedPortType);
+								const envVal = get(portType);
+								const portVal = portNumber();
+
+								if (envVal && portVal) {
+									props.onAdd(portVal, envVal);
+									setPortNumber("");
+									setPortType(undefined);
+								}
 							}}
 							options={[
 								{
@@ -101,7 +111,10 @@ const PortInput = (props: PortInputProps) => {
 							onClick={(e) => {
 								e.preventDefault();
 								const envVal = get(portType);
-								if (!envVal) {
+								const portVal = portNumber();
+
+								if (!envVal || !portVal) {
+									toast("Both Port Number and Port Type are required", "error");
 									return;
 								}
 								props.onAdd(portNumber(), envVal);

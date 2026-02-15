@@ -13,7 +13,7 @@ import {
 } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
-import useIsAllowed from "~/hooks/use-is-allowed";
+import { useIsAllowed } from "~/hooks";
 
 const DeploymentListRow = (props: { item: WithId<Deployment>; runnerName: string }) => {
 	const navigate = useNavigate();

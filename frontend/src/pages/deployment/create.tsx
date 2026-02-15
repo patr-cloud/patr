@@ -22,7 +22,7 @@ import {
 	ListRunnersForWorkspaceResponse,
 } from "~/bindings";
 import PortInput from "./port";
-import { useAuthState } from "~/hooks";
+import { createFormAction, useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import { convertFileToBase64, Uuid } from "~/utils/func";
@@ -80,20 +80,7 @@ const CreateDeploymentPage = () => {
 		[key: string]: ExposedPortType;
 	}>({});
 
-	const onSubmit = async (
-		e: SubmitEvent & {
-			currentTarget: HTMLFormElement;
-		}
-	) => {
-		e.preventDefault();
-
-		const auth = authState();
-		const currentWorkspaceId = lastUsedWorkspaceId();
-		if (!auth || auth.type !== "LoggedIn" || !currentWorkspaceId) {
-			console.error("User is not logged in");
-			return;
-		}
-
+	const { onSubmit, isLoading } = createFormAction(async ({ accessToken, workspaceId }) => {
 		let configMounts: Record<string, Base64String> = {};
 		for (const [key, file] of Object.entries(configFiles())) {
 			const byteArray = await convertFileToBase64(file);
@@ -119,13 +106,9 @@ const CreateDeploymentPage = () => {
 		console.log(requestBody);
 
 		const response = await httpRequest<CreateDeploymentResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${lastUsedWorkspaceId()}/deployment`,
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/deployment`,
 			{
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 				body: JSON.stringify(requestBody),
 			}
 		);
@@ -140,7 +123,7 @@ const CreateDeploymentPage = () => {
 
 		navigate(`/deployments/${response.data.id}`);
 		console.log("Deployment created:", response.data);
-	};
+	});
 
 	return (
 		<PageContainer>
@@ -269,7 +252,12 @@ const CreateDeploymentPage = () => {
 					</div>
 
 					<div class="w-full flex items-end justify-end">
-						<Button type="submit" variant={ButtonVariant.Contained}>
+						<Button
+							loading={isLoading}
+							loadingContent={() => <span>Creating Deployment</span>}
+							type="submit"
+							variant={ButtonVariant.Contained}
+						>
 							Create
 						</Button>
 					</div>

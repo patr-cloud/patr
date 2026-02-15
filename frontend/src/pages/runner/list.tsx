@@ -13,7 +13,7 @@ import {
 import { useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import useIsAllowed from "~/hooks/use-is-allowed";
+import { useIsAllowed } from "~/hooks";
 import { formatRelativeTime } from "~/utils/func";
 import { httpRequest } from "~/utils/http-request";
 
@@ -35,10 +35,6 @@ const ListRunnersPage = () => {
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner`,
 			{
 				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
 

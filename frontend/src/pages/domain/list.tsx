@@ -18,7 +18,7 @@ import { httpRequest } from "~/utils/http-request";
 import { ModalContainer } from "~/components/modal";
 import { GetDomainInfoInWorkspaceResponse, GetVerificationRecordsForDomainResponse } from "~/bindings";
 import { EventT } from "~/utils/types";
-import useIsAllowed from "~/hooks/use-is-allowed";
+import { useIsAllowed } from "~/hooks";
 
 // Type definitions based on API bindings
 type WorkspaceDomain = {
@@ -51,10 +51,6 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain/${domainId}/verification-records`,
 			{
 				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
 
@@ -82,9 +78,6 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain/${domainId}/verify`,
 			{
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
 			}
 		);
 
@@ -178,7 +171,7 @@ const VerificationIcon = (props: { domain: WorkspaceDomain }) => {
 			renderTrigger={(setOpen) => (
 				<Button
 					variant={ButtonVariant.Plain}
-					onClick={(e) => {
+					onClick={(e: EventT<MouseEvent, HTMLButtonElement>) => {
 						e.stopPropagation();
 						setOpen(true);
 					}}
@@ -215,10 +208,6 @@ const ListDomainsPage = () => {
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain`,
 			{
 				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
 

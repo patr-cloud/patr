@@ -1,7 +1,7 @@
 import { FiPlus, FiTrash2 } from "solid-icons/fi";
 import { createSignal, Show } from "solid-js";
 import { EnvironmentVariableValue } from "~/bindings";
-import { Button, ButtonVariant, Input, InputLabel, InputType } from "~/components";
+import { Button, ButtonVariant, Input, InputLabel, InputType, useToast } from "~/components";
 import { Color } from "~/utils/color";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
@@ -26,6 +26,7 @@ const parseEnvValue = (value: EnvironmentVariableValue): string => {
 const EnvInput = (props: EnvInputProps) => {
 	const [envName, setEnvName] = createSignal<string>("");
 	const [envValue, setEnvValue] = createSignal<string>("");
+	const toast = useToast();
 
 	return (
 		<div class="flex gap-8 items-start w-full">
@@ -88,6 +89,15 @@ const EnvInput = (props: EnvInputProps) => {
 							type={InputType.Text}
 							onInput={(e) => {
 								setEnvValue(e.currentTarget.value);
+
+								const envVal = envValue();
+								const envKey = e.currentTarget.value;
+
+								if (!envKey || !envVal) return;
+
+								props.onAdd(envKey, envVal);
+								setEnvName("");
+								setEnvValue("");
 							}}
 						/>
 
@@ -97,6 +107,15 @@ const EnvInput = (props: EnvInputProps) => {
 							class="flex-1 h-full flex items-center gap-2"
 							onClick={(e) => {
 								e.preventDefault();
+
+								const envKey = envName();
+								const envVal = envValue();
+
+								if (!envKey || !envVal) {
+									toast("Both Env Name and Value are required", "error");
+									return;
+								};
+
 								props.onAdd(envName(), envValue());
 								setEnvName("");
 								setEnvValue("");

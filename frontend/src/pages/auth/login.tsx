@@ -274,14 +274,10 @@ const Login = () => {
 							variant={ButtonVariant.Contained}
 							class="py-4 text-base font-semibold px-xxl flex-end"
 							type="submit"
-							disabled={isLoading()}
+							loading={isLoading()}
+							loadingContent={() => <span>Logging in...</span>}
 						>
-							<Show when={isLoading()} fallback="Login">
-								<div class="flex items-center gap-2">
-								<LoadingSpinner size={20} />
-									<span>Logging in...</span>
-								</div>
-							</Show>
+							Login
 						</Button>
 					</div>
 				</div>

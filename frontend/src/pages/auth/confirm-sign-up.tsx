@@ -7,8 +7,10 @@ import OtpInput from "~/components/otp-input";
 const ConfirmSignUp = () => {
 	const navigate = useNavigate();
 	const toast = useToast();
+
 	const [searchParams] = useSearchParams<{ username?: string; otp?: string }>();
 	const [turnstileToken, setTurnstileToken] = createSignal<string>("");
+	const [isLoading, setIsLoading] = createSignal(false);
 
 	// Get username from URL params or navigation state
 	const initialUsername = searchParams.username || "";
@@ -39,6 +41,7 @@ const ConfirmSignUp = () => {
 			return;
 		}
 
+		setIsLoading(true);
 		const body: CompleteSignUpRequest = {
 			username: username(),
 			verificationToken: otpDigits().join(""),
@@ -61,6 +64,7 @@ const ConfirmSignUp = () => {
 			console.error("Error confirming account:", resp.statusText);
 			toast("Error confirming account", "error");
 		}
+		setIsLoading(false);
 	};
 
 	return (
@@ -119,8 +123,12 @@ const ConfirmSignUp = () => {
 					Back to Sign Up
 				</A>
 				<Button
+					loading={isLoading()}
+					loadingContent={() => <span>Confirming...</span>}
 					variant={ButtonVariant.Contained}
 					class="py-4 text-base font-semibold px-xxl flex-end transition-all duration-200"
+					type="submit"
+					disabled={!turnstileToken() || otpDigits().some((d) => d === "")}
 				>
 					Confirm
 				</Button>

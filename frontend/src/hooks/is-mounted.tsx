@@ -6,7 +6,7 @@ import { createSignal, onMount } from "solid-js";
  *
  * @returns A signal that is false during SSR and initial hydration, true after mount
  */
-export const useIsMounted = () => {
+const useIsMounted = () => {
 	const [isMounted, setIsMounted] = createSignal(false);
 
 	onMount(() => {
@@ -15,3 +15,5 @@ export const useIsMounted = () => {
 
 	return isMounted;
 };
+
+export default useIsMounted;

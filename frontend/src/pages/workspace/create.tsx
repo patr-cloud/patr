@@ -10,10 +10,9 @@ import {
 	PageContainerHead,
 	useToast,
 } from "~/components";
-import { useAuthState } from "~/hooks";
+import { createAsyncAction, useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
-import { EventT } from "~/utils/types";
 
 const CreateWorkspace = () => {
 	const [authState] = useAuthState();
@@ -22,9 +21,7 @@ const CreateWorkspace = () => {
 
 	const [workspaceName, setWorkspaceName] = createSignal("");
 
-	const onCreateWorkspace = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
-		e.preventDefault();
-
+	const { execute: createWorkspace, isLoading } = createAsyncAction(async () => {
 		const auth = authState();
 		if (!auth || auth.type !== "LoggedIn") {
 			toast("You must be logged in to create a workspace", "error");
@@ -37,9 +34,6 @@ const CreateWorkspace = () => {
 
 		const response = await httpRequest<CreateWorkspaceResponse>(`${import.meta.env.VITE_BASE_URL}/api/workspace`, {
 			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
 			body: JSON.stringify(requestBody),
 		});
 
@@ -55,7 +49,7 @@ const CreateWorkspace = () => {
 		if (!currentWorkspaceName() && response.data.id) {
 			setCurrentWorkspaceName(response.data.id);
 		}
-	};
+	});
 
 	return (
 		<PageContainer>
@@ -72,7 +66,15 @@ const CreateWorkspace = () => {
 				subText="Workspaces are a way to organize your projects, deployments, and resources."
 			/>
 			<PageContainerBody class="flex flex-col">
-				<form class="flex flex-1 flex-col justify-between gap-8" onSubmit={onCreateWorkspace}>
+				<form
+					class="flex flex-1 flex-col justify-between gap-8"
+					onSubmit={async (e: SubmitEvent) => {
+						e.preventDefault();
+						await createWorkspace().catch(() => {
+							toast("An unexpected error occurred while creating the workspace", "error");
+						});
+					}}
+				>
 					<div class="flex gap-4 items-center">
 						<InputLabel for="workspace-name" label="Workspace Name" parentClass="flex-2" />
 						<Input
@@ -86,7 +88,13 @@ const CreateWorkspace = () => {
 					</div>
 
 					<div class="flex justify-end w-full">
-						<Button variant={ButtonVariant.Contained}>Create Workspace</Button>
+						<Button
+							loading={isLoading}
+							loadingContent={() => <span>Creating Workspace...</span>}
+							variant={ButtonVariant.Contained}
+						>
+							Create Workspace
+						</Button>
 					</div>
 				</form>
 			</PageContainerBody>

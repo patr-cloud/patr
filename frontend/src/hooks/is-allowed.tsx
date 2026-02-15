@@ -2,8 +2,8 @@ import { ActionTypes, MaybeAccessor, ResourceTypes, UserPermissionsT } from "~/u
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { createMemo } from "solid-js";
 import { get } from "~/utils/func";
-import useFetchUserPermissions from "~/hooks/use-fetch/use-fetch-user-permissions";
-import { useIsMounted } from "~/hooks/use-is-mounted";
+import { useFetchUserPermissions } from "~/hooks/fetch";
+import { useIsMounted } from "~/hooks";
 
 /**
  * Custom hook to check what actions a user has for a specific resource.

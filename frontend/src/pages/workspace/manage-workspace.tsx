@@ -11,7 +11,7 @@ import {
 	Initials,
 } from "~/components";
 import { FiEdit2, FiPlus, FiTrash } from "solid-icons/fi";
-import { useAuthState } from "~/hooks";
+import { createAuthenticatedAction, createFormAction, useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { GetWorkspaceInfoResponse } from "~/bindings/GetWorkspaceInfoResponse";
 import { ListAllRolesResponse } from "~/bindings/ListAllRolesResponse";
@@ -23,7 +23,6 @@ import { WithId } from "~/bindings/WithId";
 import { BasicUserInfo } from "~/bindings/BasicUserInfo";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "~/pages/workspace/workspace-header";
-import { EventT } from "~/utils/types";
 import { EditUserRoles } from "~/pages/workspace/edit-user-roles";
 
 const ManageWorkspace = () => {
@@ -138,27 +137,23 @@ const ManageWorkspace = () => {
 			return userDetails.filter((user) => user !== null);
 		}
 	);
-	const onDelete = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
-		e.stopPropagation();
-		const wsId = workspaceId();
-		const userId = userToDelete();
-		const auth = authState();
 
-		if (!userId) {
-			toast("No user selected for deletion", "error");
-			return;
-		}
+	const { execute: deleteUser, isLoading: isDeleting } = createAuthenticatedAction(
+		async ({ accessToken, workspaceId }) => {
+			const userId = userToDelete();
 
-		if (!auth || auth.type !== "LoggedIn") {
-			toast("Authentication required", "error");
-			return;
-		}
+			if (!userId) {
+				toast("No user selected for deletion", "error");
+				return;
+			}
 
-		try {
 			const response = await httpRequest<RemoveUserFromWorkspaceResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/user/${userId}`,
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/user/${userId}`,
 				{
 					method: "DELETE",
+					headers: {
+						Authorization: `Bearer ${accessToken}`,
+					},
 				}
 			);
 
@@ -172,15 +167,12 @@ const ManageWorkspace = () => {
 			setShouldDelete(false);
 			setUserToDelete(null);
 			refetchMembers();
-		} catch (error) {
-			console.error("Error deleting user:", error);
-			toast("An error occurred while removing the user", "error");
 		}
-	};
+	);
+
 	// Separate state for input fields and added members
 	const [selectedUser, setSelectedUser] = createSignal<WithId<BasicUserInfo> | null>(null);
 	const [currentRoleId, setCurrentRoleId] = createSignal("");
-	const [isSubmitting, setIsSubmitting] = createSignal(false);
 	const [shouldDelete, setShouldDelete] = createSignal(false);
 	const [userToDelete, setUserToDelete] = createSignal<string | null>(null);
 	const [editingMember, setEditingMember] = createSignal<{
@@ -193,37 +185,19 @@ const ManageWorkspace = () => {
 		setSelectedUser(user);
 	};
 
-	const handleAddMember = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
-		e.preventDefault();
+	const { onSubmit: handleAddMember, isLoading: isSubmitting } = createFormAction(
+		async ({ accessToken, workspaceId }) => {
+			const user = selectedUser();
+			const roleId = currentRoleId().trim();
 
-		const user = selectedUser();
-		const roleId = currentRoleId().trim();
-		const auth = authState();
-
-		if (!user || !roleId) {
-			toast("Please select a user and role", "error");
-			return;
-		}
-
-		if (!auth || auth.type !== "LoggedIn") {
-			toast("You must be logged in", "error");
-			return;
-		}
-
-		setIsSubmitting(true);
-
-		try {
 			const requestBody: UpdateUserRolesInWorkspaceRequest = {
 				roles: [roleId],
 			};
 
 			const response = await httpRequest(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId()}/rbac/user/${user.id}`,
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/user/${user!.id}`,
 				{
 					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-					},
 					body: JSON.stringify(requestBody),
 				}
 			);
@@ -237,18 +211,17 @@ const ManageWorkspace = () => {
 			toast("User added successfully", "success");
 			setCurrentRoleId("");
 			refetchMembers();
-		} catch (error) {
-			console.error("Error adding user:", error);
-			toast("An error occurred while adding the user", "error");
-		} finally {
-			setIsSubmitting(false);
+		},
+		() => {
+			const user = selectedUser();
+			const roleId = currentRoleId().trim();
+			if (!user || !roleId) {
+				toast("Please select a user and role", "error");
+				return false;
+			}
+			return true;
 		}
-	};
-
-	const handleSaveRoles = async (roleIds: string[]) => {
-		setEditingMember(null);
-		refetchMembers();
-	};
+	);
 
 	return (
 		<PageContainer>
@@ -351,7 +324,10 @@ const ManageWorkspace = () => {
 																	name: role.name,
 																})) || []
 															}
-															onSave={handleSaveRoles}
+															onSave={async (roleIds: string[]) => {
+																setEditingMember(null);
+																refetchMembers();
+															}}
 															onClose={() => {
 																setEditingMember(null);
 															}}
@@ -373,7 +349,13 @@ const ManageWorkspace = () => {
 														{shouldDelete() && userToDelete() === member.userId ? (
 															<>
 																<div class="flex gap-2">
-																	<button class="text-red-500" onClick={onDelete}>
+																	<button
+																		class="text-red-500"
+																		onClick={async (e: MouseEvent) => {
+																			e.stopPropagation();
+																			await deleteUser().catch(() => {});
+																		}}
+																	>
 																		Delete
 																	</button>
 																	<button

@@ -60,6 +60,13 @@ TypeScript types in `frontend/src/bindings/` are generated from Rust models via 
 
 All reusable components live in `components/` and are exported through `components/index.tsx`.
 
+**Fetch and Action**
+
+- Authentication happens via cookies, so no need to manually attach bearer tokens in API calls
+- `httpRequest()` - low-level wrapper around `fetch` that handles auth tokens, error parsing, and response typing
+- `createAsyncAction()` - higher-level abstraction for async operations with built-in loading/error state
+- authenticated API calls should use the `createAuthenticatedAction()` hook for built-in loading/error state and automatic token handling
+
 **When to create a component:**
 
 - You're about to copy-paste styling or layout logic

@@ -8,7 +8,7 @@ import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 import EnvInput from "~/pages/deployment/env-input";
 import PortInput from "~/pages/deployment/port";
-import useIsAllowed from "~/hooks/use-is-allowed";
+import { useIsAllowed } from "~/hooks";
 
 interface DeploymentInfoProps {
 	deploymentInfo: Resource<GetDeploymentInfoResponse | undefined>;
@@ -40,10 +40,6 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner`,
 			{
 				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
 

@@ -1,6 +1,6 @@
 import { createMemo, createSignal, Show, Suspense } from "solid-js";
 import { Button, ButtonVariant, InputDropdown, InputDropdownCheckBox, ListResources } from "~/components";
-import useFetchPermissions from "~/hooks/use-fetch/use-fetch-permissions";
+import { useFetchPermissions } from "~/hooks/fetch";
 import { parsePermissionName, parseCamelCase, getResourceEndpoint } from "~/utils/func";
 import { ResourcePermissionType } from "~/bindings/ResourcePermissionType";
 import { FiPlus } from "solid-icons/fi";
@@ -188,12 +188,16 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 				</Show>
 			</div>
 
-			<Button variant={ButtonVariant.Outlined} onClick={() => {updatePermissionsData(props.selectedPermissionIds);
-				props.onPermissionChange(new Set<string>([]))
-				setSelectedResourceType("");
-				setSelectedResources(new Set<string>([]));
-				setIncludeExcludeMode("all");
-			}}>
+			<Button
+				variant={ButtonVariant.Outlined}
+				onClick={() => {
+					updatePermissionsData(props.selectedPermissionIds);
+					props.onPermissionChange(new Set<string>([]));
+					setSelectedResourceType("");
+					setSelectedResources(new Set<string>([]));
+					setIncludeExcludeMode("all");
+				}}
+			>
 				<FiPlus size={16} class="inline-block" />
 			</Button>
 		</Suspense>

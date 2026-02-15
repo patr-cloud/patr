@@ -1,13 +1,13 @@
 import { Button, ButtonVariant, Table, useToast } from "~/components";
 import PermissionSelector from "../permission-selector";
 import { createEffect, createMemo, createSignal, For, Resource, Show, Suspense } from "solid-js";
-import { useNavigate, useParams } from "@solidjs/router";
+import { useParams } from "@solidjs/router";
 import { httpRequest } from "~/utils/http-request";
 import { UpdateRoleRequest } from "~/bindings/UpdateRoleRequest";
-import { useAuthState } from "~/hooks";
+import { createLoggedInAction } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { GetRoleInfoResponse, ResourcePermissionType } from "~/bindings";
-import useFetchPermissions from "~/hooks/use-fetch/use-fetch-permissions";
+import { useFetchPermissions } from "~/hooks/fetch";
 import { FiTrash2, FiXCircle } from "solid-icons/fi";
 import { parsePermissionName } from "~/utils/func";
 
@@ -16,12 +16,9 @@ const EditPermissions = (props: {
 	refetchRoleInfo: () => void;
 }) => {
 	const [selectedPermissionIds, setSelectedPermissionIds] = createSignal<Set<string>>(new Set());
-	const [isUpdating, setIsUpdating] = createSignal(false);
 	const [permissionsData, setPermissionsData] = createSignal<{ [key: string]: ResourcePermissionType }>({});
-	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
-	const navigate = useNavigate();
 	const params = useParams();
 
 	// Initialize selected permissions when role info loads and editing starts
@@ -83,48 +80,33 @@ const EditPermissions = (props: {
 		return Array.from(grouped.values());
 	});
 
-	const handleUpdateRole = async () => {
-		const auth = authState();
-		if (!auth || auth.type !== "LoggedIn") {
-			toast("You must be logged in to update a role", "error");
+	const { execute: handleUpdateRole, isLoading: isUpdating } = createLoggedInAction(async ({ accessToken }) => {
+		const requestBody: UpdateRoleRequest = {
+			permissions: permissionsData(),
+		};
+
+		const response = await httpRequest(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId()}/rbac/role/${params.roleId}`,
+			{
+				method: "PATCH",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${accessToken}`,
+				},
+				body: JSON.stringify(requestBody),
+			}
+		);
+
+		if (!response.ok) {
+			console.error("Failed to update role:", response.data.error);
+			toast(response.data.error || "Failed to update role", "error");
 			return;
 		}
 
-		setIsUpdating(true);
-
-		try {
-			const requestBody: UpdateRoleRequest = {
-				permissions: permissionsData(),
-			};
-
-			const response = await httpRequest(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId()}/rbac/role/${params.roleId}`,
-				{
-					method: "PATCH",
-					headers: {
-						"Content-Type": "application/json",
-						Authorization: `Bearer ${auth.accessToken}`,
-					},
-					body: JSON.stringify(requestBody),
-				}
-			);
-
-			if (!response.ok) {
-				console.error("Failed to update role:", response.data.error);
-				toast(response.data.error || "Failed to update role", "error");
-				return;
-			}
-
-			toast("Role updated successfully", "success");
-			// Navigate back to roles list
-			props.refetchRoleInfo();
-		} catch (error) {
-			console.error("Error updating role:", error);
-			toast("An error occurred while updating the role", "error");
-		} finally {
-			setIsUpdating(false);
-		}
-	};
+		toast("Role updated successfully", "success");
+		// Navigate back to roles list
+		props.refetchRoleInfo();
+	});
 
 	return (
 		<Suspense fallback={<div class="text-gray-400 text-center py-8">Loading role information...</div>}>
@@ -146,10 +128,10 @@ const EditPermissions = (props: {
 						</button>
 						<Button
 							variant={ButtonVariant.Contained}
-							onClick={handleUpdateRole}
+							onClick={() => handleUpdateRole().catch(() => {})}
 							disabled={isUpdating() || Object.keys(permissionsData()).length === 0}
 						>
-							{isUpdating() ? "Updating..." : "Save Changes"}
+							{isUpdating() ? "Saving Changes..." : "Save Changes"}
 						</Button>
 					</div>
 				</div>

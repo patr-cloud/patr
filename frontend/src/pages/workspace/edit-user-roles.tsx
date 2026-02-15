@@ -3,7 +3,7 @@ import { Button, ButtonVariant, InputDropdown, useToast } from "~/components";
 import { FiX, FiTrash2 } from "solid-icons/fi";
 import { httpRequest } from "~/utils/http-request";
 import { UpdateUserRolesInWorkspaceRequest } from "~/bindings/UpdateUserRolesInWorkspaceRequest";
-import { useAuthState } from "~/hooks";
+import { createLoggedInAction } from "~/hooks";
 
 interface EditRolesProps {
 	userName: string;
@@ -18,7 +18,6 @@ interface EditRolesProps {
 export const EditUserRoles = (props: EditRolesProps) => {
 	const [selectedRoles, setSelectedRoles] = createSignal<string[]>(props.currentRoles.map((r) => r.id));
 	const [newRoleId, setNewRoleId] = createSignal("");
-	const [authState] = useAuthState();
 	const toast = useToast();
 
 	const handleAddRole = () => {
@@ -33,43 +32,28 @@ export const EditUserRoles = (props: EditRolesProps) => {
 		setSelectedRoles(selectedRoles().filter((id) => id !== roleId));
 	};
 
-	const handleSave = async () => {
-		const auth = authState();
+	const { execute: handleSave, isLoading: isSaving } = createLoggedInAction(async ({ accessToken }) => {
+		const requestBody: UpdateUserRolesInWorkspaceRequest = {
+			roles: selectedRoles(),
+		};
 
-		if (!auth || auth.type !== "LoggedIn") {
-			toast("Authentication required", "error");
+		const response = await httpRequest(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${props.workspaceId}/rbac/user/${props.userId}`,
+			{
+				method: "POST",
+				body: JSON.stringify(requestBody),
+			}
+		);
+
+		if (!response.ok) {
+			console.error("Failed to update roles:", response.data.error);
+			toast("Failed to update roles", "error");
 			return;
 		}
 
-		try {
-			const requestBody: UpdateUserRolesInWorkspaceRequest = {
-				roles: selectedRoles(),
-			};
-
-			const response = await httpRequest(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${props.workspaceId}/rbac/user/${props.userId}`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify(requestBody),
-				}
-			);
-
-			if (!response.ok) {
-				console.error("Failed to update roles:", response.data.error);
-				toast("Failed to update roles", "error");
-				return;
-			}
-
-			toast("Roles updated successfully", "success");
-			props.onSave(selectedRoles());
-		} catch (error) {
-			console.error("Error updating roles:", error);
-			toast("An error occurred while updating roles", "error");
-		}
-	};
+		toast("Roles updated successfully", "success");
+		props.onSave(selectedRoles());
+	});
 
 	return (
 		<div class="w-full p-md pb-sm bg-secondary-light rounded-xs">
@@ -131,7 +115,12 @@ export const EditUserRoles = (props: EditRolesProps) => {
 						<Button variant={ButtonVariant.Outlined} onClick={props.onClose}>
 							Cancel
 						</Button>
-						<Button variant={ButtonVariant.Contained} onClick={handleSave}>
+						<Button
+							variant={ButtonVariant.Contained}
+							onClick={() => handleSave().catch(() => {})}
+							loading={isSaving()}
+							loadingContent={() => <span>Saving...</span>}
+						>
 							Save
 						</Button>
 					</div>

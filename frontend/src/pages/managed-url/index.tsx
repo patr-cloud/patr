@@ -3,7 +3,17 @@ import { Input, InputDropdown, PageContainer, PageContainerBody, PageContainerHe
 const ManagedUrlPage = () => {
 	return (
 		<PageContainer>
-			<PageContainerHead title="Managed URLs" subTitle="Create" />
+			<PageContainerHead
+				subText="Manage URLs"
+				breadcrumbs={[
+					{
+						label: "Managed URLs",
+					},
+					{
+						label: "Create",
+					},
+				]}
+			/>
 
 			<PageContainerBody>
 				<h1 class="text-md">Create Managed URL</h1>

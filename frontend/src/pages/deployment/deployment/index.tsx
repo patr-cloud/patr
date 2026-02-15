@@ -18,7 +18,7 @@ import { httpRequest } from "~/utils/http-request";
 import DeploymentInfoUpdate from "~/pages/deployment/deployment/info";
 import DeploymentLogs from "./logs";
 import { Color } from "~/utils/color";
-import useIsAllowed from "~/hooks/use-is-allowed";
+import { useIsAllowed } from "~/hooks";
 
 const DeploymentInfo = () => {
 	const params = useParams();
