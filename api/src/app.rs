@@ -10,6 +10,7 @@ use axum::extract::FromRef;
 use models::{RequestUserData, prelude::*};
 use preprocess::Preprocessable;
 use rustis::client::Client as RedisClient;
+use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
 
 use crate::{prelude::*, utils::config::AppConfig};
@@ -128,6 +129,23 @@ pub async fn serve(state: &AppState) {
 	}
 }
 
+/// The type of the worker task. This is used to differentiate between different
+/// types of tasks in the worker. This is currently used to differentiate
+/// between cron tasks and email tasks, but can be extended to include other
+/// types of tasks in the future.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum WorkerTaskType {
+	/// A cron task. This is a task that is run on a schedule, such as every
+	/// hour or every day. The data for this task is the tick that is passed by
+	/// the CronStream backend of the worker.
+	Cron(Tick),
+	/// An email task. This is a task that is run to send an email. The data for
+	/// this task is the type of email that is being sent, which can be used to
+	/// differentiate between different types of email tasks, such as sending a
+	/// verification email or sending a password reset email.
+	Email(Email),
+}
+
 #[derive(Clone, FromRef)]
 /// The global state of the application.
 /// This will contain the database connection and other global state.
@@ -143,7 +161,7 @@ pub struct AppState {
 	/// The application configuration.
 	pub config: AppConfig,
 	/// The background worker storage.
-	pub worker: PostgresStorage<Tick, Vec<u8>, JsonCodec<Vec<u8>>, PgNotify>,
+	pub worker: PostgresStorage<WorkerTaskType, Vec<u8>, JsonCodec<Vec<u8>>, PgNotify>,
 }
 
 impl Debug for AppState {

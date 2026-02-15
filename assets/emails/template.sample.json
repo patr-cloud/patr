@@ -1,16 +1,7 @@
 {
-	"html": {
-		"file": "html.handlebars",
-		"inline": {
-			"logo": {
-				"mime": "image/png",
-				"file": "../../images/shared/logo.png"
-			}
-		}
-	},
-	"plain": {
-		"file": "plain.handlebars"
-	},
+	"subject": "Example Email Subject",
+	"html": "html.hbs",
+	"text": "text.hbs",
 	"attachments": {
 		"code.txt": {
 			"mime": "text/plain",

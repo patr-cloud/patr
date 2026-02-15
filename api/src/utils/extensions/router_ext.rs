@@ -8,15 +8,6 @@ use models::utils::{AppAuthentication, BearerToken, HasHeader, NoAuthentication}
 use preprocess::Preprocessable;
 use tower::ServiceBuilder;
 
-use super::layers::{
-	AuthenticationLayer,
-	AuthorizationLayer,
-	ClientType,
-	PreprocessLayer,
-	RequestParserLayer,
-	UserAgentValidationLayer,
-	WebDashboardAuthCookieLayer,
-};
 use crate::{
 	prelude::*,
 	routes::registry_patr_cloud::prelude::RegistryEndpoint,
@@ -24,9 +15,16 @@ use crate::{
 		AuditLoggerLayer,
 		AuthEndpointHandler,
 		AuthEndpointLayer,
+		AuthenticationLayer,
+		AuthorizationLayer,
+		ClientType,
 		DataStoreConnectionLayer,
 		EndpointHandler,
 		EndpointLayer,
+		PreprocessLayer,
+		RequestParserLayer,
+		UserAgentValidationLayer,
+		WebDashboardAuthCookieLayer,
 		registry::{
 			RegistryAuthenticationLayer,
 			RegistryDataStoreConnectionLayer,

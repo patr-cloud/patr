@@ -16,6 +16,9 @@ mod declare_registry_endpoint;
 /// The proc macro for declaring a streaming endpoint. A streaming endpoint is
 /// basically a websocket endpoint.
 mod declare_stream_endpoint;
+/// A macro to generate email templates. This is used to generate the email
+/// templates to send in the background worker.
+mod email_template;
 /// A derive macro for the `HasHeaders` trait.
 mod has_headers;
 /// A derive macro to generate an enum of all fields and a search struct
@@ -313,4 +316,41 @@ pub fn verify_regex(input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn optionalize(args: TokenStream, input: TokenStream) -> TokenStream {
 	optionalize::parse(args, input)
+}
+
+/// A derive macro that generates the following methods:
+/// - A `subject` method that returns the subject of the email
+/// - A `html` method that returns the HTML body of the email
+/// - A `text` method that returns the text body of the email
+/// - An `inline_attachments` method that returns a tuple of all inline
+///   attachments, along with the file contents.
+/// - An `attachments` method that returns a tuple of all attachment names,
+///   along with the file contents.
+///
+/// This is used to generate email templates for the background worker.
+///
+/// # Example usage:
+/// ```rust
+/// use macros::EmailTemplate;
+///
+/// #[derive(EmailTemplate)]
+/// #[template(path = "user-sign-up")]
+/// pub struct UserSignUpEmail {
+///     pub username: String,
+///     pub otp: String,
+/// }
+///
+/// # fn verify() {
+/// let email = UserSignUpEmail {
+///     username: "testuser".to_string(),
+///     otp: "123456".to_string(),
+/// };
+/// assert_eq!(email.subject(), "Welcome to Patr Cloud!");
+/// assert_eq!(email.html(), "<html><body><h1>Welcome to Patr Cloud, testuser!</h1><p>Your OTP is 123456</p></body></html>");
+/// assert_eq!(email.text(), "Welcome to Patr Cloud, testuser!\nYour OTP is 123456");
+/// # }
+/// ```
+#[proc_macro_derive(EmailTemplate, attributes(template))]
+pub fn email_template(input: TokenStream) -> TokenStream {
+	email_template::parse(input)
 }

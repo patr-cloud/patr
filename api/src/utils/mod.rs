@@ -19,31 +19,14 @@ pub mod extractors;
 /// and request/response types needed to validate Turnstile tokens.
 mod cf_turnstile_validator;
 
-/// Extensions traits for the `Either` type.
-mod either_ext;
-/// Contains the extension traits that will be used to add exit signal handling
-/// to futures.
-mod exitable_ext;
-/// Contains the extension traits that will be used with the axum [`Router`][1]
-/// to mount the various endpoints on the router.
-///
-/// [1]: axum::Router
-mod router_ext;
-/// Contains the extension traits that will be used to timeout futures as
-/// they're executing.
-mod timeout_ext;
+/// Contains the extension traits that will be used to add functionality to
+/// existing types.
+mod extensions;
 /// Contains the log formatter for the API. This is used to format the logs in a
 /// specific way, and to remove any fields that are not needed from the logs.
 mod tracing;
 
-pub use self::{
-	cf_turnstile_validator::*,
-	either_ext::*,
-	exitable_ext::*,
-	router_ext::*,
-	timeout_ext::*,
-	tracing::*,
-};
+pub use self::{cf_turnstile_validator::*, extensions::*, tracing::*};
 
 /// A list of constants that will be used throughout the application. This is
 /// mostly kept to prevent typos.
@@ -108,7 +91,7 @@ pub mod constants {
 	/// How long an OTP is valid for. After this time, the OTP will be invalid
 	/// and the error returned will be the same as an "OTP doesn't exist" error
 	/// to prevent it from leaking old OTPs.
-	pub const OTP_VALIDITY: time::Duration = time::Duration::hours(2);
+	pub const OTP_VALIDITY: time::Duration = time::Duration::minutes(15);
 
 	/// The default maximum limit for the number of workspaces a user can
 	/// create. If this needs to be increased, the user should open a support

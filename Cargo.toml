@@ -53,6 +53,7 @@ flate2                         = { default-features = false, version = "1" }
 fslock                         = { default-features = false, version = "0.2" }
 futures                        = { default-features = false, version = "0.3" }
 getrandom                      = { default-features = false, version = "0.3" }
+handlebars                     = { default-features = false, version = "6" }
 headers                        = { default-features = false, version = "0.4" }
 hex                            = { default-features = false, version = "0.4" }
 hickory-resolver               = { default-features = false, version = "0.25" }
@@ -92,6 +93,7 @@ rust-s3                        = { default-features = false, version = "0.37" }
 rustis                         = { default-features = false, version = "0.19" }
 schemars                       = { default-features = false, version = "1" }
 semver                         = { default-features = false, version = "1" }
+sendgrid                       = { default-features = false, version = "0.27" }
 serde                          = { default-features = false, version = "1" }
 serde_json                     = { default-features = false, version = "1" }
 serde_path_to_error            = { default-features = false, version = "0.1" }

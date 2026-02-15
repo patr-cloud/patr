@@ -68,7 +68,8 @@ pub mod prelude {
 		app::{AppRequest, AppState, AuthenticatedAppRequest, UnprocessedAppRequest},
 		models::ip_lookup as ip,
 		redis,
-		utils::{EitherExt, RouterExt, TimeoutExt, constants, layers::ClientType},
+		utils::{EitherExt, RouterExt, TimeoutExt, WorkerExt, constants, layers::ClientType},
+		worker::mailer::*,
 	};
 
 	/// The type of the database connection. A mutable reference to this should
@@ -114,7 +115,7 @@ pub async fn build_state(config: AppConfig) -> AppState {
 
 	let redis = redis::connect(&config.redis).await;
 
-	let worker = worker::setup(&database).await;
+	let worker = worker::setup(&database);
 
 	AppState {
 		database,

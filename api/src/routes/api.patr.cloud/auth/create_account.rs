@@ -28,7 +28,7 @@ pub async fn create_account(
 		database,
 		redis,
 		client_ip,
-		state,
+		mut state,
 	}: AppRequest<'_, CreateAccountRequest>,
 ) -> Result<AppResponse<CreateAccountRequest>, ErrorType> {
 	trace!("Validating Cloudflare Turnstile token");
@@ -237,7 +237,19 @@ pub async fn create_account(
 
 	trace!("User to sign up inserted into the database");
 
-	// TODO send OTP via email
+	state
+		.worker
+		.send_email(
+			recovery_email
+				.clone()
+				.unwrap_or_else(|| "unknown".to_string()),
+			EmailType::UserSignUp {
+				username: username.to_string(),
+				otp,
+				otp_expiry: constants::OTP_VALIDITY.to_string(),
+			},
+		)
+		.await?;
 
 	AppResponse::builder()
 		.body(CreateAccountResponse)

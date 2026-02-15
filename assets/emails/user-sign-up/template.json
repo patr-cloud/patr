@@ -1,10 +1,5 @@
 {
-	"html": {
-		"file": "html.handlebars",
-		"inline": {}
-	},
-	"plain": {
-		"file": "plain.handlebars"
-	},
-	"attachments": {}
+	"subject": "Verify your email address | Patr",
+	"html": "html.hbs",
+	"text": "text.hbs"
 }

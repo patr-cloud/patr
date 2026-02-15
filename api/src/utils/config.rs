@@ -59,6 +59,10 @@ pub struct AppConfig {
 	/// based on an environment variable and if the application is compiled with
 	/// debug mode.
 	pub environment: RunningEnvironment,
+	/// The configuration for sending emails. This is used to send emails to
+	/// users for various reasons, such as account verification, password reset,
+	/// etc.
+	pub email: EmailConfig,
 	/// The configuration for S3, used for storing layers of docker images
 	pub s3: S3Config,
 	/// The configuration for the database to connect to

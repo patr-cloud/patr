@@ -25,8 +25,7 @@
     <strong style="
       color: #f89b41;
       font-size: 2rem;
-      ">{{#if
-      otp}}{{otp}}{{else}}123-456{{/if}}</strong>
+      ">{{otp}}</strong>
   </td>
 </tr>
 <tr>
@@ -93,7 +92,7 @@
       text-decoration: none;
       font-weight: 700;
     ">
-      {{#if otpExpiry}}{{otpExpiry}}{{else}}10 minutes{{/if}}
+      {{otpExpiry}}
     </strong>.
   </td>
 </tr>

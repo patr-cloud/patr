@@ -7,6 +7,7 @@ async fn main() {
 		db,
 		redis_publisher,
 		utils::{self, config},
+		worker,
 	};
 
 	let config = config::parse_config();
@@ -48,9 +49,9 @@ async fn main() {
 		.await
 		.expect("error initializing database");
 
-	PostgresStorage::setup(&state.database)
+	worker::initialize(&state)
 		.await
-		.expect("error setting up apalis database");
+		.expect("error initializing worker");
 
 	futures::future::join3(
 		app::serve(&state),

@@ -15,7 +15,7 @@ workspace = true
 apalis                         = { workspace = true, features = ["tracing"] }
 apalis-codec                   = { workspace = true, features = ["json"] }
 apalis-cron                    = { workspace = true, features = ["cron", "serde"] }
-apalis-postgres                = { workspace = true, features = ["migrate", "tokio"] }
+apalis-postgres                = { workspace = true, features = ["migrate", "tokio", "time"] }
 argon2                         = { workspace = true, features = ["default"] }
 aws-config                     = { workspace = true, features = [] }
 aws-credential-types           = { workspace = true, features = ["hardcoded-credentials"] }
@@ -30,6 +30,7 @@ config                         = { workspace = true, features = ["default"] }
 console-subscriber             = { workspace = true, features = ["default"] }
 cron                           = { workspace = true, features = [] }
 futures                        = { workspace = true, features = ["default"] }
+handlebars                     = { workspace = true, features = ["default"] }
 headers                        = { workspace = true, features = [] }
 hex                            = { workspace = true, features = [] }
 http                           = { workspace = true, features = ["default"] }
@@ -52,8 +53,10 @@ psl                            = { workspace = true, features = ["default"] }
 rand                           = { workspace = true, features = ["default"] }
 regex                          = { workspace = true, features = ["default"] }
 reqwest                        = { workspace = true, features = ["default", "json", "multipart", "blocking", "stream", "query", "form"] }
+rust-embed                     = { workspace = true, features = ["interpolate-folder-path", "mime-guess"] }
 rustis                         = { workspace = true, features = ["default", "pool", "tokio-rustls"] }
 semver                         = { workspace = true, features = ["default"] }
+sendgrid                       = { workspace = true, features = [] }
 serde                          = { workspace = true, features = ["default", "derive"] }
 serde_json                     = { workspace = true, features = ["default"] }
 serde_qs                       = { workspace = true, features = [] }
