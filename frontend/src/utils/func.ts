@@ -244,9 +244,7 @@ const parseDate = (date: Date | string): Date | null => {
 
 	// Handle format like "2026-02-06 21:54:25.712709 +00:00:00"
 	// Convert to ISO format: replace space with 'T' and fix timezone
-	const isoString = date
-		.replace(" ", "T")
-		.replace(/\s*\+(\d{2}):(\d{2}):\d{2}$/, "+$1:$2");
+	const isoString = date.replace(" ", "T").replace(/\s*\+(\d{2}):(\d{2}):\d{2}$/, "+$1:$2");
 	const parsed = new Date(isoString);
 
 	return isNaN(parsed.getTime()) ? null : parsed;
@@ -277,6 +275,21 @@ const formatRelativeTime = (date: Date | string): string => {
 	return d.toLocaleDateString();
 };
 
+const formatSize = (bytes: bigint | string | undefined): string => {
+	if (!bytes) return "0 B";
+
+	const numBytes = typeof bytes === "bigint" ? Number(bytes) : Number(bytes);
+
+	if (isNaN(numBytes) || numBytes === 0) return "0 B";
+
+	const units = ["B", "KB", "MB", "GB", "TB", "PB"];
+	const k = 1024;
+	const i = Math.floor(Math.log(numBytes) / Math.log(k));
+
+	const size = (numBytes / Math.pow(k, i)).toFixed(2);
+	return `${size} ${units[i]}`;
+};
+
 export {
 	get,
 	Jsx,
@@ -293,4 +306,5 @@ export {
 	userActionTypes,
 	parseDate,
 	formatRelativeTime,
+	formatSize,
 };

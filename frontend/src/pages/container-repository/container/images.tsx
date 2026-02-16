@@ -3,7 +3,7 @@ import { createSignal, Show } from "solid-js";
 import { FiCopy, FiTrash2 } from "solid-icons/fi";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
-import { useToast, Table } from "~/components";
+import { useToast, Table, Link } from "~/components";
 import { formatRelativeTime } from "~/utils/func";
 import { ListContainerRepositoryTagsResponse } from "~/bindings";
 
@@ -67,7 +67,12 @@ const Images = (props: ContainerImagesProps) => {
 				fallback={
 					<div class="w-full text-center py-16">
 						<p class="text-white text-lg">No Images Found</p>
-						<p class="text-gray-400 text-sm mt-2">Push an image to this repository to get started</p>
+						<p class="text-gray-400 text-sm mt-2">
+							<Link href={`/container-repositories/${params.id}?tab=`} external={false} class="inline">
+								Push an image
+							</Link>{" "}
+							to this repository to get started
+						</p>
 					</div>
 				}
 			>

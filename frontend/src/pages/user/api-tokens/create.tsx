@@ -116,7 +116,22 @@ const CreateApiTokens = () => {
 
 	return (
 		<PageContainer>
-			<PageContainerHead title="API Tokens" titleUrl="/profile/api-tokens" subTitle="Create API Token" />
+			<PageContainerHead
+				breadcrumbs={[
+					{
+						label: "Profile",
+						url: "/profile",
+					},
+					{
+						label: "Api Token",
+						url: "/profile/api-tokens",
+					},
+					{
+						label: "Create New API Token",
+					},
+				]}
+				subText="Create API Token"
+			/>
 			<PageContainerBody class="flex flex-col justify-between gap-8">
 				<form onSubmit={onSubmit} class="flex w-full flex-col justify-between gap-8 h-full flex-1">
 					<div class="flex flex-col gap-6 items-start w-full">

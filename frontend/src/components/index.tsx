@@ -23,7 +23,8 @@ import ListResources from "~/components/list-resources";
 import DeleteModal from "~/components/modal/delete-resource-modal";
 import NoPermissionsPage from "~/components/no-permissions";
 import { LoadingSpinner } from "~/components/loading-spinner";
-
+import InfoPopup from "./info-popup";
+import Tooltip from "./tooltip";
 export {
 	Alert,
 	PageContainer,
@@ -54,4 +55,6 @@ export {
 	DeleteModal,
 	NoPermissionsPage,
 	LoadingSpinner,
+	InfoPopup,
+	Tooltip,
 };

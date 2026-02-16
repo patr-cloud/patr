@@ -1,4 +1,4 @@
-import { createMemo, createResource, createSignal, For, Show } from "solid-js";
+import { createMemo, createResource, createSignal, ErrorBoundary, For, Show, Suspense } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import {
 	ButtonVariant,
@@ -12,7 +12,7 @@ import {
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { ListContainerRepositoriesResponse, WithId, ContainerRepository } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
-import { formatRelativeTime } from "~/utils/func";
+import { formatRelativeTime, formatSize } from "~/utils/func";
 
 const ListContainerRepository = () => {
 	const [authState] = useAuthState();
@@ -39,7 +39,7 @@ const ListContainerRepository = () => {
 				},
 			}
 		);
-		
+
 		if (!response.ok) {
 			console.error("Failed to fetch repositories:", response.data.error);
 			toast("Failed to fetch repositories", "error");
@@ -54,44 +54,53 @@ const ListContainerRepository = () => {
 			<PageContainerHead
 				breadcrumbs={[
 					{
-						label: "Repository",
+						label: "Container Repositories",
 					},
 				]}
-				subText="Create Deployments, Databases, Object Storage, Static Sites, Upgrade Paths and manage Repositories"
+				subText="Create Deployments, Databases, Object Storage, Static Sites, Upgrade Paths and manage Container Repositories"
 				actions={() => (
 					<Link href="/container-repositories/new" buttonVariant={ButtonVariant.Plain} external={false}>
-						Add Repository
+						Add Container Repository
 					</Link>
 				)}
 			/>
 
 			<PageContainerBody>
-				<div class="w-full flex flex-col gap-6">
-					<div class="w-full">
+				<ErrorBoundary
+					fallback={(err, reset) => (
+						<div>
+							<p>Error loading repositories: {err.message}</p>
+							<button onClick={reset}>Retry</button>
+						</div>
+					)}
+				>
+					<Suspense fallback={<div>Loading repositories...</div>}>
 						<Show
 							when={repositories()?.repositories && repositories()!.repositories.length > 0}
 							fallback={
 								<div class="w-full text-center py-16">
-									<p class="text-white text-lg">No Repository Exist</p>
+									<p class="text-white text-lg">No Container Repositories Exist</p>
 								</div>
 							}
 						>
 							<Table
-								column_grids={["flex-1", "flex-1"]}
-								headings={["Repository", "Date Created"]}
+								column_grids={["flex-1", "flex-1", "flex-1", "flex-1"]}
+								headings={["Container Repository", "Last Updated", "Size", "Created At"]}
 								rows={repositories()?.repositories || []}
 								renderRow={(repo: WithId<ContainerRepository>) => (
-									<tr class="table-row" onClick={() => navigate(`/container-repositories/${repo.id}`)}>
+									<tr class="table-row cursor-pointer" onClick={() => navigate(`/container-repositories/${repo.id}`)}>
 										<td class="flex-1">
 											<span class="truncate">{repo.name}</span>
 										</td>
+										<td class="flex-1">{formatRelativeTime(repo.lastUpdated)}</td>
+										<td class="flex-1">{formatSize(repo.size)}</td>
 										<td class="flex-1">{formatRelativeTime(repo.created)}</td>
 									</tr>
 								)}
 							/>
 						</Show>
-					</div>
-				</div>
+					</Suspense>
+				</ErrorBoundary>
 			</PageContainerBody>
 		</PageContainer>
 	);

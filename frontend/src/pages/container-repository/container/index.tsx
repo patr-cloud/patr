@@ -136,7 +136,7 @@ const ContainerInfo = () => {
 			<PageContainerHead
 				breadcrumbs={[
 					{
-						label: "Repository",
+						label: "Container Repositories",
 						url: "/container-repositories",
 					},
 					{

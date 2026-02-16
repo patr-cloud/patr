@@ -82,8 +82,12 @@ const UserSettingsPage = () => {
 	return (
 		<PageContainer>
 			<PageContainerHead
-				title="User"
-				subTitle="Settings"
+				breadcrumbs={[
+					{
+						label: "User",
+					},
+				]}
+				subText="Settings"
 				bottomContent={() => (
 					<HeadTab
 						tab={tab}
