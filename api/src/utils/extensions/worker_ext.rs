@@ -14,7 +14,7 @@ pub trait WorkerExt {
 	fn send_email(
 		&mut self,
 		to: String,
-		email: impl Into<EmailType>,
+		email: impl Into<EmailTypeData>,
 	) -> impl Future<Output = Result<(), ErrorType>>;
 }
 
@@ -22,7 +22,7 @@ impl WorkerExt for PostgresStorage<WorkerTaskType, Vec<u8>, JsonCodec<Vec<u8>>, 
 	async fn send_email(
 		&mut self,
 		to: String,
-		email: impl Into<EmailType>,
+		email: impl Into<EmailTypeData>,
 	) -> Result<(), ErrorType> {
 		self.push(WorkerTaskType::Email(Email {
 			to,

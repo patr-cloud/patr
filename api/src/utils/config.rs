@@ -59,10 +59,9 @@ pub struct AppConfig {
 	/// based on an environment variable and if the application is compiled with
 	/// debug mode.
 	pub environment: RunningEnvironment,
-	/// The configuration for sending emails. This is used to send emails to
-	/// users for various reasons, such as account verification, password reset,
-	/// etc.
-	pub email: EmailConfig,
+	/// The configuration for SendGrid to use to send emails to users such as
+	/// signing up and for password resets
+	pub send_grid: SendGridConfig,
 	/// The configuration for S3, used for storing layers of docker images
 	pub s3: S3Config,
 	/// The configuration for the database to connect to
@@ -185,22 +184,26 @@ pub struct CloudflareConfig {
 	pub primary_hosted_zone_id: String,
 }
 
-/// The configuration for the SMTP server to use to send emails to users
+/// The configuration for SendGrid to use to send emails to users
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct EmailConfig {
-	/// The host of the SMTP server
-	pub host: String,
-	/// The port of the SMTP server
-	pub port: u16,
-	/// Whether or not to use TLS to connect to the SMTP server
-	pub secure: bool,
-	/// The username to use to connect to the SMTP server
-	pub username: String,
-	/// The from address to use when sending emails
+pub struct SendGridConfig {
+	/// The API key to use to connect to SendGrid
+	pub api_key: String,
+	/// The email address to use as the sender for all emails sent by the API
 	pub from: String,
-	/// The password to use to connect to the SMTP server
-	pub password: String,
+	/// The list of all templates to use for sending emails, mapped by a unique
+	/// name for each template
+	pub templates: SendGridTemplateConfig,
+}
+
+/// The list of all SendGrid templates to use for sending emails, mapped by a
+/// unique name for each template
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SendGridTemplateConfig {
+	pub user_sign_up: String,
+	pub sign_up_completed: String,
 }
 
 /// The configuration for the opentelemetry endpoints
