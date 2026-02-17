@@ -1,23 +1,21 @@
-//! GET blob endpoint handler.
+//! HEAD blob endpoint handler.
 //!
-//! This handler downloads a blob from the registry, streaming it directly from
-//! S3. It supports HTTP range requests for partial downloads, which is useful
-//! for resuming interrupted downloads or accessing specific parts of large
-//! blobs.
+//! This handler checks if a blob exists and returns metadata headers without
+//! the blob body. It's used by clients to verify blob existence and get
+//! size information before downloading.
 
-use axum::body::Body;
 use headers::{AcceptRanges, ContentLength, ContentType};
-use tokio_util::io::ReaderStream;
+use rustis::commands::GenericCommands as _;
 
-use crate::routes::registry_patr_cloud::prelude::*;
+use crate::{redis::keys, routes::registry_patr_cloud::prelude::*};
 
 macros::declare_registry_endpoint!(
-	/// GET blob endpoint.
+	/// HEAD blob endpoint.
 	///
-	/// Downloads a blob from the registry, streaming it directly from S3.
-	/// Supports HTTP range requests for partial downloads.
-	GetBlob,
-	GET "/v2/{workspace_id}/{repo_name}/blobs/{digest}" {
+	/// Checks if a blob exists and returns metadata headers without the body.
+	/// Used for verifying blob existence and getting size information.
+	HeadBlob,
+	HEAD "/v2/{workspace_id}/{repo_name}/blobs/{digest}" {
 		/// The workspace ID
 		pub workspace_id: Uuid,
 		/// The repository name
@@ -45,39 +43,37 @@ macros::declare_registry_endpoint!(
 	}
 );
 
-/// Handler for GET /v2/{workspace_id}/{repo_name}/blobs/{reference}
+/// Handler for HEAD "/v2/{workspace_id}/{repo_name}/blobs/{digest}"
 ///
 /// This handler:
 /// - Verifies workspace access
 /// - Queries the database for blob metadata
-/// - Streams blob content from S3
-/// - Supports HTTP range requests for partial downloads
-/// - Returns with appropriate headers
-pub async fn get_blob(
+/// - Returns headers with Content-Length and Docker-Content-Digest
+pub async fn head_blob(
 	AuthenticatedRegistryAppRequest {
 		request:
 			RegistryProcessedApiRequest {
-				path: GetBlobPathProcessed {
+				path: HeadBlobPathProcessed {
 					workspace_id,
 					repo_name,
 					digest,
 				},
 				query: (),
-				headers: GetBlobRequestHeaders {
+				headers: HeadBlobRequestHeaders {
 					authorization: _,
 					range,
 				},
 				body: _,
 			},
 		database,
-		redis: _,
+		redis,
 		s3,
 		client_ip: _,
 		user_data,
 		config,
-	}: AuthenticatedRegistryAppRequest<'_, GetBlobPath>,
-) -> Result<RegistryResponse<GetBlobPath>, RegistryError> {
-	info!("GET blob request");
+	}: AuthenticatedRegistryAppRequest<'_, HeadBlobPath>,
+) -> Result<RegistryResponse<HeadBlobPath>, RegistryError> {
+	info!("HEAD blob request");
 
 	// Check that the user can pull from this repository
 	let (repository_id, permission_id) = query!(
@@ -130,7 +126,8 @@ pub async fn get_blob(
 			.into_result();
 	}
 
-	let exists = query!(
+	// Check if the blob is linked to this repo via a manifest (permanent)
+	let exists_in_db = query!(
 		r#"
 		SELECT EXISTS(
 			SELECT
@@ -147,18 +144,28 @@ pub async fn get_blob(
 				container_registry_repository_manifest.manifest_digest = container_registry_manifest_blob.manifest_digest
 			WHERE
 				container_registry_manifest_blob.blob_digest = $1 AND
-				container_registry_repository.workspace_id = $2 AND
-				container_registry_repository.name = $3 AND
+				container_registry_repository.id = $2 AND
 				container_registry_repository.deleted IS NULL
 		) AS "exists!";
 		"#,
 		digest,
-		workspace_id as _,
-		&repo_name,
+		repository_id as _,
 	)
 	.fetch_one(&mut **database)
 	.await?
 	.exists;
+
+	// Also check if the blob was recently uploaded to this repo (temporary Redis
+	// key)
+	let exists_in_redis = if !exists_in_db {
+		redis
+			.exists(keys::repository_for_registry_blob(&repository_id, &digest))
+			.await? > 0
+	} else {
+		true
+	};
+
+	let exists = exists_in_db || exists_in_redis;
 
 	if !exists {
 		warn!("Blob not found");
@@ -170,11 +177,11 @@ pub async fn get_blob(
 			.into_result();
 	}
 
-	info!("Found blob in database");
+	info!("Found blob in database/redis");
 
 	// Use S3 bucket from request (pre-initialized in AppState)
 	let object = s3
-		.get_object()
+		.head_object()
 		.bucket(&config.s3.bucket)
 		.key(format!("blobs/{digest}"))
 		.set_range(range.into_option().map(|range| range.to_string()))
@@ -183,15 +190,13 @@ pub async fn get_blob(
 
 	RegistryResponse::builder()
 		.status_code(StatusCode::OK)
-		.headers(GetBlobResponseHeaders {
+		.headers(HeadBlobResponseHeaders {
 			content_type: ContentType::octet_stream(),
 			docker_content_digest: DockerContentDigest(digest),
 			content_length: ContentLength(object.content_length.unwrap_or_default().unsigned_abs()),
 			accept_ranges: AcceptRanges::bytes(),
 		})
-		.body(Body::from_stream(ReaderStream::new(
-			object.body.into_async_read(),
-		)))
+		.body(Body::empty())
 		.build()
 		.into_result()
 }
@@ -201,10 +206,10 @@ mod tests {
 	use super::*;
 
 	#[test]
-	fn test_get_blob_endpoint_path() {
+	fn test_head_blob_endpoint_path() {
 		// Verify the endpoint path is correct
 		assert_eq!(
-			<GetBlobPath as axum_extra::routing::TypedPath>::PATH,
+			<HeadBlobPath as axum_extra::routing::TypedPath>::PATH,
 			"/v2/{name}/blobs/{digest}"
 		);
 	}

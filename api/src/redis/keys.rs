@@ -55,3 +55,19 @@ pub fn runner_connection_lock_prefix() -> String {
 pub fn registry_blob_upload_part_prefix(session_id: &Uuid) -> String {
 	format!("registryBlobUploadPart:{}", session_id)
 }
+
+/// The key used to store the pending buffer (bytes < 5MB that haven't been
+/// flushed as an S3 part yet) for a chunked upload session. Stored as
+/// base64-encoded data separate from the session object.
+pub fn registry_blob_upload_pending_buffer(session_id: &Uuid) -> String {
+	format!("registryBlobUploadPendingBuffer:{}", session_id)
+}
+
+/// The key used to temporarily associate a recently-uploaded blob with the
+/// repository it was uploaded to. This is needed because between blob upload
+/// and manifest push, the blob isn't yet linked to the repo via the manifest
+/// tables. The key has the same TTL as the upload session (24h) and is deleted
+/// once the manifest is pushed.
+pub fn repository_for_registry_blob(repository_id: &Uuid, digest: &str) -> String {
+	format!("repositoryForRegistryBlob:{}:{}", repository_id, digest)
+}

@@ -56,7 +56,7 @@ pub async fn delete_blob(
 		repo_name = %repo_name,
 		reference = %reference,
 		user_id = %user_data.id,
-		"Manifest deletion requested but currently disabled"
+		"Manifest deletion requested is currently disabled"
 	);
 
 	RegistryResponse::builder()

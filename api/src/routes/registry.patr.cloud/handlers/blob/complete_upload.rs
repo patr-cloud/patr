@@ -5,8 +5,12 @@
 
 use std::str::FromStr;
 
-use aws_sdk_s3::types::{CompletedMultipartUpload, CompletedPart};
+use aws_sdk_s3::{
+	primitives::ByteStream,
+	types::{CompletedMultipartUpload, CompletedPart},
+};
 use axum::body::Body;
+use base64::prelude::*;
 use headers::{ContentLength, ContentRange, ContentType};
 use http_body::Body as _;
 use rustis::commands::{GenericCommands, StringCommands};
@@ -144,7 +148,7 @@ pub async fn complete_upload(
 			.into_result();
 	}
 
-	let session = serde_json::from_str::<S3UploadSession>(
+	let mut session = serde_json::from_str::<S3UploadSession>(
 		&redis
 			.get::<String>(keys::registry_blob_upload_part_prefix(&session_id))
 			.await?,
@@ -254,6 +258,53 @@ pub async fn complete_upload(
 			.await?;
 	}
 
+	// Flush any pending buffer from Redis as the final S3 part.
+	// This is data from previous PATCH requests that was under the 5MB
+	// minimum part size and couldn't be uploaded as a non-final part.
+	let pending_key = keys::registry_blob_upload_pending_buffer(&session_id);
+	if let Some(encoded) = redis.get::<Option<String>>(&pending_key).await? {
+		let pending_bytes = BASE64_STANDARD.decode(&encoded).map_err(|err| {
+			error!("Failed to decode pending buffer from Redis: {err}");
+			RegistryError::builder()
+				.code(ErrorCode::BlobUploadInvalid)
+				.message("Corrupted pending upload buffer")
+				.status(StatusCode::INTERNAL_SERVER_ERROR)
+				.build()
+		})?;
+
+		if !pending_bytes.is_empty() {
+			let part_number = session.uploaded_parts_etags.len() as i32 + 1;
+			let bytes_to_upload = pending_bytes.len() as i64;
+			info!(
+				"Flushing {}B pending buffer as final part {part_number}",
+				bytes_to_upload
+			);
+
+			let response = s3
+				.upload_part()
+				.bucket(&config.s3.bucket)
+				.key(format!("uploads/{}", session_id))
+				.upload_id(&session.upload_id)
+				.part_number(part_number)
+				.content_length(bytes_to_upload)
+				.body(ByteStream::from(pending_bytes))
+				.send()
+				.await?;
+
+			session
+				.uploaded_parts_etags
+				.push(response.e_tag.ok_or_else(|| {
+					RegistryError::builder()
+						.code(ErrorCode::BlobUploadInvalid)
+						.message("Missing or invalid ETag header in S3 response")
+						.status(StatusCode::INTERNAL_SERVER_ERROR)
+						.build()
+				})?);
+		}
+
+		let _ = redis.del(&pending_key).await;
+	}
+
 	info!("Completing S3 multipart upload");
 	s3.complete_multipart_upload()
 		.bucket(&config.s3.bucket)
@@ -306,6 +357,16 @@ pub async fn complete_upload(
 	)
 	.execute(&mut **database)
 	.await?;
+
+	// Temporarily associate this blob with the repository in Redis so that
+	// HEAD/GET blob checks pass before the manifest is pushed.
+	redis
+		.setex(
+			keys::repository_for_registry_blob(&repository_id, &digest),
+			constants::REGISTRY_BLOB_UPLOAD_SESSION_TTL.as_secs(),
+			"exists",
+		)
+		.await?;
 
 	// Verify digest matches uploaded content
 	// Download the completed blob from S3 and compute its digest

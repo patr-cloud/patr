@@ -8,10 +8,11 @@ use std::str::FromStr;
 use aws_sdk_s3::primitives::ByteStream;
 use axum::body::Body;
 use headers::ContentType;
-use oci_spec::image::{ImageManifest, MediaType};
+use oci_spec::image::ImageManifest;
+use rustis::commands::GenericCommands;
 use sha2::{Digest as _, Sha256};
 
-use crate::routes::registry_patr_cloud::prelude::*;
+use crate::{redis::keys, routes::registry_patr_cloud::prelude::*};
 
 macros::declare_registry_endpoint!(
 	/// PUT manifest endpoint.
@@ -48,16 +49,15 @@ macros::declare_registry_endpoint!(
 /// Handler for PUT /v2/{workspace_id}/{repo_name}/manifests/{reference}
 ///
 /// This handler:
-/// 1. Parses and validates the repository name
-/// 2. Verifies workspace access
-/// 3. Reads manifest from streaming request body
-/// 4. Parses manifest using oci-spec (ImageManifest or ImageIndex)
-/// 5. Computes SHA256 digest of manifest
-/// 6. Verifies all referenced blobs exist in database
-/// 7. Stores manifest in S3
-/// 8. Stores manifest metadata in database
-/// 9. Creates or updates tag if reference is a tag name
-/// 10. Returns 201 Created with Location and Docker-Content-Digest headers
+/// 1. Verifies user has push access to the repository
+/// 2. Reads and computes the SHA256 digest of the manifest body
+/// 3. Validates the digest against the reference (if reference is a digest)
+/// 4. Stores the manifest in S3
+/// 5. Records manifest metadata and repository linkage in the database
+/// 6. If the manifest is a valid OCI ImageManifest, records config and layer
+///    blobs
+/// 7. Creates or updates a tag if the reference is a tag name
+/// 8. Returns 201 Created with Location and Docker-Content-Digest headers
 pub async fn upload_manifest(
 	AuthenticatedRegistryAppRequest {
 		request:
@@ -76,7 +76,7 @@ pub async fn upload_manifest(
 				body,
 			},
 		database,
-		redis: _,
+		redis,
 		s3,
 		client_ip: _,
 		user_data,
@@ -136,151 +136,64 @@ pub async fn upload_manifest(
 			.into_result();
 	}
 
-	let bytes = axum::body::to_bytes(body, usize::MAX).await.map_err(|e| {
-		error!("Failed to read manifest body: {e}");
+	// Read request body and compute digest
 
-		RegistryError::builder()
-			.status(StatusCode::BAD_REQUEST)
-			.message("Failed to read manifest body")
-			.code(ErrorCode::ManifestInvalid)
-			.build()
-	})?;
+	let bytes = axum::body::to_bytes(body, constants::MAX_REGISTRY_MANIFEST_SIZE)
+		.await
+		.map_err(|e| {
+			error!("Failed to read manifest body: {e}");
 
-	if let Ok(manifest) = serde_json::from_slice::<ImageManifest>(&bytes) {
-		query!(
-			r#"
-			INSERT INTO
-				container_registry_manifest(
-					digest,
-					size,
-					created_at,
-					content_type
-				)
-			VALUES
-				(
-					$1,
-					$2,
-					NOW(),
-					$3
-				)
-			ON CONFLICT (digest) DO NOTHING;
-			"#,
-			manifest.config().digest().to_string(),
-			manifest.config().size() as i32,
-			MediaType::ImageManifest.to_string()
-		)
-		.execute(&mut **database)
-		.await?;
-
-		query!(
-			r#"
-			INSERT INTO
-				container_registry_repository_manifest(
-					repository_id,
-					manifest_digest,
-					created_at
-				)
-			VALUES
-				(
-					$1,
-					$2,
-					NOW()
-				)
-			ON CONFLICT (repository_id, manifest_digest) DO NOTHING;
-			"#,
-			repository_id as _,
-			manifest.config().digest().to_string()
-		)
-		.execute(&mut **database)
-		.await?;
-
-		for (index, layer) in manifest.layers().iter().enumerate() {
-			query!(
-				r#"
-				INSERT INTO
-					container_registry_manifest_blob(
-						ordinal,
-						manifest_digest,
-						blob_digest
-					)
-				VALUES
-					(
-						$1,
-						$2,
-						$3
-					)
-				ON CONFLICT (manifest_digest, blob_digest)
-				DO UPDATE SET
-					ordinal = EXCLUDED.ordinal,
-					manifest_digest = EXCLUDED.manifest_digest,
-					blob_digest = EXCLUDED.blob_digest;
-				"#,
-				index as i32,
-				manifest.config().digest().to_string(),
-				layer.digest().to_string()
-			)
-			.execute(&mut **database)
-			.await?;
-		}
-	}
+			RegistryError::builder()
+				.status(StatusCode::BAD_REQUEST)
+				.message("Failed to read manifest body")
+				.code(ErrorCode::ManifestInvalid)
+				.build()
+		})?;
 
 	let size = bytes.len();
 	let computed_digest = format!("sha256:{:x}", Sha256::digest(&bytes));
-	debug!("Computed manifest digest: {}", computed_digest);
+	debug!("Computed manifest digest: {computed_digest}");
 
-	let s3_key = format!("manifests/{}", computed_digest);
+	// Validate digest if the reference is a digest
+
+	if reference.contains(':') && reference != computed_digest {
+		warn!(
+			"Manifest digest mismatch: reference `{reference}` does not match computed `{computed_digest}`"
+		);
+		return RegistryError::builder()
+			.status(StatusCode::BAD_REQUEST)
+			.message("Manifest digest does not match content")
+			.detail(format!(
+				"Provided reference: {reference}, Computed digest: {computed_digest}"
+			))
+			.code(ErrorCode::ManifestInvalid)
+			.build()
+			.into_result();
+	}
+
+	// Strip the algorithm prefix when referenced by digest; keep the full
+	// "sha256:…" value when referenced by tag.
+	let digest = if let Some((_, hex)) = reference.split_once(':') {
+		hex.to_string()
+	} else {
+		computed_digest.clone()
+	};
+
+	// Try to parse as an OCI ImageManifest for config/layer processing later
+	let image_manifest = serde_json::from_slice::<ImageManifest>(&bytes).ok();
+
+	// Upload manifest bytes to S3
 	s3.put_object()
 		.bucket(&config.s3.bucket)
-		.key(&s3_key)
+		.key(format!("manifests/{computed_digest}"))
 		.body(ByteStream::from(bytes))
 		.send()
 		.await
 		.inspect_err(|e| {
-			error!("Failed to head manifest object in S3: {e}");
+			error!("Failed to upload manifest to S3: {e}");
 		})?;
 
-	let digest = if let Some((_, digest)) = reference.split_once(':') {
-		if reference != computed_digest {
-			warn!(
-				"Manifest digest mismatch: reference `{reference}` does not match computed `{computed_digest}`"
-			);
-			return RegistryError::builder()
-				.status(StatusCode::BAD_REQUEST)
-				.message("Manifest digest does not match content")
-				.detail(format!(
-					"Provided reference: {reference}, Computed digest: {computed_digest}"
-				))
-				.code(ErrorCode::ManifestInvalid)
-				.build()
-				.into_result();
-		}
-		digest.to_string()
-	} else {
-		query!(
-			r#"
-			INSERT INTO
-				container_registry_repository_tag(
-					repository_id,
-					name,
-					manifest_digest
-				)
-			VALUES
-				(
-					$1,
-					$2,
-					$3
-				)
-			ON CONFLICT (repository_id, name) DO NOTHING;
-			"#,
-			repository_id as _,
-			reference,
-			&computed_digest
-		)
-		.execute(&mut **database)
-		.await?;
-
-		computed_digest
-	};
+	// Record manifest metadata in the database
 
 	query!(
 		r#"
@@ -292,12 +205,8 @@ pub async fn upload_manifest(
 				content_type
 			)
 		VALUES
-			(
-				$1,
-				$2,
-				NOW(),
-				$3
-			);
+			($1, $2, NOW(), $3)
+		ON CONFLICT (digest) DO NOTHING;
 		"#,
 		digest,
 		size as i32,
@@ -306,6 +215,7 @@ pub async fn upload_manifest(
 	.execute(&mut **database)
 	.await?;
 
+	// Link this manifest to the repository
 	query!(
 		r#"
 		INSERT INTO
@@ -315,11 +225,8 @@ pub async fn upload_manifest(
 				created_at
 			)
 		VALUES
-			(
-				$1,
-				$2,
-				NOW()
-			);
+			($1, $2, NOW())
+		ON CONFLICT (repository_id, manifest_digest) DO NOTHING;
 		"#,
 		repository_id as _,
 		digest
@@ -327,12 +234,75 @@ pub async fn upload_manifest(
 	.execute(&mut **database)
 	.await?;
 
+	// Create or update tag if the reference is a tag name
+	if !reference.contains(':') {
+		query!(
+			r#"
+			INSERT INTO
+				container_registry_repository_tag(
+					repository_id,
+					name,
+					manifest_digest,
+					last_updated
+				)
+			VALUES
+				($1, $2, $3, NOW())
+			ON CONFLICT (repository_id, name)
+			DO UPDATE SET
+				manifest_digest = EXCLUDED.manifest_digest,
+				last_updated = EXCLUDED.last_updated;
+			"#,
+			repository_id as _,
+			reference,
+			&digest
+		)
+		.execute(&mut **database)
+		.await?;
+	}
+
+	// Process OCI ImageManifest config and layers (if applicable)
+
+	if let Some(manifest) = image_manifest {
+		// Record each layer blob and clean up temporary Redis associations
+		for (index, layer) in manifest.layers().iter().enumerate() {
+			let blob_digest = layer.digest().to_string();
+
+			query!(
+				r#"
+				INSERT INTO
+					container_registry_manifest_blob(
+						ordinal,
+						manifest_digest,
+						blob_digest
+					)
+				VALUES
+					($1, $2, $3)
+				ON CONFLICT (manifest_digest, blob_digest) DO NOTHING;
+				"#,
+				index as i32,
+				computed_digest,
+				&blob_digest
+			)
+			.execute(&mut **database)
+			.await?;
+
+			// The blob is now permanently linked via the manifest, so we can
+			// remove the temporary Redis blob->repo association.
+			let _ = redis
+				.del(keys::repository_for_registry_blob(
+					&repository_id,
+					&blob_digest,
+				))
+				.await;
+		}
+	}
+
+	// Return 201 Created with location and digest headers
 	RegistryResponse::builder()
 		.status_code(StatusCode::CREATED)
 		.headers(PutManifestResponseHeaders {
 			location: Location::from_str(&format!(
-				"/v2/{}/{}/manifests/{}",
-				workspace_id, repo_name, &digest
+				"/v2/{workspace_id}/{repo_name}/manifests/{digest}"
 			))?,
 			docker_content_digest: DockerContentDigest(digest),
 			docker_distribution_api_version: DockerDistributionApiVersion,
@@ -342,15 +312,6 @@ pub async fn upload_manifest(
 		.into_result()
 }
 
-/// Create an S3 bucket client from configuration.
-///
-/// # Arguments
-///
-/// * `config` - S3 configuration
-///
-/// # Returns
-///
-/// An S3 Bucket client
 #[cfg(test)]
 mod tests {
 	use super::*;

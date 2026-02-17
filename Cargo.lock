@@ -115,6 +115,7 @@ dependencies = [
  "axum-test",
  "axum-typed-websockets",
  "base32",
+ "base64 0.22.1",
  "cloudflare",
  "config",
  "console-subscriber",

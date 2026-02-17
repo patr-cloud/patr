@@ -4,7 +4,7 @@
 //! large blobs in chunks using the chunked upload protocol. It also supports
 //! cross-repository blob mounting for efficient blob sharing.
 
-use std::{str::FromStr, time::Duration};
+use std::str::FromStr;
 
 use axum::body::Body;
 use headers::{ContentLength, ContentType};
@@ -208,6 +208,16 @@ pub async fn initiate_upload(
 		.execute(&mut **database)
 		.await?;
 
+		// Temporarily associate this blob with the repository in Redis so that
+		// HEAD/GET blob checks pass before the manifest is pushed.
+		redis
+			.setex(
+				keys::repository_for_registry_blob(&repository_id, &digest),
+				constants::REGISTRY_BLOB_UPLOAD_SESSION_TTL.as_secs(),
+				"exists",
+			)
+			.await?;
+
 		s3.put_object()
 			.bucket(&config.s3.bucket)
 			.key(format!("blobs/{digest}"))
@@ -255,7 +265,7 @@ pub async fn initiate_upload(
 		redis
 			.setex(
 				keys::registry_blob_upload_part_prefix(&session_id),
-				Duration::from_hours(24).as_secs(),
+				constants::REGISTRY_BLOB_UPLOAD_SESSION_TTL.as_secs(),
 				serde_json::to_string(&S3UploadSession {
 					upload_id: upload_id.to_string(),
 					uploaded_parts_etags: vec![],

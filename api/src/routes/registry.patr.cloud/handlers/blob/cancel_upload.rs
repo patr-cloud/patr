@@ -127,6 +127,11 @@ pub async fn cancel_upload(
 		.del(keys::registry_blob_upload_part_prefix(&session_id))
 		.await?;
 
+	// Clean up any pending buffer
+	let _ = redis
+		.del(keys::registry_blob_upload_pending_buffer(&session_id))
+		.await;
+
 	info!("Deleted upload session from redis");
 
 	// 9. Return 204 No Content
