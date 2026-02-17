@@ -1,4 +1,4 @@
-import { JSX, ParentProps, createSignal, mergeProps, onCleanup, onMount } from "solid-js";
+import { JSX, ParentProps, createSignal, mergeProps, onCleanup } from "solid-js";
 import { MaybeAccessor } from "~/utils/types";
 import { get } from "~/utils/func";
 
@@ -7,11 +7,6 @@ interface TooltipProps {
 	 * The content to display inside the tooltip
 	 */
 	content: MaybeAccessor<string | JSX.Element>;
-	/**
-	 * Position of the tooltip relative to the trigger element
-	 * @default "top"
-	 */
-	position?: "top" | "bottom" | "left" | "right";
 	/**
 	 * Additional classes for the wrapper container
 	 */
@@ -25,24 +20,41 @@ interface TooltipProps {
 	 * @default 200
 	 */
 	delay?: number;
+	/**
+	 * Offset from cursor in pixels
+	 * @default 20
+	 */
+	xOffset?: number;
+	/**
+	 * Offset from cursor in pixels
+	 * @default 0
+	 */
+	yOffset?: number;
 }
 
 const Tooltip = (rawProps: ParentProps<TooltipProps>) => {
 	const props = mergeProps(
 		{
-			position: "top" as const,
 			delay: 200,
 			class: "",
-			tooltipClass: "bg-secondary-dark text-white px-sm py-xs rounded-xs text-sm whitespace-nowrap shadow-lg",
+			tooltipClass: "",
+			xOffset: 20,
+			yOffset: 0,
 		},
 		rawProps
 	);
 
 	const [isVisible, setIsVisible] = createSignal(false);
-	const [triggerRef, setTriggerRef] = createSignal<HTMLDivElement>();
+	const [mousePosition, setMousePosition] = createSignal({ x: 0, y: 0 });
+	const [tooltipRef, setTooltipRef] = createSignal<HTMLDivElement>();
 	let timeoutId: number | undefined;
 
-	const handleMouseEnter = () => {
+	const handleMouseMove = (e: MouseEvent) => {
+		setMousePosition({ x: e.clientX, y: e.clientY });
+	};
+
+	const handleMouseEnter = (e: MouseEvent) => {
+		setMousePosition({ x: e.clientX, y: e.clientY });
 		timeoutId = window.setTimeout(() => {
 			setIsVisible(true);
 		}, props.delay);
@@ -51,6 +63,7 @@ const Tooltip = (rawProps: ParentProps<TooltipProps>) => {
 	const handleMouseLeave = () => {
 		if (timeoutId) {
 			clearTimeout(timeoutId);
+			timeoutId = undefined;
 		}
 		setIsVisible(false);
 	};
@@ -61,41 +74,60 @@ const Tooltip = (rawProps: ParentProps<TooltipProps>) => {
 		}
 	});
 
-	const positionClasses = () => {
-		switch (props.position) {
-			case "top":
-				return "bottom-full left-1/2 -translate-x-1/2 mb-2";
-			case "bottom":
-				return "top-full left-1/2 -translate-x-1/2 mt-2";
-			case "left":
-				return "right-full top-1/2 -translate-y-1/2 mr-2";
-			case "right":
-				return "left-full top-1/2 -translate-y-1/2 ml-2";
+	const tooltipStyle = () => {
+		const tooltip = tooltipRef();
+		if (!tooltip) {
+			return {
+				left: `${mousePosition().x + props.xOffset}px`,
+				top: `${mousePosition().y + props.yOffset}px`,
+			};
 		}
-	};
 
-	const arrowClasses = () => {
-		switch (props.position) {
-			case "top":
-				return "top-full left-1/2 -translate-x-1/2 border-l-transparent border-r-transparent border-b-transparent border-t-secondary-dark";
-			case "bottom":
-				return "bottom-full left-1/2 -translate-x-1/2 border-l-transparent border-r-transparent border-t-transparent border-b-secondary-dark";
-			case "left":
-				return "left-full top-1/2 -translate-y-1/2 border-t-transparent border-b-transparent border-r-transparent border-l-secondary-dark";
-			case "right":
-				return "right-full top-1/2 -translate-y-1/2 border-t-transparent border-b-transparent border-l-transparent border-r-secondary-dark";
+		const tooltipRect = tooltip.getBoundingClientRect();
+		const viewportWidth = window.innerWidth;
+		const viewportHeight = window.innerHeight;
+
+		let x = mousePosition().x + props.xOffset;
+		let y = mousePosition().y + props.yOffset;
+
+		// Adjust horizontal position if tooltip would overflow right edge
+		if (x + tooltipRect.width > viewportWidth) {
+			x = mousePosition().x - tooltipRect.width - props.xOffset;
 		}
+
+		// Adjust vertical position if tooltip would overflow bottom edge
+		if (y + tooltipRect.height > viewportHeight) {
+			y = mousePosition().y - tooltipRect.height - props.yOffset;
+		}
+
+		// Ensure tooltip doesn't go off left edge
+		if (x < 0) {
+			x = props.xOffset;
+		}
+
+		// Ensure tooltip doesn't go off top edge
+		if (y < 0) {
+			y = props.yOffset;
+		}
+
+		return {
+			left: `${x}px`,
+			top: `${y}px`,
+		};
 	};
 
 	return (
-		<div class={`relative inline-block ${get(props.class) ?? ""}`} ref={setTriggerRef}>
-			<div onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+		<div class={`inline-block ${get(props.class) ?? ""}`}>
+			<div onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} onMouseMove={handleMouseMove}>
 				{props.children}
 			</div>
 			{isVisible() && (
-				<div class={`absolute z-50 ${positionClasses()} pointer-events-none`} role="tooltip">
-					<div class={get(props.tooltipClass) ?? ""}>{get(props.content)}</div>
-					<div class={`absolute w-0 h-0 border-4 ${arrowClasses()}`} />
+				<div ref={setTooltipRef} class="fixed z-50 pointer-events-none" style={tooltipStyle()} role="tooltip">
+					<div
+						class={`bg-secondary-dark text-white px-sm py-xs rounded-xs text-sm whitespace-nowrap shadow-lg ${get(props.tooltipClass)}`}
+					>
+						{get(props.content)}
+					</div>
 				</div>
 			)}
 		</div>

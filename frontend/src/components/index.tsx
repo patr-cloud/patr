@@ -23,8 +23,9 @@ import ListResources from "~/components/list-resources";
 import DeleteModal from "~/components/modal/delete-resource-modal";
 import NoPermissionsPage from "~/components/no-permissions";
 import { LoadingSpinner } from "~/components/loading-spinner";
-import InfoPopup from "./info-popup";
-import Tooltip from "./tooltip";
+import InfoPopup from "~/components/info-popup";
+import Tooltip from "~/components/tooltip";
+import CopyButton from "~/components/copy-button";
 export {
 	Alert,
 	PageContainer,
@@ -57,4 +58,5 @@ export {
 	LoadingSpinner,
 	InfoPopup,
 	Tooltip,
+	CopyButton,
 };

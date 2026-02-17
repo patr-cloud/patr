@@ -290,6 +290,26 @@ const formatSize = (bytes: bigint | string | undefined): string => {
 	return `${size} ${units[i]}`;
 };
 
+/**
+ * Formats a date for display in tooltips with a shorter format.
+ */
+const formatDate = (date: Date | string): string => {
+	const d = parseDate(date);
+
+	if (!d) {
+		return "N/A";
+	}
+
+	return d.toLocaleString("en-US", {
+		year: "numeric",
+		month: "short",
+		day: "numeric",
+		hour: "2-digit",
+		minute: "2-digit",
+		second: "2-digit",
+	});
+};
+
 export {
 	get,
 	Jsx,
@@ -307,4 +327,5 @@ export {
 	parseDate,
 	formatRelativeTime,
 	formatSize,
+	formatDate,
 };

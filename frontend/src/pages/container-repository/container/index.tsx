@@ -1,15 +1,6 @@
 import { useNavigate, useParams, useSearchParams } from "@solidjs/router";
 import { createMemo, createResource, createSignal, ErrorBoundary, Suspense } from "solid-js";
-import {
-	Button,
-	ButtonVariant,
-	DeleteModal,
-	HeadTab,
-	PageContainer,
-	PageContainerBody,
-	PageContainerHead,
-	useToast,
-} from "~/components";
+import { DeleteModal, HeadTab, PageContainer, PageContainerBody, PageContainerHead, useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { GetContainerRepositoryInfoResponse, ListContainerRepositoryTagsResponse } from "~/bindings";
@@ -36,20 +27,13 @@ const ContainerInfo = () => {
 		if (!wsId || !auth || auth.type !== "LoggedIn" || !repoId) {
 			return undefined;
 		}
-		console.log("Fetching repository info for repoId:", wsId, repoId);
 		const response = await httpRequest<GetContainerRepositoryInfoResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${repoId}`,
 			{
 				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
-		console.log("Fetched repository info:", response);
 		if (!response.ok) {
-			console.error("Failed to fetch repository info:", response.data.error);
 			toast("Failed to fetch repository info", "error");
 			return undefined;
 		}
@@ -57,24 +41,17 @@ const ContainerInfo = () => {
 		return response.data;
 	});
 
-	const [imageTags] = createResource(resourceParams, async ([auth, wsId, repoId]) => {
+	const [imageTags, { refetch: refetchImageTags }] = createResource(resourceParams, async ([auth, wsId, repoId]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn" || !repoId) {
 			return undefined;
 		}
-		console.log("Fetching image tags for repository:", repoId);
 		const response = await httpRequest<ListContainerRepositoryTagsResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${repoId}/tag`,
 			{
 				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
-		console.log("Fetched image tags:", response);
 		if (!response.ok) {
-			console.error("Failed to fetch image tags:", response.data.error);
 			toast("Failed to fetch image tags", "error");
 			return undefined;
 		}
@@ -94,7 +71,6 @@ const ContainerInfo = () => {
 		const repository = repositoryInfo();
 
 		if (!auth || auth.type !== "LoggedIn" || !currentWorkspace || !repository) {
-			console.error("User not logged in or workspace ID missing");
 			return;
 		}
 
@@ -102,13 +78,8 @@ const ContainerInfo = () => {
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId()}/docker-registry/${params.id}`,
 			{
 				method: "DELETE",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
-		console.log("Delete container-repository response:", resp);
 		if (!resp.ok) {
 			toast("Failed to delete repository", "error");
 			return;
@@ -123,11 +94,11 @@ const ContainerInfo = () => {
 			case "images":
 				const tags = imageTags();
 				if (!tags) return <div>Loading image tags...</div>;
-				return <Images imageTags={tags} />;
+				return <Images imageTags={() => tags} refetch={refetchImageTags} />;
 			case "general":
 			case "":
 			default:
-				return <General repositoryInfo={repositoryInfo()} />;
+				return <General repositoryInfo={() => repositoryInfo()} />;
 		}
 	};
 
@@ -143,7 +114,7 @@ const ContainerInfo = () => {
 						label: repositoryInfo()?.repository?.name || "Loading...",
 					},
 				]}
-				subText="View and manage container repository images"
+				subText="Store and manage container images for your deployments"
 				class="justify-between items-center"
 				actions={() => (
 					<div class="flex items-center justify-end gap-3">

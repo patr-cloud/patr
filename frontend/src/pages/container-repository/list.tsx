@@ -1,4 +1,4 @@
-import { createMemo, createResource, createSignal, ErrorBoundary, For, Show, Suspense } from "solid-js";
+import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import {
 	ButtonVariant,
@@ -41,7 +41,6 @@ const ListContainerRepository = () => {
 		);
 
 		if (!response.ok) {
-			console.error("Failed to fetch repositories:", response.data.error);
 			toast("Failed to fetch repositories", "error");
 			return undefined;
 		}
@@ -57,7 +56,7 @@ const ListContainerRepository = () => {
 						label: "Container Repositories",
 					},
 				]}
-				subText="Create Deployments, Databases, Object Storage, Static Sites, Upgrade Paths and manage Container Repositories"
+				subText="Store and manage container images for your deployments"
 				actions={() => (
 					<Link href="/container-repositories/new" buttonVariant={ButtonVariant.Plain} external={false}>
 						Add Container Repository

@@ -9,58 +9,7 @@ import { ListAllRolesResponse } from "~/bindings/ListAllRolesResponse";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "~/pages/workspace/workspace-header";
 import { Color } from "~/utils/color";
-import { GetRoleInfoResponse, Role, WithId } from "~/bindings";
-
-const EditRole = (props: { role: WithId<Role> }) => {
-	const [authState] = useAuthState();
-	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
-
-	const [roleInfo] = createResource(async () => {
-		const auth = authState();
-		if (!auth || auth.type !== "LoggedIn") {
-			return;
-		}
-
-		const wsId = workspaceId();
-		if (!wsId) {
-			toast("Workspace ID is missing", "error");
-			return;
-		}
-
-		const response = await httpRequest<GetRoleInfoResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/role/${props.role.id}`,
-			{
-				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
-			}
-		);
-
-		if (!response.ok) {
-			console.error("Failed to fetch role info:", response.data.error);
-			toast("Failed to fetch role info", "error");
-			return;
-		}
-
-		return response.data;
-	});
-
-	return (
-		<div class="text-white w-full">
-			{Object.entries(roleInfo()?.permissions || {}).map(([permissionId, permissionType]) => {
-				return (
-					<div class="flex justify-between items-center border-b border-border-color py-2">
-						<div>{permissionId}</div>
-						<div>{permissionType?.permissionType}</div>
-					</div>
-				);
-			})}
-		</div>
-	);
-};
+import { Role, WithId } from "~/bindings";
 
 const RoleRow = (props: {
 	refetch: (info?: unknown) => ListAllRolesResponse | Promise<ListAllRolesResponse | undefined> | null | undefined;

@@ -123,7 +123,7 @@ const CreateApiTokens = () => {
 						url: "/profile",
 					},
 					{
-						label: "Api Token",
+						label: "API Token",
 						url: "/profile/api-tokens",
 					},
 					{

@@ -62,7 +62,6 @@ const CreateContainerRepository = () => {
 		setIsSubmitting(false);
 
 		if (!response.ok) {
-			console.error("Failed to create repository:", response.data.error);
 			toast("Failed to create repository", "error");
 			return;
 		}
@@ -83,7 +82,7 @@ const CreateContainerRepository = () => {
 						label: "Add",
 					},
 				]}
-				subText="Create Deployments, Databases, Object Storage, Static Sites, Upgrade Paths and manage Repositories"
+				subText="Store and manage container images for your deployments"
 			/>
 			<PageContainerBody class="flex flex-col justify-between gap-8">
 				<form onSubmit={handleSubmit} class="flex flex-col gap-8 items-start w-full justify-between flex-1">
@@ -103,18 +102,20 @@ const CreateContainerRepository = () => {
 									/>
 								</div>
 							</div>
-							<div class="flex items-start w-full gap-8">
-								<div class="flex-2"></div>
-								<div class="flex-10 flex items-start gap-2">
-									<FiInfo size={14} class="text-gray-400 shrink-0 mt-0.5" />
-									<p class="text-gray-400 text-xs">
-										Your container repository will be created at:{" "}
-										<span class="text-white font-mono">
-											registry.patr.cloud/{workspaceId()}/{repositoryName().trim() || ""}
-										</span>
-									</p>
+							{repositoryName().trim() && (
+								<div class="flex items-start w-full gap-8">
+									<div class="flex-2"></div>
+									<div class="flex-10 flex items-start gap-2">
+										<FiInfo size={14} class="text-gray-400 shrink-0 mt-0.5" />
+										<p class="text-gray-400 text-xs">
+											Your container repository will be created as:{" "}
+											<span class="text-white">
+												registry.patr.cloud/{workspaceId()}/{repositoryName().trim() || ""}
+											</span>
+										</p>
+									</div>
 								</div>
-							</div>
+							)}
 						</div>
 					</div>
 
