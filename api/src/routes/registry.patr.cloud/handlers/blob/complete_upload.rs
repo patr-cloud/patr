@@ -350,7 +350,8 @@ pub async fn complete_upload(
 				size
 			)
 		VALUES
-			($1, $2);
+			($1, $2)
+		ON CONFLICT (digest) DO NOTHING;
 		"#,
 		&digest,
 		object.content_length().unwrap_or_default()
