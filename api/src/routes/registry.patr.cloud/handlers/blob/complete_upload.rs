@@ -243,19 +243,28 @@ pub async fn complete_upload(
 				.into_result();
 		}
 
-		info!(
-			"Uploading part {} to S3",
-			session.uploaded_parts_etags.len() + 1
-		);
-		s3.upload_part()
+		let part_number = session.uploaded_parts_etags.len() as i32 + 1;
+		info!("Uploading part {part_number} to S3");
+		let response = s3
+			.upload_part()
 			.bucket(&config.s3.bucket)
 			.key(format!("uploads/{}", session_id))
 			.upload_id(&session.upload_id)
 			.content_length(content_length.0 as i64)
-			.part_number(session.uploaded_parts_etags.len() as i32 + 1)
+			.part_number(part_number)
 			.body(BodyStreamWrapper::new(body.into_data_stream()).into_byte_stream())
 			.send()
 			.await?;
+
+		session
+			.uploaded_parts_etags
+			.push(response.e_tag.ok_or_else(|| {
+				RegistryError::builder()
+					.code(ErrorCode::BlobUploadInvalid)
+					.message("Missing or invalid ETag header in S3 response")
+					.status(StatusCode::INTERNAL_SERVER_ERROR)
+					.build()
+			})?);
 	}
 
 	// Flush any pending buffer from Redis as the final S3 part.
