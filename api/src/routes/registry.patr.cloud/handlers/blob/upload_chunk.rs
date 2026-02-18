@@ -314,11 +314,14 @@ pub async fn upload_chunk(
 				total_bytes_uploaded += chunk_len as u64;
 			}
 
-			// Spawn the upload for the current buffer and start a fresh one.
+			// Split the buffer at exactly the threshold so every
+			// non-trailing part is exactly CHUNK_FLUSH_THRESHOLD bytes.
+			let remainder = buffer.split_off(CHUNK_FLUSH_THRESHOLD + 1);
+
 			let part_number = uploaded_parts_etags.len() as i32 + 1;
 			info!(
-				"Buffer reached {}B, flushing as part {part_number}",
-				buffer.len()
+				"Flushing exactly {:.2}MB as part {part_number}",
+				buffer.len() as f64 / (1024.0 * 1024.0)
 			);
 
 			let s3 = s3.clone();
@@ -347,7 +350,7 @@ pub async fn upload_chunk(
 					})
 			}));
 
-			buffer = Vec::with_capacity(CHUNK_FLUSH_THRESHOLD);
+			buffer = remainder;
 		}
 
 		// Stream ended — collect the last in-flight upload, if any.
@@ -369,7 +372,10 @@ pub async fn upload_chunk(
 		// in Redis as a pending buffer — uploading them as a sub-5 MB S3 part
 		// would violate the minimum part size requirement for non-final parts.
 		if !buffer.is_empty() {
-			info!("Storing {}B pending buffer in Redis", buffer.len());
+			info!(
+				"Storing {:.2}MB pending buffer in Redis",
+				buffer.len() as f64 / (1024.0 * 1024.0)
+			);
 			redis
 				.setex(
 					&pending_key,

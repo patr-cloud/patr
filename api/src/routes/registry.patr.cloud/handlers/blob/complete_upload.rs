@@ -6,15 +6,18 @@
 use std::str::FromStr;
 
 use aws_sdk_s3::{
+	operation::upload_part::UploadPartOutput,
 	primitives::ByteStream,
 	types::{CompletedMultipartUpload, CompletedPart},
 };
 use axum::body::Body;
 use base64::prelude::*;
+use futures::StreamExt;
 use headers::{ContentLength, ContentRange, ContentType};
 use http_body::Body as _;
 use rustis::commands::{GenericCommands, StringCommands};
 use sha2::{Digest, Sha256};
+use tokio::task::JoinHandle;
 
 use crate::{redis::keys, routes::registry_patr_cloud::prelude::*};
 
@@ -182,19 +185,45 @@ pub async fn complete_upload(
 
 	debug!("Retrieved upload session");
 
-	// Read final chunk from request body and upload final chunk if present
-	let params = content_type
-		.into_option()
-		.zip(content_length.into_option())
-		.zip(content_range.into_option());
+	// Stream the final chunk body (if present) combined with any pending
+	// buffer from Redis, flushing to S3 in uniform-sized parts. Only the
+	// very last part may be smaller than the threshold, satisfying R2's
+	// "all non-trailing parts must have equal length" constraint.
 
+	/// 5 MB threshold — must match the flush size used in upload_chunk so
+	/// that all non-trailing parts across the entire upload are equal.
+	const CHUNK_FLUSH_THRESHOLD: usize = 5 * 1024 * 1024;
+
+	// Load any pending buffer from Redis (leftover from previous PATCH
+	// requests that was under the 5MB minimum part size).
+	let pending_key = keys::registry_blob_upload_pending_buffer(&session_id);
+	let mut buffer = match redis.get::<Option<String>>(&pending_key).await? {
+		Some(encoded) => {
+			let _ = redis.del(&pending_key).await;
+			BASE64_STANDARD.decode(&encoded).map_err(|err| {
+				error!("Failed to decode pending buffer from Redis: {err}");
+				RegistryError::builder()
+					.code(ErrorCode::BlobUploadInvalid)
+					.message("Corrupted pending upload buffer")
+					.status(StatusCode::INTERNAL_SERVER_ERROR)
+					.build()
+			})?
+		}
+		None => Vec::with_capacity(CHUNK_FLUSH_THRESHOLD),
+	};
+
+	// Stream body chunks (if any) into the buffer, flushing full 5MB parts.
 	'upload: {
+		let params = content_type
+			.into_option()
+			.zip(content_length.into_option())
+			.zip(content_range.into_option());
+
 		let Some(((content_type, content_length), content_range)) = params else {
 			break 'upload;
 		};
 
 		if content_length.0 == 0 {
-			// No final chunk to upload
 			break 'upload;
 		}
 
@@ -209,7 +238,7 @@ pub async fn complete_upload(
 		}
 
 		trace!(
-			"Uploading final chunk: content_length={}, content_range={:?}, content_type={}",
+			"Streaming final chunk: content_length={}, content_range={:?}, content_type={}",
 			content_length.0, content_range, content_type
 		);
 
@@ -243,16 +272,114 @@ pub async fn complete_upload(
 				.into_result();
 		}
 
+		let mut stream = body.into_data_stream();
+		let mut inflight_task = None::<JoinHandle<Result<(i64, UploadPartOutput), _>>>;
+
+		while let Some(chunk) = stream.next().await {
+			let data = chunk.map_err(|err| {
+				error!("Failed to read body frame: {err}");
+				RegistryError::builder()
+					.code(ErrorCode::BlobUploadInvalid)
+					.message("Failed to read request body")
+					.status(StatusCode::BAD_REQUEST)
+					.build()
+			})?;
+
+			buffer.extend(data);
+
+			if buffer.len() <= CHUNK_FLUSH_THRESHOLD {
+				continue;
+			}
+
+			// Buffer exceeds threshold — wait for any in-flight upload to
+			// finish before starting a new one (preserves part ordering).
+			if let Some(task) = inflight_task.take() {
+				let (_, response) = task.await.expect("upload task panicked")?;
+
+				session
+					.uploaded_parts_etags
+					.push(response.e_tag.ok_or_else(|| {
+						RegistryError::builder()
+							.code(ErrorCode::BlobUploadInvalid)
+							.message("Missing or invalid ETag header in S3 response")
+							.status(StatusCode::INTERNAL_SERVER_ERROR)
+							.build()
+					})?);
+			}
+
+			// Split the buffer at exactly the threshold so every
+			// non-trailing part is exactly CHUNK_FLUSH_THRESHOLD bytes.
+			let remainder = buffer.split_off(CHUNK_FLUSH_THRESHOLD + 1);
+
+			let part_number = session.uploaded_parts_etags.len() as i32 + 1;
+			info!(
+				"Flushing exactly {:.2}MB as part {part_number}",
+				buffer.len() as f64 / (1024.0 * 1024.0)
+			);
+
+			let s3 = s3.clone();
+			let bucket = config.s3.bucket.clone();
+			let upload_id = session.upload_id.clone();
+
+			inflight_task = Some(tokio::spawn(async move {
+				let chunk_len = buffer.len() as i64;
+				s3.upload_part()
+					.bucket(&bucket)
+					.key(format!("uploads/{}", session_id))
+					.upload_id(&upload_id)
+					.part_number(part_number)
+					.content_length(chunk_len)
+					.body(ByteStream::from(buffer))
+					.send()
+					.await
+					.map(|response| (chunk_len, response))
+					.map_err(|err| {
+						error!("Failed to upload part to S3: {err}");
+						RegistryError::builder()
+							.code(ErrorCode::BlobUploadInvalid)
+							.message("Failed to upload chunk to storage")
+							.status(StatusCode::INTERNAL_SERVER_ERROR)
+							.build()
+					})
+			}));
+
+			buffer = remainder;
+		}
+
+		// Stream ended — collect the last in-flight upload, if any.
+		if let Some(task) = inflight_task.take() {
+			let (_, response) = task.await.expect("upload task panicked")?;
+
+			session
+				.uploaded_parts_etags
+				.push(response.e_tag.ok_or_else(|| {
+					RegistryError::builder()
+						.code(ErrorCode::BlobUploadInvalid)
+						.message("Missing or invalid ETag header in S3 response")
+						.status(StatusCode::INTERNAL_SERVER_ERROR)
+						.build()
+				})?);
+		}
+	}
+
+	// Upload whatever remains in the buffer as the final trailing part.
+	// This is the only part allowed to be smaller than CHUNK_FLUSH_THRESHOLD.
+	if !buffer.is_empty() {
 		let part_number = session.uploaded_parts_etags.len() as i32 + 1;
-		info!("Uploading part {part_number} to S3");
+		let bytes_to_upload = buffer.len() as i64;
+		info!(
+			"Uploading {:.2}MB as final trailing part {part_number}",
+			bytes_to_upload as f64 / (1024.0 * 1024.0)
+		);
+
 		let response = s3
 			.upload_part()
 			.bucket(&config.s3.bucket)
 			.key(format!("uploads/{}", session_id))
 			.upload_id(&session.upload_id)
-			.content_length(content_length.0 as i64)
 			.part_number(part_number)
-			.body(BodyStreamWrapper::new(body.into_data_stream()).into_byte_stream())
+			.content_length(bytes_to_upload)
+			.body(ByteStream::from(buffer))
 			.send()
 			.await?;
 
@@ -265,53 +392,6 @@ pub async fn complete_upload(
 					.status(StatusCode::INTERNAL_SERVER_ERROR)
 					.build()
 			})?);
-	}
-
-	// Flush any pending buffer from Redis as the final S3 part.
-	// This is data from previous PATCH requests that was under the 5MB
-	// minimum part size and couldn't be uploaded as a non-final part.
-	let pending_key = keys::registry_blob_upload_pending_buffer(&session_id);
-	if let Some(encoded) = redis.get::<Option<String>>(&pending_key).await? {
-		let pending_bytes = BASE64_STANDARD.decode(&encoded).map_err(|err| {
-			error!("Failed to decode pending buffer from Redis: {err}");
-			RegistryError::builder()
-				.code(ErrorCode::BlobUploadInvalid)
-				.message("Corrupted pending upload buffer")
-				.status(StatusCode::INTERNAL_SERVER_ERROR)
-				.build()
-		})?;
-
-		if !pending_bytes.is_empty() {
-			let part_number = session.uploaded_parts_etags.len() as i32 + 1;
-			let bytes_to_upload = pending_bytes.len() as i64;
-			info!(
-				"Flushing {}B pending buffer as final part {part_number}",
-				bytes_to_upload
-			);
-
-			let response = s3
-				.upload_part()
-				.bucket(&config.s3.bucket)
-				.key(format!("uploads/{}", session_id))
-				.upload_id(&session.upload_id)
-				.part_number(part_number)
-				.content_length(bytes_to_upload)
-				.body(ByteStream::from(pending_bytes))
-				.send()
-				.await?;
-
-			session
-				.uploaded_parts_etags
-				.push(response.e_tag.ok_or_else(|| {
-					RegistryError::builder()
-						.code(ErrorCode::BlobUploadInvalid)
-						.message("Missing or invalid ETag header in S3 response")
-						.status(StatusCode::INTERNAL_SERVER_ERROR)
-						.build()
-				})?);
-		}
-
-		let _ = redis.del(&pending_key).await;
 	}
 
 	info!("Completing S3 multipart upload");
