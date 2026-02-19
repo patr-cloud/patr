@@ -132,6 +132,7 @@ dependencies = [
  "opentelemetry-appender-tracing",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
+ "pin-project-lite",
  "preprocess",
  "psl",
  "rand 0.8.5",

@@ -52,7 +52,7 @@ pub mod prelude {
 				RegistryUnprocessedAppRequest,
 			},
 			response::RegistryResponse,
-			utils::{BodyStreamWrapper, S3UploadSession},
+			utils::{BodyStreamWrapper, ReadBufferedBytesExt, S3UploadSession},
 		},
 		utils::RouterExt,
 	};
