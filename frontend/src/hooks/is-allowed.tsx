@@ -1,45 +1,82 @@
 import { ActionTypes, MaybeAccessor, ResourceTypes, UserPermissionsT } from "~/utils/types";
-import { useLastWorkspaceId } from "~/hooks/state-hooks";
+import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { createMemo } from "solid-js";
-import { get } from "~/utils/func";
-import { useFetchUserPermissions } from "~/hooks/fetch";
+import { get, resourceActionMap } from "~/utils/func";
+import { useFetchPermissions, useFetchUserPermissions } from "~/hooks/fetch";
 import { useIsMounted } from "~/hooks";
+import { getPermissions } from "./fetch/user-permissions";
+
+type ResourceActionMapType = typeof resourceActionMap;
+type ActionsForResource<T extends ResourceTypes> = ResourceActionMapType[T][number];
 
 /**
  * Custom hook to check what actions a user has for a specific resource.
  */
-const useGetPermissions = async (resourceType: ResourceTypes, resId: MaybeAccessor<string>) => {
+const useGetPermissions = <T extends ResourceTypes>(resourceType: T, resId: MaybeAccessor<string>) => {
+	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const [userPermissions] = useFetchUserPermissions();
 	const isMounted = useIsMounted();
 
-	console.log("[useGetPermissions] Initializing with:", {
-		resourceType,
-		resId: get(resId),
-	});
-
 	const permissions = createMemo(() => {
-		// Prevent SSR hydration mismatches by always returning null until mounted
-		if (!isMounted()) return null;
+		const allFalse = {} as Record<ActionsForResource<T>, boolean>;
+		resourceActionMap[resourceType].forEach((action) => {
+			allFalse[action as ActionsForResource<T>] = false;
+		});
 
+		if (!isMounted()) return allFalse;
+
+		const actionTypes = resourceActionMap[resourceType];
+		const userPerms = userPermissions() as unknown as UserPermissionsT | null;
 		const resourceId = get(resId);
 		const wsId = get(workspaceId);
-		const permissions = userPermissions() as unknown as UserPermissionsT | null;
+		const auth = authState();
 
-		if (!permissions) return null;
-		if (!wsId) return null;
-
-		if (permissions.type === "superAdmin") {
-			return { permissionType: "include", resources: [] };
+		if (!userPerms) return allFalse;
+		if (userPerms.type === "superAdmin") {
+			// Super admins have all permissions
+			const allPermissions = {} as Record<ActionsForResource<T>, boolean>;
+			actionTypes.forEach((action) => {
+				allPermissions[action as ActionsForResource<T>] = true;
+			});
+			return allPermissions;
 		}
+		if (!resourceId) return allFalse;
+		if (!wsId) return allFalse;
+		if (!auth || auth.type !== "LoggedIn") return allFalse;
 
-		const resourcePermissions = permissions[resourceType];
+		const userPermissionsOnResource = userPerms[resourceType] as Record<
+			ActionTypes,
+			{ permissionType: "include" | "exclude"; resources: string[] }
+		>;
+		if (!userPermissionsOnResource) return allFalse;
 
-		if (!resourcePermissions) return null;
+		const permissions = {} as Record<ActionsForResource<T>, boolean>;
 
-		// return resourcePermissions[action];
+		console.log(actionTypes);
+		actionTypes.forEach((action) => {
+			const actionPermission = userPermissionsOnResource[action];
+			if (!actionPermission) {
+				permissions[action as ActionsForResource<T>] = false;
+				console.log(`[useGetPermissions memo] No permission entry for action ${action}, defaulting to false`);
+				return;
+			}
+
+			if (actionPermission.permissionType === "exclude") {
+				permissions[action as ActionsForResource<T>] = !actionPermission.resources.includes(resourceId);
+			} else if (actionPermission.permissionType === "include") {
+				permissions[action as ActionsForResource<T>] = actionPermission.resources.includes(resourceId);
+			} else {
+				permissions[action as ActionsForResource<T>] = false;
+			}
+		});
+
+		console.log(permissions);
+
+		return permissions;
 	});
 
+	console.log("[useGetPermissions] finishing with:", permissions());
 	return permissions;
 };
 
@@ -78,40 +115,32 @@ const useIsAllowed = (resourceType: ResourceTypes, action: ActionTypes, resId?: 
 		if (actionPermission.permissionType === "exclude") {
 			if (actionPermission.resources.length === 0) {
 				// Exclude nothing means allow all
-				console.log("[useIsAllowed memo] Exclude none = allow all, returning true");
 				return true;
 			}
 
 			if (resourceId && !actionPermission.resources.includes(resourceId)) {
 				// Resource ID is not in the excluded list, so allowed, this is only if resourceId is provided
-				console.log("[useIsAllowed memo] Resource not in exclude list, returning true");
 				return true;
 			}
-
-			console.log("[useIsAllowed memo] Exclude check: resource in exclude list or no specific resource");
 		}
 
 		if (actionPermission.permissionType === "include") {
 			// Include nothing means allow none
 			if (actionPermission.resources.length === 0) {
-				console.log("[useIsAllowed memo] Include none = deny all, returning false");
 				return false;
 			}
 
 			if (resourceId && actionPermission.resources.includes(resourceId)) {
 				// Resource ID is in the included list, so allowed, this is only if resourceId is provided
-				console.log("[useIsAllowed memo] Resource in include list, returning true");
 				return true;
 			}
-
-			console.log("[useIsAllowed memo] Include check: resource not in include list or no specific resource");
 		}
 
-		console.log("[useIsAllowed memo] Defaulting to false");
 		return false;
 	});
 
 	return isAllowed;
 };
 
+export { useGetPermissions };
 export default useIsAllowed;

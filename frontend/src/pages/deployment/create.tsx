@@ -254,7 +254,7 @@ const CreateDeploymentPage = () => {
 					<div class="w-full flex items-end justify-end">
 						<Button
 							loading={isLoading}
-							loadingContent={() => <span>Creating Deployment</span>}
+							loadingContent={() => <span>Creating Deployment...</span>}
 							type="submit"
 							variant={ButtonVariant.Contained}
 						>

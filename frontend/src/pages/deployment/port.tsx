@@ -42,7 +42,7 @@ const PortInput = (props: PortInputProps) => {
 						/>
 						{portType === "http" && props.deploymentId && (
 							<a
-								class="flex-2 flex items-center justify-start gap-2 rounded-xs bg-secondary-medium py-xs px-lg text-primary"
+								class="flex-2 flex items-center justify-start gap-2 rounded-xs bg-secondary-light border border-secondary-medium py-xs px-lg text-primary"
 								href={`https://${port}-${props.deploymentId}.onpatr.cloud`}
 								target="_blank"
 							>

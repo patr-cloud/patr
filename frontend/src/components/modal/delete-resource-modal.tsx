@@ -8,6 +8,7 @@ const DeleteModal = (props: {
 	onClickDelete: (e: MouseEvent & { currentTarget: HTMLButtonElement }) => void;
 	resourceName: string;
 	title: string;
+	isLoading?: boolean;
 	isOpen?: Accessor<boolean>;
 	setIsOpen?: Setter<boolean>;
 }) => {
@@ -44,6 +45,8 @@ const DeleteModal = (props: {
 								onClick={props.onClickDelete}
 								disabled={resourceNameInput() !== props.resourceName}
 								color={Color.Error}
+								loading={props.isLoading}
+								loadingContent={() => <span>Deleting...</span>}
 							>
 								DELETE
 							</Button>

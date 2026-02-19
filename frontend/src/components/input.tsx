@@ -171,7 +171,7 @@ const Input = (rawProps: InputProps) => {
     transition-all duration-125
     focus-within:border-primary focus-within:shadow-md focus-within:bg-secondary-light
     ${variantBgClass(get(props.styleVariant))} ${get(props.class)} ${
-			get(props.disabled) ? "bg-secondary-medium cursor-not-allowed" : ""
+			get(props.disabled) ? "bg-secondary-primary cursor-not-allowed" : ""
 		}`;
 
 	const paddingClass = () => {

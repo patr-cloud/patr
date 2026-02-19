@@ -2,13 +2,12 @@ import { FiChevronDown } from "solid-icons/fi";
 import { createMemo, createResource, createSignal, Resource, Setter, Show } from "solid-js";
 import { GetDeploymentInfoResponse, ListRunnersForWorkspaceResponse, UpdateDeploymentResponse } from "~/bindings";
 import { Button, Input, InputDropdown, InputLabel, InputType, useToast } from "~/components";
-import { useAuthState } from "~/hooks";
+import { useAuthState, useGetPermissions } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 import EnvInput from "~/pages/deployment/env-input";
 import PortInput from "~/pages/deployment/port";
-import { useIsAllowed } from "~/hooks";
 
 interface DeploymentInfoProps {
 	deploymentInfo: Resource<GetDeploymentInfoResponse | undefined>;
@@ -24,7 +23,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
-	const isAllowedEdit = useIsAllowed("deployment", "edit", props.deploymentInfo.latest?.id);
+	const deploymentPermissions = useGetPermissions("deployment", () => props.deploymentInfo.latest?.id || "");
 
 	const [, setHasUpdated] = createSignal(false);
 
@@ -109,7 +108,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						name="deployment-name"
 						placeholder="Deployment Name"
 						type={InputType.Text}
-						disabled={!isAllowedEdit()}
+						disabled={!deploymentPermissions().edit}
 						value={props.deploymentInfo.latest?.name}
 						onInput={(e) => {
 							setHasUpdated(true);
@@ -132,7 +131,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						class="flex-10"
 						name="deployment-runner"
 						placeholder="Select Runner"
-						disabled={!isAllowedEdit()}
+						disabled={!deploymentPermissions().edit}
 						value={props.deploymentInfo.latest?.runner ?? ""}
 						endIcon={() => (
 							<button>
@@ -198,7 +197,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 
 						<Input
 							class="flex-2"
-							disabled={!isAllowedEdit()}
+							disabled={!deploymentPermissions().edit}
 							placeholder="Image Tag"
 							type={InputType.Text}
 							value={props.deploymentInfo.latest?.imageTag ?? "N/A"}
@@ -218,6 +217,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				</div>
 
 				<EnvInput
+					disabled={() => !deploymentPermissions().edit}
 					envList={Object.entries(props.deploymentInfo.latest?.environmentVariables || {}).map(([key, value]) => ({
 						key,
 						value,
@@ -251,6 +251,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				/>
 
 				<PortInput
+					disabled={() => !deploymentPermissions().edit}
 					portList={props.deploymentInfo.latest?.ports || {}}
 					deploymentId={props.deploymentInfo.latest?.id}
 					onAdd={(key, value) => {
@@ -283,9 +284,9 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				/>
 			</div>
 
-			<Show when={isAllowedEdit()}>
+			<Show when={deploymentPermissions().edit}>
 				<div class="w-full flex justify-end items-center">
-					<Button disabled={!isAllowedEdit()} type="submit" variant="contained">
+					<Button disabled={!deploymentPermissions().edit} type="submit" variant="contained">
 						UPDATE
 					</Button>
 				</div>

@@ -30,7 +30,7 @@ const EnvInput = (props: EnvInputProps) => {
 
 	return (
 		<div class="flex gap-8 items-start w-full">
-			<InputLabel parentClass="flex-2 pt-3" label="Environment Variables" />
+			<InputLabel parentClass="flex-2" label="Environment Variables" />
 
 			<div class="flex flex-col flex-10 gap-4 w-full">
 				{get(props.envList).map((env) => (
@@ -71,7 +71,35 @@ const EnvInput = (props: EnvInputProps) => {
 					</div>
 				))}
 
-				<Show when={!get(props.disabled)}>
+				<Show
+					when={!get(props.disabled)}
+					fallback={
+						<div class="flex items-center flex-10 gap-4">
+							<Input
+								class="flex-4"
+								disabled={true}
+								placeholder="Enter Env Name"
+								type={InputType.Text}
+								value={envName()}
+							/>
+							<Input
+								class="flex-7"
+								disabled={true}
+								placeholder="Enter Env Value"
+								type={InputType.Text}
+								value={envValue()}
+							/>
+							<Button
+								type="button"
+								variant={ButtonVariant.Contained}
+								disabled={true}
+								class="flex-1 h-full flex items-center gap-2"
+							>
+								<FiPlus size={16} />
+							</Button>
+						</div>
+					}
+				>
 					<div class="flex items-center flex-10 gap-4">
 						<Input
 							class="flex-4"
@@ -114,7 +142,7 @@ const EnvInput = (props: EnvInputProps) => {
 								if (!envKey || !envVal) {
 									toast("Both Env Name and Value are required", "error");
 									return;
-								};
+								}
 
 								props.onAdd(envName(), envValue());
 								setEnvName("");
