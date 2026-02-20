@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE container_registry_manifest_reference(digest TEXT NOT NULL, referenced_digest TEXT NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "8231429865bc5e63de0fc4aa4647ecb4b54e6f6b710c29a8cf8683ce90225291"
+}

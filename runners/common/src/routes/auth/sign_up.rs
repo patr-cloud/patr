@@ -1,4 +1,4 @@
-use argon2::{Algorithm, PasswordHasher, Version, password_hash::SaltString};
+use argon2::{Algorithm, PasswordHasher, Version, password_hash::generate_salt};
 use http::StatusCode;
 use models::api::auth::*;
 
@@ -87,10 +87,7 @@ pub async fn sign_up(
 		error!("Error creating Argon2: `{}`", err);
 	})
 	.map_err(ErrorType::server_error)?
-	.hash_password(
-		password.as_bytes(),
-		SaltString::generate(&mut rand::thread_rng()).as_salt(),
-	)
+	.hash_password_with_salt(password.as_bytes(), &generate_salt())
 	.inspect_err(|err| {
 		error!("Error hashing password: `{}`", err);
 	})

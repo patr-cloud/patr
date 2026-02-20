@@ -45,18 +45,28 @@ pub async fn list_repository_tags(
 	let tags = query!(
 		r#"
 		SELECT
-			*,
+			name,
+			last_updated,
+			manifest_digest,
 			COUNT(*) OVER() AS "count!"
 		FROM
 			container_registry_repository_tag
 		WHERE
-			repository_id = $1
+			repository_id = $1 AND
+			($2::TEXT IS NULL OR name ILIKE '%' || $2 || '%') AND
+			($3::TEXT IS NULL OR manifest_digest ILIKE '%' || $3 || '%') AND
+			($4::TIMESTAMPTZ IS NULL OR last_updated >= $4) AND
+			($5::TIMESTAMPTZ IS NULL OR last_updated <= $5)
 		ORDER BY
 			last_updated DESC
-		LIMIT $2
-		OFFSET $3;
+		LIMIT $6
+		OFFSET $7;
 		"#,
 		repository_id as _,
+		tag_filter,
+		digest_filter,
+		last_updated_filter.as_ref().map(|range| range.start()),
+		last_updated_filter.as_ref().map(|range| range.end()),
 		count as i32,
 		(page * count) as i32,
 	)

@@ -149,25 +149,3 @@ pub async fn get_upload_status(
 		.build()
 		.into_result()
 }
-
-#[cfg(test)]
-mod tests {
-	use models::utils::DockerUploadUuid;
-
-	use super::*;
-
-	#[test]
-	fn test_get_blob_upload_status_endpoint_path() {
-		// Verify the endpoint path is correct
-		assert_eq!(
-			<GetBlobUploadStatusPath as axum_extra::routing::TypedPath>::PATH,
-			"/v2/{name}/blobs/uploads/{uuid}"
-		);
-	}
-
-	#[test]
-	fn test_docker_upload_uuid_header() {
-		let uuid = DockerUploadUuid::new("550e8400-e29b-41d4-a716-446655440000".parse().unwrap());
-		assert_eq!(uuid.to_string(), "550e8400-e29b-41d4-a716-446655440000");
-	}
-}

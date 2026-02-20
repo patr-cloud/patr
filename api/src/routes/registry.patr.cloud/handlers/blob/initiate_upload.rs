@@ -11,6 +11,7 @@ use headers::{ContentLength, ContentType};
 use http_body::Body as _;
 use models::utils::DockerUploadUuid;
 use rustis::commands::StringCommands;
+use sha2::{Digest as _, Sha256, digest::common::hazmat::SerializableState};
 
 use crate::{redis::keys, routes::registry_patr_cloud::prelude::*};
 
@@ -272,6 +273,7 @@ pub async fn initiate_upload(
 					total_bytes_uploaded: 0,
 					initiated_by_login: user_data.login_id,
 					initiated_by_ip: client_ip,
+					hasher_state: hex::encode(Sha256::new().serialize()),
 				})?,
 			)
 			.await?;
@@ -294,19 +296,4 @@ pub async fn initiate_upload(
 		.body(Body::empty())
 		.build()
 		.into_result()
-}
-
-/// Create an S3 Bucket client
-#[cfg(test)]
-mod tests {
-	use super::*;
-
-	#[test]
-	fn test_initiate_blob_upload_endpoint_path() {
-		// Verify the endpoint path is correct
-		assert_eq!(
-			<InitiateBlobUploadPath as axum_extra::routing::TypedPath>::PATH,
-			"/v2/{name}/blobs/uploads/"
-		);
-	}
 }

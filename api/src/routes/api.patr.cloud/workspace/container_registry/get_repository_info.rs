@@ -49,16 +49,69 @@ pub async fn get_repository_info(
 
 	let size = query!(
 		r#"
+		WITH RECURSIVE manifest_set AS (
+			SELECT
+				manifest_digest AS digest
+			FROM
+				container_registry_repository_manifest
+			WHERE
+				repository_id = $1
+			UNION
+			SELECT
+				manifest_reference.referenced_digest AS digest
+			FROM
+				container_registry_manifest_reference manifest_reference
+			INNER JOIN
+				manifest_set
+			ON
+				manifest_set.digest = manifest_reference.digest
+		),
+		manifest_size AS (
+			SELECT
+				COALESCE(SUM(manifest.size), 0)::BIGINT AS size
+			FROM
+				container_registry_manifest manifest
+			INNER JOIN
+				manifest_set
+			ON
+				manifest_set.digest = manifest.digest
+		),
+		blob_set AS (
+			SELECT
+				manifest.config_blob_digest AS digest
+			FROM
+				container_registry_manifest manifest
+			INNER JOIN
+				manifest_set
+			ON
+				manifest_set.digest = manifest.digest
+			WHERE
+				manifest.config_blob_digest IS NOT NULL
+			UNION
+			SELECT
+				manifest_blob.blob_digest AS digest
+			FROM
+				container_registry_manifest_blob manifest_blob
+			INNER JOIN
+				manifest_set
+			ON
+				manifest_set.digest = manifest_blob.manifest_digest
+		),
+		blob_size AS (
+			SELECT
+				COALESCE(SUM(blob.size), 0)::BIGINT AS size
+			FROM
+				container_registry_blob blob
+			INNER JOIN
+				blob_set
+			ON
+				blob_set.digest = blob.digest
+		)
 		SELECT
-			COALESCE(SUM(container_registry_blob.size), 0)::BIGINT AS "size!"
+			(manifest_size.size + blob_size.size)::BIGINT AS "size!"
 		FROM
-			container_registry_blob
-		INNER JOIN
-			container_registry_repository_manifest
-		ON
-			container_registry_blob.digest = container_registry_repository_manifest.manifest_digest
-		WHERE
-			container_registry_repository_manifest.repository_id = $1;
+			manifest_size,
+			blob_size;
 		"#,
 		repository_id as _,
 	)
@@ -66,7 +119,7 @@ pub async fn get_repository_info(
 	.await?
 	.size as u64;
 
-	let last_updated = query!(
+	let (last_updated, created) = query!(
 		r#"
 		SELECT
 			GREATEST(
@@ -87,7 +140,8 @@ pub async fn get_repository_info(
 					WHERE
 						repository_id = $1
 				)
-			) AS "last_updated!"
+			) AS "last_updated!",
+			created
 		FROM
 			resource
 		WHERE
@@ -97,22 +151,7 @@ pub async fn get_repository_info(
 	)
 	.fetch_one(&mut **database)
 	.await
-	.map(|row| row.last_updated)?;
-
-	let created = query!(
-		r#"
-		SELECT
-			created
-		FROM
-			resource
-		WHERE
-			id = $1;
-		"#,
-		repository_id as _
-	)
-	.fetch_one(&mut **database)
-	.await?
-	.created;
+	.map(|row| (row.last_updated, row.created))?;
 
 	AppResponse::builder()
 		.body(GetContainerRepositoryInfoResponse {

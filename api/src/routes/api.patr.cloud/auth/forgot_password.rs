@@ -1,9 +1,9 @@
 use std::ops::Add;
 
-use argon2::{Algorithm, PasswordHasher, Version, password_hash::SaltString};
+use argon2::{Algorithm, PasswordHasher, Version, password_hash::generate_salt};
 use axum::http::StatusCode;
 use models::api::auth::*;
-use rand::Rng;
+use rand::RngExt;
 use time::OffsetDateTime;
 
 use crate::prelude::*;
@@ -69,9 +69,7 @@ pub async fn forgot_password(
 	.ok_or(ErrorType::UserNotFound)?;
 
 	let now = OffsetDateTime::now_utc();
-	let password_reset_token = rand::thread_rng()
-		.gen_range(constants::OTP_RANGE)
-		.to_string();
+	let password_reset_token = rand::rng().random_range(constants::OTP_RANGE).to_string();
 	let password_reset_token_expiry = now.add(constants::OTP_VALIDITY);
 	let hashed_password_reset_token = argon2::Argon2::new_with_secret(
 		state.config.password_pepper.as_ref(),
@@ -80,15 +78,12 @@ pub async fn forgot_password(
 		constants::HASHING_PARAMS,
 	)
 	.inspect_err(|err| {
-		error!("Error creating Argon2: `{err}");
+		error!("Error creating Argon2: `{err}`");
 	})
 	.map_err(ErrorType::server_error)?
-	.hash_password(
-		password_reset_token.as_bytes(),
-		SaltString::generate(&mut rand::thread_rng()).as_salt(),
-	)
+	.hash_password_with_salt(password_reset_token.as_bytes(), &generate_salt())
 	.inspect_err(|err| {
-		error!("Error hashing reset token: `{err}");
+		error!("Error hashing reset token: `{err}`");
 	})
 	.map_err(ErrorType::server_error)?
 	.to_string();

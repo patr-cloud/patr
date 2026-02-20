@@ -8,48 +8,62 @@ mod create_repository;
 /// The endpoint to delete a repository
 mod delete_repository;
 /// The endpoint to delete an image from a repository
-mod delete_repository_image;
+mod delete_repository_manifest;
 /// The endpoint to get the exposed ports of an image in a repository
 mod get_exposed_ports;
-/// The endpoint to get the details of an image in a repository
-mod get_repository_image_details;
 /// The endpoint to get the details of a repository
 mod get_repository_info;
+/// The endpoint to get the details of an image in a repository
+mod get_repository_manifest_details;
 /// The endpoint to list all the repositories in a workspace
 mod list_repositories;
+/// The endpoint to list all the manifests of a repository
+mod list_repository_manifests;
 /// The endpoint to list all the tags of a repository
 mod list_repository_tags;
 
 pub use self::{
 	create_repository::*,
 	delete_repository::*,
-	delete_repository_image::*,
+	delete_repository_manifest::*,
 	get_exposed_ports::*,
-	get_repository_image_details::*,
 	get_repository_info::*,
+	get_repository_manifest_details::*,
 	list_repositories::*,
+	list_repository_manifests::*,
 	list_repository_tags::*,
 };
+
 /// Contains tag information of a repository
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
 pub struct ContainerRepositoryTagInfo {
 	/// The tag
 	pub tag: String,
 	/// Last updated timestamp
+	#[ts(type = "Date")]
 	pub last_updated: OffsetDateTime,
 }
-/// Contains image information of a repository
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+
+/// Contains manifest information of a repository
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-pub struct ContainerRepositoryImageInfo {
-	/// Image digest
+pub struct ContainerRepositoryManifestInfo {
+	/// Manifest digest
 	pub digest: String,
-	/// The size of the image
+	/// The size of the manifest
+	#[search(ty = "range")]
 	pub size: u64,
+	/// The platform of the manifest, if it's an image
+	pub platform: String,
 	/// The created timestamp
+	#[ts(type = "Date")]
 	pub created: OffsetDateTime,
+	/// The tags that point to this manifest
+	#[search(ty = "custom", name = "Vec<String>")]
+	pub tags: Vec<String>,
 }
+
 /// Represents a repository of container images in Patr's in-build container
 /// registry.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, ts_rs::TS)]
@@ -66,7 +80,7 @@ pub struct ContainerRepository {
 	/// TODO: Change this to audit log
 	#[ts(type = "Date")]
 	pub last_updated: OffsetDateTime,
-	/// The time the repository was created.nlas
+	/// The time the repository was created.
 	///
 	/// TODO: Change this to audit log
 	#[ts(type = "Date")]

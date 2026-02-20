@@ -1,9 +1,9 @@
 use std::ops::Add;
 
-use argon2::{Algorithm, PasswordHasher, Version, password_hash::SaltString};
+use argon2::{Algorithm, PasswordHasher, Version, password_hash::generate_salt};
 use axum::http::StatusCode;
 use models::api::auth::*;
-use rand::Rng;
+use rand::RngExt;
 use time::OffsetDateTime;
 
 use crate::{prelude::*, utils::validate_turnstile_token};
@@ -120,7 +120,7 @@ pub async fn create_account(
 	}
 
 	let now = OffsetDateTime::now_utc();
-	let otp = format!("{:06}", rand::thread_rng().gen_range(constants::OTP_RANGE));
+	let otp = format!("{:06}", rand::rng().random_range(constants::OTP_RANGE));
 	let hashed_otp = argon2::Argon2::new_with_secret(
 		state.config.password_pepper.as_ref(),
 		Algorithm::Argon2id,
@@ -131,10 +131,7 @@ pub async fn create_account(
 		error!("Error creating Argon2: `{}`", err);
 	})
 	.map_err(ErrorType::server_error)?
-	.hash_password(
-		otp.as_bytes(),
-		SaltString::generate(&mut rand::thread_rng()).as_salt(),
-	)
+	.hash_password_with_salt(otp.as_bytes(), &generate_salt())
 	.inspect_err(|err| {
 		error!("Error hashing OTP: `{}`", err);
 	})
@@ -152,10 +149,7 @@ pub async fn create_account(
 		error!("Error creating Argon2: `{}`", err);
 	})
 	.map_err(ErrorType::server_error)?
-	.hash_password(
-		password.as_bytes(),
-		SaltString::generate(&mut rand::thread_rng()).as_salt(),
-	)
+	.hash_password_with_salt(password.as_bytes(), &generate_salt())
 	.inspect_err(|err| {
 		error!("Error hashing password: `{}`", err);
 	})

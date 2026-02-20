@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT deployment_volume.*, (SELECT deployment_id FROM deployment_volume_mount WHERE volume_id = deployment_volume.id) AS deployment_id, COUNT(*) OVER() AS \"total_count!\" FROM deployment_volume JOIN resource ON deployment_volume.id = resource.id WHERE resource.owner_id = $1 AND deployment_volume.deleted IS NULL AND ($2::TEXT IS NULL OR deployment_volume.name ILIKE '%' || $2 || '%') AND ($3::INT IS NULL OR deployment_volume.volume_size >= $3) AND ($4::INT IS NULL OR deployment_volume.volume_size <= $4) AND ($5::UUID IS NULL OR deployment_volume.id IN (SELECT volume_id FROM deployment_volume_mount WHERE deployment_id = $5)) ORDER BY resource.created DESC LIMIT $6 OFFSET $7;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "volume_size",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "deleted",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "deployment_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "total_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int4",
+        "Int4",
+        "Uuid",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      null,
+      null
+    ]
+  },
+  "hash": "96a45b7a7e84396fc33db4554f20715ad7e4c9587124e796c2e0d87ea68863e5"
+}

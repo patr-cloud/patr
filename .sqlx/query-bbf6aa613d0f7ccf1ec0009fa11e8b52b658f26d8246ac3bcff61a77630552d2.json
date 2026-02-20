@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO container_registry_manifest_reference(digest, referenced_digest) VALUES ($1, $2) ON CONFLICT (digest, referenced_digest) DO NOTHING;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bbf6aa613d0f7ccf1ec0009fa11e8b52b658f26d8246ac3bcff61a77630552d2"
+}

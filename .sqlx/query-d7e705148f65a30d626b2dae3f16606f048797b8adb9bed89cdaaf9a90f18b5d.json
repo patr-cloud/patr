@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT (/* Check if the blob is a layer in any manifest linked to this repo */ EXISTS(SELECT 1 FROM container_registry_repository_manifest repo_manifest INNER JOIN container_registry_manifest_blob manifest_blob ON manifest_blob.manifest_digest = repo_manifest.manifest_digest WHERE repo_manifest.repository_id = $2 AND manifest_blob.blob_digest = $1) OR /* Check if the blob is a config for any manifest linked to this repo */ EXISTS (SELECT 1 FROM container_registry_repository_manifest repo_manifest INNER JOIN container_registry_manifest manifest ON manifest.digest = repo_manifest.manifest_digest WHERE repo_manifest.repository_id = $2 AND manifest.config_blob_digest = $1)) AS \"exists!\";",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "d7e705148f65a30d626b2dae3f16606f048797b8adb9bed89cdaaf9a90f18b5d"
+}

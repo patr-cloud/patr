@@ -1,18 +1,16 @@
 //! Utility functions for registry operations.
 //!
 //! This module contains utilities for:
-//! - S3 streaming operations (upload/download without buffering)
-//! - Repository access validation
-//! - Digest verification
-//! - Tag resolution
-//! - Blob reference checking
-//! - Background cleanup tasks
+//! - Managing S3 multipart upload sessions, including tracking state in Redis
+//!   and computing digests on-the-fly.
+//! - Converting Axum request bodies into a format compatible with AWS SDK S3
+//!   uploads.
+//! - Common database queries related to manifests and blobs.
 
 use std::{
 	io::Error as IoError,
 	net::IpAddr,
 	pin::Pin,
-	sync::{Arc, Mutex},
 	task::{Context, Poll},
 };
 
@@ -21,32 +19,18 @@ use axum::body::{BodyDataStream, Bytes};
 use futures::Stream;
 use http_body::Frame;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use sync_wrapper::SyncWrapper;
 
 use crate::routes::registry_patr_cloud::prelude::*;
 
 /// Wrapper to convert Axum Body into a type compatible with AWS SDK S3
 /// [`ByteStream`].
-pub struct BodyStreamWrapper {
-	stream: SyncWrapper<BodyDataStream>,
-	hasher: Option<Arc<Mutex<Sha256>>>,
-}
+pub struct BodyStreamWrapper(SyncWrapper<BodyDataStream>);
 
 impl BodyStreamWrapper {
 	/// Create a new [`BodyStreamWrapper`] from a streaming body.
 	pub fn new(body: BodyDataStream) -> Self {
-		Self {
-			stream: SyncWrapper::new(body),
-			hasher: None,
-		}
-	}
-
-	/// Optionally attach a hasher to compute the digest of the stream
-	/// on-the-fly.
-	pub fn with_hasher(mut self, hasher: Arc<Mutex<Sha256>>) -> Self {
-		self.hasher = Some(hasher);
-		self
+		Self(SyncWrapper::new(body))
 	}
 
 	/// Convert the [`BodyStreamWrapper`] into an AWS SDK [`ByteStream`].
@@ -63,25 +47,10 @@ impl http_body::Body for BodyStreamWrapper {
 		mut self: Pin<&mut Self>,
 		cx: &mut Context<'_>,
 	) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
-		let poll = Pin::new(&mut self.stream)
+		Pin::new(&mut self.0)
 			.get_pin_mut()
 			.poll_frame(cx)
-			.map_err(IoError::other);
-		let data = match poll {
-			Poll::Ready(data) => data,
-			Poll::Pending => return Poll::Pending,
-		};
-
-		let Some(Ok(frame)) = data else {
-			return Poll::Ready(data);
-		};
-
-		Poll::Ready(Some(Ok(frame.map_data(|chunk| {
-			if let Some(hasher) = self.hasher.as_ref() {
-				hasher.lock().unwrap().update(&chunk);
-			}
-			chunk
-		}))))
+			.map_err(IoError::other)
 	}
 }
 
@@ -100,6 +69,9 @@ pub struct S3UploadSession {
 	pub initiated_by_login: Uuid,
 	/// The client IP address that initiated this upload session.
 	pub initiated_by_ip: IpAddr,
+	/// The in-progress hasher for computing the digest of the uploaded data
+	/// on-the-fly.
+	pub hasher_state: String,
 }
 
 pin_project_lite::pin_project! {

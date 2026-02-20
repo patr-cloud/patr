@@ -290,11 +290,11 @@ pub enum ContainerRegistryRepositoryPermission {
 	/// but not view it, edit it, or delete it. This permission is useful for
 	/// users or API tokens that need to only pull images from repositories.
 	Pull,
-	/// This permission allows the user to delete an image from the repository,
-	/// but not view it, edit it, or push or pull images from it. This
-	/// permission allows the user / API token to only delete images that have
-	/// been pushed, instead of deleting the whole repository.
-	DeleteImage,
+	/// This permission allows the user to delete a manifest from the
+	/// repository, but not view it, edit it, or push or pull images from it.
+	/// This permission allows the user / API token to only delete manifests
+	/// that have been pushed, instead of deleting the whole repository.
+	DeleteManifest,
 }
 
 /// A list of all permissions that can be granted on a static site

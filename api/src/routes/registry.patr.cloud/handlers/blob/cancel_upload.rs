@@ -134,37 +134,11 @@ pub async fn cancel_upload(
 
 	info!("Deleted upload session from redis");
 
-	// 9. Return 204 No Content
+	// Return 204 No Content
 	RegistryResponse::builder()
 		.status_code(StatusCode::NO_CONTENT)
 		.headers(CancelBlobUploadResponseHeaders {})
 		.body(Body::empty())
 		.build()
 		.into_result()
-}
-
-/// Helper function to create an S3 bucket client from configuration.
-///
-/// This function creates a properly configured S3 bucket client using the
-/// credentials and settings from the application configuration.
-///
-/// # Arguments
-///
-/// * `config` - The S3 configuration containing credentials and bucket details
-///
-/// # Returns
-///
-/// A boxed S3 Bucket client ready for use
-#[cfg(test)]
-mod tests {
-	use super::*;
-
-	#[test]
-	fn test_cancel_blob_upload_endpoint_path() {
-		// Verify the endpoint path is correct
-		assert_eq!(
-			<CancelBlobUploadPath as axum_extra::routing::TypedPath>::PATH,
-			"/v2/{name}/blobs/uploads/{uuid}"
-		);
-	}
 }

@@ -19,9 +19,13 @@ use api::{
 	},
 };
 use axum_test::TestServer;
-use rand::{Rng, distributions::Alphanumeric};
-use testcontainers::{ContainerAsync, ImageExt, runners::AsyncRunner as _};
-use testcontainers_modules::{minio::MinIO, postgres::Postgres, redis::Redis};
+use rand::{RngExt as _, distr::Alphanumeric};
+use testcontainers_modules::{
+	minio::MinIO,
+	postgres::Postgres,
+	redis::Redis,
+	testcontainers::{ContainerAsync, ImageExt, runners::AsyncRunner as _},
+};
 use tokio::net::TcpListener;
 
 pub struct TestSetup {
@@ -37,13 +41,13 @@ pub struct TestSetup {
 pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 	let bind_address = TcpListener::bind("127.0.0.1:0").await?.local_addr()?;
 
-	let password_pepper = rand::thread_rng()
+	let password_pepper = rand::rng()
 		.sample_iter(Alphanumeric)
 		.map(char::from)
 		.take(32)
 		.collect::<String>();
 
-	let jwt_secret = rand::thread_rng()
+	let jwt_secret = rand::rng()
 		.sample_iter(Alphanumeric)
 		.map(char::from)
 		.take(64)

@@ -18,6 +18,11 @@ use headers::{ContentLength, ContentRange, ContentType};
 use http_body::Body as _;
 use models::utils::{DockerUploadUuid, Range};
 use rustis::commands::{GenericCommands, StringCommands};
+use sha2::{
+	Digest,
+	Sha256,
+	digest::common::hazmat::{SerializableState, SerializedState},
+};
 use tokio::task::JoinHandle;
 
 use crate::{redis::keys, routes::registry_patr_cloud::prelude::*};
@@ -222,6 +227,23 @@ pub async fn upload_chunk(
 		}
 	}
 
+	let hasher = Sha256::deserialize(&SerializedState::<Sha256>::from_iter(
+		hex::decode(&session.hasher_state).map_err(|err| {
+			error!("Failed to decode hasher state from session: {err}");
+			RegistryError::server_error(
+				ErrorCode::BlobUploadInvalid,
+				"Corrupted upload session hasher state",
+			)
+		})?,
+	))
+	.map_err(|err| {
+		error!("Failed to deserialize hasher state: {err}");
+		RegistryError::server_error(
+			ErrorCode::BlobUploadInvalid,
+			"Corrupted upload session hasher state",
+		)
+	})?;
+
 	// Upload chunk to S3
 	const CHUNK_FLUSH_THRESHOLD: u64 = 5 * 1024 * 1024; // 5 MB - S3 requires all non-final parts to be at least this size
 
@@ -249,102 +271,110 @@ pub async fn upload_chunk(
 	// the blob
 	let _ = redis.del(&pending_key).await;
 
-	let (updated_session, _) = futures::stream::once(async move { Ok(Bytes::from(buffer)) })
-		.chain(body.into_data_stream().map_err(|err| {
-			error!("Failed to read body stream: {err}");
-			RegistryError::builder()
-				.code(ErrorCode::BlobUploadInvalid)
-				.message("Failed to read request body")
-				.status(StatusCode::BAD_REQUEST)
-				.build()
-		}))
-		// .inspect_ok(|frame| hasher.update(&frame))
-		.read_buffered_bytes(CHUNK_FLUSH_THRESHOLD)
-		.try_fold(
-			(
-				session,
-				None::<JoinHandle<Result<UploadPartOutput, SdkError<UploadPartError>>>>,
-			),
-			async |(mut session, inflight_task), chunk| {
-				// If there's an inflight upload task from the previous chunk, await it and
-				// update the session with the returned ETag and part number
-				if let Some(task) = inflight_task {
-					let response = task.await.expect("push task panicked")?;
+	let (mut updated_session, hasher, _) =
+		futures::stream::once(async move { Ok(Bytes::from(buffer)) })
+			.chain(body.into_data_stream().map_err(|err| {
+				error!("Failed to read body stream: {err}");
+				RegistryError::builder()
+					.code(ErrorCode::BlobUploadInvalid)
+					.message("Failed to read request body")
+					.status(StatusCode::BAD_REQUEST)
+					.build()
+			}))
+			.read_buffered_bytes(CHUNK_FLUSH_THRESHOLD)
+			.try_fold(
+				(
+					session,
+					hasher,
+					None::<JoinHandle<Result<UploadPartOutput, SdkError<UploadPartError>>>>,
+				),
+				async |(mut session, mut hasher, inflight_task), chunk| {
+					// If there's an inflight upload task from the previous chunk, await it and
+					// update the session with the returned ETag and part number
+					if let Some(task) = inflight_task {
+						let response = task.await.expect("push task panicked")?;
 
-					session
-						.uploaded_parts_etags
-						.push(response.e_tag.ok_or_else(|| {
-							RegistryError::server_error(
-								ErrorCode::BlobUploadInvalid,
-								"Missing or invalid ETag header in S3 response",
-							)
-						})?);
+						session
+							.uploaded_parts_etags
+							.push(response.e_tag.ok_or_else(|| {
+								RegistryError::server_error(
+									ErrorCode::BlobUploadInvalid,
+									"Missing or invalid ETag header in S3 response",
+								)
+							})?);
 
-					session.total_bytes_uploaded += CHUNK_FLUSH_THRESHOLD as u64;
-				}
+						session.total_bytes_uploaded += CHUNK_FLUSH_THRESHOLD as u64;
+					}
 
-				let part_number = session.uploaded_parts_etags.len() as i32 + 1;
-				let chunk_size = chunk.len();
-				let chunk_size_string = format!("{:.2}MB", chunk_size as f64 / (1024.0 * 1024.0));
+					let part_number = session.uploaded_parts_etags.len() as i32 + 1;
+					let chunk_size = chunk.len();
+					let chunk_size_string =
+						format!("{:.2}MB", chunk_size as f64 / (1024.0 * 1024.0));
 
-				info!(
-					"Uploading part {part_number} to S3 (buffered, {})",
-					chunk_size_string
-				);
+					info!(
+						"Uploading part {part_number} to S3 (buffered, {})",
+						chunk_size_string
+					);
 
-				let inflight_task = match chunk_size as u64 {
-					CHUNK_FLUSH_THRESHOLD => Some(tokio::spawn({
-						let s3 = s3.clone();
-						let bucket = config.s3.bucket.clone();
-						let upload_id = session.upload_id.clone();
-						async move {
-							s3.upload_part()
-								.bucket(&bucket)
-								.key(format!("uploads/{}", session_id))
-								.content_length(CHUNK_FLUSH_THRESHOLD as i64)
-								.upload_id(&upload_id)
-								.part_number(part_number)
-								.body(ByteStream::from(chunk))
-								.send()
-								.await
+					let inflight_task = match chunk_size as u64 {
+						CHUNK_FLUSH_THRESHOLD => {
+							hasher.update(&chunk);
+
+							Some(tokio::spawn({
+								let s3 = s3.clone();
+								let bucket = config.s3.bucket.clone();
+								let upload_id = session.upload_id.clone();
+								async move {
+									s3.upload_part()
+										.bucket(&bucket)
+										.key(format!("uploads/{}", session_id))
+										.content_length(CHUNK_FLUSH_THRESHOLD as i64)
+										.upload_id(&upload_id)
+										.part_number(part_number)
+										.body(ByteStream::from(chunk))
+										.send()
+										.await
+								}
+							}))
 						}
-					})),
-					0 => None,
-					..CHUNK_FLUSH_THRESHOLD => {
-						// The only way to get a chunk smaller than the flush threshold
-						// is if it's the final chunk (the stream ended) — in that case
-						// we can store that final chunk in Redis as a pending buffer to
-						// be flushed on the next PATCH, which avoids violating S3's
-						// minimum part size requirement for non-final parts
-						info!("Storing {} pending buffer in Redis", chunk_size_string);
-						// session.total_bytes_uploaded += chunk_size as u64;
-						redis
-							.setex(
-								&pending_key,
-								constants::REGISTRY_BLOB_UPLOAD_PENDING_BUFFER_TTL.as_secs(),
-								BASE64_STANDARD.encode(&chunk),
-							)
-							.await?;
+						0 => None,
+						..CHUNK_FLUSH_THRESHOLD => {
+							// The only way to get a chunk smaller than the flush threshold
+							// is if it's the final chunk (the stream ended) — in that case
+							// we can store that final chunk in Redis as a pending buffer to
+							// be flushed on the next PATCH, which avoids violating S3's
+							// minimum part size requirement for non-final parts
+							info!("Storing {} pending buffer in Redis", chunk_size_string);
+							// session.total_bytes_uploaded += chunk_size as u64;
+							redis
+								.setex(
+									&pending_key,
+									constants::REGISTRY_BLOB_UPLOAD_PENDING_BUFFER_TTL.as_secs(),
+									BASE64_STANDARD.encode(&chunk),
+								)
+								.await?;
 
-						session.total_bytes_uploaded += chunk_size as u64;
-						None
-					}
-					CHUNK_FLUSH_THRESHOLD.. => {
-						error!(
-							"Chunk size {} exceeds flush threshold of {}",
-							chunk_size, CHUNK_FLUSH_THRESHOLD
-						);
-						return Err(RegistryError::server_error(
-							ErrorCode::BlobUploadInvalid,
-							"Chunk size exceeds flush threshold",
-						));
-					}
-				};
+							session.total_bytes_uploaded += chunk_size as u64;
+							None
+						}
+						CHUNK_FLUSH_THRESHOLD.. => {
+							error!(
+								"Chunk size {} exceeds flush threshold of {}",
+								chunk_size, CHUNK_FLUSH_THRESHOLD
+							);
+							return Err(RegistryError::server_error(
+								ErrorCode::BlobUploadInvalid,
+								"Chunk size exceeds flush threshold",
+							));
+						}
+					};
 
-				Ok((session, inflight_task))
-			},
-		)
-		.await?;
+					Ok((session, hasher, inflight_task))
+				},
+			)
+			.await?;
+
+	updated_session.hasher_state = hex::encode(hasher.serialize());
 
 	info!("All parts uploaded successfully");
 
@@ -378,19 +408,4 @@ pub async fn upload_chunk(
 		.body(Body::empty())
 		.build()
 		.into_result()
-}
-
-/// Create an S3 Bucket client
-#[cfg(test)]
-mod tests {
-	use super::*;
-
-	#[test]
-	fn test_upload_blob_chunk_endpoint_path() {
-		// Verify the endpoint path is correct
-		assert_eq!(
-			<UploadBlobChunkPath as axum_extra::routing::TypedPath>::PATH,
-			"/v2/{name}/blobs/uploads/{uuid}"
-		);
-	}
 }

@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT referenced_manifest.digest AS \"digest\", referenced_manifest.platform AS \"platform\", (referenced_manifest.size + COALESCE(config_blob.size, 0) + COALESCE(layer_size.total_size, 0))::BIGINT AS \"size!\", repository_manifest.created_at AS \"created\", COALESCE((SELECT ARRAY_AGG(tag.name ORDER BY tag.last_updated DESC) FROM container_registry_repository_tag tag WHERE tag.repository_id = $1 AND tag.manifest_digest = referenced_manifest.digest), ARRAY[]::TEXT[]) AS \"tags!: Vec<String>\" FROM container_registry_manifest_reference manifest_reference INNER JOIN container_registry_manifest referenced_manifest ON referenced_manifest.digest = manifest_reference.referenced_digest LEFT JOIN container_registry_repository_manifest repository_manifest ON repository_manifest.repository_id = $1 AND repository_manifest.manifest_digest = referenced_manifest.digest LEFT JOIN container_registry_blob config_blob ON config_blob.digest = referenced_manifest.config_blob_digest LEFT JOIN LATERAL (SELECT COALESCE(SUM(layer_blob.size), 0)::BIGINT AS total_size FROM container_registry_manifest_blob manifest_blob INNER JOIN container_registry_blob layer_blob ON layer_blob.digest = manifest_blob.blob_digest WHERE manifest_blob.manifest_digest = referenced_manifest.digest) layer_size ON TRUE WHERE manifest_reference.digest = $2 ORDER BY repository_manifest.created_at DESC;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "digest",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "platform",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "size!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "created",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "tags!: Vec<String>",
+        "type_info": "TextArray"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      false,
+      null
+    ]
+  },
+  "hash": "e57e065f3dcbae1ebeb48f4b4b2ef33c4b867112ece10a935a7793361f3bd7a7"
+}

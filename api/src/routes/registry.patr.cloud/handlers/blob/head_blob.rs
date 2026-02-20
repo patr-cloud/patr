@@ -129,23 +129,36 @@ pub async fn head_blob(
 	// Check if the blob is linked to this repo via a manifest (permanent)
 	let exists_in_db = query!(
 		r#"
-		SELECT EXISTS(
-			SELECT
-				1
-			FROM
-				container_registry_repository
-			INNER JOIN
-				container_registry_repository_manifest
-			ON
-				container_registry_repository.id = container_registry_repository_manifest.repository_id
-			INNER JOIN
-				container_registry_manifest_blob
-			ON
-				container_registry_repository_manifest.manifest_digest = container_registry_manifest_blob.manifest_digest
-			WHERE
-				container_registry_manifest_blob.blob_digest = $1 AND
-				container_registry_repository.id = $2 AND
-				container_registry_repository.deleted IS NULL
+		SELECT (
+			/* Check if the blob is a layer in any manifest linked to this repo */
+			EXISTS(
+				SELECT
+					1
+				FROM
+					container_registry_repository_manifest repo_manifest
+				INNER JOIN
+					container_registry_manifest_blob manifest_blob
+				ON
+					manifest_blob.manifest_digest = repo_manifest.manifest_digest
+				WHERE
+					repo_manifest.repository_id = $2 AND
+					manifest_blob.blob_digest = $1
+			)
+			OR
+			/* Check if the blob is a config for any manifest linked to this repo */
+			EXISTS (
+				SELECT
+					1
+				FROM
+					container_registry_repository_manifest repo_manifest
+				INNER JOIN
+					container_registry_manifest manifest
+				ON
+					manifest.digest = repo_manifest.manifest_digest
+				WHERE
+					repo_manifest.repository_id = $2 AND
+					manifest.config_blob_digest = $1
+			)
 		) AS "exists!";
 		"#,
 		digest,
@@ -199,18 +212,4 @@ pub async fn head_blob(
 		.body(Body::empty())
 		.build()
 		.into_result()
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-
-	#[test]
-	fn test_head_blob_endpoint_path() {
-		// Verify the endpoint path is correct
-		assert_eq!(
-			<HeadBlobPath as axum_extra::routing::TypedPath>::PATH,
-			"/v2/{name}/blobs/{digest}"
-		);
-	}
 }

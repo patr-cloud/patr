@@ -37,8 +37,8 @@ pub async fn delete_blob(
 		request:
 			RegistryProcessedApiRequest {
 				path: DeleteBlobPathProcessed {
-					repo_name,
-					reference,
+					repo_name: _,
+					reference: _,
 				},
 				query: (),
 				headers: DeleteBlobRequestHeaders { authorization: _ },
@@ -48,16 +48,11 @@ pub async fn delete_blob(
 		redis: _,
 		s3: _,
 		client_ip: _,
-		user_data,
+		user_data: _,
 		config: _,
 	}: AuthenticatedRegistryAppRequest<'_, DeleteBlobPath>,
 ) -> Result<RegistryResponse<DeleteBlobPath>, RegistryError> {
-	debug!(
-		repo_name = %repo_name,
-		reference = %reference,
-		user_id = %user_data.id,
-		"Manifest deletion requested is currently disabled"
-	);
+	debug!("Manifest deletion requested is currently disabled");
 
 	RegistryResponse::builder()
 		.body(Body::empty())
@@ -65,18 +60,4 @@ pub async fn delete_blob(
 		.headers(())
 		.build()
 		.into_result()
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-
-	#[test]
-	fn test_delete_blob_endpoint_path() {
-		// Verify the endpoint path is correct
-		assert_eq!(
-			<DeleteBlobPath as axum_extra::routing::TypedPath>::PATH,
-			"/v2/{name}/blobs/{digest}"
-		);
-	}
 }

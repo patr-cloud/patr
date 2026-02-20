@@ -1,0 +1,68 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT token_id, name, token_nbf, token_exp, allowed_ips, created, COUNT(*) OVER() AS \"total_count!\" FROM user_api_token WHERE user_id = $1 AND revoked IS NULL AND ($2::TEXT IS NULL OR name ILIKE '%' || $2 || '%') AND ($3::TIMESTAMPTZ IS NULL OR token_nbf >= $3) AND ($4::TIMESTAMPTZ IS NULL OR token_nbf <= $4) AND ($5::TIMESTAMPTZ IS NULL OR token_exp >= $5) AND ($6::TIMESTAMPTZ IS NULL OR token_exp <= $6) AND ($7::INET IS NULL OR $7::INET <<= ANY(allowed_ips)) AND ($8::TIMESTAMPTZ IS NULL OR created >= $8) AND ($9::TIMESTAMPTZ IS NULL OR created <= $9) ORDER BY created DESC LIMIT $10 OFFSET $11;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "token_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "token_nbf",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "token_exp",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "allowed_ips",
+        "type_info": "InetArray"
+      },
+      {
+        "ordinal": 5,
+        "name": "created",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "total_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Timestamptz",
+        "Timestamptz",
+        "Inet",
+        "Timestamptz",
+        "Timestamptz",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      null
+    ]
+  },
+  "hash": "bc08934863aa2814aea55088a2b10d5ef83ffbfb2e451e453e49255de456f9c2"
+}

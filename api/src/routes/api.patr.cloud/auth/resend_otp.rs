@@ -4,11 +4,11 @@ use argon2::{
 	PasswordHasher,
 	PasswordVerifier,
 	Version,
-	password_hash::SaltString,
+	password_hash::generate_salt,
 };
 use axum::http::StatusCode;
 use models::api::auth::*;
-use rand::Rng;
+use rand::RngExt;
 
 use crate::prelude::*;
 
@@ -64,7 +64,7 @@ pub async fn resend_otp(
 		.is_ok();
 
 		if success {
-			let otp = format!("{:06}", rand::thread_rng().gen_range(constants::OTP_RANGE));
+			let otp = format!("{:06}", rand::rng().random_range(constants::OTP_RANGE));
 			let hashed_otp = argon2::Argon2::new_with_secret(
 				state.config.password_pepper.as_ref(),
 				Algorithm::Argon2id,
@@ -75,10 +75,7 @@ pub async fn resend_otp(
 				error!("Error while creating Argon2 instance: {}", err);
 			})
 			.map_err(ErrorType::server_error)?
-			.hash_password(
-				otp.as_bytes(),
-				SaltString::generate(&mut rand::thread_rng()).as_salt(),
-			)
+			.hash_password_with_salt(otp.as_bytes(), &generate_salt())
 			.inspect_err(|err| {
 				error!("Error hashing OTP: {}", err);
 			})

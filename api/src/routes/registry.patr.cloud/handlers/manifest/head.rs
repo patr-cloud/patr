@@ -135,7 +135,7 @@ pub async fn check_manifest(
 		FROM
 			container_registry_manifest m
 		INNER JOIN
-			container_registry_repository_manifest rm 
+			container_registry_repository_manifest rm
 		ON
 			m.digest = rm.manifest_digest
 		INNER JOIN
@@ -144,14 +144,13 @@ pub async fn check_manifest(
 			rm.repository_id = r.id
 		WHERE
 			(
-				m.digest = $1 OR EXISTS(
+				m.digest = $1 OR m.digest = (
 					SELECT
-						1
+						t.manifest_digest
 					FROM
-						container_registry_repository_tag t 
+						container_registry_repository_tag t
 					WHERE
 						t.repository_id = r.id AND
-						t.manifest_digest = m.digest AND
 						t.name = $1
 				)
 			) AND
@@ -166,11 +165,7 @@ pub async fn check_manifest(
 	.fetch_optional(&mut **database)
 	.await?
 	.ok_or_else(|| {
-		warn!(
-			reference = %reference,
-			repository = %repo_name,
-			"Manifest not found"
-		);
+		warn!("Manifest not found");
 		RegistryError::builder()
 			.status(StatusCode::NOT_FOUND)
 			.message(format!("Manifest `{reference}` not found"))
@@ -178,12 +173,7 @@ pub async fn check_manifest(
 			.build()
 	})?;
 
-	info!(
-		digest = %manifest_record.digest,
-		size = manifest_record.size,
-		content_type = %manifest_record.content_type,
-		"Found manifest in database"
-	);
+	info!("Found manifest in database");
 
 	let s3_key = format!("manifests/{}", &manifest_record.digest);
 	debug!(s3_key = %s3_key, "Streaming manifest from S3");
@@ -195,7 +185,7 @@ pub async fn check_manifest(
 		.unwrap_or_else(|_| ContentType::octet_stream());
 
 	let etag = ETag::from_str(&manifest_record.digest).map_err(|err| {
-		error!(%err, "Failed to parse ETag from manifest digest");
+		error!("Failed to parse ETag from manifest digest: {err}");
 		RegistryError::builder()
 			.code(ErrorCode::ManifestInvalid)
 			.message("Failed to parse ETag")

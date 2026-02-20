@@ -25,6 +25,7 @@ config                         = { workspace = true, features = ["default"] }
 console-subscriber             = { workspace = true, features = ["default"] }
 futures                        = { workspace = true, features = ["default"] }
 headers                        = { workspace = true, features = [] }
+hex                            = { workspace = true, features = [] }
 http                           = { workspace = true, features = ["default"] }
 http-body                      = { workspace = true, features = [] }
 ipinfo                         = { workspace = true, features = [] }
@@ -66,5 +67,4 @@ woothee                        = { workspace = true, features = ["default"] }
 [dev-dependencies]
 anyhow                 = { workspace = true, features = ["default"] }
 axum-test              = { workspace = true, features = ["default"] }
-testcontainers         = { workspace = true, features = ["default"] }
 testcontainers-modules = { workspace = true, features = ["default", "postgres", "minio", "redis"] }

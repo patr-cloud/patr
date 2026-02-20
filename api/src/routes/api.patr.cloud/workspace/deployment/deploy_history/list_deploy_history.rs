@@ -72,10 +72,8 @@ pub async fn list_deploy_history(
 		WHERE
 			deployment_id = $1 AND
 			($2::TEXT IS NULL OR image_digest = $2) AND
-			(($3::TIMESTAMPTZ IS NULL AND $4::TIMESTAMPTZ IS NULL) OR (
-				deployment_deploy_history.created >= $3 AND
-				deployment_deploy_history.created <= $4
-			))
+			($3::TIMESTAMPTZ IS NULL OR created >= $3) AND
+			($4::TIMESTAMPTZ IS NULL OR created <= $4)
 		ORDER BY
 			created DESC
 		LIMIT $5
@@ -86,7 +84,7 @@ pub async fn list_deploy_history(
 		created_filter.as_ref().map(|created_at| created_at.start()) as _,
 		created_filter.as_ref().map(|created_at| created_at.end()) as _,
 		count as i32,
-		(page & count) as i32
+		(page * count) as i32
 	)
 	.fetch_all(&mut **database)
 	.await?
