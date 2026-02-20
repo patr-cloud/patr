@@ -63,10 +63,8 @@ pub async fn list_domains_in_workspace(
 				nameserver_type = ANY($5)
 			) AND
 			($6::BOOLEAN IS NULL OR is_verified = $6) AND
-			(($7::TIMESTAMPTZ IS NULL AND $8::TIMESTAMPTZ IS NULL) OR (
-				last_verified >= $7::TIMESTAMPTZ AND
-				last_verified <= $8::TIMESTAMPTZ
-			))
+			($7::TIMESTAMPTZ IS NULL OR last_verified >= $7) AND
+			($8::TIMESTAMPTZ IS NULL OR last_verified <= $8)
 		ORDER BY
 			resource.created DESC
 		LIMIT $9

@@ -42,7 +42,7 @@ impl RegistryError {
 	///
 	/// * `code` - The OCI error code
 	/// * `message` - Human-readable error message
-	pub fn new(code: ErrorCode, message: impl Into<String>) -> Self {
+	pub fn server_error(code: ErrorCode, message: impl Into<String>) -> Self {
 		let status = Self::error_code_to_status(&code);
 		Self {
 			code,
@@ -101,14 +101,14 @@ impl From<sqlx::Error> for RegistryError {
 impl From<serde_json::Error> for RegistryError {
 	fn from(err: serde_json::Error) -> Self {
 		error!("JSON error: {}", err);
-		Self::new(ErrorCode::ManifestInvalid, format!("invalid JSON: {}", err))
+		Self::server_error(ErrorCode::ManifestInvalid, format!("invalid JSON: {}", err))
 	}
 }
 
 impl From<oci_spec::OciSpecError> for RegistryError {
 	fn from(err: oci_spec::OciSpecError) -> Self {
 		error!("OCI spec error: {}", err);
-		Self::new(
+		Self::server_error(
 			ErrorCode::Unsupported,
 			format!("invalid OCI specification: {}", err),
 		)
@@ -175,7 +175,7 @@ impl From<PresigningConfigError> for RegistryError {
 impl From<headers::Error> for RegistryError {
 	fn from(err: headers::Error) -> Self {
 		error!("Header error: {}", err);
-		Self::new(
+		Self::server_error(
 			ErrorCode::Unsupported,
 			format!("invalid HTTP header: {}", err),
 		)
@@ -265,14 +265,14 @@ mod tests {
 
 	#[test]
 	fn test_new_error() {
-		let err = RegistryError::new(ErrorCode::BlobUnknown, "test error");
+		let err = RegistryError::server_error(ErrorCode::BlobUnknown, "test error");
 		assert_eq!(err.status, StatusCode::NOT_FOUND);
 		assert_eq!(err.message, "test error");
 	}
 
 	#[test]
 	fn test_to_oci_error_response() {
-		let err = RegistryError::new(ErrorCode::BlobUnknown, "blob not found");
+		let err = RegistryError::server_error(ErrorCode::BlobUnknown, "blob not found");
 		let oci_response = ErrorResponseBuilder::default()
 			.errors(vec![
 				ErrorInfoBuilder::default()
@@ -301,7 +301,7 @@ mod tests {
 
 	#[test]
 	fn test_display() {
-		let err = RegistryError::new(ErrorCode::BlobUnknown, "test error");
+		let err = RegistryError::server_error(ErrorCode::BlobUnknown, "test error");
 		let display = format!("{}", err);
 		assert!(display.contains("BlobUnknown"));
 		assert!(display.contains("test error"));

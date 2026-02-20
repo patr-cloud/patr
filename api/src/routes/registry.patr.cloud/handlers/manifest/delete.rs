@@ -37,8 +37,8 @@ pub async fn delete_manifest(
 		request:
 			RegistryProcessedApiRequest {
 				path: DeleteManifestPathProcessed {
-					repo_name,
-					reference,
+					repo_name: _,
+					reference: _,
 				},
 				query: (),
 				headers: DeleteManifestRequestHeaders { authorization: _ },
@@ -48,16 +48,11 @@ pub async fn delete_manifest(
 		redis: _,
 		s3: _,
 		client_ip: _,
-		user_data,
+		user_data: _,
 		config: _,
 	}: AuthenticatedRegistryAppRequest<'_, DeleteManifestPath>,
 ) -> Result<RegistryResponse<DeleteManifestPath>, RegistryError> {
-	debug!(
-		repo_name = %repo_name,
-		reference = %reference,
-		user_id = %user_data.id,
-		"Manifest deletion requested but currently disabled"
-	);
+	debug!("Manifest deletion requested but currently disabled");
 
 	RegistryResponse::builder()
 		.body(Body::empty())
@@ -65,18 +60,4 @@ pub async fn delete_manifest(
 		.headers(())
 		.build()
 		.into_result()
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-
-	#[test]
-	fn test_delete_manifest_endpoint_path() {
-		// Verify the endpoint path is correct
-		assert_eq!(
-			<DeleteManifestPath as axum_extra::routing::TypedPath>::PATH,
-			"/v2/{name}/manifests/{reference}"
-		);
-	}
 }

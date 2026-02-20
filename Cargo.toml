@@ -20,7 +20,7 @@ missing_docs_in_private_items = "warn"
 
 [workspace.dependencies]
 anyhow                         = { default-features = false, version = "1" }
-argon2                         = { default-features = false, version = "0.5" }
+argon2                         = { default-features = false, version = "0.6.0-rc.7" }
 aws-config                     = { default-features = false, version = "1" }
 aws-credential-types           = { default-features = false, version = "1" }
 aws-sdk-s3                     = { default-features = false, version = "1" }
@@ -39,7 +39,7 @@ common                         = { default-features = false, path = "runners/com
 config                         = { default-features = false, version = "0.15" }
 console-subscriber             = { default-features = false, version = "0.5" }
 console_error_panic_hook       = { default-features = false, version = "0.1" }
-convert_case                   = { default-features = false, version = "0.10" }
+convert_case                   = { default-features = false, version = "0.11" }
 dashmap                        = { default-features = false, version = "6" }
 dirs                           = { default-features = false, version = "6" }
 docker                         = { default-features = false, path = "runners/docker" }
@@ -47,8 +47,6 @@ either                         = { default-features = false, version = "1" }
 flate2                         = { default-features = false, version = "1" }
 fslock                         = { default-features = false, version = "0.2" }
 futures                        = { default-features = false, version = "0.3" }
-getrandom_02                   = { default-features = false, package = "getrandom", version = "0.2" }
-getrandom_03                   = { default-features = false, package = "getrandom", version = "0.3" }
 headers                        = { default-features = false, version = "0.4" }
 hex                            = { default-features = false, version = "0.4" }
 hickory-resolver               = { default-features = false, version = "0.25" }
@@ -66,17 +64,18 @@ macros                         = { default-features = false, path = "macros" }
 models                         = { default-features = false, path = "models" }
 monostate                      = { default-features = false, version = "1" }
 nix                            = { default-features = false, version = "0.31" }
-oci-spec                       = { default-features = false, version = "0.8" }
+oci-spec                       = { default-features = false, version = "0.9" }
 open                           = { default-features = false, version = "5" }
 opentelemetry                  = { default-features = false, version = "0.31" }
 opentelemetry-appender-tracing = { default-features = false, version = "0.31" }
 opentelemetry-otlp             = { default-features = false, version = "0.31" }
 opentelemetry_sdk              = { default-features = false, version = "0.31" }
+pin-project-lite               = { default-features = false, version = "0.2" }
 preprocess                     = { default-features = false, version = "0.5" }
 proc-macro2                    = { default-features = false, version = "1" }
 psl                            = { default-features = false, version = "2" }
 quote                          = { default-features = false, version = "1" }
-rand                           = { default-features = false, version = "0.8" }
+rand                           = { default-features = false, version = "0.10" }
 regex                          = { default-features = false, version = "1" }
 reqwest                        = { default-features = false, version = "0.13" }
 rust-embed                     = { default-features = false, version = "8" }
@@ -87,17 +86,16 @@ semver                         = { default-features = false, version = "1" }
 serde                          = { default-features = false, version = "1" }
 serde_json                     = { default-features = false, version = "1" }
 serde_path_to_error            = { default-features = false, version = "0.1" }
-serde_qs                       = { default-features = false, version = "0.15" }
+serde_qs                       = { default-features = false, version = "1" }
 serde_test                     = { default-features = false, version = "1" }
 serde_yaml2                    = { default-features = false, version = "0.1" }
-sha2                           = { default-features = false, version = "0.10" }
+sha2                           = { default-features = false, version = "0.11.0-rc.5" }
 sqlx                           = { default-features = false, version = "0.8" }
 strum                          = { default-features = false, version = "0.27" }
 syn                            = { default-features = false, version = "2" }
 sync_wrapper                   = { default-features = false, version = "1" }
 tar                            = { default-features = false, version = "0.4" }
 tempfile                       = { default-features = false, version = "3" }
-testcontainers                 = { default-features = false, version = "0.26" }
 testcontainers-modules         = { default-features = false, version = "0.14" }
 thiserror                      = { default-features = false, version = "2" }
 time                           = { default-features = false, version = "0.3" }

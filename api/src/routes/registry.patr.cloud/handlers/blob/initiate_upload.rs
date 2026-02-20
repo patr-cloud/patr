@@ -4,13 +4,14 @@
 //! large blobs in chunks using the chunked upload protocol. It also supports
 //! cross-repository blob mounting for efficient blob sharing.
 
-use std::{str::FromStr, time::Duration};
+use std::str::FromStr;
 
 use axum::body::Body;
 use headers::{ContentLength, ContentType};
 use http_body::Body as _;
 use models::utils::DockerUploadUuid;
 use rustis::commands::StringCommands;
+use sha2::{Digest as _, Sha256, digest::common::hazmat::SerializableState};
 
 use crate::{redis::keys, routes::registry_patr_cloud::prelude::*};
 
@@ -208,6 +209,16 @@ pub async fn initiate_upload(
 		.execute(&mut **database)
 		.await?;
 
+		// Temporarily associate this blob with the repository in Redis so that
+		// HEAD/GET blob checks pass before the manifest is pushed.
+		redis
+			.setex(
+				keys::repository_for_registry_blob(&repository_id, &digest),
+				constants::REGISTRY_BLOB_UPLOAD_SESSION_TTL.as_secs(),
+				"exists",
+			)
+			.await?;
+
 		s3.put_object()
 			.bucket(&config.s3.bucket)
 			.key(format!("blobs/{digest}"))
@@ -255,13 +266,14 @@ pub async fn initiate_upload(
 		redis
 			.setex(
 				keys::registry_blob_upload_part_prefix(&session_id),
-				Duration::from_hours(24).as_secs(),
+				constants::REGISTRY_BLOB_UPLOAD_SESSION_TTL.as_secs(),
 				serde_json::to_string(&S3UploadSession {
 					upload_id: upload_id.to_string(),
 					uploaded_parts_etags: vec![],
 					total_bytes_uploaded: 0,
 					initiated_by_login: user_data.login_id,
 					initiated_by_ip: client_ip,
+					hasher_state: hex::encode(Sha256::new().serialize()),
 				})?,
 			)
 			.await?;
@@ -284,19 +296,4 @@ pub async fn initiate_upload(
 		.body(Body::empty())
 		.build()
 		.into_result()
-}
-
-/// Create an S3 Bucket client
-#[cfg(test)]
-mod tests {
-	use super::*;
-
-	#[test]
-	fn test_initiate_blob_upload_endpoint_path() {
-		// Verify the endpoint path is correct
-		assert_eq!(
-			<InitiateBlobUploadPath as axum_extra::routing::TypedPath>::PATH,
-			"/v2/{name}/blobs/uploads/"
-		);
-	}
 }

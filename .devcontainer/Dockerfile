@@ -41,6 +41,7 @@ RUN mkdir -p --mode=0755 /usr/share/keyrings && \
     mold \
     nginx \
     caddy && \
+    redis-tools && \
     rm -rf /var/lib/apt/lists/*
 
 # Setup non-root user with sudo permissions

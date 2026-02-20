@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE container_registry_repository(id UUID NOT NULL, workspace_id UUID NOT NULL, name TEXT NOT NULL, deleted TIMESTAMPTZ);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "d3651a617bf60631b8b550e8c6a47bcdb3f8ce150da1b2ab298f7ed2a560585d"
+}

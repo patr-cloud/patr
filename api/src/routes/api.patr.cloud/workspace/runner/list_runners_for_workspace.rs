@@ -57,10 +57,8 @@ pub async fn list_runners_for_workspace(
 			runner.deleted IS NULL AND
 			($4::TEXT IS NULL OR name ILIKE '%' || $4 || '%') AND
 			($5::BOOLEAN IS NULL OR is_connected = $5) AND
-			(($6::TIMESTAMPTZ IS NULL AND $7::TIMESTAMPTZ IS NULL) OR (
-				last_seen >= $6 AND
-				last_seen <= $7
-			))
+			($6::TIMESTAMPTZ IS NULL OR last_seen >= $6) AND
+			($7::TIMESTAMPTZ IS NULL OR last_seen <= $7)
 		ORDER BY
 			resource.created DESC
 		LIMIT $8

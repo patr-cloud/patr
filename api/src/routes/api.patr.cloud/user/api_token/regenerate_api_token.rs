@@ -1,4 +1,4 @@
-use argon2::{Algorithm, PasswordHasher, Version, password_hash::SaltString};
+use argon2::{Algorithm, PasswordHasher, Version, password_hash::generate_salt};
 use models::api::user::*;
 use reqwest::StatusCode;
 
@@ -37,10 +37,7 @@ pub async fn regenerate_api_token(
 		error!("Error creating Argon2: `{}`", err);
 	})
 	.map_err(ErrorType::server_error)?
-	.hash_password(
-		refresh_token.as_bytes(),
-		SaltString::generate(&mut rand::thread_rng()).as_salt(),
-	)
+	.hash_password_with_salt(refresh_token.as_bytes(), &generate_salt())
 	.inspect_err(|err| {
 		error!("Error hashing refresh token: `{}`", err);
 	})

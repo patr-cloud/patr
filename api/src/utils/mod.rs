@@ -24,9 +24,6 @@ mod either_ext;
 /// Contains the extension traits that will be used to add exit signal handling
 /// to futures.
 mod exitable_ext;
-/// Contains the log formatter for the API. This is used to format the logs in a
-/// specific way, and to remove any fields that are not needed from the logs.
-mod tracing;
 /// Contains the extension traits that will be used with the axum [`Router`][1]
 /// to mount the various endpoints on the router.
 ///
@@ -35,20 +32,23 @@ mod router_ext;
 /// Contains the extension traits that will be used to timeout futures as
 /// they're executing.
 mod timeout_ext;
+/// Contains the log formatter for the API. This is used to format the logs in a
+/// specific way, and to remove any fields that are not needed from the logs.
+mod tracing;
 
 pub use self::{
 	cf_turnstile_validator::*,
 	either_ext::*,
 	exitable_ext::*,
-	tracing::*,
 	router_ext::*,
 	timeout_ext::*,
+	tracing::*,
 };
 
 /// A list of constants that will be used throughout the application. This is
 /// mostly kept to prevent typos.
 pub mod constants {
-	use std::ops::RangeInclusive;
+	use std::{ops::RangeInclusive, time::Duration};
 
 	use semver::Version;
 
@@ -139,4 +139,29 @@ pub mod constants {
 
 	/// The issuer to be used for TOTP generation
 	pub const TOTP_ISSUER: &str = "app.patr.cloud";
+
+	/// -------------------All Registry Related Constants-------------------
+
+	/// The duration for which a registry blob upload session will be valid for.
+	/// This is the duration for which the session data will be stored in Redis,
+	/// and the duration for which the S3 multipart upload will be valid for.
+	/// After this duration, the session will be considered expired and the S3
+	/// multipart upload will have to be aborted and cleaned up.
+	pub const REGISTRY_BLOB_UPLOAD_SESSION_TTL: Duration = Duration::from_hours(24);
+
+	/// The duration for which the pending buffer of a registry blob upload
+	/// session will be valid for. This is the duration for which the pending
+	/// buffer data will be stored in Redis. After this duration, the pending
+	/// buffer will be considered expired and will be deleted from Redis.
+	pub const REGISTRY_BLOB_UPLOAD_PENDING_BUFFER_TTL: Duration = Duration::from_hours(24);
+
+	/// The maximum size of a manifest that can be uploaded to the registry.
+	/// This is used to prevent DoS attacks by uploading extremely large
+	/// manifests that can consume a lot of memory when being processed. The
+	/// value is set to 100 MiB, which should be sufficient for most users,
+	/// since the average manifest size is usually in the range of a few KB to a
+	/// few MBs, even for large images with many layers. If a user needs to
+	/// upload a manifest larger than this size, they can contact support to
+	/// have the limit increased for their account.
+	pub const MAX_REGISTRY_MANIFEST_SIZE: usize = 100 * 1024 * 1024; // 100 MiB
 }

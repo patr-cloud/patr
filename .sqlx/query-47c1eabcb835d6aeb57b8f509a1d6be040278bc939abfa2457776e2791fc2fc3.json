@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE container_registry_repository ADD CONSTRAINT container_registry_repository_pk PRIMARY KEY(id), ADD CONSTRAINT container_registry_repository_uq_name_workspace_id UNIQUE(name, workspace_id), ADD CONSTRAINT container_registry_repository_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id), ADD CONSTRAINT container_registry_repository_chk_name CHECK(name ~ '^[a-z0-9]+((\\.|_|__|-+)[a-z0-9]+)*(\\/[a-z0-9]+((\\.|_|__|-+)[a-z0-9]+)*)*$');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "47c1eabcb835d6aeb57b8f509a1d6be040278bc939abfa2457776e2791fc2fc3"
+}

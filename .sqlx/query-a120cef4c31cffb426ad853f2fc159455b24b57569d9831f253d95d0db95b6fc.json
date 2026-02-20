@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT manifest_digest AS \"manifest_digest!\" FROM (SELECT manifest_digest FROM container_registry_repository_tag WHERE repository_id = $1 AND name = $2  UNION ALL  SELECT manifest_digest FROM container_registry_repository_manifest WHERE repository_id = $1 AND manifest_digest = $2) AS combined;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "manifest_digest!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "a120cef4c31cffb426ad853f2fc159455b24b57569d9831f253d95d0db95b6fc"
+}

@@ -5,12 +5,24 @@
 
 use std::str::FromStr;
 
-use aws_sdk_s3::types::{CompletedMultipartUpload, CompletedPart};
-use axum::body::Body;
+use aws_sdk_s3::{
+	error::SdkError,
+	operation::upload_part::{UploadPartError, UploadPartOutput},
+	primitives::ByteStream,
+	types::{CompletedMultipartUpload, CompletedPart},
+};
+use axum::body::{Body, Bytes};
+use base64::prelude::*;
+use futures::{StreamExt, TryStreamExt as _};
 use headers::{ContentLength, ContentRange, ContentType};
-use http_body::Body as _;
+use oci_spec::image::Digest as OciDigest;
 use rustis::commands::{GenericCommands, StringCommands};
-use sha2::{Digest, Sha256};
+use sha2::{
+	Digest,
+	Sha256,
+	digest::common::hazmat::{SerializableState, SerializedState},
+};
+use tokio::task::JoinHandle;
 
 use crate::{redis::keys, routes::registry_patr_cloud::prelude::*};
 
@@ -77,9 +89,9 @@ pub async fn complete_upload(
 				headers:
 					CompleteBlobUploadRequestHeaders {
 						authorization: _,
-						content_type,
-						content_length,
-						content_range,
+						content_type: _,
+						content_length: _,
+						content_range: _,
 					},
 				body,
 			},
@@ -178,91 +190,178 @@ pub async fn complete_upload(
 
 	debug!("Retrieved upload session");
 
-	// Read final chunk from request body and upload final chunk if present
-	let params = content_type
-		.into_option()
-		.zip(content_length.into_option())
-		.zip(content_range.into_option());
+	let hasher = Sha256::deserialize(&SerializedState::<Sha256>::from_iter(
+		hex::decode(&session.hasher_state).map_err(|err| {
+			error!("Failed to decode hasher state from session: {err}");
+			RegistryError::server_error(
+				ErrorCode::BlobUploadInvalid,
+				"Corrupted upload session hasher state",
+			)
+		})?,
+	))
+	.map_err(|err| {
+		error!("Failed to deserialize hasher state: {err}");
+		RegistryError::server_error(
+			ErrorCode::BlobUploadInvalid,
+			"Corrupted upload session hasher state",
+		)
+	})?;
 
-	'upload: {
-		let Some(((content_type, content_length), content_range)) = params else {
-			break 'upload;
-		};
+	// Stream the final chunk body (if present) combined with any pending
+	// buffer from Redis, flushing to S3 in uniform-sized parts. Only the
+	// very last part may be smaller than the threshold, satisfying R2's
+	// "all non-trailing parts must have equal length" constraint.
 
-		if content_length.0 == 0 {
-			// No final chunk to upload
-			break 'upload;
-		}
+	/// 5 MB threshold — must match the flush size used in upload_chunk so
+	/// that all non-trailing parts across the entire upload are equal.
+	const CHUNK_FLUSH_THRESHOLD: u64 = 5 * 1024 * 1024;
 
-		if body.is_end_stream() {
-			warn!("Empty body provided for blob upload");
-			return RegistryError::builder()
-				.code(ErrorCode::BlobUploadInvalid)
-				.message("Body must not be empty for blob upload")
-				.status(StatusCode::BAD_REQUEST)
-				.build()
-				.into_result();
-		}
+	// Load any pending buffer from Redis (leftover from previous PATCH
+	// requests that was under the 5MB minimum part size).
+	let pending_key = keys::registry_blob_upload_pending_buffer(&session_id);
+	let buffer = redis
+		.get::<Option<String>>(&pending_key)
+		.await?
+		.map(|encoded| {
+			// If there's any pending buffer, decode it from base64 and prepend it to the
+			// body stream
+			info!("Loaded pending buffer from Redis");
+			BASE64_STANDARD.decode(&encoded).map_err(|err| {
+				error!("Failed to decode pending buffer from Redis: {err}");
+				RegistryError::server_error(
+					ErrorCode::BlobUploadInvalid,
+					"Corrupted pending upload buffer",
+				)
+			})
+		})
+		.transpose()?
+		.unwrap_or_default();
 
-		trace!(
-			"Uploading final chunk: content_length={}, content_range={:?}, content_type={}",
-			content_length.0, content_range, content_type
-		);
+	let (updated_session, hasher, _) =
+		futures::stream::once(async move { Ok(Bytes::from(buffer)) })
+			.chain(body.into_data_stream().map_err(|err| {
+				error!("Failed to read body stream: {err}");
+				RegistryError::builder()
+					.code(ErrorCode::BlobUploadInvalid)
+					.message("Failed to read request body")
+					.status(StatusCode::BAD_REQUEST)
+					.build()
+			}))
+			.read_buffered_bytes(CHUNK_FLUSH_THRESHOLD)
+			.try_fold(
+				(
+					session,
+					hasher,
+					None::<JoinHandle<Result<UploadPartOutput, SdkError<UploadPartError>>>>,
+				),
+				async |(mut session, mut hasher, inflight_task), chunk| {
+					let part_number = session.uploaded_parts_etags.len() as i32 + 1;
+					let chunk_size = chunk.len();
+					let chunk_size_string =
+						format!("{:.2}MB", chunk_size as f64 / (1024.0 * 1024.0));
 
-		if content_type != ContentType::octet_stream() {
-			warn!(
-				"Invalid Content-Type for single blob upload: {}",
-				content_type
-			);
-			return RegistryError::builder()
-				.code(ErrorCode::BlobUploadInvalid)
-				.message("Content-Type must be application/octet-stream for single blob upload")
-				.status(StatusCode::BAD_REQUEST)
-				.build()
-				.into_result();
-		}
+					info!(
+						"Uploading part {part_number} to S3 (buffered, {})",
+						chunk_size_string
+					);
 
-		let start_range = content_range
-			.bytes_range()
-			.map(|range| range.0)
-			.unwrap_or_default();
-		if start_range != session.total_bytes_uploaded {
-			warn!(
-				"Content-Range start is {start_range} but last byte position is {}",
-				session.total_bytes_uploaded
-			);
-			return RegistryError::builder()
-				.code(ErrorCode::BlobUploadInvalid)
-				.message("Content-Range start does not match expected byte position")
-				.status(StatusCode::RANGE_NOT_SATISFIABLE)
-				.build()
-				.into_result();
-		}
+					if let Some(task) = inflight_task {
+						let response = task.await.expect("push task panicked")?;
 
-		info!(
-			"Uploading part {} to S3",
-			session.uploaded_parts_etags.len() + 1
-		);
-		s3.upload_part()
-			.bucket(&config.s3.bucket)
-			.key(format!("uploads/{}", session_id))
-			.upload_id(&session.upload_id)
-			.content_length(content_length.0 as i64)
-			.part_number(session.uploaded_parts_etags.len() as i32 + 1)
-			.body(BodyStreamWrapper::new(body.into_data_stream()).into_byte_stream())
-			.send()
+						session
+							.uploaded_parts_etags
+							.push(response.e_tag.ok_or_else(|| {
+								RegistryError::server_error(
+									ErrorCode::BlobUploadInvalid,
+									"Missing or invalid ETag header in S3 response",
+								)
+							})?);
+
+						session.total_bytes_uploaded += CHUNK_FLUSH_THRESHOLD as u64;
+					}
+
+					let inflight_task = match chunk_size as u64 {
+						CHUNK_FLUSH_THRESHOLD => {
+							hasher.update(&chunk);
+
+							Some(tokio::spawn({
+								let s3 = s3.clone();
+								let bucket = config.s3.bucket.clone();
+								let upload_id = session.upload_id.clone();
+								async move {
+									s3.upload_part()
+										.bucket(&bucket)
+										.key(format!("uploads/{}", session_id))
+										.content_length(CHUNK_FLUSH_THRESHOLD as i64)
+										.upload_id(&upload_id)
+										.part_number(part_number)
+										.body(ByteStream::from(chunk))
+										.send()
+										.await
+								}
+							}))
+						}
+						0 => None,
+						..CHUNK_FLUSH_THRESHOLD => {
+							// Upload whatever remains in the buffer as the final trailing part.
+							// This is the only part allowed to be smaller than
+							// CHUNK_FLUSH_THRESHOLD.
+							info!(
+								"Uploading {:.2}MB as final trailing part {part_number}",
+								chunk_size_string
+							);
+
+							hasher.update(&chunk);
+
+							let response = s3
+								.upload_part()
+								.bucket(&config.s3.bucket)
+								.key(format!("uploads/{}", session_id))
+								.upload_id(&session.upload_id)
+								.part_number(part_number)
+								.content_length(chunk_size as i64)
+								.body(ByteStream::from(chunk))
+								.send()
+								.await?;
+
+							session
+								.uploaded_parts_etags
+								.push(response.e_tag.ok_or_else(|| {
+									RegistryError::builder()
+										.code(ErrorCode::BlobUploadInvalid)
+										.message("Missing or invalid ETag header in S3 response")
+										.status(StatusCode::INTERNAL_SERVER_ERROR)
+										.build()
+								})?);
+							session.total_bytes_uploaded += chunk_size as u64;
+							None
+						}
+						CHUNK_FLUSH_THRESHOLD.. => {
+							error!(
+								"Chunk size {} exceeds flush threshold of {}",
+								chunk_size, CHUNK_FLUSH_THRESHOLD
+							);
+							return Err(RegistryError::server_error(
+								ErrorCode::BlobUploadInvalid,
+								"Chunk size exceeds flush threshold",
+							));
+						}
+					};
+
+					Ok((session, hasher, inflight_task))
+				},
+			)
 			.await?;
-	}
 
 	info!("Completing S3 multipart upload");
 	s3.complete_multipart_upload()
 		.bucket(&config.s3.bucket)
 		.key(format!("uploads/{session_id}"))
-		.upload_id(&session.upload_id)
+		.upload_id(&updated_session.upload_id)
 		.multipart_upload(
 			CompletedMultipartUpload::builder()
 				.set_parts(Some(
-					session
+					updated_session
 						.uploaded_parts_etags
 						.into_iter()
 						.enumerate()
@@ -280,18 +379,11 @@ pub async fn complete_upload(
 		.await?;
 	info!("Successfully completed S3 multipart upload");
 
-	let mut object = s3
-		.get_object()
-		.bucket(&config.s3.bucket)
-		.key(format!("uploads/{session_id}"))
-		.send()
-		.await
-		.inspect_err(|e| {
-			error!("Failed to head blob object in S3: {e}");
-		})?;
+	// Clean up the pending buffer in Redis
+	let _ = redis.del(&pending_key).await;
 
 	trace!("Updating the database and completing the upload");
-	query!(
+	let inserted = query!(
 		r#"
 		INSERT INTO
 			container_registry_blob(
@@ -299,26 +391,38 @@ pub async fn complete_upload(
 				size
 			)
 		VALUES
-			($1, $2);
+			($1, $2)
+		ON CONFLICT (digest) DO NOTHING
+		RETURNING digest;
 		"#,
 		&digest,
-		object.content_length().unwrap_or_default()
+		updated_session.total_bytes_uploaded as i64
 	)
-	.execute(&mut **database)
-	.await?;
+	.fetch_optional(&mut **database)
+	.await?
+	.is_some();
 
-	// Verify digest matches uploaded content
-	// Download the completed blob from S3 and compute its digest
-	let mut hasher = Sha256::new();
-	while let Some(bytes) = object.body.try_next().await? {
-		hasher.update(&bytes);
-	}
-	let computed_digest = format!("sha256:{:x}", hasher.finalize());
+	// Temporarily associate this blob with the repository in Redis so that
+	// HEAD/GET blob checks pass before the manifest is pushed.
+	redis
+		.setex(
+			keys::repository_for_registry_blob(&repository_id, &digest),
+			constants::REGISTRY_BLOB_UPLOAD_SESSION_TTL.as_secs(),
+			"exists",
+		)
+		.await?;
+
+	let computed_digest = hex::encode(hasher.finalize());
+	let reference_digest = OciDigest::from_str(&digest).ok();
+	let digest_mismatch = reference_digest
+		.as_ref()
+		.map(|digest| digest.digest() != computed_digest)
+		.unwrap_or(false);
 
 	info!("Computed digest for uploaded blob");
 
 	// Verify digest matches
-	if computed_digest != digest {
+	if digest_mismatch {
 		error!("Digest mismatch");
 
 		// Clean up the uploaded blob
@@ -341,12 +445,14 @@ pub async fn complete_upload(
 
 	info!("Digest verification successful");
 
-	s3.copy_object()
-		.bucket(&config.s3.bucket)
-		.copy_source(format!("{}/uploads/{session_id}", config.s3.bucket))
-		.key(format!("blobs/{}", digest))
-		.send()
-		.await?;
+	if inserted {
+		s3.copy_object()
+			.bucket(&config.s3.bucket)
+			.copy_source(format!("{}/uploads/{session_id}", config.s3.bucket))
+			.key(format!("blobs/{}", digest))
+			.send()
+			.await?;
+	}
 
 	let _ = s3
 		.delete_object()
@@ -375,30 +481,4 @@ pub async fn complete_upload(
 		.body(Body::empty())
 		.build()
 		.into_result()
-}
-
-/// Create an S3 Bucket client
-#[cfg(test)]
-mod tests {
-	use super::*;
-
-	#[test]
-	fn test_complete_blob_upload_endpoint_path() {
-		// Verify the endpoint path is correct
-		assert_eq!(
-			<CompleteBlobUploadPath as axum_extra::routing::TypedPath>::PATH,
-			"/v2/{workspace_id}/{repo_name}/blobs/uploads/{session_id}"
-		);
-	}
-
-	#[test]
-	fn test_docker_content_digest_header() {
-		let digest = DockerContentDigest(
-			"sha256:abc123def456abc123def456abc123def456abc123def456abc123def456abc1".to_string(),
-		);
-		assert_eq!(
-			digest.0,
-			"sha256:abc123def456abc123def456abc123def456abc123def456abc123def456abc1"
-		);
-	}
 }

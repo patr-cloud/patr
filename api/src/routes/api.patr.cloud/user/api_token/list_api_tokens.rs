@@ -58,19 +58,13 @@ pub async fn list_api_tokens(
 			user_id = $1 AND
 			revoked IS NULL AND
 			($2::TEXT IS NULL OR name ILIKE '%' || $2 || '%') AND
-			(($3::TIMESTAMPTZ IS NULL AND $4::TIMESTAMPTZ IS NULL) OR (
-				token_nbf >= $3 AND
-				token_nbf <= $4
-			)) AND
-			(($5::TIMESTAMPTZ IS NULL AND $6::TIMESTAMPTZ IS NULL) OR (
-				token_exp >= $5 AND
-				token_exp <= $6
-			)) AND
+			($3::TIMESTAMPTZ IS NULL OR token_nbf >= $3) AND
+			($4::TIMESTAMPTZ IS NULL OR token_nbf <= $4) AND
+			($5::TIMESTAMPTZ IS NULL OR token_exp >= $5) AND
+			($6::TIMESTAMPTZ IS NULL OR token_exp <= $6) AND
 			($7::INET IS NULL OR $7::INET <<= ANY(allowed_ips)) AND
-			(($8::TIMESTAMPTZ IS NULL AND $9::TIMESTAMPTZ IS NULL) OR (
-				created >= $8 AND
-				created <= $9
-			))
+			($8::TIMESTAMPTZ IS NULL OR created >= $8) AND
+			($9::TIMESTAMPTZ IS NULL OR created <= $9)
 		ORDER BY
 			created DESC
 		LIMIT $10

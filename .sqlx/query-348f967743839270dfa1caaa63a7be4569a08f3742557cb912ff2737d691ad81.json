@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT name, last_updated, manifest_digest, COUNT(*) OVER() AS \"count!\" FROM container_registry_repository_tag WHERE repository_id = $1 AND ($2::TEXT IS NULL OR name ILIKE '%' || $2 || '%') AND ($3::TEXT IS NULL OR manifest_digest ILIKE '%' || $3 || '%') AND ($4::TIMESTAMPTZ IS NULL OR last_updated >= $4) AND ($5::TIMESTAMPTZ IS NULL OR last_updated <= $5) ORDER BY last_updated DESC LIMIT $6 OFFSET $7;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "last_updated",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "manifest_digest",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "348f967743839270dfa1caaa63a7be4569a08f3742557cb912ff2737d691ad81"
+}

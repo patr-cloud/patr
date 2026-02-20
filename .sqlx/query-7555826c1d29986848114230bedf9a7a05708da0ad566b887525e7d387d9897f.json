@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT GREATEST(resource.created, (SELECT MAX(last_updated) FROM container_registry_repository_tag WHERE repository_id = $1), (SELECT MAX(created_at) FROM container_registry_repository_manifest WHERE repository_id = $1)) AS \"last_updated!\", created FROM resource WHERE resource.id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "last_updated!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 1,
+        "name": "created",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      false
+    ]
+  },
+  "hash": "7555826c1d29986848114230bedf9a7a05708da0ad566b887525e7d387d9897f"
+}

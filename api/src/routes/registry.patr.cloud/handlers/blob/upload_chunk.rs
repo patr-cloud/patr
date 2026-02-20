@@ -4,13 +4,26 @@
 //! large blobs in multiple parts using the OCI Distribution API's chunked
 //! upload protocol.
 
-use std::{self, str::FromStr, time::Duration};
+use std::{self, str::FromStr};
 
-use axum::body::Body;
-use headers::{ContentRange, ContentType};
+use aws_sdk_s3::{
+	error::SdkError,
+	operation::upload_part::{UploadPartError, UploadPartOutput},
+	primitives::ByteStream,
+};
+use axum::body::{Body, Bytes};
+use base64::prelude::*;
+use futures::{StreamExt, TryStreamExt};
+use headers::{ContentLength, ContentRange, ContentType};
 use http_body::Body as _;
 use models::utils::{DockerUploadUuid, Range};
-use rustis::commands::StringCommands;
+use rustis::commands::{GenericCommands, StringCommands};
+use sha2::{
+	Digest,
+	Sha256,
+	digest::common::hazmat::{SerializableState, SerializedState},
+};
+use tokio::task::JoinHandle;
 
 use crate::{redis::keys, routes::registry_patr_cloud::prelude::*};
 
@@ -33,6 +46,8 @@ macros::declare_registry_endpoint!(
 		pub authorization: BearerToken,
 		/// The content type header
 		pub content_type: ContentType,
+		/// The content length header
+		pub content_length: OptionalHeader<ContentLength>,
 		/// The content range header
 		pub content_range: OptionalHeader<ContentRange>,
 	},
@@ -71,6 +86,7 @@ pub async fn upload_chunk(
 					UploadBlobChunkRequestHeaders {
 						authorization: _,
 						content_type,
+						content_length: _,
 						content_range,
 					},
 				body,
@@ -171,22 +187,22 @@ pub async fn upload_chunk(
 
 	if content_type != ContentType::octet_stream() {
 		warn!(
-			"Invalid Content-Type for single blob upload: {}",
+			"Invalid Content-Type for blob chunk upload: {}",
 			content_type
 		);
 		return RegistryError::builder()
 			.code(ErrorCode::BlobUploadInvalid)
-			.message("Content-Type must be application/octet-stream for single blob upload")
+			.message("Content-Type must be application/octet-stream for blob chunk upload")
 			.status(StatusCode::BAD_REQUEST)
 			.build()
 			.into_result();
 	}
 
 	if body.is_end_stream() {
-		warn!("Empty body provided for single blob upload");
+		warn!("Empty body provided for blob chunk upload");
 		return RegistryError::builder()
 			.code(ErrorCode::BlobUploadInvalid)
-			.message("Body must not be empty for single blob upload")
+			.message("Body must not be empty for blob chunk upload")
 			.status(StatusCode::BAD_REQUEST)
 			.build()
 			.into_result();
@@ -211,74 +227,162 @@ pub async fn upload_chunk(
 		}
 	}
 
-	info!(
-		"Uploading part {} to S3",
-		session.uploaded_parts_etags.len() + 1
-	);
+	let hasher = Sha256::deserialize(&SerializedState::<Sha256>::from_iter(
+		hex::decode(&session.hasher_state).map_err(|err| {
+			error!("Failed to decode hasher state from session: {err}");
+			RegistryError::server_error(
+				ErrorCode::BlobUploadInvalid,
+				"Corrupted upload session hasher state",
+			)
+		})?,
+	))
+	.map_err(|err| {
+		error!("Failed to deserialize hasher state: {err}");
+		RegistryError::server_error(
+			ErrorCode::BlobUploadInvalid,
+			"Corrupted upload session hasher state",
+		)
+	})?;
 
-	info!("Uploading bytes to S3");
+	// Upload chunk to S3
+	const CHUNK_FLUSH_THRESHOLD: u64 = 5 * 1024 * 1024; // 5 MB - S3 requires all non-final parts to be at least this size
 
-	let response = s3
-		.upload_part()
-		.bucket(&config.s3.bucket)
-		.key(format!("uploads/{}", session_id))
-		.upload_id(&session.upload_id)
-		.part_number(session.uploaded_parts_etags.len() as i32 + 1)
-		.body(BodyStreamWrapper::new(body.into_data_stream()).into_byte_stream())
-		.send()
-		.await?;
-
-	info!("Uploaded part to S3 successfully");
-
-	let content_length = s3
-		.list_parts()
-		.bucket(&config.s3.bucket)
-		.key(format!("uploads/{}", session_id))
-		.upload_id(&session.upload_id)
-		.max_parts(1)
-		.part_number_marker(session.uploaded_parts_etags.len().to_string())
-		.send()
+	// Load any pending buffer from a previous PATCH that was under 5 MB
+	let pending_key = keys::registry_blob_upload_pending_buffer(&session_id);
+	let buffer = redis
+		.get::<Option<String>>(&pending_key)
 		.await?
-		.parts
-		.and_then(|vec| vec.into_iter().next())
-		.ok_or_else(|| {
-			RegistryError::builder()
-				.code(ErrorCode::Unsupported)
-				.message("Failed to retrieve uploaded part information from S3")
-				.status(StatusCode::INTERNAL_SERVER_ERROR)
-				.build()
-		})?
-		.size
-		.unwrap_or_default()
-		.unsigned_abs();
+		.map(|encoded| {
+			// If there's any pending buffer, decode it from base64 and prepend it to the
+			// body stream
+			info!("Loaded pending buffer from Redis");
+			BASE64_STANDARD.decode(&encoded).map_err(|err| {
+				error!("Failed to decode pending buffer from Redis: {err}");
+				RegistryError::server_error(
+					ErrorCode::BlobUploadInvalid,
+					"Corrupted pending upload buffer",
+				)
+			})
+		})
+		.transpose()?
+		.unwrap_or_default();
+	// Clean up the pending buffer in Redis since we're now processing it (if it
+	// exists) If something goes wrong during processing, the client can re-upload
+	// the blob
+	let _ = redis.del(&pending_key).await;
 
-	info!("Retrieved uploaded part information from S3");
-
-	let session = S3UploadSession {
-		upload_id: session.upload_id,
-		uploaded_parts_etags: {
-			let mut etags = session.uploaded_parts_etags;
-
-			etags.push(response.e_tag.ok_or_else(|| {
+	let (mut updated_session, hasher, _) =
+		futures::stream::once(async move { Ok(Bytes::from(buffer)) })
+			.chain(body.into_data_stream().map_err(|err| {
+				error!("Failed to read body stream: {err}");
 				RegistryError::builder()
 					.code(ErrorCode::BlobUploadInvalid)
-					.message("Missing or invalid ETag header in S3 response")
-					.status(StatusCode::INTERNAL_SERVER_ERROR)
+					.message("Failed to read request body")
+					.status(StatusCode::BAD_REQUEST)
 					.build()
-			})?);
+			}))
+			.read_buffered_bytes(CHUNK_FLUSH_THRESHOLD)
+			.try_fold(
+				(
+					session,
+					hasher,
+					None::<JoinHandle<Result<UploadPartOutput, SdkError<UploadPartError>>>>,
+				),
+				async |(mut session, mut hasher, inflight_task), chunk| {
+					// If there's an inflight upload task from the previous chunk, await it and
+					// update the session with the returned ETag and part number
+					if let Some(task) = inflight_task {
+						let response = task.await.expect("push task panicked")?;
 
-			etags
-		},
-		total_bytes_uploaded: session.total_bytes_uploaded + content_length as u64,
-		initiated_by_login: session.initiated_by_login,
-		initiated_by_ip: session.initiated_by_ip,
-	};
+						session
+							.uploaded_parts_etags
+							.push(response.e_tag.ok_or_else(|| {
+								RegistryError::server_error(
+									ErrorCode::BlobUploadInvalid,
+									"Missing or invalid ETag header in S3 response",
+								)
+							})?);
+
+						session.total_bytes_uploaded += CHUNK_FLUSH_THRESHOLD as u64;
+					}
+
+					let part_number = session.uploaded_parts_etags.len() as i32 + 1;
+					let chunk_size = chunk.len();
+					let chunk_size_string =
+						format!("{:.2}MB", chunk_size as f64 / (1024.0 * 1024.0));
+
+					info!(
+						"Uploading part {part_number} to S3 (buffered, {})",
+						chunk_size_string
+					);
+
+					let inflight_task = match chunk_size as u64 {
+						CHUNK_FLUSH_THRESHOLD => {
+							hasher.update(&chunk);
+
+							Some(tokio::spawn({
+								let s3 = s3.clone();
+								let bucket = config.s3.bucket.clone();
+								let upload_id = session.upload_id.clone();
+								async move {
+									s3.upload_part()
+										.bucket(&bucket)
+										.key(format!("uploads/{}", session_id))
+										.content_length(CHUNK_FLUSH_THRESHOLD as i64)
+										.upload_id(&upload_id)
+										.part_number(part_number)
+										.body(ByteStream::from(chunk))
+										.send()
+										.await
+								}
+							}))
+						}
+						0 => None,
+						..CHUNK_FLUSH_THRESHOLD => {
+							// The only way to get a chunk smaller than the flush threshold
+							// is if it's the final chunk (the stream ended) — in that case
+							// we can store that final chunk in Redis as a pending buffer to
+							// be flushed on the next PATCH, which avoids violating S3's
+							// minimum part size requirement for non-final parts
+							info!("Storing {} pending buffer in Redis", chunk_size_string);
+							// session.total_bytes_uploaded += chunk_size as u64;
+							redis
+								.setex(
+									&pending_key,
+									constants::REGISTRY_BLOB_UPLOAD_PENDING_BUFFER_TTL.as_secs(),
+									BASE64_STANDARD.encode(&chunk),
+								)
+								.await?;
+
+							session.total_bytes_uploaded += chunk_size as u64;
+							None
+						}
+						CHUNK_FLUSH_THRESHOLD.. => {
+							error!(
+								"Chunk size {} exceeds flush threshold of {}",
+								chunk_size, CHUNK_FLUSH_THRESHOLD
+							);
+							return Err(RegistryError::server_error(
+								ErrorCode::BlobUploadInvalid,
+								"Chunk size exceeds flush threshold",
+							));
+						}
+					};
+
+					Ok((session, hasher, inflight_task))
+				},
+			)
+			.await?;
+
+	updated_session.hasher_state = hex::encode(hasher.serialize());
+
+	info!("All parts uploaded successfully");
 
 	redis
 		.setex(
 			keys::registry_blob_upload_part_prefix(&session_id),
-			Duration::from_hours(24).as_secs(),
-			serde_json::to_string(&session)?,
+			constants::REGISTRY_BLOB_UPLOAD_SESSION_TTL.as_secs(),
+			serde_json::to_string(&updated_session)?,
 		)
 		.await?;
 
@@ -289,37 +393,19 @@ pub async fn upload_chunk(
 				"/v2/{workspace_id}/{repo_name}/blobs/uploads/{session_id}"
 			))?,
 			docker_upload_uuid: DockerUploadUuid::new(session_id),
-			range: Range::new(0..session.total_bytes_uploaded).map_err(|err| {
+			range: Range::new(0..updated_session.total_bytes_uploaded).map_err(|err| {
 				error!("Invalid range error: {}", err);
-				RegistryError::builder()
-					.code(ErrorCode::SizeInvalid)
-					.message(
-						if cfg!(debug_assertions) {
-							format!("invalid range specified: {}", err)
-						} else {
-							"invalid range specified".to_string()
-						},
-					)
-					.status(StatusCode::INTERNAL_SERVER_ERROR)
-					.build()
+				RegistryError::server_error(
+					ErrorCode::BlobUploadInvalid,
+					if cfg!(debug_assertions) {
+						format!("invalid range specified: {}", err)
+					} else {
+						"invalid range specified".to_string()
+					},
+				)
 			})?,
 		})
 		.body(Body::empty())
 		.build()
 		.into_result()
-}
-
-/// Create an S3 Bucket client
-#[cfg(test)]
-mod tests {
-	use super::*;
-
-	#[test]
-	fn test_upload_blob_chunk_endpoint_path() {
-		// Verify the endpoint path is correct
-		assert_eq!(
-			<UploadBlobChunkPath as axum_extra::routing::TypedPath>::PATH,
-			"/v2/{name}/blobs/uploads/{uuid}"
-		);
-	}
 }

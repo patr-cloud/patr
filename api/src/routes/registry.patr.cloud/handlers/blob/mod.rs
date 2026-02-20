@@ -10,13 +10,13 @@ mod cancel_upload;
 /// Complete blob upload
 mod complete_upload;
 /// Delete a blob
-mod delete;
+mod delete_blob;
 /// Download a blob
-mod get;
+mod get_blob;
 /// Get upload status
 mod get_upload_status;
 /// Check if a blob exists and get metadata
-mod head;
+mod head_blob;
 /// Initiate blob upload
 mod initiate_upload;
 /// Upload blob chunk
@@ -25,10 +25,10 @@ mod upload_chunk;
 pub use self::{
 	cancel_upload::*,
 	complete_upload::*,
-	delete::*,
-	get::*,
+	delete_blob::*,
+	get_blob::*,
 	get_upload_status::*,
-	head::*,
+	head_blob::*,
 	initiate_upload::*,
 	upload_chunk::*,
 };

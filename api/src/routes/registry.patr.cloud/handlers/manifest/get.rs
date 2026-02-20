@@ -130,7 +130,7 @@ pub async fn get_manifest(
 		FROM
 			container_registry_manifest m
 		INNER JOIN
-			container_registry_repository_manifest rm 
+			container_registry_repository_manifest rm
 		ON
 			m.digest = rm.manifest_digest
 		INNER JOIN
@@ -139,14 +139,13 @@ pub async fn get_manifest(
 			rm.repository_id = r.id
 		WHERE
 			(
-				m.digest = $1 OR EXISTS(
+				m.digest = $1 OR m.digest = (
 					SELECT
-						1
+						t.manifest_digest
 					FROM
-						container_registry_tag t 
+						container_registry_repository_tag t
 					WHERE
 						t.repository_id = r.id AND
-						t.manifest_digest = m.digest AND
 						t.name = $1
 				)
 			) AND
@@ -161,11 +160,7 @@ pub async fn get_manifest(
 	.fetch_optional(&mut **database)
 	.await?
 	.ok_or_else(|| {
-		warn!(
-			reference = %reference,
-			repository = %repo_name,
-			"Manifest not found"
-		);
+		warn!("Manifest not found");
 		RegistryError::builder()
 			.status(StatusCode::NOT_FOUND)
 			.message(format!("Manifest `{reference}` not found"))
@@ -203,24 +198,4 @@ pub async fn get_manifest(
 		)))
 		.build()
 		.into_result()
-}
-
-/// Create an S3 bucket client from configuration.
-///
-/// # Arguments
-///
-/// * `config` - S3 configuration
-///
-/// # Returns
-///
-/// An S3 Bucket client
-#[cfg(test)]
-mod tests {
-	use super::*;
-
-	#[test]
-	fn test_docker_content_digest_header() {
-		let digest = DockerContentDigest("sha256:abc123".into());
-		assert_eq!(digest.0, "sha256:abc123");
-	}
 }

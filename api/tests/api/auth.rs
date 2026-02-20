@@ -3,7 +3,7 @@ use models::{
 	ApiSuccessResponseBody,
 	api::{ApiEndpoint, auth::*, user::*},
 };
-use rand::{Rng as _, distributions::Alphanumeric};
+use rand::{RngExt, distr::Alphanumeric};
 
 use crate::prelude::*;
 
@@ -11,7 +11,7 @@ use crate::prelude::*;
 pub async fn create_account_works() {
 	let setup = setup().await.expect("failed to setup test server");
 
-	let username = rand::thread_rng()
+	let username = rand::rng()
 		.sample_iter(Alphanumeric)
 		.map(char::from)
 		.take(8)
@@ -19,7 +19,7 @@ pub async fn create_account_works() {
 
 	let password = format!(
 		"{}@",
-		rand::thread_rng()
+		rand::rng()
 			.sample_iter(Alphanumeric)
 			.map(char::from)
 			.take(32)

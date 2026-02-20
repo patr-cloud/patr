@@ -19,11 +19,13 @@ axum                           = { workspace = true, features = ["default", "mac
 axum-extra                     = { workspace = true, features = ["default", "typed-routing"] }
 axum-typed-websockets          = { workspace = true, features = ["default"] }
 base32                         = { workspace = true, features = [] }
+base64                         = { workspace = true, features = ["default"] }
 cloudflare                     = { workspace = true, features = ["default"] }
 config                         = { workspace = true, features = ["default"] }
 console-subscriber             = { workspace = true, features = ["default"] }
 futures                        = { workspace = true, features = ["default"] }
 headers                        = { workspace = true, features = [] }
+hex                            = { workspace = true, features = [] }
 http                           = { workspace = true, features = ["default"] }
 http-body                      = { workspace = true, features = [] }
 ipinfo                         = { workspace = true, features = [] }
@@ -35,6 +37,7 @@ opentelemetry                  = { workspace = true, features = ["default"] }
 opentelemetry-appender-tracing = { workspace = true, features = ["default"] }
 opentelemetry-otlp             = { workspace = true, features = ["default", "tonic", "tokio", "reqwest-client", "reqwest-rustls-webpki-roots", "grpc-tonic", "http-json"] }
 opentelemetry_sdk              = { workspace = true, features = ["default", "rt-tokio"] }
+pin-project-lite               = { workspace = true, features = [] }
 preprocess                     = { workspace = true, features = [] }
 psl                            = { workspace = true, features = ["default"] }
 rand                           = { workspace = true, features = ["default"] }
@@ -64,5 +67,4 @@ woothee                        = { workspace = true, features = ["default"] }
 [dev-dependencies]
 anyhow                 = { workspace = true, features = ["default"] }
 axum-test              = { workspace = true, features = ["default"] }
-testcontainers         = { workspace = true, features = ["default"] }
 testcontainers-modules = { workspace = true, features = ["default", "postgres", "minio", "redis"] }

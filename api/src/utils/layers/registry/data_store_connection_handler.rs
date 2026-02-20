@@ -137,7 +137,7 @@ where
 				}
 				Err(err) => {
 					error!("Failed to begin database transaction: {}", err);
-					return RegistryError::new(
+					return RegistryError::server_error(
 						ErrorCode::Unsupported,
 						if cfg!(debug_assertions) {
 							"Internal server error: unable to begin database transaction"
@@ -187,7 +187,7 @@ where
 					// Commit the transaction on success
 					if let Err(err) = database.commit().await {
 						error!("Failed to commit database transaction: {}", err);
-						return RegistryError::new(
+						return RegistryError::server_error(
 							ErrorCode::Unsupported,
 							"Internal server error: unable to commit database transaction",
 						)

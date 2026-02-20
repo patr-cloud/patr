@@ -6,7 +6,7 @@ use argon2::{
 	PasswordHasher,
 	PasswordVerifier,
 	Version,
-	password_hash::SaltString,
+	password_hash::generate_salt,
 };
 use axum::http::StatusCode;
 use jsonwebtoken::EncodingKey;
@@ -248,10 +248,7 @@ pub async fn complete_sign_up(
 		error!("Error creating Argon2: {err}");
 	})
 	.map_err(ErrorType::server_error)?
-	.hash_password(
-		refresh_token.as_ref(),
-		SaltString::generate(&mut rand::thread_rng()).as_salt(),
-	)
+	.hash_password_with_salt(refresh_token.as_ref(), &generate_salt())
 	.inspect_err(|err| {
 		error!("Error hashing password: {err}");
 	})

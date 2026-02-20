@@ -4,7 +4,7 @@ use argon2::{
 	PasswordHasher,
 	PasswordVerifier,
 	Version,
-	password_hash::SaltString,
+	password_hash::generate_salt,
 };
 use axum::http::StatusCode;
 use models::api::user::*;
@@ -133,10 +133,7 @@ pub async fn change_password(
 		error!("Error creating Argon2: `{}`", err);
 	})
 	.map_err(ErrorType::server_error)?
-	.hash_password(
-		new_password.as_bytes(),
-		SaltString::generate(&mut rand::thread_rng()).as_salt(),
-	)
+	.hash_password_with_salt(new_password.as_bytes(), &generate_salt())
 	.inspect_err(|err| {
 		error!("Error hashing password: `{}`", err);
 	})

@@ -159,7 +159,7 @@ where
 					debug!("Failed to parse query `{:?}`: {}", req.uri().query(), err);
 				})
 			else {
-				return Ok(RegistryError::new(
+				return Ok(RegistryError::server_error(
 					ErrorCode::Unsupported,
 					String::from("Invalid Query Parameters"),
 				)
@@ -201,7 +201,7 @@ where
 					warn!("Request Headers: {:#?}", req.headers());
 				}
 			}) else {
-				return Ok(RegistryError::new(
+				return Ok(RegistryError::server_error(
 					ErrorCode::Unsupported,
 					String::from("Invalid Headers"),
 				)

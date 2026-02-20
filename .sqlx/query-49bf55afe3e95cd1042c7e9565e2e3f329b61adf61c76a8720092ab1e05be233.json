@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO container_registry_blob(digest, size) VALUES ($1, $2) ON CONFLICT (digest) DO NOTHING RETURNING digest;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "digest",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "49bf55afe3e95cd1042c7e9565e2e3f329b61adf61c76a8720092ab1e05be233"
+}

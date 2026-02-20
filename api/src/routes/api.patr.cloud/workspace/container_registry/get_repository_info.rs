@@ -7,10 +7,11 @@ pub async fn get_repository_info(
 	AuthenticatedAppRequest {
 		request:
 			ProcessedApiRequest {
-				path: GetContainerRepositoryInfoPath {
-					workspace_id,
-					repository_id,
-				},
+				path:
+					GetContainerRepositoryInfoPath {
+						workspace_id: _,
+						repository_id,
+					},
 				query: (),
 				headers:
 					GetContainerRepositoryInfoRequestHeaders {
@@ -48,62 +49,99 @@ pub async fn get_repository_info(
 
 	let size = query!(
 		r#"
+		WITH RECURSIVE manifest_set AS (
+			SELECT
+				manifest_digest AS digest
+			FROM
+				container_registry_repository_manifest
+			WHERE
+				repository_id = $1
+			UNION
+			SELECT
+				manifest_reference.referenced_digest AS digest
+			FROM
+				container_registry_manifest_reference manifest_reference
+			INNER JOIN
+				manifest_set
+			ON
+				manifest_set.digest = manifest_reference.digest
+		),
+		manifest_size AS (
+			SELECT
+				COALESCE(SUM(manifest.size), 0)::BIGINT AS size
+			FROM
+				container_registry_manifest manifest
+			INNER JOIN
+				manifest_set
+			ON
+				manifest_set.digest = manifest.digest
+		),
+		blob_set AS (
+			SELECT
+				manifest.config_blob_digest AS digest
+			FROM
+				container_registry_manifest manifest
+			INNER JOIN
+				manifest_set
+			ON
+				manifest_set.digest = manifest.digest
+			WHERE
+				manifest.config_blob_digest IS NOT NULL
+			UNION
+			SELECT
+				manifest_blob.blob_digest AS digest
+			FROM
+				container_registry_manifest_blob manifest_blob
+			INNER JOIN
+				manifest_set
+			ON
+				manifest_set.digest = manifest_blob.manifest_digest
+		),
+		blob_size AS (
+			SELECT
+				COALESCE(SUM(blob.size), 0)::BIGINT AS size
+			FROM
+				container_registry_blob blob
+			INNER JOIN
+				blob_set
+			ON
+				blob_set.digest = blob.digest
+		)
 		SELECT
-			COALESCE(SUM(size), 0)::BIGINT AS "size!"
+			(manifest_size.size + blob_size.size)::BIGINT AS "size!"
 		FROM
-			container_registry_repository
-		INNER JOIN
-			container_registry_repository_manifest
-		ON
-			container_registry_repository.id 
-			= container_registry_repository_manifest.repository_id
-		INNER JOIN
-			container_registry_manifest_blob
-		ON
-			container_registry_repository_manifest.manifest_digest 
-			= container_registry_manifest_blob.manifest_digest
-		INNER JOIN
-			container_registry_repository_blob
-		ON
-			container_registry_manifest_blob.blob_digest 
-			= container_registry_repository_blob.blob_digest
-		WHERE
-			container_registry_repository.workspace_id = $1;
+			manifest_size,
+			blob_size;
 		"#,
-		workspace_id as _,
+		repository_id as _,
 	)
 	.fetch_one(&mut **database)
-	.await
-	.map(|repo| repo.size as u64)?;
+	.await?
+	.size as u64;
 
-	let last_updated = query!(
+	let (last_updated, created) = query!(
 		r#"
-		SELECT 
+		SELECT
 			GREATEST(
-				resource.created, 
+				resource.created,
 				(
-					SELECT 
-						COALESCE(created, TO_TIMESTAMP(0)) 
-					FROM 
-						container_registry_repository_manifest 
-					WHERE 
+					SELECT
+						MAX(last_updated)
+					FROM
+						container_registry_repository_tag
+					WHERE
 						repository_id = $1
-					ORDER BY
-						created DESC
-					LIMIT 1
-				), 
+				),
 				(
-					SELECT 
-						COALESCE(last_updated, TO_TIMESTAMP(0)) 
-					FROM 
-						container_registry_repository_tag 
-					WHERE 
+					SELECT
+						MAX(created_at)
+					FROM
+						container_registry_repository_manifest
+					WHERE
 						repository_id = $1
-					ORDER BY
-						created DESC
-					LIMIT 1
 				)
-			) AS "last_updated!"
+			) AS "last_updated!",
+			created
 		FROM
 			resource
 		WHERE
@@ -113,23 +151,7 @@ pub async fn get_repository_info(
 	)
 	.fetch_one(&mut **database)
 	.await
-	.map(|row| row.last_updated)?;
-
-	let created = query!(
-		r#"
-		SELECT
-			MIN(created) AS created
-		FROM
-			container_registry_repository_manifest
-		WHERE
-			repository_id = $1;
-		"#,
-		repository_id as _
-	)
-	.fetch_one(&mut **database)
-	.await
-	.map(|repo| repo.created)?
-	.ok_or(ErrorType::ResourceDoesNotExist)?;
+	.map(|row| (row.last_updated, row.created))?;
 
 	AppResponse::builder()
 		.body(GetContainerRepositoryInfoResponse {
