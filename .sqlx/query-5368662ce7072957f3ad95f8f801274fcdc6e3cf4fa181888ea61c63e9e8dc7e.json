@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE audit_log_change ADD CONSTRAINT audit_log_change_pkey PRIMARY KEY(audit_log_id, field), ADD CONSTRAINT audit_log_change_audit_log_id_fkey FOREIGN KEY(audit_log_id) REFERENCES audit_log(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "5368662ce7072957f3ad95f8f801274fcdc6e3cf4fa181888ea61c63e9e8dc7e"
+}
