@@ -68,7 +68,7 @@ const CreateContainerRepository = () => {
 
 		toast("Repository created successfully", "success");
 		setRepositoryName("");
-		navigate(`/container-repositories/${response.data.id}`);
+		navigate(`/container-registry/${response.data.id}`);
 	};
 	return (
 		<PageContainer>
@@ -76,7 +76,7 @@ const CreateContainerRepository = () => {
 				breadcrumbs={[
 					{
 						label: "Container Repositories",
-						url: "/container-repositories",
+						url: "/container-registry",
 					},
 					{
 						label: "Add",

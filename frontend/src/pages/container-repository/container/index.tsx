@@ -8,7 +8,7 @@ import { httpRequest } from "~/utils/http-request";
 import General from "./general";
 import Images from "./images";
 
-const ContainerInfo = () => {
+const ContainerRepositoryInfo = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
@@ -75,7 +75,7 @@ const ContainerInfo = () => {
 		}
 
 		const resp = await httpRequest(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId()}/docker-registry/${params.id}`,
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId()}/container-registry/${params.id}`,
 			{
 				method: "DELETE",
 			}
@@ -86,7 +86,7 @@ const ContainerInfo = () => {
 		}
 
 		toast("Repository deleted successfully", "success");
-		navigate("/container-repositories");
+		navigate("/container-registry");
 	};
 
 	const renderTab = () => {
@@ -108,7 +108,7 @@ const ContainerInfo = () => {
 				breadcrumbs={[
 					{
 						label: "Container Repositories",
-						url: "/container-repositories",
+						url: "/container-registry",
 					},
 					{
 						label: repositoryInfo()?.repository?.name || "Loading...",
@@ -167,4 +167,4 @@ const ContainerInfo = () => {
 		</PageContainer>
 	);
 };
-export default ContainerInfo;
+export default ContainerRepositoryInfo;

@@ -41,7 +41,7 @@ pub async fn create_repository(
 		VALUES
 			(
 				GENERATE_RESOURCE_ID(),
-				(SELECT id FROM resource_type WHERE name = 'container_repository'),
+				(SELECT id FROM resource_type WHERE name = 'containerRegistryRepository'),
 				$1,
 				NOW()
 			)

@@ -25,7 +25,7 @@ const Images = (props: ContainerImagesProps) => {
 					<div class="w-full text-center py-16">
 						<p class="text-white text-lg">No Images Found</p>
 						<p class="text-gray-400 text-sm mt-2">
-							<Link href={`/container-repositories/${params.id}?tab=`} external={false} class="inline">
+							<Link href={`/container-registry/${params.id}?tab=`} external={false} class="inline">
 								Push an image
 							</Link>{" "}
 							to this repository to get started

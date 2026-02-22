@@ -14,7 +14,7 @@ import { ListContainerRepositoriesResponse, WithId, ContainerRepository } from "
 import { httpRequest } from "~/utils/http-request";
 import { formatRelativeTime, formatSize } from "~/utils/func";
 
-const ListContainerRepository = () => {
+const ListContainerRepositories = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
@@ -58,7 +58,7 @@ const ListContainerRepository = () => {
 				]}
 				subText="Store and manage container images for your deployments"
 				actions={() => (
-					<Link href="/container-repositories/new" buttonVariant={ButtonVariant.Plain} external={false}>
+					<Link href="/container-registry/new" buttonVariant={ButtonVariant.Plain} external={false}>
 						Add Container Repository
 					</Link>
 				)}
@@ -87,7 +87,7 @@ const ListContainerRepository = () => {
 								headings={["Container Repository", "Last Updated", "Size", "Created At"]}
 								rows={repositories()?.repositories || []}
 								renderRow={(repo: WithId<ContainerRepository>) => (
-									<tr class="table-row cursor-pointer" onClick={() => navigate(`/container-repositories/${repo.id}`)}>
+									<tr class="table-row cursor-pointer" onClick={() => navigate(`/container-registry/${repo.id}`)}>
 										<td class="flex-1">
 											<span class="truncate">{repo.name}</span>
 										</td>
@@ -105,4 +105,4 @@ const ListContainerRepository = () => {
 	);
 };
 
-export default ListContainerRepository;
+export default ListContainerRepositories;

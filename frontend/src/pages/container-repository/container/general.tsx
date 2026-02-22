@@ -108,24 +108,15 @@ const PushInstructions = (props: { repositoryName: string | undefined }) => {
 				<div>
 					<h3 class="text-white text-base font-medium mb-4">Build and Push a New Image</h3>
 					<div class="space-y-4">
-						{/* Step 1: Build */}
+						{/* Step 1: Login */}
 						<div>
-							<p class="text-gray-300 text-sm mb-2 ">1. Build your Docker image</p>
-							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group">
-								<CopyButton text="docker build -t &lt;image-name&gt;:&lt;tag&gt; ." />
-								<code>docker build -t &lt;image-name&gt;:&lt;tag&gt; .</code>
-							</div>
-						</div>
-
-						{/* Step 2: Login */}
-						<div>
-							<p class="text-gray-300 text-sm mb-2">2. Login to Patr Registry</p>
+							<p class="text-gray-300 text-sm mb-2">1. Login to Patr Registry</p>
 							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group">
 								<CopyButton text={`docker login ${registryUrl} -u patr`} />
 								<code>docker login {registryUrl} -u patr</code>
 							</div>
 							<p class="text-gray-300 text-sm mt-2 flex items-center gap-1">
-								Use your Patr{" "}
+								Use an{" "}
 								<Link href="/profile/api-tokens" external={false} class="inline-flex items-center gap-1">
 									API token <FiExternalLink size={12} />
 								</Link>{" "}
@@ -133,18 +124,18 @@ const PushInstructions = (props: { repositoryName: string | undefined }) => {
 							</p>
 						</div>
 
-						{/* Step 3: Tag */}
+						{/* Step 2: Build */}
 						<div>
-							<p class="text-gray-300 text-sm mb-2">3. Tag your image</p>
+							<p class="text-gray-300 text-sm mb-2 ">2. Build your Docker image</p>
 							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group">
-								<CopyButton text={`docker tag <image-name>:<tag> ${registryUrl}:<tag>`} />
-								<code>docker tag &lt;image-name&gt;:&lt;tag&gt; {registryUrl}:&lt;tag&gt;</code>
+								<CopyButton text={`docker build -t ${registryUrl}:<tag> .`} />
+								<code>docker build -t {registryUrl}:&lt;tag&gt; .</code>
 							</div>
 						</div>
 
-						{/* Step 4: Push */}
+						{/* Step 3: Push */}
 						<div>
-							<p class="text-gray-300 text-sm mb-2">4. Push the image</p>
+							<p class="text-gray-300 text-sm mb-2">3. Push the image</p>
 							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group">
 								<CopyButton text={`docker push ${registryUrl}:<tag>`} />
 								<code>docker push {registryUrl}:&lt;tag&gt;</code>
