@@ -65,12 +65,10 @@ pub async fn create_repository(
 				id,
 				workspace_id,
 				name,
-				created_at,
-				updated_at,
 				deleted
 			)
 		VALUES
-			($1, $2, $3, NOW(), NOW(), NULL);
+			($1, $2, $3, NULL);
 		"#,
 		resource_id as _,
 		workspace_id as _,
