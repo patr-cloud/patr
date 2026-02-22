@@ -1,9 +1,11 @@
 FROM ubuntu:noble
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 # Install dependencies
 RUN mkdir -p --mode=0755 /usr/share/keyrings && \
     apt update && \
-    apt install -y debian-keyring debian-archive-keyring apt-transport-https curl && \
+    apt install -y debian-keyring debian-archive-keyring apt-transport-https curl redis-tools && \
     \
     # Install Cloudflare
     curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg > /usr/share/keyrings/cloudflare-main.gpg && \
@@ -41,7 +43,6 @@ RUN mkdir -p --mode=0755 /usr/share/keyrings && \
     mold \
     nginx \
     caddy && \
-    redis-tools && \
     rm -rf /var/lib/apt/lists/*
 
 # Setup non-root user with sudo permissions

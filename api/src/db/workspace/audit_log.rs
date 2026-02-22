@@ -24,11 +24,24 @@ pub async fn initialize_workspace_tables(
 		CREATE TABLE audit_log(
 			id UUID NOT NULL,
 			/* workspace_id is kept in case the resource is moved to another workspace */
-			workspace_id UUID NOT NULL,
-			resource_id UUID NOT NULL,
 			timestamp TIMESTAMPTZ NOT NULL,
+			login_id UUID NOT NULL,
 			action AUDIT_LOG_TYPE NOT NULL,
-			login_id UUID NOT NULL
+			workspace_id UUID NOT NULL,
+			resource_id UUID NOT NULL
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE audit_log_change(
+			audit_log_id UUID NOT NULL,
+			field TEXT NOT NULL,
+			old_value TEXT NOT NULL,
+			new_value TEXT NOT NULL
 		);
 		"#
 	)
@@ -49,11 +62,41 @@ pub async fn initialize_workspace_indices(
 }
 
 /// Initializes all audit log-related constraints
-#[instrument(skip(_connection))]
+#[instrument(skip(connection))]
 pub async fn initialize_workspace_constraints(
-	_connection: &mut DatabaseConnection,
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
 	info!("Setting up audit logs constraints");
+
+	query!(
+		r#"
+		ALTER TABLE audit_log
+			ADD CONSTRAINT audit_log_pkey PRIMARY KEY(id),
+			ADD CONSTRAINT audit_log_workspace_id_fkey
+				FOREIGN KEY(workspace_id)
+					REFERENCES workspace(id),
+			ADD CONSTRAINT audit_log_resource_id_fkey
+				FOREIGN KEY(resource_id)
+					REFERENCES resource(id),
+			ADD CONSTRAINT audit_log_login_id_fkey
+				FOREIGN KEY(login_id)
+					REFERENCES user_login(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE audit_log_change
+			ADD CONSTRAINT audit_log_change_pkey PRIMARY KEY(audit_log_id, field),
+			ADD CONSTRAINT audit_log_change_audit_log_id_fkey
+				FOREIGN KEY(audit_log_id)
+					REFERENCES audit_log(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }

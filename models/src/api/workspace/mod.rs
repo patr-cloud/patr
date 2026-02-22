@@ -26,6 +26,8 @@ pub mod secret;
 pub mod static_site;
 /// This module contains all the models that corresponds to a deployment volume
 pub mod volume;
+/// This module contains all the models that corresponds to a workspace's audit log
+pub mod audit_log;
 
 /// The endpoint to create a workspace
 mod create_workspace;
