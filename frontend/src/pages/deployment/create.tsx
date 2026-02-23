@@ -103,7 +103,6 @@ const CreateDeploymentPage = () => {
 			configMounts,
 		};
 
-		console.log(requestBody);
 
 		const response = await httpRequest<CreateDeploymentResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/deployment`,

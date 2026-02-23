@@ -39,7 +39,6 @@ const ListDeploymentsPage = () => {
 	const toast = useToast();
 	const isAllowedCreate = useIsAllowed("deployment", "create", undefined);
 
-	console.log("User permissions for creating deployment:", isAllowedCreate());
 
 	const fetchParams = createMemo(() => {
 		return [authState(), workspaceId()] as const;

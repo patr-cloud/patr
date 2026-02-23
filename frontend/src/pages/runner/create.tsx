@@ -31,7 +31,7 @@ const CreateRunnerPage = () => {
 
 		setName("");
 		navigate("/runners");
-		console.log("Runner created successfully:", response.data);
+
 	});
 
 	return (
