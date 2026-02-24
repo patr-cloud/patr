@@ -37,7 +37,7 @@ pub async fn complete_sign_up(
 		database,
 		redis: _,
 		client_ip,
-		state,
+		mut state,
 	}: AppRequest<'_, CompleteSignUpRequest>,
 ) -> Result<AppResponse<CompleteSignUpRequest>, ErrorType> {
 	trace!("Validating Cloudflare Turnstile token");
@@ -256,20 +256,7 @@ pub async fn complete_sign_up(
 	.to_string();
 	let refresh_token_expiry = now.add(constants::INACTIVE_REFRESH_TOKEN_VALIDITY);
 
-	let ip_info = ipinfo::IpInfo::new(ipinfo::IpInfoConfig {
-		token: { Some(state.config.ipinfo.token) },
-		..Default::default()
-	})
-	.inspect_err(|err| {
-		info!("Error creating IpInfo: {err}");
-	})
-	.map_err(ErrorType::server_error)?
-	.lookup(client_ip.to_string().as_str())
-	.await
-	.inspect_err(|err| {
-		info!("Error looking up IP address: {err}");
-	})
-	.map_err(ErrorType::server_error)?;
+	let ip_info = ip::lookup(client_ip, &mut state.redis, &state.config.ipinfo).await?;
 
 	if !cfg!(debug_assertions) && ip_info.bogon.unwrap_or(false) {
 		return Err(ErrorType::server_error(format!(

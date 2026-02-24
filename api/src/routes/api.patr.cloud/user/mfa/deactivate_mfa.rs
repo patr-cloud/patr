@@ -10,7 +10,11 @@ pub async fn deactivate_mfa(
 			ProcessedApiRequest {
 				path: DeactivateMfaPath,
 				query: (),
-				headers: DeactivateMfaRequestHeaders { authorization: _ },
+				headers:
+					DeactivateMfaRequestHeaders {
+						authorization: _,
+						user_agent: _,
+					},
 				body: DeactivateMfaRequestProcessed { otp },
 			},
 		database,

@@ -119,6 +119,28 @@ pub mod constants {
 	/// before getting banned altogether
 	pub const MAX_PASSWORD_RESET_ATTEMPTS: i32 = 5;
 
+	/// The issuer to be used for TOTP generation
+	pub const TOTP_ISSUER: &str = "app.patr.cloud";
+
+	/// The validity duration for an IP lookup. This is the duration for which
+	/// the IP lookup data will be stored in Redis and considered valid. After
+	/// this duration, the data will be considered stale and will be deleted
+	/// from Redis, and a new lookup will be performed the next time an IP
+	/// lookup is needed.
+	pub const IP_LOOKUP_SUCCESS_VALIDITY: time::Duration = time::Duration::days(7);
+
+	/// The validity duration for a failed IP lookup. This is the duration for
+	/// which the failed IP lookup data will be stored in Redis and considered
+	/// valid. After this duration, the data will be considered stale and will
+	/// be deleted from Redis, and a new lookup will be performed the next time
+	/// an IP lookup is needed. This is kept separate from the success validity
+	/// duration to prevent the backend from performing repeated lookups for IPs
+	/// that are consistently failing, which can help reduce costs and
+	/// unnecessary load on the IP lookup service.
+	pub const IP_LOOKUP_FAILURE_VALIDITY: time::Duration = time::Duration::days(1);
+
+	// -------------------All Registry Related Constants-------------------
+
 	/// The regex that a registry repository name must conform to
 	pub const REGISTRY_REPO_NAME_REGEX: &str = macros::verify_regex!(
 		"^[a-z0-9]+((\\.|_|__|-+)[a-z0-9]+)*(\\/[a-z0-9]+((\\.|_|__|-+)[a-z0-9]+)*)*$"
@@ -136,11 +158,6 @@ pub mod constants {
 	pub const REGISTRY_TAG_OR_DIGEST_REGEX: &str = macros::verify_regex!(
 		"^(?:[A-Za-z0-9_][A-Za-z0-9._-]{0,127}|[A-Za-z][A-Za-z0-9+._-]*:(?:[a-f0-9]{2})+)$"
 	);
-
-	/// The issuer to be used for TOTP generation
-	pub const TOTP_ISSUER: &str = "app.patr.cloud";
-
-	/// -------------------All Registry Related Constants-------------------
 
 	/// The duration for which a registry blob upload session will be valid for.
 	/// This is the duration for which the session data will be stored in Redis,

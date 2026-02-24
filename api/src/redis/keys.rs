@@ -1,3 +1,5 @@
+use std::net::IpAddr;
+
 use crate::prelude::*;
 
 /// The key used to store the permissions for a login ID
@@ -70,4 +72,11 @@ pub fn registry_blob_upload_pending_buffer(session_id: &Uuid) -> String {
 /// once the manifest is pushed.
 pub fn repository_for_registry_blob(repository_id: &Uuid, digest: &str) -> String {
 	format!("repositoryForRegistryBlob:{}:{}", repository_id, digest)
+}
+
+/// The key used to store the IP lookup data for an IP address. This is used to
+/// cache the results of IP lookups to avoid making repeated calls to the IPInfo
+/// API for the same IP address, both to reduce latency and to reduce costs.
+pub fn ip_lookup_data(ip: IpAddr) -> String {
+	format!("ipLookupData:{}", ip)
 }

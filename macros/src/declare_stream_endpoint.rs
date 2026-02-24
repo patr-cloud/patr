@@ -315,7 +315,11 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				quote::quote! {
 					NoAuthentication
 				},
-				quote::quote! {},
+				quote::quote! {
+					fn get_authenticator() -> Self::Authenticator {
+						models::utils::NoAuthentication
+					}
+				},
 			)
 		},
 		|block| {
@@ -490,6 +494,10 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			type Authenticator = models::utils::#auth_type;
 
 			#auth_impl
+
+			fn get_audit_logger() -> models::utils::AuditLogger<Self> {
+				models::utils::AuditLogger::NoAuditLogger
+			}
 
 			type ResponseHeaders = #response_headers_name;
 			type ResponseBody = models::utils::GenericResponse;

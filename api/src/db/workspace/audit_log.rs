@@ -23,10 +23,20 @@ pub async fn initialize_workspace_tables(
 		r#"
 		CREATE TABLE audit_log(
 			id UUID NOT NULL,
-			/* workspace_id is kept in case the resource is moved to another workspace */
+
+			/* Where the action was performed from */
 			timestamp TIMESTAMPTZ NOT NULL,
+			ip INET NOT NULL,
+			location GEOMETRY NOT NULL,
+			user_agent TEXT NOT NULL,
+			country TEXT NOT NULL,
+			region TEXT NOT NULL,
+			city TEXT NOT NULL,
+			timezone TEXT NOT NULL,
+
 			login_id UUID NOT NULL,
 			action AUDIT_LOG_TYPE NOT NULL,
+			/* workspace_id is kept in case the resource is moved to another workspace */
 			workspace_id UUID NOT NULL,
 			resource_id UUID NOT NULL
 		);
@@ -80,7 +90,7 @@ pub async fn initialize_workspace_constraints(
 					REFERENCES resource(id),
 			ADD CONSTRAINT audit_log_login_id_fkey
 				FOREIGN KEY(login_id)
-					REFERENCES user_login(id);
+					REFERENCES user_login(login_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -93,6 +103,31 @@ pub async fn initialize_workspace_constraints(
 			ADD CONSTRAINT audit_log_change_audit_log_id_fkey
 				FOREIGN KEY(audit_log_id)
 					REFERENCES audit_log(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE FUNCTION GENERATE_AUDIT_LOG_ID() RETURNS UUID AS $$
+		DECLARE
+			audit_log_id UUID;
+		BEGIN
+			audit_log_id := gen_random_uuid();
+			WHILE EXISTS(
+				SELECT
+					1
+				FROM
+					audit_log
+				WHERE
+					id = audit_log_id
+			) LOOP
+				audit_log_id := gen_random_uuid();
+			END LOOP;
+			RETURN audit_log_id;
+		END;
+		$$ LANGUAGE plpgsql;
 		"#
 	)
 	.execute(&mut *connection)

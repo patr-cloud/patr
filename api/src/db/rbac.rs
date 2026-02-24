@@ -162,8 +162,12 @@ pub async fn initialize_rbac_indices(
 	query!(
 		r#"
 		ALTER TABLE role
-			ADD CONSTRAINT role_pk PRIMARY KEY(id),
-			ADD CONSTRAINT role_uq_name_owner_id UNIQUE(name, owner_id);
+			ADD CONSTRAINT role_pk
+				PRIMARY KEY(id),
+			ADD CONSTRAINT role_fk_id_owner_id
+				FOREIGN KEY(id, owner_id) REFERENCES resource(id, owner_id),
+			ADD CONSTRAINT role_uq_name_owner_id
+				UNIQUE(name, owner_id);
 		"#
 	)
 	.execute(&mut *connection)

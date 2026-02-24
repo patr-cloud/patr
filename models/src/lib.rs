@@ -51,6 +51,7 @@ pub mod prelude {
 		},
 		utils::{
 			AppAuthentication,
+			AuditLogger,
 			Base64String,
 			BearerToken,
 			DeduplicatedIaacResourceExt,

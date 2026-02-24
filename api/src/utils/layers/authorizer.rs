@@ -25,7 +25,7 @@ static PERMISSION_TO_ID_MAP: OnceCell<BTreeMap<Permission, Uuid>> = OnceCell::co
 /// passed to the next layer. Otherwise, an error will be returned.
 pub struct AuthorizationLayer<E>
 where
-	E: ApiEndpoint,
+	E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// The endpoint type that this layer will handle
@@ -34,7 +34,7 @@ where
 
 impl<E> AuthorizationLayer<E>
 where
-	E: ApiEndpoint,
+	E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// Helper function to initialize an authorization layer
@@ -47,7 +47,7 @@ where
 
 impl<E, S> Layer<S> for AuthorizationLayer<E>
 where
-	E: ApiEndpoint,
+	E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 	for<'a> S: Service<AuthenticatedAppRequest<'a, E>>,
 {
@@ -64,7 +64,7 @@ where
 
 impl<E> Clone for AuthorizationLayer<E>
 where
-	E: ApiEndpoint,
+	E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	fn clone(&self) -> Self {
@@ -77,7 +77,7 @@ where
 /// The underlying service that runs when the [`AuthorizationLayer`] is used.
 pub struct AuthorizationService<A, E, S>
 where
-	E: ApiEndpoint,
+	E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// The inner service that will be called after the request is authenticated
@@ -106,7 +106,7 @@ where
 		self.inner.poll_ready(cx)
 	}
 
-	#[instrument(skip(self, req), name = "AuthenticatorService")]
+	#[instrument(skip(self, req), name = "AuthorizationService")]
 	fn call(&mut self, req: AuthenticatedAppRequest<'a, E>) -> Self::Future {
 		let mut inner = self.inner.clone();
 		async move {
@@ -239,7 +239,7 @@ where
 
 impl<A, E, S> Clone for AuthorizationService<A, E, S>
 where
-	E: ApiEndpoint,
+	E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 	for<'b> S: Service<AuthenticatedAppRequest<'b, E>, Response = AppResponse<E>, Error = ErrorType>
 		+ Clone,

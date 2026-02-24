@@ -1,3 +1,12 @@
+/// The layer that handles the audit logging of the requests. This layer is
+/// responsible for logging the actions performed on the endpoint, including the
+/// request, the response, and the user that performed the action. This layer is
+/// only used for endpoints that require auditing, as specified by the
+/// [`AppAuditLogger`][1] struct in the [`ApiEndpoint`][2] trait.
+///
+/// [1]: models::utils::AppAuditLogger
+/// [2]: models::prelude::ApiEndpoint
+mod audit_logger_layer;
 /// Handles functions that processes authenticated requests
 mod auth_endpoint_handler;
 /// Handles the authentication of the requests in case the route is protected
@@ -36,6 +45,7 @@ mod web_dashboard_auth_cookie_layer;
 pub mod registry;
 
 pub use self::{
+	audit_logger_layer::*,
 	auth_endpoint_handler::*,
 	authenticator::*,
 	authorizer::*,
