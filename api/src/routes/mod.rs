@@ -21,12 +21,17 @@ pub mod app_patr_cloud;
 #[path = "registry.patr.cloud/mod.rs"]
 pub mod registry_patr_cloud;
 
+/// The routes for serving https://loki.patr.cloud as a Loki logging service
+#[path = "loki.patr.cloud/mod.rs"]
+pub mod loki_patr_cloud;
+
 /// Sets up the routes for the API, across all domains.
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	let api_router = api_patr_cloud::setup_routes(state, ClientType::ApiToken).await;
 	let app_router = app_patr_cloud::setup_routes(state).await;
 	let registry_router = registry_patr_cloud::setup_routes(state).await;
+	let loki_router = loki_patr_cloud::setup_routes(state).await;
 
 	Router::new()
 		.fallback(any(async |request: Request<Body>| {
@@ -39,6 +44,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 				"api.patr.cloud" => api_router.oneshot(request).await,
 				"app.patr.cloud" => app_router.oneshot(request).await,
 				"registry.patr.cloud" => registry_router.oneshot(request).await,
+				"loki.patr.cloud" => loki_router.oneshot(request).await,
 				_ => Ok(Response::builder()
 					.status(StatusCode::NOT_FOUND)
 					.body(Body::empty())
