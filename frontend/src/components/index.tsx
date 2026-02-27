@@ -26,6 +26,7 @@ import { LoadingSpinner } from "~/components/loading-spinner";
 import InfoPopup from "~/components/info-popup";
 import Tooltip from "~/components/tooltip";
 import CopyButton from "~/components/copy-button";
+import Initials from "~/components/initials";
 export {
 	Alert,
 	PageContainer,
@@ -59,4 +60,5 @@ export {
 	InfoPopup,
 	Tooltip,
 	CopyButton,
+	Initials,
 };

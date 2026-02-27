@@ -19,6 +19,7 @@ import useFetchUserPermissions from "~/hooks/use-fetch/use-fetch-user-permission
 import CreateContainerRepository from "~/pages/container-repository/create";
 import ContainerRepositoryInfo from "~/pages/container-repository/container";
 import ListContainerRepositories from "~/pages/container-repository/list";
+import General from "~/pages/workspace/general";
 
 const WorkspacedLayout = (props: ParentProps<{}>) => {
 	const [workspaces] = useFetchWorkspaces();
@@ -64,6 +65,7 @@ export default function WorkspacedRoutes() {
 					<Route path="/" component={ManageRoles} />
 					<Route path="/:roleId" component={RoleInfo} />
 				</Route>
+				<Route path="/general" component={General} />
 				<Route path="/roles/new" component={CreateRoles} />
 			</Route>
 			<Route path="/container-registry">

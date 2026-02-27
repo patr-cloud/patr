@@ -256,18 +256,14 @@ const ListDomainsPage = () => {
 				>
 					<Suspense fallback={<div>Loading domains...</div>}>
 						<Table
-							column_grids={["flex-3", "flex-3", "flex-2", "flex-2"]}
+							column_grids={["flex-3", "flex-3", "flex-3"]}
 							rows={domains()?.domains || []}
-							headings={["Domain ID", "Domain Name", "Type", "Verified"]}
+							headings={["Domain Name", "Type", "Verified"]}
 							renderRow={(item) => (
 								<tr onClick={() => navigate(`/domains/${item.id}`)} class="table-row cursor-pointer">
-									<td class="flex-3 flex items-center justify-center">
-										<span class="truncate">{item.id}</span>
-										<CopyButton text={item.id} />
-									</td>
 									<td class="flex-3 flex items-center justify-center">{item.name}</td>
-									<td class="flex-2 flex items-center justify-center">{item.nameserverType}</td>
-									<td class="flex-2 flex items-center justify-center">
+									<td class="flex-3 flex items-center justify-center">{item.nameserverType}</td>
+									<td class="flex-3 flex items-center justify-center">
 										<div class="flex items-center gap-2">
 											{item.isVerified ? (
 												<span class="text-green-500">✓ Verified</span>

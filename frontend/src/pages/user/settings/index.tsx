@@ -84,10 +84,10 @@ const UserSettingsPage = () => {
 			<PageContainerHead
 				breadcrumbs={[
 					{
-						label: "User",
+						label: "Account Settings",
 					},
 				]}
-				subText="Settings"
+				subText="Manage your profile information and security preferences"
 				bottomContent={() => (
 					<HeadTab
 						tab={tab}
@@ -99,11 +99,6 @@ const UserSettingsPage = () => {
 								value: "",
 								onClick: (value) => setSearchParams({ tab: value }),
 							},
-							{
-								label: "Change Password",
-								value: "password",
-								onClick: (value) => setSearchParams({ tab: value }),
-							},
 						]}
 					/>
 				)}
@@ -111,20 +106,12 @@ const UserSettingsPage = () => {
 			<PageContainerBody class="flex flex-col gap-8">
 				<Suspense fallback={<div>Loading user info...</div>}>
 					<div class="flex flex-1 flex-col gap-6 items-start w-full">
-						{tab() === "" && (
-							<UserSettingsInfoTab
-								userInfo={userInfo}
-								mutateUserInfo={mutateUserInfo}
-								refetchUserInfo={refetchUserInfo}
-							/>
-						)}
-						{tab() === "password" && (
-							<ChangePasswordTab
-								mutateUserInfo={mutateUserInfo}
-								userInfo={userInfo}
-								refetchUserInfo={refetchUserInfo}
-							/>
-						)}
+						<UserSettingsInfoTab
+							userInfo={userInfo}
+							mutateUserInfo={mutateUserInfo}
+							refetchUserInfo={refetchUserInfo}
+						/>
+						<ChangePasswordTab mutateUserInfo={mutateUserInfo} userInfo={userInfo} refetchUserInfo={refetchUserInfo} />
 					</div>
 				</Suspense>
 			</PageContainerBody>

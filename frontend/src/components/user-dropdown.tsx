@@ -4,6 +4,7 @@ import { FiKey, FiSettings, FiLogOut } from "solid-icons/fi";
 import { useAuthState, useClickOutside } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
 import CopyableTextField from "./copyable-text-field";
+import Initials from "./initials";
 import { useToast } from "~/components/toast";
 import { GetUserInfoResponse } from "~/bindings";
 
@@ -70,29 +71,12 @@ const UserDropdown = () => {
 		return user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username : "User";
 	};
 
-	const getInitials = () => {
-		const user = userInfo();
-		if (!user) return "U";
-
-		if (user.firstName && user.lastName) {
-			return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
-		}
-
-		if (user.username) {
-			return user.username.slice(0, 2).toUpperCase();
-		}
-
-		return "U";
-	};
-
 	return (
 		<div class="relative" ref={setDropdownRef}>
 			<Suspense
 				fallback={
 					<button class="flex items-center gap-2 px-4 py-2 rounded-xs bg-secondary-light hover:bg-secondary-medium transition-colors duration-200 border border-white/10">
-						<div class="w-8 h-8 rounded-full bg-secondary-dark flex items-center justify-center text-white text-sm font-light">
-							U
-						</div>
+						<Initials size="sm" />
 						<span class="text-sm font-medium text-white">User</span>
 					</button>
 				}
@@ -103,9 +87,12 @@ const UserDropdown = () => {
 					}}
 					class="flex items-center gap-2 px-4 py-2 rounded-xs bg-secondary-light hover:bg-secondary-medium transition-colors duration-200 border border-white/10 cursor-pointer"
 				>
-					<div class="w-8 h-8 rounded-full bg-secondary-dark flex items-center justify-center text-white text-sm font-light">
-						{getInitials()}
-					</div>
+					<Initials
+						firstName={userInfo()?.firstName}
+						lastName={userInfo()?.lastName}
+						username={userInfo()?.username}
+						size="sm"
+					/>
 					<span class="text-sm font-medium text-white">{getDisplayName()}</span>
 				</button>
 
@@ -113,9 +100,12 @@ const UserDropdown = () => {
 					<div class="absolute right-0 mt-2 w-80 bg-secondary-medium border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
 						<div class="p-4 border-b border-white/10">
 							<div class="flex items-center gap-3 mb-3">
-								<div class="w-12 h-12 rounded-full bg-secondary-dark flex items-center justify-center text-white text-lg font-light">
-									{getInitials()}
-								</div>
+								<Initials
+									firstName={userInfo()?.firstName}
+									lastName={userInfo()?.lastName}
+									username={userInfo()?.username}
+									size="lg"
+								/>
 								<div class="flex-1 min-w-0">
 									<Show when={!userInfo.loading} fallback={<div class="text-gray-400 text-sm">Loading...</div>}>
 										<div class="text-white font-medium truncate">
@@ -150,7 +140,7 @@ const UserDropdown = () => {
 								onClick={() => setIsOpen(false)}
 							>
 								<FiSettings size={16} />
-								<span class="text-sm">User Settings</span>
+								<span class="text-sm">Account Settings</span>
 							</A>
 						</div>
 

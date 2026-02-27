@@ -95,95 +95,100 @@ const ChangePasswordTab = (_: UserSettingsInfoTabProps) => {
 	};
 
 	return (
-		<form onSubmit={onUpdatePassword} class="flex flex-col gap-4 items-center justify-between w-full h-full flex-1">
-			<div class="flex flex-col justify-between items-start gap-4 w-full">
-				<div class="flex gap-4 items-center w-full">
-					<InputLabel parentClass="flex-[1.25]" for="current-password" label="Current Password" />
-
-					<div class="flex-[10.75]">
-						<PasswordInput
-							value={oldPassword()}
-							name="current-password"
-							placeholder="Current Password"
-							onInput={(e) => setOldPassword(e.currentTarget.value)}
-						/>
-
-						<Show when={inputError().oldPassword}>
-							<div class="flex justify-start items-center mt-1">
-								<Alert message={inputError().oldPassword} type="error" />
-							</div>
-						</Show>
-					</div>
-				</div>
-
-				<div class="flex gap-4 items-center w-full">
-					<InputLabel parentClass="flex-[1.25]" for="new-password" label="New Password" />
-
-					<div class="flex-[10.75]">
-						<PasswordInput
-							value={newPassword()}
-							name="new-password"
-							placeholder="New Password"
-							onInput={(e) => setNewPassword(e.currentTarget.value)}
-						/>
-
-						<Show when={inputError().newPassword}>
-							<div class="flex justify-start items-center mt-1">
-								<Alert message={inputError().newPassword} type="error" />
-							</div>
-						</Show>
-					</div>
-				</div>
-
-				<div class="flex gap-4 items-center w-full">
-					<InputLabel parentClass="flex-[1.25]" for="confirm-password" label="Confirm Password" />
-					<div class="flex-[10.75]">
-						<PasswordInput
-							value={confirmPassword()}
-							name="confirm-password"
-							placeholder="Confirm Password"
-							onInput={(e) => setConfirmPassword(e.currentTarget.value)}
-						/>
-
-						<Show when={inputError().confirmPassword}>
-							<div class="flex justify-start items-center mt-1">
-								<Alert message={inputError().confirmPassword} type="error" />
-							</div>
-						</Show>
-					</div>
-				</div>
-
-				<Show when={showMfa()}>
+		<div class="flex flex-col gap-4 w-full">
+			<div class="flex items-center">
+				<p class="text-xl text-white">Change Password</p>
+			</div>
+			<form onSubmit={onUpdatePassword} class="flex flex-col gap-4 items-center justify-between w-full h-full flex-1">
+				<div class="flex flex-col justify-between items-start gap-4 w-full">
 					<div class="flex gap-4 items-center w-full">
-						<InputLabel parentClass="flex-[1.25]" for="mfa-otp" label="MFA OTP" />
+						<InputLabel parentClass="flex-[1.25]" for="current-password" label="Current Password" />
+
 						<div class="flex-[10.75]">
-							<OtpInput
-								outerClass="w-1/3"
-								inputVariant="medium"
-								otpDigits={() => mfaOtp().split("")}
-								setOtpDigits={(digits) => setMfaOtp(digits.join(""))}
+							<PasswordInput
+								value={oldPassword()}
+								name="current-password"
+								placeholder="Current Password"
+								onInput={(e) => setOldPassword(e.currentTarget.value)}
 							/>
+
+							<Show when={inputError().oldPassword}>
+								<div class="flex justify-start items-center mt-1">
+									<Alert message={inputError().oldPassword} type="error" />
+								</div>
+							</Show>
 						</div>
 					</div>
-				</Show>
 
-				<Show when={inputError().error}>
-					<div class="flex justify-start items-center mt-1">
-						<Alert message={inputError().error} type="error" />
+					<div class="flex gap-4 items-center w-full">
+						<InputLabel parentClass="flex-[1.25]" for="new-password" label="New Password" />
+
+						<div class="flex-[10.75]">
+							<PasswordInput
+								value={newPassword()}
+								name="new-password"
+								placeholder="New Password"
+								onInput={(e) => setNewPassword(e.currentTarget.value)}
+							/>
+
+							<Show when={inputError().newPassword}>
+								<div class="flex justify-start items-center mt-1">
+									<Alert message={inputError().newPassword} type="error" />
+								</div>
+							</Show>
+						</div>
 					</div>
-				</Show>
-			</div>
 
-			<div class="flex items-center justify-end w-full">
-				<Button
-					disabled={!oldPassword() || !newPassword() || newPassword() !== confirmPassword()}
-					type="submit"
-					variant={ButtonVariant.Contained}
-				>
-					Update Password
-				</Button>
-			</div>
-		</form>
+					<div class="flex gap-4 items-center w-full">
+						<InputLabel parentClass="flex-[1.25]" for="confirm-password" label="Confirm Password" />
+						<div class="flex-[10.75]">
+							<PasswordInput
+								value={confirmPassword()}
+								name="confirm-password"
+								placeholder="Confirm Password"
+								onInput={(e) => setConfirmPassword(e.currentTarget.value)}
+							/>
+
+							<Show when={inputError().confirmPassword}>
+								<div class="flex justify-start items-center mt-1">
+									<Alert message={inputError().confirmPassword} type="error" />
+								</div>
+							</Show>
+						</div>
+					</div>
+
+					<Show when={showMfa()}>
+						<div class="flex gap-4 items-center w-full">
+							<InputLabel parentClass="flex-[1.25]" for="mfa-otp" label="MFA OTP" />
+							<div class="flex-[10.75]">
+								<OtpInput
+									outerClass="w-1/3"
+									inputVariant="medium"
+									otpDigits={() => mfaOtp().split("")}
+									setOtpDigits={(digits) => setMfaOtp(digits.join(""))}
+								/>
+							</div>
+						</div>
+					</Show>
+
+					<Show when={inputError().error}>
+						<div class="flex justify-start items-center mt-1">
+							<Alert message={inputError().error} type="error" />
+						</div>
+					</Show>
+				</div>
+
+				<div class="flex items-center justify-end w-full">
+					<Button
+						disabled={!oldPassword() || !newPassword() || newPassword() !== confirmPassword()}
+						type="submit"
+						variant={ButtonVariant.Contained}
+					>
+						Update Password
+					</Button>
+				</div>
+			</form>
+		</div>
 	);
 };
 

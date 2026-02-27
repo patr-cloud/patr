@@ -2,7 +2,7 @@ import { useParams } from "@solidjs/router";
 import { createResource, Show, Suspense } from "solid-js";
 import { GetUserDetailsResponse } from "~/bindings/GetUserDetailsResponse";
 import { ListUsersForRoleResponse } from "~/bindings/ListUsersForRoleResponse";
-import { Table, useToast } from "~/components";
+import { Initials, Table, useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
@@ -79,7 +79,8 @@ const UsersAssignedToRole = () => {
 						rows={usersWithDetails() ?? []}
 						renderRow={(item) => (
 							<tr class="table-row">
-								<td class="flex-2 flex items-center justify-center">
+								<td class="flex-2 flex items-center justify-center gap-2">
+									<Initials firstName={item.firstName} lastName={item.lastName} username={item.username} size="xs" />
 									<span class="truncate font-mono">{item.username}</span>
 								</td>
 							</tr>

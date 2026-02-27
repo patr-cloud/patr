@@ -115,7 +115,7 @@ const Sidebar: Component = () => {
 				<For each={items}>{(item) => <SidebarItem {...item} />}</For>
 			</nav>
 
-			<div class="p-4 border-t border-white/5">
+			<div class="px-4 py-8 border-t border-white/5">
 				<WorkspaceSwitcher />
 			</div>
 		</aside>

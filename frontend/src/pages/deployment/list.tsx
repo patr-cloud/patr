@@ -25,13 +25,10 @@ const DeploymentListRow = (props: { item: WithId<Deployment> }) => {
 			}}
 			class="table-row"
 		>
-			<td class="flex-4 flex items-center justify-center">
-				<span class="truncate">{props.item.id}</span>
-				<CopyButton text={props.item.id} />
-			</td>
 			<td class="flex-4 flex items-center justify-center">{props.item.name}</td>
 			<td class="flex-4 flex items-center justify-center">{props.item.status}</td>
 			<td class="flex-4 flex items-center justify-center">{props.item.runner}</td>
+			<td class="flex-4 flex items-center justify-center">{props.item.imageTag}</td>
 		</tr>
 	);
 };
@@ -104,7 +101,7 @@ const ListDeploymentsPage = () => {
 						<Table
 							column_grids={["flex-4", "flex-4", "flex-4", "flex-4"]}
 							rows={deployments()?.deployments || []}
-							headings={["ID", "Deployment Name", "Status", "Runner"]}
+							headings={["Deployment Name", "Status", "Runner", "Image Tag"]}
 							renderRow={(item) => <DeploymentListRow item={item} />}
 						/>
 					</Suspense>

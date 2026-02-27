@@ -3,7 +3,7 @@ import { ButtonVariant, Link, PageContainerHead } from "~/components";
 
 interface WorkspaceHeaderProps {
 	workspaceName?: string;
-	activeTab: "workspace" | "roles";
+	activeTab: "workspace" | "roles" | "general";
 }
 
 const WorkspaceHeader = (props: WorkspaceHeaderProps) => {
@@ -15,7 +15,7 @@ const WorkspaceHeader = (props: WorkspaceHeaderProps) => {
 			breadcrumbs={[
 				{
 					label: "Workspace Settings",
-					url: props.activeTab === "roles" ? "/workspace" : undefined,
+					url: props.activeTab !== "workspace" ? "/workspace" : undefined,
 				},
 				...(props.activeTab === "roles"
 					? [
@@ -23,7 +23,13 @@ const WorkspaceHeader = (props: WorkspaceHeaderProps) => {
 								label: "Roles",
 							},
 						]
-					: []),
+					: props.activeTab === "general"
+						? [
+								{
+									label: "General",
+								},
+							]
+						: []),
 			]}
 			subText="Manage your workspace settings, members, and roles."
 			actions={() =>
@@ -40,7 +46,7 @@ const WorkspaceHeader = (props: WorkspaceHeaderProps) => {
 						href="/workspace"
 						class={`pb-2 px-2 border-b-2 ${props.activeTab === "workspace" ? "border-primary" : "border-transparent"}`}
 					>
-						Manage Workspace
+						Members
 					</A>
 
 					<A
@@ -48,7 +54,14 @@ const WorkspaceHeader = (props: WorkspaceHeaderProps) => {
 						onClick={() => navigate("/workspace/roles")}
 						class={`pb-2 px-2 border-b-2 ${props.activeTab === "roles" ? "border-primary" : "border-transparent"}`}
 					>
-						Manage Roles
+						Roles
+					</A>
+					<A
+						href="/workspace/general"
+						onClick={() => navigate("/workspace/general")}
+						class={`pb-2 px-2 border-b-2 ${props.activeTab === "general" ? "border-primary" : "border-transparent"}`}
+					>
+						General
 					</A>
 				</div>
 			)}

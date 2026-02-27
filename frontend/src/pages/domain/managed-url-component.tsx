@@ -90,7 +90,7 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 					</td>
 					<td class="flex-3 flex items-center justify-center">{domainTypeToTitle(props.managedUrl.type)}</td>
 
-					<td class="flex-[0.3] flex items-center justify-center">
+					<td class="flex-3 flex items-center justify-center">
 						<div class="flex gap-2 items-center">
 							{!props.managedUrl.isConfigured && (
 								<InfoPopup

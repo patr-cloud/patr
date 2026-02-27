@@ -2,7 +2,7 @@ import { A } from "@solidjs/router";
 import { FiSettings } from "solid-icons/fi";
 import { createEffect, createMemo, createResource, createSignal, For, Show, Suspense } from "solid-js";
 import { ListUserWorkspacesResponse } from "~/bindings";
-import { Button, useToast } from "~/components";
+import { Button, Link, useToast } from "~/components";
 import { useAuthState, useClickOutside } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
@@ -72,7 +72,7 @@ const WorkspaceSwitcher = () => {
 				<div
 					class="absolute bottom-12 left-0 min-w-72 max-h-160 
           shadow-high rounded-xs z-10 bg-secondary-light text-white
-          border border-border-color flex flex-col items-start justify-start py-md px-sm"
+          border border-border-color flex flex-col items-start justify-start py-md px-sm pb-0"
 				>
 					<p class="text-center w-full text-md mb-sm">Workspaces</p>
 
@@ -81,9 +81,9 @@ const WorkspaceSwitcher = () => {
 							fallback={
 								<div
 									class="text-sm text-white text-center px-md py-sm
-                  bg-secondary-medium! hover:bg-secondary-dark! w-full
-                  cursor-pointer rounded-xs rounded-b-none
-                  border-b border-border-color"
+                 					 bg-secondary-medium! hover:bg-secondary-dark! w-full
+                 					 cursor-pointer rounded-xs rounded-b-none
+									border-b border-border-color"
 								>
 									Loading...
 								</div>
@@ -108,12 +108,11 @@ const WorkspaceSwitcher = () => {
 								</For>
 							</div>
 						</Suspense>
-
-						<div class="px-md py-sm text-center bg-secondary-medium! hover:bg-secondary-dark! cursor-pointer rounded-xs w-full">
-							<A href="/workspaces/new" class="text-sm text-primary leading-none">
-								CREATE WORKSPACE
-							</A>
-						</div>
+					</div>
+					<div class="px-md py-md text-center bg-secondary-light! cursor-pointer w-full">
+						<Link href="/workspace/new" class="text-sm text-primary" external={false}>
+							CREATE WORKSPACE
+						</Link>
 					</div>
 				</div>
 			</Show>
