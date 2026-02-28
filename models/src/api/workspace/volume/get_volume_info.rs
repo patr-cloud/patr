@@ -27,5 +27,6 @@ macros::declare_api_endpoint!(
 		/// The volume information
 		#[serde(flatten)]
 		pub volume: WithId<DeploymentVolume>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

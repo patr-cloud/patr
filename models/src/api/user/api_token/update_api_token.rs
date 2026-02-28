@@ -47,5 +47,6 @@ macros::declare_api_endpoint!(
 		#[preprocess(none)]
 		#[ts(type = "Array<string>")]
 		pub allowed_ips: Option<Vec<IpNetwork>>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

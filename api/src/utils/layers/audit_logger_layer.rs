@@ -108,30 +108,45 @@ where
 	}
 
 	#[instrument(skip(self, req), name = "AuditLoggerService")]
-	fn call(&mut self, mut req: AuthenticatedAppRequest<'a, E>) -> Self::Future {
+	fn call(&mut self, req: AuthenticatedAppRequest<'a, E>) -> Self::Future {
 		let mut inner = self.inner.clone();
 		async move {
 			trace!("Preprocessing request");
 
-			let database = req.state.database.clone();
+			let AuthenticatedAppRequest {
+				request,
+				database,
+				redis,
+				client_ip,
+				user_data,
+				state,
+			} = req;
 
-			let (audit_log_type, resource_type, extract_resource_id) = match E::get_audit_logger() {
-				AuditLogger::NoAuditLogger => {
-					return inner.call(req).await;
-				}
+			let (audit_log_type, _, extract_resource_id) = match E::get_audit_logger() {
 				AuditLogger::AppAuditLogger {
 					audit_log_type,
 					resource_type,
 					extract_resource_id,
 				} => (audit_log_type, resource_type, extract_resource_id),
+				AuditLogger::NoAuditLogger => {
+					return inner
+						.call(AuthenticatedAppRequest {
+							request,
+							database,
+							redis,
+							client_ip,
+							user_data,
+							state,
+						})
+						.await;
+				}
 			};
 
-			let user_agent = req.request.headers.get_header().as_str().to_owned();
-			let client_ip = req.client_ip;
-			let login_id = req.user_data.login_id;
-			let ip_details =
-				ip::lookup(client_ip, &mut req.redis, &req.state.config.ipinfo).await?;
-			let client_ip = IpNetwork::from(client_ip);
+			let user_agent = request.headers.get_header().as_str().to_owned();
+			let client_ip = client_ip;
+			let login_id = user_data.login_id;
+			let ip_details = ip::lookup(client_ip, redis, &state.config.ipinfo).await?;
+			let client_ip_network = IpNetwork::from(client_ip);
 
 			let (lat, lng) = ip_details
 				.loc
@@ -160,17 +175,38 @@ where
 
 			let (resource_id, response) = match extract_resource_id {
 				ResourceIdExtractor::FromRequest(extractor) => {
-					let resource_id = extractor(&req.request);
-					(resource_id, inner.call(req).await?)
+					let resource_id = extractor(&request);
+					(
+						resource_id,
+						inner
+							.call(AuthenticatedAppRequest {
+								request,
+								database,
+								redis,
+								client_ip,
+								user_data,
+								state,
+							})
+							.await?,
+					)
 				}
 				ResourceIdExtractor::FromResponse(extractor) => {
-					let response = inner.call(req).await?;
+					let response = inner
+						.call(AuthenticatedAppRequest {
+							request,
+							database,
+							redis,
+							client_ip,
+							user_data,
+							state,
+						})
+						.await?;
 					let resource_id = extractor(&response);
 					(resource_id, response)
 				}
 			};
 
-			let audit_log_id = query!(
+			query!(
 				r#"
 				INSERT INTO
 					audit_log(
@@ -207,10 +243,9 @@ where
 						$10,
 						(SELECT owner_id FROM resource WHERE id = $11),
 						$11
-					)
-				RETURNING id AS "id: Uuid";
+					);
 				"#,
-				client_ip,
+				client_ip_network,
 				lat,
 				lng,
 				user_agent,
@@ -222,9 +257,8 @@ where
 				audit_log_type as _,
 				resource_id as _,
 			)
-			.fetch_one(&database)
-			.await?
-			.id;
+			.execute(&mut **database)
+			.await?;
 
 			// TODO audit log changes
 

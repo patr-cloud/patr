@@ -22,5 +22,6 @@ macros::declare_api_endpoint!(
 		/// The details of the workspace requested
 		#[serde(flatten)]
 		pub workspace: WithId<Workspace>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

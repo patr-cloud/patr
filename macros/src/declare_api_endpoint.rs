@@ -11,6 +11,7 @@ use syn::{
 	LitBool,
 	LitStr,
 	Token,
+	Variant,
 	parse::{Parse, ParseStream},
 	parse_macro_input,
 	punctuated::Punctuated,
@@ -43,6 +44,8 @@ pub struct ApiEndpoint {
 	request: Option<FieldsNamed>,
 	/// The required request headers for the endpoint.
 	request_headers: Option<FieldsNamed>,
+	/// The audit logger for the endpoint.
+	audit_logger: Variant,
 
 	/// The required response headers for the endpoint.
 	response_headers: Option<FieldsNamed>,
@@ -92,6 +95,7 @@ impl Parse for ApiEndpoint {
 		let mut response_headers = None;
 		let mut response = None;
 		let mut api_allowed = None;
+		let mut audit_logger = None;
 
 		while !input.is_empty() {
 			let ident = input.parse::<Ident>()?;
@@ -160,6 +164,14 @@ impl Parse for ApiEndpoint {
 
 					api_allowed = Some(input.parse::<LitBool>()?.value);
 				}
+				"audit_logger" | "audit_log" => {
+					if audit_logger.is_some() {
+						return Err(Error::new(ident.span(), "Duplicate field"));
+					}
+					input.parse::<Token![=]>()?;
+
+					audit_logger = Some(input.parse()?);
+				}
 				_ => {
 					return Err(Error::new(ident.span(), "Unknown field"));
 				}
@@ -169,6 +181,9 @@ impl Parse for ApiEndpoint {
 			}
 		}
 		let api_allowed = api_allowed.unwrap_or(true);
+		let Some(audit_logger) = audit_logger else {
+			return Err(Error::new(input.span(), "Missing field: audit_logger"));
+		};
 
 		Ok(Self {
 			documentation,
@@ -183,6 +198,7 @@ impl Parse for ApiEndpoint {
 			listable_resource,
 			request,
 			request_headers,
+			audit_logger,
 
 			response_headers,
 			response,
@@ -207,6 +223,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		listable_resource,
 		request_headers,
 		request,
+		audit_logger,
 
 		response_headers,
 		response,
@@ -559,7 +576,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			#auth_impl
 
 			fn get_audit_logger() -> models::utils::AuditLogger<Self> {
-				models::utils::AuditLogger::NoAuditLogger
+				models::utils::AuditLogger::#audit_logger
 			}
 
 			type ResponseHeaders = #response_headers_name;

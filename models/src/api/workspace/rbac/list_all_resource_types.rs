@@ -36,5 +36,6 @@ macros::declare_api_endpoint!(
 		/// - name - The name of the resource type
 		/// - description - The description of the resource type
 		pub resource_types: Vec<WithId<ResourceType>>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

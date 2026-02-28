@@ -45,19 +45,6 @@ pub async fn initialize_workspace_tables(
 	.execute(&mut *connection)
 	.await?;
 
-	query!(
-		r#"
-		CREATE TABLE audit_log_change(
-			audit_log_id UUID NOT NULL,
-			field TEXT NOT NULL,
-			old_value TEXT NOT NULL,
-			new_value TEXT NOT NULL
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	Ok(())
 }
 
@@ -91,18 +78,6 @@ pub async fn initialize_workspace_constraints(
 			ADD CONSTRAINT audit_log_login_id_fkey
 				FOREIGN KEY(login_id)
 					REFERENCES user_login(login_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE audit_log_change
-			ADD CONSTRAINT audit_log_change_pkey PRIMARY KEY(audit_log_id, field),
-			ADD CONSTRAINT audit_log_change_audit_log_id_fkey
-				FOREIGN KEY(audit_log_id)
-					REFERENCES audit_log(id);
 		"#
 	)
 	.execute(&mut *connection)

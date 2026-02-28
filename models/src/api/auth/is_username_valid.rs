@@ -17,5 +17,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// A boolean response corresponding the availability of the username
 		pub available: bool,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

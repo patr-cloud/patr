@@ -16,13 +16,13 @@ mod declare_registry_endpoint;
 /// The proc macro for declaring a streaming endpoint. A streaming endpoint is
 /// basically a websocket endpoint.
 mod declare_stream_endpoint;
-/// A macro to generate the same struct but with all fields optional.
-mod generate_optional;
 /// A derive macro for the `HasHeaders` trait.
 mod has_headers;
 /// A derive macro to generate an enum of all fields and a search struct
 /// for a given struct.
 mod listable_resource;
+/// A macro to generate the same struct but with all fields optional.
+mod optionalize;
 /// A proc macro for stripping whitespaces and newlines from SQL queries.
 mod query;
 /// A macro to generate a recursive enum iterator.
@@ -291,8 +291,8 @@ pub fn verify_regex(input: TokenStream) -> TokenStream {
 /// struct, where all fields are optional.
 /// ## Example usage:
 /// ```rust
-/// # use ::macros::generate_optional;
-/// #[generate_optional]
+/// # use ::macros::optionalize;
+/// #[optionalize]
 /// pub struct User {
 ///     pub name: String,
 ///     pub age: u32,
@@ -302,8 +302,15 @@ pub fn verify_regex(input: TokenStream) -> TokenStream {
 /// The generated struct will have the same fields as the original struct, but
 /// all fields will be wrapped in `Option`. The generated struct will also
 /// have a few utility methods, such as `any_field_set` to check if any field is
-/// set, `all_fields_set` to check if all fields are set.
+/// set, `all_fields_set` to check if all fields are set, and an implementation
+/// of `models::utils::Optionalizable` for the original struct.
+/// You can skip individual fields in the generated struct by annotating the
+/// original field with `#[optionalize(skip)]`.
+/// You can keep an already optional field unchanged with
+/// `#[optionalize(keep)]`.
+/// Place `#[optionalize]` before other active struct attributes like
+/// `#[derive(...)]` to apply them to both original and generated structs.
 #[proc_macro_attribute]
-pub fn generate_optional(args: TokenStream, input: TokenStream) -> TokenStream {
-	generate_optional::parse(args, input)
+pub fn optionalize(args: TokenStream, input: TokenStream) -> TokenStream {
+	optionalize::parse(args, input)
 }

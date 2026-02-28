@@ -27,5 +27,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// The list of runners in the workspace
 		pub runners: Vec<WithId<Runner>>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

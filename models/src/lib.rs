@@ -29,7 +29,6 @@ pub mod prelude {
 	pub use crate::{
 		ApiErrorResponse,
 		ApiRequest,
-		ApiSuccessResponse,
 		ApiSuccessResponseBody,
 		AppResponse,
 		ErrorType,

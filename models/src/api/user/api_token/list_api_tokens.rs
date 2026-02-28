@@ -23,5 +23,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// The list of API tokens
 		pub tokens: Vec<WithId<UserApiToken>>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

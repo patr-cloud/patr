@@ -16,4 +16,5 @@ macros::declare_api_endpoint!(
 		/// The new access token which will be used for authentication by the user
 		pub access_token: String,
 	},
+	audit_log = NoAuditLogger,
 );

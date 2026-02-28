@@ -26,5 +26,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// The verification DNS record required to verify the domain
 		pub verification_records: Vec<PatrDomainDnsRecord>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

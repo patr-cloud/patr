@@ -31,5 +31,6 @@ macros::declare_api_endpoint!(
 		///     name - The role name
 		///     description - The role description
 		pub roles: Vec<WithId<Role>>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

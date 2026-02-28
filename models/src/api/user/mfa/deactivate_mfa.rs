@@ -18,4 +18,5 @@ macros::declare_api_endpoint!(
 		#[preprocess(none)]
 		pub otp: String,
 	},
+	audit_log = NoAuditLogger,
 );

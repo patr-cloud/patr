@@ -42,24 +42,7 @@ where
 	}
 }
 
-/// This struct represents a successful response from the API. It contains the
-/// status code, headers and body.
-#[derive(Debug)]
-pub struct ApiSuccessResponse<E>
-where
-	E: ApiEndpoint,
-	<E::RequestBody as Preprocessable>::Processed: Send,
-{
-	/// The status code of the success response. Ideally in the 2xx range.
-	pub status_code: StatusCode,
-	/// The headers of the success response.
-	pub headers: E::ResponseHeaders,
-	/// The body of the success response. This is the actual data that will be
-	/// sent to the client. Can be either JSON or Websockets.
-	pub body: E::ResponseBody,
-}
-
-impl<E> IntoResponse for ApiSuccessResponse<E>
+impl<E> IntoResponse for AppResponse<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
@@ -78,7 +61,7 @@ where
 /// This is mostly used internally and would ideally not need to be constructed
 /// manually.
 ///
-/// Use [`ApiSuccessResponse`] to create a success response.
+/// Use [`AppResponse`] to create a success response.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiSuccessResponseBody<T> {

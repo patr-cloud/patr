@@ -30,5 +30,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// The list of users with the role
 		pub users: Vec<Uuid>
-	}
+	},
+	audit_log = NoAuditLogger,
 );

@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT name, tld, workspace_id, nameserver_type AS \"nameserver_type: DomainNameserverType\", is_verified, last_verified FROM workspace_domain WHERE id = $1 AND deleted IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "tld",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "workspace_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "nameserver_type: DomainNameserverType",
+        "type_info": {
+          "Custom": {
+            "name": "domain_nameserver_type",
+            "kind": {
+              "Enum": [
+                "internal",
+                "external"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "is_verified",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "last_verified",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "7f3f3c360bf93c064b2fd98f7848a0446be3fb9b0fd9c3098912e2fe68100011"
+}

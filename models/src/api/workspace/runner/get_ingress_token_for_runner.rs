@@ -25,5 +25,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// The runner ingress token
 		pub token: String,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

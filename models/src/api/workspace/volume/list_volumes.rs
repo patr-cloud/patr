@@ -27,5 +27,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// The list of volumes in the workspace
 		pub volumes: Vec<WithId<DeploymentVolume>>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

@@ -27,5 +27,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// List of container repositories in the current workspace
 		pub repositories: Vec<WithId<ContainerRepository>>
-	}
+	},
+	audit_log = NoAuditLogger,
 );

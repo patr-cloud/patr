@@ -17,4 +17,5 @@ macros::declare_api_endpoint!(
 		/// The MFA secret QR code URL
 		pub qr: String,
 	},
+	audit_log = NoAuditLogger,
 );

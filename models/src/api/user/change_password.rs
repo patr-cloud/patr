@@ -28,4 +28,5 @@ macros::declare_api_endpoint!(
 		#[preprocess(none)]
 		pub mfa_otp: Option<String>,
 	},
+	audit_log = NoAuditLogger,
 );

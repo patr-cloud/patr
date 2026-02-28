@@ -31,7 +31,9 @@ pub async fn lookup(
 
 	// If not present in Redis, perform the IP lookup using the ipinfo crate
 	let ip_details = IpInfo::new(ipinfo::IpInfoConfig {
-		token: if cfg!(debug_assertions) {
+		// If debug AND the token is empty, then don't use a token for testing. Otherwise use the
+		// token.
+		token: if cfg!(debug_assertions) && config.token.is_empty() {
 			None
 		} else {
 			Some(config.token.clone())

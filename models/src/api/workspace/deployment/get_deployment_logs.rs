@@ -40,5 +40,6 @@ macros::declare_api_endpoint!(
 		/// timestamp - The timestamp of the log
 		/// logs - The log message
 		pub logs: Vec<DeploymentLog>
-	}
+	},
+	audit_log = NoAuditLogger,
 );

@@ -32,5 +32,6 @@ macros::declare_api_endpoint!(
 		///         (Created, Pushed, Deploying, Running, Stopped, Errored,Deleted)
 		/// current_live_upload - The index.html that is currently live
 		pub static_sites: Vec<WithId<StaticSite>>
-	}
+	},
+	audit_log = NoAuditLogger,
 );

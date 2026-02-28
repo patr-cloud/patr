@@ -36,5 +36,6 @@ macros::declare_api_endpoint!(
 		/// created - The date and time when the upload was created
 		/// processed - The data and time when the static site was updated
 		pub uploads: Vec<WithId<StaticSiteUploadHistory>>
-	}
+	},
+	audit_log = NoAuditLogger,
 );

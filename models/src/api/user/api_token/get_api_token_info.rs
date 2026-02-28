@@ -22,5 +22,6 @@ macros::declare_api_endpoint!(
 		/// The token to create
 		#[serde(flatten)]
 		pub token: WithId<UserApiToken>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

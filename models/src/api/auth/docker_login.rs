@@ -24,4 +24,5 @@ macros::declare_api_endpoint!(
 		/// The token (alias for access token) generated for the user
 		pub token: String,
 	},
+	audit_log = NoAuditLogger,
 );

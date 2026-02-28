@@ -17,4 +17,5 @@ macros::declare_api_endpoint!(
 	authentication = {
 		AppAuthentication::<Self>::PlainTokenAuthenticator
 	},
+	audit_log = NoAuditLogger,
 );

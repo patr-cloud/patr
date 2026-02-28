@@ -57,5 +57,6 @@ macros::declare_api_endpoint!(
 		/// The response from the OAuthIntrospect endpoint
 		#[serde(flatten)]
 		pub response: OAuthIntrospectResponseType,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

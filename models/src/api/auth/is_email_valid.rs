@@ -17,5 +17,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// A boolean response corresponding to the availability of the email
 		pub available: bool,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

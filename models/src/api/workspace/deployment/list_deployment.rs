@@ -33,5 +33,6 @@ macros::declare_api_endpoint!(
 		/// machine_type - The deployment machine type corresponding to CPU and RAM
 		/// current_live_digest - The current live digest running
 		pub deployments: Vec<WithId<Deployment>>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

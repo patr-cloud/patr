@@ -22,4 +22,5 @@ macros::declare_api_endpoint!(
 		#[preprocess(none)]
 		pub phone_number: Option<UserPhoneNumber>,
 	},
+	audit_log = NoAuditLogger,
 );

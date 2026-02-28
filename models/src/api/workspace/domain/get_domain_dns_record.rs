@@ -36,5 +36,6 @@ macros::declare_api_endpoint!(
 		/// - type - The domain type
 		/// - ttl - The time to live
 		pub records: Vec<WithId<PatrDomainDnsRecord>>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

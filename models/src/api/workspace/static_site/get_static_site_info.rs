@@ -33,5 +33,6 @@ macros::declare_api_endpoint!(
 		pub static_site: WithId<StaticSite>,
 		/// The static site details like metrics, etc
 		pub static_site_details: StaticSiteDetails
-	}
+	},
+	audit_log = NoAuditLogger,
 );

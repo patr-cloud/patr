@@ -72,4 +72,5 @@ macros::declare_api_endpoint!(
 		#[preprocess(trim, length(min = 1))]
 		pub cf_turnstile_token: String,
 	},
+	audit_log = NoAuditLogger,
 );

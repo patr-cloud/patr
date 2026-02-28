@@ -17,5 +17,6 @@ macros::declare_api_endpoint!(
 		/// memory_count: The number of memory nodes
 		/// volume: The size of the volume
 		pub plans: Vec<WithId<DatabasePlan>>
-	}
+	},
+	audit_log = NoAuditLogger,
 );

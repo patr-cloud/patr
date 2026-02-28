@@ -32,5 +32,6 @@ macros::declare_api_endpoint!(
 		pub role: WithId<Role>,
 		/// List of Permission IDs and the type of permission that is granted on this role.
 		pub permissions: BTreeMap<Uuid, ResourcePermissionType>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );
