@@ -1,9 +1,8 @@
 import { useNavigate } from "@solidjs/router";
 import { createMemo, createResource, ErrorBoundary, Suspense } from "solid-js";
-import { ListDeploymentResponse, WithId, Deployment } from "~/bindings";
+import { ListDeploymentResponse, WithId, Deployment, ListRunnersForWorkspaceResponse } from "~/bindings";
 import {
 	ButtonVariant,
-	CopyButton,
 	Link,
 	PageContainer,
 	PageContainerBody,
@@ -15,7 +14,7 @@ import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import useIsAllowed from "~/hooks/use-is-allowed";
 
-const DeploymentListRow = (props: { item: WithId<Deployment> }) => {
+const DeploymentListRow = (props: { item: WithId<Deployment>; runnerName: string }) => {
 	const navigate = useNavigate();
 
 	return (
@@ -27,7 +26,7 @@ const DeploymentListRow = (props: { item: WithId<Deployment> }) => {
 		>
 			<td class="flex-4 flex items-center justify-center">{props.item.name}</td>
 			<td class="flex-4 flex items-center justify-center">{props.item.status}</td>
-			<td class="flex-4 flex items-center justify-center">{props.item.runner}</td>
+			<td class="flex-4 flex items-center justify-center">{props.runnerName}</td>
 			<td class="flex-4 flex items-center justify-center">{props.item.imageTag}</td>
 		</tr>
 	);
@@ -70,6 +69,28 @@ const ListDeploymentsPage = () => {
 		return { deployments: response.data.deployments };
 	});
 
+	const [runners] = createResource(fetchParams, async ([auth, wsId]) => {
+		if (!wsId || !auth || auth.type !== "LoggedIn") {
+			return { runners: [] };
+		}
+		const response = await httpRequest<ListRunnersForWorkspaceResponse>(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner`,
+			{
+				method: "GET",
+			}
+		);
+
+		if (!response.ok) {
+			console.error("Failed to fetch runners:", response.data.error);
+			toast("Failed to fetch runners", "error");
+
+			return { runners: [] };
+		}
+
+		console.log("Fetched runners:", response.data);
+		return response.data;
+	});
+
 	return (
 		<PageContainer>
 			<PageContainerHead
@@ -102,7 +123,12 @@ const ListDeploymentsPage = () => {
 							column_grids={["flex-4", "flex-4", "flex-4", "flex-4"]}
 							rows={deployments()?.deployments || []}
 							headings={["Deployment Name", "Status", "Runner", "Image Tag"]}
-							renderRow={(item) => <DeploymentListRow item={item} />}
+							renderRow={(item) => (
+								<DeploymentListRow
+									item={item}
+									runnerName={runners()?.runners.find((r) => r.id === item.runner)?.name ?? "Unknown"}
+								/>
+							)}
 						/>
 					</Suspense>
 				</ErrorBoundary>
