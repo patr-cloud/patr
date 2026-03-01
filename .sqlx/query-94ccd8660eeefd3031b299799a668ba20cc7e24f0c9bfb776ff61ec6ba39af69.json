@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE container_registry_repository_manifest ADD CONSTRAINT container_registry_repository_manifest_pk PRIMARY KEY(repository_id, manifest_digest), ADD CONSTRAINT container_registry_repository_manifest_fk_repository_id FOREIGN KEY(repository_id) REFERENCES container_registry_repository(id), ADD CONSTRAINT container_registry_repository_manifest_fk_manifest_digest FOREIGN KEY(manifest_digest) REFERENCES container_registry_manifest(digest);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "94ccd8660eeefd3031b299799a668ba20cc7e24f0c9bfb776ff61ec6ba39af69"
+}
