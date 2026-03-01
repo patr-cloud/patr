@@ -21,5 +21,10 @@ macros::declare_api_endpoint!(
 			extract_workspace_id: |req| req.path.workspace_id,
 			permission: Permission::ManagedURL(ManagedURLPermission::Delete),
 		}
-	}
+	},
+	audit_log = AppAuditLogger {
+		audit_log_type: AuditLogType::ResourceDeleted,
+		resource_type: ResourceType::ManagedURL,
+		extract_resource_id: ResourceIdExtractor::FromRequest(|req| req.path.managed_url_id),
+	},
 );

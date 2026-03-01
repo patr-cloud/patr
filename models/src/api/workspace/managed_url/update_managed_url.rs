@@ -33,4 +33,9 @@ macros::declare_api_endpoint!(
 		#[preprocess(optional(none))]
 		pub url_type: Option<ManagedUrlType>,
 	},
+	audit_log = AppAuditLogger {
+		audit_log_type: AuditLogType::ResourceUpdated,
+		resource_type: ResourceType::ManagedURL,
+		extract_resource_id: ResourceIdExtractor::FromRequest(|req| req.path.managed_url_id),
+	},
 );

@@ -5,10 +5,11 @@ use ts_rs::TS;
 
 use crate::prelude::*;
 
+/// This module contains all the models that corresponds to a workspace's audit
+/// log
+pub mod audit_log;
 /// All the modules that corresponds to Patr's in-build container registry
 pub mod container_registry;
-/// This module contains all the database models
-pub mod database;
 /// This module contains all the deployment models
 pub mod deployment;
 /// All the modules that corresponds to Patr Domains
@@ -20,14 +21,15 @@ pub mod rbac;
 /// This module contains all the models that corresponds to a runner of a Patr
 /// workspace
 pub mod runner;
-/// This module contains all the models that corresponds to Patr secrets
-pub mod secret;
-/// This module contains all the static site models
-pub mod static_site;
 /// This module contains all the models that corresponds to a deployment volume
 pub mod volume;
-/// This module contains all the models that corresponds to a workspace's audit log
-pub mod audit_log;
+
+// /// This module contains all the database models
+// pub mod database;
+// /// This module contains all the models that corresponds to Patr secrets
+// pub mod secret;
+// /// This module contains all the static site models
+// pub mod static_site;
 
 /// The endpoint to create a workspace
 mod create_workspace;

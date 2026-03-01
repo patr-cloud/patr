@@ -38,5 +38,6 @@ macros::declare_api_endpoint!(
 		///                     username - The amin username
 		///                     password - The admin password
 		pub database: WithId<Database>
-	}
+	},
+	audit_log = NoAuditLogger,
 );

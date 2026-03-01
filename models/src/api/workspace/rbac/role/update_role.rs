@@ -34,5 +34,10 @@ macros::declare_api_endpoint!(
 		/// The updated list of permission this role has
 		#[preprocess(none)]
 		pub permissions: Option<BTreeMap<Uuid, ResourcePermissionType>>,
-	}
+	},
+	audit_log = AppAuditLogger {
+		audit_log_type: AuditLogType::ResourceUpdated,
+		resource_type: ResourceType::Role,
+		extract_resource_id: ResourceIdExtractor::FromRequest(|req| req.path.role_id),
+	},
 );

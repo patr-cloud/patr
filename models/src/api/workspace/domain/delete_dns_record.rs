@@ -23,5 +23,10 @@ macros::declare_api_endpoint!(
 			extract_workspace_id: |req| req.path.workspace_id,
 			permission: Permission::DnsRecord(DnsRecordPermission::Delete),
 		}
-	}
+	},
+	audit_log = AppAuditLogger {
+		audit_log_type: AuditLogType::ResourceDeleted,
+		resource_type: ResourceType::DnsRecord,
+		extract_resource_id: ResourceIdExtractor::FromRequest(|req| req.path.record_id),
+	},
 );

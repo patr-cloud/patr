@@ -63,7 +63,12 @@ macros::declare_api_endpoint!(
 		/// To update the volumes attached to the deployment
 		#[preprocess(none)]
 		pub volumes: Option<BTreeMap<Uuid, String>>,
-	}
+	},
+	audit_log = AppAuditLogger {
+		audit_log_type: AuditLogType::ResourceUpdated,
+		resource_type: ResourceType::Deployment,
+		extract_resource_id: ResourceIdExtractor::FromRequest(|req| req.path.deployment_id),
+	},
 );
 
 impl UpdateDeploymentRequest {

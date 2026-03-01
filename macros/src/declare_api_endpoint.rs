@@ -11,7 +11,6 @@ use syn::{
 	LitBool,
 	LitStr,
 	Token,
-	Variant,
 	parse::{Parse, ParseStream},
 	parse_macro_input,
 	punctuated::Punctuated,
@@ -45,7 +44,7 @@ pub struct ApiEndpoint {
 	/// The required request headers for the endpoint.
 	request_headers: Option<FieldsNamed>,
 	/// The audit logger for the endpoint.
-	audit_logger: Variant,
+	audit_logger: Expr,
 
 	/// The required response headers for the endpoint.
 	response_headers: Option<FieldsNamed>,
@@ -576,7 +575,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			#auth_impl
 
 			fn get_audit_logger() -> models::utils::AuditLogger<Self> {
-				models::utils::AuditLogger::#audit_logger
+				models::utils::AuditLogger::<Self>::#audit_logger
 			}
 
 			type ResponseHeaders = #response_headers_name;

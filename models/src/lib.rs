@@ -43,6 +43,7 @@ pub mod prelude {
 			DomainPermission,
 			ManagedURLPermission,
 			Permission,
+			ResourceType,
 			RunnerPermission,
 			SecretPermission,
 			StaticSitePermission,
@@ -50,6 +51,7 @@ pub mod prelude {
 		},
 		utils::{
 			AppAuthentication,
+			AuditLogType,
 			AuditLogger,
 			Base64String,
 			BearerToken,
@@ -62,6 +64,7 @@ pub mod prelude {
 			OneOrMore,
 			OrderedIaacResourceExt,
 			Range,
+			ResourceIdExtractor,
 			SortOrder,
 			StringifiedU16,
 			TotalCountHeader,

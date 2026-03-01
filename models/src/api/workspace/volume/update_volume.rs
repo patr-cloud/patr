@@ -29,5 +29,10 @@ macros::declare_api_endpoint!(
 		/// The size of the volume
 		#[preprocess(optional(range(min = 1)))]
 		pub size: Option<u64>,
-	}
+	},
+	audit_log = AppAuditLogger {
+		audit_log_type: AuditLogType::ResourceUpdated,
+		resource_type: ResourceType::Volume,
+		extract_resource_id: ResourceIdExtractor::FromRequest(|req| req.path.volume_id),
+	},
 );

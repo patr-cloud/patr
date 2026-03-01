@@ -25,5 +25,10 @@ macros::declare_api_endpoint!(
 	response = {
 		/// Whether the domain is verified or not
 		pub verified: bool,
-	}
+	},
+	audit_log = AppAuditLogger {
+		audit_log_type: AuditLogType::ResourceUpdated,
+		resource_type: ResourceType::Domain,
+		extract_resource_id: ResourceIdExtractor::FromRequest(|req| req.path.domain_id),
+	},
 );

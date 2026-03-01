@@ -37,5 +37,10 @@ macros::declare_api_endpoint!(
 		/// To update the if the domain is proxied or not
 		// #[preprocess(none)]
 		pub proxied: Option<bool>,
-	}
+	},
+	audit_log = AppAuditLogger {
+		audit_log_type: AuditLogType::ResourceUpdated,
+		resource_type: ResourceType::DnsRecord,
+		extract_resource_id: ResourceIdExtractor::FromRequest(|req| req.path.record_id),
+	},
 );

@@ -22,4 +22,9 @@ macros::declare_api_endpoint!(
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,
 	},
+	audit_log = AppAuditLogger {
+		audit_log_type: AuditLogType::ResourceDeleted,
+		resource_type: ResourceType::Deployment,
+		extract_resource_id: ResourceIdExtractor::FromRequest(|req| req.path.deployment_id),
+	},
 );
