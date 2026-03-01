@@ -96,7 +96,7 @@ const General = () => {
 										value={workspaceInfo()?.name}
 										class="flex-10"
 										name="workspace-name"
-										placeholder="Enter New Workspace Name"
+										placeholder="Workspace Current Name"
 										type={InputType.Text}
 										disabled={true}
 									/>
@@ -110,7 +110,7 @@ const General = () => {
 										}}
 										class="flex-10"
 										name="new-workspace-name"
-										placeholder="Enter New Workspace Name"
+										placeholder="Enter Workspace New Name"
 										type={InputType.Text}
 									/>
 								</div>

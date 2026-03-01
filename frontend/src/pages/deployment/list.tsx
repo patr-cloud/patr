@@ -1,8 +1,9 @@
 import { useNavigate } from "@solidjs/router";
-import { createMemo, createResource, ErrorBoundary, Suspense } from "solid-js";
+import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid-js";
 import { ListDeploymentResponse, WithId, Deployment, ListRunnersForWorkspaceResponse } from "~/bindings";
 import {
 	ButtonVariant,
+	EmptyState,
 	Link,
 	PageContainer,
 	PageContainerBody,
@@ -119,17 +120,22 @@ const ListDeploymentsPage = () => {
 					)}
 				>
 					<Suspense fallback={<div>Loading deployments...</div>}>
-						<Table
-							column_grids={["flex-4", "flex-4", "flex-4", "flex-4"]}
-							rows={deployments()?.deployments || []}
-							headings={["Deployment Name", "Status", "Runner", "Image Tag"]}
-							renderRow={(item) => (
-								<DeploymentListRow
-									item={item}
-									runnerName={runners()?.runners.find((r) => r.id === item.runner)?.name ?? "Unknown"}
-								/>
-							)}
-						/>
+						<Show
+							when={(deployments()?.deployments?.length ?? 0) > 0}
+							fallback={<EmptyState title="No Deployments Added" />}
+						>
+							<Table
+								column_grids={["flex-4", "flex-4", "flex-4", "flex-4"]}
+								rows={deployments()?.deployments || []}
+								headings={["Deployment Name", "Status", "Runner", "Image Tag"]}
+								renderRow={(item) => (
+									<DeploymentListRow
+										item={item}
+										runnerName={runners()?.runners.find((r) => r.id === item.runner)?.name ?? "Unknown"}
+									/>
+								)}
+							/>
+						</Show>
 					</Suspense>
 				</ErrorBoundary>
 			</PageContainerBody>

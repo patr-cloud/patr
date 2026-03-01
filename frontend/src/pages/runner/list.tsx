@@ -1,6 +1,15 @@
+import { Show } from "solid-js";
 import { createMemo, createResource, ErrorBoundary, Suspense } from "solid-js";
 import { ListRunnersForWorkspaceResponse } from "~/bindings";
-import { ButtonVariant, Link, PageContainer, PageContainerBody, PageContainerHead, Table } from "~/components";
+import {
+	ButtonVariant,
+	EmptyState,
+	Link,
+	PageContainer,
+	PageContainerBody,
+	PageContainerHead,
+	Table,
+} from "~/components";
 import { useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
@@ -67,25 +76,27 @@ const ListRunnersPage = () => {
 					)}
 				>
 					<Suspense fallback={<div>Loading...</div>}>
-						<Table
-							column_grids={["flex-4", "flex-4", "flex-4"]}
-							rows={runners()?.runners || []}
-							headings={["Runner Name", "Status", "Last Seen"]}
-							renderRow={(item) => (
-								<tr
-									class="border border-border-color min-h-10 cursor-pointer flex items-center justify-center w-full px-xl
+						<Show when={(runners()?.runners?.length ?? 0) > 0} fallback={<EmptyState title="No Runner Added" />}>
+							<Table
+								column_grids={["flex-4", "flex-4", "flex-4"]}
+								rows={runners()?.runners || []}
+								headings={["Runner Name", "Status", "Last Seen"]}
+								renderRow={(item) => (
+									<tr
+										class="border border-border-color min-h-10 cursor-pointer flex items-center justify-center w-full px-xl
                   bg-secondary-light last-of-type:rounded-b-xs"
-								>
-									<td class="flex items-center justify-center flex-1">{item.name}</td>
-									<td class="flex items-center justify-center flex-1">
-										{item.connected ? "Connected" : "Disconnected"}
-									</td>
-									<td class="flex items-center justify-center flex-1">
-										{item.lastSeen ? formatRelativeTime(item.lastSeen) : "N/A"}
-									</td>
-								</tr>
-							)}
-						/>
+									>
+										<td class="flex items-center justify-center flex-1">{item.name}</td>
+										<td class="flex items-center justify-center flex-1">
+											{item.connected ? "Connected" : "Disconnected"}
+										</td>
+										<td class="flex items-center justify-center flex-1">
+											{item.lastSeen ? formatRelativeTime(item.lastSeen) : "N/A"}
+										</td>
+									</tr>
+								)}
+							/>
+						</Show>
 					</Suspense>
 				</ErrorBoundary>
 			</PageContainerBody>

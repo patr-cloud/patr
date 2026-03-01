@@ -2,6 +2,7 @@ import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid
 import { useNavigate } from "@solidjs/router";
 import {
 	ButtonVariant,
+	EmptyState,
 	Link,
 	PageContainer,
 	PageContainerBody,
@@ -76,11 +77,7 @@ const ListContainerRepositories = () => {
 					<Suspense fallback={<div>Loading repositories...</div>}>
 						<Show
 							when={repositories()?.repositories && repositories()!.repositories.length > 0}
-							fallback={
-								<div class="w-full text-center py-16">
-									<p class="text-white text-lg">No Container Repositories Exist</p>
-								</div>
-							}
+							fallback={<EmptyState title="No Container Repositories Exist" />}
 						>
 							<Table
 								column_grids={["flex-1", "flex-1", "flex-1", "flex-1"]}

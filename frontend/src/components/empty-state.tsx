@@ -1,0 +1,30 @@
+import { Show, mergeProps } from "solid-js";
+import { get } from "~/utils/func";
+import { MaybeAccessor } from "~/utils/types";
+import { ButtonVariant } from "~/utils/color";
+import Link from "~/components/link";
+
+interface EmptyStateProps {
+	/** The heading text, e.g. "No Deployments Added" */
+	title: MaybeAccessor<string>;
+}
+
+const EmptyState = (props: EmptyStateProps) => {
+	return (
+		<div class={`relative flex flex-col items-center w-full h-full overflow-hidden`}>
+			{/* Text content — sits above the image */}
+			<div class="flex flex-col items-center gap-4 pt-16 pb-8 z-10">
+				<h2 class="text-xl font-medium text-white">{get(props.title)}</h2>
+			</div>
+
+			{/* Jeep illustration */}
+			<img
+				src="/images/jeep.png"
+				alt="No records found image"
+				class="w-full object-cover object-top select-none pointer-events-none"
+			/>
+		</div>
+	);
+};
+
+export default EmptyState;

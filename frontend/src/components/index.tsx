@@ -27,6 +27,7 @@ import InfoPopup from "~/components/info-popup";
 import Tooltip from "~/components/tooltip";
 import CopyButton from "~/components/copy-button";
 import Initials from "~/components/initials";
+import EmptyState from "~/components/empty-state";
 export {
 	Alert,
 	PageContainer,
@@ -61,4 +62,5 @@ export {
 	Tooltip,
 	CopyButton,
 	Initials,
+	EmptyState,
 };
