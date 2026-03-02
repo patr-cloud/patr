@@ -106,7 +106,7 @@ const CreateDeploymentPage = () => {
 			imageTag: imageTag(),
 			registry: registry(),
 			runner: runner(),
-			machineType: Uuid("0be608bc-0dfd-4e2a-8ece-90252d3c9bce"),
+			machineType: Uuid("b3cf3771-fa39-4281-bfdf-eb2e65a061b6"),
 			minHorizontalScale: 1,
 			maxHorizontalScale: 2,
 			environmentVariables: Object.fromEntries(envList().map((env) => [env.key, env.value])),

@@ -8,7 +8,7 @@ use std::str::FromStr;
 use aws_sdk_s3::primitives::ByteStream;
 use axum::body::Body;
 use headers::ContentType;
-use oci_spec::image::{Digest, ImageIndex, ImageManifest};
+use oci_spec::image::{Digest, ImageConfiguration, ImageIndex, ImageManifest};
 use rustis::commands::GenericCommands;
 use sha2::{Digest as _, Sha256};
 
@@ -197,13 +197,24 @@ pub async fn upload_manifest(
 					.into_result();
 			};
 
+			let config_digest = manifest.config().digest().to_string();
+			let config_blob = serde_json::from_slice::<ImageConfiguration>(
+				&s3.get_object()
+					.bucket(&config.s3.bucket)
+					.key(format!("blobs/{config_digest}"))
+					.send()
+					.await?
+					.body
+					.collect()
+					.await?
+					.into_bytes(),
+			)?;
 			let platform = manifest
 				.config()
 				.platform()
 				.as_ref()
 				.map(|p| format!("{}/{}", p.os(), p.architecture()))
-				.unwrap_or_else(|| "unknown".to_string());
-			let config_digest = manifest.config().digest().to_string();
+				.unwrap_or_else(|| format!("{}/{}", config_blob.os(), config_blob.architecture()));
 
 			let inserted = query!(
 				r#"
