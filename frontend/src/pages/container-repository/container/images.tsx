@@ -5,14 +5,21 @@ import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import { useToast, Table, Link, CopyButton } from "~/components";
 import { formatRelativeTime, get } from "~/utils/func";
-import { ListContainerRepositoryTagsResponse } from "~/bindings";
+import { ListContainerRepositoryManifestsResponse, ContainerRepositoryManifestInfo } from "~/bindings";
 import { MaybeAccessor } from "~/utils/types";
-import { ContainerRepositoryTagAndDigestInfo } from "~/bindings/ContainerRepositoryTagAndDigestInfo";
 
 interface ContainerImagesProps {
-	imageTags: MaybeAccessor<ListContainerRepositoryTagsResponse>;
+	manifests: MaybeAccessor<ListContainerRepositoryManifestsResponse>;
 	refetch?: () => void;
 }
+
+const formatBytes = (bytes: number | bigint) => {
+	if (bytes === 0) return "0 B";
+	const k = 1024;
+	const sizes = ["B", "KB", "MB", "GB", "TB"];
+	const i = Math.floor(Math.log(Number(bytes)) / Math.log(k));
+	return parseFloat((Number(bytes) / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+};
 
 const Images = (props: ContainerImagesProps) => {
 	const params = useParams();
@@ -20,7 +27,7 @@ const Images = (props: ContainerImagesProps) => {
 	return (
 		<div class="w-full">
 			<Show
-				when={props.imageTags && get(props.imageTags).tags && get(props.imageTags).tags.length > 0}
+				when={get(props.manifests) && get(props.manifests).manifests && get(props.manifests).manifests.length > 0}
 				fallback={
 					<div class="w-full text-center py-16">
 						<p class="text-white text-lg">No Images Found</p>
@@ -34,10 +41,10 @@ const Images = (props: ContainerImagesProps) => {
 				}
 			>
 				<Table
-					column_grids={["flex-4", "flex-4", "flex-4", "flex-4"]}
-					headings={["Tag", "Digest", "Last Pushed", "Actions"]}
-					rows={get(props.imageTags).tags}
-					renderRow={(image) => <ImageRow image={image} refetch={props.refetch} />}
+					column_grids={["flex-3", "flex-2", "flex-2", "flex-3", "flex-3", "flex-2"]}
+					headings={["Tags", "Platform", "Size", "Created", "Digest", "Actions"]}
+					rows={get(props.manifests).manifests}
+					renderRow={(manifest) => <ImageRow manifest={manifest} refetch={props.refetch} />}
 				/>
 			</Show>
 		</div>
@@ -46,7 +53,7 @@ const Images = (props: ContainerImagesProps) => {
 
 export default Images;
 
-const ImageRow = (props: { image: ContainerRepositoryTagAndDigestInfo; refetch?: () => void }) => {
+const ImageRow = (props: { manifest: ContainerRepositoryManifestInfo; refetch?: () => void }) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
@@ -64,7 +71,7 @@ const ImageRow = (props: { image: ContainerRepositoryTagAndDigestInfo; refetch?:
 		}
 
 		const response = await httpRequest(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/docker-registry/${repoId}/image/${digest}`,
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${repoId}/image/${digest}`,
 			{
 				method: "DELETE",
 			}
@@ -78,29 +85,38 @@ const ImageRow = (props: { image: ContainerRepositoryTagAndDigestInfo; refetch?:
 		toast("Image deleted successfully", "success");
 		props.refetch?.();
 	};
+
 	return (
 		<tr class="table-row">
-			<td class="flex-4 flex items-center gap-2">
-				<span class="truncate text-gray-300 font-mono text-sm">{props.image.tag}</span>
+			<td class="flex-3 flex items-center gap-2 overflow-hidden">
+				<span class="truncate text-gray-300 font-mono text-sm" title={props.manifest.tags.join(", ")}>
+					{props.manifest.tags.length > 0 ? (
+						props.manifest.tags.join(", ")
+					) : (
+						<span class="text-gray-500 italic">No tags</span>
+					)}
+				</span>
 			</td>
-			<td class="flex-4 flex items-center gap-2">
-				<span class="truncate text-gray-300 font-mono text-sm">{props.image.digest}</span>
-				<CopyButton text={props.image.digest} />
+			<td class="flex-2 text-gray-400 text-sm">{props.manifest.platform}</td>
+			<td class="flex-2 text-gray-400 text-sm">{formatBytes(props.manifest.size)}</td>
+			<td class="flex-3 text-gray-400 text-sm">{formatRelativeTime(props.manifest.created)}</td>
+			<td class="flex-3 flex items-center gap-2 overflow-hidden">
+				<span class="truncate text-gray-300 font-mono text-sm max-w-[150px]">{props.manifest.digest}</span>
+				<CopyButton text={props.manifest.digest} />
 			</td>
-			<td class="flex-4 text-gray-400 text-sm">{formatRelativeTime(props.image.lastUpdated)}</td>
-			<td class="flex-4 flex items-center justify-center">
+			<td class="flex-2 flex items-center justify-center">
 				{deleteSelected() ? (
 					<div class="flex flex-row items-center gap-2">
 						<button
-							onClick={() => handleDelete(props.image.digest)}
-							class="text-red-500 transition-colors mr-2"
+							onClick={() => handleDelete(props.manifest.digest)}
+							class="text-red-500 transition-colors mr-2 text-xs font-bold"
 							title="Confirm delete"
 						>
-							DELETE
+							CONFIRM
 						</button>
 						<button
 							onClick={() => setDeleteSelected(false)}
-							class="text-gray-400 transition-colors"
+							class="text-gray-400 transition-colors text-xs"
 							title="Cancel delete"
 						>
 							CANCEL
@@ -111,7 +127,7 @@ const ImageRow = (props: { image: ContainerRepositoryTagAndDigestInfo; refetch?:
 						onClick={() => {
 							setDeleteSelected(true);
 						}}
-						class="text-red-500 transition-colors"
+						class="text-red-500 transition-colors hover:text-red-400"
 						title="Delete image"
 					>
 						<FiTrash2 size={16} />

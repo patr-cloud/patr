@@ -3,7 +3,7 @@ import { createMemo, createResource, createSignal, ErrorBoundary, Suspense } fro
 import { DeleteModal, HeadTab, PageContainer, PageContainerBody, PageContainerHead, useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { GetContainerRepositoryInfoResponse, ListContainerRepositoryTagsResponse } from "~/bindings";
+import { GetContainerRepositoryInfoResponse, ListContainerRepositoryManifestsResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
 import General from "./general";
 import Images from "./images";
@@ -41,18 +41,18 @@ const ContainerRepositoryInfo = () => {
 		return response.data;
 	});
 
-	const [imageTags, { refetch: refetchImageTags }] = createResource(resourceParams, async ([auth, wsId, repoId]) => {
+	const [manifests, { refetch: refetchManifests }] = createResource(resourceParams, async ([auth, wsId, repoId]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn" || !repoId) {
 			return undefined;
 		}
-		const response = await httpRequest<ListContainerRepositoryTagsResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${repoId}/tag`,
+		const response = await httpRequest<ListContainerRepositoryManifestsResponse>(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${repoId}/manifest`,
 			{
 				method: "GET",
 			}
 		);
 		if (!response.ok) {
-			toast("Failed to fetch image tags", "error");
+			toast("Failed to fetch manifests", "error");
 			return undefined;
 		}
 
@@ -92,9 +92,9 @@ const ContainerRepositoryInfo = () => {
 	const renderTab = () => {
 		switch (tab()) {
 			case "images":
-				const tags = imageTags();
-				if (!tags) return <div>Loading image tags...</div>;
-				return <Images imageTags={() => tags} refetch={refetchImageTags} />;
+				const manifest_list = manifests();
+				if (!manifest_list) return <div>Loading manifests...</div>;
+				return <Images manifests={() => manifest_list} refetch={refetchManifests} />;
 			case "general":
 			case "":
 			default:
