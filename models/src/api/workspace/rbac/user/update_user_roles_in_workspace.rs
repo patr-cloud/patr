@@ -28,4 +28,5 @@ macros::declare_api_endpoint!(
 		#[preprocess(none)]
 		pub roles: Vec<Uuid>,
 	},
+	audit_logger = NoAuditLogger,
 );
