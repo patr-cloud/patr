@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO resource(id, resource_type_id, owner_id, created) VALUES (GENERATE_RESOURCE_ID(), (SELECT id FROM resource_type WHERE name = 'containerRegistryRepository'), $1, NOW()) RETURNING id;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "58ca56376558669ee750bd468c564cf6d4b183d05ff822fbfb1d26b992273089"
+}

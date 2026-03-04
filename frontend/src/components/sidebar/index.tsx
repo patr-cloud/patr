@@ -1,5 +1,5 @@
 import { A, useLocation } from "@solidjs/router";
-import { FiHome, FiBox, FiDatabase, FiCpu, FiGlobe, FiSettings, FiChevronDown, FiChevronRight } from "solid-icons/fi";
+import { FiHome, FiBox, FiCpu, FiGlobe, FiSettings, FiChevronDown, FiChevronRight, FiPackage } from "solid-icons/fi";
 import { Component, createSignal, For, Show } from "solid-js";
 import WorkspaceSwitcher from "./workspace-switcher";
 
@@ -40,7 +40,7 @@ const SidebarItem = (props: SidebarItemProps) => {
 				onClick={handleClick}
 			>
 				<div class="flex items-center gap-3">
-					<div class="w-[18px] h-[18px] flex items-center justify-center">
+					<div class="w-4.5 h-4.5 flex items-center justify-center">
 						<props.icon />
 					</div>
 					<span>{props.label}</span>
@@ -77,6 +77,11 @@ const Sidebar: Component = () => {
 			label: "Home",
 			href: "/",
 			icon: FiHome,
+		},
+		{
+			label: "Container Registry",
+			icon: FiPackage,
+			href: "/container-registry",
 		},
 		{
 			label: "Deployments",

@@ -17,12 +17,7 @@
     "parameters": {
       "Left": [
         "Uuid",
-        {
-          "Custom": {
-            "name": "citext",
-            "kind": "Simple"
-          }
-        },
+        "Text",
         "Text"
       ]
     },
