@@ -1,8 +1,8 @@
 import { FiPlus } from "solid-icons/fi";
 import { createMemo, createSignal, mergeProps, Show, Suspense } from "solid-js";
-import { Workspace, WorkspacePermission, type WithId } from "~/bindings";
+import { WorkspacePermission } from "~/bindings";
 import { Button, ButtonVariant, InputDropdown, InputDropdownCheckBox, ListResources } from "~/components";
-import useFetchPermissions from "~/hooks/use-fetch/use-fetch-permissions";
+import { useFetchPermissions } from "~/hooks/fetch";
 import { get, getResourceEndpoint, parseCamelCase, parsePermissionName } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 

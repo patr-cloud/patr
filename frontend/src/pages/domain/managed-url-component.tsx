@@ -7,8 +7,7 @@ import {
 	WithId,
 } from "~/bindings";
 import { Button, ButtonVariant, Input, InputDropdown, useToast } from "~/components";
-import { useAuthState } from "~/hooks";
-import { useLastWorkspaceId } from "~/hooks/state-hooks";
+import { createAuthenticatedAction, createFormAction } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 import DeploymentOption from "./deployment-option";
@@ -28,39 +27,31 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 	const [openEdit, setOpenEdit] = createSignal(false);
 	const [shouldDelete, setShouldDelete] = createSignal(false);
 
-	const [authState] = useAuthState();
-	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
+
+	const { execute: deleteUrl, isLoading: isDeleting } = createAuthenticatedAction(
+		async ({ accessToken, workspaceId }) => {
+			const response = await httpRequest<void>(
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/infrastructure/managed-url/${props.managedUrl.id}`,
+				{
+					method: "DELETE",
+				}
+			);
+
+			if (!response.ok) {
+				console.error("Failed to delete managed URL:", response.data.error);
+				toast("Failed to delete managed URL", "error");
+				return;
+			}
+
+			toast("Managed URL deleted successfully", "success");
+			props.onUpdate?.();
+		}
+	);
 
 	const onDelete = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
 		e.stopPropagation();
-
-		const auth = authState();
-		const wsId = workspaceId();
-
-		if (!wsId || !auth || auth.type !== "LoggedIn") {
-			toast("Authentication required", "error");
-			return;
-		}
-
-		const response = await httpRequest<void>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/infrastructure/managed-url/${props.managedUrl.id}`,
-			{
-				method: "DELETE",
-				headers: {
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
-			}
-		);
-
-		if (!response.ok) {
-			console.error("Failed to delete managed URL:", response.data.error);
-			toast("Failed to delete managed URL", "error");
-			return;
-		}
-
-		toast("Managed URL deleted successfully", "success");
-		props.onUpdate?.();
+		await deleteUrl().catch(() => {});
 	};
 
 	return (
@@ -159,8 +150,6 @@ interface ManagedUrlComponentProps {
 }
 
 const ManagedUrlComponent = (props: ManagedUrlComponentProps) => {
-	const [authState] = useAuthState();
-	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 
 	const [path, setPath] = createSignal(props.managedUrl.path);
@@ -172,52 +161,46 @@ const ManagedUrlComponent = (props: ManagedUrlComponentProps) => {
 		props.managedUrl.type === "proxyDeployment" ? props.managedUrl.port : null
 	);
 
-	const onSubmit = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
-		e.preventDefault();
+	const { onSubmit, isLoading } = createFormAction(
+		async ({ accessToken, workspaceId }) => {
+			const requestBody: UpdateManagedURLRequest = {
+				path: path(),
+				type: "proxyDeployment",
+				deploymentId: target()!,
+				port: deploymentPort() || 80,
+			};
 
-		const auth = authState();
-		const wsId = workspaceId();
+			const response = await httpRequest<UpdateManagedURLResponse>(
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/infrastructure/managed-url/${props.managedUrl.id}`,
+				{
+					method: "PATCH",
+					body: JSON.stringify(requestBody),
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: `Bearer ${accessToken}`,
+					},
+				}
+			);
 
-		if (!wsId || !auth || auth.type !== "LoggedIn") {
-			toast("Authentication required", "error");
-			return;
-		}
-
-		const urlTypeVal = urlType();
-		const targetVal = target();
-		if (!urlTypeVal || !targetVal) {
-			toast("Please fill in all required fields", "error");
-			return;
-		}
-
-		const requestBody: UpdateManagedURLRequest = {
-			path: path(),
-			type: "proxyDeployment",
-			deploymentId: targetVal,
-			port: deploymentPort() || 80,
-		};
-
-		const response = await httpRequest<UpdateManagedURLResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/infrastructure/managed-url/${props.managedUrl.id}`,
-			{
-				method: "PATCH",
-				body: JSON.stringify(requestBody),
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
+			if (!response.ok) {
+				console.error("Failed to update managed URL:", response.data.error);
+				toast("Failed to update managed URL", "error");
+				return;
 			}
-		);
 
-		if (!response.ok) {
-			console.error("Failed to update managed URL:", response.data.error);
-			toast("Failed to update managed URL", "error");
-			return;
+			toast("Managed URL updated successfully", "success");
+			props.onUpdate?.();
+		},
+		() => {
+			const urlTypeVal = urlType();
+			const targetVal = target();
+			if (!urlTypeVal || !targetVal) {
+				toast("Please fill in all required fields", "error");
+				return false;
+			}
+			return true;
 		}
-
-		toast("Managed URL updated successfully", "success");
-		props.onUpdate?.();
-	};
+	);
 
 	const urlInput = () => {
 		const urlTypeVal = urlType();
@@ -274,6 +257,9 @@ const ManagedUrlComponent = (props: ManagedUrlComponentProps) => {
 				<p class="mx-2">Will point to</p>
 				<div class="flex items-center justify-center gap-2 w-full">
 					<InputDropdown
+						class="flex-2 m-0"
+						styleVariant="medium"
+						placeholder="Type"
 						onSelect={(value) => setUrlType(value as urlTypeT)}
 						value={urlType() || undefined}
 						options={[
@@ -282,15 +268,14 @@ const ManagedUrlComponent = (props: ManagedUrlComponentProps) => {
 								value: "proxyDeployment",
 							},
 						]}
-						class="flex-2 m-0"
-						styleVariant="medium"
-						placeholder="Type"
 					/>
 					<div class="flex-10">{urlInput()}</div>
 				</div>
 
 				<div class="w-full flex justify-end mt-4">
-					<Button variant={ButtonVariant.Contained}>Update</Button>
+					<Button loading={isLoading} loadingContent={() => <span>Updating...</span>} variant={ButtonVariant.Contained}>
+						Update
+					</Button>
 				</div>
 			</div>
 		</form>

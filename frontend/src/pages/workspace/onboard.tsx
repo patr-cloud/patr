@@ -1,11 +1,11 @@
-import { Navigate } from "@solidjs/router";
+import { Navigate, useNavigate } from "@solidjs/router";
 import { createSignal, ParentProps, Suspense } from "solid-js";
 import { CreateWorkspaceResponse } from "~/bindings";
 import { BgOnboard, useToast } from "~/components";
 import Button from "~/components/button";
 import Input, { InputType } from "~/components/input";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
-import useFetchWorkspaces from "~/hooks/use-fetch/use-fetch-wokrspaces";
+import { useFetchWorkspaces } from "~/hooks/fetch";
 import { ButtonVariant } from "~/utils/color";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
@@ -18,6 +18,8 @@ const WorkspaceOnboard = () => {
 	const [authState] = useAuthState();
 	const [workspaceName, setWorkspaceName] = createSignal("");
 	const toast = useToast();
+	const [isLoading, setIsLoading] = createSignal(false);
+	const navigate = useNavigate();
 
 	const [, setWorkspaceId] = useLastWorkspaceId();
 	const [workspaces] = useFetchWorkspaces();
@@ -39,6 +41,7 @@ const WorkspaceOnboard = () => {
 			name: workspaceName(),
 		};
 
+		setIsLoading(true);
 		const response = await httpRequest<CreateWorkspaceResponse>(`${import.meta.env.VITE_BASE_URL}/api/workspace`, {
 			method: "POST",
 			headers: {
@@ -50,6 +53,7 @@ const WorkspaceOnboard = () => {
 		if (!response.ok) {
 			console.error("Failed to create workspace:", response.data.error);
 			toast("Failed to create workspace", "error");
+			setIsLoading(false);
 			return;
 		}
 
@@ -58,7 +62,10 @@ const WorkspaceOnboard = () => {
 
 		if (response.data.id) {
 			setWorkspaceId(response.data.id);
+			navigate(`/`);
 		}
+
+		setIsLoading(false);
 	};
 
 	return (
@@ -87,7 +94,13 @@ const WorkspaceOnboard = () => {
 						</div>
 
 						<div class="flex items-center justify-end">
-							<Button variant={ButtonVariant.Contained} class="w-full py-4 text-base font-semibold" type="submit">
+							<Button
+								loading={isLoading()}
+								loadingContent={() => <span>Creating...</span>}
+								variant={ButtonVariant.Contained}
+								class="w-full py-4 text-base font-semibold"
+								type="submit"
+							>
 								Create Workspace
 							</Button>
 						</div>

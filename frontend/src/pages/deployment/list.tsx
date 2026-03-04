@@ -13,7 +13,7 @@ import {
 } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
-import useIsAllowed from "~/hooks/use-is-allowed";
+import { useIsAllowed } from "~/hooks";
 
 const DeploymentListRow = (props: { item: WithId<Deployment>; runnerName: string }) => {
 	const navigate = useNavigate();
@@ -37,8 +37,8 @@ const ListDeploymentsPage = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
-	const isAllowedCreate = useIsAllowed("deployment", "create", undefined, false);
-	console.log("User permissions for creating deployment:", isAllowedCreate());
+	const isAllowedCreate = useIsAllowed("deployment", "create", undefined);
+
 
 	const fetchParams = createMemo(() => {
 		return [authState(), workspaceId()] as const;
@@ -101,13 +101,14 @@ const ListDeploymentsPage = () => {
 					},
 				]}
 				subText="A deployment represents a containerized application running on a runner."
-				actions={() =>
-					isAllowedCreate() && (
-						<Link href="/deployments/new" buttonVariant={ButtonVariant.Plain} external={false}>
-							New Deployment
+				actions={() => {
+					if (!isAllowedCreate()) return null;
+					return (
+						<Link href="/deployments/new" buttonVariant={ButtonVariant.Outlined} external={false}>
+							CREATE DEPLOYMENT
 						</Link>
-					)
-				}
+					);
+				}}
 			/>
 
 			<PageContainerBody class="flex flex-col">

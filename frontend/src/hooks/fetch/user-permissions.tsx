@@ -13,7 +13,7 @@ import { ActionTypes, ResourceTypes, UserPermissionsT } from "~/utils/types";
  * @param wsId Current Workspace ID
  * @returns Every Permission ID mapped to it's resourceType and action
  */
-const getPermissions = async (authState: AuthState, wsId: string) => {
+export const getPermissions = async (authState: AuthState, wsId: string) => {
 	console.log("[getPermissions] Called with:", { authType: authState?.type, wsId });
 
 	if (!authState || authState.type !== "LoggedIn") {
@@ -26,7 +26,7 @@ const getPermissions = async (authState: AuthState, wsId: string) => {
 		? createSignal<string | null>(null)
 		: makePersisted(createSignal<string | null>(null), {
 				name: `user-permissions`,
-		  });
+			});
 
 	let parsedPermissions: ListAllPermissionsResponse | undefined = undefined;
 
@@ -90,7 +90,7 @@ const useUserPermissions = () => {
 			: makePersisted(createSignal<string | null>(null), {
 					storage: sessionStorage,
 					name: `user-permissions-${wsId}`,
-			  });
+				});
 		console.log("[useFetchUserPermissions] Cached permissions:", cachedPermissions() ? "Found" : "Not found");
 		if (!isServer && cachedPermissions()) {
 			const parsed = safelyParseJSON<UserPermissionsT>(cachedPermissions() || "");
@@ -198,7 +198,7 @@ const useUserPermissions = () => {
 		}
 	});
 
-  return permissions;
+	return permissions;
 };
 
 export default useUserPermissions;

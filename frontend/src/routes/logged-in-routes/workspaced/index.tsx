@@ -5,7 +5,6 @@ import CreateDeploymentPage from "~/pages/deployment/create";
 import DeploymentInfo from "~/pages/deployment/deployment";
 import ListDeploymentsPage from "~/pages/deployment/list";
 import DomainInfo from "~/pages/domain/domain-info";
-import ManagedUrlPage from "~/pages/managed-url";
 import CreateRunnerPage from "~/pages/runner/create";
 import ListRunnersPage from "~/pages/runner/list";
 import ListDomainsPage from "~/pages/domain/list";
@@ -14,12 +13,12 @@ import ManageWorkspace from "~/pages/workspace/manage-workspace";
 import ManageRoles from "~/pages/workspace/roles/manage-roles";
 import CreateRoles from "~/pages/workspace/roles/create-roles";
 import RoleInfo from "~/pages/workspace/roles/role-info";
-import useFetchWorkspaces from "~/hooks/use-fetch/use-fetch-wokrspaces";
-import useFetchUserPermissions from "~/hooks/use-fetch/use-fetch-user-permissions";
 import CreateContainerRepository from "~/pages/container-repository/create";
 import ContainerRepositoryInfo from "~/pages/container-repository/container";
 import ListContainerRepositories from "~/pages/container-repository/list";
 import General from "~/pages/workspace/general";
+import { useFetchWorkspaces } from "~/hooks/fetch";
+import { useFetchUserPermissions } from "~/hooks/fetch";
 
 const WorkspacedLayout = (props: ParentProps<{}>) => {
 	const [workspaces] = useFetchWorkspaces();
@@ -50,9 +49,6 @@ export default function WorkspacedRoutes() {
 			<Route path="/runners">
 				<Route path="/" component={ListRunnersPage} />
 				<Route path="/new" component={CreateRunnerPage} />
-			</Route>
-			<Route path="/managed-urls">
-				<Route path="/" component={ManagedUrlPage} />
 			</Route>
 			<Route path="/domains">
 				<Route path="/" component={ListDomainsPage} />

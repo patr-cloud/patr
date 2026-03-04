@@ -13,6 +13,7 @@ import {
 import { useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
+import { useIsAllowed } from "~/hooks";
 import { formatRelativeTime } from "~/utils/func";
 import { httpRequest } from "~/utils/http-request";
 
@@ -20,6 +21,7 @@ const ListRunnersPage = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
+	const isAllowedCreate = useIsAllowed("runner", "create");
 
 	const fetchParams = createMemo(() => {
 		return [authState(), workspaceId()] as const;
@@ -33,10 +35,6 @@ const ListRunnersPage = () => {
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner`,
 			{
 				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
 
@@ -60,11 +58,14 @@ const ListRunnersPage = () => {
 					},
 				]}
 				subText="Runners execute deployments on your machines or clusters"
-				actions={() => (
-					<Link href="/runners/new" buttonVariant={ButtonVariant.Plain} external={false}>
-						Add Runner
-					</Link>
-				)}
+				actions={() => {
+					if (!isAllowedCreate()) return null;
+					return (
+						<Link href="/runners/new" buttonVariant={ButtonVariant.Plain} external={false}>
+							Add Runner
+						</Link>
+					);
+				}}
 			/>
 			<PageContainerBody class="flex flex-col justify-between gap-8">
 				<ErrorBoundary
@@ -83,7 +84,7 @@ const ListRunnersPage = () => {
 								headings={["Runner Name", "Status", "Last Seen"]}
 								renderRow={(item) => (
 									<tr
-										class="border border-border-color min-h-10 cursor-pointer flex items-center justify-center w-full px-xl
+										class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl
                   bg-secondary-light last-of-type:rounded-b-xs"
 									>
 										<td class="flex items-center justify-center flex-1">{item.name}</td>

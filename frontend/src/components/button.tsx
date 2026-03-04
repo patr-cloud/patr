@@ -1,9 +1,10 @@
-import { ParentProps, mergeProps } from "solid-js";
+import { JSX, ParentProps, mergeProps } from "solid-js";
 import { Color, ButtonVariantEnum, ButtonVariant } from "~/utils/color";
 import { get, getColorClasses } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
+import { LoadingSpinner } from "./loading-spinner";
 
-interface ButtonProps {
+type ButtonProps = {
 	/**
 	 * The Type of the button, defaults to 'button'.
 	 */
@@ -28,7 +29,15 @@ interface ButtonProps {
 	 * Click handler for the button
 	 */
 	onClick?: (event: MouseEvent & { currentTarget: HTMLButtonElement }) => void;
-}
+	/**
+	 * Loading state for the button, if true, shows a loading spinner and disables the button
+	 */
+	loading?: MaybeAccessor<boolean>;
+	/**
+	 * Loading Content
+	 */
+	loadingContent?: () => JSX.Element;
+};
 
 const Button = (rawProps: ParentProps<ButtonProps>) => {
 	const props = mergeProps(
@@ -61,8 +70,20 @@ const Button = (rawProps: ParentProps<ButtonProps>) => {
 	};
 
 	return (
-		<button disabled={props.disabled} type={props.type} class={derivedClass()} onClick={props.onClick}>
-			{props.children}
+		<button
+			disabled={props.disabled || get(props.loading)}
+			type={props.type}
+			class={derivedClass()}
+			onClick={props.onClick}
+		>
+			{get(props.loading) && props.loadingContent ? (
+				<div class="flex items-center gap-2">
+					<LoadingSpinner size={20} />
+					{props.loadingContent()}
+				</div>
+			) : (
+				props.children
+			)}
 		</button>
 	);
 };

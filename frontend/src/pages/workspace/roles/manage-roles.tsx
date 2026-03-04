@@ -27,7 +27,6 @@ const RoleRow = (props: {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
-	const [showManageRole, setShowManageRole] = createSignal<boolean>(false);
 
 	const onClickDelete = async (roleId: string) => {
 		const auth = authState();

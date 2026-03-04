@@ -1,8 +1,8 @@
 import { FiChevronDown } from "solid-icons/fi";
-import { createMemo, createResource, createSignal, Resource, Setter } from "solid-js";
+import { createMemo, createResource, createSignal, Resource, Setter, Show } from "solid-js";
 import { GetDeploymentInfoResponse, ListRunnersForWorkspaceResponse, UpdateDeploymentResponse } from "~/bindings";
 import { Button, Input, InputDropdown, InputLabel, InputType, useToast } from "~/components";
-import { useAuthState } from "~/hooks";
+import { useAuthState, useGetPermissions } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
@@ -23,6 +23,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
+	const deploymentPermissions = useGetPermissions("deployment", () => props.deploymentInfo.latest?.id || "");
 
 	const [, setHasUpdated] = createSignal(false);
 
@@ -38,10 +39,6 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner`,
 			{
 				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
 
@@ -107,6 +104,11 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				<div class="flex gap-8 items-center w-full">
 					<InputLabel parentClass="flex-2" for="deployment-name" label="Name" />
 					<Input
+						class="flex-10"
+						name="deployment-name"
+						placeholder="Deployment Name"
+						type={InputType.Text}
+						disabled={!deploymentPermissions().edit}
 						value={props.deploymentInfo.latest?.name}
 						onInput={(e) => {
 							setHasUpdated(true);
@@ -119,10 +121,6 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 									: undefined;
 							});
 						}}
-						class="flex-10"
-						name="deployment-name"
-						placeholder="Deployment Name"
-						type={InputType.Text}
 					/>
 				</div>
 
@@ -130,18 +128,22 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 					<InputLabel parentClass="flex-2" for="deployment-runner" label="Runner" />
 
 					<InputDropdown
+						class="flex-10"
+						name="deployment-runner"
+						placeholder="Select Runner"
+						disabled={!deploymentPermissions().edit}
+						value={props.deploymentInfo.latest?.runner ?? ""}
+						endIcon={() => (
+							<button>
+								<FiChevronDown size={16} />
+							</button>
+						)}
 						options={
 							runnerList.latest?.runners.map((runner) => ({
 								value: runner.id,
 								label: runner.name,
 							})) ?? []
 						}
-						endIcon={() => (
-							<button>
-								<FiChevronDown size={16} />
-							</button>
-						)}
-						value={props.deploymentInfo.latest?.runner ?? ""}
 						onSelect={(runnerId) => {
 							setHasUpdated(true);
 							props.mutateDeploymentInfo((prev) => {
@@ -153,9 +155,6 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 									: undefined;
 							});
 						}}
-						class="flex-10"
-						name="deployment-runner"
-						placeholder="Select Runner"
 					/>
 				</div>
 
@@ -198,6 +197,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 
 						<Input
 							class="flex-2"
+							disabled={!deploymentPermissions().edit}
 							placeholder="Image Tag"
 							type={InputType.Text}
 							value={props.deploymentInfo.latest?.imageTag ?? "N/A"}
@@ -217,6 +217,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				</div>
 
 				<EnvInput
+					disabled={() => !deploymentPermissions().edit}
 					envList={Object.entries(props.deploymentInfo.latest?.environmentVariables || {}).map(([key, value]) => ({
 						key,
 						value,
@@ -250,6 +251,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				/>
 
 				<PortInput
+					disabled={() => !deploymentPermissions().edit}
 					portList={props.deploymentInfo.latest?.ports || {}}
 					deploymentId={props.deploymentInfo.latest?.id}
 					onAdd={(key, value) => {
@@ -282,11 +284,13 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				/>
 			</div>
 
-			<div class="w-full flex justify-end items-center">
-				<Button type="submit" variant="contained">
-					UPDATE
-				</Button>
-			</div>
+			<Show when={deploymentPermissions().edit}>
+				<div class="w-full flex justify-end items-center">
+					<Button disabled={!deploymentPermissions().edit} type="submit" variant="contained">
+						UPDATE
+					</Button>
+				</div>
+			</Show>
 		</form>
 	);
 };

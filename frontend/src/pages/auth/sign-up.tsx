@@ -2,23 +2,25 @@ import { A, useNavigate } from "@solidjs/router";
 import { createSignal } from "solid-js";
 import { CreateAccountRequest } from "~/bindings";
 import { Button, Input, InputType, useToast, Turnstile } from "~/components";
+import { createAsyncAction } from "~/hooks";
 import { ButtonVariant } from "~/utils/color";
 import { httpRequest } from "~/utils/http-request";
 
 const SignUp = () => {
 	const toast = useToast();
+	const navigate = useNavigate();
+
 	const [username, setUsername] = createSignal("");
 	const [firstName, setFirstName] = createSignal("");
 	const [lastName, setLastName] = createSignal("");
+
 	const [email, setEmail] = createSignal("");
 	const [password, setPassword] = createSignal("");
 	const [confirmPassword, setConfirmPassword] = createSignal("");
+
 	const [turnstileToken, setTurnstileToken] = createSignal<string>("");
-	const navigate = useNavigate();
 
-	const onSubmit = async (e: Event) => {
-		e.preventDefault();
-
+	const { execute: submitSignUp, isLoading } = createAsyncAction(async () => {
 		if (!turnstileToken()) {
 			toast("Please complete the security verification", "error");
 			return;
@@ -50,13 +52,20 @@ const SignUp = () => {
 			console.error("Error creating account:", resp.statusText);
 			toast("Error creating account: " + resp.statusText, "error");
 		}
-	};
+	});
 
 	return (
 		<>
 			{/* Sign Up Card */}
 			<form
-				onSubmit={onSubmit}
+				onSubmit={async (e) => {
+					e.preventDefault();
+					await submitSignUp().catch((e) => {
+						toast("An unexpected error occurred. Please try again.", "error");
+						console.error("Unexpected error during sign-up:", e);
+						setTurnstileToken("");
+					});
+				}}
 				class="bg-secondary p-12 rounded-sm shadow-2xl w-full max-w-128 relative z-10 border border-secondary-medium"
 			>
 				{/* Header */}
@@ -154,6 +163,8 @@ const SignUp = () => {
 							variant={ButtonVariant.Contained}
 							class="py-4 text-base font-semibold px-xxl flex-end"
 							type="submit"
+							loading={isLoading}
+							loadingContent={() => <span>Signing up...</span>}
 						>
 							Sign Up
 						</Button>

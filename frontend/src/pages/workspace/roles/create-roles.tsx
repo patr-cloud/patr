@@ -1,7 +1,7 @@
 import { createResource, createSignal } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { Button, ButtonVariant, Input, PageContainer, PageContainerBody, useToast } from "~/components";
-import { useAuthState } from "~/hooks";
+import { createAuthenticatedAction, useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { GetWorkspaceInfoResponse } from "~/bindings/GetWorkspaceInfoResponse";
 import { CreateNewRoleRequest } from "~/bindings/CreateNewRoleRequest";
@@ -21,7 +21,6 @@ const CreateRoles = () => {
 	const [roleDescription, setRoleDescription] = createSignal("");
 	const [selectedPermissionIds, setSelectedPermissionIds] = createSignal<Set<string>>(new Set());
 	const [permissionsData, setPermissionsData] = createSignal<{ [key: string]: ResourcePermissionType }>({});
-	const [isSubmitting, setIsSubmitting] = createSignal(false);
 
 	const resourceParamsWorkspace = () => {
 		return [authState(), workspaceId()] as const;
@@ -49,26 +48,18 @@ const CreateRoles = () => {
 		return response.data;
 	});
 
-	const handleSubmit = async () => {
-		if (!roleName().trim()) {
-			toast("Please enter a role name", "error");
-			return;
-		}
+	const { execute: handleSubmit, isLoading: isSubmitting } = createAuthenticatedAction(
+		async ({ accessToken, workspaceId }) => {
+			if (!roleName().trim()) {
+				toast("Please enter a role name", "error");
+				return;
+			}
 
-		if (selectedPermissionIds().size === 0) {
-			toast("Please select at least one permission", "error");
-			return;
-		}
+			if (selectedPermissionIds().size === 0) {
+				toast("Please select at least one permission", "error");
+				return;
+			}
 
-		const auth = authState();
-		if (!auth || auth.type !== "LoggedIn") {
-			toast("You must be logged in to create a role", "error");
-			return;
-		}
-
-		setIsSubmitting(true);
-
-		try {
 			const requestBody: CreateNewRoleRequest = {
 				name: roleName().trim(),
 				description: roleDescription().trim() || `Role: ${roleName().trim()}`,
@@ -76,12 +67,12 @@ const CreateRoles = () => {
 			};
 
 			const response = await httpRequest<CreateNewRoleResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId()}/rbac/role`,
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role`,
 				{
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
-						Authorization: `Bearer ${auth.accessToken}`,
+						Authorization: `Bearer ${accessToken}`,
 					},
 					body: JSON.stringify(requestBody),
 				}
@@ -95,13 +86,8 @@ const CreateRoles = () => {
 
 			toast("Role created successfully", "success");
 			navigate("/workspace/roles");
-		} catch (error) {
-			console.error("Error creating role:", error);
-			toast("An error occurred while creating the role", "error");
-		} finally {
-			setIsSubmitting(false);
 		}
-	};
+	);
 
 	return (
 		<PageContainer>
@@ -149,8 +135,16 @@ const CreateRoles = () => {
 					>
 						CANCEL
 					</Button>
-					<Button variant={ButtonVariant.Contained} onClick={handleSubmit} disabled={isSubmitting()}>
-						{isSubmitting() ? "CREATING..." : "CONFIRM"}
+					<Button
+						variant={ButtonVariant.Contained}
+						onClick={() =>
+							handleSubmit().catch(() => {
+								toast("An unexpected error occurred while creating the role", "error");
+							})
+						}
+						disabled={isSubmitting()}
+					>
+						{isSubmitting() ? "Creating..." : "Create Role"}
 					</Button>
 				</div>
 			</PageContainerBody>

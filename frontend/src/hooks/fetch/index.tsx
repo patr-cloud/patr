@@ -1,6 +1,10 @@
 import { MaybeAccessor } from "~/utils/types";
 import { useAuthState, useLastWorkspaceId } from "../state-hooks";
 import { createMemo } from "solid-js";
+import useFetchDeployments from "./deployments";
+import useFetchPermissions from "./permissions";
+import useFetchWorkspaces from "./wokrspaces";
+import useFetchUserPermissions from "./user-permissions";
 
 interface UseFetchProps {
 	id: MaybeAccessor<string>;
@@ -24,3 +28,4 @@ const useFetch = (props: UseFetchProps) => {
 };
 
 export default useFetch;
+export { useFetchDeployments, useFetchPermissions, useFetchUserPermissions, useFetchWorkspaces };

@@ -20,7 +20,7 @@ const ForgotPassword = () => {
 			</div>
 
 			{/* Forgot Password Card */}
-			<section class="bg-secondary-dark p-12 rounded-2xl shadow-2xl w-full max-w-[480px] relative z-10 border border-secondary-medium">
+			<section class="bg-secondary-dark p-12 rounded-2xl shadow-2xl w-full max-w-120 relative z-10 border border-secondary-medium">
 				{/* Logo */}
 				<div class="flex justify-center mb-10">
 					<div class="text-primary text-4xl font-bold">PATR</div>

@@ -1,22 +1,24 @@
 import { useNavigate, useParams, useSearchParams } from "@solidjs/router";
-import { createMemo, createResource, createSignal, ErrorBoundary, Suspense } from "solid-js";
+import { createMemo, createResource, createSignal, ErrorBoundary, Show, Suspense } from "solid-js";
 import { GetDeploymentInfoResponse } from "~/bindings";
 import {
 	Button,
 	ButtonVariant,
 	DeleteModal,
 	HeadTab,
+	NoPermissionsPage,
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
 	useToast,
 } from "~/components";
-import { useAuthState } from "~/hooks";
+import { createAuthenticatedAction, useAuthState, useGetPermissions } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import DeploymentInfoUpdate from "~/pages/deployment/deployment/info";
 import DeploymentLogs from "./logs";
 import { Color } from "~/utils/color";
+import { useIsAllowed } from "~/hooks";
 
 const DeploymentInfo = () => {
 	const params = useParams();
@@ -32,6 +34,9 @@ const DeploymentInfo = () => {
 	const resourceParamsDeployment = createMemo(() => {
 		return [authState(), workspaceId(), params.id] as const;
 	});
+
+	const isAllowedResource = useIsAllowed("deployment", "view", params.id!);
+	const deploymentPermissions = useGetPermissions("deployment", () => params.id || "");
 
 	const [deploymentInfo, { refetch: refetchDeploymentInfo, mutate: mutateDeploymentInfo }] = createResource(
 		resourceParamsDeployment,
@@ -59,83 +64,80 @@ const DeploymentInfo = () => {
 		}
 	);
 
-	const onClickStart = async (e: MouseEvent & { currentTarget: HTMLButtonElement }) => {
-		e.preventDefault();
+	const { execute: startDeployment, isLoading: isStartingDeployment } = createAuthenticatedAction(async ({ accessToken, workspaceId }) => {
+		if (!deploymentPermissions().start) {
+			toast("You do not have permission to start this deployment", "error");
+			return
+		}
 
-		const auth = authState();
-		const currentWorkspace = workspaceId();
 		const deployment = deploymentInfo();
-
-		if (!auth || auth.type !== "LoggedIn" || !currentWorkspace || !deployment) {
-			console.error("User not logged in or workspace ID missing");
+		if (!deployment) {
+			toast("Deployment information is not available", "error");
 			return;
 		}
 
-		console.log("Start deployment clicked");
-		const resp = await httpRequest(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId()}/deployment/${deployment.id}/start`,
+		const response = await httpRequest(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/deployment/${deployment.id}/start`,
 			{
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
-		console.log("Start deployment response:", resp);
-	};
 
-	const onClickStop = async (e: MouseEvent & { currentTarget: HTMLButtonElement }) => {
-		e.preventDefault();
-
-		const auth = authState();
-		const currentWorkspace = workspaceId();
-		const deployment = deploymentInfo();
-
-		if (!auth || auth.type !== "LoggedIn" || !currentWorkspace || !deployment) {
-			console.error("User not logged in or workspace ID missing");
+		if (!response.ok) {
+			console.error("Failed to start deployment:", response.data.error);
+			toast("Failed to start deployment", "error");
 			return;
 		}
 
-		console.log("Stop deployment clicked");
-		const resp = await httpRequest(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId()}/deployment/${deployment.id}/stop`,
+		toast("Deployment started successfully", "success");
+		refetchDeploymentInfo();
+	});
+
+	const { execute: stopDeployment, isLoading: isStoppingDeployment } = createAuthenticatedAction(async ({ accessToken, workspaceId }) => {
+		if (!deploymentPermissions().stop) {
+			toast("You do not have permission to stop this deployment", "error");
+			return
+		}
+
+		const deployment = deploymentInfo();
+		if (!deployment) {
+			toast("Deployment information is not available", "error");
+			return;
+		}
+
+		const response = await httpRequest(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/deployment/${deployment.id}/stop`,
 			{
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
-		console.log("Stop deployment response:", resp);
-	};
 
-	const onClickDelete = async (
-		e: MouseEvent & {
-			currentTarget: HTMLButtonElement;
-		}
-	) => {
-		e.preventDefault();
-
-		const auth = authState();
-		const currentWorkspace = workspaceId();
-		const deployment = deploymentInfo();
-
-		if (!auth || auth.type !== "LoggedIn" || !currentWorkspace || !deployment) {
-			console.error("User not logged in or workspace ID missing");
+		if (!response.ok) {
+			console.error("Failed to stop deployment:", response.data.error);
+			toast("Failed to stop deployment", "error");
 			return;
 		}
 
-		console.log("Delete deployment clicked");
+		toast("Deployment stopped successfully", "success");
+		refetchDeploymentInfo();
+	});
+
+	const { execute: deleteDeployment, isLoading: isDeletingDeployment } = createAuthenticatedAction(async ({ accessToken, workspaceId }) => {
+		if (!deploymentPermissions().delete) {
+			toast("You do not have permission to delete this deployment", "error");
+			return
+		}
+
+		const deployment = deploymentInfo();
+		if (!deployment) {
+			toast("Deployment information is not available", "error");
+			return;
+		}
+
 		const resp = await httpRequest(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId()}/deployment/${deployment.id}`,
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/deployment/${deployment.id}`,
 			{
 				method: "DELETE",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
 		console.log("Delete deployment response:", resp);
@@ -146,13 +148,20 @@ const DeploymentInfo = () => {
 
 		toast("Deployment deleted successfully", "success");
 		navigate("/deployments");
-	};
+	});
 
 	const Cta = () => {
 		switch (deploymentInfo()?.status) {
 			case "running":
+				if (!deploymentPermissions().stop) {
+					return null;
+				}
+
 				return (
-					<Button onClick={onClickStop} class="h-10" variant={ButtonVariant.Outlined} color={Color.Error}>
+					<Button onClick={e => {
+						e.preventDefault();
+						stopDeployment();
+					}} class="h-10" variant={ButtonVariant.Outlined} color={Color.Error} loading={isStoppingDeployment()} loadingContent={() => <span>Stopping...</span>}>
 						STOP
 					</Button>
 				);
@@ -164,8 +173,21 @@ const DeploymentInfo = () => {
 			case "unreachable":
 				return <span class="text-white">Unreachable</span>;
 			case "stopped":
+				if (!deploymentPermissions().start) {
+					return null;
+				}
+
 				return (
-					<Button onClick={onClickStart} class="h-10" variant={ButtonVariant.Contained}>
+					<Button
+						class="h-10"
+						variant={ButtonVariant.Contained}
+						loading={isStartingDeployment()}
+						loadingContent={() => <span>Starting...</span>}
+						onClick={(e) => {
+							e.preventDefault();
+							startDeployment();
+						}}
+					>
 						START
 					</Button>
 				);
@@ -193,69 +215,81 @@ const DeploymentInfo = () => {
 	};
 
 	return (
-		<PageContainer>
-			<PageContainerHead
-				breadcrumbs={[
-					{
-						label: "Deployments",
-						url: "/deployments",
-					},
-					{
-						label: deploymentInfo() ? deploymentInfo()!.name : "Loading...",
-					},
-				]}
-				subText="A deployment represents a containerized application running on a runner."
-				class="justify-between items-center"
-				actions={() => (
-					<div class="flex items-center justify-end gap-3">
-						<Suspense fallback={<div>Loading actions...</div>}>
-							{Cta()}
+		<Show
+			when={isAllowedResource()}
+			fallback={
+				<NoPermissionsPage title="Can't View Resource" message="You do not have permission to view this deployment." />
+			}
+		>
+			<PageContainer>
+				<PageContainerHead
+					breadcrumbs={[
+						{
+							label: "Deployments",
+							url: "/deployments",
+						},
+						{
+							label: deploymentInfo() ? deploymentInfo()!.name : "Loading...",
+						},
+					]}
+					subText="A deployment represents a containerized application running on a runner."
+					class="justify-between items-center"
+					actions={() => (
+						<div class="flex items-center justify-end gap-3">
+							<Suspense fallback={<div>Loading actions...</div>}>
+								{Cta()}
 
-							{deploymentInfo() && deploymentInfo()?.name && deploymentInfo()!.status === "stopped" && (
-								<DeleteModal
-									title="Do You Really Want to Delete This Deployment?"
-									resourceName={deploymentInfo()?.name || ""}
-									onClickDelete={onClickDelete}
-									isOpen={isDeleteModalOpen}
-									setIsOpen={setIsDeleteModalOpen}
-								/>
-							)}
-						</Suspense>
-					</div>
-				)}
-				bottomContent={() => (
-					<HeadTab
-						tab={tab}
-						searchParams={searchParams}
-						setSearchParams={setSearchParams}
-						tabItems={[
-							{
-								label: "Info",
-								value: "",
-								onClick: (value) => setSearchParams({ tab: value }),
-							},
-							{
-								label: "Logs",
-								value: "logs",
-								onClick: (value) => setSearchParams({ tab: value }),
-							},
-						]}
-					/>
-				)}
-			/>
-			<PageContainerBody class="flex flex-col justify-between gap-8">
-				<ErrorBoundary
-					fallback={(err, reset) => (
-						<div>
-							<p>Error loading deployment info: {err.message}</p>
-							<button onClick={reset}>Retry</button>
+								{deploymentInfo() && deploymentPermissions().delete && deploymentInfo()?.name && deploymentInfo()!.status === "stopped" && (
+									<DeleteModal
+										isLoading={isDeletingDeployment()}
+										title="Do You Really Want to Delete This Deployment?"
+										resourceName={deploymentInfo()?.name || ""}
+										isOpen={isDeleteModalOpen}
+										setIsOpen={setIsDeleteModalOpen}
+										onClickDelete={e => {
+											e.preventDefault();
+											deleteDeployment();
+										}}
+									/>
+								)}
+							</Suspense>
 						</div>
 					)}
-				>
-					<Suspense fallback={<div>Loading deployment info...</div>}>{renderTab()}</Suspense>
-				</ErrorBoundary>
-			</PageContainerBody>
-		</PageContainer>
+					bottomContent={() => (
+						<HeadTab
+							tab={tab}
+							searchParams={searchParams}
+							setSearchParams={setSearchParams}
+							tabItems={[
+								{
+									label: "Info",
+									value: "",
+									onClick: (value) => setSearchParams({ tab: value }),
+								},
+								{
+									label: "Logs",
+									value: "logs",
+									onClick: (value) => setSearchParams({ tab: value }),
+								},
+							]}
+						/>
+					)}
+				/>
+
+				<PageContainerBody class="flex flex-col justify-between gap-8">
+					<ErrorBoundary
+						fallback={(err, reset) => (
+							<div>
+								<p>Error loading deployment info: {err.message}</p>
+								<button onClick={reset}>Retry</button>
+							</div>
+						)}
+					>
+						<Suspense fallback={<div>Loading deployment info...</div>}>{renderTab()}</Suspense>
+					</ErrorBoundary>
+				</PageContainerBody>
+			</PageContainer>
+		</Show>
 	);
 };
 

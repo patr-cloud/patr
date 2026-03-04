@@ -1,10 +1,13 @@
 import { createMemo, createSignal, Show, Suspense } from "solid-js";
-import { InputDropdown, InputDropdownCheckBox, ListResources } from "~/components";
-import useFetchPermissions from "~/hooks/use-fetch/use-fetch-permissions";
+import { Button, ButtonVariant, InputDropdown, InputDropdownCheckBox, ListResources } from "~/components";
+import { useFetchPermissions } from "~/hooks/fetch";
 import { parsePermissionName, parseCamelCase, getResourceEndpoint } from "~/utils/func";
 import { ResourcePermissionType } from "~/bindings/ResourcePermissionType";
+import { FiPlus } from "solid-icons/fi";
 
 interface PermissionSelectorProps {
+	/** Additional classes for the container */
+	class?: string;
 	workspaceId: string;
 	selectedPermissionIds: Set<string>;
 	onPermissionChange: (permissions: Set<string>) => void;
@@ -20,13 +23,15 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 
 	const togglePermissionId = (permissionId: string) => {
 		const newSet = new Set(props.selectedPermissionIds);
+		console.log("new set before toggle", newSet);
 		if (newSet.has(permissionId)) {
 			newSet.delete(permissionId);
 		} else {
 			newSet.add(permissionId);
 		}
+		console.log("new set after toggle", newSet);
+
 		props.onPermissionChange(newSet);
-		updatePermissionsData(newSet);
 	};
 
 	const toggleResource = (resourceId: string) => {
@@ -37,7 +42,6 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 			newSet.add(resourceId);
 		}
 		setSelectedResources(newSet);
-		updatePermissionsData(props.selectedPermissionIds);
 	};
 
 	const updatePermissionsData = (permissionIds: Set<string>) => {
@@ -73,6 +77,11 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 		props.onPermissionsDataChange(permissionsData);
 	};
 
+	/**
+	 * This is a list of actions, (e.g. create, delete, etc.) for the currently selected resource type.
+	 * It is derived from the full list of permissions for the workspace, filtered down to just the permissions
+	 * that match the currently selected resource type.
+	 */
 	const permissionActions = createMemo(() => {
 		return (permissions()?.permissions || []).filter((p) => {
 			const parsed = parsePermissionName(p.name);
@@ -82,7 +91,7 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 
 	return (
 		<Suspense fallback={<div class="text-gray-400 text-sm">Loading permissions...</div>}>
-			<div class="flex gap-3">
+			<div class={`flex gap-3 ${props.class}`}>
 				{/* Column 1: Resource Types */}
 				<div class="flex flex-col gap-3 w-full">
 					<InputDropdown
@@ -114,18 +123,21 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 							checked={() => Array.from(props.selectedPermissionIds)}
 							placeholder={() =>
 								Array.from(props.selectedPermissionIds)
-									.map((s) => permissionActions().find((p) => p.id === s)?.name)
+									.map((id) => permissionActions().find((p) => p.id === id)?.name)
 									.map((val) => (val ? parseCamelCase(parsePermissionName(val).action) : undefined))
+									.filter((v) => v !== undefined)
 									.join(", ") || "Select Permissions"
 							}
 							options={() =>
-								permissionActions().map((p) => {
-									const parsed = parsePermissionName(p.name);
-									return {
-										label: `${parseCamelCase(parsed.action)}`,
-										value: p.id,
-									};
-								})
+								permissionActions()
+									.map((p) => ({ id: p.id, ...parsePermissionName(p.name) }))
+									.filter((p) => p.resourceType === selectedResourceType())
+									.map((p) => {
+										return {
+											label: `${parseCamelCase(p.action)}`,
+											value: p.id,
+										};
+									})
 							}
 						/>
 					</div>
@@ -140,7 +152,6 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 								if (val === "all") {
 									setSelectedResources(new Set<string>([]));
 								}
-								updatePermissionsData(props.selectedPermissionIds);
 							}}
 							placeholder="Select Include/Exclude Mode"
 							value={includeExcludeMode}
@@ -176,6 +187,19 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 					</div>
 				</Show>
 			</div>
+
+			<Button
+				variant={ButtonVariant.Outlined}
+				onClick={() => {
+					updatePermissionsData(props.selectedPermissionIds);
+					props.onPermissionChange(new Set<string>([]));
+					setSelectedResourceType("");
+					setSelectedResources(new Set<string>([]));
+					setIncludeExcludeMode("all");
+				}}
+			>
+				<FiPlus size={16} class="inline-block" />
+			</Button>
 		</Suspense>
 	);
 };

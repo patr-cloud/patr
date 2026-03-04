@@ -72,10 +72,6 @@ const CreateDomainPage = () => {
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain/is-valid?domain=${encodeURIComponent(input)}`,
 				{
 					method: "GET",
-					headers: {
-						"Content-Type": "application/json",
-						Authorization: `Bearer ${auth.accessToken}`,
-					},
 				}
 			);
 
@@ -164,10 +160,6 @@ const CreateDomainPage = () => {
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain`,
 				{
 					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						Authorization: `Bearer ${auth.accessToken}`,
-					},
 					body: JSON.stringify(requestBody),
 				}
 			);

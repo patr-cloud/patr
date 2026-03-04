@@ -18,6 +18,7 @@ import { httpRequest } from "~/utils/http-request";
 import { ModalContainer } from "~/components/modal";
 import { GetDomainInfoInWorkspaceResponse, GetVerificationRecordsForDomainResponse } from "~/bindings";
 import { EventT } from "~/utils/types";
+import { useIsAllowed } from "~/hooks";
 
 // Type definitions based on API bindings
 type WorkspaceDomain = {
@@ -50,10 +51,6 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain/${domainId}/verification-records`,
 			{
 				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
 
@@ -81,9 +78,6 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain/${domainId}/verify`,
 			{
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
 			}
 		);
 
@@ -177,7 +171,7 @@ const VerificationIcon = (props: { domain: WorkspaceDomain }) => {
 			renderTrigger={(setOpen) => (
 				<Button
 					variant={ButtonVariant.Plain}
-					onClick={(e) => {
+					onClick={(e: EventT<MouseEvent, HTMLButtonElement>) => {
 						e.stopPropagation();
 						setOpen(true);
 					}}
@@ -199,6 +193,8 @@ const ListDomainsPage = () => {
 	const navigate = useNavigate();
 	const toast = useToast();
 
+	const isCreateAllowed = useIsAllowed("domain", "create");
+
 	const fetchParams = createMemo(() => {
 		return [authState(), workspaceId()] as const;
 	});
@@ -212,10 +208,6 @@ const ListDomainsPage = () => {
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain`,
 			{
 				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
 
@@ -238,13 +230,16 @@ const ListDomainsPage = () => {
 					},
 				]}
 				subText="Configure custom domains to route traffic to your deployments."
-				actions={() => (
-					<div class="ml-auto">
-						<Button variant={ButtonVariant.Plain} onClick={() => navigate("/domains/new")}>
-							Add Domain
-						</Button>
-					</div>
-				)}
+				actions={() => {
+					if (!isCreateAllowed()) return null;
+					return (
+						<div class="ml-auto">
+							<Button variant={ButtonVariant.Plain} onClick={() => navigate("/domains/new")}>
+								Add Domain
+							</Button>
+						</div>
+					);
+				}}
 			/>
 			<PageContainerBody class="flex flex-col">
 				<ErrorBoundary
