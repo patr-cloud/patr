@@ -4,7 +4,7 @@ import { FiTrash2 } from "solid-icons/fi";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import { useToast, Table, Link, CopyButton } from "~/components";
-import { formatRelativeTime, get } from "~/utils/func";
+import { formatRelativeTime, get, formatSize } from "~/utils/func";
 import { ListContainerRepositoryManifestsResponse, ContainerRepositoryManifestInfo } from "~/bindings";
 import { MaybeAccessor } from "~/utils/types";
 
@@ -12,14 +12,6 @@ interface ContainerImagesProps {
 	manifests: MaybeAccessor<ListContainerRepositoryManifestsResponse>;
 	refetch?: () => void;
 }
-
-const formatBytes = (bytes: number | bigint) => {
-	if (bytes === 0) return "0 B";
-	const k = 1024;
-	const sizes = ["B", "KB", "MB", "GB", "TB"];
-	const i = Math.floor(Math.log(Number(bytes)) / Math.log(k));
-	return parseFloat((Number(bytes) / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-};
 
 const Images = (props: ContainerImagesProps) => {
 	const params = useParams();
@@ -98,7 +90,7 @@ const ImageRow = (props: { manifest: ContainerRepositoryManifestInfo; refetch?: 
 				</span>
 			</td>
 			<td class="flex-2 text-gray-400 text-sm">{props.manifest.platform}</td>
-			<td class="flex-2 text-gray-400 text-sm">{formatBytes(props.manifest.size)}</td>
+			<td class="flex-2 text-gray-400 text-sm">{formatSize(props.manifest.size)}</td>
 			<td class="flex-3 text-gray-400 text-sm">{formatRelativeTime(props.manifest.created)}</td>
 			<td class="flex-3 flex items-center gap-2 overflow-hidden">
 				<span class="truncate text-gray-300 font-mono text-sm max-w-[150px]">{props.manifest.digest}</span>
