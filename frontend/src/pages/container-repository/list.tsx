@@ -60,7 +60,7 @@ const ListContainerRepositories = () => {
 				subText="Store and manage container images for your deployments"
 				actions={() => (
 					<Link href="/container-registry/new" buttonVariant={ButtonVariant.Plain} external={false}>
-						Add Container Repository
+						Create Repository
 					</Link>
 				)}
 			/>

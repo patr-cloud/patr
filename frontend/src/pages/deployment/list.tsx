@@ -114,8 +114,8 @@ const ListDeploymentsPage = () => {
 				actions={() => {
 					if (!isAllowedCreate()) return null;
 					return (
-						<Link href="/deployments/new" buttonVariant={ButtonVariant.Outlined} external={false}>
-							CREATE DEPLOYMENT
+						<Link href="/deployments/new" buttonVariant={ButtonVariant.Plain} external={false}>
+							Create Deployment
 						</Link>
 					);
 				}}

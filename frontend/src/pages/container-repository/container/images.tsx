@@ -85,7 +85,7 @@ const ImageRow = (props: { manifest: ContainerRepositoryManifestInfo; refetch?: 
 					{props.manifest.tags.length > 0 ? (
 						props.manifest.tags.join(", ")
 					) : (
-						<span class="text-gray-500 italic">No images</span>
+						<span class="text-gray-500 italic">No tags</span>
 					)}
 				</span>
 			</td>
