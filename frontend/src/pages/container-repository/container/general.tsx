@@ -103,17 +103,17 @@ const PushInstructions = (props: { repositoryName: string | undefined }) => {
 	return (
 		<div class="py-8">
 			<h2 class="text-white text-lg font-semibold mb-4">Push Instructions</h2>
-			<div>
+			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 				{/* Build and Push New Image */}
-				<div>
+				<div class="border border-border-color rounded-xs p-5">
 					<h3 class="text-white text-base font-medium mb-4">Build and Push a New Image</h3>
 					<div class="space-y-4">
 						{/* Step 1: Login */}
 						<div>
 							<p class="text-gray-300 text-sm mb-2">1. Login to Patr Registry</p>
-							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group">
+							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group overflow-x-auto">
 								<CopyButton text={`docker login ${registryUrl} -u patr`} />
-								<code>docker login {registryUrl} -u patr</code>
+								<code class="whitespace-nowrap">docker login {registryUrl} -u patr</code>
 							</div>
 							<p class="text-gray-300 text-sm mt-2 flex items-center gap-1">
 								Use an{" "}
@@ -126,62 +126,61 @@ const PushInstructions = (props: { repositoryName: string | undefined }) => {
 
 						{/* Step 2: Build */}
 						<div>
-							<p class="text-gray-300 text-sm mb-2 ">2. Build your Docker image</p>
-							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group">
+							<p class="text-gray-300 text-sm mb-2">2. Build your Docker image</p>
+							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group overflow-x-auto">
 								<CopyButton text={`docker build -t ${registryUrl}:<tag> .`} />
-								<code>docker build -t {registryUrl}:&lt;tag&gt; .</code>
+								<code class="whitespace-nowrap">docker build -t {registryUrl}:&lt;tag&gt; .</code>
 							</div>
 						</div>
 
 						{/* Step 3: Push */}
 						<div>
 							<p class="text-gray-300 text-sm mb-2">3. Push the image</p>
-							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group">
+							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group overflow-x-auto">
 								<CopyButton text={`docker push ${registryUrl}:<tag>`} />
-								<code>docker push {registryUrl}:&lt;tag&gt;</code>
+								<code class="whitespace-nowrap">docker push {registryUrl}:&lt;tag&gt;</code>
 							</div>
 						</div>
 					</div>
 				</div>
 
-				{/* Divider */}
-				<div class="border-t border-border-color mt-4 mb-3" />
-
 				{/* Push Existing Image */}
-				<div>
+				<div class="border border-border-color rounded-xs p-5">
 					<h3 class="text-white text-base font-medium mb-4">Push an Existing Image</h3>
 					<div class="space-y-4">
 						{/* Step 1: Login */}
 						<div>
 							<p class="text-gray-300 text-sm mb-2">1. Login to Patr Registry</p>
-							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group">
+							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group overflow-x-auto">
 								<CopyButton text={`docker login ${registryUrl} -u patr`} />
-								<code>docker login {registryUrl} -u patr</code>
+								<code class="whitespace-nowrap">docker login {registryUrl} -u patr</code>
 							</div>
 							<p class="text-gray-300 text-sm mt-2 flex items-center gap-1">
-								Use your Patr{" "}
+								Use an&nbsp;
 								<Link href="/profile/api-tokens" external={false} class="inline-flex items-center gap-1">
 									API token <FiExternalLink size={12} />
-								</Link>{" "}
-								as the password.
+								</Link>
+								&nbsp; as the password.
 							</p>
 						</div>
 
 						{/* Step 2: Tag */}
 						<div>
 							<p class="text-gray-300 text-sm mb-2">2. Tag the existing image</p>
-							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group">
+							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group overflow-x-auto">
 								<CopyButton text={`docker tag <existing-image>:<tag> ${registryUrl}:<tag>`} />
-								<code>docker tag &lt;existing-image&gt;:&lt;tag&gt; {registryUrl}:&lt;tag&gt;</code>
+								<code class="whitespace-nowrap">
+									docker tag &lt;existing-image&gt;:&lt;tag&gt; {registryUrl}:&lt;tag&gt;
+								</code>
 							</div>
 						</div>
 
 						{/* Step 3: Push */}
 						<div>
 							<p class="text-gray-300 text-sm mb-2">3. Push the image</p>
-							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group">
+							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group overflow-x-auto">
 								<CopyButton text={`docker push ${registryUrl}:<tag>`} />
-								<code>docker push {registryUrl}:&lt;tag&gt;</code>
+								<code class="whitespace-nowrap">docker push {registryUrl}:&lt;tag&gt;</code>
 							</div>
 						</div>
 					</div>

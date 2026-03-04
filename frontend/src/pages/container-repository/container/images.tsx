@@ -85,7 +85,7 @@ const ImageRow = (props: { manifest: ContainerRepositoryManifestInfo; refetch?: 
 					{props.manifest.tags.length > 0 ? (
 						props.manifest.tags.join(", ")
 					) : (
-						<span class="text-gray-500 italic">No tags</span>
+						<span class="text-gray-500 italic">No images</span>
 					)}
 				</span>
 			</td>
@@ -93,7 +93,7 @@ const ImageRow = (props: { manifest: ContainerRepositoryManifestInfo; refetch?: 
 			<td class="flex-2 text-gray-400 text-sm">{formatSize(props.manifest.size)}</td>
 			<td class="flex-3 text-gray-400 text-sm">{formatRelativeTime(props.manifest.created)}</td>
 			<td class="flex-3 flex items-center gap-2 overflow-hidden">
-				<span class="truncate text-gray-300 font-mono text-sm max-w-[150px]">{props.manifest.digest}</span>
+				<span class="truncate text-gray-300 font-mono text-sm max-w-37.5">{props.manifest.digest}</span>
 				<CopyButton text={props.manifest.digest} />
 			</td>
 			<td class="flex-2 flex items-center justify-center">

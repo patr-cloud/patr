@@ -52,13 +52,15 @@ pub async fn delete_repository_manifest(
 			container_registry_repository_manifest
 		WHERE
 			repository_id = $1 AND
-			manifest_digest = $2;
+			manifest_digest = $2
+		RETURNING manifest_digest;
 		"#,
 		repository_id as _,
 		digest_or_tag
 	)
-	.execute(&mut **database)
-	.await?;
+	.fetch_optional(&mut **database)
+	.await?
+	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
 	AppResponse::builder()
 		.body(DeleteContainerRepositoryManifestResponse)
