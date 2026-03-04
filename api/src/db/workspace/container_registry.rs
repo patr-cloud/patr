@@ -112,6 +112,8 @@ pub async fn initialize_container_registry_constraints(
 		ALTER TABLE container_registry_repository
 			ADD CONSTRAINT container_registry_repository_pk
 				PRIMARY KEY(id),
+			ADD CONSTRAINT container_registry_repository_uq_id_workspace_id
+				UNIQUE(id, workspace_id),
 			ADD CONSTRAINT container_registry_repository_uq_name_workspace_id
 				UNIQUE(name, workspace_id),
 			ADD CONSTRAINT container_registry_repository_fk_workspace_id
@@ -191,6 +193,8 @@ pub async fn initialize_container_registry_constraints(
 	query!(
 		r#"
 		ALTER TABLE container_registry_repository_manifest
+			ADD CONSTRAINT container_registry_repository_manifest_pk
+				PRIMARY KEY(repository_id, manifest_digest),
 			ADD CONSTRAINT container_registry_repository_manifest_fk_repository_id
 				FOREIGN KEY(repository_id)
 					REFERENCES container_registry_repository(id),

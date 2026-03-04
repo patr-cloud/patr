@@ -8,6 +8,7 @@ import {
 	Table,
 	useToast,
 	UserSearchInput,
+	Initials,
 } from "~/components";
 import { FiEdit2, FiPlus, FiTrash } from "solid-icons/fi";
 import { useAuthState } from "~/hooks";
@@ -251,7 +252,7 @@ const ManageWorkspace = () => {
 
 	return (
 		<PageContainer>
-			<WorkspaceHeader workspaceName={workspaceInfo()?.name} activeTab="workspace" />
+			<WorkspaceHeader workspaceName={workspaceInfo()?.name} activeTab="members" />
 			<PageContainerBody class="flex flex-col justify-between gap-8">
 				<div class="flex flex-col gap-6">
 					<div class="flex flex-col gap-4">
@@ -359,7 +360,14 @@ const ManageWorkspace = () => {
 												</tr>
 											) : (
 												<tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
-													<td class="flex items-center justify-center flex-2">{member.userName}</td>
+													<td class="flex items-center justify-center flex-2 gap-2">
+														<Initials
+															size="xs"
+															firstName={member.userName.split(" ")[0]}
+															lastName={member.userName.split(" ")[1]}
+														/>
+														{member.userName}
+													</td>
 													<td class="flex items-center justify-center flex-1">{memberRoleNames || "No roles"}</td>
 													<td class="flex items-center justify-center flex-1">
 														{shouldDelete() && userToDelete() === member.userId ? (

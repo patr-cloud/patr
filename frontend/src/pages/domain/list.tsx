@@ -11,6 +11,7 @@ import {
 	useToast,
 	Modal,
 	CopyButton,
+	EmptyState,
 } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
@@ -245,7 +246,7 @@ const ListDomainsPage = () => {
 					</div>
 				)}
 			/>
-			<PageContainerBody>
+			<PageContainerBody class="flex flex-col">
 				<ErrorBoundary
 					fallback={(err, reset) => (
 						<div>
@@ -255,33 +256,31 @@ const ListDomainsPage = () => {
 					)}
 				>
 					<Suspense fallback={<div>Loading domains...</div>}>
-						<Table
-							column_grids={["flex-3", "flex-3", "flex-2", "flex-2"]}
-							rows={domains()?.domains || []}
-							headings={["Domain ID", "Domain Name", "Type", "Verified"]}
-							renderRow={(item) => (
-								<tr onClick={() => navigate(`/domains/${item.id}`)} class="table-row cursor-pointer">
-									<td class="flex-3 flex items-center justify-center">
-										<span class="truncate">{item.id}</span>
-										<CopyButton text={item.id} />
-									</td>
-									<td class="flex-3 flex items-center justify-center">{item.name}</td>
-									<td class="flex-2 flex items-center justify-center">{item.nameserverType}</td>
-									<td class="flex-2 flex items-center justify-center">
-										<div class="flex items-center gap-2">
-											{item.isVerified ? (
-												<span class="text-green-500">✓ Verified</span>
-											) : (
-												<>
-													<span class="text-yellow-500">Not Verified</span>
-													<VerificationIcon domain={item} />
-												</>
-											)}
-										</div>
-									</td>
-								</tr>
-							)}
-						/>
+						<Show when={(domains()?.domains?.length ?? 0) > 0} fallback={<EmptyState title="No Domain Added" />}>
+							<Table
+								column_grids={["flex-3", "flex-3", "flex-3"]}
+								rows={domains()?.domains || []}
+								headings={["Domain Name", "Type", "Verified"]}
+								renderRow={(item) => (
+									<tr onClick={() => navigate(`/domains/${item.id}`)} class="table-row cursor-pointer">
+										<td class="flex-3 flex items-center justify-center">{item.name}</td>
+										<td class="flex-3 flex items-center justify-center">{item.nameserverType}</td>
+										<td class="flex-3 flex items-center justify-center">
+											<div class="flex items-center gap-2">
+												{item.isVerified ? (
+													<span class="text-green-500">✓ Verified</span>
+												) : (
+													<>
+														<span class="text-yellow-500">Not Verified</span>
+														<VerificationIcon domain={item} />
+													</>
+												)}
+											</div>
+										</td>
+									</tr>
+								)}
+							/>
+						</Show>
 					</Suspense>
 				</ErrorBoundary>
 			</PageContainerBody>

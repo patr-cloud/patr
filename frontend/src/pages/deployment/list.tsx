@@ -1,9 +1,9 @@
 import { useNavigate } from "@solidjs/router";
-import { createMemo, createResource, ErrorBoundary, Suspense } from "solid-js";
-import { ListDeploymentResponse, WithId, Deployment } from "~/bindings";
+import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid-js";
+import { ListDeploymentResponse, WithId, Deployment, ListRunnersForWorkspaceResponse } from "~/bindings";
 import {
 	ButtonVariant,
-	CopyButton,
+	EmptyState,
 	Link,
 	PageContainer,
 	PageContainerBody,
@@ -15,7 +15,7 @@ import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import useIsAllowed from "~/hooks/use-is-allowed";
 
-const DeploymentListRow = (props: { item: WithId<Deployment> }) => {
+const DeploymentListRow = (props: { item: WithId<Deployment>; runnerName: string }) => {
 	const navigate = useNavigate();
 
 	return (
@@ -25,13 +25,10 @@ const DeploymentListRow = (props: { item: WithId<Deployment> }) => {
 			}}
 			class="table-row"
 		>
-			<td class="flex-4 flex items-center justify-center">
-				<span class="truncate">{props.item.id}</span>
-				<CopyButton text={props.item.id} />
-			</td>
 			<td class="flex-4 flex items-center justify-center">{props.item.name}</td>
 			<td class="flex-4 flex items-center justify-center">{props.item.status}</td>
-			<td class="flex-4 flex items-center justify-center">{props.item.runner}</td>
+			<td class="flex-4 flex items-center justify-center">{props.runnerName}</td>
+			<td class="flex-4 flex items-center justify-center">{props.item.imageTag}</td>
 		</tr>
 	);
 };
@@ -73,6 +70,28 @@ const ListDeploymentsPage = () => {
 		return { deployments: response.data.deployments };
 	});
 
+	const [runners] = createResource(fetchParams, async ([auth, wsId]) => {
+		if (!wsId || !auth || auth.type !== "LoggedIn") {
+			return { runners: [] };
+		}
+		const response = await httpRequest<ListRunnersForWorkspaceResponse>(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner`,
+			{
+				method: "GET",
+			}
+		);
+
+		if (!response.ok) {
+			console.error("Failed to fetch runners:", response.data.error);
+			toast("Failed to fetch runners", "error");
+
+			return { runners: [] };
+		}
+
+		console.log("Fetched runners:", response.data);
+		return response.data;
+	});
+
 	return (
 		<PageContainer>
 			<PageContainerHead
@@ -91,7 +110,7 @@ const ListDeploymentsPage = () => {
 				}
 			/>
 
-			<PageContainerBody>
+			<PageContainerBody class="flex flex-col">
 				<ErrorBoundary
 					fallback={(err, reset) => (
 						<div>
@@ -101,12 +120,22 @@ const ListDeploymentsPage = () => {
 					)}
 				>
 					<Suspense fallback={<div>Loading deployments...</div>}>
-						<Table
-							column_grids={["flex-4", "flex-4", "flex-4", "flex-4"]}
-							rows={deployments()?.deployments || []}
-							headings={["ID", "Deployment Name", "Status", "Runner"]}
-							renderRow={(item) => <DeploymentListRow item={item} />}
-						/>
+						<Show
+							when={(deployments()?.deployments?.length ?? 0) > 0}
+							fallback={<EmptyState title="No Deployments Added" />}
+						>
+							<Table
+								column_grids={["flex-4", "flex-4", "flex-4", "flex-4"]}
+								rows={deployments()?.deployments || []}
+								headings={["Deployment Name", "Status", "Runner", "Image Tag"]}
+								renderRow={(item) => (
+									<DeploymentListRow
+										item={item}
+										runnerName={runners()?.runners.find((r) => r.id === item.runner)?.name ?? "Unknown"}
+									/>
+								)}
+							/>
+						</Show>
 					</Suspense>
 				</ErrorBoundary>
 			</PageContainerBody>
