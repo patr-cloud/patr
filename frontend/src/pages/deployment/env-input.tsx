@@ -41,18 +41,21 @@ const EnvInput = (props: EnvInputProps) => {
 							placeholder="Enter Env Name"
 							type={InputType.Text}
 							value={env.key}
-							onInput={(e) => {
-								setEnvName(e.currentTarget.value);
+							onKeyDown={(e) => {
+								if (e.key === "Enter") e.preventDefault();
 							}}
 						/>
 						<Input
-							disabled={true}
+							disabled={get(props.disabled)}
 							class="flex-7"
 							placeholder="Enter Env Value"
 							value={env.value ? parseEnvValue(env.value) : ""}
 							type={InputType.Text}
 							onInput={(e) => {
-								setEnvValue(e.currentTarget.value);
+								props.onAdd(env.key, e.currentTarget.value);
+							}}
+							onKeyDown={(e) => {
+								if (e.key === "Enter") e.preventDefault();
 							}}
 						/>
 
@@ -109,6 +112,20 @@ const EnvInput = (props: EnvInputProps) => {
 							onInput={(e) => {
 								setEnvName(e.currentTarget.value);
 							}}
+							onKeyDown={(e) => {
+								if (e.key === "Enter") {
+									e.preventDefault();
+									const envKey = envName();
+									const envVal = envValue();
+									if (!envKey || !envVal) {
+										toast("Both Env Name and Value are required", "error");
+										return;
+									}
+									props.onAdd(envKey, envVal);
+									setEnvName("");
+									setEnvValue("");
+								}
+							}}
 						/>
 						<Input
 							class="flex-7"
@@ -117,15 +134,20 @@ const EnvInput = (props: EnvInputProps) => {
 							type={InputType.Text}
 							onInput={(e) => {
 								setEnvValue(e.currentTarget.value);
-
-								const envVal = envValue();
-								const envKey = e.currentTarget.value;
-
-								if (!envKey || !envVal) return;
-
-								props.onAdd(envKey, envVal);
-								setEnvName("");
-								setEnvValue("");
+							}}
+							onKeyDown={(e) => {
+								if (e.key === "Enter") {
+									e.preventDefault();
+									const envKey = envName();
+									const envVal = envValue();
+									if (!envKey || !envVal) {
+										toast("Both Env Name and Value are required", "error");
+										return;
+									}
+									props.onAdd(envKey, envVal);
+									setEnvName("");
+									setEnvValue("");
+								}
 							}}
 						/>
 

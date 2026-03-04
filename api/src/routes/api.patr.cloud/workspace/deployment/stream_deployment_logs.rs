@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{collections::BTreeMap, str::FromStr};
 
 use axum::{
 	http::{HeaderName, HeaderValue, StatusCode, Uri},
@@ -72,7 +72,7 @@ pub async fn stream_deployment_logs(
 	.await?
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
-	let mut client_request = Uri::from_str(&dbg!(format!(
+	let mut client_request = Uri::from_str(&format!(
 		"{}://{}/api/v1/tail?{}",
 		if state
 			.config
@@ -92,17 +92,17 @@ pub async fn stream_deployment_logs(
 			.endpoint
 			.trim_start_matches("http://")
 			.trim_start_matches("https://"),
-		serde_qs::to_string(&[(
+		serde_qs::to_string(&BTreeMap::from([(
 			"start",
 			start_time
 				.unwrap_or(OffsetDateTime::now_utc())
 				.unix_timestamp_nanos()
 				.to_string(),
-		)])?
-	)))?
+		)]))?
+	))?
 	.into_client_request()?;
 	client_request.headers_mut().insert(
-		HeaderName::from_static("X-Scope-OrgID"),
+		HeaderName::from_static("x-scope-orgid"),
 		HeaderValue::from_str(&workspace_id.to_string()).unwrap(),
 	);
 	*client_request.method_mut() = Method::GET;

@@ -23,12 +23,23 @@ const DeploymentListRow = (props: { item: WithId<Deployment>; runnerName: string
 			onClick={() => {
 				navigate(`/deployments/${props.item.id}`);
 			}}
-			class="table-row"
+			class="table-row cursor-pointer"
 		>
-			<td class="flex-4 flex items-center justify-center">{props.item.name}</td>
-			<td class="flex-4 flex items-center justify-center">{props.item.status}</td>
-			<td class="flex-4 flex items-center justify-center">{props.runnerName}</td>
-			<td class="flex-4 flex items-center justify-center">{props.item.imageTag}</td>
+			<td class="flex-3 flex items-start justify-center min-w-0">
+				<span class="truncate">{props.item.id}</span>
+			</td>
+			<td class="flex-3 flex items-start justify-center min-w-0">
+				<span class="truncate">{props.item.name}</span>
+			</td>
+			<td class="flex-3 flex items-start justify-center min-w-0">
+				<span class="truncate">{props.item.status}</span>
+			</td>
+			<td class="flex-3 flex items-start justify-center min-w-0">
+				<span class="truncate">{props.runnerName}</span>
+			</td>
+			<td class="flex-3 flex items-start justify-center min-w-0">
+				<span class="truncate">{props.item.imageTag}</span>
+			</td>
 		</tr>
 	);
 };
@@ -38,7 +49,6 @@ const ListDeploymentsPage = () => {
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const isAllowedCreate = useIsAllowed("deployment", "create", undefined);
-
 
 	const fetchParams = createMemo(() => {
 		return [authState(), workspaceId()] as const;
@@ -126,9 +136,9 @@ const ListDeploymentsPage = () => {
 							fallback={<EmptyState title="No Deployments Added" />}
 						>
 							<Table
-								column_grids={["flex-4", "flex-4", "flex-4", "flex-4"]}
+								column_grids={["flex-3", "flex-3", "flex-3", "flex-3", "flex-3"]}
 								rows={deployments()?.deployments || []}
-								headings={["Deployment Name", "Status", "Runner", "Image Tag"]}
+								headings={["ID", "Deployment Name", "Status", "Runner", "Image Tag"]}
 								renderRow={(item) => (
 									<DeploymentListRow
 										item={item}

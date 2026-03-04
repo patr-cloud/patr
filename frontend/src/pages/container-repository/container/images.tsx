@@ -63,7 +63,7 @@ const ImageRow = (props: { manifest: ContainerRepositoryManifestInfo; refetch?: 
 		}
 
 		const response = await httpRequest(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${repoId}/image/${digest}`,
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${repoId}/manifest/${digest}`,
 			{
 				method: "DELETE",
 			}

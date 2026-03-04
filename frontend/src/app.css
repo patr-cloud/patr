@@ -274,6 +274,10 @@ body {
     bg-secondary-light last-of-type:rounded-b-xs;
 }
 
+.table-row:hover {
+	@apply bg-secondary-medium;
+}
+
 .table-row > td {
 	@apply flex items-center justify-center;
 }

@@ -32,7 +32,11 @@ pub async fn initialize_deployment_tables(
 			($1, 1, 1024);
 		"#,
 	)
-	.bind(Uuid::new_v4().to_string())
+	.bind(
+		Uuid::parse_str("b3cf3771-fa39-4281-bfdf-eb2e65a061b6")
+			.unwrap()
+			.to_string(),
+	)
 	.execute(&mut *connection)
 	.await?;
 

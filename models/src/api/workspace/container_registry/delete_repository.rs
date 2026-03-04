@@ -3,7 +3,7 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Deletes a container repository in the workspace.
 	DeleteContainerRepository,
-	DELETE "/workspace/{workspace_id}/docker-registry/{repository_id}" {
+	DELETE "/workspace/{workspace_id}/container-registry/{repository_id}" {
 		/// The workspace to delete the container repository in.
 		pub workspace_id: Uuid,
 		/// The id of the repository to delete.
@@ -17,7 +17,7 @@ macros::declare_api_endpoint!(
 	},
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
-			extract_resource_id: |req| req.path.workspace_id,
+			extract_resource_id: |req| req.path.repository_id,
 			extract_workspace_id: |req| req.path.workspace_id,
 			permission: Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Delete),
 		}

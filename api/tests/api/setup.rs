@@ -132,7 +132,7 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 			},
 		},
 		ipinfo: IpInfoConfig {
-			token: "ipinfo-token".to_string(),
+			token: "".to_string(),
 		},
 	};
 
@@ -151,7 +151,7 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 			routes::setup_routes(&state, ClientType::WebDashboard)
 				.await
 				.into_make_service_with_connect_info::<SocketAddr>(),
-		)?;
+		);
 
 	Ok(TestSetup {
 		server,

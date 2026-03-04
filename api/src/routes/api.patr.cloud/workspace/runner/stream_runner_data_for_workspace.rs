@@ -25,6 +25,8 @@ use models::{
 	utils::{GenericResponse, WebSocketUpgrade},
 };
 use rustis::{
+	ClientError,
+	Error as RedisError,
 	client::Client as RedisClient,
 	commands::{SetCondition, SetExpiration, StringCommands},
 };
@@ -119,11 +121,8 @@ async fn handle_websocket(
 			debug!("Websocket client disconnected before setting exposure type");
 			return;
 		};
-		let Ok(message) = message else {
+		let Ok(Message::Item(message)) = message else {
 			// Error on websocket, continue to try again
-			continue;
-		};
-		let Message::Item(message) = message else {
 			continue;
 		};
 
@@ -184,13 +183,21 @@ async fn handle_websocket(
 	let redis_channel = format!("{workspace_id}/runner/{runner_id}/stream");
 	let mut pub_sub = redis.create_pub_sub();
 
-	let Ok(()) = pub_sub
-		.subscribe(&redis_channel)
-		.await
-		.inspect_err(|err| error!("Error streaming runner data: {:?}", err))
-	else {
-		return;
-	};
+	match pub_sub.subscribe(&redis_channel).await {
+		Ok(()) => (),
+		Err(RedisError::Client(ClientError::AlreadySubscribed)) => {
+			warn!("Already subscribed to the runner data stream.");
+			debug!(concat!(
+				"This only happens when a previous loop ",
+				"of this function tried to connect and subscribed. ",
+				"Ignore the error"
+			));
+		}
+		Err(err) => {
+			error!("Error streaming runner data: {:?}", err);
+			return;
+		}
+	}
 
 	let ping_interval = if cfg!(debug_assertions) {
 		Duration::from_secs(1)

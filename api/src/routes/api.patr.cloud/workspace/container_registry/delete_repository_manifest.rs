@@ -11,7 +11,7 @@ pub async fn delete_repository_manifest(
 					DeleteContainerRepositoryManifestPath {
 						workspace_id: _,
 						repository_id,
-						digest,
+						digest_or_tag,
 					},
 				query: (),
 				headers:
@@ -40,7 +40,7 @@ pub async fn delete_repository_manifest(
 			manifest_digest = $2;
 		"#,
 		repository_id as _,
-		digest
+		digest_or_tag
 	)
 	.execute(&mut **database)
 	.await?;
@@ -55,7 +55,7 @@ pub async fn delete_repository_manifest(
 			manifest_digest = $2;
 		"#,
 		repository_id as _,
-		digest
+		digest_or_tag
 	)
 	.execute(&mut **database)
 	.await?;

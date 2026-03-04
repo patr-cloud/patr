@@ -26,11 +26,11 @@ aws-credential-types           = { default-features = false, version = "1" }
 aws-sdk-s3                     = { default-features = false, version = "1" }
 axum                           = { default-features = false, version = "0.8" }
 axum-extra                     = { default-features = false, version = "0.12" }
-axum-test                      = { default-features = false, version = "18" }
+axum-test                      = { default-features = false, version = "19" }
 axum-typed-websockets          = { default-features = false, git = "https://github.com/cachix/axum-typed-websockets" }
 base32                         = { default-features = false, version = "0.5" }
 base64                         = { default-features = false, version = "0.22" }
-bollard                        = { default-features = false, version = "0.19" }
+bollard                        = { default-features = false, version = "0.20" }
 build-print                    = { default-features = false, version = "1" }
 clap                           = { default-features = false, version = "4" }
 cloudflare                     = { default-features = false, git = "https://github.com/rakshith-ravi/cloudflare-rs", branch = "patr-must-haves" }
@@ -91,12 +91,12 @@ serde_test                     = { default-features = false, version = "1" }
 serde_yaml2                    = { default-features = false, version = "0.1" }
 sha2                           = { default-features = false, version = "0.11.0-rc.5" }
 sqlx                           = { default-features = false, version = "0.8" }
-strum                          = { default-features = false, version = "0.27" }
+strum                          = { default-features = false, version = "0.28" }
 syn                            = { default-features = false, version = "2" }
 sync_wrapper                   = { default-features = false, version = "1" }
 tar                            = { default-features = false, version = "0.4" }
 tempfile                       = { default-features = false, version = "3" }
-testcontainers-modules         = { default-features = false, version = "0.14" }
+testcontainers-modules         = { default-features = false, version = "0.15" }
 thiserror                      = { default-features = false, version = "2" }
 time                           = { default-features = false, version = "0.3" }
 tokio                          = { default-features = false, version = "1" }
