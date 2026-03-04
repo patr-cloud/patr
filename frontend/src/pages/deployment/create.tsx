@@ -175,7 +175,7 @@ const CreateDeploymentPage = () => {
 						</div>
 
 						<div class="flex gap-8 items-center w-full">
-							<InputLabel parentClass="flex-2" for="deployment-registry" label="Registry" />
+							<InputLabel parentClass="flex-2" for="deployment-registry" label="Image" />
 							<div class="flex-10 flex items-center gap-4 w-full">
 								<InputDropdown
 									options={[
