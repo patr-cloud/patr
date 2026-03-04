@@ -42,7 +42,8 @@ RUN mkdir -p --mode=0755 /usr/share/keyrings && \
     zlib1g-dev \
     mold \
     nginx \
-    caddy && \
+    caddy \
+    redis-tools && \
     rm -rf /var/lib/apt/lists/*
 
 # Setup non-root user with sudo permissions
@@ -62,7 +63,6 @@ RUN rustup component add rustc-codegen-cranelift-preview --toolchain nightly
 
 # Install rust-based additional tools
 RUN cargo install --locked cargo-binstall
-RUN cargo binstall --locked cargo-leptos
 RUN cargo binstall --locked cargo-audit
 RUN cargo binstall --locked sqlx-cli
 RUN cargo binstall --locked wasm-pack

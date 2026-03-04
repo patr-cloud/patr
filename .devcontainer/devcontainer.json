@@ -29,6 +29,5 @@
 		4000,
 		"grafana:3000",
 		22300
-	],
-	"postAttachCommand": "sudo chown :docker /var/run/docker.sock || exit 0"
+	]
 }
