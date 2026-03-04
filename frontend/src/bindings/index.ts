@@ -86,6 +86,8 @@ import { GetContainerRepositoryImageDetailsResponse } from "./GetContainerReposi
 import { DeleteContainerRepositoryImageRequest } from "./DeleteContainerRepositoryImageRequest";
 import { DeleteContainerRepositoryImageResponse } from "./DeleteContainerRepositoryImageResponse";
 import { ListContainerRepositoryTagsResponse } from "./ListContainerRepositoryTagsResponse";
+import { ListContainerRepositoryManifestsResponse } from "./ListContainerRepositoryManifestsResponse";
+import { ContainerRepositoryManifestInfo } from "./ContainerRepositoryManifestInfo";
 
 export type {
 	EnvironmentVariableValue,
@@ -176,4 +178,6 @@ export type {
 	DeleteContainerRepositoryImageRequest,
 	DeleteContainerRepositoryImageResponse,
 	ListContainerRepositoryTagsResponse,
+	ListContainerRepositoryManifestsResponse,
+	ContainerRepositoryManifestInfo,
 };
