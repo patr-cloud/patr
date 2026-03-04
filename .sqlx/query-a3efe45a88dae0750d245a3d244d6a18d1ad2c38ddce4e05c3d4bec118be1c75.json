@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM container_registry_repository_manifest WHERE repository_id = $1 AND manifest_digest = $2 RETURNING manifest_digest;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "manifest_digest",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a3efe45a88dae0750d245a3d244d6a18d1ad2c38ddce4e05c3d4bec118be1c75"
+}
