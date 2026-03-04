@@ -21,4 +21,5 @@ macros::declare_api_endpoint!(
 		#[preprocess(trim, length(min = 8), custom = "validate_password")]
 		pub password: String,
 	},
+	audit_log = NoAuditLogger,
 );

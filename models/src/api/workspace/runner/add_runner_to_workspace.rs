@@ -29,5 +29,10 @@ macros::declare_api_endpoint!(
 		/// The ID of the created runner
 		#[serde(flatten)]
 		pub id: OnlyId,
-	}
+	},
+	audit_log = AppAuditLogger {
+		audit_log_type: AuditLogType::ResourceCreated,
+		resource_type: ResourceType::Runner,
+		extract_resource_id: ResourceIdExtractor::FromResponse(|res| res.body.id.id),
+	},
 );

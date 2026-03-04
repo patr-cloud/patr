@@ -37,5 +37,6 @@ macros::declare_api_endpoint!(
 		/// pod_name - The name of the pod
 		/// metrics - The metrics of the pod
 		pub metrics: Vec<DeploymentMetric>
-	}
+	},
+	audit_log = NoAuditLogger,
 );

@@ -26,5 +26,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// The information of the container repository.
 		pub repository: ContainerRepository,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

@@ -30,5 +30,6 @@ macros::declare_api_endpoint!(
 		/// - is_verified - whether the domain is verified or not
 		/// - nameserver_type - The type of the nameserver
 		pub domains: Vec<WithId<WorkspaceDomain>>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

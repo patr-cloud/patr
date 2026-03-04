@@ -22,5 +22,6 @@ macros::declare_api_endpoint!(
 		/// The permissions
 		#[serde(flatten)]
 		pub permissions: WorkspacePermission
-	}
+	},
+	audit_log = NoAuditLogger,
 );

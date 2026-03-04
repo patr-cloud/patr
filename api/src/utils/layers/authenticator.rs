@@ -45,7 +45,7 @@ impl Display for ClientType {
 /// [1]: ::models::RequestUserData
 pub struct AuthenticationLayer<E>
 where
-	E: ApiEndpoint,
+	E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// The type of client that is allowed to make the request
@@ -56,7 +56,7 @@ where
 
 impl<E> AuthenticationLayer<E>
 where
-	E: ApiEndpoint,
+	E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// Helper function to initialize an authentication layer
@@ -70,7 +70,7 @@ where
 
 impl<E, S> Layer<S> for AuthenticationLayer<E>
 where
-	E: ApiEndpoint,
+	E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 	for<'a> S: Service<AuthenticatedAppRequest<'a, E>>,
 {
@@ -87,7 +87,7 @@ where
 
 impl<E> Clone for AuthenticationLayer<E>
 where
-	E: ApiEndpoint,
+	E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	fn clone(&self) -> Self {
@@ -101,7 +101,7 @@ where
 /// The underlying service that runs when the [`AuthenticationLayer`] is used.
 pub struct AuthenticationService<E, S>
 where
-	E: ApiEndpoint,
+	E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// The inner service that will be called after the request is authenticated
@@ -178,7 +178,7 @@ where
 
 impl<E, S> Clone for AuthenticationService<E, S>
 where
-	E: ApiEndpoint,
+	E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 	for<'b> S: Service<AuthenticatedAppRequest<'b, E>, Response = AppResponse<E>, Error = ErrorType>
 		+ Clone,

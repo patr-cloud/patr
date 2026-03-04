@@ -36,16 +36,17 @@ services:
           - backend
 
   postgres:
-    image: postgis/postgis:13-master
+    image: postgis/postgis:18-3.6
+    platform: linux/amd64
     restart: unless-stopped
     environment:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=api
-      - PGDATA=/var/lib/postgresql/data
+      - PGDATA=/var/lib/postgresql
     expose:
       - 5432
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
     hostname: postgres
     networks:
       vpc:
@@ -64,7 +65,7 @@ services:
           - redis
 
   tracing:
-    image: grafana/tempo:latest
+    image: grafana/tempo:2.10.1
     command: "-target=scalable-single-binary -config.file=/etc/tempo/tempo.yaml"
     user: root
     restart: unless-stopped
@@ -84,7 +85,7 @@ services:
 
   # Forwards OpenTelemetry logs to Loki
   logs:
-    image: otel/opentelemetry-collector:latest
+    image: otel/opentelemetry-collector:0.146.0
     restart: unless-stopped
     command: "--config=/etc/otel/config.yaml"
     expose:

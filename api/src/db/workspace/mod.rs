@@ -42,18 +42,6 @@ pub async fn initialize_workspace_tables(
 	.execute(&mut *connection)
 	.await?;
 
-	// Ref: https://www.postgresql.org/docs/13/datatype-enum.html
-	query!(
-		r#"
-		CREATE TYPE RESOURCE_OWNER_TYPE AS ENUM(
-			'personal',
-			'business'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	audit_log::initialize_workspace_tables(connection).await?;
 	container_registry::initialize_container_registry_tables(connection).await?;
 	domain::initialize_domain_tables(connection).await?;

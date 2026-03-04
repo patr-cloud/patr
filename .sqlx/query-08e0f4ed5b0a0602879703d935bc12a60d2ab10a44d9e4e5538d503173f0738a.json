@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO resource(id, resource_type_id, owner_id, created, deleted) VALUES (GENERATE_RESOURCE_ID(), (SELECT id FROM resource_type WHERE name = 'role'), $1, $2, NULL) RETURNING id AS \"id: Uuid\";",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "08e0f4ed5b0a0602879703d935bc12a60d2ab10a44d9e4e5538d503173f0738a"
+}

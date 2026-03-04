@@ -142,7 +142,8 @@ where
 				ResourceType::Secret |
 				ResourceType::Domain |
 				ResourceType::DnsRecord |
-				ResourceType::ManagedURL => {
+				ResourceType::ManagedURL |
+				ResourceType::Role => {
 					todo!()
 				}
 			}

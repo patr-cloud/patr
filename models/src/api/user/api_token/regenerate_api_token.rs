@@ -22,5 +22,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// The new token
 		pub token: String,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

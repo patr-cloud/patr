@@ -24,4 +24,5 @@ macros::declare_api_endpoint!(
 		#[preprocess(none)]
 		pub verification_token: String,
 	},
+	audit_log = NoAuditLogger,
 );

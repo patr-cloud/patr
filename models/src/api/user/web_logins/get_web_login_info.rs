@@ -22,5 +22,6 @@ macros::declare_api_endpoint!(
 		/// The login information.
 		#[serde(flatten)]
 		pub login: WithId<UserWebLogin>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

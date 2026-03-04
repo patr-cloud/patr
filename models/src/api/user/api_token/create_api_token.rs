@@ -26,5 +26,6 @@ macros::declare_api_endpoint!(
 		pub id: Uuid,
 		/// The token itself
 		pub token: String,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

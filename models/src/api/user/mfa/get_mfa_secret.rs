@@ -7,6 +7,8 @@ macros::declare_api_endpoint!(
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,
+		/// The user agent of the client making the request
+		pub user_agent: UserAgent,
 	},
 	authentication = {
 		AppAuthentication::<Self>::PlainTokenAuthenticator
@@ -15,4 +17,5 @@ macros::declare_api_endpoint!(
 		/// The MFA secret QR code URL
 		pub qr: String,
 	},
+	audit_log = NoAuditLogger,
 );

@@ -52,5 +52,10 @@ macros::declare_api_endpoint!(
 		/// The deployment ID of the created deployment
 		#[serde(flatten)]
 		pub id: OnlyId,
-	}
+	},
+	audit_log = AppAuditLogger {
+		audit_log_type: AuditLogType::ResourceCreated,
+		resource_type: ResourceType::Deployment,
+		extract_resource_id: ResourceIdExtractor::FromResponse(|res| res.body.id.id),
+	},
 );

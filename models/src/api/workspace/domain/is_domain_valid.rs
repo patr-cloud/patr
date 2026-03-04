@@ -28,5 +28,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// A boolean response corresponding to the validity of the domain
 		pub valid: bool,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

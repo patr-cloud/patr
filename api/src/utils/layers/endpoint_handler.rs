@@ -122,7 +122,7 @@ where
 	type Error = ErrorType;
 	type Response = AppResponse<E>;
 
-	type Future = impl Future<Output = Result<AppResponse<E>, Self::Error>> + Send;
+	type Future = impl Future<Output = Result<Self::Response, Self::Error>> + Send;
 
 	fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
 		Poll::Ready(Ok(()))

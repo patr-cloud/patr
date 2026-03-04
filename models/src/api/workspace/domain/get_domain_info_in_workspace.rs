@@ -30,5 +30,6 @@ macros::declare_api_endpoint!(
 		/// - nameserver_type - The type of the nameserver
 		#[serde(flatten)]
 		pub workspace_domain: WithId<WorkspaceDomain>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

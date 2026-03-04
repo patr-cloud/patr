@@ -36,4 +36,5 @@ macros::declare_api_endpoint!(
 		#[preprocess(none)]
 		pub preferred_recovery_option: PreferredRecoveryOption,
 	},
+	audit_log = NoAuditLogger,
 );

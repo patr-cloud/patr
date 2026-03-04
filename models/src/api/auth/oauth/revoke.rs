@@ -15,5 +15,6 @@ macros::declare_api_endpoint!(
 		/// The access token to revoke
 		#[serde(rename = "access_token")]
 		pub token: String,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

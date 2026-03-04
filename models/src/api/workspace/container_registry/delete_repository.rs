@@ -21,5 +21,10 @@ macros::declare_api_endpoint!(
 			extract_workspace_id: |req| req.path.workspace_id,
 			permission: Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Delete),
 		}
-	}
+	},
+	audit_log = AppAuditLogger {
+		audit_log_type: AuditLogType::ResourceDeleted,
+		resource_type: ResourceType::ContainerRegistryRepository,
+		extract_resource_id: ResourceIdExtractor::FromRequest(|req| req.path.repository_id),
+	},
 );

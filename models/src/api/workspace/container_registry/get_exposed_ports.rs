@@ -29,5 +29,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// The exposed ports of the container repository.
 		pub ports: Vec<u16>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

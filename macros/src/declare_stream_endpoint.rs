@@ -44,6 +44,8 @@ pub struct ApiEndpoint {
 	client_msg: Option<Vec<Variant>>,
 	/// The required request headers for the endpoint.
 	request_headers: Option<FieldsNamed>,
+	/// The audit logger for the endpoint.
+	audit_logger: Expr,
 
 	/// The required response headers for the endpoint.
 	response_headers: Option<FieldsNamed>,
@@ -93,6 +95,7 @@ impl Parse for ApiEndpoint {
 		let mut response_headers = None;
 		let mut server_msg = None;
 		let mut api_allowed = None;
+		let mut audit_logger = None;
 
 		while !input.is_empty() {
 			let ident = input.parse::<Ident>()?;
@@ -179,6 +182,14 @@ impl Parse for ApiEndpoint {
 
 					api_allowed = Some(input.parse::<LitBool>()?.value);
 				}
+				"audit_logger" | "audit_log" => {
+					if audit_logger.is_some() {
+						return Err(Error::new(ident.span(), "Duplicate field"));
+					}
+					input.parse::<Token![=]>()?;
+
+					audit_logger = Some(input.parse()?);
+				}
 				_ => {
 					return Err(Error::new(ident.span(), "Unknown field"));
 				}
@@ -188,6 +199,9 @@ impl Parse for ApiEndpoint {
 			}
 		}
 		let api_allowed = api_allowed.unwrap_or(true);
+		let Some(audit_logger) = audit_logger else {
+			return Err(Error::new(input.span(), "Missing field: audit_logger"));
+		};
 
 		Ok(Self {
 			documentation,
@@ -202,6 +216,7 @@ impl Parse for ApiEndpoint {
 			paginate_query,
 			client_msg,
 			request_headers,
+			audit_logger,
 
 			response_headers,
 			server_msg,
@@ -226,6 +241,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		paginate_query,
 		request_headers,
 		server_msg,
+		audit_logger,
 
 		response_headers,
 		client_msg,
@@ -315,7 +331,11 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				quote::quote! {
 					NoAuthentication
 				},
-				quote::quote! {},
+				quote::quote! {
+					fn get_authenticator() -> Self::Authenticator {
+						models::utils::NoAuthentication
+					}
+				},
 			)
 		},
 		|block| {
@@ -490,6 +510,10 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			type Authenticator = models::utils::#auth_type;
 
 			#auth_impl
+
+			fn get_audit_logger() -> models::utils::AuditLogger<Self> {
+				models::utils::AuditLogger::<Self>::#audit_logger
+			}
 
 			type ResponseHeaders = #response_headers_name;
 			type ResponseBody = models::utils::GenericResponse;

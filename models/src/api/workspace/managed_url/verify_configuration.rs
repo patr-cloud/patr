@@ -26,5 +26,10 @@ macros::declare_api_endpoint!(
 		/// The status of the URL
 		/// Is the URL configured or not
 		pub configured: bool
-	}
+	},
+	audit_log = AppAuditLogger {
+		audit_log_type: AuditLogType::ResourceUpdated,
+		resource_type: ResourceType::ManagedURL,
+		extract_resource_id: ResourceIdExtractor::FromRequest(|req| req.path.managed_url_id),
+	},
 );

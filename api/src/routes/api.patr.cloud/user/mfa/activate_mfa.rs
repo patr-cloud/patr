@@ -11,7 +11,11 @@ pub async fn activate_mfa(
 			ProcessedApiRequest {
 				path: ActivateMfaPath,
 				query: (),
-				headers: ActivateMfaRequestHeaders { authorization: _ },
+				headers:
+					ActivateMfaRequestHeaders {
+						authorization: _,
+						user_agent: _,
+					},
 				body: ActivateMfaRequestProcessed { otp },
 			},
 		database,

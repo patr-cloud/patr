@@ -20,5 +20,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// Whether the workspace name is available
 		pub available: bool,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

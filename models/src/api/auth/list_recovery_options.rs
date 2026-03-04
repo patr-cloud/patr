@@ -24,5 +24,6 @@ macros::declare_api_endpoint!(
 		/// The available email the user has linked to their account
 		#[serde(skip_serializing_if = "Option::is_none")]
 		pub recovery_email: Option<String>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

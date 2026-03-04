@@ -26,5 +26,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// The runner information
 		pub runner: WithId<Runner>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

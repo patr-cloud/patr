@@ -3,6 +3,7 @@ use models::{
 	api::workspace::rbac::role::*,
 	rbac::{ResourcePermissionType, ResourcePermissionTypeDiscriminant},
 };
+use time::OffsetDateTime;
 
 use crate::prelude::*;
 
@@ -36,7 +37,40 @@ pub async fn create_new_role(
 ) -> Result<AppResponse<CreateNewRoleRequest>, ErrorType> {
 	info!("Creating new role: {} in workspace: {}", name, workspace_id);
 
+	let now = OffsetDateTime::now_utc();
+
 	let role_id = query!(
+		r#"
+		INSERT INTO
+			resource(
+				id,
+				resource_type_id,
+				owner_id,
+				created,
+				deleted
+			)
+		VALUES
+			(
+				GENERATE_RESOURCE_ID(),
+				(SELECT id FROM resource_type WHERE name = 'role'),
+				$1,
+				$2,
+				NULL
+			)
+		RETURNING id AS "id: Uuid";
+		"#,
+		workspace_id as _,
+		now as _,
+	)
+	.fetch_one(&mut **database)
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(err) if err.is_unique_violation() => ErrorType::RoleAlreadyExists,
+		err => ErrorType::server_error(err),
+	})?
+	.id;
+
+	query!(
 		r#"
 		INSERT INTO
 			role(
@@ -47,24 +81,19 @@ pub async fn create_new_role(
 			)
 		VALUES
 			(
-				GENERATE_ROLE_ID(),
 				$1,
 				$2,
-				$3
-			)
-		RETURNING id;
+				$3,
+				$4
+			);
 		"#,
+		role_id as _,
 		workspace_id as _,
 		name as _,
 		description as _,
 	)
-	.fetch_one(&mut **database)
-	.await
-	.map_err(|e| match e {
-		sqlx::Error::Database(dbe) if dbe.is_unique_violation() => ErrorType::RoleAlreadyExists,
-		other => other.into(),
-	})?
-	.id;
+	.execute(&mut **database)
+	.await?;
 
 	trace!("Role created. Inserting permissions.");
 

@@ -46,5 +46,6 @@ macros::declare_api_endpoint!(
 		/// volumes - The volumes
 		#[serde(flatten)]
 		pub running_details: DeploymentRunningDetails,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

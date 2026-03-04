@@ -22,4 +22,5 @@ macros::declare_api_endpoint!(
 		// #[preprocess(email)]
 		pub email: Option<String>,
 	},
+	audit_log = NoAuditLogger,
 );

@@ -31,5 +31,6 @@ macros::declare_api_endpoint!(
 		/// path - The URL path
 		/// url_type - The type of URL (Deployment, Static Site, Proxy, Redirect)
 		pub urls: Vec<WithId<ManagedUrl>>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

@@ -17,5 +17,6 @@ macros::declare_api_endpoint!(
 		/// cpu_count - The number of CPUs
 		/// memory_count - The amount of RAM
 		pub machine_types: Vec<WithId<DeploymentMachineType>>
-	}
+	},
+	audit_log = NoAuditLogger,
 );

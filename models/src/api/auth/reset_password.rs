@@ -27,4 +27,5 @@ macros::declare_api_endpoint!(
 		#[preprocess(trim, length(equal = 6), regex = OTP_VERIFICATION_TOKEN_REGEX)]
 		pub verification_token: String,
 	},
+	audit_log = NoAuditLogger,
 );

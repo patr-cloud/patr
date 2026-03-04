@@ -5,6 +5,7 @@ use preprocess::Preprocessable;
 use serde::{Serialize, de::DeserializeOwned};
 
 use crate::utils::{
+	AuditLogger,
 	FromAxumRequest,
 	HasHeaders,
 	Headers,
@@ -121,4 +122,21 @@ where
 	/// The authenticator that should be used for this endpoint.
 	#[must_use]
 	fn get_authenticator() -> Self::Authenticator;
+
+	/// The audit logger that should be used for this endpoint. This is used to
+	/// log the actions performed on this endpoint for auditing purposes.
+	///
+	/// The variants are:
+	/// - [`NoAuditLogger`][1]: This struct is used to specify that an API
+	///   endpoint does not require auditing. It does not log any actions
+	///   performed on this endpoint.
+	/// - [`AppAuditLogger`][2]: This struct is used to specify that an API
+	///   endpoint requires auditing. It logs all actions performed on this
+	///   resource, including the request, the response, and the user that
+	///   performed the action.
+	///
+	/// [1]: crate::utils::AuditLogger::NoAuditLogger
+	/// [2]: crate::utils::AuditLogger::AppAuditLogger
+	#[must_use]
+	fn get_audit_logger() -> AuditLogger<Self>;
 }

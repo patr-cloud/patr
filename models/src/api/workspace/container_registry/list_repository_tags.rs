@@ -48,5 +48,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// List of tags in the current container repository
 		pub tags: Vec<ContainerRepositoryTagAndDigestInfo>
-	}
+	},
+	audit_log = NoAuditLogger,
 );

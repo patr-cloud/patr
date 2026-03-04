@@ -1,9 +1,11 @@
 FROM ubuntu:noble
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 # Install dependencies
 RUN mkdir -p --mode=0755 /usr/share/keyrings && \
     apt update && \
-    apt install -y debian-keyring debian-archive-keyring apt-transport-https curl && \
+    apt install -y debian-keyring debian-archive-keyring apt-transport-https curl redis-tools && \
     \
     # Install Cloudflare
     curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg > /usr/share/keyrings/cloudflare-main.gpg && \
@@ -40,7 +42,7 @@ RUN mkdir -p --mode=0755 /usr/share/keyrings && \
     zlib1g-dev \
     mold \
     nginx \
-    caddy && \
+    caddy \
     redis-tools && \
     rm -rf /var/lib/apt/lists/*
 
@@ -61,7 +63,6 @@ RUN rustup component add rustc-codegen-cranelift-preview --toolchain nightly
 
 # Install rust-based additional tools
 RUN cargo install --locked cargo-binstall
-RUN cargo binstall --locked cargo-leptos
 RUN cargo binstall --locked cargo-audit
 RUN cargo binstall --locked sqlx-cli
 RUN cargo binstall --locked wasm-pack

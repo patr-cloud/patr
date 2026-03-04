@@ -33,5 +33,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// List of container repositories in the current workspace
 		pub manifests: Vec<ContainerRepositoryManifestInfo>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

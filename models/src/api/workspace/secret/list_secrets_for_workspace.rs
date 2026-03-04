@@ -29,5 +29,6 @@ macros::declare_api_endpoint!(
 		///     name - The secret name
 		///     deployment_id - The deployment this secret is attached to
 		pub secrets: Vec<WithId<Secret>>
-	}
+	},
+	audit_log = NoAuditLogger,
 );

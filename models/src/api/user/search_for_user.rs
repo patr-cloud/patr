@@ -23,5 +23,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// The list of users matching the search query.
 		pub users: Vec<WithId<BasicUserInfo>>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

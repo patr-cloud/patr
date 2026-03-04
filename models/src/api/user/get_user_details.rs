@@ -22,5 +22,6 @@ macros::declare_api_endpoint!(
 		/// The basic info of the user.
 		#[serde(flatten)]
 		pub basic_user_info: WithId<BasicUserInfo>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

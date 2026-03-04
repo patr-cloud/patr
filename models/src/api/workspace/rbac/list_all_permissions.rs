@@ -36,5 +36,6 @@ macros::declare_api_endpoint!(
 		/// - name - The name of the permission
 		/// - description - The description of the permission
 		pub permissions: Vec<WithId<Permission>>
-	}
+	},
+	audit_log = NoAuditLogger,
 );

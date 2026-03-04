@@ -33,5 +33,6 @@ macros::declare_api_endpoint!(
 		/// image_digest - The image digest of the deployment
 		/// created - The timestamp of when the deployment was created
 		pub deploys: Vec<DeploymentDeployHistory>
-	}
+	},
+	audit_log = NoAuditLogger,
 );

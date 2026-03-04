@@ -23,4 +23,5 @@ macros::declare_api_endpoint!(
 		pub last_name: Option<String>,
 		// TODO MFA stuff
 	},
+	audit_log = NoAuditLogger,
 );

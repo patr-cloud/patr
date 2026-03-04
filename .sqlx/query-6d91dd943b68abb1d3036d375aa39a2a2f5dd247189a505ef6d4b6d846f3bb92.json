@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE FUNCTION GENERATE_AUDIT_LOG_ID() RETURNS UUID AS $$ DECLARE audit_log_id UUID; BEGIN audit_log_id := gen_random_uuid(); WHILE EXISTS(SELECT 1 FROM audit_log WHERE id = audit_log_id) LOOP audit_log_id := gen_random_uuid(); END LOOP; RETURN audit_log_id; END; $$ LANGUAGE plpgsql;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "6d91dd943b68abb1d3036d375aa39a2a2f5dd247189a505ef6d4b6d846f3bb92"
+}

@@ -23,5 +23,6 @@ macros::declare_api_endpoint!(
 		pub personal: bool,
 		/// Whether the domain is being used by others
 		pub is_used_by_others: bool,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

@@ -29,5 +29,6 @@ macros::declare_api_endpoint!(
 		pub recovery_phone_number: Option<UserPhoneNumber>,
 		/// Check if MFA is enabled or not
 		pub is_mfa_enabled: bool,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

@@ -12,7 +12,11 @@ pub async fn get_mfa_secret(
 			ProcessedApiRequest {
 				path: GetMfaSecretPath,
 				query: (),
-				headers: GetMfaSecretRequestHeaders { authorization: _ },
+				headers:
+					GetMfaSecretRequestHeaders {
+						authorization: _,
+						user_agent: _,
+					},
 				body: GetMfaSecretRequestProcessed,
 			},
 		database,

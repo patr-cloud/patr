@@ -18,4 +18,9 @@ macros::declare_api_endpoint!(
 			extract_workspace_id: |req| req.path.workspace_id,
 		}
 	},
+	audit_log = AppAuditLogger {
+		audit_log_type: AuditLogType::ResourceDeleted,
+		resource_type: ResourceType::Workspace,
+		extract_resource_id: ResourceIdExtractor::FromRequest(|req| req.path.workspace_id),
+	},
 );

@@ -42,5 +42,6 @@ macros::declare_api_endpoint!(
 		/// renew the access token.
 		/// It contains the login_id and the refresh_token concatenated together.
 		pub refresh_token: String,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

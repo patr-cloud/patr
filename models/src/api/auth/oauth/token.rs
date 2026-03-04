@@ -62,5 +62,6 @@ macros::declare_api_endpoint!(
 		pub refresh_token: String,
 		/// The scopes that the access token has access to
 		pub scope: String
-	}
+	},
+	audit_log = NoAuditLogger,
 );

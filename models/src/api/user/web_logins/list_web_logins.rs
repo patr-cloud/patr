@@ -23,5 +23,6 @@ macros::declare_api_endpoint!(
 	response = {
 		/// The list of logins for the user
 		pub logins: Vec<WithId<UserWebLogin>>,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

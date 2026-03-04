@@ -52,5 +52,6 @@ macros::declare_api_endpoint!(
 		pub code_challenge: String,
 		/// The method used to hash the code challenge
 		pub code_challenge_method: CodeChallengeHashMethod,
-	}
+	},
+	audit_log = NoAuditLogger,
 );

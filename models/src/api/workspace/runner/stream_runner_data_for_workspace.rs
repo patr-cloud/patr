@@ -131,4 +131,9 @@ macros::declare_stream_endpoint!(
 			status: DeploymentStatus,
 		},
 	},
+	audit_log = AppAuditLogger {
+		audit_log_type: AuditLogType::ResourceUpdated,
+		resource_type: ResourceType::Runner,
+		extract_resource_id: ResourceIdExtractor::FromRequest(|req| req.path.runner_id),
+	},
 );

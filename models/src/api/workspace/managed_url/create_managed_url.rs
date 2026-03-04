@@ -40,5 +40,10 @@ macros::declare_api_endpoint!(
 		/// The new managed URL ID
 		#[serde(flatten)]
 		pub id: OnlyId,
-	}
+	},
+	audit_log = AppAuditLogger {
+		audit_log_type: AuditLogType::ResourceCreated,
+		resource_type: ResourceType::ManagedURL,
+		extract_resource_id: ResourceIdExtractor::FromResponse(|res| res.body.id.id),
+	},
 );

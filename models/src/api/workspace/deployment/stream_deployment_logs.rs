@@ -38,4 +38,5 @@ macros::declare_stream_endpoint!(
 		},
 	},
 	client_msg = {},
+	audit_log = NoAuditLogger,
 );

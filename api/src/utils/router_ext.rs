@@ -3,6 +3,7 @@ use axum::{
 	routing::{MethodFilter, MethodRouter},
 };
 use axum_extra::routing::TypedPath;
+use headers::UserAgent;
 use models::utils::{AppAuthentication, BearerToken, HasHeader, NoAuthentication};
 use preprocess::Preprocessable;
 use tower::ServiceBuilder;
@@ -20,6 +21,7 @@ use crate::{
 	prelude::*,
 	routes::registry_patr_cloud::prelude::RegistryEndpoint,
 	utils::layers::{
+		AuditLoggerLayer,
 		AuthEndpointHandler,
 		AuthEndpointLayer,
 		DataStoreConnectionLayer,
@@ -70,7 +72,7 @@ where
 		for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send + Sync + 'static,
 		E: ApiEndpoint<Authenticator = AppAuthentication<E>> + Sync,
 		<E::RequestBody as Preprocessable>::Processed: Send,
-		E::RequestHeaders: HasHeader<BearerToken>;
+		E::RequestHeaders: HasHeader<BearerToken> + HasHeader<UserAgent>;
 
 	/// Mount a registry endpoint. This sets up the necessary layers for request
 	/// parsing and data store connection.
@@ -140,7 +142,7 @@ where
 		for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send + Sync + 'static,
 		E: ApiEndpoint<Authenticator = AppAuthentication<E>> + Sync,
 		<E::RequestBody as Preprocessable>::Processed: Send,
-		E::RequestHeaders: HasHeader<BearerToken>,
+		E::RequestHeaders: HasHeader<BearerToken> + HasHeader<UserAgent>,
 	{
 		// Setup the layers for the backend
 
@@ -177,7 +179,7 @@ where
 							.layer(AuthenticationLayer::new(allowed_client_type))
 							.layer(AuthorizationLayer::new())
 							// .layer(todo!("Add rate limiter value updater middleware here"))
-							// .layer(todo!("Add audit logger middleware here"))
+							.layer(AuditLoggerLayer::new())
 							.layer(AuthEndpointLayer::new(handler)),
 					),
 			)

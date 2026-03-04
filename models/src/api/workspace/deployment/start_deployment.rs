@@ -36,5 +36,10 @@ macros::declare_api_endpoint!(
 			extract_workspace_id: |req| req.path.workspace_id,
 			permission: Permission::Deployment(DeploymentPermission::Start),
 		}
-	}
+	},
+	audit_log = AppAuditLogger {
+		audit_log_type: AuditLogType::ResourceUpdated,
+		resource_type: ResourceType::Deployment,
+		extract_resource_id: ResourceIdExtractor::FromRequest(|req| req.path.deployment_id),
+	},
 );

@@ -140,6 +140,7 @@ pub async fn initialize_rbac_indices(
 		r#"
 		ALTER TABLE resource
 			ADD CONSTRAINT resource_pk PRIMARY KEY(id),
+			ADD CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id),
 			ADD CONSTRAINT resource_uq_id_owner_id_deleted UNIQUE(id, owner_id, deleted);
 		"#
 	)
@@ -162,8 +163,12 @@ pub async fn initialize_rbac_indices(
 	query!(
 		r#"
 		ALTER TABLE role
-			ADD CONSTRAINT role_pk PRIMARY KEY(id),
-			ADD CONSTRAINT role_uq_name_owner_id UNIQUE(name, owner_id);
+			ADD CONSTRAINT role_pk
+				PRIMARY KEY(id),
+			ADD CONSTRAINT role_fk_id_owner_id
+				FOREIGN KEY(id, owner_id) REFERENCES resource(id, owner_id),
+			ADD CONSTRAINT role_uq_name_owner_id
+				UNIQUE(name, owner_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -410,31 +415,6 @@ pub async fn initialize_rbac_constraints(
 				resource_id := gen_random_uuid();
 			END LOOP;
 			RETURN resource_id;
-		END;
-		$$ LANGUAGE plpgsql;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE FUNCTION GENERATE_ROLE_ID() RETURNS UUID AS $$
-		DECLARE
-			role_id UUID;
-		BEGIN
-			role_id := gen_random_uuid();
-			WHILE EXISTS(
-				SELECT
-					1
-				FROM
-					role
-				WHERE
-					id = role_id
-			) LOOP
-				role_id := gen_random_uuid();
-			END LOOP;
-			RETURN role_id;
 		END;
 		$$ LANGUAGE plpgsql;
 		"#
