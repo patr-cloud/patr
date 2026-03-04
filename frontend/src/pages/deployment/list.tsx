@@ -110,7 +110,7 @@ const ListDeploymentsPage = () => {
 				}
 			/>
 
-			<PageContainerBody>
+			<PageContainerBody class="flex flex-col">
 				<ErrorBoundary
 					fallback={(err, reset) => (
 						<div>

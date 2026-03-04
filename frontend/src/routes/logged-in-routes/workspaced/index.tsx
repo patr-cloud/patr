@@ -60,13 +60,13 @@ export default function WorkspacedRoutes() {
 				<Route path="/:id" component={DomainInfo} />
 			</Route>
 			<Route path="/workspace">
-				<Route path="/" component={ManageWorkspace} />
+				<Route path="/" component={General} />
+				<Route path="/members" component={ManageWorkspace} />
 				<Route path="/roles">
 					<Route path="/" component={ManageRoles} />
+					<Route path="/new" component={CreateRoles} />
 					<Route path="/:roleId" component={RoleInfo} />
 				</Route>
-				<Route path="/general" component={General} />
-				<Route path="/roles/new" component={CreateRoles} />
 			</Route>
 			<Route path="/container-registry">
 				<Route path="/" component={ListContainerRepositories} />

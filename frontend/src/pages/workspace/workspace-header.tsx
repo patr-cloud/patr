@@ -3,7 +3,7 @@ import { ButtonVariant, Link, PageContainerHead } from "~/components";
 
 interface WorkspaceHeaderProps {
 	workspaceName?: string;
-	activeTab: "workspace" | "roles" | "general";
+	activeTab: "general" | "members" | "roles";
 }
 
 const WorkspaceHeader = (props: WorkspaceHeaderProps) => {
@@ -15,18 +15,18 @@ const WorkspaceHeader = (props: WorkspaceHeaderProps) => {
 			breadcrumbs={[
 				{
 					label: "Workspace Settings",
-					url: props.activeTab !== "workspace" ? "/workspace" : undefined,
+					url: props.activeTab !== "general" ? "/workspace" : undefined,
 				},
-				...(props.activeTab === "roles"
+				...(props.activeTab === "members"
 					? [
 							{
-								label: "Roles",
+								label: "Members",
 							},
 						]
-					: props.activeTab === "general"
+					: props.activeTab === "roles"
 						? [
 								{
-									label: "General",
+									label: "Roles",
 								},
 							]
 						: []),
@@ -44,24 +44,23 @@ const WorkspaceHeader = (props: WorkspaceHeaderProps) => {
 				<div class="w-full text-white flex gap-4">
 					<A
 						href="/workspace"
-						class={`pb-2 px-2 border-b-2 ${props.activeTab === "workspace" ? "border-primary" : "border-transparent"}`}
+						class={`pb-2 px-2 border-b-2 ${props.activeTab === "general" ? "border-primary" : "border-transparent"}`}
+					>
+						General
+					</A>
+
+					<A
+						href="/workspace/members"
+						class={`pb-2 px-2 border-b-2 ${props.activeTab === "members" ? "border-primary" : "border-transparent"}`}
 					>
 						Members
 					</A>
 
 					<A
 						href="/workspace/roles"
-						onClick={() => navigate("/workspace/roles")}
 						class={`pb-2 px-2 border-b-2 ${props.activeTab === "roles" ? "border-primary" : "border-transparent"}`}
 					>
 						Roles
-					</A>
-					<A
-						href="/workspace/general"
-						onClick={() => navigate("/workspace/general")}
-						class={`pb-2 px-2 border-b-2 ${props.activeTab === "general" ? "border-primary" : "border-transparent"}`}
-					>
-						General
 					</A>
 				</div>
 			)}

@@ -143,8 +143,8 @@ const ManageRoles = () => {
 	return (
 		<PageContainer>
 			<WorkspaceHeader workspaceName={workspaceInfo()?.name} activeTab="roles" />
-			<PageContainerBody class="flex flex-col justify-between gap-8">
-				<div class="flex flex-col gap-6">
+			<PageContainerBody class="flex flex-col gap-8">
+				<div class="flex flex-col gap-6 flex-1">
 					<Suspense fallback={<div class="text-white">Loading roles...</div>}>
 						<Show when={(roles()?.roles || []).length > 0} fallback={<EmptyState title="No Roles Created" />}>
 							<Table

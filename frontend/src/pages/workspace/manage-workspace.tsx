@@ -252,7 +252,7 @@ const ManageWorkspace = () => {
 
 	return (
 		<PageContainer>
-			<WorkspaceHeader workspaceName={workspaceInfo()?.name} activeTab="workspace" />
+			<WorkspaceHeader workspaceName={workspaceInfo()?.name} activeTab="members" />
 			<PageContainerBody class="flex flex-col justify-between gap-8">
 				<div class="flex flex-col gap-6">
 					<div class="flex flex-col gap-4">
