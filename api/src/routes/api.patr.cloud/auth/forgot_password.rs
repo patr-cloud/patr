@@ -69,7 +69,7 @@ pub async fn forgot_password(
 	.ok_or(ErrorType::UserNotFound)?;
 
 	let now = OffsetDateTime::now_utc();
-	let password_reset_token = rand::rng().random_range(constants::OTP_RANGE).to_string();
+	let password_reset_token = format!("{:06}", rand::rng().random_range(constants::OTP_RANGE));
 	let password_reset_token_expiry = now.add(constants::OTP_VALIDITY);
 	let hashed_password_reset_token = argon2::Argon2::new_with_secret(
 		state.config.password_pepper.as_ref(),

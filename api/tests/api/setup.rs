@@ -136,7 +136,11 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 		},
 	};
 
-	_ = api::utils::setup_tracing(&config);
+	use std::sync::Once;
+	static TRACING: Once = Once::new();
+	TRACING.call_once(|| {
+		_ = api::utils::setup_tracing(&config);
+	});
 
 	let state = api::build_state(config).await;
 

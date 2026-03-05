@@ -122,7 +122,7 @@ pub async fn logout(
 				.whole_seconds()
 				.unsigned_abs() +
 				100,
-			OffsetDateTime::now_utc().unix_timestamp(),
+			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
 		)
 		.await
 		.inspect_err(|err| {

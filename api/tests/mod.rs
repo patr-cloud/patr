@@ -7,5 +7,5 @@ mod api;
 
 /// Convenience re-exports for the API tests.
 pub mod prelude {
-	pub use crate::api::setup;
+	pub use crate::api::{helpers::*, setup};
 }

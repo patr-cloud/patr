@@ -74,9 +74,10 @@ async fn get_permissions_for_login_id(
 		// Check user revocation, then loginId revocation, then workspace ID revocation
 		let is_valid = 'validity: {
 			let revoked = redis_connection
-				.get::<Option<i64>>(redis::keys::user_id_revocation_timestamp(user_id))
+				.get::<Option<String>>(redis::keys::user_id_revocation_timestamp(user_id))
 				.await?
-				.and_then(|time| OffsetDateTime::from_unix_timestamp(time).ok())
+				.and_then(|s| s.parse::<i128>().ok())
+				.and_then(|time| OffsetDateTime::from_unix_timestamp_nanos(time).ok())
 				.filter(|time| {
 					// If the timestamp exists, and the token was inserted into Redis before the
 					// timestamp, then the data in Redis is considered invalid
@@ -89,9 +90,10 @@ async fn get_permissions_for_login_id(
 			}
 
 			let revoked = redis_connection
-				.get::<Option<i64>>(redis::keys::login_id_revocation_timestamp(login_id))
+				.get::<Option<String>>(redis::keys::login_id_revocation_timestamp(login_id))
 				.await?
-				.and_then(|time| OffsetDateTime::from_unix_timestamp(time).ok())
+				.and_then(|s| s.parse::<i128>().ok())
+				.and_then(|time| OffsetDateTime::from_unix_timestamp_nanos(time).ok())
 				.filter(|time| {
 					// If the timestamp exists, and the token was inserted into Redis before the
 					// timestamp, then the data in Redis is considered invalid
@@ -105,11 +107,12 @@ async fn get_permissions_for_login_id(
 
 			for workspace_id in data.permission.keys() {
 				let revoked = redis_connection
-					.get::<Option<i64>>(redis::keys::workspace_id_revocation_timestamp(
+					.get::<Option<String>>(redis::keys::workspace_id_revocation_timestamp(
 						workspace_id,
 					))
 					.await?
-					.and_then(|time| OffsetDateTime::from_unix_timestamp(time).ok())
+					.and_then(|s| s.parse::<i128>().ok())
+					.and_then(|time| OffsetDateTime::from_unix_timestamp_nanos(time).ok())
 					.filter(|time| {
 						// If the timestamp exists, and the token was inserted into Redis before the
 						// timestamp, then the data in Redis is considered invalid
@@ -123,9 +126,10 @@ async fn get_permissions_for_login_id(
 			}
 
 			let revoked = redis_connection
-				.get::<Option<i64>>(redis::keys::global_revocation_timestamp())
+				.get::<Option<String>>(redis::keys::global_revocation_timestamp())
 				.await?
-				.and_then(|time| OffsetDateTime::from_unix_timestamp(time).ok())
+				.and_then(|s| s.parse::<i128>().ok())
+				.and_then(|time| OffsetDateTime::from_unix_timestamp_nanos(time).ok())
 				.filter(|time| {
 					// If the timestamp exists, and the token was inserted into Redis before the
 					// timestamp, then the data in Redis is considered invalid
