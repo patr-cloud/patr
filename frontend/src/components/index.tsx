@@ -4,7 +4,7 @@ import PageContainerBody from "~/components/page/body";
 import PageContainerHead from "~/components/page/head";
 import { HeadTab } from "~/components/page/head";
 import Button from "~/components/button";
-import Input, { InputType, InputEventT, PasswordInput } from "~/components/input";
+import Input, { InputType, InputEventT, PasswordInput, type AutocompleteSuggestion } from "~/components/input";
 import InputLabel from "~/components/input-label";
 import InputDropdown from "~/components/input-dropdown";
 import InputDropdownCheckBox from "~/components/input-dropdown-checkbox";
@@ -54,6 +54,7 @@ export {
 	Modal,
 	Link,
 	type InputEventT,
+	type AutocompleteSuggestion,
 	ListResources,
 	DeleteModal,
 	NoPermissionsPage,
