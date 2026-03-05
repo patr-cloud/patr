@@ -159,11 +159,11 @@ pub async fn create_managed_url(
 		VALUES
 			(
 				GENERATE_RESOURCE_ID(),
-				(SELECT id FROM resource_type WHERE name = 'managed_url'),
+				(SELECT id FROM resource_type WHERE name = 'managedUrl'),
 				$1,
 				NOW()
 			)
-		RETURNING id;
+		RETURNING id AS "id: Uuid";
 		"#,
 		workspace_id as _,
 	)

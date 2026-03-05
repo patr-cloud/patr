@@ -52,7 +52,7 @@ pub async fn add_runner_to_workspace(
 				$1,
 				NOW()
 			)
-		RETURNING id;
+		RETURNING id AS "id: Uuid";
 		"#,
 		workspace_id as _,
 	)
