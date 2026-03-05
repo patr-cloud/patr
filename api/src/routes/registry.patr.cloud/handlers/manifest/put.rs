@@ -3,14 +3,19 @@
 //! This handler uploads a new manifest to the registry, validates it,
 //! stores it in S3, and creates/updates tags as needed.
 
-use std::str::FromStr;
+use std::{collections::BTreeMap, str::FromStr};
 
 use aws_sdk_s3::primitives::ByteStream;
 use axum::body::Body;
 use headers::ContentType;
+use models::{
+	api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg},
+	utils::{Base64String, StringifiedU16},
+};
 use oci_spec::image::{Digest, ImageConfiguration, ImageIndex, ImageManifest};
-use rustis::commands::GenericCommands;
+use rustis::commands::{GenericCommands, PubSubCommands};
 use sha2::{Digest as _, Sha256};
+use time::OffsetDateTime;
 
 use crate::{redis::keys, routes::registry_patr_cloud::prelude::*};
 
@@ -417,6 +422,23 @@ pub async fn upload_manifest(
 		)
 		.execute(&mut **database)
 		.await?;
+
+		// Deploy-on-push: update all deployments using this repo+tag that
+		// have opted in via deploy_on_push = true.
+		if let Err(err) = auto_deploy_on_push(
+			&mut *database,
+			&mut *redis,
+			repository_id,
+			&reference,
+			&digest,
+			workspace_id,
+		)
+		.await
+		{
+			error!(
+				"Failed to auto-deploy on push for repository {repository_id}, tag {reference}: {err}"
+			);
+		}
 	}
 
 	// Return 201 Created with location and digest headers
@@ -432,4 +454,257 @@ pub async fn upload_manifest(
 		.body(Body::empty())
 		.build()
 		.into_result()
+}
+
+/// Automatically update and redeploy all deployments that use the given
+/// repository and tag with `deploy_on_push` enabled.
+async fn auto_deploy_on_push(
+	database: &mut DatabaseTransaction,
+	redis: &mut rustis::client::Client,
+	repository_id: Uuid,
+	tag: &str,
+	digest: &str,
+	workspace_id: Uuid,
+) -> Result<(), ErrorType> {
+	let now = OffsetDateTime::now_utc();
+
+	// Find all deployments using this repository + tag with deploy_on_push enabled
+	let deployments = query!(
+		r#"
+		SELECT
+			id AS "id: Uuid",
+			name,
+			registry,
+			image_name,
+			image_tag,
+			runner AS "runner: Uuid",
+			status AS "status: DeploymentStatus",
+			repository_id AS "repository_id: Uuid",
+			min_horizontal_scale,
+			max_horizontal_scale,
+			machine_type AS "machine_type: Uuid",
+			deploy_on_push,
+			startup_probe_port,
+			startup_probe_path,
+			startup_probe_port_type AS "startup_probe_port_type: Option<ExposedPortType>",
+			liveness_probe_port,
+			liveness_probe_path,
+			liveness_probe_port_type AS "liveness_probe_port_type: Option<ExposedPortType>",
+			current_live_digest
+		FROM
+			deployment
+		WHERE
+			repository_id = $1 AND
+			image_tag = $2 AND
+			deploy_on_push = TRUE AND
+			deleted IS NULL;
+		"#,
+		repository_id as _,
+		tag,
+	)
+	.fetch_all(&mut **database)
+	.await?;
+
+	for deployment in deployments {
+		let deployment_id = deployment.id;
+		let runner = deployment.runner;
+
+		info!(
+			"Auto-deploying deployment `{}` due to push of tag `{}` on repository `{}`",
+			deployment_id, tag, repository_id
+		);
+
+		// Record the new digest in deployment history
+		query!(
+			r#"
+			INSERT INTO
+				deployment_deploy_history(
+					deployment_id,
+					image_digest,
+					repository_id,
+					created
+				)
+			VALUES
+				($1, $2, $3, $4)
+			ON CONFLICT
+				(deployment_id, image_digest)
+			DO NOTHING;
+			"#,
+			deployment_id as _,
+			digest,
+			repository_id as _,
+			now as _,
+		)
+		.execute(&mut **database)
+		.await?;
+
+		// Update the deployment's live digest and set status to deploying
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				current_live_digest = $1,
+				status = $2
+			WHERE
+				id = $3;
+			"#,
+			digest,
+			DeploymentStatus::Deploying as _,
+			deployment_id as _,
+		)
+		.execute(&mut **database)
+		.await?;
+
+		// Fetch deployment details needed by the runner
+		let ports = query!(
+			r#"
+			SELECT
+				port,
+				port_type AS "port_type: ExposedPortType"
+			FROM
+				deployment_exposed_port
+			WHERE
+				deployment_id = $1;
+			"#,
+			deployment_id as _
+		)
+		.fetch_all(&mut **database)
+		.await?
+		.into_iter()
+		.map(|row| (StringifiedU16::new(row.port as u16), row.port_type))
+		.collect::<BTreeMap<_, _>>();
+
+		let environment_variables = query!(
+			r#"
+			SELECT
+				name,
+				value,
+				secret_id AS "secret_id: Uuid"
+			FROM
+				deployment_environment_variable
+			WHERE
+				deployment_id = $1;
+			"#,
+			deployment_id as _
+		)
+		.fetch_all(&mut **database)
+		.await?
+		.into_iter()
+		.filter_map(|env| {
+			let value = match (env.value, env.secret_id) {
+				(Some(val), None) => Some(EnvironmentVariableValue::String(val)),
+				(None, Some(from_secret)) => Some(EnvironmentVariableValue::Secret { from_secret }),
+				_ => {
+					warn!("Corrupted environment variable for deployment {deployment_id}");
+					None
+				}
+			};
+			value.map(|v| (env.name, v))
+		})
+		.collect::<BTreeMap<_, _>>();
+
+		let config_mounts = query!(
+			r#"
+			SELECT
+				path,
+				file
+			FROM
+				deployment_config_mounts
+			WHERE
+				deployment_id = $1;
+			"#,
+			deployment_id as _
+		)
+		.fetch_all(&mut **database)
+		.await?
+		.into_iter()
+		.map(|row| (row.path, Base64String::from(row.file)))
+		.collect::<BTreeMap<_, _>>();
+
+		let volumes = query!(
+			r#"
+			SELECT
+				volume_id AS "volume_id: Uuid",
+				volume_mount_path
+			FROM
+				deployment_volume_mount
+			WHERE
+				deployment_id = $1;
+			"#,
+			deployment_id as _
+		)
+		.fetch_all(&mut **database)
+		.await?
+		.into_iter()
+		.map(|row| (row.volume_id, row.volume_mount_path))
+		.collect::<BTreeMap<_, _>>();
+
+		let startup_probe = deployment
+			.startup_probe_port
+			.zip(deployment.startup_probe_path)
+			.map(|(port, path)| DeploymentProbe {
+				port: port as u16,
+				path,
+			});
+
+		let liveness_probe = deployment
+			.liveness_probe_port
+			.zip(deployment.liveness_probe_path)
+			.map(|(port, path)| DeploymentProbe {
+				port: port as u16,
+				path,
+			});
+
+		let registry = if deployment.registry == PatrRegistry.to_string() {
+			DeploymentRegistry::PatrRegistry {
+				registry: PatrRegistry,
+				repository_id: deployment.repository_id.unwrap_or(repository_id),
+			}
+		} else {
+			DeploymentRegistry::ExternalRegistry {
+				registry: deployment.registry,
+				image_name: deployment.image_name.unwrap_or_default(),
+			}
+		};
+
+		// Notify the runner via Redis pubsub
+		redis
+			.publish(
+				format!("{workspace_id}/runner/{runner}/stream"),
+				serde_json::to_string(&StreamRunnerDataForWorkspaceServerMsg::DeploymentUpdated {
+					deployment: WithId::new(
+						deployment_id,
+						Deployment {
+							name: deployment.name,
+							registry,
+							image_tag: deployment.image_tag,
+							runner,
+							status: DeploymentStatus::Deploying,
+							current_live_digest: Some(digest.to_string()),
+							machine_type: deployment.machine_type,
+						},
+					),
+					running_details: DeploymentRunningDetails {
+						deploy_on_push: deployment.deploy_on_push,
+						min_horizontal_scale: deployment.min_horizontal_scale as u16,
+						max_horizontal_scale: deployment.max_horizontal_scale as u16,
+						ports,
+						environment_variables,
+						startup_probe,
+						liveness_probe,
+						config_mounts,
+						volumes,
+					},
+				})
+				.map_err(|err| {
+					ErrorType::server_error(format!("Failed to serialize deployment update: {err}"))
+				})?,
+			)
+			.await?;
+
+		info!("Successfully triggered auto-deploy for deployment `{deployment_id}`");
+	}
+
+	Ok(())
 }

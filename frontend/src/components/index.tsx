@@ -4,11 +4,11 @@ import PageContainerBody from "~/components/page/body";
 import PageContainerHead from "~/components/page/head";
 import { HeadTab } from "~/components/page/head";
 import Button from "~/components/button";
-import Input, { InputType, InputEventT, PasswordInput } from "~/components/input";
+import Input, { InputType, InputEventT, PasswordInput, type AutocompleteSuggestion } from "~/components/input";
 import InputLabel from "~/components/input-label";
 import InputDropdown from "~/components/input-dropdown";
 import InputDropdownCheckBox from "~/components/input-dropdown-checkbox";
-import { ButtonVariant } from "~/utils/color";
+import { ButtonVariant, CopyableFieldVariant } from "~/utils/color";
 import Table from "~/components/table";
 import StatusBadge from "~/components/status-badge";
 import ContainerGrid from "~/components/container-grid";
@@ -25,7 +25,7 @@ import NoPermissionsPage from "~/components/no-permissions";
 import { LoadingSpinner } from "~/components/loading-spinner";
 import InfoPopup from "~/components/info-popup";
 import Tooltip from "~/components/tooltip";
-import CopyButton from "~/components/copy-button";
+import CopyableField from "~/components/copyable-field";
 import Initials from "~/components/initials";
 import EmptyState from "~/components/empty-state";
 export {
@@ -54,13 +54,15 @@ export {
 	Modal,
 	Link,
 	type InputEventT,
+	type AutocompleteSuggestion,
 	ListResources,
 	DeleteModal,
 	NoPermissionsPage,
 	LoadingSpinner,
 	InfoPopup,
 	Tooltip,
-	CopyButton,
+	CopyableField,
+	CopyableFieldVariant,
 	Initials,
 	EmptyState,
 };

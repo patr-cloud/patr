@@ -1,4 +1,13 @@
-import { Button, Input, InputLabel, InputType, PageContainer, PageContainerBody, useToast } from "~/components";
+import {
+	Button,
+	CopyableField,
+	Input,
+	InputLabel,
+	InputType,
+	PageContainer,
+	PageContainerBody,
+	useToast,
+} from "~/components";
 import WorkspaceHeader from "./workspace-header";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
@@ -94,6 +103,10 @@ const General = () => {
 			<PageContainerBody class="flex flex-col gap-8">
 				<form onSubmit={onSubmit} class="flex flex-col gap-6 justify-between w-full flex-1">
 					<div class="flex flex-col gap-4 items-start w-full">
+						<div class="flex gap-8 items-center w-full">
+							<InputLabel parentClass="flex-2" for="workspace-id" label="Workspace ID" />
+							<CopyableField value={workspaceId() || "Loading..."} class="flex-10" buttonPosition="start" />
+						</div>
 						<div class="flex gap-8 items-center w-full">
 							<InputLabel parentClass="flex-2" for="workspace-name" label="Workspace Name" />
 							<Input

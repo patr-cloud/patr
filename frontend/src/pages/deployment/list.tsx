@@ -3,6 +3,8 @@ import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid
 import { ListDeploymentResponse, WithId, Deployment, ListRunnersForWorkspaceResponse } from "~/bindings";
 import {
 	ButtonVariant,
+	CopyableField,
+	CopyableFieldVariant,
 	EmptyState,
 	Link,
 	PageContainer,
@@ -26,7 +28,13 @@ const DeploymentListRow = (props: { item: WithId<Deployment>; runnerName: string
 			class="table-row cursor-pointer"
 		>
 			<td class="flex-3 flex items-start justify-center min-w-0">
-				<span class="truncate">{props.item.id}</span>
+				<CopyableField
+					variant={CopyableFieldVariant.Text}
+					value={props.item.id}
+					class="truncate"
+					innerClass="text-white"
+					buttonPosition="start"
+				/>
 			</td>
 			<td class="flex-3 flex items-start justify-center min-w-0">
 				<span class="truncate">{props.item.name}</span>

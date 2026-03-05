@@ -1,6 +1,6 @@
 import { useNavigate } from "@solidjs/router";
 import { createMemo, createResource, createSignal, ErrorBoundary, Suspense, For, Show } from "solid-js";
-import { FiCheck, FiCopy, FiAlertCircle } from "solid-icons/fi";
+import { FiAlertCircle } from "solid-icons/fi";
 import {
 	PageContainer,
 	PageContainerBody,
@@ -10,7 +10,8 @@ import {
 	ButtonVariant,
 	useToast,
 	Modal,
-	CopyButton,
+	CopyableField,
+	CopyableFieldVariant,
 	EmptyState,
 } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
@@ -130,16 +131,13 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 								renderRow={(record) => (
 									<tr class="table-row text-sm">
 										<td class="flex-2 flex items-center justify-center">
-											<span class="truncate">{record.type}</span>
-											<CopyButton text={record.type} />
+											<CopyableField variant={CopyableFieldVariant.Text} value={record.type} />
 										</td>
 										<td class="flex-4 flex items-center justify-center min-w-0">
-											<span class="truncate max-w-full">{record.name}</span>
-											<CopyButton text={record.name} />
+											<CopyableField variant={CopyableFieldVariant.Text} value={record.name} innerClass="truncate max-w-full" />
 										</td>
 										<td class="flex-4 flex items-center justify-center min-w-0">
-											<span class="truncate max-w-full">{record.target}</span>
-											<CopyButton text={record.target} />
+											<CopyableField variant={CopyableFieldVariant.Text} value={record.target} innerClass="truncate max-w-full" />
 										</td>
 									</tr>
 								)}

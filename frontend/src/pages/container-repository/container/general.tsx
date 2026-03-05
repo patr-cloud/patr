@@ -1,7 +1,7 @@
 import { Show } from "solid-js";
 import { FiExternalLink } from "solid-icons/fi";
 import { GetContainerRepositoryInfoResponse } from "~/bindings";
-import { CopyButton, Input, InputLabel, InputType, Link, Tooltip, useToast } from "~/components";
+import { CopyableField, CopyableFieldVariant, Input, InputLabel, InputType, Link, Tooltip } from "~/components";
 import { formatRelativeTime, formatSize, formatDate, get } from "~/utils/func";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { MaybeAccessor } from "~/utils/types";
@@ -11,6 +11,8 @@ interface GeneralInfoProps {
 }
 
 const General = (props: GeneralInfoProps) => {
+	const [workspaceId] = useLastWorkspaceId();
+
 	return (
 		<div class="w-full">
 			<Show when={get(props.repositoryInfo)} fallback={<div class="text-gray-400 p-6">Loading...</div>}>
@@ -21,13 +23,11 @@ const General = (props: GeneralInfoProps) => {
 							{/* Repo Name */}
 							<div class="flex items-center gap-4">
 								<InputLabel parentClass="flex-2" for="repository-name" label="Repository Name" />
-								<Input
-									value={get(props.repositoryInfo)?.repository?.name}
-									disabled={true}
+								<CopyableField
+									variant={CopyableFieldVariant.Input}
+									value={`registry.patr.cloud/${workspaceId()}/${get(props.repositoryInfo)?.repository?.name}`}
+									buttonPosition="start"
 									class="flex-10"
-									name="repository-name"
-									placeholder="Repository Name"
-									type={InputType.Text}
 								/>
 							</div>
 
@@ -111,10 +111,7 @@ const PushInstructions = (props: { repositoryName: string | undefined }) => {
 						{/* Step 1: Login */}
 						<div>
 							<p class="text-gray-300 text-sm mb-2">1. Login to Patr Registry</p>
-							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group overflow-x-auto">
-								<CopyButton text={`docker login ${registryUrl} -u patr`} />
-								<code class="whitespace-nowrap">docker login {registryUrl} -u patr</code>
-							</div>
+							<CopyableField value={`docker login ${registryUrl} -u patr`} innerClass="font-mono" />
 							<p class="text-gray-300 text-sm mt-2 flex items-center gap-1">
 								Use an{" "}
 								<Link href="/profile/api-tokens" external={false} class="inline-flex items-center gap-1">
@@ -127,19 +124,13 @@ const PushInstructions = (props: { repositoryName: string | undefined }) => {
 						{/* Step 2: Build */}
 						<div>
 							<p class="text-gray-300 text-sm mb-2">2. Build your Docker image</p>
-							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group overflow-x-auto">
-								<CopyButton text={`docker build -t ${registryUrl}:<tag> .`} />
-								<code class="whitespace-nowrap">docker build -t {registryUrl}:&lt;tag&gt; .</code>
-							</div>
+							<CopyableField value={`docker build -t ${registryUrl}:<tag> .`} innerClass="font-mono" />
 						</div>
 
 						{/* Step 3: Push */}
 						<div>
 							<p class="text-gray-300 text-sm mb-2">3. Push the image</p>
-							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group overflow-x-auto">
-								<CopyButton text={`docker push ${registryUrl}:<tag>`} />
-								<code class="whitespace-nowrap">docker push {registryUrl}:&lt;tag&gt;</code>
-							</div>
+							<CopyableField value={`docker push ${registryUrl}:<tag>`} innerClass="font-mono" />
 						</div>
 					</div>
 				</div>
@@ -151,10 +142,7 @@ const PushInstructions = (props: { repositoryName: string | undefined }) => {
 						{/* Step 1: Login */}
 						<div>
 							<p class="text-gray-300 text-sm mb-2">1. Login to Patr Registry</p>
-							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group overflow-x-auto">
-								<CopyButton text={`docker login ${registryUrl} -u patr`} />
-								<code class="whitespace-nowrap">docker login {registryUrl} -u patr</code>
-							</div>
+							<CopyableField value={`docker login ${registryUrl} -u patr`} innerClass="font-mono" />
 							<p class="text-gray-300 text-sm mt-2 flex items-center gap-1">
 								Use an&nbsp;
 								<Link href="/profile/api-tokens" external={false} class="inline-flex items-center gap-1">
@@ -167,21 +155,13 @@ const PushInstructions = (props: { repositoryName: string | undefined }) => {
 						{/* Step 2: Tag */}
 						<div>
 							<p class="text-gray-300 text-sm mb-2">2. Tag the existing image</p>
-							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group overflow-x-auto">
-								<CopyButton text={`docker tag <existing-image>:<tag> ${registryUrl}:<tag>`} />
-								<code class="whitespace-nowrap">
-									docker tag &lt;existing-image&gt;:&lt;tag&gt; {registryUrl}:&lt;tag&gt;
-								</code>
-							</div>
+							<CopyableField value={`docker tag <existing-image>:<tag> ${registryUrl}:<tag>`} innerClass="font-mono" />
 						</div>
 
 						{/* Step 3: Push */}
 						<div>
 							<p class="text-gray-300 text-sm mb-2">3. Push the image</p>
-							<div class="relative bg-secondary-light rounded px-4 py-3 font-mono text-sm text-gray-300 flex items-center gap-3 group overflow-x-auto">
-								<CopyButton text={`docker push ${registryUrl}:<tag>`} />
-								<code class="whitespace-nowrap">docker push {registryUrl}:&lt;tag&gt;</code>
-							</div>
+							<CopyableField value={`docker push ${registryUrl}:<tag>`} innerClass="font-mono" />
 						</div>
 					</div>
 				</div>

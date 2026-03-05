@@ -11,7 +11,6 @@ import {
 	Button,
 } from "~/components";
 import EnvInput from "./env-input";
-import { FiChevronDown } from "solid-icons/fi";
 import {
 	Base64String,
 	CreateDeploymentRequest,
@@ -19,6 +18,8 @@ import {
 	DeploymentProbe,
 	EnvironmentVariableValue,
 	ExposedPortType,
+	ListContainerRepositoriesResponse,
+	ListContainerRepositoryTagsResponse,
 	ListRunnersForWorkspaceResponse,
 } from "~/bindings";
 import PortInput from "./port";
@@ -30,6 +31,8 @@ import { useToast } from "~/components";
 import ProbeInput from "~/pages/deployment/probe-input";
 import ConfigMount, { ConfigMountT } from "~/pages/deployment/config-mount";
 import { useNavigate } from "@solidjs/router";
+
+const PATR_REGISTRY = "registry.patr.cloud";
 
 const CreateDeploymentPage = () => {
 	const [authState] = useAuthState();
@@ -61,7 +64,26 @@ const CreateDeploymentPage = () => {
 			return { runners: [] };
 		}
 
-		console.log("Fetched runners:", response.data);
+		return response.data;
+	});
+
+	const [repositories] = createResource(fetchParams, async ([auth, wsId]) => {
+		if (!wsId || !auth || auth.type !== "LoggedIn") {
+			return { repositories: [] };
+		}
+		const response = await httpRequest<ListContainerRepositoriesResponse>(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry`,
+			{
+				method: "GET",
+				headers: {
+					"Content-Type": "application/json",
+				},
+			}
+		);
+		if (!response.ok) {
+			console.error("Failed to fetch repositories:", response.data.error);
+			return { repositories: [] };
+		}
 		return response.data;
 	});
 
@@ -70,6 +92,8 @@ const CreateDeploymentPage = () => {
 	const [runner, setRunner] = createSignal<string>("");
 	const [imageName, setImageName] = createSignal<string>("");
 	const [imageTag, setImageTag] = createSignal<string>("");
+	const [tagFilter, setTagFilter] = createSignal<string>("");
+	const [repositoryId, setRepositoryId] = createSignal<string>("");
 	const [configFiles, setConfigFiles] = createSignal<ConfigMountT>({});
 	const [startupProbe, setStartupProbe] = createSignal<DeploymentProbe | undefined>(undefined);
 
@@ -80,18 +104,55 @@ const CreateDeploymentPage = () => {
 		[key: string]: ExposedPortType;
 	}>({});
 
-	const { onSubmit, isLoading } = createFormAction(async ({ accessToken, workspaceId }) => {
+	const isPatrRegistry = () => registry() === PATR_REGISTRY;
+
+	// Debounce tag filter updates to avoid hammering the API on every keystroke
+	let tagFilterTimer: ReturnType<typeof setTimeout> | undefined;
+	const debouncedSetTagFilter = (value: string) => {
+		clearTimeout(tagFilterTimer);
+		tagFilterTimer = setTimeout(() => setTagFilter(value), 300);
+	};
+
+	const tagFetchParams = createMemo(() => {
+		return [authState(), lastUsedWorkspaceId(), repositoryId(), tagFilter()] as const;
+	});
+
+	const [repositoryTags] = createResource(tagFetchParams, async ([auth, wsId, repoId, tagSearch]) => {
+		if (!wsId || !auth || auth.type !== "LoggedIn" || !repoId) {
+			return { tags: [] };
+		}
+		const url = new URL(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${repoId}/tag`
+		);
+		if (tagSearch) url.searchParams.set("tag", tagSearch);
+		const response = await httpRequest<ListContainerRepositoryTagsResponse>(url.toString(), {
+			method: "GET",
+			headers: {
+				"Content-Type": "application/json",
+			},
+		});
+		if (!response.ok) {
+			console.error("Failed to fetch tags:", response.data.error);
+			return { tags: [] };
+		}
+		return response.data;
+	});
+
+	const tagSuggestions = () => repositoryTags()?.tags.map((t) => ({ label: t.tag, value: t.tag })) ?? [];
+
+	const repoSuggestions = () =>
+		repositories()?.repositories.map((r) => ({ label: r.name, value: r.id })) ?? [];
+
+	const { onSubmit, isLoading } = createFormAction(async ({ workspaceId }) => {
 		let configMounts: Record<string, Base64String> = {};
 		for (const [key, file] of Object.entries(configFiles())) {
 			const byteArray = await convertFileToBase64(file);
 			configMounts[key] = byteArray;
 		}
 
-		const requestBody: CreateDeploymentRequest = {
+		const commonFields = {
 			name: name(),
-			imageName: imageName(),
 			imageTag: imageTag(),
-			registry: registry(),
 			runner: runner(),
 			machineType: Uuid("b3cf3771-fa39-4281-bfdf-eb2e65a061b6"),
 			minHorizontalScale: 1,
@@ -103,6 +164,11 @@ const CreateDeploymentPage = () => {
 			configMounts,
 		};
 
+		const requestBody = (
+			isPatrRegistry()
+				? { ...commonFields, registry: PATR_REGISTRY, repositoryId: repositoryId() }
+				: { ...commonFields, registry: registry(), imageName: imageName() }
+		) as CreateDeploymentRequest;
 
 		const response = await httpRequest<CreateDeploymentResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/deployment`,
@@ -161,36 +227,67 @@ const CreateDeploymentPage = () => {
 							<div class="flex-10 flex items-center gap-4 w-full">
 								<InputDropdown
 									options={[
-										{ value: "registry.patr.cloud", label: "Patr Registry" },
+										{ value: PATR_REGISTRY, label: "Patr Registry" },
 										{ value: "docker.io", label: "Docker Hub" },
 									]}
-									endIcon={() => (
-										<button>
-											<FiChevronDown size={16} />
-										</button>
-									)}
 									value={registry()}
-									onSelect={setRegistry}
+									onSelect={(val) => {
+										setRegistry(val);
+										setRepositoryId("");
+										setImageName("");
+										setImageTag("");
+										setTagFilter("");
+									}}
 									class="flex-4"
 									name="deployment-registry"
 									placeholder="Select Registry"
 								/>
 
-								<Input
-									class="flex-6"
-									placeholder="Image Name"
-									type={InputType.Text}
-									value={imageName()}
-									onInput={(e) => setImageName(e.currentTarget.value)}
-								/>
+								{isPatrRegistry() ? (
+									<Input
+										class="flex-6"
+										placeholder="Select Repository"
+										suggestions={repoSuggestions()}
+										allowCustomValue={false}
+										value={repositoryId()}
+										onSelect={(id) => {
+											setRepositoryId(id);
+											setImageTag("");
+											setTagFilter("");
+										}}
+									/>
+								) : (
+									<Input
+										class="flex-6"
+										placeholder="Image Name"
+										type={InputType.Text}
+										value={imageName()}
+										onInput={(e) => setImageName(e.currentTarget.value)}
+									/>
+								)}
 
-								<Input
-									class="flex-2"
-									placeholder="Image Tag"
-									type={InputType.Text}
-									value={imageTag()}
-									onInput={(e) => setImageTag(e.currentTarget.value)}
-								/>
+								{isPatrRegistry() ? (
+									<Input
+										class="flex-2"
+										placeholder="Image Tag"
+										value={imageTag()}
+										suggestions={tagSuggestions()}
+										allowCustomValue={true}
+										onInput={(e) => {
+											setImageTag(e.currentTarget.value);
+											debouncedSetTagFilter(e.currentTarget.value);
+										}}
+										onSelect={setImageTag}
+									/>
+								) : (
+									<Input
+										class="flex-2"
+										placeholder="Image Tag"
+										type={InputType.Text}
+										value={imageTag()}
+										onInput={(e) => setImageTag(e.currentTarget.value)}
+									/>
+								)}
 							</div>
 						</div>
 
@@ -204,11 +301,6 @@ const CreateDeploymentPage = () => {
 											label: runner.name,
 										})) ?? []
 									}
-									endIcon={() => (
-										<button>
-											<FiChevronDown size={16} />
-										</button>
-									)}
 									value={runner()}
 									onSelect={setRunner}
 									class="flex-4"

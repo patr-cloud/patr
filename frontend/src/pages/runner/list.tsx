@@ -3,6 +3,8 @@ import { createMemo, createResource, ErrorBoundary, Suspense } from "solid-js";
 import { ListRunnersForWorkspaceResponse } from "~/bindings";
 import {
 	ButtonVariant,
+	CopyableField,
+	CopyableFieldVariant,
 	EmptyState,
 	Link,
 	PageContainer,
@@ -79,19 +81,25 @@ const ListRunnersPage = () => {
 					<Suspense fallback={<div>Loading...</div>}>
 						<Show when={(runners()?.runners?.length ?? 0) > 0} fallback={<EmptyState title="No Runner Added" />}>
 							<Table
-								column_grids={["flex-4", "flex-4", "flex-4"]}
+								column_grids={["flex-4", "flex-4", "flex-4", "flex-4"]}
 								rows={runners()?.runners || []}
-								headings={["Runner Name", "Status", "Last Seen"]}
+								headings={["ID", "Runner Name", "Status", "Last Seen"]}
 								renderRow={(item) => (
-									<tr
-										class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl
-                  bg-secondary-light last-of-type:rounded-b-xs"
-									>
-										<td class="flex items-center justify-center flex-1">{item.name}</td>
-										<td class="flex items-center justify-center flex-1">
+									<tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
+										<td class="flex items-center justify-center min-w-0 flex-1">
+											<CopyableField
+												variant={CopyableFieldVariant.Text}
+												value={item.id}
+												class="truncate"
+												innerClass="text-white"
+												buttonPosition="start"
+											/>
+										</td>
+										<td class="flex items-center justify-center min-w-0 flex-1">{item.name}</td>
+										<td class="flex items-center justify-center min-w-0 flex-1">
 											{item.connected ? "Connected" : "Disconnected"}
 										</td>
-										<td class="flex items-center justify-center flex-1">
+										<td class="flex items-center justify-center min-w-0 flex-1">
 											{item.lastSeen ? formatRelativeTime(item.lastSeen) : "N/A"}
 										</td>
 									</tr>
