@@ -5,11 +5,9 @@ import { MaybeAccessor } from "~/utils/types";
 
 interface InitialsProps {
 	/** First name of the user */
-	firstName?: MaybeAccessor<string | undefined>;
+	firstName: MaybeAccessor<string | undefined>;
 	/** Last name of the user */
 	lastName?: MaybeAccessor<string | undefined>;
-	/** Username as fallback */
-	username?: MaybeAccessor<string | undefined>;
 	/** Size variant */
 	size?: "xs" | "sm" | "md" | "lg";
 	/** Additional CSS classes */
@@ -36,23 +34,19 @@ const Initials = (rawProps: InitialsProps) => {
 		rawProps
 	);
 
-	const getInitials = (firstName?: string, lastName?: string, username?: string): string => {
-		if (firstName && lastName) {
-			return `${firstName[0]}${lastName[0]}`.toUpperCase();
+	const getInitials = (firstName?: string, lastName?: string): string => {
+		if (lastName) {
+			return `${firstName?.[0] || ""}${lastName[0]}`.toUpperCase();
 		}
 
-		if (username) {
-			return username.slice(0, 2).toUpperCase();
-		}
-
-		return "U";
+		return (firstName?.slice(0, 2) ?? "??").toUpperCase();
 	};
 
 	return (
 		<div
 			class={`bg-secondary-dark rounded-full flex items-center justify-center font-light ${sizeClasses[props.size]} ${get(props.class)} ${getColorClasses(props.color).text}`}
 		>
-			{getInitials(get(props.firstName), get(props.lastName), get(props.username))}
+			{getInitials(get(props.firstName), get(props.lastName))}
 		</div>
 	);
 };

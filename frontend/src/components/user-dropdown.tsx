@@ -3,7 +3,8 @@ import { createSignal, Show, createResource, Suspense } from "solid-js";
 import { FiKey, FiSettings, FiLogOut } from "solid-icons/fi";
 import { useAuthState, useClickOutside } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
-import CopyableTextField from "./copyable-text-field";
+import CopyableField from "./copyable-field";
+import { CopyableFieldVariant } from "~/utils/color";
 import Initials from "./initials";
 import { useToast } from "~/components/toast";
 import { GetUserInfoResponse } from "~/bindings";
@@ -76,7 +77,7 @@ const UserDropdown = () => {
 			<Suspense
 				fallback={
 					<button class="flex items-center gap-2 px-4 py-2 rounded-xs bg-secondary-light hover:bg-secondary-medium transition-colors duration-200 border border-white/10">
-						<Initials size="sm" />
+						<Initials size="sm" firstName={".."} />
 						<span class="text-sm font-medium text-white">User</span>
 					</button>
 				}
@@ -87,12 +88,7 @@ const UserDropdown = () => {
 					}}
 					class="flex items-center gap-2 px-4 py-2 rounded-xs bg-secondary-light hover:bg-secondary-medium transition-colors duration-200 border border-white/10 cursor-pointer"
 				>
-					<Initials
-						firstName={userInfo()?.firstName}
-						lastName={userInfo()?.lastName}
-						username={userInfo()?.username}
-						size="sm"
-					/>
+					<Initials firstName={userInfo()?.firstName} lastName={userInfo()?.lastName} size="sm" />
 					<span class="text-sm font-medium text-white">{getDisplayName()}</span>
 				</button>
 
@@ -100,12 +96,7 @@ const UserDropdown = () => {
 					<div class="absolute right-0 mt-2 w-80 bg-secondary-medium border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
 						<div class="p-4 border-b border-white/10">
 							<div class="flex items-center gap-3 mb-3">
-								<Initials
-									firstName={userInfo()?.firstName}
-									lastName={userInfo()?.lastName}
-									username={userInfo()?.username}
-									size="lg"
-								/>
+								<Initials firstName={userInfo()?.firstName} lastName={userInfo()?.lastName} size="lg" />
 								<div class="flex-1 min-w-0">
 									<Show when={!userInfo.loading} fallback={<div class="text-gray-400 text-sm">Loading...</div>}>
 										<div class="text-white font-medium truncate">
@@ -119,10 +110,10 @@ const UserDropdown = () => {
 							</div>
 
 							<div class="mb-2">
-								<CopyableTextField label="User ID" value={userInfo()?.id || ""} disabled={!userInfo()?.id} />
+								<CopyableField variant={CopyableFieldVariant.Input} label="User ID" value={userInfo()?.id || ""} />
 							</div>
 
-							<CopyableTextField label="Username" value={userInfo()?.username || ""} disabled={!userInfo()?.username} />
+							<CopyableField variant={CopyableFieldVariant.Input} label="Username" value={userInfo()?.username || ""} />
 						</div>
 
 						<div class="p-2">

@@ -1,7 +1,7 @@
 import { Accessor, Setter } from "solid-js";
-import { FiCopy } from "solid-icons/fi";
 import Modal, { ModalContainer } from "~/components/modal";
 import { useToast } from "~/components/toast";
+import CopyableField from "~/components/copyable-field";
 
 const ApiTokenModal = (props: {
     isOpen: Accessor<boolean>;
@@ -29,19 +29,10 @@ const ApiTokenModal = (props: {
                     <p class="mb-3 text-sm text-white">
                         Please copy your API token now. You won't be able to see it again!
                     </p>
-                    <div class="bg-secondary-light text-white text-sm px-4 py-2 rounded-xs flex items-center justify-between">
-                        <pre class="break-all">{props.token()}</pre>
-
-                        <button
-                            class="p-2 rounded-xs flex items-center hover:bg-secondary-dark/80 transition"
-                            onClick={() => {
-                                navigator.clipboard.writeText(props.token());
-                                toast("API Token copied to clipboard", "success");
-                            }}
-                        >
-                            <FiCopy size={16} />
-                        </button>
-                    </div>
+                    <CopyableField
+                        value={props.token()}
+                        onCopy={() => toast("API Token copied to clipboard", "success")}
+                    />
                 </ModalContainer>
             )}
         />

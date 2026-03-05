@@ -31,4 +31,17 @@ const ButtonVariant = {
 
 export type ButtonVariantEnum = (typeof ButtonVariant)[keyof typeof ButtonVariant];
 
-export { ButtonVariant };
+/**
+ * CopyableField variants for different visual styles.
+ * @enum {typeof CopyableFieldVariant[keyof typeof CopyableFieldVariant]}
+ */
+const CopyableFieldVariant = {
+	/** Styled like a disabled Input (border, bg, rounded-xs). */
+	Input: "input",
+	/** Simple div with minimal styling for compact/inline contexts. */
+	Text: "text",
+} as const;
+
+export type CopyableFieldVariantEnum = (typeof CopyableFieldVariant)[keyof typeof CopyableFieldVariant];
+
+export { ButtonVariant, CopyableFieldVariant };

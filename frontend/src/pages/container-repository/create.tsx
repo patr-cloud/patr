@@ -5,6 +5,8 @@ import { CreateContainerRepositoryRequest, CreateContainerRepositoryResponse } f
 import {
 	Button,
 	ButtonVariant,
+	CopyableField,
+	CopyableFieldVariant,
 	Input,
 	InputLabel,
 	InputType,
@@ -105,14 +107,14 @@ const CreateContainerRepository = () => {
 							{repositoryName().trim() && (
 								<div class="flex items-start w-full gap-8">
 									<div class="flex-2"></div>
-									<div class="flex-10 flex items-start gap-2">
-										<FiInfo size={14} class="text-gray-400 shrink-0 mt-0.5" />
-										<p class="text-gray-400 text-xs">
-											Your container repository will be created as:{" "}
-											<span class="text-white">
-												registry.patr.cloud/{workspaceId()}/{repositoryName().trim() || ""}
-											</span>
-										</p>
+									<div class="flex-10 flex items-center gap-2">
+										<FiInfo size={14} class="text-gray-400 shrink-0" />
+										<span class="text-gray-400 text-xs">Your container repository will be created as:</span>
+										<CopyableField
+											variant={CopyableFieldVariant.Text}
+											value={`registry.patr.cloud/${workspaceId()}/${repositoryName().trim() || ""}`}
+											innerClass="text-white font-semibold"
+										/>
 									</div>
 								</div>
 							)}

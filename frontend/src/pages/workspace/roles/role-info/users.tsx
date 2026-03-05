@@ -80,7 +80,7 @@ const UsersAssignedToRole = () => {
 						renderRow={(item) => (
 							<tr class="table-row">
 								<td class="flex-2 flex items-center justify-center gap-2">
-									<Initials firstName={item.firstName} lastName={item.lastName} username={item.username} size="xs" />
+									<Initials firstName={item.firstName} lastName={item.lastName} size="xs" />
 									<span class="truncate font-mono">{item.username}</span>
 								</td>
 							</tr>

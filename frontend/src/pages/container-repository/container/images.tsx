@@ -3,7 +3,7 @@ import { createSignal, Show } from "solid-js";
 import { FiTrash2 } from "solid-icons/fi";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
-import { useToast, Table, Link, CopyButton } from "~/components";
+import { useToast, Table, Link, CopyableField, CopyableFieldVariant } from "~/components";
 import { formatRelativeTime, get, formatSize } from "~/utils/func";
 import { ListContainerRepositoryManifestsResponse, ContainerRepositoryManifestInfo } from "~/bindings";
 import { MaybeAccessor } from "~/utils/types";
@@ -93,8 +93,7 @@ const ImageRow = (props: { manifest: ContainerRepositoryManifestInfo; refetch?: 
 			<td class="flex-2 text-gray-400 text-sm">{formatSize(props.manifest.size)}</td>
 			<td class="flex-3 text-gray-400 text-sm">{formatRelativeTime(props.manifest.created)}</td>
 			<td class="flex-3 flex items-center gap-2 overflow-hidden">
-				<span class="truncate text-gray-300 font-mono text-sm max-w-37.5">{props.manifest.digest}</span>
-				<CopyButton text={props.manifest.digest} />
+				<CopyableField variant={CopyableFieldVariant.Text} value={props.manifest.digest} innerClass="font-mono truncate max-w-37.5" />
 			</td>
 			<td class="flex-2 flex items-center justify-center">
 				{deleteSelected() ? (

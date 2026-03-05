@@ -211,9 +211,7 @@ const Input = (rawProps: InputProps) => {
 		const suggestions = get(props.suggestions) ?? [];
 		const filter = inputText().toLowerCase();
 		if (!filter) return suggestions;
-		return suggestions.filter(
-			(s) => s.label.toLowerCase().includes(filter) || s.value.toLowerCase().includes(filter)
-		);
+		return suggestions.filter((s) => s.label.toLowerCase().includes(filter) || s.value.toLowerCase().includes(filter));
 	};
 
 	/** The text to display in the <input> element */
@@ -290,8 +288,8 @@ const Input = (rawProps: InputProps) => {
     transition-all duration-125
     focus-within:border-primary focus-within:shadow-md focus-within:bg-secondary-light
     ${variantBgClass(get(props.styleVariant))} ${get(props.class)} ${
-		get(props.disabled) ? "bg-secondary-primary cursor-not-allowed" : ""
-	} ${hasSuggestions() && showDropdown() ? "rounded-b-none" : ""}`;
+			get(props.disabled) ? "bg-secondary-primary cursor-not-allowed" : ""
+		} ${hasSuggestions() && showDropdown() ? "rounded-b-none" : ""}`;
 
 	const paddingClass = () => {
 		const hasStart = props.startIcon;
@@ -348,7 +346,12 @@ const Input = (rawProps: InputProps) => {
 				type={props.type}
 				maxLength={props.maxLength}
 			/>
-			<Show when={hasSuggestions()} fallback={<div class="pr-5 flex items-center justify-center">{props.endIcon && <div>{props.endIcon()}</div>}</div>}>
+			<Show
+				when={hasSuggestions()}
+				fallback={
+					<div class="pr-lg flex items-center justify-center">{props.endIcon && <div>{props.endIcon()}</div>}</div>
+				}
+			>
 				<FiChevronDown class="mr-sm shrink-0" />
 			</Show>
 
@@ -404,7 +407,11 @@ export const PasswordInput = (props: InputProps) => {
 			{...props}
 			type={showPassword() ? InputType.Text : InputType.Password}
 			endIcon={() => (
-				<button type="button" onClick={() => setShowPassword(!showPassword())} class="text-primary">
+				<button
+					type="button"
+					onClick={() => setShowPassword(!showPassword())}
+					class="text-primary flex items-center justify-center"
+				>
 					{showPassword() ? <FiEye /> : <FiEyeOff />}
 				</button>
 			)}

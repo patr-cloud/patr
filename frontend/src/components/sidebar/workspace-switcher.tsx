@@ -1,8 +1,8 @@
 import { A } from "@solidjs/router";
 import { FiSettings } from "solid-icons/fi";
-import { createEffect, createMemo, createResource, createSignal, For, Show, Suspense } from "solid-js";
+import { createMemo, createResource, createSignal, For, Show, Suspense } from "solid-js";
 import { ListUserWorkspacesResponse } from "~/bindings";
-import { Button, Link, useToast } from "~/components";
+import { Button, Initials, Link, useToast } from "~/components";
 import { useAuthState, useClickOutside } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
@@ -55,8 +55,9 @@ const WorkspaceSwitcher = () => {
 				class="flex justify-between items-center py-sm px-md cursor-pointer hover:bg-secondary-dark rounded-xs w-full br-sm bg-secondary-dark gap-xxs"
 				onClick={() => setShowSwitcher(!showSwitcher())}
 			>
-				<div class="flex flex-col items-start justify-start w-full">
+				<div class="flex flex-row items-center justify-start w-full">
 					<Suspense fallback={<div class="text-sm text-white">Loading...</div>}>
+						<Initials firstName={() => currentWorkspaceInfo()?.name ?? ".."} size="lg" class="mr-3 bg-secondary!" />
 						<p class="text-sm text-white text-ellipsis overflow-hidden">
 							{currentWorkspaceInfo() ? currentWorkspaceInfo()!.name : "Select A Workspace"}
 						</p>
@@ -70,7 +71,7 @@ const WorkspaceSwitcher = () => {
 
 			<Show when={showSwitcher()}>
 				<div
-					class="absolute bottom-12 left-0 min-w-72 max-h-160 
+					class="absolute bottom-18 left-0 min-w-72 max-h-160 
           shadow-high rounded-xs z-10 bg-secondary-light text-white
           border border-border-color flex flex-col items-start justify-start py-md px-sm pb-0"
 				>
@@ -81,7 +82,7 @@ const WorkspaceSwitcher = () => {
 							fallback={
 								<div
 									class="text-sm text-white text-center px-md py-sm
-                 					 bg-secondary-medium! hover:bg-secondary-dark! w-full
+                 					 bg-secondary-medium! hover:border-primary w-full
                  					 cursor-pointer rounded-xs rounded-b-none
 									border-b border-border-color"
 								>
@@ -98,10 +99,11 @@ const WorkspaceSwitcher = () => {
 												setShowSwitcher(false);
 												setWorkspaceId(workspace.id);
 											}}
-											class={`px-md py-sm bg-secondary-medium! hover:bg-secondary-dark! cursor-pointer rounded-xs w-full ${
+											class={`px-sm py-sm bg-secondary-medium! hover:border-primary! cursor-pointer overflow-hidden rounded-xs w-full ${
 												index() !== (listWorkspacesResource.latest?.workspaces.length || 0) ? "ul-light" : ""
-											} relative`}
+											} relative justify-start`}
 										>
+											<Initials firstName={workspace.name ?? ".."} size="sm" class="mr-3" />
 											<p class="text-sm text-white text-ellipsis overflow-hidden">{workspace.name}</p>
 										</Button>
 									)}
