@@ -17,6 +17,7 @@ wasm-opt = false
 crate-type = ["cdylib"]
 
 [dependencies]
-models = { workspace = true, features = [] }
-url    = { workspace = true, features = ["default"] }
-worker = { workspace = true, features = [] }
+getrandom = { workspace = true, features = ["wasm_js"] }
+models    = { workspace = true, features = [] }
+url       = { workspace = true, features = ["default"] }
+worker    = { workspace = true, features = [] }

@@ -340,7 +340,7 @@ pub async fn handle_request(req: Request, env: Env, ctx: Context, host: &str) ->
 						}),
 						polish: Some(PolishConfig::Off),
 						resolve_override: Some(format!(
-							"https://{}.{}",
+							"{}.{}",
 							runner_id,
 							constants::DEFAULT_PATR_DOMAIN
 						)),
