@@ -2,7 +2,10 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use api::routes::registry_patr_cloud::handlers::{blob::*, manifest::*};
 use headers::{ContentLength, ContentType};
-use models::rbac::{DeploymentPermission, Permission, ResourcePermissionType, WorkspacePermission};
+use models::{
+	api::workspace::container_registry::*,
+	rbac::{DeploymentPermission, Permission, ResourcePermissionType, WorkspacePermission},
+};
 
 use super::helpers::*;
 use crate::prelude::*;
@@ -41,9 +44,7 @@ async fn registry_push_without_permission() {
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&other_token.token).unwrap(),
 				content_length: ContentLength(data.len() as u64),
-				content_type: models::utils::OptionalHeader::new(Some(
-					ContentType::octet_stream(),
-				)),
+				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 			},
 			body: Body::from(data),
 		})
@@ -87,9 +88,7 @@ async fn push_to_nonexistent_repo() {
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
 				content_length: ContentLength(data.len() as u64),
-				content_type: models::utils::OptionalHeader::new(Some(
-					ContentType::octet_stream(),
-				)),
+				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 			},
 			body: Body::from(data),
 		})
@@ -146,20 +145,20 @@ async fn push_to_deleted_repo() {
 	// Delete the repo via API
 	setup
 		.make_api_call(
-			ApiRequest::<models::api::workspace::container_registry::DeleteContainerRepositoryRequest>::builder()
-				.path(models::api::workspace::container_registry::DeleteContainerRepositoryPath {
+			ApiRequest::<DeleteContainerRepositoryRequest>::builder()
+				.path(DeleteContainerRepositoryPath {
 					workspace_id: workspace.id,
 					repository_id: repo.id,
 				})
-				.headers(models::api::workspace::container_registry::DeleteContainerRepositoryRequestHeaders {
+				.headers(DeleteContainerRepositoryRequestHeaders {
 					authorization: user.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
 				.build(),
 		)
 		.await
-		.assert_json(&models::ApiSuccessResponseBody::new(
-			models::api::workspace::container_registry::DeleteContainerRepositoryResponse,
+		.assert_json(&ApiSuccessResponseBody::new(
+			DeleteContainerRepositoryResponse,
 		));
 
 	let data: Vec<u8> = (0..64u8).collect();
@@ -179,9 +178,7 @@ async fn push_to_deleted_repo() {
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
 				content_length: ContentLength(data.len() as u64),
-				content_type: models::utils::OptionalHeader::new(Some(
-					ContentType::octet_stream(),
-				)),
+				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 			},
 			body: Body::from(data),
 		})
@@ -233,9 +230,7 @@ async fn cross_workspace_push_denied() {
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&token_b.token).unwrap(),
 				content_length: ContentLength(data.len() as u64),
-				content_type: models::utils::OptionalHeader::new(Some(
-					ContentType::octet_stream(),
-				)),
+				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 			},
 			body: Body::from(data),
 		})
@@ -299,9 +294,7 @@ async fn initiate_upload_without_push_permission_returns_not_found() {
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&token_b.token).unwrap(),
 				content_length: ContentLength(data.len() as u64),
-				content_type: models::utils::OptionalHeader::new(Some(
-					ContentType::octet_stream(),
-				)),
+				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 			},
 			body: Body::from(data),
 		})

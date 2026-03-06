@@ -61,7 +61,7 @@ async fn push_and_pull_image() {
 			query: (),
 			headers: GetBlobRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				range: models::utils::OptionalHeader::new(None),
+				range: OptionalHeader::new(None),
 			},
 			body: Body::empty(),
 		})
@@ -81,7 +81,7 @@ async fn push_and_pull_image() {
 			query: (),
 			headers: GetBlobRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				range: models::utils::OptionalHeader::new(None),
+				range: OptionalHeader::new(None),
 			},
 			body: Body::empty(),
 		})

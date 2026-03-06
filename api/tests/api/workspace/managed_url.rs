@@ -14,7 +14,7 @@ async fn create_managed_url_works() {
 	let url_id = setup
 		.create_test_managed_url(&user.access_token, workspace.id, domain.id)
 		.await;
-	assert_ne!(url_id, models::utils::Uuid::nil());
+	assert_ne!(url_id, Uuid::nil());
 }
 
 #[tokio::test]

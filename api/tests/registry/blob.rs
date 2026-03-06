@@ -62,7 +62,7 @@ async fn blob_upload_wrong_content_type() {
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
 				content_length: ContentLength(data.len() as u64),
-				content_type: models::utils::OptionalHeader::new(Some(ContentType::json())),
+				content_type: OptionalHeader::new(Some(ContentType::json())),
 			},
 			body: Body::from(data),
 		})
@@ -107,7 +107,7 @@ async fn get_blob_after_upload() {
 			query: (),
 			headers: GetBlobRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				range: models::utils::OptionalHeader::new(None),
+				range: OptionalHeader::new(None),
 			},
 			body: Body::empty(),
 		})
@@ -149,7 +149,7 @@ async fn head_blob_after_upload() {
 			query: (),
 			headers: HeadBlobRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				range: models::utils::OptionalHeader::new(None),
+				range: OptionalHeader::new(None),
 			},
 			body: Body::empty(),
 		})
@@ -174,8 +174,7 @@ async fn get_blob_nonexistent() {
 		)
 		.await;
 
-	let fake_digest =
-		"sha256:0000000000000000000000000000000000000000000000000000000000000000";
+	let fake_digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
 
 	let response = setup
 		.make_registry_call(RegistryUnprocessedApiRequest::<GetBlobPath> {
@@ -187,7 +186,7 @@ async fn get_blob_nonexistent() {
 			query: (),
 			headers: GetBlobRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				range: models::utils::OptionalHeader::new(None),
+				range: OptionalHeader::new(None),
 			},
 			body: Body::empty(),
 		})
@@ -225,7 +224,7 @@ async fn chunked_upload_initiate_works() {
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
 				content_length: ContentLength(0),
-				content_type: models::utils::OptionalHeader::new(None),
+				content_type: OptionalHeader::new(None),
 			},
 			body: Body::empty(),
 		})
@@ -278,13 +277,9 @@ async fn chunked_upload_complete_works() {
 			},
 			headers: CompleteBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				content_type: models::utils::OptionalHeader::new(Some(
-					ContentType::octet_stream(),
-				)),
-				content_length: models::utils::OptionalHeader::new(Some(ContentLength(
-					data.len() as u64,
-				))),
-				content_range: models::utils::OptionalHeader::new(None),
+				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
+				content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
+				content_range: OptionalHeader::new(None),
 			},
 			body: Body::from(data),
 		})
@@ -323,7 +318,13 @@ async fn chunked_upload_with_patch_under_threshold() {
 	let digest = sha256_digest(&data);
 
 	let patch_response = setup
-		.patch_blob_chunk(&api_token.token, &workspace.id, &repo.name, session_id, &data)
+		.patch_blob_chunk(
+			&api_token.token,
+			&workspace.id,
+			&repo.name,
+			session_id,
+			&data,
+		)
 		.await;
 	assert_eq!(
 		patch_response.status_code(),
@@ -345,9 +346,9 @@ async fn chunked_upload_with_patch_under_threshold() {
 			},
 			headers: CompleteBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				content_type: models::utils::OptionalHeader::new(None),
-				content_length: models::utils::OptionalHeader::new(None),
-				content_range: models::utils::OptionalHeader::new(None),
+				content_type: OptionalHeader::new(None),
+				content_length: OptionalHeader::new(None),
+				content_range: OptionalHeader::new(None),
 			},
 			body: Body::empty(),
 		})
@@ -371,7 +372,7 @@ async fn chunked_upload_with_patch_under_threshold() {
 			query: (),
 			headers: GetBlobRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				range: models::utils::OptionalHeader::new(None),
+				range: OptionalHeader::new(None),
 			},
 			body: Body::empty(),
 		})
@@ -407,7 +408,13 @@ async fn chunked_upload_with_patch_over_threshold() {
 	let digest = sha256_digest(&data);
 
 	let patch_response = setup
-		.patch_blob_chunk(&api_token.token, &workspace.id, &repo.name, session_id, &data)
+		.patch_blob_chunk(
+			&api_token.token,
+			&workspace.id,
+			&repo.name,
+			session_id,
+			&data,
+		)
 		.await;
 	assert_eq!(
 		patch_response.status_code(),
@@ -429,9 +436,9 @@ async fn chunked_upload_with_patch_over_threshold() {
 			},
 			headers: CompleteBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				content_type: models::utils::OptionalHeader::new(None),
-				content_length: models::utils::OptionalHeader::new(None),
-				content_range: models::utils::OptionalHeader::new(None),
+				content_type: OptionalHeader::new(None),
+				content_length: OptionalHeader::new(None),
+				content_range: OptionalHeader::new(None),
 			},
 			body: Body::empty(),
 		})
@@ -455,7 +462,7 @@ async fn chunked_upload_with_patch_over_threshold() {
 			query: (),
 			headers: GetBlobRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				range: models::utils::OptionalHeader::new(None),
+				range: OptionalHeader::new(None),
 			},
 			body: Body::empty(),
 		})
@@ -502,7 +509,13 @@ async fn chunked_upload_multiple_patches() {
 
 	// 2. PATCH with 5MB data (flushes to S3 as part 1)
 	let patch1 = setup
-		.patch_blob_chunk(&api_token.token, &workspace.id, &repo.name, session_id, &part1)
+		.patch_blob_chunk(
+			&api_token.token,
+			&workspace.id,
+			&repo.name,
+			session_id,
+			&part1,
+		)
 		.await;
 	assert_eq!(
 		patch1.status_code(),
@@ -513,7 +526,13 @@ async fn chunked_upload_multiple_patches() {
 
 	// 3. PATCH with 2MB data (goes to Redis pending buffer)
 	let patch2 = setup
-		.patch_blob_chunk(&api_token.token, &workspace.id, &repo.name, session_id, &part2)
+		.patch_blob_chunk(
+			&api_token.token,
+			&workspace.id,
+			&repo.name,
+			session_id,
+			&part2,
+		)
 		.await;
 	assert_eq!(
 		patch2.status_code(),
@@ -535,9 +554,9 @@ async fn chunked_upload_multiple_patches() {
 			},
 			headers: CompleteBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				content_type: models::utils::OptionalHeader::new(None),
-				content_length: models::utils::OptionalHeader::new(None),
-				content_range: models::utils::OptionalHeader::new(None),
+				content_type: OptionalHeader::new(None),
+				content_length: OptionalHeader::new(None),
+				content_range: OptionalHeader::new(None),
 			},
 			body: Body::empty(),
 		})
@@ -561,7 +580,7 @@ async fn chunked_upload_multiple_patches() {
 			query: (),
 			headers: GetBlobRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				range: models::utils::OptionalHeader::new(None),
+				range: OptionalHeader::new(None),
 			},
 			body: Body::empty(),
 		})
@@ -593,11 +612,7 @@ async fn chunked_upload_patch_then_body_in_put() {
 
 	// 2. PATCH with 1KB data (buffered in Redis)
 	let patch_data: Vec<u8> = (0..=255u8).cycle().take(1024).collect();
-	let put_data: Vec<u8> = (128..=255u8)
-		.chain(0..=127u8)
-		.cycle()
-		.take(1024)
-		.collect();
+	let put_data: Vec<u8> = (128..=255u8).chain(0..=127u8).cycle().take(1024).collect();
 
 	let mut combined = Vec::with_capacity(2048);
 	combined.extend_from_slice(&patch_data);
@@ -633,13 +648,9 @@ async fn chunked_upload_patch_then_body_in_put() {
 			},
 			headers: CompleteBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				content_type: models::utils::OptionalHeader::new(Some(
-					ContentType::octet_stream(),
-				)),
-				content_length: models::utils::OptionalHeader::new(Some(ContentLength(
-					put_data.len() as u64,
-				))),
-				content_range: models::utils::OptionalHeader::new(None),
+				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
+				content_length: OptionalHeader::new(Some(ContentLength(put_data.len() as u64))),
+				content_range: OptionalHeader::new(None),
 			},
 			body: Body::from(put_data),
 		})
@@ -663,7 +674,7 @@ async fn chunked_upload_patch_then_body_in_put() {
 			query: (),
 			headers: GetBlobRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				range: models::utils::OptionalHeader::new(None),
+				range: OptionalHeader::new(None),
 			},
 			body: Body::empty(),
 		})

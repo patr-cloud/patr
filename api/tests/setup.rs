@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, net::SocketAddr};
+use std::{collections::BTreeMap, net::SocketAddr, sync::Once};
 
 use api::{
 	app::AppState,
@@ -42,6 +42,8 @@ use testcontainers_modules::{
 	testcontainers::{ContainerAsync, ImageExt, runners::AsyncRunner as _},
 };
 use tokio::net::TcpListener;
+
+static TRACING: Once = Once::new();
 
 #[allow(dead_code)]
 pub struct TestSetup {
@@ -174,7 +176,7 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 		.with_user("user")
 		.with_password("password")
 		.with_name("postgis/postgis")
-		.with_tag("13-master")
+		.with_tag("18-3.6")
 		.start()
 		.await?;
 
@@ -238,8 +240,6 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 		},
 	};
 
-	use std::sync::Once;
-	static TRACING: Once = Once::new();
 	TRACING.call_once(|| {
 		use tracing_subscriber::{
 			filter::LevelFilter,

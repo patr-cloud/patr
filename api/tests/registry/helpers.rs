@@ -1,7 +1,6 @@
 use api::routes::registry_patr_cloud::handlers::{blob::*, manifest::*};
 use axum::body::Body;
 use headers::{ContentLength, ContentType, HeaderMapExt as _};
-use models::utils::{BearerToken, OptionalHeader};
 use oci_spec::image::{
 	Arch,
 	ConfigBuilder,
@@ -105,9 +104,9 @@ impl TestSetup {
 	pub async fn initiate_chunked_upload(
 		&self,
 		api_token: &str,
-		workspace_id: &models::utils::Uuid,
+		workspace_id: &Uuid,
 		repo_name: &str,
-	) -> (models::utils::Uuid, String) {
+	) -> (Uuid, String) {
 		let response = self
 			.make_registry_call(RegistryUnprocessedApiRequest::<InitiateBlobUploadPath> {
 				path: InitiateBlobUploadPath {
@@ -149,8 +148,8 @@ impl TestSetup {
 			.unwrap()
 			.to_string();
 
-		let session_id = models::utils::Uuid::parse_str(&uuid_str)
-			.expect("Docker-Upload-UUID is not a valid UUID");
+		let session_id =
+			Uuid::parse_str(&uuid_str).expect("Docker-Upload-UUID is not a valid UUID");
 
 		(session_id, location)
 	}
@@ -159,9 +158,9 @@ impl TestSetup {
 	pub async fn patch_blob_chunk(
 		&self,
 		api_token: &str,
-		workspace_id: &models::utils::Uuid,
+		workspace_id: &Uuid,
 		repo_name: &str,
-		session_id: models::utils::Uuid,
+		session_id: Uuid,
 		data: &[u8],
 	) -> axum_test::TestResponse {
 		use api::routes::registry_patr_cloud::handlers::blob::UploadBlobChunkPath;
@@ -173,12 +172,13 @@ impl TestSetup {
 				session_id,
 			},
 			query: (),
-			headers: api::routes::registry_patr_cloud::handlers::blob::UploadBlobChunkRequestHeaders {
-				authorization: BearerToken::from_str(api_token).unwrap(),
-				content_type: ContentType::octet_stream(),
-				content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
-				content_range: OptionalHeader::new(None),
-			},
+			headers:
+				api::routes::registry_patr_cloud::handlers::blob::UploadBlobChunkRequestHeaders {
+					authorization: BearerToken::from_str(api_token).unwrap(),
+					content_type: ContentType::octet_stream(),
+					content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
+					content_range: OptionalHeader::new(None),
+				},
 			body: Body::from(data.to_vec()),
 		})
 		.await
@@ -188,7 +188,7 @@ impl TestSetup {
 	pub async fn push_blob(
 		&self,
 		api_token: &str,
-		workspace_id: &models::utils::Uuid,
+		workspace_id: &Uuid,
 		repo_name: &str,
 		digest: &str,
 		data: &[u8],
@@ -225,7 +225,7 @@ impl TestSetup {
 	pub async fn push_manifest(
 		&self,
 		api_token: &str,
-		workspace_id: &models::utils::Uuid,
+		workspace_id: &Uuid,
 		repo_name: &str,
 		reference: &str,
 		manifest_bytes: &[u8],
@@ -251,7 +251,7 @@ impl TestSetup {
 	pub async fn push_test_image(
 		&self,
 		api_token: &str,
-		workspace_id: &models::utils::Uuid,
+		workspace_id: &Uuid,
 		repo_name: &str,
 		tag: &str,
 	) -> TestOciImage {
