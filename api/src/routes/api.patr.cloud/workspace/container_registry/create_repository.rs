@@ -50,11 +50,7 @@ pub async fn create_repository(
 		workspace_id as _,
 	)
 	.fetch_one(&mut **database)
-	.await
-	.map_err(|e| match e {
-		sqlx::Error::Database(dbe) if dbe.is_unique_violation() => ErrorType::ResourceAlreadyExists,
-		other => other.into(),
-	})?
+	.await?
 	.id;
 
 	// Create new repository in database
@@ -75,7 +71,11 @@ pub async fn create_repository(
 		name as _
 	)
 	.execute(&mut **database)
-	.await?;
+	.await
+	.map_err(|e| match e {
+		sqlx::Error::Database(dbe) if dbe.is_unique_violation() => ErrorType::ResourceAlreadyExists,
+		other => other.into(),
+	})?;
 
 	AppResponse::builder()
 		.body(CreateContainerRepositoryResponse {

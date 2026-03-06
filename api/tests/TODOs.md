@@ -431,3 +431,12 @@ Comprehensive list of missing test cases. Organized by module.
 | Permissions        | 52             | 16            | Low          |
 | Infrastructure     | 0              | 10            | Medium       |
 | **Total**          | **~182**       | **~235**      |              |
+
+---
+
+## Registry Garbage Collection (pending GC implementation)
+
+- [ ] `gc_cleans_orphan_blobs` — delete all manifests referencing a blob, run GC → blob removed from DB and S3
+- [ ] `gc_preserves_shared_blobs` — two manifests share a layer blob, delete one → blob still exists
+- [ ] `gc_cleans_orphan_manifests` — unlink manifest from repo, run GC → manifest row and S3 object removed
+- [ ] `gc_cleans_orphan_config_blobs` — delete manifest → config blob orphaned → GC cleans it

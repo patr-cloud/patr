@@ -71,7 +71,7 @@ opentelemetry                  = { default-features = false, version = "0.31" }
 opentelemetry-appender-tracing = { default-features = false, version = "0.31" }
 opentelemetry-otlp             = { default-features = false, version = "0.31" }
 opentelemetry_sdk              = { default-features = false, version = "0.31" }
-pin-project-lite               = { default-features = false, version = "0.2" }
+pin-project                    = { default-features = false, version = "1" }
 preprocess                     = { default-features = false, version = "0.5" }
 proc-macro2                    = { default-features = false, version = "1" }
 psl                            = { default-features = false, version = "2" }

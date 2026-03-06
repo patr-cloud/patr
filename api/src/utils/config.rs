@@ -113,6 +113,11 @@ pub struct S3Config {
 	pub key: String,
 	/// The secret key to use to connect to the S3 server
 	pub secret: String,
+	/// Whether to use path-style addressing for S3 requests.
+	/// Required for MinIO and other S3-compatible stores that don't support
+	/// virtual-hosted-style addressing.
+	#[serde(default)]
+	pub force_path_style: bool,
 }
 
 /// The configuration for the database to connect to. This will be the primary

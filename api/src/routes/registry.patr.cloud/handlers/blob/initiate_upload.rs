@@ -201,7 +201,8 @@ pub async fn initiate_upload(
 					size
 				)
 			VALUES
-				($1, $2);
+				($1, $2)
+			ON CONFLICT (digest) DO NOTHING;
 			"#,
 			&digest,
 			content_length.0 as i64

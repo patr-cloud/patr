@@ -11,5 +11,5 @@ TS_RS_EXPORT_DIR = { value = "frontend/src/bindings", relative = true }
 [build]
 rustflags = ["--cfg", "tokio_unstable"]
 
-[target.'cfg(target_arch = "wasm32")'.build]
+[build.'cfg(target_arch = "wasm32")']
 rustflags = ["-cfg", "getrandom_backend=wasm_js"]

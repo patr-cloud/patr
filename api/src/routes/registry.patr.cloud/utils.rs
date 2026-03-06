@@ -74,25 +74,25 @@ pub struct S3UploadSession {
 	pub hasher_state: String,
 }
 
-pin_project_lite::pin_project! {
-	// A stream adapter that buffers incoming byte chunks until a specified
-	// threshold is reached, at which point it yields the buffered data as a single
-	// chunk. This is useful for optimizing S3 multipart uploads by ensuring that
-	// each part is of a reasonable size.
-	pub struct ReadBufferedBytes<S>
-	where
-		S: Stream<Item = Result<Bytes, RegistryError>>,
-	{
-		// The underlying stream of byte chunks.
-		#[pin]
-		stream: S,
-		// A buffer to accumulate incoming bytes until the threshold is reached.
-		buffer: Vec<u8>,
-		// The threshold in bytes at which the buffer should be flushed and
-		// yielded. Once the buffer reaches this size, it will be returned as a
-		// chunk and the buffer will be cleared for the next set of incoming bytes.
-		threshold: u64,
-	}
+/// A stream adapter that buffers incoming byte chunks until a specified
+/// threshold is reached, at which point it yields the buffered data as a single
+/// chunk. This is useful for optimizing S3 multipart uploads by ensuring that
+/// each part is of a reasonable size.
+#[pin_project::pin_project]
+#[allow(missing_docs)]
+pub struct ReadBufferedBytes<S>
+where
+	S: Stream<Item = Result<Bytes, RegistryError>>,
+{
+	// The underlying stream of byte chunks.
+	#[pin]
+	stream: S,
+	// A buffer to accumulate incoming bytes until the threshold is reached.
+	buffer: Vec<u8>,
+	// The threshold in bytes at which the buffer should be flushed and
+	// yielded. Once the buffer reaches this size, it will be returned as a
+	// chunk and the buffer will be cleared for the next set of incoming bytes.
+	threshold: u64,
 }
 
 impl<S> ReadBufferedBytes<S>
