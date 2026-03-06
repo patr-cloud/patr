@@ -42,11 +42,21 @@ pub fn sha256_digest(data: &[u8]) -> String {
 
 /// Build a minimal valid OCI image (config + layer + manifest).
 pub fn build_minimal_oci_image() -> TestOciImage {
-	// Layer: small random bytes
-	let layer_bytes: Vec<u8> = (0..64u8).collect();
+	build_minimal_oci_image_with_seed(0)
+}
+
+/// Build a minimal valid OCI image with a seed byte to produce distinct
+/// images. Different seeds produce different layer bytes and therefore
+/// different manifest digests.
+pub fn build_minimal_oci_image_with_seed(seed: u8) -> TestOciImage {
+	// Layer: small bytes offset by seed so different seeds yield different
+	// content and different digests.
+	let layer_bytes: Vec<u8> = (0..64u8).map(|b| b.wrapping_add(seed)).collect();
 	let layer_digest = sha256_digest(&layer_bytes);
 
-	// Config: valid OCI image configuration
+	// Config: valid OCI image configuration.
+	// `diff_ids` holds the digest of the uncompressed layer, which for
+	// uncompressed layers equals the layer descriptor digest.
 	let config = ImageConfigurationBuilder::default()
 		.architecture(Arch::Amd64)
 		.os(Os::Linux)
@@ -63,7 +73,9 @@ pub fn build_minimal_oci_image() -> TestOciImage {
 	let config_bytes = serde_json::to_vec(&config).unwrap();
 	let config_digest = sha256_digest(&config_bytes);
 
-	// Manifest: OCI image manifest v1
+	// Manifest: OCI image manifest v1.
+	// Use `ImageLayer` (uncompressed) because the layer bytes are raw data,
+	// not a gzip-compressed tar stream.
 	let manifest = ImageManifestBuilder::default()
 		.schema_version(2u32)
 		.media_type(MediaType::ImageManifest)
@@ -77,7 +89,7 @@ pub fn build_minimal_oci_image() -> TestOciImage {
 		)
 		.layers(vec![
 			DescriptorBuilder::default()
-				.media_type(MediaType::ImageLayerGzip)
+				.media_type(MediaType::ImageLayer)
 				.digest(layer_digest.parse::<Digest>().unwrap())
 				.size(layer_bytes.len() as u64)
 				.build()
@@ -246,16 +258,19 @@ impl TestSetup {
 		.await
 	}
 
-	/// Build, push, and return a complete test image. Pushes config blob, layer
-	/// blob, then manifest with the given tag.
-	pub async fn push_test_image(
+	/// Build, push, and return a complete test image using the given seed to
+	/// produce a distinct image. Pushes config blob, layer blob, then manifest
+	/// with the given tag. Different seeds produce images with different
+	/// manifest digests.
+	pub async fn push_test_image_seeded(
 		&self,
 		api_token: &str,
 		workspace_id: &Uuid,
 		repo_name: &str,
 		tag: &str,
+		seed: u8,
 	) -> TestOciImage {
-		let image = build_minimal_oci_image();
+		let image = build_minimal_oci_image_with_seed(seed);
 
 		// Push config blob
 		self.push_blob(
@@ -296,5 +311,18 @@ impl TestSetup {
 		);
 
 		image
+	}
+
+	/// Build, push, and return a complete test image. Pushes config blob, layer
+	/// blob, then manifest with the given tag.
+	pub async fn push_test_image(
+		&self,
+		api_token: &str,
+		workspace_id: &Uuid,
+		repo_name: &str,
+		tag: &str,
+	) -> TestOciImage {
+		self.push_test_image_seeded(api_token, workspace_id, repo_name, tag, 0)
+			.await
 	}
 }

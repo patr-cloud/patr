@@ -210,18 +210,24 @@ async fn push_tag_updates_existing() {
 
 	// Push first image with tag "v1"
 	let image1 = setup
-		.push_test_image(&api_token.token, &workspace.id, &repo.name, "v1")
+		.push_test_image_seeded(&api_token.token, &workspace.id, &repo.name, "v1", 0)
 		.await;
 
-	// Push second (different) image with same tag "v1"
+	// Push second image with the same tag "v1" but different content so it
+	// produces a distinct manifest digest, exercising the tag-overwrite path.
 	let image2 = setup
-		.push_test_image(&api_token.token, &workspace.id, &repo.name, "v1")
+		.push_test_image_seeded(&api_token.token, &workspace.id, &repo.name, "v1", 1)
 		.await;
 
-	// The images should have different digests (different random layer won't
-	// help since we use deterministic data, but manifests differ because
-	// build_minimal_oci_image always creates the same image). Let's verify
-	// the tag points to the latest push.
+	// Different seeds must produce different manifest digests.
+	assert_ne!(
+		image1.manifest_digest,
+		image2.manifest_digest,
+		"seeded images should produce distinct manifest digests"
+	);
+
+	// Check via API that there is exactly one "v1" tag and it points to the
+	// second (most recent) push.
 	let response = setup
 		.make_api_call(
 			ApiRequest::<ListContainerRepositoryTagsRequest>::builder()
@@ -246,10 +252,11 @@ async fn push_tag_updates_existing() {
 		.collect();
 
 	assert_eq!(v1_tags.len(), 1, "expected exactly one 'v1' tag");
-	// Since both images are identical (deterministic build), digests match
-	assert_eq!(v1_tags[0].digest, image2.manifest_digest);
-	// For identical images, these are the same
-	assert_eq!(image1.manifest_digest, image2.manifest_digest);
+	assert_eq!(
+		v1_tags[0].digest,
+		image2.manifest_digest,
+		"tag 'v1' should point to the digest from the second (overwriting) push"
+	);
 }
 
 #[tokio::test]
