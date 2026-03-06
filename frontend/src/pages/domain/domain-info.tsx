@@ -10,6 +10,7 @@ import {
 import {
 	Button,
 	ButtonVariant,
+	CopyButton,
 	DeleteModal,
 	Input,
 	InputDropdown,
@@ -19,10 +20,9 @@ import {
 	Table,
 	useToast,
 } from "~/components";
-import { useAuthState } from "~/hooks";
+import { createAuthenticatedAction, createFormAction, useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
-import { EventT } from "~/utils/types";
 import DeploymentOption from "./deployment-option";
 import ManageUrlRow from "./managed-url-component";
 
@@ -35,7 +35,6 @@ const DomainInfo = () => {
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const navigate = useNavigate();
-	const [isVerifying, setIsVerifying] = createSignal(false);
 
 	const [subDomain, setSubDomain] = createSignal("");
 	const [path, setPath] = createSignal("");
@@ -106,73 +105,63 @@ const DomainInfo = () => {
 		}
 	);
 
-	const onSubmitCreateManagedUrl = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
-		e.preventDefault();
-		// Create managed URL logic goes here
+	const { onSubmit: onSubmitCreateManagedUrl, isLoading: isCreatingManagedUrl } = createFormAction(
+		async ({ workspaceId }) => {
+			const domainId = params.id;
 
-		const auth = authState();
-		const wsId = workspaceId();
-		const domainId = params.id;
-
-		if (!domainId || !wsId || !auth || auth.type !== "LoggedIn") {
-			toast("Domain ID is missing", "error");
-			return;
-		}
-
-		const urlTypeVal = urlType();
-		const targetVal = target();
-		if (!urlTypeVal || !subDomain() || !targetVal) {
-			toast("Please fill in all required fields", "error");
-			return;
-		}
-
-		const requestBody: CreateManagedURLRequest = {
-			domainId,
-			subDomain: subDomain(),
-			path: path(),
-			type: "proxyDeployment",
-			deploymentId: targetVal,
-			port: deploymentPort() || 80,
-		};
-		const response = await httpRequest<CreateManagedURLResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/infrastructure/managed-url`,
-			{
-				method: "POST",
-				body: JSON.stringify(requestBody),
-				headers: {
-					"Content-Type": "application/json",
-				},
+			if (!domainId) {
+				toast("Domain ID is missing", "error");
+				return;
 			}
-		);
 
-		if (!response.ok) {
-			console.error("Failed to create managed URL:", response.data.error);
-			toast("Failed to create managed URL", "error");
-			return;
+			const urlTypeVal = urlType();
+			const targetVal = target();
+			if (!urlTypeVal || !subDomain() || !targetVal) {
+				toast("Please fill in all required fields", "error");
+				return;
+			}
+
+			const requestBody: CreateManagedURLRequest = {
+				domainId,
+				subDomain: subDomain(),
+				path: path(),
+				type: "proxyDeployment",
+				deploymentId: targetVal,
+				port: deploymentPort() || 80,
+			};
+
+			const response = await httpRequest<CreateManagedURLResponse>(
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/infrastructure/managed-url`,
+				{
+					method: "POST",
+					body: JSON.stringify(requestBody),
+				}
+			);
+
+			if (!response.ok) {
+				console.error("Failed to create managed URL:", response.data.error);
+				toast("Failed to create managed URL", "error");
+				return;
+			}
+
+			toast("Managed URL created successfully", "success");
+
+			refetchManagedUrls();
 		}
+	);
 
-		toast("Managed URL created successfully", "success");
-
-		refetchManagedUrls();
-	};
-
-	const onVerifyClick = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
-		const auth = authState();
-		const wsId = workspaceId();
+	const { execute: onVerifyClick, isLoading: verifyLoading } = createAuthenticatedAction(async ({ workspaceId }) => {
 		const domainId = params.id;
 
-		if (!wsId || !auth || auth.type !== "LoggedIn" || !domainId) {
+		if (!domainId) {
 			toast("Unable to verify domain", "error");
 			return;
 		}
 
 		const verifyResp = await httpRequest<GetDomainInfoInWorkspaceResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain/${domainId}/verify`,
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/domain/${domainId}/verify`,
 			{
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
 			}
 		);
 
@@ -184,48 +173,38 @@ const DomainInfo = () => {
 
 		toast("Domain verification initiated", "success");
 		refetchDomainInfo();
+	});
 
-		setIsVerifying(true);
-	};
+	const { execute: onClickDelete, isLoading: deleteLoading } = createAuthenticatedAction(
+		async ({ accessToken, workspaceId }) => {
+			const domainId = params.id;
 
-	const onClickDelete = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
-		e.preventDefault();
-
-		// Delete domain logic goes here
-		const auth = authState();
-		const wsId = workspaceId();
-		const domainId = params.id;
-
-		if (!wsId || !auth || auth.type !== "LoggedIn" || !domainId) {
-			toast("Unable to delete domain", "error");
-			return;
-		}
-
-		const deleteDomainResp = await httpRequest<DeleteDomainInWorkspaceResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain/${domainId}`,
-			{
-				method: "DELETE",
-				headers: {
-					"Content-Type": "application/json",
-				},
-			}
-		);
-
-		if (!deleteDomainResp.ok) {
-			console.error("Failed to delete domain:", deleteDomainResp.data.error);
-			if (deleteDomainResp.data.error === "resourceInUse") {
-				toast("Cannot delete domain: Domain is in use by managed URL(s)", "error");
-				navigate("/domains");
+			if (!workspaceId || !accessToken || !domainId) {
+				toast("Unable to delete domain", "error");
 				return;
 			}
-			toast("Failed to delete domain", "error");
-			navigate("/domains");
-			return;
-		}
 
-		toast("Domain deleted successfully", "success");
-		navigate("/domains");
-	};
+			const deleteDomainResp = await httpRequest<DeleteDomainInWorkspaceResponse>(
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/domain/${domainId}`,
+				{
+					method: "DELETE",
+				}
+			);
+
+			if (!deleteDomainResp.ok) {
+				console.error("Failed to delete domain:", deleteDomainResp.data.error);
+				if (deleteDomainResp.data.error === "resourceInUse") {
+					toast("Cannot delete domain: Domain is in use by managed URL(s)", "error");
+					return;
+				}
+				toast("Failed to delete domain", "error");
+				return;
+			}
+
+			toast("Domain deleted successfully", "success");
+			navigate("/domains");
+		}
+	);
 
 	const urlInput = () => {
 		const urlTypeVal = urlType();
@@ -269,18 +248,26 @@ const DomainInfo = () => {
 						actions={() => (
 							<div class="flex items-center justify-center gap-2">
 								<DeleteModal
+									isLoading={deleteLoading()}
 									title="Delete Domain"
-									onClickDelete={onClickDelete}
+									onClickDelete={(e) => {
+										e.preventDefault();
+										onClickDelete();
+									}}
 									resourceName={domainInfo.latest?.name || ""}
 								/>
 								{!domainInfo.latest?.isVerified ? (
 									<Button
 										type="button"
-										onClick={onVerifyClick}
+										onClick={(e) => {
+											e.preventDefault();
+											onVerifyClick();
+										}}
 										variant={ButtonVariant.Contained}
-										disabled={isVerifying()}
+										loading={verifyLoading()}
+										loadingContent={() => <>Verifying...</>}
 									>
-										{isVerifying() ? "Verifying..." : "Verify"}
+										Verify
 									</Button>
 								) : undefined}
 							</div>
@@ -328,8 +315,52 @@ const DomainInfo = () => {
 								</div>
 
 								<div class="w-full flex justify-end mt-4">
-									<Button variant={ButtonVariant.Contained}>Create</Button>
+									<Button
+										loading={isCreatingManagedUrl}
+										loadingContent={() => <>Creating...</>}
+										variant={ButtonVariant.Contained}
+									>
+										Create
+									</Button>
 								</div>
+							</div>
+
+							<div class="mt-4 bg-secondary-dark p-4 rounded border border-white/5">
+								<h4 class="text-white text-sm font-semibold mb-2">Managed URL Instructions</h4>
+
+								<p class="text-gray-400 text-sm space-y-1">
+									To configure this Managed URL, please update your DNS settings to point to our servers. If you have
+									already updated your DNS settings, please allow some time for the changes to propagate.
+								</p>
+
+								<Table
+									column_grids={["flex-2", "flex-4", "flex-4"]}
+									headings={["Type", "Name", "Value"]}
+									class="mt-2"
+									rows={[
+										{
+											type: "CNAME",
+											name: `${subDomain() || "(subdomain)"}.${domainInfo.latest?.name || "your-domain.com"}`,
+											target: "ingress.patr.cloud",
+										},
+									]}
+									renderRow={(record) => (
+										<tr class="table-row text-sm">
+											<td class="flex-2 pl-3 flex items-center justify-center">
+												<span class="truncate">{record.type}</span>
+												<CopyButton text={record.type} />
+											</td>
+											<td class="flex-4 flex items-center justify-center min-w-0">
+												<span class="truncate max-w-full">{record.name}</span>
+												<CopyButton text={record.name} />
+											</td>
+											<td class="flex-4 pl-20 flex items-center justify-center min-w-0">
+												<span class="truncate max-w-full">{record.target}</span>
+												<CopyButton text={record.target} />
+											</td>
+										</tr>
+									)}
+								/>
 							</div>
 						</form>
 
@@ -344,13 +375,6 @@ const DomainInfo = () => {
 									)
 								}
 							/>
-							{/* {domainInfo.latest && managedUrls.latest?.urls.at(0) && (
-                <ManagedUrlComponent
-                  domainInfo={domainInfo.latest}
-                  managedUrl={managedUrls.latest?.urls[0]!}
-                  onUpdate={refetchManagedUrls}
-                />
-              )} */}
 						</div>
 					</PageContainerBody>
 				</Suspense>
