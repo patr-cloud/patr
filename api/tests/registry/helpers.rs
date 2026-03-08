@@ -1,5 +1,8 @@
+use std::io::Write as _;
+
 use api::routes::registry_patr_cloud::handlers::{blob::*, manifest::*};
 use axum::body::Body;
+use flate2::{Compression, write::GzEncoder};
 use headers::{ContentLength, ContentType, HeaderMapExt as _};
 use oci_spec::image::{
 	Arch,
@@ -41,9 +44,32 @@ pub fn sha256_digest(data: &[u8]) -> String {
 }
 
 /// Build a minimal valid OCI image (config + layer + manifest).
-pub fn build_minimal_oci_image() -> TestOciImage {
-	// Layer: small random bytes
-	let layer_bytes: Vec<u8> = (0..64u8).collect();
+///
+/// The `seed` parameter varies the layer content so that different seeds
+/// produce images with different digests throughout.
+pub fn build_minimal_oci_image(seed: u8) -> TestOciImage {
+	// Build an uncompressed tar archive with a single file whose content
+	// depends on `seed`.
+	let file_content: Vec<u8> = vec![seed; 64];
+	let mut tar_bytes = Vec::new();
+	{
+		let mut tar = tar::Builder::new(&mut tar_bytes);
+		let mut header = tar::Header::new_gnu();
+		header.set_size(file_content.len() as u64);
+		header.set_mode(0o644);
+		header.set_cksum();
+		tar.append_data(&mut header, "data", &file_content[..])
+			.unwrap();
+		tar.finish().unwrap();
+	}
+
+	// diff_id is the digest of the *uncompressed* layer (per OCI spec)
+	let diff_id = sha256_digest(&tar_bytes);
+
+	// Gzip the tar to produce the actual layer blob
+	let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+	encoder.write_all(&tar_bytes).unwrap();
+	let layer_bytes = encoder.finish().unwrap();
 	let layer_digest = sha256_digest(&layer_bytes);
 
 	// Config: valid OCI image configuration
@@ -53,7 +79,7 @@ pub fn build_minimal_oci_image() -> TestOciImage {
 		.rootfs(
 			RootFsBuilder::default()
 				.typ("layers")
-				.diff_ids(vec![layer_digest.clone()])
+				.diff_ids(vec![diff_id])
 				.build()
 				.unwrap(),
 		)
@@ -129,7 +155,7 @@ impl TestSetup {
 
 		assert_eq!(
 			response.status_code(),
-			http::StatusCode::ACCEPTED,
+			StatusCode::ACCEPTED,
 			"chunked upload initiation failed: {}",
 			std::str::from_utf8(&response.as_bytes()).unwrap_or("<non-utf8>")
 		);
@@ -215,7 +241,7 @@ impl TestSetup {
 
 		assert_eq!(
 			response.status_code(),
-			http::StatusCode::CREATED,
+			StatusCode::CREATED,
 			"blob upload failed: {}",
 			std::str::from_utf8(&response.into_bytes()).unwrap_or("<non-utf8>")
 		);
@@ -255,7 +281,7 @@ impl TestSetup {
 		repo_name: &str,
 		tag: &str,
 	) -> TestOciImage {
-		let image = build_minimal_oci_image();
+		let image = build_minimal_oci_image(0);
 
 		// Push config blob
 		self.push_blob(
@@ -290,7 +316,7 @@ impl TestSetup {
 
 		assert_eq!(
 			response.status_code(),
-			http::StatusCode::CREATED,
+			StatusCode::CREATED,
 			"manifest push failed: {}",
 			std::str::from_utf8(&response.into_bytes()).unwrap_or("<non-utf8>")
 		);

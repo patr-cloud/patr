@@ -7,6 +7,7 @@ use models::{
 	rbac::WorkspacePermission,
 };
 
+use super::helpers::*;
 use crate::prelude::*;
 
 #[tokio::test]
@@ -44,7 +45,7 @@ async fn push_and_pull_image() {
 		})
 		.await;
 
-	assert_eq!(response.status_code(), http::StatusCode::OK);
+	assert_eq!(response.status_code(), StatusCode::OK);
 	assert_eq!(
 		response.into_bytes().as_ref(),
 		image.manifest_bytes.as_slice()
@@ -67,7 +68,7 @@ async fn push_and_pull_image() {
 		})
 		.await;
 
-	assert_eq!(response.status_code(), http::StatusCode::OK);
+	assert_eq!(response.status_code(), StatusCode::OK);
 	assert_eq!(response.into_bytes().as_ref(), image.layer_bytes.as_slice());
 
 	// Pull config blob back
@@ -87,7 +88,7 @@ async fn push_and_pull_image() {
 		})
 		.await;
 
-	assert_eq!(response.status_code(), http::StatusCode::OK);
+	assert_eq!(response.status_code(), StatusCode::OK);
 	assert_eq!(
 		response.into_bytes().as_ref(),
 		image.config_bytes.as_slice()
@@ -208,20 +209,57 @@ async fn push_tag_updates_existing() {
 		)
 		.await;
 
-	// Push first image with tag "v1"
+	// Push first image with tag "v1" (seed 0)
 	let image1 = setup
 		.push_test_image(&api_token.token, &workspace.id, &repo.name, "v1")
 		.await;
 
-	// Push second (different) image with same tag "v1"
-	let image2 = setup
-		.push_test_image(&api_token.token, &workspace.id, &repo.name, "v1")
-		.await;
+	// Push a different image with the same tag "v1" (seed 42)
+	let image2 = {
+		let img = build_minimal_oci_image(42);
+		setup
+			.push_blob(
+				&api_token.token,
+				&workspace.id,
+				&repo.name,
+				&img.config_digest,
+				&img.config_bytes,
+			)
+			.await;
+		setup
+			.push_blob(
+				&api_token.token,
+				&workspace.id,
+				&repo.name,
+				&img.layer_digest,
+				&img.layer_bytes,
+			)
+			.await;
+		let response = setup
+			.push_manifest(
+				&api_token.token,
+				&workspace.id,
+				&repo.name,
+				"v1",
+				&img.manifest_bytes,
+			)
+			.await;
+		assert_eq!(
+			response.status_code(),
+			StatusCode::CREATED,
+			"manifest push failed: {}",
+			std::str::from_utf8(&response.into_bytes()).unwrap_or("<non-utf8>")
+		);
+		img
+	};
 
-	// The images should have different digests (different random layer won't
-	// help since we use deterministic data, but manifests differ because
-	// build_minimal_oci_image always creates the same image). Let's verify
-	// the tag points to the latest push.
+	// The two images must have different digests
+	assert_ne!(
+		image1.manifest_digest, image2.manifest_digest,
+		"images with different seeds must produce different digests"
+	);
+
+	// Verify the tag now points to the second image
 	let response = setup
 		.make_api_call(
 			ApiRequest::<ListContainerRepositoryTagsRequest>::builder()
@@ -246,10 +284,10 @@ async fn push_tag_updates_existing() {
 		.collect();
 
 	assert_eq!(v1_tags.len(), 1, "expected exactly one 'v1' tag");
-	// Since both images are identical (deterministic build), digests match
-	assert_eq!(v1_tags[0].digest, image2.manifest_digest);
-	// For identical images, these are the same
-	assert_eq!(image1.manifest_digest, image2.manifest_digest);
+	assert_eq!(
+		v1_tags[0].digest, image2.manifest_digest,
+		"tag should point to the latest pushed image"
+	);
 }
 
 #[tokio::test]
@@ -415,7 +453,7 @@ async fn registry_delete_manifest_returns_405() {
 
 	assert_eq!(
 		response.status_code(),
-		http::StatusCode::METHOD_NOT_ALLOWED,
+		StatusCode::METHOD_NOT_ALLOWED,
 		"registry DELETE manifest should return 405, got {}",
 		response.status_code()
 	);

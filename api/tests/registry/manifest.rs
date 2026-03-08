@@ -63,7 +63,7 @@ async fn get_manifest_by_tag() {
 		})
 		.await;
 
-	assert_eq!(response.status_code(), http::StatusCode::OK);
+	assert_eq!(response.status_code(), StatusCode::OK);
 
 	let digest_header = response
 		.maybe_header("docker-content-digest")
@@ -108,7 +108,7 @@ async fn get_manifest_by_digest() {
 		})
 		.await;
 
-	assert_eq!(response.status_code(), http::StatusCode::OK);
+	assert_eq!(response.status_code(), StatusCode::OK);
 
 	let body = response.into_bytes();
 	assert_eq!(body.as_ref(), image.manifest_bytes.as_slice());
@@ -148,7 +148,7 @@ async fn head_manifest_works() {
 		})
 		.await;
 
-	assert_eq!(response.status_code(), http::StatusCode::OK);
+	assert_eq!(response.status_code(), StatusCode::OK);
 	assert_eq!(
 		response
 			.maybe_header("docker-content-digest")
@@ -190,7 +190,7 @@ async fn get_manifest_nonexistent() {
 		})
 		.await;
 
-	assert_eq!(response.status_code(), http::StatusCode::NOT_FOUND);
+	assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
@@ -208,7 +208,7 @@ async fn push_manifest_unsupported_content_type() {
 		)
 		.await;
 
-	let image = build_minimal_oci_image();
+	let image = build_minimal_oci_image(0);
 
 	// Push blobs first so they exist
 	setup

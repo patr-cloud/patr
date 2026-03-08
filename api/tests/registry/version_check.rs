@@ -23,5 +23,5 @@ async fn version_check_works() {
 		})
 		.await;
 
-	assert_eq!(response.status_code(), http::StatusCode::OK);
+	assert_eq!(response.status_code(), StatusCode::OK);
 }

@@ -113,7 +113,7 @@ async fn get_blob_after_upload() {
 		})
 		.await;
 
-	assert_eq!(response.status_code(), http::StatusCode::OK);
+	assert_eq!(response.status_code(), StatusCode::OK);
 	assert_eq!(response.into_bytes().as_ref(), &data);
 }
 
@@ -155,7 +155,7 @@ async fn head_blob_after_upload() {
 		})
 		.await;
 
-	assert_eq!(response.status_code(), http::StatusCode::OK);
+	assert_eq!(response.status_code(), StatusCode::OK);
 	assert!(response.maybe_header("docker-content-digest").is_some());
 }
 
@@ -192,7 +192,7 @@ async fn get_blob_nonexistent() {
 		})
 		.await;
 
-	assert_eq!(response.status_code(), http::StatusCode::NOT_FOUND);
+	assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
@@ -230,7 +230,7 @@ async fn chunked_upload_initiate_works() {
 		})
 		.await;
 
-	assert_eq!(response.status_code(), http::StatusCode::ACCEPTED);
+	assert_eq!(response.status_code(), StatusCode::ACCEPTED);
 	assert!(
 		response.maybe_header("location").is_some(),
 		"expected Location header on chunked upload initiation"
@@ -287,7 +287,7 @@ async fn chunked_upload_complete_works() {
 
 	assert_eq!(
 		response.status_code(),
-		http::StatusCode::CREATED,
+		StatusCode::CREATED,
 		"chunked upload complete failed: {}",
 		std::str::from_utf8(&response.into_bytes()).unwrap_or("<non-utf8>")
 	);
@@ -328,7 +328,7 @@ async fn chunked_upload_with_patch_under_threshold() {
 		.await;
 	assert_eq!(
 		patch_response.status_code(),
-		http::StatusCode::ACCEPTED,
+		StatusCode::ACCEPTED,
 		"PATCH chunk failed: {}",
 		std::str::from_utf8(&patch_response.into_bytes()).unwrap_or("<non-utf8>")
 	);
@@ -356,7 +356,7 @@ async fn chunked_upload_with_patch_under_threshold() {
 
 	assert_eq!(
 		response.status_code(),
-		http::StatusCode::CREATED,
+		StatusCode::CREATED,
 		"complete upload failed: {}",
 		std::str::from_utf8(&response.into_bytes()).unwrap_or("<non-utf8>")
 	);
@@ -378,7 +378,7 @@ async fn chunked_upload_with_patch_under_threshold() {
 		})
 		.await;
 
-	assert_eq!(get_response.status_code(), http::StatusCode::OK);
+	assert_eq!(get_response.status_code(), StatusCode::OK);
 	assert_eq!(get_response.into_bytes().as_ref(), &data);
 }
 
@@ -418,7 +418,7 @@ async fn chunked_upload_with_patch_over_threshold() {
 		.await;
 	assert_eq!(
 		patch_response.status_code(),
-		http::StatusCode::ACCEPTED,
+		StatusCode::ACCEPTED,
 		"PATCH chunk failed: {}",
 		std::str::from_utf8(&patch_response.into_bytes()).unwrap_or("<non-utf8>")
 	);
@@ -446,7 +446,7 @@ async fn chunked_upload_with_patch_over_threshold() {
 
 	assert_eq!(
 		response.status_code(),
-		http::StatusCode::CREATED,
+		StatusCode::CREATED,
 		"complete upload failed: {}",
 		std::str::from_utf8(&response.into_bytes()).unwrap_or("<non-utf8>")
 	);
@@ -468,7 +468,7 @@ async fn chunked_upload_with_patch_over_threshold() {
 		})
 		.await;
 
-	assert_eq!(get_response.status_code(), http::StatusCode::OK);
+	assert_eq!(get_response.status_code(), StatusCode::OK);
 	assert_eq!(get_response.into_bytes().len(), size);
 }
 
@@ -519,7 +519,7 @@ async fn chunked_upload_multiple_patches() {
 		.await;
 	assert_eq!(
 		patch1.status_code(),
-		http::StatusCode::ACCEPTED,
+		StatusCode::ACCEPTED,
 		"PATCH part 1 failed: {}",
 		std::str::from_utf8(&patch1.into_bytes()).unwrap_or("<non-utf8>")
 	);
@@ -536,7 +536,7 @@ async fn chunked_upload_multiple_patches() {
 		.await;
 	assert_eq!(
 		patch2.status_code(),
-		http::StatusCode::ACCEPTED,
+		StatusCode::ACCEPTED,
 		"PATCH part 2 failed: {}",
 		std::str::from_utf8(&patch2.into_bytes()).unwrap_or("<non-utf8>")
 	);
@@ -564,7 +564,7 @@ async fn chunked_upload_multiple_patches() {
 
 	assert_eq!(
 		response.status_code(),
-		http::StatusCode::CREATED,
+		StatusCode::CREATED,
 		"complete upload failed: {}",
 		std::str::from_utf8(&response.into_bytes()).unwrap_or("<non-utf8>")
 	);
@@ -586,7 +586,7 @@ async fn chunked_upload_multiple_patches() {
 		})
 		.await;
 
-	assert_eq!(get_response.status_code(), http::StatusCode::OK);
+	assert_eq!(get_response.status_code(), StatusCode::OK);
 	assert_eq!(get_response.into_bytes().len(), part1_size + part2_size);
 }
 
@@ -630,7 +630,7 @@ async fn chunked_upload_patch_then_body_in_put() {
 		.await;
 	assert_eq!(
 		patch_response.status_code(),
-		http::StatusCode::ACCEPTED,
+		StatusCode::ACCEPTED,
 		"PATCH chunk failed: {}",
 		std::str::from_utf8(&patch_response.into_bytes()).unwrap_or("<non-utf8>")
 	);
@@ -658,7 +658,7 @@ async fn chunked_upload_patch_then_body_in_put() {
 
 	assert_eq!(
 		response.status_code(),
-		http::StatusCode::CREATED,
+		StatusCode::CREATED,
 		"complete upload failed: {}",
 		std::str::from_utf8(&response.into_bytes()).unwrap_or("<non-utf8>")
 	);
@@ -680,6 +680,6 @@ async fn chunked_upload_patch_then_body_in_put() {
 		})
 		.await;
 
-	assert_eq!(get_response.status_code(), http::StatusCode::OK);
+	assert_eq!(get_response.status_code(), StatusCode::OK);
 	assert_eq!(get_response.into_bytes().as_ref(), &combined);
 }

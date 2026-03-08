@@ -21,6 +21,7 @@ pub mod prelude {
 		request::RegistryUnprocessedApiRequest,
 	};
 	pub use axum::body::Body;
+	pub use http::StatusCode;
 	pub use models::{
 		ApiRequest,
 		ApiSuccessResponseBody,

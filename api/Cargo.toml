@@ -68,6 +68,8 @@ woothee                        = { workspace = true, features = ["default"] }
 [dev-dependencies]
 anyhow                 = { workspace = true, features = ["default"] }
 axum-test              = { workspace = true, features = ["default"] }
+flate2                 = { workspace = true, features = ["rust_backend"] }
+tar                    = { workspace = true, features = [] }
 testcontainers-modules = { workspace = true, features = ["default", "postgres", "minio", "redis"] }
 
 [[test]]

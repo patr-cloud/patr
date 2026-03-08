@@ -53,7 +53,7 @@ async fn registry_push_without_permission() {
 	// Should be 404 (not 403) to avoid leaking repo existence
 	assert_eq!(
 		response.status_code(),
-		http::StatusCode::NOT_FOUND,
+		StatusCode::NOT_FOUND,
 		"expected 404 for push without permission, got {}",
 		response.status_code()
 	);
@@ -94,7 +94,7 @@ async fn push_to_nonexistent_repo() {
 		})
 		.await;
 
-	assert_eq!(response.status_code(), http::StatusCode::NOT_FOUND);
+	assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
@@ -124,7 +124,7 @@ async fn pull_from_nonexistent_repo() {
 		})
 		.await;
 
-	assert_eq!(response.status_code(), http::StatusCode::NOT_FOUND);
+	assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
@@ -186,7 +186,7 @@ async fn push_to_deleted_repo() {
 
 	assert_eq!(
 		response.status_code(),
-		http::StatusCode::NOT_FOUND,
+		StatusCode::NOT_FOUND,
 		"expected 404 for push to deleted repo"
 	);
 }
@@ -238,7 +238,7 @@ async fn cross_workspace_push_denied() {
 
 	assert_eq!(
 		response.status_code(),
-		http::StatusCode::NOT_FOUND,
+		StatusCode::NOT_FOUND,
 		"expected 404 for cross-workspace push, got {}",
 		response.status_code()
 	);
@@ -303,7 +303,7 @@ async fn initiate_upload_without_push_permission_returns_not_found() {
 	// Correct behavior: should be 404 to prevent leaking repo existence
 	assert_eq!(
 		response.status_code(),
-		http::StatusCode::NOT_FOUND,
+		StatusCode::NOT_FOUND,
 		"expected 404 for push without permission, got {}",
 		response.status_code()
 	);
