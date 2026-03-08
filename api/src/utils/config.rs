@@ -179,8 +179,6 @@ pub struct CloudflareConfig {
 	pub turnstile_secret: String,
 	/// The zone ID of the primary hosted zone
 	pub primary_hosted_zone_id: String,
-	/// The name of the Cloudflare Worker script used for ingress
-	pub ingress_script_name: String,
 }
 
 /// The configuration for the SMTP server to use to send emails to users

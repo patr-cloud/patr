@@ -1,10 +1,7 @@
 use cloudflare::{
-	endpoints::{
-		workers::*,
-		zones::{
-			custom_hostnames::*,
-			zone::{Type as ZoneType, *},
-		},
+	endpoints::zones::{
+		custom_hostnames::*,
+		zone::{Type as ZoneType, *},
 	},
 	framework::{
 		Environment,
@@ -115,7 +112,6 @@ pub async fn add_domain_to_workspace(
                 tld,
                 workspace_id,
                 nameserver_type,
-				cloudflare_worker_route_id,
 				cloudflare_custom_hostname_id,
                 is_verified,
                 deleted
@@ -127,7 +123,6 @@ pub async fn add_domain_to_workspace(
 				$3,
 				$4,
 				$5,
-				'undefined',
 				'undefined',
 				FALSE,
 				NULL
@@ -153,18 +148,6 @@ pub async fn add_domain_to_workspace(
 		ClientConfig::default(),
 		Environment::Production,
 	)?;
-
-	let worker_route_id = client
-		.request(&CreateRoute {
-			zone_identifier: &state.config.cloudflare.primary_hosted_zone_id,
-			params: CreateRouteParams {
-				pattern: format!("*.{domain}/*"),
-				script: Some(state.config.cloudflare.ingress_script_name.clone()),
-			},
-		})
-		.await?
-		.result
-		.id;
 
 	let custom_hostname_id = client
 		.request(&AddCustomHostname {
@@ -192,13 +175,11 @@ pub async fn add_domain_to_workspace(
 		UPDATE
 			workspace_domain
 		SET
-			cloudflare_worker_route_id = $2,
-			cloudflare_custom_hostname_id = $3
+			cloudflare_custom_hostname_id = $2
 		WHERE
 			id = $1;
 		"#,
 		domain_id as _,
-		worker_route_id,
 		custom_hostname_id,
 	)
 	.execute(&mut **database)

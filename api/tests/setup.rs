@@ -220,7 +220,6 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 			worker_namespace_id: "fake-worker-namespace-id".to_string(),
 			turnstile_secret: "1x0000000000000000000000000000000AA".to_string(),
 			primary_hosted_zone_id: "fake-hosted-zone-id".to_string(),
-			ingress_script_name: "ingress".to_string(),
 		},
 		opentelemetry: OpenTelemetryConfig {
 			tracing: TracingConfig {

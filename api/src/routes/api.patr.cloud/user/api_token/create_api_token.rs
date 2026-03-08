@@ -41,6 +41,10 @@ pub async fn create_api_token(
 ) -> Result<AppResponse<CreateApiTokenRequest>, ErrorType> {
 	info!("Creating API token");
 
+	if permissions.is_empty() {
+		return Err(ErrorType::WrongParameters);
+	}
+
 	let now = OffsetDateTime::now_utc();
 
 	let refresh_token = Uuid::new_v4();

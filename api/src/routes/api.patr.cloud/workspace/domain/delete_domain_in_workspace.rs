@@ -1,8 +1,5 @@
 use cloudflare::{
-	endpoints::{
-		workers::*,
-		zones::{custom_hostnames::*, zone::*},
-	},
+	endpoints::zones::{custom_hostnames::*, zone::*},
 	framework::{
 		Environment,
 		auth::Credentials,
@@ -72,7 +69,6 @@ pub async fn delete_domain_in_workspace(
 		WHERE
 			id = $1
 		RETURNING
-			cloudflare_worker_route_id,
 			cloudflare_custom_hostname_id;
 		"#,
 		domain_id as _
@@ -92,12 +88,6 @@ pub async fn delete_domain_in_workspace(
 		Environment::Production,
 	)?;
 
-	client
-		.request(&DeleteRoute {
-			zone_identifier: &state.config.cloudflare.primary_hosted_zone_id,
-			identifier: &row.cloudflare_worker_route_id,
-		})
-		.await?;
 	client
 		.request(&DeleteCustomHostname {
 			zone_identifier: &state.config.cloudflare.primary_hosted_zone_id,

@@ -219,9 +219,6 @@ async fn get_api_token_info_nonexistent() {
 	);
 }
 
-/// Bug: creating an API token with empty permissions should be rejected,
-/// but the endpoint currently accepts it silently. This test asserts the
-/// correct behavior and is expected to FAIL until the bug is fixed.
 #[tokio::test]
 async fn create_api_token_with_empty_permissions_fails() {
 	let setup = setup().await.expect("failed to setup test server");

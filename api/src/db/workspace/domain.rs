@@ -35,7 +35,6 @@ pub async fn initialize_domain_tables(
 			tld TEXT NOT NULL,
 			workspace_id UUID NOT NULL,
 			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL,
-			cloudflare_worker_route_id TEXT NOT NULL,
 			cloudflare_custom_hostname_id TEXT NOT NULL,
 			is_verified BOOLEAN NOT NULL,
 			last_verified TIMESTAMPTZ,
