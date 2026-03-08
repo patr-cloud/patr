@@ -200,6 +200,9 @@ pub enum RunnerPermission {
 	/// view it, edit it, or delete it. This permission is useful for users or
 	/// API tokens that need to only regenerate the runner token.
 	RegenerateToken,
+	/// This permission allows the user to execute runner operations, including
+	/// streaming runner data and pushing logs to the logging backend.
+	Execute,
 }
 
 /// A list of all permissions that can be granted on a deployment
