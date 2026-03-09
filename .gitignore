@@ -48,3 +48,5 @@ dist-ssr
 # LLM files doesn't need to be tracked
 .claude/
 CLAUDE.md
+patr-api
+docker

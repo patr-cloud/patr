@@ -6,7 +6,7 @@ import {
 	UpdateManagedURLResponse,
 	WithId,
 } from "~/bindings";
-import { Button, ButtonVariant, Input, InputDropdown, useToast } from "~/components";
+import { Button, ButtonVariant, Input, InputDropdown, LoadingSpinner, useToast } from "~/components";
 import { createAuthenticatedAction, createFormAction } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
@@ -57,7 +57,7 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 	return (
 		<>
 			{openEdit() ? (
-				<tr class="table-row">
+				<tr class="flex items-center justify-center border border-border-color  min-h-10 w-full h">
 					<td class="w-full" colspan={3}>
 						<ManagedUrlComponent
 							domainInfo={props.domainInfo}
@@ -90,8 +90,8 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 									content={() => (
 										<div>
 											<p class="text-gray-300 text-sm mb-2">
-												This managed URL is not properly configured. Please update your DNS settings to point to our
-												servers.
+												To configure this Managed URL, please update your DNS settings to point to our servers. If you
+												have already updated your DNS settings, please allow some time for the changes to propagate.
 											</p>
 
 											<div class="bg-black/30 p-2 rounded text-xs text-gray-400 mb-2">
@@ -107,10 +107,20 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 							)}
 							{shouldDelete() ? (
 								<>
-									<button onClick={onDelete} class="text-red-500">
-										Delete
-									</button>
-									<button onClick={() => setShouldDelete(false)}>Cancel</button>
+									{isDeleting() ? (
+										<>
+											<LoadingSpinner size={20} />
+										</>
+									) : (
+										<>
+											<button onClick={onDelete} class="text-red-500 cursor-pointer">
+												Delete
+											</button>
+											<button class="cursor-pointer" onClick={() => setShouldDelete(false)}>
+												Cancel
+											</button>
+										</>
+									)}
 								</>
 							) : (
 								<>
@@ -220,7 +230,7 @@ const ManagedUrlComponent = (props: ManagedUrlComponentProps) => {
 	};
 
 	return (
-		<form class="w-full mb-2 p-lg bg-secondary-light rounded-xs" onSubmit={onSubmit}>
+		<form class="w-full p-lg bg-secondary-light rounded-xs" onSubmit={onSubmit}>
 			<div class="mb-3 w-full flex items-center justify-between">
 				<h1 class="text-lg">Update Managed URL</h1>
 
