@@ -10,6 +10,7 @@ import {
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
+	useToast,
 } from "~/components";
 import { createFormAction } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
@@ -17,8 +18,9 @@ import { httpRequest } from "~/utils/http-request";
 const CreateRunnerPage = () => {
 	const [name, setName] = createSignal<string>("");
 	const navigate = useNavigate();
+	const toast = useToast();
 
-	const { onSubmit, isLoading } = createFormAction(async ({ accessToken, workspaceId }) => {
+	const { onSubmit, isLoading } = createFormAction(async ({ workspaceId }) => {
 		const response = await httpRequest<AddRunnerToWorkspaceResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/runner`,
 			{
@@ -29,9 +31,17 @@ const CreateRunnerPage = () => {
 			}
 		);
 
-		setName("");
-		navigate("/runners");
+		if (!response.ok) {
+			console.error("Failed to create runner:", response.data.error);
+			toast("Failed to create runner", "error");
+			return;
+		}
 
+		const runnerId = response.data.id;
+
+		toast("Runner created successfully", "success");
+		setName("");
+		navigate(`/runners/${runnerId}`);
 	});
 
 	return (

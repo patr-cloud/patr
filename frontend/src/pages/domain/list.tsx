@@ -232,7 +232,7 @@ const ListDomainsPage = () => {
 					if (!isCreateAllowed()) return null;
 					return (
 						<div class="ml-auto">
-							<Button variant={ButtonVariant.Plain} onClick={() => navigate("/domains/new")}>
+							<Button class="cursor-pointer" variant={ButtonVariant.Plain} onClick={() => navigate("/domains/new")}>
 								Add Domain
 							</Button>
 						</div>

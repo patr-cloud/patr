@@ -44,3 +44,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+patr-api
+docker
