@@ -341,7 +341,7 @@ const DomainInfo = () => {
 										{
 											type: "CNAME",
 											name: `${subDomain() || "(subdomain)"}.${domainInfo.latest?.name || "your-domain.com"}`,
-											target: "ingress.patr.cloud",
+											target: "ingress.onpatr.cloud",
 										},
 									]}
 									renderRow={(record) => (
