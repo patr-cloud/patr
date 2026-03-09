@@ -13,4 +13,10 @@ pub mod constants {
 	/// The name of the config used to store the ingress configuration for the
 	/// runner.
 	pub const INGRESS_CONFIG_NAME: &str = "patr-ingress-config";
+	/// The name of the Grafana Alloy log collector service.
+	pub const ALLOY_SERVICE_NAME: &str = "patr-alloy";
+	/// The name of the Docker config for the Alloy configuration.
+	pub const ALLOY_CONFIG_NAME: &str = "patr-alloy-config";
+	/// The pinned Grafana Alloy image version.
+	pub const ALLOY_IMAGE: &str = "grafana/alloy:v1.13.2";
 }

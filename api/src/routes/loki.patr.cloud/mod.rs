@@ -88,7 +88,7 @@ async fn proxy_to_loki(
 		}
 	};
 
-	// Verify the user has access to the workspace
+	// TODO Verify the user has access to push here
 	if !user_data.permissions.contains_key(&workspace_id) {
 		warn!(
 			"User {} does not have access to workspace {}",

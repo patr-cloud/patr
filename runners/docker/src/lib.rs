@@ -2,6 +2,8 @@
 //! incoming WebSocket connections from the Patr API. The runner is responsible
 //! for creating, updating, and deleting deployments in the given runner.
 
+/// Grafana Alloy log collector service management
+pub(crate) mod alloy;
 /// The configuration of the Docker runner
 pub(crate) mod config;
 /// All deployment related stuff goes here
@@ -19,5 +21,5 @@ pub mod prelude {
 	pub use common::prelude::*;
 
 	pub use crate::{config::DockerSettings, runner::DockerRunner, utils::constants};
-	pub(crate) use crate::{deployment, ingress};
+	pub(crate) use crate::{alloy, deployment, ingress};
 }
