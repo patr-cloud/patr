@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use models::{ApiSuccessResponseBody, api::user::*, utils::Uuid};
+use models::{ApiSuccessResponseBody, api::user::*, rbac::WorkspacePermission, utils::Uuid};
 
 use crate::prelude::*;
 
@@ -8,9 +8,16 @@ use crate::prelude::*;
 async fn create_api_token_works() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeMap::new())
+		.create_test_api_token(&user.access_token, {
+			let mut map = BTreeMap::new();
+
+			map.insert(workspace.id, WorkspacePermission::SuperAdmin);
+
+			map
+		})
 		.await;
 	assert!(!api_token.token.is_empty(), "token should not be empty");
 }
