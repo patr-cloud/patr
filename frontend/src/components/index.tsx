@@ -28,6 +28,7 @@ import Tooltip from "~/components/tooltip";
 import CopyableField from "~/components/copyable-field";
 import Initials from "~/components/initials";
 import EmptyState from "~/components/empty-state";
+import Pagination from "~/components/pagination";
 export {
 	Alert,
 	PageContainer,
@@ -65,4 +66,5 @@ export {
 	CopyableFieldVariant,
 	Initials,
 	EmptyState,
+	Pagination,
 };

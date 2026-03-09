@@ -10,12 +10,13 @@ import {
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
+	Pagination,
 	Table,
 	useToast,
 } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
-import { useIsAllowed } from "~/hooks";
+import { useIsAllowed, createPaginationState } from "~/hooks";
 
 const DeploymentListRow = (props: { item: WithId<Deployment>; runnerName: string }) => {
 	const navigate = useNavigate();
@@ -57,20 +58,19 @@ const ListDeploymentsPage = () => {
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const isAllowedCreate = useIsAllowed("deployment", "create", undefined);
+	const pagination = createPaginationState({ defaultCount: 14 });
 
 	const fetchParams = createMemo(() => {
-		return [authState(), workspaceId()] as const;
+		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
 	});
 
-	const [deployments] = createResource(fetchParams, async ([auth, wsId]) => {
+	const [deployments] = createResource(fetchParams, async ([auth, wsId, page, count]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") {
 			return { deployments: [] };
 		}
 
-		console.log("Fetching deployments with workspace ID:", wsId);
-
 		const response = await httpRequest<ListDeploymentResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment`,
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment?page=${page}&count=${count}`,
 			{
 				method: "GET",
 			}
@@ -82,9 +82,8 @@ const ListDeploymentsPage = () => {
 			return { deployments: [] };
 		}
 
-		console.log("Fetched deployments:", response.data);
+		pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
 
-		// Fetch deployments logic goes here
 		return { deployments: response.data.deployments };
 	});
 
@@ -129,7 +128,7 @@ const ListDeploymentsPage = () => {
 				}}
 			/>
 
-			<PageContainerBody class="flex flex-col">
+			<PageContainerBody class="flex flex-col justify-between">
 				<ErrorBoundary
 					fallback={(err, reset) => (
 						<div>
@@ -154,6 +153,7 @@ const ListDeploymentsPage = () => {
 									/>
 								)}
 							/>
+							<Pagination state={pagination} loading={deployments.loading} />
 						</Show>
 					</Suspense>
 				</ErrorBoundary>

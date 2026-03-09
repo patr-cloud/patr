@@ -12,6 +12,7 @@ import {
 } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
+import { formatRelativeTime, parseDate } from "~/utils/func";
 import { httpRequest } from "~/utils/http-request";
 
 const ListApiTokens = () => {
@@ -76,12 +77,10 @@ const ListApiTokens = () => {
 							>
 								<td class="flex-4 flex items-center justify-center">{token.name}</td>
 								<td class="flex-4 flex items-center justify-center">
-									{/* @ts-expect-error - Date formatting will be fixed later */}
-									{token.created || "Unknown"}
+									{formatRelativeTime(token.created) || "Unknown"}
 								</td>
 								<td class="flex-4 flex items-center justify-center">
-									{/* @ts-expect-error - Date formatting will be fixed later */}
-									{token.tokenExp ? token.tokenExp : "Never"}
+									{token.tokenExp ? formatRelativeTime(token.tokenExp) : "Never"}
 								</td>
 							</tr>
 						)}
