@@ -146,6 +146,11 @@ impl RunnerExecutor for DockerRunner {
 		// Setup ingress, if it doesn't exist
 		ingress::update_ingress_configs(&docker, settings).await?;
 
+		// Setup Alloy log collector for managed mode
+		if settings.mode.is_managed() {
+			alloy::update_alloy_service(&docker, settings).await?;
+		}
+
 		Ok(docker)
 	}
 
