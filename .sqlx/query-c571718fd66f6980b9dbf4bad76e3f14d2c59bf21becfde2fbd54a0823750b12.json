@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM workspace_domain WHERE id = $1 RETURNING cloudflare_custom_hostname_id;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "cloudflare_custom_hostname_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c571718fd66f6980b9dbf4bad76e3f14d2c59bf21becfde2fbd54a0823750b12"
+}

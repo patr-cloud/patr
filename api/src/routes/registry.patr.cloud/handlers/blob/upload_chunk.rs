@@ -282,6 +282,7 @@ pub async fn upload_chunk(
 					.build()
 			}))
 			.read_buffered_bytes(CHUNK_FLUSH_THRESHOLD)
+			.chain(futures::stream::once(async { Ok(Bytes::new()) }))
 			.try_fold(
 				(
 					session,

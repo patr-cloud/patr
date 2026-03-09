@@ -1,0 +1,315 @@
+use models::{ApiSuccessResponseBody, api::user::*, utils::Uuid};
+
+use crate::prelude::*;
+
+mod api_token;
+mod mfa;
+
+#[tokio::test]
+async fn get_user_info_works() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	let info = setup
+		.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.headers(GetUserInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetUserInfoResponse>>();
+
+	assert_eq!(user.username, info.response.basic_user_info.username);
+	assert_eq!("Test", info.response.basic_user_info.first_name);
+	assert_eq!("User", info.response.basic_user_info.last_name);
+}
+
+#[tokio::test]
+async fn get_user_info_unauthorized() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.headers(GetUserInfoRequestHeaders {
+					authorization: BearerToken::from_str("invalid-token").unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"expected client error without auth token"
+	);
+}
+
+#[tokio::test]
+async fn get_user_details_works() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	let details = setup
+		.make_api_call(
+			ApiRequest::<GetUserDetailsRequest>::builder()
+				.path(GetUserDetailsPath {
+					user_id: user.user_id,
+				})
+				.headers(GetUserDetailsRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetUserDetailsResponse>>();
+
+	assert_eq!(user.username, details.response.basic_user_info.username);
+}
+
+#[tokio::test]
+async fn get_user_details_nonexistent() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<GetUserDetailsRequest>::builder()
+				.path(GetUserDetailsPath {
+					user_id: Uuid::nil(),
+				})
+				.headers(GetUserDetailsRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"expected client error for nonexistent user"
+	);
+}
+
+#[tokio::test]
+async fn update_user_info_works() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	setup
+		.make_api_call(
+			ApiRequest::<UpdateUserInfoRequest>::builder()
+				.headers(UpdateUserInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateUserInfoRequest {
+					first_name: Some("Updated".to_string()),
+					last_name: Some("Name".to_string()),
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateUserInfoResponse));
+
+	// Verify the update
+	let info = setup
+		.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.headers(GetUserInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetUserInfoResponse>>();
+
+	assert_eq!("Updated", info.response.basic_user_info.first_name);
+	assert_eq!("Name", info.response.basic_user_info.last_name);
+}
+
+#[tokio::test]
+async fn update_user_info_unauthorized() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<UpdateUserInfoRequest>::builder()
+				.headers(UpdateUserInfoRequestHeaders {
+					authorization: BearerToken::from_str("invalid-token").unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateUserInfoRequest {
+					first_name: Some("Hacker".to_string()),
+					last_name: None,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"expected client error without auth token"
+	);
+}
+
+#[tokio::test]
+async fn change_password_works() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let new_password = random_password();
+
+	setup
+		.make_api_call(
+			ApiRequest::<ChangePasswordRequest>::builder()
+				.headers(ChangePasswordRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ChangePasswordRequest {
+					current_password: user.password.clone(),
+					new_password: new_password.clone(),
+					mfa_otp: None,
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(ChangePasswordResponse));
+
+	// Login with new password should work
+	let (_token, _refresh) = setup.login_test_user(&user.username, &new_password).await;
+}
+
+#[tokio::test]
+async fn change_password_wrong_current() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<ChangePasswordRequest>::builder()
+				.headers(ChangePasswordRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ChangePasswordRequest {
+					current_password: "WrongCurrent@123".to_string(),
+					new_password: random_password(),
+					mfa_otp: None,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"expected client error for wrong current password"
+	);
+}
+
+#[tokio::test]
+async fn list_workspaces_empty() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<ListUserWorkspacesRequest>::builder()
+				.headers(ListUserWorkspacesRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListUserWorkspacesResponse>>();
+
+	assert!(
+		response.response.workspaces.is_empty(),
+		"new user should have no workspaces"
+	);
+}
+
+#[tokio::test]
+async fn list_workspaces_after_create() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<ListUserWorkspacesRequest>::builder()
+				.headers(ListUserWorkspacesRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListUserWorkspacesResponse>>();
+
+	assert_eq!(1, response.response.workspaces.len());
+	assert_eq!(workspace.id, response.response.workspaces[0].id);
+}
+
+#[tokio::test]
+async fn search_for_user_works() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<SearchForUserRequest>::builder()
+				.query(SearchForUserQuery {
+					query: user.username.clone(),
+				})
+				.headers(SearchForUserRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<SearchForUserResponse>>();
+
+	assert!(
+		response
+			.response
+			.users
+			.iter()
+			.any(|u| u.username == user.username),
+		"search should find the created user"
+	);
+}
+
+#[tokio::test]
+async fn search_for_user_no_results() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<SearchForUserRequest>::builder()
+				.query(SearchForUserQuery {
+					query: "zzzznonexistentuserzzzzz".to_string(),
+				})
+				.headers(SearchForUserRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<SearchForUserResponse>>();
+
+	assert!(
+		response.response.users.is_empty(),
+		"search for gibberish should return empty"
+	);
+}

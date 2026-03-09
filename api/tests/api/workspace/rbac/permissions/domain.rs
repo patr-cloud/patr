@@ -1,0 +1,289 @@
+use std::collections::BTreeMap;
+
+use models::{
+	api::workspace::domain::*,
+	rbac::{DomainPermission, Permission},
+};
+
+use super::{all, exclude, include, setup_permission_test};
+use crate::prelude::*;
+
+#[tokio::test]
+async fn domain_add_permission_grants_access() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (_admin, ws_id, user_b) = setup_permission_test(
+		&setup,
+		vec![(Permission::Domain(DomainPermission::Add), all())],
+	)
+	.await;
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<AddDomainToWorkspaceRequest>::builder()
+				.path(AddDomainToWorkspacePath {
+					workspace_id: ws_id,
+				})
+				.headers(AddDomainToWorkspaceRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(AddDomainToWorkspaceRequest {
+					domain: format!("{}.com", random_name(8)),
+					nameserver_type: DomainNameserverType::External,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(response.status_code().is_success());
+}
+
+#[tokio::test]
+async fn domain_delete_permission_grants_access() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let domain = setup
+		.create_test_domain(&admin.access_token, workspace.id)
+		.await;
+
+	let mut perms = BTreeMap::new();
+	perms.insert(
+		setup.get_permission_id(Permission::Domain(DomainPermission::Delete)),
+		include(&[domain.id]),
+	);
+	let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.await;
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<DeleteDomainInWorkspaceRequest>::builder()
+				.path(DeleteDomainInWorkspacePath {
+					workspace_id: workspace.id,
+					domain_id: domain.id,
+				})
+				.headers(DeleteDomainInWorkspaceRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_success(),
+		"user with domain::delete should delete domain"
+	);
+}
+
+#[tokio::test]
+async fn domain_verify_permission_grants_access() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let domain = setup
+		.create_test_domain(&admin.access_token, workspace.id)
+		.await;
+
+	let mut perms = BTreeMap::new();
+	perms.insert(
+		setup.get_permission_id(Permission::Domain(DomainPermission::Verify)),
+		include(&[domain.id]),
+	);
+	let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.await;
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<VerifyDomainInWorkspaceRequest>::builder()
+				.path(VerifyDomainInWorkspacePath {
+					workspace_id: workspace.id,
+					domain_id: domain.id,
+				})
+				.headers(VerifyDomainInWorkspaceRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	// May fail due to Cloudflare API, but should not be a 403
+	assert!(
+		!response.status_code().is_client_error() || response.status_code().as_u16() != 403,
+		"user with domain::verify should not get 403"
+	);
+}
+
+#[tokio::test]
+async fn domain_denied_without_permission() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let domain = setup
+		.create_test_domain(&admin.access_token, workspace.id)
+		.await;
+
+	let mut perms = BTreeMap::new();
+	perms.insert(setup.get_permission_id(Permission::ViewRoles), all());
+	let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.await;
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<GetDomainInfoInWorkspaceRequest>::builder()
+				.path(GetDomainInfoInWorkspacePath {
+					workspace_id: workspace.id,
+					domain_id: domain.id,
+				})
+				.headers(GetDomainInfoInWorkspaceRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"user without domain permissions should be denied"
+	);
+}
+
+#[tokio::test]
+async fn domain_include_grants_only_listed_resource() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let domain1 = setup
+		.create_test_domain(&admin.access_token, workspace.id)
+		.await;
+	let domain2 = setup
+		.create_test_domain(&admin.access_token, workspace.id)
+		.await;
+
+	let mut perms = BTreeMap::new();
+	perms.insert(
+		setup.get_permission_id(Permission::Domain(DomainPermission::View)),
+		include(&[domain1.id]),
+	);
+	let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.await;
+
+	let r1 = setup
+		.make_api_call(
+			ApiRequest::<GetDomainInfoInWorkspaceRequest>::builder()
+				.path(GetDomainInfoInWorkspacePath {
+					workspace_id: workspace.id,
+					domain_id: domain1.id,
+				})
+				.headers(GetDomainInfoInWorkspaceRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		r1.status_code().is_success(),
+		"domain1 should be accessible"
+	);
+
+	let r2 = setup
+		.make_api_call(
+			ApiRequest::<GetDomainInfoInWorkspaceRequest>::builder()
+				.path(GetDomainInfoInWorkspacePath {
+					workspace_id: workspace.id,
+					domain_id: domain2.id,
+				})
+				.headers(GetDomainInfoInWorkspaceRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		r2.status_code().is_client_error(),
+		"domain2 should NOT be accessible"
+	);
+}
+
+#[tokio::test]
+async fn domain_exclude_denies_only_listed_resource() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let domain1 = setup
+		.create_test_domain(&admin.access_token, workspace.id)
+		.await;
+	let domain2 = setup
+		.create_test_domain(&admin.access_token, workspace.id)
+		.await;
+
+	let mut perms = BTreeMap::new();
+	perms.insert(
+		setup.get_permission_id(Permission::Domain(DomainPermission::View)),
+		exclude(&[domain2.id]),
+	);
+	let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.await;
+
+	let r1 = setup
+		.make_api_call(
+			ApiRequest::<GetDomainInfoInWorkspaceRequest>::builder()
+				.path(GetDomainInfoInWorkspacePath {
+					workspace_id: workspace.id,
+					domain_id: domain1.id,
+				})
+				.headers(GetDomainInfoInWorkspaceRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		r1.status_code().is_success(),
+		"domain1 should be accessible"
+	);
+
+	let r2 = setup
+		.make_api_call(
+			ApiRequest::<GetDomainInfoInWorkspaceRequest>::builder()
+				.path(GetDomainInfoInWorkspacePath {
+					workspace_id: workspace.id,
+					domain_id: domain2.id,
+				})
+				.headers(GetDomainInfoInWorkspaceRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		r2.status_code().is_client_error(),
+		"domain2 should be excluded"
+	);
+}

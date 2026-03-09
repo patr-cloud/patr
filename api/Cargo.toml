@@ -2,6 +2,7 @@
 name = "api"
 
 authors.workspace      = true
+autotests              = false
 description.workspace  = true
 edition.workspace      = true
 rust-version.workspace = true
@@ -37,7 +38,7 @@ opentelemetry                  = { workspace = true, features = ["default"] }
 opentelemetry-appender-tracing = { workspace = true, features = ["default"] }
 opentelemetry-otlp             = { workspace = true, features = ["default", "tonic", "tokio", "reqwest-client", "reqwest-rustls-webpki-roots", "grpc-tonic", "http-json"] }
 opentelemetry_sdk              = { workspace = true, features = ["default", "rt-tokio"] }
-pin-project-lite               = { workspace = true, features = [] }
+pin-project                    = { workspace = true, features = [] }
 preprocess                     = { workspace = true, features = [] }
 psl                            = { workspace = true, features = ["default"] }
 rand                           = { workspace = true, features = ["default"] }
@@ -67,4 +68,10 @@ woothee                        = { workspace = true, features = ["default"] }
 [dev-dependencies]
 anyhow                 = { workspace = true, features = ["default"] }
 axum-test              = { workspace = true, features = ["default"] }
+flate2                 = { workspace = true, features = ["rust_backend"] }
+tar                    = { workspace = true, features = [] }
 testcontainers-modules = { workspace = true, features = ["default", "postgres", "minio", "redis"] }
+
+[[test]]
+name = "integration-tests"
+path = "tests/mod.rs"

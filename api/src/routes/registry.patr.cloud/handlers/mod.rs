@@ -13,9 +13,9 @@ use axum::Router;
 use crate::prelude::*;
 
 /// Blob handlers for the OCI registry.
-mod blob;
+pub mod blob;
 /// Manifest handlers for the OCI registry.
-mod manifest;
+pub mod manifest;
 /// Version check handler for the OCI registry.
 mod version_check;
 

@@ -184,7 +184,7 @@ pub async fn check_manifest(
 		.parse()
 		.unwrap_or_else(|_| ContentType::octet_stream());
 
-	let etag = ETag::from_str(&manifest_record.digest).map_err(|err| {
+	let etag = ETag::from_str(&format!("\"{}\"", manifest_record.digest)).map_err(|err| {
 		error!("Failed to parse ETag from manifest digest: {err}");
 		RegistryError::builder()
 			.code(ErrorCode::ManifestInvalid)

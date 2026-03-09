@@ -1,5 +1,3 @@
-mod setup;
-
 mod auth;
-
-pub use self::setup::setup;
+mod user;
+mod workspace;

@@ -1,6 +1,8 @@
-use aws_config::{ConfigLoader, Region};
 use aws_credential_types::Credentials;
-use aws_sdk_s3::Client as S3Client;
+use aws_sdk_s3::{
+	Client as S3Client,
+	config::{Builder as S3Builder, Region},
+};
 use axum::http::StatusCode;
 use models::{api::workspace::container_registry::*, prelude::*};
 use oci_spec::image::{Config, ImageManifest};
@@ -86,19 +88,20 @@ pub async fn get_exposed_ports(
 	.ok_or(ErrorType::TagNotFound)?
 	.manifest_digest;
 
-	let s3 = ConfigLoader::default()
-		.region(Region::new(state.config.s3.region.clone()))
-		.endpoint_url(state.config.s3.endpoint.clone())
-		.credentials_provider(
-			Credentials::builder()
-				.access_key_id(&state.config.s3.key)
-				.secret_access_key(&state.config.s3.secret)
-				.provider_name("Static")
-				.build(),
-		)
-		.load()
-		.await;
-	let s3 = S3Client::new(&s3);
+	let s3 = S3Client::from_conf(
+		S3Builder::new()
+			.region(Region::new(state.config.s3.region.clone()))
+			.endpoint_url(state.config.s3.endpoint.clone())
+			.credentials_provider(
+				Credentials::builder()
+					.access_key_id(&state.config.s3.key)
+					.secret_access_key(&state.config.s3.secret)
+					.provider_name("Static")
+					.build(),
+			)
+			.force_path_style(state.config.s3.force_path_style)
+			.build(),
+	);
 
 	let manifest = s3
 		.get_object()

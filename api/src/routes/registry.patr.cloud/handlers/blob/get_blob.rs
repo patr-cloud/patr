@@ -230,7 +230,7 @@ mod tests {
 		// Verify the endpoint path is correct
 		assert_eq!(
 			<GetBlobPath as axum_extra::routing::TypedPath>::PATH,
-			"/v2/{name}/blobs/{digest}"
+			"/v2/{workspace_id}/{repo_name}/blobs/{digest}"
 		);
 	}
 }

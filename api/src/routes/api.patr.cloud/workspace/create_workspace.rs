@@ -144,7 +144,7 @@ pub async fn create_workspace(
 				.whole_seconds()
 				.unsigned_abs()
 				.add(300),
-			OffsetDateTime::now_utc().unix_timestamp(),
+			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
 		)
 		.await
 		.inspect_err(|err| {

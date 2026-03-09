@@ -63,6 +63,7 @@ pub async fn delete_workspace(
 			resource
 		WHERE
 			owner_id = $1 AND
+			id <> owner_id AND
 			deleted IS NULL;
 		"#,
 		&workspace_id as _,
@@ -90,6 +91,18 @@ pub async fn delete_workspace(
 	.execute(&mut **database)
 	.await?;
 
+	query!(
+		r#"
+		DELETE FROM
+			workspace
+		WHERE
+			id = $1;
+		"#,
+		&workspace_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
 	// Revoke all tokens that have access to the workspace
 	redis
 		.setex(
@@ -98,7 +111,7 @@ pub async fn delete_workspace(
 				.whole_seconds()
 				.unsigned_abs()
 				.add(300),
-			OffsetDateTime::now_utc().unix_timestamp(),
+			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
 		)
 		.await
 		.inspect_err(|err| {

@@ -14,9 +14,9 @@ use std::{
 	task::{Context, Poll},
 };
 
-use aws_config::{ConfigLoader, Region};
+use aws_config::Region;
 use aws_credential_types::Credentials;
-use aws_sdk_s3::Client as S3Client;
+use aws_sdk_s3::{Client as S3Client, config::Builder as S3Builder};
 use oci_spec::distribution::ErrorCode;
 use preprocess::Preprocessable;
 use tower::{Layer, Service};
@@ -152,7 +152,7 @@ where
 			// Get Redis client
 			let redis = &mut state.redis;
 
-			let s3 = ConfigLoader::default()
+			let s3 = S3Builder::new()
 				.region(Region::new(state.config.s3.region.clone()))
 				.endpoint_url(state.config.s3.endpoint.clone())
 				.credentials_provider(
@@ -162,9 +162,9 @@ where
 						.provider_name("Static")
 						.build(),
 				)
-				.load()
-				.await;
-			let s3 = S3Client::new(&s3);
+				.force_path_style(state.config.s3.force_path_style)
+				.build();
+			let s3 = S3Client::from_conf(s3);
 
 			let config = state.config.clone();
 

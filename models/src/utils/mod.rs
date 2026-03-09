@@ -208,3 +208,62 @@ pub mod constants {
 		r"^((([a-z0-9].)([a-z0-9\-]*){0,63}([a-z0-9].).)(\.([a-z0-9].)([a-z0-9\-_]*){0,63}([a-z0-9]*)))|\@$"
 	);
 }
+
+#[cfg(test)]
+mod tests {
+	use std::borrow::Cow;
+
+	use super::validate_password;
+
+	#[test]
+	fn valid_password_passes() {
+		assert!(validate_password(Cow::Borrowed("SecurePass1@")).is_ok());
+	}
+
+	#[test]
+	fn missing_digit_fails() {
+		let err = validate_password(Cow::Borrowed("SecurePass@")).unwrap_err();
+		assert!(
+			err.to_string().contains("at least one digit"),
+			"expected digit error, got: {}",
+			err
+		);
+	}
+
+	#[test]
+	fn missing_lowercase_fails() {
+		let err = validate_password(Cow::Borrowed("SECUREPASS1@")).unwrap_err();
+		assert!(
+			err.to_string().contains("at least one lowercase"),
+			"expected lowercase error, got: {}",
+			err
+		);
+	}
+
+	#[test]
+	fn missing_uppercase_fails() {
+		let err = validate_password(Cow::Borrowed("securepass1@")).unwrap_err();
+		assert!(
+			err.to_string().contains("at least one uppercase"),
+			"expected uppercase error, got: {}",
+			err
+		);
+	}
+
+	#[test]
+	fn missing_special_char_fails() {
+		let err = validate_password(Cow::Borrowed("SecurePass1")).unwrap_err();
+		assert!(
+			err.to_string().contains("at least one special character"),
+			"expected special char error, got: {}",
+			err
+		);
+	}
+
+	#[test]
+	fn all_special_chars_accepted() {
+		assert!(validate_password(Cow::Borrowed(r#"aA1@!#$%^&*?"#)).is_ok());
+		assert!(validate_password(Cow::Borrowed(r"aA1/\|~`")).is_ok());
+		assert!(validate_password(Cow::Borrowed("aA1.,;:<>[]{}")).is_ok());
+	}
+}

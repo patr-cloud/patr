@@ -13,16 +13,19 @@
 //! - `handlers/`: OCI Distribution API endpoint implementations
 //! - `utils/`: S3 streaming, repository validation, and other utilities
 
-mod endpoint;
-mod request;
-mod response;
+/// Registry-specific endpoint definitions and handlers.
+pub mod endpoint;
+/// Request types for registry endpoints.
+pub mod request;
+/// Response types for registry endpoints, including streaming responses.
+pub mod response;
 
 /// Registry-specific error types.
-mod error;
+pub mod error;
 /// OCI Distribution API endpoint handlers.
-mod handlers;
+pub mod handlers;
 /// Utility functions for registry operations.
-mod utils;
+pub mod utils;
 
 use std::convert::Infallible;
 

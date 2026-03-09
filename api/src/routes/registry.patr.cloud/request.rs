@@ -1,16 +1,18 @@
-use std::net::IpAddr;
+use std::{fmt::Debug, net::IpAddr};
 
 use aws_sdk_s3::Client as S3Client;
 use axum::body::Body;
 use models::RequestUserData;
 use preprocess::Preprocessable;
 use rustis::client::Client as RedisClient;
+use typed_builder::TypedBuilder;
 
 use crate::{routes::registry_patr_cloud::prelude::*, utils::config::AppConfig};
 
 /// This struct represents a unprocessed request to the API. It contains the
 /// path, query, headers and unprocessed body of the request. This struct
 /// provides a builder API to make it easier to construct requests.
+#[derive(Debug, TypedBuilder)]
 pub struct RegistryUnprocessedApiRequest<E>
 where
 	E: RegistryEndpoint,
@@ -30,6 +32,7 @@ where
 /// This struct represents a preprocessed request to the API. It contains the
 /// path, query, headers and preprocessed body of the request. This struct
 /// provides a builder API to make it easier to construct requests.
+#[derive(TypedBuilder)]
 pub struct RegistryProcessedApiRequest<E>
 where
 	E: RegistryEndpoint,
