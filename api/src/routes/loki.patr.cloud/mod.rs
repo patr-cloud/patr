@@ -1,9 +1,15 @@
-mod auth;
-mod cache;
-mod common;
-mod loki_push;
-mod models;
-mod otlp_push;
+/// Authentication helpers for runner-based Basic Auth.
+pub mod auth;
+/// Redis-backed caching for runner/deployment ownership lookups.
+pub mod cache;
+/// Shared label/attribute validation, rewriting, and upstream forwarding.
+pub mod common;
+/// Handler for Loki protobuf push requests (`/loki/api/v1/push`).
+pub mod loki_push;
+/// Loki protobuf model types used for push request encoding/decoding.
+pub mod models;
+/// Handler for OTLP log push requests (`/otlp/v1/logs`).
+pub mod otlp_push;
 
 use std::time::Duration;
 

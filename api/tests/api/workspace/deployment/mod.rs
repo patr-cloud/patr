@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use models::{ApiSuccessResponseBody, api::workspace::deployment::*, utils::Uuid};
+use prost::Message;
 
 use crate::prelude::*;
 
@@ -394,6 +395,8 @@ async fn stop_deployment_works() {
 
 #[tokio::test]
 async fn get_deployment_logs_works() {
+	use api::routes::loki_patr_cloud::models::{EntryAdapter, PushRequest, StreamAdapter};
+
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
@@ -403,6 +406,48 @@ async fn get_deployment_logs_works() {
 	let deployment = setup
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
+
+	// Pre-seed Loki with a log line using the same labels Alloy actually pushes:
+	// deployment_id, deployment_name, runner_id, workspace_id
+	let push_request = PushRequest {
+		streams: vec![StreamAdapter {
+			labels: format!(
+				r#"{{deployment_id="{}", deployment_name="{}", runner_id="{}", workspace_id="{}"}}"#,
+				deployment.id, deployment.name, runner.id, workspace.id,
+			),
+			entries: vec![EntryAdapter {
+				timestamp: Some(prost_types::Timestamp {
+					seconds: time::OffsetDateTime::now_utc().unix_timestamp(),
+					nanos: 0,
+				}),
+				line: "hello from deployment logs test".to_string(),
+			}],
+			hash: 0,
+		}],
+	};
+	let encoded = push_request.encode_to_vec();
+	let compressed = snap::raw::Encoder::new()
+		.compress_vec(&encoded)
+		.expect("snappy compress failed");
+
+	let loki_url = format!("{}/loki/api/v1/push", setup.upstream_loki_url());
+	let push_resp = reqwest::Client::new()
+		.post(&loki_url)
+		.header("Content-Type", "application/x-protobuf")
+		.header("X-Scope-OrgID", workspace.id.to_string())
+		.body(compressed)
+		.send()
+		.await
+		.expect("failed to push to Loki");
+
+	assert!(
+		push_resp.status().is_success(),
+		"Loki push failed: {}",
+		push_resp.text().await.unwrap_or_default()
+	);
+
+	// Wait for Loki to index
+	tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
 	let response = setup
 		.make_api_call(
@@ -419,10 +464,117 @@ async fn get_deployment_logs_works() {
 		)
 		.await;
 
-	let status = response.status_code();
+	assert_eq!(
+		response.status_code(),
+		StatusCode::OK,
+		"expected 200 from get_deployment_logs"
+	);
+
+	let body = response.json::<ApiSuccessResponseBody<GetDeploymentLogsResponse>>();
 	assert!(
-		status.is_success() || status.is_server_error(),
-		"expected success or server error, got {status}"
+		!body.response.logs.is_empty(),
+		"expected at least one log entry"
+	);
+	assert!(
+		body.response
+			.logs
+			.iter()
+			.any(|l| l.log.contains("hello from deployment logs test")),
+		"expected to find the seeded log line"
+	);
+}
+
+#[tokio::test]
+async fn get_deployment_logs_with_search_filter() {
+	use api::routes::loki_patr_cloud::models::{EntryAdapter, PushRequest, StreamAdapter};
+
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let deployment = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	// Push multiple log lines with the same labels Alloy actually pushes
+	let now = time::OffsetDateTime::now_utc().unix_timestamp();
+	let push_request = PushRequest {
+		streams: vec![StreamAdapter {
+			labels: format!(
+				r#"{{deployment_id="{}", deployment_name="{}", runner_id="{}", workspace_id="{}"}}"#,
+				deployment.id, deployment.name, runner.id, workspace.id,
+			),
+			entries: vec![
+				EntryAdapter {
+					timestamp: Some(prost_types::Timestamp {
+						seconds: now,
+						nanos: 0,
+					}),
+					line: "normal log message".to_string(),
+				},
+				EntryAdapter {
+					timestamp: Some(prost_types::Timestamp {
+						seconds: now + 1,
+						nanos: 0,
+					}),
+					line: "special-keyword-xyzzy in this line".to_string(),
+				},
+			],
+			hash: 0,
+		}],
+	};
+	let encoded = push_request.encode_to_vec();
+	let compressed = snap::raw::Encoder::new()
+		.compress_vec(&encoded)
+		.expect("snappy compress failed");
+
+	let loki_url = format!("{}/loki/api/v1/push", setup.upstream_loki_url());
+	reqwest::Client::new()
+		.post(&loki_url)
+		.header("Content-Type", "application/x-protobuf")
+		.header("X-Scope-OrgID", workspace.id.to_string())
+		.body(compressed)
+		.send()
+		.await
+		.expect("failed to push to Loki");
+
+	tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<GetDeploymentLogsRequest>::builder()
+				.path(GetDeploymentLogsPath {
+					workspace_id: workspace.id,
+					deployment_id: deployment.id,
+				})
+				.query(GetDeploymentLogsQuery {
+					end_time: None,
+					limit: None,
+					search: Some("special-keyword-xyzzy".to_string()),
+				})
+				.headers(GetDeploymentLogsRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!(
+		response.status_code(),
+		StatusCode::OK,
+		"expected 200 from filtered logs query"
+	);
+
+	let body = response.json::<ApiSuccessResponseBody<GetDeploymentLogsResponse>>();
+	assert!(
+		body.response
+			.logs
+			.iter()
+			.all(|l| l.log.contains("special-keyword-xyzzy")),
+		"all returned logs should contain the search keyword"
 	);
 }
 

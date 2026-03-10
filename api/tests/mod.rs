@@ -9,6 +9,8 @@ mod utils;
 
 /// All tests related to the API are in this module.
 mod api;
+/// All tests related to the loki.patr.cloud log proxy are in this module.
+mod loki;
 /// All tests related to the OCI registry are in this module.
 mod registry;
 

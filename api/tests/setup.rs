@@ -5,6 +5,7 @@ use api::{
 	prelude::ClientType,
 	routes::{
 		api_patr_cloud,
+		loki_patr_cloud,
 		registry_patr_cloud,
 		registry_patr_cloud::{endpoint::RegistryEndpoint, request::RegistryUnprocessedApiRequest},
 	},
@@ -39,7 +40,13 @@ use testcontainers_modules::{
 	minio::MinIO,
 	postgres::Postgres,
 	redis::Redis,
-	testcontainers::{ContainerAsync, ImageExt, runners::AsyncRunner as _},
+	testcontainers::{
+		ContainerAsync,
+		GenericImage,
+		ImageExt,
+		core::{IntoContainerPort, WaitFor},
+		runners::AsyncRunner as _,
+	},
 };
 use tokio::net::TcpListener;
 
@@ -49,10 +56,12 @@ static TRACING: Once = Once::new();
 pub struct TestSetup {
 	api: TestServer,
 	registry: TestServer,
+	loki: TestServer,
 	state: AppState,
 	s3_container: ContainerAsync<MinIO>,
 	postgres_container: ContainerAsync<Postgres>,
 	redis_container: ContainerAsync<Redis>,
+	loki_container: ContainerAsync<GenericImage>,
 	permission_ids: BTreeMap<String, Uuid>,
 }
 
@@ -127,6 +136,30 @@ impl TestSetup {
 		}
 	}
 
+	/// Make a raw HTTP call to the loki TestServer.
+	pub async fn make_loki_call(
+		&self,
+		method: http::Method,
+		path: &str,
+		headers: Vec<(http::HeaderName, &str)>,
+		body: Vec<u8>,
+	) -> TestResponse {
+		let mut req = self.loki.method(method, path);
+		for (name, value) in headers {
+			req = req.add_header(name, value);
+		}
+		if body.is_empty() {
+			req.await
+		} else {
+			req.bytes(axum::body::Bytes::from(body)).await
+		}
+	}
+
+	/// Get the direct URL to the upstream Loki container (for querying logs).
+	pub fn upstream_loki_url(&self) -> &str {
+		&self.state.config.opentelemetry.logs.endpoint
+	}
+
 	/// Look up the UUID of a permission by the strongly-typed `Permission`
 	/// enum. Uses the cached `permission_ids` populated at setup time.
 	pub fn get_permission_id(&self, permission: Permission) -> Uuid {
@@ -143,6 +176,7 @@ impl TestSetup {
 pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 	let api_bind_address = TcpListener::bind("127.0.0.1:0").await?.local_addr()?;
 	let registry_bind_address = TcpListener::bind("127.0.0.1:0").await?.local_addr()?;
+	let loki_bind_address = TcpListener::bind("127.0.0.1:0").await?.local_addr()?;
 
 	let password_pepper = rand::rng()
 		.sample_iter(Alphanumeric)
@@ -189,6 +223,63 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 		connection_limit: 10,
 	};
 
+	let loki_config = r#"
+auth_enabled: true
+target: all
+server:
+  http_listen_address: "0.0.0.0"
+  http_listen_port: 3100
+common:
+  path_prefix: /tmp/loki
+  replication_factor: 1
+memberlist:
+  join_members: []
+ingester:
+  lifecycler:
+    address: 127.0.0.1
+    ring:
+      kvstore:
+        store: inmemory
+      replication_factor: 1
+    final_sleep: 0s
+  chunk_idle_period: 1h
+  max_chunk_age: 1h
+  chunk_target_size: 1048576
+  chunk_retain_period: 30s
+storage_config:
+  tsdb_shipper:
+    active_index_directory: /tmp/loki/tsdb_shipper/active_index
+    cache_location: /tmp/loki/tsdb_shipper/cache
+  filesystem:
+    directory: /tmp/loki/chunks
+compactor:
+  working_directory: /tmp/loki/compactor
+schema_config:
+  configs:
+    - from: 2023-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+limits_config:
+  allow_structured_metadata: true
+  ingestion_rate_mb: 64
+  ingestion_burst_size_mb: 128
+"#;
+
+	let loki_container = GenericImage::new("grafana/loki", "3.2.0")
+		.with_exposed_port(3100.tcp())
+		.with_wait_for(WaitFor::message_on_stderr("Loki started"))
+		.with_copy_to(
+			"/etc/loki/test-config.yaml",
+			loki_config.as_bytes().to_vec(),
+		)
+		.with_cmd(["-config.file=/etc/loki/test-config.yaml"])
+		.start()
+		.await?;
+
 	let redis_container = Redis::default().with_tag("7").start().await?;
 
 	let redis = RedisConfig {
@@ -226,7 +317,11 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 				endpoint: "".to_string(),
 			},
 			logs: LogsConfig {
-				endpoint: "".to_string(),
+				endpoint: format!(
+					"http://{}:{}",
+					loki_container.get_host().await?,
+					loki_container.get_host_port_ipv4(3100).await?
+				),
 			},
 			metrics: MetricsConfig {
 				endpoint: "".to_string(),
@@ -320,6 +415,14 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 				.into_make_service_with_connect_info::<SocketAddr>(),
 		);
 
+	let loki = TestServer::builder()
+		.http_transport_with_ip_port(Some(loki_bind_address.ip()), Some(loki_bind_address.port()))
+		.build(
+			loki_patr_cloud::setup_routes(&state)
+				.await
+				.into_make_service_with_connect_info::<SocketAddr>(),
+		);
+
 	let permission_ids: BTreeMap<String, Uuid> = {
 		use sqlx::Row;
 		let rows = sqlx::query("SELECT id, name FROM permission")
@@ -338,10 +441,12 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 	Ok(TestSetup {
 		api,
 		registry,
+		loki,
 		state,
 		s3_container,
 		postgres_container,
 		redis_container,
+		loki_container,
 		permission_ids,
 	})
 }

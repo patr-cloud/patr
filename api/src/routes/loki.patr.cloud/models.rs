@@ -2,7 +2,7 @@
 
 /// A push request to the Loki log ingestion endpoint.
 #[derive(Clone, PartialEq, prost::Message)]
-pub(super) struct PushRequest {
+pub struct PushRequest {
 	/// The log streams to push.
 	#[prost(message, repeated, tag = "1")]
 	pub streams: Vec<StreamAdapter>,
@@ -10,7 +10,7 @@ pub(super) struct PushRequest {
 
 /// A single log stream identified by its label set.
 #[derive(Clone, PartialEq, prost::Message)]
-pub(super) struct StreamAdapter {
+pub struct StreamAdapter {
 	/// Prometheus-style label string, e.g. `{job="foo", instance="bar"}`.
 	#[prost(string, tag = "1")]
 	pub labels: String,
@@ -24,7 +24,7 @@ pub(super) struct StreamAdapter {
 
 /// A single log entry.
 #[derive(Clone, PartialEq, prost::Message)]
-pub(super) struct EntryAdapter {
+pub struct EntryAdapter {
 	/// Timestamp of the log line.
 	#[prost(message, optional, tag = "1")]
 	pub timestamp: Option<prost_types::Timestamp>,

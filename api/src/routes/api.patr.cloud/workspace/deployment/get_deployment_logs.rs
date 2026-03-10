@@ -88,7 +88,7 @@ pub async fn get_deployment_logs(
 			(
 				"query",
 				format!(
-					"{{deploymentId=\"{}\"}}{}",
+					"{{deployment_id=\"{}\"}}{}",
 					deployment_id,
 					search
 						.map(|search| format!(" |= `{}`", search))
