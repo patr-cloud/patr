@@ -1,23 +1,14 @@
 use std::{
-	collections::BTreeMap,
 	future::Future,
 	marker::PhantomData,
-	str::FromStr as _,
 	task::{Context, Poll},
 };
 
 use models::utils::{AppAuthentication, BearerToken, HasHeader};
 use preprocess::Preprocessable;
-use tokio::sync::OnceCell;
 use tower::{Layer, Service};
 
-use crate::prelude::*;
-
-/// A global map of Permission -> PermissionID for all permissions.
-/// This is used to cache the permission IDs for faster lookup instead of
-/// fetching it from the database every time.
-#[doc(hidden)]
-static PERMISSION_TO_ID_MAP: OnceCell<BTreeMap<Permission, Uuid>> = OnceCell::const_new();
+use crate::{models::permissions::get_permission_id, prelude::*};
 
 /// The [`tower::Layer`] used to authorize requests. This will check the
 /// permissions of the authenticated user against the required permissions for
@@ -138,37 +129,7 @@ where
 					let workspace_id = extract_workspace_id(&req.request);
 					let resource_id = extract_resource_id(&req.request);
 
-					let permission_id = PERMISSION_TO_ID_MAP
-						.get_or_init(async || {
-							query!(
-								r#"
-								SELECT
-									id AS "id: Uuid",
-									name
-								FROM
-									permission;
-								"#
-							)
-							.fetch_all(&mut **req.database)
-							.await
-							.expect("Failed to fetch permissions from the database")
-							.into_iter()
-							.map(|row| {
-								(
-									Permission::from_str(&row.name)
-										.expect("Invalid permission name"),
-									row.id,
-								)
-							})
-							.collect()
-						})
-						.await
-						.get(&permission)
-						.copied()
-						.ok_or_else(|| {
-							error!("Permission {permission} does not exist in the database");
-							ErrorType::InternalServerError
-						})?;
+					let permission_id = get_permission_id(&mut **req.database, permission).await;
 
 					// Check if the user has the required permission for the resource in the
 					// workspace

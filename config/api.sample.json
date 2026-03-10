@@ -49,7 +49,7 @@
 			"endpoint": "http://tracing:4317/v1/traces"
 		},
 		"logs": {
-			"endpoint": "http://loki:3100/loki"
+			"endpoint": "http://loki:3100"
 		},
 		"metrics": {
 			"endpoint": "http://metrics:8080",

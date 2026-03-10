@@ -1,6 +1,7 @@
 use std::{
 	collections::{BTreeMap, BTreeSet},
 	net::IpAddr,
+	str::FromStr as _,
 };
 
 use models::{
@@ -12,8 +13,49 @@ use rustis::{
 	commands::{GenericCommands as _, StringCommands as _},
 };
 use time::OffsetDateTime;
+use tokio::sync::OnceCell;
 
 use crate::{models::redis::UserPermissionCache, prelude::*, utils::config::AppConfig};
+
+/// A global map of Permission -> PermissionID for all permissions.
+/// This is used to cache the permission IDs for faster lookup instead of
+/// fetching it from the database every time.
+#[doc(hidden)]
+static PERMISSION_TO_ID_MAP: OnceCell<BTreeMap<Permission, Uuid>> = OnceCell::const_new();
+
+/// Looks up the UUID for a given [`Permission`] in the database, caching
+/// the full permission table on first call via [`PERMISSION_TO_ID_MAP`].
+pub async fn get_permission_id(database: &mut DatabaseConnection, permission: Permission) -> Uuid {
+	PERMISSION_TO_ID_MAP
+		.get_or_init(async || {
+			query!(
+				r#"
+				SELECT
+					id AS "id: Uuid",
+					name
+				FROM
+					permission;
+				"#
+			)
+			.fetch_all(&mut *database)
+			.await
+			.expect("Failed to fetch permissions from the database")
+			.into_iter()
+			.map(|row| {
+				(
+					Permission::from_str(&row.name).expect("Invalid permission name"),
+					row.id,
+				)
+			})
+			.collect()
+		})
+		.await
+		.get(&permission)
+		.copied()
+		.unwrap_or_else(|| {
+			panic!("Permission {permission} does not exist in the database");
+		})
+}
 
 /// Contains the functions to extract permissions for an API token.
 mod api_token;

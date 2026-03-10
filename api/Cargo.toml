@@ -37,9 +37,12 @@ oci-spec                       = { workspace = true, features = ["distribution",
 opentelemetry                  = { workspace = true, features = ["default"] }
 opentelemetry-appender-tracing = { workspace = true, features = ["default"] }
 opentelemetry-otlp             = { workspace = true, features = ["default", "tonic", "tokio", "reqwest-client", "reqwest-rustls-webpki-roots", "grpc-tonic", "http-json"] }
+opentelemetry-proto            = { workspace = true, features = [] }
 opentelemetry_sdk              = { workspace = true, features = ["default", "rt-tokio"] }
 pin-project                    = { workspace = true, features = [] }
 preprocess                     = { workspace = true, features = [] }
+prost                          = { workspace = true, features = [] }
+prost-types                    = { workspace = true, features = [] }
 psl                            = { workspace = true, features = ["default"] }
 rand                           = { workspace = true, features = ["default"] }
 regex                          = { workspace = true, features = ["default"] }
@@ -50,6 +53,7 @@ serde                          = { workspace = true, features = ["default", "der
 serde_json                     = { workspace = true, features = ["default"] }
 serde_qs                       = { workspace = true, features = [] }
 sha2                           = { workspace = true, features = ["default"] }
+snap                           = { workspace = true, features = [] }
 sqlx                           = { workspace = true, features = ["ipnetwork", "macros", "postgres", "runtime-tokio", "time", "tls-rustls", "uuid", "json"] }
 sync_wrapper                   = { workspace = true, features = [] }
 time                           = { workspace = true, features = ["default", "serde-human-readable"] }
