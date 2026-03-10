@@ -8,6 +8,7 @@ use cloudflare::{
 	},
 };
 use models::{api::workspace::runner::*, prelude::*};
+use rustis::commands::GenericCommands as _;
 
 use crate::prelude::*;
 
@@ -28,7 +29,7 @@ pub async fn remove_runner_from_workspace(
 				body: DeleteRunnerRequestProcessed,
 			},
 		database,
-		redis: _,
+		redis,
 		client_ip: _,
 		user_data: _,
 		state,
@@ -65,6 +66,11 @@ pub async fn remove_runner_from_workspace(
 	)
 	.execute(&mut **database)
 	.await?;
+
+	// Invalidate the cached workspace-for-runner lookup
+	redis
+		.del(redis::keys::workspace_id_for_runner(&runner_id))
+		.await?;
 
 	CloudflareClient::new(
 		Credentials::UserAuthToken {

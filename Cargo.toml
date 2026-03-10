@@ -70,10 +70,13 @@ open                           = { default-features = false, version = "5" }
 opentelemetry                  = { default-features = false, version = "0.31" }
 opentelemetry-appender-tracing = { default-features = false, version = "0.31" }
 opentelemetry-otlp             = { default-features = false, version = "0.31" }
+opentelemetry-proto            = { default-features = false, version = "0.31", features = ["gen-tonic-messages", "with-serde", "logs"] }
 opentelemetry_sdk              = { default-features = false, version = "0.31" }
 pin-project-lite               = { default-features = false, version = "0.2" }
 preprocess                     = { default-features = false, version = "0.5" }
 proc-macro2                    = { default-features = false, version = "1" }
+prost                          = { default-features = false, version = "0.14" }
+prost-types                    = { default-features = false, version = "0.14" }
 psl                            = { default-features = false, version = "2" }
 quote                          = { default-features = false, version = "1" }
 rand                           = { default-features = false, version = "0.10" }
@@ -91,6 +94,7 @@ serde_qs                       = { default-features = false, version = "1" }
 serde_test                     = { default-features = false, version = "1" }
 serde_yaml2                    = { default-features = false, version = "0.1" }
 sha2                           = { default-features = false, version = "0.11.0-rc.5" }
+snap                           = { default-features = false, version = "1" }
 sqlx                           = { default-features = false, version = "0.8" }
 strum                          = { default-features = false, version = "0.28" }
 syn                            = { default-features = false, version = "2" }

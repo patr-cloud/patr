@@ -41,13 +41,8 @@ pub async fn update_alloy_service(
 	};
 
 	let loki_url = match settings.environment {
-		RunningEnvironment::Production => String::from("https://loki.patr.cloud"),
-		RunningEnvironment::Development => {
-			format!(
-				"http://host.docker.internal:{}",
-				settings.bind_address.port() + 3
-			)
-		}
+		RunningEnvironment::Production => "https://loki.patr.cloud",
+		RunningEnvironment::Development => "http://host.docker.internal:3003",
 	};
 
 	let alloy_config_text = generate_alloy_config(workspace_id, runner_id, api_token, &loki_url);
@@ -80,7 +75,7 @@ pub async fn update_alloy_service(
 				String::from("managed-by"),
 				String::from("patr"),
 			)])),
-			data: Some(alloy_config_text),
+			data: Some(Base64String::from_string(alloy_config_text).to_string()),
 			templating: None,
 		};
 
@@ -236,8 +231,10 @@ loki.source.docker "patr" {{
 loki.write "patr" {{
   endpoint {{
     url = "{loki_url}/loki/api/v1/push"
+    batch_size = "4MiB"
+
     basic_auth {{
-      username = "{workspace_id}"
+      username = "{runner_id}"
       password = "{api_token}"
     }}
   }}

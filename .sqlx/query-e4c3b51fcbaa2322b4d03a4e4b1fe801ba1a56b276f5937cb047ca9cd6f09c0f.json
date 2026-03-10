@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT runner AS \"runner: Uuid\" FROM deployment WHERE id = $1 AND deleted IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "runner: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e4c3b51fcbaa2322b4d03a4e4b1fe801ba1a56b276f5937cb047ca9cd6f09c0f"
+}

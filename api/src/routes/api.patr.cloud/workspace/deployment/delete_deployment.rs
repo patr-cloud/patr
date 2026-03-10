@@ -8,7 +8,7 @@ use cloudflare::{
 	},
 };
 use models::api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg};
-use rustis::commands::PubSubCommands;
+use rustis::commands::{GenericCommands as _, PubSubCommands};
 
 use crate::prelude::*;
 
@@ -162,6 +162,11 @@ pub async fn delete_deployment(
 	)
 	.execute(&mut **database)
 	.await?;
+
+	// Invalidate the cached runner-for-deployment lookup
+	redis
+		.del(redis::keys::runner_id_for_deployment(&deployment_id))
+		.await?;
 
 	CloudflareClient::new(
 		Credentials::UserAuthToken {

@@ -13,7 +13,7 @@ use models::utils::DockerUploadUuid;
 use rustis::commands::StringCommands;
 use sha2::{Digest as _, Sha256, digest::common::hazmat::SerializableState};
 
-use crate::{redis::keys, routes::registry_patr_cloud::prelude::*};
+use crate::{models::permissions, redis::keys, routes::registry_patr_cloud::prelude::*};
 
 macros::declare_registry_endpoint!(
 	/// POST blob upload initiation endpoint.
@@ -94,18 +94,10 @@ pub async fn initiate_upload(
 	info!("POST blob upload initiation request");
 
 	// Check that the user can push to this repository
-	let (repository_id, permission_id) = query!(
+	let repository_id = query!(
 		r#"
 		SELECT
-			id AS "resource_id: Uuid",
-			(
-				SELECT
-					id
-				FROM
-					permission
-				WHERE
-					name = $3
-			) AS "permission_id!: Uuid"
+			id AS "resource_id: Uuid"
 		FROM
 			container_registry_repository
 		WHERE
@@ -115,8 +107,6 @@ pub async fn initiate_upload(
 		"#,
 		workspace_id as _,
 		&repo_name,
-		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Push)
-			.to_string(),
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -128,7 +118,13 @@ pub async fn initiate_upload(
 			.code(ErrorCode::NameUnknown)
 			.build()
 	})
-	.map(|row| (row.resource_id, row.permission_id))?;
+	.map(|row| row.resource_id)?;
+
+	let permission_id = permissions::get_permission_id(
+		&mut **database,
+		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Push),
+	)
+	.await;
 
 	let authorized =
 		user_data.has_permission_on_resource(workspace_id, repository_id, permission_id);
