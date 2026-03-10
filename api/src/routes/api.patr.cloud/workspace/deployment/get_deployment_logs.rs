@@ -73,7 +73,7 @@ pub async fn get_deployment_logs(
 
 	let loki_response = reqwest::Client::new()
 		.get(format!(
-			"{}/api/v1/query_range",
+			"{}/loki/api/v1/query_range",
 			state.config.opentelemetry.logs.endpoint
 		))
 		.query(&[

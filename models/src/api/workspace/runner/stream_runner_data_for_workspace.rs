@@ -87,7 +87,7 @@ macros::declare_stream_endpoint!(
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.runner_id,
 			extract_workspace_id: |req| req.path.workspace_id,
-			permission: Permission::Runner(RunnerPermission::View),
+			permission: Permission::Runner(RunnerPermission::Execute),
 		}
 	},
 	server_msg = {

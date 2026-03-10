@@ -34,7 +34,7 @@ pub(crate) async fn upsert(
 		id,
 		data:
 			Deployment {
-				name: _,
+				name,
 				registry,
 				image_tag,
 				status: _,       // TODO handle paused deployments
@@ -127,6 +127,7 @@ pub(crate) async fn upsert(
 		name: Some(service_name.clone()),
 		labels: Some(HashMap::from([
 			(String::from("patr.deploymentId"), id.to_string()),
+			(String::from("patr.deploymentName"), name.clone()),
 			(
 				String::from("patr.minHorizontalScale"),
 				min_horizontal_scale.to_string(),
@@ -155,10 +156,10 @@ pub(crate) async fn upsert(
 						})
 						.collect(),
 				),
-				labels: Some(HashMap::from([(
-					String::from("patr.deploymentId"),
-					id.to_string(),
-				)])),
+				labels: Some(HashMap::from([
+					(String::from("patr.deploymentId"), id.to_string()),
+					(String::from("patr.deploymentName"), name.clone()),
+				])),
 				health_check,
 				..Default::default()
 			}),

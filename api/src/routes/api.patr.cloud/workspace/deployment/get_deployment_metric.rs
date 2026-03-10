@@ -73,7 +73,7 @@ pub async fn get_deployment_metric(
 	let mimir_response = reqwest::Client::new()
 		.get(format!(
 			"{}/mimir/api/v1/query_range",
-			state.config.opentelemetry.logs.endpoint
+			state.config.opentelemetry.metrics.endpoint
 		))
 		.query(&[
 			(

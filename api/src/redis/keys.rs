@@ -74,6 +74,18 @@ pub fn repository_for_registry_blob(repository_id: &Uuid, digest: &str) -> Strin
 	format!("repositoryForRegistryBlob:{}:{}", repository_id, digest)
 }
 
+/// The key used to cache the workspace ID that a runner belongs to. Cached
+/// for 1 week; an empty value means the runner was deleted / not found.
+pub fn workspace_id_for_runner(runner_id: &Uuid) -> String {
+	format!("workspaceIdForRunner:{}", runner_id)
+}
+
+/// The key used to cache the runner ID that a deployment is assigned to. Cached
+/// for 1 week; an empty value means the deployment was deleted / not found.
+pub fn runner_id_for_deployment(deployment_id: &Uuid) -> String {
+	format!("runnerIdForDeployment:{}", deployment_id)
+}
+
 /// The key used to store the IP lookup data for an IP address. This is used to
 /// cache the results of IP lookups to avoid making repeated calls to the IPInfo
 /// API for the same IP address, both to reduce latency and to reduce costs.
