@@ -59,9 +59,8 @@ pub struct AppConfig {
 	/// based on an environment variable and if the application is compiled with
 	/// debug mode.
 	pub environment: RunningEnvironment,
-	/// The configuration for SendGrid to use to send emails to users such as
-	/// signing up and for password resets
-	pub send_grid: SendGridConfig,
+	/// The configuration for sending emails via SMTP
+	pub email: EmailConfig,
 	/// The configuration for S3, used for storing layers of docker images
 	pub s3: S3Config,
 	/// The configuration for the database to connect to
@@ -184,26 +183,22 @@ pub struct CloudflareConfig {
 	pub primary_hosted_zone_id: String,
 }
 
-/// The configuration for SendGrid to use to send emails to users
+/// The configuration for sending emails via SMTP
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SendGridConfig {
-	/// The API key to use to connect to SendGrid
-	pub api_key: String,
-	/// The email address to use as the sender for all emails sent by the API
+pub struct EmailConfig {
+	/// The SMTP server hostname
+	pub host: String,
+	/// The SMTP server port
+	pub port: u16,
+	/// Whether to use TLS for the SMTP connection
+	pub secure: bool,
+	/// The SMTP username for authentication
+	pub username: String,
+	/// The email address to use as the sender for all emails
 	pub from: String,
-	/// The list of all templates to use for sending emails, mapped by a unique
-	/// name for each template
-	pub templates: SendGridTemplateConfig,
-}
-
-/// The list of all SendGrid templates to use for sending emails, mapped by a
-/// unique name for each template
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SendGridTemplateConfig {
-	pub user_sign_up: String,
-	pub sign_up_completed: String,
+	/// The SMTP password for authentication
+	pub password: String,
 }
 
 /// The configuration for the opentelemetry endpoints

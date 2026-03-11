@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 /// The email template for the user sign up email. This email is sent to the
 /// user when they sign up, and contains an OTP for verification.
 #[derive(Debug, Clone, Serialize, Deserialize, EmailTemplate)]
-#[template(path = "user-sign-up")]
+#[template(path = "user-sign-up", subject = "Verify your account | Patr")]
 #[serde(rename_all = "camelCase")]
 pub struct UserSignUpEmail {
 	/// The username of the user who signed up.

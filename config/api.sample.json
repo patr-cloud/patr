@@ -28,14 +28,6 @@
 		"key": "key123",
 		"secret": "secret123"
 	},
-	"sendgrid": {
-		"apiKey": "SG.sendgrid-api-key",
-		"from": "no-reply@example.com",
-		"templates": {
-			"userSignUp": "d-1234567890abcdef1234567890abcdef",
-			"signUpCompleted": "d-abcdef1234567890abcdef1234567890"
-		}
-	},
 	"email": {
 		"host": "smtp.example.com",
 		"port": 587,

@@ -318,37 +318,25 @@ pub fn optionalize(args: TokenStream, input: TokenStream) -> TokenStream {
 	optionalize::parse(args, input)
 }
 
-/// A derive macro that generates the following methods:
-/// - A `subject` method that returns the subject of the email
-/// - A `html` method that returns the HTML body of the email
-/// - A `text` method that returns the text body of the email
-/// - An `inline_attachments` method that returns a tuple of all inline
-///   attachments, along with the file contents.
-/// - An `attachments` method that returns a tuple of all attachment names,
-///   along with the file contents.
+/// A derive macro that generates an `.into_email_body()` method for email
+/// template structs.
 ///
-/// This is used to generate email templates for the background worker.
+/// The macro generates two internal Askama wrapper structs (one for `.mjml`,
+/// one for `.txt`) with the same fields, plus a subject template. The
+/// `.into_email_body()` method renders all three and returns an `EmailBody`
+/// containing the subject, HTML (via MJML), and plain text.
 ///
 /// # Example usage:
 /// ```rust
 /// use macros::EmailTemplate;
 ///
 /// #[derive(EmailTemplate)]
-/// #[template(path = "user-sign-up")]
+/// #[template(path = "user-sign-up", subject = "Verify your email, {{ username }} | Patr")]
 /// pub struct UserSignUpEmail {
 ///     pub username: String,
 ///     pub otp: String,
+///     pub otp_expiry: String,
 /// }
-///
-/// # fn verify() {
-/// let email = UserSignUpEmail {
-///     username: "testuser".to_string(),
-///     otp: "123456".to_string(),
-/// };
-/// assert_eq!(email.subject(), "Welcome to Patr Cloud!");
-/// assert_eq!(email.html(), "<html><body><h1>Welcome to Patr Cloud, testuser!</h1><p>Your OTP is 123456</p></body></html>");
-/// assert_eq!(email.text(), "Welcome to Patr Cloud, testuser!\nYour OTP is 123456");
-/// # }
 /// ```
 #[proc_macro_derive(EmailTemplate, attributes(template))]
 pub fn email_template(input: TokenStream) -> TokenStream {

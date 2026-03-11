@@ -202,7 +202,7 @@ pub async fn upload_manifest(
 			let config_blob = serde_json::from_slice::<ImageConfiguration>(
 				&s3.get_object()
 					.bucket(&config.s3.bucket)
-					.key(format!("blobs/{config_digest}"))
+					.key(format!("registry/blobs/{config_digest}"))
 					.send()
 					.await?
 					.body
@@ -365,7 +365,7 @@ pub async fn upload_manifest(
 		// immutable and must be identical.
 		s3.put_object()
 			.bucket(&config.s3.bucket)
-			.key(format!("manifests/{digest}"))
+			.key(format!("registry/manifests/{digest}"))
 			.content_type(content_type)
 			.body(ByteStream::from(bytes))
 			.send()

@@ -1,13 +1,13 @@
 use std::str::FromStr;
 
 use apalis::prelude::*;
-use apalis_codec::json::JsonCodec;
 use apalis_cron::CronStream;
-use apalis_postgres::{Config, PgNotify, PostgresStorage, shared::SharedPostgresStorage};
+use apalis_postgres::{Config, PostgresStorage, shared::SharedPostgresStorage};
 use cron::Schedule;
-use futures::{FutureExt, TryStreamExt};
+use futures::FutureExt;
+use serde::{Deserialize, Serialize};
 
-use crate::{app::WorkerTaskType, prelude::*};
+use crate::prelude::*;
 
 /// The background workers for rendering, and sending emails.
 pub mod mailer;
@@ -19,12 +19,22 @@ mod verify_unverified_domains;
 
 use self::{reverify_verified_domains::*, verify_unverified_domains::*};
 
+/// The type of background task to be performed by the worker. This is used to
+/// differentiate between different types of tasks, such as sending emails or
+/// performing database maintenance.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", content = "data", rename_all = "camelCase")]
+pub enum WorkerTaskType {
+	/// The task to send an email. This task is used to send an email using the
+	/// worker, and contains the necessary information to send the email, such
+	/// as the recipient and the type of email to be sent.
+	Email(Email),
+}
+
 /// Sets up the storage backend for the worker. This storage backend is where
 /// the jobs get stored (and can be used to queue jobs as well).
-pub fn setup(
-	pool: &sqlx::Pool<DatabaseType>,
-) -> PostgresStorage<WorkerTaskType, Vec<u8>, JsonCodec<Vec<u8>>, PgNotify> {
-	PostgresStorage::new_with_notify(pool, &Config::default())
+pub fn setup(pool: &sqlx::Pool<DatabaseType>) -> PostgresStorage<WorkerTaskType> {
+	PostgresStorage::new(pool)
 }
 
 /// Initializes the worker by running any necessary setup tasks, such as
@@ -52,7 +62,6 @@ pub async fn run(state: &AppState) {
 								"Failed to parse cron schedule for verify-unverified-domains",
 							),
 						)
-						.map_ok(WorkerTaskType::Cron)
 						.pipe_to(backend),
 					)
 					.data(state.clone())
@@ -74,7 +83,6 @@ pub async fn run(state: &AppState) {
 								"Failed to parse cron schedule for reverify-verified-domains",
 							),
 						)
-						.map_ok(WorkerTaskType::Cron)
 						.pipe_to(backend),
 					)
 					.data(state.clone())
@@ -86,10 +94,16 @@ pub async fn run(state: &AppState) {
 		.register({
 			let state = state.clone();
 			move |_| {
-				WorkerBuilder::new("send-emails")
-					.backend(state.worker.clone())
+				let backend = PostgresStorage::new_with_notify(&state.database, &Config::default());
+
+				WorkerBuilder::new("background-worker")
+					.backend(backend)
 					.data(state.clone())
-					.build(mailer::send_emails)
+					.build(
+						async |task: WorkerTaskType, state: Data<AppState>| match task {
+							WorkerTaskType::Email(email) => mailer::send_emails(email, state).await,
+						},
+					)
 			}
 		})
 		.run_with_signal(super::exit_signal().then(async |_| Ok(())))

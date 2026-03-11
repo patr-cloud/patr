@@ -15,7 +15,6 @@ proc-macro = true
 
 [dependencies]
 convert_case = { workspace = true }
-handlebars   = { workspace = true, features = ["default"] }
 proc-macro2  = { workspace = true, features = ["default"] }
 quote        = { workspace = true, features = ["default"] }
 regex        = { workspace = true, features = ["default"] }

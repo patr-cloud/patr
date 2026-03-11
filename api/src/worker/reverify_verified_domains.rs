@@ -1,4 +1,5 @@
 use apalis::prelude::*;
+use apalis_cron::Tick;
 use cloudflare::{
 	endpoints::zones::custom_hostnames::*,
 	framework::{
@@ -9,12 +10,9 @@ use cloudflare::{
 };
 use futures::TryStreamExt;
 
-use crate::{app::WorkerTaskType, prelude::*};
+use crate::prelude::*;
 
-pub async fn reverify_verified_domains(
-	_: WorkerTaskType,
-	data: Data<AppState>,
-) -> Result<(), WorkerError> {
+pub async fn reverify_verified_domains(_: Tick, data: Data<AppState>) -> Result<(), WorkerError> {
 	println!("Re-verifying verified domains...");
 
 	query!(

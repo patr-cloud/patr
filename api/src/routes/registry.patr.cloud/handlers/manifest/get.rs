@@ -173,7 +173,7 @@ pub async fn get_manifest(
 	let object = s3
 		.get_object()
 		.bucket(&config.s3.bucket)
-		.key(format!("manifests/{}", manifest_record.digest))
+		.key(format!("registry/manifests/{}", manifest_record.digest))
 		.send()
 		.await
 		.inspect_err(|e| {

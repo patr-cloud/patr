@@ -1,4 +1,5 @@
 use apalis::prelude::*;
+use apalis_cron::Tick;
 use cloudflare::{
 	endpoints::zones::custom_hostnames::*,
 	framework::{
@@ -9,17 +10,14 @@ use cloudflare::{
 };
 use futures::TryStreamExt;
 
-use crate::{app::WorkerTaskType, prelude::*};
+use crate::prelude::*;
 
 /// The cron job that verifies unverified domains every 2 hours.
 ///
 /// For every unverified domain in the database, get it's Cloudflare custom
 /// hostname ID, and hit the cloudflare endpoint to check if it's verified. If
 /// it is, update the database to mark it as verified.
-pub async fn verify_unverified_domains(
-	_: WorkerTaskType,
-	data: Data<AppState>,
-) -> Result<(), WorkerError> {
+pub async fn verify_unverified_domains(_: Tick, data: Data<AppState>) -> Result<(), WorkerError> {
 	println!("Verifying unverified domains...");
 
 	query!(

@@ -1,8 +1,7 @@
 use apalis::prelude::TaskSink;
-use apalis_codec::json::JsonCodec;
-use apalis_postgres::{PgNotify, PostgresStorage};
+use apalis_postgres::PostgresStorage;
 
-use crate::{app::WorkerTaskType, prelude::*};
+use crate::{prelude::*, worker::WorkerTaskType};
 
 /// Contains the extension trait to allow sending emails using the worker.
 pub trait WorkerExt {
@@ -14,19 +13,19 @@ pub trait WorkerExt {
 	fn send_email(
 		&mut self,
 		to: String,
-		email: impl Into<EmailTypeData>,
+		email: impl Into<EmailTemplateType>,
 	) -> impl Future<Output = Result<(), ErrorType>>;
 }
 
-impl WorkerExt for PostgresStorage<WorkerTaskType, Vec<u8>, JsonCodec<Vec<u8>>, PgNotify> {
+impl WorkerExt for PostgresStorage<WorkerTaskType> {
 	async fn send_email(
 		&mut self,
 		to: String,
-		email: impl Into<EmailTypeData>,
+		email: impl Into<EmailTemplateType>,
 	) -> Result<(), ErrorType> {
 		self.push(WorkerTaskType::Email(Email {
 			to,
-			r#type: email.into(),
+			template: email.into(),
 		}))
 		.await
 		.map_err(ErrorType::server_error)

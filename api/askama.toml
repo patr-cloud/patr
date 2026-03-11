@@ -1,0 +1,7 @@
+[general]
+dirs    = ["../assets/emails/templates"]
+filters = "crate::worker::mailer::images"
+
+[[escaper]]
+extensions = ["mjml"]
+path       = "askama::filters::Html"
