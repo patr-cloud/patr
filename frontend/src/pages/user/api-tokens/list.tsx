@@ -12,7 +12,7 @@ import {
 } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { formatRelativeTime, parseDate } from "~/utils/func";
+import { formatRelativeTime } from "~/utils/func";
 import { httpRequest } from "~/utils/http-request";
 
 const ListApiTokens = () => {

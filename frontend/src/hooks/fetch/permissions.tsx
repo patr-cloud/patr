@@ -5,7 +5,7 @@ import { useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
 
-const useFetchPermissions = (workspaceId?: string) => {
+const useFetchPermissions = (workspaceId: string) => {
 	const [authState] = useAuthState();
 	const toast = useToast();
 

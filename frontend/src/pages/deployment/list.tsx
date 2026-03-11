@@ -60,11 +60,11 @@ const ListDeploymentsPage = () => {
 	const isAllowedCreate = useIsAllowed("deployment", "create", undefined);
 	const pagination = createPaginationState({ defaultCount: 14 });
 
-	const fetchParams = createMemo(() => {
+	const fetchParamsForDeployment = createMemo(() => {
 		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
 	});
 
-	const [deployments] = createResource(fetchParams, async ([auth, wsId, page, count]) => {
+	const [deployments] = createResource(fetchParamsForDeployment, async ([auth, wsId, page, count]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") {
 			return { deployments: [] };
 		}
@@ -87,7 +87,11 @@ const ListDeploymentsPage = () => {
 		return { deployments: response.data.deployments };
 	});
 
-	const [runners] = createResource(fetchParams, async ([auth, wsId]) => {
+	const fetchParamsForRunners = createMemo(() => {
+		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
+	});
+
+	const [runners] = createResource(fetchParamsForRunners, async ([auth, wsId]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") {
 			return { runners: [] };
 		}

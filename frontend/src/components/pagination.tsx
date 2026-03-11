@@ -8,7 +8,7 @@ interface PaginationProps {
 	state: PaginationState;
 	/** Whether to show the page-size selector. Defaults to true. */
 	showPageSizeSelector?: boolean;
-	/** Page size options. Defaults to [10, 20, 50, 100]. */
+	/** Page size options. Defaults to [10, 14, 20, 50, 100]. */
 	countOptions?: number[];
 	/** Whether the list is currently loading — disables all controls. */
 	loading?: MaybeAccessor<boolean>;

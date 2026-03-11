@@ -3,10 +3,8 @@ import {
 	Button,
 	ButtonVariant,
 	Input,
-	InputDropdown,
 	InputLabel,
 	InputType,
-	Modal,
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
@@ -37,7 +35,7 @@ const WorkspacePermissionItem = (props: { workspace: WithId<Workspace> }) => {
 	const [expand, setExpand] = createSignal(false);
 
 	// Fetch all permissions for the workspace to map IDs to names
-	const [allPermissions] = useFetchPermissions();
+	const [allPermissions] = useFetchPermissions(props.workspace.id);
 
 	// Create a map of permission ID to permission name
 	const permissionIdToName = createMemo(() => {
@@ -116,8 +114,8 @@ const WorkspacePermissionItem = (props: { workspace: WithId<Workspace> }) => {
 						</div>
 
 						<Table
-							column_grids={["flex-2", "flex-3", "flex-2"]}
-							headings={["Resource Type", "Actions", "Resources"]}
+							column_grids={["flex-2", "flex-3", "flex-2", "flex-[0.5]"]}
+							headings={["Resource Type", "Actions", "Resources", ""]}
 							rows={permissionEntries().sort((a, b) =>
 								a.permissionResourceType.localeCompare(b.permissionResourceType)
 							)}
@@ -360,7 +358,6 @@ const CreateApiTokens = () => {
 								</div>
 							}
 						>
-							<div class="hidden">{workspaces.latest?.workspaces.at(0)?.id}</div>
 							<div class="flex flex-col gap-2 items-center w-full">
 								{/* Workspace Selection Section */}
 								<div class="flex gap-8 items-center justify-center w-full">
