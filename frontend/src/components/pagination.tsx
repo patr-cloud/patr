@@ -95,6 +95,7 @@ const Pagination = (rawProps: PaginationProps) => {
 			<div class="flex items-center gap-xs">
 				{/* Prev arrow */}
 				<button
+					type="button"
 					class={btnArrow}
 					disabled={!props.state.canPrev() || isLoading()}
 					onClick={() => props.state.setPage(props.state.page() - 1)}
