@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use api::routes::registry_patr_cloud::handlers::GetApiVersionPath;
+use models::rbac::WorkspacePermission;
 
 use crate::prelude::*;
 
@@ -8,8 +9,12 @@ use crate::prelude::*;
 async fn version_check_works() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
 		.await;
 
 	let response = setup

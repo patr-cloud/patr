@@ -21,10 +21,14 @@ async fn registry_push_without_permission() {
 		.create_test_container_repo(&admin.access_token, workspace.id)
 		.await;
 
-	// Second user (not in workspace) gets an API token with no permissions
+	// Second user (not in admin's workspace) gets an API token for their own workspace
 	let other = setup.create_test_user().await;
+	let other_workspace = setup.create_test_workspace(&other.access_token).await;
 	let other_token = setup
-		.create_test_api_token(&other.access_token, BTreeMap::new())
+		.create_test_api_token(
+			&other.access_token,
+			BTreeMap::from([(other_workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
 		.await;
 
 	let data: Vec<u8> = (0..64u8).collect();
@@ -262,7 +266,7 @@ async fn initiate_upload_without_push_permission_returns_not_found() {
 		.create_role_with_permissions(
 			&admin.access_token,
 			workspace.id,
-			BTreeMap::from([(perm_id, ResourcePermissionType::Include(BTreeSet::new()))]),
+			BTreeMap::from([(perm_id, ResourcePermissionType::Exclude(BTreeSet::new()))]),
 		)
 		.await;
 
@@ -274,7 +278,18 @@ async fn initiate_upload_without_push_permission_returns_not_found() {
 	// Second user creates an API token (no workspace-level SuperAdmin on token;
 	// permissions come from their role membership)
 	let token_b = setup
-		.create_test_api_token(&user_b.access_token, BTreeMap::new())
+		.create_test_api_token(
+			&user_b.access_token,
+			BTreeMap::from([(
+				workspace.id,
+				WorkspacePermission::Member {
+					permissions: BTreeMap::from([(
+						perm_id,
+						ResourcePermissionType::Exclude(BTreeSet::new()),
+					)]),
+				},
+			)]),
+		)
 		.await;
 
 	let data: Vec<u8> = (0..64u8).collect();

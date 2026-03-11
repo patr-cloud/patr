@@ -146,3 +146,287 @@ impl WorkspacePermission {
 		}
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	fn create_member_permission(
+		permissions: BTreeMap<Uuid, ResourcePermissionType>,
+	) -> WorkspacePermission {
+		WorkspacePermission::Member { permissions }
+	}
+
+	#[test]
+	fn test_is_super_admin() {
+		assert!(WorkspacePermission::SuperAdmin.is_super_admin());
+		assert!(!create_member_permission(BTreeMap::new()).is_super_admin());
+	}
+
+	#[test]
+	fn test_is_member() {
+		assert!(!WorkspacePermission::SuperAdmin.is_member());
+		assert!(create_member_permission(BTreeMap::new()).is_member());
+	}
+
+	#[test]
+	fn test_is_superset_of_super_admin_vs_all() {
+		let super_admin = WorkspacePermission::SuperAdmin;
+		let member = create_member_permission(BTreeMap::new());
+
+		assert!(super_admin.is_superset_of(&super_admin));
+		assert!(super_admin.is_superset_of(&member));
+	}
+
+	#[test]
+	fn test_is_superset_of_member_vs_super_admin() {
+		let super_admin = WorkspacePermission::SuperAdmin;
+		let member = create_member_permission(BTreeMap::new());
+
+		assert!(!member.is_superset_of(&super_admin));
+	}
+
+	#[test]
+	fn test_is_superset_of_include_vs_include_superset() {
+		let permission_id = Uuid::new_v4();
+		let resource_1 = Uuid::new_v4();
+		let resource_2 = Uuid::new_v4();
+		let resource_3 = Uuid::new_v4();
+
+		let mut self_perms = BTreeMap::new();
+		self_perms.insert(
+			permission_id,
+			ResourcePermissionType::Include(
+				[resource_1, resource_2, resource_3].into_iter().collect(),
+			),
+		);
+		let self_permission = create_member_permission(self_perms);
+
+		let mut other_perms = BTreeMap::new();
+		other_perms.insert(
+			permission_id,
+			ResourcePermissionType::Include([resource_1, resource_2].into_iter().collect()),
+		);
+		let other_permission = create_member_permission(other_perms);
+
+		assert!(self_permission.is_superset_of(&other_permission));
+	}
+
+	#[test]
+	fn test_is_superset_of_include_vs_include_not_superset() {
+		let permission_id = Uuid::new_v4();
+		let resource_1 = Uuid::new_v4();
+		let resource_2 = Uuid::new_v4();
+
+		let mut self_perms = BTreeMap::new();
+		self_perms.insert(
+			permission_id,
+			ResourcePermissionType::Include([resource_1].into_iter().collect()),
+		);
+		let self_permission = create_member_permission(self_perms);
+
+		let mut other_perms = BTreeMap::new();
+		other_perms.insert(
+			permission_id,
+			ResourcePermissionType::Include([resource_1, resource_2].into_iter().collect()),
+		);
+		let other_permission = create_member_permission(other_perms);
+
+		assert!(!self_permission.is_superset_of(&other_permission));
+	}
+
+	#[test]
+	fn test_is_superset_of_include_vs_exclude() {
+		let permission_id = Uuid::new_v4();
+		let resource_1 = Uuid::new_v4();
+
+		let mut self_perms = BTreeMap::new();
+		self_perms.insert(
+			permission_id,
+			ResourcePermissionType::Include([resource_1].into_iter().collect()),
+		);
+		let self_permission = create_member_permission(self_perms);
+
+		let mut other_perms = BTreeMap::new();
+		other_perms.insert(
+			permission_id,
+			ResourcePermissionType::Exclude([resource_1].into_iter().collect()),
+		);
+		let other_permission = create_member_permission(other_perms);
+
+		assert!(!self_permission.is_superset_of(&other_permission));
+	}
+
+	#[test]
+	fn test_is_superset_of_exclude_vs_include_disjoint() {
+		let permission_id = Uuid::new_v4();
+		let resource_1 = Uuid::new_v4();
+		let resource_2 = Uuid::new_v4();
+
+		let mut self_perms = BTreeMap::new();
+		self_perms.insert(
+			permission_id,
+			ResourcePermissionType::Exclude([resource_1].into_iter().collect()),
+		);
+		let self_permission = create_member_permission(self_perms);
+
+		let mut other_perms = BTreeMap::new();
+		other_perms.insert(
+			permission_id,
+			ResourcePermissionType::Include([resource_2].into_iter().collect()),
+		);
+		let other_permission = create_member_permission(other_perms);
+
+		assert!(self_permission.is_superset_of(&other_permission));
+	}
+
+	#[test]
+	fn test_is_superset_of_exclude_vs_include_overlap() {
+		let permission_id = Uuid::new_v4();
+		let resource_1 = Uuid::new_v4();
+
+		let mut self_perms = BTreeMap::new();
+		self_perms.insert(
+			permission_id,
+			ResourcePermissionType::Exclude([resource_1].into_iter().collect()),
+		);
+		let self_permission = create_member_permission(self_perms);
+
+		let mut other_perms = BTreeMap::new();
+		other_perms.insert(
+			permission_id,
+			ResourcePermissionType::Include([resource_1].into_iter().collect()),
+		);
+		let other_permission = create_member_permission(other_perms);
+
+		assert!(!self_permission.is_superset_of(&other_permission));
+	}
+
+	#[test]
+	fn test_is_superset_of_exclude_vs_exclude_subset() {
+		let permission_id = Uuid::new_v4();
+		let resource_1 = Uuid::new_v4();
+		let resource_2 = Uuid::new_v4();
+
+		let mut self_perms = BTreeMap::new();
+		self_perms.insert(
+			permission_id,
+			ResourcePermissionType::Exclude([resource_1].into_iter().collect()),
+		);
+		let self_permission = create_member_permission(self_perms);
+
+		let mut other_perms = BTreeMap::new();
+		other_perms.insert(
+			permission_id,
+			ResourcePermissionType::Exclude([resource_1, resource_2].into_iter().collect()),
+		);
+		let other_permission = create_member_permission(other_perms);
+
+		assert!(self_permission.is_superset_of(&other_permission));
+	}
+
+	#[test]
+	fn test_is_superset_of_missing_permission_id() {
+		let permission_1 = Uuid::new_v4();
+		let permission_2 = Uuid::new_v4();
+		let resource = Uuid::new_v4();
+
+		let mut self_perms = BTreeMap::new();
+		self_perms.insert(
+			permission_1,
+			ResourcePermissionType::Include([resource].into_iter().collect()),
+		);
+		let self_permission = create_member_permission(self_perms);
+
+		let mut other_perms = BTreeMap::new();
+		other_perms.insert(
+			permission_2,
+			ResourcePermissionType::Include([resource].into_iter().collect()),
+		);
+		let other_permission = create_member_permission(other_perms);
+
+		assert!(!self_permission.is_superset_of(&other_permission));
+	}
+
+	#[test]
+	fn test_has_permission_on_resource_super_admin() {
+		let permission_id = Uuid::new_v4();
+		let resource_id = Uuid::new_v4();
+
+		assert!(
+			WorkspacePermission::SuperAdmin.has_permission_on_resource(resource_id, permission_id)
+		);
+	}
+
+	#[test]
+	fn test_has_permission_on_resource_member_included() {
+		let permission_id = Uuid::new_v4();
+		let resource_id = Uuid::new_v4();
+
+		let mut perms = BTreeMap::new();
+		perms.insert(
+			permission_id,
+			ResourcePermissionType::Include([resource_id].into_iter().collect()),
+		);
+		let permission = create_member_permission(perms);
+
+		assert!(permission.has_permission_on_resource(resource_id, permission_id));
+	}
+
+	#[test]
+	fn test_has_permission_on_resource_member_not_included() {
+		let permission_id = Uuid::new_v4();
+		let resource_id = Uuid::new_v4();
+		let other_resource_id = Uuid::new_v4();
+
+		let mut perms = BTreeMap::new();
+		perms.insert(
+			permission_id,
+			ResourcePermissionType::Include([resource_id].into_iter().collect()),
+		);
+		let permission = create_member_permission(perms);
+
+		assert!(!permission.has_permission_on_resource(other_resource_id, permission_id));
+	}
+
+	#[test]
+	fn test_has_permission_on_resource_member_excluded() {
+		let permission_id = Uuid::new_v4();
+		let resource_id = Uuid::new_v4();
+
+		let mut perms = BTreeMap::new();
+		perms.insert(
+			permission_id,
+			ResourcePermissionType::Exclude([resource_id].into_iter().collect()),
+		);
+		let permission = create_member_permission(perms);
+
+		assert!(!permission.has_permission_on_resource(resource_id, permission_id));
+	}
+
+	#[test]
+	fn test_has_permission_on_resource_member_not_excluded() {
+		let permission_id = Uuid::new_v4();
+		let resource_id = Uuid::new_v4();
+		let excluded_resource_id = Uuid::new_v4();
+
+		let mut perms = BTreeMap::new();
+		perms.insert(
+			permission_id,
+			ResourcePermissionType::Exclude([excluded_resource_id].into_iter().collect()),
+		);
+		let permission = create_member_permission(perms);
+
+		assert!(permission.has_permission_on_resource(resource_id, permission_id));
+	}
+
+	#[test]
+	fn test_has_permission_on_resource_missing_permission() {
+		let permission_id = Uuid::new_v4();
+		let resource_id = Uuid::new_v4();
+
+		let permission = create_member_permission(BTreeMap::new());
+
+		assert!(!permission.has_permission_on_resource(resource_id, permission_id));
+	}
+}
