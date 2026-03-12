@@ -21,6 +21,7 @@ regex        = { workspace = true, features = ["default"] }
 serde        = { workspace = true, features = ["derive"] }
 serde_json   = { workspace = true }
 syn          = { workspace = true, features = ["default", "full"] }
+mrml         = { workspace = true, features = ["parse", "render"] }
 
 [dev-dependencies]
 axum       = { workspace = true }

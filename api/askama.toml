@@ -1,7 +1,2 @@
 [general]
-dirs    = ["../assets/emails/templates", "../assets/emails/components"]
 filters = ["worker::mailer::asset_url"]
-
-[[escaper]]
-extensions = ["mjml"]
-path       = "askama::filters::Html"
