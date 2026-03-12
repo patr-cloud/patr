@@ -1,0 +1,12 @@
+Hi {{ username }},
+
+Your payment of {{ amount }} for {{ billing_month }} {{ billing_year }} in the {{ workspace_name }} workspace has been processed successfully.
+
+No action needed - you're all set. You can view or download your invoice from the billing section anytime.
+
+View Invoice: https://app.patr.cloud/billing
+
+Need help? Talk to us on Discord: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.

@@ -14,10 +14,7 @@ async fn loki_push_no_auth_returns_401() {
 		.make_loki_call(
 			http::Method::POST,
 			"/loki/api/v1/push",
-			vec![(
-				http::header::CONTENT_TYPE,
-				"application/x-protobuf",
-			)],
+			vec![(http::header::CONTENT_TYPE, "application/x-protobuf")],
 			body,
 		)
 		.await;
@@ -44,10 +41,7 @@ async fn loki_push_invalid_token_returns_401() {
 			http::Method::POST,
 			"/loki/api/v1/push",
 			vec![
-				(
-					http::header::CONTENT_TYPE,
-					"application/x-protobuf",
-				),
+				(http::header::CONTENT_TYPE, "application/x-protobuf"),
 				(
 					http::header::AUTHORIZATION,
 					&basic_auth(&runner.id, "invalid-token-value"),
@@ -102,10 +96,7 @@ async fn loki_push_no_execute_permission_returns_403() {
 			http::Method::POST,
 			"/loki/api/v1/push",
 			vec![
-				(
-					http::header::CONTENT_TYPE,
-					"application/x-protobuf",
-				),
+				(http::header::CONTENT_TYPE, "application/x-protobuf"),
 				(
 					http::header::AUTHORIZATION,
 					&basic_auth(&runner.id, &api_token.token),
@@ -152,10 +143,7 @@ async fn loki_push_valid_auth_succeeds() {
 			http::Method::POST,
 			"/loki/api/v1/push",
 			vec![
-				(
-					http::header::CONTENT_TYPE,
-					"application/x-protobuf",
-				),
+				(http::header::CONTENT_TYPE, "application/x-protobuf"),
 				(
 					http::header::AUTHORIZATION,
 					&basic_auth(&runner.id, &api_token.token),
@@ -206,10 +194,7 @@ async fn loki_push_label_rewriting() {
 			http::Method::POST,
 			"/loki/api/v1/push",
 			vec![
-				(
-					http::header::CONTENT_TYPE,
-					"application/x-protobuf",
-				),
+				(http::header::CONTENT_TYPE, "application/x-protobuf"),
 				(
 					http::header::AUTHORIZATION,
 					&basic_auth(&runner.id, &api_token.token),
@@ -229,10 +214,7 @@ async fn loki_push_label_rewriting() {
 	tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
 	// Query Loki directly for the real runner_id label
-	let query_url = format!(
-		"{}/loki/api/v1/query_range",
-		setup.upstream_loki_url()
-	);
+	let query_url = format!("{}/loki/api/v1/query_range", setup.upstream_loki_url());
 	let query_response = reqwest::Client::new()
 		.get(&query_url)
 		.query(&[
@@ -287,10 +269,7 @@ async fn loki_push_wrong_deployment_returns_403() {
 			http::Method::POST,
 			"/loki/api/v1/push",
 			vec![
-				(
-					http::header::CONTENT_TYPE,
-					"application/x-protobuf",
-				),
+				(http::header::CONTENT_TYPE, "application/x-protobuf"),
 				(
 					http::header::AUTHORIZATION,
 					&basic_auth(&runner_a.id, &api_token.token),
@@ -329,10 +308,7 @@ async fn loki_push_invalid_snappy_returns_400() {
 			http::Method::POST,
 			"/loki/api/v1/push",
 			vec![
-				(
-					http::header::CONTENT_TYPE,
-					"application/x-protobuf",
-				),
+				(http::header::CONTENT_TYPE, "application/x-protobuf"),
 				(
 					http::header::AUTHORIZATION,
 					&basic_auth(&runner.id, &api_token.token),
@@ -376,10 +352,7 @@ async fn loki_push_invalid_protobuf_returns_400() {
 			http::Method::POST,
 			"/loki/api/v1/push",
 			vec![
-				(
-					http::header::CONTENT_TYPE,
-					"application/x-protobuf",
-				),
+				(http::header::CONTENT_TYPE, "application/x-protobuf"),
 				(
 					http::header::AUTHORIZATION,
 					&basic_auth(&runner.id, &api_token.token),

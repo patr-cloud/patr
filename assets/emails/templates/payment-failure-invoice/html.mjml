@@ -1,0 +1,100 @@
+<mjml>
+  <mj-head>
+    <mj-font
+      name="Poppins"
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap"
+    />
+    <mj-font
+      name="Source Code Pro"
+      href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@600&display=swap"
+    />
+    <mj-attributes>
+      <mj-all font-family="Poppins, Helvetica, Arial, sans-serif" />
+      <mj-text font-size="14px" color="#ffffff" line-height="1.6" padding="0" />
+      <mj-section padding="0" background-color="#191131" />
+      <mj-button
+        background-color="#f89b41"
+        color="#191131"
+        font-size="14px"
+        font-weight="600"
+        border-radius="4px"
+        inner-padding="10px 40px"
+      />
+    </mj-attributes>
+    <mj-style>
+      a {
+        color: #f89b41;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      b {
+        color: #ffffff;
+      }
+      .email-container > table > tbody > tr > td {
+        border-radius: 32px;
+        overflow: hidden;
+      }
+      .footer-section > table {
+        border-radius: 0 0 32px 32px;
+        border-left: 2px solid #191131;
+        border-right: 2px solid #191131;
+        border-top: 2px solid #191131;
+        overflow: hidden;
+      }
+    </mj-style>
+  </mj-head>
+  <mj-body background-color="#0d0526">
+    <mj-wrapper background-color="#0d0526" padding="0" css-class="email-container">
+      <mj-include path="header.mjml" />
+      <mj-include path="greeting.mjml" />
+      <mj-section padding="10px 40px 0 40px">
+        <mj-column>
+          <mj-text
+            >The payment of <b>${{ card_amount_to_be_charged_in_cents }}</b> for
+            workspace <b>{{ workspace_name }}</b> failed to process. This covers
+            all outstanding charges through
+            <b>{{ bill_month }} {{ bill_year }}</b>. A detailed breakdown of your
+            usage is included below.</mj-text
+          >
+        </mj-column>
+      </mj-section>
+      <mj-section padding="10px 40px 0 40px">
+        <mj-column>
+          <mj-text
+            >Your resources are still running, but continued failure to pay may
+            result in service disruption. Please update your payment method or
+            retry the charge.</mj-text
+          >
+        </mj-column>
+      </mj-section>
+      <mj-section padding="10px 40px 0 40px">
+        <mj-column>
+          <mj-text
+            >We'll automatically retry the charge within 24-48 hours. In the
+            meantime, please review your payment details in the billing section
+            to make sure everything is up to date.</mj-text
+          >
+        </mj-column>
+      </mj-section>
+      <mj-section padding="20px 40px 10px 40px">
+        <mj-column>
+          <mj-button href="https://app.patr.cloud/billing"
+            >Update Payment Details</mj-button
+          >
+          <mj-text
+            font-size="11px"
+            align="center"
+            color="#9990a8"
+            padding="5px 0 0 0"
+          >
+            https://app.patr.cloud/billing
+          </mj-text>
+        </mj-column>
+      </mj-section>
+      <mj-include path="discord-cta.mjml" />
+      <mj-include path="footer.mjml" />
+    </mj-wrapper>
+  </mj-body>
+</mjml>

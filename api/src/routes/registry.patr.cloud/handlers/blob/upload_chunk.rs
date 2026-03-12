@@ -324,7 +324,7 @@ pub async fn upload_chunk(
 								async move {
 									s3.upload_part()
 										.bucket(&bucket)
-										.key(format!("uploads/{}", session_id))
+										.key(format!("registry/uploads/{}", session_id))
 										.content_length(CHUNK_FLUSH_THRESHOLD as i64)
 										.upload_id(&upload_id)
 										.part_number(part_number)

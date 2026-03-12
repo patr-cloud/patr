@@ -288,7 +288,7 @@ pub async fn complete_upload(
 								async move {
 									s3.upload_part()
 										.bucket(&bucket)
-										.key(format!("uploads/{}", session_id))
+										.key(format!("registry/uploads/{}", session_id))
 										.content_length(CHUNK_FLUSH_THRESHOLD as i64)
 										.upload_id(&upload_id)
 										.part_number(part_number)
@@ -313,7 +313,7 @@ pub async fn complete_upload(
 							let response = s3
 								.upload_part()
 								.bucket(&config.s3.bucket)
-								.key(format!("uploads/{}", session_id))
+								.key(format!("registry/uploads/{}", session_id))
 								.upload_id(&session.upload_id)
 								.part_number(part_number)
 								.content_length(chunk_size as i64)
@@ -353,7 +353,7 @@ pub async fn complete_upload(
 	info!("Completing S3 multipart upload");
 	s3.complete_multipart_upload()
 		.bucket(&config.s3.bucket)
-		.key(format!("uploads/{session_id}"))
+		.key(format!("registry/uploads/{session_id}"))
 		.upload_id(&updated_session.upload_id)
 		.multipart_upload(
 			CompletedMultipartUpload::builder()
@@ -426,7 +426,7 @@ pub async fn complete_upload(
 		let _ = s3
 			.delete_object()
 			.bucket(&config.s3.bucket)
-			.key(format!("uploads/{session_id}"))
+			.key(format!("registry/uploads/{session_id}"))
 			.send()
 			.await;
 
@@ -445,8 +445,11 @@ pub async fn complete_upload(
 	if inserted {
 		s3.copy_object()
 			.bucket(&config.s3.bucket)
-			.copy_source(format!("{}/uploads/{session_id}", config.s3.bucket))
-			.key(format!("blobs/{}", digest))
+			.copy_source(format!(
+				"{}/registry/uploads/{session_id}",
+				config.s3.bucket
+			))
+			.key(format!("registry/blobs/{}", digest))
 			.send()
 			.await?;
 	}
@@ -454,7 +457,7 @@ pub async fn complete_upload(
 	let _ = s3
 		.delete_object()
 		.bucket(&config.s3.bucket)
-		.key(format!("uploads/{session_id}"))
+		.key(format!("registry/uploads/{session_id}"))
 		.send()
 		.await;
 

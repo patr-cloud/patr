@@ -144,3 +144,15 @@ services:
       vpc:
         aliases:
           - grafana
+
+  mailcrab:
+    image: marlonb/mailcrab:latest
+    restart: unless-stopped
+    expose:
+      - 1080
+      - 1025
+    hostname: mailcrab
+    networks:
+      vpc:
+        aliases:
+          - mailcrab

@@ -13,6 +13,7 @@ use api::{
 		AppConfig,
 		CloudflareConfig,
 		DatabaseConfig,
+		EmailConfig,
 		IpInfoConfig,
 		LogsConfig,
 		MetricsConfig,
@@ -291,6 +292,15 @@ limits_config:
 		secure: false,
 	};
 
+	let email = EmailConfig {
+		host: "smtp.sendgrid.net".to_string(),
+		port: 587,
+		from: "no-reply@patr.cloud".to_string(),
+		username: "apikey".to_string(),
+		password: "SG.fake-api-key".to_string(),
+		secure: true,
+	};
+
 	let config = AppConfig {
 		bind_address: api_bind_address,
 		api_base_path: String::from("/"),
@@ -302,6 +312,7 @@ limits_config:
 		} else {
 			RunningEnvironment::Production
 		},
+		email,
 		s3: s3.clone(),
 		database,
 		redis,

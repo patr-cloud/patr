@@ -20,7 +20,11 @@ missing_docs_in_private_items = "warn"
 
 [workspace.dependencies]
 anyhow                         = { default-features = false, version = "1" }
+apalis                         = { default-features = false, version = "1.0.0-rc.1" }
+apalis-cron                    = { default-features = false, version = "1.0.0-rc.1" }
+apalis-postgres                = { default-features = false, version = "1.0.0-rc.3" }
 argon2                         = { default-features = false, version = "0.6.0-rc.7" }
+askama                         = { default-features = false, version = "0.15" }
 aws-config                     = { default-features = false, version = "1" }
 aws-credential-types           = { default-features = false, version = "1" }
 aws-sdk-s3                     = { default-features = false, version = "1" }
@@ -40,7 +44,9 @@ config                         = { default-features = false, version = "0.15" }
 console-subscriber             = { default-features = false, version = "0.5" }
 console_error_panic_hook       = { default-features = false, version = "0.1" }
 convert_case                   = { default-features = false, version = "0.11" }
+cron                           = { default-features = false, version = "0.15" }
 dashmap                        = { default-features = false, version = "6" }
+derive_more                    = { default-features = false, version = "2" }
 dirs                           = { default-features = false, version = "6" }
 docker                         = { default-features = false, path = "runners/docker" }
 either                         = { default-features = false, version = "1" }
@@ -61,16 +67,18 @@ ipnetwork                      = { default-features = false, version = "0.20" }
 jsonwebtoken                   = { default-features = false, version = "10" }
 k8s-openapi                    = { default-features = false, version = "0.27" }
 kube                           = { default-features = false, version = "3" }
+lettre                         = { default-features = false, version = "0.11" }
 macros                         = { default-features = false, path = "macros" }
 models                         = { default-features = false, path = "models" }
 monostate                      = { default-features = false, version = "1" }
+mrml                           = { default-features = false, version = "5" }
 nix                            = { default-features = false, version = "0.31" }
 oci-spec                       = { default-features = false, version = "0.9" }
 open                           = { default-features = false, version = "5" }
 opentelemetry                  = { default-features = false, version = "0.31" }
 opentelemetry-appender-tracing = { default-features = false, version = "0.31" }
 opentelemetry-otlp             = { default-features = false, version = "0.31" }
-opentelemetry-proto            = { default-features = false, version = "0.31", features = ["gen-tonic-messages", "with-serde", "logs"] }
+opentelemetry-proto            = { default-features = false, version = "0.31" }
 opentelemetry_sdk              = { default-features = false, version = "0.31" }
 pin-project                    = { default-features = false, version = "1" }
 preprocess                     = { default-features = false, version = "0.5" }

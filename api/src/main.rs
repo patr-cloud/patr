@@ -7,6 +7,7 @@ async fn main() {
 		db,
 		redis_publisher,
 		utils::{self, config},
+		worker,
 	};
 
 	let config = config::parse_config();
@@ -48,7 +49,18 @@ async fn main() {
 		.await
 		.expect("error initializing database");
 
-	futures::future::join(app::serve(&state), redis_publisher::run(&state)).await;
+	worker::initialize(&state)
+		.await
+		.expect("error initializing worker");
+
+	worker::mailer::upload_email_images(&state.config.s3).await;
+
+	futures::future::join3(
+		app::serve(&state),
+		redis_publisher::run(&state),
+		worker::run(&state),
+	)
+	.await;
 
 	utils::flush_tracing(logger_provider, tracer_provider);
 }

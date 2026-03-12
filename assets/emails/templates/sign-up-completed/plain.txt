@@ -1,0 +1,19 @@
+Hi {{ username }},
+
+Your Patr account is ready. You can start deploying right away.
+
+Here's what you can do:
+
+- Deploy containerized applications: https://app.patr.cloud/deployments
+- Set up a Runner to execute your deployments: https://app.patr.cloud/runners
+- Push to a secure, private container registry: https://app.patr.cloud/container-registry
+- Create Managed URLs and manage domains: https://app.patr.cloud/domains
+
+You can find more details in our documentation: https://docs.patr.cloud
+
+Go to Dashboard: https://app.patr.cloud
+
+Need help? Talk to us on Discord: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.

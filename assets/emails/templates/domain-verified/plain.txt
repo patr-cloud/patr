@@ -1,0 +1,10 @@
+Hi {{ username }},
+
+Your domain {{ domain_name }} is verified and ready to use. You can now create Managed URLs to point it at your deployments - SSL certificates and firewall rules are handled automatically.
+
+Configure Managed URLs: https://app.patr.cloud/managed-urls
+
+Need help? Talk to us on Discord: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.

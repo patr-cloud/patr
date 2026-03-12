@@ -1,0 +1,17 @@
+<mj-section
+  padding="0"
+  full-width="full-width"
+  css-class="header-section"
+  background-color="#0d0526"
+>
+  <mj-column padding="0">
+    <mj-image
+      src='{{ "header.png"|asset_url }}'
+      alt="Patr"
+      width="600px"
+      padding="0"
+      border="2px solid #191131"
+      border-radius="32px 32px 0 0"
+    />
+  </mj-column>
+</mj-section>

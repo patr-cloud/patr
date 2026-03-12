@@ -1,0 +1,21 @@
+Hi {{ username }},
+
+Your invoice for {{ bill_month }} {{ bill_year }} on workspace {{ workspace_name }} is ready.
+
+Total charges: ${{ total_charge }}
+
+A detailed breakdown of your usage is included below.
+
+Payment was handled automatically - no action needed. Here's how it was covered:
+
+- Card: ${{ card_amount_deducted }}
+- Credits: ${{ credits_deducted }} (remaining: ${{ credits_remaining }})
+
+You can view the full invoice in the billing section.
+
+View Invoice: https://app.patr.cloud/billing
+
+Need help? Talk to us on Discord: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.

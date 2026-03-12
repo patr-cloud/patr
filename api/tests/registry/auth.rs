@@ -21,7 +21,8 @@ async fn registry_push_without_permission() {
 		.create_test_container_repo(&admin.access_token, workspace.id)
 		.await;
 
-	// Second user (not in admin's workspace) gets an API token for their own workspace
+	// Second user (not in admin's workspace) gets an API token for their own
+	// workspace
 	let other = setup.create_test_user().await;
 	let other_workspace = setup.create_test_workspace(&other.access_token).await;
 	let other_token = setup

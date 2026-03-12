@@ -106,7 +106,7 @@ pub async fn get_exposed_ports(
 	let manifest = s3
 		.get_object()
 		.bucket(&state.config.s3.bucket)
-		.key(format!("manifests/{digest}"))
+		.key(format!("registry/manifests/{digest}"))
 		.send()
 		.await
 		.map_err(|err| {
@@ -131,7 +131,7 @@ pub async fn get_exposed_ports(
 	let config = s3
 		.get_object()
 		.bucket(&state.config.s3.bucket)
-		.key(format!("blobs/{config_digest}"))
+		.key(format!("registry/blobs/{config_digest}"))
 		.send()
 		.await
 		.map_err(|err| {

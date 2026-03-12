@@ -3,13 +3,14 @@ use std::{
 	net::{IpAddr, SocketAddr},
 };
 
+use apalis_postgres::PostgresStorage;
 use axum::extract::FromRef;
 use models::{RequestUserData, prelude::*};
 use preprocess::Preprocessable;
 use rustis::client::Client as RedisClient;
 use tokio::net::TcpListener;
 
-use crate::{prelude::*, utils::config::AppConfig};
+use crate::{prelude::*, utils::config::AppConfig, worker::WorkerTaskType};
 
 /// Sets up the router and starts the server.
 #[instrument(skip(state))]
@@ -58,7 +59,19 @@ pub async fn serve(state: &AppState) {
 			loki_listener.local_addr().unwrap()
 		);
 
-		futures::future::join4(
+		let assets_listener = TcpListener::bind(SocketAddr::from((
+			state.config.bind_address.ip(),
+			state.config.bind_address.port() + 4,
+		)))
+		.await
+		.unwrap();
+
+		info!(
+			"Assets server running on http://{}",
+			assets_listener.local_addr().unwrap()
+		);
+
+		futures::future::join5(
 			async {
 				axum::serve(
 					api_listener,
@@ -103,6 +116,17 @@ pub async fn serve(state: &AppState) {
 				.await
 				.unwrap();
 			},
+			async {
+				axum::serve(
+					assets_listener,
+					crate::routes::assets_patr_cloud::setup_routes(state)
+						.await
+						.into_make_service_with_connect_info::<SocketAddr>(),
+				)
+				.with_graceful_shutdown(crate::exit_signal())
+				.await
+				.unwrap();
+			},
 		)
 		.await;
 	} else {
@@ -139,6 +163,8 @@ pub struct AppState {
 	pub redis: RedisClient,
 	/// The application configuration.
 	pub config: AppConfig,
+	/// The background worker storage.
+	pub worker: PostgresStorage<WorkerTaskType>,
 }
 
 impl Debug for AppState {

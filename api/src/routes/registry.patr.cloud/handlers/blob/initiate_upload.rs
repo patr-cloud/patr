@@ -218,7 +218,7 @@ pub async fn initiate_upload(
 
 		s3.put_object()
 			.bucket(&config.s3.bucket)
-			.key(format!("blobs/{digest}"))
+			.key(format!("registry/blobs/{digest}"))
 			.content_length(content_length.0 as i64)
 			.content_type(content_type.to_string())
 			.body(BodyStreamWrapper::new(body.into_data_stream()).into_byte_stream())
@@ -254,7 +254,7 @@ pub async fn initiate_upload(
 		let response = s3
 			.create_multipart_upload()
 			.bucket(&config.s3.bucket)
-			.key(format!("uploads/{session_id}"))
+			.key(format!("registry/uploads/{session_id}"))
 			.send()
 			.await?;
 

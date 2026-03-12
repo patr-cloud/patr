@@ -1,0 +1,14 @@
+Hi {{ username }},
+
+The payment of ${{ card_amount_to_be_charged_in_cents }} for workspace {{ workspace_name }} failed to process. This covers all outstanding charges through {{ bill_month }} {{ bill_year }}. A detailed breakdown of your usage is included below.
+
+Your resources are still running, but continued failure to pay may result in service disruption. Please update your payment method or retry the charge.
+
+We'll automatically retry the charge within 24-48 hours. In the meantime, please review your payment details in the billing section to make sure everything is up to date.
+
+Update Payment Details: https://app.patr.cloud/billing
+
+Need help? Talk to us on Discord: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.

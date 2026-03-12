@@ -1,0 +1,2 @@
+[general]
+filters = ["worker::mailer::asset_url"]

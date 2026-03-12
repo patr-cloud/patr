@@ -1,0 +1,10 @@
+Hi {{ username }},
+
+Your Patr account password was just changed. If you made this change, no action is needed.
+
+If you didn't do this, change your password immediately and contact us.
+
+Need help? Talk to us on Discord: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.

@@ -1,0 +1,44 @@
+<mj-font
+  name="Poppins"
+  href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap"
+/>
+<mj-font
+  name="Source Code Pro"
+  href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@600&display=swap"
+/>
+<mj-attributes>
+  <mj-all font-family="Poppins, Helvetica, Arial, sans-serif" />
+  <mj-text font-size="14px" color="#ffffff" line-height="1.6" padding="0" />
+  <mj-section padding="0" background-color="#191131" />
+  <mj-button
+    background-color="#f89b41"
+    color="#191131"
+    font-size="14px"
+    font-weight="600"
+    border-radius="4px"
+    inner-padding="10px 40px"
+  />
+</mj-attributes>
+<mj-style>
+  a {
+    color: #f89b41;
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+  b {
+    color: #ffffff;
+  }
+  .email-container > table > tbody > tr > td {
+    border-radius: 32px;
+    overflow: hidden;
+  }
+  .footer-section > table {
+    border-radius: 0 0 32px 32px;
+    border-left: 2px solid #191131;
+    border-right: 2px solid #191131;
+    border-top: 2px solid #191131;
+    overflow: hidden;
+  }
+</mj-style>

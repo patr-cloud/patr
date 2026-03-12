@@ -1,0 +1,12 @@
+Hi {{ username }},
+
+Your bill of {{ total_charges }} for {{ workspace_name }} ({{ month }}/{{ year }}) is still unpaid.
+
+If payment isn't completed by {{ deadline }}, all resources in this workspace will be permanently deleted.
+
+Pay Now: https://app.patr.cloud/billing
+
+Need help? Talk to us on Discord: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.

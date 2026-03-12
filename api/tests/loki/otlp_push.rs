@@ -103,10 +103,7 @@ async fn otlp_push_protobuf_valid_succeeds() {
 			http::Method::POST,
 			"/otlp/v1/logs",
 			vec![
-				(
-					http::header::CONTENT_TYPE,
-					"application/x-protobuf",
-				),
+				(http::header::CONTENT_TYPE, "application/x-protobuf"),
 				(
 					http::header::AUTHORIZATION,
 					&basic_auth(&runner.id, &api_token.token),
@@ -267,10 +264,7 @@ async fn otlp_push_attribute_rewriting() {
 	tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
 	// Query Loki for the real runner_id
-	let query_url = format!(
-		"{}/loki/api/v1/query_range",
-		setup.upstream_loki_url()
-	);
+	let query_url = format!("{}/loki/api/v1/query_range", setup.upstream_loki_url());
 	let query_response = reqwest::Client::new()
 		.get(&query_url)
 		.query(&[
@@ -348,10 +342,7 @@ async fn otlp_push_invalid_protobuf_returns_400() {
 			http::Method::POST,
 			"/otlp/v1/logs",
 			vec![
-				(
-					http::header::CONTENT_TYPE,
-					"application/x-protobuf",
-				),
+				(http::header::CONTENT_TYPE, "application/x-protobuf"),
 				(
 					http::header::AUTHORIZATION,
 					&basic_auth(&runner.id, &api_token.token),

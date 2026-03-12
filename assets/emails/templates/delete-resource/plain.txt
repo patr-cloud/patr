@@ -1,0 +1,10 @@
+Hi {{ username }},
+
+A {{ resource_type }} named {{ resource_name }} was deleted from the {{ workspace_name }} workspace by {{ deleted_by }}.
+
+If this was expected, no action is needed. If this was unexpected, contact support immediately - we can help you investigate.
+
+Need help? Talk to us on Discord: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.

@@ -59,6 +59,8 @@ pub struct AppConfig {
 	/// based on an environment variable and if the application is compiled with
 	/// debug mode.
 	pub environment: RunningEnvironment,
+	/// The configuration for sending emails via SMTP
+	pub email: EmailConfig,
 	/// The configuration for S3, used for storing layers of docker images
 	pub s3: S3Config,
 	/// The configuration for the database to connect to
@@ -181,21 +183,21 @@ pub struct CloudflareConfig {
 	pub primary_hosted_zone_id: String,
 }
 
-/// The configuration for the SMTP server to use to send emails to users
+/// The configuration for sending emails via SMTP
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EmailConfig {
-	/// The host of the SMTP server
+	/// The SMTP server hostname
 	pub host: String,
-	/// The port of the SMTP server
+	/// The SMTP server port
 	pub port: u16,
-	/// Whether or not to use TLS to connect to the SMTP server
+	/// Whether to use TLS for the SMTP connection
 	pub secure: bool,
-	/// The username to use to connect to the SMTP server
+	/// The SMTP username for authentication
 	pub username: String,
-	/// The from address to use when sending emails
+	/// The email address to use as the sender for all emails
 	pub from: String,
-	/// The password to use to connect to the SMTP server
+	/// The SMTP password for authentication
 	pub password: String,
 }
 

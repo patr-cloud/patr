@@ -1,0 +1,12 @@
+Hi {{ username }},
+
+Your domain {{ domain_name }} is no longer connected to Patr - it looks like the DNS records or nameservers have changed since it was last verified.
+
+If this wasn't intentional, you'll need to re-verify the domain within {{ deadline_days }} days or it will be automatically removed from your account.
+
+Re-verify Domain: https://app.patr.cloud/domains/{{ domain_id }}
+
+Need help? Talk to us on Discord: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.

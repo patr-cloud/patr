@@ -112,7 +112,7 @@ pub async fn cancel_upload(
 
 	s3.abort_multipart_upload()
 		.bucket(&config.s3.bucket)
-		.upload_id(format!("uploads/{session_id}"))
+		.upload_id(format!("registry/uploads/{session_id}"))
 		.send()
 		.await?;
 

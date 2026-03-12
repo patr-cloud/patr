@@ -23,7 +23,7 @@
 // );
 // ```
 
-// This test ensures the macro is exported and can be invoked
+/// This test ensures the macro is exported and can be invoked
 #[test]
 fn test_registry_endpoint_macro_exists() {
 	// The test passes if this file compiles

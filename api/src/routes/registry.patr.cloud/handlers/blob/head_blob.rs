@@ -196,7 +196,7 @@ pub async fn head_blob(
 	let object = s3
 		.head_object()
 		.bucket(&config.s3.bucket)
-		.key(format!("blobs/{digest}"))
+		.key(format!("registry/blobs/{digest}"))
 		.set_range(range.into_option().map(|range| range.to_string()))
 		.send()
 		.await?;

@@ -17,6 +17,10 @@ pub mod api_patr_cloud;
 #[path = "app.patr.cloud/mod.rs"]
 pub mod app_patr_cloud;
 
+/// The routes for serving https://assets.patr.cloud for static assets
+#[path = "assets.patr.cloud/mod.rs"]
+pub mod assets_patr_cloud;
+
 /// The routes for serving https://loki.patr.cloud as an authenticated Loki
 /// push proxy
 #[path = "loki.patr.cloud/mod.rs"]
@@ -31,6 +35,7 @@ pub mod registry_patr_cloud;
 pub async fn setup_routes(state: &AppState) -> Router {
 	let api_router = api_patr_cloud::setup_routes(state, ClientType::ApiToken).await;
 	let app_router = app_patr_cloud::setup_routes(state).await;
+	let assets_router = assets_patr_cloud::setup_routes(state).await;
 	let loki_router = loki_patr_cloud::setup_routes(state).await;
 	let registry_router = registry_patr_cloud::setup_routes(state).await;
 
@@ -44,6 +49,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 			match hostname {
 				"api.patr.cloud" => api_router.oneshot(request).await,
 				"app.patr.cloud" => app_router.oneshot(request).await,
+				"assets.patr.cloud" => assets_router.oneshot(request).await,
 				"loki.patr.cloud" => loki_router.oneshot(request).await,
 				"registry.patr.cloud" => registry_router.oneshot(request).await,
 				_ => Ok(Response::builder()

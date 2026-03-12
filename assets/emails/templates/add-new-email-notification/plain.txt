@@ -1,0 +1,14 @@
+Hi {{ username }},
+
+Your OTP to verify this email address on your Patr account is:
+
+{{ otp }}
+
+Or visit: https://app.patr.cloud/verify-email?email={{ email }}&otp={{ otp }}
+
+This code expires in {{ otp_expiry }}. If you didn't request this, ignore this email and reach out to us at support@patr.cloud immediately.
+
+Need help? Talk to us on Discord: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.

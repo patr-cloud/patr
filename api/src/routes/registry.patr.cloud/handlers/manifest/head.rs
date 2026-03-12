@@ -175,7 +175,7 @@ pub async fn check_manifest(
 
 	info!("Found manifest in database");
 
-	let s3_key = format!("manifests/{}", &manifest_record.digest);
+	let s3_key = format!("registry/manifests/{}", &manifest_record.digest);
 	debug!(s3_key = %s3_key, "Streaming manifest from S3");
 
 	// Parse content type

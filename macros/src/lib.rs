@@ -16,6 +16,9 @@ mod declare_registry_endpoint;
 /// The proc macro for declaring a streaming endpoint. A streaming endpoint is
 /// basically a websocket endpoint.
 mod declare_stream_endpoint;
+/// A macro to generate email templates. This is used to generate the email
+/// templates to send in the background worker.
+mod email_template;
 /// A derive macro for the `HasHeaders` trait.
 mod has_headers;
 /// A derive macro to generate an enum of all fields and a search struct
@@ -313,4 +316,29 @@ pub fn verify_regex(input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn optionalize(args: TokenStream, input: TokenStream) -> TokenStream {
 	optionalize::parse(args, input)
+}
+
+/// A derive macro that generates an `.into_email_body()` method for email
+/// template structs.
+///
+/// The macro generates two internal Askama wrapper structs (one for `.mjml`,
+/// one for `.txt`) with the same fields, plus a subject template. The
+/// `.into_email_body()` method renders all three and returns an `EmailBody`
+/// containing the subject, HTML (via MJML), and plain text.
+///
+/// # Example usage:
+/// ```rust
+/// use macros::EmailTemplate;
+///
+/// #[derive(EmailTemplate)]
+/// #[template(path = "user-sign-up", subject = "Verify your email, {{ username }} | Patr")]
+/// pub struct UserSignUpEmail {
+///     pub username: String,
+///     pub otp: String,
+///     pub otp_expiry: String,
+/// }
+/// ```
+#[proc_macro_derive(EmailTemplate, attributes(template))]
+pub fn email_template(input: TokenStream) -> TokenStream {
+	email_template::parse(input)
 }
