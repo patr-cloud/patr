@@ -1,0 +1,12 @@
+Hi {{ username }},
+
+Your runner {{ runner_name }} in {{ workspace_name }} is no longer connected to Patr. Any deployments on this runner may be affected.
+
+Please check the runner's status - it may be stopped, terminated, or have a network issue.
+
+Check Runner Status: https://app.patr.cloud/runners/{{ runner_id }}
+
+Need help? Talk to us on Discord: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.

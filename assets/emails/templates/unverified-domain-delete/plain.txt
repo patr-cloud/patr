@@ -1,0 +1,12 @@
+Hi {{ username }},
+
+Your domain {{ domain_name }} has been removed because it wasn't verified for more than {{ deadline_limit }}.
+
+If you still want to use this domain, you can re-add it and complete verification at any time.
+
+Re-add domain: https://app.patr.cloud/domains
+
+Need help? Talk to us on Discord: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.

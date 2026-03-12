@@ -1,0 +1,12 @@
+Hi {{ username }},
+
+{% if fully_paid %}Your bill of {{ total_bill }} for the {{ workspace_name }} workspace has been fully paid using your Patr credits. Your remaining credit balance is {{ remaining_credits }}.{% else %}Your bill of {{ total_bill }} for the {{ workspace_name }} workspace has been partially covered by your Patr credits. The remaining amount due is {{ reduced_bill }}.{% endif %}
+
+{% if !fully_paid %}Please ensure the outstanding balance is settled to avoid any service interruptions.
+
+{% endif %}{% if fully_paid %}View Billing{% else %}Pay Remaining Balance{% endif %}: https://app.patr.cloud/billing
+
+Need help? Talk to us on Discord: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.

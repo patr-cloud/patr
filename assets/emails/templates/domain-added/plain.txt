@@ -1,0 +1,18 @@
+Hi {{ username }},
+
+Your domain {{ domain_name }} has been added to the workspace {{ workspace_name }}.
+
+To start using it with Managed URLs you'll need to verify ownership.
+
+Please visit the Domains settings for instructions on how to verify your domain: https://app.patr.cloud/domains/{{ domain_id }}
+
+Verify Domain: https://app.patr.cloud/domains/{{ domain_id }}
+
+Verification usually propagates within a few minutes, but DNS changes can take up to 48 hours.
+
+If not verified within {{ deadline_limit }} days, the domain will be automatically removed.
+
+Need help? Talk to us on Discord: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.

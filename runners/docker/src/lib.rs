@@ -20,6 +20,6 @@ pub(crate) mod utils;
 pub mod prelude {
 	pub use common::prelude::*;
 
-	pub use crate::{config::DockerSettings, runner::DockerRunner, utils::constants};
 	pub(crate) use crate::{alloy, deployment, ingress};
+	pub use crate::{config::DockerSettings, runner::DockerRunner, utils::constants};
 }

@@ -1,0 +1,14 @@
+Hi {{ username }},
+
+{{ credit_amount }} in credits have been added to your {{ workspace_name }} workspace. The invoice for this purchase is attached to this email.
+
+Credits are applied automatically - any billable resources will be deducted from your credits first, then charged to your card. You're billed hourly, up to a max of 720 hours per month.
+
+You can check your current balance anytime from your workspace billing settings.
+
+View Billing: https://app.patr.cloud/billing
+
+Need help? Talk to us on Discord: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.

@@ -1,0 +1,16 @@
+Hi {{ username }},
+
+We received a payment of {{ amount_paid }} toward your bill for the {{ workspace_name }} workspace.
+
+Total bill: {{ total_bill_amount }}
+Amount paid: {{ amount_paid }}
+Remaining due: {{ remaining_balance }}
+
+{% if balance_cleared %}Your bill has been fully covered. The remaining {{ credits_applied }} was applied from your account credits.{% else %}Please settle the remaining balance of {{ remaining_balance }} to keep your resources running without interruption.{% endif %}
+
+View Billing: https://app.patr.cloud/billing
+
+Need help? Talk to us on Discord: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.

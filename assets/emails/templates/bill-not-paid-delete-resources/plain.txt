@@ -1,0 +1,12 @@
+Hi {{ username }},
+
+Your resources on the {{ workspace_name }} workspace have been deleted due to an unpaid balance of {{ total_usage_charges }}.
+
+Your account is currently locked. To restore access, please contact our support team to settle the outstanding balance and discuss next steps.
+
+We retain workspace configuration data for a limited period, so the sooner you reach out, the more we can help recover.
+
+Need help? Talk to us on Discord: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.

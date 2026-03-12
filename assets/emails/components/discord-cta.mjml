@@ -1,13 +1,10 @@
 <mj-section padding="20px 40px 40px 40px">
   <mj-column>
     <mj-text
-      >Join our
-      <a
-        href="https://patr.cloud/discord"
-        style="color: #f89b41; font-weight: 600"
-        >Discord Community</a
-      >
-      for the latest updates, discussions, and support.</mj-text
+      >Need help?
+      <a href="https://patr.cloud/discord" style="color: #f89b41"
+        >Talk to us on Discord</a
+      ></mj-text
     >
   </mj-column>
 </mj-section>

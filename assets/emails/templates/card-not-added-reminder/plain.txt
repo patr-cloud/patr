@@ -1,0 +1,14 @@
+Hi {{ username }},
+
+Your workspace {{ workspace_name }} has {{ total_usage_charges }} in unpaid charges for this billing period, and there's no payment method on file.
+
+Head to your billing settings to add a payment method and settle the balance.
+
+Add Payment Method: https://app.patr.cloud/billing
+
+Please add a card by {{ deletion_deadline }} to avoid service interruption.
+
+Need help? Talk to us on Discord: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.

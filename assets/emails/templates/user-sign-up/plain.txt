@@ -10,7 +10,7 @@ This code will expire in {{ otp_expiry }}.
 
 If you did not create an account, you can safely ignore this email. If you have any questions or need assistance, please contact our support team at support@patr.cloud.
 
-Join our Discord Community for the latest updates, discussions, and support: https://patr.cloud/discord
+Need help? Talk to us on Discord: https://patr.cloud/discord
 
 ---
 2026 Patr. All rights reserved.

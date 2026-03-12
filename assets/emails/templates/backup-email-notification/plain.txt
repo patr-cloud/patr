@@ -1,0 +1,12 @@
+Hi {{ username }},
+
+This email ({{ recovery_email }}) has been set as the recovery email for your Patr account.
+
+If you did this, no action is needed - you're all set.
+
+If you didn't initiate this, contact us immediately at support@patr.cloud.
+
+Need help? Talk to us on Discord: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.
