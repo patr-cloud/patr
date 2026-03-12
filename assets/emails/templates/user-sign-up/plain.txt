@@ -1,1 +1,16 @@
-Hi {{ username }}, your OTP is {{ otp }}. Expires in {{ otp_expiry }}.
+Hi {{ username }},
+
+Enter the code below to verify your email address and complete your Patr sign-up:
+
+{{ otp }}
+
+Or visit: https://app.patr.cloud/sign-up/confirm?otp={{ otp }}&username={{ username }}
+
+This code will expire in {{ otp_expiry }}.
+
+If you did not create an account, you can safely ignore this email. If you have any questions or need assistance, please contact our support team at support@patr.cloud.
+
+Join our Discord Community for the latest updates, discussions, and support: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.

@@ -1,0 +1,50 @@
+<mj-section
+  background-url='{{ "footer.png"|asset_url }}'
+  background-size="cover"
+  background-repeat="no-repeat"
+  background-color="#0d0526"
+  padding="55px 0 10px 0"
+  css-class="footer-section"
+>
+  <mj-column>
+    <mj-social
+      font-size="0px"
+      icon-size="28px"
+      mode="horizontal"
+      padding="0 0 10px 0"
+      border-radius="0"
+    >
+      <mj-social-element
+        name="github-noshare"
+        href="https://github.com/patr-cloud/patr"
+        src='{{ "icon-github.png"|asset_url }}'
+        alt="GitHub"
+      />
+      <mj-social-element
+        name="custom"
+        href="https://patr.cloud/discord"
+        src='{{ "icon-discord.png"|asset_url }}'
+        alt="Discord"
+      />
+      <mj-social-element
+        name="linkedin-noshare"
+        href="https://www.linkedin.com/showcase/patr/"
+        src='{{ "icon-linkedin.png"|asset_url }}'
+        alt="LinkedIn"
+      />
+      <mj-social-element
+        name="instagram"
+        href="https://www.instagram.com/patr.cloud/"
+        src='{{ "icon-instagram.png"|asset_url }}'
+        alt="Instagram"
+      />
+    </mj-social>
+    <mj-text
+      align="center"
+      font-size="11px"
+      color="#888888"
+      padding="0 0 10px 0"
+      >&copy; 2026 Patr. All rights reserved.</mj-text
+    >
+  </mj-column>
+</mj-section>

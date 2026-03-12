@@ -15,17 +15,12 @@ use crate::prelude::*;
 
 /// The module to handle embedded email images. This is used to upload all
 /// embedded email images to R2/S3 at startup.
-pub mod images;
+mod images;
 
 /// The user sign-up email template.
 mod user_sign_up;
 
-pub use self::images::upload_email_images;
-
-/// Helper module for all emails.
-pub mod mails {
-	pub use super::user_sign_up::UserSignUpEmail;
-}
+pub use self::{images::*, user_sign_up::*};
 
 /// The struct representing an email to be sent by the worker. This struct
 /// contains the necessary information to send an email, such as the recipient

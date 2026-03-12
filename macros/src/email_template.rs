@@ -126,6 +126,40 @@ pub fn parse(input: TokenStream) -> TokenStream {
 
 	let subject_template = subject.clone();
 
+	// Generate snake_case module name from struct name
+	let test_mod_name = quote::format_ident!(
+		"__test_{}_preview",
+		name.to_string()
+			.chars()
+			.enumerate()
+			.fold(String::new(), |mut acc, (i, c)| {
+				if c.is_uppercase() {
+					if i > 0 {
+						acc.push('_');
+					}
+					acc.push(c.to_ascii_lowercase());
+				} else {
+					acc.push(c);
+				}
+				acc
+			})
+	);
+
+	// Generate field initializers with sample values
+	let field_initializers: Vec<_> = field_defs
+		.iter()
+		.map(|(ident, ty)| {
+			let ty_str = quote::quote!(#ty).to_string();
+			if ty_str == "String" {
+				quote::quote! { #ident: stringify!(#ident).to_string() }
+			} else {
+				quote::quote! { #ident: Default::default() }
+			}
+		})
+		.collect();
+
+	let preview_path = format!("{}.html", template_path);
+
 	quote::quote! {
 		// Subject template (inline source)
 		#[doc(hidden)]
@@ -184,6 +218,25 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				Ok(#txt_wrapper_name {
 					#(#field_names: &self.#field_names,)*
 				}.render()?)
+			}
+		}
+
+		#[cfg(test)]
+		mod #test_mod_name {
+			use super::*;
+
+			#[test]
+			fn preview_email() {
+				let template = #name {
+					#(#field_initializers,)*
+				};
+				let html = template.render_html().expect("failed to render email HTML");
+				let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+					.join("../target/email-previews");
+				std::fs::create_dir_all(&dir).expect("failed to create preview dir");
+				let path = dir.join(#preview_path);
+				std::fs::write(&path, &html).expect("failed to write preview");
+				eprintln!("Email preview written to: {}", path.display());
 			}
 		}
 	}

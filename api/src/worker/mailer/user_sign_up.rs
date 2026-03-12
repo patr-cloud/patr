@@ -1,6 +1,8 @@
 use macros::EmailTemplate;
 use serde::{Deserialize, Serialize};
 
+use super::images as filters;
+
 /// The email template for the user sign up email. This email is sent to the
 /// user when they sign up, and contains an OTP for verification.
 #[derive(Debug, Clone, Serialize, Deserialize, EmailTemplate)]

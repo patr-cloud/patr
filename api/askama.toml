@@ -1,6 +1,6 @@
 [general]
-dirs    = ["../assets/emails/templates"]
-filters = "crate::worker::mailer::images"
+dirs    = ["../assets/emails/templates", "../assets/emails/components"]
+filters = ["worker::mailer::asset_url"]
 
 [[escaper]]
 extensions = ["mjml"]

@@ -243,7 +243,7 @@ pub async fn create_account(
 			recovery_email
 				.clone()
 				.unwrap_or_else(|| "unknown".to_string()),
-			mails::UserSignUpEmail {
+			UserSignUpEmail {
 				username: username.to_string(),
 				otp,
 				otp_expiry: constants::OTP_VALIDITY.to_string(),

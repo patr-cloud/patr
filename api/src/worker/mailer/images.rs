@@ -11,10 +11,13 @@ use crate::{prelude::*, utils::config::S3Config};
 #[folder = "../assets/emails/images/"]
 pub struct EmailImages;
 
+#[askama::filter_fn]
 /// Askama custom filter that converts an image filename into its hashed
 /// `assets.patr.cloud` URL. The hash is derived from the file's SHA-256 at
 /// compile time, ensuring cache-busting when images change.
-pub fn asset_url(filename: &str) -> askama::Result<String> {
+///
+/// Usage in templates: `{{ "header.png"|asset_url }}`
+pub fn asset_url(filename: &str, _env: &dyn askama::Values) -> askama::Result<String> {
 	let file = EmailImages::get(filename).ok_or(askama::Error::Fmt)?;
 	let hash = hex::encode(file.metadata.sha256_hash());
 	let ext = filename.rsplit('.').next().unwrap_or("bin");
