@@ -186,7 +186,6 @@ const ManagedUrlComponent = (props: ManagedUrlComponentProps) => {
 					method: "PATCH",
 					body: JSON.stringify(requestBody),
 					headers: {
-						"Content-Type": "application/json",
 						Authorization: `Bearer ${accessToken}`,
 					},
 				}

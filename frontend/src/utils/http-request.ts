@@ -73,7 +73,7 @@ const httpRequest = async <T>(url: string, options?: RequestInit): Promise<Fetch
 				return defaultErrorReturn;
 			}
 
-			const authState = JSON.parse(cookieStorage.getItem("authState") || "null") as AuthState | null;
+			const authState = JSON.parse(currentAuthState) as AuthState | null;
 
 			if (!authState || authState.type !== "LoggedIn") {
 				window.location.href = "/login";
@@ -123,7 +123,8 @@ const httpRequest = async <T>(url: string, options?: RequestInit): Promise<Fetch
 				},
 			});
 
-			const retryData = hasJsonContent ? await retryResp.json() : {};
+			const retryContentType = retryResp.headers.get("content-type");
+		const retryData = retryContentType?.includes("application/json") ? await retryResp.json() : {};
 
 			if (retryResp.ok) {
 				return {

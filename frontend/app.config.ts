@@ -14,8 +14,14 @@ export default defineConfig({
   }) : undefined,
   vite: ({ router }: { router: any }) => isCSR ? ({
     plugins: [tailwindcss()],
+    esbuild: {
+      pure: ['console.log'],
+    },
   }) : ({
     plugins: [tailwindcss()],
+    esbuild: {
+      pure: ['console.log'],
+    },
     publicDir: resolve(__dirname, "../assets/frontend/public"),
     server: {
       fs: {

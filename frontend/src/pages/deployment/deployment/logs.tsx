@@ -1,5 +1,5 @@
 import { createWS, WSMessage } from "@solid-primitives/websocket";
-import { createMemo, createResource, Suspense } from "solid-js";
+import { createMemo, createResource, For, onCleanup, Show, Suspense } from "solid-js";
 import { createStore } from "solid-js/store";
 import { GetDeploymentLogsResponse } from "~/bindings";
 import { useToast } from "~/components";
@@ -18,8 +18,10 @@ const DeploymentLogs = (props: DeploymentLogsProps) => {
 	const toast = useToast();
 	const params = useParams();
 
+	const baseUrl = import.meta.env.VITE_BASE_URL as string;
+	const wsUrl = baseUrl.replace(/^http/, "ws");
 	const ws = createWS(
-		`ws://localhost:3001/api/workspace/${workspaceId()}/deployment/${props.deploymentId}/logs/stream`
+		`${wsUrl}/api/workspace/${workspaceId()}/deployment/${props.deploymentId}/logs/stream`
 	);
 	const [, setLogs] = createStore<WSMessage[]>([]);
 
@@ -28,6 +30,8 @@ const DeploymentLogs = (props: DeploymentLogsProps) => {
 		console.log("Received log message:", message);
 		setLogs((prevLogs) => [...prevLogs, message]);
 	});
+
+	onCleanup(() => ws.close());
 
 	const resourceParamsDeploymentLogs = createMemo(() => {
 		return [authState(), workspaceId(), params.id] as const;
@@ -43,7 +47,6 @@ const DeploymentLogs = (props: DeploymentLogsProps) => {
 			{
 				method: "GET",
 				headers: {
-					"Content-Type": "application/json",
 					Authorization: `Bearer ${auth.accessToken}`,
 				},
 			}
@@ -74,7 +77,9 @@ const DeploymentLogs = (props: DeploymentLogsProps) => {
 				<div class="w-full h-full br-sm bg-secondary px-xl py-md flex grow flex-col items-start justify-start overflow-auto">
 					<Suspense fallback={<div>Loading logs...</div>}>
 						<div class="w-full flex flex-col gap-2">
-							{deploymentLogs.latest && deploymentLogs.latest!.logs.map((log) => <LogStatement log={log} />)}
+							<Show when={deploymentLogs.latest}>
+								<For each={deploymentLogs.latest!.logs}>{(log) => <LogStatement log={log} />}</For>
+							</Show>
 						</div>
 					</Suspense>
 				</div>

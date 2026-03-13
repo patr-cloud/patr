@@ -25,7 +25,6 @@ const UsersAssignedToRole = () => {
 				{
 					method: "GET",
 					headers: {
-						"Content-Type": "application/json",
 						Authorization: `Bearer ${auth.accessToken}`,
 					},
 				}
@@ -44,7 +43,6 @@ const UsersAssignedToRole = () => {
 					{
 						method: "GET",
 						headers: {
-							"Content-Type": "application/json",
 							Authorization: `Bearer ${auth.accessToken}`,
 						},
 					}

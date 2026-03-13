@@ -3,6 +3,8 @@ import { createSignal, onMount, Show } from "solid-js";
 import { CompleteSignUpRequest } from "~/bindings";
 import { Button, ButtonVariant, Input, InputType, useToast, Turnstile } from "~/components";
 import OtpInput from "~/components/otp-input";
+import { createAsyncAction } from "~/hooks";
+import { httpRequest } from "~/utils/http-request";
 
 const ConfirmSignUp = () => {
 	const navigate = useNavigate();
@@ -10,7 +12,6 @@ const ConfirmSignUp = () => {
 
 	const [searchParams] = useSearchParams<{ username?: string; otp?: string }>();
 	const [turnstileToken, setTurnstileToken] = createSignal<string>("");
-	const [isLoading, setIsLoading] = createSignal(false);
 
 	// Get username from URL params or navigation state
 	const initialUsername = searchParams.username || "";
@@ -33,38 +34,34 @@ const ConfirmSignUp = () => {
 		}
 	});
 
-	const onSubmit = async (e: Event) => {
-		e.preventDefault();
-
+	const { execute: submitConfirmation, isLoading } = createAsyncAction(async () => {
 		if (!turnstileToken()) {
 			toast("Please complete the security verification", "error");
 			return;
 		}
 
-		setIsLoading(true);
 		const body: CompleteSignUpRequest = {
 			username: username(),
 			verificationToken: otpDigits().join(""),
 			cfTurnstileToken: turnstileToken(),
 		};
-		const resp = await fetch("/api/auth/join", {
+		const resp = await httpRequest("/api/auth/join", {
 			method: "POST",
 			body: JSON.stringify(body),
-			headers: {
-				"Content-Type": "application/json",
-			},
 		});
 
 		if (resp.ok) {
-			// Handle successful sign-up (e.g., redirect to login or dashboard)
 			console.log("Account confirmed successfully");
 			navigate("/login");
 		} else {
-			// Handle sign-up errors
-			console.error("Error confirming account:", resp.statusText);
+			console.error("Error confirming account:", resp.data.error);
 			toast("Error confirming account", "error");
 		}
-		setIsLoading(false);
+	});
+
+	const onSubmit = async (e: Event) => {
+		e.preventDefault();
+		await submitConfirmation().catch(() => {});
 	};
 
 	return (
@@ -123,7 +120,7 @@ const ConfirmSignUp = () => {
 					Back to Sign Up
 				</A>
 				<Button
-					loading={isLoading()}
+					loading={isLoading}
 					loadingContent={() => <span>Confirming...</span>}
 					variant={ButtonVariant.Contained}
 					class="py-4 text-base font-semibold px-xxl flex-end transition-all duration-200"

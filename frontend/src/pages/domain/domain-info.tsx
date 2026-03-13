@@ -59,9 +59,6 @@ const DomainInfo = () => {
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain/${domainId}`,
 				{
 					method: "GET",
-					headers: {
-						"Content-Type": "application/json",
-					},
 				}
 			);
 
@@ -75,11 +72,8 @@ const DomainInfo = () => {
 		}
 	);
 
-	const resourceParamsManagedUrls = createMemo(() => {
-		return [authState(), workspaceId(), params.id] as const;
-	});
 	const [managedUrls, { refetch: refetchManagedUrls }] = createResource(
-		resourceParamsManagedUrls,
+		resourceParams,
 		async ([auth, wsId, domainId]) => {
 			if (!wsId || !auth || auth.type !== "LoggedIn" || !domainId) {
 				return;
@@ -90,9 +84,6 @@ const DomainInfo = () => {
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/infrastructure/managed-url?domainId=${domainId}`,
 				{
 					method: "GET",
-					headers: {
-						"Content-Type": "application/json",
-					},
 				}
 			);
 

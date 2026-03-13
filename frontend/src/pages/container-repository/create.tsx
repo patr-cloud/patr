@@ -54,9 +54,6 @@ const CreateContainerRepository = () => {
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry`,
 			{
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
 				body: JSON.stringify(requestBody),
 			}
 		);

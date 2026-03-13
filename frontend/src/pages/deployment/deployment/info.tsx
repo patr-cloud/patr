@@ -66,7 +66,6 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 			{
 				method: "PATCH",
 				headers: {
-					"Content-Type": "application/json",
 					Authorization: `Bearer ${auth.accessToken}`,
 				},
 				body: JSON.stringify({

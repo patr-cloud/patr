@@ -55,9 +55,6 @@ const ChangePasswordTab = (_: UserSettingsInfoTabProps) => {
 				`${import.meta.env.VITE_BASE_URL}/api/user/change-password`,
 				{
 					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-					},
 					body: JSON.stringify(body),
 				}
 			);
@@ -68,7 +65,7 @@ const ChangePasswordTab = (_: UserSettingsInfoTabProps) => {
 					case "mfaRequired":
 						setShowMfa(true);
 						break;
-					case "invalidCurrentPassword":
+					case "invalidPassword":
 						toast("Current password is incorrect", "error");
 						break;
 					default:

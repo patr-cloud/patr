@@ -31,7 +31,6 @@ const TwoFactorAuthModal = (props: ModalContainerProps) => {
 		const response = await httpRequest<GetMfaSecretResponse>(`${import.meta.env.VITE_BASE_URL}/api/user/mfa`, {
 			method: "GET",
 			headers: {
-				"Content-Type": "application/json",
 				Authorization: `Bearer ${auth.accessToken}`,
 			},
 		});
@@ -88,7 +87,6 @@ const TwoFactorAuthModal = (props: ModalContainerProps) => {
 		const response = await httpRequest(`${import.meta.env.VITE_BASE_URL}/api/user/mfa`, {
 			method: props.isMfaEnabled ? "DELETE" : "POST",
 			headers: {
-				"Content-Type": "application/json",
 				Authorization: `Bearer ${auth.accessToken}`,
 			},
 			body: JSON.stringify({ otp: otp() }),
@@ -130,7 +128,7 @@ const TwoFactorAuthModal = (props: ModalContainerProps) => {
 						)}
 					</div>
 
-					<div class="border border-border-color p-4 rounded-xs min-h-[264px] min-w-[264px] flex justify-center items-center relative">
+					<div class="border border-border-color p-4 rounded-xs min-h-66 min-w-66 flex justify-center items-center relative">
 						<Suspense fallback={<div class="text-white">Loading QR Code...</div>}>
 							<img
 								style={{

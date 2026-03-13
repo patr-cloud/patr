@@ -38,9 +38,6 @@ const SignUp = () => {
 		const resp = await httpRequest("/api/auth/sign-up", {
 			method: "POST",
 			body: JSON.stringify(requestBody),
-			headers: {
-				"Content-Type": "application/json",
-			},
 		});
 
 		if (resp.ok) {
