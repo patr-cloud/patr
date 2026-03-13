@@ -1,4 +1,4 @@
-import { Navigate, Route } from "@solidjs/router";
+import { Route, useNavigate } from "@solidjs/router";
 import { createEffect, ParentProps } from "solid-js";
 import HomePage from "~/pages/home";
 import CreateDeploymentPage from "~/pages/deployment/create";
@@ -23,13 +23,14 @@ import { useFetchUserPermissions } from "~/hooks/fetch";
 const WorkspacedLayout = (props: ParentProps<{}>) => {
 	const [workspaces] = useFetchWorkspaces();
 	useFetchUserPermissions();
+	const navigate = useNavigate();
 
 	createEffect(() => {
 		if (workspaces.state === "ready") {
 			console.log("workspaces:", workspaces());
 			const workspaceLength = workspaces()?.workspaces?.length || 0;
 			if (workspaceLength === 0) {
-				return <Navigate href="/onboard" />;
+				navigate("/onboard", { replace: true });
 			}
 		}
 	});

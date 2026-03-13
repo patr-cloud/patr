@@ -1,17 +1,25 @@
+import { createSignal, onMount } from "solid-js";
+
 interface BgOnboardProps {
 	/** Additional CSS classes */
 	class?: string;
 }
 
 const BgOnboard = (rawProps: BgOnboardProps) => {
-	// Generate random stars
-	const stars = Array.from({ length: 25 }, () => ({
-		top: `${Math.random() * 100}%`,
-		left: `${Math.random() * 100}%`,
-		size: Math.random() * 5,
-		delay: `${Math.random() * 3}s`,
-		duration: `${Math.random() * 2 + 1.5}s`,
-	}));
+	const [stars, setStars] = createSignal<
+		{ top: string; left: string; size: number; delay: string; duration: string }[]
+	>([]);
+	onMount(() => {
+		setStars(
+			Array.from({ length: 25 }, () => ({
+				top: `${Math.random() * 100}%`,
+				left: `${Math.random() * 100}%`,
+				size: Math.random() * 5,
+				delay: `${Math.random() * 3}s`,
+				duration: `${Math.random() * 2 + 1.5}s`,
+			}))
+		);
+	});
 
 	const randomizeDuration = (element: HTMLDivElement) => {
 		const newDuration = Math.random() * 2 + 1.5; // Random duration between 1.5-3.5s
@@ -21,7 +29,7 @@ const BgOnboard = (rawProps: BgOnboardProps) => {
 	return (
 		<>
 			{/* Scattered stars */}
-			{stars.map((star, i) => (
+			{stars().map((star, i) => (
 				<div
 					ref={(el) => {
 						el.addEventListener("animationiteration", () => randomizeDuration(el));
