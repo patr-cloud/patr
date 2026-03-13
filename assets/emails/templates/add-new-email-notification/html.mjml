@@ -61,7 +61,7 @@
           >
         </mj-column>
       </mj-section>
-      <mj-section padding="20px 20px 10px 20px">
+      <mj-section padding="20px 40px 10px 40px">
         <mj-column border="1px solid #f89b41" border-radius="4px" padding="0">
           <mj-text
             align="center"

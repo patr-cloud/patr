@@ -22,7 +22,12 @@ pub fn asset_url(filename: &str, _env: &dyn askama::Values) -> askama::Result<St
 	let hash = hex::encode(file.metadata.sha256_hash());
 	let ext = filename.rsplit('.').next().unwrap_or("bin");
 	Ok(format!(
-		"https://assets.patr.cloud/email/images/{hash}.{ext}"
+		"{}/email/images/{hash}.{ext}",
+		if cfg!(debug_assertions) {
+			"http://localhost:3004"
+		} else {
+			"https://assets.patr.cloud"
+		}
 	))
 }
 

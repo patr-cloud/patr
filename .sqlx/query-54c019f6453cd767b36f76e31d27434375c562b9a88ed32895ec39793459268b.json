@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n    *\nFROM\n    apalis.workers\nORDER BY\n    last_seen DESC\nLIMIT\n    $1 OFFSET $2\n",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "worker_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "storage_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "layers",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "last_seen",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "started_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "54c019f6453cd767b36f76e31d27434375c562b9a88ed32895ec39793459268b"
+}

@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, cloudflare_custom_hostname_id FROM workspace_domain WHERE is_verified = TRUE;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "cloudflare_custom_hostname_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "cd0b1aaf33a7972aa1d85571b7d8415fd3138e8d6ab2fa93cffa67a4cf38554c"
+}

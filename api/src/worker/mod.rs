@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use apalis::prelude::*;
 use apalis_cron::CronStream;
-use apalis_postgres::{Config, PostgresStorage, shared::SharedPostgresStorage};
+use apalis_postgres::{PostgresStorage, shared::SharedPostgresStorage};
 use cron::Schedule;
 use futures::FutureExt;
 use serde::{Deserialize, Serialize};
@@ -94,7 +94,7 @@ pub async fn run(state: &AppState) {
 		.register({
 			let state = state.clone();
 			move |_| {
-				let backend = PostgresStorage::new_with_notify(&state.database, &Config::default());
+				let backend = PostgresStorage::new(&state.database);
 
 				WorkerBuilder::new("background-worker")
 					.backend(backend)

@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO\n    apalis.jobs (\n        id,\n        job_type,\n        job,\n        status,\n        attempts,\n        max_attempts,\n        run_at,\n        priority,\n        metadata\n    )\nSELECT\n    unnest($1::text[]) as id,\n    $2::text as job_type,\n    unnest($3::bytea[]) as job,\n    'Pending' as status,\n    0 as attempts,\n    unnest($4::integer []) as max_attempts,\n    unnest($5::timestamptz []) as run_at,\n    unnest($6::integer []) as priority,\n    unnest($7::jsonb []) as metadata\n",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Text",
+        "ByteaArray",
+        "Int4Array",
+        "TimestamptzArray",
+        "Int4Array",
+        "JsonbArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7e5fb4248558ac31dd2b4ff2c34a58930c43feb8ee8c4505e0a4e0521ee6890c"
+}
