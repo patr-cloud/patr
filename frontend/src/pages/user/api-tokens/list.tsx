@@ -1,16 +1,18 @@
 import { A, useNavigate } from "@solidjs/router";
-import { createMemo, createResource, Suspense } from "solid-js";
+import { createMemo, createResource, Show, Suspense } from "solid-js";
 import { ListApiTokensResponse } from "~/bindings";
 import {
 	ButtonVariant,
+	EmptyState,
 	Link,
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
+	Pagination,
 	Table,
 	useToast,
 } from "~/components";
-import { useAuthState } from "~/hooks";
+import { useAuthState, createPaginationState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { formatRelativeTime } from "~/utils/func";
 import { httpRequest } from "~/utils/http-request";
@@ -20,17 +22,18 @@ const ListApiTokens = () => {
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const navigate = useNavigate();
+	const pagination = createPaginationState();
 
 	const fetchParams = createMemo(() => {
-		return [authState(), workspaceId()] as const;
+		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
 	});
 
-	const [apiTokens] = createResource(fetchParams, async ([auth, wsId]) => {
+	const [apiTokens] = createResource(fetchParams, async ([auth, wsId, page, count]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") {
 			return { tokens: [] };
 		}
 
-		const response = await httpRequest<ListApiTokensResponse>(`${import.meta.env.VITE_BASE_URL}/api/user/api-token`, {
+		const response = await httpRequest<ListApiTokensResponse>(`${import.meta.env.VITE_BASE_URL}/api/user/api-token?page=${page}&count=${count}`, {
 			method: "GET",
 		});
 
@@ -39,6 +42,8 @@ const ListApiTokens = () => {
 			toast("Failed to fetch API Tokens", "error");
 			return { tokens: [] };
 		}
+
+		pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
 
 		return { tokens: response.data.tokens };
 	});
@@ -62,29 +67,40 @@ const ListApiTokens = () => {
 					</Link>
 				)}
 			/>
-			<PageContainerBody class="flex flex-col gap-8">
+			<PageContainerBody class="flex flex-col justify-between gap-8">
 				<Suspense fallback={<div>Loading API Tokens...</div>}>
-					<Table
-						column_grids={["flex-4", "flex-4", "flex-4"]}
-						headings={["Token Name", "Created", "Expiry"]}
-						rows={apiTokens()?.tokens || []}
-						renderRow={(token) => (
-							<tr
-								onClick={() => {
-									navigate(`/profile/api-tokens/${token.id}`);
-								}}
-								class="table-row cursor-pointer"
-							>
-								<td class="flex-4 flex items-center justify-center">{token.name}</td>
-								<td class="flex-4 flex items-center justify-center">
-									{formatRelativeTime(token.created) || "Unknown"}
-								</td>
-								<td class="flex-4 flex items-center justify-center">
-									{token.tokenExp ? formatRelativeTime(token.tokenExp) : "Never"}
-								</td>
-							</tr>
-						)}
-					/>
+					<Show
+						when={(apiTokens()?.tokens?.length ?? 0) > 0}
+						fallback={<EmptyState title="No API Tokens Created" />}
+					>
+						<Table
+							column_grids={["flex-4", "flex-4", "flex-4"]}
+							headings={["Token Name", "Created", "Expiry"]}
+							rows={apiTokens()?.tokens || []}
+							renderRow={(token) => (
+								<tr
+									onClick={() => {
+										navigate(`/profile/api-tokens/${token.id}`);
+									}}
+									class="table-row cursor-pointer"
+								>
+									<td class="flex-4 flex items-center justify-center">{token.name}</td>
+									<td class="flex-4 flex items-center justify-center">
+										{formatRelativeTime(token.created) || "Unknown"}
+									</td>
+									<td class="flex-4 flex items-center justify-center">
+										{token.tokenExp ? formatRelativeTime(token.tokenExp) : "Never"}
+									</td>
+								</tr>
+							)}
+						/>
+						<Pagination
+							state={pagination}
+							loading={apiTokens.loading}
+							showPageSizeSelector={false}
+							showGoToPage={false}
+						/>
+					</Show>
 				</Suspense>
 			</PageContainerBody>
 		</PageContainer>

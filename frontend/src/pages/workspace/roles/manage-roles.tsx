@@ -7,11 +7,12 @@ import {
 	Link,
 	PageContainer,
 	PageContainerBody,
+	Pagination,
 	Table,
 	useToast,
 } from "~/components";
 import { FiTrash2 } from "solid-icons/fi";
-import { useAuthState } from "~/hooks";
+import { useAuthState, createPaginationState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { GetWorkspaceInfoResponse } from "~/bindings/GetWorkspaceInfoResponse";
 import { ListAllRolesResponse } from "~/bindings/ListAllRolesResponse";
@@ -90,7 +91,7 @@ const ManageRoles = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
-	const navigate = useNavigate();
+	const pagination = createPaginationState();
 	const resourceParamsWorkspace = () => {
 		return [authState(), workspaceId()] as const;
 	};
@@ -117,12 +118,16 @@ const ManageRoles = () => {
 		return response.data;
 	});
 
-	const [roles, { refetch: refetchRoles }] = createResource(resourceParamsWorkspace, async ([auth, id]) => {
+	const rolesFetchParams = () => {
+		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
+	};
+
+	const [roles, { refetch: refetchRoles }] = createResource(rolesFetchParams, async ([auth, id, page, count]) => {
 		if (!auth || auth.type !== "LoggedIn" || id === "") {
 			return { roles: [] };
 		}
 		const response = await httpRequest<ListAllRolesResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}/rbac/role`,
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}/rbac/role?page=${page}&count=${count}`,
 			{
 				method: "GET",
 				headers: {
@@ -136,13 +141,14 @@ const ManageRoles = () => {
 			toast("Failed to fetch roles", "error");
 			return { roles: [] };
 		}
+		pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
 		return response.data;
 	});
 
 	return (
 		<PageContainer>
 			<WorkspaceHeader workspaceName={workspaceInfo()?.name} activeTab="roles" />
-			<PageContainerBody class="flex flex-col gap-8">
+			<PageContainerBody class="flex flex-col justify-between gap-8">
 				<div class="flex flex-col gap-6 flex-1">
 					<Suspense fallback={<div class="text-white">Loading roles...</div>}>
 						<Show when={(roles()?.roles || []).length > 0} fallback={<EmptyState title="No Roles Created" />}>
@@ -151,6 +157,12 @@ const ManageRoles = () => {
 								headings={["Role Name", "Description", "Action", ""]}
 								rows={roles()?.roles || []}
 								renderRow={(role) => <RoleRow role={role} refetch={refetchRoles} />}
+							/>
+							<Pagination
+								state={pagination}
+								loading={roles.loading}
+								showPageSizeSelector={false}
+								showGoToPage={false}
 							/>
 						</Show>
 					</Suspense>

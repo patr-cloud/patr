@@ -7,10 +7,12 @@ import {
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
+	Pagination,
 	Table,
 	useToast,
 } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
+import { createPaginationState } from "~/hooks";
 import { ListContainerRepositoriesResponse, WithId, ContainerRepository } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
 import { formatRelativeTime, formatSize } from "~/utils/func";
@@ -20,18 +22,19 @@ const ListContainerRepositories = () => {
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const navigate = useNavigate();
+	const pagination = createPaginationState();
 
 	const resourceParams = createMemo(() => {
-		return [authState(), workspaceId()] as const;
+		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
 	});
 
-	const [repositories] = createResource(resourceParams, async ([auth, wsId]) => {
+	const [repositories] = createResource(resourceParams, async ([auth, wsId, page, count]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") {
 			return undefined;
 		}
 
 		const response = await httpRequest<ListContainerRepositoriesResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry`,
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry?page=${page}&count=${count}`,
 			{
 				method: "GET",
 				headers: {
@@ -45,6 +48,8 @@ const ListContainerRepositories = () => {
 			toast("Failed to fetch repositories", "error");
 			return undefined;
 		}
+
+		pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
 
 		return response.data;
 	});
@@ -65,7 +70,7 @@ const ListContainerRepositories = () => {
 				)}
 			/>
 
-			<PageContainerBody class="flex flex-col">
+			<PageContainerBody class="flex flex-col justify-between">
 				<ErrorBoundary
 					fallback={(err, reset) => (
 						<div>
@@ -93,6 +98,12 @@ const ListContainerRepositories = () => {
 										<td class="flex-1">{formatRelativeTime(repo.created)}</td>
 									</tr>
 								)}
+							/>
+							<Pagination
+								state={pagination}
+								loading={repositories.loading}
+								showPageSizeSelector={false}
+								showGoToPage={false}
 							/>
 						</Show>
 					</Suspense>

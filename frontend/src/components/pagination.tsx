@@ -10,6 +10,8 @@ interface PaginationProps {
 	showPageSizeSelector?: boolean;
 	/** Page size options. Defaults to [10, 14, 20, 50, 100]. */
 	countOptions?: number[];
+	/** Whether to show the "Go to page" input. Defaults to true. */
+	showGoToPage?: boolean;
 	/** Whether the list is currently loading — disables all controls. */
 	loading?: MaybeAccessor<boolean>;
 	/** Additional classes for the root element */
@@ -50,6 +52,7 @@ const Pagination = (rawProps: PaginationProps) => {
 	const props = mergeProps(
 		{
 			showPageSizeSelector: true,
+			showGoToPage: true,
 			countOptions: [10, 14, 20, 50, 100],
 		},
 		rawProps
@@ -73,10 +76,11 @@ const Pagination = (rawProps: PaginationProps) => {
 	const rangeEnd = () => Math.min((props.state.page() + 1) * props.state.count(), props.state.totalCount());
 
 	const btnBase =
-		"w-8 h-8 flex items-center justify-center rounded-xs text-sm font-medium transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed";
-	const btnInactive = `${btnBase} bg-secondary-light text-grey hover:bg-secondary-medium hover:text-white`;
-	const btnActive = `${btnBase} bg-primary text-secondary font-semibold`;
-	const btnArrow = `${btnBase} bg-secondary-light text-white hover:bg-secondary-medium`;
+		"h-8 flex items-center justify-center rounded-xs text-sm font-medium transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed";
+	const btnPage = `${btnBase} w-8`;
+	const btnInactive = `${btnPage} bg-secondary-light text-grey enabled:hover:bg-secondary-medium enabled:hover:text-white`;
+	const btnActive = `${btnPage} bg-primary text-secondary font-semibold`;
+	const btnFirstLast = `${btnBase} px-sm gap-xxs bg-secondary-light text-white enabled:hover:bg-secondary-medium`;
 
 	return (
 		<div class={`flex flex-col gap-sm sm:flex-row sm:items-center sm:justify-between mt-md ${get(props.class) ?? ""}`}>
@@ -91,84 +95,91 @@ const Pagination = (rawProps: PaginationProps) => {
 				</Show>
 			</p>
 
-			{/* Centre: page buttons */}
-			<div class="flex items-center gap-xs">
-				{/* Prev arrow */}
-				<button
-					type="button"
-					class={btnArrow}
-					disabled={!props.state.canPrev() || isLoading()}
-					onClick={() => props.state.setPage(props.state.page() - 1)}
-					aria-label="Previous page"
-				>
-					‹
-				</button>
-
-				<For each={pageWindow()}>
-					{(entry) => (
-						<Show
-							when={entry !== "..."}
-							fallback={<span class="w-8 h-8 flex items-center justify-center text-grey text-sm select-none">…</span>}
-						>
-							<button
-								class={(entry as number) - 1 === props.state.page() ? btnActive : btnInactive}
-								disabled={isLoading()}
-								onClick={() => props.state.setPage((entry as number) - 1)}
-								aria-label={`Page ${entry}`}
-								aria-current={(entry as number) - 1 === props.state.page() ? "page" : undefined}
-							>
-								{entry as number}
-							</button>
-						</Show>
-					)}
-				</For>
-
-				{/* Next arrow */}
-				<button
-					class={btnArrow}
-					disabled={!props.state.canNext() || isLoading()}
-					onClick={() => props.state.setPage(props.state.page() + 1)}
-					aria-label="Next page"
-				>
-					›
-				</button>
-			</div>
-
-			{/* Right: jump-to-page + page-size selector */}
-			<div class="flex items-center justify-end gap-sm flex-1">
-				{/* Jump to page */}
+			{/* Centre: page buttons — hidden (but space preserved) when only one page */}
+			<Show when={props.state.totalPages() > 1} fallback={<div class="h-8" />}>
 				<div class="flex items-center gap-xs">
-					<span class="text-sm text-grey whitespace-nowrap">Go to</span>
-					<input
-						type="number"
-						min={1}
-						max={props.state.totalPages()}
-						disabled={isLoading()}
-						value={jumpValue()}
-						onInput={(e) => setJumpValue(e.currentTarget.value)}
-						onKeyDown={(e) => e.key === "Enter" && handleJump()}
-						onBlur={handleJump}
-						class="w-14 h-8 px-xs text-sm bg-secondary-light border border-border-color rounded-xs text-white text-center
+					{/* First page */}
+					<button
+						type="button"
+						class={btnFirstLast}
+						disabled={!props.state.canPrev() || isLoading()}
+						onClick={() => props.state.setPage(0)}
+						aria-label="First page"
+					>
+						<span aria-hidden="true">«</span>First
+					</button>
+
+					<For each={pageWindow()}>
+						{(entry) => (
+							<Show
+								when={entry !== "..."}
+								fallback={<span class="w-8 h-8 flex items-center justify-center text-grey text-sm select-none">…</span>}
+							>
+								<button
+									class={(entry as number) - 1 === props.state.page() ? btnActive : btnInactive}
+									disabled={isLoading()}
+									onClick={() => props.state.setPage((entry as number) - 1)}
+									aria-label={`Page ${entry}`}
+									aria-current={(entry as number) - 1 === props.state.page() ? "page" : undefined}
+								>
+									{entry as number}
+								</button>
+							</Show>
+						)}
+					</For>
+
+					{/* Last page */}
+					<button
+						type="button"
+						class={btnFirstLast}
+						disabled={!props.state.canNext() || isLoading()}
+						onClick={() => props.state.setPage(props.state.totalPages() - 1)}
+						aria-label="Last page"
+					>
+						Last<span aria-hidden="true">»</span>
+					</button>
+				</div>
+			</Show>
+
+			{/* Right: jump-to-page + page-size selector — also hidden when single page */}
+			<Show when={props.state.totalPages() > 1} fallback={<div class="flex-1" />}>
+				<div class="flex items-center justify-end gap-sm flex-1">
+					{/* Jump to page */}
+					<Show when={props.showGoToPage}>
+						<div class="flex items-center gap-xs">
+							<span class="text-sm text-grey whitespace-nowrap">Go to</span>
+							<input
+								type="number"
+								min={1}
+								max={props.state.totalPages()}
+								disabled={isLoading()}
+								value={jumpValue()}
+								onInput={(e) => setJumpValue(e.currentTarget.value)}
+								onKeyDown={(e) => e.key === "Enter" && handleJump()}
+								onBlur={handleJump}
+								class="w-14 h-8 px-xs text-sm bg-secondary-light border border-border-color rounded-xs text-white text-center
                                focus:outline-none focus:border-primary disabled:opacity-40 disabled:cursor-not-allowed
                                [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-						placeholder={String(props.state.page() + 1)}
-					/>
-				</div>
+								placeholder={String(props.state.page() + 1)}
+							/>
+						</div>
+					</Show>
 
-				{/* Page size selector */}
-				<Show when={props.showPageSizeSelector}>
-					<select
-						disabled={isLoading()}
-						value={props.state.count()}
-						onChange={(e) => props.state.setCount(Number(e.currentTarget.value))}
-						class="h-8 p-xs py-0 text-sm bg-secondary-light border border-border-color rounded-xs text-grey
+					{/* Page size selector */}
+					<Show when={props.showPageSizeSelector}>
+						<select
+							disabled={isLoading()}
+							value={props.state.count()}
+							onChange={(e) => props.state.setCount(Number(e.currentTarget.value))}
+							class="h-8 p-xs py-0 text-sm bg-secondary-light border border-border-color rounded-xs text-grey
               focus:outline-none focus:border-primary disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-						aria-label="Items per page"
-					>
-						<For each={props.countOptions}>{(opt) => <option value={opt}>{opt} / page</option>}</For>
-					</select>
-				</Show>
-			</div>
+							aria-label="Items per page"
+						>
+							<For each={props.countOptions}>{(opt) => <option value={opt}>{opt} / page</option>}</For>
+						</select>
+					</Show>
+				</div>
+			</Show>
 		</div>
 	);
 };

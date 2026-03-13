@@ -43,7 +43,7 @@ export interface PaginationState {
  * ```
  */
 const createPaginationState = (opts?: { defaultCount?: number }): PaginationState => {
-	const defaultCount = opts?.defaultCount ?? 15;
+	const defaultCount = opts?.defaultCount ?? 20;
 	const [searchParams, setSearchParams] = useSearchParams<{ page?: string; count?: string }>();
 	const [totalCount, setTotalCount] = createSignal(0);
 

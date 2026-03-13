@@ -58,7 +58,7 @@ const ListDeploymentsPage = () => {
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const isAllowedCreate = useIsAllowed("deployment", "create", undefined);
-	const pagination = createPaginationState({ defaultCount: 14 });
+	const pagination = createPaginationState();
 
 	const fetchParamsForDeployment = createMemo(() => {
 		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
@@ -157,7 +157,12 @@ const ListDeploymentsPage = () => {
 									/>
 								)}
 							/>
-							<Pagination state={pagination} loading={deployments.loading} />
+							<Pagination
+								state={pagination}
+								loading={deployments.loading}
+								showPageSizeSelector={false}
+								showGoToPage={false}
+							/>
 						</Show>
 					</Suspense>
 				</ErrorBoundary>
