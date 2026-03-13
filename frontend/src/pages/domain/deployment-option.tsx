@@ -29,9 +29,6 @@ const DeploymentOption = (props: DeploymentOptionProps) => {
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment`,
 			{
 				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-				},
 			}
 		);
 
@@ -58,7 +55,6 @@ const DeploymentOption = (props: DeploymentOptionProps) => {
 			{
 				method: "GET",
 				headers: {
-					"Content-Type": "application/json",
 					Authorization: `Bearer ${auth.accessToken}`,
 				},
 			}

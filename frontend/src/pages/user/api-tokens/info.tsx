@@ -68,9 +68,6 @@ const ApiTokenInfo = () => {
 
 		const response = await httpRequest<void>(`${import.meta.env.VITE_BASE_URL}/api/user/api-token/${params.id}`, {
 			method: "DELETE",
-			headers: {
-				"Content-Type": "application/json",
-			},
 		});
 
 		if (!response.ok) {
@@ -97,9 +94,6 @@ const ApiTokenInfo = () => {
 			`${import.meta.env.VITE_BASE_URL}/api/user/api-token/${params.id}/regenerate`,
 			{
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
 			}
 		);
 

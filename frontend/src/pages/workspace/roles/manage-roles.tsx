@@ -105,7 +105,6 @@ const ManageRoles = () => {
 			{
 				method: "GET",
 				headers: {
-					"Content-Type": "application/json",
 					Authorization: `Bearer ${auth.accessToken}`,
 				},
 			}
@@ -131,7 +130,6 @@ const ManageRoles = () => {
 			{
 				method: "GET",
 				headers: {
-					"Content-Type": "application/json",
 					Authorization: `Bearer ${auth.accessToken}`,
 				},
 			}

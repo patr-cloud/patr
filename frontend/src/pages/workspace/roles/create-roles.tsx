@@ -35,7 +35,6 @@ const CreateRoles = () => {
 			{
 				method: "GET",
 				headers: {
-					"Content-Type": "application/json",
 					Authorization: `Bearer ${auth.accessToken}`,
 				},
 			}
@@ -71,7 +70,6 @@ const CreateRoles = () => {
 				{
 					method: "POST",
 					headers: {
-						"Content-Type": "application/json",
 						Authorization: `Bearer ${accessToken}`,
 					},
 					body: JSON.stringify(requestBody),

@@ -38,7 +38,6 @@ const General = () => {
 				{
 					method: "GET",
 					headers: {
-						"Content-Type": "application/json",
 						Authorization: `Bearer ${auth.accessToken}`,
 					},
 				}

@@ -193,7 +193,6 @@ const CreateApiTokens = () => {
 			{
 				method: "GET",
 				headers: {
-					"Content-Type": "application/json",
 					Authorization: `Bearer ${auth.type === "LoggedIn" ? auth.accessToken : ""}`,
 				},
 			}
@@ -245,7 +244,6 @@ const CreateApiTokens = () => {
 		const response = await httpRequest<CreateApiTokenResponse>(`${import.meta.env.VITE_BASE_URL}/api/user/api-token`, {
 			method: "POST",
 			headers: {
-				"Content-Type": "application/json",
 				Authorization: `Bearer ${auth.type === "LoggedIn" ? auth.accessToken : ""}`,
 			},
 			body: JSON.stringify(requestBody),

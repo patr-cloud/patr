@@ -29,7 +29,6 @@ const UserSettingsInfoTab = (props: UserSettingsInfoTabProps) => {
 			const response = await httpRequest(`${import.meta.env.VITE_BASE_URL}/api/user`, {
 				method: "PATCH",
 				headers: {
-					"Content-Type": "application/json",
 					Authorization: `Bearer ${auth.accessToken}`,
 				},
 				body: JSON.stringify({

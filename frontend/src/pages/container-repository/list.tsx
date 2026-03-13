@@ -38,7 +38,6 @@ const ListContainerRepositories = () => {
 			{
 				method: "GET",
 				headers: {
-					"Content-Type": "application/json",
 					Authorization: `Bearer ${auth.accessToken}`,
 				},
 			}

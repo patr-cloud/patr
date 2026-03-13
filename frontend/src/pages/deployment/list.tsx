@@ -1,6 +1,6 @@
 import { useNavigate } from "@solidjs/router";
 import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid-js";
-import { ListDeploymentResponse, WithId, Deployment, ListRunnersForWorkspaceResponse } from "~/bindings";
+import { ListDeploymentResponse, WithId, Deployment } from "~/bindings";
 import {
 	ButtonVariant,
 	CopyableField,
@@ -15,6 +15,7 @@ import {
 	useToast,
 } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
+import { useFetchRunners } from "~/hooks/fetch";
 import { httpRequest } from "~/utils/http-request";
 import { useIsAllowed, createPaginationState } from "~/hooks";
 
@@ -87,30 +88,10 @@ const ListDeploymentsPage = () => {
 		return { deployments: response.data.deployments };
 	});
 
-	const fetchParamsForRunners = createMemo(() => {
-		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
-	});
+	const [runners] = useFetchRunners();
 
-	const [runners] = createResource(fetchParamsForRunners, async ([auth, wsId]) => {
-		if (!wsId || !auth || auth.type !== "LoggedIn") {
-			return { runners: [] };
-		}
-		const response = await httpRequest<ListRunnersForWorkspaceResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner`,
-			{
-				method: "GET",
-			}
-		);
-
-		if (!response.ok) {
-			console.error("Failed to fetch runners:", response.data.error);
-			toast("Failed to fetch runners", "error");
-
-			return { runners: [] };
-		}
-
-		console.log("Fetched runners:", response.data);
-		return response.data;
+	const runnerNameMap = createMemo(() => {
+		return new Map((runners()?.runners || []).map((r) => [r.id, r.name]));
 	});
 
 	return (
@@ -153,7 +134,7 @@ const ListDeploymentsPage = () => {
 								renderRow={(item) => (
 									<DeploymentListRow
 										item={item}
-										runnerName={runners()?.runners.find((r) => r.id === item.runner)?.name ?? "Unknown"}
+										runnerName={runnerNameMap().get(item.runner) ?? "Unknown"}
 									/>
 								)}
 							/>

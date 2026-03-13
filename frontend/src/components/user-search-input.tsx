@@ -82,6 +82,10 @@ export const UserSearchInput = (props: UserSearchInputProps) => {
 		document.addEventListener("click", handleClickOutside);
 	});
 
+	onCleanup(() => {
+		document.removeEventListener("click", handleClickOutside);
+	});
+
 	return (
 		<div class={`relative ${props.class || ""}`}>
 			<input

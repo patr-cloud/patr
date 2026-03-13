@@ -82,6 +82,10 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 	 * It is derived from the full list of permissions for the workspace, filtered down to just the permissions
 	 * that match the currently selected resource type.
 	 */
+	const permissionNameMap = createMemo(() => {
+		return new Map((permissions()?.permissions || []).map((p) => [p.id, p.name]));
+	});
+
 	const permissionActions = createMemo(() => {
 		return (permissions()?.permissions || []).filter((p) => {
 			const parsed = parsePermissionName(p.name);
@@ -123,7 +127,7 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 							checked={() => Array.from(props.selectedPermissionIds)}
 							placeholder={() =>
 								Array.from(props.selectedPermissionIds)
-									.map((id) => permissionActions().find((p) => p.id === id)?.name)
+									.map((id) => permissionNameMap().get(id))
 									.map((val) => (val ? parseCamelCase(parsePermissionName(val).action) : undefined))
 									.filter((v) => v !== undefined)
 									.join(", ") || "Select Permissions"

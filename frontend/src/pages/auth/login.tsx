@@ -1,62 +1,14 @@
-import { A, query, redirect, useNavigate } from "@solidjs/router";
-import { Alert, Button, InputEventT, useToast, Turnstile, LoadingSpinner } from "~/components";
+import { A, useNavigate } from "@solidjs/router";
+import { Alert, Button, InputEventT, useToast, Turnstile } from "~/components";
 import { InputType, Input } from "~/components";
 import { ButtonVariant } from "~/utils/color";
-import { createSignal, JSX, Show } from "solid-js";
-import { getRequestEvent } from "solid-js/web";
+import { createSignal, Show } from "solid-js";
 import { LoginRequest, LoginResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
-import { useAuthState } from "~/hooks";
+import { createAsyncAction, useAuthState } from "~/hooks";
 import { USERNAME_VALIDITY_PATTERN, validatePassword } from "~/utils/validation";
 import { PasswordInput } from "~/components";
 import OtpInput from "~/components/otp-input";
-
-/**
- * @deprecated Not using a server function, cause that limits Client Side Only Capabilities,
- * keeping it here in case we decide to backtrack on it later.
- */
-const loginFn = query(async (data: LoginRequest) => {
-	"use server";
-
-	const event = getRequestEvent();
-	if (!event) throw new Error("Expect Request Event");
-
-	const userAgent = event.request.headers.get("user-agent");
-
-	const loginResponse = await httpRequest<LoginResponse>(`${import.meta.env.VITE_BASE_URL}/api/auth/sign-in`, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			"User-Agent": userAgent || "",
-		},
-		body: JSON.stringify({
-			userId: data.userId,
-			password: data.password,
-			mfaOtp: data.mfaOtp,
-		}),
-	});
-
-	console.log("Login Response Status:", loginResponse);
-	if (loginResponse.ok) {
-		event.response.headers.append(
-			"Set-Cookie",
-			`authState=${JSON.stringify({
-				type: "LoggedIn",
-				accessToken: loginResponse.data.accessToken,
-				refreshToken: loginResponse.data.refreshToken,
-			})};Path=/;SameSite=Strict;Max-Age=604800` // 7 days
-		);
-
-		// Don't mind the throw, it's just to redirect after setting the cookie
-		// and apparently that's how it's done in solid-start and TS
-		throw redirect("/");
-	} else {
-		console.error("Login failed:", loginResponse.statusText);
-		event.response.status = 401;
-		// FIXME: as well so this needs some proper error handling, for now just return false
-		return false;
-	}
-}, "login");
 
 interface InputFields {
 	userId: string;
@@ -70,7 +22,6 @@ const Login = () => {
 	const toast = useToast();
 	const [showMfa, setShowMfa] = createSignal(false);
 	const [mfaOtp, setMfaOtp] = createSignal("");
-	const [isLoading, setIsLoading] = createSignal(false);
 	const [turnstileToken, setTurnstileToken] = createSignal<string>(import.meta.env.VITE_TURNSTILE_SITE_KEY);
 	const [inputs, setInputs] = createSignal<InputFields>({
 		userId: "",
@@ -129,13 +80,9 @@ const Login = () => {
 		return true;
 	};
 
-	const onSubmitLogin: JSX.EventHandler<HTMLFormElement, SubmitEvent> = async (e) => {
-		e.preventDefault();
-
+	const { execute: submitLogin, isLoading } = createAsyncAction(async () => {
 		const { userId, password } = inputs();
 		if (!validateInputs()) return;
-
-		setIsLoading(true);
 
 		const requestBody: LoginRequest = {
 			userId,
@@ -147,9 +94,6 @@ const Login = () => {
 		const loginResp = await httpRequest<LoginResponse>("/api/auth/sign-in", {
 			method: "POST",
 			body: JSON.stringify(requestBody),
-			headers: {
-				"Content-Type": "application/json",
-			},
 		});
 
 		if (loginResp.ok) {
@@ -161,7 +105,6 @@ const Login = () => {
 			});
 			navigate("/", { replace: true });
 		} else {
-			setIsLoading(false);
 			console.error("Error during login:", loginResp);
 			switch (loginResp.data.error) {
 				case "invalidPassword":
@@ -181,20 +124,21 @@ const Login = () => {
 					setShowMfa(true);
 					break;
 				default:
-					// Generic error handling
 					toast("Error during login: " + loginResp.statusText, "error");
 					break;
 			}
-			return;
 		}
-	};
+	});
 
 	return (
 		<>
 			{/* Login Card */}
 			<form
 				method="post"
-				onSubmit={onSubmitLogin}
+				onSubmit={async (e) => {
+					e.preventDefault();
+					await submitLogin().catch(() => {});
+				}}
 				class="bg-secondary p-12 rounded-sm shadow-2xl w-full max-w-128 relative z-10 border border-secondary-medium"
 			>
 				{/* Header */}
@@ -274,7 +218,7 @@ const Login = () => {
 							variant={ButtonVariant.Contained}
 							class="py-4 text-base font-semibold px-xxl flex-end"
 							type="submit"
-							loading={isLoading()}
+							loading={isLoading}
 							loadingContent={() => <span>Logging in...</span>}
 						>
 							Login

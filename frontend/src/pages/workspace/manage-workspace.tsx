@@ -1,4 +1,4 @@
-import { createResource, createSignal, Show, Suspense } from "solid-js";
+import { createMemo, createResource, createSignal, Show, Suspense } from "solid-js";
 import {
 	Button,
 	ButtonVariant,
@@ -43,7 +43,6 @@ const ManageWorkspace = () => {
 			{
 				method: "GET",
 				headers: {
-					"Content-Type": "application/json",
 					Authorization: `Bearer ${auth.accessToken}`,
 				},
 			}
@@ -65,7 +64,6 @@ const ManageWorkspace = () => {
 			{
 				method: "GET",
 				headers: {
-					"Content-Type": "application/json",
 					Authorization: `Bearer ${auth.accessToken}`,
 				},
 			}
@@ -93,7 +91,6 @@ const ManageWorkspace = () => {
 				{
 					method: "GET",
 					headers: {
-						"Content-Type": "application/json",
 						Authorization: `Bearer ${auth.accessToken}`,
 					},
 				}
@@ -111,7 +108,6 @@ const ManageWorkspace = () => {
 					{
 						method: "GET",
 						headers: {
-							"Content-Type": "application/json",
 							Authorization: `Bearer ${auth.accessToken}`,
 						},
 					}
@@ -176,6 +172,10 @@ const ManageWorkspace = () => {
 			refetchMembers();
 		}
 	);
+
+	const roleNameMap = createMemo(() => {
+		return new Map((roles()?.roles || []).map((r) => [r.id, r.name]));
+	});
 
 	// Separate state for input fields and added members
 	const [selectedUser, setSelectedUser] = createSignal<WithId<BasicUserInfo> | null>(null);
@@ -285,7 +285,7 @@ const ManageWorkspace = () => {
 								renderRow={(member) => {
 									const memberRoleIds = member.roleIds;
 									const memberRoleNames = memberRoleIds
-										.map((roleId) => roles()?.roles.find((r) => r.id === roleId)?.name)
+										.map((roleId) => roleNameMap().get(roleId))
 										.filter(Boolean)
 										.join(", ");
 
