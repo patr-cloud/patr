@@ -34,9 +34,6 @@ const CreateRoles = () => {
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}`,
 			{
 				method: "GET",
-				headers: {
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
 		if (!response.ok) {
@@ -69,9 +66,6 @@ const CreateRoles = () => {
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role`,
 				{
 					method: "POST",
-					headers: {
-						Authorization: `Bearer ${accessToken}`,
-					},
 					body: JSON.stringify(requestBody),
 				}
 			);

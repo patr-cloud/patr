@@ -123,8 +123,7 @@ const httpRequest = async <T>(url: string, options?: RequestInit): Promise<Fetch
 				},
 			});
 
-			const retryContentType = retryResp.headers.get("content-type");
-		const retryData = retryContentType?.includes("application/json") ? await retryResp.json() : {};
+			const retryData = hasJsonContent ? await retryResp.json() : {};
 
 			if (retryResp.ok) {
 				return {

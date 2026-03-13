@@ -37,9 +37,6 @@ const ListContainerRepositories = () => {
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry?page=${page}&count=${count}`,
 			{
 				method: "GET",
-				headers: {
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
 
@@ -88,7 +85,10 @@ const ListContainerRepositories = () => {
 								headings={["Container Repository", "Last Updated", "Size", "Created At"]}
 								rows={repositories()?.repositories || []}
 								renderRow={(repo: WithId<ContainerRepository>) => (
-									<tr class="table-row cursor-pointer" onClick={() => navigate(`/container-registry/${repo.id}`)}>
+									<tr
+										class="table-row cursor-pointer"
+										onClick={() => navigate(`/container-registry/${repo.id}`)}
+									>
 										<td class="flex-1">
 											<span class="truncate">{repo.name}</span>
 										</td>

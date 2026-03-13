@@ -89,9 +89,6 @@ const EditPermissions = (props: {
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId()}/rbac/role/${params.roleId}`,
 			{
 				method: "PATCH",
-				headers: {
-					Authorization: `Bearer ${accessToken}`,
-				},
 				body: JSON.stringify(requestBody),
 			}
 		);
@@ -137,7 +134,9 @@ const EditPermissions = (props: {
 				<Table
 					column_grids={["flex-2", "flex-3", "flex-2"]}
 					headings={["Resource Type", "Actions", "Resources"]}
-					rows={permissionEntries().sort((a, b) => a.permissionResourceType.localeCompare(b.permissionResourceType))}
+					rows={permissionEntries().sort((a, b) =>
+						a.permissionResourceType.localeCompare(b.permissionResourceType)
+					)}
 					renderRow={(perm) => (
 						<tr class="table-row">
 							<td class="flex-2 flex items-center justify-center">
@@ -168,7 +167,9 @@ const EditPermissions = (props: {
 									fallback={<span class="text-gray-400">All resources</span>}
 								>
 									<div class="flex flex-col gap-1">
-										<For each={perm.resources}>{(resource) => <span class="text-sm">{resource}</span>}</For>
+										<For each={perm.resources}>
+											{(resource) => <span class="text-sm">{resource}</span>}
+										</For>
 									</div>
 								</Show>
 							</td>

@@ -22,7 +22,9 @@ const StatusBadge = (rawProps: StatusBadgeProps) => {
 	);
 	const colorClasses = () => getColorClasses(props.color);
 	return (
-		<span class={`relative text-secondary cursor-default py-0.25 px-1.5 rounded-xl ${colorClasses().bg}`}>{get(props.text)}</span>
+		<span class={`relative text-secondary cursor-default py-0.25 px-1.5 rounded-xl ${colorClasses().bg}`}>
+			{get(props.text)}
+		</span>
 	);
 };
 

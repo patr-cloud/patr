@@ -15,32 +15,32 @@ const UserSettingsPage = () => {
 	const [searchParams, setSearchParams] = useSearchParams();
 	const tab = () => (searchParams.tab as string) || "";
 
-	const [userInfo, { mutate: mutateUserInfo, refetch: refetchUserInfo }] = createResource(authState(), async (auth) => {
-		if (auth === null || auth.type !== "LoggedIn") {
-			console.log("Auth is null or LoggedOut, returning null");
-			return undefined;
-		}
-
-		try {
-			const response = await httpRequest<GetUserInfoResponse>(`${import.meta.env.VITE_BASE_URL}/api/user`, {
-				method: "GET",
-				headers: {
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
-			});
-
-			if (!response.ok) {
-				console.error("Failed to fetch workspaces:", response.data.error);
-				toast("Failed to fetch workspaces", "error");
+	const [userInfo, { mutate: mutateUserInfo, refetch: refetchUserInfo }] = createResource(
+		authState(),
+		async (auth) => {
+			if (auth === null || auth.type !== "LoggedIn") {
+				console.log("Auth is null or LoggedOut, returning null");
 				return undefined;
 			}
 
-			return response.data;
-		} catch (error) {
-			console.error("Failed to fetch user info:", error);
-			return undefined;
+			try {
+				const response = await httpRequest<GetUserInfoResponse>(`${import.meta.env.VITE_BASE_URL}/api/user`, {
+					method: "GET",
+				});
+
+				if (!response.ok) {
+					console.error("Failed to fetch workspaces:", response.data.error);
+					toast("Failed to fetch workspaces", "error");
+					return undefined;
+				}
+
+				return response.data;
+			} catch (error) {
+				console.error("Failed to fetch user info:", error);
+				return undefined;
+			}
 		}
-	});
+	);
 
 	const onUpdateName = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
 		e.preventDefault();
@@ -54,9 +54,6 @@ const UserSettingsPage = () => {
 		try {
 			const response = await httpRequest(`${import.meta.env.VITE_BASE_URL}/api/user`, {
 				method: "PATCH",
-				headers: {
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 				body: JSON.stringify({
 					firstName: userInfo.latest?.firstName,
 					lastName: userInfo.latest?.lastName,
@@ -109,7 +106,11 @@ const UserSettingsPage = () => {
 							mutateUserInfo={mutateUserInfo}
 							refetchUserInfo={refetchUserInfo}
 						/>
-						<ChangePasswordTab mutateUserInfo={mutateUserInfo} userInfo={userInfo} refetchUserInfo={refetchUserInfo} />
+						<ChangePasswordTab
+							mutateUserInfo={mutateUserInfo}
+							userInfo={userInfo}
+							refetchUserInfo={refetchUserInfo}
+						/>
 					</div>
 				</Suspense>
 			</PageContainerBody>

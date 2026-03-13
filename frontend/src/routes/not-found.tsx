@@ -87,15 +87,18 @@ export default function NotFound() {
 				<div class="mb-8">
 					<h2 class="text-3xl font-semibold text-white mb-3">Lost in Space</h2>
 					<p class="text-gray-400 text-base leading-relaxed">
-						Oops! Looks like you've drifted into uncharted territory. The page you're looking for doesn't exist in our
-						galaxy.
+						Oops! Looks like you've drifted into uncharted territory. The page you're looking for doesn't
+						exist in our galaxy.
 					</p>
 				</div>
 
 				{/* Action Buttons */}
 				<div class="space-y-3">
 					<A href="/" class="block">
-						<Button variant={ButtonVariant.Contained} class="w-full py-3.5 text-[15px] font-semibold rounded-full">
+						<Button
+							variant={ButtonVariant.Contained}
+							class="w-full py-3.5 text-[15px] font-semibold rounded-full"
+						>
 							Return Home
 						</Button>
 					</A>

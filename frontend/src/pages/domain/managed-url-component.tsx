@@ -90,8 +90,9 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 									content={() => (
 										<div>
 											<p class="text-gray-300 text-sm mb-2">
-												To configure this Managed URL, please update your DNS settings to point to our servers. If you
-												have already updated your DNS settings, please allow some time for the changes to propagate.
+												To configure this Managed URL, please update your DNS settings to point
+												to our servers. If you have already updated your DNS settings, please
+												allow some time for the changes to propagate.
 											</p>
 
 											<div class="bg-black/30 p-2 rounded text-xs text-gray-400 mb-2">
@@ -185,9 +186,6 @@ const ManagedUrlComponent = (props: ManagedUrlComponentProps) => {
 				{
 					method: "PATCH",
 					body: JSON.stringify(requestBody),
-					headers: {
-						Authorization: `Bearer ${accessToken}`,
-					},
 				}
 			);
 
@@ -282,7 +280,11 @@ const ManagedUrlComponent = (props: ManagedUrlComponentProps) => {
 				</div>
 
 				<div class="w-full flex justify-end mt-4">
-					<Button loading={isLoading} loadingContent={() => <span>Updating...</span>} variant={ButtonVariant.Contained}>
+					<Button
+						loading={isLoading}
+						loadingContent={() => <span>Updating...</span>}
+						variant={ButtonVariant.Contained}
+					>
 						Update
 					</Button>
 				</div>

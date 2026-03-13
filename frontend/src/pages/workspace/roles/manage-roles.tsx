@@ -104,9 +104,6 @@ const ManageRoles = () => {
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}`,
 			{
 				method: "GET",
-				headers: {
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
 		if (!response.ok) {
@@ -129,9 +126,6 @@ const ManageRoles = () => {
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}/rbac/role?page=${page}&count=${count}`,
 			{
 				method: "GET",
-				headers: {
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
 		if (!response.ok) {
@@ -149,7 +143,10 @@ const ManageRoles = () => {
 			<PageContainerBody class="flex flex-col justify-between gap-8">
 				<div class="flex flex-col gap-6 flex-1">
 					<Suspense fallback={<div class="text-white">Loading roles...</div>}>
-						<Show when={(roles()?.roles || []).length > 0} fallback={<EmptyState title="No Roles Created" />}>
+						<Show
+							when={(roles()?.roles || []).length > 0}
+							fallback={<EmptyState title="No Roles Created" />}
+						>
 							<Table
 								column_grids={["flex-1", "flex-2", "flex-1", "flex-[0.5]"]}
 								headings={["Role Name", "Description", "Action", ""]}

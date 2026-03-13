@@ -69,7 +69,10 @@ export const EditUserRoles = (props: EditRolesProps) => {
 
 			<div class="mb-4">
 				<h3 class="text-white text-sm font-medium mb-2">Current Roles</h3>
-				<Show when={selectedRoles().length > 0} fallback={<p class="text-gray-400 text-sm">No roles assigned</p>}>
+				<Show
+					when={selectedRoles().length > 0}
+					fallback={<p class="text-gray-400 text-sm">No roles assigned</p>}
+				>
 					<div class="grid grid-cols-4 gap-2">
 						<For each={selectedRoles()}>
 							{(roleId) => {

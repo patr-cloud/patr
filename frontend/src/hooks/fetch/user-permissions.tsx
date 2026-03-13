@@ -1,4 +1,5 @@
-import { createMemo, createResource } from "solid-js";
+import { makePersisted } from "@solid-primitives/storage";
+import { createMemo, createResource, createSignal } from "solid-js";
 import { GetCurrentPermissionsResponse, ListAllPermissionsResponse } from "~/bindings";
 import { useToast } from "~/components";
 import { AuthState, useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
@@ -21,14 +22,16 @@ export const getPermissions = async (authState: AuthState, wsId: string) => {
 	}
 
 	const isServer = typeof window === "undefined";
+	const [permissions, setPermissions] = isServer
+		? createSignal<string | null>(null)
+		: makePersisted(createSignal<string | null>(null), {
+				name: `user-permissions`,
+			});
 
 	let parsedPermissions: ListAllPermissionsResponse | undefined = undefined;
 
-	if (!isServer) {
-		const cached = sessionStorage.getItem("user-permissions");
-		if (cached) {
-			parsedPermissions = safelyParseJSON<ListAllPermissionsResponse>(cached);
-		}
+	if (!isServer && permissions()) {
+		parsedPermissions = safelyParseJSON<ListAllPermissionsResponse>(permissions() || "");
 	}
 
 	if (!parsedPermissions) {
@@ -48,9 +51,7 @@ export const getPermissions = async (authState: AuthState, wsId: string) => {
 		console.log("[getPermissions] Successfully fetched permissions from API");
 		const permissionsData = response.data;
 
-		if (!isServer) {
-			sessionStorage.setItem("user-permissions", JSON.stringify(permissionsData));
-		}
+		setPermissions(JSON.stringify(permissionsData));
 		parsedPermissions = permissionsData as unknown as ListAllPermissionsResponse;
 	}
 
@@ -81,16 +82,18 @@ const useUserPermissions = () => {
 		}
 
 		const isServer = typeof window === "undefined";
-		const cacheKey = `user-permissions-${wsId}`;
-
-		if (!isServer) {
-			const cached = sessionStorage.getItem(cacheKey);
-			if (cached) {
-				const parsed = safelyParseJSON<UserPermissionsT>(cached);
-				if (parsed) {
-					console.log("[useFetchUserPermissions] Using cached permissions from sessionStorage:", parsed);
-					return parsed;
-				}
+		const [cachedPermissions, setCachedPermissions] = isServer
+			? createSignal<string | null>(null)
+			: makePersisted(createSignal<string | null>(null), {
+					storage: sessionStorage,
+					name: `user-permissions-${wsId}`,
+				});
+		console.log("[useFetchUserPermissions] Cached permissions:", cachedPermissions() ? "Found" : "Not found");
+		if (!isServer && cachedPermissions()) {
+			const parsed = safelyParseJSON<UserPermissionsT>(cachedPermissions() || "");
+			if (parsed) {
+				console.log("[useFetchUserPermissions] Using cached permissions from sessionStorage:", parsed);
+				return parsed;
 			}
 		}
 
@@ -166,19 +169,20 @@ const useUserPermissions = () => {
 								detailedPermissions[resourceType as ResourceTypes] = {};
 							}
 
-							detailedPermissions[resourceType as ResourceTypes][action as ActionTypes] = userPermission[permId];
+							detailedPermissions[resourceType as ResourceTypes][action as ActionTypes] =
+								userPermission[permId];
 						} else {
 							console.log(`[useFetchUserPermissions] No permission found for permId: ${permId}`);
 						}
 					});
 				}
 
-				if (!isServer) { sessionStorage.setItem(cacheKey, JSON.stringify(detailedPermissions)); }
+				setCachedPermissions(JSON.stringify(detailedPermissions));
 				console.log("[useFetchUserPermissions] Returning detailed permissions:", detailedPermissions);
 				return detailedPermissions;
 			} else {
 				console.log("[useFetchUserPermissions] User type is superAdmin, returning as is");
-				if (!isServer) { sessionStorage.setItem(cacheKey, JSON.stringify(userPermission)); }
+				setCachedPermissions(JSON.stringify(userPermission));
 
 				return userPermission;
 			}

@@ -42,9 +42,6 @@ const ManageWorkspace = () => {
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}`,
 			{
 				method: "GET",
-				headers: {
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
 		if (!response.ok) {
@@ -63,9 +60,6 @@ const ManageWorkspace = () => {
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}/rbac/role`,
 			{
 				method: "GET",
-				headers: {
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
 		if (!response.ok) {
@@ -90,9 +84,6 @@ const ManageWorkspace = () => {
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}/rbac/user?page=${page}&count=${count}`,
 				{
 					method: "GET",
-					headers: {
-						Authorization: `Bearer ${auth.accessToken}`,
-					},
 				}
 			);
 			if (!response.ok) {
@@ -107,9 +98,6 @@ const ManageWorkspace = () => {
 					`${import.meta.env.VITE_BASE_URL}/api/user/${userId}`,
 					{
 						method: "GET",
-						headers: {
-							Authorization: `Bearer ${auth.accessToken}`,
-						},
 					}
 				);
 
@@ -154,9 +142,6 @@ const ManageWorkspace = () => {
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/user/${userId}`,
 				{
 					method: "DELETE",
-					headers: {
-						Authorization: `Bearer ${accessToken}`,
-					},
 				}
 			);
 
@@ -241,14 +226,11 @@ const ManageWorkspace = () => {
 
 							<div class="flex flex-col items-start justify-center gap-2 w-full">
 								<div class="flex items-center justify-center gap-3 w-full">
-									<Show when={authState() && authState()!.type === "LoggedIn"} fallback={<div class="flex-2" />}>
-										<UserSearchInput
-											placeholder="Search for user by name or username..."
-											class="flex-2"
-											accessToken={(authState()! as any).accessToken}
-											onUserSelect={handleUserSelect}
-										/>
-									</Show>
+									<UserSearchInput
+										placeholder="Search for user by name or username..."
+										class="flex-2"
+										onUserSelect={handleUserSelect}
+									/>
 									<InputDropdown
 										placeholder="Add Roles"
 										styleVariant="medium"
@@ -318,7 +300,9 @@ const ManageWorkspace = () => {
 															workspaceId={workspaceId() || ""}
 															currentRoles={
 																editingMember()!.roleIds.map((roleId) => {
-																	const role = roles()?.roles.find((r) => r.id === roleId);
+																	const role = roles()?.roles.find(
+																		(r) => r.id === roleId
+																	);
 																	return {
 																		id: roleId,
 																		name: role?.name || roleId,
@@ -351,7 +335,9 @@ const ManageWorkspace = () => {
 														/>
 														{member.userName}
 													</td>
-													<td class="flex items-center justify-center flex-1">{memberRoleNames || "No roles"}</td>
+													<td class="flex items-center justify-center flex-1">
+														{memberRoleNames || "No roles"}
+													</td>
 													<td class="flex items-center justify-center flex-1">
 														{shouldDelete() && userToDelete() === member.userId ? (
 															<>

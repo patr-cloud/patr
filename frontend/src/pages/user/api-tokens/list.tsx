@@ -33,9 +33,12 @@ const ListApiTokens = () => {
 			return { tokens: [] };
 		}
 
-		const response = await httpRequest<ListApiTokensResponse>(`${import.meta.env.VITE_BASE_URL}/api/user/api-token?page=${page}&count=${count}`, {
-			method: "GET",
-		});
+		const response = await httpRequest<ListApiTokensResponse>(
+			`${import.meta.env.VITE_BASE_URL}/api/user/api-token?page=${page}&count=${count}`,
+			{
+				method: "GET",
+			}
+		);
 
 		if (!response.ok) {
 			console.error("Failed to fetch API Tokens:", response.data.error);

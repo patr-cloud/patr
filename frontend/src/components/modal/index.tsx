@@ -32,7 +32,7 @@ const ModalContainer = (rawProps: ParentProps<ModalContainerProps>) => {
 
 	return (
 		<div
-			onClick={e => {
+			onClick={(e) => {
 				e.stopPropagation();
 				props.onClick?.(e);
 			}}
@@ -78,9 +78,12 @@ const Modal = ({
 			{renderTrigger(setIsOpen)}
 			{isOpen() && (
 				<Portal>
-					<div 
-						ref={setContainerRef} 
-						onClick={(e) => {e.stopPropagation(); setIsOpen(false);}} 
+					<div
+						ref={setContainerRef}
+						onClick={(e) => {
+							e.stopPropagation();
+							setIsOpen(false);
+						}}
 						class="w-full min-h-screen fixed top-0 left-0 bg-black/50 flex justify-center items-center z-50 backdrop-blur-sm"
 					>
 						{renderModalContent(setIsOpen)}

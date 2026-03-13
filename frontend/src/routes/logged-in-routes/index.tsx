@@ -43,10 +43,6 @@ export const PageWrapper = (props: ParentProps<{}>) => {
 			`${import.meta.env.VITE_BASE_URL}/api/user/workspaces`,
 			{
 				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
 

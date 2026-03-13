@@ -51,9 +51,6 @@ const CreateDeploymentPage = () => {
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner`,
 			{
 				method: "GET",
-				headers: {
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
 
@@ -117,9 +114,7 @@ const CreateDeploymentPage = () => {
 		if (!wsId || !auth || auth.type !== "LoggedIn" || !repoId) {
 			return { tags: [] };
 		}
-		const url = new URL(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${repoId}/tag`
-		);
+		const url = new URL(`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${repoId}/tag`);
 		if (tagSearch) url.searchParams.set("tag", tagSearch);
 		const response = await httpRequest<ListContainerRepositoryTagsResponse>(url.toString(), {
 			method: "GET",
@@ -133,8 +128,7 @@ const CreateDeploymentPage = () => {
 
 	const tagSuggestions = () => repositoryTags()?.tags.map((t) => ({ label: t.tag, value: t.tag })) ?? [];
 
-	const repoSuggestions = () =>
-		repositories()?.repositories.map((r) => ({ label: r.name, value: r.id })) ?? [];
+	const repoSuggestions = () => repositories()?.repositories.map((r) => ({ label: r.name, value: r.id })) ?? [];
 
 	const { onSubmit, isLoading } = createFormAction(async ({ workspaceId }) => {
 		let configMounts: Record<string, Base64String> = {};

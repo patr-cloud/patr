@@ -133,7 +133,9 @@ const WorkspaceRoles = (rawProps: WorkspaceRolesProps) => {
 								placeholder={() =>
 									Array.from(selectedPermissionIds())
 										.map((s) => permissionActions().find((p) => p.id === s)?.name)
-										.map((val) => (val ? parseCamelCase(parsePermissionName(val).action) : undefined))
+										.map((val) =>
+											val ? parseCamelCase(parsePermissionName(val).action) : undefined
+										)
 										.join(", ") || "Select Permissions"
 								}
 								options={() =>
@@ -183,7 +185,9 @@ const WorkspaceRoles = (rawProps: WorkspaceRolesProps) => {
 					{/* Column 4: Add Button */}
 					<Show
 						when={
-							selectedResourceType() && includeExcludeMode() !== "all" && getResourceEndpoint(selectedResourceType())
+							selectedResourceType() &&
+							includeExcludeMode() !== "all" &&
+							getResourceEndpoint(selectedResourceType())
 						}
 					>
 						<div class="flex flex-col gap-[2.5]">

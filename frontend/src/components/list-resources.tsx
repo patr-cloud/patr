@@ -36,10 +36,6 @@ const ListResources = ({
 
 		const response = await httpRequest<any>(`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/${endpoint}`, {
 			method: "GET",
-			headers: {
-				"Content-Type": "application/json",
-				Authorization: `Bearer ${auth.accessToken}`,
-			},
 		});
 
 		if (!response.ok) {

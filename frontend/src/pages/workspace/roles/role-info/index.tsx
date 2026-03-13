@@ -34,9 +34,6 @@ const RoleInfo = () => {
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}`,
 				{
 					method: "GET",
-					headers: {
-						Authorization: `Bearer ${auth.accessToken}`,
-					},
 				}
 			);
 			console.log("Workspace info response:", response.data);
@@ -50,33 +47,37 @@ const RoleInfo = () => {
 		}
 	);
 
-	const [roleInfo, { refetch: refetchRoleInfo }] = createResource(fetchParams, async ([auth, workspaceId, roleId]) => {
-		if (!auth || auth.type !== "LoggedIn" || !workspaceId || !roleId) {
-			return;
-		}
-		console.log("Fetching role info for workspaceId:", workspaceId, "roleId:", roleId);
-		const response = await httpRequest<GetRoleInfoResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role/${roleId}`,
-			{
-				method: "GET",
-				headers: {
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
+	const [roleInfo, { refetch: refetchRoleInfo }] = createResource(
+		fetchParams,
+		async ([auth, workspaceId, roleId]) => {
+			if (!auth || auth.type !== "LoggedIn" || !workspaceId || !roleId) {
+				return;
 			}
-		);
-		console.log("Role info response:", response.data);
-		if (!response.ok) {
-			console.error("Failed to fetch role info:", response.data.error);
-			toast("Failed to fetch role info", "error");
-			return;
-		}
+			console.log("Fetching role info for workspaceId:", workspaceId, "roleId:", roleId);
+			const response = await httpRequest<GetRoleInfoResponse>(
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role/${roleId}`,
+				{
+					method: "GET",
+				}
+			);
+			console.log("Role info response:", response.data);
+			if (!response.ok) {
+				console.error("Failed to fetch role info:", response.data.error);
+				toast("Failed to fetch role info", "error");
+				return;
+			}
 
-		return response.data;
-	});
+			return response.data;
+		}
+	);
 
 	return (
 		<PageContainer>
-			<RoleHeader roleName={roleInfo()?.role.name} workspaceName={workspaceInfo()?.name} activeTab={activeTab()} />
+			<RoleHeader
+				roleName={roleInfo()?.role.name}
+				workspaceName={workspaceInfo()?.name}
+				activeTab={activeTab()}
+			/>
 			<PageContainerBody class="flex flex-col gap-6">
 				<ErrorBoundary
 					fallback={(err, reset) => (

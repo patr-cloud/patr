@@ -30,9 +30,6 @@ const TwoFactorAuthModal = (props: ModalContainerProps) => {
 
 		const response = await httpRequest<GetMfaSecretResponse>(`${import.meta.env.VITE_BASE_URL}/api/user/mfa`, {
 			method: "GET",
-			headers: {
-				Authorization: `Bearer ${auth.accessToken}`,
-			},
 		});
 
 		if (!response.ok) {
@@ -86,9 +83,6 @@ const TwoFactorAuthModal = (props: ModalContainerProps) => {
 
 		const response = await httpRequest(`${import.meta.env.VITE_BASE_URL}/api/user/mfa`, {
 			method: props.isMfaEnabled ? "DELETE" : "POST",
-			headers: {
-				Authorization: `Bearer ${auth.accessToken}`,
-			},
 			body: JSON.stringify({ otp: otp() }),
 		});
 
@@ -116,7 +110,8 @@ const TwoFactorAuthModal = (props: ModalContainerProps) => {
 			{!props.isMfaEnabled && (
 				<>
 					<p class="text-center text-white">
-						Scan the QR code below with your preferred authenticator app and then enter the provided one time code below
+						Scan the QR code below with your preferred authenticator app and then enter the provided one
+						time code below
 					</p>
 
 					{/* Timer Display */}
@@ -141,7 +136,11 @@ const TwoFactorAuthModal = (props: ModalContainerProps) => {
 							/>
 							{isExpired() && (
 								<div class="absolute inset-0 flex items-center justify-center">
-									<Button variant={ButtonVariant.Contained} onClick={handleReload} class="z-10 hover:text-primary">
+									<Button
+										variant={ButtonVariant.Contained}
+										onClick={handleReload}
+										class="z-10 hover:text-primary"
+									>
 										<VsRefresh class="text-secondary hover:text-primary" size={48} />
 									</Button>
 								</div>

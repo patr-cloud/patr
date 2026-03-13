@@ -21,7 +21,9 @@ const QuickActionCard = (props: QuickActionProps) => {
 				<props.icon />
 			</div>
 			<div class="flex flex-col gap-1">
-				<h3 class="text-base font-medium text-white group-hover:text-primary transition-colors">{props.title}</h3>
+				<h3 class="text-base font-medium text-white group-hover:text-primary transition-colors">
+					{props.title}
+				</h3>
 				<p class="text-sm text-gray-400 leading-relaxed">{props.description}</p>
 			</div>
 			<div class="flex items-center gap-1 text-sm text-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -61,7 +63,8 @@ const HomePage = () => {
 	const quickActions: QuickActionProps[] = [
 		{
 			title: "Set Up a Runner",
-			description: "Connect your own infrastructure to Patr. Runners execute deployments on your machines or clusters.",
+			description:
+				"Connect your own infrastructure to Patr. Runners execute deployments on your machines or clusters.",
 			href: "/runners/new",
 			icon: FiCpu,
 			color: "bg-info/15 text-info",

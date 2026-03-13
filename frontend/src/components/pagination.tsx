@@ -83,7 +83,9 @@ const Pagination = (rawProps: PaginationProps) => {
 	const btnFirstLast = `${btnBase} px-sm gap-xxs bg-secondary-light text-white enabled:hover:bg-secondary-medium`;
 
 	return (
-		<div class={`flex flex-col gap-sm sm:flex-row sm:items-center sm:justify-between mt-md ${get(props.class) ?? ""}`}>
+		<div
+			class={`flex flex-col gap-sm sm:flex-row sm:items-center sm:justify-between mt-md ${get(props.class) ?? ""}`}
+		>
 			{/* Left: item range label */}
 			<p class="text-sm text-grey flex-1">
 				<Show when={props.state.totalCount() > 0} fallback={<span>No results</span>}>
@@ -113,7 +115,11 @@ const Pagination = (rawProps: PaginationProps) => {
 						{(entry) => (
 							<Show
 								when={entry !== "..."}
-								fallback={<span class="w-8 h-8 flex items-center justify-center text-grey text-sm select-none">…</span>}
+								fallback={
+									<span class="w-8 h-8 flex items-center justify-center text-grey text-sm select-none">
+										…
+									</span>
+								}
 							>
 								<button
 									class={(entry as number) - 1 === props.state.page() ? btnActive : btnInactive}
