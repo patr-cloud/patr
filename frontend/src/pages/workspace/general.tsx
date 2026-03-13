@@ -37,9 +37,6 @@ const General = () => {
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}`,
 				{
 					method: "GET",
-					headers: {
-						Authorization: `Bearer ${auth.accessToken}`,
-					},
 				}
 			);
 			if (!response.ok) {
@@ -104,7 +101,11 @@ const General = () => {
 					<div class="flex flex-col gap-4 items-start w-full">
 						<div class="flex gap-8 items-center w-full">
 							<InputLabel parentClass="flex-2" for="workspace-id" label="Workspace ID" />
-							<CopyableField value={workspaceId() || "Loading..."} class="flex-10" buttonPosition="start" />
+							<CopyableField
+								value={workspaceId() || "Loading..."}
+								class="flex-10"
+								buttonPosition="start"
+							/>
 						</div>
 						<div class="flex gap-8 items-center w-full">
 							<InputLabel parentClass="flex-2" for="workspace-name" label="Workspace Name" />

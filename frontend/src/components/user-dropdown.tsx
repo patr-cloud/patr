@@ -36,10 +36,6 @@ const UserDropdown = () => {
 		try {
 			const response = await httpRequest<GetUserInfoResponse>(`${import.meta.env.VITE_BASE_URL}/api/user`, {
 				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			});
 
 			if (!response.ok) {
@@ -98,22 +94,35 @@ const UserDropdown = () => {
 							<div class="flex items-center gap-3 mb-3">
 								<Initials firstName={userInfo()?.firstName} lastName={userInfo()?.lastName} size="lg" />
 								<div class="flex-1 min-w-0">
-									<Show when={!userInfo.loading} fallback={<div class="text-gray-400 text-sm">Loading...</div>}>
+									<Show
+										when={!userInfo.loading}
+										fallback={<div class="text-gray-400 text-sm">Loading...</div>}
+									>
 										<div class="text-white font-medium truncate">
 											{userInfo()?.firstName && userInfo()?.lastName
 												? `${userInfo()!.firstName} ${userInfo()!.lastName}`
 												: userInfo()?.username || "Unknown User"}
 										</div>
-										<div class="text-gray-400 text-sm truncate">{userInfo()?.recoveryEmail || "No email"}</div>
+										<div class="text-gray-400 text-sm truncate">
+											{userInfo()?.recoveryEmail || "No email"}
+										</div>
 									</Show>
 								</div>
 							</div>
 
 							<div class="mb-2">
-								<CopyableField variant={CopyableFieldVariant.Input} label="User ID" value={userInfo()?.id || ""} />
+								<CopyableField
+									variant={CopyableFieldVariant.Input}
+									label="User ID"
+									value={userInfo()?.id || ""}
+								/>
 							</div>
 
-							<CopyableField variant={CopyableFieldVariant.Input} label="Username" value={userInfo()?.username || ""} />
+							<CopyableField
+								variant={CopyableFieldVariant.Input}
+								label="Username"
+								value={userInfo()?.username || ""}
+							/>
 						</div>
 
 						<div class="p-2">

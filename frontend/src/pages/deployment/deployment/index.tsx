@@ -48,9 +48,6 @@ const DeploymentInfo = () => {
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment/${id}`,
 				{
 					method: "GET",
-					headers: {
-						Authorization: `Bearer ${auth.accessToken}`,
-					},
 				}
 			);
 			if (!response.ok) {
@@ -63,91 +60,97 @@ const DeploymentInfo = () => {
 		}
 	);
 
-	const { execute: startDeployment, isLoading: isStartingDeployment } = createAuthenticatedAction(async ({ accessToken, workspaceId }) => {
-		if (!deploymentPermissions().start) {
-			toast("You do not have permission to start this deployment", "error");
-			return
-		}
-
-		const deployment = deploymentInfo();
-		if (!deployment) {
-			toast("Deployment information is not available", "error");
-			return;
-		}
-
-		const response = await httpRequest(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/deployment/${deployment.id}/start`,
-			{
-				method: "POST",
+	const { execute: startDeployment, isLoading: isStartingDeployment } = createAuthenticatedAction(
+		async ({ accessToken, workspaceId }) => {
+			if (!deploymentPermissions().start) {
+				toast("You do not have permission to start this deployment", "error");
+				return;
 			}
-		);
 
-		if (!response.ok) {
-			console.error("Failed to start deployment:", response.data.error);
-			toast("Failed to start deployment", "error");
-			return;
-		}
-
-		toast("Deployment started successfully", "success");
-		refetchDeploymentInfo();
-	});
-
-	const { execute: stopDeployment, isLoading: isStoppingDeployment } = createAuthenticatedAction(async ({ accessToken, workspaceId }) => {
-		if (!deploymentPermissions().stop) {
-			toast("You do not have permission to stop this deployment", "error");
-			return
-		}
-
-		const deployment = deploymentInfo();
-		if (!deployment) {
-			toast("Deployment information is not available", "error");
-			return;
-		}
-
-		const response = await httpRequest(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/deployment/${deployment.id}/stop`,
-			{
-				method: "POST",
+			const deployment = deploymentInfo();
+			if (!deployment) {
+				toast("Deployment information is not available", "error");
+				return;
 			}
-		);
 
-		if (!response.ok) {
-			console.error("Failed to stop deployment:", response.data.error);
-			toast("Failed to stop deployment", "error");
-			return;
-		}
+			const response = await httpRequest(
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/deployment/${deployment.id}/start`,
+				{
+					method: "POST",
+				}
+			);
 
-		toast("Deployment stopped successfully", "success");
-		refetchDeploymentInfo();
-	});
-
-	const { execute: deleteDeployment, isLoading: isDeletingDeployment } = createAuthenticatedAction(async ({ accessToken, workspaceId }) => {
-		if (!deploymentPermissions().delete) {
-			toast("You do not have permission to delete this deployment", "error");
-			return
-		}
-
-		const deployment = deploymentInfo();
-		if (!deployment) {
-			toast("Deployment information is not available", "error");
-			return;
-		}
-
-		const resp = await httpRequest(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/deployment/${deployment.id}`,
-			{
-				method: "DELETE",
+			if (!response.ok) {
+				console.error("Failed to start deployment:", response.data.error);
+				toast("Failed to start deployment", "error");
+				return;
 			}
-		);
-		console.log("Delete deployment response:", resp);
-		if (!resp.ok) {
-			toast("Failed to delete deployment", "error");
-			return;
-		}
 
-		toast("Deployment deleted successfully", "success");
-		navigate("/deployments");
-	});
+			toast("Deployment started successfully", "success");
+			refetchDeploymentInfo();
+		}
+	);
+
+	const { execute: stopDeployment, isLoading: isStoppingDeployment } = createAuthenticatedAction(
+		async ({ accessToken, workspaceId }) => {
+			if (!deploymentPermissions().stop) {
+				toast("You do not have permission to stop this deployment", "error");
+				return;
+			}
+
+			const deployment = deploymentInfo();
+			if (!deployment) {
+				toast("Deployment information is not available", "error");
+				return;
+			}
+
+			const response = await httpRequest(
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/deployment/${deployment.id}/stop`,
+				{
+					method: "POST",
+				}
+			);
+
+			if (!response.ok) {
+				console.error("Failed to stop deployment:", response.data.error);
+				toast("Failed to stop deployment", "error");
+				return;
+			}
+
+			toast("Deployment stopped successfully", "success");
+			refetchDeploymentInfo();
+		}
+	);
+
+	const { execute: deleteDeployment, isLoading: isDeletingDeployment } = createAuthenticatedAction(
+		async ({ accessToken, workspaceId }) => {
+			if (!deploymentPermissions().delete) {
+				toast("You do not have permission to delete this deployment", "error");
+				return;
+			}
+
+			const deployment = deploymentInfo();
+			if (!deployment) {
+				toast("Deployment information is not available", "error");
+				return;
+			}
+
+			const resp = await httpRequest(
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/deployment/${deployment.id}`,
+				{
+					method: "DELETE",
+				}
+			);
+			console.log("Delete deployment response:", resp);
+			if (!resp.ok) {
+				toast("Failed to delete deployment", "error");
+				return;
+			}
+
+			toast("Deployment deleted successfully", "success");
+			navigate("/deployments");
+		}
+	);
 
 	const Cta = () => {
 		switch (deploymentInfo()?.status) {
@@ -157,10 +160,17 @@ const DeploymentInfo = () => {
 				}
 
 				return (
-					<Button onClick={e => {
-						e.preventDefault();
-						stopDeployment();
-					}} class="h-10" variant={ButtonVariant.Outlined} color={Color.Error} loading={isStoppingDeployment()} loadingContent={() => <span>Stopping...</span>}>
+					<Button
+						onClick={(e) => {
+							e.preventDefault();
+							stopDeployment();
+						}}
+						class="h-10"
+						variant={ButtonVariant.Outlined}
+						color={Color.Error}
+						loading={isStoppingDeployment()}
+						loadingContent={() => <span>Stopping...</span>}
+					>
 						STOP
 					</Button>
 				);
@@ -217,7 +227,10 @@ const DeploymentInfo = () => {
 		<Show
 			when={isAllowedResource()}
 			fallback={
-				<NoPermissionsPage title="Can't View Resource" message="You do not have permission to view this deployment." />
+				<NoPermissionsPage
+					title="Can't View Resource"
+					message="You do not have permission to view this deployment."
+				/>
 			}
 		>
 			<PageContainer>
@@ -238,19 +251,22 @@ const DeploymentInfo = () => {
 							<Suspense fallback={<div>Loading actions...</div>}>
 								{Cta()}
 
-								{deploymentInfo() && deploymentPermissions().delete && deploymentInfo()?.name && deploymentInfo()!.status === "stopped" && (
-									<DeleteModal
-										isLoading={isDeletingDeployment()}
-										title="Do You Really Want to Delete This Deployment?"
-										resourceName={deploymentInfo()?.name || ""}
-										isOpen={isDeleteModalOpen}
-										setIsOpen={setIsDeleteModalOpen}
-										onClickDelete={e => {
-											e.preventDefault();
-											deleteDeployment();
-										}}
-									/>
-								)}
+								{deploymentInfo() &&
+									deploymentPermissions().delete &&
+									deploymentInfo()?.name &&
+									deploymentInfo()!.status === "stopped" && (
+										<DeleteModal
+											isLoading={isDeletingDeployment()}
+											title="Do You Really Want to Delete This Deployment?"
+											resourceName={deploymentInfo()?.name || ""}
+											isOpen={isDeleteModalOpen}
+											setIsOpen={setIsDeleteModalOpen}
+											onClickDelete={(e) => {
+												e.preventDefault();
+												deleteDeployment();
+											}}
+										/>
+									)}
 							</Suspense>
 						</div>
 					)}

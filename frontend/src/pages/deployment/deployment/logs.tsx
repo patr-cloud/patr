@@ -20,9 +20,7 @@ const DeploymentLogs = (props: DeploymentLogsProps) => {
 
 	const baseUrl = import.meta.env.VITE_BASE_URL as string;
 	const wsUrl = baseUrl.replace(/^http/, "ws");
-	const ws = createWS(
-		`${wsUrl}/api/workspace/${workspaceId()}/deployment/${props.deploymentId}/logs/stream`
-	);
+	const ws = createWS(`${wsUrl}/api/workspace/${workspaceId()}/deployment/${props.deploymentId}/logs/stream`);
 	const [, setLogs] = createStore<WSMessage[]>([]);
 
 	ws.addEventListener("message", (event) => {
@@ -46,9 +44,6 @@ const DeploymentLogs = (props: DeploymentLogsProps) => {
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment/${id}/logs`,
 			{
 				method: "GET",
-				headers: {
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
 

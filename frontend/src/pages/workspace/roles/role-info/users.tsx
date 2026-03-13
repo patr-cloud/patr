@@ -24,9 +24,6 @@ const UsersAssignedToRole = () => {
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role/${roleId}/users`,
 				{
 					method: "GET",
-					headers: {
-						Authorization: `Bearer ${auth.accessToken}`,
-					},
 				}
 			);
 
@@ -42,9 +39,6 @@ const UsersAssignedToRole = () => {
 					`${import.meta.env.VITE_BASE_URL}/api/user/${userId}`,
 					{
 						method: "GET",
-						headers: {
-							Authorization: `Bearer ${auth.accessToken}`,
-						},
 					}
 				);
 
@@ -69,7 +63,9 @@ const UsersAssignedToRole = () => {
 				</div>
 				<Show
 					when={(usersWithDetails() ?? []).length > 0}
-					fallback={<div class="text-gray-400 text-center py-8">No users have been assigned this role yet</div>}
+					fallback={
+						<div class="text-gray-400 text-center py-8">No users have been assigned this role yet</div>
+					}
 				>
 					<Table
 						column_grids={["flex-1"]}

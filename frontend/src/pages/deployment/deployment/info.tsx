@@ -65,9 +65,6 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId()}/deployment/${props.deploymentInfo()?.id}`,
 			{
 				method: "PATCH",
-				headers: {
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 				body: JSON.stringify({
 					...props.deploymentInfo(),
 				}),
@@ -217,10 +214,12 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 
 				<EnvInput
 					disabled={() => !deploymentPermissions().edit}
-					envList={Object.entries(props.deploymentInfo.latest?.environmentVariables || {}).map(([key, value]) => ({
-						key,
-						value,
-					}))}
+					envList={Object.entries(props.deploymentInfo.latest?.environmentVariables || {}).map(
+						([key, value]) => ({
+							key,
+							value,
+						})
+					)}
 					onAdd={(key, value) => {
 						setHasUpdated(true);
 						props.mutateDeploymentInfo((prev) => {

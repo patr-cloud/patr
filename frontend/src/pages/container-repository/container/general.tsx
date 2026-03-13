@@ -54,7 +54,9 @@ const General = (props: GeneralInfoProps) => {
 									<Input
 										value={
 											get(props.repositoryInfo)?.repository?.lastUpdated
-												? formatRelativeTime(get(props.repositoryInfo)?.repository?.lastUpdated || "")
+												? formatRelativeTime(
+														get(props.repositoryInfo)?.repository?.lastUpdated || ""
+													)
 												: "N/A"
 										}
 										disabled={true}
@@ -74,7 +76,9 @@ const General = (props: GeneralInfoProps) => {
 									<Input
 										value={
 											get(props.repositoryInfo)?.repository?.created
-												? formatRelativeTime(get(props.repositoryInfo)?.repository?.created || "")
+												? formatRelativeTime(
+														get(props.repositoryInfo)?.repository?.created || ""
+													)
 												: "N/A"
 										}
 										disabled={true}
@@ -114,7 +118,11 @@ const PushInstructions = (props: { repositoryName: string | undefined }) => {
 							<CopyableField value={`docker login ${registryUrl} -u patr`} innerClass="font-mono" />
 							<p class="text-gray-300 text-sm mt-2 flex items-center gap-1">
 								Use an{" "}
-								<Link href="/profile/api-tokens" external={false} class="inline-flex items-center gap-1">
+								<Link
+									href="/profile/api-tokens"
+									external={false}
+									class="inline-flex items-center gap-1"
+								>
 									API token <FiExternalLink size={12} />
 								</Link>{" "}
 								as the password.
@@ -145,7 +153,11 @@ const PushInstructions = (props: { repositoryName: string | undefined }) => {
 							<CopyableField value={`docker login ${registryUrl} -u patr`} innerClass="font-mono" />
 							<p class="text-gray-300 text-sm mt-2 flex items-center gap-1">
 								Use an&nbsp;
-								<Link href="/profile/api-tokens" external={false} class="inline-flex items-center gap-1">
+								<Link
+									href="/profile/api-tokens"
+									external={false}
+									class="inline-flex items-center gap-1"
+								>
 									API token <FiExternalLink size={12} />
 								</Link>
 								&nbsp; as the password.
@@ -155,7 +167,10 @@ const PushInstructions = (props: { repositoryName: string | undefined }) => {
 						{/* Step 2: Tag */}
 						<div>
 							<p class="text-gray-300 text-sm mb-2">2. Tag the existing image</p>
-							<CopyableField value={`docker tag <existing-image>:<tag> ${registryUrl}:<tag>`} innerClass="font-mono" />
+							<CopyableField
+								value={`docker tag <existing-image>:<tag> ${registryUrl}:<tag>`}
+								innerClass="font-mono"
+							/>
 						</div>
 
 						{/* Step 3: Push */}

@@ -28,9 +28,6 @@ const UserSettingsInfoTab = (props: UserSettingsInfoTabProps) => {
 		try {
 			const response = await httpRequest(`${import.meta.env.VITE_BASE_URL}/api/user`, {
 				method: "PATCH",
-				headers: {
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 				body: JSON.stringify({
 					firstName: props.userInfo.latest?.firstName,
 					lastName: props.userInfo.latest?.lastName,
@@ -112,7 +109,12 @@ const UserSettingsInfoTab = (props: UserSettingsInfoTabProps) => {
 				<div class="flex-11">
 					<Modal
 						renderTrigger={(open) => (
-							<Button variant={ButtonVariant.Contained} type="button" class="text-primary" onClick={() => open(true)}>
+							<Button
+								variant={ButtonVariant.Contained}
+								type="button"
+								class="text-primary"
+								onClick={() => open(true)}
+							>
 								{props.userInfo.latest?.isMfaEnabled ? "Disable" : "Enable"} 2FA Settings
 							</Button>
 						)}

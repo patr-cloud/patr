@@ -149,7 +149,9 @@ const WorkspacePermissionItem = (props: { workspace: WithId<Workspace> }) => {
 											fallback={<span class="text-gray-400">All resources</span>}
 										>
 											<div class="flex flex-col gap-1">
-												<For each={perm.resources}>{(resource) => <span class="text-sm">{resource}</span>}</For>
+												<For each={perm.resources}>
+													{(resource) => <span class="text-sm">{resource}</span>}
+												</For>
 											</div>
 										</Show>
 									</td>
@@ -192,9 +194,6 @@ const CreateApiTokens = () => {
 			`${import.meta.env.VITE_BASE_URL}/api/user/workspaces`,
 			{
 				method: "GET",
-				headers: {
-					Authorization: `Bearer ${auth.type === "LoggedIn" ? auth.accessToken : ""}`,
-				},
 			}
 		);
 
@@ -241,13 +240,13 @@ const CreateApiTokens = () => {
 			permissions: workspacePermissions(),
 		};
 
-		const response = await httpRequest<CreateApiTokenResponse>(`${import.meta.env.VITE_BASE_URL}/api/user/api-token`, {
-			method: "POST",
-			headers: {
-				Authorization: `Bearer ${auth.type === "LoggedIn" ? auth.accessToken : ""}`,
-			},
-			body: JSON.stringify(requestBody),
-		});
+		const response = await httpRequest<CreateApiTokenResponse>(
+			`${import.meta.env.VITE_BASE_URL}/api/user/api-token`,
+			{
+				method: "POST",
+				body: JSON.stringify(requestBody),
+			}
+		);
 
 		console.log("API Token created successfully:", response.data);
 

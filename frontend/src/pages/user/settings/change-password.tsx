@@ -96,7 +96,10 @@ const ChangePasswordTab = (_: UserSettingsInfoTabProps) => {
 			<div class="flex items-center">
 				<p class="text-xl text-white">Change Password</p>
 			</div>
-			<form onSubmit={onUpdatePassword} class="flex flex-col gap-4 items-center justify-between w-full h-full flex-1">
+			<form
+				onSubmit={onUpdatePassword}
+				class="flex flex-col gap-4 items-center justify-between w-full h-full flex-1"
+			>
 				<div class="flex flex-col justify-between items-start gap-4 w-full">
 					<div class="flex gap-4 items-center w-full">
 						<InputLabel parentClass="flex-[1.25]" for="current-password" label="Current Password" />

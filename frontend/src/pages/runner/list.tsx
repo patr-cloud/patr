@@ -83,7 +83,10 @@ const ListRunnersPage = () => {
 					)}
 				>
 					<Suspense fallback={<div>Loading...</div>}>
-						<Show when={(runners()?.runners?.length ?? 0) > 0} fallback={<EmptyState title="No Runner Added" />}>
+						<Show
+							when={(runners()?.runners?.length ?? 0) > 0}
+							fallback={<EmptyState title="No Runner Added" />}
+						>
 							<Table
 								column_grids={["flex-4", "flex-4", "flex-4", "flex-4"]}
 								rows={runners()?.runners || []}

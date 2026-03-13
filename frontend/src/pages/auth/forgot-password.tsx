@@ -48,14 +48,22 @@ const ForgotPassword = () => {
 						</div>
 
 						<div class="mt-8 pt-6 border-t border-gray-600">
-							<p class="text-gray-400 text-sm mb-4">Didn't receive the email? Check your spam folder or</p>
-							<button onClick={() => setSubmitted(false)} class="text-primary font-medium hover:underline text-sm">
+							<p class="text-gray-400 text-sm mb-4">
+								Didn't receive the email? Check your spam folder or
+							</p>
+							<button
+								onClick={() => setSubmitted(false)}
+								class="text-primary font-medium hover:underline text-sm"
+							>
 								Try again
 							</button>
 						</div>
 
 						<div class="mt-6">
-							<A href="/login" class="text-gray-400 text-sm hover:text-primary flex items-center justify-center gap-2">
+							<A
+								href="/login"
+								class="text-gray-400 text-sm hover:text-primary flex items-center justify-center gap-2"
+							>
 								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path
 										stroke-linecap="round"
@@ -100,7 +108,10 @@ const ForgotPassword = () => {
 						</div>
 
 						<div class="mt-8 text-center">
-							<A href="/login" class="text-gray-400 text-sm hover:text-primary flex items-center justify-center gap-2">
+							<A
+								href="/login"
+								class="text-gray-400 text-sm hover:text-primary flex items-center justify-center gap-2"
+							>
 								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path
 										stroke-linecap="round"

@@ -110,7 +110,9 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 						value={selectedResourceType}
 						options={Array.from(
 							new Set(
-								(permissions()?.permissions || []).map((p) => parsePermissionName(p.name).resourceType).filter((r) => r)
+								(permissions()?.permissions || [])
+									.map((p) => parsePermissionName(p.name).resourceType)
+									.filter((r) => r)
 							)
 						).map((resourceType) => ({
 							label: parseCamelCase(resourceType),
@@ -179,7 +181,11 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 
 				{/* Column 4: List of Resources */}
 				<Show
-					when={selectedResourceType() && includeExcludeMode() !== "all" && getResourceEndpoint(selectedResourceType())}
+					when={
+						selectedResourceType() &&
+						includeExcludeMode() !== "all" &&
+						getResourceEndpoint(selectedResourceType())
+					}
 				>
 					<div class="flex flex-col gap-3 w-full">
 						<ListResources

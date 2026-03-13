@@ -19,7 +19,9 @@ const Images = (props: ContainerImagesProps) => {
 	return (
 		<div class="w-full">
 			<Show
-				when={get(props.manifests) && get(props.manifests).manifests && get(props.manifests).manifests.length > 0}
+				when={
+					get(props.manifests) && get(props.manifests).manifests && get(props.manifests).manifests.length > 0
+				}
 				fallback={
 					<div class="w-full text-center py-16">
 						<p class="text-white text-lg">No Images Found</p>
@@ -93,7 +95,11 @@ const ImageRow = (props: { manifest: ContainerRepositoryManifestInfo; refetch?: 
 			<td class="flex-2 text-gray-400 text-sm">{formatSize(props.manifest.size)}</td>
 			<td class="flex-3 text-gray-400 text-sm">{formatRelativeTime(props.manifest.created)}</td>
 			<td class="flex-3 flex items-center gap-2 overflow-hidden">
-				<CopyableField variant={CopyableFieldVariant.Text} value={props.manifest.digest} innerClass="font-mono truncate max-w-37.5" />
+				<CopyableField
+					variant={CopyableFieldVariant.Text}
+					value={props.manifest.digest}
+					innerClass="font-mono truncate max-w-37.5"
+				/>
 			</td>
 			<td class="flex-2 flex items-center justify-center">
 				{deleteSelected() ? (

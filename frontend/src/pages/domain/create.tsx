@@ -86,7 +86,9 @@ const CreateDomainPage = () => {
 		} catch (err: any) {
 			// Handle API errors
 			if (err?.error === "NotRootDomain" || err?.error === "NotIcannDomain") {
-				setError(err?.message || "Please enter a root domain (e.g., example.com instead of subdomain.example.com)");
+				setError(
+					err?.message || "Please enter a root domain (e.g., example.com instead of subdomain.example.com)"
+				);
 			} else if (err?.error === "ResourceAlreadyExists") {
 				setError("This domain already exists in your workspace");
 			} else {
@@ -229,7 +231,9 @@ const CreateDomainPage = () => {
 									<li>✅ Enter only the base domain (e.g., example.com)</li>
 									<li>❌ Do not include subdomains (e.g., www.example.com)</li>
 									<li>❌ Do not include protocols (e.g., https://example.com)</li>
-									<li>❌ Do not include paths or query parameters (e.g., example.com/path?query=1)</li>
+									<li>
+										❌ Do not include paths or query parameters (e.g., example.com/path?query=1)
+									</li>
 									<li>⚠️ We currently don't support non-ASCII domains (e.g., èxámplê.com)</li>
 								</ul>
 							</div>

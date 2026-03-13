@@ -135,10 +135,18 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 											<CopyableField variant={CopyableFieldVariant.Text} value={record.type} />
 										</td>
 										<td class="flex-4 flex items-center justify-center min-w-0">
-											<CopyableField variant={CopyableFieldVariant.Text} value={record.name} innerClass="truncate max-w-full" />
+											<CopyableField
+												variant={CopyableFieldVariant.Text}
+												value={record.name}
+												innerClass="truncate max-w-full"
+											/>
 										</td>
 										<td class="flex-4 flex items-center justify-center min-w-0">
-											<CopyableField variant={CopyableFieldVariant.Text} value={record.target} innerClass="truncate max-w-full" />
+											<CopyableField
+												variant={CopyableFieldVariant.Text}
+												value={record.target}
+												innerClass="truncate max-w-full"
+											/>
 										</td>
 									</tr>
 								)}
@@ -236,7 +244,11 @@ const ListDomainsPage = () => {
 					if (!isCreateAllowed()) return null;
 					return (
 						<div class="ml-auto">
-							<Button class="cursor-pointer" variant={ButtonVariant.Plain} onClick={() => navigate("/domains/new")}>
+							<Button
+								class="cursor-pointer"
+								variant={ButtonVariant.Plain}
+								onClick={() => navigate("/domains/new")}
+							>
 								Add Domain
 							</Button>
 						</div>
@@ -253,13 +265,19 @@ const ListDomainsPage = () => {
 					)}
 				>
 					<Suspense fallback={<div>Loading domains...</div>}>
-						<Show when={(domains()?.domains?.length ?? 0) > 0} fallback={<EmptyState title="No Domain Added" />}>
+						<Show
+							when={(domains()?.domains?.length ?? 0) > 0}
+							fallback={<EmptyState title="No Domain Added" />}
+						>
 							<Table
 								column_grids={["flex-3", "flex-3", "flex-3"]}
 								rows={domains()?.domains || []}
 								headings={["Domain Name", "Type", "Verified"]}
 								renderRow={(item) => (
-									<tr onClick={() => navigate(`/domains/${item.id}`)} class="table-row cursor-pointer">
+									<tr
+										onClick={() => navigate(`/domains/${item.id}`)}
+										class="table-row cursor-pointer"
+									>
 										<td class="flex-3 flex items-center justify-center">{item.name}</td>
 										<td class="flex-3 flex items-center justify-center">{item.nameserverType}</td>
 										<td class="flex-3 flex items-center justify-center">

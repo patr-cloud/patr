@@ -91,7 +91,7 @@ const OtpInput = (props: OtpInputProps) => {
 						onKeyDown={(e) => handleOtpKeyDown(index, e)}
 						onPaste={handleOtpPaste}
 						class={`${props.inputClass ?? ""} w-full text-center text-xl font-medium flex-1 border-none \
-              focus:outline focus:outline-solid focus:outline-primary transition-none ${
+							focus:outline focus:outline-solid focus:outline-primary transition-none ${
 								props.inputVariant ? variantBgClass(props.inputVariant) : "bg-secondary-light"
 							}`}
 					/>

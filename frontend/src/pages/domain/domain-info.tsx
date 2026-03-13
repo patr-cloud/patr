@@ -278,7 +278,12 @@ const DomainInfo = () => {
 										placeholder="Sub-domain"
 									/>
 									<span class="h-full">.</span>
-									<Input disabled={true} value={domainInfo.latest?.name} class="flex-2" placeholder="Domain" />
+									<Input
+										disabled={true}
+										value={domainInfo.latest?.name}
+										class="flex-2"
+										placeholder="Domain"
+									/>
 									<span>/</span>
 									<Input
 										styleVariant="medium"
@@ -321,8 +326,9 @@ const DomainInfo = () => {
 								<h4 class="text-white text-sm font-semibold mb-2">Managed URL Instructions</h4>
 
 								<p class="text-gray-400 text-sm space-y-1">
-									To configure this Managed URL, please update your DNS settings to point to our servers. If you have
-									already updated your DNS settings, please allow some time for the changes to propagate.
+									To configure this Managed URL, please update your DNS settings to point to our
+									servers. If you have already updated your DNS settings, please allow some time for
+									the changes to propagate.
 								</p>
 
 								<Table
@@ -340,15 +346,24 @@ const DomainInfo = () => {
 										<tr class="table-row text-sm">
 											<td class="flex-2 pl-3 flex items-center justify-center">
 												<span class="truncate">{record.type}</span>
-												<CopyableField value={record.type} variant={CopyableFieldVariant.Text} />
+												<CopyableField
+													value={record.type}
+													variant={CopyableFieldVariant.Text}
+												/>
 											</td>
 											<td class="flex-4 flex items-center justify-center min-w-0">
 												<span class="truncate max-w-full">{record.name}</span>
-												<CopyableField value={record.name} variant={CopyableFieldVariant.Text} />
+												<CopyableField
+													value={record.name}
+													variant={CopyableFieldVariant.Text}
+												/>
 											</td>
 											<td class="flex-4 pl-20 flex items-center justify-center min-w-0">
 												<span class="truncate max-w-full">{record.target}</span>
-												<CopyableField value={record.target} variant={CopyableFieldVariant.Text} />
+												<CopyableField
+													value={record.target}
+													variant={CopyableFieldVariant.Text}
+												/>
 											</td>
 										</tr>
 									)}
@@ -363,7 +378,11 @@ const DomainInfo = () => {
 								headings={["Domain ID", "Domain Name", "Actions"]}
 								renderRow={(item) =>
 									domainInfo.latest && (
-										<ManageUrlRow domainInfo={domainInfo.latest} managedUrl={item} onUpdate={refetchManagedUrls} />
+										<ManageUrlRow
+											domainInfo={domainInfo.latest}
+											managedUrl={item}
+											onUpdate={refetchManagedUrls}
+										/>
 									)
 								}
 							/>
