@@ -1,17 +1,23 @@
 import { A } from "@solidjs/router";
-import { For } from "solid-js";
+import { createSignal, For, onMount } from "solid-js";
 import Button from "~/components/button";
 import { ButtonVariant } from "~/utils/color";
 
 export default function NotFound() {
-	// Generate random stars
-	const stars = Array.from({ length: 25 }, () => ({
-		top: `${Math.random() * 100}%`,
-		left: `${Math.random() * 100}%`,
-		size: Math.random() * 5,
-		delay: `${Math.random() * 3}s`,
-		duration: `${Math.random() * 2 + 1.5}s`,
-	}));
+	const [stars, setStars] = createSignal<
+		{ top: string; left: string; size: number; delay: string; duration: string }[]
+	>([]);
+	onMount(() => {
+		setStars(
+			Array.from({ length: 25 }, () => ({
+				top: `${Math.random() * 100}%`,
+				left: `${Math.random() * 100}%`,
+				size: Math.random() * 5,
+				delay: `${Math.random() * 3}s`,
+				duration: `${Math.random() * 2 + 1.5}s`,
+			}))
+		);
+	});
 
 	const randomizeDuration = (element: HTMLDivElement) => {
 		const newDuration = Math.random() * 2 + 1.5; // Random duration between 1.5-3.5s
@@ -25,7 +31,7 @@ export default function NotFound() {
 				<img src="/images/starry-sky.svg" alt="Starry Sky" class="w-full h-full object-cover opacity-60" />
 			</div>
 			{/* Scattered stars */}
-			<For each={stars}>
+			<For each={stars()}>
 				{(star) => (
 					<div
 						ref={(el) => {

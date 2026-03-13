@@ -234,75 +234,73 @@ const DeploymentInfo = () => {
 			}
 		>
 			<PageContainer>
-				<PageContainerHead
-					breadcrumbs={[
-						{
-							label: "Deployments",
-							url: "/deployments",
-						},
-						{
-							label: deploymentInfo() ? deploymentInfo()!.name : "Loading...",
-						},
-					]}
-					subText="A deployment represents a containerized application running on a runner."
-					class="justify-between items-center"
-					actions={() => (
-						<div class="flex items-center justify-end gap-3">
-							<Suspense fallback={<div>Loading actions...</div>}>
-								{Cta()}
-
-								{deploymentInfo() &&
-									deploymentPermissions().delete &&
-									deploymentInfo()?.name &&
-									deploymentInfo()!.status === "stopped" && (
-										<DeleteModal
-											isLoading={isDeletingDeployment()}
-											title="Do You Really Want to Delete This Deployment?"
-											resourceName={deploymentInfo()?.name || ""}
-											isOpen={isDeleteModalOpen}
-											setIsOpen={setIsDeleteModalOpen}
-											onClickDelete={(e) => {
-												e.preventDefault();
-												deleteDeployment();
-											}}
-										/>
-									)}
-							</Suspense>
+				<ErrorBoundary
+					fallback={(err, reset) => (
+						<div>
+							<p>Error loading deployment info: {err.message}</p>
+							<button onClick={reset}>Retry</button>
 						</div>
 					)}
-					bottomContent={() => (
-						<HeadTab
-							tab={tab}
-							searchParams={searchParams}
-							setSearchParams={setSearchParams}
-							tabItems={[
+				>
+					<Suspense fallback={<div>Loading deployment info...</div>}>
+						<PageContainerHead
+							breadcrumbs={[
 								{
-									label: "Info",
-									value: "",
-									onClick: (value) => setSearchParams({ tab: value }),
+									label: "Deployments",
+									url: "/deployments",
 								},
 								{
-									label: "Logs",
-									value: "logs",
-									onClick: (value) => setSearchParams({ tab: value }),
+									label: deploymentInfo() ? deploymentInfo()!.name : "Loading...",
 								},
 							]}
-						/>
-					)}
-				/>
+							subText="A deployment represents a containerized application running on a runner."
+							class="justify-between items-center"
+							actions={() => (
+								<div class="flex items-center justify-end gap-3">
+									{Cta()}
 
-				<PageContainerBody class="flex flex-col justify-between gap-8">
-					<ErrorBoundary
-						fallback={(err, reset) => (
-							<div>
-								<p>Error loading deployment info: {err.message}</p>
-								<button onClick={reset}>Retry</button>
-							</div>
-						)}
-					>
-						<Suspense fallback={<div>Loading deployment info...</div>}>{renderTab()}</Suspense>
-					</ErrorBoundary>
-				</PageContainerBody>
+									{deploymentInfo() &&
+										deploymentPermissions().delete &&
+										deploymentInfo()?.name &&
+										deploymentInfo()!.status === "stopped" && (
+											<DeleteModal
+												isLoading={isDeletingDeployment()}
+												title="Do You Really Want to Delete This Deployment?"
+												resourceName={deploymentInfo()?.name || ""}
+												isOpen={isDeleteModalOpen}
+												setIsOpen={setIsDeleteModalOpen}
+												onClickDelete={(e) => {
+													e.preventDefault();
+													deleteDeployment();
+												}}
+											/>
+										)}
+								</div>
+							)}
+							bottomContent={() => (
+								<HeadTab
+									tab={tab}
+									searchParams={searchParams}
+									setSearchParams={setSearchParams}
+									tabItems={[
+										{
+											label: "Info",
+											value: "",
+											onClick: (value) => setSearchParams({ tab: value }),
+										},
+										{
+											label: "Logs",
+											value: "logs",
+											onClick: (value) => setSearchParams({ tab: value }),
+										},
+									]}
+								/>
+							)}
+						/>
+
+						<PageContainerBody class="flex flex-col justify-between gap-8">{renderTab()}</PageContainerBody>
+					</Suspense>
+				</ErrorBoundary>
 			</PageContainer>
 		</Show>
 	);
