@@ -1,10 +1,11 @@
 import { createMemo, createResource } from "solid-js";
+import { isServer } from "solid-js/web";
 import { ListAllPermissionsResponse } from "~/bindings/ListAllPermissionsResponse";
 import { useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
 
-const useFetchPermissions = (workspaceId?: string) => {
+const useFetchPermissions = (workspaceId: string) => {
 	const [authState] = useAuthState();
 	const toast = useToast();
 
@@ -15,6 +16,18 @@ const useFetchPermissions = (workspaceId?: string) => {
 	return createResource(fetchParams, async ([auth, wsId]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") {
 			return { permissions: [] };
+		}
+
+		const cacheKey = `user-permissions:${wsId}`;
+		if (!isServer) {
+			const cached = localStorage.getItem(cacheKey);
+			if (cached) {
+				try {
+					return JSON.parse(cached) as ListAllPermissionsResponse;
+				} catch {
+					localStorage.removeItem(cacheKey);
+				}
+			}
 		}
 
 		try {
@@ -38,6 +51,9 @@ const useFetchPermissions = (workspaceId?: string) => {
 				return { permissions: [] };
 			}
 
+			if (!isServer) {
+				localStorage.setItem(cacheKey, JSON.stringify(response.data));
+			}
 			return response.data;
 		} catch (error) {
 			console.error("Error fetching permissions:", error);

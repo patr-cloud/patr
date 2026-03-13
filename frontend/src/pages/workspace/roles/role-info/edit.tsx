@@ -115,17 +115,6 @@ const EditPermissions = (props: {
 					<h3 class="text-lg text-white">Edit Permissions</h3>
 
 					<div class="flex justify-end gap-4">
-						<button
-							onClick={(e) => {
-								e.preventDefault();
-
-								console.log(permissionsData());
-								console.log(permissionIdToName());
-								console.log(permissionEntries());
-							}}
-						>
-							console log
-						</button>
 						<Button
 							variant={ButtonVariant.Contained}
 							onClick={() => handleUpdateRole().catch(() => {})}

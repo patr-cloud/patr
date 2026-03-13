@@ -83,91 +83,91 @@ const getColorClasses = (color: Color) => {
 		case Color.Primary:
 			return {
 				border: "border-primary",
-				hoverBorder: "hover:border-primary",
+				hoverBorder: "enabled:hover:border-primary",
 				text: "text-primary",
-				hoverText: "hover:text-primary",
-				hoverBg: "hover:bg-primary",
+				hoverText: "enabled:hover:text-primary",
+				hoverBg: "enabled:hover:bg-primary",
 				bg: "bg-primary",
 			};
 		case Color.Secondary:
 			return {
 				border: "border-secondary",
-				hoverBorder: "hover:border-secondary",
+				hoverBorder: "enabled:hover:border-secondary",
 				text: "text-secondary",
-				hoverText: "hover:text-secondary",
-				hoverBg: "hover:bg-secondary",
+				hoverText: "enabled:hover:text-secondary",
+				hoverBg: "enabled:hover:bg-secondary",
 				bg: "bg-secondary",
 			};
 		case Color.Grey:
 			return {
 				border: "border-grey",
-				hoverBorder: "hover:border-grey",
+				hoverBorder: "enabled:hover:border-grey",
 				text: "text-grey",
-				hoverText: "hover:text-grey",
-				hoverBg: "hover:bg-grey",
+				hoverText: "enabled:hover:text-grey",
+				hoverBg: "enabled:hover:bg-grey",
 				bg: "bg-grey",
 			};
 		case Color.Success:
 			return {
 				border: "border-success",
-				hoverBorder: "hover:border-success",
+				hoverBorder: "enabled:hover:border-success",
 				text: "text-success",
-				hoverText: "hover:text-success",
-				hoverBg: "hover:bg-success",
+				hoverText: "enabled:hover:text-success",
+				hoverBg: "enabled:hover:bg-success",
 				bg: "bg-success",
 			};
 		case Color.Error:
 			return {
 				border: "border-error",
-				hoverBorder: "hover:border-error",
+				hoverBorder: "enabled:hover:border-error",
 				text: "text-error",
-				hoverText: "hover:text-error",
-				hoverBg: "hover:bg-error",
+				hoverText: "enabled:hover:text-error",
+				hoverBg: "enabled:hover:bg-error",
 				bg: "bg-error",
 			};
 		case Color.Warning:
 			return {
 				border: "border-warning",
-				hoverBorder: "hover:border-warning",
+				hoverBorder: "enabled:hover:border-warning",
 				text: "text-warning",
-				hoverText: "hover:text-warning",
-				hoverBg: "hover:bg-warning",
+				hoverText: "enabled:hover:text-warning",
+				hoverBg: "enabled:hover:bg-warning",
 				bg: "bg-warning",
 			};
 		case Color.Black:
 			return {
 				border: "border-black",
-				hoverBorder: "hover:border-black",
+				hoverBorder: "enabled:hover:border-black",
 				text: "text-black",
-				hoverText: "hover:text-black",
-				hoverBg: "hover:bg-black",
+				hoverText: "enabled:hover:text-black",
+				hoverBg: "enabled:hover:bg-black",
 				bg: "bg-black",
 			};
 		case Color.White:
 			return {
 				border: "border-white",
-				hoverBorder: "hover:border-white",
+				hoverBorder: "enabled:hover:border-white",
 				text: "text-white",
-				hoverText: "hover:text-white",
-				hoverBg: "hover:bg-white",
+				hoverText: "enabled:hover:text-white",
+				hoverBg: "enabled:hover:bg-white",
 				bg: "bg-white",
 			};
 		case Color.Info:
 			return {
 				border: "border-info",
-				hoverBorder: "hover:border-info",
+				hoverBorder: "enabled:hover:border-info",
 				text: "text-info",
-				hoverText: "hover:text-info",
-				hoverBg: "hover:bg-info",
+				hoverText: "enabled:hover:text-info",
+				hoverBg: "enabled:hover:bg-info",
 				bg: "bg-info",
 			};
 		case Color.Disabled:
 			return {
 				border: "border-disabled",
-				hoverBorder: "hover:border-disabled",
+				hoverBorder: "enabled:hover:border-disabled",
 				text: "text-disabled",
-				hoverText: "hover:text-disabled",
-				hoverBg: "hover:bg-disabled",
+				hoverText: "enabled:hover:text-disabled",
+				hoverBg: "enabled:hover:bg-disabled",
 				bg: "bg-disabled",
 			};
 		default:

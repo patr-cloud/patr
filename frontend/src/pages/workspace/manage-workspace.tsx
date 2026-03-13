@@ -5,13 +5,14 @@ import {
 	InputDropdown,
 	PageContainer,
 	PageContainerBody,
+	Pagination,
 	Table,
 	useToast,
 	UserSearchInput,
 	Initials,
 } from "~/components";
 import { FiEdit2, FiPlus, FiTrash } from "solid-icons/fi";
-import { createAuthenticatedAction, createFormAction, useAuthState } from "~/hooks";
+import { createAuthenticatedAction, createFormAction, useAuthState, createPaginationState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { GetWorkspaceInfoResponse } from "~/bindings/GetWorkspaceInfoResponse";
 import { ListAllRolesResponse } from "~/bindings/ListAllRolesResponse";
@@ -29,6 +30,7 @@ const ManageWorkspace = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
+	const pagination = createPaginationState();
 	const resourceParamsWorkspace = () => {
 		return [authState(), workspaceId()] as const;
 	};
@@ -76,14 +78,18 @@ const ManageWorkspace = () => {
 		return response.data;
 	});
 
+	const membersFetchParams = () => {
+		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
+	};
+
 	const [workspaceMembers, { refetch: refetchMembers }] = createResource(
-		resourceParamsWorkspace,
-		async ([auth, id]) => {
+		membersFetchParams,
+		async ([auth, id, page, count]) => {
 			if (!auth || auth.type !== "LoggedIn" || id === "") {
 				return;
 			}
 			const response = await httpRequest<ListUsersInWorkspaceResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}/rbac/user`,
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}/rbac/user?page=${page}&count=${count}`,
 				{
 					method: "GET",
 					headers: {
@@ -97,6 +103,7 @@ const ManageWorkspace = () => {
 				toast("Failed to fetch workspace members", "error");
 				return undefined;
 			}
+			pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
 			// Fetch user details for each user ID
 			const userDetailsPromises = Object.keys(response.data.users).map(async (userId) => {
 				const userResponse = await httpRequest<GetUserDetailsResponse>(
@@ -404,6 +411,12 @@ const ManageWorkspace = () => {
 						</Suspense>
 					</div>
 				</div>
+				<Pagination
+					state={pagination}
+					loading={workspaceMembers.loading}
+					showPageSizeSelector={false}
+					showGoToPage={false}
+				/>
 			</PageContainerBody>
 		</PageContainer>
 	);

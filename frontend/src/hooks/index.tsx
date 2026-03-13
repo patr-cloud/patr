@@ -7,3 +7,5 @@ import { useGetPermissions } from "./is-allowed";
 export { useClickOutside, useAuthState, useLastWorkspaceId, useIsAllowed, useIsMounted, useGetPermissions };
 export { createAsyncAction, createAuthenticatedAction, createFormAction, createLoggedInAction } from "./actions";
 export type { AuthenticatedActionContext, LoggedInActionContext } from "./actions";
+export { default as createPaginationState } from "./pagination";
+export type { PaginationState } from "./pagination";

@@ -93,12 +93,15 @@ const ApiTokenInfo = () => {
 			return;
 		}
 
-		const response = await httpRequest<RegenerateApiTokenResponse>(`${import.meta.env.VITE_BASE_URL}/api/user/api-token/${params.id}/regenerate`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
-		});
+		const response = await httpRequest<RegenerateApiTokenResponse>(
+			`${import.meta.env.VITE_BASE_URL}/api/user/api-token/${params.id}/regenerate`,
+			{
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+			}
+		);
 
 		if (!response.ok) {
 			console.error("Failed to regenerate API Token:", response.data.error);
@@ -116,9 +119,16 @@ const ApiTokenInfo = () => {
 		<PageContainer>
 			<Suspense fallback={<div>Loading API Token Info...</div>}>
 				<PageContainerHead
-					title="API Tokens"
-					titleUrl="/profile/api-tokens"
-					subTitle={apiTokenInfo()?.name || ""}
+					breadcrumbs={[
+						{
+							label: "API Tokens",
+							url: "/profile/api-tokens",
+						},
+						{
+							label: apiTokenInfo()?.name || "",
+						},
+					]}
+					subText="Manage API Token here"
 					actions={() => (
 						<div class="flex gap-2 px-2">
 							<RegenerateModal
@@ -137,7 +147,6 @@ const ApiTokenInfo = () => {
 							/>
 						</div>
 					)}
-
 				/>
 				<PageContainerBody class="flex flex-col gap-8">
 					<div class="flex flex-col gap-4 items-start w-full">
@@ -167,6 +176,7 @@ const ApiTokenInfo = () => {
 					</div>
 				</PageContainerBody>
 			</Suspense>
+
 			<ApiTokenModal
 				isOpen={isApiTokenModalOpen}
 				setIsOpen={setIsApiTokenModalOpen}

@@ -13,13 +13,14 @@ import {
 	CopyableField,
 	CopyableFieldVariant,
 	EmptyState,
+	Pagination,
 } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import { ModalContainer } from "~/components/modal";
 import { GetDomainInfoInWorkspaceResponse, GetVerificationRecordsForDomainResponse } from "~/bindings";
 import { EventT } from "~/utils/types";
-import { useIsAllowed } from "~/hooks";
+import { useIsAllowed, createPaginationState } from "~/hooks";
 
 // Type definitions based on API bindings
 type WorkspaceDomain = {
@@ -192,18 +193,19 @@ const ListDomainsPage = () => {
 	const toast = useToast();
 
 	const isCreateAllowed = useIsAllowed("domain", "create");
+	const pagination = createPaginationState();
 
 	const fetchParams = createMemo(() => {
-		return [authState(), workspaceId()] as const;
+		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
 	});
 
-	const [domains] = createResource(fetchParams, async ([auth, wsId]) => {
+	const [domains] = createResource(fetchParams, async ([auth, wsId, page, count]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") {
 			return { domains: [] };
 		}
 
 		const response = await httpRequest<GetDomainsForWorkspaceResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain`,
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain?page=${page}&count=${count}`,
 			{
 				method: "GET",
 			}
@@ -214,6 +216,8 @@ const ListDomainsPage = () => {
 			toast("Failed to fetch domains", "error");
 			return { domains: [] };
 		}
+
+		pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
 
 		console.log("Fetched domains:", response.data);
 		return { domains: response.data.domains || [] };
@@ -239,7 +243,7 @@ const ListDomainsPage = () => {
 					);
 				}}
 			/>
-			<PageContainerBody class="flex flex-col">
+			<PageContainerBody class="flex flex-col justify-between">
 				<ErrorBoundary
 					fallback={(err, reset) => (
 						<div>
@@ -272,6 +276,12 @@ const ListDomainsPage = () => {
 										</td>
 									</tr>
 								)}
+							/>
+							<Pagination
+								state={pagination}
+								loading={domains.loading}
+								showPageSizeSelector={false}
+								showGoToPage={false}
 							/>
 						</Show>
 					</Suspense>

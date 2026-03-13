@@ -2,7 +2,7 @@ import { NavigateOptions, SearchParams } from "@solidjs/router";
 import { For, JSX, mergeProps, Show } from "solid-js";
 import { get } from "~/utils/func";
 import { MaybeAccessor, SetSearchParams } from "~/utils/types";
-import Link from "../link";
+import Link from "~/components/link";
 
 export interface HeadTabProps {
 	/** Additional CSS classes for the tab container */

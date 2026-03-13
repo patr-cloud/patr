@@ -1,6 +1,7 @@
 use std::sync::OnceLock;
 
 use models::{
+	AppResponse,
 	ApiErrorResponse,
 	ApiErrorResponseBody,
 	ApiResponseBody,
@@ -23,7 +24,7 @@ pub async fn make_request<E>(
 		headers,
 		body,
 	}: ApiRequest<E>,
-) -> Result<ApiSuccessResponse<E>, ApiErrorResponse>
+) -> Result<AppResponse<E>, ApiErrorResponse>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
@@ -100,7 +101,7 @@ where
 		Ok(ApiResponseBody::Success(ApiSuccessResponseBody {
 			success: _,
 			response: body,
-		})) => Ok(ApiSuccessResponse {
+		})) => Ok(AppResponse {
 			status_code: http::StatusCode::from_u16(status_code.as_u16())
 				.expect("Status code is not valid"),
 			headers,

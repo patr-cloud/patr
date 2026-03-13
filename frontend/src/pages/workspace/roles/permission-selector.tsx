@@ -190,6 +190,7 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 
 			<Button
 				variant={ButtonVariant.Outlined}
+				type="button"
 				onClick={() => {
 					updatePermissionsData(props.selectedPermissionIds);
 					props.onPermissionChange(new Set<string>([]));

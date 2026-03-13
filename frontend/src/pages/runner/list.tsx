@@ -10,10 +10,11 @@ import {
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
+	Pagination,
 	Table,
 } from "~/components";
 import { useToast } from "~/components";
-import { useAuthState } from "~/hooks";
+import { useAuthState, createPaginationState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useIsAllowed } from "~/hooks";
 import { formatRelativeTime } from "~/utils/func";
@@ -24,17 +25,18 @@ const ListRunnersPage = () => {
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const isAllowedCreate = useIsAllowed("runner", "create");
+	const pagination = createPaginationState();
 
 	const fetchParams = createMemo(() => {
-		return [authState(), workspaceId()] as const;
+		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
 	});
 
-	const [runners] = createResource(fetchParams, async ([auth, wsId]) => {
+	const [runners] = createResource(fetchParams, async ([auth, wsId, page, count]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") {
 			return { runners: [] };
 		}
 		const response = await httpRequest<ListRunnersForWorkspaceResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner`,
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner?page=${page}&count=${count}`,
 			{
 				method: "GET",
 			}
@@ -46,6 +48,8 @@ const ListRunnersPage = () => {
 
 			return { runners: [] };
 		}
+
+		pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
 
 		console.log("Fetched runners:", response.data);
 		return response.data;
@@ -104,6 +108,12 @@ const ListRunnersPage = () => {
 										</td>
 									</tr>
 								)}
+							/>
+							<Pagination
+								state={pagination}
+								loading={runners.loading}
+								showPageSizeSelector={false}
+								showGoToPage={false}
 							/>
 						</Show>
 					</Suspense>
