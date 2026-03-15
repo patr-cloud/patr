@@ -30,3 +30,5 @@ Thumbs.db
 src/bindings/*
 !src/bindings/index.ts
 !src/bindings/.gitkeep
+
+src/routeTree.gen.ts

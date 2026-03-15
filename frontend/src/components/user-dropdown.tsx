@@ -1,4 +1,4 @@
-import { A } from "@solidjs/router";
+import { Link } from "@tanstack/solid-router";
 import { createSignal, Show, createResource, Suspense } from "solid-js";
 import { FiKey, FiSettings, FiLogOut } from "solid-icons/fi";
 import { useAuthState, useClickOutside } from "~/hooks";
@@ -126,22 +126,22 @@ const UserDropdown = () => {
 						</div>
 
 						<div class="p-2">
-							<A
-								href="/profile/api-tokens"
+							<Link
+								to="/profile/api-tokens"
 								class="flex items-center gap-3 px-3 py-2 rounded-xs hover:bg-white/5 transition-colors text-gray-300 hover:text-white"
 								onClick={() => setIsOpen(false)}
 							>
 								<FiKey size={16} />
 								<span class="text-sm">API Keys</span>
-							</A>
-							<A
-								href="/profile"
+							</Link>
+							<Link
+								to={"/profile" as string}
 								class="flex items-center gap-3 px-3 py-2 rounded-xs hover:bg-white/5 transition-colors text-gray-300 hover:text-white"
 								onClick={() => setIsOpen(false)}
 							>
 								<FiSettings size={16} />
 								<span class="text-sm">Account Settings</span>
-							</A>
+							</Link>
 						</div>
 
 						<div class="p-2 border-t border-white/10">

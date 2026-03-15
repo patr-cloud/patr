@@ -1,4 +1,4 @@
-import { A } from "@solidjs/router";
+import { Link as RouterLink } from "@tanstack/solid-router";
 import { FiSettings } from "solid-icons/fi";
 import { createMemo, createResource, createSignal, For, Show, Suspense } from "solid-js";
 import { ListUserWorkspacesResponse } from "~/bindings";
@@ -64,9 +64,9 @@ const WorkspaceSwitcher = () => {
 					</Suspense>
 				</div>
 
-				<A href="/workspace" class="text-xs text-gray-400">
+				<RouterLink to="/workspace" class="text-xs text-gray-400">
 					<FiSettings />
-				</A>
+				</RouterLink>
 			</div>
 
 			<Show when={showSwitcher()}>

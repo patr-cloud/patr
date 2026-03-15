@@ -1,21 +1,25 @@
 import "./app.css";
-import { Route, Router } from "@solidjs/router";
-import LoggedOutRoutes from "./routes/logged-out-routes/index";
-import NotFound from "./routes/not-found";
-import LoggedInRoutes from "./routes/logged-in-routes";
-import { AuthStateProvider, LastWorkspaceIdProvider } from "~/hooks/state-hooks";
+import { RouterProvider } from "@tanstack/solid-router";
+import { createAppRouter } from "./router";
+import { AuthStateProvider, LastWorkspaceIdProvider, useAuthState } from "~/hooks/state-hooks";
 import { ToastProvider } from "./components";
+import { isServer } from "solid-js/web";
+
+// Singleton on the client; server creates per-request in InnerApp
+const clientRouter = isServer ? null : createAppRouter();
+
+function InnerApp() {
+	const [authState] = useAuthState();
+	const router = clientRouter ?? createAppRouter();
+	return <RouterProvider router={router} context={{ auth: authState() }} />;
+}
 
 function App() {
 	return (
 		<AuthStateProvider>
 			<LastWorkspaceIdProvider>
 				<ToastProvider>
-					<Router>
-						<LoggedOutRoutes />
-						<LoggedInRoutes />
-						<Route path="*" component={NotFound} />
-					</Router>
+					<InnerApp />
 				</ToastProvider>
 			</LastWorkspaceIdProvider>
 		</AuthStateProvider>
