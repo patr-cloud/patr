@@ -15,6 +15,7 @@
       "node"
     ],
     "isolatedModules": true,
+    "skipLibCheck": true,
     "paths": {
       "~/*": [
         "./src/*"

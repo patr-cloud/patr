@@ -1,4 +1,4 @@
-import { A, useLocation } from "@solidjs/router";
+import { Link, useLocation } from "@tanstack/solid-router";
 import { FiHome, FiBox, FiCpu, FiGlobe, FiSettings, FiChevronDown, FiChevronRight, FiPackage } from "solid-icons/fi";
 import { Component, createSignal, For, Show } from "solid-js";
 import WorkspaceSwitcher from "./workspace-switcher";
@@ -16,9 +16,9 @@ const SidebarItem = (props: SidebarItemProps) => {
 
 	const isActive = () => {
 		if (props.href) {
-			return location.pathname === props.href;
+			return location().pathname === props.href;
 		}
-		return props.children?.some((child) => child.href === location.pathname);
+		return props.children?.some((child) => child.href === location().pathname);
 	};
 
 	const handleClick = (e: MouseEvent) => {
@@ -30,8 +30,8 @@ const SidebarItem = (props: SidebarItemProps) => {
 
 	return (
 		<div class="w-full">
-			<A
-				href={props.href || "#"}
+			<Link
+				to={props.href || "#"}
 				class={`flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors duration-200 ${
 					isActive()
 						? "text-white bg-primary/10 border-r-2 border-primary"
@@ -48,21 +48,21 @@ const SidebarItem = (props: SidebarItemProps) => {
 				<Show when={props.children}>
 					<div class="text-gray-500">{isOpen() ? <FiChevronDown /> : <FiChevronRight />}</div>
 				</Show>
-			</A>
+			</Link>
 			<Show when={props.children && isOpen()}>
 				<div class="bg-black/20">
 					<For each={props.children}>
 						{(child) => (
-							<A
-								href={child.href || "#"}
+							<Link
+								to={child.href || "#"}
 								class={`flex items-center gap-3 pl-11 pr-4 py-2 text-sm transition-colors duration-200 ${
-									location.pathname === child.href
+									location().pathname === child.href
 										? "text-white bg-white/5"
 										: "text-gray-400 hover:text-white hover:bg-white/5"
 								}`}
 							>
 								<span>{child.label}</span>
-							</A>
+							</Link>
 						)}
 					</For>
 				</div>

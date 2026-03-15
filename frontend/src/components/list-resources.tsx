@@ -1,4 +1,3 @@
-import { useParams } from "@solidjs/router";
 import { createMemo, createResource, For, Show, Suspense } from "solid-js";
 import { useAuthState } from "~/hooks";
 import { get, getResourceEndpoint, parseCamelCase } from "~/utils/func";
