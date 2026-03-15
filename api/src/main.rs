@@ -1,4 +1,5 @@
 //! The main API server for Patr.
+#![recursion_limit = "1024"]
 
 #[tokio::main]
 async fn main() {
