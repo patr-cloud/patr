@@ -1,5 +1,6 @@
 import { defineConfig } from "@solidjs/start/config";
 import tailwindcss from "@tailwindcss/vite";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -13,9 +14,15 @@ export default defineConfig({
     preset: "static",
   }) : undefined,
   vite: ({ router }: { router: any }) => isCSR ? ({
-    plugins: [tailwindcss()],
+    plugins: [tanstackRouter({ target: "solid", autoCodeSplitting: true, routesDirectory: "./src/routes", generatedRouteTree: "./src/routeTree.gen.ts" }), tailwindcss()],
+    esbuild: {
+      pure: ['console.log'],
+    },
   }) : ({
-    plugins: [tailwindcss()],
+    plugins: [tanstackRouter({ target: "solid", autoCodeSplitting: true, routesDirectory: "./src/routes", generatedRouteTree: "./src/routeTree.gen.ts" }), tailwindcss()],
+    esbuild: {
+      pure: ['console.log'],
+    },
     publicDir: resolve(__dirname, "../assets/frontend/public"),
     server: {
       fs: {

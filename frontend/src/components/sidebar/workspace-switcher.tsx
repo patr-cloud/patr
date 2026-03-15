@@ -1,4 +1,4 @@
-import { A } from "@solidjs/router";
+import { Link as RouterLink } from "@tanstack/solid-router";
 import { FiSettings } from "solid-icons/fi";
 import { createMemo, createResource, createSignal, For, Show, Suspense } from "solid-js";
 import { ListUserWorkspacesResponse } from "~/bindings";
@@ -28,10 +28,6 @@ const WorkspaceSwitcher = () => {
 			`${import.meta.env.VITE_BASE_URL}/api/user/workspaces`,
 			{
 				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			}
 		);
 
@@ -57,16 +53,20 @@ const WorkspaceSwitcher = () => {
 			>
 				<div class="flex flex-row items-center justify-start w-full">
 					<Suspense fallback={<div class="text-sm text-white">Loading...</div>}>
-						<Initials firstName={() => currentWorkspaceInfo()?.name ?? ".."} size="lg" class="mr-3 bg-secondary!" />
+						<Initials
+							firstName={() => currentWorkspaceInfo()?.name ?? ".."}
+							size="lg"
+							class="mr-3 bg-secondary!"
+						/>
 						<p class="text-sm text-white text-ellipsis overflow-hidden">
 							{currentWorkspaceInfo() ? currentWorkspaceInfo()!.name : "Select A Workspace"}
 						</p>
 					</Suspense>
 				</div>
 
-				<A href="/workspace" class="text-xs text-gray-400">
+				<RouterLink to="/workspace" class="text-xs text-gray-400">
 					<FiSettings />
-				</A>
+				</RouterLink>
 			</div>
 
 			<Show when={showSwitcher()}>
@@ -100,11 +100,15 @@ const WorkspaceSwitcher = () => {
 												setWorkspaceId(workspace.id);
 											}}
 											class={`px-sm py-sm bg-secondary-medium! hover:border-primary! cursor-pointer overflow-hidden rounded-xs w-full ${
-												index() !== (listWorkspacesResource.latest?.workspaces.length || 0) ? "ul-light" : ""
+												index() !== (listWorkspacesResource.latest?.workspaces.length || 0)
+													? "ul-light"
+													: ""
 											} relative justify-start`}
 										>
 											<Initials firstName={workspace.name ?? ".."} size="sm" class="mr-3" />
-											<p class="text-sm text-white text-ellipsis overflow-hidden">{workspace.name}</p>
+											<p class="text-sm text-white text-ellipsis overflow-hidden">
+												{workspace.name}
+											</p>
 										</Button>
 									)}
 								</For>

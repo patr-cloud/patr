@@ -35,10 +35,6 @@ const useFetchPermissions = (workspaceId: string) => {
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/permission`,
 				{
 					method: "GET",
-					headers: {
-						"Content-Type": "application/json",
-						Authorization: `Bearer ${auth.accessToken}`,
-					},
 				}
 			);
 

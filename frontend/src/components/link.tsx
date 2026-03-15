@@ -1,4 +1,4 @@
-import { A } from "@solidjs/router";
+import { Link as RouterLink } from "@tanstack/solid-router";
 import { ParentProps, mergeProps, JSX } from "solid-js";
 import { Color, ButtonVariantEnum, ButtonVariant } from "~/utils/color";
 import { get, getColorClasses } from "~/utils/func";
@@ -18,7 +18,7 @@ interface LinkProps {
 	 */
 	buttonVariant?: ButtonVariantEnum;
 	/**
-	 * Whether it's an external link (uses <a> instead of <A>)
+	 * Whether it's an external link (uses <a> instead of router Link)
 	 */
 	external?: boolean;
 	/**
@@ -70,9 +70,9 @@ const Link = (rawProps: ParentProps<LinkProps>) => {
 	}
 
 	return (
-		<A target={props.target} href={props.href} class={derivedClass()}>
+		<RouterLink target={props.target} to={props.href} class={derivedClass()}>
 			{props.children}
-		</A>
+		</RouterLink>
 	);
 };
 

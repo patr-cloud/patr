@@ -40,9 +40,6 @@ export const getPermissions = async (authState: AuthState, wsId: string) => {
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/permission`,
 			{
 				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-				},
 			}
 		);
 
@@ -172,7 +169,8 @@ const useUserPermissions = () => {
 								detailedPermissions[resourceType as ResourceTypes] = {};
 							}
 
-							detailedPermissions[resourceType as ResourceTypes][action as ActionTypes] = userPermission[permId];
+							detailedPermissions[resourceType as ResourceTypes][action as ActionTypes] =
+								userPermission[permId];
 						} else {
 							console.log(`[useFetchUserPermissions] No permission found for permId: ${permId}`);
 						}

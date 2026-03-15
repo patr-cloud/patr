@@ -22,3 +22,5 @@ CONTRIBUTING.md
 CODE_OF_CONDUCT.md
 SECURITY.md
 ARCHITECTURE.md
+.pnpm-store
+.vscode

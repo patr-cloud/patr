@@ -1,7 +1,6 @@
-import { NavigateOptions, SearchParams } from "@solidjs/router";
 import { For, JSX, mergeProps, Show } from "solid-js";
 import { get } from "~/utils/func";
-import { MaybeAccessor, SetSearchParams } from "~/utils/types";
+import { MaybeAccessor } from "~/utils/types";
 import Link from "~/components/link";
 
 export interface HeadTabProps {
@@ -9,12 +8,10 @@ export interface HeadTabProps {
 	class?: MaybeAccessor<string>;
 	/** Additional CSS classes for the tab buttons */
 	buttonClass?: MaybeAccessor<string>;
-	/** Search Params */
-	searchParams: Partial<SearchParams>;
 	/** Tab */
 	tab: MaybeAccessor<string>;
-	/** Set Search Params */
-	setSearchParams: (params: SetSearchParams, options?: Partial<NavigateOptions>) => void;
+	/** Callback when tab changes */
+	onTabChange?: (value: string) => void;
 	/** Tab Items */
 	tabItems: Array<{
 		/** Button Class */
@@ -24,10 +21,7 @@ export interface HeadTabProps {
 		/** The value of the tab */
 		value: string;
 		/** OnClick handler for the tab */
-		onClick?: (
-			value: string,
-			setSearchParams?: (params: SetSearchParams, options?: Partial<NavigateOptions>) => void
-		) => void;
+		onClick?: (value: string) => void;
 	}>;
 }
 
@@ -46,7 +40,9 @@ const HeadTab = (rawProps: HeadTabProps) => {
 				<button
 					onClick={() => {
 						if (item.onClick) {
-							item.onClick(item.value, props.setSearchParams);
+							item.onClick(item.value);
+						} else if (props.onTabChange) {
+							props.onTabChange(item.value);
 						}
 					}}
 					class={`pb-2 px-2 border-b-2 ${
@@ -101,7 +97,9 @@ const PageContainerHead = (rawProps: PageContainerHeadProps) => {
 											<span class="text-xl text-white">&gt;</span>
 										</Show>
 
-										<h1 class={`text-xl ${crumb.url ? "text-primary cursor-pointer" : "text-white"}`}>
+										<h1
+											class={`text-xl ${crumb.url ? "text-primary cursor-pointer" : "text-white"}`}
+										>
 											{crumb.url ? <Link href={crumb.url}>{crumb.label}</Link> : crumb.label}
 										</h1>
 									</>

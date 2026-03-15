@@ -1,5 +1,4 @@
-import { createSignal } from "solid-js";
-import { useSearchParams } from "@solidjs/router";
+import { createSignal, type Accessor } from "solid-js";
 
 export interface PaginationState {
 	/** The current 0-indexed page number */
@@ -23,6 +22,16 @@ export interface PaginationState {
 }
 
 /**
+ * Merges `update` into the current search params via `navigate`.
+ *
+ * TanStack Router's `useNavigate()` is typed against the union of all routes'
+ * search params, so a generic `(prev) => ({...prev, ...update})` updater
+ * doesn't satisfy any single route's type. We widen the function signature here
+ * so callers can pass `navigate` without per-call-site casts.
+ */
+type NavigateFn = (opts: Record<string, unknown>) => void;
+
+/**
  * Creates a pagination state object backed by URL search params (`?page=0&count=20`).
  * Page and count survive navigation and can be bookmarked / shared.
  *
@@ -30,7 +39,13 @@ export interface PaginationState {
  *
  * @example
  * ```ts
- * const pagination = createPaginationState({ defaultCount: 20 });
+ * const search = Route.useSearch();
+ * const navigate = useNavigate();
+ * const pagination = createPaginationState({
+ *   defaultCount: 20,
+ *   search: () => search(),
+ *   navigate,
+ * });
  *
  * const [items] = createResource(
  *   () => [workspaceId(), pagination.page(), pagination.count()] as const,
@@ -42,18 +57,21 @@ export interface PaginationState {
  * );
  * ```
  */
-const createPaginationState = (opts?: { defaultCount?: number }): PaginationState => {
-	const defaultCount = opts?.defaultCount ?? 20;
-	const [searchParams, setSearchParams] = useSearchParams<{ page?: string; count?: string }>();
+const createPaginationState = (opts: {
+	defaultCount?: number;
+	search: Accessor<{ page?: string; count?: string }>;
+	navigate: NavigateFn;
+}): PaginationState => {
+	const defaultCount = opts.defaultCount ?? 20;
 	const [totalCount, setTotalCount] = createSignal(0);
 
 	const page = () => {
-		const p = parseInt(searchParams.page ?? "0", 10);
+		const p = parseInt(String(opts.search().page ?? "0"), 10);
 		return isNaN(p) || p < 0 ? 0 : p;
 	};
 
 	const count = () => {
-		const c = parseInt(searchParams.count ?? String(defaultCount), 10);
+		const c = parseInt(String(opts.search().count ?? String(defaultCount)), 10);
 		return isNaN(c) || c < 1 ? defaultCount : c;
 	};
 
@@ -61,13 +79,20 @@ const createPaginationState = (opts?: { defaultCount?: number }): PaginationStat
 	const canPrev = () => page() > 0;
 	const canNext = () => page() < totalPages() - 1;
 
+	const updateSearch = (update: Record<string, string>) => {
+		opts.navigate({
+			search: (prev: Record<string, unknown>) => ({ ...prev, ...update }),
+			replace: true,
+		});
+	};
+
 	const setPage = (p: number) => {
 		const clamped = Math.max(0, Math.min(p, totalPages() - 1));
-		setSearchParams({ page: String(clamped) }, { replace: true });
+		updateSearch({ page: String(clamped) });
 	};
 
 	const setCount = (c: number) => {
-		setSearchParams({ count: String(c), page: "0" }, { replace: true });
+		updateSearch({ count: String(c), page: "0" });
 	};
 
 	return { page, count, totalCount, totalPages, canPrev, canNext, setPage, setCount, setTotalCount };

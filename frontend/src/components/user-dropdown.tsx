@@ -1,4 +1,4 @@
-import { A } from "@solidjs/router";
+import { Link } from "@tanstack/solid-router";
 import { createSignal, Show, createResource, Suspense } from "solid-js";
 import { FiKey, FiSettings, FiLogOut } from "solid-icons/fi";
 import { useAuthState, useClickOutside } from "~/hooks";
@@ -36,10 +36,6 @@ const UserDropdown = () => {
 		try {
 			const response = await httpRequest<GetUserInfoResponse>(`${import.meta.env.VITE_BASE_URL}/api/user`, {
 				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${auth.accessToken}`,
-				},
 			});
 
 			if (!response.ok) {
@@ -98,41 +94,54 @@ const UserDropdown = () => {
 							<div class="flex items-center gap-3 mb-3">
 								<Initials firstName={userInfo()?.firstName} lastName={userInfo()?.lastName} size="lg" />
 								<div class="flex-1 min-w-0">
-									<Show when={!userInfo.loading} fallback={<div class="text-gray-400 text-sm">Loading...</div>}>
+									<Show
+										when={!userInfo.loading}
+										fallback={<div class="text-gray-400 text-sm">Loading...</div>}
+									>
 										<div class="text-white font-medium truncate">
 											{userInfo()?.firstName && userInfo()?.lastName
 												? `${userInfo()!.firstName} ${userInfo()!.lastName}`
 												: userInfo()?.username || "Unknown User"}
 										</div>
-										<div class="text-gray-400 text-sm truncate">{userInfo()?.recoveryEmail || "No email"}</div>
+										<div class="text-gray-400 text-sm truncate">
+											{userInfo()?.recoveryEmail || "No email"}
+										</div>
 									</Show>
 								</div>
 							</div>
 
 							<div class="mb-2">
-								<CopyableField variant={CopyableFieldVariant.Input} label="User ID" value={userInfo()?.id || ""} />
+								<CopyableField
+									variant={CopyableFieldVariant.Input}
+									label="User ID"
+									value={userInfo()?.id || ""}
+								/>
 							</div>
 
-							<CopyableField variant={CopyableFieldVariant.Input} label="Username" value={userInfo()?.username || ""} />
+							<CopyableField
+								variant={CopyableFieldVariant.Input}
+								label="Username"
+								value={userInfo()?.username || ""}
+							/>
 						</div>
 
 						<div class="p-2">
-							<A
-								href="/profile/api-tokens"
+							<Link
+								to="/profile/api-tokens"
 								class="flex items-center gap-3 px-3 py-2 rounded-xs hover:bg-white/5 transition-colors text-gray-300 hover:text-white"
 								onClick={() => setIsOpen(false)}
 							>
 								<FiKey size={16} />
 								<span class="text-sm">API Keys</span>
-							</A>
-							<A
-								href="/profile"
+							</Link>
+							<Link
+								to={"/profile" as string}
 								class="flex items-center gap-3 px-3 py-2 rounded-xs hover:bg-white/5 transition-colors text-gray-300 hover:text-white"
 								onClick={() => setIsOpen(false)}
 							>
 								<FiSettings size={16} />
 								<span class="text-sm">Account Settings</span>
-							</A>
+							</Link>
 						</div>
 
 						<div class="p-2 border-t border-white/10">

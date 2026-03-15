@@ -171,7 +171,7 @@ const getColorClasses = (color: Color) => {
 				bg: "bg-disabled",
 			};
 		default:
-			return { border: "", text: "", hoverBg: "" };
+			return { border: "", hoverBorder: "", text: "", hoverText: "", hoverBg: "", bg: "" };
 	}
 };
 // Helper to parse permission names like "deployment::view" into { resourceType: "deployment", action: "view" }
@@ -207,7 +207,7 @@ const getResourceEndpoint = (type: string) => {
 		database: "database",
 		secret: "secret",
 		domain: "domain",
-		mangagedUrl: "managed-url",
+		managedUrl: "managed-url",
 	};
 	return endpointMap[type];
 };

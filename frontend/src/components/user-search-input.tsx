@@ -7,7 +7,6 @@ import { httpRequest } from "~/utils/http-request";
 interface UserSearchInputProps {
 	placeholder?: string;
 	onUserSelect: (user: WithId<BasicUserInfo>) => void;
-	accessToken: string;
 	class?: string;
 	value?: string;
 	onClear?: () => void;
@@ -36,10 +35,6 @@ export const UserSearchInput = (props: UserSearchInputProps) => {
 			`${import.meta.env.VITE_BASE_URL}/api/user/search?query=${encodeURIComponent(query)}`,
 			{
 				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${props.accessToken}`,
-				},
 			}
 		);
 
@@ -80,6 +75,10 @@ export const UserSearchInput = (props: UserSearchInputProps) => {
 
 	onMount(() => {
 		document.addEventListener("click", handleClickOutside);
+	});
+
+	onCleanup(() => {
+		document.removeEventListener("click", handleClickOutside);
 	});
 
 	return (

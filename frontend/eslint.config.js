@@ -7,7 +7,7 @@ import globals from "globals";
 
 export default [
 	{
-		ignores: ["dist/**", "node_modules/**", ".vinxi/**", ".output/**", "*.config.ts", "*.config.js"],
+		ignores: ["dist/**", "node_modules/**", ".vinxi/**", ".output/**", "*.config.ts", "*.config.js", "src/routeTree.gen.ts"],
 	},
 	js.configs.recommended,
 	{

@@ -26,7 +26,9 @@ const httpRequest = async <T>(url: string, options?: RequestInit): Promise<Fetch
 			headers: {
 				"Content-Type": "application/json",
 				...(options?.headers || {}),
-				...(event?.request?.headers ? Object.fromEntries(event.request.headers.entries()) : {}),
+				...(isServer && event?.request?.headers?.get("cookie")
+					? { Cookie: event.request.headers.get("cookie")! }
+					: {}),
 			},
 		});
 
@@ -63,7 +65,9 @@ const httpRequest = async <T>(url: string, options?: RequestInit): Promise<Fetch
 		if (errorData.error === "malformedAccessToken") {
 			console.log("Access token malformed, redirecting to login...", data);
 			cookieStorage.removeItem("authState");
-			window.location.href = "/login";
+			if (!isServer) {
+				window.location.href = "/login";
+			}
 			return defaultErrorReturn;
 		}
 
@@ -73,10 +77,12 @@ const httpRequest = async <T>(url: string, options?: RequestInit): Promise<Fetch
 				return defaultErrorReturn;
 			}
 
-			const authState = JSON.parse(cookieStorage.getItem("authState") || "null") as AuthState | null;
+			const authState = JSON.parse(currentAuthState) as AuthState | null;
 
 			if (!authState || authState.type !== "LoggedIn") {
-				window.location.href = "/login";
+				if (!isServer) {
+					window.location.href = "/login";
+				}
 				return defaultErrorReturn;
 			}
 
@@ -89,7 +95,9 @@ const httpRequest = async <T>(url: string, options?: RequestInit): Promise<Fetch
 
 			if (!refreshResp.ok) {
 				cookieStorage.removeItem("authState");
-				window.location.href = "/login";
+				if (!isServer) {
+					window.location.href = "/login";
+				}
 				return defaultErrorReturn;
 			}
 

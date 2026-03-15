@@ -1,6 +1,5 @@
 ignoredBuiltDependencies:
-  - '@parcel/watcher'
+    - "@parcel/watcher"
 
 onlyBuiltDependencies:
-  - aws-sdk
-  - esbuild
+    - esbuild

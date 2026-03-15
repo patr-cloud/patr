@@ -1,6 +1,6 @@
 import { mergeProps } from "solid-js";
 import { Color } from "~/utils/color";
-import { get } from "~/utils/func";
+import { get, getColorClasses } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
 interface StatusBadgeProps {
@@ -16,13 +16,16 @@ const StatusBadge = (rawProps: StatusBadgeProps) => {
 	const props = mergeProps(
 		{
 			class: "",
+			color: Color.Info,
 		},
 		rawProps
 	);
+	const colorClasses = () => getColorClasses(props.color);
 	return (
-		<span class="relative text-secondary cursor-default py-0.25 px-1.5 rounded-xl bg-info">{get(props.text)}</span>
+		<span class={`relative text-secondary cursor-default py-0.25 px-1.5 rounded-xl ${colorClasses().bg}`}>
+			{get(props.text)}
+		</span>
 	);
 };
 
-// {`relative ${get(props.class)}`}
 export default StatusBadge;

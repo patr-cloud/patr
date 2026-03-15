@@ -1,4 +1,3 @@
-import { useParams } from "@solidjs/router";
 import { createMemo, createResource, For, Show, Suspense } from "solid-js";
 import { useAuthState } from "~/hooks";
 import { get, getResourceEndpoint, parseCamelCase } from "~/utils/func";
@@ -36,10 +35,6 @@ const ListResources = ({
 
 		const response = await httpRequest<any>(`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/${endpoint}`, {
 			method: "GET",
-			headers: {
-				"Content-Type": "application/json",
-				Authorization: `Bearer ${auth.accessToken}`,
-			},
 		});
 
 		if (!response.ok) {
