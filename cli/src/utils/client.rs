@@ -1,11 +1,11 @@
 use std::sync::OnceLock;
 
 use models::{
-	AppResponse,
 	ApiErrorResponse,
 	ApiErrorResponseBody,
 	ApiResponseBody,
 	ApiSuccessResponseBody,
+	AppResponse,
 	prelude::*,
 	utils::{False, Headers},
 };

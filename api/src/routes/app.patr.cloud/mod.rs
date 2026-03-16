@@ -38,7 +38,9 @@ async fn proxy(req: Request<Body>) -> Response {
 		.request(
 			req.method().clone(),
 			format!(
-				"http://localhost:3030{}",
+				"{}{}",
+				std::env::var("FRONTEND_URL")
+					.unwrap_or_else(|_| "http://localhost:3030".to_string()),
 				req.uri()
 					.path_and_query()
 					.map(|v| v.as_str())
