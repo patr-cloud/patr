@@ -1,7 +1,17 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use api::routes::loki_patr_cloud::models::{EntryAdapter, PushRequest, StreamAdapter};
 use base64::prelude::*;
 use models::utils::Uuid;
 use prost::Message;
+
+/// Returns the current Unix timestamp in seconds.
+fn now_secs() -> i64 {
+	SystemTime::now()
+		.duration_since(UNIX_EPOCH)
+		.unwrap()
+		.as_secs() as i64
+}
 
 /// Build a Basic Authorization header value for runner auth.
 pub fn basic_auth(runner_id: &Uuid, api_token: &str) -> String {
@@ -13,12 +23,13 @@ pub fn basic_auth(runner_id: &Uuid, api_token: &str) -> String {
 
 /// Build a snappy-compressed protobuf Loki push payload.
 pub fn make_loki_push_body(labels: &str, lines: &[&str]) -> Vec<u8> {
+	let base_ts = now_secs();
 	let entries = lines
 		.iter()
 		.enumerate()
 		.map(|(i, line)| EntryAdapter {
 			timestamp: Some(prost_types::Timestamp {
-				seconds: 1700000000 + i as i64,
+				seconds: base_ts + i as i64,
 				nanos: 0,
 			}),
 			line: line.to_string(),
@@ -59,7 +70,7 @@ pub fn make_otlp_json_body(attrs: &[(&str, &str)]) -> Vec<u8> {
 			"scopeLogs": [{
 				"scope": {},
 				"logRecords": [{
-					"timeUnixNano": "1700000000000000000",
+					"timeUnixNano": format!("{}000000000", now_secs()),
 					"body": {
 						"stringValue": "test log line from OTLP"
 					},
@@ -102,7 +113,7 @@ pub fn make_otlp_proto_body(attrs: &[(&str, &str)]) -> Vec<u8> {
 			scope_logs: vec![ScopeLogs {
 				scope: None,
 				log_records: vec![LogRecord {
-					time_unix_nano: 1_700_000_000_000_000_000,
+					time_unix_nano: now_secs() as u64 * 1_000_000_000,
 					body: Some(AnyValue {
 						value: Some(Value::StringValue(
 							"test log line from OTLP proto".to_string(),

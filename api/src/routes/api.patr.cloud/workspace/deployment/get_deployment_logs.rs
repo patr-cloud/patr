@@ -20,7 +20,7 @@ struct LokiData {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct LokiMatrixResult {
-	values: Vec<(i128, String)>,
+	values: Vec<(String, String)>,
 }
 
 /// Route to get the logs of a deployment. This will fetch logs from Loki
@@ -121,7 +121,10 @@ pub async fn get_deployment_logs(
 			values
 				.into_iter()
 				.map(|(timestamp, log)| DeploymentLog {
-					timestamp: OffsetDateTime::from_unix_timestamp_nanos(timestamp)
+					timestamp: timestamp
+						.parse::<i128>()
+						.ok()
+						.and_then(|ns| OffsetDateTime::from_unix_timestamp_nanos(ns).ok())
 						.unwrap_or(OffsetDateTime::UNIX_EPOCH),
 					log,
 				})

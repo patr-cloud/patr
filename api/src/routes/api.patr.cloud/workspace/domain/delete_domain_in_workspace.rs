@@ -85,7 +85,7 @@ pub async fn delete_domain_in_workspace(
 			token: state.config.cloudflare.api_key.clone(),
 		},
 		ClientConfig::default(),
-		Environment::Production,
+		Environment::Custom(state.config.cloudflare.base_url.clone()),
 	)?;
 
 	client

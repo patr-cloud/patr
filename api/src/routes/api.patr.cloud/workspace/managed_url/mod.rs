@@ -17,7 +17,6 @@ mod create_managed_url;
 mod delete_managed_url;
 mod list_managed_url;
 mod update_managed_url;
-#[expect(unreachable_code)]
 mod verify_configuration;
 
 use self::{
@@ -54,7 +53,7 @@ pub async fn sync_worker_kv_for_domain(
 			token: config.cloudflare.api_key.clone(),
 		},
 		ClientConfig::default(),
-		Environment::Production,
+		Environment::Custom(config.cloudflare.base_url.clone()),
 	)?;
 
 	let kv_body = query!(

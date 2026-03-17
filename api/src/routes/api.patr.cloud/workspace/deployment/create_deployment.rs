@@ -388,7 +388,7 @@ pub async fn create_deployment(
 			token: state.config.cloudflare.api_key.clone(),
 		},
 		ClientConfig::default(),
-		Environment::Production,
+		Environment::Custom(state.config.cloudflare.base_url.clone()),
 	)?
 	.request(&write_key::WriteKey {
 		account_identifier: &state.config.cloudflare.account_id,

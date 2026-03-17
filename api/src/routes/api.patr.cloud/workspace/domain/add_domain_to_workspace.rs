@@ -146,7 +146,7 @@ pub async fn add_domain_to_workspace(
 			token: state.config.cloudflare.api_key.clone(),
 		},
 		ClientConfig::default(),
-		Environment::Production,
+		Environment::Custom(state.config.cloudflare.base_url.clone()),
 	)?;
 
 	let custom_hostname_id = client

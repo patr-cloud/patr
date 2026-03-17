@@ -64,7 +64,7 @@ pub async fn get_verification_records_for_domain(
 			token: state.config.cloudflare.api_key.clone(),
 		},
 		ClientConfig::default(),
-		Environment::Production,
+		Environment::Custom(state.config.cloudflare.base_url.clone()),
 	)?
 	.request(&GetCustomHostnameDetails {
 		zone_identifier: &state.config.cloudflare.primary_hosted_zone_id,

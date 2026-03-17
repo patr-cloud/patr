@@ -91,13 +91,13 @@ pub async fn update_cloudflare_config_for_runner(
 			token: config.cloudflare.api_key.clone(),
 		},
 		Default::default(),
-		Environment::Production,
+		Environment::Custom(config.cloudflare.base_url.clone()),
 	)?;
 
 	let tunnel = client
 		.get(format!(
-			"https://api.cloudflare.com/client/v4/accounts/{}/cfd_tunnel/{}",
-			config.cloudflare.account_id, tunnel_id
+			"{}accounts/{}/cfd_tunnel/{}",
+			config.cloudflare.base_url, config.cloudflare.account_id, tunnel_id
 		))
 		.bearer_auth(&config.cloudflare.api_key)
 		.send()
@@ -208,8 +208,8 @@ pub async fn update_cloudflare_config_for_runner(
 
 	client
 		.put(format!(
-			"https://api.cloudflare.com/client/v4/accounts/{}/cfd_tunnel/{}/configurations",
-			config.cloudflare.account_id, tunnel.id
+			"{}accounts/{}/cfd_tunnel/{}/configurations",
+			config.cloudflare.base_url, config.cloudflare.account_id, tunnel.id
 		))
 		.bearer_auth(&config.cloudflare.api_key)
 		.json(&TunnelConfigRequest {

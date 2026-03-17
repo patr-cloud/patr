@@ -49,8 +49,10 @@ pub async fn get_ingress_token_for_runner(
 	trace!("Getting the tunnel token for the runner");
 	let token = reqwest::Client::new()
 		.get(format!(
-			"https://api.cloudflare.com/client/v4/accounts/{}/cfd_tunnel/{}/token",
-			state.config.cloudflare.account_id, runner.cloudflare_tunnel_id
+			"{}accounts/{}/cfd_tunnel/{}/token",
+			state.config.cloudflare.base_url,
+			state.config.cloudflare.account_id,
+			runner.cloudflare_tunnel_id
 		))
 		.bearer_auth(&state.config.cloudflare.api_key)
 		.send()

@@ -60,7 +60,7 @@ pub async fn verify_domain_in_workspace(
 			token: state.config.cloudflare.api_key.clone(),
 		},
 		ClientConfig::default(),
-		Environment::Production,
+		Environment::Custom(state.config.cloudflare.base_url.clone()),
 	)?
 	.request(&EditCustomHostname {
 		zone_identifier: &state.config.cloudflare.primary_hosted_zone_id,

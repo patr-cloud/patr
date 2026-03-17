@@ -406,7 +406,7 @@ async fn update_runner_exposure_type(
 			token: state.config.cloudflare.api_key.clone(),
 		},
 		Default::default(),
-		Environment::Production,
+		Environment::Custom(state.config.cloudflare.base_url.clone()),
 	)?;
 
 	let zone_id = client
@@ -456,8 +456,8 @@ async fn update_runner_exposure_type(
 
 			let tunnel = reqwest::Client::new()
 				.get(format!(
-					"https://api.cloudflare.com/client/v4/accounts/{}/cfd_tunnel/{}",
-					state.config.cloudflare.account_id, tunnel_id
+					"{}accounts/{}/cfd_tunnel/{}",
+					state.config.cloudflare.base_url, state.config.cloudflare.account_id, tunnel_id
 				))
 				.bearer_auth(&state.config.cloudflare.api_key)
 				.send()

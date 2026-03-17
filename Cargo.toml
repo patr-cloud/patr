@@ -127,6 +127,7 @@ ts-rs                          = { default-features = false, version = "11" }
 typed-builder                  = { default-features = false, version = "0.23" }
 url                            = { default-features = false, version = "2" }
 uuid                           = { default-features = false, version = "1" }
+wiremock                       = { default-features = false, version = "0.6" }
 woothee                        = { default-features = false, version = "0.13" }
 worker                         = { default-features = false, version = "0.7" }
 

@@ -37,10 +37,9 @@ pub async fn verify_configuration(
 ) -> Result<AppResponse<VerifyManagedURLConfigurationRequest>, ErrorType> {
 	info!("Verifying configuration of ManagedURL");
 
+	// TODO: Check if the managed URL is configured correctly
 	AppResponse::builder()
-		.body(VerifyManagedURLConfigurationResponse {
-			configured: panic!("Check if the managed URL is configured correctly"),
-		})
+		.body(VerifyManagedURLConfigurationResponse { configured: false })
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()

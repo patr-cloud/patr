@@ -35,7 +35,7 @@ pub async fn reverify_verified_domains(_: Tick, data: Data<AppState>) -> Result<
 				token: data.config.cloudflare.api_key.clone(),
 			},
 			ClientConfig::default(),
-			Environment::Production,
+			Environment::Custom(data.config.cloudflare.base_url.clone()),
 		)?
 		.request(&EditCustomHostname {
 			zone_identifier: &data.config.cloudflare.primary_hosted_zone_id,

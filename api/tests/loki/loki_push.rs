@@ -67,20 +67,12 @@ async fn loki_push_no_execute_permission_returns_403() {
 		.create_test_runner(&admin.access_token, workspace.id)
 		.await;
 
-	// Create a role with no permissions
-	let role = setup
-		.create_test_role(&admin.access_token, workspace.id)
-		.await;
-
-	// Add a second user with the empty role
-	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
-		.await;
-
-	// Create an API token for user_b (no Runner::Execute)
+	// Create an API token for the admin but with only Member permissions
+	// (no Runner::Execute). The admin can create such a token because they
+	// own the workspace.
 	let api_token = setup
 		.create_test_api_token(
-			&user_b.access_token,
+			&admin.access_token,
 			BTreeMap::from([(
 				workspace.id,
 				WorkspacePermission::Member {

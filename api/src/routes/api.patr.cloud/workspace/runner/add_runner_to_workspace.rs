@@ -69,7 +69,7 @@ pub async fn add_runner_to_workspace(
 			token: state.config.cloudflare.api_key.clone(),
 		},
 		Default::default(),
-		Environment::Production,
+		Environment::Custom(state.config.cloudflare.base_url.clone()),
 	)?
 	.request(&create_tunnel::CreateTunnel {
 		account_identifier: &state.config.cloudflare.account_id,
@@ -117,7 +117,7 @@ pub async fn add_runner_to_workspace(
 			token: state.config.cloudflare.api_key.clone(),
 		},
 		ClientConfig::default(),
-		Environment::Production,
+		Environment::Custom(state.config.cloudflare.base_url.clone()),
 	)?
 	.request(&write_key::WriteKey {
 		account_identifier: &state.config.cloudflare.account_id,

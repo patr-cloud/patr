@@ -50,6 +50,12 @@ use testcontainers_modules::{
 	},
 };
 use tokio::net::TcpListener;
+use wiremock::{
+	Mock,
+	MockServer,
+	ResponseTemplate,
+	matchers::{method, path_regex},
+};
 
 static TRACING: Once = Once::new();
 
@@ -63,6 +69,7 @@ pub struct TestSetup {
 	postgres_container: ContainerAsync<Postgres>,
 	redis_container: ContainerAsync<Redis>,
 	loki_container: ContainerAsync<GenericImage>,
+	cloudflare_mock: MockServer,
 	permission_ids: BTreeMap<String, Uuid>,
 }
 
@@ -268,6 +275,17 @@ limits_config:
   allow_structured_metadata: true
   ingestion_rate_mb: 64
   ingestion_burst_size_mb: 128
+  otlp_config:
+    resource_attributes:
+      attributes_config:
+        - action: index_label
+          attributes:
+            - runner_id
+            - workspace_id
+            - deployment_id
+            - deployment_name
+            - service_name
+            - job
 "#;
 
 	let loki_container = GenericImage::new("grafana/loki", "3.2.0")
@@ -291,6 +309,9 @@ limits_config:
 		database: 0,
 		secure: false,
 	};
+
+	let cloudflare_mock = MockServer::start().await;
+	mount_cloudflare_mocks(&cloudflare_mock).await;
 
 	let email = EmailConfig {
 		host: "smtp.sendgrid.net".to_string(),
@@ -322,6 +343,7 @@ limits_config:
 			worker_namespace_id: "fake-worker-namespace-id".to_string(),
 			turnstile_secret: "1x0000000000000000000000000000000AA".to_string(),
 			primary_hosted_zone_id: "fake-hosted-zone-id".to_string(),
+			base_url: format!("{}/client/v4/", cloudflare_mock.uri()),
 		},
 		opentelemetry: OpenTelemetryConfig {
 			tracing: TracingConfig {
@@ -381,6 +403,26 @@ limits_config:
 	api::db::initialize(&state)
 		.await
 		.map_err(|e| anyhow::anyhow!("error initializing database: {e}"))?;
+
+	api::worker::initialize(&state)
+		.await
+		.map_err(|e| anyhow::anyhow!("error initializing worker: {e}"))?;
+
+	// Seed deployment machine types (the table is created by db::initialize
+	// but never populated).
+	sqlx::query(
+		r#"
+		INSERT INTO deployment_machine_type (id, cpu_count, memory_count)
+		VALUES
+			('d47b2c5a-0001-4000-8000-000000000001', 1, 1),
+			('d47b2c5a-0002-4000-8000-000000000002', 2, 4),
+			('d47b2c5a-0004-4000-8000-000000000004', 4, 8)
+		ON CONFLICT DO NOTHING;
+		"#,
+	)
+	.execute(&state.database)
+	.await
+	.map_err(|e| anyhow::anyhow!("error seeding machine types: {e}"))?;
 
 	// Create S3 bucket for registry blob/manifest storage.
 	// Must use force_path_style(true) for MinIO in testcontainers.
@@ -458,6 +500,237 @@ limits_config:
 		postgres_container,
 		redis_container,
 		loki_container,
+		cloudflare_mock,
 		permission_ids,
 	})
+}
+
+/// Helper to build a Cloudflare API envelope response.
+fn cf_success(result: serde_json::Value) -> ResponseTemplate {
+	ResponseTemplate::new(200).set_body_json(serde_json::json!({
+		"success": true,
+		"errors": [],
+		"messages": [],
+		"result": result
+	}))
+}
+
+/// Mount wiremock stubs for all Cloudflare API endpoints used by the
+/// application. Each stub returns a minimal valid response in the
+/// standard Cloudflare envelope format.
+async fn mount_cloudflare_mocks(server: &MockServer) {
+	// POST /zones/*/custom_hostnames — AddCustomHostname
+	Mock::given(method("POST"))
+		.and(path_regex(r"^/client/v4/zones/[^/]+/custom_hostnames$"))
+		.respond_with(cf_success(serde_json::json!({
+			"id": "mock-custom-hostname-id",
+			"hostname": "example.com",
+			"ssl": {
+				"status": "pending_validation",
+				"method": "txt",
+				"type": "dv",
+				"validation_records": []
+			},
+			"status": "pending"
+		})))
+		.mount(server)
+		.await;
+
+	// PATCH /zones/*/custom_hostnames/* — EditCustomHostname
+	Mock::given(method("PATCH"))
+		.and(path_regex(
+			r"^/client/v4/zones/[^/]+/custom_hostnames/[^/]+$",
+		))
+		.respond_with(cf_success(serde_json::json!({
+			"id": "mock-custom-hostname-id",
+			"hostname": "example.com",
+			"ssl": {
+				"status": "active",
+				"method": "txt",
+				"type": "dv",
+				"validation_records": []
+			},
+			"status": "active"
+		})))
+		.mount(server)
+		.await;
+
+	// GET /zones/*/custom_hostnames/* — GetCustomHostnameDetails
+	Mock::given(method("GET"))
+		.and(path_regex(
+			r"^/client/v4/zones/[^/]+/custom_hostnames/[^/]+$",
+		))
+		.respond_with(cf_success(serde_json::json!({
+			"id": "mock-custom-hostname-id",
+			"hostname": "example.com",
+			"ssl": {
+				"status": "pending_validation",
+				"method": "txt",
+				"type": "dv",
+				"validation_records": [
+					{
+						"txt_name": "_acme-challenge.example.com",
+						"txt_value": "mock-txt-value"
+					}
+				]
+			},
+			"status": "pending",
+			"ownership_verification": {
+				"type": "txt",
+				"name": "_cf-custom-hostname.example.com",
+				"value": "mock-ownership-value"
+			}
+		})))
+		.mount(server)
+		.await;
+
+	// DELETE /zones/*/custom_hostnames/* — DeleteCustomHostname
+	Mock::given(method("DELETE"))
+		.and(path_regex(
+			r"^/client/v4/zones/[^/]+/custom_hostnames/[^/]+$",
+		))
+		.respond_with(cf_success(serde_json::json!({
+			"id": "mock-custom-hostname-id"
+		})))
+		.mount(server)
+		.await;
+
+	// GET /zones — ListZones
+	Mock::given(method("GET"))
+		.and(path_regex(r"^/client/v4/zones$"))
+		.respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+			"success": true,
+			"errors": [],
+			"messages": [],
+			"result": [{
+				"id": "mock-zone-id",
+				"name": "testonpatr.cloud",
+				"status": "active",
+				"paused": false,
+				"type": "full",
+				"development_mode": 0,
+				"name_servers": ["ns1.mock.com", "ns2.mock.com"]
+			}],
+			"result_info": {
+				"page": 1,
+				"per_page": 20,
+				"total_pages": 1,
+				"count": 1,
+				"total_count": 1
+			}
+		})))
+		.mount(server)
+		.await;
+
+	// POST /zones — CreateZone
+	Mock::given(method("POST"))
+		.and(path_regex(r"^/client/v4/zones$"))
+		.respond_with(cf_success(serde_json::json!({
+			"id": "mock-zone-id",
+			"name": "testonpatr.cloud",
+			"status": "active",
+			"paused": false,
+			"type": "full",
+			"development_mode": 0,
+			"name_servers": ["ns1.mock.com", "ns2.mock.com"]
+		})))
+		.mount(server)
+		.await;
+
+	// DELETE /zones/* — DeleteZone
+	Mock::given(method("DELETE"))
+		.and(path_regex(r"^/client/v4/zones/[^/]+$"))
+		.respond_with(cf_success(serde_json::json!({
+			"id": "mock-zone-id"
+		})))
+		.mount(server)
+		.await;
+
+	// PUT /accounts/*/storage/kv/namespaces/*/values/* — WriteKey
+	Mock::given(method("PUT"))
+		.and(path_regex(
+			r"^/client/v4/accounts/[^/]+/storage/kv/namespaces/[^/]+/values/.+$",
+		))
+		.respond_with(cf_success(serde_json::json!(null)))
+		.mount(server)
+		.await;
+
+	// DELETE /accounts/*/storage/kv/namespaces/*/values/* — DeleteKey
+	Mock::given(method("DELETE"))
+		.and(path_regex(
+			r"^/client/v4/accounts/[^/]+/storage/kv/namespaces/[^/]+/values/.+$",
+		))
+		.respond_with(cf_success(serde_json::json!(null)))
+		.mount(server)
+		.await;
+
+	// POST /accounts/*/cfd_tunnel — CreateTunnel
+	Mock::given(method("POST"))
+		.and(path_regex(r"^/client/v4/accounts/[^/]+/cfd_tunnel$"))
+		.respond_with(cf_success(serde_json::json!({
+			"id": "00000000-0000-0000-0000-000000000000",
+			"name": "mock-tunnel",
+			"created_at": "2024-01-01T00:00:00Z",
+			"deleted_at": null,
+			"connections": [],
+			"metadata": {}
+		})))
+		.mount(server)
+		.await;
+
+	// GET /accounts/*/cfd_tunnel/*/token — GetTunnelToken
+	// (must be before the more general GET tunnel pattern)
+	Mock::given(method("GET"))
+		.and(path_regex(
+			r"^/client/v4/accounts/[^/]+/cfd_tunnel/[^/]+/token$",
+		))
+		.respond_with(cf_success(serde_json::json!("mock-tunnel-token-value")))
+		.mount(server)
+		.await;
+
+	// GET /accounts/*/cfd_tunnel/* — GetTunnel
+	Mock::given(method("GET"))
+		.and(path_regex(r"^/client/v4/accounts/[^/]+/cfd_tunnel/[^/]+$"))
+		.respond_with(cf_success(serde_json::json!({
+			"id": "00000000-0000-0000-0000-000000000000",
+			"name": "mock-tunnel",
+			"created_at": "2024-01-01T00:00:00Z",
+			"deleted_at": null,
+			"connections": [],
+			"metadata": {}
+		})))
+		.mount(server)
+		.await;
+
+	// PUT /accounts/*/cfd_tunnel/*/configurations — UpdateTunnelConfig
+	Mock::given(method("PUT"))
+		.and(path_regex(
+			r"^/client/v4/accounts/[^/]+/cfd_tunnel/[^/]+/configurations$",
+		))
+		.respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+			"success": true,
+			"errors": [],
+			"messages": [],
+			"result": {}
+		})))
+		.mount(server)
+		.await;
+
+	// DNS records — catch-all for GET/POST/PUT/DELETE
+	Mock::given(path_regex(r"^/client/v4/zones/[^/]+/dns_records"))
+		.respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+			"success": true,
+			"errors": [],
+			"messages": [],
+			"result": [],
+			"result_info": {
+				"page": 1,
+				"per_page": 20,
+				"total_pages": 1,
+				"count": 0,
+				"total_count": 0
+			}
+		})))
+		.mount(server)
+		.await;
 }

@@ -26,13 +26,13 @@ async fn create_api_token_works() {
 async fn list_api_tokens_works() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let perms = BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]);
 
 	let _t1 = setup
-		.create_test_api_token(&user.access_token, BTreeMap::new())
+		.create_test_api_token(&user.access_token, perms.clone())
 		.await;
-	let _t2 = setup
-		.create_test_api_token(&user.access_token, BTreeMap::new())
-		.await;
+	let _t2 = setup.create_test_api_token(&user.access_token, perms).await;
 
 	let response = setup
 		.make_api_call(
@@ -56,8 +56,12 @@ async fn list_api_tokens_works() {
 async fn get_api_token_info_works() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
 		.await;
 
 	let response = setup
@@ -82,8 +86,12 @@ async fn get_api_token_info_works() {
 async fn update_api_token_works() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
 		.await;
 	let new_name = random_name(8);
 
@@ -132,8 +140,12 @@ async fn update_api_token_works() {
 async fn revoke_api_token_works() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
 		.await;
 
 	setup
@@ -176,8 +188,12 @@ async fn revoke_api_token_works() {
 async fn regenerate_api_token_works() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
 		.await;
 
 	let response = setup

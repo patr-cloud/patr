@@ -260,8 +260,8 @@ async fn otlp_push_attribute_rewriting() {
 		"push should succeed, got {status}"
 	);
 
-	// Wait for Loki to index
-	tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+	// Wait for Loki to index (testcontainers Loki can be slow)
+	tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 
 	// Query Loki for the real runner_id
 	let query_url = format!("{}/loki/api/v1/query_range", setup.upstream_loki_url());

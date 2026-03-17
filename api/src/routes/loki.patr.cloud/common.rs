@@ -106,6 +106,7 @@ pub(super) async fn forward_to_loki(
 	let mut forwarded_headers = original_headers.clone();
 	forwarded_headers.remove(http::header::HOST);
 	forwarded_headers.remove(http::header::AUTHORIZATION);
+	forwarded_headers.remove(http::header::CONTENT_LENGTH);
 	forwarded_headers.remove("X-Scope-OrgID");
 
 	let Ok(response) = CLIENT

@@ -83,6 +83,7 @@ axum-test              = { workspace = true, features = ["default"] }
 flate2                 = { workspace = true, features = ["rust_backend"] }
 tar                    = { workspace = true, features = [] }
 testcontainers-modules = { workspace = true, features = ["default", "postgres", "minio", "redis"] }
+wiremock               = { workspace = true, features = [] }
 
 [[test]]
 name = "integration-tests"

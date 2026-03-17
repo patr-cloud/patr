@@ -181,6 +181,16 @@ pub struct CloudflareConfig {
 	pub turnstile_secret: String,
 	/// The zone ID of the primary hosted zone
 	pub primary_hosted_zone_id: String,
+	/// The base URL for the Cloudflare API. Defaults to
+	/// `https://api.cloudflare.com/client/v4` in production.
+	/// Override in tests to point at a mock server.
+	#[serde(default = "default_cloudflare_base_url")]
+	pub base_url: String,
+}
+
+/// The default base URL for the Cloudflare API
+fn default_cloudflare_base_url() -> String {
+	"https://api.cloudflare.com/client/v4/".to_string()
 }
 
 /// The configuration for sending emails via SMTP
