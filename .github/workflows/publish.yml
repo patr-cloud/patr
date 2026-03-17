@@ -58,21 +58,20 @@ jobs:
 
           echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
 
-      - uses: docker/setup-buildx-action@v3
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-      - uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ${{ matrix.image }}/Dockerfile
-          push: true
-          tags: ${{ steps.tags.outputs.tags }}
-          cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.arch }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ matrix.arch }}
+      - name: Build and push
+        run: |
+          IFS=',' read -ra TAG_ARRAY <<< "${{ steps.tags.outputs.tags }}"
+          TAG_FLAGS=""
+          for TAG in "${TAG_ARRAY[@]}"; do
+            TAG_FLAGS="$TAG_FLAGS -t $TAG"
+          done
+          docker build $TAG_FLAGS -f ${{ matrix.image }}/Dockerfile .
+          for TAG in "${TAG_ARRAY[@]}"; do
+            docker push "$TAG"
+          done
 
   manifest:
     name: Multi-arch manifest for ${{ matrix.image }}
@@ -95,10 +94,8 @@ jobs:
           echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
           echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
 
-      - uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
       - name: Create and push multi-arch manifests
         run: |
@@ -121,7 +118,7 @@ jobs:
           esac
 
           for TAG in $BASE_TAGS; do
-            docker manifest create --amend "${IMAGE}:${TAG}" \
+            docker manifest create "${IMAGE}:${TAG}" \
               "${IMAGE}:${TAG}-amd64" \
               "${IMAGE}:${TAG}-arm64"
             docker manifest push "${IMAGE}:${TAG}"

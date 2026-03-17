@@ -20,6 +20,12 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - uses: actions/cache@v4
+        with:
+          path: target
+          key: rust-target-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: rust-target-${{ runner.os }}-
+
       - run: cargo fmt --all -- --check
 
       - run: cargo clippy --workspace --all-targets
@@ -60,6 +66,12 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@nightly
 
+      - uses: actions/cache@v4
+        with:
+          path: target
+          key: rust-target-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: rust-target-${{ runner.os }}-
+
       - name: Install sqlx-cli
         run: cargo install sqlx-cli --no-default-features --features postgres
 
@@ -93,8 +105,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            frontend/node_modules
+            ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
 
       - run: pnpm install --frozen-lockfile
 
