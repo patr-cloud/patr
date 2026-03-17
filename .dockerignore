@@ -2,9 +2,9 @@
 /log
 
 /temp
-.[Dd][Ss]_[Ss]tore
+.[Dd][Ss]\_[Ss]tore
 
-/config/*
+/config/\*
 .env
 .dockerignore
 /api/Dockerfile
@@ -24,3 +24,6 @@ SECURITY.md
 ARCHITECTURE.md
 .pnpm-store
 .vscode
+/.github
+/.claude
+/.pnpm-store

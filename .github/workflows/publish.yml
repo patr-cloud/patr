@@ -4,13 +4,14 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-push:
-    name: Build & Push ${{ matrix.image }}
+  build:
+    name: Build ${{ matrix.image }} (${{ matrix.platform }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         image: [api, frontend]
+        platform: [linux/amd64, linux/arm64]
     steps:
       - uses: actions/checkout@v4
 
@@ -32,16 +33,17 @@ jobs:
           VERSION_FULL="${{ steps.version.outputs.full }}"
           VERSION_MINOR="${{ steps.version.outputs.minor }}"
           VERSION_MAJOR="${{ steps.version.outputs.major }}"
+          ARCH=$(echo "${{ matrix.platform }}" | cut -d/ -f2)
 
           case "$BRANCH" in
             master)
-              TAGS="${IMAGE}:${VERSION_MAJOR},${IMAGE}:${VERSION_MINOR},${IMAGE}:${VERSION_FULL},${IMAGE}:latest,${IMAGE}:stable"
+              TAGS="${IMAGE}:${VERSION_MAJOR}-${ARCH},${IMAGE}:${VERSION_MINOR}-${ARCH},${IMAGE}:${VERSION_FULL}-${ARCH},${IMAGE}:latest-${ARCH},${IMAGE}:stable-${ARCH}"
               ;;
             staging)
-              TAGS="${IMAGE}:${VERSION_MAJOR}-beta,${IMAGE}:${VERSION_MINOR}-beta,${IMAGE}:${VERSION_FULL}-beta,${IMAGE}:staging,${IMAGE}:beta"
+              TAGS="${IMAGE}:${VERSION_MAJOR}-beta-${ARCH},${IMAGE}:${VERSION_MINOR}-beta-${ARCH},${IMAGE}:${VERSION_FULL}-beta-${ARCH},${IMAGE}:staging-${ARCH},${IMAGE}:beta-${ARCH}"
               ;;
             develop)
-              TAGS="${IMAGE}:develop,${IMAGE}:alpha"
+              TAGS="${IMAGE}:develop-${ARCH},${IMAGE}:alpha-${ARCH}"
               ;;
             *)
               echo "::error::Branch '$BRANCH' is not allowed for Docker publishing. Use master, staging, or develop."
@@ -50,6 +52,8 @@ jobs:
           esac
 
           echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-qemu-action@v3
 
       - uses: docker/setup-buildx-action@v3
 
@@ -62,7 +66,61 @@ jobs:
         with:
           context: .
           file: ${{ matrix.image }}/Dockerfile
+          platforms: ${{ matrix.platform }}
           push: true
           tags: ${{ steps.tags.outputs.tags }}
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ matrix.platform }}
+
+  manifest:
+    name: Multi-arch manifest for ${{ matrix.image }}
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [api, frontend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from Cargo.toml
+        id: version
+        run: |
+          VERSION=$(grep '^package.version' Cargo.toml | sed 's/.*= *"\(.*\)"/\1/')
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f1-2)
+          echo "full=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
+          echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Create and push multi-arch manifests
+        run: |
+          IMAGE="patrcloud/${{ matrix.image }}"
+          BRANCH="${{ github.ref_name }}"
+          VERSION_FULL="${{ steps.version.outputs.full }}"
+          VERSION_MINOR="${{ steps.version.outputs.minor }}"
+          VERSION_MAJOR="${{ steps.version.outputs.major }}"
+
+          case "$BRANCH" in
+            master)
+              BASE_TAGS="${VERSION_MAJOR} ${VERSION_MINOR} ${VERSION_FULL} latest stable"
+              ;;
+            staging)
+              BASE_TAGS="${VERSION_MAJOR}-beta ${VERSION_MINOR}-beta ${VERSION_FULL}-beta staging beta"
+              ;;
+            develop)
+              BASE_TAGS="develop alpha"
+              ;;
+          esac
+
+          for TAG in $BASE_TAGS; do
+            docker manifest create "${IMAGE}:${TAG}" \
+              "${IMAGE}:${TAG}-amd64" \
+              "${IMAGE}:${TAG}-arm64"
+            docker manifest push "${IMAGE}:${TAG}"
+          done
