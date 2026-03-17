@@ -13,7 +13,7 @@ async fn main() {
 
 	let config = config::parse_config();
 
-	let (logger_provider, tracer_provider) = utils::setup_tracing(&config);
+	let (logger_provider, tracer_provider, meter_provider) = utils::setup_tracing(&config);
 
 	tracing::info!("Config parsed. Running in {} mode", config.environment);
 
@@ -63,5 +63,5 @@ async fn main() {
 	)
 	.await;
 
-	utils::flush_tracing(logger_provider, tracer_provider);
+	utils::flush_tracing(logger_provider, tracer_provider, meter_provider);
 }

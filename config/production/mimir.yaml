@@ -1,0 +1,54 @@
+multitenancy_enabled: true
+
+target: all
+
+server:
+  http_listen_port: 8080
+
+distributor:
+  ring:
+    kvstore:
+      store: memberlist
+  otlp:
+    convert_all_attributes: true
+
+ingester:
+  ring:
+    kvstore:
+      store: memberlist
+    replication_factor: 1 # Increase when adding replicas
+
+blocks_storage:
+  backend: s3
+  s3:
+    bucket_name: CHANGE_ME # Override via -blocks-storage.s3.bucket-name
+    endpoint: CHANGE_ME # Override via -blocks-storage.s3.endpoint
+    access_key_id: CHANGE_ME # Override via -blocks-storage.s3.access-key-id
+    secret_access_key: CHANGE_ME # Override via -blocks-storage.s3.secret-access-key
+    region: CHANGE_ME # Override via -blocks-storage.s3.region
+  bucket_store:
+    sync_dir: /var/lib/mimir/tsdb-sync
+  tsdb:
+    dir: /var/lib/mimir/tsdb
+    storage_prefix: mimir/
+
+compactor:
+  data_dir: /var/lib/mimir/compactor
+  sharding_ring:
+    kvstore:
+      store: memberlist
+  deletion_enabled: true
+  blocks_retention_period: 2160h # 90 days
+
+store_gateway:
+  sharding_ring:
+    kvstore:
+      store: memberlist
+
+# memberlist:
+#   join_members:
+#     - metrics:7946 # DNS-based peer discovery in deployment
+
+runtime_config:
+  file: /etc/mimir/mimir-overrides.yaml
+  period: 10s

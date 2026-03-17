@@ -43,7 +43,7 @@ models                         = { workspace = true, features = ["axum"] }
 oci-spec                       = { workspace = true, features = ["distribution", "image"] }
 opentelemetry                  = { workspace = true, features = ["default"] }
 opentelemetry-appender-tracing = { workspace = true, features = ["default"] }
-opentelemetry-otlp             = { workspace = true, features = ["default", "tonic", "tokio", "reqwest-client", "reqwest-rustls-webpki-roots", "grpc-tonic", "http-json"] }
+opentelemetry-otlp             = { workspace = true, features = ["default", "tonic", "tokio", "reqwest-client", "reqwest-rustls-webpki-roots", "grpc-tonic", "http-json", "metrics"] }
 opentelemetry-proto            = { workspace = true, features = ["gen-tonic-messages", "with-serde", "logs"] }
 opentelemetry_sdk              = { workspace = true, features = ["default", "rt-tokio"] }
 pin-project                    = { workspace = true, features = [] }

@@ -1,0 +1,12 @@
+overrides:
+  patr:
+    ingestion_burst_size_bytes: 20000000 # 20 MB
+    ingestion_rate_limit_bytes: 15000000 # 15 MB/s
+    max_bytes_per_trace: 5000000 # 5 MB
+    max_traces_per_user: 50000
+    max_search_duration: 1h
+    max_bytes_per_tag_values_query: 5000000 # 5 MB
+    block_retention: 336h # 14 days
+    metrics_generator_processors:
+      - service-graphs
+      - span-metrics

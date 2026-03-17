@@ -1,0 +1,40 @@
+multitenancy_enabled: true
+
+server:
+  http_listen_port: 3200
+  grpc_listen_port: 9095
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        http:
+          endpoint: 0.0.0.0:4318
+        grpc:
+          endpoint: 0.0.0.0:4317
+
+compactor:
+  compaction:
+    block_retention: 336h # 14 days
+
+storage:
+  trace:
+    backend: s3
+    s3:
+      bucket: CHANGE_ME # Override via -storage.trace.s3.bucket
+      endpoint: CHANGE_ME # Override via -storage.trace.s3.endpoint
+      access_key: CHANGE_ME # Override via -storage.trace.s3.access_key
+      secret_key: CHANGE_ME # Override via -storage.trace.s3.secret_key
+      region: CHANGE_ME # Override via -storage.trace.s3.region
+      prefix: tempo/
+    pool:
+      max_workers: 100
+      queue_depth: 10000
+
+# querier:
+#   frontend_worker:
+#     frontend_address: tracing:9095
+
+overrides:
+  per_tenant_override_config: /etc/tempo/tempo-overrides.yaml
+  per_tenant_override_period: 10s

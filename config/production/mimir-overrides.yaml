@@ -1,0 +1,15 @@
+overrides:
+  patr:
+    ingestion_rate: 10000 # samples/sec
+    ingestion_burst_size: 200000
+    max_series_per_user: 150000
+    max_global_series_per_user: 150000
+    max_series_per_metric: 50000
+    max_metadata_per_user: 10000
+    max_fetched_series_per_query: 50000
+    max_fetched_chunks_per_query: 2000000
+    max_query_parallelism: 16
+    max_query_length: 2160h # 90 days
+    compactor_blocks_retention_period: 2160h # 90 days
+    ruler_max_rules_per_rule_group: 20
+    ruler_max_rule_groups_per_tenant: 35
