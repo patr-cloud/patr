@@ -5,9 +5,9 @@ WORKDIR /app
 COPY . .
 
 ENV SQLX_OFFLINE=true
-RUN cargo build --release --package api
+RUN cargo build --release --package api --locked
 
-FROM rust:1
+FROM ubuntu:noble
 
 WORKDIR /app
 

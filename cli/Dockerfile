@@ -6,7 +6,7 @@ WORKDIR /app
 
 COPY . .
 
-RUN cargo build --release --package cli
+RUN cargo build --release --package cli --locked
 
 FROM ubuntu:noble
 
