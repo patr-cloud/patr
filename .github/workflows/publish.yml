@@ -11,13 +11,12 @@ jobs:
       fail-fast: false
       matrix:
         image: [api, frontend]
+        arch: [amd64, arm64]
         include:
           - arch: amd64
-            runner: ubuntu-latest
-            platform: linux/amd64
+            runner: ubuntu-24.04
           - arch: arm64
-            runner: ubuntu-latest-arm
-            platform: linux/arm64
+            runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
 
