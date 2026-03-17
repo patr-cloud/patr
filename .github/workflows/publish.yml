@@ -5,13 +5,19 @@ on:
 
 jobs:
   build:
-    name: Build ${{ matrix.image }} (${{ matrix.platform }})
-    runs-on: ubuntu-latest
+    name: Build ${{ matrix.image }} (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         image: [api, frontend]
-        platform: [linux/amd64, linux/arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+            platform: linux/amd64
+          - arch: arm64
+            runner: ubuntu-latest-arm
+            platform: linux/arm64
     steps:
       - uses: actions/checkout@v4
 
@@ -33,7 +39,7 @@ jobs:
           VERSION_FULL="${{ steps.version.outputs.full }}"
           VERSION_MINOR="${{ steps.version.outputs.minor }}"
           VERSION_MAJOR="${{ steps.version.outputs.major }}"
-          ARCH=$(echo "${{ matrix.platform }}" | cut -d/ -f2)
+          ARCH="${{ matrix.arch }}"
 
           case "$BRANCH" in
             master)
@@ -53,8 +59,6 @@ jobs:
 
           echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
 
-      - uses: docker/setup-qemu-action@v3
-
       - uses: docker/setup-buildx-action@v3
 
       - uses: docker/login-action@v3
@@ -66,11 +70,10 @@ jobs:
         with:
           context: .
           file: ${{ matrix.image }}/Dockerfile
-          platforms: ${{ matrix.platform }}
           push: true
           tags: ${{ steps.tags.outputs.tags }}
-          cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ matrix.platform }}
+          cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ matrix.arch }}
 
   manifest:
     name: Multi-arch manifest for ${{ matrix.image }}
