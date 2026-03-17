@@ -30,11 +30,10 @@ ingester:
 storage_config:
   object_prefix: loki
   aws:
-    s3: s3://CHANGE_ME:CHANGE_ME@CHANGE_ME/CHANGE_ME # Override via -s3.url or individual -s3.* flags
+    endpoint: CHANGE_ME # Override via -s3.endpoint
     region: CHANGE_ME # Override via -s3.region
     s3forcepathstyle: true
     bucketnames: CHANGE_ME # Override via -s3.buckets
-    endpoint: CHANGE_ME # Override via -s3.endpoint
     access_key_id: CHANGE_ME # Override via -s3.access-key-id
     secret_access_key: CHANGE_ME # Override via -s3.secret-access-key
 

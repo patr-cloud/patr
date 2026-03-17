@@ -21,8 +21,8 @@ ingester:
 blocks_storage:
   backend: s3
   s3:
-    bucket_name: CHANGE_ME # Override via -blocks-storage.s3.bucket-name
     endpoint: CHANGE_ME # Override via -blocks-storage.s3.endpoint
+    bucket_name: CHANGE_ME # Override via -blocks-storage.s3.bucket-name
     access_key_id: CHANGE_ME # Override via -blocks-storage.s3.access-key-id
     secret_access_key: CHANGE_ME # Override via -blocks-storage.s3.secret-access-key
     region: CHANGE_ME # Override via -blocks-storage.s3.region

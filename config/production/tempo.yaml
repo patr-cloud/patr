@@ -21,8 +21,8 @@ storage:
   trace:
     backend: s3
     s3:
-      bucket: CHANGE_ME # Override via -storage.trace.s3.bucket
       endpoint: CHANGE_ME # Override via -storage.trace.s3.endpoint
+      bucket: CHANGE_ME # Override via -storage.trace.s3.bucket
       access_key: CHANGE_ME # Override via -storage.trace.s3.access_key
       secret_key: CHANGE_ME # Override via -storage.trace.s3.secret_key
       region: CHANGE_ME # Override via -storage.trace.s3.region
