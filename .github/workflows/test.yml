@@ -1,0 +1,103 @@
+name: CI Tests
+
+on:
+  pull_request:
+    branches: [develop, staging, master]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust-checks:
+    name: Rust Checks
+    runs-on: ubuntu-latest
+    env:
+      SQLX_OFFLINE: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt, clippy
+
+      - run: cargo fmt --all -- --check
+
+      - run: cargo clippy --workspace --all-targets
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@nextest
+
+      - run: cargo nextest run --workspace
+
+  sqlx-check:
+    name: SQLx Offline Check
+    runs-on: ubuntu-latest
+    if: github.base_ref == 'staging' || github.base_ref == 'master'
+    services:
+      postgres:
+        image: postgis/postgis:18-3.6
+        env:
+          POSTGRES_DB: api
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@nightly
+
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli --no-default-features --features postgres
+
+      - name: Build API binary
+        run: cargo build --package api
+        env:
+          SQLX_OFFLINE: "true"
+
+      - name: Run API to initialize DB schema
+        run: timeout 30 ./target/debug/api || true
+        env:
+          PATR_DATABASE_HOST: localhost
+          PATR_REDIS_HOST: localhost
+
+      - name: Verify sqlx offline data
+        run: cargo sqlx prepare --check --workspace
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/api
+
+  frontend-checks:
+    name: Frontend Checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm lint:check
+
+      - run: pnpm format:check
