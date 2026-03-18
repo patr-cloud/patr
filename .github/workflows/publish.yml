@@ -4,13 +4,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    name: Build ${{ matrix.image }} (${{ matrix.arch }})
+  build-api:
+    name: Build api (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        image: [api, frontend]
         arch: [amd64, arm64]
         include:
           - arch: amd64
@@ -33,7 +32,7 @@ jobs:
       - name: Compute Docker tags
         id: tags
         run: |
-          IMAGE="patrcloud/${{ matrix.image }}"
+          IMAGE="patrcloud/api"
           BRANCH="${{ github.ref_name }}"
           VERSION_FULL="${{ steps.version.outputs.full }}"
           VERSION_MINOR="${{ steps.version.outputs.minor }}"
@@ -69,24 +68,87 @@ jobs:
             TAG_FLAGS="$TAG_FLAGS -t $TAG"
           done
 
-          BUILD_ARGS=""
-          if [ "${{ matrix.image }}" = "frontend" ]; then
-            BUILD_ARGS="--build-arg VITE_TURNSTILE_SITE_KEY=${{ secrets.VITE_TURNSTILE_SITE_KEY }} --build-arg VITE_BASE_URL=${{ secrets.VITE_BASE_URL }}"
-          fi
-
-          docker build $TAG_FLAGS $BUILD_ARGS -f ${{ matrix.image }}/Dockerfile .
+          docker build $TAG_FLAGS -f api/Dockerfile .
           for TAG in "${TAG_ARRAY[@]}"; do
             docker push "$TAG"
           done
 
-  manifest:
-    name: Multi-arch manifest for ${{ matrix.image }}
-    needs: build
-    runs-on: ubuntu-latest
+  build-frontend:
+    name: Build frontend (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        image: [api, frontend]
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from Cargo.toml
+        id: version
+        run: |
+          VERSION=$(grep '^package.version' Cargo.toml | sed 's/.*= *"\(.*\)"/\1/')
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f1-2)
+          echo "full=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
+          echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
+
+      - name: Compute Docker tags
+        id: tags
+        run: |
+          IMAGE="patrcloud/frontend"
+          BRANCH="${{ github.ref_name }}"
+          VERSION_FULL="${{ steps.version.outputs.full }}"
+          VERSION_MINOR="${{ steps.version.outputs.minor }}"
+          VERSION_MAJOR="${{ steps.version.outputs.major }}"
+          ARCH="${{ matrix.arch }}"
+
+          case "$BRANCH" in
+            master)
+              TAGS="${IMAGE}:${VERSION_MAJOR}-${ARCH},${IMAGE}:${VERSION_MINOR}-${ARCH},${IMAGE}:${VERSION_FULL}-${ARCH},${IMAGE}:latest-${ARCH},${IMAGE}:stable-${ARCH}"
+              ;;
+            staging)
+              TAGS="${IMAGE}:${VERSION_MAJOR}-beta-${ARCH},${IMAGE}:${VERSION_MINOR}-beta-${ARCH},${IMAGE}:${VERSION_FULL}-beta-${ARCH},${IMAGE}:staging-${ARCH},${IMAGE}:beta-${ARCH}"
+              ;;
+            develop)
+              TAGS="${IMAGE}:develop-${ARCH},${IMAGE}:alpha-${ARCH}"
+              ;;
+            *)
+              echo "::error::Branch '$BRANCH' is not allowed for Docker publishing. Use master, staging, or develop."
+              exit 1
+              ;;
+          esac
+
+          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Build and push
+        run: |
+          IFS=',' read -ra TAG_ARRAY <<< "${{ steps.tags.outputs.tags }}"
+          TAG_FLAGS=""
+          for TAG in "${TAG_ARRAY[@]}"; do
+            TAG_FLAGS="$TAG_FLAGS -t $TAG"
+          done
+
+          docker build $TAG_FLAGS \
+            --build-arg VITE_TURNSTILE_SITE_KEY=${{ secrets.VITE_TURNSTILE_SITE_KEY }} \
+            --build-arg VITE_BASE_URL=${{ secrets.VITE_BASE_URL }} \
+            -f frontend/Dockerfile .
+          for TAG in "${TAG_ARRAY[@]}"; do
+            docker push "$TAG"
+          done
+
+  manifest-api:
+    name: Multi-arch manifest for api
+    needs: build-api
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -105,7 +167,54 @@ jobs:
 
       - name: Create and push multi-arch manifests
         run: |
-          IMAGE="patrcloud/${{ matrix.image }}"
+          IMAGE="patrcloud/api"
+          BRANCH="${{ github.ref_name }}"
+          VERSION_FULL="${{ steps.version.outputs.full }}"
+          VERSION_MINOR="${{ steps.version.outputs.minor }}"
+          VERSION_MAJOR="${{ steps.version.outputs.major }}"
+
+          case "$BRANCH" in
+            master)
+              BASE_TAGS="${VERSION_MAJOR} ${VERSION_MINOR} ${VERSION_FULL} latest stable"
+              ;;
+            staging)
+              BASE_TAGS="${VERSION_MAJOR}-beta ${VERSION_MINOR}-beta ${VERSION_FULL}-beta staging beta"
+              ;;
+            develop)
+              BASE_TAGS="develop alpha"
+              ;;
+          esac
+
+          for TAG in $BASE_TAGS; do
+            docker manifest create "${IMAGE}:${TAG}" \
+              "${IMAGE}:${TAG}-amd64" \
+              "${IMAGE}:${TAG}-arm64"
+            docker manifest push "${IMAGE}:${TAG}"
+          done
+
+  manifest-frontend:
+    name: Multi-arch manifest for frontend
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from Cargo.toml
+        id: version
+        run: |
+          VERSION=$(grep '^package.version' Cargo.toml | sed 's/.*= *"\(.*\)"/\1/')
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f1-2)
+          echo "full=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
+          echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Create and push multi-arch manifests
+        run: |
+          IMAGE="patrcloud/frontend"
           BRANCH="${{ github.ref_name }}"
           VERSION_FULL="${{ steps.version.outputs.full }}"
           VERSION_MINOR="${{ steps.version.outputs.minor }}"
