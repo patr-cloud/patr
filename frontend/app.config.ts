@@ -10,6 +10,7 @@ const isCSR = process.env.VITE_BUILD_TARGET === "csr";
 
 export default defineConfig({
   ssr: !isCSR,
+  publicDir: resolve(__dirname, "../assets/frontend/public"),
   server: isCSR ? ({
     preset: "static",
   }) : undefined,
@@ -23,7 +24,6 @@ export default defineConfig({
     esbuild: {
       pure: ['console.log'],
     },
-    publicDir: resolve(__dirname, "../assets/frontend/public"),
     server: {
       fs: {
         allow: [resolve(__dirname, "../assets/frontend")]
