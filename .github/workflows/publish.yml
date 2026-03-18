@@ -68,7 +68,13 @@ jobs:
           for TAG in "${TAG_ARRAY[@]}"; do
             TAG_FLAGS="$TAG_FLAGS -t $TAG"
           done
-          docker build $TAG_FLAGS -f ${{ matrix.image }}/Dockerfile .
+
+          BUILD_ARGS=""
+          if [ "${{ matrix.image }}" = "frontend" ]; then
+            BUILD_ARGS="--build-arg VITE_TURNSTILE_SITE_KEY=${{ secrets.VITE_TURNSTILE_SITE_KEY }} --build-arg VITE_BASE_URL=${{ secrets.VITE_BASE_URL }}"
+          fi
+
+          docker build $TAG_FLAGS $BUILD_ARGS -f ${{ matrix.image }}/Dockerfile .
           for TAG in "${TAG_ARRAY[@]}"; do
             docker push "$TAG"
           done
