@@ -31,9 +31,9 @@ storage:
       max_workers: 100
       queue_depth: 10000
 
-# querier:
-#   frontend_worker:
-#     frontend_address: tracing:9095
+querier:
+  frontend_worker:
+    frontend_address: localhost:9095
 
 overrides:
   per_tenant_override_config: /etc/tempo/tempo-overrides.yaml

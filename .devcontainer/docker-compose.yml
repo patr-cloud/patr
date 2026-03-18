@@ -82,25 +82,7 @@ services:
         aliases:
           - tracing
 
-  # Forwards OpenTelemetry logs to Loki
   logs:
-    image: otel/opentelemetry-collector:0.146.0
-    restart: unless-stopped
-    command: "--config=/etc/otel/config.yaml"
-    expose:
-      - 4317
-      - 4318
-    volumes:
-      - ../config/otel-collector-config.yaml:/etc/otel/config.yaml:ro
-    hostname: logs
-    networks:
-      vpc:
-        aliases:
-          - logs
-    depends_on:
-      - loki
-
-  loki:
     image: grafana/loki:3.2.0
     restart: unless-stopped
     command: "-config.file=/etc/loki/loki.yaml"
@@ -110,11 +92,11 @@ services:
     volumes:
       - ../config/loki.yaml:/etc/loki/loki.yaml:ro
       - loki-data:/var/lib/loki
-    hostname: loki
+    hostname: logs
     networks:
       vpc:
         aliases:
-          - loki
+          - logs
 
   metrics:
     image: grafana/mimir:2.13.0

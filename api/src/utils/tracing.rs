@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use opentelemetry::{global, trace::TracerProvider as _};
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_otlp::{
@@ -6,6 +8,7 @@ use opentelemetry_otlp::{
 	Protocol,
 	SpanExporter,
 	WithExportConfig,
+	WithHttpConfig,
 	WithTonicConfig,
 	tonic_types::metadata::MetadataMap,
 };
@@ -39,10 +42,13 @@ pub fn setup_tracing(
 	metadata.insert("x-scope-orgid", "patr".parse().unwrap());
 
 	let logger_exporter = LogExporter::builder()
-		.with_tonic()
-		.with_metadata(metadata.clone())
-		.with_endpoint(&config.opentelemetry.logs.endpoint)
-		.with_protocol(Protocol::Grpc)
+		.with_http()
+		.with_headers(HashMap::from([(
+			"x-scope-orgid".to_string(),
+			"patr".to_string(),
+		)]))
+		.with_endpoint(format!("{}/otlp/v1/logs", config.opentelemetry.logs.endpoint))
+		.with_protocol(Protocol::HttpJson)
 		.build()
 		.expect("Failed to build OpenTelemetry logging pipeline");
 

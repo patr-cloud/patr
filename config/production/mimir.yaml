@@ -9,8 +9,6 @@ distributor:
   ring:
     kvstore:
       store: memberlist
-  otlp:
-    convert_all_attributes: true
 
 ingester:
   ring:
@@ -20,6 +18,7 @@ ingester:
 
 blocks_storage:
   backend: s3
+  storage_prefix: mimir/
   s3:
     endpoint: CHANGE_ME # Override via -blocks-storage.s3.endpoint
     bucket_name: CHANGE_ME # Override via -blocks-storage.s3.bucket-name
@@ -30,15 +29,15 @@ blocks_storage:
     sync_dir: /var/lib/mimir/tsdb-sync
   tsdb:
     dir: /var/lib/mimir/tsdb
-    storage_prefix: mimir/
 
 compactor:
   data_dir: /var/lib/mimir/compactor
   sharding_ring:
     kvstore:
       store: memberlist
-  deletion_enabled: true
-  blocks_retention_period: 2160h # 90 days
+
+limits:
+  compactor_blocks_retention_period: 2160h # 90 days
 
 store_gateway:
   sharding_ring:
