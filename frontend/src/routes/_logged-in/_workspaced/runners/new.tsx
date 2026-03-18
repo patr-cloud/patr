@@ -1,14 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { createSignal } from "solid-js";
 import { AddRunnerToWorkspaceResponse } from "~/bindings";
-import {
-	Button,
-	ButtonVariant,
-	PageContainer,
-	PageContainerBody,
-	PageContainerHead,
-	useToast,
-} from "~/components";
+import { Button, ButtonVariant, PageContainer, PageContainerBody, PageContainerHead, useToast } from "~/components";
 import Input, { InputType } from "~/components/input";
 import InputLabel from "~/components/input-label";
 import { createFormAction } from "~/hooks";
@@ -28,12 +21,12 @@ const CreateRunnerPage = () => {
 					name: name(),
 				}),
 			}
-		)
+		);
 
 		if (!response.ok) {
 			console.error("Failed to create runner:", response.data.error);
 			toast("Failed to create runner", "error");
-			return
+			return;
 		}
 
 		const runnerId = response.data.id;
@@ -41,7 +34,7 @@ const CreateRunnerPage = () => {
 		toast("Runner created successfully", "success");
 		setName("");
 		navigate({ to: `/runners/${runnerId}` });
-	})
+	});
 
 	return (
 		<PageContainer>
@@ -90,7 +83,7 @@ const CreateRunnerPage = () => {
 				</form>
 			</PageContainerBody>
 		</PageContainer>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/runners/new")({

@@ -7,7 +7,7 @@ const AuthLayout = () => {
 			<BgOnboard />
 			<Outlet />
 		</main>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-out")({

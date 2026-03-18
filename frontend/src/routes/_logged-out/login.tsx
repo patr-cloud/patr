@@ -27,12 +27,12 @@ const Login = () => {
 		userId: "",
 		password: "",
 		mfaOtp: "",
-	})
+	});
 	const [inputError, setInputError] = createSignal<InputFields>({
 		userId: "",
 		password: "",
 		mfaOtp: "",
-	})
+	});
 
 	const handleInput = (e: InputEventT) => {
 		e.preventDefault();
@@ -41,7 +41,7 @@ const Login = () => {
 
 		setInputs((prev) => ({ ...prev, [id]: value }));
 		setInputError((prev) => ({ ...prev, [id]: "" }));
-	}
+	};
 
 	const validateInputs = (): boolean => {
 		const { userId, password } = inputs();
@@ -59,7 +59,7 @@ const Login = () => {
 			setInputError((prev) => ({
 				...prev,
 				password: "Password cannot be empty.",
-			}))
+			}));
 			return false;
 		}
 
@@ -68,7 +68,7 @@ const Login = () => {
 			setInputError((prev) => ({
 				...prev,
 				password: passwordValidation.error || "Invalid password.",
-			}))
+			}));
 			return false;
 		}
 
@@ -78,7 +78,7 @@ const Login = () => {
 		}
 
 		return true;
-	}
+	};
 
 	const { execute: submitLogin, isLoading } = createAsyncAction(async () => {
 		const { userId, password } = inputs();
@@ -89,12 +89,12 @@ const Login = () => {
 			password,
 			mfaOtp: showMfa() && mfaOtp() !== "" ? mfaOtp() : undefined,
 			cfTurnstileToken: turnstileToken(),
-		}
+		};
 
 		const loginResp = await httpRequest<LoginResponse>("/api/auth/sign-in", {
 			method: "POST",
 			body: JSON.stringify(requestBody),
-		})
+		});
 
 		if (loginResp.ok) {
 			console.log("Login successful");
@@ -119,24 +119,24 @@ const Login = () => {
 					setInputError((prev) => ({
 						...prev,
 						password: "Incorrect password. Please try again.",
-					}))
-					break
+					}));
+					break;
 				case "userNotFound":
 				case "invalidEmail":
 					setInputError((prev) => ({
 						...prev,
 						userId: "User not found. Please check your username.",
-					}))
-					break
+					}));
+					break;
 				case "mfaRequired":
 					setShowMfa(true);
-					break
+					break;
 				default:
 					toast("Error during login: " + loginResp.statusText, "error");
-					break
+					break;
 			}
 		}
-	})
+	});
 
 	return (
 		<>
@@ -240,7 +240,7 @@ const Login = () => {
 				<p class="text-gray-500 text-xs">&copy; 2025 Patr. All rights reserved.</p>
 			</div>
 		</>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-out/login")({

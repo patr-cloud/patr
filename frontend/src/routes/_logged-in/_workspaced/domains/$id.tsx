@@ -45,13 +45,13 @@ const DomainInfo = () => {
 
 	const resourceParams = createMemo(() => {
 		return [authState(), workspaceId(), params().id] as const;
-	})
+	});
 
 	const [domainInfo, { refetch: refetchDomainInfo }] = createResource(
 		resourceParams,
 		async ([auth, wsId, domainId]) => {
 			if (!wsId || !auth || auth.type !== "LoggedIn" || !domainId) {
-				return
+				return;
 			}
 
 			// Fetch domain info logic goes here
@@ -60,23 +60,23 @@ const DomainInfo = () => {
 				{
 					method: "GET",
 				}
-			)
+			);
 
 			if (!resource.ok) {
 				console.error("Failed to fetch domain info:", resource.data.error);
 				toast("Failed to fetch domain info", "error");
-				return
+				return;
 			}
 
 			return resource.data;
 		}
-	)
+	);
 
 	const [managedUrls, { refetch: refetchManagedUrls }] = createResource(
 		resourceParams,
 		async ([auth, wsId, domainId]) => {
 			if (!wsId || !auth || auth.type !== "LoggedIn" || !domainId) {
-				return
+				return;
 			}
 
 			// Fetch managed URLs logic goes here
@@ -85,17 +85,17 @@ const DomainInfo = () => {
 				{
 					method: "GET",
 				}
-			)
+			);
 
 			if (!resource.ok) {
 				console.error("Failed to fetch managed URLs:", resource.data.error);
 				toast("Failed to fetch managed URLs", "error");
-				return
+				return;
 			}
 
 			return resource.data;
 		}
-	)
+	);
 
 	const { onSubmit: onSubmitCreateManagedUrl, isLoading: isCreatingManagedUrl } = createFormAction(
 		async ({ workspaceId }) => {
@@ -103,14 +103,14 @@ const DomainInfo = () => {
 
 			if (!domainId) {
 				toast("Domain ID is missing", "error");
-				return
+				return;
 			}
 
 			const urlTypeVal = urlType();
 			const targetVal = target();
 			if (!urlTypeVal || !subDomain() || !targetVal) {
 				toast("Please fill in all required fields", "error");
-				return
+				return;
 			}
 
 			const requestBody: CreateManagedURLRequest = {
@@ -120,7 +120,7 @@ const DomainInfo = () => {
 				type: "proxyDeployment",
 				deploymentId: targetVal,
 				port: deploymentPort() || 80,
-			}
+			};
 
 			const response = await httpRequest<CreateManagedURLResponse>(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/infrastructure/managed-url`,
@@ -128,26 +128,26 @@ const DomainInfo = () => {
 					method: "POST",
 					body: JSON.stringify(requestBody),
 				}
-			)
+			);
 
 			if (!response.ok) {
 				console.error("Failed to create managed URL:", response.data.error);
 				toast("Failed to create managed URL", "error");
-				return
+				return;
 			}
 
 			toast("Managed URL created successfully", "success");
 
 			refetchManagedUrls();
 		}
-	)
+	);
 
 	const { execute: onVerifyClick, isLoading: verifyLoading } = createAuthenticatedAction(async ({ workspaceId }) => {
 		const domainId = params().id;
 
 		if (!domainId) {
 			toast("Unable to verify domain", "error");
-			return
+			return;
 		}
 
 		const verifyResp = await httpRequest<GetDomainInfoInWorkspaceResponse>(
@@ -155,17 +155,17 @@ const DomainInfo = () => {
 			{
 				method: "POST",
 			}
-		)
+		);
 
 		if (!verifyResp.ok) {
 			console.error("Failed to verify domain:", verifyResp.data.error);
 			toast("Failed to verify domain", "error");
-			return
+			return;
 		}
 
 		toast("Domain verification initiated", "success");
 		refetchDomainInfo();
-	})
+	});
 
 	const { execute: onClickDelete, isLoading: deleteLoading } = createAuthenticatedAction(
 		async ({ accessToken, workspaceId }) => {
@@ -173,7 +173,7 @@ const DomainInfo = () => {
 
 			if (!workspaceId || !accessToken || !domainId) {
 				toast("Unable to delete domain", "error");
-				return
+				return;
 			}
 
 			const deleteDomainResp = await httpRequest<DeleteDomainInWorkspaceResponse>(
@@ -181,22 +181,22 @@ const DomainInfo = () => {
 				{
 					method: "DELETE",
 				}
-			)
+			);
 
 			if (!deleteDomainResp.ok) {
 				console.error("Failed to delete domain:", deleteDomainResp.data.error);
 				if (deleteDomainResp.data.error === "resourceInUse") {
 					toast("Cannot delete domain: Domain is in use by managed URL(s)", "error");
-					return
+					return;
 				}
 				toast("Failed to delete domain", "error");
-				return
+				return;
 			}
 
 			toast("Domain deleted successfully", "success");
 			navigate({ to: "/domains" });
 		}
-	)
+	);
 
 	const urlInput = () => {
 		const urlTypeVal = urlType();
@@ -209,11 +209,11 @@ const DomainInfo = () => {
 						port={deploymentPort() || 80}
 						onPortChange={(port) => setDeploymentPort(port)}
 					/>
-				)
+				);
 			default:
 				return <Input disabled={true} placeholder="Select URL Type" class="flex-4" />;
 		}
-	}
+	};
 
 	return (
 		<PageContainer>
@@ -243,8 +243,8 @@ const DomainInfo = () => {
 									isLoading={deleteLoading()}
 									title="Delete Domain"
 									onClickDelete={(e) => {
-										e.preventDefault()
-										onClickDelete()
+										e.preventDefault();
+										onClickDelete();
 									}}
 									resourceName={domainInfo.latest?.name || ""}
 								/>
@@ -252,8 +252,8 @@ const DomainInfo = () => {
 									<Button
 										type="button"
 										onClick={(e) => {
-											e.preventDefault()
-											onVerifyClick()
+											e.preventDefault();
+											onVerifyClick();
 										}}
 										variant={ButtonVariant.Contained}
 										loading={verifyLoading()}
@@ -391,7 +391,7 @@ const DomainInfo = () => {
 				</Suspense>
 			</ErrorBoundary>
 		</PageContainer>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/domains/$id")({

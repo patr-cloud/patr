@@ -28,7 +28,7 @@ const UserSettingsPage = () => {
 			try {
 				const response = await httpRequest<GetUserInfoResponse>(`${import.meta.env.VITE_BASE_URL}/api/user`, {
 					method: "GET",
-				})
+				});
 
 				if (!response.ok) {
 					console.error("Failed to fetch workspaces:", response.data.error);
@@ -42,7 +42,7 @@ const UserSettingsPage = () => {
 				return undefined;
 			}
 		}
-	)
+	);
 
 	const onUpdateName = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
 		e.preventDefault();
@@ -50,7 +50,7 @@ const UserSettingsPage = () => {
 
 		if (!auth || auth.type !== "LoggedIn") {
 			toast("You must be logged in to update your name", "error");
-			return
+			return;
 		}
 
 		try {
@@ -60,12 +60,12 @@ const UserSettingsPage = () => {
 					firstName: userInfo.latest?.firstName,
 					lastName: userInfo.latest?.lastName,
 				}),
-			})
+			});
 
 			if (!response.ok) {
 				console.error("Failed to update user info:", response.data.error);
 				toast("Failed to update user info", "error");
-				return
+				return;
 			}
 
 			toast("User info updated successfully", "success");
@@ -74,7 +74,7 @@ const UserSettingsPage = () => {
 			console.error("Failed to update user info:", error);
 			toast("Failed to update user info", "error");
 		}
-	}
+	};
 
 	return (
 		<PageContainer>
@@ -88,7 +88,7 @@ const UserSettingsPage = () => {
 				bottomContent={() => (
 					<HeadTab
 						tab={tab}
-					tabItems={[
+						tabItems={[
 							{
 								label: "Info",
 								value: "",
@@ -115,7 +115,7 @@ const UserSettingsPage = () => {
 				</Suspense>
 			</PageContainerBody>
 		</PageContainer>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/profile/")({

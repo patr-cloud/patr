@@ -27,11 +27,11 @@ const ListApiTokens = () => {
 	const pagination = createPaginationState({
 		search: () => search(),
 		navigate,
-	})
+	});
 
 	const fetchParams = createMemo(() => {
 		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
-	})
+	});
 
 	const [apiTokens] = createResource(fetchParams, async ([auth, wsId, page, count]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") {
@@ -43,7 +43,7 @@ const ListApiTokens = () => {
 			{
 				method: "GET",
 			}
-		)
+		);
 
 		if (!response.ok) {
 			console.error("Failed to fetch API Tokens:", response.data.error);
@@ -54,7 +54,7 @@ const ListApiTokens = () => {
 		pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
 
 		return { tokens: response.data.tokens };
-	})
+	});
 
 	return (
 		<PageContainer>
@@ -112,7 +112,7 @@ const ListApiTokens = () => {
 				</Suspense>
 			</PageContainerBody>
 		</PageContainer>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/profile/api-tokens/")({

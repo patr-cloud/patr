@@ -21,13 +21,13 @@ const RoleInfo = () => {
 
 	const fetchParams = createMemo(() => {
 		return [authState(), workspaceId(), params().roleId] as const;
-	})
+	});
 
 	const [workspaceInfo] = createResource(
 		() => [authState(), workspaceId()] as const,
 		async ([auth, workspaceId]) => {
 			if (!auth || auth.type !== "LoggedIn" || !workspaceId) {
-				return
+				return;
 			}
 
 			const response = await httpRequest<GetWorkspaceInfoResponse>(
@@ -35,23 +35,23 @@ const RoleInfo = () => {
 				{
 					method: "GET",
 				}
-			)
+			);
 			console.log("Workspace info response:", response.data);
 			if (!response.ok) {
 				console.error("Failed to fetch workspace info:", response.data.error);
 				toast("Failed to fetch workspace info", "error");
-				return
+				return;
 			}
 
 			return response.data;
 		}
-	)
+	);
 
 	const [roleInfo, { refetch: refetchRoleInfo }] = createResource(
 		fetchParams,
 		async ([auth, workspaceId, roleId]) => {
 			if (!auth || auth.type !== "LoggedIn" || !workspaceId || !roleId) {
-				return
+				return;
 			}
 			console.log("Fetching role info for workspaceId:", workspaceId, "roleId:", roleId);
 			const response = await httpRequest<GetRoleInfoResponse>(
@@ -59,17 +59,17 @@ const RoleInfo = () => {
 				{
 					method: "GET",
 				}
-			)
+			);
 			console.log("Role info response:", response.data);
 			if (!response.ok) {
 				console.error("Failed to fetch role info:", response.data.error);
 				toast("Failed to fetch role info", "error");
-				return
+				return;
 			}
 
 			return response.data;
 		}
-	)
+	);
 
 	return (
 		<PageContainer>
@@ -109,7 +109,7 @@ const RoleInfo = () => {
 				</ErrorBoundary>
 			</PageContainerBody>
 		</PageContainer>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/workspace/roles/$roleId")({

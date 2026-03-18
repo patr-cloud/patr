@@ -35,28 +35,28 @@ const RoleRow = (props: {
 		const auth = authState();
 		if (!auth || auth.type !== "LoggedIn") {
 			toast("You must be logged in to delete a role", "error");
-			return
+			return;
 		}
 
 		const wsId = workspaceId();
 		if (!wsId) {
 			toast("Workspace ID is missing", "error");
-			return
+			return;
 		}
 
 		const resp = await httpRequest(`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/role/${roleId}`, {
 			method: "DELETE",
-		})
+		});
 
 		if (!resp.ok) {
 			console.error("Failed to delete role:", resp.data.error);
 			toast(resp.data.message, "error");
-			return
+			return;
 		}
 
 		toast("Role deleted successfully", "success");
 		props.refetch();
-	}
+	};
 
 	return (
 		<tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
@@ -86,7 +86,7 @@ const RoleRow = (props: {
 				</Button>
 			</td>
 		</tr>
-	)
+	);
 };
 
 const ManageRoles = () => {
@@ -98,32 +98,32 @@ const ManageRoles = () => {
 	const pagination = createPaginationState({
 		search: () => search(),
 		navigate,
-	})
+	});
 	const resourceParamsWorkspace = () => {
 		return [authState(), workspaceId()] as const;
-	}
+	};
 
 	const [workspaceInfo] = createResource(resourceParamsWorkspace, async ([auth, id]) => {
 		if (!auth || auth.type !== "LoggedIn" || id === "") {
-			return
+			return;
 		}
 		const response = await httpRequest<GetWorkspaceInfoResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}`,
 			{
 				method: "GET",
 			}
-		)
+		);
 		if (!response.ok) {
 			console.error("Failed to fetch workspace info:", response.data.error);
 			toast("Failed to fetch workspace info", "error");
 			return undefined;
 		}
 		return response.data;
-	})
+	});
 
 	const rolesFetchParams = () => {
 		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
-	}
+	};
 
 	const [roles, { refetch: refetchRoles }] = createResource(rolesFetchParams, async ([auth, id, page, count]) => {
 		if (!auth || auth.type !== "LoggedIn" || id === "") {
@@ -134,7 +134,7 @@ const ManageRoles = () => {
 			{
 				method: "GET",
 			}
-		)
+		);
 		if (!response.ok) {
 			console.error("Failed to fetch roles:", response.data.error);
 			toast("Failed to fetch roles", "error");
@@ -142,7 +142,7 @@ const ManageRoles = () => {
 		}
 		pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
 		return response.data;
-	})
+	});
 
 	return (
 		<PageContainer>
@@ -171,7 +171,7 @@ const ManageRoles = () => {
 				</div>
 			</PageContainerBody>
 		</PageContainer>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/workspace/roles/")({

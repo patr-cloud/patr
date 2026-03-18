@@ -47,7 +47,10 @@ pub fn setup_tracing(
 			"x-scope-orgid".to_string(),
 			"patr".to_string(),
 		)]))
-		.with_endpoint(format!("{}/otlp/v1/logs", config.opentelemetry.logs.endpoint))
+		.with_endpoint(format!(
+			"{}/otlp/v1/logs",
+			config.opentelemetry.logs.endpoint
+		))
 		.with_protocol(Protocol::HttpJson)
 		.build()
 		.expect("Failed to build OpenTelemetry logging pipeline");

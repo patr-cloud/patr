@@ -26,30 +26,30 @@ const ConfirmSignUp = () => {
 		initialOtp
 			? [...initialOtp.replace(/\D/g, "").slice(0, 6).padEnd(6, " ")].map((c) => (c === " " ? "" : c))
 			: ["", "", "", "", "", ""]
-	)
+	);
 
 	// Clear URL params after reading them
 	onMount(() => {
 		if (search().username || search().otp) {
 			navigate({ to: "/confirm-signup", search: { username: undefined, otp: undefined }, replace: true });
 		}
-	})
+	});
 
 	const { execute: submitConfirmation, isLoading } = createAsyncAction(async () => {
 		if (!turnstileToken()) {
 			toast("Please complete the security verification", "error");
-			return
+			return;
 		}
 
 		const body: CompleteSignUpRequest = {
 			username: username(),
 			verificationToken: otpDigits().join(""),
 			cfTurnstileToken: turnstileToken(),
-		}
+		};
 		const resp = await httpRequest("/api/auth/join", {
 			method: "POST",
 			body: JSON.stringify(body),
-		})
+		});
 
 		if (resp.ok) {
 			console.log("Account confirmed successfully");
@@ -58,12 +58,12 @@ const ConfirmSignUp = () => {
 			console.error("Error confirming account:", resp.data.error);
 			toast("Error confirming account", "error");
 		}
-	})
+	});
 
 	const onSubmit = async (e: Event) => {
 		e.preventDefault();
 		await submitConfirmation().catch(() => {});
-	}
+	};
 
 	return (
 		<form
@@ -132,7 +132,7 @@ const ConfirmSignUp = () => {
 				</Button>
 			</div>
 		</form>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-out/confirm-signup")({

@@ -35,19 +35,19 @@ const CreateContainerRepository = () => {
 
 		if (!auth || auth.type !== "LoggedIn" || !wsId) {
 			toast("User not logged in", "error");
-			return
+			return;
 		}
 
 		if (!repositoryName().trim()) {
 			toast("Repository name is required", "error");
-			return
+			return;
 		}
 
 		setIsSubmitting(true);
 
 		const requestBody: CreateContainerRepositoryRequest = {
 			name: repositoryName().trim(),
-		}
+		};
 
 		const response = await httpRequest<CreateContainerRepositoryResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry`,
@@ -55,19 +55,19 @@ const CreateContainerRepository = () => {
 				method: "POST",
 				body: JSON.stringify(requestBody),
 			}
-		)
+		);
 
 		setIsSubmitting(false);
 
 		if (!response.ok) {
 			toast("Failed to create repository", "error");
-			return
+			return;
 		}
 
 		toast("Repository created successfully", "success");
 		setRepositoryName("");
 		navigate({ to: `/container-registry/${response.data.id}` });
-	}
+	};
 	return (
 		<PageContainer>
 			<PageContainerHead
@@ -127,7 +127,7 @@ const CreateContainerRepository = () => {
 				</form>
 			</PageContainerBody>
 		</PageContainer>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/container-registry/new")({

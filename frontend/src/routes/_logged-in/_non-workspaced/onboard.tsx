@@ -36,24 +36,24 @@ const WorkspaceOnboard = () => {
 		const auth = authState();
 		if (!auth || auth.type !== "LoggedIn") {
 			toast("You must be logged in to create a workspace", "error");
-			return
+			return;
 		}
 
 		const requestBody = {
 			name: workspaceName(),
-		}
+		};
 
 		setIsLoading(true);
 		const response = await httpRequest<CreateWorkspaceResponse>(`${import.meta.env.VITE_BASE_URL}/api/workspace`, {
 			method: "POST",
 			body: JSON.stringify(requestBody),
-		})
+		});
 
 		if (!response.ok) {
 			console.error("Failed to create workspace:", response.data.error);
 			toast("Failed to create workspace", "error");
 			setIsLoading(false);
-			return
+			return;
 		}
 
 		toast("Workspace created successfully", "success");
@@ -65,7 +65,7 @@ const WorkspaceOnboard = () => {
 		}
 
 		setIsLoading(false);
-	}
+	};
 
 	return (
 		<Suspense fallback={<div>Loading...</div>}>
@@ -112,7 +112,7 @@ const WorkspaceOnboard = () => {
 				</div>
 			</main>
 		</Suspense>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_non-workspaced/onboard")({

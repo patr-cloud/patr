@@ -31,11 +31,11 @@ const ListRunnersPage = () => {
 	const pagination = createPaginationState({
 		search: () => search(),
 		navigate,
-	})
+	});
 
 	const fetchParams = createMemo(() => {
 		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
-	})
+	});
 
 	const [runners] = createResource(fetchParams, async ([auth, wsId, page, count]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") {
@@ -46,7 +46,7 @@ const ListRunnersPage = () => {
 			{
 				method: "GET",
 			}
-		)
+		);
 
 		if (!response.ok) {
 			console.error("Failed to fetch runners:", response.data.error);
@@ -59,7 +59,7 @@ const ListRunnersPage = () => {
 
 		console.log("Fetched runners:", response.data);
 		return response.data;
-	})
+	});
 
 	return (
 		<PageContainer>
@@ -76,7 +76,7 @@ const ListRunnersPage = () => {
 						<Link href="/runners/new" buttonVariant={ButtonVariant.Plain} external={false}>
 							Add Runner
 						</Link>
-					)
+					);
 				}}
 			/>
 			<PageContainerBody class="flex flex-col justify-between gap-8">
@@ -129,7 +129,7 @@ const ListRunnersPage = () => {
 				</ErrorBoundary>
 			</PageContainerBody>
 		</PageContainer>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/runners/")({

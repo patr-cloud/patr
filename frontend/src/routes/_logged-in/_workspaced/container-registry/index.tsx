@@ -26,11 +26,11 @@ const ListContainerRepositories = () => {
 	const pagination = createPaginationState({
 		search: () => search(),
 		navigate,
-	})
+	});
 
 	const resourceParams = createMemo(() => {
 		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
-	})
+	});
 
 	const [repositories] = createResource(resourceParams, async ([auth, wsId, page, count]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") {
@@ -42,7 +42,7 @@ const ListContainerRepositories = () => {
 			{
 				method: "GET",
 			}
-		)
+		);
 
 		if (!response.ok) {
 			toast("Failed to fetch repositories", "error");
@@ -52,7 +52,7 @@ const ListContainerRepositories = () => {
 		pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
 
 		return response.data;
-	})
+	});
 
 	return (
 		<PageContainer>
@@ -113,7 +113,7 @@ const ListContainerRepositories = () => {
 				</ErrorBoundary>
 			</PageContainerBody>
 		</PageContainer>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/container-registry/")({

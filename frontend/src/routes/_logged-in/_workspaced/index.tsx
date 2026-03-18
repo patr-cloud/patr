@@ -31,7 +31,7 @@ const QuickActionCard = (props: QuickActionProps) => {
 				<FiArrowRight class="transition-transform group-hover:translate-x-1" />
 			</div>
 		</Link>
-	)
+	);
 };
 
 interface ResourceLinkProps {
@@ -56,7 +56,7 @@ const ResourceLink = (props: ResourceLinkProps) => {
 			</div>
 			<FiArrowRight class="ml-auto shrink-0 text-gray-600 group-hover:text-primary transition-colors" />
 		</Link>
-	)
+	);
 };
 
 const HomePage = () => {
@@ -84,7 +84,7 @@ const HomePage = () => {
 			icon: FiGlobe,
 			color: "bg-success/15 text-success",
 		},
-	]
+	];
 
 	const resources: ResourceLinkProps[] = [
 		{
@@ -111,7 +111,7 @@ const HomePage = () => {
 			href: "/workspace",
 			icon: FiZap,
 		},
-	]
+	];
 
 	return (
 		<PageContainer>
@@ -150,7 +150,7 @@ const HomePage = () => {
 				</div>
 			</PageContainerBody>
 		</PageContainer>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/")({

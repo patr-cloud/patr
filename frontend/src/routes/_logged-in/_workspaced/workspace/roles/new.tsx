@@ -25,43 +25,43 @@ const CreateRoles = () => {
 
 	const resourceParamsWorkspace = () => {
 		return [authState(), workspaceId()] as const;
-	}
+	};
 
 	const [workspaceInfo] = createResource(resourceParamsWorkspace, async ([auth, id]) => {
 		if (!auth || auth.type !== "LoggedIn" || id === "") {
-			return
+			return;
 		}
 		const response = await httpRequest<GetWorkspaceInfoResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}`,
 			{
 				method: "GET",
 			}
-		)
+		);
 		if (!response.ok) {
 			console.error("Failed to fetch workspace info:", response.data.error);
 			toast("Failed to fetch workspace info", "error");
 			return undefined;
 		}
 		return response.data;
-	})
+	});
 
 	const { execute: handleSubmit, isLoading: isSubmitting } = createAuthenticatedAction(
 		async ({ accessToken, workspaceId }) => {
 			if (!roleName().trim()) {
 				toast("Please enter a role name", "error");
-				return
+				return;
 			}
 
 			if (selectedPermissionIds().size === 0) {
 				toast("Please select at least one permission", "error");
-				return
+				return;
 			}
 
 			const requestBody: CreateNewRoleRequest = {
 				name: roleName().trim(),
 				description: roleDescription().trim() || `Role: ${roleName().trim()}`,
 				permissions: permissionsData(),
-			}
+			};
 
 			const response = await httpRequest<CreateNewRoleResponse>(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role`,
@@ -69,18 +69,18 @@ const CreateRoles = () => {
 					method: "POST",
 					body: JSON.stringify(requestBody),
 				}
-			)
+			);
 
 			if (!response.ok) {
 				console.error("Failed to create role:", response.data.error);
 				toast(response.data.error || "Failed to create role", "error");
-				return
+				return;
 			}
 
 			toast("Role created successfully", "success");
 			navigate({ to: "/workspace/roles" });
 		}
-	)
+	);
 
 	return (
 		<PageContainer>
@@ -142,7 +142,7 @@ const CreateRoles = () => {
 				</div>
 			</PageContainerBody>
 		</PageContainer>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/workspace/roles/new")({

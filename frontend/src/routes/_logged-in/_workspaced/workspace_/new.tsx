@@ -26,22 +26,22 @@ const CreateWorkspace = () => {
 		const auth = authState();
 		if (!auth || auth.type !== "LoggedIn") {
 			toast("You must be logged in to create a workspace", "error");
-			return
+			return;
 		}
 
 		const requestBody = {
 			name: workspaceName(),
-		}
+		};
 
 		const response = await httpRequest<CreateWorkspaceResponse>(`${import.meta.env.VITE_BASE_URL}/api/workspace`, {
 			method: "POST",
 			body: JSON.stringify(requestBody),
-		})
+		});
 
 		if (!response.ok) {
 			console.error("Failed to create workspace:", response.data.error);
 			toast("Failed to create workspace", "error");
-			return
+			return;
 		}
 
 		toast("Workspace created successfully", "success");
@@ -50,7 +50,7 @@ const CreateWorkspace = () => {
 		if (!currentWorkspaceName() && response.data.id) {
 			setCurrentWorkspaceName(response.data.id);
 		}
-	})
+	});
 
 	return (
 		<PageContainer>
@@ -73,7 +73,7 @@ const CreateWorkspace = () => {
 						e.preventDefault();
 						await createWorkspace().catch(() => {
 							toast("An unexpected error occurred while creating the workspace", "error");
-						})
+						});
 					}}
 				>
 					<div class="flex gap-4 items-center">
@@ -100,7 +100,7 @@ const CreateWorkspace = () => {
 				</form>
 			</PageContainerBody>
 		</PageContainer>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/workspace_/new")({

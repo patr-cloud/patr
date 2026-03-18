@@ -1,11 +1,5 @@
 import { createFileRoute } from "@tanstack/solid-router";
-import {
-	Button,
-	CopyableField,
-	PageContainer,
-	PageContainerBody,
-	useToast,
-} from "~/components";
+import { Button, CopyableField, PageContainer, PageContainerBody, useToast } from "~/components";
 import Input, { InputType } from "~/components/input";
 import InputLabel from "~/components/input-label";
 import WorkspaceHeader from "./-components/workspace-header";
@@ -22,7 +16,7 @@ const General = () => {
 	const toast = useToast();
 	const resourceParamsWorkspace = () => {
 		return [authState(), workspaceId()] as const;
-	}
+	};
 
 	const [name, setName] = createSignal("");
 	const [hasUpdated, setHasUpdated] = createSignal(false);
@@ -31,14 +25,14 @@ const General = () => {
 		resourceParamsWorkspace,
 		async ([auth, id]) => {
 			if (!auth || auth.type !== "LoggedIn" || id === "") {
-				return
+				return;
 			}
 			const response = await httpRequest<GetWorkspaceInfoResponse>(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}`,
 				{
 					method: "GET",
 				}
-			)
+			);
 			if (!response.ok) {
 				console.error("Failed to fetch workspace info:", response.data.error);
 				toast("Failed to fetch workspace info", "error");
@@ -46,14 +40,14 @@ const General = () => {
 			}
 			return response.data;
 		}
-	)
+	);
 
 	createEffect(() => {
 		const info = workspaceInfo();
 		if (info?.name) {
 			setName(info.name);
 		}
-	})
+	});
 
 	const onSubmit = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
 		e.preventDefault();
@@ -63,25 +57,25 @@ const General = () => {
 
 		if (!auth || auth.type !== "LoggedIn" || id === "") {
 			toast("You must be logged in to update the workspace", "error");
-			return
+			return;
 		}
 
 		const newName = name().trim();
 		if (!newName) {
 			toast("Please enter a workspace name", "error");
-			return
+			return;
 		}
 
 		try {
 			const response = await httpRequest(`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}`, {
 				method: "PATCH",
 				body: JSON.stringify({ name: newName }),
-			})
+			});
 
 			if (!response.ok) {
 				console.error("Failed to update workspace name:", response.data);
 				toast("Failed to update workspace name", "error");
-				return
+				return;
 			}
 
 			toast("Workspace name updated successfully", "success");
@@ -91,7 +85,7 @@ const General = () => {
 			console.error("Failed to update workspace name:", error);
 			toast("Failed to update workspace name", "error");
 		}
-	}
+	};
 
 	return (
 		<PageContainer>
@@ -112,7 +106,7 @@ const General = () => {
 							<Input
 								value={name()}
 								onInput={(e) => {
-									setHasUpdated(true)
+									setHasUpdated(true);
 									setName(e.currentTarget.value);
 								}}
 								class="flex-10"
@@ -135,7 +129,7 @@ const General = () => {
 				</form>
 			</PageContainerBody>
 		</PageContainer>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/workspace/")({

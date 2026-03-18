@@ -2,13 +2,7 @@ import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
 import { createMemo, createResource, createSignal, Suspense } from "solid-js";
 import { GetApiTokenInfoResponse } from "~/bindings";
-import {
-	DeleteModal,
-	PageContainer,
-	PageContainerBody,
-	PageContainerHead,
-	useToast,
-} from "~/components";
+import { DeleteModal, PageContainer, PageContainerBody, PageContainerHead, useToast } from "~/components";
 import Input, { InputType } from "~/components/input";
 import InputLabel from "~/components/input-label";
 import { useAuthState } from "~/hooks";
@@ -33,7 +27,7 @@ const ApiTokenInfo = () => {
 
 	const fetchParams = createMemo(() => {
 		return [authState()] as const;
-	})
+	});
 
 	const [apiTokenInfo] = createResource(fetchParams, async ([auth]) => {
 		if (!auth || auth.type !== "LoggedIn") {
@@ -45,7 +39,7 @@ const ApiTokenInfo = () => {
 			{
 				method: "GET",
 			}
-		)
+		);
 
 		if (!response.ok) {
 			console.error("Failed to fetch API Token Info:", response.data.error);
@@ -54,7 +48,7 @@ const ApiTokenInfo = () => {
 		}
 
 		return { ...response.data };
-	})
+	});
 
 	const onClickDelete = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
 		e.preventDefault();
@@ -63,22 +57,22 @@ const ApiTokenInfo = () => {
 
 		if (!auth || auth.type !== "LoggedIn") {
 			toast("You must be logged in to delete an API Token", "error");
-			return
+			return;
 		}
 
 		const response = await httpRequest<void>(`${import.meta.env.VITE_BASE_URL}/api/user/api-token/${params().id}`, {
 			method: "DELETE",
-		})
+		});
 
 		if (!response.ok) {
 			console.error("Failed to delete API Token:", response.data.error);
 			toast("Failed to delete API Token", "error");
-			return
+			return;
 		}
 
 		toast("API Token deleted successfully", "success");
 		navigate({ to: "/profile/api-tokens" });
-	}
+	};
 
 	const onClickRegenerate = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
 		e.preventDefault();
@@ -87,7 +81,7 @@ const ApiTokenInfo = () => {
 
 		if (!auth || auth.type !== "LoggedIn") {
 			toast("You must be logged in to regenerate an API Token", "error");
-			return
+			return;
 		}
 
 		const response = await httpRequest<RegenerateApiTokenResponse>(
@@ -95,19 +89,19 @@ const ApiTokenInfo = () => {
 			{
 				method: "POST",
 			}
-		)
+		);
 
 		if (!response.ok) {
 			console.error("Failed to regenerate API Token:", response.data.error);
 			toast("Failed to regenerate API Token", "error");
-			return
+			return;
 		}
 
 		toast("API Token regenerated successfully", "success");
 		setNewApiToken(response.data.token);
 		setIsRegenerateModalOpen(false);
 		setIsApiTokenModalOpen(true);
-	}
+	};
 
 	return (
 		<PageContainer>
@@ -178,7 +172,7 @@ const ApiTokenInfo = () => {
 				onClose={() => navigate({ to: "/profile/api-tokens" })}
 			/>
 		</PageContainer>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/profile/api-tokens/$id")({

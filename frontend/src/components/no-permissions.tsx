@@ -7,9 +7,7 @@ const NoPermissionPage = (props: { title: string; subTitle?: string; titleUrl?: 
 		<PageContainer>
 			<PageContainerHead
 				breadcrumbs={[
-					...(props.titleUrl
-						? [{ label: props.title, url: props.titleUrl }]
-						: [{ label: props.title }]),
+					...(props.titleUrl ? [{ label: props.title, url: props.titleUrl }] : [{ label: props.title }]),
 				]}
 				subText={props.subTitle || ""}
 			/>

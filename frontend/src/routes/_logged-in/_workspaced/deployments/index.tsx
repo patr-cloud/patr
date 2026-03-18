@@ -52,7 +52,7 @@ const DeploymentListRow = (props: { item: WithId<Deployment>; runnerName: string
 				<span class="truncate">{props.item.imageTag}</span>
 			</td>
 		</tr>
-	)
+	);
 };
 
 const ListDeploymentsPage = () => {
@@ -65,11 +65,11 @@ const ListDeploymentsPage = () => {
 	const pagination = createPaginationState({
 		search: () => search(),
 		navigate,
-	})
+	});
 
 	const fetchParamsForDeployment = createMemo(() => {
 		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
-	})
+	});
 
 	const [deployments] = createResource(fetchParamsForDeployment, async ([auth, wsId, page, count]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") {
@@ -81,7 +81,7 @@ const ListDeploymentsPage = () => {
 			{
 				method: "GET",
 			}
-		)
+		);
 
 		if (!response.ok) {
 			console.error("Failed to fetch deployments:", response.data.error);
@@ -92,13 +92,13 @@ const ListDeploymentsPage = () => {
 		pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
 
 		return { deployments: response.data.deployments };
-	})
+	});
 
 	const [runners] = useFetchRunners();
 
 	const runnerNameMap = createMemo(() => {
 		return new Map((runners()?.runners || []).map((r) => [r.id, r.name]));
-	})
+	});
 
 	return (
 		<PageContainer>
@@ -115,7 +115,7 @@ const ListDeploymentsPage = () => {
 						<Link href="/deployments/new" buttonVariant={ButtonVariant.Plain} external={false}>
 							Create Deployment
 						</Link>
-					)
+					);
 				}}
 			/>
 
@@ -155,7 +155,7 @@ const ListDeploymentsPage = () => {
 				</ErrorBoundary>
 			</PageContainerBody>
 		</PageContainer>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/deployments/")({

@@ -1,13 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { createMemo, createResource, createSignal, For, Show, Suspense } from "solid-js";
-import {
-	Button,
-	ButtonVariant,
-	PageContainer,
-	PageContainerBody,
-	PageContainerHead,
-	Table,
-} from "~/components";
+import { Button, ButtonVariant, PageContainer, PageContainerBody, PageContainerHead, Table } from "~/components";
 import Input, { InputType } from "~/components/input";
 import InputLabel from "~/components/input-label";
 import { httpRequest } from "~/utils/http-request";
@@ -42,7 +35,7 @@ const WorkspacePermissionItem = (props: { workspace: WithId<Workspace> }) => {
 		const perms = allPermissions()?.permissions;
 		if (!perms) return new Map<string, string>();
 		return new Map(perms.map((perm) => [perm.id, perm.name]));
-	})
+	});
 
 	const permissionEntries = createMemo(() => {
 		const permissions = permissionsData();
@@ -58,7 +51,7 @@ const WorkspacePermissionItem = (props: { workspace: WithId<Workspace> }) => {
 				permissionType: string;
 				resources?: string[];
 			}
-		>()
+		>();
 
 		Object.entries(permissions).forEach(([permissionId, permissionData]) => {
 			const permissionName = nameMap.get(permissionId) || permissionId;
@@ -70,18 +63,18 @@ const WorkspacePermissionItem = (props: { workspace: WithId<Workspace> }) => {
 					permissionActions: [],
 					permissionType: permissionData?.permissionType || "all",
 					resources: permissionData?.permissionType ? permissionData.resources : undefined,
-				})
+				});
 			}
 
 			const group = grouped.get(parsed.resourceType)!;
 			group.permissionActions.push({
 				permissionId,
 				action: parsed.action,
-			})
-		})
+			});
+		});
 
 		return Array.from(grouped.values());
-	})
+	});
 
 	return (
 		<div class="w-full flex flex-col items-start justify-start">
@@ -132,7 +125,7 @@ const WorkspacePermissionItem = (props: { workspace: WithId<Workspace> }) => {
 														onClick={() => {
 															const newPermissionsData = { ...permissionsData() };
 															delete newPermissionsData[actionData.permissionId];
-															setPermissionsData(newPermissionsData)
+															setPermissionsData(newPermissionsData);
 														}}
 														class="text-sm px-2 py-1 bg-secondary-medium rounded cursor-pointer hover:bg-secondary-dark transition-colors flex items-center justify-center gap-1"
 													>
@@ -161,7 +154,7 @@ const WorkspacePermissionItem = (props: { workspace: WithId<Workspace> }) => {
 											// Delete all permissions for this resource type
 											perm.permissionActions.forEach((actionData) => {
 												delete newPermissionsData[actionData.permissionId];
-											})
+											});
 											setPermissionsData(newPermissionsData);
 										}}
 									>
@@ -174,7 +167,7 @@ const WorkspacePermissionItem = (props: { workspace: WithId<Workspace> }) => {
 				)}
 			</div>
 		</div>
-	)
+	);
 };
 
 export interface WorkspacePermissions {
@@ -195,7 +188,7 @@ const CreateApiTokens = () => {
 			{
 				method: "GET",
 			}
-		)
+		);
 
 		if (!response.ok) {
 			console.error("Failed to fetch workspaces:", response.data.error);
@@ -204,7 +197,7 @@ const CreateApiTokens = () => {
 		}
 
 		return response.data;
-	})
+	});
 
 	const [name, setName] = createSignal<string>("");
 	const [fromDate, setFromDate] = createSignal<Date | null>(null);
@@ -215,7 +208,7 @@ const CreateApiTokens = () => {
 
 	const selectedWorkspaceInfo = createMemo(() => {
 		return workspaces()?.workspaces?.find((ws) => ws.id === selectedWorkspace());
-	})
+	});
 
 	const onSubmit = async (e: Event) => {
 		e.preventDefault();
@@ -223,14 +216,14 @@ const CreateApiTokens = () => {
 		if (!auth || auth.type !== "LoggedIn") {
 			toast("User is not logged in", "error");
 			console.error("User is not logged in");
-			return
+			return;
 		}
 
 		console.log("Creating API Token with details:", {
 			name: name(),
 			fromDate: fromDate(),
 			toDate: toDate(),
-		})
+		});
 
 		// @ts-expect-error
 		const requestBody: CreateApiTokenRequest = {
@@ -238,7 +231,7 @@ const CreateApiTokens = () => {
 			tokenNbf: fromDate() || undefined,
 			tokenExp: toDate() || undefined,
 			permissions: workspacePermissions(),
-		}
+		};
 
 		const response = await httpRequest<CreateApiTokenResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/user/api-token`,
@@ -246,21 +239,21 @@ const CreateApiTokens = () => {
 				method: "POST",
 				body: JSON.stringify(requestBody),
 			}
-		)
+		);
 
 		console.log("API Token created successfully:", response.data);
 
 		if (!response.ok) {
 			console.error("Failed to create API token:", response.data.error);
 			toast("Failed to create API token", "error");
-			return
+			return;
 		}
 
 		if (response?.data?.token) {
 			setOpenCopyModal(true);
 			setApiToken(response.data.token);
 		}
-	}
+	};
 
 	return (
 		<PageContainer>
@@ -385,7 +378,7 @@ const CreateApiTokens = () => {
 				/>
 			</PageContainerBody>
 		</PageContainer>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/profile/api-tokens/new")({

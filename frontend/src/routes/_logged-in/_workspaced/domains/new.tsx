@@ -1,12 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { createSignal, Show } from "solid-js";
-import {
-	PageContainer,
-	PageContainerBody,
-	PageContainerHead,
-	ButtonVariant,
-	Button,
-} from "~/components";
+import { PageContainer, PageContainerBody, PageContainerHead, ButtonVariant, Button } from "~/components";
 import Input, { InputType } from "~/components/input";
 import InputLabel from "~/components/input-label";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
@@ -47,14 +41,14 @@ const CreateDomainPage = () => {
 		if (!input.trim()) {
 			setError("");
 			setSuggestedDomain("");
-			return
+			return;
 		}
 
 		const auth = authState();
 		const wsId = workspaceId();
 
 		if (!auth || auth.type !== "LoggedIn" || !wsId) {
-			return
+			return;
 		}
 
 		// First check if it looks like a URL
@@ -62,7 +56,7 @@ const CreateDomainPage = () => {
 			const hostname = extractHostname(input);
 			setError("Please enter a domain without protocols, paths, or query strings");
 			setSuggestedDomain(hostname);
-			return
+			return;
 		}
 
 		// Call the API to validate the domain
@@ -72,7 +66,7 @@ const CreateDomainPage = () => {
 				{
 					method: "GET",
 				}
-			)
+			);
 
 			if (response.ok && response.data.valid) {
 				setError("");
@@ -87,7 +81,7 @@ const CreateDomainPage = () => {
 			if (err?.error === "NotRootDomain" || err?.error === "NotIcannDomain") {
 				setError(
 					err?.message || "Please enter a root domain (e.g., example.com instead of subdomain.example.com)"
-				)
+				);
 			} else if (err?.error === "ResourceAlreadyExists") {
 				setError("This domain already exists in your workspace");
 			} else {
@@ -95,7 +89,7 @@ const CreateDomainPage = () => {
 			}
 			setSuggestedDomain("");
 		}
-	}
+	};
 
 	const handleInputChange = (value: string) => {
 		setDomainInput(value);
@@ -109,14 +103,14 @@ const CreateDomainPage = () => {
 		// validationTimeout = setTimeout(() => {
 		//   validateDomain(value);
 		// }, 500) as unknown as number;
-	}
+	};
 
 	const handleSuggestionClick = () => {
 		const suggested = suggestedDomain();
 		setDomainInput(suggested);
 		setError("");
 		setSuggestedDomain("");
-	}
+	};
 
 	const onSubmit = async (e: SubmitEvent) => {
 		e.preventDefault();
@@ -126,14 +120,14 @@ const CreateDomainPage = () => {
 
 		if (!auth || auth.type !== "LoggedIn" || !wsId) {
 			console.error("User is not logged in or workspace ID missing");
-			return
+			return;
 		}
 
 		const domain = domainInput().trim();
 
 		if (!domain) {
 			setError("Domain is required");
-			return
+			return;
 		}
 
 		// Quick check for URL-like input before submitting
@@ -141,12 +135,12 @@ const CreateDomainPage = () => {
 			const hostname = extractHostname(domain);
 			setError("Please enter a domain without protocols, paths, or query strings");
 			setSuggestedDomain(hostname);
-			return
+			return;
 		}
 
 		// If there's already an error, don't submit
 		if (error()) {
-			return
+			return;
 		}
 
 		setIsSubmitting(true);
@@ -155,7 +149,7 @@ const CreateDomainPage = () => {
 			const requestBody: AddDomainToWorkspaceRequest = {
 				domain: domain,
 				nameserverType: "external",
-			}
+			};
 
 			const response = await httpRequest<AddDomainToWorkspaceResponse>(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain`,
@@ -163,7 +157,7 @@ const CreateDomainPage = () => {
 					method: "POST",
 					body: JSON.stringify(requestBody),
 				}
-			)
+			);
 
 			console.log("Domain added successfully:", response.data);
 			navigate({ to: "/domains" });
@@ -173,7 +167,7 @@ const CreateDomainPage = () => {
 		} finally {
 			setIsSubmitting(false);
 		}
-	}
+	};
 
 	return (
 		<PageContainer>
@@ -240,7 +234,11 @@ const CreateDomainPage = () => {
 					</div>
 
 					<div class="w-full flex justify-end gap-4">
-						<Button variant={ButtonVariant.Outlined} type="button" onClick={() => navigate({ to: "/domains" })}>
+						<Button
+							variant={ButtonVariant.Outlined}
+							type="button"
+							onClick={() => navigate({ to: "/domains" })}
+						>
 							Cancel
 						</Button>
 						<Button variant={ButtonVariant.Contained} type="submit" disabled={isSubmitting() || !!error()}>
@@ -250,7 +248,7 @@ const CreateDomainPage = () => {
 				</form>
 			</PageContainerBody>
 		</PageContainer>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/domains/new")({

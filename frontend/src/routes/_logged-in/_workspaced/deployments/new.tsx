@@ -41,7 +41,7 @@ const CreateDeploymentPage = () => {
 
 	const fetchParams = createMemo(() => {
 		return [authState(), lastUsedWorkspaceId()] as const;
-	})
+	});
 
 	const [runners] = createResource(fetchParams, async ([auth, wsId]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") {
@@ -52,7 +52,7 @@ const CreateDeploymentPage = () => {
 			{
 				method: "GET",
 			}
-		)
+		);
 
 		if (!response.ok) {
 			console.error("Failed to fetch runners:", response.data.error);
@@ -61,7 +61,7 @@ const CreateDeploymentPage = () => {
 		}
 
 		return response.data;
-	})
+	});
 
 	const [repositories] = createResource(fetchParams, async ([auth, wsId]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") {
@@ -72,13 +72,13 @@ const CreateDeploymentPage = () => {
 			{
 				method: "GET",
 			}
-		)
+		);
 		if (!response.ok) {
 			console.error("Failed to fetch repositories:", response.data.error);
 			return { repositories: [] };
 		}
 		return response.data;
-	})
+	});
 
 	const navigate = useNavigate();
 	const [name, setName] = createSignal<string>("");
@@ -104,11 +104,11 @@ const CreateDeploymentPage = () => {
 	const debouncedSetTagFilter = (value: string) => {
 		clearTimeout(tagFilterTimer);
 		tagFilterTimer = setTimeout(() => setTagFilter(value), 300);
-	}
+	};
 
 	const tagFetchParams = createMemo(() => {
 		return [authState(), lastUsedWorkspaceId(), repositoryId(), tagFilter()] as const;
-	})
+	});
 
 	const [repositoryTags] = createResource(tagFetchParams, async ([auth, wsId, repoId, tagSearch]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn" || !repoId) {
@@ -118,13 +118,13 @@ const CreateDeploymentPage = () => {
 		if (tagSearch) url.searchParams.set("tag", tagSearch);
 		const response = await httpRequest<ListContainerRepositoryTagsResponse>(url.toString(), {
 			method: "GET",
-		})
+		});
 		if (!response.ok) {
 			console.error("Failed to fetch tags:", response.data.error);
 			return { tags: [] };
 		}
 		return response.data;
-	})
+	});
 
 	const tagSuggestions = () => repositoryTags()?.tags.map((t) => ({ label: t.tag, value: t.tag })) ?? [];
 
@@ -149,7 +149,7 @@ const CreateDeploymentPage = () => {
 			deployOnCreate: false,
 			deployOnPush: false,
 			configMounts,
-		}
+		};
 
 		const requestBody = (
 			isPatrRegistry()
@@ -163,19 +163,19 @@ const CreateDeploymentPage = () => {
 				method: "POST",
 				body: JSON.stringify(requestBody),
 			}
-		)
+		);
 
 		if (!response.ok) {
 			console.error("Failed to create deployment:", response.data.error);
 			toast("Failed to create deployment", "error");
-			return
+			return;
 		}
 
 		toast("Deployment created successfully", "success");
 
 		navigate({ to: `/deployments/${response.data.id}` });
 		console.log("Deployment created:", response.data);
-	})
+	});
 
 	return (
 		<PageContainer>
@@ -199,7 +199,7 @@ const CreateDeploymentPage = () => {
 							<Input
 								value={name()}
 								onInput={(e) => {
-									e.preventDefault()
+									e.preventDefault();
 									setName(e.currentTarget.value);
 								}}
 								class="flex-10"
@@ -219,11 +219,11 @@ const CreateDeploymentPage = () => {
 									]}
 									value={registry()}
 									onSelect={(val) => {
-										setRegistry(val)
-										setRepositoryId("")
-										setImageName("")
-										setImageTag("")
-										setTagFilter("")
+										setRegistry(val);
+										setRepositoryId("");
+										setImageName("");
+										setImageTag("");
+										setTagFilter("");
 									}}
 									class="flex-4"
 									name="deployment-registry"
@@ -238,9 +238,9 @@ const CreateDeploymentPage = () => {
 										allowCustomValue={false}
 										value={repositoryId()}
 										onSelect={(id) => {
-											setRepositoryId(id)
-											setImageTag("")
-											setTagFilter("")
+											setRepositoryId(id);
+											setImageTag("");
+											setTagFilter("");
 										}}
 									/>
 								) : (
@@ -314,9 +314,9 @@ const CreateDeploymentPage = () => {
 							onDelete={(key) => {
 								setPortList((prev) => {
 									const newPorts = { ...prev };
-									delete newPorts[key]
-									return newPorts
-								})
+									delete newPorts[key];
+									return newPorts;
+								});
 							}}
 							portList={portList}
 						/>
@@ -342,7 +342,7 @@ const CreateDeploymentPage = () => {
 				</form>
 			</PageContainerBody>
 		</PageContainer>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/deployments/new")({

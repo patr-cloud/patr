@@ -37,62 +37,62 @@ const ManageWorkspace = () => {
 	const pagination = createPaginationState({
 		search: () => search(),
 		navigate,
-	})
+	});
 	const resourceParamsWorkspace = () => {
 		return [authState(), workspaceId()] as const;
-	}
+	};
 	const [workspaceInfo] = createResource(resourceParamsWorkspace, async ([auth, id]) => {
 		if (!auth || auth.type !== "LoggedIn" || id === "") {
-			return
+			return;
 		}
 		const response = await httpRequest<GetWorkspaceInfoResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}`,
 			{
 				method: "GET",
 			}
-		)
+		);
 		if (!response.ok) {
 			console.error("Failed to fetch workspace info:", response.data.error);
 			toast("Failed to fetch workspace info", "error");
 			return undefined;
 		}
 		return response.data;
-	})
+	});
 
 	const [roles] = createResource(resourceParamsWorkspace, async ([auth, id]) => {
 		if (!auth || auth.type !== "LoggedIn" || id === "") {
-			return
+			return;
 		}
 		const response = await httpRequest<ListAllRolesResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}/rbac/role`,
 			{
 				method: "GET",
 			}
-		)
+		);
 		if (!response.ok) {
 			console.error("Failed to fetch roles:", response.data.error);
 			toast("Failed to fetch roles", "error");
 			return undefined;
 		}
 		return response.data;
-	})
+	});
 
 	const membersFetchParams = () => {
 		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
-	}
+	};
 
 	const [workspaceMembers, { refetch: refetchMembers }] = createResource(
 		membersFetchParams,
 		async ([auth, id, page, count]) => {
 			if (!auth || auth.type !== "LoggedIn" || id === "") {
-				return
+				return;
 			}
 			const response = await httpRequest<ListUsersInWorkspaceResponse>(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}/rbac/user?page=${page}&count=${count}`,
 				{
 					method: "GET",
 				}
-			)
+			);
 			if (!response.ok) {
 				console.error("Failed to fetch workspace members:", response.data.error);
 				toast("Failed to fetch workspace members", "error");
@@ -106,7 +106,7 @@ const ManageWorkspace = () => {
 					{
 						method: "GET",
 					}
-				)
+				);
 
 				console.log("User response for", userId, ":", userResponse);
 
@@ -125,16 +125,16 @@ const ManageWorkspace = () => {
 						userId: id,
 						userName: `${firstName} ${lastName} (@${username})`,
 						roleIds: roleIds,
-					}
+					};
 				}
 				console.error("Failed to fetch user details for", userId, ":", userResponse.data);
-				return null
-			})
+				return null;
+			});
 
 			const userDetails = await Promise.all(userDetailsPromises);
 			return userDetails.filter((user) => user !== null);
 		}
-	)
+	);
 
 	const { execute: deleteUser, isLoading: isDeleting } = createAuthenticatedAction(
 		async ({ accessToken, workspaceId }) => {
@@ -142,7 +142,7 @@ const ManageWorkspace = () => {
 
 			if (!userId) {
 				toast("No user selected for deletion", "error");
-				return
+				return;
 			}
 
 			const response = await httpRequest<RemoveUserFromWorkspaceResponse>(
@@ -150,12 +150,12 @@ const ManageWorkspace = () => {
 				{
 					method: "DELETE",
 				}
-			)
+			);
 
 			if (!response.ok) {
 				console.error("Failed to delete user:", response.data.error);
 				toast("Failed to delete user", "error");
-				return
+				return;
 			}
 
 			toast("User removed successfully", "success");
@@ -163,11 +163,11 @@ const ManageWorkspace = () => {
 			setUserToDelete(null);
 			refetchMembers();
 		}
-	)
+	);
 
 	const roleNameMap = createMemo(() => {
 		return new Map((roles()?.roles || []).map((r) => [r.id, r.name]));
-	})
+	});
 
 	// Separate state for input fields and added members
 	const [selectedUser, setSelectedUser] = createSignal<WithId<BasicUserInfo> | null>(null);
@@ -182,7 +182,7 @@ const ManageWorkspace = () => {
 
 	const handleUserSelect = (user: WithId<BasicUserInfo>) => {
 		setSelectedUser(user);
-	}
+	};
 
 	const { onSubmit: handleAddMember, isLoading: isSubmitting } = createFormAction(
 		async ({ accessToken, workspaceId }) => {
@@ -191,7 +191,7 @@ const ManageWorkspace = () => {
 
 			const requestBody: UpdateUserRolesInWorkspaceRequest = {
 				roles: [roleId],
-			}
+			};
 
 			const response = await httpRequest(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/user/${user!.id}`,
@@ -199,12 +199,12 @@ const ManageWorkspace = () => {
 					method: "POST",
 					body: JSON.stringify(requestBody),
 				}
-			)
+			);
 
 			if (!response.ok) {
 				console.error("Failed to add user:", response.data.error);
 				toast(response.data.error || "Failed to add user to workspace", "error");
-				return
+				return;
 			}
 
 			toast("User added successfully", "success");
@@ -220,7 +220,7 @@ const ManageWorkspace = () => {
 			}
 			return true;
 		}
-	)
+	);
 
 	return (
 		<PageContainer>
@@ -276,14 +276,14 @@ const ManageWorkspace = () => {
 									const memberRoleNames = memberRoleIds
 										.map((roleId) => roleNameMap().get(roleId))
 										.filter(Boolean)
-										.join(", ")
+										.join(", ");
 
 									if (workspaceMembers.loading) {
 										return (
 											<tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
 												<td colspan="3">Loading...</td>
 											</tr>
-										)
+										);
 									}
 
 									if (!workspaceMembers() || workspaceMembers()!.length <= 0) {
@@ -291,7 +291,7 @@ const ManageWorkspace = () => {
 											<tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
 												<td colspan="3">No members found.</td>
 											</tr>
-										)
+										);
 									}
 
 									const isEditing = editingMember()?.userId === member.userId;
@@ -309,11 +309,11 @@ const ManageWorkspace = () => {
 																editingMember()!.roleIds.map((roleId) => {
 																	const role = roles()?.roles.find(
 																		(r) => r.id === roleId
-																	)
+																	);
 																	return {
 																		id: roleId,
 																		name: role?.name || roleId,
-																	}
+																	};
 																}) || []
 															}
 															availableRoles={
@@ -323,11 +323,11 @@ const ManageWorkspace = () => {
 																})) || []
 															}
 															onSave={async (roleIds: string[]) => {
-																setEditingMember(null)
-																refetchMembers()
+																setEditingMember(null);
+																refetchMembers();
 															}}
 															onClose={() => {
-																setEditingMember(null)
+																setEditingMember(null);
 															}}
 														/>
 													</td>
@@ -352,16 +352,16 @@ const ManageWorkspace = () => {
 																	<button
 																		class="text-red-500"
 																		onClick={async (e: MouseEvent) => {
-																			e.stopPropagation()
-																			await deleteUser().catch(() => {})
+																			e.stopPropagation();
+																			await deleteUser().catch(() => {});
 																		}}
 																	>
 																		Delete
 																	</button>
 																	<button
 																		onClick={() => {
-																			setShouldDelete(false)
-																			setUserToDelete(null)
+																			setShouldDelete(false);
+																			setUserToDelete(null);
 																		}}
 																	>
 																		Cancel
@@ -376,7 +376,7 @@ const ManageWorkspace = () => {
 																			userId: member.userId,
 																			userName: member.userName,
 																			roleIds: member.roleIds,
-																		})
+																		});
 																	}}
 																	class="text-gray-400 hover:bg-white/10 p-1 rounded transition-colors cursor-pointer"
 																>
@@ -384,9 +384,9 @@ const ManageWorkspace = () => {
 																</button>
 																<button
 																	onClick={(e) => {
-																		e.stopPropagation()
-																		setUserToDelete(member.userId)
-																		setShouldDelete(true)
+																		e.stopPropagation();
+																		setUserToDelete(member.userId);
+																		setShouldDelete(true);
 																	}}
 																	class="text-red-500 hover:bg-white/10 p-1 rounded transition-colors cursor-pointer"
 																>
@@ -398,7 +398,7 @@ const ManageWorkspace = () => {
 												</tr>
 											)}
 										</>
-									)
+									);
 								}}
 							/>
 						</Suspense>
@@ -412,7 +412,7 @@ const ManageWorkspace = () => {
 				/>
 			</PageContainerBody>
 		</PageContainer>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/workspace/members")({

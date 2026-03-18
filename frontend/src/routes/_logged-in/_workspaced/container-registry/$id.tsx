@@ -20,7 +20,7 @@ const ContainerRepositoryInfo = () => {
 
 	const resourceParams = createMemo(() => {
 		return [authState(), workspaceId(), params().id] as const;
-	})
+	});
 
 	const [repositoryInfo] = createResource(resourceParams, async ([auth, wsId, repoId]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn" || !repoId) {
@@ -31,14 +31,14 @@ const ContainerRepositoryInfo = () => {
 			{
 				method: "GET",
 			}
-		)
+		);
 		if (!response.ok) {
 			toast("Failed to fetch repository info", "error");
 			return undefined;
 		}
 
 		return response.data;
-	})
+	});
 
 	const [manifests, { refetch: refetchManifests }] = createResource(resourceParams, async ([auth, wsId, repoId]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn" || !repoId) {
@@ -49,14 +49,14 @@ const ContainerRepositoryInfo = () => {
 			{
 				method: "GET",
 			}
-		)
+		);
 		if (!response.ok) {
 			toast("Failed to fetch manifests", "error");
 			return undefined;
 		}
 
 		return response.data;
-	})
+	});
 
 	const handleDelete = async (
 		e: MouseEvent & {
@@ -70,7 +70,7 @@ const ContainerRepositoryInfo = () => {
 		const repository = repositoryInfo();
 
 		if (!auth || auth.type !== "LoggedIn" || !currentWorkspace || !repository) {
-			return
+			return;
 		}
 
 		const resp = await httpRequest(
@@ -78,15 +78,15 @@ const ContainerRepositoryInfo = () => {
 			{
 				method: "DELETE",
 			}
-		)
+		);
 		if (!resp.ok) {
 			toast("Failed to delete repository", "error");
-			return
+			return;
 		}
 
 		toast("Repository deleted successfully", "success");
 		navigate({ to: "/container-registry" });
-	}
+	};
 
 	const renderTab = () => {
 		switch (tab()) {
@@ -99,7 +99,7 @@ const ContainerRepositoryInfo = () => {
 			default:
 				return <General repositoryInfo={() => repositoryInfo()} />;
 		}
-	}
+	};
 
 	return (
 		<PageContainer>
@@ -144,12 +144,22 @@ const ContainerRepositoryInfo = () => {
 									{
 										label: "General",
 										value: "",
-										onClick: (value) => navigate({ to: "/container-registry/$id", params: { id: params().id }, search: { tab: value } }),
+										onClick: (value) =>
+											navigate({
+												to: "/container-registry/$id",
+												params: { id: params().id },
+												search: { tab: value },
+											}),
 									},
 									{
 										label: "Images",
 										value: "images",
-										onClick: (value) => navigate({ to: "/container-registry/$id", params: { id: params().id }, search: { tab: value } }),
+										onClick: (value) =>
+											navigate({
+												to: "/container-registry/$id",
+												params: { id: params().id },
+												search: { tab: value },
+											}),
 									},
 								]}
 							/>
@@ -160,7 +170,7 @@ const ContainerRepositoryInfo = () => {
 				</Suspense>
 			</ErrorBoundary>
 		</PageContainer>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/container-registry/$id")({

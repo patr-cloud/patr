@@ -34,7 +34,7 @@ const DeploymentInfo = () => {
 
 	const resourceParamsDeployment = createMemo(() => {
 		return [authState(), workspaceId(), params().id] as const;
-	})
+	});
 
 	const isAllowedResource = useIsAllowed("deployment", "view", params().id);
 	const deploymentPermissions = useGetPermissions("deployment", () => params().id || "");
@@ -50,7 +50,7 @@ const DeploymentInfo = () => {
 				{
 					method: "GET",
 				}
-			)
+			);
 			if (!response.ok) {
 				console.error("Failed to fetch deployment info:", response.data.error);
 				toast("Failed to fetch deployment info", "error");
@@ -59,19 +59,19 @@ const DeploymentInfo = () => {
 
 			return response.data;
 		}
-	)
+	);
 
 	const { execute: startDeployment, isLoading: isStartingDeployment } = createAuthenticatedAction(
 		async ({ accessToken, workspaceId }) => {
 			if (!deploymentPermissions().start) {
 				toast("You do not have permission to start this deployment", "error");
-				return
+				return;
 			}
 
 			const deployment = deploymentInfo();
 			if (!deployment) {
 				toast("Deployment information is not available", "error");
-				return
+				return;
 			}
 
 			const response = await httpRequest(
@@ -79,30 +79,30 @@ const DeploymentInfo = () => {
 				{
 					method: "POST",
 				}
-			)
+			);
 
 			if (!response.ok) {
 				console.error("Failed to start deployment:", response.data.error);
 				toast("Failed to start deployment", "error");
-				return
+				return;
 			}
 
 			toast("Deployment started successfully", "success");
 			refetchDeploymentInfo();
 		}
-	)
+	);
 
 	const { execute: stopDeployment, isLoading: isStoppingDeployment } = createAuthenticatedAction(
 		async ({ accessToken, workspaceId }) => {
 			if (!deploymentPermissions().stop) {
 				toast("You do not have permission to stop this deployment", "error");
-				return
+				return;
 			}
 
 			const deployment = deploymentInfo();
 			if (!deployment) {
 				toast("Deployment information is not available", "error");
-				return
+				return;
 			}
 
 			const response = await httpRequest(
@@ -110,30 +110,30 @@ const DeploymentInfo = () => {
 				{
 					method: "POST",
 				}
-			)
+			);
 
 			if (!response.ok) {
 				console.error("Failed to stop deployment:", response.data.error);
 				toast("Failed to stop deployment", "error");
-				return
+				return;
 			}
 
 			toast("Deployment stopped successfully", "success");
 			refetchDeploymentInfo();
 		}
-	)
+	);
 
 	const { execute: deleteDeployment, isLoading: isDeletingDeployment } = createAuthenticatedAction(
 		async ({ accessToken, workspaceId }) => {
 			if (!deploymentPermissions().delete) {
 				toast("You do not have permission to delete this deployment", "error");
-				return
+				return;
 			}
 
 			const deployment = deploymentInfo();
 			if (!deployment) {
 				toast("Deployment information is not available", "error");
-				return
+				return;
 			}
 
 			const resp = await httpRequest(
@@ -141,30 +141,30 @@ const DeploymentInfo = () => {
 				{
 					method: "DELETE",
 				}
-			)
+			);
 			console.log("Delete deployment response:", resp);
 			if (!resp.ok) {
 				toast("Failed to delete deployment", "error");
-				return
+				return;
 			}
 
 			toast("Deployment deleted successfully", "success");
 			navigate({ to: "/deployments" });
 		}
-	)
+	);
 
 	const Cta = () => {
 		switch (deploymentInfo()?.status) {
 			case "running":
 				if (!deploymentPermissions().stop) {
-					return null
+					return null;
 				}
 
 				return (
 					<Button
 						onClick={(e) => {
-							e.preventDefault()
-							stopDeployment()
+							e.preventDefault();
+							stopDeployment();
 						}}
 						class="h-10"
 						variant={ButtonVariant.Outlined}
@@ -174,7 +174,7 @@ const DeploymentInfo = () => {
 					>
 						STOP
 					</Button>
-				)
+				);
 
 			case "deploying":
 				return <span class="text-white">Deploying...</span>;
@@ -184,7 +184,7 @@ const DeploymentInfo = () => {
 				return <span class="text-white">Unreachable</span>;
 			case "stopped":
 				if (!deploymentPermissions().start) {
-					return null
+					return null;
 				}
 
 				return (
@@ -194,17 +194,17 @@ const DeploymentInfo = () => {
 						loading={isStartingDeployment()}
 						loadingContent={() => <span>Starting...</span>}
 						onClick={(e) => {
-							e.preventDefault()
-							startDeployment()
+							e.preventDefault();
+							startDeployment();
 						}}
 					>
 						START
 					</Button>
-				)
+				);
 			default:
 				return <span>where status?</span>;
 		}
-	}
+	};
 
 	const renderTab = () => {
 		switch (tab()) {
@@ -218,11 +218,11 @@ const DeploymentInfo = () => {
 						refetchDeploymentInfo={refetchDeploymentInfo}
 						mutateDeploymentInfo={mutateDeploymentInfo}
 					/>
-				)
+				);
 			default:
 				return <div class="text-white">No such tab</div>;
 		}
-	}
+	};
 
 	return (
 		<Show
@@ -271,8 +271,8 @@ const DeploymentInfo = () => {
 												isOpen={isDeleteModalOpen}
 												setIsOpen={setIsDeleteModalOpen}
 												onClickDelete={(e) => {
-													e.preventDefault()
-													deleteDeployment()
+													e.preventDefault();
+													deleteDeployment();
 												}}
 											/>
 										)}
@@ -286,13 +286,21 @@ const DeploymentInfo = () => {
 											label: "Info",
 											value: "",
 											onClick: (value) =>
-												navigate({ to: "/deployments/$id", params: { id: params().id }, search: { tab: value } }),
+												navigate({
+													to: "/deployments/$id",
+													params: { id: params().id },
+													search: { tab: value },
+												}),
 										},
 										{
 											label: "Logs",
 											value: "logs",
 											onClick: (value) =>
-												navigate({ to: "/deployments/$id", params: { id: params().id }, search: { tab: value } }),
+												navigate({
+													to: "/deployments/$id",
+													params: { id: params().id },
+													search: { tab: value },
+												}),
 										},
 									]}
 								/>
@@ -304,7 +312,7 @@ const DeploymentInfo = () => {
 				</ErrorBoundary>
 			</PageContainer>
 		</Show>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/deployments/$id")({

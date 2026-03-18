@@ -24,7 +24,7 @@ const SignUp = () => {
 	const { execute: submitSignUp, isLoading } = createAsyncAction(async () => {
 		if (!turnstileToken()) {
 			toast("Please complete the security verification", "error");
-			return
+			return;
 		}
 
 		const requestBody: CreateAccountRequest = {
@@ -34,12 +34,12 @@ const SignUp = () => {
 			lastName: lastName(),
 			recoveryEmail: email(),
 			cfTurnstileToken: turnstileToken(),
-		}
+		};
 
 		const resp = await httpRequest("/api/auth/sign-up", {
 			method: "POST",
 			body: JSON.stringify(requestBody),
-		})
+		});
 
 		if (resp.ok) {
 			// Handle successful sign-up (e.g., redirect to login or dashboard)
@@ -50,7 +50,7 @@ const SignUp = () => {
 			console.error("Error creating account:", resp.statusText);
 			toast("Error creating account: " + resp.statusText, "error");
 		}
-	})
+	});
 
 	return (
 		<>
@@ -62,7 +62,7 @@ const SignUp = () => {
 						toast("An unexpected error occurred. Please try again.", "error");
 						console.error("Unexpected error during sign-up:", e);
 						setTurnstileToken("");
-					})
+					});
 				}}
 				class="bg-secondary p-12 rounded-sm shadow-2xl w-full max-w-128 relative z-10 border border-secondary-medium"
 			>
@@ -154,7 +154,11 @@ const SignUp = () => {
 
 					{/* Sign Up Button */}
 					<div class="pt-8 w-full flex flex-row items-center justify-between">
-						<Link to="/confirm-signup" search={{ username: undefined, otp: undefined }} class="text-primary text-xs hover:underline font-light">
+						<Link
+							to="/confirm-signup"
+							search={{ username: undefined, otp: undefined }}
+							class="text-primary text-xs hover:underline font-light"
+						>
 							Have an OTP?
 						</Link>
 						<Button
@@ -175,7 +179,7 @@ const SignUp = () => {
 				<p class="text-gray-500 text-xs">&copy; 2025 Patr. All rights reserved.</p>
 			</div>
 		</>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-out/sign-up")({

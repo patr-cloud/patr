@@ -10,16 +10,16 @@ const ForgotPassword = () => {
 
 	const handleSubmit = () => {
 		setSubmitted(true);
-	}
+	};
 
 	return (
-        <main class="min-h-screen w-full bg-secondary flex items-center justify-center p-4 relative overflow-hidden">
-            {/* Background decorative elements */}
-            <div class="absolute inset-0 overflow-hidden pointer-events-none">
+		<main class="min-h-screen w-full bg-secondary flex items-center justify-center p-4 relative overflow-hidden">
+			{/* Background decorative elements */}
+			<div class="absolute inset-0 overflow-hidden pointer-events-none">
 				<div class="absolute inset-0 w-full h-full bg-linear-to-br from-secondary via-secondary-dark to-secondary opacity-50"></div>
 			</div>
-            {/* Forgot Password Card */}
-            <section class="bg-secondary-dark p-12 rounded-2xl shadow-2xl w-full max-w-120 relative z-10 border border-secondary-medium">
+			{/* Forgot Password Card */}
+			<section class="bg-secondary-dark p-12 rounded-2xl shadow-2xl w-full max-w-120 relative z-10 border border-secondary-medium">
 				{/* Logo */}
 				<div class="flex justify-center mb-10">
 					<div class="text-primary text-4xl font-bold">PATR</div>
@@ -27,8 +27,8 @@ const ForgotPassword = () => {
 
 				{submitted() ? (
 					/* Success Message */
-					(<div class="text-center">
-                        <div class="mb-6">
+					<div class="text-center">
+						<div class="mb-6">
 							<div class="w-16 h-16 bg-success bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-4">
 								<svg class="w-8 h-8 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path
@@ -45,7 +45,7 @@ const ForgotPassword = () => {
 								<span class="text-primary font-medium">{email()}</span>
 							</p>
 						</div>
-                        <div class="mt-8 pt-6 border-t border-gray-600">
+						<div class="mt-8 pt-6 border-t border-gray-600">
 							<p class="text-gray-400 text-sm mb-4">
 								Didn't receive the email? Check your spam folder or
 							</p>
@@ -56,7 +56,7 @@ const ForgotPassword = () => {
 								Try again
 							</button>
 						</div>
-                        <div class="mt-6">
+						<div class="mt-6">
 							<Link
 								to="/login"
 								class="text-gray-400 text-sm hover:text-primary flex items-center justify-center gap-2"
@@ -72,15 +72,15 @@ const ForgotPassword = () => {
 								Back to Sign In
 							</Link>
 						</div>
-                    </div>)
+					</div>
 				) : (
 					/* Reset Form */
-					(<>
-                        <div class="text-center mb-10">
+					<>
+						<div class="text-center mb-10">
 							<h1 class="text-4xl font-bold text-white mb-3">Reset Password</h1>
 							<p class="text-gray-400 text-base">Enter your email to receive reset instructions</p>
 						</div>
-                        <div class="space-y-6">
+						<div class="space-y-6">
 							<div class="space-y-2">
 								<label class="text-white text-sm font-medium block pl-1">Email Address</label>
 								<Input
@@ -102,7 +102,7 @@ const ForgotPassword = () => {
 								</Button>
 							</div>
 						</div>
-                        <div class="mt-8 text-center">
+						<div class="mt-8 text-center">
 							<Link
 								to="/login"
 								class="text-gray-400 text-sm hover:text-primary flex items-center justify-center gap-2"
@@ -118,15 +118,15 @@ const ForgotPassword = () => {
 								Back to Sign In
 							</Link>
 						</div>
-                    </>)
+					</>
 				)}
 			</section>
-            {/* Footer */}
-            <div class="absolute bottom-6 left-0 right-0 text-center">
+			{/* Footer */}
+			<div class="absolute bottom-6 left-0 right-0 text-center">
 				<p class="text-gray-500 text-xs">&copy; 2025 Patr. All rights reserved.</p>
 			</div>
-        </main>
-    )
+		</main>
+	);
 };
 
 export const Route = createFileRoute("/_logged-out/forgot-password")({

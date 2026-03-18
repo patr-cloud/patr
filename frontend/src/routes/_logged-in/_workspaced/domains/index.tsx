@@ -42,7 +42,7 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 
 	const fetchParams = createMemo(() => {
 		return [authState(), workspaceId(), props.domainId] as const;
-	})
+	});
 
 	const [dnsRecord] = createResource(fetchParams, async ([auth, wsId, domainId]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") {
@@ -54,7 +54,7 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 			{
 				method: "GET",
 			}
-		)
+		);
 
 		if (!response.ok) {
 			console.error("Failed to fetch DNS records:", response.data.error);
@@ -62,7 +62,7 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 		}
 
 		return { records: response.data.verificationRecords || [] };
-	})
+	});
 
 	const onVerifyClick = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
 		setLoading(true);
@@ -73,7 +73,7 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 
 		if (!wsId || !auth || auth.type !== "LoggedIn" || !domainId) {
 			toast("Unable to verify domain", "error");
-			return
+			return;
 		}
 
 		const verifyResp = await httpRequest<GetDomainInfoInWorkspaceResponse>(
@@ -81,19 +81,19 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 			{
 				method: "POST",
 			}
-		)
+		);
 
 		if (!verifyResp.ok) {
 			console.error("Failed to verify domain:", verifyResp.data.error);
 			toast("Failed to verify domain", "error");
 			setLoading(false);
-			return
+			return;
 		}
 
 		setLoading(false);
 		toast("Domain verification initiated", "success");
 		props.closeFn(false);
-	}
+	};
 
 	return (
 		<ModalContainer
@@ -165,7 +165,7 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 				</Suspense>
 			</ErrorBoundary>
 		</ModalContainer>
-	)
+	);
 };
 
 const VerificationIcon = (props: { domain: WorkspaceDomain }) => {
@@ -180,7 +180,7 @@ const VerificationIcon = (props: { domain: WorkspaceDomain }) => {
 					variant={ButtonVariant.Plain}
 					onClick={(e: EventT<MouseEvent, HTMLButtonElement>) => {
 						e.stopPropagation();
-						setOpen(true)
+						setOpen(true);
 					}}
 				>
 					<FiAlertCircle
@@ -191,7 +191,7 @@ const VerificationIcon = (props: { domain: WorkspaceDomain }) => {
 			)}
 			renderModalContent={(close) => <DNSRecords domainId={props.domain.id} closeFn={close} />}
 		/>
-	)
+	);
 };
 
 const ListDomainsPage = () => {
@@ -205,11 +205,11 @@ const ListDomainsPage = () => {
 	const pagination = createPaginationState({
 		search: () => search(),
 		navigate,
-	})
+	});
 
 	const fetchParams = createMemo(() => {
 		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
-	})
+	});
 
 	const [domains] = createResource(fetchParams, async ([auth, wsId, page, count]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") {
@@ -221,7 +221,7 @@ const ListDomainsPage = () => {
 			{
 				method: "GET",
 			}
-		)
+		);
 
 		if (!response.ok) {
 			console.error("Failed to fetch domains:", response.data.error);
@@ -233,7 +233,7 @@ const ListDomainsPage = () => {
 
 		console.log("Fetched domains:", response.data);
 		return { domains: response.data.domains || [] };
-	})
+	});
 
 	return (
 		<PageContainer>
@@ -256,7 +256,7 @@ const ListDomainsPage = () => {
 								Add Domain
 							</Button>
 						</div>
-					)
+					);
 				}}
 			/>
 			<PageContainerBody class="flex flex-col justify-between">
@@ -310,7 +310,7 @@ const ListDomainsPage = () => {
 				</ErrorBoundary>
 			</PageContainerBody>
 		</PageContainer>
-	)
+	);
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/domains/")({
