@@ -167,6 +167,7 @@ const Login = () => {
 						required={true}
 						type={InputType.Text}
 						placeholder="Username"
+						autocomplete="username"
 						pattern={USERNAME_VALIDITY_PATTERN}
 						title="Username must start and end with an alphanumeric character and can contain underscores, dots, or hyphens in between."
 						id="userId"
@@ -185,6 +186,7 @@ const Login = () => {
 					<PasswordInput
 						required={true}
 						placeholder="Password"
+						autocomplete="current-password"
 						id="password"
 						name="password"
 						class="mt-4"

@@ -82,6 +82,7 @@ const SignUp = () => {
 					<Input
 						type={InputType.Text}
 						placeholder="Username"
+						autocomplete="username"
 						name="username"
 						id="username"
 						value={username}
@@ -94,6 +95,7 @@ const SignUp = () => {
 						<Input
 							type={InputType.Text}
 							placeholder="First Name"
+							autocomplete="given-name"
 							required={true}
 							name="first-name"
 							id="first-name"
@@ -105,6 +107,7 @@ const SignUp = () => {
 						<Input
 							type={InputType.Text}
 							placeholder="Last Name"
+							autocomplete="family-name"
 							required={true}
 							name="last-name"
 							id="last-name"
@@ -118,6 +121,7 @@ const SignUp = () => {
 					<Input
 						type={InputType.Email}
 						placeholder="Email Address"
+						autocomplete="email"
 						value={email}
 						onInput={(e) => setEmail(e.currentTarget.value)}
 						class="mt-4"
@@ -127,6 +131,7 @@ const SignUp = () => {
 					<Input
 						type={InputType.Password}
 						placeholder="Password"
+						autocomplete="new-password"
 						value={password}
 						onInput={(e) => setPassword(e.currentTarget.value)}
 						class="mt-4"
@@ -136,6 +141,7 @@ const SignUp = () => {
 					<Input
 						type={InputType.Password}
 						placeholder="Confirm Password"
+						autocomplete="new-password"
 						value={confirmPassword}
 						onInput={(e) => setConfirmPassword(e.currentTarget.value)}
 						class="mt-4"

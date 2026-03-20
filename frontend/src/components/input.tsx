@@ -160,6 +160,24 @@ interface InputProps {
 	 */
 	title?: string;
 	/**
+	 * The autocomplete hint for the browser.
+	 * {@link https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/autocomplete MDN Documentation}
+	 */
+	autocomplete?:
+		| "off"
+		| "on"
+		| "username"
+		| "email"
+		| "current-password"
+		| "new-password"
+		| "one-time-code"
+		| "name"
+		| "given-name"
+		| "family-name"
+		| "tel"
+		| "url"
+		| "organization";
+	/**
 	 * Autocomplete suggestions. When provided, shows a filterable dropdown of options.
 	 * Each suggestion has a `label` (displayed) and `value` (committed on selection).
 	 */
@@ -310,6 +328,7 @@ const Input = (rawProps: InputProps) => {
 			<input
 				title={props.title}
 				form={props.form}
+				autocomplete={props.autocomplete}
 				required={props.required}
 				class={`overflow-hidden text-ellipsis w-full text-white border-none bg-transparent disabled:text-disabled focus:outline-none placeholder:text-grey text-sm font-thin ${paddingClass()} ${get(
 					props.innerClass
