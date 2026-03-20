@@ -33,7 +33,7 @@ const CreateRunnerPage = () => {
 
 		toast("Runner created successfully", "success");
 		setName("");
-		navigate({ to: `/runners/${runnerId}` });
+		navigate({ to: "/runners" });
 	});
 
 	return (

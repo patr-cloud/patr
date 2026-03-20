@@ -345,24 +345,23 @@ const DomainInfo = () => {
 									renderRow={(record) => (
 										<tr class="table-row text-sm">
 											<td class="flex-2 pl-3 flex items-center justify-center">
-												<span class="truncate">{record.type}</span>
 												<CopyableField
 													value={record.type}
 													variant={CopyableFieldVariant.Text}
 												/>
 											</td>
 											<td class="flex-4 flex items-center justify-center min-w-0">
-												<span class="truncate max-w-full">{record.name}</span>
 												<CopyableField
 													value={record.name}
 													variant={CopyableFieldVariant.Text}
+													innerClass="max-w-full"
 												/>
 											</td>
 											<td class="flex-4 pl-20 flex items-center justify-center min-w-0">
-												<span class="truncate max-w-full">{record.target}</span>
 												<CopyableField
 													value={record.target}
 													variant={CopyableFieldVariant.Text}
+													innerClass="max-w-full"
 												/>
 											</td>
 										</tr>
