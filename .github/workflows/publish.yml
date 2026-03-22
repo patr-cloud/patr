@@ -480,6 +480,13 @@ jobs:
           echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
 
+      - name: Force-update tag to current commit
+        if: github.ref_name == 'develop' || github.ref_name == 'staging'
+        run: |
+          TAG="${{ steps.release.outputs.tag }}"
+          git tag -f "$TAG"
+          git push -f origin "$TAG"
+
       - name: Delete existing release assets
         if: github.ref_name == 'develop' || github.ref_name == 'staging'
         env:
