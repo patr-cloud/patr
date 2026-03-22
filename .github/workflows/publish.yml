@@ -1,4 +1,4 @@
-name: Docker Publish
+name: Publish
 
 on:
   workflow_dispatch:
@@ -145,6 +145,132 @@ jobs:
             docker push "$TAG"
           done
 
+  build-cli-binaries:
+    name: Build CLI (${{ matrix.artifact_name }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-24.04
+            artifact_name: patr-linux-amd64
+            binary_name: patr
+            archive_ext: tar.gz
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
+            artifact_name: patr-linux-arm64
+            binary_name: patr
+            archive_ext: tar.gz
+          - target: aarch64-apple-darwin
+            runner: macos-14
+            artifact_name: patr-darwin-arm64
+            binary_name: patr
+            archive_ext: zip
+          - target: x86_64-pc-windows-msvc
+            runner: windows-latest
+            artifact_name: patr-windows-amd64
+            binary_name: patr.exe
+            archive_ext: zip
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust nightly
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Build CLI
+        run: cargo build --release --package cli --locked
+
+      - name: Package binary (tar.gz)
+        if: matrix.archive_ext == 'tar.gz'
+        run: tar -czf ${{ matrix.artifact_name }}.tar.gz -C target/release ${{ matrix.binary_name }}
+
+      - name: Package binary (zip, macOS)
+        if: matrix.archive_ext == 'zip' && runner.os == 'macOS'
+        run: zip -j ${{ matrix.artifact_name }}.zip target/release/${{ matrix.binary_name }}
+
+      - name: Package binary (zip, Windows)
+        if: matrix.archive_ext == 'zip' && runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path target/release/${{ matrix.binary_name }} -DestinationPath ${{ matrix.artifact_name }}.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}.${{ matrix.archive_ext }}
+          retention-days: 1
+
+  build-cli-docker:
+    name: Build CLI Docker (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from Cargo.toml
+        id: version
+        run: |
+          VERSION=$(grep '^package.version' Cargo.toml | sed 's/.*= *"\(.*\)"/\1/')
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f1-2)
+          echo "full=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
+          echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
+
+      - name: Compute Docker tags
+        id: tags
+        run: |
+          IMAGE="patrcloud/cli"
+          BRANCH="${{ github.ref_name }}"
+          VERSION_FULL="${{ steps.version.outputs.full }}"
+          VERSION_MINOR="${{ steps.version.outputs.minor }}"
+          VERSION_MAJOR="${{ steps.version.outputs.major }}"
+          ARCH="${{ matrix.arch }}"
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+
+          case "$BRANCH" in
+            master)
+              TAGS="${IMAGE}:${VERSION_MAJOR}-${ARCH},${IMAGE}:${VERSION_MINOR}-${ARCH},${IMAGE}:${VERSION_FULL}-${ARCH},${IMAGE}:latest-${ARCH},${IMAGE}:stable-${ARCH}"
+              ;;
+            staging)
+              TAGS="${IMAGE}:${VERSION_MAJOR}-beta-${ARCH},${IMAGE}:${VERSION_MINOR}-beta-${ARCH},${IMAGE}:${VERSION_FULL}-beta-${ARCH},${IMAGE}:staging-${ARCH},${IMAGE}:beta-${ARCH}"
+              ;;
+            develop)
+              TAGS="${IMAGE}:develop-${ARCH},${IMAGE}:alpha-${ARCH},${IMAGE}:alpha.${SHORT_SHA}-${ARCH}"
+              ;;
+            *)
+              echo "::error::Branch '$BRANCH' is not allowed for Docker publishing. Use master, staging, or develop."
+              exit 1
+              ;;
+          esac
+
+          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Build and push
+        run: |
+          IFS=',' read -ra TAG_ARRAY <<< "${{ steps.tags.outputs.tags }}"
+          TAG_FLAGS=""
+          for TAG in "${TAG_ARRAY[@]}"; do
+            TAG_FLAGS="$TAG_FLAGS -t $TAG"
+          done
+
+          docker build $TAG_FLAGS -f cli/Dockerfile .
+          for TAG in "${TAG_ARRAY[@]}"; do
+            docker push "$TAG"
+          done
+
   manifest-api:
     name: Multi-arch manifest for api
     needs: build-api
@@ -246,3 +372,221 @@ jobs:
               "${IMAGE}:${TAG}-arm64"
             docker manifest push "${IMAGE}:${TAG}"
           done
+
+  manifest-cli:
+    name: Multi-arch manifest for CLI
+    needs: build-cli-docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from Cargo.toml
+        id: version
+        run: |
+          VERSION=$(grep '^package.version' Cargo.toml | sed 's/.*= *"\(.*\)"/\1/')
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f1-2)
+          echo "full=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
+          echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Create and push multi-arch manifests
+        run: |
+          IMAGE="patrcloud/cli"
+          BRANCH="${{ github.ref_name }}"
+          VERSION_FULL="${{ steps.version.outputs.full }}"
+          VERSION_MINOR="${{ steps.version.outputs.minor }}"
+          VERSION_MAJOR="${{ steps.version.outputs.major }}"
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+
+          case "$BRANCH" in
+            master)
+              BASE_TAGS="${VERSION_MAJOR} ${VERSION_MINOR} ${VERSION_FULL} latest stable"
+              ;;
+            staging)
+              BASE_TAGS="${VERSION_MAJOR}-beta ${VERSION_MINOR}-beta ${VERSION_FULL}-beta staging beta"
+              ;;
+            develop)
+              BASE_TAGS="develop alpha alpha.${SHORT_SHA}"
+              ;;
+            *)
+              echo "::error::Branch '$BRANCH' is not allowed for Docker publishing. Use master, staging, or develop."
+              exit 1
+              ;;
+          esac
+
+          for TAG in $BASE_TAGS; do
+            docker manifest create "${IMAGE}:${TAG}" \
+              "${IMAGE}:${TAG}-amd64" \
+              "${IMAGE}:${TAG}-arm64"
+            docker manifest push "${IMAGE}:${TAG}"
+          done
+
+  github-release:
+    name: Create GitHub Release
+    needs: build-cli-binaries
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from Cargo.toml
+        id: version
+        run: |
+          VERSION=$(grep '^package.version' Cargo.toml | sed 's/.*= *"\(.*\)"/\1/')
+          echo "full=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Download all CLI artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: patr-*
+          merge-multiple: true
+          path: artifacts
+
+      - name: Compute release tag
+        id: release
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          VERSION="${{ steps.version.outputs.full }}"
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+
+          case "$BRANCH" in
+            master)
+              TAG="v${VERSION}"
+              PRERELEASE=false
+              NAME="Patr CLI v${VERSION}"
+              ;;
+            staging)
+              TAG="v${VERSION}-beta"
+              PRERELEASE=true
+              NAME="Patr CLI v${VERSION}-beta"
+              ;;
+            develop)
+              TAG="alpha"
+              PRERELEASE=true
+              NAME="Patr CLI Alpha (${SHORT_SHA})"
+              ;;
+            *)
+              echo "::error::Branch '$BRANCH' is not allowed for publishing."
+              exit 1
+              ;;
+          esac
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release.outputs.tag }}
+          name: ${{ steps.release.outputs.name }}
+          prerelease: ${{ steps.release.outputs.prerelease }}
+          generate_release_notes: ${{ github.ref_name != 'develop' }}
+          body: ${{ github.ref_name == 'develop' && format('Rolling alpha build from commit {0}', github.sha) || '' }}
+          make_latest: ${{ github.ref_name == 'master' }}
+          files: artifacts/*
+
+  update-homebrew-tap:
+    name: Update Homebrew formula
+    needs: github-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from Cargo.toml
+        id: version
+        run: |
+          VERSION=$(grep '^package.version' Cargo.toml | sed 's/.*= *"\(.*\)"/\1/')
+          echo "full=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Compute release tag and formula
+        id: brew
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          VERSION="${{ steps.version.outputs.full }}"
+
+          case "$BRANCH" in
+            master)
+              TAG="v${VERSION}"
+              FORMULA="cli"
+              CLASS="Cli"
+              CONFLICTS_A="alpha"
+              CONFLICTS_B="beta"
+              ;;
+            staging)
+              TAG="v${VERSION}-beta"
+              FORMULA="beta"
+              CLASS="Beta"
+              CONFLICTS_A="cli"
+              CONFLICTS_B="alpha"
+              ;;
+            develop)
+              TAG="alpha"
+              FORMULA="alpha"
+              CLASS="Alpha"
+              CONFLICTS_A="cli"
+              CONFLICTS_B="beta"
+              ;;
+            *)
+              echo "::error::Branch '$BRANCH' is not allowed for publishing."
+              exit 1
+              ;;
+          esac
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "formula=$FORMULA" >> "$GITHUB_OUTPUT"
+          echo "class=$CLASS" >> "$GITHUB_OUTPUT"
+          echo "conflicts_a=$CONFLICTS_A" >> "$GITHUB_OUTPUT"
+          echo "conflicts_b=$CONFLICTS_B" >> "$GITHUB_OUTPUT"
+
+      - name: Download release assets and compute checksums
+        id: checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.brew.outputs.tag }}"
+          REPO="${{ github.repository }}"
+
+          for ASSET in patr-linux-amd64.tar.gz patr-linux-arm64.tar.gz patr-darwin-arm64.zip patr-windows-amd64.zip; do
+            gh release download "$TAG" --repo "$REPO" --pattern "$ASSET" --dir /tmp/assets
+          done
+
+          echo "linux_amd64=$(sha256sum /tmp/assets/patr-linux-amd64.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "linux_arm64=$(sha256sum /tmp/assets/patr-linux-arm64.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "darwin_arm64=$(sha256sum /tmp/assets/patr-darwin-arm64.zip | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Generate and push formula
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          TAG="${{ steps.brew.outputs.tag }}"
+          VERSION="${{ steps.version.outputs.full }}"
+          FORMULA="${{ steps.brew.outputs.formula }}"
+          REPO="${{ github.repository }}"
+          BASE_URL="https://github.com/${REPO}/releases/download/${TAG}"
+
+          cp assets/cli/homebrew/formula.rb /tmp/formula.rb
+          sed -i "s|{{CLASS}}|${{ steps.brew.outputs.class }}|g" /tmp/formula.rb
+          sed -i "s|{{VERSION}}|${VERSION}|g" /tmp/formula.rb
+          sed -i "s|{{CONFLICTS_A}}|${{ steps.brew.outputs.conflicts_a }}|g" /tmp/formula.rb
+          sed -i "s|{{CONFLICTS_B}}|${{ steps.brew.outputs.conflicts_b }}|g" /tmp/formula.rb
+          sed -i "s|{{BASE_URL}}|${BASE_URL}|g" /tmp/formula.rb
+          sed -i "s|{{SHA_DARWIN_ARM64}}|${{ steps.checksums.outputs.darwin_arm64 }}|g" /tmp/formula.rb
+          sed -i "s|{{SHA_LINUX_ARM64}}|${{ steps.checksums.outputs.linux_arm64 }}|g" /tmp/formula.rb
+          sed -i "s|{{SHA_LINUX_AMD64}}|${{ steps.checksums.outputs.linux_amd64 }}|g" /tmp/formula.rb
+
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/patr-cloud/homebrew-cli.git" /tmp/homebrew-cli
+          mkdir -p /tmp/homebrew-cli/Formula
+          cp /tmp/formula.rb "/tmp/homebrew-cli/Formula/${FORMULA}.rb"
+
+          cd /tmp/homebrew-cli
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "Formula/${FORMULA}.rb"
+          git commit -m "Update ${FORMULA} formula to ${TAG}" || echo "No changes to commit"
+          git push

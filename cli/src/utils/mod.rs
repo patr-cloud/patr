@@ -58,7 +58,8 @@ pub mod constants {
 pub fn config_dir() -> std::path::PathBuf {
 	dirs::data_dir()
 		.expect("Failed to get the system config directory")
-		.join("patr-cli")
+		.join("patr")
+		.join("cli")
 		.join("config.json")
 }
 
@@ -66,7 +67,8 @@ pub fn config_dir() -> std::path::PathBuf {
 pub fn config_local_dir() -> std::path::PathBuf {
 	dirs::data_local_dir()
 		.expect("Failed to get the user's config directory")
-		.join("patr-cli")
+		.join("patr")
+		.join("cli")
 		.join("config.json")
 }
 
@@ -79,7 +81,8 @@ pub fn runner_config_path(runner_type: RunnerType) -> std::path::PathBuf {
 	};
 	dirs::data_local_dir()
 		.expect("Failed to get local data directory")
-		.join("patr-cli")
+		.join("patr")
+		.join("cli")
 		.join(format!("runner.{name}.json"))
 }
 
