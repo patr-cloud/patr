@@ -88,6 +88,7 @@ import { DeleteContainerRepositoryImageResponse } from "./DeleteContainerReposit
 import { ListContainerRepositoryTagsResponse } from "./ListContainerRepositoryTagsResponse";
 import { ListContainerRepositoryManifestsResponse } from "./ListContainerRepositoryManifestsResponse";
 import { ContainerRepositoryManifestInfo } from "./ContainerRepositoryManifestInfo";
+import { UpdateApiTokenRequest } from "./UpdateApiTokenRequest";
 
 export type {
 	EnvironmentVariableValue,
@@ -180,4 +181,5 @@ export type {
 	ListContainerRepositoryTagsResponse,
 	ListContainerRepositoryManifestsResponse,
 	ContainerRepositoryManifestInfo,
+	UpdateApiTokenRequest,
 };

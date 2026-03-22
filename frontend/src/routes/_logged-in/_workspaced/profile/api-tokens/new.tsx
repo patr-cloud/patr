@@ -1,181 +1,25 @@
 import { createFileRoute } from "@tanstack/solid-router";
-import { createMemo, createResource, createSignal, For, Show, Suspense } from "solid-js";
-import { Button, ButtonVariant, PageContainer, PageContainerBody, PageContainerHead, Table } from "~/components";
+import { createResource, createSignal, For, Suspense } from "solid-js";
+import { Button, ButtonVariant, PageContainer, PageContainerBody, PageContainerHead } from "~/components";
 import Input, { InputType } from "~/components/input";
 import InputLabel from "~/components/input-label";
 import { httpRequest } from "~/utils/http-request";
 import { useAuthState } from "~/hooks";
+import { useUserInfo } from "~/hooks/state-hooks";
 import {
 	CreateApiTokenRequest,
 	CreateApiTokenResponse,
 	ListUserWorkspacesResponse,
-	ResourcePermissionType,
-	WithId,
-	Workspace,
 	WorkspacePermission,
 } from "~/bindings";
 import { useToast } from "~/components/toast";
 import { useNavigate } from "@tanstack/solid-router";
 import ApiTokenModal from "./-components/api-token-modal";
-import PermissionSelector from "~/routes/_logged-in/_workspaced/workspace/roles/-components/permission-selector";
-import { parsePermissionName } from "~/utils/func";
-import { useFetchPermissions } from "~/hooks/fetch";
-import { FiTrash2, FiXCircle } from "solid-icons/fi";
-
-const WorkspacePermissionItem = (props: { workspace: WithId<Workspace> }) => {
-	const [selectedPermissionIds, setSelectedPermissionIds] = createSignal<Set<string>>(new Set());
-	const [permissionsData, setPermissionsData] = createSignal<{ [key: string]: ResourcePermissionType }>({});
-	const [expand, setExpand] = createSignal(false);
-
-	// Fetch all permissions for the workspace to map IDs to names
-	const [allPermissions] = useFetchPermissions(props.workspace.id);
-
-	// Create a map of permission ID to permission name
-	const permissionIdToName = createMemo(() => {
-		const perms = allPermissions()?.permissions;
-		if (!perms) return new Map<string, string>();
-		return new Map(perms.map((perm) => [perm.id, perm.name]));
-	});
-
-	const permissionEntries = createMemo(() => {
-		const permissions = permissionsData();
-		if (!permissions) return [];
-		const nameMap = permissionIdToName();
-
-		// Group permissions by resourceType
-		const grouped = new Map<
-			string,
-			{
-				permissionResourceType: string;
-				permissionActions: Array<{ permissionId: string; action: string }>;
-				permissionType: string;
-				resources?: string[];
-			}
-		>();
-
-		Object.entries(permissions).forEach(([permissionId, permissionData]) => {
-			const permissionName = nameMap.get(permissionId) || permissionId;
-			const parsed = parsePermissionName(permissionName);
-
-			if (!grouped.has(parsed.resourceType)) {
-				grouped.set(parsed.resourceType, {
-					permissionResourceType: parsed.resourceType,
-					permissionActions: [],
-					permissionType: permissionData?.permissionType || "all",
-					resources: permissionData?.permissionType ? permissionData.resources : undefined,
-				});
-			}
-
-			const group = grouped.get(parsed.resourceType)!;
-			group.permissionActions.push({
-				permissionId,
-				action: parsed.action,
-			});
-		});
-
-		return Array.from(grouped.values());
-	});
-
-	return (
-		<div class="w-full flex flex-col items-start justify-start">
-			<div
-				onClick={(e) => {
-					e.preventDefault();
-					setExpand(!expand());
-				}}
-				class="flex items-center justify-start gap-4"
-			>
-				<span
-					class="text-[8px] transition-transform duration-200"
-					style={{ display: "inline-block", transform: expand() ? "rotate(90deg)" : "rotate(0deg)" }}
-				>
-					&#9658
-				</span>
-				<h1>{props.workspace.name}</h1>
-			</div>
-			<div class="flex items-center gap-2 w-full">
-				{expand() && (
-					<div class="flex flex-col items-start gap-4 w-full">
-						<div class="flex items-center gap-2 w-full">
-							<PermissionSelector
-								class="flex-1 w-full"
-								workspaceId={props.workspace.id}
-								selectedPermissionIds={selectedPermissionIds()}
-								onPermissionChange={setSelectedPermissionIds}
-								onPermissionsDataChange={(data) => setPermissionsData((prev) => ({ ...prev, ...data }))}
-							/>
-						</div>
-
-						<Table
-							column_grids={["flex-2", "flex-3", "flex-2", "flex-[0.5]"]}
-							headings={["Resource Type", "Actions", "Resources", ""]}
-							rows={permissionEntries().sort((a, b) =>
-								a.permissionResourceType.localeCompare(b.permissionResourceType)
-							)}
-							renderRow={(perm) => (
-								<tr class="table-row">
-									<td class="flex-2 flex items-center justify-center">
-										<span class="truncate">{perm.permissionResourceType}</span>
-									</td>
-									<td class="flex-3 flex items-center justify-center">
-										<div class="flex flex-wrap gap-1 justify-center">
-											<For each={perm.permissionActions}>
-												{(actionData) => (
-													<span
-														onClick={() => {
-															const newPermissionsData = { ...permissionsData() };
-															delete newPermissionsData[actionData.permissionId];
-															setPermissionsData(newPermissionsData);
-														}}
-														class="text-sm px-2 py-1 bg-secondary-medium rounded cursor-pointer hover:bg-secondary-dark transition-colors flex items-center justify-center gap-1"
-													>
-														{actionData.action}
-														<FiXCircle size={12} class="inline-block" />
-													</span>
-												)}
-											</For>
-										</div>
-									</td>
-									<td class="flex-2 flex items-center justify-center">
-										<Show
-											when={perm.resources && perm.resources.length > 0}
-											fallback={<span class="text-gray-400">All resources</span>}
-										>
-											<div class="flex flex-col gap-1">
-												<For each={perm.resources}>
-													{(resource) => <span class="text-sm">{resource}</span>}
-												</For>
-											</div>
-										</Show>
-									</td>
-									<td
-										onClick={() => {
-											const newPermissionsData = { ...permissionsData() };
-											// Delete all permissions for this resource type
-											perm.permissionActions.forEach((actionData) => {
-												delete newPermissionsData[actionData.permissionId];
-											});
-											setPermissionsData(newPermissionsData);
-										}}
-									>
-										<FiTrash2 color="red" />
-									</td>
-								</tr>
-							)}
-						/>
-					</div>
-				)}
-			</div>
-		</div>
-	);
-};
-
-export interface WorkspacePermissions {
-	[workspaceId: string]: WorkspacePermission;
-}
+import WorkspacePermissionItem from "./-components/workspace-permission-item";
 
 const CreateApiTokens = () => {
-	const [authState, _] = useAuthState();
+	const [authState] = useAuthState();
+	const userInfo = useUserInfo();
 	const toast = useToast();
 	const navigate = useNavigate();
 
@@ -183,6 +27,10 @@ const CreateApiTokens = () => {
 	const [apiToken, setApiToken] = createSignal<string>("");
 
 	const [workspaces] = createResource(authState, async (auth) => {
+		if (!auth || auth.type !== "LoggedIn") {
+			return { workspaces: [] };
+		}
+
 		const response = await httpRequest<ListUserWorkspacesResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/user/workspaces`,
 			{
@@ -202,35 +50,50 @@ const CreateApiTokens = () => {
 	const [name, setName] = createSignal<string>("");
 	const [fromDate, setFromDate] = createSignal<Date | null>(null);
 	const [toDate, setToDate] = createSignal<Date | null>(null);
-	const [selectedWorkspace, setSelectedWorkspace] = createSignal<string | undefined>(undefined);
 
-	const [workspacePermissions, setWorkspacePermissions] = createSignal<WorkspacePermissions>();
+	const [enabledWorkspaces, setEnabledWorkspaces] = createSignal<Set<string>>(new Set());
+	const [workspacePermissions, setWorkspacePermissions] = createSignal<{
+		[workspaceId: string]: WorkspacePermission;
+	}>({});
 
-	const selectedWorkspaceInfo = createMemo(() => {
-		return workspaces()?.workspaces?.find((ws) => ws.id === selectedWorkspace());
-	});
+	const handleWorkspaceToggle = (workspaceId: string, enabled: boolean) => {
+		const newEnabled = new Set(enabledWorkspaces());
+		if (enabled) {
+			newEnabled.add(workspaceId);
+		} else {
+			newEnabled.delete(workspaceId);
+			const newPerms = { ...workspacePermissions() };
+			delete newPerms[workspaceId];
+			setWorkspacePermissions(newPerms);
+		}
+		setEnabledWorkspaces(newEnabled);
+	};
+
+	const handlePermissionChange = (workspaceId: string, permission: WorkspacePermission) => {
+		setWorkspacePermissions((prev) => ({ ...prev, [workspaceId]: permission }));
+	};
+
+	const hasEnabledWorkspaces = () => enabledWorkspaces().size > 0;
 
 	const onSubmit = async (e: Event) => {
 		e.preventDefault();
 		const auth = authState();
 		if (!auth || auth.type !== "LoggedIn") {
 			toast("User is not logged in", "error");
-			console.error("User is not logged in");
 			return;
 		}
 
-		console.log("Creating API Token with details:", {
-			name: name(),
-			fromDate: fromDate(),
-			toDate: toDate(),
-		});
+		const perms = workspacePermissions();
+		if (Object.keys(perms).length === 0) {
+			toast("Please enable at least one workspace and configure permissions", "error");
+			return;
+		}
 
-		// @ts-expect-error
-		const requestBody: CreateApiTokenRequest = {
+		const requestBody: Omit<CreateApiTokenRequest, "created"> = {
 			name: name(),
 			tokenNbf: fromDate() || undefined,
 			tokenExp: toDate() || undefined,
-			permissions: workspacePermissions(),
+			permissions: perms,
 		};
 
 		const response = await httpRequest<CreateApiTokenResponse>(
@@ -240,8 +103,6 @@ const CreateApiTokens = () => {
 				body: JSON.stringify(requestBody),
 			}
 		);
-
-		console.log("API Token created successfully:", response.data);
 
 		if (!response.ok) {
 			console.error("Failed to create API token:", response.data.error);
@@ -348,24 +209,35 @@ const CreateApiTokens = () => {
 								</div>
 							}
 						>
-							<div class="flex flex-col gap-2 items-center w-full">
-								{/* Workspace Selection Section */}
-								<div class="flex gap-8 items-center justify-center w-full">
-									<InputLabel parentClass="flex-2" label="Workspace" />
-								</div>
+							<div class="flex flex-col gap-4 items-start w-full">
+								<InputLabel parentClass="flex-2" label="Workspace Permissions" />
 
 								<For
 									each={workspaces.latest?.workspaces || []}
 									fallback={<div class="text-gray-400">No workspaces available</div>}
 								>
-									{(ws) => <WorkspacePermissionItem workspace={ws} />}
+									{(ws) => (
+										<WorkspacePermissionItem
+											workspace={ws}
+											isSuperAdmin={userInfo()?.id === ws.superAdminId}
+											enabled={enabledWorkspaces().has(ws.id)}
+											onToggle={handleWorkspaceToggle}
+											onPermissionChange={handlePermissionChange}
+										/>
+									)}
 								</For>
+
+								{!hasEnabledWorkspaces() && (workspaces.latest?.workspaces?.length ?? 0) > 0 && (
+									<p class="text-sm text-gray-400">
+										Enable at least one workspace to create an API token.
+									</p>
+								)}
 							</div>
 						</Suspense>
 					</div>
 
 					<div class="flex justify-end">
-						<Button type="submit" variant={ButtonVariant.Contained}>
+						<Button type="submit" variant={ButtonVariant.Contained} disabled={!hasEnabledWorkspaces()}>
 							Create Token
 						</Button>
 					</div>

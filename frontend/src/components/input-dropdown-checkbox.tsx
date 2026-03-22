@@ -4,6 +4,7 @@ import { createSignal, JSX, mergeProps } from "solid-js";
 import { get, variantBgClass } from "~/utils/func";
 import { FiChevronDown } from "solid-icons/fi";
 import { useClickOutside } from "~/hooks";
+import Checkbox from "./checkbox";
 
 interface InputDropdownCheckboxProps {
 	/** Dropdown Options */
@@ -168,8 +169,7 @@ const InputDropdownCheckbox = (rawProps: InputDropdownCheckboxProps) => {
 								highlightedIndex() === index ? "bg-secondary-dark" : ""
 							}`}
 						>
-							<input checked={get(props.checked).includes(option.value)} type="checkbox" />
-							{option.label}
+							<Checkbox checked={get(props.checked).includes(option.value)} label={option.label} />
 						</div>
 					))}
 					{filteredOptions().length === 0 && <div class="px-xl py-sm text-grey">No options available.</div>}

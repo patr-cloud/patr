@@ -29,6 +29,8 @@ import CopyableField from "~/components/copyable-field";
 import Initials from "~/components/initials";
 import EmptyState from "~/components/empty-state";
 import Pagination from "~/components/pagination";
+import Checkbox from "~/components/checkbox";
+import Radio from "~/components/radio";
 export {
 	Alert,
 	PageContainer,
@@ -67,4 +69,6 @@ export {
 	Initials,
 	EmptyState,
 	Pagination,
+	Checkbox,
+	Radio,
 };

@@ -1,5 +1,5 @@
 import { createMemo, createSignal, Show, Suspense } from "solid-js";
-import { Button, ButtonVariant, InputDropdown, InputDropdownCheckBox, ListResources } from "~/components";
+import { Button, ButtonVariant, InputDropdown, ListResources } from "~/components";
 import { useFetchPermissions } from "~/hooks/fetch";
 import { parsePermissionName, parseCamelCase, getResourceEndpoint } from "~/utils/func";
 import { ResourcePermissionType } from "~/bindings/ResourcePermissionType";
@@ -9,30 +9,64 @@ interface PermissionSelectorProps {
 	/** Additional classes for the container */
 	class?: string;
 	workspaceId: string;
-	selectedPermissionIds: Set<string>;
-	onPermissionChange: (permissions: Set<string>) => void;
-	onPermissionsDataChange?: (data: { [key: string]: ResourcePermissionType }) => void;
+	onPermissionsDataChange: (data: { [key: string]: ResourcePermissionType }) => void;
 }
 
 const PermissionSelector = (props: PermissionSelectorProps) => {
 	const [selectedResourceType, setSelectedResourceType] = createSignal<string>("");
+	const [selectedPermission, setSelectedPermission] = createSignal<string>("");
+	const [scopeMode, setScopeMode] = createSignal<"all" | "include" | "exclude">("all");
 	const [selectedResources, setSelectedResources] = createSignal<Set<string>>(new Set());
-	const [includeExcludeMode, setIncludeExcludeMode] = createSignal<"all" | "include" | "exclude">("all");
 
 	const [permissions] = useFetchPermissions(props.workspaceId);
 
-	const togglePermissionId = (permissionId: string) => {
-		const newSet = new Set(props.selectedPermissionIds);
-		console.log("new set before toggle", newSet);
-		if (newSet.has(permissionId)) {
-			newSet.delete(permissionId);
-		} else {
-			newSet.add(permissionId);
-		}
-		console.log("new set after toggle", newSet);
+	// Get unique resource types from permissions
+	const resourceTypeOptions = createMemo(() => {
+		return Array.from(
+			new Set(
+				(permissions()?.permissions || []).map((p) => parsePermissionName(p.name).resourceType).filter((r) => r)
+			)
+		).map((resourceType) => ({
+			label: parseCamelCase(resourceType),
+			value: resourceType,
+		}));
+	});
 
-		props.onPermissionChange(newSet);
-	};
+	// Get permissions for the selected resource type
+	const permissionsOptions = createMemo(() => {
+		return (permissions()?.permissions || [])
+			.filter((p) => parsePermissionName(p.name).resourceType === selectedResourceType())
+			.map((p) => {
+				const parsed = parsePermissionName(p.name);
+				return {
+					label: parseCamelCase(parsed.permission),
+					value: parsed.permission,
+				};
+			});
+	});
+
+	// Find the permission ID for the selected resource type + permission
+	const selectedPermissionId = createMemo(() => {
+		const perms = permissions()?.permissions || [];
+		const match = perms.find((p) => {
+			const parsed = parsePermissionName(p.name);
+			return parsed.resourceType === selectedResourceType() && parsed.permission === selectedPermission();
+		});
+		return match?.id;
+	});
+
+	// Whether the scope dropdown should be shown
+	const shouldShowScope = createMemo(() => {
+		if (!selectedResourceType() || !selectedPermission()) return false;
+		if (!getResourceEndpoint(selectedResourceType())) return false;
+		if (["create", "add"].includes(selectedPermission())) return false;
+		return true;
+	});
+
+	const humanResourceType = createMemo(() => {
+		if (selectedResourceType() == "containerRegistryRepository") return "Container Registry Repositories";
+		return parseCamelCase(selectedResourceType()) + "s";
+	});
 
 	const toggleResource = (resourceId: string) => {
 		const newSet = new Set(selectedResources());
@@ -44,150 +78,85 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 		setSelectedResources(newSet);
 	};
 
-	const updatePermissionsData = (permissionIds: Set<string>) => {
-		if (!props.onPermissionsDataChange) return;
+	const handleAdd = () => {
+		const permId = selectedPermissionId();
+		if (!permId || !selectedPermission()) return;
 
-		const permissionsData: { [key: string]: ResourcePermissionType } = {};
-		const mode = includeExcludeMode();
+		let resourcePermission: ResourcePermissionType;
+		if (!shouldShowScope() || scopeMode() === "all") {
+			resourcePermission = { permissionType: "exclude", resources: [] };
+		} else if (scopeMode() === "include") {
+			resourcePermission = { permissionType: "include", resources: Array.from(selectedResources()) };
+		} else {
+			resourcePermission = { permissionType: "exclude", resources: Array.from(selectedResources()) };
+		}
 
-		permissionIds.forEach((permissionId) => {
-			if (mode === "all") {
-				permissionsData[permissionId] = {
-					permissionType: "exclude",
-					resources: [],
-				};
-			} else if (mode === "include" && selectedResources().size > 0) {
-				permissionsData[permissionId] = {
-					permissionType: "include",
-					resources: Array.from(selectedResources()),
-				};
-			} else if (mode === "exclude" && selectedResources().size > 0) {
-				permissionsData[permissionId] = {
-					permissionType: "exclude",
-					resources: Array.from(selectedResources()),
-				};
-			} else {
-				permissionsData[permissionId] = {
-					permissionType: "include",
-					resources: [],
-				};
-			}
-		});
+		props.onPermissionsDataChange({ [permId]: resourcePermission });
 
-		props.onPermissionsDataChange(permissionsData);
+		// Reset dropdowns 2-4, keep dropdown 1
+		setSelectedPermission("");
+		setScopeMode("all");
+		setSelectedResources(new Set([]));
 	};
-
-	/**
-	 * This is a list of actions, (e.g. create, delete, etc.) for the currently selected resource type.
-	 * It is derived from the full list of permissions for the workspace, filtered down to just the permissions
-	 * that match the currently selected resource type.
-	 */
-	const permissionNameMap = createMemo(() => {
-		return new Map((permissions()?.permissions || []).map((p) => [p.id, p.name]));
-	});
-
-	const permissionActions = createMemo(() => {
-		return (permissions()?.permissions || []).filter((p) => {
-			const parsed = parsePermissionName(p.name);
-			return parsed.action !== "" ? parsed.resourceType === selectedResourceType() : null;
-		});
-	});
 
 	return (
 		<Suspense fallback={<div class="text-gray-400 text-sm">Loading permissions...</div>}>
-			<div class={`flex gap-3 ${props.class}`}>
-				{/* Column 1: Resource Types */}
-				<div class="flex flex-col gap-3 w-full">
+			<div class={`flex gap-3 items-center ${props.class || ""}`}>
+				{/* Dropdown 1: Resource Type */}
+				<div class="flex-1 min-w-0">
 					<InputDropdown
 						onSelect={(val) => {
-							console.log(val);
 							setSelectedResourceType(val);
-							setIncludeExcludeMode("all");
-							props.onPermissionChange(new Set<string>([]));
-							setSelectedResources(new Set<string>([]));
+							setSelectedPermission("");
+							setScopeMode("all");
+							setSelectedResources(new Set([]));
 						}}
 						placeholder="Select Resource Type"
 						value={selectedResourceType}
-						options={Array.from(
-							new Set(
-								(permissions()?.permissions || [])
-									.map((p) => parsePermissionName(p.name).resourceType)
-									.filter((r) => r)
-							)
-						).map((resourceType) => ({
-							label: parseCamelCase(resourceType),
-							value: resourceType,
-						}))}
+						options={resourceTypeOptions()}
 					/>
 				</div>
 
-				{/* Column 2: Permission Actions */}
-				<Show when={selectedResourceType() && permissionActions().length > 0}>
-					<div class="flex flex-col gap-3 w-full">
-						<InputDropdownCheckBox
-							onToggle={(val) => togglePermissionId(val)}
-							checked={() => Array.from(props.selectedPermissionIds)}
-							placeholder={() =>
-								Array.from(props.selectedPermissionIds)
-									.map((id) => permissionNameMap().get(id))
-									.map((val) => (val ? parseCamelCase(parsePermissionName(val).action) : undefined))
-									.filter((v) => v !== undefined)
-									.join(", ") || "Select Permissions"
-							}
-							options={() =>
-								permissionActions()
-									.map((p) => ({ id: p.id, ...parsePermissionName(p.name) }))
-									.filter((p) => p.resourceType === selectedResourceType())
-									.map((p) => {
-										return {
-											label: `${parseCamelCase(p.action)}`,
-											value: p.id,
-										};
-									})
-							}
+				{/* Dropdown 2: Action */}
+				<Show when={selectedResourceType() && permissionsOptions().length > 0}>
+					<div class="flex-1 min-w-0">
+						<InputDropdown
+							onSelect={(val) => {
+								setSelectedPermission(val);
+								setScopeMode("all");
+								setSelectedResources(new Set([]));
+							}}
+							placeholder="Select Action"
+							value={selectedPermission}
+							options={permissionsOptions()}
 						/>
 					</div>
 				</Show>
 
-				{/* Column 3: Include/Exclude Mode */}
-				<Show when={selectedResourceType() && getResourceEndpoint(selectedResourceType())}>
-					<div class="flex flex-col gap-3 w-full">
+				{/* Dropdown 3: Resource Scope */}
+				<Show when={selectedPermission() && shouldShowScope()}>
+					<div class="flex-1 min-w-0">
 						<InputDropdown
 							onSelect={(val) => {
-								setIncludeExcludeMode(val as "all" | "include" | "exclude");
+								setScopeMode(val as "all" | "include" | "exclude");
 								if (val === "all") {
-									setSelectedResources(new Set<string>([]));
+									setSelectedResources(new Set([]));
 								}
 							}}
-							placeholder="Select Include/Exclude Mode"
-							value={includeExcludeMode}
+							placeholder="Select Scope"
+							value={scopeMode}
 							options={[
-								{
-									label: `All ${parseCamelCase(selectedResourceType())}(s)`,
-									value: "all",
-								},
-								{
-									label: `Include Specific ${parseCamelCase(selectedResourceType())}(s)`,
-									value: "include",
-								},
-								{
-									label: `Exclude Specific ${parseCamelCase(selectedResourceType())}(s)`,
-									value: "exclude",
-								},
+								{ label: `All ${humanResourceType()}`, value: "all" },
+								{ label: `Only Specific ${humanResourceType()}...`, value: "include" },
+								{ label: `All ${humanResourceType()} Except...`, value: "exclude" },
 							]}
 						/>
 					</div>
 				</Show>
 
-				{/* Column 4: List of Resources */}
-				<Show
-					when={
-						selectedResourceType() &&
-						includeExcludeMode() !== "all" &&
-						getResourceEndpoint(selectedResourceType())
-					}
-				>
-					<div class="flex flex-col gap-3 w-full">
+				{/* Dropdown 4: Resource Selection */}
+				<Show when={selectedPermission() && shouldShowScope() && scopeMode() !== "all"}>
+					<div class="flex-1 min-w-0">
 						<ListResources
 							workspaceId={props.workspaceId}
 							resourceType={selectedResourceType()}
@@ -196,21 +165,17 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 						/>
 					</div>
 				</Show>
-			</div>
 
-			<Button
-				variant={ButtonVariant.Outlined}
-				type="button"
-				onClick={() => {
-					updatePermissionsData(props.selectedPermissionIds);
-					props.onPermissionChange(new Set<string>([]));
-					setSelectedResourceType("");
-					setSelectedResources(new Set<string>([]));
-					setIncludeExcludeMode("all");
-				}}
-			>
-				<FiPlus size={16} class="inline-block" />
-			</Button>
+				{/* + Button */}
+				<Button
+					variant={ButtonVariant.Outlined}
+					type="button"
+					disabled={!selectedPermission()}
+					onClick={handleAdd}
+				>
+					<FiPlus size={16} class="inline-block" />
+				</Button>
+			</div>
 		</Suspense>
 	);
 };

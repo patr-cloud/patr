@@ -106,13 +106,13 @@ const useUserPermissions = () => {
 
 			for (const permObj of permissions) {
 				for (const [permId, permDetail] of Object.entries(permObj)) {
-					const { resourceType, action } = permDetail;
+					const { resourceType, permission } = permDetail;
 
 					if (!permissionsMap[resourceType]) {
 						permissionsMap[resourceType] = {};
 					}
 
-					permissionsMap[resourceType][action] = permId;
+					permissionsMap[resourceType][permission] = permId;
 				}
 			}
 

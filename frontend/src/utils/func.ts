@@ -179,7 +179,7 @@ const parsePermissionName = (name: string) => {
 	const parts = name.split("::");
 	return {
 		resourceType: parts[0] || "",
-		action: parts[1] || "",
+		permission: parts[1] || "",
 	};
 };
 
@@ -200,7 +200,7 @@ const safelyParseJSON = <T>(jsonString: string): T | undefined => {
 const getResourceEndpoint = (type: string) => {
 	const endpointMap: Record<string, string> = {
 		deployment: "deployment",
-		containerRegistry: "container-registry",
+		containerRegistryRepository: "container-registry",
 		runner: "runner",
 		staticSite: "static-site",
 		volume: "volume",

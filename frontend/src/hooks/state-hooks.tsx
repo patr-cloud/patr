@@ -1,7 +1,10 @@
 import { makePersisted, cookieStorage } from "@solid-primitives/storage";
-import { createContext, createSignal, ParentProps, Signal, useContext } from "solid-js";
+import { createContext, createResource, createSignal, ParentProps, Resource, Signal, useContext } from "solid-js";
+import { GetUserInfoResponse } from "~/bindings/GetUserInfoResponse";
+import { httpRequest } from "~/utils/http-request";
 
 const AuthStateContext = createContext<Signal<AuthState | null>>();
+const UserInfoContext = createContext<Resource<GetUserInfoResponse | undefined>>();
 const LastWorkspaceIdContext = createContext<Signal<string | null>>();
 
 /// The authentication state of the user. This is what gets stored in the cookie
@@ -29,7 +32,23 @@ export const AuthStateProvider = (props: ParentProps<{}>) => {
 		}),
 	});
 
-	return <AuthStateContext.Provider value={[authState, setAuthState]}>{props.children}</AuthStateContext.Provider>;
+	const [userInfo] = createResource(
+		() => authState(),
+		async (auth) => {
+			if (!auth || auth.type !== "LoggedIn") return undefined;
+			const response = await httpRequest<GetUserInfoResponse>(`${import.meta.env.VITE_BASE_URL}/api/user`, {
+				method: "GET",
+			});
+			if (!response.ok) return undefined;
+			return response.data;
+		}
+	);
+
+	return (
+		<AuthStateContext.Provider value={[authState, setAuthState]}>
+			<UserInfoContext.Provider value={userInfo}>{props.children}</UserInfoContext.Provider>
+		</AuthStateContext.Provider>
+	);
 };
 
 export function useAuthState(): Signal<AuthState | null> {
@@ -39,6 +58,14 @@ export function useAuthState(): Signal<AuthState | null> {
 	}
 
 	return signal;
+}
+
+export function useUserInfo(): Resource<GetUserInfoResponse | undefined> {
+	const resource = useContext(UserInfoContext);
+	if (!resource) {
+		throw new Error("useUserInfo must be used within an AuthStateProvider");
+	}
+	return resource;
 }
 
 /**

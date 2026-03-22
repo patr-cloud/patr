@@ -183,6 +183,10 @@ jobs:
             develop)
               BASE_TAGS="develop alpha"
               ;;
+            *)
+              echo "::error::Branch '$BRANCH' is not allowed for Docker publishing. Use master, staging, or develop."
+              exit 1
+              ;;
           esac
 
           for TAG in $BASE_TAGS; do
@@ -229,6 +233,10 @@ jobs:
               ;;
             develop)
               BASE_TAGS="develop alpha"
+              ;;
+            *)
+              echo "::error::Branch '$BRANCH' is not allowed for Docker publishing. Use master, staging, or develop."
+              exit 1
               ;;
           esac
 

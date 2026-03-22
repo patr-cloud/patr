@@ -1,6 +1,6 @@
 import { Button, ButtonVariant, Table, useToast } from "~/components";
 import PermissionSelector from "./permission-selector";
-import { createEffect, createMemo, createSignal, For, Resource, Show, Suspense } from "solid-js";
+import { createEffect, createMemo, createSignal, Resource, Show, Suspense } from "solid-js";
 import { useParams } from "@tanstack/solid-router";
 import { httpRequest } from "~/utils/http-request";
 import { UpdateRoleRequest } from "~/bindings/UpdateRoleRequest";
@@ -8,25 +8,22 @@ import { createLoggedInAction } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { GetRoleInfoResponse, ResourcePermissionType } from "~/bindings";
 import { useFetchPermissions } from "~/hooks/fetch";
-import { FiTrash2, FiXCircle } from "solid-icons/fi";
-import { parsePermissionName } from "~/utils/func";
+import { FiTrash2 } from "solid-icons/fi";
+import { parsePermissionName, parseCamelCase } from "~/utils/func";
 
 const EditPermissions = (props: {
 	roleInfo: Resource<GetRoleInfoResponse | undefined>;
 	refetchRoleInfo: () => void;
 }) => {
-	const [selectedPermissionIds, setSelectedPermissionIds] = createSignal<Set<string>>(new Set());
 	const [permissionsData, setPermissionsData] = createSignal<{ [key: string]: ResourcePermissionType }>({});
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const params = useParams({ from: "/_logged-in/_workspaced/workspace/roles/$roleId" });
 
-	// Initialize selected permissions when role info loads and editing starts
+	// Initialize permissions data when role info loads
 	createEffect(() => {
 		const role = props.roleInfo();
 		if (role) {
-			const permIds = Object.keys(role.permissions);
-			// setSelectedPermissionIds(new Set(permIds));
 			setPermissionsData(role.permissions as { [key: string]: ResourcePermissionType });
 		}
 	});
@@ -46,38 +43,17 @@ const EditPermissions = (props: {
 		if (!permissions) return [];
 		const nameMap = permissionIdToName();
 
-		// Group permissions by resourceType
-		const grouped = new Map<
-			string,
-			{
-				permissionResourceType: string;
-				permissionActions: Array<{ permissionId: string; action: string }>;
-				permissionType: string;
-				resources?: string[];
-			}
-		>();
-
-		Object.entries(permissions).forEach(([permissionId, permissionData]) => {
+		return Object.entries(permissions).map(([permissionId, permissionData]) => {
 			const permissionName = nameMap.get(permissionId) || permissionId;
 			const parsed = parsePermissionName(permissionName);
-
-			if (!grouped.has(parsed.resourceType)) {
-				grouped.set(parsed.resourceType, {
-					permissionResourceType: parsed.resourceType,
-					permissionActions: [],
-					permissionType: permissionData?.permissionType || "all",
-					resources: permissionData?.permissionType ? permissionData.resources : undefined,
-				});
-			}
-
-			const group = grouped.get(parsed.resourceType)!;
-			group.permissionActions.push({
+			return {
 				permissionId,
-				action: parsed.action,
-			});
+				resourceType: parsed.resourceType,
+				action: parsed.permission,
+				permissionType: permissionData?.permissionType || "exclude",
+				resources: permissionData?.resources || [],
+			};
 		});
-
-		return Array.from(grouped.values());
 	});
 
 	const { execute: handleUpdateRole, isLoading: isUpdating } = createLoggedInAction(async ({ accessToken }) => {
@@ -125,61 +101,40 @@ const EditPermissions = (props: {
 					<PermissionSelector
 						class="flex-1"
 						workspaceId={workspaceId()!}
-						selectedPermissionIds={selectedPermissionIds()}
-						onPermissionChange={setSelectedPermissionIds}
 						onPermissionsDataChange={(data) => setPermissionsData((prev) => ({ ...prev, ...data }))}
 					/>
 				</div>
 
 				<Table
-					column_grids={["flex-2", "flex-3", "flex-2"]}
-					headings={["Resource Type", "Actions", "Resources"]}
-					rows={permissionEntries().sort((a, b) =>
-						a.permissionResourceType.localeCompare(b.permissionResourceType)
+					column_grids={["flex-3", "flex-2", "flex-3", "flex-[0.5]"]}
+					headings={["Resource Type", "Action", "Resources", ""]}
+					rows={permissionEntries().sort(
+						(a, b) => a.resourceType.localeCompare(b.resourceType) || a.action.localeCompare(b.action)
 					)}
 					renderRow={(perm) => (
 						<tr class="table-row">
+							<td class="flex-3 flex items-center justify-center">
+								<span class="truncate">{parseCamelCase(perm.resourceType)}</span>
+							</td>
 							<td class="flex-2 flex items-center justify-center">
-								<span class="truncate">{perm.permissionResourceType}</span>
+								<span>{parseCamelCase(perm.action)}</span>
 							</td>
 							<td class="flex-3 flex items-center justify-center">
-								<div class="flex flex-wrap gap-1 justify-center">
-									<For each={perm.permissionActions}>
-										{(actionData) => (
-											<span
-												onClick={() => {
-													const newPermissionsData = { ...permissionsData() };
-													delete newPermissionsData[actionData.permissionId];
-													setPermissionsData(newPermissionsData);
-												}}
-												class="text-sm px-2 py-1 bg-secondary-medium rounded cursor-pointer hover:bg-secondary-dark transition-colors flex items-center justify-center gap-1"
-											>
-												{actionData.action}
-												<FiXCircle size={12} class="inline-block" />
-											</span>
-										)}
-									</For>
-								</div>
-							</td>
-							<td class="flex-2 flex items-center justify-center">
 								<Show
-									when={perm.resources && perm.resources.length > 0}
+									when={perm.resources.length > 0}
 									fallback={<span class="text-gray-400">All resources</span>}
 								>
-									<div class="flex flex-col gap-1">
-										<For each={perm.resources}>
-											{(resource) => <span class="text-sm">{resource}</span>}
-										</For>
-									</div>
+									<span class="text-sm">
+										{perm.permissionType === "include" ? "Only " : "All except "}
+										{perm.resources.length} resource{perm.resources.length !== 1 ? "s" : ""}
+									</span>
 								</Show>
 							</td>
 							<td
+								class="flex-[0.5] cursor-pointer"
 								onClick={() => {
 									const newPermissionsData = { ...permissionsData() };
-									// Delete all permissions for this resource type
-									perm.permissionActions.forEach((actionData) => {
-										delete newPermissionsData[actionData.permissionId];
-									});
+									delete newPermissionsData[perm.permissionId];
 									setPermissionsData(newPermissionsData);
 								}}
 							>

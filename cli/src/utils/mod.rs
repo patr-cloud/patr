@@ -5,11 +5,13 @@ mod client;
 /// The module that contains the extension traits that are used to extend
 /// functionalities to help make it easier to work with the CLI code
 mod ext_trait;
+/// A reusable search-and-select prompt widget for async search-based selection
+pub mod search_and_select;
 /// The storage module, used to store data between CLI sessions such as the
 /// user's API token or access token + refresh token
 mod storage;
 
-pub use self::{authenticator::*, client::*, ext_trait::*, storage::*};
+pub use self::{authenticator::*, client::*, ext_trait::*, search_and_select::*, storage::*};
 
 /// Constants used in the CLI
 pub mod constants {
@@ -54,6 +56,15 @@ pub fn config_local_dir() -> std::path::PathBuf {
 		.expect("Failed to get the user's config directory")
 		.join("patr-cli")
 		.join("config.json")
+}
+
+/// Clears the terminal screen and moves the cursor to the top-left.
+pub fn clear_screen() {
+	let _ = crossterm::execute!(
+		std::io::stderr(),
+		crossterm::terminal::Clear(crossterm::terminal::ClearType::All),
+		crossterm::cursor::MoveTo(0, 0)
+	);
 }
 
 /// A trait to convert a serde type to a JSON value. This is useful for

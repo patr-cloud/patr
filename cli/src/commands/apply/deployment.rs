@@ -16,7 +16,7 @@ pub async fn apply(
 		name,
 		image,
 		runner,
-		machine_type,
+		machine_type: _,
 		deploy_on_push,
 		min_horizontal_scale,
 		max_horizontal_scale,

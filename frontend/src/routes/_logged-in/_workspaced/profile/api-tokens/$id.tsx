@@ -1,19 +1,35 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
-import { createMemo, createResource, createSignal, Suspense } from "solid-js";
-import { GetApiTokenInfoResponse } from "~/bindings";
-import { DeleteModal, PageContainer, PageContainerBody, PageContainerHead, useToast } from "~/components";
+import { createEffect, createMemo, createResource, createSignal, For, Show, Suspense } from "solid-js";
+import {
+	GetApiTokenInfoResponse,
+	ListUserWorkspacesResponse,
+	UpdateApiTokenRequest,
+	WorkspacePermission,
+} from "~/bindings";
+import {
+	Button,
+	ButtonVariant,
+	DeleteModal,
+	PageContainer,
+	PageContainerBody,
+	PageContainerHead,
+	useToast,
+} from "~/components";
 import Input, { InputType } from "~/components/input";
 import InputLabel from "~/components/input-label";
 import { useAuthState } from "~/hooks";
+import { useUserInfo } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 import RegenerateModal from "./-components/regenerate-modal";
 import { RegenerateApiTokenResponse } from "~/bindings/RegenerateApiTokenResponse";
 import ApiTokenModal from "./-components/api-token-modal";
+import WorkspacePermissionItem from "./-components/workspace-permission-item";
 
 const ApiTokenInfo = () => {
 	const [authState] = useAuthState();
+	const userInfo = useUserInfo();
 	const toast = useToast();
 	const navigate = useNavigate();
 	const params = Route.useParams();
@@ -21,6 +37,7 @@ const ApiTokenInfo = () => {
 	const [isRegenerateModalOpen, setIsRegenerateModalOpen] = createSignal(false);
 	const [isApiTokenModalOpen, setIsApiTokenModalOpen] = createSignal(false);
 	const [newApiToken, setNewApiToken] = createSignal<string>("");
+
 	if (!params().id) {
 		return <div>Invalid API Token ID</div>;
 	}
@@ -49,6 +66,69 @@ const ApiTokenInfo = () => {
 
 		return { ...response.data };
 	});
+
+	const [workspaces] = createResource(authState, async (auth) => {
+		if (!auth || auth.type !== "LoggedIn") {
+			return { workspaces: [] };
+		}
+
+		const response = await httpRequest<ListUserWorkspacesResponse>(
+			`${import.meta.env.VITE_BASE_URL}/api/user/workspaces`,
+			{ method: "GET" }
+		);
+
+		if (!response.ok) {
+			console.error("Failed to fetch workspaces:", response.data.error);
+			toast("Failed to fetch workspaces", "error");
+			return { workspaces: [] };
+		}
+
+		return response.data;
+	});
+
+	// Permission editing state
+	const [enabledWorkspaces, setEnabledWorkspaces] = createSignal<Set<string>>(new Set());
+	const [workspacePermissions, setWorkspacePermissions] = createSignal<{
+		[workspaceId: string]: WorkspacePermission;
+	}>({});
+	const [initialized, setInitialized] = createSignal(false);
+
+	// Initialize permission state from fetched token info
+	createEffect(() => {
+		const info = apiTokenInfo();
+		if (!info?.permissions || initialized()) return;
+
+		const enabled = new Set<string>();
+		const perms: { [key: string]: WorkspacePermission } = {};
+
+		Object.entries(info.permissions).forEach(([wsId, perm]) => {
+			if (perm) {
+				enabled.add(wsId);
+				perms[wsId] = perm;
+			}
+		});
+
+		setEnabledWorkspaces(enabled);
+		setWorkspacePermissions(perms);
+		setInitialized(true);
+	});
+
+	const handleWorkspaceToggle = (workspaceId: string, enabled: boolean) => {
+		const newEnabled = new Set(enabledWorkspaces());
+		if (enabled) {
+			newEnabled.add(workspaceId);
+		} else {
+			newEnabled.delete(workspaceId);
+			const newPerms = { ...workspacePermissions() };
+			delete newPerms[workspaceId];
+			setWorkspacePermissions(newPerms);
+		}
+		setEnabledWorkspaces(newEnabled);
+	};
+
+	const handlePermissionChange = (workspaceId: string, permission: WorkspacePermission) => {
+		setWorkspacePermissions((prev) => ({ ...prev, [workspaceId]: permission }));
+	};
 
 	const onClickDelete = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
 		e.preventDefault();
@@ -101,6 +181,35 @@ const ApiTokenInfo = () => {
 		setNewApiToken(response.data.token);
 		setIsRegenerateModalOpen(false);
 		setIsApiTokenModalOpen(true);
+	};
+
+	const onSavePermissions = async () => {
+		const auth = authState();
+		if (!auth || auth.type !== "LoggedIn") {
+			toast("You must be logged in to update an API Token", "error");
+			return;
+		}
+
+		const info = apiTokenInfo();
+		const body = {
+			permissions: workspacePermissions(),
+			tokenNbf: info?.tokenNbf,
+			tokenExp: info?.tokenExp,
+			allowedIps: info?.allowedIps || [],
+		} as UpdateApiTokenRequest;
+
+		const response = await httpRequest<null>(`${import.meta.env.VITE_BASE_URL}/api/user/api-token/${params().id}`, {
+			method: "PATCH",
+			body: JSON.stringify(body),
+		});
+
+		if (!response.ok) {
+			console.error("Failed to update API Token:", response.data.error);
+			toast("Failed to update API Token", "error");
+			return;
+		}
+
+		toast("API Token permissions updated successfully", "success");
 	};
 
 	return (
@@ -162,6 +271,42 @@ const ApiTokenInfo = () => {
 							/>
 						</div>
 					</div>
+
+					{/* Workspace Permissions Section */}
+					<Suspense
+						fallback={
+							<div class="flex items-center justify-center py-8">
+								<div class="text-gray-400">Loading workspaces...</div>
+							</div>
+						}
+					>
+						<Show when={initialized()}>
+							<div class="flex flex-col gap-4 items-start w-full">
+								<div class="flex justify-between items-center w-full">
+									<h3 class="text-lg text-white">Workspace Permissions</h3>
+									<Button variant={ButtonVariant.Contained} onClick={onSavePermissions}>
+										Save Permissions
+									</Button>
+								</div>
+
+								<For
+									each={workspaces.latest?.workspaces || []}
+									fallback={<div class="text-gray-400">No workspaces available</div>}
+								>
+									{(ws) => (
+										<WorkspacePermissionItem
+											workspace={ws}
+											isSuperAdmin={userInfo()?.id === ws.superAdminId}
+											enabled={enabledWorkspaces().has(ws.id)}
+											initialPermission={apiTokenInfo()?.permissions?.[ws.id]}
+											onToggle={handleWorkspaceToggle}
+											onPermissionChange={handlePermissionChange}
+										/>
+									)}
+								</For>
+							</div>
+						</Show>
+					</Suspense>
 				</PageContainerBody>
 			</Suspense>
 

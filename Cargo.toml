@@ -45,6 +45,7 @@ console-subscriber             = { default-features = false, version = "0.5" }
 console_error_panic_hook       = { default-features = false, version = "0.1" }
 convert_case                   = { default-features = false, version = "0.11" }
 cron                           = { default-features = false, version = "0.15" }
+crossterm                      = { default-features = false, version = "0.29" }
 dashmap                        = { default-features = false, version = "6" }
 derive_more                    = { default-features = false, version = "2" }
 dirs                           = { default-features = false, version = "6" }

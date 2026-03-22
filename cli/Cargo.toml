@@ -20,6 +20,7 @@ path = "src/main.rs"
 clap                = { workspace = true, features = ["cargo", "default", "derive", "env", "string"] }
 comfy-table         = { workspace = true, features = ["default"] }
 config              = { workspace = true, features = ["default"] }
+crossterm           = { workspace = true, features = [] }
 dirs                = { workspace = true, features = [] }
 docker              = { workspace = true, features = [] }
 either              = { workspace = true, features = ["serde"] }
