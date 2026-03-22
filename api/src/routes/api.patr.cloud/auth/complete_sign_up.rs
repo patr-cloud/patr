@@ -229,6 +229,20 @@ pub async fn complete_sign_up(
 
 	query!(
 		r#"
+		DELETE FROM
+			user_to_sign_up
+		WHERE
+			username = $1;
+		"#,
+		&username
+	)
+	.execute(&mut **database)
+	.await?;
+
+	trace!("Deleted user_to_sign_up entry");
+
+	query!(
+		r#"
 		SET CONSTRAINTS ALL IMMEDIATE;
 		"#
 	)

@@ -58,11 +58,11 @@ getrandom                      = { default-features = false, version = "0.3" }
 headers                        = { default-features = false, version = "0.4" }
 hex                            = { default-features = false, version = "0.4" }
 hickory-resolver               = { default-features = false, version = "0.25" }
-if-addrs                       = { default-features = false, version = "0.15" }
 http                           = { default-features = false, version = "1" }
 http-body                      = { default-features = false, version = "1" }
 httparse                       = { default-features = false, version = "1" }
 hyper                          = { default-features = false, version = "1" }
+if-addrs                       = { default-features = false, version = "0.15" }
 inquire                        = { default-features = false, version = "0.9" }
 ipinfo                         = { default-features = false, version = "3" }
 ipnetwork                      = { default-features = false, version = "0.20" }

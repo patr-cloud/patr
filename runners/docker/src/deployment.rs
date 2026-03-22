@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use bollard::{
 	models::{
 		ConfigSpec,
+		CreateImageInfo,
 		HealthConfig,
 		NetworkAttachmentConfig,
 		ServiceSpec,
@@ -19,7 +20,6 @@ use bollard::{
 		UpdateConfigOptionsBuilder,
 		UpdateServiceOptionsBuilder,
 	},
-	secret::CreateImageInfo,
 };
 use futures::{Stream, StreamExt};
 use models::api::workspace::deployment::*;
