@@ -480,6 +480,16 @@ jobs:
           echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
 
+      - name: Delete existing release assets
+        if: github.ref_name == 'develop' || github.ref_name == 'staging'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.release.outputs.tag }}"
+          gh release view "$TAG" --json assets --jq '.assets[].name' 2>/dev/null | while read -r ASSET; do
+            gh release delete-asset "$TAG" "$ASSET" --yes
+          done || true
+
       - name: Create or update release
         uses: softprops/action-gh-release@v2
         with:
