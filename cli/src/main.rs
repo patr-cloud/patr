@@ -23,6 +23,7 @@ pub mod prelude {
 		utils::{
 			AppState,
 			IaacResolverExt,
+			RunnerType,
 			SearchAndSelect,
 			ToJsonValue,
 			TtyExpectable,

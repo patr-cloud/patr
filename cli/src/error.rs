@@ -35,6 +35,9 @@ pub enum AppError {
 	/// An error that occurred while applying an Iaac file.
 	#[error("error applying Iaac file: {0}")]
 	IaacError(#[from] IaacError),
+	/// An error that occurred while running a runner.
+	#[error("runner error: {0}")]
+	RunnerError(String),
 }
 
 impl From<ApiErrorResponse> for AppError {

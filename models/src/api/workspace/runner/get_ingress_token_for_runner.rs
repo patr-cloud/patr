@@ -19,7 +19,7 @@ macros::declare_api_endpoint!(
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.runner_id,
 			extract_workspace_id: |req| req.path.workspace_id,
-			permission: Permission::Runner(RunnerPermission::RegenerateToken),
+			permission: Permission::Runner(RunnerPermission::Execute),
 		}
 	},
 	response = {

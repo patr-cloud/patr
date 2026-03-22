@@ -6,6 +6,8 @@ use crate::prelude::*;
 mod create;
 /// List all runners
 mod list;
+/// The command to run a configured runner
+mod run;
 /// The command to setup the CLI's configuration settings for first time use.
 mod setup;
 
@@ -33,6 +35,9 @@ pub enum RunnerActionCommand {
 	/// The command to list all runners for a specific workspace
 	#[command(alias = "ls")]
 	List,
+	#[command(alias = "exec", alias = "execute", alias = "start")]
+	/// Run a configured runner
+	Run(run::Args),
 }
 
 /// All commands that are executed on runner related stuff
@@ -50,5 +55,6 @@ pub async fn execute(
 		RunnerCommand::RunnerAction(List) | RunnerCommand::ListRunners => {
 			list::execute(global_args, state).await
 		}
+		RunnerCommand::RunnerAction(Run(args)) => run::execute(args).await,
 	}
 }

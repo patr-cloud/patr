@@ -19,6 +19,7 @@ path = "src/main.rs"
 [dependencies]
 clap                = { workspace = true, features = ["cargo", "default", "derive", "env", "string"] }
 comfy-table         = { workspace = true, features = ["default"] }
+common              = { workspace = true, features = [] }
 config              = { workspace = true, features = ["default"] }
 crossterm           = { workspace = true, features = [] }
 dirs                = { workspace = true, features = [] }
@@ -27,11 +28,13 @@ either              = { workspace = true, features = ["serde"] }
 futures             = { workspace = true, features = ["default"] }
 headers             = { workspace = true, features = [] }
 http                = { workspace = true, features = ["default"] }
+if-addrs            = { workspace = true, features = [] }
 inquire             = { workspace = true, features = ["console", "date", "default", "editor"] }
 macros              = { workspace = true, features = [] }
 models              = { workspace = true, features = [] }
 open                = { workspace = true, features = [] }
 preprocess          = { workspace = true, features = [] }
+rand                = { workspace = true, features = ["default"] }
 reqwest             = { workspace = true, features = ["default", "json"] }
 serde               = { workspace = true, features = ["default", "derive"] }
 serde_json          = { workspace = true, features = ["default"] }
