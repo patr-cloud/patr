@@ -1,22 +1,20 @@
 use clap::Args as ClapArgs;
-use inquire::{Confirm, Select};
-use models::api::{user::*, workspace::deployment::*};
+use inquire::Select;
+use models::api::{user::*, workspace::container_registry::*};
+use serde_json::Value;
 
 use crate::prelude::*;
 
+/// The arguments for printing the registry URL
 #[derive(Debug, Clone, ClapArgs)]
 pub struct Args {
-	/// The name of the deployment
-	#[arg(
-		short = 'n',
-		long = "name",
-		value_name = "NAME",
-		env = "PATR_DEPLOYMENT_NAME"
-	)]
-	pub name: Option<String>,
+	/// The name or ID of the repository
+	#[arg(short = 'r', long = "repo")]
+	pub repo: Option<String>,
 }
 
-pub async fn execute(
+/// Print the full registry image URL for a repository
+pub(super) async fn execute(
 	args: Args,
 	global_args: GlobalArgs,
 	state: AppState,
@@ -65,14 +63,15 @@ pub async fn execute(
 			.id
 	};
 
-	let mut deployments = vec![];
+	// Resolve the repo to get its name
+	let mut repositories = vec![];
 	let mut start = 0;
 
 	loop {
 		let response = make_request(
-			ApiRequest::<ListDeploymentRequest>::builder()
-				.path(ListDeploymentPath { workspace_id })
-				.headers(ListDeploymentRequestHeaders {
+			ApiRequest::<ListContainerRepositoriesRequest>::builder()
+				.path(ListContainerRepositoriesPath { workspace_id })
+				.headers(ListContainerRepositoriesRequestHeaders {
 					authorization: token.clone(),
 					user_agent: constants::USER_AGENT,
 				})
@@ -87,80 +86,40 @@ pub async fn execute(
 		)
 		.await?;
 
-		start += response.body.deployments.len();
-
-		deployments.extend(response.body.deployments);
+		start += response.body.repositories.len();
+		repositories.extend(response.body.repositories);
 
 		if start >= response.headers.total_count.0 {
 			break;
 		}
 	}
 
-	let deployment = args
-		.name
+	let repo = args
+		.repo
 		.and_then(|name| {
 			let id = Uuid::parse_str(&name).ok();
-			deployments
+			repositories
 				.iter()
 				.find(|r| r.name == name || id.filter(|id| r.id == *id).is_some())
+				.cloned()
 		})
 		.unwrap_or_else(|| {
-			let name = Select::new(
-				"Please select the deployment to delete:",
-				deployments
-					.iter()
-					.map(|deployment| &deployment.name)
-					.collect(),
-			)
-			.with_formatter(&|deployment| deployment.value.to_string())
-			.prompt()
-			.expect_tty("Failed to read deployment ID");
+			let names: Vec<String> = repositories.iter().map(|repo| repo.name.clone()).collect();
+			let selected = Select::new("Please select a repository:", names)
+				.prompt()
+				.expect_tty("Failed to read repository");
 
-			deployments
-				.iter()
-				.find(|&deployment| &deployment.name == name)
-				.unwrap_or_else(|| panic!("No deployment found with name: `{}`", name))
+			repositories
+				.into_iter()
+				.find(|repo| repo.name == selected)
+				.unwrap_or_else(|| panic!("No repository found with name: `{}`", selected))
 		});
 
-	let confirmed = Confirm::new(&format!(
-		"Are you sure you want to delete `{}`?",
-		deployment.name
-	))
-	.with_default(false)
-	.prompt()
-	.expect_tty("Failed to read confirmation");
-
-	if !confirmed {
-		return CommandOutput::builder()
-			.text("Aborted.".to_string())
-			.json(serde_json::Value::Null)
-			.build()
-			.into_result();
-	}
-
-	let deployment_id = deployment.id;
-
-	let response = make_request(
-		ApiRequest::<DeleteDeploymentRequest>::builder()
-			.path(DeleteDeploymentPath {
-				workspace_id,
-				deployment_id,
-			})
-			.headers(DeleteDeploymentRequestHeaders {
-				authorization: token.clone(),
-				user_agent: constants::USER_AGENT,
-			})
-			.build(),
-	)
-	.await?
-	.body;
+	let url = format!("registry.patr.cloud/{}/{}", workspace_id, repo.name);
 
 	CommandOutput::builder()
-		.text(format!(
-			"Deleted deployment `{}` successfully",
-			deployment_id
-		))
-		.json(response.to_json_value())
+		.text(url.clone())
+		.json(Value::String(url))
 		.build()
 		.into_result()
 }

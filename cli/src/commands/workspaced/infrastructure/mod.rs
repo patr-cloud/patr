@@ -1,8 +1,14 @@
 use clap::Subcommand;
 
-use self::{deployment::DeploymentCommand, runner::RunnerCommand};
+use self::{
+	container_registry::ContainerRegistryCommand,
+	deployment::DeploymentCommand,
+	runner::RunnerCommand,
+};
 use crate::prelude::*;
 
+/// All container registry related commands
+mod container_registry;
 /// All deployment related commands (e.g. list, create, etc.)
 mod deployment;
 /// All commands to setup / run a runner
@@ -18,10 +24,11 @@ pub enum InfrastructureCommand {
 	/// All the commands that are related to setting up a runner
 	#[command(flatten)]
 	RunnerCommands(RunnerCommand),
+	/// All container registry related commands
+	#[command(flatten)]
+	ContainerRegistryCommand(ContainerRegistryCommand),
 	// #[command(flatten)]
 	// DatabaseCommand(DatabaseCommand),
-	// #[command(flatten)]
-	// ContainerRegistryCommand(ContainerRegistryCommand),
 	// #[command(flatten)]
 	// StaticSiteCommand(StaticSiteCommand),
 	// #[command(flatten)]
@@ -40,6 +47,9 @@ pub async fn execute(
 		}
 		InfrastructureCommand::RunnerCommands(commands) => {
 			runner::execute(commands, global_args, state).await
+		}
+		InfrastructureCommand::ContainerRegistryCommand(command) => {
+			container_registry::execute(command, global_args, state).await
 		}
 	}
 }

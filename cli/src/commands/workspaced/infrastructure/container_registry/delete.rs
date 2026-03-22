@@ -1,22 +1,19 @@
 use clap::Args as ClapArgs;
 use inquire::{Confirm, Select};
-use models::api::{user::*, workspace::deployment::*};
+use models::api::{user::*, workspace::container_registry::*};
 
 use crate::prelude::*;
 
+/// The arguments for deleting a container registry repository
 #[derive(Debug, Clone, ClapArgs)]
 pub struct Args {
-	/// The name of the deployment
-	#[arg(
-		short = 'n',
-		long = "name",
-		value_name = "NAME",
-		env = "PATR_DEPLOYMENT_NAME"
-	)]
+	/// The name or ID of the repository to delete
+	#[arg(short = 'n', long = "name")]
 	pub name: Option<String>,
 }
 
-pub async fn execute(
+/// Delete a container registry repository
+pub(super) async fn execute(
 	args: Args,
 	global_args: GlobalArgs,
 	state: AppState,
@@ -65,14 +62,14 @@ pub async fn execute(
 			.id
 	};
 
-	let mut deployments = vec![];
+	let mut repositories = vec![];
 	let mut start = 0;
 
 	loop {
 		let response = make_request(
-			ApiRequest::<ListDeploymentRequest>::builder()
-				.path(ListDeploymentPath { workspace_id })
-				.headers(ListDeploymentRequestHeaders {
+			ApiRequest::<ListContainerRepositoriesRequest>::builder()
+				.path(ListContainerRepositoriesPath { workspace_id })
+				.headers(ListContainerRepositoriesRequestHeaders {
 					authorization: token.clone(),
 					user_agent: constants::USER_AGENT,
 				})
@@ -87,44 +84,40 @@ pub async fn execute(
 		)
 		.await?;
 
-		start += response.body.deployments.len();
-
-		deployments.extend(response.body.deployments);
+		start += response.body.repositories.len();
+		repositories.extend(response.body.repositories);
 
 		if start >= response.headers.total_count.0 {
 			break;
 		}
 	}
 
-	let deployment = args
+	let repository = args
 		.name
 		.and_then(|name| {
 			let id = Uuid::parse_str(&name).ok();
-			deployments
+			repositories
 				.iter()
 				.find(|r| r.name == name || id.filter(|id| r.id == *id).is_some())
 		})
 		.unwrap_or_else(|| {
 			let name = Select::new(
-				"Please select the deployment to delete:",
-				deployments
-					.iter()
-					.map(|deployment| &deployment.name)
-					.collect(),
+				"Please select a repository:",
+				repositories.iter().map(|repo| &repo.name).collect(),
 			)
-			.with_formatter(&|deployment| deployment.value.to_string())
+			.with_formatter(&|repo| repo.value.to_string())
 			.prompt()
-			.expect_tty("Failed to read deployment ID");
+			.expect_tty("Failed to read repository");
 
-			deployments
+			repositories
 				.iter()
-				.find(|&deployment| &deployment.name == name)
-				.unwrap_or_else(|| panic!("No deployment found with name: `{}`", name))
+				.find(|repo| &repo.name == name)
+				.unwrap_or_else(|| panic!("No repository found with name: `{}`", name))
 		});
 
 	let confirmed = Confirm::new(&format!(
-		"Are you sure you want to delete `{}`?",
-		deployment.name
+		"Are you sure you want to delete registry.patr.cloud/{}/{}?",
+		workspace_id, repository.name
 	))
 	.with_default(false)
 	.prompt()
@@ -138,16 +131,16 @@ pub async fn execute(
 			.into_result();
 	}
 
-	let deployment_id = deployment.id;
+	let repository_id = repository.id;
 
 	let response = make_request(
-		ApiRequest::<DeleteDeploymentRequest>::builder()
-			.path(DeleteDeploymentPath {
+		ApiRequest::<DeleteContainerRepositoryRequest>::builder()
+			.path(DeleteContainerRepositoryPath {
 				workspace_id,
-				deployment_id,
+				repository_id,
 			})
-			.headers(DeleteDeploymentRequestHeaders {
-				authorization: token.clone(),
+			.headers(DeleteContainerRepositoryRequestHeaders {
+				authorization: token,
 				user_agent: constants::USER_AGENT,
 			})
 			.build(),
@@ -157,8 +150,8 @@ pub async fn execute(
 
 	CommandOutput::builder()
 		.text(format!(
-			"Deleted deployment `{}` successfully",
-			deployment_id
+			"Deleted repository `{}` successfully",
+			repository_id
 		))
 		.json(response.to_json_value())
 		.build()
