@@ -138,8 +138,10 @@ pub async fn update_ingress_tunnel_token(
 /// running, then generating the ingress configs for each deployment, writing
 /// the configs to it's own Docker Config, and returning a list of all Config
 /// IDs for the ingress service to use.
-async fn get_deployment_configs(docker: &Docker) -> Result<Vec<(Uuid, String)>, RunnerError> {
-	let config_ids = docker
+async fn get_deployment_configs(
+	docker: &Docker,
+) -> Result<Vec<(Uuid, String, String)>, RunnerError> {
+	let configs = docker
 		.list_configs(Some(ListConfigsOptions {
 			filters: Some(HashMap::from([(
 				String::from("label"),
@@ -155,17 +157,19 @@ async fn get_deployment_configs(docker: &Docker) -> Result<Vec<(Uuid, String)>, 
 		.filter_map(|config| {
 			Some((
 				config
-					.spec?
+					.spec
+					.clone()?
 					.labels?
 					.get("patr.deploymentId")?
 					.parse()
 					.ok()?,
 				config.id?,
+				config.spec.as_ref()?.name.clone()?,
 			))
 		})
 		.collect::<Vec<_>>();
 
-	Ok(config_ids)
+	Ok(configs)
 }
 
 /// Get the service spec for the ingress service, with the latest deployment
@@ -179,7 +183,7 @@ async fn get_ingress_spec(
 	let base_ingress_config = include_str!("../../../assets/runner/Caddyfile.base");
 	let base_config = Base64String::from_string(base_ingress_config.to_string());
 
-	let ingress_config_id = crate::utils::update_config(
+	let (ingress_config_id, ingress_config_name) = crate::utils::update_config(
 		docker,
 		constants::INGRESS_CONFIG_NAME,
 		HashMap::from([(
@@ -215,19 +219,21 @@ async fn get_ingress_spec(
 				configs: Some(
 					config_ids
 						.into_iter()
-						.map(|(deployment_id, config_id)| TaskSpecContainerSpecConfigs {
-							file: Some(TaskSpecContainerSpecFile1 {
-								name: Some(format!(
-									"/etc/caddy/deployments/{}.caddy",
-									deployment_id
-								)),
-								mode: Some(0o444),
-								uid: Some("0".to_string()),
-								gid: Some("0".to_string()),
-							}),
-							config_id: Some(config_id),
-							config_name: None,
-							runtime: None,
+						.map(|(deployment_id, config_id, config_name)| {
+							TaskSpecContainerSpecConfigs {
+								file: Some(TaskSpecContainerSpecFile1 {
+									name: Some(format!(
+										"/etc/caddy/deployments/{}.caddy",
+										deployment_id
+									)),
+									mode: Some(0o444),
+									uid: Some("0".to_string()),
+									gid: Some("0".to_string()),
+								}),
+								config_id: Some(config_id),
+								config_name: Some(config_name),
+								runtime: None,
+							}
 						})
 						.chain(iter::once(TaskSpecContainerSpecConfigs {
 							file: Some(TaskSpecContainerSpecFile1 {
@@ -237,7 +243,7 @@ async fn get_ingress_spec(
 								gid: Some("0".to_string()),
 							}),
 							config_id: Some(ingress_config_id),
-							config_name: None,
+							config_name: Some(ingress_config_name),
 							runtime: None,
 						}))
 						.collect(),

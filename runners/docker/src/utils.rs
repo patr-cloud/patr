@@ -12,15 +12,15 @@ use crate::prelude::*;
 /// config name: `{base_name}-{sha256(data)[:16]}`. The full hash is stored in a
 /// `patr.configHash` label for reliable matching.
 ///
-/// If a config with the same hash already exists, its ID is returned (no-op).
-/// Otherwise, a new config is created and old configs with the same labels are
-/// cleaned up.
+/// Returns `(config_id, config_name)`. If a config with the same hash already
+/// exists, it is reused (no-op). Otherwise, a new config is created and old
+/// configs with the same labels are cleaned up.
 pub async fn update_config(
 	docker: &Docker,
 	base_name: &str,
 	mut labels: HashMap<String, String>,
 	data: String,
-) -> Result<String, RunnerError> {
+) -> Result<(String, String), RunnerError> {
 	let full_hash = Sha256::digest(&data)
 		.iter()
 		.map(|byte| format!("{:02x}", byte))
@@ -79,7 +79,12 @@ pub async fn update_config(
 
 		if hash_matches {
 			if let Some(id) = &config.id {
-				return Ok(id.clone());
+				let name = config
+					.spec
+					.as_ref()
+					.and_then(|s| s.name.clone())
+					.unwrap_or_else(|| config_name.clone());
+				return Ok((id.clone(), name));
 			}
 		}
 	}
@@ -89,7 +94,7 @@ pub async fn update_config(
 
 	let new_id = docker
 		.create_config(ConfigSpec {
-			name: Some(config_name),
+			name: Some(config_name.clone()),
 			labels: Some(labels),
 			data: Some(data),
 			templating: None,
@@ -109,7 +114,7 @@ pub async fn update_config(
 		}
 	}
 
-	Ok(new_id)
+	Ok((new_id, config_name))
 }
 
 /// All commonly used constants in the Docker runner.

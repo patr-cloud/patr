@@ -44,7 +44,7 @@ pub async fn update_alloy_service(
 	let alloy_config_text = generate_alloy_config(workspace_id, runner_id, api_token, &loki_url);
 
 	// Create or reuse the Docker config for Alloy (content-hash naming)
-	let alloy_config_id = crate::utils::update_config(
+	let (alloy_config_id, alloy_config_name) = crate::utils::update_config(
 		docker,
 		constants::ALLOY_CONFIG_NAME,
 		HashMap::from([(String::from("managed-by"), String::from("patr"))]),
@@ -79,7 +79,7 @@ pub async fn update_alloy_service(
 						gid: Some(String::from("0")),
 					}),
 					config_id: Some(alloy_config_id),
-					config_name: None,
+					config_name: Some(alloy_config_name),
 					runtime: None,
 				}]),
 				mounts: Some(vec![Mount {
