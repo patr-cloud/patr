@@ -2,12 +2,8 @@ use std::collections::HashMap;
 
 use bollard::{
 	Docker,
-	models::{ConfigSpec, Mount, MountTypeEnum},
-	query_parameters::{
-		ListConfigsOptions,
-		UpdateConfigOptionsBuilder,
-		UpdateServiceOptionsBuilder,
-	},
+	models::{Mount, MountTypeEnum},
+	query_parameters::UpdateServiceOptionsBuilder,
 	service::{
 		NetworkAttachmentConfig,
 		ServiceSpec,
@@ -47,58 +43,14 @@ pub async fn update_alloy_service(
 
 	let alloy_config_text = generate_alloy_config(workspace_id, runner_id, api_token, &loki_url);
 
-	// Create or update the Docker config for Alloy
-	let alloy_config_id = {
-		let existing = docker
-			.list_configs(Some(ListConfigsOptions {
-				filters: Some(HashMap::from([(
-					String::from("name"),
-					vec![String::from(constants::ALLOY_CONFIG_NAME)],
-				)])),
-			}))
-			.await
-			.map_err(RunnerError::host)?
-			.into_iter()
-			.find(|config| {
-				config
-					.spec
-					.as_ref()
-					.and_then(|spec| spec.name.as_ref())
-					.filter(|&name| name == constants::ALLOY_CONFIG_NAME)
-					.is_some()
-			})
-			.and_then(|config| Some((config.id?, config.version?.index?)));
-
-		let config_spec = ConfigSpec {
-			name: Some(String::from(constants::ALLOY_CONFIG_NAME)),
-			labels: Some(HashMap::from([(
-				String::from("managed-by"),
-				String::from("patr"),
-			)])),
-			data: Some(Base64String::from_string(alloy_config_text).to_string()),
-			templating: None,
-		};
-
-		if let Some((config_id, index)) = existing {
-			docker
-				.update_config(
-					&config_id,
-					config_spec,
-					UpdateConfigOptionsBuilder::new()
-						.version(index as i64)
-						.build(),
-				)
-				.await
-				.map_err(RunnerError::host)?;
-			config_id
-		} else {
-			docker
-				.create_config(config_spec)
-				.await
-				.map_err(RunnerError::host)?
-				.id
-		}
-	};
+	// Create or reuse the Docker config for Alloy (content-hash naming)
+	let alloy_config_id = crate::utils::update_config(
+		docker,
+		constants::ALLOY_CONFIG_NAME,
+		HashMap::from([(String::from("managed-by"), String::from("patr"))]),
+		Base64String::from_string(alloy_config_text).to_string(),
+	)
+	.await?;
 
 	// Build the global Alloy service spec
 	let service_spec = ServiceSpec {
@@ -127,7 +79,7 @@ pub async fn update_alloy_service(
 						gid: Some(String::from("0")),
 					}),
 					config_id: Some(alloy_config_id),
-					config_name: Some(String::from(constants::ALLOY_CONFIG_NAME)),
+					config_name: None,
 					runtime: None,
 				}]),
 				mounts: Some(vec![Mount {

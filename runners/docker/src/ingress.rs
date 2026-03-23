@@ -3,11 +3,7 @@ use std::{collections::HashMap, io::Error as IoError, iter};
 use bollard::{
 	Docker,
 	models::{ConfigSpec, Mount, MountTypeEnum},
-	query_parameters::{
-		ListConfigsOptions,
-		UpdateConfigOptionsBuilder,
-		UpdateServiceOptionsBuilder,
-	},
+	query_parameters::{ListConfigsOptions, UpdateServiceOptionsBuilder},
 	service::{
 		EndpointPortConfig,
 		EndpointPortConfigProtocolEnum,
@@ -85,7 +81,9 @@ pub async fn update_ingress_tunnel_token(
 	docker: &Docker,
 	new_token: String,
 ) -> Result<(), RunnerError> {
-	let version = docker
+	// Tunnel token config is NOT mounted in any service (cloudflare spec reads
+	// it via inspect_config and passes as env var), so we can delete + recreate.
+	let existing_config_id = docker
 		.list_configs(Some(ListConfigsOptions {
 			filters: Some(HashMap::from([(
 				String::from("label"),
@@ -106,38 +104,30 @@ pub async fn update_ingress_tunnel_token(
 				.filter(|&name| name == constants::TUNNEL_TOKEN_CONFIG_NAME)
 				.is_some()
 		})
-		.and_then(|config| config.version?.index);
+		.and_then(|config| config.id);
 
-	let config_spec = ConfigSpec {
-		name: Some(String::from(constants::TUNNEL_TOKEN_CONFIG_NAME)),
-		labels: Some(HashMap::from([
-			(String::from("managed-by"), String::from("patr")),
-			(
-				String::from("patr.deploymentId"),
-				String::from(constants::INGRESS_SERVICE_NAME),
-			),
-		])),
-		data: Some(new_token),
-		templating: None,
-	};
-
-	if let Some(version) = version {
+	if let Some(config_id) = existing_config_id {
 		docker
-			.update_config(
-				constants::TUNNEL_TOKEN_CONFIG_NAME,
-				config_spec,
-				UpdateConfigOptionsBuilder::new()
-					.version(version as i64)
-					.build(),
-			)
-			.await
-			.map_err(RunnerError::host)?;
-	} else {
-		docker
-			.create_config(config_spec)
+			.delete_config(&config_id)
 			.await
 			.map_err(RunnerError::host)?;
 	}
+
+	docker
+		.create_config(ConfigSpec {
+			name: Some(String::from(constants::TUNNEL_TOKEN_CONFIG_NAME)),
+			labels: Some(HashMap::from([
+				(String::from("managed-by"), String::from("patr")),
+				(
+					String::from("patr.deploymentId"),
+					String::from(constants::INGRESS_SERVICE_NAME),
+				),
+			])),
+			data: Some(new_token),
+			templating: None,
+		})
+		.await
+		.map_err(RunnerError::host)?;
 
 	Ok(())
 }
@@ -189,59 +179,16 @@ async fn get_ingress_spec(
 	let base_ingress_config = include_str!("../../../assets/runner/Caddyfile.base");
 	let base_config = Base64String::from_string(base_ingress_config.to_string());
 
-	let config_spec = ConfigSpec {
-		name: Some(String::from(constants::INGRESS_CONFIG_NAME)),
-		labels: Some(HashMap::from([(
+	let ingress_config_id = crate::utils::update_config(
+		docker,
+		constants::INGRESS_CONFIG_NAME,
+		HashMap::from([(
 			String::from("patr.deploymentId"),
 			String::from(constants::INGRESS_SERVICE_NAME),
-		)])),
-		data: Some(base_config.to_string()),
-		templating: None,
-	};
-
-	let ingress_config_id = if let Some((config_id, index)) = docker
-		.list_configs(Some(ListConfigsOptions {
-			filters: Some(HashMap::from([(
-				String::from("label"),
-				vec![format!(
-					"patr.deploymentId={}",
-					constants::INGRESS_SERVICE_NAME
-				)],
-			)])),
-		}))
-		.await
-		.map_err(RunnerError::host)?
-		.into_iter()
-		.find(|config| {
-			config
-				.spec
-				.as_ref()
-				.and_then(|spec| spec.name.as_ref())
-				.filter(|&name| name == constants::INGRESS_CONFIG_NAME)
-				.is_some()
-		})
-		.and_then(|config| Some((config.id?, config.version?.index?)))
-	{
-		trace!("Config exists for ingress, updating: {}", config_id);
-		docker
-			.update_config(
-				&config_id,
-				config_spec,
-				UpdateConfigOptionsBuilder::default()
-					.version(index as i64)
-					.build(),
-			)
-			.await
-			.map_err(RunnerError::host)?;
-		config_id
-	} else {
-		trace!("Creating new config for ingress");
-		docker
-			.create_config(config_spec)
-			.await
-			.map_err(RunnerError::host)?
-			.id
-	};
+		)]),
+		base_config.to_string(),
+	)
+	.await?;
 
 	Ok(ServiceSpec {
 		name: Some(String::from(constants::INGRESS_SERVICE_NAME)),
@@ -279,7 +226,7 @@ async fn get_ingress_spec(
 								gid: Some("0".to_string()),
 							}),
 							config_id: Some(config_id),
-							config_name: Some(format!("ingress-{}", deployment_id)),
+							config_name: None,
 							runtime: None,
 						})
 						.chain(iter::once(TaskSpecContainerSpecConfigs {
@@ -290,7 +237,7 @@ async fn get_ingress_spec(
 								gid: Some("0".to_string()),
 							}),
 							config_id: Some(ingress_config_id),
-							config_name: Some(String::from(constants::INGRESS_CONFIG_NAME)),
+							config_name: None,
 							runtime: None,
 						}))
 						.collect(),

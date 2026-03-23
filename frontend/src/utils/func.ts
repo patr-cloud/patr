@@ -9,7 +9,7 @@ const resourceActionMap: Record<ResourceTypes, ActionTypes[]> = {
 	deployment: ["view", "edit", "create", "delete", "start", "stop"],
 	dnsRecord: ["view", "edit", "add", "delete"],
 	domain: ["view", "add", "verify", "delete"],
-	managedUrl: ["view", "edit", "delete", "add", "verify"],
+	managedURL: ["view", "edit", "delete", "add", "verify"],
 	runner: ["view", "edit", "create", "delete", "regenerateToken"],
 	secret: ["view", "edit", "create", "delete"],
 	staticSite: ["view", "edit", "create", "delete", "upload", "start", "stop"],
@@ -26,7 +26,7 @@ const resourceTypes = [
 	"deployment",
 	"dnsRecord",
 	"domain",
-	"managedUrl",
+	"managedURL",
 	"runner",
 	"secret",
 	"staticSite",
@@ -207,7 +207,7 @@ const getResourceEndpoint = (type: string) => {
 		database: "database",
 		secret: "secret",
 		domain: "domain",
-		managedUrl: "managed-url",
+		managedURL: "managed-url",
 	};
 	return endpointMap[type];
 };

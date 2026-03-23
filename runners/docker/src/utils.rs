@@ -1,3 +1,117 @@
+use std::collections::HashMap;
+
+use bollard::{Docker, models::ConfigSpec, query_parameters::ListConfigsOptions};
+use sha2::{Digest as _, Sha256};
+
+use crate::prelude::*;
+
+/// Create or reuse a Docker config using content-hash naming.
+///
+/// Docker Swarm configs are immutable — data cannot be updated after creation.
+/// This function works around that by including a hash of the data in the
+/// config name: `{base_name}-{sha256(data)[:16]}`. The full hash is stored in a
+/// `patr.configHash` label for reliable matching.
+///
+/// If a config with the same hash already exists, its ID is returned (no-op).
+/// Otherwise, a new config is created and old configs with the same labels are
+/// cleaned up.
+pub async fn update_config(
+	docker: &Docker,
+	base_name: &str,
+	mut labels: HashMap<String, String>,
+	data: String,
+) -> Result<String, RunnerError> {
+	let full_hash = Sha256::digest(&data)
+		.iter()
+		.map(|byte| format!("{:02x}", byte))
+		.collect::<String>();
+
+	// List existing configs that share the same labels (excluding the hash label)
+	let label_filter = labels
+		.iter()
+		.map(|(k, v)| format!("{}={}", k, v))
+		.collect::<Vec<_>>();
+
+	let existing_configs = docker
+		.list_configs(Some(ListConfigsOptions {
+			filters: Some(HashMap::from([(String::from("label"), label_filter)])),
+		}))
+		.await
+		.map_err(RunnerError::host)?;
+
+	// Pick the shortest hash suffix (starting at 16) that doesn't collide with
+	// an existing config that has different data.
+	let mut hash_len = 16;
+	let config_name = loop {
+		let candidate = format!(
+			"{}-{}",
+			base_name,
+			full_hash.chars().take(hash_len).collect::<String>()
+		);
+		let collision = existing_configs.iter().any(|c| {
+			let same_name = c
+				.spec
+				.as_ref()
+				.and_then(|s| s.name.as_ref())
+				.is_some_and(|n| n == &candidate);
+			let different_hash = c
+				.spec
+				.as_ref()
+				.and_then(|s| s.labels.as_ref())
+				.and_then(|l| l.get("patr.configHash"))
+				.is_some_and(|h| h != &full_hash);
+			same_name && different_hash
+		});
+		if !collision || hash_len == full_hash.len() {
+			break candidate;
+		}
+		hash_len += 1;
+	};
+
+	// Check if a config with the same hash already exists
+	for config in &existing_configs {
+		let hash_matches = config
+			.spec
+			.as_ref()
+			.and_then(|spec| spec.labels.as_ref())
+			.and_then(|labels| labels.get("patr.configHash"))
+			.is_some_and(|h| h == &full_hash);
+
+		if hash_matches {
+			if let Some(id) = &config.id {
+				return Ok(id.clone());
+			}
+		}
+	}
+
+	// Data changed (or first creation) — create new config with hashed name
+	labels.insert(String::from("patr.configHash"), full_hash);
+
+	let new_id = docker
+		.create_config(ConfigSpec {
+			name: Some(config_name),
+			labels: Some(labels),
+			data: Some(data),
+			templating: None,
+		})
+		.await
+		.map_err(RunnerError::host)?
+		.id;
+
+	// Clean up old configs — non-fatal, log and continue
+	for config in existing_configs {
+		if let Some(id) = config.id {
+			if id != new_id {
+				if let Err(err) = docker.delete_config(&id).await {
+					warn!("Failed to clean up old config {}: {}", id, err);
+				}
+			}
+		}
+	}
+
+	Ok(new_id)
+}
+
 /// All commonly used constants in the Docker runner.
 pub mod constants {
 	/// The name of the patr overlay network for service discovery.

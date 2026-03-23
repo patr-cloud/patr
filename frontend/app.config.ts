@@ -19,6 +19,22 @@ export default defineConfig({
     esbuild: {
       pure: ['console.log'],
     },
+    // @solid-primitives/storage has an internal circular dependency
+    // (cookies.js <-> index.js via a dead import). Forcing the package
+    // into a single chunk keeps the cycle chunk-internal, which Rollup
+    // handles fine. Only applied to the client router — the SSR router
+    // externalizes node_modules so manualChunks can't include them.
+    ...(router === "client" ? {
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              'solid-primitives-storage': ['@solid-primitives/storage'],
+            },
+          },
+        },
+      },
+    } : {}),
   }) : ({
     plugins: [tanstackRouter({ target: "solid", autoCodeSplitting: true, routesDirectory: "./src/routes", generatedRouteTree: "./src/routeTree.gen.ts" }), tailwindcss()],
     esbuild: {

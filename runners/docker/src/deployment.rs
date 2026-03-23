@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use bollard::{
 	models::{
-		ConfigSpec,
 		CreateImageInfo,
 		HealthConfig,
 		NetworkAttachmentConfig,
@@ -17,7 +16,6 @@ use bollard::{
 		ListConfigsOptions,
 		ListServicesOptions,
 		ListServicesOptionsBuilder,
-		UpdateConfigOptionsBuilder,
 		UpdateServiceOptionsBuilder,
 	},
 };
@@ -221,50 +219,13 @@ pub(crate) async fn upsert(
 
 	let config = Base64String::from_string(config);
 
-	let config_spec = ConfigSpec {
-		name: Some(format!("ingress-{}", id)),
-		labels: Some(HashMap::from([(
-			String::from("patr.deploymentId"),
-			id.to_string(),
-		)])),
-		data: Some(config.to_string()),
-		templating: None,
-	};
-
-	if let Some((config_id, index)) = docker
-		.list_configs(Some(ListConfigsOptions {
-			filters: Some(HashMap::from([(
-				String::from("label"),
-				vec![format!("patr.deploymentId={}", id)],
-			)])),
-		}))
-		.await
-		.map_err(RunnerError::host)?
-		.into_iter()
-		.next()
-		.and_then(|config| Some((config.id?, config.version?.index?)))
-	{
-		trace!(
-			"Config exists for deployment {}, updating: {}",
-			id, config_id
-		);
-		docker
-			.update_config(
-				&config_id,
-				config_spec,
-				UpdateConfigOptionsBuilder::default()
-					.version(index as i64)
-					.build(),
-			)
-			.await
-			.map_err(RunnerError::host)?;
-	} else {
-		trace!("Creating new config for deployment: {}", id);
-		docker
-			.create_config(config_spec)
-			.await
-			.map_err(RunnerError::host)?;
-	}
+	crate::utils::update_config(
+		docker,
+		&format!("ingress-{}", id),
+		HashMap::from([(String::from("patr.deploymentId"), id.to_string())]),
+		config.to_string(),
+	)
+	.await?;
 
 	Ok(())
 }

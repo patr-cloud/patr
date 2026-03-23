@@ -8,11 +8,22 @@ mod workspace;
 
 use std::sync::OnceLock;
 
-use axum::{Router, body::Body, http::Request, response::Response};
-use tokio::fs;
-use tower_http::services::ServeFile;
+use axum::{
+	Router,
+	body::Body,
+	http::{Request, header},
+	response::{IntoResponse, Response},
+};
 
 use crate::prelude::*;
+
+/// The embedded frontend assets for production mode. In production, these will
+/// be served by the frontend server, so we don't need to include them in the
+/// binary.
+#[doc(hidden)]
+#[derive(Debug, Clone, rust_embed::RustEmbed)]
+#[folder = "../../frontend/.output/public"]
+struct FrontendAssets;
 
 /// A static reqwest client for proxying requests in debug mode
 #[doc(hidden)]
@@ -29,7 +40,7 @@ where
 		.merge(user::setup_routes(state).await)
 		.merge(workspace::setup_routes(state).await);
 
-	if cfg!(debug_assertions) {
+	if !cfg!(debug_assertions) {
 		router.fallback(async |req: Request<Body>| {
 			let Ok(response) = CLIENT
 				.get_or_init(reqwest::Client::new)
@@ -74,31 +85,22 @@ where
 			response.body(Body::from_stream(body)).unwrap()
 		})
 	} else {
-		router.merge(read_files("./frontend/dist").await.into_iter().fold(
-			Router::new(),
-			|router, file| {
-				router.route_service(
-					file.trim_start_matches("./frontend/dist"),
-					ServeFile::new(file.as_str()),
-				)
-			},
-		))
-	}
-}
+		router.fallback(async |req: Request<Body>| {
+			let path = req.uri().path().trim_start_matches('/');
 
-/// Reads all files in a directory and its subdirectories
-async fn read_files(path: &str) -> Vec<String> {
-	let mut files = Vec::new();
-	let mut read_dir = fs::read_dir(path)
-		.await
-		.unwrap_or_else(|_| panic!("failed to read directory: `{path}`"));
-	while let Some(entry) = read_dir.next_entry().await.expect("failed to read entry") {
-		let path = entry.path();
-		if path.is_dir() {
-			files.extend(Box::pin(read_files(path.to_str().unwrap())).await);
-		} else {
-			files.push(path.to_str().unwrap().to_string());
-		}
+			// Try the exact path, then fall back to index.html for SPA routing
+			let file = FrontendAssets::get(path).or_else(|| FrontendAssets::get("index.html"));
+
+			match file {
+				Some(file) => {
+					let mime = file.metadata.mimetype();
+					([(header::CONTENT_TYPE, mime)], file.data).into_response()
+				}
+				None => Response::builder()
+					.status(404)
+					.body(Body::from("Not Found"))
+					.unwrap(),
+			}
+		})
 	}
-	files
 }

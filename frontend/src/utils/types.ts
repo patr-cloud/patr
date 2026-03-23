@@ -51,7 +51,7 @@ export type ResourceTypes =
 	| "deployment"
 	| "dnsRecord"
 	| "domain"
-	| "managedUrl"
+	| "managedURL"
 	| "runner"
 	| "secret"
 	| "staticSite"
