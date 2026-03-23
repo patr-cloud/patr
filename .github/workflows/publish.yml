@@ -510,7 +510,7 @@ jobs:
 
   update-homebrew-tap:
     name: Update Homebrew formula
-    needs: github-release
+    needs: [github-release, build-cli-binaries]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -519,7 +519,23 @@ jobs:
         id: version
         run: |
           VERSION=$(grep '^package.version' Cargo.toml | sed 's/.*= *"\(.*\)"/\1/')
+          BRANCH="${{ github.ref_name }}"
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+
+          case "$BRANCH" in
+            master)
+              BREW_VERSION="${VERSION}"
+              ;;
+            staging)
+              BREW_VERSION="${VERSION}-beta"
+              ;;
+            develop)
+              BREW_VERSION="${VERSION}-alpha.${{ github.run_number }}"
+              ;;
+          esac
+
           echo "full=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "brew_version=$BREW_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Compute release tag and formula
         id: brew
@@ -561,18 +577,17 @@ jobs:
           echo "conflicts_a=$CONFLICTS_A" >> "$GITHUB_OUTPUT"
           echo "conflicts_b=$CONFLICTS_B" >> "$GITHUB_OUTPUT"
 
-      - name: Download release assets and compute checksums
+      - name: Download build artifacts and compute checksums
         id: checksums
-        env:
-          GH_TOKEN: ${{ github.token }}
+        uses: actions/download-artifact@v4
+        with:
+          pattern: patr-*
+          merge-multiple: true
+          path: /tmp/assets
+
+      - name: Compute checksums
+        id: shas
         run: |
-          TAG="${{ steps.brew.outputs.tag }}"
-          REPO="${{ github.repository }}"
-
-          for ASSET in patr-linux-amd64.tar.gz patr-linux-arm64.tar.gz patr-darwin-arm64.zip patr-windows-amd64.zip; do
-            gh release download "$TAG" --repo "$REPO" --pattern "$ASSET" --dir /tmp/assets
-          done
-
           echo "linux_amd64=$(sha256sum /tmp/assets/patr-linux-amd64.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
           echo "linux_arm64=$(sha256sum /tmp/assets/patr-linux-arm64.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
           echo "darwin_arm64=$(sha256sum /tmp/assets/patr-darwin-arm64.zip | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
@@ -582,7 +597,7 @@ jobs:
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
           TAG="${{ steps.brew.outputs.tag }}"
-          VERSION="${{ steps.version.outputs.full }}"
+          VERSION="${{ steps.version.outputs.brew_version }}"
           FORMULA="${{ steps.brew.outputs.formula }}"
           REPO="${{ github.repository }}"
           BASE_URL="https://github.com/${REPO}/releases/download/${TAG}"
@@ -593,9 +608,9 @@ jobs:
           sed -i "s|{{CONFLICTS_A}}|${{ steps.brew.outputs.conflicts_a }}|g" /tmp/formula.rb
           sed -i "s|{{CONFLICTS_B}}|${{ steps.brew.outputs.conflicts_b }}|g" /tmp/formula.rb
           sed -i "s|{{BASE_URL}}|${BASE_URL}|g" /tmp/formula.rb
-          sed -i "s|{{SHA_DARWIN_ARM64}}|${{ steps.checksums.outputs.darwin_arm64 }}|g" /tmp/formula.rb
-          sed -i "s|{{SHA_LINUX_ARM64}}|${{ steps.checksums.outputs.linux_arm64 }}|g" /tmp/formula.rb
-          sed -i "s|{{SHA_LINUX_AMD64}}|${{ steps.checksums.outputs.linux_amd64 }}|g" /tmp/formula.rb
+          sed -i "s|{{SHA_DARWIN_ARM64}}|${{ steps.shas.outputs.darwin_arm64 }}|g" /tmp/formula.rb
+          sed -i "s|{{SHA_LINUX_ARM64}}|${{ steps.shas.outputs.linux_arm64 }}|g" /tmp/formula.rb
+          sed -i "s|{{SHA_LINUX_AMD64}}|${{ steps.shas.outputs.linux_amd64 }}|g" /tmp/formula.rb
 
           git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/patr-cloud/homebrew-cli.git" /tmp/homebrew-cli
           mkdir -p /tmp/homebrew-cli/Formula
