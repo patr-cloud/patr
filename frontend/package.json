@@ -27,6 +27,7 @@
 		"totp-generator": "^2.0.1"
 	},
 	"devDependencies": {
+		"@eslint/js": "^9.39.2",
 		"@tailwindcss/vite": "^4.1.18",
 		"@types/js-cookie": "^3.0.6",
 		"@types/node": "^24.10.12",
