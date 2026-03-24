@@ -32,6 +32,7 @@ models             = { workspace = true }
 preprocess         = { workspace = true, features = [] }
 rand               = { workspace = true, features = ["default"] }
 reqwest            = { workspace = true, features = ["json", "rustls", "stream"] }
+rustls             = { workspace = true, features = ["aws-lc-rs"] }
 rust-embed         = { workspace = true, features = ["interpolate-folder-path", "mime-guess"] }
 semver             = { workspace = true, features = ["default"] }
 serde              = { workspace = true, features = ["derive"] }
