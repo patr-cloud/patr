@@ -74,42 +74,40 @@ const CreateRoles = () => {
 		return response.data;
 	});
 
-	const { execute: handleSubmit, isLoading: isSubmitting } = createAuthenticatedAction(
-		async ({ workspaceId }) => {
-			if (!roleName().trim()) {
-				toast("Please enter a role name", "error");
-				return;
-			}
-
-			if (Object.keys(permissionsData()).length === 0) {
-				toast("Please select at least one permission", "error");
-				return;
-			}
-
-			const requestBody: CreateNewRoleRequest = {
-				name: roleName().trim(),
-				description: roleDescription().trim() || `Role: ${roleName().trim()}`,
-				permissions: permissionsData(),
-			};
-
-			const response = await httpRequest<CreateNewRoleResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role`,
-				{
-					method: "POST",
-					body: JSON.stringify(requestBody),
-				}
-			);
-
-			if (!response.ok) {
-				console.error("Failed to create role:", response.data.error);
-				toast(response.data.error || "Failed to create role", "error");
-				return;
-			}
-
-			toast("Role created successfully", "success");
-			navigate({ to: "/workspace/roles" });
+	const { execute: handleSubmit, isLoading: isSubmitting } = createAuthenticatedAction(async ({ workspaceId }) => {
+		if (!roleName().trim()) {
+			toast("Please enter a role name", "error");
+			return;
 		}
-	);
+
+		if (Object.keys(permissionsData()).length === 0) {
+			toast("Please select at least one permission", "error");
+			return;
+		}
+
+		const requestBody: CreateNewRoleRequest = {
+			name: roleName().trim(),
+			description: roleDescription().trim() || `Role: ${roleName().trim()}`,
+			permissions: permissionsData(),
+		};
+
+		const response = await httpRequest<CreateNewRoleResponse>(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role`,
+			{
+				method: "POST",
+				body: JSON.stringify(requestBody),
+			}
+		);
+
+		if (!response.ok) {
+			console.error("Failed to create role:", response.data.error);
+			toast(response.data.error || "Failed to create role", "error");
+			return;
+		}
+
+		toast("Role created successfully", "success");
+		navigate({ to: "/workspace/roles" });
+	});
 
 	return (
 		<>

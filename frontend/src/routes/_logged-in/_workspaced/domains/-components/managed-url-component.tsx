@@ -29,25 +29,23 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 
 	const toast = useToast();
 
-	const { execute: deleteUrl, isLoading: isDeleting } = createAuthenticatedAction(
-		async ({ workspaceId }) => {
-			const response = await httpRequest<void>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/infrastructure/managed-url/${props.managedUrl.id}`,
-				{
-					method: "DELETE",
-				}
-			);
-
-			if (!response.ok) {
-				console.error("Failed to delete managed URL:", response.data.error);
-				toast("Failed to delete managed URL", "error");
-				return;
+	const { execute: deleteUrl, isLoading: isDeleting } = createAuthenticatedAction(async ({ workspaceId }) => {
+		const response = await httpRequest<void>(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/infrastructure/managed-url/${props.managedUrl.id}`,
+			{
+				method: "DELETE",
 			}
+		);
 
-			toast("Managed URL deleted successfully", "success");
-			props.onUpdate?.();
+		if (!response.ok) {
+			console.error("Failed to delete managed URL:", response.data.error);
+			toast("Failed to delete managed URL", "error");
+			return;
 		}
-	);
+
+		toast("Managed URL deleted successfully", "success");
+		props.onUpdate?.();
+	});
 
 	const onDelete = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
 		e.stopPropagation();

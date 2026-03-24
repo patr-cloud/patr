@@ -73,7 +73,6 @@ const useUserPermissions = () => {
 		return params;
 	});
 
-	 
 	const [permissionsResource, permissionsActions] = createResource(fetchParams, async ([auth, wsId]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") {
 			console.log("[useFetchUserPermissions] Invalid auth or workspace, returning default member");

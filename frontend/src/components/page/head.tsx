@@ -36,22 +36,24 @@ const HeadTab = (rawProps: HeadTabProps) => {
 
 	return (
 		<div class={`w-full text-white flex gap-4 ${get(props.class)}`}>
-			<For each={props.tabItems}>{(item) => (
-				<button
-					onClick={() => {
-						if (item.onClick) {
-							item.onClick(item.value);
-						} else if (props.onTabChange) {
-							props.onTabChange(item.value);
-						}
-					}}
-					class={`pb-2 px-2 border-b-2 ${
-						get(props.tab) === item.value ? "border-primary" : "border-none"
-					} ${get(props.buttonClass)} ${get(item.class) || ""}`}
-				>
-					{item.label}
-				</button>
-			)}</For>
+			<For each={props.tabItems}>
+				{(item) => (
+					<button
+						onClick={() => {
+							if (item.onClick) {
+								item.onClick(item.value);
+							} else if (props.onTabChange) {
+								props.onTabChange(item.value);
+							}
+						}}
+						class={`pb-2 px-2 border-b-2 ${
+							get(props.tab) === item.value ? "border-primary" : "border-none"
+						} ${get(props.buttonClass)} ${get(item.class) || ""}`}
+					>
+						{item.label}
+					</button>
+				)}
+			</For>
 		</div>
 	);
 };

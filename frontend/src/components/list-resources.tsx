@@ -28,9 +28,12 @@ const ListResources = (props: {
 			return null;
 		}
 
-		const response = await httpRequest<Record<string, { id: string; name: string }[]>>(`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/${endpoint}`, {
-			method: "GET",
-		});
+		const response = await httpRequest<Record<string, { id: string; name: string }[]>>(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/${endpoint}`,
+			{
+				method: "GET",
+			}
+		);
 
 		if (!response.ok) {
 			console.error(`Failed to fetch ${type}:`, response.data.error);

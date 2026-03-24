@@ -35,46 +35,48 @@ const EnvInput = (props: EnvInputProps) => {
 			<InputLabel parentClass="flex-2" label="Environment Variables" />
 
 			<div class="flex flex-col flex-10 gap-4 w-full">
-				<For each={get(props.envList)}>{(env) => (
-					<div class="flex items-center flex-10 gap-4">
-						<Input
-							disabled={true}
-							class="flex-4"
-							placeholder="Enter Env Name"
-							type={InputType.Text}
-							value={env.key}
-							onKeyDown={(e) => {
-								if (e.key === "Enter") e.preventDefault();
-							}}
-						/>
-						<Input
-							disabled={get(props.disabled)}
-							class="flex-7"
-							placeholder="Enter Env Value"
-							value={env.value ? parseEnvValue(env.value) : ""}
-							type={InputType.Text}
-							onInput={(e) => {
-								props.onAdd(env.key, e.currentTarget.value);
-							}}
-							onKeyDown={(e) => {
-								if (e.key === "Enter") e.preventDefault();
-							}}
-						/>
-
-						<Show when={!get(props.disabled)}>
-							<Button
-								onClick={() => {
-									props.onDelete(env.key);
+				<For each={get(props.envList)}>
+					{(env) => (
+						<div class="flex items-center flex-10 gap-4">
+							<Input
+								disabled={true}
+								class="flex-4"
+								placeholder="Enter Env Name"
+								type={InputType.Text}
+								value={env.key}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") e.preventDefault();
 								}}
-								variant={ButtonVariant.Outlined}
-								class="flex-1 h-full flex items-center gap-2"
-								color={Color.Error}
-							>
-								<FiTrash2 size={16} />
-							</Button>
-						</Show>
-					</div>
-				)}</For>
+							/>
+							<Input
+								disabled={get(props.disabled)}
+								class="flex-7"
+								placeholder="Enter Env Value"
+								value={env.value ? parseEnvValue(env.value) : ""}
+								type={InputType.Text}
+								onInput={(e) => {
+									props.onAdd(env.key, e.currentTarget.value);
+								}}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") e.preventDefault();
+								}}
+							/>
+
+							<Show when={!get(props.disabled)}>
+								<Button
+									onClick={() => {
+										props.onDelete(env.key);
+									}}
+									variant={ButtonVariant.Outlined}
+									class="flex-1 h-full flex items-center gap-2"
+									color={Color.Error}
+								>
+									<FiTrash2 size={16} />
+								</Button>
+							</Show>
+						</div>
+					)}
+				</For>
 
 				<Show
 					when={!get(props.disabled)}
