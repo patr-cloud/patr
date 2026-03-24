@@ -28,7 +28,7 @@ use rustis::{
 	ClientError,
 	Error as RedisError,
 	client::Client as RedisClient,
-	commands::{SetCondition, SetExpiration, StringCommands},
+	commands::{GenericCommands, SetCondition, SetExpiration, StringCommands},
 };
 use tokio_util::sync::CancellationToken;
 
@@ -93,7 +93,7 @@ pub async fn stream_runner_data_for_workspace(
 						random_connection_id,
 						state,
 					)
-					.await
+					.await;
 				})
 				.into_response(),
 		))
@@ -356,6 +356,10 @@ async fn handle_websocket(
 		.unsubscribe(&redis_channel)
 		.await
 		.inspect_err(|err| error!("Error streaming runner data: {:?}", err));
+	_ = redis
+		.del(redis::keys::runner_connection_lock(&runner_id))
+		.await
+		.inspect_err(|err| error!("Error releasing runner connection lock: {:?}", err));
 	_ = websocket.close().await;
 }
 
