@@ -81,6 +81,10 @@ where
 	pub async fn init_with_config(
 		config: RunnerSettings<E::Settings>,
 	) -> Result<Self, RunnerError> {
+		// sqlx (ring) and reqwest (aws-lc-rs) both enable their crypto backend on
+		// rustls. When both are compiled in, rustls can't auto-detect — pick one.
+		let _ = rustls::crypto::ring::default_provider().install_default();
+
 		tracing::dispatcher::set_global_default(Dispatch::new(
 			tracing_subscriber::registry()
 				.with(

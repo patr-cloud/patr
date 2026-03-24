@@ -20,6 +20,7 @@ pub struct RunnerSettings<D> {
 	/// The environment the application is running in. This is set at runtime
 	/// based on an environment variable and if the application is compiled with
 	/// debug mode.
+	#[serde(skip, default = "default_running_environment")]
 	pub environment: RunningEnvironment,
 	/// The configuration for the database to connect to
 	pub database: DatabaseConfig,
@@ -88,6 +89,20 @@ where
 			bind_address,
 			data: (),
 		}
+	}
+}
+
+fn default_running_environment() -> RunningEnvironment {
+	let env = if cfg!(debug_assertions) {
+		"dev".to_string()
+	} else {
+		std::env::var("PATR_ENV").unwrap_or_else(|_| "prod".into())
+	};
+
+	match env.as_ref() {
+		"dev" | "development" => RunningEnvironment::Development,
+		"prod" | "production" => RunningEnvironment::Production,
+		_ => panic!("Unknown running environment found!")
 	}
 }
 

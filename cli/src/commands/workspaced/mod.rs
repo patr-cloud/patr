@@ -1,10 +1,19 @@
 use clap::Subcommand;
 
-use self::{infrastructure::InfrastructureCommand, workspace::WorkspaceCommand};
+use self::{
+	container_registry::ContainerRegistryCommand,
+	deployment::DeploymentCommand,
+	runner::RunnerCommand,
+	workspace::WorkspaceCommand,
+};
 use crate::prelude::*;
 
-/// All infrastructure related commands (e.g. deployments, databases, etc.)
-mod infrastructure;
+/// All container registry related commands
+mod container_registry;
+/// All deployment related commands (e.g. list, create, etc.)
+mod deployment;
+/// All commands to setup / run a runner
+mod runner;
 /// All the commands that can be executed on a workspace.
 mod workspace;
 
@@ -15,11 +24,15 @@ pub enum WorkspacedCommand {
 	/// All commands that can be executed on a workspace
 	#[command(flatten)]
 	WorkspaceCommands(WorkspaceCommand),
-	/// All infrastructure related commands (e.g. deployments, databases, etc.)
+	/// All deployment related commands
 	#[command(flatten)]
-	InfrastructureCommands(InfrastructureCommand),
-	// #[command(flatten)]
-	// DomainConfigurationCommands(DomainConfigurationCommands),
+	DeploymentCommand(DeploymentCommand),
+	/// All the commands that are related to setting up a runner
+	#[command(flatten)]
+	RunnerCommands(RunnerCommand),
+	/// All container registry related commands
+	#[command(flatten)]
+	ContainerRegistryCommand(ContainerRegistryCommand),
 }
 
 /// All commands that are executed on workspace related stuff
@@ -32,8 +45,14 @@ pub async fn execute(
 		WorkspacedCommand::WorkspaceCommands(commands) => {
 			workspace::execute(commands, global_args, state).await
 		}
-		WorkspacedCommand::InfrastructureCommands(commands) => {
-			infrastructure::execute(commands, global_args, state).await
+		WorkspacedCommand::DeploymentCommand(command) => {
+			deployment::execute(command, global_args, state).await
+		}
+		WorkspacedCommand::RunnerCommands(commands) => {
+			runner::execute(commands, global_args, state).await
+		}
+		WorkspacedCommand::ContainerRegistryCommand(command) => {
+			container_registry::execute(command, global_args, state).await
 		}
 	}
 }
