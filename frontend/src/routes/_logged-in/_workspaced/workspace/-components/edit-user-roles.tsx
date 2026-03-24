@@ -1,4 +1,4 @@
-import { createSignal, For, Show } from "solid-js";
+import { createSignal, For, Show, untrack } from "solid-js";
 import { Button, ButtonVariant, InputDropdown, useToast } from "~/components";
 import { FiX, FiTrash2 } from "solid-icons/fi";
 import { httpRequest } from "~/utils/http-request";
@@ -16,7 +16,9 @@ interface EditRolesProps {
 }
 
 export const EditUserRoles = (props: EditRolesProps) => {
-	const [selectedRoles, setSelectedRoles] = createSignal<string[]>(props.currentRoles.map((r) => r.id));
+	const [selectedRoles, setSelectedRoles] = createSignal<string[]>(
+		untrack(() => props.currentRoles.map((r) => r.id))
+	);
 	const [newRoleId, setNewRoleId] = createSignal("");
 	const toast = useToast();
 
@@ -32,7 +34,7 @@ export const EditUserRoles = (props: EditRolesProps) => {
 		setSelectedRoles(selectedRoles().filter((id) => id !== roleId));
 	};
 
-	const { execute: handleSave, isLoading: isSaving } = createLoggedInAction(async ({ accessToken }) => {
+	const { execute: handleSave, isLoading: isSaving } = createLoggedInAction(async (_) => {
 		const requestBody: UpdateUserRolesInWorkspaceRequest = {
 			roles: selectedRoles(),
 		};
@@ -62,7 +64,7 @@ export const EditUserRoles = (props: EditRolesProps) => {
 					<h2 class="text-lg text-white">Editing Roles</h2>
 					<p class="text-white text-lg">of {props.userName}</p>
 				</div>
-				<button onClick={props.onClose} class="text-primary text-sm hover:underline cursor-pointer">
+				<button onClick={() => props.onClose()} class="text-primary text-sm hover:underline cursor-pointer">
 					<FiX size={18} />
 				</button>
 			</div>

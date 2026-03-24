@@ -1,4 +1,4 @@
-import { createSignal, createResource, For, Show, onMount, onCleanup, Suspense } from "solid-js";
+import { createSignal, createResource, For, Show, onMount, onCleanup, Suspense, untrack } from "solid-js";
 import { SearchForUserResponse } from "~/bindings/SearchForUserResponse";
 import { WithId } from "~/bindings/WithId";
 import { BasicUserInfo } from "~/bindings/BasicUserInfo";
@@ -13,19 +13,20 @@ interface UserSearchInputProps {
 }
 
 export const UserSearchInput = (props: UserSearchInputProps) => {
-	const [searchQuery, setSearchQuery] = createSignal(props.value || "");
+	const [searchQuery, setSearchQuery] = createSignal(untrack(() => props.value || ""));
 	const [showDropdown, setShowDropdown] = createSignal(false);
 	const [selectedUser, setSelectedUser] = createSignal<WithId<BasicUserInfo> | null>(null);
 	let inputRef: HTMLInputElement | undefined;
 	let dropdownRef: HTMLDivElement | undefined;
 
-	const [searchResults] = createResource(searchQuery, async (query) => {
+	const searchParams = () => ({ query: searchQuery(), hasSelection: !!selectedUser() });
+	const [searchResults] = createResource(searchParams, async ({ query, hasSelection }) => {
 		if (!query || query.length < 2) {
 			return { users: [] };
 		}
 
 		// Don't search if we have a selected user
-		if (selectedUser()) {
+		if (hasSelection) {
 			return { users: [] };
 		}
 

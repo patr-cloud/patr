@@ -1,4 +1,4 @@
-import { JSX, mergeProps, ParentProps } from "solid-js";
+import { JSX, mergeProps, For } from "solid-js";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
@@ -21,7 +21,7 @@ const ContainerGrid = <ItemI,>(rawProps: ContainerGridProps<ItemI>) => {
 	return (
 		<section class="w-full overflow-y-auto">
 			<div class={`grid grid-cols-3 gap-xl justify-start content-start ${get(props.class)}`}>
-				{get(props.items).map((item) => props.renderCard(item))}
+				<For each={get(props.items)}>{(item) => props.renderCard(item)}</For>
 			</div>
 		</section>
 	);

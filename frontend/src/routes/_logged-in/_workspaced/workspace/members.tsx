@@ -137,34 +137,32 @@ const ManageWorkspace = () => {
 		}
 	);
 
-	const { execute: deleteUser, isLoading: isDeleting } = createAuthenticatedAction(
-		async ({ accessToken, workspaceId }) => {
-			const userId = userToDelete();
+	const { execute: deleteUser } = createAuthenticatedAction(async ({ workspaceId }) => {
+		const userId = userToDelete();
 
-			if (!userId) {
-				toast("No user selected for deletion", "error");
-				return;
-			}
-
-			const response = await httpRequest<RemoveUserFromWorkspaceResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/user/${userId}`,
-				{
-					method: "DELETE",
-				}
-			);
-
-			if (!response.ok) {
-				console.error("Failed to delete user:", response.data.error);
-				toast("Failed to delete user", "error");
-				return;
-			}
-
-			toast("User removed successfully", "success");
-			setShouldDelete(false);
-			setUserToDelete(null);
-			refetchMembers();
+		if (!userId) {
+			toast("No user selected for deletion", "error");
+			return;
 		}
-	);
+
+		const response = await httpRequest<RemoveUserFromWorkspaceResponse>(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/user/${userId}`,
+			{
+				method: "DELETE",
+			}
+		);
+
+		if (!response.ok) {
+			console.error("Failed to delete user:", response.data.error);
+			toast("Failed to delete user", "error");
+			return;
+		}
+
+		toast("User removed successfully", "success");
+		setShouldDelete(false);
+		setUserToDelete(null);
+		refetchMembers();
+	});
 
 	const roleNameMap = createMemo(() => {
 		return new Map((roles()?.roles || []).map((r) => [r.id, r.name]));
@@ -186,7 +184,7 @@ const ManageWorkspace = () => {
 	};
 
 	const { onSubmit: handleAddMember, isLoading: isSubmitting } = createFormAction(
-		async ({ accessToken, workspaceId }) => {
+		async ({ workspaceId }) => {
 			const user = selectedUser();
 			const roleId = currentRoleId().trim();
 
@@ -325,7 +323,7 @@ const ManageWorkspace = () => {
 																		name: role.name,
 																	})) || []
 																}
-																onSave={async (roleIds: string[]) => {
+																onSave={(_roleIds: string[]) => {
 																	setEditingMember(null);
 																	refetchMembers();
 																}}

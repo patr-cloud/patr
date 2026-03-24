@@ -26,7 +26,7 @@ const CreateContainerRepository = () => {
 	const navigate = useNavigate();
 
 	const [repositoryName, setRepositoryName] = createSignal("");
-	const [isSubmitting, setIsSubmitting] = createSignal(false);
+	const [_isSubmitting, setIsSubmitting] = createSignal(false);
 
 	const handleSubmit = async (e: Event) => {
 		e.preventDefault();
@@ -105,7 +105,7 @@ const CreateContainerRepository = () => {
 								</div>
 								{repositoryName().trim() && (
 									<div class="flex items-start w-full gap-8">
-										<div class="flex-2"></div>
+										<div class="flex-2" />
 										<div class="flex-10 flex items-center gap-2">
 											<FiInfo size={14} class="text-gray-400 shrink-0" />
 											<span class="text-gray-400 text-xs">

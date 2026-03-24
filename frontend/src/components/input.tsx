@@ -346,7 +346,7 @@ const Input = (rawProps: InputProps) => {
 						props.onInput?.(e);
 					}
 				}}
-				onChange={props.onChange}
+				onChange={(e) => props.onChange?.(e)}
 				onKeyDown={(e) => {
 					if (hasSuggestions()) {
 						onAutocompleteKeyDown(e);
@@ -365,7 +365,7 @@ const Input = (rawProps: InputProps) => {
 						setShowDropdown(true);
 					}
 				}}
-				onPaste={props.onPaste}
+				onPaste={(e) => props.onPaste?.(e)}
 				placeholder={props.placeholder}
 				disabled={get(props.disabled)}
 				id={props.id}

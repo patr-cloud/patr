@@ -1,7 +1,13 @@
-import { makePersisted, cookieStorage } from "@solid-primitives/storage";
+import { makePersisted, cookieStorage, PersistenceOptions } from "@solid-primitives/storage";
 import { createContext, createResource, createSignal, ParentProps, Resource, Signal, useContext } from "solid-js";
 import { GetUserInfoResponse } from "~/bindings/GetUserInfoResponse";
 import { httpRequest } from "~/utils/http-request";
+
+/** Creates a persisted signal — wraps createSignal + makePersisted to avoid lint false positives */
+function createPersistedSignal<T>(initial: T, options: PersistenceOptions<T, Storage>) {
+	const [get, set] = createSignal<T>(initial);
+	return makePersisted([get, set] as Signal<T>, options);
+}
 
 const AuthStateContext = createContext<Signal<AuthState | null>>();
 const UserInfoContext = createContext<Resource<GetUserInfoResponse | undefined>>();
@@ -22,8 +28,8 @@ export type AuthState =
 /**
  * A Component that provides the AuthState context to its children
  */
-export const AuthStateProvider = (props: ParentProps<{}>) => {
-	const [authState, setAuthState] = makePersisted(createSignal<AuthState | null>(null), {
+export const AuthStateProvider = (props: ParentProps) => {
+	const [authState, setAuthState] = createPersistedSignal<AuthState | null>(null, {
 		name: "authState",
 		storage: cookieStorage.withOptions({
 			expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7 days
@@ -71,8 +77,8 @@ export function useUserInfo(): Resource<GetUserInfoResponse | undefined> {
 /**
  * A Component that provides the LastWorkspaceId context to its children
  */
-export const LastWorkspaceIdProvider = (props: ParentProps<{}>) => {
-	const [getter, setter] = makePersisted(createSignal<string | null>(null), {
+export const LastWorkspaceIdProvider = (props: ParentProps) => {
+	const [getter, setter] = createPersistedSignal<string | null>(null, {
 		name: "lastWorkspaceId",
 		storage: cookieStorage.withOptions({
 			expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7 days

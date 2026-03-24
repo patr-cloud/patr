@@ -56,7 +56,7 @@ const EditPermissions = (props: {
 		});
 	});
 
-	const { execute: handleUpdateRole, isLoading: isUpdating } = createLoggedInAction(async ({ accessToken }) => {
+	const { execute: handleUpdateRole, isLoading: isUpdating } = createLoggedInAction(async (_) => {
 		const requestBody: UpdateRoleRequest = {
 			permissions: permissionsData(),
 		};

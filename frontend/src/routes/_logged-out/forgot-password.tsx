@@ -19,7 +19,7 @@ const ForgotPassword = () => {
 			<main class="min-h-screen w-full bg-secondary flex items-center justify-center p-4 relative overflow-hidden">
 				{/* Background decorative elements */}
 				<div class="absolute inset-0 overflow-hidden pointer-events-none">
-					<div class="absolute inset-0 w-full h-full bg-linear-to-br from-secondary via-secondary-dark to-secondary opacity-50"></div>
+					<div class="absolute inset-0 w-full h-full bg-linear-to-br from-secondary via-secondary-dark to-secondary opacity-50" />
 				</div>
 				{/* Forgot Password Card */}
 				<section class="bg-secondary-dark p-12 rounded-2xl shadow-2xl w-full max-w-120 relative z-10 border border-secondary-medium">

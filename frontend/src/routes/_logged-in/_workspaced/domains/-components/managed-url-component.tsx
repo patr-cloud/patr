@@ -1,4 +1,4 @@
-import { createSignal } from "solid-js";
+import { createSignal, untrack } from "solid-js";
 import {
 	GetDomainInfoInWorkspaceResponse,
 	ManagedUrl,
@@ -30,7 +30,7 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 	const toast = useToast();
 
 	const { execute: deleteUrl, isLoading: isDeleting } = createAuthenticatedAction(
-		async ({ accessToken, workspaceId }) => {
+		async ({ workspaceId }) => {
 			const response = await httpRequest<void>(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/infrastructure/managed-url/${props.managedUrl.id}`,
 				{
@@ -173,17 +173,17 @@ interface ManagedUrlComponentProps {
 const ManagedUrlComponent = (props: ManagedUrlComponentProps) => {
 	const toast = useToast();
 
-	const [path, setPath] = createSignal(props.managedUrl.path);
-	const [urlType, setUrlType] = createSignal<urlTypeT>(props.managedUrl.type as urlTypeT);
+	const [path, setPath] = createSignal(untrack(() => props.managedUrl.path));
+	const [urlType, setUrlType] = createSignal<urlTypeT>(untrack(() => props.managedUrl.type as urlTypeT));
 	const [target, setTarget] = createSignal<string | null>(
-		props.managedUrl.type === "proxyDeployment" ? props.managedUrl.deploymentId : null
+		untrack(() => (props.managedUrl.type === "proxyDeployment" ? props.managedUrl.deploymentId : null))
 	);
 	const [deploymentPort, setDeploymentPort] = createSignal<number | null>(
-		props.managedUrl.type === "proxyDeployment" ? props.managedUrl.port : null
+		untrack(() => (props.managedUrl.type === "proxyDeployment" ? props.managedUrl.port : null))
 	);
 
 	const { onSubmit, isLoading } = createFormAction(
-		async ({ accessToken, workspaceId }) => {
+		async ({ workspaceId }) => {
 			const requestBody: UpdateManagedURLRequest = {
 				path: path(),
 				type: "proxyDeployment",

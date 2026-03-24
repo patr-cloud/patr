@@ -45,7 +45,7 @@ const Login = () => {
 	};
 
 	const validateInputs = (): boolean => {
-		const { userId, password } = inputs();
+		const { password } = inputs();
 
 		// FIXME: Poor regex, improve this
 		// if (!USERNAME_VALIDITY_REGEX.test(userId)) {

@@ -30,8 +30,6 @@ const CreateRunnerPage = () => {
 			return;
 		}
 
-		const runnerId = response.data.id;
-
 		toast("Runner created successfully", "success");
 		setName("");
 		navigate({ to: "/runners" });

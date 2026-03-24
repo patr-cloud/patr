@@ -91,10 +91,11 @@ const ContainerRepositoryInfo = () => {
 
 	const renderTab = () => {
 		switch (tab()) {
-			case "images":
+			case "images": {
 				const manifest_list = manifests();
 				if (!manifest_list) return <div>Loading manifests...</div>;
 				return <Images manifests={() => manifest_list} refetch={refetchManifests} />;
+			}
 			case "general":
 			case "":
 			default:

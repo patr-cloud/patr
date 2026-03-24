@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createMemo, createResource, createSignal, ErrorBoundary, Show, Suspense } from "solid-js";
+import { createMemo, createResource, createSignal, ErrorBoundary, Match, Show, Suspense, Switch } from "solid-js";
 import { GetDeploymentInfoResponse } from "~/bindings";
 import {
 	Button,
@@ -63,7 +63,7 @@ const DeploymentInfo = () => {
 	);
 
 	const { execute: startDeployment, isLoading: isStartingDeployment } = createAuthenticatedAction(
-		async ({ accessToken, workspaceId }) => {
+		async ({ workspaceId }) => {
 			if (!deploymentPermissions().start) {
 				toast("You do not have permission to start this deployment", "error");
 				return;
@@ -94,7 +94,7 @@ const DeploymentInfo = () => {
 	);
 
 	const { execute: stopDeployment, isLoading: isStoppingDeployment } = createAuthenticatedAction(
-		async ({ accessToken, workspaceId }) => {
+		async ({ workspaceId }) => {
 			if (!deploymentPermissions().stop) {
 				toast("You do not have permission to stop this deployment", "error");
 				return;
@@ -125,7 +125,7 @@ const DeploymentInfo = () => {
 	);
 
 	const { execute: deleteDeployment, isLoading: isDeletingDeployment } = createAuthenticatedAction(
-		async ({ accessToken, workspaceId }) => {
+		async ({ workspaceId }) => {
 			if (!deploymentPermissions().delete) {
 				toast("You do not have permission to delete this deployment", "error");
 				return;
@@ -154,14 +154,10 @@ const DeploymentInfo = () => {
 		}
 	);
 
-	const Cta = () => {
-		switch (deploymentInfo()?.status) {
-			case "running":
-				if (!deploymentPermissions().stop) {
-					return null;
-				}
-
-				return (
+	const Cta = () => (
+		<Switch fallback={<span>Unknown</span>}>
+			<Match when={deploymentInfo()?.status === "running"}>
+				<Show when={deploymentPermissions().stop}>
 					<Button
 						onClick={(e) => {
 							e.preventDefault();
@@ -175,20 +171,19 @@ const DeploymentInfo = () => {
 					>
 						STOP
 					</Button>
-				);
-
-			case "deploying":
-				return <span class="text-white">Deploying...</span>;
-			case "errored":
-				return <span class="text-white">Error occurred</span>;
-			case "unreachable":
-				return <span class="text-white">Unreachable</span>;
-			case "stopped":
-				if (!deploymentPermissions().start) {
-					return null;
-				}
-
-				return (
+				</Show>
+			</Match>
+			<Match when={deploymentInfo()?.status === "deploying"}>
+				<span class="text-white">Deploying...</span>
+			</Match>
+			<Match when={deploymentInfo()?.status === "errored"}>
+				<span class="text-white">Error occurred</span>
+			</Match>
+			<Match when={deploymentInfo()?.status === "unreachable"}>
+				<span class="text-white">Unreachable</span>
+			</Match>
+			<Match when={deploymentInfo()?.status === "stopped"}>
+				<Show when={deploymentPermissions().start}>
 					<Button
 						class="h-10"
 						variant={ButtonVariant.Contained}
@@ -201,11 +196,10 @@ const DeploymentInfo = () => {
 					>
 						START
 					</Button>
-				);
-			default:
-				return <span>where status?</span>;
-		}
-	};
+				</Show>
+			</Match>
+		</Switch>
+	);
 
 	const renderTab = () => {
 		switch (tab()) {

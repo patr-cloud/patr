@@ -3,11 +3,11 @@ import { useToast } from "~/components/toast";
 import { useAuthState } from "./state-hooks";
 import { useLastWorkspaceId } from "./state-hooks";
 
-function createAsyncAction<T extends (...args: any[]) => Promise<any>>(fn: T) {
+function createAsyncAction<TArgs extends unknown[], TReturn>(fn: (...args: TArgs) => Promise<TReturn>) {
 	const [isLoading, setIsLoading] = createSignal(false);
 	const [error, setError] = createSignal<unknown>(null);
 
-	const execute = async (...args: Parameters<T>): Promise<Awaited<ReturnType<T>>> => {
+	const execute = async (...args: TArgs): Promise<TReturn> => {
 		setIsLoading(true);
 		setError(null);
 		try {

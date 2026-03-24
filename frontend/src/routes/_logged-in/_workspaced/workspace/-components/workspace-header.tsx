@@ -1,4 +1,4 @@
-import { Link as RouterLink, useNavigate, useLocation } from "@tanstack/solid-router";
+import { Link as RouterLink, useLocation } from "@tanstack/solid-router";
 import { ButtonVariant, Link, PageContainerHead } from "~/components";
 
 interface WorkspaceHeaderProps {
@@ -7,7 +7,6 @@ interface WorkspaceHeaderProps {
 }
 
 const WorkspaceHeader = (props: WorkspaceHeaderProps) => {
-	const navigate = useNavigate();
 	const location = useLocation();
 
 	return (

@@ -2,9 +2,8 @@ import { ActionTypes, MaybeAccessor, ResourceTypes, UserPermissionsT } from "~/u
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { createMemo } from "solid-js";
 import { get, resourceActionMap } from "~/utils/func";
-import { useFetchPermissions, useFetchUserPermissions } from "~/hooks/fetch";
+import { useFetchUserPermissions } from "~/hooks/fetch";
 import { useIsMounted } from "~/hooks";
-import { getPermissions } from "./fetch/user-permissions";
 
 type ResourceActionMapType = typeof resourceActionMap;
 type ActionsForResource<T extends ResourceTypes> = ResourceActionMapType[T][number];
@@ -76,7 +75,6 @@ const useGetPermissions = <T extends ResourceTypes>(resourceType: T, resId: Mayb
 		return permissions;
 	});
 
-	console.log("[useGetPermissions] finishing with:", permissions());
 	return permissions;
 };
 

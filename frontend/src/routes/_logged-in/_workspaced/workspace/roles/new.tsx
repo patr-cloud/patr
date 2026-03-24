@@ -75,7 +75,7 @@ const CreateRoles = () => {
 	});
 
 	const { execute: handleSubmit, isLoading: isSubmitting } = createAuthenticatedAction(
-		async ({ accessToken, workspaceId }) => {
+		async ({ workspaceId }) => {
 			if (!roleName().trim()) {
 				toast("Please enter a role name", "error");
 				return;

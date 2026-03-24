@@ -1,5 +1,5 @@
 import { Link as RouterLink } from "@tanstack/solid-router";
-import { ParentProps, mergeProps, JSX } from "solid-js";
+import { ParentProps, mergeProps, Show } from "solid-js";
 import { Color, ButtonVariantEnum, ButtonVariant } from "~/utils/color";
 import { get, getColorClasses } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
@@ -61,18 +61,19 @@ const Link = (rawProps: ParentProps<LinkProps>) => {
 		return `flex items-center ${variant()} justify-center ${get(props.class) ?? ""}`;
 	};
 
-	if (props.external) {
-		return (
+	return (
+		<Show
+			when={props.external}
+			fallback={
+				<RouterLink target={props.target} to={props.href} class={derivedClass()}>
+					{props.children}
+				</RouterLink>
+			}
+		>
 			<a target={props.target} href={props.href} class={derivedClass()}>
 				{props.children}
 			</a>
-		);
-	}
-
-	return (
-		<RouterLink target={props.target} to={props.href} class={derivedClass()}>
-			{props.children}
-		</RouterLink>
+		</Show>
 	);
 };
 

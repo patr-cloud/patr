@@ -36,7 +36,7 @@ const HeadTab = (rawProps: HeadTabProps) => {
 
 	return (
 		<div class={`w-full text-white flex gap-4 ${get(props.class)}`}>
-			{props.tabItems.map((item) => (
+			<For each={props.tabItems}>{(item) => (
 				<button
 					onClick={() => {
 						if (item.onClick) {
@@ -51,7 +51,7 @@ const HeadTab = (rawProps: HeadTabProps) => {
 				>
 					{item.label}
 				</button>
-			))}
+			)}</For>
 		</div>
 	);
 };

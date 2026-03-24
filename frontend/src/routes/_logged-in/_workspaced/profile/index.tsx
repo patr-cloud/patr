@@ -6,7 +6,6 @@ import { GetUserInfoResponse } from "~/bindings";
 import { PageContainer, PageContainerBody, PageContainerHead, useToast, HeadTab } from "~/components";
 import { useAuthState } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
-import { EventT } from "~/utils/types";
 import UserSettingsInfoTab from "./-components/info";
 import ChangePasswordTab from "./-components/change-password";
 
@@ -44,38 +43,6 @@ const UserSettingsPage = () => {
 			}
 		}
 	);
-
-	const onUpdateName = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
-		e.preventDefault();
-		const auth = authState();
-
-		if (!auth || auth.type !== "LoggedIn") {
-			toast("You must be logged in to update your name", "error");
-			return;
-		}
-
-		try {
-			const response = await httpRequest(`${import.meta.env.VITE_BASE_URL}/api/user`, {
-				method: "PATCH",
-				body: JSON.stringify({
-					firstName: userInfo.latest?.firstName,
-					lastName: userInfo.latest?.lastName,
-				}),
-			});
-
-			if (!response.ok) {
-				console.error("Failed to update user info:", response.data.error);
-				toast("Failed to update user info", "error");
-				return;
-			}
-
-			toast("User info updated successfully", "success");
-			refetchUserInfo();
-		} catch (error) {
-			console.error("Failed to update user info:", error);
-			toast("Failed to update user info", "error");
-		}
-	};
 
 	return (
 		<>
