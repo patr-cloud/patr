@@ -23,17 +23,14 @@ export type AuthState =
  * A Component that provides the AuthState context to its children
  */
 export const AuthStateProvider = (props: ParentProps<{}>) => {
-	const isServer = typeof window === "undefined";
-	const [authState, setAuthState] = isServer
-		? createSignal<AuthState | null>(null)
-		: makePersisted(createSignal<AuthState | null>(null), {
-				name: "authState",
-				storage: cookieStorage.withOptions({
-					expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7 days
-					path: "/",
-					sameSite: "Strict",
-				}),
-			});
+	const [authState, setAuthState] = makePersisted(createSignal<AuthState | null>(null), {
+		name: "authState",
+		storage: cookieStorage.withOptions({
+			expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7 days
+			path: "/",
+			sameSite: "Strict",
+		}),
+	});
 
 	const [userInfo] = createResource(
 		() => authState(),
@@ -75,17 +72,14 @@ export function useUserInfo(): Resource<GetUserInfoResponse | undefined> {
  * A Component that provides the LastWorkspaceId context to its children
  */
 export const LastWorkspaceIdProvider = (props: ParentProps<{}>) => {
-	const isServer = typeof window === "undefined";
-	const [getter, setter] = isServer
-		? createSignal<string | null>(null)
-		: makePersisted(createSignal<string | null>(null), {
-				name: "lastWorkspaceId",
-				storage: cookieStorage.withOptions({
-					expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7 days
-					path: "/",
-					sameSite: "Strict",
-				}),
-			});
+	const [getter, setter] = makePersisted(createSignal<string | null>(null), {
+		name: "lastWorkspaceId",
+		storage: cookieStorage.withOptions({
+			expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7 days
+			path: "/",
+			sameSite: "Strict",
+		}),
+	});
 
 	return <LastWorkspaceIdContext.Provider value={[getter, setter]}>{props.children}</LastWorkspaceIdContext.Provider>;
 };
