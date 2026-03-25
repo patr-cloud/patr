@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/solid-router";
+import { Title } from "@solidjs/meta";
 import { createSignal } from "solid-js";
 import { CreateWorkspaceResponse } from "~/bindings";
 import {
@@ -53,53 +54,56 @@ const CreateWorkspace = () => {
 	});
 
 	return (
-		<PageContainer>
-			<PageContainerHead
-				breadcrumbs={[
-					{
-						label: "Workspace",
-						url: "/workspace",
-					},
-					{
-						label: "Create",
-					},
-				]}
-				subText="Workspaces are a way to organize your projects, deployments, and resources."
-			/>
-			<PageContainerBody class="flex flex-col">
-				<form
-					class="flex flex-1 flex-col justify-between gap-8"
-					onSubmit={async (e: SubmitEvent) => {
-						e.preventDefault();
-						await createWorkspace().catch(() => {
-							toast("An unexpected error occurred while creating the workspace", "error");
-						});
-					}}
-				>
-					<div class="flex gap-4 items-center">
-						<InputLabel for="workspace-name" label="Workspace Name" parentClass="flex-2" />
-						<Input
-							name="workspace-name"
-							value={workspaceName()}
-							onInput={(e) => setWorkspaceName(e.currentTarget.value)}
-							placeholder="Enter Workspace Name"
-							type="text"
-							class="flex-10"
-						/>
-					</div>
+		<>
+			<Title>New Workspace | Patr</Title>
+			<PageContainer>
+				<PageContainerHead
+					breadcrumbs={[
+						{
+							label: "Workspace",
+							url: "/workspace",
+						},
+						{
+							label: "Create",
+						},
+					]}
+					subText="Workspaces are a way to organize your projects, deployments, and resources."
+				/>
+				<PageContainerBody class="flex flex-col">
+					<form
+						class="flex flex-1 flex-col justify-between gap-8"
+						onSubmit={async (e: SubmitEvent) => {
+							e.preventDefault();
+							await createWorkspace().catch(() => {
+								toast("An unexpected error occurred while creating the workspace", "error");
+							});
+						}}
+					>
+						<div class="flex gap-4 items-center">
+							<InputLabel for="workspace-name" label="Workspace Name" parentClass="flex-2" />
+							<Input
+								name="workspace-name"
+								value={workspaceName()}
+								onInput={(e) => setWorkspaceName(e.currentTarget.value)}
+								placeholder="Enter Workspace Name"
+								type="text"
+								class="flex-10"
+							/>
+						</div>
 
-					<div class="flex justify-end w-full">
-						<Button
-							loading={isLoading}
-							loadingContent={() => <span>Creating Workspace...</span>}
-							variant={ButtonVariant.Contained}
-						>
-							Create Workspace
-						</Button>
-					</div>
-				</form>
-			</PageContainerBody>
-		</PageContainer>
+						<div class="flex justify-end w-full">
+							<Button
+								loading={isLoading}
+								loadingContent={() => <span>Creating Workspace...</span>}
+								variant={ButtonVariant.Contained}
+							>
+								Create Workspace
+							</Button>
+						</div>
+					</form>
+				</PageContainerBody>
+			</PageContainer>
+		</>
 	);
 };
 

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/solid-router";
+import { Title } from "@solidjs/meta";
 import { createResource, createSignal, For, Suspense } from "solid-js";
 import { Button, ButtonVariant, PageContainer, PageContainerBody, PageContainerHead } from "~/components";
 import Input, { InputType } from "~/components/input";
@@ -117,139 +118,142 @@ const CreateApiTokens = () => {
 	};
 
 	return (
-		<PageContainer>
-			<PageContainerHead
-				breadcrumbs={[
-					{
-						label: "Profile",
-						url: "/profile",
-					},
-					{
-						label: "API Token",
-						url: "/profile/api-tokens",
-					},
-					{
-						label: "Create New API Token",
-					},
-				]}
-				subText="Create API Token"
-			/>
-			<PageContainerBody class="flex flex-col justify-between gap-8">
-				<form onSubmit={onSubmit} class="flex w-full flex-col justify-between gap-8 h-full flex-1">
-					<div class="flex flex-col gap-6 items-start w-full">
-						<h1 class="text-md">Create API Tokens</h1>
-
-						<div class="flex gap-8 items-center w-full">
-							<InputLabel parentClass="flex-2" for="token-name" label="Token Name" />
-							<Input
-								value={name()}
-								onInput={(e) => {
-									setName(e.currentTarget.value);
-								}}
-								class="flex-10"
-								name="token-name"
-								placeholder="Enter Token Name"
-								type={InputType.Text}
-							/>
-						</div>
-
-						<div class="flex gap-8 items-center w-full">
-							<InputLabel
-								parentClass="flex-2"
-								for="allowed-ips"
-								label="Allowed IP(s)"
-								comments="By default, all IP addresses will be allowed. Enter Comma Separated Values."
-							/>
-							<Input
-								class="flex-10"
-								name="token-name"
-								placeholder="Enter Comma Seperated IP(s)"
-								type={InputType.Text}
-							/>
-						</div>
-
-						<div class="flex gap-8 items-center w-full">
-							<InputLabel
-								parentClass="flex-2"
-								label="Token Validity"
-								comments="By default, the token will be valid forever from the date created."
-							/>
-
-							<div class="flex items-center flex-10 gap-4">
-								<InputLabel parentClass="flex-2" for="token-validity-from" label="Valid From" />
-								<Input
-									class="flex-10"
-									value={fromDate() ? (fromDate()?.toISOString().split("T")[0] ?? "") : ""}
-									onInput={(e) => {
-										setFromDate(e.currentTarget.valueAsDate);
-									}}
-									name="token-validity"
-									placeholder="Enter Token Validity in days"
-									type={InputType.Date}
-								/>
-
-								<InputLabel parentClass="flex-2 items-center" for="token-validity-to" label="to" />
-								<Input
-									onInput={(e) => {
-										setToDate(e.currentTarget.valueAsDate);
-									}}
-									value={toDate() ? toDate()!.toISOString().split("T")[0] : ""}
-									class="flex-10"
-									name="token-validity"
-									placeholder="Enter Token Validity in days"
-									type={InputType.Date}
-								/>
-							</div>
-						</div>
-
-						<Suspense
-							fallback={
-								<div class="flex items-center justify-center py-8">
-									<div class="text-gray-400">Loading workspaces...</div>
-								</div>
-							}
-						>
-							<div class="flex flex-col gap-4 items-start w-full">
-								<InputLabel parentClass="flex-2" label="Workspace Permissions" />
-
-								<For
-									each={workspaces.latest?.workspaces || []}
-									fallback={<div class="text-gray-400">No workspaces available</div>}
-								>
-									{(ws) => (
-										<WorkspacePermissionItem
-											workspace={ws}
-											isSuperAdmin={userInfo()?.id === ws.superAdminId}
-											enabled={enabledWorkspaces().has(ws.id)}
-											onToggle={handleWorkspaceToggle}
-											onPermissionChange={handlePermissionChange}
-										/>
-									)}
-								</For>
-
-								{!hasEnabledWorkspaces() && (workspaces.latest?.workspaces?.length ?? 0) > 0 && (
-									<p class="text-sm text-gray-400">
-										Enable at least one workspace to create an API token.
-									</p>
-								)}
-							</div>
-						</Suspense>
-					</div>
-
-					<div class="flex justify-end">
-						<Button type="submit" variant={ButtonVariant.Contained} disabled={!hasEnabledWorkspaces()}>
-							Create Token
-						</Button>
-					</div>
-				</form>
-				<ApiTokenModal
-					isOpen={openCopyModal}
-					setIsOpen={setOpenCopyModal}
-					token={apiToken}
-					onClose={() => navigate({ to: "/profile/api-tokens" })}
+		<>
+			<Title>New API Token | Patr</Title>
+			<PageContainer>
+				<PageContainerHead
+					breadcrumbs={[
+						{
+							label: "Profile",
+							url: "/profile",
+						},
+						{
+							label: "API Token",
+							url: "/profile/api-tokens",
+						},
+						{
+							label: "Create New API Token",
+						},
+					]}
+					subText="Create API Token"
 				/>
-			</PageContainerBody>
-		</PageContainer>
+				<PageContainerBody class="flex flex-col justify-between gap-8">
+					<form onSubmit={onSubmit} class="flex w-full flex-col justify-between gap-8 h-full flex-1">
+						<div class="flex flex-col gap-6 items-start w-full">
+							<h1 class="text-md">Create API Tokens</h1>
+
+							<div class="flex gap-8 items-center w-full">
+								<InputLabel parentClass="flex-2" for="token-name" label="Token Name" />
+								<Input
+									value={name()}
+									onInput={(e) => {
+										setName(e.currentTarget.value);
+									}}
+									class="flex-10"
+									name="token-name"
+									placeholder="Enter Token Name"
+									type={InputType.Text}
+								/>
+							</div>
+
+							<div class="flex gap-8 items-center w-full">
+								<InputLabel
+									parentClass="flex-2"
+									for="allowed-ips"
+									label="Allowed IP(s)"
+									comments="By default, all IP addresses will be allowed. Enter Comma Separated Values."
+								/>
+								<Input
+									class="flex-10"
+									name="token-name"
+									placeholder="Enter Comma Seperated IP(s)"
+									type={InputType.Text}
+								/>
+							</div>
+
+							<div class="flex gap-8 items-center w-full">
+								<InputLabel
+									parentClass="flex-2"
+									label="Token Validity"
+									comments="By default, the token will be valid forever from the date created."
+								/>
+
+								<div class="flex items-center flex-10 gap-4">
+									<InputLabel parentClass="flex-2" for="token-validity-from" label="Valid From" />
+									<Input
+										class="flex-10"
+										value={fromDate() ? (fromDate()?.toISOString().split("T")[0] ?? "") : ""}
+										onInput={(e) => {
+											setFromDate(e.currentTarget.valueAsDate);
+										}}
+										name="token-validity"
+										placeholder="Enter Token Validity in days"
+										type={InputType.Date}
+									/>
+
+									<InputLabel parentClass="flex-2 items-center" for="token-validity-to" label="to" />
+									<Input
+										onInput={(e) => {
+											setToDate(e.currentTarget.valueAsDate);
+										}}
+										value={toDate() ? toDate()!.toISOString().split("T")[0] : ""}
+										class="flex-10"
+										name="token-validity"
+										placeholder="Enter Token Validity in days"
+										type={InputType.Date}
+									/>
+								</div>
+							</div>
+
+							<Suspense
+								fallback={
+									<div class="flex items-center justify-center py-8">
+										<div class="text-gray-400">Loading workspaces...</div>
+									</div>
+								}
+							>
+								<div class="flex flex-col gap-4 items-start w-full">
+									<InputLabel parentClass="flex-2" label="Workspace Permissions" />
+
+									<For
+										each={workspaces.latest?.workspaces || []}
+										fallback={<div class="text-gray-400">No workspaces available</div>}
+									>
+										{(ws) => (
+											<WorkspacePermissionItem
+												workspace={ws}
+												isSuperAdmin={userInfo()?.id === ws.superAdminId}
+												enabled={enabledWorkspaces().has(ws.id)}
+												onToggle={handleWorkspaceToggle}
+												onPermissionChange={handlePermissionChange}
+											/>
+										)}
+									</For>
+
+									{!hasEnabledWorkspaces() && (workspaces.latest?.workspaces?.length ?? 0) > 0 && (
+										<p class="text-sm text-gray-400">
+											Enable at least one workspace to create an API token.
+										</p>
+									)}
+								</div>
+							</Suspense>
+						</div>
+
+						<div class="flex justify-end">
+							<Button type="submit" variant={ButtonVariant.Contained} disabled={!hasEnabledWorkspaces()}>
+								Create Token
+							</Button>
+						</div>
+					</form>
+					<ApiTokenModal
+						isOpen={openCopyModal}
+						setIsOpen={setOpenCopyModal}
+						token={apiToken}
+						onClose={() => navigate({ to: "/profile/api-tokens" })}
+					/>
+				</PageContainerBody>
+			</PageContainer>
+		</>
 	);
 };
 

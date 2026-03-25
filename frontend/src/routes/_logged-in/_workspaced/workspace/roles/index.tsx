@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/solid-router";
+import { Title } from "@solidjs/meta";
 import { createResource, createSignal, Show, Suspense } from "solid-js";
 
 import {
@@ -145,32 +146,35 @@ const ManageRoles = () => {
 	});
 
 	return (
-		<PageContainer>
-			<WorkspaceHeader workspaceName={workspaceInfo()?.name} activeTab="roles" />
-			<PageContainerBody class="flex flex-col justify-between gap-8">
-				<div class="flex flex-col gap-6 flex-1">
-					<Suspense fallback={<div class="text-white">Loading roles...</div>}>
-						<Show
-							when={(roles()?.roles || []).length > 0}
-							fallback={<EmptyState title="No Roles Created" />}
-						>
-							<Table
-								column_grids={["flex-1", "flex-2", "flex-1", "flex-[0.5]"]}
-								headings={["Role Name", "Description", "Action", ""]}
-								rows={roles()?.roles || []}
-								renderRow={(role) => <RoleRow role={role} refetch={refetchRoles} />}
-							/>
-							<Pagination
-								state={pagination}
-								loading={roles.loading}
-								showPageSizeSelector={false}
-								showGoToPage={false}
-							/>
-						</Show>
-					</Suspense>
-				</div>
-			</PageContainerBody>
-		</PageContainer>
+		<>
+			<Title>Roles | Patr</Title>
+			<PageContainer>
+				<WorkspaceHeader workspaceName={workspaceInfo()?.name} activeTab="roles" />
+				<PageContainerBody class="flex flex-col justify-between gap-8">
+					<div class="flex flex-col gap-6 flex-1">
+						<Suspense fallback={<div class="text-white">Loading roles...</div>}>
+							<Show
+								when={(roles()?.roles || []).length > 0}
+								fallback={<EmptyState title="No Roles Created" />}
+							>
+								<Table
+									column_grids={["flex-1", "flex-2", "flex-1", "flex-[0.5]"]}
+									headings={["Role Name", "Description", "Action", ""]}
+									rows={roles()?.roles || []}
+									renderRow={(role) => <RoleRow role={role} refetch={refetchRoles} />}
+								/>
+								<Pagination
+									state={pagination}
+									loading={roles.loading}
+									showPageSizeSelector={false}
+									showGoToPage={false}
+								/>
+							</Show>
+						</Suspense>
+					</div>
+				</PageContainerBody>
+			</PageContainer>
+		</>
 	);
 };
 

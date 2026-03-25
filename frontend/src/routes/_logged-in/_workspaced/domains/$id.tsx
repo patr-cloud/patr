@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
+import { Title } from "@solidjs/meta";
 import { createMemo, createResource, createSignal, ErrorBoundary, Suspense } from "solid-js";
 import {
 	CreateManagedURLRequest,
@@ -216,180 +217,183 @@ const DomainInfo = () => {
 	};
 
 	return (
-		<PageContainer>
-			<ErrorBoundary
-				fallback={(err, reset) => (
-					<div>
-						<p>Error loading runners: {err.message}</p>
-						<button onClick={reset}>Retry</button>
-					</div>
-				)}
-			>
-				<Suspense fallback={<div class="text-white">Loading...</div>}>
-					<PageContainerHead
-						breadcrumbs={[
-							{
-								label: "Domains",
-								url: "/domains",
-							},
-							{
-								label: domainInfo.latest?.name || "Loading...",
-							},
-						]}
-						subText="Configure custom domains to route traffic to your deployments."
-						actions={() => (
-							<div class="flex items-center justify-center gap-2">
-								<DeleteModal
-									isLoading={deleteLoading()}
-									title="Delete Domain"
-									onClickDelete={(e) => {
-										e.preventDefault();
-										onClickDelete();
-									}}
-									resourceName={domainInfo.latest?.name || ""}
-								/>
-								{!domainInfo.latest?.isVerified ? (
-									<Button
-										type="button"
-										onClick={(e) => {
+		<>
+			<Title>Domain Details | Patr</Title>
+			<PageContainer>
+				<ErrorBoundary
+					fallback={(err, reset) => (
+						<div>
+							<p>Error loading runners: {err.message}</p>
+							<button onClick={reset}>Retry</button>
+						</div>
+					)}
+				>
+					<Suspense fallback={<div class="text-white">Loading...</div>}>
+						<PageContainerHead
+							breadcrumbs={[
+								{
+									label: "Domains",
+									url: "/domains",
+								},
+								{
+									label: domainInfo.latest?.name || "Loading...",
+								},
+							]}
+							subText="Configure custom domains to route traffic to your deployments."
+							actions={() => (
+								<div class="flex items-center justify-center gap-2">
+									<DeleteModal
+										isLoading={deleteLoading()}
+										title="Delete Domain"
+										onClickDelete={(e) => {
 											e.preventDefault();
-											onVerifyClick();
+											onClickDelete();
 										}}
-										variant={ButtonVariant.Contained}
-										loading={verifyLoading()}
-										loadingContent={() => <>Verifying...</>}
-									>
-										Verify
-									</Button>
-								) : undefined}
-							</div>
-						)}
-					/>
-					<PageContainerBody>
-						<form class="mb-2 p-lg bg-secondary-light rounded-xs" onSubmit={onSubmitCreateManagedUrl}>
-							<h1 class="text-lg mb-3">Create New Managed URL</h1>
-							<div class="flex flex-col items-start justify-center gap-2 w-full">
-								<div class="flex items-center justify-center gap-3 w-full">
-									<Input
-										onInput={(e) => setSubDomain(e.currentTarget.value)}
-										value={subDomain()}
-										styleVariant="medium"
-										class="flex-2"
-										placeholder="Sub-domain"
+										resourceName={domainInfo.latest?.name || ""}
 									/>
-									<span class="h-full">.</span>
-									<Input
-										disabled={true}
-										value={domainInfo.latest?.name}
-										class="flex-2"
-										placeholder="Domain"
-									/>
-									<span>/</span>
-									<Input
-										styleVariant="medium"
-										onInput={(e) => setPath(e.currentTarget.value)}
-										value={path()}
-										class="flex-2"
-										placeholder="Path"
-									/>
+									{!domainInfo.latest?.isVerified ? (
+										<Button
+											type="button"
+											onClick={(e) => {
+												e.preventDefault();
+												onVerifyClick();
+											}}
+											variant={ButtonVariant.Contained}
+											loading={verifyLoading()}
+											loadingContent={() => <>Verifying...</>}
+										>
+											Verify
+										</Button>
+									) : undefined}
 								</div>
-								<p class="mx-2">Will point to</p>
-								<div class="flex items-center justify-center gap-2 w-full">
-									<InputDropdown
-										onSelect={(value) => setUrlType(value as urlTypeT)}
-										value={urlType() || undefined}
-										options={[
+							)}
+						/>
+						<PageContainerBody>
+							<form class="mb-2 p-lg bg-secondary-light rounded-xs" onSubmit={onSubmitCreateManagedUrl}>
+								<h1 class="text-lg mb-3">Create New Managed URL</h1>
+								<div class="flex flex-col items-start justify-center gap-2 w-full">
+									<div class="flex items-center justify-center gap-3 w-full">
+										<Input
+											onInput={(e) => setSubDomain(e.currentTarget.value)}
+											value={subDomain()}
+											styleVariant="medium"
+											class="flex-2"
+											placeholder="Sub-domain"
+										/>
+										<span class="h-full">.</span>
+										<Input
+											disabled={true}
+											value={domainInfo.latest?.name}
+											class="flex-2"
+											placeholder="Domain"
+										/>
+										<span>/</span>
+										<Input
+											styleVariant="medium"
+											onInput={(e) => setPath(e.currentTarget.value)}
+											value={path()}
+											class="flex-2"
+											placeholder="Path"
+										/>
+									</div>
+									<p class="mx-2">Will point to</p>
+									<div class="flex items-center justify-center gap-2 w-full">
+										<InputDropdown
+											onSelect={(value) => setUrlType(value as urlTypeT)}
+											value={urlType() || undefined}
+											options={[
+												{
+													label: "Deployments",
+													value: "proxyDeployment",
+												},
+											]}
+											class="flex-2 m-0"
+											styleVariant="medium"
+											placeholder="Type"
+										/>
+										<div class="flex-10">{urlInput()}</div>
+									</div>
+
+									<div class="w-full flex justify-end mt-4">
+										<Button
+											loading={isCreatingManagedUrl}
+											loadingContent={() => <>Creating...</>}
+											variant={ButtonVariant.Contained}
+										>
+											Create
+										</Button>
+									</div>
+								</div>
+
+								<div class="mt-4 bg-secondary-dark p-4 rounded border border-white/5">
+									<h4 class="text-white text-sm font-semibold mb-2">Managed URL Instructions</h4>
+
+									<p class="text-gray-400 text-sm space-y-1">
+										To configure this Managed URL, please update your DNS settings to point to our
+										servers. If you have already updated your DNS settings, please allow some time
+										for the changes to propagate.
+									</p>
+
+									<Table
+										column_grids={["flex-2", "flex-4", "flex-4"]}
+										headings={["Type", "Name", "Value"]}
+										class="mt-2"
+										rows={[
 											{
-												label: "Deployments",
-												value: "proxyDeployment",
+												type: "CNAME",
+												name: `${subDomain() || "(subdomain)"}.${domainInfo.latest?.name || "your-domain.com"}`,
+												target: "ingress.onpatr.cloud",
 											},
 										]}
-										class="flex-2 m-0"
-										styleVariant="medium"
-										placeholder="Type"
+										renderRow={(record) => (
+											<tr class="table-row text-sm">
+												<td class="flex-2 pl-3 flex items-center justify-center">
+													<CopyableField
+														value={record.type}
+														variant={CopyableFieldVariant.Text}
+													/>
+												</td>
+												<td class="flex-4 flex items-center justify-center min-w-0">
+													<CopyableField
+														value={record.name}
+														variant={CopyableFieldVariant.Text}
+														innerClass="max-w-full"
+													/>
+												</td>
+												<td class="flex-4 pl-20 flex items-center justify-center min-w-0">
+													<CopyableField
+														value={record.target}
+														variant={CopyableFieldVariant.Text}
+														innerClass="max-w-full"
+													/>
+												</td>
+											</tr>
+										)}
 									/>
-									<div class="flex-10">{urlInput()}</div>
 								</div>
+							</form>
 
-								<div class="w-full flex justify-end mt-4">
-									<Button
-										loading={isCreatingManagedUrl}
-										loadingContent={() => <>Creating...</>}
-										variant={ButtonVariant.Contained}
-									>
-										Create
-									</Button>
-								</div>
-							</div>
-
-							<div class="mt-4 bg-secondary-dark p-4 rounded border border-white/5">
-								<h4 class="text-white text-sm font-semibold mb-2">Managed URL Instructions</h4>
-
-								<p class="text-gray-400 text-sm space-y-1">
-									To configure this Managed URL, please update your DNS settings to point to our
-									servers. If you have already updated your DNS settings, please allow some time for
-									the changes to propagate.
-								</p>
-
+							<div class="flex flex-col gap-2 items-start w-5/5 mt-4">
 								<Table
-									column_grids={["flex-2", "flex-4", "flex-4"]}
-									headings={["Type", "Name", "Value"]}
-									class="mt-2"
-									rows={[
-										{
-											type: "CNAME",
-											name: `${subDomain() || "(subdomain)"}.${domainInfo.latest?.name || "your-domain.com"}`,
-											target: "ingress.onpatr.cloud",
-										},
-									]}
-									renderRow={(record) => (
-										<tr class="table-row text-sm">
-											<td class="flex-2 pl-3 flex items-center justify-center">
-												<CopyableField
-													value={record.type}
-													variant={CopyableFieldVariant.Text}
-												/>
-											</td>
-											<td class="flex-4 flex items-center justify-center min-w-0">
-												<CopyableField
-													value={record.name}
-													variant={CopyableFieldVariant.Text}
-													innerClass="max-w-full"
-												/>
-											</td>
-											<td class="flex-4 pl-20 flex items-center justify-center min-w-0">
-												<CopyableField
-													value={record.target}
-													variant={CopyableFieldVariant.Text}
-													innerClass="max-w-full"
-												/>
-											</td>
-										</tr>
-									)}
+									column_grids={["flex-3", "flex-3", "flex-3"]}
+									rows={managedUrls.latest?.urls || []}
+									headings={["Domain ID", "Domain Name", "Actions"]}
+									renderRow={(item) =>
+										domainInfo.latest && (
+											<ManageUrlRow
+												domainInfo={domainInfo.latest}
+												managedUrl={item}
+												onUpdate={refetchManagedUrls}
+											/>
+										)
+									}
 								/>
 							</div>
-						</form>
-
-						<div class="flex flex-col gap-2 items-start w-5/5 mt-4">
-							<Table
-								column_grids={["flex-3", "flex-3", "flex-3"]}
-								rows={managedUrls.latest?.urls || []}
-								headings={["Domain ID", "Domain Name", "Actions"]}
-								renderRow={(item) =>
-									domainInfo.latest && (
-										<ManageUrlRow
-											domainInfo={domainInfo.latest}
-											managedUrl={item}
-											onUpdate={refetchManagedUrls}
-										/>
-									)
-								}
-							/>
-						</div>
-					</PageContainerBody>
-				</Suspense>
-			</ErrorBoundary>
-		</PageContainer>
+						</PageContainerBody>
+					</Suspense>
+				</ErrorBoundary>
+			</PageContainer>
+		</>
 	);
 };
 

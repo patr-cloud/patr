@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
+import { Title } from "@solidjs/meta";
 import { createMemo, createResource, Show, Suspense } from "solid-js";
 import { ListApiTokensResponse } from "~/bindings";
 import {
@@ -57,61 +58,64 @@ const ListApiTokens = () => {
 	});
 
 	return (
-		<PageContainer>
-			<PageContainerHead
-				breadcrumbs={[
-					{
-						label: "Profile",
-						url: "/profile",
-					},
-					{
-						label: "API Tokens",
-					},
-				]}
-				subText="API Tokens"
-				actions={() => (
-					<Link href="/profile/api-tokens/new" buttonVariant={ButtonVariant.Contained} external={false}>
-						Create API Token
-					</Link>
-				)}
-			/>
-			<PageContainerBody class="flex flex-col justify-between gap-8">
-				<Suspense fallback={<div>Loading API Tokens...</div>}>
-					<Show
-						when={(apiTokens()?.tokens?.length ?? 0) > 0}
-						fallback={<EmptyState title="No API Tokens Created" />}
-					>
-						<Table
-							column_grids={["flex-4", "flex-4", "flex-4"]}
-							headings={["Token Name", "Created", "Expiry"]}
-							rows={apiTokens()?.tokens || []}
-							renderRow={(token) => (
-								<tr
-									onClick={() => {
-										navigate({ to: `/profile/api-tokens/${token.id}` });
-									}}
-									class="table-row cursor-pointer"
-								>
-									<td class="flex-4 flex items-center justify-center">{token.name}</td>
-									<td class="flex-4 flex items-center justify-center">
-										{formatRelativeTime(token.created) || "Unknown"}
-									</td>
-									<td class="flex-4 flex items-center justify-center">
-										{token.tokenExp ? formatRelativeTime(token.tokenExp) : "Never"}
-									</td>
-								</tr>
-							)}
-						/>
-						<Pagination
-							state={pagination}
-							loading={apiTokens.loading}
-							showPageSizeSelector={false}
-							showGoToPage={false}
-						/>
-					</Show>
-				</Suspense>
-			</PageContainerBody>
-		</PageContainer>
+		<>
+			<Title>API Tokens | Patr</Title>
+			<PageContainer>
+				<PageContainerHead
+					breadcrumbs={[
+						{
+							label: "Profile",
+							url: "/profile",
+						},
+						{
+							label: "API Tokens",
+						},
+					]}
+					subText="API Tokens"
+					actions={() => (
+						<Link href="/profile/api-tokens/new" buttonVariant={ButtonVariant.Contained} external={false}>
+							Create API Token
+						</Link>
+					)}
+				/>
+				<PageContainerBody class="flex flex-col justify-between gap-8">
+					<Suspense fallback={<div>Loading API Tokens...</div>}>
+						<Show
+							when={(apiTokens()?.tokens?.length ?? 0) > 0}
+							fallback={<EmptyState title="No API Tokens Created" />}
+						>
+							<Table
+								column_grids={["flex-4", "flex-4", "flex-4"]}
+								headings={["Token Name", "Created", "Expiry"]}
+								rows={apiTokens()?.tokens || []}
+								renderRow={(token) => (
+									<tr
+										onClick={() => {
+											navigate({ to: `/profile/api-tokens/${token.id}` });
+										}}
+										class="table-row cursor-pointer"
+									>
+										<td class="flex-4 flex items-center justify-center">{token.name}</td>
+										<td class="flex-4 flex items-center justify-center">
+											{formatRelativeTime(token.created) || "Unknown"}
+										</td>
+										<td class="flex-4 flex items-center justify-center">
+											{token.tokenExp ? formatRelativeTime(token.tokenExp) : "Never"}
+										</td>
+									</tr>
+								)}
+							/>
+							<Pagination
+								state={pagination}
+								loading={apiTokens.loading}
+								showPageSizeSelector={false}
+								showGoToPage={false}
+							/>
+						</Show>
+					</Suspense>
+				</PageContainerBody>
+			</PageContainer>
+		</>
 	);
 };
 

@@ -1,5 +1,6 @@
 import "./app.css";
 import { RouterProvider } from "@tanstack/solid-router";
+import { MetaProvider } from "@solidjs/meta";
 import { createAppRouter } from "./router";
 import { AuthStateProvider, LastWorkspaceIdProvider, useAuthState } from "~/hooks/state-hooks";
 import { ToastProvider } from "./components";
@@ -16,13 +17,15 @@ function InnerApp() {
 
 function App() {
 	return (
-		<AuthStateProvider>
-			<LastWorkspaceIdProvider>
-				<ToastProvider>
-					<InnerApp />
-				</ToastProvider>
-			</LastWorkspaceIdProvider>
-		</AuthStateProvider>
+		<MetaProvider>
+			<AuthStateProvider>
+				<LastWorkspaceIdProvider>
+					<ToastProvider>
+						<InnerApp />
+					</ToastProvider>
+				</LastWorkspaceIdProvider>
+			</AuthStateProvider>
+		</MetaProvider>
 	);
 }
 

@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
+import { Title } from "@solidjs/meta";
 import { createSignal } from "solid-js";
 import { AddRunnerToWorkspaceResponse } from "~/bindings";
 import { Button, ButtonVariant, PageContainer, PageContainerBody, PageContainerHead, useToast } from "~/components";
@@ -37,52 +38,55 @@ const CreateRunnerPage = () => {
 	});
 
 	return (
-		<PageContainer>
-			<PageContainerHead
-				subText="Runners execute deployments on your machines or clusters"
-				breadcrumbs={[
-					{
-						label: "Runners",
-						url: "/runners",
-					},
-					{
-						label: "Create",
-					},
-				]}
-			/>
-			<PageContainerBody class="flex flex-col justify-between gap-8">
-				<form onSubmit={onSubmit} class="flex flex-col gap-8 items-start w-full justify-between flex-1">
-					<div class="flex w-full flex-col justify-between gap-6 h-full flex-1">
-						<div class="flex flex-col gap-6 items-start w-full">
-							<div class="flex gap-8 items-center w-full">
-								<InputLabel parentClass="flex-2" for="runner-name" label="Runner Name" />
-								<Input
-									class="flex-10"
-									name="runner-name"
-									placeholder="Enter Runner Name"
-									type={InputType.Text}
-									value={name()}
-									onInput={(e) => {
-										setName(e.currentTarget.value);
-									}}
-								/>
+		<>
+			<Title>New Runner | Patr</Title>
+			<PageContainer>
+				<PageContainerHead
+					subText="Runners execute deployments on your machines or clusters"
+					breadcrumbs={[
+						{
+							label: "Runners",
+							url: "/runners",
+						},
+						{
+							label: "Create",
+						},
+					]}
+				/>
+				<PageContainerBody class="flex flex-col justify-between gap-8">
+					<form onSubmit={onSubmit} class="flex flex-col gap-8 items-start w-full justify-between flex-1">
+						<div class="flex w-full flex-col justify-between gap-6 h-full flex-1">
+							<div class="flex flex-col gap-6 items-start w-full">
+								<div class="flex gap-8 items-center w-full">
+									<InputLabel parentClass="flex-2" for="runner-name" label="Runner Name" />
+									<Input
+										class="flex-10"
+										name="runner-name"
+										placeholder="Enter Runner Name"
+										type={InputType.Text}
+										value={name()}
+										onInput={(e) => {
+											setName(e.currentTarget.value);
+										}}
+									/>
+								</div>
 							</div>
 						</div>
-					</div>
 
-					<div class="w-full flex justify-end">
-						<Button
-							loading={isLoading}
-							loadingContent={() => <span>Creating Runner...</span>}
-							variant={ButtonVariant.Contained}
-							type="submit"
-						>
-							Create Runner
-						</Button>
-					</div>
-				</form>
-			</PageContainerBody>
-		</PageContainer>
+						<div class="w-full flex justify-end">
+							<Button
+								loading={isLoading}
+								loadingContent={() => <span>Creating Runner...</span>}
+								variant={ButtonVariant.Contained}
+								type="submit"
+							>
+								Create Runner
+							</Button>
+						</div>
+					</form>
+				</PageContainerBody>
+			</PageContainer>
+		</>
 	);
 };
 

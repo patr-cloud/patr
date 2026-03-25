@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/solid-router";
+import { Title } from "@solidjs/meta";
 import { createSignal } from "solid-js";
 import { CreateAccountRequest } from "~/bindings";
 import { Button, useToast, Turnstile } from "~/components";
@@ -54,6 +55,7 @@ const SignUp = () => {
 
 	return (
 		<>
+			<Title>Sign Up | Patr</Title>
 			{/* Sign Up Card */}
 			<form
 				onSubmit={async (e) => {

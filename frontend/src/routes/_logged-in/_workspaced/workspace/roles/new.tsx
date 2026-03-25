@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/solid-router";
+import { Title } from "@solidjs/meta";
 import { createMemo, createResource, createSignal, Show } from "solid-js";
 import { useNavigate } from "@tanstack/solid-router";
 import { Button, ButtonVariant, Input, PageContainer, PageContainerBody, Table, useToast } from "~/components";
@@ -111,106 +112,110 @@ const CreateRoles = () => {
 	);
 
 	return (
-		<PageContainer>
-			<WorkspaceHeader workspaceName={workspaceInfo()?.name} activeTab="roles" />
-			<PageContainerBody class="flex flex-col justify-between h-full gap-8">
-				<div class="flex flex-col gap-6 flex-1">
-					<div class="text-2xl text-white font-semibold">Create New Roles</div>
+		<>
+			<Title>New Role | Patr</Title>
+			<PageContainer>
+				<WorkspaceHeader workspaceName={workspaceInfo()?.name} activeTab="roles" />
+				<PageContainerBody class="flex flex-col justify-between h-full gap-8">
+					<div class="flex flex-col gap-6 flex-1">
+						<div class="text-2xl text-white font-semibold">Create New Roles</div>
 
-					<div class="flex flex-col gap-2">
-						<label class="text-white text-sm">Role Name</label>
-						<Input
-							type="text"
-							placeholder="Enter Name"
-							value={roleName()}
-							onInput={(e) => setRoleName(e.currentTarget.value)}
-						/>
-					</div>
-
-					<div class="flex flex-col gap-2">
-						<label class="text-white text-sm">Description</label>
-						<Input
-							type="text"
-							placeholder="Enter Description (optional)"
-							value={roleDescription()}
-							onInput={(e) => setRoleDescription(e.currentTarget.value)}
-						/>
-					</div>
-
-					<div class="flex flex-col gap-4">
-						<div class="text-white text-sm font-medium">Permissions</div>
-						<PermissionSelector
-							workspaceId={workspaceId()!}
-							onPermissionsDataChange={(data) => setPermissionsData((prev) => ({ ...prev, ...data }))}
-						/>
-
-						<Show when={permissionEntries().length > 0}>
-							<Table
-								column_grids={["flex-3", "flex-2", "flex-3", "flex-[0.5]"]}
-								headings={["Resource Type", "Action", "Resources", ""]}
-								rows={permissionEntries().sort(
-									(a, b) =>
-										a.resourceType.localeCompare(b.resourceType) || a.action.localeCompare(b.action)
-								)}
-								renderRow={(perm) => (
-									<tr class="table-row">
-										<td class="flex-3 flex items-center justify-center">
-											<span class="truncate">{parseCamelCase(perm.resourceType)}</span>
-										</td>
-										<td class="flex-2 flex items-center justify-center">
-											<span>{parseCamelCase(perm.action)}</span>
-										</td>
-										<td class="flex-3 flex items-center justify-center">
-											<Show
-												when={perm.resources.length > 0}
-												fallback={<span class="text-gray-400">All resources</span>}
-											>
-												<span class="text-sm">
-													{perm.permissionType === "include" ? "Only " : "All except "}
-													{perm.resources.length} resource
-													{perm.resources.length !== 1 ? "s" : ""}
-												</span>
-											</Show>
-										</td>
-										<td
-											class="flex-[0.5] cursor-pointer"
-											onClick={() => {
-												const newPermissionsData = { ...permissionsData() };
-												delete newPermissionsData[perm.permissionId];
-												setPermissionsData(newPermissionsData);
-											}}
-										>
-											<FiTrash2 color="red" />
-										</td>
-									</tr>
-								)}
+						<div class="flex flex-col gap-2">
+							<label class="text-white text-sm">Role Name</label>
+							<Input
+								type="text"
+								placeholder="Enter Name"
+								value={roleName()}
+								onInput={(e) => setRoleName(e.currentTarget.value)}
 							/>
-						</Show>
-					</div>
-				</div>
+						</div>
 
-				<div class="flex justify-end gap-4 border-t border-border-color pt-4">
-					<Button
-						variant={ButtonVariant.Outlined}
-						onClick={() => navigate({ to: "/workspace/roles" })}
-						disabled={isSubmitting()}
-					>
-						CANCEL
-					</Button>
-					<Button
-						variant={ButtonVariant.Contained}
-						onClick={() =>
-							handleSubmit().catch(() => {
-								toast("An unexpected error occurred while creating the role", "error");
-							})
-						}
-						disabled={isSubmitting()}
-					>
-						{isSubmitting() ? "Creating..." : "Create Role"}
-					</Button>
-				</div>
-			</PageContainerBody>
-		</PageContainer>
+						<div class="flex flex-col gap-2">
+							<label class="text-white text-sm">Description</label>
+							<Input
+								type="text"
+								placeholder="Enter Description (optional)"
+								value={roleDescription()}
+								onInput={(e) => setRoleDescription(e.currentTarget.value)}
+							/>
+						</div>
+
+						<div class="flex flex-col gap-4">
+							<div class="text-white text-sm font-medium">Permissions</div>
+							<PermissionSelector
+								workspaceId={workspaceId()!}
+								onPermissionsDataChange={(data) => setPermissionsData((prev) => ({ ...prev, ...data }))}
+							/>
+
+							<Show when={permissionEntries().length > 0}>
+								<Table
+									column_grids={["flex-3", "flex-2", "flex-3", "flex-[0.5]"]}
+									headings={["Resource Type", "Action", "Resources", ""]}
+									rows={permissionEntries().sort(
+										(a, b) =>
+											a.resourceType.localeCompare(b.resourceType) ||
+											a.action.localeCompare(b.action)
+									)}
+									renderRow={(perm) => (
+										<tr class="table-row">
+											<td class="flex-3 flex items-center justify-center">
+												<span class="truncate">{parseCamelCase(perm.resourceType)}</span>
+											</td>
+											<td class="flex-2 flex items-center justify-center">
+												<span>{parseCamelCase(perm.action)}</span>
+											</td>
+											<td class="flex-3 flex items-center justify-center">
+												<Show
+													when={perm.resources.length > 0}
+													fallback={<span class="text-gray-400">All resources</span>}
+												>
+													<span class="text-sm">
+														{perm.permissionType === "include" ? "Only " : "All except "}
+														{perm.resources.length} resource
+														{perm.resources.length !== 1 ? "s" : ""}
+													</span>
+												</Show>
+											</td>
+											<td
+												class="flex-[0.5] cursor-pointer"
+												onClick={() => {
+													const newPermissionsData = { ...permissionsData() };
+													delete newPermissionsData[perm.permissionId];
+													setPermissionsData(newPermissionsData);
+												}}
+											>
+												<FiTrash2 color="red" />
+											</td>
+										</tr>
+									)}
+								/>
+							</Show>
+						</div>
+					</div>
+
+					<div class="flex justify-end gap-4 border-t border-border-color pt-4">
+						<Button
+							variant={ButtonVariant.Outlined}
+							onClick={() => navigate({ to: "/workspace/roles" })}
+							disabled={isSubmitting()}
+						>
+							CANCEL
+						</Button>
+						<Button
+							variant={ButtonVariant.Contained}
+							onClick={() =>
+								handleSubmit().catch(() => {
+									toast("An unexpected error occurred while creating the role", "error");
+								})
+							}
+							disabled={isSubmitting()}
+						>
+							{isSubmitting() ? "Creating..." : "Create Role"}
+						</Button>
+					</div>
+				</PageContainerBody>
+			</PageContainer>
+		</>
 	);
 };
 

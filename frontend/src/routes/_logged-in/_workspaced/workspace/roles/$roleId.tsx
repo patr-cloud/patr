@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/solid-router";
+import { Title } from "@solidjs/meta";
 import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid-js";
 import { PageContainer, PageContainerBody, useToast } from "~/components";
 import { useAuthState } from "~/hooks";
@@ -72,43 +73,46 @@ const RoleInfo = () => {
 	);
 
 	return (
-		<PageContainer>
-			<RoleHeader
-				roleName={roleInfo()?.role.name}
-				workspaceName={workspaceInfo()?.name}
-				activeTab={activeTab()}
-			/>
-			<PageContainerBody class="flex flex-col gap-6">
-				<ErrorBoundary
-					fallback={(err, reset) => (
-						<div class="text-white">
-							<p>Error loading role information: {err.message}</p>
-							<button onClick={reset}>Retry</button>
-						</div>
-					)}
-				>
-					<Suspense
-						fallback={
-							<div class="flex items-center justify-center py-8">
-								<div class="text-gray-400">Loading role information...</div>
+		<>
+			<Title>Role Details | Patr</Title>
+			<PageContainer>
+				<RoleHeader
+					roleName={roleInfo()?.role.name}
+					workspaceName={workspaceInfo()?.name}
+					activeTab={activeTab()}
+				/>
+				<PageContainerBody class="flex flex-col gap-6">
+					<ErrorBoundary
+						fallback={(err, reset) => (
+							<div class="text-white">
+								<p>Error loading role information: {err.message}</p>
+								<button onClick={reset}>Retry</button>
 							</div>
-						}
+						)}
 					>
-						<Show when={roleInfo()} fallback={null}>
-							<div class="flex flex-col gap-4">
-								<Show when={activeTab() === "permissions"}>
-									<EditPermissions refetchRoleInfo={refetchRoleInfo} roleInfo={roleInfo} />
-								</Show>
+						<Suspense
+							fallback={
+								<div class="flex items-center justify-center py-8">
+									<div class="text-gray-400">Loading role information...</div>
+								</div>
+							}
+						>
+							<Show when={roleInfo()} fallback={null}>
+								<div class="flex flex-col gap-4">
+									<Show when={activeTab() === "permissions"}>
+										<EditPermissions refetchRoleInfo={refetchRoleInfo} roleInfo={roleInfo} />
+									</Show>
 
-								<Show when={activeTab() === "users"}>
-									<UsersAssignedToRole />
-								</Show>
-							</div>
-						</Show>
-					</Suspense>
-				</ErrorBoundary>
-			</PageContainerBody>
-		</PageContainer>
+									<Show when={activeTab() === "users"}>
+										<UsersAssignedToRole />
+									</Show>
+								</div>
+							</Show>
+						</Suspense>
+					</ErrorBoundary>
+				</PageContainerBody>
+			</PageContainer>
+		</>
 	);
 };
 

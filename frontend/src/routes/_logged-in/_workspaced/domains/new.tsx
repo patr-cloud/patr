@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
+import { Title } from "@solidjs/meta";
 import { createSignal, Show } from "solid-js";
 import { PageContainer, PageContainerBody, PageContainerHead, ButtonVariant, Button } from "~/components";
 import Input, { InputType } from "~/components/input";
@@ -170,84 +171,91 @@ const CreateDomainPage = () => {
 	};
 
 	return (
-		<PageContainer>
-			<PageContainerHead
-				breadcrumbs={[
-					{
-						label: "Domains",
-						url: "/domains",
-					},
-					{
-						label: "Add",
-					},
-				]}
-				subText="Configure custom domains to route traffic to your deployments."
-			/>
-			<PageContainerBody>
-				<form onSubmit={onSubmit} class="space-y-6">
-					<div class="bg-secondary-light p-6 rounded-xs border border-white/5">
-						<div class="space-y-4">
-							<div class="flex flex-col gap-2">
-								<InputLabel parentClass="flex-2" for="domain-name" label="Domain Name" />
-								<Input
-									styleVariant="dark"
-									id="domain-name"
-									class="flex-10"
-									name="domain-name"
-									placeholder="example.com"
-									type={InputType.Text}
-									value={domainInput()}
-									onInput={(e) => handleInputChange(e.currentTarget.value)}
-									required
-								/>
-								<Show when={error()}>
-									<p class="text-red-500 text-sm mt-1">{error()}</p>
-								</Show>
-								<Show when={suggestedDomain()}>
-									<p class="text-gray-400 text-sm mt-1">
-										Did you mean{" "}
-										<button
-											type="button"
-											onClick={handleSuggestionClick}
-											class="text-primary hover:underline font-medium"
-										>
-											{suggestedDomain()}
-										</button>
-										?
-									</p>
-								</Show>
-							</div>
+		<>
+			<Title>Add Domain | Patr</Title>
+			<PageContainer>
+				<PageContainerHead
+					breadcrumbs={[
+						{
+							label: "Domains",
+							url: "/domains",
+						},
+						{
+							label: "Add",
+						},
+					]}
+					subText="Configure custom domains to route traffic to your deployments."
+				/>
+				<PageContainerBody>
+					<form onSubmit={onSubmit} class="space-y-6">
+						<div class="bg-secondary-light p-6 rounded-xs border border-white/5">
+							<div class="space-y-4">
+								<div class="flex flex-col gap-2">
+									<InputLabel parentClass="flex-2" for="domain-name" label="Domain Name" />
+									<Input
+										styleVariant="dark"
+										id="domain-name"
+										class="flex-10"
+										name="domain-name"
+										placeholder="example.com"
+										type={InputType.Text}
+										value={domainInput()}
+										onInput={(e) => handleInputChange(e.currentTarget.value)}
+										required
+									/>
+									<Show when={error()}>
+										<p class="text-red-500 text-sm mt-1">{error()}</p>
+									</Show>
+									<Show when={suggestedDomain()}>
+										<p class="text-gray-400 text-sm mt-1">
+											Did you mean{" "}
+											<button
+												type="button"
+												onClick={handleSuggestionClick}
+												class="text-primary hover:underline font-medium"
+											>
+												{suggestedDomain()}
+											</button>
+											?
+										</p>
+									</Show>
+								</div>
 
-							<div class="bg-secondary-dark p-4 rounded border border-white/5">
-								<h4 class="text-white text-sm font-semibold mb-2">Domain Requirements:</h4>
-								<ul class="text-gray-400 text-sm space-y-1 list-disc list-inside">
-									<li>✅ Enter only the base domain (e.g., example.com)</li>
-									<li>❌ Do not include subdomains (e.g., www.example.com)</li>
-									<li>❌ Do not include protocols (e.g., https://example.com)</li>
-									<li>
-										❌ Do not include paths or query parameters (e.g., example.com/path?query=1)
-									</li>
-									<li>⚠️ We currently don't support non-ASCII domains (e.g., èxámplê.com)</li>
-								</ul>
+								<div class="bg-secondary-dark p-4 rounded border border-white/5">
+									<h4 class="text-white text-sm font-semibold mb-2">Domain Requirements:</h4>
+									<ul class="text-gray-400 text-sm space-y-1 list-disc list-inside">
+										<li>✅ Enter only the base domain (e.g., example.com)</li>
+										<li>❌ Do not include subdomains (e.g., www.example.com)</li>
+										<li>❌ Do not include protocols (e.g., https://example.com)</li>
+										<li>
+											❌ Do not include paths or query parameters (e.g., example.com/path?query=1)
+										</li>
+										<li>⚠️ We currently don't support non-ASCII domains (e.g., èxámplê.com)</li>
+									</ul>
+								</div>
 							</div>
 						</div>
-					</div>
 
-					<div class="w-full flex justify-end gap-4">
-						<Button
-							variant={ButtonVariant.Outlined}
-							type="button"
-							onClick={() => navigate({ to: "/domains" })}
-						>
-							Cancel
-						</Button>
-						<Button variant={ButtonVariant.Contained} type="submit" disabled={isSubmitting() || !!error()}>
-							{isSubmitting() ? "Adding..." : "Add Domain"}
-						</Button>
-					</div>
-				</form>
-			</PageContainerBody>
-		</PageContainer>
+						<div class="w-full flex justify-end gap-4">
+							<Button
+								variant={ButtonVariant.Outlined}
+								type="button"
+								onClick={() => navigate({ to: "/domains" })}
+							>
+								Cancel
+							</Button>
+							<Button
+								variant={ButtonVariant.Contained}
+								type="submit"
+								disabled={isSubmitting() || !!error()}
+							>
+								{isSubmitting() ? "Adding..." : "Add Domain"}
+							</Button>
+						</div>
+					</form>
+				</PageContainerBody>
+			</PageContainer>
+		</>
 	);
 };
 

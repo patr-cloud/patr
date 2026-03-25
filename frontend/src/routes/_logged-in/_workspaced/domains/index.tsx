@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
+import { Title } from "@solidjs/meta";
 import { createMemo, createResource, createSignal, ErrorBoundary, Suspense, For, Show } from "solid-js";
 import { FiAlertCircle } from "solid-icons/fi";
 import {
@@ -236,80 +237,85 @@ const ListDomainsPage = () => {
 	});
 
 	return (
-		<PageContainer>
-			<PageContainerHead
-				breadcrumbs={[
-					{
-						label: "Domains",
-					},
-				]}
-				subText="Configure custom domains to route traffic to your deployments."
-				actions={() => {
-					if (!isCreateAllowed()) return null;
-					return (
-						<div class="ml-auto">
-							<Button
-								class="cursor-pointer"
-								variant={ButtonVariant.Plain}
-								onClick={() => navigate({ to: "/domains/new" })}
+		<>
+			<Title>Domains | Patr</Title>
+			<PageContainer>
+				<PageContainerHead
+					breadcrumbs={[
+						{
+							label: "Domains",
+						},
+					]}
+					subText="Configure custom domains to route traffic to your deployments."
+					actions={() => {
+						if (!isCreateAllowed()) return null;
+						return (
+							<div class="ml-auto">
+								<Button
+									class="cursor-pointer"
+									variant={ButtonVariant.Plain}
+									onClick={() => navigate({ to: "/domains/new" })}
+								>
+									Add Domain
+								</Button>
+							</div>
+						);
+					}}
+				/>
+				<PageContainerBody class="flex flex-col justify-between">
+					<ErrorBoundary
+						fallback={(err, reset) => (
+							<div>
+								<p>Error loading domains: {err.message}</p>
+								<button onClick={reset}>Retry</button>
+							</div>
+						)}
+					>
+						<Suspense fallback={<div>Loading domains...</div>}>
+							<Show
+								when={(domains()?.domains?.length ?? 0) > 0}
+								fallback={<EmptyState title="No Domain Added" />}
 							>
-								Add Domain
-							</Button>
-						</div>
-					);
-				}}
-			/>
-			<PageContainerBody class="flex flex-col justify-between">
-				<ErrorBoundary
-					fallback={(err, reset) => (
-						<div>
-							<p>Error loading domains: {err.message}</p>
-							<button onClick={reset}>Retry</button>
-						</div>
-					)}
-				>
-					<Suspense fallback={<div>Loading domains...</div>}>
-						<Show
-							when={(domains()?.domains?.length ?? 0) > 0}
-							fallback={<EmptyState title="No Domain Added" />}
-						>
-							<Table
-								column_grids={["flex-3", "flex-3", "flex-3"]}
-								rows={domains()?.domains || []}
-								headings={["Domain Name", "Type", "Verified"]}
-								renderRow={(item) => (
-									<tr
-										onClick={() => navigate({ to: `/domains/${item.id}` })}
-										class="table-row cursor-pointer"
-									>
-										<td class="flex-3 flex items-center justify-center">{item.name}</td>
-										<td class="flex-3 flex items-center justify-center">{item.nameserverType}</td>
-										<td class="flex-3 flex items-center justify-center">
-											<div class="flex items-center gap-2">
-												{item.isVerified ? (
-													<span class="text-green-500">✓ Verified</span>
-												) : (
-													<>
-														<span class="text-yellow-500">Not Verified</span>
-														<VerificationIcon domain={item} />
-													</>
-												)}
-											</div>
-										</td>
-									</tr>
-								)}
-							/>
-							<Pagination
-								state={pagination}
-								loading={domains.loading}
-								showPageSizeSelector={false}
-								showGoToPage={false}
-							/>
-						</Show>
-					</Suspense>
-				</ErrorBoundary>
-			</PageContainerBody>
-		</PageContainer>
+								<Table
+									column_grids={["flex-3", "flex-3", "flex-3"]}
+									rows={domains()?.domains || []}
+									headings={["Domain Name", "Type", "Verified"]}
+									renderRow={(item) => (
+										<tr
+											onClick={() => navigate({ to: `/domains/${item.id}` })}
+											class="table-row cursor-pointer"
+										>
+											<td class="flex-3 flex items-center justify-center">{item.name}</td>
+											<td class="flex-3 flex items-center justify-center">
+												{item.nameserverType}
+											</td>
+											<td class="flex-3 flex items-center justify-center">
+												<div class="flex items-center gap-2">
+													{item.isVerified ? (
+														<span class="text-green-500">✓ Verified</span>
+													) : (
+														<>
+															<span class="text-yellow-500">Not Verified</span>
+															<VerificationIcon domain={item} />
+														</>
+													)}
+												</div>
+											</td>
+										</tr>
+									)}
+								/>
+								<Pagination
+									state={pagination}
+									loading={domains.loading}
+									showPageSizeSelector={false}
+									showGoToPage={false}
+								/>
+							</Show>
+						</Suspense>
+					</ErrorBoundary>
+				</PageContainerBody>
+			</PageContainer>
+		</>
 	);
 };
 

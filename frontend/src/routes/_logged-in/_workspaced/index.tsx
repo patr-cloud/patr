@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/solid-router";
+import { Title } from "@solidjs/meta";
 import { Component, For } from "solid-js";
 import { FiBox, FiCpu, FiGlobe, FiArrowRight, FiPlus, FiBookOpen, FiTerminal, FiLayers, FiZap } from "solid-icons/fi";
 import { PageContainer, PageContainerBody, PageContainerHead } from "~/components";
@@ -114,42 +115,47 @@ const HomePage = () => {
 	];
 
 	return (
-		<PageContainer>
-			<PageContainerHead
-				breadcrumbs={[
-					{
-						label: "Welcome to Patr",
-					},
-				]}
-				subText="Your DevOps platform for deploying and managing containerized applications. Get started by creating a deployment, setting up a runner, or connecting a domain."
-			/>
+		<>
+			<Title>Home | Patr</Title>
+			<PageContainer>
+				<PageContainerHead
+					breadcrumbs={[
+						{
+							label: "Welcome to Patr",
+						},
+					]}
+					subText="Your DevOps platform for deploying and managing containerized applications. Get started by creating a deployment, setting up a runner, or connecting a domain."
+				/>
 
-			<PageContainerBody class="overflow-y-auto">
-				<div class="flex flex-col gap-8">
-					{/* Quick Actions */}
-					<div class="flex flex-col gap-4">
-						<div class="flex items-center gap-2">
-							<FiPlus class="text-primary" />
-							<h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Quick Actions</h3>
+				<PageContainerBody class="overflow-y-auto">
+					<div class="flex flex-col gap-8">
+						{/* Quick Actions */}
+						<div class="flex flex-col gap-4">
+							<div class="flex items-center gap-2">
+								<FiPlus class="text-primary" />
+								<h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">
+									Quick Actions
+								</h3>
+							</div>
+							<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+								<For each={quickActions}>{(action) => <QuickActionCard {...action} />}</For>
+							</div>
 						</div>
-						<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-							<For each={quickActions}>{(action) => <QuickActionCard {...action} />}</For>
+
+						{/* Resources */}
+						<div class="flex flex-col gap-4">
+							<div class="flex items-center gap-2">
+								<FiBookOpen class="text-primary" />
+								<h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Resources</h3>
+							</div>
+							<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+								<For each={resources}>{(resource) => <ResourceLink {...resource} />}</For>
+							</div>
 						</div>
 					</div>
-
-					{/* Resources */}
-					<div class="flex flex-col gap-4">
-						<div class="flex items-center gap-2">
-							<FiBookOpen class="text-primary" />
-							<h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Resources</h3>
-						</div>
-						<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-							<For each={resources}>{(resource) => <ResourceLink {...resource} />}</For>
-						</div>
-					</div>
-				</div>
-			</PageContainerBody>
-		</PageContainer>
+				</PageContainerBody>
+			</PageContainer>
+		</>
 	);
 };
 

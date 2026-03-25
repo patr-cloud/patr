@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/solid-router";
+import { Title } from "@solidjs/meta";
 import { Button, CopyableField, PageContainer, PageContainerBody, useToast } from "~/components";
 import Input, { InputType } from "~/components/input";
 import InputLabel from "~/components/input-label";
@@ -88,47 +89,50 @@ const General = () => {
 	};
 
 	return (
-		<PageContainer>
-			<WorkspaceHeader workspaceName={workspaceInfo()?.name} activeTab="general" />
-			<PageContainerBody class="flex flex-col gap-8">
-				<form onSubmit={onSubmit} class="flex flex-col gap-6 justify-between w-full flex-1">
-					<div class="flex flex-col gap-4 items-start w-full">
-						<div class="flex gap-8 items-center w-full">
-							<InputLabel parentClass="flex-2" for="workspace-id" label="Workspace ID" />
-							<CopyableField
-								value={workspaceId() || "Loading..."}
-								class="flex-10"
-								buttonPosition="start"
-							/>
+		<>
+			<Title>Workspace Settings | Patr</Title>
+			<PageContainer>
+				<WorkspaceHeader workspaceName={workspaceInfo()?.name} activeTab="general" />
+				<PageContainerBody class="flex flex-col gap-8">
+					<form onSubmit={onSubmit} class="flex flex-col gap-6 justify-between w-full flex-1">
+						<div class="flex flex-col gap-4 items-start w-full">
+							<div class="flex gap-8 items-center w-full">
+								<InputLabel parentClass="flex-2" for="workspace-id" label="Workspace ID" />
+								<CopyableField
+									value={workspaceId() || "Loading..."}
+									class="flex-10"
+									buttonPosition="start"
+								/>
+							</div>
+							<div class="flex gap-8 items-center w-full">
+								<InputLabel parentClass="flex-2" for="workspace-name" label="Workspace Name" />
+								<Input
+									value={name()}
+									onInput={(e) => {
+										setHasUpdated(true);
+										setName(e.currentTarget.value);
+									}}
+									class="flex-10"
+									name="workspace-name"
+									placeholder="Workspace Name"
+									type={InputType.Text}
+								/>
+							</div>
 						</div>
-						<div class="flex gap-8 items-center w-full">
-							<InputLabel parentClass="flex-2" for="workspace-name" label="Workspace Name" />
-							<Input
-								value={name()}
-								onInput={(e) => {
-									setHasUpdated(true);
-									setName(e.currentTarget.value);
-								}}
-								class="flex-10"
-								name="workspace-name"
-								placeholder="Workspace Name"
-								type={InputType.Text}
-							/>
-						</div>
-					</div>
 
-					<div class="w-full flex justify-end items-center">
-						<Button
-							type="submit"
-							variant="contained"
-							disabled={name().trim() === (workspaceInfo()?.name ?? "") || name().trim() === ""}
-						>
-							UPDATE
-						</Button>
-					</div>
-				</form>
-			</PageContainerBody>
-		</PageContainer>
+						<div class="w-full flex justify-end items-center">
+							<Button
+								type="submit"
+								variant="contained"
+								disabled={name().trim() === (workspaceInfo()?.name ?? "") || name().trim() === ""}
+							>
+								UPDATE
+							</Button>
+						</div>
+					</form>
+				</PageContainerBody>
+			</PageContainer>
+		</>
 	);
 };
 

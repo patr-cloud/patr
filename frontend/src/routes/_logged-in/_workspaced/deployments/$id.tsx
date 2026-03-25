@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
+import { Title } from "@solidjs/meta";
 import { createMemo, createResource, createSignal, ErrorBoundary, Show, Suspense } from "solid-js";
 import { GetDeploymentInfoResponse } from "~/bindings";
 import {
@@ -225,93 +226,98 @@ const DeploymentInfo = () => {
 	};
 
 	return (
-		<Show
-			when={isAllowedResource()}
-			fallback={
-				<NoPermissionsPage
-					title="Can't View Resource"
-					message="You do not have permission to view this deployment."
-				/>
-			}
-		>
-			<PageContainer>
-				<ErrorBoundary
-					fallback={(err, reset) => (
-						<div>
-							<p>Error loading deployment info: {err.message}</p>
-							<button onClick={reset}>Retry</button>
-						</div>
-					)}
-				>
-					<Suspense fallback={<div>Loading deployment info...</div>}>
-						<PageContainerHead
-							breadcrumbs={[
-								{
-									label: "Deployments",
-									url: "/deployments",
-								},
-								{
-									label: deploymentInfo() ? deploymentInfo()!.name : "Loading...",
-								},
-							]}
-							subText="A deployment represents a containerized application running on a runner."
-							class="justify-between items-center"
-							actions={() => (
-								<div class="flex items-center justify-end gap-3">
-									{Cta()}
+		<>
+			<Title>Deployment Details | Patr</Title>
+			<Show
+				when={isAllowedResource()}
+				fallback={
+					<NoPermissionsPage
+						title="Can't View Resource"
+						message="You do not have permission to view this deployment."
+					/>
+				}
+			>
+				<PageContainer>
+					<ErrorBoundary
+						fallback={(err, reset) => (
+							<div>
+								<p>Error loading deployment info: {err.message}</p>
+								<button onClick={reset}>Retry</button>
+							</div>
+						)}
+					>
+						<Suspense fallback={<div>Loading deployment info...</div>}>
+							<PageContainerHead
+								breadcrumbs={[
+									{
+										label: "Deployments",
+										url: "/deployments",
+									},
+									{
+										label: deploymentInfo() ? deploymentInfo()!.name : "Loading...",
+									},
+								]}
+								subText="A deployment represents a containerized application running on a runner."
+								class="justify-between items-center"
+								actions={() => (
+									<div class="flex items-center justify-end gap-3">
+										{Cta()}
 
-									{deploymentInfo() &&
-										deploymentPermissions().delete &&
-										deploymentInfo()?.name &&
-										deploymentInfo()!.status === "stopped" && (
-											<DeleteModal
-												isLoading={isDeletingDeployment()}
-												title="Do You Really Want to Delete This Deployment?"
-												resourceName={deploymentInfo()?.name || ""}
-												isOpen={isDeleteModalOpen}
-												setIsOpen={setIsDeleteModalOpen}
-												onClickDelete={(e) => {
-													e.preventDefault();
-													deleteDeployment();
-												}}
-											/>
-										)}
-								</div>
-							)}
-							bottomContent={() => (
-								<HeadTab
-									tab={tab}
-									tabItems={[
-										{
-											label: "Info",
-											value: "",
-											onClick: (value) =>
-												navigate({
-													to: "/deployments/$id",
-													params: { id: params().id },
-													search: { tab: value },
-												}),
-										},
-										{
-											label: "Logs",
-											value: "logs",
-											onClick: (value) =>
-												navigate({
-													to: "/deployments/$id",
-													params: { id: params().id },
-													search: { tab: value },
-												}),
-										},
-									]}
-								/>
-							)}
-						/>
+										{deploymentInfo() &&
+											deploymentPermissions().delete &&
+											deploymentInfo()?.name &&
+											deploymentInfo()!.status === "stopped" && (
+												<DeleteModal
+													isLoading={isDeletingDeployment()}
+													title="Do You Really Want to Delete This Deployment?"
+													resourceName={deploymentInfo()?.name || ""}
+													isOpen={isDeleteModalOpen}
+													setIsOpen={setIsDeleteModalOpen}
+													onClickDelete={(e) => {
+														e.preventDefault();
+														deleteDeployment();
+													}}
+												/>
+											)}
+									</div>
+								)}
+								bottomContent={() => (
+									<HeadTab
+										tab={tab}
+										tabItems={[
+											{
+												label: "Info",
+												value: "",
+												onClick: (value) =>
+													navigate({
+														to: "/deployments/$id",
+														params: { id: params().id },
+														search: { tab: value },
+													}),
+											},
+											{
+												label: "Logs",
+												value: "logs",
+												onClick: (value) =>
+													navigate({
+														to: "/deployments/$id",
+														params: { id: params().id },
+														search: { tab: value },
+													}),
+											},
+										]}
+									/>
+								)}
+							/>
 
-						<PageContainerBody class="flex flex-col justify-between gap-8">{renderTab()}</PageContainerBody>
-					</Suspense>
-				</ErrorBoundary>
-			</PageContainer>
-		</Show>
+							<PageContainerBody class="flex flex-col justify-between gap-8">
+								{renderTab()}
+							</PageContainerBody>
+						</Suspense>
+					</ErrorBoundary>
+				</PageContainer>
+			</Show>
+		</>
 	);
 };
 

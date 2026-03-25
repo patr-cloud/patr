@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/solid-router";
+import { Title } from "@solidjs/meta";
 import { createResource, Suspense } from "solid-js";
 import { useNavigate } from "@tanstack/solid-router";
 import { GetUserInfoResponse } from "~/bindings";
@@ -77,44 +78,47 @@ const UserSettingsPage = () => {
 	};
 
 	return (
-		<PageContainer>
-			<PageContainerHead
-				breadcrumbs={[
-					{
-						label: "Account Settings",
-					},
-				]}
-				subText="Manage your profile information and security preferences"
-				bottomContent={() => (
-					<HeadTab
-						tab={tab}
-						tabItems={[
-							{
-								label: "Info",
-								value: "",
-								onClick: (value) => navigate({ to: "/profile", search: { tab: value } }),
-							},
-						]}
-					/>
-				)}
-			/>
-			<PageContainerBody class="flex flex-col gap-8">
-				<Suspense fallback={<div>Loading user info...</div>}>
-					<div class="flex flex-1 flex-col gap-6 items-start w-full">
-						<UserSettingsInfoTab
-							userInfo={userInfo}
-							mutateUserInfo={mutateUserInfo}
-							refetchUserInfo={refetchUserInfo}
+		<>
+			<Title>Profile | Patr</Title>
+			<PageContainer>
+				<PageContainerHead
+					breadcrumbs={[
+						{
+							label: "Account Settings",
+						},
+					]}
+					subText="Manage your profile information and security preferences"
+					bottomContent={() => (
+						<HeadTab
+							tab={tab}
+							tabItems={[
+								{
+									label: "Info",
+									value: "",
+									onClick: (value) => navigate({ to: "/profile", search: { tab: value } }),
+								},
+							]}
 						/>
-						<ChangePasswordTab
-							mutateUserInfo={mutateUserInfo}
-							userInfo={userInfo}
-							refetchUserInfo={refetchUserInfo}
-						/>
-					</div>
-				</Suspense>
-			</PageContainerBody>
-		</PageContainer>
+					)}
+				/>
+				<PageContainerBody class="flex flex-col gap-8">
+					<Suspense fallback={<div>Loading user info...</div>}>
+						<div class="flex flex-1 flex-col gap-6 items-start w-full">
+							<UserSettingsInfoTab
+								userInfo={userInfo}
+								mutateUserInfo={mutateUserInfo}
+								refetchUserInfo={refetchUserInfo}
+							/>
+							<ChangePasswordTab
+								mutateUserInfo={mutateUserInfo}
+								userInfo={userInfo}
+								refetchUserInfo={refetchUserInfo}
+							/>
+						</div>
+					</Suspense>
+				</PageContainerBody>
+			</PageContainer>
+		</>
 	);
 };
 

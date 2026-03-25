@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
+import { Title } from "@solidjs/meta";
 import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid-js";
 import { ListDeploymentResponse, WithId, Deployment } from "~/bindings";
 import {
@@ -101,60 +102,63 @@ const ListDeploymentsPage = () => {
 	});
 
 	return (
-		<PageContainer>
-			<PageContainerHead
-				breadcrumbs={[
-					{
-						label: "Deployments",
-					},
-				]}
-				subText="A deployment represents a containerized application running on a runner."
-				actions={() => {
-					if (!isAllowedCreate()) return null;
-					return (
-						<Link href="/deployments/new" buttonVariant={ButtonVariant.Plain} external={false}>
-							Create Deployment
-						</Link>
-					);
-				}}
-			/>
+		<>
+			<Title>Deployments | Patr</Title>
+			<PageContainer>
+				<PageContainerHead
+					breadcrumbs={[
+						{
+							label: "Deployments",
+						},
+					]}
+					subText="A deployment represents a containerized application running on a runner."
+					actions={() => {
+						if (!isAllowedCreate()) return null;
+						return (
+							<Link href="/deployments/new" buttonVariant={ButtonVariant.Plain} external={false}>
+								Create Deployment
+							</Link>
+						);
+					}}
+				/>
 
-			<PageContainerBody class="flex flex-col justify-between">
-				<ErrorBoundary
-					fallback={(err, reset) => (
-						<div>
-							<p>Error loading deployments: {err.message}</p>
-							<button onClick={reset}>Retry</button>
-						</div>
-					)}
-				>
-					<Suspense fallback={<div>Loading deployments...</div>}>
-						<Show
-							when={(deployments()?.deployments?.length ?? 0) > 0}
-							fallback={<EmptyState title="No Deployments Added" />}
-						>
-							<Table
-								column_grids={["flex-3", "flex-3", "flex-3", "flex-3", "flex-3"]}
-								rows={deployments()?.deployments || []}
-								headings={["ID", "Deployment Name", "Status", "Runner", "Image Tag"]}
-								renderRow={(item) => (
-									<DeploymentListRow
-										item={item}
-										runnerName={runnerNameMap().get(item.runner) ?? "Unknown"}
-									/>
-								)}
-							/>
-							<Pagination
-								state={pagination}
-								loading={deployments.loading}
-								showPageSizeSelector={false}
-								showGoToPage={false}
-							/>
-						</Show>
-					</Suspense>
-				</ErrorBoundary>
-			</PageContainerBody>
-		</PageContainer>
+				<PageContainerBody class="flex flex-col justify-between">
+					<ErrorBoundary
+						fallback={(err, reset) => (
+							<div>
+								<p>Error loading deployments: {err.message}</p>
+								<button onClick={reset}>Retry</button>
+							</div>
+						)}
+					>
+						<Suspense fallback={<div>Loading deployments...</div>}>
+							<Show
+								when={(deployments()?.deployments?.length ?? 0) > 0}
+								fallback={<EmptyState title="No Deployments Added" />}
+							>
+								<Table
+									column_grids={["flex-3", "flex-3", "flex-3", "flex-3", "flex-3"]}
+									rows={deployments()?.deployments || []}
+									headings={["ID", "Deployment Name", "Status", "Runner", "Image Tag"]}
+									renderRow={(item) => (
+										<DeploymentListRow
+											item={item}
+											runnerName={runnerNameMap().get(item.runner) ?? "Unknown"}
+										/>
+									)}
+								/>
+								<Pagination
+									state={pagination}
+									loading={deployments.loading}
+									showPageSizeSelector={false}
+									showGoToPage={false}
+								/>
+							</Show>
+						</Suspense>
+					</ErrorBoundary>
+				</PageContainerBody>
+			</PageContainer>
+		</>
 	);
 };
 

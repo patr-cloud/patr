@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/solid-router";
+import { Title } from "@solidjs/meta";
 import { Alert, Button, useToast, Turnstile } from "~/components";
 import Input, { InputType, InputEventT, PasswordInput } from "~/components/input";
 import { ButtonVariant } from "~/utils/color";
@@ -140,6 +141,7 @@ const Login = () => {
 
 	return (
 		<>
+			<Title>Login | Patr</Title>
 			{/* Login Card */}
 			<form
 				method="post"

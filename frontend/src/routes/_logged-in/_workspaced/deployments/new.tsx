@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/solid-router";
+import { Title } from "@solidjs/meta";
 import { createMemo, createResource, createSignal } from "solid-js";
 import {
 	PageContainer,
@@ -178,170 +179,173 @@ const CreateDeploymentPage = () => {
 	});
 
 	return (
-		<PageContainer>
-			<PageContainerHead
-				breadcrumbs={[
-					{
-						label: "Deployments",
-						url: "/deployments",
-					},
-					{
-						label: "New",
-					},
-				]}
-				subText="A deployment represents a containerized application running on a runner."
-			/>
-			<PageContainerBody class="flex flex-col justify-between gap-8">
-				<form onSubmit={onSubmit} class="flex flex-col gap-6 justify-between w-full flex-1">
-					<div class="flex flex-col gap-5  items-start w-full">
-						<div class="flex gap-8 items-center w-full">
-							<InputLabel parentClass="flex-2" for="deployment-name" label="Name" />
-							<Input
-								value={name()}
-								onInput={(e) => {
-									e.preventDefault();
-									setName(e.currentTarget.value);
-								}}
-								class="flex-10"
-								name="deployment-name"
-								placeholder="Enter Deployment Name"
-								type={InputType.Text}
-							/>
-						</div>
-
-						<div class="flex gap-8 items-center w-full">
-							<InputLabel parentClass="flex-2" for="deployment-registry" label="Image" />
-							<div class="flex-10 flex items-center gap-4 w-full">
-								<InputDropdown
-									options={[
-										{ value: PATR_REGISTRY, label: "Patr Registry" },
-										{ value: "docker.io", label: "Docker Hub" },
-									]}
-									value={registry()}
-									onSelect={(val) => {
-										setRegistry(val);
-										setRepositoryId("");
-										setImageName("");
-										setImageTag("");
-										setTagFilter("");
+		<>
+			<Title>New Deployment | Patr</Title>
+			<PageContainer>
+				<PageContainerHead
+					breadcrumbs={[
+						{
+							label: "Deployments",
+							url: "/deployments",
+						},
+						{
+							label: "New",
+						},
+					]}
+					subText="A deployment represents a containerized application running on a runner."
+				/>
+				<PageContainerBody class="flex flex-col justify-between gap-8">
+					<form onSubmit={onSubmit} class="flex flex-col gap-6 justify-between w-full flex-1">
+						<div class="flex flex-col gap-5  items-start w-full">
+							<div class="flex gap-8 items-center w-full">
+								<InputLabel parentClass="flex-2" for="deployment-name" label="Name" />
+								<Input
+									value={name()}
+									onInput={(e) => {
+										e.preventDefault();
+										setName(e.currentTarget.value);
 									}}
-									class="flex-4"
-									name="deployment-registry"
-									placeholder="Select Registry"
+									class="flex-10"
+									name="deployment-name"
+									placeholder="Enter Deployment Name"
+									type={InputType.Text}
 								/>
+							</div>
 
-								{isPatrRegistry() ? (
-									<Input
-										class="flex-6"
-										placeholder="Select Repository"
-										suggestions={repoSuggestions()}
-										allowCustomValue={false}
-										value={repositoryId()}
-										onSelect={(id) => {
-											setRepositoryId(id);
+							<div class="flex gap-8 items-center w-full">
+								<InputLabel parentClass="flex-2" for="deployment-registry" label="Image" />
+								<div class="flex-10 flex items-center gap-4 w-full">
+									<InputDropdown
+										options={[
+											{ value: PATR_REGISTRY, label: "Patr Registry" },
+											{ value: "docker.io", label: "Docker Hub" },
+										]}
+										value={registry()}
+										onSelect={(val) => {
+											setRegistry(val);
+											setRepositoryId("");
+											setImageName("");
 											setImageTag("");
 											setTagFilter("");
 										}}
+										class="flex-4"
+										name="deployment-registry"
+										placeholder="Select Registry"
 									/>
-								) : (
-									<Input
-										class="flex-6"
-										placeholder="Image Name"
-										type={InputType.Text}
-										value={imageName()}
-										onInput={(e) => setImageName(e.currentTarget.value)}
-									/>
-								)}
 
-								{isPatrRegistry() ? (
-									<Input
-										class="flex-2"
-										placeholder="Image Tag"
-										value={imageTag()}
-										suggestions={tagSuggestions()}
-										allowCustomValue={true}
-										onInput={(e) => {
-											setImageTag(e.currentTarget.value);
-											debouncedSetTagFilter(e.currentTarget.value);
-										}}
-										onSelect={setImageTag}
-									/>
-								) : (
-									<Input
-										class="flex-2"
-										placeholder="Image Tag"
-										type={InputType.Text}
-										value={imageTag()}
-										onInput={(e) => setImageTag(e.currentTarget.value)}
-									/>
-								)}
+									{isPatrRegistry() ? (
+										<Input
+											class="flex-6"
+											placeholder="Select Repository"
+											suggestions={repoSuggestions()}
+											allowCustomValue={false}
+											value={repositoryId()}
+											onSelect={(id) => {
+												setRepositoryId(id);
+												setImageTag("");
+												setTagFilter("");
+											}}
+										/>
+									) : (
+										<Input
+											class="flex-6"
+											placeholder="Image Name"
+											type={InputType.Text}
+											value={imageName()}
+											onInput={(e) => setImageName(e.currentTarget.value)}
+										/>
+									)}
+
+									{isPatrRegistry() ? (
+										<Input
+											class="flex-2"
+											placeholder="Image Tag"
+											value={imageTag()}
+											suggestions={tagSuggestions()}
+											allowCustomValue={true}
+											onInput={(e) => {
+												setImageTag(e.currentTarget.value);
+												debouncedSetTagFilter(e.currentTarget.value);
+											}}
+											onSelect={setImageTag}
+										/>
+									) : (
+										<Input
+											class="flex-2"
+											placeholder="Image Tag"
+											type={InputType.Text}
+											value={imageTag()}
+											onInput={(e) => setImageTag(e.currentTarget.value)}
+										/>
+									)}
+								</div>
 							</div>
+
+							<div class="flex gap-8 items-center w-full">
+								<InputLabel parentClass="flex-2" for="deployment-runner" label="Runner" />
+								<div class="flex-10 flex items-center gap-4 w-full">
+									<InputDropdown
+										options={
+											runners()?.runners.map((runner) => ({
+												value: runner.id,
+												label: runner.name,
+											})) ?? []
+										}
+										value={runner()}
+										onSelect={setRunner}
+										class="flex-4"
+										name="deployment-runner"
+										placeholder="Select Runner"
+									/>
+								</div>
+							</div>
+
+							<EnvInput
+								envList={envList}
+								onAdd={(key, value) => {
+									setEnvList((prev) => [...prev, { key, value }]);
+								}}
+								onDelete={(key) => {
+									setEnvList((prev) => prev.filter((env) => env.key !== key));
+								}}
+							/>
+
+							<PortInput
+								onAdd={(key, value) => {
+									setPortList((prev) => ({ ...prev, [key]: value }));
+								}}
+								onDelete={(key) => {
+									setPortList((prev) => {
+										const newPorts = { ...prev };
+										delete newPorts[key];
+										return newPorts;
+									});
+								}}
+								portList={portList}
+							/>
+
+							<ProbeInput
+								probe={[startupProbe, setStartupProbe]}
+								ports={Object.keys(portList()).map((port) => parseInt(port))}
+							/>
+
+							<ConfigMount selectedFiles={configFiles} setSelectedFiles={setConfigFiles} />
 						</div>
 
-						<div class="flex gap-8 items-center w-full">
-							<InputLabel parentClass="flex-2" for="deployment-runner" label="Runner" />
-							<div class="flex-10 flex items-center gap-4 w-full">
-								<InputDropdown
-									options={
-										runners()?.runners.map((runner) => ({
-											value: runner.id,
-											label: runner.name,
-										})) ?? []
-									}
-									value={runner()}
-									onSelect={setRunner}
-									class="flex-4"
-									name="deployment-runner"
-									placeholder="Select Runner"
-								/>
-							</div>
+						<div class="w-full flex items-end justify-end">
+							<Button
+								loading={isLoading}
+								loadingContent={() => <span>Creating Deployment...</span>}
+								type="submit"
+								variant={ButtonVariant.Contained}
+							>
+								Create
+							</Button>
 						</div>
-
-						<EnvInput
-							envList={envList}
-							onAdd={(key, value) => {
-								setEnvList((prev) => [...prev, { key, value }]);
-							}}
-							onDelete={(key) => {
-								setEnvList((prev) => prev.filter((env) => env.key !== key));
-							}}
-						/>
-
-						<PortInput
-							onAdd={(key, value) => {
-								setPortList((prev) => ({ ...prev, [key]: value }));
-							}}
-							onDelete={(key) => {
-								setPortList((prev) => {
-									const newPorts = { ...prev };
-									delete newPorts[key];
-									return newPorts;
-								});
-							}}
-							portList={portList}
-						/>
-
-						<ProbeInput
-							probe={[startupProbe, setStartupProbe]}
-							ports={Object.keys(portList()).map((port) => parseInt(port))}
-						/>
-
-						<ConfigMount selectedFiles={configFiles} setSelectedFiles={setConfigFiles} />
-					</div>
-
-					<div class="w-full flex items-end justify-end">
-						<Button
-							loading={isLoading}
-							loadingContent={() => <span>Creating Deployment...</span>}
-							type="submit"
-							variant={ButtonVariant.Contained}
-						>
-							Create
-						</Button>
-					</div>
-				</form>
-			</PageContainerBody>
-		</PageContainer>
+					</form>
+				</PageContainerBody>
+			</PageContainer>
+		</>
 	);
 };
 

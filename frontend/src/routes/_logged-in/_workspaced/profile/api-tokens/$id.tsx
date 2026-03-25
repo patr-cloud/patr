@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
+import { Title } from "@solidjs/meta";
 import { createEffect, createMemo, createResource, createSignal, For, Show, Suspense } from "solid-js";
 import {
 	GetApiTokenInfoResponse,
@@ -213,110 +214,113 @@ const ApiTokenInfo = () => {
 	};
 
 	return (
-		<PageContainer>
-			<Suspense fallback={<div>Loading API Token Info...</div>}>
-				<PageContainerHead
-					breadcrumbs={[
-						{
-							label: "API Tokens",
-							url: "/profile/api-tokens",
-						},
-						{
-							label: apiTokenInfo()?.name || "",
-						},
-					]}
-					subText="Manage API Token here"
-					actions={() => (
-						<div class="flex gap-2 px-2">
-							<RegenerateModal
-								title="Regenerate API Token"
-								onClickRegenerate={onClickRegenerate}
-								resourceName={apiTokenInfo()?.name || ""}
-								isOpen={isRegenerateModalOpen}
-								setIsOpen={setIsRegenerateModalOpen}
-							/>
-							<DeleteModal
-								title="Delete API Token"
-								onClickDelete={onClickDelete}
-								resourceName={apiTokenInfo()?.name || ""}
-								isOpen={isDeleteModalOpen}
-								setIsOpen={setIsDeleteModalOpen}
-							/>
-						</div>
-					)}
-				/>
-				<PageContainerBody class="flex flex-col gap-8">
-					<div class="flex flex-col gap-4 items-start w-full">
-						<div class="flex gap-8 items-center w-full">
-							<InputLabel parentClass="flex-2" for="deployment-id" label="ID" />
-							<Input
-								value={apiTokenInfo()?.id || ""}
-								disabled={true}
-								class="flex-10"
-								name="deployment-id"
-								placeholder="Deployment ID"
-								type={InputType.Text}
-							/>
-						</div>
-
-						<div class="flex gap-8 items-center w-full">
-							<InputLabel parentClass="flex-2" for="deployment-name" label="Name" />
-							<Input
-								value={apiTokenInfo()?.name || ""}
-								class="flex-10"
-								name="deployment-name"
-								placeholder="Deployment Name"
-								type={InputType.Text}
-								disabled={true}
-							/>
-						</div>
-					</div>
-
-					{/* Workspace Permissions Section */}
-					<Suspense
-						fallback={
-							<div class="flex items-center justify-center py-8">
-								<div class="text-gray-400">Loading workspaces...</div>
+		<>
+			<Title>API Token Details | Patr</Title>
+			<PageContainer>
+				<Suspense fallback={<div>Loading API Token Info...</div>}>
+					<PageContainerHead
+						breadcrumbs={[
+							{
+								label: "API Tokens",
+								url: "/profile/api-tokens",
+							},
+							{
+								label: apiTokenInfo()?.name || "",
+							},
+						]}
+						subText="Manage API Token here"
+						actions={() => (
+							<div class="flex gap-2 px-2">
+								<RegenerateModal
+									title="Regenerate API Token"
+									onClickRegenerate={onClickRegenerate}
+									resourceName={apiTokenInfo()?.name || ""}
+									isOpen={isRegenerateModalOpen}
+									setIsOpen={setIsRegenerateModalOpen}
+								/>
+								<DeleteModal
+									title="Delete API Token"
+									onClickDelete={onClickDelete}
+									resourceName={apiTokenInfo()?.name || ""}
+									isOpen={isDeleteModalOpen}
+									setIsOpen={setIsDeleteModalOpen}
+								/>
 							</div>
-						}
-					>
-						<Show when={initialized()}>
-							<div class="flex flex-col gap-4 items-start w-full">
-								<div class="flex justify-between items-center w-full">
-									<h3 class="text-lg text-white">Workspace Permissions</h3>
-									<Button variant={ButtonVariant.Contained} onClick={onSavePermissions}>
-										Save Permissions
-									</Button>
+						)}
+					/>
+					<PageContainerBody class="flex flex-col gap-8">
+						<div class="flex flex-col gap-4 items-start w-full">
+							<div class="flex gap-8 items-center w-full">
+								<InputLabel parentClass="flex-2" for="deployment-id" label="ID" />
+								<Input
+									value={apiTokenInfo()?.id || ""}
+									disabled={true}
+									class="flex-10"
+									name="deployment-id"
+									placeholder="Deployment ID"
+									type={InputType.Text}
+								/>
+							</div>
+
+							<div class="flex gap-8 items-center w-full">
+								<InputLabel parentClass="flex-2" for="deployment-name" label="Name" />
+								<Input
+									value={apiTokenInfo()?.name || ""}
+									class="flex-10"
+									name="deployment-name"
+									placeholder="Deployment Name"
+									type={InputType.Text}
+									disabled={true}
+								/>
+							</div>
+						</div>
+
+						{/* Workspace Permissions Section */}
+						<Suspense
+							fallback={
+								<div class="flex items-center justify-center py-8">
+									<div class="text-gray-400">Loading workspaces...</div>
 								</div>
+							}
+						>
+							<Show when={initialized()}>
+								<div class="flex flex-col gap-4 items-start w-full">
+									<div class="flex justify-between items-center w-full">
+										<h3 class="text-lg text-white">Workspace Permissions</h3>
+										<Button variant={ButtonVariant.Contained} onClick={onSavePermissions}>
+											Save Permissions
+										</Button>
+									</div>
 
-								<For
-									each={workspaces.latest?.workspaces || []}
-									fallback={<div class="text-gray-400">No workspaces available</div>}
-								>
-									{(ws) => (
-										<WorkspacePermissionItem
-											workspace={ws}
-											isSuperAdmin={userInfo()?.id === ws.superAdminId}
-											enabled={enabledWorkspaces().has(ws.id)}
-											initialPermission={apiTokenInfo()?.permissions?.[ws.id]}
-											onToggle={handleWorkspaceToggle}
-											onPermissionChange={handlePermissionChange}
-										/>
-									)}
-								</For>
-							</div>
-						</Show>
-					</Suspense>
-				</PageContainerBody>
-			</Suspense>
+									<For
+										each={workspaces.latest?.workspaces || []}
+										fallback={<div class="text-gray-400">No workspaces available</div>}
+									>
+										{(ws) => (
+											<WorkspacePermissionItem
+												workspace={ws}
+												isSuperAdmin={userInfo()?.id === ws.superAdminId}
+												enabled={enabledWorkspaces().has(ws.id)}
+												initialPermission={apiTokenInfo()?.permissions?.[ws.id]}
+												onToggle={handleWorkspaceToggle}
+												onPermissionChange={handlePermissionChange}
+											/>
+										)}
+									</For>
+								</div>
+							</Show>
+						</Suspense>
+					</PageContainerBody>
+				</Suspense>
 
-			<ApiTokenModal
-				isOpen={isApiTokenModalOpen}
-				setIsOpen={setIsApiTokenModalOpen}
-				token={newApiToken}
-				onClose={() => navigate({ to: "/profile/api-tokens" })}
-			/>
-		</PageContainer>
+				<ApiTokenModal
+					isOpen={isApiTokenModalOpen}
+					setIsOpen={setIsApiTokenModalOpen}
+					token={newApiToken}
+					onClose={() => navigate({ to: "/profile/api-tokens" })}
+				/>
+			</PageContainer>
+		</>
 	);
 };
 
