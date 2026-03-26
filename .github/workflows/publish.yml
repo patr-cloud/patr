@@ -462,6 +462,13 @@ jobs:
           merge-multiple: true
           path: artifacts
 
+      - name: Generate SHA256 checksums
+        working-directory: artifacts
+        run: |
+          for file in *; do
+            sha256sum "$file" > "${file}.sha256sum"
+          done
+
       - name: Compute release tag
         id: release
         run: |
