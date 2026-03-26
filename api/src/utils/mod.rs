@@ -1,19 +1,22 @@
+/// Contains the asset handling for emails, error pages, and other static files.
+/// This includes the embedded assets, the S3 upload logic, and the functions to
+/// get the URLs for the assets.
+pub mod assets;
 /// The configuration data that is loaded when the backend starts. This contains
 /// the details of the database, Redis, the JWT secret, etc.
 pub mod config;
-/// Contains the [`layer`][1]s that will be used with [`tower`] mounted on the
-/// axum [`Router`][2]
-///
-/// [1]: tower::Layer
-/// [2]: axum::Router
-pub mod layers;
-
 /// Contains the [`extractor`][1]s that will be used with [`tower`] mounted on
 /// the axum [`Router`][2]
 ///
 /// [1]: axum::extract::FromRequest
 /// [2]: axum::Router
 pub mod extractors;
+/// Contains the [`layer`][1]s that will be used with [`tower`] mounted on the
+/// axum [`Router`][2]
+///
+/// [1]: tower::Layer
+/// [2]: axum::Router
+pub mod layers;
 
 /// A Cloudflare Turnstile validator utility module. This contains the client
 /// and request/response types needed to validate Turnstile tokens.

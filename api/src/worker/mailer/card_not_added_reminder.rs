@@ -1,7 +1,7 @@
 use macros::EmailTemplate;
 use serde::{Deserialize, Serialize};
 
-use super::images as filters;
+use crate::utils::assets::email_images as filters;
 
 /// The email template for the card not added reminder email. This email is sent
 /// to remind the user to add a payment method to avoid resource deletion.

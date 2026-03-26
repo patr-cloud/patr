@@ -1,7 +1,7 @@
 use macros::EmailTemplate;
 use serde::{Deserialize, Serialize};
 
-use super::images as filters;
+use crate::utils::assets::email_images as filters;
 
 /// The email template for the domain added email. This email is sent to the
 /// user when a domain is added to their workspace, prompting them to verify

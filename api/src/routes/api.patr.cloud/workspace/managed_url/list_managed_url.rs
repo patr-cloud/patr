@@ -20,7 +20,7 @@ pub async fn list_managed_url(
 								path: path_filter,
 								// TODO nested search params
 								url_type: url_type_filter,
-								is_configured: is_configured_filter,
+								is_active: is_active_filter,
 							},
 						count,
 						page,
@@ -56,7 +56,7 @@ pub async fn list_managed_url(
 			port,
 			static_site_id,
 			url,
-			is_configured,
+			is_active,
 			permanent_redirect,
 			http_only,
 			COUNT(*) OVER() AS "total_count!"
@@ -73,7 +73,7 @@ pub async fn list_managed_url(
 			($5::UUID IS NULL OR managed_url.domain_id = $5) AND
 			($6::TEXT IS NULL OR managed_url.path ILIKE '%' || $6 || '%') AND
 			($7::MANAGED_URL_TYPE IS NULL OR managed_url.url_type = $7) AND
-			($8::BOOLEAN IS NULL OR managed_url.is_configured = $8)
+			($8::BOOLEAN IS NULL OR managed_url.is_active = $8)
 		ORDER BY
 			resource.created DESC
 		LIMIT $9
@@ -86,7 +86,7 @@ pub async fn list_managed_url(
 		domain_id_filter as _,
 		path_filter as _,
 		url_type_filter as _,
-		is_configured_filter as _,
+		is_active_filter as _,
 		count as i32,
 		(count * page) as i32,
 	)
@@ -142,7 +142,7 @@ pub async fn list_managed_url(
 						}
 					}
 				},
-				is_configured: row.is_configured,
+				is_active: row.is_active,
 			},
 		))
 	})

@@ -1,7 +1,7 @@
 use macros::EmailTemplate;
 use serde::{Deserialize, Serialize};
 
-use super::images as filters;
+use crate::utils::assets::email_images as filters;
 
 /// The email template for the domain not verified email. This email is sent to
 /// the user when their domain is no longer pointing to Patr and needs to be

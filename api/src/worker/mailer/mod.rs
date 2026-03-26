@@ -13,10 +13,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
 
-/// The module to handle embedded email images. This is used to upload all
-/// embedded email images to R2/S3 at startup.
-mod images;
-
 /// The add new email notification email template.
 mod add_new_email_notification;
 /// The backup email notification email template.
@@ -80,7 +76,6 @@ pub use self::{
 	domain_not_verified_reminder::*,
 	domain_verified::*,
 	forgot_password::*,
-	images::*,
 	partial_payment_success::*,
 	password_changed_notification::*,
 	password_reset_notification::*,

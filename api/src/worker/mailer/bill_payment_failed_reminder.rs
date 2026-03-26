@@ -1,7 +1,7 @@
 use macros::EmailTemplate;
 use serde::{Deserialize, Serialize};
 
-use super::images as filters;
+use crate::utils::assets::email_images as filters;
 
 /// The email template for the bill payment failed reminder email. This email is
 /// sent to the user when their bill is unpaid and resources are at risk of

@@ -32,7 +32,7 @@ pub async fn initialize_managed_url_tables(
 			static_site_id UUID,
 			url TEXT,
 			workspace_id UUID NOT NULL,
-			is_configured BOOLEAN NOT NULL,
+			is_active BOOLEAN NOT NULL,
 			deleted TIMESTAMPTZ,
 			permanent_redirect BOOLEAN,
 			http_only BOOLEAN

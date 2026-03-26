@@ -39,8 +39,8 @@ pub struct ManagedUrl {
 	#[serde(flatten)]
 	#[search(ty = "custom", name = "ManagedUrlTypeDiscriminant")]
 	pub url_type: ManagedUrlType,
-	/// Verify if the URL is
-	pub is_configured: bool,
+	/// Whether this URL is actively being served by Patr
+	pub is_active: bool,
 }
 
 /// Managed URL types

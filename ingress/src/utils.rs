@@ -1,3 +1,31 @@
+use crate::prelude::*;
+
+const ERROR_PAGE_BASE: &str = "https://assets.patr.cloud/error-pages";
+
+/// Fetches a branded error page from assets.patr.cloud and returns it as the
+/// response with the given status code. The user's URL stays unchanged in the
+/// browser. Falls back to a plain text error if the fetch fails.
+pub async fn serve_error_page(page: &str, status: u16) -> Result<Response> {
+	let url = format!("{ERROR_PAGE_BASE}/{page}.html");
+
+	let fetched = Fetch::Url(Url::parse(&url).map_err(|_| Error::BadEncoding)?)
+		.send()
+		.await;
+
+	match fetched {
+		Ok(mut resp) => {
+			let body = resp.bytes().await?;
+			let mut response = Response::from_bytes(body)?;
+			response = response.with_status(status);
+			let headers = response.headers_mut();
+			headers.set("Content-Type", "text/html; charset=utf-8")?;
+			headers.set("Server", "patr")?;
+			Ok(response)
+		}
+		Err(_) => Response::error(page, status),
+	}
+}
+
 /// Constants used in the Worker
 pub mod constants {
 	/// The default domain for the PATR platform. Any requests to this domain

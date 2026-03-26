@@ -189,7 +189,7 @@ pub async fn create_managed_url(
 				static_site_id,
 				url,
 				workspace_id,
-				is_configured,
+				is_active,
 				deleted,
 				permanent_redirect,
 				http_only

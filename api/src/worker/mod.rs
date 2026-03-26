@@ -14,10 +14,16 @@ pub mod mailer;
 
 /// The cron job that re-verifies verified domains every 6 hours.
 mod reverify_verified_domains;
+/// The cron job that verifies managed URL active status every 2 hours.
+mod verify_managed_url_active;
 /// The cron job that verifies unverified domains every 2 hours.
 mod verify_unverified_domains;
 
-use self::{reverify_verified_domains::*, verify_unverified_domains::*};
+use self::{
+	reverify_verified_domains::*,
+	verify_managed_url_active::*,
+	verify_unverified_domains::*,
+};
 
 /// The type of background task to be performed by the worker. This is used to
 /// differentiate between different types of tasks, such as sending emails or
@@ -87,6 +93,27 @@ pub async fn run(state: &AppState) {
 					)
 					.data(state.clone())
 					.build(reverify_verified_domains)
+			}
+		})
+		.register({
+			let state = state.clone();
+			move |_| {
+				let backend = SharedPostgresStorage::new(state.database.clone())
+					.make_shared()
+					.expect("Failed to create shared postgres storage for worker");
+
+				WorkerBuilder::new("verify-managed-url-active")
+					.backend(
+						CronStream::new(
+							// Every 2 hours
+							Schedule::from_str("0 */2 * * * *").expect(
+								"Failed to parse cron schedule for verify-managed-url-active",
+							),
+						)
+						.pipe_to(backend),
+					)
+					.data(state.clone())
+					.build(verify_managed_url_active)
 			}
 		})
 		// TODO worker to clean up users who have signed up but haven't verified their email

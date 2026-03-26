@@ -74,7 +74,11 @@ pub async fn verify_domain_in_workspace(
 	})
 	.await?
 	.result
-	.status == "active";
+	.ssl
+	.as_ref()
+	.and_then(|ssl| ssl.status.as_deref())
+	.map(|status| status == "active")
+	.unwrap_or(false);
 
 	if verified {
 		query!(

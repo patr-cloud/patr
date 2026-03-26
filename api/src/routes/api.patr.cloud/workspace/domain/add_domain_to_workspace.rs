@@ -162,6 +162,7 @@ pub async fn add_domain_to_workspace(
 					validation_records: None,
 					settings: None,
 					wildcard: Some(true),
+					status: None,
 				}),
 				custom_metadata: None,
 			},

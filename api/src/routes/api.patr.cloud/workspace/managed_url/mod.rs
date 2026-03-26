@@ -66,7 +66,7 @@ pub async fn sync_worker_kv_for_domain(
 			managed_url.port,
 			managed_url.static_site_id AS "static_site_id: Uuid",
 			managed_url.url,
-			managed_url.is_configured,
+			managed_url.is_active,
 			managed_url.permanent_redirect,
 			managed_url.http_only
 		FROM

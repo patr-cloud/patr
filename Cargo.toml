@@ -71,6 +71,7 @@ k8s-openapi                    = { default-features = false, version = "0.27" }
 kube                           = { default-features = false, version = "3" }
 lettre                         = { default-features = false, version = "0.11" }
 macros                         = { default-features = false, path = "macros" }
+mime_guess                     = { default-features = false, version = "2" }
 models                         = { default-features = false, path = "models" }
 monostate                      = { default-features = false, version = "1" }
 mrml                           = { default-features = false, version = "5" }

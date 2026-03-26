@@ -1,4 +1,6 @@
-use crate::prelude::*;
+use models::api::workspace::deployment::DeploymentStatus;
+
+use crate::{prelude::*, utils::serve_error_page};
 
 pub async fn handle_request(req: Request, env: Env, _ctx: Context, host: &str) -> Result<Response> {
 	let host = host
@@ -18,17 +20,19 @@ pub async fn handle_request(req: Request, env: Env, _ctx: Context, host: &str) -
 		.await?
 	else {
 		console_debug!("No KV data found for deployment ID {}", key);
-		return Ok(Response::builder()
-			.with_status(404)
-			.body(ResponseBody::Body(b"Not found".to_vec())));
+		return serve_error_page("not-found", 404).await;
 	};
 
 	match kv {
 		InternalKVData::Deployment {
 			ports,
 			runner_id,
-			status: _,
+			status,
 		} => {
+			if !matches!(status, DeploymentStatus::Running) {
+				return serve_error_page("deployment-stopped", 503).await;
+			}
+
 			let Ok(port) = port.map(|port| port.parse::<u16>()).transpose() else {
 				return Err(Error::RouteNoDataError);
 			};
@@ -38,16 +42,12 @@ pub async fn handle_request(req: Request, env: Env, _ctx: Context, host: &str) -
 					"No port specified and multiple ports available for deployment ID {}",
 					key
 				);
-				return Ok(Response::builder()
-					.with_status(404)
-					.body(ResponseBody::Body(b"Not found".to_vec())));
+				return serve_error_page("port-not-found", 404).await;
 			};
 
 			if !ports.contains(&port) {
 				console_debug!("Port {} not found in deployment ports {:?}", port, ports);
-				return Ok(Response::builder()
-					.with_status(404)
-					.body(ResponseBody::Body(b"Not found".to_vec())));
+				return serve_error_page("port-not-found", 404).await;
 			}
 
 			Fetch::Request(Request::new_with_init(
@@ -72,13 +72,6 @@ pub async fn handle_request(req: Request, env: Env, _ctx: Context, host: &str) -
 			.await
 		}
 		InternalKVData::Runner => {
-			let InternalKVData::Runner = kv else {
-				console_error!("Expected a Runner KV data, but found {:?}", kv);
-				return Ok(Response::builder()
-					.with_status(404)
-					.body(ResponseBody::Body(b"Internal server error".to_vec())));
-			};
-
 			Fetch::Request(Request::new_with_init(
 				req.url()?.as_str(),
 				&RequestInit {

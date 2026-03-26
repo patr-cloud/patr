@@ -1,7 +1,7 @@
 use macros::EmailTemplate;
 use serde::{Deserialize, Serialize};
 
-use super::images as filters;
+use crate::utils::assets::email_images as filters;
 
 /// The email template for the recovery email notification. This email is sent
 /// when a recovery email address is added to a user's Patr account.

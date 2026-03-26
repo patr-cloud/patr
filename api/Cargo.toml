@@ -40,6 +40,7 @@ jsonwebtoken                   = { workspace = true, features = ["default", "aws
 lettre                         = { workspace = true, features = ["tokio1-rustls-tls", "smtp-transport", "builder", "tokio1"] }
 macros                         = { workspace = true, features = [] }
 models                         = { workspace = true, features = ["axum"] }
+mime_guess                     = { workspace = true, features = ["default"] }
 oci-spec                       = { workspace = true, features = ["distribution", "image"] }
 opentelemetry                  = { workspace = true, features = ["default"] }
 opentelemetry-appender-tracing = { workspace = true, features = ["default"] }

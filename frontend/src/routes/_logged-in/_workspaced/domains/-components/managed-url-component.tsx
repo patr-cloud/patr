@@ -58,7 +58,7 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 		<>
 			{openEdit() ? (
 				<tr class="flex items-center justify-center border border-border-color  min-h-10 w-full h">
-					<td class="w-full" colspan={3}>
+					<td class="w-full" colspan={4}>
 						<ManagedUrlComponent
 							domainInfo={props.domainInfo}
 							managedUrl={props.managedUrl}
@@ -79,33 +79,43 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 							{props.managedUrl.path}
 						</a>
 					</td>
-					<td class="flex-3 flex items-center justify-center">{domainTypeToTitle(props.managedUrl.type)}</td>
+					<td class="flex-2 flex items-center justify-center">{domainTypeToTitle(props.managedUrl.type)}</td>
+
+					<td class="flex-2 flex items-center justify-center">
+						<div class="flex gap-2 items-center">
+							{props.managedUrl.isActive ? (
+								<span class="text-green-400 text-sm">Yes</span>
+							) : (
+								<>
+									<span class="text-yellow-400 text-sm">No</span>
+									<InfoPopup
+										triggerIcon={() => <FiAlertCircle color="text-warning" size={18} />}
+										title="Configuration Required"
+										content={() => (
+											<div>
+												<p class="text-gray-300 text-sm mb-2">
+													To configure this Managed URL, please update your DNS settings to point
+													to our servers. If you have already updated your DNS settings, please
+													allow some time for the changes to propagate.
+												</p>
+
+												<div class="bg-black/30 p-2 rounded text-xs text-gray-400 mb-2">
+													<p>Type: CNAME</p>
+													<p>
+														Name: {props.managedUrl.subDomain}.{props.domainInfo.name || ""}
+													</p>
+													<p>Value: ingress.onpatr.cloud</p>
+												</div>
+											</div>
+										)}
+									/>
+								</>
+							)}
+						</div>
+					</td>
 
 					<td class="flex-3 flex items-center justify-center">
 						<div class="flex gap-2 items-center">
-							{!props.managedUrl.isConfigured && (
-								<InfoPopup
-									triggerIcon={() => <FiAlertCircle color="text-warning" size={18} />}
-									title="Configuration Required"
-									content={() => (
-										<div>
-											<p class="text-gray-300 text-sm mb-2">
-												To configure this Managed URL, please update your DNS settings to point
-												to our servers. If you have already updated your DNS settings, please
-												allow some time for the changes to propagate.
-											</p>
-
-											<div class="bg-black/30 p-2 rounded text-xs text-gray-400 mb-2">
-												<p>Type: CNAME</p>
-												<p>
-													Name: {props.managedUrl.subDomain}.{props.domainInfo.name || ""}
-												</p>
-												<p>Value: ingress.patr.cloud</p>
-											</div>
-										</div>
-									)}
-								/>
-							)}
 							{shouldDelete() ? (
 								<>
 									{isDeleting() ? (

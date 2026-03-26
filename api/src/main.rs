@@ -54,7 +54,7 @@ async fn main() {
 		.await
 		.expect("error initializing worker");
 
-	worker::mailer::upload_email_images(&state.config.s3).await;
+	utils::assets::initialize(&state.config.s3).await;
 
 	futures::future::join3(
 		app::serve(&state),

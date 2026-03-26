@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT managed_url.path, managed_url.url_type AS \"url_type: ManagedUrlTypeDiscriminant\", managed_url.deployment_id AS \"deployment_id: Uuid\", deployment.runner AS \"runner?: Uuid\", managed_url.port, managed_url.static_site_id AS \"static_site_id: Uuid\", managed_url.url, managed_url.is_configured, managed_url.permanent_redirect, managed_url.http_only FROM managed_url INNER JOIN workspace_domain ON managed_url.domain_id = workspace_domain.id LEFT JOIN deployment ON managed_url.deployment_id = deployment.id WHERE managed_url.deleted IS NULL AND CONCAT(managed_url.sub_domain, '.', workspace_domain.name, '.', workspace_domain.tld) = $1;",
+  "query": "SELECT managed_url.path, managed_url.url_type AS \"url_type: ManagedUrlTypeDiscriminant\", managed_url.deployment_id AS \"deployment_id: Uuid\", deployment.runner AS \"runner?: Uuid\", managed_url.port, managed_url.static_site_id AS \"static_site_id: Uuid\", managed_url.url, managed_url.is_active, managed_url.permanent_redirect, managed_url.http_only FROM managed_url INNER JOIN workspace_domain ON managed_url.domain_id = workspace_domain.id LEFT JOIN deployment ON managed_url.deployment_id = deployment.id WHERE managed_url.deleted IS NULL AND CONCAT(managed_url.sub_domain, '.', workspace_domain.name, '.', workspace_domain.tld) = $1;",
   "describe": {
     "columns": [
       {
@@ -52,7 +52,7 @@
       },
       {
         "ordinal": 7,
-        "name": "is_configured",
+        "name": "is_active",
         "type_info": "Bool"
       },
       {
@@ -84,5 +84,5 @@
       true
     ]
   },
-  "hash": "4e5481d4569244354cc60dfec798fba260c811aae4c29c8027b47ff09b4f7c18"
+  "hash": "d759094d0842b7c61f74d3dfed57ea3d0d4c097b5ac13dd10a39dd29a9f3c277"
 }

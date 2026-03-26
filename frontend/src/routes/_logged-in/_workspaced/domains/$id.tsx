@@ -375,9 +375,9 @@ const DomainInfo = () => {
 
 							<div class="flex flex-col gap-2 items-start w-5/5 mt-4">
 								<Table
-									column_grids={["flex-3", "flex-3", "flex-3"]}
+									column_grids={["flex-3", "flex-2", "flex-2", "flex-3"]}
 									rows={managedUrls.latest?.urls || []}
-									headings={["Domain ID", "Domain Name", "Actions"]}
+									headings={["URL", "Type", "Served by Patr", "Actions"]}
 									renderRow={(item) =>
 										domainInfo.latest && (
 											<ManageUrlRow
