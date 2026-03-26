@@ -28,7 +28,6 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 		.mount_auth_endpoint(list_domains_in_workspace, state, allowed_client_type)
 		.mount_auth_endpoint(delete_domain_in_workspace, state, allowed_client_type)
 		.mount_auth_endpoint(is_domain_valid, state, allowed_client_type)
-		.mount_endpoint(is_domain_personal, state, allowed_client_type)
 		.mount_auth_endpoint(add_dns_record, state, allowed_client_type)
 		.mount_auth_endpoint(delete_dns_record, state, allowed_client_type)
 		.mount_auth_endpoint(get_doamin_dns_record, state, allowed_client_type)
@@ -40,36 +39,6 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 			state,
 			allowed_client_type,
 		)
-}
-
-#[expect(unreachable_code, unused_variables)]
-async fn is_domain_personal(
-	AppRequest {
-		request: ProcessedApiRequest {
-			path,
-			query: _,
-			headers,
-			body,
-		},
-		database,
-		redis: _,
-		client_ip: _,
-		state,
-	}: AppRequest<'_, IsDomainPersonalRequest>,
-) -> Result<AppResponse<IsDomainPersonalRequest>, ErrorType> {
-	info!("Starting: Check for is domain personal");
-
-	// LOGIC
-
-	AppResponse::builder()
-		.body(IsDomainPersonalResponse {
-			personal: todo!(),
-			is_used_by_others: todo!(),
-		})
-		.headers(())
-		.status_code(StatusCode::OK)
-		.build()
-		.into_result()
 }
 
 #[expect(unreachable_code, unused_variables)]

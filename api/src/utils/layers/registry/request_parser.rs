@@ -175,8 +175,11 @@ where
 						headers.insert(
 							header::WWW_AUTHENTICATE,
 							HeaderValue::from_static(
-								// TODO: make realm and service configurable
-								"Bearer realm=\"http://localhost:3000/auth/docker-login\",service=\"registry.patr.cloud\"",
+								if cfg!(debug_assertions) {
+									"Bearer realm=\"http://localhost:3000/auth/docker-login\",service=\"registry.patr.cloud\""
+								} else {
+									"Bearer realm=\"https://api.patr.cloud/auth/docker-login\",service=\"registry.patr.cloud\""
+								},
 							),
 						);
 						headers
