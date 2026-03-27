@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createMemo, createResource, createSignal, Suspense } from "solid-js";
+import { createEffect, createMemo, createSignal, Show, Suspense } from "solid-js";
 import {
 	Button,
 	ButtonVariant,
@@ -17,10 +17,6 @@ import { FiEdit2, FiPlus, FiTrash } from "solid-icons/fi";
 import { useNavigate } from "@tanstack/solid-router";
 import { createAuthenticatedAction, createFormAction, useAuthState, createPaginationState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { GetWorkspaceInfoResponse } from "~/bindings/GetWorkspaceInfoResponse";
-import { ListAllRolesResponse } from "~/bindings/ListAllRolesResponse";
-import { ListUsersInWorkspaceResponse } from "~/bindings/ListUsersInWorkspaceResponse";
-import { GetUserDetailsResponse } from "~/bindings/GetUserDetailsResponse";
 import { UpdateUserRolesInWorkspaceRequest } from "~/bindings/UpdateUserRolesInWorkspaceRequest";
 import { RemoveUserFromWorkspaceResponse } from "~/bindings/RemoveUserFromWorkspaceResponse";
 import { WithId } from "~/bindings/WithId";
@@ -28,6 +24,9 @@ import { BasicUserInfo } from "~/bindings/BasicUserInfo";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "./-components/workspace-header";
 import { EditUserRoles } from "./-components/edit-user-roles";
+import { useWorkspaceInfoQuery, useAllRolesQuery, useMembersQuery } from "~/hooks/fetch";
+import { useQueryClient } from "@tanstack/solid-query";
+import { memberKeys } from "~/hooks/query-keys";
 
 const ManageWorkspace = () => {
 	const [authState] = useAuthState();
@@ -39,106 +38,28 @@ const ManageWorkspace = () => {
 		search: () => search(),
 		navigate,
 	});
-	const resourceParamsWorkspace = () => {
-		return [authState(), workspaceId()] as const;
-	};
-	const [workspaceInfo] = createResource(resourceParamsWorkspace, async ([auth, id]) => {
-		if (!auth || auth.type !== "LoggedIn" || id === "") {
-			return;
-		}
-		const response = await httpRequest<GetWorkspaceInfoResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}`,
-			{
-				method: "GET",
-			}
-		);
-		if (!response.ok) {
-			console.error("Failed to fetch workspace info:", response.data.error);
-			toast("Failed to fetch workspace info", "error");
-			return undefined;
-		}
-		return response.data;
-	});
+	const queryClient = useQueryClient();
 
-	const [roles] = createResource(resourceParamsWorkspace, async ([auth, id]) => {
-		if (!auth || auth.type !== "LoggedIn" || id === "") {
-			return;
-		}
-		const response = await httpRequest<ListAllRolesResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}/rbac/role`,
-			{
-				method: "GET",
-			}
-		);
-		if (!response.ok) {
-			console.error("Failed to fetch roles:", response.data.error);
-			toast("Failed to fetch roles", "error");
-			return undefined;
-		}
-		return response.data;
-	});
-
-	const membersFetchParams = () => {
-		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
-	};
-
-	const [workspaceMembers, { refetch: refetchMembers }] = createResource(
-		membersFetchParams,
-		async ([auth, id, page, count]) => {
-			if (!auth || auth.type !== "LoggedIn" || id === "") {
-				return;
-			}
-			const response = await httpRequest<ListUsersInWorkspaceResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}/rbac/user?page=${page}&count=${count}`,
-				{
-					method: "GET",
-				}
-			);
-			if (!response.ok) {
-				console.error("Failed to fetch workspace members:", response.data.error);
-				toast("Failed to fetch workspace members", "error");
-				return undefined;
-			}
-			pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
-			// Fetch user details for each user ID
-			const userDetailsPromises = Object.keys(response.data.users).map(async (userId) => {
-				const userResponse = await httpRequest<GetUserDetailsResponse>(
-					`${import.meta.env.VITE_BASE_URL}/api/user/${userId}`,
-					{
-						method: "GET",
-					}
-				);
-
-				console.log("User response for", userId, ":", userResponse);
-
-				if (userResponse.ok) {
-					const user = userResponse.data;
-					console.log("User data:", user);
-					const roleIds = response.data.users[userId] || [];
-
-					// Handle both flattened and nested response structures
-					const firstName = user.firstName || "";
-					const lastName = user.lastName || "";
-					const username = user.username || "";
-					const id = user.id || "";
-
-					return {
-						userId: id,
-						firstName,
-						lastName,
-						username,
-						fullName: `${firstName} ${lastName}`,
-						roleIds: roleIds,
-					};
-				}
-				console.error("Failed to fetch user details for", userId, ":", userResponse.data);
-				return null;
-			});
-
-			const userDetails = await Promise.all(userDetailsPromises);
-			return userDetails.filter((user) => user !== null);
-		}
+	const workspaceInfoQuery = useWorkspaceInfoQuery();
+	const rolesQuery = useAllRolesQuery();
+	const membersQuery = useMembersQuery(
+		() => search().page,
+		() => search().count
 	);
+
+	createEffect(() => {
+		const totalCount = membersQuery.data?.totalCount;
+		if (totalCount !== undefined) {
+			pagination.setTotalCount(totalCount);
+		}
+	});
+
+	const refetchMembers = () => {
+		const wsId = workspaceId();
+		if (wsId) {
+			queryClient.invalidateQueries({ queryKey: memberKeys.all(wsId) });
+		}
+	};
 
 	const { execute: deleteUser } = createAuthenticatedAction(async ({ workspaceId }) => {
 		const userId = userToDelete();
@@ -168,7 +89,7 @@ const ManageWorkspace = () => {
 	});
 
 	const roleNameMap = createMemo(() => {
-		return new Map((roles()?.roles || []).map((r) => [r.id, r.name]));
+		return new Map((rolesQuery.data?.roles || []).map((r) => [r.id, r.name]));
 	});
 
 	// Separate state for input fields and added members
@@ -228,12 +149,12 @@ const ManageWorkspace = () => {
 		<>
 			<Title>Workspace Members | Patr</Title>
 			<PageContainer>
-				<WorkspaceHeader workspaceName={workspaceInfo()?.name} activeTab="members" />
+				<WorkspaceHeader workspaceName={workspaceInfoQuery.data?.name} activeTab="members" />
 				<PageContainerBody class="flex flex-col justify-between gap-8">
 					<div class="flex flex-col gap-6">
 						<div class="flex flex-col gap-4">
 							<form class="p-lg bg-secondary-light rounded-xs" onSubmit={handleAddMember}>
-								<h1 class="text-lg mb-3">Add Someone to {workspaceInfo()?.name}</h1>
+								<h1 class="text-lg mb-3">Add Someone to {workspaceInfoQuery.data?.name}</h1>
 
 								<div class="flex flex-col items-start justify-center gap-2 w-full">
 									<div class="flex items-center justify-center gap-3 w-full">
@@ -247,7 +168,7 @@ const ManageWorkspace = () => {
 											styleVariant="medium"
 											class="flex-1"
 											options={
-												roles()?.roles.map((role) => ({
+												rolesQuery.data?.roles.map((role) => ({
 													label: role.name,
 													value: role.id,
 												})) || []
@@ -283,7 +204,7 @@ const ManageWorkspace = () => {
 								<Table
 									column_grids={["flex-6", "flex-3", "flex-3"]}
 									headings={["User", "Roles", "Actions"]}
-									rows={workspaceMembers() || []}
+									rows={membersQuery.data?.members || []}
 									renderRow={(member) => {
 										const memberRoleIds = member.roleIds;
 										const memberRoleNames = memberRoleIds
@@ -291,7 +212,7 @@ const ManageWorkspace = () => {
 											.filter(Boolean)
 											.join(", ");
 
-										if (workspaceMembers.loading) {
+										if (membersQuery.isLoading) {
 											return (
 												<tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
 													<td colspan="3">Loading...</td>
@@ -299,7 +220,7 @@ const ManageWorkspace = () => {
 											);
 										}
 
-										if (!workspaceMembers() || workspaceMembers()!.length <= 0) {
+										if (!membersQuery.data?.members || membersQuery.data.members.length <= 0) {
 											return (
 												<tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
 													<td colspan="3">No members found.</td>
@@ -320,7 +241,7 @@ const ManageWorkspace = () => {
 																workspaceId={workspaceId() || ""}
 																currentRoles={
 																	editingMember()!.roleIds.map((roleId) => {
-																		const role = roles()?.roles.find(
+																		const role = rolesQuery.data?.roles.find(
 																			(r) => r.id === roleId
 																		);
 																		return {
@@ -330,7 +251,7 @@ const ManageWorkspace = () => {
 																	}) || []
 																}
 																availableRoles={
-																	roles()?.roles.map((role) => ({
+																	rolesQuery.data?.roles.map((role) => ({
 																		id: role.id,
 																		name: role.name,
 																	})) || []
@@ -436,7 +357,7 @@ const ManageWorkspace = () => {
 					</div>
 					<Pagination
 						state={pagination}
-						loading={workspaceMembers.loading}
+						loading={membersQuery.isFetching}
 						showPageSizeSelector={false}
 						showGoToPage={false}
 					/>

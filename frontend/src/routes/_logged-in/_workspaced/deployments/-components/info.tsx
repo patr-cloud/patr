@@ -1,6 +1,6 @@
 import { FiChevronDown } from "solid-icons/fi";
-import { createMemo, createResource, createSignal, Resource, Setter, Show } from "solid-js";
-import { GetDeploymentInfoResponse, ListRunnersForWorkspaceResponse, UpdateDeploymentResponse } from "~/bindings";
+import { createSignal, Setter, Show } from "solid-js";
+import { GetDeploymentInfoResponse, UpdateDeploymentResponse } from "~/bindings";
 import {
 	Button,
 	CopyableField,
@@ -16,19 +16,16 @@ import {
 import { useAuthState } from "~/hooks";
 import { useGetPermissions } from "~/hooks/is-allowed";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
+import { useRunnersQuery } from "~/hooks/fetch";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 import EnvInput from "./env-input";
 import PortInput from "./port";
 
 interface DeploymentInfoProps {
-	deploymentInfo: Resource<GetDeploymentInfoResponse | undefined>;
+	deploymentInfo: GetDeploymentInfoResponse | undefined;
 	mutateDeploymentInfo: Setter<GetDeploymentInfoResponse | undefined>;
-	refetchDeploymentInfo: () =>
-		| GetDeploymentInfoResponse
-		| Promise<GetDeploymentInfoResponse | undefined>
-		| null
-		| undefined;
+	refetchDeploymentInfo: () => void;
 }
 
 const PATR_REGISTRY = "registry.patr.cloud";
@@ -37,33 +34,11 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
-	const deploymentPermissions = useGetPermissions("deployment", () => props.deploymentInfo.latest?.id || "");
+	const deploymentPermissions = useGetPermissions("deployment", () => props.deploymentInfo?.id || "");
 
 	const [_, setHasUpdated] = createSignal(false);
 
-	const resourceParamsRunnerList = createMemo(() => {
-		return [authState(), workspaceId()] as const;
-	});
-
-	const [runnerList] = createResource(resourceParamsRunnerList, async ([auth, wsId]) => {
-		if (!wsId || !auth || auth.type !== "LoggedIn") {
-			return { runners: [] };
-		}
-		const response = await httpRequest<ListRunnersForWorkspaceResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner`,
-			{
-				method: "GET",
-			}
-		);
-
-		if (!response.ok) {
-			console.error("Failed to fetch runner list:", response.data.error);
-			toast("Failed to fetch runner list", "error");
-			return { runners: [] };
-		}
-
-		return response.data;
-	});
+	const runnersQuery = useRunnersQuery();
 
 	const isPatrRegistry = () => {
 		const info = props.deploymentInfo.latest;
@@ -121,7 +96,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				<div class="flex gap-8 items-start w-full">
 					<InputLabel parentClass="flex-2 pt-2.5" for="deployment-id" label="ID" />
 					<CopyableField
-						value={props.deploymentInfo.latest?.id ?? ""}
+						value={props.deploymentInfo?.id ?? ""}
 						variant={CopyableFieldVariant.Input}
 						class="flex-10"
 					/>
@@ -135,7 +110,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						placeholder="Deployment Name"
 						type={InputType.Text}
 						disabled={!deploymentPermissions().edit}
-						value={props.deploymentInfo.latest?.name}
+						value={props.deploymentInfo?.name}
 						onInput={(e) => {
 							setHasUpdated(true);
 							props.mutateDeploymentInfo((prev) => {
@@ -178,14 +153,14 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						name="deployment-runner"
 						placeholder="Select Runner"
 						disabled={!deploymentPermissions().edit}
-						value={props.deploymentInfo.latest?.runner ?? ""}
+						value={props.deploymentInfo?.runner ?? ""}
 						endIcon={() => (
 							<button>
 								<FiChevronDown size={16} />
 							</button>
 						)}
 						options={
-							runnerList.latest?.runners.map((runner) => ({
+							runnersQuery.data?.runners.map((runner) => ({
 								value: runner.id,
 								label: runner.name,
 							})) ?? []
@@ -208,7 +183,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 					<InputLabel parentClass="flex-2 pt-2.5" for="deployment-registry" label="Image" />
 					<div class="flex-10 flex items-center gap-4 w-full">
 						<Input
-							value={props.deploymentInfo.latest?.registry ?? ""}
+							value={props.deploymentInfo?.registry ?? ""}
 							disabled={true}
 							class="flex-4"
 							name="deployment-registry"
@@ -221,7 +196,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 							placeholder="Image Name"
 							type={InputType.Text}
 							value={(() => {
-								const info = props.deploymentInfo.latest;
+								const info = props.deploymentInfo;
 								if (!info) return "";
 								if (info.registry === PATR_REGISTRY) {
 									return "repositoryId" in info ? (info.repositoryId as string) : "";
@@ -235,7 +210,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 							disabled={!deploymentPermissions().edit}
 							placeholder="Image Tag"
 							type={InputType.Text}
-							value={props.deploymentInfo.latest?.imageTag ?? "N/A"}
+							value={props.deploymentInfo?.imageTag ?? "N/A"}
 							onInput={(e) => {
 								setHasUpdated(true);
 								props.mutateDeploymentInfo((prev) => {
@@ -302,12 +277,10 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 
 				<EnvInput
 					disabled={() => !deploymentPermissions().edit}
-					envList={Object.entries(props.deploymentInfo.latest?.environmentVariables || {}).map(
-						([key, value]) => ({
-							key,
-							value,
-						})
-					)}
+					envList={Object.entries(props.deploymentInfo?.environmentVariables || {}).map(([key, value]) => ({
+						key,
+						value,
+					}))}
 					onAdd={(key, value) => {
 						setHasUpdated(true);
 						props.mutateDeploymentInfo((prev) => {
@@ -338,8 +311,8 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 
 				<PortInput
 					disabled={() => !deploymentPermissions().edit}
-					portList={props.deploymentInfo.latest?.ports || {}}
-					deploymentId={props.deploymentInfo.latest?.id}
+					portList={props.deploymentInfo?.ports || {}}
+					deploymentId={props.deploymentInfo?.id}
 					onAdd={(key, value) => {
 						setHasUpdated(true);
 						props.mutateDeploymentInfo((prev) => {

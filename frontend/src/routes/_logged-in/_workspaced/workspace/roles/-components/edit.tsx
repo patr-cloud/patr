@@ -7,7 +7,7 @@ import { UpdateRoleRequest } from "~/bindings/UpdateRoleRequest";
 import { createLoggedInAction } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { GetRoleInfoResponse, ResourcePermissionType } from "~/bindings";
-import { useFetchPermissions } from "~/hooks/fetch";
+import { usePermissionsQuery } from "~/hooks/fetch";
 import { FiTrash2 } from "solid-icons/fi";
 import { parsePermissionName, parseCamelCase } from "~/utils/func";
 
@@ -29,11 +29,11 @@ const EditPermissions = (props: {
 	});
 
 	// Fetch all permissions for the workspace to map IDs to names
-	const [allPermissions] = useFetchPermissions(() => workspaceId()!);
+	const allPermissionsQuery = usePermissionsQuery(() => workspaceId()!);
 
 	// Create a map of permission ID to permission name
 	const permissionIdToName = createMemo(() => {
-		const perms = allPermissions()?.permissions;
+		const perms = allPermissionsQuery.data?.permissions;
 		if (!perms) return new Map<string, string>();
 		return new Map(perms.map((perm) => [perm.id, perm.name]));
 	});

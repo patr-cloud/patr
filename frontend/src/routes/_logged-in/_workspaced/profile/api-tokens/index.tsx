@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid-js";
-import { ListApiTokensResponse } from "~/bindings";
+import { createEffect, ErrorBoundary, Show, Suspense } from "solid-js";
 import {
 	Button,
 	ButtonVariant,
@@ -14,17 +13,12 @@ import {
 	PageContainerHead,
 	Pagination,
 	Table,
-	useToast,
 } from "~/components";
-import { useAuthState, createPaginationState } from "~/hooks";
-import { useLastWorkspaceId } from "~/hooks/state-hooks";
+import { createPaginationState } from "~/hooks";
+import { useApiTokensQuery } from "~/hooks/fetch";
 import { formatRelativeTime } from "~/utils/func";
-import { httpRequest } from "~/utils/http-request";
 
 const ListApiTokens = () => {
-	const [authState] = useAuthState();
-	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 	const navigate = useNavigate();
 	const search = Route.useSearch();
 	const pagination = createPaginationState({
@@ -32,30 +26,16 @@ const ListApiTokens = () => {
 		navigate,
 	});
 
-	const fetchParams = createMemo(() => {
-		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
-	});
+	const apiTokensQuery = useApiTokensQuery(
+		() => search().page,
+		() => search().count
+	);
 
-	const [apiTokens] = createResource(fetchParams, async ([auth, wsId, page, count]) => {
-		if (!wsId || !auth || auth.type !== "LoggedIn") {
-			return { tokens: [] };
+	createEffect(() => {
+		const totalCount = apiTokensQuery.data?.totalCount;
+		if (totalCount !== undefined) {
+			pagination.setTotalCount(totalCount);
 		}
-
-		const response = await httpRequest<ListApiTokensResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/user/api-token?page=${page}&count=${count}`,
-			{
-				method: "GET",
-			}
-		);
-
-		if (!response.ok) {
-			toast("Failed to fetch API Tokens", "error");
-			return { tokens: [] };
-		}
-
-		pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
-
-		return { tokens: response.data.tokens };
 	});
 
 	return (
@@ -105,7 +85,7 @@ const ListApiTokens = () => {
 							}
 						>
 							<Show
-								when={(apiTokens()?.tokens?.length ?? 0) > 0}
+								when={(apiTokensQuery.data?.tokens?.length ?? 0) > 0}
 								fallback={
 									<EmptyState
 										title="No API Tokens Created"
@@ -125,7 +105,7 @@ const ListApiTokens = () => {
 								<Table
 									column_grids={["flex-4", "flex-4", "flex-4"]}
 									headings={["Token Name", "Created", "Expiry"]}
-									rows={apiTokens()?.tokens || []}
+									rows={apiTokensQuery.data?.tokens || []}
 									renderRow={(token) => {
 										const goToDetail = () => navigate({ to: `/profile/api-tokens/${token.id}` });
 										return (
@@ -160,7 +140,7 @@ const ListApiTokens = () => {
 								/>
 								<Pagination
 									state={pagination}
-									loading={apiTokens.loading}
+									loading={apiTokensQuery.isFetching}
 									showPageSizeSelector={false}
 									showGoToPage={false}
 								/>

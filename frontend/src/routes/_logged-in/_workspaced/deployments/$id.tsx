@@ -27,9 +27,12 @@ import {
 	useToast,
 	LoadingSpinner,
 } from "~/components";
-import { createAuthenticatedAction, useAuthState } from "~/hooks";
+import { createAuthenticatedAction } from "~/hooks";
 import useIsAllowed, { useGetPermissions } from "~/hooks/is-allowed";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
+import { useDeploymentInfoQuery } from "~/hooks/fetch";
+import { deploymentKeys } from "~/hooks/query-keys";
+import { useQueryClient } from "@tanstack/solid-query";
 import { httpRequest } from "~/utils/http-request";
 import DeploymentInfoUpdate from "./-components/info";
 import DeploymentLogs from "./-components/logs";
@@ -41,40 +44,32 @@ const DeploymentInfo = () => {
 	const search = Route.useSearch();
 	const tab = () => search().tab;
 
-	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const [isDeleteModalOpen, setIsDeleteModalOpen] = createSignal(false);
-
-	const resourceParamsDeployment = createMemo(() => {
-		return [authState(), workspaceId(), params().id] as const;
-	});
 
 	const isAllowedResource = useIsAllowed("deployment", "view", params().id);
 	const deploymentPermissions = useGetPermissions("deployment", () => params().id || "");
 
-	const [deploymentInfo, { refetch: refetchDeploymentInfo, mutate: mutateDeploymentInfo }] = createResource(
-		resourceParamsDeployment,
-		async ([auth, wsId, id]) => {
-			if (!wsId || !auth || auth.type !== "LoggedIn" || id === "") {
-				return undefined;
-			}
-			const response = await httpRequest<GetDeploymentInfoResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment/${id}`,
-				{
-					method: "GET",
-				}
-			);
-			if (!response.ok) {
-				console.error("Failed to fetch deployment info:", response.data.error);
-				toast("Failed to fetch deployment info", "error");
-				return undefined;
-			}
+	const deploymentQuery = useDeploymentInfoQuery(() => params().id);
 
-			return response.data;
+	// Local signal for form editing — initialized from query data and kept in sync
+	const [deploymentInfo, setDeploymentInfo] = createSignal<GetDeploymentInfoResponse | undefined>(undefined);
+
+	createEffect(() => {
+		if (deploymentQuery.data) {
+			setDeploymentInfo(deploymentQuery.data);
 		}
-	);
+	});
+
+	const refetchDeploymentInfo = () => {
+		const wsId = workspaceId();
+		if (wsId) {
+			queryClient.invalidateQueries({ queryKey: deploymentKeys.detail(wsId, params().id) });
+		}
+	};
 
 	// Auto-refresh when deployment is in "deploying" state
 	createEffect(() => {
@@ -102,9 +97,7 @@ const DeploymentInfo = () => {
 
 			const response = await httpRequest(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/deployment/${deployment.id}/start`,
-				{
-					method: "POST",
-				}
+				{ method: "POST" }
 			);
 
 			if (!response.ok) {
@@ -134,9 +127,7 @@ const DeploymentInfo = () => {
 
 			const response = await httpRequest(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/deployment/${deployment.id}/stop`,
-				{
-					method: "POST",
-				}
+				{ method: "POST" }
 			);
 
 			if (!response.ok) {
@@ -166,9 +157,7 @@ const DeploymentInfo = () => {
 
 			const resp = await httpRequest(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/deployment/${deployment.id}`,
-				{
-					method: "DELETE",
-				}
+				{ method: "DELETE" }
 			);
 			console.log("Delete deployment response:", resp);
 			if (!resp.ok) {
@@ -205,7 +194,7 @@ const DeploymentInfo = () => {
 						)}
 					>
 						<Show
-							when={deploymentInfo.latest !== undefined}
+							when={!deploymentQuery.isPending}
 							fallback={
 								<div class="flex items-center justify-center gap-2 py-16 text-grey">
 									<LoadingSpinner size={20} />

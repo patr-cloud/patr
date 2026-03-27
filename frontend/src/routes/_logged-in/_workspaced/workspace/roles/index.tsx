@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createResource, createSignal, Show, Suspense } from "solid-js";
+import { createEffect, createSignal, Show, Suspense } from "solid-js";
 import { FiTrash2 } from "solid-icons/fi";
 
 import {
@@ -20,13 +20,14 @@ import { Color } from "~/utils/color";
 import { useNavigate } from "@tanstack/solid-router";
 import { useAuthState, createPaginationState, useIsAllowed } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { GetWorkspaceInfoResponse } from "~/bindings/GetWorkspaceInfoResponse";
-import { ListAllRolesResponse } from "~/bindings/ListAllRolesResponse";
+import { Role, WithId } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "~/routes/_logged-in/_workspaced/workspace/-components/workspace-header";
-import { Role, WithId } from "~/bindings";
+import { useRolesQuery, useWorkspaceInfoQuery } from "~/hooks/fetch";
+import { useQueryClient } from "@tanstack/solid-query";
+import { roleKeys } from "~/hooks/query-keys";
 
-const RoleRow = (props: { refetch: () => void; role: WithId<Role> }) => {
+const RoleRow = (props: { role: WithId<Role>; onDeleted: () => void }) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
@@ -58,7 +59,7 @@ const RoleRow = (props: { refetch: () => void; role: WithId<Role> }) => {
 		}
 
 		toast("Role deleted successfully", "success");
-		props.refetch();
+		props.onDeleted();
 	};
 
 	return (
@@ -110,9 +111,6 @@ const RoleRow = (props: { refetch: () => void; role: WithId<Role> }) => {
 };
 
 const ManageRoles = () => {
-	const [authState] = useAuthState();
-	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 	const navigate = useNavigate();
 	const isAllowedCreate = useIsAllowed("modifyRoles", "edit");
 	const search = Route.useSearch();
@@ -120,54 +118,34 @@ const ManageRoles = () => {
 		search: () => search(),
 		navigate,
 	});
-	const resourceParamsWorkspace = () => {
-		return [authState(), workspaceId()] as const;
-	};
+	const [workspaceId] = useLastWorkspaceId();
+	const queryClient = useQueryClient();
 
-	const [workspaceInfo] = createResource(resourceParamsWorkspace, async ([auth, id]) => {
-		if (!auth || auth.type !== "LoggedIn" || id === "") {
-			return;
+	const workspaceInfoQuery = useWorkspaceInfoQuery();
+	const rolesQuery = useRolesQuery(
+		() => search().page,
+		() => search().count
+	);
+
+	createEffect(() => {
+		const totalCount = rolesQuery.data?.totalCount;
+		if (totalCount !== undefined) {
+			pagination.setTotalCount(totalCount);
 		}
-		const response = await httpRequest<GetWorkspaceInfoResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}`,
-			{
-				method: "GET",
-			}
-		);
-		if (!response.ok) {
-			toast("Failed to fetch workspace info", "error");
-			return undefined;
-		}
-		return response.data;
 	});
 
-	const rolesFetchParams = () => {
-		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
+	const refetchRoles = () => {
+		const wsId = workspaceId();
+		if (wsId) {
+			queryClient.invalidateQueries({ queryKey: roleKeys.all(wsId) });
+		}
 	};
-
-	const [roles, { refetch: refetchRoles }] = createResource(rolesFetchParams, async ([auth, id, page, count]) => {
-		if (!auth || auth.type !== "LoggedIn" || id === "") {
-			return { roles: [] };
-		}
-		const response = await httpRequest<ListAllRolesResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}/rbac/role?page=${page}&count=${count}`,
-			{
-				method: "GET",
-			}
-		);
-		if (!response.ok) {
-			toast("Failed to fetch roles", "error");
-			return { roles: [] };
-		}
-		pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
-		return response.data;
-	});
 
 	return (
 		<>
 			<Title>Roles | Patr</Title>
 			<PageContainer>
-				<WorkspaceHeader workspaceName={workspaceInfo()?.name} activeTab="roles" />
+				<WorkspaceHeader workspaceName={workspaceInfoQuery.data?.name} activeTab="roles" />
 				<PageContainerBody class="flex flex-col justify-between">
 					<Suspense
 						fallback={
@@ -178,7 +156,7 @@ const ManageRoles = () => {
 						}
 					>
 						<Show
-							when={(roles()?.roles || []).length > 0}
+							when={(rolesQuery.data?.roles || []).length > 0}
 							fallback={
 								<EmptyState
 									title="No Roles Created"
@@ -202,12 +180,12 @@ const ManageRoles = () => {
 							<Table
 								column_grids={["flex-3", "flex-5", "flex-3", "flex-1"]}
 								headings={["Role Name", "Description", "Actions", ""]}
-								rows={roles()?.roles || []}
-								renderRow={(role) => <RoleRow role={role} refetch={refetchRoles} />}
+								rows={rolesQuery.data?.roles || []}
+								renderRow={(role) => <RoleRow role={role} onDeleted={refetchRoles} />}
 							/>
 							<Pagination
 								state={pagination}
-								loading={roles.loading}
+								loading={rolesQuery.isFetching}
 								showPageSizeSelector={false}
 								showGoToPage={false}
 							/>

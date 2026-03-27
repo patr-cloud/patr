@@ -2,7 +2,7 @@ import { createEffect, createMemo, createSignal, Show } from "solid-js";
 import { Checkbox, Radio, Table } from "~/components";
 import { ResourcePermissionType, WithId, Workspace, WorkspacePermission } from "~/bindings";
 import PermissionSelector from "~/routes/_logged-in/_workspaced/workspace/roles/-components/permission-selector";
-import { useFetchPermissions } from "~/hooks/fetch";
+import { usePermissionsQuery } from "~/hooks/fetch";
 import { parsePermissionName, parseCamelCase } from "~/utils/func";
 import { FiTrash2 } from "solid-icons/fi";
 
@@ -27,10 +27,10 @@ const WorkspacePermissionItem = (props: WorkspacePermissionItemProps) => {
 	);
 
 	// Fetch all permissions for the workspace to map IDs to names
-	const [allPermissions] = useFetchPermissions(() => props.workspace.id);
+	const allPermissionsQuery = usePermissionsQuery(() => props.workspace.id);
 
 	const permissionIdToName = createMemo(() => {
-		const perms = allPermissions()?.permissions;
+		const perms = allPermissionsQuery.data?.permissions;
 		if (!perms) return new Map<string, string>();
 		return new Map(perms.map((perm) => [perm.id, perm.name]));
 	});

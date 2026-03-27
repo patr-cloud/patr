@@ -1,18 +1,17 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createMemo, createResource, createSignal, Show } from "solid-js";
+import { createMemo, createSignal, Show } from "solid-js";
 import { useNavigate } from "@tanstack/solid-router";
 import { Button, ButtonVariant, Input, PageContainer, PageContainerBody, Table, useToast } from "~/components";
 import { createAuthenticatedAction, useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { GetWorkspaceInfoResponse } from "~/bindings/GetWorkspaceInfoResponse";
 import { CreateNewRoleRequest } from "~/bindings/CreateNewRoleRequest";
 import { CreateNewRoleResponse } from "~/bindings/CreateNewRoleResponse";
 import { ResourcePermissionType } from "~/bindings/ResourcePermissionType";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "~/routes/_logged-in/_workspaced/workspace/-components/workspace-header";
 import PermissionSelector from "./-components/permission-selector";
-import { useFetchPermissions } from "~/hooks/fetch";
+import { usePermissionsQuery, useWorkspaceInfoQuery } from "~/hooks/fetch";
 import { parsePermissionName, parseCamelCase } from "~/utils/func";
 import { FiTrash2 } from "solid-icons/fi";
 
@@ -26,10 +25,10 @@ const CreateRoles = () => {
 	const [roleDescription, setRoleDescription] = createSignal("");
 	const [permissionsData, setPermissionsData] = createSignal<{ [key: string]: ResourcePermissionType }>({});
 
-	const [allPermissions] = useFetchPermissions(() => workspaceId()!);
+	const allPermissionsQuery = usePermissionsQuery(() => workspaceId()!);
 
 	const permissionIdToName = createMemo(() => {
-		const perms = allPermissions()?.permissions;
+		const perms = allPermissionsQuery.data?.permissions;
 		if (!perms) return new Map<string, string>();
 		return new Map(perms.map((perm) => [perm.id, perm.name]));
 	});
@@ -52,27 +51,7 @@ const CreateRoles = () => {
 		});
 	});
 
-	const resourceParamsWorkspace = () => {
-		return [authState(), workspaceId()] as const;
-	};
-
-	const [workspaceInfo] = createResource(resourceParamsWorkspace, async ([auth, id]) => {
-		if (!auth || auth.type !== "LoggedIn" || id === "") {
-			return;
-		}
-		const response = await httpRequest<GetWorkspaceInfoResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}`,
-			{
-				method: "GET",
-			}
-		);
-		if (!response.ok) {
-			console.error("Failed to fetch workspace info:", response.data.error);
-			toast("Failed to fetch workspace info", "error");
-			return undefined;
-		}
-		return response.data;
-	});
+	const workspaceInfoQuery = useWorkspaceInfoQuery();
 
 	const { execute: handleSubmit, isLoading: isSubmitting } = createAuthenticatedAction(async ({ workspaceId }) => {
 		if (!roleName().trim()) {
@@ -113,7 +92,7 @@ const CreateRoles = () => {
 		<>
 			<Title>New Role | Patr</Title>
 			<PageContainer>
-				<WorkspaceHeader workspaceName={workspaceInfo()?.name} activeTab="roles" />
+				<WorkspaceHeader workspaceName={workspaceInfoQuery.data?.name} activeTab="roles" />
 				<PageContainerBody class="flex flex-col justify-between h-full gap-8">
 					<div class="flex flex-col gap-6 flex-1">
 						<div class="text-2xl text-white font-semibold">Create New Role</div>

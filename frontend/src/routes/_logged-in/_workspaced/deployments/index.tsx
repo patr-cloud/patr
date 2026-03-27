@@ -20,9 +20,7 @@ import {
 	Tooltip,
 	useToast,
 } from "~/components";
-import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
-import { useFetchRunners } from "~/hooks/fetch";
-import { httpRequest } from "~/utils/http-request";
+import { useDeploymentsQuery, useRunnersQuery } from "~/hooks/fetch";
 import { useIsAllowed, createPaginationState } from "~/hooks";
 
 const ImageName = (props: { item: WithId<Deployment> }) => {
@@ -109,9 +107,6 @@ const DeploymentListRow = (props: { item: WithId<Deployment>; runnerName: string
 };
 
 const ListDeploymentsPage = () => {
-	const [authState] = useAuthState();
-	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 	const isAllowedCreate = useIsAllowed("deployment", "create", undefined);
 	const navigate = useNavigate();
 	const search = Route.useSearch();
@@ -120,50 +115,20 @@ const ListDeploymentsPage = () => {
 		navigate,
 	});
 
-	const fetchParamsForDeployment = createMemo(() => {
-		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
-	});
-
-	const [deployments, { refetch: refetchDeployments }] = createResource(
-		fetchParamsForDeployment,
-		async ([auth, wsId, page, count]) => {
-			if (!wsId || !auth || auth.type !== "LoggedIn") {
-				return { deployments: [] };
-			}
-
-			const response = await httpRequest<ListDeploymentResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment?page=${page}&count=${count}`,
-				{
-					method: "GET",
-				}
-			);
-
-			if (!response.ok) {
-				console.error("Failed to fetch deployments:", response.data.error);
-				toast("Failed to fetch deployments", "error");
-				return { deployments: [] };
-			}
-
-			pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
-
-			return { deployments: response.data.deployments };
-		}
+	const deploymentsQuery = useDeploymentsQuery(
+		() => search().page,
+		() => search().count
 	);
+	const runnersQuery = useRunnersQuery();
 
-	// Auto-refresh when any deployment is in "deploying" state
 	createEffect(() => {
-		const hasDeploying = deployments()?.deployments?.some((d) => d.status === "deploying");
-		if (hasDeploying) {
-			const interval = setInterval(() => refetchDeployments(), 8000);
-			onCleanup(() => clearInterval(interval));
+		const totalCount = deploymentsQuery.data?.totalCount;
+		if (totalCount !== undefined) {
+			pagination.setTotalCount(totalCount);
 		}
 	});
 
-	const [runners] = useFetchRunners();
-
-	const runnerNameMap = createMemo(() => {
-		return new Map((runners()?.runners || []).map((r) => [r.id, r.name]));
-	});
+	const runnerNameMap = () => new Map((runnersQuery.data?.runners || []).map((r) => [r.id, r.name]));
 
 	return (
 		<>
@@ -197,7 +162,7 @@ const ListDeploymentsPage = () => {
 						)}
 					>
 						<Show
-							when={deployments.latest !== undefined}
+							when={!deploymentsQuery.isPending}
 							fallback={
 								<div class="flex items-center justify-center gap-2 py-16 text-grey">
 									<LoadingSpinner size={20} />
@@ -206,7 +171,7 @@ const ListDeploymentsPage = () => {
 							}
 						>
 							<Show
-								when={(deployments.latest?.deployments?.length ?? 0) > 0}
+								when={(deploymentsQuery.data?.deployments?.length ?? 0) > 0}
 								fallback={
 									<EmptyState
 										title="No Deployments Added"
@@ -231,7 +196,7 @@ const ListDeploymentsPage = () => {
 							>
 								<Table
 									column_grids={["flex-3", "flex-2", "flex-2", "flex-3", "flex-2"]}
-									rows={deployments.latest?.deployments || []}
+									rows={deploymentsQuery.data?.deployments || []}
 									headings={["Name", "Status", "Runner", "Image", "ID"]}
 									renderRow={(item) => (
 										<DeploymentListRow
@@ -242,7 +207,7 @@ const ListDeploymentsPage = () => {
 								/>
 								<Pagination
 									state={pagination}
-									loading={deployments.loading}
+									loading={deploymentsQuery.isFetching}
 									showPageSizeSelector={false}
 									showGoToPage={false}
 								/>

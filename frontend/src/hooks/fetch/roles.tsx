@@ -1,11 +1,11 @@
 import { createQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
-import { GetDeploymentInfoResponse, ListDeploymentResponse } from "~/bindings";
+import { ListAllRolesResponse } from "~/bindings/ListAllRolesResponse";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
-import { deploymentKeys } from "~/hooks/query-keys";
+import { roleKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
 
-export const useDeploymentsQuery = (page: Accessor<string | undefined>, count: Accessor<string | undefined>) => {
+export const useRolesQuery = (page: Accessor<string | undefined>, count: Accessor<string | undefined>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 
@@ -15,7 +15,7 @@ export const useDeploymentsQuery = (page: Accessor<string | undefined>, count: A
 		const p = page();
 		const c = count();
 		return {
-			queryKey: deploymentKeys.list(wsId ?? "", p, c),
+			queryKey: roleKeys.list(wsId ?? "", p, c),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn",
 			queryFn: async () => {
 				const params = new URLSearchParams();
@@ -23,8 +23,8 @@ export const useDeploymentsQuery = (page: Accessor<string | undefined>, count: A
 				if (c) params.set("count", c);
 				const qs = params.size > 0 ? `?${params.toString()}` : "";
 
-				const response = await httpRequest<ListDeploymentResponse>(
-					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment${qs}`,
+				const response = await httpRequest<ListAllRolesResponse>(
+					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/role${qs}`,
 					{ method: "GET" }
 				);
 
@@ -33,7 +33,7 @@ export const useDeploymentsQuery = (page: Accessor<string | undefined>, count: A
 				}
 
 				return {
-					deployments: response.data.deployments,
+					roles: response.data.roles,
 					totalCount: Number(response.headers.get("x-total-count") ?? 0),
 				};
 			},
@@ -41,20 +41,19 @@ export const useDeploymentsQuery = (page: Accessor<string | undefined>, count: A
 	});
 };
 
-export const useDeploymentInfoQuery = (id: Accessor<string>) => {
+export const useAllRolesQuery = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 
-	return createQuery<GetDeploymentInfoResponse>(() => {
+	return createQuery<ListAllRolesResponse>(() => {
 		const auth = authState();
 		const wsId = workspaceId();
-		const deploymentId = id();
 		return {
-			queryKey: deploymentKeys.detail(wsId ?? "", deploymentId),
-			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!deploymentId,
+			queryKey: roleKeys.list(wsId ?? "", undefined, undefined),
+			enabled: !!wsId && !!auth && auth.type === "LoggedIn",
 			queryFn: async () => {
-				const response = await httpRequest<GetDeploymentInfoResponse>(
-					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment/${deploymentId}`,
+				const response = await httpRequest<ListAllRolesResponse>(
+					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/role`,
 					{ method: "GET" }
 				);
 

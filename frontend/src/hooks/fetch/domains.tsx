@@ -1,11 +1,22 @@
 import { createQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
-import { GetDeploymentInfoResponse, ListDeploymentResponse } from "~/bindings";
+import { GetVerificationRecordsForDomainResponse } from "~/bindings";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
-import { deploymentKeys } from "~/hooks/query-keys";
+import { domainKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
 
-export const useDeploymentsQuery = (page: Accessor<string | undefined>, count: Accessor<string | undefined>) => {
+type WorkspaceDomain = {
+	id: string;
+	name: string;
+	nameserverType: string;
+	isVerified: boolean;
+};
+
+type GetDomainsForWorkspaceResponse = {
+	domains: WorkspaceDomain[];
+};
+
+export const useDomainsQuery = (page: Accessor<string | undefined>, count: Accessor<string | undefined>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 
@@ -15,7 +26,7 @@ export const useDeploymentsQuery = (page: Accessor<string | undefined>, count: A
 		const p = page();
 		const c = count();
 		return {
-			queryKey: deploymentKeys.list(wsId ?? "", p, c),
+			queryKey: domainKeys.list(wsId ?? "", p, c),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn",
 			queryFn: async () => {
 				const params = new URLSearchParams();
@@ -23,8 +34,8 @@ export const useDeploymentsQuery = (page: Accessor<string | undefined>, count: A
 				if (c) params.set("count", c);
 				const qs = params.size > 0 ? `?${params.toString()}` : "";
 
-				const response = await httpRequest<ListDeploymentResponse>(
-					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment${qs}`,
+				const response = await httpRequest<GetDomainsForWorkspaceResponse>(
+					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain${qs}`,
 					{ method: "GET" }
 				);
 
@@ -33,7 +44,7 @@ export const useDeploymentsQuery = (page: Accessor<string | undefined>, count: A
 				}
 
 				return {
-					deployments: response.data.deployments,
+					domains: response.data.domains || [],
 					totalCount: Number(response.headers.get("x-total-count") ?? 0),
 				};
 			},
@@ -41,20 +52,20 @@ export const useDeploymentsQuery = (page: Accessor<string | undefined>, count: A
 	});
 };
 
-export const useDeploymentInfoQuery = (id: Accessor<string>) => {
+export const useDomainVerificationRecordsQuery = (domainId: Accessor<string>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 
-	return createQuery<GetDeploymentInfoResponse>(() => {
+	return createQuery(() => {
 		const auth = authState();
 		const wsId = workspaceId();
-		const deploymentId = id();
+		const dId = domainId();
 		return {
-			queryKey: deploymentKeys.detail(wsId ?? "", deploymentId),
-			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!deploymentId,
+			queryKey: domainKeys.verificationRecords(wsId ?? "", dId),
+			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!dId,
 			queryFn: async () => {
-				const response = await httpRequest<GetDeploymentInfoResponse>(
-					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment/${deploymentId}`,
+				const response = await httpRequest<GetVerificationRecordsForDomainResponse>(
+					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain/${dId}/verification-records`,
 					{ method: "GET" }
 				);
 
@@ -62,7 +73,7 @@ export const useDeploymentInfoQuery = (id: Accessor<string>) => {
 					throw new Error(response.data.error);
 				}
 
-				return response.data;
+				return { records: response.data.verificationRecords || [] };
 			},
 		};
 	});

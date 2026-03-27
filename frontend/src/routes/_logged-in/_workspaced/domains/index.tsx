@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createMemo, createResource, createSignal, ErrorBoundary, Suspense, Show } from "solid-js";
+import { createEffect, createSignal, ErrorBoundary, Suspense, Show } from "solid-js";
 import { FiAlertCircle } from "solid-icons/fi";
 import {
 	PageContainer,
@@ -20,11 +20,12 @@ import {
 	StatusChip,
 	LoadingSpinner,
 } from "~/components";
-import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
+import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import { GetDomainInfoInWorkspaceResponse } from "~/bindings";
 import { EventT } from "~/utils/types";
 import { useIsAllowed, createPaginationState } from "~/hooks";
+import { useDomainsQuery, useDomainVerificationRecordsQuery } from "~/hooks/fetch";
 
 // Type definitions based on API bindings
 type WorkspaceDomain = {
@@ -34,15 +35,12 @@ type WorkspaceDomain = {
 	isVerified: boolean;
 };
 
-type GetDomainsForWorkspaceResponse = {
-	domains: WorkspaceDomain[];
-};
-
 const DNSRecords = (props: { domainId: string; domainName: string; closeFn: (prev: boolean) => void }) => {
-	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const [loading, setLoading] = createSignal(false);
+
+	const dnsRecordQuery = useDomainVerificationRecordsQuery(() => props.domainId);
 
 	const verificationRecord = () => {
 		return {
@@ -55,11 +53,10 @@ const DNSRecords = (props: { domainId: string; domainName: string; closeFn: (pre
 	const onVerifyClick = async (_: EventT<MouseEvent, HTMLButtonElement>) => {
 		setLoading(true);
 
-		const auth = authState();
 		const wsId = workspaceId();
 		const domainId = props.domainId;
 
-		if (!wsId || !auth || auth.type !== "LoggedIn" || !domainId) {
+		if (!wsId || !domainId) {
 			toast("Unable to verify domain", "error");
 			return;
 		}
@@ -164,8 +161,6 @@ const VerificationIcon = (props: { domain: WorkspaceDomain }) => {
 };
 
 const ListDomainsPage = () => {
-	const [authState] = useAuthState();
-	const [workspaceId] = useLastWorkspaceId();
 	const navigate = useNavigate();
 	const toast = useToast();
 
@@ -176,32 +171,16 @@ const ListDomainsPage = () => {
 		navigate,
 	});
 
-	const fetchParams = createMemo(() => {
-		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
-	});
+	const domainsQuery = useDomainsQuery(
+		() => search().page,
+		() => search().count
+	);
 
-	const [domains] = createResource(fetchParams, async ([auth, wsId, page, count]) => {
-		if (!wsId || !auth || auth.type !== "LoggedIn") {
-			return { domains: [] };
+	createEffect(() => {
+		const totalCount = domainsQuery.data?.totalCount;
+		if (totalCount !== undefined) {
+			pagination.setTotalCount(totalCount);
 		}
-
-		const response = await httpRequest<GetDomainsForWorkspaceResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain?page=${page}&count=${count}`,
-			{
-				method: "GET",
-			}
-		);
-
-		if (!response.ok) {
-			console.error("Failed to fetch domains:", response.data.error);
-			toast("Failed to fetch domains", "error");
-			return { domains: [] };
-		}
-
-		pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
-
-		console.log("Fetched domains:", response.data);
-		return { domains: response.data.domains || [] };
 	});
 
 	return (
@@ -243,7 +222,7 @@ const ListDomainsPage = () => {
 							}
 						>
 							<Show
-								when={(domains()?.domains?.length ?? 0) > 0}
+								when={(domainsQuery.data?.domains?.length ?? 0) > 0}
 								fallback={
 									<EmptyState
 										title="No Domains Added"
@@ -268,7 +247,7 @@ const ListDomainsPage = () => {
 							>
 								<Table
 									column_grids={["flex-5", "flex-3", "flex-4"]}
-									rows={domains()?.domains || []}
+									rows={domainsQuery.data?.domains || []}
 									headings={["Domain", "Type", "Status"]}
 									renderRow={(item) => {
 										const goToDetail = () => navigate({ to: `/domains/${item.id}` });
@@ -309,7 +288,7 @@ const ListDomainsPage = () => {
 								/>
 								<Pagination
 									state={pagination}
-									loading={domains.loading}
+									loading={domainsQuery.isFetching}
 									showPageSizeSelector={false}
 									showGoToPage={false}
 								/>
