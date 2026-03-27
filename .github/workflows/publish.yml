@@ -388,6 +388,21 @@ jobs:
             docker manifest push "${IMAGE}:${TAG}"
           done
 
+  deploy:
+    name: Deploy to alpha server
+    needs: [manifest-api, manifest-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref_name == 'develop'
+    steps:
+      - name: Deploy to server
+        env:
+          SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+        run: |
+          echo "$SSH_KEY" > private_key.pem
+          chmod 600 private_key.pem
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.SERVER_SSH_USER }}@${{ secrets.SERVER_IP_ADDRESS }} "./update.sh"
+          rm private_key.pem
+
   manifest-cli:
     name: Multi-arch manifest for CLI
     needs: build-cli-docker
