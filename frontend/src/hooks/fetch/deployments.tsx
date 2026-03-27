@@ -52,6 +52,8 @@ export const useDeploymentInfoQuery = (id: Accessor<string>) => {
 		return {
 			queryKey: deploymentKeys.detail(wsId ?? "", deploymentId),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!deploymentId,
+			refetchInterval: (query: { state: { data?: GetDeploymentInfoResponse } }) =>
+				query.state.data?.status === "deploying" ? 15_000 : 60_000,
 			queryFn: async () => {
 				const response = await httpRequest<GetDeploymentInfoResponse>(
 					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment/${deploymentId}`,
