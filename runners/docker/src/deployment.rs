@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use bollard::{
+	auth::DockerCredentials,
 	models::{
 		CreateImageInfo,
 		HealthConfig,
@@ -27,7 +28,7 @@ use crate::prelude::*;
 /// Upsert (create or update) a deployment. This will create the service if
 /// it does not exist, or update the service if it does exist.
 pub(crate) async fn upsert(
-	DockerRunner { docker, .. }: &DockerRunner,
+	DockerRunner { docker, settings }: &DockerRunner,
 	WithId {
 		id,
 		data:
@@ -74,7 +75,23 @@ pub(crate) async fn upsert(
 	let mut pull_image = docker.create_image(
 		Some(CreateImageOptionsBuilder::new().from_image(&image).build()),
 		None,
-		None,
+		if let RunnerMode::Managed {
+			workspace_id: _,
+			runner_id: _,
+			user_agent: _,
+			api_token,
+		} = &settings.mode &&
+			registry.is_patr_registry()
+		{
+			Some(DockerCredentials {
+				username: Some("patr".to_string()),
+				password: Some(api_token.0.token().to_string()),
+				serveraddress: Some(registry.registry_url()),
+				..Default::default()
+			})
+		} else {
+			None
+		},
 	);
 	while let Some(result) = pull_image.next().await {
 		match result {
