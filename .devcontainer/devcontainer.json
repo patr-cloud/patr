@@ -1,28 +1,28 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/rust-postgres
 {
-  "name": "Patr API",
-  "dockerComposeFile": "docker-compose.yml",
-  "updateRemoteUserUID": true,
-  "service": "app",
-  "workspaceFolder": "/workspace",
-  "customizations": {
-    "vscode": {
-      "extensions": [
-        "vadimcn.vscode-lldb",
-        "rust-lang.rust-analyzer",
-        "tamasfe.even-better-toml",
-        "usernamehw.errorlens",
-        "citreae535.sparse-crates",
-        "GitHub.vscode-pull-request-github",
-        "naumovs.color-highlight",
-        "streetsidesoftware.code-spell-checker",
-        "patr-cloud.patr-theme",
-        "bradlc.vscode-tailwindcss",
-        "esbenp.prettier-vscode",
-        "anthropic.claude-code"
-      ]
-    }
-  },
-  "forwardPorts": [3000, 3001, 3002, 3003, 3004, 4000, "grafana:3000", 22300]
+	"name": "Patr API",
+	"dockerComposeFile": "docker-compose.yml",
+	"updateRemoteUserUID": true,
+	"service": "app",
+	"workspaceFolder": "/workspace",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"vadimcn.vscode-lldb",
+				"rust-lang.rust-analyzer",
+				"tamasfe.even-better-toml",
+				"usernamehw.errorlens",
+				"citreae535.sparse-crates",
+				"GitHub.vscode-pull-request-github",
+				"naumovs.color-highlight",
+				"streetsidesoftware.code-spell-checker",
+				"patr-cloud.patr-theme",
+				"bradlc.vscode-tailwindcss",
+				"esbenp.prettier-vscode",
+				"anthropic.claude-code"
+			]
+		}
+	},
+	"forwardPorts": [3000, 3001, 3002, 3003, 3004, 4000, "grafana:3000", 22300]
 }
