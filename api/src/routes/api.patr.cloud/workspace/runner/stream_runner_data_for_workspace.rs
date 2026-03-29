@@ -386,9 +386,7 @@ async fn update_deployment_status(
 				) OR (
 				 	$1 = 'running' AND status IN ('deploying', 'errored')
 				)
-			)
-		RETURNING
-			status AS "status: DeploymentStatus";
+			);
 		"#,
 		status as _,
 		id as _,
