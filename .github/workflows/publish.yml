@@ -168,11 +168,6 @@ jobs:
             artifact_name: patr-darwin-arm64
             binary_name: patr
             archive_ext: zip
-          - target: x86_64-pc-windows-msvc
-            runner: windows-latest
-            artifact_name: patr-windows-amd64
-            binary_name: patr.exe
-            archive_ext: zip
     steps:
       - uses: actions/checkout@v4
 
@@ -203,11 +198,6 @@ jobs:
       - name: Package binary (zip, macOS)
         if: matrix.archive_ext == 'zip' && runner.os == 'macOS'
         run: zip -j ${{ matrix.artifact_name }}.zip target/release/${{ matrix.binary_name }}
-
-      - name: Package binary (zip, Windows)
-        if: matrix.archive_ext == 'zip' && runner.os == 'Windows'
-        shell: pwsh
-        run: Compress-Archive -Path target/release/${{ matrix.binary_name }} -DestinationPath ${{ matrix.artifact_name }}.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

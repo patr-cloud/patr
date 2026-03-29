@@ -1,0 +1,20 @@
+[Unit]
+Description=Patr Runner ({runner_type_str})
+After=network-online.target docker.service
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User={username}
+Group={groupname}
+ExecStart={patr_binary} runner run {runner_type_str} --config {config_path}
+Restart=on-failure
+RestartSec=5s
+Environment=PATR_ENV=prod
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/run/docker.sock
+
+[Install]
+WantedBy=multi-user.target

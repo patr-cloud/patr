@@ -49,3 +49,4 @@ tracing-log         = { workspace = true, features = ["default"] }
 tracing-subscriber  = { workspace = true, features = ["default"] }
 typed-builder       = { workspace = true, features = [] }
 url                 = { workspace = true, features = ["default"] }
+uzers               = { workspace = true, features = ["default"] }

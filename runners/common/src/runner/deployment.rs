@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use futures::{Stream, StreamExt};
-use models::api::workspace::deployment::*;
+use models::api::workspace::{container_registry::*, deployment::*};
 use tokio_stream as stream;
 
 use crate::{prelude::*, resource_executor::ResourceExecutorTask};
@@ -182,6 +182,43 @@ where
 		}: DeploymentRunningDetails,
 	) -> Result<(), RunnerError> {
 		trace!("Creating deployment in database with ID: {}", deployment_id);
+
+		let image_name = match &registry {
+			DeploymentRegistry::PatrRegistry { repository_id, .. } => {
+				let RunnerMode::Managed {
+					workspace_id,
+					api_token,
+					user_agent,
+					..
+				} = &self.state.config.mode
+				else {
+					return Err(RunnerError::Unsupported);
+				};
+
+				let repository = client::make_request(
+					ApiRequest::<GetContainerRepositoryInfoRequest>::builder()
+						.path(GetContainerRepositoryInfoPath {
+							workspace_id: *workspace_id,
+							repository_id: *repository_id,
+						})
+						.headers(GetContainerRepositoryInfoRequestHeaders {
+							authorization: api_token.clone(),
+							user_agent: user_agent.clone(),
+						})
+						.query(())
+						.body(GetContainerRepositoryInfoRequest)
+						.build(),
+				)
+				.await
+				.map_err(|err| RunnerError::UpstreamServerError(err.body.error))?
+				.body
+				.repository;
+
+				format!("{}/{}", workspace_id, repository.name)
+			}
+			DeploymentRegistry::ExternalRegistry { image_name, .. } => image_name.clone(),
+		};
+
 		query(
 			r#"
 			INSERT INTO
@@ -231,7 +268,7 @@ where
 		.bind(deployment_id)
 		.bind(name.to_string())
 		.bind(registry.registry_url())
-		.bind(registry.image_name())
+		.bind(&image_name)
 		.bind(image_tag.to_string())
 		.bind(status)
 		.bind(machine_type)

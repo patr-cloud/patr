@@ -130,6 +130,7 @@ tracing-subscriber             = { default-features = false, version = "0.3" }
 ts-rs                          = { default-features = false, version = "11" }
 typed-builder                  = { default-features = false, version = "0.23" }
 url                            = { default-features = false, version = "2" }
+uzers                          = { default-features = false, version = "0.12" }
 uuid                           = { default-features = false, version = "1" }
 wiremock                       = { default-features = false, version = "0.6" }
 woothee                        = { default-features = false, version = "0.13" }

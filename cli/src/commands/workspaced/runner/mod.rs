@@ -4,6 +4,8 @@ use crate::prelude::*;
 
 /// Create a new runner
 mod create;
+/// Install a systemd service for the runner
+mod install_service;
 /// List all runners
 mod list;
 /// The command to run a configured runner
@@ -38,6 +40,9 @@ pub enum RunnerActionCommand {
 	#[command(alias = "exec", alias = "execute", alias = "start")]
 	/// Run a configured runner
 	Run(run::Args),
+	#[command(alias = "install")]
+	/// Install a systemd service for the runner
+	InstallService(install_service::Args),
 }
 
 /// All commands that are executed on runner related stuff
@@ -56,5 +61,6 @@ pub async fn execute(
 			list::execute(global_args, state).await
 		}
 		RunnerCommand::RunnerAction(Run(args)) => run::execute(args).await,
+		RunnerCommand::RunnerAction(InstallService(args)) => install_service::execute(args).await,
 	}
 }
