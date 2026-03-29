@@ -54,7 +54,7 @@ const ListRunnersPage = () => {
 					]}
 					subText="Runners execute deployments on your machines or clusters"
 					actions={() => (
-						<Show when={isAllowedCreate() && (runners()?.runners?.length ?? 0) > 0}>
+						<Show when={isAllowedCreate() && (runnersQuery.data?.runners?.length ?? 0) > 0}>
 							<Link href="/runners/new" buttonVariant={ButtonVariant.Outlined} external={false}>
 								Add Runner
 							</Link>

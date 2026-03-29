@@ -1,6 +1,7 @@
 import { createQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
 import { ListAllRolesResponse } from "~/bindings/ListAllRolesResponse";
+import { useToast } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { roleKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
@@ -8,6 +9,7 @@ import { httpRequest } from "~/utils/http-request";
 export const useRolesQuery = (page: Accessor<string | undefined>, count: Accessor<string | undefined>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
+	const toast = useToast();
 
 	return createQuery(() => {
 		const auth = authState();
@@ -29,6 +31,7 @@ export const useRolesQuery = (page: Accessor<string | undefined>, count: Accesso
 				);
 
 				if (!response.ok) {
+					toast("Failed to fetch roles", "error");
 					throw new Error(response.data.error);
 				}
 
@@ -44,6 +47,7 @@ export const useRolesQuery = (page: Accessor<string | undefined>, count: Accesso
 export const useAllRolesQuery = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
+	const toast = useToast();
 
 	return createQuery<ListAllRolesResponse>(() => {
 		const auth = authState();
@@ -58,6 +62,7 @@ export const useAllRolesQuery = () => {
 				);
 
 				if (!response.ok) {
+					toast("Failed to fetch roles", "error");
 					throw new Error(response.data.error);
 				}
 

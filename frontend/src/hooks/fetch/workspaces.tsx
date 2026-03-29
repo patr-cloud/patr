@@ -1,11 +1,13 @@
 import { createQuery } from "@tanstack/solid-query";
 import { ListUserWorkspacesResponse } from "~/bindings";
+import { useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { workspacesKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
 
 const useWorkspacesQuery = () => {
 	const [authState] = useAuthState();
+	const toast = useToast();
 
 	return createQuery<ListUserWorkspacesResponse>(() => {
 		const auth = authState();
@@ -19,6 +21,7 @@ const useWorkspacesQuery = () => {
 				);
 
 				if (!response.ok) {
+					toast("Failed to fetch workspaces", "error");
 					throw new Error(response.data.error);
 				}
 

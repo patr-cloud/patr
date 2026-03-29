@@ -1,6 +1,7 @@
 import { createQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
 import { ListContainerRepositoriesResponse } from "~/bindings";
+import { useToast } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { containerRegistryKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
@@ -11,6 +12,7 @@ export const useContainerRegistriesQuery = (
 ) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
+	const toast = useToast();
 
 	return createQuery(() => {
 		const auth = authState();
@@ -32,6 +34,7 @@ export const useContainerRegistriesQuery = (
 				);
 
 				if (!response.ok) {
+					toast("Failed to fetch container registries", "error");
 					throw new Error(response.data.error);
 				}
 

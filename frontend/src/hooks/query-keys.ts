@@ -2,8 +2,7 @@ export const deploymentKeys = {
 	all: (workspaceId: string) => ["deployments", workspaceId] as const,
 	list: (workspaceId: string, page: string | undefined, count: string | undefined) =>
 		[...deploymentKeys.all(workspaceId), "list", page, count] as const,
-	detail: (workspaceId: string, id: string) =>
-		[...deploymentKeys.all(workspaceId), "detail", id] as const,
+	detail: (workspaceId: string, id: string) => [...deploymentKeys.all(workspaceId), "detail", id] as const,
 };
 
 export const runnerKeys = {

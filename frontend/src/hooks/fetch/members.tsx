@@ -2,6 +2,7 @@ import { createQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
 import { GetUserDetailsResponse } from "~/bindings/GetUserDetailsResponse";
 import { ListUsersInWorkspaceResponse } from "~/bindings/ListUsersInWorkspaceResponse";
+import { useToast } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { memberKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
@@ -15,6 +16,7 @@ export type WorkspaceMember = {
 export const useMembersQuery = (page: Accessor<string | undefined>, count: Accessor<string | undefined>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
+	const toast = useToast();
 
 	return createQuery(() => {
 		const auth = authState();
@@ -36,6 +38,7 @@ export const useMembersQuery = (page: Accessor<string | undefined>, count: Acces
 				);
 
 				if (!response.ok) {
+					toast("Failed to fetch members", "error");
 					throw new Error(response.data.error);
 				}
 

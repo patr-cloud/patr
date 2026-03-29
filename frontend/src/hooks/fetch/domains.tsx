@@ -1,6 +1,7 @@
 import { createQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
 import { GetVerificationRecordsForDomainResponse } from "~/bindings";
+import { useToast } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { domainKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
@@ -19,6 +20,7 @@ type GetDomainsForWorkspaceResponse = {
 export const useDomainsQuery = (page: Accessor<string | undefined>, count: Accessor<string | undefined>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
+	const toast = useToast();
 
 	return createQuery(() => {
 		const auth = authState();
@@ -40,6 +42,7 @@ export const useDomainsQuery = (page: Accessor<string | undefined>, count: Acces
 				);
 
 				if (!response.ok) {
+					toast("Failed to fetch domains", "error");
 					throw new Error(response.data.error);
 				}
 
@@ -55,6 +58,7 @@ export const useDomainsQuery = (page: Accessor<string | undefined>, count: Acces
 export const useDomainVerificationRecordsQuery = (domainId: Accessor<string>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
+	const toast = useToast();
 
 	return createQuery(() => {
 		const auth = authState();
@@ -70,6 +74,7 @@ export const useDomainVerificationRecordsQuery = (domainId: Accessor<string>) =>
 				);
 
 				if (!response.ok) {
+					toast("Failed to fetch domain verification records", "error");
 					throw new Error(response.data.error);
 				}
 

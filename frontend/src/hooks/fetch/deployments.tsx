@@ -1,13 +1,18 @@
 import { createQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
 import { GetDeploymentInfoResponse, ListDeploymentResponse } from "~/bindings";
+import { useToast } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { deploymentKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
 
+const DEPLOYING_REFETCH_INTERVAL = 15_000;
+const DEFAULT_REFETCH_INTERVAL = 60_000;
+
 export const useDeploymentsQuery = (page: Accessor<string | undefined>, count: Accessor<string | undefined>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
+	const toast = useToast();
 
 	return createQuery(() => {
 		const auth = authState();
@@ -29,6 +34,7 @@ export const useDeploymentsQuery = (page: Accessor<string | undefined>, count: A
 				);
 
 				if (!response.ok) {
+					toast("Failed to fetch deployments", "error");
 					throw new Error(response.data.error);
 				}
 
@@ -44,6 +50,7 @@ export const useDeploymentsQuery = (page: Accessor<string | undefined>, count: A
 export const useDeploymentInfoQuery = (id: Accessor<string>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
+	const toast = useToast();
 
 	return createQuery<GetDeploymentInfoResponse>(() => {
 		const auth = authState();
@@ -53,7 +60,7 @@ export const useDeploymentInfoQuery = (id: Accessor<string>) => {
 			queryKey: deploymentKeys.detail(wsId ?? "", deploymentId),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!deploymentId,
 			refetchInterval: (query: { state: { data?: GetDeploymentInfoResponse } }) =>
-				query.state.data?.status === "deploying" ? 15_000 : 60_000,
+				query.state.data?.status === "deploying" ? DEPLOYING_REFETCH_INTERVAL : DEFAULT_REFETCH_INTERVAL,
 			queryFn: async () => {
 				const response = await httpRequest<GetDeploymentInfoResponse>(
 					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment/${deploymentId}`,
@@ -61,6 +68,7 @@ export const useDeploymentInfoQuery = (id: Accessor<string>) => {
 				);
 
 				if (!response.ok) {
+					toast("Failed to fetch deployment info", "error");
 					throw new Error(response.data.error);
 				}
 

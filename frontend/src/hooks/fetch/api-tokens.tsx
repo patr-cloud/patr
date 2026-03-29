@@ -1,12 +1,14 @@
 import { createQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
 import { ListApiTokensResponse } from "~/bindings";
+import { useToast } from "~/components";
 import { useAuthState } from "~/hooks/state-hooks";
 import { apiTokenKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
 
 export const useApiTokensQuery = (page: Accessor<string | undefined>, count: Accessor<string | undefined>) => {
 	const [authState] = useAuthState();
+	const toast = useToast();
 
 	return createQuery(() => {
 		const auth = authState();
@@ -27,6 +29,7 @@ export const useApiTokensQuery = (page: Accessor<string | undefined>, count: Acc
 				);
 
 				if (!response.ok) {
+					toast("Failed to fetch API tokens", "error");
 					throw new Error(response.data.error);
 				}
 
