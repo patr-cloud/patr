@@ -227,7 +227,7 @@ loki.write "patr" {{
 }}
 
 prometheus.exporter.unix "system" {{
-  rootfs      = "/host/root"
+  rootfs_path = "/host/root"
   procfs_path = "/host/proc"
   sysfs_path  = "/host/sys"
 }}
