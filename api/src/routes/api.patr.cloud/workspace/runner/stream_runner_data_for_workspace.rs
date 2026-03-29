@@ -391,7 +391,7 @@ async fn update_deployment_status(
 		status as _,
 		id as _,
 	)
-	.fetch_one(database)
+	.execute(database)
 	.await?;
 
 	Ok(())
