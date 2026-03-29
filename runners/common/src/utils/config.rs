@@ -102,7 +102,7 @@ fn default_running_environment() -> RunningEnvironment {
 	match env.as_ref() {
 		"dev" | "development" => RunningEnvironment::Development,
 		"prod" | "production" => RunningEnvironment::Production,
-		_ => panic!("Unknown running environment found!")
+		_ => panic!("Unknown running environment found!"),
 	}
 }
 

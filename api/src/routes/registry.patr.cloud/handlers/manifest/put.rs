@@ -588,11 +588,17 @@ async fn auto_deploy_on_push(
 		.await?
 		.into_iter()
 		.filter_map(|env| {
-			let value = match (env.value, env.secret_id) {
+			let value = match (env.value.clone(), env.secret_id.clone()) {
 				(Some(val), None) => Some(EnvironmentVariableValue::String(val)),
 				(None, Some(from_secret)) => Some(EnvironmentVariableValue::Secret { from_secret }),
 				_ => {
-					warn!("Corrupted environment variable for deployment {deployment_id}");
+					warn!(
+						concat!(
+							"corrupted deployment, cannot find environment variable value. ",
+							"deployment_id: {}, env name: `{}`, value: {:?}`, secret_id: {:?}"
+						),
+						deployment_id, env.name, env.value, env.secret_id
+					);
 					None
 				}
 			};

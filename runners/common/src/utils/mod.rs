@@ -10,6 +10,8 @@ pub mod client;
 pub mod config;
 /// Extensions traits for the `Either` type.
 pub mod ext_traits;
+/// OTLP observability setup for managed-mode runners.
+pub mod observability;
 
 /// Contains the [`layer`][1]s that will be used with [`tower`] mounted on the
 /// axum [`Router`][2]

@@ -5,6 +5,7 @@ use std::{
 
 use apalis_postgres::PostgresStorage;
 use axum::extract::FromRef;
+use futures::FutureExt;
 use models::{RequestUserData, prelude::*};
 use preprocess::Preprocessable;
 use rustis::client::Client as RedisClient;
@@ -71,7 +72,19 @@ pub async fn serve(state: &AppState) {
 			assets_listener.local_addr().unwrap()
 		);
 
-		futures::future::join5(
+		let mimir_listener = TcpListener::bind(SocketAddr::from((
+			state.config.bind_address.ip(),
+			state.config.bind_address.port() + 5,
+		)))
+		.await
+		.unwrap();
+
+		info!(
+			"Mimir server running on http://{}",
+			mimir_listener.local_addr().unwrap()
+		);
+
+		futures::future::join_all([
 			async {
 				axum::serve(
 					api_listener,
@@ -82,7 +95,8 @@ pub async fn serve(state: &AppState) {
 				.with_graceful_shutdown(crate::exit_signal())
 				.await
 				.unwrap();
-			},
+			}
+			.boxed(),
 			async {
 				axum::serve(
 					app_listener,
@@ -93,7 +107,8 @@ pub async fn serve(state: &AppState) {
 				.with_graceful_shutdown(crate::exit_signal())
 				.await
 				.unwrap();
-			},
+			}
+			.boxed(),
 			async {
 				axum::serve(
 					registry_listener,
@@ -104,7 +119,8 @@ pub async fn serve(state: &AppState) {
 				.with_graceful_shutdown(crate::exit_signal())
 				.await
 				.unwrap();
-			},
+			}
+			.boxed(),
 			async {
 				axum::serve(
 					loki_listener,
@@ -115,7 +131,8 @@ pub async fn serve(state: &AppState) {
 				.with_graceful_shutdown(crate::exit_signal())
 				.await
 				.unwrap();
-			},
+			}
+			.boxed(),
 			async {
 				axum::serve(
 					assets_listener,
@@ -126,8 +143,21 @@ pub async fn serve(state: &AppState) {
 				.with_graceful_shutdown(crate::exit_signal())
 				.await
 				.unwrap();
-			},
-		)
+			}
+			.boxed(),
+			async {
+				axum::serve(
+					mimir_listener,
+					crate::routes::mimir_patr_cloud::setup_routes(state)
+						.await
+						.into_make_service_with_connect_info::<SocketAddr>(),
+				)
+				.with_graceful_shutdown(crate::exit_signal())
+				.await
+				.unwrap();
+			}
+			.boxed(),
+		])
 		.await;
 	} else {
 		let tcp_listener = TcpListener::bind(state.config.bind_address).await.unwrap();

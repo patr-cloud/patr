@@ -22,10 +22,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 }
 
 /// Serves static assets from R2/S3. Only paths mounted above are reachable.
-async fn serve_asset(
-	State(state): State<AppState>,
-	uri: Uri,
-) -> Result<Response, StatusCode> {
+async fn serve_asset(State(state): State<AppState>, uri: Uri) -> Result<Response, StatusCode> {
 	let key = uri.path().trim_start_matches('/');
 
 	let s3 = S3Client::from_conf(

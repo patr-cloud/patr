@@ -517,20 +517,26 @@ pub async fn update_deployment(
 	.into_iter()
 	.map(|env| {
 		let name = env.name;
-		let value = env.value.map(EnvironmentVariableValue::String);
+		let value = env.value.clone().map(EnvironmentVariableValue::String);
 
 		let secret_id = env
 			.secret_id
 			.map(|from_secret| EnvironmentVariableValue::Secret { from_secret });
 
-		let value = match (value, secret_id) {
+		let value = match (value.clone(), secret_id.clone()) {
 			(Some(value), None) => Some(value),
 			(None, Some(secret)) => Some(secret),
 			_ => None,
 		}
-		.ok_or(ErrorType::server_error(
-			"corrupted deployment, cannot find environment variable value",
-		))?;
+		.ok_or_else(|| {
+			ErrorType::server_error(format!(
+				concat!(
+					"corrupted deployment, cannot find environment variable value. ",
+					"env name: `{}`, value: {:?}`, secret_id: {:?}, raw_value: {:?}, raw_secret_id: {:?}"
+				),
+				name, value, secret_id, env.value, env.secret_id
+			))
+		})?;
 
 		Ok((name, value))
 	})

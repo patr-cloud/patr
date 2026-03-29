@@ -41,7 +41,13 @@ pub async fn update_alloy_service(
 		RunningEnvironment::Development => "http://host.docker.internal:3003",
 	};
 
-	let alloy_config_text = generate_alloy_config(workspace_id, runner_id, api_token, &loki_url);
+	let mimir_url = match settings.environment {
+		RunningEnvironment::Production => "https://mimir.patr.cloud",
+		RunningEnvironment::Development => "http://host.docker.internal:3005",
+	};
+
+	let alloy_config_text =
+		generate_alloy_config(workspace_id, runner_id, api_token, &loki_url, &mimir_url);
 
 	// Create or reuse the Docker config for Alloy (content-hash naming)
 	let (alloy_config_id, alloy_config_name) = crate::utils::update_config(
@@ -82,13 +88,36 @@ pub async fn update_alloy_service(
 					config_name: Some(alloy_config_name),
 					runtime: None,
 				}]),
-				mounts: Some(vec![Mount {
-					target: Some(String::from("/var/run/docker.sock")),
-					source: Some(String::from("/var/run/docker.sock")),
-					typ: Some(MountTypeEnum::BIND),
-					read_only: Some(true),
-					..Default::default()
-				}]),
+				mounts: Some(vec![
+					Mount {
+						target: Some(String::from("/var/run/docker.sock")),
+						source: Some(String::from("/var/run/docker.sock")),
+						typ: Some(MountTypeEnum::BIND),
+						read_only: Some(true),
+						..Default::default()
+					},
+					Mount {
+						target: Some(String::from("/host/proc")),
+						source: Some(String::from("/proc")),
+						typ: Some(MountTypeEnum::BIND),
+						read_only: Some(true),
+						..Default::default()
+					},
+					Mount {
+						target: Some(String::from("/host/sys")),
+						source: Some(String::from("/sys")),
+						typ: Some(MountTypeEnum::BIND),
+						read_only: Some(true),
+						..Default::default()
+					},
+					Mount {
+						target: Some(String::from("/host/root")),
+						source: Some(String::from("/")),
+						typ: Some(MountTypeEnum::BIND),
+						read_only: Some(true),
+						..Default::default()
+					},
+				]),
 				..Default::default()
 			}),
 			..Default::default()
@@ -142,6 +171,7 @@ fn generate_alloy_config(
 	runner_id: &Uuid,
 	api_token: &BearerToken,
 	loki_url: &str,
+	mimir_url: &str,
 ) -> String {
 	format!(
 		r#"
@@ -172,6 +202,10 @@ discovery.relabel "patr" {{
     target_label = "workspace_id"
     replacement  = "{workspace_id}"
   }}
+  rule {{
+    target_label = "source"
+    replacement  = "deployment"
+  }}
 }}
 
 loki.source.docker "patr" {{
@@ -191,10 +225,50 @@ loki.write "patr" {{
     }}
   }}
 }}
+
+prometheus.exporter.unix "system" {{
+  rootfs      = "/host/root"
+  procfs_path = "/host/proc"
+  sysfs_path  = "/host/sys"
+}}
+
+prometheus.scrape "system" {{
+  targets    = prometheus.exporter.unix.system.targets
+  forward_to = [prometheus.relabel.system.receiver]
+}}
+
+prometheus.relabel "system" {{
+  forward_to = [prometheus.remote_write.mimir.receiver]
+
+  rule {{
+    target_label = "runner_id"
+    replacement  = "{runner_id}"
+  }}
+  rule {{
+    target_label = "workspace_id"
+    replacement  = "{workspace_id}"
+  }}
+  rule {{
+    target_label = "source"
+    replacement  = "runner"
+  }}
+}}
+
+prometheus.remote_write "mimir" {{
+  endpoint {{
+    url = "{mimir_url}/api/v1/push"
+
+    basic_auth {{
+      username = "{runner_id}"
+      password = "{api_token}"
+    }}
+  }}
+}}
 "#,
 		runner_id = runner_id,
 		workspace_id = workspace_id,
 		loki_url = loki_url,
+		mimir_url = mimir_url,
 		api_token = api_token.0.token(),
 	)
 }

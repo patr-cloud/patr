@@ -6,7 +6,7 @@ use axum::{
 };
 use http::StatusCode;
 use opentelemetry_proto::tonic::{
-	collector::logs::v1::ExportLogsServiceRequest,
+	collector::metrics::v1::ExportMetricsServiceRequest,
 	common::v1::{KeyValue, any_value::Value},
 };
 use prost::Message;
@@ -14,21 +14,20 @@ use rustis::client::Client as RedisClient;
 
 use crate::prelude::*;
 
-/// Handler for OTLP log push requests (`/otlp/v1/logs`).
+/// Handler for OTLP metrics push requests (`/otlp/v1/metrics`).
 ///
 /// Supports both JSON (`application/json`) and protobuf
 /// (`application/x-protobuf`) payloads. Resource attributes are validated and
 /// rewritten using the same typed logic for both content types.
-pub(super) async fn handle_otlp_push(
+pub(super) async fn handle_otlp_metrics_push(
 	State(state): State<AppState>,
 	ConnectInfo(addr): ConnectInfo<std::net::SocketAddr>,
 	req: Request<Body>,
 ) -> Response {
-	// Extract auth before any async work to avoid Send issues
 	let Some((runner_id, api_token)) = super::auth::extract_basic_auth(req.headers()) else {
 		return Response::builder()
 			.status(StatusCode::UNAUTHORIZED)
-			.header("WWW-Authenticate", "Basic realm=\"Patr Loki\"")
+			.header("WWW-Authenticate", "Basic realm=\"Patr Mimir\"")
 			.body(Body::from("Missing or invalid Authorization header"))
 			.unwrap();
 	};
@@ -66,7 +65,7 @@ pub(super) async fn handle_otlp_push(
 	}
 
 	// Decode the request based on content type
-	let mut request: ExportLogsServiceRequest = if is_json {
+	let mut request: ExportMetricsServiceRequest = if is_json {
 		let Ok(req) = serde_json::from_slice(&body_bytes)
 			.inspect_err(|err| warn!("Failed to parse OTLP JSON: {}", err))
 		else {
@@ -78,7 +77,7 @@ pub(super) async fn handle_otlp_push(
 
 		req
 	} else {
-		let Ok(req) = ExportLogsServiceRequest::decode(&body_bytes[..])
+		let Ok(req) = ExportMetricsServiceRequest::decode(&body_bytes[..])
 			.inspect_err(|err| warn!("Failed to decode OTLP protobuf: {}", err))
 		else {
 			return Response::builder()
@@ -103,9 +102,9 @@ pub(super) async fn handle_otlp_push(
 	};
 	let mut redis_conn = state.redis.clone();
 
-	// Validate and rewrite resource attributes for each resource_logs entry
-	for rl in &mut request.resource_logs {
-		let Some(ref mut resource) = rl.resource else {
+	// Validate and rewrite resource attributes for each resource_metrics entry
+	for rm in &mut request.resource_metrics {
+		let Some(ref mut resource) = rm.resource else {
 			continue;
 		};
 
@@ -133,10 +132,10 @@ pub(super) async fn handle_otlp_push(
 		request.encode_to_vec()
 	};
 
-	super::common::forward_to_loki(
+	super::common::forward_to_mimir(
 		&state,
 		&method,
-		"/otlp/v1/logs",
+		"/otlp/v1/metrics",
 		&headers,
 		&workspace_id,
 		new_body,
@@ -153,11 +152,13 @@ async fn validate_and_rewrite_attributes(
 	workspace_id: &Uuid,
 ) -> Result<(), String> {
 	// Validate deployment_id
+	let mut has_deployment_id = false;
 	for attr in attrs.iter() {
 		if let Some(Value::StringValue(dep_id_str)) =
 			attr.value.as_ref().and_then(|v| v.value.as_ref()) &&
 			attr.key == "deployment_id"
 		{
+			has_deployment_id = true;
 			let deployment_id = dep_id_str
 				.parse::<Uuid>()
 				.map_err(|_| format!("Invalid deployment_id: {dep_id_str}"))?;
@@ -176,9 +177,8 @@ async fn validate_and_rewrite_attributes(
 		}
 	}
 
-	// Upsert runner_id, workspace_id with server-derived values; track
-	// deployment_id presence
-	let mut has_deployment_id = false;
+	// Upsert runner_id, workspace_id with server-derived values; re-check
+	// deployment_id presence during rewrite pass
 	let mut found_runner_id = false;
 	let mut found_workspace_id = false;
 	for attr in attrs.iter_mut() {

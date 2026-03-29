@@ -79,13 +79,28 @@ pub(super) async fn validate_and_rewrite_labels(
 		}
 	}
 
-	// Rewrite runner_id and workspace_id with server-derived values
-	for (k, v) in &mut pairs {
-		if k == "runner_id" {
-			*v = runner_id.to_string();
-		} else if k == "workspace_id" {
-			*v = workspace_id.to_string();
-		}
+	// Upsert runner_id and workspace_id with server-derived values
+	if let Some((_, v)) = pairs.iter_mut().find(|(k, _)| k == "runner_id") {
+		*v = runner_id.to_string();
+	} else {
+		pairs.push(("runner_id".to_string(), runner_id.to_string()));
+	}
+	if let Some((_, v)) = pairs.iter_mut().find(|(k, _)| k == "workspace_id") {
+		*v = workspace_id.to_string();
+	} else {
+		pairs.push(("workspace_id".to_string(), workspace_id.to_string()));
+	}
+
+	// Force-set source label based on deployment_id presence
+	let source_value = if deployment_id_value.is_some() {
+		"deployment"
+	} else {
+		"runner"
+	};
+	if let Some((_, v)) = pairs.iter_mut().find(|(k, _)| k == "source") {
+		*v = source_value.to_string();
+	} else {
+		pairs.push(("source".to_string(), source_value.to_string()));
 	}
 
 	Ok(serialize_labels(&pairs))

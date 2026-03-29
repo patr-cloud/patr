@@ -5,6 +5,7 @@ use std::{
 };
 
 use futures::{FutureExt, future};
+use opentelemetry_sdk::logs::SdkLoggerProvider;
 use tokio::{
 	net::TcpListener,
 	sync::{Mutex, Notify, mpsc},
@@ -12,12 +13,6 @@ use tokio::{
 	time::{self, Duration},
 };
 use tokio_util::sync::CancellationToken;
-use tracing::{Dispatch, Level, level_filters::LevelFilter};
-use tracing_subscriber::{
-	Layer,
-	fmt::{Layer as FmtLayer, format::FmtSpan},
-	layer::SubscriberExt,
-};
 
 use crate::{db, prelude::*, resource_executor::ResourceExecutorTask};
 
@@ -57,6 +52,8 @@ where
 	registry: Mutex<BTreeMap<Uuid, ResourceExecutorTask<E>>>,
 	/// State and configuration for the runner
 	state: AppState<E>,
+	/// OTLP logger provider for managed-mode log export (None in self-hosted)
+	logger_provider: Option<SdkLoggerProvider>,
 }
 
 impl<E> Runner<E>
@@ -85,51 +82,8 @@ where
 		// rustls. When both are compiled in, rustls can't auto-detect — pick one.
 		let _ = rustls::crypto::ring::default_provider().install_default();
 
-		tracing::dispatcher::set_global_default(Dispatch::new(
-			tracing_subscriber::registry()
-				.with(
-					if config.environment == RunningEnvironment::Development {
-						Some(
-							console_subscriber::Builder::default()
-								.with_default_env()
-								.server_addr((
-									console_subscriber::Server::DEFAULT_IP,
-									console_subscriber::Server::DEFAULT_PORT + 1,
-								))
-								.spawn(),
-						)
-					} else {
-						None
-					},
-				)
-				.with(
-					FmtLayer::new()
-						.with_span_events(FmtSpan::NONE)
-						.event_format(
-							tracing_subscriber::fmt::format()
-								.with_ansi(true)
-								.with_file(false)
-								.without_time()
-								.with_target(false)
-								.with_source_location(false)
-								.compact(),
-						)
-						.with_filter(
-							tracing_subscriber::filter::Targets::new()
-								.with_target(E::runner_internal_name(), LevelFilter::TRACE)
-								.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
-								.with_target("models", LevelFilter::TRACE)
-								.with_target("frontend", LevelFilter::TRACE),
-						)
-						.with_filter(LevelFilter::from_level(
-							if config.environment == RunningEnvironment::Development {
-								Level::TRACE
-							} else {
-								Level::DEBUG
-							},
-						)),
-				),
-		))?;
+		// Set up OTLP log layer for managed mode
+		let logger_provider = crate::utils::observability::setup_tracing::<E>(&config)?;
 
 		trace!("Initialized global logger");
 
@@ -154,6 +108,7 @@ where
 		Ok(Self {
 			registry: Mutex::new(BTreeMap::new()),
 			state,
+			logger_provider,
 		})
 	}
 
@@ -207,6 +162,11 @@ where
 
 		for (_, task) in self.registry.into_inner() {
 			_ = task.stop().await;
+		}
+
+		// Flush OTLP logs before exiting
+		if let Some(provider) = self.logger_provider.take() {
+			crate::utils::observability::flush_observability(provider);
 		}
 
 		info!("Server exited. Exiting runner");
