@@ -69,14 +69,17 @@ pub(crate) async fn upsert(
 		current_live_digest.as_deref().unwrap_or(&image_tag)
 	);
 
-	// Build registry credentials for both image pull and Swarm task scheduling
+	// Build registry credentials for both image pull and Swarm task scheduling.
+	// The local DB stores all registries as ExternalRegistry, so check the URL
+	// string rather than the enum variant to detect Patr registry images.
+	let is_patr = registry.registry_url() == models::utils::constants::CONTAINER_REGISTRY_URL;
 	let registry_auth = if let RunnerMode::Managed {
 		workspace_id: _,
 		runner_id: _,
 		user_agent: _,
 		api_token,
 	} = &settings.mode &&
-		registry.is_patr_registry()
+		is_patr
 	{
 		Some(DockerCredentials {
 			username: Some("patr".to_string()),
