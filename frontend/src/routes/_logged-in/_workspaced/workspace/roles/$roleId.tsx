@@ -76,11 +76,7 @@ const RoleInfo = () => {
 		<>
 			<Title>Role Details | Patr</Title>
 			<PageContainer>
-				<RoleHeader
-					roleName={roleInfo()?.role.name}
-					workspaceName={workspaceInfo()?.name}
-					activeTab={activeTab()}
-				/>
+				<RoleHeader roleName={roleInfo()?.name} workspaceName={workspaceInfo()?.name} activeTab={activeTab()} />
 				<PageContainerBody class="flex flex-col gap-6">
 					<ErrorBoundary
 						fallback={(err, reset) => (

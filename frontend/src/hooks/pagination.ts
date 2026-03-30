@@ -66,12 +66,12 @@ const createPaginationState = (opts: {
 	const [totalCount, setTotalCount] = createSignal(0);
 
 	const page = () => {
-		const p = parseInt(String(opts.search().page ?? "0"), 10);
+		const p = parseInt(String(opts.search()?.page ?? "0"), 10);
 		return isNaN(p) || p < 0 ? 0 : p;
 	};
 
 	const count = () => {
-		const c = parseInt(String(opts.search().count ?? String(defaultCount)), 10);
+		const c = parseInt(String(opts.search()?.count ?? String(defaultCount)), 10);
 		return isNaN(c) || c < 1 ? defaultCount : c;
 	};
 
