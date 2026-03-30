@@ -1,7 +1,16 @@
 import { useNavigate } from "@tanstack/solid-router";
 import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid-js";
 import { Deployment, GetContainerRepositoryInfoResponse, ListDeploymentResponse, WithId } from "~/bindings";
-import { EmptyState, Pagination, StatusChip, Table, useToast } from "~/components";
+import {
+	CopyableField,
+	CopyableFieldVariant,
+	EmptyState,
+	Pagination,
+	StatusChip,
+	Table,
+	Tooltip,
+	useToast,
+} from "~/components";
 import { createPaginationState, useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
@@ -14,15 +23,19 @@ const ImageName = (props: { item: WithId<Deployment> }) => {
 	const [workspaceId] = useLastWorkspaceId();
 
 	if ("imageName" in props.item) {
+		const fullImage = () =>
+			`${props.item.registry}/${(props.item as { imageName: string }).imageName}:${props.item.imageTag}`;
 		return (
-			<span class="truncate font-log text-xs text-grey">
-				{props.item.registry}/{props.item.imageName}:{props.item.imageTag}
-			</span>
+			<Tooltip content={fullImage()} class="min-w-0">
+				<span class="truncate font-log text-xs text-grey block">{fullImage()}</span>
+			</Tooltip>
 		);
 	}
 
+	const patrItem = props.item as WithId<Deployment> & { repositoryId: string };
+
 	const [repoInfo] = createResource(
-		() => [workspaceId(), props.item.repositoryId] as const,
+		() => [workspaceId(), patrItem.repositoryId] as const,
 		async ([wsId, repoId]) => {
 			if (!wsId || !repoId) return undefined;
 			const response = await httpRequest<GetContainerRepositoryInfoResponse>(
@@ -34,14 +47,17 @@ const ImageName = (props: { item: WithId<Deployment> }) => {
 		}
 	);
 
+	const fullImage = () =>
+		`registry.patr.cloud/${workspaceId()}/${repoInfo()?.repository.name ?? "..."}:${props.item.imageTag}`;
+
 	return (
-		<span class="truncate font-log text-xs text-grey">
-			registry.patr.cloud/{workspaceId()}/
-			<Show when={!repoInfo.loading} fallback={<span class="animate-pulse">loading</span>}>
-				{repoInfo()?.repository.name ?? "unknown"}
-			</Show>
-			:{props.item.imageTag}
-		</span>
+		<Tooltip content={fullImage()} class="min-w-0">
+			<span class="truncate font-log text-xs text-grey block">
+				<Show when={!repoInfo.loading} fallback={<span class="animate-pulse">{fullImage()}</span>}>
+					{fullImage()}
+				</Show>
+			</span>
+		</Tooltip>
 	);
 };
 
@@ -95,21 +111,30 @@ const RunnerDeployments = (props: RunnerDeploymentsProps) => {
 					fallback={<EmptyState title="No Deployments on This Runner" />}
 				>
 					<Table
-						column_grids={["flex-3", "flex-2", "flex-5"]}
+						column_grids={["flex-3", "flex-3", "flex-2", "flex-4"]}
 						rows={deployments()?.deployments || []}
-						headings={["Name", "Status", "Image"]}
+						headings={["ID", "Name", "Status", "Image"]}
 						renderRow={(item) => (
 							<tr
 								onClick={() => navigate({ to: `/deployments/${item.id}` })}
 								class="table-row cursor-pointer"
 							>
-								<td class="flex-3 flex items-center justify-start min-w-0">
+								<td class="flex-3 flex items-center justify-center min-w-0">
+									<CopyableField
+										variant={CopyableFieldVariant.Text}
+										value={item.id}
+										class="truncate"
+										innerClass="text-white"
+										buttonPosition="start"
+									/>
+								</td>
+								<td class="flex-3 flex items-center justify-center min-w-0">
 									<span class="truncate">{item.name}</span>
 								</td>
 								<td class="flex-2 flex items-center justify-center min-w-0">
 									<StatusChip status={item.status} />
 								</td>
-								<td class="flex-5 flex items-center justify-start min-w-0">
+								<td class="flex-4 flex items-center justify-start min-w-0">
 									<ImageName item={item} />
 								</td>
 							</tr>

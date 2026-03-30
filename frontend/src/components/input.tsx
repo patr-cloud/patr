@@ -354,7 +354,16 @@ const Input = (rawProps: InputProps) => {
 					props.onKeyDown?.(e);
 				}}
 				onFocus={() => {
-					if (hasSuggestions()) setShowDropdown(true);
+					if (hasSuggestions()) {
+						setInputText("");
+						setShowDropdown(true);
+					}
+				}}
+				onClick={() => {
+					if (hasSuggestions()) {
+						setInputText("");
+						setShowDropdown(true);
+					}
 				}}
 				onPaste={props.onPaste}
 				placeholder={props.placeholder}

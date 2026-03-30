@@ -15,6 +15,7 @@ import {
 	Pagination,
 	StatusChip,
 	Table,
+	Tooltip,
 	useToast,
 } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
@@ -26,15 +27,19 @@ const ImageName = (props: { item: WithId<Deployment> }) => {
 	const [workspaceId] = useLastWorkspaceId();
 
 	if ("imageName" in props.item) {
+		const fullImage = () =>
+			`${props.item.registry}/${(props.item as { imageName: string }).imageName}:${props.item.imageTag}`;
 		return (
-			<span class="truncate font-log text-xs text-grey">
-				{props.item.registry}/{props.item.imageName}:{props.item.imageTag}
-			</span>
+			<Tooltip content={fullImage()} class="min-w-0">
+				<span class="truncate font-log text-xs text-grey block">{fullImage()}</span>
+			</Tooltip>
 		);
 	}
 
+	const patrItem = props.item as WithId<Deployment> & { repositoryId: string };
+
 	const [repoInfo] = createResource(
-		() => [workspaceId(), props.item.repositoryId] as const,
+		() => [workspaceId(), patrItem.repositoryId] as const,
 		async ([wsId, repoId]) => {
 			if (!wsId || !repoId) return undefined;
 			const response = await httpRequest<GetContainerRepositoryInfoResponse>(
@@ -46,14 +51,17 @@ const ImageName = (props: { item: WithId<Deployment> }) => {
 		}
 	);
 
+	const fullImage = () =>
+		`registry.patr.cloud/${workspaceId()}/${repoInfo()?.repository.name ?? "..."}:${props.item.imageTag}`;
+
 	return (
-		<span class="truncate font-log text-xs text-grey">
-			registry.patr.cloud/{workspaceId()}/
-			<Show when={!repoInfo.loading} fallback={<span class="animate-pulse">loading</span>}>
-				{repoInfo()?.repository.name ?? "unknown"}
-			</Show>
-			:{props.item.imageTag}
-		</span>
+		<Tooltip content={fullImage()} class="min-w-0">
+			<span class="truncate font-log text-xs text-grey block">
+				<Show when={!repoInfo.loading} fallback={<span class="animate-pulse">{fullImage()}</span>}>
+					{fullImage()}
+				</Show>
+			</span>
+		</Tooltip>
 	);
 };
 

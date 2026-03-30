@@ -124,7 +124,7 @@ const ListRunnersPage = () => {
 											</td>
 											<td class="flex items-center justify-center min-w-0 flex-1">{item.name}</td>
 											<td class="flex items-center justify-center min-w-0 flex-1">
-												{item.connected ? "Connected" : "Disconnected"}
+												{item.connected ? "Online" : "Unreachable"}
 											</td>
 											<td class="flex items-center justify-center min-w-0 flex-1">
 												{item.connected

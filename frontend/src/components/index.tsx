@@ -32,6 +32,7 @@ import Pagination from "~/components/pagination";
 import Checkbox from "~/components/checkbox";
 import Radio from "~/components/radio";
 import LogLine from "~/components/log-line";
+import LogTerminal from "~/components/log-terminal";
 import StatusChip from "~/components/status-chip";
 export {
 	Alert,
@@ -74,5 +75,6 @@ export {
 	Checkbox,
 	Radio,
 	LogLine,
+	LogTerminal,
 	StatusChip,
 };

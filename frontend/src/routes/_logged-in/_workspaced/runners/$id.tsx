@@ -112,7 +112,7 @@ const RunnerDetail = () => {
 													runnerInfo()?.runner.connected ? "bg-success" : "bg-error"
 												}`}
 											/>
-											{runnerInfo()?.runner.connected ? "Connected" : "Disconnected"}
+											{runnerInfo()?.runner.connected ? "Online" : "Unreachable"}
 										</span>
 									</div>
 								)}
