@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createMemo, createResource, createSignal, ErrorBoundary, Suspense, For, Show } from "solid-js";
+import { createMemo, createResource, createSignal, ErrorBoundary, Suspense, Show } from "solid-js";
 import { FiAlertCircle } from "solid-icons/fi";
 import {
 	PageContainer,

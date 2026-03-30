@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createResource, createSignal, Show, Suspense } from "solid-js";
+import { createResource, Show, Suspense } from "solid-js";
 
 import {
 	Button,
