@@ -26,7 +26,7 @@ struct LokiResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct LokiStream {
-	values: Vec<(i128, String)>,
+	values: Vec<(String, String)>,
 }
 
 /// Route to stream the logs of a deployment. This will stream logs from Loki
@@ -142,7 +142,12 @@ pub async fn stream_deployment_logs(
 							.into_iter()
 							.flat_map(|stream| stream.values)
 							.map(|(timestamp, log)| DeploymentLog {
-								timestamp: OffsetDateTime::from_unix_timestamp_nanos(timestamp)
+								timestamp: timestamp
+									.parse::<i128>()
+									.ok()
+									.and_then(|ns| {
+										OffsetDateTime::from_unix_timestamp_nanos(ns).ok()
+									})
 									.unwrap_or(OffsetDateTime::UNIX_EPOCH),
 								log,
 							})
