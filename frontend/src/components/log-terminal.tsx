@@ -1,7 +1,7 @@
 import { createWS, WSMessage } from "@solid-primitives/websocket";
 import { createEffect, createMemo, createResource, createSignal, For, on, onCleanup, onMount, Show } from "solid-js";
 import { createStore, produce } from "solid-js/store";
-import { InputDropdown, useToast } from "~/components";
+import { useToast } from "~/components";
 import LogLine from "~/components/log-line";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
@@ -22,15 +22,6 @@ interface LogEntry {
 interface LogsResponse {
 	logs: LogEntry[];
 }
-
-const TIME_RANGES = [
-	{ label: "Last 15 min", value: "900" },
-	{ label: "Last 1 hour", value: "3600" },
-	{ label: "Last 6 hours", value: "21600" },
-	{ label: "Last 12 hours", value: "43200" },
-	{ label: "Last 24 hours", value: "86400" },
-	{ label: "Last 7 days", value: "604800" },
-];
 
 /** Debounce a value by `ms` milliseconds */
 const useDebounce = (value: () => string, ms: number) => {
@@ -53,7 +44,6 @@ const LogTerminal = (props: LogTerminalProps) => {
 	// --- State ---
 	const [searchInput, setSearchInput] = createSignal("");
 	const debouncedSearch = useDebounce(searchInput, 300);
-	const [timeRange, setTimeRange] = createSignal("3600");
 	const [logs, setLogs] = createStore<LogEntry[]>([]);
 	const [isLoadingMore, setIsLoadingMore] = createSignal(false);
 	const [hasMoreLogs, setHasMoreLogs] = createSignal(true);
@@ -61,10 +51,10 @@ const LogTerminal = (props: LogTerminalProps) => {
 
 	// --- REST fetch ---
 	const fetchParams = createMemo(() => {
-		return [authState(), workspaceId(), props.restUrl, debouncedSearch(), timeRange()] as const;
+		return [authState(), workspaceId(), props.restUrl, debouncedSearch()] as const;
 	});
 
-	const [initialLogs] = createResource(fetchParams, async ([auth, wsId, restUrl, search, _range]) => {
+	const [initialLogs] = createResource(fetchParams, async ([auth, wsId, restUrl, search]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") return undefined;
 
 		const params = new URLSearchParams();
@@ -91,7 +81,6 @@ const LogTerminal = (props: LogTerminalProps) => {
 				if (data?.logs) {
 					setLogs(data.logs);
 					setHasMoreLogs(data.logs.length >= 100);
-					// Scroll to bottom after render
 					queueMicrotask(scrollToBottom);
 				} else {
 					setLogs([]);
@@ -112,7 +101,6 @@ const LogTerminal = (props: LogTerminalProps) => {
 
 				for (const entry of entries) {
 					const logEntry = entry as LogEntry;
-					// Client-side search filter for WS messages
 					if (isSearching() && !logEntry.log.toLowerCase().includes(debouncedSearch().toLowerCase())) {
 						continue;
 					}
@@ -123,7 +111,6 @@ const LogTerminal = (props: LogTerminalProps) => {
 					);
 				}
 
-				// Auto-scroll if at bottom
 				if (isAtBottom()) {
 					queueMicrotask(scrollToBottom);
 				}
@@ -135,9 +122,9 @@ const LogTerminal = (props: LogTerminalProps) => {
 		onCleanup(() => ws.close());
 	});
 
-	// --- Load more ---
+	// --- Load more (auto-fetch on scroll to top) ---
 	const loadMore = async () => {
-		if (isLoadingMore() || logs.length === 0) return;
+		if (isLoadingMore() || !hasMoreLogs() || logs.length === 0) return;
 		setIsLoadingMore(true);
 
 		const oldestLog = logs[0];
@@ -169,7 +156,6 @@ const LogTerminal = (props: LogTerminalProps) => {
 		}
 
 		if (olderLogs.length > 0) {
-			// Preserve scroll position
 			const scrollEl = scrollRef;
 			const prevHeight = scrollEl?.scrollHeight ?? 0;
 			const prevTop = scrollEl?.scrollTop ?? 0;
@@ -180,7 +166,6 @@ const LogTerminal = (props: LogTerminalProps) => {
 				})
 			);
 
-			// Restore scroll position after prepend
 			queueMicrotask(() => {
 				if (scrollEl) {
 					const newHeight = scrollEl.scrollHeight;
@@ -202,11 +187,15 @@ const LogTerminal = (props: LogTerminalProps) => {
 		if (!scrollRef) return;
 		const atBottom = scrollRef.scrollHeight - scrollRef.scrollTop - scrollRef.clientHeight < 30;
 		setIsAtBottom(atBottom);
+
+		// Auto-fetch when scrolled to top
+		if (scrollRef.scrollTop < 10 && hasMoreLogs() && !isLoadingMore()) {
+			loadMore();
+		}
 	};
 
 	onMount(() => queueMicrotask(scrollToBottom));
 
-	// --- Derived ---
 	const entryCount = () => logs.length;
 
 	return (
@@ -251,33 +240,29 @@ const LogTerminal = (props: LogTerminalProps) => {
 					</Show>
 				</div>
 
-				{/* Time range */}
-				<div class="w-32 shrink-0">
-					<InputDropdown
-						options={TIME_RANGES}
-						value={timeRange()}
-						onSelect={(val) => setTimeRange(val)}
-						placeholder="Time range"
-						styleVariant="dark"
-					/>
-				</div>
-
 				{/* Entry count */}
 				<span class="text-xxs text-white/30 font-log shrink-0 tabular-nums">{entryCount()} entries</span>
 			</div>
 
 			{/* Log body */}
 			<div ref={scrollRef} onScroll={handleScroll} class="flex-1 overflow-auto bg-secondary py-xs">
-				{/* Load more button */}
-				<Show when={hasMoreLogs() && logs.length > 0}>
-					<div class="flex justify-center py-xs">
-						<button
-							onClick={loadMore}
-							disabled={isLoadingMore()}
-							class="text-xxs font-log text-primary/60 hover:text-primary px-sm py-xxs rounded-xs border border-border-color hover:border-primary/30 bg-secondary-light transition-colors disabled:opacity-50"
+				{/* Top sentinel — spinner or end-of-logs */}
+				<Show when={logs.length > 0}>
+					<div class="flex items-center justify-center py-sm">
+						<Show
+							when={hasMoreLogs()}
+							fallback={
+								<div class="flex items-center gap-xs">
+									<span class="w-8 h-px bg-border-color" />
+									<span class="text-xxs font-log text-white/20">Beginning of logs</span>
+									<span class="w-8 h-px bg-border-color" />
+								</div>
+							}
 						>
-							{isLoadingMore() ? "Loading..." : "Load more entries"}
-						</button>
+							<Show when={isLoadingMore()}>
+								<div class="w-3.5 h-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+							</Show>
+						</Show>
 					</div>
 				</Show>
 
@@ -293,7 +278,6 @@ const LogTerminal = (props: LogTerminalProps) => {
 								<span class="text-xs text-grey/40">
 									No logs matching &lsquo;{debouncedSearch()}&rsquo;
 								</span>
-								<span class="text-xxs text-grey/25">Try increasing the time range</span>
 							</Show>
 						</div>
 					}

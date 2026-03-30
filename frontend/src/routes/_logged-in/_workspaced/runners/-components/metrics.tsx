@@ -1,6 +1,7 @@
 import {
 	Show,
 	For,
+	createEffect,
 	createMemo,
 	createResource,
 	createSignal,
@@ -109,7 +110,7 @@ const MetricCard = (props: { chart: ChartDef; data: GetRunnerMetricsResponse | u
 		return currentValue(allData()?.[s.field], s.transform);
 	};
 
-	onMount(() => {
+	const buildChart = () => {
 		const d = allData();
 		const primaryPoints = d?.[props.chart.series[0].field] || [];
 		const labels = primaryPoints.map((p: DataPoint) => {
@@ -133,6 +134,11 @@ const MetricCard = (props: { chart: ChartDef; data: GetRunnerMetricsResponse | u
 			};
 		});
 
+		return { labels, datasets };
+	};
+
+	onMount(() => {
+		const { labels, datasets } = buildChart();
 		chartInstance = new Chart(canvasRef, {
 			type: "line",
 			data: { labels, datasets },
@@ -188,6 +194,15 @@ const MetricCard = (props: { chart: ChartDef; data: GetRunnerMetricsResponse | u
 				},
 			},
 		});
+	});
+
+	// Update chart data when props change (e.g., interval change)
+	createEffect(() => {
+		if (!chartInstance) return;
+		const { labels, datasets } = buildChart();
+		chartInstance.data.labels = labels;
+		chartInstance.data.datasets = datasets;
+		chartInstance.update();
 	});
 
 	onCleanup(() => chartInstance?.destroy());
