@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createMemo, createResource, createSignal } from "solid-js";
+import { createMemo, createResource, createSignal, Show } from "solid-js";
 import {
 	PageContainer,
 	PageContainerBody,
@@ -233,7 +233,18 @@ const CreateDeploymentPage = () => {
 										placeholder="Select Registry"
 									/>
 
-									{isPatrRegistry() ? (
+									<Show
+										when={isPatrRegistry()}
+										fallback={
+											<Input
+												class="flex-6"
+												placeholder="Image Name"
+												type={InputType.Text}
+												value={imageName()}
+												onInput={(e) => setImageName(e.currentTarget.value)}
+											/>
+										}
+									>
 										<Input
 											class="flex-6"
 											placeholder="Select Repository"
@@ -246,17 +257,20 @@ const CreateDeploymentPage = () => {
 												setTagFilter("");
 											}}
 										/>
-									) : (
-										<Input
-											class="flex-6"
-											placeholder="Image Name"
-											type={InputType.Text}
-											value={imageName()}
-											onInput={(e) => setImageName(e.currentTarget.value)}
-										/>
-									)}
+									</Show>
 
-									{isPatrRegistry() ? (
+									<Show
+										when={isPatrRegistry()}
+										fallback={
+											<Input
+												class="flex-2"
+												placeholder="Image Tag"
+												type={InputType.Text}
+												value={imageTag()}
+												onInput={(e) => setImageTag(e.currentTarget.value)}
+											/>
+										}
+									>
 										<Input
 											class="flex-2"
 											placeholder="Image Tag"
@@ -269,15 +283,7 @@ const CreateDeploymentPage = () => {
 											}}
 											onSelect={setImageTag}
 										/>
-									) : (
-										<Input
-											class="flex-2"
-											placeholder="Image Tag"
-											type={InputType.Text}
-											value={imageTag()}
-											onInput={(e) => setImageTag(e.currentTarget.value)}
-										/>
-									)}
+									</Show>
 								</div>
 							</div>
 

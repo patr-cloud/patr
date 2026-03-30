@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use bollard::{
 	auth::DockerCredentials,
 	models::{
-		CreateImageInfo,
 		HealthConfig,
 		NetworkAttachmentConfig,
 		ServiceSpec,
@@ -13,7 +12,6 @@ use bollard::{
 		TaskSpecContainerSpec,
 	},
 	query_parameters::{
-		CreateImageOptionsBuilder,
 		ListConfigsOptions,
 		ListServicesOptions,
 		ListServicesOptionsBuilder,
@@ -71,41 +69,24 @@ pub(crate) async fn upsert(
 		current_live_digest.as_deref().unwrap_or(&image_tag)
 	);
 
-	info!("Pulling latest image...");
-	let mut pull_image = docker.create_image(
-		Some(CreateImageOptionsBuilder::new().from_image(&image).build()),
-		None,
-		if let RunnerMode::Managed {
-			workspace_id: _,
-			runner_id: _,
-			user_agent: _,
-			api_token,
-		} = &settings.mode &&
-			registry.is_patr_registry()
-		{
-			Some(DockerCredentials {
-				username: Some("patr".to_string()),
-				password: Some(api_token.0.token().to_string()),
-				serveraddress: Some(registry.registry_url()),
-				..Default::default()
-			})
-		} else {
-			None
-		},
-	);
-	while let Some(result) = pull_image.next().await {
-		match result {
-			Ok(CreateImageInfo {
-				status: Some(status),
-				..
-			}) => {
-				trace!("Image pull status: {}", status);
-			}
-			Err(err) => warn!("Unable to pull image: {}", err),
-			_ => (),
-		}
-	}
-	info!("Image updated");
+	// Build registry credentials for both image pull and Swarm task scheduling
+	let registry_auth = if let RunnerMode::Managed {
+		workspace_id: _,
+		runner_id: _,
+		user_agent: _,
+		api_token,
+	} = &settings.mode &&
+		registry.is_patr_registry()
+	{
+		Some(DockerCredentials {
+			username: Some("patr".to_string()),
+			password: Some(api_token.0.token().to_string()),
+			serveraddress: Some(registry.registry_url()),
+			..Default::default()
+		})
+	} else {
+		None
+	};
 
 	// Build health check from probes. Docker Swarm only supports a single
 	// healthcheck, so we prefer liveness_probe over startup_probe if both are
@@ -216,7 +197,7 @@ pub(crate) async fn upsert(
 			.build();
 
 		docker
-			.update_service(&service_name, service_spec, options, None)
+			.update_service(&service_name, service_spec, options, registry_auth.clone())
 			.await
 			.map_err(|err| {
 				error!("Error updating service: {:?}", err);
@@ -226,7 +207,7 @@ pub(crate) async fn upsert(
 	} else {
 		// Create new service
 		docker
-			.create_service(service_spec, None)
+			.create_service(service_spec, registry_auth)
 			.await
 			.map_err(|err| {
 				error!("Error creating service: {:?}", err);

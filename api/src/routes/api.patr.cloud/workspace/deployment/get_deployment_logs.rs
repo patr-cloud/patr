@@ -78,7 +78,7 @@ pub async fn get_deployment_logs(
 		))
 		.query(&[
 			("limit", limit.unwrap_or(100).to_string()),
-			("direction", "forward".to_string()),
+			("direction", "backward".to_string()),
 			(
 				"end",
 				end_time
