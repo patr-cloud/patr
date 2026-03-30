@@ -3,13 +3,18 @@ use std::{net::IpAddr, time::Duration};
 use axum::{http::StatusCode, response::IntoResponse};
 use axum_typed_websockets::{Message, WebSocket};
 use cloudflare::{
-	endpoints::{cfd_tunnel::*, dns::dns::*, zones::zone::*},
+	endpoints::{
+		cfd_tunnel::*,
+		dns::dns::*,
+		workerskv::{read_key, write_key},
+		zones::zone::*,
+	},
 	framework::{
 		Environment,
 		OrderDirection,
 		SearchMatch,
 		auth::Credentials,
-		client::async_api::Client as CloudflareClient,
+		client::{ClientConfig, async_api::Client as CloudflareClient},
 		response::ApiSuccess,
 	},
 };
@@ -22,6 +27,7 @@ use models::{
 		deployment::DeploymentStatus,
 		runner::{StreamRunnerDataForWorkspaceClientMsg::*, *},
 	},
+	cloudflare::kv::InternalKVData,
 	utils::{GenericResponse, WebSocketUpgrade},
 };
 use rustis::{
@@ -297,7 +303,7 @@ async fn handle_websocket(
 
 				match message {
 					DeploymentStatusUpdated { id, status } => {
-						let Ok(()) = update_deployment_status(id, status, &state.database)
+						let Ok(()) = update_deployment_status(id, runner_id, status, &state)
 							.await
 							.inspect_err(|err| {
 								error!(
@@ -365,34 +371,97 @@ async fn handle_websocket(
 
 async fn update_deployment_status(
 	id: Uuid,
+	runner_id: Uuid,
 	status: DeploymentStatus,
-	database: &sqlx::Pool<DatabaseType>,
+	state: &AppState,
 ) -> Result<(), ErrorType> {
-	query!(
+	// Try to update the status, then always return the current status
+	let current_status = query!(
 		r#"
-		UPDATE
-			deployment
-		SET
-			status = $1
-		WHERE
-			id = $2 AND
-			status != $1 AND (
-				(
-					$1 = 'errored' AND status = 'deploying'
-				) OR (
-					$1 = 'deploying' AND status = 'errored'
-				) OR (
-					$1 IN ('deploying', 'errored') AND status = 'running'
-				) OR (
-				 	$1 = 'running' AND status IN ('deploying', 'errored')
+		WITH updated AS (
+			UPDATE
+				deployment
+			SET
+				status = $1
+			WHERE
+				id = $2 AND
+				status != $1 AND (
+					(
+						$1 = 'errored' AND status = 'deploying'
+					) OR (
+						$1 = 'deploying' AND status = 'errored'
+					) OR (
+						$1 IN ('deploying', 'errored') AND status = 'running'
+					) OR (
+						$1 = 'running' AND status IN ('deploying', 'errored')
+					)
 				)
-			);
+			RETURNING status
+		)
+		SELECT COALESCE(
+			(
+				SELECT status FROM updated
+			),
+			(
+				SELECT
+					status
+				FROM
+					deployment
+				WHERE
+					id = $2
+			)
+		) AS "status!: DeploymentStatus";
 		"#,
 		status as _,
 		id as _,
 	)
-	.execute(database)
-	.await?;
+	.fetch_one(&state.database)
+	.await?
+	.status;
+
+	let client = CloudflareClient::new(
+		Credentials::UserAuthToken {
+			token: state.config.cloudflare.api_key.clone(),
+		},
+		ClientConfig::default(),
+		Environment::Custom(state.config.cloudflare.base_url.clone()),
+	)?;
+
+	// Read existing KV to get the ports
+	let existing_kv: InternalKVData = serde_json::from_slice(
+		&client
+			.request(&read_key::ReadKey {
+				account_identifier: &state.config.cloudflare.account_id,
+				namespace_identifier: &state.config.cloudflare.worker_namespace_id,
+				key: &id.to_string(),
+			})
+			.await?,
+	)?;
+
+	let InternalKVData::Deployment { ports, .. } = &existing_kv else {
+		return Err(ErrorType::server_error(
+			"expected deployment KV data, found runner",
+		));
+	};
+
+	client
+		.request(&write_key::WriteKey {
+			account_identifier: &state.config.cloudflare.account_id,
+			namespace_identifier: &state.config.cloudflare.worker_namespace_id,
+			key: &id.to_string(),
+			params: write_key::WriteKeyParams {
+				expiration: None,
+				expiration_ttl: None,
+			},
+			body: write_key::WriteKeyBody::Value(serde_json::to_vec(
+				&InternalKVData::Deployment {
+					ports: ports.clone(),
+					runner_id,
+					status: current_status,
+				},
+			)?),
+		})
+		.await?;
 
 	Ok(())
 }

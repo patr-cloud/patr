@@ -34,8 +34,6 @@ use crate::prelude::*;
 /*
 Figure out how to structure:
 	- Volume
-	- logs
-	- metrics
 	- backups
 */
 

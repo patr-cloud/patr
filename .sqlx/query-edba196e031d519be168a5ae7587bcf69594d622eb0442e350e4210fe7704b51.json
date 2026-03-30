@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH updated AS (UPDATE deployment SET status = $1 WHERE id = $2 AND status != $1 AND (($1 = 'errored' AND status = 'deploying') OR ($1 = 'deploying' AND status = 'errored') OR ($1 IN ('deploying', 'errored') AND status = 'running') OR ($1 = 'running' AND status IN ('deploying', 'errored'))) RETURNING status) SELECT COALESCE((SELECT status FROM updated), (SELECT status FROM deployment WHERE id = $2)) AS \"status!: DeploymentStatus\";",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status!: DeploymentStatus",
+        "type_info": {
+          "Custom": {
+            "name": "deployment_status",
+            "kind": {
+              "Enum": [
+                "created",
+                "pushed",
+                "deploying",
+                "running",
+                "stopped",
+                "errored",
+                "deleted"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "deployment_status",
+            "kind": {
+              "Enum": [
+                "created",
+                "pushed",
+                "deploying",
+                "running",
+                "stopped",
+                "errored",
+                "deleted"
+              ]
+            }
+          }
+        },
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "edba196e031d519be168a5ae7587bcf69594d622eb0442e350e4210fe7704b51"
+}
