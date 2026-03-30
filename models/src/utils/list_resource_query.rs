@@ -124,12 +124,30 @@ where
 /// This struct represents a search query for a resource. It contains the
 /// resource ID that should be used to search for the resource. This is used
 /// to filter the resources that are returned in a paginated request.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ResourceSearcher<const R: ResourceType> {
 	/// The ID of the resource that should be searched for. This is used to
 	/// filter the resources that are returned in a paginated request.
 	pub resource_id: Uuid,
+}
+
+impl<const R: ResourceType> Serialize for ResourceSearcher<R> {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: serde::Serializer,
+	{
+		self.resource_id.serialize(serializer)
+	}
+}
+
+impl<'de, const R: ResourceType> Deserialize<'de> for ResourceSearcher<R> {
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where
+		D: serde::Deserializer<'de>,
+	{
+		let resource_id = Uuid::deserialize(deserializer)?;
+		Ok(ResourceSearcher { resource_id })
+	}
 }
 
 // For backend

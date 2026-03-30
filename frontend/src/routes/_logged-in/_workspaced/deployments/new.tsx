@@ -127,9 +127,9 @@ const CreateDeploymentPage = () => {
 		return response.data;
 	});
 
-	const tagSuggestions = () => repositoryTags()?.tags.map((t) => ({ label: t.tag, value: t.tag })) ?? [];
+	const tagSuggestions = () => repositoryTags.latest?.tags.map((t) => ({ label: t.tag, value: t.tag })) ?? [];
 
-	const repoSuggestions = () => repositories()?.repositories.map((r) => ({ label: r.name, value: r.id })) ?? [];
+	const repoSuggestions = () => repositories.latest?.repositories.map((r) => ({ label: r.name, value: r.id })) ?? [];
 
 	const { onSubmit, isLoading } = createFormAction(async ({ workspaceId }) => {
 		let configMounts: Record<string, Base64String> = {};
@@ -292,7 +292,7 @@ const CreateDeploymentPage = () => {
 								<div class="flex-10 flex items-center gap-4 w-full">
 									<InputDropdown
 										options={
-											runners()?.runners.map((runner) => ({
+											runners.latest?.runners.map((runner) => ({
 												value: runner.id,
 												label: runner.name,
 											})) ?? []

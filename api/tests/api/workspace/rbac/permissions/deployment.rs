@@ -489,6 +489,65 @@ async fn deployment_exclude_empty_grants_all() {
 }
 
 #[tokio::test]
+async fn deployment_exclude_empty_grants_list_access() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let runner = setup
+		.create_test_runner(&admin.access_token, workspace.id)
+		.await;
+	let deployment1 = setup
+		.create_test_deployment(&admin.access_token, workspace.id, runner.id)
+		.await;
+	let deployment2 = setup
+		.create_test_deployment(&admin.access_token, workspace.id, runner.id)
+		.await;
+
+	let mut perms = BTreeMap::new();
+	perms.insert(
+		setup.get_permission_id(Permission::Deployment(DeploymentPermission::View)),
+		all(),
+	);
+	let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.await;
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<ListDeploymentRequest>::builder()
+				.path(ListDeploymentPath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListDeploymentRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_success(),
+		"listing deployments with Exclude([]) should succeed"
+	);
+
+	let body = response.json::<ApiSuccessResponseBody<ListDeploymentResponse>>();
+	let deployment_ids: Vec<_> = body.response.deployments.iter().map(|d| d.id).collect();
+
+	assert!(
+		deployment_ids.contains(&deployment1.id),
+		"deployment1 should be in the list"
+	);
+	assert!(
+		deployment_ids.contains(&deployment2.id),
+		"deployment2 should be in the list"
+	);
+}
+
+#[tokio::test]
 async fn deployment_view_does_not_grant_edit() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;

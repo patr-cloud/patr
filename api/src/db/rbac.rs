@@ -504,19 +504,17 @@ pub async fn initialize_rbac_constraints(
 					WHERE
 						user_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 				) OR (
-					permission_type = 'include' AND resource.id IN (
+					permission_type = 'include' AND EXISTS (
 						SELECT
-							COALESCE(
-								user_api_token_resource_permissions_include.resource_id,
-								role_resource_permissions_include.resource_id
-							)
+							1
 						FROM
 							user_login
 						LEFT JOIN
 							user_api_token_resource_permissions_include
 						ON
 							user_login.login_type = 'api_token' AND
-							user_api_token_resource_permissions_include.token_id = user_login.login_id
+							user_api_token_resource_permissions_include.token_id = user_login.login_id AND
+							user_api_token_resource_permissions_include.resource_id = resource.id
 						LEFT JOIN
 							workspace_user
 						ON
@@ -524,29 +522,32 @@ pub async fn initialize_rbac_constraints(
 						LEFT JOIN
 							role_resource_permissions_include
 						ON
-							role_resource_permissions_include.role_id = workspace_user.role_id
+							role_resource_permissions_include.role_id = workspace_user.role_id AND
+							role_resource_permissions_include.resource_id = resource.id
 						WHERE
 							user_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
 							role_resource_permissions_include.permission_id = local_permission_id AND
 							resource.owner_id = COALESCE(
 								user_api_token_resource_permissions_include.workspace_id,
 								workspace_user.workspace_id
-							)
+							) AND
+							COALESCE(
+								user_api_token_resource_permissions_include.resource_id,
+								role_resource_permissions_include.resource_id
+							) IS NOT NULL
 					)
 				) OR (
-					permission_type = 'exclude' AND resource.id NOT IN (
+					permission_type = 'exclude' AND NOT EXISTS (
 						SELECT
-							COALESCE(
-								user_api_token_resource_permissions_exclude.resource_id,
-								role_resource_permissions_exclude.resource_id
-							)
+							1
 						FROM
 							user_login
 						LEFT JOIN
 							user_api_token_resource_permissions_exclude
 						ON
 							user_login.login_type = 'api_token' AND
-							user_api_token_resource_permissions_exclude.token_id = user_login.login_id
+							user_api_token_resource_permissions_exclude.token_id = user_login.login_id AND
+							user_api_token_resource_permissions_exclude.resource_id = resource.id
 						LEFT JOIN
 							workspace_user
 						ON
@@ -554,14 +555,30 @@ pub async fn initialize_rbac_constraints(
 						LEFT JOIN
 							role_resource_permissions_exclude
 						ON
-							role_resource_permissions_exclude.role_id = workspace_user.role_id
+							role_resource_permissions_exclude.role_id = workspace_user.role_id AND
+							role_resource_permissions_exclude.resource_id = resource.id
 						WHERE
 							user_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
 							role_resource_permissions_exclude.permission_id = local_permission_id AND
 							resource.owner_id = COALESCE(
 								user_api_token_resource_permissions_exclude.workspace_id,
 								workspace_user.workspace_id
-							)
+							) AND
+							COALESCE(
+								user_api_token_resource_permissions_exclude.resource_id,
+								role_resource_permissions_exclude.resource_id
+							) IS NOT NULL
+					) AND resource.owner_id IN (
+						SELECT
+							workspace_user.workspace_id
+						FROM
+							user_login
+						INNER JOIN
+							workspace_user
+						ON
+							workspace_user.user_id = user_login.user_id
+						WHERE
+							user_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 					)
 				);
 		END;

@@ -29,6 +29,7 @@ macros::declare_api_endpoint!(
 		/// The role which contains:
 		///     name - The role name
 		///     description - The role description
+		#[serde(flatten)]
 		pub role: WithId<Role>,
 		/// List of Permission IDs and the type of permission that is granted on this role.
 		pub permissions: BTreeMap<Uuid, ResourcePermissionType>,

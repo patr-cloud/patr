@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/solid-router";
-import { createEffect } from "solid-js";
+import { createEffect, ErrorBoundary } from "solid-js";
 import { useFetchWorkspaces, useFetchUserPermissions } from "~/hooks/fetch";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import Sidebar from "~/components/sidebar";
@@ -28,7 +28,15 @@ const WorkspacedLayout = () => {
 			<div class="flex-1 flex flex-col overflow-hidden">
 				<TopBar />
 				<div class="flex-1 overflow-auto">
-					<Outlet />
+					<ErrorBoundary
+						fallback={(err) => (
+							<div class="flex items-center justify-center h-full text-white">
+								<p>Something went wrong: {err.message}</p>
+							</div>
+						)}
+					>
+						<Outlet />
+					</ErrorBoundary>
 				</div>
 			</div>
 		</main>
