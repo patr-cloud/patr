@@ -58,6 +58,16 @@ limits_config:
   ingestion_rate_mb: 16
   ingestion_burst_size_mb: 32
   volume_enabled: true
+  otlp_config:
+    resource_attributes:
+      attributes_config:
+        - action: index_label
+          attributes:
+            - runner_id
+            - workspace_id
+            - deployment_id
+            - source
+            - service.name
 
 runtime_config:
   file: /etc/loki/loki-overrides.yaml
