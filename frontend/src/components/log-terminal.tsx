@@ -1,4 +1,4 @@
-import { createWS, WSMessage } from "@solid-primitives/websocket";
+import { createWS } from "@solid-primitives/websocket";
 import { createEffect, createMemo, createResource, createSignal, For, on, onCleanup, onMount, Show } from "solid-js";
 import { createStore, produce } from "solid-js/store";
 import { useToast } from "~/components";
@@ -96,11 +96,11 @@ const LogTerminal = (props: LogTerminalProps) => {
 
 		ws.addEventListener("message", (event) => {
 			try {
-				const message: WSMessage = JSON.parse(event.data);
-				const entries = Array.isArray(message) ? message : [message];
+				const message = JSON.parse(event.data);
+				if (message?.type !== "LogData") return;
+				const entries: LogEntry[] = message.logs ?? [];
 
-				for (const entry of entries) {
-					const logEntry = entry as LogEntry;
+				for (const logEntry of entries) {
 					if (isSearching() && !logEntry.log.toLowerCase().includes(debouncedSearch().toLowerCase())) {
 						continue;
 					}

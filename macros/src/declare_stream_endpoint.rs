@@ -472,6 +472,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			::serde::Serialize,
 			::serde::Deserialize,
 		)]
+		#[serde(tag = "type")]
 		pub enum #server_msg_name {
 			#server_msg_body
 		}
@@ -495,6 +496,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 			::serde::Serialize,
 			::serde::Deserialize,
 		)]
+		#[serde(tag = "type")]
 		pub enum #client_msg_name {
 			#client_msg_body
 		}

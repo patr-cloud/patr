@@ -137,6 +137,16 @@ pub(crate) async fn upsert(
 			..Default::default()
 		});
 
+	let host_ip = docker
+		.inspect_network("bridge", None)
+		.await
+		.ok()
+		.and_then(|network| network.ipam)
+		.and_then(|ipam| ipam.config)
+		.and_then(|configs| configs.into_iter().next())
+		.and_then(|config| config.gateway)
+		.unwrap_or_else(|| String::from("172.17.0.1"));
+
 	// Build the service spec
 	let service_spec = ServiceSpec {
 		name: Some(service_name.clone()),
@@ -176,7 +186,7 @@ pub(crate) async fn upsert(
 					(String::from("patr.deploymentName"), name.clone()),
 				])),
 				health_check,
-				hosts: Some(vec![format!("host.docker.internal:host-gateway")]),
+				hosts: Some(vec![format!("host.docker.internal:{host_ip}")]),
 				..Default::default()
 			}),
 			..Default::default()

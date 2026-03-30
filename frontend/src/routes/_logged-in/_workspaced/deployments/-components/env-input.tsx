@@ -1,5 +1,5 @@
 import { FiPlus, FiTrash2 } from "solid-icons/fi";
-import { createSignal, Show, For } from "solid-js";
+import { createSignal, Show, Index } from "solid-js";
 import { EnvironmentVariableValue } from "~/bindings";
 import { Button, ButtonVariant, useToast } from "~/components";
 import Input, { InputType } from "~/components/input";
@@ -35,7 +35,7 @@ const EnvInput = (props: EnvInputProps) => {
 			<InputLabel parentClass="flex-2" label="Environment Variables" />
 
 			<div class="flex flex-col flex-10 gap-4 w-full">
-				<For each={get(props.envList)}>
+				<Index each={get(props.envList)}>
 					{(env) => (
 						<div class="flex items-center flex-10 gap-4">
 							<Input
@@ -43,7 +43,7 @@ const EnvInput = (props: EnvInputProps) => {
 								class="flex-4"
 								placeholder="Enter Env Name"
 								type={InputType.Text}
-								value={env.key}
+								value={env().key}
 								onKeyDown={(e) => {
 									if (e.key === "Enter") e.preventDefault();
 								}}
@@ -52,10 +52,10 @@ const EnvInput = (props: EnvInputProps) => {
 								disabled={get(props.disabled)}
 								class="flex-7"
 								placeholder="Enter Env Value"
-								value={env.value ? parseEnvValue(env.value) : ""}
+								value={env().value ? parseEnvValue(env().value!) : ""}
 								type={InputType.Text}
 								onInput={(e) => {
-									props.onAdd(env.key, e.currentTarget.value);
+									props.onAdd(env().key, e.currentTarget.value);
 								}}
 								onKeyDown={(e) => {
 									if (e.key === "Enter") e.preventDefault();
@@ -65,7 +65,7 @@ const EnvInput = (props: EnvInputProps) => {
 							<Show when={!get(props.disabled)}>
 								<Button
 									onClick={() => {
-										props.onDelete(env.key);
+										props.onDelete(env().key);
 									}}
 									variant={ButtonVariant.Outlined}
 									class="flex-1 h-full flex items-center gap-2"
@@ -76,7 +76,7 @@ const EnvInput = (props: EnvInputProps) => {
 							</Show>
 						</div>
 					)}
-				</For>
+				</Index>
 
 				<Show
 					when={!get(props.disabled)}

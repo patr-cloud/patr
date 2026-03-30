@@ -33,7 +33,6 @@ macros::declare_stream_endpoint!(
 		/// There is new log data for the runner
 		LogData {
 			/// The log entries
-			#[serde(flatten)]
 			logs: Vec<RunnerLog>,
 		},
 	},

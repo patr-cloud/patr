@@ -32,8 +32,7 @@ macros::declare_stream_endpoint!(
 	server_msg = {
 		/// There is new log data for the deployment
 		LogData {
-			/// The deployment that was created
-			#[serde(flatten)]
+			/// The deployment log entries
 			logs: Vec<DeploymentLog>,
 		},
 	},
