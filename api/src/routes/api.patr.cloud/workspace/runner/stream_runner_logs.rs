@@ -94,7 +94,7 @@ pub async fn stream_runner_logs(
 	))?
 	.into_client_request()?;
 	client_request.headers_mut().insert(
-		HeaderName::from_static("X-Scope-OrgID"),
+		HeaderName::from_static("x-scope-orgid"),
 		HeaderValue::from_str(&workspace_id.to_string()).unwrap(),
 	);
 	*client_request.method_mut() = Method::GET;

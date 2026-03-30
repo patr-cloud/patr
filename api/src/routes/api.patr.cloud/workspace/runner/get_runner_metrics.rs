@@ -244,7 +244,7 @@ async fn query_mimir(
 			("step", step.to_string()),
 		])
 		.header(
-			HeaderName::from_static("X-Scope-OrgID"),
+			HeaderName::from_static("x-scope-orgid"),
 			HeaderValue::from_str(&workspace_id.to_string()).unwrap(),
 		)
 		.send()
