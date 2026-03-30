@@ -21,22 +21,14 @@ interface RunnerDeploymentsProps {
 
 const ImageName = (props: { item: WithId<Deployment> }) => {
 	const [workspaceId] = useLastWorkspaceId();
-
-	if ("imageName" in props.item) {
-		const fullImage = () =>
-			`${props.item.registry}/${(props.item as { imageName: string }).imageName}:${props.item.imageTag}`;
-		return (
-			<Tooltip content={fullImage()} class="min-w-0">
-				<span class="truncate font-log text-xs text-grey block">{fullImage()}</span>
-			</Tooltip>
-		);
-	}
-
-	const patrItem = props.item as WithId<Deployment> & { repositoryId: string };
+	const isExternal = () => "imageName" in props.item;
+	const repositoryId = () => (props.item as { repositoryId?: string }).repositoryId;
 
 	const [repoInfo] = createResource(
-		() => [workspaceId(), patrItem.repositoryId] as const,
-		async ([wsId, repoId]) => {
+		() => (isExternal() ? null : ([workspaceId(), repositoryId()] as const)),
+		async (params) => {
+			if (!params) return undefined;
+			const [wsId, repoId] = params;
 			if (!wsId || !repoId) return undefined;
 			const response = await httpRequest<GetContainerRepositoryInfoResponse>(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${repoId}`,
@@ -47,13 +39,20 @@ const ImageName = (props: { item: WithId<Deployment> }) => {
 		}
 	);
 
-	const fullImage = () =>
-		`registry.patr.cloud/${workspaceId()}/${repoInfo()?.repository.name ?? "..."}:${props.item.imageTag}`;
+	const fullImage = () => {
+		if (isExternal()) {
+			return `${props.item.registry}/${(props.item as { imageName: string }).imageName}:${props.item.imageTag}`;
+		}
+		return `registry.patr.cloud/${workspaceId()}/${repoInfo()?.repository.name ?? "..."}:${props.item.imageTag}`;
+	};
 
 	return (
 		<Tooltip content={fullImage()} class="min-w-0">
 			<span class="truncate font-log text-xs text-grey block">
-				<Show when={!repoInfo.loading} fallback={<span class="animate-pulse">{fullImage()}</span>}>
+				<Show
+					when={isExternal() || !repoInfo.loading}
+					fallback={<span class="animate-pulse">{fullImage()}</span>}
+				>
 					{fullImage()}
 				</Show>
 			</span>

@@ -1,4 +1,3 @@
-import { useParams } from "@tanstack/solid-router";
 import { LogTerminal } from "~/components";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 
