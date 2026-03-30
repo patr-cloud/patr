@@ -15,6 +15,7 @@ import { InputDropdown, useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
+import { parseDate } from "~/utils/func";
 
 Chart.register(...registerables);
 
@@ -112,8 +113,8 @@ const MetricCard = (props: { chart: ChartDef; data: GetRunnerMetricsResponse | u
 		const d = allData();
 		const primaryPoints = d?.[props.chart.series[0].field] || [];
 		const labels = primaryPoints.map((p: DataPoint) => {
-			const date = new Date(p.timestamp);
-			return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+			const date = parseDate(p.timestamp);
+			return date?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) ?? "";
 		});
 
 		const datasets = props.chart.series.map((s) => {

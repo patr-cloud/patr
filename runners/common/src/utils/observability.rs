@@ -113,13 +113,21 @@ where
 					)),
 			)
 			.with(logger_provider.as_ref().map(|provider| {
-				OpenTelemetryTracingBridge::new(provider).with_filter(
-					tracing_subscriber::filter::Targets::new()
-						.with_target(E::runner_internal_name(), LevelFilter::TRACE)
-						.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
-						.with_target("models", LevelFilter::TRACE)
-						.with_target("frontend", LevelFilter::TRACE),
-				)
+				OpenTelemetryTracingBridge::new(provider)
+					.with_filter(
+						tracing_subscriber::filter::Targets::new()
+							.with_target(E::runner_internal_name(), LevelFilter::TRACE)
+							.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
+							.with_target("models", LevelFilter::TRACE)
+							.with_target("frontend", LevelFilter::TRACE),
+					)
+					.with_filter(LevelFilter::from_level(
+						if config.environment == RunningEnvironment::Development {
+							Level::TRACE
+						} else {
+							Level::DEBUG
+						},
+					))
 			})),
 	))?;
 

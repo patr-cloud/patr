@@ -73,7 +73,7 @@ pub async fn stream_deployment_logs(
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
 	let mut client_request = Uri::from_str(&format!(
-		"{}://{}/api/v1/tail?{}",
+		"{}://{}/loki/api/v1/tail?{}",
 		if state
 			.config
 			.opentelemetry
