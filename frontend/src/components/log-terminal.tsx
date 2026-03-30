@@ -166,12 +166,11 @@ const LogTerminal = (props: LogTerminalProps) => {
 				})
 			);
 
-			queueMicrotask(() => {
-				if (scrollEl) {
-					const newHeight = scrollEl.scrollHeight;
-					scrollEl.scrollTop = prevTop + (newHeight - prevHeight);
-				}
-			});
+			// Restore scroll position synchronously — SolidJS updates the DOM
+			// immediately after the store change, so scrollHeight is already correct
+			if (scrollEl) {
+				scrollEl.scrollTop = prevTop + (scrollEl.scrollHeight - prevHeight);
+			}
 		}
 	};
 

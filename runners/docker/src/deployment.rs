@@ -176,6 +176,7 @@ pub(crate) async fn upsert(
 					(String::from("patr.deploymentName"), name.clone()),
 				])),
 				health_check,
+				hosts: Some(vec![format!("host.docker.internal:host-gateway")]),
 				..Default::default()
 			}),
 			..Default::default()
