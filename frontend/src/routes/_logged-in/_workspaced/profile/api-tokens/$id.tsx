@@ -39,10 +39,6 @@ const ApiTokenInfo = () => {
 	const [isApiTokenModalOpen, setIsApiTokenModalOpen] = createSignal(false);
 	const [newApiToken, setNewApiToken] = createSignal<string>("");
 
-	if (!params().id) {
-		return <div>Invalid API Token ID</div>;
-	}
-
 	const fetchParams = createMemo(() => {
 		return [authState()] as const;
 	});

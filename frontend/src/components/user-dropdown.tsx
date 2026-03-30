@@ -9,14 +9,6 @@ import Initials from "./initials";
 import { useToast } from "~/components/toast";
 import { GetUserInfoResponse } from "~/bindings";
 
-interface UserInfo {
-	id: string;
-	username: string;
-	firstName?: string;
-	lastName?: string;
-	recoveryEmail?: string;
-}
-
 const UserDropdown = () => {
 	const [isOpen, setIsOpen] = createSignal(false);
 	const [authState, setAuthState] = useAuthState();

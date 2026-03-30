@@ -20,7 +20,7 @@ const General = () => {
 	};
 
 	const [name, setName] = createSignal("");
-	const [hasUpdated, setHasUpdated] = createSignal(false);
+	const [_hasUpdated, setHasUpdated] = createSignal(false);
 
 	const [workspaceInfo, { mutate: mutateWorkspaceInfo }] = createResource(
 		resourceParamsWorkspace,

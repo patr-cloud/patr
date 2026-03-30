@@ -21,8 +21,10 @@ const TwoFactorAuthModal = (props: ModalContainerProps) => {
 	const [timeRemaining, setTimeRemaining] = createSignal(5 * 60); // 15 minutes in seconds
 	const [isExpired, setIsExpired] = createSignal(false);
 
-	const fetchMfaSecret = async (auth: ReturnType<typeof authState>) => {
-		if (props.isMfaEnabled) return undefined;
+	const mfaSource = () => ({ auth: authState(), isMfaEnabled: props.isMfaEnabled });
+
+	const [mfaSecret, { refetch }] = createResource(mfaSource, async ({ auth, isMfaEnabled }) => {
+		if (isMfaEnabled) return undefined;
 		if (!auth || auth.type !== "LoggedIn") {
 			toast("You must be logged in to enable 2FA", "error");
 			return undefined;
@@ -38,9 +40,7 @@ const TwoFactorAuthModal = (props: ModalContainerProps) => {
 		}
 
 		return response.data;
-	};
-
-	const [mfaSecret, { refetch }] = createResource(authState(), fetchMfaSecret);
+	});
 
 	// Timer countdown
 	createEffect(() => {
@@ -149,9 +149,9 @@ const TwoFactorAuthModal = (props: ModalContainerProps) => {
 					</div>
 
 					<div class="w-full flex items-center gap-2">
-						<div class="h-px w-full bg-grey/20"></div>
+						<div class="h-px w-full bg-grey/20" />
 						<span class="text-white">THEN</span>
-						<div class="h-px w-full bg-grey/20"></div>
+						<div class="h-px w-full bg-grey/20" />
 					</div>
 				</>
 			)}

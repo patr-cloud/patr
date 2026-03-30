@@ -105,7 +105,7 @@ export default General;
 const PushInstructions = (props: { repositoryName: string | undefined }) => {
 	const [workspaceId] = useLastWorkspaceId();
 
-	const registryUrl = `registry.patr.cloud/${workspaceId()}/${props.repositoryName || "<repository-name>"}`;
+	const registryUrl = () => `registry.patr.cloud/${workspaceId()}/${props.repositoryName || "<repository-name>"}`;
 	return (
 		<div class="py-8">
 			<h2 class="text-white text-lg font-semibold mb-4">Push Instructions</h2>
@@ -117,7 +117,7 @@ const PushInstructions = (props: { repositoryName: string | undefined }) => {
 						{/* Step 1: Login */}
 						<div>
 							<p class="text-gray-300 text-sm mb-2">1. Login to Patr Registry</p>
-							<CopyableField value={`docker login ${registryUrl} -u patr`} innerClass="font-mono" />
+							<CopyableField value={`docker login ${registryUrl()} -u patr`} innerClass="font-mono" />
 							<p class="text-gray-300 text-sm mt-2 flex items-center gap-1">
 								Use an{" "}
 								<Link
@@ -134,13 +134,13 @@ const PushInstructions = (props: { repositoryName: string | undefined }) => {
 						{/* Step 2: Build */}
 						<div>
 							<p class="text-gray-300 text-sm mb-2">2. Build your Docker image</p>
-							<CopyableField value={`docker build -t ${registryUrl}:<tag> .`} innerClass="font-mono" />
+							<CopyableField value={`docker build -t ${registryUrl()}:<tag> .`} innerClass="font-mono" />
 						</div>
 
 						{/* Step 3: Push */}
 						<div>
 							<p class="text-gray-300 text-sm mb-2">3. Push the image</p>
-							<CopyableField value={`docker push ${registryUrl}:<tag>`} innerClass="font-mono" />
+							<CopyableField value={`docker push ${registryUrl()}:<tag>`} innerClass="font-mono" />
 						</div>
 					</div>
 				</div>
@@ -152,7 +152,7 @@ const PushInstructions = (props: { repositoryName: string | undefined }) => {
 						{/* Step 1: Login */}
 						<div>
 							<p class="text-gray-300 text-sm mb-2">1. Login to Patr Registry</p>
-							<CopyableField value={`docker login ${registryUrl} -u patr`} innerClass="font-mono" />
+							<CopyableField value={`docker login ${registryUrl()} -u patr`} innerClass="font-mono" />
 							<p class="text-gray-300 text-sm mt-2 flex items-center gap-1">
 								Use an&nbsp;
 								<Link
@@ -170,7 +170,7 @@ const PushInstructions = (props: { repositoryName: string | undefined }) => {
 						<div>
 							<p class="text-gray-300 text-sm mb-2">2. Tag the existing image</p>
 							<CopyableField
-								value={`docker tag <existing-image>:<tag> ${registryUrl}:<tag>`}
+								value={`docker tag <existing-image>:<tag> ${registryUrl()}:<tag>`}
 								innerClass="font-mono"
 							/>
 						</div>
@@ -178,7 +178,7 @@ const PushInstructions = (props: { repositoryName: string | undefined }) => {
 						{/* Step 3: Push */}
 						<div>
 							<p class="text-gray-300 text-sm mb-2">3. Push the image</p>
-							<CopyableField value={`docker push ${registryUrl}:<tag>`} innerClass="font-mono" />
+							<CopyableField value={`docker push ${registryUrl()}:<tag>`} innerClass="font-mono" />
 						</div>
 					</div>
 				</div>

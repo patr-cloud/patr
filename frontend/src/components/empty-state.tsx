@@ -1,8 +1,5 @@
-import { Show, mergeProps } from "solid-js";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
-import { ButtonVariant } from "~/utils/color";
-import Link from "~/components/link";
 
 interface EmptyStateProps {
 	/** The heading text, e.g. "No Deployments Added" */

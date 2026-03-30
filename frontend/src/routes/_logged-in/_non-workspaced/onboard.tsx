@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createSignal, ParentProps, Suspense } from "solid-js";
+import { createEffect, createSignal, ParentProps, Suspense } from "solid-js";
 import { CreateWorkspaceResponse } from "~/bindings";
 import { BgOnboard, useToast } from "~/components";
 import Button from "~/components/button";
@@ -12,7 +12,7 @@ import { ButtonVariant } from "~/utils/color";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 
-const WorkspaceOnboardPage = (props: ParentProps<{}>) => {
+const WorkspaceOnboardPage = (_props: ParentProps) => {
 	return <WorkspaceOnboard />;
 };
 
@@ -26,10 +26,11 @@ const WorkspaceOnboard = () => {
 	const [, setWorkspaceId] = useLastWorkspaceId();
 	const [workspaces] = useFetchWorkspaces();
 
-	if ((workspaces()?.workspaces?.length || 0) > 0) {
-		navigate({ to: "/", replace: true });
-		return null;
-	}
+	createEffect(() => {
+		if ((workspaces()?.workspaces?.length || 0) > 0) {
+			navigate({ to: "/", replace: true });
+		}
+	});
 
 	const onCreateWorkspace = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
 		e.preventDefault();

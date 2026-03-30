@@ -38,60 +38,6 @@ const CreateDomainPage = () => {
 	const [workspaceId] = useLastWorkspaceId();
 	const navigate = useNavigate();
 
-	const validateDomain = async (input: string) => {
-		if (!input.trim()) {
-			setError("");
-			setSuggestedDomain("");
-			return;
-		}
-
-		const auth = authState();
-		const wsId = workspaceId();
-
-		if (!auth || auth.type !== "LoggedIn" || !wsId) {
-			return;
-		}
-
-		// First check if it looks like a URL
-		if (looksLikeUrl(input)) {
-			const hostname = extractHostname(input);
-			setError("Please enter a domain without protocols, paths, or query strings");
-			setSuggestedDomain(hostname);
-			return;
-		}
-
-		// Call the API to validate the domain
-		try {
-			const response = await httpRequest<{ valid: boolean }>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain/is-valid?domain=${encodeURIComponent(input)}`,
-				{
-					method: "GET",
-				}
-			);
-
-			if (response.ok && response.data.valid) {
-				setError("");
-				setSuggestedDomain("");
-			} else {
-				// Domain is not valid (likely not a root domain or already exists)
-				setError("Please enter a valid root domain (e.g., example.com, not subdomain.example.com)");
-				setSuggestedDomain("");
-			}
-		} catch (err: any) {
-			// Handle API errors
-			if (err?.error === "NotRootDomain" || err?.error === "NotIcannDomain") {
-				setError(
-					err?.message || "Please enter a root domain (e.g., example.com instead of subdomain.example.com)"
-				);
-			} else if (err?.error === "ResourceAlreadyExists") {
-				setError("This domain already exists in your workspace");
-			} else {
-				setError("Unable to validate domain. Please check your input.");
-			}
-			setSuggestedDomain("");
-		}
-	};
-
 	const handleInputChange = (value: string) => {
 		setDomainInput(value);
 

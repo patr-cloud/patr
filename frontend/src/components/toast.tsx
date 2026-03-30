@@ -1,5 +1,5 @@
 import { Portal } from "solid-js/web";
-import { createContext, createEffect, For, onCleanup, ParentProps, splitProps, useContext } from "solid-js";
+import { createContext, createEffect, For, onCleanup, ParentProps, useContext } from "solid-js";
 import { createStore, SetStoreFunction } from "solid-js/store";
 import { FiAlertCircle, FiCheckCircle } from "solid-icons/fi";
 
@@ -22,19 +22,13 @@ const Toaster = (props: { toasts: ToastData[]; setToasts: SetStoreFunction<Toast
 };
 
 const Toast = (props: { toast: ToastData; setToasts: SetStoreFunction<ToastData[]> }) => {
-	const [{ toast, setToasts }] = splitProps(props, ["toast", "setToasts"]);
-
-	const handleClick = () => {
-		if (toast.dismissible) {
-			setToasts((prev) => prev.filter((t) => t.id !== props.toast.id));
-		}
-	};
-
 	createEffect(() => {
-		if (toast.expiry > 0) {
+		const expiry = props.toast.expiry;
+		const toastId = props.toast.id;
+		if (expiry > 0) {
 			const timeout = setTimeout(() => {
-				setToasts((prev) => prev.filter((t) => t.id !== toast.id));
-			}, toast.expiry);
+				props.setToasts((prev) => prev.filter((t) => t.id !== toastId));
+			}, expiry);
 
 			onCleanup(() => {
 				clearTimeout(timeout);
@@ -42,32 +36,35 @@ const Toast = (props: { toast: ToastData; setToasts: SetStoreFunction<ToastData[
 		}
 	});
 
-	let backgroundColor: string;
-	switch (toast.level) {
-		case "success":
-			backgroundColor = "bg-success";
-			break;
-		case "error":
-			backgroundColor = "bg-error";
-			break;
-		case "warn":
-			backgroundColor = "bg-warning";
-			break;
-		default:
-			backgroundColor = "bg-info";
-	}
+	const backgroundColor = () => {
+		switch (props.toast.level) {
+			case "success":
+				return "bg-success";
+			case "error":
+				return "bg-error";
+			case "warn":
+				return "bg-warning";
+			default:
+				return "bg-info";
+		}
+	};
 
 	return (
 		<div
-			class={`${backgroundColor} text-white rounded-xs min-h-16 min-w-60 flex items-center justify-start gap-2 max-h-12 p-sm pr-md text-sm ${
-				toast.dismissible ? "cursor-pointer" : ""
+			class={`${backgroundColor()} text-white rounded-xs min-h-16 min-w-60 flex items-center justify-start gap-2 max-h-12 p-sm pr-md text-sm ${
+				props.toast.dismissible ? "cursor-pointer" : ""
 			}`}
-			onClick={handleClick}
+			onClick={() => {
+				if (props.toast.dismissible) {
+					const toastId = props.toast.id;
+					props.setToasts((prev) => prev.filter((t) => t.id !== toastId));
+				}
+			}}
 		>
-			{toast.level === "success" && <FiCheckCircle class="text-success-dark" size={20} />}
-			{toast.level === "warn" && <FiCheckCircle class="text-warning-dark" size={20} />}
-			{toast.level === "error" && <FiAlertCircle class="text-error-dark" size={20} />}
-			{toast.message}
+			{props.toast.level === "success" && <FiCheckCircle class="text-success-dark" size={20} />}
+			{props.toast.level === "warn" && <FiCheckCircle class="text-warning-dark" size={20} />}
+			{props.toast.level === "error" && <FiAlertCircle class="text-error-dark" size={20} />}
+			{props.toast.message}
 		</div>
 	);
 };
@@ -94,7 +91,7 @@ type ToastContextType = [
 
 const ToastContext = createContext<ToastContextType | null>(null);
 
-const ToastProvider = (props: ParentProps<{}>) => {
+const ToastProvider = (props: ParentProps) => {
 	const [toasts, setToasts] = createStore<ToastData[]>([]);
 
 	const createToast: CreateToastFn = (message, level, dismissible = true, expiry = 5000) => {

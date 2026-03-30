@@ -74,7 +74,7 @@ const Button = (rawProps: ParentProps<ButtonProps>) => {
 			disabled={props.disabled || get(props.loading)}
 			type={props.type}
 			class={derivedClass()}
-			onClick={props.onClick}
+			onClick={(e) => props.onClick?.(e)}
 		>
 			{get(props.loading) && props.loadingContent ? (
 				<div class="flex items-center gap-2">

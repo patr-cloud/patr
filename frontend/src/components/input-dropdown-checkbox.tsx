@@ -1,6 +1,6 @@
 import { MaybeAccessor } from "~/utils/types";
 import { InputDropdownOption } from "./input-dropdown";
-import { createSignal, JSX, mergeProps } from "solid-js";
+import { createSignal, For, JSX, mergeProps } from "solid-js";
 import { get, variantBgClass } from "~/utils/func";
 import { FiChevronDown } from "solid-icons/fi";
 import { useClickOutside } from "~/hooks";
@@ -162,16 +162,18 @@ const InputDropdownCheckbox = (rawProps: InputDropdownCheckboxProps) => {
 						get(props.styleVariant)
 					)} border border-border-color absolute z-10 top-[2.22rem] -left-px w-[calc(100%+2px)] rounded-xs rounded-t-none shadow-lg overflow-y-scroll max-h-60`}
 				>
-					{filteredOptions().map((option, index) => (
-						<div
-							onClick={(e) => onSelectItem(e, option.value)}
-							class={`border-b last-of-type:border-0 border-border-color px-xl py-sm cursor-pointer flex items-center gap-3 ${
-								highlightedIndex() === index ? "bg-secondary-dark" : ""
-							}`}
-						>
-							<Checkbox checked={get(props.checked).includes(option.value)} label={option.label} />
-						</div>
-					))}
+					<For each={filteredOptions()}>
+						{(option, index) => (
+							<div
+								onClick={(e) => onSelectItem(e, option.value)}
+								class={`border-b last-of-type:border-0 border-border-color px-xl py-sm cursor-pointer flex items-center gap-3 ${
+									highlightedIndex() === index() ? "bg-secondary-dark" : ""
+								}`}
+							>
+								<Checkbox checked={get(props.checked).includes(option.value)} label={option.label} />
+							</div>
+						)}
+					</For>
 					{filteredOptions().length === 0 && <div class="px-xl py-sm text-grey">No options available.</div>}
 				</div>
 			)}

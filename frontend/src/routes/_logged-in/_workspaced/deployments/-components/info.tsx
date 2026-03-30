@@ -28,7 +28,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	const toast = useToast();
 	const deploymentPermissions = useGetPermissions("deployment", () => props.deploymentInfo.latest?.id || "");
 
-	const [, setHasUpdated] = createSignal(false);
+	const [_, setHasUpdated] = createSignal(false);
 
 	const resourceParamsRunnerList = createMemo(() => {
 		return [authState(), workspaceId()] as const;

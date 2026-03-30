@@ -1,5 +1,5 @@
 import { makePersisted } from "@solid-primitives/storage";
-import { createMemo, createResource, createSignal } from "solid-js";
+import { createMemo, createResource, createSignal, Signal } from "solid-js";
 import { GetCurrentPermissionsResponse, ListAllPermissionsResponse } from "~/bindings";
 import { useToast } from "~/components";
 import { AuthState, useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
@@ -22,11 +22,11 @@ export const getPermissions = async (authState: AuthState, wsId: string) => {
 	}
 
 	const isServer = typeof window === "undefined";
-	const [permissions, setPermissions] = isServer
-		? createSignal<string | null>(null)
-		: makePersisted(createSignal<string | null>(null), {
-				name: `user-permissions`,
-			});
+	const [permissions, setPermissions] = (() => {
+		const [g, s] = createSignal<string | null>(null);
+		if (isServer) return [g, s] as Signal<string | null>;
+		return makePersisted([g, s] as Signal<string | null>, { name: `user-permissions` });
+	})();
 
 	let parsedPermissions: ListAllPermissionsResponse | undefined = undefined;
 
@@ -73,7 +73,7 @@ const useUserPermissions = () => {
 		return params;
 	});
 
-	const permissions = createResource(fetchParams, async ([auth, wsId]) => {
+	const [permissionsResource, permissionsActions] = createResource(fetchParams, async ([auth, wsId]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") {
 			console.log("[useFetchUserPermissions] Invalid auth or workspace, returning default member");
 			return {
@@ -82,12 +82,14 @@ const useUserPermissions = () => {
 		}
 
 		const isServer = typeof window === "undefined";
-		const [cachedPermissions, setCachedPermissions] = isServer
-			? createSignal<string | null>(null)
-			: makePersisted(createSignal<string | null>(null), {
-					storage: sessionStorage,
-					name: `user-permissions-${wsId}`,
-				});
+		const [cachedPermissions, setCachedPermissions] = (() => {
+			const [g, s] = createSignal<string | null>(null);
+			if (isServer) return [g, s] as Signal<string | null>;
+			return makePersisted([g, s] as Signal<string | null>, {
+				storage: sessionStorage,
+				name: `user-permissions-${wsId}`,
+			});
+		})();
 		console.log("[useFetchUserPermissions] Cached permissions:", cachedPermissions() ? "Found" : "Not found");
 		if (!isServer && cachedPermissions()) {
 			const parsed = safelyParseJSON<UserPermissionsT>(cachedPermissions() || "");
@@ -196,7 +198,7 @@ const useUserPermissions = () => {
 		}
 	});
 
-	return permissions;
+	return [permissionsResource, permissionsActions] as const;
 };
 
 export default useUserPermissions;

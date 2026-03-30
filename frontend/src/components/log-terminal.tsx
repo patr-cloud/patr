@@ -64,14 +64,14 @@ const LogTerminal = (props: LogTerminalProps) => {
 		return [authState(), workspaceId(), props.restUrl, debouncedSearch(), timeRange()] as const;
 	});
 
-	const [initialLogs] = createResource(fetchParams, async ([auth, wsId, _url, search, _range]) => {
+	const [initialLogs] = createResource(fetchParams, async ([auth, wsId, restUrl, search, _range]) => {
 		if (!wsId || !auth || auth.type !== "LoggedIn") return undefined;
 
 		const params = new URLSearchParams();
 		params.set("limit", "100");
 		if (search) params.set("search", search);
 
-		const response = await httpRequest<LogsResponse>(`${props.restUrl}?${params.toString()}`, {
+		const response = await httpRequest<LogsResponse>(`${restUrl}?${params.toString()}`, {
 			method: "GET",
 		});
 
@@ -102,36 +102,38 @@ const LogTerminal = (props: LogTerminalProps) => {
 	);
 
 	// --- WebSocket ---
-	const ws = createWS(props.wsUrl);
+	createEffect(() => {
+		const ws = createWS(props.wsUrl);
 
-	ws.addEventListener("message", (event) => {
-		try {
-			const message: WSMessage = JSON.parse(event.data);
-			const entries = Array.isArray(message) ? message : [message];
+		ws.addEventListener("message", (event) => {
+			try {
+				const message: WSMessage = JSON.parse(event.data);
+				const entries = Array.isArray(message) ? message : [message];
 
-			for (const entry of entries) {
-				const logEntry = entry as LogEntry;
-				// Client-side search filter for WS messages
-				if (isSearching() && !logEntry.log.toLowerCase().includes(debouncedSearch().toLowerCase())) {
-					continue;
+				for (const entry of entries) {
+					const logEntry = entry as LogEntry;
+					// Client-side search filter for WS messages
+					if (isSearching() && !logEntry.log.toLowerCase().includes(debouncedSearch().toLowerCase())) {
+						continue;
+					}
+					setLogs(
+						produce((prev) => {
+							prev.push(logEntry);
+						})
+					);
 				}
-				setLogs(
-					produce((prev) => {
-						prev.push(logEntry);
-					})
-				);
-			}
 
-			// Auto-scroll if at bottom
-			if (isAtBottom()) {
-				queueMicrotask(scrollToBottom);
+				// Auto-scroll if at bottom
+				if (isAtBottom()) {
+					queueMicrotask(scrollToBottom);
+				}
+			} catch {
+				// ignore malformed messages
 			}
-		} catch {
-			// ignore malformed messages
-		}
+		});
+
+		onCleanup(() => ws.close());
 	});
-
-	onCleanup(() => ws.close());
 
 	// --- Load more ---
 	const loadMore = async () => {

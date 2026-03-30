@@ -19,15 +19,15 @@ const WorkspacePermissionItem = (props: WorkspacePermissionItemProps) => {
 	const [superAdminMode, setSuperAdminMode] = createSignal(props.initialPermission?.type === "superAdmin");
 	const extractMemberPermissions = (wp?: WorkspacePermission): { [key: string]: ResourcePermissionType } => {
 		if (!wp || wp.type !== "member") return {};
-		const { type, ...rest } = wp as any;
-		return rest;
+		const { type: _, ...rest } = wp as Record<string, ResourcePermissionType | string>;
+		return rest as { [key: string]: ResourcePermissionType };
 	};
 	const [permissionsData, setPermissionsData] = createSignal<{ [key: string]: ResourcePermissionType }>(
 		extractMemberPermissions(props.initialPermission)
 	);
 
 	// Fetch all permissions for the workspace to map IDs to names
-	const [allPermissions] = useFetchPermissions(props.workspace.id);
+	const [allPermissions] = useFetchPermissions(() => props.workspace.id);
 
 	const permissionIdToName = createMemo(() => {
 		const perms = allPermissions()?.permissions;

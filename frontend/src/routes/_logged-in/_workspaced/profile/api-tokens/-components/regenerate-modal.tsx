@@ -15,8 +15,8 @@ const RegenerateModal = (props: {
 	const [internalIsOpen, internalSetIsOpen] = createSignal(false);
 
 	// Use external state if provided, otherwise use internal state
-	const isOpen = props.isOpen || internalIsOpen;
-	const setIsOpen = props.setIsOpen || internalSetIsOpen;
+	const isOpen = () => (props.isOpen ?? internalIsOpen)();
+	const setIsOpen = (v: boolean) => (props.setIsOpen ?? internalSetIsOpen)(v);
 
 	return (
 		<Modal

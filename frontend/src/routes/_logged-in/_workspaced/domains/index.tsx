@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createMemo, createResource, createSignal, ErrorBoundary, Suspense, For, Show } from "solid-js";
+import { createMemo, createResource, createSignal, ErrorBoundary, Suspense, Show } from "solid-js";
 import { FiAlertCircle } from "solid-icons/fi";
 import {
 	PageContainer,
@@ -65,7 +65,7 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 		return { records: response.data.verificationRecords || [] };
 	});
 
-	const onVerifyClick = async (e: EventT<MouseEvent, HTMLButtonElement>) => {
+	const onVerifyClick = async (_: EventT<MouseEvent, HTMLButtonElement>) => {
 		setLoading(true);
 
 		const auth = authState();
@@ -170,28 +170,26 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 };
 
 const VerificationIcon = (props: { domain: WorkspaceDomain }) => {
-	if (props.domain.isVerified) {
-		return null;
-	}
-
 	return (
-		<Modal
-			renderTrigger={(setOpen) => (
-				<Button
-					variant={ButtonVariant.Plain}
-					onClick={(e: EventT<MouseEvent, HTMLButtonElement>) => {
-						e.stopPropagation();
-						setOpen(true);
-					}}
-				>
-					<FiAlertCircle
-						size={22}
-						class="text-yellow-500 cursor-pointer hover:bg-white/10 transition-colors rounded p-1"
-					/>
-				</Button>
-			)}
-			renderModalContent={(close) => <DNSRecords domainId={props.domain.id} closeFn={close} />}
-		/>
+		<Show when={!props.domain.isVerified} fallback={null}>
+			<Modal
+				renderTrigger={(setOpen) => (
+					<Button
+						variant={ButtonVariant.Plain}
+						onClick={(e: EventT<MouseEvent, HTMLButtonElement>) => {
+							e.stopPropagation();
+							setOpen(true);
+						}}
+					>
+						<FiAlertCircle
+							size={22}
+							class="text-yellow-500 cursor-pointer hover:bg-white/10 transition-colors rounded p-1"
+						/>
+					</Button>
+				)}
+				renderModalContent={(close) => <DNSRecords domainId={props.domain.id} closeFn={close} />}
+			/>
+		</Show>
 	);
 };
 

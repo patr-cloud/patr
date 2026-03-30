@@ -3,14 +3,16 @@ import { isServer } from "solid-js/web";
 import { ListAllPermissionsResponse } from "~/bindings/ListAllPermissionsResponse";
 import { useToast } from "~/components";
 import { useAuthState } from "~/hooks";
+import { get } from "~/utils/func";
 import { httpRequest } from "~/utils/http-request";
+import { MaybeAccessor } from "~/utils/types";
 
-const useFetchPermissions = (workspaceId: string) => {
+const useFetchPermissions = (workspaceId: MaybeAccessor<string>) => {
 	const [authState] = useAuthState();
 	const toast = useToast();
 
 	const fetchParams = createMemo(() => {
-		return [authState(), workspaceId] as const;
+		return [authState(), get(workspaceId)] as const;
 	});
 
 	return createResource(fetchParams, async ([auth, wsId]) => {

@@ -126,6 +126,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm lint:check
-        continue-on-error: true
 
       - run: pnpm format:check

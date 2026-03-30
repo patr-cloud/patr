@@ -1,11 +1,11 @@
-import { createSignal, onMount } from "solid-js";
+import { createSignal, For, onMount } from "solid-js";
 
 interface BgOnboardProps {
 	/** Additional CSS classes */
 	class?: string;
 }
 
-const BgOnboard = (rawProps: BgOnboardProps) => {
+const BgOnboard = (_rawProps: BgOnboardProps) => {
 	const [stars, setStars] = createSignal<
 		{ top: string; left: string; size: number; delay: string; duration: string }[]
 	>([]);
@@ -29,22 +29,24 @@ const BgOnboard = (rawProps: BgOnboardProps) => {
 	return (
 		<>
 			{/* Scattered stars */}
-			{stars().map((star, i) => (
-				<div
-					ref={(el) => {
-						el.addEventListener("animationiteration", () => randomizeDuration(el));
-					}}
-					class="absolute bg-white rounded-full animate-pulse"
-					style={{
-						top: star.top,
-						left: star.left,
-						width: `${star.size}px`,
-						height: `${star.size}px`,
-						"animation-delay": star.delay,
-						"animation-duration": star.duration,
-					}}
-				/>
-			))}
+			<For each={stars()}>
+				{(star) => (
+					<div
+						ref={(el) => {
+							el.addEventListener("animationiteration", () => randomizeDuration(el));
+						}}
+						class="absolute bg-white rounded-full animate-pulse"
+						style={{
+							top: star.top,
+							left: star.left,
+							width: `${star.size}px`,
+							height: `${star.size}px`,
+							"animation-delay": star.delay,
+							"animation-duration": star.duration,
+						}}
+					/>
+				)}
+			</For>
 			<img
 				src="/images/astronaut.svg"
 				alt="Floating Astronaut"

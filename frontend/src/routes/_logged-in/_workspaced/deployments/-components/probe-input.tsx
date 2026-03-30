@@ -18,7 +18,8 @@ interface ProbeInputProps {
 const ProbeInput = (props: ProbeInputProps) => {
 	const [path, setPath] = createSignal<string>("");
 
-	const [probe, setProbe] = props.probe;
+	const probe = () => props.probe[0]();
+	const setProbe = (v: DeploymentProbe | undefined) => props.probe[1](v);
 
 	const onSelectPort = (port: string) => {
 		const probeVal = probe();
