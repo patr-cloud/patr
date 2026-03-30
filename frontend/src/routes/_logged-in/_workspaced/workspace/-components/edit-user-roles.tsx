@@ -34,7 +34,7 @@ export const EditUserRoles = (props: EditRolesProps) => {
 		setSelectedRoles(selectedRoles().filter((id) => id !== roleId));
 	};
 
-	const { execute: handleSave, isLoading: isSaving } = createLoggedInAction(async (_) => {
+	const { execute: handleSave, isLoading: isSaving } = createLoggedInAction(async () => {
 		const requestBody: UpdateUserRolesInWorkspaceRequest = {
 			roles: selectedRoles(),
 		};

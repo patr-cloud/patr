@@ -18,8 +18,7 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 	const [scopeMode, setScopeMode] = createSignal<"all" | "include" | "exclude">("all");
 	const [selectedResources, setSelectedResources] = createSignal<Set<string>>(new Set());
 
-	const workspaceId = () => props.workspaceId;
-	const [permissions] = useFetchPermissions(workspaceId());
+	const [permissions] = useFetchPermissions(() => props.workspaceId);
 
 	// Get unique resource types from permissions
 	const resourceTypeOptions = createMemo(() => {

@@ -29,7 +29,7 @@ const EditPermissions = (props: {
 	});
 
 	// Fetch all permissions for the workspace to map IDs to names
-	const [allPermissions] = useFetchPermissions(workspaceId()!);
+	const [allPermissions] = useFetchPermissions(() => workspaceId()!);
 
 	// Create a map of permission ID to permission name
 	const permissionIdToName = createMemo(() => {
@@ -56,7 +56,7 @@ const EditPermissions = (props: {
 		});
 	});
 
-	const { execute: handleUpdateRole, isLoading: isUpdating } = createLoggedInAction(async (_) => {
+	const { execute: handleUpdateRole, isLoading: isUpdating } = createLoggedInAction(async () => {
 		const requestBody: UpdateRoleRequest = {
 			permissions: permissionsData(),
 		};

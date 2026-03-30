@@ -26,7 +26,7 @@ const CreateRoles = () => {
 	const [roleDescription, setRoleDescription] = createSignal("");
 	const [permissionsData, setPermissionsData] = createSignal<{ [key: string]: ResourcePermissionType }>({});
 
-	const [allPermissions] = useFetchPermissions(workspaceId()!);
+	const [allPermissions] = useFetchPermissions(() => workspaceId()!);
 
 	const permissionIdToName = createMemo(() => {
 		const perms = allPermissions()?.permissions;

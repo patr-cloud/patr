@@ -14,7 +14,8 @@ export default createHandler(() => (
 				<body>
 					<div id="app">{children}</div>
 					{scripts}
-					<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+					{/* eslint-disable-next-line solid/self-closing-comp -- <script> is not a void element; self-closing breaks HTML */}
+					<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 				</body>
 			</html>
 		)}

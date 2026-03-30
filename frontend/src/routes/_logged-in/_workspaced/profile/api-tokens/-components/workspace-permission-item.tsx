@@ -27,8 +27,7 @@ const WorkspacePermissionItem = (props: WorkspacePermissionItemProps) => {
 	);
 
 	// Fetch all permissions for the workspace to map IDs to names
-	const workspaceId = () => props.workspace.id;
-	const [allPermissions] = useFetchPermissions(workspaceId());
+	const [allPermissions] = useFetchPermissions(() => props.workspace.id);
 
 	const permissionIdToName = createMemo(() => {
 		const perms = allPermissions()?.permissions;
