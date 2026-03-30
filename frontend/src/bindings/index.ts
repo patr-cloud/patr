@@ -89,7 +89,7 @@ import { ListContainerRepositoryTagsResponse } from "./ListContainerRepositoryTa
 import { ListContainerRepositoryManifestsResponse } from "./ListContainerRepositoryManifestsResponse";
 import { ContainerRepositoryManifestInfo } from "./ContainerRepositoryManifestInfo";
 import { UpdateApiTokenRequest } from "./UpdateApiTokenRequest";
-import { GetRunnerMetricsResponse } from './GetRunnerMetricsResponse';
+import { GetRunnerMetricsResponse } from "./GetRunnerMetricsResponse";
 import { GetRunnerLogsResponse } from "./GetRunnerLogsResponse";
 
 export type {
@@ -185,5 +185,5 @@ export type {
 	ContainerRepositoryManifestInfo,
 	UpdateApiTokenRequest,
 	GetRunnerMetricsResponse,
-	GetRunnerLogsResponse
+	GetRunnerLogsResponse,
 };

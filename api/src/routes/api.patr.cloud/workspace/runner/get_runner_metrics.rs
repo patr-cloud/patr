@@ -212,7 +212,7 @@ pub async fn get_runner_metrics(
 /// point count reasonable.
 fn rate_window_for_interval(interval: Duration) -> &'static str {
 	if interval <= Duration::hours(1) {
-		"1m"
+		"2m"
 	} else if interval <= Duration::hours(6) {
 		"5m"
 	} else if interval <= Duration::hours(24) {
