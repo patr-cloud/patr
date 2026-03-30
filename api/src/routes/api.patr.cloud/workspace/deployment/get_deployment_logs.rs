@@ -78,6 +78,7 @@ pub async fn get_deployment_logs(
 		))
 		.query(&[
 			("limit", limit.unwrap_or(100).to_string()),
+			("direction", "forward".to_string()),
 			(
 				"end",
 				end_time
@@ -114,23 +115,23 @@ pub async fn get_deployment_logs(
 		return Err(ErrorType::server_error("Failed to parse Loki response"));
 	};
 
-	let logs = result
+	let mut logs: Vec<DeploymentLog> = result
 		.into_iter()
-		.next()
-		.map(|LokiMatrixResult { values }| {
-			values
-				.into_iter()
-				.map(|(timestamp, log)| DeploymentLog {
-					timestamp: timestamp
-						.parse::<i128>()
-						.ok()
-						.and_then(|ns| OffsetDateTime::from_unix_timestamp_nanos(ns).ok())
-						.unwrap_or(OffsetDateTime::UNIX_EPOCH),
-					log,
-				})
-				.collect()
+		.flat_map(|LokiMatrixResult { values }| {
+			values.into_iter().map(|(timestamp, log)| DeploymentLog {
+				timestamp: timestamp
+					.parse::<i128>()
+					.ok()
+					.and_then(|ns| OffsetDateTime::from_unix_timestamp_nanos(ns).ok())
+					.unwrap_or(OffsetDateTime::UNIX_EPOCH),
+				log,
+			})
 		})
-		.unwrap_or_default();
+		.collect();
+
+	// Sort ascending (oldest first, newest last) — the frontend renders
+	// index 0 at the top and auto-scrolls to the bottom (latest entry)
+	logs.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
 
 	AppResponse::builder()
 		.body(GetDeploymentLogsResponse { logs })
