@@ -82,7 +82,7 @@ const DomainInfo = () => {
 
 			// Fetch managed URLs logic goes here
 			const resource = await httpRequest<ListManagedURLResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/infrastructure/managed-url?domainId=${domainId}`,
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/infrastructure/managed-url?search[domainId]=${domainId}`,
 				{
 					method: "GET",
 				}

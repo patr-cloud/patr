@@ -79,7 +79,7 @@ const RunnerDeployments = (props: RunnerDeploymentsProps) => {
 			return { deployments: [] };
 		}
 		const response = await httpRequest<ListDeploymentResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment?runner=${runnerId}&page=${page}&count=${count}`,
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment?search[runner]=${runnerId}&page=${page}&count=${count}`,
 			{
 				method: "GET",
 			}

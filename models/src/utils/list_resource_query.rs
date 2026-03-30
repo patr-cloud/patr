@@ -216,3 +216,33 @@ where
 		Uuid::decode(value).map(|resource_id| Self { resource_id })
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[derive(Debug, Deserialize)]
+	#[serde(rename_all = "camelCase")]
+	struct TestParams {
+		#[serde(default)]
+		runner: Option<ResourceSearcher<{ ResourceType::Runner }>>,
+	}
+
+	#[test]
+	fn resource_searcher_deserializes_from_plain_uuid_via_serde_qs() {
+		let qs = "runner=a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4";
+		let params: TestParams = serde_qs::from_str(qs).expect("should parse");
+		assert!(params.runner.is_some());
+		assert_eq!(
+			params.runner.unwrap().resource_id.to_string(),
+			"a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
+		);
+	}
+
+	#[test]
+	fn resource_searcher_is_none_when_absent() {
+		let qs = "other=value";
+		let params: TestParams = serde_qs::from_str(qs).expect("should parse");
+		assert!(params.runner.is_none());
+	}
+}
