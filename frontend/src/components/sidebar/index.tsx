@@ -79,6 +79,11 @@ const Sidebar: Component = () => {
 			icon: FiHome,
 		},
 		{
+			label: "Runners",
+			href: "/runners",
+			icon: FiCpu,
+		},
+		{
 			label: "Container Registry",
 			icon: FiPackage,
 			href: "/container-registry",
@@ -87,11 +92,6 @@ const Sidebar: Component = () => {
 			label: "Deployments",
 			href: "/deployments",
 			icon: FiBox,
-		},
-		{
-			label: "Runners",
-			href: "/runners",
-			icon: FiCpu,
 		},
 		{
 			label: "Domains",
