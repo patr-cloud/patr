@@ -89,6 +89,8 @@ import { ListContainerRepositoryTagsResponse } from "./ListContainerRepositoryTa
 import { ListContainerRepositoryManifestsResponse } from "./ListContainerRepositoryManifestsResponse";
 import { ContainerRepositoryManifestInfo } from "./ContainerRepositoryManifestInfo";
 import { UpdateApiTokenRequest } from "./UpdateApiTokenRequest";
+import { GetRunnerMetricsResponse } from './GetRunnerMetricsResponse';
+import { GetRunnerLogsResponse } from "./GetRunnerLogsResponse";
 
 export type {
 	EnvironmentVariableValue,
@@ -182,4 +184,6 @@ export type {
 	ListContainerRepositoryManifestsResponse,
 	ContainerRepositoryManifestInfo,
 	UpdateApiTokenRequest,
+	GetRunnerMetricsResponse,
+	GetRunnerLogsResponse
 };

@@ -4,12 +4,18 @@ mod add_runner_to_workspace;
 mod get_ingress_token_for_runner;
 /// The endpoint to get the details of a runner in a workspace
 mod get_runner_info;
+/// The endpoint to get the logs of a runner process
+mod get_runner_logs;
+/// The endpoint to get system metrics for a runner
+mod get_runner_metrics;
 /// The endpoint to list all the runners in a workspace
 mod list_runners_for_workspace;
 /// The endpoint to remove a runner from a workspace
 mod remove_runner_from_workspace;
 /// The endpoint to stream the runner data for a workspace
 mod stream_runner_data_for_workspace;
+/// The endpoint to stream runner process logs in real time
+mod stream_runner_logs;
 
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -19,9 +25,12 @@ pub use self::{
 	add_runner_to_workspace::*,
 	get_ingress_token_for_runner::*,
 	get_runner_info::*,
+	get_runner_logs::*,
+	get_runner_metrics::*,
 	list_runners_for_workspace::*,
 	remove_runner_from_workspace::*,
 	stream_runner_data_for_workspace::*,
+	stream_runner_logs::*,
 };
 use crate::prelude::*;
 
@@ -44,4 +53,46 @@ pub struct Runner {
 	/// The last timestamp the runner was seen online
 	#[ts(type = "Date | null")]
 	pub last_seen: Option<OffsetDateTime>,
+}
+
+/// A single log entry from a runner process.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct RunnerLog {
+	/// Timestamp of the log entry
+	#[ts(type = "Date")]
+	pub timestamp: OffsetDateTime,
+	/// The log message
+	pub log: String,
+}
+
+/// A single timestamped data point for a metric series.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct MetricDataPoint {
+	/// The timestamp of the data point
+	#[ts(type = "Date")]
+	pub timestamp: OffsetDateTime,
+	/// The metric value as a string
+	pub value: String,
+}
+
+/// System metrics for a runner, organized by metric type.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct RunnerMetrics {
+	/// CPU usage as a percentage (0-100)
+	pub cpu_usage: Vec<MetricDataPoint>,
+	/// Memory usage as a percentage (0-100)
+	pub memory_usage: Vec<MetricDataPoint>,
+	/// Disk read rate in bytes per second
+	pub disk_read_bytes: Vec<MetricDataPoint>,
+	/// Disk write rate in bytes per second
+	pub disk_written_bytes: Vec<MetricDataPoint>,
+	/// Disk usage as a percentage (0-100)
+	pub disk_usage: Vec<MetricDataPoint>,
+	/// Network transmit rate in bytes per second
+	pub network_usage_tx: Vec<MetricDataPoint>,
+	/// Network receive rate in bytes per second
+	pub network_usage_rx: Vec<MetricDataPoint>,
 }

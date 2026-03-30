@@ -105,7 +105,7 @@ serde_path_to_error            = { default-features = false, version = "0.1" }
 serde_qs                       = { default-features = false, version = "1" }
 serde_test                     = { default-features = false, version = "1" }
 serde_yaml2                    = { default-features = false, version = "0.1" }
-sha2                           = { default-features = false, version = "0.11.0-rc.5" }
+sha2                           = { default-features = false, version = "0.11" }
 snap                           = { default-features = false, version = "1" }
 sqlx                           = { default-features = false, version = "0.8" }
 strum                          = { default-features = false, version = "0.28" }
@@ -127,11 +127,11 @@ tracing                        = { default-features = false, version = "0.1" }
 tracing-log                    = { default-features = false, version = "0.2" }
 tracing-opentelemetry          = { default-features = false, version = "0.32" }
 tracing-subscriber             = { default-features = false, version = "0.3" }
-ts-rs                          = { default-features = false, version = "11" }
+ts-rs                          = { default-features = false, version = "12" }
 typed-builder                  = { default-features = false, version = "0.23" }
 url                            = { default-features = false, version = "2" }
-uzers                          = { default-features = false, version = "0.12" }
 uuid                           = { default-features = false, version = "1" }
+uzers                          = { default-features = false, version = "0.12" }
 wiremock                       = { default-features = false, version = "0.6" }
 woothee                        = { default-features = false, version = "0.13" }
 worker                         = { default-features = false, version = "0.7" }

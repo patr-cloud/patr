@@ -31,6 +31,7 @@ import EmptyState from "~/components/empty-state";
 import Pagination from "~/components/pagination";
 import Checkbox from "~/components/checkbox";
 import Radio from "~/components/radio";
+import StatusChip from "~/components/status-chip";
 export {
 	Alert,
 	PageContainer,
@@ -71,4 +72,5 @@ export {
 	Pagination,
 	Checkbox,
 	Radio,
+	StatusChip,
 };

@@ -119,24 +119,24 @@ impl ts_rs::TS for StringifiedU16 {
 	type OptionInnerType = <u16 as ts_rs::TS>::OptionInnerType;
 	type WithoutGenerics = <u16 as ts_rs::TS>::WithoutGenerics;
 
-	fn decl() -> String {
-		<u16 as ts_rs::TS>::decl()
+	fn decl(config: &ts_rs::Config) -> String {
+		<u16 as ts_rs::TS>::decl(config)
 	}
 
-	fn decl_concrete() -> String {
-		<u16 as ts_rs::TS>::decl_concrete()
+	fn decl_concrete(config: &ts_rs::Config) -> String {
+		<u16 as ts_rs::TS>::decl_concrete(config)
 	}
 
-	fn name() -> String {
-		<u16 as ts_rs::TS>::name()
+	fn name(config: &ts_rs::Config) -> String {
+		<u16 as ts_rs::TS>::name(config)
 	}
 
-	fn inline() -> String {
-		<u16 as ts_rs::TS>::inline()
+	fn inline(config: &ts_rs::Config) -> String {
+		<u16 as ts_rs::TS>::inline(config)
 	}
 
-	fn inline_flattened() -> String {
-		<u16 as ts_rs::TS>::inline_flattened()
+	fn inline_flattened(config: &ts_rs::Config) -> String {
+		<u16 as ts_rs::TS>::inline_flattened(config)
 	}
 }
 

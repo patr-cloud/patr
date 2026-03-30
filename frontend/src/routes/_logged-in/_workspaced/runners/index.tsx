@@ -101,7 +101,18 @@ const ListRunnersPage = () => {
 									rows={runners()?.runners || []}
 									headings={["ID", "Runner Name", "Status", "Last Seen"]}
 									renderRow={(item) => (
-										<tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
+										<tr
+											onClick={() =>
+												navigate({
+													to: "/runners/$id",
+													params: { id: item.id },
+													search: {
+														tab: "deployments",
+													},
+												})
+											}
+											class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs cursor-pointer hover:bg-secondary-medium"
+										>
 											<td class="flex items-center justify-center min-w-0 flex-1">
 												<CopyableField
 													variant={CopyableFieldVariant.Text}
@@ -116,7 +127,11 @@ const ListRunnersPage = () => {
 												{item.connected ? "Connected" : "Disconnected"}
 											</td>
 											<td class="flex items-center justify-center min-w-0 flex-1">
-												{item.lastSeen ? formatRelativeTime(item.lastSeen) : "N/A"}
+												{item.connected
+													? "Now"
+													: item.lastSeen
+														? formatRelativeTime(item.lastSeen)
+														: "Never"}
 											</td>
 										</tr>
 									)}

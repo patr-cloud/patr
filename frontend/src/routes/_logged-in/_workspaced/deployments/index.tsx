@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid-js";
-import { ListDeploymentResponse, WithId, Deployment } from "~/bindings";
+import { Deployment, GetContainerRepositoryInfoResponse, ListDeploymentResponse, WithId } from "~/bindings";
 import {
 	ButtonVariant,
 	CopyableField,
@@ -13,6 +13,7 @@ import {
 	PageContainerBody,
 	PageContainerHead,
 	Pagination,
+	StatusChip,
 	Table,
 	useToast,
 } from "~/components";
@@ -20,6 +21,41 @@ import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useFetchRunners } from "~/hooks/fetch";
 import { httpRequest } from "~/utils/http-request";
 import { useIsAllowed, createPaginationState } from "~/hooks";
+
+const ImageName = (props: { item: WithId<Deployment> }) => {
+	const [workspaceId] = useLastWorkspaceId();
+
+	if ("imageName" in props.item) {
+		return (
+			<span class="truncate font-log text-xs text-grey">
+				{props.item.registry}/{props.item.imageName}:{props.item.imageTag}
+			</span>
+		);
+	}
+
+	const [repoInfo] = createResource(
+		() => [workspaceId(), props.item.repositoryId] as const,
+		async ([wsId, repoId]) => {
+			if (!wsId || !repoId) return undefined;
+			const response = await httpRequest<GetContainerRepositoryInfoResponse>(
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${repoId}`,
+				{ method: "GET" }
+			);
+			if (!response.ok) return undefined;
+			return response.data;
+		}
+	);
+
+	return (
+		<span class="truncate font-log text-xs text-grey">
+			registry.patr.cloud/{workspaceId()}/
+			<Show when={!repoInfo.loading} fallback={<span class="animate-pulse">loading</span>}>
+				{repoInfo()?.repository.name ?? "unknown"}
+			</Show>
+			:{props.item.imageTag}
+		</span>
+	);
+};
 
 const DeploymentListRow = (props: { item: WithId<Deployment>; runnerName: string }) => {
 	const navigate = useNavigate();
@@ -31,7 +67,7 @@ const DeploymentListRow = (props: { item: WithId<Deployment>; runnerName: string
 			}}
 			class="table-row cursor-pointer"
 		>
-			<td class="flex-3 flex items-start justify-center min-w-0">
+			<td class="flex-3 flex items-center justify-center min-w-0">
 				<CopyableField
 					variant={CopyableFieldVariant.Text}
 					value={props.item.id}
@@ -40,17 +76,17 @@ const DeploymentListRow = (props: { item: WithId<Deployment>; runnerName: string
 					buttonPosition="start"
 				/>
 			</td>
-			<td class="flex-3 flex items-start justify-center min-w-0">
+			<td class="flex-3 flex items-center justify-center min-w-0">
 				<span class="truncate">{props.item.name}</span>
 			</td>
-			<td class="flex-3 flex items-start justify-center min-w-0">
-				<span class="truncate">{props.item.status}</span>
+			<td class="flex-2 flex items-center justify-center min-w-0">
+				<StatusChip status={props.item.status} />
 			</td>
-			<td class="flex-3 flex items-start justify-center min-w-0">
+			<td class="flex-3 flex items-center justify-center min-w-0">
 				<span class="truncate">{props.runnerName}</span>
 			</td>
-			<td class="flex-3 flex items-start justify-center min-w-0">
-				<span class="truncate">{props.item.imageTag}</span>
+			<td class="flex-4 flex items-center justify-start min-w-0">
+				<ImageName item={props.item} />
 			</td>
 		</tr>
 	);
@@ -137,9 +173,9 @@ const ListDeploymentsPage = () => {
 								fallback={<EmptyState title="No Deployments Added" />}
 							>
 								<Table
-									column_grids={["flex-3", "flex-3", "flex-3", "flex-3", "flex-3"]}
+									column_grids={["flex-3", "flex-3", "flex-2", "flex-3", "flex-4"]}
 									rows={deployments()?.deployments || []}
-									headings={["ID", "Deployment Name", "Status", "Runner", "Image Tag"]}
+									headings={["ID", "Name", "Status", "Runner", "Image"]}
 									renderRow={(item) => (
 										<DeploymentListRow
 											item={item}

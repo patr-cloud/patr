@@ -89,23 +89,23 @@ where
 	type OptionInnerType = Self;
 	type WithoutGenerics = String;
 
-	fn decl() -> String {
+	fn decl(_: &ts_rs::Config) -> String {
 		"string".to_string()
 	}
 
-	fn decl_concrete() -> String {
+	fn decl_concrete(_: &ts_rs::Config) -> String {
 		"string".to_string()
 	}
 
-	fn name() -> String {
+	fn name(_: &ts_rs::Config) -> String {
 		"string".to_string()
 	}
 
-	fn inline() -> String {
+	fn inline(_: &ts_rs::Config) -> String {
 		panic!("HeaderExporter cannot be inlined")
 	}
 
-	fn inline_flattened() -> String {
+	fn inline_flattened(_: &ts_rs::Config) -> String {
 		format!("\"{}\": string,", <T as Header>::name().as_str())
 	}
 }

@@ -19,6 +19,7 @@
 		"@solidjs/start": "^1.2.1",
 		"@tanstack/router-plugin": "^1.166.9",
 		"@tanstack/solid-router": "^1.167.0",
+		"chart.js": "^4.5.1",
 		"js-cookie": "^3.0.5",
 		"p-limit": "^7.3.0",
 		"qrcode": "^1.5.4",

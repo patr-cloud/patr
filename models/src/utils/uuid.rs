@@ -134,24 +134,24 @@ impl TS for Uuid {
 	type OptionInnerType = <uuid::Uuid as TS>::OptionInnerType;
 	type WithoutGenerics = <uuid::Uuid as TS>::WithoutGenerics;
 
-	fn decl() -> String {
-		<uuid::Uuid as TS>::decl()
+	fn decl(config: &ts_rs::Config) -> String {
+		<uuid::Uuid as TS>::decl(config)
 	}
 
-	fn decl_concrete() -> String {
-		<uuid::Uuid as TS>::decl_concrete()
+	fn decl_concrete(config: &ts_rs::Config) -> String {
+		<uuid::Uuid as TS>::decl_concrete(config)
 	}
 
-	fn name() -> String {
-		<uuid::Uuid as TS>::name()
+	fn name(config: &ts_rs::Config) -> String {
+		<uuid::Uuid as TS>::name(config)
 	}
 
-	fn inline() -> String {
-		<uuid::Uuid as TS>::inline()
+	fn inline(config: &ts_rs::Config) -> String {
+		<uuid::Uuid as TS>::inline(config)
 	}
 
-	fn inline_flattened() -> String {
-		<uuid::Uuid as TS>::inline_flattened()
+	fn inline_flattened(config: &ts_rs::Config) -> String {
+		<uuid::Uuid as TS>::inline_flattened(config)
 	}
 }
 
