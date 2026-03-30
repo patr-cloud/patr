@@ -20,12 +20,12 @@ use crate::prelude::*;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct LokiResponse {
-	streams: LokiStreams,
+	streams: Vec<LokiStream>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct LokiStreams {
+struct LokiStream {
 	values: Vec<(i128, String)>,
 }
 
@@ -92,13 +92,16 @@ pub async fn stream_deployment_logs(
 			.endpoint
 			.trim_start_matches("http://")
 			.trim_start_matches("https://"),
-		serde_qs::to_string(&BTreeMap::from([(
-			"start",
-			start_time
-				.unwrap_or(OffsetDateTime::now_utc())
-				.unix_timestamp_nanos()
-				.to_string(),
-		)]))?
+		serde_qs::to_string(&BTreeMap::from([
+			("query", format!("{{deployment_id=\"{}\"}}", deployment_id),),
+			(
+				"start",
+				start_time
+					.unwrap_or(OffsetDateTime::now_utc())
+					.unix_timestamp_nanos()
+					.to_string(),
+			),
+		]))?
 	))?
 	.into_client_request()?;
 	client_request.headers_mut().insert(
@@ -136,8 +139,8 @@ pub async fn stream_deployment_logs(
 
 						let logs = message
 							.streams
-							.values
 							.into_iter()
+							.flat_map(|stream| stream.values)
 							.map(|(timestamp, log)| DeploymentLog {
 								timestamp: OffsetDateTime::from_unix_timestamp_nanos(timestamp)
 									.unwrap_or(OffsetDateTime::UNIX_EPOCH),

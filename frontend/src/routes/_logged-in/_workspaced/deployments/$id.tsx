@@ -204,7 +204,7 @@ const DeploymentInfo = () => {
 	const renderTab = () => {
 		switch (tab()) {
 			case "logs":
-				return <DeploymentLogs deploymentId={deploymentInfo.latest?.id || ""} />;
+				return <Show when={deploymentInfo.latest?.id}>{(id) => <DeploymentLogs deploymentId={id()} />}</Show>;
 			case "info":
 			case "":
 				return (

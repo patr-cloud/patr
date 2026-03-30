@@ -20,12 +20,12 @@ use crate::prelude::*;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct LokiResponse {
-	streams: LokiStreams,
+	streams: Vec<LokiStream>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct LokiStreams {
+struct LokiStream {
 	values: Vec<(i128, String)>,
 }
 
@@ -128,8 +128,8 @@ pub async fn stream_runner_logs(
 
 						let logs = message
 							.streams
-							.values
 							.into_iter()
+							.flat_map(|stream| stream.values)
 							.map(|(timestamp, log)| RunnerLog {
 								timestamp: OffsetDateTime::from_unix_timestamp_nanos(timestamp)
 									.unwrap_or(OffsetDateTime::UNIX_EPOCH),
