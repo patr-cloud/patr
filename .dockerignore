@@ -32,6 +32,8 @@ ARCHITECTURE.md
 /frontend/.vinxi
 /frontend/.tanstack
 /frontend/src/routeTree.gen.ts
+/frontend/src/bindings/*
+!/frontend/src/bindings/index.ts
 /ingress/.wrangler
 /ingress/.build
 /ingress/.dist

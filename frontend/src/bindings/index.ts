@@ -35,7 +35,6 @@ import { ListManagedURLResponse } from "./ListManagedURLResponse";
 import { ManagedUrl } from "./ManagedUrl";
 import { CreateManagedURLRequest } from "./CreateManagedURLRequest";
 import { CreateManagedURLResponse } from "./CreateManagedURLResponse";
-import { ManagedUrlType } from "./ManagedUrlType";
 import { WithId } from "./WithId";
 import { UpdateManagedURLResponse } from "./UpdateManagedURLResponse";
 import { UpdateManagedURLRequest } from "./UpdateManagedURLRequest";
@@ -81,10 +80,10 @@ import { CreateContainerRepositoryRequest } from "./CreateContainerRepositoryReq
 import { ContainerRepository } from "./ContainerRepository";
 import { GetContainerRepositoryInfoRequest } from "./GetContainerRepositoryInfoRequest";
 import { GetContainerRepositoryInfoResponse } from "./GetContainerRepositoryInfoResponse";
-import { GetContainerRepositoryImageDetailsRequest } from "./GetContainerRepositoryImageDetailsRequest";
-import { GetContainerRepositoryImageDetailsResponse } from "./GetContainerRepositoryImageDetailsResponse";
-import { DeleteContainerRepositoryImageRequest } from "./DeleteContainerRepositoryImageRequest";
-import { DeleteContainerRepositoryImageResponse } from "./DeleteContainerRepositoryImageResponse";
+import { GetContainerRepositoryManifestDetailsRequest } from "./GetContainerRepositoryManifestDetailsRequest";
+import { GetContainerRepositoryManifestDetailsResponse } from "./GetContainerRepositoryManifestDetailsResponse";
+import { DeleteContainerRepositoryManifestRequest } from "./DeleteContainerRepositoryManifestRequest";
+import { DeleteContainerRepositoryManifestResponse } from "./DeleteContainerRepositoryManifestResponse";
 import { ListContainerRepositoryTagsResponse } from "./ListContainerRepositoryTagsResponse";
 import { ListContainerRepositoryManifestsResponse } from "./ListContainerRepositoryManifestsResponse";
 import { ContainerRepositoryManifestInfo } from "./ContainerRepositoryManifestInfo";
@@ -128,7 +127,6 @@ export type {
 	GetDomainInfoInWorkspaceResponse,
 	ListManagedURLResponse,
 	ManagedUrl,
-	ManagedUrlType,
 	CreateManagedURLRequest,
 	CreateManagedURLResponse,
 	UpdateManagedURLRequest,
@@ -176,10 +174,10 @@ export type {
 	ContainerRepository,
 	GetContainerRepositoryInfoRequest,
 	GetContainerRepositoryInfoResponse,
-	GetContainerRepositoryImageDetailsRequest,
-	GetContainerRepositoryImageDetailsResponse,
-	DeleteContainerRepositoryImageRequest,
-	DeleteContainerRepositoryImageResponse,
+	GetContainerRepositoryManifestDetailsRequest,
+	GetContainerRepositoryManifestDetailsResponse,
+	DeleteContainerRepositoryManifestRequest,
+	DeleteContainerRepositoryManifestResponse,
 	ListContainerRepositoryTagsResponse,
 	ListContainerRepositoryManifestsResponse,
 	ContainerRepositoryManifestInfo,

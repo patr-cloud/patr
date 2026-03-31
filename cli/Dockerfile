@@ -1,3 +1,15 @@
+# Build context should be the repo root:
+
+# Generate TS bindings from Rust models
+FROM rust:1 AS bindings
+
+WORKDIR /app
+COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
+COPY . .
+
+ENV SQLX_OFFLINE=true
+RUN cargo bindings
+
 FROM node:24-alpine as frontend
 
 RUN corepack enable && corepack prepare pnpm@10.30.1 --activate
@@ -9,6 +21,7 @@ RUN pnpm install --frozen-lockfile
 
 COPY frontend/ ./
 COPY assets/frontend/ /app/assets/frontend/
+COPY --from=bindings /app/frontend/src/bindings ./src/bindings
 
 ENV VITE_BUILD_TARGET=csr
 RUN pnpm build
