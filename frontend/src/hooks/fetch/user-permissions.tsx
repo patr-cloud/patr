@@ -22,7 +22,7 @@ export const getPermissions = async (authState: AuthState, wsId: string) => {
 
 	const isServer = typeof window === "undefined";
 
-	const cacheKey = `user-permissions:${wsId}`;
+	const cacheKey = `user-permissions`;
 	let parsedPermissions: ListAllPermissionsResponse | undefined = undefined;
 
 	if (!isServer) {
@@ -81,7 +81,7 @@ const useUserPermissions = () => {
 		}
 
 		const isServer = typeof window === "undefined";
-		const cacheKey = `user-permissions-${wsId}`;
+		const cacheKey = `user-permissions:${wsId}`;
 
 		if (!isServer) {
 			const cached = sessionStorage.getItem(cacheKey);

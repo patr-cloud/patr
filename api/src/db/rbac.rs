@@ -436,8 +436,8 @@ pub async fn initialize_rbac_constraints(
 		) AS $$
 		DECLARE
 			local_permission_id UUID;
-			permission_type TEXT;
 		BEGIN
+			/* Resolve permission name to ID */
 			SELECT
 				permission.id
 			INTO
@@ -451,134 +451,158 @@ pub async fn initialize_rbac_constraints(
 				RAISE EXCEPTION 'Permission `%` not found', permission_name;
 			END IF;
 
+			RETURN QUERY
+			/* Workspaces where this login has super admin access */
+			WITH super_admin_workspaces AS (
+				SELECT
+					workspace.id AS workspace_id
+				FROM
+					web_login
+				INNER JOIN
+					workspace
+				ON
+					workspace.super_admin_id = web_login.user_id
+				WHERE
+					web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+				UNION ALL
+				SELECT
+					user_api_token_workspace_super_admin.workspace_id
+				FROM
+					user_api_token_workspace_super_admin
+				WHERE
+					user_api_token_workspace_super_admin.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+			),
+			/* Resources explicitly granted via include lists,
+			scoped to the workspace the role belongs to */
+			included_resources AS (
+				SELECT
+					role_resource_permissions_include.resource_id,
+					workspace_user.workspace_id
+				FROM
+					web_login
+				INNER JOIN
+					workspace_user
+				ON
+					workspace_user.user_id = web_login.user_id
+				INNER JOIN
+					role_resource_permissions_include
+				ON
+					role_resource_permissions_include.role_id = workspace_user.role_id AND
+					role_resource_permissions_include.permission_id = local_permission_id
+				WHERE
+					web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+				UNION ALL
+				SELECT
+					user_api_token_resource_permissions_include.resource_id,
+					user_api_token_resource_permissions_include.workspace_id
+				FROM
+					user_api_token_resource_permissions_include
+				WHERE
+					user_api_token_resource_permissions_include.permission_id = local_permission_id AND
+					user_api_token_resource_permissions_include.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+			),
+			/* Resources explicitly denied via exclude lists */
+			excluded_resources AS (
+				SELECT
+					role_resource_permissions_exclude.resource_id
+				FROM
+					web_login
+				INNER JOIN
+					workspace_user
+				ON
+					workspace_user.user_id = web_login.user_id
+				INNER JOIN
+					role_resource_permissions_exclude
+				ON
+					role_resource_permissions_exclude.role_id = workspace_user.role_id AND
+					role_resource_permissions_exclude.permission_id = local_permission_id
+				WHERE
+					web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+				UNION ALL
+				SELECT
+					user_api_token_resource_permissions_exclude.resource_id
+				FROM
+					user_api_token_resource_permissions_exclude
+				WHERE
+					user_api_token_resource_permissions_exclude.permission_id = local_permission_id AND
+					user_api_token_resource_permissions_exclude.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+			),
+			/* Workspaces where this login has any exclude-type permission */
+			exclude_workspaces AS (
+				SELECT
+					workspace_user.workspace_id
+				FROM
+					web_login
+				INNER JOIN
+					workspace_user
+				ON
+					workspace_user.user_id = web_login.user_id
+				INNER JOIN
+					role_resource_permissions_type
+				ON
+					role_resource_permissions_type.role_id = workspace_user.role_id AND
+					role_resource_permissions_type.permission_id = local_permission_id AND
+					role_resource_permissions_type.permission_type = 'exclude'
+				WHERE
+					web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+				UNION ALL
+				SELECT
+					user_api_token_resource_permissions_type.workspace_id
+				FROM
+					user_api_token_resource_permissions_type
+				WHERE
+					user_api_token_resource_permissions_type.permission_id = local_permission_id AND
+					user_api_token_resource_permissions_type.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
+					user_api_token_resource_permissions_type.resource_permission_type = 'exclude'
+			)
+			/*
+			We are basically doing:
+				if super_admin OR
+				in(include_list) OR
+				(has exclude on permissionId AND not in(exclude_list))
+			*/
 			SELECT
-				COALESCE(
-					user_api_token_resource_permissions_type.resource_permission_type,
-					role_resource_permissions_type.permission_type
-				)
-			INTO
-				permission_type
-			FROM
-				user_login
-			LEFT JOIN
-				user_api_token_resource_permissions_type
-			ON
-				user_login.login_type = 'api_token' AND
-				user_api_token_resource_permissions_type.token_id = user_login.login_id AND
-				user_api_token_resource_permissions_type.permission_id = local_permission_id
-			LEFT JOIN
-				workspace_user
-			ON
-				workspace_user.user_id = user_login.user_id
-			LEFT JOIN
-				role_resource_permissions_type
-			ON
-				role_resource_permissions_type.role_id = workspace_user.role_id AND
-				role_resource_permissions_type.permission_id = local_permission_id
-			WHERE
-				user_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id;
-
-			RETURN QUERY SELECT
 				resource.*
 			FROM
 				resource
 			WHERE
-				resource.owner_id IN (
-					SELECT DISTINCT
-						COALESCE(
-							user_api_token_workspace_super_admin.workspace_id,
-							workspace.id
-						)
+				/* Super admin: all resources in owned workspaces */
+				EXISTS (
+					SELECT
+						1
 					FROM
-						user_login
-					LEFT JOIN
-						user_api_token_workspace_super_admin
-					ON
-						user_login.login_type = 'api_token' AND
-						user_api_token_workspace_super_admin.token_id = user_login.login_id
-					LEFT JOIN
-						workspace
-					ON
-						user_login.login_type = 'web_login' AND
-						workspace.super_admin_id = user_login.user_id
+						super_admin_workspaces
 					WHERE
-						user_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
-				) OR (
-					permission_type = 'include' AND EXISTS (
+						super_admin_workspaces.workspace_id = resource.owner_id
+				)
+				/* Include: any role or API token explicitly grants this resource
+				(also overrides exclude — include always wins) */
+				OR EXISTS (
+					SELECT
+						1
+					FROM
+						included_resources
+					WHERE
+						included_resources.resource_id = resource.id AND
+						included_resources.workspace_id = resource.owner_id
+				)
+				/* Exclude: resource is in a workspace with an exclude-type
+				permission and is not on any deny list */
+				OR (
+					EXISTS (
 						SELECT
 							1
 						FROM
-							user_login
-						LEFT JOIN
-							user_api_token_resource_permissions_include
-						ON
-							user_login.login_type = 'api_token' AND
-							user_api_token_resource_permissions_include.token_id = user_login.login_id AND
-							user_api_token_resource_permissions_include.resource_id = resource.id
-						LEFT JOIN
-							workspace_user
-						ON
-							workspace_user.user_id = user_login.user_id
-						LEFT JOIN
-							role_resource_permissions_include
-						ON
-							role_resource_permissions_include.role_id = workspace_user.role_id AND
-							role_resource_permissions_include.resource_id = resource.id
+							exclude_workspaces
 						WHERE
-							user_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
-							role_resource_permissions_include.permission_id = local_permission_id AND
-							resource.owner_id = COALESCE(
-								user_api_token_resource_permissions_include.workspace_id,
-								workspace_user.workspace_id
-							) AND
-							COALESCE(
-								user_api_token_resource_permissions_include.resource_id,
-								role_resource_permissions_include.resource_id
-							) IS NOT NULL
-					)
-				) OR (
-					permission_type = 'exclude' AND NOT EXISTS (
+							exclude_workspaces.workspace_id = resource.owner_id
+					) AND NOT EXISTS (
 						SELECT
 							1
 						FROM
-							user_login
-						LEFT JOIN
-							user_api_token_resource_permissions_exclude
-						ON
-							user_login.login_type = 'api_token' AND
-							user_api_token_resource_permissions_exclude.token_id = user_login.login_id AND
-							user_api_token_resource_permissions_exclude.resource_id = resource.id
-						LEFT JOIN
-							workspace_user
-						ON
-							workspace_user.user_id = user_login.user_id
-						LEFT JOIN
-							role_resource_permissions_exclude
-						ON
-							role_resource_permissions_exclude.role_id = workspace_user.role_id AND
-							role_resource_permissions_exclude.resource_id = resource.id
+							excluded_resources
 						WHERE
-							user_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
-							role_resource_permissions_exclude.permission_id = local_permission_id AND
-							resource.owner_id = COALESCE(
-								user_api_token_resource_permissions_exclude.workspace_id,
-								workspace_user.workspace_id
-							) AND
-							COALESCE(
-								user_api_token_resource_permissions_exclude.resource_id,
-								role_resource_permissions_exclude.resource_id
-							) IS NOT NULL
-					) AND resource.owner_id IN (
-						SELECT
-							workspace_user.workspace_id
-						FROM
-							user_login
-						INNER JOIN
-							workspace_user
-						ON
-							workspace_user.user_id = user_login.user_id
-						WHERE
-							user_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+							excluded_resources.resource_id = resource.id
 					)
 				);
 		END;
