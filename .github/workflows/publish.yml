@@ -171,6 +171,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Install Rust nightly
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Generate TS bindings
+        run: cargo bindings
+        env:
+          SQLX_OFFLINE: "true"
+
       - uses: pnpm/action-setup@v4
         with:
           package_json_file: frontend/package.json
@@ -184,9 +192,6 @@ jobs:
         working-directory: frontend
         env:
           VITE_BUILD_TARGET: csr
-
-      - name: Install Rust nightly
-        uses: dtolnay/rust-toolchain@nightly
 
       - name: Build CLI
         run: cargo build --release --package cli --locked
