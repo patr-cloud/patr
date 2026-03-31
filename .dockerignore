@@ -27,3 +27,12 @@ ARCHITECTURE.md
 /.github
 /.claude
 /.pnpm-store
+/frontend/node_modules
+/frontend/.output
+/frontend/.vinxi
+/frontend/.tanstack
+/frontend/src/routeTree.gen.ts
+/ingress/.wrangler
+/ingress/.build
+/ingress/.dist
+/ingress/node_modules

@@ -1,4 +1,15 @@
 # Build context should be the repo root:
+
+# Generate TS bindings from Rust models
+FROM rust:1 AS bindings
+
+WORKDIR /app
+COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
+COPY . .
+
+ENV SQLX_OFFLINE=true
+RUN cargo bindings
+
 FROM node:22-alpine AS base
 
 RUN corepack enable && corepack prepare pnpm@10.30.1 --activate
@@ -23,6 +34,7 @@ WORKDIR /app/frontend
 
 COPY --from=deps /app/frontend/node_modules ./node_modules
 COPY frontend/ .
+COPY --from=bindings /app/frontend/src/bindings ./src/bindings
 
 ARG VITE_TURNSTILE_SITE_KEY
 ENV VITE_TURNSTILE_SITE_KEY=${VITE_TURNSTILE_SITE_KEY}

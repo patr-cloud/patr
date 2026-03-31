@@ -7,7 +7,7 @@ import { httpRequest } from "~/utils/http-request";
 import { ActionTypes, ResourceTypes, UserPermissionsT } from "~/utils/types";
 
 /**
- * Utility function to prevent redundant API calls by caching permissions in localStorage.
+ * Utility function to prevent redundant API calls by caching permissions in sessionStorage.
  * @param authState Current Authentication State
  * @param wsId Current Workspace ID
  * @returns Every Permission ID mapped to it's resourceType and action
@@ -22,10 +22,11 @@ export const getPermissions = async (authState: AuthState, wsId: string) => {
 
 	const isServer = typeof window === "undefined";
 
+	const cacheKey = `user-permissions:${wsId}`;
 	let parsedPermissions: ListAllPermissionsResponse | undefined = undefined;
 
 	if (!isServer) {
-		const cached = localStorage.getItem("user-permissions");
+		const cached = sessionStorage.getItem(cacheKey);
 		if (cached) {
 			parsedPermissions = safelyParseJSON<ListAllPermissionsResponse>(cached);
 		}
@@ -49,7 +50,7 @@ export const getPermissions = async (authState: AuthState, wsId: string) => {
 		parsedPermissions = response.data;
 
 		if (!isServer) {
-			localStorage.setItem("user-permissions", JSON.stringify(parsedPermissions));
+			sessionStorage.setItem(cacheKey, JSON.stringify(parsedPermissions));
 		}
 	}
 

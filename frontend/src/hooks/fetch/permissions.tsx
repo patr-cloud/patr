@@ -22,12 +22,12 @@ const useFetchPermissions = (workspaceId: MaybeAccessor<string>) => {
 
 		const cacheKey = `user-permissions:${wsId}`;
 		if (!isServer) {
-			const cached = localStorage.getItem(cacheKey);
+			const cached = sessionStorage.getItem(cacheKey);
 			if (cached) {
 				try {
 					return JSON.parse(cached) as ListAllPermissionsResponse;
 				} catch {
-					localStorage.removeItem(cacheKey);
+					sessionStorage.removeItem(cacheKey);
 				}
 			}
 		}
@@ -50,7 +50,7 @@ const useFetchPermissions = (workspaceId: MaybeAccessor<string>) => {
 			}
 
 			if (!isServer) {
-				localStorage.setItem(cacheKey, JSON.stringify(response.data));
+				sessionStorage.setItem(cacheKey, JSON.stringify(response.data));
 			}
 			return response.data;
 		} catch (error) {

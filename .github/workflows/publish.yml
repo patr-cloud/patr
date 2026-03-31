@@ -18,7 +18,7 @@ jobs:
           - arch: arm64
             runner: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Extract version from Cargo.toml
         id: version
@@ -87,7 +87,7 @@ jobs:
           - arch: arm64
             runner: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Extract version from Cargo.toml
         id: version
@@ -169,13 +169,13 @@ jobs:
             binary_name: patr
             archive_ext: zip
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: pnpm/action-setup@v4
         with:
           package_json_file: frontend/package.json
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
 
@@ -200,7 +200,7 @@ jobs:
         run: zip -j ${{ matrix.artifact_name }}.zip target/release/${{ matrix.binary_name }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_name }}.${{ matrix.archive_ext }}
@@ -219,7 +219,7 @@ jobs:
           - arch: arm64
             runner: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Extract version from Cargo.toml
         id: version
@@ -281,7 +281,7 @@ jobs:
     needs: build-api
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Extract version from Cargo.toml
         id: version
@@ -332,7 +332,7 @@ jobs:
     needs: build-frontend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Extract version from Cargo.toml
         id: version
@@ -398,7 +398,7 @@ jobs:
     needs: build-cli-docker
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Extract version from Cargo.toml
         id: version
@@ -452,7 +452,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Extract version from Cargo.toml
         id: version
@@ -461,7 +461,7 @@ jobs:
           echo "full=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Download all CLI artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: patr-*
           merge-multiple: true
@@ -540,7 +540,7 @@ jobs:
     needs: [github-release, build-cli-binaries]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Extract version from Cargo.toml
         id: version
@@ -606,7 +606,7 @@ jobs:
 
       - name: Download build artifacts and compute checksums
         id: checksums
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: patr-*
           merge-multiple: true

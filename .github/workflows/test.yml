@@ -19,13 +19,13 @@ jobs:
     env:
       SQLX_OFFLINE: "true"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt, clippy
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: target
           key: rust-target-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
@@ -69,11 +69,11 @@ jobs:
         ports:
           - 6379:6379
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: dtolnay/rust-toolchain@nightly
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: target
           key: rust-target-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
@@ -101,21 +101,31 @@ jobs:
   frontend-checks:
     name: Frontend Checks
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
+    env:
+      SQLX_OFFLINE: "true"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@nightly
+
+      - uses: actions/cache@v5
+        with:
+          path: target
+          key: rust-target-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: rust-target-${{ runner.os }}-
+
+      - name: Generate TS bindings
+        run: cargo bindings
 
       - uses: pnpm/action-setup@v4
         with:
           package_json_file: frontend/package.json
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             frontend/node_modules
@@ -124,7 +134,13 @@ jobs:
           restore-keys: pnpm-${{ runner.os }}-
 
       - run: pnpm install --frozen-lockfile
+        working-directory: frontend
+
+      - run: pnpm typecheck
+        working-directory: frontend
 
       - run: pnpm lint:check
+        working-directory: frontend
 
       - run: pnpm format:check
+        working-directory: frontend

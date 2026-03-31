@@ -16,12 +16,10 @@ const RegenerateModal = (props: {
 
 	// Use external state if provided, otherwise use internal state
 	const isOpen = () => (props.isOpen ?? internalIsOpen)();
-	const setIsOpen = (v: boolean) => (props.setIsOpen ?? internalSetIsOpen)(v);
-
 	return (
 		<Modal
 			isOpen={isOpen}
-			setIsOpen={setIsOpen}
+			setIsOpen={(v) => (props.setIsOpen ?? internalSetIsOpen)(v)}
 			renderModalContent={(close) => (
 				<ModalContainer closeFn={() => close(false)} class="w-full">
 					<form class="w-full">
