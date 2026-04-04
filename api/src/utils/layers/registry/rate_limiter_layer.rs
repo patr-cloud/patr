@@ -16,7 +16,7 @@ use crate::{models::rate_limiter::check_rate_limit, routes::registry_patr_cloud:
 /// `docker pull` or `docker push` generates many parallel HTTP requests
 /// (manifest + config + layer blobs). These limits are roughly 2x Docker Hub's
 /// effective HTTP request rate for authenticated free-tier users.
-const GLOBAL_RATE_LIMITS: [(u32, Duration); 3] = [
+const RATE_LIMITS: [(u32, Duration); 3] = [
 	(30, Duration::from_secs(1)),
 	(300, Duration::from_secs(60)),
 	(1000, Duration::from_secs(3600)),
@@ -118,7 +118,7 @@ where
 				req.redis,
 				req.client_ip,
 				Some(&req.user_data.login_id),
-				&GLOBAL_RATE_LIMITS,
+				&RATE_LIMITS,
 			)
 			.await
 			.map_err(|_| {

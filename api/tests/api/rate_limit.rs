@@ -7,7 +7,7 @@ async fn test_rate_limit_allows_requests_under_limit() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 
-	// Make 2 requests (under the 3/sec limit). Both should succeed.
+	// Make 2 requests (under the 20/sec limit). Both should succeed.
 	for _ in 0..2 {
 		let response = setup
 			.make_api_call(
@@ -33,8 +33,8 @@ async fn test_rate_limit_blocks_after_exceeding_per_second_limit() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 
-	// The per-second limit is 3. Send 4 rapid requests.
-	for _ in 0..3 {
+	// The per-second limit is 20. Send 21 rapid requests.
+	for _ in 0..20 {
 		setup
 			.make_api_call(
 				ApiRequest::<GetUserInfoRequest>::builder()
@@ -47,7 +47,7 @@ async fn test_rate_limit_blocks_after_exceeding_per_second_limit() {
 			.await;
 	}
 
-	// The 4th request should be rate-limited
+	// The 21st request should be rate-limited
 	let response = setup
 		.make_api_call(
 			ApiRequest::<GetUserInfoRequest>::builder()
@@ -71,8 +71,8 @@ async fn test_rate_limit_window_slides() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 
-	// Exhaust the per-second limit (3 requests)
-	for _ in 0..3 {
+	// Exhaust the per-second limit (20 requests)
+	for _ in 0..20 {
 		setup
 			.make_api_call(
 				ApiRequest::<GetUserInfoRequest>::builder()
@@ -125,8 +125,8 @@ async fn test_rate_limit_rejected_requests_count() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 
-	// Exhaust the per-second limit
-	for _ in 0..3 {
+	// Exhaust the per-second limit (20 requests)
+	for _ in 0..20 {
 		setup
 			.make_api_call(
 				ApiRequest::<GetUserInfoRequest>::builder()
@@ -173,8 +173,8 @@ async fn test_rate_limit_authenticated_per_login() {
 	// Clear rate limits accumulated during setup
 	setup.clear_rate_limits().await;
 
-	// Exhaust the per-second limit using the first session
-	for _ in 0..3 {
+	// Exhaust the per-second limit using the first session (20 requests)
+	for _ in 0..20 {
 		setup
 			.make_api_call(
 				ApiRequest::<GetUserInfoRequest>::builder()
@@ -207,7 +207,7 @@ async fn test_rate_limit_authenticated_per_login() {
 	// Session B has a different login_id, so its per-login counter is separate.
 	// However, both sessions share the same IP (127.0.0.1), so the per-IP
 	// counter is shared. Since we already made 4 requests from this IP
-	// (3 + 1 rejected), session B is also blocked by the per-IP limit.
+	// (20 + 1 rejected), session B is also blocked by the per-IP limit.
 	let response = setup
 		.make_api_call(
 			ApiRequest::<GetUserInfoRequest>::builder()
