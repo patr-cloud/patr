@@ -8,8 +8,10 @@ const StatusChip = (props: StatusChipProps) => {
 	const colorClass = () => {
 		switch (props.status) {
 			case "running":
+			case "connected":
 				return "bg-success/15 text-success";
 			case "stopped":
+			case "unreachable":
 				return "bg-grey/15 text-grey";
 			case "errored":
 				return "bg-error/15 text-error";

@@ -97,7 +97,7 @@ const General = () => {
 					<form onSubmit={onSubmit} class="flex flex-col gap-6 justify-between w-full flex-1">
 						<div class="flex flex-col gap-4 items-start w-full">
 							<div class="flex gap-8 items-center w-full">
-								<InputLabel parentClass="flex-2" for="workspace-id" label="Workspace ID" />
+								<InputLabel parentClass="flex-2" label="Workspace ID" />
 								<CopyableField
 									value={workspaceId() || "Loading..."}
 									class="flex-10"
@@ -113,6 +113,7 @@ const General = () => {
 										setName(e.currentTarget.value);
 									}}
 									class="flex-10"
+									id="workspace-name"
 									name="workspace-name"
 									placeholder="Workspace Name"
 									type={InputType.Text}
@@ -126,7 +127,7 @@ const General = () => {
 								variant="contained"
 								disabled={name().trim() === (workspaceInfo()?.name ?? "") || name().trim() === ""}
 							>
-								UPDATE
+								Update
 							</Button>
 						</div>
 					</form>

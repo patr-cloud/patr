@@ -116,7 +116,7 @@ const CreateRoles = () => {
 				<WorkspaceHeader workspaceName={workspaceInfo()?.name} activeTab="roles" />
 				<PageContainerBody class="flex flex-col justify-between h-full gap-8">
 					<div class="flex flex-col gap-6 flex-1">
-						<div class="text-2xl text-white font-semibold">Create New Roles</div>
+						<div class="text-2xl text-white font-semibold">Create New Role</div>
 
 						<div class="flex flex-col gap-2">
 							<label class="text-white text-sm">Role Name</label>
@@ -197,7 +197,7 @@ const CreateRoles = () => {
 							onClick={() => navigate({ to: "/workspace/roles" })}
 							disabled={isSubmitting()}
 						>
-							CANCEL
+							Cancel
 						</Button>
 						<Button
 							variant={ButtonVariant.Contained}

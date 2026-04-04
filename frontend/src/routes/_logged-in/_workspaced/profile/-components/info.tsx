@@ -56,7 +56,9 @@ const UserSettingsInfoTab = (props: UserSettingsInfoTabProps) => {
 				<Input
 					value={props.userInfo.latest?.firstName || ""}
 					class="flex-5"
+					id="first-name"
 					name="first-name"
+					autocomplete="given-name"
 					placeholder="First Name"
 					type={InputType.Text}
 					onInput={(e) => {
@@ -73,7 +75,9 @@ const UserSettingsInfoTab = (props: UserSettingsInfoTabProps) => {
 				<Input
 					value={props.userInfo.latest?.lastName || ""}
 					class="flex-5"
+					id="last-name"
 					name="last-name"
+					autocomplete="family-name"
 					placeholder="Last Name"
 					type={InputType.Text}
 					onInput={(e) => {
@@ -88,17 +92,19 @@ const UserSettingsInfoTab = (props: UserSettingsInfoTabProps) => {
 					}}
 				/>
 				<Button type="submit" variant={ButtonVariant.Contained}>
-					UPDATE
+					Update
 				</Button>
 			</form>
 
 			<div class="flex gap-4 items-center w-full">
-				<InputLabel parentClass="flex-1" for="first-name" label="Email" />
+				<InputLabel parentClass="flex-1" for="recovery-email" label="Email" />
 
 				<Input
 					value={props.userInfo.latest?.recoveryEmail || ""}
 					class="flex-11"
+					id="recovery-email"
 					name="recovery-email"
+					autocomplete="email"
 					placeholder="Recovery Email"
 					type={InputType.Text}
 					disabled
@@ -106,7 +112,7 @@ const UserSettingsInfoTab = (props: UserSettingsInfoTabProps) => {
 			</div>
 
 			<form class="flex gap-4 items-start w-full">
-				<InputLabel parentClass="flex-1" for="2-fa" label="Two-Factor Authentication" />
+				<InputLabel parentClass="flex-1" label="Two-Factor Authentication" />
 
 				<div class="flex-11">
 					<Modal

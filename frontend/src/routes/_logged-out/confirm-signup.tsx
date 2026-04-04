@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createSignal, onMount, Show } from "solid-js";
 import { CompleteSignUpRequest } from "~/bindings";
-import { Button, ButtonVariant, useToast, Turnstile } from "~/components";
+import { Alert, Button, ButtonVariant, useToast, Turnstile } from "~/components";
 import Input, { InputType } from "~/components/input";
 import OtpInput from "~/components/otp-input";
 import { createAsyncAction } from "~/hooks";
@@ -23,6 +23,7 @@ const ConfirmSignUp = () => {
 	const usernameWasPreFilled = !!initialUsername;
 
 	const [username, setUsername] = createSignal(initialUsername);
+	const [usernameError, setUsernameError] = createSignal("");
 	const [otpDigits, setOtpDigits] = createSignal<string[]>(
 		initialOtp
 			? [...initialOtp.replace(/\D/g, "").slice(0, 6).padEnd(6, " ")].map((c) => (c === " " ? "" : c))
@@ -37,6 +38,11 @@ const ConfirmSignUp = () => {
 	});
 
 	const { execute: submitConfirmation, isLoading } = createAsyncAction(async () => {
+		if (!username().trim()) {
+			setUsernameError("Username is required.");
+			return;
+		}
+
 		if (!turnstileToken()) {
 			toast("Please complete the security verification", "error");
 			return;
@@ -53,33 +59,44 @@ const ConfirmSignUp = () => {
 		});
 
 		if (resp.ok) {
-			console.log("Account confirmed successfully");
+			toast("Account verified! You can now log in.", "success");
 			navigate({ to: "/login" });
 		} else {
-			console.error("Error confirming account:", resp.data.error);
-			toast("Error confirming account", "error");
+			const errorMsg =
+				resp.data.error === "userNotFound"
+					? "Those credentials don't match our records. Please check your username and verification code."
+					: "Error confirming account. Please try again.";
+			toast(errorMsg, "error");
 		}
 	});
 
+	const handleResendOtp = () => {
+		toast("To get a new code, please sign up again with the same username.", "info");
+		navigate({ to: "/sign-up" });
+	};
+
 	const onSubmit = async (e: Event) => {
 		e.preventDefault();
-		await submitConfirmation().catch(() => {});
+		await submitConfirmation().catch(() => {
+			toast("An unexpected error occurred. Please try again.", "error");
+		});
 	};
 
 	return (
 		<>
 			<Title>Confirm Sign Up | Patr</Title>
 			<form
+				noValidate
 				onSubmit={onSubmit}
 				class="bg-secondary p-12 rounded-sm shadow-2xl w-full max-w-128 relative z-10 border border-secondary-medium"
 			>
 				{/* Header */}
 				<div class="mb-10 items-center justify-between flex flex-row">
 					<h1 class="font-bold text-2xl text-white">Confirm Sign Up</h1>
-					<div class="flex flex-row items-end">
-						<div class="text-gray-400 font-extralight text-sm mr-2">New User?</div>
-						<Link class="text-primary font-thin text-sm hover:underline" to="/sign-up">
-							Sign Up
+					<div class="flex flex-row items-baseline">
+						<div class="text-gray-400 font-extralight text-sm mr-2">Already verified?</div>
+						<Link class="text-primary font-thin text-sm hover:underline" to="/login">
+							Login
 						</Link>
 					</div>
 				</div>
@@ -89,10 +106,22 @@ const ConfirmSignUp = () => {
 					<Input
 						type={InputType.Text}
 						placeholder="Username"
+						required={true}
+						autocomplete="username"
+						name="username"
+						id="username"
 						value={username}
-						onInput={(e) => setUsername(e.currentTarget.value)}
+						onInput={(e) => {
+							setUsername(e.currentTarget.value);
+							setUsernameError("");
+						}}
 						styleVariant="medium"
 					/>
+					<Show when={usernameError()}>
+						<div class="mt-1">
+							<Alert message={usernameError()} type="error" />
+						</div>
+					</Show>
 				</Show>
 
 				{/* Show username as text if it was pre-filled */}
@@ -104,7 +133,7 @@ const ConfirmSignUp = () => {
 
 				{/* OTP Input - 6 digits */}
 				<div class="mt-8">
-					<p class="text-gray-400 text-xs mb-2">Enter the 6-digit code sent to you</p>
+					<p class="text-grey text-sm mb-3">Enter the 6-digit verification code sent to your email</p>
 					<OtpInput inputVariant="medium" otpDigits={otpDigits} setOtpDigits={setOtpDigits} />
 				</div>
 
@@ -118,16 +147,25 @@ const ConfirmSignUp = () => {
 					/>
 				</div>
 
-				{/* Sign Up Button */}
+				{/* Buttons */}
 				<div class="pt-8 w-full flex flex-row items-center justify-between">
-					<Link to="/sign-up" class="text-primary text-xs hover:underline font-light">
-						Back to Sign Up
-					</Link>
+					<div class="flex items-center gap-4">
+						<Link to="/sign-up" class="text-primary text-xs hover:underline font-light">
+							Back to Sign Up
+						</Link>
+						<button
+							type="button"
+							class="text-grey text-xs hover:text-primary hover:underline font-light"
+							onClick={handleResendOtp}
+						>
+							Resend Code
+						</button>
+					</div>
 					<Button
 						loading={isLoading}
 						loadingContent={() => <span>Confirming...</span>}
 						variant={ButtonVariant.Contained}
-						class="py-4 text-base font-semibold px-xxl flex-end transition-all duration-200"
+						class="py-4 text-base font-semibold px-8"
 						type="submit"
 						disabled={!turnstileToken() || otpDigits().some((d) => d === "")}
 					>
@@ -135,6 +173,11 @@ const ConfirmSignUp = () => {
 					</Button>
 				</div>
 			</form>
+
+			{/* Footer */}
+			<div class="absolute bottom-6 left-0 right-0 text-center">
+				<p class="text-gray-500 text-xs">&copy; {new Date().getFullYear()} Patr. All rights reserved.</p>
+			</div>
 		</>
 	);
 };

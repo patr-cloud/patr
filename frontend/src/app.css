@@ -31,8 +31,8 @@
 
 	--color-white: #ffffff;
 	--color-black: #000000;
-	--color-grey: #ffffffac;
-	--color-disabled: #ffffff60;
+	--color-grey: #ffffffcc;
+	--color-disabled: #ffffff99;
 
 	--color-txt-code-snippet: #a5c5ff;
 	--color-bg-code-snippet: #78a7ff1a;
@@ -110,7 +110,7 @@ body {
 	textarea,
 	select {
 		background-color: transparent;
-		@apply text-white border border-primary px-lg py-sm rounded-xs;
+		@apply text-white border border-secondary-medium px-lg py-sm rounded-xs;
 		@apply focus:outline-none focus:border-primary focus:ring-0;
 		transition: all 0.2s ease;
 	}
@@ -189,6 +189,8 @@ body {
 .btn-primary:focus-visible {
 	animation: ripple 1200ms linear infinite;
 	@apply text-secondary;
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
 }
 
 .btn-plain {
@@ -271,8 +273,11 @@ body {
 
 .table-row {
 	@apply border border-border-color min-h-10
-    flex items-center justify-center w-full px-xl 
-    bg-secondary-light last-of-type:rounded-b-xs;
+    flex items-center justify-center w-full px-xl
+    bg-secondary-light last-of-type:rounded-b-xs hover:bg-secondary-medium;
+	transition:
+		background-color 150ms ease,
+		border-color 150ms ease;
 }
 
 .table-row:hover {
@@ -293,6 +298,21 @@ body {
 		height: 1px;
 		background: var(--color-border-color);
 	}
+}
+
+.chip-tag {
+	@apply inline-flex items-center gap-1 py-0.5 pl-2.5 pr-1.5 rounded-xs text-sm font-medium text-white/80 border border-white/15;
+	background-color: rgba(255, 255, 255, 0.04);
+	font-family: "Courier New", monospace;
+}
+
+.chip-input-inner {
+	@apply flex-1 min-w-30 bg-transparent text-white text-sm;
+	border: none;
+	outline: none;
+	box-shadow: none;
+	border-radius: 0;
+	padding: 0;
 }
 
 .input-file {

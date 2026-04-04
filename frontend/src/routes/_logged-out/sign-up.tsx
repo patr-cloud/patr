@@ -1,12 +1,31 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createSignal } from "solid-js";
+import { createSignal, Show } from "solid-js";
 import { CreateAccountRequest } from "~/bindings";
-import { Button, useToast, Turnstile } from "~/components";
+import { Alert, Button, useToast, Turnstile } from "~/components";
 import Input, { InputType } from "~/components/input";
 import { createAsyncAction } from "~/hooks";
 import { ButtonVariant } from "~/utils/color";
 import { httpRequest } from "~/utils/http-request";
+import { validatePassword } from "~/utils/validation";
+
+interface FieldErrors {
+	username: string;
+	firstName: string;
+	lastName: string;
+	email: string;
+	password: string;
+	confirmPassword: string;
+}
+
+const emptyErrors: FieldErrors = {
+	username: "",
+	firstName: "",
+	lastName: "",
+	email: "",
+	password: "",
+	confirmPassword: "",
+};
 
 const SignUp = () => {
 	const toast = useToast();
@@ -21,8 +40,54 @@ const SignUp = () => {
 	const [confirmPassword, setConfirmPassword] = createSignal("");
 
 	const [turnstileToken, setTurnstileToken] = createSignal<string>("");
+	const [errors, setErrors] = createSignal<FieldErrors>({ ...emptyErrors });
+
+	const clearError = (field: keyof FieldErrors) => {
+		setErrors((prev) => ({ ...prev, [field]: "" }));
+	};
+
+	const validateInputs = (): boolean => {
+		const newErrors = { ...emptyErrors };
+		let valid = true;
+
+		if (!username().trim()) {
+			newErrors.username = "Username is required.";
+			valid = false;
+		}
+		if (!firstName().trim()) {
+			newErrors.firstName = "First name is required.";
+			valid = false;
+		}
+		if (!lastName().trim()) {
+			newErrors.lastName = "Last name is required.";
+			valid = false;
+		}
+		if (!email().trim()) {
+			newErrors.email = "Email is required.";
+			valid = false;
+		}
+		if (!password()) {
+			newErrors.password = "Password is required.";
+			valid = false;
+		} else {
+			const passwordValidation = validatePassword(password());
+			if (!passwordValidation.valid) {
+				newErrors.password = passwordValidation.error || "Invalid password.";
+				valid = false;
+			}
+		}
+		if (password() !== confirmPassword()) {
+			newErrors.confirmPassword = "Passwords do not match.";
+			valid = false;
+		}
+
+		setErrors(newErrors);
+		return valid;
+	};
 
 	const { execute: submitSignUp, isLoading } = createAsyncAction(async () => {
+		if (!validateInputs()) return;
+
 		if (!turnstileToken()) {
 			toast("Please complete the security verification", "error");
 			return;
@@ -43,13 +108,19 @@ const SignUp = () => {
 		});
 
 		if (resp.ok) {
-			// Handle successful sign-up (e.g., redirect to login or dashboard)
-			console.log("Account created successfully");
 			navigate({ to: "/confirm-signup", search: { username: username(), otp: undefined } });
 		} else {
-			// Handle sign-up errors
-			console.error("Error creating account:", resp.statusText);
-			toast("Error creating account: " + resp.statusText, "error");
+			switch (resp.data.error) {
+				case "usernameUnavailable":
+					setErrors((prev) => ({ ...prev, username: "Username is already taken." }));
+					break;
+				case "emailUnavailable":
+					setErrors((prev) => ({ ...prev, email: "Email is already in use." }));
+					break;
+				default:
+					toast("Error creating account: " + resp.statusText, "error");
+					break;
+			}
 		}
 	});
 
@@ -58,6 +129,7 @@ const SignUp = () => {
 			<Title>Sign Up | Patr</Title>
 			{/* Sign Up Card */}
 			<form
+				noValidate
 				onSubmit={async (e) => {
 					e.preventDefault();
 					await submitSignUp().catch((e) => {
@@ -71,7 +143,7 @@ const SignUp = () => {
 				{/* Header */}
 				<div class="mb-10 items-center justify-between flex flex-row">
 					<h1 class="font-bold text-2xl text-white">Sign Up</h1>
-					<div class="flex flex-row items-end">
+					<div class="flex flex-row items-baseline">
 						<div class="text-gray-400 font-extralight text-sm mr-2">Already a User?</div>
 						<Link class="text-primary font-thin text-sm hover:underline" to="/login">
 							Login
@@ -85,70 +157,130 @@ const SignUp = () => {
 						type={InputType.Text}
 						placeholder="Username"
 						autocomplete="username"
+						required={true}
 						name="username"
 						id="username"
 						value={username}
-						onInput={(e) => setUsername(e.currentTarget.value)}
+						onInput={(e) => {
+							setUsername(e.currentTarget.value);
+							clearError("username");
+						}}
 						styleVariant="medium"
 					/>
+					<Show when={errors().username}>
+						<div class="mt-1">
+							<Alert message={errors().username} type="error" />
+						</div>
+					</Show>
 
 					{/* Name Inputs */}
 					<div class="flex items-center gap-4 mt-4">
-						<Input
-							type={InputType.Text}
-							placeholder="First Name"
-							autocomplete="given-name"
-							required={true}
-							name="first-name"
-							id="first-name"
-							value={firstName}
-							onInput={(e) => setFirstName(e.currentTarget.value)}
-							styleVariant="medium"
-							class="flex-1"
-						/>
-						<Input
-							type={InputType.Text}
-							placeholder="Last Name"
-							autocomplete="family-name"
-							required={true}
-							name="last-name"
-							id="last-name"
-							value={lastName}
-							onInput={(e) => setLastName(e.currentTarget.value)}
-							styleVariant="medium"
-							class="flex-1"
-						/>
+						<div class="flex-1">
+							<Input
+								type={InputType.Text}
+								placeholder="First Name"
+								autocomplete="given-name"
+								required={true}
+								name="first-name"
+								id="first-name"
+								value={firstName}
+								onInput={(e) => {
+									setFirstName(e.currentTarget.value);
+									clearError("firstName");
+								}}
+								styleVariant="medium"
+							/>
+							<Show when={errors().firstName}>
+								<div class="mt-1">
+									<Alert message={errors().firstName} type="error" />
+								</div>
+							</Show>
+						</div>
+						<div class="flex-1">
+							<Input
+								type={InputType.Text}
+								placeholder="Last Name"
+								autocomplete="family-name"
+								required={true}
+								name="last-name"
+								id="last-name"
+								value={lastName}
+								onInput={(e) => {
+									setLastName(e.currentTarget.value);
+									clearError("lastName");
+								}}
+								styleVariant="medium"
+							/>
+							<Show when={errors().lastName}>
+								<div class="mt-1">
+									<Alert message={errors().lastName} type="error" />
+								</div>
+							</Show>
+						</div>
 					</div>
 
 					<Input
 						type={InputType.Email}
 						placeholder="Email Address"
 						autocomplete="email"
+						required={true}
+						name="email"
+						id="email"
 						value={email}
-						onInput={(e) => setEmail(e.currentTarget.value)}
+						onInput={(e) => {
+							setEmail(e.currentTarget.value);
+							clearError("email");
+						}}
 						class="mt-4"
 						styleVariant="medium"
 					/>
+					<Show when={errors().email}>
+						<div class="mt-1">
+							<Alert message={errors().email} type="error" />
+						</div>
+					</Show>
 
 					<Input
 						type={InputType.Password}
 						placeholder="Password"
 						autocomplete="new-password"
+						required={true}
+						name="password"
+						id="password"
 						value={password}
-						onInput={(e) => setPassword(e.currentTarget.value)}
+						onInput={(e) => {
+							setPassword(e.currentTarget.value);
+							clearError("password");
+						}}
 						class="mt-4"
 						styleVariant="medium"
 					/>
+					<Show when={errors().password}>
+						<div class="mt-1">
+							<Alert message={errors().password} type="error" />
+						</div>
+					</Show>
 
 					<Input
 						type={InputType.Password}
 						placeholder="Confirm Password"
 						autocomplete="new-password"
+						required={true}
+						name="confirm-password"
+						id="confirm-password"
 						value={confirmPassword}
-						onInput={(e) => setConfirmPassword(e.currentTarget.value)}
+						onInput={(e) => {
+							setConfirmPassword(e.currentTarget.value);
+							clearError("confirmPassword");
+						}}
 						class="mt-4"
 						styleVariant="medium"
 					/>
+					<Show when={errors().confirmPassword}>
+						<div class="mt-1">
+							<Alert message={errors().confirmPassword} type="error" />
+						</div>
+					</Show>
 
 					{/* Turnstile Widget */}
 					<div class="mt-6 flex justify-center">
@@ -171,7 +303,7 @@ const SignUp = () => {
 						</Link>
 						<Button
 							variant={ButtonVariant.Contained}
-							class="py-4 text-base font-semibold px-xxl flex-end"
+							class="py-4 text-base font-semibold px-8"
 							type="submit"
 							loading={isLoading}
 							loadingContent={() => <span>Signing up...</span>}
@@ -184,7 +316,7 @@ const SignUp = () => {
 
 			{/* Footer */}
 			<div class="absolute bottom-6 left-0 right-0 text-center">
-				<p class="text-gray-500 text-xs">&copy; 2025 Patr. All rights reserved.</p>
+				<p class="text-gray-500 text-xs">&copy; {new Date().getFullYear()} Patr. All rights reserved.</p>
 			</div>
 		</>
 	);

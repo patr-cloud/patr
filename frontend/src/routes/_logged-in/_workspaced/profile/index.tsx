@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createResource, Suspense } from "solid-js";
-import { useNavigate } from "@tanstack/solid-router";
+import { LoadingSpinner } from "~/components/loading-spinner";
 import { GetUserInfoResponse } from "~/bindings";
-import { PageContainer, PageContainerBody, PageContainerHead, useToast, HeadTab } from "~/components";
+import { PageContainer, PageContainerBody, PageContainerHead, useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
 import UserSettingsInfoTab from "./-components/info";
@@ -12,10 +12,6 @@ import ChangePasswordTab from "./-components/change-password";
 const UserSettingsPage = () => {
 	const [authState] = useAuthState();
 	const toast = useToast();
-
-	const search = Route.useSearch();
-	const navigate = useNavigate();
-	const tab = () => search().tab;
 
 	const [userInfo, { mutate: mutateUserInfo, refetch: refetchUserInfo }] = createResource(
 		authState(),
@@ -31,8 +27,7 @@ const UserSettingsPage = () => {
 				});
 
 				if (!response.ok) {
-					console.error("Failed to fetch workspaces:", response.data.error);
-					toast("Failed to fetch workspaces", "error");
+					toast("Failed to fetch user info", "error");
 					return undefined;
 				}
 
@@ -55,21 +50,16 @@ const UserSettingsPage = () => {
 						},
 					]}
 					subText="Manage your profile information and security preferences"
-					bottomContent={() => (
-						<HeadTab
-							tab={tab}
-							tabItems={[
-								{
-									label: "Info",
-									value: "",
-									onClick: (value) => navigate({ to: "/profile", search: { tab: value } }),
-								},
-							]}
-						/>
-					)}
 				/>
 				<PageContainerBody class="flex flex-col gap-8">
-					<Suspense fallback={<div>Loading user info...</div>}>
+					<Suspense
+						fallback={
+							<div class="flex items-center justify-center gap-2 py-16 text-grey">
+								<LoadingSpinner size={20} />
+								<span class="text-sm">Loading user info...</span>
+							</div>
+						}
+					>
 						<div class="flex flex-1 flex-col gap-6 items-start w-full">
 							<UserSettingsInfoTab
 								userInfo={userInfo}

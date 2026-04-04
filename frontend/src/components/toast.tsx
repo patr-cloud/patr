@@ -1,11 +1,11 @@
 import { Portal } from "solid-js/web";
 import { createContext, createEffect, For, onCleanup, ParentProps, useContext } from "solid-js";
 import { createStore, SetStoreFunction } from "solid-js/store";
-import { FiAlertCircle, FiCheckCircle } from "solid-icons/fi";
+import { FiAlertCircle, FiCheckCircle, FiInfo } from "solid-icons/fi";
 
 export interface ToastData {
 	id: number;
-	level: "warn" | "error" | "success";
+	level: "warn" | "error" | "success" | "info";
 	expiry: number;
 	dismissible: boolean;
 	message: string;
@@ -44,6 +44,8 @@ const Toast = (props: { toast: ToastData; setToasts: SetStoreFunction<ToastData[
 				return "bg-error";
 			case "warn":
 				return "bg-warning";
+			case "info":
+				return "bg-info";
 			default:
 				return "bg-info";
 		}
@@ -64,6 +66,7 @@ const Toast = (props: { toast: ToastData; setToasts: SetStoreFunction<ToastData[
 			{props.toast.level === "success" && <FiCheckCircle class="text-success-dark" size={20} />}
 			{props.toast.level === "warn" && <FiCheckCircle class="text-warning-dark" size={20} />}
 			{props.toast.level === "error" && <FiAlertCircle class="text-error-dark" size={20} />}
+			{props.toast.level === "info" && <FiInfo class="text-info-dark" size={20} />}
 			{props.toast.message}
 		</div>
 	);
@@ -73,7 +76,7 @@ type CreateToastFn = (
 	/** The message to display in the toast */
 	message: string,
 	/** The level of the toast */
-	level: "warn" | "error" | "success",
+	level: "warn" | "error" | "success" | "info",
 	/** Whether the toast can be dismissed by clicking on it */
 	dismissible?: boolean,
 	/** The time in milliseconds before the toast expires, set to -1 to disable expiry */

@@ -169,7 +169,7 @@ const DeploymentInfo = () => {
 						loading={isStoppingDeployment()}
 						loadingContent={() => <span>Stopping...</span>}
 					>
-						STOP
+						Stop
 					</Button>
 				</Show>
 			</Match>
@@ -194,7 +194,7 @@ const DeploymentInfo = () => {
 							startDeployment();
 						}}
 					>
-						START
+						Start
 					</Button>
 				</Show>
 			</Match>

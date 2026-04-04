@@ -222,9 +222,11 @@ const DomainInfo = () => {
 			<PageContainer>
 				<ErrorBoundary
 					fallback={(err, reset) => (
-						<div>
-							<p>Error loading runners: {err.message}</p>
-							<button onClick={reset}>Retry</button>
+						<div class="flex flex-col items-center justify-center gap-4 py-16">
+							<p class="text-error text-sm">Error loading domain details: {err.message}</p>
+							<button class="text-primary hover:underline text-sm" onClick={reset}>
+								Retry
+							</button>
 						</div>
 					)}
 				>

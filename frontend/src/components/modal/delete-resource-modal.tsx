@@ -1,4 +1,4 @@
-import { Accessor, createSignal, Setter } from "solid-js";
+import { Accessor, createSignal, JSX, Setter } from "solid-js";
 import Modal, { ModalContainer } from "~/components/modal";
 import Input, { InputType } from "~/components/input";
 import Button from "~/components/button";
@@ -11,6 +11,7 @@ const DeleteModal = (props: {
 	isLoading?: boolean;
 	isOpen?: Accessor<boolean>;
 	setIsOpen?: Setter<boolean>;
+	renderTrigger?: (open?: (value: boolean) => void) => JSX.Element;
 }) => {
 	const [resourceNameInput, setResourceNameInput] = createSignal("");
 	const [internalIsOpen, internalSetIsOpen] = createSignal(false);
@@ -47,17 +48,21 @@ const DeleteModal = (props: {
 								loading={props.isLoading}
 								loadingContent={() => <span>Deleting...</span>}
 							>
-								DELETE
+								Delete
 							</Button>
 						</div>
 					</form>
 				</ModalContainer>
 			)}
-			renderTrigger={(open) => (
-				<Button onClick={() => open(true)} variant={ButtonVariant.Outlined} color={Color.Error}>
-					DELETE
-				</Button>
-			)}
+			renderTrigger={(open) =>
+				props.renderTrigger ? (
+					props.renderTrigger(open)
+				) : (
+					<Button onClick={() => open(true)} variant={ButtonVariant.Outlined} color={Color.Error}>
+						Delete
+					</Button>
+				)
+			}
 		/>
 	);
 };

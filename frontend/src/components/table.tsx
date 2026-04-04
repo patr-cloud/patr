@@ -22,12 +22,16 @@ const TableRow = <TItem extends Record<string, unknown>>(props: {
 }) => {
 	return (
 		<tr
+			role="row"
 			class={`border border-border-color min-h-10 cursor-pointer flex items-center justify-center w-full px-xl
         bg-secondary-light last-of-type:rounded-b-xs ${get(props.class)}`}
 		>
 			<For each={Object.values(props.item)}>
 				{(row, index) => (
-					<td class={`flex items-center justify-center ${props.column_classes.at(index()) ?? ""}`}>
+					<td
+						role="cell"
+						class={`flex items-center justify-center ${props.column_classes.at(index()) ?? ""}`}
+					>
 						{row as string}
 					</td>
 				)}
@@ -45,12 +49,13 @@ const Table = <TItem extends Record<string, unknown>>(rawProps: TableProps<TItem
 	);
 	return (
 		<div class="w-full overflow-x-auto">
-			<table class={`rounded-xs w-full min-w-150 text-white ${get(props.class)}`}>
+			<table role="table" class={`rounded-xs w-full min-w-150 text-white ${get(props.class)}`}>
 				<thead class="flex items-center justify-center py-sm bg-secondary-medium w-full rounded-t-xs">
-					<tr class="flex items-center justify-center px-xl w-full">
+					<tr role="row" class="flex items-center justify-center px-xl w-full">
 						<For each={props.headings}>
 							{(heading, index) => (
 								<th
+									role="columnheader"
 									class={`flex items-center justify-center text-sm font-medium ${props.column_grids.at(index()) ?? ""}`}
 								>
 									{heading}
@@ -62,8 +67,11 @@ const Table = <TItem extends Record<string, unknown>>(rawProps: TableProps<TItem
 
 				<tbody class="w-full h-full flex flex-col justify-start items-start rounded-b-xs">
 					{get(props.rows).length === 0 && (
-						<tr class="w-full flex justify-center items-center p-md text-grey bg-secondary-light rounded-b-xs">
-							<td>No data found.</td>
+						<tr
+							role="row"
+							class="w-full flex justify-center items-center p-md text-grey bg-secondary-light rounded-b-xs"
+						>
+							<td role="cell">No data found.</td>
 						</tr>
 					)}
 					<For each={get(props.rows)}>

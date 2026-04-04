@@ -25,7 +25,7 @@ const QuickActionCard = (props: QuickActionProps) => {
 				<h3 class="text-base font-medium text-white group-hover:text-primary transition-colors">
 					{props.title}
 				</h3>
-				<p class="text-sm text-gray-400 leading-relaxed">{props.description}</p>
+				<p class="text-sm text-grey leading-relaxed">{props.description}</p>
 			</div>
 			<div class="flex items-center gap-1 text-sm text-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300">
 				<span>Get started</span>
@@ -48,14 +48,14 @@ const ResourceLink = (props: ResourceLinkProps) => {
 			to={props.href}
 			class="group flex items-center gap-4 rounded-xs bg-secondary-light/50 p-4 border border-white/5 transition-all duration-200 hover:bg-secondary-medium/30 hover:border-white/10"
 		>
-			<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xs bg-white/5 text-gray-400 group-hover:text-primary transition-colors">
+			<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xs bg-white/5 text-grey group-hover:text-primary transition-colors">
 				<props.icon />
 			</div>
 			<div class="flex flex-col gap-0.5 min-w-0">
 				<span class="text-sm font-medium text-white">{props.title}</span>
-				<span class="text-xs text-gray-500">{props.description}</span>
+				<span class="text-xs text-grey">{props.description}</span>
 			</div>
-			<FiArrowRight class="ml-auto shrink-0 text-gray-600 group-hover:text-primary transition-colors" />
+			<FiArrowRight class="ml-auto shrink-0 text-grey group-hover:text-primary transition-colors" />
 		</Link>
 	);
 };
@@ -121,10 +121,10 @@ const HomePage = () => {
 				<PageContainerHead
 					breadcrumbs={[
 						{
-							label: "Welcome to Patr",
+							label: "Home",
 						},
 					]}
-					subText="Your DevOps platform for deploying and managing containerized applications. Get started by creating a deployment, setting up a runner, or connecting a domain."
+					subText="Deploy and manage containerized applications across your infrastructure."
 				/>
 
 				<PageContainerBody class="overflow-y-auto">
@@ -132,10 +132,8 @@ const HomePage = () => {
 						{/* Quick Actions */}
 						<div class="flex flex-col gap-4">
 							<div class="flex items-center gap-2">
-								<FiPlus class="text-primary" />
-								<h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">
-									Quick Actions
-								</h3>
+								<FiPlus class="text-primary" aria-hidden="true" />
+								<h2 class="text-sm font-semibold text-grey uppercase tracking-wide">Quick Actions</h2>
 							</div>
 							<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 								<For each={quickActions}>{(action) => <QuickActionCard {...action} />}</For>
@@ -145,8 +143,8 @@ const HomePage = () => {
 						{/* Resources */}
 						<div class="flex flex-col gap-4">
 							<div class="flex items-center gap-2">
-								<FiBookOpen class="text-primary" />
-								<h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Resources</h3>
+								<FiBookOpen class="text-primary" aria-hidden="true" />
+								<h2 class="text-sm font-semibold text-grey uppercase tracking-wide">Resources</h2>
 							</div>
 							<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
 								<For each={resources}>{(resource) => <ResourceLink {...resource} />}</For>

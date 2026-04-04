@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createEffect, createSignal, ParentProps, Suspense } from "solid-js";
+import { createEffect, createSignal, ParentProps, Show, Suspense } from "solid-js";
 import { CreateWorkspaceResponse } from "~/bindings";
-import { BgOnboard, useToast } from "~/components";
+import { Alert, BgOnboard, useToast } from "~/components";
 import Button from "~/components/button";
 import Input, { InputType } from "~/components/input";
 
@@ -19,6 +19,7 @@ const WorkspaceOnboardPage = (_props: ParentProps) => {
 const WorkspaceOnboard = () => {
 	const [authState] = useAuthState();
 	const [workspaceName, setWorkspaceName] = createSignal("");
+	const [nameError, setNameError] = createSignal("");
 	const toast = useToast();
 	const [isLoading, setIsLoading] = createSignal(false);
 	const navigate = useNavigate();
@@ -41,32 +42,38 @@ const WorkspaceOnboard = () => {
 			return;
 		}
 
-		const requestBody = {
-			name: workspaceName(),
-		};
-
-		setIsLoading(true);
-		const response = await httpRequest<CreateWorkspaceResponse>(`${import.meta.env.VITE_BASE_URL}/api/workspace`, {
-			method: "POST",
-			body: JSON.stringify(requestBody),
-		});
-
-		if (!response.ok) {
-			console.error("Failed to create workspace:", response.data.error);
-			toast("Failed to create workspace", "error");
-			setIsLoading(false);
+		const name = workspaceName().trim();
+		if (!name) {
+			setNameError("Workspace name is required.");
 			return;
 		}
 
-		toast("Workspace created successfully", "success");
-		setWorkspaceName("");
+		setIsLoading(true);
+		try {
+			const response = await httpRequest<CreateWorkspaceResponse>(
+				`${import.meta.env.VITE_BASE_URL}/api/workspace`,
+				{
+					method: "POST",
+					body: JSON.stringify({ name }),
+				}
+			);
 
-		if (response.data.id) {
-			setWorkspaceId(response.data.id);
-			navigate({ to: "/" });
+			if (!response.ok) {
+				setNameError("Failed to create workspace. Please try a different name.");
+				return;
+			}
+
+			toast("Workspace created successfully", "success");
+
+			if (response.data.id) {
+				setWorkspaceId(response.data.id);
+				navigate({ to: "/" });
+			}
+		} catch {
+			toast("An unexpected error occurred. Please try again.", "error");
+		} finally {
+			setIsLoading(false);
 		}
-
-		setIsLoading(false);
 	};
 
 	return (
@@ -77,11 +84,12 @@ const WorkspaceOnboard = () => {
 					<BgOnboard />
 
 					<form
+						noValidate
 						onSubmit={onCreateWorkspace}
-						class="bg-secondary-dark p-12 rounded-xs shadow-2xl w-full max-w-[520px] relative flex flex-col items-start justify-start gap-3 z-10 border border-secondary-medium"
+						class="bg-secondary p-12 rounded-sm shadow-2xl w-full max-w-128 relative flex flex-col items-start justify-start gap-3 z-10 border border-secondary-medium"
 					>
 						<div class="text-left">
-							<h1 class="text-xl font-bold text-primary">Create Workspace</h1>
+							<h1 class="text-2xl font-bold text-white">Create Workspace</h1>
 							<p class="text-gray-400 text-sm">Set up your workspace to get started with Patr.</p>
 						</div>
 
@@ -90,12 +98,20 @@ const WorkspaceOnboard = () => {
 								<Input
 									type={InputType.Text}
 									placeholder="Enter your workspace name"
+									name="workspace-name"
+									id="workspace-name"
 									value={workspaceName}
-									onInput={(e: Event) =>
-										setWorkspaceName((e.currentTarget as HTMLInputElement).value)
-									}
+									onInput={(e: Event) => {
+										setWorkspaceName((e.currentTarget as HTMLInputElement).value);
+										setNameError("");
+									}}
 									styleVariant="medium"
 								/>
+								<Show when={nameError()}>
+									<div class="mt-1">
+										<Alert message={nameError()} type="error" />
+									</div>
+								</Show>
 							</div>
 
 							<div class="flex items-center justify-end">
@@ -114,7 +130,9 @@ const WorkspaceOnboard = () => {
 
 					{/* Footer */}
 					<div class="absolute bottom-6 left-0 right-0 text-center">
-						<p class="text-gray-500 text-xs">&copy; 2025 Patr. All rights reserved.</p>
+						<p class="text-gray-500 text-xs">
+							&copy; {new Date().getFullYear()} Patr. All rights reserved.
+						</p>
 					</div>
 				</main>
 			</Suspense>

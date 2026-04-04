@@ -247,24 +247,26 @@ const ApiTokenInfo = () => {
 					<PageContainerBody class="flex flex-col gap-8">
 						<div class="flex flex-col gap-4 items-start w-full">
 							<div class="flex gap-8 items-center w-full">
-								<InputLabel parentClass="flex-2" for="deployment-id" label="ID" />
+								<InputLabel parentClass="flex-2" for="token-id" label="ID" />
 								<Input
 									value={apiTokenInfo()?.id || ""}
 									disabled={true}
 									class="flex-10"
-									name="deployment-id"
-									placeholder="Deployment ID"
+									id="token-id"
+									name="token-id"
+									placeholder="Token ID"
 									type={InputType.Text}
 								/>
 							</div>
 
 							<div class="flex gap-8 items-center w-full">
-								<InputLabel parentClass="flex-2" for="deployment-name" label="Name" />
+								<InputLabel parentClass="flex-2" for="token-name" label="Name" />
 								<Input
 									value={apiTokenInfo()?.name || ""}
 									class="flex-10"
-									name="deployment-name"
-									placeholder="Deployment Name"
+									id="token-name"
+									name="token-name"
+									placeholder="Token Name"
 									type={InputType.Text}
 									disabled={true}
 								/>

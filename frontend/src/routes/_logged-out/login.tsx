@@ -7,7 +7,7 @@ import { createSignal, Show } from "solid-js";
 import { LoginRequest, LoginResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
 import { createAsyncAction, useAuthState } from "~/hooks";
-import { USERNAME_VALIDITY_PATTERN, validatePassword } from "~/utils/validation";
+import { USERNAME_VALIDITY_PATTERN } from "~/utils/validation";
 import OtpInput from "~/components/otp-input";
 
 interface InputFields {
@@ -23,7 +23,7 @@ const Login = () => {
 	const toast = useToast();
 	const [showMfa, setShowMfa] = createSignal(false);
 	const [mfaOtp, setMfaOtp] = createSignal("");
-	const [turnstileToken, setTurnstileToken] = createSignal<string>(import.meta.env.VITE_TURNSTILE_SITE_KEY);
+	const [turnstileToken, setTurnstileToken] = createSignal<string>("");
 	const [inputs, setInputs] = createSignal<InputFields>({
 		userId: "",
 		password: "",
@@ -60,15 +60,6 @@ const Login = () => {
 			setInputError((prev) => ({
 				...prev,
 				password: "Password cannot be empty.",
-			}));
-			return false;
-		}
-
-		const passwordValidation = validatePassword(password);
-		if (!passwordValidation.valid) {
-			setInputError((prev) => ({
-				...prev,
-				password: passwordValidation.error || "Invalid password.",
 			}));
 			return false;
 		}
@@ -145,9 +136,12 @@ const Login = () => {
 			{/* Login Card */}
 			<form
 				method="post"
+				noValidate
 				onSubmit={async (e) => {
 					e.preventDefault();
-					await submitLogin().catch(() => {});
+					await submitLogin().catch(() => {
+						toast("An unexpected error occurred. Please try again.", "error");
+					});
 				}}
 				class="bg-secondary p-12 rounded-sm shadow-2xl w-full max-w-128 relative z-10 border border-secondary-medium"
 			>
@@ -203,6 +197,7 @@ const Login = () => {
 					</Show>
 
 					<Show when={showMfa()}>
+						<p class="mt-4 text-sm text-grey">Enter the 6-digit code from your authenticator app</p>
 						<OtpInput
 							outerClass="mt-4"
 							inputVariant="medium"
@@ -228,7 +223,7 @@ const Login = () => {
 						</Link>
 						<Button
 							variant={ButtonVariant.Contained}
-							class="py-4 text-base font-semibold px-xxl flex-end"
+							class="py-4 text-base font-semibold px-8"
 							type="submit"
 							loading={isLoading}
 							loadingContent={() => <span>Logging in...</span>}
@@ -241,7 +236,7 @@ const Login = () => {
 
 			{/* Footer */}
 			<div class="absolute bottom-6 left-0 right-0 text-center">
-				<p class="text-gray-500 text-xs">&copy; 2025 Patr. All rights reserved.</p>
+				<p class="text-gray-500 text-xs">&copy; {new Date().getFullYear()} Patr. All rights reserved.</p>
 			</div>
 		</>
 	);

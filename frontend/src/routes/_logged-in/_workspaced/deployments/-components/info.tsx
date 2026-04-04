@@ -288,7 +288,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 			<Show when={deploymentPermissions().edit}>
 				<div class="w-full flex justify-end items-center">
 					<Button disabled={!deploymentPermissions().edit} type="submit" variant="contained">
-						UPDATE
+						Update
 					</Button>
 				</div>
 			</Show>

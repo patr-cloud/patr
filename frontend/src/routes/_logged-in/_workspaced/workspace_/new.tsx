@@ -1,8 +1,9 @@
-import { createFileRoute } from "@tanstack/solid-router";
+import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createSignal } from "solid-js";
+import { createSignal, Show } from "solid-js";
 import { CreateWorkspaceResponse } from "~/bindings";
 import {
+	Alert,
 	Button,
 	ButtonVariant,
 	Input,
@@ -20,8 +21,10 @@ const CreateWorkspace = () => {
 	const [authState] = useAuthState();
 	const [currentWorkspaceName, setCurrentWorkspaceName] = useLastWorkspaceId();
 	const toast = useToast();
+	const navigate = useNavigate();
 
 	const [workspaceName, setWorkspaceName] = createSignal("");
+	const [nameError, setNameError] = createSignal("");
 
 	const { execute: createWorkspace, isLoading } = createAsyncAction(async () => {
 		const auth = authState();
@@ -30,27 +33,29 @@ const CreateWorkspace = () => {
 			return;
 		}
 
-		const requestBody = {
-			name: workspaceName(),
-		};
+		const name = workspaceName().trim();
+		if (!name) {
+			setNameError("Workspace name is required.");
+			return;
+		}
 
 		const response = await httpRequest<CreateWorkspaceResponse>(`${import.meta.env.VITE_BASE_URL}/api/workspace`, {
 			method: "POST",
-			body: JSON.stringify(requestBody),
+			body: JSON.stringify({ name }),
 		});
 
 		if (!response.ok) {
-			console.error("Failed to create workspace:", response.data.error);
-			toast("Failed to create workspace", "error");
+			setNameError("Failed to create workspace. Please try a different name.");
 			return;
 		}
 
 		toast("Workspace created successfully", "success");
-		setWorkspaceName("");
 
 		if (!currentWorkspaceName() && response.data.id) {
 			setCurrentWorkspaceName(response.data.id);
 		}
+
+		navigate({ to: "/workspace" });
 	});
 
 	return (
@@ -64,14 +69,15 @@ const CreateWorkspace = () => {
 							url: "/workspace",
 						},
 						{
-							label: "Create",
+							label: "New",
 						},
 					]}
 					subText="Workspaces are a way to organize your projects, deployments, and resources."
 				/>
 				<PageContainerBody class="flex flex-col">
 					<form
-						class="flex flex-1 flex-col justify-between gap-8"
+						noValidate
+						class="flex flex-col gap-8"
 						onSubmit={async (e: SubmitEvent) => {
 							e.preventDefault();
 							await createWorkspace().catch(() => {
@@ -79,20 +85,31 @@ const CreateWorkspace = () => {
 							});
 						}}
 					>
-						<div class="flex gap-4 items-center">
+						<div class="flex gap-8 items-center w-full">
 							<InputLabel for="workspace-name" label="Workspace Name" parentClass="flex-2" />
-							<Input
-								name="workspace-name"
-								value={workspaceName()}
-								onInput={(e) => setWorkspaceName(e.currentTarget.value)}
-								placeholder="Enter Workspace Name"
-								type="text"
-								class="flex-10"
-							/>
+							<div class="flex-10 flex flex-col">
+								<Input
+									id="workspace-name"
+									name="workspace-name"
+									value={workspaceName()}
+									onInput={(e) => {
+										setWorkspaceName(e.currentTarget.value);
+										setNameError("");
+									}}
+									placeholder="Enter Workspace Name"
+									type="text"
+								/>
+								<Show when={nameError()}>
+									<div class="mt-1">
+										<Alert message={nameError()} type="error" />
+									</div>
+								</Show>
+							</div>
 						</div>
 
 						<div class="flex justify-end w-full">
 							<Button
+								type="submit"
 								loading={isLoading}
 								loadingContent={() => <span>Creating Workspace...</span>}
 								variant={ButtonVariant.Contained}

@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid-js";
+import { LoadingSpinner } from "~/components/loading-spinner";
+import Button from "~/components/button";
 import { Deployment, GetContainerRepositoryInfoResponse, ListDeploymentResponse, WithId } from "~/bindings";
 import {
 	ButtonVariant,
@@ -67,33 +69,40 @@ const ImageName = (props: { item: WithId<Deployment> }) => {
 const DeploymentListRow = (props: { item: WithId<Deployment>; runnerName: string }) => {
 	const navigate = useNavigate();
 
+	const goToDetail = () => navigate({ to: `/deployments/${props.item.id}` });
+
 	return (
 		<tr
-			onClick={() => {
-				navigate({ to: `/deployments/${props.item.id}` });
+			role="row"
+			tabIndex={0}
+			onClick={goToDetail}
+			onKeyDown={(e) => {
+				if (e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					goToDetail();
+				}
 			}}
-			class="table-row cursor-pointer"
+			class="table-row cursor-pointer focus-visible:outline-primary"
 		>
-			<td class="flex-3 flex items-center justify-center min-w-0">
+			<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
+				<span class="truncate font-medium text-white">{props.item.name}</span>
+			</td>
+			<td role="cell" class="flex-2 flex items-center justify-center min-w-0">
+				<StatusChip status={props.item.status} />
+			</td>
+			<td role="cell" class="flex-2 flex items-center justify-start min-w-0">
+				<span class="truncate">{props.runnerName}</span>
+			</td>
+			<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
+				<ImageName item={props.item} />
+			</td>
+			<td role="cell" class="flex-2 flex items-center justify-start min-w-0">
 				<CopyableField
 					variant={CopyableFieldVariant.Text}
 					value={props.item.id}
 					class="truncate"
-					innerClass="text-white"
-					buttonPosition="start"
+					innerClass="text-grey font-log text-xs"
 				/>
-			</td>
-			<td class="flex-3 flex items-center justify-center min-w-0">
-				<span class="truncate">{props.item.name}</span>
-			</td>
-			<td class="flex-2 flex items-center justify-center min-w-0">
-				<StatusChip status={props.item.status} />
-			</td>
-			<td class="flex-3 flex items-center justify-center min-w-0">
-				<span class="truncate">{props.runnerName}</span>
-			</td>
-			<td class="flex-4 flex items-center justify-start min-w-0">
-				<ImageName item={props.item} />
 			</td>
 		</tr>
 	);
@@ -155,34 +164,62 @@ const ListDeploymentsPage = () => {
 						},
 					]}
 					subText="A deployment represents a containerized application running on a runner."
-					actions={() => {
-						if (!isAllowedCreate()) return null;
-						return (
-							<Link href="/deployments/new" buttonVariant={ButtonVariant.Plain} external={false}>
+					actions={() => (
+						<Show when={isAllowedCreate() && (deployments()?.deployments?.length ?? 0) > 0}>
+							<Link href="/deployments/new" buttonVariant={ButtonVariant.Outlined} external={false}>
 								Create Deployment
 							</Link>
-						);
-					}}
+						</Show>
+					)}
 				/>
 
 				<PageContainerBody class="flex flex-col justify-between">
 					<ErrorBoundary
 						fallback={(err, reset) => (
-							<div>
-								<p>Error loading deployments: {err.message}</p>
-								<button onClick={reset}>Retry</button>
+							<div class="flex flex-col items-center justify-center gap-4 py-16">
+								<p class="text-error text-sm">Error loading deployments: {err.message}</p>
+								<Button variant={ButtonVariant.Outlined} onClick={reset}>
+									Retry
+								</Button>
 							</div>
 						)}
 					>
-						<Suspense fallback={<div>Loading deployments...</div>}>
+						<Suspense
+							fallback={
+								<div class="flex items-center justify-center gap-2 py-16 text-grey">
+									<LoadingSpinner size={20} />
+									<span class="text-sm">Loading deployments...</span>
+								</div>
+							}
+						>
 							<Show
 								when={(deployments()?.deployments?.length ?? 0) > 0}
-								fallback={<EmptyState title="No Deployments Added" />}
+								fallback={
+									<EmptyState
+										title="No Deployments Added"
+										description={
+											isAllowedCreate()
+												? "Deploy a containerized application to get started."
+												: undefined
+										}
+										action={
+											isAllowedCreate() ? (
+												<Link
+													href="/deployments/new"
+													buttonVariant={ButtonVariant.Outlined}
+													external={false}
+												>
+													Create Deployment
+												</Link>
+											) : undefined
+										}
+									/>
+								}
 							>
 								<Table
-									column_grids={["flex-3", "flex-3", "flex-2", "flex-3", "flex-4"]}
+									column_grids={["flex-3", "flex-2", "flex-2", "flex-3", "flex-2"]}
 									rows={deployments()?.deployments || []}
-									headings={["ID", "Name", "Status", "Runner", "Image"]}
+									headings={["Name", "Status", "Runner", "Image", "ID"]}
 									renderRow={(item) => (
 										<DeploymentListRow
 											item={item}

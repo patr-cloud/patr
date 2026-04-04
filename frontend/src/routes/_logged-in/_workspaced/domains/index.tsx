@@ -14,8 +14,11 @@ import {
 	CopyableField,
 	CopyableFieldVariant,
 	EmptyState,
+	Link,
 	Pagination,
+	StatusChip,
 } from "~/components";
+import { LoadingSpinner } from "~/components/loading-spinner";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import { ModalContainer } from "~/components/modal";
@@ -158,7 +161,7 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 
 							<div class="w-full flex items-center justify-end mt-4">
 								<Button variant={ButtonVariant.Contained} onClick={onVerifyClick} disabled={loading()}>
-									{loading() ? "VERIFYING..." : "VERIFY"}
+									{loading() ? "Verifying..." : "Verify"}
 								</Button>
 							</div>
 						</div>
@@ -176,6 +179,7 @@ const VerificationIcon = (props: { domain: WorkspaceDomain }) => {
 				renderTrigger={(setOpen) => (
 					<Button
 						variant={ButtonVariant.Plain}
+						aria-label="Verify domain"
 						onClick={(e: EventT<MouseEvent, HTMLButtonElement>) => {
 							e.stopPropagation();
 							setOpen(true);
@@ -245,62 +249,98 @@ const ListDomainsPage = () => {
 						},
 					]}
 					subText="Configure custom domains to route traffic to your deployments."
-					actions={() => {
-						if (!isCreateAllowed()) return null;
-						return (
-							<div class="ml-auto">
-								<Button
-									class="cursor-pointer"
-									variant={ButtonVariant.Plain}
-									onClick={() => navigate({ to: "/domains/new" })}
-								>
-									Add Domain
-								</Button>
-							</div>
-						);
-					}}
+					actions={() => (
+						<Show when={isCreateAllowed() && (domains()?.domains?.length ?? 0) > 0}>
+							<Link href="/domains/new" buttonVariant={ButtonVariant.Outlined} external={false}>
+								Add Domain
+							</Link>
+						</Show>
+					)}
 				/>
 				<PageContainerBody class="flex flex-col justify-between">
 					<ErrorBoundary
 						fallback={(err, reset) => (
-							<div>
-								<p>Error loading domains: {err.message}</p>
-								<button onClick={reset}>Retry</button>
+							<div class="flex flex-col items-center justify-center gap-4 py-16">
+								<p class="text-error text-sm">Error loading domains: {err.message}</p>
+								<Button variant={ButtonVariant.Outlined} onClick={reset}>
+									Retry
+								</Button>
 							</div>
 						)}
 					>
-						<Suspense fallback={<div>Loading domains...</div>}>
+						<Suspense
+							fallback={
+								<div class="flex items-center justify-center gap-2 py-16 text-grey">
+									<LoadingSpinner size={20} />
+									<span class="text-sm">Loading domains...</span>
+								</div>
+							}
+						>
 							<Show
 								when={(domains()?.domains?.length ?? 0) > 0}
-								fallback={<EmptyState title="No Domain Added" />}
+								fallback={
+									<EmptyState
+										title="No Domains Added"
+										description={
+											isCreateAllowed()
+												? "Register a custom domain to route traffic to your deployments."
+												: undefined
+										}
+										action={
+											isCreateAllowed() ? (
+												<Link
+													href="/domains/new"
+													buttonVariant={ButtonVariant.Outlined}
+													external={false}
+												>
+													Add Domain
+												</Link>
+											) : undefined
+										}
+									/>
+								}
 							>
 								<Table
-									column_grids={["flex-3", "flex-3", "flex-3"]}
+									column_grids={["flex-5", "flex-3", "flex-4"]}
 									rows={domains()?.domains || []}
-									headings={["Domain Name", "Type", "Verified"]}
-									renderRow={(item) => (
-										<tr
-											onClick={() => navigate({ to: `/domains/${item.id}` })}
-											class="table-row cursor-pointer"
-										>
-											<td class="flex-3 flex items-center justify-center">{item.name}</td>
-											<td class="flex-3 flex items-center justify-center">
-												{item.nameserverType}
-											</td>
-											<td class="flex-3 flex items-center justify-center">
-												<div class="flex items-center gap-2">
-													{item.isVerified ? (
-														<span class="text-green-500">✓ Verified</span>
-													) : (
-														<>
-															<span class="text-yellow-500">Not Verified</span>
+									headings={["Domain", "Type", "Status"]}
+									renderRow={(item) => {
+										const goToDetail = () => navigate({ to: `/domains/${item.id}` });
+										return (
+											<tr
+												role="row"
+												tabIndex={0}
+												onClick={goToDetail}
+												onKeyDown={(e) => {
+													if (e.key === "Enter" || e.key === " ") {
+														e.preventDefault();
+														goToDetail();
+													}
+												}}
+												class="table-row cursor-pointer focus-visible:outline-primary"
+											>
+												<td role="cell" class="flex-5 flex items-center justify-start min-w-0">
+													<span class="truncate font-medium text-white">{item.name}</span>
+												</td>
+												<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
+													<span class="text-grey">
+														{item.nameserverType === "patr" ? "Patr Managed" : "External"}
+													</span>
+												</td>
+												<td role="cell" class="flex-4 flex items-center justify-start min-w-0">
+													<div class="flex items-center gap-2">
+														<StatusChip status={item.isVerified ? "running" : "stopped"} />
+														<span class="text-sm">
+															{item.isVerified ? "Verified" : "Not Verified"}
+														</span>
+														<Show when={!item.isVerified}>
 															<VerificationIcon domain={item} />
-														</>
-													)}
-												</div>
-											</td>
-										</tr>
-									)}
+														</Show>
+													</div>
+												</td>
+											</tr>
+										);
+									}}
 								/>
 								<Pagination
 									state={pagination}

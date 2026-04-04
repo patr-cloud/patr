@@ -116,9 +116,29 @@ const Tooltip = (rawProps: ParentProps<TooltipProps>) => {
 		};
 	};
 
+	const handleFocus = () => {
+		timeoutId = window.setTimeout(() => {
+			setIsVisible(true);
+		}, props.delay);
+	};
+
+	const handleBlur = () => {
+		if (timeoutId) {
+			clearTimeout(timeoutId);
+			timeoutId = undefined;
+		}
+		setIsVisible(false);
+	};
+
 	return (
 		<div class={`inline-block ${get(props.class) ?? ""}`}>
-			<div onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} onMouseMove={handleMouseMove}>
+			<div
+				onMouseEnter={handleMouseEnter}
+				onMouseLeave={handleMouseLeave}
+				onMouseMove={handleMouseMove}
+				onFocusIn={handleFocus}
+				onFocusOut={handleBlur}
+			>
 				{props.children}
 			</div>
 			{isVisible() && (

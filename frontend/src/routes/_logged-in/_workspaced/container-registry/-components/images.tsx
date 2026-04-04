@@ -116,7 +116,7 @@ const ImageRow = (props: { manifest: ContainerRepositoryManifestInfo; refetch?: 
 							class="text-gray-400 transition-colors text-xs"
 							title="Cancel delete"
 						>
-							CANCEL
+							Cancel
 						</button>
 					</div>
 				) : (

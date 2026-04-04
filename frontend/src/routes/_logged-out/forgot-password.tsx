@@ -1,38 +1,77 @@
 import { createFileRoute, Link } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createSignal } from "solid-js";
+import { createSignal, Show } from "solid-js";
 import Button from "~/components/button";
 import Input, { InputType } from "~/components/input";
 import { ButtonVariant } from "~/utils/color";
+import { Alert, useToast, Turnstile } from "~/components";
+import { httpRequest } from "~/utils/http-request";
+import { createAsyncAction } from "~/hooks";
 
 const ForgotPassword = () => {
+	const toast = useToast();
 	const [email, setEmail] = createSignal("");
+	const [emailError, setEmailError] = createSignal("");
 	const [submitted, setSubmitted] = createSignal(false);
+	const [turnstileToken, setTurnstileToken] = createSignal<string>("");
 
-	const handleSubmit = () => {
-		setSubmitted(true);
-	};
+	const { execute: handleSubmit, isLoading } = createAsyncAction(async () => {
+		if (!email().trim()) {
+			setEmailError("Email address is required.");
+			return;
+		}
+
+		if (!turnstileToken()) {
+			toast("Please complete the security verification", "error");
+			return;
+		}
+
+		const resp = await httpRequest("/api/auth/forgot-password", {
+			method: "POST",
+			body: JSON.stringify({
+				email: email(),
+				cfTurnstileToken: turnstileToken(),
+			}),
+		});
+
+		if (resp.ok) {
+			setSubmitted(true);
+		} else {
+			toast("Failed to send reset link. Please try again.", "error");
+		}
+	});
 
 	return (
 		<>
 			<Title>Reset Password | Patr</Title>
-			<main class="min-h-screen w-full bg-secondary flex items-center justify-center p-4 relative overflow-hidden">
-				{/* Background decorative elements */}
-				<div class="absolute inset-0 overflow-hidden pointer-events-none">
-					<div class="absolute inset-0 w-full h-full bg-linear-to-br from-secondary via-secondary-dark to-secondary opacity-50" />
-				</div>
-				{/* Forgot Password Card */}
-				<section class="bg-secondary-dark p-12 rounded-2xl shadow-2xl w-full max-w-120 relative z-10 border border-secondary-medium">
-					{/* Logo */}
-					<div class="flex justify-center mb-10">
-						<div class="text-primary text-4xl font-bold">PATR</div>
+			<form
+				noValidate
+				class="bg-secondary p-12 rounded-sm shadow-2xl w-full max-w-128 relative z-10 border border-secondary-medium"
+				onSubmit={async (e) => {
+					e.preventDefault();
+					await handleSubmit().catch(() => {
+						toast("An unexpected error occurred. Please try again.", "error");
+					});
+				}}
+			>
+				{/* Header */}
+				<div class="mb-10 items-center justify-between flex flex-row">
+					<h1 class="font-bold text-2xl text-white">Reset Password</h1>
+					<div class="flex flex-row items-baseline">
+						<div class="text-gray-400 font-extralight text-sm mr-2">Remember it?</div>
+						<Link class="text-primary font-thin text-sm hover:underline" to="/login">
+							Login
+						</Link>
 					</div>
+				</div>
 
-					{submitted() ? (
+				<Show
+					when={!submitted()}
+					fallback={
 						/* Success Message */
 						<div class="text-center">
 							<div class="mb-6">
-								<div class="w-16 h-16 bg-success bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-4">
+								<div class="w-16 h-16 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-4">
 									<svg
 										class="w-8 h-8 text-success"
 										fill="none"
@@ -47,93 +86,79 @@ const ForgotPassword = () => {
 										/>
 									</svg>
 								</div>
-								<h1 class="text-2xl font-semibold text-white mb-2">Check Your Email</h1>
-								<p class="text-gray-400 text-sm">
-									We've sent password reset instructions to
+								<h2 class="text-xl font-semibold text-white mb-2">Check Your Email</h2>
+								<p class="text-grey text-sm">
+									We've sent password reset instructions to&nbsp;
 									<span class="text-primary font-medium">{email()}</span>
 								</p>
 							</div>
-							<div class="mt-8 pt-6 border-t border-gray-600">
-								<p class="text-gray-400 text-sm mb-4">
+							<div class="mt-8 pt-6 border-t border-border-color">
+								<p class="text-grey text-sm mb-4">
 									Didn't receive the email? Check your spam folder or
 								</p>
 								<button
+									type="button"
 									onClick={() => setSubmitted(false)}
 									class="text-primary font-medium hover:underline text-sm"
 								>
 									Try again
 								</button>
 							</div>
-							<div class="mt-6">
-								<Link
-									to="/login"
-									class="text-gray-400 text-sm hover:text-primary flex items-center justify-center gap-2"
-								>
-									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M10 19l-7-7m0 0l7-7m-7 7h18"
-										/>
-									</svg>
-									Back to Sign In
-								</Link>
-							</div>
 						</div>
-					) : (
-						/* Reset Form */
-						<>
-							<div class="text-center mb-10">
-								<h1 class="text-4xl font-bold text-white mb-3">Reset Password</h1>
-								<p class="text-gray-400 text-base">Enter your email to receive reset instructions</p>
+					}
+				>
+					{/* Form */}
+					<div>
+						<Input
+							type={InputType.Email}
+							placeholder="Email Address"
+							autocomplete="email"
+							required={true}
+							name="email"
+							id="email"
+							value={email}
+							onInput={(e: Event) => {
+								setEmail((e.currentTarget as HTMLInputElement).value);
+								setEmailError("");
+							}}
+							styleVariant="medium"
+						/>
+						<Show when={emailError()}>
+							<div class="mt-1">
+								<Alert message={emailError()} type="error" />
 							</div>
-							<div class="space-y-6">
-								<div class="space-y-2">
-									<label class="text-white text-sm font-medium block pl-1">Email Address</label>
-									<Input
-										type={InputType.Email}
-										placeholder="Enter your email"
-										value={email}
-										onInput={(e: Event) => setEmail((e.currentTarget as HTMLInputElement).value)}
-										styleVariant="medium"
-									/>
-								</div>
+						</Show>
 
-								<div class="pt-4">
-									<Button
-										variant={ButtonVariant.Contained}
-										class="w-full py-4 text-base font-semibold"
-										onClick={handleSubmit}
-									>
-										Send Reset Link
-									</Button>
-								</div>
-							</div>
-							<div class="mt-8 text-center">
-								<Link
-									to="/login"
-									class="text-gray-400 text-sm hover:text-primary flex items-center justify-center gap-2"
-								>
-									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M10 19l-7-7m0 0l7-7m-7 7h18"
-										/>
-									</svg>
-									Back to Sign In
-								</Link>
-							</div>
-						</>
-					)}
-				</section>
-				{/* Footer */}
-				<div class="absolute bottom-6 left-0 right-0 text-center">
-					<p class="text-gray-500 text-xs">&copy; 2025 Patr. All rights reserved.</p>
-				</div>
-			</main>
+						{/* Turnstile Widget */}
+						<div class="mt-6 flex justify-center">
+							<Turnstile
+								onVerify={setTurnstileToken}
+								onExpire={() => setTurnstileToken("")}
+								onError={() => setTurnstileToken("")}
+								action="forgot-password"
+							/>
+						</div>
+
+						{/* Submit Button */}
+						<div class="pt-8 w-full flex flex-row items-center justify-end">
+							<Button
+								variant={ButtonVariant.Contained}
+								class="py-4 text-base font-semibold px-8"
+								type="submit"
+								loading={isLoading}
+								loadingContent={() => <span>Sending...</span>}
+							>
+								Send Reset Link
+							</Button>
+						</div>
+					</div>
+				</Show>
+			</form>
+
+			{/* Footer */}
+			<div class="absolute bottom-6 left-0 right-0 text-center">
+				<p class="text-gray-500 text-xs">&copy; {new Date().getFullYear()} Patr. All rights reserved.</p>
+			</div>
 		</>
 	);
 };

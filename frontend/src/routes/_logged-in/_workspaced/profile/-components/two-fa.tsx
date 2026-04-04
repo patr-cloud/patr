@@ -18,7 +18,7 @@ const TwoFactorAuthModal = (props: ModalContainerProps) => {
 	const toast = useToast();
 
 	const [otp, setOtp] = createSignal("");
-	const [timeRemaining, setTimeRemaining] = createSignal(5 * 60); // 15 minutes in seconds
+	const [timeRemaining, setTimeRemaining] = createSignal(5 * 60); // 5 minutes in seconds
 	const [isExpired, setIsExpired] = createSignal(false);
 
 	const mfaSource = () => ({ auth: authState(), isMfaEnabled: props.isMfaEnabled });
@@ -67,7 +67,7 @@ const TwoFactorAuthModal = (props: ModalContainerProps) => {
 	};
 
 	const handleReload = () => {
-		setTimeRemaining(15 * 60);
+		setTimeRemaining(5 * 60);
 		setIsExpired(false);
 		refetch();
 	};
@@ -92,7 +92,7 @@ const TwoFactorAuthModal = (props: ModalContainerProps) => {
 			return;
 		}
 
-		toast("Two-Factor Authentication enabled successfully!", "success");
+		toast(`Two-Factor Authentication ${props.isMfaEnabled ? "disabled" : "enabled"} successfully!`, "success");
 		props.refetchUserInfo();
 		props.closeFn(false);
 	};
@@ -168,7 +168,7 @@ const TwoFactorAuthModal = (props: ModalContainerProps) => {
 					class="mt-4 w-full"
 					disabled={otp().length < 6 || isExpired()}
 				>
-					VERIFY
+					Verify
 				</Button>
 			</form>
 		</ModalContainer>

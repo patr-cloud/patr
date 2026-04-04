@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createResource, createSignal, For, Suspense } from "solid-js";
+import ChipInput from "~/components/chip-input";
 import { Button, ButtonVariant, PageContainer, PageContainerBody, PageContainerHead } from "~/components";
 import Input, { InputType } from "~/components/input";
 import InputLabel from "~/components/input-label";
@@ -49,8 +50,30 @@ const CreateApiTokens = () => {
 	});
 
 	const [name, setName] = createSignal<string>("");
+	const [allowedIps, setAllowedIps] = createSignal<string[]>([]);
 	const [fromDate, setFromDate] = createSignal<Date | null>(null);
 	const [toDate, setToDate] = createSignal<Date | null>(null);
+
+	const validateIp = (value: string): string | undefined => {
+		// Match IPv4, IPv4/CIDR, IPv6, IPv6/CIDR
+		const ipv4 = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/;
+		const ipv6 = /^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(\/\d{1,3})?$/;
+		if (!ipv4.test(value) && !ipv6.test(value)) {
+			return "Invalid IP address or CIDR notation";
+		}
+		// Validate IPv4 octets
+		if (ipv4.test(value)) {
+			const [ip, cidr] = value.split("/");
+			const octets = ip.split(".").map(Number);
+			if (octets.some((o) => o < 0 || o > 255)) {
+				return "Invalid IP address: octets must be 0-255";
+			}
+			if (cidr !== undefined && (Number(cidr) < 0 || Number(cidr) > 32)) {
+				return "Invalid CIDR: must be 0-32 for IPv4";
+			}
+		}
+		return undefined;
+	};
 
 	const [enabledWorkspaces, setEnabledWorkspaces] = createSignal<Set<string>>(new Set());
 	const [workspacePermissions, setWorkspacePermissions] = createSignal<{
@@ -94,6 +117,7 @@ const CreateApiTokens = () => {
 			name: name(),
 			tokenNbf: fromDate() || undefined,
 			tokenExp: toDate() || undefined,
+			allowedIps: allowedIps().length > 0 ? allowedIps() : undefined,
 			permissions: perms,
 		};
 
@@ -156,18 +180,18 @@ const CreateApiTokens = () => {
 								/>
 							</div>
 
-							<div class="flex gap-8 items-center w-full">
+							<div class="flex gap-8 items-start w-full">
 								<InputLabel
-									parentClass="flex-2"
-									for="allowed-ips"
+									parentClass="flex-2 pt-2.5"
 									label="Allowed IP(s)"
-									comments="By default, all IP addresses will be allowed. Enter Comma Separated Values."
+									comments="Leave empty to allow all IPs."
 								/>
-								<Input
+								<ChipInput
 									class="flex-10"
-									name="token-name"
-									placeholder="Enter Comma Seperated IP(s)"
-									type={InputType.Text}
+									values={allowedIps}
+									onChange={setAllowedIps}
+									validate={validateIp}
+									placeholder="Type an IP address and press Enter, Space, or Comma"
 								/>
 							</div>
 

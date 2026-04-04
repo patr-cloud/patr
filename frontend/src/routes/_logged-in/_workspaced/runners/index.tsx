@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { Show } from "solid-js";
-import { createMemo, createResource, ErrorBoundary, Suspense } from "solid-js";
+import { Show, createMemo, createResource, ErrorBoundary, Suspense } from "solid-js";
 import { ListRunnersForWorkspaceResponse } from "~/bindings";
 import {
 	ButtonVariant,
@@ -14,8 +13,11 @@ import {
 	PageContainerHead,
 	Pagination,
 	Table,
+	StatusChip,
+	useToast,
 } from "~/components";
-import { useToast } from "~/components";
+import { LoadingSpinner } from "~/components/loading-spinner";
+import Button from "~/components/button";
 import { useAuthState, createPaginationState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useIsAllowed } from "~/hooks";
@@ -73,68 +75,107 @@ const ListRunnersPage = () => {
 						},
 					]}
 					subText="Runners execute deployments on your machines or clusters"
-					actions={() => {
-						if (!isAllowedCreate()) return null;
-						return (
-							<Link href="/runners/new" buttonVariant={ButtonVariant.Plain} external={false}>
+					actions={() => (
+						<Show when={isAllowedCreate() && (runners()?.runners?.length ?? 0) > 0}>
+							<Link href="/runners/new" buttonVariant={ButtonVariant.Outlined} external={false}>
 								Add Runner
 							</Link>
-						);
-					}}
+						</Show>
+					)}
 				/>
-				<PageContainerBody class="flex flex-col justify-between gap-8">
+				<PageContainerBody class="flex flex-col justify-between">
 					<ErrorBoundary
 						fallback={(err, reset) => (
-							<div>
-								<p>Error loading runners: {err.message}</p>
-								<button onClick={reset}>Retry</button>
+							<div class="flex flex-col items-center justify-center gap-4 py-16">
+								<p class="text-error text-sm">Error loading runners: {err.message}</p>
+								<Button variant={ButtonVariant.Outlined} onClick={reset}>
+									Retry
+								</Button>
 							</div>
 						)}
 					>
-						<Suspense fallback={<div>Loading...</div>}>
+						<Suspense
+							fallback={
+								<div class="flex items-center justify-center gap-2 py-16 text-grey">
+									<LoadingSpinner size={20} />
+									<span class="text-sm">Loading runners...</span>
+								</div>
+							}
+						>
 							<Show
 								when={(runners()?.runners?.length ?? 0) > 0}
-								fallback={<EmptyState title="No Runner Added" />}
+								fallback={
+									<EmptyState
+										title="No Runners Added"
+										description={
+											isAllowedCreate()
+												? "Connect your infrastructure to start deploying."
+												: undefined
+										}
+										action={
+											isAllowedCreate() ? (
+												<Link
+													href="/runners/new"
+													buttonVariant={ButtonVariant.Outlined}
+													external={false}
+												>
+													Add Runner
+												</Link>
+											) : undefined
+										}
+									/>
+								}
 							>
 								<Table
-									column_grids={["flex-4", "flex-4", "flex-4", "flex-4"]}
+									column_grids={["flex-4", "flex-2", "flex-3", "flex-3"]}
 									rows={runners()?.runners || []}
-									headings={["ID", "Runner Name", "Status", "Last Seen"]}
-									renderRow={(item) => (
-										<tr
-											onClick={() =>
-												navigate({
-													to: "/runners/$id",
-													params: { id: item.id },
-													search: {
-														tab: "deployments",
-													},
-												})
-											}
-											class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs cursor-pointer hover:bg-secondary-medium"
-										>
-											<td class="flex items-center justify-center min-w-0 flex-1">
-												<CopyableField
-													variant={CopyableFieldVariant.Text}
-													value={item.id}
-													class="truncate"
-													innerClass="text-white"
-													buttonPosition="start"
-												/>
-											</td>
-											<td class="flex items-center justify-center min-w-0 flex-1">{item.name}</td>
-											<td class="flex items-center justify-center min-w-0 flex-1">
-												{item.connected ? "Online" : "Unreachable"}
-											</td>
-											<td class="flex items-center justify-center min-w-0 flex-1">
-												{item.connected
-													? "Now"
-													: item.lastSeen
-														? formatRelativeTime(item.lastSeen)
-														: "Never"}
-											</td>
-										</tr>
-									)}
+									headings={["Name", "Status", "Last Seen", "ID"]}
+									renderRow={(item) => {
+										const goToDetail = () =>
+											navigate({
+												to: "/runners/$id",
+												params: { id: item.id },
+												search: { tab: "deployments" },
+											});
+										return (
+											<tr
+												role="row"
+												tabIndex={0}
+												class="table-row cursor-pointer focus-visible:outline-primary"
+												onClick={goToDetail}
+												onKeyDown={(e) => {
+													if (e.key === "Enter" || e.key === " ") {
+														e.preventDefault();
+														goToDetail();
+													}
+												}}
+											>
+												<td role="cell" class="flex-4 flex items-center justify-start min-w-0">
+													<span class="truncate font-medium text-white">{item.name}</span>
+												</td>
+												<td role="cell" class="flex-2 flex items-center justify-center min-w-0">
+													<StatusChip status={item.connected ? "connected" : "unreachable"} />
+												</td>
+												<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
+													<span class="text-grey">
+														{item.connected
+															? "-"
+															: item.lastSeen
+																? formatRelativeTime(item.lastSeen)
+																: "Never"}
+													</span>
+												</td>
+												<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
+													<CopyableField
+														variant={CopyableFieldVariant.Text}
+														value={item.id}
+														class="truncate"
+														innerClass="text-grey font-log text-xs"
+													/>
+												</td>
+											</tr>
+										);
+									}}
 								/>
 								<Pagination
 									state={pagination}

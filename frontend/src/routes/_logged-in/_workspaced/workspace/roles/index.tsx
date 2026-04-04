@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createResource, Show, Suspense } from "solid-js";
+import { createResource, createSignal, Show, Suspense } from "solid-js";
+import { FiTrash2 } from "solid-icons/fi";
 
 import {
 	Button,
@@ -13,26 +14,25 @@ import {
 	Table,
 	useToast,
 } from "~/components";
-import { FiTrash2 } from "solid-icons/fi";
+import DeleteModal from "~/components/modal/delete-resource-modal";
+import { LoadingSpinner } from "~/components/loading-spinner";
+import { Color } from "~/utils/color";
 import { useNavigate } from "@tanstack/solid-router";
-import { useAuthState, createPaginationState } from "~/hooks";
+import { useAuthState, createPaginationState, useIsAllowed } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { GetWorkspaceInfoResponse } from "~/bindings/GetWorkspaceInfoResponse";
 import { ListAllRolesResponse } from "~/bindings/ListAllRolesResponse";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "~/routes/_logged-in/_workspaced/workspace/-components/workspace-header";
-import { Color } from "~/utils/color";
 import { Role, WithId } from "~/bindings";
 
-const RoleRow = (props: {
-	refetch: (info?: unknown) => ListAllRolesResponse | Promise<ListAllRolesResponse | undefined> | null | undefined;
-	role: WithId<Role>;
-}) => {
+const RoleRow = (props: { refetch: () => void; role: WithId<Role> }) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
+	const [deleteOpen, setDeleteOpen] = createSignal(false);
 
-	const onClickDelete = async (roleId: string) => {
+	const onClickDelete = async () => {
 		const auth = authState();
 		if (!auth || auth.type !== "LoggedIn") {
 			toast("You must be logged in to delete a role", "error");
@@ -45,13 +45,15 @@ const RoleRow = (props: {
 			return;
 		}
 
-		const resp = await httpRequest(`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/role/${roleId}`, {
-			method: "DELETE",
-		});
+		const resp = await httpRequest(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/role/${props.role.id}`,
+			{
+				method: "DELETE",
+			}
+		);
 
 		if (!resp.ok) {
-			console.error("Failed to delete role:", resp.data.error);
-			toast(resp.data.message, "error");
+			toast(resp.data.message || "Failed to delete role", "error");
 			return;
 		}
 
@@ -60,10 +62,16 @@ const RoleRow = (props: {
 	};
 
 	return (
-		<tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
-			<td class="flex items-center justify-center flex-1">{props.role.name}</td>
-			<td class="flex items-center justify-center flex-2">{props.role.description || "No description"}</td>
-			<td class="flex items-center justify-center flex-1">
+		<tr role="row" class="table-row">
+			<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
+				<span class="truncate font-medium text-white">{props.role.name}</span>
+			</td>
+			<td role="cell" class="flex-4 flex items-center justify-start min-w-0">
+				<span class={props.role.description ? "truncate" : "truncate text-grey italic"}>
+					{props.role.description || "No description"}
+				</span>
+			</td>
+			<td role="cell" class="flex-3 flex items-center justify-center min-w-0">
 				<Link
 					href={`/workspace/roles/${props.role.id}`}
 					buttonVariant={ButtonVariant.Plain}
@@ -72,18 +80,30 @@ const RoleRow = (props: {
 					Manage Role
 				</Link>
 			</td>
-			<td class="flex items-center justify-center flex-[0.5]">
-				<Button
-					onClick={(e) => {
-						e.preventDefault();
-						onClickDelete(props.role.id);
+			<td role="cell" class="flex-[0.5] flex items-center justify-center min-w-0">
+				<DeleteModal
+					title={`Delete Role "${props.role.name}"`}
+					resourceName={props.role.name}
+					onClickDelete={onClickDelete}
+					isOpen={deleteOpen}
+					setIsOpen={setDeleteOpen}
+					renderTrigger={(open) => {
+						return (
+							<Button
+								variant={ButtonVariant.Plain}
+								color={Color.Error}
+								aria-label="Delete role"
+								onClick={(e) => {
+									e.stopPropagation();
+									open?.(true);
+								}}
+								class="p-1"
+							>
+								<FiTrash2 size={16} />
+							</Button>
+						);
 					}}
-					color={Color.Error}
-					variant={ButtonVariant.Plain}
-					class="h-full flex items-center gap-2 cursor-pointer"
-				>
-					<FiTrash2 size={16} />
-				</Button>
+				/>
 			</td>
 		</tr>
 	);
@@ -94,6 +114,7 @@ const ManageRoles = () => {
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const navigate = useNavigate();
+	const isAllowedCreate = useIsAllowed("modifyRoles", "edit");
 	const search = Route.useSearch();
 	const pagination = createPaginationState({
 		search: () => search(),
@@ -114,7 +135,6 @@ const ManageRoles = () => {
 			}
 		);
 		if (!response.ok) {
-			console.error("Failed to fetch workspace info:", response.data.error);
 			toast("Failed to fetch workspace info", "error");
 			return undefined;
 		}
@@ -136,7 +156,6 @@ const ManageRoles = () => {
 			}
 		);
 		if (!response.ok) {
-			console.error("Failed to fetch roles:", response.data.error);
 			toast("Failed to fetch roles", "error");
 			return { roles: [] };
 		}
@@ -149,28 +168,51 @@ const ManageRoles = () => {
 			<Title>Roles | Patr</Title>
 			<PageContainer>
 				<WorkspaceHeader workspaceName={workspaceInfo()?.name} activeTab="roles" />
-				<PageContainerBody class="flex flex-col justify-between gap-8">
-					<div class="flex flex-col gap-6 flex-1">
-						<Suspense fallback={<div class="text-white">Loading roles...</div>}>
-							<Show
-								when={(roles()?.roles || []).length > 0}
-								fallback={<EmptyState title="No Roles Created" />}
-							>
-								<Table
-									column_grids={["flex-1", "flex-2", "flex-1", "flex-[0.5]"]}
-									headings={["Role Name", "Description", "Action", ""]}
-									rows={roles()?.roles || []}
-									renderRow={(role) => <RoleRow role={role} refetch={refetchRoles} />}
+				<PageContainerBody class="flex flex-col justify-between">
+					<Suspense
+						fallback={
+							<div class="flex items-center justify-center gap-2 py-16 text-grey">
+								<LoadingSpinner size={20} />
+								<span class="text-sm">Loading roles...</span>
+							</div>
+						}
+					>
+						<Show
+							when={(roles()?.roles || []).length > 0}
+							fallback={
+								<EmptyState
+									title="No Roles Created"
+									description={
+										isAllowedCreate() ? "Create roles to manage team permissions." : undefined
+									}
+									action={
+										isAllowedCreate() ? (
+											<Link
+												href="/workspace/roles/new"
+												buttonVariant={ButtonVariant.Outlined}
+												external={false}
+											>
+												Create Role
+											</Link>
+										) : undefined
+									}
 								/>
-								<Pagination
-									state={pagination}
-									loading={roles.loading}
-									showPageSizeSelector={false}
-									showGoToPage={false}
-								/>
-							</Show>
-						</Suspense>
-					</div>
+							}
+						>
+							<Table
+								column_grids={["flex-3", "flex-4", "flex-3", "flex-[0.5]"]}
+								headings={["Role Name", "Description", "Actions", ""]}
+								rows={roles()?.roles || []}
+								renderRow={(role) => <RoleRow role={role} refetch={refetchRoles} />}
+							/>
+							<Pagination
+								state={pagination}
+								loading={roles.loading}
+								showPageSizeSelector={false}
+								showGoToPage={false}
+							/>
+						</Show>
+					</Suspense>
 				</PageContainerBody>
 			</PageContainer>
 		</>

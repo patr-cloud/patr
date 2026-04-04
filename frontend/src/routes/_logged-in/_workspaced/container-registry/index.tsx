@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid-js";
+import { LoadingSpinner } from "~/components/loading-spinner";
+import Button from "~/components/button";
 import {
 	ButtonVariant,
 	EmptyState,
@@ -13,7 +15,7 @@ import {
 	useToast,
 } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
-import { createPaginationState } from "~/hooks";
+import { createPaginationState, useIsAllowed } from "~/hooks";
 import { ListContainerRepositoriesResponse, WithId, ContainerRepository } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
 import { formatRelativeTime, formatSize } from "~/utils/func";
@@ -23,6 +25,7 @@ const ListContainerRepositories = () => {
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const navigate = useNavigate();
+	const isAllowedCreate = useIsAllowed("containerRegistryRepository", "create", undefined);
 	const search = Route.useSearch();
 	const pagination = createPaginationState({
 		search: () => search(),
@@ -67,41 +70,92 @@ const ListContainerRepositories = () => {
 					]}
 					subText="Store and manage container images for your deployments"
 					actions={() => (
-						<Link href="/container-registry/new" buttonVariant={ButtonVariant.Plain} external={false}>
-							Create Repository
-						</Link>
+						<Show when={isAllowedCreate() && (repositories()?.repositories?.length ?? 0) > 0}>
+							<Link
+								href="/container-registry/new"
+								buttonVariant={ButtonVariant.Outlined}
+								external={false}
+							>
+								Create Repository
+							</Link>
+						</Show>
 					)}
 				/>
 
 				<PageContainerBody class="flex flex-col justify-between">
 					<ErrorBoundary
 						fallback={(err, reset) => (
-							<div>
-								<p>Error loading repositories: {err.message}</p>
-								<button onClick={reset}>Retry</button>
+							<div class="flex flex-col items-center justify-center gap-4 py-16">
+								<p class="text-error text-sm">Error loading repositories: {err.message}</p>
+								<Button variant={ButtonVariant.Outlined} onClick={reset}>
+									Retry
+								</Button>
 							</div>
 						)}
 					>
-						<Suspense fallback={<div>Loading repositories...</div>}>
+						<Suspense
+							fallback={
+								<div class="flex items-center justify-center gap-2 py-16 text-grey">
+									<LoadingSpinner size={20} />
+									<span class="text-sm">Loading repositories...</span>
+								</div>
+							}
+						>
 							<Show
-								when={repositories()?.repositories && repositories()!.repositories.length > 0}
-								fallback={<EmptyState title="No Container Repositories Exist" />}
+								when={!repositories.loading && (repositories()?.repositories?.length ?? 0) > 0}
+								fallback={
+									repositories.loading ? null : (
+										<EmptyState
+											title="No Container Repositories Yet"
+											description={
+												isAllowedCreate()
+													? "Create one to store your container images."
+													: undefined
+											}
+											action={
+												isAllowedCreate() ? (
+													<Link
+														href="/container-registry/new"
+														buttonVariant={ButtonVariant.Outlined}
+														external={false}
+													>
+														Create Repository
+													</Link>
+												) : undefined
+											}
+										/>
+									)
+								}
 							>
 								<Table
-									column_grids={["flex-1", "flex-1", "flex-1", "flex-1"]}
-									headings={["Container Repository", "Last Updated", "Size", "Created At"]}
+									column_grids={["flex-5", "flex-3", "flex-2", "flex-3"]}
+									headings={["Repository", "Last Updated", "Size", "Created"]}
 									rows={repositories()?.repositories || []}
 									renderRow={(repo: WithId<ContainerRepository>) => (
 										<tr
-											class="table-row cursor-pointer"
+											role="row"
+											tabIndex={0}
+											class="table-row cursor-pointer focus-visible:outline-primary"
 											onClick={() => navigate({ to: `/container-registry/${repo.id}` })}
+											onKeyDown={(e) => {
+												if (e.key === "Enter" || e.key === " ") {
+													e.preventDefault();
+													navigate({ to: `/container-registry/${repo.id}` });
+												}
+											}}
 										>
-											<td class="flex-1">
-												<span class="truncate">{repo.name}</span>
+											<td role="cell" class="flex-5 min-w-0">
+												<span class="truncate font-medium text-white">{repo.name}</span>
 											</td>
-											<td class="flex-1">{formatRelativeTime(repo.lastUpdated)}</td>
-											<td class="flex-1">{formatSize(repo.size)}</td>
-											<td class="flex-1">{formatRelativeTime(repo.created)}</td>
+											<td role="cell" class="flex-3">
+												{formatRelativeTime(repo.lastUpdated)}
+											</td>
+											<td role="cell" class="flex-2">
+												{formatSize(repo.size)}
+											</td>
+											<td role="cell" class="flex-3">
+												{formatRelativeTime(repo.created)}
+											</td>
 										</tr>
 									)}
 								/>
