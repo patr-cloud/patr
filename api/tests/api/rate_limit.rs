@@ -1,0 +1,227 @@
+use models::api::user::*;
+
+use crate::prelude::*;
+
+#[tokio::test]
+async fn test_rate_limit_allows_requests_under_limit() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	// Make 2 requests (under the 3/sec limit). Both should succeed.
+	for _ in 0..2 {
+		let response = setup
+			.make_api_call(
+				ApiRequest::<GetUserInfoRequest>::builder()
+					.headers(GetUserInfoRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await;
+
+		assert_eq!(
+			response.status_code(),
+			StatusCode::OK,
+			"expected 200 OK for requests under rate limit"
+		);
+	}
+}
+
+#[tokio::test]
+async fn test_rate_limit_blocks_after_exceeding_per_second_limit() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	// The per-second limit is 3. Send 4 rapid requests.
+	for _ in 0..3 {
+		setup
+			.make_api_call(
+				ApiRequest::<GetUserInfoRequest>::builder()
+					.headers(GetUserInfoRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await;
+	}
+
+	// The 4th request should be rate-limited
+	let response = setup
+		.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.headers(GetUserInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!(
+		response.status_code(),
+		StatusCode::TOO_MANY_REQUESTS,
+		"expected 429 after exceeding per-second rate limit"
+	);
+}
+
+#[tokio::test]
+async fn test_rate_limit_window_slides() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	// Exhaust the per-second limit (3 requests)
+	for _ in 0..3 {
+		setup
+			.make_api_call(
+				ApiRequest::<GetUserInfoRequest>::builder()
+					.headers(GetUserInfoRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await;
+	}
+
+	// Confirm we're rate-limited
+	let response = setup
+		.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.headers(GetUserInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(response.status_code(), StatusCode::TOO_MANY_REQUESTS);
+
+	// Wait for the 1-second window to slide
+	tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+	// Should be allowed again
+	let response = setup
+		.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.headers(GetUserInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!(
+		response.status_code(),
+		StatusCode::OK,
+		"expected 200 OK after window slides"
+	);
+}
+
+#[tokio::test]
+async fn test_rate_limit_rejected_requests_count() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	// Exhaust the per-second limit
+	for _ in 0..3 {
+		setup
+			.make_api_call(
+				ApiRequest::<GetUserInfoRequest>::builder()
+					.headers(GetUserInfoRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await;
+	}
+
+	// Send more requests — they should all be 429 because rejected requests
+	// also consume a slot in the sorted set (optimistic add)
+	for _ in 0..3 {
+		let response = setup
+			.make_api_call(
+				ApiRequest::<GetUserInfoRequest>::builder()
+					.headers(GetUserInfoRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await;
+
+		assert_eq!(
+			response.status_code(),
+			StatusCode::TOO_MANY_REQUESTS,
+			"rejected requests should still count against the rate limit"
+		);
+	}
+}
+
+#[tokio::test]
+async fn test_rate_limit_authenticated_per_login() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	// Log in again to get a second session (different login_id, same user)
+	let (session_b_token, _) = setup.login_test_user(&user.username, &user.password).await;
+	let session_b_bearer = BearerToken::from_str(&session_b_token).unwrap();
+
+	// Clear rate limits accumulated during setup
+	setup.clear_rate_limits().await;
+
+	// Exhaust the per-second limit using the first session
+	for _ in 0..3 {
+		setup
+			.make_api_call(
+				ApiRequest::<GetUserInfoRequest>::builder()
+					.headers(GetUserInfoRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await;
+	}
+
+	// First session should be rate-limited
+	let response = setup
+		.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.headers(GetUserInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(
+		response.status_code(),
+		StatusCode::TOO_MANY_REQUESTS,
+		"session A should be rate-limited"
+	);
+
+	// Session B has a different login_id, so its per-login counter is separate.
+	// However, both sessions share the same IP (127.0.0.1), so the per-IP
+	// counter is shared. Since we already made 4 requests from this IP
+	// (3 + 1 rejected), session B is also blocked by the per-IP limit.
+	let response = setup
+		.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.headers(GetUserInfoRequestHeaders {
+					authorization: session_b_bearer,
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!(
+		response.status_code(),
+		StatusCode::TOO_MANY_REQUESTS,
+		"session B should be blocked by shared per-IP rate limit"
+	);
+}

@@ -27,6 +27,9 @@ mod login_id_manager;
 /// Handles the preprocessing of the request, such as the validation of the
 /// request body and returning the error if the request body is invalid
 mod preprocess_layer;
+/// The rate limiter layers for unauthenticated and authenticated endpoints.
+/// Uses Redis sorted sets with the sliding window log algorithm.
+mod rate_limiter_layer;
 /// Handles the parsing of the request in the required format and passes a
 /// [`ApiRequest`][ApiRequest] to the next layer
 mod request_parser;
@@ -53,6 +56,7 @@ pub use self::{
 	endpoint_handler::*,
 	login_id_manager::*,
 	preprocess_layer::*,
+	rate_limiter_layer::*,
 	request_parser::*,
 	user_agent_validation_layer::*,
 	web_dashboard_auth_cookie_layer::*,

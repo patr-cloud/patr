@@ -117,7 +117,7 @@ jobs:
       - name: Generate TS bindings
         run: cargo bindings
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v5
         with:
           package_json_file: frontend/package.json
 

@@ -177,6 +177,8 @@ impl TestSetup {
 			.await
 			.json::<ApiSuccessResponseBody<GetUserInfoResponse>>();
 
+		self.clear_rate_limits().await;
+
 		TestUser {
 			user_id: user_info.response.basic_user_info.id,
 			username,
@@ -206,6 +208,8 @@ impl TestSetup {
 			.json::<ApiSuccessResponseBody<LoginResponse>>()
 			.response;
 
+		self.clear_rate_limits().await;
+
 		(response.access_token, response.refresh_token)
 	}
 
@@ -226,6 +230,8 @@ impl TestSetup {
 			.await
 			.json::<ApiSuccessResponseBody<CreateWorkspaceResponse>>()
 			.response;
+
+		self.clear_rate_limits().await;
 
 		TestWorkspace {
 			id: response.id.id,
@@ -251,6 +257,8 @@ impl TestSetup {
 			.await
 			.json::<ApiSuccessResponseBody<AddRunnerToWorkspaceResponse>>()
 			.response;
+
+		self.clear_rate_limits().await;
 
 		TestRunner {
 			id: response.id.id,
@@ -324,6 +332,8 @@ impl TestSetup {
 			.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>()
 			.response;
 
+		self.clear_rate_limits().await;
+
 		TestDeployment {
 			id: response.id.id,
 			name,
@@ -352,6 +362,8 @@ impl TestSetup {
 			.json::<ApiSuccessResponseBody<AddDomainToWorkspaceResponse>>()
 			.response;
 
+		self.clear_rate_limits().await;
+
 		TestDomain {
 			id: response.id.id,
 			domain,
@@ -379,6 +391,8 @@ impl TestSetup {
 			.await
 			.json::<ApiSuccessResponseBody<CreateVolumeResponse>>()
 			.response;
+
+		self.clear_rate_limits().await;
 
 		TestVolume {
 			id: response.id.id,
@@ -409,6 +423,8 @@ impl TestSetup {
 			.json::<ApiSuccessResponseBody<CreateContainerRepositoryResponse>>()
 			.response;
 
+		self.clear_rate_limits().await;
+
 		TestContainerRepo {
 			id: response.id.id,
 			name,
@@ -438,6 +454,8 @@ impl TestSetup {
 			.await
 			.json::<ApiSuccessResponseBody<CreateNewRoleResponse>>()
 			.response;
+
+		self.clear_rate_limits().await;
 
 		TestRole {
 			id: response.id.id,
@@ -472,6 +490,8 @@ impl TestSetup {
 			.await
 			.json::<ApiSuccessResponseBody<CreateNewRoleResponse>>()
 			.response;
+
+		self.clear_rate_limits().await;
 
 		TestRole {
 			id: response.id.id,
@@ -511,6 +531,8 @@ impl TestSetup {
 			.json::<ApiSuccessResponseBody<CreateApiTokenResponse>>()
 			.response;
 
+		self.clear_rate_limits().await;
+
 		TestApiToken {
 			id: response.id,
 			token: response.token,
@@ -548,6 +570,8 @@ impl TestSetup {
 			UpdateUserRolesInWorkspaceResponse,
 		));
 
+		self.clear_rate_limits().await;
+
 		user_b
 	}
 
@@ -581,6 +605,8 @@ impl TestSetup {
 			.await
 			.json::<ApiSuccessResponseBody<CreateManagedURLResponse>>()
 			.response;
+
+		self.clear_rate_limits().await;
 
 		response.id.id
 	}

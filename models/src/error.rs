@@ -114,6 +114,8 @@ pub enum ErrorType {
 	/// The cloudflare turnstile verification action did not match the expected
 	/// action
 	TurnstileVerificationActionMismatch,
+	/// The client has sent too many requests in a given amount of time
+	RateLimitExceeded,
 }
 
 impl ErrorType {
@@ -163,6 +165,7 @@ impl ErrorType {
 			Self::NotIcannDomain => StatusCode::BAD_REQUEST,
 			Self::TurnstileVerificationFailed => StatusCode::FORBIDDEN,
 			Self::TurnstileVerificationActionMismatch => StatusCode::FORBIDDEN,
+			Self::RateLimitExceeded => StatusCode::TOO_MANY_REQUESTS,
 		}
 	}
 
@@ -240,6 +243,7 @@ impl ErrorType {
 			Self::TurnstileVerificationActionMismatch => {
 				"Human verification action mismatch. Please try again (Turnstile action mismatch)."
 			}
+			Self::RateLimitExceeded => "Too many requests. Please try again later.",
 		}
 	}
 

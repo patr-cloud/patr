@@ -179,7 +179,7 @@ jobs:
         env:
           SQLX_OFFLINE: "true"
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v5
         with:
           package_json_file: frontend/package.json
 

@@ -177,6 +177,27 @@ impl TestSetup {
 			.get(&key)
 			.unwrap_or_else(|| panic!("permission '{}' not found in cached IDs", key))
 	}
+
+	/// Clear all rate limit keys from Redis. Useful in tests to reset rate
+	/// limit state after setup helpers have made API calls.
+	pub async fn clear_rate_limits(&self) {
+		use rustis::commands::GenericCommands;
+
+		let keys: Vec<String> = self
+			.state
+			.redis
+			.keys("rateLimit:*")
+			.await
+			.expect("failed to fetch rate limit keys");
+
+		if !keys.is_empty() {
+			self.state
+				.redis
+				.del(keys)
+				.await
+				.expect("failed to delete rate limit keys");
+		}
+	}
 }
 
 /// Helps setup the test server and database for API tests. This is used by all

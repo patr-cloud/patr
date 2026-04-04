@@ -7,5 +7,8 @@ pub mod ip_lookup;
 /// login ID, regardless of if it's from an API token, a web dashboard session,
 /// or an OAuth session.
 pub mod permissions;
+/// Contains the rate limiting logic using Redis sorted sets with the sliding
+/// window log algorithm.
+pub mod rate_limiter;
 /// Contains all the structs that will be stored in Redis
 pub mod redis;

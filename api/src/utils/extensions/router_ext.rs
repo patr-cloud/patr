@@ -15,6 +15,7 @@ use crate::{
 		AuditLoggerLayer,
 		AuthEndpointHandler,
 		AuthEndpointLayer,
+		AuthRateLimiterLayer,
 		AuthenticationLayer,
 		AuthorizationLayer,
 		ClientType,
@@ -22,6 +23,7 @@ use crate::{
 		EndpointHandler,
 		EndpointLayer,
 		PreprocessLayer,
+		RateLimiterLayer,
 		RequestParserLayer,
 		UserAgentValidationLayer,
 		WebDashboardAuthCookieLayer,
@@ -31,6 +33,7 @@ use crate::{
 			RegistryEndpointHandler,
 			RegistryEndpointLayer,
 			RegistryPreprocessLayer,
+			RegistryRateLimiterLayer,
 			RegistryRequestParserLayer,
 		},
 	},
@@ -117,10 +120,9 @@ where
 					)
 					.layer(
 						ServiceBuilder::new()
-							// .layer(todo!("Add rate limiter checker middleware here")),
 							.layer(RequestParserLayer::new())
 							.layer(DataStoreConnectionLayer::with_state(state.clone()))
-							// .layer(todo!("Add rate limiter value updater middleware here"))
+							.layer(RateLimiterLayer::new())
 							.layer(PreprocessLayer::new())
 							.layer(UserAgentValidationLayer::new())
 							.layer(EndpointLayer::new(handler)),
@@ -158,7 +160,6 @@ where
 					)
 					.layer(
 						ServiceBuilder::new()
-							// .layer(todo!("Add rate limiter checker middleware here")),
 							.option_layer(
 								if allowed_client_type == ClientType::WebDashboard {
 									// For web dashboard, we need to extract the
@@ -176,7 +177,7 @@ where
 							.layer(UserAgentValidationLayer::new())
 							.layer(AuthenticationLayer::new(allowed_client_type))
 							.layer(AuthorizationLayer::new())
-							// .layer(todo!("Add rate limiter value updater middleware here"))
+							.layer(AuthRateLimiterLayer::new())
 							.layer(AuditLoggerLayer::new())
 							.layer(AuthEndpointLayer::new(handler)),
 					),
@@ -202,13 +203,11 @@ where
 				)
 				.layer(
 					ServiceBuilder::new()
-						// .layer(todo!("Add rate limiter checker middleware here")),
 						.layer(RegistryRequestParserLayer::new())
 						.layer(RegistryDataStoreConnectionLayer::with_state(state.clone()))
 						.layer(RegistryPreprocessLayer::new())
 						.layer(RegistryAuthenticationLayer::new())
-						// .layer(todo!("Add permission checker middleware here"))
-						// .layer(todo!("Add rate limiter value updater middleware here"))
+						.layer(RegistryRateLimiterLayer::new())
 						// .layer(todo!("Add audit logger middleware here"))
 						.layer(RegistryEndpointLayer::new(handler)),
 				),

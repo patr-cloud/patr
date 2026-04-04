@@ -92,3 +92,16 @@ pub fn runner_id_for_deployment(deployment_id: &Uuid) -> String {
 pub fn ip_lookup_data(ip: IpAddr) -> String {
 	format!("ipLookupData:{}", ip)
 }
+
+/// The key used for the sliding window rate limiter sorted set, keyed by IP
+/// address (or IPv6 /64 subnet) and window duration.
+pub fn rate_limit_ip(identifier: &str, window_secs: u64) -> String {
+	format!("rateLimit:ip:{}:{}", identifier, window_secs)
+}
+
+/// The key used for the sliding window rate limiter sorted set, keyed by login
+/// ID and window duration. Used for per-login rate limiting on authenticated
+/// endpoints.
+pub fn rate_limit_login_id(login_id: &Uuid, window_secs: u64) -> String {
+	format!("rateLimit:loginId:{}:{}", login_id, window_secs)
+}
