@@ -112,14 +112,14 @@ const EditPermissions = (props: {
 						(a, b) => a.resourceType.localeCompare(b.resourceType) || a.action.localeCompare(b.action)
 					)}
 					renderRow={(perm) => (
-						<tr class="table-row">
-							<td class="flex-3 flex items-center justify-center">
+						<tr role="row" class="table-row">
+							<td role="cell" class="flex-3 flex items-center justify-start">
 								<span class="truncate">{parseCamelCase(perm.resourceType)}</span>
 							</td>
-							<td class="flex-2 flex items-center justify-center">
+							<td role="cell" class="flex-2 flex items-center justify-start">
 								<span>{parseCamelCase(perm.action)}</span>
 							</td>
-							<td class="flex-3 flex items-center justify-center">
+							<td role="cell" class="flex-3 flex items-center justify-start">
 								<Show
 									when={perm.resources.length > 0}
 									fallback={<span class="text-gray-400">All resources</span>}
@@ -130,15 +130,19 @@ const EditPermissions = (props: {
 									</span>
 								</Show>
 							</td>
-							<td
-								class="flex-[0.5] cursor-pointer"
-								onClick={() => {
-									const newPermissionsData = { ...permissionsData() };
-									delete newPermissionsData[perm.permissionId];
-									setPermissionsData(newPermissionsData);
-								}}
-							>
-								<FiTrash2 color="red" />
+							<td role="cell" class="flex-[0.5] flex items-center justify-center">
+								<button
+									type="button"
+									aria-label="Remove permission"
+									class="text-error hover:bg-white/10 p-1 rounded transition-colors cursor-pointer"
+									onClick={() => {
+										const newPermissionsData = { ...permissionsData() };
+										delete newPermissionsData[perm.permissionId];
+										setPermissionsData(newPermissionsData);
+									}}
+								>
+									<FiTrash2 size={16} />
+								</button>
 							</td>
 						</tr>
 					)}

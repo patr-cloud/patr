@@ -187,6 +187,12 @@ const ApiTokenInfo = () => {
 			return;
 		}
 
+		const perms = workspacePermissions();
+		if (Object.keys(perms).length === 0) {
+			toast("At least one workspace permission is required", "error");
+			return;
+		}
+
 		const info = apiTokenInfo();
 		const body = {
 			permissions: workspacePermissions(),
@@ -285,7 +291,11 @@ const ApiTokenInfo = () => {
 								<div class="flex flex-col gap-4 items-start w-full">
 									<div class="flex justify-between items-center w-full">
 										<h3 class="text-lg text-white">Workspace Permissions</h3>
-										<Button variant={ButtonVariant.Contained} onClick={onSavePermissions}>
+										<Button
+											variant={ButtonVariant.Contained}
+											onClick={onSavePermissions}
+											disabled={enabledWorkspaces().size === 0}
+										>
 											Save Permissions
 										</Button>
 									</div>

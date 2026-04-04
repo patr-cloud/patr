@@ -124,7 +124,10 @@ const ManageWorkspace = () => {
 
 					return {
 						userId: id,
-						userName: `${firstName} ${lastName} (@${username})`,
+						firstName,
+						lastName,
+						username,
+						fullName: `${firstName} ${lastName}`,
 						roleIds: roleIds,
 					};
 				}
@@ -261,13 +264,22 @@ const ManageWorkspace = () => {
 										variant={ButtonVariant.Contained}
 										class="h-full flex items-center gap-2"
 										disabled={isSubmitting()}
+										loading={isSubmitting()}
+										loadingContent={() => <span>Adding...</span>}
 									>
 										<FiPlus size={16} />
+										Add Member
 									</Button>
 								</div>
 							</form>
 
-							<Suspense fallback={<div class="text-white">Loading members...</div>}>
+							<Suspense
+								fallback={
+									<div class="flex items-center justify-center gap-2 py-16 text-grey">
+										<span class="text-sm">Loading members...</span>
+									</div>
+								}
+							>
 								<Table
 									column_grids={["flex-2", "flex-1", "flex-1"]}
 									headings={["User", "Roles", "Actions"]}
@@ -334,17 +346,32 @@ const ManageWorkspace = () => {
 														</td>
 													</tr>
 												) : (
-													<tr class="border border-border-color min-h-10 flex items-center justify-center w-full px-xl bg-secondary-light last-of-type:rounded-b-xs">
-														<td class="flex items-center justify-center flex-2 gap-2">
+													<tr role="row" class="table-row">
+														<td
+															role="cell"
+															class="flex items-center justify-start flex-2 gap-2 min-w-0"
+														>
 															<Initials
 																size="xs"
-																firstName={member.userName.split(" ")[0]}
-																lastName={member.userName.split(" ")[1]}
+																firstName={member.firstName}
+																lastName={member.lastName}
 															/>
-															{member.userName}
+															<div class="flex flex-col min-w-0">
+																<span class="text-white font-medium truncate">
+																	{member.fullName}
+																</span>
+																<span class="text-grey text-xs truncate">
+																	@{member.username}
+																</span>
+															</div>
 														</td>
-														<td class="flex items-center justify-center flex-1">
-															{memberRoleNames || "No roles"}
+														<td
+															role="cell"
+															class="flex items-center justify-start flex-1 min-w-0"
+														>
+															<span class={memberRoleNames ? "" : "text-grey italic"}>
+																{memberRoleNames || "No roles"}
+															</span>
 														</td>
 														<td class="flex items-center justify-center flex-1">
 															{shouldDelete() && userToDelete() === member.userId ? (
@@ -372,24 +399,26 @@ const ManageWorkspace = () => {
 															) : (
 																<>
 																	<button
+																		aria-label="Edit member roles"
 																		onClick={() => {
 																			setEditingMember({
 																				userId: member.userId,
-																				userName: member.userName,
+																				userName: member.fullName,
 																				roleIds: member.roleIds,
 																			});
 																		}}
-																		class="text-gray-400 hover:bg-white/10 p-1 rounded transition-colors cursor-pointer"
+																		class="text-grey hover:bg-white/10 p-1 rounded transition-colors cursor-pointer"
 																	>
 																		<FiEdit2 size={18} />
 																	</button>
 																	<button
+																		aria-label="Remove member"
 																		onClick={(e) => {
 																			e.stopPropagation();
 																			setUserToDelete(member.userId);
 																			setShouldDelete(true);
 																		}}
-																		class="text-red-500 hover:bg-white/10 p-1 rounded transition-colors cursor-pointer"
+																		class="text-error hover:bg-white/10 p-1 rounded transition-colors cursor-pointer"
 																	>
 																		<FiTrash size={18} />
 																	</button>

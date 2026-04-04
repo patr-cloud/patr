@@ -24,7 +24,7 @@ const ProbeInput = (props: ProbeInputProps) => {
 	const onSelectPort = (port: string) => {
 		const probeVal = probe();
 
-		if (!probeVal?.path || !path) return;
+		if (!probeVal?.path || !path()) return;
 
 		setProbe({
 			path: probeVal.path || path(),

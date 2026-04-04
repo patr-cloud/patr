@@ -114,14 +114,38 @@ const DomainInfo = () => {
 				return;
 			}
 
-			const requestBody: CreateManagedURLRequest = {
+			const base = {
 				domainId,
 				subDomain: subDomain(),
 				path: path(),
-				type: "proxyDeployment",
-				deploymentId: targetVal,
-				port: deploymentPort() || 80,
 			};
+
+			let requestBody: CreateManagedURLRequest;
+			switch (urlTypeVal) {
+				case "proxyDeployment":
+					requestBody = {
+						...base,
+						type: "proxyDeployment",
+						deploymentId: targetVal,
+						port: deploymentPort() || 80,
+					};
+					break;
+				case "proxyUrl":
+					requestBody = { ...base, type: "proxyUrl", url: targetVal, httpOnly: false };
+					break;
+				case "redirect":
+					requestBody = {
+						...base,
+						type: "redirect",
+						url: targetVal,
+						permanentRedirect: false,
+						httpOnly: false,
+					};
+					break;
+				case "proxyStaticSite":
+					requestBody = { ...base, type: "proxyStaticSite", staticSiteId: targetVal };
+					break;
+			}
 
 			const response = await httpRequest<CreateManagedURLResponse>(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/infrastructure/managed-url`,
@@ -138,7 +162,11 @@ const DomainInfo = () => {
 			}
 
 			toast("Managed URL created successfully", "success");
-
+			setSubDomain("");
+			setPath("");
+			setUrlType(null);
+			setTarget(null);
+			setDeploymentPort(null);
 			refetchManagedUrls();
 		}
 	);

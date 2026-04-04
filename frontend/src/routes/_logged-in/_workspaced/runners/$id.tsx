@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid-js";
+import { createMemo, createResource, ErrorBoundary, Match, Show, Suspense, Switch } from "solid-js";
 import { GetRunnerInfoResponse } from "~/bindings";
 import {
 	HeadTab,
@@ -51,18 +51,6 @@ const RunnerDetail = () => {
 		}
 		return response.data;
 	});
-
-	const renderTab = () => {
-		switch (tab()) {
-			case "metrics":
-				return <RunnerMetrics runnerId={params().id} />;
-			case "logs":
-				return <RunnerLogs runnerId={params().id} />;
-			case "":
-			default:
-				return <RunnerDeployments runnerId={params().id} />;
-		}
-	};
 
 	return (
 		<>
@@ -156,7 +144,14 @@ const RunnerDetail = () => {
 							/>
 
 							<PageContainerBody class="flex flex-col justify-between gap-8">
-								{renderTab()}
+								<Switch fallback={<RunnerDeployments runnerId={params().id} />}>
+									<Match when={tab() === "metrics"}>
+										<RunnerMetrics runnerId={params().id} />
+									</Match>
+									<Match when={tab() === "logs"}>
+										<RunnerLogs runnerId={params().id} />
+									</Match>
+								</Switch>
 							</PageContainerBody>
 						</Suspense>
 					</ErrorBoundary>

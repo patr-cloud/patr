@@ -1,8 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createSignal } from "solid-js";
+import { createSignal, Show } from "solid-js";
 import { AddRunnerToWorkspaceResponse } from "~/bindings";
-import { Button, ButtonVariant, PageContainer, PageContainerBody, PageContainerHead, useToast } from "~/components";
+import {
+	Alert,
+	Button,
+	ButtonVariant,
+	PageContainer,
+	PageContainerBody,
+	PageContainerHead,
+	useToast,
+} from "~/components";
 import Input, { InputType } from "~/components/input";
 import InputLabel from "~/components/input-label";
 import { createFormAction } from "~/hooks";
@@ -10,10 +18,16 @@ import { httpRequest } from "~/utils/http-request";
 
 const CreateRunnerPage = () => {
 	const [name, setName] = createSignal<string>("");
+	const [nameError, setNameError] = createSignal("");
 	const navigate = useNavigate();
 	const toast = useToast();
 
 	const { onSubmit, isLoading } = createFormAction(async ({ workspaceId }) => {
+		if (!name().trim()) {
+			setNameError("Runner name is required.");
+			return;
+		}
+
 		const response = await httpRequest<AddRunnerToWorkspaceResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/runner`,
 			{
@@ -25,13 +39,11 @@ const CreateRunnerPage = () => {
 		);
 
 		if (!response.ok) {
-			console.error("Failed to create runner:", response.data.error);
-			toast("Failed to create runner", "error");
+			setNameError("Failed to create runner. Please try a different name.");
 			return;
 		}
 
 		toast("Runner created successfully", "success");
-		setName("");
 		navigate({ to: "/runners" });
 	});
 
@@ -47,27 +59,31 @@ const CreateRunnerPage = () => {
 							url: "/runners",
 						},
 						{
-							label: "Create",
+							label: "Add",
 						},
 					]}
 				/>
-				<PageContainerBody class="flex flex-col justify-between gap-8">
-					<form onSubmit={onSubmit} class="flex flex-col gap-8 items-start w-full justify-between flex-1">
-						<div class="flex w-full flex-col justify-between gap-6 h-full flex-1">
-							<div class="flex flex-col gap-6 items-start w-full">
-								<div class="flex gap-8 items-center w-full">
-									<InputLabel parentClass="flex-2" for="runner-name" label="Runner Name" />
-									<Input
-										class="flex-10"
-										name="runner-name"
-										placeholder="Enter Runner Name"
-										type={InputType.Text}
-										value={name()}
-										onInput={(e) => {
-											setName(e.currentTarget.value);
-										}}
-									/>
-								</div>
+				<PageContainerBody class="flex flex-col">
+					<form noValidate onSubmit={onSubmit} class="flex flex-col gap-8 w-full">
+						<div class="flex gap-8 items-center w-full">
+							<InputLabel parentClass="flex-2" for="runner-name" label="Runner Name" />
+							<div class="flex-10 flex flex-col">
+								<Input
+									id="runner-name"
+									name="runner-name"
+									placeholder="Enter Runner Name"
+									type={InputType.Text}
+									value={name()}
+									onInput={(e) => {
+										setName(e.currentTarget.value);
+										setNameError("");
+									}}
+								/>
+								<Show when={nameError()}>
+									<div class="mt-1">
+										<Alert message={nameError()} type="error" />
+									</div>
+								</Show>
 							</div>
 						</div>
 

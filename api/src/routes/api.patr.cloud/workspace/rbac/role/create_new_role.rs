@@ -37,6 +37,10 @@ pub async fn create_new_role(
 ) -> Result<AppResponse<CreateNewRoleRequest>, ErrorType> {
 	info!("Creating new role: {} in workspace: {}", name, workspace_id);
 
+	if permissions.is_empty() {
+		return Err(ErrorType::WrongParameters);
+	}
+
 	let now = OffsetDateTime::now_utc();
 
 	let role_id = query!(

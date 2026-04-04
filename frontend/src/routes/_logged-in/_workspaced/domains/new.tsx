@@ -1,29 +1,30 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createSignal, Show } from "solid-js";
-import { PageContainer, PageContainerBody, PageContainerHead, ButtonVariant, Button } from "~/components";
+import {
+	Alert,
+	PageContainer,
+	PageContainerBody,
+	PageContainerHead,
+	ButtonVariant,
+	Button,
+	useToast,
+} from "~/components";
 import Input, { InputType } from "~/components/input";
 import InputLabel from "~/components/input-label";
-import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
+import { createFormAction } from "~/hooks";
 import { AddDomainToWorkspaceRequest, AddDomainToWorkspaceResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
 
-// Check if input looks like a URL (has protocol, path, query, etc.)
 function looksLikeUrl(input: string): boolean {
 	const trimmed = input.trim();
 	return /^https?:\/\//i.test(trimmed) || trimmed.includes("/") || trimmed.includes("?") || trimmed.includes("#");
 }
 
-// Extract hostname from URL-like input
 function extractHostname(input: string): string {
 	let trimmed = input.trim();
-
-	// Remove protocol if present
 	trimmed = trimmed.replace(/^https?:\/\//i, "");
-
-	// Remove path, query, and fragment
 	trimmed = trimmed.split(/[/?#]/)[0];
-
 	return trimmed;
 }
 
@@ -31,26 +32,8 @@ const CreateDomainPage = () => {
 	const [domainInput, setDomainInput] = createSignal("");
 	const [error, setError] = createSignal("");
 	const [suggestedDomain, setSuggestedDomain] = createSignal("");
-	const [isSubmitting, setIsSubmitting] = createSignal(false);
-	let validationTimeout: number | undefined;
-
-	const [authState] = useAuthState();
-	const [workspaceId] = useLastWorkspaceId();
 	const navigate = useNavigate();
-
-	const handleInputChange = (value: string) => {
-		setDomainInput(value);
-
-		// Clear previous timeout
-		if (validationTimeout) {
-			clearTimeout(validationTimeout);
-		}
-
-		// TODO Debounce the validation to avoid too many API calls
-		// validationTimeout = setTimeout(() => {
-		//   validateDomain(value);
-		// }, 500) as unknown as number;
-	};
+	const toast = useToast();
 
 	const handleSuggestionClick = () => {
 		const suggested = suggestedDomain();
@@ -59,62 +42,42 @@ const CreateDomainPage = () => {
 		setSuggestedDomain("");
 	};
 
-	const onSubmit = async (e: SubmitEvent) => {
-		e.preventDefault();
-
-		const auth = authState();
-		const wsId = workspaceId();
-
-		if (!auth || auth.type !== "LoggedIn" || !wsId) {
-			console.error("User is not logged in or workspace ID missing");
-			return;
-		}
-
+	const { onSubmit, isLoading } = createFormAction(async ({ workspaceId: wsId }) => {
 		const domain = domainInput().trim();
 
 		if (!domain) {
-			setError("Domain is required");
+			setError("Domain is required.");
 			return;
 		}
 
-		// Quick check for URL-like input before submitting
 		if (looksLikeUrl(domain)) {
 			const hostname = extractHostname(domain);
-			setError("Please enter a domain without protocols, paths, or query strings");
+			setError("Enter a base domain only, without protocols, paths, or query strings.");
 			setSuggestedDomain(hostname);
 			return;
 		}
 
-		// If there's already an error, don't submit
-		if (error()) {
+		const requestBody: AddDomainToWorkspaceRequest = {
+			domain,
+			nameserverType: "external",
+		};
+
+		const response = await httpRequest<AddDomainToWorkspaceResponse>(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain`,
+			{
+				method: "POST",
+				body: JSON.stringify(requestBody),
+			}
+		);
+
+		if (!response.ok) {
+			setError("Failed to add domain. Please try again.");
 			return;
 		}
 
-		setIsSubmitting(true);
-
-		try {
-			const requestBody: AddDomainToWorkspaceRequest = {
-				domain: domain,
-				nameserverType: "external",
-			};
-
-			const response = await httpRequest<AddDomainToWorkspaceResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain`,
-				{
-					method: "POST",
-					body: JSON.stringify(requestBody),
-				}
-			);
-
-			console.log("Domain added successfully:", response.data);
-			navigate({ to: "/domains" });
-		} catch (error) {
-			console.error("Error adding domain:", error);
-			setError("Failed to add domain. Please try again.");
-		} finally {
-			setIsSubmitting(false);
-		}
-	};
+		toast("Domain added successfully", "success");
+		navigate({ to: "/domains" });
+	});
 
 	return (
 		<>
@@ -132,28 +95,31 @@ const CreateDomainPage = () => {
 					]}
 					subText="Configure custom domains to route traffic to your deployments."
 				/>
-				<PageContainerBody>
-					<form onSubmit={onSubmit} class="space-y-6">
-						<div class="bg-secondary-light p-6 rounded-xs border border-white/5">
-							<div class="space-y-4">
-								<div class="flex flex-col gap-2">
-									<InputLabel parentClass="flex-2" for="domain-name" label="Domain Name" />
+				<PageContainerBody class="flex flex-col">
+					<form noValidate onSubmit={onSubmit} class="flex flex-col gap-8 w-full">
+						<div class="flex flex-col gap-4 w-full">
+							<div class="flex gap-8 items-start w-full">
+								<InputLabel parentClass="flex-2 pt-2.5" for="domain-name" label="Domain Name" />
+								<div class="flex-10 flex flex-col">
 									<Input
-										styleVariant="dark"
 										id="domain-name"
-										class="flex-10"
 										name="domain-name"
 										placeholder="example.com"
 										type={InputType.Text}
 										value={domainInput()}
-										onInput={(e) => handleInputChange(e.currentTarget.value)}
-										required
+										onInput={(e) => {
+											setDomainInput(e.currentTarget.value);
+											setError("");
+											setSuggestedDomain("");
+										}}
 									/>
 									<Show when={error()}>
-										<p class="text-red-500 text-sm mt-1">{error()}</p>
+										<div class="mt-1">
+											<Alert message={error()} type="error" />
+										</div>
 									</Show>
 									<Show when={suggestedDomain()}>
-										<p class="text-gray-400 text-sm mt-1">
+										<p class="text-grey text-sm mt-1">
 											Did you mean{" "}
 											<button
 												type="button"
@@ -165,37 +131,31 @@ const CreateDomainPage = () => {
 											?
 										</p>
 									</Show>
-								</div>
-
-								<div class="bg-secondary-dark p-4 rounded border border-white/5">
-									<h4 class="text-white text-sm font-semibold mb-2">Domain Requirements:</h4>
-									<ul class="text-gray-400 text-sm space-y-1 list-disc list-inside">
-										<li>✅ Enter only the base domain (e.g., example.com)</li>
-										<li>❌ Do not include subdomains (e.g., www.example.com)</li>
-										<li>❌ Do not include protocols (e.g., https://example.com)</li>
-										<li>
-											❌ Do not include paths or query parameters (e.g., example.com/path?query=1)
-										</li>
-										<li>⚠️ We currently don't support non-ASCII domains (e.g., èxámplê.com)</li>
-									</ul>
+									<div class="mt-3 bg-secondary-dark p-4 rounded border border-primary/40">
+										<h4 class="text-white text-sm font-semibold mb-2">Domain Requirements:</h4>
+										<ul class="text-grey text-sm space-y-1 list-disc list-inside">
+											<li>✅ Enter only the base domain (e.g., example.com)</li>
+											<li>❌ Do not include subdomains (e.g., www.example.com)</li>
+											<li>❌ Do not include protocols (e.g., https://example.com)</li>
+											<li>
+												❌ Do not include paths or query parameters (e.g.,
+												example.com/path?query=1)
+											</li>
+											<li>⚠️ We currently don't support non-ASCII domains (e.g., èxámplê.com)</li>
+										</ul>
+									</div>
 								</div>
 							</div>
 						</div>
 
-						<div class="w-full flex justify-end gap-4">
-							<Button
-								variant={ButtonVariant.Outlined}
-								type="button"
-								onClick={() => navigate({ to: "/domains" })}
-							>
-								Cancel
-							</Button>
+						<div class="w-full flex justify-end">
 							<Button
 								variant={ButtonVariant.Contained}
 								type="submit"
-								disabled={isSubmitting() || !!error()}
+								loading={isLoading}
+								loadingContent={() => <span>Adding...</span>}
 							>
-								{isSubmitting() ? "Adding..." : "Add Domain"}
+								Add Domain
 							</Button>
 						</div>
 					</form>

@@ -12,8 +12,10 @@ import {
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
+	StatusChip,
 	useToast,
 } from "~/components";
+import { LoadingSpinner } from "~/components/loading-spinner";
 import { createAuthenticatedAction, useAuthState } from "~/hooks";
 import useIsAllowed, { useGetPermissions } from "~/hooks/is-allowed";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
@@ -201,24 +203,6 @@ const DeploymentInfo = () => {
 		</Switch>
 	);
 
-	const renderTab = () => {
-		switch (tab()) {
-			case "logs":
-				return <Show when={deploymentInfo.latest?.id}>{(id) => <DeploymentLogs deploymentId={id()} />}</Show>;
-			case "info":
-			case "":
-				return (
-					<DeploymentInfoUpdate
-						deploymentInfo={deploymentInfo}
-						refetchDeploymentInfo={refetchDeploymentInfo}
-						mutateDeploymentInfo={mutateDeploymentInfo}
-					/>
-				);
-			default:
-				return <div class="text-white">No such tab</div>;
-		}
-	};
-
 	return (
 		<>
 			<Title>Deployment Details | Patr</Title>
@@ -234,13 +218,22 @@ const DeploymentInfo = () => {
 				<PageContainer>
 					<ErrorBoundary
 						fallback={(err, reset) => (
-							<div>
-								<p>Error loading deployment info: {err.message}</p>
-								<button onClick={reset}>Retry</button>
+							<div class="flex flex-col items-center justify-center gap-4 py-16">
+								<p class="text-error text-sm">Error loading deployment: {err.message}</p>
+								<Button variant={ButtonVariant.Outlined} onClick={reset}>
+									Retry
+								</Button>
 							</div>
 						)}
 					>
-						<Suspense fallback={<div>Loading deployment info...</div>}>
+						<Suspense
+							fallback={
+								<div class="flex items-center justify-center gap-2 py-16 text-grey">
+									<LoadingSpinner size={20} />
+									<span class="text-sm">Loading deployment...</span>
+								</div>
+							}
+						>
 							<PageContainerHead
 								breadcrumbs={[
 									{
@@ -255,6 +248,9 @@ const DeploymentInfo = () => {
 								class="justify-between items-center"
 								actions={() => (
 									<div class="flex items-center justify-end gap-3">
+										<Show when={deploymentInfo()?.status}>
+											<StatusChip status={deploymentInfo()!.status} />
+										</Show>
 										{Cta()}
 
 										{deploymentInfo() &&
@@ -281,7 +277,7 @@ const DeploymentInfo = () => {
 										tabItems={[
 											{
 												label: "Info",
-												value: "",
+												value: "info",
 												onClick: (value) =>
 													navigate({
 														to: "/deployments/$id",
@@ -305,7 +301,20 @@ const DeploymentInfo = () => {
 							/>
 
 							<PageContainerBody class="flex flex-col justify-between gap-8">
-								{renderTab()}
+								<Switch fallback={<div class="text-grey text-sm py-8 text-center">No such tab</div>}>
+									<Match when={tab() === "logs"}>
+										<Show when={deploymentInfo.latest?.id}>
+											{(id) => <DeploymentLogs deploymentId={id()} />}
+										</Show>
+									</Match>
+									<Match when={tab() === "info" || tab() === ""}>
+										<DeploymentInfoUpdate
+											deploymentInfo={deploymentInfo}
+											refetchDeploymentInfo={refetchDeploymentInfo}
+											mutateDeploymentInfo={mutateDeploymentInfo}
+										/>
+									</Match>
+								</Switch>
 							</PageContainerBody>
 						</Suspense>
 					</ErrorBoundary>

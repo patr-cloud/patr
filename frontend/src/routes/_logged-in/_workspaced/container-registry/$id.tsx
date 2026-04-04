@@ -1,8 +1,18 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createMemo, createResource, createSignal, ErrorBoundary, Suspense } from "solid-js";
-import { DeleteModal, HeadTab, PageContainer, PageContainerBody, PageContainerHead, useToast } from "~/components";
-import { useAuthState } from "~/hooks";
+import { createMemo, createResource, createSignal, ErrorBoundary, Match, Show, Suspense, Switch } from "solid-js";
+import {
+	Button,
+	ButtonVariant,
+	DeleteModal,
+	HeadTab,
+	PageContainer,
+	PageContainerBody,
+	PageContainerHead,
+	useToast,
+} from "~/components";
+import { LoadingSpinner } from "~/components/loading-spinner";
+import { useAuthState, useIsAllowed } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { GetContainerRepositoryInfoResponse, ListContainerRepositoryManifestsResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
@@ -12,6 +22,7 @@ import Images from "./-components/images";
 const ContainerRepositoryInfo = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
+	const isAllowedDelete = useIsAllowed("containerRegistryRepository", "delete", undefined);
 	const toast = useToast();
 	const navigate = useNavigate();
 	const params = Route.useParams();
@@ -89,33 +100,28 @@ const ContainerRepositoryInfo = () => {
 		navigate({ to: "/container-registry" });
 	};
 
-	const renderTab = () => {
-		switch (tab()) {
-			case "images": {
-				const manifest_list = manifests();
-				if (!manifest_list) return <div>Loading manifests...</div>;
-				return <Images manifests={() => manifest_list} refetch={refetchManifests} />;
-			}
-			case "general":
-			case "":
-			default:
-				return <General repositoryInfo={() => repositoryInfo()} />;
-		}
-	};
-
 	return (
 		<>
 			<Title>Repository Details | Patr</Title>
 			<PageContainer>
 				<ErrorBoundary
 					fallback={(err, reset) => (
-						<div>
-							<p>Error loading repository info: {err.message}</p>
-							<button onClick={reset}>Retry</button>
+						<div class="flex flex-col items-center justify-center gap-4 py-16">
+							<p class="text-error text-sm">Error loading repository: {err.message}</p>
+							<Button variant={ButtonVariant.Outlined} onClick={reset}>
+								Retry
+							</Button>
 						</div>
 					)}
 				>
-					<Suspense fallback={<div>Loading repository info...</div>}>
+					<Suspense
+						fallback={
+							<div class="flex items-center justify-center gap-2 py-16 text-grey">
+								<LoadingSpinner size={20} />
+								<span class="text-sm">Loading repository...</span>
+							</div>
+						}
+					>
 						<PageContainerHead
 							breadcrumbs={[
 								{
@@ -130,7 +136,7 @@ const ContainerRepositoryInfo = () => {
 							class="justify-between items-center"
 							actions={() => (
 								<div class="flex items-center justify-end gap-3">
-									{repositoryInfo() && repositoryInfo()?.repository?.name && (
+									<Show when={isAllowedDelete() && repositoryInfo()?.repository?.name}>
 										<DeleteModal
 											title="Do You Really Want to Delete This Repository?"
 											resourceName={repositoryInfo()?.repository?.name || ""}
@@ -138,7 +144,7 @@ const ContainerRepositoryInfo = () => {
 											isOpen={isDeleteModalOpen}
 											setIsOpen={setIsDeleteModalOpen}
 										/>
-									)}
+									</Show>
 								</div>
 							)}
 							bottomContent={() => (
@@ -170,7 +176,25 @@ const ContainerRepositoryInfo = () => {
 							)}
 						/>
 
-						<PageContainerBody class="flex flex-col justify-between gap-8">{renderTab()}</PageContainerBody>
+						<PageContainerBody class="flex flex-col justify-between gap-8">
+							<Switch fallback={<General repositoryInfo={() => repositoryInfo()} />}>
+								<Match when={tab() === "images"}>
+									<Show
+										when={manifests()}
+										fallback={
+											<div class="flex items-center justify-center gap-2 py-16 text-grey">
+												<LoadingSpinner size={20} />
+												<span class="text-sm">Loading images...</span>
+											</div>
+										}
+									>
+										{(manifestList) => (
+											<Images manifests={manifestList} refetch={refetchManifests} />
+										)}
+									</Show>
+								</Match>
+							</Switch>
+						</PageContainerBody>
 					</Suspense>
 				</ErrorBoundary>
 			</PageContainer>

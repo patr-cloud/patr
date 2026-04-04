@@ -78,6 +78,10 @@ pub async fn update_api_token(
 	trace!("API token updated");
 
 	if let Some(permissions) = permissions {
+		if permissions.is_empty() {
+			return Err(ErrorType::WrongParameters);
+		}
+
 		trace!("Updating permissions for API token: {}", token_id);
 
 		query!(

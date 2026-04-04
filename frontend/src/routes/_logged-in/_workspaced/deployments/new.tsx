@@ -11,6 +11,7 @@ import {
 } from "~/components";
 import Input, { InputType } from "~/components/input";
 import InputLabel from "~/components/input-label";
+import ToggleSwitch from "~/components/toggle-switch";
 import EnvInput from "./-components/env-input";
 import {
 	Base64String,
@@ -90,6 +91,8 @@ const CreateDeploymentPage = () => {
 	const [repositoryId, setRepositoryId] = createSignal<string>("");
 	const [configFiles, setConfigFiles] = createSignal<ConfigMountT>({});
 	const [startupProbe, setStartupProbe] = createSignal<DeploymentProbe | undefined>(undefined);
+	const [deployOnCreate, setDeployOnCreate] = createSignal(false);
+	const [deployOnPush, setDeployOnPush] = createSignal(false);
 
 	const [registry, setRegistry] = createSignal<string>("");
 	const [envList, setEnvList] = createSignal<{ key: string; value: EnvironmentVariableValue }[]>([]);
@@ -147,8 +150,9 @@ const CreateDeploymentPage = () => {
 			maxHorizontalScale: 2,
 			environmentVariables: Object.fromEntries(envList().map((env) => [env.key, env.value])),
 			ports: portList(),
-			deployOnCreate: false,
-			deployOnPush: false,
+			startupProbe: startupProbe(),
+			deployOnCreate: deployOnCreate(),
+			deployOnPush: isPatrRegistry() ? deployOnPush() : undefined,
 			configMounts,
 		};
 
@@ -336,6 +340,22 @@ const CreateDeploymentPage = () => {
 							/>
 
 							<ConfigMount selectedFiles={configFiles} setSelectedFiles={setConfigFiles} />
+
+							<div class="flex gap-8 items-center w-full">
+								<InputLabel parentClass="flex-2" label="Deploy on Create" />
+								<div class="flex-10">
+									<ToggleSwitch checked={deployOnCreate} onChange={setDeployOnCreate} />
+								</div>
+							</div>
+
+							<Show when={isPatrRegistry()}>
+								<div class="flex gap-8 items-center w-full">
+									<InputLabel parentClass="flex-2" label="Deploy on Push" />
+									<div class="flex-10">
+										<ToggleSwitch checked={deployOnPush} onChange={setDeployOnPush} />
+									</div>
+								</div>
+							</Show>
 						</div>
 
 						<div class="w-full flex items-end justify-end">

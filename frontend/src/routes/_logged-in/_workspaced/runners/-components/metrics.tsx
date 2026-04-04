@@ -342,7 +342,17 @@ const RunnerMetrics = (props: RunnerMetricsProps) => {
 					}
 				>
 					<div class="grid grid-cols-1 lg:grid-cols-2 gap-lg">
-						<For each={CHARTS}>{(chart) => <MetricCard chart={chart} data={metricsData()} />}</For>
+						<For each={CHARTS}>
+							{(chart, index) => (
+								<div
+									class={
+										index() === CHARTS.length - 1 && CHARTS.length % 2 !== 0 ? "lg:col-span-2" : ""
+									}
+								>
+									<MetricCard chart={chart} data={metricsData()} />
+								</div>
+							)}
+						</For>
 					</div>
 				</Suspense>
 			</ErrorBoundary>

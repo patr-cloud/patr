@@ -71,6 +71,10 @@ pub async fn update_role(
 	trace!("Role updated");
 
 	if let Some(permissions) = permissions {
+		if permissions.is_empty() {
+			return Err(ErrorType::WrongParameters);
+		}
+
 		query!(
 			r#"
 			DELETE FROM

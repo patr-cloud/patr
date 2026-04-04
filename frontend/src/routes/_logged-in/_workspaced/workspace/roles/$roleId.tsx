@@ -80,16 +80,18 @@ const RoleInfo = () => {
 				<PageContainerBody class="flex flex-col gap-6">
 					<ErrorBoundary
 						fallback={(err, reset) => (
-							<div class="text-white">
-								<p>Error loading role information: {err.message}</p>
-								<button onClick={reset}>Retry</button>
+							<div class="flex flex-col items-center justify-center gap-4 py-16">
+								<p class="text-error text-sm">Error loading role: {err.message}</p>
+								<button class="text-primary hover:underline text-sm" onClick={reset}>
+									Retry
+								</button>
 							</div>
 						)}
 					>
 						<Suspense
 							fallback={
-								<div class="flex items-center justify-center py-8">
-									<div class="text-gray-400">Loading role information...</div>
+								<div class="flex items-center justify-center gap-2 py-16 text-grey">
+									<span class="text-sm">Loading role information...</span>
 								</div>
 							}
 						>
