@@ -1,7 +1,7 @@
 import { createMemo, createSignal, Show, Suspense } from "solid-js";
 import { Button, ButtonVariant, InputDropdown, ListResources } from "~/components";
 import { useFetchPermissions } from "~/hooks/fetch";
-import { parsePermissionName, parseCamelCase, getResourceEndpoint } from "~/utils/func";
+import { parsePermissionName, parseCamelCase, getResourceEndpoint, workspaceLevelResourceTypes } from "~/utils/func";
 import { ResourcePermissionType } from "~/bindings/ResourcePermissionType";
 import { FiPlus } from "solid-icons/fi";
 
@@ -45,9 +45,20 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 			});
 	});
 
+	// Whether the selected resource type is workspace-level (no per-resource actions)
+	const isWorkspaceLevelSelected = createMemo(() => workspaceLevelResourceTypes.has(selectedResourceType()));
+
 	// Find the permission ID for the selected resource type + permission
 	const selectedPermissionId = createMemo(() => {
 		const perms = permissions()?.permissions || [];
+		if (isWorkspaceLevelSelected()) {
+			// Workspace-level types have no action — match by resourceType only
+			const match = perms.find((p) => {
+				const parsed = parsePermissionName(p.name);
+				return parsed.resourceType === selectedResourceType();
+			});
+			return match?.id;
+		}
 		const match = perms.find((p) => {
 			const parsed = parsePermissionName(p.name);
 			return parsed.resourceType === selectedResourceType() && parsed.permission === selectedPermission();
@@ -80,10 +91,13 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 
 	const handleAdd = () => {
 		const permId = selectedPermissionId();
-		if (!permId || !selectedPermission()) return;
+		if (!permId) return;
+
+		// Workspace-level types don't need an action selection
+		if (!isWorkspaceLevelSelected() && !selectedPermission()) return;
 
 		let resourcePermission: ResourcePermissionType;
-		if (!shouldShowScope() || scopeMode() === "all") {
+		if (isWorkspaceLevelSelected() || !shouldShowScope() || scopeMode() === "all") {
 			resourcePermission = { permissionType: "exclude", resources: [] };
 		} else if (scopeMode() === "include") {
 			resourcePermission = { permissionType: "include", resources: Array.from(selectedResources()) };
@@ -117,8 +131,8 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 					/>
 				</div>
 
-				{/* Dropdown 2: Action */}
-				<Show when={selectedResourceType() && permissionsOptions().length > 0}>
+				{/* Dropdown 2: Action (hidden for workspace-level types) */}
+				<Show when={!isWorkspaceLevelSelected() && selectedResourceType() && permissionsOptions().length > 0}>
 					<div class="flex-1 min-w-0">
 						<InputDropdown
 							onSelect={(val) => {
@@ -133,8 +147,8 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 					</div>
 				</Show>
 
-				{/* Dropdown 3: Resource Scope */}
-				<Show when={selectedPermission() && shouldShowScope()}>
+				{/* Dropdown 3: Resource Scope (hidden for workspace-level types) */}
+				<Show when={!isWorkspaceLevelSelected() && selectedPermission() && shouldShowScope()}>
 					<div class="flex-1 min-w-0">
 						<InputDropdown
 							onSelect={(val) => {
@@ -154,8 +168,15 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 					</div>
 				</Show>
 
-				{/* Dropdown 4: Resource Selection */}
-				<Show when={selectedPermission() && shouldShowScope() && scopeMode() !== "all"}>
+				{/* Dropdown 4: Resource Selection (hidden for workspace-level types) */}
+				<Show
+					when={
+						!isWorkspaceLevelSelected() &&
+						selectedPermission() &&
+						shouldShowScope() &&
+						scopeMode() !== "all"
+					}
+				>
 					<div class="flex-1 min-w-0">
 						<ListResources
 							workspaceId={props.workspaceId}
@@ -170,7 +191,7 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 				<Button
 					variant={ButtonVariant.Outlined}
 					type="button"
-					disabled={!selectedPermission()}
+					disabled={!isWorkspaceLevelSelected() && !selectedPermission()}
 					onClick={handleAdd}
 				>
 					<FiPlus size={16} class="inline-block" />

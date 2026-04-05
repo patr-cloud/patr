@@ -203,7 +203,7 @@ const ListDomainsPage = () => {
 	const navigate = useNavigate();
 	const toast = useToast();
 
-	const isCreateAllowed = useIsAllowed("domain", "create");
+	const isCreateAllowed = useIsAllowed("domain", "add");
 	const search = Route.useSearch();
 	const pagination = createPaginationState({
 		search: () => search(),

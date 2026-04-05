@@ -1,7 +1,7 @@
 import { ActionTypes, MaybeAccessor, ResourceTypes, UserPermissionsT } from "~/utils/types";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { createMemo } from "solid-js";
-import { get, resourceActionMap } from "~/utils/func";
+import { get, isWorkspaceScoped, resourceActionMap, workspaceLevelResourceTypes } from "~/utils/func";
 import { useFetchUserPermissions } from "~/hooks/fetch";
 import { useIsMounted } from "~/hooks";
 
@@ -106,32 +106,33 @@ const useIsAllowed = (resourceType: ResourceTypes, action: ActionTypes, resId?: 
 		const resourcePermissions = permissions[resourceType];
 
 		if (!resourcePermissions) return false;
-		const actionPermission = resourcePermissions[action];
+
+		// For workspace-level resource types (e.g. viewRoles, modifyRoles),
+		// the permission is stored under key "" — remap the action for lookup
+		const lookupAction = workspaceLevelResourceTypes.has(resourceType) ? ("" as ActionTypes) : action;
+		const actionPermission = resourcePermissions[lookupAction];
 
 		if (!actionPermission) return false;
 
-		if (actionPermission.permissionType === "exclude") {
-			if (actionPermission.resources.length === 0) {
-				// Exclude nothing means allow all
-				return true;
-			}
+		// Workspace-scoped actions (e.g. deployment::create, billing::view) are not
+		// dependent on a specific resource ID — just check that the entry exists
+		if (workspaceLevelResourceTypes.has(resourceType) || isWorkspaceScoped(resourceType, action)) {
+			return true;
+		}
 
-			if (resourceId && !actionPermission.resources.includes(resourceId)) {
-				// Resource ID is not in the excluded list, so allowed, this is only if resourceId is provided
-				return true;
-			}
+		// For resource-dependent actions without a resourceId, the caller is asking
+		// "does the user have this capability at all?" — return true if the entry exists
+		if (!resourceId) {
+			return true;
+		}
+
+		// Resource-dependent actions with a resourceId: check include/exclude lists
+		if (actionPermission.permissionType === "exclude") {
+			return !actionPermission.resources.includes(resourceId);
 		}
 
 		if (actionPermission.permissionType === "include") {
-			// Include nothing means allow none
-			if (actionPermission.resources.length === 0) {
-				return false;
-			}
-
-			if (resourceId && actionPermission.resources.includes(resourceId)) {
-				// Resource ID is in the included list, so allowed, this is only if resourceId is provided
-				return true;
-			}
+			return actionPermission.resources.includes(resourceId);
 		}
 
 		return false;
