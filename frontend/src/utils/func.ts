@@ -19,6 +19,43 @@ const resourceActionMap: Record<ResourceTypes, ActionTypes[]> = {
 	editWorkspace: [],
 };
 
+/**
+ * Resource types that have no per-resource actions (e.g. viewRoles, modifyRoles, editWorkspace).
+ * Derived dynamically from resourceActionMap — any type with an empty actions array is workspace-level.
+ */
+const workspaceLevelResourceTypes = new Set(
+	Object.entries(resourceActionMap)
+		.filter(([_, actions]) => actions.length === 0)
+		.map(([type]) => type)
+);
+
+/**
+ * Mapping of (resourceType, action) pairs that are workspace-scoped — i.e. not dependent on a
+ * specific resource ID. These permissions are granted at the workspace level.
+ */
+const workspaceScopedActions: Record<string, string[]> = {
+	billing: ["view", "edit", "makePayment"],
+	containerRegistryRepository: ["create"],
+	database: ["create"],
+	deployment: ["create"],
+	dnsRecord: ["add"],
+	domain: ["add"],
+	managedURL: ["add"],
+	runner: ["create"],
+	secret: ["create"],
+	staticSite: ["create"],
+	volume: ["create"],
+};
+
+/**
+ * Returns true if the given (resourceType, action) pair is workspace-scoped,
+ * meaning it is NOT dependent on a specific resource ID.
+ */
+function isWorkspaceScoped(resourceType: string, action: string): boolean {
+	const actions = workspaceScopedActions[resourceType];
+	return !!actions && actions.includes(action);
+}
+
 const resourceTypes = [
 	"billing",
 	"containerRegistryRepository",
@@ -324,6 +361,8 @@ export {
 	resourceActionMap,
 	resourceTypes,
 	userActionTypes,
+	workspaceLevelResourceTypes,
+	isWorkspaceScoped,
 	parseDate,
 	formatRelativeTime,
 	formatSize,

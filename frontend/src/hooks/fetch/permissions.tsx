@@ -7,6 +7,11 @@ import { get } from "~/utils/func";
 import { httpRequest } from "~/utils/http-request";
 import { MaybeAccessor } from "~/utils/types";
 
+/**
+ * Fetches the static list of all available permission definitions.
+ * This list is workspace-independent (the same regardless of which workspace is queried)
+ * and cached in localStorage since it never changes unless the database is recreated.
+ */
 const useFetchPermissions = (workspaceId: MaybeAccessor<string>) => {
 	const [authState] = useAuthState();
 	const toast = useToast();
@@ -20,14 +25,14 @@ const useFetchPermissions = (workspaceId: MaybeAccessor<string>) => {
 			return { permissions: [] };
 		}
 
-		const cacheKey = `user-permissions:${wsId}`;
+		const cacheKey = `all-permissions`;
 		if (!isServer) {
-			const cached = sessionStorage.getItem(cacheKey);
+			const cached = localStorage.getItem(cacheKey);
 			if (cached) {
 				try {
 					return JSON.parse(cached) as ListAllPermissionsResponse;
 				} catch {
-					sessionStorage.removeItem(cacheKey);
+					localStorage.removeItem(cacheKey);
 				}
 			}
 		}
@@ -50,7 +55,7 @@ const useFetchPermissions = (workspaceId: MaybeAccessor<string>) => {
 			}
 
 			if (!isServer) {
-				sessionStorage.setItem(cacheKey, JSON.stringify(response.data));
+				localStorage.setItem(cacheKey, JSON.stringify(response.data));
 			}
 			return response.data;
 		} catch (error) {

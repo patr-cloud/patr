@@ -22,7 +22,7 @@ export const getPermissions = async (authState: AuthState, wsId: string) => {
 
 	const isServer = typeof window === "undefined";
 
-	const cacheKey = `user-permissions`;
+	const cacheKey = `all-permissions-map`;
 	let parsedPermissions: ListAllPermissionsResponse | undefined = undefined;
 
 	if (!isServer) {
@@ -62,6 +62,11 @@ export const getPermissions = async (authState: AuthState, wsId: string) => {
 	return mappedPermissions;
 };
 
+/**
+ * Fetches the current user's granted permissions for a specific workspace.
+ * Workspace-dependent — the result varies per workspace and user.
+ * Cached in sessionStorage keyed by workspace ID.
+ */
 const useUserPermissions = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
@@ -81,7 +86,7 @@ const useUserPermissions = () => {
 		}
 
 		const isServer = typeof window === "undefined";
-		const cacheKey = `user-permissions:${wsId}`;
+		const cacheKey = `user-permissions-map:${wsId}`;
 
 		if (!isServer) {
 			const cached = sessionStorage.getItem(cacheKey);
