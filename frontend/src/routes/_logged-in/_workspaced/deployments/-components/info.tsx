@@ -1,9 +1,7 @@
 import { FiChevronDown } from "solid-icons/fi";
 import { createMemo, createResource, createSignal, Resource, Setter, Show } from "solid-js";
 import { GetDeploymentInfoResponse, ListRunnersForWorkspaceResponse, UpdateDeploymentResponse } from "~/bindings";
-import { Button, InputDropdown, useToast } from "~/components";
-import Input, { InputType } from "~/components/input";
-import InputLabel from "~/components/input-label";
+import { Button, Input, InputType, InputDropdown, useToast, InputLabel } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useGetPermissions } from "~/hooks/is-allowed";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
@@ -88,8 +86,8 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	return (
 		<form onSubmit={onSubmitUpdate} class="flex flex-col gap-6 justify-between w-full flex-1">
 			<div class="flex flex-col gap-4 items-start w-full">
-				<div class="flex gap-8 items-center w-full">
-					<InputLabel parentClass="flex-2" for="deployment-id" label="ID" />
+				<div class="flex gap-8 items-start w-full">
+					<InputLabel parentClass="flex-2 pt-2.5" for="deployment-id" label="ID" />
 					<Input
 						value={props.deploymentInfo.latest?.id}
 						disabled={true}
@@ -100,8 +98,8 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 					/>
 				</div>
 
-				<div class="flex gap-8 items-center w-full">
-					<InputLabel parentClass="flex-2" for="deployment-name" label="Name" />
+				<div class="flex gap-8 items-start w-full">
+					<InputLabel parentClass="flex-2 pt-2.5" for="deployment-name" label="Name" />
 					<Input
 						class="flex-10"
 						name="deployment-name"
@@ -123,8 +121,8 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 					/>
 				</div>
 
-				<div class="flex gap-8 items-center w-full">
-					<InputLabel parentClass="flex-2" for="deployment-runner" label="Runner" />
+				<div class="flex gap-8 items-start w-full">
+					<InputLabel parentClass="flex-2 pt-2.5" for="deployment-runner" label="Runner" />
 
 					<InputDropdown
 						class="flex-10"
@@ -157,8 +155,8 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 					/>
 				</div>
 
-				<div class="flex gap-8 items-center w-full">
-					<InputLabel parentClass="flex-2" for="deployment-registry" label="Image" />
+				<div class="flex gap-8 items-start w-full">
+					<InputLabel parentClass="flex-2 pt-2.5" for="deployment-registry" label="Image" />
 					<div class="flex-10 flex items-center gap-4 w-full">
 						<Input
 							value={props.deploymentInfo.latest?.registry ?? ""}

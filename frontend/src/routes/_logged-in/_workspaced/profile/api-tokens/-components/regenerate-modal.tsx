@@ -1,8 +1,6 @@
 import { Accessor, createSignal, Setter } from "solid-js";
-import Modal, { ModalContainer } from "~/components/modal";
-import Input, { InputType } from "~/components/input";
-import Button from "~/components/button";
-import { ButtonVariant, Color } from "~/utils/color";
+import { Button, ButtonVariant, Input, InputType, Modal, ModalContainer } from "~/components";
+import { Color } from "~/utils/color";
 
 const RegenerateModal = (props: {
 	onClickRegenerate: (e: MouseEvent & { currentTarget: HTMLButtonElement }) => void;

@@ -4,7 +4,13 @@ import PageContainerBody from "~/components/page/body";
 import PageContainerHead from "~/components/page/head";
 import { HeadTab } from "~/components/page/head";
 import Button from "~/components/button";
-import Input, { InputType, InputEventT, PasswordInput, type AutocompleteSuggestion } from "~/components/input";
+import Input, {
+	InputType,
+	InputEventT,
+	PasswordInput,
+	FileInput,
+	type AutocompleteSuggestion,
+} from "~/components/input";
 import InputLabel from "~/components/input-label";
 import InputDropdown from "~/components/input-dropdown";
 import InputDropdownCheckBox from "~/components/input-dropdown-checkbox";
@@ -18,6 +24,7 @@ import Turnstile from "~/components/turnstile";
 import { UserSearchInput } from "~/components/user-search-input";
 import ToggleSwitch from "~/components/toggle-switch";
 import Modal from "~/components/modal";
+import { ModalContainer } from "~/components/modal";
 import Link from "~/components/link";
 import ListResources from "~/components/list-resources";
 import DeleteModal from "~/components/modal/delete-resource-modal";
@@ -34,6 +41,10 @@ import Radio from "~/components/radio";
 import LogLine from "~/components/log-line";
 import LogTerminal from "~/components/log-terminal";
 import StatusChip from "~/components/status-chip";
+import OtpInput from "~/components/otp-input";
+import ChipInput from "~/components/chip-input";
+import Sidebar from "~/components/sidebar";
+import TopBar from "~/components/top-bar";
 export {
 	Alert,
 	PageContainer,
@@ -46,6 +57,7 @@ export {
 	Input,
 	InputType,
 	PasswordInput,
+	FileInput,
 	InputLabel,
 	InputDropdown,
 	InputDropdownCheckBox,
@@ -58,6 +70,7 @@ export {
 	UserSearchInput,
 	ToggleSwitch,
 	Modal,
+	ModalContainer,
 	Link,
 	type InputEventT,
 	type AutocompleteSuggestion,
@@ -77,4 +90,8 @@ export {
 	LogLine,
 	LogTerminal,
 	StatusChip,
+	OtpInput,
+	ChipInput,
+	Sidebar,
+	TopBar,
 };

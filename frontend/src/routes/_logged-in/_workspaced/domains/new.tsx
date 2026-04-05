@@ -8,10 +8,11 @@ import {
 	PageContainerHead,
 	ButtonVariant,
 	Button,
+	Input,
+	InputType,
 	useToast,
+	InputLabel,
 } from "~/components";
-import Input, { InputType } from "~/components/input";
-import InputLabel from "~/components/input-label";
 import { createFormAction } from "~/hooks";
 import { AddDomainToWorkspaceRequest, AddDomainToWorkspaceResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";

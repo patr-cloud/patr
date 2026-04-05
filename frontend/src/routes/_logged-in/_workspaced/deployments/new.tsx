@@ -5,13 +5,14 @@ import {
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
+	Input,
+	InputType,
 	InputDropdown,
 	ButtonVariant,
 	Button,
+	InputLabel,
+	ToggleSwitch,
 } from "~/components";
-import Input, { InputType } from "~/components/input";
-import InputLabel from "~/components/input-label";
-import ToggleSwitch from "~/components/toggle-switch";
 import EnvInput from "./-components/env-input";
 import {
 	Base64String,

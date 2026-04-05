@@ -1,12 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid-js";
-import { LoadingSpinner } from "~/components/loading-spinner";
-import Button from "~/components/button";
 import {
+	Button,
 	ButtonVariant,
 	EmptyState,
 	Link,
+	LoadingSpinner,
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
@@ -128,7 +128,7 @@ const ListContainerRepositories = () => {
 								}
 							>
 								<Table
-									column_grids={["flex-5", "flex-3", "flex-2", "flex-3"]}
+									column_grids={["flex-4", "flex-3", "flex-2", "flex-3"]}
 									headings={["Repository", "Last Updated", "Size", "Created"]}
 									rows={repositories()?.repositories || []}
 									renderRow={(repo: WithId<ContainerRepository>) => (
@@ -144,7 +144,7 @@ const ListContainerRepositories = () => {
 												}
 											}}
 										>
-											<td role="cell" class="flex-5 min-w-0">
+											<td role="cell" class="flex-4 min-w-0">
 												<span class="truncate font-medium text-white">{repo.name}</span>
 											</td>
 											<td role="cell" class="flex-3">

@@ -1,8 +1,6 @@
 import { Resource, Setter } from "solid-js";
 import { GetUserInfoResponse } from "~/bindings";
-import { Button, ButtonVariant, Modal, useToast } from "~/components";
-import Input, { InputType } from "~/components/input";
-import InputLabel from "~/components/input-label";
+import { Button, ButtonVariant, Input, InputType, InputLabel, Modal, useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import TwoFactorAuthModal from "./two-fa";
 import { httpRequest } from "~/utils/http-request";

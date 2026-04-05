@@ -1,8 +1,15 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { Button, CopyableField, PageContainer, PageContainerBody, useToast } from "~/components";
-import Input, { InputType } from "~/components/input";
-import InputLabel from "~/components/input-label";
+import {
+	Button,
+	CopyableField,
+	Input,
+	InputType,
+	InputLabel,
+	PageContainer,
+	PageContainerBody,
+	useToast,
+} from "~/components";
 import WorkspaceHeader from "./-components/workspace-header";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";

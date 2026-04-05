@@ -10,8 +10,8 @@ import {
 	PageContainerBody,
 	PageContainerHead,
 	useToast,
+	LoadingSpinner,
 } from "~/components";
-import { LoadingSpinner } from "~/components/loading-spinner";
 import { useAuthState, useIsAllowed } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { GetContainerRepositoryInfoResponse, ListContainerRepositoryManifestsResponse } from "~/bindings";

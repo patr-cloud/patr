@@ -1,7 +1,5 @@
 import { createEffect, createResource, createSignal, onCleanup, Suspense } from "solid-js";
-import { Button, ButtonVariant, useToast } from "~/components";
-import { ModalContainer } from "~/components/modal";
-import OtpInput from "~/components/otp-input";
+import { Button, ButtonVariant, ModalContainer, OtpInput, useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { GetMfaSecretResponse, GetUserInfoResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";

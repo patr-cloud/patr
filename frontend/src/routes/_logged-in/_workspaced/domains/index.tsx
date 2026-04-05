@@ -11,17 +11,17 @@ import {
 	ButtonVariant,
 	useToast,
 	Modal,
+	ModalContainer,
 	CopyableField,
 	CopyableFieldVariant,
 	EmptyState,
 	Link,
 	Pagination,
 	StatusChip,
+	LoadingSpinner,
 } from "~/components";
-import { LoadingSpinner } from "~/components/loading-spinner";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
-import { ModalContainer } from "~/components/modal";
 import { GetDomainInfoInWorkspaceResponse, GetVerificationRecordsForDomainResponse } from "~/bindings";
 import { EventT } from "~/utils/types";
 import { useIsAllowed, createPaginationState } from "~/hooks";
@@ -130,7 +130,7 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 						<p class="text-primary text-md mb-2">To verify domain, add the following DNS records:</p>
 						<div class="mb-4">
 							<Table
-								column_grids={["flex-2", "flex-4", "flex-4"]}
+								column_grids={["flex-2", "flex-5", "flex-5"]}
 								headings={["Type", "Name", "Value"]}
 								rows={dnsRecord()!.records}
 								renderRow={(record) => (
@@ -138,14 +138,14 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 										<td class="flex-2 flex items-center justify-center">
 											<CopyableField variant={CopyableFieldVariant.Text} value={record.type} />
 										</td>
-										<td class="flex-4 flex items-center justify-center min-w-0">
+										<td class="flex-5 flex items-center justify-center min-w-0">
 											<CopyableField
 												variant={CopyableFieldVariant.Text}
 												value={record.name}
 												innerClass="truncate max-w-full"
 											/>
 										</td>
-										<td class="flex-4 flex items-center justify-center min-w-0">
+										<td class="flex-5 flex items-center justify-center min-w-0">
 											<CopyableField
 												variant={CopyableFieldVariant.Text}
 												value={record.target}

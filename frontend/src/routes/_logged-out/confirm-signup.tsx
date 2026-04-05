@@ -2,9 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createSignal, onMount, Show } from "solid-js";
 import { CompleteSignUpRequest } from "~/bindings";
-import { Alert, Button, ButtonVariant, useToast, Turnstile } from "~/components";
-import Input, { InputType } from "~/components/input";
-import OtpInput from "~/components/otp-input";
+import { Alert, Button, ButtonVariant, Input, InputType, OtpInput, useToast, Turnstile } from "~/components";
 import { createAsyncAction } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
 

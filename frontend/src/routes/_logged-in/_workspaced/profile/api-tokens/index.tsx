@@ -4,9 +4,11 @@ import { Title } from "@solidjs/meta";
 import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid-js";
 import { ListApiTokensResponse } from "~/bindings";
 import {
+	Button,
 	ButtonVariant,
 	EmptyState,
 	Link,
+	LoadingSpinner,
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
@@ -14,8 +16,6 @@ import {
 	Table,
 	useToast,
 } from "~/components";
-import Button from "~/components/button";
-import { LoadingSpinner } from "~/components/loading-spinner";
 import { useAuthState, createPaginationState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { formatRelativeTime } from "~/utils/func";

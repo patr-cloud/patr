@@ -365,7 +365,7 @@ const DomainInfo = () => {
 									</p>
 
 									<Table
-										column_grids={["flex-2", "flex-4", "flex-4"]}
+										column_grids={["flex-2", "flex-5", "flex-5"]}
 										headings={["Type", "Name", "Value"]}
 										class="mt-2"
 										rows={[
@@ -383,14 +383,14 @@ const DomainInfo = () => {
 														variant={CopyableFieldVariant.Text}
 													/>
 												</td>
-												<td class="flex-4 flex items-center justify-center min-w-0">
+												<td class="flex-5 flex items-center justify-center min-w-0">
 													<CopyableField
 														value={record.name}
 														variant={CopyableFieldVariant.Text}
 														innerClass="max-w-full"
 													/>
 												</td>
-												<td class="flex-4 pl-20 flex items-center justify-center min-w-0">
+												<td class="flex-5 pl-20 flex items-center justify-center min-w-0">
 													<CopyableField
 														value={record.target}
 														variant={CopyableFieldVariant.Text}
@@ -405,7 +405,7 @@ const DomainInfo = () => {
 
 							<div class="flex flex-col gap-2 items-start w-5/5 mt-4">
 								<Table
-									column_grids={["flex-3", "flex-2", "flex-2", "flex-3"]}
+									column_grids={["flex-4", "flex-2", "flex-2", "flex-4"]}
 									rows={managedUrls.latest?.urls || []}
 									headings={["URL", "Type", "Served by Patr", "Actions"]}
 									renderRow={(item) =>

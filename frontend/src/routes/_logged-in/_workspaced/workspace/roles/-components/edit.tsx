@@ -106,20 +106,20 @@ const EditPermissions = (props: {
 				</div>
 
 				<Table
-					column_grids={["flex-3", "flex-2", "flex-3", "flex-[0.5]"]}
+					column_grids={["flex-4", "flex-3", "flex-4", "flex-1"]}
 					headings={["Resource Type", "Action", "Resources", ""]}
 					rows={permissionEntries().sort(
 						(a, b) => a.resourceType.localeCompare(b.resourceType) || a.action.localeCompare(b.action)
 					)}
 					renderRow={(perm) => (
 						<tr role="row" class="table-row">
-							<td role="cell" class="flex-3 flex items-center justify-start">
+							<td role="cell" class="flex-4 flex items-center justify-start">
 								<span class="truncate">{parseCamelCase(perm.resourceType)}</span>
 							</td>
-							<td role="cell" class="flex-2 flex items-center justify-start">
+							<td role="cell" class="flex-3 flex items-center justify-start">
 								<span>{parseCamelCase(perm.action)}</span>
 							</td>
-							<td role="cell" class="flex-3 flex items-center justify-start">
+							<td role="cell" class="flex-4 flex items-center justify-start">
 								<Show
 									when={perm.resources.length > 0}
 									fallback={<span class="text-gray-400">All resources</span>}
@@ -130,7 +130,7 @@ const EditPermissions = (props: {
 									</span>
 								</Show>
 							</td>
-							<td role="cell" class="flex-[0.5] flex items-center justify-center">
+							<td role="cell" class="flex-1 flex items-center justify-center">
 								<button
 									type="button"
 									aria-label="Remove permission"

@@ -6,16 +6,16 @@ import { FiTrash2 } from "solid-icons/fi";
 import {
 	Button,
 	ButtonVariant,
+	DeleteModal,
 	EmptyState,
 	Link,
+	LoadingSpinner,
 	PageContainer,
 	PageContainerBody,
 	Pagination,
 	Table,
 	useToast,
 } from "~/components";
-import DeleteModal from "~/components/modal/delete-resource-modal";
-import { LoadingSpinner } from "~/components/loading-spinner";
 import { Color } from "~/utils/color";
 import { useNavigate } from "@tanstack/solid-router";
 import { useAuthState, createPaginationState, useIsAllowed } from "~/hooks";
@@ -66,7 +66,7 @@ const RoleRow = (props: { refetch: () => void; role: WithId<Role> }) => {
 			<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
 				<span class="truncate font-medium text-white">{props.role.name}</span>
 			</td>
-			<td role="cell" class="flex-4 flex items-center justify-start min-w-0">
+			<td role="cell" class="flex-5 flex items-center justify-start min-w-0">
 				<span class={props.role.description ? "truncate" : "truncate text-grey italic"}>
 					{props.role.description || "No description"}
 				</span>
@@ -80,7 +80,7 @@ const RoleRow = (props: { refetch: () => void; role: WithId<Role> }) => {
 					Manage Role
 				</Link>
 			</td>
-			<td role="cell" class="flex-[0.5] flex items-center justify-center min-w-0">
+			<td role="cell" class="flex-1 flex items-center justify-center min-w-0">
 				<DeleteModal
 					title={`Delete Role "${props.role.name}"`}
 					resourceName={props.role.name}
@@ -200,7 +200,7 @@ const ManageRoles = () => {
 							}
 						>
 							<Table
-								column_grids={["flex-3", "flex-4", "flex-3", "flex-[0.5]"]}
+								column_grids={["flex-3", "flex-5", "flex-3", "flex-1"]}
 								headings={["Role Name", "Description", "Actions", ""]}
 								rows={roles()?.roles || []}
 								renderRow={(role) => <RoleRow role={role} refetch={refetchRoles} />}

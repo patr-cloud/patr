@@ -1,9 +1,7 @@
 import { Show } from "solid-js";
 import { FiExternalLink } from "solid-icons/fi";
 import { GetContainerRepositoryInfoResponse } from "~/bindings";
-import { CopyableField, CopyableFieldVariant, Link, Tooltip } from "~/components";
-import Input, { InputType } from "~/components/input";
-import InputLabel from "~/components/input-label";
+import { CopyableField, CopyableFieldVariant, Input, InputType, InputLabel, Link, Tooltip } from "~/components";
 import { formatRelativeTime, formatSize, formatDate, get } from "~/utils/func";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { MaybeAccessor } from "~/utils/types";

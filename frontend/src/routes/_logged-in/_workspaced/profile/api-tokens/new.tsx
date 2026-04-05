@@ -1,10 +1,18 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createResource, createSignal, For, Suspense } from "solid-js";
-import ChipInput from "~/components/chip-input";
-import { Button, ButtonVariant, PageContainer, PageContainerBody, PageContainerHead } from "~/components";
-import Input, { InputType } from "~/components/input";
-import InputLabel from "~/components/input-label";
+import {
+	Button,
+	ButtonVariant,
+	ChipInput,
+	Input,
+	InputType,
+	InputLabel,
+	PageContainer,
+	PageContainerBody,
+	PageContainerHead,
+	useToast,
+} from "~/components";
 import { httpRequest } from "~/utils/http-request";
 import { useAuthState } from "~/hooks";
 import { useUserInfo } from "~/hooks/state-hooks";
@@ -14,7 +22,6 @@ import {
 	ListUserWorkspacesResponse,
 	WorkspacePermission,
 } from "~/bindings";
-import { useToast } from "~/components/toast";
 import { useNavigate } from "@tanstack/solid-router";
 import ApiTokenModal from "./-components/api-token-modal";
 import WorkspacePermissionItem from "./-components/workspace-permission-item";

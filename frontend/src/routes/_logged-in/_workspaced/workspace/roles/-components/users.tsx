@@ -73,7 +73,7 @@ const UsersAssignedToRole = () => {
 						rows={usersWithDetails() ?? []}
 						renderRow={(item) => (
 							<tr class="table-row">
-								<td class="flex-2 flex items-center justify-center gap-2">
+								<td class="flex-1 flex items-center justify-center gap-2">
 									<Initials firstName={item.firstName} lastName={item.lastName} size="xs" />
 									<span class="truncate font-mono">{item.username}</span>
 								</td>

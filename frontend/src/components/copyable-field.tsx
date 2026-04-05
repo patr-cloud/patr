@@ -54,7 +54,7 @@ const CopyableField = (rawProps: CopyableFieldProps) => {
 	const copyButton = () => (
 		<button
 			onClick={handleCopy}
-			class={`p-1 ${props.buttonPosition === "start" ? "mr-2" : "ml-2"} rounded hover:bg-white/10 transition-colors ${copied() ? "" : "hover:text-white"}`}
+			class={`p-1 rounded hover:bg-white/10 transition-colors ${copied() ? "" : "hover:text-white"}`}
 			title={copied() ? "Copied!" : "Copy"}
 			disabled={get(props.disabled) || !get(props.value)}
 		>
@@ -71,7 +71,7 @@ const CopyableField = (rawProps: CopyableFieldProps) => {
 				class={
 					props.variant === CopyableFieldVariant.Input
 						? `rounded-xs flex items-center border border-secondary-medium ${variantBgClass(get(props.styleVariant))} py-xs px-md min-w-0`
-						: `flex items-center gap-2`
+						: `flex items-center gap-0.5`
 				}
 			>
 				{props.buttonPosition === "start" && copyButton()}

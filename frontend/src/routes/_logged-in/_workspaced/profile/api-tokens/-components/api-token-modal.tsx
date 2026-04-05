@@ -1,7 +1,5 @@
 import { Accessor, Setter } from "solid-js";
-import Modal, { ModalContainer } from "~/components/modal";
-import { useToast } from "~/components/toast";
-import CopyableField from "~/components/copyable-field";
+import { CopyableField, Modal, ModalContainer, useToast } from "~/components";
 
 const ApiTokenModal = (props: {
 	isOpen: Accessor<boolean>;

@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createResource, Suspense } from "solid-js";
-import { LoadingSpinner } from "~/components/loading-spinner";
 import { GetUserInfoResponse } from "~/bindings";
-import { PageContainer, PageContainerBody, PageContainerHead, useToast } from "~/components";
+import { LoadingSpinner, PageContainer, PageContainerBody, PageContainerHead, useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
 import UserSettingsInfoTab from "./-components/info";

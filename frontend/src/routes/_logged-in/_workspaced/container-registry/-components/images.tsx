@@ -35,7 +35,7 @@ const Images = (props: ContainerImagesProps) => {
 				}
 			>
 				<Table
-					column_grids={["flex-3", "flex-2", "flex-2", "flex-3", "flex-3", "flex-2"]}
+					column_grids={["flex-2", "flex-2", "flex-2", "flex-2", "flex-2", "flex-2"]}
 					headings={["Tags", "Platform", "Size", "Created", "Digest", "Actions"]}
 					rows={get(props.manifests).manifests}
 					renderRow={(manifest) => <ImageRow manifest={manifest} refetch={props.refetch} />}
@@ -82,7 +82,7 @@ const ImageRow = (props: { manifest: ContainerRepositoryManifestInfo; refetch?: 
 
 	return (
 		<tr class="table-row">
-			<td class="flex-3 flex items-center gap-2 overflow-hidden">
+			<td class="flex-2 flex items-center gap-2 overflow-hidden">
 				<span class="truncate text-gray-300 font-mono text-sm" title={props.manifest.tags.join(", ")}>
 					{props.manifest.tags.length > 0 ? (
 						props.manifest.tags.join(", ")
@@ -93,8 +93,8 @@ const ImageRow = (props: { manifest: ContainerRepositoryManifestInfo; refetch?: 
 			</td>
 			<td class="flex-2 text-gray-400 text-sm">{props.manifest.platform}</td>
 			<td class="flex-2 text-gray-400 text-sm">{formatSize(props.manifest.size)}</td>
-			<td class="flex-3 text-gray-400 text-sm">{formatRelativeTime(props.manifest.created)}</td>
-			<td class="flex-3 flex items-center gap-2 overflow-hidden">
+			<td class="flex-2 text-gray-400 text-sm">{formatRelativeTime(props.manifest.created)}</td>
+			<td class="flex-2 flex items-center gap-2 overflow-hidden">
 				<CopyableField
 					variant={CopyableFieldVariant.Text}
 					value={props.manifest.digest}

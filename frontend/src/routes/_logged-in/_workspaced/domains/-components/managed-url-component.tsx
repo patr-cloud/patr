@@ -6,14 +6,13 @@ import {
 	UpdateManagedURLResponse,
 	WithId,
 } from "~/bindings";
-import { Button, ButtonVariant, Input, InputDropdown, LoadingSpinner, useToast } from "~/components";
+import { Button, ButtonVariant, Input, InputDropdown, LoadingSpinner, useToast, InfoPopup } from "~/components";
 import { createAuthenticatedAction, createFormAction } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 import DeploymentOption from "./deployment-option";
 import { domainTypeToTitle } from "./utils";
 import { FiAlertCircle, FiEdit2, FiTrash, FiX } from "solid-icons/fi";
-import InfoPopup from "~/components/info-popup";
 
 type urlTypeT = "proxyUrl" | "redirect" | "proxyDeployment" | "proxyStaticSite";
 
@@ -67,7 +66,7 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 				</tr>
 			) : (
 				<tr class="table-row cursor-auto">
-					<td class="flex-3 flex items-center justify-center">
+					<td class="flex-4 flex items-center justify-center">
 						<a
 							href={`https://${props.managedUrl.subDomain}.${props.domainInfo.name}${props.managedUrl.path}`}
 							target="_blank"
@@ -112,7 +111,7 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 						</div>
 					</td>
 
-					<td class="flex-3 flex items-center justify-center">
+					<td class="flex-4 flex items-center justify-center">
 						<div class="flex gap-2 items-center">
 							{shouldDelete() ? (
 								<>

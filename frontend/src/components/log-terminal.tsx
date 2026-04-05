@@ -47,6 +47,7 @@ const LogTerminal = (props: LogTerminalProps) => {
 	const [logs, setLogs] = createStore<LogEntry[]>([]);
 	const [isLoadingMore, setIsLoadingMore] = createSignal(false);
 	const [hasMoreLogs, setHasMoreLogs] = createSignal(true);
+	const [isConnected, setIsConnected] = createSignal(false);
 	const isSearching = () => debouncedSearch().length > 0;
 
 	// --- REST fetch ---
@@ -94,6 +95,9 @@ const LogTerminal = (props: LogTerminalProps) => {
 	createEffect(() => {
 		const ws = createWS(props.wsUrl);
 
+		ws.addEventListener("open", () => setIsConnected(true));
+		ws.addEventListener("close", () => setIsConnected(false));
+
 		ws.addEventListener("message", (event) => {
 			try {
 				const message = JSON.parse(event.data);
@@ -119,7 +123,10 @@ const LogTerminal = (props: LogTerminalProps) => {
 			}
 		});
 
-		onCleanup(() => ws.close());
+		onCleanup(() => {
+			ws.close();
+			setIsConnected(false);
+		});
 	});
 
 	// --- Load more (auto-fetch on scroll to top) ---
@@ -215,8 +222,18 @@ const LogTerminal = (props: LogTerminalProps) => {
 							</>
 						}
 					>
-						<span class="w-2 h-2 rounded-full bg-success animate-pulse" />
-						<span class="text-xxs text-grey font-medium">LIVE</span>
+						<Show
+							when={isConnected()}
+							fallback={
+								<>
+									<span class="w-2 h-2 rounded-full bg-warning" />
+									<span class="text-xxs text-warning font-medium">CONNECTING</span>
+								</>
+							}
+						>
+							<span class="w-2 h-2 rounded-full bg-success animate-pulse" />
+							<span class="text-xxs text-grey font-medium">LIVE</span>
+						</Show>
 					</Show>
 				</div>
 

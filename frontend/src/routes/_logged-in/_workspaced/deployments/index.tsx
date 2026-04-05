@@ -2,15 +2,15 @@ import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid-js";
-import { LoadingSpinner } from "~/components/loading-spinner";
-import Button from "~/components/button";
 import { Deployment, GetContainerRepositoryInfoResponse, ListDeploymentResponse, WithId } from "~/bindings";
 import {
+	Button,
 	ButtonVariant,
 	CopyableField,
 	CopyableFieldVariant,
 	EmptyState,
 	Link,
+	LoadingSpinner,
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,

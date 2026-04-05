@@ -3,11 +3,13 @@ import { Title } from "@solidjs/meta";
 import { Show, createMemo, createResource, ErrorBoundary, Suspense } from "solid-js";
 import { ListRunnersForWorkspaceResponse } from "~/bindings";
 import {
+	Button,
 	ButtonVariant,
 	CopyableField,
 	CopyableFieldVariant,
 	EmptyState,
 	Link,
+	LoadingSpinner,
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
@@ -16,8 +18,6 @@ import {
 	StatusChip,
 	useToast,
 } from "~/components";
-import { LoadingSpinner } from "~/components/loading-spinner";
-import Button from "~/components/button";
 import { useAuthState, createPaginationState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useIsAllowed } from "~/hooks";

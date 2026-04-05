@@ -41,6 +41,9 @@ const INTERVALS = [
 interface ChartDef {
 	title: string;
 	unit: string;
+	yMin: number;
+	yMax?: number;
+	ySuggestedMax?: number;
 	series: {
 		field: string;
 		label: string;
@@ -53,16 +56,22 @@ const CHARTS: ChartDef[] = [
 	{
 		title: "CPU",
 		unit: "%",
+		yMin: 0,
+		yMax: 100,
 		series: [{ field: "cpuUsage", label: "Usage", color: "#3b82f6" }],
 	},
 	{
 		title: "Memory",
 		unit: "%",
+		yMin: 0,
+		yMax: 100,
 		series: [{ field: "memoryUsage", label: "Usage", color: "#a855f7" }],
 	},
 	{
 		title: "Disk I/O",
 		unit: "KB/s",
+		yMin: 0,
+		ySuggestedMax: 10,
 		series: [
 			{ field: "diskReadBytes", label: "Read", color: "#10b981", transform: (v) => v / 1024 },
 			{ field: "diskWrittenBytes", label: "Write", color: "#f59e0b", transform: (v) => v / 1024 },
@@ -71,11 +80,15 @@ const CHARTS: ChartDef[] = [
 	{
 		title: "Disk",
 		unit: "%",
+		yMin: 0,
+		yMax: 100,
 		series: [{ field: "diskUsage", label: "Usage", color: "#ef4444" }],
 	},
 	{
 		title: "Network",
 		unit: "KB/s",
+		yMin: 0,
+		ySuggestedMax: 10,
 		series: [
 			{ field: "networkUsageRx", label: "RX", color: "#06b6d4", transform: (v) => v / 1024 },
 			{ field: "networkUsageTx", label: "TX", color: "#ec4899", transform: (v) => v / 1024 },
@@ -179,6 +192,9 @@ const MetricCard = (props: { chart: ChartDef; data: GetRunnerMetricsResponse | u
 					},
 					y: {
 						display: true,
+						min: props.chart.yMin,
+						max: props.chart.yMax,
+						suggestedMax: props.chart.ySuggestedMax,
 						ticks: {
 							color: "#ffffff40",
 							font: { family: "SUSE Mono", size: 10 },
@@ -198,8 +214,8 @@ const MetricCard = (props: { chart: ChartDef; data: GetRunnerMetricsResponse | u
 
 	// Update chart data when props change (e.g., interval change)
 	createEffect(() => {
-		if (!chartInstance) return;
 		const { labels, datasets } = buildChart();
+		if (!chartInstance) return;
 		chartInstance.data.labels = labels;
 		chartInstance.data.datasets = datasets;
 		chartInstance.update();

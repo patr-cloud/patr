@@ -9,13 +9,14 @@ import {
 	ButtonVariant,
 	CopyableField,
 	CopyableFieldVariant,
+	Input,
+	InputType,
+	InputLabel,
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
 	useToast,
 } from "~/components";
-import Input, { InputType } from "~/components/input";
-import InputLabel from "~/components/input-label";
 import { createFormAction } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";

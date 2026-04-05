@@ -1,9 +1,6 @@
 import { FiPlus, FiTrash } from "solid-icons/fi";
 import { createSignal, For, Setter } from "solid-js";
-import { Button, ButtonVariant } from "~/components";
-import Input, { InputType } from "~/components/input";
-import InputLabel from "~/components/input-label";
-import { FileInput } from "~/components/input";
+import { Button, ButtonVariant, FileInput, Input, InputType, InputLabel } from "~/components";
 import { Color } from "~/utils/color";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
@@ -71,6 +68,12 @@ const ConfigMount = (props: ConfigMountProps) => {
 					<Input
 						type={InputType.Text}
 						onInput={(e) => setNewFileName(e.currentTarget.value)}
+						onKeyDown={(e) => {
+							if (e.key === "Enter") {
+								e.preventDefault();
+								addConfig();
+							}
+						}}
 						class="flex-6"
 						id="deployment-config-filename"
 						name="deployment-config-filename"

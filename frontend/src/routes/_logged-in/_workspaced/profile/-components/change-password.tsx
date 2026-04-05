@@ -1,13 +1,10 @@
 import { createSignal, Resource, Setter, Show } from "solid-js";
 import { GetUserInfoResponse } from "~/bindings";
-import { Alert, Button, ButtonVariant, useToast } from "~/components";
-import { PasswordInput } from "~/components/input";
-import InputLabel from "~/components/input-label";
+import { Alert, Button, ButtonVariant, InputLabel, OtpInput, PasswordInput, useToast } from "~/components";
 import { EventT } from "~/utils/types";
 import { ChangePasswordRequest, ChangePasswordResponse } from "~/bindings";
 import { useAuthState } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
-import OtpInput from "~/components/otp-input";
 
 interface UserSettingsInfoTabProps {
 	userInfo: Resource<GetUserInfoResponse | undefined>;

@@ -1,9 +1,7 @@
 import { FiPlus, FiTrash2 } from "solid-icons/fi";
 import { createSignal, Show, Index } from "solid-js";
 import { EnvironmentVariableValue } from "~/bindings";
-import { Button, ButtonVariant, useToast } from "~/components";
-import Input, { InputType } from "~/components/input";
-import InputLabel from "~/components/input-label";
+import { Button, ButtonVariant, Input, InputType, useToast, InputLabel } from "~/components";
 import { Color } from "~/utils/color";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
@@ -32,7 +30,7 @@ const EnvInput = (props: EnvInputProps) => {
 
 	return (
 		<div class="flex gap-8 items-start w-full">
-			<InputLabel parentClass="flex-2" label="Environment Variables" />
+			<InputLabel parentClass="flex-2 pt-2.5" label="Environment Variables" />
 
 			<div class="flex flex-col flex-10 gap-4 w-full">
 				<Index each={get(props.envList)}>

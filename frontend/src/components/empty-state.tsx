@@ -21,9 +21,9 @@ const stars = Array.from({ length: 80 }, () => ({
 
 const EmptyState = (props: EmptyStateProps) => {
 	return (
-		<div class={`relative flex flex-col items-center flex-1 -mx-md -mb-md rounded-b-xs overflow-hidden`}>
-			{/* Scattered stars above the image */}
-			<div class="absolute inset-0 pointer-events-none" aria-hidden="true">
+		<div class="absolute inset-0 flex flex-col items-center rounded-b-xs overflow-hidden isolate">
+			{/* Scattered stars — behind everything */}
+			<div class="absolute inset-0 -z-10 pointer-events-none" aria-hidden="true">
 				<For each={stars}>
 					{(star) => (
 						<div
@@ -42,13 +42,13 @@ const EmptyState = (props: EmptyStateProps) => {
 			</div>
 
 			{/* Text content — sits above the image */}
-			<div class="flex flex-col items-center gap-4 pt-16 pb-8 z-10">
+			<div class="relative flex flex-col items-center gap-4 pt-16 pb-8 z-10">
 				<h2 class="text-xl font-medium text-white">{get(props.title)}</h2>
 				<Show when={props.description}>
 					<p class="text-sm text-grey">{get(props.description!)}</p>
 				</Show>
 				<Show when={props.action}>
-					<div class="mt-2">{props.action}</div>
+					<div class="mt-2 bg-secondary-dark">{props.action}</div>
 				</Show>
 			</div>
 
@@ -56,7 +56,7 @@ const EmptyState = (props: EmptyStateProps) => {
 			<img
 				src="/images/jeep.png"
 				alt="No records found image"
-				class="w-full mt-auto object-cover object-top select-none pointer-events-none"
+				class="relative w-full mt-auto object-cover object-top select-none pointer-events-none z-10"
 			/>
 		</div>
 	);

@@ -89,11 +89,11 @@ const Pagination = (rawProps: PaginationProps) => {
 			{/* Left: item range label */}
 			<p class="text-sm text-grey flex-1">
 				<Show when={props.state.totalCount() > 0} fallback={<span>No results</span>}>
-					Showing{" "}
+					Showing&nbsp;
 					<span class="text-white">
 						{rangeStart()}–{rangeEnd()}
-					</span>{" "}
-					of <span class="text-white">{props.state.totalCount()}</span>
+					</span>
+					&nbsp;of <span class="text-white">{props.state.totalCount()}</span>
 				</Show>
 			</p>
 

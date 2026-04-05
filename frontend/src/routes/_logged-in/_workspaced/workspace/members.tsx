@@ -281,7 +281,7 @@ const ManageWorkspace = () => {
 								}
 							>
 								<Table
-									column_grids={["flex-2", "flex-1", "flex-1"]}
+									column_grids={["flex-6", "flex-3", "flex-3"]}
 									headings={["User", "Roles", "Actions"]}
 									rows={workspaceMembers() || []}
 									renderRow={(member) => {
@@ -349,7 +349,7 @@ const ManageWorkspace = () => {
 													<tr role="row" class="table-row">
 														<td
 															role="cell"
-															class="flex items-center justify-start flex-2 gap-2 min-w-0"
+															class="flex items-center justify-start flex-6 gap-2 min-w-0"
 														>
 															<Initials
 																size="xs"
@@ -367,13 +367,13 @@ const ManageWorkspace = () => {
 														</td>
 														<td
 															role="cell"
-															class="flex items-center justify-start flex-1 min-w-0"
+															class="flex items-center justify-start flex-3 min-w-0"
 														>
 															<span class={memberRoleNames ? "" : "text-grey italic"}>
 																{memberRoleNames || "No roles"}
 															</span>
 														</td>
-														<td class="flex items-center justify-center flex-1">
+														<td class="flex items-center justify-center flex-3">
 															{shouldDelete() && userToDelete() === member.userId ? (
 																<>
 																	<div class="flex gap-2">

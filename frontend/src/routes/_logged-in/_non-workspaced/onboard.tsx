@@ -2,9 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createEffect, createSignal, ParentProps, Show, Suspense } from "solid-js";
 import { CreateWorkspaceResponse } from "~/bindings";
-import { Alert, BgOnboard, useToast } from "~/components";
-import Button from "~/components/button";
-import Input, { InputType } from "~/components/input";
+import { Alert, BgOnboard, Button, Input, InputType, useToast } from "~/components";
 
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useFetchWorkspaces } from "~/hooks/fetch";

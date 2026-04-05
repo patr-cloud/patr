@@ -1,14 +1,22 @@
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { Alert, Button, useToast, Turnstile } from "~/components";
-import Input, { InputType, InputEventT, PasswordInput } from "~/components/input";
+import {
+	Alert,
+	Button,
+	Input,
+	InputType,
+	type InputEventT,
+	PasswordInput,
+	OtpInput,
+	useToast,
+	Turnstile,
+} from "~/components";
 import { ButtonVariant } from "~/utils/color";
 import { createSignal, Show } from "solid-js";
 import { LoginRequest, LoginResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
 import { createAsyncAction, useAuthState } from "~/hooks";
 import { USERNAME_VALIDITY_PATTERN } from "~/utils/validation";
-import OtpInput from "~/components/otp-input";
 
 interface InputFields {
 	userId: string;

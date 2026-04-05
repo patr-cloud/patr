@@ -12,13 +12,14 @@ import {
 	Button,
 	ButtonVariant,
 	DeleteModal,
+	Input,
+	InputType,
+	InputLabel,
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
 	useToast,
 } from "~/components";
-import Input, { InputType } from "~/components/input";
-import InputLabel from "~/components/input-label";
 import { useAuthState } from "~/hooks";
 import { useUserInfo } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";

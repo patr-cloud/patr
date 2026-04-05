@@ -147,7 +147,7 @@ const CreateRoles = () => {
 
 							<Show when={permissionEntries().length > 0}>
 								<Table
-									column_grids={["flex-3", "flex-2", "flex-3", "flex-[0.5]"]}
+									column_grids={["flex-4", "flex-3", "flex-4", "flex-1"]}
 									headings={["Resource Type", "Action", "Resources", ""]}
 									rows={permissionEntries().sort(
 										(a, b) =>
@@ -156,13 +156,13 @@ const CreateRoles = () => {
 									)}
 									renderRow={(perm) => (
 										<tr class="table-row">
-											<td class="flex-3 flex items-center justify-center">
+											<td class="flex-4 flex items-center justify-center">
 												<span class="truncate">{parseCamelCase(perm.resourceType)}</span>
 											</td>
-											<td class="flex-2 flex items-center justify-center">
+											<td class="flex-3 flex items-center justify-center">
 												<span>{parseCamelCase(perm.action)}</span>
 											</td>
-											<td class="flex-3 flex items-center justify-center">
+											<td class="flex-4 flex items-center justify-center">
 												<Show
 													when={perm.resources.length > 0}
 													fallback={<span class="text-gray-400">All resources</span>}
@@ -175,7 +175,7 @@ const CreateRoles = () => {
 												</Show>
 											</td>
 											<td
-												class="flex-[0.5] cursor-pointer"
+												class="flex-1 cursor-pointer"
 												onClick={() => {
 													const newPermissionsData = { ...permissionsData() };
 													delete newPermissionsData[perm.permissionId];

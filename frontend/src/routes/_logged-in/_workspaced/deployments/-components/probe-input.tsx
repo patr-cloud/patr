@@ -1,8 +1,6 @@
 import { createSignal, Signal } from "solid-js";
 import { DeploymentProbe } from "~/bindings";
-import { InputDropdown } from "~/components";
-import Input, { InputType } from "~/components/input";
-import InputLabel from "~/components/input-label";
+import { Input, InputType, InputDropdown, InputLabel } from "~/components";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
@@ -44,6 +42,9 @@ const ProbeInput = (props: ProbeInputProps) => {
 					id="probe-path"
 					name="probe-path"
 					type={InputType.Text}
+					onKeyDown={(e) => {
+						if (e.key === "Enter") e.preventDefault();
+					}}
 					onInput={(e) => {
 						const probeVal = probe();
 						if (probeVal) {

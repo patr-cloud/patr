@@ -86,36 +86,40 @@ const PageContainerHead = (rawProps: PageContainerHeadProps) => {
 
 	return (
 		<>
-			<header
-				class={`h-full bg-secondary-light flex justify-between items-center gap-2 rounded-t-xs p-xl py-lg ${props.class}`}
-			>
-				<div class="flex flex-col gap-2 justify-start">
-					<div class="flex gap-4 items-center select-none">
-						<For each={props.breadcrumbs}>
-							{(crumb, index) => {
-								return (
-									<>
-										<Show when={index() !== 0}>
-											<span class="text-xl text-white">&gt;</span>
-										</Show>
+			<header class={`h-full bg-secondary-light rounded-t-xs p-xl py-lg ${props.class}`}>
+				<div class="mx-auto w-full max-w-300 flex justify-between items-center gap-2">
+					<div class="flex flex-col gap-2 justify-start">
+						<div class="flex gap-4 items-center select-none">
+							<For each={props.breadcrumbs}>
+								{(crumb, index) => {
+									return (
+										<>
+											<Show when={index() !== 0}>
+												<span class="text-xl text-white">&gt;</span>
+											</Show>
 
-										<h1
-											class={`text-xl ${crumb.url ? "text-primary cursor-pointer" : "text-white"}`}
-										>
-											{crumb.url ? <Link href={crumb.url}>{crumb.label}</Link> : crumb.label}
-										</h1>
-									</>
-								);
-							}}
-						</For>
+											<h1
+												class={`text-xl ${crumb.url ? "text-primary cursor-pointer" : "text-white"}`}
+											>
+												{crumb.url ? <Link href={crumb.url}>{crumb.label}</Link> : crumb.label}
+											</h1>
+										</>
+									);
+								}}
+							</For>
+						</div>
+
+						<p class="text-grey text-xs">{props.subText}</p>
 					</div>
 
-					<p class="text-grey text-xs">{props.subText}</p>
+					<div>{props.actions?.()}</div>
 				</div>
-
-				<div>{props.actions?.()}</div>
 			</header>
-			{props.bottomContent && <div class="bg-secondary-light px-xl">{props.bottomContent?.()}</div>}
+			{props.bottomContent && (
+				<div class="bg-secondary-light px-xl">
+					<div class="mx-auto w-full max-w-300">{props.bottomContent?.()}</div>
+				</div>
+			)}
 		</>
 	);
 };

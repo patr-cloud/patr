@@ -1,10 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createSignal, Show } from "solid-js";
-import Button from "~/components/button";
-import Input, { InputType } from "~/components/input";
+import { Alert, Button, Input, InputType, useToast, Turnstile } from "~/components";
 import { ButtonVariant } from "~/utils/color";
-import { Alert, useToast, Turnstile } from "~/components";
 import { httpRequest } from "~/utils/http-request";
 import { createAsyncAction } from "~/hooks";
 

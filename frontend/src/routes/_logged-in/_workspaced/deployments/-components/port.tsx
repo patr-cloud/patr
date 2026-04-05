@@ -29,7 +29,7 @@ const PortInput = (props: PortInputProps) => {
 
 	return (
 		<div class={`${get(props.class)} flex gap-8 items-start w-full`}>
-			<InputLabel parentClass="flex-2 pt-3" label="Exposed Ports" />
+			<InputLabel parentClass="flex-2 pt-2.5" label="Exposed Ports" />
 
 			<div class="flex flex-col flex-10 gap-4 w-full">
 				<For each={Object.entries(get(props.portList))}>
@@ -72,6 +72,18 @@ const PortInput = (props: PortInputProps) => {
 					<div class="flex items-center flex-10 gap-4 w-full">
 						<Input
 							onInput={(e) => setPortNumber(e.currentTarget.value)}
+							onKeyDown={(e) => {
+								if (e.key === "Enter") {
+									e.preventDefault();
+									const envVal = get(portType);
+									const portVal = portNumber();
+									if (envVal && portVal) {
+										props.onAdd(portVal, envVal);
+										setPortNumber("");
+										setPortType(undefined);
+									}
+								}
+							}}
 							class="flex-6"
 							placeholder="Enter Port Number"
 						/>

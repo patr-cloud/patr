@@ -2,8 +2,7 @@ import { createFileRoute, Outlet, useNavigate } from "@tanstack/solid-router";
 import { createEffect, ErrorBoundary } from "solid-js";
 import { useFetchWorkspaces, useFetchUserPermissions } from "~/hooks/fetch";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import Sidebar from "~/components/sidebar";
-import TopBar from "~/components/top-bar";
+import { Sidebar, TopBar } from "~/components";
 
 const WorkspacedLayout = () => {
 	const [workspaces] = useFetchWorkspaces();

@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createSignal, For, onMount } from "solid-js";
-import Button from "~/components/button";
+import { Button } from "~/components";
 import { ButtonVariant } from "~/utils/color";
 
 export default function NotFound() {

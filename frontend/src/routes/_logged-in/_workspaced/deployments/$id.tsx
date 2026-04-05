@@ -14,8 +14,8 @@ import {
 	PageContainerHead,
 	StatusChip,
 	useToast,
+	LoadingSpinner,
 } from "~/components";
-import { LoadingSpinner } from "~/components/loading-spinner";
 import { createAuthenticatedAction, useAuthState } from "~/hooks";
 import useIsAllowed, { useGetPermissions } from "~/hooks/is-allowed";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
@@ -326,7 +326,7 @@ const DeploymentInfo = () => {
 
 export const Route = createFileRoute("/_logged-in/_workspaced/deployments/$id")({
 	validateSearch: (search: Record<string, unknown>): { tab: string } => ({
-		tab: (search.tab as string) || "",
+		tab: (search.tab as string) || "info",
 	}),
 	component: DeploymentInfo,
 });
