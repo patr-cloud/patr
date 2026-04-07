@@ -77,15 +77,13 @@ pub async fn update_config(
 			.and_then(|labels| labels.get("patr.configHash"))
 			.is_some_and(|h| h == &full_hash);
 
-		if hash_matches {
-			if let Some(id) = &config.id {
-				let name = config
-					.spec
-					.as_ref()
-					.and_then(|s| s.name.clone())
-					.unwrap_or_else(|| config_name.clone());
-				return Ok((id.clone(), name));
-			}
+		if hash_matches && let Some(id) = &config.id {
+			let name = config
+				.spec
+				.as_ref()
+				.and_then(|s| s.name.clone())
+				.unwrap_or_else(|| config_name.clone());
+			return Ok((id.clone(), name));
 		}
 	}
 
@@ -105,12 +103,11 @@ pub async fn update_config(
 
 	// Clean up old configs — non-fatal, log and continue
 	for config in existing_configs {
-		if let Some(id) = config.id {
-			if id != new_id {
-				if let Err(err) = docker.delete_config(&id).await {
-					warn!("Failed to clean up old config {}: {}", id, err);
-				}
-			}
+		if let Some(id) = config.id &&
+			id != new_id &&
+			let Err(err) = docker.delete_config(&id).await
+		{
+			warn!("Failed to clean up old config {}: {}", id, err);
 		}
 	}
 

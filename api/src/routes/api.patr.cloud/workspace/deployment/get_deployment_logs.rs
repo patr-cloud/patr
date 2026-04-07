@@ -131,7 +131,7 @@ pub async fn get_deployment_logs(
 
 	// Sort ascending (oldest first, newest last) — the frontend renders
 	// index 0 at the top and auto-scrolls to the bottom (latest entry)
-	logs.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+	logs.sort_by_key(|a| a.timestamp);
 
 	AppResponse::builder()
 		.body(GetDeploymentLogsResponse { logs })

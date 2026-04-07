@@ -55,7 +55,7 @@ pub async fn login(
 		error!("Error verifying Cloudflare Turnstile token: `{}`", err);
 	})?;
 
-	if cf_turnstile_response.success != true {
+	if !cf_turnstile_response.success {
 		return Err(ErrorType::TurnstileVerificationFailed);
 	}
 

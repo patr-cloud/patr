@@ -129,7 +129,7 @@ where
 					let workspace_id = extract_workspace_id(&req.request);
 					let resource_id = extract_resource_id(&req.request);
 
-					let permission_id = get_permission_id(&mut **req.database, permission).await;
+					let permission_id = get_permission_id(req.database, permission).await;
 
 					// Check if the user has the required permission for the resource in the
 					// workspace

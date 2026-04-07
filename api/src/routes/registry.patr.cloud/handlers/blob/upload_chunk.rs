@@ -128,7 +128,7 @@ pub async fn upload_chunk(
 	.map(|row| row.resource_id)?;
 
 	let permission_id = permissions::get_permission_id(
-		&mut **database,
+		database,
 		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Push),
 	)
 	.await;
@@ -300,7 +300,7 @@ pub async fn upload_chunk(
 								)
 							})?);
 
-						session.total_bytes_uploaded += CHUNK_FLUSH_THRESHOLD as u64;
+						session.total_bytes_uploaded += CHUNK_FLUSH_THRESHOLD;
 					}
 
 					let part_number = session.uploaded_parts_etags.len() as i32 + 1;

@@ -210,7 +210,7 @@ pub async fn update_managed_url(
 
 	super::sync_worker_kv_for_domain(
 		&format!("{}.{}", managed_url.sub_domain, managed_url.domain),
-		&mut **database,
+		database,
 		&state.config,
 	)
 	.await?;
@@ -218,7 +218,7 @@ pub async fn update_managed_url(
 	if let Some(runner_id) = runner_id_to_update {
 		super::super::runner::update_cloudflare_config_for_runner(
 			runner_id,
-			&mut **database,
+			database,
 			&state.config,
 		)
 		.await?;

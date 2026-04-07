@@ -92,6 +92,13 @@ where
 	}
 }
 
+/// Get the default running environment based on whether the application is
+/// compiled in debug mode or not, and the `PATR_ENV` environment variable. If
+/// the application is compiled in debug mode, the default environment is
+/// development. Otherwise, it checks the `PATR_ENV` environment variable and
+/// defaults to production if it is not set or if it is set to an unknown value.
+/// The environment variable can be set to either "dev" or "development" for
+/// development mode, and "prod" or "production" for production mode.
 fn default_running_environment() -> RunningEnvironment {
 	let env = if cfg!(debug_assertions) {
 		"dev".to_string()

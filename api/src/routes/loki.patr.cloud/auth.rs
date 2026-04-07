@@ -38,7 +38,7 @@ pub(super) async fn authenticate_and_authorize(
 
 	// Authenticate the API token
 	let user_data = permissions::get_user_data_for_token(
-		&mut *database,
+		&mut database,
 		&mut redis_conn,
 		ClientType::ApiToken,
 		&state.config,
@@ -57,7 +57,7 @@ pub(super) async fn authenticate_and_authorize(
 
 	// Look up which workspace this runner belongs to
 	let workspace_id =
-		super::cache::get_workspace_for_runner(&mut *database, &mut redis_conn, &runner_id)
+		super::cache::get_workspace_for_runner(&mut database, &mut redis_conn, &runner_id)
 			.await
 			.map_err(|err| {
 				error!("Failed to look up runner workspace: {}", err);
@@ -76,7 +76,7 @@ pub(super) async fn authenticate_and_authorize(
 
 	// Check Runner::Execute permission on this specific runner
 	let permission_id = permissions::get_permission_id(
-		&mut *database,
+		&mut database,
 		Permission::Runner(RunnerPermission::Execute),
 	)
 	.await;

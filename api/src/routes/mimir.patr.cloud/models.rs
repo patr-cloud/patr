@@ -1,4 +1,4 @@
-/// Prometheus remote write protobuf types.
+//! Prometheus remote write protobuf types.
 
 /// A Prometheus remote write request containing one or more time series.
 #[derive(Clone, PartialEq, prost::Message)]

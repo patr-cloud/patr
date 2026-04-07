@@ -2,6 +2,11 @@ use models::api::workspace::deployment::DeploymentStatus;
 
 use crate::{prelude::*, utils::serve_error_page};
 
+/// The function that handles incoming requests to the ingress. It looks up the
+/// deployment information from KV storage based on the host header, checks the
+/// deployment status and routes the request to the appropriate runner if the
+/// deployment is running. If any step fails, it serves an error page with the
+/// appropriate status code.
 pub async fn handle_request(req: Request, env: Env, _ctx: Context, host: &str) -> Result<Response> {
 	let host = host
 		.trim_end_matches(constants::DEFAULT_PATR_DOMAIN)

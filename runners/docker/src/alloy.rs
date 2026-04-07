@@ -47,7 +47,7 @@ pub async fn update_alloy_service(
 	};
 
 	let alloy_config_text =
-		generate_alloy_config(workspace_id, runner_id, api_token, &loki_url, &mimir_url);
+		generate_alloy_config(workspace_id, runner_id, api_token, loki_url, mimir_url);
 
 	// Create or reuse the Docker config for Alloy (content-hash naming)
 	let (alloy_config_id, alloy_config_name) = crate::utils::update_config(

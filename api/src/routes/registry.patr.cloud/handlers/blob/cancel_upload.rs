@@ -89,7 +89,7 @@ pub async fn cancel_upload(
 	.map(|row| row.resource_id)?;
 
 	let permission_id = permissions::get_permission_id(
-		&mut **database,
+		database,
 		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Push),
 	)
 	.await;

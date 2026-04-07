@@ -399,19 +399,15 @@ pub async fn create_deployment(
 			expiration_ttl: None,
 		},
 		body: write_key::WriteKeyBody::Value(serde_json::to_vec(&InternalKVData::Deployment {
-			ports: ports.iter().map(|(port, _)| port.value()).collect(),
+			ports: ports.keys().map(|port| port.value()).collect(),
 			runner_id: runner,
 			status: DeploymentStatus::Deploying,
 		})?),
 	})
 	.await?;
 
-	super::super::runner::update_cloudflare_config_for_runner(
-		runner,
-		&mut **database,
-		&state.config,
-	)
-	.await?;
+	super::super::runner::update_cloudflare_config_for_runner(runner, database, &state.config)
+		.await?;
 
 	// TODO Temporary workaround until audit logs and triggers are implemented
 	redis

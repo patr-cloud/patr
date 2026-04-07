@@ -1,5 +1,10 @@
 use crate::prelude::*;
 
+/// The base URL for fetching error pages. The `serve_error_page` function will
+/// fetch error pages from this URL and serve them to the user when an error
+/// occurs. The error pages are expected to be in the format
+/// `{ERROR_PAGE_BASE}/{page}.html`, where `{page}` is the name of the error
+/// page (e.g., "not-found", "deployment-stopped", etc.).
 const ERROR_PAGE_BASE: &str = "https://assets.patr.cloud/error-pages";
 
 /// Fetches a branded error page from assets.patr.cloud and returns it as the

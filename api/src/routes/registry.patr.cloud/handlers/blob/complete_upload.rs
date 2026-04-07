@@ -133,7 +133,7 @@ pub async fn complete_upload(
 	.map(|row| row.resource_id)?;
 
 	let permission_id = permissions::get_permission_id(
-		&mut **database,
+		database,
 		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Push),
 	)
 	.await;
@@ -274,7 +274,7 @@ pub async fn complete_upload(
 								)
 							})?);
 
-						session.total_bytes_uploaded += CHUNK_FLUSH_THRESHOLD as u64;
+						session.total_bytes_uploaded += CHUNK_FLUSH_THRESHOLD;
 					}
 
 					let inflight_task = match chunk_size as u64 {

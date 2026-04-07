@@ -74,7 +74,7 @@ pub(super) async fn handle_remote_write_push(
 
 	for ts in &mut write_request.timeseries {
 		if let Err(msg) = validate_and_rewrite_labels(
-			&mut *database,
+			&mut database,
 			&mut redis_conn,
 			&mut ts.labels,
 			&runner_id,

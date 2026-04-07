@@ -1,4 +1,4 @@
-/// Loki protobuf types (replaces `loki-api` crate to unify on prost 0.14).
+//! Loki protobuf types (replaces `loki-api` crate to unify on prost 0.14).
 
 /// A push request to the Loki log ingestion endpoint.
 #[derive(Clone, PartialEq, prost::Message)]

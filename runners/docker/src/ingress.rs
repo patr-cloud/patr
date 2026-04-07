@@ -69,6 +69,10 @@ pub async fn update_ingress_configs(
 	Ok(())
 }
 
+/// Generate the Caddyfile config for a deployment, given the deployment ID and
+/// the port the deployment is listening on. This will read the Caddyfile
+/// template from the assets folder and replace the placeholders with the actual
+/// values.
 pub fn generate_config_for_deployment(deployment_id: Uuid, port: u16) -> String {
 	format!(
 		include_str!("../../../assets/runner/Caddyfile.template"),
@@ -77,6 +81,10 @@ pub fn generate_config_for_deployment(deployment_id: Uuid, port: u16) -> String 
 	)
 }
 
+/// Update the cloudflare tunnel token for the ingress service, if the tunnel
+/// token config has changed. This is done by first checking if the config
+/// exists, and if it does, deleting it and creating a new one with the updated
+/// token. Then, the ingress service is updated to pick up the new config.
 pub async fn update_ingress_tunnel_token(
 	docker: &Docker,
 	new_token: String,

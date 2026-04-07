@@ -118,7 +118,7 @@ pub async fn upload_manifest(
 	.map(|row| row.resource_id)?;
 
 	let permission_id = permissions::get_permission_id(
-		&mut **database,
+		database,
 		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Push),
 	)
 	.await;
@@ -588,7 +588,7 @@ async fn auto_deploy_on_push(
 		.await?
 		.into_iter()
 		.filter_map(|env| {
-			let value = match (env.value.clone(), env.secret_id.clone()) {
+			let value = match (env.value.clone(), env.secret_id) {
 				(Some(val), None) => Some(EnvironmentVariableValue::String(val)),
 				(None, Some(from_secret)) => Some(EnvironmentVariableValue::Secret { from_secret }),
 				_ => {

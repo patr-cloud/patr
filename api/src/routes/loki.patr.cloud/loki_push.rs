@@ -75,7 +75,7 @@ pub(super) async fn handle_loki_push(
 
 	for stream in &mut push_request.streams {
 		let Ok(new_labels) = super::common::validate_and_rewrite_labels(
-			&mut *database,
+			&mut database,
 			&mut redis_conn,
 			&stream.labels,
 			&runner_id,

@@ -148,7 +148,7 @@ pub async fn sync_worker_kv_for_domain(
 			.request(&delete_key::DeleteKey {
 				account_identifier: &config.cloudflare.account_id,
 				namespace_identifier: &config.cloudflare.worker_namespace_id,
-				key: &domain,
+				key: domain,
 			})
 			.await?;
 	} else {
@@ -156,7 +156,7 @@ pub async fn sync_worker_kv_for_domain(
 			.request(&write_key::WriteKey {
 				account_identifier: &config.cloudflare.account_id,
 				namespace_identifier: &config.cloudflare.worker_namespace_id,
-				key: &domain,
+				key: domain,
 				params: write_key::WriteKeyParams {
 					expiration: None,
 					expiration_ttl: None,

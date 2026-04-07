@@ -110,7 +110,7 @@ pub(super) async fn handle_otlp_push(
 		};
 
 		if let Err(msg) = validate_and_rewrite_attributes(
-			&mut *database,
+			&mut database,
 			&mut redis_conn,
 			&mut resource.attributes,
 			&runner_id,
