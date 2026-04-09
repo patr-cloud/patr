@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connection Error</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://assets.patr.cloud/error-pages/index.css">
+  <style>
+    .diagnostics {
+      margin-top: 14px;
+      margin-bottom: 18px;
+      padding: 10px 14px;
+      background: rgba(13, 5, 38, 0.5);
+      border: 1px solid #241c3a;
+      border-radius: 6px;
+      font-family: "SFMono-Regular", "Cascadia Code", "Consolas", monospace;
+      font-size: 10px;
+      line-height: 1.6;
+      color: #4a4260;
+      text-align: left;
+      white-space: pre-line;
+      word-break: break-word;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="bg-stars" id="stars">
+    <img src="https://assets.patr.cloud/error-pages/starry-sky.svg" alt="">
+  </div>
+
+  <img src="https://assets.patr.cloud/error-pages/astronaut.svg" alt="" class="space-asset astronaut">
+  <img src="https://assets.patr.cloud/error-pages/planet.svg" alt="" class="space-asset planet-tr">
+  <img src="https://assets.patr.cloud/error-pages/planet.svg" alt="" class="space-asset planet-tl">
+  <img src="https://assets.patr.cloud/error-pages/spaceship.svg" alt="" class="space-asset spaceship">
+  <img src="https://assets.patr.cloud/error-pages/patr-lowercase.png" alt="Patr" class="logo">
+
+  <section class="card">
+    <div class="status-code">503</div>
+    <h1>Connection Error</h1>
+    <p class="description">
+      We couldn't establish a connection to this site. This could mean the site
+      is temporarily unavailable or is still being set up. If you're the site
+      owner, check your configuration in the Patr dashboard.
+    </p>
+    <hr class="separator">
+    <div class="diagnostics">::CLOUDFLARE_ERROR_500S_BOX::
+      ::CLOUDFLARE_ERROR_1000S_BOX::
+    </div>
+    <p class="help">
+      Need help? <a href="https://app.patr.cloud">Go to Dashboard</a>
+    </p>
+  </section>
+
+  <script src="https://assets.patr.cloud/error-pages/index.js"></script>
+</body>
+
+</html>

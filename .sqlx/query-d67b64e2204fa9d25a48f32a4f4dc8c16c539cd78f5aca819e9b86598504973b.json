@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE managed_url_custom_hostname ADD CONSTRAINT managed_url_custom_hostname_pk PRIMARY KEY(sub_domain, domain_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "d67b64e2204fa9d25a48f32a4f4dc8c16c539cd78f5aca819e9b86598504973b"
+}

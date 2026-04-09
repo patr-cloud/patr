@@ -17,7 +17,7 @@ use time::OffsetDateTime;
 use crate::{
 	models::access_token_data::AccessTokenData,
 	prelude::*,
-	utils::validate_turnstile_token,
+	utils::cloudflare::validate_turnstile_token,
 };
 
 pub async fn complete_sign_up(

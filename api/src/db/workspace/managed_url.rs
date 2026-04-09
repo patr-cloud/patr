@@ -32,7 +32,6 @@ pub async fn initialize_managed_url_tables(
 			static_site_id UUID,
 			url TEXT,
 			workspace_id UUID NOT NULL,
-			is_active BOOLEAN NOT NULL,
 			deleted TIMESTAMPTZ,
 			permanent_redirect BOOLEAN,
 			http_only BOOLEAN
@@ -141,7 +140,10 @@ pub async fn initialize_managed_url_constraints(
 			ADD CONSTRAINT managed_url_fk_deployment_id_workspace_id
 				FOREIGN KEY(deployment_id, workspace_id) REFERENCES deployment(id, workspace_id),
 			ADD CONSTRAINT managed_url_fk_static_site_id_workspace_id
-				FOREIGN KEY(static_site_id, workspace_id) REFERENCES static_site(id, workspace_id);
+				FOREIGN KEY(static_site_id, workspace_id) REFERENCES static_site(id, workspace_id),
+			ADD CONSTRAINT managed_url_fk_custom_hostname
+				FOREIGN KEY(sub_domain, domain_id)
+					REFERENCES managed_url_custom_hostname(sub_domain, domain_id);
 		"#
 	)
 	.execute(&mut *connection)

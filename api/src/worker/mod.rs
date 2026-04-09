@@ -12,14 +12,23 @@ use crate::prelude::*;
 /// The background workers for rendering, and sending emails.
 pub mod mailer;
 
+/// The cron job that cleans up managed URLs whose FQDN has been inactive for
+/// more than 7 days.
+mod cleanup_inactive_managed_urls;
+/// The cron job that cleans up domains that have been unverified for more than
+/// 7 days, including their managed URLs and custom hostnames.
+mod cleanup_unverified_domains;
 /// The cron job that re-verifies verified domains every 6 hours.
 mod reverify_verified_domains;
-/// The cron job that verifies managed URL active status every 2 hours.
+/// The cron job that verifies managed URL active status every 2 hours and
+/// reconciles missing custom hostnames.
 mod verify_managed_url_active;
 /// The cron job that verifies unverified domains every 2 hours.
 mod verify_unverified_domains;
 
 use self::{
+	cleanup_inactive_managed_urls::*,
+	cleanup_unverified_domains::*,
 	reverify_verified_domains::*,
 	verify_managed_url_active::*,
 	verify_unverified_domains::*,
@@ -114,6 +123,48 @@ pub async fn run(state: &AppState) {
 					)
 					.data(state.clone())
 					.build(verify_managed_url_active)
+			}
+		})
+		.register({
+			let state = state.clone();
+			move |_| {
+				let backend = SharedPostgresStorage::new(state.database.clone())
+					.make_shared()
+					.expect("Failed to create shared postgres storage for worker");
+
+				WorkerBuilder::new("cleanup-unverified-domains")
+					.backend(
+						CronStream::new(
+							// Every 6 hours
+							Schedule::from_str("0 */6 * * * *").expect(
+								"Failed to parse cron schedule for cleanup-unverified-domains",
+							),
+						)
+						.pipe_to(backend),
+					)
+					.data(state.clone())
+					.build(cleanup_unverified_domains)
+			}
+		})
+		.register({
+			let state = state.clone();
+			move |_| {
+				let backend = SharedPostgresStorage::new(state.database.clone())
+					.make_shared()
+					.expect("Failed to create shared postgres storage for worker");
+
+				WorkerBuilder::new("cleanup-inactive-managed-urls")
+					.backend(
+						CronStream::new(
+							// Every 6 hours
+							Schedule::from_str("0 */6 * * * *").expect(
+								"Failed to parse cron schedule for cleanup-inactive-managed-urls",
+							),
+						)
+						.pipe_to(backend),
+					)
+					.data(state.clone())
+					.build(cleanup_inactive_managed_urls)
 			}
 		})
 		// TODO worker to clean up users who have signed up but haven't verified their email

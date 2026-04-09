@@ -45,7 +45,8 @@ pub async fn update_managed_url(
 				'.',
 				workspace_domain.tld
 			) AS "domain!",
-			managed_url.path
+			managed_url.path,
+			workspace_domain.is_verified
 		FROM
 			managed_url
 		INNER JOIN
@@ -63,6 +64,10 @@ pub async fn update_managed_url(
 	.fetch_optional(&mut **database)
 	.await?
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
+
+	if !managed_url.is_verified {
+		return Err(ErrorType::DomainNotVerified);
+	}
 
 	let path = path.map(|path| format!("/{}", path.trim_start_matches('/')));
 
@@ -208,7 +213,7 @@ pub async fn update_managed_url(
 	.execute(&mut **database)
 	.await?;
 
-	super::sync_worker_kv_for_domain(
+	utils::cloudflare::sync_ingress_kv_for_fqdn(
 		&format!("{}.{}", managed_url.sub_domain, managed_url.domain),
 		database,
 		&state.config,
@@ -216,12 +221,8 @@ pub async fn update_managed_url(
 	.await?;
 
 	if let Some(runner_id) = runner_id_to_update {
-		super::super::runner::update_cloudflare_config_for_runner(
-			runner_id,
-			database,
-			&state.config,
-		)
-		.await?;
+		utils::cloudflare::update_tunnel_config_for_runner(runner_id, database, &state.config)
+			.await?;
 	}
 
 	AppResponse::builder()

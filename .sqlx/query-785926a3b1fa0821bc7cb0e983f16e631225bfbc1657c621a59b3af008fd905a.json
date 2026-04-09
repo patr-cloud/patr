@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT managed_url_custom_hostname.sub_domain, managed_url_custom_hostname.domain_id AS \"domain_id: Uuid\", managed_url_custom_hostname.cloudflare_custom_hostname_id, CONCAT(workspace_domain.name, '.', workspace_domain.tld) AS \"domain_name!\" FROM managed_url_custom_hostname INNER JOIN workspace_domain ON managed_url_custom_hostname.domain_id = workspace_domain.id WHERE managed_url_custom_hostname.is_active = FALSE AND managed_url_custom_hostname.last_verified IS NOT NULL AND managed_url_custom_hostname.last_verified < NOW() - INTERVAL '7 days';",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "sub_domain",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "domain_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "cloudflare_custom_hostname_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "domain_name!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "785926a3b1fa0821bc7cb0e983f16e631225bfbc1657c621a59b3af008fd905a"
+}

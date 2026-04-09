@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM managed_url_custom_hostname WHERE sub_domain = $1 AND domain_id = $2;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dbc712c627629aee5521c034cfb1df2c561e1155498a6a4b25cb6ec99b38d76f"
+}

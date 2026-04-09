@@ -1,19 +1,12 @@
-use cloudflare::{
-	endpoints::zones::custom_hostnames::*,
-	framework::{
-		Environment,
-		auth::Credentials,
-		client::{ClientConfig, async_api::Client as CloudflareClient},
-	},
-};
+use hickory_resolver::{Resolver, config::ResolverConfig, name_server::TokioConnectionProvider};
 use http::StatusCode;
 use models::api::workspace::domain::*;
 
 use crate::prelude::*;
 
-/// The handler to verify a domain in a workspace. This will check if the domain
-/// has been verified by checking the DNS records for the required verification
-/// record. If the record is found, the domain will be marked as verified.
+/// The handler to verify a domain in a workspace. This checks if the user has
+/// added a TXT record at `_patr-verify.{domain}` with the domain ID as the
+/// value. If the record is found, the domain will be marked as verified.
 pub async fn verify_domain_in_workspace(
 	AuthenticatedAppRequest {
 		request:
@@ -34,7 +27,7 @@ pub async fn verify_domain_in_workspace(
 		redis: _,
 		client_ip: _,
 		user_data: _,
-		state,
+		state: _,
 	}: AuthenticatedAppRequest<'_, VerifyDomainInWorkspaceRequest>,
 ) -> Result<AppResponse<VerifyDomainInWorkspaceRequest>, ErrorType> {
 	info!("Starting: Check to verify domain in workspace");
@@ -42,7 +35,9 @@ pub async fn verify_domain_in_workspace(
 	let row = query!(
 		r#"
 		SELECT
-			cloudflare_custom_hostname_id
+			id AS "id: Uuid",
+			name,
+			tld
 		FROM
 			workspace_domain
 		WHERE
@@ -55,30 +50,22 @@ pub async fn verify_domain_in_workspace(
 	.await?
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
-	let verified = CloudflareClient::new(
-		Credentials::UserAuthToken {
-			token: state.config.cloudflare.api_key.clone(),
-		},
-		ClientConfig::default(),
-		Environment::Custom(state.config.cloudflare.base_url.clone()),
-	)?
-	.request(&EditCustomHostname {
-		zone_identifier: &state.config.cloudflare.primary_hosted_zone_id,
-		custom_hostname_id: &row.cloudflare_custom_hostname_id,
-		params: EditCustomHostnameParams {
-			custom_metadata: None,
-			custom_origin_server: None,
-			custom_origin_sni: None,
-			ssl: None,
-		},
-	})
-	.await?
-	.result
-	.ssl
-	.as_ref()
-	.and_then(|ssl| ssl.status.as_deref())
-	.map(|status| status == "active")
-	.unwrap_or(false);
+	let verification_hostname = format!("_patr-verify.{}.{}", row.name, row.tld);
+	let expected_value = row.id.to_string();
+
+	let resolver = Resolver::builder_with_config(
+		ResolverConfig::default(),
+		TokioConnectionProvider::default(),
+	)
+	.build();
+
+	let verified = match resolver.txt_lookup(&verification_hostname).await {
+		Ok(lookup) => lookup.iter().any(|txt| {
+			txt.iter()
+				.any(|data| String::from_utf8_lossy(data) == expected_value)
+		}),
+		Err(_) => false,
+	};
 
 	if verified {
 		query!(

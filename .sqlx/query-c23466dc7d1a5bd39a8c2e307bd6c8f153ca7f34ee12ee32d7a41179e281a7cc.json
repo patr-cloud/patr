@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO managed_url_custom_hostname(sub_domain, domain_id, cloudflare_custom_hostname_id, is_active) VALUES ($1, $2, $3, FALSE) ON CONFLICT (sub_domain, domain_id) DO NOTHING;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c23466dc7d1a5bd39a8c2e307bd6c8f153ca7f34ee12ee32d7a41179e281a7cc"
+}

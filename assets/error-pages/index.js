@@ -1,7 +1,7 @@
 // Procedural twinkling stars
 (function () {
   var c = document.getElementById("stars");
-  for (var i = 0; i < 25; i++) {
+  for (var i = 0; i < 250; i++) {
     var s = document.createElement("div");
     s.className = "star";
     s.style.left = Math.random() * 100 + "%";

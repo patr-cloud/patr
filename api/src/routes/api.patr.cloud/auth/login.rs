@@ -18,7 +18,7 @@ use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};
 use crate::{
 	models::access_token_data::AccessTokenData,
 	prelude::*,
-	utils::validate_turnstile_token,
+	utils::cloudflare::validate_turnstile_token,
 };
 
 /// The handler to login the user. This will return the access token and the

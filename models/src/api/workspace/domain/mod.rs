@@ -22,9 +22,6 @@ mod delete_domain_in_workspace;
 mod get_domain_dns_record;
 /// The endpoint to get the domain information in a workspace
 mod get_domain_info_in_workspace;
-/// The endpoint to get the verification records for a domain, if the domain is
-/// not verified
-mod get_verification_records_for_domain;
 /// The endpoint to check if a domain is valid and can be added to a workspace
 mod is_domain_valid;
 /// The endpoint to get all the domains in a workspace
@@ -41,7 +38,6 @@ pub use self::{
 	delete_domain_in_workspace::*,
 	get_domain_dns_record::*,
 	get_domain_info_in_workspace::*,
-	get_verification_records_for_domain::*,
 	is_domain_valid::*,
 	list_domains_in_workspace::*,
 	update_domain_dns_record::*,

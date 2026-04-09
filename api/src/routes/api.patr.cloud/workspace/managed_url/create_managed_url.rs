@@ -1,4 +1,12 @@
 use axum::http::StatusCode;
+use cloudflare::{
+	endpoints::zones::custom_hostnames::*,
+	framework::{
+		Environment,
+		auth::Credentials,
+		client::{ClientConfig, async_api::Client as CloudflareClient},
+	},
+};
 use models::{api::workspace::managed_url::*, prelude::*};
 
 use crate::prelude::*;
@@ -43,7 +51,8 @@ pub async fn create_managed_url(
 		r#"
 		SELECT
 			workspace_domain.name,
-			workspace_domain.tld
+			workspace_domain.tld,
+			workspace_domain.is_verified
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -61,6 +70,10 @@ pub async fn create_managed_url(
 	.fetch_optional(&mut **database)
 	.await?
 	.ok_or(ErrorType::WrongParameters)?;
+
+	if !domain.is_verified {
+		return Err(ErrorType::DomainNotVerified);
+	}
 
 	let domain = format!("{}.{}", domain.name, domain.tld);
 	let path = format!("/{}", path.trim_start_matches('/'));
@@ -147,6 +160,86 @@ pub async fn create_managed_url(
 			),
 		};
 
+	// Ensure a Cloudflare Custom Hostname exists for this FQDN before
+	// inserting the managed URL (FK requires the custom hostname row to exist)
+	let existing_custom_hostname = query!(
+		r#"
+		SELECT
+			cloudflare_custom_hostname_id
+		FROM
+			managed_url_custom_hostname
+		WHERE
+			sub_domain = $1 AND
+			domain_id = $2
+		FOR UPDATE;
+		"#,
+		&sub_domain,
+		domain_id as _,
+	)
+	.fetch_optional(&mut **database)
+	.await?;
+
+	if existing_custom_hostname.is_none() {
+		let fqdn = if sub_domain == "@" {
+			domain.clone()
+		} else {
+			format!("{}.{}", sub_domain, domain)
+		};
+
+		let cf_client = CloudflareClient::new(
+			Credentials::UserAuthToken {
+				token: state.config.cloudflare.api_key.clone(),
+			},
+			ClientConfig::default(),
+			Environment::Custom(state.config.cloudflare.base_url.clone()),
+		)?;
+
+		let custom_hostname_id = cf_client
+			.request(&AddCustomHostname {
+				zone_identifier: &state.config.cloudflare.primary_hosted_zone_id,
+				params: AddCustomHostnameParams {
+					hostname: fqdn,
+					ssl: Some(CustomHostnameSsl {
+						bundle_method: Some(CustomHostnameSslBundleMethod::Ubiquitous),
+						certificate_authority: Some(
+							CustomHostnameSslCertificateAuthority::LetsEncrypt,
+						),
+						type_: Some(CustomHostnameSslType::DV),
+						method: Some(CustomHostnameSslMethod::Http),
+						validation_records: None,
+						settings: None,
+						wildcard: None,
+						status: None,
+					}),
+					custom_metadata: None,
+				},
+			})
+			.await?
+			.result
+			.id;
+
+		query!(
+			r#"
+			INSERT INTO
+				managed_url_custom_hostname(
+					sub_domain,
+					domain_id,
+					cloudflare_custom_hostname_id,
+					is_active
+				)
+			VALUES
+				($1, $2, $3, FALSE)
+			ON CONFLICT (sub_domain, domain_id)
+			DO NOTHING;
+			"#,
+			&sub_domain,
+			domain_id as _,
+			&custom_hostname_id,
+		)
+		.execute(&mut **database)
+		.await?;
+	}
+
 	let id = query!(
 		r#"
 		INSERT INTO
@@ -189,7 +282,6 @@ pub async fn create_managed_url(
 				static_site_id,
 				url,
 				workspace_id,
-				is_active,
 				deleted,
 				permanent_redirect,
 				http_only
@@ -206,7 +298,6 @@ pub async fn create_managed_url(
 				$8,
 				$9,
 				$10,
-				FALSE,
 				NULL,
 				$11,
 				$12
@@ -228,7 +319,7 @@ pub async fn create_managed_url(
 	.execute(&mut **database)
 	.await?;
 
-	super::sync_worker_kv_for_domain(
+	utils::cloudflare::sync_ingress_kv_for_fqdn(
 		&format!("{}.{}", sub_domain, domain),
 		database,
 		&state.config,
@@ -236,12 +327,8 @@ pub async fn create_managed_url(
 	.await?;
 
 	if let Some(runner_id) = runner_id_to_update {
-		super::super::runner::update_cloudflare_config_for_runner(
-			runner_id,
-			database,
-			&state.config,
-		)
-		.await?;
+		utils::cloudflare::update_tunnel_config_for_runner(runner_id, database, &state.config)
+			.await?;
 	}
 
 	AppResponse::builder()

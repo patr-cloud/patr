@@ -29,7 +29,7 @@ pub async fn get_ingress_token_for_runner(
 ) -> Result<AppResponse<GetIngressTokenForRunnerRequest>, ErrorType> {
 	info!("Getting ingress token for runner `{runner_id}`");
 
-	super::update_cloudflare_config_for_runner(runner_id, database, &state.config).await?;
+	utils::cloudflare::update_tunnel_config_for_runner(runner_id, database, &state.config).await?;
 
 	let runner = query!(
 		r#"

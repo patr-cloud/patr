@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE managed_url_custom_hostname SET is_active = $3, last_verified = NOW() WHERE sub_domain = $1 AND domain_id = $2;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "786b37370a35b775b99bccf98cfe74ab6809ffad371a22b435e55192e1fafef0"
+}

@@ -6,7 +6,7 @@ use models::api::auth::*;
 use rand::RngExt;
 use time::OffsetDateTime;
 
-use crate::{prelude::*, utils::validate_turnstile_token};
+use crate::{prelude::*, utils::cloudflare::validate_turnstile_token};
 
 pub async fn create_account(
 	AppRequest {

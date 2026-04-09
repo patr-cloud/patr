@@ -16,7 +16,7 @@ mod workspaced;
 
 /// A list of all the arguments that can be passed to the CLI.
 #[derive(Debug, Clone, Parser)]
-#[command(author, version, about)]
+#[command(author, version = build_version(), about)]
 pub struct AppArgs {
 	/// All global arguments that can be used across all commands.
 	#[command(flatten)]
@@ -85,5 +85,31 @@ pub async fn execute(
 		GlobalCommand::Workspaced(commands) => {
 			workspaced::execute(commands, global_args, state).await
 		}
+	}
+}
+
+/// Builds the version string shown by `patr --version`.
+///
+/// SHA and date are set by `build.rs` from git/system. Channel is set by CI
+/// via `PATR_BUILD_CHANNEL` env var; local builds fall back to `-dev`.
+fn build_version() -> String {
+	let version = env!("CARGO_PKG_VERSION");
+	let channel = option_env!("PATR_BUILD_CHANNEL");
+	let sha = option_env!("PATR_BUILD_SHA");
+	let date = option_env!("PATR_BUILD_DATE");
+	let os = std::env::consts::OS;
+	let arch = std::env::consts::ARCH;
+
+	let version_str = match channel {
+		Some("alpha") => format!("{version}-alpha"),
+		Some("beta") => format!("{version}-beta"),
+		Some("stable") => version.to_string(),
+		_ => return format!("{version}-dev {os}/{arch}"),
+	};
+
+	match (sha, date) {
+		(Some(sha), Some(date)) => format!("{version_str} ({sha} {date}) {os}/{arch}"),
+		(None, Some(date)) => format!("{version_str} ({date}) {os}/{arch}"),
+		_ => format!("{version_str} {os}/{arch}"),
 	}
 }

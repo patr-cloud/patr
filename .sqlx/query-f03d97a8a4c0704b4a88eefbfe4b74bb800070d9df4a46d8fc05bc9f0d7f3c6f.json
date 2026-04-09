@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO migrations(name, version) VALUES ($1, $2) ON CONFLICT DO NOTHING;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f03d97a8a4c0704b4a88eefbfe4b74bb800070d9df4a46d8fc05bc9f0d7f3c6f"
+}

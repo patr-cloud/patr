@@ -5,9 +5,9 @@ on:
     branches: [develop, staging, master]
 
 # Cancel in-progress runs for the same ref
-# concurrency:
-#   group: test-${{ github.ref }}
-#   cancel-in-progress: true
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always

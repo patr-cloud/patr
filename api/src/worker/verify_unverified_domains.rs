@@ -1,64 +1,50 @@
 use apalis::prelude::*;
 use apalis_cron::Tick;
-use cloudflare::{
-	endpoints::zones::custom_hostnames::*,
-	framework::{
-		Environment,
-		auth::Credentials,
-		client::{ClientConfig, async_api::Client as CloudflareClient},
-	},
-};
 use futures::TryStreamExt;
+use hickory_resolver::{Resolver, config::ResolverConfig, name_server::TokioConnectionProvider};
 
 use crate::prelude::*;
 
 /// The cron job that verifies unverified domains every 2 hours.
 ///
-/// For every unverified domain in the database, get it's Cloudflare custom
-/// hostname ID, and hit the cloudflare endpoint to check if it's verified. If
-/// it is, update the database to mark it as verified.
+/// For every unverified domain in the database, perform a DNS TXT lookup for
+/// `_patr-verify.{domain}` and check if the value matches the domain ID. If
+/// it does, mark the domain as verified.
 pub async fn verify_unverified_domains(_: Tick, data: Data<AppState>) -> Result<(), WorkerError> {
 	println!("Verifying unverified domains...");
 
+	let resolver = Resolver::builder_with_config(
+		ResolverConfig::default(),
+		TokioConnectionProvider::default(),
+	)
+	.build();
+
 	query!(
 		r#"
-	    SELECT
-	        id,
-	        cloudflare_custom_hostname_id
-	    FROM
-	        workspace_domain
-	    WHERE
-	        is_verified = FALSE;
-	    "#,
+		SELECT
+			id AS "id: Uuid",
+			name,
+			tld
+		FROM
+			workspace_domain
+		WHERE
+			is_verified = FALSE AND
+			deleted IS NULL;
+		"#,
 	)
 	.fetch(&data.database)
 	.map_err(ErrorType::server_error)
 	.try_for_each(async |domain| {
-		// Check with Cloudflare if the domain is verified
-		let verified = CloudflareClient::new(
-			Credentials::UserAuthToken {
-				token: data.config.cloudflare.api_key.clone(),
-			},
-			ClientConfig::default(),
-			Environment::Custom(data.config.cloudflare.base_url.clone()),
-		)?
-		.request(&EditCustomHostname {
-			zone_identifier: &data.config.cloudflare.primary_hosted_zone_id,
-			custom_hostname_id: &domain.cloudflare_custom_hostname_id,
-			params: EditCustomHostnameParams {
-				custom_metadata: None,
-				custom_origin_server: None,
-				custom_origin_sni: None,
-				ssl: None,
-			},
-		})
-		.await?
-		.result
-		.ssl
-		.as_ref()
-		.and_then(|ssl| ssl.status.as_deref())
-		.map(|status| status == "active")
-		.unwrap_or(false);
+		let verification_hostname = format!("_patr-verify.{}.{}", domain.name, domain.tld);
+		let expected_value = domain.id.to_string();
+
+		let verified = match resolver.txt_lookup(&verification_hostname).await {
+			Ok(lookup) => lookup.iter().any(|txt| {
+				txt.iter()
+					.any(|data| String::from_utf8_lossy(data) == expected_value)
+			}),
+			Err(_) => false,
+		};
 
 		if verified {
 			query!(

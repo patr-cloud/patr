@@ -8,6 +8,9 @@ pub mod app;
 /// This module contains the database connection logic, as well as all the
 /// ORM entities.
 pub mod db;
+/// Database migrations organized by version. Uses `inventory` for automatic
+/// registration and tracks individual migrations in a `_migrations` table.
+pub mod migrations;
 /// This module contains the models used by the API. These are the structs that
 /// are used for encoding and decoding things that are not a part of the API
 /// (eg, JWT).
@@ -68,7 +71,7 @@ pub mod prelude {
 		app::{AppRequest, AppState, AuthenticatedAppRequest, UnprocessedAppRequest},
 		models::ip_lookup as ip,
 		redis,
-		utils::{EitherExt, RouterExt, TimeoutExt, WorkerExt, constants, layers::ClientType},
+		utils::{self, EitherExt, RouterExt, TimeoutExt, WorkerExt, constants, layers::ClientType},
 		worker::mailer::*,
 	};
 

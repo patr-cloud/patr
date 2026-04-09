@@ -35,7 +35,6 @@ pub async fn initialize_domain_tables(
 			tld TEXT NOT NULL,
 			workspace_id UUID NOT NULL,
 			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL,
-			cloudflare_custom_hostname_id TEXT NOT NULL,
 			is_verified BOOLEAN NOT NULL,
 			last_verified TIMESTAMPTZ,
 			deleted TIMESTAMPTZ
@@ -62,6 +61,20 @@ pub async fn initialize_domain_tables(
 		CREATE TABLE user_controlled_domain(
 			domain_id UUID NOT NULL,
 			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE managed_url_custom_hostname(
+			sub_domain TEXT NOT NULL,
+			domain_id UUID NOT NULL,
+			cloudflare_custom_hostname_id TEXT NOT NULL,
+			is_active BOOLEAN NOT NULL DEFAULT FALSE,
+			last_verified TIMESTAMPTZ
 		);
 		"#
 	)
@@ -146,6 +159,16 @@ pub async fn initialize_domain_indices(
 		ALTER TABLE user_controlled_domain
 		ADD CONSTRAINT User_controlled_domain_pk
 		PRIMARY KEY(domain_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE managed_url_custom_hostname
+		ADD CONSTRAINT managed_url_custom_hostname_pk
+		PRIMARY KEY(sub_domain, domain_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -254,6 +277,21 @@ pub async fn initialize_domain_constraints(
 			ADD CONSTRAINT user_controlled_domain_fk_domain_id_nameserver_type
 				FOREIGN KEY(domain_id, nameserver_type)	
 					REFERENCES workspace_domain(id, nameserver_type);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE managed_url_custom_hostname
+			ADD CONSTRAINT managed_url_custom_hostname_fk_domain_id
+				FOREIGN KEY(domain_id)
+					REFERENCES workspace_domain(id),
+			ADD CONSTRAINT managed_url_custom_hostname_chk_sub_domain_valid CHECK(
+				sub_domain = '@' OR
+				sub_domain ~ '^(([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])$'
+			);
 		"#
 	)
 	.execute(&mut *connection)

@@ -108,6 +108,8 @@ pub enum ErrorType {
 	NotRootDomain,
 	/// The domain is not a domain with an ICANN TLD
 	NotIcannDomain,
+	/// The domain must be verified before managed URLs can be created on it
+	DomainNotVerified,
 	/// The user tried to access the API but is not a human. This can happen
 	/// when the Cloudflare Turnstile verification fails
 	TurnstileVerificationFailed,
@@ -163,6 +165,7 @@ impl ErrorType {
 			Self::InvalidRunnerMode => StatusCode::FORBIDDEN,
 			Self::NotRootDomain => StatusCode::BAD_REQUEST,
 			Self::NotIcannDomain => StatusCode::BAD_REQUEST,
+			Self::DomainNotVerified => StatusCode::PRECONDITION_FAILED,
 			Self::TurnstileVerificationFailed => StatusCode::FORBIDDEN,
 			Self::TurnstileVerificationActionMismatch => StatusCode::FORBIDDEN,
 			Self::RateLimitExceeded => StatusCode::TOO_MANY_REQUESTS,
@@ -237,6 +240,12 @@ impl ErrorType {
 					"Not a valid ICANN domain. ",
 					"Please provide a domain with an ICANN TLD instead (.com, .net, etc). ",
 					"Private TLDs are currently not supported ",
+				)
+			}
+			Self::DomainNotVerified => {
+				concat!(
+					"The domain must be verified before managed URLs can be created or updated. ",
+					"Please add the required TXT record and verify the domain first.",
 				)
 			}
 			Self::TurnstileVerificationFailed => "Human verification failed. Please try again.",

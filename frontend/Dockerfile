@@ -12,7 +12,7 @@ RUN cargo bindings
 
 FROM node:22-alpine AS base
 
-RUN corepack enable && corepack prepare pnpm@10.30.1 --activate
+RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
 # Install dependencies
 FROM base AS deps

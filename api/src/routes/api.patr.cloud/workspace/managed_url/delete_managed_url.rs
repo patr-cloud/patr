@@ -1,4 +1,13 @@
 use axum::http::StatusCode;
+use cloudflare::{
+	endpoints::zones::custom_hostnames::*,
+	framework::{
+		Environment,
+		auth::Credentials,
+		client::{ClientConfig, async_api::Client as CloudflareClient},
+		response::ApiFailure,
+	},
+};
 use models::{api::workspace::managed_url::*, prelude::*};
 
 use crate::prelude::*;
@@ -46,6 +55,7 @@ pub async fn delete_managed_url(
 		)
 		SELECT
 			deleted.sub_domain,
+			deleted.domain_id AS "domain_id: Uuid",
 			CONCAT(
 				workspace_domain.name,
 				'.',
@@ -87,7 +97,7 @@ pub async fn delete_managed_url(
 	.execute(&mut **database)
 	.await?;
 
-	super::sync_worker_kv_for_domain(
+	utils::cloudflare::sync_ingress_kv_for_fqdn(
 		&format!("{}.{}", managed_url.sub_domain, managed_url.domain),
 		database,
 		&state.config,
@@ -95,12 +105,82 @@ pub async fn delete_managed_url(
 	.await?;
 
 	if let Some(runner_id) = managed_url.connected_deployment_runner {
-		super::super::runner::update_cloudflare_config_for_runner(
-			runner_id,
-			database,
-			&state.config,
+		utils::cloudflare::update_tunnel_config_for_runner(runner_id, database, &state.config)
+			.await?;
+	}
+
+	// Lock the custom hostname row to prevent race conditions with concurrent
+	// create/delete operations on the same FQDN
+	let locked_hostname = query!(
+		r#"
+		SELECT
+			cloudflare_custom_hostname_id
+		FROM
+			managed_url_custom_hostname
+		WHERE
+			sub_domain = $1 AND
+			domain_id = $2
+		FOR UPDATE;
+		"#,
+		&managed_url.sub_domain,
+		managed_url.domain_id as _,
+	)
+	.fetch_one(&mut **database)
+	.await?;
+
+	// Check if any managed URLs still use this FQDN
+	let remaining = query!(
+		r#"
+		SELECT
+			COUNT(*) AS "count!"
+		FROM
+			managed_url
+		WHERE
+			sub_domain = $1 AND
+			domain_id = $2 AND
+			deleted IS NULL;
+		"#,
+		&managed_url.sub_domain,
+		managed_url.domain_id as _,
+	)
+	.fetch_one(&mut **database)
+	.await?
+	.count;
+
+	if remaining == 0 {
+		query!(
+			r#"
+			DELETE FROM
+				managed_url_custom_hostname
+			WHERE
+				sub_domain = $1 AND
+				domain_id = $2;
+			"#,
+			&managed_url.sub_domain,
+			managed_url.domain_id as _,
 		)
+		.execute(&mut **database)
 		.await?;
+
+		let cf_client = CloudflareClient::new(
+			Credentials::UserAuthToken {
+				token: state.config.cloudflare.api_key.clone(),
+			},
+			ClientConfig::default(),
+			Environment::Custom(state.config.cloudflare.base_url.clone()),
+		)?;
+
+		match cf_client
+			.request(&DeleteCustomHostname {
+				zone_identifier: &state.config.cloudflare.primary_hosted_zone_id,
+				custom_hostname_id: &locked_hostname.cloudflare_custom_hostname_id,
+			})
+			.await
+		{
+			Ok(_) => {}
+			Err(ApiFailure::Error(status, _)) if status == reqwest::StatusCode::NOT_FOUND => {}
+			Err(err) => return Err(ErrorType::server_error(err)),
+		}
 	}
 
 	AppResponse::builder()

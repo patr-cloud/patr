@@ -33,7 +33,9 @@ derive_more                    = { workspace = true, features = ["from"] }
 futures                        = { workspace = true, features = ["default"] }
 headers                        = { workspace = true, features = [] }
 hex                            = { workspace = true, features = [] }
+hickory-resolver               = { workspace = true, features = ["tokio"] }
 http                           = { workspace = true, features = ["default"] }
+inventory                      = { workspace = true, features = [] }
 http-body                      = { workspace = true, features = [] }
 ipinfo                         = { workspace = true, features = [] }
 jsonwebtoken                   = { workspace = true, features = ["default", "aws_lc_rs"] }

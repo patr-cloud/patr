@@ -223,37 +223,6 @@ async fn verify_domain_works() {
 }
 
 #[tokio::test]
-async fn get_verification_records_works() {
-	let setup = setup().await.expect("failed to setup test server");
-	let user = setup.create_test_user().await;
-	let workspace = setup.create_test_workspace(&user.access_token).await;
-	let domain = setup
-		.create_test_domain(&user.access_token, workspace.id)
-		.await;
-
-	let response = setup
-		.make_api_call(
-			ApiRequest::<GetVerificationRecordsForDomainRequest>::builder()
-				.path(GetVerificationRecordsForDomainPath {
-					workspace_id: workspace.id,
-					domain_id: domain.id,
-				})
-				.headers(GetVerificationRecordsForDomainRequestHeaders {
-					authorization: user.access_token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.build(),
-		)
-		.await;
-
-	let status = response.status_code();
-	assert!(
-		status.is_success() || status.is_server_error(),
-		"expected success or server error, got {status}"
-	);
-}
-
-#[tokio::test]
 async fn domain_unauthorized() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;

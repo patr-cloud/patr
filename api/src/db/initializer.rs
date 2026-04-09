@@ -71,33 +71,9 @@ pub async fn initialize(app: &AppState) -> Result<(), ErrorType> {
 		super::initialize_workspace_constraints(&mut transaction).await?;
 		super::initialize_rbac_constraints(&mut transaction).await?;
 
-		// Set the database schema version
-		query!(
-			r#"
-			INSERT INTO
-				meta_data(
-					id,
-					value
-				)
-			VALUES
-				('version_major', $1),
-				('version_minor', $2),
-				('version_patch', $3)
-			ON CONFLICT(id) DO UPDATE SET
-				value = EXCLUDED.value;
-			"#,
-			constants::DATABASE_VERSION.major.to_string(),
-			constants::DATABASE_VERSION.minor.to_string(),
-			constants::DATABASE_VERSION.patch.to_string()
-		)
-		.execute(&mut *transaction)
-		.await?;
-
-		transaction.commit().await?;
+		crate::migrations::mark_all_applied(&mut transaction).await?;
 
 		info!("Database created fresh");
-
-		Ok(())
 	} else {
 		// If it already exists, perform a migration with the known values
 
@@ -136,36 +112,42 @@ pub async fn initialize(app: &AppState) -> Result<(), ErrorType> {
 
 		match version.cmp(&constants::DATABASE_VERSION) {
 			Ordering::Greater => {
-				error!("Database version is higher than what's recognised. Exiting...");
+				error!("Database version is higher than what's recognized. Exiting...");
 				panic!();
 			}
-			Ordering::Less => {
+			Ordering::Less | Ordering::Equal => {
 				info!(
 					"Migrating from {}.{}.{}",
 					version.major, version.minor, version.patch
 				);
 
-				// migrations::run_migrations(&mut transaction, version, &app.config).await?;
-
-				transaction.commit().await?;
-				info!(
-					"Migration completed. Database is now at version {}.{}.{}",
-					constants::DATABASE_VERSION.major,
-					constants::DATABASE_VERSION.minor,
-					constants::DATABASE_VERSION.patch
-				);
-				transaction = app.database.begin().await?;
-			}
-			Ordering::Equal => {
-				info!("Database already in the latest version. No migration required.");
+				// Run pending migrations (from current DB version onwards, including
+				// equal to cover alpha -> stable channel switches)
+				crate::migrations::run_migrations(&mut transaction, &version, &app.config).await?;
 			}
 		}
-
-		// Any initialization that needs to be done after the migration goes here:
-		// ...
-
-		drop(transaction);
-
-		Ok(())
 	}
+
+	// Set the database schema version
+	query!(
+		r#"
+		INSERT INTO
+			meta_data(id, value)
+		VALUES
+			('version_major', $1),
+			('version_minor', $2),
+			('version_patch', $3)
+		ON CONFLICT(id) DO UPDATE SET
+			value = EXCLUDED.value;
+		"#,
+		constants::DATABASE_VERSION.major.to_string(),
+		constants::DATABASE_VERSION.minor.to_string(),
+		constants::DATABASE_VERSION.patch.to_string()
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	transaction.commit().await?;
+
+	Ok(())
 }

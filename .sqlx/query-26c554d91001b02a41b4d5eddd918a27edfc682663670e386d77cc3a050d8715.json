@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE migrations(name TEXT CONSTRAINT migrations_pk PRIMARY KEY, version TEXT NOT NULL, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "26c554d91001b02a41b4d5eddd918a27edfc682663670e386d77cc3a050d8715"
+}

@@ -6,7 +6,6 @@ use crate::prelude::*;
 mod add_domain_to_workspace;
 mod delete_domain_in_workspace;
 mod get_domain_info_in_workspace;
-mod get_verification_records_for_domain;
 mod is_domain_valid;
 mod list_domains_in_workspace;
 mod verify_domain_in_workspace;
@@ -15,7 +14,6 @@ pub use self::{
 	add_domain_to_workspace::*,
 	delete_domain_in_workspace::*,
 	get_domain_info_in_workspace::*,
-	get_verification_records_for_domain::*,
 	is_domain_valid::*,
 	list_domains_in_workspace::*,
 	verify_domain_in_workspace::*,
@@ -34,11 +32,6 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 		.mount_auth_endpoint(get_domain_info_in_workspace, state, allowed_client_type)
 		.mount_auth_endpoint(update_domain_dns_record, state, allowed_client_type)
 		.mount_auth_endpoint(verify_domain_in_workspace, state, allowed_client_type)
-		.mount_auth_endpoint(
-			get_verification_records_for_domain,
-			state,
-			allowed_client_type,
-		)
 }
 
 #[expect(unreachable_code, unused_variables)]

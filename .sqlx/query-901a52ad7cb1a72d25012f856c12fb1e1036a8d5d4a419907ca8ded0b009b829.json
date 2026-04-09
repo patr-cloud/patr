@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE managed_url_custom_hostname SET cloudflare_custom_hostname_id = $3, is_active = FALSE, last_verified = NOW() WHERE sub_domain = $1 AND domain_id = $2;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "901a52ad7cb1a72d25012f856c12fb1e1036a8d5d4a419907ca8ded0b009b829"
+}

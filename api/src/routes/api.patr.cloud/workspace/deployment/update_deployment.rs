@@ -468,8 +468,7 @@ pub async fn update_deployment(
 	})
 	.await?;
 
-	super::super::runner::update_cloudflare_config_for_runner(runner_id, database, &state.config)
-		.await?;
+	utils::cloudflare::update_tunnel_config_for_runner(runner_id, database, &state.config).await?;
 
 	// TODO Temporary workaround until audit logs and triggers are implemented
 	let ports = query!(

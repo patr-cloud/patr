@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM managed_url_custom_hostname WHERE domain_id = $1 RETURNING cloudflare_custom_hostname_id;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "cloudflare_custom_hostname_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "af7596c7ff0652a3a9a53267bd6091c21e6b9e669b81b6d6bc106a89c1e7c724"
+}

@@ -1,8 +1,5 @@
 use cloudflare::{
-	endpoints::zones::{
-		custom_hostnames::*,
-		zone::{Type as ZoneType, *},
-	},
+	endpoints::zones::zone::{Type as ZoneType, *},
 	framework::{
 		Environment,
 		SearchMatch,
@@ -112,7 +109,6 @@ pub async fn add_domain_to_workspace(
                 tld,
                 workspace_id,
                 nameserver_type,
-				cloudflare_custom_hostname_id,
                 is_verified,
                 deleted
 			)
@@ -123,7 +119,6 @@ pub async fn add_domain_to_workspace(
 				$3,
 				$4,
 				$5,
-				'undefined',
 				FALSE,
 				NULL
 			);
@@ -141,53 +136,16 @@ pub async fn add_domain_to_workspace(
 		err => ErrorType::server_error(err),
 	})?;
 
-	let client = CloudflareClient::new(
-		Credentials::UserAuthToken {
-			token: state.config.cloudflare.api_key.clone(),
-		},
-		ClientConfig::default(),
-		Environment::Custom(state.config.cloudflare.base_url.clone()),
-	)?;
-
-	let custom_hostname_id = client
-		.request(&AddCustomHostname {
-			zone_identifier: &state.config.cloudflare.primary_hosted_zone_id,
-			params: AddCustomHostnameParams {
-				hostname: domain.clone(),
-				ssl: Some(CustomHostnameSsl {
-					bundle_method: Some(CustomHostnameSslBundleMethod::Ubiquitous),
-					certificate_authority: Some(CustomHostnameSslCertificateAuthority::Google),
-					type_: Some(CustomHostnameSslType::DV),
-					method: Some(CustomHostnameSslMethod::Txt),
-					validation_records: None,
-					settings: None,
-					wildcard: Some(true),
-					status: None,
-				}),
-				custom_metadata: None,
-			},
-		})
-		.await?
-		.result
-		.id;
-
-	query!(
-		r#"
-		UPDATE
-			workspace_domain
-		SET
-			cloudflare_custom_hostname_id = $2
-		WHERE
-			id = $1;
-		"#,
-		domain_id as _,
-		custom_hostname_id,
-	)
-	.execute(&mut **database)
-	.await?;
-
 	match nameserver_type {
 		DomainNameserverType::Internal => {
+			let client = CloudflareClient::new(
+				Credentials::UserAuthToken {
+					token: state.config.cloudflare.api_key.clone(),
+				},
+				ClientConfig::default(),
+				Environment::Custom(state.config.cloudflare.base_url.clone()),
+			)?;
+
 			let zone = client
 				.request(&ListZones {
 					params: ListZonesParams {

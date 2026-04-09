@@ -1,15 +1,20 @@
-use std::time::Duration;
-
 use axum::http::StatusCode;
+use cloudflare::{
+	endpoints::zones::custom_hostnames::*,
+	framework::{
+		Environment,
+		auth::Credentials,
+		client::{ClientConfig, async_api::Client as CloudflareClient},
+	},
+};
 use models::{api::workspace::managed_url::*, prelude::*};
 
 use crate::prelude::*;
 
-/// Verify if a managed URL is actively being served by Patr.
+/// Verify if a managed URL's FQDN custom hostname is active on Cloudflare.
 ///
-/// Makes an HTTP request to `https://{fqdn}/.well-known/patr/managed-url`
-/// and checks if the response is 200 OK (meaning the ingress worker is
-/// handling this host).
+/// Checks the Cloudflare Custom Hostname status and updates the
+/// `managed_url_custom_hostname.is_active` flag accordingly.
 pub async fn verify_configuration(
 	AuthenticatedAppRequest {
 		request:
@@ -31,7 +36,7 @@ pub async fn verify_configuration(
 		redis: _,
 		client_ip: _,
 		user_data: _,
-		state: _,
+		state,
 	}: AuthenticatedAppRequest<'_, VerifyManagedURLConfigurationRequest>,
 ) -> Result<AppResponse<VerifyManagedURLConfigurationRequest>, ErrorType> {
 	info!("Verifying configuration of ManagedURL");
@@ -40,14 +45,15 @@ pub async fn verify_configuration(
 		r#"
 		SELECT
 			managed_url.sub_domain,
-			workspace_domain.name AS domain_name,
-			workspace_domain.tld AS domain_tld
+			managed_url.domain_id AS "domain_id: Uuid",
+			managed_url_custom_hostname.cloudflare_custom_hostname_id
 		FROM
 			managed_url
 		INNER JOIN
-			workspace_domain
+			managed_url_custom_hostname
 		ON
-			managed_url.domain_id = workspace_domain.id
+			managed_url.sub_domain = managed_url_custom_hostname.sub_domain AND
+			managed_url.domain_id = managed_url_custom_hostname.domain_id
 		WHERE
 			managed_url.id = $1 AND
 			managed_url.deleted IS NULL;
@@ -58,31 +64,43 @@ pub async fn verify_configuration(
 	.await?
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
-	let fqdn = if row.sub_domain == "@" {
-		format!("{}.{}", row.domain_name, row.domain_tld)
-	} else {
-		format!("{}.{}.{}", row.sub_domain, row.domain_name, row.domain_tld)
-	};
+	let cf_client = CloudflareClient::new(
+		Credentials::UserAuthToken {
+			token: state.config.cloudflare.api_key.clone(),
+		},
+		ClientConfig::default(),
+		Environment::Custom(state.config.cloudflare.base_url.clone()),
+	)?;
 
-	let configured = reqwest::Client::new()
-		.get(format!("https://{}/.well-known/patr/managed-url", fqdn))
-		.header("Cache-Control", "no-cache")
-		.timeout(Duration::from_secs(10))
-		.send()
-		.await
-		.map(|resp| resp.status().is_success())
-		.unwrap_or(false);
+	let configured = cf_client
+		.request(&EditCustomHostname {
+			zone_identifier: &state.config.cloudflare.primary_hosted_zone_id,
+			custom_hostname_id: &row.cloudflare_custom_hostname_id,
+			params: EditCustomHostnameParams {
+				custom_metadata: None,
+				custom_origin_server: None,
+				custom_origin_sni: None,
+				ssl: None,
+			},
+		})
+		.await?
+		.result
+		.status ==
+		"active";
 
 	query!(
 		r#"
 		UPDATE
-			managed_url
+			managed_url_custom_hostname
 		SET
-			is_active = $2
+			is_active = $3,
+			last_verified = NOW()
 		WHERE
-			id = $1;
+			sub_domain = $1 AND
+			domain_id = $2;
 		"#,
-		managed_url_id as _,
+		&row.sub_domain,
+		row.domain_id as _,
 		configured,
 	)
 	.execute(&mut **database)

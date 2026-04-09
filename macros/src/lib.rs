@@ -1,3 +1,4 @@
+#![feature(proc_macro_span)]
 #![forbid(unsafe_code)]
 
 //! This crate contains the macros used in this project. It is not intended to
@@ -24,6 +25,9 @@ mod has_headers;
 /// A derive macro to generate an enum of all fields and a search struct
 /// for a given struct.
 mod listable_resource;
+/// An attribute macro to register a database migration. Derives the migration
+/// name from the source filename and version from the parent directory.
+mod migration;
 /// A macro to generate the same struct but with all fields optional.
 mod optionalize;
 /// A proc macro for stripping whitespaces and newlines from SQL queries.
@@ -273,6 +277,28 @@ pub fn recursive_enum_iter(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn version(input: TokenStream) -> TokenStream {
 	version::parse(input)
+}
+
+/// Registers a database migration. Place on an async function that takes
+/// `(&mut DatabaseConnection, &AppConfig)` and returns `Result<(), ErrorType>`.
+///
+/// The migration name is derived from the source filename and the version
+/// from the parent directory name (`v{major}_{minor}_{patch}/`).
+///
+/// ## Example usage:
+/// ```rust
+/// #[macros::migration]
+/// async fn migrate(
+///     connection: &mut DatabaseConnection,
+///     _config: &AppConfig,
+/// ) -> Result<(), ErrorType> {
+///     // migration SQL here
+///     Ok(())
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn migration(args: TokenStream, input: TokenStream) -> TokenStream {
+	migration::parse(args, input)
 }
 
 /// A macro to verify if a given string is a valid regex at compile time.

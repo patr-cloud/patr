@@ -22,7 +22,7 @@ import {
 } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
-import { GetDomainInfoInWorkspaceResponse, GetVerificationRecordsForDomainResponse } from "~/bindings";
+import { GetDomainInfoInWorkspaceResponse } from "~/bindings";
 import { EventT } from "~/utils/types";
 import { useIsAllowed, createPaginationState } from "~/hooks";
 
@@ -38,35 +38,17 @@ type GetDomainsForWorkspaceResponse = {
 	domains: WorkspaceDomain[];
 };
 
-const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void }) => {
+const DNSRecords = (props: { domainId: string; domainName: string; closeFn: (prev: boolean) => void }) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const [loading, setLoading] = createSignal(false);
 
-	const fetchParams = createMemo(() => {
-		return [authState(), workspaceId(), props.domainId] as const;
-	});
-
-	const [dnsRecord] = createResource(fetchParams, async ([auth, wsId, domainId]) => {
-		if (!wsId || !auth || auth.type !== "LoggedIn") {
-			throw new Error("Not authenticated or workspace ID missing");
-		}
-
-		const response = await httpRequest<GetVerificationRecordsForDomainResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain/${domainId}/verification-records`,
-			{
-				method: "GET",
-			}
-		);
-
-		if (!response.ok) {
-			console.error("Failed to fetch DNS records:", response.data.error);
-			throw new Error("Failed to fetch DNS records");
-		}
-
-		return { records: response.data.verificationRecords || [] };
-	});
+	const verificationRecord = {
+		type: "TXT",
+		name: `_patr-verify.${props.domainName}`,
+		target: props.domainId,
+	};
 
 	const onVerifyClick = async (_: EventT<MouseEvent, HTMLButtonElement>) => {
 		setLoading(true);
@@ -109,65 +91,45 @@ const DNSRecords = (props: { domainId: string; closeFn: (prev: boolean) => void 
 			}}
 			closeFn={props.closeFn}
 		>
-			<ErrorBoundary
-				fallback={(err, reset) => (
-					<div class="text-white">
-						<p>Error loading DNS records: {err.message}</p>
-						<Button variant={ButtonVariant.Contained} onClick={reset}>
-							Retry
-						</Button>
-					</div>
-				)}
-			>
-				<Suspense
-					fallback={
-						<div class="flex items-center justify-center py-8">
-							<div class="text-gray-400">Loading DNS records...</div>
-						</div>
-					}
-				>
-					<Show when={dnsRecord()?.records.length}>
-						<p class="text-primary text-md mb-2">To verify domain, add the following DNS records:</p>
-						<div class="mb-4">
-							<Table
-								column_grids={["flex-2", "flex-5", "flex-5"]}
-								headings={["Type", "Name", "Value"]}
-								rows={dnsRecord()!.records}
-								renderRow={(record) => (
-									<tr class="table-row text-sm">
-										<td class="flex-2 flex items-center justify-center">
-											<CopyableField variant={CopyableFieldVariant.Text} value={record.type} />
-										</td>
-										<td class="flex-5 flex items-center justify-center min-w-0">
-											<CopyableField
-												variant={CopyableFieldVariant.Text}
-												value={record.name}
-												innerClass="truncate max-w-full"
-											/>
-										</td>
-										<td class="flex-5 flex items-center justify-center min-w-0">
-											<CopyableField
-												variant={CopyableFieldVariant.Text}
-												value={record.target}
-												innerClass="truncate max-w-full"
-											/>
-										</td>
-									</tr>
-								)}
-							/>
-							<p class="text-gray-400 text-xs mt-2">
-								After adding the DNS record, it may take up to 48 hours to propagate.
-							</p>
+			<p class="text-primary text-md mb-2">To verify domain, add the following DNS record:</p>
+			<div class="mb-4">
+				<Table
+					column_grids={["flex-2", "flex-5", "flex-5"]}
+					headings={["Type", "Name", "Value"]}
+					rows={[verificationRecord]}
+					renderRow={(record) => (
+						<tr class="table-row text-sm">
+							<td class="flex-2 flex items-center justify-center">
+								<CopyableField variant={CopyableFieldVariant.Text} value={record.type} />
+							</td>
+							<td class="flex-5 flex items-center justify-center min-w-0">
+								<CopyableField
+									variant={CopyableFieldVariant.Text}
+									value={record.name}
+									innerClass="truncate max-w-full"
+								/>
+							</td>
+							<td class="flex-5 flex items-center justify-center min-w-0">
+								<CopyableField
+									variant={CopyableFieldVariant.Text}
+									value={record.target}
+									innerClass="truncate max-w-full"
+								/>
+							</td>
+						</tr>
+					)}
+				/>
+				<p class="text-gray-400 text-xs mt-2">
+					After adding the DNS record, it may take up to 24 hours to propagate (but is usually done within a
+					few minutes).
+				</p>
 
-							<div class="w-full flex items-center justify-end mt-4">
-								<Button variant={ButtonVariant.Contained} onClick={onVerifyClick} disabled={loading()}>
-									{loading() ? "Verifying..." : "Verify"}
-								</Button>
-							</div>
-						</div>
-					</Show>
-				</Suspense>
-			</ErrorBoundary>
+				<div class="w-full flex items-center justify-end mt-4">
+					<Button variant={ButtonVariant.Contained} onClick={onVerifyClick} disabled={loading()}>
+						{loading() ? "Verifying..." : "Verify"}
+					</Button>
+				</div>
+			</div>
 		</ModalContainer>
 	);
 };
@@ -191,7 +153,9 @@ const VerificationIcon = (props: { domain: WorkspaceDomain }) => {
 						/>
 					</Button>
 				)}
-				renderModalContent={(close) => <DNSRecords domainId={props.domain.id} closeFn={close} />}
+				renderModalContent={(close) => (
+					<DNSRecords domainId={props.domain.id} domainName={props.domain.name} closeFn={close} />
+				)}
 			/>
 		</Show>
 	);

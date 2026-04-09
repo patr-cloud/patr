@@ -2,6 +2,9 @@
 /// This includes the embedded assets, the S3 upload logic, and the functions to
 /// get the URLs for the assets.
 pub mod assets;
+/// Cloudflare utilities: ingress KV sync, tunnel config, and Turnstile
+/// validation.
+pub mod cloudflare;
 /// The configuration data that is loaded when the backend starts. This contains
 /// the details of the database, Redis, the JWT secret, etc.
 pub mod config;
@@ -18,10 +21,6 @@ pub mod extractors;
 /// [2]: axum::Router
 pub mod layers;
 
-/// A Cloudflare Turnstile validator utility module. This contains the client
-/// and request/response types needed to validate Turnstile tokens.
-mod cf_turnstile_validator;
-
 /// Contains the extension traits that will be used to add functionality to
 /// existing types.
 mod extensions;
@@ -29,7 +28,7 @@ mod extensions;
 /// specific way, and to remove any fields that are not needed from the logs.
 mod tracing;
 
-pub use self::{cf_turnstile_validator::*, extensions::*, tracing::*};
+pub use self::{extensions::*, tracing::*};
 
 /// A list of constants that will be used throughout the application. This is
 /// mostly kept to prevent typos.

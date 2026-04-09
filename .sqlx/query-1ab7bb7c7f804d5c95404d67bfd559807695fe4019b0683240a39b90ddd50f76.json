@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO migrations(name, version) VALUES ($1, $2);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1ab7bb7c7f804d5c95404d67bfd559807695fe4019b0683240a39b90ddd50f76"
+}

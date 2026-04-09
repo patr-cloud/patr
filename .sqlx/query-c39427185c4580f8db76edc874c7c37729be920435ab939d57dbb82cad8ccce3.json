@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE managed_url_custom_hostname(sub_domain TEXT NOT NULL, domain_id UUID NOT NULL, cloudflare_custom_hostname_id TEXT NOT NULL, is_active BOOLEAN NOT NULL DEFAULT FALSE, last_verified TIMESTAMPTZ);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "c39427185c4580f8db76edc874c7c37729be920435ab939d57dbb82cad8ccce3"
+}

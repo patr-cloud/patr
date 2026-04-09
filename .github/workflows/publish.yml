@@ -5,8 +5,44 @@ on:
     branches: [develop, staging, master]
 
 jobs:
+  version:
+    name: Check Version
+    runs-on: ubuntu-latest
+    outputs:
+      full: ${{ steps.v.outputs.full }}
+      major: ${{ steps.v.outputs.major }}
+      minor: ${{ steps.v.outputs.minor }}
+      short_sha: ${{ steps.v.outputs.short_sha }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Extract version from Cargo.toml
+        id: v
+        run: |
+          VERSION=$(grep '^package.version' Cargo.toml | sed 's/.*= *"\(.*\)"/\1/')
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f1-2)
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+
+          echo "full=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
+          echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Reject duplicate version on stable
+        if: github.ref_name == 'master'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${{ steps.v.outputs.full }}"
+          if git tag -l "$TAG" | grep -q "$TAG"; then
+            echo "::error::Version $TAG already exists. Bump the version in Cargo.toml before merging to master."
+            exit 1
+          fi
+
   build-api:
     name: Build api (${{ matrix.arch }})
+    needs: [version]
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -19,25 +55,17 @@ jobs:
             runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v6
-
-      - name: Extract version from Cargo.toml
-        id: version
-        run: |
-          VERSION=$(grep '^package.version' Cargo.toml | sed 's/.*= *"\(.*\)"/\1/')
-          MAJOR=$(echo "$VERSION" | cut -d. -f1)
-          MINOR=$(echo "$VERSION" | cut -d. -f1-2)
-          echo "full=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
-          echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
+        with:
+          ref: ${{ github.ref_name }}
 
       - name: Compute Docker tags
         id: tags
         run: |
           IMAGE="patrcloud/api"
           BRANCH="${{ github.ref_name }}"
-          VERSION_FULL="${{ steps.version.outputs.full }}"
-          VERSION_MINOR="${{ steps.version.outputs.minor }}"
-          VERSION_MAJOR="${{ steps.version.outputs.major }}"
+          VERSION_FULL="${{ needs.version.outputs.full }}"
+          VERSION_MINOR="${{ needs.version.outputs.minor }}"
+          VERSION_MAJOR="${{ needs.version.outputs.major }}"
           ARCH="${{ matrix.arch }}"
 
           case "$BRANCH" in
@@ -76,6 +104,7 @@ jobs:
 
   build-frontend:
     name: Build frontend (${{ matrix.arch }})
+    needs: [version]
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -88,25 +117,17 @@ jobs:
             runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v6
-
-      - name: Extract version from Cargo.toml
-        id: version
-        run: |
-          VERSION=$(grep '^package.version' Cargo.toml | sed 's/.*= *"\(.*\)"/\1/')
-          MAJOR=$(echo "$VERSION" | cut -d. -f1)
-          MINOR=$(echo "$VERSION" | cut -d. -f1-2)
-          echo "full=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
-          echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
+        with:
+          ref: ${{ github.ref_name }}
 
       - name: Compute Docker tags
         id: tags
         run: |
           IMAGE="patrcloud/frontend"
           BRANCH="${{ github.ref_name }}"
-          VERSION_FULL="${{ steps.version.outputs.full }}"
-          VERSION_MINOR="${{ steps.version.outputs.minor }}"
-          VERSION_MAJOR="${{ steps.version.outputs.major }}"
+          VERSION_FULL="${{ needs.version.outputs.full }}"
+          VERSION_MINOR="${{ needs.version.outputs.minor }}"
+          VERSION_MAJOR="${{ needs.version.outputs.major }}"
           ARCH="${{ matrix.arch }}"
 
           case "$BRANCH" in
@@ -148,6 +169,7 @@ jobs:
 
   build-cli-binaries:
     name: Build CLI (${{ matrix.artifact_name }})
+    needs: [version]
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -170,6 +192,8 @@ jobs:
             archive_ext: zip
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
 
       - name: Install Rust nightly
         uses: dtolnay/rust-toolchain@nightly
@@ -195,6 +219,9 @@ jobs:
 
       - name: Build CLI
         run: cargo build --release --package cli --locked
+        env:
+          PATR_BUILD_CHANNEL: ${{ github.ref_name == 'master' && 'stable' || github.ref_name == 'staging' && 'beta' || 'alpha' }}
+          PATR_BUILD_SHA: ${{ github.sha }}
 
       - name: Package binary (tar.gz)
         if: matrix.archive_ext == 'tar.gz'
@@ -213,6 +240,7 @@ jobs:
 
   build-cli-docker:
     name: Build CLI Docker (${{ matrix.arch }})
+    needs: [version]
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -225,27 +253,19 @@ jobs:
             runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v6
-
-      - name: Extract version from Cargo.toml
-        id: version
-        run: |
-          VERSION=$(grep '^package.version' Cargo.toml | sed 's/.*= *"\(.*\)"/\1/')
-          MAJOR=$(echo "$VERSION" | cut -d. -f1)
-          MINOR=$(echo "$VERSION" | cut -d. -f1-2)
-          echo "full=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
-          echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
+        with:
+          ref: ${{ github.ref_name }}
 
       - name: Compute Docker tags
         id: tags
         run: |
           IMAGE="patrcloud/cli"
           BRANCH="${{ github.ref_name }}"
-          VERSION_FULL="${{ steps.version.outputs.full }}"
-          VERSION_MINOR="${{ steps.version.outputs.minor }}"
-          VERSION_MAJOR="${{ steps.version.outputs.major }}"
+          VERSION_FULL="${{ needs.version.outputs.full }}"
+          VERSION_MINOR="${{ needs.version.outputs.minor }}"
+          VERSION_MAJOR="${{ needs.version.outputs.major }}"
           ARCH="${{ matrix.arch }}"
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          SHORT_SHA="${{ needs.version.outputs.short_sha }}"
 
           case "$BRANCH" in
             master)
@@ -276,28 +296,21 @@ jobs:
             TAG_FLAGS="$TAG_FLAGS -t $TAG"
           done
 
-          docker build $TAG_FLAGS -f cli/Dockerfile .
+          CHANNEL="${{ github.ref_name == 'master' && 'stable' || github.ref_name == 'staging' && 'beta' || 'alpha' }}"
+
+          docker build $TAG_FLAGS \
+            --build-arg PATR_BUILD_CHANNEL=$CHANNEL \
+            --build-arg PATR_BUILD_SHA=${{ github.sha }} \
+            -f cli/Dockerfile .
           for TAG in "${TAG_ARRAY[@]}"; do
             docker push "$TAG"
           done
 
   manifest-api:
     name: Multi-arch manifest for api
-    needs: build-api
+    needs: [version, build-api]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-
-      - name: Extract version from Cargo.toml
-        id: version
-        run: |
-          VERSION=$(grep '^package.version' Cargo.toml | sed 's/.*= *"\(.*\)"/\1/')
-          MAJOR=$(echo "$VERSION" | cut -d. -f1)
-          MINOR=$(echo "$VERSION" | cut -d. -f1-2)
-          echo "full=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
-          echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
-
       - name: Log in to Docker Hub
         run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
@@ -305,9 +318,9 @@ jobs:
         run: |
           IMAGE="patrcloud/api"
           BRANCH="${{ github.ref_name }}"
-          VERSION_FULL="${{ steps.version.outputs.full }}"
-          VERSION_MINOR="${{ steps.version.outputs.minor }}"
-          VERSION_MAJOR="${{ steps.version.outputs.major }}"
+          VERSION_FULL="${{ needs.version.outputs.full }}"
+          VERSION_MINOR="${{ needs.version.outputs.minor }}"
+          VERSION_MAJOR="${{ needs.version.outputs.major }}"
 
           case "$BRANCH" in
             master)
@@ -334,21 +347,9 @@ jobs:
 
   manifest-frontend:
     name: Multi-arch manifest for frontend
-    needs: build-frontend
+    needs: [version, build-frontend]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-
-      - name: Extract version from Cargo.toml
-        id: version
-        run: |
-          VERSION=$(grep '^package.version' Cargo.toml | sed 's/.*= *"\(.*\)"/\1/')
-          MAJOR=$(echo "$VERSION" | cut -d. -f1)
-          MINOR=$(echo "$VERSION" | cut -d. -f1-2)
-          echo "full=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
-          echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
-
       - name: Log in to Docker Hub
         run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
@@ -356,9 +357,9 @@ jobs:
         run: |
           IMAGE="patrcloud/frontend"
           BRANCH="${{ github.ref_name }}"
-          VERSION_FULL="${{ steps.version.outputs.full }}"
-          VERSION_MINOR="${{ steps.version.outputs.minor }}"
-          VERSION_MAJOR="${{ steps.version.outputs.major }}"
+          VERSION_FULL="${{ needs.version.outputs.full }}"
+          VERSION_MINOR="${{ needs.version.outputs.minor }}"
+          VERSION_MAJOR="${{ needs.version.outputs.major }}"
 
           case "$BRANCH" in
             master)
@@ -400,21 +401,9 @@ jobs:
 
   manifest-cli:
     name: Multi-arch manifest for CLI
-    needs: build-cli-docker
+    needs: [version, build-cli-docker]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-
-      - name: Extract version from Cargo.toml
-        id: version
-        run: |
-          VERSION=$(grep '^package.version' Cargo.toml | sed 's/.*= *"\(.*\)"/\1/')
-          MAJOR=$(echo "$VERSION" | cut -d. -f1)
-          MINOR=$(echo "$VERSION" | cut -d. -f1-2)
-          echo "full=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
-          echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
-
       - name: Log in to Docker Hub
         run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
@@ -422,10 +411,10 @@ jobs:
         run: |
           IMAGE="patrcloud/cli"
           BRANCH="${{ github.ref_name }}"
-          VERSION_FULL="${{ steps.version.outputs.full }}"
-          VERSION_MINOR="${{ steps.version.outputs.minor }}"
-          VERSION_MAJOR="${{ steps.version.outputs.major }}"
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          VERSION_FULL="${{ needs.version.outputs.full }}"
+          VERSION_MINOR="${{ needs.version.outputs.minor }}"
+          VERSION_MAJOR="${{ needs.version.outputs.major }}"
+          SHORT_SHA="${{ needs.version.outputs.short_sha }}"
 
           case "$BRANCH" in
             master)
@@ -452,18 +441,16 @@ jobs:
 
   github-release:
     name: Create GitHub Release
-    needs: build-cli-binaries
+    needs: [version, build-cli-binaries]
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v6
-
-      - name: Extract version from Cargo.toml
-        id: version
-        run: |
-          VERSION=$(grep '^package.version' Cargo.toml | sed 's/.*= *"\(.*\)"/\1/')
-          echo "full=$VERSION" >> "$GITHUB_OUTPUT"
+        with:
+          fetch-depth: 0
 
       - name: Download all CLI artifacts
         uses: actions/download-artifact@v8
@@ -481,10 +468,12 @@ jobs:
 
       - name: Compute release tag
         id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           BRANCH="${{ github.ref_name }}"
-          VERSION="${{ steps.version.outputs.full }}"
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          VERSION="${{ needs.version.outputs.full }}"
+          SHORT_SHA="${{ needs.version.outputs.short_sha }}"
 
           case "$BRANCH" in
             master)
@@ -493,9 +482,14 @@ jobs:
               NAME="Patr CLI v${VERSION}"
               ;;
             staging)
-              TAG="v${VERSION}-beta"
+              # Find the next beta number by counting existing beta tags for this version
+              BETA_NUM=1
+              while git tag -l "v${VERSION}-beta.${BETA_NUM}" | grep -q .; do
+                BETA_NUM=$((BETA_NUM + 1))
+              done
+              TAG="v${VERSION}-beta.${BETA_NUM}"
               PRERELEASE=true
-              NAME="Patr CLI v${VERSION}-beta"
+              NAME="Patr CLI v${VERSION}-beta.${BETA_NUM}"
               ;;
             develop)
               TAG="alpha"
@@ -513,14 +507,14 @@ jobs:
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
 
       - name: Force-update tag to current commit
-        if: github.ref_name == 'develop' || github.ref_name == 'staging'
+        if: github.ref_name == 'develop'
         run: |
           TAG="${{ steps.release.outputs.tag }}"
           git tag -f "$TAG"
           git push -f origin "$TAG"
 
       - name: Delete existing release assets
-        if: github.ref_name == 'develop' || github.ref_name == 'staging'
+        if: github.ref_name == 'develop'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -542,56 +536,35 @@ jobs:
 
   update-homebrew-tap:
     name: Update Homebrew formula
-    needs: [github-release, build-cli-binaries]
+    needs: [version, github-release, build-cli-binaries]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-
-      - name: Extract version from Cargo.toml
-        id: version
-        run: |
-          VERSION=$(grep '^package.version' Cargo.toml | sed 's/.*= *"\(.*\)"/\1/')
-          BRANCH="${{ github.ref_name }}"
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-
-          case "$BRANCH" in
-            master)
-              BREW_VERSION="${VERSION}"
-              ;;
-            staging)
-              BREW_VERSION="${VERSION}-beta"
-              ;;
-            develop)
-              BREW_VERSION="${VERSION}-alpha.${{ github.run_number }}"
-              ;;
-          esac
-
-          echo "full=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "brew_version=$BREW_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Compute release tag and formula
         id: brew
         run: |
           BRANCH="${{ github.ref_name }}"
-          VERSION="${{ steps.version.outputs.full }}"
+          VERSION="${{ needs.version.outputs.full }}"
+          TAG="${{ needs.github-release.outputs.tag }}"
 
           case "$BRANCH" in
             master)
-              TAG="v${VERSION}"
+              BREW_VERSION="${VERSION}"
               FORMULA="cli"
               CLASS="Cli"
               CONFLICTS_A="alpha"
               CONFLICTS_B="beta"
               ;;
             staging)
-              TAG="v${VERSION}-beta"
+              BREW_VERSION="${TAG#v}"
               FORMULA="beta"
               CLASS="Beta"
               CONFLICTS_A="cli"
               CONFLICTS_B="alpha"
               ;;
             develop)
-              TAG="alpha"
+              BREW_VERSION="${VERSION}-alpha.${{ github.run_number }}"
               FORMULA="alpha"
               CLASS="Alpha"
               CONFLICTS_A="cli"
@@ -603,6 +576,7 @@ jobs:
               ;;
           esac
 
+          echo "brew_version=$BREW_VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "formula=$FORMULA" >> "$GITHUB_OUTPUT"
           echo "class=$CLASS" >> "$GITHUB_OUTPUT"
@@ -610,7 +584,6 @@ jobs:
           echo "conflicts_b=$CONFLICTS_B" >> "$GITHUB_OUTPUT"
 
       - name: Download build artifacts and compute checksums
-        id: checksums
         uses: actions/download-artifact@v8
         with:
           pattern: patr-*
@@ -628,8 +601,8 @@ jobs:
         env:
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
-          TAG="${{ steps.brew.outputs.tag }}"
-          VERSION="${{ steps.version.outputs.brew_version }}"
+          TAG="${{ needs.github-release.outputs.tag }}"
+          VERSION="${{ steps.brew.outputs.brew_version }}"
           FORMULA="${{ steps.brew.outputs.formula }}"
           REPO="${{ github.repository }}"
           BASE_URL="https://github.com/${REPO}/releases/download/${TAG}"

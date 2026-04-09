@@ -12,7 +12,7 @@ RUN cargo bindings
 
 FROM node:24-alpine as frontend
 
-RUN corepack enable && corepack prepare pnpm@10.30.1 --activate
+RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
 WORKDIR /app/frontend
 
@@ -29,6 +29,11 @@ RUN pnpm build
 FROM rust:1 as build
 
 RUN apt update && apt install -y build-essential clang
+
+ARG PATR_BUILD_CHANNEL
+ARG PATR_BUILD_SHA
+ENV PATR_BUILD_CHANNEL=${PATR_BUILD_CHANNEL}
+ENV PATR_BUILD_SHA=${PATR_BUILD_SHA}
 
 WORKDIR /app
 

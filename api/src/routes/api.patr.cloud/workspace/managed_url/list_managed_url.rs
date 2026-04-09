@@ -48,17 +48,17 @@ pub async fn list_managed_url(
 		r#"
 		SELECT
 			managed_url.id,
-			sub_domain,
-			domain_id,
-			path,
-			url_type AS "url_type: ManagedUrlTypeDiscriminant",
-			deployment_id,
-			port,
-			static_site_id,
-			url,
-			is_active,
-			permanent_redirect,
-			http_only,
+			managed_url.sub_domain,
+			managed_url.domain_id,
+			managed_url.path,
+			managed_url.url_type AS "url_type: ManagedUrlTypeDiscriminant",
+			managed_url.deployment_id,
+			managed_url.port,
+			managed_url.static_site_id,
+			managed_url.url,
+			managed_url_custom_hostname.is_active,
+			managed_url.permanent_redirect,
+			managed_url.http_only,
 			COUNT(*) OVER() AS "total_count!"
 		FROM
 			managed_url
@@ -66,14 +66,19 @@ pub async fn list_managed_url(
 			RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource
 		ON
 			managed_url.id = resource.id
+		INNER JOIN
+			managed_url_custom_hostname
+		ON
+			managed_url.sub_domain = managed_url_custom_hostname.sub_domain AND
+			managed_url.domain_id = managed_url_custom_hostname.domain_id
 		WHERE
-			workspace_id = $1 AND
+			managed_url.workspace_id = $1 AND
 			managed_url.deleted IS NULL AND
 			($4::TEXT IS NULL OR managed_url.sub_domain ILIKE '%' || $4 || '%') AND
 			($5::UUID IS NULL OR managed_url.domain_id = $5) AND
 			($6::TEXT IS NULL OR managed_url.path ILIKE '%' || $6 || '%') AND
 			($7::MANAGED_URL_TYPE IS NULL OR managed_url.url_type = $7) AND
-			($8::BOOLEAN IS NULL OR managed_url.is_active = $8)
+			($8::BOOLEAN IS NULL OR managed_url_custom_hostname.is_active = $8)
 		ORDER BY
 			resource.created DESC
 		LIMIT $9

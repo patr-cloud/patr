@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT cloudflare_custom_hostname_id FROM managed_url_custom_hostname WHERE sub_domain = $1 AND domain_id = $2 FOR UPDATE;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "cloudflare_custom_hostname_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "2941bdcc988462ae9a75e6f325ed95f19a316cf0b4d4e3749726cc8a6f0149b2"
+}
