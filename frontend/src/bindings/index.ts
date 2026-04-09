@@ -69,7 +69,6 @@ import { RevokeApiTokenRequest } from "./RevokeApiTokenRequest";
 import { GetCurrentPermissionsRequest } from "./GetCurrentPermissionsRequest";
 import { GetCurrentPermissionsResponse } from "./GetCurrentPermissionsResponse";
 import { Deployment } from "./Deployment";
-import { GetVerificationRecordsForDomainResponse } from "./GetVerificationRecordsForDomainResponse";
 import { PatrDomainDnsRecord } from "./PatrDomainDnsRecord";
 import { Role } from "./Role";
 import { ResourcePermissionType } from "./ResourcePermissionType";
@@ -163,7 +162,6 @@ export type {
 	GetCurrentPermissionsRequest,
 	GetCurrentPermissionsResponse,
 	Deployment,
-	GetVerificationRecordsForDomainResponse,
 	PatrDomainDnsRecord,
 	Role,
 	GetRoleInfoResponse,
