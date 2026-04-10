@@ -123,7 +123,7 @@ pub async fn initialize(app: &AppState) -> Result<(), ErrorType> {
 
 				// Run pending migrations (from current DB version onwards, including
 				// equal to cover alpha -> stable channel switches)
-				crate::migrations::run_migrations(&mut transaction, &version, &app.config).await?;
+				crate::migrations::run_migrations(&mut transaction, &version).await?;
 			}
 		}
 	}

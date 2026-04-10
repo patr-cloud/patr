@@ -70,7 +70,7 @@ pub fn parse(args: TokenStream, input: TokenStream) -> TokenStream {
 			crate::migrations::Migration {
 				name: #name,
 				version: ::semver::Version::new(#major, #minor, #patch),
-				migrate: |conn, config| ::std::boxed::Box::pin(#fn_name(conn, config)),
+				migrate: |conn| ::std::boxed::Box::pin(#fn_name(conn)),
 			}
 		}
 	}

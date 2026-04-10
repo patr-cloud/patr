@@ -27,7 +27,7 @@ pub struct Migration {
 	/// The migration function
 	pub migrate: for<'a> fn(
 		&'a mut DatabaseConnection,
-	) -> Pin<Box<dyn Future<Output = Result<(), ErrorType>> + Send + 'a>>,
+	) -> Pin<Box<dyn Future<Output = Result<(), sqlx::Error>> + Send + 'a>>,
 }
 
 inventory::collect!(Migration);
@@ -39,19 +39,19 @@ inventory::collect!(Migration);
 pub async fn run_migrations(
 	connection: &mut DatabaseConnection,
 	from_version: &Version,
-) -> Result<(), ErrorType> {
-	let applied = query!(
+) -> Result<(), sqlx::Error> {
+	let applied = query(
 		r#"
 		SELECT
 			name
 		FROM
 			migrations;
-		"#
+		"#,
 	)
 	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
-	.map(|record| record.name)
+	.map(|row| row.get::<String, _>("name"))
 	.collect::<HashSet<String>>();
 
 	let mut migrations = inventory::iter::<Migration>
@@ -70,16 +70,16 @@ pub async fn run_migrations(
 		(migration.migrate)(&mut *connection).await?;
 
 		let version = migration.version.to_string();
-		query!(
+		query(
 			r#"
 			INSERT INTO
 				migrations(name, version)
 			VALUES
 				($1, $2);
 			"#,
-			migration.name,
-			version
 		)
+		.bind(migration.name)
+		.bind(&version)
 		.execute(&mut *connection)
 		.await?;
 
@@ -91,10 +91,10 @@ pub async fn run_migrations(
 
 /// Marks all registered migrations as applied without running them. Used
 /// on fresh database initialization where the schema is already current.
-pub async fn mark_all_applied(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
+pub async fn mark_all_applied(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error> {
 	for migration in inventory::iter::<Migration> {
 		let version = migration.version.to_string();
-		query!(
+		query(
 			r#"
 			INSERT INTO
 				migrations(name, version)
@@ -103,9 +103,9 @@ pub async fn mark_all_applied(connection: &mut DatabaseConnection) -> Result<(),
 			ON CONFLICT
 			DO NOTHING;
 			"#,
-			migration.name,
-			version
 		)
+		.bind(migration.name)
+		.bind(&version)
 		.execute(&mut *connection)
 		.await?;
 	}

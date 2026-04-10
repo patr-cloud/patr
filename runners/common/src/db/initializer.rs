@@ -38,26 +38,11 @@ where
 		super::initialize_meta_indices(&mut connection).await?;
 		super::initialize_workspace_indices(&mut connection).await?;
 
-		query(
-			r#"
-			INSERT INTO
-				meta_data(
-					id,
-					value
-				)
-			VALUES
-				('version_major', $1),
-				('version_minor', $2),
-				('version_patch', $3);
-			"#,
-		)
-		.bind(constants::DATABASE_VERSION.major.to_string())
-		.bind(constants::DATABASE_VERSION.minor.to_string())
-		.bind(constants::DATABASE_VERSION.patch.to_string())
-		.execute(&mut *connection)
-		.await?;
+		// Mark all existing migrations as applied — the fresh schema is
+		// already current, so migrations should not actually execute.
+		crate::migrations::mark_all_applied(&mut connection).await?;
 
-		info!("Database created");
+		info!("Database created fresh");
 	} else {
 		let rows = query(
 			r#"
@@ -99,29 +84,33 @@ where
 				error!("Database version is higher than what's recognized. Exiting...");
 				panic!();
 			}
-			Ordering::Less => {
+			Ordering::Less | Ordering::Equal => {
 				info!(
 					"Migrating from {}.{}.{}",
 					version.major, version.minor, version.patch
 				);
 
-				// migrations::run_migrations(&mut transaction, version, &app.config).await?;
-
-				info!(
-					"Migration completed. Database is now at version {}.{}.{}",
-					constants::DATABASE_VERSION.major,
-					constants::DATABASE_VERSION.minor,
-					constants::DATABASE_VERSION.patch
-				);
-			}
-			Ordering::Equal => {
-				info!("Database already in the latest version. No migration required.");
+				crate::migrations::run_migrations(&mut connection, &version).await?;
 			}
 		}
-
-		// Any initialization that needs to be done after the migration goes
-		// here: ...
 	}
+
+	// Set the database schema version
+	query(
+		r#"
+		INSERT OR REPLACE INTO
+			meta_data(id, value)
+		VALUES
+			('version_major', $1),
+			('version_minor', $2),
+			('version_patch', $3);
+		"#,
+	)
+	.bind(constants::DATABASE_VERSION.major.to_string())
+	.bind(constants::DATABASE_VERSION.minor.to_string())
+	.bind(constants::DATABASE_VERSION.patch.to_string())
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }

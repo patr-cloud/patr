@@ -1467,6 +1467,7 @@ dependencies = [
  "fslock",
  "futures",
  "http 1.4.0",
+ "inventory",
  "jsonwebtoken",
  "macros",
  "models",

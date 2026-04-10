@@ -17,6 +17,9 @@ mod error;
 /// The executor module contains the trait that the runner needs to implement
 /// to run the resources.
 mod executor;
+/// Database migrations organized by version. Uses `inventory` for automatic
+/// registration and tracks individual migrations in a `migrations` table.
+mod migrations;
 /// The resource executor that will be used to manage the resources.
 mod resource_executor;
 /// All the Routes for the self-hosted Patr is defined here.

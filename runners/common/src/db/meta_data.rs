@@ -16,6 +16,19 @@ pub async fn initialize_meta_tables(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	query(
+		r#"
+		CREATE TABLE migrations(
+			name TEXT NOT NULL PRIMARY KEY,
+			version TEXT NOT NULL,
+			applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+		);
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 

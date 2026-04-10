@@ -5,12 +5,9 @@
 //! schema directly; this migration exists so the tracking table records
 //! that v0.18.0 has been accounted for.
 
-use crate::{prelude::*, utils::config::AppConfig};
+use crate::prelude::*;
 
 #[macros::migration]
-async fn migrate(
-	_connection: &mut DatabaseConnection,
-	_config: &AppConfig,
-) -> Result<(), ErrorType> {
+async fn migrate(_connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 	Ok(())
 }
