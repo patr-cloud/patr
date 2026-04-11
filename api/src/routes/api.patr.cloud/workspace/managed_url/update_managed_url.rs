@@ -79,8 +79,6 @@ pub async fn update_managed_url(
 	let permanent_redirect;
 	let http_only;
 
-	let mut runner_id_to_update = None;
-
 	if let Some(managed_url_type) = managed_url_type {
 		match managed_url_type {
 			ManagedUrlType::ProxyDeployment {
@@ -108,8 +106,6 @@ pub async fn update_managed_url(
 				.fetch_optional(&mut **database)
 				.await?
 				.ok_or(ErrorType::WrongParameters)?;
-
-				runner_id_to_update = Some(deployment.runner);
 
 				url_type = Some(ManagedUrlTypeDiscriminant::ProxyDeployment);
 				deployment_id = Some(managed_url_deployment_id);
@@ -219,11 +215,6 @@ pub async fn update_managed_url(
 		&state.config,
 	)
 	.await?;
-
-	if let Some(runner_id) = runner_id_to_update {
-		utils::cloudflare::update_tunnel_config_for_runner(runner_id, database, &state.config)
-			.await?;
-	}
 
 	AppResponse::builder()
 		.body(UpdateManagedURLResponse)

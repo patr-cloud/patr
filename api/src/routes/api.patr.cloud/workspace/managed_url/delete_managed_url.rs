@@ -104,11 +104,6 @@ pub async fn delete_managed_url(
 	)
 	.await?;
 
-	if let Some(runner_id) = managed_url.connected_deployment_runner {
-		utils::cloudflare::update_tunnel_config_for_runner(runner_id, database, &state.config)
-			.await?;
-	}
-
 	// Lock the custom hostname row to prevent race conditions with concurrent
 	// create/delete operations on the same FQDN
 	let locked_hostname = query!(

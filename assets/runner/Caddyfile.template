@@ -1,4 +1,4 @@
 
-{port}-{deployment_id}.onpatr.cloud {{
+{scheme}{port}-{deployment_id}.onpatr.cloud {{
 	reverse_proxy {deployment_id}.onpatr.local:{port}
 }}

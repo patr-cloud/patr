@@ -2,11 +2,19 @@
 	http_port 80
 	https_port 443
 
+	metrics {
+		per_host
+	}
+
 	admin off
 	persist_config off
 
 	skip_install_trust
 	acme_ca {$ACME_CA_URL}
+}
+
+:9180 {
+	metrics /metrics
 }
 
 import /etc/caddy/deployments/*.caddy

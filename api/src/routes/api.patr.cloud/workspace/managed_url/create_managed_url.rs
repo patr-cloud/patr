@@ -80,8 +80,6 @@ pub async fn create_managed_url(
 
 	info!("Creating ManagedURL: `{}.{}{}`", sub_domain, domain, path);
 
-	let mut runner_id_to_update = None;
-
 	// TODO: Check if the user has access to the deployment or static site (ON THE
 	// RIGHT WORKSPACE) if the URL type is a proxy.
 	let (url_discriminant, deployment_id, port, static_site_id, url, permanent_redirect, http_only) =
@@ -111,8 +109,6 @@ pub async fn create_managed_url(
 				.fetch_optional(&mut **database)
 				.await?
 				.ok_or(ErrorType::WrongParameters)?;
-
-				runner_id_to_update = Some(deployment.runner);
 
 				(
 					ManagedUrlTypeDiscriminant::ProxyDeployment,
@@ -325,11 +321,6 @@ pub async fn create_managed_url(
 		&state.config,
 	)
 	.await?;
-
-	if let Some(runner_id) = runner_id_to_update {
-		utils::cloudflare::update_tunnel_config_for_runner(runner_id, database, &state.config)
-			.await?;
-	}
 
 	AppResponse::builder()
 		.body(CreateManagedURLResponse {

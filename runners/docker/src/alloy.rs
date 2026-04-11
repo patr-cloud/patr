@@ -117,6 +117,13 @@ pub async fn update_alloy_service(
 						read_only: Some(true),
 						..Default::default()
 					},
+					Mount {
+						target: Some(String::from("/var/lib/docker")),
+						source: Some(String::from("/var/lib/docker")),
+						typ: Some(MountTypeEnum::BIND),
+						read_only: Some(true),
+						..Default::default()
+					},
 				]),
 				..Default::default()
 			}),
@@ -191,10 +198,6 @@ discovery.relabel "patr" {{
     target_label  = "deployment_id"
   }}
   rule {{
-    source_labels = ["__meta_docker_container_label_patr_deploymentName"]
-    target_label  = "deployment_name"
-  }}
-  rule {{
     target_label = "runner_id"
     replacement  = "{runner_id}"
   }}
@@ -251,6 +254,181 @@ prometheus.relabel "system" {{
   rule {{
     target_label = "source"
     replacement  = "runner"
+  }}
+}}
+
+prometheus.exporter.cadvisor "containers" {{
+  docker_host = "unix:///var/run/docker.sock"
+  docker_only = true
+  store_container_labels = true
+}}
+
+prometheus.scrape "containers" {{
+  targets    = prometheus.exporter.cadvisor.containers.targets
+  forward_to = [prometheus.relabel.containers.receiver]
+  scrape_interval = "15s"
+}}
+
+prometheus.relabel "containers" {{
+  forward_to = [prometheus.remote_write.mimir.receiver]
+
+  rule {{
+    source_labels = ["container_label_patr_deploymentId"]
+    target_label  = "deployment_id"
+  }}
+
+  rule {{
+    source_labels = ["__name__"]
+    regex         = "container_cpu_usage_seconds_total"
+    target_label  = "__name__"
+    replacement   = "patr_container_cpu_usage_seconds_total"
+  }}
+  rule {{
+    source_labels = ["__name__"]
+    regex         = "container_cpu_cfs_throttled_seconds_total"
+    target_label  = "__name__"
+    replacement   = "patr_container_cpu_throttled_seconds_total"
+  }}
+  rule {{
+    source_labels = ["__name__"]
+    regex         = "container_memory_working_set_bytes"
+    target_label  = "__name__"
+    replacement   = "patr_container_memory_used_bytes"
+  }}
+  rule {{
+    source_labels = ["__name__"]
+    regex         = "container_spec_memory_limit_bytes"
+    target_label  = "__name__"
+    replacement   = "patr_container_memory_limit_bytes"
+  }}
+  rule {{
+    source_labels = ["__name__"]
+    regex         = "container_network_receive_bytes_total"
+    target_label  = "__name__"
+    replacement   = "patr_container_network_rx_bytes_total"
+  }}
+  rule {{
+    source_labels = ["__name__"]
+    regex         = "container_network_transmit_bytes_total"
+    target_label  = "__name__"
+    replacement   = "patr_container_network_tx_bytes_total"
+  }}
+  rule {{
+    source_labels = ["__name__"]
+    regex         = "container_fs_reads_bytes_total"
+    target_label  = "__name__"
+    replacement   = "patr_container_disk_read_bytes_total"
+  }}
+  rule {{
+    source_labels = ["__name__"]
+    regex         = "container_fs_writes_bytes_total"
+    target_label  = "__name__"
+    replacement   = "patr_container_disk_write_bytes_total"
+  }}
+  rule {{
+    source_labels = ["__name__"]
+    regex         = "container_oom_events_total"
+    target_label  = "__name__"
+    replacement   = "patr_container_oom_kills_total"
+  }}
+
+  rule {{
+    target_label = "runner_id"
+    replacement  = "{runner_id}"
+  }}
+  rule {{
+    target_label = "workspace_id"
+    replacement  = "{workspace_id}"
+  }}
+  rule {{
+    target_label = "source"
+    replacement  = "deployment"
+  }}
+
+  rule {{
+    source_labels = ["__name__"]
+    regex         = "patr_.*"
+    action        = "keep"
+  }}
+}}
+
+prometheus.scrape "ingress" {{
+  targets = [{{
+    __address__ = "patr-ingress:9180",
+  }}]
+  forward_to = [prometheus.relabel.ingress.receiver]
+  scrape_interval = "15s"
+}}
+
+prometheus.relabel "ingress" {{
+  forward_to = [prometheus.remote_write.mimir.receiver]
+
+  rule {{
+    source_labels = ["host"]
+    regex         = "\\d+-([a-f0-9]+)\\.onpatr\\.cloud"
+    target_label  = "deployment_id"
+  }}
+
+  rule {{
+    source_labels = ["__name__"]
+    regex         = "caddy_http_requests_total"
+    target_label  = "__name__"
+    replacement   = "patr_ingress_requests_total"
+  }}
+  rule {{
+    source_labels = ["__name__"]
+    regex         = "caddy_http_request_duration_seconds(.*)"
+    target_label  = "__name__"
+    replacement   = "patr_ingress_request_duration_seconds${{1}}"
+  }}
+  rule {{
+    source_labels = ["__name__"]
+    regex         = "caddy_http_response_duration_seconds(.*)"
+    target_label  = "__name__"
+    replacement   = "patr_ingress_response_duration_seconds${{1}}"
+  }}
+  rule {{
+    source_labels = ["__name__"]
+    regex         = "caddy_http_request_errors_total"
+    target_label  = "__name__"
+    replacement   = "patr_ingress_request_errors_total"
+  }}
+  rule {{
+    source_labels = ["__name__"]
+    regex         = "caddy_http_requests_in_flight"
+    target_label  = "__name__"
+    replacement   = "patr_ingress_requests_in_flight"
+  }}
+  rule {{
+    source_labels = ["__name__"]
+    regex         = "caddy_http_request_size_bytes(.*)"
+    target_label  = "__name__"
+    replacement   = "patr_ingress_request_size_bytes${{1}}"
+  }}
+  rule {{
+    source_labels = ["__name__"]
+    regex         = "caddy_http_response_size_bytes(.*)"
+    target_label  = "__name__"
+    replacement   = "patr_ingress_response_size_bytes${{1}}"
+  }}
+
+  rule {{
+    target_label = "runner_id"
+    replacement  = "{runner_id}"
+  }}
+  rule {{
+    target_label = "workspace_id"
+    replacement  = "{workspace_id}"
+  }}
+  rule {{
+    target_label = "source"
+    replacement  = "deployment"
+  }}
+
+  rule {{
+    source_labels = ["__name__"]
+    regex         = "patr_.*"
+    action        = "keep"
   }}
 }}
 

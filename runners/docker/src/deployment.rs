@@ -226,7 +226,11 @@ pub(crate) async fn upsert(
 		.into_iter()
 		.filter(|(_, r#type)| matches!(r#type, ExposedPortType::Http))
 	{
-		config.push_str(&ingress::generate_config_for_deployment(id, port.value()));
+		config.push_str(&ingress::generate_config_for_deployment(
+			id,
+			port.value(),
+			settings.data.runner_exposure_type.is_private(),
+		));
 	}
 
 	let config = Base64String::from_string(config);

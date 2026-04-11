@@ -172,16 +172,6 @@ pub async fn cleanup_unverified_domains(_: Tick, data: Data<AppState>) -> Result
 			utils::cloudflare::sync_ingress_kv_for_fqdn(&fqdn, &mut conn, &data.config)
 				.await
 				.map_err(|err| WorkerStateError::InvalidState(err.to_string()))?;
-
-			if let Some(runner_id) = url.runner {
-				utils::cloudflare::update_tunnel_config_for_runner(
-					runner_id,
-					&mut conn,
-					&data.config,
-				)
-				.await
-				.map_err(|err| WorkerStateError::InvalidState(err.to_string()))?;
-			}
 		}
 
 		// Delete domain records

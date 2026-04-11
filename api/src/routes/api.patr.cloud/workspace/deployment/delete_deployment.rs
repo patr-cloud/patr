@@ -182,8 +182,6 @@ pub async fn delete_deployment(
 	})
 	.await?;
 
-	utils::cloudflare::update_tunnel_config_for_runner(runner, database, &state.config).await?;
-
 	// TODO Temporary workaround until audit logs and triggers are implemented
 	redis
 		.publish(

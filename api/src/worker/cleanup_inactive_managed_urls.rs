@@ -164,19 +164,6 @@ pub async fn cleanup_inactive_managed_urls(
 			.await
 			.map_err(|err| WorkerStateError::InvalidState(err.to_string()))?;
 
-		// Update runner configs
-		for url in &managed_urls {
-			if let Some(runner_id) = url.runner {
-				utils::cloudflare::update_tunnel_config_for_runner(
-					runner_id,
-					&mut conn,
-					&data.config,
-				)
-				.await
-				.map_err(|err| WorkerStateError::InvalidState(err.to_string()))?;
-			}
-		}
-
 		// TODO send an email to the workspace super-admin notifying them that
 		// the managed URLs for this FQDN have been removed
 

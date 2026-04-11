@@ -33,11 +33,8 @@ pub async fn update_ingress_configs(
 	docker: &Docker,
 	settings: &RunnerSettings<DockerSettings>,
 ) -> Result<(), RunnerError> {
-	let ingress_service_spec = if settings.data.runner_exposure_type.is_private() {
-		get_cloudflare_spec(docker, settings).await?
-	} else {
-		get_ingress_spec(docker, settings).await?
-	};
+	// Always deploy Caddy as the ingress service, regardless of exposure type
+	let ingress_service_spec = get_ingress_spec(docker, settings).await?;
 
 	let ingress = docker
 		.inspect_service(constants::INGRESS_SERVICE_NAME, None)
@@ -66,6 +63,38 @@ pub async fn update_ingress_configs(
 			.map_err(RunnerError::host)?;
 	}
 
+	// For private runners, also deploy the Cloudflare tunnel as a separate service
+	if settings.data.runner_exposure_type.is_private() {
+		let tunnel_service_spec = get_cloudflare_spec(docker, settings).await?;
+
+		let tunnel = docker
+			.inspect_service(constants::TUNNEL_SERVICE_NAME, None)
+			.await
+			.ok();
+
+		if let Some(version) = tunnel
+			.and_then(|tunnel| tunnel.version)
+			.and_then(|version| version.index)
+		{
+			docker
+				.update_service(
+					constants::TUNNEL_SERVICE_NAME,
+					tunnel_service_spec,
+					UpdateServiceOptionsBuilder::new()
+						.version(version as i32)
+						.build(),
+					None,
+				)
+				.await
+				.map_err(RunnerError::host)?;
+		} else {
+			docker
+				.create_service(tunnel_service_spec, None)
+				.await
+				.map_err(RunnerError::host)?;
+		}
+	}
+
 	Ok(())
 }
 
@@ -73,9 +102,10 @@ pub async fn update_ingress_configs(
 /// the port the deployment is listening on. This will read the Caddyfile
 /// template from the assets folder and replace the placeholders with the actual
 /// values.
-pub fn generate_config_for_deployment(deployment_id: Uuid, port: u16) -> String {
+pub fn generate_config_for_deployment(deployment_id: Uuid, port: u16, is_private: bool) -> String {
 	format!(
 		include_str!("../../../assets/runner/Caddyfile.template"),
+		scheme = if is_private { "http://" } else { "" },
 		deployment_id = deployment_id,
 		port = port
 	)
@@ -273,25 +303,31 @@ async fn get_ingress_spec(
 			replicated: Some(ServiceSpecModeReplicated { replicas: Some(1) }),
 			..Default::default()
 		}),
-		endpoint_spec: Some(EndpointSpec {
-			mode: None,
-			ports: Some(vec![
-				EndpointPortConfig {
-					name: None,
-					protocol: Some(EndpointPortConfigProtocolEnum::TCP),
-					target_port: Some(80),
-					published_port: Some(settings.data.ingress_http_listen_port.into()),
-					publish_mode: Some(EndpointPortConfigPublishModeEnum::INGRESS),
-				},
-				EndpointPortConfig {
-					name: None,
-					protocol: Some(EndpointPortConfigProtocolEnum::TCP),
-					target_port: Some(443),
-					published_port: Some(settings.data.ingress_https_listen_port.into()),
-					publish_mode: Some(EndpointPortConfigPublishModeEnum::INGRESS),
-				},
-			]),
-		}),
+		// Only publish ports for public runners — private runners receive
+		// traffic through the Cloudflare tunnel, not directly
+		endpoint_spec: if settings.data.runner_exposure_type.is_private() {
+			None
+		} else {
+			Some(EndpointSpec {
+				mode: None,
+				ports: Some(vec![
+					EndpointPortConfig {
+						name: None,
+						protocol: Some(EndpointPortConfigProtocolEnum::TCP),
+						target_port: Some(80),
+						published_port: Some(settings.data.ingress_http_listen_port.into()),
+						publish_mode: Some(EndpointPortConfigPublishModeEnum::INGRESS),
+					},
+					EndpointPortConfig {
+						name: None,
+						protocol: Some(EndpointPortConfigProtocolEnum::TCP),
+						target_port: Some(443),
+						published_port: Some(settings.data.ingress_https_listen_port.into()),
+						publish_mode: Some(EndpointPortConfigPublishModeEnum::INGRESS),
+					},
+				]),
+			})
+		},
 		networks: Some(vec![
 			NetworkAttachmentConfig {
 				target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
@@ -325,7 +361,7 @@ async fn get_cloudflare_spec(
 		)))?;
 
 	Ok(ServiceSpec {
-		name: Some(String::from(constants::INGRESS_SERVICE_NAME)),
+		name: Some(String::from(constants::TUNNEL_SERVICE_NAME)),
 		labels: Some(HashMap::from([(
 			String::from("managed-by"),
 			String::from("patr"),

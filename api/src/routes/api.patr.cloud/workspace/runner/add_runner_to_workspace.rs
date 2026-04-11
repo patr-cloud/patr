@@ -1,13 +1,10 @@
 use axum::http::StatusCode;
 use cloudflare::{
-	endpoints::{cfd_tunnel::*, workerskv::write_key},
+	endpoints::workerskv::write_key,
 	framework::{
 		Environment,
 		auth::Credentials,
-		client::{
-			ClientConfig,
-			async_api::{Client, Client as CloudflareClient},
-		},
+		client::{ClientConfig, async_api::Client as CloudflareClient},
 	},
 };
 use models::{api::workspace::runner::*, cloudflare::kv::*, prelude::*};
@@ -64,26 +61,7 @@ pub async fn add_runner_to_workspace(
 	})?
 	.id;
 
-	let tunnel_id = Client::new(
-		Credentials::UserAuthToken {
-			token: state.config.cloudflare.api_key.clone(),
-		},
-		Default::default(),
-		Environment::Custom(state.config.cloudflare.base_url.clone()),
-	)?
-	.request(&create_tunnel::CreateTunnel {
-		account_identifier: &state.config.cloudflare.account_id,
-		params: create_tunnel::Params {
-			config_src: &ConfigurationSrc::Cloudflare,
-			name: &format!("Runner: {}", id),
-			tunnel_secret: &b"default".to_vec(),
-			metadata: None,
-		},
-	})
-	.await?
-	.result
-	.id
-	.to_string();
+	let tunnel_id = utils::cloudflare::create_tunnel_with_config(id, &state.config).await?;
 
 	query!(
 		r#"
