@@ -82,7 +82,7 @@ pub async fn start_deployment(
 	})
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
-	if let DeploymentRegistry::PatrRegistry { repository_id, .. } = &registry {
+	let digest = if let DeploymentRegistry::PatrRegistry { repository_id, .. } = &registry {
 		let digest = query!(
 			r#"
 			SELECT
@@ -100,7 +100,7 @@ pub async fn start_deployment(
 		.await?
 		.map(|row| row.manifest_digest);
 
-		if let Some(digest) = digest {
+		if let Some(digest) = &digest {
 			// Check if digest is already in deployment_deploy_history table
 			// If not, add it to the table
 			query!(
@@ -126,20 +126,26 @@ pub async fn start_deployment(
 			.execute(&mut **database)
 			.await?;
 		}
-	}
 
-	// Update status to deploying
+		digest
+	} else {
+		None
+	};
+
+	// Update status to deploying and set the current live digest
 	query!(
 		r#"
 		UPDATE
 			deployment
 		SET
-			status = $1
+			status = $1,
+			current_live_digest = COALESCE($3, current_live_digest)
 		WHERE
 			id = $2;
 		"#,
 		DeploymentStatus::Deploying as _,
-		deployment_id as _
+		deployment_id as _,
+		digest as _,
 	)
 	.execute(&mut **database)
 	.await?;

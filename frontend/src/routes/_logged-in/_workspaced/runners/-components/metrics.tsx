@@ -7,7 +7,6 @@ import {
 	createSignal,
 	ErrorBoundary,
 	onCleanup,
-	onMount,
 	Suspense,
 } from "solid-js";
 import { Chart, registerables } from "chart.js";
@@ -150,8 +149,18 @@ const MetricCard = (props: { chart: ChartDef; data: GetRunnerMetricsResponse | u
 		return { labels, datasets };
 	};
 
-	onMount(() => {
+	// Create or update chart when data changes. Only runs when canvas is mounted (hasData() is true).
+	createEffect(() => {
+		if (!hasData() || !canvasRef) return;
 		const { labels, datasets } = buildChart();
+
+		if (chartInstance) {
+			chartInstance.data.labels = labels;
+			chartInstance.data.datasets = datasets;
+			chartInstance.update();
+			return;
+		}
+
 		chartInstance = new Chart(canvasRef, {
 			type: "line",
 			data: { labels, datasets },
@@ -210,15 +219,6 @@ const MetricCard = (props: { chart: ChartDef; data: GetRunnerMetricsResponse | u
 				},
 			},
 		});
-	});
-
-	// Update chart data when props change (e.g., interval change)
-	createEffect(() => {
-		const { labels, datasets } = buildChart();
-		if (!chartInstance) return;
-		chartInstance.data.labels = labels;
-		chartInstance.data.datasets = datasets;
-		chartInstance.update();
 	});
 
 	onCleanup(() => chartInstance?.destroy());
@@ -337,7 +337,7 @@ const RunnerMetrics = (props: RunnerMetricsProps) => {
 					<div class="rounded-sm border border-error/30 bg-error/5 p-lg text-center">
 						<p class="text-sm text-error mb-xs">Failed to load metrics</p>
 						<p class="text-xxs text-grey mb-md">{err.message}</p>
-						<button class="btn btn-plain text-xs" onClick={reset}>
+						<button class="text-primary text-xs cursor-pointer bg-transparent border-none" onClick={reset}>
 							Retry
 						</button>
 					</div>

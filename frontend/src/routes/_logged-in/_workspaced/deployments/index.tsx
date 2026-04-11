@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid-js";
+import { createEffect, createMemo, createResource, ErrorBoundary, onCleanup, Show } from "solid-js";
 import { Deployment, GetContainerRepositoryInfoResponse, ListDeploymentResponse, WithId } from "~/bindings";
 import {
 	Button,
@@ -124,27 +124,39 @@ const ListDeploymentsPage = () => {
 		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
 	});
 
-	const [deployments] = createResource(fetchParamsForDeployment, async ([auth, wsId, page, count]) => {
-		if (!wsId || !auth || auth.type !== "LoggedIn") {
-			return { deployments: [] };
-		}
-
-		const response = await httpRequest<ListDeploymentResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment?page=${page}&count=${count}`,
-			{
-				method: "GET",
+	const [deployments, { refetch: refetchDeployments }] = createResource(
+		fetchParamsForDeployment,
+		async ([auth, wsId, page, count]) => {
+			if (!wsId || !auth || auth.type !== "LoggedIn") {
+				return { deployments: [] };
 			}
-		);
 
-		if (!response.ok) {
-			console.error("Failed to fetch deployments:", response.data.error);
-			toast("Failed to fetch deployments", "error");
-			return { deployments: [] };
+			const response = await httpRequest<ListDeploymentResponse>(
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment?page=${page}&count=${count}`,
+				{
+					method: "GET",
+				}
+			);
+
+			if (!response.ok) {
+				console.error("Failed to fetch deployments:", response.data.error);
+				toast("Failed to fetch deployments", "error");
+				return { deployments: [] };
+			}
+
+			pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
+
+			return { deployments: response.data.deployments };
 		}
+	);
 
-		pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
-
-		return { deployments: response.data.deployments };
+	// Auto-refresh when any deployment is in "deploying" state
+	createEffect(() => {
+		const hasDeploying = deployments()?.deployments?.some((d) => d.status === "deploying");
+		if (hasDeploying) {
+			const interval = setInterval(() => refetchDeployments(), 8000);
+			onCleanup(() => clearInterval(interval));
+		}
 	});
 
 	const [runners] = useFetchRunners();
@@ -165,7 +177,7 @@ const ListDeploymentsPage = () => {
 					]}
 					subText="A deployment represents a containerized application running on a runner."
 					actions={() => (
-						<Show when={isAllowedCreate() && (deployments()?.deployments?.length ?? 0) > 0}>
+						<Show when={isAllowedCreate() && (deployments.latest?.deployments?.length ?? 0) > 0}>
 							<Link href="/deployments/new" buttonVariant={ButtonVariant.Outlined} external={false}>
 								Create Deployment
 							</Link>
@@ -184,7 +196,8 @@ const ListDeploymentsPage = () => {
 							</div>
 						)}
 					>
-						<Suspense
+						<Show
+							when={deployments.latest !== undefined}
 							fallback={
 								<div class="flex items-center justify-center gap-2 py-16 text-grey">
 									<LoadingSpinner size={20} />
@@ -193,7 +206,7 @@ const ListDeploymentsPage = () => {
 							}
 						>
 							<Show
-								when={(deployments()?.deployments?.length ?? 0) > 0}
+								when={(deployments.latest?.deployments?.length ?? 0) > 0}
 								fallback={
 									<EmptyState
 										title="No Deployments Added"
@@ -218,7 +231,7 @@ const ListDeploymentsPage = () => {
 							>
 								<Table
 									column_grids={["flex-3", "flex-2", "flex-2", "flex-3", "flex-2"]}
-									rows={deployments()?.deployments || []}
+									rows={deployments.latest?.deployments || []}
 									headings={["Name", "Status", "Runner", "Image", "ID"]}
 									renderRow={(item) => (
 										<DeploymentListRow
@@ -234,7 +247,7 @@ const ListDeploymentsPage = () => {
 									showGoToPage={false}
 								/>
 							</Show>
-						</Suspense>
+						</Show>
 					</ErrorBoundary>
 				</PageContainerBody>
 			</PageContainer>

@@ -69,6 +69,10 @@ where
 	let mut get_deployment_status_future = Box::pin(executor.next_deployment_status(deployment_id));
 	let mut update_notifier_future = Box::pin(update_notifier.notified());
 
+	// Track the last config we applied to the executor so we can detect when the
+	// desired config changes (e.g. new image digest pushed, env vars updated).
+	let mut last_applied: Option<(Deployment, DeploymentRunningDetails)> = None;
+
 	loop {
 		// Keep checking for the status of the deployment and update the database
 		trace!("Checking deployment status for {}", deployment_id);
@@ -90,11 +94,47 @@ where
 				status
 			}
 			Either::Right(((), future)) => {
-				// The notifier told us that the db has changed. Get the current running status
-				// and check that against the db
+				// The notifier told us that the db has changed. Check if the desired
+				// config has changed and upsert if so, then get the current running
+				// status and check that against the db.
 
 				get_deployment_status_future = future;
 				update_notifier_future = Box::pin(update_notifier.notified());
+
+				let (desired_deployment, desired_details) =
+					get_local_deployment_info(&state.database, deployment_id).await?;
+
+				// Compare with last applied config, ignoring the status field since
+				// status changes don't represent config changes that need an upsert.
+				let config_changed =
+					last_applied
+						.as_ref()
+						.is_none_or(|(applied_dep, applied_details)| {
+							let mut desired_cmp = desired_deployment.clone();
+							let mut applied_cmp = applied_dep.clone();
+							desired_cmp.status = DeploymentStatus::Running;
+							applied_cmp.status = DeploymentStatus::Running;
+							desired_cmp != applied_cmp || *applied_details != desired_details
+						});
+
+				if config_changed {
+					info!("Desired config changed for deployment {deployment_id}, upserting");
+					executor
+						.upsert_deployment(
+							WithId::new(deployment_id, desired_deployment.clone()),
+							desired_details.clone(),
+						)
+						.await
+						.inspect_err(|_| {
+							let _ = state.task_status_sender.send(
+								ExecutorStatusUpdate::DeploymentStatusUpdated {
+									deployment_id,
+									status: DeploymentStatus::Errored,
+								},
+							);
+						})?;
+					last_applied = Some((desired_deployment, desired_details));
+				}
 
 				executor.get_deployment_status(deployment_id).await
 			}
@@ -203,7 +243,10 @@ where
 				let (deployment, running_details) =
 					get_local_deployment_info(&state.database, deployment_id).await?;
 				executor
-					.upsert_deployment(WithId::new(deployment_id, deployment), running_details)
+					.upsert_deployment(
+						WithId::new(deployment_id, deployment.clone()),
+						running_details.clone(),
+					)
 					.await
 					.inspect_err(|_| {
 						let _ = state.task_status_sender.send(
@@ -213,6 +256,7 @@ where
 							},
 						);
 					})?;
+				last_applied = Some((deployment, running_details));
 			}
 		}
 

@@ -44,10 +44,12 @@ const DNSRecords = (props: { domainId: string; domainName: string; closeFn: (pre
 	const toast = useToast();
 	const [loading, setLoading] = createSignal(false);
 
-	const verificationRecord = {
-		type: "TXT",
-		name: `_patr-verify.${props.domainName}`,
-		target: props.domainId,
+	const verificationRecord = () => {
+		return {
+			type: "TXT",
+			name: `_patr-verify.${props.domainName}`,
+			target: props.domainId,
+		};
 	};
 
 	const onVerifyClick = async (_: EventT<MouseEvent, HTMLButtonElement>) => {
@@ -96,7 +98,7 @@ const DNSRecords = (props: { domainId: string; domainName: string; closeFn: (pre
 				<Table
 					column_grids={["flex-2", "flex-5", "flex-5"]}
 					headings={["Type", "Name", "Value"]}
-					rows={[verificationRecord]}
+					rows={[verificationRecord()]}
 					renderRow={(record) => (
 						<tr class="table-row text-sm">
 							<td class="flex-2 flex items-center justify-center">
@@ -293,10 +295,9 @@ const ListDomainsPage = () => {
 												</td>
 												<td role="cell" class="flex-4 flex items-center justify-start min-w-0">
 													<div class="flex items-center gap-2">
-														<StatusChip status={item.isVerified ? "running" : "stopped"} />
-														<span class="text-sm">
-															{item.isVerified ? "Verified" : "Not Verified"}
-														</span>
+														<StatusChip
+															status={item.isVerified ? "verified" : "not verified"}
+														/>
 														<Show when={!item.isVerified}>
 															<VerificationIcon domain={item} />
 														</Show>

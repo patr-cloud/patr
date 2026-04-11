@@ -1,7 +1,18 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createMemo, createResource, createSignal, ErrorBoundary, Match, Show, Suspense, Switch } from "solid-js";
+import {
+	createEffect,
+	createMemo,
+	createResource,
+	createSignal,
+	ErrorBoundary,
+	Match,
+	onCleanup,
+	Show,
+	Switch,
+} from "solid-js";
+import { FiPause, FiPlay } from "solid-icons/fi";
 import { GetDeploymentInfoResponse } from "~/bindings";
 import {
 	Button,
@@ -64,6 +75,17 @@ const DeploymentInfo = () => {
 		}
 	);
 
+	// Auto-refresh when deployment is in "deploying" state
+	createEffect(() => {
+		const status = deploymentInfo()?.status;
+		if (status === "deploying") {
+			const interval = setInterval(() => {
+				refetchDeploymentInfo();
+			}, 5000);
+			onCleanup(() => clearInterval(interval));
+		}
+	});
+
 	const { execute: startDeployment, isLoading: isStartingDeployment } = createAuthenticatedAction(
 		async ({ workspaceId }) => {
 			if (!deploymentPermissions().start) {
@@ -91,6 +113,7 @@ const DeploymentInfo = () => {
 			}
 
 			toast("Deployment started successfully", "success");
+			mutateDeploymentInfo((prev) => (prev ? { ...prev, status: "deploying" } : undefined));
 			refetchDeploymentInfo();
 		}
 	);
@@ -122,6 +145,7 @@ const DeploymentInfo = () => {
 			}
 
 			toast("Deployment stopped successfully", "success");
+			mutateDeploymentInfo((prev) => (prev ? { ...prev, status: "stopped" } : undefined));
 			refetchDeploymentInfo();
 		}
 	);
@@ -156,53 +180,6 @@ const DeploymentInfo = () => {
 		}
 	);
 
-	const Cta = () => (
-		<Switch fallback={<span>Unknown</span>}>
-			<Match when={deploymentInfo()?.status === "running"}>
-				<Show when={deploymentPermissions().stop}>
-					<Button
-						onClick={(e) => {
-							e.preventDefault();
-							stopDeployment();
-						}}
-						class="h-10"
-						variant={ButtonVariant.Outlined}
-						color={Color.Error}
-						loading={isStoppingDeployment()}
-						loadingContent={() => <span>Stopping...</span>}
-					>
-						Stop
-					</Button>
-				</Show>
-			</Match>
-			<Match when={deploymentInfo()?.status === "deploying"}>
-				<span class="text-white">Deploying...</span>
-			</Match>
-			<Match when={deploymentInfo()?.status === "errored"}>
-				<span class="text-white">Error occurred</span>
-			</Match>
-			<Match when={deploymentInfo()?.status === "unreachable"}>
-				<span class="text-white">Unreachable</span>
-			</Match>
-			<Match when={deploymentInfo()?.status === "stopped"}>
-				<Show when={deploymentPermissions().start}>
-					<Button
-						class="h-10"
-						variant={ButtonVariant.Contained}
-						loading={isStartingDeployment()}
-						loadingContent={() => <span>Starting...</span>}
-						onClick={(e) => {
-							e.preventDefault();
-							startDeployment();
-						}}
-					>
-						Start
-					</Button>
-				</Show>
-			</Match>
-		</Switch>
-	);
-
 	return (
 		<>
 			<Title>Deployment Details | Patr</Title>
@@ -226,7 +203,8 @@ const DeploymentInfo = () => {
 							</div>
 						)}
 					>
-						<Suspense
+						<Show
+							when={deploymentInfo.latest !== undefined}
 							fallback={
 								<div class="flex items-center justify-center gap-2 py-16 text-grey">
 									<LoadingSpinner size={20} />
@@ -241,26 +219,63 @@ const DeploymentInfo = () => {
 										url: "/deployments",
 									},
 									{
-										label: deploymentInfo() ? deploymentInfo()!.name : "Loading...",
+										label: deploymentInfo.latest?.name ?? "Loading...",
 									},
 								]}
 								subText="A deployment represents a containerized application running on a runner."
 								class="justify-between items-center"
 								actions={() => (
-									<div class="flex items-center justify-end gap-3">
-										<Show when={deploymentInfo()?.status}>
-											<StatusChip status={deploymentInfo()!.status} />
+									<div class="flex items-center justify-end gap-4">
+										<Show when={deploymentInfo.latest?.status}>
+											<StatusChip status={deploymentInfo.latest!.status} size="md" />
 										</Show>
-										{Cta()}
+										<Show
+											when={
+												deploymentInfo.latest?.status !== "stopped" &&
+												deploymentPermissions().stop
+											}
+										>
+											<Button
+												onClick={(e) => {
+													e.preventDefault();
+													stopDeployment();
+												}}
+												class="w-10 h-10"
+												variant={ButtonVariant.Outlined}
+												color={Color.Error}
+												loading={isStoppingDeployment()}
+												loadingContent={() => <></>}
+											>
+												<FiPause size={14} />
+											</Button>
+										</Show>
+										<Show
+											when={
+												deploymentInfo.latest?.status === "stopped" &&
+												deploymentPermissions().start
+											}
+										>
+											<Button
+												class="w-10 h-10"
+												variant={ButtonVariant.Contained}
+												loading={isStartingDeployment()}
+												loadingContent={() => <></>}
+												onClick={(e) => {
+													e.preventDefault();
+													startDeployment();
+												}}
+											>
+												<FiPlay size={14} />
+											</Button>
+										</Show>
 
-										{deploymentInfo() &&
+										{deploymentInfo.latest &&
 											deploymentPermissions().delete &&
-											deploymentInfo()?.name &&
-											deploymentInfo()!.status === "stopped" && (
+											deploymentInfo.latest?.name && (
 												<DeleteModal
 													isLoading={isDeletingDeployment()}
 													title="Do You Really Want to Delete This Deployment?"
-													resourceName={deploymentInfo()?.name || ""}
+													resourceName={deploymentInfo.latest?.name || ""}
 													isOpen={isDeleteModalOpen}
 													setIsOpen={setIsDeleteModalOpen}
 													onClickDelete={(e) => {
@@ -316,7 +331,7 @@ const DeploymentInfo = () => {
 									</Match>
 								</Switch>
 							</PageContainerBody>
-						</Suspense>
+						</Show>
 					</ErrorBoundary>
 				</PageContainer>
 			</Show>

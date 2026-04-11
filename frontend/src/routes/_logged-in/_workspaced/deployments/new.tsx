@@ -12,6 +12,7 @@ import {
 	Button,
 	InputLabel,
 	ToggleSwitch,
+	RangeSlider,
 } from "~/components";
 import EnvInput from "./-components/env-input";
 import {
@@ -92,6 +93,8 @@ const CreateDeploymentPage = () => {
 	const [repositoryId, setRepositoryId] = createSignal<string>("");
 	const [configFiles, setConfigFiles] = createSignal<ConfigMountT>({});
 	const [startupProbe, setStartupProbe] = createSignal<DeploymentProbe | undefined>(undefined);
+	const [minScale, setMinScale] = createSignal(1);
+	const [maxScale, setMaxScale] = createSignal(2);
 	const [deployOnCreate, setDeployOnCreate] = createSignal(false);
 	const [deployOnPush, setDeployOnPush] = createSignal(false);
 
@@ -147,8 +150,8 @@ const CreateDeploymentPage = () => {
 			imageTag: imageTag(),
 			runner: runner(),
 			machineType: Uuid("b3cf3771-fa39-4281-bfdf-eb2e65a061b6"),
-			minHorizontalScale: 1,
-			maxHorizontalScale: 2,
+			minHorizontalScale: minScale(),
+			maxHorizontalScale: maxScale(),
 			environmentVariables: Object.fromEntries(envList().map((env) => [env.key, env.value])),
 			ports: portList(),
 			startupProbe: startupProbe(),
@@ -311,6 +314,27 @@ const CreateDeploymentPage = () => {
 								</div>
 							</div>
 
+							<div class="flex gap-8 items-center w-full">
+								<InputLabel
+									parentClass="flex-2"
+									label="Horizontal Scale"
+									comments="Min & max replica count"
+								/>
+								<div class="flex-10">
+									<RangeSlider
+										min={1}
+										max={10}
+										valueLow={minScale}
+										valueHigh={maxScale}
+										onChangeLow={setMinScale}
+										onChangeHigh={setMaxScale}
+									/>
+								</div>
+							</div>
+
+							{/* Divider */}
+							<div class="border-t border-border-color mt-2" />
+
 							<EnvInput
 								envList={envList}
 								onAdd={(key, value) => {
@@ -342,8 +366,15 @@ const CreateDeploymentPage = () => {
 
 							<ConfigMount selectedFiles={configFiles} setSelectedFiles={setConfigFiles} />
 
+							{/* Divider */}
+							<div class="border-t border-border-color mt-2" />
+
 							<div class="flex gap-8 items-center w-full">
-								<InputLabel parentClass="flex-2" label="Deploy on Create" />
+								<InputLabel
+									parentClass="flex-2"
+									label="Deploy on Create"
+									comments="Start the deployment immediately after creation"
+								/>
 								<div class="flex-10">
 									<ToggleSwitch checked={deployOnCreate} onChange={setDeployOnCreate} />
 								</div>
@@ -351,7 +382,11 @@ const CreateDeploymentPage = () => {
 
 							<Show when={isPatrRegistry()}>
 								<div class="flex gap-8 items-center w-full">
-									<InputLabel parentClass="flex-2" label="Deploy on Push" />
+									<InputLabel
+										parentClass="flex-2"
+										label="Deploy on Push"
+										comments="Redeploy when a new image is pushed to the registry"
+									/>
 									<div class="flex-10">
 										<ToggleSwitch checked={deployOnPush} onChange={setDeployOnPush} />
 									</div>

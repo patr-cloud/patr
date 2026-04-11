@@ -33,24 +33,22 @@ const PortInput = (props: PortInputProps) => {
 
 			<div class="flex flex-col flex-10 gap-4 w-full">
 				<For each={Object.entries(get(props.portList))}>
-					{([port, portType]) => (
-						<div class="flex items-center flex-10 gap-4 w-full">
-							<Input class="flex-6" disabled={true} value={port} />
-							<Input
-								class={portType === "http" && props.deploymentId ? "flex-3" : "flex-5"}
-								disabled={true}
-								value={portType}
-							/>
-							{portType === "http" && props.deploymentId && (
-								<a
-									class="flex-2 flex items-center justify-start gap-2 rounded-xs bg-secondary-light border border-secondary-medium py-xs px-lg text-primary"
-									href={`https://${port}-${props.deploymentId}.onpatr.cloud`}
-									target="_blank"
-								>
-									<FiExternalLink size={16} />
-									Visit URL
-								</a>
-							)}
+					{([port, type]) => (
+						<div class="flex items-center gap-4 w-full">
+							<Input class="flex-5" disabled={true} value={port} />
+							<div class="flex items-center justify-start gap-4 flex-5">
+								<Input class="flex-8" disabled={true} value={type} />
+								<Show when={type === "http" && props.deploymentId}>
+									<a
+										class="flex-4 flex items-center justify-start gap-2 rounded-xs bg-secondary-light border border-secondary-medium py-xs pl-xl pr-0 text-primary"
+										href={`https://${port}-${props.deploymentId}.onpatr.cloud`}
+										target="_blank"
+									>
+										<FiExternalLink size={16} />
+										Visit URL
+									</a>
+								</Show>
+							</div>
 
 							<Show when={!get(props.disabled)}>
 								<Button
@@ -58,7 +56,7 @@ const PortInput = (props: PortInputProps) => {
 										props.onDelete(port);
 									}}
 									variant={ButtonVariant.Outlined}
-									class="flex-1 h-full flex items-center gap-2"
+									class="flex-1"
 									color={Color.Error}
 								>
 									<FiTrash2 size={16} />
@@ -69,8 +67,9 @@ const PortInput = (props: PortInputProps) => {
 				</For>
 
 				<Show when={!get(props.disabled)}>
-					<div class="flex items-center flex-10 gap-4 w-full">
+					<div class="flex items-center gap-4 w-full">
 						<Input
+							value={portNumber()}
 							onInput={(e) => setPortNumber(e.currentTarget.value)}
 							onKeyDown={(e) => {
 								if (e.key === "Enter") {
@@ -84,44 +83,46 @@ const PortInput = (props: PortInputProps) => {
 									}
 								}
 							}}
-							class="flex-6"
+							class="flex-5"
 							placeholder="Enter Port Number"
 						/>
-						<InputDropdown
-							placeholder="Select Port Type"
-							value={portType()}
-							class="flex-5"
-							onSelect={(value) => {
-								setPortType(value as ExposedPortType);
-								const envVal = get(portType);
-								const portVal = portNumber();
+						<div class="flex items-center justify-start gap-4 flex-5">
+							<InputDropdown
+								placeholder="Select Port Type"
+								value={portType()}
+								class="flex-8"
+								onSelect={(value) => {
+									setPortType(value as ExposedPortType);
+									const envVal = get(portType);
+									const portVal = portNumber();
 
-								if (envVal && portVal) {
-									props.onAdd(portVal, envVal);
-									setPortNumber("");
-									setPortType(undefined);
-								}
-							}}
-							options={[
-								{
-									value: "udp",
-									label: "UDP",
-								},
-								{
-									value: "tcp",
-									label: "TCP",
-								},
-								{
-									value: "http",
-									label: "HTTP",
-								},
-							]}
-						/>
+									if (envVal && portVal) {
+										props.onAdd(portVal, envVal);
+										setPortNumber("");
+										setPortType(undefined);
+									}
+								}}
+								options={[
+									{
+										value: "udp",
+										label: "UDP",
+									},
+									{
+										value: "tcp",
+										label: "TCP",
+									},
+									{
+										value: "http",
+										label: "HTTP",
+									},
+								]}
+							/>
+						</div>
 
 						<Button
 							type="button"
 							variant={ButtonVariant.Contained}
-							class="flex-1 h-full flex items-center gap-2"
+							class="flex-1"
 							onClick={(e) => {
 								e.preventDefault();
 								const envVal = get(portType);

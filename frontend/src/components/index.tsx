@@ -40,6 +40,7 @@ import Checkbox from "~/components/checkbox";
 import Radio from "~/components/radio";
 import LogLine from "~/components/log-line";
 import LogTerminal from "~/components/log-terminal";
+import RangeSlider from "~/components/range-slider";
 import StatusChip from "~/components/status-chip";
 import OtpInput from "~/components/otp-input";
 import ChipInput from "~/components/chip-input";
@@ -87,6 +88,7 @@ export {
 	Pagination,
 	Checkbox,
 	Radio,
+	RangeSlider,
 	LogLine,
 	LogTerminal,
 	StatusChip,

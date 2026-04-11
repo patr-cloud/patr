@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE deployment SET status = $1, current_live_digest = COALESCE($3, current_live_digest) WHERE id = $2;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "deployment_status",
+            "kind": {
+              "Enum": [
+                "created",
+                "pushed",
+                "deploying",
+                "running",
+                "stopped",
+                "errored",
+                "deleted"
+              ]
+            }
+          }
+        },
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3b0561bd189717edd8c56c7ecede131b2325b003a7dc88cff7065cf338575016"
+}

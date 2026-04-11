@@ -93,37 +93,52 @@ const LogTerminal = (props: LogTerminalProps) => {
 
 	// --- WebSocket ---
 	createEffect(() => {
-		const ws = createWS(props.wsUrl);
+		let ws: WebSocket;
+		let reconnectTimer: ReturnType<typeof setTimeout>;
+		let disposed = false;
 
-		ws.addEventListener("open", () => setIsConnected(true));
-		ws.addEventListener("close", () => setIsConnected(false));
+		const connect = () => {
+			ws = createWS(props.wsUrl);
 
-		ws.addEventListener("message", (event) => {
-			try {
-				const message = JSON.parse(event.data);
-				if (message?.type !== "LogData") return;
-				const entries: LogEntry[] = message.logs ?? [];
+			ws.addEventListener("open", () => setIsConnected(true));
+			ws.addEventListener("close", () => {
+				setIsConnected(false);
+				if (!disposed) {
+					reconnectTimer = setTimeout(connect, 500);
+				}
+			});
 
-				for (const logEntry of entries) {
-					if (isSearching() && !logEntry.log.toLowerCase().includes(debouncedSearch().toLowerCase())) {
-						continue;
+			ws.addEventListener("message", (event) => {
+				try {
+					const message = JSON.parse(event.data);
+					if (message?.type !== "LogData") return;
+					const entries: LogEntry[] = message.logs ?? [];
+
+					for (const logEntry of entries) {
+						if (isSearching() && !logEntry.log.toLowerCase().includes(debouncedSearch().toLowerCase())) {
+							continue;
+						}
+						setLogs(
+							produce((prev) => {
+								prev.push(logEntry);
+							})
+						);
 					}
-					setLogs(
-						produce((prev) => {
-							prev.push(logEntry);
-						})
-					);
-				}
 
-				if (isAtBottom()) {
-					queueMicrotask(scrollToBottom);
+					if (isAtBottom()) {
+						queueMicrotask(scrollToBottom);
+					}
+				} catch {
+					// ignore malformed messages
 				}
-			} catch {
-				// ignore malformed messages
-			}
-		});
+			});
+		};
+
+		connect();
 
 		onCleanup(() => {
+			disposed = true;
+			clearTimeout(reconnectTimer);
 			ws.close();
 			setIsConnected(false);
 		});

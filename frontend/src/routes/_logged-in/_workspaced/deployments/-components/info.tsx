@@ -1,7 +1,18 @@
 import { FiChevronDown } from "solid-icons/fi";
 import { createMemo, createResource, createSignal, Resource, Setter, Show } from "solid-js";
 import { GetDeploymentInfoResponse, ListRunnersForWorkspaceResponse, UpdateDeploymentResponse } from "~/bindings";
-import { Button, Input, InputType, InputDropdown, useToast, InputLabel } from "~/components";
+import {
+	Button,
+	CopyableField,
+	CopyableFieldVariant,
+	Input,
+	InputType,
+	InputDropdown,
+	InputLabel,
+	RangeSlider,
+	ToggleSwitch,
+	useToast,
+} from "~/components";
 import { useAuthState } from "~/hooks";
 import { useGetPermissions } from "~/hooks/is-allowed";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
@@ -19,6 +30,8 @@ interface DeploymentInfoProps {
 		| null
 		| undefined;
 }
+
+const PATR_REGISTRY = "registry.patr.cloud";
 
 const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	const [authState] = useAuthState();
@@ -52,22 +65,41 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 		return response.data;
 	});
 
+	const isPatrRegistry = () => {
+		const info = props.deploymentInfo.latest;
+		if (!info) return false;
+		return info.registry === PATR_REGISTRY;
+	};
+
 	const onSubmitUpdate = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
 		e.preventDefault();
-		console.log("Update deployment form submitted");
 		const auth = authState();
 		if (!auth || auth.type !== "LoggedIn") {
-			console.error("User not logged in");
 			toast("User not logged in", "error");
 			return;
 		}
 
+		const info = props.deploymentInfo();
+		if (!info) {
+			toast("Deployment info not available", "error");
+			return;
+		}
+
 		const response = await httpRequest<UpdateDeploymentResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId()}/deployment/${props.deploymentInfo()?.id}`,
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId()}/deployment/${info.id}`,
 			{
 				method: "PATCH",
 				body: JSON.stringify({
-					...props.deploymentInfo(),
+					name: info.name,
+					runner: info.runner,
+					deployOnPush: info.deployOnPush,
+					minHorizontalScale: info.minHorizontalScale,
+					maxHorizontalScale: info.maxHorizontalScale,
+					ports: info.ports,
+					environmentVariables: info.environmentVariables,
+					startupProbe: info.startupProbe,
+					livenessProbe: info.livenessProbe,
+					configMounts: info.configMounts,
 				}),
 			}
 		);
@@ -88,13 +120,10 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 			<div class="flex flex-col gap-4 items-start w-full">
 				<div class="flex gap-8 items-start w-full">
 					<InputLabel parentClass="flex-2 pt-2.5" for="deployment-id" label="ID" />
-					<Input
-						value={props.deploymentInfo.latest?.id}
-						disabled={true}
+					<CopyableField
+						value={props.deploymentInfo.latest?.id ?? ""}
+						variant={CopyableFieldVariant.Input}
 						class="flex-10"
-						name="deployment-id"
-						placeholder="Deployment ID"
-						type={InputType.Text}
 					/>
 				</div>
 
@@ -119,6 +148,26 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 							});
 						}}
 					/>
+				</div>
+
+				<div class="flex gap-8 items-start w-full">
+					<InputLabel
+						parentClass="flex-2 pt-2.5"
+						label="Current Digest"
+						comments="Image hash running in production"
+					/>
+					<div class="flex-10">
+						<Show
+							when={props.deploymentInfo.latest?.currentLiveDigest}
+							fallback={<Input disabled={true} placeholder="No digest available" type={InputType.Text} />}
+						>
+							<CopyableField
+								value={props.deploymentInfo.latest!.currentLiveDigest!}
+								variant={CopyableFieldVariant.Input}
+								class="font-log"
+							/>
+						</Show>
+					</div>
 				</div>
 
 				<div class="flex gap-8 items-start w-full">
@@ -171,21 +220,10 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 							class="flex-6"
 							placeholder="Image Name"
 							type={InputType.Text}
-							onInput={(e) => {
-								setHasUpdated(true);
-								props.mutateDeploymentInfo((prev) => {
-									return prev
-										? {
-												...prev,
-												imageName: e.currentTarget.value,
-											}
-										: undefined;
-								});
-							}}
 							value={(() => {
 								const info = props.deploymentInfo.latest;
 								if (!info) return "";
-								if (info.registry === "registry.patr.cloud") {
+								if (info.registry === PATR_REGISTRY) {
 									return "repositoryId" in info ? (info.repositoryId as string) : "";
 								}
 								return "imageName" in info ? info.imageName : "";
@@ -212,6 +250,55 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						/>
 					</div>
 				</div>
+
+				{/* Divider */}
+				<div class="border-t border-border-color w-full mt-2" />
+
+				<div class="flex gap-8 items-center w-full">
+					<InputLabel parentClass="flex-2" label="Horizontal Scale" comments="Min & max replica count" />
+					<div class="flex-10">
+						<RangeSlider
+							min={1}
+							max={10}
+							valueLow={() => props.deploymentInfo.latest?.minHorizontalScale ?? 1}
+							valueHigh={() => props.deploymentInfo.latest?.maxHorizontalScale ?? 2}
+							disabled={!deploymentPermissions().edit}
+							onChangeLow={(val) => {
+								setHasUpdated(true);
+								props.mutateDeploymentInfo((prev) =>
+									prev ? { ...prev, minHorizontalScale: val } : undefined
+								);
+							}}
+							onChangeHigh={(val) => {
+								setHasUpdated(true);
+								props.mutateDeploymentInfo((prev) =>
+									prev ? { ...prev, maxHorizontalScale: val } : undefined
+								);
+							}}
+						/>
+					</div>
+				</div>
+
+				<Show when={isPatrRegistry()}>
+					<div class="flex gap-8 items-center w-full">
+						<InputLabel parentClass="flex-2" label="Deploy on Push" comments="Redeploy on new image push" />
+						<div class="flex-10">
+							<ToggleSwitch
+								checked={() => props.deploymentInfo.latest?.deployOnPush ?? false}
+								disabled={!deploymentPermissions().edit}
+								onChange={(val) => {
+									setHasUpdated(true);
+									props.mutateDeploymentInfo((prev) =>
+										prev ? { ...prev, deployOnPush: val } : undefined
+									);
+								}}
+							/>
+						</div>
+					</div>
+				</Show>
+
+				{/* Divider */}
+				<div class="border-t border-border-color w-full mt-2" />
 
 				<EnvInput
 					disabled={() => !deploymentPermissions().edit}
@@ -255,7 +342,6 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 					deploymentId={props.deploymentInfo.latest?.id}
 					onAdd={(key, value) => {
 						setHasUpdated(true);
-						console.log(key, value);
 						props.mutateDeploymentInfo((prev) => {
 							return prev
 								? {

@@ -106,7 +106,7 @@ body {
 }
 
 @layer base {
-	input,
+	input:not([type="range"]),
 	textarea,
 	select {
 		background-color: transparent;
@@ -115,7 +115,35 @@ body {
 		transition: all 0.2s ease;
 	}
 
-	input:focus,
+	input[type="range"] {
+		-webkit-appearance: none;
+		appearance: none;
+		background: transparent;
+		border: none;
+		padding: 0;
+		margin: 0;
+		outline: none;
+		box-shadow: none;
+	}
+
+	input[type="range"]::-webkit-slider-runnable-track {
+		-webkit-appearance: none;
+		background: transparent;
+		border: none;
+		height: 0;
+	}
+
+	input[type="range"]::-webkit-slider-container {
+		background: transparent;
+	}
+
+	input[type="range"]::-moz-range-track {
+		background: transparent;
+		border: none;
+		height: 0;
+	}
+
+	input:not([type="range"]):focus,
 	textarea:focus,
 	select:focus {
 		@apply bg-secondary-light;
@@ -126,7 +154,7 @@ body {
 		@apply text-grey;
 	}
 
-	input:disabled,
+	input:not([type="range"]):disabled,
 	textarea:disabled,
 	select:disabled {
 		@apply bg-secondary-medium text-disabled cursor-not-allowed;
@@ -152,110 +180,71 @@ body {
 	}
 }
 
-.btn {
-	@apply cursor-pointer text-sm font-medium rounded-xl transition-[background] duration-200;
+/* Range slider thumb styling */
+.range-input::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	pointer-events: all;
+	width: 14px;
+	height: 14px;
+	margin-top: -7px;
+	border-radius: 50%;
+	background: white;
+	border: 2px solid var(--color-primary);
+	cursor: pointer;
+	transition: box-shadow 0.15s;
 }
 
-.btn-outline {
-	@apply font-medium rounded-[50%] py-xs px-md border border-primary transition-all duration-150 aspect-square;
+.range-input::-webkit-slider-thumb:hover {
+	box-shadow: 0 0 0 4px rgba(248, 155, 65, 0.12);
 }
 
-.btn-outline,
-.btn-outline * {
-	@apply text-primary;
+.range-input:disabled::-webkit-slider-thumb {
+	cursor: not-allowed;
+	opacity: 0.5;
 }
 
-.btn-outline:hover {
-	@apply bg-primary;
+.range-input::-moz-range-thumb {
+	pointer-events: all;
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	background: white;
+	border: 2px solid var(--color-primary);
+	cursor: pointer;
+	transition: box-shadow 0.15s;
 }
 
-.btn-outline:hover,
-.btn-outline:hover * {
-	@apply text-secondary;
+.range-input::-moz-range-thumb:hover {
+	box-shadow: 0 0 0 4px rgba(248, 155, 65, 0.12);
 }
 
-.btn-primary {
-	@apply bg-primary text-secondary;
+.range-input:disabled::-moz-range-thumb {
+	cursor: not-allowed;
+	opacity: 0.5;
 }
 
-.btn-primary:hover {
-	/* TODO: Replace @include button-hover with actual hover styles */
+@keyframes pulse-dot {
+	0%,
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 0.4;
+		transform: scale(0.8);
+	}
 }
 
-.btn-primary:disabled {
-	@apply bg-primary-light;
-}
-
-.btn-primary:focus-visible {
-	animation: ripple 1200ms linear infinite;
-	@apply text-secondary;
-	outline: 2px solid var(--color-primary);
-	outline-offset: 2px;
-}
-
-.btn-plain {
-	@apply text-primary py-0 px-xxs;
-	padding: 0 var(--spacing-xxs); /* TODO: Replace map.get($paddings, "xxs") */
-}
-
-.btn-plain:disabled {
-	@apply text-primary-light;
-}
-
-.btn-plain:focus-visible {
-	@apply rounded-sm;
-}
-
-.btn-error {
-	@apply bg-error text-white;
-}
-
-.btn-error:disabled {
-	@apply bg-error-light;
-}
-
-.btn-secondary {
-	@apply font-bold text-primary bg-secondary-light;
-}
-
-.btn-light {
-	@apply text-black bg-white;
-}
-
-.btn-light:hover {
-	/* TODO: Replace @include button-hover($text-white) with actual hover styles */
-}
-
-.btn-light:disabled {
-	@apply bg-disabled;
-}
-
-.btn-dark {
-	@apply text-white bg-secondary;
-}
-
-.btn-dark:hover {
-	/* TODO: Replace @include button-hover($secondary-main) with actual hover styles */
-}
-
-.btn-dark:disabled {
-	@apply bg-secondary-light text-grey;
-}
-
-.btn-icon {
-	@apply p-1 rounded-full flex items-center justify-center;
-}
-
-.btn-secondary,
-.btn-error,
-.btn-plain,
-.btn-icon {
-	/* TODO: Replace @include btn-secondary-focus with actual focus styles */
-}
-
-.btn-dark,
-.btn-light {
-	/* TODO: Replace @include btn-secondary-focus($info-main) with actual focus styles */
+@keyframes throb-glow {
+	0% {
+		box-shadow: 0 0 0 0 rgba(214, 43, 54, 0.5);
+	}
+	70% {
+		box-shadow: 0 0 8px 4px rgba(214, 43, 54, 0);
+	}
+	100% {
+		box-shadow: 0 0 0 0 rgba(214, 43, 54, 0);
+	}
 }
 
 @keyframes float {
