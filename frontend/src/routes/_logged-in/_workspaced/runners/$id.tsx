@@ -110,7 +110,7 @@ const RunnerDetail = () => {
 										tabItems={[
 											{
 												label: "Deployments",
-												value: "",
+												value: "deployments",
 												onClick: (value) =>
 													navigate({
 														to: "/runners/$id",
@@ -144,7 +144,10 @@ const RunnerDetail = () => {
 							/>
 
 							<PageContainerBody class="flex flex-col justify-between gap-8">
-								<Switch fallback={<RunnerDeployments runnerId={params().id} />}>
+								<Switch fallback={<div class="text-grey text-sm py-8 text-center">No such tab</div>}>
+									<Match when={tab() === "deployments"}>
+										<RunnerDeployments runnerId={params().id} />
+									</Match>
 									<Match when={tab() === "metrics"}>
 										<RunnerMetrics runnerId={params().id} />
 									</Match>
@@ -163,7 +166,7 @@ const RunnerDetail = () => {
 
 export const Route = createFileRoute("/_logged-in/_workspaced/runners/$id")({
 	validateSearch: (search: Record<string, unknown>): { tab: string } => ({
-		tab: (search.tab as string) || "",
+		tab: (search.tab as string) || "deployments",
 	}),
 	component: RunnerDetail,
 });

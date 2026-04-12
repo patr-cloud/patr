@@ -1,82 +1,98 @@
 import { Show, For, createMemo, createResource, createSignal, ErrorBoundary, Suspense } from "solid-js";
-import type { GetRunnerMetricsResponse, MetricDataPoint } from "~/bindings";
+import type { GetDeploymentMetricResponse, MetricDataPoint } from "~/bindings";
 import { InputDropdown } from "~/components";
 import MetricCard, { INTERVALS, type ChartDef } from "~/components/metric-card";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 
-interface RunnerMetricsProps {
-	runnerId: string;
+interface DeploymentMetricsProps {
+	deploymentId: string;
 }
 
 const CHARTS: ChartDef[] = [
+	{
+		title: "Requests per Second",
+		unit: "req/s",
+		yMin: 0,
+		ySuggestedMax: 10,
+		series: [{ metric: "ingress_rps", label: "RPS", color: "#3b82f6" }],
+	},
+	{
+		title: "Error Rate",
+		unit: "err/s",
+		yMin: 0,
+		ySuggestedMax: 1,
+		series: [{ metric: "ingress_error_rate", label: "Errors", color: "#ef4444" }],
+	},
+	{
+		title: "Latency (P95)",
+		unit: "ms",
+		yMin: 0,
+		ySuggestedMax: 100,
+		series: [{ metric: "ingress_latency_p95", label: "P95", color: "#f59e0b", transform: (v) => v * 1000 }],
+	},
 	{
 		title: "CPU",
 		unit: "%",
 		yMin: 0,
 		yMax: 100,
-		series: [{ metric: "system_cpu_usage", label: "Usage", color: "#3b82f6" }],
+		series: [{ metric: "container_cpu_usage", label: "Usage", color: "#8b5cf6" }],
 	},
 	{
 		title: "Memory",
-		unit: "%",
+		unit: "MB",
 		yMin: 0,
-		yMax: 100,
-		series: [{ metric: "system_memory_usage", label: "Usage", color: "#a855f7" }],
-	},
-	{
-		title: "Disk I/O",
-		unit: "KB/s",
-		yMin: 0,
-		ySuggestedMax: 10,
 		series: [
-			{ metric: "system_disk_read_bytes", label: "Read", color: "#10b981", transform: (v) => v / 1024 },
-			{ metric: "system_disk_written_bytes", label: "Write", color: "#f59e0b", transform: (v) => v / 1024 },
+			{
+				metric: "container_memory_used",
+				label: "Used",
+				color: "#a855f7",
+				transform: (v) => v / 1024 / 1024,
+			},
+			{
+				metric: "container_memory_limit",
+				label: "Limit",
+				color: "#6b7280",
+				transform: (v) => v / 1024 / 1024,
+			},
 		],
 	},
 	{
-		title: "Disk",
-		unit: "%",
-		yMin: 0,
-		yMax: 100,
-		series: [{ metric: "system_disk_usage", label: "Usage", color: "#ef4444" }],
-	},
-	{
-		title: "Network",
+		title: "Network I/O",
 		unit: "KB/s",
 		yMin: 0,
 		ySuggestedMax: 10,
 		series: [
-			{ metric: "system_network_rx", label: "RX", color: "#06b6d4", transform: (v) => v / 1024 },
-			{ metric: "system_network_tx", label: "TX", color: "#ec4899", transform: (v) => v / 1024 },
+			{ metric: "container_network_rx", label: "RX", color: "#06b6d4", transform: (v) => v / 1024 },
+			{ metric: "container_network_tx", label: "TX", color: "#ec4899", transform: (v) => v / 1024 },
 		],
 	},
 ];
 
 const METRIC_NAMES = [...new Set(CHARTS.flatMap((c) => c.series.map((s) => s.metric)))];
 
-const RunnerMetrics = (props: RunnerMetricsProps) => {
+const DeploymentMetrics = (props: DeploymentMetricsProps) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const [intervalSeconds, setIntervalSeconds] = createSignal("3600");
 
 	const fetchParams = createMemo(() => {
-		return [authState(), workspaceId(), props.runnerId, intervalSeconds()] as const;
+		return [authState(), workspaceId(), props.deploymentId, intervalSeconds()] as const;
 	});
 
-	const [metricsData] = createResource(fetchParams, async ([auth, wsId, runnerId, interval]) => {
-		if (!wsId || !auth || auth.type !== "LoggedIn" || !runnerId) {
+	const [metricsData] = createResource(fetchParams, async ([auth, wsId, deploymentId, interval]) => {
+		if (!wsId || !auth || auth.type !== "LoggedIn" || !deploymentId) {
 			return undefined;
 		}
 		const results = await Promise.all(
 			METRIC_NAMES.map(async (metric) => {
-				const resp = await httpRequest<GetRunnerMetricsResponse>(
-					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner/${runnerId}/metrics/${metric}?interval=${interval}.0`,
+				const resp = await httpRequest<GetDeploymentMetricResponse>(
+					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment/${deploymentId}/metrics/${metric}?interval=${interval}.0`,
 					{ method: "GET" }
 				);
 				if (!resp.ok) {
-					console.error(`Failed to fetch runner metric ${metric}:`, resp.data.error);
+					console.error(`Failed to fetch deployment metric ${metric}:`, resp.data.error);
 					return [metric, []] as const;
 				}
 				return [metric, resp.data.dataPoints] as const;
@@ -149,4 +165,4 @@ const RunnerMetrics = (props: RunnerMetricsProps) => {
 	);
 };
 
-export default RunnerMetrics;
+export default DeploymentMetrics;

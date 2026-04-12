@@ -33,6 +33,7 @@ import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import DeploymentInfoUpdate from "./-components/info";
 import DeploymentLogs from "./-components/logs";
+import DeploymentMetrics from "./-components/metrics";
 import { Color } from "~/utils/color";
 
 const DeploymentInfo = () => {
@@ -291,6 +292,16 @@ const DeploymentInfo = () => {
 										tab={tab}
 										tabItems={[
 											{
+												label: "Metrics",
+												value: "metrics",
+												onClick: (value) =>
+													navigate({
+														to: "/deployments/$id",
+														params: { id: params().id },
+														search: { tab: value },
+													}),
+											},
+											{
 												label: "Info",
 												value: "info",
 												onClick: (value) =>
@@ -317,17 +328,22 @@ const DeploymentInfo = () => {
 
 							<PageContainerBody class="flex flex-col justify-between gap-8">
 								<Switch fallback={<div class="text-grey text-sm py-8 text-center">No such tab</div>}>
-									<Match when={tab() === "logs"}>
+									<Match when={tab() === "metrics"}>
 										<Show when={deploymentInfo.latest?.id}>
-											{(id) => <DeploymentLogs deploymentId={id()} />}
+											{(id) => <DeploymentMetrics deploymentId={id()} />}
 										</Show>
 									</Match>
-									<Match when={tab() === "info" || tab() === ""}>
+									<Match when={tab() === "info"}>
 										<DeploymentInfoUpdate
 											deploymentInfo={deploymentInfo}
 											refetchDeploymentInfo={refetchDeploymentInfo}
 											mutateDeploymentInfo={mutateDeploymentInfo}
 										/>
+									</Match>
+									<Match when={tab() === "logs"}>
+										<Show when={deploymentInfo.latest?.id}>
+											{(id) => <DeploymentLogs deploymentId={id()} />}
+										</Show>
 									</Match>
 								</Switch>
 							</PageContainerBody>
@@ -341,7 +357,7 @@ const DeploymentInfo = () => {
 
 export const Route = createFileRoute("/_logged-in/_workspaced/deployments/$id")({
 	validateSearch: (search: Record<string, unknown>): { tab: string } => ({
-		tab: (search.tab as string) || "info",
+		tab: (search.tab as string) || "metrics",
 	}),
 	component: DeploymentInfo,
 });

@@ -89,6 +89,10 @@ import { ContainerRepositoryManifestInfo } from "./ContainerRepositoryManifestIn
 import { UpdateApiTokenRequest } from "./UpdateApiTokenRequest";
 import { GetRunnerMetricsResponse } from "./GetRunnerMetricsResponse";
 import { GetRunnerLogsResponse } from "./GetRunnerLogsResponse";
+import { GetDeploymentMetricResponse } from "./GetDeploymentMetricResponse";
+import { MetricDataPoint } from "./MetricDataPoint";
+import { DeploymentMetricName } from "./DeploymentMetricName";
+import { RunnerMetricName } from "./RunnerMetricName";
 
 export type {
 	EnvironmentVariableValue,
@@ -182,4 +186,8 @@ export type {
 	UpdateApiTokenRequest,
 	GetRunnerMetricsResponse,
 	GetRunnerLogsResponse,
+	GetDeploymentMetricResponse,
+	MetricDataPoint,
+	DeploymentMetricName,
+	RunnerMetricName,
 };
