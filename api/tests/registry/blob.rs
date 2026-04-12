@@ -308,12 +308,12 @@ async fn chunked_upload_with_patch_under_threshold() {
 		)
 		.await;
 
-	// 1. Initiate chunked upload
+	// Initiate chunked upload
 	let (session_id, _) = setup
 		.initiate_chunked_upload(&api_token.token, &workspace.id, &repo.name)
 		.await;
 
-	// 2. PATCH with ~1KB data (under 5MB — goes to Redis pending buffer)
+	// PATCH with ~1KB data (under 5MB — goes to Redis pending buffer)
 	let data: Vec<u8> = (0..=255u8).cycle().take(1024).collect();
 	let digest = sha256_digest(&data);
 
@@ -333,7 +333,7 @@ async fn chunked_upload_with_patch_under_threshold() {
 		std::str::from_utf8(&patch_response.into_bytes()).unwrap_or("<non-utf8>")
 	);
 
-	// 3. PUT to complete with empty body + digest
+	// PUT to complete with empty body + digest
 	let response = setup
 		.make_registry_call(RegistryUnprocessedApiRequest::<CompleteBlobUploadPath> {
 			path: CompleteBlobUploadPath {
@@ -361,7 +361,7 @@ async fn chunked_upload_with_patch_under_threshold() {
 		std::str::from_utf8(&response.into_bytes()).unwrap_or("<non-utf8>")
 	);
 
-	// 4. Verify blob GET returns the data
+	// Verify blob GET returns the data
 	let get_response = setup
 		.make_registry_call(RegistryUnprocessedApiRequest::<GetBlobPath> {
 			path: GetBlobPath {
@@ -397,12 +397,12 @@ async fn chunked_upload_with_patch_over_threshold() {
 		)
 		.await;
 
-	// 1. Initiate chunked upload
+	// Initiate chunked upload
 	let (session_id, _) = setup
 		.initiate_chunked_upload(&api_token.token, &workspace.id, &repo.name)
 		.await;
 
-	// 2. PATCH with 5MB + 100 bytes (5MB flushes to S3, 100 bytes buffer in Redis)
+	// PATCH with 5MB + 100 bytes (5MB flushes to S3, 100 bytes buffer in Redis)
 	let size = 5 * 1024 * 1024 + 100;
 	let data: Vec<u8> = (0..=255u8).cycle().take(size).collect();
 	let digest = sha256_digest(&data);
@@ -423,7 +423,7 @@ async fn chunked_upload_with_patch_over_threshold() {
 		std::str::from_utf8(&patch_response.into_bytes()).unwrap_or("<non-utf8>")
 	);
 
-	// 3. PUT to complete with empty body + digest
+	// PUT to complete with empty body + digest
 	let response = setup
 		.make_registry_call(RegistryUnprocessedApiRequest::<CompleteBlobUploadPath> {
 			path: CompleteBlobUploadPath {
@@ -451,7 +451,7 @@ async fn chunked_upload_with_patch_over_threshold() {
 		std::str::from_utf8(&response.into_bytes()).unwrap_or("<non-utf8>")
 	);
 
-	// 4. Verify blob GET returns all 5MB+100 bytes
+	// Verify blob GET returns all 5MB+100 bytes
 	let get_response = setup
 		.make_registry_call(RegistryUnprocessedApiRequest::<GetBlobPath> {
 			path: GetBlobPath {
@@ -487,7 +487,7 @@ async fn chunked_upload_multiple_patches() {
 		)
 		.await;
 
-	// 1. Initiate chunked upload
+	// Initiate chunked upload
 	let (session_id, _) = setup
 		.initiate_chunked_upload(&api_token.token, &workspace.id, &repo.name)
 		.await;
@@ -507,7 +507,7 @@ async fn chunked_upload_multiple_patches() {
 	full_data.extend_from_slice(&part2);
 	let digest = sha256_digest(&full_data);
 
-	// 2. PATCH with 5MB data (flushes to S3 as part 1)
+	// PATCH with 5MB data (flushes to S3 as part 1)
 	let patch1 = setup
 		.patch_blob_chunk(
 			&api_token.token,
@@ -524,7 +524,7 @@ async fn chunked_upload_multiple_patches() {
 		std::str::from_utf8(&patch1.into_bytes()).unwrap_or("<non-utf8>")
 	);
 
-	// 3. PATCH with 2MB data (goes to Redis pending buffer)
+	// PATCH with 2MB data (goes to Redis pending buffer)
 	let patch2 = setup
 		.patch_blob_chunk(
 			&api_token.token,
@@ -541,7 +541,7 @@ async fn chunked_upload_multiple_patches() {
 		std::str::from_utf8(&patch2.into_bytes()).unwrap_or("<non-utf8>")
 	);
 
-	// 4. PUT to complete with empty body + digest
+	// PUT to complete with empty body + digest
 	let response = setup
 		.make_registry_call(RegistryUnprocessedApiRequest::<CompleteBlobUploadPath> {
 			path: CompleteBlobUploadPath {
@@ -605,12 +605,12 @@ async fn chunked_upload_patch_then_body_in_put() {
 		)
 		.await;
 
-	// 1. Initiate chunked upload
+	// Initiate chunked upload
 	let (session_id, _) = setup
 		.initiate_chunked_upload(&api_token.token, &workspace.id, &repo.name)
 		.await;
 
-	// 2. PATCH with 1KB data (buffered in Redis)
+	// PATCH with 1KB data (buffered in Redis)
 	let patch_data: Vec<u8> = (0..=255u8).cycle().take(1024).collect();
 	let put_data: Vec<u8> = (128..=255u8).chain(0..=127u8).cycle().take(1024).collect();
 
@@ -635,7 +635,7 @@ async fn chunked_upload_patch_then_body_in_put() {
 		std::str::from_utf8(&patch_response.into_bytes()).unwrap_or("<non-utf8>")
 	);
 
-	// 3. PUT to complete with additional 1KB body + digest of combined data
+	// PUT to complete with additional 1KB body + digest of combined data
 	let response = setup
 		.make_registry_call(RegistryUnprocessedApiRequest::<CompleteBlobUploadPath> {
 			path: CompleteBlobUploadPath {
@@ -663,7 +663,7 @@ async fn chunked_upload_patch_then_body_in_put() {
 		std::str::from_utf8(&response.into_bytes()).unwrap_or("<non-utf8>")
 	);
 
-	// 4. Verify blob GET returns 2KB
+	// Verify blob GET returns 2KB
 	let get_response = setup
 		.make_registry_call(RegistryUnprocessedApiRequest::<GetBlobPath> {
 			path: GetBlobPath {

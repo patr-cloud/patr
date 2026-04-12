@@ -66,33 +66,36 @@ pub struct RunnerLog {
 	pub log: String,
 }
 
-/// A single timestamped data point for a metric series.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
-#[serde(rename_all = "camelCase")]
-pub struct MetricDataPoint {
-	/// The timestamp of the data point
-	#[ts(type = "Date")]
-	pub timestamp: OffsetDateTime,
-	/// The metric value as a string
-	pub value: String,
-}
-
-/// System metrics for a runner, organized by metric type.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
-#[serde(rename_all = "camelCase")]
-pub struct RunnerMetrics {
-	/// CPU usage as a percentage (0-100)
-	pub cpu_usage: Vec<MetricDataPoint>,
-	/// Memory usage as a percentage (0-100)
-	pub memory_usage: Vec<MetricDataPoint>,
+/// The set of available per-runner metric names. Used as a path parameter
+/// in the metrics endpoint to select which metric to query.
+#[derive(
+	Debug,
+	Clone,
+	Serialize,
+	Deserialize,
+	PartialEq,
+	Eq,
+	PartialOrd,
+	Ord,
+	TS,
+	strum::Display,
+	strum::EnumString,
+)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum RunnerMetricName {
+	/// System CPU usage percentage
+	SystemCpuUsage,
+	/// System memory usage percentage
+	SystemMemoryUsage,
 	/// Disk read rate in bytes per second
-	pub disk_read_bytes: Vec<MetricDataPoint>,
+	SystemDiskReadBytes,
 	/// Disk write rate in bytes per second
-	pub disk_written_bytes: Vec<MetricDataPoint>,
-	/// Disk usage as a percentage (0-100)
-	pub disk_usage: Vec<MetricDataPoint>,
-	/// Network transmit rate in bytes per second
-	pub network_usage_tx: Vec<MetricDataPoint>,
+	SystemDiskWrittenBytes,
+	/// Disk usage percentage
+	SystemDiskUsage,
 	/// Network receive rate in bytes per second
-	pub network_usage_rx: Vec<MetricDataPoint>,
+	SystemNetworkRx,
+	/// Network transmit rate in bytes per second
+	SystemNetworkTx,
 }

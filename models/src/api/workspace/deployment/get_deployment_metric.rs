@@ -1,17 +1,19 @@
 use time::Duration;
 
-use super::DeploymentMetric;
-use crate::prelude::*;
+use super::DeploymentMetricName;
+use crate::{api::workspace::MetricDataPoint, prelude::*};
 
 macros::declare_api_endpoint!(
-	/// Route to get monitoring metrics like CPU, RAM and Disk usage
-	/// for a deployment
+	/// Route to get a single metric for a deployment. The metric name is
+	/// specified in the path (e.g. `ingress_rps`, `container_cpu_usage`).
 	GetDeploymentMetric,
-	GET "/workspace/{workspace_id}/deployment/{deployment_id}/metrics" {
+	GET "/workspace/{workspace_id}/deployment/{deployment_id}/metrics/{metric}" {
 		/// The workspace ID of the user
 		pub workspace_id: Uuid,
 		/// The deployment ID to get the metrics for
 		pub deployment_id: Uuid,
+		/// The metric to query
+		pub metric: DeploymentMetricName,
 	},
 	request_headers = {
 		/// Token used to authorize user
@@ -33,10 +35,8 @@ macros::declare_api_endpoint!(
 		pub interval: Option<Duration>,
 	},
 	response = {
-		/// The deployment metrics containing:
-		/// pod_name - The name of the pod
-		/// metrics - The metrics of the pod
-		pub metrics: Vec<DeploymentMetric>
+		/// The metric data points
+		pub data_points: Vec<MetricDataPoint>
 	},
 	audit_log = NoAuditLogger,
 );

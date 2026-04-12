@@ -50,6 +50,17 @@ pub use self::{
 	update_workspace_info::*,
 };
 
+/// A single data point in a time-series metric.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct MetricDataPoint {
+	/// The timestamp of the data point
+	#[ts(type = "Date")]
+	pub timestamp: OffsetDateTime,
+	/// The metric value as a string
+	pub value: String,
+}
+
 /// The details of a workspace. A workspace contains all the resources that will
 /// be created. A resource cannot exist outside of a workspace.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]

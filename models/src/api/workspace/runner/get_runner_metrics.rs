@@ -1,16 +1,19 @@
 use time::Duration;
 
-use super::RunnerMetrics;
-use crate::prelude::*;
+use super::RunnerMetricName;
+use crate::{api::workspace::MetricDataPoint, prelude::*};
 
 macros::declare_api_endpoint!(
-	/// Route to get system metrics (CPU, memory, disk, network) for a runner
+	/// Route to get a single system metric for a runner. The metric name is
+	/// specified in the path (e.g. `system_cpu_usage`, `system_network_rx`).
 	GetRunnerMetrics,
-	GET "/workspace/{workspace_id}/runner/{runner_id}/metrics" {
+	GET "/workspace/{workspace_id}/runner/{runner_id}/metrics/{metric}" {
 		/// The workspace ID of the user
 		pub workspace_id: Uuid,
 		/// The runner ID to get the metrics for
 		pub runner_id: Uuid,
+		/// The metric to query
+		pub metric: RunnerMetricName,
 	},
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
@@ -32,9 +35,8 @@ macros::declare_api_endpoint!(
 		pub interval: Option<Duration>,
 	},
 	response = {
-		/// The runner system metrics, organized by metric type
-		#[serde(flatten)]
-		pub metrics: RunnerMetrics
+		/// The metric data points
+		pub data_points: Vec<MetricDataPoint>
 	},
 	audit_log = NoAuditLogger,
 );

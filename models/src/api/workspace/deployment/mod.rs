@@ -371,21 +371,76 @@ impl FromStr for DeploymentStatus {
 	}
 }
 
-/// Deployment metrics
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
-#[serde(rename_all = "camelCase")]
-pub struct DeploymentMetric {
-	/// The timestamp of the metric
-	#[ts(type = "Date")]
-	pub timestamp: OffsetDateTime,
-	/// The cpu usage of a pod
-	pub cpu_usage: String,
-	/// The memory usage of a pod
-	pub memory_usage: String,
-	/// The network transmit of a pod
-	pub network_usage_tx: String,
-	/// The network recieve of a pod
-	pub network_usage_rx: String,
+/// The set of available per-deployment metric names. Used as a path parameter
+/// in the metrics endpoint to select which metric to query.
+#[derive(
+	Debug,
+	Clone,
+	Serialize,
+	Deserialize,
+	PartialEq,
+	Eq,
+	PartialOrd,
+	Ord,
+	TS,
+	strum::Display,
+	strum::EnumString,
+)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum DeploymentMetricName {
+	/// Requests per second
+	IngressRps,
+	/// Full round-trip latency, 50th percentile
+	IngressLatencyP50,
+	/// Full round-trip latency, 95th percentile
+	IngressLatencyP95,
+	/// Full round-trip latency, 99th percentile
+	IngressLatencyP99,
+	/// Time to first byte, 50th percentile
+	IngressTtfbP50,
+	/// Time to first byte, 95th percentile
+	IngressTtfbP95,
+	/// Time to first byte, 99th percentile
+	IngressTtfbP99,
+	/// Middleware errors per second
+	IngressErrorRate,
+	/// 2xx responses per second
+	IngressStatus2xx,
+	/// 3xx responses per second
+	IngressStatus3xx,
+	/// 4xx responses per second
+	IngressStatus4xx,
+	/// 5xx responses per second
+	IngressStatus5xx,
+	/// Inbound bandwidth (bytes/sec)
+	IngressBandwidthIn,
+	/// Outbound bandwidth (bytes/sec)
+	IngressBandwidthOut,
+	/// In-flight requests
+	IngressActiveConnections,
+	/// Average request body size (bytes)
+	IngressRequestBodySize,
+	/// Average response body size (bytes)
+	IngressResponseBodySize,
+	/// Container CPU usage percentage
+	ContainerCpuUsage,
+	/// Container CPU throttling (seconds)
+	ContainerCpuThrottling,
+	/// Container memory working set (bytes)
+	ContainerMemoryUsed,
+	/// Container memory limit (bytes)
+	ContainerMemoryLimit,
+	/// Container network receive (bytes/sec)
+	ContainerNetworkRx,
+	/// Container network transmit (bytes/sec)
+	ContainerNetworkTx,
+	/// Container disk read (bytes/sec)
+	ContainerDiskRead,
+	/// Container disk write (bytes/sec)
+	ContainerDiskWrite,
+	/// Container OOM kill count
+	ContainerOomKills,
 }
 
 /// Deployment logs
