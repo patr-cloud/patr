@@ -105,3 +105,24 @@ pub fn rate_limit_ip(identifier: &str, window_secs: u64) -> String {
 pub fn rate_limit_login_id(login_id: &Uuid, window_secs: u64) -> String {
 	format!("rateLimit:loginId:{}:{}", login_id, window_secs)
 }
+
+/// The key used to store a GitHub OAuth CSRF state token. The value is the
+/// sentinel string `"1"` (presence-only). Expires after 10 minutes.
+/// Consumed (deleted) on first use to prevent replay.
+pub fn github_oauth_state(state_token: &str) -> String {
+	format!("githubOAuthState:{}", state_token)
+}
+
+/// The key used to store a pending GitHub account-link confirmation. The value
+/// is JSON containing `{ user_id, github_id, github_login, github_email }`.
+/// Expires after 5 minutes. Consumed on first use.
+pub fn github_oauth_link(link_token: &str) -> String {
+	format!("githubOAuthLink:{}", link_token)
+}
+
+/// The key used to store a pending GitHub account-setup payload for new users.
+/// The value is JSON containing `{ github_id, github_login, github_email }`.
+/// Expires after 10 minutes. Consumed on first use.
+pub fn github_oauth_setup(setup_token: &str) -> String {
+	format!("githubOAuthSetup:{}", setup_token)
+}

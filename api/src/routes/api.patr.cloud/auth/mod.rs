@@ -4,6 +4,8 @@ use crate::prelude::*;
 
 /// The route to complete the sign up process
 mod complete_sign_up;
+/// GitHub OAuth2 SSO routes
+mod github_oauth;
 /// The route to create a new user account
 mod create_account;
 /// The route to login using Docker credentials
@@ -35,6 +37,7 @@ use self::{
 	create_account::*,
 	docker_login::*,
 	forgot_password::*,
+	github_oauth::*,
 	is_email_valid::*,
 	is_username_valid::*,
 	list_recovery_options::*,
@@ -62,4 +65,8 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 		.mount_endpoint(resend_otp, state, allowed_client_type)
 		.mount_endpoint(reset_password, state, allowed_client_type)
 		.mount_endpoint(docker_login, state, allowed_client_type)
+		.mount_endpoint(github_oauth_initiate, state, allowed_client_type)
+		.mount_endpoint(github_oauth_callback, state, allowed_client_type)
+		.mount_endpoint(github_oauth_link, state, allowed_client_type)
+		.mount_endpoint(github_oauth_setup, state, allowed_client_type)
 }

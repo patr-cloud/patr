@@ -1,6 +1,9 @@
 /// All OAuth related endpoints go here.
 pub mod oauth;
 
+/// GitHub OAuth2 SSO endpoints
+mod github_oauth;
+
 /// The endpoint to complete the sign up process
 mod complete_sign_up;
 /// The endpoint to create an account (a.k.a. sign up)
@@ -31,6 +34,7 @@ pub use self::{
 	create_account::*,
 	docker_login::*,
 	forgot_password::*,
+	github_oauth::*,
 	is_email_valid::*,
 	is_username_valid::*,
 	list_recovery_options::*,

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO user_social_login(user_id, provider, external_id, linked_at) VALUES ($1, 'github', $2, $3) ON CONFLICT (provider, external_id) DO NOTHING;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4b6a6336bce82cfd474001886505c50c907a10c358221fc2d06a03d68d9d3e4c"
+}

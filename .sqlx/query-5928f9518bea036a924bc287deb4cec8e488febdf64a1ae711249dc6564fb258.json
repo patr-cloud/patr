@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE INDEX user_social_login_idx_user_id ON user_social_login(user_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "5928f9518bea036a924bc287deb4cec8e488febdf64a1ae711249dc6564fb258"
+}

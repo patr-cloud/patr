@@ -75,6 +75,8 @@ pub struct AppConfig {
 	pub opentelemetry: OpenTelemetryConfig,
 	/// The configuration for IpInfo to get IpAddress details
 	pub ipinfo: IpInfoConfig,
+	/// The configuration for GitHub OAuth2 SSO
+	pub github_oauth: GitHubOAuthConfig,
 }
 
 /// The environment the application is running in
@@ -257,4 +259,19 @@ pub struct MetricsConfig {
 pub struct IpInfoConfig {
 	/// The token for connecting to ipinfo.io
 	pub token: String,
+}
+
+/// The configuration for GitHub OAuth2, used to allow users to sign in with
+/// their GitHub account.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitHubOAuthConfig {
+	/// The Client ID of the GitHub OAuth App registered at
+	/// https://github.com/settings/developers
+	pub client_id: String,
+	/// The Client Secret of the GitHub OAuth App
+	pub client_secret: String,
+	/// The full callback URL registered in the GitHub OAuth App settings.
+	/// In production this is `https://app.patr.cloud/github-callback`.
+	pub callback_url: String,
 }

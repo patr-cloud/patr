@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE SOCIAL_LOGIN_PROVIDER AS ENUM('github');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "6be828d0b4fe2df8ebfe8418afc576b8c95816f8a18e53c6e311cb379542af0a"
+}

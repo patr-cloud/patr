@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE user_social_login(user_id     UUID                  NOT NULL, provider    SOCIAL_LOGIN_PROVIDER NOT NULL, external_id TEXT                  NOT NULL, linked_at   TIMESTAMPTZ           NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "95f306d812bf93cbb1190b6cc2b60ef1b922b43c0e8e3b8e3e3a8b4ee98101a0"
+}

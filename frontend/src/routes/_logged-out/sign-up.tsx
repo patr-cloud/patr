@@ -29,6 +29,18 @@ const emptyErrors: FieldErrors = {
 const SignUp = () => {
 	const toast = useToast();
 	const navigate = useNavigate();
+	const [githubLoading, setGithubLoading] = createSignal(false);
+
+	const handleGithubSignIn = async () => {
+		setGithubLoading(true);
+		const resp = await httpRequest<{ authorizeUrl: string }>("/api/auth/github", { method: "GET" });
+		if (resp.ok) {
+			window.location.href = resp.data.authorizeUrl;
+		} else {
+			toast("Could not initiate GitHub sign-in. Please try again.", "error");
+			setGithubLoading(false);
+		}
+	};
 
 	const [username, setUsername] = createSignal("");
 	const [firstName, setFirstName] = createSignal("");
@@ -310,6 +322,24 @@ const SignUp = () => {
 							Sign Up
 						</Button>
 					</div>
+
+					{/* GitHub SSO */}
+					<div class="flex items-center gap-3 mb-4">
+						<div class="flex-1 h-px bg-secondary-medium" />
+						<span class="text-gray-500 text-xs">or</span>
+						<div class="flex-1 h-px bg-secondary-medium" />
+					</div>
+					<Button
+						variant={ButtonVariant.Outlined}
+						class="w-full py-3 mb-2 flex items-center justify-center gap-2"
+						type="button"
+						loading={githubLoading}
+						loadingContent={() => <span>Redirecting to GitHub...</span>}
+						onClick={handleGithubSignIn}
+					>
+						<img src="/icons/github.svg" alt="" aria-hidden="true" height="20" width="20" class="invert" />
+						Continue with GitHub
+					</Button>
 				</div>
 			</form>
 

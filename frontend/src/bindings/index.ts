@@ -93,6 +93,14 @@ import { GetDeploymentMetricResponse } from "./GetDeploymentMetricResponse";
 import { MetricDataPoint } from "./MetricDataPoint";
 import { DeploymentMetricName } from "./DeploymentMetricName";
 import { RunnerMetricName } from "./RunnerMetricName";
+import { GithubCallbackStatus } from "./GithubCallbackStatus";
+import { GithubOAuthInitiateResponse } from "./GithubOAuthInitiateResponse";
+import { GithubOAuthCallbackResponse } from "./GithubOAuthCallbackResponse";
+import { GithubOAuthLinkRequest } from "./GithubOAuthLinkRequest";
+import { GithubOAuthLinkResponse } from "./GithubOAuthLinkResponse";
+import { GithubOAuthSetupRequest } from "./GithubOAuthSetupRequest";
+import { GithubOAuthSetupResponse } from "./GithubOAuthSetupResponse";
+import { OAuthProvider } from "./OAuthProvider";
 
 export type {
 	EnvironmentVariableValue,
@@ -190,4 +198,12 @@ export type {
 	MetricDataPoint,
 	DeploymentMetricName,
 	RunnerMetricName,
+	GithubCallbackStatus,
+	GithubOAuthInitiateResponse,
+	GithubOAuthCallbackResponse,
+	GithubOAuthLinkRequest,
+	GithubOAuthLinkResponse,
+	GithubOAuthSetupRequest,
+	GithubOAuthSetupResponse,
+	OAuthProvider,
 };

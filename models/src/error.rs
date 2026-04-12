@@ -118,6 +118,12 @@ pub enum ErrorType {
 	TurnstileVerificationActionMismatch,
 	/// The client has sent too many requests in a given amount of time
 	RateLimitExceeded,
+	/// GitHub OAuth2 authentication failed. This can happen if the state token
+	/// is invalid or expired, the authorization code has already been used,
+	/// GitHub returned an error, or the user's GitHub account has no verified
+	/// email address. Also returned when a link/setup token is invalid or
+	/// expired.
+	GithubOAuthFailed,
 }
 
 impl ErrorType {
@@ -169,6 +175,7 @@ impl ErrorType {
 			Self::TurnstileVerificationFailed => StatusCode::FORBIDDEN,
 			Self::TurnstileVerificationActionMismatch => StatusCode::FORBIDDEN,
 			Self::RateLimitExceeded => StatusCode::TOO_MANY_REQUESTS,
+			Self::GithubOAuthFailed => StatusCode::BAD_REQUEST,
 		}
 	}
 
@@ -253,6 +260,12 @@ impl ErrorType {
 				"Human verification action mismatch. Please try again (Turnstile action mismatch)."
 			}
 			Self::RateLimitExceeded => "Too many requests. Please try again later.",
+			Self::GithubOAuthFailed => {
+				concat!(
+					"GitHub authentication failed. Please try again. ",
+					"Ensure your GitHub account has a verified email address.",
+				)
+			}
 		}
 	}
 
