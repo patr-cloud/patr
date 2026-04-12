@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createEffect, createMemo, createSignal, Show, Suspense } from "solid-js";
+import { createEffect, createMemo, createSignal, Suspense } from "solid-js";
 import {
 	Button,
 	ButtonVariant,
@@ -15,7 +15,7 @@ import {
 } from "~/components";
 import { FiEdit2, FiPlus, FiTrash } from "solid-icons/fi";
 import { useNavigate } from "@tanstack/solid-router";
-import { createAuthenticatedAction, createFormAction, useAuthState, createPaginationState } from "~/hooks";
+import { createAuthenticatedAction, createFormAction, createPaginationState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { UpdateUserRolesInWorkspaceRequest } from "~/bindings/UpdateUserRolesInWorkspaceRequest";
 import { RemoveUserFromWorkspaceResponse } from "~/bindings/RemoveUserFromWorkspaceResponse";
@@ -29,7 +29,6 @@ import { useQueryClient } from "@tanstack/solid-query";
 import { memberKeys } from "~/hooks/query-keys";
 
 const ManageWorkspace = () => {
-	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const navigate = useNavigate();

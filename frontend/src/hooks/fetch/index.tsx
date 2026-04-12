@@ -2,28 +2,49 @@ import usePermissionsQuery from "./permissions";
 import useWorkspacesQuery from "./workspaces";
 import useUserPermissionsQuery from "./user-permissions";
 import { useDeploymentsQuery, useDeploymentInfoQuery } from "./deployments";
-import { useRunnersQuery, useRunnersListQuery } from "./runners";
+import { useRunnersQuery, useRunnerInfoQuery, useRunnersListQuery } from "./runners";
 import { useWorkspaceInfoQuery } from "./workspace";
-import { useRolesQuery, useAllRolesQuery } from "./roles";
+import { useRolesQuery, useAllRolesQuery, useRoleInfoQuery, useRoleUsersQuery } from "./roles";
 import { useMembersQuery } from "./members";
-import { useApiTokensQuery } from "./api-tokens";
-import { useContainerRegistriesQuery } from "./container-registry";
-import { useDomainsQuery, useDomainVerificationRecordsQuery } from "./domains";
+import { useApiTokensQuery, useApiTokenInfoQuery } from "./api-tokens";
+import {
+	useContainerRegistriesQuery,
+	useContainerRegistryInfoQuery,
+	useContainerManifestsQuery,
+	useContainerTagsQuery,
+} from "./container-registry";
+import { useDomainsQuery, useDomainInfoQuery } from "./domains";
+import { useManagedUrlsQuery } from "./managed-urls";
+import { useRunnerMetricsQuery, useDeploymentMetricsQuery } from "./metrics";
+import { useUserInfoQuery, useUserSearchQuery, useMfaSecretQuery } from "./user";
 
 export {
 	useDeploymentsQuery,
 	useDeploymentInfoQuery,
+	useDeploymentMetricsQuery,
 	useRunnersQuery,
+	useRunnerInfoQuery,
 	useRunnersListQuery,
+	useRunnerMetricsQuery,
 	usePermissionsQuery,
 	useUserPermissionsQuery,
 	useWorkspacesQuery,
 	useWorkspaceInfoQuery,
 	useRolesQuery,
 	useAllRolesQuery,
+	useRoleInfoQuery,
+	useRoleUsersQuery,
 	useMembersQuery,
 	useApiTokensQuery,
+	useApiTokenInfoQuery,
 	useContainerRegistriesQuery,
+	useContainerRegistryInfoQuery,
+	useContainerManifestsQuery,
+	useContainerTagsQuery,
 	useDomainsQuery,
-	useDomainVerificationRecordsQuery,
+	useDomainInfoQuery,
+	useManagedUrlsQuery,
+	useUserInfoQuery,
+	useUserSearchQuery,
+	useMfaSecretQuery,
 };

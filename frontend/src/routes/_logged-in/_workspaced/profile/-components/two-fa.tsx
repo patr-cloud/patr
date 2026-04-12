@@ -1,44 +1,27 @@
-import { createEffect, createResource, createSignal, onCleanup, Suspense } from "solid-js";
+import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 import { Button, ButtonVariant, ModalContainer, OtpInput, useToast } from "~/components";
 import { useAuthState } from "~/hooks";
-import { GetMfaSecretResponse, GetUserInfoResponse } from "~/bindings";
+import { useMfaSecretQuery } from "~/hooks/fetch";
+import { useQueryClient } from "@tanstack/solid-query";
 import { httpRequest } from "~/utils/http-request";
 import { VsRefresh } from "solid-icons/vs";
 
 interface ModalContainerProps {
 	isMfaEnabled: boolean;
 	closeFn: (prev: boolean) => void;
-	refetchUserInfo: () => GetUserInfoResponse | Promise<GetUserInfoResponse | undefined> | null | undefined;
+	refetchUserInfo: () => void;
 }
 
 const TwoFactorAuthModal = (props: ModalContainerProps) => {
 	const [authState] = useAuthState();
 	const toast = useToast();
+	const queryClient = useQueryClient();
 
 	const [otp, setOtp] = createSignal("");
 	const [timeRemaining, setTimeRemaining] = createSignal(5 * 60); // 5 minutes in seconds
 	const [isExpired, setIsExpired] = createSignal(false);
 
-	const mfaSource = () => ({ auth: authState(), isMfaEnabled: props.isMfaEnabled });
-
-	const [mfaSecret, { refetch }] = createResource(mfaSource, async ({ auth, isMfaEnabled }) => {
-		if (isMfaEnabled) return undefined;
-		if (!auth || auth.type !== "LoggedIn") {
-			toast("You must be logged in to enable 2FA", "error");
-			return undefined;
-		}
-
-		const response = await httpRequest<GetMfaSecretResponse>(`${import.meta.env.VITE_BASE_URL}/api/user/mfa`, {
-			method: "GET",
-		});
-
-		if (!response.ok) {
-			toast(`Failed to fetch MFA secret: ${response.data.error || "Unknown error"}`, "error");
-			return undefined;
-		}
-
-		return response.data;
-	});
+	const mfaQuery = useMfaSecretQuery(() => !props.isMfaEnabled);
 
 	// Timer countdown
 	createEffect(() => {
@@ -67,7 +50,7 @@ const TwoFactorAuthModal = (props: ModalContainerProps) => {
 	const handleReload = () => {
 		setTimeRemaining(5 * 60);
 		setIsExpired(false);
-		refetch();
+		queryClient.invalidateQueries({ queryKey: ["mfa"] });
 	};
 
 	const onVerifyOtp = async (e: Event) => {
@@ -122,7 +105,7 @@ const TwoFactorAuthModal = (props: ModalContainerProps) => {
 					</div>
 
 					<div class="border border-border-color p-4 rounded-xs min-h-66 min-w-66 flex justify-center items-center relative">
-						<Suspense fallback={<div class="text-white">Loading QR Code...</div>}>
+						<Show when={mfaQuery.data} fallback={<div class="text-white">Loading QR Code...</div>}>
 							<img
 								style={{
 									height: "230px",
@@ -130,20 +113,20 @@ const TwoFactorAuthModal = (props: ModalContainerProps) => {
 									transition: "filter 0.3s ease",
 								}}
 								width="auto"
-								src={`data:image/png;base64,${mfaSecret.latest?.qr || ""}`}
+								src={`data:image/png;base64,${mfaQuery.data?.qr || ""}`}
 							/>
-							{isExpired() && (
-								<div class="absolute inset-0 flex items-center justify-center">
-									<Button
-										variant={ButtonVariant.Contained}
-										onClick={handleReload}
-										class="z-10 hover:text-primary"
-									>
-										<VsRefresh class="text-secondary hover:text-primary" size={48} />
-									</Button>
-								</div>
-							)}
-						</Suspense>
+						</Show>
+						{isExpired() && (
+							<div class="absolute inset-0 flex items-center justify-center">
+								<Button
+									variant={ButtonVariant.Contained}
+									onClick={handleReload}
+									class="z-10 hover:text-primary"
+								>
+									<VsRefresh class="text-secondary hover:text-primary" size={48} />
+								</Button>
+							</div>
+						)}
 					</div>
 
 					<div class="w-full flex items-center gap-2">

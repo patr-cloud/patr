@@ -1,10 +1,7 @@
-import { Show, For, createMemo, createResource, createSignal, ErrorBoundary, Suspense } from "solid-js";
-import type { GetDeploymentMetricResponse, MetricDataPoint } from "~/bindings";
+import { Show, For, createSignal, ErrorBoundary } from "solid-js";
 import { InputDropdown } from "~/components";
 import MetricCard, { INTERVALS, type ChartDef } from "~/components/metric-card";
-import { useAuthState } from "~/hooks";
-import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { httpRequest } from "~/utils/http-request";
+import { useDeploymentMetricsQuery } from "~/hooks/fetch";
 
 interface DeploymentMetricsProps {
 	deploymentId: string;
@@ -73,39 +70,15 @@ const CHARTS: ChartDef[] = [
 const METRIC_NAMES = [...new Set(CHARTS.flatMap((c) => c.series.map((s) => s.metric)))];
 
 const DeploymentMetrics = (props: DeploymentMetricsProps) => {
-	const [authState] = useAuthState();
-	const [workspaceId] = useLastWorkspaceId();
 	const [intervalSeconds, setIntervalSeconds] = createSignal("3600");
 
-	const fetchParams = createMemo(() => {
-		return [authState(), workspaceId(), props.deploymentId, intervalSeconds()] as const;
-	});
-
-	const [metricsData] = createResource(fetchParams, async ([auth, wsId, deploymentId, interval]) => {
-		if (!wsId || !auth || auth.type !== "LoggedIn" || !deploymentId) {
-			return undefined;
-		}
-		const results = await Promise.all(
-			METRIC_NAMES.map(async (metric) => {
-				const resp = await httpRequest<GetDeploymentMetricResponse>(
-					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment/${deploymentId}/metrics/${metric}?interval=${interval}.0`,
-					{ method: "GET" }
-				);
-				if (!resp.ok) {
-					console.error(`Failed to fetch deployment metric ${metric}:`, resp.data.error);
-					return [metric, []] as const;
-				}
-				return [metric, resp.data.dataPoints] as const;
-			})
-		);
-		return Object.fromEntries(results) as Record<string, MetricDataPoint[]>;
-	});
+	const metricsQuery = useDeploymentMetricsQuery(() => props.deploymentId, METRIC_NAMES, intervalSeconds);
 
 	return (
 		<div class="flex flex-col gap-lg">
 			{/* Interval selector */}
 			<div class="flex items-center justify-end gap-sm">
-				<Show when={metricsData.loading}>
+				<Show when={metricsQuery.isFetching}>
 					<div class="w-3.5 h-3.5 border-2 border-primary/40 border-t-primary rounded-full animate-spin" />
 				</Show>
 				<span class="text-xs text-grey">Interval</span>
@@ -132,7 +105,8 @@ const DeploymentMetrics = (props: DeploymentMetricsProps) => {
 					</div>
 				)}
 			>
-				<Suspense
+				<Show
+					when={!metricsQuery.isPending}
 					fallback={
 						<div class="grid grid-cols-1 lg:grid-cols-2 gap-lg">
 							<For each={CHARTS}>
@@ -154,12 +128,12 @@ const DeploymentMetrics = (props: DeploymentMetricsProps) => {
 										index() === CHARTS.length - 1 && CHARTS.length % 2 !== 0 ? "lg:col-span-2" : ""
 									}
 								>
-									<MetricCard chart={chart} data={metricsData()} />
+									<MetricCard chart={chart} data={metricsQuery.data} isError={metricsQuery.isError} />
 								</div>
 							)}
 						</For>
 					</div>
-				</Suspense>
+				</Show>
 			</ErrorBoundary>
 		</div>
 	);

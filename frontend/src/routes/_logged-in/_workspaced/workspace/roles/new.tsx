@@ -3,7 +3,7 @@ import { Title } from "@solidjs/meta";
 import { createMemo, createSignal, Show } from "solid-js";
 import { useNavigate } from "@tanstack/solid-router";
 import { Button, ButtonVariant, Input, PageContainer, PageContainerBody, Table, useToast } from "~/components";
-import { createAuthenticatedAction, useAuthState } from "~/hooks";
+import { createAuthenticatedAction } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { CreateNewRoleRequest } from "~/bindings/CreateNewRoleRequest";
 import { CreateNewRoleResponse } from "~/bindings/CreateNewRoleResponse";
@@ -16,7 +16,6 @@ import { parsePermissionName, parseCamelCase } from "~/utils/func";
 import { FiTrash2 } from "solid-icons/fi";
 
 const CreateRoles = () => {
-	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const navigate = useNavigate();

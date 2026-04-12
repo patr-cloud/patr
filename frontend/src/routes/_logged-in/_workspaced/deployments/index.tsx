@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createEffect, createMemo, createResource, ErrorBoundary, onCleanup, Show } from "solid-js";
-import { Deployment, GetContainerRepositoryInfoResponse, ListDeploymentResponse, WithId } from "~/bindings";
+import { createEffect, createResource, ErrorBoundary, Show } from "solid-js";
+import { Deployment, GetContainerRepositoryInfoResponse, WithId } from "~/bindings";
 import {
 	Button,
 	ButtonVariant,
@@ -18,10 +18,11 @@ import {
 	StatusChip,
 	Table,
 	Tooltip,
-	useToast,
 } from "~/components";
+import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useDeploymentsQuery, useRunnersQuery } from "~/hooks/fetch";
 import { useIsAllowed, createPaginationState } from "~/hooks";
+import { httpRequest } from "~/utils/http-request";
 
 const ImageName = (props: { item: WithId<Deployment> }) => {
 	const [workspaceId] = useLastWorkspaceId();
@@ -142,7 +143,7 @@ const ListDeploymentsPage = () => {
 					]}
 					subText="A deployment represents a containerized application running on a runner."
 					actions={() => (
-						<Show when={isAllowedCreate() && (deployments.latest?.deployments?.length ?? 0) > 0}>
+						<Show when={isAllowedCreate() && (deploymentsQuery.data?.deployments?.length ?? 0) > 0}>
 							<Link href="/deployments/new" buttonVariant={ButtonVariant.Outlined} external={false}>
 								Create Deployment
 							</Link>

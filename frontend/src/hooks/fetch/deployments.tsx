@@ -6,8 +6,7 @@ import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { deploymentKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
 
-const DEPLOYING_REFETCH_INTERVAL = 15_000;
-const DEFAULT_REFETCH_INTERVAL = 60_000;
+const DEPLOYING_REFETCH_INTERVAL = 3_000;
 
 export const useDeploymentsQuery = (page: Accessor<string | undefined>, count: Accessor<string | undefined>) => {
 	const [authState] = useAuthState();
@@ -22,6 +21,10 @@ export const useDeploymentsQuery = (page: Accessor<string | undefined>, count: A
 		return {
 			queryKey: deploymentKeys.list(wsId ?? "", p, c),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn",
+			refetchInterval: (query: { state: { data?: { deployments: { status: string }[] } } }) =>
+				query.state.data?.deployments?.some((d) => d.status === "deploying")
+					? DEPLOYING_REFETCH_INTERVAL
+					: false,
 			queryFn: async () => {
 				const params = new URLSearchParams();
 				if (p) params.set("page", p);
@@ -60,7 +63,7 @@ export const useDeploymentInfoQuery = (id: Accessor<string>) => {
 			queryKey: deploymentKeys.detail(wsId ?? "", deploymentId),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!deploymentId,
 			refetchInterval: (query: { state: { data?: GetDeploymentInfoResponse } }) =>
-				query.state.data?.status === "deploying" ? DEPLOYING_REFETCH_INTERVAL : DEFAULT_REFETCH_INTERVAL,
+				query.state.data?.status === "deploying" ? DEPLOYING_REFETCH_INTERVAL : false,
 			queryFn: async () => {
 				const response = await httpRequest<GetDeploymentInfoResponse>(
 					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment/${deploymentId}`,

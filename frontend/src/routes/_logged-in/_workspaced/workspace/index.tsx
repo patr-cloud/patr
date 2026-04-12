@@ -13,8 +13,11 @@ import {
 import WorkspaceHeader from "./-components/workspace-header";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
+import { useWorkspaceInfoQuery } from "~/hooks/fetch";
+import { workspaceKeys } from "~/hooks/query-keys";
+import { useQueryClient } from "@tanstack/solid-query";
 import { httpRequest } from "~/utils/http-request";
-import { createEffect, createResource, createSignal } from "solid-js";
+import { createEffect, createSignal } from "solid-js";
 import { GetWorkspaceInfoResponse } from "~/bindings/GetWorkspaceInfoResponse";
 import { EventT } from "~/utils/types";
 
@@ -22,36 +25,15 @@ const General = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
-	const resourceParamsWorkspace = () => {
-		return [authState(), workspaceId()] as const;
-	};
+	const queryClient = useQueryClient();
+
+	const workspaceInfoQuery = useWorkspaceInfoQuery();
 
 	const [name, setName] = createSignal("");
 	const [_hasUpdated, setHasUpdated] = createSignal(false);
 
-	const [workspaceInfo, { mutate: mutateWorkspaceInfo }] = createResource(
-		resourceParamsWorkspace,
-		async ([auth, id]) => {
-			if (!auth || auth.type !== "LoggedIn" || id === "") {
-				return;
-			}
-			const response = await httpRequest<GetWorkspaceInfoResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}`,
-				{
-					method: "GET",
-				}
-			);
-			if (!response.ok) {
-				console.error("Failed to fetch workspace info:", response.data.error);
-				toast("Failed to fetch workspace info", "error");
-				return undefined;
-			}
-			return response.data;
-		}
-	);
-
 	createEffect(() => {
-		const info = workspaceInfo();
+		const info = workspaceInfoQuery.data;
 		if (info?.name) {
 			setName(info.name);
 		}
@@ -88,7 +70,9 @@ const General = () => {
 
 			toast("Workspace name updated successfully", "success");
 			setHasUpdated(false);
-			mutateWorkspaceInfo((prev) => (prev ? { ...prev, name: newName } : prev));
+			queryClient.setQueryData<GetWorkspaceInfoResponse>(workspaceKeys.info(id!), (prev) =>
+				prev ? { ...prev, name: newName } : prev
+			);
 		} catch (error) {
 			console.error("Failed to update workspace name:", error);
 			toast("Failed to update workspace name", "error");
@@ -99,7 +83,7 @@ const General = () => {
 		<>
 			<Title>Workspace Settings | Patr</Title>
 			<PageContainer>
-				<WorkspaceHeader workspaceName={workspaceInfo()?.name} activeTab="general" />
+				<WorkspaceHeader workspaceName={workspaceInfoQuery.data?.name} activeTab="general" />
 				<PageContainerBody class="flex flex-col gap-8">
 					<form onSubmit={onSubmit} class="flex flex-col gap-6 justify-between w-full flex-1">
 						<div class="flex flex-col gap-4 items-start w-full">
@@ -132,7 +116,9 @@ const General = () => {
 							<Button
 								type="submit"
 								variant="contained"
-								disabled={name().trim() === (workspaceInfo()?.name ?? "") || name().trim() === ""}
+								disabled={
+									name().trim() === (workspaceInfoQuery.data?.name ?? "") || name().trim() === ""
+								}
 							>
 								Update
 							</Button>

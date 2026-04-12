@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createMemo, createResource, createSignal, ErrorBoundary, Match, Show, Suspense, Switch } from "solid-js";
+import { createSignal, ErrorBoundary, Match, Show, Switch } from "solid-js";
 import {
 	Button,
 	ButtonVariant,
@@ -14,7 +14,9 @@ import {
 } from "~/components";
 import { useAuthState, useIsAllowed } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { GetContainerRepositoryInfoResponse, ListContainerRepositoryManifestsResponse } from "~/bindings";
+import { useContainerRegistryInfoQuery, useContainerManifestsQuery } from "~/hooks/fetch";
+import { containerRegistryKeys } from "~/hooks/query-keys";
+import { useQueryClient } from "@tanstack/solid-query";
 import { httpRequest } from "~/utils/http-request";
 import General from "./-components/general";
 import Images from "./-components/images";
@@ -25,50 +27,21 @@ const ContainerRepositoryInfo = () => {
 	const isAllowedDelete = useIsAllowed("containerRegistryRepository", "delete", undefined);
 	const toast = useToast();
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const params = Route.useParams();
 	const search = Route.useSearch();
 	const [isDeleteModalOpen, setIsDeleteModalOpen] = createSignal(false);
 	const tab = () => search().tab;
 
-	const resourceParams = createMemo(() => {
-		return [authState(), workspaceId(), params().id] as const;
-	});
+	const repoInfoQuery = useContainerRegistryInfoQuery(() => params().id);
+	const manifestsQuery = useContainerManifestsQuery(() => params().id);
 
-	const [repositoryInfo] = createResource(resourceParams, async ([auth, wsId, repoId]) => {
-		if (!wsId || !auth || auth.type !== "LoggedIn" || !repoId) {
-			return undefined;
+	const refetchManifests = () => {
+		const wsId = workspaceId();
+		if (wsId) {
+			queryClient.invalidateQueries({ queryKey: containerRegistryKeys.manifests(wsId, params().id) });
 		}
-		const response = await httpRequest<GetContainerRepositoryInfoResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${repoId}`,
-			{
-				method: "GET",
-			}
-		);
-		if (!response.ok) {
-			toast("Failed to fetch repository info", "error");
-			return undefined;
-		}
-
-		return response.data;
-	});
-
-	const [manifests, { refetch: refetchManifests }] = createResource(resourceParams, async ([auth, wsId, repoId]) => {
-		if (!wsId || !auth || auth.type !== "LoggedIn" || !repoId) {
-			return undefined;
-		}
-		const response = await httpRequest<ListContainerRepositoryManifestsResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${repoId}/manifest`,
-			{
-				method: "GET",
-			}
-		);
-		if (!response.ok) {
-			toast("Failed to fetch manifests", "error");
-			return undefined;
-		}
-
-		return response.data;
-	});
+	};
 
 	const handleDelete = async (
 		e: MouseEvent & {
@@ -79,7 +52,7 @@ const ContainerRepositoryInfo = () => {
 
 		const auth = authState();
 		const currentWorkspace = workspaceId();
-		const repository = repositoryInfo();
+		const repository = repoInfoQuery.data;
 
 		if (!auth || auth.type !== "LoggedIn" || !currentWorkspace || !repository) {
 			return;
@@ -87,9 +60,7 @@ const ContainerRepositoryInfo = () => {
 
 		const resp = await httpRequest(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId()}/container-registry/${params().id}`,
-			{
-				method: "DELETE",
-			}
+			{ method: "DELETE" }
 		);
 		if (!resp.ok) {
 			toast("Failed to delete repository", "error");
@@ -114,7 +85,8 @@ const ContainerRepositoryInfo = () => {
 						</div>
 					)}
 				>
-					<Suspense
+					<Show
+						when={!repoInfoQuery.isPending}
 						fallback={
 							<div class="flex items-center justify-center gap-2 py-16 text-grey">
 								<LoadingSpinner size={20} />
@@ -129,17 +101,17 @@ const ContainerRepositoryInfo = () => {
 									url: "/container-registry",
 								},
 								{
-									label: repositoryInfo()?.repository?.name || "Loading...",
+									label: repoInfoQuery.data?.repository?.name || "Loading...",
 								},
 							]}
 							subText="Store and manage container images for your deployments"
 							class="justify-between items-center"
 							actions={() => (
 								<div class="flex items-center justify-end gap-3">
-									<Show when={isAllowedDelete() && repositoryInfo()?.repository?.name}>
+									<Show when={isAllowedDelete() && repoInfoQuery.data?.repository?.name}>
 										<DeleteModal
 											title="Do You Really Want to Delete This Repository?"
-											resourceName={repositoryInfo()?.repository?.name || ""}
+											resourceName={repoInfoQuery.data?.repository?.name || ""}
 											onClickDelete={handleDelete}
 											isOpen={isDeleteModalOpen}
 											setIsOpen={setIsDeleteModalOpen}
@@ -177,10 +149,10 @@ const ContainerRepositoryInfo = () => {
 						/>
 
 						<PageContainerBody class="flex flex-col justify-between gap-8">
-							<Switch fallback={<General repositoryInfo={() => repositoryInfo()} />}>
+							<Switch fallback={<General repositoryInfo={() => repoInfoQuery.data} />}>
 								<Match when={tab() === "images"}>
 									<Show
-										when={manifests()}
+										when={manifestsQuery.data}
 										fallback={
 											<div class="flex items-center justify-center gap-2 py-16 text-grey">
 												<LoadingSpinner size={20} />
@@ -195,7 +167,7 @@ const ContainerRepositoryInfo = () => {
 								</Match>
 							</Switch>
 						</PageContainerBody>
-					</Suspense>
+					</Show>
 				</ErrorBoundary>
 			</PageContainer>
 		</>

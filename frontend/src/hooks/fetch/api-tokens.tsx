@@ -1,10 +1,37 @@
 import { createQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
-import { ListApiTokensResponse } from "~/bindings";
+import { GetApiTokenInfoResponse, ListApiTokensResponse } from "~/bindings";
 import { useToast } from "~/components";
 import { useAuthState } from "~/hooks/state-hooks";
 import { apiTokenKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
+
+export const useApiTokenInfoQuery = (id: Accessor<string>) => {
+	const [authState] = useAuthState();
+	const toast = useToast();
+
+	return createQuery<GetApiTokenInfoResponse>(() => {
+		const auth = authState();
+		const tokenId = id();
+		return {
+			queryKey: apiTokenKeys.detail(tokenId),
+			enabled: !!auth && auth.type === "LoggedIn" && !!tokenId,
+			queryFn: async () => {
+				const response = await httpRequest<GetApiTokenInfoResponse>(
+					`${import.meta.env.VITE_BASE_URL}/api/user/api-token/${tokenId}`,
+					{ method: "GET" }
+				);
+
+				if (!response.ok) {
+					toast("Failed to fetch API token info", "error");
+					throw new Error(response.data.error);
+				}
+
+				return response.data;
+			},
+		};
+	});
+};
 
 export const useApiTokensQuery = (page: Accessor<string | undefined>, count: Accessor<string | undefined>) => {
 	const [authState] = useAuthState();

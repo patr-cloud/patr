@@ -1,5 +1,6 @@
 import { useNavigate } from "@tanstack/solid-router";
-import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid-js";
+import { createResource, ErrorBoundary, Show } from "solid-js";
+import { createQuery } from "@tanstack/solid-query";
 import { Deployment, GetContainerRepositoryInfoResponse, ListDeploymentResponse, WithId } from "~/bindings";
 import {
 	CopyableField,
@@ -11,8 +12,8 @@ import {
 	Tooltip,
 	useToast,
 } from "~/components";
-import { createPaginationState, useAuthState } from "~/hooks";
-import { useLastWorkspaceId } from "~/hooks/state-hooks";
+import { createPaginationState } from "~/hooks";
+import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 
 interface RunnerDeploymentsProps {
@@ -70,29 +71,29 @@ const RunnerDeployments = (props: RunnerDeploymentsProps) => {
 		navigate,
 	});
 
-	const fetchParams = createMemo(() => {
-		return [authState(), workspaceId(), props.runnerId, pagination.page(), pagination.count()] as const;
-	});
+	const deploymentsQuery = createQuery(() => {
+		const auth = authState();
+		const wsId = workspaceId();
+		const p = pagination.page();
+		const c = pagination.count();
+		return {
+			queryKey: ["runnerDeployments", wsId, props.runnerId, p, c] as const,
+			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!props.runnerId,
+			queryFn: async () => {
+				const response = await httpRequest<ListDeploymentResponse>(
+					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment?search[runner]=${props.runnerId}&page=${p}&count=${c}`,
+					{ method: "GET" }
+				);
 
-	const [deployments] = createResource(fetchParams, async ([auth, wsId, runnerId, page, count]) => {
-		if (!wsId || !auth || auth.type !== "LoggedIn" || !runnerId) {
-			return { deployments: [] };
-		}
-		const response = await httpRequest<ListDeploymentResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment?search[runner]=${runnerId}&page=${page}&count=${count}`,
-			{
-				method: "GET",
-			}
-		);
+				if (!response.ok) {
+					toast("Failed to fetch deployments for runner", "error");
+					throw new Error(response.data.error);
+				}
 
-		if (!response.ok) {
-			console.error("Failed to fetch deployments:", response.data.error);
-			toast("Failed to fetch deployments for runner", "error");
-			return { deployments: [] };
-		}
-
-		pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
-		return response.data;
+				pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
+				return response.data;
+			},
+		};
 	});
 
 	return (
@@ -104,49 +105,47 @@ const RunnerDeployments = (props: RunnerDeploymentsProps) => {
 				</div>
 			)}
 		>
-			<Suspense fallback={<div>Loading deployments...</div>}>
-				<Show
-					when={(deployments()?.deployments?.length ?? 0) > 0}
-					fallback={<EmptyState title="No Deployments on This Runner" />}
-				>
-					<Table
-						column_grids={["flex-3", "flex-3", "flex-2", "flex-4"]}
-						rows={deployments()?.deployments || []}
-						headings={["ID", "Name", "Status", "Image"]}
-						renderRow={(item) => (
-							<tr
-								onClick={() => navigate({ to: `/deployments/${item.id}` })}
-								class="table-row cursor-pointer"
-							>
-								<td class="flex-3 flex items-center justify-center min-w-0">
-									<CopyableField
-										variant={CopyableFieldVariant.Text}
-										value={item.id}
-										class="truncate"
-										innerClass="text-white"
-										buttonPosition="start"
-									/>
-								</td>
-								<td class="flex-3 flex items-center justify-center min-w-0">
-									<span class="truncate">{item.name}</span>
-								</td>
-								<td class="flex-2 flex items-center justify-center min-w-0">
-									<StatusChip status={item.status} />
-								</td>
-								<td class="flex-4 flex items-center justify-start min-w-0">
-									<ImageName item={item} />
-								</td>
-							</tr>
-						)}
-					/>
-					<Pagination
-						state={pagination}
-						loading={deployments.loading}
-						showPageSizeSelector={false}
-						showGoToPage={false}
-					/>
-				</Show>
-			</Suspense>
+			<Show
+				when={(deploymentsQuery.data?.deployments?.length ?? 0) > 0}
+				fallback={<EmptyState title="No Deployments on This Runner" />}
+			>
+				<Table
+					column_grids={["flex-3", "flex-3", "flex-2", "flex-4"]}
+					rows={deploymentsQuery.data?.deployments || []}
+					headings={["ID", "Name", "Status", "Image"]}
+					renderRow={(item) => (
+						<tr
+							onClick={() => navigate({ to: `/deployments/${item.id}` })}
+							class="table-row cursor-pointer"
+						>
+							<td class="flex-3 flex items-center justify-center min-w-0">
+								<CopyableField
+									variant={CopyableFieldVariant.Text}
+									value={item.id}
+									class="truncate"
+									innerClass="text-white"
+									buttonPosition="start"
+								/>
+							</td>
+							<td class="flex-3 flex items-center justify-center min-w-0">
+								<span class="truncate">{item.name}</span>
+							</td>
+							<td class="flex-2 flex items-center justify-center min-w-0">
+								<StatusChip status={item.status} />
+							</td>
+							<td class="flex-4 flex items-center justify-start min-w-0">
+								<ImageName item={item} />
+							</td>
+						</tr>
+					)}
+				/>
+				<Pagination
+					state={pagination}
+					loading={deploymentsQuery.isFetching}
+					showPageSizeSelector={false}
+					showGoToPage={false}
+				/>
+			</Show>
 		</ErrorBoundary>
 	);
 };

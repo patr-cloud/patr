@@ -25,7 +25,7 @@ import { httpRequest } from "~/utils/http-request";
 import { GetDomainInfoInWorkspaceResponse } from "~/bindings";
 import { EventT } from "~/utils/types";
 import { useIsAllowed, createPaginationState } from "~/hooks";
-import { useDomainsQuery, useDomainVerificationRecordsQuery } from "~/hooks/fetch";
+import { useDomainsQuery } from "~/hooks/fetch";
 
 // Type definitions based on API bindings
 type WorkspaceDomain = {
@@ -39,8 +39,6 @@ const DNSRecords = (props: { domainId: string; domainName: string; closeFn: (pre
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const [loading, setLoading] = createSignal(false);
-
-	const dnsRecordQuery = useDomainVerificationRecordsQuery(() => props.domainId);
 
 	const verificationRecord = () => {
 		return {
@@ -162,7 +160,6 @@ const VerificationIcon = (props: { domain: WorkspaceDomain }) => {
 
 const ListDomainsPage = () => {
 	const navigate = useNavigate();
-	const toast = useToast();
 
 	const isCreateAllowed = useIsAllowed("domain", "add");
 	const search = Route.useSearch();
@@ -195,7 +192,7 @@ const ListDomainsPage = () => {
 					]}
 					subText="Configure custom domains to route traffic to your deployments."
 					actions={() => (
-						<Show when={isCreateAllowed() && (domains()?.domains?.length ?? 0) > 0}>
+						<Show when={isCreateAllowed() && (domainsQuery.data?.domains?.length ?? 0) > 0}>
 							<Link href="/domains/new" buttonVariant={ButtonVariant.Outlined} external={false}>
 								Add Domain
 							</Link>

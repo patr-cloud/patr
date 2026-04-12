@@ -1,8 +1,7 @@
-import { createSignal, createResource, For, Show, onMount, onCleanup, Suspense, untrack } from "solid-js";
-import { SearchForUserResponse } from "~/bindings/SearchForUserResponse";
+import { createSignal, For, Show, onMount, onCleanup, untrack } from "solid-js";
 import { WithId } from "~/bindings/WithId";
 import { BasicUserInfo } from "~/bindings/BasicUserInfo";
-import { httpRequest } from "~/utils/http-request";
+import { useUserSearchQuery } from "~/hooks/fetch";
 
 interface UserSearchInputProps {
 	placeholder?: string;
@@ -19,34 +18,9 @@ export const UserSearchInput = (props: UserSearchInputProps) => {
 	let inputRef: HTMLInputElement | undefined;
 	let dropdownRef: HTMLDivElement | undefined;
 
-	const searchParams = () => ({ query: searchQuery(), hasSelection: !!selectedUser() });
-	const [searchResults] = createResource(searchParams, async ({ query, hasSelection }) => {
-		if (!query || query.length < 2) {
-			return { users: [] };
-		}
-
-		// Don't search if we have a selected user
-		if (hasSelection) {
-			return { users: [] };
-		}
-
-		console.log("Searching for users with query:", query);
-
-		const response = await httpRequest<SearchForUserResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/user/search?query=${encodeURIComponent(query)}`,
-			{
-				method: "GET",
-			}
-		);
-
-		if (!response.ok) {
-			console.error("Failed to search users:", response.data.error);
-			return { users: [] };
-		}
-
-		console.log("Search results:", response.data);
-		return response.data;
-	});
+	// Don't search when user is already selected
+	const effectiveQuery = () => (selectedUser() ? "" : searchQuery());
+	const searchResults = useUserSearchQuery(effectiveQuery);
 
 	const handleUserSelect = (user: WithId<BasicUserInfo>) => {
 		setSelectedUser(user);
@@ -99,29 +73,27 @@ export const UserSearchInput = (props: UserSearchInputProps) => {
 					ref={dropdownRef}
 					class="absolute z-50 w-full mt-1 bg-secondary-light border border-border-color rounded shadow-lg max-h-60 overflow-y-auto"
 				>
-					<Suspense fallback={<div class="px-4 py-3 text-gray-400 text-sm">Searching...</div>}>
-						<Show
-							when={searchResults()?.users && searchResults()!.users.length > 0}
-							fallback={<div class="px-4 py-3 text-gray-400 text-sm">No users found</div>}
-						>
-							<For each={searchResults()!.users}>
-								{(user) => (
-									<button
-										type="button"
-										onClick={() => handleUserSelect(user)}
-										class="w-full px-4 py-3 text-left hover:bg-secondary transition-colors border-b border-border-color last:border-b-0"
-									>
-										<div class="flex flex-col gap-1">
-											<div class="text-white font-medium">
-												{user.firstName} {user.lastName}
-											</div>
-											<div class="text-gray-400 text-sm">@{user.username}</div>
+					<Show
+						when={searchResults.data?.users && searchResults.data!.users.length > 0}
+						fallback={<div class="px-4 py-3 text-gray-400 text-sm">No users found</div>}
+					>
+						<For each={searchResults.data!.users}>
+							{(user) => (
+								<button
+									type="button"
+									onClick={() => handleUserSelect(user)}
+									class="w-full px-4 py-3 text-left hover:bg-secondary transition-colors border-b border-border-color last:border-b-0"
+								>
+									<div class="flex flex-col gap-1">
+										<div class="text-white font-medium">
+											{user.firstName} {user.lastName}
 										</div>
-									</button>
-								)}
-							</For>
-						</Show>
-					</Suspense>
+										<div class="text-gray-400 text-sm">@{user.username}</div>
+									</div>
+								</button>
+							)}
+						</For>
+					</Show>
 				</div>
 			</Show>
 		</div>

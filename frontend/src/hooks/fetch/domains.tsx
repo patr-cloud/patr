@@ -1,6 +1,6 @@
 import { createQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
-import { GetVerificationRecordsForDomainResponse } from "~/bindings";
+import { GetDomainInfoInWorkspaceResponse } from "~/bindings";
 import { useToast } from "~/components";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { domainKeys } from "~/hooks/query-keys";
@@ -55,30 +55,30 @@ export const useDomainsQuery = (page: Accessor<string | undefined>, count: Acces
 	});
 };
 
-export const useDomainVerificationRecordsQuery = (domainId: Accessor<string>) => {
+export const useDomainInfoQuery = (id: Accessor<string>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 
-	return createQuery(() => {
+	return createQuery<GetDomainInfoInWorkspaceResponse>(() => {
 		const auth = authState();
 		const wsId = workspaceId();
-		const dId = domainId();
+		const domainId = id();
 		return {
-			queryKey: domainKeys.verificationRecords(wsId ?? "", dId),
-			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!dId,
+			queryKey: domainKeys.detail(wsId ?? "", domainId),
+			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!domainId,
 			queryFn: async () => {
-				const response = await httpRequest<GetVerificationRecordsForDomainResponse>(
-					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain/${dId}/verification-records`,
+				const response = await httpRequest<GetDomainInfoInWorkspaceResponse>(
+					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain/${domainId}`,
 					{ method: "GET" }
 				);
 
 				if (!response.ok) {
-					toast("Failed to fetch domain verification records", "error");
+					toast("Failed to fetch domain info", "error");
 					throw new Error(response.data.error);
 				}
 
-				return { records: response.data.verificationRecords || [] };
+				return response.data;
 			},
 		};
 	});

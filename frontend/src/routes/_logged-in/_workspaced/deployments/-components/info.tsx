@@ -1,5 +1,5 @@
 import { FiChevronDown } from "solid-icons/fi";
-import { createSignal, Setter, Show } from "solid-js";
+import { createEffect, createSignal, Show } from "solid-js";
 import { GetDeploymentInfoResponse, UpdateDeploymentResponse } from "~/bindings";
 import {
 	Button,
@@ -16,16 +16,16 @@ import {
 import { useAuthState } from "~/hooks";
 import { useGetPermissions } from "~/hooks/is-allowed";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { useRunnersQuery } from "~/hooks/fetch";
+import { useDeploymentInfoQuery, useRunnersQuery } from "~/hooks/fetch";
+import { deploymentKeys } from "~/hooks/query-keys";
+import { useQueryClient } from "@tanstack/solid-query";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 import EnvInput from "./env-input";
 import PortInput from "./port";
 
 interface DeploymentInfoProps {
-	deploymentInfo: GetDeploymentInfoResponse | undefined;
-	mutateDeploymentInfo: Setter<GetDeploymentInfoResponse | undefined>;
-	refetchDeploymentInfo: () => void;
+	deploymentId: string;
 }
 
 const PATR_REGISTRY = "registry.patr.cloud";
@@ -34,16 +34,35 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
-	const deploymentPermissions = useGetPermissions("deployment", () => props.deploymentInfo?.id || "");
+	const queryClient = useQueryClient();
+
+	const deploymentQuery = useDeploymentInfoQuery(() => props.deploymentId);
+	const runnersQuery = useRunnersQuery();
+
+	// Local signal for form editing — initialized from query data and kept in sync
+	const [localInfo, setLocalInfo] = createSignal<GetDeploymentInfoResponse | undefined>(undefined);
+
+	createEffect(() => {
+		if (deploymentQuery.data) {
+			setLocalInfo(deploymentQuery.data);
+		}
+	});
+
+	const deploymentPermissions = useGetPermissions("deployment", () => props.deploymentId);
 
 	const [_, setHasUpdated] = createSignal(false);
 
-	const runnersQuery = useRunnersQuery();
-
 	const isPatrRegistry = () => {
-		const info = props.deploymentInfo.latest;
+		const info = localInfo();
 		if (!info) return false;
 		return info.registry === PATR_REGISTRY;
+	};
+
+	const refetchDeploymentInfo = () => {
+		const wsId = workspaceId();
+		if (wsId) {
+			queryClient.invalidateQueries({ queryKey: deploymentKeys.detail(wsId, props.deploymentId) });
+		}
 	};
 
 	const onSubmitUpdate = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
@@ -54,7 +73,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 			return;
 		}
 
-		const info = props.deploymentInfo();
+		const info = localInfo();
 		if (!info) {
 			toast("Deployment info not available", "error");
 			return;
@@ -82,12 +101,12 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 		if (!response.ok) {
 			console.error("Failed to update deployment:", response.data.error);
 			toast("Failed to update deployment", "error");
-			props.refetchDeploymentInfo();
+			refetchDeploymentInfo();
 			return;
 		}
 
 		toast("Deployment updated successfully", "success");
-		props.refetchDeploymentInfo();
+		refetchDeploymentInfo();
 	};
 
 	return (
@@ -95,11 +114,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 			<div class="flex flex-col gap-4 items-start w-full">
 				<div class="flex gap-8 items-start w-full">
 					<InputLabel parentClass="flex-2 pt-2.5" for="deployment-id" label="ID" />
-					<CopyableField
-						value={props.deploymentInfo?.id ?? ""}
-						variant={CopyableFieldVariant.Input}
-						class="flex-10"
-					/>
+					<CopyableField value={localInfo()?.id ?? ""} variant={CopyableFieldVariant.Input} class="flex-10" />
 				</div>
 
 				<div class="flex gap-8 items-start w-full">
@@ -110,10 +125,10 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						placeholder="Deployment Name"
 						type={InputType.Text}
 						disabled={!deploymentPermissions().edit}
-						value={props.deploymentInfo?.name}
+						value={localInfo()?.name}
 						onInput={(e) => {
 							setHasUpdated(true);
-							props.mutateDeploymentInfo((prev) => {
+							setLocalInfo((prev) => {
 								return prev
 									? {
 											...prev,
@@ -133,11 +148,11 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 					/>
 					<div class="flex-10">
 						<Show
-							when={props.deploymentInfo.latest?.currentLiveDigest}
+							when={localInfo()?.currentLiveDigest}
 							fallback={<Input disabled={true} placeholder="No digest available" type={InputType.Text} />}
 						>
 							<CopyableField
-								value={props.deploymentInfo.latest!.currentLiveDigest!}
+								value={localInfo()!.currentLiveDigest!}
 								variant={CopyableFieldVariant.Input}
 								class="font-log"
 							/>
@@ -153,7 +168,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						name="deployment-runner"
 						placeholder="Select Runner"
 						disabled={!deploymentPermissions().edit}
-						value={props.deploymentInfo?.runner ?? ""}
+						value={localInfo()?.runner ?? ""}
 						endIcon={() => (
 							<button>
 								<FiChevronDown size={16} />
@@ -167,7 +182,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						}
 						onSelect={(runnerId) => {
 							setHasUpdated(true);
-							props.mutateDeploymentInfo((prev) => {
+							setLocalInfo((prev) => {
 								return prev
 									? {
 											...prev,
@@ -183,7 +198,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 					<InputLabel parentClass="flex-2 pt-2.5" for="deployment-registry" label="Image" />
 					<div class="flex-10 flex items-center gap-4 w-full">
 						<Input
-							value={props.deploymentInfo?.registry ?? ""}
+							value={localInfo()?.registry ?? ""}
 							disabled={true}
 							class="flex-4"
 							name="deployment-registry"
@@ -196,7 +211,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 							placeholder="Image Name"
 							type={InputType.Text}
 							value={(() => {
-								const info = props.deploymentInfo;
+								const info = localInfo();
 								if (!info) return "";
 								if (info.registry === PATR_REGISTRY) {
 									return "repositoryId" in info ? (info.repositoryId as string) : "";
@@ -210,10 +225,10 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 							disabled={!deploymentPermissions().edit}
 							placeholder="Image Tag"
 							type={InputType.Text}
-							value={props.deploymentInfo?.imageTag ?? "N/A"}
+							value={localInfo()?.imageTag ?? "N/A"}
 							onInput={(e) => {
 								setHasUpdated(true);
-								props.mutateDeploymentInfo((prev) => {
+								setLocalInfo((prev) => {
 									return prev
 										? {
 												...prev,
@@ -235,20 +250,16 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						<RangeSlider
 							min={1}
 							max={10}
-							valueLow={() => props.deploymentInfo.latest?.minHorizontalScale ?? 1}
-							valueHigh={() => props.deploymentInfo.latest?.maxHorizontalScale ?? 2}
+							valueLow={() => localInfo()?.minHorizontalScale ?? 1}
+							valueHigh={() => localInfo()?.maxHorizontalScale ?? 2}
 							disabled={!deploymentPermissions().edit}
 							onChangeLow={(val) => {
 								setHasUpdated(true);
-								props.mutateDeploymentInfo((prev) =>
-									prev ? { ...prev, minHorizontalScale: val } : undefined
-								);
+								setLocalInfo((prev) => (prev ? { ...prev, minHorizontalScale: val } : undefined));
 							}}
 							onChangeHigh={(val) => {
 								setHasUpdated(true);
-								props.mutateDeploymentInfo((prev) =>
-									prev ? { ...prev, maxHorizontalScale: val } : undefined
-								);
+								setLocalInfo((prev) => (prev ? { ...prev, maxHorizontalScale: val } : undefined));
 							}}
 						/>
 					</div>
@@ -259,13 +270,11 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						<InputLabel parentClass="flex-2" label="Deploy on Push" comments="Redeploy on new image push" />
 						<div class="flex-10">
 							<ToggleSwitch
-								checked={() => props.deploymentInfo.latest?.deployOnPush ?? false}
+								checked={() => localInfo()?.deployOnPush ?? false}
 								disabled={!deploymentPermissions().edit}
 								onChange={(val) => {
 									setHasUpdated(true);
-									props.mutateDeploymentInfo((prev) =>
-										prev ? { ...prev, deployOnPush: val } : undefined
-									);
+									setLocalInfo((prev) => (prev ? { ...prev, deployOnPush: val } : undefined));
 								}}
 							/>
 						</div>
@@ -277,13 +286,13 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 
 				<EnvInput
 					disabled={() => !deploymentPermissions().edit}
-					envList={Object.entries(props.deploymentInfo?.environmentVariables || {}).map(([key, value]) => ({
+					envList={Object.entries(localInfo()?.environmentVariables || {}).map(([key, value]) => ({
 						key,
 						value,
 					}))}
 					onAdd={(key, value) => {
 						setHasUpdated(true);
-						props.mutateDeploymentInfo((prev) => {
+						setLocalInfo((prev) => {
 							return prev
 								? {
 										...prev,
@@ -297,7 +306,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 					}}
 					onDelete={(key) => {
 						setHasUpdated(true);
-						props.mutateDeploymentInfo((prev) => {
+						setLocalInfo((prev) => {
 							if (!prev) return undefined;
 							const newEnv = { ...prev.environmentVariables };
 							delete newEnv[key];
@@ -311,11 +320,11 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 
 				<PortInput
 					disabled={() => !deploymentPermissions().edit}
-					portList={props.deploymentInfo?.ports || {}}
-					deploymentId={props.deploymentInfo?.id}
+					portList={localInfo()?.ports || {}}
+					deploymentId={localInfo()?.id}
 					onAdd={(key, value) => {
 						setHasUpdated(true);
-						props.mutateDeploymentInfo((prev) => {
+						setLocalInfo((prev) => {
 							return prev
 								? {
 										...prev,
@@ -329,7 +338,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 					}}
 					onDelete={(key) => {
 						setHasUpdated(true);
-						props.mutateDeploymentInfo((prev) => {
+						setLocalInfo((prev) => {
 							if (!prev) return undefined;
 							const newPorts = { ...prev.ports };
 							delete newPorts[Number(key)];

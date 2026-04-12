@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createMemo, createResource, createSignal, Show } from "solid-js";
+import { createSignal, Show } from "solid-js";
 import {
 	PageContainer,
 	PageContainerBody,
@@ -13,6 +13,7 @@ import {
 	InputLabel,
 	ToggleSwitch,
 	RangeSlider,
+	useToast,
 } from "~/components";
 import EnvInput from "./-components/env-input";
 import {
@@ -22,16 +23,12 @@ import {
 	DeploymentProbe,
 	EnvironmentVariableValue,
 	ExposedPortType,
-	ListContainerRepositoriesResponse,
-	ListContainerRepositoryTagsResponse,
-	ListRunnersForWorkspaceResponse,
 } from "~/bindings";
 import PortInput from "./-components/port";
-import { createFormAction, useAuthState } from "~/hooks";
-import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { httpRequest } from "~/utils/http-request";
+import { createFormAction } from "~/hooks";
 import { convertFileToBase64, Uuid } from "~/utils/func";
-import { useToast } from "~/components";
+import { useRunnersQuery, useContainerRegistriesQuery, useContainerTagsQuery } from "~/hooks/fetch";
+import { httpRequest } from "~/utils/http-request";
 import ProbeInput from "./-components/probe-input";
 import ConfigMount, { ConfigMountT } from "./-components/config-mount";
 import { useNavigate } from "@tanstack/solid-router";
@@ -39,50 +36,13 @@ import { useNavigate } from "@tanstack/solid-router";
 const PATR_REGISTRY = "registry.patr.cloud";
 
 const CreateDeploymentPage = () => {
-	const [authState] = useAuthState();
-	const [lastUsedWorkspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 
-	const fetchParams = createMemo(() => {
-		return [authState(), lastUsedWorkspaceId()] as const;
-	});
-
-	const [runners] = createResource(fetchParams, async ([auth, wsId]) => {
-		if (!wsId || !auth || auth.type !== "LoggedIn") {
-			return { runners: [] };
-		}
-		const response = await httpRequest<ListRunnersForWorkspaceResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner`,
-			{
-				method: "GET",
-			}
-		);
-
-		if (!response.ok) {
-			console.error("Failed to fetch runners:", response.data.error);
-			toast("Failed to fetch runners", "error");
-			return { runners: [] };
-		}
-
-		return response.data;
-	});
-
-	const [repositories] = createResource(fetchParams, async ([auth, wsId]) => {
-		if (!wsId || !auth || auth.type !== "LoggedIn") {
-			return { repositories: [] };
-		}
-		const response = await httpRequest<ListContainerRepositoriesResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry`,
-			{
-				method: "GET",
-			}
-		);
-		if (!response.ok) {
-			console.error("Failed to fetch repositories:", response.data.error);
-			return { repositories: [] };
-		}
-		return response.data;
-	});
+	const runnersQuery = useRunnersQuery();
+	const repositoriesQuery = useContainerRegistriesQuery(
+		() => undefined,
+		() => undefined
+	);
 
 	const navigate = useNavigate();
 	const [name, setName] = createSignal<string>("");
@@ -114,29 +74,15 @@ const CreateDeploymentPage = () => {
 		tagFilterTimer = setTimeout(() => setTagFilter(value), 300);
 	};
 
-	const tagFetchParams = createMemo(() => {
-		return [authState(), lastUsedWorkspaceId(), repositoryId(), tagFilter()] as const;
-	});
+	const tagsQuery = useContainerTagsQuery(
+		() => repositoryId(),
+		() => tagFilter()
+	);
 
-	const [repositoryTags] = createResource(tagFetchParams, async ([auth, wsId, repoId, tagSearch]) => {
-		if (!wsId || !auth || auth.type !== "LoggedIn" || !repoId) {
-			return { tags: [] };
-		}
-		const url = new URL(`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${repoId}/tag`);
-		if (tagSearch) url.searchParams.set("tag", tagSearch);
-		const response = await httpRequest<ListContainerRepositoryTagsResponse>(url.toString(), {
-			method: "GET",
-		});
-		if (!response.ok) {
-			console.error("Failed to fetch tags:", response.data.error);
-			return { tags: [] };
-		}
-		return response.data;
-	});
+	const tagSuggestions = () => tagsQuery.data?.tags.map((t) => ({ label: t.tag, value: t.tag })) ?? [];
 
-	const tagSuggestions = () => repositoryTags.latest?.tags.map((t) => ({ label: t.tag, value: t.tag })) ?? [];
-
-	const repoSuggestions = () => repositories.latest?.repositories.map((r) => ({ label: r.name, value: r.id })) ?? [];
+	const repoSuggestions = () =>
+		repositoriesQuery.data?.repositories.map((r) => ({ label: r.name, value: r.id })) ?? [];
 
 	const { onSubmit, isLoading } = createFormAction(async ({ workspaceId }) => {
 		let configMounts: Record<string, Base64String> = {};
@@ -300,7 +246,7 @@ const CreateDeploymentPage = () => {
 								<div class="flex-10 flex items-center gap-4 w-full">
 									<InputDropdown
 										options={
-											runners.latest?.runners.map((runner) => ({
+											runnersQuery.data?.runners.map((runner) => ({
 												value: runner.id,
 												label: runner.name,
 											})) ?? []

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createResource, createSignal, For, Suspense } from "solid-js";
+import { createSignal, For, Suspense } from "solid-js";
 import {
 	Button,
 	ButtonVariant,
@@ -16,12 +16,8 @@ import {
 import { httpRequest } from "~/utils/http-request";
 import { useAuthState } from "~/hooks";
 import { useUserInfo } from "~/hooks/state-hooks";
-import {
-	CreateApiTokenRequest,
-	CreateApiTokenResponse,
-	ListUserWorkspacesResponse,
-	WorkspacePermission,
-} from "~/bindings";
+import { useWorkspacesQuery } from "~/hooks/fetch";
+import { CreateApiTokenRequest, CreateApiTokenResponse, WorkspacePermission } from "~/bindings";
 import { useNavigate } from "@tanstack/solid-router";
 import ApiTokenModal from "./-components/api-token-modal";
 import WorkspacePermissionItem from "./-components/workspace-permission-item";
@@ -35,26 +31,7 @@ const CreateApiTokens = () => {
 	const [openCopyModal, setOpenCopyModal] = createSignal<boolean>(false);
 	const [apiToken, setApiToken] = createSignal<string>("");
 
-	const [workspaces] = createResource(authState, async (auth) => {
-		if (!auth || auth.type !== "LoggedIn") {
-			return { workspaces: [] };
-		}
-
-		const response = await httpRequest<ListUserWorkspacesResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/user/workspaces`,
-			{
-				method: "GET",
-			}
-		);
-
-		if (!response.ok) {
-			console.error("Failed to fetch workspaces:", response.data.error);
-			toast("Failed to fetch workspaces", "error");
-			return { workspaces: [] };
-		}
-
-		return response.data;
-	});
+	const workspacesQuery = useWorkspacesQuery();
 
 	const [name, setName] = createSignal<string>("");
 	const [allowedIps, setAllowedIps] = createSignal<string[]>([]);
@@ -247,7 +224,7 @@ const CreateApiTokens = () => {
 									<InputLabel parentClass="flex-2" label="Workspace Permissions" />
 
 									<For
-										each={workspaces.latest?.workspaces || []}
+										each={workspacesQuery.data?.workspaces || []}
 										fallback={<div class="text-gray-400">No workspaces available</div>}
 									>
 										{(ws) => (
@@ -261,7 +238,7 @@ const CreateApiTokens = () => {
 										)}
 									</For>
 
-									{!hasEnabledWorkspaces() && (workspaces.latest?.workspaces?.length ?? 0) > 0 && (
+									{!hasEnabledWorkspaces() && (workspacesQuery.data?.workspaces?.length ?? 0) > 0 && (
 										<p class="text-sm text-gray-400">
 											Enable at least one workspace to create an API token.
 										</p>

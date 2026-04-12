@@ -1,18 +1,11 @@
-import { createSignal, Resource, Setter, Show } from "solid-js";
-import { GetUserInfoResponse } from "~/bindings";
+import { createSignal, Show } from "solid-js";
 import { Alert, Button, ButtonVariant, InputLabel, OtpInput, PasswordInput, useToast } from "~/components";
 import { EventT } from "~/utils/types";
 import { ChangePasswordRequest, ChangePasswordResponse } from "~/bindings";
 import { useAuthState } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
 
-interface UserSettingsInfoTabProps {
-	userInfo: Resource<GetUserInfoResponse | undefined>;
-	mutateUserInfo: Setter<GetUserInfoResponse | undefined>;
-	refetchUserInfo: () => GetUserInfoResponse | Promise<GetUserInfoResponse | undefined> | null | undefined;
-}
-
-const ChangePasswordTab = (_: UserSettingsInfoTabProps) => {
+const ChangePasswordTab = () => {
 	const [authState] = useAuthState();
 	const toast = useToast();
 

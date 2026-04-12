@@ -1,19 +1,8 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import {
-	createEffect,
-	createMemo,
-	createResource,
-	createSignal,
-	ErrorBoundary,
-	Match,
-	onCleanup,
-	Show,
-	Switch,
-} from "solid-js";
+import { createSignal, ErrorBoundary, Match, Show, Switch } from "solid-js";
 import { FiPause, FiPlay } from "solid-icons/fi";
-import { GetDeploymentInfoResponse } from "~/bindings";
 import {
 	Button,
 	ButtonVariant,
@@ -33,6 +22,7 @@ import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useDeploymentInfoQuery } from "~/hooks/fetch";
 import { deploymentKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
+import { GetDeploymentInfoResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
 import DeploymentInfoUpdate from "./-components/info";
 import DeploymentLogs from "./-components/logs";
@@ -55,32 +45,16 @@ const DeploymentInfo = () => {
 
 	const deploymentQuery = useDeploymentInfoQuery(() => params().id);
 
-	// Local signal for form editing — initialized from query data and kept in sync
-	const [deploymentInfo, setDeploymentInfo] = createSignal<GetDeploymentInfoResponse | undefined>(undefined);
+	const deploymentData = () => deploymentQuery.data;
 
-	createEffect(() => {
-		if (deploymentQuery.data) {
-			setDeploymentInfo(deploymentQuery.data);
-		}
-	});
-
-	const refetchDeploymentInfo = () => {
+	const optimisticStatusUpdate = (status: string) => {
 		const wsId = workspaceId();
 		if (wsId) {
-			queryClient.invalidateQueries({ queryKey: deploymentKeys.detail(wsId, params().id) });
+			queryClient.setQueryData<GetDeploymentInfoResponse>(deploymentKeys.detail(wsId, params().id), (prev) =>
+				prev ? { ...prev, status } : undefined
+			);
 		}
 	};
-
-	// Auto-refresh when deployment is in "deploying" state
-	createEffect(() => {
-		const status = deploymentInfo()?.status;
-		if (status === "deploying") {
-			const interval = setInterval(() => {
-				refetchDeploymentInfo();
-			}, 5000);
-			onCleanup(() => clearInterval(interval));
-		}
-	});
 
 	const { execute: startDeployment, isLoading: isStartingDeployment } = createAuthenticatedAction(
 		async ({ workspaceId }) => {
@@ -89,7 +63,7 @@ const DeploymentInfo = () => {
 				return;
 			}
 
-			const deployment = deploymentInfo();
+			const deployment = deploymentData();
 			if (!deployment) {
 				toast("Deployment information is not available", "error");
 				return;
@@ -107,8 +81,7 @@ const DeploymentInfo = () => {
 			}
 
 			toast("Deployment started successfully", "success");
-			mutateDeploymentInfo((prev) => (prev ? { ...prev, status: "deploying" } : undefined));
-			refetchDeploymentInfo();
+			optimisticStatusUpdate("deploying");
 		}
 	);
 
@@ -119,7 +92,7 @@ const DeploymentInfo = () => {
 				return;
 			}
 
-			const deployment = deploymentInfo();
+			const deployment = deploymentData();
 			if (!deployment) {
 				toast("Deployment information is not available", "error");
 				return;
@@ -137,8 +110,7 @@ const DeploymentInfo = () => {
 			}
 
 			toast("Deployment stopped successfully", "success");
-			mutateDeploymentInfo((prev) => (prev ? { ...prev, status: "stopped" } : undefined));
-			refetchDeploymentInfo();
+			optimisticStatusUpdate("stopped");
 		}
 	);
 
@@ -149,7 +121,7 @@ const DeploymentInfo = () => {
 				return;
 			}
 
-			const deployment = deploymentInfo();
+			const deployment = deploymentData();
 			if (!deployment) {
 				toast("Deployment information is not available", "error");
 				return;
@@ -209,20 +181,19 @@ const DeploymentInfo = () => {
 										url: "/deployments",
 									},
 									{
-										label: deploymentInfo.latest?.name ?? "Loading...",
+										label: deploymentData()?.name ?? "Loading...",
 									},
 								]}
 								subText="A deployment represents a containerized application running on a runner."
 								class="justify-between items-center"
 								actions={() => (
 									<div class="flex items-center justify-end gap-4">
-										<Show when={deploymentInfo.latest?.status}>
-											<StatusChip status={deploymentInfo.latest!.status} size="md" />
+										<Show when={deploymentData()?.status}>
+											<StatusChip status={deploymentData()!.status} size="md" />
 										</Show>
 										<Show
 											when={
-												deploymentInfo.latest?.status !== "stopped" &&
-												deploymentPermissions().stop
+												deploymentData()?.status !== "stopped" && deploymentPermissions().stop
 											}
 										>
 											<Button
@@ -241,8 +212,7 @@ const DeploymentInfo = () => {
 										</Show>
 										<Show
 											when={
-												deploymentInfo.latest?.status === "stopped" &&
-												deploymentPermissions().start
+												deploymentData()?.status === "stopped" && deploymentPermissions().start
 											}
 										>
 											<Button
@@ -259,13 +229,13 @@ const DeploymentInfo = () => {
 											</Button>
 										</Show>
 
-										{deploymentInfo.latest &&
+										{deploymentData() &&
 											deploymentPermissions().delete &&
-											deploymentInfo.latest?.name && (
+											deploymentData()?.name && (
 												<DeleteModal
 													isLoading={isDeletingDeployment()}
 													title="Do You Really Want to Delete This Deployment?"
-													resourceName={deploymentInfo.latest?.name || ""}
+													resourceName={deploymentData()?.name || ""}
 													isOpen={isDeleteModalOpen}
 													setIsOpen={setIsDeleteModalOpen}
 													onClickDelete={(e) => {
@@ -318,19 +288,15 @@ const DeploymentInfo = () => {
 							<PageContainerBody class="flex flex-col justify-between gap-8">
 								<Switch fallback={<div class="text-grey text-sm py-8 text-center">No such tab</div>}>
 									<Match when={tab() === "metrics"}>
-										<Show when={deploymentInfo.latest?.id}>
+										<Show when={deploymentData()?.id}>
 											{(id) => <DeploymentMetrics deploymentId={id()} />}
 										</Show>
 									</Match>
 									<Match when={tab() === "info"}>
-										<DeploymentInfoUpdate
-											deploymentInfo={deploymentInfo}
-											refetchDeploymentInfo={refetchDeploymentInfo}
-											mutateDeploymentInfo={mutateDeploymentInfo}
-										/>
+										<DeploymentInfoUpdate deploymentId={params().id} />
 									</Match>
 									<Match when={tab() === "logs"}>
-										<Show when={deploymentInfo.latest?.id}>
+										<Show when={deploymentData()?.id}>
 											{(id) => <DeploymentLogs deploymentId={id()} />}
 										</Show>
 									</Match>
