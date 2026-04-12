@@ -6,7 +6,7 @@ import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { domainKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
 
-type WorkspaceDomain = {
+export type WorkspaceDomain = {
 	id: string;
 	name: string;
 	nameserverType: string;

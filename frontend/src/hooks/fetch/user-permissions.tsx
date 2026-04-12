@@ -40,7 +40,13 @@ const useUserPermissionsQuery = () => {
 			staleTime: 5 * 60 * 1000,
 			gcTime: 30 * 60 * 1000,
 			queryFn: async (): Promise<UserPermissionsT> => {
-				const permissions = await getPermissions(wsId!);
+				const [permissions, response] = await Promise.all([
+					getPermissions(wsId!),
+					httpRequest<GetCurrentPermissionsResponse>(
+						`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/current-permissions`,
+						{ method: "GET" }
+					),
+				]);
 
 				let permissionsMap: Record<string, Record<string, string>> = {};
 				for (const permObj of permissions) {
@@ -52,11 +58,6 @@ const useUserPermissionsQuery = () => {
 						permissionsMap[resourceType][permission] = permId;
 					}
 				}
-
-				const response = await httpRequest<GetCurrentPermissionsResponse>(
-					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/current-permissions`,
-					{ method: "GET" }
-				);
 
 				if (!response.ok) {
 					throw new Error("Failed to fetch user permissions");

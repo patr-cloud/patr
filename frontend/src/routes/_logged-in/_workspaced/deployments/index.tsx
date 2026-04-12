@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createEffect, ErrorBoundary, Show } from "solid-js";
+import { createEffect, createMemo, ErrorBoundary, Show } from "solid-js";
 import { Deployment, WithId } from "~/bindings";
 import {
 	Button,
@@ -86,7 +86,7 @@ const ListDeploymentsPage = () => {
 		}
 	});
 
-	const runnerNameMap = () => new Map((runnersQuery.data?.runners || []).map((r) => [r.id, r.name]));
+	const runnerNameMap = createMemo(() => new Map((runnersQuery.data?.runners || []).map((r) => [r.id, r.name])));
 
 	return (
 		<>

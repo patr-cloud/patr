@@ -43,7 +43,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	const [localInfo, setLocalInfo] = createSignal<GetDeploymentInfoResponse | undefined>(undefined);
 
 	createEffect(() => {
-		if (deploymentQuery.data) {
+		if (deploymentQuery.data && !localInfo()) {
 			setLocalInfo(deploymentQuery.data);
 		}
 	});

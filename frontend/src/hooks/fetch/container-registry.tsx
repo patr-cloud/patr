@@ -121,7 +121,6 @@ export const useContainerTagsQuery = (repoId: Accessor<string>, search?: Accesso
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!id,
 			meta: { errorMessage: "Failed to fetch tags" },
 			initialData: { tags: [] } as ListContainerRepositoryTagsResponse,
-			placeholderData: (prev: ListContainerRepositoryTagsResponse | undefined) => prev,
 			queryFn: async () => {
 				const url = new URL(
 					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${id}/tag`

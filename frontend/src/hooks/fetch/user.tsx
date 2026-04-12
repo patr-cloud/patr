@@ -40,6 +40,7 @@ export const useUserSearchQuery = (query: Accessor<string>) => {
 		return {
 			queryKey: userInfoKeys.search(q),
 			enabled: !!auth && auth.type === "LoggedIn" && q.length >= 2,
+			meta: { errorMessage: "Failed to search users" },
 			queryFn: async () => {
 				const response = await httpRequest<SearchForUserResponse>(
 					`${import.meta.env.VITE_BASE_URL}/api/user/search?query=${encodeURIComponent(q)}`,

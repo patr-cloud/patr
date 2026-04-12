@@ -20,7 +20,7 @@ const UserSettingsInfoTab = () => {
 	const [localInfo, setLocalInfo] = createSignal<GetUserInfoResponse | undefined>(undefined);
 
 	createEffect(() => {
-		if (userInfoQuery.data) {
+		if (userInfoQuery.data && !localInfo()) {
 			setLocalInfo(userInfoQuery.data);
 		}
 	});

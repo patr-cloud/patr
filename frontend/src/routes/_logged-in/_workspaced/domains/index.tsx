@@ -26,14 +26,7 @@ import { GetDomainInfoInWorkspaceResponse } from "~/bindings";
 import { EventT } from "~/utils/types";
 import { useIsAllowed, createPaginationState } from "~/hooks";
 import { useDomainsQuery } from "~/hooks/fetch";
-
-// Type definitions based on API bindings
-type WorkspaceDomain = {
-	id: string;
-	name: string;
-	nameserverType: string;
-	isVerified: boolean;
-};
+import type { WorkspaceDomain } from "~/hooks/fetch/domains";
 
 const DNSRecords = (props: { domainId: string; domainName: string; closeFn: (prev: boolean) => void }) => {
 	const [workspaceId] = useLastWorkspaceId();

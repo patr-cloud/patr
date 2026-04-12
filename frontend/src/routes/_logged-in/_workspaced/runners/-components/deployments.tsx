@@ -1,8 +1,8 @@
 import { useNavigate } from "@tanstack/solid-router";
-import { ErrorBoundary, Show } from "solid-js";
+import { createEffect, ErrorBoundary, Show } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { ListDeploymentResponse } from "~/bindings";
-import { CopyableField, CopyableFieldVariant, EmptyState, Pagination, StatusChip, Table, useToast } from "~/components";
+import { CopyableField, CopyableFieldVariant, EmptyState, Pagination, StatusChip, Table } from "~/components";
 import { createPaginationState } from "~/hooks";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { runnerKeys } from "~/hooks/query-keys";
@@ -16,7 +16,6 @@ interface RunnerDeploymentsProps {
 const RunnerDeployments = (props: RunnerDeploymentsProps) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 	const navigate = useNavigate();
 	const pagination = createPaginationState({
 		search: () => ({}),
@@ -31,6 +30,7 @@ const RunnerDeployments = (props: RunnerDeploymentsProps) => {
 		return {
 			queryKey: runnerKeys.deployments(wsId ?? "", props.runnerId, p, c),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!props.runnerId,
+			meta: { errorMessage: "Failed to fetch deployments for runner" },
 			queryFn: async () => {
 				const response = await httpRequest<ListDeploymentResponse>(
 					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment?search[runner]=${props.runnerId}&page=${p}&count=${c}`,
@@ -38,14 +38,22 @@ const RunnerDeployments = (props: RunnerDeploymentsProps) => {
 				);
 
 				if (!response.ok) {
-					toast("Failed to fetch deployments for runner", "error");
 					throw new Error(response.data.error);
 				}
 
-				pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
-				return response.data;
+				return {
+					deployments: response.data.deployments,
+					totalCount: Number(response.headers.get("x-total-count") ?? 0),
+				};
 			},
 		};
+	});
+
+	createEffect(() => {
+		const totalCount = deploymentsQuery.data?.totalCount;
+		if (totalCount !== undefined) {
+			pagination.setTotalCount(totalCount);
+		}
 	});
 
 	return (
