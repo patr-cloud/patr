@@ -2,6 +2,7 @@ import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 import { Button, ButtonVariant, ModalContainer, OtpInput, useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useMfaSecretQuery } from "~/hooks/fetch";
+import { mfaKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
 import { httpRequest } from "~/utils/http-request";
 import { VsRefresh } from "solid-icons/vs";
@@ -50,7 +51,7 @@ const TwoFactorAuthModal = (props: ModalContainerProps) => {
 	const handleReload = () => {
 		setTimeRemaining(5 * 60);
 		setIsExpired(false);
-		queryClient.invalidateQueries({ queryKey: ["mfa"] });
+		queryClient.invalidateQueries({ queryKey: mfaKeys.all() });
 	};
 
 	const onVerifyOtp = async (e: Event) => {

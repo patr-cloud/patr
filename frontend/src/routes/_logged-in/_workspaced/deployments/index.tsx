@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createEffect, createResource, ErrorBoundary, Show } from "solid-js";
-import { Deployment, GetContainerRepositoryInfoResponse, WithId } from "~/bindings";
+import { createEffect, ErrorBoundary, Show } from "solid-js";
+import { Deployment, WithId } from "~/bindings";
 import {
 	Button,
 	ButtonVariant,
@@ -17,53 +17,10 @@ import {
 	Pagination,
 	StatusChip,
 	Table,
-	Tooltip,
 } from "~/components";
-import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useDeploymentsQuery, useRunnersQuery } from "~/hooks/fetch";
 import { useIsAllowed, createPaginationState } from "~/hooks";
-import { httpRequest } from "~/utils/http-request";
-
-const ImageName = (props: { item: WithId<Deployment> }) => {
-	const [workspaceId] = useLastWorkspaceId();
-	const isExternal = () => "imageName" in props.item;
-	const repositoryId = () => (props.item as { repositoryId?: string }).repositoryId;
-
-	const [repoInfo] = createResource(
-		() => (isExternal() ? null : ([workspaceId(), repositoryId()] as const)),
-		async (params) => {
-			if (!params) return undefined;
-			const [wsId, repoId] = params;
-			if (!wsId || !repoId) return undefined;
-			const response = await httpRequest<GetContainerRepositoryInfoResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${repoId}`,
-				{ method: "GET" }
-			);
-			if (!response.ok) return undefined;
-			return response.data;
-		}
-	);
-
-	const fullImage = () => {
-		if (isExternal()) {
-			return `${props.item.registry}/${(props.item as { imageName: string }).imageName}:${props.item.imageTag}`;
-		}
-		return `registry.patr.cloud/${workspaceId()}/${repoInfo()?.repository.name ?? "..."}:${props.item.imageTag}`;
-	};
-
-	return (
-		<Tooltip content={fullImage()} class="min-w-0">
-			<span class="truncate font-log text-xs text-grey block">
-				<Show
-					when={isExternal() || !repoInfo.loading}
-					fallback={<span class="animate-pulse">{fullImage()}</span>}
-				>
-					{fullImage()}
-				</Show>
-			</span>
-		</Tooltip>
-	);
-};
+import DeploymentImageName from "~/components/deployment-image-name";
 
 const DeploymentListRow = (props: { item: WithId<Deployment>; runnerName: string }) => {
 	const navigate = useNavigate();
@@ -93,7 +50,7 @@ const DeploymentListRow = (props: { item: WithId<Deployment>; runnerName: string
 				<span class="truncate">{props.runnerName}</span>
 			</td>
 			<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
-				<ImageName item={props.item} />
+				<DeploymentImageName item={props.item} />
 			</td>
 			<td role="cell" class="flex-2 flex items-center justify-start min-w-0">
 				<CopyableField

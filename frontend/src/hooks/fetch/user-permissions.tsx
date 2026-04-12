@@ -1,6 +1,6 @@
 import { createQuery } from "@tanstack/solid-query";
 import { GetCurrentPermissionsResponse, ListAllPermissionsResponse } from "~/bindings";
-import { useToast } from "~/components";
+
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { userPermissionKeys } from "~/hooks/query-keys";
 import { parsePermissionName, resourceTypes, userActionTypes } from "~/utils/func";
@@ -29,7 +29,6 @@ export const getPermissions = async (wsId: string) => {
 const useUserPermissionsQuery = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 
 	return createQuery(() => {
 		const auth = authState();
@@ -37,6 +36,7 @@ const useUserPermissionsQuery = () => {
 		return {
 			queryKey: userPermissionKeys.current(wsId ?? ""),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn",
+			meta: { errorMessage: "Failed to fetch user permissions" },
 			staleTime: 5 * 60 * 1000,
 			gcTime: 30 * 60 * 1000,
 			queryFn: async (): Promise<UserPermissionsT> => {
@@ -59,7 +59,6 @@ const useUserPermissionsQuery = () => {
 				);
 
 				if (!response.ok) {
-					toast("Failed to fetch user permissions", "error");
 					throw new Error("Failed to fetch user permissions");
 				}
 

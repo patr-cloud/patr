@@ -1,7 +1,7 @@
 import { createQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
 import { ListManagedURLResponse } from "~/bindings";
-import { useToast } from "~/components";
+
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { managedUrlKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
@@ -9,7 +9,6 @@ import { httpRequest } from "~/utils/http-request";
 export const useManagedUrlsQuery = (domainId: Accessor<string>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 
 	return createQuery<ListManagedURLResponse>(() => {
 		const auth = authState();
@@ -18,6 +17,7 @@ export const useManagedUrlsQuery = (domainId: Accessor<string>) => {
 		return {
 			queryKey: managedUrlKeys.list(wsId ?? "", dId),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!dId,
+			meta: { errorMessage: "Failed to fetch managed URLs" },
 			queryFn: async () => {
 				const response = await httpRequest<ListManagedURLResponse>(
 					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/infrastructure/managed-url?search[domainId]=${dId}`,
@@ -25,7 +25,6 @@ export const useManagedUrlsQuery = (domainId: Accessor<string>) => {
 				);
 
 				if (!response.ok) {
-					toast("Failed to fetch managed URLs", "error");
 					throw new Error(response.data.error);
 				}
 

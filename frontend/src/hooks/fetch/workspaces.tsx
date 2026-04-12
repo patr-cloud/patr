@@ -1,19 +1,19 @@
 import { createQuery } from "@tanstack/solid-query";
 import { ListUserWorkspacesResponse } from "~/bindings";
-import { useToast } from "~/components";
+
 import { useAuthState } from "~/hooks";
 import { workspacesKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
 
 const useWorkspacesQuery = () => {
 	const [authState] = useAuthState();
-	const toast = useToast();
 
 	return createQuery<ListUserWorkspacesResponse>(() => {
 		const auth = authState();
 		return {
 			queryKey: workspacesKeys.list(),
 			enabled: !!auth && auth.type === "LoggedIn",
+			meta: { errorMessage: "Failed to fetch workspaces" },
 			queryFn: async () => {
 				const response = await httpRequest<ListUserWorkspacesResponse>(
 					`${import.meta.env.VITE_BASE_URL}/api/user/workspaces`,
@@ -21,7 +21,6 @@ const useWorkspacesQuery = () => {
 				);
 
 				if (!response.ok) {
-					toast("Failed to fetch workspaces", "error");
 					throw new Error(response.data.error);
 				}
 

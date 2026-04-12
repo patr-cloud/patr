@@ -13,6 +13,8 @@ export const runnerKeys = {
 	pagedList: (workspaceId: string, page: string | undefined, count: string | undefined) =>
 		[...runnerKeys.all(workspaceId), "list", page, count] as const,
 	detail: (workspaceId: string, id: string) => [...runnerKeys.all(workspaceId), "detail", id] as const,
+	deployments: (workspaceId: string, runnerId: string, page: string | undefined, count: string | undefined) =>
+		[...runnerKeys.all(workspaceId), "deployments", runnerId, page, count] as const,
 	metrics: (workspaceId: string, runnerId: string, interval: string) =>
 		[...runnerKeys.all(workspaceId), "metrics", runnerId, interval] as const,
 };
@@ -97,6 +99,11 @@ export const mfaKeys = {
 
 export const logKeys = {
 	all: (workspaceId: string) => ["logs", workspaceId] as const,
-	initial: (workspaceId: string, resourceType: string, resourceId: string) =>
-		[...logKeys.all(workspaceId), "initial", resourceType, resourceId] as const,
+	initial: (workspaceId: string, restUrl: string, search: string) =>
+		[...logKeys.all(workspaceId), restUrl, search] as const,
+};
+
+export const resourceKeys = {
+	all: (workspaceId: string) => ["resources", workspaceId] as const,
+	list: (workspaceId: string, resourceType: string) => [...resourceKeys.all(workspaceId), resourceType] as const,
 };

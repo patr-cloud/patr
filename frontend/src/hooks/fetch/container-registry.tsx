@@ -6,7 +6,7 @@ import {
 	ListContainerRepositoryManifestsResponse,
 	ListContainerRepositoryTagsResponse,
 } from "~/bindings";
-import { useToast } from "~/components";
+
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { containerRegistryKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
@@ -17,7 +17,6 @@ export const useContainerRegistriesQuery = (
 ) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 
 	return createQuery(() => {
 		const auth = authState();
@@ -27,6 +26,7 @@ export const useContainerRegistriesQuery = (
 		return {
 			queryKey: containerRegistryKeys.list(wsId ?? "", p, c),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn",
+			meta: { errorMessage: "Failed to fetch container registries" },
 			queryFn: async () => {
 				const params = new URLSearchParams();
 				if (p) params.set("page", p);
@@ -39,7 +39,6 @@ export const useContainerRegistriesQuery = (
 				);
 
 				if (!response.ok) {
-					toast("Failed to fetch container registries", "error");
 					throw new Error(response.data.error);
 				}
 
@@ -55,7 +54,6 @@ export const useContainerRegistriesQuery = (
 export const useContainerRegistryInfoQuery = (id: Accessor<string>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 
 	return createQuery<GetContainerRepositoryInfoResponse>(() => {
 		const auth = authState();
@@ -64,6 +62,7 @@ export const useContainerRegistryInfoQuery = (id: Accessor<string>) => {
 		return {
 			queryKey: containerRegistryKeys.detail(wsId ?? "", repoId),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!repoId,
+			meta: { errorMessage: "Failed to fetch repository info" },
 			queryFn: async () => {
 				const response = await httpRequest<GetContainerRepositoryInfoResponse>(
 					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${repoId}`,
@@ -71,7 +70,6 @@ export const useContainerRegistryInfoQuery = (id: Accessor<string>) => {
 				);
 
 				if (!response.ok) {
-					toast("Failed to fetch repository info", "error");
 					throw new Error(response.data.error);
 				}
 
@@ -84,7 +82,6 @@ export const useContainerRegistryInfoQuery = (id: Accessor<string>) => {
 export const useContainerManifestsQuery = (repoId: Accessor<string>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 
 	return createQuery<ListContainerRepositoryManifestsResponse>(() => {
 		const auth = authState();
@@ -93,6 +90,7 @@ export const useContainerManifestsQuery = (repoId: Accessor<string>) => {
 		return {
 			queryKey: containerRegistryKeys.manifests(wsId ?? "", id),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!id,
+			meta: { errorMessage: "Failed to fetch manifests" },
 			queryFn: async () => {
 				const response = await httpRequest<ListContainerRepositoryManifestsResponse>(
 					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${id}/manifest`,
@@ -100,7 +98,6 @@ export const useContainerManifestsQuery = (repoId: Accessor<string>) => {
 				);
 
 				if (!response.ok) {
-					toast("Failed to fetch manifests", "error");
 					throw new Error(response.data.error);
 				}
 
@@ -113,7 +110,6 @@ export const useContainerManifestsQuery = (repoId: Accessor<string>) => {
 export const useContainerTagsQuery = (repoId: Accessor<string>, search?: Accessor<string>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 
 	return createQuery<ListContainerRepositoryTagsResponse>(() => {
 		const auth = authState();
@@ -123,6 +119,7 @@ export const useContainerTagsQuery = (repoId: Accessor<string>, search?: Accesso
 		return {
 			queryKey: containerRegistryKeys.tags(wsId ?? "", id, s),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!id,
+			meta: { errorMessage: "Failed to fetch tags" },
 			initialData: { tags: [] } as ListContainerRepositoryTagsResponse,
 			placeholderData: (prev: ListContainerRepositoryTagsResponse | undefined) => prev,
 			queryFn: async () => {
@@ -135,7 +132,6 @@ export const useContainerTagsQuery = (repoId: Accessor<string>, search?: Accesso
 				});
 
 				if (!response.ok) {
-					toast("Failed to fetch tags", "error");
 					throw new Error(response.data.error);
 				}
 

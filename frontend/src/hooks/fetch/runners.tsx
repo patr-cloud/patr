@@ -1,7 +1,7 @@
 import { createQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
 import { GetRunnerInfoResponse, ListRunnersForWorkspaceResponse } from "~/bindings";
-import { useToast } from "~/components";
+
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { runnerKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
@@ -9,7 +9,6 @@ import { httpRequest } from "~/utils/http-request";
 export const useRunnersQuery = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 
 	return createQuery<ListRunnersForWorkspaceResponse>(() => {
 		const auth = authState();
@@ -17,6 +16,7 @@ export const useRunnersQuery = () => {
 		return {
 			queryKey: runnerKeys.list(wsId ?? ""),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn",
+			meta: { errorMessage: "Failed to fetch runners" },
 			queryFn: async () => {
 				const response = await httpRequest<ListRunnersForWorkspaceResponse>(
 					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner`,
@@ -24,7 +24,6 @@ export const useRunnersQuery = () => {
 				);
 
 				if (!response.ok) {
-					toast("Failed to fetch runners", "error");
 					throw new Error(response.data.error);
 				}
 
@@ -37,7 +36,6 @@ export const useRunnersQuery = () => {
 export const useRunnerInfoQuery = (id: Accessor<string>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 
 	return createQuery<GetRunnerInfoResponse>(() => {
 		const auth = authState();
@@ -46,6 +44,7 @@ export const useRunnerInfoQuery = (id: Accessor<string>) => {
 		return {
 			queryKey: runnerKeys.detail(wsId ?? "", runnerId),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!runnerId,
+			meta: { errorMessage: "Failed to fetch runner info" },
 			queryFn: async () => {
 				const response = await httpRequest<GetRunnerInfoResponse>(
 					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner/${runnerId}`,
@@ -53,7 +52,6 @@ export const useRunnerInfoQuery = (id: Accessor<string>) => {
 				);
 
 				if (!response.ok) {
-					toast("Failed to fetch runner info", "error");
 					throw new Error(response.data.error);
 				}
 
@@ -66,7 +64,6 @@ export const useRunnerInfoQuery = (id: Accessor<string>) => {
 export const useRunnersListQuery = (page: Accessor<string | undefined>, count: Accessor<string | undefined>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 
 	return createQuery(() => {
 		const auth = authState();
@@ -76,6 +73,7 @@ export const useRunnersListQuery = (page: Accessor<string | undefined>, count: A
 		return {
 			queryKey: runnerKeys.pagedList(wsId ?? "", p, c),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn",
+			meta: { errorMessage: "Failed to fetch runners" },
 			queryFn: async () => {
 				const params = new URLSearchParams();
 				if (p) params.set("page", p);
@@ -88,7 +86,6 @@ export const useRunnersListQuery = (page: Accessor<string | undefined>, count: A
 				);
 
 				if (!response.ok) {
-					toast("Failed to fetch runners", "error");
 					throw new Error(response.data.error);
 				}
 

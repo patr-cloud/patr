@@ -1,14 +1,13 @@
 import { createQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
 import { GetApiTokenInfoResponse, ListApiTokensResponse } from "~/bindings";
-import { useToast } from "~/components";
+
 import { useAuthState } from "~/hooks/state-hooks";
 import { apiTokenKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
 
 export const useApiTokenInfoQuery = (id: Accessor<string>) => {
 	const [authState] = useAuthState();
-	const toast = useToast();
 
 	return createQuery<GetApiTokenInfoResponse>(() => {
 		const auth = authState();
@@ -16,6 +15,7 @@ export const useApiTokenInfoQuery = (id: Accessor<string>) => {
 		return {
 			queryKey: apiTokenKeys.detail(tokenId),
 			enabled: !!auth && auth.type === "LoggedIn" && !!tokenId,
+			meta: { errorMessage: "Failed to fetch API token info" },
 			queryFn: async () => {
 				const response = await httpRequest<GetApiTokenInfoResponse>(
 					`${import.meta.env.VITE_BASE_URL}/api/user/api-token/${tokenId}`,
@@ -23,7 +23,6 @@ export const useApiTokenInfoQuery = (id: Accessor<string>) => {
 				);
 
 				if (!response.ok) {
-					toast("Failed to fetch API token info", "error");
 					throw new Error(response.data.error);
 				}
 
@@ -35,7 +34,6 @@ export const useApiTokenInfoQuery = (id: Accessor<string>) => {
 
 export const useApiTokensQuery = (page: Accessor<string | undefined>, count: Accessor<string | undefined>) => {
 	const [authState] = useAuthState();
-	const toast = useToast();
 
 	return createQuery(() => {
 		const auth = authState();
@@ -44,6 +42,7 @@ export const useApiTokensQuery = (page: Accessor<string | undefined>, count: Acc
 		return {
 			queryKey: apiTokenKeys.list(p, c),
 			enabled: !!auth && auth.type === "LoggedIn",
+			meta: { errorMessage: "Failed to fetch API tokens" },
 			queryFn: async () => {
 				const params = new URLSearchParams();
 				if (p) params.set("page", p);
@@ -56,7 +55,6 @@ export const useApiTokensQuery = (page: Accessor<string | undefined>, count: Acc
 				);
 
 				if (!response.ok) {
-					toast("Failed to fetch API tokens", "error");
 					throw new Error(response.data.error);
 				}
 

@@ -1,7 +1,7 @@
 import { createQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
 import { GetDeploymentInfoResponse, ListDeploymentResponse } from "~/bindings";
-import { useToast } from "~/components";
+
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { deploymentKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
@@ -11,7 +11,6 @@ const DEPLOYING_REFETCH_INTERVAL = 3_000;
 export const useDeploymentsQuery = (page: Accessor<string | undefined>, count: Accessor<string | undefined>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 
 	return createQuery(() => {
 		const auth = authState();
@@ -21,6 +20,7 @@ export const useDeploymentsQuery = (page: Accessor<string | undefined>, count: A
 		return {
 			queryKey: deploymentKeys.list(wsId ?? "", p, c),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn",
+			meta: { errorMessage: "Failed to fetch deployments" },
 			refetchInterval: (query: { state: { data?: { deployments: { status: string }[] } } }) =>
 				query.state.data?.deployments?.some((d) => d.status === "deploying")
 					? DEPLOYING_REFETCH_INTERVAL
@@ -37,7 +37,6 @@ export const useDeploymentsQuery = (page: Accessor<string | undefined>, count: A
 				);
 
 				if (!response.ok) {
-					toast("Failed to fetch deployments", "error");
 					throw new Error(response.data.error);
 				}
 
@@ -53,7 +52,6 @@ export const useDeploymentsQuery = (page: Accessor<string | undefined>, count: A
 export const useDeploymentInfoQuery = (id: Accessor<string>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 
 	return createQuery<GetDeploymentInfoResponse>(() => {
 		const auth = authState();
@@ -62,6 +60,7 @@ export const useDeploymentInfoQuery = (id: Accessor<string>) => {
 		return {
 			queryKey: deploymentKeys.detail(wsId ?? "", deploymentId),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!deploymentId,
+			meta: { errorMessage: "Failed to fetch deployment info" },
 			refetchInterval: (query: { state: { data?: GetDeploymentInfoResponse } }) =>
 				query.state.data?.status === "deploying" ? DEPLOYING_REFETCH_INTERVAL : false,
 			queryFn: async () => {
@@ -71,7 +70,6 @@ export const useDeploymentInfoQuery = (id: Accessor<string>) => {
 				);
 
 				if (!response.ok) {
-					toast("Failed to fetch deployment info", "error");
 					throw new Error(response.data.error);
 				}
 

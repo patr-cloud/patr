@@ -1,15 +1,15 @@
 import "./app.css";
 import { RouterProvider } from "@tanstack/solid-router";
 import { MetaProvider } from "@solidjs/meta";
-import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
+import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import { createAppRouter } from "./router";
 import { AuthStateProvider, LastWorkspaceIdProvider, useAuthState } from "~/hooks/state-hooks";
-import { ToastProvider } from "./components";
+import { ToastProvider, useToast } from "./components";
 import { isServer } from "solid-js/web";
+import { ParentProps } from "solid-js";
 
-// Singleton on the client; server creates per-request in InnerApp
+// Singleton on the client; server creates per-request
 const clientRouter = isServer ? null : createAppRouter();
-const queryClient = new QueryClient();
 
 function InnerApp() {
 	const [authState] = useAuthState();
@@ -17,18 +17,43 @@ function InnerApp() {
 	return <RouterProvider router={router} context={{ auth: authState() }} />;
 }
 
+function createQueryClient(toast: (msg: string, type: string) => void) {
+	return new QueryClient({
+		queryCache: new QueryCache({
+			onError: (_error, query) => {
+				const message = query.meta?.errorMessage;
+				if (typeof message === "string") {
+					toast(message, "error");
+				}
+			},
+		}),
+	});
+}
+
+let clientQueryClient: QueryClient | null = null;
+
+function QueryLayer(props: ParentProps) {
+	const toast = useToast();
+	if (!clientQueryClient && !isServer) {
+		clientQueryClient = createQueryClient(toast);
+	}
+	const queryClient = clientQueryClient ?? createQueryClient(toast);
+
+	return <QueryClientProvider client={queryClient}>{props.children}</QueryClientProvider>;
+}
+
 function App() {
 	return (
 		<MetaProvider>
-			<QueryClientProvider client={queryClient}>
-				<AuthStateProvider>
-					<LastWorkspaceIdProvider>
-						<ToastProvider>
+			<ToastProvider>
+				<QueryLayer>
+					<AuthStateProvider>
+						<LastWorkspaceIdProvider>
 							<InnerApp />
-						</ToastProvider>
-					</LastWorkspaceIdProvider>
-				</AuthStateProvider>
-			</QueryClientProvider>
+						</LastWorkspaceIdProvider>
+					</AuthStateProvider>
+				</QueryLayer>
+			</ToastProvider>
 		</MetaProvider>
 	);
 }

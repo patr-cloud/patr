@@ -4,7 +4,7 @@ import { GetRoleInfoResponse } from "~/bindings/GetRoleInfoResponse";
 import { GetUserDetailsResponse } from "~/bindings/GetUserDetailsResponse";
 import { ListAllRolesResponse } from "~/bindings/ListAllRolesResponse";
 import { ListUsersForRoleResponse } from "~/bindings/ListUsersForRoleResponse";
-import { useToast } from "~/components";
+
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { roleKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
@@ -12,7 +12,6 @@ import { httpRequest } from "~/utils/http-request";
 export const useRolesQuery = (page: Accessor<string | undefined>, count: Accessor<string | undefined>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 
 	return createQuery(() => {
 		const auth = authState();
@@ -22,6 +21,7 @@ export const useRolesQuery = (page: Accessor<string | undefined>, count: Accesso
 		return {
 			queryKey: roleKeys.list(wsId ?? "", p, c),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn",
+			meta: { errorMessage: "Failed to fetch roles" },
 			queryFn: async () => {
 				const params = new URLSearchParams();
 				if (p) params.set("page", p);
@@ -34,7 +34,6 @@ export const useRolesQuery = (page: Accessor<string | undefined>, count: Accesso
 				);
 
 				if (!response.ok) {
-					toast("Failed to fetch roles", "error");
 					throw new Error(response.data.error);
 				}
 
@@ -50,7 +49,6 @@ export const useRolesQuery = (page: Accessor<string | undefined>, count: Accesso
 export const useAllRolesQuery = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 
 	return createQuery<ListAllRolesResponse>(() => {
 		const auth = authState();
@@ -58,6 +56,7 @@ export const useAllRolesQuery = () => {
 		return {
 			queryKey: roleKeys.allRoles(wsId ?? ""),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn",
+			meta: { errorMessage: "Failed to fetch roles" },
 			queryFn: async () => {
 				const response = await httpRequest<ListAllRolesResponse>(
 					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/role`,
@@ -65,7 +64,6 @@ export const useAllRolesQuery = () => {
 				);
 
 				if (!response.ok) {
-					toast("Failed to fetch roles", "error");
 					throw new Error(response.data.error);
 				}
 
@@ -78,7 +76,6 @@ export const useAllRolesQuery = () => {
 export const useRoleInfoQuery = (roleId: Accessor<string>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 
 	return createQuery<GetRoleInfoResponse>(() => {
 		const auth = authState();
@@ -87,6 +84,7 @@ export const useRoleInfoQuery = (roleId: Accessor<string>) => {
 		return {
 			queryKey: roleKeys.detail(wsId ?? "", id),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!id,
+			meta: { errorMessage: "Failed to fetch role info" },
 			queryFn: async () => {
 				const response = await httpRequest<GetRoleInfoResponse>(
 					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/role/${id}`,
@@ -94,7 +92,6 @@ export const useRoleInfoQuery = (roleId: Accessor<string>) => {
 				);
 
 				if (!response.ok) {
-					toast("Failed to fetch role info", "error");
 					throw new Error(response.data.error);
 				}
 
@@ -107,7 +104,6 @@ export const useRoleInfoQuery = (roleId: Accessor<string>) => {
 export const useRoleUsersQuery = (roleId: Accessor<string>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 
 	return createQuery(() => {
 		const auth = authState();
@@ -116,6 +112,7 @@ export const useRoleUsersQuery = (roleId: Accessor<string>) => {
 		return {
 			queryKey: roleKeys.users(wsId ?? "", id),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!id,
+			meta: { errorMessage: "Failed to fetch users for role" },
 			queryFn: async () => {
 				const response = await httpRequest<ListUsersForRoleResponse>(
 					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/role/${id}/users`,
@@ -123,7 +120,6 @@ export const useRoleUsersQuery = (roleId: Accessor<string>) => {
 				);
 
 				if (!response.ok) {
-					toast("Failed to fetch users for role", "error");
 					throw new Error(response.data.error);
 				}
 

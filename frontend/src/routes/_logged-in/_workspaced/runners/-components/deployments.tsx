@@ -1,65 +1,17 @@
 import { useNavigate } from "@tanstack/solid-router";
-import { createResource, ErrorBoundary, Show } from "solid-js";
+import { ErrorBoundary, Show } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
-import { Deployment, GetContainerRepositoryInfoResponse, ListDeploymentResponse, WithId } from "~/bindings";
-import {
-	CopyableField,
-	CopyableFieldVariant,
-	EmptyState,
-	Pagination,
-	StatusChip,
-	Table,
-	Tooltip,
-	useToast,
-} from "~/components";
+import { ListDeploymentResponse } from "~/bindings";
+import { CopyableField, CopyableFieldVariant, EmptyState, Pagination, StatusChip, Table, useToast } from "~/components";
 import { createPaginationState } from "~/hooks";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
+import { runnerKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
+import DeploymentImageName from "~/components/deployment-image-name";
 
 interface RunnerDeploymentsProps {
 	runnerId: string;
 }
-
-const ImageName = (props: { item: WithId<Deployment> }) => {
-	const [workspaceId] = useLastWorkspaceId();
-	const isExternal = () => "imageName" in props.item;
-	const repositoryId = () => (props.item as { repositoryId?: string }).repositoryId;
-
-	const [repoInfo] = createResource(
-		() => (isExternal() ? null : ([workspaceId(), repositoryId()] as const)),
-		async (params) => {
-			if (!params) return undefined;
-			const [wsId, repoId] = params;
-			if (!wsId || !repoId) return undefined;
-			const response = await httpRequest<GetContainerRepositoryInfoResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry/${repoId}`,
-				{ method: "GET" }
-			);
-			if (!response.ok) return undefined;
-			return response.data;
-		}
-	);
-
-	const fullImage = () => {
-		if (isExternal()) {
-			return `${props.item.registry}/${(props.item as { imageName: string }).imageName}:${props.item.imageTag}`;
-		}
-		return `registry.patr.cloud/${workspaceId()}/${repoInfo()?.repository.name ?? "..."}:${props.item.imageTag}`;
-	};
-
-	return (
-		<Tooltip content={fullImage()} class="min-w-0">
-			<span class="truncate font-log text-xs text-grey block">
-				<Show
-					when={isExternal() || !repoInfo.loading}
-					fallback={<span class="animate-pulse">{fullImage()}</span>}
-				>
-					{fullImage()}
-				</Show>
-			</span>
-		</Tooltip>
-	);
-};
 
 const RunnerDeployments = (props: RunnerDeploymentsProps) => {
 	const [authState] = useAuthState();
@@ -77,7 +29,7 @@ const RunnerDeployments = (props: RunnerDeploymentsProps) => {
 		const p = pagination.page();
 		const c = pagination.count();
 		return {
-			queryKey: ["runnerDeployments", wsId, props.runnerId, p, c] as const,
+			queryKey: runnerKeys.deployments(wsId ?? "", props.runnerId, p, c),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!props.runnerId,
 			queryFn: async () => {
 				const response = await httpRequest<ListDeploymentResponse>(
@@ -134,7 +86,7 @@ const RunnerDeployments = (props: RunnerDeploymentsProps) => {
 								<StatusChip status={item.status} />
 							</td>
 							<td class="flex-4 flex items-center justify-start min-w-0">
-								<ImageName item={item} />
+								<DeploymentImageName item={item} />
 							</td>
 						</tr>
 					)}

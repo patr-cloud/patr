@@ -1,7 +1,7 @@
 import { createQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
 import { GetDomainInfoInWorkspaceResponse } from "~/bindings";
-import { useToast } from "~/components";
+
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { domainKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
@@ -20,7 +20,6 @@ type GetDomainsForWorkspaceResponse = {
 export const useDomainsQuery = (page: Accessor<string | undefined>, count: Accessor<string | undefined>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 
 	return createQuery(() => {
 		const auth = authState();
@@ -30,6 +29,7 @@ export const useDomainsQuery = (page: Accessor<string | undefined>, count: Acces
 		return {
 			queryKey: domainKeys.list(wsId ?? "", p, c),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn",
+			meta: { errorMessage: "Failed to fetch domains" },
 			queryFn: async () => {
 				const params = new URLSearchParams();
 				if (p) params.set("page", p);
@@ -42,7 +42,6 @@ export const useDomainsQuery = (page: Accessor<string | undefined>, count: Acces
 				);
 
 				if (!response.ok) {
-					toast("Failed to fetch domains", "error");
 					throw new Error(response.data.error);
 				}
 
@@ -58,7 +57,6 @@ export const useDomainsQuery = (page: Accessor<string | undefined>, count: Acces
 export const useDomainInfoQuery = (id: Accessor<string>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 
 	return createQuery<GetDomainInfoInWorkspaceResponse>(() => {
 		const auth = authState();
@@ -67,6 +65,7 @@ export const useDomainInfoQuery = (id: Accessor<string>) => {
 		return {
 			queryKey: domainKeys.detail(wsId ?? "", domainId),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!domainId,
+			meta: { errorMessage: "Failed to fetch domain info" },
 			queryFn: async () => {
 				const response = await httpRequest<GetDomainInfoInWorkspaceResponse>(
 					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain/${domainId}`,
@@ -74,7 +73,6 @@ export const useDomainInfoQuery = (id: Accessor<string>) => {
 				);
 
 				if (!response.ok) {
-					toast("Failed to fetch domain info", "error");
 					throw new Error(response.data.error);
 				}
 
