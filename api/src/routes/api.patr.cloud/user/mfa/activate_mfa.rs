@@ -68,7 +68,13 @@ pub async fn activate_mfa(
 			);
 		})?)
 		.with_issuer(Some(constants::TOTP_ISSUER))
-		.with_account_name(user_data.email)
+		.with_account_name(
+			user_data
+				.identity
+				.email()
+				.ok_or(ErrorType::Unauthorized)?
+				.to_string(),
+		)
 		.build()
 		.inspect_err(|err| {
 			error!(

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO service_account_role(service_account_id, workspace_id, role_id) VALUES ($1, $2, $3);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "11f23e4d57bbe6551e9f909192bfba466207f13075d4e2ddecb34f47eeef5d16"
+}
