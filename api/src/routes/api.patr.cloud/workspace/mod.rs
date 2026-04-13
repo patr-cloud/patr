@@ -9,6 +9,7 @@ mod managed_url;
 mod rbac;
 mod runner;
 // mod secret;
+mod service_account;
 mod volume;
 
 /// The handler to create a new workspace. The workspace name must be unique.
@@ -54,6 +55,7 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 		.merge(rbac::setup_routes(state, allowed_client_type).await)
 		.merge(runner::setup_routes(state, allowed_client_type).await)
 		// .merge(secret::setup_routes(state, allowed_client_type).await)
+		.merge(service_account::setup_routes(state, allowed_client_type).await)
 		.merge(volume::setup_routes(state, allowed_client_type).await)
 		.mount_auth_endpoint(create_workspace, state, allowed_client_type)
 		.mount_auth_endpoint(delete_workspace, state, allowed_client_type)
