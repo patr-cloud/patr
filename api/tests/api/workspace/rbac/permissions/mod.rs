@@ -9,6 +9,7 @@ pub mod managed_url;
 pub mod membership;
 pub mod rbac;
 pub mod runner;
+pub mod service_account;
 pub mod volume;
 pub mod workspace;
 

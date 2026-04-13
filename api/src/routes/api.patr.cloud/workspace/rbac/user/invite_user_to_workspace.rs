@@ -211,7 +211,7 @@ pub async fn invite_user_to_workspace(
 			email.into_owned(),
 			WorkspaceInviteEmail {
 				workspace_name,
-				invited_by: format!("{} {}", user_data.first_name, user_data.last_name),
+				invited_by: user_data.identity.display_name(),
 				accept_url: accept_url.clone(),
 				expiry: constants::WORKSPACE_INVITE_VALIDITY.to_string(),
 			},

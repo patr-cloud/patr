@@ -44,6 +44,7 @@ pub mod prelude {
 			ResourceType,
 			RunnerPermission,
 			SecretPermission,
+			ServiceAccountPermission,
 			VolumePermission,
 		},
 		utils::{

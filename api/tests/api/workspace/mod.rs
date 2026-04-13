@@ -9,6 +9,7 @@ pub mod managed_url;
 pub mod rbac;
 pub mod resources_info;
 pub mod runner;
+pub mod service_account;
 pub mod volume;
 
 #[tokio::test]
