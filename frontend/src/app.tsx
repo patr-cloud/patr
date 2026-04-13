@@ -17,7 +17,7 @@ function InnerApp() {
 	return <RouterProvider router={router} context={{ auth: authState() }} />;
 }
 
-function createQueryClient(toast: (msg: string, type: string) => void) {
+function createQueryClient(toast: (msg: string, level: "warn" | "error" | "success" | "info") => void) {
 	return new QueryClient({
 		queryCache: new QueryCache({
 			onError: (_error, query) => {

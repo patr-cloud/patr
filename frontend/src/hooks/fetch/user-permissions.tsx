@@ -7,6 +7,8 @@ import { parsePermissionName, resourceTypes, userActionTypes } from "~/utils/fun
 import { httpRequest } from "~/utils/http-request";
 import { ActionTypes, ResourceTypes, UserPermissionsT } from "~/utils/types";
 
+type ParsedPermission = { resourceType: string; permission: string };
+
 const getCachedPermissions = (wsId: string): UserPermissionsT | undefined => {
 	if (typeof window === "undefined") return undefined;
 	try {
@@ -36,7 +38,7 @@ export const getPermissions = async (wsId: string) => {
 		throw new Error("Failed to fetch permissions from server");
 	}
 
-	return response.data.permissions.map((perm) => ({
+	return response.data.permissions.map((perm): Record<string, ParsedPermission> => ({
 		[perm.id]: parsePermissionName(perm.name),
 	}));
 };

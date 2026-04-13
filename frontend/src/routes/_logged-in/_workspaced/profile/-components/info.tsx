@@ -73,14 +73,9 @@ const UserSettingsInfoTab = () => {
 					placeholder="First Name"
 					type={InputType.Text}
 					onInput={(e) => {
-						setLocalInfo((prev) => {
-							return prev
-								? {
-										...prev,
-										firstName: e.currentTarget.value,
-									}
-								: undefined;
-						});
+						setLocalInfo((prev: GetUserInfoResponse | undefined) =>
+							prev ? { ...prev, firstName: e.currentTarget.value } : undefined
+						);
 					}}
 				/>
 				<Input
@@ -92,14 +87,9 @@ const UserSettingsInfoTab = () => {
 					placeholder="Last Name"
 					type={InputType.Text}
 					onInput={(e) => {
-						setLocalInfo((prev) => {
-							return prev
-								? {
-										...prev,
-										lastName: e.currentTarget.value,
-									}
-								: undefined;
-						});
+						setLocalInfo((prev: GetUserInfoResponse | undefined) =>
+							prev ? { ...prev, lastName: e.currentTarget.value } : undefined
+						);
 					}}
 				/>
 				<Button type="submit" variant={ButtonVariant.Contained}>

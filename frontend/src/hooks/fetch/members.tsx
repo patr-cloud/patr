@@ -9,7 +9,10 @@ import { httpRequest } from "~/utils/http-request";
 
 export type WorkspaceMember = {
 	userId: string;
-	userName: string;
+	firstName: string;
+	lastName: string;
+	fullName: string;
+	username: string;
 	roleIds: string[];
 };
 
@@ -61,7 +64,10 @@ export const useMembersQuery = (page: Accessor<string | undefined>, count: Acces
 
 					return {
 						userId: id,
-						userName: `${firstName} ${lastName} (@${username})`,
+						firstName,
+						lastName,
+						fullName: `${firstName} ${lastName}`,
+						username,
 						roleIds: response.data.users[userId] || [],
 					} satisfies WorkspaceMember;
 				});

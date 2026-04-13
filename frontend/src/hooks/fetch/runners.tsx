@@ -1,6 +1,6 @@
 import { createQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
-import { GetRunnerInfoResponse, ListDeploymentResponse, ListRunnersForWorkspaceResponse } from "~/bindings";
+import { Deployment, GetRunnerInfoResponse, ListDeploymentResponse, ListRunnersForWorkspaceResponse, WithId } from "~/bindings";
 
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { runnerKeys } from "~/hooks/query-keys";
@@ -100,13 +100,13 @@ export const useRunnersListQuery = (page: Accessor<string | undefined>, count: A
 
 export const useRunnerDeploymentsQuery = (
 	runnerId: Accessor<string>,
-	page: Accessor<string | undefined>,
-	count: Accessor<string | undefined>
+	page: Accessor<number>,
+	count: Accessor<number>
 ) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 
-	return createQuery(() => {
+	return createQuery<{ deployments: WithId<Deployment>[]; totalCount: number }>(() => {
 		const auth = authState();
 		const wsId = workspaceId();
 		const rid = runnerId();
