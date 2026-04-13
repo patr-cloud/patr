@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE service_account_role ADD CONSTRAINT service_account_role_pk PRIMARY KEY(service_account_id, role_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "b8f017fb23fe9903ffafbdea8627268ab686ee1c65354032b403801352bdceff"
+}

@@ -46,6 +46,7 @@ pub mod prelude {
 			ResourceType,
 			RunnerPermission,
 			SecretPermission,
+			ServiceAccountPermission,
 			StaticSitePermission,
 			VolumePermission,
 		},

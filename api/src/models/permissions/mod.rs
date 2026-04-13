@@ -52,13 +52,89 @@ pub async fn get_permission_id(database: &mut DatabaseConnection, permission: Pe
 
 /// Contains the functions to extract permissions for an API token.
 mod api_token;
+/// Contains the functions to extract permissions for a service account token.
+mod service_account;
 /// Contains the functions to extract permissions for a web dashboard JWT.
 mod web_dashboard;
 
-pub use self::{
-	api_token::get_permissions_for_api_token,
-	web_dashboard::get_permissions_for_web_login,
-};
+/// The kind of credential a request authenticated with. Each variant has its
+/// own permission source, so the identity ID alone is not enough to know where
+/// to read permissions from — [`get_permissions_for_identity`] needs both.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IdentityTokenType {
+	/// A web dashboard session (JWT). Permissions come from the user's
+	/// workspace ownership and role memberships.
+	WebLogin,
+	/// A user API token. Permissions are the user's current permissions
+	/// intersected with the scope declared when the token was minted.
+	ApiToken,
+	/// A service account token. Permissions come from the roles assigned
+	/// directly to the service account.
+	ServiceAccount,
+}
+
+/// Resolve the effective permission map for an identity, keyed by its identity
+/// ID.
+///
+/// `identity_id` is the user ID for human identities and the service account ID
+/// for service accounts; `login_id` is the credential's own ID (the web login
+/// ID, the API token ID, or — for service accounts, which hold a single
+/// non-rotating credential — the service account ID again).
+///
+/// A valid cache entry short-circuits the whole thing. Otherwise this delegates
+/// to the sub-module that owns the permission source for `token_type`, caches
+/// what it computed, and returns it. The sub-modules are pure database reads —
+/// caching lives here so every identity type gets the same invalidation
+/// semantics.
+#[tracing::instrument(skip(db_connection, redis_connection))]
+pub async fn get_permissions_for_identity(
+	db_connection: &mut DatabaseConnection,
+	redis_connection: &mut RedisClient,
+	login_id: &Uuid,
+	identity_id: &Uuid,
+	token_type: IdentityTokenType,
+) -> Result<BTreeMap<Uuid, WorkspacePermission>, ErrorType> {
+	if let Some(cached) = get_cached_permissions(redis_connection, login_id, identity_id).await? {
+		return Ok(cached);
+	}
+
+	let permissions = match token_type {
+		IdentityTokenType::WebLogin => {
+			web_dashboard::get_permissions_for_web_login(&mut *db_connection, identity_id).await?
+		}
+		IdentityTokenType::ApiToken => {
+			api_token::get_permissions_for_api_token(&mut *db_connection, login_id, identity_id)
+				.await?
+		}
+		IdentityTokenType::ServiceAccount => {
+			service_account::get_permissions_for_service_account(&mut *db_connection, identity_id)
+				.await?
+		}
+	};
+
+	// The stored `creation_time` is what the revocation timestamps in
+	// `get_cached_permissions` are compared against.
+	redis_connection
+		.setex(
+			redis::keys::permission_for_login_id(login_id),
+			constants::CACHED_PERMISSIONS_VALIDITY
+				.whole_seconds()
+				.unsigned_abs(),
+			serde_json::to_string(&UserPermissionCache {
+				permission: permissions.clone(),
+				creation_time: OffsetDateTime::now_utc(),
+			})?,
+		)
+		.await
+		.inspect_err(|err| {
+			error!(
+				"Error setting the permissions for the loginId `{login_id}`: `{}`",
+				err
+			);
+		})?;
+
+	Ok(permissions)
+}
 
 /// Gets the user data for the given token based on the allowed client type.
 /// This function delegates the permission extraction to the appropriate module
@@ -85,14 +161,20 @@ pub async fn get_user_data_for_token(
 }
 
 /// Read the cached permission map for `login_id` from Redis if it is still
-/// valid. Validity is checked against four revocation timestamps (user,
+/// valid. Validity is checked against four revocation timestamps (identity,
 /// login, workspace, global): if any timestamp is newer than the cache
 /// entry's `creation_time`, the entry is stale, gets deleted, and `None` is
 /// returned so the caller recomputes from the database.
+///
+/// `identity_id` is the user ID for human identities and the service account
+/// ID for service accounts — both share the
+/// [`user_id_revocation_timestamp`][redis::keys::user_id_revocation_timestamp]
+/// namespace, so rotating a service account's token invalidates its cached
+/// permissions the same way revoking a user's does.
 async fn get_cached_permissions(
 	redis_connection: &mut RedisClient,
 	login_id: &Uuid,
-	user_id: &Uuid,
+	identity_id: &Uuid,
 ) -> Result<Option<BTreeMap<Uuid, WorkspacePermission>>, ErrorType> {
 	let redis_data: Option<String> = redis_connection
 		.get(redis::keys::permission_for_login_id(login_id))
@@ -117,7 +199,7 @@ async fn get_cached_permissions(
 	// Check user revocation, then loginId revocation, then workspace ID revocation
 	let is_valid = 'validity: {
 		let revoked = redis_connection
-			.get::<Option<String>>(redis::keys::user_id_revocation_timestamp(user_id))
+			.get::<Option<String>>(redis::keys::user_id_revocation_timestamp(identity_id))
 			.await?
 			.and_then(|s| s.parse::<i128>().ok())
 			.and_then(|time| OffsetDateTime::from_unix_timestamp_nanos(time).ok())

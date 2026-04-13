@@ -1,7 +1,10 @@
 use models::api::user::*;
 use reqwest::StatusCode;
 
-use crate::{models::permissions::get_permissions_for_api_token, prelude::*};
+use crate::{
+	models::permissions::{IdentityTokenType, get_permissions_for_identity},
+	prelude::*,
+};
 
 pub async fn get_api_token_info(
 	AuthenticatedAppRequest {
@@ -66,9 +69,14 @@ pub async fn get_api_token_info(
 	// Route the read through the same cache/intersect/write-back path the auth
 	// layer uses so the UI shows the token's effective permissions — narrowed
 	// by any user-side role revocations since the token was minted.
-	token.data.permissions =
-		get_permissions_for_api_token(&mut **database, redis, &token_id, &user_data.id.into())
-			.await?;
+	token.data.permissions = get_permissions_for_identity(
+		&mut **database,
+		redis,
+		&token_id,
+		&user_data.id.into(),
+		IdentityTokenType::ApiToken,
+	)
+	.await?;
 
 	AppResponse::builder()
 		.body(GetApiTokenInfoResponse { token })

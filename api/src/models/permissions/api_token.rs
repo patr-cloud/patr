@@ -5,6 +5,7 @@ use std::{
 
 use argon2::{Algorithm, Argon2, PasswordHash, PasswordVerifier as _, Version};
 use models::{
+	IdentityData,
 	RequestUserData,
 	rbac::{
 		ResourcePermissionType,
@@ -13,10 +14,11 @@ use models::{
 		intersect_workspace_permissions,
 	},
 };
-use rustis::{client::Client as RedisClient, commands::StringCommands as _};
+use rustis::client::Client as RedisClient;
 use time::OffsetDateTime;
 
-use crate::{models::redis::UserPermissionCache, prelude::*, utils::config::AppConfig};
+use super::IdentityTokenType;
+use crate::{prelude::*, utils::config::AppConfig};
 
 pub(crate) async fn get_permissions(
 	database: &mut DatabaseConnection,
@@ -53,12 +55,20 @@ pub(crate) async fn get_permissions(
 	})?;
 	trace!("Login ID parsed as UUID");
 
+	// Resolve the token to an identity. Service account tokens share the
+	// `patrv1.{refresh_token}.{id}` shape with user API tokens, so a login ID
+	// that isn't a user API token may still be a valid service account — try
+	// that before rejecting it outright.
+	//
+	// Each branch yields (identity_id, login_id, created, token_hash, identity,
+	// token_type).
 	info!("Extracting information about API token");
-	let Some(token) = query!(
-		r#"
+	let (identity_id, resolved_login_id, created, token_hash, identity, token_type) =
+		if let Some(token) = query!(
+			r#"
 		SELECT
-			user_api_token.token_id,
-			user_api_token.user_id,
+			user_api_token.token_id AS "token_id: Uuid",
+			user_api_token.user_id AS "user_id: Uuid",
 			user_api_token.token_hash,
 			user_api_token.token_nbf,
 			user_api_token.token_exp,
@@ -79,62 +89,109 @@ pub(crate) async fn get_permissions(
 			user_api_token.token_id = $1 AND
 			user_login.login_type = 'api_token';
 		"#,
-		login_id as _
-	)
-	.fetch_optional(&mut *database) // What the actual fuck?
-	.await?
-	else {
-		warn!("API token not found");
-		// No specific error for API token not found, since we don't want to leak
-		// information about whether a loginId is valid or if it's expired
-		return Err(ErrorType::AuthorizationTokenInvalid);
-	};
-	trace!("Token extracted from database");
+			login_id as _
+		)
+		.fetch_optional(&mut *database) // What the actual fuck?
+		.await?
+		{
+			trace!("Token extracted from database");
 
-	if let Some(nbf) = token.token_nbf {
-		trace!("Token has an NBF");
-		if OffsetDateTime::now_utc() < nbf {
-			info!("API token is not valid yet");
+			if let Some(nbf) = token.token_nbf {
+				trace!("Token has an NBF");
+				if OffsetDateTime::now_utc() < nbf {
+					info!("API token is not valid yet");
+					return Err(ErrorType::AuthorizationTokenInvalid);
+				}
+			} else {
+				trace!("Token does not have an NBF");
+			}
+			trace!("Token passed NBF check");
+
+			if let Some(exp) = token.token_exp {
+				trace!("Token has an EXP");
+				if OffsetDateTime::now_utc() > exp {
+					info!("API token has expired");
+					return Err(ErrorType::AuthorizationTokenInvalid);
+				}
+			} else {
+				trace!("Token does not have an EXP");
+			}
+			trace!("Token passed EXP check");
+
+			if let Some(revoked) = token.revoked {
+				trace!("Token has a revoked timestamp");
+				if OffsetDateTime::now_utc() > revoked {
+					info!("API token has been revoked");
+					return Err(ErrorType::AuthorizationTokenInvalid);
+				}
+			} else {
+				trace!("Token does not have a revoked timestamp");
+			}
+			trace!("Token passed revoked timestamp check");
+
+			if let Some(allowed_ips) = token.allowed_ips &&
+				!allowed_ips
+					.iter()
+					.any(|ip_network| ip_network.contains(client_ip))
+			{
+				info!("API token not accessed from an allowed IP Address");
+				return Err(ErrorType::DisallowedIpAddressForApiToken);
+			}
+
+			(
+				token.user_id,
+				token.token_id,
+				token.created,
+				token.token_hash,
+				IdentityData::User {
+					username: token.username,
+					first_name: token.first_name,
+					last_name: token.last_name,
+				},
+				IdentityTokenType::ApiToken,
+			)
+		} else if let Some(service_account) = query!(
+			r#"
+		SELECT
+			id AS "id: Uuid",
+			name,
+			token_hash,
+			created
+		FROM
+			service_account
+		WHERE
+			id = $1 AND
+			deleted IS NULL;
+		"#,
+			login_id as _
+		)
+		.fetch_optional(&mut *database)
+		.await?
+		{
+			trace!("Found service account token");
+
+			// A service account holds a single, non-rotating credential rather than
+			// a set of logins, so it acts as its own login ID.
+			(
+				service_account.id,
+				service_account.id,
+				service_account.created,
+				service_account.token_hash,
+				IdentityData::ServiceAccount {
+					name: service_account.name,
+				},
+				IdentityTokenType::ServiceAccount,
+			)
+		} else {
+			warn!("Token not found as a user API token or a service account");
+			// No specific error for the token not being found, since we don't want
+			// to leak information about whether a loginId is valid or if it's
+			// expired
 			return Err(ErrorType::AuthorizationTokenInvalid);
-		}
-	} else {
-		trace!("Token does not have an NBF");
-	}
-	trace!("Token passed NBF check");
+		};
 
-	if let Some(exp) = token.token_exp {
-		trace!("Token has an EXP");
-		if OffsetDateTime::now_utc() > exp {
-			info!("API token has expired");
-			return Err(ErrorType::AuthorizationTokenInvalid);
-		}
-	} else {
-		trace!("Token does not have an EXP");
-	}
-	trace!("Token passed EXP check");
-
-	if let Some(revoked) = token.revoked {
-		trace!("Token has a revoked timestamp");
-		if OffsetDateTime::now_utc() > revoked {
-			info!("API token has been revoked");
-			return Err(ErrorType::AuthorizationTokenInvalid);
-		}
-	} else {
-		trace!("Token does not have a revoked timestamp");
-	}
-	trace!("Token passed revoked timestamp check");
-
-	if let Some(allowed_ips) = token.allowed_ips &&
-		!allowed_ips
-			.iter()
-			.any(|ip_network| ip_network.contains(client_ip))
-	{
-		info!("API token not accessed from an allowed IP Address");
-		return Err(ErrorType::DisallowedIpAddressForApiToken);
-	}
-
-	let Ok(password_hash) = PasswordHash::new(&token.token_hash) else {
-		error!("Unable to parse password hash: {}", token.token_hash);
+	let Ok(password_hash) = PasswordHash::new(&token_hash) else {
+		error!("Unable to parse password hash: {}", token_hash);
 		return Err(ErrorType::server_error("password hash parsing failed"));
 	};
 	let success = Argon2::new_with_secret(
@@ -148,28 +205,30 @@ pub(crate) async fn get_permissions(
 	.is_ok();
 
 	if !success {
-		warn!("API token has invalid refresh token");
+		warn!("Token has an invalid refresh token");
 		return Err(ErrorType::AuthorizationTokenInvalid);
 	}
-	info!("API token valid");
+	info!("Token valid");
 
-	let permissions =
-		get_permissions_for_api_token(&mut *database, redis, &login_id, &token.user_id.into())
-			.await?;
+	let permissions = super::get_permissions_for_identity(
+		&mut *database,
+		redis,
+		&resolved_login_id,
+		&identity_id,
+		token_type,
+	)
+	.await?;
 
 	Ok(RequestUserData::builder()
-		.id(token.user_id)
-		.username(token.username)
-		.first_name(token.first_name)
-		.last_name(token.last_name)
-		.created(token.created)
-		.login_id(token.token_id)
+		.id(identity_id)
+		.identity(identity)
+		.created(created)
+		.login_id(resolved_login_id)
 		.permissions(permissions)
 		.build())
 }
 
-/// Compute the effective permission map for an API token. On a valid cache
-/// hit the cached map is returned directly. Otherwise:
+/// Compute the effective permission map for an API token:
 ///
 /// 1. Reads the user's current role-derived permissions for the workspaces they
 ///    are a member of (the upper bound).
@@ -180,19 +239,16 @@ pub(crate) async fn get_permissions(
 /// 4. Rewrites the token's DB rows for any workspace whose intersection differs
 ///    from the declared rows, so subsequent reads (auth and
 ///    `get_api_token_info`) see the converged state directly.
-/// 5. Caches and returns the effective map.
-#[tracing::instrument(skip(db_connection, redis_connection))]
+///
+/// Caching is the caller's job — see [`get_permissions_for_identity`][1].
+///
+/// [1]: super::get_permissions_for_identity
+#[tracing::instrument(skip(db_connection))]
 pub async fn get_permissions_for_api_token(
 	db_connection: &mut DatabaseConnection,
-	redis_connection: &mut RedisClient,
 	login_id: &Uuid,
 	user_id: &Uuid,
 ) -> Result<BTreeMap<Uuid, WorkspacePermission>, ErrorType> {
-	if let Some(cached) = super::get_cached_permissions(redis_connection, login_id, user_id).await?
-	{
-		return Ok(cached);
-	}
-
 	// User's current role-derived permissions (the upper bound for the
 	// token). Read directly from the DB — the token's cache slot is keyed
 	// on its own login_id, so reusing the user's cached perms doesn't apply.
@@ -699,25 +755,6 @@ pub async fn get_permissions_for_api_token(
 			}
 		}
 	}
-
-	redis_connection
-		.setex(
-			redis::keys::permission_for_login_id(login_id),
-			constants::CACHED_PERMISSIONS_VALIDITY
-				.whole_seconds()
-				.unsigned_abs(),
-			serde_json::to_string(&UserPermissionCache {
-				permission: effective_permissions.clone(),
-				creation_time: OffsetDateTime::now_utc(),
-			})?,
-		)
-		.await
-		.inspect_err(|err| {
-			error!(
-				"Error setting the permissions for the loginId `{login_id}`: `{}`",
-				err
-			);
-		})?;
 
 	Ok(effective_permissions)
 }

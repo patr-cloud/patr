@@ -15,6 +15,7 @@ pub mod domain;
 pub mod managed_url;
 pub mod rbac;
 pub mod runner;
+pub mod service_account;
 pub mod volume;
 
 #[tokio::test]
