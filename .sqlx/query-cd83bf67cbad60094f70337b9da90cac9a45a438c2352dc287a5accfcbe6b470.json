@@ -1,16 +1,16 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT user_api_token.token_id, user_api_token.user_id, user_api_token.token_hash, user_api_token.token_nbf, user_api_token.token_exp, user_api_token.allowed_ips, user_api_token.revoked, \"user\".* FROM user_api_token INNER JOIN user_login ON user_api_token.token_id = user_login.login_id INNER JOIN \"user\" ON user_api_token.user_id = \"user\".id WHERE user_api_token.token_id = $1 AND user_login.login_type = 'api_token';",
+  "query": "SELECT user_api_token.token_id AS \"token_id: Uuid\", user_api_token.user_id AS \"user_id: Uuid\", user_api_token.token_hash, user_api_token.token_nbf, user_api_token.token_exp, user_api_token.allowed_ips, user_api_token.revoked, \"user\".* FROM user_api_token INNER JOIN user_login ON user_api_token.token_id = user_login.login_id INNER JOIN \"user\" ON user_api_token.user_id = \"user\".id WHERE user_api_token.token_id = $1 AND user_login.login_type = 'api_token';",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "token_id",
+        "name": "token_id: Uuid",
         "type_info": "Uuid"
       },
       {
         "ordinal": 1,
-        "name": "user_id",
+        "name": "user_id: Uuid",
         "type_info": "Uuid"
       },
       {
@@ -125,5 +125,5 @@
       true
     ]
   },
-  "hash": "83b562cb50d398cf56e04504e25881f34f7c0c07e062a8113fd54fe1e897fffe"
+  "hash": "cd83bf67cbad60094f70337b9da90cac9a45a438c2352dc287a5accfcbe6b470"
 }
