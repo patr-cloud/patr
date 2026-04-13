@@ -1,6 +1,6 @@
 import { createQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
-import { GetRunnerInfoResponse, ListRunnersForWorkspaceResponse } from "~/bindings";
+import { GetRunnerInfoResponse, ListDeploymentResponse, ListRunnersForWorkspaceResponse } from "~/bindings";
 
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { runnerKeys } from "~/hooks/query-keys";
@@ -91,6 +91,43 @@ export const useRunnersListQuery = (page: Accessor<string | undefined>, count: A
 
 				return {
 					runners: response.data.runners,
+					totalCount: Number(response.headers.get("x-total-count") ?? 0),
+				};
+			},
+		};
+	});
+};
+
+export const useRunnerDeploymentsQuery = (
+	runnerId: Accessor<string>,
+	page: Accessor<string | undefined>,
+	count: Accessor<string | undefined>
+) => {
+	const [authState] = useAuthState();
+	const [workspaceId] = useLastWorkspaceId();
+
+	return createQuery(() => {
+		const auth = authState();
+		const wsId = workspaceId();
+		const rid = runnerId();
+		const p = page();
+		const c = count();
+		return {
+			queryKey: runnerKeys.deployments(wsId ?? "", rid, p, c),
+			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!rid,
+			meta: { errorMessage: "Failed to fetch deployments for runner" },
+			queryFn: async () => {
+				const response = await httpRequest<ListDeploymentResponse>(
+					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment?search[runner]=${rid}&page=${p}&count=${c}`,
+					{ method: "GET" }
+				);
+
+				if (!response.ok) {
+					throw new Error(response.data.error);
+				}
+
+				return {
+					deployments: response.data.deployments,
 					totalCount: Number(response.headers.get("x-total-count") ?? 0),
 				};
 			},

@@ -1,12 +1,8 @@
 import { useNavigate } from "@tanstack/solid-router";
 import { createEffect, ErrorBoundary, Show } from "solid-js";
-import { createQuery } from "@tanstack/solid-query";
-import { ListDeploymentResponse } from "~/bindings";
 import { CopyableField, CopyableFieldVariant, EmptyState, Pagination, StatusChip, Table } from "~/components";
 import { createPaginationState } from "~/hooks";
-import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
-import { runnerKeys } from "~/hooks/query-keys";
-import { httpRequest } from "~/utils/http-request";
+import { useRunnerDeploymentsQuery } from "~/hooks/fetch";
 import DeploymentImageName from "~/components/deployment-image-name";
 
 interface RunnerDeploymentsProps {
@@ -14,40 +10,17 @@ interface RunnerDeploymentsProps {
 }
 
 const RunnerDeployments = (props: RunnerDeploymentsProps) => {
-	const [authState] = useAuthState();
-	const [workspaceId] = useLastWorkspaceId();
 	const navigate = useNavigate();
 	const pagination = createPaginationState({
 		search: () => ({}),
 		navigate,
 	});
 
-	const deploymentsQuery = createQuery(() => {
-		const auth = authState();
-		const wsId = workspaceId();
-		const p = pagination.page();
-		const c = pagination.count();
-		return {
-			queryKey: runnerKeys.deployments(wsId ?? "", props.runnerId, p, c),
-			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!props.runnerId,
-			meta: { errorMessage: "Failed to fetch deployments for runner" },
-			queryFn: async () => {
-				const response = await httpRequest<ListDeploymentResponse>(
-					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment?search[runner]=${props.runnerId}&page=${p}&count=${c}`,
-					{ method: "GET" }
-				);
-
-				if (!response.ok) {
-					throw new Error(response.data.error);
-				}
-
-				return {
-					deployments: response.data.deployments,
-					totalCount: Number(response.headers.get("x-total-count") ?? 0),
-				};
-			},
-		};
-	});
+	const deploymentsQuery = useRunnerDeploymentsQuery(
+		() => props.runnerId,
+		() => pagination.page(),
+		() => pagination.count()
+	);
 
 	createEffect(() => {
 		const totalCount = deploymentsQuery.data?.totalCount;

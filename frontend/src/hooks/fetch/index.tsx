@@ -2,7 +2,7 @@ import usePermissionsQuery from "./permissions";
 import useWorkspacesQuery from "./workspaces";
 import useUserPermissionsQuery from "./user-permissions";
 import { useDeploymentsQuery, useDeploymentInfoQuery } from "./deployments";
-import { useRunnersQuery, useRunnerInfoQuery, useRunnersListQuery } from "./runners";
+import { useRunnersQuery, useRunnerInfoQuery, useRunnersListQuery, useRunnerDeploymentsQuery } from "./runners";
 import { useWorkspaceInfoQuery } from "./workspace";
 import { useRolesQuery, useAllRolesQuery, useRoleInfoQuery, useRoleUsersQuery } from "./roles";
 import { useMembersQuery } from "./members";
@@ -25,6 +25,7 @@ export {
 	useRunnersQuery,
 	useRunnerInfoQuery,
 	useRunnersListQuery,
+	useRunnerDeploymentsQuery,
 	useRunnerMetricsQuery,
 	usePermissionsQuery,
 	useUserPermissionsQuery,

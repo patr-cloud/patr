@@ -22,7 +22,6 @@ import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useDeploymentInfoQuery } from "~/hooks/fetch";
 import { deploymentKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
-import { GetDeploymentInfoResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
 import DeploymentInfoUpdate from "./-components/info";
 import DeploymentLogs from "./-components/logs";
@@ -47,12 +46,10 @@ const DeploymentInfo = () => {
 
 	const deploymentData = () => deploymentQuery.data;
 
-	const optimisticStatusUpdate = (status: string) => {
+	const refetchDeployment = () => {
 		const wsId = workspaceId();
 		if (wsId) {
-			queryClient.setQueryData<GetDeploymentInfoResponse>(deploymentKeys.detail(wsId, params().id), (prev) =>
-				prev ? { ...prev, status } : undefined
-			);
+			queryClient.invalidateQueries({ queryKey: deploymentKeys.detail(wsId, params().id) });
 		}
 	};
 
@@ -81,7 +78,7 @@ const DeploymentInfo = () => {
 			}
 
 			toast("Deployment started successfully", "success");
-			optimisticStatusUpdate("deploying");
+			refetchDeployment();
 		}
 	);
 
@@ -110,7 +107,7 @@ const DeploymentInfo = () => {
 			}
 
 			toast("Deployment stopped successfully", "success");
-			optimisticStatusUpdate("stopped");
+			refetchDeployment();
 		}
 	);
 

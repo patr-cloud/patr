@@ -51,6 +51,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	const deploymentPermissions = useGetPermissions("deployment", () => props.deploymentId);
 
 	const [_, setHasUpdated] = createSignal(false);
+	const [isUpdating, setIsUpdating] = createSignal(false);
 
 	const isPatrRegistry = () => {
 		const info = localInfo();
@@ -79,34 +80,39 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 			return;
 		}
 
-		const response = await httpRequest<UpdateDeploymentResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId()}/deployment/${info.id}`,
-			{
-				method: "PATCH",
-				body: JSON.stringify({
-					name: info.name,
-					runner: info.runner,
-					deployOnPush: info.deployOnPush,
-					minHorizontalScale: info.minHorizontalScale,
-					maxHorizontalScale: info.maxHorizontalScale,
-					ports: info.ports,
-					environmentVariables: info.environmentVariables,
-					startupProbe: info.startupProbe,
-					livenessProbe: info.livenessProbe,
-					configMounts: info.configMounts,
-				}),
+		setIsUpdating(true);
+		try {
+			const response = await httpRequest<UpdateDeploymentResponse>(
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId()}/deployment/${info.id}`,
+				{
+					method: "PATCH",
+					body: JSON.stringify({
+						name: info.name,
+						runner: info.runner,
+						deployOnPush: info.deployOnPush,
+						minHorizontalScale: info.minHorizontalScale,
+						maxHorizontalScale: info.maxHorizontalScale,
+						ports: info.ports,
+						environmentVariables: info.environmentVariables,
+						startupProbe: info.startupProbe,
+						livenessProbe: info.livenessProbe,
+						configMounts: info.configMounts,
+					}),
+				}
+			);
+
+			if (!response.ok) {
+				console.error("Failed to update deployment:", response.data.error);
+				toast("Failed to update deployment", "error");
+				refetchDeploymentInfo();
+				return;
 			}
-		);
 
-		if (!response.ok) {
-			console.error("Failed to update deployment:", response.data.error);
-			toast("Failed to update deployment", "error");
+			toast("Deployment updated successfully", "success");
 			refetchDeploymentInfo();
-			return;
+		} finally {
+			setIsUpdating(false);
 		}
-
-		toast("Deployment updated successfully", "success");
-		refetchDeploymentInfo();
 	};
 
 	return (
@@ -353,7 +359,13 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 
 			<Show when={deploymentPermissions().edit}>
 				<div class="w-full flex justify-end items-center">
-					<Button disabled={!deploymentPermissions().edit} type="submit" variant="contained">
+					<Button
+						disabled={!deploymentPermissions().edit || isUpdating()}
+						loading={isUpdating()}
+						loadingContent={() => <span>Updating...</span>}
+						type="submit"
+						variant="contained"
+					>
 						Update
 					</Button>
 				</div>
