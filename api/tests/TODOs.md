@@ -383,6 +383,24 @@ Comprehensive list of missing test cases. Organized by module.
 
 ---
 
+## Service Account
+
+### Missing Tests (require `ClientType::ApiToken` test server)
+
+The test infra only supports `ClientType::WebDashboard` (JWT auth). Tests that authenticate
+using `patrv1.*` tokens cannot be written until a `ClientType::ApiToken` test server is added.
+
+- [ ] `service_account_token_authenticates` — create SA with Runner::View role, use SA token to call GetRunnerInfo
+- [ ] `service_account_token_deleted_sa_fails` — delete SA, use its token, expect auth failure
+- [ ] `sa_without_runner_permission_denied` — SA with no permissions, use SA token to access runner
+- [ ] `sa_with_runner_execute_can_access_runner` — SA with Runner::Execute, use SA token for runner endpoint
+- [ ] `regenerate_token_invalidates_old` — regenerate token, use old token, expect auth failure
+- [ ] `user_api_token_still_works_after_sa_feature` — regression: user API token still authenticates
+
+**Fix:** Add a second `TestServer` in `setup.rs` mounted with `ClientType::ApiToken`, expose `make_api_token_call()` on `TestSetup`.
+
+---
+
 ## Infrastructure / Cross-Cutting
 
 ### Concurrency & Rate Limiting
@@ -420,6 +438,7 @@ Comprehensive list of missing test cases. Organized by module.
 | Workspace          | 11             | 11            | High         |
 | Deployment         | 15             | 20            | High         |
 | Runner             | 9              | 6             | Medium       |
+| Service Account    | 17             | 6             | High         |
 | Domain             | 8              | 20            | High         |
 | Managed URL        | 7              | 13            | Medium       |
 | Container Registry | 10             | 12            | Medium       |

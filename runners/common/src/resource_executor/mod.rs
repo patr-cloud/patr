@@ -143,6 +143,7 @@ where
 				ResourceType::Domain |
 				ResourceType::DnsRecord |
 				ResourceType::ManagedURL |
+				ResourceType::ServiceAccount |
 				ResourceType::Role => {
 					todo!()
 				}

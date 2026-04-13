@@ -14,6 +14,7 @@ mod managed_url;
 mod membership;
 mod rbac;
 mod runner;
+mod service_account;
 mod volume;
 mod workspace;
 
