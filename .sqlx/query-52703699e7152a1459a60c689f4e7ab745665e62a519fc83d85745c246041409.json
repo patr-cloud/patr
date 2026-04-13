@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE service_account SET name = COALESCE($1, name), description = COALESCE($2, description) WHERE id = $3 AND deleted IS NULL;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "52703699e7152a1459a60c689f4e7ab745665e62a519fc83d85745c246041409"
+}

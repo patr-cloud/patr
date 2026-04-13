@@ -2,13 +2,15 @@ use std::{collections::BTreeMap, net::IpAddr};
 
 use argon2::{Algorithm, Argon2, PasswordHash, PasswordVerifier as _, Version};
 use models::{
+	IdentityData,
 	RequestUserData,
 	rbac::{WorkspacePermission, intersect_workspace_permissions},
 };
-use rustis::{client::Client as RedisClient, commands::StringCommands as _};
+use rustis::client::Client as RedisClient;
 use time::OffsetDateTime;
 
-use crate::{models::redis::UserPermissionCache, prelude::*, utils::config::AppConfig};
+use super::IdentityTokenType;
+use crate::{prelude::*, utils::config::AppConfig};
 
 pub(crate) async fn get_permissions(
 	database: &mut DatabaseConnection,
@@ -145,23 +147,30 @@ pub(crate) async fn get_permissions(
 	}
 	info!("API token valid");
 
-	let permissions =
-		get_permissions_for_api_token(&mut *database, redis, &login_id, &token.user_id.into())
-			.await?;
+	let permissions = super::get_permissions_for_identity(
+		&mut *database,
+		redis,
+		&login_id,
+		&token.user_id.into(),
+		IdentityTokenType::ApiToken,
+	)
+	.await?;
 
 	Ok(RequestUserData::builder()
 		.id(token.user_id)
-		.email(token.email)
-		.first_name(token.first_name)
-		.last_name(token.last_name)
+		.identity(IdentityData::User {
+			email: token.email,
+			first_name: token.first_name,
+			last_name: token.last_name,
+		})
 		.created(token.created)
 		.login_id(token.token_id)
 		.permissions(permissions)
 		.build())
 }
 
-/// Compute the effective permission map for an API token. On a valid cache
-/// hit the cached map is returned directly. Otherwise:
+/// Compute the effective permission map for an API token. A pure database
+/// read — caching is the dispatcher's job.
 ///
 /// 1. Reads the user's current role-derived permissions for the workspaces they are a member of
 ///    (the upper bound).
@@ -171,19 +180,13 @@ pub(crate) async fn get_permissions(
 ///    from the token's effective scope.
 /// 4. Rewrites the token's DB rows for any workspace whose intersection differs from the declared
 ///    rows, so subsequent reads (auth and `get_api_token_info`) see the converged state directly.
-/// 5. Caches and returns the effective map.
-#[tracing::instrument(skip(db_connection, redis_connection))]
+/// 5. Returns the effective map.
+#[tracing::instrument(skip(db_connection))]
 pub async fn get_permissions_for_api_token(
 	db_connection: &mut DatabaseConnection,
-	redis_connection: &mut RedisClient,
 	login_id: &Uuid,
 	user_id: &Uuid,
 ) -> Result<BTreeMap<Uuid, WorkspacePermission>, ErrorType> {
-	if let Some(cached) = super::get_cached_permissions(redis_connection, login_id, user_id).await?
-	{
-		return Ok(cached);
-	}
-
 	// User's current role-derived permissions (the upper bound for the
 	// token). Read directly from the DB — the token's cache slot is keyed
 	// on its own login_id, so reusing the user's cached perms doesn't apply.
@@ -313,26 +316,6 @@ pub async fn get_permissions_for_api_token(
 
 	let effective_permissions =
 		intersect_workspace_permissions(&token_permissions, &user_permissions);
-
-	// A token belongs to the workspaces it holds effective permissions or
-	redis_connection
-		.setex(
-			redis::keys::permission_for_login_id(login_id),
-			constants::CACHED_PERMISSIONS_VALIDITY
-				.whole_seconds()
-				.unsigned_abs(),
-			serde_json::to_string(&UserPermissionCache {
-				permission: effective_permissions.clone(),
-				creation_time: OffsetDateTime::now_utc(),
-			})?,
-		)
-		.await
-		.inspect_err(|err| {
-			error!(
-				"Error setting the permissions for the loginId `{login_id}`: `{}`",
-				err
-			);
-		})?;
 
 	Ok(effective_permissions)
 }
