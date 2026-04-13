@@ -21,6 +21,9 @@ pub mod rbac;
 /// This module contains all the models that corresponds to a runner of a Patr
 /// workspace
 pub mod runner;
+/// This module contains all the models that corresponds to a service account
+/// in a workspace
+pub mod service_account;
 /// This module contains all the models that corresponds to a deployment volume
 pub mod volume;
 

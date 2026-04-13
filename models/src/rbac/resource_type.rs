@@ -69,6 +69,11 @@ pub enum ResourceType {
 	/// assigned to users within that workspace. A role can be used to grant
 	/// permissions on resources within a workspace.
 	Role,
+	/// A service account within a workspace. A service account is a non-human
+	/// identity that can be used to authenticate runners and other automated
+	/// processes. It has a single token and can be assigned roles within its
+	/// workspace.
+	ServiceAccount,
 }
 
 impl ResourceType {

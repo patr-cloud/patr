@@ -1,6 +1,10 @@
 {
   "db_name": "PostgreSQL",
+<<<<<<<< HEAD:.sqlx/query-3e6a06fc948edc00f464dc0d8b0a74f8c321413b682e3978206f986574d36ea9.json
   "query": "ALTER TABLE workspace_user ADD CONSTRAINT workspace_user_fk_user_id FOREIGN KEY(user_id) REFERENCES \"user\"(id), ADD CONSTRAINT workspace_user_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id);",
+========
+  "query": "ALTER TABLE workspace_user ADD CONSTRAINT workspace_user_fk_user_id FOREIGN KEY(user_id) REFERENCES \"user\"(id), ADD CONSTRAINT workspace_user_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id), ADD CONSTRAINT workspace_user_fk_role_id_workspace_id FOREIGN KEY(role_id, workspace_id) REFERENCES role(id, owner_id);",
+>>>>>>>> fe8c7aff8 (Add service accounts - non-human identity for runners and automation):.sqlx/query-7a1d96c754b19ce8b852bcfc3febea3dedcce0b113485a9424f3e7a16088a0bc.json
   "describe": {
     "columns": [],
     "parameters": {
@@ -8,5 +12,9 @@
     },
     "nullable": []
   },
+<<<<<<<< HEAD:.sqlx/query-3e6a06fc948edc00f464dc0d8b0a74f8c321413b682e3978206f986574d36ea9.json
   "hash": "3e6a06fc948edc00f464dc0d8b0a74f8c321413b682e3978206f986574d36ea9"
+========
+  "hash": "7a1d96c754b19ce8b852bcfc3febea3dedcce0b113485a9424f3e7a16088a0bc"
+>>>>>>>> fe8c7aff8 (Add service accounts - non-human identity for runners and automation):.sqlx/query-7a1d96c754b19ce8b852bcfc3febea3dedcce0b113485a9424f3e7a16088a0bc.json
 }

@@ -12,6 +12,7 @@ use models::{
 			managed_url::*,
 			rbac::{role::*, user::*},
 			runner::*,
+			service_account::*,
 			volume::*,
 			*,
 		},
@@ -90,6 +91,13 @@ pub struct TestApiToken {
 	pub id: Uuid,
 	pub token: String,
 	pub name: String,
+}
+
+/// A test service account.
+pub struct TestServiceAccount {
+	pub id: Uuid,
+	pub name: String,
+	pub token: String,
 }
 
 /// Generate a random lowercase alphanumeric string suitable for use as an
@@ -257,6 +265,44 @@ impl TestSetup {
 		TestRunner {
 			id: response.id.id,
 			name,
+		}
+	}
+
+	/// Create a service account in a workspace, returning its ID, name, and
+	/// token.
+	pub async fn create_test_service_account(
+		&self,
+		token: &BearerToken,
+		workspace_id: Uuid,
+		roles: Vec<Uuid>,
+	) -> TestServiceAccount {
+		let name = random_name(8);
+
+		let response = self
+			.make_api_call(
+				ApiRequest::<CreateServiceAccountRequest>::builder()
+					.path(CreateServiceAccountPath { workspace_id })
+					.headers(CreateServiceAccountRequestHeaders {
+						authorization: token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.body(CreateServiceAccountRequest {
+						name: name.clone(),
+						description: None,
+						roles,
+					})
+					.build(),
+			)
+			.await
+			.json::<ApiSuccessResponseBody<CreateServiceAccountResponse>>()
+			.response;
+
+		self.clear_rate_limits().await;
+
+		TestServiceAccount {
+			id: response.id.id,
+			name,
+			token: response.token,
 		}
 	}
 
