@@ -19,18 +19,7 @@ where
 	/// running is exactly as per what's in the database.
 	#[instrument(skip(self))]
 	pub(super) async fn monitor_resources(&self) -> Result<!, RunnerError> {
-		let (update_sender, mut receiver) = mpsc::unbounded_channel::<SqliteUpdateHook>();
-
-		info!("Installing SQLite hook for updates");
-		self.state
-			.database
-			.acquire()
-			.await?
-			.lock_handle()
-			.await?
-			.set_update_hook(move |params| {
-				_ = update_sender.send(params.into());
-			});
+		let mut receiver = self.install_update_hook().await?;
 
 		const FULL_SYNC_INTERVAL: Duration = if cfg!(debug_assertions) {
 			Duration::from_secs(10)
@@ -50,6 +39,34 @@ where
 		// resource. As long as it's running, we are happy. So NO updating the
 		// resource here whatsoever. All that happens in the task.
 		loop {
+			// Check if the update hook channel is still alive. If the pool
+			// recycled the connection holding the hook, the sender is dropped
+			// and recv() would return None immediately — causing a busy spin.
+			if receiver.is_closed() {
+				warn!(
+					"SQLite update hook channel closed (pool connection recycled). \
+					 Re-installing hook. Periodic reconciliation continues to run \
+					 regardless — no updates will be missed."
+				);
+				match self.install_update_hook().await {
+					Ok(new_receiver) => {
+						info!("SQLite update hook re-installed successfully");
+						receiver = new_receiver;
+					}
+					Err(err) => {
+						error!(
+							"Failed to re-install SQLite update hook: {}. \
+							 Will retry in 1 second. Periodic reconciliation \
+							 is still active.",
+							err
+						);
+						time::sleep(Duration::from_secs(1))
+							.with_cancel_check()
+							.await?;
+					}
+				}
+			}
+
 			let receive_future = pin!(receiver.recv());
 			let monitor_future = future::select(sleep_future, receive_future)
 				.with_cancel_check()
@@ -85,6 +102,8 @@ where
 				}
 				Either::Right((update, pending_sleep)) => {
 					let Some(update) = update else {
+						// Channel returned None — will be caught by is_closed()
+						// check at the top of the next iteration.
 						sleep_future = pending_sleep;
 						continue;
 					};
@@ -106,12 +125,37 @@ where
 					trace!("Database update received: {:?}", update);
 
 					// Don't look up by rowid — rowids are unstable (INSERT OR
-					// REPLACE invalidates them) and the hook fires before the
-					// transaction commits. Schedule a quick reconciliation instead.
-					sleep_future = Box::pin(time::sleep(Duration::from_millis(50)));
+					// REPLACE invalidates them). In managed mode,
+					// handle_server_message notifies executors directly after
+					// commit. For all other paths, the periodic reconciliation
+					// picks up changes.
+					sleep_future = pending_sleep;
 				}
 			}
 		}
+	}
+
+	/// Install the SQLite update hook on a pool connection and return the
+	/// receiver end of the channel. If the pool later recycles the connection,
+	/// the sender is dropped, the channel closes, and the caller should
+	/// re-invoke this to get a fresh hook.
+	async fn install_update_hook(
+		&self,
+	) -> Result<mpsc::UnboundedReceiver<SqliteUpdateHook>, RunnerError> {
+		let (sender, receiver) = mpsc::unbounded_channel::<SqliteUpdateHook>();
+
+		info!("Installing SQLite update hook");
+		self.state
+			.database
+			.acquire()
+			.await?
+			.lock_handle()
+			.await?
+			.set_update_hook(move |params| {
+				_ = sender.send(params.into());
+			});
+
+		Ok(receiver)
 	}
 
 	/// Resync all the resources that the runner is responsible for. This
