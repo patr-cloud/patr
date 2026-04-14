@@ -181,7 +181,7 @@ impl RunnerExecutor for DockerRunner {
 	async fn delete_deployment(&self, id: Uuid) -> Result<(), RunnerError> {
 		deployment::delete(self, id).await?;
 
-		ingress::update_ingress_configs(&self.docker, &self.settings).await
+		ingress::delete_deployment_config(&self.docker, &self.settings, id).await
 	}
 
 	async fn get_deployment_status(

@@ -12,7 +12,6 @@ use bollard::{
 		TaskSpecContainerSpec,
 	},
 	query_parameters::{
-		ListConfigsOptions,
 		ListServicesOptions,
 		ListServicesOptionsBuilder,
 		UpdateServiceOptionsBuilder,
@@ -295,7 +294,9 @@ pub(crate) async fn list_running<'a>(
 }
 
 /// Delete the deployment with the given ID. This will remove the service
-/// if it exists.
+/// if it exists. The deployment's ingress config is not deleted here — it
+/// must be removed via [`ingress::delete_deployment_config`] which first
+/// unmounts it from Caddy.
 pub(crate) async fn delete(
 	DockerRunner { docker, .. }: &DockerRunner,
 	id: Uuid,
@@ -325,28 +326,6 @@ pub(crate) async fn delete(
 	if service.is_some() {
 		docker.delete_service(&service_name).await.map_err(|err| {
 			error!("Error removing service: {:?}", err);
-			RunnerError::host(err)
-		})?;
-	}
-
-	info!("Removing ingress config for deployment: {}", id);
-
-	// Remove ingress config
-	if let Some((config_id, _)) = docker
-		.list_configs(Some(ListConfigsOptions {
-			filters: Some(HashMap::from([(
-				String::from("label"),
-				vec![format!("patr.deploymentId={}", id)],
-			)])),
-		}))
-		.await
-		.map_err(RunnerError::host)?
-		.into_iter()
-		.next()
-		.and_then(|config| Some((config.id?, config.version?.index?)))
-	{
-		docker.delete_config(&config_id).await.map_err(|err| {
-			error!("Error removing config: {:?}", err);
 			RunnerError::host(err)
 		})?;
 	}

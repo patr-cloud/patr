@@ -69,6 +69,8 @@ pub async fn update_config(
 	};
 
 	// Check if a config with the same hash already exists
+	// If it does, reuse it (no-op). This handles the common case of unchanged
+	// configs without unnecessary churn
 	for config in &existing_configs {
 		let hash_matches = config
 			.spec

@@ -34,7 +34,7 @@ pub async fn update_ingress_configs(
 	settings: &RunnerSettings<DockerSettings>,
 ) -> Result<(), RunnerError> {
 	// Always deploy Caddy as the ingress service, regardless of exposure type
-	let ingress_service_spec = get_ingress_spec(docker, settings).await?;
+	let ingress_service_spec = build_ingress_spec(docker, settings).await?;
 
 	let ingress = docker
 		.inspect_service(constants::INGRESS_SERVICE_NAME, None)
@@ -170,16 +170,89 @@ pub async fn update_ingress_tunnel_token(
 	Ok(())
 }
 
-/// Get all ingress configs for deployments.
-///
-/// This is done by first getting all the deployments that are currently
-/// running, then generating the ingress configs for each deployment, writing
-/// the configs to it's own Docker Config, and returning a list of all Config
-/// IDs for the ingress service to use.
-async fn get_deployment_configs(
+/// Delete a deployment's ingress config. This rebuilds Caddy without the
+/// deployment's config (unmounting it), then deletes the Docker config.
+pub async fn delete_deployment_config(
 	docker: &Docker,
-) -> Result<Vec<(Uuid, String, String)>, RunnerError> {
-	let configs = docker
+	settings: &RunnerSettings<DockerSettings>,
+	deployment_id: Uuid,
+) -> Result<(), RunnerError> {
+	// Find the deployment's configs by label
+	let deployment_configs = docker
+		.list_configs(Some(ListConfigsOptions {
+			filters: Some(HashMap::from([(
+				String::from("label"),
+				vec![format!("patr.deploymentId={}", deployment_id)],
+			)])),
+		}))
+		.await
+		.map_err(RunnerError::host)?;
+
+	let config_ids_to_remove = deployment_configs
+		.iter()
+		.filter_map(|c| c.id.clone())
+		.collect::<Vec<_>>();
+
+	// Build the ingress spec and remove this deployment's configs from
+	// the mount list so that updating the service unmounts them.
+	let mut ingress_service_spec = build_ingress_spec(docker, settings).await?;
+
+	if let Some(configs) = ingress_service_spec
+		.task_template
+		.as_mut()
+		.and_then(|task| task.container_spec.as_mut())
+		.and_then(|container| container.configs.as_mut())
+	{
+		configs.retain(|c| {
+			c.config_id
+				.as_ref()
+				.is_none_or(|id| !config_ids_to_remove.contains(id))
+		});
+	}
+
+	// Update Caddy — this unmounts the configs
+	let ingress = docker
+		.inspect_service(constants::INGRESS_SERVICE_NAME, None)
+		.await
+		.ok();
+
+	if let Some(version) = ingress
+		.and_then(|ingress| ingress.version)
+		.and_then(|version| version.index)
+	{
+		docker
+			.update_service(
+				constants::INGRESS_SERVICE_NAME,
+				ingress_service_spec,
+				UpdateServiceOptionsBuilder::new()
+					.version(version as i32)
+					.build(),
+				None,
+			)
+			.await
+			.map_err(RunnerError::host)?;
+	}
+
+	// Now the configs are unmounted — safe to delete
+	for config in deployment_configs {
+		if let Some(id) = config.id {
+			docker.delete_config(&id).await.map_err(|err| {
+				error!("Error removing config {}: {}", id, err);
+				RunnerError::host(err)
+			})?;
+		}
+	}
+
+	Ok(())
+}
+
+/// Build the service spec for the ingress service, with the latest
+/// deployment configs mounted in the service.
+async fn build_ingress_spec(
+	docker: &Docker,
+	settings: &RunnerSettings<DockerSettings>,
+) -> Result<ServiceSpec, RunnerError> {
+	let config_ids = docker
 		.list_configs(Some(ListConfigsOptions {
 			filters: Some(HashMap::from([(
 				String::from("label"),
@@ -199,24 +272,13 @@ async fn get_deployment_configs(
 					.clone()?
 					.labels?
 					.get("patr.deploymentId")?
-					.parse()
+					.parse::<Uuid>()
 					.ok()?,
 				config.id?,
 				config.spec.as_ref()?.name.clone()?,
 			))
 		})
 		.collect::<Vec<_>>();
-
-	Ok(configs)
-}
-
-/// Get the service spec for the ingress service, with the latest deployment
-/// configs mounted in the service.
-async fn get_ingress_spec(
-	docker: &Docker,
-	settings: &RunnerSettings<DockerSettings>,
-) -> Result<ServiceSpec, RunnerError> {
-	let config_ids = get_deployment_configs(docker).await?;
 
 	let base_ingress_config = include_str!("../../../assets/runner/Caddyfile.base");
 	let base_config = Base64String::from_string(base_ingress_config.to_string());
