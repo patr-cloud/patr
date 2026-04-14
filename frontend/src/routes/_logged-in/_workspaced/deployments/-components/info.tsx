@@ -139,7 +139,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						disabled={!deploymentPermissions().edit}
 						value={localInfo()?.name}
 						onInput={(e) => {
-							updateLocal((prev) => prev ? { ...prev, name: e.currentTarget.value } : undefined);
+							updateLocal((prev) => (prev ? { ...prev, name: e.currentTarget.value } : undefined));
 						}}
 					/>
 				</div>
@@ -185,7 +185,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 							})) ?? []
 						}
 						onSelect={(runnerId) => {
-							updateLocal((prev) => prev ? { ...prev, runner: runnerId } : undefined);
+							updateLocal((prev) => (prev ? { ...prev, runner: runnerId } : undefined));
 						}}
 					/>
 				</div>
@@ -223,7 +223,9 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 							type={InputType.Text}
 							value={localInfo()?.imageTag ?? "N/A"}
 							onInput={(e) => {
-								updateLocal((prev) => prev ? { ...prev, imageTag: e.currentTarget.value } : undefined);
+								updateLocal((prev) =>
+									prev ? { ...prev, imageTag: e.currentTarget.value } : undefined
+								);
 							}}
 						/>
 					</div>
@@ -242,10 +244,10 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 							valueHigh={() => localInfo()?.maxHorizontalScale ?? 2}
 							disabled={!deploymentPermissions().edit}
 							onChangeLow={(val) => {
-								updateLocal((prev) => prev ? { ...prev, minHorizontalScale: val } : undefined);
+								updateLocal((prev) => (prev ? { ...prev, minHorizontalScale: val } : undefined));
 							}}
 							onChangeHigh={(val) => {
-								updateLocal((prev) => prev ? { ...prev, maxHorizontalScale: val } : undefined);
+								updateLocal((prev) => (prev ? { ...prev, maxHorizontalScale: val } : undefined));
 							}}
 						/>
 					</div>
@@ -259,7 +261,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 								checked={() => localInfo()?.deployOnPush ?? false}
 								disabled={!deploymentPermissions().edit}
 								onChange={(val) => {
-									updateLocal((prev) => prev ? { ...prev, deployOnPush: val } : undefined);
+									updateLocal((prev) => (prev ? { ...prev, deployOnPush: val } : undefined));
 								}}
 							/>
 						</div>
@@ -276,7 +278,11 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						value,
 					}))}
 					onAdd={(key, value) => {
-						updateLocal((prev) => prev ? { ...prev, environmentVariables: { ...prev.environmentVariables, [key]: value } } : undefined);
+						updateLocal((prev) =>
+							prev
+								? { ...prev, environmentVariables: { ...prev.environmentVariables, [key]: value } }
+								: undefined
+						);
 					}}
 					onDelete={(key) => {
 						updateLocal((prev) => {
@@ -293,7 +299,9 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 					portList={localInfo()?.ports || {}}
 					deploymentId={localInfo()?.id}
 					onAdd={(key, value) => {
-						updateLocal((prev) => prev ? { ...prev, ports: { ...prev.ports, [Number(key)]: value } } : undefined);
+						updateLocal((prev) =>
+							prev ? { ...prev, ports: { ...prev.ports, [Number(key)]: value } } : undefined
+						);
 					}}
 					onDelete={(key) => {
 						updateLocal((prev) => {
