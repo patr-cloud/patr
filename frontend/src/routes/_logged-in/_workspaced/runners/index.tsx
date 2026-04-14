@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { Show, createMemo, createResource, ErrorBoundary, Suspense } from "solid-js";
-import { ListRunnersForWorkspaceResponse } from "~/bindings";
+import { createEffect, Show, ErrorBoundary, Suspense } from "solid-js";
 import {
 	Button,
 	ButtonVariant,
@@ -16,18 +15,12 @@ import {
 	Pagination,
 	Table,
 	StatusChip,
-	useToast,
 } from "~/components";
-import { useAuthState, createPaginationState } from "~/hooks";
-import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { useIsAllowed } from "~/hooks";
+import { useIsAllowed, createPaginationState } from "~/hooks";
+import { useRunnersListQuery } from "~/hooks/fetch";
 import { formatRelativeTime } from "~/utils/func";
-import { httpRequest } from "~/utils/http-request";
 
 const ListRunnersPage = () => {
-	const [authState] = useAuthState();
-	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 	const isAllowedCreate = useIsAllowed("runner", "create");
 	const navigate = useNavigate();
 	const search = Route.useSearch();
@@ -36,32 +29,16 @@ const ListRunnersPage = () => {
 		navigate,
 	});
 
-	const fetchParams = createMemo(() => {
-		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
-	});
+	const runnersQuery = useRunnersListQuery(
+		() => search().page,
+		() => search().count
+	);
 
-	const [runners] = createResource(fetchParams, async ([auth, wsId, page, count]) => {
-		if (!wsId || !auth || auth.type !== "LoggedIn") {
-			return { runners: [] };
+	createEffect(() => {
+		const totalCount = runnersQuery.data?.totalCount;
+		if (totalCount !== undefined) {
+			pagination.setTotalCount(totalCount);
 		}
-		const response = await httpRequest<ListRunnersForWorkspaceResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner?page=${page}&count=${count}`,
-			{
-				method: "GET",
-			}
-		);
-
-		if (!response.ok) {
-			console.error("Failed to fetch runners:", response.data.error);
-			toast("Failed to fetch runners", "error");
-
-			return { runners: [] };
-		}
-
-		pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
-
-		console.log("Fetched runners:", response.data);
-		return response.data;
 	});
 
 	return (
@@ -76,7 +53,7 @@ const ListRunnersPage = () => {
 					]}
 					subText="Runners execute deployments on your machines or clusters"
 					actions={() => (
-						<Show when={isAllowedCreate() && (runners()?.runners?.length ?? 0) > 0}>
+						<Show when={isAllowedCreate() && (runnersQuery.data?.runners?.length ?? 0) > 0}>
 							<Link href="/runners/new" buttonVariant={ButtonVariant.Outlined} external={false}>
 								Add Runner
 							</Link>
@@ -103,7 +80,7 @@ const ListRunnersPage = () => {
 							}
 						>
 							<Show
-								when={(runners()?.runners?.length ?? 0) > 0}
+								when={(runnersQuery.data?.runners?.length ?? 0) > 0}
 								fallback={
 									<EmptyState
 										title="No Runners Added"
@@ -128,7 +105,7 @@ const ListRunnersPage = () => {
 							>
 								<Table
 									column_grids={["flex-4", "flex-2", "flex-3", "flex-3"]}
-									rows={runners()?.runners || []}
+									rows={runnersQuery.data?.runners || []}
 									headings={["Name", "Status", "Last Seen", "ID"]}
 									renderRow={(item) => {
 										const goToDetail = () =>
@@ -179,7 +156,7 @@ const ListRunnersPage = () => {
 								/>
 								<Pagination
 									state={pagination}
-									loading={runners.loading}
+									loading={runnersQuery.isFetching}
 									showPageSizeSelector={false}
 									showGoToPage={false}
 								/>

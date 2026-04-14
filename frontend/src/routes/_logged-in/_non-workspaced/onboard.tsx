@@ -5,7 +5,7 @@ import { CreateWorkspaceResponse } from "~/bindings";
 import { Alert, BgOnboard, Button, Input, InputType, useToast } from "~/components";
 
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
-import { useFetchWorkspaces } from "~/hooks/fetch";
+import { useWorkspacesQuery } from "~/hooks/fetch";
 import { ButtonVariant } from "~/utils/color";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
@@ -23,10 +23,10 @@ const WorkspaceOnboard = () => {
 	const navigate = useNavigate();
 
 	const [, setWorkspaceId] = useLastWorkspaceId();
-	const [workspaces] = useFetchWorkspaces();
+	const workspacesQuery = useWorkspacesQuery();
 
 	createEffect(() => {
-		if ((workspaces()?.workspaces?.length || 0) > 0) {
+		if ((workspacesQuery.data?.workspaces?.length || 0) > 0) {
 			navigate({ to: "/", replace: true });
 		}
 	});

@@ -1,6 +1,6 @@
 import { createMemo, createSignal, Show, Suspense } from "solid-js";
 import { Button, ButtonVariant, InputDropdown, ListResources } from "~/components";
-import { useFetchPermissions } from "~/hooks/fetch";
+import { usePermissionsQuery } from "~/hooks/fetch";
 import { parsePermissionName, parseCamelCase, getResourceEndpoint, workspaceLevelResourceTypes } from "~/utils/func";
 import { ResourcePermissionType } from "~/bindings/ResourcePermissionType";
 import { FiPlus } from "solid-icons/fi";
@@ -18,13 +18,15 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 	const [scopeMode, setScopeMode] = createSignal<"all" | "include" | "exclude">("all");
 	const [selectedResources, setSelectedResources] = createSignal<Set<string>>(new Set());
 
-	const [permissions] = useFetchPermissions(() => props.workspaceId);
+	const permissionsQuery = usePermissionsQuery(() => props.workspaceId);
 
 	// Get unique resource types from permissions
 	const resourceTypeOptions = createMemo(() => {
 		return Array.from(
 			new Set(
-				(permissions()?.permissions || []).map((p) => parsePermissionName(p.name).resourceType).filter((r) => r)
+				(permissionsQuery.data?.permissions || [])
+					.map((p) => parsePermissionName(p.name).resourceType)
+					.filter((r) => r)
 			)
 		).map((resourceType) => ({
 			label: parseCamelCase(resourceType),
@@ -34,7 +36,7 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 
 	// Get permissions for the selected resource type
 	const permissionsOptions = createMemo(() => {
-		return (permissions()?.permissions || [])
+		return (permissionsQuery.data?.permissions || [])
 			.filter((p) => parsePermissionName(p.name).resourceType === selectedResourceType())
 			.map((p) => {
 				const parsed = parsePermissionName(p.name);
@@ -50,7 +52,7 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 
 	// Find the permission ID for the selected resource type + permission
 	const selectedPermissionId = createMemo(() => {
-		const perms = permissions()?.permissions || [];
+		const perms = permissionsQuery.data?.permissions || [];
 		if (isWorkspaceLevelSelected()) {
 			// Workspace-level types have no action — match by resourceType only
 			const match = perms.find((p) => {

@@ -1,10 +1,12 @@
 import { createWS } from "@solid-primitives/websocket";
-import { createEffect, createMemo, createResource, createSignal, For, on, onCleanup, onMount, Show } from "solid-js";
+import { createEffect, createSignal, For, on, onCleanup, onMount, Show } from "solid-js";
 import { createStore, produce } from "solid-js/store";
+import { createQuery } from "@tanstack/solid-query";
 import { useToast } from "~/components";
 import LogLine from "~/components/log-line";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
+import { logKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
 
 interface LogTerminalProps {
@@ -51,33 +53,36 @@ const LogTerminal = (props: LogTerminalProps) => {
 	const isSearching = () => debouncedSearch().length > 0;
 
 	// --- REST fetch ---
-	const fetchParams = createMemo(() => {
-		return [authState(), workspaceId(), props.restUrl, debouncedSearch()] as const;
-	});
+	const initialLogsQuery = createQuery<LogsResponse>(() => {
+		const auth = authState();
+		const wsId = workspaceId();
+		const search = debouncedSearch();
+		return {
+			queryKey: logKeys.initial(wsId ?? "", props.restUrl, search),
+			enabled: !!wsId && !!auth && auth.type === "LoggedIn",
+			meta: { errorMessage: "Failed to fetch logs" },
+			queryFn: async () => {
+				const params = new URLSearchParams();
+				params.set("limit", "100");
+				if (search) params.set("search", search);
 
-	const [initialLogs] = createResource(fetchParams, async ([auth, wsId, restUrl, search]) => {
-		if (!wsId || !auth || auth.type !== "LoggedIn") return undefined;
+				const response = await httpRequest<LogsResponse>(`${props.restUrl}?${params.toString()}`, {
+					method: "GET",
+				});
 
-		const params = new URLSearchParams();
-		params.set("limit", "100");
-		if (search) params.set("search", search);
+				if (!response.ok) {
+					throw new Error(response.data.error);
+				}
 
-		const response = await httpRequest<LogsResponse>(`${restUrl}?${params.toString()}`, {
-			method: "GET",
-		});
-
-		if (!response.ok) {
-			toast("Failed to fetch logs", "error");
-			return undefined;
-		}
-
-		return response.data;
+				return response.data;
+			},
+		};
 	});
 
 	// When REST data arrives, reset the log store
 	createEffect(
 		on(
-			() => initialLogs(),
+			() => initialLogsQuery.data,
 			(data) => {
 				if (data?.logs) {
 					setLogs(data.logs);

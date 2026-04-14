@@ -1,20 +1,33 @@
-import { Resource, Setter } from "solid-js";
+import { createEffect, createSignal } from "solid-js";
 import { GetUserInfoResponse } from "~/bindings";
 import { Button, ButtonVariant, Input, InputType, InputLabel, Modal, useToast } from "~/components";
 import { useAuthState } from "~/hooks";
+import { useUserInfoQuery } from "~/hooks/fetch";
+import { userInfoKeys } from "~/hooks/query-keys";
+import { useQueryClient } from "@tanstack/solid-query";
 import TwoFactorAuthModal from "./two-fa";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 
-interface UserSettingsInfoTabProps {
-	userInfo: Resource<GetUserInfoResponse | undefined>;
-	mutateUserInfo: Setter<GetUserInfoResponse | undefined>;
-	refetchUserInfo: () => GetUserInfoResponse | Promise<GetUserInfoResponse | undefined> | null | undefined;
-}
-
-const UserSettingsInfoTab = (props: UserSettingsInfoTabProps) => {
+const UserSettingsInfoTab = () => {
 	const [authState] = useAuthState();
 	const toast = useToast();
+	const queryClient = useQueryClient();
+
+	const userInfoQuery = useUserInfoQuery();
+
+	// Local state for form editing
+	const [localInfo, setLocalInfo] = createSignal<GetUserInfoResponse | undefined>(undefined);
+
+	createEffect(() => {
+		if (userInfoQuery.data && !localInfo()) {
+			setLocalInfo(userInfoQuery.data);
+		}
+	});
+
+	const refetchUserInfo = () => {
+		queryClient.invalidateQueries({ queryKey: userInfoKeys.current() });
+	};
 
 	const onUpdateName = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
 		e.preventDefault();
@@ -29,8 +42,8 @@ const UserSettingsInfoTab = (props: UserSettingsInfoTabProps) => {
 			const response = await httpRequest(`${import.meta.env.VITE_BASE_URL}/api/user`, {
 				method: "PATCH",
 				body: JSON.stringify({
-					firstName: props.userInfo.latest?.firstName,
-					lastName: props.userInfo.latest?.lastName,
+					firstName: localInfo()?.firstName,
+					lastName: localInfo()?.lastName,
 				}),
 			});
 
@@ -41,7 +54,7 @@ const UserSettingsInfoTab = (props: UserSettingsInfoTabProps) => {
 			}
 
 			toast("User info updated successfully", "success");
-			props.refetchUserInfo();
+			refetchUserInfo();
 		} catch (error) {
 			console.error("Failed to update user info:", error);
 			toast("Failed to update user info", "error");
@@ -52,7 +65,7 @@ const UserSettingsInfoTab = (props: UserSettingsInfoTabProps) => {
 			<form onSubmit={onUpdateName} class="flex gap-4 items-center w-full">
 				<InputLabel parentClass="flex-1" for="first-name" label="Name" />
 				<Input
-					value={props.userInfo.latest?.firstName || ""}
+					value={localInfo()?.firstName || ""}
 					class="flex-5"
 					id="first-name"
 					name="first-name"
@@ -60,18 +73,13 @@ const UserSettingsInfoTab = (props: UserSettingsInfoTabProps) => {
 					placeholder="First Name"
 					type={InputType.Text}
 					onInput={(e) => {
-						props.mutateUserInfo((prev) => {
-							return prev
-								? {
-										...prev,
-										firstName: e.currentTarget.value,
-									}
-								: undefined;
-						});
+						setLocalInfo((prev: GetUserInfoResponse | undefined) =>
+							prev ? { ...prev, firstName: e.currentTarget.value } : undefined
+						);
 					}}
 				/>
 				<Input
-					value={props.userInfo.latest?.lastName || ""}
+					value={localInfo()?.lastName || ""}
 					class="flex-5"
 					id="last-name"
 					name="last-name"
@@ -79,14 +87,9 @@ const UserSettingsInfoTab = (props: UserSettingsInfoTabProps) => {
 					placeholder="Last Name"
 					type={InputType.Text}
 					onInput={(e) => {
-						props.mutateUserInfo((prev) => {
-							return prev
-								? {
-										...prev,
-										lastName: e.currentTarget.value,
-									}
-								: undefined;
-						});
+						setLocalInfo((prev: GetUserInfoResponse | undefined) =>
+							prev ? { ...prev, lastName: e.currentTarget.value } : undefined
+						);
 					}}
 				/>
 				<Button type="submit" variant={ButtonVariant.Contained}>
@@ -98,7 +101,7 @@ const UserSettingsInfoTab = (props: UserSettingsInfoTabProps) => {
 				<InputLabel parentClass="flex-1" for="recovery-email" label="Email" />
 
 				<Input
-					value={props.userInfo.latest?.recoveryEmail || ""}
+					value={localInfo()?.recoveryEmail || ""}
 					class="flex-11"
 					id="recovery-email"
 					name="recovery-email"
@@ -121,13 +124,13 @@ const UserSettingsInfoTab = (props: UserSettingsInfoTabProps) => {
 								class="text-primary"
 								onClick={() => open(true)}
 							>
-								{props.userInfo.latest?.isMfaEnabled ? "Disable" : "Enable"} 2FA Settings
+								{localInfo()?.isMfaEnabled ? "Disable" : "Enable"} 2FA Settings
 							</Button>
 						)}
 						renderModalContent={(close) => (
 							<TwoFactorAuthModal
-								isMfaEnabled={!!props.userInfo.latest?.isMfaEnabled}
-								refetchUserInfo={props.refetchUserInfo}
+								isMfaEnabled={!!localInfo()?.isMfaEnabled}
+								refetchUserInfo={refetchUserInfo}
 								closeFn={close}
 							/>
 						)}

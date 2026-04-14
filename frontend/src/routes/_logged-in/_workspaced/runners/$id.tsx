@@ -1,19 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createMemo, createResource, ErrorBoundary, Match, Show, Suspense, Switch } from "solid-js";
-import { GetRunnerInfoResponse } from "~/bindings";
+import { ErrorBoundary, Match, Show, Switch } from "solid-js";
 import {
 	HeadTab,
+	LoadingSpinner,
 	NoPermissionsPage,
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
-	useToast,
 } from "~/components";
-import { useAuthState } from "~/hooks";
 import useIsAllowed from "~/hooks/is-allowed";
-import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { httpRequest } from "~/utils/http-request";
+import { useRunnerInfoQuery } from "~/hooks/fetch";
 import RunnerDeployments from "./-components/deployments";
 import RunnerMetrics from "./-components/metrics";
 import RunnerLogs from "./-components/logs";
@@ -23,34 +20,11 @@ const RunnerDetail = () => {
 	const search = Route.useSearch();
 	const tab = () => search().tab;
 
-	const [authState] = useAuthState();
-	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 	const navigate = useNavigate();
 
 	const isAllowedResource = useIsAllowed("runner", "view", params().id);
 
-	const resourceParams = createMemo(() => {
-		return [authState(), workspaceId(), params().id] as const;
-	});
-
-	const [runnerInfo] = createResource(resourceParams, async ([auth, wsId, id]) => {
-		if (!wsId || !auth || auth.type !== "LoggedIn" || id === "") {
-			return undefined;
-		}
-		const response = await httpRequest<GetRunnerInfoResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner/${id}`,
-			{
-				method: "GET",
-			}
-		);
-		if (!response.ok) {
-			console.error("Failed to fetch runner info:", response.data.error);
-			toast("Failed to fetch runner info", "error");
-			return undefined;
-		}
-		return response.data;
-	});
+	const runnerQuery = useRunnerInfoQuery(() => params().id);
 
 	return (
 		<>
@@ -73,7 +47,15 @@ const RunnerDetail = () => {
 							</div>
 						)}
 					>
-						<Suspense fallback={<div>Loading runner info...</div>}>
+						<Show
+							when={!runnerQuery.isPending}
+							fallback={
+								<div class="flex items-center justify-center gap-2 py-16 text-grey">
+									<LoadingSpinner size={20} />
+									<span class="text-sm">Loading runner...</span>
+								</div>
+							}
+						>
 							<PageContainerHead
 								breadcrumbs={[
 									{
@@ -81,7 +63,7 @@ const RunnerDetail = () => {
 										url: "/runners",
 									},
 									{
-										label: runnerInfo() ? runnerInfo()!.runner.name : "Loading...",
+										label: runnerQuery.data?.runner.name ?? "Loading...",
 									},
 								]}
 								subText="View deployments, system metrics, and logs for this runner."
@@ -90,17 +72,17 @@ const RunnerDetail = () => {
 									<div class="flex items-center gap-sm">
 										<span
 											class={`inline-flex items-center gap-xxs text-xs font-medium px-sm py-1 rounded-xl ${
-												runnerInfo()?.runner.connected
+												runnerQuery.data?.runner.connected
 													? "bg-success/15 text-success"
 													: "bg-error/15 text-error"
 											}`}
 										>
 											<span
 												class={`inline-block w-1.5 h-1.5 rounded-full ${
-													runnerInfo()?.runner.connected ? "bg-success" : "bg-error"
+													runnerQuery.data?.runner.connected ? "bg-success" : "bg-error"
 												}`}
 											/>
-											{runnerInfo()?.runner.connected ? "Online" : "Unreachable"}
+											{runnerQuery.data?.runner.connected ? "Online" : "Unreachable"}
 										</span>
 									</div>
 								)}
@@ -156,7 +138,7 @@ const RunnerDetail = () => {
 									</Match>
 								</Switch>
 							</PageContainerBody>
-						</Suspense>
+						</Show>
 					</ErrorBoundary>
 				</PageContainer>
 			</Show>

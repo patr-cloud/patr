@@ -1,6 +1,6 @@
 import { MaybeAccessor } from "~/utils/types";
 import { InputDropdownOption } from "./input-dropdown";
-import { createSignal, For, JSX, mergeProps } from "solid-js";
+import { createSignal, For, JSX, mergeProps, Show } from "solid-js";
 import { get, variantBgClass } from "~/utils/func";
 import { FiChevronDown } from "solid-icons/fi";
 import { useClickOutside } from "~/hooks";
@@ -38,6 +38,10 @@ interface InputDropdownCheckboxProps {
 	onClickEndIcon?: () => void;
 	/** Text to put in start */
 	startText?: MaybeAccessor<string>;
+	/** Called when the user scrolls near the bottom of the dropdown */
+	onLoadMore?: () => void;
+	/** Whether more items are currently being loaded */
+	isLoadingMore?: MaybeAccessor<boolean>;
 }
 
 const InputDropdownCheckbox = (rawProps: InputDropdownCheckboxProps) => {
@@ -161,6 +165,13 @@ const InputDropdownCheckbox = (rawProps: InputDropdownCheckboxProps) => {
 					class={`${variantBgClass(
 						get(props.styleVariant)
 					)} border border-border-color absolute z-10 top-[2.22rem] -left-px w-[calc(100%+2px)] rounded-xs rounded-t-none shadow-lg overflow-y-scroll max-h-60`}
+					onScroll={(e) => {
+						if (!props.onLoadMore) return;
+						const el = e.currentTarget;
+						if (el.scrollHeight - el.scrollTop - el.clientHeight < 40) {
+							props.onLoadMore();
+						}
+					}}
 				>
 					<For each={filteredOptions()}>
 						{(option, index) => (
@@ -175,6 +186,11 @@ const InputDropdownCheckbox = (rawProps: InputDropdownCheckboxProps) => {
 						)}
 					</For>
 					{filteredOptions().length === 0 && <div class="px-xl py-sm text-grey">No options available.</div>}
+					<Show when={get(props.isLoadingMore)}>
+						<div class="flex items-center justify-center py-sm">
+							<div class="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+						</div>
+					</Show>
 				</div>
 			)}
 		</div>

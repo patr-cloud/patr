@@ -19,18 +19,10 @@
 				"streetsidesoftware.code-spell-checker",
 				"patr-cloud.patr-theme",
 				"bradlc.vscode-tailwindcss",
-				"esbenp.prettier-vscode"
+				"esbenp.prettier-vscode",
+				"anthropic.claude-code"
 			]
 		}
 	},
-	"forwardPorts": [
-		3000,
-		3001,
-		3002,
-		3003,
-		3004,
-		4000,
-		"grafana:3000",
-		22300
-	]
+	"forwardPorts": [3000, 3001, 3002, 3003, 3004, 4000, "grafana:3000", 22300]
 }

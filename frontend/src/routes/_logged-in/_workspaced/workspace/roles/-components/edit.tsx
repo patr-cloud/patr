@@ -1,39 +1,41 @@
 import { Button, ButtonVariant, Table, useToast } from "~/components";
 import PermissionSelector from "./permission-selector";
-import { createEffect, createMemo, createSignal, Resource, Show, Suspense } from "solid-js";
+import { createEffect, createMemo, createSignal, Show, Suspense } from "solid-js";
 import { useParams } from "@tanstack/solid-router";
 import { httpRequest } from "~/utils/http-request";
 import { UpdateRoleRequest } from "~/bindings/UpdateRoleRequest";
 import { createLoggedInAction } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { GetRoleInfoResponse, ResourcePermissionType } from "~/bindings";
-import { useFetchPermissions } from "~/hooks/fetch";
+import { ResourcePermissionType } from "~/bindings";
+import { usePermissionsQuery, useRoleInfoQuery } from "~/hooks/fetch";
+import { roleKeys } from "~/hooks/query-keys";
+import { useQueryClient } from "@tanstack/solid-query";
 import { FiTrash2 } from "solid-icons/fi";
 import { parsePermissionName, parseCamelCase } from "~/utils/func";
 
-const EditPermissions = (props: {
-	roleInfo: Resource<GetRoleInfoResponse | undefined>;
-	refetchRoleInfo: () => void;
-}) => {
+const EditPermissions = () => {
 	const [permissionsData, setPermissionsData] = createSignal<{ [key: string]: ResourcePermissionType }>({});
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
+	const queryClient = useQueryClient();
 	const params = useParams({ from: "/_logged-in/_workspaced/workspace/roles/$roleId" });
+
+	const roleInfoQuery = useRoleInfoQuery(() => params().roleId);
 
 	// Initialize permissions data when role info loads
 	createEffect(() => {
-		const role = props.roleInfo();
+		const role = roleInfoQuery.data;
 		if (role) {
 			setPermissionsData(role.permissions as { [key: string]: ResourcePermissionType });
 		}
 	});
 
 	// Fetch all permissions for the workspace to map IDs to names
-	const [allPermissions] = useFetchPermissions(() => workspaceId()!);
+	const allPermissionsQuery = usePermissionsQuery(() => workspaceId()!);
 
 	// Create a map of permission ID to permission name
 	const permissionIdToName = createMemo(() => {
-		const perms = allPermissions()?.permissions;
+		const perms = allPermissionsQuery.data?.permissions;
 		if (!perms) return new Map<string, string>();
 		return new Map(perms.map((perm) => [perm.id, perm.name]));
 	});
@@ -76,8 +78,10 @@ const EditPermissions = (props: {
 		}
 
 		toast("Role updated successfully", "success");
-		// Navigate back to roles list
-		props.refetchRoleInfo();
+		const wsId = workspaceId();
+		if (wsId) {
+			queryClient.invalidateQueries({ queryKey: roleKeys.detail(wsId, params().roleId) });
+		}
 	});
 
 	return (

@@ -11,6 +11,7 @@
 .[Dd][Ss]_[Ss]tore
 
 /data/*
+.worktrees
 
 *.db
 *.lock

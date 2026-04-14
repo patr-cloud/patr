@@ -1,39 +1,142 @@
-import { createMemo, createResource } from "solid-js";
-import { ListRunnersForWorkspaceResponse } from "~/bindings";
-import { useToast } from "~/components";
+import { createQuery } from "@tanstack/solid-query";
+import { Accessor } from "solid-js";
+import {
+	Deployment,
+	GetRunnerInfoResponse,
+	ListDeploymentResponse,
+	ListRunnersForWorkspaceResponse,
+	WithId,
+} from "~/bindings";
+
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
+import { runnerKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
 
-const useFetchRunners = () => {
+export const useRunnersQuery = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 
-	const fetchParams = createMemo(() => {
-		return [authState(), workspaceId()] as const;
+	return createQuery<ListRunnersForWorkspaceResponse>(() => {
+		const auth = authState();
+		const wsId = workspaceId();
+		return {
+			queryKey: runnerKeys.list(wsId ?? ""),
+			enabled: !!wsId && !!auth && auth.type === "LoggedIn",
+			meta: { errorMessage: "Failed to fetch runners" },
+			queryFn: async () => {
+				const response = await httpRequest<ListRunnersForWorkspaceResponse>(
+					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner`,
+					{ method: "GET" }
+				);
+
+				if (!response.ok) {
+					throw new Error(response.data.error);
+				}
+
+				return response.data;
+			},
+		};
 	});
-
-	const resource = createResource(fetchParams, async ([auth, wsId]) => {
-		if (!wsId || !auth || auth.type !== "LoggedIn") {
-			return { runners: [] };
-		}
-		const response = await httpRequest<ListRunnersForWorkspaceResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner`,
-			{
-				method: "GET",
-			}
-		);
-
-		if (!response.ok) {
-			console.error("Failed to fetch runners:", response.data.error);
-			toast("Failed to fetch runners", "error");
-			return { runners: [] };
-		}
-
-		return response.data;
-	});
-
-	return resource;
 };
 
-export default useFetchRunners;
+export const useRunnerInfoQuery = (id: Accessor<string>) => {
+	const [authState] = useAuthState();
+	const [workspaceId] = useLastWorkspaceId();
+
+	return createQuery<GetRunnerInfoResponse>(() => {
+		const auth = authState();
+		const wsId = workspaceId();
+		const runnerId = id();
+		return {
+			queryKey: runnerKeys.detail(wsId ?? "", runnerId),
+			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!runnerId,
+			meta: { errorMessage: "Failed to fetch runner info" },
+			queryFn: async () => {
+				const response = await httpRequest<GetRunnerInfoResponse>(
+					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner/${runnerId}`,
+					{ method: "GET" }
+				);
+
+				if (!response.ok) {
+					throw new Error(response.data.error);
+				}
+
+				return response.data;
+			},
+		};
+	});
+};
+
+export const useRunnersListQuery = (page: Accessor<string | undefined>, count: Accessor<string | undefined>) => {
+	const [authState] = useAuthState();
+	const [workspaceId] = useLastWorkspaceId();
+
+	return createQuery(() => {
+		const auth = authState();
+		const wsId = workspaceId();
+		const p = page();
+		const c = count();
+		return {
+			queryKey: runnerKeys.pagedList(wsId ?? "", p, c),
+			enabled: !!wsId && !!auth && auth.type === "LoggedIn",
+			meta: { errorMessage: "Failed to fetch runners" },
+			queryFn: async () => {
+				const params = new URLSearchParams();
+				if (p) params.set("page", p);
+				if (c) params.set("count", c);
+				const qs = params.size > 0 ? `?${params.toString()}` : "";
+
+				const response = await httpRequest<ListRunnersForWorkspaceResponse>(
+					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner${qs}`,
+					{ method: "GET" }
+				);
+
+				if (!response.ok) {
+					throw new Error(response.data.error);
+				}
+
+				return {
+					runners: response.data.runners,
+					totalCount: Number(response.headers.get("x-total-count") ?? 0),
+				};
+			},
+		};
+	});
+};
+
+export const useRunnerDeploymentsQuery = (
+	runnerId: Accessor<string>,
+	page: Accessor<number>,
+	count: Accessor<number>
+) => {
+	const [authState] = useAuthState();
+	const [workspaceId] = useLastWorkspaceId();
+
+	return createQuery<{ deployments: WithId<Deployment>[]; totalCount: number }>(() => {
+		const auth = authState();
+		const wsId = workspaceId();
+		const rid = runnerId();
+		const p = page();
+		const c = count();
+		return {
+			queryKey: runnerKeys.deployments(wsId ?? "", rid, p, c),
+			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!rid,
+			meta: { errorMessage: "Failed to fetch deployments for runner" },
+			queryFn: async () => {
+				const response = await httpRequest<ListDeploymentResponse>(
+					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment?search[runner]=${rid}&page=${p}&count=${c}`,
+					{ method: "GET" }
+				);
+
+				if (!response.ok) {
+					throw new Error(response.data.error);
+				}
+
+				return {
+					deployments: response.data.deployments,
+					totalCount: Number(response.headers.get("x-total-count") ?? 0),
+				};
+			},
+		};
+	});
+};

@@ -40,6 +40,7 @@ const CopyableField = (rawProps: CopyableFieldProps) => {
 
 	const handleCopy = async (e: MouseEvent) => {
 		e.stopPropagation();
+
 		if (get(props.disabled) || !get(props.value)) return;
 		try {
 			await navigator.clipboard.writeText(get(props.value));
@@ -53,6 +54,7 @@ const CopyableField = (rawProps: CopyableFieldProps) => {
 
 	const copyButton = () => (
 		<button
+			type="button"
 			onClick={handleCopy}
 			class={`p-1 rounded hover:bg-white/10 transition-colors ${copied() ? "" : "hover:text-white"}`}
 			title={copied() ? "Copied!" : "Copy"}

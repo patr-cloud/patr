@@ -2,7 +2,7 @@ import { ActionTypes, MaybeAccessor, ResourceTypes, UserPermissionsT } from "~/u
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { createMemo } from "solid-js";
 import { get, isWorkspaceScoped, resourceActionMap, workspaceLevelResourceTypes } from "~/utils/func";
-import { useFetchUserPermissions } from "~/hooks/fetch";
+import { useUserPermissionsQuery } from "~/hooks/fetch";
 import { useIsMounted } from "~/hooks";
 
 type ResourceActionMapType = typeof resourceActionMap;
@@ -14,7 +14,7 @@ type ActionsForResource<T extends ResourceTypes> = ResourceActionMapType[T][numb
 const useGetPermissions = <T extends ResourceTypes>(resourceType: T, resId: MaybeAccessor<string>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const [userPermissions] = useFetchUserPermissions();
+	const userPermissionsQuery = useUserPermissionsQuery();
 	const isMounted = useIsMounted();
 
 	const permissions = createMemo(() => {
@@ -26,7 +26,7 @@ const useGetPermissions = <T extends ResourceTypes>(resourceType: T, resId: Mayb
 		if (!isMounted()) return allFalse;
 
 		const actionTypes = resourceActionMap[resourceType];
-		const userPerms = userPermissions() as unknown as UserPermissionsT | null;
+		const userPerms = userPermissionsQuery.data as unknown as UserPermissionsT | null;
 		const resourceId = get(resId);
 		const wsId = get(workspaceId);
 		const auth = authState();
@@ -80,7 +80,7 @@ const useGetPermissions = <T extends ResourceTypes>(resourceType: T, resId: Mayb
 
 const useIsAllowed = (resourceType: ResourceTypes, action: ActionTypes, resId?: MaybeAccessor<string>) => {
 	const [workspaceId] = useLastWorkspaceId();
-	const [userPermissions] = useFetchUserPermissions();
+	const userPermissionsQuery = useUserPermissionsQuery();
 	const isMounted = useIsMounted();
 	console.log("[useIsAllowed] Initializing with:", {
 		resourceType,
@@ -94,7 +94,7 @@ const useIsAllowed = (resourceType: ResourceTypes, action: ActionTypes, resId?: 
 
 		const resourceId = get(resId);
 		const wsId = get(workspaceId);
-		const permissions = userPermissions() as unknown as UserPermissionsT | null;
+		const permissions = userPermissionsQuery.data as unknown as UserPermissionsT | null;
 
 		if (!permissions) return false;
 		if (!wsId) return false;

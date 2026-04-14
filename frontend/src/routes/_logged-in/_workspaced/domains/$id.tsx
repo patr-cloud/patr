@@ -1,12 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createMemo, createResource, createSignal, ErrorBoundary, Suspense } from "solid-js";
+import { createSignal, ErrorBoundary, Show } from "solid-js";
 import {
 	CreateManagedURLRequest,
 	CreateManagedURLResponse,
 	DeleteDomainInWorkspaceResponse,
 	GetDomainInfoInWorkspaceResponse,
-	ListManagedURLResponse,
 } from "~/bindings";
 import {
 	Button,
@@ -16,14 +15,18 @@ import {
 	DeleteModal,
 	Input,
 	InputDropdown,
+	LoadingSpinner,
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
 	Table,
 	useToast,
 } from "~/components";
-import { createAuthenticatedAction, createFormAction, useAuthState } from "~/hooks";
+import { createAuthenticatedAction, createFormAction } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
+import { useDomainInfoQuery, useManagedUrlsQuery } from "~/hooks/fetch";
+import { domainKeys, managedUrlKeys } from "~/hooks/query-keys";
+import { useQueryClient } from "@tanstack/solid-query";
 import { httpRequest } from "~/utils/http-request";
 import DeploymentOption from "./-components/deployment-option";
 import ManageUrlRow from "./-components/managed-url-component";
@@ -33,10 +36,10 @@ type urlTypeT = "proxyUrl" | "redirect" | "proxyDeployment" | "proxyStaticSite";
 const DomainInfo = () => {
 	const params = Route.useParams();
 
-	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 
 	const [subDomain, setSubDomain] = createSignal("");
 	const [path, setPath] = createSignal("");
@@ -44,59 +47,22 @@ const DomainInfo = () => {
 	const [target, setTarget] = createSignal<string | null>(null);
 	const [deploymentPort, setDeploymentPort] = createSignal<number | null>(null);
 
-	const resourceParams = createMemo(() => {
-		return [authState(), workspaceId(), params().id] as const;
-	});
+	const domainInfoQuery = useDomainInfoQuery(() => params().id);
+	const managedUrlsQuery = useManagedUrlsQuery(() => params().id);
 
-	const [domainInfo, { refetch: refetchDomainInfo }] = createResource(
-		resourceParams,
-		async ([auth, wsId, domainId]) => {
-			if (!wsId || !auth || auth.type !== "LoggedIn" || !domainId) {
-				return;
-			}
-
-			// Fetch domain info logic goes here
-			const resource = await httpRequest<GetDomainInfoInWorkspaceResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain/${domainId}`,
-				{
-					method: "GET",
-				}
-			);
-
-			if (!resource.ok) {
-				console.error("Failed to fetch domain info:", resource.data.error);
-				toast("Failed to fetch domain info", "error");
-				return;
-			}
-
-			return resource.data;
+	const refetchDomainInfo = () => {
+		const wsId = workspaceId();
+		if (wsId) {
+			queryClient.invalidateQueries({ queryKey: domainKeys.detail(wsId, params().id) });
 		}
-	);
+	};
 
-	const [managedUrls, { refetch: refetchManagedUrls }] = createResource(
-		resourceParams,
-		async ([auth, wsId, domainId]) => {
-			if (!wsId || !auth || auth.type !== "LoggedIn" || !domainId) {
-				return;
-			}
-
-			// Fetch managed URLs logic goes here
-			const resource = await httpRequest<ListManagedURLResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/infrastructure/managed-url?search[domainId]=${domainId}`,
-				{
-					method: "GET",
-				}
-			);
-
-			if (!resource.ok) {
-				console.error("Failed to fetch managed URLs:", resource.data.error);
-				toast("Failed to fetch managed URLs", "error");
-				return;
-			}
-
-			return resource.data;
+	const refetchManagedUrls = () => {
+		const wsId = workspaceId();
+		if (wsId) {
+			queryClient.invalidateQueries({ queryKey: managedUrlKeys.list(wsId, params().id) });
 		}
-	);
+	};
 
 	const { onSubmit: onSubmitCreateManagedUrl, isLoading: isCreatingManagedUrl } = createFormAction(
 		async ({ workspaceId }) => {
@@ -181,9 +147,7 @@ const DomainInfo = () => {
 
 		const verifyResp = await httpRequest<GetDomainInfoInWorkspaceResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/domain/${domainId}/verify`,
-			{
-				method: "POST",
-			}
+			{ method: "POST" }
 		);
 
 		if (!verifyResp.ok) {
@@ -207,9 +171,7 @@ const DomainInfo = () => {
 
 			const deleteDomainResp = await httpRequest<DeleteDomainInWorkspaceResponse>(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/domain/${domainId}`,
-				{
-					method: "DELETE",
-				}
+				{ method: "DELETE" }
 			);
 
 			if (!deleteDomainResp.ok) {
@@ -258,7 +220,15 @@ const DomainInfo = () => {
 						</div>
 					)}
 				>
-					<Suspense fallback={<div class="text-white">Loading...</div>}>
+					<Show
+						when={!domainInfoQuery.isPending}
+						fallback={
+							<div class="flex items-center justify-center gap-2 py-16 text-grey">
+								<LoadingSpinner size={20} />
+								<span class="text-sm">Loading domain...</span>
+							</div>
+						}
+					>
 						<PageContainerHead
 							breadcrumbs={[
 								{
@@ -266,7 +236,7 @@ const DomainInfo = () => {
 									url: "/domains",
 								},
 								{
-									label: domainInfo.latest?.name || "Loading...",
+									label: domainInfoQuery.data?.name || "Loading...",
 								},
 							]}
 							subText="Configure custom domains to route traffic to your deployments."
@@ -279,9 +249,9 @@ const DomainInfo = () => {
 											e.preventDefault();
 											onClickDelete();
 										}}
-										resourceName={domainInfo.latest?.name || ""}
+										resourceName={domainInfoQuery.data?.name || ""}
 									/>
-									{!domainInfo.latest?.isVerified ? (
+									{!domainInfoQuery.data?.isVerified ? (
 										<Button
 											type="button"
 											onClick={(e) => {
@@ -313,7 +283,7 @@ const DomainInfo = () => {
 										<span class="h-full">.</span>
 										<Input
 											disabled={true}
-											value={domainInfo.latest?.name}
+											value={domainInfoQuery.data?.name}
 											class="flex-2"
 											placeholder="Domain"
 										/>
@@ -371,7 +341,7 @@ const DomainInfo = () => {
 										rows={[
 											{
 												type: "CNAME",
-												name: `${subDomain() || "(subdomain)"}.${domainInfo.latest?.name || "your-domain.com"}`,
+												name: `${subDomain() || "(subdomain)"}.${domainInfoQuery.data?.name || "your-domain.com"}`,
 												target: "ingress.onpatr.cloud",
 											},
 										]}
@@ -406,12 +376,12 @@ const DomainInfo = () => {
 							<div class="flex flex-col gap-2 items-start w-5/5 mt-4">
 								<Table
 									column_grids={["flex-4", "flex-2", "flex-2", "flex-4"]}
-									rows={managedUrls.latest?.urls || []}
+									rows={managedUrlsQuery.data?.urls || []}
 									headings={["URL", "Type", "Served by Patr", "Actions"]}
 									renderRow={(item) =>
-										domainInfo.latest && (
+										domainInfoQuery.data && (
 											<ManageUrlRow
-												domainInfo={domainInfo.latest}
+												domainInfo={domainInfoQuery.data}
 												managedUrl={item}
 												onUpdate={refetchManagedUrls}
 											/>
@@ -420,7 +390,7 @@ const DomainInfo = () => {
 								/>
 							</div>
 						</PageContainerBody>
-					</Suspense>
+					</Show>
 				</ErrorBoundary>
 			</PageContainer>
 		</>

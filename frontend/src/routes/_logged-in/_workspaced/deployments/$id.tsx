@@ -1,19 +1,8 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import {
-	createEffect,
-	createMemo,
-	createResource,
-	createSignal,
-	ErrorBoundary,
-	Match,
-	onCleanup,
-	Show,
-	Switch,
-} from "solid-js";
+import { createSignal, ErrorBoundary, Match, Show, Switch } from "solid-js";
 import { FiPause, FiPlay } from "solid-icons/fi";
-import { GetDeploymentInfoResponse } from "~/bindings";
 import {
 	Button,
 	ButtonVariant,
@@ -27,9 +16,12 @@ import {
 	useToast,
 	LoadingSpinner,
 } from "~/components";
-import { createAuthenticatedAction, useAuthState } from "~/hooks";
+import { createAuthenticatedAction } from "~/hooks";
 import useIsAllowed, { useGetPermissions } from "~/hooks/is-allowed";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
+import { useDeploymentInfoQuery } from "~/hooks/fetch";
+import { deploymentKeys } from "~/hooks/query-keys";
+import { useQueryClient } from "@tanstack/solid-query";
 import { httpRequest } from "~/utils/http-request";
 import DeploymentInfoUpdate from "./-components/info";
 import DeploymentLogs from "./-components/logs";
@@ -41,51 +33,25 @@ const DeploymentInfo = () => {
 	const search = Route.useSearch();
 	const tab = () => search().tab;
 
-	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const [isDeleteModalOpen, setIsDeleteModalOpen] = createSignal(false);
-
-	const resourceParamsDeployment = createMemo(() => {
-		return [authState(), workspaceId(), params().id] as const;
-	});
 
 	const isAllowedResource = useIsAllowed("deployment", "view", params().id);
 	const deploymentPermissions = useGetPermissions("deployment", () => params().id || "");
 
-	const [deploymentInfo, { refetch: refetchDeploymentInfo, mutate: mutateDeploymentInfo }] = createResource(
-		resourceParamsDeployment,
-		async ([auth, wsId, id]) => {
-			if (!wsId || !auth || auth.type !== "LoggedIn" || id === "") {
-				return undefined;
-			}
-			const response = await httpRequest<GetDeploymentInfoResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment/${id}`,
-				{
-					method: "GET",
-				}
-			);
-			if (!response.ok) {
-				console.error("Failed to fetch deployment info:", response.data.error);
-				toast("Failed to fetch deployment info", "error");
-				return undefined;
-			}
+	const deploymentQuery = useDeploymentInfoQuery(() => params().id);
 
-			return response.data;
-		}
-	);
+	const deploymentData = () => deploymentQuery.data;
 
-	// Auto-refresh when deployment is in "deploying" state
-	createEffect(() => {
-		const status = deploymentInfo()?.status;
-		if (status === "deploying") {
-			const interval = setInterval(() => {
-				refetchDeploymentInfo();
-			}, 5000);
-			onCleanup(() => clearInterval(interval));
+	const refetchDeployment = () => {
+		const wsId = workspaceId();
+		if (wsId) {
+			queryClient.invalidateQueries({ queryKey: deploymentKeys.detail(wsId, params().id) });
 		}
-	});
+	};
 
 	const { execute: startDeployment, isLoading: isStartingDeployment } = createAuthenticatedAction(
 		async ({ workspaceId }) => {
@@ -94,7 +60,7 @@ const DeploymentInfo = () => {
 				return;
 			}
 
-			const deployment = deploymentInfo();
+			const deployment = deploymentData();
 			if (!deployment) {
 				toast("Deployment information is not available", "error");
 				return;
@@ -102,9 +68,7 @@ const DeploymentInfo = () => {
 
 			const response = await httpRequest(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/deployment/${deployment.id}/start`,
-				{
-					method: "POST",
-				}
+				{ method: "POST" }
 			);
 
 			if (!response.ok) {
@@ -114,8 +78,7 @@ const DeploymentInfo = () => {
 			}
 
 			toast("Deployment started successfully", "success");
-			mutateDeploymentInfo((prev) => (prev ? { ...prev, status: "deploying" } : undefined));
-			refetchDeploymentInfo();
+			refetchDeployment();
 		}
 	);
 
@@ -126,7 +89,7 @@ const DeploymentInfo = () => {
 				return;
 			}
 
-			const deployment = deploymentInfo();
+			const deployment = deploymentData();
 			if (!deployment) {
 				toast("Deployment information is not available", "error");
 				return;
@@ -134,9 +97,7 @@ const DeploymentInfo = () => {
 
 			const response = await httpRequest(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/deployment/${deployment.id}/stop`,
-				{
-					method: "POST",
-				}
+				{ method: "POST" }
 			);
 
 			if (!response.ok) {
@@ -146,8 +107,7 @@ const DeploymentInfo = () => {
 			}
 
 			toast("Deployment stopped successfully", "success");
-			mutateDeploymentInfo((prev) => (prev ? { ...prev, status: "stopped" } : undefined));
-			refetchDeploymentInfo();
+			refetchDeployment();
 		}
 	);
 
@@ -158,7 +118,7 @@ const DeploymentInfo = () => {
 				return;
 			}
 
-			const deployment = deploymentInfo();
+			const deployment = deploymentData();
 			if (!deployment) {
 				toast("Deployment information is not available", "error");
 				return;
@@ -166,9 +126,7 @@ const DeploymentInfo = () => {
 
 			const resp = await httpRequest(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/deployment/${deployment.id}`,
-				{
-					method: "DELETE",
-				}
+				{ method: "DELETE" }
 			);
 			console.log("Delete deployment response:", resp);
 			if (!resp.ok) {
@@ -205,7 +163,7 @@ const DeploymentInfo = () => {
 						)}
 					>
 						<Show
-							when={deploymentInfo.latest !== undefined}
+							when={!deploymentQuery.isPending}
 							fallback={
 								<div class="flex items-center justify-center gap-2 py-16 text-grey">
 									<LoadingSpinner size={20} />
@@ -220,20 +178,19 @@ const DeploymentInfo = () => {
 										url: "/deployments",
 									},
 									{
-										label: deploymentInfo.latest?.name ?? "Loading...",
+										label: deploymentData()?.name ?? "Loading...",
 									},
 								]}
 								subText="A deployment represents a containerized application running on a runner."
 								class="justify-between items-center"
 								actions={() => (
 									<div class="flex items-center justify-end gap-4">
-										<Show when={deploymentInfo.latest?.status}>
-											<StatusChip status={deploymentInfo.latest!.status} size="md" />
+										<Show when={deploymentData()?.status}>
+											<StatusChip status={deploymentData()!.status} size="md" />
 										</Show>
 										<Show
 											when={
-												deploymentInfo.latest?.status !== "stopped" &&
-												deploymentPermissions().stop
+												deploymentData()?.status !== "stopped" && deploymentPermissions().stop
 											}
 										>
 											<Button
@@ -252,8 +209,7 @@ const DeploymentInfo = () => {
 										</Show>
 										<Show
 											when={
-												deploymentInfo.latest?.status === "stopped" &&
-												deploymentPermissions().start
+												deploymentData()?.status === "stopped" && deploymentPermissions().start
 											}
 										>
 											<Button
@@ -270,13 +226,13 @@ const DeploymentInfo = () => {
 											</Button>
 										</Show>
 
-										{deploymentInfo.latest &&
+										{deploymentData() &&
 											deploymentPermissions().delete &&
-											deploymentInfo.latest?.name && (
+											deploymentData()?.name && (
 												<DeleteModal
 													isLoading={isDeletingDeployment()}
 													title="Do You Really Want to Delete This Deployment?"
-													resourceName={deploymentInfo.latest?.name || ""}
+													resourceName={deploymentData()?.name || ""}
 													isOpen={isDeleteModalOpen}
 													setIsOpen={setIsDeleteModalOpen}
 													onClickDelete={(e) => {
@@ -329,19 +285,15 @@ const DeploymentInfo = () => {
 							<PageContainerBody class="flex flex-col justify-between gap-8">
 								<Switch fallback={<div class="text-grey text-sm py-8 text-center">No such tab</div>}>
 									<Match when={tab() === "metrics"}>
-										<Show when={deploymentInfo.latest?.id}>
+										<Show when={deploymentData()?.id}>
 											{(id) => <DeploymentMetrics deploymentId={id()} />}
 										</Show>
 									</Match>
 									<Match when={tab() === "info"}>
-										<DeploymentInfoUpdate
-											deploymentInfo={deploymentInfo}
-											refetchDeploymentInfo={refetchDeploymentInfo}
-											mutateDeploymentInfo={mutateDeploymentInfo}
-										/>
+										<DeploymentInfoUpdate deploymentId={params().id} />
 									</Match>
 									<Match when={tab() === "logs"}>
-										<Show when={deploymentInfo.latest?.id}>
+										<Show when={deploymentData()?.id}>
 											{(id) => <DeploymentLogs deploymentId={id()} />}
 										</Show>
 									</Match>

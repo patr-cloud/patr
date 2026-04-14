@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid-js";
+import { createEffect, ErrorBoundary, Show, Suspense } from "solid-js";
 import {
 	Button,
 	ButtonVariant,
@@ -12,18 +12,13 @@ import {
 	PageContainerHead,
 	Pagination,
 	Table,
-	useToast,
 } from "~/components";
-import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { createPaginationState, useIsAllowed } from "~/hooks";
-import { ListContainerRepositoriesResponse, WithId, ContainerRepository } from "~/bindings";
-import { httpRequest } from "~/utils/http-request";
+import { WithId, ContainerRepository } from "~/bindings";
+import { useContainerRegistriesQuery } from "~/hooks/fetch";
 import { formatRelativeTime, formatSize } from "~/utils/func";
 
 const ListContainerRepositories = () => {
-	const [authState] = useAuthState();
-	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 	const navigate = useNavigate();
 	const isAllowedCreate = useIsAllowed("containerRegistryRepository", "create", undefined);
 	const search = Route.useSearch();
@@ -32,30 +27,16 @@ const ListContainerRepositories = () => {
 		navigate,
 	});
 
-	const resourceParams = createMemo(() => {
-		return [authState(), workspaceId(), pagination.page(), pagination.count()] as const;
-	});
+	const repositoriesQuery = useContainerRegistriesQuery(
+		() => search().page,
+		() => search().count
+	);
 
-	const [repositories] = createResource(resourceParams, async ([auth, wsId, page, count]) => {
-		if (!wsId || !auth || auth.type !== "LoggedIn") {
-			return undefined;
+	createEffect(() => {
+		const totalCount = repositoriesQuery.data?.totalCount;
+		if (totalCount !== undefined) {
+			pagination.setTotalCount(totalCount);
 		}
-
-		const response = await httpRequest<ListContainerRepositoriesResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry?page=${page}&count=${count}`,
-			{
-				method: "GET",
-			}
-		);
-
-		if (!response.ok) {
-			toast("Failed to fetch repositories", "error");
-			return undefined;
-		}
-
-		pagination.setTotalCount(Number(response.headers.get("x-total-count") ?? 0));
-
-		return response.data;
 	});
 
 	return (
@@ -70,7 +51,7 @@ const ListContainerRepositories = () => {
 					]}
 					subText="Store and manage container images for your deployments"
 					actions={() => (
-						<Show when={isAllowedCreate() && (repositories()?.repositories?.length ?? 0) > 0}>
+						<Show when={isAllowedCreate() && (repositoriesQuery.data?.repositories?.length ?? 0) > 0}>
 							<Link
 								href="/container-registry/new"
 								buttonVariant={ButtonVariant.Outlined}
@@ -102,35 +83,31 @@ const ListContainerRepositories = () => {
 							}
 						>
 							<Show
-								when={!repositories.loading && (repositories()?.repositories?.length ?? 0) > 0}
+								when={(repositoriesQuery.data?.repositories?.length ?? 0) > 0}
 								fallback={
-									repositories.loading ? null : (
-										<EmptyState
-											title="No Container Repositories Yet"
-											description={
-												isAllowedCreate()
-													? "Create one to store your container images."
-													: undefined
-											}
-											action={
-												isAllowedCreate() ? (
-													<Link
-														href="/container-registry/new"
-														buttonVariant={ButtonVariant.Outlined}
-														external={false}
-													>
-														Create Repository
-													</Link>
-												) : undefined
-											}
-										/>
-									)
+									<EmptyState
+										title="No Container Repositories Yet"
+										description={
+											isAllowedCreate() ? "Create one to store your container images." : undefined
+										}
+										action={
+											isAllowedCreate() ? (
+												<Link
+													href="/container-registry/new"
+													buttonVariant={ButtonVariant.Outlined}
+													external={false}
+												>
+													Create Repository
+												</Link>
+											) : undefined
+										}
+									/>
 								}
 							>
 								<Table
 									column_grids={["flex-4", "flex-3", "flex-2", "flex-3"]}
 									headings={["Repository", "Last Updated", "Size", "Created"]}
-									rows={repositories()?.repositories || []}
+									rows={repositoriesQuery.data?.repositories || []}
 									renderRow={(repo: WithId<ContainerRepository>) => (
 										<tr
 											role="row"
@@ -161,7 +138,7 @@ const ListContainerRepositories = () => {
 								/>
 								<Pagination
 									state={pagination}
-									loading={repositories.loading}
+									loading={repositoriesQuery.isFetching}
 									showPageSizeSelector={false}
 									showGoToPage={false}
 								/>

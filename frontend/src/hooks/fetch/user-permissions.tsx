@@ -1,145 +1,95 @@
-import { createMemo, createResource } from "solid-js";
+import { createQuery } from "@tanstack/solid-query";
 import { GetCurrentPermissionsResponse, ListAllPermissionsResponse } from "~/bindings";
-import { useToast } from "~/components";
-import { AuthState, useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
-import { parsePermissionName, resourceTypes, safelyParseJSON, userActionTypes } from "~/utils/func";
+
+import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
+import { userPermissionKeys } from "~/hooks/query-keys";
+import { parsePermissionName, resourceTypes, userActionTypes } from "~/utils/func";
 import { httpRequest } from "~/utils/http-request";
 import { ActionTypes, ResourceTypes, UserPermissionsT } from "~/utils/types";
 
-/**
- * Utility function to prevent redundant API calls by caching permissions in sessionStorage.
- * @param authState Current Authentication State
- * @param wsId Current Workspace ID
- * @returns Every Permission ID mapped to it's resourceType and action
- */
-export const getPermissions = async (authState: AuthState, wsId: string) => {
-	console.log("[getPermissions] Called with:", { authType: authState?.type, wsId });
+type ParsedPermission = { resourceType: string; permission: string };
 
-	if (!authState || authState.type !== "LoggedIn") {
-		console.log("[getPermissions] User is not logged in, throwing error");
-		throw new Error("User is not logged in");
+const getCachedPermissions = (wsId: string): UserPermissionsT | undefined => {
+	if (typeof window === "undefined") return undefined;
+	try {
+		const cached = sessionStorage.getItem(`user-permissions-map:${wsId}`);
+		return cached ? JSON.parse(cached) : undefined;
+	} catch {
+		return undefined;
 	}
+};
 
-	const isServer = typeof window === "undefined";
-
-	const cacheKey = `all-permissions-map`;
-	let parsedPermissions: ListAllPermissionsResponse | undefined = undefined;
-
-	if (!isServer) {
-		const cached = sessionStorage.getItem(cacheKey);
-		if (cached) {
-			parsedPermissions = safelyParseJSON<ListAllPermissionsResponse>(cached);
-		}
-	}
-
-	if (!parsedPermissions) {
-		console.log("[getPermissions] Fetching permissions from API");
-		const response = await httpRequest<ListAllPermissionsResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/permission`,
-			{
-				method: "GET",
-			}
-		);
-
-		if (!response.ok) {
-			console.error("[getPermissions] Failed to fetch permissions:", response.data.error);
-			throw new Error("Failed to fetch permissions from server");
-		}
-
-		console.log("[getPermissions] Successfully fetched permissions from API");
-		parsedPermissions = response.data;
-
-		if (!isServer) {
-			sessionStorage.setItem(cacheKey, JSON.stringify(parsedPermissions));
-		}
-	}
-
-	const mappedPermissions = parsedPermissions.permissions.map((perm) => {
-		return { [perm.id]: parsePermissionName(perm.name) };
-	});
-
-	console.log("[getPermissions] Returning mapped permissions:", mappedPermissions);
-	return mappedPermissions;
+const setCachedPermissions = (wsId: string, data: UserPermissionsT) => {
+	if (typeof window === "undefined") return;
+	sessionStorage.setItem(`user-permissions-map:${wsId}`, JSON.stringify(data));
 };
 
 /**
- * Fetches the current user's granted permissions for a specific workspace.
- * Workspace-dependent — the result varies per workspace and user.
- * Cached in sessionStorage keyed by workspace ID.
+ * Utility function to fetch all permissions for a workspace and map them
+ * to their resourceType and action.
  */
-const useUserPermissions = () => {
+export const getPermissions = async (wsId: string) => {
+	const response = await httpRequest<ListAllPermissionsResponse>(
+		`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/permission`,
+		{ method: "GET" }
+	);
+
+	if (!response.ok) {
+		throw new Error("Failed to fetch permissions from server");
+	}
+
+	return response.data.permissions.map(
+		(perm): Record<string, ParsedPermission> => ({
+			[perm.id]: parsePermissionName(perm.name),
+		})
+	);
+};
+
+const useUserPermissionsQuery = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 
-	const fetchParams = createMemo(() => {
-		const params = [authState(), workspaceId()] as const;
-		return params;
-	});
+	return createQuery(() => {
+		const auth = authState();
+		const wsId = workspaceId();
+		return {
+			queryKey: userPermissionKeys.current(wsId ?? ""),
+			enabled: !!wsId && !!auth && auth.type === "LoggedIn",
+			meta: { errorMessage: "Failed to fetch user permissions" },
+			staleTime: 5 * 60 * 1000,
+			gcTime: 30 * 60 * 1000,
+			initialData: () => getCachedPermissions(wsId ?? ""),
+			queryFn: async (): Promise<UserPermissionsT> => {
+				const [permissions, response] = await Promise.all([
+					getPermissions(wsId!),
+					httpRequest<GetCurrentPermissionsResponse>(
+						`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/current-permissions`,
+						{ method: "GET" }
+					),
+				]);
 
-	const [permissionsResource, permissionsActions] = createResource(fetchParams, async ([auth, wsId]) => {
-		if (!wsId || !auth || auth.type !== "LoggedIn") {
-			console.log("[useFetchUserPermissions] Invalid auth or workspace, returning default member");
-			return {
-				type: "member" as const,
-			};
-		}
-
-		const isServer = typeof window === "undefined";
-		const cacheKey = `user-permissions-map:${wsId}`;
-
-		if (!isServer) {
-			const cached = sessionStorage.getItem(cacheKey);
-			if (cached) {
-				const parsed = safelyParseJSON<UserPermissionsT>(cached);
-				if (parsed) {
-					console.log("[useFetchUserPermissions] Using cached permissions from sessionStorage");
-					return parsed;
-				}
-			}
-		}
-
-		try {
-			console.log("[useFetchUserPermissions] Fetching permissions from API");
-			const permissions = await getPermissions(auth, wsId);
-
-			// Transform permissions array to { [resourceType]: { [action]: permissionId } }
-			let permissionsMap: Record<string, Record<string, string>> = {};
-
-			for (const permObj of permissions) {
-				for (const [permId, permDetail] of Object.entries(permObj)) {
-					const { resourceType, permission } = permDetail;
-
-					if (!permissionsMap[resourceType]) {
-						permissionsMap[resourceType] = {};
+				let permissionsMap: Record<string, Record<string, string>> = {};
+				for (const permObj of permissions) {
+					for (const [permId, permDetail] of Object.entries(permObj)) {
+						const { resourceType, permission } = permDetail;
+						if (!permissionsMap[resourceType]) {
+							permissionsMap[resourceType] = {};
+						}
+						permissionsMap[resourceType][permission] = permId;
 					}
-
-					permissionsMap[resourceType][permission] = permId;
 				}
-			}
 
-			console.log("[useFetchUserPermissions] Transformed permissionsMap:", permissionsMap);
-
-			const response = await httpRequest<GetCurrentPermissionsResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/current-permissions`,
-				{
-					method: "GET",
+				if (!response.ok) {
+					throw new Error("Failed to fetch user permissions");
 				}
-			);
 
-			if (!response.ok) {
-				console.error("[useFetchUserPermissions] Failed to fetch user permissions:", response);
-				toast("Failed to load user information", "error");
-				return {
-					type: "member" as const,
-				};
-			}
+				const userPermission = response.data;
 
-			const userPermission = response.data;
-			console.log("[useFetchUserPermissions] User permission response:", userPermission);
+				if (userPermission.type !== "member") {
+					setCachedPermissions(wsId!, userPermission as UserPermissionsT);
+					return userPermission as UserPermissionsT;
+				}
 
-			if (userPermission.type === "member") {
-				console.log("[useFetchUserPermissions] User type is member, building detailed permissions");
 				const validResourceTypes = new Set<string>(resourceTypes);
 				const validActions = new Set<string>(userActionTypes);
 
@@ -150,55 +100,27 @@ const useUserPermissions = () => {
 				> & { type: "member" } = { type: "member" };
 
 				for (const [resourceType, actionPermissions] of Object.entries(permissionsMap)) {
-					if (resourceType === "type" || !validResourceTypes.has(resourceType)) {
-						console.log(`[useFetchUserPermissions] Skipping invalid resourceType: ${resourceType}`);
-						continue;
-					}
+					if (resourceType === "type" || !validResourceTypes.has(resourceType)) continue;
 
 					Object.entries(actionPermissions).forEach(([action, permId]) => {
-						if (!validActions.has(action)) {
-							console.log(`[useFetchUserPermissions] Skipping invalid action: ${action}`);
-							return;
-						}
+						if (!validActions.has(action)) return;
 
 						if (userPermission[permId]) {
-							console.log(
-								`[useFetchUserPermissions] Adding permission for ${resourceType}.${action}:`,
-								userPermission[permId]
-							);
 							if (!detailedPermissions[resourceType as ResourceTypes]) {
 								// @ts-expect-error TypeScript can't narrow string to resourceTypes after validation
 								detailedPermissions[resourceType as ResourceTypes] = {};
 							}
-
 							detailedPermissions[resourceType as ResourceTypes][action as ActionTypes] =
 								userPermission[permId];
-						} else {
-							console.log(`[useFetchUserPermissions] No permission found for permId: ${permId}`);
 						}
 					});
 				}
 
-				if (!isServer) sessionStorage.setItem(cacheKey, JSON.stringify(detailedPermissions));
-				console.log("[useFetchUserPermissions] Returning detailed permissions:", detailedPermissions);
+				setCachedPermissions(wsId!, detailedPermissions);
 				return detailedPermissions;
-			} else {
-				console.log("[useFetchUserPermissions] User type is superAdmin, returning as is");
-				if (!isServer) sessionStorage.setItem(cacheKey, JSON.stringify(userPermission));
-
-				return userPermission;
-			}
-		} catch (error) {
-			console.error("Error fetching user permissions:", error);
-			toast("Failed to load user permissions", "error");
-
-			return {
-				type: "member" as const,
-			};
-		}
+			},
+		};
 	});
-
-	return [permissionsResource, permissionsActions] as const;
 };
 
-export default useUserPermissions;
+export default useUserPermissionsQuery;

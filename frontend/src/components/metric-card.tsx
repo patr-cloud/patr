@@ -41,7 +41,11 @@ export const currentValue = (points: MetricDataPoint[] | undefined, transform?: 
 	return val < 10 ? val.toFixed(2) : val.toFixed(1);
 };
 
-const MetricCard = (props: { chart: ChartDef; data: Record<string, MetricDataPoint[]> | undefined }) => {
+const MetricCard = (props: {
+	chart: ChartDef;
+	data: Record<string, MetricDataPoint[]> | undefined;
+	isError?: boolean;
+}) => {
 	let canvasRef!: HTMLCanvasElement;
 	let chartInstance: Chart | undefined;
 
@@ -208,7 +212,9 @@ const MetricCard = (props: { chart: ChartDef; data: Record<string, MetricDataPoi
 										)}
 									</For>
 								</div>
-								<span class="text-xs text-grey/50">Awaiting data</span>
+								<span class="text-xs text-grey/50">
+									{props.isError ? "Error fetching data" : "Awaiting data"}
+								</span>
 							</div>
 						</div>
 					}

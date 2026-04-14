@@ -1,13 +1,8 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createEffect, createMemo, createResource, createSignal, For, Show, Suspense } from "solid-js";
-import {
-	GetApiTokenInfoResponse,
-	ListUserWorkspacesResponse,
-	UpdateApiTokenRequest,
-	WorkspacePermission,
-} from "~/bindings";
+import { createEffect, createSignal, For, Show, Suspense } from "solid-js";
+import { UpdateApiTokenRequest, WorkspacePermission } from "~/bindings";
 import {
 	Button,
 	ButtonVariant,
@@ -22,6 +17,7 @@ import {
 } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useUserInfo } from "~/hooks/state-hooks";
+import { useApiTokenInfoQuery, useWorkspacesQuery } from "~/hooks/fetch";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 import RegenerateModal from "./-components/regenerate-modal";
@@ -40,49 +36,10 @@ const ApiTokenInfo = () => {
 	const [isApiTokenModalOpen, setIsApiTokenModalOpen] = createSignal(false);
 	const [newApiToken, setNewApiToken] = createSignal<string>("");
 
-	const fetchParams = createMemo(() => {
-		return [authState()] as const;
-	});
+	const apiTokenInfoQuery = useApiTokenInfoQuery(() => params().id);
+	const workspacesQuery = useWorkspacesQuery();
 
-	const [apiTokenInfo] = createResource(fetchParams, async ([auth]) => {
-		if (!auth || auth.type !== "LoggedIn") {
-			return undefined;
-		}
-
-		const response = await httpRequest<GetApiTokenInfoResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/user/api-token/${params().id}`,
-			{
-				method: "GET",
-			}
-		);
-
-		if (!response.ok) {
-			console.error("Failed to fetch API Token Info:", response.data.error);
-			toast("Failed to fetch API Token Info", "error");
-			return undefined;
-		}
-
-		return { ...response.data };
-	});
-
-	const [workspaces] = createResource(authState, async (auth) => {
-		if (!auth || auth.type !== "LoggedIn") {
-			return { workspaces: [] };
-		}
-
-		const response = await httpRequest<ListUserWorkspacesResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/user/workspaces`,
-			{ method: "GET" }
-		);
-
-		if (!response.ok) {
-			console.error("Failed to fetch workspaces:", response.data.error);
-			toast("Failed to fetch workspaces", "error");
-			return { workspaces: [] };
-		}
-
-		return response.data;
-	});
+	const apiTokenInfo = () => apiTokenInfoQuery.data;
 
 	// Permission editing state
 	const [enabledWorkspaces, setEnabledWorkspaces] = createSignal<Set<string>>(new Set());
@@ -302,7 +259,7 @@ const ApiTokenInfo = () => {
 									</div>
 
 									<For
-										each={workspaces.latest?.workspaces || []}
+										each={workspacesQuery.data?.workspaces || []}
 										fallback={<div class="text-gray-400">No workspaces available</div>}
 									>
 										{(ws) => (

@@ -1,12 +1,8 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createMemo, createResource, ErrorBoundary, Show, Suspense } from "solid-js";
-import { PageContainer, PageContainerBody, useToast } from "~/components";
-import { useAuthState } from "~/hooks";
-import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { GetRoleInfoResponse } from "~/bindings/GetRoleInfoResponse";
-import { GetWorkspaceInfoResponse } from "~/bindings/GetWorkspaceInfoResponse";
-import { httpRequest } from "~/utils/http-request";
+import { createMemo, ErrorBoundary, Show } from "solid-js";
+import { LoadingSpinner, PageContainer, PageContainerBody } from "~/components";
+import { useRoleInfoQuery, useWorkspaceInfoQuery } from "~/hooks/fetch";
 import RoleHeader from "./-components/role-header";
 import UsersAssignedToRole from "./-components/users";
 import EditPermissions from "./-components/edit";
@@ -14,69 +10,21 @@ import EditPermissions from "./-components/edit";
 const RoleInfo = () => {
 	const params = Route.useParams();
 	const search = Route.useSearch();
-	const [authState] = useAuthState();
-	const [workspaceId] = useLastWorkspaceId();
-	const toast = useToast();
 
 	const activeTab = createMemo(() => (search().tab === "users" ? "users" : "permissions"));
 
-	const fetchParams = createMemo(() => {
-		return [authState(), workspaceId(), params().roleId] as const;
-	});
-
-	const [workspaceInfo] = createResource(
-		() => [authState(), workspaceId()] as const,
-		async ([auth, workspaceId]) => {
-			if (!auth || auth.type !== "LoggedIn" || !workspaceId) {
-				return;
-			}
-
-			const response = await httpRequest<GetWorkspaceInfoResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}`,
-				{
-					method: "GET",
-				}
-			);
-			console.log("Workspace info response:", response.data);
-			if (!response.ok) {
-				console.error("Failed to fetch workspace info:", response.data.error);
-				toast("Failed to fetch workspace info", "error");
-				return;
-			}
-
-			return response.data;
-		}
-	);
-
-	const [roleInfo, { refetch: refetchRoleInfo }] = createResource(
-		fetchParams,
-		async ([auth, workspaceId, roleId]) => {
-			if (!auth || auth.type !== "LoggedIn" || !workspaceId || !roleId) {
-				return;
-			}
-			console.log("Fetching role info for workspaceId:", workspaceId, "roleId:", roleId);
-			const response = await httpRequest<GetRoleInfoResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/role/${roleId}`,
-				{
-					method: "GET",
-				}
-			);
-			console.log("Role info response:", response.data);
-			if (!response.ok) {
-				console.error("Failed to fetch role info:", response.data.error);
-				toast("Failed to fetch role info", "error");
-				return;
-			}
-
-			return response.data;
-		}
-	);
+	const workspaceInfoQuery = useWorkspaceInfoQuery();
+	const roleInfoQuery = useRoleInfoQuery(() => params().roleId);
 
 	return (
 		<>
 			<Title>Role Details | Patr</Title>
 			<PageContainer>
-				<RoleHeader roleName={roleInfo()?.name} workspaceName={workspaceInfo()?.name} activeTab={activeTab()} />
+				<RoleHeader
+					roleName={roleInfoQuery.data?.name}
+					workspaceName={workspaceInfoQuery.data?.name}
+					activeTab={activeTab()}
+				/>
 				<PageContainerBody class="flex flex-col gap-6">
 					<ErrorBoundary
 						fallback={(err, reset) => (
@@ -88,17 +36,19 @@ const RoleInfo = () => {
 							</div>
 						)}
 					>
-						<Suspense
+						<Show
+							when={!roleInfoQuery.isPending}
 							fallback={
 								<div class="flex items-center justify-center gap-2 py-16 text-grey">
+									<LoadingSpinner size={20} />
 									<span class="text-sm">Loading role information...</span>
 								</div>
 							}
 						>
-							<Show when={roleInfo()} fallback={null}>
+							<Show when={roleInfoQuery.data}>
 								<div class="flex flex-col gap-4">
 									<Show when={activeTab() === "permissions"}>
-										<EditPermissions refetchRoleInfo={refetchRoleInfo} roleInfo={roleInfo} />
+										<EditPermissions />
 									</Show>
 
 									<Show when={activeTab() === "users"}>
@@ -106,7 +56,7 @@ const RoleInfo = () => {
 									</Show>
 								</div>
 							</Show>
-						</Suspense>
+						</Show>
 					</ErrorBoundary>
 				</PageContainerBody>
 			</PageContainer>

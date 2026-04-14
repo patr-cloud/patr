@@ -1,18 +1,18 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/solid-router";
 import { createEffect, ErrorBoundary } from "solid-js";
-import { useFetchWorkspaces, useFetchUserPermissions } from "~/hooks/fetch";
+import { useWorkspacesQuery, useUserPermissionsQuery } from "~/hooks/fetch";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { Sidebar, TopBar } from "~/components";
 
 const WorkspacedLayout = () => {
-	const [workspaces] = useFetchWorkspaces();
-	useFetchUserPermissions();
+	const workspacesQuery = useWorkspacesQuery();
+	useUserPermissionsQuery();
 	const navigate = useNavigate();
 	const [workspaceId, setWorkspaceId] = useLastWorkspaceId();
 
 	createEffect(() => {
-		if (workspaces.state === "ready") {
-			const ws = workspaces()?.workspaces;
+		if (!workspacesQuery.isPending) {
+			const ws = workspacesQuery.data?.workspaces;
 			if (!ws || ws.length === 0) {
 				navigate({ to: "/onboard", replace: true });
 			} else if (!workspaceId()) {
