@@ -232,18 +232,11 @@ async fn get_ingress_spec(
 	)
 	.await?;
 
-	let networks = Some(vec![
-		NetworkAttachmentConfig {
-			target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
-			aliases: Some(vec![String::from("patr-ingress"), String::from("ingress")]),
-			driver_opts: None,
-		},
-		NetworkAttachmentConfig {
-			target: Some(String::from("ingress")),
-			aliases: Some(vec![String::from("patr-ingress"), String::from("ingress")]),
-			driver_opts: None,
-		},
-	]);
+	let networks = Some(vec![NetworkAttachmentConfig {
+		target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
+		aliases: Some(vec![String::from("patr-ingress"), String::from("ingress")]),
+		driver_opts: None,
+	}]);
 
 	Ok(ServiceSpec {
 		name: Some(String::from(constants::INGRESS_SERVICE_NAME)),
