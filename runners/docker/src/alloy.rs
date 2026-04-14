@@ -59,6 +59,12 @@ pub async fn update_alloy_service(
 	.await?;
 
 	// Build the global Alloy service spec
+	let networks = Some(vec![NetworkAttachmentConfig {
+		target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
+		aliases: Some(vec![String::from("patr-alloy")]),
+		driver_opts: None,
+	}]);
+
 	let service_spec = ServiceSpec {
 		name: Some(String::from(constants::ALLOY_SERVICE_NAME)),
 		labels: Some(HashMap::from([(
@@ -127,17 +133,14 @@ pub async fn update_alloy_service(
 				]),
 				..Default::default()
 			}),
+			networks: networks.clone(),
 			..Default::default()
 		}),
 		mode: Some(ServiceSpecMode {
 			global: Some(HashMap::new()),
 			..Default::default()
 		}),
-		networks: Some(vec![NetworkAttachmentConfig {
-			target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
-			aliases: Some(vec![String::from("patr-alloy")]),
-			driver_opts: None,
-		}]),
+		networks,
 		..Default::default()
 	};
 

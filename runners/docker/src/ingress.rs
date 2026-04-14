@@ -232,6 +232,19 @@ async fn get_ingress_spec(
 	)
 	.await?;
 
+	let networks = Some(vec![
+		NetworkAttachmentConfig {
+			target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
+			aliases: Some(vec![String::from("patr-ingress"), String::from("ingress")]),
+			driver_opts: None,
+		},
+		NetworkAttachmentConfig {
+			target: Some(String::from("ingress")),
+			aliases: Some(vec![String::from("patr-ingress"), String::from("ingress")]),
+			driver_opts: None,
+		},
+	]);
+
 	Ok(ServiceSpec {
 		name: Some(String::from(constants::INGRESS_SERVICE_NAME)),
 		labels: Some(HashMap::from([(
@@ -297,6 +310,7 @@ async fn get_ingress_spec(
 				}]),
 				..Default::default()
 			}),
+			networks: networks.clone(),
 			..Default::default()
 		}),
 		mode: Some(ServiceSpecMode {
@@ -328,18 +342,7 @@ async fn get_ingress_spec(
 				]),
 			})
 		},
-		networks: Some(vec![
-			NetworkAttachmentConfig {
-				target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
-				aliases: Some(vec![String::from("patr-ingress"), String::from("ingress")]),
-				driver_opts: None,
-			},
-			NetworkAttachmentConfig {
-				target: Some(String::from("ingress")),
-				aliases: Some(vec![String::from("patr-ingress"), String::from("ingress")]),
-				driver_opts: None,
-			},
-		]),
+		networks,
 		..Default::default()
 	})
 }
@@ -359,6 +362,11 @@ async fn get_cloudflare_spec(
 		.ok_or(RunnerError::CloudflareTunnelSetupError(IoError::other(
 			"could not find cloudflare tunnel token config",
 		)))?;
+
+	let networks = Some(vec![NetworkAttachmentConfig {
+		target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
+		..Default::default()
+	}]);
 
 	Ok(ServiceSpec {
 		name: Some(String::from(constants::TUNNEL_SERVICE_NAME)),
@@ -382,16 +390,14 @@ async fn get_cloudflare_spec(
 				env: Some(vec![format!("TUNNEL_TOKEN={}", tunnel_token)]),
 				..Default::default()
 			}),
+			networks: networks.clone(),
 			..Default::default()
 		}),
 		mode: Some(ServiceSpecMode {
 			replicated: Some(ServiceSpecModeReplicated { replicas: Some(1) }),
 			..Default::default()
 		}),
-		networks: Some(vec![NetworkAttachmentConfig {
-			target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
-			..Default::default()
-		}]),
+		networks,
 		..Default::default()
 	})
 }

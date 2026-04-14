@@ -101,8 +101,22 @@ pub async fn update_config(
 		.map_err(RunnerError::host)?
 		.id;
 
-	// Clean up old configs — non-fatal, log and continue
+	// Clean up old configs — non-fatal, log and continue.
+	// Skip configs whose deploymentId is not a valid UUID — those are
+	// managed separately (e.g. tunnel token) and share labels only for
+	// organizational grouping.
 	for config in existing_configs {
+		let is_non_deployment_config = config
+			.spec
+			.as_ref()
+			.and_then(|s| s.labels.as_ref())
+			.and_then(|l| l.get("patr.deploymentId"))
+			.is_none_or(|id| Uuid::parse_str(id).is_err());
+
+		if is_non_deployment_config {
+			continue;
+		}
+
 		if let Some(id) = config.id &&
 			id != new_id &&
 			let Err(err) = docker.delete_config(&id).await

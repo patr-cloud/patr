@@ -19,10 +19,9 @@ where
 	/// running is exactly as per what's in the database.
 	#[instrument(skip(self))]
 	pub(super) async fn monitor_resources(&self) -> Result<!, RunnerError> {
-		let (sender, mut receiver) = mpsc::unbounded_channel::<SqliteUpdateHook>();
+		let (update_sender, mut receiver) = mpsc::unbounded_channel::<SqliteUpdateHook>();
 
 		info!("Installing SQLite hook for updates");
-		let update_sender = sender.clone();
 		self.state
 			.database
 			.acquire()
@@ -84,75 +83,32 @@ where
 					});
 					sleep_future = Box::pin(time::sleep(FULL_SYNC_INTERVAL));
 				}
-				Either::Right((update, next_sleep)) => {
-					sleep_future = next_sleep;
-
+				Either::Right((update, pending_sleep)) => {
 					let Some(update) = update else {
+						sleep_future = pending_sleep;
 						continue;
 					};
 
 					if !update.table.ends_with("_update_log") || update.database != "main" {
+						sleep_future = pending_sleep;
 						continue;
 					}
 					if update.operation == SqliteOperation::Delete {
+						sleep_future = pending_sleep;
 						continue;
 					}
 					if let SqliteOperation::Unknown(op_id) = update.operation {
 						warn!("Ignoring unsupported SQLite operation: {op_id}");
+						sleep_future = pending_sleep;
 						continue;
 					}
 
-					info!("Database update received: {:?}", update);
+					trace!("Database update received: {:?}", update);
 
-					let Ok(deployment_id) = query(
-						r#"
-                        SELECT
-                            deployment_id,
-                            update_type
-                        FROM
-                            deployment_update_log
-                        WHERE
-                            rowid = $1;
-                        "#,
-					)
-					.bind(update.row_id)
-					.fetch_optional(&self.state.database)
-					.await
-					.inspect_err(|err| {
-						error!("Failed to fetch deployment update log: {}", err);
-					}) else {
-						_ = sender
-							.send(update)
-							.inspect_err(|err| error!("Unable to resend database update: {}", err));
-						continue;
-					};
-
-					let Some((deployment_id, update_type)) = deployment_id.map(|row| {
-						(
-							row.get::<Uuid, _>("deployment_id"),
-							row.get::<String, _>("update_type"),
-						)
-					}) else {
-						// Deployment not found. It was probably deleted or the row was updated
-						// subsequently with some other value.
-						debug!(
-							"Deployment for updated row `{}` not found in database. Skipping...",
-							update.row_id
-						);
-						continue;
-					};
-
-					match update_type.as_str() {
-						"insert" | "update" => {
-							self.upsert_running_deployment(deployment_id).await;
-						}
-						"delete" => {
-							self.delete_running_deployment(deployment_id).await;
-						}
-						unknown => {
-							warn!("Unknown SQLite operation: {}", unknown);
-						}
-					}
+					// Don't look up by rowid — rowids are unstable (INSERT OR
+					// REPLACE invalidates them) and the hook fires before the
+					// transaction commits. Schedule a quick reconciliation instead.
+					sleep_future = Box::pin(time::sleep(Duration::from_millis(50)));
 				}
 			}
 		}

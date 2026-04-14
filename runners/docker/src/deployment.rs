@@ -132,6 +132,12 @@ pub(crate) async fn upsert(
 		.unwrap_or_else(|| String::from("172.17.0.1"));
 
 	// Build the service spec
+	let networks = Some(vec![NetworkAttachmentConfig {
+		target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
+		aliases: Some(vec![format!("{}.onpatr.local", id)]),
+		driver_opts: None,
+	}]);
+
 	let service_spec = ServiceSpec {
 		name: Some(service_name.clone()),
 		labels: Some(HashMap::from([
@@ -173,6 +179,7 @@ pub(crate) async fn upsert(
 				hosts: Some(vec![format!("host.docker.internal:{host_ip}")]),
 				..Default::default()
 			}),
+			networks: networks.clone(),
 			..Default::default()
 		}),
 		mode: Some(ServiceSpecMode {
@@ -183,11 +190,7 @@ pub(crate) async fn upsert(
 			}),
 			..Default::default()
 		}),
-		networks: Some(vec![NetworkAttachmentConfig {
-			target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
-			aliases: Some(vec![format!("{}.onpatr.local", id)]),
-			driver_opts: None,
-		}]),
+		networks,
 		..Default::default()
 	};
 

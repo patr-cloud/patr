@@ -231,6 +231,18 @@ where
 
 		let mut transaction = self.state.database.begin().await?;
 
+		// Extract the deployment ID before the match moves the data.
+		// Uuid is Copy so this is free.
+		let deployment_id = match &msg {
+			DeploymentCreated { deployment, .. } | DeploymentUpdated { deployment, .. } => {
+				Some(deployment.id)
+			}
+			DeploymentDeleted { id } => Some(*id),
+			ExposureTypeRequired => None,
+		};
+
+		let is_delete = matches!(msg, DeploymentDeleted { .. });
+
 		match msg {
 			DeploymentCreated {
 				deployment,
@@ -258,6 +270,17 @@ where
 		}
 
 		transaction.commit().await?;
+
+		// Directly notify the task executor now that data is committed.
+		// This bypasses the SQLite update hook (which fires with unstable rowids)
+		// for the managed mode path.
+		if let Some(deployment_id) = deployment_id {
+			if is_delete {
+				self.delete_running_deployment(deployment_id).await;
+			} else {
+				self.upsert_running_deployment(deployment_id).await;
+			}
+		}
 
 		Ok(())
 	}
