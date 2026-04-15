@@ -20,7 +20,6 @@ use syn::{
 };
 
 /// The type of search that can be performed on a field
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 enum SearchType {
 	/// Search by a resource identifier
 	Resource(Path),

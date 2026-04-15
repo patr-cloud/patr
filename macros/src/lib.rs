@@ -1,4 +1,3 @@
-#![feature(proc_macro_span)]
 #![forbid(unsafe_code)]
 
 //! This crate contains the macros used in this project. It is not intended to

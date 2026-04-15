@@ -39,6 +39,9 @@ jobs:
       - name: Install cargo-nextest
         uses: taiki-e/install-action@nextest
 
+      - name: Setup frontend public folder
+        run: mkdir -p frontend/.output/public
+
       - run: cargo nextest run --workspace --package api
         continue-on-error: true
 
