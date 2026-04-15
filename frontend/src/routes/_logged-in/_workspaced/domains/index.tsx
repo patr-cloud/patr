@@ -185,7 +185,7 @@ const ListDomainsPage = () => {
 					]}
 					subText="Configure custom domains to route traffic to your deployments."
 					actions={() => (
-						<Show when={isCreateAllowed() && (domainsQuery.data?.domains?.length ?? 0) > 0}>
+						<Show when={isCreateAllowed() && domainsQuery.isSuccess && (domainsQuery.data?.domains?.length ?? 0) > 0}>
 							<Link href="/domains/new" buttonVariant={ButtonVariant.Outlined} external={false}>
 								Add Domain
 							</Link>

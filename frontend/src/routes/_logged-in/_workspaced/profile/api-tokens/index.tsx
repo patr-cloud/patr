@@ -54,7 +54,7 @@ const ListApiTokens = () => {
 					]}
 					subText="Programmatic access tokens for the Patr API"
 					actions={() => (
-						<Show when={(apiTokensQuery.data?.tokens?.length ?? 0) > 0}>
+						<Show when={apiTokensQuery.isSuccess && (apiTokensQuery.data?.tokens?.length ?? 0) > 0}>
 							<Link
 								href="/profile/api-tokens/new"
 								buttonVariant={ButtonVariant.Outlined}

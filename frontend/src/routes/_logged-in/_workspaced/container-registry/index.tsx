@@ -51,7 +51,7 @@ const ListContainerRepositories = () => {
 					]}
 					subText="Store and manage container images for your deployments"
 					actions={() => (
-						<Show when={isAllowedCreate() && (repositoriesQuery.data?.repositories?.length ?? 0) > 0}>
+						<Show when={isAllowedCreate() && repositoriesQuery.isSuccess && (repositoriesQuery.data?.repositories?.length ?? 0) > 0}>
 							<Link
 								href="/container-registry/new"
 								buttonVariant={ButtonVariant.Outlined}
