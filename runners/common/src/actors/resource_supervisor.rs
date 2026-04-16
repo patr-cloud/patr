@@ -163,9 +163,15 @@ where
 				resource_id,
 				resource_type: _,
 			} => {
-				// Clear any respawn backoff — this is an explicit notification
-				// that the config changed, so retry immediately.
-				state.respawn_backoff.remove(&resource_id);
+				// If the actor is already running, clear any stale backoff and
+				// forward ConfigUpdated. If not, only clear the backoff if this
+				// is an external notification (the actor doesn't exist yet),
+				// which lets the spawn proceed. The backoff timer also sends
+				// UpsertResource — in that case the child won't exist, and
+				// clearing is fine since the timer already waited.
+				if state.children.contains_key(&resource_id) {
+					state.respawn_backoff.remove(&resource_id);
+				}
 				upsert_deployment_actor(&myself, state, resource_id).await?;
 			}
 			ResourceSupervisorMessage::DeleteResource {

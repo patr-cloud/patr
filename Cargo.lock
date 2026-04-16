@@ -152,7 +152,7 @@ checksum = "623a80caf0a084acf22cc3f43e49b984214e1c00b79779b16683ab55d46fa764"
 dependencies = [
  "apalis-core",
  "chrono",
- "cron 0.16.0",
+ "cron",
  "futures-util",
  "serde",
  "ulid",
@@ -212,7 +212,7 @@ dependencies = [
  "cloudflare",
  "config",
  "console-subscriber",
- "cron 0.15.0",
+ "cron",
  "derive_more",
  "flate2",
  "futures",
@@ -935,6 +935,7 @@ dependencies = [
  "form_urlencoded",
  "futures-core",
  "futures-util",
+ "headers",
  "http 1.4.0",
  "http-body 1.0.1",
  "http-body-util",
@@ -1462,6 +1463,7 @@ dependencies = [
  "argon2",
  "axum",
  "axum-extra",
+ "axum-test",
  "base64 0.22.1",
  "build-print",
  "config",
@@ -1469,6 +1471,7 @@ dependencies = [
  "flate2",
  "fslock",
  "futures",
+ "headers",
  "http 1.4.0",
  "inventory",
  "jsonwebtoken",
@@ -1503,6 +1506,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "typed-builder",
+ "wiremock",
 ]
 
 [[package]]
@@ -1813,17 +1817,6 @@ name = "critical-section"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "790eea4361631c5e7d22598ecd5723ff611904e3344ce8720784c93e3d83d40b"
-
-[[package]]
-name = "cron"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5877d3fbf742507b66bc2a1945106bd30dd8504019d596901ddd012a4dd01740"
-dependencies = [
- "chrono",
- "once_cell",
- "winnow 0.6.26",
-]
 
 [[package]]
 name = "cron"
@@ -7920,15 +7913,6 @@ name = "windows_x86_64_msvc"
 version = "0.53.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6bbff5f0aada427a1e5a6da5f1f98158182f26556f345ac9e04d36d0ebed650"
-
-[[package]]
-name = "winnow"
-version = "0.6.26"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e90edd2ac1aa278a5c4599b1d89cf03074b610800f866d4026dc199d7929a28"
-dependencies = [
- "memchr",
-]
 
 [[package]]
 name = "winnow"

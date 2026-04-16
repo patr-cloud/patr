@@ -28,6 +28,7 @@ pub async fn login(
 			},
 		database,
 		config,
+		supervisor_ref: _,
 	}: AppRequest<'_, LoginRequest>,
 ) -> Result<AppResponse<LoginRequest>, ErrorType> {
 	trace!("Logging in user: {}", user_id);

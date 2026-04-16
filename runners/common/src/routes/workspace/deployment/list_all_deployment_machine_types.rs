@@ -17,6 +17,7 @@ pub async fn list_all_deployment_machine_types(
 			},
 		database,
 		config: _,
+		supervisor_ref: _,
 	}: AppRequest<'_, ListAllDeploymentMachineTypeRequest>,
 ) -> Result<AppResponse<ListAllDeploymentMachineTypeRequest>, ErrorType> {
 	info!("Listing all Deployment Machine Types");

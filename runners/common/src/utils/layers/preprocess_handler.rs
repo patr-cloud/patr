@@ -113,6 +113,7 @@ where
 				request,
 				database,
 				config,
+				supervisor_ref,
 			} = req;
 			let req = AppRequest {
 				request: ProcessedApiRequest::try_from(request).map_err(
@@ -126,6 +127,7 @@ where
 				)?,
 				database,
 				config,
+				supervisor_ref,
 			};
 			inner.call(req).await
 		}

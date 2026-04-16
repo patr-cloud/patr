@@ -25,6 +25,7 @@ pub async fn get_deployment_info(
 			},
 		database,
 		config: _,
+		supervisor_ref: _,
 	}: AppRequest<'_, GetDeploymentInfoRequest>,
 ) -> Result<AppResponse<GetDeploymentInfoRequest>, ErrorType> {
 	info!("Getting deployment info");

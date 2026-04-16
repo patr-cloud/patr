@@ -1,0 +1,6 @@
+[test-groups.managed-mode]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter     = "test(managed_mode::)"
+test-group = "managed-mode"

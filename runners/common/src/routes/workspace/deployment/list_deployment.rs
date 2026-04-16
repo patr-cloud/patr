@@ -27,6 +27,7 @@ pub async fn list_deployment(
 			},
 		database,
 		config: _,
+		supervisor_ref: _,
 	}: AppRequest<'_, ListDeploymentRequest>,
 ) -> Result<AppResponse<ListDeploymentRequest>, ErrorType> {
 	trace!("Listing all deployments");

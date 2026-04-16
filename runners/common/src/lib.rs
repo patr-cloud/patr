@@ -7,31 +7,31 @@
 /// Actor definitions for the ractor-based actor framework. Contains all actor
 /// types (DeploymentActor, ResourceSupervisor, WebSocketActor,
 /// RunnerSupervisor) and their message enums.
-mod actors;
+pub mod actors;
 /// This module contains the main application logic. Most of the app requests,
 /// states, and mounting of endpoints are done here
-mod app;
+pub mod app;
 /// The database module contains all the database related functions. Such as
 /// initializing the database, getting the connection, etc.
-mod db;
+pub mod db;
 /// The error module contains all the error types that are used in the runner.
 /// This includes the error type for the runner, the error type for the
 /// database, etc.
-mod error;
+pub mod error;
 /// The executor module contains the trait that the runner needs to implement
 /// to run the resources.
-mod executor;
+pub mod executor;
 /// Database migrations organized by version. Uses `inventory` for automatic
 /// registration and tracks individual migrations in a `migrations` table.
-mod migrations;
+pub mod migrations;
 /// All the Routes for the self-hosted Patr is defined here.
-mod routes;
+pub mod routes;
 /// All the runner related structs and functions.
-mod runner;
+pub mod runner;
 /// This module contains all the utilities used by the API. This includes things
 /// like the config parser, the [`tower::Layer`]s that are used to parse the
 /// requests, etc.
-mod utils;
+pub mod utils;
 
 /// The prelude module contains all the things you need to import to get
 /// started with the runner.

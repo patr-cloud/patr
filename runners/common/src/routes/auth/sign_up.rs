@@ -25,6 +25,7 @@ pub async fn sign_up(
 			},
 		database,
 		config,
+		supervisor_ref: _,
 	}: AppRequest<'_, CreateAccountRequest>,
 ) -> Result<AppResponse<CreateAccountRequest>, ErrorType> {
 	trace!("Signing up user: {}", username);

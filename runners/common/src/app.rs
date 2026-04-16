@@ -51,6 +51,9 @@ where
 	pub database: &'a mut DatabaseTransaction,
 	/// The Application Config.
 	pub config: RunnerSettings<()>,
+	/// Reference to the RunnerSupervisor actor for notifying the actor
+	/// system of resource changes after DB writes.
+	pub supervisor_ref: ActorRef<RunnerSupervisorMessage>,
 }
 
 /// A request object that is passed through the tower layers and services for
@@ -68,4 +71,7 @@ where
 	pub database: &'a mut DatabaseTransaction,
 	/// The Application Config.
 	pub config: RunnerSettings<()>,
+	/// Reference to the RunnerSupervisor actor for notifying the actor
+	/// system of resource changes after DB writes.
+	pub supervisor_ref: ActorRef<RunnerSupervisorMessage>,
 }

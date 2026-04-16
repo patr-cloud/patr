@@ -22,6 +22,7 @@ pub async fn list_workspaces(
 			},
 		database: _,
 		config: _,
+		supervisor_ref: _,
 	}: AppRequest<'_, ListUserWorkspacesRequest>,
 ) -> Result<AppResponse<ListUserWorkspacesRequest>, ErrorType> {
 	info!("Listing all user workspaces");

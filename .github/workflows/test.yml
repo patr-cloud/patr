@@ -42,8 +42,9 @@ jobs:
       - name: Setup frontend public folder
         run: mkdir -p frontend/.output/public
 
-      - run: cargo nextest run --workspace --package api
-        continue-on-error: true
+      - run: cargo nextest run --package api
+
+      - run: cargo nextest run --package common
 
   sqlx-check:
     name: SQLx Offline Check

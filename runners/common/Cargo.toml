@@ -2,6 +2,7 @@
 name = "common"
 
 authors.workspace      = true
+autotests              = false
 description.workspace  = true
 edition.workspace      = true
 rust-version.workspace = true
@@ -59,3 +60,14 @@ tower-http                     = { workspace = true, features = ["fs"] }
 tracing                        = { workspace = true, features = ["async-await", "default"] }
 tracing-subscriber             = { workspace = true, features = ["default"] }
 typed-builder                  = { workspace = true, features = [] }
+
+[dev-dependencies]
+axum       = { workspace = true, features = ["default", "ws"] }
+axum-extra = { workspace = true, features = ["default", "typed-header", "typed-routing"] }
+axum-test  = { workspace = true, features = ["default"] }
+headers    = { workspace = true, features = [] }
+wiremock   = { workspace = true, features = [] }
+
+[[test]]
+name = "integration-tests"
+path = "tests/mod.rs"

@@ -1,7 +1,9 @@
+use std::time::Duration;
+
 use axum::http::StatusCode;
 use models::api::workspace::deployment::*;
 
-use crate::{app::AppRequest, prelude::*};
+use crate::{actors::runner_supervisor::RunnerSupervisorMessage, app::AppRequest, prelude::*};
 
 /// Update deployment details. This endpoint is used to update the deployment
 /// details. The deployment details that can be updated are the name, machine
@@ -40,6 +42,7 @@ pub async fn update_deployment(
 			},
 		database,
 		config: _,
+		supervisor_ref,
 	}: AppRequest<'_, UpdateDeploymentRequest>,
 ) -> Result<AppResponse<UpdateDeploymentRequest>, ErrorType> {
 	info!("Updating deployment: {}", deployment_id);
@@ -325,6 +328,13 @@ pub async fn update_deployment(
 			})?;
 		}
 	}
+
+	supervisor_ref.send_after(Duration::from_millis(50), move || {
+		RunnerSupervisorMessage::UpsertResource {
+			resource_id: deployment_id,
+			resource_type: ResourceType::Deployment,
+		}
+	});
 
 	AppResponse::builder()
 		.body(UpdateDeploymentResponse)

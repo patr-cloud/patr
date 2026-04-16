@@ -20,8 +20,8 @@ pub async fn get_workspace_info(
 				body: GetWorkspaceInfoRequestProcessed,
 			},
 		database: _,
-
 		config: _,
+		supervisor_ref: _,
 	}: AppRequest<'_, GetWorkspaceInfoRequest>,
 ) -> Result<AppResponse<GetWorkspaceInfoRequest>, ErrorType> {
 	info!("Getting information about the workspace `{workspace_id}`");
