@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createEffect, createMemo, ErrorBoundary, Show } from "solid-js";
+import { createEffect, createMemo, ErrorBoundary, Show, Suspense } from "solid-js";
 import { Deployment, WithId } from "~/bindings";
 import {
 	Button,
@@ -100,7 +100,13 @@ const ListDeploymentsPage = () => {
 					]}
 					subText="A deployment represents a containerized application running on a runner."
 					actions={() => (
-						<Show when={isAllowedCreate() && (deploymentsQuery.data?.deployments?.length ?? 0) > 0}>
+						<Show
+							when={
+								isAllowedCreate() &&
+								deploymentsQuery.isSuccess &&
+								(deploymentsQuery.data?.deployments?.length ?? 0) > 0
+							}
+						>
 							<Link href="/deployments/new" buttonVariant={ButtonVariant.Outlined} external={false}>
 								Create Deployment
 							</Link>
@@ -119,8 +125,7 @@ const ListDeploymentsPage = () => {
 							</div>
 						)}
 					>
-						<Show
-							when={!deploymentsQuery.isPending}
+						<Suspense
 							fallback={
 								<div class="flex items-center justify-center gap-2 py-16 text-grey">
 									<LoadingSpinner size={20} />
@@ -170,7 +175,7 @@ const ListDeploymentsPage = () => {
 									showGoToPage={false}
 								/>
 							</Show>
-						</Show>
+						</Suspense>
 					</ErrorBoundary>
 				</PageContainerBody>
 			</PageContainer>
