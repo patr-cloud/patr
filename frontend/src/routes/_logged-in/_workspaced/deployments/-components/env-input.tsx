@@ -1,182 +1,213 @@
-import { FiPlus, FiTrash2 } from "solid-icons/fi";
-import { createSignal, Show, Index } from "solid-js";
+import { FiTrash2 } from "solid-icons/fi";
+import { createEffect, createMemo, createSignal, createUniqueId, Index, Show } from "solid-js";
 import { EnvironmentVariableValue } from "~/bindings";
-import { Button, ButtonVariant, Input, InputType, useToast, InputLabel } from "~/components";
+import { Button, ButtonVariant, Input, InputType, InputLabel } from "~/components";
 import { Color } from "~/utils/color";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
 interface EnvInputProps {
-	/** Additional Classes for the input.  */
-	class?: MaybeAccessor<string>;
-	/** On Add Value Handler */
-	onAdd: (key: string, value: EnvironmentVariableValue) => void;
-	/** On Remove Value Handler */
-	onDelete: (key: string) => void;
-	/** Env List */
-	envList: MaybeAccessor<{ key: string; value?: EnvironmentVariableValue }[]>;
-	/** Disabled state for the input */
+	/** Current environment variables (source of truth). */
+	value: MaybeAccessor<Record<string, EnvironmentVariableValue>>;
+	/** Fires whenever the committed (validated) map changes. */
+	onChange: (next: Record<string, EnvironmentVariableValue>) => void;
+	/** Fires whenever the validity of the rows changes. Parents use this to gate submit. */
+	onValidityChange?: (valid: boolean) => void;
+	/** Disables all inputs. */
 	disabled?: MaybeAccessor<boolean>;
+	/** Additional class for the root container. */
+	class?: MaybeAccessor<string>;
 }
 
-const parseEnvValue = (value: EnvironmentVariableValue): string => {
-	return typeof value === "string" ? value : JSON.stringify(value);
-};
+type Row = { id: string; key: string; value: string };
+
+const parseEnvValue = (value: EnvironmentVariableValue): string =>
+	typeof value === "string" ? value : JSON.stringify(value);
+
+const makeDraftRow = (): Row => ({ id: createUniqueId(), key: "", value: "" });
 
 const EnvInput = (props: EnvInputProps) => {
-	const [envName, setEnvName] = createSignal<string>("");
-	const [envValue, setEnvValue] = createSignal<string>("");
-	const toast = useToast();
+	const [rows, setRows] = createSignal<Row[]>([makeDraftRow()]);
+
+	// Seed from parent value on first render and whenever the parent resets the
+	// map to something we don't already reflect (e.g. initial load on the edit
+	// page). We compare by value to avoid clobbering in-progress edits — our
+	// own onChange callbacks cause the parent's map to match what we already
+	// have, so the early-return below fires and we leave `rows` untouched.
+	createEffect(() => {
+		const incoming = get(props.value) ?? {};
+		const currentCommitted = committedMap();
+		const sameKeys =
+			Object.keys(incoming).length === Object.keys(currentCommitted).length &&
+			Object.keys(incoming).every((k) => parseEnvValue(incoming[k]) === parseEnvValue(currentCommitted[k] ?? ""));
+		if (sameKeys) return;
+		const seeded = Object.entries(incoming).map(([key, value]) => ({
+			id: createUniqueId(),
+			key,
+			value: parseEnvValue(value),
+		}));
+		seeded.push(makeDraftRow());
+		setRows(seeded);
+	});
+
+	const keyCounts = createMemo(() => {
+		const counts = new Map<string, number>();
+		for (const row of rows()) {
+			if (row.key === "") continue;
+			counts.set(row.key, (counts.get(row.key) ?? 0) + 1);
+		}
+		return counts;
+	});
+
+	type RowErrors = { key?: string; value?: string };
+	const rowError = (row: Row): RowErrors => {
+		const errs: RowErrors = {};
+		const keyEmpty = row.key === "";
+		const valueEmpty = row.value === "";
+		if (keyEmpty && valueEmpty) return errs; // draft row
+		if (keyEmpty) errs.key = "Key required";
+		if (valueEmpty) errs.value = "Value required";
+		if (!keyEmpty && (keyCounts().get(row.key) ?? 0) > 1) errs.key = "Duplicate key";
+		return errs;
+	};
+
+	const hasAnyError = createMemo(() => rows().some((r) => Object.keys(rowError(r)).length > 0));
+
+	const committedMap = (): Record<string, EnvironmentVariableValue> => {
+		const out: Record<string, EnvironmentVariableValue> = {};
+		const counts = keyCounts();
+		for (const row of rows()) {
+			if (row.key === "" || row.value === "") continue;
+			if ((counts.get(row.key) ?? 0) > 1) continue;
+			out[row.key] = row.value;
+		}
+		return out;
+	};
+
+	// Emit committed map + validity on every row change.
+	createEffect(() => {
+		props.onChange(committedMap());
+		props.onValidityChange?.(!hasAnyError());
+	});
+
+	const updateRow = (id: string, patch: Partial<Pick<Row, "key" | "value">>) => {
+		setRows((prev) => {
+			const next = prev.map((r) => (r.id === id ? { ...r, ...patch } : r));
+			// Ensure exactly one trailing empty draft row at the end.
+			const last = next[next.length - 1];
+			if (!last || last.key !== "" || last.value !== "") {
+				next.push(makeDraftRow());
+			}
+			return next;
+		});
+	};
+
+	const removeRow = (id: string) => {
+		setRows((prev) => {
+			const next = prev.filter((r) => r.id !== id);
+			if (next.length === 0 || next[next.length - 1].key !== "" || next[next.length - 1].value !== "") {
+				next.push(makeDraftRow());
+			}
+			return next;
+		});
+	};
+
+	const handleBlur = (id: string) => {
+		setRows((prev) => {
+			const row = prev.find((r) => r.id === id);
+			if (!row) return prev;
+			if (row.key !== "" || row.value !== "") return prev;
+			// Row is empty on blur — remove it unless it's the sole trailing draft.
+			if (prev.length === 1) return prev;
+			if (prev[prev.length - 1].id === id) return prev; // keep trailing draft
+			return prev.filter((r) => r.id !== id);
+		});
+	};
 
 	return (
-		<div class="flex gap-8 items-start w-full">
+		<div class={`flex gap-8 items-start w-full ${get(props.class) ?? ""}`}>
 			<InputLabel parentClass="flex-2 pt-2.5" label="Environment Variables" />
 
 			<div class="flex flex-col flex-10 gap-4 w-full">
-				<Index each={get(props.envList)}>
-					{(env) => (
-						<div class="flex items-center flex-10 gap-4">
-							<Input
-								disabled={true}
-								class="flex-4"
-								placeholder="Enter Env Name"
-								type={InputType.Text}
-								value={env().key}
-								onKeyDown={(e) => {
-									if (e.key === "Enter") e.preventDefault();
-								}}
-							/>
-							<Input
-								disabled={get(props.disabled)}
-								class="flex-7"
-								placeholder="Enter Env Value"
-								value={env().value ? parseEnvValue(env().value!) : ""}
-								type={InputType.Text}
-								onInput={(e) => {
-									props.onAdd(env().key, e.currentTarget.value);
-								}}
-								onKeyDown={(e) => {
-									if (e.key === "Enter") e.preventDefault();
-								}}
-							/>
+				<Index each={rows()}>
+					{(row) => {
+						const errs = () => rowError(row());
+						const keyErr = () => errs().key;
+						const valueErr = () => errs().value;
+						const isDraftTrailing = () =>
+							row().key === "" && row().value === "" && rows()[rows().length - 1]?.id === row().id;
 
-							<Show when={!get(props.disabled)}>
-								<Button
-									onClick={() => {
-										props.onDelete(env().key);
-									}}
-									variant={ButtonVariant.Outlined}
-									class="flex-1 h-full flex items-center gap-2"
-									color={Color.Error}
-								>
-									<FiTrash2 size={16} />
-								</Button>
-							</Show>
-						</div>
-					)}
+						return (
+							<div class="flex flex-col gap-1 w-full">
+								<div class="flex items-center flex-10 gap-4">
+									<Input
+										class={`flex-5 ${keyErr() ? "border-error!" : ""}`}
+										disabled={get(props.disabled)}
+										placeholder="Enter Env Name"
+										type={InputType.Text}
+										value={row().key}
+										onInput={(e) => updateRow(row().id, { key: e.currentTarget.value })}
+										onBlur={() => handleBlur(row().id)}
+										onKeyDown={(e) => {
+											if (e.key === "Enter") e.preventDefault();
+										}}
+									/>
+									<Input
+										class={`flex-7 ${valueErr() ? "border-error!" : ""}`}
+										disabled={get(props.disabled)}
+										placeholder="Enter Env Value"
+										type={InputType.Text}
+										value={row().value}
+										onInput={(e) => updateRow(row().id, { value: e.currentTarget.value })}
+										onBlur={() => handleBlur(row().id)}
+										onKeyDown={(e) => {
+											if (e.key === "Enter") e.preventDefault();
+										}}
+									/>
+
+									<Show
+										when={!get(props.disabled) && !isDraftTrailing()}
+										fallback={
+											<Button
+												type="button"
+												variant={ButtonVariant.Outlined}
+												class="flex-1 h-full flex items-center gap-2 invisible"
+												color={Color.Error}
+											>
+												<FiTrash2 size={16} />
+											</Button>
+										}
+									>
+										<Button
+											type="button"
+											onClick={() => removeRow(row().id)}
+											variant={ButtonVariant.Outlined}
+											class="flex-1 h-full flex items-center gap-2"
+											color={Color.Error}
+										>
+											<FiTrash2 size={16} />
+										</Button>
+									</Show>
+								</div>
+
+								<Show when={keyErr() || valueErr()}>
+									<div class="flex gap-4 pl-0 text-error text-sm">
+										<Show when={keyErr()}>
+											<span class="flex-5">{keyErr()}</span>
+										</Show>
+										<Show when={!keyErr()}>
+											<span class="flex-5" />
+										</Show>
+										<Show when={valueErr()}>
+											<span class="flex-7">{valueErr()}</span>
+										</Show>
+										<span class="flex-1" />
+									</div>
+								</Show>
+							</div>
+						);
+					}}
 				</Index>
-
-				<Show
-					when={!get(props.disabled)}
-					fallback={
-						<div class="flex items-center flex-10 gap-4">
-							<Input
-								class="flex-4"
-								disabled={true}
-								placeholder="Enter Env Name"
-								type={InputType.Text}
-								value={envName()}
-							/>
-							<Input
-								class="flex-7"
-								disabled={true}
-								placeholder="Enter Env Value"
-								type={InputType.Text}
-								value={envValue()}
-							/>
-							<Button
-								type="button"
-								variant={ButtonVariant.Contained}
-								disabled={true}
-								class="flex-1 h-full flex items-center gap-2"
-							>
-								<FiPlus size={16} />
-							</Button>
-						</div>
-					}
-				>
-					<div class="flex items-center flex-10 gap-4">
-						<Input
-							class="flex-4"
-							placeholder="Enter Env Name"
-							type={InputType.Text}
-							value={envName()}
-							onInput={(e) => {
-								setEnvName(e.currentTarget.value);
-							}}
-							onKeyDown={(e) => {
-								if (e.key === "Enter") {
-									e.preventDefault();
-									const envKey = envName();
-									const envVal = envValue();
-									if (!envKey || !envVal) {
-										toast("Both Env Name and Value are required", "error");
-										return;
-									}
-									props.onAdd(envKey, envVal);
-									setEnvName("");
-									setEnvValue("");
-								}
-							}}
-						/>
-						<Input
-							class="flex-7"
-							placeholder="Enter Env Value"
-							value={envValue()}
-							type={InputType.Text}
-							onInput={(e) => {
-								setEnvValue(e.currentTarget.value);
-							}}
-							onKeyDown={(e) => {
-								if (e.key === "Enter") {
-									e.preventDefault();
-									const envKey = envName();
-									const envVal = envValue();
-									if (!envKey || !envVal) {
-										toast("Both Env Name and Value are required", "error");
-										return;
-									}
-									props.onAdd(envKey, envVal);
-									setEnvName("");
-									setEnvValue("");
-								}
-							}}
-						/>
-
-						<Button
-							type="button"
-							variant={ButtonVariant.Contained}
-							class="flex-1 h-full flex items-center gap-2"
-							onClick={(e) => {
-								e.preventDefault();
-
-								const envKey = envName();
-								const envVal = envValue();
-
-								if (!envKey || !envVal) {
-									toast("Both Env Name and Value are required", "error");
-									return;
-								}
-
-								props.onAdd(envName(), envValue());
-								setEnvName("");
-								setEnvValue("");
-							}}
-						>
-							<FiPlus size={16} />
-						</Button>
-					</div>
-				</Show>
 			</div>
 		</div>
 	);

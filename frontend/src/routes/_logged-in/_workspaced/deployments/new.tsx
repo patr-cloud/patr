@@ -26,11 +26,11 @@ import {
 } from "~/bindings";
 import PortInput from "./-components/port";
 import { createFormAction } from "~/hooks";
-import { convertFileToBase64, Uuid } from "~/utils/func";
+import { Uuid } from "~/utils/func";
 import { useRunnersQuery, useContainerRegistriesQuery, useContainerTagsQuery } from "~/hooks/fetch";
 import { httpRequest } from "~/utils/http-request";
 import ProbeInput from "./-components/probe-input";
-import ConfigMount, { ConfigMountT } from "./-components/config-mount";
+import ConfigMount from "./-components/config-mount";
 import { useNavigate } from "@tanstack/solid-router";
 
 const PATR_REGISTRY = "registry.patr.cloud";
@@ -51,7 +51,7 @@ const CreateDeploymentPage = () => {
 	const [imageTag, setImageTag] = createSignal<string>("");
 	const [tagFilter, setTagFilter] = createSignal<string>("");
 	const [repositoryId, setRepositoryId] = createSignal<string>("");
-	const [configFiles, setConfigFiles] = createSignal<ConfigMountT>({});
+	const [configFiles, setConfigFiles] = createSignal<Record<string, Base64String>>({});
 	const [startupProbe, setStartupProbe] = createSignal<DeploymentProbe | undefined>(undefined);
 	const [minScale, setMinScale] = createSignal(1);
 	const [maxScale, setMaxScale] = createSignal(2);
@@ -59,11 +59,11 @@ const CreateDeploymentPage = () => {
 	const [deployOnPush, setDeployOnPush] = createSignal(false);
 
 	const [registry, setRegistry] = createSignal<string>("");
-	const [envList, setEnvList] = createSignal<{ key: string; value: EnvironmentVariableValue }[]>([]);
+	const [envVars, setEnvVars] = createSignal<Record<string, EnvironmentVariableValue>>({});
+	const [envValid, setEnvValid] = createSignal(true);
 
-	const [portList, setPortList] = createSignal<{
-		[key: string]: ExposedPortType;
-	}>({});
+	const [portList, setPortList] = createSignal<Record<string, ExposedPortType>>({});
+	const [portsValid, setPortsValid] = createSignal(true);
 
 	const isPatrRegistry = () => registry() === PATR_REGISTRY;
 
@@ -85,10 +85,9 @@ const CreateDeploymentPage = () => {
 		repositoriesQuery.data?.repositories.map((r) => ({ label: r.name, value: r.id })) ?? [];
 
 	const { onSubmit, isLoading } = createFormAction(async ({ workspaceId }) => {
-		let configMounts: Record<string, Base64String> = {};
-		for (const [key, file] of Object.entries(configFiles())) {
-			const byteArray = await convertFileToBase64(file);
-			configMounts[key] = byteArray;
+		if (!envValid() || !portsValid()) {
+			toast("Please fix the highlighted errors before submitting", "error");
+			return;
 		}
 
 		const commonFields = {
@@ -98,12 +97,12 @@ const CreateDeploymentPage = () => {
 			machineType: Uuid("b3cf3771-fa39-4281-bfdf-eb2e65a061b6"),
 			minHorizontalScale: minScale(),
 			maxHorizontalScale: maxScale(),
-			environmentVariables: Object.fromEntries(envList().map((env) => [env.key, env.value])),
+			environmentVariables: envVars(),
 			ports: portList(),
 			startupProbe: startupProbe(),
 			deployOnCreate: deployOnCreate(),
-			deployOnPush: isPatrRegistry() ? deployOnPush() : undefined,
-			configMounts,
+			deployOnPush: isPatrRegistry() ? deployOnPush() : false,
+			configMounts: configFiles(),
 		};
 
 		const requestBody = (
@@ -281,36 +280,16 @@ const CreateDeploymentPage = () => {
 							{/* Divider */}
 							<div class="border-t border-border-color mt-2" />
 
-							<EnvInput
-								envList={envList}
-								onAdd={(key, value) => {
-									setEnvList((prev) => [...prev, { key, value }]);
-								}}
-								onDelete={(key) => {
-									setEnvList((prev) => prev.filter((env) => env.key !== key));
-								}}
-							/>
+							<EnvInput value={envVars} onChange={setEnvVars} onValidityChange={setEnvValid} />
 
-							<PortInput
-								onAdd={(key, value) => {
-									setPortList((prev) => ({ ...prev, [key]: value }));
-								}}
-								onDelete={(key) => {
-									setPortList((prev) => {
-										const newPorts = { ...prev };
-										delete newPorts[key];
-										return newPorts;
-									});
-								}}
-								portList={portList}
-							/>
+							<PortInput value={portList} onChange={setPortList} onValidityChange={setPortsValid} />
 
 							<ProbeInput
 								probe={[startupProbe, setStartupProbe]}
 								ports={Object.keys(portList()).map((port) => parseInt(port))}
 							/>
 
-							<ConfigMount selectedFiles={configFiles} setSelectedFiles={setConfigFiles} />
+							<ConfigMount value={configFiles} onChange={setConfigFiles} />
 
 							{/* Divider */}
 							<div class="border-t border-border-color mt-2" />
@@ -345,6 +324,7 @@ const CreateDeploymentPage = () => {
 								loading={isLoading}
 								loadingContent={() => <span>Creating Deployment...</span>}
 								type="submit"
+								disabled={!envValid() || !portsValid()}
 								variant={ButtonVariant.Contained}
 							>
 								Create

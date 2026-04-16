@@ -72,7 +72,7 @@ const CopyableField = (rawProps: CopyableFieldProps) => {
 			<div
 				class={
 					props.variant === CopyableFieldVariant.Input
-						? `rounded-xs flex items-center border border-secondary-medium ${variantBgClass(get(props.styleVariant))} py-xs px-md min-w-0`
+						? `rounded-xs flex items-center gap-2 border border-secondary-medium ${variantBgClass(get(props.styleVariant))} py-xs px-md min-w-0`
 						: `flex items-center gap-0.5`
 				}
 			>
