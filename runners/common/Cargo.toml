@@ -28,7 +28,7 @@ fslock                         = { workspace = true, features = ["default"] }
 futures                        = { workspace = true }
 http                           = { workspace = true, features = ["default"] }
 inventory                      = { workspace = true, features = [] }
-jsonwebtoken                   = { workspace = true, features = ["default", "aws_lc_rs"] }
+jsonwebtoken                   = { workspace = true, features = ["aws_lc_rs", "default"] }
 macros                         = { workspace = true }
 models                         = { workspace = true }
 opentelemetry                  = { workspace = true, features = ["default"] }
@@ -36,15 +36,17 @@ opentelemetry-appender-tracing = { workspace = true, features = ["default"] }
 opentelemetry-otlp             = { workspace = true, features = ["default", "http-json", "reqwest-rustls-webpki-roots"] }
 opentelemetry_sdk              = { workspace = true, features = ["default", "rt-tokio"] }
 preprocess                     = { workspace = true, features = [] }
+ractor                         = { workspace = true, features = ["tokio_runtime"] }
+ractor_actors                  = { workspace = true, features = ["streams"] }
 rand                           = { workspace = true, features = ["default"] }
 reqwest                        = { workspace = true, features = ["json", "rustls", "stream"] }
 rust-embed                     = { workspace = true, features = ["interpolate-folder-path", "mime-guess"] }
 rustls                         = { workspace = true, features = ["ring"] }
 semver                         = { workspace = true, features = ["default"] }
 serde                          = { workspace = true, features = ["derive"] }
-serde_json                     = { workspace = true }
+serde_json                     = { workspace = true, features = [] }
 serde_qs                       = { workspace = true, features = [] }
-sqlx                           = { workspace = true, features = ["runtime-tokio-rustls", "sqlite", "sqlite-preupdate-hook", "time", "uuid"] }
+sqlx                           = { workspace = true, features = ["runtime-tokio-rustls", "sqlite", "time", "uuid"] }
 tempfile                       = { workspace = true, features = ["default"] }
 thiserror                      = { workspace = true, features = [] }
 time                           = { workspace = true, features = ["default", "serde-human-readable"] }

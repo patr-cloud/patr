@@ -4,6 +4,10 @@
 //! will need to make a runner. All it needs are the implementations of how the
 //! runner handles the resources (such as deployments, databases, etc).
 
+/// Actor definitions for the ractor-based actor framework. Contains all actor
+/// types (DeploymentActor, ResourceSupervisor, WebSocketActor,
+/// RunnerSupervisor) and their message enums.
+mod actors;
 /// This module contains the main application logic. Most of the app requests,
 /// states, and mounting of endpoints are done here
 mod app;
@@ -20,8 +24,6 @@ mod executor;
 /// Database migrations organized by version. Uses `inventory` for automatic
 /// registration and tracks individual migrations in a `migrations` table.
 mod migrations;
-/// The resource executor that will be used to manage the resources.
-mod resource_executor;
 /// All the Routes for the self-hosted Patr is defined here.
 mod routes;
 /// All the runner related structs and functions.
@@ -39,7 +41,7 @@ pub mod prelude {
 	pub use sqlx::{Row, query};
 
 	pub use crate::{
-		app::{AppRequest, AppState, ExecutorStatusUpdate},
+		app::{AppRequest, AppState},
 		error::RunnerError,
 		executor::RunnerExecutor,
 		runner::Runner,

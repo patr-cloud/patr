@@ -16,6 +16,12 @@ use crate::prelude::*;
 // Import version modules so their inventory::submit! calls are linked
 mod v0_18_0;
 
+/// The function signature for a migration: takes a mutable DB connection
+/// reference and returns a pinned, boxed future that resolves to a sqlx Result.
+type MigrateFn = for<'a> fn(
+	&'a mut DatabaseConnection,
+) -> Pin<Box<dyn Future<Output = Result<(), sqlx::Error>> + Send + 'a>>;
+
 /// A registered database migration.
 ///
 /// Each migration file submits one of these via `inventory::submit!`.
@@ -25,9 +31,7 @@ pub struct Migration {
 	/// The version this migration belongs to
 	pub version: Version,
 	/// The migration function
-	pub migrate: for<'a> fn(
-		&'a mut DatabaseConnection,
-	) -> Pin<Box<dyn Future<Output = Result<(), sqlx::Error>> + Send + 'a>>,
+	pub migrate: MigrateFn,
 }
 
 inventory::collect!(Migration);

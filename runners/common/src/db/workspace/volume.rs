@@ -12,7 +12,9 @@ pub async fn initialize_volume_tables(
 		CREATE TABLE deployment_volume(
 			id UUID NOT NULL PRIMARY KEY,
 			name TEXT NOT NULL UNIQUE,
-			volume_size INT NOT NULL CHECK(volume_size > 0),
+			volume_size INT NOT NULL
+				CONSTRAINT deployment_volume_chk_volume_size_positive
+					CHECK(volume_size > 0),
 			deleted DATETIME
 		);
 		"#,

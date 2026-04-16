@@ -1,44 +1,25 @@
-use std::{
-	collections::BTreeMap,
-	net::SocketAddr,
-	sync::{Arc, OnceLock},
-};
+use std::{net::SocketAddr, sync::OnceLock};
 
-use futures::{FutureExt, future};
 use opentelemetry_sdk::logs::SdkLoggerProvider;
+use ractor::Actor;
 use tokio::{
 	net::TcpListener,
-	sync::{Mutex, Notify, mpsc},
 	task,
 	time::{self, Duration},
 };
 use tokio_util::sync::CancellationToken;
 
-use crate::{db, prelude::*, resource_executor::ResourceExecutorTask};
+use crate::{
+	actors::runner_supervisor::{RunnerSupervisor, RunnerSupervisorArgs},
+	db,
+	prelude::*,
+};
 
 /// The global cancellation token that will be used to cancel the tasks
 /// when the runner is stopped. This token will be used to cancel all the
 /// tasks that are running in the runner.
 #[doc(hidden)]
 pub(super) static GLOBAL_CANCEL_TOKEN: OnceLock<CancellationToken> = OnceLock::new();
-
-/// The part of the runner that syncs the local database with the upstream APIs.
-///
-/// This is only used when the runner is running in managed mode. This connects
-/// to the server and listens for changes to the resources. When a change is
-/// detected, it updates the local database and notifies the resource monitor
-/// to reconcile the resources.
-mod database_sync;
-/// All deployment related functions for the runner
-mod deployment;
-/// The part of the runner that monitors resources.
-///
-/// The job of this is simple: Make sure that for every resource in the
-/// database, there is a task running. If the database updates, notify the task
-/// that something has changed. That's it. It's the task's job to update the
-/// resource. As long as it's running, we are happy. So NO updating the
-/// resource here whatsoever. All that happens in the executor task.
-mod monitor_resources;
 
 /// The runner is the main struct that is used to run the resources.
 ///
@@ -48,10 +29,12 @@ pub struct Runner<E>
 where
 	E: RunnerExecutor + Send + 'static,
 {
-	/// Runner task registry
-	registry: Mutex<BTreeMap<Uuid, ResourceExecutorTask<E>>>,
-	/// State and configuration for the runner
-	state: AppState<E>,
+	/// Database connection pool for SQLite access.
+	database: sqlx::Pool<DatabaseType>,
+	/// Runner configuration (settings, mode, bind address, etc.).
+	config: RunnerSettings<E::Settings>,
+	/// Executor-specific initialized state (e.g. Docker client).
+	runner_state: E::InitializedState,
 	/// OTLP logger provider for managed-mode log export (None in self-hosted)
 	logger_provider: Option<SdkLoggerProvider>,
 }
@@ -95,39 +78,24 @@ where
 
 		let runner_state = E::initialize(&config).await?;
 
-		// Create the channel for deployment status updates
-		let (task_status_sender, _) = mpsc::unbounded_channel();
-		let nginx_reload_notifier = Arc::new(Notify::new());
-
-		let state = AppState {
+		Ok(Self {
 			database,
 			config,
 			runner_state,
-			task_status_sender,
-			nginx_reload_notifier,
-		};
-
-		Ok(Self {
-			registry: Mutex::new(BTreeMap::new()),
-			state,
 			logger_provider,
 		})
 	}
 
-	/// Run the runner. This function will start the runner and run the server
-	/// and the resource reconciliation. It will return a result with the error
-	/// if the runner fails to start. The runner will run until the exit signal
-	/// is received.
+	/// Run the runner. This function will start the actor tree, HTTP server,
+	/// and block until the exit signal is received.
 	#[instrument(skip(self))]
 	pub async fn run(mut self) -> Result<!, RunnerError> {
-		debug!("Attempting to listen on {}", self.state.config.bind_address);
-		let tcp_listener = TcpListener::bind(self.state.config.bind_address)
+		debug!("Attempting to listen on {}", self.config.bind_address);
+		let tcp_listener = TcpListener::bind(self.config.bind_address)
 			.await
 			.map_err(RunnerError::ServerSetupError)?;
 
-		let (sender, receiver) = mpsc::unbounded_channel();
-		self.state.task_status_sender = sender;
-
+		// Spawn the exit signal handler
 		task::spawn(async move {
 			info!("Listening for exit signal");
 			exit_signal().await;
@@ -145,42 +113,30 @@ where
 			std::process::exit(1);
 		});
 
-		let (server_setup, sync_database, resource_monitor) = future::join3(
-			self.run_server(tcp_listener).inspect(|_| {
-				debug!("Server has shut down");
-			}),
-			self.sync_local_database(receiver).inspect(|_| {
-				debug!("Database sync has stopped");
-			}),
-			self.monitor_resources().inspect(|_| {
-				debug!("Resource monitor has stopped");
-			}),
+		// Start the actor tree. The RunnerSupervisor spawns and supervises
+		// the ResourceSupervisor and WebSocketActor as children. HTTP routes
+		// send messages to the RunnerSupervisor, which forwards them.
+		let (root_ref, root_handle) = RunnerSupervisor::<E>::spawn(
+			Some("runner-supervisor".to_string()),
+			RunnerSupervisor::new(),
+			RunnerSupervisorArgs {
+				config: self.config.clone(),
+				database: self.database.clone(),
+				runner_state: self.runner_state.clone(),
+			},
 		)
-		.await;
+		.await
+		.map_err(RunnerError::host)?;
 
-		server_setup?;
+		// Build AppState for the HTTP server
+		let state = AppState::<E> {
+			database: self.database.clone(),
+			config: self.config.clone(),
+			runner_state: self.runner_state.clone(),
+			supervisor_ref: root_ref.clone(),
+		};
 
-		info!("Runner stopped. Waiting for server to exit...");
-
-		for (_, task) in self.registry.into_inner() {
-			_ = task.stop().await;
-		}
-
-		// Flush OTLP logs before exiting
-		if let Some(provider) = self.logger_provider.take() {
-			crate::utils::observability::flush_observability(provider);
-		}
-
-		info!("Server exited. Exiting runner");
-		sync_database.or(resource_monitor)
-	}
-
-	/// Run the server. This function will start the server and listen for
-	/// incoming HTTP connections. It will return a result with the error if the
-	/// server fails to start. The server will run until the exit signal is
-	/// received.
-	#[instrument(skip(self))]
-	async fn run_server(&self, tcp_listener: TcpListener) -> Result<(), RunnerError> {
+		// Run the HTTP server
 		info!(
 			"Listening for connections on http://{}",
 			tcp_listener
@@ -190,7 +146,7 @@ where
 
 		axum::serve(
 			tcp_listener,
-			crate::routes::setup_routes(&self.state)
+			crate::routes::setup_routes(&state)
 				.await
 				.into_make_service_with_connect_info::<SocketAddr>(),
 		)
@@ -200,7 +156,23 @@ where
 				.cancelled(),
 		)
 		.await
-		.map_err(RunnerError::ServerSetupError)
+		.map_err(RunnerError::ServerSetupError)?;
+
+		info!("HTTP server stopped");
+
+		// Stop the actor tree — RunnerSupervisor stops its children.
+		root_ref.stop(Some("runner shutting down".to_string()));
+		root_handle.await.map_err(RunnerError::host)?;
+
+		// Flush OTLP logs before exiting
+		if let Some(provider) = self.logger_provider.take() {
+			crate::utils::observability::flush_observability(provider);
+		}
+
+		info!("Runner exited");
+		// The server has stopped, so we need to exit. This is a divergent
+		// function (returns !) so we need to loop or exit.
+		std::process::exit(0);
 	}
 }
 

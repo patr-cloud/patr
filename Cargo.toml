@@ -91,6 +91,8 @@ prost                          = { default-features = false, version = "0.14" }
 prost-types                    = { default-features = false, version = "0.14" }
 psl                            = { default-features = false, version = "2" }
 quote                          = { default-features = false, version = "1" }
+ractor                         = { default-features = false, version = "0.15" }
+ractor_actors                  = { default-features = false, version = "0.5" }
 rand                           = { default-features = false, version = "0.10" }
 regex                          = { default-features = false, version = "1" }
 reqwest                        = { default-features = false, version = "0.13" }
