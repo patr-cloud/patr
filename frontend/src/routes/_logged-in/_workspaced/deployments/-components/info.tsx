@@ -1,6 +1,6 @@
 import { FiChevronDown } from "solid-icons/fi";
 import { createEffect, createSignal, Show } from "solid-js";
-import { GetDeploymentInfoResponse, UpdateDeploymentResponse } from "~/bindings";
+import { ExposedPortType, GetDeploymentInfoResponse, UpdateDeploymentResponse } from "~/bindings";
 import {
 	Button,
 	CopyableField,
@@ -23,6 +23,7 @@ import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 import EnvInput from "./env-input";
 import PortInput from "./port";
+import ConfigMount from "./config-mount";
 
 interface DeploymentInfoProps {
 	deploymentId: string;
@@ -52,6 +53,9 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 
 	const [_, setHasUpdated] = createSignal(false);
 	const [isUpdating, setIsUpdating] = createSignal(false);
+	const [envValid, setEnvValid] = createSignal(true);
+	const [portsValid, setPortsValid] = createSignal(true);
+	const [configMountsValid, setConfigMountsValid] = createSignal(true);
 
 	type DeployInfo = GetDeploymentInfoResponse | undefined;
 	const updateLocal = (fn: (prev: DeployInfo) => DeployInfo) => {
@@ -77,6 +81,14 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 		const auth = authState();
 		if (!auth || auth.type !== "LoggedIn") {
 			toast("User not logged in", "error");
+			return;
+		}
+
+		// The Update button is disabled when env/ports are invalid, but form
+		// submission can still be triggered via Enter on another input or
+		// programmatically. Block invalid payloads defensively.
+		if (!envValid() || !portsValid() || !configMountsValid()) {
+			toast("Please fix the highlighted errors before saving", "error");
 			return;
 		}
 
@@ -126,7 +138,12 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 			<div class="flex flex-col gap-4 items-start w-full">
 				<div class="flex gap-8 items-start w-full">
 					<InputLabel parentClass="flex-2 pt-2.5" for="deployment-id" label="ID" />
-					<CopyableField value={localInfo()?.id ?? ""} variant={CopyableFieldVariant.Input} class="flex-10" />
+					<CopyableField
+						value={localInfo()?.id ?? ""}
+						variant={CopyableFieldVariant.Input}
+						buttonPosition="start"
+						class="flex-10"
+					/>
 				</div>
 
 				<div class="flex gap-8 items-start w-full">
@@ -158,6 +175,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 							<CopyableField
 								value={localInfo()!.currentLiveDigest!}
 								variant={CopyableFieldVariant.Input}
+								buttonPosition="start"
 								class="font-log"
 							/>
 						</Show>
@@ -273,51 +291,45 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 
 				<EnvInput
 					disabled={() => !deploymentPermissions().edit}
-					envList={Object.entries(localInfo()?.environmentVariables || {}).map(([key, value]) => ({
-						key,
-						value,
-					}))}
-					onAdd={(key, value) => {
-						updateLocal((prev) =>
-							prev
-								? { ...prev, environmentVariables: { ...prev.environmentVariables, [key]: value } }
-								: undefined
-						);
-					}}
-					onDelete={(key) => {
-						updateLocal((prev) => {
-							if (!prev) return undefined;
-							const newEnv = { ...prev.environmentVariables };
-							delete newEnv[key];
-							return { ...prev, environmentVariables: newEnv };
-						});
-					}}
+					value={() => deploymentQuery.data?.environmentVariables ?? {}}
+					onChange={(next) =>
+						updateLocal((prev) => (prev ? { ...prev, environmentVariables: next } : undefined))
+					}
+					onValidityChange={setEnvValid}
 				/>
 
 				<PortInput
 					disabled={() => !deploymentPermissions().edit}
-					portList={localInfo()?.ports || {}}
+					value={() => (deploymentQuery.data?.ports ?? {}) as Record<string, ExposedPortType>}
 					deploymentId={localInfo()?.id}
-					onAdd={(key, value) => {
-						updateLocal((prev) =>
-							prev ? { ...prev, ports: { ...prev.ports, [Number(key)]: value } } : undefined
-						);
+					onChange={(next) => {
+						const numericPorts: Record<number, ExposedPortType> = {};
+						for (const [k, v] of Object.entries(next)) {
+							numericPorts[Number(k)] = v;
+						}
+						updateLocal((prev) => (prev ? { ...prev, ports: numericPorts } : undefined));
 					}}
-					onDelete={(key) => {
-						updateLocal((prev) => {
-							if (!prev) return undefined;
-							const newPorts = { ...prev.ports };
-							delete newPorts[Number(key)];
-							return { ...prev, ports: newPorts };
-						});
-					}}
+					onValidityChange={setPortsValid}
+				/>
+
+				<ConfigMount
+					disabled={() => !deploymentPermissions().edit}
+					value={() => deploymentQuery.data?.configMounts ?? {}}
+					onChange={(next) => updateLocal((prev) => (prev ? { ...prev, configMounts: next } : undefined))}
+					onValidityChange={setConfigMountsValid}
 				/>
 			</div>
 
 			<Show when={deploymentPermissions().edit}>
 				<div class="w-full flex justify-end items-center">
 					<Button
-						disabled={!deploymentPermissions().edit || isUpdating()}
+						disabled={
+							!deploymentPermissions().edit ||
+							isUpdating() ||
+							!envValid() ||
+							!portsValid() ||
+							!configMountsValid()
+						}
 						loading={isUpdating()}
 						loadingContent={() => <span>Updating...</span>}
 						type="submit"

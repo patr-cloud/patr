@@ -1,165 +1,264 @@
 import { FiPlus, FiTrash } from "solid-icons/fi";
-import { createSignal, For, Setter } from "solid-js";
-import { Button, ButtonVariant, FileInput, Input, InputType, InputLabel } from "~/components";
+import { createEffect, createMemo, createSignal, createUniqueId, Index, Show } from "solid-js";
+import { Base64String } from "~/bindings";
+import { Button, ButtonVariant, FileInput, Input, InputLabel, InputType } from "~/components";
 import { Color } from "~/utils/color";
-import { get } from "~/utils/func";
+import { convertFileToBase64, get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
 const MAX_SIZE_BYTES = 1 * 1024 * 1024; // 1 MB
 
-export interface ConfigMountT {
-	[key: string]: File;
+interface ConfigMountProps {
+	/** Current config mounts: path → base64-encoded file contents. */
+	value: MaybeAccessor<Record<string, Base64String>>;
+	/** Fires when the committed map changes. */
+	onChange: (next: Record<string, Base64String>) => void;
+	/** Fires whenever the validity of the rows changes. Parents gate submit on this. */
+	onValidityChange?: (valid: boolean) => void;
+	/** Disables all inputs. */
+	disabled?: MaybeAccessor<boolean>;
 }
 
-interface ConfigMountProps {
-	/** The current value */
-	selectedFiles: MaybeAccessor<ConfigMountT>;
-	setSelectedFiles: Setter<ConfigMountT>;
-}
+type Row = { id: string; path: string; content: Base64String; fileLabel: string };
 
 const ConfigMount = (props: ConfigMountProps) => {
-	const [newFileName, setNewFileName] = createSignal<string>("");
-	const [newFileContent, setNewFileContent] = createSignal<File | null>(null);
+	const [rows, setRows] = createSignal<Row[]>([]);
+	const [draftPath, setDraftPath] = createSignal<string>("");
+	const [draftContent, setDraftContent] = createSignal<Base64String | null>(null);
+	const [draftFileLabel, setDraftFileLabel] = createSignal<string>("");
 	const [error, setError] = createSignal<string | null>(null);
 
-	const handleChange = (e: Event & { currentTarget: HTMLInputElement }) => {
-		// Handle file input change
-		const files = e.currentTarget.files;
-
-		if (files && files.length > 0) {
-			const file = files[0];
-
-			if (file && file.size <= MAX_SIZE_BYTES) setNewFileContent(file);
-
-			if (newFileName() && newFileContent()) {
-				addConfig();
-			}
+	const committedMap = (): Record<string, Base64String> => {
+		const out: Record<string, Base64String> = {};
+		const counts = new Map<string, number>();
+		for (const row of rows()) {
+			if (row.path === "") continue;
+			counts.set(row.path, (counts.get(row.path) ?? 0) + 1);
 		}
+		for (const row of rows()) {
+			if (row.path === "") continue;
+			if ((counts.get(row.path) ?? 0) > 1) continue;
+			out[row.path] = row.content;
+		}
+		return out;
 	};
 
-	const addConfig = () => {
-		const fileContent = newFileContent();
-		const fileName = newFileName().trim();
-
-		if (!fileContent || !fileName) {
-			setError("Please provide both a file name and select a file.");
-			return;
+	// Seed from props.value on mount and whenever the incoming map *itself*
+	// changes (e.g. the parent refetches after a save). This effect must not
+	// read our own committed state — doing so would make it re-run on every
+	// keystroke and clobber the user's edits.
+	let lastSeeded: Record<string, Base64String> | null = null;
+	createEffect(() => {
+		const incoming = get(props.value) ?? {};
+		if (lastSeeded !== null) {
+			const incomingKeys = Object.keys(incoming);
+			const same =
+				incomingKeys.length === Object.keys(lastSeeded).length &&
+				incomingKeys.every((k) => incoming[k] === lastSeeded![k]);
+			if (same) return;
 		}
+		lastSeeded = { ...incoming };
+		setRows(
+			Object.entries(incoming).map(([path, content]) => ({
+				id: createUniqueId(),
+				path,
+				content,
+				fileLabel: "",
+			}))
+		);
+	});
 
-		if (fileContent.size > MAX_SIZE_BYTES) {
+	const pathCounts = createMemo(() => {
+		const counts = new Map<string, number>();
+		for (const row of rows()) {
+			if (row.path === "") continue;
+			counts.set(row.path, (counts.get(row.path) ?? 0) + 1);
+		}
+		return counts;
+	});
+
+	const rowError = (row: Row): string | undefined => {
+		if (row.path === "") return "Path required";
+		if ((pathCounts().get(row.path) ?? 0) > 1) return "Duplicate path";
+		return undefined;
+	};
+
+	const hasAnyError = createMemo(() => rows().some((r) => rowError(r) !== undefined));
+
+	// Emit committed map + validity whenever rows change.
+	createEffect(() => {
+		props.onChange(committedMap());
+		props.onValidityChange?.(!hasAnyError());
+	});
+
+	const handleDraftFileChange = async (e: Event & { currentTarget: HTMLInputElement }) => {
+		const file = e.currentTarget.files?.[0];
+		if (!file) return;
+		if (file.size > MAX_SIZE_BYTES) {
 			setError("File size exceeds the maximum limit of 1 MB.");
 			return;
 		}
+		setError(null);
+		const b64 = await convertFileToBase64(file);
+		setDraftContent(b64);
+		setDraftFileLabel(file.name);
+	};
 
-		props.setSelectedFiles({
-			...get(props.selectedFiles),
-			[fileName]: fileContent,
-		});
+	const addDraft = () => {
+		const path = draftPath().trim();
+		const content = draftContent();
+		if (!path || !content) {
+			setError("Please provide both a file path and a file.");
+			return;
+		}
+		if (pathCounts().get(path) ?? 0) {
+			setError(`A mount with path "${path}" already exists.`);
+			return;
+		}
+		setRows((prev) => [...prev, { id: createUniqueId(), path, content, fileLabel: draftFileLabel() }]);
+		setDraftPath("");
+		setDraftContent(null);
+		setDraftFileLabel("");
+		setError(null);
+	};
 
-		setNewFileName("");
-		setNewFileContent(null);
+	const updateRowPath = (id: string, path: string) => {
+		setRows((prev) => prev.map((r) => (r.id === id ? { ...r, path } : r)));
+	};
+
+	const replaceRowFile = async (id: string, e: Event & { currentTarget: HTMLInputElement }) => {
+		const file = e.currentTarget.files?.[0];
+		if (!file) return;
+		if (file.size > MAX_SIZE_BYTES) {
+			setError("File size exceeds the maximum limit of 1 MB.");
+			return;
+		}
+		setError(null);
+		const b64 = await convertFileToBase64(file);
+		setRows((prev) => prev.map((r) => (r.id === id ? { ...r, content: b64, fileLabel: file.name } : r)));
+	};
+
+	const removeRow = (id: string) => {
+		setRows((prev) => prev.filter((r) => r.id !== id));
 	};
 
 	return (
 		<div class="flex flex-col gap-0 w-full">
-			<div class="flex gap-8 items-center w-full">
-				<InputLabel parentClass="flex-2" label="Config File" />
-				<section class="flex-10 flex items-center gap-3 w-full">
-					<Input
-						type={InputType.Text}
-						onInput={(e) => setNewFileName(e.currentTarget.value)}
-						onKeyDown={(e) => {
-							if (e.key === "Enter") {
-								e.preventDefault();
-								addConfig();
-							}
-						}}
-						class="flex-6"
-						id="deployment-config-filename"
-						name="deployment-config-filename"
-						placeholder="No file selected"
-						value={newFileName()}
-					/>
-					<FileInput
-						id="deployment-config"
-						name="deployment-config"
-						onChange={handleChange}
-						class="flex-5 file:bg-red-500"
-						placeholder="Select Config File"
-					/>
-
-					<Button
-						type="button"
-						variant={ButtonVariant.Contained}
-						class="flex-1"
-						onClick={(e) => {
-							e.preventDefault();
-							addConfig();
-						}}
-					>
-						<FiPlus size={16} />
-					</Button>
-				</section>
-			</div>
-
-			{error() ? <p class="text-sm text-error mt-1 ml-20">{error()}</p> : <></>}
-
-			<For each={Object.entries(get(props.selectedFiles))}>
-				{([fileName, file]) => (
-					<div class="flex gap-8 items-center w-full mt-3">
-						<div class="flex-2" />
-						<section class="flex-10 flex items-center gap-3 w-full">
-							<Input
-								type={InputType.Text}
-								onInput={(e) => {
-									const newFileName = e.currentTarget.value;
-
-									const currentFiles = get(props.selectedFiles);
-									const newFiles = { ...currentFiles };
-
-									// Remove old key and add new key
-									delete newFiles[fileName];
-									newFiles[newFileName] = file;
-
-									props.setSelectedFiles(newFiles);
-								}}
-								class="flex-6"
-								name="deployment-config-filename"
-								placeholder="No file selected"
-								value={fileName}
-							/>
-							<Input
-								type={InputType.Text}
-								value={file.name}
-								class="flex-5"
-								name="deployment-config"
-								placeholder="Select Config File"
-								disabled
-							/>
-
-							<Button
-								type="button"
-								variant={ButtonVariant.Contained}
-								color={Color.Error}
-								class="flex-1"
-								onClick={(e) => {
+			<Show when={!get(props.disabled)}>
+				<div class="flex gap-8 items-center w-full">
+					<InputLabel parentClass="flex-2" label="Config File" />
+					<section class="flex-10 flex items-center gap-4 w-full">
+						<Input
+							type={InputType.Text}
+							value={draftPath()}
+							onInput={(e) => setDraftPath(e.currentTarget.value)}
+							onKeyDown={(e) => {
+								if (e.key === "Enter") {
 									e.preventDefault();
+									addDraft();
+								}
+							}}
+							class="flex-5"
+							id="deployment-config-filename"
+							name="deployment-config-filename"
+							placeholder="Mount path (e.g. /etc/my.conf)"
+						/>
+						<FileInput
+							id="deployment-config"
+							name="deployment-config"
+							onChange={handleDraftFileChange}
+							class="flex-7"
+							placeholder={draftFileLabel() || "Select Config File"}
+						/>
 
-									const currentFiles = get(props.selectedFiles);
-									const newFiles = { ...currentFiles };
+						<Button
+							type="button"
+							variant={ButtonVariant.Contained}
+							class="flex-1"
+							onClick={(e) => {
+								e.preventDefault();
+								addDraft();
+							}}
+						>
+							<FiPlus size={16} />
+						</Button>
+					</section>
+				</div>
 
-									// Remove the selected file
-									delete newFiles[fileName];
+				<Show when={error()}>
+					<p class="text-sm text-error mt-1 ml-20">{error()}</p>
+				</Show>
+			</Show>
 
-									props.setSelectedFiles(newFiles);
-								}}
-							>
-								<FiTrash size={16} />
-							</Button>
-						</section>
-					</div>
-				)}
-			</For>
+			<Show when={get(props.disabled) && rows().length > 0}>
+				<div class="flex gap-8 items-center w-full">
+					<InputLabel parentClass="flex-2" label="Config File" />
+					<div class="flex-10" />
+				</div>
+			</Show>
+
+			<Index each={rows()}>
+				{(row) => {
+					const err = () => rowError(row());
+					return (
+						<div class="flex flex-col gap-1 w-full mt-3">
+							<div class="flex gap-8 items-center w-full">
+								<div class="flex-2" />
+								<section class="flex-10 flex items-center gap-4 w-full">
+									<Input
+										class={`flex-5 ${err() ? "border-error!" : ""}`}
+										disabled={get(props.disabled)}
+										type={InputType.Text}
+										name="deployment-config-filename"
+										placeholder="Mount path"
+										value={row().path}
+										onInput={(e) => updateRowPath(row().id, e.currentTarget.value)}
+									/>
+									<Show
+										when={!get(props.disabled)}
+										fallback={
+											<Input
+												type={InputType.Text}
+												value={row().fileLabel || "File uploaded"}
+												class="flex-7"
+												disabled
+											/>
+										}
+									>
+										<FileInput
+											name="deployment-config"
+											onChange={(e) => replaceRowFile(row().id, e)}
+											class="flex-7"
+											placeholder={row().fileLabel || "Replace file"}
+										/>
+									</Show>
+
+									<Show when={!get(props.disabled)} fallback={<div class="flex-1" />}>
+										<Button
+											type="button"
+											variant={ButtonVariant.Contained}
+											color={Color.Error}
+											class="flex-1"
+											onClick={(e) => {
+												e.preventDefault();
+												removeRow(row().id);
+											}}
+										>
+											<FiTrash size={16} />
+										</Button>
+									</Show>
+								</section>
+							</div>
+							<Show when={err()}>
+								<div class="flex gap-8 w-full">
+									<div class="flex-2" />
+									<div class="flex-10 text-error text-sm">{err()}</div>
+								</div>
+							</Show>
+						</div>
+					);
+				}}
+			</Index>
 		</div>
 	);
 };

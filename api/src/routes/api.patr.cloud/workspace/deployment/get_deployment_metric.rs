@@ -161,37 +161,46 @@ pub async fn get_deployment_metric(
 			d, step, d, step
 		),
 		DeploymentMetricName::ContainerCpuUsage => format!(
-			"rate(patr_container_cpu_usage_seconds_total{{{}}}[{}]) * 100",
+			"sum by (deployment_id) (rate(patr_container_cpu_usage_seconds_total{{{}}}[{}])) * 100",
 			d, step
 		),
 		DeploymentMetricName::ContainerCpuThrottling => format!(
-			"rate(patr_container_cpu_throttled_seconds_total{{{}}}[{}])",
+			"sum by (deployment_id) (rate(patr_container_cpu_throttled_seconds_total{{{}}}[{}]))",
 			d, step
 		),
 		DeploymentMetricName::ContainerMemoryUsed => {
-			format!("patr_container_memory_used_bytes{{{}}}", d)
+			format!(
+				"sum by (deployment_id) (patr_container_memory_used_bytes{{{}}})",
+				d
+			)
 		}
 		DeploymentMetricName::ContainerMemoryLimit => {
-			format!("patr_container_memory_limit_bytes{{{}}}", d)
+			format!(
+				"sum by (deployment_id) (patr_container_memory_limit_bytes{{{}}})",
+				d
+			)
 		}
 		DeploymentMetricName::ContainerNetworkRx => format!(
-			"rate(patr_container_network_rx_bytes_total{{{}}}[{}])",
+			"sum by (deployment_id) (rate(patr_container_network_rx_bytes_total{{{}}}[{}]))",
 			d, step
 		),
 		DeploymentMetricName::ContainerNetworkTx => format!(
-			"rate(patr_container_network_tx_bytes_total{{{}}}[{}])",
+			"sum by (deployment_id) (rate(patr_container_network_tx_bytes_total{{{}}}[{}]))",
 			d, step
 		),
 		DeploymentMetricName::ContainerDiskRead => format!(
-			"rate(patr_container_disk_read_bytes_total{{{}}}[{}])",
+			"sum by (deployment_id) (rate(patr_container_disk_read_bytes_total{{{}}}[{}]))",
 			d, step
 		),
 		DeploymentMetricName::ContainerDiskWrite => format!(
-			"rate(patr_container_disk_write_bytes_total{{{}}}[{}])",
+			"sum by (deployment_id) (rate(patr_container_disk_write_bytes_total{{{}}}[{}]))",
 			d, step
 		),
 		DeploymentMetricName::ContainerOomKills => {
-			format!("patr_container_oom_kills_total{{{}}}", d)
+			format!(
+				"sum by (deployment_id) (patr_container_oom_kills_total{{{}}})",
+				d
+			)
 		}
 	};
 

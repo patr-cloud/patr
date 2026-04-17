@@ -102,6 +102,8 @@ pub async fn update_alloy_service(
 						read_only: Some(true),
 						..Default::default()
 					},
+					// node_exporter reads these host paths (matches the
+					// rootfs_path / procfs_path / sysfs_path options below).
 					Mount {
 						target: Some(String::from("/host/proc")),
 						source: Some(String::from("/proc")),
@@ -118,6 +120,22 @@ pub async fn update_alloy_service(
 					},
 					Mount {
 						target: Some(String::from("/host/root")),
+						source: Some(String::from("/")),
+						typ: Some(MountTypeEnum::BIND),
+						read_only: Some(true),
+						..Default::default()
+					},
+					// cAdvisor has no path-override options; it expects the
+					// host cgroup hierarchy and rootfs at standard locations.
+					Mount {
+						target: Some(String::from("/sys")),
+						source: Some(String::from("/sys")),
+						typ: Some(MountTypeEnum::BIND),
+						read_only: Some(true),
+						..Default::default()
+					},
+					Mount {
+						target: Some(String::from("/rootfs")),
 						source: Some(String::from("/")),
 						typ: Some(MountTypeEnum::BIND),
 						read_only: Some(true),
@@ -348,11 +366,22 @@ prometheus.relabel "containers" {{
     replacement  = "deployment"
   }}
 
+  // Drop orphan cgroup series (root cgroup, Alloy itself, non-Patr
+  // containers) that don't belong to a Patr deployment.
+  rule {{
+    source_labels = ["container_label_patr_deploymentId"]
+    regex         = ".+"
+    action        = "keep"
+  }}
   rule {{
     source_labels = ["__name__"]
     regex         = "patr_.*"
     action        = "keep"
   }}
+
+  // `job` is a constant ("integrations/cadvisor") and `id` is just the
+  // cgroup path, redundant with deployment_id once the keep above passes.
+  rule {{ action = "labeldrop", regex = "job|id" }}
 }}
 
 prometheus.scrape "ingress" {{
@@ -428,11 +457,19 @@ prometheus.relabel "ingress" {{
     replacement  = "deployment"
   }}
 
+  // Only keep ingress series whose host header parsed to a deployment_id.
+  rule {{
+    source_labels = ["deployment_id"]
+    regex         = ".+"
+    action        = "keep"
+  }}
   rule {{
     source_labels = ["__name__"]
     regex         = "patr_.*"
     action        = "keep"
   }}
+
+  rule {{ action = "labeldrop", regex = "job" }}
 }}
 
 prometheus.remote_write "mimir" {{

@@ -134,6 +134,8 @@ interface InputProps {
 	onChange?: (e: Event & { currentTarget: HTMLInputElement }) => void;
 	/** On KeyDown Handler */
 	onKeyDown?: (e: KeyboardEvent & { currentTarget: HTMLInputElement }) => void;
+	/** On Blur Handler */
+	onBlur?: (e: FocusEvent & { currentTarget: HTMLInputElement }) => void;
 	/** On Paste Handler */
 	onPaste?: (e: ClipboardEvent & { currentTarget: HTMLInputElement }) => void;
 	/** Whether the input is disabled or not */
@@ -353,6 +355,7 @@ const Input = (rawProps: InputProps) => {
 					}
 					props.onKeyDown?.(e);
 				}}
+				onBlur={(e) => props.onBlur?.(e)}
 				onFocus={() => {
 					if (hasSuggestions()) {
 						setInputText("");

@@ -91,6 +91,24 @@ pub async fn delete_deployment(
 	.execute(&mut **database)
 	.await?;
 
+	// Break the FK cycle between deployment.current_live_digest and
+	// deployment_deploy_history before deleting history rows — both FKs
+	// are non-deferrable, so SET CONSTRAINTS ALL DEFERRED below is a no-op
+	// for them.
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			current_live_digest = NULL
+		WHERE
+			id = $1;
+		"#,
+		deployment_id as _
+	)
+	.execute(&mut **database)
+	.await?;
+
 	query!(
 		r#"
 		DELETE FROM
