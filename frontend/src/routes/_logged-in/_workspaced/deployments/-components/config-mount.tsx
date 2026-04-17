@@ -77,6 +77,12 @@ const ConfigMount = (props: ConfigMountProps) => {
 		return counts;
 	});
 
+	const rowError = (row: Row): string | undefined => {
+		if (row.path === "") return "Path required";
+		if ((pathCounts().get(row.path) ?? 0) > 1) return "Duplicate path";
+		return undefined;
+	};
+
 	const hasAnyError = createMemo(() => rows().some((r) => rowError(r) !== undefined));
 
 	// Emit committed map + validity whenever rows change.
@@ -84,12 +90,6 @@ const ConfigMount = (props: ConfigMountProps) => {
 		props.onChange(committedMap());
 		props.onValidityChange?.(!hasAnyError());
 	});
-
-	const rowError = (row: Row): string | undefined => {
-		if (row.path === "") return "Path required";
-		if ((pathCounts().get(row.path) ?? 0) > 1) return "Duplicate path";
-		return undefined;
-	};
 
 	const handleDraftFileChange = async (e: Event & { currentTarget: HTMLInputElement }) => {
 		const file = e.currentTarget.files?.[0];
