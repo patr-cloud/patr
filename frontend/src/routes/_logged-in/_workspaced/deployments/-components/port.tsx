@@ -189,6 +189,7 @@ const PortInput = (props: PortInputProps) => {
 												class="flex-9 flex items-center justify-center gap-2 rounded-xs bg-secondary-light border border-secondary-medium py-xs text-primary"
 												href={`https://${row().port}-${props.deploymentId}.onpatr.cloud`}
 												target="_blank"
+												rel="noopener noreferrer"
 											>
 												<FiExternalLink size={16} />
 												Visit URL
