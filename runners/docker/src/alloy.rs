@@ -381,7 +381,10 @@ prometheus.relabel "containers" {{
 
   // `job` is a constant ("integrations/cadvisor") and `id` is just the
   // cgroup path, redundant with deployment_id once the keep above passes.
-  rule {{ action = "labeldrop", regex = "job|id" }}
+  rule {{
+    action = "labeldrop"
+    regex  = "job|id"
+  }}
 }}
 
 prometheus.scrape "ingress" {{
@@ -469,7 +472,10 @@ prometheus.relabel "ingress" {{
     action        = "keep"
   }}
 
-  rule {{ action = "labeldrop", regex = "job" }}
+  rule {{
+    action = "labeldrop"
+    regex  = "job"
+  }}
 }}
 
 prometheus.remote_write "mimir" {{
