@@ -29,18 +29,21 @@ const makeDraftRow = (): Row => ({ id: createUniqueId(), key: "", value: "" });
 const EnvInput = (props: EnvInputProps) => {
 	const [rows, setRows] = createSignal<Row[]>([makeDraftRow()]);
 
-	// Seed from parent value on first render and whenever the parent resets the
-	// map to something we don't already reflect (e.g. initial load on the edit
-	// page). We compare by value to avoid clobbering in-progress edits — our
-	// own onChange callbacks cause the parent's map to match what we already
-	// have, so the early-return below fires and we leave `rows` untouched.
+	// Seed from props.value on mount and whenever the incoming map *itself*
+	// changes (e.g. the parent refetches after a save). This effect must not
+	// read our own committed state — doing so would make it re-run on every
+	// keystroke and clobber the user's edits.
+	let lastSeeded: Record<string, EnvironmentVariableValue> | null = null;
 	createEffect(() => {
 		const incoming = get(props.value) ?? {};
-		const currentCommitted = committedMap();
-		const sameKeys =
-			Object.keys(incoming).length === Object.keys(currentCommitted).length &&
-			Object.keys(incoming).every((k) => parseEnvValue(incoming[k]) === parseEnvValue(currentCommitted[k] ?? ""));
-		if (sameKeys) return;
+		if (lastSeeded !== null) {
+			const incomingKeys = Object.keys(incoming);
+			const same =
+				incomingKeys.length === Object.keys(lastSeeded).length &&
+				incomingKeys.every((k) => parseEnvValue(incoming[k]) === parseEnvValue(lastSeeded![k]));
+			if (same) return;
+		}
+		lastSeeded = { ...incoming };
 		const seeded = Object.entries(incoming).map(([key, value]) => ({
 			id: createUniqueId(),
 			key,

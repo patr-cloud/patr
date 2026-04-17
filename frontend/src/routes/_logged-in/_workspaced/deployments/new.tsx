@@ -280,7 +280,7 @@ const CreateDeploymentPage = () => {
 							{/* Divider */}
 							<div class="border-t border-border-color mt-2" />
 
-							<EnvInput value={envVars} onChange={setEnvVars} onValidityChange={setEnvValid} />
+							<EnvInput value={() => ({})} onChange={setEnvVars} onValidityChange={setEnvValid} />
 
 							<PortInput value={() => ({})} onChange={setPortList} onValidityChange={setPortsValid} />
 
@@ -289,7 +289,7 @@ const CreateDeploymentPage = () => {
 								ports={Object.keys(portList()).map((port) => parseInt(port))}
 							/>
 
-							<ConfigMount value={configFiles} onChange={setConfigFiles} />
+							<ConfigMount value={() => ({})} onChange={setConfigFiles} />
 
 							{/* Divider */}
 							<div class="border-t border-border-color mt-2" />

@@ -282,7 +282,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 
 				<EnvInput
 					disabled={() => !deploymentPermissions().edit}
-					value={() => localInfo()?.environmentVariables ?? {}}
+					value={() => deploymentQuery.data?.environmentVariables ?? {}}
 					onChange={(next) =>
 						updateLocal((prev) => (prev ? { ...prev, environmentVariables: next } : undefined))
 					}
@@ -305,7 +305,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 
 				<ConfigMount
 					disabled={() => !deploymentPermissions().edit}
-					value={() => localInfo()?.configMounts ?? {}}
+					value={() => deploymentQuery.data?.configMounts ?? {}}
 					onChange={(next) => updateLocal((prev) => (prev ? { ...prev, configMounts: next } : undefined))}
 				/>
 			</div>

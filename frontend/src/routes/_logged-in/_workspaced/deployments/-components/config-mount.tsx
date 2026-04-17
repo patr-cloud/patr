@@ -41,14 +41,21 @@ const ConfigMount = (props: ConfigMountProps) => {
 		return out;
 	};
 
-	// Seed from parent on mount / external change.
+	// Seed from props.value on mount and whenever the incoming map *itself*
+	// changes (e.g. the parent refetches after a save). This effect must not
+	// read our own committed state — doing so would make it re-run on every
+	// keystroke and clobber the user's edits.
+	let lastSeeded: Record<string, Base64String> | null = null;
 	createEffect(() => {
 		const incoming = get(props.value) ?? {};
-		const currentCommitted = committedMap();
-		const sameKeys =
-			Object.keys(incoming).length === Object.keys(currentCommitted).length &&
-			Object.keys(incoming).every((k) => incoming[k] === currentCommitted[k]);
-		if (sameKeys) return;
+		if (lastSeeded !== null) {
+			const incomingKeys = Object.keys(incoming);
+			const same =
+				incomingKeys.length === Object.keys(lastSeeded).length &&
+				incomingKeys.every((k) => incoming[k] === lastSeeded![k]);
+			if (same) return;
+		}
+		lastSeeded = { ...incoming };
 		setRows(
 			Object.entries(incoming).map(([path, content]) => ({
 				id: createUniqueId(),

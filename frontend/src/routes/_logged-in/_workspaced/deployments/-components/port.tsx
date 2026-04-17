@@ -42,14 +42,21 @@ const TYPE_OPTIONS = [
 const PortInput = (props: PortInputProps) => {
 	const [rows, setRows] = createSignal<Row[]>([makeDraftRow()]);
 
-	// Seed from parent value on mount / external change.
+	// Seed from props.value on mount and whenever the incoming map *itself*
+	// changes (e.g. the parent refetches after a save). Crucially this effect
+	// must not re-read our own committed state — doing so would make it
+	// re-run on every keystroke and clobber the user's edits.
+	let lastSeeded: Record<string, ExposedPortType | undefined> | null = null;
 	createEffect(() => {
 		const incoming = get(props.value) ?? {};
-		const currentCommitted = committedMap();
-		const sameKeys =
-			Object.keys(incoming).length === Object.keys(currentCommitted).length &&
-			Object.keys(incoming).every((k) => incoming[k] === currentCommitted[k]);
-		if (sameKeys) return;
+		if (lastSeeded !== null) {
+			const incomingKeys = Object.keys(incoming);
+			const same =
+				incomingKeys.length === Object.keys(lastSeeded).length &&
+				incomingKeys.every((k) => incoming[k] === lastSeeded![k]);
+			if (same) return;
+		}
+		lastSeeded = { ...incoming };
 		const seeded = Object.entries(incoming).map(([port, type]) => ({
 			id: createUniqueId(),
 			port,
