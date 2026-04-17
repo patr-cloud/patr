@@ -13,6 +13,8 @@ interface ConfigMountProps {
 	value: MaybeAccessor<Record<string, Base64String>>;
 	/** Fires when the committed map changes. */
 	onChange: (next: Record<string, Base64String>) => void;
+	/** Fires whenever the validity of the rows changes. Parents gate submit on this. */
+	onValidityChange?: (valid: boolean) => void;
 	/** Disables all inputs. */
 	disabled?: MaybeAccessor<boolean>;
 }
@@ -66,11 +68,6 @@ const ConfigMount = (props: ConfigMountProps) => {
 		);
 	});
 
-	// Emit committed map whenever rows change.
-	createEffect(() => {
-		props.onChange(committedMap());
-	});
-
 	const pathCounts = createMemo(() => {
 		const counts = new Map<string, number>();
 		for (const row of rows()) {
@@ -78,6 +75,14 @@ const ConfigMount = (props: ConfigMountProps) => {
 			counts.set(row.path, (counts.get(row.path) ?? 0) + 1);
 		}
 		return counts;
+	});
+
+	const hasAnyError = createMemo(() => rows().some((r) => rowError(r) !== undefined));
+
+	// Emit committed map + validity whenever rows change.
+	createEffect(() => {
+		props.onChange(committedMap());
+		props.onValidityChange?.(!hasAnyError());
 	});
 
 	const rowError = (row: Row): string | undefined => {

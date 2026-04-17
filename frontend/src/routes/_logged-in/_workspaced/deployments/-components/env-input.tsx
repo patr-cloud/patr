@@ -19,10 +19,20 @@ interface EnvInputProps {
 	class?: MaybeAccessor<string>;
 }
 
-type Row = { id: string; key: string; value: string };
+// Row value preserves the full EnvironmentVariableValue union so that
+// `fromSecret` references coming from the server round-trip untouched unless
+// the user actively replaces them.
+type Row = { id: string; key: string; value: EnvironmentVariableValue };
 
-const parseEnvValue = (value: EnvironmentVariableValue): string =>
-	typeof value === "string" ? value : JSON.stringify(value);
+const isSecretValue = (value: EnvironmentVariableValue): value is { fromSecret: string } =>
+	typeof value === "object" && value !== null && "fromSecret" in value;
+
+const valueIsEmpty = (value: EnvironmentVariableValue): boolean => typeof value === "string" && value === "";
+
+// Stable string for comparing incoming vs last-seeded values (detects secret
+// vs secret, secret vs string, etc.).
+const valueKey = (value: EnvironmentVariableValue): string =>
+	typeof value === "string" ? `s:${value}` : `r:${value.fromSecret}`;
 
 const makeDraftRow = (): Row => ({ id: createUniqueId(), key: "", value: "" });
 
@@ -40,14 +50,14 @@ const EnvInput = (props: EnvInputProps) => {
 			const incomingKeys = Object.keys(incoming);
 			const same =
 				incomingKeys.length === Object.keys(lastSeeded).length &&
-				incomingKeys.every((k) => parseEnvValue(incoming[k]) === parseEnvValue(lastSeeded![k]));
+				incomingKeys.every((k) => valueKey(incoming[k]) === valueKey(lastSeeded![k]));
 			if (same) return;
 		}
 		lastSeeded = { ...incoming };
-		const seeded = Object.entries(incoming).map(([key, value]) => ({
+		const seeded: Row[] = Object.entries(incoming).map(([key, value]) => ({
 			id: createUniqueId(),
 			key,
-			value: parseEnvValue(value),
+			value,
 		}));
 		seeded.push(makeDraftRow());
 		setRows(seeded);
@@ -66,10 +76,10 @@ const EnvInput = (props: EnvInputProps) => {
 	const rowError = (row: Row): RowErrors => {
 		const errs: RowErrors = {};
 		const keyEmpty = row.key === "";
-		const valueEmpty = row.value === "";
-		if (keyEmpty && valueEmpty) return errs; // draft row
+		const isEmpty = valueIsEmpty(row.value);
+		if (keyEmpty && isEmpty) return errs; // draft row
 		if (keyEmpty) errs.key = "Key required";
-		if (valueEmpty) errs.value = "Value required";
+		if (isEmpty) errs.value = "Value required";
 		if (!keyEmpty && (keyCounts().get(row.key) ?? 0) > 1) errs.key = "Duplicate key";
 		return errs;
 	};
@@ -80,7 +90,7 @@ const EnvInput = (props: EnvInputProps) => {
 		const out: Record<string, EnvironmentVariableValue> = {};
 		const counts = keyCounts();
 		for (const row of rows()) {
-			if (row.key === "" || row.value === "") continue;
+			if (row.key === "" || valueIsEmpty(row.value)) continue;
 			if ((counts.get(row.key) ?? 0) > 1) continue;
 			out[row.key] = row.value;
 		}
@@ -98,7 +108,7 @@ const EnvInput = (props: EnvInputProps) => {
 			const next = prev.map((r) => (r.id === id ? { ...r, ...patch } : r));
 			// Ensure exactly one trailing empty draft row at the end.
 			const last = next[next.length - 1];
-			if (!last || last.key !== "" || last.value !== "") {
+			if (!last || last.key !== "" || !valueIsEmpty(last.value)) {
 				next.push(makeDraftRow());
 			}
 			return next;
@@ -108,7 +118,8 @@ const EnvInput = (props: EnvInputProps) => {
 	const removeRow = (id: string) => {
 		setRows((prev) => {
 			const next = prev.filter((r) => r.id !== id);
-			if (next.length === 0 || next[next.length - 1].key !== "" || next[next.length - 1].value !== "") {
+			const last = next[next.length - 1];
+			if (!last || last.key !== "" || !valueIsEmpty(last.value)) {
 				next.push(makeDraftRow());
 			}
 			return next;
@@ -119,7 +130,7 @@ const EnvInput = (props: EnvInputProps) => {
 		setRows((prev) => {
 			const row = prev.find((r) => r.id === id);
 			if (!row) return prev;
-			if (row.key !== "" || row.value !== "") return prev;
+			if (row.key !== "" || !valueIsEmpty(row.value)) return prev;
 			// Row is empty on blur — remove it unless it's the sole trailing draft.
 			if (prev.length === 1) return prev;
 			if (prev[prev.length - 1].id === id) return prev; // keep trailing draft
@@ -137,8 +148,10 @@ const EnvInput = (props: EnvInputProps) => {
 						const errs = () => rowError(row());
 						const keyErr = () => errs().key;
 						const valueErr = () => errs().value;
+						const isSecret = () => isSecretValue(row().value);
+						const displayValue = () => (typeof row().value === "string" ? (row().value as string) : "");
 						const isDraftTrailing = () =>
-							row().key === "" && row().value === "" && rows()[rows().length - 1]?.id === row().id;
+							row().key === "" && valueIsEmpty(row().value) && rows()[rows().length - 1]?.id === row().id;
 
 						return (
 							<div class="flex flex-col gap-1 w-full">
@@ -158,9 +171,9 @@ const EnvInput = (props: EnvInputProps) => {
 									<Input
 										class={`flex-7 ${valueErr() ? "border-error!" : ""}`}
 										disabled={get(props.disabled)}
-										placeholder="Enter Env Value"
+										placeholder={isSecret() ? "(secret — type to replace)" : "Enter Env Value"}
 										type={InputType.Text}
-										value={row().value}
+										value={displayValue()}
 										onInput={(e) => updateRow(row().id, { value: e.currentTarget.value })}
 										onBlur={() => handleBlur(row().id)}
 										onKeyDown={(e) => {

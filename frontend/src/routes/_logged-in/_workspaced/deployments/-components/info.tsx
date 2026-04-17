@@ -55,6 +55,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	const [isUpdating, setIsUpdating] = createSignal(false);
 	const [envValid, setEnvValid] = createSignal(true);
 	const [portsValid, setPortsValid] = createSignal(true);
+	const [configMountsValid, setConfigMountsValid] = createSignal(true);
 
 	type DeployInfo = GetDeploymentInfoResponse | undefined;
 	const updateLocal = (fn: (prev: DeployInfo) => DeployInfo) => {
@@ -80,6 +81,14 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 		const auth = authState();
 		if (!auth || auth.type !== "LoggedIn") {
 			toast("User not logged in", "error");
+			return;
+		}
+
+		// The Update button is disabled when env/ports are invalid, but form
+		// submission can still be triggered via Enter on another input or
+		// programmatically. Block invalid payloads defensively.
+		if (!envValid() || !portsValid() || !configMountsValid()) {
+			toast("Please fix the highlighted errors before saving", "error");
 			return;
 		}
 
@@ -307,13 +316,20 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 					disabled={() => !deploymentPermissions().edit}
 					value={() => deploymentQuery.data?.configMounts ?? {}}
 					onChange={(next) => updateLocal((prev) => (prev ? { ...prev, configMounts: next } : undefined))}
+					onValidityChange={setConfigMountsValid}
 				/>
 			</div>
 
 			<Show when={deploymentPermissions().edit}>
 				<div class="w-full flex justify-end items-center">
 					<Button
-						disabled={!deploymentPermissions().edit || isUpdating() || !envValid() || !portsValid()}
+						disabled={
+							!deploymentPermissions().edit ||
+							isUpdating() ||
+							!envValid() ||
+							!portsValid() ||
+							!configMountsValid()
+						}
 						loading={isUpdating()}
 						loadingContent={() => <span>Updating...</span>}
 						type="submit"

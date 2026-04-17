@@ -64,6 +64,7 @@ const CreateDeploymentPage = () => {
 
 	const [portList, setPortList] = createSignal<Record<string, ExposedPortType>>({});
 	const [portsValid, setPortsValid] = createSignal(true);
+	const [configMountsValid, setConfigMountsValid] = createSignal(true);
 
 	const isPatrRegistry = () => registry() === PATR_REGISTRY;
 
@@ -85,7 +86,7 @@ const CreateDeploymentPage = () => {
 		repositoriesQuery.data?.repositories.map((r) => ({ label: r.name, value: r.id })) ?? [];
 
 	const { onSubmit, isLoading } = createFormAction(async ({ workspaceId }) => {
-		if (!envValid() || !portsValid()) {
+		if (!envValid() || !portsValid() || !configMountsValid()) {
 			toast("Please fix the highlighted errors before submitting", "error");
 			return;
 		}
@@ -289,7 +290,11 @@ const CreateDeploymentPage = () => {
 								ports={Object.keys(portList()).map((port) => parseInt(port))}
 							/>
 
-							<ConfigMount value={() => ({})} onChange={setConfigFiles} />
+							<ConfigMount
+								value={() => ({})}
+								onChange={setConfigFiles}
+								onValidityChange={setConfigMountsValid}
+							/>
 
 							{/* Divider */}
 							<div class="border-t border-border-color mt-2" />
@@ -324,7 +329,7 @@ const CreateDeploymentPage = () => {
 								loading={isLoading}
 								loadingContent={() => <span>Creating Deployment...</span>}
 								type="submit"
-								disabled={!envValid() || !portsValid()}
+								disabled={!envValid() || !portsValid() || !configMountsValid()}
 								variant={ButtonVariant.Contained}
 							>
 								Create
