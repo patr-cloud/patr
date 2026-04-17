@@ -291,11 +291,8 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 
 				<PortInput
 					disabled={() => !deploymentPermissions().edit}
-					value={() => (localInfo()?.ports ?? {}) as Record<string, ExposedPortType>}
+					value={() => (deploymentQuery.data?.ports ?? {}) as Record<string, ExposedPortType>}
 					deploymentId={localInfo()?.id}
-					savedPorts={() =>
-						new Set(Object.keys((deploymentQuery.data?.ports ?? {}) as Record<string, unknown>))
-					}
 					onChange={(next) => {
 						const numericPorts: Record<number, ExposedPortType> = {};
 						for (const [k, v] of Object.entries(next)) {

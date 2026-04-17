@@ -282,7 +282,7 @@ const CreateDeploymentPage = () => {
 
 							<EnvInput value={envVars} onChange={setEnvVars} onValidityChange={setEnvValid} />
 
-							<PortInput value={portList} onChange={setPortList} onValidityChange={setPortsValid} />
+							<PortInput value={() => ({})} onChange={setPortList} onValidityChange={setPortsValid} />
 
 							<ProbeInput
 								probe={[startupProbe, setStartupProbe]}

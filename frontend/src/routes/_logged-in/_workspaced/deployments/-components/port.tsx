@@ -7,21 +7,20 @@ import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
 interface PortInputProps {
-	/** Current exposed ports (source of truth). Keys are port numbers. */
+	/**
+	 * Saved ports — pass the server's current state here, not the in-progress
+	 * edit state. The component seeds its rows from this map and layers
+	 * user edits on top internally; `onChange` emits the merged result.
+	 * The Visit URL link is only rendered for rows whose (port, type) still
+	 * exactly matches this map. On the create page, pass an empty map.
+	 */
 	value: MaybeAccessor<Record<string, ExposedPortType | undefined>>;
-	/** Fires whenever the committed (validated) map changes. */
+	/** Fires whenever the committed (validated) map of current rows changes. */
 	onChange: (next: Record<string, ExposedPortType>) => void;
 	/** Fires whenever the validity of the rows changes. */
 	onValidityChange?: (valid: boolean) => void;
-	/** If set, HTTP rows show a "Visit URL" link to this deployment. */
+	/** If set, HTTP rows pointing at a saved port show a "Visit URL" link. */
 	deploymentId?: string;
-	/**
-	 * Ports that are already persisted on the server. The Visit URL link is
-	 * only rendered for these — newly-added rows won't get a link until the
-	 * user saves and the server acknowledges the port. Optional; if omitted,
-	 * no URL is ever shown (useful on the create page).
-	 */
-	savedPorts?: MaybeAccessor<Set<string>>;
 	/** Disables all inputs. */
 	disabled?: MaybeAccessor<boolean>;
 	/** Additional class for the root container. */
@@ -142,14 +141,13 @@ const PortInput = (props: PortInputProps) => {
 						);
 						const showVisitUrl = createMemo(() => {
 							const r = row();
-							const saved = get(props.savedPorts);
+							const saved = get(props.value) ?? {};
 							return (
 								r.port.trim() !== "" &&
 								r.type === "http" &&
 								!!props.deploymentId &&
 								!err() &&
-								!!saved &&
-								saved.has(r.port)
+								saved[r.port] === "http"
 							);
 						});
 
