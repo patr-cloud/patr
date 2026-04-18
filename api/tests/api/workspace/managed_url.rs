@@ -10,6 +10,7 @@ async fn create_managed_url_works() {
 	let domain = setup
 		.create_test_domain(&user.access_token, workspace.id)
 		.await;
+	setup.mark_test_domain_verified(domain.id).await;
 
 	let url_id = setup
 		.create_test_managed_url(&user.access_token, workspace.id, domain.id)
@@ -25,6 +26,7 @@ async fn list_managed_urls_works() {
 	let domain = setup
 		.create_test_domain(&user.access_token, workspace.id)
 		.await;
+	setup.mark_test_domain_verified(domain.id).await;
 	let _url_id = setup
 		.create_test_managed_url(&user.access_token, workspace.id, domain.id)
 		.await;
@@ -79,6 +81,7 @@ async fn update_managed_url_works() {
 	let domain = setup
 		.create_test_domain(&user.access_token, workspace.id)
 		.await;
+	setup.mark_test_domain_verified(domain.id).await;
 	let url_id = setup
 		.create_test_managed_url(&user.access_token, workspace.id, domain.id)
 		.await;
@@ -112,6 +115,7 @@ async fn delete_managed_url_works() {
 	let domain = setup
 		.create_test_domain(&user.access_token, workspace.id)
 		.await;
+	setup.mark_test_domain_verified(domain.id).await;
 	let url_id = setup
 		.create_test_managed_url(&user.access_token, workspace.id, domain.id)
 		.await;
@@ -141,6 +145,7 @@ async fn verify_configuration_works() {
 	let domain = setup
 		.create_test_domain(&user.access_token, workspace.id)
 		.await;
+	setup.mark_test_domain_verified(domain.id).await;
 	let url_id = setup
 		.create_test_managed_url(&user.access_token, workspace.id, domain.id)
 		.await;

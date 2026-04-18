@@ -74,6 +74,13 @@ pub struct TestSetup {
 }
 
 impl TestSetup {
+	/// The test database pool. Exposed for helpers that need to tweak DB state
+	/// directly (e.g. marking a domain as verified) without going through the
+	/// real API flow.
+	pub(crate) fn database(&self) -> &sqlx::Pool<api::prelude::DatabaseType> {
+		&self.state.database
+	}
+
 	/// Make a typed API call using `ApiRequest<E>`.
 	///
 	/// All headers (including `authorization` and `user_agent`) are provided

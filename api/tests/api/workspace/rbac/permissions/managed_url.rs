@@ -16,6 +16,7 @@ async fn managed_url_add_grants_access() {
 	let domain = setup
 		.create_test_domain(&admin.access_token, workspace.id)
 		.await;
+	setup.mark_test_domain_verified(domain.id).await;
 
 	let mut perms = BTreeMap::new();
 	perms.insert(
@@ -67,6 +68,7 @@ async fn managed_url_delete_grants_access() {
 	let domain = setup
 		.create_test_domain(&admin.access_token, workspace.id)
 		.await;
+	setup.mark_test_domain_verified(domain.id).await;
 	let url_id = setup
 		.create_test_managed_url(&admin.access_token, workspace.id, domain.id)
 		.await;
@@ -112,6 +114,7 @@ async fn managed_url_denied_without_permission() {
 	let domain = setup
 		.create_test_domain(&admin.access_token, workspace.id)
 		.await;
+	setup.mark_test_domain_verified(domain.id).await;
 	let url_id = setup
 		.create_test_managed_url(&admin.access_token, workspace.id, domain.id)
 		.await;

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use models::{
 	api::workspace::rbac::role::*,
-	rbac::{DeploymentPermission, Permission},
+	rbac::{DeploymentPermission, Permission, ResourcePermissionType},
 };
 
 use super::{all, setup_permission_test};
@@ -37,6 +37,14 @@ async fn rbac_modify_roles_grants_access() {
 	let (_admin, ws_id, user_b) =
 		setup_permission_test(&setup, vec![(Permission::ModifyRoles, all())]).await;
 
+	// Role creation rejects empty permissions with `WrongParameters`, so seed
+	// one harmless permission.
+	let mut permissions = BTreeMap::new();
+	permissions.insert(
+		setup.get_permission_id(Permission::ViewRoles),
+		ResourcePermissionType::Include(Default::default()),
+	);
+
 	let response = setup
 		.make_api_call(
 			ApiRequest::<CreateNewRoleRequest>::builder()
@@ -50,7 +58,7 @@ async fn rbac_modify_roles_grants_access() {
 				.body(CreateNewRoleRequest {
 					name: random_name(8),
 					description: "test".to_string(),
-					permissions: BTreeMap::new(),
+					permissions,
 				})
 				.build(),
 		)

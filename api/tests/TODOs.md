@@ -199,8 +199,10 @@ Comprehensive list of missing test cases. Organized by module.
 - [ ] `get_verification_records_works` — GET `.../domain/{id}/verification-records`
 - [ ] `get_verification_records_nonexistent_domain` — → `ResourceDoesNotExist`
 - [ ] `is_domain_personal_works` — GET `/workspace/{id}/is-domain-personal`
+- [ ] `verify_domain_works` — POST `.../domain/{id}/verify` against a domain with the correct TXT record set up (currently bypassed in tests by flipping `is_verified` via `TestSetup::mark_test_domain_verified`)
 - [ ] `verify_domain_already_verified` — double-verify behavior
 - [ ] `verify_domain_unverifiable` — DNS not configured
+- [ ] `verify_domain_wrong_txt_value` — TXT record present but value doesn't match
 
 ### Edge Cases
 
