@@ -88,6 +88,27 @@ else
 	require unzip
 fi
 
+# Refuse to overwrite an existing install at the target path. `patr upgrade` is
+# the one path that keeps the binary and the CLI's persisted target channel in
+# sync; letting the script replace the binary behind its back causes the two to
+# drift.
+if [ -n "$PREFIX" ]; then
+	DEST="$PREFIX/patr"
+else
+	DEST="/usr/local/bin/patr"
+fi
+if [ -e "$DEST" ]; then
+	echo "error: patr is already installed at $DEST" >&2
+	echo "" >&2
+	echo "To update to the latest release, run:" >&2
+	echo "    patr upgrade" >&2
+	echo "" >&2
+	echo "To reinstall from scratch, run:" >&2
+	echo "    patr uninstall" >&2
+	echo "and then re-run this install script." >&2
+	exit 1
+fi
+
 if command -v sha256sum >/dev/null 2>&1; then
 	SHA_CHECK="sha256sum -c"
 elif command -v shasum >/dev/null 2>&1; then
@@ -183,10 +204,8 @@ fi
 # Install.
 if [ -n "$PREFIX" ]; then
 	mkdir -p "$PREFIX"
-	install -m 0755 "$TMPDIR/patr" "$PREFIX/patr"
-	DEST="$PREFIX/patr"
+	install -m 0755 "$TMPDIR/patr" "$DEST"
 else
-	DEST="/usr/local/bin/patr"
 	echo ""
 	echo "Installing to $DEST (may prompt for your password)."
 	sudo install -m 0755 "$TMPDIR/patr" "$DEST"
