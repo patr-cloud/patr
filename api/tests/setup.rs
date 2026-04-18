@@ -203,9 +203,14 @@ impl TestSetup {
 /// Helps setup the test server and database for API tests. This is used by all
 /// API tests, so it should be kept up to date and working.
 pub async fn setup() -> Result<TestSetup, anyhow::Error> {
-	let api_bind_address = TcpListener::bind("127.0.0.1:0").await?.local_addr()?;
-	let registry_bind_address = TcpListener::bind("127.0.0.1:0").await?.local_addr()?;
-	let loki_bind_address = TcpListener::bind("127.0.0.1:0").await?.local_addr()?;
+	// Bind listeners now and pass them to axum::serve below. Axum-test's
+	// `http_transport_with_ip_port` has a drop-then-rebind race that collides
+	// with other nextest processes; handing over a live listener avoids it.
+	let api_listener = TcpListener::bind("127.0.0.1:0").await?;
+	let registry_listener = TcpListener::bind("127.0.0.1:0").await?;
+	let loki_listener = TcpListener::bind("127.0.0.1:0").await?;
+
+	let api_bind_address = api_listener.local_addr()?;
 
 	let password_pepper = rand::rng()
 		.sample_iter(Alphanumeric)
@@ -469,33 +474,26 @@ limits_config:
 		.await
 		.map_err(|e| anyhow::anyhow!("error creating S3 bucket: {e}"))?;
 
-	let api = TestServer::builder()
-		.http_transport_with_ip_port(Some(api_bind_address.ip()), Some(api_bind_address.port()))
-		.save_cookies()
-		.build(
-			api_patr_cloud::setup_routes(&state, ClientType::WebDashboard)
-				.await
-				.into_make_service_with_connect_info::<SocketAddr>(),
-		);
+	let api = TestServer::builder().save_cookies().build(axum::serve(
+		api_listener,
+		api_patr_cloud::setup_routes(&state, ClientType::WebDashboard)
+			.await
+			.into_make_service_with_connect_info::<SocketAddr>(),
+	));
 
-	let registry = TestServer::builder()
-		.http_transport_with_ip_port(
-			Some(registry_bind_address.ip()),
-			Some(registry_bind_address.port()),
-		)
-		.build(
-			registry_patr_cloud::setup_routes(&state)
-				.await
-				.into_make_service_with_connect_info::<SocketAddr>(),
-		);
+	let registry = TestServer::builder().build(axum::serve(
+		registry_listener,
+		registry_patr_cloud::setup_routes(&state)
+			.await
+			.into_make_service_with_connect_info::<SocketAddr>(),
+	));
 
-	let loki = TestServer::builder()
-		.http_transport_with_ip_port(Some(loki_bind_address.ip()), Some(loki_bind_address.port()))
-		.build(
-			loki_patr_cloud::setup_routes(&state)
-				.await
-				.into_make_service_with_connect_info::<SocketAddr>(),
-		);
+	let loki = TestServer::builder().build(axum::serve(
+		loki_listener,
+		loki_patr_cloud::setup_routes(&state)
+			.await
+			.into_make_service_with_connect_info::<SocketAddr>(),
+	));
 
 	let permission_ids: BTreeMap<String, Uuid> = {
 		use sqlx::Row;
