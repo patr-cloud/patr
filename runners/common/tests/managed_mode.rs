@@ -15,7 +15,14 @@ use crate::{
 };
 
 /// Set up a managed-mode runner connected to the test server on port 3000.
-async fn setup_managed() -> (Arc<ManagedServerState>, Arc<MockExecutorState>, sqlx::Pool<DatabaseType>, Uuid, Uuid, tempfile::TempDir) {
+async fn setup_managed() -> (
+	Arc<ManagedServerState>,
+	Arc<MockExecutorState>,
+	sqlx::Pool<DatabaseType>,
+	Uuid,
+	Uuid,
+	tempfile::TempDir,
+) {
 	let server_state = managed_server::get_managed_server().await;
 
 	let workspace_id = Uuid::new_v4();
@@ -62,7 +69,14 @@ async fn setup_managed() -> (Arc<ManagedServerState>, Arc<MockExecutorState>, sq
 	// Give the actor tree time to connect.
 	tokio::time::sleep(Duration::from_millis(500)).await;
 
-	(server_state, mock_state, database, workspace_id, runner_id, temp_dir)
+	(
+		server_state,
+		mock_state,
+		database,
+		workspace_id,
+		runner_id,
+		temp_dir,
+	)
 }
 
 fn test_deployment(runner_id: Uuid) -> (Uuid, Deployment, DeploymentRunningDetails) {
@@ -258,8 +272,7 @@ async fn status_change_flows_upstream_via_ws() {
 
 #[tokio::test]
 async fn full_resync_adds_missing_deployment() {
-	let (server_state, mock_state, database, _ws_id, runner_id, _tmp) =
-		setup_managed().await;
+	let (server_state, mock_state, database, _ws_id, runner_id, _tmp) = setup_managed().await;
 	let (dep_id, deployment, details) = test_deployment(runner_id);
 
 	// Add a deployment to the mock REST server that the runner doesn't
@@ -282,5 +295,8 @@ async fn full_resync_adds_missing_deployment() {
 		.fetch_optional(&database)
 		.await
 		.unwrap();
-	assert!(row.is_some(), "deployment should be in SQLite after full resync");
+	assert!(
+		row.is_some(),
+		"deployment should be in SQLite after full resync"
+	);
 }

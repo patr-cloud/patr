@@ -3,10 +3,7 @@ use std::{collections::BTreeMap, str::FromStr};
 use models::{
 	ApiRequest,
 	ApiSuccessResponseBody,
-	api::{
-		auth::*,
-		workspace::deployment::*,
-	},
+	api::{auth::*, workspace::deployment::*},
 	utils::BearerToken,
 };
 

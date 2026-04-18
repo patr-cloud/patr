@@ -19,12 +19,12 @@ pub enum ExecutorCall {
 /// Shared mutable state backing all MockExecutor instances in a test.
 ///
 /// Each field controls a different aspect of the mock:
-/// - `calls`: append-only log of every method invocation, in order.
-///    Tests assert on this to verify the actor called the right methods.
-/// - `statuses`: what `get_deployment_status()` returns per deployment.
-///    Default (missing key) returns `DeploymentStatus::Stopped`.
-/// - `upsert_errors` / `delete_errors`: if set for a deployment ID,
-///    the corresponding method returns this error string as `RunnerError`.
+/// - `calls`: append-only log of every method invocation, in order. Tests
+///   assert on this to verify the actor called the right methods.
+/// - `statuses`: what `get_deployment_status()` returns per deployment. Default
+///   (missing key) returns `DeploymentStatus::Stopped`.
+/// - `upsert_errors` / `delete_errors`: if set for a deployment ID, the
+///   corresponding method returns this error string as `RunnerError`.
 /// - `running`: the list of UUIDs returned by `list_running_deployments()`.
 pub struct MockExecutorState {
 	pub calls: Mutex<Vec<ExecutorCall>>,
@@ -46,7 +46,12 @@ impl MockExecutorState {
 	}
 
 	pub fn call_count(&self, predicate: impl Fn(&ExecutorCall) -> bool) -> usize {
-		self.calls.lock().unwrap().iter().filter(|c| predicate(c)).count()
+		self.calls
+			.lock()
+			.unwrap()
+			.iter()
+			.filter(|c| predicate(c))
+			.count()
 	}
 
 	pub fn has_call(&self, predicate: impl Fn(&ExecutorCall) -> bool) -> bool {
@@ -82,7 +87,11 @@ impl RunnerExecutor for MockExecutor {
 		_running_details: DeploymentRunningDetails,
 	) -> Result<(), RunnerError> {
 		let id = deployment.id;
-		self.state.calls.lock().unwrap().push(ExecutorCall::Upsert(id));
+		self.state
+			.calls
+			.lock()
+			.unwrap()
+			.push(ExecutorCall::Upsert(id));
 
 		if let Some(err_msg) = self.state.upsert_errors.lock().unwrap().get(&id) {
 			return Err(RunnerError::host(std::io::Error::other(err_msg.clone())));
@@ -104,7 +113,11 @@ impl RunnerExecutor for MockExecutor {
 	}
 
 	async fn list_running_deployments<'a>(&self) -> impl futures::Stream<Item = Uuid> + 'a {
-		self.state.calls.lock().unwrap().push(ExecutorCall::ListRunning);
+		self.state
+			.calls
+			.lock()
+			.unwrap()
+			.push(ExecutorCall::ListRunning);
 		let ids = self.state.running.lock().unwrap().clone();
 		stream::iter(ids)
 	}

@@ -217,7 +217,8 @@ pub async fn create_deployment_in_database(
 
 /// Delete a deployment and all its related data from the local SQLite database.
 ///
-/// This is a free-function version of the old `Runner::delete_deployment_in_database`.
+/// This is a free-function version of the old
+/// `Runner::delete_deployment_in_database`.
 #[instrument(skip(connection))]
 pub async fn delete_deployment_in_database(
 	connection: &mut DatabaseConnection,
@@ -229,7 +230,7 @@ pub async fn delete_deployment_in_database(
 			deployment_volume_mount
 		WHERE
 			deployment_id = $1;
-		"#
+		"#,
 	)
 	.bind(deployment_id)
 	.execute(&mut *connection)
@@ -241,7 +242,7 @@ pub async fn delete_deployment_in_database(
 			deployment_deploy_history
 		WHERE
 			deployment_id = $1;
-		"#
+		"#,
 	)
 	.bind(deployment_id)
 	.execute(&mut *connection)
@@ -253,7 +254,7 @@ pub async fn delete_deployment_in_database(
 			deployment_config_mounts
 		WHERE
 			deployment_id = $1;
-		"#
+		"#,
 	)
 	.bind(deployment_id)
 	.execute(&mut *connection)
@@ -265,7 +266,7 @@ pub async fn delete_deployment_in_database(
 			deployment_exposed_port
 		WHERE
 			deployment_id = $1;
-		"#
+		"#,
 	)
 	.bind(deployment_id)
 	.execute(&mut *connection)
@@ -277,7 +278,7 @@ pub async fn delete_deployment_in_database(
 			deployment_environment_variable
 		WHERE
 			deployment_id = $1;
-		"#
+		"#,
 	)
 	.bind(deployment_id)
 	.execute(&mut *connection)
@@ -289,7 +290,7 @@ pub async fn delete_deployment_in_database(
 			deployment
 		WHERE
 			id = $1;
-		"#
+		"#,
 	)
 	.bind(deployment_id)
 	.execute(&mut *connection)

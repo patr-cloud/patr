@@ -64,4 +64,3 @@ pub mod constants {
 	/// store the last name of the user that is currently logged in.
 	pub const LAST_NAME_KEY: &str = "last_name";
 }
-

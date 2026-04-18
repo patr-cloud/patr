@@ -154,11 +154,15 @@ async fn start_already_running_is_noop() {
 	// No additional upsert or delete should have been triggered by the
 	// status reconciliation.
 	assert!(
-		!setup.mock_state.has_call(|c| matches!(c, ExecutorCall::Upsert(_))),
+		!setup
+			.mock_state
+			.has_call(|c| matches!(c, ExecutorCall::Upsert(_))),
 		"expected no upsert when already running"
 	);
 	assert!(
-		!setup.mock_state.has_call(|c| matches!(c, ExecutorCall::Delete(_))),
+		!setup
+			.mock_state
+			.has_call(|c| matches!(c, ExecutorCall::Delete(_))),
 		"expected no delete when already running"
 	);
 }
@@ -194,11 +198,15 @@ async fn stop_already_stopped_is_noop() {
 
 	// Stopped == Stopped → no action.
 	assert!(
-		!setup.mock_state.has_call(|c| matches!(c, ExecutorCall::Upsert(_))),
+		!setup
+			.mock_state
+			.has_call(|c| matches!(c, ExecutorCall::Upsert(_))),
 		"expected no upsert when already stopped"
 	);
 	assert!(
-		!setup.mock_state.has_call(|c| matches!(c, ExecutorCall::Delete(_))),
+		!setup
+			.mock_state
+			.has_call(|c| matches!(c, ExecutorCall::Delete(_))),
 		"expected no delete when already stopped"
 	);
 }

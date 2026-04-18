@@ -35,8 +35,9 @@ async fn failed_actor_is_respawned_with_backoff() {
 	// Verify it's not an immediate tight loop — there should be a gap
 	// between attempts. With 1s initial backoff, 2 attempts in 10s is fine
 	// but 10+ attempts would indicate no backoff.
-	let count =
-		setup.mock_state.call_count(|c| matches!(c, ExecutorCall::Upsert(i) if *i == id));
+	let count = setup
+		.mock_state
+		.call_count(|c| matches!(c, ExecutorCall::Upsert(i) if *i == id));
 	assert!(
 		count <= 5,
 		"expected backoff to limit retries, got {count} upsert attempts"
@@ -105,13 +106,15 @@ async fn reconcile_skips_backed_off_deployments() {
 	// Now the deployment is in backoff. Wait for another full Reconcile
 	// cycle. With exponential backoff (1s, 2s, 4s, ...), the retry count
 	// should be bounded — not every 10s from Reconcile.
-	let count_before =
-		setup.mock_state.call_count(|c| matches!(c, ExecutorCall::Upsert(i) if *i == id));
+	let count_before = setup
+		.mock_state
+		.call_count(|c| matches!(c, ExecutorCall::Upsert(i) if *i == id));
 
 	tokio::time::sleep(Duration::from_secs(12)).await;
 
-	let count_after =
-		setup.mock_state.call_count(|c| matches!(c, ExecutorCall::Upsert(i) if *i == id));
+	let count_after = setup
+		.mock_state
+		.call_count(|c| matches!(c, ExecutorCall::Upsert(i) if *i == id));
 
 	// Backoff doubles: 1s → 2s → 4s → 8s. In 12 seconds, we'd expect
 	// ~3-4 retries from the backoff timer. Without backoff, Reconcile

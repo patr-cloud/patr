@@ -40,30 +40,28 @@ async fn setup_with_statuses(
 
 #[tokio::test]
 async fn running_matches_running_is_noop() {
-	let (setup, id) = setup_with_statuses(
-		DeploymentStatus::Running,
-		DeploymentStatus::Running,
-	)
-	.await;
+	let (setup, id) =
+		setup_with_statuses(DeploymentStatus::Running, DeploymentStatus::Running).await;
 
 	// No upsert or delete should have been called after the status check.
 	assert!(
-		!setup.mock_state.has_call(|c| matches!(c, ExecutorCall::Upsert(i) if *i == id)),
+		!setup
+			.mock_state
+			.has_call(|c| matches!(c, ExecutorCall::Upsert(i) if *i == id)),
 		"expected no upsert when statuses match"
 	);
 	assert!(
-		!setup.mock_state.has_call(|c| matches!(c, ExecutorCall::Delete(i) if *i == id)),
+		!setup
+			.mock_state
+			.has_call(|c| matches!(c, ExecutorCall::Delete(i) if *i == id)),
 		"expected no delete when statuses match"
 	);
 }
 
 #[tokio::test]
 async fn deploying_in_db_running_from_executor_updates_db() {
-	let (setup, id) = setup_with_statuses(
-		DeploymentStatus::Deploying,
-		DeploymentStatus::Running,
-	)
-	.await;
+	let (setup, id) =
+		setup_with_statuses(DeploymentStatus::Deploying, DeploymentStatus::Running).await;
 
 	// DB should be updated to Running.
 	let row = sqlx::query("SELECT status FROM deployment WHERE id = $1")
@@ -77,11 +75,8 @@ async fn deploying_in_db_running_from_executor_updates_db() {
 
 #[tokio::test]
 async fn errored_in_db_running_from_executor_updates_db() {
-	let (setup, id) = setup_with_statuses(
-		DeploymentStatus::Errored,
-		DeploymentStatus::Running,
-	)
-	.await;
+	let (setup, id) =
+		setup_with_statuses(DeploymentStatus::Errored, DeploymentStatus::Running).await;
 
 	let row = sqlx::query("SELECT status FROM deployment WHERE id = $1")
 		.bind(id)
@@ -94,11 +89,8 @@ async fn errored_in_db_running_from_executor_updates_db() {
 
 #[tokio::test]
 async fn stopped_from_executor_running_in_db_calls_upsert() {
-	let (setup, id) = setup_with_statuses(
-		DeploymentStatus::Running,
-		DeploymentStatus::Stopped,
-	)
-	.await;
+	let (setup, id) =
+		setup_with_statuses(DeploymentStatus::Running, DeploymentStatus::Stopped).await;
 
 	// Actor should try to restart the deployment via upsert.
 	let mock = setup.mock_state.clone();
@@ -111,11 +103,8 @@ async fn stopped_from_executor_running_in_db_calls_upsert() {
 
 #[tokio::test]
 async fn running_from_executor_stopped_in_db_calls_delete() {
-	let (setup, id) = setup_with_statuses(
-		DeploymentStatus::Stopped,
-		DeploymentStatus::Running,
-	)
-	.await;
+	let (setup, id) =
+		setup_with_statuses(DeploymentStatus::Stopped, DeploymentStatus::Running).await;
 
 	let mock = setup.mock_state.clone();
 	periodic_check(
@@ -177,22 +166,23 @@ async fn duplicate_status_not_re_reported() {
 	.await;
 
 	assert!(
-		!setup.mock_state.has_call(|c| matches!(c, ExecutorCall::Upsert(_))),
+		!setup
+			.mock_state
+			.has_call(|c| matches!(c, ExecutorCall::Upsert(_))),
 		"expected no upsert on duplicate status"
 	);
 	assert!(
-		!setup.mock_state.has_call(|c| matches!(c, ExecutorCall::Delete(_))),
+		!setup
+			.mock_state
+			.has_call(|c| matches!(c, ExecutorCall::Delete(_))),
 		"expected no delete on duplicate status"
 	);
 }
 
 #[tokio::test]
 async fn deploying_in_db_errored_from_executor_updates_db() {
-	let (setup, id) = setup_with_statuses(
-		DeploymentStatus::Deploying,
-		DeploymentStatus::Errored,
-	)
-	.await;
+	let (setup, id) =
+		setup_with_statuses(DeploymentStatus::Deploying, DeploymentStatus::Errored).await;
 
 	let row = sqlx::query("SELECT status FROM deployment WHERE id = $1")
 		.bind(id)

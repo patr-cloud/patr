@@ -36,7 +36,9 @@ async fn config_updated_no_change_is_noop() {
 
 	tokio::time::sleep(Duration::from_millis(500)).await;
 	assert_eq!(
-		setup.mock_state.call_count(|c| matches!(c, ExecutorCall::Upsert(_))),
+		setup
+			.mock_state
+			.call_count(|c| matches!(c, ExecutorCall::Upsert(_))),
 		0,
 		"expected no upsert call when config hasn't changed"
 	);
@@ -130,7 +132,9 @@ async fn shutdown_stopped_deployment_does_not_call_delete() {
 	// Wait a bit — delete should NOT be called since executor reports Stopped.
 	tokio::time::sleep(Duration::from_millis(500)).await;
 	assert!(
-		!setup.mock_state.has_call(|c| matches!(c, ExecutorCall::Delete(_))),
+		!setup
+			.mock_state
+			.has_call(|c| matches!(c, ExecutorCall::Delete(_))),
 		"expected no delete call for a stopped deployment"
 	);
 }
