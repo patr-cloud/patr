@@ -653,7 +653,7 @@ jobs:
       - name: Compute checksums
         id: shas
         # Homebrew installs the `-brew` variants (built with
-        # `--features no-self-update`), so hash those, not the standard ones.
+        # `--features package-managed`), so hash those, not the standard ones.
         run: |
           echo "linux_amd64=$(sha256sum /tmp/assets/patr-linux-amd64-brew.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
           echo "linux_arm64=$(sha256sum /tmp/assets/patr-linux-arm64-brew.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
