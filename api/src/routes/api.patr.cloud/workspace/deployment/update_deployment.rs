@@ -111,10 +111,6 @@ pub async fn update_deployment(
 	.await?;
 
 	let ports = if let Some(ports) = ports {
-		if ports.is_empty() {
-			return Err(ErrorType::WrongParameters);
-		}
-
 		// Updating deployment port in database
 		query!(
 			r#"
