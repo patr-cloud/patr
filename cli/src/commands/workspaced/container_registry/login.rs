@@ -31,9 +31,9 @@ pub(super) async fn execute(
 		.stderr(Stdio::inherit())
 		.spawn()
 		.map_err(|e| match e.kind() {
-			std::io::ErrorKind::NotFound => AppError::RunnerError(
-				"docker not found on PATH. Install Docker first.".to_string(),
-			),
+			std::io::ErrorKind::NotFound => {
+				AppError::RunnerError("docker not found on PATH. Install Docker first.".to_string())
+			}
 			_ => AppError::RunnerError(format!("Failed to run `docker login`: {e}")),
 		})?;
 

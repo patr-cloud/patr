@@ -36,8 +36,7 @@ pub(super) async fn execute(
 ) -> Result<CommandOutput, AppError> {
 	// Pick the auth + ids.
 	// - When `--runner` is given, use the CLI's session token + workspace.
-	// - Otherwise read the local runner config and use the runner's own api
-	//   token.
+	// - Otherwise read the local runner config and use the runner's own api token.
 	let (workspace_id, runner_id, token) = if let Some(runner_ref) = args.runner {
 		let AppState::LoggedIn {
 			token,

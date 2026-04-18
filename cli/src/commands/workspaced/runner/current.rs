@@ -56,13 +56,11 @@ pub(super) async fn execute(args: Args) -> Result<CommandOutput, AppError> {
 			table.add_row(["Mode".to_string(), "Self-hosted".to_string()]);
 			CommandOutput::builder()
 				.text(table.to_string())
-				.json(
-					serde_json::json!({
-						"config": config_path.display().to_string(),
-						"type": runner_type_str,
-						"mode": "selfHosted",
-					}),
-				)
+				.json(serde_json::json!({
+					"config": config_path.display().to_string(),
+					"type": runner_type_str,
+					"mode": "selfHosted",
+				}))
 				.build()
 				.into_result()
 		}

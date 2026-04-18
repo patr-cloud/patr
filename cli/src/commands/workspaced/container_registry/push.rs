@@ -126,9 +126,9 @@ pub(super) async fn execute(
 
 	let tag = if let Some(tag) = args.tag {
 		tag
-	} else if let Some((_, rest)) = args.source.rsplit_once(':')
-		&& !rest.is_empty()
-		&& !rest.contains('/')
+	} else if let Some((_, rest)) = args.source.rsplit_once(':') &&
+		!rest.is_empty() &&
+		!rest.contains('/')
 	{
 		rest.to_string()
 	} else if std::io::stdin().is_terminal() {
@@ -157,9 +157,9 @@ pub(super) async fn execute(
 		.stderr(Stdio::inherit())
 		.status()
 		.map_err(|e| match e.kind() {
-			std::io::ErrorKind::NotFound => AppError::RunnerError(
-				"docker not found on PATH. Install Docker first.".to_string(),
-			),
+			std::io::ErrorKind::NotFound => {
+				AppError::RunnerError("docker not found on PATH. Install Docker first.".to_string())
+			}
 			_ => AppError::RunnerError(format!("Failed to run `docker tag`: {e}")),
 		})?;
 	if !status.success() {
@@ -181,8 +181,8 @@ pub(super) async fn execute(
 		.is_some();
 
 	if !docker_logged_in {
-		let should_login = std::io::stdin().is_terminal()
-			&& Confirm::new("Not logged in to registry.patr.cloud. Log in now?")
+		let should_login = std::io::stdin().is_terminal() &&
+			Confirm::new("Not logged in to registry.patr.cloud. Log in now?")
 				.with_default(true)
 				.prompt()
 				.expect_tty("Failed to read login confirmation");
