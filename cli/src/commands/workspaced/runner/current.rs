@@ -5,8 +5,18 @@ use comfy_table::Table;
 use common::prelude::{RunnerMode, RunnerSettings};
 use docker::prelude::DockerSettings;
 use models::api::workspace::runner::*;
+use serde::Serialize;
 
 use crate::prelude::*;
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SelfHostedOutput {
+	config: String,
+	#[serde(rename = "type")]
+	runner_type: String,
+	mode: &'static str,
+}
 
 /// The arguments for the `runner current` command.
 #[derive(Debug, Clone, ClapArgs)]
@@ -56,11 +66,14 @@ pub(super) async fn execute(args: Args) -> Result<CommandOutput, AppError> {
 			table.add_row(["Mode".to_string(), "Self-hosted".to_string()]);
 			CommandOutput::builder()
 				.text(table.to_string())
-				.json(serde_json::json!({
-					"config": config_path.display().to_string(),
-					"type": runner_type_str,
-					"mode": "selfHosted",
-				}))
+				.json(
+					SelfHostedOutput {
+						config: config_path.display().to_string(),
+						runner_type: runner_type_str.to_string(),
+						mode: "selfHosted",
+					}
+					.to_json_value(),
+				)
 				.build()
 				.into_result()
 		}

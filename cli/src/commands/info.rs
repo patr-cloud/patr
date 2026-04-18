@@ -16,12 +16,12 @@ pub(super) async fn execute(
 			.into_result();
 	}
 
-	let access_token = match state {
-		AppState::LoggedIn {
+	let access_token = match state.auth {
+		AuthState::LoggedIn {
 			token,
 			current_workspace: _,
 		} => token,
-		AppState::LoggedOut => {
+		AuthState::LoggedOut => {
 			return Err(AppError::NotLoggedIn);
 		}
 	};

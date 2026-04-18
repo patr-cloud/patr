@@ -11,6 +11,10 @@ mod info;
 mod login;
 /// The command to logout of your Patr account.
 mod logout;
+/// The command to uninstall the Patr CLI from this host.
+mod uninstall;
+/// The command to upgrade the Patr CLI in place.
+mod upgrade;
 /// All commands that are meant for a workspace.
 mod workspaced;
 
@@ -67,6 +71,12 @@ pub enum GlobalCommand {
 	/// Apply a configuration file to the current workspace.
 	#[command(name = "apply")]
 	Apply(apply::Args),
+	/// Upgrade the Patr CLI in place.
+	#[command(alias = "update", alias = "self-update")]
+	Upgrade(upgrade::Args),
+	/// Uninstall the Patr CLI from this host.
+	#[command(alias = "delete")]
+	Uninstall(uninstall::Args),
 	/// All the commands that are meant for a workspace
 	#[command(flatten)]
 	Workspaced(WorkspacedCommand),
@@ -82,6 +92,8 @@ pub async fn execute(
 		GlobalCommand::Logout => logout::execute(global_args, state).await,
 		GlobalCommand::Info => info::execute(global_args, state).await,
 		GlobalCommand::Apply(args) => apply::execute(args, global_args, state).await,
+		GlobalCommand::Upgrade(args) => upgrade::execute(args, global_args, state).await,
+		GlobalCommand::Uninstall(args) => uninstall::execute(args, global_args, state).await,
 		GlobalCommand::Workspaced(commands) => {
 			workspaced::execute(commands, global_args, state).await
 		}
@@ -90,26 +102,24 @@ pub async fn execute(
 
 /// Builds the version string shown by `patr --version`.
 ///
-/// SHA and date are set by `build.rs` from git/system. Channel is set by CI
-/// via `PATR_BUILD_CHANNEL` env var; local builds fall back to `-dev`.
+/// CI bakes `PATR_BUILD_VERSION` (full semver, e.g. `0.19.0-alpha.142`),
+/// `PATR_BUILD_CHANNEL`, `PATR_BUILD_SHA`, and `PATR_BUILD_DATE` into the
+/// binary. Local builds fall back to `CARGO_PKG_VERSION-dev`.
 fn build_version() -> String {
-	let version = env!("CARGO_PKG_VERSION");
+	let version = constants::PATR_BUILD_VERSION;
 	let channel = option_env!("PATR_BUILD_CHANNEL");
 	let sha = option_env!("PATR_BUILD_SHA");
 	let date = option_env!("PATR_BUILD_DATE");
 	let os = std::env::consts::OS;
 	let arch = std::env::consts::ARCH;
 
-	let version_str = match channel {
-		Some("alpha") => format!("{version}-alpha"),
-		Some("beta") => format!("{version}-beta"),
-		Some("stable") => version.to_string(),
-		_ => return format!("{version}-dev {os}/{arch}"),
-	};
+	if channel.is_none() {
+		return format!("{version}-dev {os}/{arch}");
+	}
 
 	match (sha, date) {
-		(Some(sha), Some(date)) => format!("{version_str} ({sha} {date}) {os}/{arch}"),
-		(None, Some(date)) => format!("{version_str} ({date}) {os}/{arch}"),
-		_ => format!("{version_str} {os}/{arch}"),
+		(Some(sha), Some(date)) => format!("{version} ({sha} {date}) {os}/{arch}"),
+		(None, Some(date)) => format!("{version} ({date}) {os}/{arch}"),
+		_ => format!("{version} {os}/{arch}"),
 	}
 }

@@ -18,10 +18,10 @@ pub(super) async fn execute(
 	args: Args,
 	state: AppState,
 ) -> Result<CommandOutput, AppError> {
-	let AppState::LoggedIn {
+	let AuthState::LoggedIn {
 		token,
 		current_workspace: _,
-	} = state
+	} = state.auth
 	else {
 		return Err(AppError::NotLoggedIn);
 	};

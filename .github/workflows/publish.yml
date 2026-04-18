@@ -13,8 +13,12 @@ jobs:
       major: ${{ steps.v.outputs.major }}
       minor: ${{ steps.v.outputs.minor }}
       short_sha: ${{ steps.v.outputs.short_sha }}
+      build_version: ${{ steps.v.outputs.build_version }}
+      beta_num: ${{ steps.v.outputs.beta_num }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Extract version from Cargo.toml
         id: v
@@ -24,10 +28,35 @@ jobs:
           MINOR=$(echo "$VERSION" | cut -d. -f1-2)
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
 
+          # Channel-specific semver baked into the binary as `PATR_BUILD_VERSION`.
+          # Matches the GH release tag scheme:
+          #   master  -> 0.18.0
+          #   staging -> 0.18.0-beta.N  (N = next unused beta index)
+          #   develop -> 0.18.0-alpha.<run_number>
+          BETA_NUM=""
+          case "${{ github.ref_name }}" in
+            master)
+              BUILD_VERSION="$VERSION"
+              ;;
+            staging)
+              # Find the next beta number by counting existing beta tags for this version.
+              BETA_NUM=1
+              while git tag -l "v${VERSION}-beta.${BETA_NUM}" | grep -q .; do
+                BETA_NUM=$((BETA_NUM + 1))
+              done
+              BUILD_VERSION="${VERSION}-beta.${BETA_NUM}"
+              ;;
+            develop)
+              BUILD_VERSION="${VERSION}-alpha.${{ github.run_number }}"
+              ;;
+          esac
+
           echo "full=$VERSION" >> "$GITHUB_OUTPUT"
           echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
           echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
           echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+          echo "build_version=$BUILD_VERSION" >> "$GITHUB_OUTPUT"
+          echo "beta_num=$BETA_NUM" >> "$GITHUB_OUTPUT"
 
       - name: Reject duplicate version on stable
         if: github.ref_name == 'master'
@@ -175,21 +204,46 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Standard binaries — shipped via the curl installer + direct download.
           - target: x86_64-unknown-linux-gnu
             runner: ubuntu-24.04
             artifact_name: patr-linux-amd64
             binary_name: patr
             archive_ext: tar.gz
+            features: ""
           - target: aarch64-unknown-linux-gnu
             runner: ubuntu-24.04-arm
             artifact_name: patr-linux-arm64
             binary_name: patr
             archive_ext: tar.gz
+            features: ""
           - target: aarch64-apple-darwin
             runner: macos-14
             artifact_name: patr-darwin-arm64
             binary_name: patr
             archive_ext: zip
+            features: ""
+          # Homebrew-tapped binaries — built with `package-managed` so
+          # `patr upgrade` and `patr uninstall` hard-refuse. Consumed by the
+          # homebrew formula.
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-24.04
+            artifact_name: patr-linux-amd64-brew
+            binary_name: patr
+            archive_ext: tar.gz
+            features: package-managed
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
+            artifact_name: patr-linux-arm64-brew
+            binary_name: patr
+            archive_ext: tar.gz
+            features: package-managed
+          - target: aarch64-apple-darwin
+            runner: macos-14
+            artifact_name: patr-darwin-arm64-brew
+            binary_name: patr
+            archive_ext: zip
+            features: package-managed
     steps:
       - uses: actions/checkout@v6
         with:
@@ -218,10 +272,16 @@ jobs:
           VITE_BUILD_TARGET: csr
 
       - name: Build CLI
-        run: cargo build --release --package cli --locked
+        run: |
+          if [ -n "${{ matrix.features }}" ]; then
+            cargo build --release --package cli --locked --features "${{ matrix.features }}"
+          else
+            cargo build --release --package cli --locked
+          fi
         env:
           PATR_BUILD_CHANNEL: ${{ github.ref_name == 'master' && 'stable' || github.ref_name == 'staging' && 'beta' || 'alpha' }}
           PATR_BUILD_SHA: ${{ github.sha }}
+          PATR_BUILD_VERSION: ${{ needs.version.outputs.build_version }}
 
       - name: Package binary (tar.gz)
         if: matrix.archive_ext == 'tar.gz'
@@ -459,6 +519,10 @@ jobs:
           merge-multiple: true
           path: artifacts
 
+      - name: Write version.txt
+        working-directory: artifacts
+        run: echo "${{ needs.version.outputs.build_version }}" > version.txt
+
       - name: Generate SHA256 checksums
         working-directory: artifacts
         run: |
@@ -474,6 +538,7 @@ jobs:
           BRANCH="${{ github.ref_name }}"
           VERSION="${{ needs.version.outputs.full }}"
           SHORT_SHA="${{ needs.version.outputs.short_sha }}"
+          BETA_NUM="${{ needs.version.outputs.beta_num }}"
 
           case "$BRANCH" in
             master)
@@ -482,11 +547,6 @@ jobs:
               NAME="Patr CLI v${VERSION}"
               ;;
             staging)
-              # Find the next beta number by counting existing beta tags for this version
-              BETA_NUM=1
-              while git tag -l "v${VERSION}-beta.${BETA_NUM}" | grep -q .; do
-                BETA_NUM=$((BETA_NUM + 1))
-              done
               TAG="v${VERSION}-beta.${BETA_NUM}"
               PRERELEASE=true
               NAME="Patr CLI v${VERSION}-beta.${BETA_NUM}"
@@ -550,21 +610,18 @@ jobs:
 
           case "$BRANCH" in
             master)
-              BREW_VERSION="${VERSION}"
               FORMULA="cli"
               CLASS="Cli"
               CONFLICTS_A="alpha"
               CONFLICTS_B="beta"
               ;;
             staging)
-              BREW_VERSION="${TAG#v}"
               FORMULA="beta"
               CLASS="Beta"
               CONFLICTS_A="cli"
               CONFLICTS_B="alpha"
               ;;
             develop)
-              BREW_VERSION="${VERSION}-alpha.${{ github.run_number }}"
               FORMULA="alpha"
               CLASS="Alpha"
               CONFLICTS_A="cli"
@@ -575,6 +632,9 @@ jobs:
               exit 1
               ;;
           esac
+
+          # Reuse the same semver string the binary itself carries.
+          BREW_VERSION="${{ needs.version.outputs.build_version }}"
 
           echo "brew_version=$BREW_VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
@@ -592,10 +652,12 @@ jobs:
 
       - name: Compute checksums
         id: shas
+        # Homebrew installs the `-brew` variants (built with
+        # `--features no-self-update`), so hash those, not the standard ones.
         run: |
-          echo "linux_amd64=$(sha256sum /tmp/assets/patr-linux-amd64.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-          echo "linux_arm64=$(sha256sum /tmp/assets/patr-linux-arm64.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-          echo "darwin_arm64=$(sha256sum /tmp/assets/patr-darwin-arm64.zip | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "linux_amd64=$(sha256sum /tmp/assets/patr-linux-amd64-brew.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "linux_arm64=$(sha256sum /tmp/assets/patr-linux-arm64-brew.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "darwin_arm64=$(sha256sum /tmp/assets/patr-darwin-arm64-brew.zip | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
       - name: Generate and push formula
         env:

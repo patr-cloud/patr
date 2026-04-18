@@ -1,0 +1,7 @@
+{
+    "evenBetterToml.formatter.reorderKeys": true,
+    "evenBetterToml.formatter.alignEntries": true,
+    "evenBetterToml.formatter.reorderInlineTables": true,
+    "evenBetterToml.formatter.reorderArrays": false,
+    "evenBetterToml.formatter.columnWidth": 200,
+}

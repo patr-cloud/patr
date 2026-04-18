@@ -14,7 +14,7 @@ mod storage;
 pub use self::{authenticator::*, client::*, ext_trait::*, search_and_select::*, storage::*};
 
 /// A list of all possible runner types that can be setup or run.
-#[derive(Debug, Copy, Clone, clap::ValueEnum)]
+#[derive(Debug, Copy, Clone, clap::ValueEnum, strum::EnumIter)]
 #[value(rename_all = "kebab-case")]
 pub enum RunnerType {
 	/// A runner that runs on a local machine and uses Docker to run the
@@ -52,6 +52,16 @@ pub mod constants {
 		".",
 		env!("CARGO_PKG_VERSION_PATCH"),
 	));
+
+	/// The full semver string CI baked into this binary. For dev builds this
+	/// falls back to `CARGO_PKG_VERSION`.
+	pub const PATR_BUILD_VERSION: &str = match option_env!("PATR_BUILD_VERSION") {
+		Some(v) => v,
+		None => env!("CARGO_PKG_VERSION"),
+	};
+
+	/// GitHub `OWNER/REPO` that hosts releases.
+	pub const GITHUB_REPO: &str = "patr-cloud/patr";
 }
 
 /// The location for config files for the CLI

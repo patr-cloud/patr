@@ -14,7 +14,7 @@ pub(super) async fn execute(
 	_global_args: GlobalArgs,
 	state: AppState,
 ) -> Result<CommandOutput, AppError> {
-	let AppState::LoggedIn { token, .. } = state else {
+	let AuthState::LoggedIn { token, .. } = state.auth else {
 		return Err(AppError::NotLoggedIn);
 	};
 

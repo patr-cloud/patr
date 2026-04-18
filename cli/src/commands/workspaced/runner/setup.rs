@@ -76,10 +76,10 @@ pub async fn execute(
 	let is_managed = mode_selection == MANAGED_OPTION;
 
 	let mode = if is_managed {
-		let AppState::LoggedIn {
+		let AuthState::LoggedIn {
 			token,
 			current_workspace,
-		} = state
+		} = state.auth
 		else {
 			return Err(AppError::NotLoggedIn);
 		};

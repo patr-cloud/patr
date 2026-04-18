@@ -14,6 +14,14 @@ workspace = true
 name = "patr"
 path = "src/main.rs"
 
+[features]
+default = []
+# Signals that this build's install/uninstall/upgrade lifecycle is owned by an
+# external package manager (Homebrew, distro packages, etc.). `patr upgrade`
+# and `patr uninstall` refuse to modify the installation and tell the user to
+# use their package manager instead.
+package-managed = []
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -25,6 +33,7 @@ crossterm           = { workspace = true, features = [] }
 dirs                = { workspace = true, features = [] }
 docker              = { workspace = true, features = [] }
 either              = { workspace = true, features = ["serde"] }
+flate2              = { workspace = true, features = ["default"] }
 futures             = { workspace = true, features = ["default"] }
 headers             = { workspace = true, features = [] }
 http                = { workspace = true, features = ["default"] }
@@ -36,11 +45,17 @@ open                = { workspace = true, features = [] }
 preprocess          = { workspace = true, features = [] }
 rand                = { workspace = true, features = ["default"] }
 reqwest             = { workspace = true, features = ["default", "json"] }
+self-replace        = { workspace = true, features = [] }
+semver              = { workspace = true, features = [] }
 serde               = { workspace = true, features = ["default", "derive"] }
 serde_json          = { workspace = true, features = ["default"] }
 serde_path_to_error = { workspace = true, features = [] }
 serde_qs            = { workspace = true, features = [] }
 serde_yaml2         = { workspace = true, features = [] }
+sha2                = { workspace = true, features = ["default"] }
+strum               = { workspace = true, features = ["derive"] }
+tar                 = { workspace = true, features = [] }
+tempfile            = { workspace = true, features = [] }
 thiserror           = { workspace = true, features = ["default"] }
 time                = { workspace = true, features = ["default", "serde-human-readable"] }
 tokio               = { workspace = true, features = ["default", "full"] }
@@ -50,6 +65,7 @@ tracing-subscriber  = { workspace = true, features = ["default"] }
 typed-builder       = { workspace = true, features = [] }
 url                 = { workspace = true, features = ["default"] }
 uzers               = { workspace = true, features = ["default"] }
+zip                 = { workspace = true, features = ["deflate"] }
 
 [build-dependencies]
 time = { workspace = true, features = [] }

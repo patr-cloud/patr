@@ -21,11 +21,7 @@ impl WorkspacedArgs {
 		let token = if let Some(token) = &global_args.token {
 			BearerToken::from_str(token).map_err(|err| AppError::ParseError(err.to_string()))?
 		} else {
-			let AppState::LoggedIn {
-				token,
-				current_workspace: _,
-			} = state
-			else {
+			let AuthState::LoggedIn { token, .. } = &state.auth else {
 				return Err(AppError::NotLoggedIn);
 			};
 
@@ -37,10 +33,9 @@ impl WorkspacedArgs {
 				.parse::<Uuid>()
 				.map_err(|err| AppError::ParseError(err.to_string()))?
 		} else {
-			let AppState::LoggedIn {
-				token: _,
-				current_workspace,
-			} = state
+			let AuthState::LoggedIn {
+				current_workspace, ..
+			} = &state.auth
 			else {
 				return Err(AppError::NoWorkspace);
 			};
