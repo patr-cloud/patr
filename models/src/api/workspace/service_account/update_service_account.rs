@@ -32,6 +32,7 @@ macros::declare_api_endpoint!(
 		/// Updated role assignments (replaces all roles)
 		pub roles: Option<Vec<Uuid>>,
 	},
+	client_type = [WebDashboard, ApiToken],
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceUpdated,
 		resource_type: ResourceType::ServiceAccount,

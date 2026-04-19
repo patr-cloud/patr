@@ -1,10 +1,7 @@
 use models::api::user::*;
 use reqwest::StatusCode;
 
-use crate::{
-	models::permissions::{IdentityTokenType, get_permissions_for_identity},
-	prelude::*,
-};
+use crate::{models::permissions::get_permissions_for_identity, prelude::*};
 
 pub async fn get_api_token_info(
 	AuthenticatedAppRequest {
@@ -74,7 +71,7 @@ pub async fn get_api_token_info(
 		redis,
 		&token_id,
 		&user_data.id.into(),
-		IdentityTokenType::ApiToken,
+		ClientType::ApiToken,
 	)
 	.await?;
 

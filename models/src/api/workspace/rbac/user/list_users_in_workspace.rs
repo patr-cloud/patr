@@ -31,5 +31,6 @@ macros::declare_api_endpoint!(
 		/// List of all users with their set of roles in a workspace
 		pub users: BTreeMap<Uuid, Vec<Uuid>>,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

@@ -9,11 +9,11 @@ use models::{
 	IdentityData,
 	RequestUserData,
 	rbac::{ResourcePermissionType, WorkspacePermission},
+	utils::ClientType,
 };
 use rustis::client::Client as RedisClient;
 use time::OffsetDateTime;
 
-use super::IdentityTokenType;
 use crate::{models::access_token_data::AccessTokenData, prelude::*, utils::config::AppConfig};
 
 pub(crate) async fn get_permissions(
@@ -141,7 +141,7 @@ pub(crate) async fn get_permissions(
 		redis,
 		&sub,
 		&user.id.into(),
-		IdentityTokenType::WebLogin,
+		ClientType::WebDashboard,
 	)
 	.await?;
 
@@ -152,6 +152,7 @@ pub(crate) async fn get_permissions(
 			first_name: user.first_name,
 			last_name: user.last_name,
 		})
+		.client_type(ClientType::WebDashboard)
 		.created(user.created)
 		.login_id(sub)
 		.permissions(permissions)

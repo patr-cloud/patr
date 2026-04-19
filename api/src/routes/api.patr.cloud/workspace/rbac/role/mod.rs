@@ -19,13 +19,13 @@ use self::{
 };
 
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
+pub async fn setup_routes(state: &AppState, allowed_client_types: &[ClientType]) -> Router {
 	Router::new()
-		.mount_auth_endpoint(create_new_role, state, allowed_client_type)
-		.mount_auth_endpoint(delete_role, state, allowed_client_type)
-		.mount_auth_endpoint(get_role_info, state, allowed_client_type)
-		.mount_auth_endpoint(list_all_roles, state, allowed_client_type)
-		.mount_auth_endpoint(list_users_for_role, state, allowed_client_type)
-		.mount_auth_endpoint(update_role, state, allowed_client_type)
+		.mount_auth_endpoint(create_new_role, state, allowed_client_types)
+		.mount_auth_endpoint(delete_role, state, allowed_client_types)
+		.mount_auth_endpoint(get_role_info, state, allowed_client_types)
+		.mount_auth_endpoint(list_all_roles, state, allowed_client_types)
+		.mount_auth_endpoint(list_users_for_role, state, allowed_client_types)
+		.mount_auth_endpoint(update_role, state, allowed_client_types)
 		.with_state(state.clone())
 }

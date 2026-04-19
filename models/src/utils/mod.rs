@@ -15,6 +15,9 @@ mod base64string;
 /// A set of constant booleans that are used to ensure that the values are
 /// forced to be either true or false.
 mod bools;
+/// The type of client used for a request. Controls which authentication method
+/// is used and which endpoints are accessible.
+mod client_type;
 /// A set of extension traits that provide additional functionality to the
 /// [`IaacResource`] type, such as deduplication of resources based on their
 /// names.
@@ -59,6 +62,7 @@ pub use self::{
 	axum_response::*,
 	base64string::*,
 	bools::*,
+	client_type::*,
 	ext_trait::*,
 	geo_location::*,
 	headers::*,

@@ -8,5 +8,6 @@ macros::declare_api_endpoint!(
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,
 	},
+	client_type = [WebDashboard, ApiToken],
 	audit_log = NoAuditLogger,
 );

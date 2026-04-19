@@ -58,6 +58,7 @@ pub mod prelude {
 		},
 		utils::{
 			BearerToken,
+			ClientType,
 			DockerContentDigest,
 			DockerDistributionApiVersion,
 			ListResourceQuery,
@@ -74,7 +75,7 @@ pub mod prelude {
 		app::{AppRequest, AppState, AuthenticatedAppRequest, UnprocessedAppRequest},
 		models::ip_lookup as ip,
 		redis,
-		utils::{self, EitherExt, RouterExt, TimeoutExt, WorkerExt, constants, layers::ClientType},
+		utils::{self, EitherExt, RouterExt, TimeoutExt, WorkerExt, constants},
 		worker::mailer::*,
 	};
 

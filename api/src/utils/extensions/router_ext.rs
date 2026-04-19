@@ -4,7 +4,7 @@ use axum::{
 };
 use axum_extra::routing::TypedPath;
 use headers::UserAgent;
-use models::utils::{AppAuthentication, BearerToken, HasHeader, NoAuthentication};
+use models::utils::{AppAuthentication, BearerToken, ClientType, HasHeader, NoAuthentication};
 use preprocess::Preprocessable;
 use tower::ServiceBuilder;
 
@@ -18,7 +18,6 @@ use crate::{
 		AuthRateLimiterLayer,
 		AuthenticationLayer,
 		AuthorizationLayer,
-		ClientType,
 		DataStoreConnectionLayer,
 		EndpointHandler,
 		EndpointLayer,
@@ -53,7 +52,7 @@ where
 		self,
 		handler: H,
 		state: &AppState,
-		allowed_client_type: ClientType,
+		allowed_client_types: &[ClientType],
 	) -> Self
 	where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
@@ -67,7 +66,7 @@ where
 		self,
 		handler: H,
 		state: &AppState,
-		allowed_client_type: ClientType,
+		allowed_client_types: &[ClientType],
 	) -> Self
 	where
 		for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send + Sync + 'static,
@@ -96,7 +95,7 @@ where
 		self,
 		handler: H,
 		state: &AppState,
-		allowed_client_type: ClientType,
+		allowed_client_types: &[ClientType],
 	) -> Self
 	where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
@@ -105,9 +104,12 @@ where
 	{
 		// Setup the layers for the backend
 
-		if allowed_client_type == ClientType::ApiToken && !<E as ApiEndpoint>::API_ALLOWED {
-			// If the client type is API token and the endpoint is not allowed for API
-			// tokens, skip mounting the endpoint
+		if !<E as ApiEndpoint>::ALLOWED_CLIENT_TYPES
+			.iter()
+			.any(|ct| allowed_client_types.contains(ct))
+		{
+			// If there is no overlap between the server's client types and the
+			// endpoint's allowed client types, skip mounting the endpoint
 			self
 		} else {
 			// For all other cases, mount the endpoint
@@ -136,7 +138,7 @@ where
 		self,
 		handler: H,
 		state: &AppState,
-		allowed_client_type: ClientType,
+		allowed_client_types: &[ClientType],
 	) -> Self
 	where
 		for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send + Sync + 'static,
@@ -146,9 +148,12 @@ where
 	{
 		// Setup the layers for the backend
 
-		if allowed_client_type == ClientType::ApiToken && !<E as ApiEndpoint>::API_ALLOWED {
-			// If the client type is API token and the endpoint is not allowed for API
-			// tokens, skip mounting the endpoint
+		if !<E as ApiEndpoint>::ALLOWED_CLIENT_TYPES
+			.iter()
+			.any(|ct| allowed_client_types.contains(ct))
+		{
+			// If there is no overlap between the server's client types and the
+			// endpoint's allowed client types, skip mounting the endpoint
 			self
 		} else {
 			self.route(
@@ -161,7 +166,7 @@ where
 					.route_layer(
 						ServiceBuilder::new()
 							.option_layer(
-								if allowed_client_type == ClientType::WebDashboard {
+								if allowed_client_types.contains(&ClientType::WebDashboard) {
 									// For web dashboard, we need to extract the
 									// auth state cookie and set that as the
 									// Bearer token so that the
@@ -175,7 +180,7 @@ where
 							.layer(DataStoreConnectionLayer::with_state(state.clone()))
 							.layer(PreprocessLayer::new())
 							.layer(UserAgentValidationLayer::new())
-							.layer(AuthenticationLayer::new(allowed_client_type))
+							.layer(AuthenticationLayer::new())
 							.layer(AuthorizationLayer::new())
 							.layer(AuthRateLimiterLayer::new())
 							.layer(AuditLoggerLayer::new())

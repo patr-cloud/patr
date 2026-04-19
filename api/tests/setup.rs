@@ -620,14 +620,14 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 
 	let api = TestServer::builder().build(axum::serve(
 		api_listener,
-		api_patr_cloud::setup_routes(&state, ClientType::ApiToken)
+		api_patr_cloud::setup_routes(&state, &[ClientType::ApiToken, ClientType::ServiceAccount])
 			.await
 			.into_make_service_with_connect_info::<SocketAddr>(),
 	));
 
 	let web = TestServer::builder().save_cookies().build(axum::serve(
 		web_listener,
-		api_patr_cloud::setup_routes(&state, ClientType::WebDashboard)
+		api_patr_cloud::setup_routes(&state, &[ClientType::WebDashboard])
 			.await
 			.into_make_service_with_connect_info::<SocketAddr>(),
 	));

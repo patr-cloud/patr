@@ -47,7 +47,7 @@ macros::declare_api_endpoint!(
 	/// The route to create a new user account
 	CreateAccount,
 	POST "/auth/sign-up",
-	api = false,
+	client_type = [WebDashboard],
 	request_headers = {
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,

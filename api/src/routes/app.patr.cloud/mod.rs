@@ -24,7 +24,7 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.with_state(state.clone())
 		.nest(
 			"/api",
-			api_patr_cloud::setup_routes(state, ClientType::WebDashboard)
+			api_patr_cloud::setup_routes(state, &[ClientType::WebDashboard])
 				.await
 				.fallback(async |req: Request<Body>| ApiErrorResponse {
 					status_code: StatusCode::NOT_FOUND,

@@ -16,9 +16,9 @@ use self::{callback::*, initiate::*, setup::*};
 
 /// Sets up the social-login routes
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
+pub async fn setup_routes(state: &AppState, allowed_client_types: &[ClientType]) -> Router {
 	Router::new()
-		.mount_endpoint(social_login_initiate, state, allowed_client_type)
-		.mount_endpoint(social_login_callback, state, allowed_client_type)
-		.mount_endpoint(social_login_setup, state, allowed_client_type)
+		.mount_endpoint(social_login_initiate, state, allowed_client_types)
+		.mount_endpoint(social_login_callback, state, allowed_client_types)
+		.mount_endpoint(social_login_setup, state, allowed_client_types)
 }

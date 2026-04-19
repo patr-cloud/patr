@@ -32,5 +32,6 @@ macros::declare_api_endpoint!(
 		///     description - The role description
 		pub roles: Vec<WithId<Role>>,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );
