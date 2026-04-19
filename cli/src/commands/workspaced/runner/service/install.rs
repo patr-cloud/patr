@@ -6,9 +6,10 @@ use std::{
 
 use clap::Args as ClapArgs;
 
+use super::{run_systemctl, sudo_spawn_error};
 use crate::prelude::*;
 
-/// The arguments for the `runner install-service` command.
+/// The arguments for the `runner service install` command.
 ///
 /// Run this command without sudo. Patr resolves your config and renders the
 /// systemd unit as your user, then uses `sudo` to write the unit file and run
@@ -24,6 +25,7 @@ pub struct Args {
 	pub config: Option<PathBuf>,
 }
 
+/// Install the runner as a systemd service.
 pub async fn execute(args: Args) -> Result<CommandOutput, AppError> {
 	if !Path::new("/run/systemd/system").exists() {
 		return Err(AppError::RunnerError(
@@ -54,6 +56,16 @@ pub async fn execute(args: Args) -> Result<CommandOutput, AppError> {
 		.map_err(|e| AppError::RunnerError(format!("Failed to determine patr binary path: {e}")))?;
 
 	let uid = uzers::get_current_uid();
+	// Running under `sudo patr runner service install` would otherwise silently
+	// install a unit that runs as root. The command is designed to be invoked
+	// without sudo — it escalates only for the write + systemctl calls.
+	if uid == 0 && std::env::var_os("SUDO_UID").is_some() {
+		return Err(AppError::RunnerError(
+			"Don't invoke this command with sudo. Run `patr runner service install` as your \
+			 normal user — it will prompt for your password when needed."
+				.to_string(),
+		));
+	}
 	let user = uzers::get_user_by_uid(uid)
 		.ok_or_else(|| AppError::RunnerError(format!("Failed to resolve user for UID {uid}")))?;
 
@@ -85,7 +97,7 @@ pub async fn execute(args: Args) -> Result<CommandOutput, AppError> {
 	let service_file_path = format!("/etc/systemd/system/{service_name}");
 
 	let unit_file = format!(
-		include_str!("../../../../../assets/cli/systemd-service.template"),
+		include_str!("../../../../../../assets/cli/systemd-service.template"),
 		runner_type_str = runner_type_str,
 		username = username,
 		groupname = groupname,
@@ -121,14 +133,16 @@ pub async fn execute(args: Args) -> Result<CommandOutput, AppError> {
 			.spawn()
 			.map_err(|e| sudo_spawn_error(e, "sudo tee"))?;
 
-		child
-			.stdin
-			.as_mut()
-			.expect("stdin was piped")
-			.write_all(unit_file.as_bytes())
-			.map_err(|e| {
+		{
+			let mut stdin = child.stdin.take().ok_or_else(|| {
+				AppError::RunnerError("`sudo tee` did not expose a stdin handle".to_string())
+			})?;
+			stdin.write_all(unit_file.as_bytes()).map_err(|e| {
 				AppError::RunnerError(format!("Failed to pipe unit file to sudo tee: {e}"))
 			})?;
+			// Dropping the handle here closes the pipe so `tee` sees EOF and
+			// exits; otherwise `wait()` can hang.
+		}
 
 		let status = child
 			.wait()
@@ -170,42 +184,5 @@ pub async fn execute(args: Args) -> Result<CommandOutput, AppError> {
 			.json(ApiSuccessResponseBody::empty().to_json_value())
 			.build()
 			.into_result()
-	}
-}
-
-/// Run `systemctl <args>` — directly when root, otherwise via `sudo`.
-fn run_systemctl(args: &[&str], is_root: bool) -> Result<(), AppError> {
-	let status = if is_root {
-		Command::new("systemctl")
-			.args(args)
-			.status()
-			.map_err(|e| AppError::RunnerError(format!("Failed to run systemctl: {e}")))?
-	} else {
-		let mut full_args = Vec::<&str>::with_capacity(args.len() + 1);
-		full_args.push("systemctl");
-		full_args.extend_from_slice(args);
-		Command::new("sudo")
-			.args(&full_args)
-			.status()
-			.map_err(|e| sudo_spawn_error(e, "sudo systemctl"))?
-	};
-
-	if !status.success() {
-		return Err(AppError::RunnerError(format!(
-			"systemctl {} failed (exit status {status})",
-			args.join(" ")
-		)));
-	}
-
-	Ok(())
-}
-
-fn sudo_spawn_error(e: std::io::Error, what: &str) -> AppError {
-	if e.kind() == std::io::ErrorKind::NotFound {
-		AppError::RunnerError(
-			"sudo not found on PATH. Install sudo or run this command as root.".to_string(),
-		)
-	} else {
-		AppError::RunnerError(format!("Failed to run {what}: {e}"))
 	}
 }

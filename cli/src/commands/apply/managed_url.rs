@@ -6,6 +6,8 @@ use models::{
 
 use crate::prelude::*;
 
+/// Apply an IaaC managed-URL resource — wiring an external URL to a
+/// deployment or domain.
 pub async fn apply(
 	workspace_id: Uuid,
 	token: BearerToken,

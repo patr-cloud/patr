@@ -8,7 +8,7 @@ use crate::prelude::*;
 /// A command that logs the user into their Patr account.
 pub(super) async fn execute(
 	global_args: GlobalArgs,
-	_: AppState,
+	mut state: AppState,
 ) -> Result<CommandOutput, AppError> {
 	// Prompt for the token
 	let token = global_args.token.unwrap_or_else(|| {
@@ -68,12 +68,12 @@ pub(super) async fn execute(
 	.next()
 	.map(|workspace| workspace.id);
 
-	// Save the authenticated state
-	AppState::LoggedIn {
+	// Save the authenticated state (preserving any existing target_channel).
+	state.auth = AuthState::LoggedIn {
 		token: BearerToken::from_str(&token)?,
 		current_workspace,
-	}
-	.save()?;
+	};
+	state.save()?;
 
 	CommandOutput::builder()
 		.text(format!(

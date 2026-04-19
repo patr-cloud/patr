@@ -4,6 +4,7 @@ use models::api::{user::*, workspace::deployment::*};
 
 use crate::prelude::*;
 
+/// Args for `patr deployment start`.
 #[derive(Debug, Clone, ClapArgs)]
 pub struct Args {
 	/// The name of the deployment
@@ -19,15 +20,16 @@ pub struct Args {
 	pub force_restart: bool,
 }
 
+/// Start a deployment (by name/id, or picked interactively).
 pub async fn execute(
 	args: Args,
 	global_args: GlobalArgs,
 	state: AppState,
 ) -> Result<CommandOutput, AppError> {
-	let AppState::LoggedIn {
+	let AuthState::LoggedIn {
 		token,
 		current_workspace,
-	} = state
+	} = state.auth
 	else {
 		return Err(AppError::NotLoggedIn);
 	};

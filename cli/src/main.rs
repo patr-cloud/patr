@@ -22,6 +22,8 @@ pub mod prelude {
 		error::AppError,
 		utils::{
 			AppState,
+			AuthState,
+			Channel,
 			IaacResolverExt,
 			RunnerType,
 			SearchAndSelect,

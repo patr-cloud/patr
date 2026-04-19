@@ -14,7 +14,7 @@ pub(super) async fn execute(
 	_global_args: GlobalArgs,
 	state: AppState,
 ) -> Result<CommandOutput, AppError> {
-	let AppState::LoggedIn { token, .. } = state else {
+	let AuthState::LoggedIn { token, .. } = state.auth else {
 		return Err(AppError::NotLoggedIn);
 	};
 
@@ -37,12 +37,19 @@ pub(super) async fn execute(
 			_ => AppError::RunnerError(format!("Failed to run `docker login`: {e}")),
 		})?;
 
-	child
-		.stdin
-		.as_mut()
-		.expect("stdin was piped")
-		.write_all(token.0.token().as_bytes())
-		.map_err(|e| AppError::RunnerError(format!("Failed to pipe token to docker login: {e}")))?;
+	{
+		let mut stdin = child.stdin.take().ok_or_else(|| {
+			AppError::RunnerError("`docker login` did not expose a stdin handle".to_string())
+		})?;
+		stdin
+			.write_all(token.0.token().as_bytes())
+			.and_then(|()| stdin.write_all(b"\n"))
+			.map_err(|e| {
+				AppError::RunnerError(format!("Failed to pipe token to docker login: {e}"))
+			})?;
+		// Dropping the handle here closes the pipe so docker sees EOF on stdin
+		// and exits; otherwise `wait()` can hang.
+	}
 
 	let status = child
 		.wait()

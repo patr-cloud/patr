@@ -1,26 +1,96 @@
-use std::{path::PathBuf, str::FromStr};
+use std::{fmt, path::PathBuf, str::FromStr};
 
 use config::ConfigError;
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
 
-/// State and stored data of the CLI
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+/// A release channel the CLI can track.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]
+#[serde(rename_all = "camelCase")]
+#[value(rename_all = "kebab-case")]
+pub enum Channel {
+	/// Tracks `master` — stable releases.
+	Stable,
+	/// Tracks `staging` — pre-release builds, ahead of stable.
+	Beta,
+	/// Tracks `develop` — bleeding edge, updated on every commit.
+	Alpha,
+}
+
+impl Channel {
+	/// The channel this binary was built on. Falls back to [`Channel::Alpha`]
+	/// for local/dev builds where CI hasn't set `PATR_BUILD_CHANNEL`.
+	pub const BUILD: Self = {
+		match option_env!("PATR_BUILD_CHANNEL") {
+			Some(s) => match s.as_bytes() {
+				b"stable" => Self::Stable,
+				b"beta" => Self::Beta,
+				_ => Self::Alpha,
+			},
+			None => Self::Alpha,
+		}
+	};
+}
+
+impl Default for Channel {
+	fn default() -> Self {
+		Self::BUILD
+	}
+}
+
+impl fmt::Display for Channel {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.write_str(match self {
+			Self::Stable => "stable",
+			Self::Beta => "beta",
+			Self::Alpha => "alpha",
+		})
+	}
+}
+
+/// Auth portion of the CLI state. Kept as an enum so that
+/// `current_workspace` can't exist without a `token`.
+///
+/// Both variants use struct syntax (including the empty `LoggedOut {}`) so
+/// that `#[serde(flatten)]` on the containing `AppState` works: flatten
+/// requires each variant to serialize as a map, and a unit variant would
+/// serialize as `null` and break round-tripping.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
-pub enum AppState {
-	/// The state of the CLI when the user is logged in
+pub enum AuthState {
+	/// The user is logged in with an API token and (optionally) a selected
+	/// workspace.
 	#[serde(rename_all = "camelCase")]
 	LoggedIn {
-		/// The user's access token
+		/// The user's access token.
 		token: BearerToken,
-		/// The current workspace that is selected by the user
+		/// The currently selected workspace id.
 		current_workspace: Option<Uuid>,
 	},
-	/// The state of the CLI when the user is logged out
-	#[serde(rename_all = "camelCase")]
-	#[default]
-	LoggedOut,
+	/// The user is logged out. Serializes as `{}` so it flattens cleanly.
+	LoggedOut {},
+}
+
+impl Default for AuthState {
+	fn default() -> Self {
+		Self::LoggedOut {}
+	}
+}
+
+/// State and stored data of the CLI. Written to a single `config.json` whether
+/// or not the user is logged in; the `target_channel` field persists across
+/// login/logout.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct AppState {
+	/// Release channel that `patr upgrade` tracks. Defaults to the channel
+	/// the binary was built on.
+	#[serde(default)]
+	pub target_channel: Channel,
+	/// Auth state — logged in with a token, or logged out.
+	#[serde(flatten, default)]
+	pub auth: AuthState,
 }
 
 impl AppState {
@@ -83,11 +153,11 @@ impl AppState {
 
 	/// Returns true if the user is logged in, false otherwise.
 	pub fn is_logged_in(&self) -> bool {
-		matches!(self, Self::LoggedIn { .. })
+		matches!(&self.auth, AuthState::LoggedIn { .. })
 	}
 
 	/// Returns true if the user is logged out, false otherwise.
 	pub fn is_logged_out(&self) -> bool {
-		matches!(self, Self::LoggedOut)
+		matches!(&self.auth, AuthState::LoggedOut {})
 	}
 }

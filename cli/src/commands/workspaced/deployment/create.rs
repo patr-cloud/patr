@@ -9,6 +9,8 @@ use models::api::{
 
 use crate::{prelude::*, utils::StringExt};
 
+/// Args for `patr deployment create`. Any field left as `None` is prompted
+/// for interactively (or required in non-TTY mode).
 #[derive(Debug, Clone, ClapArgs)]
 pub struct Args {
 	/// The name of the deployment
@@ -114,24 +116,42 @@ pub struct Args {
 	pub deploy_on_create: Option<bool>,
 }
 
+/// A field in the interactive "edit before create" menu. Each variant maps to
+/// one row the user can pick to edit (plus the terminal `CreateDeployment`
+/// row that submits the request).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum MenuField {
+	/// Edit the deployment name.
 	Name,
+	/// Edit the source registry + image.
 	Registry,
+	/// Edit the image tag.
 	ImageTag,
+	/// Pick the runner this deployment will run on.
 	Runner,
+	/// Pick the machine type (CPU / memory).
 	MachineType,
+	/// Toggle auto-deploy on image push.
 	DeployOnPush,
+	/// Edit the minimum horizontal scale.
 	MinScale,
+	/// Edit the maximum horizontal scale.
 	MaxScale,
+	/// Edit the exposed ports.
 	Ports,
+	/// Edit the environment variables.
 	EnvVars,
+	/// Toggle whether to deploy immediately after create.
 	DeployOnCreate,
+	/// Submit the request and create the deployment.
 	CreateDeployment,
 }
 
+/// One row in the interactive menu — pairs a field with its rendered label.
 struct MenuItem {
+	/// Which field this row edits.
 	field: MenuField,
+	/// Rendered label shown to the user (includes the current value).
 	display: String,
 }
 
@@ -141,6 +161,8 @@ impl fmt::Display for MenuItem {
 	}
 }
 
+/// Render the current deployment-in-progress as a list of menu rows for the
+/// interactive picker.
 fn build_menu_items(
 	name: &Option<String>,
 	registry: &Option<DeploymentRegistry>,
@@ -272,6 +294,8 @@ fn build_menu_items(
 	]
 }
 
+/// Parse `PORT:TYPE` strings (e.g. `8080:http`) passed via `--port` into the
+/// API's port-map format.
 fn parse_ports_from_args(
 	ports: Vec<String>,
 ) -> Result<BTreeMap<StringifiedU16, ExposedPortType>, AppError> {
@@ -309,6 +333,7 @@ fn parse_ports_from_args(
 		.collect()
 }
 
+/// Parse `KEY=VALUE` strings passed via `--env` into the API's env-var map.
 fn parse_env_vars_from_args(
 	env_vars: Vec<String>,
 ) -> Result<BTreeMap<String, EnvironmentVariableValue>, AppError> {
@@ -337,6 +362,8 @@ fn parse_env_vars_from_args(
 		.collect()
 }
 
+/// Search runners in the workspace by name prefix. Used as the search
+/// backend for the interactive runner picker.
 async fn search_runners(
 	workspace_id: Uuid,
 	token: &BearerToken,
@@ -372,6 +399,9 @@ async fn search_runners(
 	.runners)
 }
 
+/// Search Patr container repositories by name prefix. Used as the search
+/// backend for the interactive repository picker when the registry is
+/// `registry.patr.cloud`.
 async fn search_repositories(
 	workspace_id: Uuid,
 	token: &BearerToken,
@@ -407,6 +437,8 @@ async fn search_repositories(
 	.repositories)
 }
 
+/// Interactive editor for the source registry + image — picks either a
+/// Patr-managed repository or an external registry/image name.
 async fn edit_registry(
 	workspace_id: Uuid,
 	token: &BearerToken,
@@ -467,6 +499,8 @@ async fn edit_registry(
 	Ok(())
 }
 
+/// Interactive editor for the exposed-ports map: loops through add/remove
+/// actions until the user selects Done.
 fn edit_ports(ports: &mut BTreeMap<StringifiedU16, ExposedPortType>) {
 	loop {
 		let mut choices = vec!["Add port".to_string()];
@@ -529,6 +563,8 @@ fn edit_ports(ports: &mut BTreeMap<StringifiedU16, ExposedPortType>) {
 	}
 }
 
+/// Interactive editor for the environment-variables map: loops through
+/// add/remove actions until the user selects Done.
 fn edit_env_vars(env_vars: &mut BTreeMap<String, EnvironmentVariableValue>) {
 	loop {
 		let mut choices = vec!["Add variable".to_string()];
@@ -572,15 +608,18 @@ fn edit_env_vars(env_vars: &mut BTreeMap<String, EnvironmentVariableValue>) {
 	}
 }
 
+/// Create a deployment. Fields missing from `args` are prompted for
+/// interactively via the edit-before-create menu; in non-TTY mode all
+/// required fields must be passed as flags.
 pub async fn execute(
 	args: Args,
 	global_args: GlobalArgs,
 	state: AppState,
 ) -> Result<CommandOutput, AppError> {
-	let AppState::LoggedIn {
+	let AuthState::LoggedIn {
 		token,
 		current_workspace,
-	} = state
+	} = state.auth
 	else {
 		return Err(AppError::NotLoggedIn);
 	};

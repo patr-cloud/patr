@@ -8,12 +8,12 @@ mod create;
 mod current;
 /// List deployments assigned to a specific runner
 mod deployments;
-/// Install a systemd service for the runner
-mod install_service;
 /// List all runners
 mod list;
 /// The command to run a configured runner
 mod run;
+/// Systemd service lifecycle for the runner (install / uninstall / status)
+mod service;
 /// The command to setup the CLI's configuration settings for first time use.
 mod setup;
 
@@ -44,11 +44,11 @@ pub enum RunnerActionCommand {
 	#[command(alias = "exec", alias = "execute", alias = "start")]
 	/// Run a configured runner
 	Run(run::Args),
-	#[command(alias = "install")]
-	/// Install a systemd service for the runner
-	InstallService(install_service::Args),
+	/// Systemd service lifecycle for the runner (install / uninstall / status)
+	#[command(subcommand)]
+	Service(service::ServiceCommand),
 	/// Print info about the runner configured on this host
-	#[command(alias = "whoami", alias = "info")]
+	#[command(alias = "whoami", alias = "info", alias = "status")]
 	Current(current::Args),
 	/// List deployments assigned to a runner
 	#[command(alias = "list-deployments", alias = "ls-deployments")]
@@ -71,7 +71,7 @@ pub async fn execute(
 			list::execute(global_args, state).await
 		}
 		RunnerCommand::RunnerAction(Run(args)) => run::execute(args).await,
-		RunnerCommand::RunnerAction(InstallService(args)) => install_service::execute(args).await,
+		RunnerCommand::RunnerAction(Service(cmd)) => service::execute(cmd, global_args).await,
 		RunnerCommand::RunnerAction(Current(args)) => current::execute(args).await,
 		RunnerCommand::RunnerAction(Deployments(args)) => {
 			deployments::execute(args, global_args, state).await

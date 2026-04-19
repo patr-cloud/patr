@@ -17,6 +17,7 @@ use rand::RngExt;
 
 use crate::prelude::*;
 
+/// Args for `patr runner setup`.
 #[derive(Debug, Clone, ClapArgs)]
 pub struct Args {
 	/// Force the setup even if the CLI is already configured
@@ -31,6 +32,8 @@ pub struct Args {
 	pub runner_type: RunnerType,
 }
 
+/// First-time configuration for a runner on this host — writes the runner
+/// config file used by `patr runner run` and `patr runner service install`.
 pub async fn execute(
 	args: Args,
 	_global_args: GlobalArgs,
@@ -76,10 +79,10 @@ pub async fn execute(
 	let is_managed = mode_selection == MANAGED_OPTION;
 
 	let mode = if is_managed {
-		let AppState::LoggedIn {
+		let AuthState::LoggedIn {
 			token,
 			current_workspace,
-		} = state
+		} = state.auth
 		else {
 			return Err(AppError::NotLoggedIn);
 		};
