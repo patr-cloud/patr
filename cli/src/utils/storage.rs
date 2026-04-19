@@ -153,11 +153,11 @@ impl AppState {
 
 	/// Returns true if the user is logged in, false otherwise.
 	pub fn is_logged_in(&self) -> bool {
-		matches!(self.auth, AuthState::LoggedIn { .. })
+		matches!(&self.auth, AuthState::LoggedIn { .. })
 	}
 
 	/// Returns true if the user is logged out, false otherwise.
 	pub fn is_logged_out(&self) -> bool {
-		matches!(self.auth, AuthState::LoggedOut {})
+		matches!(&self.auth, AuthState::LoggedOut {})
 	}
 }

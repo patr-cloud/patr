@@ -107,6 +107,7 @@ pub(super) async fn execute(
 		.into_result()
 }
 
+/// Format a byte count as a human-readable string (GiB / MiB / KiB / B).
 fn format_size(bytes: u64) -> String {
 	const KIB: u64 = 1024;
 	const MIB: u64 = KIB * 1024;

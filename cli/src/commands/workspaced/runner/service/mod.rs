@@ -26,11 +26,14 @@ pub enum ServiceCommand {
 }
 
 /// Dispatch a runner service subcommand
-pub async fn execute(command: ServiceCommand) -> Result<CommandOutput, AppError> {
+pub async fn execute(
+	command: ServiceCommand,
+	global_args: GlobalArgs,
+) -> Result<CommandOutput, AppError> {
 	match command {
 		ServiceCommand::Install(args) => install::execute(args).await,
 		ServiceCommand::Uninstall(args) => uninstall::execute(args).await,
-		ServiceCommand::Status(args) => status::execute(args).await,
+		ServiceCommand::Status(args) => status::execute(args, global_args).await,
 	}
 }
 

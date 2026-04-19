@@ -4,6 +4,7 @@ use models::api::{user::*, workspace::deployment::*};
 
 use crate::prelude::*;
 
+/// Args for `patr deployment delete`.
 #[derive(Debug, Clone, ClapArgs)]
 pub struct Args {
 	/// The name of the deployment
@@ -16,6 +17,7 @@ pub struct Args {
 	pub name: Option<String>,
 }
 
+/// Delete a deployment (by name/id, or picked interactively).
 pub async fn execute(
 	args: Args,
 	global_args: GlobalArgs,

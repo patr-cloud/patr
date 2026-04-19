@@ -46,6 +46,7 @@ pub enum DeploymentActionCommand {
 	Delete(delete::Args),
 }
 
+/// Dispatch a deployment subcommand to its handler.
 pub async fn execute(
 	command: DeploymentCommand,
 	global_args: GlobalArgs,

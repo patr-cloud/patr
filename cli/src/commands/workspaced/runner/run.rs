@@ -18,6 +18,7 @@ pub struct Args {
 	pub config: Option<PathBuf>,
 }
 
+/// Run the configured runner in the foreground.
 pub async fn execute(args: Args) -> Result<CommandOutput, AppError> {
 	match args.runner_type {
 		RunnerType::Kubernetes => {

@@ -8,6 +8,8 @@ use models::{
 
 use crate::prelude::*;
 
+/// Apply an IaaC deployment resource — creating the deployment on Patr and
+/// associating it with a runner + registry image.
 pub async fn apply(
 	workspace_id: Uuid,
 	token: BearerToken,

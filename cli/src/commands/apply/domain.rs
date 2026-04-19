@@ -2,6 +2,7 @@ use models::{api::workspace::domain::*, iaac::*, utils::BearerToken};
 
 use crate::prelude::*;
 
+/// Apply an IaaC domain resource — registering the domain on the workspace.
 pub async fn apply(
 	workspace_id: Uuid,
 	token: BearerToken,

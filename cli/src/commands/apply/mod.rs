@@ -14,6 +14,7 @@ mod domain;
 /// workspace
 mod managed_url;
 
+/// Args for `patr apply`.
 #[derive(Debug, Clone, ClapArgs)]
 pub struct Args {
 	/// The filename of the configuration file to apply
@@ -30,6 +31,7 @@ pub struct Args {
 	pub dry_run: bool,
 }
 
+/// Apply an IaaC config file to the workspace.
 pub async fn execute(
 	args: Args,
 	global_args: GlobalArgs,

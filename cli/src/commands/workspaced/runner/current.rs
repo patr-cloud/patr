@@ -9,12 +9,16 @@ use serde::Serialize;
 
 use crate::prelude::*;
 
+/// JSON output shape for a self-hosted runner (mode = `selfHosted`).
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SelfHostedOutput {
+	/// Path to the config file on disk.
 	config: String,
+	/// Runner kind (`docker`, `kubernetes`).
 	#[serde(rename = "type")]
 	runner_type: String,
+	/// Always `"selfHosted"` for this variant.
 	mode: &'static str,
 }
 

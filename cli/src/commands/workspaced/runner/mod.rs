@@ -71,7 +71,7 @@ pub async fn execute(
 			list::execute(global_args, state).await
 		}
 		RunnerCommand::RunnerAction(Run(args)) => run::execute(args).await,
-		RunnerCommand::RunnerAction(Service(cmd)) => service::execute(cmd).await,
+		RunnerCommand::RunnerAction(Service(cmd)) => service::execute(cmd, global_args).await,
 		RunnerCommand::RunnerAction(Current(args)) => current::execute(args).await,
 		RunnerCommand::RunnerAction(Deployments(args)) => {
 			deployments::execute(args, global_args, state).await

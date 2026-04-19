@@ -82,6 +82,7 @@ pub enum GlobalCommand {
 	Workspaced(WorkspacedCommand),
 }
 
+/// Dispatch a top-level CLI command to its handler.
 pub async fn execute(
 	command: GlobalCommand,
 	global_args: GlobalArgs,

@@ -4,6 +4,7 @@ use models::api::{user::*, workspace::deployment::*};
 
 use crate::prelude::*;
 
+/// Args for `patr deployment start`.
 #[derive(Debug, Clone, ClapArgs)]
 pub struct Args {
 	/// The name of the deployment
@@ -19,6 +20,7 @@ pub struct Args {
 	pub force_restart: bool,
 }
 
+/// Start a deployment (by name/id, or picked interactively).
 pub async fn execute(
 	args: Args,
 	global_args: GlobalArgs,
