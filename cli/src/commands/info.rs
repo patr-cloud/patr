@@ -21,7 +21,7 @@ pub(super) async fn execute(
 			token,
 			current_workspace: _,
 		} => token,
-		AuthState::LoggedOut => {
+		AuthState::LoggedOut {} => {
 			return Err(AppError::NotLoggedIn);
 		}
 	};

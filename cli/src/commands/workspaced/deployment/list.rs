@@ -123,7 +123,10 @@ pub(super) async fn execute(
 				.repository
 				.name;
 
-				format!("registry.patr.cloud/{}:{}", repo_name, deployment.image_tag)
+				format!(
+					"registry.patr.cloud/{}/{}:{}",
+					workspace_id, repo_name, deployment.image_tag
+				)
 			}
 			DeploymentRegistry::ExternalRegistry {
 				registry,

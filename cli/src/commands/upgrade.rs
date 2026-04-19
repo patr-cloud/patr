@@ -24,7 +24,8 @@ pub struct Args {
 	#[arg(long)]
 	pub force: bool,
 	/// Print what an upgrade would do and exit without modifying anything.
-	/// Exit codes: 0 = up to date, 1 = update available, 2 = error.
+	/// Exits 0 on success (whether up-to-date or an update is available); exits
+	/// 1 only on error. Parse the text/JSON output to distinguish the two.
 	#[arg(long)]
 	pub check: bool,
 }

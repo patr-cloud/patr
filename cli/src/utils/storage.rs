@@ -51,7 +51,12 @@ impl fmt::Display for Channel {
 
 /// Auth portion of the CLI state. Kept as an enum so that
 /// `current_workspace` can't exist without a `token`.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+///
+/// Both variants use struct syntax (including the empty `LoggedOut {}`) so
+/// that `#[serde(flatten)]` on the containing `AppState` works: flatten
+/// requires each variant to serialize as a map, and a unit variant would
+/// serialize as `null` and break round-tripping.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum AuthState {
 	/// The user is logged in with an API token and (optionally) a selected
@@ -63,9 +68,14 @@ pub enum AuthState {
 		/// The currently selected workspace id.
 		current_workspace: Option<Uuid>,
 	},
-	/// The user is logged out.
-	#[default]
-	LoggedOut,
+	/// The user is logged out. Serializes as `{}` so it flattens cleanly.
+	LoggedOut {},
+}
+
+impl Default for AuthState {
+	fn default() -> Self {
+		Self::LoggedOut {}
+	}
 }
 
 /// State and stored data of the CLI. Written to a single `config.json` whether
@@ -148,6 +158,6 @@ impl AppState {
 
 	/// Returns true if the user is logged out, false otherwise.
 	pub fn is_logged_out(&self) -> bool {
-		matches!(self.auth, AuthState::LoggedOut)
+		matches!(self.auth, AuthState::LoggedOut {})
 	}
 }

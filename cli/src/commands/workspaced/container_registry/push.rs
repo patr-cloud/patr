@@ -124,13 +124,17 @@ pub(super) async fn execute(
 				.unwrap_or_else(|| panic!("No repository found with name: `{selected}`"))
 		});
 
+	// Digest refs (`image@sha256:…`) look like they have a tag after the last
+	// `:`, but that `:` belongs to the digest — don't infer a tag from it.
+	let inferred_tag = (!args.source.contains('@'))
+		.then(|| args.source.rsplit_once(':'))
+		.flatten()
+		.and_then(|(_, rest)| (!rest.is_empty() && !rest.contains('/')).then(|| rest.to_string()));
+
 	let tag = if let Some(tag) = args.tag {
 		tag
-	} else if let Some((_, rest)) = args.source.rsplit_once(':') &&
-		!rest.is_empty() &&
-		!rest.contains('/')
-	{
-		rest.to_string()
+	} else if let Some(inferred) = inferred_tag {
+		inferred
 	} else if std::io::stdin().is_terminal() {
 		let accept_latest = Confirm::new("No tag specified. Use 'latest'?")
 			.with_default(true)

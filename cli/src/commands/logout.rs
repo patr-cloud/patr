@@ -16,7 +16,7 @@ pub(super) async fn execute(
 	}
 
 	// Drop the auth while preserving any other preferences (target_channel etc).
-	state.auth = AuthState::LoggedOut;
+	state.auth = AuthState::LoggedOut {};
 	state.save()?;
 
 	CommandOutput::builder()

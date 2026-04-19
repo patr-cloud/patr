@@ -56,6 +56,16 @@ pub async fn execute(args: Args) -> Result<CommandOutput, AppError> {
 		.map_err(|e| AppError::RunnerError(format!("Failed to determine patr binary path: {e}")))?;
 
 	let uid = uzers::get_current_uid();
+	// Running under `sudo patr runner service install` would otherwise silently
+	// install a unit that runs as root. The command is designed to be invoked
+	// without sudo — it escalates only for the write + systemctl calls.
+	if uid == 0 && std::env::var_os("SUDO_UID").is_some() {
+		return Err(AppError::RunnerError(
+			"Don't invoke this command with sudo. Run `patr runner service install` as your \
+			 normal user — it will prompt for your password when needed."
+				.to_string(),
+		));
+	}
 	let user = uzers::get_user_by_uid(uid)
 		.ok_or_else(|| AppError::RunnerError(format!("Failed to resolve user for UID {uid}")))?;
 
@@ -123,14 +133,16 @@ pub async fn execute(args: Args) -> Result<CommandOutput, AppError> {
 			.spawn()
 			.map_err(|e| sudo_spawn_error(e, "sudo tee"))?;
 
-		child
-			.stdin
-			.as_mut()
-			.expect("stdin was piped")
-			.write_all(unit_file.as_bytes())
-			.map_err(|e| {
+		{
+			let mut stdin = child.stdin.take().ok_or_else(|| {
+				AppError::RunnerError("`sudo tee` did not expose a stdin handle".to_string())
+			})?;
+			stdin.write_all(unit_file.as_bytes()).map_err(|e| {
 				AppError::RunnerError(format!("Failed to pipe unit file to sudo tee: {e}"))
 			})?;
+			// Dropping the handle here closes the pipe so `tee` sees EOF and
+			// exits; otherwise `wait()` can hang.
+		}
 
 		let status = child
 			.wait()
