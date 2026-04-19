@@ -38,7 +38,9 @@ pub mod registry_patr_cloud;
 /// Sets up the routes for the API, across all domains.
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
-	let api_router = api_patr_cloud::setup_routes(state, ClientType::ApiToken).await;
+	let api_router =
+		api_patr_cloud::setup_routes(state, &[ClientType::ApiToken, ClientType::ServiceAccount])
+			.await;
 	let app_router = app_patr_cloud::setup_routes(state).await;
 	let assets_router = assets_patr_cloud::setup_routes(state).await;
 	let loki_router = loki_patr_cloud::setup_routes(state).await;

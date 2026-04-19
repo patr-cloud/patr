@@ -4,13 +4,13 @@ use models::{ErrorType, api::workspace::database::*, utils::TotalCountHeader};
 use crate::prelude::*;
 
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
+pub async fn setup_routes(state: &AppState, allowed_client_types: &[ClientType]) -> Router {
 	Router::new()
-		.mount_endpoint(all_database_plan, state, allowed_client_type)
-		.mount_auth_endpoint(create_database, state, allowed_client_type)
-		.mount_auth_endpoint(delete_database, state, allowed_client_type)
-		.mount_auth_endpoint(get_database, state, allowed_client_type)
-		.mount_auth_endpoint(list_database, state, allowed_client_type)
+		.mount_endpoint(all_database_plan, state, allowed_client_types)
+		.mount_auth_endpoint(create_database, state, allowed_client_types)
+		.mount_auth_endpoint(delete_database, state, allowed_client_types)
+		.mount_auth_endpoint(get_database, state, allowed_client_types)
+		.mount_auth_endpoint(list_database, state, allowed_client_types)
 }
 
 async fn all_database_plan(

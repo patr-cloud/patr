@@ -30,6 +30,7 @@ macros::declare_api_endpoint!(
 		#[preprocess(optional(range(min = 1)))]
 		pub size: Option<u64>,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceUpdated,
 		resource_type: ResourceType::Volume,

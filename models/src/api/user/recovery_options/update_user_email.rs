@@ -6,7 +6,7 @@ macros::declare_api_endpoint!(
 	/// [`super::verify_email_address`] endpoint.
 	UpdateUserEmail,
 	POST "/user/update-email",
-	api = false,
+	client_type = [WebDashboard],
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,

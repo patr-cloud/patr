@@ -85,7 +85,7 @@ pub async fn update_managed_url(
 				deployment_id: managed_url_deployment_id,
 				port: managed_url_port,
 			} => {
-				let deployment = query!(
+				query!(
 					r#"
 					SELECT
 						deployment.runner AS "runner: Uuid"

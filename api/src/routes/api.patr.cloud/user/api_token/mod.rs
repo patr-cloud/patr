@@ -19,12 +19,12 @@ use crate::prelude::*;
 
 /// Sets up the api-token routes
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
+pub async fn setup_routes(state: &AppState, allowed_client_types: &[ClientType]) -> Router {
 	Router::new()
-		.mount_auth_endpoint(create_api_token, state, allowed_client_type)
-		.mount_auth_endpoint(get_api_token_info, state, allowed_client_type)
-		.mount_auth_endpoint(list_api_tokens, state, allowed_client_type)
-		.mount_auth_endpoint(regenerate_api_token, state, allowed_client_type)
-		.mount_auth_endpoint(revoke_api_token, state, allowed_client_type)
-		.mount_auth_endpoint(update_api_token, state, allowed_client_type)
+		.mount_auth_endpoint(create_api_token, state, allowed_client_types)
+		.mount_auth_endpoint(get_api_token_info, state, allowed_client_types)
+		.mount_auth_endpoint(list_api_tokens, state, allowed_client_types)
+		.mount_auth_endpoint(regenerate_api_token, state, allowed_client_types)
+		.mount_auth_endpoint(revoke_api_token, state, allowed_client_types)
+		.mount_auth_endpoint(update_api_token, state, allowed_client_types)
 }

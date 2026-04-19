@@ -64,6 +64,7 @@ macros::declare_api_endpoint!(
 		#[preprocess(none)]
 		pub volumes: Option<BTreeMap<Uuid, String>>,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceUpdated,
 		resource_type: ResourceType::Deployment,

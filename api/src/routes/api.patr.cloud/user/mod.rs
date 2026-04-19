@@ -26,16 +26,16 @@ use self::{
 
 /// Sets up the user routes
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
+pub async fn setup_routes(state: &AppState, allowed_client_types: &[ClientType]) -> Router {
 	Router::new()
-		.merge(api_token::setup_routes(state, allowed_client_type).await)
-		.merge(mfa::setup_routes(state, allowed_client_type).await)
-		.merge(recovery_options::setup_routes(state, allowed_client_type).await)
-		.merge(web_logins::setup_routes(state, allowed_client_type).await)
-		.mount_auth_endpoint(change_password, state, allowed_client_type)
-		.mount_auth_endpoint(get_user_details, state, allowed_client_type)
-		.mount_auth_endpoint(get_user_info, state, allowed_client_type)
-		.mount_auth_endpoint(list_workspaces, state, allowed_client_type)
-		.mount_auth_endpoint(search_for_user, state, allowed_client_type)
-		.mount_auth_endpoint(update_user_info, state, allowed_client_type)
+		.merge(api_token::setup_routes(state, allowed_client_types).await)
+		.merge(mfa::setup_routes(state, allowed_client_types).await)
+		.merge(recovery_options::setup_routes(state, allowed_client_types).await)
+		.merge(web_logins::setup_routes(state, allowed_client_types).await)
+		.mount_auth_endpoint(change_password, state, allowed_client_types)
+		.mount_auth_endpoint(get_user_details, state, allowed_client_types)
+		.mount_auth_endpoint(get_user_info, state, allowed_client_types)
+		.mount_auth_endpoint(list_workspaces, state, allowed_client_types)
+		.mount_auth_endpoint(search_for_user, state, allowed_client_types)
+		.mount_auth_endpoint(update_user_info, state, allowed_client_types)
 }

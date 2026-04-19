@@ -397,7 +397,193 @@ using `patrv1.*` tokens cannot be written until a `ClientType::ApiToken` test se
 - [ ] `regenerate_token_invalidates_old` — regenerate token, use old token, expect auth failure
 - [ ] `user_api_token_still_works_after_sa_feature` — regression: user API token still authenticates
 
-**Fix:** Add a second `TestServer` in `setup.rs` mounted with `ClientType::ApiToken`, expose `make_api_token_call()` on `TestSetup`.
+**Fix:** See "ClientType Refactor" section below — same blocker.
+
+---
+
+## ClientType Refactor — Per-Endpoint Allowed Client Types
+
+The endpoint declaration system was changed from `api = bool` to `client_type = [...]` arrays.
+Each endpoint now explicitly declares which client types can call it (`WebDashboard`, `ApiToken`,
+`ServiceAccount`). The auth layer enforces this at runtime via `E::ALLOWED_CLIENT_TYPES`. Most
+workspace endpoints accept all three; SA management and `create_workspace` exclude SA;
+`stream_runner_data_for_workspace` is SA-only; loki/mimir push is SA-only.
+
+This is a HUGE behavioral change and needs comprehensive coverage. Split into two phases.
+
+### Phase 1: Test Infrastructure
+
+The current `tests/setup.rs` only mounts one server (`ClientType::WebDashboard`). To test
+the ApiToken and ServiceAccount flows, we need to mount the api.patr.cloud server too.
+
+- [ ] **Add second `TestServer` in `setup.rs`** mounted with
+      `&[ClientType::ApiToken, ClientType::ServiceAccount]` — represents the api.patr.cloud
+      server. Bind to a separate port. Store on `TestSetup` as `api_token_server`.
+- [ ] **Add `make_api_token_call()` method on `TestSetup`** — sends requests to the api.patr.cloud
+      server using the provided `BearerToken`. Mirrors `make_api_call()` signature.
+- [ ] **Add `make_sa_call()` helper** — convenience wrapper around `make_api_token_call()` that
+      accepts a `TestServiceAccount` and constructs the bearer token from `sa.token`.
+- [ ] **Add `create_test_user_api_token()` helper** — creates a user API token via the existing
+      `CreateApiToken` endpoint, returns a `TestUserApiToken { id, token, user_id }`. Mirrors
+      `create_test_service_account` pattern.
+- [ ] **Add helpers for token construction** — `BearerToken::from_str(&sa.token)` and similar,
+      to keep test bodies readable.
+
+### Phase 2: Tests
+
+Once Phase 1 is in place, write the following. Group into a new test module
+`api/tests/api/client_type.rs` for the cross-cutting tests; restriction-specific tests live
+in their respective module files.
+
+#### 2a. `get_user_data_for_token` dispatch (unit-style integration tests)
+
+Verify the prefix-based dispatch works correctly. Located in `api/tests/api/auth/`.
+
+- [ ] `dispatch_patrv1_token_routes_to_api_token_module` — token starting with `patrv1.` is
+      handled by the api_token module. Verify by sending a valid user API token to an endpoint
+      that allows `[ApiToken]` and asserting success.
+- [ ] `dispatch_jwt_token_routes_to_web_dashboard_module` — JWT token is handled by the
+      web_dashboard module. Verify with existing web dashboard auth flow.
+- [ ] `dispatch_garbage_token_returns_malformed_access_token` — random non-prefix string
+      falls to JWT parsing → `MalformedAccessToken`.
+- [ ] `dispatch_malformed_patrv1_token_returns_malformed_api_token` — `patrv1.notauuid.alsogarbage`
+      → `MalformedApiToken`.
+
+#### 2b. `client_type` resolution on `RequestUserData`
+
+Verify the `client_type` field is correctly set by each auth module.
+
+- [ ] `client_type_set_to_api_token_for_user_token` — auth with user API token →
+      `user_data.client_type == ClientType::ApiToken`. Use a debug-only echo endpoint, or
+      assert via observable side effects.
+- [ ] `client_type_set_to_service_account_for_sa_token` — auth with SA token →
+      `user_data.client_type == ClientType::ServiceAccount`.
+- [ ] `client_type_set_to_web_dashboard_for_jwt` — auth with JWT → `client_type == WebDashboard`.
+
+(Note: these may need a small test-only endpoint that echoes `user_data.client_type` in the
+response. Alternatively, assert through behavioral effects in 2c below.)
+
+#### 2c. `ALLOWED_CLIENT_TYPES` runtime enforcement
+
+The auth layer rejects requests whose resolved client type isn't in the endpoint's allowed list.
+For each combination, test that allowed types succeed and disallowed types return `Unauthorized`.
+
+**Endpoints accepting `[WebDashboard, ApiToken, ServiceAccount]` (most workspace endpoints):**
+- [ ] `multi_type_endpoint_accepts_jwt` — JWT works
+- [ ] `multi_type_endpoint_accepts_user_api_token` — user API token works
+- [ ] `multi_type_endpoint_accepts_sa_token` — SA token works
+
+**Endpoints accepting `[WebDashboard, ApiToken]` (no SA — `create_workspace`, `user/get_user_info`,
+`user/get_user_details`, `user/list_user_workspaces`, all `service_account/*`):**
+- [ ] `no_sa_endpoint_rejects_sa_token` — SA token to `create_workspace` → 401
+- [ ] `no_sa_endpoint_rejects_sa_token_for_sa_management` — SA token to `create_service_account`
+      → 401 (specifically test the SA-managing-SA exclusion)
+- [ ] `no_sa_endpoint_rejects_sa_token_for_user_endpoint` — SA token to `get_user_info` → 401
+- [ ] `no_sa_endpoint_accepts_user_api_token` — user API token still works for these
+- [ ] `no_sa_endpoint_accepts_jwt` — JWT still works for these
+
+**Endpoints accepting `[WebDashboard]` only (`change_password`, `mfa/*`, `oauth/*`, etc.):**
+- [ ] `web_only_endpoint_rejects_user_api_token` — user API token to `change_password` → 401
+- [ ] `web_only_endpoint_rejects_sa_token` — SA token to `change_password` → 401
+
+**Endpoints accepting `[ApiToken]` only (`docker_login`):**
+- [ ] `api_token_only_endpoint_rejects_jwt` — JWT to docker_login → 401 (or not mounted)
+- [ ] `api_token_only_endpoint_accepts_user_api_token` — user API token works
+- [ ] `api_token_only_endpoint_rejects_sa_token` — SA token → 401
+
+**Endpoints accepting `[ServiceAccount]` only (`stream_runner_data_for_workspace`):**
+- [ ] `sa_only_endpoint_rejects_user_api_token` — user API token → 401
+- [ ] `sa_only_endpoint_rejects_jwt` — JWT → 401 (or not mounted)
+- [ ] `sa_only_endpoint_accepts_sa_token` — SA token works (with the right runner permission)
+
+#### 2d. Mount-time filtering
+
+Endpoints whose allowed types don't overlap with the server's types are not mounted at all
+(returns 404, not 401). Verify both servers correctly filter.
+
+- [ ] `web_only_endpoint_not_mounted_on_api_server` — request `change_password` on
+      api.patr.cloud → 404
+- [ ] `sa_only_endpoint_not_mounted_on_web_server` — request `stream_runner_data_for_workspace`
+      on app.patr.cloud → 404
+- [ ] `api_token_only_endpoint_not_mounted_on_web_server` — request `docker_login` on
+      app.patr.cloud → 404
+- [ ] `multi_type_endpoint_mounted_on_both_servers` — `create_deployment` returns 200 (or
+      auth error, not 404) on both servers
+
+#### 2e. Loki / Mimir SA-only restriction
+
+The loki and mimir push endpoints have an explicit runtime check that
+`user_data.client_type == ClientType::ServiceAccount`. Test this explicitly since it's a
+hand-written check, not the auth layer's `ALLOWED_CLIENT_TYPES` mechanism.
+
+- [ ] `loki_push_with_user_api_token_returns_403` — Basic auth with `runner_id:user_api_token`
+      → 403 with body "Loki push is only allowed from service accounts"
+- [ ] `loki_push_with_sa_token_succeeds` — Basic auth with `runner_id:sa_token` (where the SA
+      has Runner::Execute on that runner) → 200
+- [ ] `mimir_push_with_user_api_token_returns_403` — same as loki but for mimir
+- [ ] `mimir_push_with_sa_token_succeeds` — same as loki but for mimir
+- [ ] `loki_push_with_invalid_token_returns_401` — invalid token → 401 (existing behavior,
+      regression check)
+
+#### 2f. End-to-end SA usage flow
+
+The motivating use case for this whole refactor: an SA in a CI pipeline calling resource
+endpoints. Test the happy path end-to-end.
+
+- [ ] `sa_can_create_deployment` — SA with `Deployment::Create` permission creates a deployment
+      via api.patr.cloud → 200, deployment exists in DB
+- [ ] `sa_can_list_runners` — SA with `Runner::View` lists runners → 200
+- [ ] `sa_without_permission_denied_at_authorization_layer` — SA without `Deployment::Create`
+      tries to create a deployment → 403 (note: this is the existing RBAC check, not the
+      new ClientType check — but worth verifying it still works for SAs)
+- [ ] `sa_can_manage_users_with_rbac_permission` — SA with role/user management permissions
+      can call `update_user_roles_in_workspace` → 200 (validates the GCP/AWS-style decision
+      to allow SA-managed IAM via RBAC)
+
+#### 2g. Macro-level coverage
+
+The `client_type` field is now required on every endpoint. We can't directly test proc macros
+in integration tests, but we can add compile-fail tests via `trybuild` (already used? check).
+
+- [ ] `compile_fail_missing_client_type` — trybuild test asserting an endpoint declaration
+      without `client_type = [...]` fails to compile with "Missing field: client_type"
+- [ ] `compile_fail_empty_client_type` — `client_type = []` fails with "client_type must
+      not be empty"
+- [ ] `compile_fail_unknown_variant` — `client_type = [UnknownVariant]` fails with the
+      "Unknown client type" message
+
+(Skip if trybuild isn't already a dependency — adding it for these few cases is overkill.)
+
+#### 2h. Regression — existing tests still pass
+
+- [ ] **Run full existing test suite** — every test in `api/tests/` should still pass after
+      the refactor. The refactor preserves WebDashboard behavior since the default for
+      previously-`api = true` endpoints is now `[WebDashboard, ApiToken, ServiceAccount]`
+      (workspace) or `[WebDashboard, ApiToken]` (user/auth), all of which include WebDashboard.
+- [ ] **Verify no endpoint silently lost WebDashboard access** — manually audit the
+      `client_type` declarations to confirm WebDashboard is included where it should be.
+
+### Notes
+
+- Tests in 2a, 2b are foundational. Get them passing before tackling 2c onward.
+- 2c is the bulk of the work. Consider parametrizing with a macro or table-driven approach
+  to avoid 20+ near-identical test functions.
+- 2d may overlap with 2c — a 404 on api.patr.cloud could be either "endpoint not mounted"
+  or "wrong server". The error code differs, so the tests are distinct.
+- 2e tests the special-cased loki/mimir auth, which doesn't use the standard auth layer.
+- The trybuild tests (2g) are nice-to-have, not blocking.
+
+### Estimated effort
+
+- Phase 1: 1-2 days (test infra is fiddly but mechanical)
+- Phase 2a-2b: half day
+- Phase 2c: 1-2 days (most of the volume, parametrize aggressively)
+- Phase 2d: half day
+- Phase 2e: half day
+- Phase 2f: half day
+- Phase 2g: skip or 2 hours
+- Phase 2h: half day audit
+- **Total: ~5-7 days**
 
 ---
 

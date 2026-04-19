@@ -1,7 +1,7 @@
 use std::net::IpAddr;
 
 use argon2::{Algorithm, Argon2, PasswordHash, PasswordVerifier as _, Version};
-use models::{IdentityData, RequestUserData};
+use models::{IdentityData, RequestUserData, utils::ClientType};
 use rustis::client::Client as RedisClient;
 use time::OffsetDateTime;
 
@@ -45,38 +45,52 @@ pub(crate) async fn get_permissions(
 	trace!("Login ID parsed as UUID");
 
 	// Resolve the token to an identity. The branches extract:
-	// (identity_id, login_id, created, token_hash, identity_data)
+	// (identity_id, login_id, identity_created_at, token_hash, identity_data,
+	// client_type)
+	//
+	// We try user_api_token first, then fall back to service_account. A UUIDv4
+	// collision between user_login.login_id and service_account.id is
+	// vanishingly unlikely, but even if it happened the worst case is the SA
+	// can't authenticate (the user_api_token branch matches first, then the
+	// hash check fails because the hashes don't match). No unauthorized access
+	// is possible — just a soft-bricked SA.
 	info!("Extracting information about API token");
-	let (identity_id, resolved_login_id, created, token_hash, identity) = if let Some(token) =
-		query!(
-			r#"
-			SELECT
-				user_api_token.token_id AS "token_id: Uuid",
-				user_api_token.user_id AS "user_id: Uuid",
-				user_api_token.token_hash,
-				user_api_token.token_nbf,
-				user_api_token.token_exp,
-				user_api_token.allowed_ips,
-				user_api_token.revoked,
-				"user".*
-			FROM
-				user_api_token
-			INNER JOIN
-				user_login
-			ON
-				user_api_token.token_id = user_login.login_id
-			INNER JOIN
-				"user"
-			ON
-				user_api_token.user_id = "user".id
-			WHERE
-				user_api_token.token_id = $1 AND
-				user_login.login_type = 'api_token';
-			"#,
-			login_id as _
-		)
-		.fetch_optional(&mut *database)
-		.await?
+	let (
+		identity_id,
+		resolved_login_id,
+		identity_created_at,
+		token_hash,
+		identity,
+		resolved_client_type,
+	) = if let Some(token) = query!(
+		r#"
+		SELECT
+			user_api_token.token_id AS "token_id: Uuid",
+			user_api_token.user_id AS "user_id: Uuid",
+			user_api_token.token_hash,
+			user_api_token.token_nbf,
+			user_api_token.token_exp,
+			user_api_token.allowed_ips,
+			user_api_token.revoked,
+			"user".*
+		FROM
+			user_api_token
+		INNER JOIN
+			user_login
+		ON
+			user_api_token.token_id = user_login.login_id
+		INNER JOIN
+			"user"
+		ON
+			user_api_token.user_id = "user".id
+		WHERE
+			user_api_token.token_id = $1 AND
+			user_login.login_type = 'api_token';
+		"#,
+		login_id as _
+	)
+	.fetch_optional(&mut *database)
+	.await?
 	{
 		trace!("Found user API token");
 
@@ -120,6 +134,7 @@ pub(crate) async fn get_permissions(
 				first_name: token.first_name,
 				last_name: token.last_name,
 			},
+			ClientType::ApiToken,
 		)
 	} else if let Some(service_account) = query!(
 		r#"
@@ -149,6 +164,7 @@ pub(crate) async fn get_permissions(
 			IdentityData::ServiceAccount {
 				name: service_account.name,
 			},
+			ClientType::ServiceAccount,
 		)
 	} else {
 		warn!("Token not found as user API token or service account");
@@ -187,7 +203,8 @@ pub(crate) async fn get_permissions(
 	Ok(RequestUserData::builder()
 		.id(identity_id)
 		.identity(identity)
-		.created(created)
+		.client_type(resolved_client_type)
+		.created(identity_created_at)
 		.login_id(resolved_login_id)
 		.permissions(permissions)
 		.build())

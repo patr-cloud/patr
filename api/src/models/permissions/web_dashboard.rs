@@ -1,7 +1,7 @@
 use std::{net::IpAddr, ops::Sub};
 
 use jsonwebtoken::{DecodingKey, TokenData, Validation};
-use models::{IdentityData, RequestUserData};
+use models::{IdentityData, RequestUserData, utils::ClientType};
 use rustis::client::Client as RedisClient;
 use time::OffsetDateTime;
 
@@ -136,6 +136,7 @@ pub(crate) async fn get_permissions(
 			first_name: user.first_name,
 			last_name: user.last_name,
 		})
+		.client_type(ClientType::WebDashboard)
 		.created(user.created)
 		.login_id(sub)
 		.permissions(permissions)

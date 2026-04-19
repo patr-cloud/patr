@@ -62,27 +62,24 @@ mod api_token;
 /// Contains the functions to extract permissions for a web dashboard JWT.
 mod web_dashboard;
 
-/// Gets the user data for the given token based on the allowed client type.
-/// This function delegates the permission extraction to the appropriate module
-/// based on whether the token is for an API token or a web dashboard session.
+/// Gets the user data for the given token. Dispatches to the appropriate
+/// module based on the token format: `patrv1.*` tokens go through
+/// [`api_token`], anything else is treated as a JWT and goes through
+/// [`web_dashboard`].
 ///
-/// For a given token, it gets all the information of the user that the login ID
-/// has (based on that token).
+/// The resolved [`ClientType`] is available on the returned
+/// [`RequestUserData`].
 pub async fn get_user_data_for_token(
 	database: &mut DatabaseConnection,
 	redis: &mut RedisClient,
-	allowed_client_type: ClientType,
 	config: &AppConfig,
 	client_ip: IpAddr,
 	token: &str,
 ) -> Result<RequestUserData, ErrorType> {
-	match allowed_client_type {
-		ClientType::ApiToken => {
-			api_token::get_permissions(database, redis, config, client_ip, token).await
-		}
-		ClientType::WebDashboard => {
-			web_dashboard::get_permissions(database, redis, config, client_ip, token).await
-		}
+	if token.starts_with("patrv1.") {
+		api_token::get_permissions(database, redis, config, client_ip, token).await
+	} else {
+		web_dashboard::get_permissions(database, redis, config, client_ip, token).await
 	}
 }
 

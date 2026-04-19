@@ -9,9 +9,9 @@ use crate::prelude::*;
 
 /// Sets up the web logins routes
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
+pub async fn setup_routes(state: &AppState, allowed_client_types: &[ClientType]) -> Router {
 	Router::new()
-		.mount_auth_endpoint(delete_web_login, state, allowed_client_type)
-		.mount_auth_endpoint(get_web_login_info, state, allowed_client_type)
-		.mount_auth_endpoint(list_web_logins, state, allowed_client_type)
+		.mount_auth_endpoint(delete_web_login, state, allowed_client_types)
+		.mount_auth_endpoint(get_web_login_info, state, allowed_client_types)
+		.mount_auth_endpoint(list_web_logins, state, allowed_client_types)
 }

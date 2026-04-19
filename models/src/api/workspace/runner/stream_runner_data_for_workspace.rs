@@ -90,6 +90,7 @@ macros::declare_stream_endpoint!(
 			permission: Permission::Runner(RunnerPermission::Execute),
 		}
 	},
+	client_type = [ServiceAccount],
 	server_msg = {
 		/// The runner needs to set the exposure type before proceeding
 		ExposureTypeRequired,
