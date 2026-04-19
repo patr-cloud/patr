@@ -28,10 +28,7 @@ pub struct Args {
 }
 
 /// Show `systemctl status` for the installed runner service.
-pub async fn execute(
-	args: Args,
-	global_args: GlobalArgs,
-) -> Result<CommandOutput, AppError> {
+pub async fn execute(args: Args, global_args: GlobalArgs) -> Result<CommandOutput, AppError> {
 	if !Path::new("/run/systemd/system").exists() {
 		return Err(AppError::RunnerError(
 			"systemd is not available on this system".to_string(),
