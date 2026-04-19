@@ -30,5 +30,6 @@ macros::declare_api_endpoint!(
 		/// The exposed ports of the container repository.
 		pub ports: Vec<u16>,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

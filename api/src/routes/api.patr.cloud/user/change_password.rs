@@ -105,7 +105,7 @@ pub async fn change_password(
 			.with_issuer(Some(constants::TOTP_ISSUER))
 			.with_account_name(
 				user_data
-					.identity
+					.actor
 					.email()
 					.ok_or(ErrorType::Unauthorized)?
 					.to_string(),

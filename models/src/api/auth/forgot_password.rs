@@ -5,7 +5,7 @@ macros::declare_api_endpoint!(
 	/// This will send an OTP to their email address.
 	ForgotPassword,
 	POST "/auth/forgot-password",
-	api = false,
+	client_type = [WebDashboard],
 	request_headers = {
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,

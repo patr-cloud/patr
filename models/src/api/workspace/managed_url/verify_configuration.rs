@@ -27,6 +27,7 @@ macros::declare_api_endpoint!(
 		/// Is the URL configured or not
 		pub configured: bool
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceUpdated,
 		resource_type: ResourceType::ManagedURL,

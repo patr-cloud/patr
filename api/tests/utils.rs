@@ -280,7 +280,7 @@ impl TestSetup {
 		let name = random_name(8);
 
 		let response = self
-			.make_api_call(
+			.make_web_dashboard_call(
 				ApiRequest::<CreateServiceAccountRequest>::builder()
 					.path(CreateServiceAccountPath { workspace_id })
 					.headers(CreateServiceAccountRequestHeaders {

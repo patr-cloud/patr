@@ -94,6 +94,7 @@ macros::declare_stream_endpoint!(
 			permission: Permission::Runner(RunnerPermission::Execute),
 		}
 	},
+	client_type = [ApiToken, ServiceAccount],
 	server_msg = {
 		/// The runner needs to set the exposure type before proceeding
 		ExposureTypeRequired,

@@ -136,7 +136,7 @@ pub async fn resend_workspace_invite(
 			invite.email,
 			WorkspaceInviteEmail {
 				workspace_name,
-				invited_by: user_data.identity.display_name(),
+				invited_by: user_data.actor.display_name(),
 				accept_url: accept_url.clone(),
 				expiry: constants::WORKSPACE_INVITE_VALIDITY.to_string(),
 			},

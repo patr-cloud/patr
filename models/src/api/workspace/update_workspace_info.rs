@@ -25,6 +25,7 @@ macros::declare_api_endpoint!(
 		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
 		pub name: String,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceUpdated,
 		resource_type: ResourceType::Workspace,

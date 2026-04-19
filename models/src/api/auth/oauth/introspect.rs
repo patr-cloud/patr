@@ -58,5 +58,6 @@ macros::declare_api_endpoint!(
 		#[serde(flatten)]
 		pub response: OAuthIntrospectResponseType,
 	},
+	client_type = [WebDashboard],
 	audit_log = NoAuditLogger,
 );

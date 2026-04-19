@@ -19,7 +19,7 @@ async fn service_account_create_permission_grants_access() {
 	.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CreateServiceAccountRequest>::builder()
 				.path(CreateServiceAccountPath {
 					workspace_id: ws_id,
@@ -65,7 +65,7 @@ async fn service_account_denied_without_permission() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetServiceAccountInfoRequest>::builder()
 				.path(GetServiceAccountInfoPath {
 					workspace_id: workspace.id,
@@ -115,7 +115,7 @@ async fn service_account_include_grants_only_listed_resource() {
 		.await;
 
 	let r1 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetServiceAccountInfoRequest>::builder()
 				.path(GetServiceAccountInfoPath {
 					workspace_id: workspace.id,
@@ -131,7 +131,7 @@ async fn service_account_include_grants_only_listed_resource() {
 	assert!(r1.status_code().is_success());
 
 	let r2 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetServiceAccountInfoRequest>::builder()
 				.path(GetServiceAccountInfoPath {
 					workspace_id: workspace.id,
@@ -179,7 +179,7 @@ async fn service_account_scoped_grant_reaches_only_that_resource() {
 		.await;
 
 	let r1 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetServiceAccountInfoRequest>::builder()
 				.path(GetServiceAccountInfoPath {
 					workspace_id: workspace.id,
@@ -195,7 +195,7 @@ async fn service_account_scoped_grant_reaches_only_that_resource() {
 	assert!(r1.status_code().is_success(), "sa1 is in scope");
 
 	let r2 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetServiceAccountInfoRequest>::builder()
 				.path(GetServiceAccountInfoPath {
 					workspace_id: workspace.id,
@@ -238,7 +238,7 @@ async fn service_account_view_does_not_grant_delete() {
 		.await;
 
 	let r_view = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetServiceAccountInfoRequest>::builder()
 				.path(GetServiceAccountInfoPath {
 					workspace_id: workspace.id,
@@ -254,7 +254,7 @@ async fn service_account_view_does_not_grant_delete() {
 	assert!(r_view.status_code().is_success());
 
 	let r_delete = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteServiceAccountRequest>::builder()
 				.path(DeleteServiceAccountPath {
 					workspace_id: workspace.id,
@@ -300,7 +300,7 @@ async fn service_account_edit_does_not_grant_regenerate_token() {
 		.await;
 
 	let r_regen = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<RegenerateServiceAccountTokenRequest>::builder()
 				.path(RegenerateServiceAccountTokenPath {
 					workspace_id: workspace.id,

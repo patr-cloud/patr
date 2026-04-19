@@ -1,11 +1,16 @@
 use std::{collections::BTreeMap, net::IpAddr, ops::Sub};
 
 use jsonwebtoken::{DecodingKey, TokenData, Validation};
-use models::{IdentityData, RequestUserData, rbac::WorkspacePermission};
+use models::{
+	ActorData,
+	RequestUserData,
+	UserLoginType,
+	rbac::WorkspacePermission,
+	utils::ActorClientType,
+};
 use rustis::client::Client as RedisClient;
 use time::OffsetDateTime;
 
-use super::IdentityTokenType;
 use crate::{models::access_token_data::AccessTokenData, prelude::*, utils::config::AppConfig};
 
 pub(crate) async fn get_permissions(
@@ -133,16 +138,17 @@ pub(crate) async fn get_permissions(
 		redis,
 		&sub,
 		&user.id.into(),
-		IdentityTokenType::WebLogin,
+		ActorClientType::WebDashboard,
 	)
 	.await?;
 
 	Ok(RequestUserData::builder()
 		.id(user.id)
-		.identity(IdentityData::User {
+		.actor(ActorData::User {
 			email: user.email,
 			first_name: user.first_name,
 			last_name: user.last_name,
+			login: UserLoginType::WebLogin,
 		})
 		.created(user.created)
 		.login_id(sub)

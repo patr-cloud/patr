@@ -18,5 +18,6 @@ macros::declare_api_endpoint!(
 		/// memory_count - The amount of RAM
 		pub machine_types: Vec<WithId<DeploymentMachineType>>
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

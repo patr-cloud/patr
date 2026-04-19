@@ -28,5 +28,6 @@ macros::declare_api_endpoint!(
 		/// The list of runners in the workspace
 		pub runners: Vec<WithId<Runner>>,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

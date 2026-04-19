@@ -37,5 +37,6 @@ macros::declare_api_endpoint!(
 		#[serde(default, skip_serializing_if = "Vec::is_empty")]
 		pub layers: Vec<ContainerRepositoryManifestLayer>,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );
