@@ -28,5 +28,6 @@ macros::declare_api_endpoint!(
 		/// List of container repositories in the current workspace
 		pub repositories: Vec<WithId<ContainerRepository>>
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

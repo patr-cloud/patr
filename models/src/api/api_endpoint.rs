@@ -6,6 +6,7 @@ use serde::{Serialize, de::DeserializeOwned};
 
 use crate::utils::{
 	AuditLogger,
+	ClientType,
 	FromAxumRequest,
 	HasHeaders,
 	Headers,
@@ -62,9 +63,9 @@ where
 {
 	/// The HTTP method that should be used for this endpoint
 	const METHOD: http::Method;
-	/// If true, this route can be accessed by the API. Otherwise, it'll only be
-	/// accessible by the Web UI
-	const API_ALLOWED: bool;
+	/// The client types that are allowed to access this endpoint. If the
+	/// resolved client type is not in this list, the request will be rejected.
+	const ALLOWED_CLIENT_TYPES: &'static [ClientType];
 
 	/// The path that should be used for this endpoint. This should be a valid
 	/// HTML URL Path and can contain URL parameters as a struct. For example,

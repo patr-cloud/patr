@@ -7,6 +7,6 @@ mod github;
 
 /// Sets up the social-login routes
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
-	Router::new().merge(github::setup_routes(state, allowed_client_type).await)
+pub async fn setup_routes(state: &AppState, allowed_client_types: &[ClientType]) -> Router {
+	Router::new().merge(github::setup_routes(state, allowed_client_types).await)
 }

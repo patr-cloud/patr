@@ -5,7 +5,7 @@ use axum::{
 use axum_extra::routing::TypedPath;
 use models::{
 	api::ApiEndpoint,
-	utils::{HasHeader, NoAuthentication},
+	utils::{ClientType, HasHeader, NoAuthentication},
 };
 use preprocess::Preprocessable;
 use tower::ServiceBuilder;
@@ -67,7 +67,9 @@ where
 		R: RunnerExecutor + Send + 'static,
 	{
 		// Setup the layers for the backend
-		if <E as ApiEndpoint>::API_ALLOWED || cfg!(debug_assertions) {
+		if <E as ApiEndpoint>::ALLOWED_CLIENT_TYPES.contains(&ClientType::ApiToken) ||
+			cfg!(debug_assertions)
+		{
 			self.route(
 				<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH,
 				MethodRouter::<S>::new()
@@ -99,7 +101,9 @@ where
 		R: RunnerExecutor + Send + 'static,
 	{
 		// Setup the layers for the backend
-		if <E as ApiEndpoint>::API_ALLOWED || cfg!(debug_assertions) {
+		if <E as ApiEndpoint>::ALLOWED_CLIENT_TYPES.contains(&ClientType::ApiToken) ||
+			cfg!(debug_assertions)
+		{
 			self.route(
 				<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH,
 				MethodRouter::<S>::new()

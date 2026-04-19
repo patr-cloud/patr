@@ -4,12 +4,12 @@ use models::{ErrorType, api::workspace::secret::*};
 use crate::prelude::*;
 
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
+pub async fn setup_routes(state: &AppState, allowed_client_types: &[ClientType]) -> Router {
 	Router::new()
-		.mount_auth_endpoint(create_secret, state, allowed_client_type)
-		.mount_auth_endpoint(delete_secret, state, allowed_client_type)
-		.mount_auth_endpoint(list_secrets_for_workspace, state, allowed_client_type)
-		.mount_auth_endpoint(update_secret, state, allowed_client_type)
+		.mount_auth_endpoint(create_secret, state, allowed_client_types)
+		.mount_auth_endpoint(delete_secret, state, allowed_client_types)
+		.mount_auth_endpoint(list_secrets_for_workspace, state, allowed_client_types)
+		.mount_auth_endpoint(update_secret, state, allowed_client_types)
 		.with_state(state.clone())
 }
 

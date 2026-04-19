@@ -29,5 +29,6 @@ macros::declare_api_endpoint!(
 		/// The number of image manifests across all repositories.
 		pub image_count: u64,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

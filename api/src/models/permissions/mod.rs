@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, net::IpAddr, str::FromStr as _};
 
-use models::{RequestUserData, rbac::WorkspacePermission};
+use models::{RequestUserData, rbac::WorkspacePermission, utils::ClientType};
 use rustis::{
 	client::Client as RedisClient,
 	commands::{GenericCommands as _, StringCommands as _},
@@ -57,22 +57,6 @@ mod service_account;
 /// Contains the functions to extract permissions for a web dashboard JWT.
 mod web_dashboard;
 
-/// The kind of credential a request authenticated with. Each variant has its
-/// own permission source, so the identity ID alone is not enough to know where
-/// to read permissions from — [`get_permissions_for_identity`] needs both.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum IdentityTokenType {
-	/// A web dashboard session (JWT). Permissions come from the user's
-	/// workspace ownership and role memberships.
-	WebLogin,
-	/// A user API token. Permissions are the user's current permissions
-	/// intersected with the scope declared when the token was minted.
-	ApiToken,
-	/// A service account token. Permissions come from the roles assigned
-	/// directly to the service account.
-	ServiceAccount,
-}
-
 /// Resolve the effective permission map for an identity, keyed by its identity
 /// ID.
 ///
@@ -82,7 +66,7 @@ pub enum IdentityTokenType {
 /// non-rotating credential — the service account ID again).
 ///
 /// A valid cache entry short-circuits the whole thing. Otherwise this delegates
-/// to the sub-module that owns the permission source for `token_type`, caches
+/// to the sub-module that owns the permission source for `client_type`, caches
 /// what it computed, and returns it. The sub-modules are pure database reads —
 /// caching lives here so every identity type gets the same invalidation
 /// semantics.
@@ -92,21 +76,21 @@ pub async fn get_permissions_for_identity(
 	redis_connection: &mut RedisClient,
 	login_id: &Uuid,
 	identity_id: &Uuid,
-	token_type: IdentityTokenType,
+	client_type: ClientType,
 ) -> Result<BTreeMap<Uuid, WorkspacePermission>, ErrorType> {
 	if let Some(cached) = get_cached_permissions(redis_connection, login_id, identity_id).await? {
 		return Ok(cached);
 	}
 
-	let permissions = match token_type {
-		IdentityTokenType::WebLogin => {
+	let permissions = match client_type {
+		ClientType::WebDashboard => {
 			web_dashboard::get_permissions_for_web_login(&mut *db_connection, identity_id).await?
 		}
-		IdentityTokenType::ApiToken => {
+		ClientType::ApiToken => {
 			api_token::get_permissions_for_api_token(&mut *db_connection, login_id, identity_id)
 				.await?
 		}
-		IdentityTokenType::ServiceAccount => {
+		ClientType::ServiceAccount => {
 			service_account::get_permissions_for_service_account(&mut *db_connection, identity_id)
 				.await?
 		}
@@ -136,27 +120,24 @@ pub async fn get_permissions_for_identity(
 	Ok(permissions)
 }
 
-/// Gets the user data for the given token based on the allowed client type.
-/// This function delegates the permission extraction to the appropriate module
-/// based on whether the token is for an API token or a web dashboard session.
+/// Gets the user data for the given token. Dispatches to the appropriate
+/// module based on the token format: `patrv1.*` tokens go through
+/// [`api_token`], anything else is treated as a JWT and goes through
+/// [`web_dashboard`].
 ///
-/// For a given token, it gets all the information of the user that the login ID
-/// has (based on that token).
+/// The resolved [`ClientType`] is available on the returned
+/// [`RequestUserData`].
 pub async fn get_user_data_for_token(
 	database: &mut DatabaseConnection,
 	redis: &mut RedisClient,
-	allowed_client_type: ClientType,
 	config: &AppConfig,
 	client_ip: IpAddr,
 	token: &str,
 ) -> Result<RequestUserData, ErrorType> {
-	match allowed_client_type {
-		ClientType::ApiToken => {
-			api_token::get_permissions(database, redis, config, client_ip, token).await
-		}
-		ClientType::WebDashboard => {
-			web_dashboard::get_permissions(database, redis, config, client_ip, token).await
-		}
+	if token.starts_with("patrv1.") {
+		api_token::get_permissions(database, redis, config, client_ip, token).await
+	} else {
+		web_dashboard::get_permissions(database, redis, config, client_ip, token).await
 	}
 }
 
