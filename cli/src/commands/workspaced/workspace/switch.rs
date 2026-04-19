@@ -21,12 +21,12 @@ pub struct Args {
 pub(super) async fn execute(
 	_: GlobalArgs,
 	args: Args,
-	state: AppState,
+	mut state: AppState,
 ) -> Result<CommandOutput, AppError> {
-	let AppState::LoggedIn {
+	let AuthState::LoggedIn {
 		token,
 		current_workspace: _,
-	} = state
+	} = state.auth.clone()
 	else {
 		return Err(AppError::NotLoggedIn);
 	};
@@ -68,11 +68,11 @@ pub(super) async fn execute(
 				.clone()
 		});
 
-	AppState::LoggedIn {
+	state.auth = AuthState::LoggedIn {
 		token,
 		current_workspace: Some(workspace.id),
-	}
-	.save()?;
+	};
+	state.save()?;
 
 	CommandOutput {
 		text: format!("Switched to workspace `{}`", workspace.name),

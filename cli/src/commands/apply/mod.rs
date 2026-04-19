@@ -14,6 +14,7 @@ mod domain;
 /// workspace
 mod managed_url;
 
+/// Args for `patr apply`.
 #[derive(Debug, Clone, ClapArgs)]
 pub struct Args {
 	/// The filename of the configuration file to apply
@@ -30,15 +31,16 @@ pub struct Args {
 	pub dry_run: bool,
 }
 
+/// Apply an IaaC config file to the workspace.
 pub async fn execute(
 	args: Args,
 	global_args: GlobalArgs,
 	state: AppState,
 ) -> Result<CommandOutput, AppError> {
-	let AppState::LoggedIn {
+	let AuthState::LoggedIn {
 		token,
 		current_workspace,
-	} = state
+	} = state.auth
 	else {
 		return Err(AppError::NotLoggedIn);
 	};

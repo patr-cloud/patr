@@ -13,10 +13,15 @@ where
 	F: Fn(&str) -> Fut,
 	Fut: Future<Output = Result<Vec<T>, AppError>>,
 {
+	/// Prompt text shown above the search input.
 	message: &'a str,
+	/// Async function called with the current query; returns the result set.
 	search_fn: F,
+	/// Renders a result row into the string shown to the user.
 	display_fn: fn(&T) -> String,
+	/// Optional dimmed hint shown below the prompt.
 	help_message: Option<&'a str>,
+	/// Number of results shown per page when paginating.
 	page_size: usize,
 }
 

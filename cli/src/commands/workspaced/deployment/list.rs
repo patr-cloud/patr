@@ -14,10 +14,10 @@ pub(super) async fn execute(
 	global_args: GlobalArgs,
 	state: AppState,
 ) -> Result<CommandOutput, AppError> {
-	let AppState::LoggedIn {
+	let AuthState::LoggedIn {
 		token,
 		current_workspace,
-	} = state
+	} = state.auth
 	else {
 		return Err(AppError::NotLoggedIn);
 	};
@@ -123,7 +123,10 @@ pub(super) async fn execute(
 				.repository
 				.name;
 
-				format!("registry.patr.cloud/{}:{}", repo_name, deployment.image_tag)
+				format!(
+					"registry.patr.cloud/{}/{}:{}",
+					workspace_id, repo_name, deployment.image_tag
+				)
 			}
 			DeploymentRegistry::ExternalRegistry {
 				registry,

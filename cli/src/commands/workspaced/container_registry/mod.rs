@@ -3,6 +3,8 @@ use clap::Subcommand;
 use self::image::ImageCommand;
 use crate::prelude::*;
 
+/// Build a Dockerfile and (optionally) push it to the Patr registry
+mod build;
 /// Create a new container registry repository
 mod create;
 /// Delete a container registry repository
@@ -11,6 +13,10 @@ mod delete;
 mod image;
 /// List all container registry repositories
 mod list;
+/// Log the local docker CLI into registry.patr.cloud
+mod login;
+/// Tag a local image with the Patr registry URL and push it
+mod push;
 /// List tags for a container registry repository
 mod tags;
 /// Print the full registry image URL for a repository
@@ -61,6 +67,13 @@ pub enum RegistryActionCommand {
 	Image(ImageCommand),
 	/// Print the full registry image URL for a repository
 	Url(url::Args),
+	/// Log the local docker CLI into registry.patr.cloud using your API token
+	#[command(alias = "docker-login")]
+	Login,
+	/// Tag a local image with the Patr registry URL and push it
+	Push(push::Args),
+	/// Build a Dockerfile and (optionally) push it to the Patr registry
+	Build(build::Args),
 }
 
 /// Execute a container registry command
@@ -88,6 +101,13 @@ pub async fn execute(
 		}
 		ContainerRegistryCommand::RegistryAction(Url(args)) => {
 			url::execute(args, global_args, state).await
+		}
+		ContainerRegistryCommand::RegistryAction(Login) => login::execute(global_args, state).await,
+		ContainerRegistryCommand::RegistryAction(Push(args)) => {
+			push::execute(args, global_args, state).await
+		}
+		ContainerRegistryCommand::RegistryAction(Build(args)) => {
+			build::execute(args, global_args, state).await
 		}
 	}
 }

@@ -19,10 +19,10 @@ pub(super) async fn execute(
 	global_args: GlobalArgs,
 	state: AppState,
 ) -> Result<CommandOutput, AppError> {
-	let AppState::LoggedIn {
+	let AuthState::LoggedIn {
 		token,
 		current_workspace,
-	} = state
+	} = state.auth
 	else {
 		return Err(AppError::NotLoggedIn);
 	};
@@ -176,6 +176,7 @@ pub(super) async fn execute(
 		.into_result()
 }
 
+/// Format a byte count as a human-readable string (GB / MB / KB / B).
 fn format_size(bytes: u64) -> String {
 	const KB: u64 = 1024;
 	const MB: u64 = KB * 1024;

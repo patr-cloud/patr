@@ -59,12 +59,12 @@ headers                        = { default-features = false, version = "0.4" }
 hex                            = { default-features = false, version = "0.4" }
 hickory-resolver               = { default-features = false, version = "0.25" }
 http                           = { default-features = false, version = "1" }
-inventory                      = { default-features = false, version = "0.3" }
 http-body                      = { default-features = false, version = "1" }
 httparse                       = { default-features = false, version = "1" }
 hyper                          = { default-features = false, version = "1" }
 if-addrs                       = { default-features = false, version = "0.15" }
 inquire                        = { default-features = false, version = "0.9" }
+inventory                      = { default-features = false, version = "0.3" }
 ipinfo                         = { default-features = false, version = "3" }
 ipnetwork                      = { default-features = false, version = "0.20" }
 jsonwebtoken                   = { default-features = false, version = "10" }
@@ -99,6 +99,7 @@ rust-s3                        = { default-features = false, version = "0.37" }
 rustis                         = { default-features = false, version = "0.19" }
 rustls                         = { default-features = false, version = "0.23" }
 schemars                       = { default-features = false, version = "1" }
+self-replace                   = { default-features = false, version = "1" }
 semver                         = { default-features = false, version = "1" }
 serde                          = { default-features = false, version = "1" }
 serde_json                     = { default-features = false, version = "1" }
@@ -136,6 +137,7 @@ uzers                          = { default-features = false, version = "0.12" }
 wiremock                       = { default-features = false, version = "0.6" }
 woothee                        = { default-features = false, version = "0.13" }
 worker                         = { default-features = false, version = "0.7" }
+zip                            = { default-features = false, version = "8" }
 
 [workspace.dev-dependencies]
 k8s-openapi = { features = ["latest"] }

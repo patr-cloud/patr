@@ -16,6 +16,16 @@ Patr is designed to feel closer to a _control plane_ than a hosting provider.
 > Not recommended for mission-critical production workloads yet.
 > We would LOVE to have contributors onboard, but please be aware that the project is not yet ready for production use.
 
+# Using the CLI
+
+To manage Patr resources from your terminal, install the CLI:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/patr-cloud/patr/develop/assets/cli/install.sh | sh
+```
+
+See [cli/README.md](./cli/README.md) for channels, upgrade, and uninstall instructions.
+
 # Running the project
 
 Nobody reads large text anyway (other than LLMs), so here's a skimmed down version:
