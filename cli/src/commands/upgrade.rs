@@ -203,7 +203,6 @@ pub async fn execute(
 			Action::Install => format!("update available: {current} → {remote} (channel {target})"),
 			Action::Reinstall => format!("reinstall available: {current} (channel {target})"),
 		};
-		eprintln!("{text}");
 		// `--check` is expected to exit non-zero when an update is available so
 		// callers can script against it. The current CommandOutput contract
 		// only gives us Ok→0 / Err→1, so "update available" under --check
@@ -316,8 +315,6 @@ pub async fn execute(
 	})?;
 
 	swap_binary(&new_binary, &current_exe)?;
-
-	eprintln!("Updated: {current} → {remote}");
 
 	CommandOutput::builder()
 		.text(format!("Updated: {current} → {remote}"))
