@@ -4,7 +4,7 @@ use axum::{
 };
 use axum_extra::routing::TypedPath;
 use headers::UserAgent;
-use models::utils::{AppAuthentication, BearerToken, HasHeader, NoAuthentication};
+use models::utils::{ActorClientType, AppAuthentication, BearerToken, HasHeader, NoAuthentication};
 use preprocess::Preprocessable;
 use tower::ServiceBuilder;
 
@@ -18,7 +18,6 @@ use crate::{
 		AuthRateLimiterLayer,
 		AuthenticationLayer,
 		AuthorizationLayer,
-		ClientType,
 		DataStoreConnectionLayer,
 		EndpointHandler,
 		EndpointLayer,
@@ -53,7 +52,7 @@ where
 		self,
 		handler: H,
 		state: &AppState,
-		allowed_client_type: ClientType,
+		host_client_types: &[ActorClientType],
 	) -> Self
 	where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
@@ -67,7 +66,7 @@ where
 		self,
 		handler: H,
 		state: &AppState,
-		allowed_client_type: ClientType,
+		host_client_types: &[ActorClientType],
 	) -> Self
 	where
 		for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send + Sync + 'static,
@@ -96,7 +95,7 @@ where
 		self,
 		handler: H,
 		state: &AppState,
-		allowed_client_type: ClientType,
+		host_client_types: &[ActorClientType],
 	) -> Self
 	where
 		for<'req> H: EndpointHandler<'req, E> + Clone + Send + Sync + 'static,
@@ -105,12 +104,13 @@ where
 	{
 		// Setup the layers for the backend
 
-		if allowed_client_type == ClientType::ApiToken && !<E as ApiEndpoint>::API_ALLOWED {
-			// If the client type is API token and the endpoint is not allowed for API
-			// tokens, skip mounting the endpoint
+		// No client the host serves may call this endpoint: nothing to mount.
+		if !<E as ApiEndpoint>::ALLOWED_CLIENT_TYPES
+			.iter()
+			.any(|client_type| host_client_types.contains(client_type))
+		{
 			self
 		} else {
-			// For all other cases, mount the endpoint
 			self.route(
 				<<E as ApiEndpoint>::RequestPath as TypedPath>::PATH,
 				MethodRouter::<S>::new()
@@ -136,7 +136,7 @@ where
 		self,
 		handler: H,
 		state: &AppState,
-		allowed_client_type: ClientType,
+		host_client_types: &[ActorClientType],
 	) -> Self
 	where
 		for<'req> H: AuthEndpointHandler<'req, E> + Clone + Send + Sync + 'static,
@@ -146,9 +146,17 @@ where
 	{
 		// Setup the layers for the backend
 
-		if allowed_client_type == ClientType::ApiToken && !<E as ApiEndpoint>::API_ALLOWED {
-			// If the client type is API token and the endpoint is not allowed for API
-			// tokens, skip mounting the endpoint
+		// Who this route actually responds to here: the clients the endpoint
+		// permits that the host also serves. Empty means it has no callers on
+		// this host and isn't mounted at all; otherwise it is the one list the
+		// authenticator checks.
+		let served_client_types = <E as ApiEndpoint>::ALLOWED_CLIENT_TYPES
+			.iter()
+			.copied()
+			.filter(|client_type| host_client_types.contains(client_type))
+			.collect::<Vec<_>>();
+
+		if served_client_types.is_empty() {
 			self
 		} else {
 			self.route(
@@ -160,22 +168,18 @@ where
 					)
 					.route_layer(
 						ServiceBuilder::new()
+							// The cookie-to-Bearer shim is only needed if a
+							// dashboard session can actually reach this route here.
 							.option_layer(
-								if allowed_client_type == ClientType::WebDashboard {
-									// For web dashboard, we need to extract the
-									// auth state cookie and set that as the
-									// Bearer token so that the
-									// AuthenticationLayer can pick it up
-									Some(WebDashboardAuthCookieLayer::new())
-								} else {
-									None
-								},
+								served_client_types
+									.contains(&ActorClientType::WebDashboard)
+									.then(WebDashboardAuthCookieLayer::new),
 							)
 							.layer(RequestParserLayer::new())
 							.layer(DataStoreConnectionLayer::with_state(state.clone()))
 							.layer(PreprocessLayer::new())
 							.layer(UserAgentValidationLayer::new())
-							.layer(AuthenticationLayer::new(allowed_client_type))
+							.layer(AuthenticationLayer::new(served_client_types))
 							.layer(AuthorizationLayer::new())
 							.layer(AuthRateLimiterLayer::new())
 							.layer(AuditLoggerLayer::new())

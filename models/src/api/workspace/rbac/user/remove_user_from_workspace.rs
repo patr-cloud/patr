@@ -22,5 +22,6 @@ macros::declare_api_endpoint!(
 			permission: Permission::ModifyRoles,
 		}
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_logger = NoAuditLogger,
 );

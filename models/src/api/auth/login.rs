@@ -8,7 +8,7 @@ macros::declare_api_endpoint!(
 	/// the authentication token needed to access all the services on PATR.
 	Login,
 	POST "/auth/sign-in",
-	api = false,
+	client_type = [WebDashboard],
 	request_headers = {
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,

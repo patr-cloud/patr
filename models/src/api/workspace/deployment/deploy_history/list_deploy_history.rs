@@ -34,5 +34,6 @@ macros::declare_api_endpoint!(
 		/// created - The timestamp of when the deployment was created
 		pub deploys: Vec<DeploymentDeployHistory>
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

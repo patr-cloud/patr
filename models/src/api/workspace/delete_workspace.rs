@@ -18,6 +18,7 @@ macros::declare_api_endpoint!(
 			extract_workspace_id: |req| req.path.workspace_id,
 		}
 	},
+	client_type = [WebDashboard, ApiToken],
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceDeleted,
 		resource_type: ResourceType::Workspace,

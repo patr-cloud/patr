@@ -35,5 +35,6 @@ macros::declare_api_endpoint!(
 		/// The permission IDs this role grants.
 		pub permissions: BTreeSet<Uuid>,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

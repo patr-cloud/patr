@@ -36,7 +36,7 @@ async fn create_service_account_duplicate_name() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CreateServiceAccountRequest>::builder()
 				.path(CreateServiceAccountPath {
 					workspace_id: workspace.id,
@@ -67,7 +67,7 @@ async fn create_service_account_invalid_name() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CreateServiceAccountRequest>::builder()
 				.path(CreateServiceAccountPath {
 					workspace_id: workspace.id,
@@ -103,7 +103,7 @@ async fn list_service_accounts_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListServiceAccountsRequest>::builder()
 				.path(ListServiceAccountsPath {
 					workspace_id: workspace.id,
@@ -127,7 +127,7 @@ async fn list_service_accounts_empty() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListServiceAccountsRequest>::builder()
 				.path(ListServiceAccountsPath {
 					workspace_id: workspace.id,
@@ -156,7 +156,7 @@ async fn get_service_account_info_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetServiceAccountInfoRequest>::builder()
 				.path(GetServiceAccountInfoPath {
 					workspace_id: workspace.id,
@@ -181,7 +181,7 @@ async fn get_service_account_info_nonexistent() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetServiceAccountInfoRequest>::builder()
 				.path(GetServiceAccountInfoPath {
 					workspace_id: workspace.id,
@@ -214,7 +214,7 @@ async fn update_service_account_name_works() {
 
 	let new_name = random_name(8);
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<UpdateServiceAccountRequest>::builder()
 				.path(UpdateServiceAccountPath {
 					workspace_id: workspace.id,
@@ -236,7 +236,7 @@ async fn update_service_account_name_works() {
 
 	// Verify
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetServiceAccountInfoRequest>::builder()
 				.path(GetServiceAccountInfoPath {
 					workspace_id: workspace.id,
@@ -276,7 +276,7 @@ async fn update_service_account_role_bindings_works() {
 	};
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<UpdateServiceAccountRequest>::builder()
 				.path(UpdateServiceAccountPath {
 					workspace_id: workspace.id,
@@ -298,7 +298,7 @@ async fn update_service_account_role_bindings_works() {
 
 	// Verify the grants came back
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetServiceAccountInfoRequest>::builder()
 				.path(GetServiceAccountInfoPath {
 					workspace_id: workspace.id,
@@ -328,7 +328,7 @@ async fn delete_service_account_works() {
 		.await;
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteServiceAccountRequest>::builder()
 				.path(DeleteServiceAccountPath {
 					workspace_id: workspace.id,
@@ -345,7 +345,7 @@ async fn delete_service_account_works() {
 
 	// Verify it's gone
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetServiceAccountInfoRequest>::builder()
 				.path(GetServiceAccountInfoPath {
 					workspace_id: workspace.id,
@@ -372,7 +372,7 @@ async fn delete_service_account_nonexistent() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteServiceAccountRequest>::builder()
 				.path(DeleteServiceAccountPath {
 					workspace_id: workspace.id,
@@ -404,7 +404,7 @@ async fn regenerate_token_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<RegenerateServiceAccountTokenRequest>::builder()
 				.path(RegenerateServiceAccountTokenPath {
 					workspace_id: workspace.id,
@@ -430,7 +430,7 @@ async fn regenerate_token_works() {
 	);
 }
 
-// NOTE: The following tests require a ClientType::ApiToken test server, which
+// NOTE: The following tests require a ActorClientType::ApiToken test server, which
 // the test infra doesn't currently support (it only runs WebDashboard mode).
 // See api/tests/TODOs.md for tracking:
 // - service_account_token_authenticates
@@ -448,7 +448,7 @@ async fn service_account_unauthorized() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListServiceAccountsRequest>::builder()
 				.path(ListServiceAccountsPath {
 					workspace_id: workspace.id,

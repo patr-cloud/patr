@@ -23,6 +23,6 @@ macros::declare_api_endpoint!(
 			permission: Permission::ModifyRoles,
 		}
 	},
-	api = false,
+	client_type = [WebDashboard],
 	audit_log = NoAuditLogger,
 );

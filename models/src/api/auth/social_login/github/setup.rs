@@ -11,7 +11,7 @@ macros::declare_api_endpoint!(
 		/// for now.
 		pub provider: SocialLoginProvider,
 	},
-	api = false,
+	client_type = [WebDashboard],
 	request_headers = {
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,
