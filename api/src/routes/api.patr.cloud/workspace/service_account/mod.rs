@@ -19,12 +19,12 @@ use self::{
 };
 
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
+pub async fn setup_routes(state: &AppState, host_client_types: &[ActorClientType]) -> Router {
 	Router::new()
-		.mount_auth_endpoint(create_service_account, state, allowed_client_type)
-		.mount_auth_endpoint(list_service_accounts, state, allowed_client_type)
-		.mount_auth_endpoint(get_service_account_info, state, allowed_client_type)
-		.mount_auth_endpoint(update_service_account, state, allowed_client_type)
-		.mount_auth_endpoint(delete_service_account, state, allowed_client_type)
-		.mount_auth_endpoint(regenerate_service_account_token, state, allowed_client_type)
+		.mount_auth_endpoint(create_service_account, state, host_client_types)
+		.mount_auth_endpoint(list_service_accounts, state, host_client_types)
+		.mount_auth_endpoint(get_service_account_info, state, host_client_types)
+		.mount_auth_endpoint(update_service_account, state, host_client_types)
+		.mount_auth_endpoint(delete_service_account, state, host_client_types)
+		.mount_auth_endpoint(regenerate_service_account_token, state, host_client_types)
 }

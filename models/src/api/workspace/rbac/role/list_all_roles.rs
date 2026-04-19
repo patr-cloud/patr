@@ -33,5 +33,6 @@ macros::declare_api_endpoint!(
 		///     isImmutable - Whether the role is a seeded default
 		pub roles: Vec<WithId<Role>>,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

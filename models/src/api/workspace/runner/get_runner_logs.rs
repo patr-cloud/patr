@@ -39,5 +39,6 @@ macros::declare_api_endpoint!(
 		/// The runner logs
 		pub logs: Vec<RunnerLog>
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

@@ -1,5 +1,4 @@
 use std::{
-	fmt::Display,
 	future::Future,
 	marker::PhantomData,
 	task::{Context, Poll},
@@ -11,30 +10,6 @@ use tower::{Layer, Service};
 use tracing::{Span, field::display};
 
 use crate::{models::permissions, prelude::*};
-
-/// The type of client used for a request. This is used to determine
-/// which authentication method to use, based on if the API call is made by our
-/// web dashboard or by a third party application using the API token. This is
-/// required because some endpoints are only accessible by the web dashboard,
-/// and some are only accessible by third party applications. For example, you
-/// cannot change your password, or create a new user using the API token, but
-/// you can do so using the web dashboard.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ClientType {
-	/// The request is authenticated using a JWT from the web dashboard
-	WebDashboard,
-	/// The request is authenticated using an API token
-	ApiToken,
-}
-
-impl Display for ClientType {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Self::WebDashboard => write!(f, "WebDashboard"),
-			Self::ApiToken => write!(f, "ApiToken"),
-		}
-	}
-}
 
 /// The [`tower::Layer`] used to authenticate requests. This will parse the
 /// [`BearerToken`] header and verify it against the database. If the token is
@@ -48,8 +23,10 @@ where
 	E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
-	/// The type of client that is allowed to make the request
-	client_type: ClientType,
+	/// Who this route responds to on the host it is mounted on. Already the
+	/// intersection of the endpoint's own allowlist and the host's, so this
+	/// is the only check a request has to pass.
+	served_client_types: Vec<ActorClientType>,
 	/// The endpoint type that this layer will handle
 	endpoint: PhantomData<E>,
 }
@@ -60,10 +37,10 @@ where
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// Helper function to initialize an authentication layer
-	pub fn new(client_type: ClientType) -> Self {
+	pub fn new(served_client_types: Vec<ActorClientType>) -> Self {
 		Self {
+			served_client_types,
 			endpoint: PhantomData,
-			client_type,
 		}
 	}
 }
@@ -79,7 +56,7 @@ where
 	fn layer(&self, inner: S) -> Self::Service {
 		AuthenticationService {
 			inner,
-			client_type: self.client_type,
+			served_client_types: self.served_client_types.clone(),
 			endpoint: PhantomData,
 		}
 	}
@@ -92,8 +69,8 @@ where
 {
 	fn clone(&self) -> Self {
 		Self {
+			served_client_types: self.served_client_types.clone(),
 			endpoint: PhantomData,
-			client_type: self.client_type,
 		}
 	}
 }
@@ -106,8 +83,8 @@ where
 {
 	/// The inner service that will be called after the request is authenticated
 	inner: S,
-	/// The type of client that is allowed to make the request
-	client_type: ClientType,
+	/// See [`AuthenticationLayer::served_client_types`].
+	served_client_types: Vec<ActorClientType>,
 	/// The endpoint type that this layer will handle
 	endpoint: PhantomData<E>,
 }
@@ -130,14 +107,12 @@ where
 	}
 
 	#[instrument(skip(self, req), name = "AuthenticatorService", fields(
-		patr.allowed_client_type,
 		patr.user_id,
 		patr.login_id,
 	))]
 	fn call(&mut self, req: AppRequest<'a, E>) -> Self::Future {
 		let mut inner = self.inner.clone();
-		let allowed_client_type = self.client_type;
-		Span::current().record("patr.allowed_client_type", display(allowed_client_type));
+		let served_client_types = self.served_client_types.clone();
 		async move {
 			trace!("Authenticating request");
 			let BearerToken(token) = req.request.headers.get_header();
@@ -146,12 +121,15 @@ where
 			let user_data = permissions::get_user_data_for_token(
 				req.database,
 				req.redis,
-				allowed_client_type,
 				&req.state.config,
 				req.client_ip,
 				token,
 			)
 			.await?;
+
+			if !served_client_types.contains(&user_data.client_type()) {
+				return Err(ErrorType::Unauthorized);
+			}
 
 			Span::current().record("patr.user_id", display(user_data.id));
 			Span::current().record("patr.login_id", display(user_data.login_id));
@@ -186,7 +164,7 @@ where
 	fn clone(&self) -> Self {
 		Self {
 			inner: self.inner.clone(),
-			client_type: self.client_type,
+			served_client_types: self.served_client_types.clone(),
 			endpoint: PhantomData,
 		}
 	}

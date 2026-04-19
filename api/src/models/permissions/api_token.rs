@@ -2,14 +2,14 @@ use std::{collections::BTreeMap, net::IpAddr};
 
 use argon2::{Algorithm, Argon2, PasswordHash, PasswordVerifier as _, Version};
 use models::{
-	IdentityData,
+	ActorData,
 	RequestUserData,
+	UserLoginType,
 	rbac::{WorkspacePermission, intersect_workspace_permissions},
 };
 use rustis::client::Client as RedisClient;
 use time::OffsetDateTime;
 
-use super::IdentityTokenType;
 use crate::{prelude::*, utils::config::AppConfig};
 
 pub(crate) async fn get_permissions(
@@ -47,12 +47,24 @@ pub(crate) async fn get_permissions(
 	})?;
 	trace!("Login ID parsed as UUID");
 
+	// Resolve the token to an identity. The branches extract:
+	// (identity_id, login_id, identity_created_at, token_hash, identity_data,
+	// client_type)
+	//
+	// Service account tokens share the `patrv1.{refresh_token}.{id}` shape with
+	// user API tokens, so we try user_api_token first, then fall back to
+	// service_account. A UUIDv4 collision between user_login.login_id and
+	// service_account.id is vanishingly unlikely, but even if it happened the
+	// worst case is the SA can't authenticate (the user_api_token branch
+	// matches first, then the hash check fails because the hashes don't match).
+	// No unauthorized access is possible — just a soft-bricked SA.
 	info!("Extracting information about API token");
-	let Some(token) = query!(
-		r#"
+	let (actor_id, resolved_login_id, actor_created_at, token_hash, actor) = if let Some(token) =
+		query!(
+			r#"
 		SELECT
-			user_api_token.token_id,
-			user_api_token.user_id,
+			user_api_token.token_id AS "token_id: Uuid",
+			user_api_token.user_id AS "user_id: Uuid",
 			user_api_token.token_hash,
 			user_api_token.token_nbf,
 			user_api_token.token_exp,
@@ -73,62 +85,108 @@ pub(crate) async fn get_permissions(
 			user_api_token.token_id = $1 AND
 			user_login.login_type = 'api_token';
 		"#,
+			login_id as _
+		)
+		.fetch_optional(&mut *database) // What the actual fuck?
+		.await?
+	{
+		trace!("Token extracted from database");
+
+		if let Some(nbf) = token.token_nbf {
+			trace!("Token has an NBF");
+			if OffsetDateTime::now_utc() < nbf {
+				info!("API token is not valid yet");
+				return Err(ErrorType::AuthorizationTokenInvalid);
+			}
+		} else {
+			trace!("Token does not have an NBF");
+		}
+		trace!("Token passed NBF check");
+
+		if let Some(exp) = token.token_exp {
+			trace!("Token has an EXP");
+			if OffsetDateTime::now_utc() > exp {
+				info!("API token has expired");
+				return Err(ErrorType::AuthorizationTokenInvalid);
+			}
+		} else {
+			trace!("Token does not have an EXP");
+		}
+		trace!("Token passed EXP check");
+
+		if let Some(revoked) = token.revoked {
+			trace!("Token has a revoked timestamp");
+			if OffsetDateTime::now_utc() > revoked {
+				info!("API token has been revoked");
+				return Err(ErrorType::AuthorizationTokenInvalid);
+			}
+		} else {
+			trace!("Token does not have a revoked timestamp");
+		}
+		trace!("Token passed revoked timestamp check");
+
+		if let Some(allowed_ips) = token.allowed_ips &&
+			!allowed_ips
+				.iter()
+				.any(|ip_network| ip_network.contains(client_ip))
+		{
+			info!("API token not accessed from an allowed IP Address");
+			return Err(ErrorType::DisallowedIpAddressForApiToken);
+		}
+
+		(
+			token.user_id,
+			token.token_id,
+			token.created,
+			token.token_hash,
+			ActorData::User {
+				email: token.email,
+				first_name: token.first_name,
+				last_name: token.last_name,
+				login: UserLoginType::ApiToken,
+			},
+		)
+	} else if let Some(service_account) = query!(
+		r#"
+		SELECT
+			id AS "id: Uuid",
+			name,
+			token_hash,
+			created
+		FROM
+			service_account
+		WHERE
+			id = $1 AND
+			deleted IS NULL;
+		"#,
 		login_id as _
 	)
-	.fetch_optional(&mut *database) // What the actual fuck?
+	.fetch_optional(&mut *database)
 	.await?
-	else {
-		warn!("API token not found");
-		// No specific error for API token not found, since we don't want to leak
-		// information about whether a loginId is valid or if it's expired
+	{
+		trace!("Found service account token");
+
+		// A service account holds a single, non-rotating credential rather than
+		// a set of logins, so it acts as its own login ID.
+		(
+			service_account.id,
+			service_account.id,
+			service_account.created,
+			service_account.token_hash,
+			ActorData::ServiceAccount {
+				name: service_account.name,
+			},
+		)
+	} else {
+		warn!("Token not found as a user API token or a service account");
+		// No specific error for the token not being found, since we don't want
+		// to leak information about whether a loginId is valid or if it's
+		// expired
 		return Err(ErrorType::AuthorizationTokenInvalid);
 	};
-	trace!("Token extracted from database");
 
-	if let Some(nbf) = token.token_nbf {
-		trace!("Token has an NBF");
-		if OffsetDateTime::now_utc() < nbf {
-			info!("API token is not valid yet");
-			return Err(ErrorType::AuthorizationTokenInvalid);
-		}
-	} else {
-		trace!("Token does not have an NBF");
-	}
-	trace!("Token passed NBF check");
-
-	if let Some(exp) = token.token_exp {
-		trace!("Token has an EXP");
-		if OffsetDateTime::now_utc() > exp {
-			info!("API token has expired");
-			return Err(ErrorType::AuthorizationTokenInvalid);
-		}
-	} else {
-		trace!("Token does not have an EXP");
-	}
-	trace!("Token passed EXP check");
-
-	if let Some(revoked) = token.revoked {
-		trace!("Token has a revoked timestamp");
-		if OffsetDateTime::now_utc() > revoked {
-			info!("API token has been revoked");
-			return Err(ErrorType::AuthorizationTokenInvalid);
-		}
-	} else {
-		trace!("Token does not have a revoked timestamp");
-	}
-	trace!("Token passed revoked timestamp check");
-
-	if let Some(allowed_ips) = token.allowed_ips &&
-		!allowed_ips
-			.iter()
-			.any(|ip_network| ip_network.contains(client_ip))
-	{
-		info!("API token not accessed from an allowed IP Address");
-		return Err(ErrorType::DisallowedIpAddressForApiToken);
-	}
-
-	let Ok(password_hash) = PasswordHash::new(&token.token_hash) else {
-		error!("Unable to parse password hash: {}", token.token_hash);
+	let Ok(password_hash) = PasswordHash::new(&token_hash) else {
+		error!("Unable to parse password hash: {}", token_hash);
 		return Err(ErrorType::server_error("password hash parsing failed"));
 	};
 	let success = Argon2::new_with_secret(
@@ -142,29 +200,25 @@ pub(crate) async fn get_permissions(
 	.is_ok();
 
 	if !success {
-		warn!("API token has invalid refresh token");
+		warn!("Token has an invalid refresh token");
 		return Err(ErrorType::AuthorizationTokenInvalid);
 	}
-	info!("API token valid");
+	info!("Token valid");
 
 	let permissions = super::get_permissions_for_identity(
 		&mut *database,
 		redis,
-		&login_id,
-		&token.user_id.into(),
-		IdentityTokenType::ApiToken,
+		&resolved_login_id,
+		&actor_id,
+		actor.client_type(),
 	)
 	.await?;
 
 	Ok(RequestUserData::builder()
-		.id(token.user_id)
-		.identity(IdentityData::User {
-			email: token.email,
-			first_name: token.first_name,
-			last_name: token.last_name,
-		})
-		.created(token.created)
-		.login_id(token.token_id)
+		.id(actor_id)
+		.actor(actor)
+		.created(actor_created_at)
+		.login_id(resolved_login_id)
 		.permissions(permissions)
 		.build())
 }

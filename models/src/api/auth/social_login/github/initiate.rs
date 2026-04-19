@@ -9,7 +9,7 @@ macros::declare_api_endpoint!(
 		/// The social-login provider to initiate. Must be `github` for now.
 		pub provider: SocialLoginProvider,
 	},
-	api = false,
+	client_type = [WebDashboard],
 	response = {
 		/// The full provider authorization URL. The frontend must redirect
 		/// the user's browser to this URL to begin the OAuth flow.
