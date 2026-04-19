@@ -11,7 +11,7 @@ macros::declare_api_endpoint!(
 		/// endpoint.
 		pub provider: SocialLoginProvider,
 	},
-	api = false,
+	client_type = [WebDashboard],
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,

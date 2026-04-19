@@ -7,7 +7,7 @@ macros::declare_api_endpoint!(
 	/// forgot password, this does not require the user to enter an OTP.
 	ChangePassword,
 	POST "/user/change-password",
-	api = false,
+	client_type = [WebDashboard],
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,

@@ -4,7 +4,6 @@ macros::declare_api_endpoint!(
 	/// Get a mfa secret which will be used for verification
 	GetMfaSecret,
 	GET "/user/mfa",
-	api = false,
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,
@@ -18,5 +17,6 @@ macros::declare_api_endpoint!(
 		/// The MFA secret QR code URL
 		pub qr: String,
 	},
+	client_type = [WebDashboard],
 	audit_log = NoAuditLogger,
 );

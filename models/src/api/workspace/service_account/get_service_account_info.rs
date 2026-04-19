@@ -27,5 +27,6 @@ macros::declare_api_endpoint!(
 		/// The service account information
 		pub service_account: WithId<ServiceAccount>,
 	},
+	client_type = [WebDashboard, ApiToken],
 	audit_log = NoAuditLogger,
 );

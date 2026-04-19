@@ -32,5 +32,6 @@ macros::declare_api_endpoint!(
 		/// url_type - The type of URL (Deployment, Static Site, Proxy, Redirect)
 		pub urls: Vec<WithId<ManagedUrl>>,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

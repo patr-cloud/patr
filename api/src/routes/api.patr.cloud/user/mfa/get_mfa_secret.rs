@@ -64,7 +64,7 @@ pub async fn get_mfa_secret(
 			})?,
 		Some(constants::TOTP_ISSUER.to_string()),
 		user_data
-			.identity
+			.actor
 			.email()
 			.ok_or(ErrorType::Unauthorized)?
 			.to_string(),

@@ -54,6 +54,7 @@ pub mod prelude {
 			SecretPermission,
 		},
 		utils::{
+			ActorClientType,
 			BearerToken,
 			DockerContentDigest,
 			DockerDistributionApiVersion,
@@ -71,7 +72,7 @@ pub mod prelude {
 		app::{AppRequest, AppState, AuthenticatedAppRequest, UnprocessedAppRequest},
 		models::ip_lookup as ip,
 		redis,
-		utils::{self, EitherExt, RouterExt, TimeoutExt, WorkerExt, constants, layers::ClientType},
+		utils::{self, EitherExt, RouterExt, TimeoutExt, WorkerExt, constants},
 		worker::mailer::*,
 	};
 
