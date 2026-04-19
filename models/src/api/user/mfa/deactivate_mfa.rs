@@ -4,7 +4,6 @@ macros::declare_api_endpoint!(
 	/// Deactivate multifactor authentication of a user
 	DeactivateMfa,
 	DELETE "/user/mfa",
-	api = false,
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,
@@ -19,5 +18,6 @@ macros::declare_api_endpoint!(
 		#[preprocess(none)]
 		pub otp: String,
 	},
+	client_type = [WebDashboard],
 	audit_log = NoAuditLogger,
 );

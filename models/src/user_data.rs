@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use typed_builder::TypedBuilder;
 
-use crate::{prelude::*, rbac::WorkspacePermission};
+use crate::{prelude::*, rbac::WorkspacePermission, utils::ClientType};
 
 /// The type of identity that is making the authenticated request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -64,6 +64,8 @@ pub struct RequestUserData {
 	pub id: Uuid,
 	/// The type-specific identity data.
 	pub identity: IdentityData,
+	/// The client type that authenticated this request.
+	pub client_type: ClientType,
 	/// When the identity was created.
 	pub created: OffsetDateTime,
 	/// The loginId of the current authenticated request.

@@ -34,5 +34,6 @@ macros::declare_api_endpoint!(
 		/// current_live_digest - The current live digest running
 		pub deployments: Vec<WithId<Deployment>>,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

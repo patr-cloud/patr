@@ -40,7 +40,6 @@ pub(super) async fn authenticate_and_authorize(
 	let user_data = permissions::get_user_data_for_token(
 		&mut database,
 		&mut redis_conn,
-		ClientType::ApiToken,
 		&state.config,
 		addr.ip(),
 		api_token,
@@ -54,6 +53,20 @@ pub(super) async fn authenticate_and_authorize(
 			.body(Body::from("Authentication failed"))
 			.unwrap()
 	})?;
+
+	// Mimir push is only allowed from runners (service accounts), not from users
+	if user_data.client_type != ClientType::ServiceAccount {
+		warn!(
+			"Mimir push attempted by non-service-account client: {:?}",
+			user_data.client_type
+		);
+		return Err(Response::builder()
+			.status(StatusCode::FORBIDDEN)
+			.body(Body::from(
+				"Mimir push is only allowed from service accounts",
+			))
+			.unwrap());
+	}
 
 	// Look up which workspace this runner belongs to
 	let workspace_id =

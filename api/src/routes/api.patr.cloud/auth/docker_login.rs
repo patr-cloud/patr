@@ -35,7 +35,6 @@ pub async fn docker_login(
 	permissions::get_user_data_for_token(
 		database,
 		redis,
-		ClientType::ApiToken,
 		&state.config,
 		client_ip,
 		authorization.password(),

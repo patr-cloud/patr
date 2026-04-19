@@ -19,7 +19,7 @@ macros::declare_api_endpoint!(
 	/// instance-specific values they can't know at build time.
 	GetApiEnvironment,
 	GET "/info",
-	api = false,
+	client_type = [WebDashboard],
 	request_headers = {
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,

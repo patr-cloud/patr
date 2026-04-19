@@ -31,5 +31,6 @@ macros::declare_api_endpoint!(
 		/// The list of users with the role, with their details
 		pub users: Vec<WithId<WorkspaceUserInfo>>
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );
