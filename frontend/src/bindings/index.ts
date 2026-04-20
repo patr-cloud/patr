@@ -41,6 +41,7 @@ import { UpdateManagedURLRequest } from "./UpdateManagedURLRequest";
 import { GetDeploymentLogsRequest } from "./GetDeploymentLogsRequest";
 import { GetDeploymentLogsResponse } from "./GetDeploymentLogsResponse";
 import { GetUserInfoResponse } from "./GetUserInfoResponse";
+import { GetVersionResponse } from "./GetVersionResponse";
 import { DeploymentLog } from "./DeploymentLog";
 import { ActivateMfaRequest } from "./ActivateMfaRequest";
 import { DeactivateMfaRequest } from "./DeactivateMfaRequest";
@@ -137,6 +138,7 @@ export type {
 	GetDeploymentLogsRequest,
 	GetDeploymentLogsResponse,
 	GetUserInfoResponse,
+	GetVersionResponse,
 	DeploymentLog,
 	ActivateMfaRequest,
 	DeactivateMfaRequest,

@@ -1,6 +1,7 @@
 use axum::http::StatusCode;
 use models::api::workspace::runner::*;
 use rustis::commands::StringCommands;
+use semver::Version;
 
 use crate::prelude::*;
 
@@ -59,7 +60,11 @@ pub async fn get_runner_info(
 				Runner {
 					name: runner.name,
 					connected,
-					last_seen: None, // TODO
+					last_seen: runner.last_seen,
+					version: runner
+						.version
+						.parse::<Version>()
+						.unwrap_or_else(|_| Version::new(0, 0, 0)),
 				},
 			),
 		})

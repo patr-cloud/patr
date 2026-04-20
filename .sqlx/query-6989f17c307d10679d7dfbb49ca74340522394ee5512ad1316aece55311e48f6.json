@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT runner.id, name, is_connected, last_seen, COUNT(*) OVER() AS \"total_count!\" FROM runner INNER JOIN RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource ON runner.id = resource.id WHERE workspace_id = $1 AND runner.deleted IS NULL AND ($4::TEXT IS NULL OR name ILIKE '%' || $4 || '%') AND ($5::BOOLEAN IS NULL OR is_connected = $5) AND ($6::TIMESTAMPTZ IS NULL OR last_seen >= $6) AND ($7::TIMESTAMPTZ IS NULL OR last_seen <= $7) ORDER BY resource.created DESC LIMIT $8 OFFSET $9;",
+  "query": "SELECT runner.id, name, is_connected, last_seen, version, COUNT(*) OVER() AS \"total_count!\" FROM runner INNER JOIN RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource ON runner.id = resource.id WHERE workspace_id = $1 AND runner.deleted IS NULL AND ($4::TEXT IS NULL OR name ILIKE '%' || $4 || '%') AND ($5::BOOLEAN IS NULL OR is_connected = $5) AND ($6::TIMESTAMPTZ IS NULL OR last_seen >= $6) AND ($7::TIMESTAMPTZ IS NULL OR last_seen <= $7) ORDER BY resource.created DESC LIMIT $8 OFFSET $9;",
   "describe": {
     "columns": [
       {
@@ -25,6 +25,11 @@
       },
       {
         "ordinal": 4,
+        "name": "version",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
         "name": "total_count!",
         "type_info": "Int8"
       }
@@ -47,8 +52,9 @@
       false,
       false,
       true,
+      false,
       null
     ]
   },
-  "hash": "edf25719f2aba950a5a8eb33044b952e102cb41622bf9e64cb85a8271527312c"
+  "hash": "6989f17c307d10679d7dfbb49ca74340522394ee5512ad1316aece55311e48f6"
 }
