@@ -1,5 +1,6 @@
 use axum::http::StatusCode;
 use models::{api::workspace::runner::*, prelude::*};
+use semver::Version;
 
 use crate::prelude::*;
 
@@ -45,6 +46,7 @@ pub async fn list_runners_for_workspace(
 			name,
 			is_connected,
 			last_seen,
+			version,
 			COUNT(*) OVER() AS "total_count!"
 		FROM
 			runner
@@ -85,6 +87,10 @@ pub async fn list_runners_for_workspace(
 				name: row.name,
 				connected: row.is_connected,
 				last_seen: row.last_seen,
+				version: row
+					.version
+					.parse::<Version>()
+					.unwrap_or_else(|_| Version::new(0, 0, 0)),
 			},
 		)
 	})

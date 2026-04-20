@@ -17,6 +17,7 @@ mod stream_runner_data_for_workspace;
 /// The endpoint to stream runner process logs in real time
 mod stream_runner_logs;
 
+use semver::Version;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use ts_rs::TS;
@@ -53,6 +54,12 @@ pub struct Runner {
 	/// The last timestamp the runner was seen online
 	#[ts(type = "Date | null")]
 	pub last_seen: Option<OffsetDateTime>,
+	/// The semver version the runner last reported on its handshake. For
+	/// runners that existed before version reporting, this is `0.0.0` until
+	/// they reconnect.
+	#[ts(type = "string")]
+	#[search(skip)]
+	pub version: Version,
 }
 
 /// A single log entry from a runner process.

@@ -81,7 +81,8 @@ pub async fn add_runner_to_workspace(
 				name,
 				is_connected,
 				workspace_id,
-				cloudflare_tunnel_id
+				cloudflare_tunnel_id,
+				version
 			)
 		VALUES
 			(
@@ -89,7 +90,8 @@ pub async fn add_runner_to_workspace(
 				$2,
 				FALSE,
 				$3,
-				$4
+				$4,
+				'0.0.0'
 			);
 		"#,
 		id as _,

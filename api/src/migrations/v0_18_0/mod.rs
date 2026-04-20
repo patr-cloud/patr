@@ -24,3 +24,4 @@ mod m021_role_binding_cutover;
 mod m022_token_ceiling_evaluation;
 mod m023_drop_legacy_permission_tables;
 mod m024_add_service_accounts;
+mod m025_runner_version;
