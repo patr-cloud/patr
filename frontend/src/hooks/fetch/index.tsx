@@ -21,6 +21,7 @@ import { useDomainsQuery, useDomainInfoQuery } from "./domains";
 import { useManagedUrlsQuery } from "./managed-urls";
 import { useRunnerMetricsQuery, useDeploymentMetricsQuery } from "./metrics";
 import { useUserInfoQuery, useUserSearchQuery, useMfaSecretQuery } from "./user";
+import { useApiVersionQuery } from "./version";
 
 export {
 	useApiEnvironmentQuery,
@@ -57,4 +58,5 @@ export {
 	useUserInfoQuery,
 	useUserSearchQuery,
 	useMfaSecretQuery,
+	useApiVersionQuery,
 };

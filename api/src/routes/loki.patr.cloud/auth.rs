@@ -62,7 +62,9 @@ pub(super) async fn authenticate_and_authorize(
 		);
 		return Err(Response::builder()
 			.status(StatusCode::FORBIDDEN)
-			.body(Body::from("Loki push is only allowed from service accounts"))
+			.body(Body::from(
+				"Loki push is only allowed from service accounts",
+			))
 			.unwrap());
 	}
 
