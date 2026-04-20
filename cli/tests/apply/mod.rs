@@ -34,6 +34,7 @@ pub async fn mount_runner(server: &MockServer, workspace_id: Uuid, runner_id: Uu
 						name: RUNNER_NAME.to_string(),
 						connected: true,
 						last_seen: None,
+						version: "0.1.0".parse().expect("valid semver"),
 					},
 				)],
 			},

@@ -38,7 +38,7 @@ use tokio::sync::{OnceCell, broadcast};
 pub struct RunnerChannel {
 	/// Send server messages (DeploymentCreated, etc.) to this runner.
 	pub server_tx: broadcast::Sender<String>,
-	/// Client messages (SetRunnerExposureType, DeploymentStatusUpdated)
+	/// Client messages (Handshake, DeploymentStatusUpdated)
 	/// received from this runner.
 	pub client_msgs: Arc<Mutex<Vec<StreamRunnerDataForWorkspaceClientMsg>>>,
 }

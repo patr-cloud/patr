@@ -6,79 +6,42 @@
       {
         "ordinal": 0,
         "name": "id",
-        "type_info": "Uuid",
-        "origin": {
-          "Table": {
-            "table": "runner",
-            "name": "id"
-          }
-        }
+        "type_info": "Uuid"
       },
       {
         "ordinal": 1,
         "name": "name",
-        "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "runner",
-            "name": "name"
-          }
-        }
+        "type_info": "Text"
       },
       {
         "ordinal": 2,
         "name": "is_connected",
-        "type_info": "Bool",
-        "origin": {
-          "Table": {
-            "table": "runner",
-            "name": "is_connected"
-          }
-        }
+        "type_info": "Bool"
       },
       {
         "ordinal": 3,
         "name": "last_seen",
-        "type_info": "Timestamptz",
-        "origin": {
-          "Table": {
-            "table": "runner",
-            "name": "last_seen"
-          }
-        }
+        "type_info": "Timestamptz"
       },
       {
         "ordinal": 4,
         "name": "workspace_id",
-        "type_info": "Uuid",
-        "origin": {
-          "Table": {
-            "table": "runner",
-            "name": "workspace_id"
-          }
-        }
+        "type_info": "Uuid"
       },
       {
         "ordinal": 5,
         "name": "cloudflare_tunnel_id",
-        "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "runner",
-            "name": "cloudflare_tunnel_id"
-          }
-        }
+        "type_info": "Text"
       },
       {
         "ordinal": 6,
         "name": "deleted",
-        "type_info": "Timestamptz",
-        "origin": {
-          "Table": {
-            "table": "runner",
-            "name": "deleted"
-          }
-        }
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "version",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -94,7 +57,8 @@
       true,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
   "hash": "ee6a287cd21311680135dca639cc93f49ed8b3d9081ce8e4e3f678b3491ac1c0"
