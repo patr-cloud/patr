@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO runner(id, name, is_connected, workspace_id, cloudflare_tunnel_id, version) VALUES ($1, $2, FALSE, $3, $4, '0.0.0');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0ddd8016a998bbad16fa15cab795ee1b5181162a640ad43930861f0ed9011577"
+}

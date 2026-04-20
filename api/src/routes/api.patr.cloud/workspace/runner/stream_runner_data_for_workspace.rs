@@ -131,10 +131,11 @@ async fn handle_websocket(
 	state: AppState,
 ) {
 	let exposure_type;
+	let runner_version;
 
 	loop {
 		let Some(message) = websocket.next().await else {
-			debug!("Websocket client disconnected before setting exposure type");
+			debug!("Websocket client disconnected before sending handshake");
 			return;
 		};
 		let Ok(Message::Item(message)) = message else {
@@ -143,24 +144,26 @@ async fn handle_websocket(
 		};
 
 		trace!("Received message from websocket: {:?}", message);
-		let SetRunnerExposureType {
+		let Handshake {
+			version,
 			exposure_type: new_exposure_type,
 		} = message
 		else {
-			// Ignore other messages until exposure type is set
+			// Ignore other messages until the handshake is received
 			let Ok(()) = websocket
 				.send(Message::Item(
-					StreamRunnerDataForWorkspaceServerMsg::ExposureTypeRequired,
+					StreamRunnerDataForWorkspaceServerMsg::HandshakeRequired,
 				))
 				.await
 			else {
-				debug!("Failed to send exposure type required message to websocket");
+				debug!("Failed to send handshake required message to websocket");
 				continue;
 			};
 			continue;
 		};
 
 		exposure_type = new_exposure_type;
+		runner_version = version;
 
 		break;
 	}
@@ -184,11 +187,13 @@ async fn handle_websocket(
 			runner
 		SET
 			is_connected = TRUE,
-			last_seen = NOW()
+			last_seen = NOW(),
+			version = $2
 		WHERE
 			id = $1;
 		"#,
 		runner_id as _,
+		runner_version.to_string(),
 	)
 	.execute(&state.database)
 	.await
@@ -349,7 +354,10 @@ async fn handle_websocket(
 							continue;
 						};
 					}
-					SetRunnerExposureType { exposure_type } => {
+					Handshake {
+						version,
+						exposure_type,
+					} => {
 						let Ok(()) = update_runner_exposure_type(
 							runner_id,
 							workspace_id,
@@ -366,6 +374,24 @@ async fn handle_websocket(
 							error!(
 								"Failed to update runner exposure type for runner ID: {runner_id}"
 							);
+							continue;
+						};
+
+						let Ok(_) = query!(
+							r#"
+							UPDATE
+								runner
+							SET
+								version = $2
+							WHERE
+								id = $1;
+							"#,
+							runner_id as _,
+							version.to_string(),
+						)
+						.execute(&state.database)
+						.await
+						.inspect_err(|err| error!("Failed to update runner version: {:?}", err)) else {
 							continue;
 						};
 					}
