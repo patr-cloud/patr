@@ -31,6 +31,7 @@ import { useSecretsQuery, useSecretInfoQuery } from "./secrets";
 import { useManagedUrlsQuery } from "./managed-urls";
 import { useRunnerMetricsQuery, useDeploymentMetricsQuery } from "./metrics";
 import { useUserInfoQuery, useMfaSecretQuery } from "./user";
+import { useApiVersionQuery } from "./version";
 
 export {
 	useApiEnvironmentQuery,
@@ -71,4 +72,5 @@ export {
 	useManagedUrlsQuery,
 	useUserInfoQuery,
 	useMfaSecretQuery,
+	useApiVersionQuery,
 };

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE runner(id UUID NOT NULL, name TEXT NOT NULL, is_connected BOOLEAN NOT NULL, last_seen TIMESTAMPTZ, workspace_id UUID NOT NULL, cloudflare_tunnel_id TEXT NOT NULL, version TEXT NOT NULL, deleted TIMESTAMPTZ);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "6be5bb0ed0f21c53402d53dac32fc05657f328d83ec142f2f2f9c2e2475976c7"
+}

@@ -108,19 +108,15 @@ fn test_deployment(runner_id: Uuid) -> (Uuid, Deployment, DeploymentRunningDetai
 }
 
 #[tokio::test]
-async fn ws_connects_and_sends_exposure_type() {
+async fn ws_connects_and_sends_handshake() {
 	let (server_state, _mock, _db, _ws_id, runner_id, _tmp) = setup_managed().await;
 
 	let state = server_state.clone();
 	periodic_check(
 		move || {
 			let msgs = state.get_client_msgs(runner_id);
-			msgs.iter().any(|m| {
-				matches!(
-					m,
-					StreamRunnerDataForWorkspaceClientMsg::SetRunnerExposureType { .. }
-				)
-			})
+			msgs.iter()
+				.any(|m| matches!(m, StreamRunnerDataForWorkspaceClientMsg::Handshake { .. }))
 		},
 		Duration::from_secs(5),
 	)

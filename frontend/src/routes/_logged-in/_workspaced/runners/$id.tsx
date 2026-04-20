@@ -17,7 +17,7 @@ import {
 } from "~/components";
 import { createAuthenticatedAction } from "~/hooks";
 import useIsAllowed, { useGetPermissions } from "~/hooks/is-allowed";
-import { useRunnerInfoQuery } from "~/hooks/fetch";
+import { useRunnerInfoQuery, useApiVersionQuery } from "~/hooks/fetch";
 import { runnerKeys } from "~/hooks/query-keys";
 import { DeleteRunnerResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
@@ -41,6 +41,9 @@ const RunnerDetail = () => {
 	const runnerPermissions = useGetPermissions("runner", () => params().id);
 
 	const runnerQuery = useRunnerInfoQuery(() => params().id);
+	const versionQuery = useApiVersionQuery();
+
+	const runner = () => runnerQuery.data?.runner;
 
 	const { execute: deleteRunner, isLoading: isDeletingRunner } = createAuthenticatedAction(
 		async ({ workspaceId: wsId }) => {
@@ -101,7 +104,7 @@ const RunnerDetail = () => {
 										url: "/runners",
 									},
 									{
-										label: runnerQuery.data?.runner.name ?? "Loading...",
+										label: runner()?.name ?? "Loading...",
 									},
 								]}
 								subText="View deployments, system metrics, and logs for this runner."
@@ -195,7 +198,17 @@ const RunnerDetail = () => {
 										<RunnerInfo runnerId={params().id} />
 									</Match>
 									<Match when={tab() === "metrics"}>
-										<RunnerMetrics runnerId={params().id} />
+										<Show when={runner()}>
+											{(r) => (
+												<RunnerMetrics
+													runnerId={r().id}
+													version={r().version}
+													connected={r().connected}
+													lastSeen={r().lastSeen}
+													apiVersion={versionQuery.data?.version}
+												/>
+											)}
+										</Show>
 									</Match>
 									<Match when={tab() === "logs"}>
 										<RunnerLogs runnerId={params().id} />
