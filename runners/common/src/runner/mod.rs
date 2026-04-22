@@ -89,6 +89,10 @@ where
 
 		let database = db::connect(&config.database).await?;
 
+		// Run schema migrations BEFORE E::initialize so the executor sees an
+		// up-to-date schema if it ever needs to read from the database.
+		db::initialize(&database).await?;
+
 		let runner_state = E::initialize(&config).await?;
 
 		// Create the channel for deployment status updates
@@ -102,8 +106,6 @@ where
 			task_status_sender,
 			nginx_reload_notifier,
 		};
-
-		db::initialize(&state).await?;
 
 		Ok(Self {
 			registry: Mutex::new(BTreeMap::new()),

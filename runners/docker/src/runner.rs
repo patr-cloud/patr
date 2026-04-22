@@ -67,10 +67,13 @@ impl RunnerExecutor for DockerRunner {
 					config_only: Some(false),
 					enable_ipv4: Some(true),
 					enable_ipv6: Some(true),
-					labels: Some(HashMap::from([(
-						"managed-by".to_string(),
-						"patr".to_string(),
-					)])),
+					labels: Some(HashMap::from([
+						("managed-by".to_string(), "patr".to_string()),
+						(
+							"patr.version".to_string(),
+							constants::PATR_VERSION.to_string(),
+						),
+					])),
 					..Default::default()
 				})
 				.await

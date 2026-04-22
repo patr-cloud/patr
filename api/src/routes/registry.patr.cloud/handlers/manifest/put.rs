@@ -493,6 +493,7 @@ async fn auto_deploy_on_push(
 			repository_id = $1 AND
 			image_tag = $2 AND
 			deploy_on_push = TRUE AND
+			status NOT IN ('stopped', 'errored') AND
 			deleted IS NULL;
 		"#,
 		repository_id as _,

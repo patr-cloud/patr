@@ -1,15 +1,13 @@
 use std::cmp::Ordering;
 
 use semver::Version;
+use sqlx::Pool;
 
 use crate::prelude::*;
 
 /// Initializes the database, and performs migrations if necessary
-#[instrument(skip(app))]
-pub async fn initialize<E>(app: &AppState<E>) -> Result<(), sqlx::Error>
-where
-	E: RunnerExecutor,
-{
+#[instrument(skip(database))]
+pub async fn initialize(database: &Pool<DatabaseType>) -> Result<(), sqlx::Error> {
 	info!("Initializing database");
 
 	let tables = query(
@@ -22,10 +20,10 @@ where
 			type = 'table';
 		"#,
 	)
-	.fetch_all(&app.database)
+	.fetch_all(database)
 	.await?;
 
-	let mut connection = app.database.acquire().await?;
+	let mut connection = database.acquire().await?;
 
 	if tables.is_empty() {
 		warn!("No tables exist. Creating fresh");

@@ -10,8 +10,11 @@ use bollard::{
 		ServiceSpecModeReplicated,
 		TaskSpec,
 		TaskSpecContainerSpec,
+		TaskSpecContainerSpecConfigs,
+		TaskSpecContainerSpecFile1,
 	},
 	query_parameters::{
+		ListConfigsOptions,
 		ListServicesOptions,
 		ListServicesOptionsBuilder,
 		UpdateServiceOptionsBuilder,
@@ -47,8 +50,8 @@ pub(crate) async fn upsert(
 		environment_variables,
 		startup_probe,
 		liveness_probe,
-		config_mounts: _, // TODO
-		volumes: _,       // TODO
+		config_mounts,
+		volumes: _, // TODO
 	}: DeploymentRunningDetails,
 ) -> Result<(), RunnerError> {
 	let service_name = format!("patr-{}", id);
@@ -130,6 +133,42 @@ pub(crate) async fn upsert(
 		.and_then(|config| config.gateway)
 		.unwrap_or_else(|| String::from("172.17.0.1"));
 
+	// Materialize config mounts as Docker Swarm configs and attach them to the
+	// container spec. Each mount gets its own config with base_name
+	// `config-{id}-{N}` where N is the ordinal after sorting the mounts by path
+	// — explicit sort keeps the ordinal stable regardless of map type.
+	// Per-ordinal base_name means update_config's cleanup is scoped to this
+	// mount only (so siblings survive) and same-content-at-different-paths
+	// never clashes on the final Docker config name.
+	let mount_count = config_mounts.len();
+	let mut sorted_mounts = config_mounts.iter().collect::<Vec<_>>();
+	sorted_mounts.sort_by(|(a, _), (b, _)| a.cmp(b));
+	let mut mount_configs = Vec::with_capacity(mount_count);
+	for (ordinal, (path, content)) in sorted_mounts.into_iter().enumerate() {
+		let (config_id, config_name) = crate::utils::update_config(
+			docker,
+			&format!("config-{}-{}", id, ordinal),
+			HashMap::from([
+				(String::from("managed-by"), String::from("patr")),
+				(String::from("patr.deploymentId"), id.to_string()),
+			]),
+			content.to_string(),
+		)
+		.await?;
+
+		mount_configs.push(TaskSpecContainerSpecConfigs {
+			file: Some(TaskSpecContainerSpecFile1 {
+				name: Some(path.clone()),
+				mode: Some(0o444),
+				uid: Some(String::from("0")),
+				gid: Some(String::from("0")),
+			}),
+			config_id: Some(config_id),
+			config_name: Some(config_name),
+			runtime: None,
+		});
+	}
+
 	// Build the service spec
 	let networks = Some(vec![NetworkAttachmentConfig {
 		target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
@@ -140,6 +179,11 @@ pub(crate) async fn upsert(
 	let service_spec = ServiceSpec {
 		name: Some(service_name.clone()),
 		labels: Some(HashMap::from([
+			(String::from("managed-by"), String::from("patr")),
+			(
+				String::from("patr.version"),
+				String::from(constants::PATR_VERSION),
+			),
 			(String::from("patr.deploymentId"), id.to_string()),
 			(String::from("patr.deploymentName"), name.clone()),
 			(
@@ -171,11 +215,21 @@ pub(crate) async fn upsert(
 						.collect(),
 				),
 				labels: Some(HashMap::from([
+					(String::from("managed-by"), String::from("patr")),
+					(
+						String::from("patr.version"),
+						String::from(constants::PATR_VERSION),
+					),
 					(String::from("patr.deploymentId"), id.to_string()),
 					(String::from("patr.deploymentName"), name.clone()),
 				])),
 				health_check,
 				hosts: Some(vec![format!("host.docker.internal:{host_ip}")]),
+				configs: if mount_configs.is_empty() {
+					None
+				} else {
+					Some(mount_configs)
+				},
 				..Default::default()
 			}),
 			networks: networks.clone(),
@@ -219,6 +273,50 @@ pub(crate) async fn upsert(
 				RunnerError::host(err)
 			})?;
 		info!("Service created");
+	}
+
+	// Clean up configs whose mount ordinal is past the current mount count
+	// (i.e. a mount was removed from this deployment). `update_config`'s own
+	// cleanup is scoped per base_name, so it only handles content churn within
+	// an ordinal — not a whole ordinal going away.
+	let base_name_prefix = format!("config-{}-", id);
+	let existing_mount_configs = docker
+		.list_configs(Some(ListConfigsOptions {
+			filters: Some(HashMap::from([(
+				String::from("label"),
+				vec![format!("patr.deploymentId={}", id)],
+			)])),
+		}))
+		.await
+		.map_err(RunnerError::host)?;
+
+	for config in existing_mount_configs {
+		let Some(base) = config
+			.spec
+			.as_ref()
+			.and_then(|spec| spec.labels.as_ref())
+			.and_then(|labels| labels.get("patr.configBaseName"))
+		else {
+			continue;
+		};
+		let Some(ordinal_str) = base.strip_prefix(&base_name_prefix) else {
+			continue;
+		};
+		let Ok(ordinal) = ordinal_str.parse::<usize>() else {
+			continue;
+		};
+		if ordinal < mount_count {
+			continue;
+		}
+
+		if let Some(config_id) = config.id.as_ref() &&
+			let Err(err) = docker.delete_config(config_id).await
+		{
+			warn!(
+				"Failed to clean up orphaned mount config {} (base={}): {}",
+				config_id, base, err
+			);
+		}
 	}
 
 	info!("Updating ingress config for deployment: {}", id);
@@ -328,6 +426,29 @@ pub(crate) async fn delete(
 			error!("Error removing service: {:?}", err);
 			RunnerError::host(err)
 		})?;
+	}
+
+	// Clean up mount configs owned by this deployment. Safe now that the
+	// service is gone — no running task references them.
+	let mount_configs = docker
+		.list_configs(Some(ListConfigsOptions {
+			filters: Some(HashMap::from([(
+				String::from("label"),
+				vec![format!("patr.deploymentId={}", id)],
+			)])),
+		}))
+		.await
+		.map_err(RunnerError::host)?;
+
+	for config in mount_configs {
+		if let Some(config_id) = config.id.as_ref() &&
+			let Err(err) = docker.delete_config(config_id).await
+		{
+			warn!(
+				"Failed to clean up mount config {} for deleted deployment {}: {}",
+				config_id, id, err
+			);
+		}
 	}
 
 	Ok(())

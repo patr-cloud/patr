@@ -26,6 +26,11 @@ pub async fn update_config(
 		.map(|byte| format!("{:02x}", byte))
 		.collect::<String>();
 
+	// Scope list/cleanup to configs with the same base_name. Without this,
+	// callers that share labels across multiple logical configs (e.g. one per
+	// deployment mount ordinal) would have cleanup trample siblings.
+	labels.insert(String::from("patr.configBaseName"), String::from(base_name));
+
 	// List existing configs that share the same labels (excluding the hash label)
 	let label_filter = labels
 		.iter()
@@ -91,6 +96,10 @@ pub async fn update_config(
 
 	// Data changed (or first creation) — create new config with hashed name
 	labels.insert(String::from("patr.configHash"), full_hash);
+	labels.insert(
+		String::from("patr.version"),
+		String::from(constants::PATR_VERSION),
+	);
 
 	let new_id = docker
 		.create_config(ConfigSpec {
@@ -103,22 +112,10 @@ pub async fn update_config(
 		.map_err(RunnerError::host)?
 		.id;
 
-	// Clean up old configs — non-fatal, log and continue.
-	// Skip configs whose deploymentId is not a valid UUID — those are
-	// managed separately (e.g. tunnel token) and share labels only for
-	// organizational grouping.
+	// Clean up old configs with the same base_name but different content hashes.
+	// The label filter above already scopes to this base_name family, so there's
+	// no risk of deleting configs owned by other callers.
 	for config in existing_configs {
-		let is_non_deployment_config = config
-			.spec
-			.as_ref()
-			.and_then(|s| s.labels.as_ref())
-			.and_then(|l| l.get("patr.deploymentId"))
-			.is_none_or(|id| Uuid::parse_str(id).is_err());
-
-		if is_non_deployment_config {
-			continue;
-		}
-
 		if let Some(id) = config.id &&
 			id != new_id &&
 			let Err(err) = docker.delete_config(&id).await
@@ -132,6 +129,9 @@ pub async fn update_config(
 
 /// All commonly used constants in the Docker runner.
 pub mod constants {
+	/// The current crate version, stamped onto every `managed-by=patr` Swarm
+	/// resource via the `patr.version` label.
+	pub const PATR_VERSION: &str = env!("CARGO_PKG_VERSION");
 	/// The name of the patr overlay network for service discovery.
 	/// NOTE: This must NOT be "ingress" - that's Docker Swarm's built-in
 	/// routing mesh network which does not support DNS-based service discovery.

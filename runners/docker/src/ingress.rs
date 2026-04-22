@@ -157,6 +157,10 @@ pub async fn update_ingress_tunnel_token(
 			labels: Some(HashMap::from([
 				(String::from("managed-by"), String::from("patr")),
 				(
+					String::from("patr.version"),
+					String::from(constants::PATR_VERSION),
+				),
+				(
 					String::from("patr.deploymentId"),
 					String::from(constants::INGRESS_SERVICE_NAME),
 				),
@@ -302,18 +306,24 @@ async fn build_ingress_spec(
 
 	Ok(ServiceSpec {
 		name: Some(String::from(constants::INGRESS_SERVICE_NAME)),
-		labels: Some(HashMap::from([(
-			String::from("managed-by"),
-			String::from("patr"),
-		)])),
+		labels: Some(HashMap::from([
+			(String::from("managed-by"), String::from("patr")),
+			(
+				String::from("patr.version"),
+				String::from(constants::PATR_VERSION),
+			),
+		])),
 		task_template: Some(TaskSpec {
 			plugin_spec: None,
 			container_spec: Some(TaskSpecContainerSpec {
 				image: Some(String::from("caddy:2")),
-				labels: Some(HashMap::from([(
-					String::from("managed-by"),
-					String::from("patr"),
-				)])),
+				labels: Some(HashMap::from([
+					(String::from("managed-by"), String::from("patr")),
+					(
+						String::from("patr.version"),
+						String::from(constants::PATR_VERSION),
+					),
+				])),
 				env: Some(vec![format!(
 					"ACME_CA_URL={}",
 					if cfg!(debug_assertions) {
@@ -425,18 +435,24 @@ async fn get_cloudflare_spec(
 
 	Ok(ServiceSpec {
 		name: Some(String::from(constants::TUNNEL_SERVICE_NAME)),
-		labels: Some(HashMap::from([(
-			String::from("managed-by"),
-			String::from("patr"),
-		)])),
+		labels: Some(HashMap::from([
+			(String::from("managed-by"), String::from("patr")),
+			(
+				String::from("patr.version"),
+				String::from(constants::PATR_VERSION),
+			),
+		])),
 		task_template: Some(TaskSpec {
 			plugin_spec: None,
 			container_spec: Some(TaskSpecContainerSpec {
 				image: Some(String::from("cloudflare/cloudflared:latest")),
-				labels: Some(HashMap::from([(
-					String::from("managed-by"),
-					String::from("patr"),
-				)])),
+				labels: Some(HashMap::from([
+					(String::from("managed-by"), String::from("patr")),
+					(
+						String::from("patr.version"),
+						String::from(constants::PATR_VERSION),
+					),
+				])),
 				command: Some(vec![
 					String::from("cloudflared"),
 					String::from("tunnel"),

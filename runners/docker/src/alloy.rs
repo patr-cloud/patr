@@ -67,17 +67,23 @@ pub async fn update_alloy_service(
 
 	let service_spec = ServiceSpec {
 		name: Some(String::from(constants::ALLOY_SERVICE_NAME)),
-		labels: Some(HashMap::from([(
-			String::from("managed-by"),
-			String::from("patr"),
-		)])),
+		labels: Some(HashMap::from([
+			(String::from("managed-by"), String::from("patr")),
+			(
+				String::from("patr.version"),
+				String::from(constants::PATR_VERSION),
+			),
+		])),
 		task_template: Some(TaskSpec {
 			container_spec: Some(TaskSpecContainerSpec {
 				image: Some(String::from(constants::ALLOY_IMAGE)),
-				labels: Some(HashMap::from([(
-					String::from("managed-by"),
-					String::from("patr"),
-				)])),
+				labels: Some(HashMap::from([
+					(String::from("managed-by"), String::from("patr")),
+					(
+						String::from("patr.version"),
+						String::from(constants::PATR_VERSION),
+					),
+				])),
 				command: Some(vec![
 					String::from("alloy"),
 					String::from("run"),

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id AS \"id: Uuid\", name, registry, image_name, image_tag, runner AS \"runner: Uuid\", status AS \"status: DeploymentStatus\", repository_id AS \"repository_id: Uuid\", min_horizontal_scale, max_horizontal_scale, machine_type AS \"machine_type: Uuid\", deploy_on_push, startup_probe_port, startup_probe_path, startup_probe_port_type AS \"startup_probe_port_type: Option<ExposedPortType>\", liveness_probe_port, liveness_probe_path, liveness_probe_port_type AS \"liveness_probe_port_type: Option<ExposedPortType>\", current_live_digest FROM deployment WHERE repository_id = $1 AND image_tag = $2 AND deploy_on_push = TRUE AND deleted IS NULL;",
+  "query": "SELECT id AS \"id: Uuid\", name, registry, image_name, image_tag, runner AS \"runner: Uuid\", status AS \"status: DeploymentStatus\", repository_id AS \"repository_id: Uuid\", min_horizontal_scale, max_horizontal_scale, machine_type AS \"machine_type: Uuid\", deploy_on_push, startup_probe_port, startup_probe_path, startup_probe_port_type AS \"startup_probe_port_type: Option<ExposedPortType>\", liveness_probe_port, liveness_probe_path, liveness_probe_port_type AS \"liveness_probe_port_type: Option<ExposedPortType>\", current_live_digest FROM deployment WHERE repository_id = $1 AND image_tag = $2 AND deploy_on_push = TRUE AND status NOT IN ('stopped', 'errored') AND deleted IS NULL;",
   "describe": {
     "columns": [
       {
@@ -165,5 +165,5 @@
       true
     ]
   },
-  "hash": "fee96f952923e13c93df806ee550fa644fc3be0760c03dfde81080976f572c7f"
+  "hash": "d353b740bc4a8b03086b34c359cc8dd9dee125bb13a00c495b52c530384631d0"
 }
