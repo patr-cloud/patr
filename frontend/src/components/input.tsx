@@ -1,5 +1,6 @@
 import { FiChevronDown, FiEye, FiEyeOff } from "solid-icons/fi";
-import { createSignal, For, mergeProps, Show, JSX } from "solid-js";
+import { createEffect, createSignal, For, mergeProps, onCleanup, Show, JSX } from "solid-js";
+import { Portal } from "solid-js/web";
 import { useClickOutside } from "~/hooks";
 import { get, variantBgClass } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
@@ -213,8 +214,35 @@ const Input = (rawProps: InputProps) => {
 	const [inputText, setInputText] = createSignal("");
 	const [highlightedIndex, setHighlightedIndex] = createSignal(-1);
 	const [containerRef, setContainerRef] = createSignal<HTMLDivElement>();
+	const [dropdownRef, setDropdownRef] = createSignal<HTMLDivElement>();
+	const [dropdownRect, setDropdownRect] = createSignal<{ top: number; left: number; width: number }>({
+		top: 0,
+		left: 0,
+		width: 0,
+	});
 
-	useClickOutside(containerRef, () => {
+	const updateDropdownRect = () => {
+		const el = containerRef();
+		if (!el) return;
+		const rect = el.getBoundingClientRect();
+		setDropdownRect({ top: rect.bottom, left: rect.left, width: rect.width });
+	};
+
+	createEffect(() => {
+		if (!showDropdown()) return;
+		updateDropdownRect();
+		const onResizeOrScroll = () => updateDropdownRect();
+		window.addEventListener("scroll", onResizeOrScroll, true);
+		window.addEventListener("resize", onResizeOrScroll);
+		onCleanup(() => {
+			window.removeEventListener("scroll", onResizeOrScroll, true);
+			window.removeEventListener("resize", onResizeOrScroll);
+		});
+	});
+
+	useClickOutside(containerRef, (event) => {
+		const dd = dropdownRef();
+		if (dd && dd.contains(event.target as Node)) return;
 		setShowDropdown(false);
 		setHighlightedIndex(-1);
 		if (!props.allowCustomValue) {
@@ -391,31 +419,40 @@ const Input = (rawProps: InputProps) => {
 			</Show>
 
 			<Show when={hasSuggestions() && showDropdown()}>
-				<div
-					class={`${variantBgClass(
-						get(props.styleVariant)
-					)} border border-border-color absolute z-10 top-[2.22rem] -left-px w-[calc(100%+2px)] rounded-xs rounded-t-none shadow-lg overflow-y-scroll max-h-60`}
-				>
-					<For each={filteredSuggestions()}>
-						{(suggestion, index) => (
-							<div
-								onMouseDown={(e) => {
-									e.preventDefault();
-									selectSuggestion(suggestion);
-								}}
-								onMouseEnter={() => setHighlightedIndex(index())}
-								class={`border-b last-of-type:border-0 border-border-color hover:bg-secondary-dark px-xl py-sm cursor-pointer text-sm text-white font-thin ${
-									highlightedIndex() === index() ? "bg-secondary-dark" : ""
-								}`}
-							>
-								{suggestion.label}
-							</div>
-						)}
-					</For>
-					<Show when={filteredSuggestions().length === 0}>
-						<div class="px-xl py-sm text-grey text-sm">No options available.</div>
-					</Show>
-				</div>
+				<Portal>
+					<div
+						ref={setDropdownRef}
+						style={{
+							position: "fixed",
+							top: `${dropdownRect().top}px`,
+							left: `${dropdownRect().left}px`,
+							width: `${dropdownRect().width}px`,
+						}}
+						class={`${variantBgClass(
+							get(props.styleVariant)
+						)} border border-border-color z-50 rounded-xs rounded-t-none shadow-lg overflow-y-scroll max-h-60`}
+					>
+						<For each={filteredSuggestions()}>
+							{(suggestion, index) => (
+								<div
+									onMouseDown={(e) => {
+										e.preventDefault();
+										selectSuggestion(suggestion);
+									}}
+									onMouseEnter={() => setHighlightedIndex(index())}
+									class={`border-b last-of-type:border-0 border-border-color hover:bg-secondary-dark px-xl py-sm cursor-pointer text-sm text-white font-thin ${
+										highlightedIndex() === index() ? "bg-secondary-dark" : ""
+									}`}
+								>
+									{suggestion.label}
+								</div>
+							)}
+						</For>
+						<Show when={filteredSuggestions().length === 0}>
+							<div class="px-xl py-sm text-grey text-sm">No options available.</div>
+						</Show>
+					</div>
+				</Portal>
 			</Show>
 		</div>
 	);

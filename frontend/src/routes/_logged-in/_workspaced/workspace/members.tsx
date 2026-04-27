@@ -41,16 +41,19 @@ const ManageWorkspace = () => {
 
 	const workspaceInfoQuery = useWorkspaceInfoQuery();
 	const rolesQuery = useAllRolesQuery();
-	const membersQuery = useMembersQuery(
-		() => search().page,
-		() => search().count
-	);
+	const membersQuery = useMembersQuery();
 
 	createEffect(() => {
 		const totalCount = membersQuery.data?.totalCount;
 		if (totalCount !== undefined) {
 			pagination.setTotalCount(totalCount);
 		}
+	});
+
+	const pagedMembers = createMemo(() => {
+		const all = membersQuery.data?.members ?? [];
+		const start = pagination.page() * pagination.count();
+		return all.slice(start, start + pagination.count());
 	});
 
 	const refetchMembers = () => {
@@ -203,7 +206,7 @@ const ManageWorkspace = () => {
 								<Table
 									column_grids={["flex-6", "flex-3", "flex-3"]}
 									headings={["User", "Roles", "Actions"]}
-									rows={membersQuery.data?.members || []}
+									rows={pagedMembers()}
 									renderRow={(member) => {
 										const memberRoleIds = member.roleIds;
 										const memberRoleNames = memberRoleIds

@@ -1,5 +1,4 @@
 import { createQuery } from "@tanstack/solid-query";
-import { Accessor } from "solid-js";
 import { GetUserDetailsResponse } from "~/bindings/GetUserDetailsResponse";
 import { ListUsersInWorkspaceResponse } from "~/bindings/ListUsersInWorkspaceResponse";
 
@@ -16,35 +15,31 @@ export type WorkspaceMember = {
 	roleIds: string[];
 };
 
-export const useMembersQuery = (page: Accessor<string | undefined>, count: Accessor<string | undefined>) => {
+// Backend paginates over (user, role) pairs, but the UI merges all roles per
+// user into one row. To paginate over the merged list on the frontend, fetch
+// all rows in one shot and slice client-side.
+const FETCH_ALL_PAGE_SIZE = 1000;
+
+export const useMembersQuery = () => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 
 	return createQuery(() => {
 		const auth = authState();
 		const wsId = workspaceId();
-		const p = page();
-		const c = count();
 		return {
-			queryKey: memberKeys.list(wsId ?? "", p, c),
+			queryKey: memberKeys.list(wsId ?? "", "0", String(FETCH_ALL_PAGE_SIZE)),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn",
 			meta: { errorMessage: "Failed to fetch members" },
 			queryFn: async () => {
-				const params = new URLSearchParams();
-				if (p) params.set("page", p);
-				if (c) params.set("count", c);
-				const qs = params.size > 0 ? `?${params.toString()}` : "";
-
 				const response = await httpRequest<ListUsersInWorkspaceResponse>(
-					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/user${qs}`,
+					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/user?page=0&count=${FETCH_ALL_PAGE_SIZE}`,
 					{ method: "GET" }
 				);
 
 				if (!response.ok) {
 					throw new Error(response.data.error);
 				}
-
-				const totalCount = Number(response.headers.get("x-total-count") ?? 0);
 
 				const userDetailsPromises = Object.keys(response.data.users).map(async (userId) => {
 					const userResponse = await httpRequest<GetUserDetailsResponse>(
@@ -76,7 +71,7 @@ export const useMembersQuery = (page: Accessor<string | undefined>, count: Acces
 					(m): m is WorkspaceMember => m !== null
 				);
 
-				return { members, totalCount };
+				return { members, totalCount: members.length };
 			},
 		};
 	});
