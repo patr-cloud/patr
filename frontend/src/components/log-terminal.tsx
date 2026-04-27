@@ -191,9 +191,7 @@ const LogTerminal = (props: LogTerminalProps) => {
 		for (let i = 0; i < Math.min(logs.length, 200); i++) {
 			existingKeys.add(`${tsKey(logs[i].timestamp)}|${logs[i].log}`);
 		}
-		const newOlderLogs = olderLogs.filter(
-			(entry) => !existingKeys.has(`${tsKey(entry.timestamp)}|${entry.log}`)
-		);
+		const newOlderLogs = olderLogs.filter((entry) => !existingKeys.has(`${tsKey(entry.timestamp)}|${entry.log}`));
 
 		if (newOlderLogs.length === 0) {
 			setHasMoreLogs(false);
