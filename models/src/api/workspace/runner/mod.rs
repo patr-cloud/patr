@@ -1,9 +1,13 @@
-/// The endpoint to add a runner to a workspace
-mod add_runner_to_workspace;
+/// Approve a runner consent link from the browser
+mod approve_runner_link;
+/// Begin a runner consent-link flow from the CLI
+mod create_runner_link;
 /// Get the token to use for the ingress tunnel for this runner
 mod get_ingress_token_for_runner;
 /// The endpoint to get the details of a runner in a workspace
 mod get_runner_info;
+/// Fetch metadata for a runner consent link (consent page)
+mod get_runner_link;
 /// The endpoint to get the logs of a runner process
 mod get_runner_logs;
 /// The endpoint to get system metrics for a runner
@@ -18,6 +22,8 @@ mod stream_runner_data_for_workspace;
 mod stream_runner_logs;
 /// The endpoint to update a runner in a workspace
 mod update_runner;
+/// Poll a runner consent link from the CLI
+mod verify_runner_link;
 
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -25,9 +31,11 @@ use time::OffsetDateTime;
 use ts_rs::TS;
 
 pub use self::{
-	add_runner_to_workspace::*,
+	approve_runner_link::*,
+	create_runner_link::*,
 	get_ingress_token_for_runner::*,
 	get_runner_info::*,
+	get_runner_link::*,
 	get_runner_logs::*,
 	get_runner_metrics::*,
 	list_runners_for_workspace::*,
@@ -35,6 +43,7 @@ pub use self::{
 	stream_runner_data_for_workspace::*,
 	stream_runner_logs::*,
 	update_runner::*,
+	verify_runner_link::*,
 };
 use crate::prelude::*;
 
