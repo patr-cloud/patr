@@ -25,3 +25,4 @@ mod m022_token_ceiling_evaluation;
 mod m023_drop_legacy_permission_tables;
 mod m024_add_service_accounts;
 mod m025_runner_version;
+mod m026_runner_service_account_link;

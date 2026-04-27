@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE runner ADD CONSTRAINT runner_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id), ADD CONSTRAINT runner_fk_service_account_id FOREIGN KEY(service_account_id) REFERENCES service_account(id), ADD CONSTRAINT runner_fk_id_workspace_id FOREIGN KEY(id, workspace_id, deleted) REFERENCES resource(id, owner_id, deleted) DEFERRABLE INITIALLY IMMEDIATE;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "ed4b1a69b0ed6eadd2929e71a4020ee63b08c092ded1c6cb12e0b83c893ccbc6"
+}
