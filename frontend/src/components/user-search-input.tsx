@@ -75,14 +75,10 @@ export const UserSearchInput = (props: UserSearchInputProps) => {
 				>
 					<ErrorBoundary
 						fallback={
-							<div class="px-4 py-3 text-error text-sm">
-								Failed to search users. Please try again.
-							</div>
+							<div class="px-4 py-3 text-error text-sm">Failed to search users. Please try again.</div>
 						}
 					>
-						<Switch
-							fallback={<div class="px-4 py-3 text-gray-400 text-sm">No users found</div>}
-						>
+						<Switch fallback={<div class="px-4 py-3 text-gray-400 text-sm">No users found</div>}>
 							<Match when={searchResults.isLoading}>
 								<div class="px-4 py-3 text-gray-400 text-sm">Searching...</div>
 							</Match>
