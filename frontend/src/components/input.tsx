@@ -1,5 +1,6 @@
 import { FiChevronDown, FiEye, FiEyeOff } from "solid-icons/fi";
-import { createEffect, createSignal, For, mergeProps, Show, JSX } from "solid-js";
+import { createEffect, createSignal, For, mergeProps, onCleanup, Show, JSX } from "solid-js";
+import { Portal } from "solid-js/web";
 import { useClickOutside } from "~/hooks";
 import { get, variantBgClass } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
@@ -213,21 +214,54 @@ const Input = (rawProps: InputProps) => {
 	const [inputText, setInputText] = createSignal("");
 	const [highlightedIndex, setHighlightedIndex] = createSignal(-1);
 	const [containerRef, setContainerRef] = createSignal<HTMLDivElement>();
-	const [dropDirection, setDropDirection] = createSignal<"down" | "up">("down");
+	const [dropdownRef, setDropdownRef] = createSignal<HTMLDivElement>();
+	const [dropdownRect, setDropdownRect] = createSignal<{
+		top: number;
+		left: number;
+		width: number;
+		bottomOffset: number;
+		direction: "down" | "up";
+	}>({
+		top: 0,
+		left: 0,
+		width: 0,
+		bottomOffset: 0,
+		direction: "down",
+	});
 
 	const DROPDOWN_MAX_HEIGHT_PX = 240;
 
-	createEffect(() => {
-		if (!showDropdown()) return;
+	const updateDropdownRect = () => {
 		const el = containerRef();
 		if (!el || typeof window === "undefined") return;
 		const rect = el.getBoundingClientRect();
 		const spaceBelow = window.innerHeight - rect.bottom;
 		const spaceAbove = rect.top;
-		setDropDirection(spaceBelow < DROPDOWN_MAX_HEIGHT_PX && spaceAbove > spaceBelow ? "up" : "down");
+		const direction = spaceBelow < DROPDOWN_MAX_HEIGHT_PX && spaceAbove > spaceBelow ? "up" : "down";
+		setDropdownRect({
+			top: rect.bottom,
+			left: rect.left,
+			width: rect.width,
+			bottomOffset: window.innerHeight - rect.top,
+			direction,
+		});
+	};
+
+	createEffect(() => {
+		if (!showDropdown()) return;
+		updateDropdownRect();
+		const onResizeOrScroll = () => updateDropdownRect();
+		window.addEventListener("scroll", onResizeOrScroll, true);
+		window.addEventListener("resize", onResizeOrScroll);
+		onCleanup(() => {
+			window.removeEventListener("scroll", onResizeOrScroll, true);
+			window.removeEventListener("resize", onResizeOrScroll);
+		});
 	});
 
-	useClickOutside(containerRef, () => {
+	useClickOutside(containerRef, (event) => {
+		const dd = dropdownRef();
+		if (dd && dd.contains(event.target as Node)) return;
 		setShowDropdown(false);
 		setHighlightedIndex(-1);
 		if (!props.allowCustomValue) {
@@ -324,7 +358,13 @@ const Input = (rawProps: InputProps) => {
     focus-within:border-primary focus-within:shadow-md focus-within:bg-secondary-light
     ${variantBgClass(get(props.styleVariant))} ${get(props.class)} ${
 		get(props.disabled) ? "bg-secondary-primary cursor-not-allowed" : ""
-	} ${hasSuggestions() && showDropdown() ? (dropDirection() === "up" ? "rounded-t-none" : "rounded-b-none") : ""}`;
+	} ${
+		hasSuggestions() && showDropdown()
+			? dropdownRect().direction === "up"
+				? "rounded-t-none"
+				: "rounded-b-none"
+			: ""
+	}`;
 
 	const paddingClass = () => {
 		const hasStart = props.startIcon;
@@ -404,33 +444,44 @@ const Input = (rawProps: InputProps) => {
 			</Show>
 
 			<Show when={hasSuggestions() && showDropdown()}>
-				<div
-					class={`${variantBgClass(
-						get(props.styleVariant)
-					)} border border-border-color absolute z-10 -left-px w-[calc(100%+2px)] rounded-xs shadow-lg overflow-y-scroll max-h-60 ${
-						dropDirection() === "up" ? "bottom-[2.22rem] rounded-b-none" : "top-[2.22rem] rounded-t-none"
-					}`}
-				>
-					<For each={filteredSuggestions()}>
-						{(suggestion, index) => (
-							<div
-								onMouseDown={(e) => {
-									e.preventDefault();
-									selectSuggestion(suggestion);
-								}}
-								onMouseEnter={() => setHighlightedIndex(index())}
-								class={`border-b last-of-type:border-0 border-border-color hover:bg-secondary-dark px-xl py-sm cursor-pointer text-sm text-white font-thin ${
-									highlightedIndex() === index() ? "bg-secondary-dark" : ""
-								}`}
-							>
-								{suggestion.label}
-							</div>
-						)}
-					</For>
-					<Show when={filteredSuggestions().length === 0}>
-						<div class="px-xl py-sm text-grey text-sm">No options available.</div>
-					</Show>
-				</div>
+				<Portal>
+					<div
+						ref={setDropdownRef}
+						style={{
+							position: "fixed",
+							...(dropdownRect().direction === "up"
+								? { bottom: `${dropdownRect().bottomOffset}px` }
+								: { top: `${dropdownRect().top}px` }),
+							left: `${dropdownRect().left}px`,
+							width: `${dropdownRect().width}px`,
+						}}
+						class={`${variantBgClass(
+							get(props.styleVariant)
+						)} border border-border-color z-50 rounded-xs shadow-lg overflow-y-scroll max-h-60 ${
+							dropdownRect().direction === "up" ? "rounded-b-none" : "rounded-t-none"
+						}`}
+					>
+						<For each={filteredSuggestions()}>
+							{(suggestion, index) => (
+								<div
+									onMouseDown={(e) => {
+										e.preventDefault();
+										selectSuggestion(suggestion);
+									}}
+									onMouseEnter={() => setHighlightedIndex(index())}
+									class={`border-b last-of-type:border-0 border-border-color hover:bg-secondary-dark px-xl py-sm cursor-pointer text-sm text-white font-thin ${
+										highlightedIndex() === index() ? "bg-secondary-dark" : ""
+									}`}
+								>
+									{suggestion.label}
+								</div>
+							)}
+						</For>
+						<Show when={filteredSuggestions().length === 0}>
+							<div class="px-xl py-sm text-grey text-sm">No options available.</div>
+						</Show>
+					</div>
+				</Portal>
 			</Show>
 		</div>
 	);
