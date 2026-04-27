@@ -1,104 +1,71 @@
-import { createFileRoute, useNavigate } from "@tanstack/solid-router";
+import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createSignal, Show } from "solid-js";
-import { AddRunnerToWorkspaceResponse } from "~/bindings";
-import {
-	Alert,
-	Button,
-	ButtonVariant,
-	Input,
-	InputType,
-	Label,
-	PageContainer,
-	PageContainerBody,
-	PageContainerHead,
-	useToast,
-} from "~/components";
-import { createFormAction } from "~/hooks";
-import { httpRequest } from "~/utils/http-request";
+import { For } from "solid-js";
+import { CopyableField, CopyableFieldVariant, PageContainer, PageContainerBody, PageContainerHead } from "~/components";
+
+const SETUP_COMMAND = "patr runner setup";
+
+const STEPS = [
+	{
+		idx: "1",
+		title: "Run on the host",
+		body: "Install the Patr CLI on the machine that will host the runner, then invoke setup from a terminal there.",
+	},
+	{
+		idx: "2",
+		title: "Approve in browser",
+		body: "The CLI opens this dashboard with a one-time code. Confirm the machine details and assign a name.",
+	},
+	{
+		idx: "3",
+		title: "Runner online",
+		body: "The CLI writes a per-runner credential and connects. The new runner appears in your list.",
+	},
+];
 
 const CreateRunnerPage = () => {
-	const [name, setName] = createSignal<string>("");
-	const [nameError, setNameError] = createSignal("");
-	const navigate = useNavigate();
-	const toast = useToast();
-
-	const { onSubmit, isLoading } = createFormAction(async ({ workspaceId }) => {
-		if (!name().trim()) {
-			setNameError("Runner name is required.");
-			return;
-		}
-
-		const response = await httpRequest<AddRunnerToWorkspaceResponse>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/runner`,
-			{
-				method: "POST",
-				body: JSON.stringify({
-					name: name(),
-				}),
-			}
-		);
-
-		if (!response.ok) {
-			setNameError("Failed to create runner. Please try a different name.");
-			return;
-		}
-
-		toast("Runner created successfully", "success");
-		navigate({ to: "/runners" });
-	});
-
 	return (
 		<>
 			<Title>New Runner | Patr</Title>
 			<PageContainer>
 				<PageContainerHead
 					subText="Runners execute deployments on your machines or clusters"
-					breadcrumbs={[
-						{
-							label: "Runners",
-							url: "/runners",
-						},
-						{
-							label: "Add",
-						},
-					]}
+					breadcrumbs={[{ label: "Runners", url: "/runners" }, { label: "Add" }]}
 				/>
-				<PageContainerBody class="flex flex-col">
-					<form noValidate onSubmit={onSubmit} class="flex flex-col gap-8 w-full">
-						<div class="flex gap-8 items-center w-full">
-							<Label parentClass="flex-2" for="runner-name" label="Runner Name" />
-							<div class="flex-10 flex flex-col">
-								<Input
-									id="runner-name"
-									name="runner-name"
-									placeholder="Enter Runner Name"
-									type={InputType.Text}
-									value={name()}
-									onInput={(e) => {
-										setName(e.currentTarget.value);
-										setNameError("");
-									}}
-								/>
-								<Show when={nameError()}>
-									<div class="mt-1">
-										<Alert message={nameError()} type="error" />
-									</div>
-								</Show>
-							</div>
-						</div>
+				<PageContainerBody class="w-full">
+					<div class="flex flex-col gap-8 w-full">
+						<section>
+							<h2 class="text-white text-lg font-semibold mb-2">Setup runs in your terminal</h2>
+							<p class="text-grey text-sm leading-relaxed" style={{ "max-width": "65ch" }}>
+								We hand setup off to the Patr CLI on the host machine. The runner gets its own
+								credential — never your account token, never anything pasted around.
+							</p>
+						</section>
 
-						<div class="w-full flex justify-end">
-							<Button
-								loading={isLoading}
-								loadingContent={() => <span>Creating Runner...</span>}
-								variant={ButtonVariant.Contained}
-								type="submit"
-							>
-								Create Runner
-							</Button>
-						</div>
-					</form>
+						<section>
+							<h3 class="text-white text-base font-medium mb-4">Run this on the host machine</h3>
+							<CopyableField value={SETUP_COMMAND} variant={CopyableFieldVariant.Input} />
+						</section>
+
+						<section>
+							<h3 class="text-white text-base font-medium mb-4">What happens next</h3>
+							<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+								<For each={STEPS}>
+									{(step) => (
+										<div class="border border-border-color rounded-xs p-5 flex flex-col gap-3">
+											<div class="flex items-center gap-3">
+												<span class="w-6 h-6 rounded-full border border-primary text-primary text-xs font-medium flex items-center justify-center">
+													{step.idx}
+												</span>
+												<span class="text-white text-sm font-medium">{step.title}</span>
+											</div>
+											<p class="text-grey text-sm leading-relaxed">{step.body}</p>
+										</div>
+									)}
+								</For>
+							</div>
+						</section>
+					</div>
 				</PageContainerBody>
 			</PageContainer>
 		</>

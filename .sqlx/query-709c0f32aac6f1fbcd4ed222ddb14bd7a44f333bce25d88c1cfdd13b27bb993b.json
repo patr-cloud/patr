@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE resource SET deleted = NOW() WHERE id IN ($1, $2);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "709c0f32aac6f1fbcd4ed222ddb14bd7a44f333bce25d88c1cfdd13b27bb993b"
+}
