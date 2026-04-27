@@ -20,7 +20,7 @@ macros::declare_api_endpoint!(
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.volume_id,
 			extract_workspace_id: |req| req.path.workspace_id,
-			permission: Permission::Volume(VolumePermission::Delete),
+			permission: Permission::Volume(VolumePermission::View),
 		}
 	},
 	response = {

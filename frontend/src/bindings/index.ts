@@ -9,8 +9,6 @@ import { ListUserWorkspacesRequest } from "./ListUserWorkspacesRequest";
 import { ListUserWorkspacesResponse } from "./ListUserWorkspacesResponse";
 import { CreateApiTokenRequest } from "~/bindings/CreateApiTokenRequest";
 import { CreateApiTokenResponse } from "~/bindings/CreateApiTokenResponse";
-import { AddRunnerToWorkspaceRequest } from "./AddRunnerToWorkspaceRequest";
-import { AddRunnerToWorkspaceResponse } from "./AddRunnerToWorkspaceResponse";
 import { ListRunnersForWorkspaceResponse } from "./ListRunnersForWorkspaceResponse";
 import { ListDeploymentResponse } from "./ListDeploymentResponse";
 import { ListDeploymentRequest } from "./ListDeploymentRequest";
@@ -94,6 +92,9 @@ import { GetDeploymentMetricResponse } from "./GetDeploymentMetricResponse";
 import { MetricDataPoint } from "./MetricDataPoint";
 import { DeploymentMetricName } from "./DeploymentMetricName";
 import { RunnerMetricName } from "./RunnerMetricName";
+import { GetRunnerLinkResponse } from "./GetRunnerLinkResponse";
+import { ApproveRunnerLinkRequest } from "./ApproveRunnerLinkRequest";
+import { ApproveRunnerLinkResponse } from "./ApproveRunnerLinkResponse";
 
 export type {
 	EnvironmentVariableValue,
@@ -107,8 +108,6 @@ export type {
 	ListUserWorkspacesResponse,
 	CreateApiTokenRequest,
 	CreateApiTokenResponse,
-	AddRunnerToWorkspaceRequest,
-	AddRunnerToWorkspaceResponse,
 	ListRunnersForWorkspaceResponse,
 	ListDeploymentResponse,
 	ListDeploymentRequest,
@@ -192,4 +191,7 @@ export type {
 	MetricDataPoint,
 	DeploymentMetricName,
 	RunnerMetricName,
+	GetRunnerLinkResponse,
+	ApproveRunnerLinkRequest,
+	ApproveRunnerLinkResponse,
 };
