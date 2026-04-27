@@ -36,6 +36,7 @@ either              = { workspace = true, features = ["serde"] }
 flate2              = { workspace = true, features = ["default"] }
 futures             = { workspace = true, features = ["default"] }
 headers             = { workspace = true, features = [] }
+hostname            = { workspace = true, features = [] }
 http                = { workspace = true, features = ["default"] }
 if-addrs            = { workspace = true, features = [] }
 inquire             = { workspace = true, features = ["console", "date", "default", "editor"] }
