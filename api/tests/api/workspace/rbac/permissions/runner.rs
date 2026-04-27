@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use models::{
 	ApiSuccessResponseBody,
 	api::workspace::runner::*,
@@ -439,19 +441,50 @@ async fn runner_view_does_not_grant_create() {
 		.await;
 	assert!(r_view.status_code().is_success());
 
-	// Create should fail.
-	let r_create = setup
-		.make_web_dashboard_call(
-			ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
-				.path(AddRunnerToWorkspacePath {
+	// Creating a runner now means approving a consent link, so that is what
+	// has to be refused. The link itself is minted by the CLI on an API token.
+	let api_token = setup
+		.create_test_api_token(
+			&admin.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+	let link = setup
+		.make_api_call(
+			ApiRequest::<CreateRunnerLinkRequest>::builder()
+				.path(CreateRunnerLinkPath {
 					workspace_id: workspace.id,
 				})
-				.headers(AddRunnerToWorkspaceRequestHeaders {
+				.headers(CreateRunnerLinkRequestHeaders {
+					authorization: BearerToken::from_str(&api_token.token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateRunnerLinkRequest {
+					version: "0.1.0".parse().unwrap(),
+					os: "linux".to_string(),
+					arch: "x86_64".to_string(),
+					hostname: random_name(8),
+					private_ip: "127.0.0.1".parse().unwrap(),
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<CreateRunnerLinkResponse>>()
+		.response;
+
+	let r_create = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ApproveRunnerLinkRequest>::builder()
+				.path(ApproveRunnerLinkPath {
+					workspace_id: workspace.id,
+					user_code: link.user_code,
+				})
+				.headers(ApproveRunnerLinkRequestHeaders {
 					authorization: user_b.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
-				.body(AddRunnerToWorkspaceRequest {
-					name: random_name(8),
+				.body(ApproveRunnerLinkRequest {
+					runner_name: random_name(8),
 				})
 				.build(),
 		)
