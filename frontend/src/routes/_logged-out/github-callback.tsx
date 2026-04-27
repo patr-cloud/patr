@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createSignal, Match, onMount, Show, Switch } from "solid-js";
+import { createSignal, Match, onMount, Switch } from "solid-js";
 import type { GithubOAuthCallbackResponse, GithubOAuthLinkRequest, GithubOAuthLinkResponse } from "~/bindings";
 import { Button, useToast } from "~/components";
 import { ButtonVariant } from "~/utils/color";
@@ -173,9 +173,7 @@ const GithubCallback = () => {
 };
 
 export const Route = createFileRoute("/_logged-out/github-callback")({
-	validateSearch: (
-		search: Record<string, unknown>
-	): { code?: string; state?: string } => ({
+	validateSearch: (search: Record<string, unknown>): { code?: string; state?: string } => ({
 		code: (search.code as string) || undefined,
 		state: (search.state as string) || undefined,
 	}),
