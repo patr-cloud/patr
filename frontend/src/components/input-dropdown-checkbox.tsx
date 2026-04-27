@@ -181,7 +181,12 @@ const InputDropdownCheckbox = (rawProps: InputDropdownCheckboxProps) => {
 									highlightedIndex() === index() ? "bg-secondary-dark" : ""
 								}`}
 							>
-								<Checkbox checked={get(props.checked).includes(option.value)} label={option.label} />
+								<div class="pointer-events-none">
+									<Checkbox
+										checked={get(props.checked).includes(option.value)}
+										label={option.label}
+									/>
+								</div>
 							</div>
 						)}
 					</For>

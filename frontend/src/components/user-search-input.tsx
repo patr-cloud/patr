@@ -33,7 +33,7 @@ export const UserSearchInput = (props: UserSearchInputProps) => {
 		const value = (e.currentTarget as HTMLInputElement).value;
 		setSearchQuery(value);
 		setSelectedUser(null);
-		setShowDropdown(value.length >= 2);
+		setShowDropdown(value.length >= 3);
 	};
 
 	const handleClickOutside = (e: Event) => {
