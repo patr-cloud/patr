@@ -136,6 +136,8 @@ pub async fn create_workspace(
 	.execute(&mut **database)
 	.await?;
 
+	crate::db::create_default_roles_for_workspace(&mut **database, &workspace_id.into()).await?;
+
 	// Revoke the token of the user who created the workspace
 	redis
 		.setex(
