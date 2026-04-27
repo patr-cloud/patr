@@ -34,6 +34,7 @@ clap                           = { workspace = true, features = ["std", "derive"
 cloudflare                     = { workspace = true, features = ["rustls-tls"], optional = true }
 config                         = { workspace = true, features = ["json", "convert-case"] }
 console-subscriber             = { workspace = true, features = ["default"] }
+constant_time_eq               = { workspace = true, features = [] }
 cron                           = { workspace = true, features = [] }
 derive_more                    = { workspace = true, features = ["from"] }
 futures                        = { workspace = true, features = ["default"] }
