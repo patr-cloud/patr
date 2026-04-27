@@ -71,6 +71,9 @@ pub async fn get_deployment_logs(
 	.await?
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
+	let end = end_time.unwrap_or(OffsetDateTime::now_utc());
+	let start = end - time::Duration::days(30);
+
 	let loki_response = reqwest::Client::new()
 		.get(format!(
 			"{}/loki/api/v1/query_range",
@@ -79,13 +82,8 @@ pub async fn get_deployment_logs(
 		.query(&[
 			("limit", limit.unwrap_or(100).to_string()),
 			("direction", "backward".to_string()),
-			(
-				"end",
-				end_time
-					.unwrap_or(OffsetDateTime::now_utc())
-					.unix_timestamp_nanos()
-					.to_string(),
-			),
+			("start", start.unix_timestamp_nanos().to_string()),
+			("end", end.unix_timestamp_nanos().to_string()),
 			(
 				"query",
 				format!(
