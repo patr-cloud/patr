@@ -31,3 +31,4 @@ mod m028_deployment_volumes;
 mod m029_add_service_accounts;
 mod m030_index_token_hashes;
 mod m031_runner_version;
+mod m032_runner_service_account_link;
