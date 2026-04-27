@@ -2,6 +2,8 @@ use std::{
 	collections::BTreeSet,
 	iter,
 	net::{IpAddr, SocketAddr},
+	str::FromStr,
+	time::{Duration, Instant},
 };
 
 use clap::Args as ClapArgs;
@@ -11,7 +13,7 @@ use inquire::{CustomType, MultiSelect, Select, Text};
 use models::{
 	ApiErrorResponseBody,
 	api::{user::*, workspace::runner::*},
-	utils::False,
+	utils::{BearerToken, False},
 };
 use rand::RngExt;
 
@@ -36,7 +38,7 @@ pub struct Args {
 /// config file used by `patr runner run` and `patr runner service install`.
 pub async fn execute(
 	args: Args,
-	_global_args: GlobalArgs,
+	global_args: GlobalArgs,
 	state: AppState,
 ) -> Result<CommandOutput, AppError> {
 	match args.runner_type {
@@ -87,115 +89,154 @@ pub async fn execute(
 			return Err(AppError::NotLoggedIn);
 		};
 
-		let workspace_id = if let Some(workspace_id) = current_workspace {
-			workspace_id
-		} else {
-			let workspaces = make_request(
-				ApiRequest::<ListUserWorkspacesRequest>::builder()
-					.headers(ListUserWorkspacesRequestHeaders {
-						authorization: token.clone(),
-						user_agent: constants::USER_AGENT,
-					})
-					.build(),
-			)
-			.await?
-			.body
-			.workspaces;
+		// Pick the workspace: prefer --workspace flag, then a Select pre-positioned
+		// on the CLI's current_workspace. One-workspace accounts skip the prompt.
+		let workspaces = make_request(
+			ApiRequest::<ListUserWorkspacesRequest>::builder()
+				.headers(ListUserWorkspacesRequestHeaders {
+					authorization: token.clone(),
+					user_agent: constants::USER_AGENT,
+				})
+				.build(),
+		)
+		.await?
+		.body
+		.workspaces;
 
-			let workspace_name = Select::new(
-				"Select a workspace:",
-				workspaces
-					.iter()
-					.map(|workspace| workspace.name.clone())
-					.collect(),
-			)
-			.prompt()
-			.expect_tty("Failed to read workspace");
-
+		let workspace_id = if let Some(arg) = global_args.workspace.as_deref() {
 			workspaces
 				.into_iter()
-				.find(|workspace| workspace.name == workspace_name)
-				.expect("Selected workspace not found")
+				.find(|w| w.id.to_string() == arg || w.name == arg)
+				.map(|w| w.id)
+				.ok_or_else(|| {
+					AppError::ParseError(format!("No workspace found with ID or name: `{arg}`"))
+				})?
+		} else if workspaces.len() == 1 {
+			workspaces.into_iter().next().unwrap().id
+		} else {
+			let names = workspaces
+				.iter()
+				.map(|w| w.name.clone())
+				.collect::<Vec<String>>();
+			let starting_cursor = current_workspace
+				.and_then(|id| workspaces.iter().position(|w| w.id == id))
+				.unwrap_or(0);
+			let selected = Select::new("Select the workspace to add this runner to:", names)
+				.with_starting_cursor(starting_cursor)
+				.prompt()
+				.expect_tty("Failed to read workspace selection");
+			workspaces
+				.into_iter()
+				.find(|w| w.name == selected)
+				.expect("selected name came from the workspace list")
 				.id
 		};
 
-		const SELECT_EXISTING_RUNNER: &str = "Select existing runner";
-		const CREATE_NEW_RUNNER: &str = "Create new runner";
+		// Drives the consent-link handshake: collects machine info, opens the
+		// browser, polls until the user approves on the web UI.
+		let version = env!("CARGO_PKG_VERSION").parse().map_err(|e| {
+			AppError::ParseError(format!("Failed to parse CLI version as semver: {e}"))
+		})?;
+		let os = std::env::consts::OS.to_string();
+		let arch = std::env::consts::ARCH.to_string();
+		let hostname = hostname::get()
+			.map_err(|e| AppError::ParseError(format!("Failed to read hostname: {e}")))?
+			.to_string_lossy()
+			.to_string();
+		let private_ip = if_addrs::get_if_addrs()
+			.unwrap_or_default()
+			.into_iter()
+			.map(|iface| iface.ip())
+			.find(|ip| !ip.is_loopback())
+			.unwrap_or(IpAddr::V4(std::net::Ipv4Addr::LOCALHOST));
 
-		let runner_options = vec![SELECT_EXISTING_RUNNER, CREATE_NEW_RUNNER];
-		let runner_selection = Select::new("Runner setup:", runner_options)
-			.prompt()
-			.expect_tty("Failed to read runner selection");
+		let create = make_request(
+			ApiRequest::<CreateRunnerLinkRequest>::builder()
+				.path(CreateRunnerLinkPath { workspace_id })
+				.headers(CreateRunnerLinkRequestHeaders {
+					authorization: token.clone(),
+					user_agent: constants::USER_AGENT,
+				})
+				.body(CreateRunnerLinkRequest {
+					version,
+					os,
+					arch,
+					hostname,
+					private_ip,
+				})
+				.build(),
+		)
+		.await?
+		.body;
 
-		let runner_id = if runner_selection == SELECT_EXISTING_RUNNER {
-			let result = SearchAndSelect::new(
-				"Search runners:",
-				|query| {
-					let token = token.clone();
-					let query = query.to_owned();
-					async move {
-						let search = if query.is_empty() {
-							Default::default()
-						} else {
-							RunnerSearchParams {
-								name: Some(query),
-								..Default::default()
-							}
-						};
-						Ok(make_request(
-							ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
-								.path(ListRunnersForWorkspacePath { workspace_id })
-								.query(ListResourceQuery {
-									page: 0,
-									count: ListResourceQuery::DEFAULT_PAGE_SIZE,
-									search,
-									sort: Default::default(),
-									additional_query: (),
-								})
-								.headers(ListRunnersForWorkspaceRequestHeaders {
-									user_agent: constants::USER_AGENT,
-									authorization: token,
-								})
-								.build(),
-						)
-						.await?
-						.body
-						.runners)
-					}
-				},
-				|r| r.name.clone(),
-			)
-			.with_help_message("Type to filter runners by name, or press Enter to list all")
-			.prompt()
-			.await?;
+		println!("Opening approval request in your browser...",);
+		println!();
+		println!("If your browser did not open, visit this URL to approve the runner:");
+		println!("{}", create.verification_uri);
+		println!();
+		println!("If prompted for a code, enter: {}", create.user_code);
+		println!();
+		// Best-effort browser launch. Silently no-ops on headless machines —
+		// the URL is already on the terminal so the user can open it elsewhere.
+		_ = open::that(&create.verification_uri_complete);
+		println!("Waiting for approval...");
 
-			result.id
-		} else {
-			let name = Text::new("Enter a name for the new runner:")
-				.prompt()
-				.expect_tty("Failed to read runner name");
+		let interval = Duration::from_secs(create.interval);
+		let deadline = Instant::now() + Duration::from_secs(create.expires_in);
+		loop {
+			tokio::time::sleep(interval).await;
+			if Instant::now() >= deadline {
+				return Err(AppError::ParseError(
+					"Approval timed out. Re-run `patr runner setup` to try again.".to_string(),
+				));
+			}
 
-			let response = make_request(
-				ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
-					.path(AddRunnerToWorkspacePath { workspace_id })
-					.headers(AddRunnerToWorkspaceRequestHeaders {
+			let response = match make_request(
+				ApiRequest::<VerifyRunnerLinkRequest>::builder()
+					.path(VerifyRunnerLinkPath { workspace_id })
+					.headers(VerifyRunnerLinkRequestHeaders {
 						authorization: token.clone(),
 						user_agent: constants::USER_AGENT,
 					})
-					.body(AddRunnerToWorkspaceRequest { name })
+					.body(VerifyRunnerLinkRequest {
+						user_code: create.user_code.clone(),
+						device_code: create.device_code.clone(),
+					})
 					.build(),
 			)
-			.await?
-			.body;
+			.await
+			{
+				Ok(resp) => resp.body,
+				// Server has no record of this link — could be expired (TTL race
+				// against our local deadline check), or already claimed in another
+				// session. Either way, the user needs to start over.
+				Err(err) if matches!(err.body.error, ErrorType::ResourceDoesNotExist) => {
+					return Err(AppError::ParseError(
+						"Approval link is no longer valid. Re-run `patr runner setup` to start over."
+							.to_string(),
+					));
+				}
+				Err(err) => return Err(err.into()),
+			};
 
-			response.id.id
-		};
-
-		RunnerMode::Managed {
-			workspace_id,
-			runner_id,
-			api_token: token,
-			user_agent: constants::USER_AGENT,
+			match response.result {
+				VerifyRunnerLinkResult::Pending => continue,
+				VerifyRunnerLinkResult::Approved {
+					runner_id,
+					workspace_id,
+					token,
+				} => {
+					println!("✓ Runner approved");
+					break RunnerMode::Managed {
+						workspace_id,
+						runner_id,
+						api_token: BearerToken::from_str(&token).map_err(|e| {
+							AppError::ParseError(format!("Server returned malformed token: {e}"))
+						})?,
+						user_agent: constants::USER_AGENT,
+					};
+				}
+			}
 		}
 	} else {
 		let mut rng = rand::rng();

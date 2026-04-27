@@ -38,12 +38,14 @@ pub async fn remove_runner_from_workspace(
 ) -> Result<AppResponse<DeleteRunnerRequest>, ErrorType> {
 	info!("Deleting runner `{}`", runner_id);
 
-	// Grab the tunnel id before the row is gone so we can tear it down on
-	// Cloudflare afterwards.
-	let tunnel_id = query!(
+	// Grab the tunnel id and the service account before the row is gone: the
+	// tunnel gets torn down on Cloudflare afterwards, and the service account
+	// cascade below needs to know which SA this runner owned.
+	let runner = query!(
 		r#"
 		SELECT
-			cloudflare_tunnel_id
+			cloudflare_tunnel_id,
+			service_account_id AS "service_account_id: Uuid"
 		FROM
 			runner
 		WHERE
@@ -53,8 +55,80 @@ pub async fn remove_runner_from_workspace(
 	)
 	.fetch_optional(&mut **database)
 	.await?
-	.map(|runner| runner.cloudflare_tunnel_id);
+	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
+	let tunnel_id = runner.cloudflare_tunnel_id;
+	let sa_id = runner.service_account_id;
+
+	// Per-runner role we auto-created in approve_runner_link, identified by
+	// its name convention. Manually-attached roles (if any) are not deleted —
+	// just unlinked when service_account_role rows go.
+	let runner_role_name = format!("runner-{runner_id}");
+	let role_row = query!(
+		r#"
+		SELECT
+			id AS "id: Uuid"
+		FROM
+			role
+		WHERE
+			name = $1;
+		"#,
+		runner_role_name,
+	)
+	.fetch_optional(&mut **database)
+	.await?;
+
+	if let Some(role_row) = &role_row {
+		query!(
+			r#"
+			DELETE FROM
+				role_resource_permissions_include
+			WHERE
+				role_id = $1;
+			"#,
+			role_row.id as _,
+		)
+		.execute(&mut **database)
+		.await?;
+
+		query!(
+			r#"
+			DELETE FROM
+				role_resource_permissions_exclude
+			WHERE
+				role_id = $1;
+			"#,
+			role_row.id as _,
+		)
+		.execute(&mut **database)
+		.await?;
+
+		query!(
+			r#"
+			DELETE FROM
+				role_resource_permissions_type
+			WHERE
+				role_id = $1;
+			"#,
+			role_row.id as _,
+		)
+		.execute(&mut **database)
+		.await?;
+	}
+
+	query!(
+		r#"
+		DELETE FROM
+			service_account_role
+		WHERE
+			service_account_id = $1;
+		"#,
+		sa_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	// Drop runner first to release its FK to service_account.
 	query!(
 		r#"
 		DELETE FROM
@@ -73,14 +147,43 @@ pub async fn remove_runner_from_workspace(
 
 	query!(
 		r#"
+		DELETE FROM
+			service_account
+		WHERE
+			id = $1;
+		"#,
+		sa_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	if let Some(role_row) = role_row {
+		query!(
+			r#"
+			DELETE FROM
+				role
+			WHERE
+				id = $1;
+			"#,
+			role_row.id as _,
+		)
+		.execute(&mut **database)
+		.await?;
+	}
+
+	// Soft-delete the underlying resource rows so audit logs / FKs to
+	// `resource` remain consistent (matches the existing pattern elsewhere).
+	query!(
+		r#"
 		UPDATE
 			resource
 		SET
 			deleted = NOW()
 		WHERE
-			id = $1;
+			id IN ($1, $2);
 		"#,
 		runner_id as _,
+		sa_id as _,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -110,15 +213,13 @@ pub async fn remove_runner_from_workspace(
 
 			// Delete the runner's Cloudflare tunnel too — otherwise it lingers on the
 			// account forever. `cascade` tears down any active connections first.
-			if let Some(tunnel_id) = tunnel_id {
-				cloudflare
-					.request(&delete_tunnel::DeleteTunnel {
-						account_identifier: &state.config.cloudflare.account_id,
-						tunnel_id: &tunnel_id,
-						params: delete_tunnel::Params { cascade: true },
-					})
-					.await?;
-			}
+			cloudflare
+				.request(&delete_tunnel::DeleteTunnel {
+					account_identifier: &state.config.cloudflare.account_id,
+					tunnel_id: &tunnel_id,
+					params: delete_tunnel::Params { cascade: true },
+				})
+				.await?;
 		} else {
 			let _ = (state, tunnel_id);
 		}
