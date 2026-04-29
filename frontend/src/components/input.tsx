@@ -1,5 +1,5 @@
 import { FiChevronDown, FiEye, FiEyeOff } from "solid-icons/fi";
-import { createSignal, For, mergeProps, Show, JSX } from "solid-js";
+import { createEffect, createSignal, For, mergeProps, Show, JSX } from "solid-js";
 import { useClickOutside } from "~/hooks";
 import { get, variantBgClass } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
@@ -213,6 +213,19 @@ const Input = (rawProps: InputProps) => {
 	const [inputText, setInputText] = createSignal("");
 	const [highlightedIndex, setHighlightedIndex] = createSignal(-1);
 	const [containerRef, setContainerRef] = createSignal<HTMLDivElement>();
+	const [dropDirection, setDropDirection] = createSignal<"down" | "up">("down");
+
+	const DROPDOWN_MAX_HEIGHT_PX = 240;
+
+	createEffect(() => {
+		if (!showDropdown()) return;
+		const el = containerRef();
+		if (!el || typeof window === "undefined") return;
+		const rect = el.getBoundingClientRect();
+		const spaceBelow = window.innerHeight - rect.bottom;
+		const spaceAbove = rect.top;
+		setDropDirection(spaceBelow < DROPDOWN_MAX_HEIGHT_PX && spaceAbove > spaceBelow ? "up" : "down");
+	});
 
 	useClickOutside(containerRef, () => {
 		setShowDropdown(false);
@@ -311,7 +324,7 @@ const Input = (rawProps: InputProps) => {
     focus-within:border-primary focus-within:shadow-md focus-within:bg-secondary-light
     ${variantBgClass(get(props.styleVariant))} ${get(props.class)} ${
 		get(props.disabled) ? "bg-secondary-primary cursor-not-allowed" : ""
-	} ${hasSuggestions() && showDropdown() ? "rounded-b-none" : ""}`;
+	} ${hasSuggestions() && showDropdown() ? (dropDirection() === "up" ? "rounded-t-none" : "rounded-b-none") : ""}`;
 
 	const paddingClass = () => {
 		const hasStart = props.startIcon;
@@ -394,7 +407,9 @@ const Input = (rawProps: InputProps) => {
 				<div
 					class={`${variantBgClass(
 						get(props.styleVariant)
-					)} border border-border-color absolute z-10 top-[2.22rem] -left-px w-[calc(100%+2px)] rounded-xs rounded-t-none shadow-lg overflow-y-scroll max-h-60`}
+					)} border border-border-color absolute z-10 -left-px w-[calc(100%+2px)] rounded-xs shadow-lg overflow-y-scroll max-h-60 ${
+						dropDirection() === "up" ? "bottom-[2.22rem] rounded-b-none" : "top-[2.22rem] rounded-t-none"
+					}`}
 				>
 					<For each={filteredSuggestions()}>
 						{(suggestion, index) => (

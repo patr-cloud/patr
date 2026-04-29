@@ -12,7 +12,7 @@ import {
 	UserSearchInput,
 	Initials,
 } from "~/components";
-import { FiChevronRight, FiEdit2, FiPlus, FiTrash } from "solid-icons/fi";
+import { FiCheck, FiChevronRight, FiEdit2, FiPlus, FiTrash, FiX } from "solid-icons/fi";
 import { useNavigate } from "@tanstack/solid-router";
 import { createAuthenticatedAction, createFormAction, createPaginationState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
@@ -22,7 +22,6 @@ import { WithId } from "~/bindings/WithId";
 import { BasicUserInfo } from "~/bindings/BasicUserInfo";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "./-components/workspace-header";
-import { EditUserRoles } from "./-components/edit-user-roles";
 import { useWorkspaceInfoQuery, useAllRolesQuery, useMembersQuery } from "~/hooks/fetch";
 import { useQueryClient } from "@tanstack/solid-query";
 import { memberKeys } from "~/hooks/query-keys";
@@ -63,7 +62,16 @@ const ManageWorkspace = () => {
 	const [currentRoleIds, setCurrentRoleIds] = createSignal<string[]>([]);
 	const [selectedMemberId, setSelectedMemberId] = createSignal<string | null>(null);
 	const [isEditingRoles, setIsEditingRoles] = createSignal(false);
+	const [editingRoleIds, setEditingRoleIds] = createSignal<string[]>([]);
 	const [pendingDeleteUserId, setPendingDeleteUserId] = createSignal<string | null>(null);
+
+	createEffect(() => {
+		const members = membersQuery.data?.members;
+		if (!members || members.length === 0) return;
+		if (selectedMemberId() === null || !members.some((m) => m.userId === selectedMemberId())) {
+			setSelectedMemberId(members[0].userId);
+		}
+	});
 
 	const { execute: deleteUser } = createAuthenticatedAction(async ({ workspaceId }) => {
 		const userId = pendingDeleteUserId();
@@ -91,6 +99,33 @@ const ManageWorkspace = () => {
 		if (selectedMemberId() === userId) {
 			setSelectedMemberId(null);
 		}
+		refetchMembers();
+	});
+
+	const { execute: saveRoles, isLoading: isSavingRoles } = createAuthenticatedAction(async ({ workspaceId }) => {
+		const userId = selectedMemberId();
+		if (!userId) return;
+
+		const requestBody: UpdateUserRolesInWorkspaceRequest = {
+			roles: editingRoleIds(),
+		};
+
+		const response = await httpRequest(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/user/${userId}`,
+			{
+				method: "POST",
+				body: JSON.stringify(requestBody),
+			}
+		);
+
+		if (!response.ok) {
+			console.error("Failed to update roles:", response.data.error);
+			toast("Failed to update roles", "error");
+			return;
+		}
+
+		toast("Roles updated successfully", "success");
+		setIsEditingRoles(false);
 		refetchMembers();
 	});
 
@@ -151,8 +186,8 @@ const ManageWorkspace = () => {
 			<Title>Workspace Members | Patr</Title>
 			<PageContainer>
 				<WorkspaceHeader workspaceName={workspaceInfoQuery.data?.name} activeTab="members" />
-				<PageContainerBody class="flex flex-col justify-between gap-8">
-					<div class="flex flex-col gap-6">
+				<PageContainerBody class="flex flex-col justify-between gap-4">
+					<div class="flex flex-col gap-6 flex-1">
 						<form class="p-lg bg-secondary-light rounded-xs" onSubmit={handleAddMember}>
 							<h1 class="text-lg mb-3">Add Someone to {workspaceInfoQuery.data?.name}</h1>
 
@@ -204,8 +239,12 @@ const ManageWorkspace = () => {
 								</div>
 							}
 						>
-							<div class="flex flex-col lg:flex-row gap-6 items-start">
-								<div class="flex-2 w-full bg-secondary-light rounded-xs overflow-hidden">
+							<div class="flex flex-1 flex-col lg:flex-row gap-6 items-start">
+								<div
+									class={`flex-2 w-full bg-secondary-light rounded-xs overflow-hidden transition-opacity ${
+										isEditingRoles() ? "opacity-50 pointer-events-none" : ""
+									}`}
+								>
 									<Show
 										when={(membersQuery.data?.members?.length ?? 0) > 0}
 										fallback={
@@ -214,7 +253,7 @@ const ManageWorkspace = () => {
 											</div>
 										}
 									>
-										<ul class="flex flex-col">
+										<ul class="flex flex-col gap-2 p-2">
 											<For each={membersQuery.data?.members || []}>
 												{(member) => {
 													const isSelected = () => selectedMemberId() === member.userId;
@@ -235,10 +274,10 @@ const ManageWorkspace = () => {
 																	setPendingDeleteUserId(null);
 																}
 															}}
-															class={`relative flex items-center gap-4 px-lg py-4 cursor-pointer border-l-2 transition-colors hover:bg-secondary not-last:border-b not-last:border-border-color ${
+															class={`relative flex items-center gap-4 px-lg py-4 cursor-pointer rounded-xs border border-border-color border-l-2 transition-colors hover:bg-secondary ${
 																isSelected()
 																	? "border-l-primary bg-secondary"
-																	: "border-l-transparent"
+																	: "border-l-border-color"
 															}`}
 														>
 															<Initials
@@ -271,20 +310,45 @@ const ManageWorkspace = () => {
 									<Show
 										when={selectedMember()}
 										fallback={
-											<div class="bg-secondary-light rounded-xs p-lg text-grey text-sm flex items-center justify-center min-h-[200px]">
+											<div class="bg-secondary-light rounded-xs p-lg text-grey text-sm flex items-center justify-center min-h-50">
 												Select a member to see details.
 											</div>
 										}
 									>
 										{(member) => {
-											const memberRoles = createMemo(() =>
-												member().roleIds.map((roleId) => ({
+											const displayedRoleIds = createMemo(() =>
+												isEditingRoles() ? editingRoleIds() : member().roleIds
+											);
+											const displayedRoles = createMemo(() =>
+												displayedRoleIds().map((roleId) => ({
 													id: roleId,
 													name: roleNameMap().get(roleId) || roleId,
 												}))
 											);
 
 											const isPendingDelete = () => pendingDeleteUserId() === member().userId;
+
+											const beginEditing = () => {
+												setEditingRoleIds([...member().roleIds]);
+												setIsEditingRoles(true);
+											};
+
+											const cancelEditing = () => {
+												setIsEditingRoles(false);
+												setEditingRoleIds([]);
+											};
+
+											const removeEditingRole = (roleId: string) => {
+												setEditingRoleIds((prev) => prev.filter((id) => id !== roleId));
+											};
+
+											const toggleEditingRole = (roleId: string) => {
+												setEditingRoleIds((prev) =>
+													prev.includes(roleId)
+														? prev.filter((id) => id !== roleId)
+														: [...prev, roleId]
+												);
+											};
 
 											return (
 												<div class="bg-secondary-light rounded-xs p-lg flex flex-col gap-5">
@@ -298,7 +362,7 @@ const ManageWorkspace = () => {
 															<div class="flex items-center gap-2">
 																<Button
 																	variant={ButtonVariant.Outlined}
-																	onClick={() => setIsEditingRoles(true)}
+																	onClick={beginEditing}
 																	class="flex items-center gap-2"
 																>
 																	<FiEdit2 size={14} />
@@ -315,86 +379,122 @@ const ManageWorkspace = () => {
 																</button>
 															</div>
 														</Show>
-													</div>
-
-													<Show when={!isEditingRoles()}>
-														<div class="flex flex-col gap-1">
-															<span class="text-white text-xl font-medium">
-																{member().fullName}
-															</span>
-															<span class="text-grey text-sm">@{member().username}</span>
-														</div>
-
-														<div class="flex flex-col gap-3">
-															<div class="flex items-center justify-between">
-																<h3 class="text-white text-sm font-medium">
-																	Assigned roles
-																</h3>
-																<span class="text-grey text-xs">
-																	{memberRoles().length}
-																</span>
-															</div>
-															<Show
-																when={memberRoles().length > 0}
-																fallback={
-																	<p class="text-grey text-sm italic">
-																		No roles assigned.
-																	</p>
-																}
-															>
-																<div class="flex flex-wrap gap-2">
-																	<For each={memberRoles()}>
-																		{(role) => (
-																			<span class="px-3 py-1 bg-secondary border border-border-color rounded-xs text-white text-xs">
-																				{role.name}
-																			</span>
-																		)}
-																	</For>
-																</div>
-															</Show>
-														</div>
-
-														<Show when={isPendingDelete()}>
-															<div class="flex flex-col gap-3 p-3 border border-error/40 rounded-xs">
-																<p class="text-white text-sm">
-																	Remove {member().fullName} from this workspace?
-																</p>
-																<div class="flex gap-2 justify-end">
-																	<Button
-																		variant={ButtonVariant.Outlined}
-																		onClick={() => setPendingDeleteUserId(null)}
-																	>
-																		Cancel
-																	</Button>
-																	<Button
-																		variant={ButtonVariant.Contained}
-																		onClick={() => deleteUser().catch(() => {})}
-																	>
-																		Remove
-																	</Button>
-																</div>
+														<Show when={isEditingRoles()}>
+															<div class="flex items-center gap-2">
+																<Button
+																	variant={ButtonVariant.Contained}
+																	onClick={() => saveRoles().catch(() => {})}
+																	loading={isSavingRoles()}
+																	class="flex items-center gap-2"
+																>
+																	<FiCheck size={14} />
+																	Save
+																</Button>
+																<Button
+																	variant={ButtonVariant.Outlined}
+																	onClick={cancelEditing}
+																	class="flex items-center gap-2"
+																>
+																	<FiX size={14} />
+																	Cancel
+																</Button>
 															</div>
 														</Show>
-													</Show>
+													</div>
 
-													<Show when={isEditingRoles()}>
-														<EditUserRoles
-															userName={member().fullName}
-															userId={member().userId}
-															workspaceId={workspaceId() || ""}
-															currentRoles={memberRoles()}
-															availableRoles={
-																rolesQuery.data?.roles.map((role) => ({
-																	id: role.id,
-																	name: role.name,
-																})) || []
+													<div class="flex flex-col gap-1">
+														<span class="text-white text-xl font-medium">
+															{member().fullName}
+														</span>
+														<span class="text-grey text-sm">@{member().username}</span>
+													</div>
+
+													<div class="flex flex-col gap-3">
+														<div class="flex items-center justify-between">
+															<h3 class="text-white text-sm font-medium">
+																Assigned roles
+															</h3>
+															<span class="text-grey text-xs">
+																{displayedRoles().length}
+															</span>
+														</div>
+														<Show
+															when={displayedRoles().length > 0}
+															fallback={
+																<p class="text-grey text-sm italic">
+																	No roles assigned.
+																</p>
 															}
-															onSave={() => {
-																setIsEditingRoles(false);
-																refetchMembers();
-															}}
-															onClose={() => setIsEditingRoles(false)}
-														/>
+														>
+															<div class="flex flex-wrap gap-2 max-h-52 overflow-y-auto pr-1">
+																<For each={displayedRoles()}>
+																	{(role) => (
+																		<span class="inline-flex items-center gap-2 px-3 py-1 bg-secondary-light border border-border-color rounded-xs text-white text-xs">
+																			{role.name}
+																			<Show when={isEditingRoles()}>
+																				<button
+																					type="button"
+																					aria-label={`Remove ${role.name}`}
+																					onClick={() =>
+																						removeEditingRole(role.id)
+																					}
+																					class="text-grey hover:text-error transition-colors cursor-pointer"
+																				>
+																					<FiX size={12} />
+																				</button>
+																			</Show>
+																		</span>
+																	)}
+																</For>
+															</div>
+														</Show>
+
+														<Show when={isEditingRoles()}>
+															<div class="flex flex-col gap-2 p-3 border border-dashed border-border-color rounded-xs">
+																<InputDropdownCheckBox
+																	placeholder="+ Add role..."
+																	styleVariant="medium"
+																	options={
+																		rolesQuery.data?.roles.map((role) => ({
+																			label: role.name,
+																			value: role.id,
+																		})) || []
+																	}
+																	checked={editingRoleIds()}
+																	onToggle={toggleEditingRole}
+																/>
+																<a
+																	href="/workspace/roles/new"
+																	target="_blank"
+																	rel="noopener noreferrer"
+																	class="text-primary text-xs hover:underline self-start"
+																>
+																	or create a new role &rarr;
+																</a>
+															</div>
+														</Show>
+													</div>
+
+													<Show when={isPendingDelete()}>
+														<div class="flex flex-col gap-3 p-3 border border-error/40 rounded-xs">
+															<p class="text-white text-sm">
+																Remove {member().fullName} from this workspace?
+															</p>
+															<div class="flex gap-2 justify-end">
+																<Button
+																	variant={ButtonVariant.Outlined}
+																	onClick={() => setPendingDeleteUserId(null)}
+																>
+																	Cancel
+																</Button>
+																<Button
+																	variant={ButtonVariant.Contained}
+																	onClick={() => deleteUser().catch(() => {})}
+																>
+																	Remove
+																</Button>
+															</div>
+														</div>
 													</Show>
 												</div>
 											);
