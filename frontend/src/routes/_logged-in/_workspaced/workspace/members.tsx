@@ -274,9 +274,9 @@ const ManageWorkspace = () => {
 																	setPendingDeleteUserId(null);
 																}
 															}}
-															class={`relative flex items-center gap-4 px-lg py-4 cursor-pointer rounded-xs border border-border-color border-l-2 transition-colors hover:bg-secondary ${
+															class={`relative flex items-center gap-4 px-lg py-4 cursor-pointer rounded-xs border border-border-color border-l-2 transition-colors hover:bg-secondary-medium ${
 																isSelected()
-																	? "border-l-primary bg-secondary"
+																	? "border-l-primary bg-secondary-medium"
 																	: "border-l-border-color"
 															}`}
 														>
