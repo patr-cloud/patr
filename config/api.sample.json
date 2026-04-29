@@ -60,9 +60,11 @@
 	"ipinfo": {
 		"token": "token"
 	},
-	"githubOauth": {
-		"clientId": "Iv120123456789abcdef",
-		"clientSecret": "0123456789abcdef0123456789abcdef01234567",
-		"callbackUrl": "http://localhost:3000/auth/github/callback"
+	"socialLogin": {
+		"github": {
+			"clientId": "Iv120123456789abcdef",
+			"clientSecret": "0123456789abcdef0123456789abcdef01234567",
+			"callbackUrl": "http://localhost:3000/github-callback"
+		}
 	}
 }

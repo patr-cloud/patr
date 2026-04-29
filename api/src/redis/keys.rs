@@ -1,5 +1,7 @@
 use std::net::IpAddr;
 
+use models::api::auth::OAuthProvider;
+
 use crate::prelude::*;
 
 /// The key used to store the permissions for a login ID
@@ -106,23 +108,23 @@ pub fn rate_limit_login_id(login_id: &Uuid, window_secs: u64) -> String {
 	format!("rateLimit:loginId:{}:{}", login_id, window_secs)
 }
 
-/// The key used to store a GitHub OAuth CSRF state token. The value is the
-/// sentinel string `"1"` (presence-only). Expires after 10 minutes.
+/// The key used to store a social-login OAuth CSRF state token. The value is
+/// the sentinel string `"1"` (presence-only). Expires after 10 minutes.
 /// Consumed (deleted) on first use to prevent replay.
-pub fn github_oauth_state(state_token: &str) -> String {
-	format!("githubOAuthState:{}", state_token)
+pub fn social_login_state(provider: &OAuthProvider, state_token: &str) -> String {
+	format!("socialLogin:{}:state:{}", provider.as_str(), state_token)
 }
 
-/// The key used to store a pending GitHub account-link confirmation. The value
-/// is JSON containing `{ user_id, github_id, github_login, github_email }`.
+/// The key used to store a pending social-login account-link confirmation.
+/// The value is JSON containing `{ user_id, external_id, email }`.
 /// Expires after 5 minutes. Consumed on first use.
-pub fn github_oauth_link(link_token: &str) -> String {
-	format!("githubOAuthLink:{}", link_token)
+pub fn social_login_link(provider: &OAuthProvider, link_token: &str) -> String {
+	format!("socialLogin:{}:link:{}", provider.as_str(), link_token)
 }
 
-/// The key used to store a pending GitHub account-setup payload for new users.
-/// The value is JSON containing `{ github_id, github_login, github_email }`.
+/// The key used to store a pending social-login account-setup payload for new
+/// users. The value is JSON containing `{ external_id, email }`.
 /// Expires after 10 minutes. Consumed on first use.
-pub fn github_oauth_setup(setup_token: &str) -> String {
-	format!("githubOAuthSetup:{}", setup_token)
+pub fn social_login_setup(provider: &OAuthProvider, setup_token: &str) -> String {
+	format!("socialLogin:{}:setup:{}", provider.as_str(), setup_token)
 }

@@ -83,11 +83,20 @@ const Login = () => {
 
 	const handleGithubSignIn = async () => {
 		setGithubLoading(true);
-		const resp = await httpRequest<{ authorizeUrl: string }>("/api/auth/github", { method: "GET" });
-		if (resp.ok) {
-			window.location.href = resp.data.authorizeUrl;
-		} else {
+
+		try {
+			const resp = await httpRequest<{ authorizeUrl: string }>("/api/auth/social-login/github", {
+				method: "GET",
+			});
+			if (resp.ok) {
+				window.location.href = resp.data.authorizeUrl;
+				return;
+			}
+
 			toast("Could not initiate GitHub sign-in. Please try again.", "error");
+		} catch {
+			toast("Could not initiate GitHub sign-in. Please try again.", "error");
+		} finally {
 			setGithubLoading(false);
 		}
 	};

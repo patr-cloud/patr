@@ -47,7 +47,7 @@ const GithubCallback = () => {
 			return;
 		}
 
-		const resp = await httpRequest<GithubOAuthCallbackResponse>("/api/auth/github/callback", {
+		const resp = await httpRequest<GithubOAuthCallbackResponse>("/api/auth/social-login/github/callback", {
 			method: "POST",
 			body: JSON.stringify({ code, state }),
 		});
@@ -93,7 +93,7 @@ const GithubCallback = () => {
 
 	const { execute: confirmLink, isLoading: isLinking } = createAsyncAction(async () => {
 		const body: GithubOAuthLinkRequest = { linkToken: linkToken() };
-		const resp = await httpRequest<GithubOAuthLinkResponse>("/api/auth/github/link", {
+		const resp = await httpRequest<GithubOAuthLinkResponse>("/api/auth/social-login/github/link", {
 			method: "POST",
 			body: JSON.stringify(body),
 		});

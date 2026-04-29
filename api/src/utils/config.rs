@@ -75,8 +75,16 @@ pub struct AppConfig {
 	pub opentelemetry: OpenTelemetryConfig,
 	/// The configuration for IpInfo to get IpAddress details
 	pub ipinfo: IpInfoConfig,
+	/// The configuration for social login providers (GitHub, etc.)
+	pub social_login: SocialLoginConfig,
+}
+
+/// The configuration for social login providers
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SocialLoginConfig {
 	/// The configuration for GitHub OAuth2 SSO
-	pub github_oauth: GitHubOAuthConfig,
+	pub github: GitHubOAuthConfig,
 }
 
 /// The environment the application is running in

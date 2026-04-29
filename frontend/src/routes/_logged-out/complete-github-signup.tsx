@@ -78,7 +78,7 @@ const CompleteGithubSignup = () => {
 			lastName: lastName(),
 		};
 
-		const resp = await httpRequest<GithubOAuthSetupResponse>("/api/auth/github/setup", {
+		const resp = await httpRequest<GithubOAuthSetupResponse>("/api/auth/social-login/github/setup", {
 			method: "POST",
 			body: JSON.stringify(body),
 		});
@@ -102,9 +102,6 @@ const CompleteGithubSignup = () => {
 			switch (resp.data?.error) {
 				case "usernameUnavailable":
 					setErrors((prev) => ({ ...prev, username: "Username is already taken." }));
-					break;
-				case "emailUnavailable":
-					setErrors((prev) => ({ ...prev, recoveryEmail: "Email is already in use." }));
 					break;
 				case "githubOAuthFailed":
 					toast("Your GitHub session has expired. Please sign in with GitHub again.", "error");
