@@ -256,11 +256,16 @@ async fn build_ingress_spec(
 	docker: &Docker,
 	settings: &RunnerSettings<DockerSettings>,
 ) -> Result<ServiceSpec, RunnerError> {
+	// Per-deployment Caddyfile snippets are uniquely identified by
+	// `patr.configBaseName` starting with `ingress-`. Data config-mounts use
+	// `config-{id}-{N}`, and the main Caddyfile.base uses `patr-ingress-config`
+	// (mounted separately at /etc/caddy/Caddyfile, not under
+	// /etc/caddy/deployments).
 	let config_ids = docker
 		.list_configs(Some(ListConfigsOptions {
 			filters: Some(HashMap::from([(
 				String::from("label"),
-				vec![String::from("patr.deploymentId")],
+				vec![String::from("patr.configBaseName")],
 			)])),
 		}))
 		.await
@@ -270,15 +275,15 @@ async fn build_ingress_spec(
 		})?
 		.into_iter()
 		.filter_map(|config| {
+			let labels = config.spec.as_ref()?.labels.as_ref()?;
+			let base_name = labels.get("patr.configBaseName")?;
+			if !base_name.starts_with("ingress-") {
+				return None;
+			}
+			let deployment_id = labels.get("patr.deploymentId")?.parse::<Uuid>().ok()?;
 			Some((
-				config
-					.spec
-					.clone()?
-					.labels?
-					.get("patr.deploymentId")?
-					.parse::<Uuid>()
-					.ok()?,
-				config.id?,
+				deployment_id,
+				config.id.clone()?,
 				config.spec.as_ref()?.name.clone()?,
 			))
 		})
@@ -290,10 +295,13 @@ async fn build_ingress_spec(
 	let (ingress_config_id, ingress_config_name) = crate::utils::update_config(
 		docker,
 		constants::INGRESS_CONFIG_NAME,
-		HashMap::from([(
-			String::from("patr.deploymentId"),
-			String::from(constants::INGRESS_SERVICE_NAME),
-		)]),
+		HashMap::from([
+			(String::from("managed-by"), String::from("patr")),
+			(
+				String::from("patr.deploymentId"),
+				String::from(constants::INGRESS_SERVICE_NAME),
+			),
+		]),
 		base_config.to_string(),
 	)
 	.await?;
