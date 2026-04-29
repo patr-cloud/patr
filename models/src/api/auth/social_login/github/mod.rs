@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-/// Endpoint to initiate the GitHub OAuth2 flow
-mod initiate;
 /// Endpoint to handle the GitHub OAuth2 callback
 mod callback;
+/// Endpoint to initiate the GitHub OAuth2 flow
+mod initiate;
 /// Endpoint to confirm linking a GitHub account to an existing Patr account
 mod link;
 /// Endpoint to complete the GitHub OAuth2 sign up flow

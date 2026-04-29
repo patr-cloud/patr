@@ -8,15 +8,16 @@ use time::OffsetDateTime;
 
 use crate::{models::access_token_data::AccessTokenData, prelude::*};
 
+/// Handler for `POST /auth/social-login/github/callback` — completes the OAuth
+/// flow
+mod callback;
 /// Handler for `GET /auth/social-login/github` — initiates the OAuth flow
 mod initiate;
-/// Handler for `POST /auth/social-login/github/callback` — completes the OAuth flow
-mod callback;
-/// Handler for `POST /auth/social-login/github/link` — links a GitHub identity to an
-/// existing Patr account
+/// Handler for `POST /auth/social-login/github/link` — links a GitHub identity
+/// to an existing Patr account
 mod link;
-/// Handler for `POST /auth/social-login/github/setup` — creates a new Patr account from a
-/// GitHub identity
+/// Handler for `POST /auth/social-login/github/setup` — creates a new Patr
+/// account from a GitHub identity
 mod setup;
 
 pub use self::{callback::*, initiate::*, link::*, setup::*};

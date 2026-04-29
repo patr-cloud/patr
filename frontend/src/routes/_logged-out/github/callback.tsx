@@ -77,7 +77,7 @@ const GithubCallback = () => {
 
 			case "setupRequired":
 				navigate({
-					to: "/complete-github-signup",
+					to: "/github/complete-signup",
 					search: {
 						setupToken: data.setupToken!,
 						username: data.prefilledUsername,
@@ -172,7 +172,7 @@ const GithubCallback = () => {
 	);
 };
 
-export const Route = createFileRoute("/_logged-out/github-callback")({
+export const Route = createFileRoute("/_logged-out/github/callback")({
 	validateSearch: (search: Record<string, unknown>): { code?: string; state?: string } => ({
 		code: (search.code as string) || undefined,
 		state: (search.state as string) || undefined,

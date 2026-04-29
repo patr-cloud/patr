@@ -34,7 +34,6 @@ pub use self::{
 	create_account::*,
 	docker_login::*,
 	forgot_password::*,
-	social_login::*,
 	is_email_valid::*,
 	is_username_valid::*,
 	list_recovery_options::*,
@@ -43,4 +42,5 @@ pub use self::{
 	renew_access_token::*,
 	resend_otp::*,
 	reset_password::*,
+	social_login::*,
 };

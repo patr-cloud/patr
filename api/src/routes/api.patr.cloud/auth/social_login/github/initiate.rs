@@ -45,7 +45,10 @@ pub async fn github_oauth_initiate(
 	authorize_url
 		.query_pairs_mut()
 		.append_pair("client_id", &state.config.social_login.github.client_id)
-		.append_pair("redirect_uri", &state.config.social_login.github.callback_url)
+		.append_pair(
+			"redirect_uri",
+			&state.config.social_login.github.callback_url,
+		)
 		.append_pair("scope", "read:user user:email")
 		.append_pair("state", &oauth_state_token);
 	let authorize_url = authorize_url.to_string();

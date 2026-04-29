@@ -4,8 +4,6 @@ use crate::prelude::*;
 
 /// The route to complete the sign up process
 mod complete_sign_up;
-/// Social-login (GitHub, …) SSO routes
-mod social_login;
 /// The route to create a new user account
 mod create_account;
 /// The route to login using Docker credentials
@@ -31,13 +29,14 @@ mod renew_access_token;
 mod resend_otp;
 /// The route to reset a user's password
 mod reset_password;
+/// Social-login (GitHub, …) SSO routes
+mod social_login;
 
 use self::{
 	complete_sign_up::*,
 	create_account::*,
 	docker_login::*,
 	forgot_password::*,
-	social_login::*,
 	is_email_valid::*,
 	is_username_valid::*,
 	list_recovery_options::*,
@@ -46,6 +45,7 @@ use self::{
 	renew_access_token::*,
 	resend_otp::*,
 	reset_password::*,
+	social_login::*,
 };
 
 /// Sets up the auth routes

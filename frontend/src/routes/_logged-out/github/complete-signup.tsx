@@ -234,7 +234,7 @@ const CompleteGithubSignup = () => {
 	);
 };
 
-export const Route = createFileRoute("/_logged-out/complete-github-signup")({
+export const Route = createFileRoute("/_logged-out/github/complete-signup")({
 	validateSearch: (
 		search: Record<string, unknown>
 	): {
