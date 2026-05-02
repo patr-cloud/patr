@@ -35,8 +35,8 @@ headers                        = { workspace = true, features = [] }
 hex                            = { workspace = true, features = [] }
 hickory-resolver               = { workspace = true, features = ["tokio"] }
 http                           = { workspace = true, features = ["default"] }
-inventory                      = { workspace = true, features = [] }
 http-body                      = { workspace = true, features = [] }
+inventory                      = { workspace = true, features = [] }
 ipinfo                         = { workspace = true, features = [] }
 jsonwebtoken                   = { workspace = true, features = ["default", "aws_lc_rs"] }
 lettre                         = { workspace = true, features = ["tokio1-rustls-tls", "smtp-transport", "builder", "tokio1"] }
@@ -84,6 +84,7 @@ woothee                        = { workspace = true, features = ["default"] }
 anyhow                 = { workspace = true, features = ["default"] }
 axum-test              = { workspace = true, features = ["default"] }
 flate2                 = { workspace = true, features = ["rust_backend"] }
+ipnetwork              = { workspace = true, features = ["default"] }
 tar                    = { workspace = true, features = [] }
 testcontainers-modules = { workspace = true, features = ["default", "postgres", "minio", "redis"] }
 wiremock               = { workspace = true, features = [] }

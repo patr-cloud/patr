@@ -14,7 +14,7 @@ async fn list_machine_types_works() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListAllDeploymentMachineTypeRequest>::builder()
 				.path(ListAllDeploymentMachineTypePath {
 					workspace_id: workspace.id,
@@ -59,7 +59,7 @@ async fn create_deployment_invalid_name() {
 
 	// Get machine type
 	let machine_types = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListAllDeploymentMachineTypeRequest>::builder()
 				.path(ListAllDeploymentMachineTypePath {
 					workspace_id: workspace.id,
@@ -75,7 +75,7 @@ async fn create_deployment_invalid_name() {
 	let mt_id = machine_types.response.machine_types[0].id;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CreateDeploymentRequest>::builder()
 				.path(CreateDeploymentPath {
 					workspace_id: workspace.id,
@@ -129,7 +129,7 @@ async fn list_deployments_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListDeploymentRequest>::builder()
 				.path(ListDeploymentPath {
 					workspace_id: workspace.id,
@@ -153,7 +153,7 @@ async fn list_deployments_empty() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListDeploymentRequest>::builder()
 				.path(ListDeploymentPath {
 					workspace_id: workspace.id,
@@ -183,7 +183,7 @@ async fn get_deployment_info_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentInfoRequest>::builder()
 				.path(GetDeploymentInfoPath {
 					workspace_id: workspace.id,
@@ -208,7 +208,7 @@ async fn get_deployment_info_nonexistent() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentInfoRequest>::builder()
 				.path(GetDeploymentInfoPath {
 					workspace_id: workspace.id,
@@ -242,7 +242,7 @@ async fn update_deployment_works() {
 
 	let new_name = random_name(8);
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<UpdateDeploymentRequest>::builder()
 				.path(UpdateDeploymentPath {
 					workspace_id: workspace.id,
@@ -285,7 +285,7 @@ async fn delete_deployment_works() {
 		.await;
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteDeploymentRequest>::builder()
 				.path(DeleteDeploymentPath {
 					workspace_id: workspace.id,
@@ -302,7 +302,7 @@ async fn delete_deployment_works() {
 
 	// Verify it's gone
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentInfoRequest>::builder()
 				.path(GetDeploymentInfoPath {
 					workspace_id: workspace.id,
@@ -334,7 +334,7 @@ async fn start_deployment_works() {
 	// Start may succeed or fail depending on runner connectivity — just check
 	// it doesn't return 4xx auth error
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<StartDeploymentRequest>::builder()
 				.path(StartDeploymentPath {
 					workspace_id: workspace.id,
@@ -372,7 +372,7 @@ async fn stop_deployment_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<StopDeploymentRequest>::builder()
 				.path(StopDeploymentPath {
 					workspace_id: workspace.id,
@@ -450,7 +450,7 @@ async fn get_deployment_logs_works() {
 	tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentLogsRequest>::builder()
 				.path(GetDeploymentLogsPath {
 					workspace_id: workspace.id,
@@ -543,7 +543,7 @@ async fn get_deployment_logs_with_search_filter() {
 	tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentLogsRequest>::builder()
 				.path(GetDeploymentLogsPath {
 					workspace_id: workspace.id,
@@ -591,7 +591,7 @@ async fn get_deployment_metric_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentMetricRequest>::builder()
 				.path(GetDeploymentMetricPath {
 					workspace_id: workspace.id,
@@ -620,7 +620,7 @@ async fn deployment_unauthorized() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListDeploymentRequest>::builder()
 				.path(ListDeploymentPath {
 					workspace_id: workspace.id,
@@ -652,7 +652,7 @@ async fn deployment_wrong_workspace() {
 	let other_user = setup.create_test_user().await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentInfoRequest>::builder()
 				.path(GetDeploymentInfoPath {
 					workspace_id: workspace.id,

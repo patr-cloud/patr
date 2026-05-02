@@ -15,7 +15,7 @@ async fn list_deploy_history_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListDeploymentDeployHistoryRequest>::builder()
 				.path(ListDeploymentDeployHistoryPath {
 					workspace_id: workspace.id,
@@ -50,7 +50,7 @@ async fn list_deploy_history_empty() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListDeploymentDeployHistoryRequest>::builder()
 				.path(ListDeploymentDeployHistoryPath {
 					workspace_id: workspace.id,

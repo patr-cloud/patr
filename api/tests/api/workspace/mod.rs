@@ -26,7 +26,7 @@ async fn create_workspace_duplicate_name() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CreateWorkspaceRequest>::builder()
 				.headers(CreateWorkspaceRequestHeaders {
 					authorization: user.access_token.clone(),
@@ -51,7 +51,7 @@ async fn create_workspace_invalid_name() {
 	let user = setup.create_test_user().await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CreateWorkspaceRequest>::builder()
 				.headers(CreateWorkspaceRequestHeaders {
 					authorization: user.access_token.clone(),
@@ -77,7 +77,7 @@ async fn get_workspace_info_works() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetWorkspaceInfoRequest>::builder()
 				.path(GetWorkspaceInfoPath {
 					workspace_id: workspace.id,
@@ -102,7 +102,7 @@ async fn get_workspace_info_unauthorized() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetWorkspaceInfoRequest>::builder()
 				.path(GetWorkspaceInfoPath {
 					workspace_id: workspace.id,
@@ -127,7 +127,7 @@ async fn get_workspace_info_nonexistent() {
 	let user = setup.create_test_user().await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetWorkspaceInfoRequest>::builder()
 				.path(GetWorkspaceInfoPath {
 					workspace_id: Uuid::nil(),
@@ -154,7 +154,7 @@ async fn update_workspace_info_works() {
 	let new_name = random_name(8);
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<UpdateWorkspaceInfoRequest>::builder()
 				.path(UpdateWorkspaceInfoPath {
 					workspace_id: workspace.id,
@@ -173,7 +173,7 @@ async fn update_workspace_info_works() {
 
 	// Verify
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetWorkspaceInfoRequest>::builder()
 				.path(GetWorkspaceInfoPath {
 					workspace_id: workspace.id,
@@ -198,7 +198,7 @@ async fn delete_workspace_works() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteWorkspaceRequest>::builder()
 				.path(DeleteWorkspacePath {
 					workspace_id: workspace.id,
@@ -214,7 +214,7 @@ async fn delete_workspace_works() {
 
 	// Verify it's gone
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetWorkspaceInfoRequest>::builder()
 				.path(GetWorkspaceInfoPath {
 					workspace_id: workspace.id,
@@ -241,7 +241,7 @@ async fn delete_workspace_not_super_admin() {
 	let other_user = setup.create_test_user().await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteWorkspaceRequest>::builder()
 				.path(DeleteWorkspacePath {
 					workspace_id: workspace.id,
@@ -267,7 +267,7 @@ async fn is_name_available_true() {
 
 	let name = random_name(8);
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<IsWorkspaceNameAvailableRequest>::builder()
 				.headers(IsWorkspaceNameAvailableRequestHeaders {
 					authorization: user.access_token.clone(),
@@ -292,7 +292,7 @@ async fn is_name_available_false() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<IsWorkspaceNameAvailableRequest>::builder()
 				.headers(IsWorkspaceNameAvailableRequestHeaders {
 					authorization: user.access_token.clone(),

@@ -21,7 +21,7 @@ async fn create_volume_invalid_name() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CreateVolumeRequest>::builder()
 				.path(CreateVolumePath {
 					workspace_id: workspace.id,
@@ -54,7 +54,7 @@ async fn list_volumes_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListVolumesInWorkspaceRequest>::builder()
 				.path(ListVolumesInWorkspacePath {
 					workspace_id: workspace.id,
@@ -78,7 +78,7 @@ async fn list_volumes_empty() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListVolumesInWorkspaceRequest>::builder()
 				.path(ListVolumesInWorkspacePath {
 					workspace_id: workspace.id,
@@ -105,7 +105,7 @@ async fn get_volume_info_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetVolumeInfoRequest>::builder()
 				.path(GetVolumeInfoPath {
 					workspace_id: workspace.id,
@@ -130,7 +130,7 @@ async fn get_volume_info_nonexistent() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetVolumeInfoRequest>::builder()
 				.path(GetVolumeInfoPath {
 					workspace_id: workspace.id,
@@ -158,7 +158,7 @@ async fn update_volume_works() {
 	let new_name = random_name(8);
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<UpdateVolumeRequest>::builder()
 				.path(UpdateVolumePath {
 					workspace_id: workspace.id,
@@ -188,7 +188,7 @@ async fn delete_volume_works() {
 		.await;
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteVolumeRequest>::builder()
 				.path(DeleteVolumePath {
 					workspace_id: workspace.id,
@@ -205,7 +205,7 @@ async fn delete_volume_works() {
 
 	// Verify it's gone
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetVolumeInfoRequest>::builder()
 				.path(GetVolumeInfoPath {
 					workspace_id: workspace.id,
@@ -229,7 +229,7 @@ async fn delete_volume_nonexistent() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteVolumeRequest>::builder()
 				.path(DeleteVolumePath {
 					workspace_id: workspace.id,
@@ -253,7 +253,7 @@ async fn volume_unauthorized() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListVolumesInWorkspaceRequest>::builder()
 				.path(ListVolumesInWorkspacePath {
 					workspace_id: workspace.id,

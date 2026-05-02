@@ -24,7 +24,7 @@ async fn create_repository_duplicate() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CreateContainerRepositoryRequest>::builder()
 				.path(CreateContainerRepositoryPath {
 					workspace_id: workspace.id,
@@ -56,7 +56,7 @@ async fn list_repositories_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListContainerRepositoriesRequest>::builder()
 				.path(ListContainerRepositoriesPath {
 					workspace_id: workspace.id,
@@ -80,7 +80,7 @@ async fn list_repositories_empty() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListContainerRepositoriesRequest>::builder()
 				.path(ListContainerRepositoriesPath {
 					workspace_id: workspace.id,
@@ -107,7 +107,7 @@ async fn get_repository_info_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetContainerRepositoryInfoRequest>::builder()
 				.path(GetContainerRepositoryInfoPath {
 					workspace_id: workspace.id,
@@ -132,7 +132,7 @@ async fn get_repository_info_nonexistent() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetContainerRepositoryInfoRequest>::builder()
 				.path(GetContainerRepositoryInfoPath {
 					workspace_id: workspace.id,
@@ -159,7 +159,7 @@ async fn delete_repository_works() {
 		.await;
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteContainerRepositoryRequest>::builder()
 				.path(DeleteContainerRepositoryPath {
 					workspace_id: workspace.id,
@@ -178,7 +178,7 @@ async fn delete_repository_works() {
 
 	// Verify it's gone
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetContainerRepositoryInfoRequest>::builder()
 				.path(GetContainerRepositoryInfoPath {
 					workspace_id: workspace.id,
@@ -205,7 +205,7 @@ async fn list_manifests_empty() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListContainerRepositoryManifestsRequest>::builder()
 				.path(ListContainerRepositoryManifestsPath {
 					workspace_id: workspace.id,
@@ -233,7 +233,7 @@ async fn list_tags_empty() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListContainerRepositoryTagsRequest>::builder()
 				.path(ListContainerRepositoryTagsPath {
 					workspace_id: workspace.id,
@@ -258,7 +258,7 @@ async fn container_registry_unauthorized() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListContainerRepositoriesRequest>::builder()
 				.path(ListContainerRepositoriesPath {
 					workspace_id: workspace.id,

@@ -18,7 +18,7 @@ pub async fn create_account_works() {
 	let password = random_password();
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CreateAccountRequest>::builder()
 				.headers(CreateAccountRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -39,7 +39,7 @@ pub async fn create_account_works() {
 		.assert_json(&ApiSuccessResponseBody::new(CreateAccountResponse));
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CompleteSignUpRequest>::builder()
 				.headers(CompleteSignUpRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -56,7 +56,7 @@ pub async fn create_account_works() {
 		.response;
 
 	let user_info = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetUserInfoRequest>::builder()
 				.headers(GetUserInfoRequestHeaders {
 					authorization: BearerToken::from_str(&response.access_token).unwrap(),
@@ -76,7 +76,7 @@ async fn create_account_duplicate_username() {
 	let user = setup.create_test_user().await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CreateAccountRequest>::builder()
 				.headers(CreateAccountRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -107,7 +107,7 @@ async fn create_account_invalid_password() {
 	let setup = setup().await.expect("failed to setup test server");
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CreateAccountRequest>::builder()
 				.headers(CreateAccountRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -137,7 +137,7 @@ async fn create_account_invalid_username() {
 	let setup = setup().await.expect("failed to setup test server");
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CreateAccountRequest>::builder()
 				.headers(CreateAccountRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -173,7 +173,7 @@ async fn complete_sign_up_wrong_otp() {
 	let password = random_password();
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CreateAccountRequest>::builder()
 				.headers(CreateAccountRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -194,7 +194,7 @@ async fn complete_sign_up_wrong_otp() {
 		.assert_json(&ApiSuccessResponseBody::new(CreateAccountResponse));
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CompleteSignUpRequest>::builder()
 				.headers(CompleteSignUpRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -219,7 +219,7 @@ async fn complete_sign_up_nonexistent_user() {
 	let setup = setup().await.expect("failed to setup test server");
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CompleteSignUpRequest>::builder()
 				.headers(CompleteSignUpRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -252,7 +252,7 @@ async fn login_works() {
 		setup.login_test_user(&user.username, &user.password).await;
 
 	let info = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetUserInfoRequest>::builder()
 				.headers(GetUserInfoRequestHeaders {
 					authorization: BearerToken::from_str(&access_token).unwrap(),
@@ -272,7 +272,7 @@ async fn login_wrong_password() {
 	let user = setup.create_test_user().await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<LoginRequest>::builder()
 				.headers(LoginRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -298,7 +298,7 @@ async fn login_nonexistent_user() {
 	let setup = setup().await.expect("failed to setup test server");
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<LoginRequest>::builder()
 				.headers(LoginRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -330,7 +330,7 @@ async fn logout_works() {
 	let user = setup.create_test_user().await;
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<LogoutRequest>::builder()
 				.headers(LogoutRequestHeaders {
 					refresh_token: user.refresh_token.clone(),
@@ -352,7 +352,7 @@ async fn renew_access_token_works() {
 	let user = setup.create_test_user().await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<RenewAccessTokenRequest>::builder()
 				.headers(RenewAccessTokenRequestHeaders {
 					refresh_token: user.refresh_token.clone(),
@@ -365,7 +365,7 @@ async fn renew_access_token_works() {
 
 	// New access token should work
 	let info = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetUserInfoRequest>::builder()
 				.headers(GetUserInfoRequestHeaders {
 					authorization: BearerToken::from_str(&response.response.access_token).unwrap(),
@@ -384,7 +384,7 @@ async fn renew_access_token_invalid() {
 	let setup = setup().await.expect("failed to setup test server");
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<RenewAccessTokenRequest>::builder()
 				.headers(RenewAccessTokenRequestHeaders {
 					refresh_token: BearerToken::from_str("invalid-token-string").unwrap(),
@@ -410,7 +410,7 @@ async fn forgot_password_works() {
 	let user = setup.create_test_user().await;
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ForgotPasswordRequest>::builder()
 				.headers(ForgotPasswordRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -431,7 +431,7 @@ async fn reset_password_works() {
 	let user = setup.create_test_user().await;
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ForgotPasswordRequest>::builder()
 				.headers(ForgotPasswordRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -447,7 +447,7 @@ async fn reset_password_works() {
 
 	let new_password = random_password();
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ResetPasswordRequest>::builder()
 				.headers(ResetPasswordRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -473,7 +473,7 @@ async fn reset_password_wrong_otp() {
 	let user = setup.create_test_user().await;
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ForgotPasswordRequest>::builder()
 				.headers(ForgotPasswordRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -488,7 +488,7 @@ async fn reset_password_wrong_otp() {
 		.assert_json(&ApiSuccessResponseBody::new(ForgotPasswordResponse));
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ResetPasswordRequest>::builder()
 				.headers(ResetPasswordRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -519,7 +519,7 @@ async fn resend_otp_works() {
 	let password = random_password();
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CreateAccountRequest>::builder()
 				.headers(CreateAccountRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -540,7 +540,7 @@ async fn resend_otp_works() {
 		.assert_json(&ApiSuccessResponseBody::new(CreateAccountResponse));
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ResendOtpRequest>::builder()
 				.headers(ResendOtpRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -564,7 +564,7 @@ async fn is_email_valid_available() {
 	let setup = setup().await.expect("failed to setup test server");
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<IsEmailValidRequest>::builder()
 				.headers(IsEmailValidRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -589,7 +589,7 @@ async fn is_email_valid_taken() {
 	let user = setup.create_test_user().await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<IsEmailValidRequest>::builder()
 				.headers(IsEmailValidRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -613,7 +613,7 @@ async fn is_username_valid_available() {
 	let setup = setup().await.expect("failed to setup test server");
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<IsUsernameValidRequest>::builder()
 				.headers(IsUsernameValidRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -638,7 +638,7 @@ async fn is_username_valid_taken() {
 	let user = setup.create_test_user().await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<IsUsernameValidRequest>::builder()
 				.headers(IsUsernameValidRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -667,7 +667,7 @@ async fn list_recovery_options_works() {
 	let user = setup.create_test_user().await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListRecoveryOptionsRequest>::builder()
 				.headers(ListRecoveryOptionsRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -699,7 +699,7 @@ async fn docker_login_works() {
 	let user = setup.create_test_user().await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DockerLoginRequest>::builder()
 				.headers(DockerLoginRequestHeaders {
 					authorization: Authorization::basic("patr", user.access_token.0.token()),
@@ -725,7 +725,7 @@ async fn docker_login_wrong_credentials() {
 	let _user = setup.create_test_user().await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DockerLoginRequest>::builder()
 				.headers(DockerLoginRequestHeaders {
 					authorization: Authorization::basic("wronguser", "wrongpassword"),
@@ -741,5 +741,395 @@ async fn docker_login_wrong_credentials() {
 	assert!(
 		response.status_code().is_client_error(),
 		"expected client error for wrong docker credentials"
+	);
+}
+
+/// Helper: attempt CreateAccount with a given username; assert client error.
+async fn assert_create_account_username_rejected(setup: &TestSetup, bad_username: &str) {
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateAccountRequest>::builder()
+				.headers(CreateAccountRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateAccountRequest {
+					username: bad_username.to_string(),
+					password: random_password(),
+					first_name: "Bad".to_string(),
+					last_name: "Name".to_string(),
+					recovery_method: RecoveryMethod::Email {
+						recovery_email: "bad@example.com".to_string(),
+					},
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"expected client error for username `{bad_username}`, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn create_account_username_starts_with_dot() {
+	let setup = setup().await.expect("failed to setup test server");
+	assert_create_account_username_rejected(&setup, ".foo").await;
+}
+
+#[tokio::test]
+async fn create_account_username_ends_with_dot() {
+	let setup = setup().await.expect("failed to setup test server");
+	assert_create_account_username_rejected(&setup, "foo.").await;
+}
+
+#[tokio::test]
+async fn create_account_username_with_uppercase() {
+	let setup = setup().await.expect("failed to setup test server");
+	assert_create_account_username_rejected(&setup, "FooBar").await;
+}
+
+#[tokio::test]
+async fn create_account_invalid_email() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateAccountRequest>::builder()
+				.headers(CreateAccountRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateAccountRequest {
+					username: random_name(8),
+					password: random_password(),
+					first_name: "Bad".to_string(),
+					last_name: "Email".to_string(),
+					recovery_method: RecoveryMethod::Email {
+						recovery_email: "not-an-email".to_string(),
+					},
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"expected client error for malformed email, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn complete_sign_up_otp_wrong_format() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	// OTP regex is `^(\d{3}\-?\d{3})$`. These all violate it.
+	for bad_otp in ["12345", "1234567", "abcdef", "12-3456", "abc-def"] {
+		let response = setup
+			.make_web_dashboard_call(
+				ApiRequest::<CompleteSignUpRequest>::builder()
+					.headers(CompleteSignUpRequestHeaders {
+						user_agent: TEST_USER_AGENT,
+					})
+					.body(CompleteSignUpRequest {
+						username: random_name(8),
+						verification_token: bad_otp.to_string(),
+						cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+					})
+					.build(),
+			)
+			.await;
+
+		assert!(
+			response.status_code().is_client_error(),
+			"expected client error for OTP `{bad_otp}`, got {}",
+			response.status_code()
+		);
+	}
+}
+
+#[tokio::test]
+async fn create_account_duplicate_email() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	let username1 = random_name(8);
+	let shared_email = format!("{}@example.com", random_name(8));
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateAccountRequest>::builder()
+				.headers(CreateAccountRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateAccountRequest {
+					username: username1,
+					password: random_password(),
+					first_name: "First".to_string(),
+					last_name: "User".to_string(),
+					recovery_method: RecoveryMethod::Email {
+						recovery_email: shared_email.clone(),
+					},
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(CreateAccountResponse));
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateAccountRequest>::builder()
+				.headers(CreateAccountRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateAccountRequest {
+					username: random_name(8),
+					password: random_password(),
+					first_name: "Second".to_string(),
+					last_name: "User".to_string(),
+					recovery_method: RecoveryMethod::Email {
+						recovery_email: shared_email,
+					},
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"expected client error for duplicate email, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn forgot_password_nonexistent_user() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<ForgotPasswordRequest>::builder()
+				.headers(ForgotPasswordRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ForgotPasswordRequest {
+					user_id: random_name(8),
+					preferred_recovery_option: PreferredRecoveryOption::RecoveryEmail,
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(ForgotPasswordResponse));
+}
+
+#[tokio::test]
+async fn resend_otp_nonexistent_user() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	// Same silent-success behaviour: resend OTP for an unknown user must not
+	// leak existence — handler returns success regardless.
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ResendOtpRequest>::builder()
+				.headers(ResendOtpRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ResendOtpRequest {
+					username: random_name(8),
+					password: random_password(),
+				})
+				.build(),
+		)
+		.await;
+
+	// Either silent success or generic client error (UserNotFound) is acceptable
+	// — the contract is just "no leak". Allow both, but reject 5xx.
+	assert!(
+		!response.status_code().is_server_error(),
+		"resend_otp for nonexistent user should not 5xx, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn reset_password_new_password_invalid() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<ForgotPasswordRequest>::builder()
+				.headers(ForgotPasswordRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ForgotPasswordRequest {
+					user_id: user.username.clone(),
+					preferred_recovery_option: PreferredRecoveryOption::RecoveryEmail,
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(ForgotPasswordResponse));
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ResetPasswordRequest>::builder()
+				.headers(ResetPasswordRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ResetPasswordRequest {
+					user_id: user.username.clone(),
+					password: "short".to_string(),
+					verification_token: "000000".to_string(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"expected client error for weak new password"
+	);
+}
+
+#[tokio::test]
+async fn complete_sign_up_expired_otp() {
+	let setup = setup().await.expect("failed to setup test server");
+	let username = random_name(8);
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateAccountRequest>::builder()
+				.headers(CreateAccountRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateAccountRequest {
+					username: username.clone(),
+					password: random_password(),
+					first_name: "Expired".to_string(),
+					last_name: "Otp".to_string(),
+					recovery_method: RecoveryMethod::Email {
+						recovery_email: format!("{}@example.com", &username),
+					},
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(CreateAccountResponse));
+
+	// Backdate the signup OTP so that any subsequent verification attempt is
+	// past expiry.
+	setup
+		.execute_sql(&format!(
+			"UPDATE user_to_sign_up SET otp_expiry = NOW() - INTERVAL '1 hour' \
+			 WHERE username = '{username}'"
+		))
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CompleteSignUpRequest>::builder()
+				.headers(CompleteSignUpRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CompleteSignUpRequest {
+					username: username.clone(),
+					verification_token: "000000".to_string(),
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"expected client error for expired sign-up OTP"
+	);
+}
+
+#[tokio::test]
+async fn reset_password_expired_otp() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<ForgotPasswordRequest>::builder()
+				.headers(ForgotPasswordRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ForgotPasswordRequest {
+					user_id: user.username.clone(),
+					preferred_recovery_option: PreferredRecoveryOption::RecoveryEmail,
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(ForgotPasswordResponse));
+
+	setup
+		.execute_sql(&format!(
+			"UPDATE \"user\" SET password_reset_token_expiry = NOW() - INTERVAL '1 hour' \
+			 WHERE username = '{}'",
+			user.username
+		))
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ResetPasswordRequest>::builder()
+				.headers(ResetPasswordRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ResetPasswordRequest {
+					user_id: user.username.clone(),
+					password: random_password(),
+					verification_token: "000000".to_string(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"expected client error for expired password-reset OTP"
+	);
+}
+
+#[tokio::test]
+async fn renew_access_token_expired() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	// Backdate the refresh token's expiry on every web_login row for this
+	// user. The login created during signup is the only one in play.
+	setup
+		.execute_sql(&format!(
+			"UPDATE web_login SET token_expiry = NOW() - INTERVAL '1 hour' \
+			 WHERE user_id = '{}'",
+			user.user_id
+		))
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<RenewAccessTokenRequest>::builder()
+				.headers(RenewAccessTokenRequestHeaders {
+					refresh_token: user.refresh_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"expected client error for expired refresh token, got {}",
+		response.status_code()
 	);
 }

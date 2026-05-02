@@ -10,7 +10,7 @@ async fn test_rate_limit_allows_requests_under_limit() {
 	// Make 2 requests (under the 20/sec limit). Both should succeed.
 	for _ in 0..2 {
 		let response = setup
-			.make_api_call(
+			.make_web_dashboard_call(
 				ApiRequest::<GetUserInfoRequest>::builder()
 					.headers(GetUserInfoRequestHeaders {
 						authorization: user.access_token.clone(),
@@ -36,7 +36,7 @@ async fn test_rate_limit_blocks_after_exceeding_per_second_limit() {
 	// The per-second limit is 20. Send 21 rapid requests.
 	for _ in 0..20 {
 		setup
-			.make_api_call(
+			.make_web_dashboard_call(
 				ApiRequest::<GetUserInfoRequest>::builder()
 					.headers(GetUserInfoRequestHeaders {
 						authorization: user.access_token.clone(),
@@ -49,7 +49,7 @@ async fn test_rate_limit_blocks_after_exceeding_per_second_limit() {
 
 	// The 21st request should be rate-limited
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetUserInfoRequest>::builder()
 				.headers(GetUserInfoRequestHeaders {
 					authorization: user.access_token.clone(),
@@ -74,7 +74,7 @@ async fn test_rate_limit_window_slides() {
 	// Exhaust the per-second limit (20 requests)
 	for _ in 0..20 {
 		setup
-			.make_api_call(
+			.make_web_dashboard_call(
 				ApiRequest::<GetUserInfoRequest>::builder()
 					.headers(GetUserInfoRequestHeaders {
 						authorization: user.access_token.clone(),
@@ -87,7 +87,7 @@ async fn test_rate_limit_window_slides() {
 
 	// Confirm we're rate-limited
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetUserInfoRequest>::builder()
 				.headers(GetUserInfoRequestHeaders {
 					authorization: user.access_token.clone(),
@@ -103,7 +103,7 @@ async fn test_rate_limit_window_slides() {
 
 	// Should be allowed again
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetUserInfoRequest>::builder()
 				.headers(GetUserInfoRequestHeaders {
 					authorization: user.access_token.clone(),
@@ -128,7 +128,7 @@ async fn test_rate_limit_rejected_requests_count() {
 	// Exhaust the per-second limit (20 requests)
 	for _ in 0..20 {
 		setup
-			.make_api_call(
+			.make_web_dashboard_call(
 				ApiRequest::<GetUserInfoRequest>::builder()
 					.headers(GetUserInfoRequestHeaders {
 						authorization: user.access_token.clone(),
@@ -143,7 +143,7 @@ async fn test_rate_limit_rejected_requests_count() {
 	// also consume a slot in the sorted set (optimistic add)
 	for _ in 0..3 {
 		let response = setup
-			.make_api_call(
+			.make_web_dashboard_call(
 				ApiRequest::<GetUserInfoRequest>::builder()
 					.headers(GetUserInfoRequestHeaders {
 						authorization: user.access_token.clone(),
@@ -176,7 +176,7 @@ async fn test_rate_limit_authenticated_per_login() {
 	// Exhaust the per-second limit using the first session (20 requests)
 	for _ in 0..20 {
 		setup
-			.make_api_call(
+			.make_web_dashboard_call(
 				ApiRequest::<GetUserInfoRequest>::builder()
 					.headers(GetUserInfoRequestHeaders {
 						authorization: user.access_token.clone(),
@@ -189,7 +189,7 @@ async fn test_rate_limit_authenticated_per_login() {
 
 	// First session should be rate-limited
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetUserInfoRequest>::builder()
 				.headers(GetUserInfoRequestHeaders {
 					authorization: user.access_token.clone(),
@@ -209,7 +209,7 @@ async fn test_rate_limit_authenticated_per_login() {
 	// counter is shared. Since we already made 4 requests from this IP
 	// (20 + 1 rejected), session B is also blocked by the per-IP limit.
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetUserInfoRequest>::builder()
 				.headers(GetUserInfoRequestHeaders {
 					authorization: session_b_bearer,

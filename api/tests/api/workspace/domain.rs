@@ -24,7 +24,7 @@ async fn list_domains_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListDomainsInWorkspaceRequest>::builder()
 				.path(ListDomainsInWorkspacePath {
 					workspace_id: workspace.id,
@@ -48,7 +48,7 @@ async fn list_domains_empty() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListDomainsInWorkspaceRequest>::builder()
 				.path(ListDomainsInWorkspacePath {
 					workspace_id: workspace.id,
@@ -75,7 +75,7 @@ async fn get_domain_info_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDomainInfoInWorkspaceRequest>::builder()
 				.path(GetDomainInfoInWorkspacePath {
 					workspace_id: workspace.id,
@@ -100,7 +100,7 @@ async fn get_domain_info_nonexistent() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDomainInfoInWorkspaceRequest>::builder()
 				.path(GetDomainInfoInWorkspacePath {
 					workspace_id: workspace.id,
@@ -127,7 +127,7 @@ async fn delete_domain_works() {
 		.await;
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteDomainInWorkspaceRequest>::builder()
 				.path(DeleteDomainInWorkspacePath {
 					workspace_id: workspace.id,
@@ -146,7 +146,7 @@ async fn delete_domain_works() {
 
 	// Verify it's gone
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDomainInfoInWorkspaceRequest>::builder()
 				.path(GetDomainInfoInWorkspacePath {
 					workspace_id: workspace.id,
@@ -170,7 +170,7 @@ async fn is_domain_valid_works() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<IsDomainValidRequest>::builder()
 				.path(IsDomainValidPath {
 					workspace_id: workspace.id,
@@ -201,7 +201,7 @@ async fn verify_domain_works() {
 
 	// Verification will likely fail (no DNS records), but it should not error
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<VerifyDomainInWorkspaceRequest>::builder()
 				.path(VerifyDomainInWorkspacePath {
 					workspace_id: workspace.id,
@@ -229,7 +229,7 @@ async fn domain_unauthorized() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListDomainsInWorkspaceRequest>::builder()
 				.path(ListDomainsInWorkspacePath {
 					workspace_id: workspace.id,

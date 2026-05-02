@@ -32,7 +32,7 @@ async fn list_managed_urls_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListManagedURLRequest>::builder()
 				.path(ListManagedURLPath {
 					workspace_id: workspace.id,
@@ -56,7 +56,7 @@ async fn list_managed_urls_empty() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListManagedURLRequest>::builder()
 				.path(ListManagedURLPath {
 					workspace_id: workspace.id,
@@ -87,7 +87,7 @@ async fn update_managed_url_works() {
 		.await;
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<UpdateManagedURLRequest>::builder()
 				.path(UpdateManagedURLPath {
 					workspace_id: workspace.id,
@@ -121,7 +121,7 @@ async fn delete_managed_url_works() {
 		.await;
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteManagedURLRequest>::builder()
 				.path(DeleteManagedURLPath {
 					workspace_id: workspace.id,
@@ -151,7 +151,7 @@ async fn verify_configuration_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<VerifyManagedURLConfigurationRequest>::builder()
 				.path(VerifyManagedURLConfigurationPath {
 					workspace_id: workspace.id,
@@ -179,7 +179,7 @@ async fn managed_url_unauthorized() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListManagedURLRequest>::builder()
 				.path(ListManagedURLPath {
 					workspace_id: workspace.id,

@@ -51,7 +51,7 @@ pub async fn update_role(
 		return Err(ErrorType::WrongParameters);
 	}
 
-	query!(
+	let rows_updated = query!(
 		r#"
 		UPDATE
 			role
@@ -66,7 +66,12 @@ pub async fn update_role(
 		role_id as _,
 	)
 	.execute(&mut **database)
-	.await?;
+	.await?
+	.rows_affected();
+
+	if rows_updated == 0 {
+		return Err(ErrorType::RoleDoesNotExist);
+	}
 
 	trace!("Role updated");
 

@@ -66,7 +66,17 @@ pub async fn update_user_roles_in_workspace(
 			.collect::<Vec<_>>(),
 	)
 	.execute(&mut **database)
-	.await?;
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+			match db_err.constraint() {
+				Some(c) if c == "workspace_user_fk_role_id" => ErrorType::RoleDoesNotExist,
+				Some(c) if c == "workspace_user_fk_user_id" => ErrorType::UserNotFound,
+				_ => ErrorType::server_error(sqlx::Error::Database(db_err)),
+			}
+		}
+		other => ErrorType::server_error(other),
+	})?;
 
 	info!("User's roles updated. Setting revocation timestamp");
 

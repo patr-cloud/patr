@@ -65,8 +65,19 @@ pub async fn forgot_password(
 		&user_id,
 	)
 	.fetch_optional(&mut **database)
-	.await?
-	.ok_or(ErrorType::UserNotFound)?;
+	.await?;
+
+	// If the user doesn't exist, return a silent 202 — same shape as the
+	// success path — so the caller can't probe for account existence.
+	let Some(user_data) = user_data else {
+		debug!("forgot_password called for unknown user `{}`", user_id);
+		return AppResponse::builder()
+			.body(ForgotPasswordResponse)
+			.headers(())
+			.status_code(StatusCode::ACCEPTED)
+			.build()
+			.into_result();
+	};
 
 	let now = OffsetDateTime::now_utc();
 	let password_reset_token = format!("{:06}", rand::rng().random_range(constants::OTP_RANGE));

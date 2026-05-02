@@ -18,7 +18,7 @@ async fn runner_create_permission_grants_access() {
 	.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
 				.path(AddRunnerToWorkspacePath {
 					workspace_id: ws_id,
@@ -56,7 +56,7 @@ async fn runner_denied_without_permission() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetRunnerInfoRequest>::builder()
 				.path(GetRunnerInfoPath {
 					workspace_id: workspace.id,
@@ -101,7 +101,7 @@ async fn runner_include_grants_only_listed_resource() {
 		.await;
 
 	let r1 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetRunnerInfoRequest>::builder()
 				.path(GetRunnerInfoPath {
 					workspace_id: workspace.id,
@@ -117,7 +117,7 @@ async fn runner_include_grants_only_listed_resource() {
 	assert!(r1.status_code().is_success());
 
 	let runner2 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetRunnerInfoRequest>::builder()
 				.path(GetRunnerInfoPath {
 					workspace_id: workspace.id,
@@ -158,7 +158,7 @@ async fn runner_exclude_denies_only_listed_resource() {
 		.await;
 
 	let r1 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetRunnerInfoRequest>::builder()
 				.path(GetRunnerInfoPath {
 					workspace_id: workspace.id,
@@ -177,7 +177,7 @@ async fn runner_exclude_denies_only_listed_resource() {
 	);
 
 	let runner2 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetRunnerInfoRequest>::builder()
 				.path(GetRunnerInfoPath {
 					workspace_id: workspace.id,
@@ -218,7 +218,7 @@ async fn runner_view_does_not_grant_delete() {
 		.await;
 
 	let r_view = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetRunnerInfoRequest>::builder()
 				.path(GetRunnerInfoPath {
 					workspace_id: workspace.id,
@@ -234,7 +234,7 @@ async fn runner_view_does_not_grant_delete() {
 	assert!(r_view.status_code().is_success());
 
 	let r_delete = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteRunnerRequest>::builder()
 				.path(DeleteRunnerPath {
 					workspace_id: workspace.id,
@@ -250,5 +250,66 @@ async fn runner_view_does_not_grant_delete() {
 	assert!(
 		r_delete.status_code().is_client_error(),
 		"view permission should not grant delete"
+	);
+}
+
+#[tokio::test]
+async fn runner_view_does_not_grant_create() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let runner = setup
+		.create_test_runner(&admin.access_token, workspace.id)
+		.await;
+
+	let mut perms = BTreeMap::new();
+	perms.insert(
+		setup.get_permission_id(Permission::Runner(RunnerPermission::View)),
+		all(),
+	);
+	let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.await;
+
+	// View should succeed.
+	let r_view = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetRunnerInfoRequest>::builder()
+				.path(GetRunnerInfoPath {
+					workspace_id: workspace.id,
+					runner_id: runner.id,
+				})
+				.headers(GetRunnerInfoRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(r_view.status_code().is_success());
+
+	// Create should fail.
+	let r_create = setup
+		.make_web_dashboard_call(
+			ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
+				.path(AddRunnerToWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.headers(AddRunnerToWorkspaceRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(AddRunnerToWorkspaceRequest {
+					name: random_name(8),
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		r_create.status_code().is_client_error(),
+		"view permission should not grant create"
 	);
 }

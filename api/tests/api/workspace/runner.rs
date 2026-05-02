@@ -24,7 +24,7 @@ async fn list_runners_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
 				.path(ListRunnersForWorkspacePath {
 					workspace_id: workspace.id,
@@ -48,7 +48,7 @@ async fn list_runners_empty() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
 				.path(ListRunnersForWorkspacePath {
 					workspace_id: workspace.id,
@@ -75,7 +75,7 @@ async fn get_runner_info_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetRunnerInfoRequest>::builder()
 				.path(GetRunnerInfoPath {
 					workspace_id: workspace.id,
@@ -100,7 +100,7 @@ async fn get_runner_info_nonexistent() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetRunnerInfoRequest>::builder()
 				.path(GetRunnerInfoPath {
 					workspace_id: workspace.id,
@@ -130,7 +130,7 @@ async fn get_ingress_token_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetIngressTokenForRunnerRequest>::builder()
 				.path(GetIngressTokenForRunnerPath {
 					workspace_id: workspace.id,
@@ -161,7 +161,7 @@ async fn remove_runner_works() {
 		.await;
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteRunnerRequest>::builder()
 				.path(DeleteRunnerPath {
 					workspace_id: workspace.id,
@@ -178,7 +178,7 @@ async fn remove_runner_works() {
 
 	// Verify it's gone
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetRunnerInfoRequest>::builder()
 				.path(GetRunnerInfoPath {
 					workspace_id: workspace.id,
@@ -205,7 +205,7 @@ async fn remove_runner_nonexistent() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteRunnerRequest>::builder()
 				.path(DeleteRunnerPath {
 					workspace_id: workspace.id,
@@ -232,7 +232,7 @@ async fn runner_unauthorized() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
 				.path(ListRunnersForWorkspacePath {
 					workspace_id: workspace.id,

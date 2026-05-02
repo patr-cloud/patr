@@ -16,7 +16,8 @@ use models::{
 			*,
 		},
 	},
-	rbac::{ResourcePermissionType, WorkspacePermission},
+	rbac::{Permission, ResourcePermissionType, WorkspacePermission},
+	utils::{BearerToken, Uuid},
 };
 use rand::RngExt as _;
 
@@ -125,7 +126,7 @@ impl TestSetup {
 		let username = random_name(8);
 		let password = random_password();
 
-		self.make_api_call(
+		self.make_web_dashboard_call(
 			ApiRequest::<CreateAccountRequest>::builder()
 				.headers(CreateAccountRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -146,7 +147,7 @@ impl TestSetup {
 		.assert_json(&ApiSuccessResponseBody::new(CreateAccountResponse));
 
 		let response = self
-			.make_api_call(
+			.make_web_dashboard_call(
 				ApiRequest::<CompleteSignUpRequest>::builder()
 					.headers(CompleteSignUpRequestHeaders {
 						user_agent: TEST_USER_AGENT,
@@ -163,7 +164,7 @@ impl TestSetup {
 			.response;
 
 		let user_info = self
-			.make_api_call(
+			.make_web_dashboard_call(
 				ApiRequest::<GetUserInfoRequest>::builder()
 					.headers(GetUserInfoRequestHeaders {
 						authorization: BearerToken::from_str(&response.access_token).unwrap(),
@@ -188,7 +189,7 @@ impl TestSetup {
 	/// Login an existing test user, returning new access and refresh tokens.
 	pub async fn login_test_user(&self, username: &str, password: &str) -> (String, String) {
 		let response = self
-			.make_api_call(
+			.make_web_dashboard_call(
 				ApiRequest::<LoginRequest>::builder()
 					.headers(LoginRequestHeaders {
 						user_agent: TEST_USER_AGENT,
@@ -215,7 +216,7 @@ impl TestSetup {
 		let name = random_name(8);
 
 		let response = self
-			.make_api_call(
+			.make_web_dashboard_call(
 				ApiRequest::<CreateWorkspaceRequest>::builder()
 					.headers(CreateWorkspaceRequestHeaders {
 						authorization: token.clone(),
@@ -241,7 +242,7 @@ impl TestSetup {
 		let name = random_name(8);
 
 		let response = self
-			.make_api_call(
+			.make_web_dashboard_call(
 				ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
 					.path(AddRunnerToWorkspacePath { workspace_id })
 					.headers(AddRunnerToWorkspaceRequestHeaders {
@@ -275,7 +276,7 @@ impl TestSetup {
 
 		// First get a valid machine type
 		let machine_types = self
-			.make_api_call(
+			.make_web_dashboard_call(
 				ApiRequest::<ListAllDeploymentMachineTypeRequest>::builder()
 					.path(ListAllDeploymentMachineTypePath { workspace_id })
 					.headers(ListAllDeploymentMachineTypeRequestHeaders {
@@ -294,7 +295,7 @@ impl TestSetup {
 			.id;
 
 		let response = self
-			.make_api_call(
+			.make_web_dashboard_call(
 				ApiRequest::<CreateDeploymentRequest>::builder()
 					.path(CreateDeploymentPath { workspace_id })
 					.headers(CreateDeploymentRequestHeaders {
@@ -364,7 +365,7 @@ impl TestSetup {
 		let domain = format!("{}.com", random_name(8));
 
 		let response = self
-			.make_api_call(
+			.make_web_dashboard_call(
 				ApiRequest::<AddDomainToWorkspaceRequest>::builder()
 					.path(AddDomainToWorkspacePath { workspace_id })
 					.headers(AddDomainToWorkspaceRequestHeaders {
@@ -394,7 +395,7 @@ impl TestSetup {
 		let name = random_name(8);
 
 		let response = self
-			.make_api_call(
+			.make_web_dashboard_call(
 				ApiRequest::<CreateVolumeRequest>::builder()
 					.path(CreateVolumePath { workspace_id })
 					.headers(CreateVolumeRequestHeaders {
@@ -428,7 +429,7 @@ impl TestSetup {
 		let name = random_name(8);
 
 		let response = self
-			.make_api_call(
+			.make_web_dashboard_call(
 				ApiRequest::<CreateContainerRepositoryRequest>::builder()
 					.path(CreateContainerRepositoryPath { workspace_id })
 					.headers(CreateContainerRepositoryRequestHeaders {
@@ -450,8 +451,9 @@ impl TestSetup {
 		}
 	}
 
-	/// Create a role in a workspace with the given permissions, returning its
-	/// ID and name.
+	/// Create a role in a workspace with a minimal harmless permission
+	/// (ViewRoles), returning its ID and name. The handler rejects empty
+	/// permission maps with `WrongParameters`, so we always seed one.
 	pub async fn create_test_role(&self, token: &BearerToken, workspace_id: Uuid) -> TestRole {
 		// The `create_new_role` handler rejects empty permissions with
 		// `WrongParameters`, so seed one harmless permission. Tests that care
@@ -461,34 +463,8 @@ impl TestSetup {
 			self.get_permission_id(Permission::ViewRoles),
 			ResourcePermissionType::Include(Default::default()),
 		);
-
-		let name = random_name(8);
-
-		let response = self
-			.make_api_call(
-				ApiRequest::<CreateNewRoleRequest>::builder()
-					.path(CreateNewRolePath { workspace_id })
-					.headers(CreateNewRoleRequestHeaders {
-						authorization: token.clone(),
-						user_agent: TEST_USER_AGENT,
-					})
-					.body(CreateNewRoleRequest {
-						name: name.clone(),
-						description: "test role".to_string(),
-						permissions,
-					})
-					.build(),
-			)
+		self.create_role_with_permissions(token, workspace_id, permissions)
 			.await
-			.json::<ApiSuccessResponseBody<CreateNewRoleResponse>>()
-			.response;
-
-		self.clear_rate_limits().await;
-
-		TestRole {
-			id: response.id.id,
-			name,
-		}
 	}
 
 	/// Create a role with specific permissions.
@@ -501,7 +477,7 @@ impl TestSetup {
 		let name = random_name(8);
 
 		let response = self
-			.make_api_call(
+			.make_web_dashboard_call(
 				ApiRequest::<CreateNewRoleRequest>::builder()
 					.path(CreateNewRolePath { workspace_id })
 					.headers(CreateNewRoleRequestHeaders {
@@ -537,7 +513,7 @@ impl TestSetup {
 		let name = random_name(8);
 
 		let response = self
-			.make_api_call(
+			.make_web_dashboard_call(
 				ApiRequest::<CreateApiTokenRequest>::builder()
 					.headers(CreateApiTokenRequestHeaders {
 						authorization: token.clone(),
@@ -578,7 +554,7 @@ impl TestSetup {
 	) -> TestUser {
 		let user_b = self.create_test_user().await;
 
-		self.make_api_call(
+		self.make_web_dashboard_call(
 			ApiRequest::<UpdateUserRolesInWorkspaceRequest>::builder()
 				.path(UpdateUserRolesInWorkspacePath {
 					workspace_id,
@@ -611,7 +587,7 @@ impl TestSetup {
 		domain_id: Uuid,
 	) -> Uuid {
 		let response = self
-			.make_api_call(
+			.make_web_dashboard_call(
 				ApiRequest::<CreateManagedURLRequest>::builder()
 					.path(CreateManagedURLPath { workspace_id })
 					.headers(CreateManagedURLRequestHeaders {

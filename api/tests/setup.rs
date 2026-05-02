@@ -63,6 +63,7 @@ static TRACING: Once = Once::new();
 
 #[allow(dead_code)]
 pub struct TestSetup {
+	web: TestServer,
 	api: TestServer,
 	registry: TestServer,
 	loki: TestServer,
@@ -87,6 +88,35 @@ impl TestSetup {
 	///
 	/// All headers (including `authorization` and `user_agent`) are provided
 	/// through the typed headers struct in the request.
+	pub async fn make_web_dashboard_call<E>(&self, request: ApiRequest<E>) -> TestResponse
+	where
+		E: ApiEndpoint,
+		E::RequestBody: Serialize,
+		E::RequestHeaders: Headers,
+		E::RequestPath: std::fmt::Display,
+		E::RequestQuery: Serialize,
+	{
+		let path_str = request.path.to_string();
+		let query_str = serde_qs::to_string(&request.query).unwrap_or_default();
+		let full_path = if query_str.is_empty() {
+			path_str
+		} else {
+			format!("{}?{}", path_str, query_str)
+		};
+
+		let mut req = self.web.method(E::METHOD, &full_path);
+		let header_map = request.headers.to_header_map();
+		for (name, value) in header_map.iter() {
+			req = req.add_header(name.clone(), value.to_str().unwrap());
+		}
+		req.json(&request.body).await
+	}
+
+	/// Make a typed API call against the routes configured for
+	/// `ClientType::ApiToken` authentication. Use this for any test that
+	/// presents a `patrv1.{refresh}.{login_id}` API token in the
+	/// `Authorization` header — the WebDashboard-routed server rejects it as
+	/// a malformed access token.
 	pub async fn make_api_call<E>(&self, request: ApiRequest<E>) -> TestResponse
 	where
 		E: ApiEndpoint,
@@ -104,6 +134,38 @@ impl TestSetup {
 		};
 
 		let mut req = self.api.method(E::METHOD, &full_path);
+		let header_map = request.headers.to_header_map();
+		for (name, value) in header_map.iter() {
+			req = req.add_header(name.clone(), value.to_str().unwrap());
+		}
+		req.json(&request.body).await
+	}
+
+	/// Same as [`make_api_call`] but pins the request's `X-Forwarded-For` to a
+	/// specific IP. Used by tests that exercise IP-keyed behaviour like API
+	/// token IP restrictions.
+	pub async fn make_api_call_from_ip<E>(
+		&self,
+		request: ApiRequest<E>,
+		client_ip: std::net::IpAddr,
+	) -> TestResponse
+	where
+		E: ApiEndpoint,
+		E::RequestBody: Serialize,
+		E::RequestHeaders: Headers,
+		E::RequestPath: std::fmt::Display,
+		E::RequestQuery: Serialize,
+	{
+		let path_str = request.path.to_string();
+		let query_str = serde_qs::to_string(&request.query).unwrap_or_default();
+		let full_path = if query_str.is_empty() {
+			path_str
+		} else {
+			format!("{}?{}", path_str, query_str)
+		};
+
+		let mut req = self.api.method(E::METHOD, &full_path);
+		req = req.add_header("X-Forwarded-For", client_ip.to_string());
 		let header_map = request.headers.to_header_map();
 		for (name, value) in header_map.iter() {
 			req = req.add_header(name.clone(), value.to_str().unwrap());
@@ -187,6 +249,65 @@ impl TestSetup {
 			.unwrap_or_else(|| panic!("permission '{}' not found in cached IDs", key))
 	}
 
+	/// Read a value at `key` from the test Redis. Returns `None` if missing.
+	pub async fn get_redis_value(&self, key: &str) -> Option<String> {
+		use rustis::commands::StringCommands;
+
+		self.state
+			.redis
+			.get(key)
+			.await
+			.expect("failed to read redis key")
+	}
+
+	/// Write a value at `key` to the test Redis.
+	pub async fn set_redis_value(&self, key: &str, value: &str) {
+		use rustis::commands::StringCommands;
+
+		self.state
+			.redis
+			.set(key, value)
+			.await
+			.expect("failed to write redis key");
+	}
+
+	/// Compute the current TOTP code for a base32-encoded secret. Used by MFA
+	/// tests that need to submit a valid OTP.
+	pub fn compute_totp(&self, secret_base32: &str) -> String {
+		use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};
+
+		let secret = Secret::Encoded(secret_base32.to_string())
+			.to_bytes()
+			.expect("failed to decode TOTP secret");
+		let totp = TOTP::new(TotpAlgorithm::SHA1, 6, 1, 30, secret, None, String::new())
+			.expect("failed to construct TOTP");
+		totp.generate_current()
+			.expect("failed to generate TOTP code")
+	}
+
+	/// Run an arbitrary SQL statement against the test database. Escape hatch
+	/// for tests that need to nudge state directly (e.g. backdating an
+	/// `*_expiry` column to simulate expiry).
+	pub async fn execute_sql(&self, sql: &str) {
+		sqlx::query(sql)
+			.execute(&self.state.database)
+			.await
+			.unwrap_or_else(|e| panic!("execute_sql failed for `{sql}`: {e}"));
+	}
+
+	/// Mark a domain as verified directly in the DB, bypassing the DNS
+	/// verification flow. Used by managed-URL tests that need an already-
+	/// verified domain to attach URLs to.
+	pub async fn mark_test_domain_verified(&self, domain_id: Uuid) {
+		sqlx::query(
+			"UPDATE workspace_domain SET is_verified = TRUE, last_verified = NOW() WHERE id = $1",
+		)
+		.bind(domain_id)
+		.execute(&self.state.database)
+		.await
+		.expect("failed to mark domain verified");
+	}
+
 	/// Clear all rate limit keys from Redis. Useful in tests to reset rate
 	/// limit state after setup helpers have made API calls.
 	pub async fn clear_rate_limits(&self) {
@@ -216,10 +337,11 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 	// `http_transport_with_ip_port` has a drop-then-rebind race that collides
 	// with other nextest processes; handing over a live listener avoids it.
 	let api_listener = TcpListener::bind("127.0.0.1:0").await?;
+	let web_listener = TcpListener::bind("127.0.0.1:0").await?;
 	let registry_listener = TcpListener::bind("127.0.0.1:0").await?;
 	let loki_listener = TcpListener::bind("127.0.0.1:0").await?;
 
-	let api_bind_address = api_listener.local_addr()?;
+	let web_bind_address = web_listener.local_addr()?;
 
 	let password_pepper = rand::rng()
 		.sample_iter(Alphanumeric)
@@ -358,7 +480,7 @@ limits_config:
 	};
 
 	let config = AppConfig {
-		bind_address: api_bind_address,
+		bind_address: web_bind_address,
 		api_base_path: String::from("/"),
 		password_pepper,
 		jwt_secret,
@@ -491,8 +613,15 @@ limits_config:
 		.await
 		.map_err(|e| anyhow::anyhow!("error creating S3 bucket: {e}"))?;
 
-	let api = TestServer::builder().save_cookies().build(axum::serve(
+	let api = TestServer::builder().build(axum::serve(
 		api_listener,
+		api_patr_cloud::setup_routes(&state, ClientType::ApiToken)
+			.await
+			.into_make_service_with_connect_info::<SocketAddr>(),
+	));
+
+	let web = TestServer::builder().save_cookies().build(axum::serve(
+		web_listener,
 		api_patr_cloud::setup_routes(&state, ClientType::WebDashboard)
 			.await
 			.into_make_service_with_connect_info::<SocketAddr>(),
@@ -528,6 +657,7 @@ limits_config:
 	};
 
 	Ok(TestSetup {
+		web,
 		api,
 		registry,
 		loki,

@@ -4,11 +4,11 @@
 
 ### Missing Edge Cases
 
-- [ ] `create_account_username_starts_with_dot` — rejects `.foo` (must start with `[a-z0-9_]`)
-- [ ] `create_account_username_ends_with_dot` — rejects `foo.` (must end with `[a-z0-9_]`)
-- [ ] `create_account_username_with_uppercase` — rejects `FooBar`
-- [ ] `create_account_invalid_email` — malformed email rejected
-- [ ] `complete_sign_up_otp_wrong_format` — non-matching `^\d{3}-?\d{3}$`
+- [x] `create_account_username_starts_with_dot` — rejects `.foo` (must start with `[a-z0-9_]`)
+- [x] `create_account_username_ends_with_dot` — rejects `foo.` (must end with `[a-z0-9_]`)
+- [x] `create_account_username_with_uppercase` — rejects `FooBar`
+- [x] `create_account_invalid_email` — Phase E: handler now calls `preprocess::validators::validate_email` explicitly before falling through to availability check.
+- [x] `complete_sign_up_otp_wrong_format` — non-matching `^\d{3}-?\d{3}$`
 
 # Integration Test TODOs
 
@@ -22,19 +22,19 @@ Comprehensive list of missing test cases. Organized by module.
 
 ### Missing Edge Cases
 
-- [ ] `create_account_duplicate_email` — same email, different username
-- [ ] `complete_sign_up_expired_otp` — OTP used after expiry window
+- [x] `create_account_duplicate_email` — same email, different username
+- [x] `complete_sign_up_expired_otp` — OTP used after expiry window
 - [ ] `complete_sign_up_already_completed` — double-join attempt
 - [ ] `login_case_insensitive_username` — login with different casing
 - [ ] `login_with_mfa_required` — returns `MfaRequired` error when MFA active
 - [ ] `login_with_mfa_valid_otp` — full MFA login flow
 - [ ] `login_with_mfa_invalid_otp` — MFA OTP wrong → `MfaOtpInvalid`
-- [ ] `renew_access_token_expired` — expired refresh token rejected
-- [ ] `forgot_password_nonexistent_user` — no error leak (silent success)
+- [x] `renew_access_token_expired` — expired refresh token rejected
+- [x] `forgot_password_nonexistent_user` — Phase E: handler now returns silent 202 for nonexistent users.
 - [ ] `forgot_password_rate_limit` — repeated calls throttled
-- [ ] `reset_password_expired_otp` — OTP past expiry
-- [ ] `reset_password_new_password_invalid` — new password fails validation
-- [ ] `resend_otp_nonexistent_user` — graceful handling
+- [x] `reset_password_expired_otp` — OTP past expiry
+- [x] `reset_password_new_password_invalid` — new password fails validation
+- [x] `resend_otp_nonexistent_user` — graceful handling
 
 ### OAuth Endpoints (entirely untested)
 
@@ -83,11 +83,11 @@ Comprehensive list of missing test cases. Organized by module.
 ### Edge Cases
 
 - [ ] `update_user_info_empty_fields` — PATCH with no changes
-- [ ] `change_password_same_as_current` — old == new
-- [ ] `change_password_new_invalid` — new password fails validation
-- [ ] `search_for_user_partial_match` — substring matching behavior
-- [ ] `search_for_user_special_chars` — SQL injection-safe search
-- [ ] `get_user_details_own_id` — viewing self via user_id
+- [x] `change_password_same_as_current` — Phase E: handler now rejects with `InvalidPassword` when new == current.
+- [x] `change_password_new_invalid` — new password fails validation
+- [x] `search_for_user_partial_match` — substring matching behavior
+- [x] `search_for_user_special_chars` — SQL injection-safe search
+- [x] `get_user_details_own_id` — viewing self via user_id
 
 ---
 
@@ -95,12 +95,12 @@ Comprehensive list of missing test cases. Organized by module.
 
 ### Missing Tests
 
-- [ ] `activate_mfa_works` — full activation with valid TOTP code
-- [ ] `deactivate_mfa_works` — DELETE `/user/mfa`
-- [ ] `deactivate_mfa_when_inactive` — → `MfaAlreadyInactive`
-- [ ] `activate_mfa_when_already_active` — → `MfaAlreadyActive`
-- [ ] `activate_mfa_expired_secret` — secret generated too long ago
-- [ ] `get_mfa_secret_regenerates` — calling twice gives new secret
+- [x] `activate_mfa_works` — full activation with valid TOTP code
+- [x] `deactivate_mfa_works` — DELETE `/user/mfa`
+- [x] `deactivate_mfa_when_inactive` — → `MfaAlreadyInactive`
+- [x] `activate_mfa_when_already_active` — → `MfaAlreadyActive`
+- [ ] `activate_mfa_expired_secret` — DROPPED: no expiry-on-access logic; Redis key has 5-minute TTL but the handler doesn't reject "almost expired" secrets distinctly.
+- [x] `get_mfa_secret_regenerates` — calling twice gives new secret
 
 ---
 
@@ -108,15 +108,15 @@ Comprehensive list of missing test cases. Organized by module.
 
 ### Missing Edge Cases
 
-- [ ] `create_api_token_duplicate_name` — → `ApiTokenAlreadyExists`
-- [ ] `api_token_with_ip_restriction` — allowed IPs enforced
-- [ ] `api_token_blocked_ip` — → `DisallowedIpAddressForApiToken`
-- [ ] `use_api_token_for_auth` — API token in `Authorization` header works for API calls
-- [ ] `use_revoked_api_token` — revoked token rejected
-- [ ] `api_token_with_permissions` — scoped permissions honored
-- [ ] `api_token_without_permissions` — default permissions
-- [ ] `update_api_token_name_conflict` — rename to existing name
-- [ ] `list_api_tokens_pagination` — verify ordering/limits
+- [x] `create_api_token_duplicate_name` — Phase E: handler now maps unique-violation on `user_api_token.name` to `ApiTokenAlreadyExists`.
+- [x] `api_token_with_ip_restriction` — allowed IPs enforced
+- [x] `api_token_blocked_ip` — → `DisallowedIpAddressForApiToken`
+- [x] `use_api_token_for_auth` — API token in `Authorization` header works for API calls
+- [x] `use_revoked_api_token` — revoked token rejected
+- [x] `api_token_with_permissions` — All scoped-permission tests pass under nextest (process-per-test isolation). The earlier flakiness was a `cargo test --test-threads=1` artifact from shared in-process state.
+- [~] `api_token_without_permissions` — REFRAMED: empty perms is already rejected by handler (existing `create_api_token_with_empty_permissions_fails` test). Wrote scoped-perm denial tests instead.
+- [x] `update_api_token_name_conflict` — Phase E: same fix as `create_api_token_duplicate_name`.
+- [x] `list_api_tokens_pagination` — verify ordering/limits
 
 ---
 
@@ -337,16 +337,16 @@ Comprehensive list of missing test cases. Organized by module.
 
 ### Missing Tests
 
-- [ ] `create_role_duplicate_name` — → `RoleAlreadyExists`
+- [x] `create_role_duplicate_name` — → `RoleAlreadyExists`
 - [ ] `create_role_invalid_name` — name outside `RESOURCE_NAME_REGEX`
-- [ ] `delete_role_in_use` — role assigned to users → `RoleInUse`
-- [ ] `delete_role_nonexistent` — → `RoleDoesNotExist`
-- [ ] `update_role_nonexistent` — → `RoleDoesNotExist`
-- [ ] `update_role_add_permissions` — add permissions to existing role
-- [ ] `update_role_remove_permissions` — remove permissions from existing role
-- [ ] `update_user_roles_nonexistent_user` — user not in workspace
-- [ ] `update_user_roles_nonexistent_role` — → `RoleDoesNotExist`
-- [ ] `remove_user_from_workspace_not_member` — user not in workspace
+- [x] `delete_role_in_use` — role assigned to users → `RoleInUse`
+- [x] `delete_role_nonexistent` — Phase E: handler now checks rowcount → `RoleDoesNotExist`
+- [x] `update_role_nonexistent` — Phase E: same
+- [x] `update_role_add_permissions` — add permissions to existing role
+- [x] `update_role_remove_permissions` — remove permissions from existing role
+- [x] `update_user_roles_nonexistent_user` — Phase E: handler maps FK violation → `UserNotFound`
+- [x] `update_user_roles_nonexistent_role` — Phase E: handler maps FK violation on role_id → `RoleDoesNotExist`
+- [x] `remove_user_from_workspace_not_member` — Phase E: handler now returns `UserNotFound` when 0 rows removed
 - [ ] `remove_self_from_workspace` — super admin removing self
 - [ ] `add_user_to_workspace_already_member` — duplicate add
 - [ ] `list_users_for_role_empty` — no users assigned
@@ -357,25 +357,25 @@ Comprehensive list of missing test cases. Organized by module.
 
 ### Missing Include/Exclude Tests
 
-- [ ] `volume_include_specific` — include list limits volume access
-- [ ] `domain_include_specific` — include list limits domain access
-- [ ] `container_registry_include_specific` — include list limits repo access
-- [ ] `managed_url_include_specific` — include list limits managed URL access
-- [ ] `runner_include_specific` — include list limits runner access
-- [ ] `deployment_exclude_specific` — exclude list blocks specific deployment
-- [ ] `volume_exclude_specific` — exclude list blocks specific volume
-- [ ] `runner_exclude_specific` — exclude list blocks specific runner
-- [ ] `domain_exclude_specific` — exclude list blocks specific domain
-- [ ] `container_registry_exclude_specific` — exclude list blocks specific repo
+- [x] `volume_include_specific` — already covered by existing `volume_include_grants_only_listed_resource`
+- [x] `domain_include_specific` — already covered by existing `domain_include_grants_only_listed_resource`
+- [x] `container_registry_include_specific` — Phase F: added `container_registry_view_include_grants_only_listed_resource` (also pre-existing `container_registry_delete_include_grants_only_listed_resource`)
+- [x] `managed_url_include_specific` — Phase F: added `managed_url_delete_include_grants_only_listed_resource`
+- [x] `runner_include_specific` — already covered by existing `runner_include_grants_only_listed_resource` (currently affected by `GetRunnerInfo` 500 bug — see runner.rs ignored test note)
+- [x] `deployment_exclude_specific` — already covered by existing `deployment_exclude_denies_only_listed_resource`
+- [x] `volume_exclude_specific` — already covered by existing `volume_exclude_denies_only_listed_resource`
+- [x] `runner_exclude_specific` — already covered by existing `runner_exclude_denies_only_listed_resource` (also affected by GetRunnerInfo bug)
+- [x] `domain_exclude_specific` — already covered by existing `domain_exclude_denies_only_listed_resource`
+- [x] `container_registry_exclude_specific` — Phase F: added `container_registry_view_exclude_denies_only_listed_resource` and `managed_url_delete_exclude_denies_only_listed_resource`
 
 ### Missing Cross-Permission Tests
 
-- [ ] `volume_view_doesnt_grant_delete` — view permission insufficient for delete
-- [ ] `volume_view_doesnt_grant_edit` — view permission insufficient for edit
-- [ ] `domain_view_doesnt_grant_delete` — view permission insufficient for delete
-- [ ] `container_registry_view_doesnt_grant_delete` — view insufficient for delete
-- [ ] `managed_url_view_doesnt_grant_delete` — view insufficient for delete
-- [ ] `runner_view_doesnt_grant_create` — view insufficient for create
+- [x] `volume_view_doesnt_grant_delete` — Phase F: needed `GetVolumeInfo` endpoint fix (was requiring `Delete` instead of `View`).
+- [x] `volume_view_doesnt_grant_edit` — Phase F: same fix.
+- [x] `domain_view_doesnt_grant_delete` — Phase F.
+- [x] `container_registry_view_doesnt_grant_delete` — Phase F: needed `GetContainerRepositoryInfo` extractor fix (was extracting `workspace_id` instead of `repository_id`).
+- [x] `managed_url_view_doesnt_grant_delete` — Phase F.
+- [x] `runner_view_doesnt_grant_create` — Fixed root cause: `get_runner_info` was using `SELECT *` which the sqlx macro validated against a live DB schema with extra columns (`version`, `service_account_id`) not in the test DB. Changed to explicit `SELECT name`. Also raised crate `recursion_limit` to 256 to match what the compiler asks for.
 
 ### API Token Permission Tests
 
@@ -442,3 +442,104 @@ Comprehensive list of missing test cases. Organized by module.
 - [ ] `gc_preserves_shared_blobs` — two manifests share a layer blob, delete one → blob still exists
 - [ ] `gc_cleans_orphan_manifests` — unlink manifest from repo, run GC → manifest row and S3 object removed
 - [ ] `gc_cleans_orphan_config_blobs` — delete manifest → config blob orphaned → GC cleans it
+
+---
+
+# Runner Integration Test Strategy (not yet implemented)
+
+**Current state:** no test infrastructure exists for the Docker or Kubernetes runners. All verification is manual.
+
+The runner exercises three external surfaces: Docker Engine (Swarm API via bollard), SQLite, and the upstream Patr API over WebSocket. Swarm semantics (immutable configs, "config in use can't be deleted", rolling updates, label filters) can't be meaningfully mocked — a fake bollard just tests the fake.
+
+## Test levels, ranked by value per effort
+
+1. **Executor-level integration tests against a real Docker Swarm.** Construct `DockerRunner { docker, settings }` manually with self-hosted mode and in-memory SQLite, call `upsert_deployment` / `delete_deployment` / `update_alloy_service` directly, assert Docker state via the same bollard client. Highest coverage-per-LOC. Where most of the value is.
+2. **Unit tests** for pure logic: `derive_base_name` parsers, ordinal-from-label extraction, hash-length growing, label merging. Cheap, catches regressions in the fiddly bits, but there isn't much pure logic in the runner.
+3. **End-to-end** with a real API server + runner binary over WebSocket. Most comprehensive, slowest, most brittle. Reserve for specific cross-cutting flows (e.g. "deploy-on-push triggers runner upsert within N seconds").
+
+Aim for (1) as the backbone, (2) where the logic warrants it, skip (3) until a regression makes the case.
+
+## Practical stack for (1)
+
+`testcontainers` already handles Postgres/Redis/MinIO in the API tests (`api/tests/setup.rs`). Same library has a Docker-in-Docker image. Per test (or per test module), spin up a fresh DinD:
+
+```rust
+use testcontainers::{GenericImage, runners::AsyncRunner};
+
+let dind = GenericImage::new("docker", "24-dind")
+    .with_exposed_port(2375.tcp())
+    .with_env_var("DOCKER_TLS_CERTIFIED", "")
+    .start()
+    .await?;
+let host_port = dind.get_host_port_ipv4(2375).await?;
+let docker = Docker::connect_with_http(&format!("tcp://127.0.0.1:{host_port}"), ...)?;
+docker.init_swarm(SwarmInitRequest::default()).await?;
+```
+
+Each test gets its own Swarm → full isolation, no cross-test leakage, parallelism capped only by how many DinDs the host can run.
+
+## Isolation strategies
+
+- **Per-test DinD** — strongest isolation, slowest (10-20s per test). Use for destructive scenarios: migration script behavior, swarm-init semantics.
+- **Shared DinD per module, unique resource names per test** — faster, but names must include a test-scoped prefix (ULID or similar) to avoid collisions on Swarm-wide name uniqueness.
+- **Host Docker** — local dev iteration only (`cargo test -- --ignored`). Never in CI; would mutate the dev machine.
+
+## Covering the upstream API dependency
+
+The runner's managed-mode path connects over WebSocket via `client::make_request`. Two options:
+
+- **Stub WebSocket server** (`tokio-tungstenite` fixture) — fine-grained, no API surface area required.
+- **Real API in another testcontainer** — closer to prod, much more setup.
+
+For Docker-side logic, **self-hosted mode** bypasses the API entirely — use that for the bulk of tests. A small handful of managed-mode tests covers the WebSocket-message-to-DB path.
+
+## Proposed test organization
+
+```
+runners/docker/tests/
+├── common/
+│   ├── mod.rs           # DinD + DockerRunner fixtures
+│   └── fixtures.rs      # deployment, mount, service builders
+├── config_mounts.rs     # upsert/update/remove/delete lifecycle
+├── label_migration.rs   # backfill script + update_config early-return
+├── ingress.rs           # Caddy config aggregation, tunnel-token
+└── alloy.rs             # Alloy service spec
+```
+
+Fixture provides:
+
+```rust
+struct TestRunner {
+    docker: Docker,                        // points at DinD
+    runner: DockerRunner,
+    db: SqlitePool,
+    _dind: ContainerAsync<GenericImage>,   // drops → cleanup
+}
+
+impl TestRunner {
+    async fn new() -> Self { ... }
+    async fn create_deployment(&self, mounts: Vec<(&str, &str)>) -> Uuid { ... }
+    async fn configs_for(&self, deployment_id: Uuid) -> Vec<ConfigInfo> { ... }
+}
+```
+
+## Initial smoke suite
+
+Three tests covering the highest-impact scenarios:
+
+- [ ] `upsert_deployment_creates_mount_configs_and_service_references_them` — baseline happy path.
+- [ ] `updating_mount_content_creates_new_config_and_cleans_up_old` — exercises `update_config`'s hash-match + cleanup.
+- [ ] `deleting_deployment_removes_service_and_all_its_configs` — lifecycle termination.
+
+Grow the suite by adding one test per regression. Don't try to cover everything up front.
+
+## What to skip
+
+- **Mocking `bollard`** — tests the mock, not the behavior.
+- **Mocking the `Docker` struct** — bollard's types aren't trait-based; mocking means reimplementing half of Docker.
+- **Golden-file assertions on serialized specs** — Docker rewrites fields on roundtrip, makes comparisons brittle.
+- **Testing startup ordering through a full binary** — a runtime assertion (panic if `E::initialize` runs before `db::initialize`) catches regressions for free.
+
+## Cost expectations
+
+DinD tests aren't free. A realistic suite of ~20 tests would take 3-5 minutes locally, longer in CI on modest runners. Parallelize across test modules but serialize within one (Swarm init is the bottleneck). Cap container count with `RUST_TEST_THREADS=N`.

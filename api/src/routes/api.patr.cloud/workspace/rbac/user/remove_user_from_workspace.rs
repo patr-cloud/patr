@@ -32,7 +32,7 @@ pub async fn remove_user_from_workspace(
 ) -> Result<AppResponse<RemoveUserFromWorkspaceRequest>, ErrorType> {
 	info!("Removing user `{user_id}` from workspace `{workspace_id}`");
 
-	query!(
+	let rows_removed = query!(
 		r#"
 		DELETE FROM
 			workspace_user
@@ -44,7 +44,12 @@ pub async fn remove_user_from_workspace(
 		user_id as _
 	)
 	.execute(&mut **database)
-	.await?;
+	.await?
+	.rows_affected();
+
+	if rows_removed == 0 {
+		return Err(ErrorType::UserNotFound);
+	}
 
 	info!("User removed. Setting revocation timestamp");
 

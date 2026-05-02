@@ -89,6 +89,13 @@ pub async fn create_account(
 			todo!("Check if phone is valid");
 		}
 		RecoveryMethod::Email { recovery_email } => {
+			// Validate the email format. The `#[preprocess(email)]` attribute
+			// inside `RecoveryMethod::Email` doesn't run because the parent
+			// field on `CreateAccountRequest` doesn't recurse into the enum.
+			if preprocess::validators::validate_email(recovery_email.as_str()).is_err() {
+				return Err(ErrorType::InvalidEmail);
+			}
+
 			// Check if email is valid
 			let is_email_available = super::is_email_valid(AppRequest {
 				client_ip,

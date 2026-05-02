@@ -77,6 +77,10 @@ pub async fn change_password(
 		return Err(ErrorType::InvalidPassword);
 	}
 
+	if current_password == new_password {
+		return Err(ErrorType::InvalidPassword);
+	}
+
 	if let Some(mfa_secret) = row.mfa_secret {
 		let Some(mfa_otp) = mfa_otp else {
 			debug!("MFA required for userId `{}`", user_data.id);

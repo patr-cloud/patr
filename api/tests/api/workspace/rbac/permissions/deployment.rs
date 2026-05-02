@@ -33,7 +33,7 @@ async fn deployment_view_permission_grants_access() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentInfoRequest>::builder()
 				.path(GetDeploymentInfoPath {
 					workspace_id: workspace.id,
@@ -66,7 +66,7 @@ async fn deployment_create_permission_grants_access() {
 		.await;
 
 	let mt = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListAllDeploymentMachineTypeRequest>::builder()
 				.path(ListAllDeploymentMachineTypePath { workspace_id })
 				.headers(ListAllDeploymentMachineTypeRequestHeaders {
@@ -79,7 +79,7 @@ async fn deployment_create_permission_grants_access() {
 	let mt_id = mt.response.machine_types[0].id;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CreateDeploymentRequest>::builder()
 				.path(CreateDeploymentPath { workspace_id })
 				.headers(CreateDeploymentRequestHeaders {
@@ -140,7 +140,7 @@ async fn deployment_delete_permission_grants_access() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteDeploymentRequest>::builder()
 				.path(DeleteDeploymentPath {
 					workspace_id: workspace.id,
@@ -182,7 +182,7 @@ async fn deployment_view_denied_without_permission() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentInfoRequest>::builder()
 				.path(GetDeploymentInfoPath {
 					workspace_id: workspace.id,
@@ -224,7 +224,7 @@ async fn deployment_create_denied_without_permission() {
 		.await;
 
 	let mt = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListAllDeploymentMachineTypeRequest>::builder()
 				.path(ListAllDeploymentMachineTypePath {
 					workspace_id: workspace.id,
@@ -239,7 +239,7 @@ async fn deployment_create_denied_without_permission() {
 	let mt_id = mt.response.machine_types[0].id;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CreateDeploymentRequest>::builder()
 				.path(CreateDeploymentPath {
 					workspace_id: workspace.id,
@@ -308,7 +308,7 @@ async fn deployment_include_grants_only_listed_resource() {
 		.await;
 
 	let r1 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentInfoRequest>::builder()
 				.path(GetDeploymentInfoPath {
 					workspace_id: workspace.id,
@@ -324,7 +324,7 @@ async fn deployment_include_grants_only_listed_resource() {
 	assert!(r1.status_code().is_success(), "dep1 should be accessible");
 
 	let r2 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentInfoRequest>::builder()
 				.path(GetDeploymentInfoPath {
 					workspace_id: workspace.id,
@@ -374,7 +374,7 @@ async fn deployment_exclude_denies_only_listed_resource() {
 		.await;
 
 	let r1 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentInfoRequest>::builder()
 				.path(GetDeploymentInfoPath {
 					workspace_id: workspace.id,
@@ -393,7 +393,7 @@ async fn deployment_exclude_denies_only_listed_resource() {
 	);
 
 	let r2 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentInfoRequest>::builder()
 				.path(GetDeploymentInfoPath {
 					workspace_id: workspace.id,
@@ -412,7 +412,7 @@ async fn deployment_exclude_denies_only_listed_resource() {
 	);
 
 	let r3 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentInfoRequest>::builder()
 				.path(GetDeploymentInfoPath {
 					workspace_id: workspace.id,
@@ -456,7 +456,7 @@ async fn deployment_exclude_empty_grants_all() {
 		.await;
 
 	let r1 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentInfoRequest>::builder()
 				.path(GetDeploymentInfoPath {
 					workspace_id: workspace.id,
@@ -472,7 +472,7 @@ async fn deployment_exclude_empty_grants_all() {
 	assert!(r1.status_code().is_success());
 
 	let r2 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentInfoRequest>::builder()
 				.path(GetDeploymentInfoPath {
 					workspace_id: workspace.id,
@@ -516,7 +516,7 @@ async fn deployment_exclude_empty_grants_list_access() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListDeploymentRequest>::builder()
 				.path(ListDeploymentPath {
 					workspace_id: workspace.id,
@@ -572,7 +572,7 @@ async fn deployment_view_does_not_grant_edit() {
 		.await;
 
 	let r_view = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentInfoRequest>::builder()
 				.path(GetDeploymentInfoPath {
 					workspace_id: workspace.id,
@@ -588,7 +588,7 @@ async fn deployment_view_does_not_grant_edit() {
 	assert!(r_view.status_code().is_success());
 
 	let r_edit = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<UpdateDeploymentRequest>::builder()
 				.path(UpdateDeploymentPath {
 					workspace_id: workspace.id,
@@ -646,7 +646,7 @@ async fn deployment_view_does_not_grant_delete() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteDeploymentRequest>::builder()
 				.path(DeleteDeploymentPath {
 					workspace_id: workspace.id,
@@ -691,7 +691,7 @@ async fn deployment_stop_denied_without_permission() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<StopDeploymentRequest>::builder()
 				.path(StopDeploymentPath {
 					workspace_id: workspace.id,
@@ -742,7 +742,7 @@ async fn deployment_include_multiple_resources() {
 		.await;
 
 	let r1 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentInfoRequest>::builder()
 				.path(GetDeploymentInfoPath {
 					workspace_id: workspace.id,
@@ -758,7 +758,7 @@ async fn deployment_include_multiple_resources() {
 	assert!(r1.status_code().is_success(), "dep1 should be accessible");
 
 	let r2 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentInfoRequest>::builder()
 				.path(GetDeploymentInfoPath {
 					workspace_id: workspace.id,
@@ -774,7 +774,7 @@ async fn deployment_include_multiple_resources() {
 	assert!(r2.status_code().is_success(), "dep2 should be accessible");
 
 	let r3 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentInfoRequest>::builder()
 				.path(GetDeploymentInfoPath {
 					workspace_id: workspace.id,
@@ -818,7 +818,7 @@ async fn deployment_view_does_not_grant_start() {
 		.await;
 
 	let r_view = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentInfoRequest>::builder()
 				.path(GetDeploymentInfoPath {
 					workspace_id: workspace.id,
@@ -834,7 +834,7 @@ async fn deployment_view_does_not_grant_start() {
 	assert!(r_view.status_code().is_success());
 
 	let r_start = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<StartDeploymentRequest>::builder()
 				.path(StartDeploymentPath {
 					workspace_id: workspace.id,
@@ -878,7 +878,7 @@ async fn deployment_edit_does_not_grant_delete() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteDeploymentRequest>::builder()
 				.path(DeleteDeploymentPath {
 					workspace_id: workspace.id,
@@ -922,7 +922,7 @@ async fn deployment_start_does_not_grant_stop() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<StopDeploymentRequest>::builder()
 				.path(StopDeploymentPath {
 					workspace_id: workspace.id,

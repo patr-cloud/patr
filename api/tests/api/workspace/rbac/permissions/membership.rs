@@ -23,7 +23,7 @@ async fn list_deployments_denied_non_member() {
 	let non_member = setup.create_test_user().await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListDeploymentRequest>::builder()
 				.path(ListDeploymentPath {
 					workspace_id: workspace.id,
@@ -50,7 +50,7 @@ async fn list_volumes_denied_non_member() {
 	let non_member = setup.create_test_user().await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListVolumesInWorkspaceRequest>::builder()
 				.path(ListVolumesInWorkspacePath {
 					workspace_id: workspace.id,
@@ -74,7 +74,7 @@ async fn list_runners_denied_non_member() {
 	let non_member = setup.create_test_user().await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
 				.path(ListRunnersForWorkspacePath {
 					workspace_id: workspace.id,
@@ -98,7 +98,7 @@ async fn list_domains_denied_non_member() {
 	let non_member = setup.create_test_user().await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListDomainsInWorkspaceRequest>::builder()
 				.path(ListDomainsInWorkspacePath {
 					workspace_id: workspace.id,
@@ -122,7 +122,7 @@ async fn list_repositories_denied_non_member() {
 	let non_member = setup.create_test_user().await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListContainerRepositoriesRequest>::builder()
 				.path(ListContainerRepositoriesPath {
 					workspace_id: workspace.id,
@@ -146,7 +146,7 @@ async fn list_managed_urls_denied_non_member() {
 	let non_member = setup.create_test_user().await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListManagedURLRequest>::builder()
 				.path(ListManagedURLPath {
 					workspace_id: workspace.id,
@@ -178,7 +178,7 @@ async fn list_endpoints_allowed_for_any_member() {
 		.await;
 
 	let list_deployments = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListDeploymentRequest>::builder()
 				.path(ListDeploymentPath {
 					workspace_id: workspace.id,
@@ -196,7 +196,7 @@ async fn list_endpoints_allowed_for_any_member() {
 	);
 
 	let list_runners = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
 				.path(ListRunnersForWorkspacePath {
 					workspace_id: workspace.id,
@@ -214,7 +214,7 @@ async fn list_endpoints_allowed_for_any_member() {
 	);
 
 	let list_volumes = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListVolumesInWorkspaceRequest>::builder()
 				.path(ListVolumesInWorkspacePath {
 					workspace_id: workspace.id,
@@ -232,7 +232,7 @@ async fn list_endpoints_allowed_for_any_member() {
 	);
 
 	let list_domains = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListDomainsInWorkspaceRequest>::builder()
 				.path(ListDomainsInWorkspacePath {
 					workspace_id: workspace.id,
@@ -250,7 +250,7 @@ async fn list_endpoints_allowed_for_any_member() {
 	);
 
 	let list_repos = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListContainerRepositoriesRequest>::builder()
 				.path(ListContainerRepositoriesPath {
 					workspace_id: workspace.id,
@@ -268,7 +268,7 @@ async fn list_endpoints_allowed_for_any_member() {
 	);
 
 	let list_urls = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListManagedURLRequest>::builder()
 				.path(ListManagedURLPath {
 					workspace_id: workspace.id,
