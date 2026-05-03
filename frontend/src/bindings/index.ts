@@ -9,8 +9,6 @@ import { ListUserWorkspacesRequest } from "./ListUserWorkspacesRequest";
 import { ListUserWorkspacesResponse } from "./ListUserWorkspacesResponse";
 import { CreateApiTokenRequest } from "~/bindings/CreateApiTokenRequest";
 import { CreateApiTokenResponse } from "~/bindings/CreateApiTokenResponse";
-import { AddRunnerToWorkspaceRequest } from "./AddRunnerToWorkspaceRequest";
-import { AddRunnerToWorkspaceResponse } from "./AddRunnerToWorkspaceResponse";
 import { ListRunnersForWorkspaceResponse } from "./ListRunnersForWorkspaceResponse";
 import { ListDeploymentResponse } from "./ListDeploymentResponse";
 import { ListDeploymentRequest } from "./ListDeploymentRequest";
@@ -41,6 +39,7 @@ import { UpdateManagedURLRequest } from "./UpdateManagedURLRequest";
 import { GetDeploymentLogsRequest } from "./GetDeploymentLogsRequest";
 import { GetDeploymentLogsResponse } from "./GetDeploymentLogsResponse";
 import { GetUserInfoResponse } from "./GetUserInfoResponse";
+import { GetVersionResponse } from "./GetVersionResponse";
 import { DeploymentLog } from "./DeploymentLog";
 import { ActivateMfaRequest } from "./ActivateMfaRequest";
 import { DeactivateMfaRequest } from "./DeactivateMfaRequest";
@@ -93,6 +92,9 @@ import { GetDeploymentMetricResponse } from "./GetDeploymentMetricResponse";
 import { MetricDataPoint } from "./MetricDataPoint";
 import { DeploymentMetricName } from "./DeploymentMetricName";
 import { RunnerMetricName } from "./RunnerMetricName";
+import { GetRunnerLinkResponse } from "./GetRunnerLinkResponse";
+import { ApproveRunnerLinkRequest } from "./ApproveRunnerLinkRequest";
+import { ApproveRunnerLinkResponse } from "./ApproveRunnerLinkResponse";
 
 export type {
 	EnvironmentVariableValue,
@@ -106,8 +108,6 @@ export type {
 	ListUserWorkspacesResponse,
 	CreateApiTokenRequest,
 	CreateApiTokenResponse,
-	AddRunnerToWorkspaceRequest,
-	AddRunnerToWorkspaceResponse,
 	ListRunnersForWorkspaceResponse,
 	ListDeploymentResponse,
 	ListDeploymentRequest,
@@ -137,6 +137,7 @@ export type {
 	GetDeploymentLogsRequest,
 	GetDeploymentLogsResponse,
 	GetUserInfoResponse,
+	GetVersionResponse,
 	DeploymentLog,
 	ActivateMfaRequest,
 	DeactivateMfaRequest,
@@ -190,4 +191,7 @@ export type {
 	MetricDataPoint,
 	DeploymentMetricName,
 	RunnerMetricName,
+	GetRunnerLinkResponse,
+	ApproveRunnerLinkRequest,
+	ApproveRunnerLinkResponse,
 };

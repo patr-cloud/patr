@@ -18,5 +18,6 @@ macros::declare_api_endpoint!(
 		#[preprocess(none)]
 		pub otp: String,
 	},
+	client_type = [WebDashboard],
 	audit_log = NoAuditLogger,
 );

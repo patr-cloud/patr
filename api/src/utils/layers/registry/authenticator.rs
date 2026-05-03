@@ -114,7 +114,6 @@ where
 			let user_data = permissions::get_user_data_for_token(
 				req.database,
 				req.redis,
-				ClientType::ApiToken,
 				&req.config,
 				req.client_ip,
 				token,

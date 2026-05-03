@@ -33,5 +33,6 @@ macros::declare_api_endpoint!(
 		#[serde(skip_serializing_if = "Vec::is_empty")]
 		pub referenced_manifests: Vec<ContainerRepositoryManifestInfo>,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

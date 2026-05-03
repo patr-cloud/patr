@@ -8,6 +8,7 @@ mod domain;
 mod managed_url;
 mod rbac;
 mod runner;
+mod service_account;
 mod volume;
 
 #[tokio::test]

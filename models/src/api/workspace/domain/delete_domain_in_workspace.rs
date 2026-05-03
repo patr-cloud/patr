@@ -22,6 +22,7 @@ macros::declare_api_endpoint!(
 			permission: Permission::Domain(DomainPermission::Delete),
 		}
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceDeleted,
 		resource_type: ResourceType::Domain,

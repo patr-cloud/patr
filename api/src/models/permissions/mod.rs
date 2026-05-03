@@ -62,27 +62,24 @@ mod api_token;
 /// Contains the functions to extract permissions for a web dashboard JWT.
 mod web_dashboard;
 
-/// Gets the user data for the given token based on the allowed client type.
-/// This function delegates the permission extraction to the appropriate module
-/// based on whether the token is for an API token or a web dashboard session.
+/// Gets the user data for the given token. Dispatches to the appropriate
+/// module based on the token format: `patrv1.*` tokens go through
+/// [`api_token`], anything else is treated as a JWT and goes through
+/// [`web_dashboard`].
 ///
-/// For a given token, it gets all the information of the user that the login ID
-/// has (based on that token).
+/// The resolved [`ClientType`] is available on the returned
+/// [`RequestUserData`].
 pub async fn get_user_data_for_token(
 	database: &mut DatabaseConnection,
 	redis: &mut RedisClient,
-	allowed_client_type: ClientType,
 	config: &AppConfig,
 	client_ip: IpAddr,
 	token: &str,
 ) -> Result<RequestUserData, ErrorType> {
-	match allowed_client_type {
-		ClientType::ApiToken => {
-			api_token::get_permissions(database, redis, config, client_ip, token).await
-		}
-		ClientType::WebDashboard => {
-			web_dashboard::get_permissions(database, redis, config, client_ip, token).await
-		}
+	if token.starts_with("patrv1.") {
+		api_token::get_permissions(database, redis, config, client_ip, token).await
+	} else {
+		web_dashboard::get_permissions(database, redis, config, client_ip, token).await
 	}
 }
 
@@ -94,7 +91,7 @@ async fn get_permissions_for_login_id(
 	db_connection: &mut DatabaseConnection,
 	redis_connection: &mut RedisClient,
 	login_id: &Uuid,
-	user_id: &Uuid,
+	identity_id: &Uuid,
 ) -> Result<BTreeMap<Uuid, WorkspacePermission>, ErrorType> {
 	let redis_data: Option<String> = redis_connection
 		.get(redis::keys::permission_for_login_id(login_id))
@@ -116,7 +113,7 @@ async fn get_permissions_for_login_id(
 		// Check user revocation, then loginId revocation, then workspace ID revocation
 		let is_valid = 'validity: {
 			let revoked = redis_connection
-				.get::<Option<String>>(redis::keys::user_id_revocation_timestamp(user_id))
+				.get::<Option<String>>(redis::keys::user_id_revocation_timestamp(identity_id))
 				.await?
 				.and_then(|s| s.parse::<i128>().ok())
 				.and_then(|time| OffsetDateTime::from_unix_timestamp_nanos(time).ok())
@@ -299,9 +296,35 @@ async fn get_permissions_for_login_id(
 				role_resource_permissions_exclude.role_id = workspace_user.role_id
 			WHERE
 				user_login.login_id = $1
+
+			UNION ALL
+
+			/* Service account role-based exclude permissions */
+			SELECT
+				service_account.workspace_id,
+				role_resource_permissions_type.permission_id,
+				role_resource_permissions_exclude.resource_id
+			FROM
+				service_account_role
+			INNER JOIN
+				service_account
+			ON
+				service_account.id = service_account_role.service_account_id
+			INNER JOIN
+				role_resource_permissions_type
+			ON
+				role_resource_permissions_type.role_id = service_account_role.role_id AND
+				role_resource_permissions_type.permission_type = 'exclude'
+			LEFT JOIN
+				role_resource_permissions_exclude
+			ON
+				role_resource_permissions_exclude.role_id = service_account_role.role_id
+			WHERE
+				service_account_role.service_account_id = $2
 		) AS excludes;
 		"#,
-		login_id as _
+		login_id as _,
+		identity_id as _
 	)
 	.fetch_all(&mut *db_connection)
 	.await?
@@ -391,9 +414,35 @@ async fn get_permissions_for_login_id(
 				role_resource_permissions_include.role_id = workspace_user.role_id
 			WHERE
 				user_login.login_id = $1
+
+			UNION ALL
+
+			/* Service account role-based include permissions */
+			SELECT
+				service_account.workspace_id,
+				role_resource_permissions_type.permission_id,
+				role_resource_permissions_include.resource_id
+			FROM
+				service_account_role
+			INNER JOIN
+				service_account
+			ON
+				service_account.id = service_account_role.service_account_id
+			INNER JOIN
+				role_resource_permissions_type
+			ON
+				role_resource_permissions_type.role_id = service_account_role.role_id AND
+				role_resource_permissions_type.permission_type = 'include'
+			LEFT JOIN
+				role_resource_permissions_include
+			ON
+				role_resource_permissions_include.role_id = service_account_role.role_id
+			WHERE
+				service_account_role.service_account_id = $2
 		) AS includes;
 		"#,
-		login_id as _
+		login_id as _,
+		identity_id as _
 	)
 	.fetch_all(&mut *db_connection)
 	.await?

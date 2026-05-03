@@ -31,5 +31,6 @@ macros::declare_api_endpoint!(
 		/// - nameserver_type - The type of the nameserver
 		pub domains: Vec<WithId<WorkspaceDomain>>,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

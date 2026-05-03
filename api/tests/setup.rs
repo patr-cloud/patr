@@ -473,7 +473,7 @@ limits_config:
 		.http_transport_with_ip_port(Some(api_bind_address.ip()), Some(api_bind_address.port()))
 		.save_cookies()
 		.build(
-			api_patr_cloud::setup_routes(&state, ClientType::WebDashboard)
+			api_patr_cloud::setup_routes(&state, &[ClientType::WebDashboard])
 				.await
 				.into_make_service_with_connect_info::<SocketAddr>(),
 		);

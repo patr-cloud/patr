@@ -21,5 +21,6 @@ macros::declare_api_endpoint!(
 		/// Whether the workspace name is available
 		pub available: bool,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

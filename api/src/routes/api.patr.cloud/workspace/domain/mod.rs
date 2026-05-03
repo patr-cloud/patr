@@ -20,18 +20,18 @@ pub use self::{
 };
 
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
+pub async fn setup_routes(state: &AppState, allowed_client_types: &[ClientType]) -> Router {
 	Router::new()
-		.mount_auth_endpoint(add_domain_to_workspace, state, allowed_client_type)
-		.mount_auth_endpoint(list_domains_in_workspace, state, allowed_client_type)
-		.mount_auth_endpoint(delete_domain_in_workspace, state, allowed_client_type)
-		.mount_auth_endpoint(is_domain_valid, state, allowed_client_type)
-		.mount_auth_endpoint(add_dns_record, state, allowed_client_type)
-		.mount_auth_endpoint(delete_dns_record, state, allowed_client_type)
-		.mount_auth_endpoint(get_doamin_dns_record, state, allowed_client_type)
-		.mount_auth_endpoint(get_domain_info_in_workspace, state, allowed_client_type)
-		.mount_auth_endpoint(update_domain_dns_record, state, allowed_client_type)
-		.mount_auth_endpoint(verify_domain_in_workspace, state, allowed_client_type)
+		.mount_auth_endpoint(add_domain_to_workspace, state, allowed_client_types)
+		.mount_auth_endpoint(list_domains_in_workspace, state, allowed_client_types)
+		.mount_auth_endpoint(delete_domain_in_workspace, state, allowed_client_types)
+		.mount_auth_endpoint(is_domain_valid, state, allowed_client_types)
+		.mount_auth_endpoint(add_dns_record, state, allowed_client_types)
+		.mount_auth_endpoint(delete_dns_record, state, allowed_client_types)
+		.mount_auth_endpoint(get_doamin_dns_record, state, allowed_client_types)
+		.mount_auth_endpoint(get_domain_info_in_workspace, state, allowed_client_types)
+		.mount_auth_endpoint(update_domain_dns_record, state, allowed_client_types)
+		.mount_auth_endpoint(verify_domain_in_workspace, state, allowed_client_types)
 }
 
 #[expect(unreachable_code, unused_variables)]

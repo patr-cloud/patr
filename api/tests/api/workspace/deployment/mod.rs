@@ -596,6 +596,7 @@ async fn get_deployment_metric_works() {
 				.path(GetDeploymentMetricPath {
 					workspace_id: workspace.id,
 					deployment_id: deployment.id,
+					metric: DeploymentMetricName::ContainerCpuUsage,
 				})
 				.headers(GetDeploymentMetricRequestHeaders {
 					authorization: user.access_token.clone(),

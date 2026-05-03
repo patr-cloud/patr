@@ -37,5 +37,6 @@ macros::declare_stream_endpoint!(
 		},
 	},
 	client_msg = {},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

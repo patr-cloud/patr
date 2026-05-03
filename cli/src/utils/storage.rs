@@ -97,29 +97,36 @@ impl AppState {
 	/// Load the state from the config file. If the config file does not exist,
 	/// return the default state.
 	///
-	/// The config file is loaded from the following locations in order:
-	/// - The environment variable `CONFIG_PATH` if it is set
-	/// - The user specific config location independent of the current platform
-	/// - The system wide config location independent of the current platform
+	/// Sources are added lowest priority first; later sources override earlier
+	/// ones. The order is:
+	/// - OS-level config (`config_dir()` then `config_local_dir()`) — lowest
+	///   priority; covers the production case
+	/// - **Either** the in-repo `config/cli.json` (debug builds) **or** the
+	///   path in `CONFIG_PATH` (always) — explicit override wins
+	///
+	/// This means a stale OS-level file can't shadow an explicit override
+	/// that the user is actively writing to.
 	pub fn load() -> Result<Self, AppError> {
+		let builder = config::Config::builder()
+			.add_source(
+				config::File::with_name(&crate::utils::config_dir().to_string_lossy())
+					.required(false),
+			)
+			.add_source(
+				config::File::with_name(&crate::utils::config_local_dir().to_string_lossy())
+					.required(false),
+			);
+
 		if let Ok(config_path) = std::env::var("CONFIG_PATH") {
-			config::Config::builder()
-				.add_source(config::File::with_name(&config_path).required(false))
+			builder.add_source(config::File::with_name(&config_path).required(false))
 		} else if cfg!(debug_assertions) {
-			config::Config::builder().add_source(
+			builder.add_source(
 				config::File::with_name(concat!(env!("CARGO_MANIFEST_DIR"), "/../config/cli.json"))
 					.required(false),
 			)
 		} else {
 			config::Config::builder()
 		}
-		.add_source(
-			config::File::with_name(&crate::utils::config_dir().to_string_lossy()).required(false),
-		)
-		.add_source(
-			config::File::with_name(&crate::utils::config_local_dir().to_string_lossy())
-				.required(false),
-		)
 		.build()
 		.map_err(AppError::ConfigReadError)?
 		.try_deserialize()

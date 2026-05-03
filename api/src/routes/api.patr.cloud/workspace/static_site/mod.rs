@@ -4,18 +4,18 @@ use models::api::workspace::static_site::*;
 use crate::prelude::*;
 
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
+pub async fn setup_routes(state: &AppState, allowed_client_types: &[ClientType]) -> Router {
 	Router::new()
-		.mount_auth_endpoint(create_static_site, state, allowed_client_type)
-		.mount_auth_endpoint(delete_static_site, state, allowed_client_type)
-		.mount_auth_endpoint(get_static_site_info, state, allowed_client_type)
-		.mount_auth_endpoint(list_static_site, state, allowed_client_type)
-		.mount_auth_endpoint(list_upload_history, state, allowed_client_type)
-		.mount_auth_endpoint(revert_static_site, state, allowed_client_type)
-		.mount_auth_endpoint(start_static_site, state, allowed_client_type)
-		.mount_auth_endpoint(stop_static_site, state, allowed_client_type)
-		.mount_auth_endpoint(update_static_site, state, allowed_client_type)
-		.mount_auth_endpoint(upload_static_site, state, allowed_client_type)
+		.mount_auth_endpoint(create_static_site, state, allowed_client_types)
+		.mount_auth_endpoint(delete_static_site, state, allowed_client_types)
+		.mount_auth_endpoint(get_static_site_info, state, allowed_client_types)
+		.mount_auth_endpoint(list_static_site, state, allowed_client_types)
+		.mount_auth_endpoint(list_upload_history, state, allowed_client_types)
+		.mount_auth_endpoint(revert_static_site, state, allowed_client_types)
+		.mount_auth_endpoint(start_static_site, state, allowed_client_types)
+		.mount_auth_endpoint(stop_static_site, state, allowed_client_types)
+		.mount_auth_endpoint(update_static_site, state, allowed_client_types)
+		.mount_auth_endpoint(upload_static_site, state, allowed_client_types)
 }
 
 async fn create_static_site(

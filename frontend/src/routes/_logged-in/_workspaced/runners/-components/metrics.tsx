@@ -1,10 +1,25 @@
 import { Show, For, createSignal, ErrorBoundary } from "solid-js";
-import { InputDropdown } from "~/components";
+import { lt } from "semver";
+import { FiAlertTriangle } from "solid-icons/fi";
+import {
+	CopyableField,
+	CopyableFieldVariant,
+	Input,
+	InputDropdown,
+	InputLabel,
+	InputType,
+	Tooltip,
+} from "~/components";
 import MetricCard, { INTERVALS, type ChartDef } from "~/components/metric-card";
 import { useRunnerMetricsQuery } from "~/hooks/fetch";
+import { formatDate, formatRelativeTime } from "~/utils/func";
 
 interface RunnerMetricsProps {
 	runnerId: string;
+	version: string;
+	connected: boolean;
+	lastSeen: Date | null;
+	apiVersion: string | undefined;
 }
 
 const CHARTS: ChartDef[] = [
@@ -58,8 +73,88 @@ const RunnerMetrics = (props: RunnerMetricsProps) => {
 
 	const metricsQuery = useRunnerMetricsQuery(() => props.runnerId, METRIC_NAMES, intervalSeconds);
 
+	// '0.0.0' is the backfill sentinel for rows that existed before version
+	// tracking or never reported a version.
+	const versionUnknown = () => props.version === "0.0.0";
+	// Only flag outdated once we know the runner has actually connected at
+	// least once — fresh-never-connected rows sit at the sentinel and there's
+	// nothing for the operator to act on.
+	const outdated = () =>
+		!versionUnknown() && !!props.lastSeen && !!props.apiVersion && lt(props.version, props.apiVersion);
+
 	return (
 		<div class="flex flex-col gap-lg">
+			{/* Identity block */}
+			<div class="flex flex-col space-y-4 py-lg">
+				<div class="flex items-center gap-4">
+					<InputLabel parentClass="flex-2" for="runner-id" label="ID" />
+					<CopyableField
+						variant={CopyableFieldVariant.Input}
+						value={props.runnerId}
+						buttonPosition="start"
+						class="flex-10"
+					/>
+				</div>
+
+				<div class="flex flex-col gap-xs">
+					<div class="flex items-center gap-4">
+						<InputLabel parentClass="flex-2" for="runner-version" label="Version" />
+						<Input
+							value={
+								versionUnknown()
+									? "Unknown"
+									: outdated()
+										? `${props.version} (update available)`
+										: props.version
+							}
+							disabled={true}
+							class="flex-10"
+							innerClass={outdated() ? "disabled:text-warning" : ""}
+							name="runner-version"
+							placeholder="Runner version"
+							type={InputType.Text}
+							startIcon={
+								outdated()
+									? () => (
+											<FiAlertTriangle
+												class="text-warning shrink-0 ml-md mr-sm"
+												size={14}
+												aria-label="Update available"
+											/>
+										)
+									: undefined
+							}
+						/>
+					</div>
+					<Show when={outdated()}>
+						<div class="flex items-center gap-4">
+							<div class="flex-2" />
+							<p class="flex-10 text-xs text-grey">
+								Run <code class="text-white font-log">patr upgrade</code> on the runner host to update.
+							</p>
+						</div>
+					</Show>
+				</div>
+
+				<div class="flex items-center gap-4">
+					<InputLabel parentClass="flex-2" for="runner-last-connected" label="Last Connected" />
+					<Tooltip content={props.lastSeen ? formatDate(props.lastSeen) : ""} class="flex-10 text-white">
+						<Input
+							value={
+								props.connected ? "Now" : props.lastSeen ? formatRelativeTime(props.lastSeen) : "Never"
+							}
+							disabled={true}
+							class="w-full"
+							name="runner-last-connected"
+							placeholder="Last connected"
+							type={InputType.Text}
+						/>
+					</Tooltip>
+				</div>
+			</div>
+
+			<hr class="border-border-color" />
+
 			{/* Interval selector */}
 			<div class="flex items-center justify-end gap-sm">
 				<Show when={metricsQuery.isFetching}>

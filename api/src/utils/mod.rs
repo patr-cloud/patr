@@ -124,6 +124,23 @@ pub mod constants {
 	/// unnecessary load on the IP lookup service.
 	pub const IP_LOOKUP_FAILURE_VALIDITY: time::Duration = time::Duration::days(1);
 
+	/// How long a runner consent link stays alive in Redis from creation. The
+	/// CLI must complete the browser approval and claim credentials within
+	/// this window.
+	pub const RUNNER_LINK_VALIDITY: time::Duration = time::Duration::minutes(5);
+
+	/// How often the CLI should poll `POST /runner/verify` while waiting for
+	/// the user to approve the link in the browser.
+	pub const RUNNER_LINK_POLL_INTERVAL: time::Duration = time::Duration::seconds(2);
+
+	/// Base URL for the web dashboard. Used to build user-facing URLs like
+	/// the runner consent page returned by `POST /runner/link`.
+	pub const FRONTEND_BASE_URL: &str = if cfg!(debug_assertions) {
+		"http://localhost:3001"
+	} else {
+		"https://app.patr.cloud"
+	};
+
 	// -------------------All Registry Related Constants-------------------
 
 	/// The regex that a registry repository name must conform to

@@ -86,11 +86,15 @@ where
 			let mut pinned_sleeper = Box::pin(time::sleep(Duration::from_secs(0)));
 
 			let Ok(()) = pinned_stream
-				.send(
-					StreamRunnerDataForWorkspaceClientMsg::SetRunnerExposureType {
-						exposure_type: E::runner_exposure_type(&self.state.config),
-					},
-				)
+				.send(StreamRunnerDataForWorkspaceClientMsg::Handshake {
+					// Parse CARGO_PKG_VERSION directly so pre-release labels
+					// (e.g. `0.18.0-alpha.1`) are preserved — macros::version!()
+					// only reads MAJOR/MINOR/PATCH and drops the pre-release.
+					version: env!("CARGO_PKG_VERSION")
+						.parse()
+						.expect("CARGO_PKG_VERSION must be a valid semver"),
+					exposure_type: E::runner_exposure_type(&self.state.config),
+				})
 				.await
 			else {
 				// Retry after 5 seconds, but break if the exit signal is received
@@ -238,7 +242,7 @@ where
 				Some(deployment.id)
 			}
 			DeploymentDeleted { id } => Some(*id),
-			ExposureTypeRequired => None,
+			HandshakeRequired => None,
 		};
 
 		let is_delete = matches!(msg, DeploymentDeleted { .. });
@@ -264,8 +268,8 @@ where
 				self.delete_deployment_in_database(&mut transaction, id)
 					.await?;
 			}
-			ExposureTypeRequired => {
-				warn!("Server requested exposure type to be set again");
+			HandshakeRequired => {
+				warn!("Server requested handshake to be sent again");
 			}
 		}
 

@@ -37,5 +37,6 @@ macros::declare_api_endpoint!(
 		/// - ttl - The time to live
 		pub records: Vec<WithId<PatrDomainDnsRecord>>,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

@@ -5,7 +5,7 @@ macros::declare_api_endpoint!(
 	/// List all API tokens for a particular user.
 	ListApiTokens,
 	GET "/user/api-token",
-	api = false,
+	client_type = [WebDashboard],
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,

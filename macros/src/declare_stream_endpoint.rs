@@ -8,13 +8,13 @@ use syn::{
 	FieldsNamed,
 	Ident,
 	Lit,
-	LitBool,
 	LitStr,
 	Token,
 	Variant,
 	braced,
 	parse::{Parse, ParseStream},
 	parse_macro_input,
+	punctuated::Punctuated,
 };
 
 /// A helper struct to parse an API endpoint
@@ -33,8 +33,8 @@ pub struct ApiEndpoint {
 	path_body: Option<FieldsNamed>,
 	/// The authentication for this endpoint.
 	auth: Option<Block>,
-	/// Should this route be allowed through APIs or only through the web-login
-	api_allowed: bool,
+	/// The client types allowed to access this endpoint.
+	allowed_client_types: Vec<Ident>,
 
 	/// The query params for the endpoint
 	query: Option<FieldsNamed>,
@@ -94,7 +94,7 @@ impl Parse for ApiEndpoint {
 		let mut request_headers = None;
 		let mut response_headers = None;
 		let mut server_msg = None;
-		let mut api_allowed = None;
+		let mut allowed_client_types = None;
 		let mut audit_logger = None;
 
 		while !input.is_empty() {
@@ -174,13 +174,20 @@ impl Parse for ApiEndpoint {
 
 					auth = Some(input.parse()?);
 				}
-				"api" => {
-					if api_allowed.is_some() {
+				"client_type" => {
+					if allowed_client_types.is_some() {
 						return Err(Error::new(ident.span(), "Duplicate field"));
 					}
 					input.parse::<Token![=]>()?;
 
-					api_allowed = Some(input.parse::<LitBool>()?.value);
+					let content;
+					syn::bracketed!(content in input);
+					let types = Punctuated::<Ident, Token![,]>::parse_terminated(&content)?;
+					let types = types.into_iter().collect::<Vec<_>>();
+					if types.is_empty() {
+						return Err(Error::new(ident.span(), "client_type must not be empty"));
+					}
+					allowed_client_types = Some(types);
 				}
 				"audit_logger" | "audit_log" => {
 					if audit_logger.is_some() {
@@ -198,7 +205,9 @@ impl Parse for ApiEndpoint {
 				input.parse::<Token![,]>()?;
 			}
 		}
-		let api_allowed = api_allowed.unwrap_or(true);
+		let Some(allowed_client_types) = allowed_client_types else {
+			return Err(Error::new(input.span(), "Missing field: client_type"));
+		};
 		let Some(audit_logger) = audit_logger else {
 			return Err(Error::new(input.span(), "Missing field: audit_logger"));
 		};
@@ -210,7 +219,7 @@ impl Parse for ApiEndpoint {
 			path,
 			path_body,
 			auth,
-			api_allowed,
+			allowed_client_types,
 
 			query,
 			paginate_query,
@@ -234,7 +243,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		method,
 		path,
 		path_body,
-		api_allowed,
+		allowed_client_types,
 
 		auth,
 		query,
@@ -503,7 +512,9 @@ pub fn parse(input: TokenStream) -> TokenStream {
 
 		impl models::api::ApiEndpoint for #request_name {
 			const METHOD: ::http::Method = ::http::Method::#method;
-			const API_ALLOWED: bool = #api_allowed;
+			const ALLOWED_CLIENT_TYPES: &'static [models::utils::ClientType] = &[
+				#(models::utils::ClientType::#allowed_client_types),*
+			];
 
 			type RequestPath = #path_name;
 			type RequestQuery = #query_name;

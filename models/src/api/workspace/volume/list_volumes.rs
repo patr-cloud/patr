@@ -28,5 +28,6 @@ macros::declare_api_endpoint!(
 		/// The list of volumes in the workspace
 		pub volumes: Vec<WithId<DeploymentVolume>>,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

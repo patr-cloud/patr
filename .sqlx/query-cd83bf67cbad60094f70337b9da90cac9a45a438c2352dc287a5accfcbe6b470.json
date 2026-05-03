@@ -1,0 +1,142 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT user_api_token.token_id AS \"token_id: Uuid\", user_api_token.user_id AS \"user_id: Uuid\", user_api_token.token_hash, user_api_token.token_nbf, user_api_token.token_exp, user_api_token.allowed_ips, user_api_token.revoked, \"user\".* FROM user_api_token INNER JOIN user_login ON user_api_token.token_id = user_login.login_id INNER JOIN \"user\" ON user_api_token.user_id = \"user\".id WHERE user_api_token.token_id = $1 AND user_login.login_type = 'api_token';",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "token_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "token_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "token_nbf",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "token_exp",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "allowed_ips",
+        "type_info": "InetArray"
+      },
+      {
+        "ordinal": 6,
+        "name": "revoked",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "password",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "first_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 11,
+        "name": "last_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 12,
+        "name": "created",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "recovery_email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "recovery_phone_country_code",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 15,
+        "name": "recovery_phone_number",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 16,
+        "name": "workspace_limit",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 17,
+        "name": "password_reset_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 18,
+        "name": "password_reset_token_expiry",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 19,
+        "name": "password_reset_attempts",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 20,
+        "name": "mfa_secret",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "cd83bf67cbad60094f70337b9da90cac9a45a438c2352dc287a5accfcbe6b470"
+}

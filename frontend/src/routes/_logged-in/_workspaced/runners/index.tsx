@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createEffect, Show, ErrorBoundary, Suspense } from "solid-js";
+import { createEffect, ErrorBoundary, Show, Suspense } from "solid-js";
+import { FiAlertTriangle } from "solid-icons/fi";
 import {
 	Button,
 	ButtonVariant,
@@ -16,8 +17,9 @@ import {
 	Table,
 	StatusChip,
 } from "~/components";
+import { lt } from "semver";
 import { useIsAllowed, createPaginationState } from "~/hooks";
-import { useRunnersListQuery } from "~/hooks/fetch";
+import { useRunnersListQuery, useApiVersionQuery } from "~/hooks/fetch";
 import { formatRelativeTime } from "~/utils/func";
 
 const ListRunnersPage = () => {
@@ -33,6 +35,7 @@ const ListRunnersPage = () => {
 		() => search().page,
 		() => search().count
 	);
+	const versionQuery = useApiVersionQuery();
 
 	createEffect(() => {
 		const totalCount = runnersQuery.data?.totalCount;
@@ -110,16 +113,24 @@ const ListRunnersPage = () => {
 								}
 							>
 								<Table
-									column_grids={["flex-4", "flex-2", "flex-3", "flex-3"]}
+									column_grids={["flex-3", "flex-2", "flex-2", "flex-2", "flex-3"]}
 									rows={runnersQuery.data?.runners || []}
-									headings={["Name", "Status", "Last Seen", "ID"]}
+									headings={["Name", "Status", "Version", "Last Seen", "ID"]}
 									renderRow={(item) => {
 										const goToDetail = () =>
 											navigate({
 												to: "/runners/$id",
 												params: { id: item.id },
-												search: { tab: "deployments" },
+												search: { tab: "metrics" },
 											});
+										const apiVersion = () => versionQuery.data?.version;
+										const versionUnknown = () => item.version === "0.0.0";
+										const outdated = () => {
+											const api = apiVersion();
+											return (
+												!versionUnknown() && !!item.lastSeen && !!api && lt(item.version, api)
+											);
+										};
 										return (
 											<tr
 												role="row"
@@ -133,13 +144,39 @@ const ListRunnersPage = () => {
 													}
 												}}
 											>
-												<td role="cell" class="flex-4 flex items-center justify-start min-w-0">
+												<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
 													<span class="truncate font-medium text-white">{item.name}</span>
 												</td>
 												<td role="cell" class="flex-2 flex items-center justify-center min-w-0">
 													<StatusChip status={item.connected ? "connected" : "unreachable"} />
 												</td>
-												<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
+												<td
+													role="cell"
+													class="flex-2 flex items-center justify-start min-w-0 gap-xs"
+												>
+													<Show when={outdated()}>
+														<FiAlertTriangle
+															class="text-warning shrink-0"
+															size={12}
+															aria-label="Update available"
+														/>
+													</Show>
+													<span
+														class={
+															versionUnknown()
+																? "italic text-grey text-sm"
+																: `font-log text-sm ${outdated() ? "text-warning" : "text-white"}`
+														}
+														title={
+															outdated()
+																? "Runner is running an older version"
+																: undefined
+														}
+													>
+														{versionUnknown() ? "unknown" : item.version}
+													</span>
+												</td>
+												<td role="cell" class="flex-2 flex items-center justify-start min-w-0">
 													<span class="text-grey">
 														{item.connected
 															? "-"

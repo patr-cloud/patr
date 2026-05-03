@@ -63,7 +63,11 @@ pub async fn get_mfa_secret(
 				);
 			})?,
 		Some(constants::TOTP_ISSUER.to_string()),
-		user_data.username,
+		user_data
+			.identity
+			.username()
+			.ok_or(ErrorType::Unauthorized)?
+			.to_string(),
 	)
 	.inspect_err(|err| {
 		error!(

@@ -37,6 +37,91 @@ pub async fn remove_runner_from_workspace(
 ) -> Result<AppResponse<DeleteRunnerRequest>, ErrorType> {
 	info!("Deleting runner `{}`", runner_id);
 
+	// Capture the SA id before we drop the runner row.
+	let sa_id = query!(
+		r#"
+		SELECT
+			service_account_id AS "service_account_id: Uuid"
+		FROM
+			runner
+		WHERE
+			id = $1;
+		"#,
+		runner_id as _,
+	)
+	.fetch_one(&mut **database)
+	.await?
+	.service_account_id;
+
+	// Per-runner role we auto-created in approve_runner_link, identified by
+	// its name convention. Manually-attached roles (if any) are not deleted —
+	// just unlinked when service_account_role rows go.
+	let runner_role_name = format!("runner-{runner_id}");
+	let role_row = query!(
+		r#"
+		SELECT
+			id AS "id: Uuid"
+		FROM
+			role
+		WHERE
+			name = $1;
+		"#,
+		runner_role_name,
+	)
+	.fetch_optional(&mut **database)
+	.await?;
+
+	if let Some(role_row) = &role_row {
+		query!(
+			r#"
+			DELETE FROM
+				role_resource_permissions_include
+			WHERE
+				role_id = $1;
+			"#,
+			role_row.id as _,
+		)
+		.execute(&mut **database)
+		.await?;
+
+		query!(
+			r#"
+			DELETE FROM
+				role_resource_permissions_exclude
+			WHERE
+				role_id = $1;
+			"#,
+			role_row.id as _,
+		)
+		.execute(&mut **database)
+		.await?;
+
+		query!(
+			r#"
+			DELETE FROM
+				role_resource_permissions_type
+			WHERE
+				role_id = $1;
+			"#,
+			role_row.id as _,
+		)
+		.execute(&mut **database)
+		.await?;
+	}
+
+	query!(
+		r#"
+		DELETE FROM
+			service_account_role
+		WHERE
+			service_account_id = $1;
+		"#,
+		sa_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	// Drop runner first to release its FK to service_account.
 	query!(
 		r#"
 		DELETE FROM
@@ -55,14 +140,43 @@ pub async fn remove_runner_from_workspace(
 
 	query!(
 		r#"
+		DELETE FROM
+			service_account
+		WHERE
+			id = $1;
+		"#,
+		sa_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	if let Some(role_row) = role_row {
+		query!(
+			r#"
+			DELETE FROM
+				role
+			WHERE
+				id = $1;
+			"#,
+			role_row.id as _,
+		)
+		.execute(&mut **database)
+		.await?;
+	}
+
+	// Soft-delete the underlying resource rows so audit logs / FKs to
+	// `resource` remain consistent (matches the existing pattern elsewhere).
+	query!(
+		r#"
 		UPDATE
 			resource
 		SET
 			deleted = NOW()
 		WHERE
-			id = $1;
+			id IN ($1, $2);
 		"#,
 		runner_id as _,
+		sa_id as _,
 	)
 	.execute(&mut **database)
 	.await?;

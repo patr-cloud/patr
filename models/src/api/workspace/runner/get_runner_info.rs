@@ -27,5 +27,6 @@ macros::declare_api_endpoint!(
 		/// The runner information
 		pub runner: WithId<Runner>,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

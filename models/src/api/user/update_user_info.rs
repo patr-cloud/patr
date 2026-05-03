@@ -4,7 +4,7 @@ macros::declare_api_endpoint!(
 	/// Set the information of the currently authenticated user.
 	UpdateUserInfo,
 	PATCH "/user",
-	api = false,
+	client_type = [WebDashboard],
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,
