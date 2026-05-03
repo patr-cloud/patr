@@ -32,7 +32,7 @@ pub async fn get_ingress_token_for_runner(
 	let runner = query!(
 		r#"
 		SELECT
-			*
+			cloudflare_tunnel_id
 		FROM
 			runner
 		WHERE

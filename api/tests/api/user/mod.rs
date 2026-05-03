@@ -2,8 +2,8 @@ use models::{ApiSuccessResponseBody, api::user::*, utils::Uuid};
 
 use crate::prelude::*;
 
-mod api_token;
-mod mfa;
+pub mod api_token;
+pub mod mfa;
 
 #[tokio::test]
 async fn get_user_info_works() {
@@ -256,6 +256,33 @@ async fn list_workspaces_after_create() {
 
 	assert_eq!(1, response.response.workspaces.len());
 	assert_eq!(workspace.id, response.response.workspaces[0].id);
+}
+
+#[tokio::test]
+async fn list_workspaces_multiple() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let ws1 = setup.create_test_workspace(&user.access_token).await;
+	let ws2 = setup.create_test_workspace(&user.access_token).await;
+	let ws3 = setup.create_test_workspace(&user.access_token).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListUserWorkspacesRequest>::builder()
+				.headers(ListUserWorkspacesRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListUserWorkspacesResponse>>();
+
+	assert_eq!(3, response.response.workspaces.len());
+	let ids: Vec<_> = response.response.workspaces.iter().map(|w| w.id).collect();
+	assert!(ids.contains(&ws1.id));
+	assert!(ids.contains(&ws2.id));
+	assert!(ids.contains(&ws3.id));
 }
 
 #[tokio::test]

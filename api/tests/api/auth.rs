@@ -1133,3 +1133,171 @@ async fn renew_access_token_expired() {
 		response.status_code()
 	);
 }
+
+#[tokio::test]
+async fn access_token_expiry_enforced() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	// Pre-check: the token works.
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.headers(GetUserInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetUserInfoResponse>>();
+
+	// Backdate the session's `web_login.token_expiry`. The JWT's own `exp`
+	// claim is signed so we can't tamper with it; the auth layer
+	// (`web_dashboard.rs:109`) re-checks the DB row, which is what kills
+	// the session here.
+	setup
+		.execute_sql(&format!(
+			"UPDATE web_login SET token_expiry = NOW() - INTERVAL '1 hour' \
+			 WHERE user_id = '{}'",
+			user.user_id
+		))
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.headers(GetUserInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"expired session should reject the access token, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn session_isolation() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user_a = setup.create_test_user().await;
+	let user_b = setup.create_test_user().await;
+
+	// Each token resolves to its own user — no cross-talk via shared session.
+	let a_info = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.headers(GetUserInfoRequestHeaders {
+					authorization: user_a.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetUserInfoResponse>>();
+
+	let b_info = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.headers(GetUserInfoRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetUserInfoResponse>>();
+
+	assert_eq!(user_a.user_id, a_info.response.basic_user_info.id);
+	assert_eq!(user_b.user_id, b_info.response.basic_user_info.id);
+	assert_ne!(
+		a_info.response.basic_user_info.id,
+		b_info.response.basic_user_info.id
+	);
+}
+
+#[tokio::test]
+async fn login_with_mfa_required() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let _secret = crate::api::user::mfa::activate_mfa_for_user(&setup, &user).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<LoginRequest>::builder()
+				.headers(LoginRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(LoginRequest {
+					user_id: user.username.clone(),
+					password: user.password.clone(),
+					mfa_otp: None,
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"login without MFA OTP for an MFA-active user should fail with MfaRequired"
+	);
+}
+
+#[tokio::test]
+async fn login_with_mfa_valid_otp() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let secret = crate::api::user::mfa::activate_mfa_for_user(&setup, &user).await;
+	let otp = setup.compute_totp(&secret);
+
+	let _ = setup
+		.make_web_dashboard_call(
+			ApiRequest::<LoginRequest>::builder()
+				.headers(LoginRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(LoginRequest {
+					user_id: user.username.clone(),
+					password: user.password.clone(),
+					mfa_otp: Some(otp),
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<LoginResponse>>();
+}
+
+#[tokio::test]
+async fn login_with_mfa_invalid_otp() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let _secret = crate::api::user::mfa::activate_mfa_for_user(&setup, &user).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<LoginRequest>::builder()
+				.headers(LoginRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(LoginRequest {
+					user_id: user.username.clone(),
+					password: user.password.clone(),
+					mfa_otp: Some("000000".to_string()),
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"login with wrong MFA OTP should fail with MfaOtpInvalid"
+	);
+}

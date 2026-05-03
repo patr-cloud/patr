@@ -2,13 +2,13 @@ use models::{ApiSuccessResponseBody, api::workspace::*, utils::Uuid};
 
 use crate::prelude::*;
 
-mod container_registry;
-mod deployment;
-mod domain;
-mod managed_url;
-mod rbac;
-mod runner;
-mod volume;
+pub mod container_registry;
+pub mod deployment;
+pub mod domain;
+pub mod managed_url;
+pub mod rbac;
+pub mod runner;
+pub mod volume;
 
 #[tokio::test]
 async fn create_workspace_works() {
@@ -67,6 +67,81 @@ async fn create_workspace_invalid_name() {
 	assert!(
 		response.status_code().is_client_error(),
 		"expected client error for invalid workspace name"
+	);
+}
+
+#[tokio::test]
+async fn create_workspace_name_too_short() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateWorkspaceRequest>::builder()
+				.headers(CreateWorkspaceRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateWorkspaceRequest {
+					name: "abc".to_string(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"workspace name shorter than 4 chars should be rejected"
+	);
+}
+
+#[tokio::test]
+async fn create_workspace_name_too_long() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateWorkspaceRequest>::builder()
+				.headers(CreateWorkspaceRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateWorkspaceRequest {
+					name: "a".repeat(256),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"workspace name longer than 255 chars should be rejected"
+	);
+}
+
+#[tokio::test]
+async fn create_workspace_name_special_chars() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateWorkspaceRequest>::builder()
+				.headers(CreateWorkspaceRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateWorkspaceRequest {
+					name: "weird/name@with#chars".to_string(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"workspace name with chars outside RESOURCE_NAME_REGEX should be rejected"
 	);
 }
 
@@ -188,6 +263,66 @@ async fn update_workspace_info_works() {
 		.json::<ApiSuccessResponseBody<GetWorkspaceInfoResponse>>();
 
 	assert_eq!(new_name, response.response.workspace.name);
+}
+
+#[tokio::test]
+async fn update_workspace_name_conflict() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace_a = setup.create_test_workspace(&user.access_token).await;
+	let workspace_b = setup.create_test_workspace(&user.access_token).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateWorkspaceInfoRequest>::builder()
+				.path(UpdateWorkspaceInfoPath {
+					workspace_id: workspace_b.id,
+				})
+				.headers(UpdateWorkspaceInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateWorkspaceInfoRequest {
+					name: Some(workspace_a.name.clone()),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"renaming to a taken name should fail"
+	);
+}
+
+#[tokio::test]
+async fn update_workspace_unauthorized() {
+	let setup = setup().await.expect("failed to setup test server");
+	let owner = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&owner.access_token).await;
+	let other_user = setup.create_test_user().await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateWorkspaceInfoRequest>::builder()
+				.path(UpdateWorkspaceInfoPath {
+					workspace_id: workspace.id,
+				})
+				.headers(UpdateWorkspaceInfoRequestHeaders {
+					authorization: other_user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateWorkspaceInfoRequest {
+					name: Some(random_name(8)),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"non-member should not be able to update workspace"
+	);
 }
 
 #[tokio::test]

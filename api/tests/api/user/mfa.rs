@@ -87,7 +87,7 @@ async fn mfa_unauthorized() {
 
 /// Helper: activate MFA for `user` using the secret currently stored in
 /// Redis. Returns the base32 secret so callers can compute later codes.
-async fn activate_mfa_for_user(setup: &TestSetup, user: &TestUser) -> String {
+pub async fn activate_mfa_for_user(setup: &TestSetup, user: &TestUser) -> String {
 	_ = setup
 		.make_web_dashboard_call(
 			ApiRequest::<GetMfaSecretRequest>::builder()

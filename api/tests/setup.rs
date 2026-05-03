@@ -47,7 +47,7 @@ use testcontainers_modules::{
 		ContainerAsync,
 		GenericImage,
 		ImageExt,
-		core::{IntoContainerPort, WaitFor},
+		core::{IntoContainerPort, WaitFor, wait::HttpWaitStrategy},
 		runners::AsyncRunner as _,
 	},
 };
@@ -72,6 +72,7 @@ pub struct TestSetup {
 	postgres_container: ContainerAsync<Postgres>,
 	redis_container: ContainerAsync<Redis>,
 	loki_container: ContainerAsync<GenericImage>,
+	mimir_container: ContainerAsync<GenericImage>,
 	cloudflare_mock: MockServer,
 	permission_ids: BTreeMap<String, Uuid>,
 }
@@ -456,6 +457,78 @@ limits_config:
 		.start()
 		.await?;
 
+	let mimir_config = r#"
+multitenancy_enabled: true
+target: all
+server:
+  http_listen_address: "0.0.0.0"
+  http_listen_port: 8080
+ingester:
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+    replication_factor: 1
+distributor:
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+ruler:
+  ring:
+    kvstore:
+      store: inmemory
+ruler_storage:
+  backend: filesystem
+  filesystem:
+    dir: /tmp/mimir/rules
+alertmanager:
+  data_dir: /tmp/mimir/am-data
+  external_url: http://localhost
+  sharding_ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+alertmanager_storage:
+  backend: filesystem
+  filesystem:
+    dir: /tmp/mimir/alertmanager
+blocks_storage:
+  backend: filesystem
+  filesystem:
+    dir: /tmp/mimir/blocks
+  bucket_store:
+    sync_dir: /tmp/mimir/tsdb-sync
+  tsdb:
+    dir: /tmp/mimir/tsdb
+compactor:
+  data_dir: /tmp/mimir/compactor
+  sharding_ring:
+    kvstore:
+      store: inmemory
+store_gateway:
+  sharding_ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+    replication_factor: 1
+"#;
+
+	let mimir_container = GenericImage::new("grafana/mimir", "2.13.0")
+		.with_exposed_port(8080.tcp())
+		.with_wait_for(WaitFor::http(
+			HttpWaitStrategy::new("/ready")
+				.with_port(8080.tcp())
+				.with_expected_status_code(200_u16),
+		))
+		.with_copy_to(
+			"/etc/mimir/test-config.yaml",
+			mimir_config.as_bytes().to_vec(),
+		)
+		.with_cmd(["-config.file=/etc/mimir/test-config.yaml"])
+		.start()
+		.await?;
+
 	let redis_container = Redis::default().with_tag("7").start().await?;
 
 	let redis = RedisConfig {
@@ -514,7 +587,11 @@ limits_config:
 				),
 			},
 			metrics: MetricsConfig {
-				endpoint: "".to_string(),
+				endpoint: format!(
+					"http://{}:{}",
+					mimir_container.get_host().await?,
+					mimir_container.get_host_port_ipv4(8080).await?
+				),
 				username: "".to_string(),
 				password: "".to_string(),
 			},
@@ -666,6 +743,7 @@ limits_config:
 		postgres_container,
 		redis_container,
 		loki_container,
+		mimir_container,
 		cloudflare_mock,
 		permission_ids,
 	})

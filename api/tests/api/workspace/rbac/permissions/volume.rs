@@ -91,7 +91,7 @@ async fn volume_include_grants_only_listed_resource() {
 
 	let mut perms = BTreeMap::new();
 	perms.insert(
-		setup.get_permission_id(Permission::Volume(VolumePermission::Delete)),
+		setup.get_permission_id(Permission::Volume(VolumePermission::View)),
 		include(&[volume1.id]),
 	);
 	let role = setup
@@ -154,7 +154,7 @@ async fn volume_exclude_denies_only_listed_resource() {
 
 	let mut perms = BTreeMap::new();
 	perms.insert(
-		setup.get_permission_id(Permission::Volume(VolumePermission::Delete)),
+		setup.get_permission_id(Permission::Volume(VolumePermission::View)),
 		exclude(&[volume2.id]),
 	);
 	let role = setup

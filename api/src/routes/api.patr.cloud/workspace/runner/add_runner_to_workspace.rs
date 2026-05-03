@@ -88,7 +88,11 @@ pub async fn add_runner_to_workspace(
 		tunnel_id,
 	)
 	.execute(&mut **database)
-	.await?;
+	.await
+	.map_err(|e| match e {
+		sqlx::Error::Database(dbe) if dbe.is_unique_violation() => ErrorType::ResourceAlreadyExists,
+		other => other.into(),
+	})?;
 
 	CloudflareClient::new(
 		Credentials::UserAuthToken {

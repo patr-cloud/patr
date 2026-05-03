@@ -26,9 +26,9 @@ Comprehensive list of missing test cases. Organized by module.
 - [x] `complete_sign_up_expired_otp` — OTP used after expiry window
 - [ ] `complete_sign_up_already_completed` — double-join attempt
 - [ ] `login_case_insensitive_username` — login with different casing
-- [ ] `login_with_mfa_required` — returns `MfaRequired` error when MFA active
-- [ ] `login_with_mfa_valid_otp` — full MFA login flow
-- [ ] `login_with_mfa_invalid_otp` — MFA OTP wrong → `MfaOtpInvalid`
+- [x] `login_with_mfa_required` — returns `MfaRequired` when MFA active and OTP omitted
+- [x] `login_with_mfa_valid_otp` — full MFA login flow (uses `compute_totp` helper from Round 1)
+- [x] `login_with_mfa_invalid_otp` — MFA OTP wrong → `MfaOtpInvalid`
 - [x] `renew_access_token_expired` — expired refresh token rejected
 - [x] `forgot_password_nonexistent_user` — Phase E: handler now returns silent 202 for nonexistent users.
 - [ ] `forgot_password_rate_limit` — repeated calls throttled
@@ -129,12 +129,12 @@ Comprehensive list of missing test cases. Organized by module.
 - [ ] `delete_workspace_with_deployments` — FK constraint blocks delete
 - [ ] `delete_workspace_with_volumes` — FK constraint blocks delete
 - [ ] `delete_workspace_with_domains` — FK constraint blocks delete
-- [ ] `create_workspace_name_too_short` — < 4 chars rejected (`RESOURCE_NAME_REGEX`)
-- [ ] `create_workspace_name_too_long` — > 255 chars rejected
-- [ ] `create_workspace_name_special_chars` — chars outside `[a-zA-Z0-9\-_ .]` rejected
-- [ ] `update_workspace_name_conflict` — rename to taken name → `WorkspaceNameAlreadyExists`
-- [ ] `update_workspace_unauthorized` — non-member cannot update
-- [ ] `list_user_workspaces_multiple` — user in multiple workspaces
+- [x] `create_workspace_name_too_short` — < 4 chars rejected (`RESOURCE_NAME_REGEX`)
+- [x] `create_workspace_name_too_long` — > 255 chars rejected
+- [x] `create_workspace_name_special_chars` — chars outside `[a-zA-Z0-9\-_ .]` rejected
+- [x] `update_workspace_name_conflict` — rename to taken name → `WorkspaceNameAlreadyExists`
+- [x] `update_workspace_unauthorized` — non-member cannot update
+- [x] `list_user_workspaces_multiple` — user in multiple workspaces (test lives in `user/mod.rs` since the endpoint is `/user/workspaces`)
 
 ---
 
@@ -142,20 +142,20 @@ Comprehensive list of missing test cases. Organized by module.
 
 ### Missing Tests
 
-- [ ] `create_deployment_duplicate_name` — same name in workspace → `ResourceAlreadyExists`
-- [ ] `create_deployment_invalid_machine_type` — nonexistent machine type
-- [ ] `create_deployment_with_volumes` — attach volumes on create
-- [ ] `create_deployment_with_env_vars` — environment variables
-- [ ] `create_deployment_with_ports` — port configuration
-- [ ] `update_deployment_name` — rename deployment
-- [ ] `update_deployment_machine_type` — change machine type
-- [ ] `update_deployment_image` — change container image (triggers deploy)
-- [ ] `start_deployment_already_running` — idempotent or error
-- [ ] `stop_deployment_already_stopped` — idempotent or error
-- [ ] `delete_deployment_while_running` — must stop first or cascades
-- [ ] `get_deployment_logs_empty` — no logs yet
-- [ ] `get_deployment_metric_empty` — no metrics yet
-- [ ] `deployment_cross_workspace` — deployment in workspace A not accessible from workspace B
+- [x] `create_deployment_duplicate_name` — same name in workspace → `ResourceAlreadyExists`
+- [ ] `create_deployment_invalid_machine_type` — DEFERRED: handler doesn't FK-check machine_type; would need a paired handler fix.
+- [x] `create_deployment_with_volumes` — attach volumes on create
+- [x] `create_deployment_with_env_vars` — environment variables
+- [x] `create_deployment_with_ports` — port configuration
+- [x] `update_deployment_name` — Round 2: added `update_deployment_name_persists` that verifies the rename via a follow-up GET (the existing `update_deployment_works` only asserts the call returned success).
+- [x] `update_deployment_machine_type` — change machine type
+- [ ] `update_deployment_image` — DROPPED: misnamed in TODOs.md; `UpdateDeploymentRequest` has no `image_tag`/`registry` field. Image changes happen via `revert_deployment` (deploy history), tracked separately under that section.
+- [x] `start_deployment_already_running` — REFRAMED: handler is idempotent (`start_deployment.rs:136-151` unconditionally sets status); added `start_deployment_idempotent`.
+- [x] `stop_deployment_already_stopped` — REFRAMED: same; added `stop_deployment_idempotent`.
+- [x] `delete_deployment_while_running` — Round 2: handler doesn't check status; test starts the deployment then deletes, asserts success.
+- [x] `get_deployment_logs_empty` — no logs yet (returns 200 with empty array)
+- [x] `get_deployment_metric_empty` — Round 2: added a Mimir testcontainer to `setup.rs` (`grafana/mimir:2.13.0`, monolithic in-memory config). Existing `get_deployment_metric_works` was tightened from "200 or 5xx" to "200".
+- [x] `deployment_cross_workspace` — deployment in workspace A not accessible from workspace B
 
 ### Deploy History
 
@@ -172,12 +172,12 @@ Comprehensive list of missing test cases. Organized by module.
 
 ### Missing Tests
 
-- [ ] `add_runner_duplicate_name` — same name → `ResourceAlreadyExists`
-- [ ] `add_runner_invalid_name` — name outside `RESOURCE_NAME_REGEX`
-- [ ] `runner_already_connected` — → `RunnerAlreadyConnected`
-- [ ] `runner_invalid_mode` — → `InvalidRunnerMode`
-- [ ] `get_ingress_token_nonexistent_runner` — → `ResourceDoesNotExist`
-- [ ] `runner_cross_workspace` — runner in workspace A not visible from B
+- [x] `add_runner_duplicate_name` — Round 2: paired handler fix in `add_runner_to_workspace.rs`. The `runner` insert wasn't catching unique violations (only the `resource` insert was) so duplicate names returned a 500.
+- [x] `add_runner_invalid_name` — name outside `RESOURCE_NAME_REGEX`
+- [ ] `runner_already_connected` — needs WebSocket connection state; deferred to a runner-WS test round.
+- [ ] `runner_invalid_mode` — needs WebSocket connection state; deferred.
+- [x] `get_ingress_token_nonexistent_runner` — → `ResourceDoesNotExist`
+- [x] `runner_cross_workspace` — runner in workspace A not visible from B
 
 ---
 
@@ -206,11 +206,11 @@ Comprehensive list of missing test cases. Organized by module.
 
 ### Edge Cases
 
-- [ ] `add_domain_not_root` — → `NotRootDomain`
-- [ ] `add_domain_not_icann` — → `NotIcannDomain`
-- [ ] `add_domain_duplicate` — → `ResourceAlreadyExists`
-- [ ] `delete_domain_in_use` — domain with managed URLs → `ResourceInUse`
-- [ ] `domain_cross_workspace` — domain in workspace A not visible from B
+- [x] `add_domain_not_root` — → `NotRootDomain` (subdomains rejected before insert)
+- [x] `add_domain_not_icann` — → `NotIcannDomain` (`.local` is in PSL private section)
+- [x] `add_domain_duplicate` — → `ResourceAlreadyExists`
+- [x] `delete_domain_in_use` — domain with attached managed URL → `ResourceInUse`
+- [x] `domain_cross_workspace` — domain in workspace A not reachable via workspace B's path
 
 ---
 
@@ -218,22 +218,22 @@ Comprehensive list of missing test cases. Organized by module.
 
 ### Missing URL Type Tests
 
-- [ ] `create_managed_url_proxy_deployment` — type `ProxyDeployment` with `deployment_id` + `port`
-- [ ] `create_managed_url_proxy_static_site` — type `ProxyStaticSite` with `static_site_id`
-- [ ] `create_managed_url_proxy_url` — type `ProxyUrl` with `url` + `http_only`
-- [ ] `create_managed_url_redirect` — type `Redirect` with `url` + `permanent_redirect` + `http_only`
-- [ ] `create_managed_url_redirect_permanent` — `permanent_redirect: true`
-- [ ] `create_managed_url_invalid_deployment_id` — nonexistent deployment
-- [ ] `create_managed_url_invalid_static_site_id` — nonexistent static site
-- [ ] `create_managed_url_unverified_domain` — domain not verified yet
+- [x] `create_managed_url_proxy_deployment` — Round 2: deployment must declare the port (FK `managed_url_fk_deployment_id_port`); test inlines a deployment with port 8080 exposed.
+- [ ] `create_managed_url_proxy_static_site` — DEFERRED: static-site handler is `todo!()`.
+- [x] `create_managed_url_proxy_url` — type `ProxyUrl` with `url` + `http_only`
+- [x] `create_managed_url_redirect` — covers both `permanent_redirect` true and false in one test
+- [x] `create_managed_url_redirect_permanent` — covered by `create_managed_url_redirect` (loops over both values)
+- [x] `create_managed_url_invalid_deployment_id` — nonexistent deployment → `WrongParameters`
+- [ ] `create_managed_url_invalid_static_site_id` — DEFERRED: static-site handler is `todo!()`.
+- [x] `create_managed_url_unverified_domain` — `DomainNotVerified` (`create_managed_url.rs:74-76`)
 
 ### Edge Cases
 
-- [ ] `update_managed_url_change_type` — switch from proxy to redirect
-- [ ] `get_managed_url_info` — no GET single endpoint exists; verify list returns all fields
-- [ ] `delete_managed_url_nonexistent` — → `ResourceDoesNotExist`
-- [ ] `verify_configuration_not_configured` — misconfigured URL
-- [ ] `managed_url_cross_workspace` — URL in workspace A not visible from B
+- [ ] `update_managed_url_change_type` — switch from proxy to redirect (deferred to a later round)
+- [ ] `get_managed_url_info` — no GET single endpoint exists; verify list returns all fields (later)
+- [x] `delete_managed_url_nonexistent` — → `ResourceDoesNotExist`
+- [ ] `verify_configuration_not_configured` — misconfigured URL (later)
+- [x] `managed_url_cross_workspace` — URL in workspace A not reachable via workspace B's path
 
 ---
 
@@ -257,9 +257,9 @@ Comprehensive list of missing test cases. Organized by module.
 
 ### Edge Cases
 
-- [ ] `create_repository_invalid_name` — name outside `RESOURCE_NAME_REGEX`
-- [ ] `delete_repository_with_images` — repository not empty
-- [ ] `container_registry_cross_workspace` — repo in workspace A not visible from B
+- [x] `create_repository_invalid_name` — name outside `RESOURCE_NAME_REGEX`
+- [x] `delete_repository_with_images` — REFRAMED: handler explicitly cascades manifests/tags on delete (`delete_repository.rs:56-79`), so "not empty" doesn't block. The actual `ResourceInUse` path is when a deployment references the repo. Round 2 added `delete_repository_in_use_by_deployment` to cover that.
+- [x] `container_registry_cross_workspace` — repo in workspace A not reachable via workspace B's path
 
 ---
 
@@ -267,13 +267,13 @@ Comprehensive list of missing test cases. Organized by module.
 
 ### Missing Tests
 
-- [ ] `create_volume_name_too_short` — < 4 chars
-- [ ] `create_volume_name_too_long` — > 255 chars
-- [ ] `update_volume_increase_size` — size increase accepted
-- [ ] `update_volume_decrease_size` — → `CannotReduceVolumeSize`
-- [ ] `delete_volume_attached_to_deployment` — → `ResourceInUse`
-- [ ] `create_volume_exceeds_limit` — → `CannotAddNewVolume`
-- [ ] `volume_cross_workspace` — volume in workspace A not visible from B
+- [x] `create_volume_name_too_short` — < 4 chars
+- [x] `create_volume_name_too_long` — > 255 chars
+- [x] `update_volume_increase_size` — size increase accepted
+- [x] `update_volume_decrease_size` — → `CannotReduceVolumeSize`
+- [x] `delete_volume_attached_to_deployment` — → `ResourceInUse`
+- [ ] `create_volume_exceeds_limit` — DROPPED: handler `create_volume.rs` doesn't enforce a per-workspace volume cap.
+- [x] `volume_cross_workspace` — volume in workspace A not visible from B
 
 ---
 
@@ -338,7 +338,7 @@ Comprehensive list of missing test cases. Organized by module.
 ### Missing Tests
 
 - [x] `create_role_duplicate_name` — → `RoleAlreadyExists`
-- [ ] `create_role_invalid_name` — name outside `RESOURCE_NAME_REGEX`
+- [x] `create_role_invalid_name` — name outside `RESOURCE_NAME_REGEX`
 - [x] `delete_role_in_use` — role assigned to users → `RoleInUse`
 - [x] `delete_role_nonexistent` — Phase E: handler now checks rowcount → `RoleDoesNotExist`
 - [x] `update_role_nonexistent` — Phase E: same
@@ -348,8 +348,8 @@ Comprehensive list of missing test cases. Organized by module.
 - [x] `update_user_roles_nonexistent_role` — Phase E: handler maps FK violation on role_id → `RoleDoesNotExist`
 - [x] `remove_user_from_workspace_not_member` — Phase E: handler now returns `UserNotFound` when 0 rows removed
 - [ ] `remove_self_from_workspace` — super admin removing self
-- [ ] `add_user_to_workspace_already_member` — duplicate add
-- [ ] `list_users_for_role_empty` — no users assigned
+- [x] `add_user_to_workspace_already_member` — REFRAMED: there's no dedicated `add_user` endpoint. Membership is via `update_user_roles_in_workspace`. Round 2 added `update_user_roles_idempotent` which calls it twice with the same role and asserts no error.
+- [x] `list_users_for_role_empty` — already covered by existing `list_users_for_role_works` (asserts `users.is_empty()` for a fresh role).
 
 ---
 
@@ -395,10 +395,10 @@ Comprehensive list of missing test cases. Organized by module.
 
 ### Token & Session Handling
 
-- [ ] `access_token_expiry_enforced` — expired access token rejected
+- [x] `access_token_expiry_enforced` — Round 2: backdates `web_login.token_expiry` via `execute_sql`. The JWT `exp` claim is signed and unforgeable, but the auth layer (`web_dashboard.rs:109`) re-checks the DB row, which is what we kill.
 - [ ] `refresh_token_single_use` — refresh token consumed after renewal
 - [ ] `logout_invalidates_refresh_token` — currently `#[ignore]`; unblock
-- [ ] `session_isolation` — user A's token cannot access user B's data
+- [x] `session_isolation` — two users get distinct identities back from `/user`; tokens don't cross-resolve.
 
 ### System Endpoints
 

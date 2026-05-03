@@ -226,6 +226,125 @@ async fn remove_runner_nonexistent() {
 }
 
 #[tokio::test]
+async fn add_runner_duplicate_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
+				.path(AddRunnerToWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.headers(AddRunnerToWorkspaceRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(AddRunnerToWorkspaceRequest {
+					name: runner.name.clone(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"adding a runner with a taken name should fail"
+	);
+}
+
+#[tokio::test]
+async fn add_runner_invalid_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
+				.path(AddRunnerToWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.headers(AddRunnerToWorkspaceRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(AddRunnerToWorkspaceRequest {
+					name: "!!!".to_string(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"runner name failing RESOURCE_NAME_REGEX should be rejected"
+	);
+}
+
+#[tokio::test]
+async fn get_ingress_token_nonexistent_runner() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetIngressTokenForRunnerRequest>::builder()
+				.path(GetIngressTokenForRunnerPath {
+					workspace_id: workspace.id,
+					runner_id: Uuid::nil(),
+				})
+				.headers(GetIngressTokenForRunnerRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"ingress token for nonexistent runner should fail"
+	);
+}
+
+#[tokio::test]
+async fn runner_cross_workspace() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace_a = setup.create_test_workspace(&user.access_token).await;
+	let workspace_b = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace_a.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetRunnerInfoRequest>::builder()
+				.path(GetRunnerInfoPath {
+					workspace_id: workspace_b.id,
+					runner_id: runner.id,
+				})
+				.headers(GetRunnerInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"runner in workspace A should not be accessible from workspace B"
+	);
+}
+
+#[tokio::test]
 async fn runner_unauthorized() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;

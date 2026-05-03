@@ -86,7 +86,7 @@ axum-test              = { workspace = true, features = ["default"] }
 flate2                 = { workspace = true, features = ["rust_backend"] }
 ipnetwork              = { workspace = true, features = ["default"] }
 tar                    = { workspace = true, features = [] }
-testcontainers-modules = { workspace = true, features = ["default", "postgres", "minio", "redis"] }
+testcontainers-modules = { workspace = true, features = ["default", "postgres", "minio", "redis", "http_wait"] }
 wiremock               = { workspace = true, features = [] }
 
 [[test]]

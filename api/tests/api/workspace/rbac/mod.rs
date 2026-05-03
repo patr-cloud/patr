@@ -8,7 +8,7 @@ use models::{
 
 use crate::prelude::*;
 
-mod permissions;
+pub mod permissions;
 
 #[tokio::test]
 async fn list_all_permissions_works() {
@@ -753,6 +753,79 @@ async fn update_user_roles_nonexistent_role() {
 		"expected RoleDoesNotExist for nonexistent role, got {}",
 		response.status_code()
 	);
+}
+
+#[tokio::test]
+async fn create_role_invalid_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let mut perms = BTreeMap::new();
+	perms.insert(
+		setup.get_permission_id(Permission::ViewRoles),
+		ResourcePermissionType::Include(Default::default()),
+	);
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateNewRoleRequest>::builder()
+				.path(CreateNewRolePath {
+					workspace_id: workspace.id,
+				})
+				.headers(CreateNewRoleRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateNewRoleRequest {
+					name: "!!!".to_string(),
+					description: "test".to_string(),
+					permissions: perms,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"role name failing RESOURCE_NAME_REGEX should be rejected"
+	);
+}
+
+#[tokio::test]
+async fn update_user_roles_idempotent() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.await;
+
+	// Call update_user_roles a second time with the same role — handler should
+	// treat membership idempotently (replaces roles, no error).
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateUserRolesInWorkspaceRequest>::builder()
+				.path(UpdateUserRolesInWorkspacePath {
+					workspace_id: workspace.id,
+					user_id: user_b.user_id,
+				})
+				.headers(UpdateUserRolesInWorkspaceRequestHeaders {
+					authorization: admin.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateUserRolesInWorkspaceRequest {
+					roles: vec![role.id],
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(
+			UpdateUserRolesInWorkspaceResponse,
+		));
 }
 
 #[tokio::test]
