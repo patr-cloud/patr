@@ -338,7 +338,10 @@ pub(crate) async fn upsert(
 	crate::utils::update_config(
 		docker,
 		&format!("ingress-{}", id),
-		HashMap::from([(String::from("patr.deploymentId"), id.to_string())]),
+		HashMap::from([
+			(String::from("managed-by"), String::from("patr")),
+			(String::from("patr.deploymentId"), id.to_string()),
+		]),
 		config.to_string(),
 	)
 	.await?;
