@@ -37,6 +37,16 @@
         "ordinal": 6,
         "name": "deleted",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "version",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "service_account_id",
+        "type_info": "Uuid"
       }
     ],
     "parameters": {

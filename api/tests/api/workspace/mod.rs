@@ -446,3 +446,39 @@ async fn is_name_available_false() {
 		"taken name should not be available"
 	);
 }
+
+#[tokio::test]
+async fn concurrent_create_same_resource() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	setup.clear_rate_limits().await;
+
+	let name = random_name(8);
+
+	// Fire 5 concurrent create_workspace calls with the same name. Exactly
+	// one should succeed; the rest should be rejected by the unique
+	// constraint on workspace.name.
+	let req = || {
+		let body = CreateWorkspaceRequest { name: name.clone() };
+		setup.make_web_dashboard_call(
+			ApiRequest::<CreateWorkspaceRequest>::builder()
+				.headers(CreateWorkspaceRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(body)
+				.build(),
+		)
+	};
+	let responses =
+		futures::future::join_all([req(), req(), req(), req(), req()]).await;
+	let statuses: Vec<_> = responses.iter().map(|r| r.status_code()).collect();
+	let successes = statuses.iter().filter(|s| s.is_success()).count();
+	let failures = statuses.iter().filter(|s| s.is_client_error()).count();
+
+	assert_eq!(
+		(successes, failures),
+		(1, 4),
+		"expected exactly 1 success and 4 client errors from 5 concurrent same-name create_workspace; got {statuses:?}"
+	);
+}

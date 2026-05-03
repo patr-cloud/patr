@@ -24,14 +24,14 @@ Comprehensive list of missing test cases. Organized by module.
 
 - [x] `create_account_duplicate_email` — same email, different username
 - [x] `complete_sign_up_expired_otp` — OTP used after expiry window
-- [ ] `complete_sign_up_already_completed` — double-join attempt
+- [x] `complete_sign_up_already_completed` — Round 3: second call returns `UserNotFound` (user_to_sign_up row deleted on success).
 - [ ] `login_case_insensitive_username` — login with different casing
 - [x] `login_with_mfa_required` — returns `MfaRequired` when MFA active and OTP omitted
 - [x] `login_with_mfa_valid_otp` — full MFA login flow (uses `compute_totp` helper from Round 1)
 - [x] `login_with_mfa_invalid_otp` — MFA OTP wrong → `MfaOtpInvalid`
 - [x] `renew_access_token_expired` — expired refresh token rejected
 - [x] `forgot_password_nonexistent_user` — Phase E: handler now returns silent 202 for nonexistent users.
-- [ ] `forgot_password_rate_limit` — repeated calls throttled
+- [x] `forgot_password_rate_limit` — Round 3: 25 sequential calls with nonexistent user_ids (hits silent-202 path before Argon2 so they fit in the 1-second window) → at least one 429.
 - [x] `reset_password_expired_otp` — OTP past expiry
 - [x] `reset_password_new_password_invalid` — new password fails validation
 - [x] `resend_otp_nonexistent_user` — graceful handling
@@ -82,7 +82,8 @@ Comprehensive list of missing test cases. Organized by module.
 
 ### Edge Cases
 
-- [ ] `update_user_info_empty_fields` — PATCH with no changes
+- [x] `update_user_info_empty_fields` — Round 3: PATCH with all-None succeeds and leaves fields unchanged (handler uses COALESCE).
+- [x] `update_user_info_first_name_persists` — Round 3: PATCH first_name, follow-up GET confirms the change while last_name is unchanged.
 - [x] `change_password_same_as_current` — Phase E: handler now rejects with `InvalidPassword` when new == current.
 - [x] `change_password_new_invalid` — new password fails validation
 - [x] `search_for_user_partial_match` — substring matching behavior
@@ -159,12 +160,12 @@ Comprehensive list of missing test cases. Organized by module.
 
 ### Deploy History
 
-- [ ] `delete_deploy_history_works` — DELETE `.../deploy-history/{digest}`
-- [ ] `delete_deploy_history_nonexistent` — invalid digest → `ResourceDoesNotExist`
-- [ ] `revert_deployment_works` — POST `.../deploy-history/{digest}/revert`
-- [ ] `revert_deployment_nonexistent_digest` — bad digest
-- [ ] `revert_deployment_to_current` — revert to already-active image
-- [ ] `list_deploy_history_after_multiple_deploys` — ordered correctly
+- [x] `delete_deploy_history_works` — Round 3: seed via `execute_sql`, delete by digest, verify gone via list.
+- [x] `delete_deploy_history_nonexistent` — invalid digest → `ResourceDoesNotExist`
+- [x] `revert_deployment_works` — POST `.../deploy-history/{digest}/revert`
+- [x] `revert_deployment_nonexistent_digest` — bad digest → `ResourceDoesNotExist`
+- [x] `revert_deployment_to_current` — handler unconditionally re-applies the digest; no-op success.
+- [x] `list_deploy_history_after_multiple_deploys` — ordered by `created DESC`. Also tightened the existing `list_deploy_history_empty` from "200 or 5xx" to "200 with empty deploys".
 
 ---
 
@@ -229,10 +230,10 @@ Comprehensive list of missing test cases. Organized by module.
 
 ### Edge Cases
 
-- [ ] `update_managed_url_change_type` — switch from proxy to redirect (deferred to a later round)
-- [ ] `get_managed_url_info` — no GET single endpoint exists; verify list returns all fields (later)
+- [x] `update_managed_url_change_type` — Round 3: covered by `update_managed_url_change_redirect_to_proxy_url` and `update_managed_url_change_proxy_url_to_redirect`.
+- [x] `get_managed_url_info` — Round 3: `get_managed_url_info_via_list` verifies the list endpoint returns sub_domain, domain_id, path, and full url_type-specific fields.
 - [x] `delete_managed_url_nonexistent` — → `ResourceDoesNotExist`
-- [ ] `verify_configuration_not_configured` — misconfigured URL (later)
+- [x] `verify_configuration_not_configured` — Round 3: added a high-priority wiremock route in setup.rs that returns `status: "pending"` for custom hostname id `pending-hostname-id`. Test re-points the managed_url_custom_hostname row at that id, calls verify, asserts `configured = false`.
 - [x] `managed_url_cross_workspace` — URL in workspace A not reachable via workspace B's path
 
 ---
@@ -241,19 +242,19 @@ Comprehensive list of missing test cases. Organized by module.
 
 ### Missing Endpoint Tests
 
-- [ ] `get_manifest_details_works` — GET `.../manifest/{digest_or_tag}`
-- [ ] `get_manifest_details_nonexistent` — → `ResourceDoesNotExist`
-- [ ] `get_exposed_ports_works` — GET `.../manifest/{digest_or_tag}/exposed-ports`
-- [ ] `get_exposed_ports_no_ports` — image with no EXPOSE
-- [ ] `delete_manifest_works` — DELETE `.../manifest/{digest_or_tag}`
-- [ ] `delete_manifest_nonexistent` — → `ResourceDoesNotExist`
+- [x] `get_manifest_details_works` — Round 3: paired model fix in `get_repository_manifest_details.rs` (added `#[serde(default)]` to `referenced_manifests`; round-tripping was broken).
+- [x] `get_manifest_details_nonexistent` — → `ResourceDoesNotExist`
+- [x] `get_exposed_ports_works` — Round 3: paired handler fix in `get_exposed_ports.rs`. Was parsing the OCI config blob as `Config` (the inner runtime config) instead of `ImageConfiguration`; now drills into `.config().exposed_ports()` and parses `port/tcp` form.
+- [x] `get_exposed_ports_no_ports` — image with no EXPOSE
+- [x] `delete_manifest_works` — DELETE `.../manifest/{digest_or_tag}`
+- [x] `delete_manifest_nonexistent` — → `ResourceDoesNotExist`
 
 ### Push/Pull Flow
 
 - [ ] `push_image_and_list_tags` — push via Docker, verify tags appear
 - [ ] `push_image_and_list_manifests` — push via Docker, verify manifests appear
 - [ ] `push_multiple_tags` — same image, multiple tags
-- [ ] `delete_tag_in_use` — tag referenced by deployment
+- [x] `delete_tag_in_use` — Round 3: REFRAMED as `delete_manifest_in_use_by_deployment` (the `delete_repository_manifest` endpoint is the only delete path here). Paired handler fix added an in-use check that refuses delete with `ResourceInUse` when any live deployment in the workspace references a tag pointing at the manifest.
 
 ### Edge Cases
 
@@ -389,14 +390,14 @@ Comprehensive list of missing test cases. Organized by module.
 
 ### Concurrency & Rate Limiting
 
-- [ ] `concurrent_create_same_resource` — race condition on unique names
-- [ ] `concurrent_login_attempts` — multiple simultaneous logins
-- [ ] `concurrent_token_renewal` — parallel refresh token usage
+- [x] `concurrent_create_same_resource` — Round 3: paired handler fix in `create_workspace.rs`. The workspace INSERT didn't map unique violations (only the resource INSERT did) so concurrent same-name calls leaked some 500s. Fixed → `WorkspaceNameAlreadyExists`. 5 concurrent → 1 success, 4 client errors.
+- [ ] `concurrent_login_attempts` — DROPPED: login is naturally idempotent; unclear what to assert.
+- [x] `concurrent_token_renewal` — Round 3: paired handler fix in `renew_access_token.rs`. Added `SELECT ... FOR UPDATE` on the `web_login` row so verify+rotate is atomic. Without this, two concurrent renews both verified the same hash before either rotated, defeating single-use. Test now: 2 concurrent renews → 1 success + 1 client error.
 
 ### Token & Session Handling
 
 - [x] `access_token_expiry_enforced` — Round 2: backdates `web_login.token_expiry` via `execute_sql`. The JWT `exp` claim is signed and unforgeable, but the auth layer (`web_dashboard.rs:109`) re-checks the DB row, which is what we kill.
-- [ ] `refresh_token_single_use` — refresh token consumed after renewal
+- [x] `refresh_token_single_use` — Round 3: paired handler change in `renew_access_token.rs` rotates the refresh token on every call (generates new token, replaces hashed value, returns the new token in the response). Frontend updated in `frontend/src/utils/http-request.ts` to capture the new refresh token. Test asserts old token is rejected after first renew while new token works.
 - [ ] `logout_invalidates_refresh_token` — currently `#[ignore]`; unblock
 - [x] `session_isolation` — two users get distinct identities back from `/user`; tokens don't cross-resolve.
 
@@ -406,8 +407,8 @@ Comprehensive list of missing test cases. Organized by module.
 
 ### Turnstile / Bot Protection
 
-- [ ] `turnstile_verification_failed` — → `TurnstileVerificationFailed`
-- [ ] `turnstile_action_mismatch` — → `TurnstileVerificationActionMismatch`
+- [ ] `turnstile_verification_failed` — Round 3: BLOCKED. Test setup uses Cloudflare's always-pass test SECRET (`1x...AA`), so any client token validates regardless. Proper test needs either a separate "always-fail" server secret or a refactor of `validate_turnstile_token` to take a configurable URL we can wiremock.
+- [ ] `turnstile_action_mismatch` — DROPPED: Cloudflare test tokens don't expose action-mismatch as documented behaviour.
 
 ---
 

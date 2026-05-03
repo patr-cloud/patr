@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE web_login SET refresh_token = $1 WHERE login_id = $2;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "119fcd8f19cd461f611eb9c10a7ab760f3b1249b376ce7cc0a46972f07553efc"
+}

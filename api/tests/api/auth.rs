@@ -1301,3 +1301,196 @@ async fn login_with_mfa_invalid_otp() {
 		"login with wrong MFA OTP should fail with MfaOtpInvalid"
 	);
 }
+
+#[tokio::test]
+async fn forgot_password_rate_limit() {
+	let setup = setup().await.expect("failed to setup test server");
+	setup.clear_rate_limits().await;
+
+	// Per-IP unauth bucket is 20/sec. Use unknown user_ids — the handler
+	// returns a silent 202 without doing the Argon2 work, so 25 calls land
+	// well inside a single 1-second window. Rate limit should still kick
+	// in on the 21st+.
+	let mut throttled_at: Option<usize> = None;
+	for i in 0..25 {
+		let resp = setup
+			.make_web_dashboard_call(
+				ApiRequest::<ForgotPasswordRequest>::builder()
+					.headers(ForgotPasswordRequestHeaders {
+						user_agent: TEST_USER_AGENT,
+					})
+					.body(ForgotPasswordRequest {
+						user_id: format!("nonexistent-{}", i),
+						preferred_recovery_option: PreferredRecoveryOption::RecoveryEmail,
+					})
+					.build(),
+			)
+			.await;
+		if resp.status_code() == StatusCode::TOO_MANY_REQUESTS {
+			throttled_at = Some(i);
+			break;
+		}
+	}
+
+	// Reset the bucket so this test doesn't pollute subsequent tests sharing
+	// containers.
+	setup.clear_rate_limits().await;
+
+	assert!(
+		throttled_at.is_some(),
+		"expected at least one 429 from 25 sequential forgot_password calls"
+	);
+}
+
+#[tokio::test]
+async fn complete_sign_up_already_completed() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	let username = random_name(8);
+	let password = random_password();
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateAccountRequest>::builder()
+				.headers(CreateAccountRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateAccountRequest {
+					username: username.clone(),
+					password,
+					first_name: "Test".to_string(),
+					last_name: "User".to_string(),
+					recovery_method: RecoveryMethod::Email {
+						recovery_email: format!("{}@example.com", &username),
+					},
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(CreateAccountResponse));
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<CompleteSignUpRequest>::builder()
+				.headers(CompleteSignUpRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CompleteSignUpRequest {
+					username: username.clone(),
+					verification_token: "000000".to_string(),
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<CompleteSignUpResponse>>();
+
+	// Second complete-sign-up call with the same payload: the user-to-sign-up
+	// row was deleted on first success, so the handler returns UserNotFound.
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CompleteSignUpRequest>::builder()
+				.headers(CompleteSignUpRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CompleteSignUpRequest {
+					username,
+					verification_token: "000000".to_string(),
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"second complete-sign-up should fail (user-to-sign-up row deleted on first success)"
+	);
+}
+
+#[tokio::test]
+async fn concurrent_token_renewal() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	setup.clear_rate_limits().await;
+
+	// Fire two concurrent renews using the same refresh token. With single-use
+	// rotation, exactly one should succeed and one should fail.
+	let req = || {
+		setup.make_web_dashboard_call(
+			ApiRequest::<RenewAccessTokenRequest>::builder()
+				.headers(RenewAccessTokenRequestHeaders {
+					refresh_token: user.refresh_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+	};
+	let (a, b) = tokio::join!(req(), req());
+	let statuses = [a.status_code(), b.status_code()];
+	let successes = statuses.iter().filter(|s| s.is_success()).count();
+	let failures = statuses.iter().filter(|s| s.is_client_error()).count();
+
+	assert_eq!(
+		(successes, failures),
+		(1, 1),
+		"with single-use refresh, exactly one of two concurrent renews should succeed; got {statuses:?}"
+	);
+}
+
+#[tokio::test]
+async fn refresh_token_single_use() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let original_refresh = user.refresh_token.clone();
+
+	// First renew: should succeed and return a new refresh token.
+	let renewed = setup
+		.make_web_dashboard_call(
+			ApiRequest::<RenewAccessTokenRequest>::builder()
+				.headers(RenewAccessTokenRequestHeaders {
+					refresh_token: original_refresh.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<RenewAccessTokenResponse>>();
+
+	assert_ne!(
+		renewed.response.refresh_token,
+		original_refresh.0.token(),
+		"renew should return a fresh refresh token"
+	);
+
+	// Second renew with the OLD refresh token must fail.
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<RenewAccessTokenRequest>::builder()
+				.headers(RenewAccessTokenRequestHeaders {
+					refresh_token: original_refresh,
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"second renew using the old refresh token should be rejected"
+	);
+
+	// And the new refresh token should still work.
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<RenewAccessTokenRequest>::builder()
+				.headers(RenewAccessTokenRequestHeaders {
+					refresh_token: BearerToken::from_str(&renewed.response.refresh_token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<RenewAccessTokenResponse>>();
+}

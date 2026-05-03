@@ -1,6 +1,13 @@
 use std::ops::Add;
 
-use argon2::{Algorithm, PasswordHash, PasswordVerifier, Version};
+use argon2::{
+	Algorithm,
+	PasswordHash,
+	PasswordHasher,
+	PasswordVerifier,
+	Version,
+	password_hash::generate_salt,
+};
 use axum::http::StatusCode;
 use jsonwebtoken::EncodingKey;
 use models::api::auth::*;
@@ -44,6 +51,9 @@ pub async fn renew_access_token(
 
 	let now = OffsetDateTime::now_utc();
 
+	// Lock the web_login row so concurrent renews are serialized — single-use
+	// rotation requires verify+update to be atomic, otherwise both callers
+	// pass verification before either updates the hash.
 	let row = query!(
 		r#"
 		SELECT
@@ -52,7 +62,8 @@ pub async fn renew_access_token(
 		FROM
 			web_login
 		WHERE
-			login_id = $1;
+			login_id = $1
+		FOR UPDATE;
 		"#,
 		login_id as _,
 	)
@@ -92,6 +103,43 @@ pub async fn renew_access_token(
 		return Err(ErrorType::MalformedRefreshToken);
 	}
 
+	// Rotate the refresh token. The previous one is invalidated by replacing
+	// its hash, so a leaked or stale token can be used at most once.
+	let new_refresh_token = Uuid::new_v4().to_string();
+	let hashed_new_refresh_token = argon2::Argon2::new_with_secret(
+		state.config.password_pepper.as_ref(),
+		Algorithm::Argon2id,
+		Version::V0x13,
+		constants::HASHING_PARAMS,
+	)
+	.inspect_err(|err| {
+		error!("Error creating Argon2: `{}`", err);
+	})
+	.map_err(ErrorType::server_error)?
+	.hash_password_with_salt(new_refresh_token.as_bytes(), &generate_salt())
+	.inspect_err(|err| {
+		error!("Error hashing refresh token: `{}`", err);
+	})
+	.map_err(ErrorType::server_error)?
+	.to_string();
+
+	query!(
+		r#"
+		UPDATE
+			web_login
+		SET
+			refresh_token = $1
+		WHERE
+			login_id = $2;
+		"#,
+		hashed_new_refresh_token,
+		login_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	let new_refresh_token = format!("{login_id}.{new_refresh_token}");
+
 	let access_token = AccessTokenData {
 		iss: constants::JWT_ISSUER.to_string(),
 		sub: login_id,
@@ -114,7 +162,10 @@ pub async fn renew_access_token(
 	trace!("Access token generated");
 
 	AppResponse::builder()
-		.body(RenewAccessTokenResponse { access_token })
+		.body(RenewAccessTokenResponse {
+			access_token,
+			refresh_token: new_refresh_token,
+		})
 		.headers(())
 		.status_code(StatusCode::ACCEPTED)
 		.build()

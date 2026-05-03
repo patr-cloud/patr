@@ -174,6 +174,39 @@ impl TestSetup {
 		req.json(&request.body).await
 	}
 
+	/// Same as [`make_web_dashboard_call`] but pins `X-Forwarded-For` to a
+	/// fixed IP. Used by tests that exercise IP-keyed behaviour on
+	/// web-dashboard-only endpoints (like the auth flow's per-IP rate
+	/// limits).
+	pub async fn make_web_dashboard_call_from_ip<E>(
+		&self,
+		request: ApiRequest<E>,
+		client_ip: std::net::IpAddr,
+	) -> TestResponse
+	where
+		E: ApiEndpoint,
+		E::RequestBody: Serialize,
+		E::RequestHeaders: Headers,
+		E::RequestPath: std::fmt::Display,
+		E::RequestQuery: Serialize,
+	{
+		let path_str = request.path.to_string();
+		let query_str = serde_qs::to_string(&request.query).unwrap_or_default();
+		let full_path = if query_str.is_empty() {
+			path_str
+		} else {
+			format!("{}?{}", path_str, query_str)
+		};
+
+		let mut req = self.web.method(E::METHOD, &full_path);
+		req = req.add_header("X-Forwarded-For", client_ip.to_string());
+		let header_map = request.headers.to_header_map();
+		for (name, value) in header_map.iter() {
+			req = req.add_header(name.clone(), value.to_str().unwrap());
+		}
+		req.json(&request.body).await
+	}
+
 	/// Make a typed registry call using `RegistryUnprocessedApiRequest<E>`.
 	///
 	/// All endpoint-specific headers (including `authorization`) are provided
@@ -781,6 +814,29 @@ async fn mount_cloudflare_mocks(server: &MockServer) {
 		.await;
 
 	// PATCH /zones/*/custom_hostnames/* — EditCustomHostname
+	// Specific override: any custom hostname id ending in `pending-hostname-id`
+	// reports `status: "pending"` so tests can exercise the not-configured path.
+	// Mounted with higher priority (lower numeric value) than the generic
+	// PATCH below so this match wins for the specific id.
+	Mock::given(method("PATCH"))
+		.and(path_regex(
+			r"^/client/v4/zones/[^/]+/custom_hostnames/pending-hostname-id$",
+		))
+		.respond_with(cf_success(serde_json::json!({
+			"id": "pending-hostname-id",
+			"hostname": "example.com",
+			"ssl": {
+				"status": "pending_validation",
+				"method": "txt",
+				"type": "dv",
+				"validation_records": []
+			},
+			"status": "pending"
+		})))
+		.with_priority(1)
+		.mount(server)
+		.await;
+
 	Mock::given(method("PATCH"))
 		.and(path_regex(
 			r"^/client/v4/zones/[^/]+/custom_hostnames/[^/]+$",

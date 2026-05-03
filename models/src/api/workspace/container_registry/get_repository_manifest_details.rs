@@ -30,7 +30,7 @@ macros::declare_api_endpoint!(
 		#[serde(flatten)]
 		pub manifest_details: ContainerRepositoryManifestInfo,
 		/// The sub-manifests referenced by this manifest, if it's an index manifest. This field will be empty for image manifests.
-		#[serde(skip_serializing_if = "Vec::is_empty")]
+		#[serde(default, skip_serializing_if = "Vec::is_empty")]
 		pub referenced_manifests: Vec<ContainerRepositoryManifestInfo>,
 	},
 	audit_log = NoAuditLogger,

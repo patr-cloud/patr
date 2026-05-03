@@ -259,6 +259,81 @@ async fn list_workspaces_after_create() {
 }
 
 #[tokio::test]
+async fn update_user_info_first_name_persists() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateUserInfoRequest>::builder()
+				.headers(UpdateUserInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateUserInfoRequest {
+					first_name: Some("Alice".to_string()),
+					last_name: None,
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateUserInfoResponse));
+
+	let info = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.headers(GetUserInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetUserInfoResponse>>();
+
+	assert_eq!("Alice", info.response.basic_user_info.first_name);
+	// Last name unchanged.
+	assert_eq!("User", info.response.basic_user_info.last_name);
+}
+
+#[tokio::test]
+async fn update_user_info_empty_fields() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateUserInfoRequest>::builder()
+				.headers(UpdateUserInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateUserInfoRequest {
+					first_name: None,
+					last_name: None,
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateUserInfoResponse));
+
+	let info = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.headers(GetUserInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetUserInfoResponse>>();
+
+	assert_eq!("Test", info.response.basic_user_info.first_name);
+	assert_eq!("User", info.response.basic_user_info.last_name);
+}
+
+#[tokio::test]
 async fn list_workspaces_multiple() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;

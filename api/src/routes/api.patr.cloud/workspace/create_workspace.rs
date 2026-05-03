@@ -127,7 +127,13 @@ pub async fn create_workspace(
 		user_id as _,
 	)
 	.execute(&mut **database)
-	.await?;
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(dbe) if dbe.is_unique_violation() => {
+			ErrorType::WorkspaceNameAlreadyExists
+		}
+		other => other.into(),
+	})?;
 
 	// Update resource's owner to workspace id
 	query!(

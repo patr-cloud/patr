@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT token_expiry, refresh_token FROM web_login WHERE login_id = $1;",
+  "query": "SELECT token_expiry, refresh_token FROM web_login WHERE login_id = $1 FOR UPDATE;",
   "describe": {
     "columns": [
       {
@@ -24,5 +24,5 @@
       false
     ]
   },
-  "hash": "9ee3d4b3e3a91e2faf4ed1918e65fab02a0b2f2c079dc1a1f98130fb4d34bb09"
+  "hash": "f356141d0372759f51574770c76be3394d2e1ba8eb61746f0bd02f0e618d7400"
 }
