@@ -33,17 +33,30 @@ jobs:
 
       - run: cargo fmt --all -- --check
 
-      - run: cargo clippy --workspace --all-targets
+      - name: Setup frontend public folder
+        run: mkdir -p frontend/.output/public
+
+      - run: cargo clippy --package api --all-targets
+        continue-on-error: true
+
+      - run: cargo clippy --package common --all-targets
+        continue-on-error: true
+
+      - run: cargo clippy --package cli --all-targets
+        continue-on-error: true
+
+      - run: cargo clippy --package models --all-targets
+        continue-on-error: true
+
+      - run: cargo clippy --package macros --all-targets
         continue-on-error: true
 
       - name: Install cargo-nextest
         uses: taiki-e/install-action@nextest
 
-      - name: Setup frontend public folder
-        run: mkdir -p frontend/.output/public
+      - run: cargo nextest run --package api
 
-      - run: cargo nextest run --workspace --package api
-        continue-on-error: true
+      - run: cargo nextest run --package common
 
   sqlx-check:
     name: SQLx Offline Check

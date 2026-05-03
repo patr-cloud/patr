@@ -25,8 +25,6 @@ mod layers;
 /// [1]: axum::Router
 mod router_ext;
 
-use sqlx::sqlite::{SqliteOperation, UpdateHookResult};
-
 pub use self::router_ext::*;
 
 /// The constants module contains all the constants that are used throughout
@@ -65,32 +63,4 @@ pub mod constants {
 	/// The Last Name key to be used in the `meta_data` table. This is used to
 	/// store the last name of the user that is currently logged in.
 	pub const LAST_NAME_KEY: &str = "last_name";
-}
-
-/// The data that is returned by the SQLite update hook. This contains the same
-/// fields as [`UpdateHookResult`][1] but has owned strings for being able to
-/// send it across threads and tasks.
-///
-/// [1]: sqlx::sqlite::UpdateHookResult
-#[derive(Debug, Clone)]
-pub struct SqliteUpdateHook {
-	/// The operation that was performed on the database.
-	pub operation: SqliteOperation,
-	/// The database that was modified.
-	pub database: String,
-	/// The table that was modified.
-	pub table: String,
-	/// The row ID of the modified row.
-	pub row_id: i64,
-}
-
-impl From<UpdateHookResult<'_>> for SqliteUpdateHook {
-	fn from(value: UpdateHookResult<'_>) -> Self {
-		Self {
-			operation: value.operation,
-			database: value.database.to_string(),
-			table: value.table.to_string(),
-			row_id: value.rowid,
-		}
-	}
 }

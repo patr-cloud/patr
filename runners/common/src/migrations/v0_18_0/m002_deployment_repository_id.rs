@@ -1,48 +1,18 @@
+//! Add `repository_id` column to `deployment` table and make `image_name`
+//! nullable. PatrRegistry deployments store `repository_id` instead of a
+//! pre-resolved `image_name`.
+
 use crate::prelude::*;
 
-/// Initializes the deployment tables
-#[instrument(skip(connection))]
-pub async fn initialize_deployment_tables(
-	connection: &mut DatabaseConnection,
-) -> Result<(), sqlx::Error> {
-	info!("Setting up deployment tables");
+/// Add `repository_id` column and make `image_name` nullable for PatrRegistry.
+#[macros::migration]
+async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error> {
+	// SQLite doesn't support ALTER TABLE ADD COLUMN with CHECK constraints
+	// that reference other columns, so we recreate the table.
 
 	query(
 		r#"
-		CREATE TABLE deployment_machine_type(
-			id TEXT NOT NULL PRIMARY KEY,
-			cpu_count INTEGER NOT NULL,
-			memory_count INTEGER NOT NULL
-		);
-		"#,
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	// TODO: Move this somewhere else, this is just here for testing
-	query(
-		r#"
-		INSERT INTO
-			deployment_machine_type(
-				id,
-				cpu_count,
-				memory_count
-			)
-		VALUES
-			($1, 1, 1024);
-		"#,
-	)
-	.bind(
-		Uuid::parse_str("b3cf3771-fa39-4281-bfdf-eb2e65a061b6")
-			.unwrap()
-			.to_string(),
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query(
-		r#"
-		CREATE TABLE deployment(
+		CREATE TABLE deployment_new(
 			id TEXT NOT NULL PRIMARY KEY,
 			name TEXT NOT NULL,
 			registry TEXT NOT NULL,
@@ -143,89 +113,38 @@ pub async fn initialize_deployment_tables(
 	.execute(&mut *connection)
 	.await?;
 
+	// Copy existing data. All existing rows have image_name set (they were
+	// pre-resolved), so they'll satisfy the ExternalRegistry branch of the
+	// CHECK constraint.
 	query(
 		r#"
-		CREATE TABLE deployment_environment_variable(
-			deployment_id TEXT NOT NULL,
-			name TEXT NOT NULL,
-			value TEXT,
-			secret_id TEXT,
-
-			PRIMARY KEY(deployment_id, name),
-			FOREIGN KEY(deployment_id) REFERENCES deployment(id),
-			CONSTRAINT deployment_environment_variable_chk_name_nonempty
-				CHECK(LENGTH(TRIM(name)) > 0),
-			CONSTRAINT deployment_environment_variable_chk_value_nonempty
-				CHECK(LENGTH(TRIM(value)) > 0),
-			CONSTRAINT deployment_environment_variable_chk_value_secret_id_required
-				CHECK(value IS NOT NULL OR secret_id IS NOT NULL)
-		);
+		INSERT INTO deployment_new(
+			id, name, registry, image_name, repository_id, image_tag, status,
+			min_horizontal_scale, max_horizontal_scale, machine_type,
+			deploy_on_push, startup_probe_port, startup_probe_path,
+			startup_probe_port_type, liveness_probe_port, liveness_probe_path,
+			liveness_probe_port_type, current_live_digest, deleted
+		)
+		SELECT
+			id, name, registry, image_name, NULL, image_tag, status,
+			min_horizontal_scale, max_horizontal_scale, machine_type,
+			deploy_on_push, startup_probe_port, startup_probe_path,
+			startup_probe_port_type, liveness_probe_port, liveness_probe_path,
+			liveness_probe_port_type, current_live_digest, deleted
+		FROM
+			deployment;
 		"#,
 	)
 	.execute(&mut *connection)
 	.await?;
 
-	query(
-		r#"
-		CREATE TABLE deployment_exposed_port(
-			deployment_id TEXT NOT NULL,
-			port INTEGER NOT NULL,
-			port_type TEXT NOT NULL
-				CONSTRAINT deployment_exposed_port_chk_port_type_enum
-				CHECK(port_type IN ('http')),
+	query("DROP TABLE deployment;")
+		.execute(&mut *connection)
+		.await?;
 
-			PRIMARY KEY(deployment_id, port, port_type),
-			FOREIGN KEY(deployment_id) REFERENCES deployment(id),
-			CONSTRAINT deployment_exposed_port_chk_port_range
-				CHECK(port > 0 AND port <= 65535)
-		);
-		"#,
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query(
-		r#"
-		CREATE TABLE deployment_config_mounts(
-			deployment_id TEXT NOT NULL,
-			path TEXT NOT NULL,
-			file BLOB NOT NULL,
-
-			PRIMARY KEY(deployment_id, path),
-			FOREIGN KEY(deployment_id) REFERENCES deployment(id)
-		);
-		"#,
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query(
-		r#"
-		CREATE TABLE deployment_deploy_history(
-			deployment_id TEXT NOT NULL,
-			image_digest TEXT NOT NULL,
-			registry TEXT NOT NULL,
-			image_tag TEXT NOT NULL,
-			image_name TEXT NOT NULL,
-			created DATETIME NOT NULL,
-
-			PRIMARY KEY(deployment_id, image_digest),
-			FOREIGN KEY(deployment_id) REFERENCES deployment(id)
-		);
-		"#,
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
-}
-
-/// Initializes the deployment indices
-#[instrument(skip(_connection))]
-pub async fn initialize_deployment_indices(
-	_connection: &mut DatabaseConnection,
-) -> Result<(), sqlx::Error> {
-	info!("Setting up deployment indices");
+	query("ALTER TABLE deployment_new RENAME TO deployment;")
+		.execute(&mut *connection)
+		.await?;
 
 	Ok(())
 }

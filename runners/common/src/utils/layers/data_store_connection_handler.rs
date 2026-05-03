@@ -138,6 +138,7 @@ where
 				request,
 				database: &mut database,
 				config: state.config.clone().into_base(),
+				supervisor_ref: state.supervisor_ref.clone(),
 			};
 
 			info!("Calling inner service");

@@ -1,7 +1,9 @@
+use std::time::Duration;
+
 use http::StatusCode;
 use models::{api::workspace::deployment::*, prelude::*};
 
-use crate::prelude::*;
+use crate::{actors::runner_supervisor::RunnerSupervisorMessage, prelude::*};
 
 /// The handler to start a deployment. This will start the deployment. In case
 /// the deployment is already running, it will do nothing.
@@ -23,6 +25,7 @@ pub async fn start_deployment(
 			},
 		database,
 		config: _,
+		supervisor_ref,
 	}: AppRequest<'_, StartDeploymentRequest>,
 ) -> Result<AppResponse<StartDeploymentRequest>, ErrorType> {
 	trace!("Starting deployment: {}", deployment_id);
@@ -43,6 +46,13 @@ pub async fn start_deployment(
 	.bind(deployment_id)
 	.execute(&mut **database)
 	.await?;
+
+	supervisor_ref.send_after(Duration::from_millis(50), move || {
+		RunnerSupervisorMessage::UpsertResource {
+			resource_id: deployment_id,
+			resource_type: ResourceType::Deployment,
+		}
+	});
 
 	AppResponse::builder()
 		.body(StartDeploymentResponse)

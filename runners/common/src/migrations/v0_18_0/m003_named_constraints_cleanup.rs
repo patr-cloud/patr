@@ -1,48 +1,78 @@
+//! Name all CHECK constraints across deployment-related tables and remove
+//! the `deployment_update_log` table and its triggers (replaced by actor
+//! messages). SQLite doesn't support renaming constraints in-place, so each
+//! table is recreated.
+
 use crate::prelude::*;
 
-/// Initializes the deployment tables
-#[instrument(skip(connection))]
-pub async fn initialize_deployment_tables(
-	connection: &mut DatabaseConnection,
-) -> Result<(), sqlx::Error> {
-	info!("Setting up deployment tables");
+/// Name all CHECK constraints and remove the defunct trigger/update_log
+/// infrastructure.
+#[macros::migration]
+async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error> {
+	// Disable foreign keys so we can freely drop/recreate tables regardless
+	// of reference order.
+	query("PRAGMA foreign_keys = OFF;")
+		.execute(&mut *connection)
+		.await?;
+
+	// Drop triggers (no longer needed — actor messages replace them)
+
+	query("DROP TRIGGER IF EXISTS deployment_tg_before_insert_update_log;")
+		.execute(&mut *connection)
+		.await?;
+	query("DROP TRIGGER IF EXISTS deployment_tg_before_update_update_log;")
+		.execute(&mut *connection)
+		.await?;
+	query("DROP TRIGGER IF EXISTS deployment_tg_before_delete_update_log;")
+		.execute(&mut *connection)
+		.await?;
+	query("DROP TABLE IF EXISTS deployment_update_log;")
+		.execute(&mut *connection)
+		.await?;
+
+	// Recreate deployment_exposed_port with named constraints
 
 	query(
 		r#"
-		CREATE TABLE deployment_machine_type(
-			id TEXT NOT NULL PRIMARY KEY,
-			cpu_count INTEGER NOT NULL,
-			memory_count INTEGER NOT NULL
+		CREATE TABLE deployment_exposed_port_new(
+			deployment_id TEXT NOT NULL,
+			port INTEGER NOT NULL,
+			port_type TEXT NOT NULL
+				CONSTRAINT deployment_exposed_port_chk_port_type_enum
+				CHECK(port_type IN ('http')),
+
+			PRIMARY KEY(deployment_id, port, port_type),
+			FOREIGN KEY(deployment_id) REFERENCES deployment(id),
+			CONSTRAINT deployment_exposed_port_chk_port_range
+				CHECK(port > 0 AND port <= 65535)
 		);
 		"#,
 	)
 	.execute(&mut *connection)
 	.await?;
 
-	// TODO: Move this somewhere else, this is just here for testing
 	query(
 		r#"
-		INSERT INTO
-			deployment_machine_type(
-				id,
-				cpu_count,
-				memory_count
-			)
-		VALUES
-			($1, 1, 1024);
+		INSERT INTO deployment_exposed_port_new
+		SELECT * FROM deployment_exposed_port;
 		"#,
-	)
-	.bind(
-		Uuid::parse_str("b3cf3771-fa39-4281-bfdf-eb2e65a061b6")
-			.unwrap()
-			.to_string(),
 	)
 	.execute(&mut *connection)
 	.await?;
 
+	query("DROP TABLE deployment_exposed_port;")
+		.execute(&mut *connection)
+		.await?;
+
+	query("ALTER TABLE deployment_exposed_port_new RENAME TO deployment_exposed_port;")
+		.execute(&mut *connection)
+		.await?;
+
+	// Recreate deployment with named constraints
+
 	query(
 		r#"
-		CREATE TABLE deployment(
+		CREATE TABLE deployment_new(
 			id TEXT NOT NULL PRIMARY KEY,
 			name TEXT NOT NULL,
 			registry TEXT NOT NULL,
@@ -145,7 +175,26 @@ pub async fn initialize_deployment_tables(
 
 	query(
 		r#"
-		CREATE TABLE deployment_environment_variable(
+		INSERT INTO deployment_new
+		SELECT * FROM deployment;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query("DROP TABLE deployment;")
+		.execute(&mut *connection)
+		.await?;
+
+	query("ALTER TABLE deployment_new RENAME TO deployment;")
+		.execute(&mut *connection)
+		.await?;
+
+	// Recreate deployment_environment_variable with named constraints
+
+	query(
+		r#"
+		CREATE TABLE deployment_environment_variable_new(
 			deployment_id TEXT NOT NULL,
 			name TEXT NOT NULL,
 			value TEXT,
@@ -167,17 +216,33 @@ pub async fn initialize_deployment_tables(
 
 	query(
 		r#"
-		CREATE TABLE deployment_exposed_port(
-			deployment_id TEXT NOT NULL,
-			port INTEGER NOT NULL,
-			port_type TEXT NOT NULL
-				CONSTRAINT deployment_exposed_port_chk_port_type_enum
-				CHECK(port_type IN ('http')),
+		INSERT INTO deployment_environment_variable_new
+		SELECT * FROM deployment_environment_variable;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
 
-			PRIMARY KEY(deployment_id, port, port_type),
-			FOREIGN KEY(deployment_id) REFERENCES deployment(id),
-			CONSTRAINT deployment_exposed_port_chk_port_range
-				CHECK(port > 0 AND port <= 65535)
+	query("DROP TABLE deployment_environment_variable;")
+		.execute(&mut *connection)
+		.await?;
+
+	query(
+		"ALTER TABLE deployment_environment_variable_new RENAME TO deployment_environment_variable;",
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// ── Recreate deployment_volume with named constraint ──
+
+	query(
+		r#"
+		CREATE TABLE deployment_volume_new(
+			id UUID NOT NULL PRIMARY KEY,
+			name TEXT NOT NULL UNIQUE,
+			volume_size INT NOT NULL
+				CONSTRAINT deployment_volume_chk_volume_size_positive CHECK(volume_size > 0),
+			deleted DATETIME
 		);
 		"#,
 	)
@@ -186,46 +251,26 @@ pub async fn initialize_deployment_tables(
 
 	query(
 		r#"
-		CREATE TABLE deployment_config_mounts(
-			deployment_id TEXT NOT NULL,
-			path TEXT NOT NULL,
-			file BLOB NOT NULL,
-
-			PRIMARY KEY(deployment_id, path),
-			FOREIGN KEY(deployment_id) REFERENCES deployment(id)
-		);
+		INSERT INTO deployment_volume_new
+		SELECT * FROM deployment_volume;
 		"#,
 	)
 	.execute(&mut *connection)
 	.await?;
 
-	query(
-		r#"
-		CREATE TABLE deployment_deploy_history(
-			deployment_id TEXT NOT NULL,
-			image_digest TEXT NOT NULL,
-			registry TEXT NOT NULL,
-			image_tag TEXT NOT NULL,
-			image_name TEXT NOT NULL,
-			created DATETIME NOT NULL,
+	query("DROP TABLE deployment_volume;")
+		.execute(&mut *connection)
+		.await?;
 
-			PRIMARY KEY(deployment_id, image_digest),
-			FOREIGN KEY(deployment_id) REFERENCES deployment(id)
-		);
-		"#,
-	)
-	.execute(&mut *connection)
-	.await?;
+	query("ALTER TABLE deployment_volume_new RENAME TO deployment_volume;")
+		.execute(&mut *connection)
+		.await?;
 
-	Ok(())
-}
+	// Re-enable foreign keys
 
-/// Initializes the deployment indices
-#[instrument(skip(_connection))]
-pub async fn initialize_deployment_indices(
-	_connection: &mut DatabaseConnection,
-) -> Result<(), sqlx::Error> {
-	info!("Setting up deployment indices");
+	query("PRAGMA foreign_keys = ON;")
+		.execute(&mut *connection)
+		.await?;
 
 	Ok(())
 }

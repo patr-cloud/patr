@@ -1,7 +1,9 @@
+use std::time::Duration;
+
 use axum::http::StatusCode;
 use models::api::workspace::deployment::*;
 
-use crate::prelude::*;
+use crate::{actors::runner_supervisor::RunnerSupervisorMessage, prelude::*};
 
 /// The handler to delete a deployment. This will delete the deployment, and
 /// remove all resources associated with the deployment.
@@ -23,6 +25,7 @@ pub async fn delete_deployment(
 			},
 		database,
 		config: _,
+		supervisor_ref,
 	}: AppRequest<'_, DeleteDeploymentRequest>,
 ) -> Result<AppResponse<DeleteDeploymentRequest>, ErrorType> {
 	info!("Deleting deployment: {deployment_id}");
@@ -115,6 +118,13 @@ pub async fn delete_deployment(
 	})?;
 
 	trace!("Deployment deleted");
+
+	supervisor_ref.send_after(Duration::from_millis(50), move || {
+		RunnerSupervisorMessage::UpsertResource {
+			resource_id: deployment_id,
+			resource_type: ResourceType::Deployment,
+		}
+	});
 
 	AppResponse::builder()
 		.body(DeleteDeploymentResponse)

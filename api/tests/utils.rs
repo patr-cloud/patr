@@ -1,9 +1,7 @@
-use std::{collections::BTreeMap, str::FromStr};
+use std::collections::BTreeMap;
 
 use headers::UserAgent;
 use models::{
-	ApiRequest,
-	ApiSuccessResponseBody,
 	api::{
 		auth::*,
 		user::*,
@@ -19,11 +17,10 @@ use models::{
 		},
 	},
 	rbac::{ResourcePermissionType, WorkspacePermission},
-	utils::{BearerToken, Uuid},
 };
 use rand::RngExt as _;
 
-use crate::setup::TestSetup;
+use crate::prelude::*;
 
 /// The User-Agent header value to use for all test API calls, which includes
 /// the cargo-test identifier and the current package version.
@@ -340,6 +337,28 @@ impl TestSetup {
 		}
 	}
 
+	/// Force-mark a domain as verified by flipping the `is_verified` flag
+	/// directly in the DB, skipping the real TXT-record + Cloudflare
+	/// verification flow. Used by tests that depend on a verified domain (e.g.
+	/// managed URL creation) but don't exercise the verification flow itself.
+	pub async fn mark_test_domain_verified(&self, domain_id: Uuid) {
+		query!(
+			r#"
+			UPDATE
+				workspace_domain
+			SET
+				is_verified = TRUE,
+				last_verified = NOW()
+			WHERE
+				id = $1;
+			"#,
+			domain_id as _,
+		)
+		.execute(self.database())
+		.await
+		.expect("failed to mark test domain as verified");
+	}
+
 	/// Add a domain to a workspace, returning its ID and domain name.
 	pub async fn create_test_domain(&self, token: &BearerToken, workspace_id: Uuid) -> TestDomain {
 		let domain = format!("{}.com", random_name(8));
@@ -434,6 +453,15 @@ impl TestSetup {
 	/// Create a role in a workspace with the given permissions, returning its
 	/// ID and name.
 	pub async fn create_test_role(&self, token: &BearerToken, workspace_id: Uuid) -> TestRole {
+		// The `create_new_role` handler rejects empty permissions with
+		// `WrongParameters`, so seed one harmless permission. Tests that care
+		// about specific permissions should use `create_role_with_permissions`.
+		let mut permissions = BTreeMap::new();
+		permissions.insert(
+			self.get_permission_id(Permission::ViewRoles),
+			ResourcePermissionType::Include(Default::default()),
+		);
+
 		let name = random_name(8);
 
 		let response = self
@@ -447,7 +475,7 @@ impl TestSetup {
 					.body(CreateNewRoleRequest {
 						name: name.clone(),
 						description: "test role".to_string(),
-						permissions: BTreeMap::new(),
+						permissions,
 					})
 					.build(),
 			)

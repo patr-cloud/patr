@@ -20,6 +20,7 @@ pub async fn get_user_info(
 			},
 		database,
 		config: _,
+		supervisor_ref: _,
 	}: AppRequest<'_, GetUserInfoRequest>,
 ) -> Result<AppResponse<GetUserInfoRequest>, ErrorType> {
 	info!("Getting authenticated user info");

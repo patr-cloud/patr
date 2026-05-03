@@ -18,16 +18,19 @@ mod registry;
 pub mod prelude {
 	pub use std::str::FromStr as _;
 
-	pub use api::routes::registry_patr_cloud::{
-		endpoint::RegistryEndpoint,
-		request::RegistryUnprocessedApiRequest,
+	pub use api::{
+		prelude::*,
+		routes::registry_patr_cloud::{
+			endpoint::RegistryEndpoint,
+			request::RegistryUnprocessedApiRequest,
+		},
 	};
 	pub use axum::body::Body;
 	pub use http::StatusCode;
 	pub use models::{
 		ApiRequest,
 		ApiSuccessResponseBody,
-		utils::{BearerToken, Headers, OptionalHeader, Uuid},
+		utils::{Headers, OptionalHeader},
 	};
 
 	pub use crate::{setup::*, utils::*};

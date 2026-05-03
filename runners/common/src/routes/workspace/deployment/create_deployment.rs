@@ -1,7 +1,9 @@
+use std::time::Duration;
+
 use http::StatusCode;
 use models::api::workspace::deployment::*;
 
-use crate::prelude::*;
+use crate::{actors::runner_supervisor::RunnerSupervisorMessage, prelude::*};
 
 /// The handler to create a deployment. This will create a new deployment, and
 /// return the ID of the deployment.
@@ -40,6 +42,7 @@ pub async fn create_deployment(
 			},
 		database,
 		config: _,
+		supervisor_ref,
 	}: AppRequest<'_, CreateDeploymentRequest>,
 ) -> Result<AppResponse<CreateDeploymentRequest>, ErrorType> {
 	trace!("Creating deployment: {}", name);
@@ -224,6 +227,17 @@ pub async fn create_deployment(
 	}
 
 	trace!("Inserted volume mounts for deployment");
+
+	// Notify the actor system after the transaction commits (the
+	// DataStoreConnectionLayer commits after we return Ok). Use send_after
+	// with a small delay so the transaction is committed before the actor
+	// reads from SQLite.
+	supervisor_ref.send_after(Duration::from_millis(50), move || {
+		RunnerSupervisorMessage::UpsertResource {
+			resource_id: deployment_id,
+			resource_type: ResourceType::Deployment,
+		}
+	});
 
 	AppResponse::builder()
 		.body(CreateDeploymentResponse {
