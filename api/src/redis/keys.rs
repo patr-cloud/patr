@@ -112,19 +112,19 @@ pub fn rate_limit_login_id(login_id: &Uuid, window_secs: u64) -> String {
 /// the sentinel string `"1"` (presence-only). Expires after 10 minutes.
 /// Consumed (deleted) on first use to prevent replay.
 pub fn social_login_state(provider: &OAuthProvider, state_token: &str) -> String {
-	format!("socialLogin:{}:state:{}", provider.as_str(), state_token)
+	format!("socialLogin:{}:state:{}", provider, state_token)
 }
 
 /// The key used to store a pending social-login account-link confirmation.
 /// The value is JSON containing `{ user_id, external_id, email }`.
 /// Expires after 5 minutes. Consumed on first use.
 pub fn social_login_link(provider: &OAuthProvider, link_token: &str) -> String {
-	format!("socialLogin:{}:link:{}", provider.as_str(), link_token)
+	format!("socialLogin:{}:link:{}", provider, link_token)
 }
 
 /// The key used to store a pending social-login account-setup payload for new
 /// users. The value is JSON containing `{ external_id, email }`.
 /// Expires after 10 minutes. Consumed on first use.
 pub fn social_login_setup(provider: &OAuthProvider, setup_token: &str) -> String {
-	format!("socialLogin:{}:setup:{}", provider.as_str(), setup_token)
+	format!("socialLogin:{}:setup:{}", provider, setup_token)
 }
