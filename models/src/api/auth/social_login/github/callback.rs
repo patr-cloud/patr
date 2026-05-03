@@ -25,24 +25,11 @@ macros::declare_api_endpoint!(
 		pub state: String,
 	},
 	response = {
-		/// Which path was taken — frontend switches on this value
+		/// Tagged on `status` — one of `loggedIn`, `linkRequired`,
+		/// `setupRequired`. Flattened so the variant fields appear at the top
+		/// level of the response body.
+		#[serde(flatten)]
 		pub status: GithubCallbackStatus,
-		/// Present when status is LoggedIn
-		pub access_token: Option<String>,
-		/// Present when status is LoggedIn
-		pub refresh_token: Option<String>,
-		/// Present when status is LinkRequired — pass to POST /auth/social-login/github/link
-		pub link_token: Option<String>,
-		/// Present when status is SetupRequired — pass to POST /auth/social-login/github/setup
-		pub setup_token: Option<String>,
-		/// Pre-filled username suggestion from GitHub login (editable by user)
-		pub prefilled_username: Option<String>,
-		/// Pre-filled first name from GitHub display name (editable by user)
-		pub prefilled_first_name: Option<String>,
-		/// Pre-filled last name from GitHub display name (editable by user)
-		pub prefilled_last_name: Option<String>,
-		/// Pre-filled email from GitHub primary verified email (editable by user)
-		pub prefilled_email: Option<String>,
 	},
 	audit_log = NoAuditLogger,
 );

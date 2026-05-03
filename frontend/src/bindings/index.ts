@@ -94,6 +94,7 @@ import { MetricDataPoint } from "./MetricDataPoint";
 import { DeploymentMetricName } from "./DeploymentMetricName";
 import { RunnerMetricName } from "./RunnerMetricName";
 import { GithubCallbackStatus } from "./GithubCallbackStatus";
+import { GithubOAuthInitiateRequest } from "./GithubOAuthInitiateRequest";
 import { GithubOAuthInitiateResponse } from "./GithubOAuthInitiateResponse";
 import { GithubOAuthCallbackResponse } from "./GithubOAuthCallbackResponse";
 import { GithubOAuthLinkRequest } from "./GithubOAuthLinkRequest";
@@ -199,6 +200,7 @@ export type {
 	DeploymentMetricName,
 	RunnerMetricName,
 	GithubCallbackStatus,
+	GithubOAuthInitiateRequest,
 	GithubOAuthInitiateResponse,
 	GithubOAuthCallbackResponse,
 	GithubOAuthLinkRequest,

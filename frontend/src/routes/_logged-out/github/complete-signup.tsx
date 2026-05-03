@@ -49,8 +49,13 @@ const CompleteGithubSignup = () => {
 		const newErrors = { ...emptyErrors };
 		let valid = true;
 
-		if (!username().trim()) {
+		const trimmedUsername = username().trim();
+		if (!trimmedUsername) {
 			newErrors.username = "Username is required.";
+			valid = false;
+		} else if (!new RegExp(`^${USERNAME_VALIDITY_PATTERN}$`).test(trimmedUsername)) {
+			newErrors.username =
+				"Username must start and end with a lowercase letter, number, or underscore, and may contain dots or hyphens in between.";
 			valid = false;
 		}
 		if (!firstName().trim()) {

@@ -66,6 +66,16 @@ pub async fn initialize_web_login_indices(
 	info!("Setting up web login indices");
 	query!(
 		r#"
+		ALTER TABLE web_login
+		ADD CONSTRAINT web_login_pk
+		PRIMARY KEY(login_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE INDEX
 			web_login_idx_login_id
 		ON
@@ -77,9 +87,19 @@ pub async fn initialize_web_login_indices(
 
 	query!(
 		r#"
+		ALTER TABLE user_social_login
+		ADD CONSTRAINT user_social_login_pk
+		PRIMARY KEY (provider, external_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE INDEX user_social_login_idx_user_id
 			ON user_social_login(user_id);
-		"#,
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -93,16 +113,6 @@ pub async fn initialize_web_login_constraints(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
 	info!("Setting up web login constraints");
-	query!(
-		r#"
-		ALTER TABLE web_login
-		ADD CONSTRAINT web_login_pk
-		PRIMARY KEY(login_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	query!(
 		r#"
 		ALTER TABLE web_login
@@ -124,15 +134,13 @@ pub async fn initialize_web_login_constraints(
 	query!(
 		r#"
 		ALTER TABLE user_social_login
-			ADD CONSTRAINT user_social_login_pk
-				PRIMARY KEY (provider, external_id),
 			ADD CONSTRAINT user_social_login_uq_user_provider
 				UNIQUE (user_id, provider),
 			ADD CONSTRAINT user_social_login_fk_user_id
 				FOREIGN KEY (user_id) REFERENCES "user"(id),
 			ADD CONSTRAINT user_social_login_chk_external_id_not_empty
 				CHECK (external_id <> '');
-		"#,
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;

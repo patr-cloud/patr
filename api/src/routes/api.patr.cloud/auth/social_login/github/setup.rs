@@ -96,11 +96,6 @@ pub async fn github_oauth_setup(
 	.map_err(ErrorType::server_error)?
 	.to_string();
 
-	// Defer constraints to allow the circular insert order
-	query!(r#"SET CONSTRAINTS ALL DEFERRED;"#)
-		.execute(&mut **database)
-		.await?;
-
 	query!(
 		r#"
 		INSERT INTO "user"(
@@ -150,10 +145,6 @@ pub async fn github_oauth_setup(
 	)
 	.execute(&mut **database)
 	.await?;
-
-	query!(r#"SET CONSTRAINTS ALL IMMEDIATE;"#)
-		.execute(&mut **database)
-		.await?;
 
 	let (access_token, refresh_token) = create_session(
 		database,

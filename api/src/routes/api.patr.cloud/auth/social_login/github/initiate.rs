@@ -2,29 +2,55 @@ use axum::http::StatusCode;
 use models::api::auth::*;
 use rustis::commands::StringCommands;
 
-use crate::{prelude::*, redis::keys as redis_keys};
+use crate::{prelude::*, redis::keys as redis_keys, utils::cloudflare::validate_turnstile_token};
 
 /// CSRF state token validity: 10 minutes
 const GITHUB_STATE_TTL_SECS: u64 = 600;
 
-/// `GET /auth/social-login/github`
+/// `POST /auth/social-login/github`
 ///
-/// Generates a CSRF state UUID, stores it in Redis for 10 minutes, and returns
-/// the full GitHub authorization URL that the frontend should redirect to.
+/// Validates the Cloudflare Turnstile token (reused from the login or signup
+/// page that surfaced the GitHub button), generates a CSRF state UUID, stores
+/// it in Redis for 10 minutes, and returns the full GitHub authorization URL
+/// that the frontend should redirect to.
 pub async fn github_oauth_initiate(
 	AppRequest {
 		request:
 			ProcessedApiRequest {
-				path: GithubOAuthInitiatePath,
+				path: GithubOAuthInitiatePath {},
 				query: (),
 				headers: (),
-				body: GithubOAuthInitiateRequestProcessed,
+				body: GithubOAuthInitiateRequestProcessed { cf_turnstile_token },
 			},
 		redis,
+		client_ip,
 		state,
 		..
 	}: AppRequest<'_, GithubOAuthInitiateRequest>,
 ) -> Result<AppResponse<GithubOAuthInitiateRequest>, ErrorType> {
+	trace!("Validating Cloudflare Turnstile token for GitHub OAuth initiate");
+	let cf_turnstile_response = validate_turnstile_token(
+		&state.config.cloudflare.turnstile_secret,
+		&cf_turnstile_token,
+		Some(client_ip),
+	)
+	.await
+	.inspect_err(|err| {
+		error!("Error verifying Cloudflare Turnstile token: `{}`", err);
+	})?;
+
+	if !cf_turnstile_response.success {
+		return Err(ErrorType::TurnstileVerificationFailed);
+	}
+
+	// The GitHub button is surfaced on `/login` and `/sign-up`; both pages'
+	// Turnstile widgets are valid sources of a token for this endpoint.
+	if !cfg!(debug_assertions) &&
+		!matches!(cf_turnstile_response.action.as_str(), "login" | "sign-up")
+	{
+		return Err(ErrorType::TurnstileVerificationActionMismatch);
+	}
+
 	trace!("Initiating GitHub OAuth flow");
 
 	let oauth_state_token = Uuid::new_v4().to_string();

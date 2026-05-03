@@ -67,11 +67,11 @@ const GithubCallback = () => {
 
 		switch (data.status) {
 			case "loggedIn":
-				setLoggedIn(data.accessToken!, data.refreshToken!);
+				setLoggedIn(data.accessToken, data.refreshToken);
 				break;
 
 			case "linkRequired":
-				setLinkToken(data.linkToken!);
+				setLinkToken(data.linkToken);
 				setPageState("linkRequired");
 				break;
 
@@ -79,7 +79,7 @@ const GithubCallback = () => {
 				navigate({
 					to: "/github/complete-signup",
 					search: {
-						setupToken: data.setupToken!,
+						setupToken: data.setupToken,
 						username: data.prefilledUsername,
 						firstName: data.prefilledFirstName,
 						lastName: data.prefilledLastName,

@@ -44,7 +44,7 @@ pub async fn github_oauth_callback(
 	AppRequest {
 		request:
 			ProcessedApiRequest {
-				path: GithubOAuthCallbackPath,
+				path: GithubOAuthCallbackPath {},
 				query: (),
 				headers: GithubOAuthCallbackRequestHeaders { user_agent },
 				// Rename `state` (OAuth CSRF token) to `csrf_state` to avoid
@@ -62,7 +62,7 @@ pub async fn github_oauth_callback(
 ) -> Result<AppResponse<GithubOAuthCallbackRequest>, ErrorType> {
 	trace!("Processing GitHub OAuth callback");
 
-	// ── Step 1: Verify and atomically consume the CSRF state ─────────────────
+	// Verify and atomically consume the CSRF state token.
 	let state_key = redis_keys::social_login_state(&OAuthProvider::Github, &csrf_state);
 	redis
 		.getdel::<Option<String>>(&state_key)
@@ -70,7 +70,7 @@ pub async fn github_oauth_callback(
 		.inspect_err(|err| error!("Redis error consuming GitHub state: {err}"))?
 		.ok_or(ErrorType::GithubOAuthFailed)?;
 
-	// ── Step 2: Exchange code for GitHub access token ────────────────────────
+	// Exchange the authorization code for a GitHub access token.
 	let client = github_client();
 
 	let token_resp = client
@@ -104,7 +104,7 @@ pub async fn github_oauth_callback(
 		.access_token
 		.ok_or(ErrorType::GithubOAuthFailed)?;
 
-	// ── Step 3: Fetch GitHub user profile ───────────────────────────────────
+	// Fetch GitHub user profile.
 	let github_user = client
 		.get("https://api.github.com/user")
 		.bearer_auth(&github_access_token)
@@ -117,7 +117,7 @@ pub async fn github_oauth_callback(
 		.inspect_err(|err| error!("Error parsing GitHub user profile: {err}"))
 		.map_err(|_| ErrorType::GithubOAuthFailed)?;
 
-	// ── Step 4: Fetch GitHub primary verified email ──────────────────────────
+	// Fetch GitHub primary verified email.
 	let github_emails = client
 		.get("https://api.github.com/user/emails")
 		.bearer_auth(&github_access_token)
@@ -142,8 +142,6 @@ pub async fn github_oauth_callback(
 		.iter()
 		.find(|e| e.primary && e.verified)
 		.map(|e| e.email.to_lowercase());
-
-	// ── Step 5: Account resolution ───────────────────────────────────────────
 
 	// Path A: existing GitHub link
 	let github_external_id = github_user.id.to_string();
@@ -173,15 +171,10 @@ pub async fn github_oauth_callback(
 
 		return AppResponse::builder()
 			.body(GithubOAuthCallbackResponse {
-				status: GithubCallbackStatus::LoggedIn,
-				access_token: Some(access_token),
-				refresh_token: Some(refresh_token),
-				link_token: None,
-				setup_token: None,
-				prefilled_username: None,
-				prefilled_first_name: None,
-				prefilled_last_name: None,
-				prefilled_email: None,
+				status: GithubCallbackStatus::LoggedIn {
+					access_token,
+					refresh_token,
+				},
 			})
 			.headers(())
 			.status_code(StatusCode::OK)
@@ -236,15 +229,7 @@ pub async fn github_oauth_callback(
 
 		return AppResponse::builder()
 			.body(GithubOAuthCallbackResponse {
-				status: GithubCallbackStatus::LinkRequired,
-				access_token: None,
-				refresh_token: None,
-				link_token: Some(link_token),
-				setup_token: None,
-				prefilled_username: None,
-				prefilled_first_name: None,
-				prefilled_last_name: None,
-				prefilled_email: None,
+				status: GithubCallbackStatus::LinkRequired { link_token },
 			})
 			.headers(())
 			.status_code(StatusCode::OK)
@@ -276,15 +261,13 @@ pub async fn github_oauth_callback(
 
 	AppResponse::builder()
 		.body(GithubOAuthCallbackResponse {
-			status: GithubCallbackStatus::SetupRequired,
-			access_token: None,
-			refresh_token: None,
-			link_token: None,
-			setup_token: Some(setup_token),
-			prefilled_username: Some(github_user.login),
-			prefilled_first_name: Some(prefilled_first_name),
-			prefilled_last_name: Some(prefilled_last_name),
-			prefilled_email: Some(github_email),
+			status: GithubCallbackStatus::SetupRequired {
+				setup_token,
+				prefilled_username: github_user.login,
+				prefilled_first_name,
+				prefilled_last_name,
+				prefilled_email: github_email,
+			},
 		})
 		.headers(())
 		.status_code(StatusCode::OK)
@@ -292,20 +275,15 @@ pub async fn github_oauth_callback(
 		.into_result()
 }
 
-/// Splits a GitHub display name into `(first_name, last_name)`.
-/// Falls back to `("GitHub", "User")` when the name is absent or empty.
+/// Splits a GitHub display name into `(first_name, last_name)`. Returns
+/// `("", "")` when the name is absent or empty so the setup form forces the
+/// user to fill the fields in.
 fn split_display_name(name: Option<&str>) -> (String, String) {
-	match name.map(str::trim).filter(|s| !s.is_empty()) {
-		None => ("GitHub".to_string(), "User".to_string()),
-		Some(n) => {
-			let mut parts = n.splitn(2, ' ');
-			let first = parts.next().unwrap_or("GitHub").to_string();
-			let last = parts
-				.next()
-				.filter(|s| !s.is_empty())
-				.unwrap_or("User")
-				.to_string();
-			(first, last)
-		}
-	}
+	let Some(trimmed) = name.map(str::trim).filter(|s| !s.is_empty()) else {
+		return (String::new(), String::new());
+	};
+	let mut parts = trimmed.splitn(2, ' ');
+	let first = parts.next().unwrap_or("").to_string();
+	let last = parts.next().unwrap_or("").trim().to_string();
+	(first, last)
 }

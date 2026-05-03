@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createSignal, Show } from "solid-js";
-import { CreateAccountRequest } from "~/bindings";
+import { CreateAccountRequest, GithubOAuthInitiateRequest, GithubOAuthInitiateResponse } from "~/bindings";
 import { Alert, Button, Input, InputType, useToast, Turnstile } from "~/components";
 import { createAsyncAction } from "~/hooks";
 import { ButtonVariant } from "~/utils/color";
@@ -32,10 +32,17 @@ const SignUp = () => {
 	const [githubLoading, setGithubLoading] = createSignal(false);
 
 	const handleGithubSignIn = async () => {
+		if (!turnstileToken()) {
+			toast("Please complete the security verification", "error");
+			return;
+		}
+
 		setGithubLoading(true);
 		try {
-			const resp = await httpRequest<{ authorizeUrl: string }>("/api/auth/social-login/github", {
-				method: "GET",
+			const body: GithubOAuthInitiateRequest = { cfTurnstileToken: turnstileToken() };
+			const resp = await httpRequest<GithubOAuthInitiateResponse>("/api/auth/social-login/github", {
+				method: "POST",
+				body: JSON.stringify(body),
 			});
 			if (resp.ok) {
 				window.location.href = resp.data.authorizeUrl;
@@ -338,8 +345,8 @@ const SignUp = () => {
 						<div class="flex-1 h-px bg-secondary-medium" />
 					</div>
 					<Button
-						variant={ButtonVariant.Outlined}
-						class="w-full py-3 mb-2 flex items-center justify-center gap-2"
+						variant={ButtonVariant.Plain}
+						class="w-full py-3 mb-2 gap-3 rounded-xs bg-black! text-white! text-sm font-medium border border-white/25 enabled:hover:bg-[#1f1f1f]! enabled:hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
 						type="button"
 						loading={githubLoading}
 						loadingContent={() => <span>Redirecting to GitHub...</span>}

@@ -13,7 +13,7 @@ import {
 } from "~/components";
 import { ButtonVariant } from "~/utils/color";
 import { createSignal, Show } from "solid-js";
-import { LoginRequest, LoginResponse } from "~/bindings";
+import { GithubOAuthInitiateRequest, GithubOAuthInitiateResponse, LoginRequest, LoginResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
 import { createAsyncAction, useAuthState } from "~/hooks";
 import { USERNAME_VALIDITY_PATTERN } from "~/utils/validation";
@@ -82,11 +82,18 @@ const Login = () => {
 	};
 
 	const handleGithubSignIn = async () => {
+		if (!turnstileToken()) {
+			toast("Please complete the security verification", "error");
+			return;
+		}
+
 		setGithubLoading(true);
 
 		try {
-			const resp = await httpRequest<{ authorizeUrl: string }>("/api/auth/social-login/github", {
-				method: "GET",
+			const body: GithubOAuthInitiateRequest = { cfTurnstileToken: turnstileToken() };
+			const resp = await httpRequest<GithubOAuthInitiateResponse>("/api/auth/social-login/github", {
+				method: "POST",
+				body: JSON.stringify(body),
 			});
 			if (resp.ok) {
 				window.location.href = resp.data.authorizeUrl;
@@ -263,14 +270,14 @@ const Login = () => {
 				</div>
 
 				{/* GitHub SSO */}
-				<div class="flex items-center gap-3 mb-4">
+				<div class="flex items-center gap-3 my-4">
 					<div class="flex-1 h-px bg-secondary-medium" />
 					<span class="text-gray-500 text-xs">or</span>
 					<div class="flex-1 h-px bg-secondary-medium" />
 				</div>
 				<Button
-					variant={ButtonVariant.Outlined}
-					class="w-full py-3 mb-2 flex items-center justify-center gap-2"
+					variant={ButtonVariant.Plain}
+					class="w-full py-3 mb-2 gap-3 rounded-xs bg-black! text-white! text-sm font-medium border border-white/25 enabled:hover:bg-[#1f1f1f]! enabled:hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
 					type="button"
 					loading={githubLoading}
 					loadingContent={() => <span>Redirecting to GitHub...</span>}

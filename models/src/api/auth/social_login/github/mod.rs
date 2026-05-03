@@ -11,38 +11,43 @@ mod setup;
 
 pub use self::{callback::*, initiate::*, link::*, setup::*};
 
-/// Identifies the third-party OAuth provider used to authenticate.
-/// Add new variants here when additional providers (Google, Apple, …) are
-/// integrated.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, ts_rs::TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(export, rename_all = "camelCase")]
-pub enum OAuthProvider {
-	/// Github OAuth Provider.
-	Github,
-}
-
-impl OAuthProvider {
-	/// Returns the lowercase string stored in the database `provider` column.
-	pub fn as_str(&self) -> &'static str {
-		match self {
-			Self::Github => "github",
-		}
-	}
-}
-
-/// Discriminates which flow the GitHub OAuth callback result belongs to.
-/// The frontend switches on this value to determine next steps.
+/// Result of the GitHub OAuth2 callback. Tagged on `status`; each variant
+/// carries exactly the fields needed for that branch — no optionals.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
-#[serde(rename_all = "camelCase")]
+#[serde(tag = "status", rename_all = "camelCase")]
 #[ts(export, rename_all = "camelCase")]
 pub enum GithubCallbackStatus {
-	/// Existing GitHub link found — access/refresh tokens returned, log in
-	/// immediately
-	LoggedIn,
+	/// Existing GitHub link found — log in immediately with the returned
+	/// tokens.
+	#[serde(rename_all = "camelCase")]
+	LoggedIn {
+		/// Patr JWT access token
+		access_token: String,
+		/// Patr refresh token (`{login_id}.{refresh_token}`)
+		refresh_token: String,
+	},
 	/// GitHub email matches an existing Patr account — user must confirm
-	/// linking
-	LinkRequired,
-	/// No existing account found — user must complete profile setup
-	SetupRequired,
+	/// linking via `POST /auth/social-login/github/link`.
+	#[serde(rename_all = "camelCase")]
+	LinkRequired {
+		/// One-time-use link confirmation token
+		link_token: String,
+	},
+	/// No existing account found — user must complete profile setup via
+	/// `POST /auth/social-login/github/setup`.
+	#[serde(rename_all = "camelCase")]
+	SetupRequired {
+		/// One-time-use setup token
+		setup_token: String,
+		/// Pre-filled username suggestion from GitHub login (editable)
+		prefilled_username: String,
+		/// Pre-filled first name from GitHub display name (editable; empty if
+		/// GitHub had no display name)
+		prefilled_first_name: String,
+		/// Pre-filled last name from GitHub display name (editable; empty if
+		/// GitHub had no display name)
+		prefilled_last_name: String,
+		/// Pre-filled email from GitHub primary verified email
+		prefilled_email: String,
+	},
 }
