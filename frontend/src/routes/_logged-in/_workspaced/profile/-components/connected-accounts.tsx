@@ -1,5 +1,5 @@
 import { createResource, For, Show } from "solid-js";
-import { ConnectGithubInitiateResponse, LinkedSocialLogin, ListSocialLoginsResponse } from "~/bindings";
+import { ConnectSocialLoginInitiateResponse, LinkedSocialLogin, ListSocialLoginsResponse } from "~/bindings";
 import { Button, ButtonVariant, InputLabel, LoadingSpinner, useToast } from "~/components";
 import { formatRelativeTime } from "~/utils/func";
 import { httpRequest } from "~/utils/http-request";
@@ -22,7 +22,7 @@ const ConnectedAccountsSection = () => {
 	const githubLinked = () => logins()?.some((l) => l.provider === "github") ?? false;
 
 	const handleConnectGithub = async () => {
-		const response = await httpRequest<ConnectGithubInitiateResponse>(
+		const response = await httpRequest<ConnectSocialLoginInitiateResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/user/social-login/github/connect`,
 			{ method: "POST" }
 		);

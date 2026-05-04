@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { onMount } from "solid-js";
-import { ConnectGithubCallbackRequest } from "~/bindings";
+import { ConnectSocialLoginCallbackRequest } from "~/bindings";
 import { LoadingSpinner, useToast } from "~/components";
 import { httpRequest } from "~/utils/http-request";
 
@@ -20,7 +20,7 @@ const GithubConnectCallback = () => {
 			return;
 		}
 
-		const body: ConnectGithubCallbackRequest = { code, state };
+		const body: ConnectSocialLoginCallbackRequest = { code, state };
 		const response = await httpRequest(`${import.meta.env.VITE_BASE_URL}/api/user/social-login/github/callback`, {
 			method: "POST",
 			body: JSON.stringify(body),
