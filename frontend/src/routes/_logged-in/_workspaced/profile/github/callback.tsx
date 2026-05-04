@@ -35,7 +35,7 @@ const GithubConnectCallback = () => {
 		const message =
 			response.data?.error === "resourceAlreadyExists"
 				? "This GitHub account is already linked to a different Patr user."
-				: response.data?.error === "githubOAuthFailed"
+				: response.data?.error === "socialLoginFailed"
 					? "The connect link has expired. Please try again."
 					: "Failed to connect GitHub. Please try again.";
 		toast(message, "error");

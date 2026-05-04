@@ -47,7 +47,7 @@ const GithubCallback = () => {
 
 		if (!resp.ok) {
 			toast(
-				resp.data?.error === "githubOAuthFailed"
+				resp.data?.error === "socialLoginFailed"
 					? "GitHub sign-in failed. Please try again."
 					: "An unexpected error occurred. Please try again.",
 				"error"

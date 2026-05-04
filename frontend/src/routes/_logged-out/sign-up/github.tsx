@@ -108,7 +108,7 @@ const CompleteGithubSignup = () => {
 				case "usernameUnavailable":
 					setErrors((prev) => ({ ...prev, username: "Username is already taken." }));
 					break;
-				case "githubOAuthFailed":
+				case "socialLoginFailed":
 					toast("Your GitHub session has expired. Please sign in with GitHub again.", "error");
 					navigate({ to: "/login", replace: true });
 					break;
