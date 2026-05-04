@@ -123,7 +123,7 @@ pub enum ErrorType {
 	/// GitHub returned an error, or the user's GitHub account has no verified
 	/// email address. Also returned when a link/setup token is invalid or
 	/// expired.
-	GithubOAuthFailed,
+	SocialLoginFailed,
 }
 
 impl ErrorType {
@@ -175,7 +175,7 @@ impl ErrorType {
 			Self::TurnstileVerificationFailed => StatusCode::FORBIDDEN,
 			Self::TurnstileVerificationActionMismatch => StatusCode::FORBIDDEN,
 			Self::RateLimitExceeded => StatusCode::TOO_MANY_REQUESTS,
-			Self::GithubOAuthFailed => StatusCode::BAD_REQUEST,
+			Self::SocialLoginFailed => StatusCode::BAD_REQUEST,
 		}
 	}
 
@@ -260,7 +260,7 @@ impl ErrorType {
 				"Human verification action mismatch. Please try again (Turnstile action mismatch)."
 			}
 			Self::RateLimitExceeded => "Too many requests. Please try again later.",
-			Self::GithubOAuthFailed => {
+			Self::SocialLoginFailed => {
 				concat!(
 					"GitHub authentication failed. Please try again. ",
 					"Ensure your GitHub account has a verified email address.",

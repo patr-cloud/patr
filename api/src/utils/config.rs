@@ -271,6 +271,11 @@ pub struct IpInfoConfig {
 
 /// The configuration for GitHub OAuth2, used to allow users to sign in with
 /// their GitHub account.
+///
+/// The GitHub OAuth App's registered Authorization callback URL should be
+/// the site root (`https://app.patr.cloud/`) — the only common parent of
+/// the two callback URLs below. GitHub allows any `redirect_uri` that is a
+/// subpath of the registered URL.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GitHubOAuthConfig {
@@ -279,7 +284,11 @@ pub struct GitHubOAuthConfig {
 	pub client_id: String,
 	/// The Client Secret of the GitHub OAuth App
 	pub client_secret: String,
-	/// The full callback URL registered in the GitHub OAuth App settings.
-	/// In production this is `https://app.patr.cloud/github-callback`.
+	/// Frontend page that GitHub redirects to after the unauthenticated
+	/// sign-in flow. In production: `https://app.patr.cloud/login/github`.
 	pub callback_url: String,
+	/// Frontend page that GitHub redirects to after the authenticated
+	/// "Connect GitHub" flow from Profile → Connected Accounts.
+	/// In production: `https://app.patr.cloud/profile/github/callback`.
+	pub connect_callback_url: String,
 }

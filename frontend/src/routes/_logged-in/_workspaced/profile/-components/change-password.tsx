@@ -5,7 +5,7 @@ import { ChangePasswordRequest, ChangePasswordResponse } from "~/bindings";
 import { useAuthState } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
 
-const ChangePasswordTab = () => {
+const ChangePasswordSection = () => {
 	const [authState] = useAuthState();
 	const toast = useToast();
 
@@ -184,4 +184,4 @@ const ChangePasswordTab = () => {
 	);
 };
 
-export default ChangePasswordTab;
+export default ChangePasswordSection;

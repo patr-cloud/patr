@@ -216,6 +216,11 @@ const CompleteGithubSignup = () => {
 						<span class="text-white">{search().email ?? "your GitHub email"}</span>
 					</p>
 
+					<p class="mt-3 text-xs text-gray-500 leading-relaxed">
+						Already have a Patr account? Log in first, then connect GitHub from your profile's Connected
+						Accounts section.
+					</p>
+
 					{/* Submit */}
 					<div class="pt-8 w-full flex justify-end">
 						<Button
@@ -239,7 +244,7 @@ const CompleteGithubSignup = () => {
 	);
 };
 
-export const Route = createFileRoute("/_logged-out/github/complete-signup")({
+export const Route = createFileRoute("/_logged-out/sign-up/github")({
 	validateSearch: (
 		search: Record<string, unknown>
 	): {

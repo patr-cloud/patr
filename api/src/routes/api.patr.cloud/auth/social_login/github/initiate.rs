@@ -2,7 +2,11 @@ use axum::http::StatusCode;
 use models::api::auth::*;
 use rustis::commands::StringCommands;
 
-use crate::{prelude::*, redis::keys as redis_keys, utils::cloudflare::validate_turnstile_token};
+use crate::{
+	models::social_login::GithubStatePayload,
+	prelude::*,
+	utils::cloudflare::validate_turnstile_token,
+};
 
 /// CSRF state token validity: 10 minutes
 const GITHUB_STATE_TTL_SECS: u64 = 600;
@@ -57,9 +61,9 @@ pub async fn github_oauth_initiate(
 
 	redis
 		.setex(
-			redis_keys::social_login_state(&OAuthProvider::Github, &oauth_state_token),
+			redis::keys::social_login_state(&SocialLoginProvider::GitHub, &oauth_state_token),
 			GITHUB_STATE_TTL_SECS,
-			"1",
+			serde_json::to_string(&GithubStatePayload::Anonymous)?,
 		)
 		.await
 		.inspect_err(|err| {

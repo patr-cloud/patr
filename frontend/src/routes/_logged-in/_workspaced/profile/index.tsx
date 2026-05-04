@@ -3,8 +3,9 @@ import { Title } from "@solidjs/meta";
 import { Show } from "solid-js";
 import { LoadingSpinner, PageContainer, PageContainerBody, PageContainerHead } from "~/components";
 import { useUserInfoQuery } from "~/hooks/fetch";
-import UserSettingsInfoTab from "./-components/info";
-import ChangePasswordTab from "./-components/change-password";
+import UserSettingsInfoSection from "./-components/info";
+import ChangePasswordSection from "./-components/change-password";
+import ConnectedAccountsSection from "./-components/connected-accounts";
 
 const UserSettingsPage = () => {
 	const userInfoQuery = useUserInfoQuery();
@@ -32,8 +33,9 @@ const UserSettingsPage = () => {
 						}
 					>
 						<div class="flex flex-1 flex-col gap-6 items-start w-full">
-							<UserSettingsInfoTab />
-							<ChangePasswordTab />
+							<UserSettingsInfoSection />
+							<ChangePasswordSection />
+							<ConnectedAccountsSection />
 						</div>
 					</Show>
 				</PageContainerBody>
@@ -43,8 +45,5 @@ const UserSettingsPage = () => {
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/profile/")({
-	validateSearch: (search: Record<string, unknown>): { tab: string } => ({
-		tab: (search.tab as string) || "",
-	}),
 	component: UserSettingsPage,
 });

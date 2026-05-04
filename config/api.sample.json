@@ -62,9 +62,10 @@
 	},
 	"socialLogin": {
 		"github": {
-			"clientId": "Iv120123456789abcdef",
-			"clientSecret": "0123456789abcdef0123456789abcdef01234567",
-			"callbackUrl": "http://localhost:3000/github/callback"
+			"clientId": "<github-client-id>",
+			"clientSecret": "<github-client-secret>",
+			"callbackUrl": "http://localhost:3000/login/github",
+			"connectCallbackUrl": "http://localhost:3000/profile/github/callback"
 		}
 	}
 }

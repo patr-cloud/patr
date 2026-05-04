@@ -97,11 +97,13 @@ import { GithubCallbackStatus } from "./GithubCallbackStatus";
 import { GithubOAuthInitiateRequest } from "./GithubOAuthInitiateRequest";
 import { GithubOAuthInitiateResponse } from "./GithubOAuthInitiateResponse";
 import { GithubOAuthCallbackResponse } from "./GithubOAuthCallbackResponse";
-import { GithubOAuthLinkRequest } from "./GithubOAuthLinkRequest";
-import { GithubOAuthLinkResponse } from "./GithubOAuthLinkResponse";
 import { GithubOAuthSetupRequest } from "./GithubOAuthSetupRequest";
 import { GithubOAuthSetupResponse } from "./GithubOAuthSetupResponse";
 import { OAuthProvider } from "./OAuthProvider";
+import { LinkedSocialLogin } from "./LinkedSocialLogin";
+import { ListSocialLoginsResponse } from "./ListSocialLoginsResponse";
+import { ConnectGithubInitiateResponse } from "./ConnectGithubInitiateResponse";
+import { ConnectGithubCallbackRequest } from "./ConnectGithubCallbackRequest";
 
 export type {
 	EnvironmentVariableValue,
@@ -203,9 +205,11 @@ export type {
 	GithubOAuthInitiateRequest,
 	GithubOAuthInitiateResponse,
 	GithubOAuthCallbackResponse,
-	GithubOAuthLinkRequest,
-	GithubOAuthLinkResponse,
 	GithubOAuthSetupRequest,
 	GithubOAuthSetupResponse,
 	OAuthProvider,
+	LinkedSocialLogin,
+	ListSocialLoginsResponse,
+	ConnectGithubInitiateResponse,
+	ConnectGithubCallbackRequest,
 };

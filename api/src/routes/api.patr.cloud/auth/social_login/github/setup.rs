@@ -1,11 +1,17 @@
+use std::{num::ParseFloatError, ops::Add};
+
 use argon2::{Algorithm, PasswordHasher, Version, password_hash::generate_salt};
 use axum::http::StatusCode;
+use jsonwebtoken::EncodingKey;
 use models::api::auth::*;
 use rustis::commands::StringCommands;
+use sqlx::types::ipnetwork::IpNetwork;
 use time::OffsetDateTime;
 
-use super::{GithubSetupPayload, create_session};
-use crate::{prelude::*, redis::keys as redis_keys};
+use crate::{
+	models::{access_token_data::AccessTokenData, social_login::GithubSetupPayload},
+	prelude::*,
+};
 
 /// `POST /auth/social-login/github/setup`
 ///
@@ -29,32 +35,38 @@ pub async fn github_oauth_setup(
 		database,
 		redis,
 		client_ip,
-		mut state,
+		state,
 	}: AppRequest<'_, GithubOAuthSetupRequest>,
 ) -> Result<AppResponse<GithubOAuthSetupRequest>, ErrorType> {
 	trace!("Processing GitHub OAuth account setup");
 
 	// Atomically fetch-and-consume the setup token. `GETDEL` ensures two
 	// concurrent requests with the same token cannot both observe it as valid.
-	let setup_key = redis_keys::social_login_setup(&OAuthProvider::Github, &setup_token);
-	let raw = redis
-		.getdel::<Option<String>>(&setup_key)
-		.await
-		.inspect_err(|err| error!("Redis error consuming setup token: {err}"))?
-		.ok_or(ErrorType::GithubOAuthFailed)?;
+	let setup_key = redis::keys::social_login_setup(&SocialLoginProvider::GitHub, &setup_token);
 
-	let payload: GithubSetupPayload =
-		serde_json::from_str(&raw).map_err(ErrorType::server_error)?;
-
-	// Require a verified email from GitHub — accounts with no verified email cannot
-	// complete setup
-	let recovery_email = payload.email.ok_or(ErrorType::GithubOAuthFailed)?;
+	let payload = serde_json::from_str::<GithubSetupPayload>(
+		&redis
+			.getdel::<Option<String>>(&setup_key)
+			.await
+			.inspect_err(|err| error!("Redis error consuming setup token: {err}"))?
+			.ok_or(ErrorType::SocialLoginFailed)?,
+	)?;
 
 	// Check username availability
-	let username_taken = query!(r#"SELECT id FROM "user" WHERE username = $1;"#, &username,)
-		.fetch_optional(&mut **database)
-		.await?
-		.is_some();
+	let username_taken = query!(
+		r#"
+		SELECT
+			id
+		FROM
+			"user"
+		WHERE
+			username = $1;
+		"#,
+		&username,
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	.is_some();
 
 	if username_taken {
 		return Err(ErrorType::UsernameUnavailable);
@@ -63,12 +75,22 @@ pub async fn github_oauth_setup(
 	// Check email availability
 	let email_taken = query!(
 		r#"
-		SELECT id AS "id!" FROM "user" WHERE recovery_email = $1
+		SELECT
+			id AS "id!"
+		FROM
+			"user"
+		WHERE
+			recovery_email = $1
 		UNION
-		SELECT user_id AS "id!" FROM user_email WHERE email = $1
+		SELECT
+			user_id AS "id!"
+		FROM
+			user_email
+		WHERE
+			email = $1
 		LIMIT 1;
 		"#,
-		&recovery_email,
+		&payload.email,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -98,21 +120,40 @@ pub async fn github_oauth_setup(
 
 	query!(
 		r#"
-		INSERT INTO "user"(
-			id, username, password,
-			first_name, last_name, created,
-			recovery_email, recovery_phone_country_code, recovery_phone_number,
-			workspace_limit,
-			password_reset_token, password_reset_token_expiry, password_reset_attempts,
-			mfa_secret
-		) VALUES (
-			$1, $2, $3,
-			$4, $5, $6,
-			$7, NULL, NULL,
-			$8,
-			NULL, NULL, NULL,
-			NULL
-		);
+		INSERT INTO
+			"user"(
+				id,
+				username,
+				password,
+				first_name,
+				last_name,
+				created,
+				recovery_email,
+				recovery_phone_country_code,
+				recovery_phone_number,
+				workspace_limit,
+				password_reset_token,
+				password_reset_token_expiry,
+				password_reset_attempts,
+				mfa_secret
+			)
+		VALUES
+			(
+				$1,
+				$2,
+				$3,
+				$4,
+				$5,
+				$6,
+				$7,
+				NULL,
+				NULL,
+				$8,
+				NULL,
+				NULL,
+				NULL,
+				NULL
+			);
 		"#,
 		user_id as _,
 		&username,
@@ -120,24 +161,39 @@ pub async fn github_oauth_setup(
 		&first_name,
 		&last_name,
 		now,
-		&recovery_email,
+		&payload.email,
 		constants::DEFAULT_WORKSPACE_LIMIT,
 	)
 	.execute(&mut **database)
 	.await?;
 
 	query!(
-		r#"INSERT INTO user_email(user_id, email) VALUES ($1, $2);"#,
+		r#"
+		INSERT INTO
+			user_email(
+				user_id,
+				email
+			)
+		VALUES
+			($1, $2);
+		"#,
 		user_id as _,
-		&recovery_email,
+		&payload.email,
 	)
 	.execute(&mut **database)
 	.await?;
 
 	query!(
 		r#"
-		INSERT INTO user_social_login(user_id, provider, external_id, linked_at)
-		VALUES ($1, 'github', $2, $3);
+		INSERT INTO
+			user_social_login(
+				user_id,
+				provider,
+				external_id,
+				linked_at
+			)
+		VALUES
+			($1, 'github', $2, $3);
 		"#,
 		user_id as _,
 		payload.external_id,
@@ -146,15 +202,157 @@ pub async fn github_oauth_setup(
 	.execute(&mut **database)
 	.await?;
 
-	let (access_token, refresh_token) = create_session(
-		database,
-		&mut state,
-		redis,
-		client_ip,
-		user_agent.to_string(),
-		user_id,
+	let refresh_token = Uuid::new_v4().to_string();
+	let hashed_refresh_token = argon2::Argon2::new_with_secret(
+		state.config.password_pepper.as_ref(),
+		Algorithm::Argon2id,
+		Version::V0x13,
+		constants::HASHING_PARAMS,
 	)
+	.inspect_err(|err| error!("Error creating Argon2: {err}"))
+	.map_err(ErrorType::server_error)?
+	.hash_password_with_salt(refresh_token.as_bytes(), &generate_salt())
+	.inspect_err(|err| error!("Error hashing refresh token: {err}"))
+	.map_err(ErrorType::server_error)?
+	.to_string();
+	let refresh_token_expiry = now.add(constants::INACTIVE_REFRESH_TOKEN_VALIDITY);
+
+	let ip_info = ip::lookup(client_ip, redis, &state.config.ipinfo).await?;
+
+	if !cfg!(debug_assertions) && ip_info.bogon.unwrap_or(false) {
+		return Err(ErrorType::server_error(format!(
+			"cannot use bogon IP address: `{}`",
+			client_ip
+		)));
+	}
+
+	let (lat, lng) = if cfg!(debug_assertions) {
+		(0f64, 0f64)
+	} else {
+		ip_info
+			.loc
+			.split_once(',')
+			.map(|(lat, lng)| {
+				Ok::<_, ParseFloatError>((
+					lat.parse::<f64>().inspect_err(|err| {
+						info!("Error parsing latitude: `{lat}` - {err}");
+					})?,
+					lng.parse::<f64>().inspect_err(|err| {
+						info!("Error parsing longitude: `{lng}` - {err}");
+					})?,
+				))
+			})
+			.ok_or_else(|| {
+				ErrorType::server_error(format!("unknown latitude and longitude: {}", ip_info.loc))
+			})??
+	};
+
+	let country = ip_info.country;
+	let region = ip_info.region;
+	let city = ip_info.city;
+	let timezone = ip_info.timezone.unwrap_or_default();
+
+	let user_agent = user_agent.to_string();
+
+	let login_id = query!(
+		r#"
+		INSERT INTO
+			user_login(
+				login_id,
+				user_id,
+				login_type,
+				created
+			)
+		VALUES
+			(
+				GENERATE_LOGIN_ID(),
+				$1,
+				'web_login',
+				$2
+			)
+		RETURNING login_id AS "login_id: Uuid";
+		"#,
+		user_id as _,
+		now,
+	)
+	.fetch_one(&mut **database)
+	.await?
+	.login_id;
+
+	query!(
+		r#"
+		INSERT INTO
+			web_login(
+				login_id,
+				original_login_id,
+				user_id,
+
+				refresh_token,
+				token_expiry,
+
+				created,
+				created_ip,
+				created_location,
+				created_user_agent,
+				created_country,
+				created_region,
+				created_city,
+				created_timezone
+			)
+		VALUES
+			(
+				$1,
+				NULL,
+				$2,
+
+				$3,
+				$4,
+
+				$5,
+				$6,
+				ST_SetSRID(POINT($7, $8)::GEOMETRY, 4326),
+				$9,
+				$10,
+				$11,
+				$12,
+				$13
+			);
+		"#,
+		login_id as _,
+		user_id as _,
+		hashed_refresh_token,
+		refresh_token_expiry,
+		now,
+		IpNetwork::from(client_ip),
+		lat,
+		lng,
+		user_agent,
+		country,
+		region,
+		city,
+		timezone,
+	)
+	.execute(&mut **database)
 	.await?;
+
+	let access_token = AccessTokenData {
+		iss: constants::JWT_ISSUER.to_string(),
+		sub: login_id,
+		aud: OneOrMore::One(constants::PATR_JWT_AUDIENCE.to_string()),
+		exp: now.add(constants::ACCESS_TOKEN_VALIDITY),
+		nbf: now,
+		iat: now,
+		jti: Uuid::now_v1(),
+	};
+
+	let access_token = jsonwebtoken::encode(
+		&Default::default(),
+		&access_token,
+		&EncodingKey::from_secret(state.config.jwt_secret.as_ref()),
+	)
+	.inspect_err(|err| error!("Error encoding JWT: {err}"))?;
+
+	let refresh_token = format!("{login_id}.{refresh_token}");
 
 	AppResponse::builder()
 		.body(GithubOAuthSetupResponse {

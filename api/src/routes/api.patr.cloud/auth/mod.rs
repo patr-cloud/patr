@@ -45,7 +45,6 @@ use self::{
 	renew_access_token::*,
 	resend_otp::*,
 	reset_password::*,
-	social_login::*,
 };
 
 /// Sets up the auth routes
@@ -53,6 +52,7 @@ use self::{
 pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
 	Router::new()
 		.merge(oauth::setup_routes(state, allowed_client_type).await)
+		.merge(social_login::setup_routes(state, allowed_client_type).await)
 		.mount_endpoint(login, state, allowed_client_type)
 		.mount_auth_endpoint(logout, state, allowed_client_type)
 		.mount_endpoint(create_account, state, allowed_client_type)
@@ -65,8 +65,4 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 		.mount_endpoint(resend_otp, state, allowed_client_type)
 		.mount_endpoint(reset_password, state, allowed_client_type)
 		.mount_endpoint(docker_login, state, allowed_client_type)
-		.mount_endpoint(github_oauth_initiate, state, allowed_client_type)
-		.mount_endpoint(github_oauth_callback, state, allowed_client_type)
-		.mount_endpoint(github_oauth_link, state, allowed_client_type)
-		.mount_endpoint(github_oauth_setup, state, allowed_client_type)
 }

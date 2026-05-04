@@ -1,6 +1,6 @@
 use std::net::IpAddr;
 
-use models::api::auth::OAuthProvider;
+use models::api::auth::SocialLoginProvider;
 
 use crate::prelude::*;
 
@@ -108,23 +108,18 @@ pub fn rate_limit_login_id(login_id: &Uuid, window_secs: u64) -> String {
 	format!("rateLimit:loginId:{}:{}", login_id, window_secs)
 }
 
-/// The key used to store a social-login OAuth CSRF state token. The value is
-/// the sentinel string `"1"` (presence-only). Expires after 10 minutes.
-/// Consumed (deleted) on first use to prevent replay.
-pub fn social_login_state(provider: &OAuthProvider, state_token: &str) -> String {
+/// The key used to store a social-login OAuth CSRF state token. The value
+/// is a JSON-serialised `GithubStatePayload` whose variant identifies
+/// whether the token belongs to the unauthenticated sign-in flow or the
+/// authenticated "Connect GitHub" flow. Expires after 10 minutes. Consumed
+/// (deleted) on first use to prevent replay.
+pub fn social_login_state(provider: &SocialLoginProvider, state_token: &str) -> String {
 	format!("socialLogin:{}:state:{}", provider, state_token)
-}
-
-/// The key used to store a pending social-login account-link confirmation.
-/// The value is JSON containing `{ user_id, external_id, email }`.
-/// Expires after 5 minutes. Consumed on first use.
-pub fn social_login_link(provider: &OAuthProvider, link_token: &str) -> String {
-	format!("socialLogin:{}:link:{}", provider, link_token)
 }
 
 /// The key used to store a pending social-login account-setup payload for new
 /// users. The value is JSON containing `{ external_id, email }`.
 /// Expires after 10 minutes. Consumed on first use.
-pub fn social_login_setup(provider: &OAuthProvider, setup_token: &str) -> String {
+pub fn social_login_setup(provider: &SocialLoginProvider, setup_token: &str) -> String {
 	format!("socialLogin:{}:setup:{}", provider, setup_token)
 }
