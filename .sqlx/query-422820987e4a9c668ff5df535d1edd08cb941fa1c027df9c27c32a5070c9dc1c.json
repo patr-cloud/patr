@@ -1,0 +1,37 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT provider AS \"provider: SocialLoginProvider\", linked_at FROM user_social_login WHERE user_id = $1 ORDER BY linked_at ASC;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "provider: SocialLoginProvider",
+        "type_info": {
+          "Custom": {
+            "name": "social_login_provider",
+            "kind": {
+              "Enum": [
+                "github"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "linked_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "422820987e4a9c668ff5df535d1edd08cb941fa1c027df9c27c32a5070c9dc1c"
+}
