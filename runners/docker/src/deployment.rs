@@ -21,7 +21,7 @@ use bollard::{
 	},
 };
 use futures::{Stream, StreamExt};
-use models::api::workspace::deployment::*;
+use models::api::workspace::{container_registry::*, deployment::*};
 
 use crate::prelude::*;
 
@@ -59,29 +59,69 @@ pub(crate) async fn upsert(
 	// Check if the service exists
 	let existing_service = docker.inspect_service(&service_name, None).await.ok();
 
-	let image = format!(
-		"{}/{}{}{}",
-		registry.registry_url(),
-		registry.image_name().unwrap(),
-		if current_live_digest.is_some() {
-			'@'
-		} else {
-			':'
-		},
-		current_live_digest.as_deref().unwrap_or(&image_tag)
-	);
+	// Resolve the image path. PatrRegistry deployments only carry a
+	// `repository_id` locally — look up the repo name via the API to build the
+	// `{workspace_id}/{repo_name}` path the registry expects.
+	let image_path = match &registry {
+		DeploymentRegistry::PatrRegistry { repository_id, .. } => {
+			let RunnerMode::Managed {
+				workspace_id,
+				api_token,
+				user_agent,
+				..
+			} = &settings.mode
+			else {
+				return Err(RunnerError::UpstreamServerError(ErrorType::server_error(
+					"PatrRegistry deployment encountered in self-hosted mode",
+				)));
+			};
+			let repository = client::make_request(
+				ApiRequest::<GetContainerRepositoryInfoRequest>::builder()
+					.path(GetContainerRepositoryInfoPath {
+						workspace_id: *workspace_id,
+						repository_id: *repository_id,
+					})
+					.headers(GetContainerRepositoryInfoRequestHeaders {
+						authorization: api_token.clone(),
+						user_agent: user_agent.clone(),
+					})
+					.query(())
+					.body(GetContainerRepositoryInfoRequest)
+					.build(),
+			)
+			.await
+			.map_err(|err| err.body.error)?
+			.body
+			.repository;
+			format!(
+				"{}/{}/{}",
+				registry.registry_url(),
+				workspace_id,
+				repository.name
+			)
+		}
+		DeploymentRegistry::ExternalRegistry {
+			registry: reg,
+			image_name,
+		} => format!("{}/{}", reg, image_name),
+	};
+
+	let image = if let Some(digest) = &current_live_digest {
+		format!("{}@{}", image_path, digest)
+	} else {
+		format!("{}:{}", image_path, image_tag)
+	};
 
 	// Build registry credentials for both image pull and Swarm task scheduling.
-	// The local DB stores all registries as ExternalRegistry, so check the URL
-	// string rather than the enum variant to detect Patr registry images.
-	let is_patr = registry.registry_url() == models::utils::constants::CONTAINER_REGISTRY_URL;
+	// Patr registry images need managed-mode auth; external registries are
+	// pulled anonymously here.
 	let registry_auth = if let RunnerMode::Managed {
 		workspace_id: _,
 		runner_id: _,
 		user_agent: _,
 		api_token,
 	} = &settings.mode &&
-		is_patr
+		registry.is_patr_registry()
 	{
 		Some(DockerCredentials {
 			username: Some("patr".to_string()),
