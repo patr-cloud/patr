@@ -328,19 +328,6 @@ impl TestSetup {
 			.unwrap_or_else(|e| panic!("execute_sql failed for `{sql}`: {e}"));
 	}
 
-	/// Mark a domain as verified directly in the DB, bypassing the DNS
-	/// verification flow. Used by managed-URL tests that need an already-
-	/// verified domain to attach URLs to.
-	pub async fn mark_test_domain_verified(&self, domain_id: Uuid) {
-		sqlx::query(
-			"UPDATE workspace_domain SET is_verified = TRUE, last_verified = NOW() WHERE id = $1",
-		)
-		.bind(domain_id)
-		.execute(&self.state.database)
-		.await
-		.expect("failed to mark domain verified");
-	}
-
 	/// Clear all rate limit keys from Redis. Useful in tests to reset rate
 	/// limit state after setup helpers have made API calls.
 	pub async fn clear_rate_limits(&self) {
