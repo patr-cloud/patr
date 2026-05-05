@@ -39,20 +39,20 @@ struct GitHubEmail {
 	verified: bool,
 }
 
-/// `POST /auth/social-login/github/callback`
+/// `POST /auth/social-login/{provider}/callback`
 ///
-/// Verifies the CSRF state, exchanges the code for a GitHub token, fetches the
-/// user profile, and resolves which of the three paths to take.
-pub async fn github_oauth_callback(
+/// Verifies the CSRF state, exchanges the code for a provider access token,
+/// fetches the user profile, and resolves which path to take.
+pub async fn social_login_callback(
 	AppRequest {
 		request:
 			ProcessedApiRequest {
-				path: GithubOAuthCallbackPath {},
+				path: SocialLoginCallbackPath { provider },
 				query: (),
-				headers: GithubOAuthCallbackRequestHeaders { user_agent },
+				headers: SocialLoginCallbackRequestHeaders { user_agent },
 				// Rename `state` (OAuth CSRF token) to `csrf_state` to avoid
 				// shadowing `state` (AppState) at the outer destructuring level.
-				body: GithubOAuthCallbackRequestProcessed {
+				body: SocialLoginCallbackRequestProcessed {
 					code,
 					state: csrf_state,
 				},
@@ -61,26 +61,28 @@ pub async fn github_oauth_callback(
 		redis,
 		client_ip,
 		state,
-	}: AppRequest<'_, GithubOAuthCallbackRequest>,
-) -> Result<AppResponse<GithubOAuthCallbackRequest>, ErrorType> {
-	trace!("Processing GitHub OAuth callback");
+	}: AppRequest<'_, SocialLoginCallbackRequest>,
+) -> Result<AppResponse<SocialLoginCallbackRequest>, ErrorType> {
+	trace!("Processing {provider} OAuth callback");
 
-	// Atomically consume the CSRF state token. Token must be of the
-	// `Auth` variant — a `Connect` token belongs to the authenticated
+	#[expect(irrefutable_let_patterns)]
+	let SocialLoginProvider::GitHub = provider else {
+		return Err(ErrorType::SocialLoginFailed);
+	};
+
+	// Atomically consume the CSRF state token. Token must be the
+	// `Anonymous` variant — an `Authenticated` token belongs to the
 	// connect-flow callback and isn't valid here.
 	let GithubStatePayload::Anonymous = serde_json::from_str::<GithubStatePayload>(
 		&redis
-			.getdel::<Option<String>>(redis::keys::social_login_state(
-				&SocialLoginProvider::GitHub,
-				&csrf_state,
-			))
+			.getdel::<Option<String>>(redis::keys::social_login_state(&provider, &csrf_state))
 			.await
 			.inspect_err(|err| error!("Redis error consuming GitHub state: {err}"))?
 			.ok_or(ErrorType::SocialLoginFailed)?,
 	)
 	.map_err(ErrorType::server_error)?
 	else {
-		warn!("GitHub state token used on the auth callback was not an Auth-variant token");
+		warn!("GitHub state token used on the auth callback was not an Anonymous-variant token");
 		return Err(ErrorType::SocialLoginFailed);
 	};
 
@@ -256,7 +258,7 @@ pub async fn github_oauth_callback(
 
 		redis
 			.setex(
-				redis::keys::social_login_setup(&SocialLoginProvider::GitHub, &setup_token),
+				redis::keys::social_login_setup(&provider, &setup_token),
 				600, // 10 mins
 				serde_json::to_string(&GithubSetupPayload {
 					external_id: github_user.id.to_string(),
@@ -267,7 +269,7 @@ pub async fn github_oauth_callback(
 			.inspect_err(|err| error!("Redis error storing setup token: {err}"))?;
 
 		return AppResponse::builder()
-			.body(GithubOAuthCallbackResponse {
+			.body(SocialLoginCallbackResponse {
 				status: GithubCallbackStatus::SetupRequired {
 					setup_token,
 					prefilled_username: github_user.login,
@@ -435,7 +437,7 @@ pub async fn github_oauth_callback(
 	let refresh_token = format!("{login_id}.{refresh_token}");
 
 	AppResponse::builder()
-		.body(GithubOAuthCallbackResponse {
+		.body(SocialLoginCallbackResponse {
 			status: GithubCallbackStatus::LoggedIn {
 				access_token,
 				refresh_token,

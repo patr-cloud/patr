@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createSignal, Show } from "solid-js";
-import { CreateAccountRequest, GithubOAuthInitiateRequest, GithubOAuthInitiateResponse } from "~/bindings";
+import { CreateAccountRequest, SocialLoginInitiateResponse } from "~/bindings";
 import { Alert, Button, Input, InputType, useToast, Turnstile } from "~/components";
 import { createAsyncAction } from "~/hooks";
 import { ButtonVariant } from "~/utils/color";
@@ -32,17 +32,10 @@ const SignUp = () => {
 	const [githubLoading, setGithubLoading] = createSignal(false);
 
 	const handleGithubSignIn = async () => {
-		if (!turnstileToken()) {
-			toast("Please complete the security verification", "error");
-			return;
-		}
-
 		setGithubLoading(true);
 		try {
-			const body: GithubOAuthInitiateRequest = { cfTurnstileToken: turnstileToken() };
-			const resp = await httpRequest<GithubOAuthInitiateResponse>("/api/auth/social-login/github", {
+			const resp = await httpRequest<SocialLoginInitiateResponse>("/api/auth/social-login/github", {
 				method: "POST",
-				body: JSON.stringify(body),
 			});
 			if (resp.ok) {
 				window.location.href = resp.data.authorizeUrl;

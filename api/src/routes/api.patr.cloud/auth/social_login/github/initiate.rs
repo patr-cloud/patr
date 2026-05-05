@@ -2,66 +2,43 @@ use axum::http::StatusCode;
 use models::api::auth::*;
 use rustis::commands::StringCommands;
 
-use crate::{
-	models::social_login::GithubStatePayload,
-	prelude::*,
-	utils::cloudflare::validate_turnstile_token,
-};
+use crate::{models::social_login::GithubStatePayload, prelude::*};
 
 /// CSRF state token validity: 10 minutes
 const GITHUB_STATE_TTL_SECS: u64 = 600;
 
-/// `POST /auth/social-login/github`
+/// `POST /auth/social-login/{provider}`
 ///
-/// Validates the Cloudflare Turnstile token (reused from the login or signup
-/// page that surfaced the GitHub button), generates a CSRF state UUID, stores
-/// it in Redis for 10 minutes, and returns the full GitHub authorization URL
-/// that the frontend should redirect to.
-pub async fn github_oauth_initiate(
+/// Generates a CSRF state UUID, stores it in Redis for 10 minutes, and
+/// returns the full provider authorization URL that the frontend should
+/// redirect to.
+pub async fn social_login_initiate(
 	AppRequest {
 		request:
 			ProcessedApiRequest {
-				path: GithubOAuthInitiatePath {},
+				path: SocialLoginInitiatePath { provider },
 				query: (),
 				headers: (),
-				body: GithubOAuthInitiateRequestProcessed { cf_turnstile_token },
+				body: SocialLoginInitiateRequestProcessed,
 			},
+		database: _,
 		redis,
-		client_ip,
+		client_ip: _,
 		state,
-		..
-	}: AppRequest<'_, GithubOAuthInitiateRequest>,
-) -> Result<AppResponse<GithubOAuthInitiateRequest>, ErrorType> {
-	trace!("Validating Cloudflare Turnstile token for GitHub OAuth initiate");
-	let cf_turnstile_response = validate_turnstile_token(
-		&state.config.cloudflare.turnstile_secret,
-		&cf_turnstile_token,
-		Some(client_ip),
-	)
-	.await
-	.inspect_err(|err| {
-		error!("Error verifying Cloudflare Turnstile token: `{}`", err);
-	})?;
+	}: AppRequest<'_, SocialLoginInitiateRequest>,
+) -> Result<AppResponse<SocialLoginInitiateRequest>, ErrorType> {
+	trace!("Initiating {provider} OAuth flow");
 
-	if !cf_turnstile_response.success {
-		return Err(ErrorType::TurnstileVerificationFailed);
-	}
-
-	// The GitHub button is surfaced on `/login` and `/sign-up`; both pages'
-	// Turnstile widgets are valid sources of a token for this endpoint.
-	if !cfg!(debug_assertions) &&
-		!matches!(cf_turnstile_response.action.as_str(), "login" | "sign-up")
-	{
-		return Err(ErrorType::TurnstileVerificationActionMismatch);
-	}
-
-	trace!("Initiating GitHub OAuth flow");
+	#[expect(irrefutable_let_patterns)]
+	let SocialLoginProvider::GitHub = provider else {
+		return Err(ErrorType::SocialLoginFailed);
+	};
 
 	let oauth_state_token = Uuid::new_v4().to_string();
 
 	redis
 		.setex(
-			redis::keys::social_login_state(&SocialLoginProvider::GitHub, &oauth_state_token),
+			redis::keys::social_login_state(&provider, &oauth_state_token),
 			GITHUB_STATE_TTL_SECS,
 			serde_json::to_string(&GithubStatePayload::Anonymous)?,
 		)
@@ -84,7 +61,7 @@ pub async fn github_oauth_initiate(
 	let authorize_url = authorize_url.to_string();
 
 	AppResponse::builder()
-		.body(GithubOAuthInitiateResponse { authorize_url })
+		.body(SocialLoginInitiateResponse { authorize_url })
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()

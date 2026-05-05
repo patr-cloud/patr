@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createSignal, onMount, Show } from "solid-js";
-import type { GithubOAuthSetupRequest, GithubOAuthSetupResponse } from "~/bindings";
+import type { SocialLoginSetupRequest, SocialLoginSetupResponse } from "~/bindings";
 import { Alert, Button, Input, InputType, useToast } from "~/components";
 import { ButtonVariant } from "~/utils/color";
 import { createAsyncAction, useAuthState } from "~/hooks";
@@ -76,14 +76,14 @@ const CompleteGithubSignup = () => {
 		const setupToken = search().setupToken;
 		if (!setupToken) return;
 
-		const body: GithubOAuthSetupRequest = {
+		const body: SocialLoginSetupRequest = {
 			setupToken,
 			username: username(),
 			firstName: firstName(),
 			lastName: lastName(),
 		};
 
-		const resp = await httpRequest<GithubOAuthSetupResponse>("/api/auth/social-login/github/setup", {
+		const resp = await httpRequest<SocialLoginSetupResponse>("/api/auth/social-login/github/setup", {
 			method: "POST",
 			body: JSON.stringify(body),
 		});

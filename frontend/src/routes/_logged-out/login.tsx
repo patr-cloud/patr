@@ -13,7 +13,7 @@ import {
 } from "~/components";
 import { ButtonVariant } from "~/utils/color";
 import { createSignal, Show } from "solid-js";
-import { GithubOAuthInitiateRequest, GithubOAuthInitiateResponse, LoginRequest, LoginResponse } from "~/bindings";
+import { SocialLoginInitiateResponse, LoginRequest, LoginResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
 import { createAsyncAction, useAuthState } from "~/hooks";
 import { USERNAME_VALIDITY_PATTERN } from "~/utils/validation";
@@ -82,18 +82,11 @@ const Login = () => {
 	};
 
 	const handleGithubSignIn = async () => {
-		if (!turnstileToken()) {
-			toast("Please complete the security verification", "error");
-			return;
-		}
-
 		setGithubLoading(true);
 
 		try {
-			const body: GithubOAuthInitiateRequest = { cfTurnstileToken: turnstileToken() };
-			const resp = await httpRequest<GithubOAuthInitiateResponse>("/api/auth/social-login/github", {
+			const resp = await httpRequest<SocialLoginInitiateResponse>("/api/auth/social-login/github", {
 				method: "POST",
-				body: JSON.stringify(body),
 			});
 			if (resp.ok) {
 				window.location.href = resp.data.authorizeUrl;

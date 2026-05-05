@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { onMount } from "solid-js";
-import type { GithubOAuthCallbackResponse } from "~/bindings";
+import type { SocialLoginCallbackResponse } from "~/bindings";
 import { useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
@@ -40,7 +40,7 @@ const GithubCallback = () => {
 			return;
 		}
 
-		const resp = await httpRequest<GithubOAuthCallbackResponse>("/api/auth/social-login/github/callback", {
+		const resp = await httpRequest<SocialLoginCallbackResponse>("/api/auth/social-login/github/callback", {
 			method: "POST",
 			body: JSON.stringify({ code, state }),
 		});

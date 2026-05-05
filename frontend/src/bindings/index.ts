@@ -94,11 +94,11 @@ import { MetricDataPoint } from "./MetricDataPoint";
 import { DeploymentMetricName } from "./DeploymentMetricName";
 import { RunnerMetricName } from "./RunnerMetricName";
 import { GithubCallbackStatus } from "./GithubCallbackStatus";
-import { GithubOAuthInitiateRequest } from "./GithubOAuthInitiateRequest";
-import { GithubOAuthInitiateResponse } from "./GithubOAuthInitiateResponse";
-import { GithubOAuthCallbackResponse } from "./GithubOAuthCallbackResponse";
-import { GithubOAuthSetupRequest } from "./GithubOAuthSetupRequest";
-import { GithubOAuthSetupResponse } from "./GithubOAuthSetupResponse";
+import { SocialLoginInitiateRequest } from "./SocialLoginInitiateRequest";
+import { SocialLoginInitiateResponse } from "./SocialLoginInitiateResponse";
+import { SocialLoginCallbackResponse } from "./SocialLoginCallbackResponse";
+import { SocialLoginSetupRequest } from "./SocialLoginSetupRequest";
+import { SocialLoginSetupResponse } from "./SocialLoginSetupResponse";
 import { SocialLoginProvider } from "./SocialLoginProvider";
 import { LinkedSocialLogin } from "./LinkedSocialLogin";
 import { ListSocialLoginsResponse } from "./ListSocialLoginsResponse";
@@ -202,11 +202,11 @@ export type {
 	DeploymentMetricName,
 	RunnerMetricName,
 	GithubCallbackStatus,
-	GithubOAuthInitiateRequest,
-	GithubOAuthInitiateResponse,
-	GithubOAuthCallbackResponse,
-	GithubOAuthSetupRequest,
-	GithubOAuthSetupResponse,
+	SocialLoginInitiateRequest,
+	SocialLoginInitiateResponse,
+	SocialLoginCallbackResponse,
+	SocialLoginSetupRequest,
+	SocialLoginSetupResponse,
 	SocialLoginProvider,
 	LinkedSocialLogin,
 	ListSocialLoginsResponse,

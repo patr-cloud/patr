@@ -13,19 +13,19 @@ use crate::{
 	prelude::*,
 };
 
-/// `POST /auth/social-login/github/setup`
+/// `POST /auth/social-login/{provider}/setup`
 ///
-/// Creates a new Patr account from a confirmed GitHub identity after the user
-/// has reviewed/edited the pre-filled profile details.
-pub async fn github_oauth_setup(
+/// Creates a new Patr account from a confirmed social-login identity after
+/// the user has reviewed/edited the pre-filled profile details.
+pub async fn social_login_setup(
 	AppRequest {
 		request:
 			ProcessedApiRequest {
-				path: GithubOAuthSetupPath,
+				path: SocialLoginSetupPath { provider },
 				query: (),
-				headers: GithubOAuthSetupRequestHeaders { user_agent },
+				headers: SocialLoginSetupRequestHeaders { user_agent },
 				body:
-					GithubOAuthSetupRequestProcessed {
+					SocialLoginSetupRequestProcessed {
 						setup_token,
 						username,
 						first_name,
@@ -36,13 +36,18 @@ pub async fn github_oauth_setup(
 		redis,
 		client_ip,
 		state,
-	}: AppRequest<'_, GithubOAuthSetupRequest>,
-) -> Result<AppResponse<GithubOAuthSetupRequest>, ErrorType> {
-	trace!("Processing GitHub OAuth account setup");
+	}: AppRequest<'_, SocialLoginSetupRequest>,
+) -> Result<AppResponse<SocialLoginSetupRequest>, ErrorType> {
+	trace!("Processing {provider} OAuth account setup");
+
+	#[expect(irrefutable_let_patterns)]
+	let SocialLoginProvider::GitHub = provider else {
+		return Err(ErrorType::SocialLoginFailed);
+	};
 
 	// Atomically fetch-and-consume the setup token. `GETDEL` ensures two
 	// concurrent requests with the same token cannot both observe it as valid.
-	let setup_key = redis::keys::social_login_setup(&SocialLoginProvider::GitHub, &setup_token);
+	let setup_key = redis::keys::social_login_setup(&provider, &setup_token);
 
 	let payload = serde_json::from_str::<GithubSetupPayload>(
 		&redis
@@ -355,7 +360,7 @@ pub async fn github_oauth_setup(
 	let refresh_token = format!("{login_id}.{refresh_token}");
 
 	AppResponse::builder()
-		.body(GithubOAuthSetupResponse {
+		.body(SocialLoginSetupResponse {
 			access_token,
 			refresh_token,
 		})
