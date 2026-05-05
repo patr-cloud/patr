@@ -145,6 +145,7 @@ pub async fn get_deployment_info(
 			name,
 			registry,
 			image_name,
+			repository_id,
 			image_tag,
 			status,
 			min_horizontal_scale,
@@ -177,10 +178,27 @@ pub async fn get_deployment_info(
 	let name = row.try_get::<String, _>("name")?;
 	let image_tag = row.try_get::<String, _>("image_tag")?;
 	let status = row.try_get::<DeploymentStatus, _>("status")?;
-	let registry = row.try_get::<String, _>("registry")?;
-	let image_name = row.try_get::<String, _>("image_name")?;
+	let registry_url = row.try_get::<String, _>("registry")?;
+	let image_name = row.try_get::<Option<String>, _>("image_name")?;
+	let repository_id = row.try_get::<Option<Uuid>, _>("repository_id")?;
 	let machine_type = row.try_get::<Uuid, _>("machine_type")?;
 	let current_live_digest = row.try_get::<Option<String>, _>("current_live_digest")?;
+
+	let registry = match (repository_id, image_name) {
+		(Some(repository_id), _) => DeploymentRegistry::PatrRegistry {
+			registry: models::api::workspace::deployment::PatrRegistry,
+			repository_id,
+		},
+		(None, Some(image_name)) => DeploymentRegistry::ExternalRegistry {
+			registry: registry_url,
+			image_name,
+		},
+		(None, None) => {
+			return Err(ErrorType::server_error(
+				"corrupted deployment: neither repository_id nor image_name is set",
+			));
+		}
+	};
 
 	let deploy_on_push = row.try_get::<bool, _>("deploy_on_push")?;
 	let min_horizontal_scale = row.try_get::<u16, _>("min_horizontal_scale")?;
@@ -204,10 +222,7 @@ pub async fn get_deployment_info(
 					name,
 					image_tag,
 					status,
-					registry: DeploymentRegistry::ExternalRegistry {
-						registry,
-						image_name,
-					},
+					registry,
 					// WARN: This is a dummy runner ID, as there is no runner-id in self-hosted PATR
 					runner: Uuid::nil(),
 					current_live_digest,

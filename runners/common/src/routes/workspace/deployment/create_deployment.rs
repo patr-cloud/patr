@@ -62,6 +62,7 @@ pub async fn create_deployment(
 				name,
 				registry,
 				image_name,
+				repository_id,
 				image_tag,
 				status,
 				machine_type,
@@ -95,6 +96,7 @@ pub async fn create_deployment(
 				$14,
 				$15,
 				$16,
+				$17,
 				NULL,
 				NULL
 			);
@@ -104,6 +106,7 @@ pub async fn create_deployment(
 	.bind(name.to_string())
 	.bind(registry.registry_url())
 	.bind(registry.image_name())
+	.bind(registry.repository_id())
 	.bind(image_tag.to_string())
 	.bind(status)
 	.bind(machine_type)

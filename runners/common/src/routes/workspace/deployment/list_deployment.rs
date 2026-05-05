@@ -40,6 +40,7 @@ pub async fn list_deployment(
 			status,
 			registry,
 			image_name,
+			repository_id,
 			image_tag,
 			machine_type,
 			current_live_digest
@@ -62,10 +63,27 @@ pub async fn list_deployment(
 			let deployment_id = row.try_get::<Uuid, _>("id")?;
 			let name = row.try_get::<String, _>("name")?;
 			let status = row.try_get::<DeploymentStatus, _>("status")?;
-			let registry = row.try_get::<String, _>("registry")?;
+			let registry_url = row.try_get::<String, _>("registry")?;
 			let image_tag = row.try_get::<String, _>("image_tag")?;
-			let image_name = row.try_get::<String, _>("image_name")?;
+			let image_name = row.try_get::<Option<String>, _>("image_name")?;
+			let repository_id = row.try_get::<Option<Uuid>, _>("repository_id")?;
 			let machine_type = row.try_get::<Uuid, _>("machine_type")?;
+
+			let registry = match (repository_id, image_name) {
+				(Some(repository_id), _) => DeploymentRegistry::PatrRegistry {
+					registry: models::api::workspace::deployment::PatrRegistry,
+					repository_id,
+				},
+				(None, Some(image_name)) => DeploymentRegistry::ExternalRegistry {
+					registry: registry_url,
+					image_name,
+				},
+				(None, None) => {
+					return Err(ErrorType::server_error(
+						"corrupted deployment: neither repository_id nor image_name is set",
+					));
+				}
+			};
 
 			Ok(WithId::new(
 				deployment_id,
@@ -73,10 +91,7 @@ pub async fn list_deployment(
 					name,
 					image_tag,
 					status,
-					registry: DeploymentRegistry::ExternalRegistry {
-						registry,
-						image_name,
-					},
+					registry,
 					// WARN: This is a dummy runner ID, as there is no runner-id in self-hosted PATR
 					runner: Uuid::nil(),
 					current_live_digest: None,

@@ -59,6 +59,25 @@ async fn create_deployment_via_http(
 	token: &BearerToken,
 	deploy_on_create: bool,
 ) -> Uuid {
+	create_deployment_with_registry(
+		setup,
+		token,
+		deploy_on_create,
+		DeploymentRegistry::ExternalRegistry {
+			registry: "docker.io".to_string(),
+			image_name: "nginx".to_string(),
+		},
+	)
+	.await
+}
+
+/// Create a deployment via HTTP using the given registry and return its ID.
+async fn create_deployment_with_registry(
+	setup: &TestSetup,
+	token: &BearerToken,
+	deploy_on_create: bool,
+	registry: DeploymentRegistry,
+) -> Uuid {
 	let response = setup
 		.make_api_call(
 			ApiRequest::<CreateDeploymentRequest>::builder()
@@ -71,10 +90,7 @@ async fn create_deployment_via_http(
 				})
 				.body(CreateDeploymentRequest {
 					name: format!("dep-{}", &Uuid::new_v4().to_string()[..8]),
-					registry: DeploymentRegistry::ExternalRegistry {
-						registry: "docker.io".to_string(),
-						image_name: "nginx".to_string(),
-					},
+					registry,
 					image_tag: "latest".to_string(),
 					runner: Uuid::nil(),
 					machine_type: Uuid::parse_str("b3cf3771fa394281bfdfeb2e65a061b6").unwrap(),
@@ -101,6 +117,17 @@ async fn create_deployment_via_http(
 		.response
 		.id
 		.id
+}
+
+/// Build a `PatrRegistry` `DeploymentRegistry` for tests. Uses a synthetic
+/// repository id — the runner schema doesn't FK into a repository table, so
+/// any UUID is accepted, exercising only the (registry, image_name,
+/// repository_id) exclusivity branch.
+fn patr_test_registry() -> DeploymentRegistry {
+	DeploymentRegistry::PatrRegistry {
+		registry: models::api::workspace::deployment::PatrRegistry,
+		repository_id: Uuid::new_v4(),
+	}
 }
 
 #[tokio::test]
@@ -262,6 +289,98 @@ async fn get_deployment_info() {
 		.response;
 
 	assert_eq!(body.deployment.id, dep_id);
+}
+
+#[tokio::test]
+async fn create_and_list_patr_registry_deployments() {
+	let setup = setup().await;
+	let token = create_user_and_login(&setup).await;
+	let registry = patr_test_registry();
+	let dep_id = create_deployment_with_registry(&setup, &token, true, registry.clone()).await;
+
+	let body = setup
+		.make_api_call(
+			ApiRequest::<ListDeploymentRequest>::builder()
+				.path(ListDeploymentPath {
+					workspace_id: Uuid::nil(),
+				})
+				.query(ListResourceQuery {
+					sort: Default::default(),
+					search: Default::default(),
+					count: 10,
+					page: 0,
+					additional_query: (),
+				})
+				.headers(ListDeploymentRequestHeaders {
+					authorization: token,
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ListDeploymentRequest)
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListDeploymentResponse>>()
+		.response;
+
+	let listed = body
+		.deployments
+		.iter()
+		.find(|d| d.id == dep_id)
+		.expect("created deployment missing from list");
+	assert_eq!(listed.data.registry, registry);
+}
+
+#[tokio::test]
+async fn get_patr_registry_deployment_info() {
+	let setup = setup().await;
+	let token = create_user_and_login(&setup).await;
+	let registry = patr_test_registry();
+	let dep_id = create_deployment_with_registry(&setup, &token, true, registry.clone()).await;
+
+	let body = setup
+		.make_api_call(
+			ApiRequest::<GetDeploymentInfoRequest>::builder()
+				.path(GetDeploymentInfoPath {
+					workspace_id: Uuid::nil(),
+					deployment_id: dep_id,
+				})
+				.headers(GetDeploymentInfoRequestHeaders {
+					authorization: token,
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(GetDeploymentInfoRequest)
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetDeploymentInfoResponse>>()
+		.response;
+
+	assert_eq!(body.deployment.id, dep_id);
+	assert_eq!(body.deployment.data.registry, registry);
+}
+
+#[tokio::test]
+async fn create_and_delete_patr_registry_deployment() {
+	let setup = setup().await;
+	let token = create_user_and_login(&setup).await;
+	let dep_id = create_deployment_with_registry(&setup, &token, true, patr_test_registry()).await;
+
+	setup
+		.make_api_call(
+			ApiRequest::<DeleteDeploymentRequest>::builder()
+				.path(DeleteDeploymentPath {
+					workspace_id: Uuid::nil(),
+					deployment_id: dep_id,
+				})
+				.headers(DeleteDeploymentRequestHeaders {
+					authorization: token,
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(DeleteDeploymentRequest)
+				.build(),
+		)
+		.await
+		.assert_status(http::StatusCode::RESET_CONTENT);
 }
 
 #[tokio::test]
