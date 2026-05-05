@@ -146,7 +146,8 @@ pub async fn get_exposed_ports(
 			ErrorType::InternalServerError
 		})?;
 
-	let Ok(image_config) = serde_json::from_slice::<ImageConfiguration>(&config.into_bytes()) else {
+	let Ok(image_config) = serde_json::from_slice::<ImageConfiguration>(&config.into_bytes())
+	else {
 		error!("Failed to parse config JSON as an image configuration");
 		return Err(ErrorType::InternalServerError);
 	};

@@ -39,18 +39,6 @@ use models::{
 use preprocess::Preprocessable;
 use rand::{RngExt as _, distr::Alphanumeric};
 use serde::Serialize;
-use testcontainers_modules::{
-	minio::MinIO,
-	postgres::Postgres,
-	redis::Redis,
-	testcontainers::{
-		ContainerAsync,
-		GenericImage,
-		ImageExt,
-		core::{IntoContainerPort, WaitFor, wait::HttpWaitStrategy},
-		runners::AsyncRunner as _,
-	},
-};
 use tokio::net::TcpListener;
 use wiremock::{
 	Mock,
@@ -68,13 +56,19 @@ pub struct TestSetup {
 	registry: TestServer,
 	loki: TestServer,
 	state: AppState,
-	s3_container: ContainerAsync<MinIO>,
-	postgres_container: ContainerAsync<Postgres>,
-	redis_container: ContainerAsync<Redis>,
-	loki_container: ContainerAsync<GenericImage>,
-	mimir_container: ContainerAsync<GenericImage>,
 	cloudflare_mock: MockServer,
 	permission_ids: BTreeMap<String, Uuid>,
+}
+
+/// Generate a fully-random IPv4 for the per-call `X-Forwarded-For` header.
+///
+/// Used by [`TestSetup::make_web_dashboard_call`] and
+/// [`TestSetup::make_api_call`] so each call lands in its own per-IP rate-limit
+/// bucket. With shared Redis across tests this prevents helpers like
+/// `create_test_user` from polluting the bucket for concurrent tests, and
+/// removes the need for blanket `clear_rate_limits()` calls in fixtures.
+fn random_ipv4() -> std::net::Ipv4Addr {
+	rand::rng().random::<u32>().into()
 }
 
 impl TestSetup {
@@ -88,7 +82,8 @@ impl TestSetup {
 	/// Make a typed API call using `ApiRequest<E>`.
 	///
 	/// All headers (including `authorization` and `user_agent`) are provided
-	/// through the typed headers struct in the request.
+	/// through the typed headers struct in the request. A fresh random IPv4
+	/// is injected as `X-Forwarded-For` per call — see [`random_ipv4`].
 	pub async fn make_web_dashboard_call<E>(&self, request: ApiRequest<E>) -> TestResponse
 	where
 		E: ApiEndpoint,
@@ -106,6 +101,7 @@ impl TestSetup {
 		};
 
 		let mut req = self.web.method(E::METHOD, &full_path);
+		req = req.add_header("X-Forwarded-For", random_ipv4().to_string());
 		let header_map = request.headers.to_header_map();
 		for (name, value) in header_map.iter() {
 			req = req.add_header(name.clone(), value.to_str().unwrap());
@@ -118,6 +114,8 @@ impl TestSetup {
 	/// presents a `patrv1.{refresh}.{login_id}` API token in the
 	/// `Authorization` header — the WebDashboard-routed server rejects it as
 	/// a malformed access token.
+	///
+	/// A fresh random IPv4 is injected as `X-Forwarded-For` per call.
 	pub async fn make_api_call<E>(&self, request: ApiRequest<E>) -> TestResponse
 	where
 		E: ApiEndpoint,
@@ -135,6 +133,7 @@ impl TestSetup {
 		};
 
 		let mut req = self.api.method(E::METHOD, &full_path);
+		req = req.add_header("X-Forwarded-For", random_ipv4().to_string());
 		let header_map = request.headers.to_header_map();
 		for (name, value) in header_map.iter() {
 			req = req.add_header(name.clone(), value.to_str().unwrap());
@@ -389,13 +388,11 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 		.take(64)
 		.collect::<String>();
 
-	let s3_container = MinIO::default().start().await?;
-
 	let s3 = S3Config {
 		endpoint: format!(
 			"http://{}:{}",
-			s3_container.get_host().await?.to_string(),
-			s3_container.get_host_port_ipv4(9000).await?
+			std::env::var("PATR_TEST_S3_HOST").expect("PATR_TEST_S3_HOST must be set"),
+			std::env::var("PATR_TEST_S3_PORT").expect("PATR_TEST_S3_PORT must be set"),
 		),
 		region: "us-east-1".to_string(),
 		bucket: "test-bucket".to_string(),
@@ -404,169 +401,40 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 		force_path_style: true,
 	};
 
-	let postgres_container = Postgres::default()
-		.with_db_name("api")
-		.with_user("user")
-		.with_password("password")
-		.with_name("postgis/postgis")
-		.with_tag("18-3.6")
-		.start()
-		.await?;
-
 	let database = DatabaseConfig {
-		host: postgres_container.get_host().await?.to_string(),
-		port: postgres_container.get_host_port_ipv4(5432).await?,
-		user: "user".to_string(),
-		password: "password".to_string(),
-		database: "api".to_string(),
+		host: std::env::var("PATR_TEST_POSTGRES_HOST")
+			.expect("PATR_TEST_POSTGRES_HOST must be set"),
+		port: std::env::var("PATR_TEST_POSTGRES_PORT")
+			.expect("PATR_TEST_POSTGRES_PORT must be set")
+			.parse()
+			.expect("PATR_TEST_POSTGRES_PORT must be a u16"),
+		user: std::env::var("PATR_TEST_POSTGRES_USER")
+			.expect("PATR_TEST_POSTGRES_USER must be set"),
+		password: std::env::var("PATR_TEST_POSTGRES_PASSWORD")
+			.expect("PATR_TEST_POSTGRES_PASSWORD must be set"),
+		database: std::env::var("PATR_TEST_POSTGRES_DB")
+			.expect("PATR_TEST_POSTGRES_DB must be set"),
 		connection_limit: 10,
 	};
 
-	let loki_config = r#"
-auth_enabled: true
-target: all
-server:
-  http_listen_address: "0.0.0.0"
-  http_listen_port: 3100
-common:
-  path_prefix: /tmp/loki
-  replication_factor: 1
-memberlist:
-  join_members: []
-ingester:
-  lifecycler:
-    address: 127.0.0.1
-    ring:
-      kvstore:
-        store: inmemory
-      replication_factor: 1
-    final_sleep: 0s
-  chunk_idle_period: 1h
-  max_chunk_age: 1h
-  chunk_target_size: 1048576
-  chunk_retain_period: 30s
-storage_config:
-  tsdb_shipper:
-    active_index_directory: /tmp/loki/tsdb_shipper/active_index
-    cache_location: /tmp/loki/tsdb_shipper/cache
-  filesystem:
-    directory: /tmp/loki/chunks
-compactor:
-  working_directory: /tmp/loki/compactor
-schema_config:
-  configs:
-    - from: 2023-01-01
-      store: tsdb
-      object_store: filesystem
-      schema: v13
-      index:
-        prefix: index_
-        period: 24h
-limits_config:
-  allow_structured_metadata: true
-  ingestion_rate_mb: 64
-  ingestion_burst_size_mb: 128
-  otlp_config:
-    resource_attributes:
-      attributes_config:
-        - action: index_label
-          attributes:
-            - runner_id
-            - workspace_id
-            - deployment_id
-            - deployment_name
-            - service_name
-            - job
-"#;
+	let loki_endpoint = format!(
+		"http://{}:{}",
+		std::env::var("PATR_TEST_LOKI_HOST").expect("PATR_TEST_LOKI_HOST must be set"),
+		std::env::var("PATR_TEST_LOKI_PORT").expect("PATR_TEST_LOKI_PORT must be set"),
+	);
 
-	let loki_container = GenericImage::new("grafana/loki", "3.2.0")
-		.with_exposed_port(3100.tcp())
-		.with_wait_for(WaitFor::message_on_stderr("Loki started"))
-		.with_copy_to(
-			"/etc/loki/test-config.yaml",
-			loki_config.as_bytes().to_vec(),
-		)
-		.with_cmd(["-config.file=/etc/loki/test-config.yaml"])
-		.start()
-		.await?;
-
-	let mimir_config = r#"
-multitenancy_enabled: true
-target: all
-server:
-  http_listen_address: "0.0.0.0"
-  http_listen_port: 8080
-ingester:
-  ring:
-    instance_addr: 127.0.0.1
-    kvstore:
-      store: inmemory
-    replication_factor: 1
-distributor:
-  ring:
-    instance_addr: 127.0.0.1
-    kvstore:
-      store: inmemory
-ruler:
-  ring:
-    kvstore:
-      store: inmemory
-ruler_storage:
-  backend: filesystem
-  filesystem:
-    dir: /tmp/mimir/rules
-alertmanager:
-  data_dir: /tmp/mimir/am-data
-  external_url: http://localhost
-  sharding_ring:
-    instance_addr: 127.0.0.1
-    kvstore:
-      store: inmemory
-alertmanager_storage:
-  backend: filesystem
-  filesystem:
-    dir: /tmp/mimir/alertmanager
-blocks_storage:
-  backend: filesystem
-  filesystem:
-    dir: /tmp/mimir/blocks
-  bucket_store:
-    sync_dir: /tmp/mimir/tsdb-sync
-  tsdb:
-    dir: /tmp/mimir/tsdb
-compactor:
-  data_dir: /tmp/mimir/compactor
-  sharding_ring:
-    kvstore:
-      store: inmemory
-store_gateway:
-  sharding_ring:
-    instance_addr: 127.0.0.1
-    kvstore:
-      store: inmemory
-    replication_factor: 1
-"#;
-
-	let mimir_container = GenericImage::new("grafana/mimir", "2.13.0")
-		.with_exposed_port(8080.tcp())
-		.with_wait_for(WaitFor::http(
-			HttpWaitStrategy::new("/ready")
-				.with_port(8080.tcp())
-				.with_expected_status_code(200_u16),
-		))
-		.with_copy_to(
-			"/etc/mimir/test-config.yaml",
-			mimir_config.as_bytes().to_vec(),
-		)
-		.with_cmd(["-config.file=/etc/mimir/test-config.yaml"])
-		.start()
-		.await?;
-
-	let redis_container = Redis::default().with_tag("7").start().await?;
+	let mimir_endpoint = format!(
+		"http://{}:{}",
+		std::env::var("PATR_TEST_MIMIR_HOST").expect("PATR_TEST_MIMIR_HOST must be set"),
+		std::env::var("PATR_TEST_MIMIR_PORT").expect("PATR_TEST_MIMIR_PORT must be set"),
+	);
 
 	let redis = RedisConfig {
-		host: redis_container.get_host().await?.to_string(),
-		port: redis_container.get_host_port_ipv4(6379).await?,
+		host: std::env::var("PATR_TEST_REDIS_HOST").expect("PATR_TEST_REDIS_HOST must be set"),
+		port: std::env::var("PATR_TEST_REDIS_PORT")
+			.expect("PATR_TEST_REDIS_PORT must be set")
+			.parse()
+			.expect("PATR_TEST_REDIS_PORT must be a u16"),
 		user: None,
 		password: None,
 		database: 0,
@@ -613,18 +481,10 @@ store_gateway:
 				endpoint: "".to_string(),
 			},
 			logs: LogsConfig {
-				endpoint: format!(
-					"http://{}:{}",
-					loki_container.get_host().await?,
-					loki_container.get_host_port_ipv4(3100).await?
-				),
+				endpoint: loki_endpoint,
 			},
 			metrics: MetricsConfig {
-				endpoint: format!(
-					"http://{}:{}",
-					mimir_container.get_host().await?,
-					mimir_container.get_host_port_ipv4(8080).await?
-				),
+				endpoint: mimir_endpoint,
 				username: "".to_string(),
 				password: "".to_string(),
 			},
@@ -716,12 +576,18 @@ store_gateway:
 			.force_path_style(true)
 			.build(),
 	);
-	s3_client
-		.create_bucket()
-		.bucket(&s3.bucket)
-		.send()
-		.await
-		.map_err(|e| anyhow::anyhow!("error creating S3 bucket: {e}"))?;
+	// Every test process races to create the same bucket; first one wins,
+	// the rest get BucketAlreadyOwnedByYou.
+	if let Err(err) = s3_client.create_bucket().bucket(&s3.bucket).send().await {
+		let svc = err.into_service_error();
+		if !matches!(
+			&svc,
+			aws_sdk_s3::operation::create_bucket::CreateBucketError::BucketAlreadyOwnedByYou(_) |
+				aws_sdk_s3::operation::create_bucket::CreateBucketError::BucketAlreadyExists(_)
+		) {
+			return Err(anyhow::anyhow!("error creating S3 bucket: {svc}"));
+		}
+	}
 
 	let api = TestServer::builder().build(axum::serve(
 		api_listener,
@@ -772,11 +638,6 @@ store_gateway:
 		registry,
 		loki,
 		state,
-		s3_container,
-		postgres_container,
-		redis_container,
-		loki_container,
-		mimir_container,
 		cloudflare_mock,
 		permission_ids,
 	})

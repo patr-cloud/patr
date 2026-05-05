@@ -441,8 +441,18 @@ async fn get_manifest_details_works() {
 		.await
 		.json::<ApiSuccessResponseBody<GetContainerRepositoryManifestDetailsResponse>>();
 
-	assert_eq!(image.manifest_digest, response.response.manifest_details.digest);
-	assert!(response.response.manifest_details.tags.iter().any(|t| t == "v1"));
+	assert_eq!(
+		image.manifest_digest,
+		response.response.manifest_details.digest
+	);
+	assert!(
+		response
+			.response
+			.manifest_details
+			.tags
+			.iter()
+			.any(|t| t == "v1")
+	);
 }
 
 #[tokio::test]
@@ -460,8 +470,9 @@ async fn get_manifest_details_nonexistent() {
 				.path(GetContainerRepositoryManifestDetailsPath {
 					workspace_id: workspace.id,
 					repository_id: repo.id,
-					digest_or_tag: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-						.to_string(),
+					digest_or_tag:
+						"sha256:0000000000000000000000000000000000000000000000000000000000000000"
+							.to_string(),
 				})
 				.headers(GetContainerRepositoryManifestDetailsRequestHeaders {
 					authorization: user.access_token.clone(),
@@ -551,8 +562,9 @@ async fn delete_manifest_nonexistent() {
 				.path(DeleteContainerRepositoryManifestPath {
 					workspace_id: workspace.id,
 					repository_id: repo.id,
-					digest_or_tag: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-						.to_string(),
+					digest_or_tag:
+						"sha256:0000000000000000000000000000000000000000000000000000000000000000"
+							.to_string(),
 				})
 				.headers(DeleteContainerRepositoryManifestRequestHeaders {
 					authorization: user.access_token.clone(),

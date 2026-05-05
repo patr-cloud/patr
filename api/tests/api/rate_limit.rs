@@ -1,22 +1,34 @@
+use std::net::IpAddr;
+
 use models::api::user::*;
+use rand::RngExt as _;
 
 use crate::prelude::*;
+
+/// Each rate-limit test pins requests to its own randomly-chosen IPv4 so the
+/// per-IP bucket accumulates predictably even when Redis is shared across
+/// tests. Collisions across concurrent tests have negligible probability.
+fn fixed_test_ip() -> IpAddr {
+	IpAddr::V4(rand::rng().random::<u32>().into())
+}
 
 #[tokio::test]
 async fn test_rate_limit_allows_requests_under_limit() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
+	let ip = fixed_test_ip();
 
 	// Make 2 requests (under the 20/sec limit). Both should succeed.
 	for _ in 0..2 {
 		let response = setup
-			.make_web_dashboard_call(
+			.make_web_dashboard_call_from_ip(
 				ApiRequest::<GetUserInfoRequest>::builder()
 					.headers(GetUserInfoRequestHeaders {
 						authorization: user.access_token.clone(),
 						user_agent: TEST_USER_AGENT,
 					})
 					.build(),
+				ip,
 			)
 			.await;
 
@@ -32,30 +44,33 @@ async fn test_rate_limit_allows_requests_under_limit() {
 async fn test_rate_limit_blocks_after_exceeding_per_second_limit() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
+	let ip = fixed_test_ip();
 
 	// The per-second limit is 20. Send 21 rapid requests.
 	for _ in 0..20 {
 		setup
-			.make_web_dashboard_call(
+			.make_web_dashboard_call_from_ip(
 				ApiRequest::<GetUserInfoRequest>::builder()
 					.headers(GetUserInfoRequestHeaders {
 						authorization: user.access_token.clone(),
 						user_agent: TEST_USER_AGENT,
 					})
 					.build(),
+				ip,
 			)
 			.await;
 	}
 
 	// The 21st request should be rate-limited
 	let response = setup
-		.make_web_dashboard_call(
+		.make_web_dashboard_call_from_ip(
 			ApiRequest::<GetUserInfoRequest>::builder()
 				.headers(GetUserInfoRequestHeaders {
 					authorization: user.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
 				.build(),
+			ip,
 		)
 		.await;
 
@@ -70,30 +85,33 @@ async fn test_rate_limit_blocks_after_exceeding_per_second_limit() {
 async fn test_rate_limit_window_slides() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
+	let ip = fixed_test_ip();
 
 	// Exhaust the per-second limit (20 requests)
 	for _ in 0..20 {
 		setup
-			.make_web_dashboard_call(
+			.make_web_dashboard_call_from_ip(
 				ApiRequest::<GetUserInfoRequest>::builder()
 					.headers(GetUserInfoRequestHeaders {
 						authorization: user.access_token.clone(),
 						user_agent: TEST_USER_AGENT,
 					})
 					.build(),
+				ip,
 			)
 			.await;
 	}
 
 	// Confirm we're rate-limited
 	let response = setup
-		.make_web_dashboard_call(
+		.make_web_dashboard_call_from_ip(
 			ApiRequest::<GetUserInfoRequest>::builder()
 				.headers(GetUserInfoRequestHeaders {
 					authorization: user.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
 				.build(),
+			ip,
 		)
 		.await;
 	assert_eq!(response.status_code(), StatusCode::TOO_MANY_REQUESTS);
@@ -103,13 +121,14 @@ async fn test_rate_limit_window_slides() {
 
 	// Should be allowed again
 	let response = setup
-		.make_web_dashboard_call(
+		.make_web_dashboard_call_from_ip(
 			ApiRequest::<GetUserInfoRequest>::builder()
 				.headers(GetUserInfoRequestHeaders {
 					authorization: user.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
 				.build(),
+			ip,
 		)
 		.await;
 
@@ -124,17 +143,19 @@ async fn test_rate_limit_window_slides() {
 async fn test_rate_limit_rejected_requests_count() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
+	let ip = fixed_test_ip();
 
 	// Exhaust the per-second limit (20 requests)
 	for _ in 0..20 {
 		setup
-			.make_web_dashboard_call(
+			.make_web_dashboard_call_from_ip(
 				ApiRequest::<GetUserInfoRequest>::builder()
 					.headers(GetUserInfoRequestHeaders {
 						authorization: user.access_token.clone(),
 						user_agent: TEST_USER_AGENT,
 					})
 					.build(),
+				ip,
 			)
 			.await;
 	}
@@ -143,13 +164,14 @@ async fn test_rate_limit_rejected_requests_count() {
 	// also consume a slot in the sorted set (optimistic add)
 	for _ in 0..3 {
 		let response = setup
-			.make_web_dashboard_call(
+			.make_web_dashboard_call_from_ip(
 				ApiRequest::<GetUserInfoRequest>::builder()
 					.headers(GetUserInfoRequestHeaders {
 						authorization: user.access_token.clone(),
 						user_agent: TEST_USER_AGENT,
 					})
 					.build(),
+				ip,
 			)
 			.await;
 
@@ -165,37 +187,37 @@ async fn test_rate_limit_rejected_requests_count() {
 async fn test_rate_limit_authenticated_per_login() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
+	let ip = fixed_test_ip();
 
 	// Log in again to get a second session (different login_id, same user)
 	let (session_b_token, _) = setup.login_test_user(&user.username, &user.password).await;
 	let session_b_bearer = BearerToken::from_str(&session_b_token).unwrap();
 
-	// Clear rate limits accumulated during setup
-	setup.clear_rate_limits().await;
-
 	// Exhaust the per-second limit using the first session (20 requests)
 	for _ in 0..20 {
 		setup
-			.make_web_dashboard_call(
+			.make_web_dashboard_call_from_ip(
 				ApiRequest::<GetUserInfoRequest>::builder()
 					.headers(GetUserInfoRequestHeaders {
 						authorization: user.access_token.clone(),
 						user_agent: TEST_USER_AGENT,
 					})
 					.build(),
+				ip,
 			)
 			.await;
 	}
 
 	// First session should be rate-limited
 	let response = setup
-		.make_web_dashboard_call(
+		.make_web_dashboard_call_from_ip(
 			ApiRequest::<GetUserInfoRequest>::builder()
 				.headers(GetUserInfoRequestHeaders {
 					authorization: user.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
 				.build(),
+			ip,
 		)
 		.await;
 	assert_eq!(
@@ -205,17 +227,18 @@ async fn test_rate_limit_authenticated_per_login() {
 	);
 
 	// Session B has a different login_id, so its per-login counter is separate.
-	// However, both sessions share the same IP (127.0.0.1), so the per-IP
-	// counter is shared. Since we already made 4 requests from this IP
+	// However, both sessions share the same IP (the per-test fixed IP), so the
+	// per-IP counter is shared. Since we already made 21 requests from this IP
 	// (20 + 1 rejected), session B is also blocked by the per-IP limit.
 	let response = setup
-		.make_web_dashboard_call(
+		.make_web_dashboard_call_from_ip(
 			ApiRequest::<GetUserInfoRequest>::builder()
 				.headers(GetUserInfoRequestHeaders {
 					authorization: session_b_bearer,
 					user_agent: TEST_USER_AGENT,
 				})
 				.build(),
+			ip,
 		)
 		.await;
 

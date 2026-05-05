@@ -451,7 +451,6 @@ async fn is_name_available_false() {
 async fn concurrent_create_same_resource() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
-	setup.clear_rate_limits().await;
 
 	let name = random_name(8);
 
@@ -470,8 +469,7 @@ async fn concurrent_create_same_resource() {
 				.build(),
 		)
 	};
-	let responses =
-		futures::future::join_all([req(), req(), req(), req(), req()]).await;
+	let responses = futures::future::join_all([req(), req(), req(), req(), req()]).await;
 	let statuses: Vec<_> = responses.iter().map(|r| r.status_code()).collect();
 	let successes = statuses.iter().filter(|s| s.is_success()).count();
 	let failures = statuses.iter().filter(|s| s.is_client_error()).count();

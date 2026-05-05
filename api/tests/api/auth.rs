@@ -1304,8 +1304,13 @@ async fn login_with_mfa_invalid_otp() {
 
 #[tokio::test]
 async fn forgot_password_rate_limit() {
+	use rand::RngExt as _;
 	let setup = setup().await.expect("failed to setup test server");
-	setup.clear_rate_limits().await;
+
+	// Pin to a per-test random IP so the bucket fills predictably under
+	// shared Redis. Plain `make_web_dashboard_call` injects a fresh random
+	// IP per call which would defeat rate-limit accumulation.
+	let ip = std::net::IpAddr::V4(rand::rng().random::<u32>().into());
 
 	// Per-IP unauth bucket is 20/sec. Use unknown user_ids — the handler
 	// returns a silent 202 without doing the Argon2 work, so 25 calls land
@@ -1314,7 +1319,7 @@ async fn forgot_password_rate_limit() {
 	let mut throttled_at: Option<usize> = None;
 	for i in 0..25 {
 		let resp = setup
-			.make_web_dashboard_call(
+			.make_web_dashboard_call_from_ip(
 				ApiRequest::<ForgotPasswordRequest>::builder()
 					.headers(ForgotPasswordRequestHeaders {
 						user_agent: TEST_USER_AGENT,
@@ -1324,6 +1329,7 @@ async fn forgot_password_rate_limit() {
 						preferred_recovery_option: PreferredRecoveryOption::RecoveryEmail,
 					})
 					.build(),
+				ip,
 			)
 			.await;
 		if resp.status_code() == StatusCode::TOO_MANY_REQUESTS {
@@ -1331,10 +1337,6 @@ async fn forgot_password_rate_limit() {
 			break;
 		}
 	}
-
-	// Reset the bucket so this test doesn't pollute subsequent tests sharing
-	// containers.
-	setup.clear_rate_limits().await;
 
 	assert!(
 		throttled_at.is_some(),
@@ -1413,7 +1415,6 @@ async fn complete_sign_up_already_completed() {
 async fn concurrent_token_renewal() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
-	setup.clear_rate_limits().await;
 
 	// Fire two concurrent renews using the same refresh token. With single-use
 	// rotation, exactly one should succeed and one should fail.

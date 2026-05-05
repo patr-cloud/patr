@@ -1,6 +1,4 @@
-use models::{
-	ApiSuccessResponseBody, api::workspace::deployment::deploy_history::*, utils::Uuid,
-};
+use models::{ApiSuccessResponseBody, api::workspace::deployment::deploy_history::*, utils::Uuid};
 
 use crate::prelude::*;
 

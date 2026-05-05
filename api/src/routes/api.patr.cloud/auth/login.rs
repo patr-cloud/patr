@@ -39,7 +39,7 @@ pub async fn login(
 					},
 			},
 		database,
-		redis: _,
+		redis,
 		client_ip,
 		state,
 	}: AppRequest<'_, LoginRequest>,
@@ -194,18 +194,7 @@ pub async fn login(
 	.to_string();
 	let refresh_token_expiry = now.add(constants::INACTIVE_REFRESH_TOKEN_VALIDITY);
 
-	let ip_info = ipinfo::IpInfo::new(ipinfo::IpInfoConfig {
-		token: { Some(state.config.ipinfo.token) },
-		..Default::default()
-	})
-	.inspect_err(|err| {
-		info!("Error creating IpInfo: {err}");
-	})?
-	.lookup(client_ip.to_string().as_str())
-	.await
-	.inspect_err(|err| {
-		info!("Error looking up IP address: {err}");
-	})?;
+	let ip_info = ip::lookup(client_ip, redis, &state.config.ipinfo).await?;
 
 	if !cfg!(debug_assertions) && ip_info.bogon.unwrap_or(false) {
 		return Err(ErrorType::server_error(format!(

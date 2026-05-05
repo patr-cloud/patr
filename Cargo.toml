@@ -126,7 +126,6 @@ syn                            = { default-features = false, version = "2" }
 sync_wrapper                   = { default-features = false, version = "1" }
 tar                            = { default-features = false, version = "0.4" }
 tempfile                       = { default-features = false, version = "3" }
-testcontainers-modules         = { default-features = false, version = "0.15" }
 thiserror                      = { default-features = false, version = "2" }
 time                           = { default-features = false, version = "0.3" }
 tokio                          = { default-features = false, version = "1" }

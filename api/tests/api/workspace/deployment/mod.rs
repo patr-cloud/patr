@@ -898,7 +898,11 @@ async fn create_deployment_with_env_vars() {
 		.json::<ApiSuccessResponseBody<GetDeploymentInfoResponse>>();
 
 	assert_eq!(
-		response.response.running_details.environment_variables.len(),
+		response
+			.response
+			.running_details
+			.environment_variables
+			.len(),
 		2
 	);
 	assert!(

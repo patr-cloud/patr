@@ -14,7 +14,7 @@
 
 Comprehensive list of missing test cases. Organized by module.
 
-**Current state:** ~186 integration tests + 6 unit tests across 14 test files covering ~60% of 124 declared endpoints.
+`todo!()`-stubbed modules and endpoints (OAuth, user recovery options, web logins, Secret, Static Site, Database, domain DNS records, `docker_login`) used to live here but were removed; they'll come back when the corresponding handlers land. Same for endpoints that don't exist yet (`/version`, `is_domain_personal`, `get_verification_records`).
 
 ---
 
@@ -25,7 +25,7 @@ Comprehensive list of missing test cases. Organized by module.
 - [x] `create_account_duplicate_email` — same email, different username
 - [x] `complete_sign_up_expired_otp` — OTP used after expiry window
 - [x] `complete_sign_up_already_completed` — Round 3: second call returns `UserNotFound` (user_to_sign_up row deleted on success).
-- [ ] `login_case_insensitive_username` — login with different casing
+- [ ] `login_case_insensitive_username` — DROPPED: username regex blocks uppercase, so the test as described isn't meaningful.
 - [x] `login_with_mfa_required` — returns `MfaRequired` when MFA active and OTP omitted
 - [x] `login_with_mfa_valid_otp` — full MFA login flow (uses `compute_totp` helper from Round 1)
 - [x] `login_with_mfa_invalid_otp` — MFA OTP wrong → `MfaOtpInvalid`
@@ -36,49 +36,9 @@ Comprehensive list of missing test cases. Organized by module.
 - [x] `reset_password_new_password_invalid` — new password fails validation
 - [x] `resend_otp_nonexistent_user` — graceful handling
 
-### OAuth Endpoints (entirely untested)
-
-- [ ] `oauth_authorize_works` — GET `/auth/oauth/authorize`
-- [ ] `oauth_authorize_invalid_client` — bad client_id
-- [ ] `oauth_token_works` — POST `/auth/oauth/token`
-- [ ] `oauth_token_invalid_grant` — invalid authorization code
-- [ ] `oauth_introspect_works` — POST `/auth/oauth/introspect`
-- [ ] `oauth_introspect_expired_token` — expired token returns inactive
-- [ ] `oauth_revoke_token_works` — POST `/auth/oauth/revoke`
-- [ ] `oauth_revoke_already_revoked` — idempotent revocation
-
-### Docker Auth Edge Cases
-
-- [ ] `docker_login_expired_token` — stale credentials
-- [ ] `docker_login_invalid_format` — malformed basic auth header
-
 ---
 
 ## User (`user.rs`)
-
-### Missing Endpoints
-
-- [ ] `update_user_email_works` — POST `/user/update-email`
-- [ ] `update_user_email_already_taken` — → `EmailUnavailable`
-- [ ] `update_user_email_invalid` — malformed email
-- [ ] `verify_user_email_works` — POST `/user/verify-email`
-- [ ] `verify_user_email_wrong_otp` — invalid OTP
-- [ ] `verify_user_email_expired_otp` — OTP past expiry
-- [ ] `update_user_phone_number_works` — POST `/user/update-phone-number`
-- [ ] `update_user_phone_number_invalid_country_code` — not `^[A-Z]{2}$`
-- [ ] `update_user_phone_number_invalid_number` — not `^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$`
-- [ ] `update_user_phone_number_already_taken` — → `PhoneUnavailable`
-- [ ] `verify_user_phone_number_works` — POST `/user/verify-phone-number`
-- [ ] `verify_user_phone_number_wrong_otp` — invalid OTP
-
-### Web Logins (entirely untested)
-
-- [ ] `list_web_logins_works` — GET `/user/login`
-- [ ] `list_web_logins_empty` — no active sessions
-- [ ] `get_web_login_info_works` — GET `/user/login/{login_id}`
-- [ ] `get_web_login_info_nonexistent` — → `ResourceDoesNotExist`
-- [ ] `delete_web_login_works` — DELETE `/user/login/{login_id}` (session revocation)
-- [ ] `delete_web_login_current_session` — revoking own session
 
 ### Edge Cases
 
@@ -94,8 +54,6 @@ Comprehensive list of missing test cases. Organized by module.
 
 ## User MFA (`user_mfa.rs`)
 
-### Missing Tests
-
 - [x] `activate_mfa_works` — full activation with valid TOTP code
 - [x] `deactivate_mfa_works` — DELETE `/user/mfa`
 - [x] `deactivate_mfa_when_inactive` — → `MfaAlreadyInactive`
@@ -106,8 +64,6 @@ Comprehensive list of missing test cases. Organized by module.
 ---
 
 ## User API Token (`user_api_token.rs`)
-
-### Missing Edge Cases
 
 - [x] `create_api_token_duplicate_name` — Phase E: handler now maps unique-violation on `user_api_token.name` to `ApiTokenAlreadyExists`.
 - [x] `api_token_with_ip_restriction` — allowed IPs enforced
@@ -122,8 +78,6 @@ Comprehensive list of missing test cases. Organized by module.
 ---
 
 ## Workspace (`workspace.rs`)
-
-### Missing Tests
 
 - [ ] `delete_workspace_works` — currently `#[ignore]` due to audit_log FK; unblock and test
 - [ ] `delete_workspace_not_empty` — workspace with resources → `WorkspaceNotEmpty`
@@ -140,8 +94,6 @@ Comprehensive list of missing test cases. Organized by module.
 ---
 
 ## Deployment (`workspace_deployment.rs`)
-
-### Missing Tests
 
 - [x] `create_deployment_duplicate_name` — same name in workspace → `ResourceAlreadyExists`
 - [ ] `create_deployment_invalid_machine_type` — DEFERRED: handler doesn't FK-check machine_type; would need a paired handler fix.
@@ -171,20 +123,20 @@ Comprehensive list of missing test cases. Organized by module.
 
 ## Runner (`workspace_runner.rs`)
 
-### Missing Tests
-
 - [x] `add_runner_duplicate_name` — Round 2: paired handler fix in `add_runner_to_workspace.rs`. The `runner` insert wasn't catching unique violations (only the `resource` insert was) so duplicate names returned a 500.
 - [x] `add_runner_invalid_name` — name outside `RESOURCE_NAME_REGEX`
 - [ ] `runner_already_connected` — needs WebSocket connection state; deferred to a runner-WS test round.
 - [ ] `runner_invalid_mode` — needs WebSocket connection state; deferred.
 - [x] `get_ingress_token_nonexistent_runner` — → `ResourceDoesNotExist`
 - [x] `runner_cross_workspace` — runner in workspace A not visible from B
+- [ ] `get_runner_logs_*` — handler exists (`get_runner_logs.rs`) and is real; zero tests today.
+- [ ] `get_runner_metrics_*` — handler exists (`get_runner_metrics.rs`) and is real; zero tests today.
 
 ---
 
 ## Domain (`workspace_domain.rs`)
 
-### DNS Records (entirely untested)
+### Verification
 
 - [ ] `add_dns_record_works` — POST `.../domain/{id}/dns-record`
 - [ ] `add_dns_record_invalid_name` — fails `DNS_RECORD_NAME_REGEX`
@@ -201,7 +153,7 @@ Comprehensive list of missing test cases. Organized by module.
 - [ ] `get_verification_records_nonexistent_domain` — → `ResourceDoesNotExist`
 - [ ] `is_domain_personal_works` — GET `/workspace/{id}/is-domain-personal`
 - [ ] `verify_domain_works` — POST `.../domain/{id}/verify` against a domain with the correct TXT record set up (currently bypassed in tests by flipping `is_verified` via `TestSetup::mark_test_domain_verified`)
-- [ ] `verify_domain_already_verified` — double-verify behavior
+- [ ] `verify_domain_already_verified` — handler is real; double-verify behavior currently untested
 - [ ] `verify_domain_unverifiable` — DNS not configured
 - [ ] `verify_domain_wrong_txt_value` — TXT record present but value doesn't match
 
@@ -217,19 +169,12 @@ Comprehensive list of missing test cases. Organized by module.
 
 ## Managed URL (`workspace_managed_url.rs`)
 
-### Missing URL Type Tests
-
 - [x] `create_managed_url_proxy_deployment` — Round 2: deployment must declare the port (FK `managed_url_fk_deployment_id_port`); test inlines a deployment with port 8080 exposed.
-- [ ] `create_managed_url_proxy_static_site` — DEFERRED: static-site handler is `todo!()`.
 - [x] `create_managed_url_proxy_url` — type `ProxyUrl` with `url` + `http_only`
 - [x] `create_managed_url_redirect` — covers both `permanent_redirect` true and false in one test
 - [x] `create_managed_url_redirect_permanent` — covered by `create_managed_url_redirect` (loops over both values)
 - [x] `create_managed_url_invalid_deployment_id` — nonexistent deployment → `WrongParameters`
-- [ ] `create_managed_url_invalid_static_site_id` — DEFERRED: static-site handler is `todo!()`.
 - [x] `create_managed_url_unverified_domain` — `DomainNotVerified` (`create_managed_url.rs:74-76`)
-
-### Edge Cases
-
 - [x] `update_managed_url_change_type` — Round 3: covered by `update_managed_url_change_redirect_to_proxy_url` and `update_managed_url_change_proxy_url_to_redirect`.
 - [x] `get_managed_url_info` — Round 3: `get_managed_url_info_via_list` verifies the list endpoint returns sub_domain, domain_id, path, and full url_type-specific fields.
 - [x] `delete_managed_url_nonexistent` — → `ResourceDoesNotExist`
@@ -240,7 +185,7 @@ Comprehensive list of missing test cases. Organized by module.
 
 ## Container Registry (`workspace_container_registry.rs`)
 
-### Missing Endpoint Tests
+### Manifest Endpoints
 
 - [x] `get_manifest_details_works` — Round 3: paired model fix in `get_repository_manifest_details.rs` (added `#[serde(default)]` to `referenced_manifests`; round-tripping was broken).
 - [x] `get_manifest_details_nonexistent` — → `ResourceDoesNotExist`
@@ -251,8 +196,8 @@ Comprehensive list of missing test cases. Organized by module.
 
 ### Push/Pull Flow
 
-- [ ] `push_image_and_list_tags` — push via Docker, verify tags appear
-- [ ] `push_image_and_list_manifests` — push via Docker, verify manifests appear
+- [ ] `push_image_and_list_tags` — push via Docker, verify tags appear (overlap with existing `tests/registry/push_pull.rs`; needs cross-check before adding)
+- [ ] `push_image_and_list_manifests` — same
 - [ ] `push_multiple_tags` — same image, multiple tags
 - [x] `delete_tag_in_use` — Round 3: REFRAMED as `delete_manifest_in_use_by_deployment` (the `delete_repository_manifest` endpoint is the only delete path here). Paired handler fix added an in-use check that refuses delete with `ResourceInUse` when any live deployment in the workspace references a tag pointing at the manifest.
 
@@ -266,8 +211,6 @@ Comprehensive list of missing test cases. Organized by module.
 
 ## Volume (`workspace_volume.rs`)
 
-### Missing Tests
-
 - [x] `create_volume_name_too_short` — < 4 chars
 - [x] `create_volume_name_too_long` — > 255 chars
 - [x] `update_volume_increase_size` — size increase accepted
@@ -278,65 +221,7 @@ Comprehensive list of missing test cases. Organized by module.
 
 ---
 
-## Secret (entirely untested module)
-
-- [ ] `create_secret_works` — POST `/workspace/{id}/secret`
-- [ ] `create_secret_duplicate_name` — → `ResourceAlreadyExists`
-- [ ] `create_secret_invalid_name` — name validation
-- [ ] `list_secrets_works` — GET `/workspace/{id}/secret`
-- [ ] `list_secrets_empty` — no secrets
-- [ ] `update_secret_works` — PATCH `/workspace/{id}/secret/{secret_id}`
-- [ ] `update_secret_nonexistent` — → `ResourceDoesNotExist`
-- [ ] `delete_secret_works` — DELETE `/workspace/{id}/secret/{secret_id}`
-- [ ] `delete_secret_nonexistent` — → `ResourceDoesNotExist`
-- [ ] `delete_secret_in_use` — secret referenced by deployment → `ResourceInUse`
-- [ ] `secret_unauthorized` — non-member cannot access
-- [ ] `secret_cross_workspace` — secret in workspace A not visible from B
-
----
-
-## Static Site (entirely untested module)
-
-- [ ] `create_static_site_works` — POST `.../static-site`
-- [ ] `create_static_site_invalid_name` — name validation
-- [ ] `create_static_site_duplicate_name` — → `ResourceAlreadyExists`
-- [ ] `list_static_sites_works` — GET `.../static-site`
-- [ ] `list_static_sites_empty` — no sites
-- [ ] `get_static_site_info_works` — GET `.../static-site/{id}`
-- [ ] `get_static_site_info_nonexistent` — → `ResourceDoesNotExist`
-- [ ] `update_static_site_works` — PATCH `.../static-site/{id}`
-- [ ] `delete_static_site_works` — DELETE `.../static-site/{id}`
-- [ ] `start_static_site_works` — POST `.../static-site/{id}/start`
-- [ ] `stop_static_site_works` — POST `.../static-site/{id}/stop`
-- [ ] `upload_static_site_works` — POST `.../static-site/{id}/upload`
-- [ ] `list_upload_history_works` — GET `.../static-site/{id}/upload`
-- [ ] `list_upload_history_empty` — no uploads
-- [ ] `revert_static_site_works` — POST `.../static-site/{id}/revert`
-- [ ] `static_site_unauthorized` — non-member cannot access
-- [ ] `static_site_cross_workspace` — site in workspace A not visible from B
-
----
-
-## Database (entirely untested module)
-
-- [ ] `create_database_works` — POST `.../infrastructure/database`
-- [ ] `create_database_invalid_name` — name validation
-- [ ] `create_database_duplicate_name` — → `ResourceAlreadyExists`
-- [ ] `list_databases_works` — GET `.../infrastructure/database`
-- [ ] `list_databases_empty` — no databases
-- [ ] `get_database_info_works` — GET `.../infrastructure/database/{id}`
-- [ ] `get_database_info_nonexistent` — → `ResourceDoesNotExist`
-- [ ] `delete_database_works` — DELETE `.../infrastructure/database/{id}`
-- [ ] `delete_database_nonexistent` — → `ResourceDoesNotExist`
-- [ ] `list_database_machine_types_works` — GET `/workspace/infrastructure/database/plan`
-- [ ] `database_unauthorized` — non-member cannot access
-- [ ] `database_cross_workspace` — database in workspace A not visible from B
-
----
-
 ## RBAC (`workspace_rbac.rs`)
-
-### Missing Tests
 
 - [x] `create_role_duplicate_name` — → `RoleAlreadyExists`
 - [x] `create_role_invalid_name` — name outside `RESOURCE_NAME_REGEX`
@@ -356,7 +241,7 @@ Comprehensive list of missing test cases. Organized by module.
 
 ## Permissions (`permissions.rs`)
 
-### Missing Include/Exclude Tests
+### Include/Exclude
 
 - [x] `volume_include_specific` — already covered by existing `volume_include_grants_only_listed_resource`
 - [x] `domain_include_specific` — already covered by existing `domain_include_grants_only_listed_resource`
@@ -369,7 +254,7 @@ Comprehensive list of missing test cases. Organized by module.
 - [x] `domain_exclude_specific` — already covered by existing `domain_exclude_denies_only_listed_resource`
 - [x] `container_registry_exclude_specific` — Phase F: added `container_registry_view_exclude_denies_only_listed_resource` and `managed_url_delete_exclude_denies_only_listed_resource`
 
-### Missing Cross-Permission Tests
+### Cross-Permission
 
 - [x] `volume_view_doesnt_grant_delete` — Phase F: needed `GetVolumeInfo` endpoint fix (was requiring `Delete` instead of `View`).
 - [x] `volume_view_doesnt_grant_edit` — Phase F: same fix.
@@ -378,11 +263,11 @@ Comprehensive list of missing test cases. Organized by module.
 - [x] `managed_url_view_doesnt_grant_delete` — Phase F.
 - [x] `runner_view_doesnt_grant_create` — Fixed root cause: `get_runner_info` was using `SELECT *` which the sqlx macro validated against a live DB schema with extra columns (`version`, `service_account_id`) not in the test DB. Changed to explicit `SELECT name`. Also raised crate `recursion_limit` to 256 to match what the compiler asks for.
 
-### API Token Permission Tests
+### API Token Permission
 
-- [ ] `api_token_with_workspace_permissions` — token with scoped workspace access
-- [ ] `api_token_denied_without_permission` — token lacks required permission
-- [ ] `api_token_resource_level_permissions` — token with include/exclude lists
+- [ ] `api_token_with_workspace_permissions` — token with scoped workspace access (likely already covered by Round 1 scoped-perm tests; needs cross-check)
+- [ ] `api_token_denied_without_permission` — same
+- [ ] `api_token_resource_level_permissions` — same
 
 ---
 
@@ -398,42 +283,13 @@ Comprehensive list of missing test cases. Organized by module.
 
 - [x] `access_token_expiry_enforced` — Round 2: backdates `web_login.token_expiry` via `execute_sql`. The JWT `exp` claim is signed and unforgeable, but the auth layer (`web_dashboard.rs:109`) re-checks the DB row, which is what we kill.
 - [x] `refresh_token_single_use` — Round 3: paired handler change in `renew_access_token.rs` rotates the refresh token on every call (generates new token, replaces hashed value, returns the new token in the response). Frontend updated in `frontend/src/utils/http-request.ts` to capture the new refresh token. Test asserts old token is rejected after first renew while new token works.
-- [ ] `logout_invalidates_refresh_token` — currently `#[ignore]`; unblock
+- [ ] `logout_invalidates_refresh_token` — currently `#[ignore]`; unblock (extractor design conflict between `PlainTokenAuthenticator` and `BearerToken`).
 - [x] `session_isolation` — two users get distinct identities back from `/user`; tokens don't cross-resolve.
-
-### System Endpoints
-
-- [ ] `get_version_works` — GET `/version`
 
 ### Turnstile / Bot Protection
 
-- [ ] `turnstile_verification_failed` — Round 3: BLOCKED. Test setup uses Cloudflare's always-pass test SECRET (`1x...AA`), so any client token validates regardless. Proper test needs either a separate "always-fail" server secret or a refactor of `validate_turnstile_token` to take a configurable URL we can wiremock.
+- [ ] `turnstile_verification_failed` — DROPPED: needs per-test override of `cloudflare.turnstile_secret` to the always-fail dummy (`2x0000000000000000000000000000000AA`). Test secret is the always-pass one, so siteverify returns success=true regardless of token.
 - [ ] `turnstile_action_mismatch` — DROPPED: Cloudflare test tokens don't expose action-mismatch as documented behaviour.
-
----
-
-## Summary
-
-| Module             | Existing Tests | Missing Tests | Priority     |
-| ------------------ | -------------- | ------------- | ------------ |
-| Auth               | 23             | 33            | High         |
-| User               | 12             | 18            | High         |
-| User MFA           | 3              | 6             | Medium       |
-| User API Token     | 8              | 9             | Medium       |
-| Workspace          | 11             | 11            | High         |
-| Deployment         | 15             | 20            | High         |
-| Runner             | 9              | 6             | Medium       |
-| Domain             | 8              | 20            | High         |
-| Managed URL        | 7              | 13            | Medium       |
-| Container Registry | 10             | 12            | Medium       |
-| Volume             | 10             | 7             | Low          |
-| Secret             | 0              | 12            | **Critical** |
-| Static Site        | 0              | 17            | **Critical** |
-| Database           | 0              | 12            | **Critical** |
-| RBAC               | 14             | 13            | Medium       |
-| Permissions        | 52             | 16            | Low          |
-| Infrastructure     | 0              | 10            | Medium       |
-| **Total**          | **~182**       | **~235**      |              |
 
 ---
 

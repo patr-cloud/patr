@@ -64,6 +64,8 @@ RUN rustup component add rustc-codegen-cranelift-preview --toolchain nightly
 # Install rust-based additional tools
 RUN cargo install --locked cargo-binstall
 RUN cargo binstall --locked cargo-audit
+RUN cargo binstall --locked just
+RUN cargo binstall --locked cargo-nextest
 RUN cargo binstall --locked sqlx-cli
 RUN cargo binstall --locked wasm-pack
 RUN cargo binstall --locked worker-build

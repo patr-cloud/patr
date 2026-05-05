@@ -25,6 +25,7 @@ axum-extra                     = { workspace = true, features = ["default", "typ
 axum-typed-websockets          = { workspace = true, features = ["default"] }
 base32                         = { workspace = true, features = [] }
 base64                         = { workspace = true, features = ["default"] }
+clap                           = { workspace = true, features = ["std", "derive"] }
 cloudflare                     = { workspace = true, features = ["rustls-tls"] }
 config                         = { workspace = true, features = ["default"] }
 console-subscriber             = { workspace = true, features = ["default"] }
@@ -86,7 +87,6 @@ axum-test              = { workspace = true, features = ["default"] }
 flate2                 = { workspace = true, features = ["rust_backend"] }
 ipnetwork              = { workspace = true, features = ["default"] }
 tar                    = { workspace = true, features = [] }
-testcontainers-modules = { workspace = true, features = ["default", "postgres", "minio", "redis", "http_wait"] }
 wiremock               = { workspace = true, features = [] }
 
 [[test]]
