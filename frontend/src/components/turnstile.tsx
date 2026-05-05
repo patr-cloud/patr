@@ -13,6 +13,7 @@ declare global {
 					theme?: "light" | "dark" | "auto";
 					action?: string;
 					size?: "normal" | "compact" | "flexible";
+					appearance?: "always" | "execute" | "interaction-only";
 				}
 			) => string;
 			reset: (widgetId: string) => void;
@@ -47,6 +48,9 @@ const Turnstile = (props: TurnstileProps) => {
 				theme: props.theme ?? "dark",
 				action: props.action,
 				size: props.size ?? "flexible",
+				// Stay invisible during the silent challenge; only surface the
+				// interactive widget if Cloudflare decides this visitor needs it.
+				appearance: "interaction-only",
 			});
 			setWidgetId(id);
 		} else {

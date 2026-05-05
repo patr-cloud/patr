@@ -9,7 +9,7 @@ import TwoFactorAuthModal from "./two-fa";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 
-const UserSettingsInfoTab = () => {
+const UserSettingsInfoSection = () => {
 	const [authState] = useAuthState();
 	const toast = useToast();
 	const queryClient = useQueryClient();
@@ -141,4 +141,4 @@ const UserSettingsInfoTab = () => {
 	);
 };
 
-export default UserSettingsInfoTab;
+export default UserSettingsInfoSection;

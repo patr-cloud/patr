@@ -29,6 +29,8 @@ mod renew_access_token;
 mod resend_otp;
 /// The route to reset a user's password
 mod reset_password;
+/// Social-login (GitHub, …) SSO routes
+mod social_login;
 
 use self::{
 	complete_sign_up::*,
@@ -50,6 +52,7 @@ use self::{
 pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
 	Router::new()
 		.merge(oauth::setup_routes(state, allowed_client_type).await)
+		.merge(social_login::setup_routes(state, allowed_client_type).await)
 		.mount_endpoint(login, state, allowed_client_type)
 		.mount_auth_endpoint(logout, state, allowed_client_type)
 		.mount_endpoint(create_account, state, allowed_client_type)

@@ -75,6 +75,16 @@ pub struct AppConfig {
 	pub opentelemetry: OpenTelemetryConfig,
 	/// The configuration for IpInfo to get IpAddress details
 	pub ipinfo: IpInfoConfig,
+	/// The configuration for social login providers (GitHub, etc.)
+	pub social_login: SocialLoginConfig,
+}
+
+/// The configuration for social login providers
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SocialLoginConfig {
+	/// The configuration for GitHub OAuth2 SSO
+	pub github: GitHubOAuthConfig,
 }
 
 /// The environment the application is running in
@@ -257,4 +267,28 @@ pub struct MetricsConfig {
 pub struct IpInfoConfig {
 	/// The token for connecting to ipinfo.io
 	pub token: String,
+}
+
+/// The configuration for GitHub OAuth2, used to allow users to sign in with
+/// their GitHub account.
+///
+/// The GitHub OAuth App's registered Authorization callback URL should be
+/// the site root (`https://app.patr.cloud/`) — the only common parent of
+/// the two callback URLs below. GitHub allows any `redirect_uri` that is a
+/// subpath of the registered URL.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitHubOAuthConfig {
+	/// The Client ID of the GitHub OAuth App registered at
+	/// https://github.com/settings/developers
+	pub client_id: String,
+	/// The Client Secret of the GitHub OAuth App
+	pub client_secret: String,
+	/// Frontend page that GitHub redirects to after the unauthenticated
+	/// sign-in flow. In production: `https://app.patr.cloud/login/github`.
+	pub callback_url: String,
+	/// Frontend page that GitHub redirects to after the authenticated
+	/// "Connect GitHub" flow from Profile → Connected Accounts.
+	/// In production: `https://app.patr.cloud/profile/github/callback`.
+	pub connect_callback_url: String,
 }

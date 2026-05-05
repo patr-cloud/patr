@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO user_social_login(user_id, provider, external_id, linked_at) VALUES ($1, 'github', $2, $3);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f08b44621cee9de844b441a07f723dbd5077749e4d993652e6ea9c80aff96e55"
+}

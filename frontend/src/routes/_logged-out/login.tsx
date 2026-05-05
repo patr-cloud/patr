@@ -13,7 +13,7 @@ import {
 } from "~/components";
 import { ButtonVariant } from "~/utils/color";
 import { createSignal, Show } from "solid-js";
-import { LoginRequest, LoginResponse } from "~/bindings";
+import { GithubOAuthInitiateRequest, GithubOAuthInitiateResponse, LoginRequest, LoginResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
 import { createAsyncAction, useAuthState } from "~/hooks";
 import { USERNAME_VALIDITY_PATTERN } from "~/utils/validation";
@@ -29,6 +29,7 @@ const Login = () => {
 	const router = useRouter();
 	const navigate = useNavigate();
 	const toast = useToast();
+	const [githubLoading, setGithubLoading] = createSignal(false);
 	const [showMfa, setShowMfa] = createSignal(false);
 	const [mfaOtp, setMfaOtp] = createSignal("");
 	const [turnstileToken, setTurnstileToken] = createSignal<string>("");
@@ -78,6 +79,33 @@ const Login = () => {
 		}
 
 		return true;
+	};
+
+	const handleGithubSignIn = async () => {
+		if (!turnstileToken()) {
+			toast("Please complete the security verification", "error");
+			return;
+		}
+
+		setGithubLoading(true);
+
+		try {
+			const body: GithubOAuthInitiateRequest = { cfTurnstileToken: turnstileToken() };
+			const resp = await httpRequest<GithubOAuthInitiateResponse>("/api/auth/social-login/github", {
+				method: "POST",
+				body: JSON.stringify(body),
+			});
+			if (resp.ok) {
+				window.location.href = resp.data.authorizeUrl;
+				return;
+			}
+
+			toast("Could not initiate GitHub sign-in. Please try again.", "error");
+		} catch {
+			toast("Could not initiate GitHub sign-in. Please try again.", "error");
+		} finally {
+			setGithubLoading(false);
+		}
 	};
 
 	const { execute: submitLogin, isLoading } = createAsyncAction(async () => {
@@ -240,6 +268,24 @@ const Login = () => {
 						</Button>
 					</div>
 				</div>
+
+				{/* GitHub SSO */}
+				<div class="flex items-center gap-3 my-4">
+					<div class="flex-1 h-px bg-secondary-medium" />
+					<span class="text-gray-500 text-xs">or</span>
+					<div class="flex-1 h-px bg-secondary-medium" />
+				</div>
+				<Button
+					variant={ButtonVariant.Plain}
+					class="w-full py-3 mb-2 gap-3 rounded-xs bg-black! text-white! text-sm font-medium border border-white/25 enabled:hover:bg-[#1f1f1f]! enabled:hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+					type="button"
+					loading={githubLoading}
+					loadingContent={() => <span>Redirecting to GitHub...</span>}
+					onClick={handleGithubSignIn}
+				>
+					<img src="/icons/github.svg" alt="" aria-hidden="true" height="20" width="20" class="invert" />
+					Continue with GitHub
+				</Button>
 			</form>
 
 			{/* Footer */}

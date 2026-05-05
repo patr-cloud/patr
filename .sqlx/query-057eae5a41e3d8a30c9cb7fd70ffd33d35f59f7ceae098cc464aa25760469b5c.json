@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM user_social_login WHERE user_id = $1 AND provider = $2 RETURNING user_id;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "social_login_provider",
+            "kind": {
+              "Enum": [
+                "github"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "057eae5a41e3d8a30c9cb7fd70ffd33d35f59f7ceae098cc464aa25760469b5c"
+}

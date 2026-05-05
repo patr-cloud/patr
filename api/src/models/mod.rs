@@ -12,3 +12,6 @@ pub mod permissions;
 pub mod rate_limiter;
 /// Contains all the structs that will be stored in Redis
 pub mod redis;
+/// Contains the payload structs handed between social-login (OAuth) endpoints
+/// via Redis-backed one-time-use tokens.
+pub mod social_login;

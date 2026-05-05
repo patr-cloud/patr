@@ -93,6 +93,17 @@ import { GetDeploymentMetricResponse } from "./GetDeploymentMetricResponse";
 import { MetricDataPoint } from "./MetricDataPoint";
 import { DeploymentMetricName } from "./DeploymentMetricName";
 import { RunnerMetricName } from "./RunnerMetricName";
+import { GithubCallbackStatus } from "./GithubCallbackStatus";
+import { GithubOAuthInitiateRequest } from "./GithubOAuthInitiateRequest";
+import { GithubOAuthInitiateResponse } from "./GithubOAuthInitiateResponse";
+import { GithubOAuthCallbackResponse } from "./GithubOAuthCallbackResponse";
+import { GithubOAuthSetupRequest } from "./GithubOAuthSetupRequest";
+import { GithubOAuthSetupResponse } from "./GithubOAuthSetupResponse";
+import { SocialLoginProvider } from "./SocialLoginProvider";
+import { LinkedSocialLogin } from "./LinkedSocialLogin";
+import { ListSocialLoginsResponse } from "./ListSocialLoginsResponse";
+import { ConnectSocialLoginInitiateResponse } from "./ConnectSocialLoginInitiateResponse";
+import { ConnectSocialLoginCallbackRequest } from "./ConnectSocialLoginCallbackRequest";
 
 export type {
 	EnvironmentVariableValue,
@@ -190,4 +201,15 @@ export type {
 	MetricDataPoint,
 	DeploymentMetricName,
 	RunnerMetricName,
+	GithubCallbackStatus,
+	GithubOAuthInitiateRequest,
+	GithubOAuthInitiateResponse,
+	GithubOAuthCallbackResponse,
+	GithubOAuthSetupRequest,
+	GithubOAuthSetupResponse,
+	SocialLoginProvider,
+	LinkedSocialLogin,
+	ListSocialLoginsResponse,
+	ConnectSocialLoginInitiateResponse,
+	ConnectSocialLoginCallbackRequest,
 };

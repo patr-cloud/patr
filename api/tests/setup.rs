@@ -14,6 +14,7 @@ use api::{
 		CloudflareConfig,
 		DatabaseConfig,
 		EmailConfig,
+		GitHubOAuthConfig,
 		IpInfoConfig,
 		LogsConfig,
 		MetricsConfig,
@@ -21,6 +22,7 @@ use api::{
 		RedisConfig,
 		RunningEnvironment,
 		S3Config,
+		SocialLoginConfig,
 		TracingConfig,
 	},
 };
@@ -397,6 +399,14 @@ limits_config:
 		},
 		ipinfo: IpInfoConfig {
 			token: "".to_string(),
+		},
+		social_login: SocialLoginConfig {
+			github: GitHubOAuthConfig {
+				client_id: "fake-github-client-id".to_string(),
+				client_secret: "fake-github-client-secret".to_string(),
+				callback_url: "http://localhost:3000/login/github".to_string(),
+				connect_callback_url: "http://localhost:3000/profile/github/callback".to_string(),
+			},
 		},
 	};
 

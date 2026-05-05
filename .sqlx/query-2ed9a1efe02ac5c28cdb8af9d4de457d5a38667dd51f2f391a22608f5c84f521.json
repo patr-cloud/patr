@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE user_social_login ADD CONSTRAINT user_social_login_pk PRIMARY KEY (provider, external_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "2ed9a1efe02ac5c28cdb8af9d4de457d5a38667dd51f2f391a22608f5c84f521"
+}

@@ -59,5 +59,13 @@
 	},
 	"ipinfo": {
 		"token": "token"
+	},
+	"socialLogin": {
+		"github": {
+			"clientId": "<github-client-id>",
+			"clientSecret": "<github-client-secret>",
+			"callbackUrl": "http://localhost:3000/login/github",
+			"connectCallbackUrl": "http://localhost:3000/profile/github/callback"
+		}
 	}
 }

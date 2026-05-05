@@ -32,6 +32,29 @@ pub async fn initialize_web_login_tables(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		CREATE TYPE SOCIAL_LOGIN_PROVIDER AS ENUM(
+			'github'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE user_social_login(
+			user_id     UUID                  NOT NULL,
+			provider    SOCIAL_LOGIN_PROVIDER NOT NULL,
+			external_id TEXT                  NOT NULL,
+			linked_at   TIMESTAMPTZ           NOT NULL
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
@@ -62,6 +85,25 @@ pub async fn initialize_web_login_indices(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		ALTER TABLE user_social_login
+		ADD CONSTRAINT user_social_login_pk
+		PRIMARY KEY (provider, external_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX user_social_login_idx_user_id
+			ON user_social_login(user_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
@@ -84,6 +126,20 @@ pub async fn initialize_web_login_constraints(
 			user_id,
 			login_type
 		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_social_login
+			ADD CONSTRAINT user_social_login_uq_user_provider
+				UNIQUE (user_id, provider),
+			ADD CONSTRAINT user_social_login_fk_user_id
+				FOREIGN KEY (user_id) REFERENCES "user"(id),
+			ADD CONSTRAINT user_social_login_chk_external_id_not_empty
+				CHECK (external_id <> '');
 		"#
 	)
 	.execute(&mut *connection)
