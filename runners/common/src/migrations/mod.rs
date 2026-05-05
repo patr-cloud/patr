@@ -10,6 +10,7 @@
 use std::{collections::HashSet, future::Future, pin::Pin};
 
 use semver::Version;
+use sqlx::Connection as _;
 
 use crate::prelude::*;
 
@@ -71,7 +72,12 @@ pub async fn run_migrations(
 
 		info!("Running migration: {}", migration.name);
 
-		(migration.migrate)(&mut *connection).await?;
+		// Run the migration and record it in the same transaction so a partial
+		// failure rolls back any DDL — otherwise leftover temp tables (e.g.
+		// `*_new`) wedge subsequent retries on `CREATE TABLE`.
+		let mut txn = connection.begin().await?;
+
+		(migration.migrate)(&mut *txn).await?;
 
 		let version = migration.version.to_string();
 		query(
@@ -84,8 +90,10 @@ pub async fn run_migrations(
 		)
 		.bind(migration.name)
 		.bind(&version)
-		.execute(&mut *connection)
+		.execute(&mut *txn)
 		.await?;
+
+		txn.commit().await?;
 
 		info!("Migration applied: {}", migration.name);
 	}
