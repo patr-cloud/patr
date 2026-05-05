@@ -41,8 +41,7 @@ jobs:
         with:
           tool: just,nextest
 
-      - run: just --justfile api/tests/justfile test
-        continue-on-error: true
+      - run: just --justfile api/tests/Justfile test
 
       - run: cargo nextest run --package common
 
