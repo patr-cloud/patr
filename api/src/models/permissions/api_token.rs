@@ -18,28 +18,26 @@ pub(crate) async fn get_permissions(
 	let (refresh_token, login_id) = token
 		.strip_prefix("patrv1.")
 		.ok_or_else(|| {
-			warn!("Invalid API token provided: {}", token);
+			warn!("Invalid API token: missing `patrv1.` prefix");
 			ErrorType::MalformedApiToken
 		})?
 		.split_once('.')
 		.ok_or_else(|| {
-			warn!("Invalid API token provided: {}", token);
+			warn!("Invalid API token: missing refresh-token/login-id separator");
 			ErrorType::MalformedApiToken
 		})?;
 
 	let refresh_token = Uuid::parse_str(refresh_token).map_err(|err| {
-		warn!("Invalid API token provided: {}", token);
 		warn!(
-			"Cannot parse refresh token `{}` as UUID: {}",
-			refresh_token, err
+			"Invalid API token: refresh token is not a valid UUID: {}",
+			err
 		);
 		ErrorType::MalformedApiToken
 	})?;
 	trace!("Refresh token parsed as UUID");
 
 	let login_id = Uuid::parse_str(login_id).map_err(|err| {
-		warn!("Invalid API token provided: {}", token);
-		warn!("Cannot parse loginId `{}` as UUID: {}", login_id, err);
+		warn!("Invalid API token: login ID is not a valid UUID: {}", err);
 		ErrorType::MalformedApiToken
 	})?;
 	trace!("Login ID parsed as UUID");
