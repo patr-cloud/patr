@@ -4,6 +4,7 @@ use crate::prelude::*;
 
 pub mod api_token;
 pub mod mfa;
+pub mod social_login;
 
 #[tokio::test]
 async fn get_user_info_works() {
