@@ -272,7 +272,7 @@ pub(crate) async fn upsert(
 				},
 				..Default::default()
 			}),
-			networks: networks.clone(),
+			networks,
 			..Default::default()
 		}),
 		mode: Some(ServiceSpecMode {
@@ -283,7 +283,6 @@ pub(crate) async fn upsert(
 			}),
 			..Default::default()
 		}),
-		networks,
 		..Default::default()
 	};
 

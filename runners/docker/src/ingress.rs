@@ -383,7 +383,7 @@ async fn build_ingress_spec(
 				}]),
 				..Default::default()
 			}),
-			networks: networks.clone(),
+			networks,
 			..Default::default()
 		}),
 		mode: Some(ServiceSpecMode {
@@ -415,7 +415,6 @@ async fn build_ingress_spec(
 				]),
 			})
 		},
-		networks,
 		..Default::default()
 	})
 }
@@ -469,14 +468,13 @@ async fn get_cloudflare_spec(
 				env: Some(vec![format!("TUNNEL_TOKEN={}", tunnel_token)]),
 				..Default::default()
 			}),
-			networks: networks.clone(),
+			networks,
 			..Default::default()
 		}),
 		mode: Some(ServiceSpecMode {
 			replicated: Some(ServiceSpecModeReplicated { replicas: Some(1) }),
 			..Default::default()
 		}),
-		networks,
 		..Default::default()
 	})
 }

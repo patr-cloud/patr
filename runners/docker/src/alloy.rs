@@ -157,14 +157,13 @@ pub async fn update_alloy_service(
 				]),
 				..Default::default()
 			}),
-			networks: networks.clone(),
+			networks,
 			..Default::default()
 		}),
 		mode: Some(ServiceSpecMode {
 			global: Some(HashMap::new()),
 			..Default::default()
 		}),
-		networks,
 		..Default::default()
 	};
 
