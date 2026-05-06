@@ -4,12 +4,8 @@ use crate::prelude::*;
 mod audit_log;
 /// The data stored in the container registry
 mod container_registry;
-/// Seeds default Viewer/Editor/Admin roles for new workspaces
-mod default_roles;
 /// The list of domains that are added to a workspace
 mod domain;
-
-pub use self::default_roles::create_default_roles_for_workspace;
 
 /// The list of deployments that are present in a workspace
 mod deployment;
