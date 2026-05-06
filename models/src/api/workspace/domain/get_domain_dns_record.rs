@@ -4,12 +4,11 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to get all the DNS records of a domain
 	GetDomainDNSRecord,
-	GET "/workspace/{workspace_id}/domain/{domain_id}/dns-record" {
-		/// The ID of the workspace
-		pub workspace_id: Uuid,
+	GET "/domain/{domain_id}/dns-record" {
 		/// The domain ID
 		pub domain_id: Uuid,
 	},
+	workspaced = true,
 	listable_resource = PatrDomainDnsRecord,
 	request_headers = {
 		/// Token used to authorize user

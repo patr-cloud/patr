@@ -9,6 +9,7 @@ macros::declare_api_endpoint!(
 		/// The social-login provider to initiate. Must be `github` for now.
 		pub provider: SocialLoginProvider,
 	},
+	workspaced = false,
 	api = false,
 	response = {
 		/// The full provider authorization URL. The frontend must redirect

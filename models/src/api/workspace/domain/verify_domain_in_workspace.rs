@@ -3,12 +3,11 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to update the domains DNS record
 	VerifyDomainInWorkspace,
-	POST "/workspace/{workspace_id}/domain/{domain_id}/verify" {
-		/// The ID of the workspace
-		pub workspace_id: Uuid,
+	POST "/domain/{domain_id}/verify" {
 		/// The domain ID of the record
 		pub domain_id: Uuid,
 	},
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

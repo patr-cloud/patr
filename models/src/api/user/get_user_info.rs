@@ -7,6 +7,7 @@ macros::declare_api_endpoint!(
 	/// Get the information of the currently authenticated user.
 	GetUserInfo,
 	GET "/user",
+	workspaced = false,
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,

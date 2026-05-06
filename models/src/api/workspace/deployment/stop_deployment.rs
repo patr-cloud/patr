@@ -3,12 +3,11 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to stop a deployment
 	StopDeployment,
-	POST "/workspace/{workspace_id}/deployment/{deployment_id}/stop" {
-		/// The workspace ID of the user
-		pub workspace_id: Uuid,
+	POST "/deployment/{deployment_id}/stop" {
 		/// The deployment ID of the deployment to stop
 		pub deployment_id: Uuid,
 	},
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

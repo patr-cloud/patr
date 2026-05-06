@@ -8,6 +8,7 @@ macros::declare_api_endpoint!(
 	/// verify their account. The recovery method can either be an email or a phone number.
 	ResendOtp,
 	POST "/auth/resend-otp",
+	workspaced = false,
 	api = false,
 	request_headers = {
 		/// The user-agent used to access this API

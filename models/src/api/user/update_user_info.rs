@@ -4,6 +4,7 @@ macros::declare_api_endpoint!(
 	/// Set the information of the currently authenticated user.
 	UpdateUserInfo,
 	PATCH "/user",
+	workspaced = false,
 	api = false,
 	request_headers = {
 		/// The authorization token

@@ -4,10 +4,8 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to get all the domains in a workspace
 	ListDomainsInWorkspace,
-	GET "/workspace/{workspace_id}/domain" {
-		/// The ID of the workspace
-		pub workspace_id: Uuid,
-	},
+	GET "/domain",
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

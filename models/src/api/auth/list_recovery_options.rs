@@ -6,6 +6,7 @@ macros::declare_api_endpoint!(
 	/// The backend performs validation and prevents the leak of sensitive user information.
 	ListRecoveryOptions,
 	GET "/auth/list-recovery-options",
+	workspaced = false,
 	api = false,
 	request_headers = {
 		/// The user-agent used to access this API

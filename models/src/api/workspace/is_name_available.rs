@@ -4,6 +4,7 @@ macros::declare_api_endpoint!(
 	/// Route to check if a workspace name is available
 	IsWorkspaceNameAvailable,
 	GET "/workspace/name-available",
+	workspaced = false,
 	authentication = {
 		AppAuthentication::<Self>::PlainTokenAuthenticator
 	},

@@ -3,10 +3,8 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to validate user's entered email ID is available or not
 	IsDomainValid,
-	GET "/workspace/{workspace_id}/domain/is-valid" {
-		/// The ID of the workspace
-		pub workspace_id: Uuid,
-	},
+	GET "/domain/is-valid",
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

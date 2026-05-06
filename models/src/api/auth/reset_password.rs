@@ -11,6 +11,7 @@ macros::declare_api_endpoint!(
 	/// preferred recovery method
 	ResetPassword,
 	POST "/auth/reset-password",
+	workspaced = false,
 	api = false,
 	request_headers = {
 		/// The user-agent used to access this API

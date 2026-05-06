@@ -7,14 +7,13 @@ macros::declare_api_endpoint!(
 	/// Route to get a single system metric for a runner. The metric name is
 	/// specified in the path (e.g. `system_cpu_usage`, `system_network_rx`).
 	GetRunnerMetrics,
-	GET "/workspace/{workspace_id}/runner/{runner_id}/metrics/{metric}" {
-		/// The workspace ID of the user
-		pub workspace_id: Uuid,
+	GET "/runner/{runner_id}/metrics/{metric}" {
 		/// The runner ID to get the metrics for
 		pub runner_id: Uuid,
 		/// The metric to query
 		pub metric: RunnerMetricName,
 	},
+	workspaced = true,
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.runner_id,

@@ -4,6 +4,7 @@ macros::declare_api_endpoint!(
 	/// The route to check if a user's username is available to be used to create an account or not
 	IsUsernameValid,
 	GET "/auth/username-valid",
+	workspaced = false,
 	api = false,
 	request_headers = {
 		/// The user-agent used to access this API

@@ -4,6 +4,7 @@ macros::declare_api_endpoint!(
 	/// List all the workspaces that the currently authenticated user is a part of.
 	ListUserWorkspaces,
 	GET "/user/workspaces",
+	workspaced = false,
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,

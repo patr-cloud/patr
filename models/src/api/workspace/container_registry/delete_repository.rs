@@ -3,12 +3,11 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Deletes a container repository in the workspace.
 	DeleteContainerRepository,
-	DELETE "/workspace/{workspace_id}/container-registry/{repository_id}" {
-		/// The workspace to delete the container repository in.
-		pub workspace_id: Uuid,
+	DELETE "/container-registry/{repository_id}" {
 		/// The id of the repository to delete.
 		pub repository_id: Uuid,
 	},
+	workspaced = true,
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,

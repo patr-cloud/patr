@@ -4,10 +4,8 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to list all the runners of a workspace
 	ListRunnersForWorkspace,
-	GET "/workspace/{workspace_id}/runner" {
-		/// The ID of the workspace
-		pub workspace_id: Uuid
-	},
+	GET "/runner",
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

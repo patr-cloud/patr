@@ -3,12 +3,11 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to get Runner information
 	GetIngressTokenForRunner,
-	GET "/workspace/{workspace_id}/runner/{runner_id}/ingress-token" {
-		/// The ID of the workspace
-		pub workspace_id: Uuid,
+	GET "/runner/{runner_id}/ingress-token" {
 		/// The runner ID
 		pub runner_id: Uuid,
 	},
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

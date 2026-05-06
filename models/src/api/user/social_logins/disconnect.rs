@@ -10,6 +10,7 @@ macros::declare_api_endpoint!(
 		/// The provider to disconnect.
 		pub provider: SocialLoginProvider,
 	},
+	workspaced = false,
 	api = false,
 	request_headers = {
 		/// The authorization token

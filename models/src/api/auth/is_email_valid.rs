@@ -4,6 +4,7 @@ macros::declare_api_endpoint!(
 	/// Route to validate user's entered email ID is available or not
 	IsEmailValid,
 	GET "/auth/email-valid",
+	workspaced = false,
 	api = false,
 	request_headers = {
 		/// The user-agent used to access this API

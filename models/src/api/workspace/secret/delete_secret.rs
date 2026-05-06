@@ -3,12 +3,11 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to delete a secret
 	DeleteSecret,
-	DELETE "/workspace/{workspace_id}/secret/{secret_id}" {
-		/// The ID of the workspace
-		pub workspace_id: Uuid,
+	DELETE "/secret/{secret_id}" {
 		/// The ID of the secret to be deleted
 		pub secret_id: Uuid,
 	},
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

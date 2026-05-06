@@ -8,6 +8,7 @@ macros::declare_api_endpoint!(
 		/// The ID of the API token to retrieve
 		pub token_id: Uuid,
 	},
+	workspaced = false,
 	api = false,
 	request_headers = {
 		/// The authorization token

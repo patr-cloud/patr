@@ -26,6 +26,7 @@ macros::declare_api_endpoint!(
 	/// the [`authorize`] endpoint.
 	OAuthToken,
 	POST "/auth/oauth/token",
+	workspaced = false,
 	request = {
 		/// The grant type for the request
 		#[serde(rename = "grant_type")]

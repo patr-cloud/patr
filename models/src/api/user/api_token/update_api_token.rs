@@ -13,6 +13,7 @@ macros::declare_api_endpoint!(
 		/// The ID of the token to update
 		pub token_id: Uuid,
 	},
+	workspaced = false,
 	api = false,
 	request_headers = {
 		/// The authorization token

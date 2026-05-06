@@ -4,12 +4,11 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to get list of deployment history for a deployment
 	ListDeploymentDeployHistory,
-	GET "/workspace/{workspace_id}/deployment/{deployment_id}/deploy-history" {
-		/// The workspace ID of the user
-		pub workspace_id: Uuid,
+	GET "/deployment/{deployment_id}/deploy-history" {
 		/// The deployment ID to get the history for
 		pub deployment_id: Uuid,
 	},
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

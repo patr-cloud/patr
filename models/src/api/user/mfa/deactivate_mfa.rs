@@ -4,6 +4,7 @@ macros::declare_api_endpoint!(
 	/// Deactivate multifactor authentication of a user
 	DeactivateMfa,
 	DELETE "/user/mfa",
+	workspaced = false,
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,

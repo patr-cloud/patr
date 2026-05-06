@@ -3,12 +3,11 @@ use crate::{api::user::BasicUserInfo, prelude::*};
 macros::declare_api_endpoint!(
 	/// Route to list all the users with the role
 	ListUsersForRole,
-	GET "/workspace/{workspace_id}/rbac/role/{role_id}/users" {
-		/// The ID of the workspace
-		pub workspace_id: Uuid,
+	GET "/rbac/role/{role_id}/users" {
 		/// The ID of the role to get users for
 		pub role_id: Uuid
 	},
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

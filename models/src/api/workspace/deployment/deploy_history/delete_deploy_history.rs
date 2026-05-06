@@ -3,14 +3,13 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to delete the deployment history for a deployment
 	DeleteDeploymentDeployHistory,
-	DELETE "/workspace/{workspace_id}/deployment/{deployment_id}/deploy-history/{image_digest}" {
-		/// The workspace ID of the user
-		pub workspace_id: Uuid,
+	DELETE "/deployment/{deployment_id}/deploy-history/{image_digest}" {
 		/// The deployment ID to get the history for
 		pub deployment_id: Uuid,
 		/// The image digest to delete
 		pub image_digest: String,
 	},
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

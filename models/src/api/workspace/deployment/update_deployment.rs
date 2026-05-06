@@ -6,12 +6,11 @@ use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 macros::declare_api_endpoint!(
 	/// Route to update a deployment
 	UpdateDeployment,
-	PATCH "/workspace/{workspace_id}/deployment/{deployment_id}" {
-		/// The workspace ID of the user
-		pub workspace_id: Uuid,
+	PATCH "/deployment/{deployment_id}" {
 		/// The deployment ID of the deployment to stop
 		pub deployment_id: Uuid,
 	},
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

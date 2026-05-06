@@ -36,6 +36,7 @@ macros::declare_api_endpoint!(
 	/// refresh token.
 	OAuthAuthorize,
 	GET "/auth/oauth/authorize",
+	workspaced = false,
 	query = {
 		/// The request type that the third-party app is making
 		pub response_type: OAuthAuthorizeResponseType,

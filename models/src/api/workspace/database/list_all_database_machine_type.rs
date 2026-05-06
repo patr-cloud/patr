@@ -5,6 +5,7 @@ macros::declare_api_endpoint!(
 	/// Route to get database information
 	ListAllDatabaseMachineType,
 	GET "/workspace/infrastructure/database/plan",
+	workspaced = false,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

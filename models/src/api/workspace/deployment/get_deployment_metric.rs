@@ -7,14 +7,13 @@ macros::declare_api_endpoint!(
 	/// Route to get a single metric for a deployment. The metric name is
 	/// specified in the path (e.g. `ingress_rps`, `container_cpu_usage`).
 	GetDeploymentMetric,
-	GET "/workspace/{workspace_id}/deployment/{deployment_id}/metrics/{metric}" {
-		/// The workspace ID of the user
-		pub workspace_id: Uuid,
+	GET "/deployment/{deployment_id}/metrics/{metric}" {
 		/// The deployment ID to get the metrics for
 		pub deployment_id: Uuid,
 		/// The metric to query
 		pub metric: DeploymentMetricName,
 	},
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

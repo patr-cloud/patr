@@ -8,6 +8,7 @@ macros::declare_api_endpoint!(
 	/// the authentication token needed to access all the services on PATR.
 	Login,
 	POST "/auth/sign-in",
+	workspaced = false,
 	api = false,
 	request_headers = {
 		/// The user-agent used to access this API

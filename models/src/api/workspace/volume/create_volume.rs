@@ -3,10 +3,8 @@ use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 macros::declare_api_endpoint!(
 	/// Route to create a new volume
 	CreateVolume,
-	POST "/workspace/{workspace_id}/volume" {
-		/// The workspace ID of the user
-		pub workspace_id: Uuid,
-	},
+	POST "/volume",
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

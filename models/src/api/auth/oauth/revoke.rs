@@ -11,6 +11,7 @@ macros::declare_api_endpoint!(
 	/// to log in again to get a new access token.
 	OAuthRevokeToken,
 	POST "/auth/oauth/revoke",
+	workspaced = false,
 	request = {
 		/// The access token to revoke
 		#[serde(rename = "access_token")]

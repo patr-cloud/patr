@@ -3,14 +3,13 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Gets the exposed ports of a container repository in the workspace.
 	GetContainerRepositoryExposedPorts,
-	GET "/workspace/{workspace_id}/container-registry/{repository_id}/manifest/{digest_or_tag}/exposed-ports" {
-		/// The workspace to get the container repository in.
-		pub workspace_id: Uuid,
+	GET "/container-registry/{repository_id}/manifest/{digest_or_tag}/exposed-ports" {
 		/// The id of the repository to get the exposed ports of.
 		pub repository_id: Uuid,
 		/// The digest of the manifest to get the exposed ports of.
 		pub digest_or_tag: String,
 	},
+	workspaced = true,
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,

@@ -4,6 +4,7 @@ macros::declare_api_endpoint!(
 	/// Route to create a new workspace. The user that called this route will automatically be assigned as the super admin of the workspace.
 	CreateWorkspace,
 	POST "/workspace",
+	workspaced = false,
 	request = {
 		/// The name of the workspace to be created
 		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]

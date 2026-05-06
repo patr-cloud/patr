@@ -3,12 +3,11 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to delete domain in a workspace
 	DeleteDomainInWorkspace,
-	DELETE "/workspace/{workspace_id}/domain/{domain_id}" {
-		/// The ID of the workspace
-		pub workspace_id: Uuid,
+	DELETE "/domain/{domain_id}" {
 		/// The domain ID of the workspace
 		pub domain_id: Uuid,
 	},
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

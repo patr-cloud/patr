@@ -11,6 +11,7 @@ macros::declare_api_endpoint!(
 		/// endpoint.
 		pub provider: SocialLoginProvider,
 	},
+	workspaced = false,
 	api = false,
 	request_headers = {
 		/// The authorization token

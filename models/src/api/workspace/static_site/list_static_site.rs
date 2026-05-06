@@ -4,10 +4,8 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to list all static site in a workspace
 	ListStaticSite,
-	GET "/workspace/{workspace_id}/infrastructure/static-site" {
-		/// The workspace ID of the user
-		pub workspace_id: Uuid,
-	},
+	GET "/infrastructure/static-site",
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

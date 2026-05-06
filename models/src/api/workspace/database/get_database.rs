@@ -4,12 +4,11 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to get database information
 	GetDatabase,
-	GET "/workspace/{workspace_id}/infrastructure/database/{database_id}" {
-		/// The workspace ID of the user
-		pub workspace_id: Uuid,
+	GET "/infrastructure/database/{database_id}" {
 		/// The database ID to retrieve database information
 		pub database_id: Uuid
 	},
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

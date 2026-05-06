@@ -21,12 +21,11 @@ pub struct ContainerRepositoryTagAndDigestInfo {
 macros::declare_api_endpoint!(
 	/// Route to get list of all container repositories in a workspace
 	ListContainerRepositoryTags,
-	GET "/workspace/{workspace_id}/container-registry/{repository_id}/tag" {
-		/// The workspace ID to list the container registry repositories in
-		pub workspace_id: Uuid,
+	GET "/container-registry/{repository_id}/tag" {
 		/// The container repository ID to list the tags of
 		pub repository_id: Uuid,
 	},
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

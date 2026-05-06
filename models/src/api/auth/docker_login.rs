@@ -7,6 +7,7 @@ macros::declare_api_endpoint!(
 	/// the authentication token needed to access all the services on PATR.
 	DockerLogin,
 	GET "/auth/docker-login",
+	workspaced = false,
 	request_headers = {
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,

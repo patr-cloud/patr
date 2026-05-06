@@ -3,12 +3,11 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to update the roles of a user in a workspace
 	UpdateUserRolesInWorkspace,
-	POST "/workspace/{workspace_id}/rbac/user/{user_id}" {
-		/// The ID of the workspace
-		pub workspace_id: Uuid,
+	POST "/rbac/user/{user_id}" {
 		/// The user ID of the user to add to the workspace
 		pub user_id: Uuid,
 	},
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

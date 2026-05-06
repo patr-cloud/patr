@@ -15,6 +15,7 @@ macros::declare_api_endpoint!(
 		/// for now.
 		pub provider: SocialLoginProvider,
 	},
+	workspaced = false,
 	api = false,
 	request_headers = {
 		/// The user-agent used to access this API

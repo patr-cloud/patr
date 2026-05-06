@@ -6,6 +6,7 @@ macros::declare_api_endpoint!(
 	/// such as their username, first name, last name, etc.
 	SearchForUser,
 	GET "/user/search",
+	workspaced = false,
 	api = false,
 	query = {
 		/// The search query to find users by username, first name, or last name.

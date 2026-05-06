@@ -6,12 +6,11 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to get the logs of a runner process
 	GetRunnerLogs,
-	GET "/workspace/{workspace_id}/runner/{runner_id}/logs" {
-		/// The workspace ID of the user
-		pub workspace_id: Uuid,
+	GET "/runner/{runner_id}/logs" {
 		/// The runner ID to get the logs for
 		pub runner_id: Uuid,
 	},
+	workspaced = true,
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.runner_id,

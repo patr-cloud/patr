@@ -30,6 +30,11 @@ pub struct ApiEndpoint {
 	path: LitStr,
 	/// The body of the URL path. This is used for typed paths.
 	path_body: Option<FieldsNamed>,
+	/// Whether this endpoint is scoped to a workspace. When true, the macro
+	/// prefixes the URL path with `/workspace/{workspace_id}` and prepends a
+	/// `workspace_id: Uuid` field to the path-body struct. This flag is
+	/// required at every callsite — there is no default.
+	workspaced: bool,
 	/// The authentication for this endpoint.
 	auth: Option<Block>,
 	/// Should this route be allowed through APIs or only through the web-login
@@ -95,6 +100,7 @@ impl Parse for ApiEndpoint {
 		let mut response = None;
 		let mut api_allowed = None;
 		let mut audit_logger = None;
+		let mut workspaced = None;
 
 		while !input.is_empty() {
 			let ident = input.parse::<Ident>()?;
@@ -171,6 +177,14 @@ impl Parse for ApiEndpoint {
 
 					audit_logger = Some(input.parse()?);
 				}
+				"workspaced" => {
+					if workspaced.is_some() {
+						return Err(Error::new(ident.span(), "Duplicate field"));
+					}
+					input.parse::<Token![=]>()?;
+
+					workspaced = Some(input.parse::<LitBool>()?.value);
+				}
 				_ => {
 					return Err(Error::new(ident.span(), "Unknown field"));
 				}
@@ -183,6 +197,12 @@ impl Parse for ApiEndpoint {
 		let Some(audit_logger) = audit_logger else {
 			return Err(Error::new(input.span(), "Missing field: audit_logger"));
 		};
+		let Some(workspaced) = workspaced else {
+			return Err(Error::new(
+				input.span(),
+				"workspaced flag is required: specify `workspaced = true` or `workspaced = false`",
+			));
+		};
 
 		Ok(Self {
 			documentation,
@@ -190,6 +210,7 @@ impl Parse for ApiEndpoint {
 			method,
 			path,
 			path_body,
+			workspaced,
 			auth,
 			api_allowed,
 
@@ -215,6 +236,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		method,
 		path,
 		path_body,
+		workspaced,
 		api_allowed,
 
 		auth,
@@ -228,24 +250,56 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		response,
 	} = parse_macro_input!(input as ApiEndpoint);
 
-	let (path_default_impl, path_body) = if let Some(body) = path_body &&
-		!body.named.is_empty()
-	{
-		(
-			quote::quote! {},
-			quote::quote! {
-				#body
-			},
+	let path = if workspaced {
+		LitStr::new(
+			&format!("/workspace/{{workspace_id}}{}", path.value()),
+			path.span(),
 		)
 	} else {
-		(
+		path
+	};
+
+	let path_body_fields = path_body.filter(|body| !body.named.is_empty());
+
+	let (path_default_impl, path_body) = if workspaced {
+		let workspace_id_field = quote::quote! {
+			/// The ID of the workspace this resource belongs to.
+			pub workspace_id: Uuid,
+		};
+		let body_tokens = if let Some(existing) = path_body_fields {
+			let named = &existing.named;
 			quote::quote! {
-				Default,
-			},
+					{
+						#workspace_id_field
+						#named
+					}
+			}
+		} else {
 			quote::quote! {
-				;
-			},
-		)
+				{
+					#workspace_id_field
+				}
+			}
+		};
+		(quote::quote! {}, body_tokens)
+	} else {
+		if let Some(body) = path_body_fields {
+			(
+				quote::quote! {},
+				quote::quote! {
+					#body
+				},
+			)
+		} else {
+			(
+				quote::quote! {
+					Default,
+				},
+				quote::quote! {
+					;
+				},
+			)
+		}
 	};
 	let path_name = format_ident!("{}Path", name);
 

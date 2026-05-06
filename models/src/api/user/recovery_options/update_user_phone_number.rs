@@ -6,6 +6,7 @@ macros::declare_api_endpoint!(
 	/// [`super::verify_phone_number`] endpoint.
 	UpdateUserPhoneNumber,
 	POST "/user/update-phone-number",
+	workspaced = false,
 	api = false,
 	request_headers = {
 		/// The authorization token

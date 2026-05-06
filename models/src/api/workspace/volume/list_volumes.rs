@@ -4,10 +4,8 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to list all the volumes of a workspace
 	ListVolumesInWorkspace,
-	GET "/workspace/{workspace_id}/volume" {
-		/// The ID of the workspace
-		pub workspace_id: Uuid
-	},
+	GET "/volume",
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

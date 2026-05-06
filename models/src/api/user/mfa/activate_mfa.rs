@@ -4,6 +4,7 @@ macros::declare_api_endpoint!(
 	/// Activate multifactor authentication of a user
 	ActivateMfa,
 	POST "/user/mfa",
+	workspaced = false,
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,

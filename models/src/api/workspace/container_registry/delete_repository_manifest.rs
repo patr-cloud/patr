@@ -3,14 +3,13 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Deletes a container repository's manifest in the workspace.
 	DeleteContainerRepositoryManifest,
-	DELETE "/workspace/{workspace_id}/container-registry/{repository_id}/manifest/{digest_or_tag}" {
-		/// The workspace to delete the container repository in.
-		pub workspace_id: Uuid,
+	DELETE "/container-registry/{repository_id}/manifest/{digest_or_tag}" {
 		/// The id of the repository to delete.
 		pub repository_id: Uuid,
 		/// The digest of the manifest to delete.
 		pub digest_or_tag: String,
 	},
+	workspaced = true,
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,

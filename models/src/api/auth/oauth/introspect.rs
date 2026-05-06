@@ -45,6 +45,7 @@ macros::declare_api_endpoint!(
 	/// time.
 	OAuthIntrospect,
 	POST "/auth/oauth/introspect",
+	workspaced = false,
 	request = {
 		/// The access token that needs to be introspected
 		#[serde(rename = "token")]

@@ -12,12 +12,11 @@ const fn default_force_restart() -> bool {
 macros::declare_api_endpoint!(
 	/// Route to start a deployment
 	StartDeployment,
-	POST "/workspace/{workspace_id}/deployment/{deployment_id}/start" {
-		/// The workspace ID of the user
-		pub workspace_id: Uuid,
+	POST "/deployment/{deployment_id}/start" {
 		/// The deployment ID of the deployment to start
 		pub deployment_id: Uuid,
 	},
+	workspaced = true,
 	query = {
 		/// If true, the deployment will be force-restarted, even
 		/// if it is already running

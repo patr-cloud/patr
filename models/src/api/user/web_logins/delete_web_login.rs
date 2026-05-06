@@ -8,6 +8,7 @@ macros::declare_api_endpoint!(
 		/// The login ID to delete.
 		pub login_id: Uuid,
 	},
+	workspaced = false,
 	api = false,
 	request_headers = {
 		/// The authorization token

@@ -3,12 +3,11 @@ use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 macros::declare_api_endpoint!(
 	/// Route to update a secret
 	UpdateSecret,
-	PATCH "/workspace/{workspace_id}/secret/{secret_id}" {
-		/// The ID of the workspace
-		pub workspace_id: Uuid,
+	PATCH "/secret/{secret_id}" {
 		/// The ID of the secret to be deleted
 		pub secret_id: Uuid,
 	},
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

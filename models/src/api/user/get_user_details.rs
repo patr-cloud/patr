@@ -9,6 +9,7 @@ macros::declare_api_endpoint!(
 		/// The userId of the user whose details are being requested.
 		pub user_id: Uuid,
 	},
+	workspaced = false,
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,

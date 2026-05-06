@@ -5,10 +5,8 @@ macros::declare_api_endpoint!(
 	/// Route to create a new database
 	/// Databases that are supported are MySQL, Postgress, MongoDB and Redis
 	CreateDatabase,
-	POST "/workspace/{workspace_id}/infrastructure/database" {
-		/// The ID of the workspace to get the info of
-		pub workspace_id: Uuid,
-	},
+	POST "/infrastructure/database",
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

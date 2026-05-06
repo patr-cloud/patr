@@ -42,6 +42,7 @@ macros::declare_api_endpoint!(
 	/// The route to create a new user account
 	CreateAccount,
 	POST "/auth/sign-up",
+	workspaced = false,
 	api = false,
 	request_headers = {
 		/// The user-agent used to access this API

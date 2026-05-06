@@ -4,12 +4,11 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to update a managed URL configurations
 	UpdateManagedURL,
-	POST "/workspace/{workspace_id}/infrastructure/managed-url/{managed_url_id}" {
-		/// The workspace ID of the user
-		pub workspace_id: Uuid,
+	POST "/infrastructure/managed-url/{managed_url_id}" {
 		/// The managed URL to be deleted
 		pub managed_url_id: Uuid,
 	},
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

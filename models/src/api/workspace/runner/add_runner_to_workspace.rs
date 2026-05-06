@@ -3,10 +3,8 @@ use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 macros::declare_api_endpoint!(
 	/// Route to add runner to a workspace
 	AddRunnerToWorkspace,
-	POST "/workspace/{workspace_id}/runner" {
-		/// The ID of the workspace
-		pub workspace_id: Uuid,
-	},
+	POST "/runner",
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

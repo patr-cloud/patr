@@ -5,10 +5,8 @@ use crate::{prelude::*, rbac::ResourcePermissionType, utils::constants::RESOURCE
 macros::declare_api_endpoint!(
 	/// Route to create a new role
 	CreateNewRole,
-	POST "/workspace/{workspace_id}/rbac/role" {
-		/// The ID of the workspace
-		pub workspace_id: Uuid
-	},
+	POST "/rbac/role",
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

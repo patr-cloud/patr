@@ -9,6 +9,7 @@ macros::declare_api_endpoint!(
 	/// This route will complete the sign-up process of the user.
 	CompleteSignUp,
 	POST "/auth/join",
+	workspaced = false,
 	api = false,
 	request_headers = {
 		/// The user-agent used to access this API

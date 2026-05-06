@@ -4,14 +4,13 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Gets the details of a container repository's manifest in the workspace.
 	GetContainerRepositoryManifestDetails,
-	GET "/workspace/{workspace_id}/container-registry/{repository_id}/manifest/{digest_or_tag}" {
-		/// The workspace to get the container repository in.
-		pub workspace_id: Uuid,
+	GET "/container-registry/{repository_id}/manifest/{digest_or_tag}" {
 		/// The id of the repository to get the manifest details of.
 		pub repository_id: Uuid,
 		/// The digest of the manifest to get the details of.
 		pub digest_or_tag: String,
 	},
+	workspaced = true,
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,

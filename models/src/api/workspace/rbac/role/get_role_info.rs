@@ -6,12 +6,11 @@ use crate::{prelude::*, rbac::ResourcePermissionType};
 macros::declare_api_endpoint!(
 	/// Route to get the role info
 	GetRoleInfo,
-	GET "/workspace/{workspace_id}/rbac/role/{role_id}" {
-		/// The ID of the workspace
-		pub workspace_id: Uuid,
+	GET "/rbac/role/{role_id}" {
 		/// The role ID to get the info of
 		pub role_id: Uuid
 	},
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

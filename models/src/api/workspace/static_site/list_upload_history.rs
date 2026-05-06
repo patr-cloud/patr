@@ -4,12 +4,11 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to get all upload history of a static site
 	ListStaticSiteUploadHistory,
-	GET "/workspace/{workspace_id}/infrastructure/static-site/{static_site_id}/upload" {
-		/// The workspace ID of the user
-		pub workspace_id: Uuid,
+	GET "/infrastructure/static-site/{static_site_id}/upload" {
 		/// The static site ID to get history of
 		pub static_site_id: Uuid,
 	},
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,

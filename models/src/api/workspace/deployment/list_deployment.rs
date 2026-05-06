@@ -4,10 +4,8 @@ use crate::prelude::*;
 macros::declare_api_endpoint!(
 	/// Route to list all the deployments in a workspace
 	ListDeployment,
-	GET "/workspace/{workspace_id}/deployment" {
-		/// The workspace ID of the user
-		pub workspace_id: Uuid,
-	},
+	GET "/deployment",
+	workspaced = true,
 	request_headers = {
 		/// Token used to authorize user
 		pub authorization: BearerToken,
