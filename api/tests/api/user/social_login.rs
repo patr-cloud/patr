@@ -1,7 +1,4 @@
-use api::{
-	models::social_login::GithubStatePayload,
-	redis::keys as redis_keys,
-};
+use api::{models::social_login::GithubStatePayload, redis::keys as redis_keys};
 use models::{
 	ApiSuccessResponseBody,
 	api::{auth::SocialLoginProvider, user::*},
@@ -34,10 +31,13 @@ async fn connect_social_login_initiate_works() {
 		.await
 		.json::<ApiSuccessResponseBody<ConnectSocialLoginInitiateResponse>>();
 
-	let url = reqwest::Url::parse(&response.response.authorize_url)
-		.expect("authorize_url should parse");
+	let url =
+		reqwest::Url::parse(&response.response.authorize_url).expect("authorize_url should parse");
 	let pairs: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
-	assert!(pairs.contains_key("client_id"), "missing client_id query param");
+	assert!(
+		pairs.contains_key("client_id"),
+		"missing client_id query param"
+	);
 	let state_token = pairs.get("state").expect("missing state query param");
 
 	let stored = setup
@@ -296,8 +296,7 @@ async fn disconnect_social_login_works() {
 		.await;
 
 	assert!(
-		!response.status_code().is_client_error()
-			&& !response.status_code().is_server_error(),
+		!response.status_code().is_client_error() && !response.status_code().is_server_error(),
 		"disconnect should succeed, got {}",
 		response.status_code()
 	);

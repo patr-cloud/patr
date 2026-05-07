@@ -29,13 +29,16 @@ async fn social_login_initiate_works() {
 		.await
 		.json::<ApiSuccessResponseBody<SocialLoginInitiateResponse>>();
 
-	let url = reqwest::Url::parse(&response.response.authorize_url)
-		.expect("authorize_url should parse");
+	let url =
+		reqwest::Url::parse(&response.response.authorize_url).expect("authorize_url should parse");
 	assert_eq!(url.host_str(), Some("github.com"));
 	assert_eq!(url.path(), "/login/oauth/authorize");
 
 	let pairs: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
-	assert!(pairs.contains_key("client_id"), "missing client_id query param");
+	assert!(
+		pairs.contains_key("client_id"),
+		"missing client_id query param"
+	);
 	let state_token = pairs.get("state").expect("missing state query param");
 
 	let stored = setup
@@ -290,11 +293,7 @@ async fn social_login_setup_username_taken() {
 	let setup = setup().await.expect("failed to setup test server");
 	let existing = setup.create_test_user().await;
 
-	let setup_token = seed_github_setup(
-		&setup,
-		&format!("{}@example.com", random_name(6)),
-	)
-	.await;
+	let setup_token = seed_github_setup(&setup, &format!("{}@example.com", random_name(6))).await;
 
 	let response = setup
 		.make_web_dashboard_call(
@@ -329,13 +328,12 @@ async fn social_login_setup_email_taken() {
 
 	// `create_test_user` sets recovery_email to `<username>@example.com` —
 	// fetch the actual value so we don't depend on that detail here.
-	let existing_email: String = sqlx::query_scalar(
-		"SELECT recovery_email FROM \"user\" WHERE id = $1",
-	)
-	.bind(existing.user_id)
-	.fetch_one(setup.database())
-	.await
-	.expect("failed to fetch existing user's recovery_email");
+	let existing_email: String =
+		sqlx::query_scalar("SELECT recovery_email FROM \"user\" WHERE id = $1")
+			.bind(existing.user_id)
+			.fetch_one(setup.database())
+			.await
+			.expect("failed to fetch existing user's recovery_email");
 
 	let setup_token = seed_github_setup(&setup, &existing_email).await;
 
