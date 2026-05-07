@@ -28,7 +28,9 @@ use crate::prelude::*;
 /// Upsert (create or update) a deployment. This will create the service if
 /// it does not exist, or update the service if it does exist.
 pub(crate) async fn upsert(
-	DockerRunner { docker, settings }: &DockerRunner,
+	DockerRunner {
+		docker, settings, ..
+	}: &DockerRunner,
 	WithId {
 		id,
 		data:
@@ -289,56 +291,18 @@ pub(crate) async fn upsert(
 	if let Some(service) = existing_service {
 		// Update existing service
 		let version = service.version.as_ref().and_then(|v| v.index).unwrap_or(0);
-		let pre_update_status = service
-			.update_status
-			.as_ref()
-			.and_then(|u| u.state.as_ref())
-			.map(|s| format!("{s:?}"));
-		debug!(
-			deployment_id = %id,
-			service_version = version,
-			update_status = ?pre_update_status,
-			"Read existing service from swarm before update"
-		);
 
 		let options = UpdateServiceOptionsBuilder::default()
 			.version(version as i32)
 			.build();
 
-		let update_result = docker
+		docker
 			.update_service(&service_name, service_spec, options, registry_auth.clone())
-			.await;
-
-		if let Err(err) = update_result {
-			// Re-inspect on failure so we can see whether the version moved
-			// between our read and our write — that pins down whether the cause
-			// is something bumping the version after we inspected, or whether
-			// the version we sent was wrong from the start.
-			match docker.inspect_service(&service_name, None).await {
-				Ok(svc) => {
-					let now_version = svc.version.as_ref().and_then(|v| v.index).unwrap_or(0);
-					let now_status = svc
-						.update_status
-						.as_ref()
-						.and_then(|u| u.state.as_ref())
-						.map(|s| format!("{s:?}"));
-					error!(
-						deployment_id = %id,
-						version_we_sent = version,
-						version_now = now_version,
-						update_status_now = ?now_status,
-						"update_service failed; post-failure inspect for diagnosis"
-					);
-				}
-				Err(post_err) => error!(
-					deployment_id = %id,
-					%post_err,
-					"update_service failed; post-failure inspect also failed"
-				),
-			}
-			error!("Error updating service: {:?}", err);
-			return Err(RunnerError::host(err));
-		}
+			.await
+			.map_err(|err| {
+				error!("Error updating service: {:?}", err);
+				RunnerError::host(err)
+			})?;
 		info!("Service updated");
 	} else {
 		// Create new service
