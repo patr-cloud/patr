@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use bollard::{
 	Docker,
@@ -6,8 +6,23 @@ use bollard::{
 };
 use futures::Stream;
 use models::api::workspace::{deployment::*, runner::*};
+use tokio::sync::Mutex;
 
 use crate::prelude::*;
+
+/// Shared state passed from `initialize` into every cloned [`DockerRunner`].
+///
+/// `ingress_lock` serializes writes to the single `patr-ingress` swarm service.
+/// Without it, concurrent deployment actors race on swarmkit's optimistic
+/// version index and one of them gets "update out of sequence".
+#[derive(Debug, Clone)]
+pub struct DockerRunnerState {
+	/// The [`Docker`] client (cheaply clonable; internally an `Arc`).
+	pub docker: Docker,
+	/// Mutex guarding all reads-then-writes of the shared `patr-ingress`
+	/// service.
+	pub ingress_lock: Arc<Mutex<()>>,
+}
 
 /// A Patr runner that uses Docker to run deployments.
 #[derive(Debug, Clone)]
@@ -16,10 +31,12 @@ pub struct DockerRunner {
 	pub docker: Docker,
 	/// The runner settings.
 	pub settings: RunnerSettings<DockerSettings>,
+	/// Shared lock to serialize ingress-service writes across all actor clones.
+	pub ingress_lock: Arc<Mutex<()>>,
 }
 
 impl RunnerExecutor for DockerRunner {
-	type InitializedState = Docker;
+	type InitializedState = DockerRunnerState;
 	type Settings = DockerSettings;
 
 	fn runner_exposure_type(settings: &RunnerSettings<Self::Settings>) -> RunnerExposureType {
@@ -154,16 +171,17 @@ impl RunnerExecutor for DockerRunner {
 			alloy::update_alloy_service(&docker, settings).await?;
 		}
 
-		Ok(docker)
+		Ok(DockerRunnerState {
+			docker,
+			ingress_lock: Arc::new(Mutex::new(())),
+		})
 	}
 
-	async fn new(
-		settings: &RunnerSettings<Self::Settings>,
-		docker: Self::InitializedState,
-	) -> Self {
+	async fn new(settings: &RunnerSettings<Self::Settings>, state: Self::InitializedState) -> Self {
 		Self {
-			docker,
+			docker: state.docker,
 			settings: settings.clone(),
+			ingress_lock: state.ingress_lock,
 		}
 	}
 
@@ -174,6 +192,7 @@ impl RunnerExecutor for DockerRunner {
 	) -> Result<(), RunnerError> {
 		deployment::upsert(self, deployment, running_details).await?;
 
+		let _guard = self.ingress_lock.lock().await;
 		ingress::update_ingress_configs(&self.docker, &self.settings).await
 	}
 
@@ -184,6 +203,7 @@ impl RunnerExecutor for DockerRunner {
 	async fn delete_deployment(&self, id: Uuid) -> Result<(), RunnerError> {
 		deployment::delete(self, id).await?;
 
+		let _guard = self.ingress_lock.lock().await;
 		ingress::delete_deployment_config(&self.docker, &self.settings, id).await
 	}
 
