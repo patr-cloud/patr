@@ -251,8 +251,11 @@ where
 	// Store the write half, boxing it to erase the opaque type.
 	state.ws_sink = Some(Box::pin(sink.sink_map_err(|e| format!("{e:?}"))));
 
-	// Schedule the first full resync.
-	myself.send_after(full_resync_interval(), || WebSocketMessage::FullResync);
+	// Trigger an immediate full resync so a freshly-connected runner picks up
+	// pre-existing deployments without waiting for the periodic timer — server
+	// pushes only fire on state changes, not on connect. The handler re-arms
+	// the periodic timer when it finishes.
+	let _ = myself.send_message(WebSocketMessage::FullResync);
 }
 
 /// Schedule a `Connect` message with exponential backoff.
