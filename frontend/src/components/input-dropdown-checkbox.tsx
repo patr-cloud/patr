@@ -1,6 +1,6 @@
 import { MaybeAccessor } from "~/utils/types";
 import { InputDropdownOption } from "./input-dropdown";
-import { createSignal, For, JSX, mergeProps, Show } from "solid-js";
+import { createEffect, createSignal, For, JSX, mergeProps, Show } from "solid-js";
 import { get, variantBgClass } from "~/utils/func";
 import { FiChevronDown } from "solid-icons/fi";
 import { useClickOutside } from "~/hooks";
@@ -58,9 +58,22 @@ const InputDropdownCheckbox = (rawProps: InputDropdownCheckboxProps) => {
 	const [inputRef, setInputRef] = createSignal<HTMLInputElement>();
 	const [inputValue, setInputValue] = createSignal("");
 	const [highlightedIndex, setHighlightedIndex] = createSignal(-1);
+	const [dropDirection, setDropDirection] = createSignal<"down" | "up">("down");
+
+	const DROPDOWN_MAX_HEIGHT_PX = 240;
 
 	useClickOutside(dropdownRef, () => {
 		setShowDropdown(false);
+	});
+
+	createEffect(() => {
+		if (!showDropdown()) return;
+		const el = dropdownRef();
+		if (!el || typeof window === "undefined") return;
+		const rect = el.getBoundingClientRect();
+		const spaceBelow = window.innerHeight - rect.bottom;
+		const spaceAbove = rect.top;
+		setDropDirection(spaceBelow < DROPDOWN_MAX_HEIGHT_PX && spaceAbove > spaceBelow ? "up" : "down");
 	});
 
 	const containerClass = () => `rounded-xs flex justify-start
@@ -68,7 +81,9 @@ const InputDropdownCheckbox = (rawProps: InputDropdownCheckboxProps) => {
 		transition-all duration-250
     ${showDropdown() ? "border-primary shadow-md bg-secondary-light" : ""}
 		focus-within:border-primary focus-within:shadow-md focus-within:bg-secondary-light
-		${variantBgClass(get(props.styleVariant))} ${get(props.class)} ${showDropdown() ? "rounded-b-none" : ""}`;
+		${variantBgClass(get(props.styleVariant))} ${get(props.class)} ${
+			showDropdown() ? (dropDirection() === "up" ? "rounded-t-none" : "rounded-b-none") : ""
+		}`;
 
 	const onSelectItem = (e: MouseEvent, value: string) => {
 		e.stopPropagation();
@@ -164,7 +179,9 @@ const InputDropdownCheckbox = (rawProps: InputDropdownCheckboxProps) => {
 				<div
 					class={`${variantBgClass(
 						get(props.styleVariant)
-					)} border border-border-color absolute z-10 top-[2.22rem] -left-px w-[calc(100%+2px)] rounded-xs rounded-t-none shadow-lg overflow-y-scroll max-h-60`}
+					)} border border-border-color absolute z-10 -left-px w-[calc(100%+2px)] rounded-xs shadow-lg overflow-y-scroll max-h-60 ${
+						dropDirection() === "up" ? "bottom-[2.22rem] rounded-b-none" : "top-[2.22rem] rounded-t-none"
+					}`}
 					onScroll={(e) => {
 						if (!props.onLoadMore) return;
 						const el = e.currentTarget;
@@ -181,7 +198,12 @@ const InputDropdownCheckbox = (rawProps: InputDropdownCheckboxProps) => {
 									highlightedIndex() === index() ? "bg-secondary-dark" : ""
 								}`}
 							>
-								<Checkbox checked={get(props.checked).includes(option.value)} label={option.label} />
+								<div class="pointer-events-none">
+									<Checkbox
+										checked={get(props.checked).includes(option.value)}
+										label={option.label}
+									/>
+								</div>
 							</div>
 						)}
 					</For>

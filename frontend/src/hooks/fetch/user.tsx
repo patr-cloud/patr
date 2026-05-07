@@ -39,7 +39,7 @@ export const useUserSearchQuery = (query: Accessor<string>) => {
 		const q = query();
 		return {
 			queryKey: userInfoKeys.search(q),
-			enabled: !!auth && auth.type === "LoggedIn" && q.length >= 2,
+			enabled: !!auth && auth.type === "LoggedIn" && q.length >= 3,
 			meta: { errorMessage: "Failed to search users" },
 			queryFn: async () => {
 				const response = await httpRequest<SearchForUserResponse>(

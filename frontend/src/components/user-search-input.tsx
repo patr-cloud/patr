@@ -1,4 +1,4 @@
-import { createSignal, For, Show, onMount, onCleanup, untrack } from "solid-js";
+import { createSignal, ErrorBoundary, For, Match, Show, Switch, onMount, onCleanup, untrack } from "solid-js";
 import { WithId } from "~/bindings/WithId";
 import { BasicUserInfo } from "~/bindings/BasicUserInfo";
 import { useUserSearchQuery } from "~/hooks/fetch";
@@ -33,7 +33,7 @@ export const UserSearchInput = (props: UserSearchInputProps) => {
 		const value = (e.currentTarget as HTMLInputElement).value;
 		setSearchQuery(value);
 		setSelectedUser(null);
-		setShowDropdown(value.length >= 2);
+		setShowDropdown(value.length >= 3);
 	};
 
 	const handleClickOutside = (e: Event) => {
@@ -64,36 +64,49 @@ export const UserSearchInput = (props: UserSearchInputProps) => {
 				placeholder={props.placeholder || "Search for user..."}
 				value={searchQuery()}
 				onInput={handleInputChange}
-				onFocus={() => searchQuery().length >= 2 && setShowDropdown(true)}
+				onFocus={() => searchQuery().length >= 3 && setShowDropdown(true)}
 				class="w-full px-4 py-2 bg-secondary-light border border-border-color rounded text-white placeholder-gray-400 focus:outline-none focus:border-primary"
 			/>
 
-			<Show when={showDropdown() && searchQuery().length >= 2}>
+			<Show when={showDropdown() && searchQuery().length >= 3}>
 				<div
 					ref={dropdownRef}
 					class="absolute z-50 w-full mt-1 bg-secondary-light border border-border-color rounded shadow-lg max-h-60 overflow-y-auto"
 				>
-					<Show
-						when={searchResults.data?.users && searchResults.data!.users.length > 0}
-						fallback={<div class="px-4 py-3 text-gray-400 text-sm">No users found</div>}
+					<ErrorBoundary
+						fallback={
+							<div class="px-4 py-3 text-error text-sm">Failed to search users. Please try again.</div>
+						}
 					>
-						<For each={searchResults.data!.users}>
-							{(user) => (
-								<button
-									type="button"
-									onClick={() => handleUserSelect(user)}
-									class="w-full px-4 py-3 text-left hover:bg-secondary transition-colors border-b border-border-color last:border-b-0"
-								>
-									<div class="flex flex-col gap-1">
-										<div class="text-white font-medium">
-											{user.firstName} {user.lastName}
-										</div>
-										<div class="text-gray-400 text-sm">@{user.username}</div>
-									</div>
-								</button>
-							)}
-						</For>
-					</Show>
+						<Switch fallback={<div class="px-4 py-3 text-gray-400 text-sm">No users found</div>}>
+							<Match when={searchResults.isLoading}>
+								<div class="px-4 py-3 text-gray-400 text-sm">Searching...</div>
+							</Match>
+							<Match when={searchResults.isError}>
+								<div class="px-4 py-3 text-error text-sm">
+									Failed to search users. Please try again.
+								</div>
+							</Match>
+							<Match when={searchResults.data?.users && searchResults.data.users.length > 0}>
+								<For each={searchResults.data!.users}>
+									{(user) => (
+										<button
+											type="button"
+											onClick={() => handleUserSelect(user)}
+											class="w-full px-4 py-3 text-left hover:bg-secondary transition-colors border-b border-border-color last:border-b-0"
+										>
+											<div class="flex flex-col gap-1">
+												<div class="text-white font-medium">
+													{user.firstName} {user.lastName}
+												</div>
+												<div class="text-gray-400 text-sm">@{user.username}</div>
+											</div>
+										</button>
+									)}
+								</For>
+							</Match>
+						</Switch>
+					</ErrorBoundary>
 				</div>
 			</Show>
 		</div>

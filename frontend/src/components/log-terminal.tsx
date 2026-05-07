@@ -182,22 +182,36 @@ const LogTerminal = (props: LogTerminalProps) => {
 			setHasMoreLogs(false);
 		}
 
-		if (olderLogs.length > 0) {
-			const scrollEl = scrollRef;
-			const prevHeight = scrollEl?.scrollHeight ?? 0;
-			const prevTop = scrollEl?.scrollTop ?? 0;
+		// Loki's `end` boundary can be inclusive and ISO-8601 round-tripping can
+		// shave sub-millisecond precision, so the API may return entries we
+		// already have. Dedupe against the existing oldest slice before
+		// prepending — if nothing is new, stop paging.
+		const tsKey = (t: Date | string) => (typeof t === "string" ? t : t.toISOString());
+		const existingKeys = new Set<string>();
+		for (let i = 0; i < Math.min(logs.length, 200); i++) {
+			existingKeys.add(`${tsKey(logs[i].timestamp)}|${logs[i].log}`);
+		}
+		const newOlderLogs = olderLogs.filter((entry) => !existingKeys.has(`${tsKey(entry.timestamp)}|${entry.log}`));
 
-			setLogs(
-				produce((prev) => {
-					prev.unshift(...olderLogs);
-				})
-			);
+		if (newOlderLogs.length === 0) {
+			setHasMoreLogs(false);
+			return;
+		}
 
-			// Restore scroll position synchronously — SolidJS updates the DOM
-			// immediately after the store change, so scrollHeight is already correct
-			if (scrollEl) {
-				scrollEl.scrollTop = prevTop + (scrollEl.scrollHeight - prevHeight);
-			}
+		const scrollEl = scrollRef;
+		const prevHeight = scrollEl?.scrollHeight ?? 0;
+		const prevTop = scrollEl?.scrollTop ?? 0;
+
+		setLogs(
+			produce((prev) => {
+				prev.unshift(...newOlderLogs);
+			})
+		);
+
+		// Restore scroll position synchronously — SolidJS updates the DOM
+		// immediately after the store change, so scrollHeight is already correct
+		if (scrollEl) {
+			scrollEl.scrollTop = prevTop + (scrollEl.scrollHeight - prevHeight);
 		}
 	};
 
