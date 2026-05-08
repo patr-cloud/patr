@@ -346,8 +346,8 @@ pub(crate) async fn build_ingress_spec(
 				configs: Some(
 					config_ids
 						.into_iter()
-						.map(|(resource_id, config_id, config_name)| {
-							TaskSpecContainerSpecConfigs {
+						.map(
+							|(resource_id, config_id, config_name)| TaskSpecContainerSpecConfigs {
 								file: Some(TaskSpecContainerSpecFile1 {
 									name: Some(format!("/etc/caddy/urls/{}.caddy", resource_id)),
 									mode: Some(0o444),
@@ -357,8 +357,8 @@ pub(crate) async fn build_ingress_spec(
 								config_id: Some(config_id),
 								config_name: Some(config_name),
 								runtime: None,
-							}
-						})
+							},
+						)
 						.chain(iter::once(TaskSpecContainerSpecConfigs {
 							file: Some(TaskSpecContainerSpecFile1 {
 								name: Some(String::from("/etc/caddy/Caddyfile")),
