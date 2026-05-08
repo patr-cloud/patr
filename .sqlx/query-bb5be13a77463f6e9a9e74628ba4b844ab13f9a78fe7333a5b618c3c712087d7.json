@@ -1,0 +1,89 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT managed_url.id, managed_url.sub_domain, managed_url.domain_id AS \"domain_id: Uuid\", CONCAT(workspace_domain.name, '.', workspace_domain.tld) AS \"domain!\", managed_url.path, managed_url.url_type AS \"url_type: ManagedUrlTypeDiscriminant\", managed_url.deployment_id AS \"deployment_id: Uuid\", managed_url.port, deployment.runner AS \"deployment_runner?: Uuid\", workspace_domain.is_verified FROM managed_url INNER JOIN workspace_domain ON managed_url.domain_id = workspace_domain.id LEFT JOIN deployment ON deployment.id = managed_url.deployment_id WHERE managed_url.id = $1 AND managed_url.deleted IS NULL AND managed_url.workspace_id = $2;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "sub_domain",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "domain_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "domain!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "url_type: ManagedUrlTypeDiscriminant",
+        "type_info": {
+          "Custom": {
+            "name": "managed_url_type",
+            "kind": {
+              "Enum": [
+                "proxy_to_deployment",
+                "proxy_to_static_site",
+                "proxy_url",
+                "redirect"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "deployment_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "port",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "deployment_runner?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 9,
+        "name": "is_verified",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "bb5be13a77463f6e9a9e74628ba4b844ab13f9a78fe7333a5b618c3c712087d7"
+}

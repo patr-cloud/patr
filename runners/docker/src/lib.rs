@@ -10,6 +10,8 @@ pub(crate) mod config;
 pub(crate) mod deployment;
 /// The module to handle ingress and routing
 pub(crate) mod ingress;
+/// All managed URL related stuff goes here
+pub(crate) mod managed_url;
 /// The core runner implementation that interfaces between Patr and Docker
 pub(crate) mod runner;
 /// Any additional utilities that are commonly used in the runner
@@ -20,6 +22,6 @@ pub(crate) mod utils;
 pub mod prelude {
 	pub use common::prelude::*;
 
-	pub(crate) use crate::{alloy, deployment, ingress};
+	pub(crate) use crate::{alloy, deployment, ingress, managed_url};
 	pub use crate::{config::DockerSettings, runner::DockerRunner, utils::constants};
 }

@@ -88,4 +88,28 @@ pub trait RunnerExecutor: Sized {
 		&self,
 		deployment_id: Uuid,
 	) -> impl Future<Output = Result<DeploymentStatus, RunnerError>> + Send;
+
+	/// Create or update a managed URL on the runner. The `host` is already
+	/// resolved to a fully-qualified hostname (e.g. `myapp.example.com`) by the
+	/// caller — the runner just writes the routing config.
+	fn upsert_managed_url(
+		&self,
+		managed_url_id: Uuid,
+		host: String,
+		path: String,
+		deployment_id: Uuid,
+		port: u16,
+	) -> impl Future<Output = Result<(), RunnerError>> + Send;
+
+	/// Delete a managed URL from the runner.
+	fn delete_managed_url(
+		&self,
+		managed_url_id: Uuid,
+	) -> impl Future<Output = Result<(), RunnerError>> + Send;
+
+	/// Returns all running managed URL IDs on the runner — used by the
+	/// supervisor for reconciliation.
+	fn list_running_managed_urls(
+		&self,
+	) -> impl Future<Output = Result<Vec<Uuid>, RunnerError>> + Send;
 }

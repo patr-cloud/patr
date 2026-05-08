@@ -161,27 +161,49 @@ where
 		match message {
 			ResourceSupervisorMessage::UpsertResource {
 				resource_id,
-				resource_type: _,
-			} => {
-				// If the actor is already running, clear any stale backoff and
-				// forward ConfigUpdated. If not, only clear the backoff if this
-				// is an external notification (the actor doesn't exist yet),
-				// which lets the spawn proceed. The backoff timer also sends
-				// UpsertResource — in that case the child won't exist, and
-				// clearing is fine since the timer already waited.
-				if state.children.contains_key(&resource_id) {
-					state.respawn_backoff.remove(&resource_id);
+				resource_type,
+			} => match resource_type {
+				ResourceType::Deployment => {
+					// If the actor is already running, clear any stale backoff and forward
+					// ConfigUpdated. If not, only clear the backoff if this is an external
+					// notification (the actor doesn't exist yet), which lets the spawn proceed. The
+					// backoff timer also sends UpsertResource — in that case the child won't exist,
+					// and clearing is fine since the timer already waited.
+					if state.children.contains_key(&resource_id) {
+						state.respawn_backoff.remove(&resource_id);
+					}
+					upsert_deployment_actor(&myself, state, resource_id).await?;
 				}
-				upsert_deployment_actor(&myself, state, resource_id).await?;
-			}
+				ResourceType::ManagedURL => {
+					upsert_managed_url(state, resource_id).await?;
+				}
+				other => {
+					warn!(?other, "Unsupported resource type in UpsertResource");
+				}
+			},
 			ResourceSupervisorMessage::DeleteResource {
 				resource_id,
-				resource_type: _,
-			} => {
-				delete_deployment_actor(state, resource_id).await;
-			}
+				resource_type,
+			} => match resource_type {
+				ResourceType::Deployment => {
+					delete_deployment_actor(state, resource_id).await;
+				}
+				ResourceType::ManagedURL => {
+					if let Err(err) = delete_managed_url(state, resource_id).await {
+						error!(
+							managed_url_id = %resource_id,
+							%err,
+							"Failed to delete managed URL"
+						);
+					}
+				}
+				other => {
+					warn!(?other, "Unsupported resource type in DeleteResource");
+				}
+			},
 			ResourceSupervisorMessage::Reconcile => {
 				reconcile_deployments(&myself, state).await?;
+				reconcile_managed_urls(state).await?;
 
 				// Schedule the next periodic reconciliation.
 				myself.send_after(full_sync_interval(), || {
@@ -434,6 +456,148 @@ where
 		total = state.children.len(),
 		"Reconciliation complete"
 	);
+
+	Ok(())
+}
+
+/// Read a managed URL row from SQLite and apply it via the runner executor.
+/// Managed URLs are stateless config — no per-URL child actor — so this just
+/// pokes the executor.
+async fn upsert_managed_url<E>(
+	state: &ResourceSupervisorState<E>,
+	managed_url_id: Uuid,
+) -> Result<(), RunnerError>
+where
+	E: RunnerExecutor + Send + Sync + 'static,
+{
+	let row = query(
+		r#"
+		SELECT
+			host,
+			path,
+			deployment_id,
+			port
+		FROM
+			managed_url
+		WHERE
+			id = $1;
+		"#,
+	)
+	.bind(managed_url_id)
+	.fetch_optional(&state.database)
+	.await?;
+
+	let Some(row) = row else {
+		// Row was deleted between the upsert message and now — let the next
+		// reconcile sweep clean up the executor side.
+		return Ok(());
+	};
+
+	let host = row.try_get::<String, _>("host")?;
+	let path = row.try_get::<String, _>("path")?;
+	let deployment_id = row.try_get::<Uuid, _>("deployment_id")?;
+	let port = row.try_get::<i64, _>("port")?;
+	let port = u16::try_from(port)
+		.map_err(|_| RunnerError::host(format!("managed_url.port out of range for u16: {port}")))?;
+
+	let executor = E::new(&state.config, state.runner_state.clone()).await;
+	executor
+		.upsert_managed_url(managed_url_id, host, path, deployment_id, port)
+		.await
+}
+
+/// Delete a managed URL via the runner executor.
+async fn delete_managed_url<E>(
+	state: &ResourceSupervisorState<E>,
+	managed_url_id: Uuid,
+) -> Result<(), RunnerError>
+where
+	E: RunnerExecutor + Send + Sync + 'static,
+{
+	let executor = E::new(&state.config, state.runner_state.clone()).await;
+	executor.delete_managed_url(managed_url_id).await
+}
+
+/// Reconcile managed URLs: diff the IDs in SQLite against the IDs the
+/// executor reports as currently configured, and call upsert/delete to
+/// converge. Mirrors `reconcile_deployments`'s sorted-merge diff:
+/// DB-only → upsert, running-only → delete, intersection → re-upsert so
+/// content drift (e.g. a missed stream message before a full resync) is
+/// caught. Re-upsert is cheap because `update_config` is content-hashed and
+/// no-ops when the snippet is unchanged.
+async fn reconcile_managed_urls<E>(state: &ResourceSupervisorState<E>) -> Result<(), RunnerError>
+where
+	E: RunnerExecutor + Send + Sync + 'static,
+{
+	let db_ids = query(
+		r#"
+		SELECT
+			id
+		FROM
+			managed_url
+		ORDER BY
+			id;
+		"#,
+	)
+	.fetch_all(&state.database)
+	.await?
+	.into_iter()
+	.filter_map(|row| row.try_get::<Uuid, _>("id").ok())
+	.collect::<Vec<Uuid>>();
+
+	let executor = E::new(&state.config, state.runner_state.clone()).await;
+	let mut running_ids = executor.list_running_managed_urls().await?;
+	running_ids.sort();
+
+	let mut db_iter = db_ids.iter().peekable();
+	let mut run_iter = running_ids.iter().peekable();
+
+	loop {
+		match (db_iter.peek(), run_iter.peek()) {
+			(Some(&&db_id), Some(&&run_id)) => {
+				use std::cmp::Ordering;
+				match db_id.cmp(&run_id) {
+					Ordering::Less => {
+						// In DB but not running — write the config.
+						if let Err(err) = upsert_managed_url(state, db_id).await {
+							error!(managed_url_id = %db_id, %err, "Failed to upsert managed URL during reconcile");
+						}
+						db_iter.next();
+					}
+					Ordering::Greater => {
+						// Running but not in DB — drop the config.
+						if let Err(err) = delete_managed_url(state, run_id).await {
+							error!(managed_url_id = %run_id, %err, "Failed to delete managed URL during reconcile");
+						}
+						run_iter.next();
+					}
+					Ordering::Equal => {
+						// Both — re-upsert to catch content drift. update_config
+						// is content-hashed so this is a no-op when the snippet
+						// hasn't changed.
+						if let Err(err) = upsert_managed_url(state, db_id).await {
+							error!(managed_url_id = %db_id, %err, "Failed to refresh managed URL during reconcile");
+						}
+						db_iter.next();
+						run_iter.next();
+					}
+				}
+			}
+			(Some(&&db_id), None) => {
+				if let Err(err) = upsert_managed_url(state, db_id).await {
+					error!(managed_url_id = %db_id, %err, "Failed to upsert managed URL during reconcile");
+				}
+				db_iter.next();
+			}
+			(None, Some(&&run_id)) => {
+				if let Err(err) = delete_managed_url(state, run_id).await {
+					error!(managed_url_id = %run_id, %err, "Failed to delete managed URL during reconcile");
+				}
+				run_iter.next();
+			}
+			(None, None) => break,
+		}
+	}
 
 	Ok(())
 }

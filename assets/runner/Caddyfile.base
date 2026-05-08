@@ -21,4 +21,4 @@
 	respond "unknown host" 404
 }
 
-import /etc/caddy/deployments/*.caddy
+import /etc/caddy/urls/*.caddy

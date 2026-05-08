@@ -1,7 +1,26 @@
-use std::{marker::PhantomData, pin::Pin, time::Duration};
+use std::{
+	collections::{BTreeMap, BTreeSet},
+	marker::PhantomData,
+	pin::Pin,
+	time::Duration,
+};
 
 use futures::{Sink, SinkExt, StreamExt};
-use models::api::workspace::{deployment::*, runner::*};
+use models::api::workspace::{
+	deployment::*,
+	domain::{
+		GetDomainInfoInWorkspacePath,
+		GetDomainInfoInWorkspaceRequest,
+		GetDomainInfoInWorkspaceRequestHeaders,
+	},
+	managed_url::{
+		ListManagedURLPath,
+		ListManagedURLRequest,
+		ListManagedURLRequestHeaders,
+		ManagedUrlType,
+	},
+	runner::*,
+};
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 use ractor_actors::streams::spawn_stream_pump;
 
@@ -279,68 +298,141 @@ where
 {
 	use StreamRunnerDataForWorkspaceServerMsg::*;
 
-	let deployment_id = match &msg {
-		DeploymentCreated { deployment, .. } | DeploymentUpdated { deployment, .. } => {
-			Some(deployment.id)
-		}
-		DeploymentDeleted { id } => Some(*id),
-		ExposureTypeRequired => None,
+	// We need workspace_id + auth for domain resolution on managed URL events.
+	let RunnerMode::Managed {
+		workspace_id,
+		api_token,
+		user_agent,
+		..
+	} = state.config.mode.clone()
+	else {
+		// Self-hosted runners shouldn't receive these events.
+		return Ok(());
 	};
-
-	let is_delete = matches!(msg, DeploymentDeleted { .. });
-
-	let mut transaction = state.database.begin().await?;
 
 	match msg {
 		DeploymentCreated {
 			deployment,
 			running_details,
 		} => {
+			let deployment_id = deployment.id;
+			let mut transaction = state.database.begin().await?;
 			db_helpers::create_deployment_in_database(
 				&mut transaction,
 				deployment,
 				running_details,
 			)
 			.await?;
-		}
-		DeploymentUpdated {
-			deployment,
-			running_details,
-		} => {
-			db_helpers::delete_deployment_in_database(&mut transaction, deployment.id).await?;
-			db_helpers::create_deployment_in_database(
-				&mut transaction,
-				deployment,
-				running_details,
-			)
-			.await?;
-		}
-		DeploymentDeleted { id } => {
-			db_helpers::delete_deployment_in_database(&mut transaction, id).await?;
-		}
-		ExposureTypeRequired => {
-			warn!("Server requested exposure type to be set again");
-		}
-	}
-
-	transaction.commit().await?;
-
-	// Notify the ResourceSupervisor now that data is committed.
-	if let Some(deployment_id) = deployment_id {
-		if is_delete {
-			let _ = state
-				.supervisor_ref
-				.send_message(ResourceSupervisorMessage::DeleteResource {
-					resource_id: deployment_id,
-					resource_type: ResourceType::Deployment,
-				});
-		} else {
+			transaction.commit().await?;
 			let _ = state
 				.supervisor_ref
 				.send_message(ResourceSupervisorMessage::UpsertResource {
 					resource_id: deployment_id,
 					resource_type: ResourceType::Deployment,
 				});
+		}
+		DeploymentUpdated {
+			deployment,
+			running_details,
+		} => {
+			let deployment_id = deployment.id;
+			let mut transaction = state.database.begin().await?;
+			db_helpers::delete_deployment_in_database(&mut transaction, deployment_id).await?;
+			db_helpers::create_deployment_in_database(
+				&mut transaction,
+				deployment,
+				running_details,
+			)
+			.await?;
+			transaction.commit().await?;
+			let _ = state
+				.supervisor_ref
+				.send_message(ResourceSupervisorMessage::UpsertResource {
+					resource_id: deployment_id,
+					resource_type: ResourceType::Deployment,
+				});
+		}
+		DeploymentDeleted { id } => {
+			let mut transaction = state.database.begin().await?;
+			db_helpers::delete_deployment_in_database(&mut transaction, id).await?;
+			transaction.commit().await?;
+			let _ = state
+				.supervisor_ref
+				.send_message(ResourceSupervisorMessage::DeleteResource {
+					resource_id: id,
+					resource_type: ResourceType::Deployment,
+				});
+		}
+		ManagedUrlCreated { managed_url } | ManagedUrlUpdated { managed_url } => {
+			let ManagedUrlType::ProxyDeployment {
+				deployment_id,
+				port,
+			} = managed_url.url_type
+			else {
+				// Server should only stream ProxyDeployment URLs to the runner;
+				// drop anything else defensively.
+				warn!(
+					id = %managed_url.id,
+					"Received non-ProxyDeployment managed URL on stream — ignoring"
+				);
+				return Ok(());
+			};
+			let domain = client::make_request(
+				ApiRequest::<GetDomainInfoInWorkspaceRequest>::builder()
+					.path(GetDomainInfoInWorkspacePath {
+						workspace_id,
+						domain_id: managed_url.domain_id,
+					})
+					.query(())
+					.headers(GetDomainInfoInWorkspaceRequestHeaders {
+						authorization: api_token.clone(),
+						user_agent: user_agent.clone(),
+					})
+					.body(GetDomainInfoInWorkspaceRequest)
+					.build(),
+			)
+			.await
+			.map_err(|err| RunnerError::UpstreamServerError(err.body.error))?
+			.body
+			.workspace_domain
+			.data
+			.name;
+			let host = if managed_url.sub_domain == "@" {
+				domain
+			} else {
+				format!("{}.{}", managed_url.sub_domain, domain)
+			};
+			let mut transaction = state.database.begin().await?;
+			db_helpers::upsert_managed_url_in_database(
+				&mut transaction,
+				managed_url.id,
+				&host,
+				&managed_url.path,
+				deployment_id,
+				port,
+			)
+			.await?;
+			transaction.commit().await?;
+			let _ = state
+				.supervisor_ref
+				.send_message(ResourceSupervisorMessage::UpsertResource {
+					resource_id: managed_url.id,
+					resource_type: ResourceType::ManagedURL,
+				});
+		}
+		ManagedUrlDeleted { id } => {
+			let mut transaction = state.database.begin().await?;
+			db_helpers::delete_managed_url_in_database(&mut transaction, id).await?;
+			transaction.commit().await?;
+			let _ = state
+				.supervisor_ref
+				.send_message(ResourceSupervisorMessage::DeleteResource {
+					resource_id: id,
+					resource_type: ResourceType::ManagedURL,
+				});
+		}
+		ExposureTypeRequired => {
+			warn!("Server requested exposure type to be set again");
 		}
 	}
 
@@ -369,6 +461,10 @@ where
 	info!("Starting full resync with upstream API");
 
 	let mut transaction = state.database.begin().await?;
+
+	// Clear managed URLs first so the deployment-FK they reference is free
+	// to be cleared next.
+	db_helpers::delete_all_managed_urls_in_database(&mut transaction).await?;
 
 	// Clear all deployment-related tables.
 	query("DELETE FROM deployment_volume_mount;")
@@ -452,6 +548,116 @@ where
 		}
 
 		page += 1;
+	}
+
+	// Collect deployment IDs we just synced; managed URLs only get persisted
+	// for deployments running on this runner. We need this before committing
+	// so the SQLite read sees them, but we can also use the in-memory set.
+	let local_deployment_ids = query(
+		r#"
+		SELECT
+			id
+		FROM
+			deployment
+		WHERE
+			deleted IS NULL;
+		"#,
+	)
+	.fetch_all(&mut *transaction)
+	.await?
+	.into_iter()
+	.filter_map(|row| row.try_get::<Uuid, _>("id").ok())
+	.collect::<BTreeSet<Uuid>>();
+
+	// Paginate through all managed URLs in the workspace, filter to
+	// ProxyDeployment URLs targeting our deployments, resolve each domain
+	// (cached), and write into SQLite.
+	let mut managed_url_page: usize = 0;
+	let mut domain_cache: BTreeMap<Uuid, String> = BTreeMap::new();
+
+	loop {
+		let response = client::make_request(
+			ApiRequest::<ListManagedURLRequest>::builder()
+				.path(ListManagedURLPath { workspace_id })
+				.query(ListResourceQuery {
+					sort: Default::default(),
+					search: Default::default(),
+					count: ListResourceQuery::DEFAULT_PAGE_SIZE,
+					page: managed_url_page,
+					additional_query: (),
+				})
+				.headers(ListManagedURLRequestHeaders {
+					authorization: api_token.clone(),
+					user_agent: user_agent.clone(),
+				})
+				.body(ListManagedURLRequest)
+				.build(),
+		)
+		.await
+		.map_err(|err| RunnerError::UpstreamServerError(err.body.error))?;
+
+		for url in &response.body.urls {
+			let ManagedUrlType::ProxyDeployment {
+				deployment_id,
+				port,
+			} = url.url_type
+			else {
+				continue;
+			};
+			if !local_deployment_ids.contains(&deployment_id) {
+				continue;
+			}
+
+			let domain = match domain_cache.get(&url.domain_id) {
+				Some(d) => d.clone(),
+				None => {
+					let resolved = client::make_request(
+						ApiRequest::<GetDomainInfoInWorkspaceRequest>::builder()
+							.path(GetDomainInfoInWorkspacePath {
+								workspace_id,
+								domain_id: url.domain_id,
+							})
+							.query(())
+							.headers(GetDomainInfoInWorkspaceRequestHeaders {
+								authorization: api_token.clone(),
+								user_agent: user_agent.clone(),
+							})
+							.body(GetDomainInfoInWorkspaceRequest)
+							.build(),
+					)
+					.await
+					.map_err(|err| RunnerError::UpstreamServerError(err.body.error))?
+					.body
+					.workspace_domain
+					.data
+					.name;
+					domain_cache.insert(url.domain_id, resolved.clone());
+					resolved
+				}
+			};
+
+			let host = if url.sub_domain == "@" {
+				domain
+			} else {
+				format!("{}.{}", url.sub_domain, domain)
+			};
+			db_helpers::upsert_managed_url_in_database(
+				&mut transaction,
+				url.id,
+				&host,
+				&url.path,
+				deployment_id,
+				port,
+			)
+			.await?;
+		}
+
+		if (managed_url_page + 1) * ListResourceQuery::DEFAULT_PAGE_SIZE >=
+			response.headers.total_count.0 as usize
+		{
+			break;
+		}
+		managed_url_page += 1;
 	}
 
 	transaction.commit().await?;
