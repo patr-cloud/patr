@@ -11,6 +11,10 @@ version.workspace      = true
 [lints]
 workspace = true
 
+[features]
+default = ["cloud"]
+cloud   = ["models/cloud"]
+
 [dependencies]
 apalis                         = { workspace = true, features = ["tracing"] }
 apalis-cron                    = { workspace = true, features = ["cron", "serde"] }

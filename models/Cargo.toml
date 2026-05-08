@@ -12,6 +12,7 @@ workspace = true
 
 [features]
 axum    = ["dep:axum-typed-websockets"]
+cloud   = []
 default = []
 
 [dependencies]
