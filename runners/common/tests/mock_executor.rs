@@ -149,4 +149,23 @@ impl RunnerExecutor for MockExecutor {
 		// Never resolves — tests use polling via CheckStatus instead.
 		std::future::pending().await
 	}
+
+	async fn upsert_managed_url(
+		&self,
+		_managed_url_id: Uuid,
+		_host: String,
+		_path: String,
+		_deployment_id: Uuid,
+		_port: u16,
+	) -> Result<(), RunnerError> {
+		Ok(())
+	}
+
+	async fn delete_managed_url(&self, _managed_url_id: Uuid) -> Result<(), RunnerError> {
+		Ok(())
+	}
+
+	async fn list_running_managed_urls(&self) -> Result<Vec<Uuid>, RunnerError> {
+		Ok(Vec::new())
+	}
 }

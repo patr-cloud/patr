@@ -51,5 +51,4 @@ dist-ssr
 .claude/
 CLAUDE.md
 patr-api
-docker
 .worktrees/

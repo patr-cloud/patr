@@ -215,6 +215,84 @@ pub async fn create_deployment_in_database(
 	Ok(())
 }
 
+/// Insert or replace a managed URL row. The host string is the resolved
+/// FQDN (e.g. `myapp.example.com`) — the WebSocket / resync layer resolves
+/// `domain_id` upstream before calling this.
+#[instrument(skip(connection))]
+pub async fn upsert_managed_url_in_database(
+	connection: &mut DatabaseConnection,
+	managed_url_id: Uuid,
+	host: &str,
+	path: &str,
+	deployment_id: Uuid,
+	port: u16,
+) -> Result<(), RunnerError> {
+	query(
+		r#"
+		INSERT INTO managed_url(
+			id,
+			host,
+			path,
+			deployment_id,
+			port
+		)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT(id) DO UPDATE SET
+			host = excluded.host,
+			path = excluded.path,
+			deployment_id = excluded.deployment_id,
+			port = excluded.port;
+		"#,
+	)
+	.bind(managed_url_id)
+	.bind(host)
+	.bind(path)
+	.bind(deployment_id)
+	.bind(port as i64)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+/// Delete a managed URL row by ID.
+#[instrument(skip(connection))]
+pub async fn delete_managed_url_in_database(
+	connection: &mut DatabaseConnection,
+	managed_url_id: Uuid,
+) -> Result<(), RunnerError> {
+	query(
+		r#"
+		DELETE FROM
+			managed_url
+		WHERE
+			id = $1;
+		"#,
+	)
+	.bind(managed_url_id)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+/// Truncate the managed URL table — used at the start of a full resync.
+#[instrument(skip(connection))]
+pub async fn delete_all_managed_urls_in_database(
+	connection: &mut DatabaseConnection,
+) -> Result<(), RunnerError> {
+	query(
+		r#"
+		DELETE FROM
+			managed_url;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
 /// Delete a deployment and all its related data from the local SQLite database.
 ///
 /// This is a free-function version of the old
@@ -224,6 +302,20 @@ pub async fn delete_deployment_in_database(
 	connection: &mut DatabaseConnection,
 	deployment_id: Uuid,
 ) -> Result<(), RunnerError> {
+	// Clear referencing managed URLs first — the FK on managed_url.deployment_id
+	// would otherwise block the deployment delete (foreign_keys = ON).
+	query(
+		r#"
+		DELETE FROM
+			managed_url
+		WHERE
+			deployment_id = $1;
+		"#,
+	)
+	.bind(deployment_id)
+	.execute(&mut *connection)
+	.await?;
+
 	query(
 		r#"
 		DELETE FROM

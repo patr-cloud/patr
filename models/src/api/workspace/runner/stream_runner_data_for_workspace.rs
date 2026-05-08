@@ -3,7 +3,10 @@ use std::net::IpAddr;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-	api::workspace::deployment::{Deployment, DeploymentRunningDetails, DeploymentStatus},
+	api::workspace::{
+		deployment::{Deployment, DeploymentRunningDetails, DeploymentStatus},
+		managed_url::ManagedUrl,
+	},
 	prelude::*,
 };
 
@@ -115,6 +118,28 @@ macros::declare_stream_endpoint!(
 		DeploymentDeleted {
 			/// The ID of the deployment that was deleted
 			id: Uuid
+		},
+		/// The user has created a managed URL that targets a deployment on
+		/// this runner. Only `ProxyDeployment` URLs are streamed today.
+		ManagedUrlCreated {
+			/// The managed URL that was created
+			#[serde(flatten)]
+			managed_url: WithId<ManagedUrl>,
+		},
+		/// The user has updated a managed URL on this runner. Sent when the
+		/// existing URL stays a `ProxyDeployment` for a deployment on this
+		/// runner; transitions in/out of `ProxyDeployment` come through as a
+		/// pair of `ManagedUrlCreated`/`ManagedUrlDeleted` instead.
+		ManagedUrlUpdated {
+			/// The managed URL after the update
+			#[serde(flatten)]
+			managed_url: WithId<ManagedUrl>,
+		},
+		/// A managed URL on this runner was deleted, or transitioned away
+		/// from `ProxyDeployment` for this runner.
+		ManagedUrlDeleted {
+			/// The ID of the managed URL that was deleted
+			id: Uuid,
 		},
 	},
 	client_msg = {

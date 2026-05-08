@@ -2,6 +2,8 @@ use crate::prelude::*;
 
 /// The list of deployments that are present in a workspace
 mod deployment;
+/// The list of managed URLs that are present in a workspace
+mod managed_url;
 /// The list of volumes that are present in a workspace
 mod volume;
 
@@ -14,6 +16,7 @@ pub async fn initialize_workspace_tables(
 
 	deployment::initialize_deployment_tables(connection).await?;
 	volume::initialize_volume_tables(connection).await?;
+	managed_url::initialize_managed_url_tables(connection).await?;
 
 	Ok(())
 }
@@ -27,6 +30,7 @@ pub async fn initialize_workspace_indices(
 
 	deployment::initialize_deployment_indices(connection).await?;
 	volume::initialize_volume_indices(connection).await?;
+	managed_url::initialize_managed_url_indices(connection).await?;
 
 	Ok(())
 }

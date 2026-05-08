@@ -8,7 +8,11 @@ use cloudflare::{
 		response::ApiFailure,
 	},
 };
-use models::{api::workspace::managed_url::*, prelude::*};
+use models::{
+	api::workspace::{managed_url::*, runner::StreamRunnerDataForWorkspaceServerMsg},
+	prelude::*,
+};
+use rustis::commands::PubSubCommands;
 
 use crate::prelude::*;
 
@@ -20,7 +24,7 @@ pub async fn delete_managed_url(
 		request:
 			ProcessedApiRequest {
 				path: DeleteManagedURLPath {
-					workspace_id: _,
+					workspace_id,
 					managed_url_id,
 				},
 				query: (),
@@ -32,7 +36,7 @@ pub async fn delete_managed_url(
 				body: DeleteManagedURLRequestProcessed,
 			},
 		database,
-		redis: _,
+		redis,
 		client_ip: _,
 		user_data: _,
 		state,
@@ -176,6 +180,20 @@ pub async fn delete_managed_url(
 			Err(ApiFailure::Error(status, _)) if status == reqwest::StatusCode::NOT_FOUND => {}
 			Err(err) => return Err(ErrorType::server_error(err)),
 		}
+	}
+
+	// If the URL pointed at a deployment, tell that deployment's runner to
+	// drop the corresponding Caddy config.
+	if let Some(runner_id) = managed_url.connected_deployment_runner {
+		redis
+			.publish(
+				format!("{}/runner/{}/stream", workspace_id, runner_id),
+				serde_json::to_string(&StreamRunnerDataForWorkspaceServerMsg::ManagedUrlDeleted {
+					id: managed_url_id,
+				})
+				.unwrap(),
+			)
+			.await?;
 	}
 
 	AppResponse::builder()

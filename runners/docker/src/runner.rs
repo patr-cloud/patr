@@ -221,4 +221,23 @@ impl RunnerExecutor for DockerRunner {
 		tokio::time::sleep(Duration::from_secs(5)).await;
 		self.get_deployment_status(deployment_id).await
 	}
+
+	async fn upsert_managed_url(
+		&self,
+		managed_url_id: Uuid,
+		host: String,
+		path: String,
+		deployment_id: Uuid,
+		port: u16,
+	) -> Result<(), RunnerError> {
+		managed_url::upsert(self, managed_url_id, host, path, deployment_id, port).await
+	}
+
+	async fn delete_managed_url(&self, managed_url_id: Uuid) -> Result<(), RunnerError> {
+		managed_url::delete(self, managed_url_id).await
+	}
+
+	async fn list_running_managed_urls(&self) -> Result<Vec<Uuid>, RunnerError> {
+		managed_url::list_running(self).await
+	}
 }

@@ -7,7 +7,11 @@ use cloudflare::{
 		client::{ClientConfig, async_api::Client as CloudflareClient},
 	},
 };
-use models::{api::workspace::managed_url::*, prelude::*};
+use models::{
+	api::workspace::{managed_url::*, runner::StreamRunnerDataForWorkspaceServerMsg},
+	prelude::*,
+};
+use rustis::commands::PubSubCommands;
 
 use crate::prelude::*;
 
@@ -36,7 +40,7 @@ pub async fn create_managed_url(
 					},
 			},
 		database,
-		redis: _,
+		redis,
 		client_ip: _,
 		user_data: _,
 		state,
@@ -82,6 +86,7 @@ pub async fn create_managed_url(
 
 	// TODO: Check if the user has access to the deployment or static site (ON THE
 	// RIGHT WORKSPACE) if the URL type is a proxy.
+	let mut deployment_runner = None::<Uuid>;
 	let (url_discriminant, deployment_id, port, static_site_id, url, permanent_redirect, http_only) =
 		match url_type.clone() {
 			ManagedUrlType::ProxyDeployment {
@@ -109,6 +114,8 @@ pub async fn create_managed_url(
 				.fetch_optional(&mut **database)
 				.await?
 				.ok_or(ErrorType::WrongParameters)?;
+
+				deployment_runner = Some(deployment.runner);
 
 				(
 					ManagedUrlTypeDiscriminant::ProxyDeployment,
@@ -321,6 +328,29 @@ pub async fn create_managed_url(
 		&state.config,
 	)
 	.await?;
+
+	// Notify the runner that owns the target deployment, if this URL targets
+	// one. Other URL types stay Cloudflare-only for now.
+	if let Some(runner_id) = deployment_runner {
+		redis
+			.publish(
+				format!("{}/runner/{}/stream", workspace_id, runner_id),
+				serde_json::to_string(&StreamRunnerDataForWorkspaceServerMsg::ManagedUrlCreated {
+					managed_url: WithId::new(
+						id,
+						ManagedUrl {
+							sub_domain: sub_domain.to_string(),
+							domain_id,
+							path: path.clone(),
+							url_type: url_type.clone(),
+							is_active: false,
+						},
+					),
+				})
+				.unwrap(),
+			)
+			.await?;
+	}
 
 	AppResponse::builder()
 		.body(CreateManagedURLResponse {

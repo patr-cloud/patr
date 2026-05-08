@@ -104,7 +104,7 @@ pub async fn update_ingress_configs(
 /// values.
 pub fn generate_config_for_deployment(deployment_id: Uuid, port: u16, is_private: bool) -> String {
 	format!(
-		include_str!("../../../assets/runner/Caddyfile.template"),
+		include_str!("../../../assets/runner/Caddyfile.deployment-default-url.template"),
 		scheme = if is_private { "http://" } else { "" },
 		deployment_id = deployment_id,
 		port = port
@@ -252,15 +252,15 @@ pub async fn delete_deployment_config(
 
 /// Build the service spec for the ingress service, with the latest
 /// deployment configs mounted in the service.
-async fn build_ingress_spec(
+pub(crate) async fn build_ingress_spec(
 	docker: &Docker,
 	settings: &RunnerSettings<DockerSettings>,
 ) -> Result<ServiceSpec, RunnerError> {
 	// Per-deployment Caddyfile snippets are uniquely identified by
-	// `patr.configBaseName` starting with `ingress-`. Data config-mounts use
-	// `config-{id}-{N}`, and the main Caddyfile.base uses `patr-ingress-config`
-	// (mounted separately at /etc/caddy/Caddyfile, not under
-	// /etc/caddy/deployments).
+	// `patr.configBaseName` starting with `ingress-`; per-managed-URL by
+	// `managed-url-`. Data config-mounts use `config-{id}-{N}`, and the main
+	// Caddyfile.base uses `patr-ingress-config` (mounted separately at
+	// /etc/caddy/Caddyfile, not under /etc/caddy/urls).
 	let config_ids = docker
 		.list_configs(Some(ListConfigsOptions {
 			filters: Some(HashMap::from([(
@@ -277,12 +277,15 @@ async fn build_ingress_spec(
 		.filter_map(|config| {
 			let labels = config.spec.as_ref()?.labels.as_ref()?;
 			let base_name = labels.get("patr.configBaseName")?;
-			if !base_name.starts_with("ingress-") {
+			let resource_id = if base_name.starts_with("ingress-") {
+				labels.get("patr.deploymentId")?.parse::<Uuid>().ok()?
+			} else if base_name.starts_with("managed-url-") {
+				labels.get("patr.managedUrlId")?.parse::<Uuid>().ok()?
+			} else {
 				return None;
-			}
-			let deployment_id = labels.get("patr.deploymentId")?.parse::<Uuid>().ok()?;
+			};
 			Some((
-				deployment_id,
+				resource_id,
 				config.id.clone()?,
 				config.spec.as_ref()?.name.clone()?,
 			))
@@ -343,13 +346,10 @@ async fn build_ingress_spec(
 				configs: Some(
 					config_ids
 						.into_iter()
-						.map(|(deployment_id, config_id, config_name)| {
-							TaskSpecContainerSpecConfigs {
+						.map(
+							|(resource_id, config_id, config_name)| TaskSpecContainerSpecConfigs {
 								file: Some(TaskSpecContainerSpecFile1 {
-									name: Some(format!(
-										"/etc/caddy/deployments/{}.caddy",
-										deployment_id
-									)),
+									name: Some(format!("/etc/caddy/urls/{}.caddy", resource_id)),
 									mode: Some(0o444),
 									uid: Some("0".to_string()),
 									gid: Some("0".to_string()),
@@ -357,8 +357,8 @@ async fn build_ingress_spec(
 								config_id: Some(config_id),
 								config_name: Some(config_name),
 								runtime: None,
-							}
-						})
+							},
+						)
 						.chain(iter::once(TaskSpecContainerSpecConfigs {
 							file: Some(TaskSpecContainerSpecFile1 {
 								name: Some(String::from("/etc/caddy/Caddyfile")),
