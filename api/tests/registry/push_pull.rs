@@ -116,7 +116,7 @@ async fn push_image_shows_in_api_manifests() {
 
 	// Check via API that the manifest appears
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListContainerRepositoryManifestsRequest>::builder()
 				.path(ListContainerRepositoryManifestsPath {
 					workspace_id: workspace.id,
@@ -169,7 +169,7 @@ async fn push_tag_shows_in_api_tags() {
 
 	// Check via API that the tag appears
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListContainerRepositoryTagsRequest>::builder()
 				.path(ListContainerRepositoryTagsPath {
 					workspace_id: workspace.id,
@@ -261,7 +261,7 @@ async fn push_tag_updates_existing() {
 
 	// Verify the tag now points to the second image
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListContainerRepositoryTagsRequest>::builder()
 				.path(ListContainerRepositoryTagsPath {
 					workspace_id: workspace.id,
@@ -311,7 +311,7 @@ async fn delete_manifest_removes_from_list() {
 
 	// Delete via API
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteContainerRepositoryManifestRequest>::builder()
 				.path(DeleteContainerRepositoryManifestPath {
 					workspace_id: workspace.id,
@@ -331,7 +331,7 @@ async fn delete_manifest_removes_from_list() {
 
 	// Verify manifest is gone from list
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListContainerRepositoryManifestsRequest>::builder()
 				.path(ListContainerRepositoryManifestsPath {
 					workspace_id: workspace.id,
@@ -375,7 +375,7 @@ async fn delete_manifest_with_tag_removes_both() {
 
 	// Delete manifest via API (by digest)
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteContainerRepositoryManifestRequest>::builder()
 				.path(DeleteContainerRepositoryManifestPath {
 					workspace_id: workspace.id,
@@ -395,7 +395,7 @@ async fn delete_manifest_with_tag_removes_both() {
 
 	// Verify tag is also gone
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListContainerRepositoryTagsRequest>::builder()
 				.path(ListContainerRepositoryTagsPath {
 					workspace_id: workspace.id,

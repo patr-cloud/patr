@@ -39,18 +39,6 @@ use models::{
 use preprocess::Preprocessable;
 use rand::{RngExt as _, distr::Alphanumeric};
 use serde::Serialize;
-use testcontainers_modules::{
-	minio::MinIO,
-	postgres::Postgres,
-	redis::Redis,
-	testcontainers::{
-		ContainerAsync,
-		GenericImage,
-		ImageExt,
-		core::{IntoContainerPort, WaitFor},
-		runners::AsyncRunner as _,
-	},
-};
 use tokio::net::TcpListener;
 use wiremock::{
 	Mock,
@@ -63,16 +51,24 @@ static TRACING: Once = Once::new();
 
 #[allow(dead_code)]
 pub struct TestSetup {
+	web: TestServer,
 	api: TestServer,
 	registry: TestServer,
 	loki: TestServer,
 	state: AppState,
-	s3_container: ContainerAsync<MinIO>,
-	postgres_container: ContainerAsync<Postgres>,
-	redis_container: ContainerAsync<Redis>,
-	loki_container: ContainerAsync<GenericImage>,
 	cloudflare_mock: MockServer,
 	permission_ids: BTreeMap<String, Uuid>,
+}
+
+/// Generate a fully-random IPv4 for the per-call `X-Forwarded-For` header.
+///
+/// Used by [`TestSetup::make_web_dashboard_call`] and
+/// [`TestSetup::make_api_call`] so each call lands in its own per-IP rate-limit
+/// bucket. With shared Redis across tests this prevents helpers like
+/// `create_test_user` from polluting the bucket for concurrent tests, and
+/// removes the need for blanket `clear_rate_limits()` calls in fixtures.
+fn random_ipv4() -> std::net::Ipv4Addr {
+	rand::rng().random::<u32>().into()
 }
 
 impl TestSetup {
@@ -86,7 +82,40 @@ impl TestSetup {
 	/// Make a typed API call using `ApiRequest<E>`.
 	///
 	/// All headers (including `authorization` and `user_agent`) are provided
-	/// through the typed headers struct in the request.
+	/// through the typed headers struct in the request. A fresh random IPv4
+	/// is injected as `X-Forwarded-For` per call — see [`random_ipv4`].
+	pub async fn make_web_dashboard_call<E>(&self, request: ApiRequest<E>) -> TestResponse
+	where
+		E: ApiEndpoint,
+		E::RequestBody: Serialize,
+		E::RequestHeaders: Headers,
+		E::RequestPath: std::fmt::Display,
+		E::RequestQuery: Serialize,
+	{
+		let path_str = request.path.to_string();
+		let query_str = serde_qs::to_string(&request.query).unwrap_or_default();
+		let full_path = if query_str.is_empty() {
+			path_str
+		} else {
+			format!("{}?{}", path_str, query_str)
+		};
+
+		let mut req = self.web.method(E::METHOD, &full_path);
+		req = req.add_header("X-Forwarded-For", random_ipv4().to_string());
+		let header_map = request.headers.to_header_map();
+		for (name, value) in header_map.iter() {
+			req = req.add_header(name.clone(), value.to_str().unwrap());
+		}
+		req.json(&request.body).await
+	}
+
+	/// Make a typed API call against the routes configured for
+	/// `ClientType::ApiToken` authentication. Use this for any test that
+	/// presents a `patrv1.{refresh}.{login_id}` API token in the
+	/// `Authorization` header — the WebDashboard-routed server rejects it as
+	/// a malformed access token.
+	///
+	/// A fresh random IPv4 is injected as `X-Forwarded-For` per call.
 	pub async fn make_api_call<E>(&self, request: ApiRequest<E>) -> TestResponse
 	where
 		E: ApiEndpoint,
@@ -104,6 +133,72 @@ impl TestSetup {
 		};
 
 		let mut req = self.api.method(E::METHOD, &full_path);
+		req = req.add_header("X-Forwarded-For", random_ipv4().to_string());
+		let header_map = request.headers.to_header_map();
+		for (name, value) in header_map.iter() {
+			req = req.add_header(name.clone(), value.to_str().unwrap());
+		}
+		req.json(&request.body).await
+	}
+
+	/// Same as [`make_api_call`] but pins the request's `X-Forwarded-For` to a
+	/// specific IP. Used by tests that exercise IP-keyed behaviour like API
+	/// token IP restrictions.
+	pub async fn make_api_call_from_ip<E>(
+		&self,
+		request: ApiRequest<E>,
+		client_ip: std::net::IpAddr,
+	) -> TestResponse
+	where
+		E: ApiEndpoint,
+		E::RequestBody: Serialize,
+		E::RequestHeaders: Headers,
+		E::RequestPath: std::fmt::Display,
+		E::RequestQuery: Serialize,
+	{
+		let path_str = request.path.to_string();
+		let query_str = serde_qs::to_string(&request.query).unwrap_or_default();
+		let full_path = if query_str.is_empty() {
+			path_str
+		} else {
+			format!("{}?{}", path_str, query_str)
+		};
+
+		let mut req = self.api.method(E::METHOD, &full_path);
+		req = req.add_header("X-Forwarded-For", client_ip.to_string());
+		let header_map = request.headers.to_header_map();
+		for (name, value) in header_map.iter() {
+			req = req.add_header(name.clone(), value.to_str().unwrap());
+		}
+		req.json(&request.body).await
+	}
+
+	/// Same as [`make_web_dashboard_call`] but pins `X-Forwarded-For` to a
+	/// fixed IP. Used by tests that exercise IP-keyed behaviour on
+	/// web-dashboard-only endpoints (like the auth flow's per-IP rate
+	/// limits).
+	pub async fn make_web_dashboard_call_from_ip<E>(
+		&self,
+		request: ApiRequest<E>,
+		client_ip: std::net::IpAddr,
+	) -> TestResponse
+	where
+		E: ApiEndpoint,
+		E::RequestBody: Serialize,
+		E::RequestHeaders: Headers,
+		E::RequestPath: std::fmt::Display,
+		E::RequestQuery: Serialize,
+	{
+		let path_str = request.path.to_string();
+		let query_str = serde_qs::to_string(&request.query).unwrap_or_default();
+		let full_path = if query_str.is_empty() {
+			path_str
+		} else {
+			format!("{}?{}", path_str, query_str)
+		};
+
+		let mut req = self.web.method(E::METHOD, &full_path);
+		req = req.add_header("X-Forwarded-For", client_ip.to_string());
 		let header_map = request.headers.to_header_map();
 		for (name, value) in header_map.iter() {
 			req = req.add_header(name.clone(), value.to_str().unwrap());
@@ -187,6 +282,52 @@ impl TestSetup {
 			.unwrap_or_else(|| panic!("permission '{}' not found in cached IDs", key))
 	}
 
+	/// Read a value at `key` from the test Redis. Returns `None` if missing.
+	pub async fn get_redis_value(&self, key: &str) -> Option<String> {
+		use rustis::commands::StringCommands;
+
+		self.state
+			.redis
+			.get(key)
+			.await
+			.expect("failed to read redis key")
+	}
+
+	/// Write a value at `key` to the test Redis.
+	pub async fn set_redis_value(&self, key: &str, value: &str) {
+		use rustis::commands::StringCommands;
+
+		self.state
+			.redis
+			.set(key, value)
+			.await
+			.expect("failed to write redis key");
+	}
+
+	/// Compute the current TOTP code for a base32-encoded secret. Used by MFA
+	/// tests that need to submit a valid OTP.
+	pub fn compute_totp(&self, secret_base32: &str) -> String {
+		use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};
+
+		let secret = Secret::Encoded(secret_base32.to_string())
+			.to_bytes()
+			.expect("failed to decode TOTP secret");
+		let totp = TOTP::new(TotpAlgorithm::SHA1, 6, 1, 30, secret, None, String::new())
+			.expect("failed to construct TOTP");
+		totp.generate_current()
+			.expect("failed to generate TOTP code")
+	}
+
+	/// Run an arbitrary SQL statement against the test database. Escape hatch
+	/// for tests that need to nudge state directly (e.g. backdating an
+	/// `*_expiry` column to simulate expiry).
+	pub async fn execute_sql(&self, sql: &str) {
+		sqlx::query(sql)
+			.execute(&self.state.database)
+			.await
+			.unwrap_or_else(|e| panic!("execute_sql failed for `{sql}`: {e}"));
+	}
+
 	/// Clear all rate limit keys from Redis. Useful in tests to reset rate
 	/// limit state after setup helpers have made API calls.
 	pub async fn clear_rate_limits(&self) {
@@ -216,10 +357,11 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 	// `http_transport_with_ip_port` has a drop-then-rebind race that collides
 	// with other nextest processes; handing over a live listener avoids it.
 	let api_listener = TcpListener::bind("127.0.0.1:0").await?;
+	let web_listener = TcpListener::bind("127.0.0.1:0").await?;
 	let registry_listener = TcpListener::bind("127.0.0.1:0").await?;
 	let loki_listener = TcpListener::bind("127.0.0.1:0").await?;
 
-	let api_bind_address = api_listener.local_addr()?;
+	let web_bind_address = web_listener.local_addr()?;
 
 	let password_pepper = rand::rng()
 		.sample_iter(Alphanumeric)
@@ -233,13 +375,11 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 		.take(64)
 		.collect::<String>();
 
-	let s3_container = MinIO::default().start().await?;
-
 	let s3 = S3Config {
 		endpoint: format!(
 			"http://{}:{}",
-			s3_container.get_host().await?.to_string(),
-			s3_container.get_host_port_ipv4(9000).await?
+			std::env::var("PATR_TEST_S3_HOST").expect("PATR_TEST_S3_HOST must be set"),
+			std::env::var("PATR_TEST_S3_PORT").expect("PATR_TEST_S3_PORT must be set"),
 		),
 		region: "us-east-1".to_string(),
 		bucket: "test-bucket".to_string(),
@@ -248,97 +388,40 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 		force_path_style: true,
 	};
 
-	let postgres_container = Postgres::default()
-		.with_db_name("api")
-		.with_user("user")
-		.with_password("password")
-		.with_name("postgis/postgis")
-		.with_tag("18-3.6")
-		.start()
-		.await?;
-
 	let database = DatabaseConfig {
-		host: postgres_container.get_host().await?.to_string(),
-		port: postgres_container.get_host_port_ipv4(5432).await?,
-		user: "user".to_string(),
-		password: "password".to_string(),
-		database: "api".to_string(),
+		host: std::env::var("PATR_TEST_POSTGRES_HOST")
+			.expect("PATR_TEST_POSTGRES_HOST must be set"),
+		port: std::env::var("PATR_TEST_POSTGRES_PORT")
+			.expect("PATR_TEST_POSTGRES_PORT must be set")
+			.parse()
+			.expect("PATR_TEST_POSTGRES_PORT must be a u16"),
+		user: std::env::var("PATR_TEST_POSTGRES_USER")
+			.expect("PATR_TEST_POSTGRES_USER must be set"),
+		password: std::env::var("PATR_TEST_POSTGRES_PASSWORD")
+			.expect("PATR_TEST_POSTGRES_PASSWORD must be set"),
+		database: std::env::var("PATR_TEST_POSTGRES_DB")
+			.expect("PATR_TEST_POSTGRES_DB must be set"),
 		connection_limit: 10,
 	};
 
-	let loki_config = r#"
-auth_enabled: true
-target: all
-server:
-  http_listen_address: "0.0.0.0"
-  http_listen_port: 3100
-common:
-  path_prefix: /tmp/loki
-  replication_factor: 1
-memberlist:
-  join_members: []
-ingester:
-  lifecycler:
-    address: 127.0.0.1
-    ring:
-      kvstore:
-        store: inmemory
-      replication_factor: 1
-    final_sleep: 0s
-  chunk_idle_period: 1h
-  max_chunk_age: 1h
-  chunk_target_size: 1048576
-  chunk_retain_period: 30s
-storage_config:
-  tsdb_shipper:
-    active_index_directory: /tmp/loki/tsdb_shipper/active_index
-    cache_location: /tmp/loki/tsdb_shipper/cache
-  filesystem:
-    directory: /tmp/loki/chunks
-compactor:
-  working_directory: /tmp/loki/compactor
-schema_config:
-  configs:
-    - from: 2023-01-01
-      store: tsdb
-      object_store: filesystem
-      schema: v13
-      index:
-        prefix: index_
-        period: 24h
-limits_config:
-  allow_structured_metadata: true
-  ingestion_rate_mb: 64
-  ingestion_burst_size_mb: 128
-  otlp_config:
-    resource_attributes:
-      attributes_config:
-        - action: index_label
-          attributes:
-            - runner_id
-            - workspace_id
-            - deployment_id
-            - deployment_name
-            - service_name
-            - job
-"#;
+	let loki_endpoint = format!(
+		"http://{}:{}",
+		std::env::var("PATR_TEST_LOKI_HOST").expect("PATR_TEST_LOKI_HOST must be set"),
+		std::env::var("PATR_TEST_LOKI_PORT").expect("PATR_TEST_LOKI_PORT must be set"),
+	);
 
-	let loki_container = GenericImage::new("grafana/loki", "3.2.0")
-		.with_exposed_port(3100.tcp())
-		.with_wait_for(WaitFor::message_on_stderr("Loki started"))
-		.with_copy_to(
-			"/etc/loki/test-config.yaml",
-			loki_config.as_bytes().to_vec(),
-		)
-		.with_cmd(["-config.file=/etc/loki/test-config.yaml"])
-		.start()
-		.await?;
-
-	let redis_container = Redis::default().with_tag("7").start().await?;
+	let mimir_endpoint = format!(
+		"http://{}:{}",
+		std::env::var("PATR_TEST_MIMIR_HOST").expect("PATR_TEST_MIMIR_HOST must be set"),
+		std::env::var("PATR_TEST_MIMIR_PORT").expect("PATR_TEST_MIMIR_PORT must be set"),
+	);
 
 	let redis = RedisConfig {
-		host: redis_container.get_host().await?.to_string(),
-		port: redis_container.get_host_port_ipv4(6379).await?,
+		host: std::env::var("PATR_TEST_REDIS_HOST").expect("PATR_TEST_REDIS_HOST must be set"),
+		port: std::env::var("PATR_TEST_REDIS_PORT")
+			.expect("PATR_TEST_REDIS_PORT must be set")
+			.parse()
+			.expect("PATR_TEST_REDIS_PORT must be a u16"),
 		user: None,
 		password: None,
 		database: 0,
@@ -358,7 +441,7 @@ limits_config:
 	};
 
 	let config = AppConfig {
-		bind_address: api_bind_address,
+		bind_address: web_bind_address,
 		api_base_path: String::from("/"),
 		password_pepper,
 		jwt_secret,
@@ -385,14 +468,10 @@ limits_config:
 				endpoint: "".to_string(),
 			},
 			logs: LogsConfig {
-				endpoint: format!(
-					"http://{}:{}",
-					loki_container.get_host().await?,
-					loki_container.get_host_port_ipv4(3100).await?
-				),
+				endpoint: loki_endpoint,
 			},
 			metrics: MetricsConfig {
-				endpoint: "".to_string(),
+				endpoint: mimir_endpoint,
 				username: "".to_string(),
 				password: "".to_string(),
 			},
@@ -484,15 +563,28 @@ limits_config:
 			.force_path_style(true)
 			.build(),
 	);
-	s3_client
-		.create_bucket()
-		.bucket(&s3.bucket)
-		.send()
-		.await
-		.map_err(|e| anyhow::anyhow!("error creating S3 bucket: {e}"))?;
+	// Every test process races to create the same bucket; first one wins,
+	// the rest get BucketAlreadyOwnedByYou.
+	if let Err(err) = s3_client.create_bucket().bucket(&s3.bucket).send().await {
+		let svc = err.into_service_error();
+		if !matches!(
+			&svc,
+			aws_sdk_s3::operation::create_bucket::CreateBucketError::BucketAlreadyOwnedByYou(_) |
+				aws_sdk_s3::operation::create_bucket::CreateBucketError::BucketAlreadyExists(_)
+		) {
+			return Err(anyhow::anyhow!("error creating S3 bucket: {svc}"));
+		}
+	}
 
-	let api = TestServer::builder().save_cookies().build(axum::serve(
+	let api = TestServer::builder().build(axum::serve(
 		api_listener,
+		api_patr_cloud::setup_routes(&state, ClientType::ApiToken)
+			.await
+			.into_make_service_with_connect_info::<SocketAddr>(),
+	));
+
+	let web = TestServer::builder().save_cookies().build(axum::serve(
+		web_listener,
 		api_patr_cloud::setup_routes(&state, ClientType::WebDashboard)
 			.await
 			.into_make_service_with_connect_info::<SocketAddr>(),
@@ -528,14 +620,11 @@ limits_config:
 	};
 
 	Ok(TestSetup {
+		web,
 		api,
 		registry,
 		loki,
 		state,
-		s3_container,
-		postgres_container,
-		redis_container,
-		loki_container,
 		cloudflare_mock,
 		permission_ids,
 	})
@@ -573,6 +662,29 @@ async fn mount_cloudflare_mocks(server: &MockServer) {
 		.await;
 
 	// PATCH /zones/*/custom_hostnames/* — EditCustomHostname
+	// Specific override: any custom hostname id ending in `pending-hostname-id`
+	// reports `status: "pending"` so tests can exercise the not-configured path.
+	// Mounted with higher priority (lower numeric value) than the generic
+	// PATCH below so this match wins for the specific id.
+	Mock::given(method("PATCH"))
+		.and(path_regex(
+			r"^/client/v4/zones/[^/]+/custom_hostnames/pending-hostname-id$",
+		))
+		.respond_with(cf_success(serde_json::json!({
+			"id": "pending-hostname-id",
+			"hostname": "example.com",
+			"ssl": {
+				"status": "pending_validation",
+				"method": "txt",
+				"type": "dv",
+				"validation_records": []
+			},
+			"status": "pending"
+		})))
+		.with_priority(1)
+		.mount(server)
+		.await;
+
 	Mock::given(method("PATCH"))
 		.and(path_regex(
 			r"^/client/v4/zones/[^/]+/custom_hostnames/[^/]+$",

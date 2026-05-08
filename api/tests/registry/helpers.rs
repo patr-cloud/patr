@@ -48,6 +48,13 @@ pub fn sha256_digest(data: &[u8]) -> String {
 /// The `seed` parameter varies the layer content so that different seeds
 /// produce images with different digests throughout.
 pub fn build_minimal_oci_image(seed: u8) -> TestOciImage {
+	build_minimal_oci_image_with_ports(seed, &[])
+}
+
+/// Like `build_minimal_oci_image`, but also sets `ExposedPorts` on the
+/// runtime config inside the image configuration. Each port is exposed on
+/// TCP.
+pub fn build_minimal_oci_image_with_ports(seed: u8, exposed_tcp_ports: &[u16]) -> TestOciImage {
 	// Build an uncompressed tar archive with a single file whose content
 	// depends on `seed`.
 	let file_content: Vec<u8> = vec![seed; 64];
@@ -73,6 +80,15 @@ pub fn build_minimal_oci_image(seed: u8) -> TestOciImage {
 	let layer_digest = sha256_digest(&layer_bytes);
 
 	// Config: valid OCI image configuration
+	let mut runtime_config = ConfigBuilder::default();
+	if !exposed_tcp_ports.is_empty() {
+		runtime_config = runtime_config.exposed_ports(
+			exposed_tcp_ports
+				.iter()
+				.map(|port| format!("{port}/tcp"))
+				.collect::<Vec<_>>(),
+		);
+	}
 	let config = ImageConfigurationBuilder::default()
 		.architecture(Arch::Amd64)
 		.os(Os::Linux)
@@ -83,7 +99,7 @@ pub fn build_minimal_oci_image(seed: u8) -> TestOciImage {
 				.build()
 				.unwrap(),
 		)
-		.config(ConfigBuilder::default().build().unwrap())
+		.config(runtime_config.build().unwrap())
 		.build()
 		.unwrap();
 	let config_bytes = serde_json::to_vec(&config).unwrap();

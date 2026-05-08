@@ -123,6 +123,17 @@ pub async fn social_login_setup(
 	.map_err(ErrorType::server_error)?
 	.to_string();
 
+	// `user.recovery_email` has an FK to `user_email(user_id, email)` —
+	// defer the check so we can land both inserts in the same transaction.
+	// Same dance as `complete_sign_up`.
+	query!(
+		r#"
+		SET CONSTRAINTS ALL DEFERRED;
+		"#
+	)
+	.execute(&mut **database)
+	.await?;
+
 	query!(
 		r#"
 		INSERT INTO
@@ -184,6 +195,14 @@ pub async fn social_login_setup(
 		"#,
 		user_id as _,
 		&payload.email,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	query!(
+		r#"
+		SET CONSTRAINTS ALL IMMEDIATE;
+		"#
 	)
 	.execute(&mut **database)
 	.await?;

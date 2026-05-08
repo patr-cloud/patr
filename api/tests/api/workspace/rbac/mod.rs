@@ -8,7 +8,7 @@ use models::{
 
 use crate::prelude::*;
 
-mod permissions;
+pub mod permissions;
 
 #[tokio::test]
 async fn list_all_permissions_works() {
@@ -17,7 +17,7 @@ async fn list_all_permissions_works() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListAllPermissionsRequest>::builder()
 				.path(ListAllPermissionsPath {
 					workspace_id: workspace.id,
@@ -44,7 +44,7 @@ async fn list_all_resource_types_works() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListAllResourceTypesRequest>::builder()
 				.path(ListAllResourceTypesPath {
 					workspace_id: workspace.id,
@@ -71,7 +71,7 @@ async fn get_current_permissions_super_admin() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetCurrentPermissionsRequest>::builder()
 				.path(GetCurrentPermissionsPath {
 					workspace_id: workspace.id,
@@ -113,7 +113,7 @@ async fn list_roles_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListAllRolesRequest>::builder()
 				.path(ListAllRolesPath {
 					workspace_id: workspace.id,
@@ -140,7 +140,7 @@ async fn get_role_info_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetRoleInfoRequest>::builder()
 				.path(GetRoleInfoPath {
 					workspace_id: workspace.id,
@@ -169,7 +169,7 @@ async fn update_role_works() {
 	let new_name = random_name(8);
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<UpdateRoleRequest>::builder()
 				.path(UpdateRolePath {
 					workspace_id: workspace.id,
@@ -200,7 +200,7 @@ async fn delete_role_works() {
 		.await;
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteRoleRequest>::builder()
 				.path(DeleteRolePath {
 					workspace_id: workspace.id,
@@ -229,7 +229,7 @@ async fn list_users_for_role_works() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListUsersForRoleRequest>::builder()
 				.path(ListUsersForRolePath {
 					workspace_id: workspace.id,
@@ -255,7 +255,7 @@ async fn list_users_in_workspace_works() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListUsersInWorkspaceRequest>::builder()
 				.path(ListUsersInWorkspacePath {
 					workspace_id: workspace.id,
@@ -291,7 +291,7 @@ async fn update_user_roles_works() {
 
 	// Verify user B is in the workspace
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListUsersInWorkspaceRequest>::builder()
 				.path(ListUsersInWorkspacePath {
 					workspace_id: workspace.id,
@@ -321,7 +321,7 @@ async fn remove_user_from_workspace_works() {
 		.await;
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<RemoveUserFromWorkspaceRequest>::builder()
 				.path(RemoveUserFromWorkspacePath {
 					workspace_id: workspace.id,
@@ -340,7 +340,7 @@ async fn remove_user_from_workspace_works() {
 
 	// Verify user B is gone
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListUsersInWorkspaceRequest>::builder()
 				.path(ListUsersInWorkspacePath {
 					workspace_id: workspace.id,
@@ -380,7 +380,7 @@ async fn get_current_permissions_member() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetCurrentPermissionsRequest>::builder()
 				.path(GetCurrentPermissionsPath {
 					workspace_id: workspace.id,
@@ -407,7 +407,7 @@ async fn rbac_unauthorized() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListAllRolesRequest>::builder()
 				.path(ListAllRolesPath {
 					workspace_id: workspace.id,
@@ -421,4 +421,437 @@ async fn rbac_unauthorized() {
 		.await;
 
 	assert!(response.status_code().is_client_error());
+}
+
+#[tokio::test]
+async fn create_role_duplicate_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let role = setup
+		.create_test_role(&user.access_token, workspace.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateNewRoleRequest>::builder()
+				.path(CreateNewRolePath {
+					workspace_id: workspace.id,
+				})
+				.headers(CreateNewRoleRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateNewRoleRequest {
+					name: role.name.clone(),
+					description: "duplicate".to_string(),
+					permissions: BTreeMap::new(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"expected client error for duplicate role name, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn delete_role_in_use() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
+	let _user_b = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<DeleteRoleRequest>::builder()
+				.path(DeleteRolePath {
+					workspace_id: workspace.id,
+					role_id: role.id,
+				})
+				.headers(DeleteRoleRequestHeaders {
+					authorization: admin.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.query(DeleteRoleQuery {
+					remove_users: false,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"expected RoleInUse for role still assigned to a user, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn delete_role_nonexistent() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<DeleteRoleRequest>::builder()
+				.path(DeleteRolePath {
+					workspace_id: workspace.id,
+					role_id: Uuid::nil(),
+				})
+				.headers(DeleteRoleRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.query(DeleteRoleQuery {
+					remove_users: false,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"expected RoleDoesNotExist for missing role, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn update_role_nonexistent() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateRoleRequest>::builder()
+				.path(UpdateRolePath {
+					workspace_id: workspace.id,
+					role_id: Uuid::nil(),
+				})
+				.headers(UpdateRoleRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateRoleRequest {
+					name: Some(random_name(8)),
+					description: None,
+					permissions: None,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"expected RoleDoesNotExist for missing role, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn update_role_add_permissions() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let role = setup
+		.create_test_role(&user.access_token, workspace.id)
+		.await;
+
+	let mut perms = BTreeMap::new();
+	perms.insert(
+		setup.get_permission_id(Permission::ViewRoles),
+		ResourcePermissionType::Exclude(Default::default()),
+	);
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateRoleRequest>::builder()
+				.path(UpdateRolePath {
+					workspace_id: workspace.id,
+					role_id: role.id,
+				})
+				.headers(UpdateRoleRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateRoleRequest {
+					name: None,
+					description: None,
+					permissions: Some(perms),
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateRoleResponse));
+
+	// Read back; the role should now have one permission entry.
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetRoleInfoRequest>::builder()
+				.path(GetRoleInfoPath {
+					workspace_id: workspace.id,
+					role_id: role.id,
+				})
+				.headers(GetRoleInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetRoleInfoResponse>>();
+
+	assert!(
+		!response.response.permissions.is_empty(),
+		"role should have at least one permission after update"
+	);
+}
+
+#[tokio::test]
+async fn update_role_remove_permissions() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	// Start with two permissions.
+	let mut perms = BTreeMap::new();
+	perms.insert(
+		setup.get_permission_id(Permission::ViewRoles),
+		ResourcePermissionType::Exclude(Default::default()),
+	);
+	perms.insert(
+		setup.get_permission_id(Permission::ModifyRoles),
+		ResourcePermissionType::Exclude(Default::default()),
+	);
+	let role = setup
+		.create_role_with_permissions(&user.access_token, workspace.id, perms)
+		.await;
+
+	// Replace with just one permission.
+	let mut next = BTreeMap::new();
+	next.insert(
+		setup.get_permission_id(Permission::ViewRoles),
+		ResourcePermissionType::Exclude(Default::default()),
+	);
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateRoleRequest>::builder()
+				.path(UpdateRolePath {
+					workspace_id: workspace.id,
+					role_id: role.id,
+				})
+				.headers(UpdateRoleRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateRoleRequest {
+					name: None,
+					description: None,
+					permissions: Some(next),
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateRoleResponse));
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetRoleInfoRequest>::builder()
+				.path(GetRoleInfoPath {
+					workspace_id: workspace.id,
+					role_id: role.id,
+				})
+				.headers(GetRoleInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetRoleInfoResponse>>();
+
+	assert_eq!(
+		response.response.permissions.len(),
+		1,
+		"role should have exactly one permission after removing one"
+	);
+}
+
+#[tokio::test]
+async fn update_user_roles_nonexistent_user() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateUserRolesInWorkspaceRequest>::builder()
+				.path(UpdateUserRolesInWorkspacePath {
+					workspace_id: workspace.id,
+					user_id: Uuid::nil(),
+				})
+				.headers(UpdateUserRolesInWorkspaceRequestHeaders {
+					authorization: admin.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateUserRolesInWorkspaceRequest {
+					roles: vec![role.id],
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"expected UserNotFound for nonexistent user, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn update_user_roles_nonexistent_role() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let user_b = setup.create_test_user().await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateUserRolesInWorkspaceRequest>::builder()
+				.path(UpdateUserRolesInWorkspacePath {
+					workspace_id: workspace.id,
+					user_id: user_b.user_id,
+				})
+				.headers(UpdateUserRolesInWorkspaceRequestHeaders {
+					authorization: admin.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateUserRolesInWorkspaceRequest {
+					roles: vec![Uuid::nil()],
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"expected RoleDoesNotExist for nonexistent role, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn create_role_invalid_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let mut perms = BTreeMap::new();
+	perms.insert(
+		setup.get_permission_id(Permission::ViewRoles),
+		ResourcePermissionType::Include(Default::default()),
+	);
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateNewRoleRequest>::builder()
+				.path(CreateNewRolePath {
+					workspace_id: workspace.id,
+				})
+				.headers(CreateNewRoleRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateNewRoleRequest {
+					name: "!!!".to_string(),
+					description: "test".to_string(),
+					permissions: perms,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"role name failing RESOURCE_NAME_REGEX should be rejected"
+	);
+}
+
+#[tokio::test]
+async fn update_user_roles_idempotent() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.await;
+
+	// Call update_user_roles a second time with the same role — handler should
+	// treat membership idempotently (replaces roles, no error).
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateUserRolesInWorkspaceRequest>::builder()
+				.path(UpdateUserRolesInWorkspacePath {
+					workspace_id: workspace.id,
+					user_id: user_b.user_id,
+				})
+				.headers(UpdateUserRolesInWorkspaceRequestHeaders {
+					authorization: admin.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateUserRolesInWorkspaceRequest {
+					roles: vec![role.id],
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(
+			UpdateUserRolesInWorkspaceResponse,
+		));
+}
+
+#[tokio::test]
+async fn remove_user_from_workspace_not_member() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<RemoveUserFromWorkspaceRequest>::builder()
+				.path(RemoveUserFromWorkspacePath {
+					workspace_id: workspace.id,
+					user_id: Uuid::nil(),
+				})
+				.headers(RemoveUserFromWorkspaceRequestHeaders {
+					authorization: admin.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"expected UserNotFound for non-member removal, got {}",
+		response.status_code()
+	);
 }

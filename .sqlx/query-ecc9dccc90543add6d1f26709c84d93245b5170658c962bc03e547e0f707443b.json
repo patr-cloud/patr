@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT 1 AS \"x!\" FROM deployment WHERE deployment.repository_id = $1 AND deployment.deleted IS NULL AND deployment.image_tag IN (SELECT name FROM container_registry_repository_tag WHERE repository_id = $1 AND (manifest_digest = $2 OR name = $2)) LIMIT 1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "x!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "ecc9dccc90543add6d1f26709c84d93245b5170658c962bc03e547e0f707443b"
+}

@@ -4,15 +4,15 @@
 //! file, and the files should be organized in a way that makes it easy to find
 //! and run specific tests.
 
-mod setup;
-mod utils;
+pub mod setup;
+pub mod utils;
 
 /// All tests related to the API are in this module.
-mod api;
+pub mod api;
 /// All tests related to the loki.patr.cloud log proxy are in this module.
-mod loki;
+pub mod loki;
 /// All tests related to the OCI registry are in this module.
-mod registry;
+pub mod registry;
 
 /// Convenience re-exports for all tests.
 pub mod prelude {

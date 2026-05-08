@@ -18,7 +18,7 @@ async fn domain_add_permission_grants_access() {
 	.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<AddDomainToWorkspaceRequest>::builder()
 				.path(AddDomainToWorkspacePath {
 					workspace_id: ws_id,
@@ -60,7 +60,7 @@ async fn domain_delete_permission_grants_access() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteDomainInWorkspaceRequest>::builder()
 				.path(DeleteDomainInWorkspacePath {
 					workspace_id: workspace.id,
@@ -102,7 +102,7 @@ async fn domain_verify_permission_grants_access() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<VerifyDomainInWorkspaceRequest>::builder()
 				.path(VerifyDomainInWorkspacePath {
 					workspace_id: workspace.id,
@@ -142,7 +142,7 @@ async fn domain_denied_without_permission() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDomainInfoInWorkspaceRequest>::builder()
 				.path(GetDomainInfoInWorkspacePath {
 					workspace_id: workspace.id,
@@ -187,7 +187,7 @@ async fn domain_include_grants_only_listed_resource() {
 		.await;
 
 	let r1 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDomainInfoInWorkspaceRequest>::builder()
 				.path(GetDomainInfoInWorkspacePath {
 					workspace_id: workspace.id,
@@ -206,7 +206,7 @@ async fn domain_include_grants_only_listed_resource() {
 	);
 
 	let r2 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDomainInfoInWorkspaceRequest>::builder()
 				.path(GetDomainInfoInWorkspacePath {
 					workspace_id: workspace.id,
@@ -250,7 +250,7 @@ async fn domain_exclude_denies_only_listed_resource() {
 		.await;
 
 	let r1 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDomainInfoInWorkspaceRequest>::builder()
 				.path(GetDomainInfoInWorkspacePath {
 					workspace_id: workspace.id,
@@ -269,7 +269,7 @@ async fn domain_exclude_denies_only_listed_resource() {
 	);
 
 	let r2 = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetDomainInfoInWorkspaceRequest>::builder()
 				.path(GetDomainInfoInWorkspacePath {
 					workspace_id: workspace.id,
@@ -285,5 +285,62 @@ async fn domain_exclude_denies_only_listed_resource() {
 	assert!(
 		r2.status_code().is_client_error(),
 		"domain2 should be excluded"
+	);
+}
+
+#[tokio::test]
+async fn domain_view_does_not_grant_delete() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let domain = setup
+		.create_test_domain(&admin.access_token, workspace.id)
+		.await;
+
+	let mut perms = BTreeMap::new();
+	perms.insert(
+		setup.get_permission_id(Permission::Domain(DomainPermission::View)),
+		all(),
+	);
+	let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.await;
+
+	let r_view = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetDomainInfoInWorkspaceRequest>::builder()
+				.path(GetDomainInfoInWorkspacePath {
+					workspace_id: workspace.id,
+					domain_id: domain.id,
+				})
+				.headers(GetDomainInfoInWorkspaceRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(r_view.status_code().is_success());
+
+	let r_delete = setup
+		.make_web_dashboard_call(
+			ApiRequest::<DeleteDomainInWorkspaceRequest>::builder()
+				.path(DeleteDomainInWorkspacePath {
+					workspace_id: workspace.id,
+					domain_id: domain.id,
+				})
+				.headers(DeleteDomainInWorkspaceRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		r_delete.status_code().is_client_error(),
+		"view permission should not grant delete"
 	);
 }

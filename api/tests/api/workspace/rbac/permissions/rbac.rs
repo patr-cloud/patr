@@ -15,7 +15,7 @@ async fn rbac_view_roles_grants_access() {
 		setup_permission_test(&setup, vec![(Permission::ViewRoles, all())]).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListAllRolesRequest>::builder()
 				.path(ListAllRolesPath {
 					workspace_id: ws_id,
@@ -46,7 +46,7 @@ async fn rbac_modify_roles_grants_access() {
 	);
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CreateNewRoleRequest>::builder()
 				.path(CreateNewRolePath {
 					workspace_id: ws_id,
@@ -86,7 +86,7 @@ async fn rbac_view_roles_denied_without_permission() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListAllRolesRequest>::builder()
 				.path(ListAllRolesPath {
 					workspace_id: workspace.id,
@@ -121,7 +121,7 @@ async fn rbac_modify_roles_denied_without_permission() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CreateNewRoleRequest>::builder()
 				.path(CreateNewRolePath {
 					workspace_id: workspace.id,
@@ -162,7 +162,7 @@ async fn rbac_view_does_not_grant_modify() {
 
 	// List roles should succeed
 	let r_list = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<ListAllRolesRequest>::builder()
 				.path(ListAllRolesPath {
 					workspace_id: workspace.id,
@@ -178,7 +178,7 @@ async fn rbac_view_does_not_grant_modify() {
 
 	// Create role should fail
 	let r_create = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CreateNewRoleRequest>::builder()
 				.path(CreateNewRolePath {
 					workspace_id: workspace.id,

@@ -100,7 +100,7 @@ pub async fn delete_role(
 
 	trace!("Deleted all the permission types");
 
-	query!(
+	let role_rows_deleted = query!(
 		r#"
 		DELETE FROM
 			role
@@ -110,7 +110,12 @@ pub async fn delete_role(
 		role_id as _
 	)
 	.execute(&mut **database)
-	.await?;
+	.await?
+	.rows_affected();
+
+	if role_rows_deleted == 0 {
+		return Err(ErrorType::RoleDoesNotExist);
+	}
 
 	trace!("Deleted the role");
 

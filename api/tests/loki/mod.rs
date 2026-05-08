@@ -1,3 +1,3 @@
-mod helpers;
-mod loki_push;
-mod otlp_push;
+pub mod helpers;
+pub mod loki_push;
+pub mod otlp_push;

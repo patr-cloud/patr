@@ -15,6 +15,10 @@ macros::declare_api_endpoint!(
 	response = {
 		/// The new access token which will be used for authentication by the user
 		pub access_token: String,
+		/// The new refresh token. The old refresh token is invalidated by this
+		/// call (single-use semantics); clients must store this value and use
+		/// it on the next renew.
+		pub refresh_token: String,
 	},
 	audit_log = NoAuditLogger,
 );

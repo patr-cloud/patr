@@ -1,7 +1,7 @@
-mod helpers;
+pub mod helpers;
 
-mod auth;
-mod blob;
-mod manifest;
-mod push_pull;
-mod version_check;
+pub mod auth;
+pub mod blob;
+pub mod manifest;
+pub mod push_pull;
+pub mod version_check;

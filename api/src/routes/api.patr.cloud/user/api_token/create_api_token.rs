@@ -138,7 +138,13 @@ pub async fn create_api_token(
 		now,
 	)
 	.execute(&mut **database)
-	.await?;
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(db_err) if db_err.is_unique_violation() => {
+			ErrorType::ApiTokenAlreadyExists
+		}
+		other => ErrorType::server_error(other),
+	})?;
 
 	trace!("API token inserted");
 

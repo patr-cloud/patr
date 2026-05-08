@@ -23,7 +23,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@nightly
         with:
-          components: rustfmt, clippy
+          components: rustfmt
 
       - uses: actions/cache@v5
         with:
@@ -36,25 +36,12 @@ jobs:
       - name: Setup frontend public folder
         run: mkdir -p frontend/.output/public
 
-      - run: cargo clippy --package api --all-targets
-        continue-on-error: true
+      - name: Install just and cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: just,nextest
 
-      - run: cargo clippy --package common --all-targets
-        continue-on-error: true
-
-      - run: cargo clippy --package cli --all-targets
-        continue-on-error: true
-
-      - run: cargo clippy --package models --all-targets
-        continue-on-error: true
-
-      - run: cargo clippy --package macros --all-targets
-        continue-on-error: true
-
-      - name: Install cargo-nextest
-        uses: taiki-e/install-action@nextest
-
-      - run: cargo nextest run --package api
+      - run: just --justfile api/tests/Justfile test
 
       - run: cargo nextest run --package common
 

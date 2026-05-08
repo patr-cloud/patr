@@ -5,7 +5,7 @@ use aws_sdk_s3::{
 };
 use axum::http::StatusCode;
 use models::{api::workspace::container_registry::*, prelude::*};
-use oci_spec::image::{Config, ImageManifest};
+use oci_spec::image::{ImageConfiguration, ImageManifest};
 
 use crate::prelude::*;
 
@@ -146,17 +146,25 @@ pub async fn get_exposed_ports(
 			ErrorType::InternalServerError
 		})?;
 
-	let Ok(config) = serde_json::from_slice::<Config>(&config.into_bytes()) else {
-		error!("Failed to parse config JSON as an image config");
+	let Ok(image_config) = serde_json::from_slice::<ImageConfiguration>(&config.into_bytes())
+	else {
+		error!("Failed to parse config JSON as an image configuration");
 		return Err(ErrorType::InternalServerError);
 	};
 
-	let exposed_ports = config
-		.exposed_ports()
-		.clone()
+	let exposed_ports = image_config
+		.config()
+		.as_ref()
+		.and_then(|c| c.exposed_ports().clone())
 		.unwrap_or_default()
 		.into_iter()
-		.filter_map(|port| port.parse::<u16>().ok())
+		.filter_map(|port| {
+			port.split_once('/')
+				.map(|(p, _)| p)
+				.unwrap_or(&port)
+				.parse::<u16>()
+				.ok()
+		})
 		.collect();
 
 	AppResponse::builder()

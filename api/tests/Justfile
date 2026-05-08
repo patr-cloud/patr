@@ -1,0 +1,71 @@
+set shell := ["bash", "-uc"]
+set positional-arguments := true
+# Run cargo / docker compose from the workspace root so paths like
+# api/tests/docker-compose.yaml and config/api.sample.json resolve normally.
+set working-directory := "../.."
+
+# Boot a single set of test containers, run the integration suite against
+# them, and tear everything down on exit. Containers are shared across all
+# tests in the run; resource isolation comes from per-test random names and
+# UUIDs (see `random_name` in api/tests/utils.rs and `random_ipv4` in
+# api/tests/setup.rs).
+test *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    docker compose -f api/tests/docker-compose.yaml up -d --wait
+    trap 'docker compose -f api/tests/docker-compose.yaml down -v' EXIT
+
+    # Mimir's image is distroless and can't have a docker healthcheck;
+    # poll its /ready endpoint from the host instead.
+    echo "Waiting for Mimir to be ready..."
+    until curl -sf http://localhost:18080/ready >/dev/null 2>&1; do
+        sleep 1
+    done
+    echo "Mimir ready."
+
+    # `cargo run --bin api -- --migrate` goes through `parse_config()` which
+    # reads ./config/api.{json,toml,...}. Drop in the sample if no local file
+    # exists so dev machines without a hand-rolled config still work.
+    [ -f config/api.json ] || cp config/api.sample.json config/api.json
+
+    # Compose maps containers to non-default host ports so they don't
+    # collide with whatever local dev infra (postgres, redis, etc.) the
+    # developer already has running on standard ports.
+    export SQLX_OFFLINE=true
+    export PATR_TEST_POSTGRES_HOST=localhost
+    export PATR_TEST_POSTGRES_PORT=15432
+    export PATR_TEST_POSTGRES_USER=user
+    export PATR_TEST_POSTGRES_PASSWORD=password
+    export PATR_TEST_POSTGRES_DB=api
+    export PATR_TEST_REDIS_HOST=localhost
+    export PATR_TEST_REDIS_PORT=16379
+    export PATR_TEST_S3_HOST=localhost
+    export PATR_TEST_S3_PORT=19000
+    export PATR_TEST_LOKI_HOST=localhost
+    export PATR_TEST_LOKI_PORT=13100
+    export PATR_TEST_MIMIR_HOST=localhost
+    export PATR_TEST_MIMIR_PORT=18080
+
+    # PATR_* env vars override the sample config's database/redis sections
+    # for the --migrate run. parse_config()'s Environment source uses `_` as
+    # the nesting separator, so PATR_DATABASE_HOST → database.host etc.
+    export PATR_DATABASE_HOST=localhost
+    export PATR_DATABASE_PORT=15432
+    export PATR_DATABASE_USER=user
+    export PATR_DATABASE_PASSWORD=password
+    export PATR_DATABASE_DATABASE=api
+    export PATR_REDIS_HOST=localhost
+    export PATR_REDIS_PORT=16379
+
+    # Seed the schema once via the api binary's --migrate flag. After this,
+    # the parallel test processes' calls to db::initialize go down the
+    # "tables exist, no migrations to apply" no-op path.
+    cargo run --bin api --quiet -- --migrate
+
+    # nextest runs each test in its own process so each test's tokio runtime
+    # is isolated. The api uses static `OnceLock<reqwest::Client>` caches
+    # (turnstile, loki/mimir proxies); under plain `cargo test` those clients
+    # get bound to the first runtime and break when subsequent tests on
+    # different runtimes try to use them.
+    cargo nextest run -p api --test integration-tests --no-fail-fast "$@"

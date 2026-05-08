@@ -1,6 +1,17 @@
 //! The main API server for Patr.
 #![recursion_limit = "1024"]
 
+use clap::Parser;
+
+#[derive(Parser)]
+struct Cli {
+	/// Run `db::initialize` (creates schema on a fresh DB; otherwise
+	/// applies pending migrations) and exit. Used by `just test` to
+	/// seed the shared postgres before the parallel test processes start.
+	#[arg(long)]
+	migrate: bool,
+}
+
 #[tokio::main]
 async fn main() {
 	use api::{
@@ -11,6 +22,7 @@ async fn main() {
 		worker,
 	};
 
+	let cli = Cli::parse();
 	let config = config::parse_config();
 
 	let (logger_provider, tracer_provider, meter_provider) = utils::setup_tracing(&config);
@@ -55,6 +67,11 @@ async fn main() {
 		.expect("error initializing worker");
 
 	utils::assets::initialize(&state.config.s3).await;
+
+	if cli.migrate {
+		println!("Migrations applied.");
+		return;
+	}
 
 	futures::future::join3(
 		app::serve(&state),

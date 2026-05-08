@@ -149,7 +149,7 @@ async fn push_to_deleted_repo() {
 
 	// Delete the repo via API
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteContainerRepositoryRequest>::builder()
 				.path(DeleteContainerRepositoryPath {
 					workspace_id: workspace.id,

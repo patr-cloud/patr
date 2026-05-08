@@ -2,13 +2,13 @@ use models::{ApiSuccessResponseBody, api::workspace::*, utils::Uuid};
 
 use crate::prelude::*;
 
-mod container_registry;
-mod deployment;
-mod domain;
-mod managed_url;
-mod rbac;
-mod runner;
-mod volume;
+pub mod container_registry;
+pub mod deployment;
+pub mod domain;
+pub mod managed_url;
+pub mod rbac;
+pub mod runner;
+pub mod volume;
 
 #[tokio::test]
 async fn create_workspace_works() {
@@ -26,7 +26,7 @@ async fn create_workspace_duplicate_name() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CreateWorkspaceRequest>::builder()
 				.headers(CreateWorkspaceRequestHeaders {
 					authorization: user.access_token.clone(),
@@ -51,7 +51,7 @@ async fn create_workspace_invalid_name() {
 	let user = setup.create_test_user().await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<CreateWorkspaceRequest>::builder()
 				.headers(CreateWorkspaceRequestHeaders {
 					authorization: user.access_token.clone(),
@@ -71,13 +71,88 @@ async fn create_workspace_invalid_name() {
 }
 
 #[tokio::test]
+async fn create_workspace_name_too_short() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateWorkspaceRequest>::builder()
+				.headers(CreateWorkspaceRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateWorkspaceRequest {
+					name: "abc".to_string(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"workspace name shorter than 4 chars should be rejected"
+	);
+}
+
+#[tokio::test]
+async fn create_workspace_name_too_long() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateWorkspaceRequest>::builder()
+				.headers(CreateWorkspaceRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateWorkspaceRequest {
+					name: "a".repeat(256),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"workspace name longer than 255 chars should be rejected"
+	);
+}
+
+#[tokio::test]
+async fn create_workspace_name_special_chars() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateWorkspaceRequest>::builder()
+				.headers(CreateWorkspaceRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateWorkspaceRequest {
+					name: "weird/name@with#chars".to_string(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"workspace name with chars outside RESOURCE_NAME_REGEX should be rejected"
+	);
+}
+
+#[tokio::test]
 async fn get_workspace_info_works() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetWorkspaceInfoRequest>::builder()
 				.path(GetWorkspaceInfoPath {
 					workspace_id: workspace.id,
@@ -102,7 +177,7 @@ async fn get_workspace_info_unauthorized() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetWorkspaceInfoRequest>::builder()
 				.path(GetWorkspaceInfoPath {
 					workspace_id: workspace.id,
@@ -127,7 +202,7 @@ async fn get_workspace_info_nonexistent() {
 	let user = setup.create_test_user().await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetWorkspaceInfoRequest>::builder()
 				.path(GetWorkspaceInfoPath {
 					workspace_id: Uuid::nil(),
@@ -154,7 +229,7 @@ async fn update_workspace_info_works() {
 	let new_name = random_name(8);
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<UpdateWorkspaceInfoRequest>::builder()
 				.path(UpdateWorkspaceInfoPath {
 					workspace_id: workspace.id,
@@ -173,7 +248,7 @@ async fn update_workspace_info_works() {
 
 	// Verify
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetWorkspaceInfoRequest>::builder()
 				.path(GetWorkspaceInfoPath {
 					workspace_id: workspace.id,
@@ -191,6 +266,66 @@ async fn update_workspace_info_works() {
 }
 
 #[tokio::test]
+async fn update_workspace_name_conflict() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace_a = setup.create_test_workspace(&user.access_token).await;
+	let workspace_b = setup.create_test_workspace(&user.access_token).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateWorkspaceInfoRequest>::builder()
+				.path(UpdateWorkspaceInfoPath {
+					workspace_id: workspace_b.id,
+				})
+				.headers(UpdateWorkspaceInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateWorkspaceInfoRequest {
+					name: Some(workspace_a.name.clone()),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"renaming to a taken name should fail"
+	);
+}
+
+#[tokio::test]
+async fn update_workspace_unauthorized() {
+	let setup = setup().await.expect("failed to setup test server");
+	let owner = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&owner.access_token).await;
+	let other_user = setup.create_test_user().await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateWorkspaceInfoRequest>::builder()
+				.path(UpdateWorkspaceInfoPath {
+					workspace_id: workspace.id,
+				})
+				.headers(UpdateWorkspaceInfoRequestHeaders {
+					authorization: other_user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateWorkspaceInfoRequest {
+					name: Some(random_name(8)),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"non-member should not be able to update workspace"
+	);
+}
+
+#[tokio::test]
 #[ignore = "workspace deletion needs audit_log FK redesign"]
 async fn delete_workspace_works() {
 	let setup = setup().await.expect("failed to setup test server");
@@ -198,7 +333,7 @@ async fn delete_workspace_works() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteWorkspaceRequest>::builder()
 				.path(DeleteWorkspacePath {
 					workspace_id: workspace.id,
@@ -214,7 +349,7 @@ async fn delete_workspace_works() {
 
 	// Verify it's gone
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<GetWorkspaceInfoRequest>::builder()
 				.path(GetWorkspaceInfoPath {
 					workspace_id: workspace.id,
@@ -241,7 +376,7 @@ async fn delete_workspace_not_super_admin() {
 	let other_user = setup.create_test_user().await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteWorkspaceRequest>::builder()
 				.path(DeleteWorkspacePath {
 					workspace_id: workspace.id,
@@ -267,7 +402,7 @@ async fn is_name_available_true() {
 
 	let name = random_name(8);
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<IsWorkspaceNameAvailableRequest>::builder()
 				.headers(IsWorkspaceNameAvailableRequestHeaders {
 					authorization: user.access_token.clone(),
@@ -292,7 +427,7 @@ async fn is_name_available_false() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<IsWorkspaceNameAvailableRequest>::builder()
 				.headers(IsWorkspaceNameAvailableRequestHeaders {
 					authorization: user.access_token.clone(),
@@ -309,5 +444,39 @@ async fn is_name_available_false() {
 	assert!(
 		!response.response.available,
 		"taken name should not be available"
+	);
+}
+
+#[tokio::test]
+async fn concurrent_create_same_resource() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	let name = random_name(8);
+
+	// Fire 5 concurrent create_workspace calls with the same name. Exactly
+	// one should succeed; the rest should be rejected by the unique
+	// constraint on workspace.name.
+	let req = || {
+		let body = CreateWorkspaceRequest { name: name.clone() };
+		setup.make_web_dashboard_call(
+			ApiRequest::<CreateWorkspaceRequest>::builder()
+				.headers(CreateWorkspaceRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(body)
+				.build(),
+		)
+	};
+	let responses = futures::future::join_all([req(), req(), req(), req(), req()]).await;
+	let statuses: Vec<_> = responses.iter().map(|r| r.status_code()).collect();
+	let successes = statuses.iter().filter(|s| s.is_success()).count();
+	let failures = statuses.iter().filter(|s| s.is_client_error()).count();
+
+	assert_eq!(
+		(successes, failures),
+		(1, 4),
+		"expected exactly 1 success and 4 client errors from 5 concurrent same-name create_workspace; got {statuses:?}"
 	);
 }

@@ -32,7 +32,7 @@ pub async fn get_runner_info(
 	let runner = query!(
 		r#"
 		SELECT
-			*
+			name
 		FROM
 			runner
 		WHERE

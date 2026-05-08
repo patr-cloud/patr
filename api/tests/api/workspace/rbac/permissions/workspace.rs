@@ -12,7 +12,7 @@ async fn edit_workspace_permission_grants_access() {
 		setup_permission_test(&setup, vec![(Permission::EditWorkspace, all())]).await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<UpdateWorkspaceInfoRequest>::builder()
 				.path(UpdateWorkspaceInfoPath {
 					workspace_id: ws_id,
@@ -47,7 +47,7 @@ async fn edit_workspace_denied_without_permission() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<UpdateWorkspaceInfoRequest>::builder()
 				.path(UpdateWorkspaceInfoPath {
 					workspace_id: workspace.id,
@@ -85,7 +85,7 @@ async fn delete_workspace_denied_non_super_admin() {
 		.await;
 
 	let response = setup
-		.make_api_call(
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteWorkspaceRequest>::builder()
 				.path(DeleteWorkspacePath {
 					workspace_id: workspace.id,
