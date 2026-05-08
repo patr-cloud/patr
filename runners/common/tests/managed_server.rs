@@ -28,7 +28,7 @@ use futures::{SinkExt, StreamExt};
 use http::StatusCode;
 use models::{
 	ApiErrorResponseBody,
-	api::workspace::{deployment::*, runner::*},
+	api::workspace::{deployment::*, managed_url::*, runner::*},
 	utils::False,
 };
 use tokio::sync::{OnceCell, broadcast};
@@ -130,6 +130,10 @@ pub async fn get_managed_server() -> Arc<ManagedServerState> {
 				.route(
 					"/workspace/{workspace_id}/deployment/{deployment_id}",
 					get(get_deployment_info_handler),
+				)
+				.route(
+					"/workspace/{workspace_id}/infrastructure/managed-url",
+					get(list_managed_urls_handler),
 				)
 				.with_state(state.clone());
 
@@ -245,6 +249,19 @@ async fn list_deployments_handler(
 		TypedHeader(TotalCountHeader(total_count)),
 		Json(ApiSuccessResponseBody::new(ListDeploymentResponse {
 			deployments: page_items,
+		})),
+	)
+}
+
+async fn list_managed_urls_handler(
+	Path(_workspace_id): Path<Uuid>,
+	Query(_query): Query<ListResourceQuery<ManagedUrl, ()>>,
+	State(_state): State<Arc<ManagedServerState>>,
+) -> impl IntoResponse {
+	(
+		TypedHeader(TotalCountHeader(0)),
+		Json(ApiSuccessResponseBody::new(ListManagedURLResponse {
+			urls: Vec::new(),
 		})),
 	)
 }
