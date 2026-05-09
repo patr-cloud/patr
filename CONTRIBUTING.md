@@ -2,10 +2,13 @@
 
 Firstly, thank you for your interest in contributing to Patr! Contributions are greatly appreciated.
 
-Participation is governed by the [Code of Conduct](./CODE_OF_CONDUCT.md). By contributing, you agree to the following terms:
+Participation is governed by the [Code of Conduct](./CODE_OF_CONDUCT.md). By submitting a contribution to this project, you agree to the following terms:
 
-- **Licensing of Contributions:** All contributions to this project are automatically licensed under the GNU Affero General Public License (AGPL) for open-source use.
-- **Future Relicensing:** By submitting contributions to this project, you agree that the owner of this repository has the perpetual, worldwide right to relicense your contributions under any other license terms in the future, while retaining an open source license for open-source use. This means the owner of this repository can, at any point, relicense the project, including your contributions, under different commercial terms, but the AGPL will always apply for the open-source community under any circumstances.
+- **License of contribution:** Your contribution is licensed to the project under the license specified in [LICENSE](./LICENSE).
+- **Future relicensing:** You grant the owner of this repository a perpetual, worldwide, irrevocable, royalty-free right to relicense your contribution under additional or different terms, including commercial or proprietary terms.
+- **Patent grant:** You grant a perpetual, worldwide, irrevocable, royalty-free patent license to the project and its users covering any patents you hold that are necessarily infringed by your contribution.
+- **Authority and originality:** You confirm that your contribution is your own work, or that you have the legal right to submit it under these terms (for example, your employer has authorised it). If it includes third-party code, you have flagged it clearly in the pull request.
+- **No warranty:** Your contribution is provided "AS IS", without warranty of any kind. You will not be liable for damages arising from your contribution.
 
 ## How to contribute
 

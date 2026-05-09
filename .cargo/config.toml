@@ -2,6 +2,7 @@
 api           = "run -p api"
 bindings      = "test -p models export_bindings"
 docker        = "run -p docker"
+entities      = "run -p api --example regenerate_entities --"
 new-migration = "run -p api --example new_migration --"
 patr          = "run -p cli --"
 prepare       = "sqlx prepare --workspace --all"
