@@ -110,7 +110,6 @@ rust-s3                        = { default-features = false, version = "0.37" }
 rustis                         = { default-features = false, version = "0.19" }
 rustls                         = { default-features = false, version = "0.23" }
 schemars                       = { default-features = false, version = "1" }
-sea-orm                        = { default-features = false, version = "2.0.0-rc.38" }
 self-replace                   = { default-features = false, version = "1" }
 semver                         = { default-features = false, version = "1" }
 serde                          = { default-features = false, version = "1" }
