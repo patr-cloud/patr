@@ -5,7 +5,7 @@
     <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/patr-cloud/patr">
 </center>
 
-**Patr** is a self-hosted, production-grade DevOps automation platform built for fast-moving teams.
+**Patr** is an open-source, production-grade DevOps automation platform built for fast-moving teams.
 
 It lets developers deploy and manage services without needing to understand or operate traditional DevOps infrastructure. No Kubernetes expertise required. No bespoke CI/CD glue. No hand-rolled observability stacks.
 
@@ -56,6 +56,19 @@ You can now access the project at `http://localhost:3001`.
 # Features
 
 Patr is built with Rust, Axum, and Postgres. It is designed to be fast, secure, and scalable. Your code can be deployed to any environment from a single dashboard. For example, you can manage your deployments that are running on a VM (say, EC2 instance) as well as your deployments that are running on a Kubernetes cluster, all from a simple, easy-to-use, unified dashboard. Where your code runs is up to you, Patr just helps you manage it. This means that you can also use Patr to manage your deployments on your local machine, if you so desire. A common use-case of having a home-box on a Raspberry Pi, for example, and managing your deployments on it with Patr is supported.
+
+Here are some of the features that we plan to implement:
+
+- ✅ Create and manage deployments.
+- ✅ Create and manage environment variables.
+- ✅ Create and manage Managed URLs.
+- ✅ Create runners to run your deployments.
+- ✅ Create and manage users.
+- ✅ Create and manage roles.
+- ✅ Implement the runner to manage the deployments on the server.
+- 🚧 Audit log for all actions that are performed on Patr. (Help needed: What's the data that needs to be stored and how do I store it?)
+- [ ] Create and manage secrets.
+- [ ] Create and manage databases.
 
 # Contributing
 
