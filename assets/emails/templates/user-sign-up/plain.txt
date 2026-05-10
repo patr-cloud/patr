@@ -1,10 +1,10 @@
-Hi {{ username }},
+Hi,
 
 Enter the code below to verify your email address and complete your Patr sign-up:
 
 {{ otp }}
 
-Or visit: https://app.patr.cloud/sign-up/confirm?otp={{ otp }}&username={{ username }}
+Or visit: https://app.patr.cloud/sign-up/confirm?email={{ email }}&otp={{ otp }}
 
 This code will expire in {{ otp_expiry }}.
 

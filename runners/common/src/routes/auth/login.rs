@@ -20,7 +20,7 @@ pub async fn login(
 				headers: LoginRequestHeaders { user_agent: _ },
 				body:
 					LoginRequestProcessed {
-						user_id,
+						email,
 						password,
 						mfa_otp: _,
 						cf_turnstile_token: _,
@@ -31,7 +31,7 @@ pub async fn login(
 		supervisor_ref: _,
 	}: AppRequest<'_, LoginRequest>,
 ) -> Result<AppResponse<LoginRequest>, ErrorType> {
-	trace!("Logging in user: {}", user_id);
+	trace!("Logging in user: {}", email);
 
 	let rows = query(
 		r#"
@@ -48,7 +48,7 @@ pub async fn login(
 		"#,
 	)
 	.bind(constants::USER_ID_KEY)
-	.bind(user_id.as_ref())
+	.bind(email.as_str())
 	.bind(constants::PASSWORD_HASH_KEY)
 	.fetch_all(&mut **database)
 	.await?;

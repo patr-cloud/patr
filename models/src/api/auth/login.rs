@@ -14,10 +14,9 @@ macros::declare_api_endpoint!(
 		pub user_agent: UserAgent,
 	},
 	request = {
-		/// The user identifier of the user
-		/// It can be either the username or the email of the user depending on the user input
-		#[preprocess(trim, length(min = 4), regex = r"^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$")]
-		pub user_id: String,
+		/// The email address of the user
+		#[preprocess(email)]
+		pub email: String,
 		/// The password of the user policy:
 		/// Minimum length (often at least 8 characters).
 		/// At least one uppercase letter.

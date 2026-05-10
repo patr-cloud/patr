@@ -23,13 +23,6 @@ pub struct Args {
 	/// Force the setup even if the CLI is already configured
 	#[arg(short = 'f', long = "force")]
 	pub force: bool,
-	/// The type of runner to setup
-	#[arg(
-		value_enum,
-		default_value_t = RunnerType::Docker,
-		env = "PATR_RUNNER_TYPE"
-	)]
-	pub runner_type: RunnerType,
 }
 
 /// First-time configuration for a runner on this host — writes the runner
@@ -39,14 +32,7 @@ pub async fn execute(
 	_global_args: GlobalArgs,
 	state: AppState,
 ) -> Result<CommandOutput, AppError> {
-	match args.runner_type {
-		RunnerType::Kubernetes => {
-			todo!("Kubernetes runner setup is not yet supported")
-		}
-		RunnerType::Docker => {}
-	}
-
-	let config_path = crate::utils::runner_config_path(RunnerType::Docker);
+	let config_path = crate::utils::runner_config_path();
 
 	if config_path.exists() && !args.force {
 		let message = concat!(
@@ -361,7 +347,7 @@ pub async fn execute(
 
 	CommandOutput::builder()
 		.text(format!(
-			"Runner configured successfully! Config written to {}.\nRun with: patr runner run docker",
+			"Runner configured successfully! Config written to {}.\nRun with: patr runner run",
 			config_path.display()
 		))
 		.json(ApiSuccessResponseBody::empty().to_json_value())

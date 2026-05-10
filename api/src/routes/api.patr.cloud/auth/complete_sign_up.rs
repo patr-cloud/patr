@@ -29,7 +29,7 @@ pub async fn complete_sign_up(
 				headers: CompleteSignUpRequestHeaders { user_agent },
 				body:
 					CompleteSignUpRequestProcessed {
-						username,
+						email,
 						verification_token,
 						cf_turnstile_token,
 					},
@@ -59,7 +59,7 @@ pub async fn complete_sign_up(
 		return Err(ErrorType::TurnstileVerificationActionMismatch);
 	}
 
-	info!("Completing sign up for user: `{username}`");
+	info!("Completing sign up for user: `{email}`");
 
 	let row = query!(
 		r#"
@@ -68,19 +68,19 @@ pub async fn complete_sign_up(
 		FROM
 			user_to_sign_up
 		WHERE
-			username = $1 AND
+			email = $1 AND
 			otp_expiry > NOW();
 		"#,
-		&username
+		&email
 	)
 	.fetch_optional(&mut **database)
 	.await?
 	.ok_or(ErrorType::UserNotFound)
 	.inspect_err(|_| {
-		info!("Could not find a row with the given username");
+		info!("Could not find a row with the given email");
 	})?;
 
-	trace!("Found a row with the given username");
+	trace!("Found a row with the given email");
 
 	let success = argon2::Argon2::new_with_secret(
 		state.config.password_pepper.as_ref(),
@@ -115,27 +115,14 @@ pub async fn complete_sign_up(
 
 	query!(
 		r#"
-		SET CONSTRAINTS ALL DEFERRED;
-		"#
-	)
-	.execute(&mut **database)
-	.await?;
-
-	trace!("Constraints deferred");
-
-	query!(
-		r#"
 		INSERT INTO
 			"user"(
 				id,
-				username,
+				email,
 				password,
 				first_name,
 				last_name,
 				created,
-				recovery_email,
-				recovery_phone_country_code,
-				recovery_phone_number,
 				workspace_limit,
 				password_reset_token,
 				password_reset_token_expiry,
@@ -144,31 +131,15 @@ pub async fn complete_sign_up(
 			)
 		VALUES
 			(
-				$1,
-				$2,
-				$3,
-				$4,
-				$5,
-				$6,
-				$7,
-				$8,
-				$9,
-				$10,
-				NULL,
-				NULL,
-				NULL,
-				NULL
+				$1, $2, $3, $4, $5, $6, $7, NULL, NULL, NULL, NULL
 			);
 		"#,
 		user_id as _,
-		&username,
+		&email,
 		row.password,
 		row.first_name,
 		row.last_name,
 		now,
-		row.recovery_email,
-		row.recovery_phone_country_code,
-		row.recovery_phone_number,
 		constants::DEFAULT_WORKSPACE_LIMIT,
 	)
 	.execute(&mut **database)
@@ -176,80 +147,19 @@ pub async fn complete_sign_up(
 
 	trace!("User inserted into the database");
 
-	match (
-		row.recovery_email,
-		row.recovery_phone_country_code,
-		row.recovery_phone_number,
-	) {
-		(Some(recovery_email), None, None) => {
-			trace!("Inserting recovery email");
-			query!(
-				r#"
-				INSERT INTO
-					user_email(
-						user_id,
-						email
-					)
-				VALUES
-					($1, $2);
-				"#,
-				user_id as _,
-				recovery_email
-			)
-			.execute(&mut **database)
-			.await?;
-		}
-		(None, Some(recovery_phone_country_code), Some(recovery_phone_number)) => {
-			trace!("Inserting recovery phone number");
-			query!(
-				r#"
-				INSERT INTO
-					user_phone_number(
-						user_id,
-						country_code,
-						number
-					)
-				VALUES
-					($1, $2, $3);
-				"#,
-				user_id as _,
-				recovery_phone_country_code,
-				recovery_phone_number
-			)
-			.execute(&mut **database)
-			.await?;
-		}
-		_ => {
-			error!("No recovery email or phone number in user_to_sign_up table");
-			return Err(ErrorType::server_error(
-				"user_to_sign_up row has no recovery email or phone number",
-			));
-		}
-	}
-
 	query!(
 		r#"
 		DELETE FROM
 			user_to_sign_up
 		WHERE
-			username = $1;
+			email = $1;
 		"#,
-		&username
+		&email
 	)
 	.execute(&mut **database)
 	.await?;
 
 	trace!("Deleted user_to_sign_up entry");
-
-	query!(
-		r#"
-		SET CONSTRAINTS ALL IMMEDIATE;
-		"#
-	)
-	.execute(&mut **database)
-	.await?;
-
-	trace!("Constraints set to immediate");
 
 	let refresh_token = Uuid::new_v4().to_string();
 	let hashed_refresh_token = argon2::Argon2::new_with_secret(

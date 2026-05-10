@@ -152,7 +152,7 @@ pub(crate) async fn get_permissions(
 
 	Ok(RequestUserData::builder()
 		.id(token.user_id)
-		.username(token.username)
+		.email(token.email)
 		.first_name(token.first_name)
 		.last_name(token.last_name)
 		.created(token.created)

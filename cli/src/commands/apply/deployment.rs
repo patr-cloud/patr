@@ -211,7 +211,6 @@ pub async fn apply(
 							})
 							.collect(),
 					),
-					volumes: Default::default(),
 				})
 				.build(),
 		)
@@ -259,7 +258,6 @@ pub async fn apply(
 								)
 							})
 							.collect(),
-						volumes: Default::default(),
 					},
 					deploy_on_create: true,
 				})

@@ -60,7 +60,6 @@ const CreateDomainPage = () => {
 
 		const requestBody: AddDomainToWorkspaceRequest = {
 			domain,
-			nameserverType: "external",
 		};
 
 		const response = await httpRequest<AddDomainToWorkspaceResponse>(

@@ -183,7 +183,6 @@ impl TestSetup {
 			startup_probe: None,
 			liveness_probe: None,
 			config_mounts: BTreeMap::new(),
-			volumes: BTreeMap::new(),
 		};
 
 		let mut conn = self

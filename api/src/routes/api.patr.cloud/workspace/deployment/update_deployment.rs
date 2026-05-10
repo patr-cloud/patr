@@ -22,7 +22,7 @@ use crate::prelude::*;
 /// details. The deployment details that can be updated are the name, machine
 /// type, deploy on push, min horizontal scale, max horizontal scale, ports,
 /// environment variables, startup probe, liveness probe, config mounts, and
-/// volumes. At least one of the values must be updated.
+/// At least one of the values must be updated.
 pub async fn update_deployment(
 	AuthenticatedAppRequest {
 		request:
@@ -50,7 +50,6 @@ pub async fn update_deployment(
 						startup_probe,
 						liveness_probe,
 						config_mounts,
-						volumes,
 					},
 			},
 		database,
@@ -76,7 +75,6 @@ pub async fn update_deployment(
 		.or(startup_probe.as_ref().map(|_| 0))
 		.or(liveness_probe.as_ref().map(|_| 0))
 		.or(config_mounts.as_ref().map(|_| 0))
-		.or(volumes.as_ref().map(|_| 0))
 		.is_none()
 	{
 		debug!(
@@ -302,12 +300,11 @@ pub async fn update_deployment(
 
 		query!(
 			r#"
-			INSERT INTO 
+			INSERT INTO
 				deployment_environment_variable(
 					deployment_id,
 					name,
-					value,
-					secret_id
+					value
 				)
 			SELECT
 				*
@@ -315,8 +312,7 @@ pub async fn update_deployment(
 				UNNEST(
 					$1::UUID[],
 					$2::TEXT[],
-					$3::TEXT[],
-					$4::UUID[]
+					$3::TEXT[]
 				);
 			"#,
 			&environment_variables
@@ -329,12 +325,8 @@ pub async fn update_deployment(
 				.collect::<Vec<_>>(),
 			&environment_variables
 				.iter()
-				.map(|(_, value)| value.value().cloned())
-				.collect::<Vec<Option<String>>>() as _,
-			&environment_variables
-				.iter()
-				.map(|(_, value)| value.secret_id().map(Into::into))
-				.collect::<Vec<Option<sqlx::types::Uuid>>>() as _,
+				.map(|(_, value)| value.clone())
+				.collect::<Vec<String>>() as _,
 		)
 		.execute(&mut **database)
 		.await?;
@@ -385,60 +377,6 @@ pub async fn update_deployment(
 		)
 		.execute(&mut **database)
 		.await?;
-	}
-
-	if let Some(updated_volumes) = &volumes {
-		query!(
-			r#"
-			DELETE FROM
-				deployment_volume_mount
-			WHERE
-				deployment_id = $1;
-			"#,
-			deployment_id as _,
-		)
-		.execute(&mut **database)
-		.await?;
-
-		query!(
-			r#"
-			INSERT INTO
-				deployment_volume_mount(
-					deployment_id,
-					volume_id,
-					volume_mount_path
-				)
-			SELECT
-				*
-			FROM
-				UNNEST(
-					$1::UUID[],
-					$2::UUID[],
-					$3::TEXT[]
-				);
-			"#,
-			&updated_volumes
-				.iter()
-				.map(|_| deployment_id.into())
-				.collect::<Vec<_>>(),
-			&updated_volumes
-				.iter()
-				.map(|(volume_id, _)| (*volume_id).into())
-				.collect::<Vec<_>>(),
-			&updated_volumes
-				.iter()
-				.map(|(_, volume_mount_path)| volume_mount_path.clone())
-				.collect::<Vec<_>>(),
-		)
-		.execute(&mut **database)
-		.await
-		.map_err(|err| match err {
-			sqlx::Error::Database(err) if err.is_unique_violation() => ErrorType::ResourceInUse,
-			sqlx::Error::Database(err) if err.is_foreign_key_violation() => {
-				ErrorType::ResourceDoesNotExist
-			}
-			err => ErrorType::server_error(err),
-		})?;
 	}
 
 	CloudflareClient::new(
@@ -492,8 +430,7 @@ pub async fn update_deployment(
 		r#"
 		SELECT
 			name,
-			value,
-			secret_id AS "secret_id: Uuid"
+			value
 		FROM
 			deployment_environment_variable
 		WHERE
@@ -504,32 +441,8 @@ pub async fn update_deployment(
 	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
-	.map(|env| {
-		let name = env.name;
-		let value = env.value.clone().map(EnvironmentVariableValue::String);
-
-		let secret_id = env
-			.secret_id
-			.map(|from_secret| EnvironmentVariableValue::Secret { from_secret });
-
-		let value = match (value.clone(), secret_id.clone()) {
-			(Some(value), None) => Some(value),
-			(None, Some(secret)) => Some(secret),
-			_ => None,
-		}
-		.ok_or_else(|| {
-			ErrorType::server_error(format!(
-				concat!(
-					"corrupted deployment, cannot find environment variable value. ",
-					"env name: `{}`, value: {:?}`, secret_id: {:?}, raw_value: {:?}, raw_secret_id: {:?}"
-				),
-				name, value, secret_id, env.value, env.secret_id
-			))
-		})?;
-
-		Ok((name, value))
-	})
-	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
+	.map(|env| (env.name, env.value))
+	.collect::<BTreeMap<_, _>>();
 
 	let config_mounts = query!(
 		r#"
@@ -551,29 +464,6 @@ pub async fn update_deployment(
 		let file = Base64String::from(row.file);
 
 		Ok((path, file))
-	})
-	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
-
-	let volumes = query!(
-		r#"
-		SELECT
-			volume_id AS "volume_id: Uuid",
-			volume_mount_path
-		FROM
-			deployment_volume_mount
-		WHERE
-			deployment_id = $1;
-		"#,
-		deployment_id as _
-	)
-	.fetch_all(&mut **database)
-	.await?
-	.into_iter()
-	.map(|row| {
-		let volume_id = row.volume_id;
-		let volume_mount_path = row.volume_mount_path;
-
-		Ok((volume_id, volume_mount_path))
 	})
 	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
 
@@ -674,7 +564,6 @@ pub async fn update_deployment(
 					startup_probe,
 					liveness_probe,
 					config_mounts,
-					volumes,
 				},
 			})
 			.unwrap(),

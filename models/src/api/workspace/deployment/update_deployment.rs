@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use super::{DeploymentProbe, EnvironmentVariableValue, ExposedPortType};
+use super::{DeploymentProbe, ExposedPortType};
 use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 
 macros::declare_api_endpoint!(
@@ -50,7 +50,7 @@ macros::declare_api_endpoint!(
 		/// To update the environment variables
 		#[preprocess(none)]
 		pub environment_variables:
-			Option<BTreeMap<String, EnvironmentVariableValue>>,
+			Option<BTreeMap<String, String>>,
 		/// To update the startup probe
 		#[preprocess(none)]
 		pub startup_probe: Option<DeploymentProbe>,
@@ -60,9 +60,6 @@ macros::declare_api_endpoint!(
 		/// To update the config mount
 		#[preprocess(none)]
 		pub config_mounts: Option<BTreeMap<String, Base64String>>,
-		/// To update the volumes attached to the deployment
-		#[preprocess(none)]
-		pub volumes: Option<BTreeMap<Uuid, String>>,
 	},
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceUpdated,
@@ -87,7 +84,6 @@ impl UpdateDeploymentRequest {
 			startup_probe: None,
 			config_mounts: None,
 			runner: None,
-			volumes: None,
 		}
 	}
 
@@ -107,7 +103,6 @@ impl UpdateDeploymentRequest {
 			.or(self.startup_probe.as_ref().map(|_| 0))
 			.or(self.liveness_probe.as_ref().map(|_| 0))
 			.or(self.config_mounts.as_ref().map(|_| 0))
-			.or(self.volumes.as_ref().map(|_| 0))
 			.is_none()
 	}
 }

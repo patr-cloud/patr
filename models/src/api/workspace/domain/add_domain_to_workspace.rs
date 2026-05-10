@@ -1,8 +1,7 @@
-use super::DomainNameserverType;
 use crate::prelude::*;
 
 macros::declare_api_endpoint!(
-	/// Route to add domain to a workspace
+	/// Route to add a domain to a workspace. Patr only validates ownership.
 	AddDomainToWorkspace,
 	POST "/workspace/{workspace_id}/domain" {
 		/// The ID of the workspace
@@ -25,12 +24,6 @@ macros::declare_api_endpoint!(
 		/// The name of the domain
 		#[preprocess(domain)]
 		pub domain: String,
-		/// The type of nameserver
-		/// It can be
-		/// - Internal: The nameserver is managed by Patr
-		/// - External: The nameserver is managed by the user
-		#[preprocess(none)]
-		pub nameserver_type: DomainNameserverType,
 	},
 	response = {
 		/// The ID of the created record

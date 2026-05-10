@@ -46,7 +46,6 @@ pub async fn create_deployment(
 								startup_probe,
 								liveness_probe,
 								config_mounts,
-								volumes,
 							},
 						deploy_on_create,
 					},
@@ -230,12 +229,11 @@ pub async fn create_deployment(
 
 	query!(
 		r#"
-		INSERT INTO 
+		INSERT INTO
 			deployment_environment_variable(
 				deployment_id,
 				name,
-				value,
-				secret_id
+				value
 			)
 		SELECT
 			*
@@ -243,8 +241,7 @@ pub async fn create_deployment(
 			UNNEST(
 				$1::UUID[],
 				$2::TEXT[],
-				$3::TEXT[],
-				$4::UUID[]
+				$3::TEXT[]
 			);
 		"#,
 		&environment_variables
@@ -257,12 +254,8 @@ pub async fn create_deployment(
 			.collect::<Vec<_>>(),
 		&environment_variables
 			.iter()
-			.map(|(_, value)| value.value().cloned())
-			.collect::<Vec<Option<String>>>() as _,
-		&environment_variables
-			.iter()
-			.map(|(_, value)| value.secret_id().map(Into::into))
-			.collect::<Vec<Option<sqlx::types::Uuid>>>() as _,
+			.map(|(_, value)| value.clone())
+			.collect::<Vec<String>>() as _,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -301,43 +294,6 @@ pub async fn create_deployment(
 	)
 	.execute(&mut **database)
 	.await?;
-
-	query!(
-		r#"
-		INSERT INTO 
-			deployment_volume_mount(
-				deployment_id,
-				volume_id,
-				volume_mount_path
-			)
-		SELECT
-			*
-		FROM
-			UNNEST(
-				$1::UUID[],
-				$2::UUID[],
-				$3::TEXT[]
-			);
-		"#,
-		&volumes
-			.iter()
-			.map(|_| deployment_id.into())
-			.collect::<Vec<_>>(),
-		&volumes
-			.iter()
-			.map(|(volume_id, _)| (*volume_id).into())
-			.collect::<Vec<_>>(),
-		&volumes
-			.iter()
-			.map(|(_, mount_path)| mount_path.clone())
-			.collect::<Vec<_>>(),
-	)
-	.execute(&mut **database)
-	.await
-	.map_err(|err| match err {
-		sqlx::Error::Database(err) if err.is_unique_violation() => ErrorType::ResourceInUse,
-		err => ErrorType::server_error(err),
-	})?;
 
 	if let DeploymentRegistry::PatrRegistry { repository_id, .. } = &registry {
 		let digest = query!(
@@ -432,7 +388,6 @@ pub async fn create_deployment(
 					startup_probe,
 					liveness_probe,
 					config_mounts,
-					volumes,
 				},
 			})
 			.unwrap(),

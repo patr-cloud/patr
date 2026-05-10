@@ -34,8 +34,6 @@ pub enum GithubCallbackStatus {
 	SetupRequired {
 		/// One-time-use setup token
 		setup_token: String,
-		/// Pre-filled username suggestion from GitHub login (editable)
-		prefilled_username: String,
 		/// Pre-filled first name from GitHub display name (editable; empty if
 		/// GitHub had no display name)
 		prefilled_first_name: String,

@@ -63,7 +63,7 @@ pub async fn get_mfa_secret(
 				);
 			})?,
 		Some(constants::TOTP_ISSUER.to_string()),
-		user_data.username,
+		user_data.email.clone(),
 	)
 	.inspect_err(|err| {
 		error!(

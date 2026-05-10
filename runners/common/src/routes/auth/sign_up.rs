@@ -17,9 +17,8 @@ pub async fn sign_up(
 					CreateAccountRequestProcessed {
 						first_name,
 						last_name,
-						username,
+						email,
 						password,
-						recovery_method: _,
 						cf_turnstile_token: _,
 					},
 			},
@@ -28,7 +27,7 @@ pub async fn sign_up(
 		supervisor_ref: _,
 	}: AppRequest<'_, CreateAccountRequest>,
 ) -> Result<AppResponse<CreateAccountRequest>, ErrorType> {
-	trace!("Signing up user: {}", username);
+	trace!("Signing up user: {}", email);
 
 	let rows = query(
 		r#"
@@ -65,10 +64,10 @@ pub async fn sign_up(
 	}
 
 	let None = db_user_id.zip(db_password_hash) else {
-		return Err(ErrorType::UsernameUnavailable);
+		return Err(ErrorType::EmailUnavailable);
 	};
 
-	trace!("Creating user with username: {}", username);
+	trace!("Creating user with username: {}", email);
 
 	let RunnerMode::SelfHosted {
 		password_pepper,
@@ -110,7 +109,7 @@ pub async fn sign_up(
 		"#,
 	)
 	.bind(constants::USER_ID_KEY)
-	.bind(&username)
+	.bind(&email)
 	.bind(constants::PASSWORD_HASH_KEY)
 	.bind(hashed_password)
 	.bind(constants::FIRST_NAME_KEY)

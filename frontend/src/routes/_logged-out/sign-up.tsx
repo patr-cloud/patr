@@ -9,7 +9,6 @@ import { httpRequest } from "~/utils/http-request";
 import { validatePassword } from "~/utils/validation";
 
 interface FieldErrors {
-	username: string;
 	firstName: string;
 	lastName: string;
 	email: string;
@@ -18,7 +17,6 @@ interface FieldErrors {
 }
 
 const emptyErrors: FieldErrors = {
-	username: "",
 	firstName: "",
 	lastName: "",
 	email: "",
@@ -50,7 +48,6 @@ const SignUp = () => {
 		}
 	};
 
-	const [username, setUsername] = createSignal("");
 	const [firstName, setFirstName] = createSignal("");
 	const [lastName, setLastName] = createSignal("");
 
@@ -69,10 +66,6 @@ const SignUp = () => {
 		const newErrors = { ...emptyErrors };
 		let valid = true;
 
-		if (!username().trim()) {
-			newErrors.username = "Username is required.";
-			valid = false;
-		}
 		if (!firstName().trim()) {
 			newErrors.firstName = "First name is required.";
 			valid = false;
@@ -113,11 +106,10 @@ const SignUp = () => {
 		}
 
 		const requestBody: CreateAccountRequest = {
-			username: username(),
+			email: email(),
 			password: password(),
 			firstName: firstName(),
 			lastName: lastName(),
-			recoveryEmail: email(),
 			cfTurnstileToken: turnstileToken(),
 		};
 
@@ -127,12 +119,9 @@ const SignUp = () => {
 		});
 
 		if (resp.ok) {
-			navigate({ to: "/confirm-signup", search: { username: username(), otp: undefined } });
+			navigate({ to: "/confirm-signup", search: { email: email(), otp: undefined } });
 		} else {
 			switch (resp.data.error) {
-				case "usernameUnavailable":
-					setErrors((prev) => ({ ...prev, username: "Username is already taken." }));
-					break;
 				case "emailUnavailable":
 					setErrors((prev) => ({ ...prev, email: "Email is already in use." }));
 					break;
@@ -172,28 +161,8 @@ const SignUp = () => {
 
 				{/* Form */}
 				<div>
-					<Input
-						type={InputType.Text}
-						placeholder="Username"
-						autocomplete="username"
-						required={true}
-						name="username"
-						id="username"
-						value={username}
-						onInput={(e) => {
-							setUsername(e.currentTarget.value);
-							clearError("username");
-						}}
-						styleVariant="medium"
-					/>
-					<Show when={errors().username}>
-						<div class="mt-1">
-							<Alert message={errors().username} type="error" />
-						</div>
-					</Show>
-
 					{/* Name Inputs */}
-					<div class="flex items-center gap-4 mt-4">
+					<div class="flex items-center gap-4">
 						<div class="flex-1">
 							<Input
 								type={InputType.Text}
@@ -315,7 +284,7 @@ const SignUp = () => {
 					<div class="pt-8 w-full flex flex-row items-center justify-between">
 						<Link
 							to="/confirm-signup"
-							search={{ username: undefined, otp: undefined }}
+							search={{ email: undefined, otp: undefined }}
 							class="text-primary text-xs hover:underline font-light"
 						>
 							Have an OTP?

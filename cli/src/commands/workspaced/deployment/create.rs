@@ -173,7 +173,7 @@ fn build_menu_items(
 	min_horizontal_scale: u16,
 	max_horizontal_scale: u16,
 	ports: &BTreeMap<StringifiedU16, ExposedPortType>,
-	environment_variables: &BTreeMap<String, EnvironmentVariableValue>,
+	environment_variables: &BTreeMap<String, String>,
 	deploy_on_create: bool,
 ) -> Vec<MenuItem> {
 	let required_remaining = [
@@ -334,9 +334,7 @@ fn parse_ports_from_args(
 }
 
 /// Parse `KEY=VALUE` strings passed via `--env` into the API's env-var map.
-fn parse_env_vars_from_args(
-	env_vars: Vec<String>,
-) -> Result<BTreeMap<String, EnvironmentVariableValue>, AppError> {
+fn parse_env_vars_from_args(env_vars: Vec<String>) -> Result<BTreeMap<String, String>, AppError> {
 	env_vars
 		.into_iter()
 		.map(|env_var| {
@@ -354,10 +352,7 @@ fn parse_env_vars_from_args(
 				)));
 			}
 
-			Ok((
-				key.to_string(),
-				EnvironmentVariableValue::String(value.to_string()),
-			))
+			Ok((key.to_string(), value.to_string()))
 		})
 		.collect()
 }
@@ -565,7 +560,7 @@ fn edit_ports(ports: &mut BTreeMap<StringifiedU16, ExposedPortType>) {
 
 /// Interactive editor for the environment-variables map: loops through
 /// add/remove actions until the user selects Done.
-fn edit_env_vars(env_vars: &mut BTreeMap<String, EnvironmentVariableValue>) {
+fn edit_env_vars(env_vars: &mut BTreeMap<String, String>) {
 	loop {
 		let mut choices = vec!["Add variable".to_string()];
 		for key in env_vars.keys() {
@@ -601,7 +596,7 @@ fn edit_env_vars(env_vars: &mut BTreeMap<String, EnvironmentVariableValue>) {
 				continue;
 			};
 
-			env_vars.insert(key, EnvironmentVariableValue::String(value));
+			env_vars.insert(key, value);
 		} else if let Some(key) = selection.strip_prefix("Remove ") {
 			env_vars.remove(key);
 		}
@@ -996,7 +991,6 @@ pub async fn execute(
 					startup_probe: None,
 					liveness_probe: None,
 					config_mounts: BTreeMap::new(),
-					volumes: BTreeMap::new(),
 				},
 				deploy_on_create,
 			})

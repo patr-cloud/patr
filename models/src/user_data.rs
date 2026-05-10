@@ -13,8 +13,8 @@ use crate::{prelude::*, rbac::WorkspacePermission};
 pub struct RequestUserData {
 	/// The userId as per the database.
 	pub id: Uuid,
-	/// The username of the user.
-	pub username: String,
+	/// The email address of the user.
+	pub email: String,
 	/// The first name of the user.
 	pub first_name: String,
 	/// The last name of the user.

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE user_to_sign_up ADD CONSTRAINT user_to_sign_up_pk PRIMARY KEY(email);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "3b08672387ff8fa24c93d750ad7d3fcc5bd861565e8426ec28b0b1fa98239362"
+}

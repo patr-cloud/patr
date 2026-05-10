@@ -30,8 +30,6 @@ async fn fresh_db_has_all_tables() {
 		"deployment_exposed_port",
 		"deployment_config_mounts",
 		"deployment_deploy_history",
-		"deployment_volume",
-		"deployment_volume_mount",
 	];
 
 	for table in expected {

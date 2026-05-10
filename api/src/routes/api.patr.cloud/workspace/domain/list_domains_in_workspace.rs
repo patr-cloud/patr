@@ -16,7 +16,6 @@ pub async fn list_domains_in_workspace(
 								name: name_filter,
 								last_verified: last_verified_filter,
 								is_verified: is_verified_filter,
-								nameserver_type: nameserver_type_filter,
 							},
 						count,
 						page,
@@ -44,7 +43,6 @@ pub async fn list_domains_in_workspace(
 		SELECT
 			workspace_domain.id,
 			CONCAT(name, '.', tld) AS "name!",
-			nameserver_type AS "nameserver_type: DomainNameserverType",
 			is_verified,
 			last_verified,
 			COUNT(*) OVER() AS "total_count!"
@@ -58,23 +56,18 @@ pub async fn list_domains_in_workspace(
 			workspace_id = $1 AND
 			workspace_domain.deleted IS NULL AND
 			($4::TEXT IS NULL OR CONCAT(name, tld) ILIKE '%' || $4::TEXT || '%') AND
-			(
-				$5::DOMAIN_NAMESERVER_TYPE[] IS NULL OR
-				nameserver_type = ANY($5)
-			) AND
-			($6::BOOLEAN IS NULL OR is_verified = $6) AND
-			($7::TIMESTAMPTZ IS NULL OR last_verified >= $7) AND
-			($8::TIMESTAMPTZ IS NULL OR last_verified <= $8)
+			($5::BOOLEAN IS NULL OR is_verified = $5) AND
+			($6::TIMESTAMPTZ IS NULL OR last_verified >= $6) AND
+			($7::TIMESTAMPTZ IS NULL OR last_verified <= $7)
 		ORDER BY
 			resource.created DESC
-		LIMIT $9
-		OFFSET $10;
+		LIMIT $8
+		OFFSET $9;
 		"#,
 		workspace_id as _,
 		user_data.login_id as _,
 		Permission::Domain(DomainPermission::View) as _,
 		name_filter as _,
-		nameserver_type_filter as _,
 		is_verified_filter as _,
 		last_verified_filter
 			.as_ref()
@@ -94,7 +87,6 @@ pub async fn list_domains_in_workspace(
 			row.id,
 			WorkspaceDomain {
 				name: row.name,
-				nameserver_type: row.nameserver_type,
 				is_verified: row.is_verified,
 				last_verified: row.last_verified,
 			},

@@ -27,7 +27,7 @@ pub async fn social_login_setup(
 				body:
 					SocialLoginSetupRequestProcessed {
 						setup_token,
-						username,
+						email,
 						first_name,
 						last_name,
 					},
@@ -57,44 +57,18 @@ pub async fn social_login_setup(
 			.ok_or(ErrorType::SocialLoginFailed)?,
 	)?;
 
-	// Check username availability
-	let username_taken = query!(
+	// Check email availability — both the user-supplied email and the GitHub
+	// payload email (the latter is what we'll actually link).
+	let email_taken = query!(
 		r#"
 		SELECT
 			id
 		FROM
 			"user"
 		WHERE
-			username = $1;
+			email = $1 OR email = $2;
 		"#,
-		&username,
-	)
-	.fetch_optional(&mut **database)
-	.await?
-	.is_some();
-
-	if username_taken {
-		return Err(ErrorType::UsernameUnavailable);
-	}
-
-	// Check email availability
-	let email_taken = query!(
-		r#"
-		SELECT
-			id AS "id!"
-		FROM
-			"user"
-		WHERE
-			recovery_email = $1
-		UNION
-		SELECT
-			user_id AS "id!"
-		FROM
-			user_email
-		WHERE
-			email = $1
-		LIMIT 1;
-		"#,
+		&email,
 		&payload.email,
 	)
 	.fetch_optional(&mut **database)
@@ -139,14 +113,11 @@ pub async fn social_login_setup(
 		INSERT INTO
 			"user"(
 				id,
-				username,
+				email,
 				password,
 				first_name,
 				last_name,
 				created,
-				recovery_email,
-				recovery_phone_country_code,
-				recovery_phone_number,
 				workspace_limit,
 				password_reset_token,
 				password_reset_token_expiry,
@@ -154,55 +125,15 @@ pub async fn social_login_setup(
 				mfa_secret
 			)
 		VALUES
-			(
-				$1,
-				$2,
-				$3,
-				$4,
-				$5,
-				$6,
-				$7,
-				NULL,
-				NULL,
-				$8,
-				NULL,
-				NULL,
-				NULL,
-				NULL
-			);
+			($1, $2, $3, $4, $5, $6, $7, NULL, NULL, NULL, NULL);
 		"#,
 		user_id as _,
-		&username,
+		&payload.email,
 		hashed_password,
 		&first_name,
 		&last_name,
 		now,
-		&payload.email,
 		constants::DEFAULT_WORKSPACE_LIMIT,
-	)
-	.execute(&mut **database)
-	.await?;
-
-	query!(
-		r#"
-		INSERT INTO
-			user_email(
-				user_id,
-				email
-			)
-		VALUES
-			($1, $2);
-		"#,
-		user_id as _,
-		&payload.email,
-	)
-	.execute(&mut **database)
-	.await?;
-
-	query!(
-		r#"
-		SET CONSTRAINTS ALL IMMEDIATE;
-		"#
 	)
 	.execute(&mut **database)
 	.await?;

@@ -14,7 +14,6 @@ pub mod managed_url;
 pub mod membership;
 pub mod rbac;
 pub mod runner;
-pub mod volume;
 pub mod workspace;
 
 /// Create admin, workspace, and user B with a role that has specific

@@ -1,6 +1,5 @@
 import { FiTrash2 } from "solid-icons/fi";
 import { createEffect, createMemo, createSignal, createUniqueId, Index, Show } from "solid-js";
-import { EnvironmentVariableValue } from "~/bindings";
 import { Button, ButtonVariant, Input, InputType, InputLabel } from "~/components";
 import { Color } from "~/utils/color";
 import { get } from "~/utils/func";
@@ -8,9 +7,9 @@ import { MaybeAccessor } from "~/utils/types";
 
 interface EnvInputProps {
 	/** Current environment variables (source of truth). */
-	value: MaybeAccessor<Record<string, EnvironmentVariableValue>>;
+	value: MaybeAccessor<Record<string, string>>;
 	/** Fires whenever the committed (validated) map changes. */
-	onChange: (next: Record<string, EnvironmentVariableValue>) => void;
+	onChange: (next: Record<string, string>) => void;
 	/** Fires whenever the validity of the rows changes. Parents use this to gate submit. */
 	onValidityChange?: (valid: boolean) => void;
 	/** Disables all inputs. */
@@ -19,38 +18,21 @@ interface EnvInputProps {
 	class?: MaybeAccessor<string>;
 }
 
-// Row value preserves the full EnvironmentVariableValue union so that
-// `fromSecret` references coming from the server round-trip untouched unless
-// the user actively replaces them.
-type Row = { id: string; key: string; value: EnvironmentVariableValue };
-
-const isSecretValue = (value: EnvironmentVariableValue): value is { fromSecret: string } =>
-	typeof value === "object" && value !== null && "fromSecret" in value;
-
-const valueIsEmpty = (value: EnvironmentVariableValue): boolean => typeof value === "string" && value === "";
-
-// Stable string for comparing incoming vs last-seeded values (detects secret
-// vs secret, secret vs string, etc.).
-const valueKey = (value: EnvironmentVariableValue): string =>
-	typeof value === "string" ? `s:${value}` : `r:${value.fromSecret}`;
+type Row = { id: string; key: string; value: string };
 
 const makeDraftRow = (): Row => ({ id: createUniqueId(), key: "", value: "" });
 
 const EnvInput = (props: EnvInputProps) => {
 	const [rows, setRows] = createSignal<Row[]>([makeDraftRow()]);
 
-	// Seed from props.value on mount and whenever the incoming map *itself*
-	// changes (e.g. the parent refetches after a save). This effect must not
-	// read our own committed state — doing so would make it re-run on every
-	// keystroke and clobber the user's edits.
-	let lastSeeded: Record<string, EnvironmentVariableValue> | null = null;
+	let lastSeeded: Record<string, string> | null = null;
 	createEffect(() => {
 		const incoming = get(props.value) ?? {};
 		if (lastSeeded !== null) {
 			const incomingKeys = Object.keys(incoming);
 			const same =
 				incomingKeys.length === Object.keys(lastSeeded).length &&
-				incomingKeys.every((k) => valueKey(incoming[k]) === valueKey(lastSeeded![k]));
+				incomingKeys.every((k) => incoming[k] === lastSeeded![k]);
 			if (same) return;
 		}
 		lastSeeded = { ...incoming };
@@ -76,8 +58,8 @@ const EnvInput = (props: EnvInputProps) => {
 	const rowError = (row: Row): RowErrors => {
 		const errs: RowErrors = {};
 		const keyEmpty = row.key === "";
-		const isEmpty = valueIsEmpty(row.value);
-		if (keyEmpty && isEmpty) return errs; // draft row
+		const isEmpty = row.value === "";
+		if (keyEmpty && isEmpty) return errs;
 		if (keyEmpty) errs.key = "Key required";
 		if (isEmpty) errs.value = "Value required";
 		if (!keyEmpty && (keyCounts().get(row.key) ?? 0) > 1) errs.key = "Duplicate key";
@@ -86,18 +68,17 @@ const EnvInput = (props: EnvInputProps) => {
 
 	const hasAnyError = createMemo(() => rows().some((r) => Object.keys(rowError(r)).length > 0));
 
-	const committedMap = (): Record<string, EnvironmentVariableValue> => {
-		const out: Record<string, EnvironmentVariableValue> = {};
+	const committedMap = (): Record<string, string> => {
+		const out: Record<string, string> = {};
 		const counts = keyCounts();
 		for (const row of rows()) {
-			if (row.key === "" || valueIsEmpty(row.value)) continue;
+			if (row.key === "" || row.value === "") continue;
 			if ((counts.get(row.key) ?? 0) > 1) continue;
 			out[row.key] = row.value;
 		}
 		return out;
 	};
 
-	// Emit committed map + validity on every row change.
 	createEffect(() => {
 		props.onChange(committedMap());
 		props.onValidityChange?.(!hasAnyError());
@@ -106,9 +87,8 @@ const EnvInput = (props: EnvInputProps) => {
 	const updateRow = (id: string, patch: Partial<Pick<Row, "key" | "value">>) => {
 		setRows((prev) => {
 			const next = prev.map((r) => (r.id === id ? { ...r, ...patch } : r));
-			// Ensure exactly one trailing empty draft row at the end.
 			const last = next[next.length - 1];
-			if (!last || last.key !== "" || !valueIsEmpty(last.value)) {
+			if (!last || last.key !== "" || last.value !== "") {
 				next.push(makeDraftRow());
 			}
 			return next;
@@ -119,7 +99,7 @@ const EnvInput = (props: EnvInputProps) => {
 		setRows((prev) => {
 			const next = prev.filter((r) => r.id !== id);
 			const last = next[next.length - 1];
-			if (!last || last.key !== "" || !valueIsEmpty(last.value)) {
+			if (!last || last.key !== "" || last.value !== "") {
 				next.push(makeDraftRow());
 			}
 			return next;
@@ -130,10 +110,9 @@ const EnvInput = (props: EnvInputProps) => {
 		setRows((prev) => {
 			const row = prev.find((r) => r.id === id);
 			if (!row) return prev;
-			if (row.key !== "" || !valueIsEmpty(row.value)) return prev;
-			// Row is empty on blur — remove it unless it's the sole trailing draft.
+			if (row.key !== "" || row.value !== "") return prev;
 			if (prev.length === 1) return prev;
-			if (prev[prev.length - 1].id === id) return prev; // keep trailing draft
+			if (prev[prev.length - 1].id === id) return prev;
 			return prev.filter((r) => r.id !== id);
 		});
 	};
@@ -148,10 +127,8 @@ const EnvInput = (props: EnvInputProps) => {
 						const errs = () => rowError(row());
 						const keyErr = () => errs().key;
 						const valueErr = () => errs().value;
-						const isSecret = () => isSecretValue(row().value);
-						const displayValue = () => (typeof row().value === "string" ? (row().value as string) : "");
 						const isDraftTrailing = () =>
-							row().key === "" && valueIsEmpty(row().value) && rows()[rows().length - 1]?.id === row().id;
+							row().key === "" && row().value === "" && rows()[rows().length - 1]?.id === row().id;
 
 						return (
 							<div class="flex flex-col gap-1 w-full">
@@ -171,9 +148,9 @@ const EnvInput = (props: EnvInputProps) => {
 									<Input
 										class={`flex-7 ${valueErr() ? "border-error!" : ""}`}
 										disabled={get(props.disabled)}
-										placeholder={isSecret() ? "(secret — type to replace)" : "Enter Env Value"}
+										placeholder="Enter Env Value"
 										type={InputType.Text}
-										value={displayValue()}
+										value={row().value}
 										onInput={(e) => updateRow(row().id, { value: e.currentTarget.value })}
 										onBlur={() => handleBlur(row().id)}
 										onKeyDown={(e) => {

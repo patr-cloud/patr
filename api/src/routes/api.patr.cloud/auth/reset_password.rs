@@ -21,7 +21,7 @@ pub async fn reset_password(
 				headers: ResetPasswordRequestHeaders { user_agent: _ },
 				body:
 					ResetPasswordRequestProcessed {
-						user_id,
+						email,
 						verification_token,
 						password,
 					},
@@ -32,7 +32,7 @@ pub async fn reset_password(
 		state,
 	}: AppRequest<'_, ResetPasswordRequest>,
 ) -> Result<AppResponse<ResetPasswordRequest>, ErrorType> {
-	info!("Resetting password for user: `{user_id}`");
+	info!("Resetting password for user: `{email}`");
 
 	let user_data = query!(
 		r#"
@@ -43,28 +43,10 @@ pub async fn reset_password(
 			"user".password_reset_attempts
 		FROM
 			"user"
-		LEFT JOIN
-			user_email
-		ON
-			user_email.user_id = "user".id
-		LEFT JOIN
-			user_phone_number
-		ON
-			user_phone_number.user_id = "user".id
-		LEFT JOIN
-			phone_number_country_code
-		ON
-			phone_number_country_code.country_code = user_phone_number.country_code
 		WHERE
-			"user".username = $1 OR
-			user_email.email = $1 OR
-			CONCAT(
-				'+',
-				phone_number_country_code.phone_code,
-				user_phone_number.number
-			) = $1;
+			"user".email = $1;
 		"#,
-		&user_id,
+		&email,
 	)
 	.fetch_optional(&mut **database)
 	.await?

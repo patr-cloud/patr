@@ -102,7 +102,6 @@ fn test_deployment(runner_id: Uuid) -> (Uuid, Deployment, DeploymentRunningDetai
 		startup_probe: None,
 		liveness_probe: None,
 		config_mounts: BTreeMap::new(),
-		volumes: BTreeMap::new(),
 	};
 	(id, deployment, details)
 }

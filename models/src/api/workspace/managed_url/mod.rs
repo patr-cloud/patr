@@ -82,24 +82,6 @@ pub enum ManagedUrlType {
 		/// Deployment port of the deployment to point to
 		port: u16,
 	},
-	/// URL is pointing to a static site
-	#[serde(rename_all = "camelCase")]
-	#[strum_discriminants(cfg_attr(
-		not(target_arch = "wasm32"),
-		sqlx(rename = "proxy_to_static_site")
-	))]
-	ProxyStaticSite {
-		/// Static site ID of the static site to point to
-		static_site_id: Uuid,
-	},
-	/// URL is a proxy
-	#[serde(rename_all = "camelCase")]
-	ProxyUrl {
-		/// The URL of the proxy
-		url: String,
-		/// If the URL is a http only
-		http_only: bool,
-	},
 	/// URL is a redirect to another site
 	#[serde(rename_all = "camelCase")]
 	Redirect {

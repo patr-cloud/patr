@@ -1,4 +1,3 @@
-import { EnvironmentVariableValue } from "./EnvironmentVariableValue";
 import { ExposedPortType } from "./ExposedPortType";
 import { CreateDeploymentResponse } from "./CreateDeploymentResponse";
 import { CreateDeploymentRequest } from "./CreateDeploymentRequest";
@@ -25,9 +24,6 @@ import { UpdateDeploymentRequest } from "./UpdateDeploymentRequest";
 import { UpdateDeploymentResponse } from "./UpdateDeploymentResponse";
 import { AddDomainToWorkspaceRequest } from "./AddDomainToWorkspaceRequest";
 import { AddDomainToWorkspaceResponse } from "./AddDomainToWorkspaceResponse";
-import { DomainNameserverType } from "./DomainNameserverType";
-// import { GetDomainsForWorkspaceRequest } from "./GetDomainsForWorkspaceRequest";
-// import { GetDomainsForWorkspaceResponse } from "./GetDomainsForWorkspaceResponse";
 import { WorkspaceDomain } from "./WorkspaceDomain";
 import { GetDomainInfoInWorkspaceRequest } from "./GetDomainInfoInWorkspaceRequest";
 import { GetDomainInfoInWorkspaceResponse } from "./GetDomainInfoInWorkspaceResponse";
@@ -69,7 +65,6 @@ import { RevokeApiTokenRequest } from "./RevokeApiTokenRequest";
 import { GetCurrentPermissionsRequest } from "./GetCurrentPermissionsRequest";
 import { GetCurrentPermissionsResponse } from "./GetCurrentPermissionsResponse";
 import { Deployment } from "./Deployment";
-import { PatrDomainDnsRecord } from "./PatrDomainDnsRecord";
 import { Role } from "./Role";
 import { ResourcePermissionType } from "./ResourcePermissionType";
 import { GetRoleInfoResponse } from "./GetRoleInfoResponse";
@@ -106,7 +101,6 @@ import { ConnectSocialLoginInitiateResponse } from "./ConnectSocialLoginInitiate
 import { ConnectSocialLoginCallbackRequest } from "./ConnectSocialLoginCallbackRequest";
 
 export type {
-	EnvironmentVariableValue,
 	ExposedPortType,
 	CreateDeploymentRequest,
 	CreateDeploymentResponse,
@@ -133,9 +127,6 @@ export type {
 	UpdateDeploymentResponse,
 	AddDomainToWorkspaceRequest,
 	AddDomainToWorkspaceResponse,
-	DomainNameserverType,
-	// GetDomainsForWorkspaceRequest,
-	// GetDomainsForWorkspaceResponse,
 	WorkspaceDomain,
 	GetDomainInfoInWorkspaceRequest,
 	GetDomainInfoInWorkspaceResponse,
@@ -177,7 +168,6 @@ export type {
 	GetCurrentPermissionsRequest,
 	GetCurrentPermissionsResponse,
 	Deployment,
-	PatrDomainDnsRecord,
 	Role,
 	GetRoleInfoResponse,
 	ResourcePermissionType,

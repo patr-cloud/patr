@@ -12,7 +12,6 @@ export type WorkspaceMember = {
 	firstName: string;
 	lastName: string;
 	fullName: string;
-	username: string;
 	roleIds: string[];
 };
 
@@ -59,7 +58,6 @@ export const useMembersQuery = (page: Accessor<string | undefined>, count: Acces
 					const user = userResponse.data;
 					const firstName = user.firstName || "";
 					const lastName = user.lastName || "";
-					const username = user.username || "";
 					const id = user.id || "";
 
 					return {
@@ -67,7 +65,6 @@ export const useMembersQuery = (page: Accessor<string | undefined>, count: Acces
 						firstName,
 						lastName,
 						fullName: `${firstName} ${lastName}`,
-						username,
 						roleIds: response.data.users[userId] || [],
 					} satisfies WorkspaceMember;
 				});

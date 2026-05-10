@@ -32,7 +32,7 @@ pub async fn login(
 				headers: LoginRequestHeaders { user_agent },
 				body:
 					LoginRequestProcessed {
-						user_id,
+						email,
 						password,
 						mfa_otp,
 						cf_turnstile_token,
@@ -63,39 +63,21 @@ pub async fn login(
 		return Err(ErrorType::TurnstileVerificationActionMismatch);
 	}
 
-	trace!("Logging in user: {}", user_id);
+	trace!("Logging in user: {}", email);
 
 	let user_data = query!(
 		r#"
 		SELECT
 			"user".id,
-			"user".username,
+			"user".email,
 			"user".password,
 			"user".mfa_secret
 		FROM
 			"user"
-		LEFT JOIN
-			user_email
-		ON
-			user_email.user_id = "user".id
-		LEFT JOIN
-			user_phone_number
-		ON
-			user_phone_number.user_id = "user".id
-		LEFT JOIN
-			phone_number_country_code
-		ON
-			phone_number_country_code.country_code = user_phone_number.country_code
 		WHERE
-			"user".username = $1 OR
-			user_email.email = $1 OR
-			CONCAT(
-				'+',
-				phone_number_country_code.phone_code,
-				user_phone_number.number
-			) = $1;
+			"user".email = $1;
 		"#,
-		&user_id,
+		&email,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -148,7 +130,7 @@ pub async fn login(
 				);
 			})?,
 			Some(constants::TOTP_ISSUER.to_string()),
-			user_data.username,
+			user_data.email,
 		)
 		.inspect_err(|err| {
 			error!(

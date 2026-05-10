@@ -52,8 +52,7 @@ pub async fn get_deployment_info(
 		r#"
 		SELECT
 			name,
-			value,
-			secret_id
+			value
 		FROM
 			deployment_environment_variable
 		WHERE
@@ -64,16 +63,7 @@ pub async fn get_deployment_info(
 	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
-	.filter_map(|env| match (env.value, env.secret_id) {
-		(Some(value), None) => Some((env.name, EnvironmentVariableValue::String(value))),
-		(None, Some(secret_id)) => Some((
-			env.name,
-			EnvironmentVariableValue::Secret {
-				from_secret: secret_id.into(),
-			},
-		)),
-		_ => None,
-	})
+	.map(|env| (env.name, env.value))
 	.collect();
 
 	let config_mounts = query!(
@@ -92,24 +82,6 @@ pub async fn get_deployment_info(
 	.await?
 	.into_iter()
 	.map(|mount| (mount.path, mount.file.into()))
-	.collect();
-
-	let volumes = query!(
-		r#"
-		SELECT
-			volume_id,
-			volume_mount_path
-		FROM
-			deployment_volume_mount
-		WHERE
-			deployment_id = $1;
-		"#,
-		deployment_id as _,
-	)
-	.fetch_all(&mut **database)
-	.await?
-	.into_iter()
-	.map(|row| (row.volume_id.into(), row.volume_mount_path))
 	.collect();
 
 	let deployment = query!(
@@ -185,7 +157,6 @@ pub async fn get_deployment_info(
 				},
 			),
 			config_mounts,
-			volumes,
 		},
 	})
 	.ok_or(ErrorType::ResourceDoesNotExist)?;

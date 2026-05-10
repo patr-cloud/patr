@@ -12,21 +12,12 @@ mod docker_login;
 mod forgot_password;
 /// The route to check if an email is valid
 mod is_email_valid;
-/// The route to check if a username is valid
-mod is_username_valid;
-/// The route to list recovery options for a user
-mod list_recovery_options;
 /// The route to login a user
 mod login;
 /// The route to logout a user
 mod logout;
-/// All OAuth related routes
-#[expect(unused_variables)]
-mod oauth;
 /// The route to renew an access token
 mod renew_access_token;
-/// The route to resend an OTP for verification
-mod resend_otp;
 /// The route to reset a user's password
 mod reset_password;
 /// Social-login (GitHub, …) SSO routes
@@ -38,12 +29,9 @@ use self::{
 	docker_login::*,
 	forgot_password::*,
 	is_email_valid::*,
-	is_username_valid::*,
-	list_recovery_options::*,
 	login::*,
 	logout::*,
 	renew_access_token::*,
-	resend_otp::*,
 	reset_password::*,
 };
 
@@ -51,7 +39,6 @@ use self::{
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
 	Router::new()
-		.merge(oauth::setup_routes(state, allowed_client_type).await)
 		.merge(social_login::setup_routes(state, allowed_client_type).await)
 		.mount_endpoint(login, state, allowed_client_type)
 		.mount_auth_endpoint(logout, state, allowed_client_type)
@@ -59,10 +46,7 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 		.mount_endpoint(renew_access_token, state, allowed_client_type)
 		.mount_endpoint(forgot_password, state, allowed_client_type)
 		.mount_endpoint(is_email_valid, state, allowed_client_type)
-		.mount_endpoint(is_username_valid, state, allowed_client_type)
 		.mount_endpoint(complete_sign_up, state, allowed_client_type)
-		.mount_endpoint(list_recovery_options, state, allowed_client_type)
-		.mount_endpoint(resend_otp, state, allowed_client_type)
 		.mount_endpoint(reset_password, state, allowed_client_type)
 		.mount_endpoint(docker_login, state, allowed_client_type)
 }

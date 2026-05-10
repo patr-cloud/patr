@@ -2,7 +2,6 @@ use std::{io::IsTerminal, path::Path, process::Command};
 
 use clap::Args as ClapArgs;
 use models::ApiSuccessResponseBody;
-use strum::IntoEnumIterator as _;
 
 use crate::prelude::*;
 
@@ -38,10 +37,8 @@ pub async fn execute(
 		.map_err(|e| AppError::RunnerError(format!("Failed to determine current binary: {e}")))?;
 
 	let cli_config_path = crate::utils::config_local_dir();
-	let runner_configs = RunnerType::iter()
-		.map(|t| (t, crate::utils::runner_config_path(t)))
-		.filter(|(_, p)| p.exists())
-		.collect::<Vec<_>>();
+	let runner_config_path = crate::utils::runner_config_path();
+	let runner_config_present = runner_config_path.exists();
 
 	// Layer 1 confirm (unless -y or --purge).
 	if !args.yes && !args.purge {
@@ -54,11 +51,11 @@ pub async fn execute(
 		if cli_config_path.exists() {
 			eprintln!("  - CLI config ({})", cli_config_path.display());
 		}
-		for (_, p) in &runner_configs {
-			eprintln!("  - Runner config ({})", p.display());
+		if runner_config_present {
+			eprintln!("  - Runner config ({})", runner_config_path.display());
 		}
-		if !runner_configs.is_empty() && Path::new("/run/systemd/system").exists() {
-			eprintln!("  - Installed systemd services for the above runners, if any");
+		if runner_config_present && Path::new("/run/systemd/system").exists() {
+			eprintln!("  - Installed systemd service for the runner, if any");
 		}
 		eprintln!("  - The patr binary at {}", current_exe.display());
 		let confirm = inquire::Confirm::new("Continue?")
@@ -116,96 +113,90 @@ pub async fn execute(
 	// Layer 1: remove installed systemd services for any runner type whose
 	// config we found on disk. Logic mirrors `runner service uninstall` but
 	// runs non-interactively here.
-	if Path::new("/run/systemd/system").exists() {
+	if Path::new("/run/systemd/system").exists() && runner_config_present {
 		let is_root = uzers::get_current_uid() == 0;
-		if !is_root && !runner_configs.is_empty() {
+		if !is_root {
 			eprintln!(
-				"This will use sudo to stop/remove installed systemd services. You may be prompted for your password."
+				"This will use sudo to stop/remove the installed systemd service. You may be prompted for your password."
 			);
 		}
-		for (runner_type, _) in &runner_configs {
-			let runner_type_str = match runner_type {
-				RunnerType::Docker => "docker",
-				RunnerType::Kubernetes => "kubernetes",
-			};
-			let service_name = format!("patr-{runner_type_str}-runner.service");
-			let service_file_path = format!("/etc/systemd/system/{service_name}");
 
-			// Lenient stop.
-			let mut stop_cmd = if is_root {
-				Command::new("systemctl")
-			} else {
-				let mut c = Command::new("sudo");
-				c.arg("systemctl");
-				c
-			};
-			stop_cmd.args(["stop", &service_name]);
-			if let Err(e) = stop_cmd.status() {
-				eprintln!("systemctl stop {service_name}: {e} (continuing)");
-			}
+		let service_name = "patr-docker-runner.service";
+		let service_file_path = format!("/etc/systemd/system/{service_name}");
 
-			// Lenient disable.
-			let mut disable_cmd = if is_root {
-				Command::new("systemctl")
-			} else {
-				let mut c = Command::new("sudo");
-				c.arg("systemctl");
-				c
-			};
-			disable_cmd.args(["disable", &service_name]);
-			if let Err(e) = disable_cmd.status() {
-				eprintln!("systemctl disable {service_name}: {e} (continuing)");
-			}
-
-			let rm_ok = if is_root {
-				std::fs::remove_file(&service_file_path)
-					.or_else(|e| {
-						if e.kind() == std::io::ErrorKind::NotFound {
-							Ok(())
-						} else {
-							Err(e)
-						}
-					})
-					.map_err(|e| format!("Failed to remove {service_file_path}: {e}"))
-			} else {
-				Command::new("sudo")
-					.args(["rm", "-f", &service_file_path])
-					.status()
-					.map_err(|e| format!("Failed to run sudo rm: {e}"))
-					.and_then(|s| {
-						if s.success() {
-							Ok(())
-						} else {
-							Err(format!("sudo rm exited with {s}"))
-						}
-					})
-			};
-			if let Err(e) = rm_ok {
-				eprintln!("Warning: {e}");
-			}
+		// Lenient stop.
+		let mut stop_cmd = if is_root {
+			Command::new("systemctl")
+		} else {
+			let mut c = Command::new("sudo");
+			c.arg("systemctl");
+			c
+		};
+		stop_cmd.args(["stop", service_name]);
+		if let Err(e) = stop_cmd.status() {
+			eprintln!("systemctl stop {service_name}: {e} (continuing)");
 		}
 
-		// One daemon-reload after all services removed.
-		if !runner_configs.is_empty() {
-			let _ = if is_root {
-				Command::new("systemctl")
-			} else {
-				let mut c = Command::new("sudo");
-				c.arg("systemctl");
-				c
-			}
-			.arg("daemon-reload")
-			.status();
+		// Lenient disable.
+		let mut disable_cmd = if is_root {
+			Command::new("systemctl")
+		} else {
+			let mut c = Command::new("sudo");
+			c.arg("systemctl");
+			c
+		};
+		disable_cmd.args(["disable", service_name]);
+		if let Err(e) = disable_cmd.status() {
+			eprintln!("systemctl disable {service_name}: {e} (continuing)");
 		}
+
+		let rm_ok = if is_root {
+			std::fs::remove_file(&service_file_path)
+				.or_else(|e| {
+					if e.kind() == std::io::ErrorKind::NotFound {
+						Ok(())
+					} else {
+						Err(e)
+					}
+				})
+				.map_err(|e| format!("Failed to remove {service_file_path}: {e}"))
+		} else {
+			Command::new("sudo")
+				.args(["rm", "-f", &service_file_path])
+				.status()
+				.map_err(|e| format!("Failed to run sudo rm: {e}"))
+				.and_then(|s| {
+					if s.success() {
+						Ok(())
+					} else {
+						Err(format!("sudo rm exited with {s}"))
+					}
+				})
+		};
+		if let Err(e) = rm_ok {
+			eprintln!("Warning: {e}");
+		}
+
+		let _ = if is_root {
+			Command::new("systemctl")
+		} else {
+			let mut c = Command::new("sudo");
+			c.arg("systemctl");
+			c
+		}
+		.arg("daemon-reload")
+		.status();
 	}
 
-	// Remove runner config files.
-	for (_, config_path) in &runner_configs {
-		if let Err(e) = std::fs::remove_file(config_path) &&
-			e.kind() != std::io::ErrorKind::NotFound
-		{
-			eprintln!("Warning: failed to remove {}: {e}", config_path.display());
-		}
+	// Remove runner config file.
+	if runner_config_present &&
+		let Err(e) = std::fs::remove_file(&runner_config_path) &&
+		e.kind() != std::io::ErrorKind::NotFound
+	{
+		eprintln!(
+			"Warning: failed to remove {}: {e}",
+			runner_config_path.display()
+		);
 	}
 
 	// Remove the CLI state file.

@@ -21,25 +21,17 @@ struct StatusOutput {
 
 /// The arguments for the `runner service status` command.
 #[derive(Debug, Clone, ClapArgs)]
-pub struct Args {
-	/// The type of runner whose service status to show
-	#[arg(value_enum)]
-	pub runner_type: RunnerType,
-}
+pub struct Args {}
 
 /// Show `systemctl status` for the installed runner service.
-pub async fn execute(args: Args, global_args: GlobalArgs) -> Result<CommandOutput, AppError> {
+pub async fn execute(_args: Args, global_args: GlobalArgs) -> Result<CommandOutput, AppError> {
 	if !Path::new("/run/systemd/system").exists() {
 		return Err(AppError::RunnerError(
 			"systemd is not available on this system".to_string(),
 		));
 	}
 
-	let runner_type_str = match args.runner_type {
-		RunnerType::Docker => "docker",
-		RunnerType::Kubernetes => "kubernetes",
-	};
-	let service_name = format!("patr-{runner_type_str}-runner.service");
+	let service_name = "patr-docker-runner.service".to_string();
 
 	// JSON modes would interleave systemctl's human-text output with the JSON
 	// payload on stdout and break machine parsing. Consumers get the exit code

@@ -15,11 +15,7 @@ pub async fn forgot_password(
 				path: ForgotPasswordPath,
 				query: (),
 				headers: ForgotPasswordRequestHeaders { user_agent: _ },
-				body:
-					ForgotPasswordRequestProcessed {
-						user_id,
-						preferred_recovery_option,
-					},
+				body: ForgotPasswordRequestProcessed { email },
 			},
 		database,
 		redis: _,
@@ -27,42 +23,19 @@ pub async fn forgot_password(
 		state,
 	}: AppRequest<'_, ForgotPasswordRequest>,
 ) -> Result<AppResponse<ForgotPasswordRequest>, ErrorType> {
-	info!("Initiating forgot password request for user: `{user_id}`");
+	info!("Initiating forgot password request for: `{email}`");
 
 	let user_data = query!(
 		r#"
 		SELECT
 			"user".id,
-			"user".username,
-			"user".password,
-			"user".recovery_email,
-			"user".recovery_phone_country_code,
-			"user".recovery_phone_number,
 			"user".password_reset_token_expiry
 		FROM
 			"user"
-		LEFT JOIN
-			user_email
-		ON
-			user_email.user_id = "user".id
-		LEFT JOIN
-			user_phone_number
-		ON
-			user_phone_number.user_id = "user".id
-		LEFT JOIN
-			phone_number_country_code
-		ON
-			phone_number_country_code.country_code = user_phone_number.country_code
 		WHERE
-			"user".username = $1 OR
-			user_email.email = $1 OR
-			CONCAT(
-				'+',
-				phone_number_country_code.phone_code,
-				user_phone_number.number
-			) = $1;
+			"user".email = $1;
 		"#,
-		&user_id,
+		&email,
 	)
 	.fetch_optional(&mut **database)
 	.await?;
@@ -70,7 +43,7 @@ pub async fn forgot_password(
 	// If the user doesn't exist, return a silent 202 — same shape as the
 	// success path — so the caller can't probe for account existence.
 	let Some(user_data) = user_data else {
-		debug!("forgot_password called for unknown user `{}`", user_id);
+		debug!("forgot_password called for unknown email `{}`", email);
 		return AppResponse::builder()
 			.body(ForgotPasswordResponse)
 			.headers(())
@@ -88,33 +61,10 @@ pub async fn forgot_password(
 		Version::V0x13,
 		constants::HASHING_PARAMS,
 	)
-	.inspect_err(|err| {
-		error!("Error creating Argon2: `{err}`");
-	})
 	.map_err(ErrorType::server_error)?
 	.hash_password_with_salt(password_reset_token.as_bytes(), &generate_salt())
-	.inspect_err(|err| {
-		error!("Error hashing reset token: `{err}`");
-	})
 	.map_err(ErrorType::server_error)?
 	.to_string();
-
-	let should_reset = match &preferred_recovery_option {
-		PreferredRecoveryOption::RecoveryPhoneNumber => user_data.recovery_phone_number.is_some(),
-		PreferredRecoveryOption::RecoveryEmail => user_data.recovery_email.is_some(),
-	};
-
-	if !should_reset {
-		debug!("User has selected a recovery option that is not set in the database");
-
-		// Return Ok even if the data is invalid to prevent leaking user data
-		return AppResponse::builder()
-			.body(ForgotPasswordResponse)
-			.headers(())
-			.status_code(StatusCode::ACCEPTED)
-			.build()
-			.into_result();
-	}
 
 	if user_data
 		.password_reset_token_expiry
@@ -123,7 +73,6 @@ pub async fn forgot_password(
 	{
 		debug!("User has an active password reset token");
 
-		// The previous attempt hasn't expired yet
 		return AppResponse::builder()
 			.body(ForgotPasswordResponse)
 			.headers(())
@@ -152,7 +101,7 @@ pub async fn forgot_password(
 
 	trace!("Password reset token for user `{}` updated", user_data.id);
 
-	// TODO send OTP by the preferred recovery option
+	// TODO send OTP via email
 
 	AppResponse::builder()
 		.body(ForgotPasswordResponse)

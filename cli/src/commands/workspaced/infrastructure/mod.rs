@@ -14,7 +14,7 @@ mod deployment;
 /// All commands to setup / run a runner
 mod runner;
 
-/// All infrastructure related commands (e.g. deployments, databases, etc.)
+/// All infrastructure related commands.
 #[derive(Debug, Clone, Subcommand)]
 #[command(rename_all = "kebab-case")]
 pub enum InfrastructureCommand {
@@ -27,12 +27,6 @@ pub enum InfrastructureCommand {
 	/// All container registry related commands
 	#[command(flatten)]
 	ContainerRegistryCommand(ContainerRegistryCommand),
-	// #[command(flatten)]
-	// DatabaseCommand(DatabaseCommand),
-	// #[command(flatten)]
-	// StaticSiteCommand(StaticSiteCommand),
-	// #[command(flatten)]
-	// SecretCommand(SecretCommand),
 }
 
 /// All commands that are executed on workspace related stuff

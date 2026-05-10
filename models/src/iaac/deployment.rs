@@ -570,17 +570,12 @@ impl TryFrom<OneOrMore<String>> for IaacDeploymentPorts {
 /// map of environment variable names to their values. The environment variables
 /// can be defined in the Iaac file in the following formats:
 /// - `KEY=VALUE`
-///
-/// An environment variable value can be either a raw string or a reference to a
-/// secret.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct IaacDeploymentEnvVars(
-	BTreeMap<String, MaybeExternallySourced<EnvironmentVariableValue>>,
-);
+pub struct IaacDeploymentEnvVars(BTreeMap<String, MaybeExternallySourced<String>>);
 
 impl IaacDeploymentEnvVars {
 	/// Get the inner map of the IaacDeploymentEnvVars.
-	pub fn into_inner(self) -> BTreeMap<String, MaybeExternallySourced<EnvironmentVariableValue>> {
+	pub fn into_inner(self) -> BTreeMap<String, MaybeExternallySourced<String>> {
 		self.0
 	}
 
@@ -615,13 +610,11 @@ impl TryFrom<Vec<String>> for IaacDeploymentEnvVars {
 	fn try_from(value: Vec<String>) -> Result<Self, Self::Error> {
 		fn parse_one_env(
 			env: String,
-		) -> Result<(String, MaybeExternallySourced<EnvironmentVariableValue>), &'static str> {
+		) -> Result<(String, MaybeExternallySourced<String>), &'static str> {
 			if let Some((key, value)) = env.split_once('=') {
 				return Ok((
 					key.trim().to_string(),
-					MaybeExternallySourced::Value(EnvironmentVariableValue::String(
-						value.trim().to_string(),
-					)),
+					MaybeExternallySourced::Value(value.trim().to_string()),
 				));
 			}
 

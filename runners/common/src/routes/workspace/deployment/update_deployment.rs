@@ -9,7 +9,7 @@ use crate::{actors::runner_supervisor::RunnerSupervisorMessage, app::AppRequest,
 /// details. The deployment details that can be updated are the name, machine
 /// type, deploy on push, min horizontal scale, max horizontal scale, ports,
 /// environment variables, startup probe, liveness probe, config mounts, and
-/// volumes. At least one of the values must be updated.
+/// At least one of the values must be updated.
 pub async fn update_deployment(
 	AppRequest {
 		request:
@@ -37,7 +37,6 @@ pub async fn update_deployment(
 						startup_probe,
 						liveness_probe,
 						config_mounts,
-						volumes,
 					},
 			},
 		database,
@@ -60,7 +59,6 @@ pub async fn update_deployment(
 		.or(startup_probe.as_ref().map(|_| 0))
 		.or(liveness_probe.as_ref().map(|_| 0))
 		.or(config_mounts.as_ref().map(|_| 0))
-		.or(volumes.as_ref().map(|_| 0))
 		.is_none()
 	{
 		debug!(
@@ -221,26 +219,23 @@ pub async fn update_deployment(
 		for (name, value) in environment_variables {
 			query(
 				r#"
-				INSERT INTO 
+				INSERT INTO
 					deployment_environment_variable(
 						deployment_id,
 						name,
-						value,
-						secret_id
+						value
 					)
 				VALUES
 					(
 						$1,
 						$2,
-						$3,
-						$4
+						$3
 					);
 				"#,
 			)
 			.bind(deployment_id)
 			.bind(name)
-			.bind(value.value())
-			.bind(value.secret_id())
+			.bind(value)
 			.execute(&mut **database)
 			.await?;
 		}
@@ -281,51 +276,6 @@ pub async fn update_deployment(
 			.bind(file.into_vec())
 			.execute(&mut **database)
 			.await?;
-		}
-	}
-
-	if let Some(updated_volumes) = &volumes {
-		query(
-			r#"
-			DELETE FROM
-				deployment_volume_mount
-			WHERE
-				deployment_id = $1;
-			"#,
-		)
-		.bind(deployment_id)
-		.execute(&mut **database)
-		.await?;
-
-		for (volume_id, volume_mount_path) in updated_volumes {
-			query(
-				r#"
-				INSERT INTO
-					deployment_volume_mount(
-						deployment_id,
-						volume_id,
-						volume_mount_path
-					)
-				VALUES
-					(
-						$1,
-						$2,
-						$3
-					);
-				"#,
-			)
-			.bind(deployment_id)
-			.bind(volume_id)
-			.bind(volume_mount_path.clone())
-			.execute(&mut **database)
-			.await
-			.map_err(|err| match err {
-				sqlx::Error::Database(err) if err.is_unique_violation() => ErrorType::ResourceInUse,
-				sqlx::Error::Database(err) if err.is_foreign_key_violation() => {
-					ErrorType::ResourceDoesNotExist
-				}
-				err => ErrorType::server_error(err),
-			})?;
 		}
 	}
 

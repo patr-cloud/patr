@@ -53,7 +53,6 @@ pub(crate) async fn upsert(
 		startup_probe,
 		liveness_probe,
 		config_mounts,
-		volumes: _, // TODO
 	}: DeploymentRunningDetails,
 ) -> Result<(), RunnerError> {
 	let service_name = format!("patr-{}", id);
@@ -244,16 +243,7 @@ pub(crate) async fn upsert(
 				env: Some(
 					environment_variables
 						.into_iter()
-						.map(|(key, value)| {
-							format!(
-								"{}={}",
-								key,
-								match value {
-									EnvironmentVariableValue::String(value) => value,
-									EnvironmentVariableValue::Secret { from_secret: _ } => todo!(),
-								}
-							)
-						})
+						.map(|(key, value)| format!("{}={}", key, value))
 						.collect(),
 				),
 				labels: Some(HashMap::from([

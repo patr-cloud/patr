@@ -98,16 +98,16 @@ const UserSettingsInfoSection = () => {
 			</form>
 
 			<div class="flex gap-4 items-center w-full">
-				<InputLabel parentClass="flex-1" for="recovery-email" label="Email" />
+				<InputLabel parentClass="flex-1" for="email" label="Email" />
 
 				<Input
-					value={localInfo()?.recoveryEmail || ""}
+					value={localInfo()?.email || ""}
 					class="flex-11"
-					id="recovery-email"
-					name="recovery-email"
+					id="email"
+					name="email"
 					autocomplete="email"
-					placeholder="Recovery Email"
-					type={InputType.Text}
+					placeholder="Email"
+					type={InputType.Email}
 					disabled
 				/>
 			</div>

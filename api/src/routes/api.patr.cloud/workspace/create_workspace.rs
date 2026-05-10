@@ -6,17 +6,12 @@ use models::{
 	rbac::{
 		BillingPermission,
 		ContainerRegistryRepositoryPermission,
-		DatabasePermission,
 		DeploymentPermission,
-		DnsRecordPermission,
 		DomainPermission,
 		ManagedURLPermission,
 		Permission,
 		ResourcePermissionTypeDiscriminant,
 		RunnerPermission,
-		SecretPermission,
-		StaticSitePermission,
-		VolumePermission,
 	},
 };
 use rustis::commands::StringCommands;
@@ -197,38 +192,6 @@ fn default_roles() -> Vec<DefaultRole> {
 
 	let mut roles = Vec::new();
 
-	let view_db = vec![Database(DatabasePermission::View)];
-	let edit_db = {
-		let mut p = view_db.clone();
-		p.extend([
-			Database(DatabasePermission::Create),
-			Database(DatabasePermission::Edit),
-			Database(DatabasePermission::Backup),
-			Database(DatabasePermission::Restore),
-		]);
-		p
-	};
-	let admin_db = {
-		let mut p = edit_db.clone();
-		p.push(Database(DatabasePermission::Delete));
-		p
-	};
-	roles.push(DefaultRole {
-		name: "Database: Viewer",
-		description: "Default role: read-only access to databases.",
-		permissions: view_db,
-	});
-	roles.push(DefaultRole {
-		name: "Database: Editor",
-		description: "Default role: create, edit, back up, and restore databases.",
-		permissions: edit_db,
-	});
-	roles.push(DefaultRole {
-		name: "Database: Admin",
-		description: "Default role: full control over databases, including delete.",
-		permissions: admin_db,
-	});
-
 	let view_deployment = vec![Deployment(DeploymentPermission::View)];
 	let edit_deployment = {
 		let mut p = view_deployment.clone();
@@ -259,99 +222,6 @@ fn default_roles() -> Vec<DefaultRole> {
 		name: "Deployment: Admin",
 		description: "Default role: full control over deployments, including delete.",
 		permissions: admin_deployment,
-	});
-
-	let view_static = vec![StaticSite(StaticSitePermission::View)];
-	let edit_static = {
-		let mut p = view_static.clone();
-		p.extend([
-			StaticSite(StaticSitePermission::Create),
-			StaticSite(StaticSitePermission::Edit),
-			StaticSite(StaticSitePermission::Upload),
-			StaticSite(StaticSitePermission::Start),
-			StaticSite(StaticSitePermission::Stop),
-		]);
-		p
-	};
-	let admin_static = {
-		let mut p = edit_static.clone();
-		p.push(StaticSite(StaticSitePermission::Delete));
-		p
-	};
-	roles.push(DefaultRole {
-		name: "Static Site: Viewer",
-		description: "Default role: read-only access to static sites.",
-		permissions: view_static,
-	});
-	roles.push(DefaultRole {
-		name: "Static Site: Editor",
-		description: "Default role: create, edit, upload, start, and stop static sites.",
-		permissions: edit_static,
-	});
-	roles.push(DefaultRole {
-		name: "Static Site: Admin",
-		description: "Default role: full control over static sites, including delete.",
-		permissions: admin_static,
-	});
-
-	let view_volume = vec![Volume(VolumePermission::View)];
-	let edit_volume = {
-		let mut p = view_volume.clone();
-		p.extend([
-			Volume(VolumePermission::Create),
-			Volume(VolumePermission::Edit),
-		]);
-		p
-	};
-	let admin_volume = {
-		let mut p = edit_volume.clone();
-		p.push(Volume(VolumePermission::Delete));
-		p
-	};
-	roles.push(DefaultRole {
-		name: "Volume: Viewer",
-		description: "Default role: read-only access to volumes.",
-		permissions: view_volume,
-	});
-	roles.push(DefaultRole {
-		name: "Volume: Editor",
-		description: "Default role: create and edit volumes.",
-		permissions: edit_volume,
-	});
-	roles.push(DefaultRole {
-		name: "Volume: Admin",
-		description: "Default role: full control over volumes, including delete.",
-		permissions: admin_volume,
-	});
-
-	let view_secret = vec![Secret(SecretPermission::View)];
-	let edit_secret = {
-		let mut p = view_secret.clone();
-		p.extend([
-			Secret(SecretPermission::Create),
-			Secret(SecretPermission::Edit),
-		]);
-		p
-	};
-	let admin_secret = {
-		let mut p = edit_secret.clone();
-		p.push(Secret(SecretPermission::Delete));
-		p
-	};
-	roles.push(DefaultRole {
-		name: "Secret: Viewer",
-		description: "Default role: read-only access to secrets.",
-		permissions: view_secret,
-	});
-	roles.push(DefaultRole {
-		name: "Secret: Editor",
-		description: "Default role: create and edit secrets.",
-		permissions: edit_secret,
-	});
-	roles.push(DefaultRole {
-		name: "Secret: Admin",
-		description: "Default role: full control over secrets, including delete.",
-		permissions: admin_secret,
 	});
 
 	let view_managed_url = vec![
@@ -415,36 +285,6 @@ fn default_roles() -> Vec<DefaultRole> {
 		name: "Domain: Admin",
 		description: "Default role: full control over domains, including delete.",
 		permissions: admin_domain,
-	});
-
-	let view_dns = vec![DnsRecord(DnsRecordPermission::View)];
-	let edit_dns = {
-		let mut p = view_dns.clone();
-		p.extend([
-			DnsRecord(DnsRecordPermission::Add),
-			DnsRecord(DnsRecordPermission::Edit),
-		]);
-		p
-	};
-	let admin_dns = {
-		let mut p = edit_dns.clone();
-		p.push(DnsRecord(DnsRecordPermission::Delete));
-		p
-	};
-	roles.push(DefaultRole {
-		name: "DNS Record: Viewer",
-		description: "Default role: read-only access to DNS records.",
-		permissions: view_dns,
-	});
-	roles.push(DefaultRole {
-		name: "DNS Record: Editor",
-		description: "Default role: add and edit DNS records.",
-		permissions: edit_dns,
-	});
-	roles.push(DefaultRole {
-		name: "DNS Record: Admin",
-		description: "Default role: full control over DNS records, including delete.",
-		permissions: admin_dns,
 	});
 
 	let view_runner = vec![Runner(RunnerPermission::View)];

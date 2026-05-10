@@ -21,7 +21,6 @@ pub async fn list_users_for_role(
 						sort: sort_order,
 						search:
 							BasicUserInfoSearchParams {
-								username: username_filter,
 								first_name: first_name_filter,
 								last_name: last_name_filter,
 							},
@@ -59,16 +58,14 @@ pub async fn list_users_for_role(
 			workspace_user.user_id = "user".id
 		WHERE
 			workspace_id = $1 AND
-			($2::TEXT IS NULL OR "user".username ILIKE '%' || $2::TEXT || '%') AND
-			($3::TEXT IS NULL OR "user".first_name ILIKE '%' || $3::TEXT || '%') AND
-			($4::TEXT IS NULL OR "user".last_name ILIKE '%' || $4::TEXT || '%')
+			($2::TEXT IS NULL OR "user".first_name ILIKE '%' || $2::TEXT || '%') AND
+			($3::TEXT IS NULL OR "user".last_name ILIKE '%' || $3::TEXT || '%')
 		ORDER BY
 			workspace_user.user_id
-		LIMIT $5
-		OFFSET $6;
+		LIMIT $4
+		OFFSET $5;
 		"#,
 		workspace_id as _,
-		username_filter,
 		first_name_filter,
 		last_name_filter,
 		count as i64,

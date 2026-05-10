@@ -29,7 +29,6 @@ async fn domain_add_permission_grants_access() {
 				})
 				.body(AddDomainToWorkspaceRequest {
 					domain: format!("{}.com", random_name(8)),
-					nameserver_type: DomainNameserverType::External,
 				})
 				.build(),
 		)

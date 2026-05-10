@@ -33,7 +33,6 @@ pub async fn get_domain_info_in_workspace(
 		SELECT
 			workspace_domain.id,
 			CONCAT(name, '.', tld) AS "name!",
-			nameserver_type AS "nameserver_type: DomainNameserverType",
 			is_verified,
 			last_verified
 		FROM
@@ -51,7 +50,6 @@ pub async fn get_domain_info_in_workspace(
 			row.id,
 			WorkspaceDomain {
 				name: row.name,
-				nameserver_type: row.nameserver_type,
 				is_verified: row.is_verified,
 				last_verified: row.last_verified,
 			},

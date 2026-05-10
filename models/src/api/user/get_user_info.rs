@@ -1,6 +1,6 @@
 use time::OffsetDateTime;
 
-use super::{BasicUserInfo, UserPhoneNumber};
+use super::BasicUserInfo;
 use crate::prelude::*;
 
 macros::declare_api_endpoint!(
@@ -17,16 +17,14 @@ macros::declare_api_endpoint!(
 		AppAuthentication::<Self>::PlainTokenAuthenticator
 	},
 	response = {
-		/// The basic info of the user. Username, userId, first name, last name, etc.
+		/// The basic info of the user.
 		#[serde(flatten)]
 		pub basic_user_info: WithId<BasicUserInfo>,
 		/// When the user account was created
 		#[ts(type = "Date")]
 		pub created: OffsetDateTime,
-		/// The primary recovery email of the user
-		pub recovery_email: Option<String>,
-		/// The primary phone number of the user
-		pub recovery_phone_number: Option<UserPhoneNumber>,
+		/// The primary email of the user
+		pub email: String,
 		/// Check if MFA is enabled or not
 		pub is_mfa_enabled: bool,
 	},

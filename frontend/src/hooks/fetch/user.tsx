@@ -1,7 +1,6 @@
 import { createQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
 import { GetMfaSecretResponse, GetUserInfoResponse } from "~/bindings";
-import { SearchForUserResponse } from "~/bindings/SearchForUserResponse";
 
 import { useAuthState } from "~/hooks/state-hooks";
 import { mfaKeys, userInfoKeys } from "~/hooks/query-keys";
@@ -20,32 +19,6 @@ export const useUserInfoQuery = () => {
 				const response = await httpRequest<GetUserInfoResponse>(`${import.meta.env.VITE_BASE_URL}/api/user`, {
 					method: "GET",
 				});
-
-				if (!response.ok) {
-					throw new Error(response.data.error);
-				}
-
-				return response.data;
-			},
-		};
-	});
-};
-
-export const useUserSearchQuery = (query: Accessor<string>) => {
-	const [authState] = useAuthState();
-
-	return createQuery<SearchForUserResponse>(() => {
-		const auth = authState();
-		const q = query();
-		return {
-			queryKey: userInfoKeys.search(q),
-			enabled: !!auth && auth.type === "LoggedIn" && q.length >= 3,
-			meta: { errorMessage: "Failed to search users" },
-			queryFn: async () => {
-				const response = await httpRequest<SearchForUserResponse>(
-					`${import.meta.env.VITE_BASE_URL}/api/user/search?query=${encodeURIComponent(q)}`,
-					{ method: "GET" }
-				);
 
 				if (!response.ok) {
 					throw new Error(response.data.error);
