@@ -64,7 +64,6 @@ regex                          = { workspace = true, features = ["default"] }
 reqwest                        = { workspace = true, features = ["default", "json", "multipart", "blocking", "stream", "query", "form"] }
 rust-embed                     = { workspace = true, features = ["interpolate-folder-path", "mime-guess"] }
 rustis                         = { workspace = true, features = ["default", "pool", "tokio-rustls"] }
-sea-orm                        = { workspace = true, features = ["runtime-tokio-rustls", "sqlx-postgres", "macros", "with-uuid", "with-time", "with-json", "with-ipnetwork"] }
 semver                         = { workspace = true, features = ["default"] }
 serde                          = { workspace = true, features = ["default", "derive"] }
 serde_json                     = { workspace = true, features = ["default"] }
