@@ -193,7 +193,7 @@ const ManageWorkspace = () => {
 
 							<div class="flex items-center justify-center gap-3 w-full">
 								<UserSearchInput
-									placeholder="Search for user by name or username..."
+									placeholder="Paste user ID"
 									class="flex-2"
 									onUserSelect={handleUserSelect}
 								/>
@@ -290,7 +290,7 @@ const ManageWorkspace = () => {
 																	{member.fullName}
 																</span>
 																<span class="text-grey text-xs truncate">
-																	@{member.username}
+																	{member.userId}
 																</span>
 															</div>
 															<div class="px-3 py-1 border border-border-color rounded-xs text-xs text-grey">
@@ -406,7 +406,7 @@ const ManageWorkspace = () => {
 														<span class="text-white text-xl font-medium">
 															{member().fullName}
 														</span>
-														<span class="text-grey text-sm">@{member().username}</span>
+														<span class="text-grey text-sm">{member().userId}</span>
 													</div>
 
 													<div class="flex flex-col gap-3">

@@ -12,7 +12,6 @@ use models::{
 			managed_url::*,
 			rbac::{role::*, user::*},
 			runner::*,
-			volume::*,
 			*,
 		},
 	},
@@ -37,7 +36,7 @@ pub const TEST_USER_AGENT: UserAgent = UserAgent::from_static(concat!(
 /// A test user with credentials and tokens.
 pub struct TestUser {
 	pub user_id: Uuid,
-	pub username: String,
+	pub email: String,
 	pub password: String,
 	pub access_token: BearerToken,
 	pub refresh_token: BearerToken,
@@ -65,12 +64,6 @@ pub struct TestDeployment {
 pub struct TestDomain {
 	pub id: Uuid,
 	pub domain: String,
-}
-
-/// A test volume.
-pub struct TestVolume {
-	pub id: Uuid,
-	pub name: String,
 }
 
 /// A test container repository.
@@ -123,7 +116,7 @@ impl TestSetup {
 	/// Create a new test user account (CreateAccount + CompleteSignUp),
 	/// returning the user's credentials and tokens.
 	pub async fn create_test_user(&self) -> TestUser {
-		let username = random_name(8);
+		let email = format!("{}@example.com", random_name(8));
 		let password = random_password();
 
 		self.make_web_dashboard_call(
@@ -132,13 +125,10 @@ impl TestSetup {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateAccountRequest {
-					username: username.clone(),
+					email: email.clone(),
 					password: password.clone(),
 					first_name: "Test".to_string(),
 					last_name: "User".to_string(),
-					recovery_method: RecoveryMethod::Email {
-						recovery_email: format!("{}@example.com", &username),
-					},
 					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
 				})
 				.build(),
@@ -153,7 +143,7 @@ impl TestSetup {
 						user_agent: TEST_USER_AGENT,
 					})
 					.body(CompleteSignUpRequest {
-						username: username.clone(),
+						email: email.clone(),
 						verification_token: "000000".to_string(),
 						cf_turnstile_token: "1x00000000000000000000AA".to_string(),
 					})
@@ -177,7 +167,7 @@ impl TestSetup {
 
 		TestUser {
 			user_id: user_info.response.basic_user_info.id,
-			username,
+			email,
 			password,
 			access_token: BearerToken::from_str(&response.access_token).unwrap(),
 			refresh_token: BearerToken::from_str(&response.refresh_token).unwrap(),
@@ -185,7 +175,7 @@ impl TestSetup {
 	}
 
 	/// Login an existing test user, returning new access and refresh tokens.
-	pub async fn login_test_user(&self, username: &str, password: &str) -> (String, String) {
+	pub async fn login_test_user(&self, email: &str, password: &str) -> (String, String) {
 		let response = self
 			.make_web_dashboard_call(
 				ApiRequest::<LoginRequest>::builder()
@@ -193,7 +183,7 @@ impl TestSetup {
 						user_agent: TEST_USER_AGENT,
 					})
 					.body(LoginRequest {
-						user_id: username.to_string(),
+						email: email.to_string(),
 						password: password.to_string(),
 						mfa_otp: None,
 						cf_turnstile_token: "1x00000000000000000000AA".to_string(),
@@ -312,7 +302,6 @@ impl TestSetup {
 							startup_probe: None,
 							liveness_probe: None,
 							config_mounts: BTreeMap::new(),
-							volumes: BTreeMap::new(),
 						},
 						deploy_on_create: false,
 					})
@@ -364,7 +353,6 @@ impl TestSetup {
 					})
 					.body(AddDomainToWorkspaceRequest {
 						domain: domain.clone(),
-						nameserver_type: DomainNameserverType::External,
 					})
 					.build(),
 			)
@@ -375,34 +363,6 @@ impl TestSetup {
 		TestDomain {
 			id: response.id.id,
 			domain,
-		}
-	}
-
-	/// Create a volume in a workspace, returning its ID and name.
-	pub async fn create_test_volume(&self, token: &BearerToken, workspace_id: Uuid) -> TestVolume {
-		let name = random_name(8);
-
-		let response = self
-			.make_web_dashboard_call(
-				ApiRequest::<CreateVolumeRequest>::builder()
-					.path(CreateVolumePath { workspace_id })
-					.headers(CreateVolumeRequestHeaders {
-						authorization: token.clone(),
-						user_agent: TEST_USER_AGENT,
-					})
-					.body(CreateVolumeRequest {
-						name: name.clone(),
-						size: 1,
-					})
-					.build(),
-			)
-			.await
-			.json::<ApiSuccessResponseBody<CreateVolumeResponse>>()
-			.response;
-
-		TestVolume {
-			id: response.id.id,
-			name,
 		}
 	}
 

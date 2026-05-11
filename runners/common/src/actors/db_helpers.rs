@@ -37,7 +37,6 @@ pub async fn create_deployment_in_database(
 		startup_probe,
 		liveness_probe,
 		config_mounts,
-		volumes,
 	}: DeploymentRunningDetails,
 ) -> Result<(), RunnerError> {
 	trace!("Creating deployment in database with ID: {}", deployment_id);
@@ -157,17 +156,15 @@ pub async fn create_deployment_in_database(
 				deployment_environment_variable(
 					deployment_id,
 					name,
-					value,
-					secret_id
+					value
 				)
 			VALUES
-				($1, $2, $3, $4);
+				($1, $2, $3);
 			"#,
 		)
 		.bind(deployment_id)
 		.bind(name)
-		.bind(value.value())
-		.bind(value.secret_id())
+		.bind(value)
 		.execute(&mut *connection)
 		.await?;
 	}
@@ -188,26 +185,6 @@ pub async fn create_deployment_in_database(
 		.bind(deployment_id)
 		.bind(path)
 		.bind(file.to_vec())
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	for (volume_id, mount_path) in &volumes {
-		query(
-			r#"
-			INSERT INTO
-				deployment_volume_mount(
-					deployment_id,
-					volume_id,
-					volume_mount_path
-				)
-			VALUES
-				($1, $2, $3);
-			"#,
-		)
-		.bind(deployment_id)
-		.bind(volume_id)
-		.bind(mount_path)
 		.execute(&mut *connection)
 		.await?;
 	}
@@ -308,18 +285,6 @@ pub async fn delete_deployment_in_database(
 		r#"
 		DELETE FROM
 			managed_url
-		WHERE
-			deployment_id = $1;
-		"#,
-	)
-	.bind(deployment_id)
-	.execute(&mut *connection)
-	.await?;
-
-	query(
-		r#"
-		DELETE FROM
-			deployment_volume_mount
 		WHERE
 			deployment_id = $1;
 		"#,

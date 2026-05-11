@@ -102,7 +102,6 @@ async fn create_deployment_invalid_name() {
 						startup_probe: None,
 						liveness_probe: None,
 						config_mounts: BTreeMap::new(),
-						volumes: BTreeMap::new(),
 					},
 					deploy_on_create: false,
 				})
@@ -264,7 +263,6 @@ async fn update_deployment_works() {
 					startup_probe: None,
 					liveness_probe: None,
 					config_mounts: None,
-					volumes: None,
 				})
 				.build(),
 		)

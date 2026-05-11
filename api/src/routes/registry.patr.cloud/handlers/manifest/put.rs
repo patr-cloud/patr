@@ -576,8 +576,7 @@ async fn auto_deploy_on_push(
 			r#"
 			SELECT
 				name,
-				value,
-				secret_id AS "secret_id: Uuid"
+				value
 			FROM
 				deployment_environment_variable
 			WHERE
@@ -588,23 +587,7 @@ async fn auto_deploy_on_push(
 		.fetch_all(&mut **database)
 		.await?
 		.into_iter()
-		.filter_map(|env| {
-			let value = match (env.value.clone(), env.secret_id) {
-				(Some(val), None) => Some(EnvironmentVariableValue::String(val)),
-				(None, Some(from_secret)) => Some(EnvironmentVariableValue::Secret { from_secret }),
-				_ => {
-					warn!(
-						concat!(
-							"corrupted deployment, cannot find environment variable value. ",
-							"deployment_id: {}, env name: `{}`, value: {:?}`, secret_id: {:?}"
-						),
-						deployment_id, env.name, env.value, env.secret_id
-					);
-					None
-				}
-			};
-			value.map(|v| (env.name, v))
-		})
+		.map(|env| (env.name, env.value))
 		.collect::<BTreeMap<_, _>>();
 
 		let config_mounts = query!(
@@ -623,24 +606,6 @@ async fn auto_deploy_on_push(
 		.await?
 		.into_iter()
 		.map(|row| (row.path, Base64String::from(row.file)))
-		.collect::<BTreeMap<_, _>>();
-
-		let volumes = query!(
-			r#"
-			SELECT
-				volume_id AS "volume_id: Uuid",
-				volume_mount_path
-			FROM
-				deployment_volume_mount
-			WHERE
-				deployment_id = $1;
-			"#,
-			deployment_id as _
-		)
-		.fetch_all(&mut **database)
-		.await?
-		.into_iter()
-		.map(|row| (row.volume_id, row.volume_mount_path))
 		.collect::<BTreeMap<_, _>>();
 
 		let startup_probe = deployment
@@ -697,7 +662,6 @@ async fn auto_deploy_on_push(
 						startup_probe,
 						liveness_probe,
 						config_mounts,
-						volumes,
 					},
 				})
 				.map_err(|err| {

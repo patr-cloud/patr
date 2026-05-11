@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE deployment_environment_variable ADD CONSTRAINT deployment_environment_variable_fk_deployment_id FOREIGN KEY(deployment_id) REFERENCES deployment(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "269e4fcfab11687a82e17c6b6cabb7c2c033d7fd816b889b29cdc8d46de7c9fa"
+}

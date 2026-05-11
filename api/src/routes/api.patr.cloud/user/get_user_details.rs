@@ -28,7 +28,6 @@ pub async fn get_user_details(
 	let basic_user_info = query!(
 		r#"
 		SELECT
-			"user".username,
 			"user".first_name,
 			"user".last_name
 		FROM
@@ -44,7 +43,6 @@ pub async fn get_user_details(
 		basic_user_info: WithId::new(
 			user_id,
 			BasicUserInfo {
-				username: row.username,
 				first_name: row.first_name,
 				last_name: row.last_name,
 			},

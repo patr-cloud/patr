@@ -1,12 +1,3 @@
-use cloudflare::{
-	endpoints::zones::zone::*,
-	framework::{
-		Environment,
-		auth::Credentials,
-		client::{ClientConfig, async_api::Client as CloudflareClient},
-		response::ApiFailure,
-	},
-};
 use models::api::workspace::domain::*;
 use reqwest::StatusCode;
 
@@ -32,36 +23,10 @@ pub async fn delete_domain_in_workspace(
 		redis: _,
 		client_ip: _,
 		user_data: _,
-		state,
+		state: _,
 	}: AuthenticatedAppRequest<'_, DeleteDomainInWorkspaceRequest>,
 ) -> Result<AppResponse<DeleteDomainInWorkspaceRequest>, ErrorType> {
 	info!("Deleting domain `{domain_id}` in workspace `{workspace_id}`");
-
-	query!(
-		r#"
-        DELETE FROM
-            user_controlled_domain
-        WHERE
-            domain_id = $1;
-        "#,
-		domain_id as _
-	)
-	.execute(&mut **database)
-	.await?;
-
-	let zone = query!(
-		r#"
-        DELETE FROM
-            patr_controlled_domain
-        WHERE
-            domain_id = $1
-        RETURNING zone_identifier;
-        "#,
-		domain_id as _
-	)
-	.fetch_optional(&mut **database)
-	.await?
-	.map(|r| r.zone_identifier);
 
 	// This will fail with ResourceInUse if managed URLs (or their custom
 	// hostnames) still reference this domain. The user must delete all managed
@@ -82,7 +47,6 @@ pub async fn delete_domain_in_workspace(
 		err => ErrorType::server_error(err),
 	})?;
 
-	// Mark the resource as deleted in the database
 	query!(
 		r#"
 		UPDATE
@@ -96,22 +60,6 @@ pub async fn delete_domain_in_workspace(
 	)
 	.execute(&mut **database)
 	.await?;
-
-	if let Some(zone) = zone {
-		let client = CloudflareClient::new(
-			Credentials::UserAuthToken {
-				token: state.config.cloudflare.api_key.clone(),
-			},
-			ClientConfig::default(),
-			Environment::Custom(state.config.cloudflare.base_url.clone()),
-		)?;
-
-		match client.request(&DeleteZone { identifier: &zone }).await {
-			Ok(_) => {}
-			Err(ApiFailure::Error(status, _)) if status == reqwest::StatusCode::NOT_FOUND => {}
-			Err(err) => return Err(ErrorType::server_error(err)),
-		}
-	}
 
 	AppResponse::builder()
 		.body(DeleteDomainInWorkspaceResponse)

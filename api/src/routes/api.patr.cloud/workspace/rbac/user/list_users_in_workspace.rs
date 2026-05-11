@@ -20,7 +20,6 @@ pub async fn list_users_in_workspace(
 						sort: sort_order,
 						search:
 							BasicUserInfoSearchParams {
-								username: username_filter,
 								first_name: first_name_filter,
 								last_name: last_name_filter,
 							},
@@ -58,9 +57,8 @@ pub async fn list_users_in_workspace(
 				workspace_user.user_id = "user".id
 			WHERE
 				workspace_user.workspace_id = $1 AND
-				($2::TEXT IS NULL OR "user".username ILIKE '%' || $2::TEXT || '%') AND
-				($3::TEXT IS NULL OR "user".first_name ILIKE '%' || $3::TEXT || '%') AND
-				($4::TEXT IS NULL OR "user".last_name ILIKE '%' || $4::TEXT || '%')
+				($2::TEXT IS NULL OR "user".first_name ILIKE '%' || $2::TEXT || '%') AND
+				($3::TEXT IS NULL OR "user".last_name ILIKE '%' || $3::TEXT || '%')
 		),
 		users_page AS (
 			SELECT
@@ -69,8 +67,8 @@ pub async fn list_users_in_workspace(
 				matched_users
 			ORDER BY
 				user_id
-			LIMIT $5
-			OFFSET $6
+			LIMIT $4
+			OFFSET $5
 		)
 		SELECT
 			workspace_user.user_id AS "user_id!",
@@ -89,7 +87,6 @@ pub async fn list_users_in_workspace(
 			workspace_user.role_id;
 		"#,
 		workspace_id as _,
-		username_filter,
 		first_name_filter,
 		last_name_filter,
 		count as i64,

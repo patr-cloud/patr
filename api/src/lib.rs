@@ -45,15 +45,11 @@ pub mod prelude {
 		rbac::{
 			BillingPermission,
 			ContainerRegistryRepositoryPermission,
-			DatabasePermission,
 			DeploymentPermission,
-			DnsRecordPermission,
 			DomainPermission,
 			ManagedURLPermission,
 			Permission,
 			RunnerPermission,
-			SecretPermission,
-			StaticSitePermission,
 		},
 		utils::{
 			BearerToken,

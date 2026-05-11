@@ -6,16 +6,15 @@ import { Alert, Button, Input, InputType, useToast } from "~/components";
 import { ButtonVariant } from "~/utils/color";
 import { createAsyncAction, useAuthState } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
-import { USERNAME_VALIDITY_PATTERN } from "~/utils/validation";
 
 interface FieldErrors {
-	username: string;
+	email: string;
 	firstName: string;
 	lastName: string;
 }
 
 const emptyErrors: FieldErrors = {
-	username: "",
+	email: "",
 	firstName: "",
 	lastName: "",
 };
@@ -28,7 +27,7 @@ const CompleteGithubSignup = () => {
 
 	const search = Route.useSearch();
 
-	const [username, setUsername] = createSignal(search().username ?? "");
+	const [email, setEmail] = createSignal(search().email ?? "");
 	const [firstName, setFirstName] = createSignal(search().firstName ?? "");
 	const [lastName, setLastName] = createSignal(search().lastName ?? "");
 	const [errors, setErrors] = createSignal<FieldErrors>({ ...emptyErrors });
@@ -49,13 +48,8 @@ const CompleteGithubSignup = () => {
 		const newErrors = { ...emptyErrors };
 		let valid = true;
 
-		const trimmedUsername = username().trim();
-		if (!trimmedUsername) {
-			newErrors.username = "Username is required.";
-			valid = false;
-		} else if (!new RegExp(`^${USERNAME_VALIDITY_PATTERN}$`).test(trimmedUsername)) {
-			newErrors.username =
-				"Username must start and end with a lowercase letter, number, or underscore, and may contain dots or hyphens in between.";
+		if (!email().trim()) {
+			newErrors.email = "Email is required.";
 			valid = false;
 		}
 		if (!firstName().trim()) {
@@ -78,7 +72,7 @@ const CompleteGithubSignup = () => {
 
 		const body: SocialLoginSetupRequest = {
 			setupToken,
-			username: username(),
+			email: email(),
 			firstName: firstName(),
 			lastName: lastName(),
 		};
@@ -105,8 +99,8 @@ const CompleteGithubSignup = () => {
 			navigate({ to: "/", replace: true });
 		} else {
 			switch (resp.data?.error) {
-				case "usernameUnavailable":
-					setErrors((prev) => ({ ...prev, username: "Username is already taken." }));
+				case "emailUnavailable":
+					setErrors((prev) => ({ ...prev, email: "Email is already in use." }));
 					break;
 				case "socialLoginFailed":
 					toast("Your GitHub session has expired. Please sign in with GitHub again.", "error");
@@ -144,24 +138,22 @@ const CompleteGithubSignup = () => {
 				{/* Form */}
 				<div>
 					<Input
-						type={InputType.Text}
-						placeholder="Username"
-						autocomplete="username"
+						type={InputType.Email}
+						placeholder="Email"
+						autocomplete="email"
 						required={true}
-						name="username"
-						id="username"
-						pattern={USERNAME_VALIDITY_PATTERN}
-						title="Username must be 2–32 characters, lowercase letters, numbers, or underscores."
-						value={username}
+						name="email"
+						id="email"
+						value={email}
 						onInput={(e) => {
-							setUsername(e.currentTarget.value);
-							clearError("username");
+							setEmail(e.currentTarget.value);
+							clearError("email");
 						}}
 						styleVariant="medium"
 					/>
-					<Show when={errors().username}>
+					<Show when={errors().email}>
 						<div class="mt-1">
-							<Alert message={errors().username} type="error" />
+							<Alert message={errors().email} type="error" />
 						</div>
 					</Show>
 
@@ -211,11 +203,6 @@ const CompleteGithubSignup = () => {
 						</div>
 					</div>
 
-					<p class="mt-4 text-sm text-gray-400">
-						Your account will be created with{" "}
-						<span class="text-white">{search().email ?? "your GitHub email"}</span>
-					</p>
-
 					<p class="mt-3 text-xs text-gray-500 leading-relaxed">
 						Already have a Patr account? Log in first, then connect GitHub from your profile's Connected
 						Accounts section.
@@ -249,13 +236,11 @@ export const Route = createFileRoute("/_logged-out/sign-up/github")({
 		search: Record<string, unknown>
 	): {
 		setupToken?: string;
-		username?: string;
 		firstName?: string;
 		lastName?: string;
 		email?: string;
 	} => ({
 		setupToken: (search.setupToken as string) || undefined,
-		username: (search.username as string) || undefined,
 		firstName: (search.firstName as string) || undefined,
 		lastName: (search.lastName as string) || undefined,
 		email: (search.email as string) || undefined,

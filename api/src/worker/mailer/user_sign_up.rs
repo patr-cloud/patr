@@ -9,8 +9,9 @@ use crate::utils::assets::email_images as filters;
 #[template(path = "user-sign-up", subject = "Verify your account | Patr")]
 #[serde(rename_all = "camelCase")]
 pub struct UserSignUpEmail {
-	/// The username of the user who signed up.
-	pub username: String,
+	/// The email of the user signing up. Included so the verification link
+	/// can pre-fill it on the confirm page.
+	pub email: String,
 	/// The OTP to be sent to the user for verification.
 	pub otp: String,
 	/// The expiry time of the OTP, in a human-readable format.

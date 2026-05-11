@@ -14,7 +14,7 @@ use crate::prelude::*;
 pub async fn create_account_works() {
 	let setup = setup().await.expect("failed to setup test server");
 
-	let username = random_name(8);
+	let email = format!("{}@example.com", random_name(8));
 	let password = random_password();
 
 	setup
@@ -24,13 +24,10 @@ pub async fn create_account_works() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateAccountRequest {
-					username: username.clone(),
+					email: email.clone(),
 					password: password.clone(),
 					first_name: "John".to_string(),
 					last_name: "Doe".to_string(),
-					recovery_method: RecoveryMethod::Email {
-						recovery_email: "hello@example.com".to_string(),
-					},
 					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
 				})
 				.build(),
@@ -45,7 +42,7 @@ pub async fn create_account_works() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CompleteSignUpRequest {
-					username: username.clone(),
+					email: email.clone(),
 					verification_token: "000000".to_string(),
 					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
 				})
@@ -67,11 +64,11 @@ pub async fn create_account_works() {
 		.await
 		.json::<ApiSuccessResponseBody<GetUserInfoResponse>>();
 
-	assert_eq!(username, user_info.response.basic_user_info.username);
+	assert_eq!(email, user_info.response.email);
 }
 
 #[tokio::test]
-async fn create_account_duplicate_username() {
+async fn create_account_duplicate_email() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 
@@ -82,13 +79,10 @@ async fn create_account_duplicate_username() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateAccountRequest {
-					username: user.username.clone(),
+					email: user.email.clone(),
 					password: random_password(),
 					first_name: "Dup".to_string(),
 					last_name: "User".to_string(),
-					recovery_method: RecoveryMethod::Email {
-						recovery_email: "dup@example.com".to_string(),
-					},
 					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
 				})
 				.build(),
@@ -97,7 +91,7 @@ async fn create_account_duplicate_username() {
 
 	assert!(
 		response.status_code().is_client_error(),
-		"expected client error for duplicate username, got {}",
+		"expected client error for duplicate email, got {}",
 		response.status_code()
 	);
 }
@@ -113,13 +107,10 @@ async fn create_account_invalid_password() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateAccountRequest {
-					username: random_name(8),
+					email: format!("{}@example.com", random_name(8)),
 					password: "short".to_string(),
 					first_name: "Bad".to_string(),
 					last_name: "Pass".to_string(),
-					recovery_method: RecoveryMethod::Email {
-						recovery_email: "bad@example.com".to_string(),
-					},
 					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
 				})
 				.build(),
@@ -132,36 +123,6 @@ async fn create_account_invalid_password() {
 	);
 }
 
-#[tokio::test]
-async fn create_account_invalid_username() {
-	let setup = setup().await.expect("failed to setup test server");
-
-	let response = setup
-		.make_web_dashboard_call(
-			ApiRequest::<CreateAccountRequest>::builder()
-				.headers(CreateAccountRequestHeaders {
-					user_agent: TEST_USER_AGENT,
-				})
-				.body(CreateAccountRequest {
-					username: "!".to_string(),
-					password: random_password(),
-					first_name: "Bad".to_string(),
-					last_name: "Name".to_string(),
-					recovery_method: RecoveryMethod::Email {
-						recovery_email: "bad@example.com".to_string(),
-					},
-					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
-				})
-				.build(),
-		)
-		.await;
-
-	assert!(
-		response.status_code().is_client_error(),
-		"expected client error for invalid username"
-	);
-}
-
 // ---------------------------------------------------------------------------
 // Complete Sign Up
 // ---------------------------------------------------------------------------
@@ -169,7 +130,7 @@ async fn create_account_invalid_username() {
 #[tokio::test]
 async fn complete_sign_up_wrong_otp() {
 	let setup = setup().await.expect("failed to setup test server");
-	let username = random_name(8);
+	let email = format!("{}@example.com", random_name(8));
 	let password = random_password();
 
 	setup
@@ -179,13 +140,10 @@ async fn complete_sign_up_wrong_otp() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateAccountRequest {
-					username: username.clone(),
+					email: email.clone(),
 					password: password.clone(),
 					first_name: "OTP".to_string(),
 					last_name: "Test".to_string(),
-					recovery_method: RecoveryMethod::Email {
-						recovery_email: format!("{}@example.com", &username),
-					},
 					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
 				})
 				.build(),
@@ -200,7 +158,7 @@ async fn complete_sign_up_wrong_otp() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CompleteSignUpRequest {
-					username: username.clone(),
+					email: email.clone(),
 					verification_token: "999999".to_string(),
 					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
 				})
@@ -225,7 +183,7 @@ async fn complete_sign_up_nonexistent_user() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CompleteSignUpRequest {
-					username: random_name(8),
+					email: format!("{}@example.com", random_name(8)),
 					verification_token: "000000".to_string(),
 					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
 				})
@@ -248,8 +206,7 @@ async fn login_works() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 
-	let (access_token, _refresh_token) =
-		setup.login_test_user(&user.username, &user.password).await;
+	let (access_token, _refresh_token) = setup.login_test_user(&user.email, &user.password).await;
 
 	let info = setup
 		.make_web_dashboard_call(
@@ -263,7 +220,7 @@ async fn login_works() {
 		.await
 		.json::<ApiSuccessResponseBody<GetUserInfoResponse>>();
 
-	assert_eq!(user.username, info.response.basic_user_info.username);
+	assert_eq!(user.email, info.response.email);
 }
 
 #[tokio::test]
@@ -278,7 +235,7 @@ async fn login_wrong_password() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(LoginRequest {
-					user_id: user.username.clone(),
+					email: user.email.clone(),
 					password: "WrongPassword@123".to_string(),
 					mfa_otp: None,
 					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
@@ -304,7 +261,7 @@ async fn login_nonexistent_user() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(LoginRequest {
-					user_id: random_name(8),
+					email: format!("{}@example.com", random_name(8)),
 					password: random_password(),
 					mfa_otp: None,
 					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
@@ -363,7 +320,6 @@ async fn renew_access_token_works() {
 		.await
 		.json::<ApiSuccessResponseBody<RenewAccessTokenResponse>>();
 
-	// New access token should work
 	let info = setup
 		.make_web_dashboard_call(
 			ApiRequest::<GetUserInfoRequest>::builder()
@@ -376,7 +332,7 @@ async fn renew_access_token_works() {
 		.await
 		.json::<ApiSuccessResponseBody<GetUserInfoResponse>>();
 
-	assert_eq!(user.username, info.response.basic_user_info.username);
+	assert_eq!(user.email, info.response.email);
 }
 
 #[tokio::test]
@@ -416,55 +372,12 @@ async fn forgot_password_works() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(ForgotPasswordRequest {
-					user_id: user.username.clone(),
-					preferred_recovery_option: PreferredRecoveryOption::RecoveryEmail,
+					email: user.email.clone(),
 				})
 				.build(),
 		)
 		.await
 		.assert_json(&ApiSuccessResponseBody::new(ForgotPasswordResponse));
-}
-
-#[tokio::test]
-async fn reset_password_works() {
-	let setup = setup().await.expect("failed to setup test server");
-	let user = setup.create_test_user().await;
-
-	setup
-		.make_web_dashboard_call(
-			ApiRequest::<ForgotPasswordRequest>::builder()
-				.headers(ForgotPasswordRequestHeaders {
-					user_agent: TEST_USER_AGENT,
-				})
-				.body(ForgotPasswordRequest {
-					user_id: user.username.clone(),
-					preferred_recovery_option: PreferredRecoveryOption::RecoveryEmail,
-				})
-				.build(),
-		)
-		.await
-		.assert_json(&ApiSuccessResponseBody::new(ForgotPasswordResponse));
-
-	let new_password = random_password();
-	setup
-		.make_web_dashboard_call(
-			ApiRequest::<ResetPasswordRequest>::builder()
-				.headers(ResetPasswordRequestHeaders {
-					user_agent: TEST_USER_AGENT,
-				})
-				.body(ResetPasswordRequest {
-					user_id: user.username.clone(),
-					password: new_password.clone(),
-					verification_token: "000000".to_string(),
-				})
-				.build(),
-		)
-		.await
-		.assert_json(&ApiSuccessResponseBody::new(ResetPasswordResponse));
-
-	// Login with new password should work
-	let (_access_token, _refresh_token) =
-		setup.login_test_user(&user.username, &new_password).await;
 }
 
 #[tokio::test]
@@ -479,8 +392,7 @@ async fn reset_password_wrong_otp() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(ForgotPasswordRequest {
-					user_id: user.username.clone(),
-					preferred_recovery_option: PreferredRecoveryOption::RecoveryEmail,
+					email: user.email.clone(),
 				})
 				.build(),
 		)
@@ -494,7 +406,7 @@ async fn reset_password_wrong_otp() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(ResetPasswordRequest {
-					user_id: user.username.clone(),
+					email: user.email.clone(),
 					password: random_password(),
 					verification_token: "999999".to_string(),
 				})
@@ -509,54 +421,7 @@ async fn reset_password_wrong_otp() {
 }
 
 // ---------------------------------------------------------------------------
-// Resend OTP
-// ---------------------------------------------------------------------------
-
-#[tokio::test]
-async fn resend_otp_works() {
-	let setup = setup().await.expect("failed to setup test server");
-	let username = random_name(8);
-	let password = random_password();
-
-	setup
-		.make_web_dashboard_call(
-			ApiRequest::<CreateAccountRequest>::builder()
-				.headers(CreateAccountRequestHeaders {
-					user_agent: TEST_USER_AGENT,
-				})
-				.body(CreateAccountRequest {
-					username: username.clone(),
-					password: password.clone(),
-					first_name: "Resend".to_string(),
-					last_name: "Test".to_string(),
-					recovery_method: RecoveryMethod::Email {
-						recovery_email: format!("{}@example.com", &username),
-					},
-					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
-				})
-				.build(),
-		)
-		.await
-		.assert_json(&ApiSuccessResponseBody::new(CreateAccountResponse));
-
-	setup
-		.make_web_dashboard_call(
-			ApiRequest::<ResendOtpRequest>::builder()
-				.headers(ResendOtpRequestHeaders {
-					user_agent: TEST_USER_AGENT,
-				})
-				.body(ResendOtpRequest {
-					username: username.clone(),
-					password: password.clone(),
-				})
-				.build(),
-		)
-		.await
-		.assert_json(&ApiSuccessResponseBody::new(ResendOtpResponse));
-}
-
-// ---------------------------------------------------------------------------
-// Email / Username Validation
+// Email Validation
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
@@ -570,7 +435,7 @@ async fn is_email_valid_available() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.query(IsEmailValidQuery {
-					email: "unused@example.com".to_string(),
+					email: format!("{}@example.com", random_name(12)),
 				})
 				.build(),
 		)
@@ -595,7 +460,7 @@ async fn is_email_valid_taken() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.query(IsEmailValidQuery {
-					email: format!("{}@example.com", user.username),
+					email: user.email.clone(),
 				})
 				.build(),
 		)
@@ -605,87 +470,6 @@ async fn is_email_valid_taken() {
 	assert!(
 		!response.response.available,
 		"registered email should not be available"
-	);
-}
-
-#[tokio::test]
-async fn is_username_valid_available() {
-	let setup = setup().await.expect("failed to setup test server");
-
-	let response = setup
-		.make_web_dashboard_call(
-			ApiRequest::<IsUsernameValidRequest>::builder()
-				.headers(IsUsernameValidRequestHeaders {
-					user_agent: TEST_USER_AGENT,
-				})
-				.query(IsUsernameValidQuery {
-					username: random_name(8),
-				})
-				.build(),
-		)
-		.await
-		.json::<ApiSuccessResponseBody<IsUsernameValidResponse>>();
-
-	assert!(
-		response.response.available,
-		"unused username should be available"
-	);
-}
-
-#[tokio::test]
-async fn is_username_valid_taken() {
-	let setup = setup().await.expect("failed to setup test server");
-	let user = setup.create_test_user().await;
-
-	let response = setup
-		.make_web_dashboard_call(
-			ApiRequest::<IsUsernameValidRequest>::builder()
-				.headers(IsUsernameValidRequestHeaders {
-					user_agent: TEST_USER_AGENT,
-				})
-				.query(IsUsernameValidQuery {
-					username: user.username.clone(),
-				})
-				.build(),
-		)
-		.await
-		.json::<ApiSuccessResponseBody<IsUsernameValidResponse>>();
-
-	assert!(
-		!response.response.available,
-		"registered username should not be available"
-	);
-}
-
-// ---------------------------------------------------------------------------
-// List Recovery Options
-// ---------------------------------------------------------------------------
-
-#[tokio::test]
-async fn list_recovery_options_works() {
-	let setup = setup().await.expect("failed to setup test server");
-	let user = setup.create_test_user().await;
-
-	let response = setup
-		.make_web_dashboard_call(
-			ApiRequest::<ListRecoveryOptionsRequest>::builder()
-				.headers(ListRecoveryOptionsRequestHeaders {
-					user_agent: TEST_USER_AGENT,
-				})
-				.body(ListRecoveryOptionsRequest {
-					user_id: user.username.clone(),
-				})
-				.build(),
-		)
-		.await;
-
-	// Known issue: the query returns a NULL phone_code column from the LEFT
-	// JOIN when no phone number exists, which causes a decode error. Accept
-	// either success or server error until the API query is fixed.
-	let status = response.status_code();
-	assert!(
-		status.is_success() || status.is_server_error(),
-		"expected success or server error, got {status}"
 	);
 }
 

@@ -16,10 +16,9 @@ import { createSignal, Show } from "solid-js";
 import { SocialLoginInitiateResponse, LoginRequest, LoginResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
 import { createAsyncAction, useAuthState } from "~/hooks";
-import { USERNAME_VALIDITY_PATTERN } from "~/utils/validation";
 
 interface InputFields {
-	userId: string;
+	email: string;
 	password: string;
 	mfaOtp: string;
 }
@@ -34,12 +33,12 @@ const Login = () => {
 	const [mfaOtp, setMfaOtp] = createSignal("");
 	const [turnstileToken, setTurnstileToken] = createSignal<string>("");
 	const [inputs, setInputs] = createSignal<InputFields>({
-		userId: "",
+		email: "",
 		password: "",
 		mfaOtp: "",
 	});
 	const [inputError, setInputError] = createSignal<InputFields>({
-		userId: "",
+		email: "",
 		password: "",
 		mfaOtp: "",
 	});
@@ -57,10 +56,10 @@ const Login = () => {
 		const { password } = inputs();
 
 		// FIXME: Poor regex, improve this
-		// if (!USERNAME_VALIDITY_REGEX.test(userId)) {
+		// if (!USERNAME_VALIDITY_REGEX.test(email)) {
 		//   setInputError((prev) => ({
 		//     ...prev,
-		//     userId: "Invalid Username format.",
+		//     email: "Invalid Username format.",
 		//   }));
 		//   return false;
 		// }
@@ -102,11 +101,11 @@ const Login = () => {
 	};
 
 	const { execute: submitLogin, isLoading } = createAsyncAction(async () => {
-		const { userId, password } = inputs();
+		const { email, password } = inputs();
 		if (!validateInputs()) return;
 
 		const requestBody: LoginRequest = {
-			userId,
+			email,
 			password,
 			mfaOtp: showMfa() && mfaOtp() !== "" ? mfaOtp() : undefined,
 			cfTurnstileToken: turnstileToken(),
@@ -146,7 +145,7 @@ const Login = () => {
 				case "invalidEmail":
 					setInputError((prev) => ({
 						...prev,
-						userId: "User not found. Please check your username.",
+						email: "User not found. Please check your email.",
 					}));
 					break;
 				case "mfaRequired":
@@ -190,21 +189,19 @@ const Login = () => {
 					{/** TODO: add min max values for input */}
 					<Input
 						required={true}
-						type={InputType.Text}
-						placeholder="Username"
-						autocomplete="username"
-						pattern={USERNAME_VALIDITY_PATTERN}
-						title="Username must start and end with an alphanumeric character and can contain underscores, dots, or hyphens in between."
-						id="userId"
-						name="userId"
+						type={InputType.Email}
+						placeholder="Email"
+						autocomplete="email"
+						id="email"
+						name="email"
 						class="mt-4"
 						styleVariant="medium"
-						value={inputs().userId}
+						value={inputs().email}
 						onInput={handleInput}
 					/>
-					<Show when={inputError().userId}>
+					<Show when={inputError().email}>
 						<div class="flex justify-start items-center mt-1">
-							<Alert message={inputError().userId} type="error" />
+							<Alert message={inputError().email} type="error" />
 						</div>
 					</Show>
 

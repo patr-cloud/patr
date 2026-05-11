@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE managed_url SET path = COALESCE($2, path), url_type = COALESCE($3, url_type), deployment_id = CASE WHEN $3 IS NOT NULL THEN $4 ELSE deployment_id END, port = CASE WHEN $3 IS NOT NULL THEN $5 ELSE port END, url = CASE WHEN $3 IS NOT NULL THEN $6 ELSE url END, permanent_redirect = CASE WHEN $3 IS NOT NULL THEN $7 ELSE permanent_redirect END, http_only = CASE WHEN $3 IS NOT NULL THEN $8 ELSE http_only END WHERE id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        {
+          "Custom": {
+            "name": "managed_url_type",
+            "kind": {
+              "Enum": [
+                "proxy_to_deployment",
+                "redirect"
+              ]
+            }
+          }
+        },
+        "Uuid",
+        "Int4",
+        "Text",
+        "Bool",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5691c3826ba60de1c48b410278b3ae91a78b8153ef49be60fd64f33ebf99dad9"
+}

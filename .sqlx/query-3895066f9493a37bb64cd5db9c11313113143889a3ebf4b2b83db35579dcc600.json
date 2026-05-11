@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE \"user\" ADD CONSTRAINT user_chk_email_is_lower_case CHECK(email = LOWER(email));",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "3895066f9493a37bb64cd5db9c11313113143889a3ebf4b2b83db35579dcc600"
+}

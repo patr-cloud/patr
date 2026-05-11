@@ -35,7 +35,6 @@ pub async fn create_deployment(
 								startup_probe,
 								liveness_probe,
 								config_mounts,
-								volumes,
 							},
 						deploy_on_create,
 					},
@@ -157,22 +156,19 @@ pub async fn create_deployment(
 				deployment_environment_variable(
 					deployment_id,
 					name,
-					value,
-					secret_id
+					value
 				)
 			VALUES
 				(
 					$1,
 					$2,
-					$3,
-					$4
+					$3
 				);
 			"#,
 		)
 		.bind(deployment_id)
 		.bind(name)
-		.bind(value.value())
-		.bind(value.secret_id())
+		.bind(value)
 		.execute(&mut **database)
 		.await?;
 	}
@@ -204,32 +200,6 @@ pub async fn create_deployment(
 	}
 
 	trace!("Inserted config mounts for deployment");
-
-	for (volume_id, mount_path) in &volumes {
-		query(
-			r#"
-			INSERT INTO 
-				deployment_volume_mount(
-					deployment_id,
-					volume_id,
-					volume_mount_path
-				)
-			VALUES
-				(
-					$1,
-					$2,
-					$3
-				);
-			"#,
-		)
-		.bind(deployment_id)
-		.bind(volume_id)
-		.bind(mount_path)
-		.execute(&mut **database)
-		.await?;
-	}
-
-	trace!("Inserted volume mounts for deployment");
 
 	// Notify the actor system after the transaction commits (the
 	// DataStoreConnectionLayer commits after we return Ok). Use send_after

@@ -16,7 +16,7 @@ import {
 import { useDomainsQuery, useDomainInfoQuery } from "./domains";
 import { useManagedUrlsQuery } from "./managed-urls";
 import { useRunnerMetricsQuery, useDeploymentMetricsQuery } from "./metrics";
-import { useUserInfoQuery, useUserSearchQuery, useMfaSecretQuery } from "./user";
+import { useUserInfoQuery, useMfaSecretQuery } from "./user";
 
 export {
 	useDeploymentsQuery,
@@ -46,6 +46,5 @@ export {
 	useDomainInfoQuery,
 	useManagedUrlsQuery,
 	useUserInfoQuery,
-	useUserSearchQuery,
 	useMfaSecretQuery,
 };

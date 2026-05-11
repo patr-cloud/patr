@@ -18,13 +18,10 @@ async fn create_user_and_login(setup: &TestSetup) -> BearerToken {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateAccountRequest {
-					username: "testuser".to_string(),
+					email: "test@example.com".to_string(),
 					password: "TestPassword123!".to_string(),
 					first_name: "Test".to_string(),
 					last_name: "User".to_string(),
-					recovery_method: RecoveryMethod::Email {
-						recovery_email: "test@example.com".to_string(),
-					},
 					cf_turnstile_token: "dummy-token".to_string(),
 				})
 				.build(),
@@ -39,7 +36,7 @@ async fn create_user_and_login(setup: &TestSetup) -> BearerToken {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(LoginRequest {
-					user_id: "testuser".to_string(),
+					email: "test@example.com".to_string(),
 					password: "TestPassword123!".to_string(),
 					mfa_otp: None,
 					cf_turnstile_token: "dummy-token".to_string(),
@@ -103,7 +100,6 @@ async fn create_deployment_with_registry(
 						startup_probe: None,
 						liveness_probe: None,
 						config_mounts: BTreeMap::new(),
-						volumes: BTreeMap::new(),
 					},
 					deploy_on_create,
 				})

@@ -37,17 +37,12 @@ pub mod prelude {
 		rbac::{
 			BillingPermission,
 			ContainerRegistryRepositoryPermission,
-			DatabasePermission,
 			DeploymentPermission,
-			DnsRecordPermission,
 			DomainPermission,
 			ManagedURLPermission,
 			Permission,
 			ResourceType,
 			RunnerPermission,
-			SecretPermission,
-			StaticSitePermission,
-			VolumePermission,
 		},
 		utils::{
 			AppAuthentication,

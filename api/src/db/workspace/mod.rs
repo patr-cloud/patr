@@ -9,19 +9,11 @@ mod domain;
 
 /// The list of deployments that are present in a workspace
 mod deployment;
-/// The list of databases that are created in a workspace
-mod managed_database;
 /// The list of Managed URLs that are created in a workspace
 mod managed_url;
-/// The list of static sites that are created in a workspace
-mod static_site;
-/// The list of deployment volumes that are created in a workspace
-mod volume;
 
 /// The list of runners that are a part of a workspace
 mod runner;
-/// The list of secrets that are added to a workspace
-mod secret;
 
 /// Initializes all workspace-related tables
 #[instrument(skip(connection))]
@@ -47,13 +39,9 @@ pub async fn initialize_workspace_tables(
 	domain::initialize_domain_tables(connection).await?;
 
 	deployment::initialize_deployment_tables(connection).await?;
-	managed_database::initialize_managed_database_tables(connection).await?;
 	managed_url::initialize_managed_url_tables(connection).await?;
-	static_site::initialize_static_site_tables(connection).await?;
-	volume::initialize_volume_tables(connection).await?;
 
 	runner::initialize_runner_tables(connection).await?;
-	secret::initialize_secret_tables(connection).await?;
 
 	Ok(())
 }
@@ -105,13 +93,9 @@ pub async fn initialize_workspace_indices(
 	domain::initialize_domain_indices(connection).await?;
 
 	deployment::initialize_deployment_indices(connection).await?;
-	managed_database::initialize_managed_database_indices(connection).await?;
 	managed_url::initialize_managed_url_indices(connection).await?;
-	static_site::initialize_static_site_indices(connection).await?;
-	volume::initialize_volume_indices(connection).await?;
 
 	runner::initialize_runner_indices(connection).await?;
-	secret::initialize_secret_indices(connection).await?;
 
 	Ok(())
 }
@@ -139,13 +123,9 @@ pub async fn initialize_workspace_constraints(
 	domain::initialize_domain_constraints(connection).await?;
 
 	deployment::initialize_deployment_constraints(connection).await?;
-	managed_database::initialize_managed_database_constraints(connection).await?;
 	managed_url::initialize_managed_url_constraints(connection).await?;
-	static_site::initialize_static_site_constraints(connection).await?;
-	volume::initialize_volume_constraints(connection).await?;
 
 	runner::initialize_runner_constraints(connection).await?;
-	secret::initialize_secret_constraints(connection).await?;
 
 	Ok(())
 }

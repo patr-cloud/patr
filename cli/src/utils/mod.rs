@@ -13,18 +13,6 @@ mod storage;
 
 pub use self::{authenticator::*, client::*, ext_trait::*, search_and_select::*, storage::*};
 
-/// A list of all possible runner types that can be setup or run.
-#[derive(Debug, Copy, Clone, clap::ValueEnum, strum::EnumIter)]
-#[value(rename_all = "kebab-case")]
-pub enum RunnerType {
-	/// A runner that runs on a local machine and uses Docker to run the
-	/// containers
-	Docker,
-	/// A runner that runs on a Kubernetes cluster and uses the Kubernetes API
-	/// to run the containers
-	Kubernetes,
-}
-
 /// Constants used in the CLI
 pub mod constants {
 	use headers::UserAgent;
@@ -82,18 +70,13 @@ pub fn config_local_dir() -> std::path::PathBuf {
 		.join("config.json")
 }
 
-/// Returns the path where a runner config file is stored for the given runner
-/// type.
-pub fn runner_config_path(runner_type: RunnerType) -> std::path::PathBuf {
-	let name = match runner_type {
-		RunnerType::Docker => "docker",
-		RunnerType::Kubernetes => "kubernetes",
-	};
+/// Returns the path where the docker runner's config file is stored.
+pub fn runner_config_path() -> std::path::PathBuf {
 	dirs::data_local_dir()
 		.expect("Failed to get local data directory")
 		.join("patr")
 		.join("cli")
-		.join(format!("runner.{name}.json"))
+		.join("runner.docker.json")
 }
 
 /// Clears the terminal screen and moves the cursor to the top-left.

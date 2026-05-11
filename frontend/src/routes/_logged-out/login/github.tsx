@@ -68,7 +68,6 @@ const GithubCallback = () => {
 					to: "/sign-up/github",
 					search: {
 						setupToken: data.setupToken,
-						username: data.prefilledUsername,
 						firstName: data.prefilledFirstName,
 						lastName: data.prefilledLastName,
 						email: data.prefilledEmail,

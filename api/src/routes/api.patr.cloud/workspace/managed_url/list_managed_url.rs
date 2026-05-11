@@ -54,7 +54,6 @@ pub async fn list_managed_url(
 			managed_url.url_type AS "url_type: ManagedUrlTypeDiscriminant",
 			managed_url.deployment_id,
 			managed_url.port,
-			managed_url.static_site_id,
 			managed_url.url,
 			managed_url_custom_hostname.is_active,
 			managed_url.permanent_redirect,
@@ -107,14 +106,6 @@ pub async fn list_managed_url(
 				domain_id: row.domain_id.into(),
 				path: row.path,
 				url_type: match row.url_type {
-					ManagedUrlTypeDiscriminant::ProxyUrl => ManagedUrlType::ProxyUrl {
-						url: row
-							.url
-							.ok_or(ErrorType::server_error("url in db is NULL"))?,
-						http_only: row
-							.http_only
-							.ok_or(ErrorType::server_error("http_only in db is NULL"))?,
-					},
 					ManagedUrlTypeDiscriminant::Redirect => ManagedUrlType::Redirect {
 						url: row
 							.url
@@ -126,14 +117,6 @@ pub async fn list_managed_url(
 							.http_only
 							.ok_or(ErrorType::server_error("http_only in db is NULL"))?,
 					},
-					ManagedUrlTypeDiscriminant::ProxyStaticSite => {
-						ManagedUrlType::ProxyStaticSite {
-							static_site_id: row
-								.static_site_id
-								.ok_or(ErrorType::server_error("static_site_id in db is NULL"))?
-								.into(),
-						}
-					}
 					ManagedUrlTypeDiscriminant::ProxyDeployment => {
 						ManagedUrlType::ProxyDeployment {
 							deployment_id: row

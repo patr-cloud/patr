@@ -23,7 +23,7 @@ async fn get_user_info_works() {
 		.await
 		.json::<ApiSuccessResponseBody<GetUserInfoResponse>>();
 
-	assert_eq!(user.username, info.response.basic_user_info.username);
+	assert_eq!(user.email, info.response.email);
 	assert_eq!("Test", info.response.basic_user_info.first_name);
 	assert_eq!("User", info.response.basic_user_info.last_name);
 }
@@ -69,7 +69,7 @@ async fn get_user_details_works() {
 		.await
 		.json::<ApiSuccessResponseBody<GetUserDetailsResponse>>();
 
-	assert_eq!(user.username, details.response.basic_user_info.username);
+	assert_eq!("Test", details.response.basic_user_info.first_name);
 }
 
 #[tokio::test]
@@ -184,7 +184,7 @@ async fn change_password_works() {
 		.assert_json(&ApiSuccessResponseBody::new(ChangePasswordResponse));
 
 	// Login with new password should work
-	let (_token, _refresh) = setup.login_test_user(&user.username, &new_password).await;
+	let (_token, _refresh) = setup.login_test_user(&user.email, &new_password).await;
 }
 
 #[tokio::test]
@@ -362,62 +362,6 @@ async fn list_workspaces_multiple() {
 }
 
 #[tokio::test]
-async fn search_for_user_works() {
-	let setup = setup().await.expect("failed to setup test server");
-	let user = setup.create_test_user().await;
-
-	let response = setup
-		.make_web_dashboard_call(
-			ApiRequest::<SearchForUserRequest>::builder()
-				.query(SearchForUserQuery {
-					query: user.username.clone(),
-				})
-				.headers(SearchForUserRequestHeaders {
-					authorization: user.access_token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.build(),
-		)
-		.await
-		.json::<ApiSuccessResponseBody<SearchForUserResponse>>();
-
-	assert!(
-		response
-			.response
-			.users
-			.iter()
-			.any(|u| u.username == user.username),
-		"search should find the created user"
-	);
-}
-
-#[tokio::test]
-async fn search_for_user_no_results() {
-	let setup = setup().await.expect("failed to setup test server");
-	let user = setup.create_test_user().await;
-
-	let response = setup
-		.make_web_dashboard_call(
-			ApiRequest::<SearchForUserRequest>::builder()
-				.query(SearchForUserQuery {
-					query: "zzzznonexistentuserzzzzz".to_string(),
-				})
-				.headers(SearchForUserRequestHeaders {
-					authorization: user.access_token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.build(),
-		)
-		.await
-		.json::<ApiSuccessResponseBody<SearchForUserResponse>>();
-
-	assert!(
-		response.response.users.is_empty(),
-		"search for gibberish should return empty"
-	);
-}
-
-#[tokio::test]
 async fn get_user_details_own_id() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
@@ -437,75 +381,7 @@ async fn get_user_details_own_id() {
 		.await
 		.json::<ApiSuccessResponseBody<GetUserDetailsResponse>>();
 
-	assert_eq!(user.username, details.response.basic_user_info.username);
-}
-
-#[tokio::test]
-async fn search_for_user_partial_match() {
-	let setup = setup().await.expect("failed to setup test server");
-	let user = setup.create_test_user().await;
-
-	// Search for a substring of the user's username (drop last 2 chars).
-	let prefix = user
-		.username
-		.chars()
-		.take(user.username.len() - 2)
-		.collect::<String>();
-
-	let response = setup
-		.make_web_dashboard_call(
-			ApiRequest::<SearchForUserRequest>::builder()
-				.query(SearchForUserQuery {
-					query: prefix.clone(),
-				})
-				.headers(SearchForUserRequestHeaders {
-					authorization: user.access_token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.build(),
-		)
-		.await
-		.json::<ApiSuccessResponseBody<SearchForUserResponse>>();
-
-	assert!(
-		response
-			.response
-			.users
-			.iter()
-			.any(|u| u.username == user.username),
-		"partial-match search for `{prefix}` should find `{}`",
-		user.username
-	);
-}
-
-#[tokio::test]
-async fn search_for_user_special_chars() {
-	let setup = setup().await.expect("failed to setup test server");
-	let user = setup.create_test_user().await;
-
-	// SQL-injection-style input must not error out, must not leak rows, must
-	// not match anything (since these strings aren't in any username).
-	for malicious in ["' OR 1=1 --", "%", "_", "'; DROP TABLE \"user\"; --"] {
-		let response = setup
-			.make_web_dashboard_call(
-				ApiRequest::<SearchForUserRequest>::builder()
-					.query(SearchForUserQuery {
-						query: malicious.to_string(),
-					})
-					.headers(SearchForUserRequestHeaders {
-						authorization: user.access_token.clone(),
-						user_agent: TEST_USER_AGENT,
-					})
-					.build(),
-			)
-			.await;
-
-		assert!(
-			!response.status_code().is_server_error(),
-			"search with `{malicious}` should not 5xx, got {}",
-			response.status_code()
-		);
-	}
+	assert_eq!(user.user_id, details.response.basic_user_info.id);
 }
 
 #[tokio::test]

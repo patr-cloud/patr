@@ -193,7 +193,6 @@ impl IaacResolverExt<CreateDeploymentRequest> for IaacDeployment {
 					.into_iter()
 					.map(|(key, value)| (key, Base64String::from_string(value)))
 					.collect(),
-				volumes: Default::default(),
 			},
 		})
 	}

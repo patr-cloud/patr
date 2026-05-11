@@ -8,7 +8,6 @@ pub mod domain;
 pub mod managed_url;
 pub mod rbac;
 pub mod runner;
-pub mod volume;
 
 #[tokio::test]
 async fn create_workspace_works() {

@@ -25,7 +25,6 @@ pub mod prelude {
 			AuthState,
 			Channel,
 			IaacResolverExt,
-			RunnerType,
 			SearchAndSelect,
 			ToJsonValue,
 			TtyExpectable,

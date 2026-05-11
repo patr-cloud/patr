@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM user_to_sign_up WHERE email = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0f5ed05d0ae6aa0e9e4e146e46cf542a49797af1694e7598a2c7490cc6ba35fa"
+}

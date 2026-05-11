@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO user_to_sign_up(email, password, first_name, last_name, otp_hash, otp_expiry) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (email) DO UPDATE SET password = EXCLUDED.password, first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, otp_hash = EXCLUDED.otp_hash, otp_expiry = EXCLUDED.otp_expiry WHERE EXCLUDED.otp_expiry > NOW();",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Varchar",
+        "Varchar",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5d660fa2259b5529082ead53f93b3f842e699036ffbbb5aa9292eb1f8343b7ca"
+}

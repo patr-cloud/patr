@@ -1,14 +1,7 @@
 use std::collections::BTreeMap;
 
 use models::{
-	api::workspace::{
-		container_registry::*,
-		deployment::*,
-		domain::*,
-		managed_url::*,
-		runner::*,
-		volume::*,
-	},
+	api::workspace::{container_registry::*, deployment::*, domain::*, managed_url::*, runner::*},
 	rbac::Permission,
 };
 
@@ -40,30 +33,6 @@ async fn list_deployments_denied_non_member() {
 		response.status_code().is_client_error(),
 		"non-member should not be able to list deployments"
 	);
-}
-
-#[tokio::test]
-async fn list_volumes_denied_non_member() {
-	let setup = setup().await.expect("failed to setup test server");
-	let admin = setup.create_test_user().await;
-	let workspace = setup.create_test_workspace(&admin.access_token).await;
-	let non_member = setup.create_test_user().await;
-
-	let response = setup
-		.make_web_dashboard_call(
-			ApiRequest::<ListVolumesInWorkspaceRequest>::builder()
-				.path(ListVolumesInWorkspacePath {
-					workspace_id: workspace.id,
-				})
-				.headers(ListVolumesInWorkspaceRequestHeaders {
-					authorization: non_member.access_token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.build(),
-		)
-		.await;
-
-	assert!(response.status_code().is_client_error());
 }
 
 #[tokio::test]
@@ -211,24 +180,6 @@ async fn list_endpoints_allowed_for_any_member() {
 	assert!(
 		list_runners.status_code().is_success(),
 		"member should list runners"
-	);
-
-	let list_volumes = setup
-		.make_web_dashboard_call(
-			ApiRequest::<ListVolumesInWorkspaceRequest>::builder()
-				.path(ListVolumesInWorkspacePath {
-					workspace_id: workspace.id,
-				})
-				.headers(ListVolumesInWorkspaceRequestHeaders {
-					authorization: user_b.access_token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.build(),
-		)
-		.await;
-	assert!(
-		list_volumes.status_code().is_success(),
-		"member should list volumes"
 	);
 
 	let list_domains = setup

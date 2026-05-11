@@ -104,7 +104,6 @@ async fn deployment_create_permission_grants_access() {
 						startup_probe: None,
 						liveness_probe: None,
 						config_mounts: BTreeMap::new(),
-						volumes: BTreeMap::new(),
 					},
 					deploy_on_create: false,
 				})
@@ -266,7 +265,6 @@ async fn deployment_create_denied_without_permission() {
 						startup_probe: None,
 						liveness_probe: None,
 						config_mounts: BTreeMap::new(),
-						volumes: BTreeMap::new(),
 					},
 					deploy_on_create: false,
 				})
@@ -610,7 +608,6 @@ async fn deployment_view_does_not_grant_edit() {
 					startup_probe: None,
 					liveness_probe: None,
 					config_mounts: None,
-					volumes: None,
 				})
 				.build(),
 		)

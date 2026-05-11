@@ -10,18 +10,14 @@ mod list_workspaces;
 mod mfa;
 #[expect(unused_variables)]
 mod recovery_options;
-mod search_for_user;
 mod social_logins;
 mod update_user_info;
-#[expect(unused_variables)]
-mod web_logins;
 
 use self::{
 	change_password::*,
 	get_user_details::*,
 	get_user_info::*,
 	list_workspaces::*,
-	search_for_user::*,
 	update_user_info::*,
 };
 
@@ -33,11 +29,9 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 		.merge(mfa::setup_routes(state, allowed_client_type).await)
 		.merge(recovery_options::setup_routes(state, allowed_client_type).await)
 		.merge(social_logins::setup_routes(state, allowed_client_type).await)
-		.merge(web_logins::setup_routes(state, allowed_client_type).await)
 		.mount_auth_endpoint(change_password, state, allowed_client_type)
 		.mount_auth_endpoint(get_user_details, state, allowed_client_type)
 		.mount_auth_endpoint(get_user_info, state, allowed_client_type)
 		.mount_auth_endpoint(list_workspaces, state, allowed_client_type)
-		.mount_auth_endpoint(search_for_user, state, allowed_client_type)
 		.mount_auth_endpoint(update_user_info, state, allowed_client_type)
 }

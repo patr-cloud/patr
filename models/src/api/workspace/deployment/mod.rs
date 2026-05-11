@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, convert::Infallible, fmt::Display, str::FromStr};
+use std::{collections::BTreeMap, fmt::Display, str::FromStr};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
@@ -110,7 +110,7 @@ pub struct DeploymentRunningDetails {
 	pub ports: BTreeMap<StringifiedU16, ExposedPortType>,
 	/// List of environment variables are values
 	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-	pub environment_variables: BTreeMap<String, EnvironmentVariableValue>,
+	pub environment_variables: BTreeMap<String, String>,
 	/// The startup probe of a deployment if any
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub startup_probe: Option<DeploymentProbe>,
@@ -120,65 +120,6 @@ pub struct DeploymentRunningDetails {
 	/// The config map attached to a deployment
 	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
 	pub config_mounts: BTreeMap<String, Base64String>,
-	/// The volume ID attached to a deployment, along with the path it is
-	/// mounted on
-	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-	pub volumes: BTreeMap<Uuid, String>,
-}
-
-/// The type of environment variable
-/// The keys can either have a string as a value or a secret
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, JsonSchema, TS)]
-#[serde(untagged)]
-pub enum EnvironmentVariableValue {
-	/// String
-	String(String),
-	/// Secret
-	#[serde(rename_all = "camelCase")]
-	Secret {
-		/// The secret ID of the referred secret
-		from_secret: Uuid,
-	},
-}
-
-impl EnvironmentVariableValue {
-	/// Check if the environment variable is a raw string
-	#[must_use]
-	pub fn is_string(&self) -> bool {
-		matches!(self, Self::String { .. })
-	}
-
-	/// Check if the environment variable is a secret
-	#[must_use]
-	pub fn is_secret(&self) -> bool {
-		matches!(self, Self::Secret { .. })
-	}
-
-	/// Get the secret ID
-	#[must_use]
-	pub fn secret_id(&self) -> Option<Uuid> {
-		match self {
-			Self::String(_) => None,
-			Self::Secret { from_secret } => Some(*from_secret),
-		}
-	}
-
-	/// Get the string value, if it is a raw string
-	#[must_use]
-	pub fn value(&self) -> Option<&String> {
-		match self {
-			Self::String(value) => Some(value),
-			Self::Secret { .. } => None,
-		}
-	}
-}
-
-impl FromStr for EnvironmentVariableValue {
-	type Err = Infallible;
-
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		Ok(Self::String(s.to_string()))
-	}
 }
 
 /// The type of exposed port

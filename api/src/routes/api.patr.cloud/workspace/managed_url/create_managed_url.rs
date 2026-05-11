@@ -17,9 +17,8 @@ use crate::prelude::*;
 
 /// The handler to create a new managed URL in a workspace. This will create a
 /// new managed URL with the provided subdomain, domain, and path. The URL type
-/// can be a proxy to a deployment, a proxy to a static site, a proxy to a URL,
-/// or a redirect to a URL. The URL type will determine how the managed URL
-/// behaves.
+/// can be a proxy to a deployment or a redirect to a URL. The URL type will
+/// determine how the managed URL behaves.
 pub async fn create_managed_url(
 	AuthenticatedAppRequest {
 		request:
@@ -84,10 +83,10 @@ pub async fn create_managed_url(
 
 	info!("Creating ManagedURL: `{}.{}{}`", sub_domain, domain, path);
 
-	// TODO: Check if the user has access to the deployment or static site (ON THE
-	// RIGHT WORKSPACE) if the URL type is a proxy.
+	// TODO: Check if the user has access to the deployment (ON THE RIGHT
+	// WORKSPACE) if the URL type is a proxy.
 	let mut deployment_runner = None::<Uuid>;
-	let (url_discriminant, deployment_id, port, static_site_id, url, permanent_redirect, http_only) =
+	let (url_discriminant, deployment_id, port, url, permanent_redirect, http_only) =
 		match url_type.clone() {
 			ManagedUrlType::ProxyDeployment {
 				deployment_id,
@@ -124,37 +123,14 @@ pub async fn create_managed_url(
 					None,
 					None,
 					None,
-					None,
 				)
 			}
-			ManagedUrlType::ProxyStaticSite { static_site_id } => (
-				ManagedUrlTypeDiscriminant::ProxyStaticSite,
-				None,
-				None,
-				Some(static_site_id),
-				None,
-				None,
-				None,
-			),
-			ManagedUrlType::ProxyUrl {
-				url: managed_url_url,
-				http_only: managed_url_http_only,
-			} => (
-				ManagedUrlTypeDiscriminant::ProxyUrl,
-				None,
-				None,
-				None,
-				Some(managed_url_url),
-				None,
-				Some(managed_url_http_only),
-			),
 			ManagedUrlType::Redirect {
 				url: managed_url_url,
 				permanent_redirect: managed_url_permanent_redirect,
 				http_only: managed_url_http_only,
 			} => (
 				ManagedUrlTypeDiscriminant::Redirect,
-				None,
 				None,
 				None,
 				Some(managed_url_url),
@@ -282,7 +258,6 @@ pub async fn create_managed_url(
 				url_type,
 				deployment_id,
 				port,
-				static_site_id,
 				url,
 				workspace_id,
 				deleted,
@@ -300,10 +275,9 @@ pub async fn create_managed_url(
 				$7,
 				$8,
 				$9,
-				$10,
 				NULL,
-				$11,
-				$12
+				$10,
+				$11
 			);
 		"#,
 		id as _,
@@ -313,7 +287,6 @@ pub async fn create_managed_url(
 		url_discriminant as _,
 		deployment_id as _,
 		port.map(|port| port as i32),
-		static_site_id as _,
 		url,
 		workspace_id as _,
 		permanent_redirect,

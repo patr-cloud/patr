@@ -9,27 +9,15 @@ use crate::prelude::*;
 /// The arguments for the `runner run` command.
 #[derive(Debug, Clone, ClapArgs)]
 pub struct Args {
-	/// The type of runner to run
-	#[arg(value_enum)]
-	pub runner_type: RunnerType,
-	/// Path to the config file (defaults to standard location for the runner
-	/// type)
+	/// Path to the config file (defaults to the standard runner config
+	/// location).
 	#[arg(short = 'c', long = "config")]
 	pub config: Option<PathBuf>,
 }
 
 /// Run the configured runner in the foreground.
 pub async fn execute(args: Args) -> Result<CommandOutput, AppError> {
-	match args.runner_type {
-		RunnerType::Kubernetes => {
-			todo!("Kubernetes runner is not yet supported")
-		}
-		RunnerType::Docker => {}
-	}
-
-	let config_path = args
-		.config
-		.unwrap_or_else(|| crate::utils::runner_config_path(args.runner_type));
+	let config_path = args.config.unwrap_or_else(crate::utils::runner_config_path);
 
 	let config_str = std::fs::read_to_string(&config_path).map_err(|e| {
 		AppError::RunnerError(format!(

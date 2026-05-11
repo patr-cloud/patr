@@ -1,16 +1,9 @@
 mod update_user_email;
-mod update_user_phone_number;
 mod verify_user_email;
-mod verify_user_phone_number;
 
 use axum::Router;
 
-use self::{
-	update_user_email::*,
-	update_user_phone_number::*,
-	verify_user_email::*,
-	verify_user_phone_number::*,
-};
+use self::{update_user_email::*, verify_user_email::*};
 use crate::prelude::*;
 
 /// Sets up the recovery options routes
@@ -18,7 +11,5 @@ use crate::prelude::*;
 pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
 	Router::new()
 		.mount_auth_endpoint(update_user_email, state, allowed_client_type)
-		.mount_auth_endpoint(update_user_phone_number, state, allowed_client_type)
 		.mount_auth_endpoint(verify_user_email, state, allowed_client_type)
-		.mount_auth_endpoint(verify_user_phone_number, state, allowed_client_type)
 }

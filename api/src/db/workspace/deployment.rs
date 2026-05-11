@@ -79,8 +79,7 @@ pub async fn initialize_deployment_tables(
 		CREATE TABLE deployment_environment_variable(
 			deployment_id UUID NOT NULL,
 			name VARCHAR(256) NOT NULL,
-			value TEXT,
-			secret_id UUID
+			value TEXT NOT NULL
 		);
 		"#
 	)
@@ -346,18 +345,7 @@ pub async fn initialize_deployment_constraints(
 		r#"
 		ALTER TABLE deployment_environment_variable
 			ADD CONSTRAINT deployment_environment_variable_fk_deployment_id
-				FOREIGN KEY(deployment_id) REFERENCES deployment(id),
-			ADD CONSTRAINT deployment_environment_variable_fk_secret_id
-				FOREIGN KEY(secret_id) REFERENCES secret(id),
-			ADD CONSTRAINT deployment_env_var_chk_value_secret_id_either_not_null CHECK(
-				(
-					value IS NOT NULL AND
-					secret_id IS NULL
-				) OR (
-					value IS NULL AND
-					secret_id IS NOT NULL
-				)
-			);
+				FOREIGN KEY(deployment_id) REFERENCES deployment(id);
 		"#
 	)
 	.execute(&mut *connection)

@@ -21,7 +21,6 @@ import {
 	CreateDeploymentRequest,
 	CreateDeploymentResponse,
 	DeploymentProbe,
-	EnvironmentVariableValue,
 	ExposedPortType,
 } from "~/bindings";
 import PortInput from "./-components/port";
@@ -59,7 +58,7 @@ const CreateDeploymentPage = () => {
 	const [deployOnPush, setDeployOnPush] = createSignal(false);
 
 	const [registry, setRegistry] = createSignal<string>("");
-	const [envVars, setEnvVars] = createSignal<Record<string, EnvironmentVariableValue>>({});
+	const [envVars, setEnvVars] = createSignal<Record<string, string>>({});
 	const [envValid, setEnvValid] = createSignal(true);
 
 	const [portList, setPortList] = createSignal<Record<string, ExposedPortType>>({});

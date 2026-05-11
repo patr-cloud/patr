@@ -240,8 +240,7 @@ pub async fn start_deployment(
 		r#"
 		SELECT
 			name,
-			value,
-			secret_id AS "secret_id: Uuid"
+			value
 		FROM
 			deployment_environment_variable
 		WHERE
@@ -252,32 +251,8 @@ pub async fn start_deployment(
 	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
-	.map(|env| {
-		let name = env.name;
-		let value = env.value.clone().map(EnvironmentVariableValue::String);
-
-		let secret_id = env
-			.secret_id
-			.map(|from_secret| EnvironmentVariableValue::Secret { from_secret });
-
-		let value = match (value.clone(), secret_id.clone()) {
-			(Some(value), None) => Some(value),
-			(None, Some(secret)) => Some(secret),
-			_ => None,
-		}
-		.ok_or_else(|| {
-			ErrorType::server_error(format!(
-				concat!(
-					"corrupted deployment, cannot find environment variable value. ",
-					"env name: `{}`, value: {:?}`, secret_id: {:?}, raw_value: {:?}, raw_secret_id: {:?}"
-				),
-				name, value, secret_id, env.value, env.secret_id
-			))
-		})?;
-
-		Ok((name, value))
-	})
-	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
+	.map(|env| (env.name, env.value))
+	.collect::<BTreeMap<_, _>>();
 
 	let config_mounts = query!(
 		r#"
@@ -299,29 +274,6 @@ pub async fn start_deployment(
 		let file = Base64String::from(row.file);
 
 		Ok((path, file))
-	})
-	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
-
-	let volumes = query!(
-		r#"
-		SELECT
-			volume_id AS "volume_id: Uuid",
-			volume_mount_path
-		FROM
-			deployment_volume_mount
-		WHERE
-			deployment_id = $1;
-		"#,
-		deployment_id as _
-	)
-	.fetch_all(&mut **database)
-	.await?
-	.into_iter()
-	.map(|row| {
-		let volume_id = row.volume_id;
-		let volume_mount_path = row.volume_mount_path;
-
-		Ok((volume_id, volume_mount_path))
 	})
 	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
 
@@ -384,7 +336,6 @@ pub async fn start_deployment(
 					startup_probe,
 					liveness_probe,
 					config_mounts,
-					volumes,
 				},
 			})
 			.unwrap(),
