@@ -17,7 +17,9 @@ use crate::{prelude::*, utils::config::AppConfig, worker::WorkerTaskType};
 #[instrument(skip(state))]
 pub async fn serve(state: &AppState) {
 	if cfg!(debug_assertions) {
-		let api_listener = TcpListener::bind(state.config.bind_address).await.unwrap();
+		let api_listener = TcpListener::bind(state.config.server.bind_address)
+			.await
+			.unwrap();
 
 		info!(
 			"API server running on http://{}",
@@ -25,8 +27,8 @@ pub async fn serve(state: &AppState) {
 		);
 
 		let app_listener = TcpListener::bind(SocketAddr::from((
-			state.config.bind_address.ip(),
-			state.config.bind_address.port() + 1,
+			state.config.server.bind_address.ip(),
+			state.config.server.bind_address.port() + 1,
 		)))
 		.await
 		.unwrap();
@@ -37,8 +39,8 @@ pub async fn serve(state: &AppState) {
 		);
 
 		let registry_listener = TcpListener::bind(SocketAddr::from((
-			state.config.bind_address.ip(),
-			state.config.bind_address.port() + 2,
+			state.config.server.bind_address.ip(),
+			state.config.server.bind_address.port() + 2,
 		)))
 		.await
 		.unwrap();
@@ -49,8 +51,8 @@ pub async fn serve(state: &AppState) {
 		);
 
 		let loki_listener = TcpListener::bind(SocketAddr::from((
-			state.config.bind_address.ip(),
-			state.config.bind_address.port() + 3,
+			state.config.server.bind_address.ip(),
+			state.config.server.bind_address.port() + 3,
 		)))
 		.await
 		.unwrap();
@@ -61,8 +63,8 @@ pub async fn serve(state: &AppState) {
 		);
 
 		let assets_listener = TcpListener::bind(SocketAddr::from((
-			state.config.bind_address.ip(),
-			state.config.bind_address.port() + 4,
+			state.config.server.bind_address.ip(),
+			state.config.server.bind_address.port() + 4,
 		)))
 		.await
 		.unwrap();
@@ -73,8 +75,8 @@ pub async fn serve(state: &AppState) {
 		);
 
 		let mimir_listener = TcpListener::bind(SocketAddr::from((
-			state.config.bind_address.ip(),
-			state.config.bind_address.port() + 5,
+			state.config.server.bind_address.ip(),
+			state.config.server.bind_address.port() + 5,
 		)))
 		.await
 		.unwrap();
@@ -160,7 +162,9 @@ pub async fn serve(state: &AppState) {
 		])
 		.await;
 	} else {
-		let tcp_listener = TcpListener::bind(state.config.bind_address).await.unwrap();
+		let tcp_listener = TcpListener::bind(state.config.server.bind_address)
+			.await
+			.unwrap();
 
 		info!(
 			"Listening for connections on http://{}",

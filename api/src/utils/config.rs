@@ -44,10 +44,8 @@ pub fn parse_config() -> AppConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppConfig {
-	/// The address to listed on
-	pub bind_address: SocketAddr,
-	/// The base path of the API
-	pub api_base_path: String,
+	/// HTTP server binding configuration
+	pub server: ServerConfig,
 	/// The pepper used to hash passwords
 	pub password_pepper: String,
 	/// The secret used to sign JWTs
@@ -77,6 +75,16 @@ pub struct AppConfig {
 	pub ipinfo: IpInfoConfig,
 	/// The configuration for social login providers (GitHub, etc.)
 	pub social_login: SocialLoginConfig,
+}
+
+/// HTTP server binding configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ServerConfig {
+	/// The address to listen on
+	pub bind_address: SocketAddr,
+	/// The base path of the API
+	pub api_base_path: String,
 }
 
 /// The configuration for social login providers

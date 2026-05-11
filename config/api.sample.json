@@ -1,6 +1,8 @@
 {
-	"bindAddress": "127.0.0.1:3000",
-	"apiBasePath": "/",
+	"server": {
+		"bindAddress": "127.0.0.1:3000",
+		"apiBasePath": "/"
+	},
 	"passwordPepper": "keyboard cat",
 	"jwtSecret": "keyboard cat",
 	"primaryHostedDomain": "onpatr.cloud",

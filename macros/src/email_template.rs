@@ -273,6 +273,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		#[template(source = #subject_template, ext = "txt")]
 		struct #subject_wrapper_name<'a> {
 			#(#field_names: &'a #field_types,)*
+			globals: &'a crate::worker::mailer::GlobalArgs,
 		}
 
 		// HTML template (inline source — pre-compiled from MJML)
@@ -282,6 +283,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		#[template(source = #html_source, ext = "html")]
 		struct #html_wrapper_name<'a> {
 			#(#field_names: &'a #field_types,)*
+			globals: &'a crate::worker::mailer::GlobalArgs,
 		}
 
 		// Plain text template (inline source)
@@ -291,33 +293,46 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		#[template(source = #txt_source, ext = "txt")]
 		struct #txt_wrapper_name<'a> {
 			#(#field_names: &'a #field_types,)*
+			globals: &'a crate::worker::mailer::GlobalArgs,
 		}
 
 		impl #name {
 			/// Renders the subject template into a string.
-			pub fn render_subject(&self) -> Result<String, crate::prelude::ErrorType> {
+			pub fn render_subject(
+				&self,
+				globals: &crate::worker::mailer::GlobalArgs,
+			) -> Result<String, crate::prelude::ErrorType> {
 				use askama::Template as _;
 
 				Ok(#subject_wrapper_name {
 					#(#field_names: &self.#field_names,)*
+					globals,
 				}.render()?)
 			}
 
 			/// Renders the pre-compiled HTML template into a string.
-			pub fn render_html(&self) -> Result<String, crate::prelude::ErrorType> {
+			pub fn render_html(
+				&self,
+				globals: &crate::worker::mailer::GlobalArgs,
+			) -> Result<String, crate::prelude::ErrorType> {
 				use askama::Template as _;
 
 				Ok(#html_wrapper_name {
 					#(#field_names: &self.#field_names,)*
+					globals,
 				}.render()?)
 			}
 
 			/// Renders the plain text template into a string.
-			pub fn render_text(&self) -> Result<String, crate::prelude::ErrorType> {
+			pub fn render_text(
+				&self,
+				globals: &crate::worker::mailer::GlobalArgs,
+			) -> Result<String, crate::prelude::ErrorType> {
 				use askama::Template as _;
 
 				Ok(#txt_wrapper_name {
 					#(#field_names: &self.#field_names,)*
+					globals,
 				}.render()?)
 			}
 		}
@@ -331,7 +346,10 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				let template = #name {
 					#(#field_initializers,)*
 				};
-				let html = template.render_html().expect("failed to render email HTML");
+				let globals = crate::worker::mailer::GlobalArgs::default();
+				let html = template
+					.render_html(&globals)
+					.expect("failed to render email HTML");
 				let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
 					.join("../target/email-previews");
 				std::fs::create_dir_all(&dir).expect("failed to create preview dir");

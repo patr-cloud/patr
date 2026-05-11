@@ -103,6 +103,14 @@ pub struct Email {
 	pub template: EmailTemplateType,
 }
 
+/// Render-time context shared by every email template.
+///
+/// Constructed once per send in [`super::send_emails`] and passed to all
+/// of an email template's render methods. Empty for now — fields will be
+/// added here as templates need them.
+#[derive(Debug, Clone, Default)]
+pub struct GlobalArgs {}
+
 /// The type of email to be sent. This is used to differentiate between
 /// different types of email tasks, such as sending a verification email or
 /// sending a password reset email. Each variant of this enum represents a
@@ -191,90 +199,90 @@ pub enum EmailTemplateType {
 
 impl EmailTemplateType {
 	/// Renders the subject template of the email into a string.
-	fn render_subject(&self) -> Result<String, ErrorType> {
+	fn render_subject(&self, globals: &GlobalArgs) -> Result<String, ErrorType> {
 		match self {
-			Self::AddNewEmailNotification(template) => template.render_subject(),
-			Self::BackupEmailNotification(template) => template.render_subject(),
-			Self::BillNotPaidDeleteResources(template) => template.render_subject(),
-			Self::BillPaidSuccessfully(template) => template.render_subject(),
-			Self::BillPaidUsingCredits(template) => template.render_subject(),
-			Self::BillPaymentFailedReminder(template) => template.render_subject(),
-			Self::CardNotAddedReminder(template) => template.render_subject(),
-			Self::DeleteResource(template) => template.render_subject(),
-			Self::ForgotPassword(template) => template.render_subject(),
-			Self::DomainAdded(template) => template.render_subject(),
-			Self::DomainNotVerified(template) => template.render_subject(),
-			Self::DomainNotVerifiedReminder(template) => template.render_subject(),
-			Self::DomainVerified(template) => template.render_subject(),
-			Self::PartialPaymentSuccess(template) => template.render_subject(),
-			Self::PasswordChangedNotification(template) => template.render_subject(),
-			Self::PasswordResetNotification(template) => template.render_subject(),
-			Self::PaymentFailureInvoice(template) => template.render_subject(),
-			Self::PaymentSuccessInvoice(template) => template.render_subject(),
-			Self::PurchaseCreditsSuccess(template) => template.render_subject(),
-			Self::RecoveryEmailNotification(template) => template.render_subject(),
-			Self::RunnerDisconnectedReminder(template) => template.render_subject(),
-			Self::SignUpCompleted(template) => template.render_subject(),
-			Self::UnverifiedDomainDelete(template) => template.render_subject(),
-			Self::UserSignUp(template) => template.render_subject(),
+			Self::AddNewEmailNotification(template) => template.render_subject(globals),
+			Self::BackupEmailNotification(template) => template.render_subject(globals),
+			Self::BillNotPaidDeleteResources(template) => template.render_subject(globals),
+			Self::BillPaidSuccessfully(template) => template.render_subject(globals),
+			Self::BillPaidUsingCredits(template) => template.render_subject(globals),
+			Self::BillPaymentFailedReminder(template) => template.render_subject(globals),
+			Self::CardNotAddedReminder(template) => template.render_subject(globals),
+			Self::DeleteResource(template) => template.render_subject(globals),
+			Self::ForgotPassword(template) => template.render_subject(globals),
+			Self::DomainAdded(template) => template.render_subject(globals),
+			Self::DomainNotVerified(template) => template.render_subject(globals),
+			Self::DomainNotVerifiedReminder(template) => template.render_subject(globals),
+			Self::DomainVerified(template) => template.render_subject(globals),
+			Self::PartialPaymentSuccess(template) => template.render_subject(globals),
+			Self::PasswordChangedNotification(template) => template.render_subject(globals),
+			Self::PasswordResetNotification(template) => template.render_subject(globals),
+			Self::PaymentFailureInvoice(template) => template.render_subject(globals),
+			Self::PaymentSuccessInvoice(template) => template.render_subject(globals),
+			Self::PurchaseCreditsSuccess(template) => template.render_subject(globals),
+			Self::RecoveryEmailNotification(template) => template.render_subject(globals),
+			Self::RunnerDisconnectedReminder(template) => template.render_subject(globals),
+			Self::SignUpCompleted(template) => template.render_subject(globals),
+			Self::UnverifiedDomainDelete(template) => template.render_subject(globals),
+			Self::UserSignUp(template) => template.render_subject(globals),
 		}
 	}
 
-	fn render_html(&self) -> Result<String, ErrorType> {
+	fn render_html(&self, globals: &GlobalArgs) -> Result<String, ErrorType> {
 		match self {
-			Self::AddNewEmailNotification(template) => template.render_html(),
-			Self::BackupEmailNotification(template) => template.render_html(),
-			Self::BillNotPaidDeleteResources(template) => template.render_html(),
-			Self::BillPaidSuccessfully(template) => template.render_html(),
-			Self::BillPaidUsingCredits(template) => template.render_html(),
-			Self::BillPaymentFailedReminder(template) => template.render_html(),
-			Self::CardNotAddedReminder(template) => template.render_html(),
-			Self::DeleteResource(template) => template.render_html(),
-			Self::ForgotPassword(template) => template.render_html(),
-			Self::DomainAdded(template) => template.render_html(),
-			Self::DomainNotVerified(template) => template.render_html(),
-			Self::DomainNotVerifiedReminder(template) => template.render_html(),
-			Self::DomainVerified(template) => template.render_html(),
-			Self::PartialPaymentSuccess(template) => template.render_html(),
-			Self::PasswordChangedNotification(template) => template.render_html(),
-			Self::PasswordResetNotification(template) => template.render_html(),
-			Self::PaymentFailureInvoice(template) => template.render_html(),
-			Self::PaymentSuccessInvoice(template) => template.render_html(),
-			Self::PurchaseCreditsSuccess(template) => template.render_html(),
-			Self::RecoveryEmailNotification(template) => template.render_html(),
-			Self::RunnerDisconnectedReminder(template) => template.render_html(),
-			Self::SignUpCompleted(template) => template.render_html(),
-			Self::UnverifiedDomainDelete(template) => template.render_html(),
-			Self::UserSignUp(template) => template.render_html(),
+			Self::AddNewEmailNotification(template) => template.render_html(globals),
+			Self::BackupEmailNotification(template) => template.render_html(globals),
+			Self::BillNotPaidDeleteResources(template) => template.render_html(globals),
+			Self::BillPaidSuccessfully(template) => template.render_html(globals),
+			Self::BillPaidUsingCredits(template) => template.render_html(globals),
+			Self::BillPaymentFailedReminder(template) => template.render_html(globals),
+			Self::CardNotAddedReminder(template) => template.render_html(globals),
+			Self::DeleteResource(template) => template.render_html(globals),
+			Self::ForgotPassword(template) => template.render_html(globals),
+			Self::DomainAdded(template) => template.render_html(globals),
+			Self::DomainNotVerified(template) => template.render_html(globals),
+			Self::DomainNotVerifiedReminder(template) => template.render_html(globals),
+			Self::DomainVerified(template) => template.render_html(globals),
+			Self::PartialPaymentSuccess(template) => template.render_html(globals),
+			Self::PasswordChangedNotification(template) => template.render_html(globals),
+			Self::PasswordResetNotification(template) => template.render_html(globals),
+			Self::PaymentFailureInvoice(template) => template.render_html(globals),
+			Self::PaymentSuccessInvoice(template) => template.render_html(globals),
+			Self::PurchaseCreditsSuccess(template) => template.render_html(globals),
+			Self::RecoveryEmailNotification(template) => template.render_html(globals),
+			Self::RunnerDisconnectedReminder(template) => template.render_html(globals),
+			Self::SignUpCompleted(template) => template.render_html(globals),
+			Self::UnverifiedDomainDelete(template) => template.render_html(globals),
+			Self::UserSignUp(template) => template.render_html(globals),
 		}
 	}
 
-	fn render_text(&self) -> Result<String, ErrorType> {
+	fn render_text(&self, globals: &GlobalArgs) -> Result<String, ErrorType> {
 		match self {
-			Self::AddNewEmailNotification(template) => template.render_text(),
-			Self::BackupEmailNotification(template) => template.render_text(),
-			Self::BillNotPaidDeleteResources(template) => template.render_text(),
-			Self::BillPaidSuccessfully(template) => template.render_text(),
-			Self::BillPaidUsingCredits(template) => template.render_text(),
-			Self::BillPaymentFailedReminder(template) => template.render_text(),
-			Self::CardNotAddedReminder(template) => template.render_text(),
-			Self::DeleteResource(template) => template.render_text(),
-			Self::ForgotPassword(template) => template.render_text(),
-			Self::DomainAdded(template) => template.render_text(),
-			Self::DomainNotVerified(template) => template.render_text(),
-			Self::DomainNotVerifiedReminder(template) => template.render_text(),
-			Self::DomainVerified(template) => template.render_text(),
-			Self::PartialPaymentSuccess(template) => template.render_text(),
-			Self::PasswordChangedNotification(template) => template.render_text(),
-			Self::PasswordResetNotification(template) => template.render_text(),
-			Self::PaymentFailureInvoice(template) => template.render_text(),
-			Self::PaymentSuccessInvoice(template) => template.render_text(),
-			Self::PurchaseCreditsSuccess(template) => template.render_text(),
-			Self::RecoveryEmailNotification(template) => template.render_text(),
-			Self::RunnerDisconnectedReminder(template) => template.render_text(),
-			Self::SignUpCompleted(template) => template.render_text(),
-			Self::UnverifiedDomainDelete(template) => template.render_text(),
-			Self::UserSignUp(template) => template.render_text(),
+			Self::AddNewEmailNotification(template) => template.render_text(globals),
+			Self::BackupEmailNotification(template) => template.render_text(globals),
+			Self::BillNotPaidDeleteResources(template) => template.render_text(globals),
+			Self::BillPaidSuccessfully(template) => template.render_text(globals),
+			Self::BillPaidUsingCredits(template) => template.render_text(globals),
+			Self::BillPaymentFailedReminder(template) => template.render_text(globals),
+			Self::CardNotAddedReminder(template) => template.render_text(globals),
+			Self::DeleteResource(template) => template.render_text(globals),
+			Self::ForgotPassword(template) => template.render_text(globals),
+			Self::DomainAdded(template) => template.render_text(globals),
+			Self::DomainNotVerified(template) => template.render_text(globals),
+			Self::DomainNotVerifiedReminder(template) => template.render_text(globals),
+			Self::DomainVerified(template) => template.render_text(globals),
+			Self::PartialPaymentSuccess(template) => template.render_text(globals),
+			Self::PasswordChangedNotification(template) => template.render_text(globals),
+			Self::PasswordResetNotification(template) => template.render_text(globals),
+			Self::PaymentFailureInvoice(template) => template.render_text(globals),
+			Self::PaymentSuccessInvoice(template) => template.render_text(globals),
+			Self::PurchaseCreditsSuccess(template) => template.render_text(globals),
+			Self::RecoveryEmailNotification(template) => template.render_text(globals),
+			Self::RunnerDisconnectedReminder(template) => template.render_text(globals),
+			Self::SignUpCompleted(template) => template.render_text(globals),
+			Self::UnverifiedDomainDelete(template) => template.render_text(globals),
+			Self::UserSignUp(template) => template.render_text(globals),
 		}
 	}
 }
@@ -283,17 +291,18 @@ impl EmailTemplateType {
 /// the worker when an email needs to be sent. It takes in the email type, and
 /// the app state, and sends the email accordingly.
 pub(super) async fn send_emails(email: Email, state: Data<AppState>) -> Result<(), WorkerError> {
-	let subject = email.template.render_subject().map_err(|e| {
+	let globals = GlobalArgs::default();
+	let subject = email.template.render_subject(&globals).map_err(|e| {
 		WorkerError::StateError(WorkerStateError::InvalidState(format!(
 			"Failed to render email template: {e}"
 		)))
 	})?;
-	let html = email.template.render_html().map_err(|e| {
+	let html = email.template.render_html(&globals).map_err(|e| {
 		WorkerError::StateError(WorkerStateError::InvalidState(format!(
 			"Failed to render email template: {e}"
 		)))
 	})?;
-	let text = email.template.render_text().map_err(|e| {
+	let text = email.template.render_text(&globals).map_err(|e| {
 		WorkerError::StateError(WorkerStateError::InvalidState(format!(
 			"Failed to render email template: {e}"
 		)))
