@@ -397,17 +397,18 @@ pub async fn upload_chunk(
 				"/v2/{workspace_id}/{repo_name}/blobs/uploads/{session_id}"
 			))?,
 			docker_upload_uuid: DockerUploadUuid::new(session_id),
-			range: Range::new(0..updated_session.total_bytes_uploaded + pending_size_after).map_err(|err| {
-				error!("Invalid range error: {}", err);
-				RegistryError::server_error(
-					ErrorCode::BlobUploadInvalid,
-					if cfg!(debug_assertions) {
-						format!("invalid range specified: {}", err)
-					} else {
-						"invalid range specified".to_string()
-					},
-				)
-			})?,
+			range: Range::new(0..updated_session.total_bytes_uploaded + pending_size_after)
+				.map_err(|err| {
+					error!("Invalid range error: {}", err);
+					RegistryError::server_error(
+						ErrorCode::BlobUploadInvalid,
+						if cfg!(debug_assertions) {
+							format!("invalid range specified: {}", err)
+						} else {
+							"invalid range specified".to_string()
+						},
+					)
+				})?,
 		})
 		.body(Body::empty())
 		.build()

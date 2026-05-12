@@ -499,15 +499,12 @@ pub async fn complete_upload(
 							.part_number(part_number)
 							.send()
 							.await?;
-						let etag = out
-							.copy_part_result
-							.and_then(|r| r.e_tag)
-							.ok_or_else(|| {
-								RegistryError::server_error(
-									ErrorCode::BlobUploadInvalid,
-									"S3 UploadPartCopy returned no ETag",
-								)
-							})?;
+						let etag = out.copy_part_result.and_then(|r| r.e_tag).ok_or_else(|| {
+							RegistryError::server_error(
+								ErrorCode::BlobUploadInvalid,
+								"S3 UploadPartCopy returned no ETag",
+							)
+						})?;
 						Ok::<_, RegistryError>(
 							CompletedPart::builder()
 								.part_number(part_number)
