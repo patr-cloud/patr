@@ -367,7 +367,7 @@ async fn chunked_upload_with_patch_under_threshold() {
 			path: GetBlobPath {
 				workspace_id: workspace.id,
 				repo_name: repo.name.clone(),
-				digest,
+				digest: digest.clone(),
 			},
 			query: (),
 			headers: GetBlobRequestHeaders {
@@ -380,6 +380,10 @@ async fn chunked_upload_with_patch_under_threshold() {
 
 	assert_eq!(get_response.status_code(), StatusCode::OK);
 	assert_eq!(get_response.into_bytes().as_ref(), &data);
+
+	setup
+		.assert_blob_size_in_db(&digest, data.len() as u64)
+		.await;
 }
 
 #[tokio::test]
@@ -457,7 +461,7 @@ async fn chunked_upload_with_patch_over_threshold() {
 			path: GetBlobPath {
 				workspace_id: workspace.id,
 				repo_name: repo.name.clone(),
-				digest,
+				digest: digest.clone(),
 			},
 			query: (),
 			headers: GetBlobRequestHeaders {
@@ -470,6 +474,8 @@ async fn chunked_upload_with_patch_over_threshold() {
 
 	assert_eq!(get_response.status_code(), StatusCode::OK);
 	assert_eq!(get_response.into_bytes().len(), size);
+
+	setup.assert_blob_size_in_db(&digest, size as u64).await;
 }
 
 #[tokio::test]
@@ -575,7 +581,7 @@ async fn chunked_upload_multiple_patches() {
 			path: GetBlobPath {
 				workspace_id: workspace.id,
 				repo_name: repo.name.clone(),
-				digest,
+				digest: digest.clone(),
 			},
 			query: (),
 			headers: GetBlobRequestHeaders {
@@ -588,6 +594,10 @@ async fn chunked_upload_multiple_patches() {
 
 	assert_eq!(get_response.status_code(), StatusCode::OK);
 	assert_eq!(get_response.into_bytes().len(), part1_size + part2_size);
+
+	setup
+		.assert_blob_size_in_db(&digest, (part1_size + part2_size) as u64)
+		.await;
 }
 
 #[tokio::test]
@@ -669,7 +679,7 @@ async fn chunked_upload_patch_then_body_in_put() {
 			path: GetBlobPath {
 				workspace_id: workspace.id,
 				repo_name: repo.name.clone(),
-				digest,
+				digest: digest.clone(),
 			},
 			query: (),
 			headers: GetBlobRequestHeaders {
@@ -682,4 +692,104 @@ async fn chunked_upload_patch_then_body_in_put() {
 
 	assert_eq!(get_response.status_code(), StatusCode::OK);
 	assert_eq!(get_response.into_bytes().as_ref(), &combined);
+
+	setup
+		.assert_blob_size_in_db(&digest, combined.len() as u64)
+		.await;
+}
+
+/// Pushes a blob larger than the multipart-copy threshold so the finalize
+/// step exercises the `UploadPartCopy` fan-out at `registry/blobs/<digest>`
+/// instead of the single-shot `CopyObject` branch. Catches regressions in
+/// the byte-range math and dest-key wiring.
+#[tokio::test]
+async fn chunked_upload_exercises_multipart_copy() {
+	use api::utils::constants::REGISTRY_BLOB_FINAL_COPY_MULTIPART_THRESHOLD;
+
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+
+	let (session_id, _) = setup
+		.initiate_chunked_upload(&api_token.token, &workspace.id, &repo.name)
+		.await;
+
+	// One byte past the threshold so finalize takes the multipart-copy branch.
+	let size = (REGISTRY_BLOB_FINAL_COPY_MULTIPART_THRESHOLD as usize) + 1;
+	let data: Vec<u8> = (0..=255u8).cycle().take(size).collect();
+	let digest = sha256_digest(&data);
+
+	let patch_response = setup
+		.patch_blob_chunk(
+			&api_token.token,
+			&workspace.id,
+			&repo.name,
+			session_id,
+			&data,
+		)
+		.await;
+	assert_eq!(
+		patch_response.status_code(),
+		StatusCode::ACCEPTED,
+		"PATCH chunk failed: {}",
+		std::str::from_utf8(&patch_response.into_bytes()).unwrap_or("<non-utf8>")
+	);
+
+	let response = setup
+		.make_registry_call(RegistryUnprocessedApiRequest::<CompleteBlobUploadPath> {
+			path: CompleteBlobUploadPath {
+				workspace_id: workspace.id,
+				repo_name: repo.name.clone(),
+				session_id,
+			},
+			query: CompleteBlobUploadQuery {
+				digest: digest.clone(),
+			},
+			headers: CompleteBlobUploadRequestHeaders {
+				authorization: BearerToken::from_str(&api_token.token).unwrap(),
+				content_type: OptionalHeader::new(None),
+				content_length: OptionalHeader::new(None),
+				content_range: OptionalHeader::new(None),
+			},
+			body: Body::empty(),
+		})
+		.await;
+	assert_eq!(
+		response.status_code(),
+		StatusCode::CREATED,
+		"complete upload failed: {}",
+		std::str::from_utf8(&response.into_bytes()).unwrap_or("<non-utf8>")
+	);
+
+	let get_response = setup
+		.make_registry_call(RegistryUnprocessedApiRequest::<GetBlobPath> {
+			path: GetBlobPath {
+				workspace_id: workspace.id,
+				repo_name: repo.name.clone(),
+				digest: digest.clone(),
+			},
+			query: (),
+			headers: GetBlobRequestHeaders {
+				authorization: BearerToken::from_str(&api_token.token).unwrap(),
+				range: OptionalHeader::new(None),
+			},
+			body: Body::empty(),
+		})
+		.await;
+
+	assert_eq!(get_response.status_code(), StatusCode::OK);
+	let bytes = get_response.into_bytes();
+	assert_eq!(bytes.len(), size);
+	assert_eq!(bytes.as_ref(), data.as_slice());
+
+	setup.assert_blob_size_in_db(&digest, size as u64).await;
 }

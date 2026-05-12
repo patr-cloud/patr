@@ -443,15 +443,121 @@ pub async fn complete_upload(
 	info!("Digest verification successful");
 
 	if inserted {
-		s3.copy_object()
-			.bucket(&config.s3.bucket)
-			.copy_source(format!(
-				"{}/registry/uploads/{session_id}",
-				config.s3.bucket
-			))
-			.key(format!("registry/blobs/{}", digest))
-			.send()
-			.await?;
+		let total_bytes = updated_session.total_bytes_uploaded;
+		let source_key = format!("registry/uploads/{session_id}");
+		let dest_key = format!("registry/blobs/{digest}");
+		let copy_source = format!("{}/{source_key}", config.s3.bucket);
+
+		if total_bytes < constants::REGISTRY_BLOB_FINAL_COPY_MULTIPART_THRESHOLD {
+			s3.copy_object()
+				.bucket(&config.s3.bucket)
+				.copy_source(&copy_source)
+				.key(&dest_key)
+				.send()
+				.await?;
+		} else {
+			// Mirrors cncf/distribution's S3 driver: for large blobs the
+			// single-shot CopyObject is replaced by a multipart upload at the
+			// destination keyed by `dest_key`, with parallel UploadPartCopy
+			// requests fanning across byte ranges of the source. Also lifts the
+			// 5 GB CopyObject ceiling — S3 mandates multipart copy above that.
+			let upload_id = s3
+				.create_multipart_upload()
+				.bucket(&config.s3.bucket)
+				.key(&dest_key)
+				.send()
+				.await?
+				.upload_id
+				.ok_or_else(|| {
+					RegistryError::server_error(
+						ErrorCode::BlobUploadInvalid,
+						"S3 did not return an upload_id for multipart copy",
+					)
+				})?;
+
+			let chunk = constants::REGISTRY_BLOB_FINAL_COPY_CHUNK_SIZE;
+			let part_count = total_bytes.div_ceil(chunk);
+
+			let part_copy = futures::stream::iter(0..part_count)
+				.map(|index| {
+					let start = index * chunk;
+					let end = (start + chunk).min(total_bytes) - 1;
+					let part_number = (index + 1) as i32;
+					let s3 = &s3;
+					let bucket = &config.s3.bucket;
+					let copy_source = &copy_source;
+					let dest_key = &dest_key;
+					let upload_id = &upload_id;
+					async move {
+						let out = s3
+							.upload_part_copy()
+							.bucket(bucket)
+							.key(dest_key)
+							.upload_id(upload_id)
+							.copy_source(copy_source)
+							.copy_source_range(format!("bytes={start}-{end}"))
+							.part_number(part_number)
+							.send()
+							.await?;
+						let etag = out.copy_part_result.and_then(|r| r.e_tag).ok_or_else(|| {
+							RegistryError::server_error(
+								ErrorCode::BlobUploadInvalid,
+								"S3 UploadPartCopy returned no ETag",
+							)
+						})?;
+						Ok::<_, RegistryError>(
+							CompletedPart::builder()
+								.part_number(part_number)
+								.e_tag(etag)
+								.build(),
+						)
+					}
+				})
+				.buffer_unordered(constants::REGISTRY_BLOB_FINAL_COPY_CONCURRENCY)
+				.try_collect::<Vec<_>>()
+				.await;
+
+			let mut parts = match part_copy {
+				Ok(parts) => parts,
+				Err(err) => {
+					error!("UploadPartCopy failed, aborting multipart copy: {err}");
+					let _ = s3
+						.abort_multipart_upload()
+						.bucket(&config.s3.bucket)
+						.key(&dest_key)
+						.upload_id(&upload_id)
+						.send()
+						.await;
+					return Err(err);
+				}
+			};
+			parts.sort_by_key(|p| p.part_number());
+
+			let complete = s3
+				.complete_multipart_upload()
+				.bucket(&config.s3.bucket)
+				.key(&dest_key)
+				.upload_id(&upload_id)
+				.multipart_upload(
+					CompletedMultipartUpload::builder()
+						.set_parts(Some(parts))
+						.build(),
+				)
+				.send()
+				.await;
+
+			if let Err(err) = complete {
+				error!("CompleteMultipartUpload failed, aborting multipart copy: {err}");
+				let _ = s3
+					.abort_multipart_upload()
+					.bucket(&config.s3.bucket)
+					.key(&dest_key)
+					.upload_id(&upload_id)
+					.send()
+					.await;
+				return Err(err.into());
+			}
+		}
 	}
 
 	let _ = s3

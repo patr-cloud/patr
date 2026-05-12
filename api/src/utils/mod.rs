@@ -166,4 +166,21 @@ pub mod constants {
 	/// upload a manifest larger than this size, they can contact support to
 	/// have the limit increased for their account.
 	pub const MAX_REGISTRY_MANIFEST_SIZE: usize = 100 * 1024 * 1024; // 100 MiB
+
+	/// Size at or above which the final blob copy (from the session-keyed
+	/// upload key to the digest-keyed final key) switches from a single
+	/// `CopyObject` to a multipart copy with parallel `UploadPartCopy`. Matches
+	/// cncf/distribution's `multipartcopythresholdsize` default.
+	pub const REGISTRY_BLOB_FINAL_COPY_MULTIPART_THRESHOLD: u64 = 32 * 1024 * 1024;
+
+	/// Byte range size for each `UploadPartCopy` request during the final blob
+	/// copy. Must be ≥ 5 MiB (S3 minimum part size, except the last part). At
+	/// 32 MiB, the 10,000-part S3 cap accommodates blobs up to 320 GB.
+	pub const REGISTRY_BLOB_FINAL_COPY_CHUNK_SIZE: u64 = 32 * 1024 * 1024;
+
+	/// Maximum in-flight `UploadPartCopy` requests for the final blob copy.
+	/// Higher helps on AWS S3 / distributed object stores; on a single-node
+	/// MinIO it saturates local disk I/O before this many threads do useful
+	/// work.
+	pub const REGISTRY_BLOB_FINAL_COPY_CONCURRENCY: usize = 10;
 }
