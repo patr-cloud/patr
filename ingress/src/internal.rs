@@ -1,6 +1,9 @@
 use models::api::workspace::deployment::DeploymentStatus;
 
-use crate::{prelude::*, utils::serve_error_page};
+use crate::{
+	prelude::*,
+	utils::{build_forwarded_headers, serve_error_page},
+};
 
 /// The function that handles incoming requests to the ingress. It looks up the
 /// deployment information from KV storage based on the host header, checks the
@@ -59,7 +62,7 @@ pub async fn handle_request(req: Request, env: Env, _ctx: Context, host: &str) -
 				req.url()?.as_str(),
 				&RequestInit {
 					body: req.inner().body().map(Into::into),
-					headers: req.headers().clone(),
+					headers: build_forwarded_headers(&req, "https")?,
 					cf: CfProperties {
 						resolve_override: Some(format!(
 							"{}.{}",
@@ -81,7 +84,7 @@ pub async fn handle_request(req: Request, env: Env, _ctx: Context, host: &str) -
 				req.url()?.as_str(),
 				&RequestInit {
 					body: req.inner().body().map(Into::into),
-					headers: req.headers().clone(),
+					headers: build_forwarded_headers(&req, "https")?,
 					cf: Default::default(),
 					method: req.method(),
 					redirect: RequestRedirect::Manual,
