@@ -381,7 +381,9 @@ async fn chunked_upload_with_patch_under_threshold() {
 	assert_eq!(get_response.status_code(), StatusCode::OK);
 	assert_eq!(get_response.into_bytes().as_ref(), &data);
 
-	setup.assert_blob_size_in_db(&digest, data.len() as u64).await;
+	setup
+		.assert_blob_size_in_db(&digest, data.len() as u64)
+		.await;
 }
 
 #[tokio::test]
