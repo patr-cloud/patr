@@ -22,6 +22,7 @@ use api::{
 		RedisConfig,
 		RunningEnvironment,
 		S3Config,
+		ServerConfig,
 		SocialLoginConfig,
 		TracingConfig,
 	},
@@ -441,8 +442,10 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 	};
 
 	let config = AppConfig {
-		bind_address: web_bind_address,
-		api_base_path: String::from("/"),
+		server: ServerConfig {
+			bind_address: web_bind_address,
+			api_base_path: String::from("/"),
+		},
 		password_pepper,
 		jwt_secret,
 		primary_hosted_domain: String::from("testonpatr.cloud"),
