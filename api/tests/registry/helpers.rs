@@ -141,6 +141,24 @@ pub fn build_minimal_oci_image_with_ports(seed: u8, exposed_tcp_ports: &[u16]) -
 }
 
 impl TestSetup {
+	/// Assert that `container_registry_blob.size` for the given digest equals
+	/// `expected`. Guards against regressions where `total_bytes_uploaded`
+	/// drifts from the actual S3 object size — e.g. by double-counting bytes
+	/// that crossed a request boundary via the Redis pending buffer.
+	pub async fn assert_blob_size_in_db(&self, digest: &str, expected: u64) {
+		let size: i64 = sqlx::query_scalar(
+			"SELECT size FROM container_registry_blob WHERE digest = $1",
+		)
+		.bind(digest)
+		.fetch_one(self.database())
+		.await
+		.unwrap_or_else(|err| panic!("blob row not found for {digest}: {err}"));
+		assert_eq!(
+			size as u64, expected,
+			"container_registry_blob.size mismatch for {digest}: got {size}, expected {expected}",
+		);
+	}
+
 	/// Initiate a chunked blob upload (POST without `?digest=`).
 	/// Returns `(session_id, location)` parsed from the response headers.
 	pub async fn initiate_chunked_upload(
