@@ -204,15 +204,44 @@ pub async fn upload_chunk(
 			.into_result();
 	}
 
+	// Load any pending buffer from a previous PATCH that was under 5 MB. We
+	// need its size before the Content-Range check below so that the byte
+	// position we compare against reflects bytes received (S3 + Redis), not
+	// just bytes flushed to S3.
+	let pending_key = keys::registry_blob_upload_pending_buffer(&session_id);
+	let buffer = redis
+		.get::<Option<String>>(&pending_key)
+		.await?
+		.map(|encoded| {
+			// If there's any pending buffer, decode it from base64 and prepend it to the
+			// body stream
+			info!("Loaded pending buffer from Redis");
+			BASE64_STANDARD.decode(&encoded).map_err(|err| {
+				error!("Failed to decode pending buffer from Redis: {err}");
+				RegistryError::server_error(
+					ErrorCode::BlobUploadInvalid,
+					"Corrupted pending upload buffer",
+				)
+			})
+		})
+		.transpose()?
+		.unwrap_or_default();
+	// Clean up the pending buffer in Redis since we're now processing it (if it
+	// exists) If something goes wrong during processing, the client can re-upload
+	// the blob
+	let _ = redis.del(&pending_key).await;
+
+	let pending_size_before = buffer.len() as u64;
+
 	if let Some(content_range) = content_range.into_option() {
 		let start_range = content_range
 			.bytes_range()
 			.map(|range| range.0)
 			.unwrap_or_default();
-		if start_range != session.total_bytes_uploaded {
+		let received_so_far = session.total_bytes_uploaded + pending_size_before;
+		if start_range != received_so_far {
 			warn!(
-				"Content-Range start is {start_range} but last byte position is {}",
-				session.total_bytes_uploaded
+				"Content-Range start is {start_range} but last byte position is {received_so_far}"
 			);
 			return RegistryError::builder()
 				.code(ErrorCode::BlobUploadInvalid)
@@ -243,31 +272,7 @@ pub async fn upload_chunk(
 	// Upload chunk to S3
 	const CHUNK_FLUSH_THRESHOLD: u64 = 5 * 1024 * 1024; // 5 MB - S3 requires all non-final parts to be at least this size
 
-	// Load any pending buffer from a previous PATCH that was under 5 MB
-	let pending_key = keys::registry_blob_upload_pending_buffer(&session_id);
-	let buffer = redis
-		.get::<Option<String>>(&pending_key)
-		.await?
-		.map(|encoded| {
-			// If there's any pending buffer, decode it from base64 and prepend it to the
-			// body stream
-			info!("Loaded pending buffer from Redis");
-			BASE64_STANDARD.decode(&encoded).map_err(|err| {
-				error!("Failed to decode pending buffer from Redis: {err}");
-				RegistryError::server_error(
-					ErrorCode::BlobUploadInvalid,
-					"Corrupted pending upload buffer",
-				)
-			})
-		})
-		.transpose()?
-		.unwrap_or_default();
-	// Clean up the pending buffer in Redis since we're now processing it (if it
-	// exists) If something goes wrong during processing, the client can re-upload
-	// the blob
-	let _ = redis.del(&pending_key).await;
-
-	let (mut updated_session, hasher, _) =
+	let (mut updated_session, hasher, _, pending_size_after) =
 		futures::stream::once(async move { Ok(Bytes::from(buffer)) })
 			.chain(body.into_data_stream().map_err(|err| {
 				error!("Failed to read body stream: {err}");
@@ -284,8 +289,9 @@ pub async fn upload_chunk(
 					session,
 					hasher,
 					None::<JoinHandle<Result<UploadPartOutput, SdkError<UploadPartError>>>>,
+					0u64,
 				),
-				async |(mut session, mut hasher, inflight_task), chunk| {
+				async |(mut session, mut hasher, inflight_task, mut pending_size_after), chunk| {
 					// If there's an inflight upload task from the previous chunk, await it and
 					// update the session with the returned ETag and part number
 					if let Some(task) = inflight_task {
@@ -340,9 +346,11 @@ pub async fn upload_chunk(
 							// is if it's the final chunk (the stream ended) — in that case
 							// we can store that final chunk in Redis as a pending buffer to
 							// be flushed on the next PATCH, which avoids violating S3's
-							// minimum part size requirement for non-final parts
+							// minimum part size requirement for non-final parts. These bytes
+							// aren't in S3 yet so they don't move `total_bytes_uploaded`; the
+							// outgoing `Range:` header adds `pending_size_after` to reflect
+							// bytes received (vs. bytes flushed to S3).
 							info!("Storing {} pending buffer in Redis", chunk_size_string);
-							// session.total_bytes_uploaded += chunk_size as u64;
 							redis
 								.setex(
 									&pending_key,
@@ -350,8 +358,7 @@ pub async fn upload_chunk(
 									BASE64_STANDARD.encode(&chunk),
 								)
 								.await?;
-
-							session.total_bytes_uploaded += chunk_size as u64;
+							pending_size_after = chunk_size as u64;
 							None
 						}
 						CHUNK_FLUSH_THRESHOLD.. => {
@@ -366,7 +373,7 @@ pub async fn upload_chunk(
 						}
 					};
 
-					Ok((session, hasher, inflight_task))
+					Ok((session, hasher, inflight_task, pending_size_after))
 				},
 			)
 			.await?;
@@ -390,7 +397,7 @@ pub async fn upload_chunk(
 				"/v2/{workspace_id}/{repo_name}/blobs/uploads/{session_id}"
 			))?,
 			docker_upload_uuid: DockerUploadUuid::new(session_id),
-			range: Range::new(0..updated_session.total_bytes_uploaded).map_err(|err| {
+			range: Range::new(0..updated_session.total_bytes_uploaded + pending_size_after).map_err(|err| {
 				error!("Invalid range error: {}", err);
 				RegistryError::server_error(
 					ErrorCode::BlobUploadInvalid,
