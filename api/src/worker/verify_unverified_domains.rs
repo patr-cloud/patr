@@ -1,7 +1,12 @@
 use apalis::prelude::*;
 use apalis_cron::Tick;
 use futures::TryStreamExt;
-use hickory_resolver::{Resolver, config::ResolverConfig, name_server::TokioConnectionProvider};
+use hickory_resolver::{
+	Resolver,
+	config::ResolverConfig,
+	net::runtime::TokioRuntimeProvider,
+	proto::rr::RData,
+};
 
 use crate::prelude::*;
 
@@ -13,11 +18,10 @@ use crate::prelude::*;
 pub async fn verify_unverified_domains(_: Tick, data: Data<AppState>) -> Result<(), WorkerError> {
 	println!("Verifying unverified domains...");
 
-	let resolver = Resolver::builder_with_config(
-		ResolverConfig::default(),
-		TokioConnectionProvider::default(),
-	)
-	.build();
+	let resolver =
+		Resolver::builder_with_config(ResolverConfig::default(), TokioRuntimeProvider::default())
+			.build()
+			.expect("failed to build DNS resolver");
 
 	query!(
 		r#"
@@ -39,8 +43,12 @@ pub async fn verify_unverified_domains(_: Tick, data: Data<AppState>) -> Result<
 		let expected_value = domain.id.to_string();
 
 		let verified = match resolver.txt_lookup(&verification_hostname).await {
-			Ok(lookup) => lookup.iter().any(|txt| {
-				txt.iter()
+			Ok(lookup) => lookup.answers().iter().any(|record| {
+				let RData::TXT(txt) = &record.data else {
+					return false;
+				};
+				txt.txt_data
+					.iter()
 					.any(|data| String::from_utf8_lossy(data) == expected_value)
 			}),
 			Err(_) => false,
