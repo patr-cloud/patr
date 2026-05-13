@@ -79,11 +79,11 @@ mrml                           = { default-features = false, version = "6" }
 nix                            = { default-features = false, version = "0.31" }
 oci-spec                       = { default-features = false, version = "0.9" }
 open                           = { default-features = false, version = "5" }
-opentelemetry                  = { default-features = false, version = "0.32" }
-opentelemetry-appender-tracing = { default-features = false, version = "0.32" }
-opentelemetry-otlp             = { default-features = false, version = "0.32" }
-opentelemetry-proto            = { default-features = false, version = "0.32" }
-opentelemetry_sdk              = { default-features = false, version = "0.32" }
+opentelemetry                  = { default-features = false, version = "0.31" }
+opentelemetry-appender-tracing = { default-features = false, version = "0.31" }
+opentelemetry-otlp             = { default-features = false, version = "0.31" }
+opentelemetry-proto            = { default-features = false, version = "0.31" }
+opentelemetry_sdk              = { default-features = false, version = "0.31" }
 pin-project                    = { default-features = false, version = "1" }
 preprocess                     = { default-features = false, version = "0.5" }
 proc-macro2                    = { default-features = false, version = "1" }

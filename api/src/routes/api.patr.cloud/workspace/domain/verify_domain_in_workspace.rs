@@ -1,4 +1,9 @@
-use hickory_resolver::{Resolver, config::ResolverConfig, name_server::TokioConnectionProvider};
+use hickory_resolver::{
+	Resolver,
+	config::ResolverConfig,
+	net::runtime::TokioRuntimeProvider,
+	proto::rr::RData,
+};
 use http::StatusCode;
 use models::api::workspace::domain::*;
 
@@ -53,15 +58,18 @@ pub async fn verify_domain_in_workspace(
 	let verification_hostname = format!("_patr-verify.{}.{}", row.name, row.tld);
 	let expected_value = row.id.to_string();
 
-	let resolver = Resolver::builder_with_config(
-		ResolverConfig::default(),
-		TokioConnectionProvider::default(),
-	)
-	.build();
+	let resolver =
+		Resolver::builder_with_config(ResolverConfig::default(), TokioRuntimeProvider::default())
+			.build()
+			.map_err(ErrorType::server_error)?;
 
 	let verified = match resolver.txt_lookup(&verification_hostname).await {
-		Ok(lookup) => lookup.iter().any(|txt| {
-			txt.iter()
+		Ok(lookup) => lookup.answers().iter().any(|record| {
+			let RData::TXT(txt) = &record.data else {
+				return false;
+			};
+			txt.txt_data
+				.iter()
 				.any(|data| String::from_utf8_lossy(data) == expected_value)
 		}),
 		Err(_) => false,
