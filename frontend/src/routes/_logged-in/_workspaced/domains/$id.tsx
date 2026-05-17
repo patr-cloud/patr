@@ -27,6 +27,7 @@ import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useDomainInfoQuery, useManagedUrlsQuery } from "~/hooks/fetch";
 import { domainKeys, managedUrlKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
+import { DEPLOYMENT_DOMAIN } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
 import DeploymentOption from "./-components/deployment-option";
 import ManageUrlRow from "./-components/managed-url-component";
@@ -342,7 +343,9 @@ const DomainInfo = () => {
 											{
 												type: "CNAME",
 												name: `${subDomain() || "(subdomain)"}.${domainInfoQuery.data?.name || "your-domain.com"}`,
-												target: "ingress.onpatr.cloud",
+												target: DEPLOYMENT_DOMAIN
+													? `ingress.${DEPLOYMENT_DOMAIN}`
+													: "your ingress hostname",
 											},
 										]}
 										renderRow={(record) => (

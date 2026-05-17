@@ -3,6 +3,7 @@ import { createEffect, createMemo, createSignal, createUniqueId, Index, Show } f
 import { ExposedPortType } from "~/bindings";
 import { Button, ButtonVariant, Input, InputDropdown, Label, InputType } from "~/components";
 import { Color } from "~/utils/color";
+import { DEPLOYMENT_DOMAIN } from "~/utils/env";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
@@ -150,6 +151,7 @@ const PortInput = (props: PortInputProps) => {
 							const r = row();
 							const saved = get(props.value) ?? {};
 							return (
+								!!DEPLOYMENT_DOMAIN &&
 								r.port.trim() !== "" &&
 								r.type === "http" &&
 								!!props.deploymentId &&
@@ -187,7 +189,7 @@ const PortInput = (props: PortInputProps) => {
 										<Show when={showVisitUrl()} fallback={<div class="flex-9" />}>
 											<a
 												class="flex-9 flex items-center justify-center gap-2 rounded-xs bg-secondary-light border border-secondary-medium py-xs text-primary"
-												href={`https://${row().port}-${props.deploymentId}.onpatr.cloud`}
+												href={`https://${row().port}-${props.deploymentId}.${DEPLOYMENT_DOMAIN}`}
 												target="_blank"
 												rel="noopener noreferrer"
 											>

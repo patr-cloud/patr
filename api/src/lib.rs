@@ -36,6 +36,7 @@ pub mod worker;
 
 /// A prelude that re-exports commonly used items.
 pub mod prelude {
+	pub use cfg_if::cfg_if;
 	pub use macros::query;
 	pub use models::{
 		AppResponse,

@@ -19,6 +19,7 @@ import {
 } from "~/components";
 import { createFormAction } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
+import { REGISTRY_DOMAIN } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
 
 const CreateContainerRepository = () => {
@@ -106,7 +107,7 @@ const CreateContainerRepository = () => {
 										</span>
 										<CopyableField
 											variant={CopyableFieldVariant.Text}
-											value={`registry.patr.cloud/${workspaceId()}/${repositoryName().trim()}`}
+											value={`${REGISTRY_DOMAIN ?? "<registry>"}/${workspaceId()}/${repositoryName().trim()}`}
 											innerClass="text-white font-semibold"
 										/>
 									</div>

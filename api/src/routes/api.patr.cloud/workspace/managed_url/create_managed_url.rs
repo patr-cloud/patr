@@ -1,4 +1,5 @@
 use axum::http::StatusCode;
+#[cfg(feature = "cloud")]
 use cloudflare::{
 	endpoints::zones::custom_hostnames::*,
 	framework::{
@@ -183,64 +184,89 @@ pub async fn create_managed_url(
 	.await?;
 
 	if existing_custom_hostname.is_none() {
-		let fqdn = if sub_domain == "@" {
-			domain.clone()
-		} else {
-			format!("{}.{}", sub_domain, domain)
-		};
+		cfg_if! {
+			if #[cfg(feature = "cloud")] {
+				let fqdn = if sub_domain == "@" {
+					domain.clone()
+				} else {
+					format!("{}.{}", sub_domain, domain)
+				};
 
-		let cf_client = CloudflareClient::new(
-			Credentials::UserAuthToken {
-				token: state.config.cloudflare.api_key.clone(),
-			},
-			ClientConfig::default(),
-			Environment::Custom(state.config.cloudflare.base_url.clone()),
-		)?;
+				let cf_client = CloudflareClient::new(
+					Credentials::UserAuthToken {
+						token: state.config.cloudflare.api_key.clone(),
+					},
+					ClientConfig::default(),
+					Environment::Custom(state.config.cloudflare.base_url.clone()),
+				)?;
 
-		let custom_hostname_id = cf_client
-			.request(&AddCustomHostname {
-				zone_identifier: &state.config.cloudflare.primary_hosted_zone_id,
-				params: AddCustomHostnameParams {
-					hostname: fqdn,
-					ssl: Some(CustomHostnameSsl {
-						bundle_method: Some(CustomHostnameSslBundleMethod::Ubiquitous),
-						certificate_authority: Some(
-							CustomHostnameSslCertificateAuthority::LetsEncrypt,
-						),
-						type_: Some(CustomHostnameSslType::DV),
-						method: Some(CustomHostnameSslMethod::Http),
-						validation_records: None,
-						settings: None,
-						wildcard: None,
-						status: None,
-					}),
-					custom_metadata: None,
-				},
-			})
-			.await?
-			.result
-			.id;
+				let custom_hostname_id = cf_client
+					.request(&AddCustomHostname {
+						zone_identifier: &state.config.cloudflare.primary_hosted_zone_id,
+						params: AddCustomHostnameParams {
+							hostname: fqdn,
+							ssl: Some(CustomHostnameSsl {
+								bundle_method: Some(CustomHostnameSslBundleMethod::Ubiquitous),
+								certificate_authority: Some(
+									CustomHostnameSslCertificateAuthority::LetsEncrypt,
+								),
+								type_: Some(CustomHostnameSslType::DV),
+								method: Some(CustomHostnameSslMethod::Http),
+								validation_records: None,
+								settings: None,
+								wildcard: None,
+								status: None,
+							}),
+							custom_metadata: None,
+						},
+					})
+					.await?
+					.result
+					.id;
 
-		query!(
-			r#"
-			INSERT INTO
-				managed_url_custom_hostname(
-					sub_domain,
-					domain_id,
-					cloudflare_custom_hostname_id,
-					is_active
+				query!(
+					r#"
+					INSERT INTO
+						managed_url_custom_hostname(
+							sub_domain,
+							domain_id,
+							cloudflare_custom_hostname_id,
+							is_active
+						)
+					VALUES
+						($1, $2, $3, FALSE)
+					ON CONFLICT (sub_domain, domain_id)
+					DO NOTHING;
+					"#,
+					&sub_domain,
+					domain_id as _,
+					&custom_hostname_id,
 				)
-			VALUES
-				($1, $2, $3, FALSE)
-			ON CONFLICT (sub_domain, domain_id)
-			DO NOTHING;
-			"#,
-			&sub_domain,
-			domain_id as _,
-			&custom_hostname_id,
-		)
-		.execute(&mut **database)
-		.await?;
+				.execute(&mut **database)
+				.await?;
+			} else {
+				let _ = state;
+				query!(
+					r#"
+					INSERT INTO
+						managed_url_custom_hostname(
+							sub_domain,
+							domain_id,
+							cloudflare_custom_hostname_id,
+							is_active
+						)
+					VALUES
+						($1, $2, '', TRUE)
+					ON CONFLICT (sub_domain, domain_id)
+					DO NOTHING;
+					"#,
+					&sub_domain,
+					domain_id as _,
+				)
+				.execute(&mut **database)
+				.await?;
+			}
+		}
 	}
 
 	let id = query!(
@@ -324,12 +350,20 @@ pub async fn create_managed_url(
 		err => ErrorType::server_error(err),
 	})?;
 
-	utils::cloudflare::sync_ingress_kv_for_fqdn(
-		&format!("{}.{}", sub_domain, domain),
-		database,
-		&state.config,
-	)
-	.await?;
+	cfg_if! {
+		if #[cfg(feature = "cloud")] {
+			utils::cloudflare::sync_ingress_kv_for_fqdn(
+				&format!("{}.{}", sub_domain, domain),
+				database,
+				&state.config,
+			)
+			.await?;
+			let is_active = false;
+		} else {
+			let _ = (database, &state, &domain);
+			let is_active = true;
+		}
+	}
 
 	// Notify the runner that owns the target deployment, if this URL targets
 	// one. Other URL types stay Cloudflare-only for now.
@@ -345,7 +379,7 @@ pub async fn create_managed_url(
 							domain_id,
 							path: path.clone(),
 							url_type: url_type.clone(),
-							is_active: false,
+							is_active,
 						},
 					),
 				})

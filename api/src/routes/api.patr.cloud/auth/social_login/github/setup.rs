@@ -241,7 +241,7 @@ pub async fn social_login_setup(
 	.to_string();
 	let refresh_token_expiry = now.add(constants::INACTIVE_REFRESH_TOKEN_VALIDITY);
 
-	let ip_info = ip::lookup(client_ip, redis, &state.config.ipinfo).await?;
+	let ip_info = ip::lookup(client_ip, &state).await?;
 
 	if !cfg!(debug_assertions) && ip_info.bogon.unwrap_or(false) {
 		return Err(ErrorType::server_error(format!(

@@ -14,11 +14,9 @@ use models::api::auth::*;
 use sqlx::types::ipnetwork::IpNetwork;
 use time::OffsetDateTime;
 
-use crate::{
-	models::access_token_data::AccessTokenData,
-	prelude::*,
-	utils::cloudflare::validate_turnstile_token,
-};
+#[cfg(feature = "cloud")]
+use crate::utils::cloudflare::validate_turnstile_token;
+use crate::{models::access_token_data::AccessTokenData, prelude::*};
 
 pub async fn complete_sign_up(
 	AppRequest {
@@ -37,26 +35,33 @@ pub async fn complete_sign_up(
 		database,
 		redis: _,
 		client_ip,
-		mut state,
+		state,
 	}: AppRequest<'_, CompleteSignUpRequest>,
 ) -> Result<AppResponse<CompleteSignUpRequest>, ErrorType> {
-	trace!("Validating Cloudflare Turnstile token");
-	let cf_turnstile_response = validate_turnstile_token(
-		&state.config.cloudflare.turnstile_secret,
-		&cf_turnstile_token,
-		Some(client_ip),
-	)
-	.await
-	.inspect_err(|err| {
-		error!("Error verifying Cloudflare Turnstile token: `{}`", err);
-	})?;
+	cfg_if! {
+		if #[cfg(feature = "cloud")] {
+			trace!("Validating Cloudflare Turnstile token");
+			let cf_turnstile_response = validate_turnstile_token(
+				&state.config.cloudflare.turnstile_secret,
+				&cf_turnstile_token,
+				client_ip,
+			)
+			.await
+			.inspect_err(|err| {
+				error!("Error verifying Cloudflare Turnstile token: `{}`", err);
+			})?;
 
-	if !cf_turnstile_response.success {
-		return Err(ErrorType::TurnstileVerificationFailed);
-	}
+			if !cf_turnstile_response.success {
+				return Err(ErrorType::TurnstileVerificationFailed);
+			}
 
-	if !cfg!(debug_assertions) && &cf_turnstile_response.action != "complete-sign-up" {
-		return Err(ErrorType::TurnstileVerificationActionMismatch);
+			if !cfg!(debug_assertions) && &cf_turnstile_response.action != "complete-sign-up" {
+				return Err(ErrorType::TurnstileVerificationActionMismatch);
+			}
+		} else {
+			// No cloudflare turnstile token in non-cloud environment
+			let _ = cf_turnstile_token;
+		}
 	}
 
 	info!("Completing sign up for user: `{username}`");
@@ -294,7 +299,7 @@ pub async fn complete_sign_up(
 	.to_string();
 	let refresh_token_expiry = now.add(constants::INACTIVE_REFRESH_TOKEN_VALIDITY);
 
-	let ip_info = ip::lookup(client_ip, &mut state.redis, &state.config.ipinfo).await?;
+	let ip_info = ip::lookup(client_ip, &state).await?;
 
 	if !cfg!(debug_assertions) && ip_info.bogon.unwrap_or(false) {
 		return Err(ErrorType::server_error(format!(

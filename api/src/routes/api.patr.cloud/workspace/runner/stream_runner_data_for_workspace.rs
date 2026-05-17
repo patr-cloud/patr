@@ -1,7 +1,10 @@
-use std::{net::IpAddr, time::Duration};
+#[cfg(feature = "cloud")]
+use std::net::IpAddr;
+use std::time::Duration;
 
 use axum::{http::StatusCode, response::IntoResponse};
 use axum_typed_websockets::{Message, WebSocket};
+#[cfg(feature = "cloud")]
 use cloudflare::{
 	endpoints::{
 		cfd_tunnel::*,
@@ -22,12 +25,13 @@ use futures::{
 	future::{self, Either},
 	prelude::stream::*,
 };
+#[cfg(feature = "cloud")]
+use models::cloudflare::kv::InternalKVData;
 use models::{
 	api::workspace::{
 		deployment::DeploymentStatus,
 		runner::{StreamRunnerDataForWorkspaceClientMsg::*, *},
 	},
-	cloudflare::kv::InternalKVData,
 	utils::{GenericResponse, WebSocketUpgrade},
 };
 use rustis::{
@@ -467,49 +471,55 @@ async fn update_deployment_status(
 	.await?
 	.status;
 
-	let client = CloudflareClient::new(
-		Credentials::UserAuthToken {
-			token: state.config.cloudflare.api_key.clone(),
-		},
-		ClientConfig::default(),
-		Environment::Custom(state.config.cloudflare.base_url.clone()),
-	)?;
-
-	// Read existing KV to get the ports
-	let existing_kv: InternalKVData = serde_json::from_slice(
-		&client
-			.request(&read_key::ReadKey {
-				account_identifier: &state.config.cloudflare.account_id,
-				namespace_identifier: &state.config.cloudflare.worker_namespace_id,
-				key: &id.to_string(),
-			})
-			.await?,
-	)?;
-
-	let InternalKVData::Deployment { ports, .. } = &existing_kv else {
-		return Err(ErrorType::server_error(
-			"expected deployment KV data, found runner",
-		));
-	};
-
-	client
-		.request(&write_key::WriteKey {
-			account_identifier: &state.config.cloudflare.account_id,
-			namespace_identifier: &state.config.cloudflare.worker_namespace_id,
-			key: &id.to_string(),
-			params: write_key::WriteKeyParams {
-				expiration: None,
-				expiration_ttl: None,
-			},
-			body: write_key::WriteKeyBody::Value(serde_json::to_vec(
-				&InternalKVData::Deployment {
-					ports: ports.clone(),
-					runner_id,
-					status: current_status,
+	cfg_if! {
+		if #[cfg(feature = "cloud")] {
+			let client = CloudflareClient::new(
+				Credentials::UserAuthToken {
+					token: state.config.cloudflare.api_key.clone(),
 				},
-			)?),
-		})
-		.await?;
+				ClientConfig::default(),
+				Environment::Custom(state.config.cloudflare.base_url.clone()),
+			)?;
+
+			// Read existing KV to get the ports
+			let existing_kv = serde_json::from_slice::<InternalKVData>(
+				&client
+					.request(&read_key::ReadKey {
+						account_identifier: &state.config.cloudflare.account_id,
+						namespace_identifier: &state.config.cloudflare.worker_namespace_id,
+						key: &id.to_string(),
+					})
+					.await?,
+			)?;
+
+			let InternalKVData::Deployment { ports, .. } = &existing_kv else {
+				return Err(ErrorType::server_error(
+					"expected deployment KV data, found runner",
+				));
+			};
+
+			client
+				.request(&write_key::WriteKey {
+					account_identifier: &state.config.cloudflare.account_id,
+					namespace_identifier: &state.config.cloudflare.worker_namespace_id,
+					key: &id.to_string(),
+					params: write_key::WriteKeyParams {
+						expiration: None,
+						expiration_ttl: None,
+					},
+					body: write_key::WriteKeyBody::Value(serde_json::to_vec(
+						&InternalKVData::Deployment {
+							ports: ports.clone(),
+							runner_id,
+							status: current_status,
+						},
+					)?),
+				})
+				.await?;
+		} else {
+			let _ = (runner_id, current_status);
+		}
+	}
 
 	Ok(())
 }
@@ -520,6 +530,8 @@ async fn update_runner_exposure_type(
 	exposure_type: RunnerExposureType,
 	state: &AppState,
 ) -> Result<(), ErrorType> {
+	cfg_if! {
+		if #[cfg(feature = "cloud")] {
 	let client = CloudflareClient::new(
 		Credentials::UserAuthToken {
 			token: state.config.cloudflare.api_key.clone(),
@@ -711,6 +723,10 @@ async fn update_runner_exposure_type(
 				},
 			})
 			.await?;
+	}
+		} else {
+			let _ = (runner_id, workspace_id, exposure_type, state);
+		}
 	}
 
 	Ok(())

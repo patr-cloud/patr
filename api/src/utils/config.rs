@@ -60,6 +60,7 @@ pub struct AppConfig {
 	pub jwt_secret: String,
 	/// This is the primary domain that all deployments and all user-facing URLs
 	/// will be hosted on
+	#[cfg(feature = "cloud")]
 	pub primary_hosted_domain: String,
 	/// The environment the application is running in. This is set at runtime
 	/// based on an environment variable and if the application is compiled with
@@ -76,12 +77,15 @@ pub struct AppConfig {
 	pub redis: RedisConfig,
 	// pub email: EmailConfig,
 	/// The cloudflare settings to use for the API
+	#[cfg(feature = "cloud")]
 	pub cloudflare: CloudflareConfig,
 	/// The opentelemetry endpoint to send traces to
 	pub opentelemetry: OpenTelemetryConfig,
 	/// The configuration for IpInfo to get IpAddress details
+	#[cfg(feature = "cloud")]
 	pub ipinfo: IpInfoConfig,
 	/// The configuration for social login providers (GitHub, etc.)
+	#[cfg(feature = "cloud")]
 	pub social_login: SocialLoginConfig,
 }
 
@@ -93,9 +97,15 @@ pub struct ServerConfig {
 	pub bind_address: SocketAddr,
 	/// The base path of the API
 	pub api_base_path: String,
+	/// The canonical base domain the API is served on. In cloud, this is the
+	/// root of the platform (e.g. `patr.cloud`) and sub-services live on
+	/// `api.`, `app.`, `registry.` subdomains. In self-hosted, this is the
+	/// single domain that path-routes everything.
+	pub base_domain: String,
 }
 
 /// The configuration for social login providers
+#[cfg(feature = "cloud")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SocialLoginConfig {
@@ -194,6 +204,7 @@ fn default_redis_database() -> u8 {
 
 /// The configuration for Cloudflare to use for the API. This is used to
 /// setup DNS records and for Cloudflare Tunnels.
+#[cfg(feature = "cloud")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CloudflareConfig {
@@ -215,6 +226,7 @@ pub struct CloudflareConfig {
 }
 
 /// The default base URL for the Cloudflare API
+#[cfg(feature = "cloud")]
 fn default_cloudflare_base_url() -> String {
 	"https://api.cloudflare.com/client/v4/".to_string()
 }
@@ -278,6 +290,7 @@ pub struct MetricsConfig {
 }
 
 /// The configuration for IpInfo to get information about an IP Address
+#[cfg(feature = "cloud")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IpInfoConfig {
@@ -292,6 +305,7 @@ pub struct IpInfoConfig {
 /// the site root (`https://app.patr.cloud/`) — the only common parent of
 /// the two callback URLs below. GitHub allows any `redirect_uri` that is a
 /// subpath of the registered URL.
+#[cfg(feature = "cloud")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GitHubOAuthConfig {

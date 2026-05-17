@@ -1,7 +1,7 @@
 use apalis::prelude::*;
 use apalis_cron::Tick;
 use cloudflare::{
-	endpoints::zones::{custom_hostnames::*, zone::*},
+	endpoints::zones::custom_hostnames::*,
 	framework::{
 		Environment,
 		auth::Credentials,
@@ -174,35 +174,6 @@ pub async fn cleanup_unverified_domains(_: Tick, data: Data<AppState>) -> Result
 				.map_err(|err| WorkerStateError::InvalidState(err.to_string()))?;
 		}
 
-		// Delete domain records
-		query!(
-			r#"
-			DELETE FROM
-				user_controlled_domain
-			WHERE
-				domain_id = $1;
-			"#,
-			domain.id as _,
-		)
-		.execute(&data.database)
-		.await
-		.map_err(|err| WorkerStateError::InvalidState(err.to_string()))?;
-
-		let zone = query!(
-			r#"
-			DELETE FROM
-				patr_controlled_domain
-			WHERE
-				domain_id = $1
-			RETURNING zone_identifier;
-			"#,
-			domain.id as _,
-		)
-		.fetch_optional(&data.database)
-		.await
-		.map_err(|err| WorkerStateError::InvalidState(err.to_string()))?
-		.map(|r| r.zone_identifier);
-
 		query!(
 			r#"
 			DELETE FROM
@@ -230,22 +201,6 @@ pub async fn cleanup_unverified_domains(_: Tick, data: Data<AppState>) -> Result
 		.execute(&data.database)
 		.await
 		.map_err(|err| WorkerStateError::InvalidState(err.to_string()))?;
-
-		// Delete CF zone if internal domain
-		if let Some(zone_id) = zone {
-			match cf_client
-				.request(&DeleteZone {
-					identifier: &zone_id,
-				})
-				.await
-			{
-				Ok(_) => {}
-				Err(ApiFailure::Error(status, _)) if status == reqwest::StatusCode::NOT_FOUND => {}
-				Err(err) => {
-					error!("Failed to delete CF zone {}: {}", zone_id, err);
-				}
-			}
-		}
 
 		// TODO send an email to the workspace super-admin notifying them that
 		// the domain and its managed URLs have been removed

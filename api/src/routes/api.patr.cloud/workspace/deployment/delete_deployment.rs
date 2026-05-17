@@ -1,4 +1,5 @@
 use axum::http::StatusCode;
+#[cfg(feature = "cloud")]
 use cloudflare::{
 	endpoints::workerskv::delete_key,
 	framework::{
@@ -186,19 +187,25 @@ pub async fn delete_deployment(
 		.del(redis::keys::runner_id_for_deployment(&deployment_id))
 		.await?;
 
-	CloudflareClient::new(
-		Credentials::UserAuthToken {
-			token: state.config.cloudflare.api_key.clone(),
-		},
-		ClientConfig::default(),
-		Environment::Custom(state.config.cloudflare.base_url.clone()),
-	)?
-	.request(&delete_key::DeleteKey {
-		account_identifier: &state.config.cloudflare.account_id,
-		namespace_identifier: &state.config.cloudflare.worker_namespace_id,
-		key: &deployment_id.to_string(),
-	})
-	.await?;
+	cfg_if! {
+		if #[cfg(feature = "cloud")] {
+			CloudflareClient::new(
+				Credentials::UserAuthToken {
+					token: state.config.cloudflare.api_key.clone(),
+				},
+				ClientConfig::default(),
+				Environment::Custom(state.config.cloudflare.base_url.clone()),
+			)?
+			.request(&delete_key::DeleteKey {
+				account_identifier: &state.config.cloudflare.account_id,
+				namespace_identifier: &state.config.cloudflare.worker_namespace_id,
+				key: &deployment_id.to_string(),
+			})
+			.await?;
+		} else {
+			let _ = state; // Avoid unused variable warning
+		}
+	}
 
 	// TODO Temporary workaround until audit logs and triggers are implemented
 	redis

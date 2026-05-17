@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::MaybeExternallySourced;
-use crate::{api::workspace::domain::DomainNameserverType, prelude::*};
+use crate::prelude::*;
 
 /// The IaaC domain resource. This is used to define a domain in an IaaC file.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -13,8 +13,4 @@ pub struct IaacDomain {
 	pub id: Option<Uuid>,
 	/// The name of the domain
 	pub name: MaybeExternallySourced<String>,
-	/// The type of nameserver for the domain. Can be Internal or External.
-	/// - Internal: The nameserver is managed by Patr
-	/// - External: The nameserver is managed by the user
-	pub nameserver_type: MaybeExternallySourced<DomainNameserverType>,
 }

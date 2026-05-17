@@ -8,6 +8,7 @@ import {
 } from "~/bindings";
 import { Button, ButtonVariant, Input, InputDropdown, LoadingSpinner, useToast, InfoPopup } from "~/components";
 import { createAuthenticatedAction, createFormAction } from "~/hooks";
+import { DEPLOYMENT_DOMAIN } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 import DeploymentOption from "./deployment-option";
@@ -101,7 +102,11 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 													<p>
 														Name: {props.managedUrl.subDomain}.{props.domainInfo.name || ""}
 													</p>
-													<p>Value: ingress.onpatr.cloud</p>
+													<p>
+														Value: {DEPLOYMENT_DOMAIN
+															? `ingress.${DEPLOYMENT_DOMAIN}`
+															: "your ingress hostname"}
+													</p>
 												</div>
 											</div>
 										)}

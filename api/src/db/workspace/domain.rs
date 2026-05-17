@@ -18,49 +18,14 @@ pub async fn initialize_domain_tables(
 
 	query!(
 		r#"
-		CREATE TYPE DOMAIN_NAMESERVER_TYPE AS ENUM(
-			'internal',
-			'external'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
 		CREATE TABLE workspace_domain(
 			id UUID NOT NULL,
 			name TEXT NOT NULL,
 			tld TEXT NOT NULL,
 			workspace_id UUID NOT NULL,
-			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL,
 			is_verified BOOLEAN NOT NULL,
 			last_verified TIMESTAMPTZ,
 			deleted TIMESTAMPTZ
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE patr_controlled_domain(
-			domain_id UUID NOT NULL,
-			zone_identifier TEXT NOT NULL,
-			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE user_controlled_domain(
-			domain_id UUID NOT NULL,
-			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL
 		);
 		"#
 	)
@@ -75,38 +40,6 @@ pub async fn initialize_domain_tables(
 			cloudflare_custom_hostname_id TEXT NOT NULL,
 			is_active BOOLEAN NOT NULL DEFAULT FALSE,
 			last_verified TIMESTAMPTZ
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TYPE DNS_RECORD_TYPE AS ENUM(
-			'A',
-			'MX',
-			'TXT',
-			'AAAA',
-			'CNAME'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE patr_domain_dns_record(
-			id UUID NOT NULL,
-			record_identifier TEXT NOT NULL,
-			domain_id UUID NOT NULL,
-			name TEXT NOT NULL,
-			type DNS_RECORD_TYPE NOT NULL,
-			value TEXT NOT NULL,
-			priority INTEGER,
-			ttl BIGINT NOT NULL,
-			proxied BOOLEAN
 		);
 		"#
 	)
@@ -136,29 +69,7 @@ pub async fn initialize_domain_indices(
 	query!(
 		r#"
 		ALTER TABLE workspace_domain
-			ADD CONSTRAINT workspace_domain_pk PRIMARY KEY(id),
-			ADD CONSTRAINT workspace_domain_uq_id_nameserver_type
-				UNIQUE(id, nameserver_type);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE patr_controlled_domain
-		ADD CONSTRAINT patr_controlled_domain_pk
-		PRIMARY KEY(domain_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE user_controlled_domain
-		ADD CONSTRAINT User_controlled_domain_pk
-		PRIMARY KEY(domain_id);
+		ADD CONSTRAINT workspace_domain_pk PRIMARY KEY(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -169,17 +80,6 @@ pub async fn initialize_domain_indices(
 		ALTER TABLE managed_url_custom_hostname
 		ADD CONSTRAINT managed_url_custom_hostname_pk
 		PRIMARY KEY(sub_domain, domain_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE patr_domain_dns_record
-			ADD CONSTRAINT patr_domain_dns_record_pk PRIMARY KEY(id),
-			ADD CONSTRAINT patr_domain_dns_record_uq_domain_id_name_type_value_priority
-				UNIQUE(domain_id, name, type, value, priority);
 		"#
 	)
 	.execute(&mut *connection)
@@ -256,34 +156,6 @@ pub async fn initialize_domain_constraints(
 
 	query!(
 		r#"
-		ALTER TABLE patr_controlled_domain
-			ADD CONSTRAINT patr_controlled_domain_chk_nameserver_type CHECK(
-				nameserver_type = 'internal'
-			),
-			ADD	CONSTRAINT patr_controlled_domain_fk_domain_id_nameserver_type
-				FOREIGN KEY(domain_id, nameserver_type)
-					REFERENCES workspace_domain(id, nameserver_type);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE user_controlled_domain
-			ADD CONSTRAINT user_controlled_domain_chk_nameserver_type CHECK(
-				nameserver_type = 'external'
-			),
-			ADD CONSTRAINT user_controlled_domain_fk_domain_id_nameserver_type
-				FOREIGN KEY(domain_id, nameserver_type)	
-					REFERENCES workspace_domain(id, nameserver_type);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
 		ALTER TABLE managed_url_custom_hostname
 			ADD CONSTRAINT managed_url_custom_hostname_fk_domain_id
 				FOREIGN KEY(domain_id)
@@ -291,39 +163,6 @@ pub async fn initialize_domain_constraints(
 			ADD CONSTRAINT managed_url_custom_hostname_chk_sub_domain_valid CHECK(
 				sub_domain = '@' OR
 				sub_domain ~ '^(([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])$'
-			);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE patr_domain_dns_record
-			ADD CONSTRAINT patr_domain_dns_record_fk_id
-				FOREIGN KEY(id) REFERENCES resource(id),
-			ADD CONSTRAINT patr_domain_dns_record_chk_name_is_valid CHECK(
-				name ~ '^((\*)|((\*\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])))$' OR
-				name = '@'
-			),
-			ADD CONSTRAINT patr_domain_dns_record_fk_domain_id
-				FOREIGN KEY(domain_id) REFERENCES patr_controlled_domain(domain_id),
-			ADD CONSTRAINT patr_domain_dns_record_chk_values_valid CHECK(
-				(
-					type = 'MX' AND priority IS NOT NULL
-				) OR (
-					type != 'MX' AND priority IS NULL
-				)
-			),
-			ADD CONSTRAINT patr_domain_dns_record_chk_proxied_is_valid CHECK(
-				(
-					(type = 'A' OR type = 'AAAA' OR type = 'CNAME') AND
-					proxied IS NOT NULL
-				) OR
-				(
-					(type = 'MX' OR type = 'TXT') AND
-					proxied IS NULL
-				)
 			);
 		"#
 	)

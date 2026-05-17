@@ -30,6 +30,7 @@ mod resend_otp;
 /// The route to reset a user's password
 mod reset_password;
 /// Social-login (GitHub, …) SSO routes
+#[cfg(feature = "cloud")]
 mod social_login;
 
 use self::{
@@ -52,7 +53,16 @@ use self::{
 pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
 	Router::new()
 		.merge(oauth::setup_routes(state, allowed_client_type).await)
-		.merge(social_login::setup_routes(state, allowed_client_type).await)
+		.merge(
+			#[cfg(feature = "cloud")]
+			{
+				social_login::setup_routes(state, allowed_client_type).await
+			},
+			#[cfg(not(feature = "cloud"))]
+			{
+				Router::new()
+			},
+		)
 		.mount_endpoint(login, state, allowed_client_type)
 		.mount_auth_endpoint(logout, state, allowed_client_type)
 		.mount_endpoint(create_account, state, allowed_client_type)

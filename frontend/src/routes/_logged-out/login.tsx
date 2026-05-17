@@ -16,6 +16,7 @@ import { createSignal, Show } from "solid-js";
 import { SocialLoginInitiateResponse, LoginRequest, LoginResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
 import { createAsyncAction, useAuthState } from "~/hooks";
+import { IS_CLOUD } from "~/utils/env";
 import { USERNAME_OR_EMAIL_PATTERN, validateUsernameOrEmail } from "~/utils/validation";
 
 interface InputFields {
@@ -70,7 +71,7 @@ const Login = () => {
 			return false;
 		}
 
-		if (!turnstileToken()) {
+		if (IS_CLOUD && !turnstileToken()) {
 			toast("Please complete the security verification", "error");
 			return false;
 		}
@@ -78,25 +79,27 @@ const Login = () => {
 		return true;
 	};
 
-	const handleGithubSignIn = async () => {
-		setGithubLoading(true);
+	const handleGithubSignIn = IS_CLOUD
+		? async () => {
+				setGithubLoading(true);
 
-		try {
-			const resp = await httpRequest<SocialLoginInitiateResponse>("/api/auth/social-login/github", {
-				method: "POST",
-			});
-			if (resp.ok) {
-				window.location.href = resp.data.authorizeUrl;
-				return;
+				try {
+					const resp = await httpRequest<SocialLoginInitiateResponse>("/api/auth/social-login/github", {
+						method: "POST",
+					});
+					if (resp.ok) {
+						window.location.href = resp.data.authorizeUrl;
+						return;
+					}
+
+					toast("Could not initiate GitHub sign-in. Please try again.", "error");
+				} catch {
+					toast("Could not initiate GitHub sign-in. Please try again.", "error");
+				} finally {
+					setGithubLoading(false);
+				}
 			}
-
-			toast("Could not initiate GitHub sign-in. Please try again.", "error");
-		} catch {
-			toast("Could not initiate GitHub sign-in. Please try again.", "error");
-		} finally {
-			setGithubLoading(false);
-		}
-	};
+		: undefined;
 
 	const { execute: submitLogin, isLoading } = createAsyncAction(async () => {
 		const { userId, password } = inputs();
@@ -106,7 +109,7 @@ const Login = () => {
 			userId,
 			password,
 			mfaOtp: showMfa() && mfaOtp() !== "" ? mfaOtp() : undefined,
-			cfTurnstileToken: turnstileToken(),
+			cfTurnstileToken: IS_CLOUD ? turnstileToken() : "self-hosted",
 		};
 
 		const loginResp = await httpRequest<LoginResponse>("/api/auth/sign-in", {
@@ -234,14 +237,16 @@ const Login = () => {
 					</Show>
 
 					{/* Turnstile Widget */}
-					<div class="mt-6 flex justify-center">
-						<Turnstile
-							onVerify={setTurnstileToken}
-							onExpire={() => setTurnstileToken("")}
-							onError={() => setTurnstileToken("")}
-							action="login"
-						/>
-					</div>
+					{IS_CLOUD && (
+						<div class="mt-6 flex justify-center">
+							<Turnstile
+								onVerify={setTurnstileToken}
+								onExpire={() => setTurnstileToken("")}
+								onError={() => setTurnstileToken("")}
+								action="login"
+							/>
+						</div>
+					)}
 
 					{/* Login Button */}
 					<div class="pt-8 w-full flex flex-row items-center justify-between">
@@ -254,7 +259,7 @@ const Login = () => {
 							type="submit"
 							loading={isLoading}
 							loadingContent={() => <span>Logging in...</span>}
-							disabled={!turnstileToken()}
+							disabled={IS_CLOUD && !turnstileToken()}
 						>
 							Login
 						</Button>
@@ -262,22 +267,26 @@ const Login = () => {
 				</div>
 
 				{/* GitHub SSO */}
-				<div class="flex items-center gap-3 my-4">
-					<div class="flex-1 h-px bg-secondary-medium" />
-					<span class="text-gray-500 text-xs">or</span>
-					<div class="flex-1 h-px bg-secondary-medium" />
-				</div>
-				<Button
-					variant={ButtonVariant.Plain}
-					class="w-full py-3 mb-2 gap-3 rounded-xs bg-black! text-white! text-sm font-medium border border-white/25 enabled:hover:bg-[#1f1f1f]! enabled:hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-					type="button"
-					loading={githubLoading}
-					loadingContent={() => <span>Redirecting to GitHub...</span>}
-					onClick={handleGithubSignIn}
-				>
-					<img src="/icons/github.svg" alt="" aria-hidden="true" height="20" width="20" class="invert" />
-					Continue with GitHub
-				</Button>
+				{IS_CLOUD && (
+					<>
+						<div class="flex items-center gap-3 my-4">
+							<div class="flex-1 h-px bg-secondary-medium" />
+							<span class="text-gray-500 text-xs">or</span>
+							<div class="flex-1 h-px bg-secondary-medium" />
+						</div>
+						<Button
+							variant={ButtonVariant.Plain}
+							class="w-full py-3 mb-2 gap-3 rounded-xs bg-black! text-white! text-sm font-medium border border-white/25 enabled:hover:bg-[#1f1f1f]! enabled:hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+							type="button"
+							loading={githubLoading}
+							loadingContent={() => <span>Redirecting to GitHub...</span>}
+							onClick={handleGithubSignIn}
+						>
+							<img src="/icons/github.svg" alt="" aria-hidden="true" height="20" width="20" class="invert" />
+							Continue with GitHub
+						</Button>
+					</>
+				)}
 			</form>
 
 			{/* Footer */}

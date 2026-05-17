@@ -4,6 +4,7 @@
 pub mod assets;
 /// Cloudflare utilities: ingress KV sync, tunnel config, and Turnstile
 /// validation.
+#[cfg(feature = "cloud")]
 pub mod cloudflare;
 /// The configuration data that is loaded when the backend starts. This contains
 /// the details of the database, Redis, the JWT secret, etc.
