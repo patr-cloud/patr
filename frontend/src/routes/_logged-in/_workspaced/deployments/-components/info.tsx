@@ -24,6 +24,7 @@ import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useDeploymentInfoQuery, useRunnersQuery } from "~/hooks/fetch";
 import { deploymentKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
+import { REGISTRY_DOMAIN } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 import EnvInput from "./env-input";
@@ -33,8 +34,6 @@ import ConfigMount from "./config-mount";
 interface DeploymentInfoProps {
 	deploymentId: string;
 }
-
-const PATR_REGISTRY = "registry.patr.cloud";
 
 const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	const [authState] = useAuthState();
@@ -71,7 +70,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	const isPatrRegistry = () => {
 		const info = localInfo();
 		if (!info) return false;
-		return info.registry === PATR_REGISTRY;
+		return info.registry === REGISTRY_DOMAIN;
 	};
 
 	const refetchDeploymentInfo = () => {
@@ -241,7 +240,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 							value={(() => {
 								const info = localInfo();
 								if (!info) return "";
-								if (info.registry === PATR_REGISTRY) {
+								if (info.registry === REGISTRY_DOMAIN) {
 									return "repositoryId" in info ? (info.repositoryId as string) : "";
 								}
 								return "imageName" in info ? info.imageName : "";

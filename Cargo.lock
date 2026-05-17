@@ -220,6 +220,7 @@ dependencies = [
  "axum-typed-websockets",
  "base32",
  "base64 0.22.1",
+ "cfg-if",
  "clap",
  "cloudflare",
  "config",

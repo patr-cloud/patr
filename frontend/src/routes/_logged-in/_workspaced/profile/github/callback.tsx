@@ -3,6 +3,7 @@ import { Title } from "@solidjs/meta";
 import { onMount } from "solid-js";
 import { ConnectSocialLoginCallbackRequest } from "~/bindings";
 import { LoadingSpinner, useToast } from "~/components";
+import { cloudOnly } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
 
 const GithubConnectCallback = () => {
@@ -53,10 +54,12 @@ const GithubConnectCallback = () => {
 	);
 };
 
-export const Route = createFileRoute("/_logged-in/_workspaced/profile/github/callback")({
-	validateSearch: (search: Record<string, unknown>): { code?: string; state?: string } => ({
-		code: (search.code as string) || undefined,
-		state: (search.state as string) || undefined,
+export const Route = createFileRoute("/_logged-in/_workspaced/profile/github/callback")(
+	cloudOnly({
+		validateSearch: (search: Record<string, unknown>): { code?: string; state?: string } => ({
+			code: (search.code as string) || undefined,
+			state: (search.state as string) || undefined,
+		}),
+		component: GithubConnectCallback,
 	}),
-	component: GithubConnectCallback,
-});
+);

@@ -3,6 +3,7 @@ import { Deployment, WithId } from "~/bindings";
 import { Tooltip } from "~/components";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useContainerRegistryInfoQuery } from "~/hooks/fetch";
+import { REGISTRY_DOMAIN } from "~/utils/env";
 
 const DeploymentImageName = (props: { item: WithId<Deployment> }) => {
 	const [workspaceId] = useLastWorkspaceId();
@@ -15,7 +16,9 @@ const DeploymentImageName = (props: { item: WithId<Deployment> }) => {
 		if (isExternal()) {
 			return `${props.item.registry}/${(props.item as { imageName: string }).imageName}:${props.item.imageTag}`;
 		}
-		return `registry.patr.cloud/${workspaceId()}/${repoInfoQuery.data?.repository.name ?? "..."}:${props.item.imageTag}`;
+		const repoName = repoInfoQuery.data?.repository.name ?? "...";
+		const registryPrefix = REGISTRY_DOMAIN ? `${REGISTRY_DOMAIN}/` : "";
+		return `${registryPrefix}${workspaceId()}/${repoName}:${props.item.imageTag}`;
 	};
 
 	return (

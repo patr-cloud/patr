@@ -6,7 +6,9 @@ use models::api::auth::*;
 use rand::RngExt;
 use time::OffsetDateTime;
 
-use crate::{prelude::*, utils::cloudflare::validate_turnstile_token};
+use crate::prelude::*;
+#[cfg(feature = "cloud")]
+use crate::utils::cloudflare::validate_turnstile_token;
 
 pub async fn create_account(
 	AppRequest {
@@ -31,23 +33,30 @@ pub async fn create_account(
 		mut state,
 	}: AppRequest<'_, CreateAccountRequest>,
 ) -> Result<AppResponse<CreateAccountRequest>, ErrorType> {
-	trace!("Validating Cloudflare Turnstile token");
-	let cf_turnstile_response = validate_turnstile_token(
-		&state.config.cloudflare.turnstile_secret,
-		&cf_turnstile_token,
-		Some(client_ip),
-	)
-	.await
-	.inspect_err(|err| {
-		error!("Error verifying Cloudflare Turnstile token: `{}`", err);
-	})?;
+	cfg_if! {
+		if #[cfg(feature = "cloud")] {
+			trace!("Validating Cloudflare Turnstile token");
+			let cf_turnstile_response = validate_turnstile_token(
+				&state.config.cloudflare.turnstile_secret,
+				&cf_turnstile_token,
+				client_ip,
+			)
+			.await
+			.inspect_err(|err| {
+				error!("Error verifying Cloudflare Turnstile token: `{}`", err);
+			})?;
 
-	if !cf_turnstile_response.success {
-		return Err(ErrorType::TurnstileVerificationFailed);
-	}
+			if !cf_turnstile_response.success {
+				return Err(ErrorType::TurnstileVerificationFailed);
+			}
 
-	if !cfg!(debug_assertions) && &cf_turnstile_response.action != "sign-up" {
-		return Err(ErrorType::TurnstileVerificationActionMismatch);
+			if !cfg!(debug_assertions) && &cf_turnstile_response.action != "sign-up" {
+				return Err(ErrorType::TurnstileVerificationActionMismatch);
+			}
+		} else {
+			// No cloudflare turnstile token in non-cloud environment
+			let _ = cf_turnstile_token;
+		}
 	}
 
 	info!("Creating account");

@@ -9,8 +9,6 @@ use proc_macro::TokenStream;
 
 /// The proc macro for declaring an API endpoint.
 mod declare_api_endpoint;
-/// The proc macro for declaring an App endpoint for the frontend.
-mod declare_app_route;
 /// The proc macro for declaring a registry endpoint.
 mod declare_registry_endpoint;
 /// The proc macro for declaring a streaming endpoint. A streaming endpoint is
@@ -87,33 +85,6 @@ mod version;
 #[proc_macro]
 pub fn declare_api_endpoint(input: TokenStream) -> TokenStream {
 	declare_api_endpoint::parse(input)
-}
-
-/// Declares a app route.
-///
-/// This macro allows creates a router path, which will be the URL of the page.
-/// It includes the URL of the route, a route name, the path parameter e.g
-/// /path/:id, the query i.e. the query string, and whether the URL is auth
-/// protected or not.
-///
-/// ## Example usage:
-/// ```rust
-/// // In the root
-/// macros::declare_app_route!(
-///     /// The documentation for the endpoint.
-///     Login,
-///     "/login/{param1}" {
-///         pub param1: i32
-///     },
-///     requires_login = true,
-///     query = {
-///         pub param1: bool,
-///     },
-/// );
-/// ```
-#[proc_macro]
-pub fn declare_app_route(input: TokenStream) -> TokenStream {
-	declare_app_route::parse(input)
 }
 
 /// Declares a registry endpoint.

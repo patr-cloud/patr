@@ -244,7 +244,6 @@ async fn add_domain_not_root() {
 				})
 				.body(AddDomainToWorkspaceRequest {
 					domain: format!("sub.{}.com", random_name(8)),
-					nameserver_type: DomainNameserverType::External,
 				})
 				.build(),
 		)
@@ -275,7 +274,6 @@ async fn add_domain_not_icann() {
 				.body(AddDomainToWorkspaceRequest {
 					// `.local` is in the PSL private section, not ICANN.
 					domain: format!("{}.local", random_name(8)),
-					nameserver_type: DomainNameserverType::External,
 				})
 				.build(),
 		)
@@ -308,7 +306,6 @@ async fn add_domain_duplicate() {
 				})
 				.body(AddDomainToWorkspaceRequest {
 					domain: domain.domain.clone(),
-					nameserver_type: DomainNameserverType::External,
 				})
 				.build(),
 		)

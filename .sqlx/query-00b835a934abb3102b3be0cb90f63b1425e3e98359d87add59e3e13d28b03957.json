@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO workspace_domain(id, name, tld, workspace_id, is_verified, deleted) VALUES ($1, $2, $3, $4, FALSE, NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "00b835a934abb3102b3be0cb90f63b1425e3e98359d87add59e3e13d28b03957"
+}

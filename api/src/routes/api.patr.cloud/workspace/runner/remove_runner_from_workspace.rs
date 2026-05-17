@@ -1,4 +1,5 @@
 use axum::http::StatusCode;
+#[cfg(feature = "cloud")]
 use cloudflare::{
 	endpoints::{cfd_tunnel::delete_tunnel, workerskv::delete_key},
 	framework::{
@@ -89,32 +90,38 @@ pub async fn remove_runner_from_workspace(
 		.del(redis::keys::workspace_id_for_runner(&runner_id))
 		.await?;
 
-	let cloudflare = CloudflareClient::new(
-		Credentials::UserAuthToken {
-			token: state.config.cloudflare.api_key.clone(),
-		},
-		ClientConfig::default(),
-		Environment::Custom(state.config.cloudflare.base_url.clone()),
-	)?;
+	cfg_if! {
+		if #[cfg(feature = "cloud")] {
+			let cloudflare = CloudflareClient::new(
+				Credentials::UserAuthToken {
+					token: state.config.cloudflare.api_key.clone(),
+				},
+				ClientConfig::default(),
+				Environment::Custom(state.config.cloudflare.base_url.clone()),
+			)?;
 
-	cloudflare
-		.request(&delete_key::DeleteKey {
-			account_identifier: &state.config.cloudflare.account_id,
-			namespace_identifier: &state.config.cloudflare.worker_namespace_id,
-			key: &runner_id.to_string(),
-		})
-		.await?;
+			cloudflare
+				.request(&delete_key::DeleteKey {
+					account_identifier: &state.config.cloudflare.account_id,
+					namespace_identifier: &state.config.cloudflare.worker_namespace_id,
+					key: &runner_id.to_string(),
+				})
+				.await?;
 
-	// Delete the runner's Cloudflare tunnel too — otherwise it lingers on the
-	// account forever. `cascade` tears down any active connections first.
-	if let Some(tunnel_id) = tunnel_id {
-		cloudflare
-			.request(&delete_tunnel::DeleteTunnel {
-				account_identifier: &state.config.cloudflare.account_id,
-				tunnel_id: &tunnel_id,
-				params: delete_tunnel::Params { cascade: true },
-			})
-			.await?;
+			// Delete the runner's Cloudflare tunnel too — otherwise it lingers on the
+			// account forever. `cascade` tears down any active connections first.
+			if let Some(tunnel_id) = tunnel_id {
+				cloudflare
+					.request(&delete_tunnel::DeleteTunnel {
+						account_identifier: &state.config.cloudflare.account_id,
+						tunnel_id: &tunnel_id,
+						params: delete_tunnel::Params { cascade: true },
+					})
+					.await?;
+			}
+		} else {
+			let _ = (state, tunnel_id);
+		}
 	}
 
 	AppResponse::builder()

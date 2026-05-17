@@ -1,12 +1,3 @@
-use cloudflare::{
-	endpoints::zones::zone::{Type as ZoneType, *},
-	framework::{
-		Environment,
-		SearchMatch,
-		auth::Credentials,
-		client::{ClientConfig, async_api::Client as CloudflareClient},
-	},
-};
 use models::api::workspace::domain::*;
 use reqwest::StatusCode;
 use time::OffsetDateTime;
@@ -24,17 +15,13 @@ pub async fn add_domain_to_workspace(
 						authorization: _,
 						user_agent: _,
 					},
-				body:
-					AddDomainToWorkspaceRequestProcessed {
-						domain,
-						nameserver_type,
-					},
+				body: AddDomainToWorkspaceRequestProcessed { domain },
 			},
 		database,
 		redis: _,
 		client_ip: _,
 		user_data: _,
-		state,
+		state: _,
 	}: AuthenticatedAppRequest<'_, AddDomainToWorkspaceRequest>,
 ) -> Result<AppResponse<AddDomainToWorkspaceRequest>, ErrorType> {
 	info!("Adding domain `{domain}` to workspace `{workspace_id}`");
@@ -105,12 +92,11 @@ pub async fn add_domain_to_workspace(
 		INSERT INTO
 			workspace_domain(
 				id,
-                name,
-                tld,
-                workspace_id,
-                nameserver_type,
-                is_verified,
-                deleted
+				name,
+				tld,
+				workspace_id,
+				is_verified,
+				deleted
 			)
 		VALUES
 			(
@@ -118,7 +104,6 @@ pub async fn add_domain_to_workspace(
 				$2,
 				$3,
 				$4,
-				$5,
 				FALSE,
 				NULL
 			);
@@ -127,7 +112,6 @@ pub async fn add_domain_to_workspace(
 		name as _,
 		tld as _,
 		workspace_id as _,
-		nameserver_type as _,
 	)
 	.execute(&mut **database)
 	.await
@@ -135,115 +119,6 @@ pub async fn add_domain_to_workspace(
 		sqlx::Error::Database(err) if err.is_unique_violation() => ErrorType::ResourceAlreadyExists,
 		err => ErrorType::server_error(err),
 	})?;
-
-	match nameserver_type {
-		DomainNameserverType::Internal => {
-			let client = CloudflareClient::new(
-				Credentials::UserAuthToken {
-					token: state.config.cloudflare.api_key.clone(),
-				},
-				ClientConfig::default(),
-				Environment::Custom(state.config.cloudflare.base_url.clone()),
-			)?;
-
-			let zone = client
-				.request(&ListZones {
-					params: ListZonesParams {
-						name: Some(domain.to_string()),
-						search_match: Some(SearchMatch::Any),
-						..Default::default()
-					},
-				})
-				.await?
-				.result
-				.into_iter()
-				.next();
-
-			if zone.is_none() {
-				client
-					.request(&CreateZone {
-						params: CreateZoneParams {
-							name: &domain,
-							account: &state.config.cloudflare.account_id,
-							jump_start: None,
-							zone_type: Some(ZoneType::Full),
-						},
-					})
-					.await?;
-			}
-
-			let zone_identifier = client
-				.request(&ListZones {
-					params: ListZonesParams {
-						name: Some(domain.to_string()),
-						search_match: Some(SearchMatch::Any),
-						..Default::default()
-					},
-				})
-				.await?
-				.result
-				.into_iter()
-				.next()
-				.ok_or_else(|| {
-					ErrorType::server_error("Failed to create or retrieve zone from Cloudflare")
-				})?
-				.id;
-
-			query!(
-				r#"
-                INSERT INTO
-                    patr_controlled_domain(
-                        domain_id,
-                        zone_identifier,
-                        nameserver_type
-                    )
-                VALUES
-                    (
-                        $1,
-                        $2,
-                        $3
-                    );
-                "#,
-				domain_id as _,
-				zone_identifier,
-				nameserver_type as _,
-			)
-			.execute(&mut **database)
-			.await
-			.map_err(|err| match err {
-				sqlx::Error::Database(err) if err.is_unique_violation() => {
-					ErrorType::ResourceAlreadyExists
-				}
-				err => ErrorType::server_error(err),
-			})?;
-		}
-		DomainNameserverType::External => {
-			query!(
-				r#"
-                INSERT INTO
-                    user_controlled_domain(
-                        domain_id,
-                        nameserver_type
-                    )
-                VALUES
-                    (
-                        $1,
-                        $2
-                    );
-                "#,
-				domain_id as _,
-				nameserver_type as _,
-			)
-			.execute(&mut **database)
-			.await
-			.map_err(|err| match err {
-				sqlx::Error::Database(err) if err.is_unique_violation() => {
-					ErrorType::ResourceAlreadyExists
-				}
-				err => ErrorType::server_error(err),
-			})?;
-		}
-	}
 
 	trace!("Created domain with ID: {}", domain_id);
 

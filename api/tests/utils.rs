@@ -364,7 +364,6 @@ impl TestSetup {
 					})
 					.body(AddDomainToWorkspaceRequest {
 						domain: domain.clone(),
-						nameserver_type: DomainNameserverType::External,
 					})
 					.build(),
 			)

@@ -1,16 +1,23 @@
 use std::sync::OnceLock;
 
-use axum::{Router, body::Body, http::Request, response::Response};
+#[cfg(feature = "cloud")]
+use axum::Router;
+use axum::{body::Body, http::Request, response::Response};
+#[cfg(feature = "cloud")]
 use http::StatusCode;
+#[cfg(feature = "cloud")]
 use models::{ApiErrorResponse, ApiErrorResponseBody, utils::False};
 
-use crate::{prelude::*, routes::api_patr_cloud};
+use crate::prelude::*;
+#[cfg(feature = "cloud")]
+use crate::routes::api_patr_cloud;
 
-/// A static reqwest client for proxying requests
+/// A static reqwest client for proxying requests to the frontend server.
 #[doc(hidden)]
 static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 
 /// Sets up the routes for the web dashboard
+#[cfg(feature = "cloud")]
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
@@ -31,8 +38,11 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.fallback(proxy)
 }
 
+/// Reverse-proxies the given request to the frontend Node server. The
+/// frontend's base URL is read from the `FRONTEND_URL` env var (default
+/// `http://localhost:3030`).
 #[axum::debug_handler]
-async fn proxy(req: Request<Body>) -> Response {
+pub async fn proxy(req: Request<Body>) -> Response {
 	let Ok(response) = CLIENT
 		.get_or_init(reqwest::Client::new)
 		.request(

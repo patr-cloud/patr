@@ -28,22 +28,21 @@ struct TurnstileVerifyRequest<'a> {
 	secret: &'a str,
 	/// The token received from the client-side Turnstile widget.
 	response: &'a str,
-	/// Optional IP address of the user who solved the challenge.
-	#[serde(skip_serializing_if = "Option::is_none")]
-	remoteip: Option<&'a str>,
+	/// IP address of the user who solved the challenge.
+	remoteip: &'a str,
 }
 
 /// Validates a Cloudflare Turnstile token by calling the siteverify API.
 pub async fn validate_turnstile_token(
 	secret_key: &str,
 	token: &str,
-	remote_ip: Option<IpAddr>,
+	remote_ip: IpAddr,
 ) -> Result<TurnstileValidationResult, reqwest::Error> {
-	let remote_ip = remote_ip.map(|ip| ip.to_string());
+	let remote_ip = remote_ip.to_string();
 	let request_body = TurnstileVerifyRequest {
 		secret: secret_key,
 		response: token,
-		remoteip: remote_ip.as_deref(),
+		remoteip: &remote_ip,
 	};
 
 	REQWEST_CLIENT

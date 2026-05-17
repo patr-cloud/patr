@@ -15,11 +15,9 @@ use sqlx::types::ipnetwork::IpNetwork;
 use time::OffsetDateTime;
 use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};
 
-use crate::{
-	models::access_token_data::AccessTokenData,
-	prelude::*,
-	utils::cloudflare::validate_turnstile_token,
-};
+#[cfg(feature = "cloud")]
+use crate::utils::cloudflare::validate_turnstile_token;
+use crate::{models::access_token_data::AccessTokenData, prelude::*};
 
 /// The handler to login the user. This will return the access token and the
 /// refresh token.
@@ -39,28 +37,35 @@ pub async fn login(
 					},
 			},
 		database,
-		redis,
+		redis: _,
 		client_ip,
 		state,
 	}: AppRequest<'_, LoginRequest>,
 ) -> Result<AppResponse<LoginRequest>, ErrorType> {
-	trace!("Validating Cloudflare Turnstile token");
-	let cf_turnstile_response = validate_turnstile_token(
-		&state.config.cloudflare.turnstile_secret,
-		&cf_turnstile_token,
-		Some(client_ip),
-	)
-	.await
-	.inspect_err(|err| {
-		error!("Error verifying Cloudflare Turnstile token: `{}`", err);
-	})?;
+	cfg_if! {
+		if #[cfg(feature = "cloud")] {
+			trace!("Validating Cloudflare Turnstile token");
+			let cf_turnstile_response = validate_turnstile_token(
+				&state.config.cloudflare.turnstile_secret,
+				&cf_turnstile_token,
+				client_ip,
+			)
+			.await
+			.inspect_err(|err| {
+				error!("Error verifying Cloudflare Turnstile token: `{}`", err);
+			})?;
 
-	if !cf_turnstile_response.success {
-		return Err(ErrorType::TurnstileVerificationFailed);
-	}
+			if !cf_turnstile_response.success {
+				return Err(ErrorType::TurnstileVerificationFailed);
+			}
 
-	if !cfg!(debug_assertions) && &cf_turnstile_response.action != "login" {
-		return Err(ErrorType::TurnstileVerificationActionMismatch);
+			if !cfg!(debug_assertions) && &cf_turnstile_response.action != "login" {
+				return Err(ErrorType::TurnstileVerificationActionMismatch);
+			}
+		} else {
+			// No cloudflare turnstile token in non-cloud environment
+			let _ = cf_turnstile_token;
+		}
 	}
 
 	trace!("Logging in user: {}", user_id);
@@ -194,7 +199,7 @@ pub async fn login(
 	.to_string();
 	let refresh_token_expiry = now.add(constants::INACTIVE_REFRESH_TOKEN_VALIDITY);
 
-	let ip_info = ip::lookup(client_ip, redis, &state.config.ipinfo).await?;
+	let ip_info = ip::lookup(client_ip, &state).await?;
 
 	if !cfg!(debug_assertions) && ip_info.bogon.unwrap_or(false) {
 		return Err(ErrorType::server_error(format!(
