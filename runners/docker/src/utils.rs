@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use bollard::{Docker, models::ConfigSpec, query_parameters::ListConfigsOptions};
 use sha2::{Digest as _, Sha256};
 
@@ -101,11 +102,13 @@ pub async fn update_config(
 		String::from(constants::PATR_VERSION),
 	);
 
+	// Docker's POST /configs/create expects `Data` base64-encoded. bollard 0.21
+	// exposes it as a raw String and does not encode for us.
 	let new_id = docker
 		.create_config(ConfigSpec {
 			name: Some(config_name.clone()),
 			labels: Some(labels),
-			data: Some(data),
+			data: Some(BASE64.encode(data.as_bytes())),
 			templating: None,
 		})
 		.await

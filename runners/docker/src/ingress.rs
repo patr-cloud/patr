@@ -1,5 +1,6 @@
 use std::{collections::HashMap, io::Error as IoError, iter};
 
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use bollard::{
 	Docker,
 	models::{ConfigSpec, Mount, MountType},
@@ -165,7 +166,7 @@ pub async fn update_ingress_tunnel_token(
 					String::from(constants::INGRESS_SERVICE_NAME),
 				),
 			])),
-			data: Some(new_token),
+			data: Some(BASE64.encode(new_token.as_bytes())),
 			templating: None,
 		})
 		.await
