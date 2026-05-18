@@ -459,6 +459,32 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.SERVER_SSH_USER }}@${{ secrets.SERVER_IP_ADDRESS }} "./update.sh"
           rm private_key.pem
 
+  deploy-worker:
+    name: Deploy ingress worker
+    runs-on: ubuntu-latest
+    if: github.ref_name == 'develop'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Install Rust nightly with wasm32 target
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install worker-build
+        run: cargo install --locked worker-build
+
+      - name: Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: ingress
+        env:
+          SQLX_OFFLINE: "true"
+
   manifest-cli:
     name: Multi-arch manifest for CLI
     needs: [version, build-cli-docker]
