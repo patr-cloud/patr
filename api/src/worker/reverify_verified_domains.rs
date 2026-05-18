@@ -3,7 +3,7 @@ use apalis_cron::Tick;
 use futures::TryStreamExt;
 use hickory_resolver::{
 	Resolver,
-	config::ResolverConfig,
+	config::{CLOUDFLARE, ResolverConfig},
 	net::runtime::TokioRuntimeProvider,
 	proto::rr::RData,
 };
@@ -18,10 +18,12 @@ use crate::prelude::*;
 pub async fn reverify_verified_domains(_: Tick, data: Data<AppState>) -> Result<(), WorkerError> {
 	println!("Re-verifying verified domains...");
 
-	let resolver =
-		Resolver::builder_with_config(ResolverConfig::default(), TokioRuntimeProvider::default())
-			.build()
-			.expect("failed to build DNS resolver");
+	let resolver = Resolver::builder_with_config(
+		ResolverConfig::udp_and_tcp(&CLOUDFLARE),
+		TokioRuntimeProvider::default(),
+	)
+	.build()
+	.expect("failed to build DNS resolver");
 
 	query!(
 		r#"

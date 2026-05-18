@@ -1,6 +1,6 @@
 use hickory_resolver::{
 	Resolver,
-	config::ResolverConfig,
+	config::{CLOUDFLARE, ResolverConfig},
 	net::runtime::TokioRuntimeProvider,
 	proto::rr::RData,
 };
@@ -58,10 +58,15 @@ pub async fn verify_domain_in_workspace(
 	let verification_hostname = format!("_patr-verify.{}.{}", row.name, row.tld);
 	let expected_value = row.id.to_string();
 
-	let resolver =
-		Resolver::builder_with_config(ResolverConfig::default(), TokioRuntimeProvider::default())
-			.build()
-			.map_err(ErrorType::server_error)?;
+	// hickory 0.26 dropped baked-in nameservers from `ResolverConfig::default()`,
+	// so pin Cloudflare explicitly — otherwise `txt_lookup` errors with
+	// `NoConnections` and every domain silently fails to verify.
+	let resolver = Resolver::builder_with_config(
+		ResolverConfig::udp_and_tcp(&CLOUDFLARE),
+		TokioRuntimeProvider::default(),
+	)
+	.build()
+	.map_err(ErrorType::server_error)?;
 
 	let verified = match resolver.txt_lookup(&verification_hostname).await {
 		Ok(lookup) => lookup.answers().iter().any(|record| {
