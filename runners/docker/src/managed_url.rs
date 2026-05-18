@@ -11,9 +11,23 @@ use bollard::query_parameters::{ListConfigsOptions, UpdateServiceOptionsBuilder}
 use crate::prelude::*;
 
 /// Generate the Caddyfile snippet for a managed URL.
-pub(crate) fn generate_config(host: &str, path: &str, deployment_id: Uuid, port: u16) -> String {
+///
+/// `is_private` corresponds to runners fronted by a Cloudflare Tunnel — TLS
+/// terminates at Cloudflare and `cloudflared` forwards to Caddy as HTTP. The
+/// site address gets an explicit `http://` prefix so Caddy doesn't auto-enable
+/// HTTPS and generate an HTTP→HTTPS redirect that would loop back through
+/// `cloudflared`. Public runners terminate TLS at Caddy itself, so we leave
+/// the scheme blank and let auto-HTTPS do its thing.
+pub(crate) fn generate_config(
+	host: &str,
+	path: &str,
+	deployment_id: Uuid,
+	port: u16,
+	is_private: bool,
+) -> String {
 	format!(
 		include_str!("../../../assets/runner/Caddyfile.managed-url.template"),
+		scheme = if is_private { "http://" } else { "" },
 		host = host,
 		path = path,
 		deployment_id = deployment_id,
@@ -31,7 +45,13 @@ pub(crate) async fn upsert(
 	deployment_id: Uuid,
 	port: u16,
 ) -> Result<(), RunnerError> {
-	let config = generate_config(&host, &path, deployment_id, port);
+	let config = generate_config(
+		&host,
+		&path,
+		deployment_id,
+		port,
+		runner.settings.data.runner_exposure_type.is_private(),
+	);
 
 	let labels = HashMap::from([
 		(String::from("managed-by"), String::from("patr")),

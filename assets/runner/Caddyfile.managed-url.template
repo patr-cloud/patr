@@ -1,4 +1,4 @@
 
-{host}{path} {{
+{scheme}{host}{path} {{
 	reverse_proxy {deployment_id}.onpatr.local:{port}
 }}
