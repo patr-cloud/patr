@@ -6,6 +6,10 @@
 		per_host
 	}
 
+	servers {
+		trusted_proxies static private_ranges
+	}
+
 	admin off
 	persist_config off
 

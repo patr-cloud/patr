@@ -7,6 +7,27 @@ use crate::prelude::*;
 /// page (e.g., "not-found", "deployment-stopped", etc.).
 const ERROR_PAGE_BASE: &str = "https://assets.patr.cloud/error-pages";
 
+/// Clones the request's headers and augments them with `X-Forwarded-Proto`,
+/// `X-Forwarded-Host`, and `X-Forwarded-For` so the upstream container knows
+/// the original scheme, hostname, and client IP. Workers always receive HTTPS
+/// at Cloudflare's edge, so pass `"https"` unless the destination is an
+/// HTTP-only managed URL.
+pub fn build_forwarded_headers(req: &Request, scheme: &str) -> Result<Headers> {
+	let headers = req.headers().clone();
+	headers.set("X-Forwarded-Proto", scheme)?;
+
+	let url = req.url()?;
+	if let Some(host) = url.host_str() {
+		headers.set("X-Forwarded-Host", host)?;
+	}
+
+	if let Ok(Some(client_ip)) = headers.get("CF-Connecting-IP") {
+		headers.set("X-Forwarded-For", &client_ip)?;
+	}
+
+	Ok(headers)
+}
+
 /// Fetches a branded error page from assets.patr.cloud and returns it as the
 /// response with the given status code. The user's URL stays unchanged in the
 /// browser. Falls back to a plain text error if the fetch fails.

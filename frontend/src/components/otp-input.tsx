@@ -84,7 +84,10 @@ const OtpInput = (props: OtpInputProps) => {
 				{(index) => (
 					<input
 						id={`otp-${index}`}
+						name="otp"
 						type={InputType.Tel}
+						inputMode="numeric"
+						autocomplete="one-time-code"
 						maxLength={1}
 						value={get(props.otpDigits).at(index) ?? ""}
 						onInput={(e) => handleOtpInput(index, e.currentTarget.value)}

@@ -1,6 +1,9 @@
 use std::collections::BTreeMap;
 
-use crate::{prelude::*, utils::serve_error_page};
+use crate::{
+	prelude::*,
+	utils::{build_forwarded_headers, serve_error_page},
+};
 
 /// Handles static site serving from R2.
 mod static_site;
@@ -77,11 +80,13 @@ pub async fn handle_request(req: Request, env: Env, ctx: Context, host: &str) ->
 			url.set_scheme(if http_only { "http" } else { "https" })
 				.map_err(|_| Error::BadEncoding)?;
 
+			let scheme = if http_only { "http" } else { "https" };
+
 			Fetch::Request(Request::new_with_init(
 				url.as_str(),
 				&RequestInit {
 					body: req.inner().body().map(Into::into),
-					headers: req.headers().clone(),
+					headers: build_forwarded_headers(&req, scheme)?,
 					cf: CfProperties::new(),
 					method: req.method(),
 					redirect: RequestRedirect::Manual,
@@ -117,7 +122,7 @@ pub async fn handle_request(req: Request, env: Env, ctx: Context, host: &str) ->
 				url.as_str(),
 				&RequestInit {
 					body: req.inner().body().map(Into::into),
-					headers: req.headers().clone(),
+					headers: build_forwarded_headers(&req, "https")?,
 					cf: CfProperties {
 						minify: Some(MinifyConfig {
 							js: false,
