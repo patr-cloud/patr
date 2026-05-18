@@ -2,7 +2,7 @@ use std::{collections::HashMap, io::Error as IoError, iter};
 
 use bollard::{
 	Docker,
-	models::{ConfigSpec, Mount, MountTypeEnum},
+	models::{ConfigSpec, Mount, MountType},
 	query_parameters::{ListConfigsOptions, UpdateServiceOptionsBuilder},
 	service::{
 		EndpointPortConfig,
@@ -377,7 +377,7 @@ pub(crate) async fn build_ingress_spec(
 				mounts: Some(vec![Mount {
 					target: Some(String::from("/data")),
 					source: Some(String::from(constants::INGRESS_TLS_CERTS_VOLUME_NAME)),
-					typ: Some(MountTypeEnum::VOLUME),
+					typ: Some(MountType::VOLUME),
 					read_only: Some(false),
 					..Default::default()
 				}]),

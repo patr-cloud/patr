@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use bollard::{
 	Docker,
-	models::{Mount, MountTypeEnum},
+	models::{Mount, MountType},
 	query_parameters::UpdateServiceOptionsBuilder,
 	service::{
 		NetworkAttachmentConfig,
@@ -104,7 +104,7 @@ pub async fn update_alloy_service(
 					Mount {
 						target: Some(String::from("/var/run/docker.sock")),
 						source: Some(String::from("/var/run/docker.sock")),
-						typ: Some(MountTypeEnum::BIND),
+						typ: Some(MountType::BIND),
 						read_only: Some(true),
 						..Default::default()
 					},
@@ -113,21 +113,21 @@ pub async fn update_alloy_service(
 					Mount {
 						target: Some(String::from("/host/proc")),
 						source: Some(String::from("/proc")),
-						typ: Some(MountTypeEnum::BIND),
+						typ: Some(MountType::BIND),
 						read_only: Some(true),
 						..Default::default()
 					},
 					Mount {
 						target: Some(String::from("/host/sys")),
 						source: Some(String::from("/sys")),
-						typ: Some(MountTypeEnum::BIND),
+						typ: Some(MountType::BIND),
 						read_only: Some(true),
 						..Default::default()
 					},
 					Mount {
 						target: Some(String::from("/host/root")),
 						source: Some(String::from("/")),
-						typ: Some(MountTypeEnum::BIND),
+						typ: Some(MountType::BIND),
 						read_only: Some(true),
 						..Default::default()
 					},
@@ -136,21 +136,21 @@ pub async fn update_alloy_service(
 					Mount {
 						target: Some(String::from("/sys")),
 						source: Some(String::from("/sys")),
-						typ: Some(MountTypeEnum::BIND),
+						typ: Some(MountType::BIND),
 						read_only: Some(true),
 						..Default::default()
 					},
 					Mount {
 						target: Some(String::from("/rootfs")),
 						source: Some(String::from("/")),
-						typ: Some(MountTypeEnum::BIND),
+						typ: Some(MountType::BIND),
 						read_only: Some(true),
 						..Default::default()
 					},
 					Mount {
 						target: Some(String::from("/var/lib/docker")),
 						source: Some(String::from("/var/lib/docker")),
-						typ: Some(MountTypeEnum::BIND),
+						typ: Some(MountType::BIND),
 						read_only: Some(true),
 						..Default::default()
 					},
