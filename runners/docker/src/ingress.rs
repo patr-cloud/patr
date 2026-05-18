@@ -287,10 +287,29 @@ pub(crate) async fn build_ingress_spec(
 			};
 			Some((
 				resource_id,
+				config.created_at,
 				config.id.clone()?,
 				config.spec.as_ref()?.name.clone()?,
 			))
 		})
+		// Dedupe by resource_id, keeping the most-recently-created config.
+		// `update_config`'s best-effort cleanup leaves stale siblings around
+		// when they're still referenced by patr-ingress; without this dedupe
+		// the spec would mount both at the same target path and
+		// `update_service` would reject it. Once this spec replaces the old
+		// one the stale configs become unreferenced and the next
+		// `update_config` call sweeps them up.
+		.fold(
+			HashMap::<Uuid, (_, String, String)>::new(),
+			|mut acc, (rid, created, id, name)| {
+				if acc.get(&rid).is_none_or(|(prev, ..)| created > *prev) {
+					acc.insert(rid, (created, id, name));
+				}
+				acc
+			},
+		)
+		.into_iter()
+		.map(|(rid, (_, id, name))| (rid, id, name))
 		.collect::<Vec<_>>();
 
 	let base_ingress_config = include_str!("../../../assets/runner/Caddyfile.base");
