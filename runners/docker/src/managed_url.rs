@@ -25,6 +25,10 @@ pub(crate) fn generate_config(
 	port: u16,
 	is_private: bool,
 ) -> String {
+	// The template appends `*` to the path to make Caddy's site-address path
+	// matcher a substring-prefix instead of the default exact match — so a
+	// managed URL at `/api` routes `/api`, `/api/foo`, `/api/v1/users`, etc.
+	// Root-path managed URLs land on `host/*` which matches everything.
 	format!(
 		include_str!("../../../assets/runner/Caddyfile.managed-url.template"),
 		scheme = if is_private { "http://" } else { "" },
