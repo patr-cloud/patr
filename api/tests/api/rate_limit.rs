@@ -226,10 +226,10 @@ async fn test_rate_limit_authenticated_per_login() {
 		"session A should be rate-limited"
 	);
 
-	// Session B has a different login_id, so its per-login counter is separate.
-	// However, both sessions share the same IP (the per-test fixed IP), so the
-	// per-IP counter is shared. Since we already made 21 requests from this IP
-	// (20 + 1 rejected), session B is also blocked by the per-IP limit.
+	// Session B has a different login_id, so its per-login bucket is separate.
+	// Authenticated callers are evaluated against their per-login bucket only
+	// (per-IP is skipped to avoid penalising users behind shared NAT/CGNAT),
+	// so session B should be allowed through even from the same IP.
 	let response = setup
 		.make_web_dashboard_call_from_ip(
 			ApiRequest::<GetUserInfoRequest>::builder()
@@ -244,7 +244,7 @@ async fn test_rate_limit_authenticated_per_login() {
 
 	assert_eq!(
 		response.status_code(),
-		StatusCode::TOO_MANY_REQUESTS,
-		"session B should be blocked by shared per-IP rate limit"
+		StatusCode::OK,
+		"session B has its own per-login bucket and should not be blocked"
 	);
 }

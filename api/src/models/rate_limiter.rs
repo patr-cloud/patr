@@ -48,9 +48,11 @@ use crate::{prelude::*, redis::keys};
 ///
 /// ## Scope
 ///
-/// When `login_id` is `Some`, both per-IP and per-login limits are checked
-/// (authenticated endpoints). When `None`, only per-IP limits are checked
-/// (unauthenticated endpoints).
+/// When `login_id` is `Some`, only the per-login bucket is checked.
+/// Authenticated callers are governed by their login: the per-login bucket is
+/// the abuse signal that matters, and a shared per-IP bucket would unfairly
+/// penalise users behind NAT/CGNAT who share a public IP with other tenants.
+/// When `None`, only the per-IP bucket is checked (unauthenticated endpoints).
 pub async fn check_rate_limit(
 	redis: &mut RedisClient,
 	client_ip: IpAddr,
@@ -64,28 +66,26 @@ pub async fn check_rate_limit(
 		.expect("system clock is before UNIX epoch")
 		.as_nanos() as f64;
 
-	let ip_key = match client_ip {
-		// IPv4: use full address.
-		IpAddr::V4(v4) => v4.to_string(),
-
-		// IPv6: mask to /64 subnet since it's easy to
-		// obtain many addresses within a /64 allocation.
-		IpAddr::V6(v6) => {
-			let [first, second, third, fourth, ..] = v6.segments();
-			format!("{first:x}:{second:x}:{third:x}:{fourth:x}::")
-		}
-	};
-
-	// Check per-IP rate limit
-	check_single_rate_limit(redis, now_ns, limits, |window_secs| {
-		keys::rate_limit_ip(&ip_key, window_secs)
-	})
-	.await?;
-
-	// Check per-login rate limit if authenticated
 	if let Some(login_id) = login_id {
 		check_single_rate_limit(redis, now_ns, limits, |window_secs| {
 			keys::rate_limit_login_id(login_id, window_secs)
+		})
+		.await?;
+	} else {
+		let ip_key = match client_ip {
+			// IPv4: use full address.
+			IpAddr::V4(v4) => v4.to_string(),
+
+			// IPv6: mask to /64 subnet since it's easy to
+			// obtain many addresses within a /64 allocation.
+			IpAddr::V6(v6) => {
+				let [first, second, third, fourth, ..] = v6.segments();
+				format!("{first:x}:{second:x}:{third:x}:{fourth:x}::")
+			}
+		};
+
+		check_single_rate_limit(redis, now_ns, limits, |window_secs| {
+			keys::rate_limit_ip(&ip_key, window_secs)
 		})
 		.await?;
 	}
