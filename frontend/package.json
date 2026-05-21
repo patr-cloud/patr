@@ -22,7 +22,7 @@
 		"@tanstack/solid-query": "^5.100.10",
 		"@tanstack/solid-router": "^1.169.2",
 		"chart.js": "^4.5.1",
-		"js-cookie": "^3.0.5",
+		"js-cookie": "^3.0.7",
 		"p-limit": "^7.3.0",
 		"qrcode": "^1.5.4",
 		"solid-icons": "^1.2.0",
