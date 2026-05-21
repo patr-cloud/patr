@@ -6,14 +6,9 @@ use crate::prelude::*;
 pub async fn apply(
 	workspace_id: Uuid,
 	token: BearerToken,
-	IaacDomain {
-		id,
-		name,
-		nameserver_type,
-	}: IaacDomain,
+	IaacDomain { id, name }: IaacDomain,
 ) -> Result<(), AppError> {
 	let name = name.resolve_value()?;
-	let nameserver_type = nameserver_type.resolve_value()?;
 
 	let domains = make_request(
 		ApiRequest::<ListDomainsInWorkspaceRequest>::builder()
@@ -66,7 +61,6 @@ pub async fn apply(
 				})
 				.body(AddDomainToWorkspaceRequest {
 					domain: name.clone(),
-					nameserver_type: nameserver_type.clone(),
 				})
 				.build(),
 		)
@@ -74,15 +68,12 @@ pub async fn apply(
 
 		eprintln!("Domain `{name}` created with ID `{}`", response.body.id.id);
 
-		// If the nameserver is external, provide verification instructions
-		if nameserver_type.is_external() {
-			eprintln!(
-				"To verify this domain, you need to add the verification records to your DNS provider."
-			);
-			eprintln!("Run `patr domain verify {name}` for verification instructions.",);
-		} else {
-			eprintln!("Internal domains are currently not supported.")
-		}
+		// Domains are always externally-nameservered now (domain unification), so
+		// they need verification records added at the user's DNS provider.
+		eprintln!(
+			"To verify this domain, you need to add the verification records to your DNS provider."
+		);
+		eprintln!("Run `patr domain verify {name}` for verification instructions.",);
 	}
 
 	Ok(())

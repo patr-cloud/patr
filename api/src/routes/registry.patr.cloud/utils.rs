@@ -177,3 +177,34 @@ pub trait ReadBufferedBytesExt: Stream<Item = Result<Bytes, RegistryError>> {
 }
 
 impl<S> ReadBufferedBytesExt for S where S: Stream<Item = Result<Bytes, RegistryError>> {}
+
+cfg_if! {
+	if #[cfg(not(feature = "cloud"))] {
+		/// On self-hosted, the registry path segment is always the literal
+		/// string `"registry"`. This ZST only deserializes from that exact
+		/// segment — anything else fails path extraction with a 404 before
+		/// any handler runs. The actual workspace UUID is fetched per-request
+		/// via [`resolve_singleton_workspace`].
+		#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+		pub struct RegistryNamespace;
+
+		impl<'de> Deserialize<'de> for RegistryNamespace {
+			fn deserialize<D: serde::Deserializer<'de>>(
+				deserializer: D
+			) -> Result<Self, D::Error> {
+				let segment = String::deserialize(deserializer)?;
+				if segment == "registry" {
+					Ok(Self)
+				} else {
+					Err(serde::de::Error::custom("expected `registry`"))
+				}
+			}
+		}
+
+		impl std::fmt::Display for RegistryNamespace {
+			fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+				f.write_str("registry")
+			}
+		}
+	}
+}

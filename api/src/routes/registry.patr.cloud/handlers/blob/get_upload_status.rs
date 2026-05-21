@@ -18,7 +18,11 @@ macros::declare_registry_endpoint!(
 	GetBlobUploadStatus,
 	GET "/v2/{workspace_id}/{repo_name}/blobs/uploads/{session_id}" {
 		/// The workspace ID
+		#[cfg(feature = "cloud")]
 		pub workspace_id: Uuid,
+		/// The literal "registry" on self-hosted
+		#[cfg(not(feature = "cloud"))]
+		pub workspace_id: RegistryNamespace,
 		/// The repository name
 		#[preprocess(lowercase, regex = constants::REGISTRY_REPO_NAME_REGEX, length(max = 255))]
 		pub repo_name: String,
@@ -72,6 +76,25 @@ pub async fn get_upload_status(
 		config: _,
 	}: AuthenticatedRegistryAppRequest<'_, GetBlobUploadStatusPath>,
 ) -> Result<RegistryResponse<GetBlobUploadStatusPath>, RegistryError> {
+	#[cfg(not(feature = "cloud"))]
+	let workspace_id = {
+		let _ = workspace_id;
+		query!(
+			r#"
+			SELECT
+				id AS "id: Uuid"
+			FROM
+				workspace
+			WHERE
+				deleted IS NULL
+			LIMIT 1;
+			"#
+		)
+		.fetch_one(&mut **database)
+		.await?
+		.id
+	};
+
 	info!("GET blob upload status request");
 
 	// Check that the user can push to this repository

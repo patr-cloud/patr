@@ -1,4 +1,3 @@
-use axum::http::StatusCode;
 #[cfg(feature = "cloud")]
 use cloudflare::{endpoints::cfd_tunnel::Tunnel, framework::response::ApiSuccess};
 use models::api::workspace::runner::*;
@@ -32,6 +31,8 @@ pub async fn get_ingress_token_for_runner(
 
 	cfg_if! {
 		if #[cfg(feature = "cloud")] {
+			use axum::http::StatusCode;
+
 			let runner = query!(
 				r#"
 				SELECT

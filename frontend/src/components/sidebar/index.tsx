@@ -1,8 +1,12 @@
 import { Link, useLocation } from "@tanstack/solid-router";
 import { FiHome, FiBox, FiCpu, FiGlobe, FiSettings, FiChevronDown, FiChevronRight, FiPackage } from "solid-icons/fi";
-import { Component, createSignal, For, Show } from "solid-js";
-import WorkspaceSwitcher from "./workspace-switcher";
+import { Component, createSignal, For, lazy, Show } from "solid-js";
 import { useSidebar } from "./context";
+import { IS_CLOUD } from "~/utils/env";
+
+// Lazy + IS_CLOUD-gated so Vite tree-shakes the switcher chunk out of
+// self-hosted bundles entirely.
+const WorkspaceSwitcher = IS_CLOUD ? lazy(() => import("./workspace-switcher")) : null;
 
 interface SidebarItemProps {
 	label: string;
@@ -125,9 +129,11 @@ const Sidebar: Component = () => {
 				<For each={items}>{(item) => <SidebarItem {...item} />}</For>
 			</nav>
 
-			<div class="block md:hidden lg:block px-4 py-8 border-t border-white/5">
-				<WorkspaceSwitcher />
-			</div>
+			{WorkspaceSwitcher && (
+				<div class="block md:hidden lg:block px-4 py-8 border-t border-white/5">
+					<WorkspaceSwitcher />
+				</div>
+			)}
 		</aside>
 	);
 };
