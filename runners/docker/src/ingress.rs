@@ -452,7 +452,10 @@ async fn get_cloudflare_spec(
 	docker: &Docker,
 	_: &RunnerSettings<DockerSettings>,
 ) -> Result<ServiceSpec, RunnerError> {
-	let tunnel_token = docker
+	// `inspect_config` returns Data base64-encoded (Docker re-encodes the
+	// stored bytes for transport). We decode it back to the raw token before
+	// shoving it into the env var.
+	let tunnel_token_encoded = docker
 		.inspect_config(constants::TUNNEL_TOKEN_CONFIG_NAME)
 		.await
 		.map_err(RunnerError::host)?
@@ -461,6 +464,16 @@ async fn get_cloudflare_spec(
 		.ok_or(RunnerError::CloudflareTunnelSetupError(IoError::other(
 			"could not find cloudflare tunnel token config",
 		)))?;
+	let tunnel_token = String::from_utf8(BASE64.decode(&tunnel_token_encoded).map_err(|err| {
+		RunnerError::CloudflareTunnelSetupError(IoError::other(format!(
+			"tunnel token config data is not valid base64: {err}"
+		)))
+	})?)
+	.map_err(|err| {
+		RunnerError::CloudflareTunnelSetupError(IoError::other(format!(
+			"tunnel token config data is not valid utf-8: {err}"
+		)))
+	})?;
 
 	let networks = Some(vec![NetworkAttachmentConfig {
 		target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
