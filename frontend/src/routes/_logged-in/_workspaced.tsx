@@ -4,6 +4,7 @@ import { useWorkspacesQuery, useUserPermissionsQuery } from "~/hooks/fetch";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { Sidebar, TopBar } from "~/components";
 import { SidebarContext } from "~/components/sidebar/context";
+import { IS_CLOUD } from "~/utils/env";
 
 const WorkspacedLayout = () => {
 	const workspacesQuery = useWorkspacesQuery();
@@ -14,18 +15,30 @@ const WorkspacedLayout = () => {
 	const [isMobileOpen, setMobileOpen] = createSignal(false);
 
 	createEffect(() => {
-		if (!workspacesQuery.isPending) {
+		// Wait until the query has actually settled — `isPending` only covers
+		// the initial fetch, so without `isFetching` an invalidation triggered
+		// by /onboard briefly exposes stale empty data and bounces the user
+		// back, creating a microtask-rate redirect loop.
+		if (!workspacesQuery.isPending && !workspacesQuery.isFetching) {
 			const ws = workspacesQuery.data?.workspaces;
 			if (!ws || ws.length === 0) {
-				navigate({ to: "/onboard", replace: true });
-			} else if (!workspaceId()) {
-				setWorkspaceId(ws[0].id);
-			} else if (!ws.some((w) => w.id === workspaceId())) {
-				// The cookie points at a workspace the user is no longer in
-				// (removed by an owner, deleted, or never existed). Fall back
-				// to the first workspace we DO have access to so the rest of
-				// the tree doesn't 403 on every query.
-				setWorkspaceId(ws[0].id);
+				// Stored workspace no longer exists / user no longer has access
+				// — clear it so dependent queries (permissions etc.) don't fire
+				// against a stale id and 401.
+				if (workspaceId()) {
+					setWorkspaceId(null);
+				}
+				// On self-hosted there is no onboarding flow — the singleton
+				// workspace is seeded out-of-band. Render an inline error
+				// instead of redirecting into a 404 loop.
+				if (IS_CLOUD) {
+					navigate({ to: "/onboard", replace: true });
+				}
+			} else {
+				const current = workspaceId();
+				if (!current || !ws.some((w) => w.id === current)) {
+					setWorkspaceId(ws[0].id);
+				}
 			}
 		}
 	});
@@ -42,6 +55,11 @@ const WorkspacedLayout = () => {
 		setMobileOpen,
 		toggleMobile: () => setMobileOpen(!isMobileOpen()),
 	};
+
+	const noWorkspaceOnSelfHosted = () =>
+		!IS_CLOUD &&
+		!workspacesQuery.isPending &&
+		(workspacesQuery.data?.workspaces?.length ?? 0) === 0;
 
 	return (
 		<SidebarContext.Provider value={sidebarCtx}>
@@ -64,7 +82,19 @@ const WorkspacedLayout = () => {
 								</div>
 							)}
 						>
-							<Outlet />
+							<Show
+								when={!noWorkspaceOnSelfHosted()}
+								fallback={
+									<div class="flex items-center justify-center h-full text-white p-8 text-center">
+										<p>
+											Self-hosted workspace is not initialised. Ask your administrator to seed the
+											workspace before signing in.
+										</p>
+									</div>
+								}
+							>
+								<Outlet />
+							</Show>
 						</ErrorBoundary>
 					</div>
 				</div>

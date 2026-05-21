@@ -4,7 +4,10 @@ bindings      = "test -p models export_bindings"
 docker        = "run -p docker"
 new-migration = "run -p api --example new_migration --"
 patr          = "run -p cli --"
-prepare       = "sqlx prepare --workspace --all"
+# sqlx prepare is wrapped by the workspace Justfile — `just prepare`
+# (self-hosted) and `just prepare-cloud`. The wrapper needs to move query
+# files into a feature-specific subdir after sqlx writes them, which a cargo
+# alias can't express.
 
 [env]
 TS_RS_EXPORT_DIR = { value = "frontend/src/bindings", relative = true }

@@ -8,9 +8,9 @@ use cloudflare::{
 		client::{ClientConfig, async_api::Client as CloudflareClient},
 	},
 };
-use models::{api::workspace::runner::*, prelude::*};
 #[cfg(feature = "cloud")]
 use models::cloudflare::kv::*;
+use models::{api::workspace::runner::*, prelude::*};
 
 use crate::prelude::*;
 

@@ -17,6 +17,7 @@ import { createAsyncAction, useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { workspacesKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
+import { cloudOnly } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
 
 const CreateWorkspace = () => {
@@ -135,6 +136,8 @@ const CreateWorkspace = () => {
 	);
 };
 
-export const Route = createFileRoute("/_logged-in/_workspaced/workspace_/new")({
-	component: CreateWorkspace,
-});
+export const Route = createFileRoute("/_logged-in/_workspaced/workspace_/new")(
+	cloudOnly({
+		component: CreateWorkspace,
+	}),
+);

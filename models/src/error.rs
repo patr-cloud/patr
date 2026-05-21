@@ -277,9 +277,7 @@ impl ErrorType {
 					"Ensure your GitHub account has a verified email address.",
 				)
 			}
-			Self::FeatureNotSupported => {
-				"This feature is not available in this build of Patr"
-			}
+			Self::FeatureNotSupported => "This feature is not available in this build of Patr",
 		}
 	}
 
