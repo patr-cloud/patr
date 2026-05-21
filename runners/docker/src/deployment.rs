@@ -377,8 +377,6 @@ pub(crate) async fn upsert(
 	// Only create/update the ingress config if there are HTTP ports.
 	// Docker rejects configs with 0 bytes of data.
 	if !config.is_empty() {
-		let config = Base64String::from_string(config);
-
 		crate::utils::update_config(
 			docker,
 			&format!("ingress-{}", id),
@@ -386,7 +384,7 @@ pub(crate) async fn upsert(
 				(String::from("managed-by"), String::from("patr")),
 				(String::from("patr.deploymentId"), id.to_string()),
 			]),
-			config.to_string(),
+			config,
 		)
 		.await?;
 	}

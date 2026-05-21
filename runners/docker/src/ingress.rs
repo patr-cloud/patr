@@ -321,7 +321,6 @@ pub(crate) async fn build_ingress_spec(
 		.collect::<Vec<_>>();
 
 	let base_ingress_config = include_str!("../../../assets/runner/Caddyfile.base");
-	let base_config = Base64String::from_string(base_ingress_config.to_string());
 
 	let (ingress_config_id, ingress_config_name) = crate::utils::update_config(
 		docker,
@@ -333,7 +332,7 @@ pub(crate) async fn build_ingress_spec(
 				String::from(constants::INGRESS_SERVICE_NAME),
 			),
 		]),
-		base_config.to_string(),
+		base_ingress_config.to_string(),
 	)
 	.await?;
 

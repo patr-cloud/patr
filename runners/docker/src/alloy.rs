@@ -54,7 +54,7 @@ pub async fn update_alloy_service(
 		docker,
 		constants::ALLOY_CONFIG_NAME,
 		HashMap::from([(String::from("managed-by"), String::from("patr"))]),
-		Base64String::from_string(alloy_config_text).to_string(),
+		alloy_config_text,
 	)
 	.await?;
 
