@@ -1,4 +1,8 @@
-use std::{collections::HashMap, io::Error as IoError, iter};
+use std::{
+	collections::{BTreeMap, HashMap},
+	io::Error as IoError,
+	iter,
+};
 
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use bollard::{
@@ -299,8 +303,12 @@ pub(crate) async fn build_ingress_spec(
 		// `update_service` would reject it. Once this spec replaces the old
 		// one the stale configs become unreferenced and the next
 		// `update_config` call sweeps them up.
+		//
+		// BTreeMap (not HashMap) so iteration order is deterministic across
+		// calls. A non-deterministic order makes every `update_service` see a
+		// "changed" TaskSpec.Configs[] and triggers a hot reload loop.
 		.fold(
-			HashMap::<Uuid, (_, String, String)>::new(),
+			BTreeMap::<Uuid, (_, String, String)>::new(),
 			|mut acc, (rid, created, id, name)| {
 				if acc.get(&rid).is_none_or(|(prev, ..)| created > *prev) {
 					acc.insert(rid, (created, id, name));
