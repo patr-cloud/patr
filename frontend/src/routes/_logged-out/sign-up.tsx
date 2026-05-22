@@ -367,7 +367,14 @@ const SignUp = () => {
 								loadingContent={() => <span>Redirecting to GitHub...</span>}
 								onClick={handleGithubSignIn}
 							>
-								<img src="/icons/github.svg" alt="" aria-hidden="true" height="20" width="20" class="invert" />
+								<img
+									src="/icons/github.svg"
+									alt=""
+									aria-hidden="true"
+									height="20"
+									width="20"
+									class="invert"
+								/>
 								Continue with GitHub
 							</Button>
 						</>

@@ -17,10 +17,9 @@ const useApiEnvironmentQuery = () =>
 		gcTime: Infinity,
 		meta: { errorMessage: "Failed to fetch API environment" },
 		queryFn: async () => {
-			const response = await httpRequest<GetApiEnvironmentResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/info`,
-				{ method: "GET" }
-			);
+			const response = await httpRequest<GetApiEnvironmentResponse>(`${import.meta.env.VITE_BASE_URL}/api/info`, {
+				method: "GET",
+			});
 			if (!response.ok) {
 				throw new Error("Failed to fetch API environment");
 			}

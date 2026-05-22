@@ -103,5 +103,5 @@ export const Route = createFileRoute("/_logged-out/login/github")(
 			state: (search.state as string) || undefined,
 		}),
 		component: GithubCallback,
-	}),
+	})
 );

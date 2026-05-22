@@ -57,9 +57,7 @@ const WorkspacedLayout = () => {
 	};
 
 	const noWorkspaceOnSelfHosted = () =>
-		!IS_CLOUD &&
-		!workspacesQuery.isPending &&
-		(workspacesQuery.data?.workspaces?.length ?? 0) === 0;
+		!IS_CLOUD && !workspacesQuery.isPending && (workspacesQuery.data?.workspaces?.length ?? 0) === 0;
 
 	return (
 		<SidebarContext.Provider value={sidebarCtx}>

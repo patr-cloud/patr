@@ -153,5 +153,5 @@ const WorkspaceOnboard = () => {
 export const Route = createFileRoute("/_logged-in/_non-workspaced/onboard")(
 	cloudOnly({
 		component: WorkspaceOnboardPage,
-	}),
+	})
 );
