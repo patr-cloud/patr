@@ -176,9 +176,8 @@ where
 						let mut headers = HeaderMap::new();
 						headers.insert(
 							header::WWW_AUTHENTICATE,
-							HeaderValue::from_str(&challenge).unwrap_or_else(|_| {
-								HeaderValue::from_static("Bearer")
-							}),
+							HeaderValue::from_str(&challenge)
+								.unwrap_or_else(|_| HeaderValue::from_static("Bearer")),
 						);
 						headers
 					},

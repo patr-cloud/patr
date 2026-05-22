@@ -264,5 +264,5 @@ export const Route = createFileRoute("/_logged-out/sign-up/github")(
 			email: (search.email as string) || undefined,
 		}),
 		component: CompleteGithubSignup,
-	}),
+	})
 );

@@ -61,5 +61,5 @@ export const Route = createFileRoute("/_logged-in/_workspaced/profile/github/cal
 			state: (search.state as string) || undefined,
 		}),
 		component: GithubConnectCallback,
-	}),
+	})
 );

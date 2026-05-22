@@ -139,5 +139,5 @@ const CreateWorkspace = () => {
 export const Route = createFileRoute("/_logged-in/_workspaced/workspace_/new")(
 	cloudOnly({
 		component: CreateWorkspace,
-	}),
+	})
 );

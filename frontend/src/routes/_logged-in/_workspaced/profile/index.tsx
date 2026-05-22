@@ -7,9 +7,7 @@ import { IS_CLOUD } from "~/utils/env";
 import UserSettingsInfoSection from "./-components/info";
 import ChangePasswordSection from "./-components/change-password";
 
-const ConnectedAccountsSection = IS_CLOUD
-	? lazy(() => import("./-components/connected-accounts"))
-	: null;
+const ConnectedAccountsSection = IS_CLOUD ? lazy(() => import("./-components/connected-accounts")) : null;
 
 const UserSettingsPage = () => {
 	const userInfoQuery = useUserInfoQuery();
