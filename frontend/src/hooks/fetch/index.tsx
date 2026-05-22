@@ -1,3 +1,4 @@
+import useApiEnvironmentQuery from "./api-environment";
 import usePermissionsQuery from "./permissions";
 import useWorkspacesQuery from "./workspaces";
 import useUserPermissionsQuery from "./user-permissions";
@@ -22,6 +23,7 @@ import { useRunnerMetricsQuery, useDeploymentMetricsQuery } from "./metrics";
 import { useUserInfoQuery, useUserSearchQuery, useMfaSecretQuery } from "./user";
 
 export {
+	useApiEnvironmentQuery,
 	useDeploymentsQuery,
 	useDeploymentInfoQuery,
 	useDeploymentMetricsQuery,

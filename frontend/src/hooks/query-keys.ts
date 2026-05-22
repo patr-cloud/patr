@@ -1,3 +1,7 @@
+export const apiEnvironmentKeys = {
+	all: () => ["apiEnvironment"] as const,
+};
+
 export const deploymentKeys = {
 	all: (workspaceId: string) => ["deployments", workspaceId] as const,
 	list: (workspaceId: string, page: string | undefined, count: string | undefined) =>

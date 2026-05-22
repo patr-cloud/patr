@@ -24,10 +24,10 @@ import {
 } from "~/components";
 import { createAuthenticatedAction, createFormAction } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { useDomainInfoQuery, useManagedUrlsQuery } from "~/hooks/fetch";
+import { useApiEnvironmentQuery, useDomainInfoQuery, useManagedUrlsQuery } from "~/hooks/fetch";
 import { domainKeys, managedUrlKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
-import { DEPLOYMENT_DOMAIN } from "~/utils/env";
+import { DEPLOYMENT_DOMAIN, IS_CLOUD } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
 import DeploymentOption from "./-components/deployment-option";
 import ManageUrlRow from "./-components/managed-url-component";
@@ -41,6 +41,18 @@ const DomainInfo = () => {
 	const toast = useToast();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
+	const apiEnvironment = useApiEnvironmentQuery();
+
+	// On cloud we point CNAMEs at `ingress.{deployment-domain}`; on
+	// self-hosted the operator's `baseDomain` from /api/info IS the ingress
+	// host (no separate ingress subdomain). Cloud value is build-time
+	// constant, self-hosted value may still be loading.
+	const ingressHost = () =>
+		IS_CLOUD
+			? DEPLOYMENT_DOMAIN
+				? `ingress.${DEPLOYMENT_DOMAIN}`
+				: "your ingress hostname"
+			: (apiEnvironment.data?.baseDomain ?? "Loading...");
 
 	const [subDomain, setSubDomain] = createSignal("");
 	const [path, setPath] = createSignal("");
@@ -343,9 +355,7 @@ const DomainInfo = () => {
 											{
 												type: "CNAME",
 												name: `${subDomain() || "(subdomain)"}.${domainInfoQuery.data?.name || "your-domain.com"}`,
-												target: DEPLOYMENT_DOMAIN
-													? `ingress.${DEPLOYMENT_DOMAIN}`
-													: "your ingress hostname",
+												target: ingressHost(),
 											},
 										]}
 										renderRow={(record) => (

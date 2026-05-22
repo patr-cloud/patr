@@ -105,6 +105,10 @@ pub async fn upload_chunk(
 		config,
 	}: AuthenticatedRegistryAppRequest<'_, UploadBlobChunkPath>,
 ) -> Result<RegistryResponse<UploadBlobChunkPath>, RegistryError> {
+	// Echo the client's path segment back in the Location header (UUID on
+	// cloud, "registry" on self-hosted) instead of the resolved workspace UUID.
+	let registry_namespace = workspace_id;
+
 	#[cfg(not(feature = "cloud"))]
 	let workspace_id = {
 		let _ = workspace_id;
@@ -437,7 +441,7 @@ pub async fn upload_chunk(
 		.status_code(StatusCode::ACCEPTED)
 		.headers(UploadBlobChunkResponseHeaders {
 			location: Location::from_str(&format!(
-				"/v2/{workspace_id}/{repo_name}/blobs/uploads/{session_id}"
+				"/v2/{registry_namespace}/{repo_name}/blobs/uploads/{session_id}"
 			))?,
 			docker_upload_uuid: DockerUploadUuid::new(session_id),
 			range: Range::new(0..updated_session.total_bytes_uploaded + pending_size_after)

@@ -87,6 +87,22 @@ pub struct AppConfig {
 	/// The configuration for social login providers (GitHub, etc.)
 	#[cfg(feature = "cloud")]
 	pub social_login: SocialLoginConfig,
+	/// Knobs for the OCI registry endpoints
+	pub registry: RegistryConfig,
+}
+
+/// OCI registry settings — currently the values surfaced in the
+/// `WWW-Authenticate` Bearer challenge that docker clients use to scope
+/// credentials and locate the token endpoint.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RegistryConfig {
+	/// The `service="..."` value in the Bearer challenge. Docker scopes
+	/// credentials in `~/.docker/config.json` by this string.
+	pub service: String,
+	/// The `realm="..."` URL in the Bearer challenge. Must be reachable
+	/// from the docker client (not just the API host).
+	pub realm: String,
 }
 
 /// HTTP server binding configuration

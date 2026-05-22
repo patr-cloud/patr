@@ -76,6 +76,10 @@ pub async fn get_upload_status(
 		config: _,
 	}: AuthenticatedRegistryAppRequest<'_, GetBlobUploadStatusPath>,
 ) -> Result<RegistryResponse<GetBlobUploadStatusPath>, RegistryError> {
+	// Echo the client's path segment in the Location header (UUID on cloud,
+	// "registry" on self-hosted) instead of the resolved workspace UUID.
+	let registry_namespace = workspace_id;
+
 	#[cfg(not(feature = "cloud"))]
 	let workspace_id = {
 		let _ = workspace_id;
@@ -204,7 +208,7 @@ pub async fn get_upload_status(
 					.build()
 			})?,
 			location: Location::from_str(&format!(
-				"/v2/{workspace_id}/{repo_name}/blobs/uploads/{session_id}"
+				"/v2/{registry_namespace}/{repo_name}/blobs/uploads/{session_id}"
 			))?,
 		})
 		.body(Body::empty())
