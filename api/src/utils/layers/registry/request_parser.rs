@@ -48,6 +48,9 @@ where
 	<E::RequestPath as Preprocessable>::Processed: Send,
 	<E::RequestQuery as Preprocessable>::Processed: Send,
 {
+	/// App state, used to read the registry config for the
+	/// `WWW-Authenticate` challenge.
+	state: AppState,
 	/// Phantom data to associate with the endpoint type `E`
 	phantom: PhantomData<E>,
 }
@@ -58,22 +61,12 @@ where
 	<E::RequestPath as Preprocessable>::Processed: Send,
 	<E::RequestQuery as Preprocessable>::Processed: Send,
 {
-	/// Create a new registry request parser layer.
-	pub const fn new() -> Self {
+	/// Create a new registry request parser layer wired to the given state.
+	pub fn with_state(state: AppState) -> Self {
 		Self {
+			state,
 			phantom: PhantomData,
 		}
-	}
-}
-
-impl<E> Default for RegistryRequestParserLayer<E>
-where
-	E: RegistryEndpoint,
-	<E::RequestPath as Preprocessable>::Processed: Send,
-	<E::RequestQuery as Preprocessable>::Processed: Send,
-{
-	fn default() -> Self {
-		Self::new()
 	}
 }
 
@@ -88,6 +81,7 @@ where
 	fn layer(&self, inner: S) -> Self::Service {
 		RegistryRequestParserService {
 			inner,
+			state: self.state.clone(),
 			phantom: PhantomData,
 		}
 	}
@@ -107,6 +101,9 @@ where
 {
 	/// The inner service that will receive the parsed request components
 	inner: S,
+	/// App state, used to read the registry config for the
+	/// `WWW-Authenticate` challenge.
+	state: AppState,
 	/// Phantom data to associate with the endpoint type `E`
 	phantom: PhantomData<E>,
 }
@@ -136,6 +133,7 @@ where
 	#[instrument(skip(self, req), name = "RegistryRequestParserService", fields(method = %req.method(), uri = %req.uri()))]
 	fn call(&mut self, mut req: Request<Body>) -> Self::Future {
 		let mut inner = self.inner.clone();
+		let state = self.state.clone();
 		async move {
 			debug!("Parsing registry request for URL: {}", req.uri());
 
@@ -169,18 +167,18 @@ where
 			// if there is not authorization header, return a WWW-Authenticate challenge
 			if req.headers().typed_get::<BearerToken>().is_none() {
 				debug!("Missing Authorization header");
+				let challenge = format!(
+					"Bearer realm=\"{}\",service=\"{}\"",
+					state.config.registry.realm, state.config.registry.service,
+				);
 				return Ok((
 					{
 						let mut headers = HeaderMap::new();
 						headers.insert(
 							header::WWW_AUTHENTICATE,
-							HeaderValue::from_static(
-								if cfg!(debug_assertions) {
-									"Bearer realm=\"http://localhost:3000/auth/docker-login\",service=\"registry.patr.cloud\""
-								} else {
-									"Bearer realm=\"https://api.patr.cloud/auth/docker-login\",service=\"registry.patr.cloud\""
-								},
-							),
+							HeaderValue::from_str(&challenge).unwrap_or_else(|_| {
+								HeaderValue::from_static("Bearer")
+							}),
 						);
 						headers
 					},

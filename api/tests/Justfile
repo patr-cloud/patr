@@ -15,7 +15,37 @@ test *args:
     done
     echo "Mimir ready."
 
-    [ -f config/api.json ] || cp config/api.sample.json config/api.json
+    # `cargo run --bin api -- --migrate` goes through `parse_config()` which
+    # reads ./config/api.{json,toml,...}. Drop in the sample if no local file
+    # exists, augmenting it with the cloud-only fields (primaryHostedDomain,
+    # cloudflare, ipinfo, socialLogin) because the test build runs with
+    # default features (= cloud) and AppConfig requires them. The sample
+    # itself is kept self-hosted-clean as the operator reference.
+    if [ ! -f config/api.json ]; then
+        jq '. + {
+            primaryHostedDomain: "testonpatr.cloud",
+            cloudflare: {
+                apiKey: "fake-api-key",
+                accountId: "fake-account-id",
+                workerNamespaceId: "fake-worker-ns",
+                turnstileSecret: "1x0000000000000000000000000000000AA",
+                primaryHostedZoneId: "fake-zone-id"
+            },
+            ipinfo: { token: "" },
+            socialLogin: {
+                github: {
+                    clientId: "fake",
+                    clientSecret: "fake",
+                    callbackUrl: "http://localhost/cb",
+                    connectCallbackUrl: "http://localhost/connect"
+                }
+            },
+            registry: {
+                service: "registry.testonpatr.cloud",
+                realm: "http://localhost:3000/auth/docker-login"
+            }
+        }' config/api.sample.json > config/api.json
+    fi
 
     export SQLX_OFFLINE=true
     export PATR_TEST_POSTGRES_HOST=localhost

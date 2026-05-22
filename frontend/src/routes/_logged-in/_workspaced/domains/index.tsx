@@ -178,12 +178,6 @@ const DomainCard = (props: { item: WorkspaceDomain }) => {
 					</Show>
 				</div>
 			</div>
-			<dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs text-grey">
-				<dt>Type</dt>
-				<dd class="text-white truncate">
-					{props.item.nameserverType === "patr" ? "Patr Managed" : "External"}
-				</dd>
-			</dl>
 		</article>
 	);
 };
@@ -291,9 +285,9 @@ const ListDomainsPage = () => {
 								</div>
 								<div class="hidden md:block">
 									<Table
-										column_grids={["flex-5", "flex-3", "flex-4"]}
+										column_grids={["flex-5", "flex-4"]}
 										rows={domainsQuery.data?.domains || []}
-										headings={["Domain", "Type", "Status"]}
+										headings={["Domain", "Status"]}
 										renderRow={(item) => {
 											const goToDetail = () => navigate({ to: `/domains/${item.id}` });
 											return (
@@ -314,16 +308,6 @@ const ListDomainsPage = () => {
 														class="flex-5 flex items-center justify-start min-w-0"
 													>
 														<span class="truncate font-medium text-white">{item.name}</span>
-													</td>
-													<td
-														role="cell"
-														class="flex-3 flex items-center justify-start min-w-0"
-													>
-														<span class="text-grey">
-															{item.nameserverType === "patr"
-																? "Patr Managed"
-																: "External"}
-														</span>
 													</td>
 													<td
 														role="cell"

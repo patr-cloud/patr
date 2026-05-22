@@ -110,6 +110,10 @@ pub async fn complete_upload(
 		config,
 	}: AuthenticatedRegistryAppRequest<'_, CompleteBlobUploadPath>,
 ) -> Result<RegistryResponse<CompleteBlobUploadPath>, RegistryError> {
+	// Echo the client's path segment back in the Location header (UUID on
+	// cloud, "registry" on self-hosted) instead of the resolved workspace UUID.
+	let registry_namespace = workspace_id;
+
 	#[cfg(not(feature = "cloud"))]
 	let workspace_id = {
 		let _ = workspace_id;
@@ -757,7 +761,7 @@ pub async fn complete_upload(
 		.status_code(StatusCode::CREATED)
 		.headers(CompleteBlobUploadResponseHeaders {
 			location: Location::from_str(&format!(
-				"/v2/{workspace_id}/{repo_name}/blobs/{digest}",
+				"/v2/{registry_namespace}/{repo_name}/blobs/{digest}",
 			))?,
 			docker_content_digest: DockerContentDigest(digest),
 		})

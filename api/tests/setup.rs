@@ -19,6 +19,7 @@ use api::{
 		MetricsConfig,
 		OpenTelemetryConfig,
 		RedisConfig,
+		RegistryConfig,
 		RunningEnvironment,
 		S3Config,
 		ServerConfig,
@@ -523,6 +524,10 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 				callback_url: "http://localhost:3000/login/github".to_string(),
 				connect_callback_url: "http://localhost:3000/profile/github/callback".to_string(),
 			},
+		},
+		registry: RegistryConfig {
+			service: "registry.patr.cloud".to_string(),
+			realm: "http://localhost:3000/auth/docker-login".to_string(),
 		},
 	};
 

@@ -103,6 +103,10 @@ pub async fn upload_manifest(
 		config,
 	}: AuthenticatedRegistryAppRequest<'_, PutManifestPath>,
 ) -> Result<RegistryResponse<PutManifestPath>, RegistryError> {
+	// Echo the client's path segment in the Location header (UUID on cloud,
+	// "registry" on self-hosted) instead of the resolved workspace UUID.
+	let registry_namespace = workspace_id;
+
 	#[cfg(not(feature = "cloud"))]
 	let workspace_id = {
 		let _ = workspace_id;
@@ -673,7 +677,7 @@ pub async fn upload_manifest(
 		.status_code(StatusCode::CREATED)
 		.headers(PutManifestResponseHeaders {
 			location: Location::from_str(&format!(
-				"/v2/{workspace_id}/{repo_name}/manifests/{digest}"
+				"/v2/{registry_namespace}/{repo_name}/manifests/{digest}"
 			))?,
 			docker_content_digest: DockerContentDigest(digest),
 			docker_distribution_api_version: DockerDistributionApiVersion,

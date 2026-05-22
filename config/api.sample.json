@@ -50,5 +50,9 @@
 			"username": "admin",
 			"password": "password"
 		}
+	},
+	"registry": {
+		"service": "patr.example.com",
+		"realm": "https://patr.example.com/api/auth/docker-login"
 	}
 }
