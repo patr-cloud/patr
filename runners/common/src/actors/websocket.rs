@@ -147,7 +147,13 @@ where
 				handle_connect(myself, state).await;
 			}
 			WebSocketMessage::ServerMessage(msg) => {
-				handle_server_message(state, *msg).await?;
+				if let Err(err) = handle_server_message(state, *msg).await {
+					// Without this log the supervisor only sees the bare WARN
+					// "Supervised child stopped" — the underlying cause (which
+					// stream-message arm failed and why) would be invisible.
+					error!(?err, "Failed to handle server message; actor will restart");
+					return Err(err);
+				}
 			}
 			WebSocketMessage::StreamEnded => {
 				state.ws_sink = None;
