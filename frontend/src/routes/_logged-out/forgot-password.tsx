@@ -145,6 +145,7 @@ const ForgotPassword = () => {
 								type="submit"
 								loading={isLoading}
 								loadingContent={() => <span>Sending...</span>}
+								disabled={!turnstileToken()}
 							>
 								Send Reset Link
 							</Button>

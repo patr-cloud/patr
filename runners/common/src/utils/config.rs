@@ -4,7 +4,7 @@ use std::{
 	str::FromStr,
 };
 
-use config::{Config, ConfigError, Environment, File};
+use config::{Case, Config, ConfigError, Environment, File};
 use models::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -63,7 +63,15 @@ where
 				panic!("Unknown running environment found!");
 			}
 		}
-		.add_source(Environment::with_prefix("PATR").separator("_"))
+		// Env-var keys use `__` as the nested-key separator and `_` as the word
+		// boundary inside each segment; `convert_case(Camel)` then matches the
+		// `#[serde(rename_all = "camelCase")]` field names. E.g.
+		// PATR__DATABASE__CONNECTION_LIMIT → database.connectionLimit.
+		.add_source(
+			Environment::with_prefix("PATR")
+				.separator("__")
+				.convert_case(Case::Camel),
+		)
 		.build()?
 		.try_deserialize()
 	}

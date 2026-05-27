@@ -256,6 +256,7 @@ const Login = () => {
 							type="submit"
 							loading={isLoading}
 							loadingContent={() => <span>Logging in...</span>}
+							disabled={!turnstileToken()}
 						>
 							Login
 						</Button>

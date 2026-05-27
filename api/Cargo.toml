@@ -12,8 +12,8 @@ version.workspace      = true
 workspace = true
 
 [features]
-default = ["cloud"]
 cloud   = ["models/cloud"]
+default = ["cloud"]
 
 [dependencies]
 apalis                         = { workspace = true, features = ["tracing"] }
@@ -31,7 +31,7 @@ base32                         = { workspace = true, features = [] }
 base64                         = { workspace = true, features = ["default"] }
 clap                           = { workspace = true, features = ["std", "derive"] }
 cloudflare                     = { workspace = true, features = ["rustls-tls"] }
-config                         = { workspace = true, features = ["default"] }
+config                         = { workspace = true, features = ["json", "convert-case"] }
 console-subscriber             = { workspace = true, features = ["default"] }
 cron                           = { workspace = true, features = [] }
 derive_more                    = { workspace = true, features = ["from"] }
@@ -86,12 +86,12 @@ typed-builder                  = { workspace = true, features = [] }
 woothee                        = { workspace = true, features = ["default"] }
 
 [dev-dependencies]
-anyhow                 = { workspace = true, features = ["default"] }
-axum-test              = { workspace = true, features = ["default"] }
-flate2                 = { workspace = true, features = ["rust_backend"] }
-ipnetwork              = { workspace = true, features = ["default"] }
-tar                    = { workspace = true, features = [] }
-wiremock               = { workspace = true, features = [] }
+anyhow    = { workspace = true, features = ["default"] }
+axum-test = { workspace = true, features = ["default"] }
+flate2    = { workspace = true, features = ["rust_backend"] }
+ipnetwork = { workspace = true, features = ["default"] }
+tar       = { workspace = true, features = [] }
+wiremock  = { workspace = true, features = [] }
 
 [[test]]
 name = "integration-tests"

@@ -4,7 +4,7 @@ use std::{
 	net::SocketAddr,
 };
 
-use config::{Config, Environment, File};
+use config::{Case, Config, Environment, File};
 use serde::{Deserialize, Serialize};
 
 /// Parses the configuration of the application and returns the parsed config.
@@ -33,7 +33,15 @@ pub fn parse_config() -> AppConfig {
 			panic!("Unknown running environment found!");
 		}
 	}
-	.add_source(Environment::with_prefix("PATR").separator("_"))
+	// Env-var keys use `__` as the nested-key separator and `_` as the word
+	// boundary inside each segment; `convert_case(Camel)` then matches the
+	// `#[serde(rename_all = "camelCase")]` field names. E.g.
+	// PATR__DATABASE__CONNECTION_LIMIT → database.connectionLimit.
+	.add_source(
+		Environment::with_prefix("PATR")
+			.separator("__")
+			.convert_case(Case::Camel),
+	)
 	.build()
 	.expect("unable to merge with environment variables")
 	.try_deserialize()

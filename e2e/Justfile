@@ -1,0 +1,108 @@
+set shell := ["bash", "-uc"]
+
+# All API config goes through env vars. `convert_case(Camel)` matches snake_case
+# env-var segments against the camelCase serde field names. `__` separates
+# nested keys; `_` is the word boundary inside one key. So
+# PATR__DATABASE__CONNECTION_LIMIT → database.connectionLimit.
+export PATR__SERVER__BIND_ADDRESS              := "127.0.0.1:3000"
+export PATR__SERVER__API_BASE_PATH             := "/"
+export PATR__PASSWORD_PEPPER                   := "keyboard cat"
+export PATR__JWT_SECRET                        := "keyboard cat"
+export PATR__PRIMARY_HOSTED_DOMAIN             := "onpatr.cloud"
+export PATR__EMAIL__HOST                       := "smtp.invalid"
+export PATR__EMAIL__PORT                       := "587"
+export PATR__EMAIL__SECURE                     := "true"
+export PATR__EMAIL__USERNAME                   := "no-reply@example.com"
+export PATR__EMAIL__FROM                       := "no-reply@example.com"
+export PATR__EMAIL__PASSWORD                   := "password"
+export PATR__S3__ENDPOINT                      := "http://127.0.0.1:19000"
+export PATR__S3__REGION                        := "us-east-1"
+export PATR__S3__BUCKET                        := "patr-e2e"
+export PATR__S3__KEY                           := "minioadmin"
+export PATR__S3__SECRET                        := "minioadmin"
+export PATR__S3__FORCE_PATH_STYLE              := "true"
+export PATR__DATABASE__HOST                    := "127.0.0.1"
+export PATR__DATABASE__PORT                    := "15432"
+export PATR__DATABASE__USER                    := "postgres"
+export PATR__DATABASE__PASSWORD                := "postgres"
+export PATR__DATABASE__DATABASE                := "api"
+export PATR__DATABASE__CONNECTION_LIMIT        := "10"
+export PATR__REDIS__HOST                       := "127.0.0.1"
+export PATR__REDIS__PORT                       := "16379"
+export PATR__REDIS__SECURE                     := "false"
+export PATR__CLOUDFLARE__API_KEY               := "e2e-disabled"
+export PATR__CLOUDFLARE__ACCOUNT_ID            := "e2e-disabled"
+export PATR__CLOUDFLARE__WORKER_NAMESPACE_ID   := "e2e-disabled"
+export PATR__CLOUDFLARE__TURNSTILE_SECRET      := "1x0000000000000000000000000000000AA"
+export PATR__CLOUDFLARE__PRIMARY_HOSTED_ZONE_ID := "e2e-disabled"
+export PATR__OPENTELEMETRY__TRACING__ENDPOINT  := "http://127.0.0.1:4317/v1/traces"
+export PATR__OPENTELEMETRY__LOGS__ENDPOINT     := "http://127.0.0.1:13100"
+export PATR__OPENTELEMETRY__METRICS__ENDPOINT  := "http://127.0.0.1:18080"
+export PATR__OPENTELEMETRY__METRICS__USERNAME  := "admin"
+export PATR__OPENTELEMETRY__METRICS__PASSWORD  := "password"
+export PATR__IPINFO__TOKEN                     := ""
+export PATR__SOCIAL_LOGIN__GITHUB__CLIENT_ID   := "e2e-disabled"
+export PATR__SOCIAL_LOGIN__GITHUB__CLIENT_SECRET := "e2e-disabled"
+export PATR__SOCIAL_LOGIN__GITHUB__CALLBACK_URL := "http://localhost:3001/login/github"
+export PATR__SOCIAL_LOGIN__GITHUB__CONNECT_CALLBACK_URL := "http://localhost:3001/profile/github/callback"
+
+# Vinxi defaults to port 3030, but that often collides with VS Code helpers
+# on developer machines. Use 13030 (matches the +10000 offset used for the
+# compose services). The frontend `dev` script reads PORT; we inline
+# PORT=$VINXI_PORT at spawn time so `pnpm run dev` works unchanged elsewhere.
+# The API proxies non-/api routes here via FRONTEND_URL.
+export VINXI_PORT := "13030"
+export FRONTEND_URL := "http://localhost:13030"
+export VITE_BASE_URL := "http://localhost:3001"
+# Cloudflare's always-passes test site key (public; matches the test secret
+# used in PATR__CLOUDFLARE__TURNSTILE_SECRET above).
+export VITE_TURNSTILE_SITE_KEY := "1x00000000000000000000AA"
+
+# Full pipeline (install → up → test → down).
+default: install up test down
+
+# One-time install of pnpm packages and the Playwright browser binary.
+install:
+    pnpm install
+    pnpm exec playwright install --with-deps chromium
+    pnpm --dir ../frontend install
+
+# Bring up external deps only — postgres, redis, minio, loki, mimir, dind images.
+# API + frontend are spawned per `test` invocation so each session exercises a
+# fresh build of the code under test.
+up:
+    docker compose -f docker-compose.yml up -d --wait
+    docker run --rm --network e2e_default --entrypoint sh minio/mc -c 'mc alias set local http://minio:9000 minioadmin minioadmin && mc mb --ignore-existing local/patr-e2e'
+    docker pull docker:24-dind
+    docker pull docker:25-dind
+    docker pull docker:26-dind
+
+# Spawn the API and frontend, run the Playwright suite, then tear them down.
+# Args pass through, e.g. `just e2e::test specs/auth/login.spec.ts`.
+test *args:
+    #!/usr/bin/env bash
+    # set -m puts each bg job in its own process group so we can group-kill
+    # them on cleanup. Without it, `cargo run`'s child api binary survives
+    # `kill $cargo_pid` and leaks.
+    set -muo pipefail
+    mkdir -p .pids .logs
+    cleanup() {
+        for f in .pids/api.pid .pids/frontend.pid; do
+            [ -f "$f" ] && kill -TERM -$(cat "$f") 2>/dev/null || true
+        done
+        rm -rf .pids
+    }
+    trap cleanup EXIT
+    nohup cargo run --manifest-path ../Cargo.toml -p api > .logs/api.log 2>&1 &
+    echo $! > .pids/api.pid
+    until nc -z localhost 3000; do sleep 0.2; done
+    until nc -z localhost 3001; do sleep 0.2; done
+    PORT=$VINXI_PORT nohup pnpm --dir ../frontend run dev > .logs/frontend.log 2>&1 &
+    echo $! > .pids/frontend.pid
+    until nc -z localhost $VINXI_PORT; do sleep 0.2; done
+    pnpm exec playwright test {{args}}
+
+# Tear down external deps and prune any leaked dind containers.
+down:
+    docker compose -f docker-compose.yml down -v
+    -docker ps -aq -f name=e2e-dind- | xargs -r docker rm -f

@@ -326,6 +326,7 @@ const SignUp = () => {
 							type="submit"
 							loading={isLoading}
 							loadingContent={() => <span>Signing up...</span>}
+							disabled={!turnstileToken()}
 						>
 							Sign Up
 						</Button>
