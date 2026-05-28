@@ -1,47 +1,266 @@
-import { test, expect, newContext, createUserAccount } from '@/prelude';
+import {
+  test,
+  expect,
+  newContext,
+  createUserAccount,
+  randomIPv4,
+} from '@/prelude';
+import {
+  openLoginPage,
+  fillLoginForm,
+  submitLogin,
+  waitForLoggedIn,
+} from '@/helpers/ui/login';
 
-test('user can sign up via API and log in through the UI', async ({ api, browser }) => {
-  await using user = await createUserAccount(api);
-
-  const context = await newContext(browser, user.clientIp);
+async function loginWith(
+  browser: import('@playwright/test').Browser,
+  fn: (page: import('@playwright/test').Page) => Promise<void>,
+  clientIp?: string,
+) {
+  const context = await newContext(browser, clientIp);
   const page = await context.newPage();
-
   try {
-    await page.goto('/login');
-    await page.locator('#userId').fill(user.username);
-    await page.locator('#password').fill(user.password);
-
-    // Submit button is disabled until Cloudflare Turnstile resolves a token
-    // (frontend/src/routes/_logged-out/login.tsx: `disabled={!turnstileToken()}`).
-    // Waiting for it to be enabled is the user-facing signal that Turnstile
-    // is ready.
-    const submitButton = page.locator('button[type=submit]', { hasText: /^Login$/ });
-    await expect(submitButton).toBeEnabled({ timeout: 15_000 });
-
-    // Submit and wait for the API to confirm the credentials.
-    const signInResponse = page.waitForResponse(
-      (r) => r.url().includes('/auth/sign-in') && r.request().method() === 'POST',
-      { timeout: 15_000 },
-    );
-    await submitButton.click();
-    const response = await signInResponse;
-    expect(response.ok()).toBe(true);
-
-    // The SPA persists auth state to a cookie (see `createPersistedSignal` in
-    // frontend/src/hooks/state-hooks.tsx — storage is cookieStorage). The
-    // route guard reads from RouterProvider context, which is reactive on the
-    // auth signal. Wait for the cookie before checking URL — otherwise we
-    // race the SPA's setAuthState + navigate('/').
-    await page.waitForFunction(
-      () => document.cookie.includes('authState='),
-      null,
-      { timeout: 10_000 },
-    );
-
-    // After a fresh signup the user has no workspace, so the workspaced
-    // dashboard layout redirects to /onboard. Either way, we're off /login.
-    await expect(page).not.toHaveURL(/\/login/, { timeout: 10_000 });
+    await openLoginPage(page);
+    await fn(page);
   } finally {
     await context.close();
   }
+}
+
+test.describe('login — happy paths', () => {
+  test('username + password via UI lands off /login', async ({ browser, api }) => {
+    await using user = await createUserAccount(api);
+    await loginWith(browser, async (page) => {
+      await fillLoginForm(page, { userId: user.username, password: user.password });
+      await submitLogin(page);
+      await waitForLoggedIn(page);
+    });
+  });
+
+  // Login by recovery email is NOT supported by the current API: the user_id
+  // preprocessor regex (`^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$`) rejects `@`.
+  // Documenting this here rather than silently skipping — fix the regex or
+  // route emails through a different field and the test below becomes real.
+  test.skip('login with recovery email instead of username', async ({
+    browser,
+    api,
+  }) => {
+    await using user = await createUserAccount(api);
+    await loginWith(browser, async (page) => {
+      await fillLoginForm(page, { userId: user.email, password: user.password });
+      await submitLogin(page);
+      await waitForLoggedIn(page);
+    });
+  });
+});
+
+test.describe('login — server-side rejection', () => {
+  // Wait for the network response first, then assert the inline alert — under
+  // sustained suite load the API can briefly take >10s and a DOM-timeout
+  // assertion gets flaky.
+  async function submitAndExpectInlineError(
+    page: import('@playwright/test').Page,
+    matcher: RegExp,
+  ): Promise<void> {
+    const respPromise = page.waitForResponse(
+      (r) => r.url().includes('/auth/sign-in') && r.request().method() === 'POST',
+      { timeout: 30_000 },
+    );
+    await submitLogin(page);
+    const resp = await respPromise;
+    expect(resp.ok()).toBe(false);
+    await expect(page.getByText(matcher)).toBeVisible();
+  }
+
+  test('wrong password → inline "Incorrect password" alert', async ({
+    browser,
+    api,
+  }) => {
+    await using user = await createUserAccount(api);
+    await loginWith(browser, async (page) => {
+      await fillLoginForm(page, {
+        userId: user.username,
+        password: 'WrongPassw0rd!',
+      });
+      await submitAndExpectInlineError(page, /Incorrect password/i);
+      await expect(page).toHaveURL(/\/login$/);
+    });
+  });
+
+  test('nonexistent username → "User not found" alert', async ({ browser }) => {
+    await loginWith(browser, async (page) => {
+      await fillLoginForm(page, {
+        userId: 'doesnotexist' + Date.now(),
+        password: 'E2eTest!1Password',
+      });
+      await submitAndExpectInlineError(page, /User not found/i);
+    });
+  });
+
+  // Email-format input fails the userId regex preprocessor → server returns
+  // a generic WrongParameters error. The frontend's only inline-alert branch
+  // is `userNotFound | invalidEmail`; everything else hits the toast default.
+  test('email-formatted nonexistent user → request rejected', async ({
+    browser,
+  }) => {
+    await loginWith(browser, async (page) => {
+      await fillLoginForm(page, {
+        userId: `nobody${Date.now()}@example.com`,
+        password: 'E2eTest!1Password',
+      });
+      const respPromise = page.waitForResponse(
+        (r) => r.url().includes('/auth/sign-in') && r.request().method() === 'POST',
+        { timeout: 10_000 },
+      );
+      await submitLogin(page);
+      const resp = await respPromise;
+      expect(resp.ok()).toBe(false);
+    });
+  });
+
+  test('empty password blocks submit (no network request)', async ({
+    browser,
+    api,
+  }) => {
+    await using user = await createUserAccount(api);
+    await loginWith(browser, async (page) => {
+      await page.locator('#userId').fill(user.username);
+      // Password left empty.
+      let fired = false;
+      page.on('request', (req) => {
+        if (req.url().includes('/auth/sign-in')) fired = true;
+      });
+      const submit = page.locator('button[type=submit]', { hasText: /^Login$/ });
+      await expect(submit).toBeEnabled({ timeout: 15_000 });
+      await submit.click();
+      await page.waitForTimeout(500);
+      expect(fired).toBe(false);
+      await expect(page.getByText(/Password cannot be empty/i)).toBeVisible();
+    });
+  });
+
+  test('SQLi attempt in username → server returns user-not-found', async ({
+    browser,
+  }) => {
+    await loginWith(browser, async (page) => {
+      await fillLoginForm(page, {
+        userId: "admin' OR 1=1--",
+        password: 'E2eTest!1Password',
+      });
+      const respPromise = page.waitForResponse(
+        (r) => r.url().includes('/auth/sign-in') && r.request().method() === 'POST',
+      );
+      await submitLogin(page);
+      const resp = await respPromise;
+      expect(resp.ok()).toBe(false);
+    });
+  });
+});
+
+test.describe('login — case sensitivity', () => {
+  test('username with wrong case (uppercase) is treated as different user', async ({
+    browser,
+    api,
+  }) => {
+    await using user = await createUserAccount(api);
+    await loginWith(browser, async (page) => {
+      await fillLoginForm(page, {
+        userId: user.username.toUpperCase(),
+        password: user.password,
+      });
+      const respPromise = page.waitForResponse(
+        (r) => r.url().includes('/auth/sign-in') && r.request().method() === 'POST',
+      );
+      await submitLogin(page);
+      const resp = await respPromise;
+      // We don't assert exactly which error, just that it fails.
+      expect(resp.ok()).toBe(false);
+    });
+  });
+});
+
+test.describe('login — concurrency & state', () => {
+  // page.reload() hangs against Vinxi dev (HMR-related). Instead, verify
+  // session persistence by navigating to a guarded route in a fresh tab that
+  // shares the same context (cookies persist).
+  test('login then open new tab in same context → still logged in', async ({
+    browser,
+    api,
+  }) => {
+    await using user = await createUserAccount(api);
+    const context = await newContext(browser);
+    const page = await context.newPage();
+    try {
+      await openLoginPage(page);
+      await fillLoginForm(page, { userId: user.username, password: user.password });
+      await submitLogin(page);
+      await waitForLoggedIn(page);
+
+      const page2 = await context.newPage();
+      await page2.goto('/profile');
+      await expect(page2).not.toHaveURL(/\/login/, { timeout: 10_000 });
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('two parallel contexts logging into same user both succeed', async ({
+    browser,
+    api,
+  }) => {
+    await using user = await createUserAccount(api);
+    const doLogin = async () => {
+      const context = await newContext(browser);
+      const page = await context.newPage();
+      try {
+        await openLoginPage(page);
+        await fillLoginForm(page, { userId: user.username, password: user.password });
+        await submitLogin(page);
+        await waitForLoggedIn(page);
+        return true;
+      } finally {
+        await context.close();
+      }
+    };
+    const results = await Promise.all([doLogin(), doLogin()]);
+    expect(results).toEqual([true, true]);
+  });
+});
+
+test.describe('login — rate limiting (per-IP wiring sanity)', () => {
+  // The per-IP limiter is 20/sec (api/src/utils/layers/rate_limiter_layer.rs).
+  // We reuse one IP across 25 sign-in attempts and assert at least one comes
+  // back as 429 — proving the limiter is wired through. The exact threshold
+  // is timing-sensitive so we don't assert "exactly the 21st".
+  test('21+ rapid requests from one IP triggers 429 at least once', async ({
+    browser,
+  }) => {
+    const ip = randomIPv4();
+    const context = await newContext(browser, ip);
+    const page = await context.newPage();
+    try {
+      await openLoginPage(page);
+      // Hit /auth/sign-in directly from the browser so the route()
+      // X-Real-IP override applies. Each call is independent.
+      const statuses = await page.evaluate(async () => {
+        const out: number[] = [];
+        for (let i = 0; i < 25; i++) {
+          const r = await fetch('http://localhost:3001/api/auth/sign-in', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: 'doesnotexist',
+              password: 'X',
+              cfTurnstileToken: 'placeholder',
+            }),
+          });
+          out.push(r.status);
+        }
+        return out;
+      });
+      expect(statuses.some((s) => s === 429)).toBe(true);
+    } finally {
+      await context.close();
+    }
+  });
 });

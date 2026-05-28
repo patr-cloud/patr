@@ -2,7 +2,10 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './specs',
-  workers: process.env.TEST_THREADS ? Number(process.env.TEST_THREADS) : undefined,
+  // Default to serial. The dev API + frontend stack handles concurrent test
+  // contexts poorly (cargo run shared binary, Vinxi HMR, single postgres).
+  // Tests that want parallelism opt in by running with `TEST_THREADS=N`.
+  workers: process.env.TEST_THREADS ? Number(process.env.TEST_THREADS) : 1,
   timeout: 60_000,
   use: {
     baseURL: 'http://localhost:3001',
