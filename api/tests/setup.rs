@@ -61,7 +61,7 @@ pub struct TestSetup {
 	permission_ids: BTreeMap<String, Uuid>,
 }
 
-/// Generate a fully-random IPv4 for the per-call `X-Forwarded-For` header.
+/// Generate a fully-random IPv4 for the per-call `X-Real-IP` header.
 ///
 /// Used by [`TestSetup::make_web_dashboard_call`] and
 /// [`TestSetup::make_api_call`] so each call lands in its own per-IP rate-limit
@@ -84,7 +84,7 @@ impl TestSetup {
 	///
 	/// All headers (including `authorization` and `user_agent`) are provided
 	/// through the typed headers struct in the request. A fresh random IPv4
-	/// is injected as `X-Forwarded-For` per call — see [`random_ipv4`].
+	/// is injected as `X-Real-IP` per call — see [`random_ipv4`].
 	pub async fn make_web_dashboard_call<E>(&self, request: ApiRequest<E>) -> TestResponse
 	where
 		E: ApiEndpoint,
@@ -102,7 +102,7 @@ impl TestSetup {
 		};
 
 		let mut req = self.web.method(E::METHOD, &full_path);
-		req = req.add_header("X-Forwarded-For", random_ipv4().to_string());
+		req = req.add_header("X-Real-IP", random_ipv4().to_string());
 		let header_map = request.headers.to_header_map();
 		for (name, value) in header_map.iter() {
 			req = req.add_header(name.clone(), value.to_str().unwrap());
@@ -116,7 +116,7 @@ impl TestSetup {
 	/// `Authorization` header — the WebDashboard-routed server rejects it as
 	/// a malformed access token.
 	///
-	/// A fresh random IPv4 is injected as `X-Forwarded-For` per call.
+	/// A fresh random IPv4 is injected as `X-Real-IP` per call.
 	pub async fn make_api_call<E>(&self, request: ApiRequest<E>) -> TestResponse
 	where
 		E: ApiEndpoint,
@@ -134,7 +134,7 @@ impl TestSetup {
 		};
 
 		let mut req = self.api.method(E::METHOD, &full_path);
-		req = req.add_header("X-Forwarded-For", random_ipv4().to_string());
+		req = req.add_header("X-Real-IP", random_ipv4().to_string());
 		let header_map = request.headers.to_header_map();
 		for (name, value) in header_map.iter() {
 			req = req.add_header(name.clone(), value.to_str().unwrap());
@@ -142,7 +142,7 @@ impl TestSetup {
 		req.json(&request.body).await
 	}
 
-	/// Same as [`make_api_call`] but pins the request's `X-Forwarded-For` to a
+	/// Same as [`make_api_call`] but pins the request's `X-Real-IP` to a
 	/// specific IP. Used by tests that exercise IP-keyed behaviour like API
 	/// token IP restrictions.
 	pub async fn make_api_call_from_ip<E>(
@@ -166,7 +166,7 @@ impl TestSetup {
 		};
 
 		let mut req = self.api.method(E::METHOD, &full_path);
-		req = req.add_header("X-Forwarded-For", client_ip.to_string());
+		req = req.add_header("X-Real-IP", client_ip.to_string());
 		let header_map = request.headers.to_header_map();
 		for (name, value) in header_map.iter() {
 			req = req.add_header(name.clone(), value.to_str().unwrap());
@@ -174,7 +174,7 @@ impl TestSetup {
 		req.json(&request.body).await
 	}
 
-	/// Same as [`make_web_dashboard_call`] but pins `X-Forwarded-For` to a
+	/// Same as [`make_web_dashboard_call`] but pins `X-Real-IP` to a
 	/// fixed IP. Used by tests that exercise IP-keyed behaviour on
 	/// web-dashboard-only endpoints (like the auth flow's per-IP rate
 	/// limits).
@@ -199,7 +199,7 @@ impl TestSetup {
 		};
 
 		let mut req = self.web.method(E::METHOD, &full_path);
-		req = req.add_header("X-Forwarded-For", client_ip.to_string());
+		req = req.add_header("X-Real-IP", client_ip.to_string());
 		let header_map = request.headers.to_header_map();
 		for (name, value) in header_map.iter() {
 			req = req.add_header(name.clone(), value.to_str().unwrap());

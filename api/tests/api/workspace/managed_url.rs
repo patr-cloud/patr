@@ -356,6 +356,66 @@ async fn create_managed_url_redirect() {
 }
 
 #[tokio::test]
+async fn create_managed_url_duplicate_returns_already_exists() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let domain = setup
+		.create_test_domain(&user.access_token, workspace.id)
+		.await;
+	setup.mark_test_domain_verified(domain.id).await;
+
+	let sub_domain = rand_subdomain();
+	let body = CreateManagedURLRequest {
+		sub_domain: sub_domain.clone(),
+		domain_id: domain.id,
+		path: "/".to_string(),
+		url_type: ManagedUrlType::Redirect {
+			url: "https://example.com".to_string(),
+			permanent_redirect: false,
+			http_only: false,
+		},
+	};
+
+	let _ = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateManagedURLRequest>::builder()
+				.path(CreateManagedURLPath {
+					workspace_id: workspace.id,
+				})
+				.headers(CreateManagedURLRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(body.clone())
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<CreateManagedURLResponse>>();
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateManagedURLRequest>::builder()
+				.path(CreateManagedURLPath {
+					workspace_id: workspace.id,
+				})
+				.headers(CreateManagedURLRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(body)
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"duplicate (sub_domain, domain_id, path) should be rejected with ResourceAlreadyExists, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
 async fn create_managed_url_invalid_deployment_id() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;

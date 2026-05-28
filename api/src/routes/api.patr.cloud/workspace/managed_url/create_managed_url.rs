@@ -264,11 +264,7 @@ pub async fn create_managed_url(
 		workspace_id as _,
 	)
 	.fetch_one(&mut **database)
-	.await
-	.map_err(|e| match e {
-		sqlx::Error::Database(dbe) if dbe.is_unique_violation() => ErrorType::ResourceAlreadyExists,
-		err => ErrorType::server_error(err),
-	})?
+	.await?
 	.id;
 
 	query!(
@@ -320,7 +316,13 @@ pub async fn create_managed_url(
 		http_only,
 	)
 	.execute(&mut **database)
-	.await?;
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(db_err) if db_err.is_unique_violation() => {
+			ErrorType::ResourceAlreadyExists
+		}
+		err => ErrorType::server_error(err),
+	})?;
 
 	utils::cloudflare::sync_ingress_kv_for_fqdn(
 		&format!("{}.{}", sub_domain, domain),
