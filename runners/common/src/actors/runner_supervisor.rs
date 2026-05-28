@@ -165,18 +165,27 @@ where
 		state: &mut Self::State,
 	) -> Result<(), ActorProcessingErr> {
 		let cell = match &message {
-			ractor::SupervisionEvent::ActorTerminated(cell, ..) |
-			ractor::SupervisionEvent::ActorFailed(cell, _) => cell.clone(),
+			ractor::SupervisionEvent::ActorTerminated(cell, ..) => {
+				warn!(
+					actor_id = %cell.get_id(),
+					actor_name = ?cell.get_name(),
+					"Supervised child terminated cleanly, restarting"
+				);
+				cell.clone()
+			}
+			ractor::SupervisionEvent::ActorFailed(cell, err) => {
+				error!(
+					actor_id = %cell.get_id(),
+					actor_name = ?cell.get_name(),
+					?err,
+					"Supervised child failed, restarting"
+				);
+				cell.clone()
+			}
 			_ => return Ok(()),
 		};
 
 		let actor_id = cell.get_id();
-
-		warn!(
-			%actor_id,
-			actor_name = ?cell.get_name(),
-			"Supervised child stopped, restarting"
-		);
 
 		if state.supervisor_ref.get_id() == actor_id {
 			let (new_ref, new_handle) = ResourceSupervisor::<E>::spawn_linked(

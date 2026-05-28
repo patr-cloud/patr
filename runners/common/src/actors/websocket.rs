@@ -21,7 +21,7 @@ use models::api::workspace::{
 	},
 	runner::*,
 };
-use ractor::{Actor, ActorProcessingErr, ActorRef};
+use ractor::{Actor, ActorProcessingErr, ActorRef, SupervisionEvent};
 use ractor_actors::streams::spawn_stream_pump;
 
 use super::{db_helpers, resource_supervisor::ResourceSupervisorMessage};
@@ -184,6 +184,42 @@ where
 			WebSocketMessage::FullResync => {
 				handle_full_resync(myself, state).await?;
 			}
+		}
+		Ok(())
+	}
+
+	/// Surface the stream pump's failure cause before stopping. ractor's
+	/// default `handle_supervisor_evt` calls `myself.stop(None)` and discards
+	/// the inner `ActorProcessingErr`, so the parent supervisor only sees a
+	/// clean termination and the actual error (which lives on the child's
+	/// `ActorFailed` event) is lost. Log it here so the next-level supervisor
+	/// log has something to correlate against.
+	async fn handle_supervisor_evt(
+		&self,
+		myself: ActorRef<Self::Msg>,
+		message: SupervisionEvent,
+		_state: &mut Self::State,
+	) -> Result<(), ActorProcessingErr> {
+		match &message {
+			SupervisionEvent::ActorFailed(cell, err) => {
+				error!(
+					child_id = %cell.get_id(),
+					child_name = ?cell.get_name(),
+					?err,
+					"WS actor child failed — propagating stop"
+				);
+				myself.stop(None);
+			}
+			SupervisionEvent::ActorTerminated(cell, _, reason) => {
+				debug!(
+					child_id = %cell.get_id(),
+					child_name = ?cell.get_name(),
+					?reason,
+					"WS actor child terminated cleanly"
+				);
+				myself.stop(None);
+			}
+			_ => {}
 		}
 		Ok(())
 	}

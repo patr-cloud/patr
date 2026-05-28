@@ -121,18 +121,24 @@ macros::declare_stream_endpoint!(
 		},
 		/// The user has created a managed URL that targets a deployment on
 		/// this runner. Only `ProxyDeployment` URLs are streamed today.
+		///
+		/// `managed_url` is intentionally *not* flattened: `ManagedUrl`
+		/// flattens `ManagedUrlType` whose discriminator is also `"type"`,
+		/// which would collide with this enum's `tag = "type"` and produce
+		/// JSON with a duplicate `"type"` key — serialise OK, deserialise
+		/// fails.
 		ManagedUrlCreated {
 			/// The managed URL that was created
-			#[serde(flatten)]
 			managed_url: WithId<ManagedUrl>,
 		},
 		/// The user has updated a managed URL on this runner. Sent when the
 		/// existing URL stays a `ProxyDeployment` for a deployment on this
 		/// runner; transitions in/out of `ProxyDeployment` come through as a
 		/// pair of `ManagedUrlCreated`/`ManagedUrlDeleted` instead.
+		///
+		/// See `ManagedUrlCreated` for why `managed_url` is not flattened.
 		ManagedUrlUpdated {
 			/// The managed URL after the update
-			#[serde(flatten)]
 			managed_url: WithId<ManagedUrl>,
 		},
 		/// A managed URL on this runner was deleted, or transitioned away

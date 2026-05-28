@@ -286,6 +286,14 @@ where
 		"Reconciling deployment status"
 	);
 
+	// Always offer the current running status upstream. After a fresh actor
+	// spawn (e.g. WS restart) `last_reported_status` is `None`, so this fires
+	// once and seeds the upstream KV with reality. Subsequent reconciles are
+	// deduped by `report_status_if_changed` itself, so the existing per-arm
+	// calls below are still load-bearing for status *transitions* — they just
+	// no longer carry the burden of the first report.
+	report_status_if_changed(state, running_status);
+
 	match (running_status, desired_status) {
 		// Statuses match — nothing to do.
 		(DeploymentStatus::Deploying, DeploymentStatus::Deploying) |
