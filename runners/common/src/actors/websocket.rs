@@ -356,31 +356,14 @@ where
 		DeploymentCreated {
 			deployment,
 			running_details,
-		} => {
-			let deployment_id = deployment.id;
-			let mut transaction = state.database.begin().await?;
-			db_helpers::create_deployment_in_database(
-				&mut transaction,
-				deployment,
-				running_details,
-			)
-			.await?;
-			transaction.commit().await?;
-			let _ = state
-				.supervisor_ref
-				.send_message(ResourceSupervisorMessage::UpsertResource {
-					resource_id: deployment_id,
-					resource_type: ResourceType::Deployment,
-				});
-		}
+		} |
 		DeploymentUpdated {
 			deployment,
 			running_details,
 		} => {
 			let deployment_id = deployment.id;
 			let mut transaction = state.database.begin().await?;
-			db_helpers::delete_deployment_in_database(&mut transaction, deployment_id).await?;
-			db_helpers::create_deployment_in_database(
+			db_helpers::upsert_deployment_in_database(
 				&mut transaction,
 				deployment,
 				running_details,
@@ -581,7 +564,7 @@ where
 			.await
 			.map_err(|err| RunnerError::UpstreamServerError(err.body.error))?;
 
-			db_helpers::create_deployment_in_database(
+			db_helpers::upsert_deployment_in_database(
 				&mut transaction,
 				info.body.deployment,
 				info.body.running_details,
