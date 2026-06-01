@@ -6,7 +6,7 @@ import { Alert, Button, Input, InputType, useToast, Turnstile } from "~/componen
 import { createAsyncAction } from "~/hooks";
 import { ButtonVariant } from "~/utils/color";
 import { httpRequest } from "~/utils/http-request";
-import { validatePassword } from "~/utils/validation";
+import { validateNameField, validatePassword } from "~/utils/validation";
 
 interface FieldErrors {
 	username: string;
@@ -73,12 +73,14 @@ const SignUp = () => {
 			newErrors.username = "Username is required.";
 			valid = false;
 		}
-		if (!firstName().trim()) {
-			newErrors.firstName = "First name is required.";
+		const firstNameError = validateNameField(firstName());
+		if (firstNameError) {
+			newErrors.firstName = firstNameError;
 			valid = false;
 		}
-		if (!lastName().trim()) {
-			newErrors.lastName = "Last name is required.";
+		const lastNameError = validateNameField(lastName());
+		if (lastNameError) {
+			newErrors.lastName = lastNameError;
 			valid = false;
 		}
 		if (!email().trim()) {

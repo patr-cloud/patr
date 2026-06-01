@@ -2,12 +2,13 @@ import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createEffect, createSignal, For, Show, Suspense } from "solid-js";
-import { UpdateApiTokenRequest, WorkspacePermission } from "~/bindings";
+import { GetApiTokenInfoResponse, UpdateApiTokenRequest, WorkspacePermission } from "~/bindings";
 import {
 	Button,
 	ButtonVariant,
 	DeleteModal,
 	Input,
+	InputLabel,
 	InputType,
 	InputWithLabel,
 	PageContainer,
@@ -15,9 +16,11 @@ import {
 	PageContainerHead,
 	useToast,
 } from "~/components";
+import { useQueryClient } from "@tanstack/solid-query";
 import { useAuthState } from "~/hooks";
 import { useUserInfo } from "~/hooks/state-hooks";
 import { useApiTokenInfoQuery, useWorkspacesQuery } from "~/hooks/fetch";
+import { apiTokenKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 import RegenerateModal from "./-components/regenerate-modal";
@@ -30,6 +33,7 @@ const ApiTokenInfo = () => {
 	const userInfo = useUserInfo();
 	const toast = useToast();
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const params = Route.useParams();
 	const [isDeleteModalOpen, setIsDeleteModalOpen] = createSignal(false);
 	const [isRegenerateModalOpen, setIsRegenerateModalOpen] = createSignal(false);
@@ -41,6 +45,51 @@ const ApiTokenInfo = () => {
 
 	const apiTokenInfo = () => apiTokenInfoQuery.data;
 
+	// Token-name draft (mirrors the workspace-rename pattern). Seeded once
+	// from the query when data arrives; user edits drive the input; Save
+	// commits via PATCH, optimistically updates the cache, and the button
+	// re-disables itself.
+	const [tokenName, setTokenName] = createSignal<string | undefined>();
+	const [isUpdatingName, setIsUpdatingName] = createSignal(false);
+
+	createEffect(() => {
+		const persisted = apiTokenInfo()?.name;
+		if (persisted !== undefined && tokenName() === undefined) {
+			setTokenName(persisted);
+		}
+	});
+
+	const onSaveTokenName = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
+		e.preventDefault();
+		if (isUpdatingName()) return;
+
+		const newName = (tokenName() ?? "").trim();
+		const current = apiTokenInfo()?.name ?? "";
+		if (!newName || newName === current) return;
+
+		setIsUpdatingName(true);
+		try {
+			const resp = await httpRequest(
+				`${import.meta.env.VITE_BASE_URL}/api/user/api-token/${params().id}`,
+				{
+					method: "PATCH",
+					body: JSON.stringify({ name: newName }),
+				}
+			);
+			if (!resp.ok) {
+				toast(resp.data?.error || "Failed to update token name", "error");
+				return;
+			}
+			queryClient.setQueryData<GetApiTokenInfoResponse>(
+				apiTokenKeys.detail(params().id),
+				(prev) => (prev ? { ...prev, name: newName } : prev)
+			);
+			toast("Token name updated", "success");
+		} finally {
+			setIsUpdatingName(false);
+		}
+	};
+
 	// Permission editing state
 	const [enabledWorkspaces, setEnabledWorkspaces] = createSignal<Set<string>>(new Set());
 	const [workspacePermissions, setWorkspacePermissions] = createSignal<{
@@ -48,15 +97,18 @@ const ApiTokenInfo = () => {
 	}>({});
 	const [initialized, setInitialized] = createSignal(false);
 
-	// Initialize permission state from fetched token info
+	// Initialize permission state from fetched token info. We treat any
+	// successful query as initialised — even if `permissions` is omitted from
+	// the response (empty BTreeMap), the section should render so the user
+	// can tick a workspace and assign perms from scratch.
 	createEffect(() => {
 		const info = apiTokenInfo();
-		if (!info?.permissions || initialized()) return;
+		if (!info || initialized()) return;
 
 		const enabled = new Set<string>();
 		const perms: { [key: string]: WorkspacePermission } = {};
 
-		Object.entries(info.permissions).forEach(([wsId, perm]) => {
+		Object.entries(info.permissions ?? {}).forEach(([wsId, perm]) => {
 			if (perm) {
 				enabled.add(wsId);
 				perms[wsId] = perm;
@@ -221,16 +273,32 @@ const ApiTokenInfo = () => {
 								/>
 							</InputWithLabel>
 
-							<InputWithLabel for="token-name" label="Name">
+							<form
+								onSubmit={onSaveTokenName}
+								class="flex gap-8 items-center w-full"
+							>
+								<InputLabel parentClass="flex-2" for="token-name" label="Name" />
 								<Input
-									value={apiTokenInfo()?.name || ""}
+									value={tokenName() ?? ""}
+									class="flex-10"
 									id="token-name"
 									name="token-name"
 									placeholder="Token Name"
 									type={InputType.Text}
-									disabled={true}
+									onInput={(e) => setTokenName(e.currentTarget.value)}
 								/>
-							</InputWithLabel>
+								<Button
+									type="submit"
+									variant={ButtonVariant.Contained}
+									disabled={
+										isUpdatingName() ||
+										(tokenName() ?? "").trim() === "" ||
+										(tokenName() ?? "").trim() === (apiTokenInfo()?.name ?? "")
+									}
+								>
+									Save
+								</Button>
+							</form>
 						</div>
 
 						{/* Workspace Permissions Section */}

@@ -2,14 +2,14 @@ import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 // Frontend reference: frontend/src/routes/_logged-out/forgot-password.tsx
-// Field: #email. Submit: button[type=submit] text "Send Reset Link".
+// Field: #userId. Submit: button[type=submit] text "Send Reset Link".
 
 export async function openForgotPassword(page: Page): Promise<void> {
   await page.goto('/forgot-password');
 }
 
-export async function fillForgotEmail(page: Page, email: string): Promise<void> {
-  await page.locator('#email').fill(email);
+export async function fillForgotEmail(page: Page, userId: string): Promise<void> {
+  await page.locator('#userId').fill(userId);
 }
 
 export async function submitForgot(page: Page): Promise<void> {

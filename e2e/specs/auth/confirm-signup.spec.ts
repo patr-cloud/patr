@@ -6,12 +6,7 @@ import {
   backdateSignupOtp,
   DEBUG_OTP,
 } from '@/prelude';
-import {
-  openConfirmSignup,
-  fillUsername,
-  fillOtp,
-  submitConfirm,
-} from '@/helpers/ui/confirm';
+import { openConfirmSignup, fillUsername, fillOtp, submitConfirm } from '@/helpers/ui/confirm';
 
 async function withContext(
   browser: import('@playwright/test').Browser,
@@ -62,10 +57,7 @@ test.describe('confirm-signup — OTP input behaviour', () => {
     });
   });
 
-  test('backspace on filled digit clears and focuses previous', async ({
-    browser,
-    api,
-  }) => {
+  test('backspace on filled digit clears and focuses previous', async ({ browser, api }) => {
     const pending = await createPendingSignup(api);
     await withContext(browser, async (page) => {
       await openConfirmSignup(page, pending.username);
@@ -87,9 +79,7 @@ test.describe('confirm-signup — OTP input behaviour', () => {
         const input = document.getElementById('otp-0') as HTMLInputElement;
         const data = new DataTransfer();
         data.setData('text', '123456');
-        input.dispatchEvent(
-          new ClipboardEvent('paste', { clipboardData: data, bubbles: true }),
-        );
+        input.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true }));
       });
       for (let i = 0; i < 6; i++) {
         await expect(page.locator(`#otp-${i}`)).toHaveValue(String(i + 1));
@@ -115,9 +105,7 @@ test.describe('confirm-signup — server-side rejection', () => {
     });
   });
 
-  test('OTP for nonexistent username → generic error (no enumeration)', async ({
-    browser,
-  }) => {
+  test('OTP for nonexistent username → generic error (no enumeration)', async ({ browser }) => {
     await withContext(browser, async (page) => {
       await openConfirmSignup(page); // no prefill — username field shown
       await fillUsername(page, 'doesnotexist' + Date.now());
@@ -164,10 +152,7 @@ test.describe('confirm-signup — server-side rejection', () => {
 });
 
 test.describe('confirm-signup — URL parameter handling', () => {
-  test('prefilled username is shown as text, no input field', async ({
-    browser,
-    api,
-  }) => {
+  test('prefilled username is shown as text, no input field', async ({ browser, api }) => {
     const pending = await createPendingSignup(api);
     await withContext(browser, async (page) => {
       await openConfirmSignup(page, pending.username);
@@ -181,19 +166,14 @@ test.describe('confirm-signup — URL parameter handling', () => {
     });
   });
 
-  test('URL params are stripped from the address bar on mount', async ({
-    browser,
-    api,
-  }) => {
+  test('URL params are stripped from the address bar on mount', async ({ browser, api }) => {
     const pending = await createPendingSignup(api);
     await withContext(browser, async (page) => {
       await page.goto(`/confirm-signup?username=${pending.username}&otp=${DEBUG_OTP}`);
       // After mount, the SPA navigates to /confirm-signup with no params.
-      await page.waitForFunction(
-        () => !window.location.search.includes('otp='),
-        null,
-        { timeout: 5_000 },
-      );
+      await page.waitForFunction(() => !window.location.search.includes('otp='), null, {
+        timeout: 5_000,
+      });
       expect(page.url()).not.toContain('otp=');
     });
   });
@@ -214,10 +194,7 @@ test.describe('confirm-signup — URL parameter handling', () => {
 });
 
 test.describe('confirm-signup — navigation', () => {
-  test('"Resend Code" button navigates back to /sign-up', async ({
-    browser,
-    api,
-  }) => {
+  test('"Resend Code" button navigates back to /sign-up', async ({ browser, api }) => {
     const pending = await createPendingSignup(api);
     await withContext(browser, async (page) => {
       await openConfirmSignup(page, pending.username);

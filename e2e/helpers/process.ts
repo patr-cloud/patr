@@ -11,7 +11,10 @@ export async function waitForPort(
   while (Date.now() < deadline) {
     const ok = await new Promise<boolean>((resolve) => {
       const socket = createConnection({ port, host });
-      socket.once('connect', () => { socket.end(); resolve(true); });
+      socket.once('connect', () => {
+        socket.end();
+        resolve(true);
+      });
       socket.once('error', () => resolve(false));
     });
     if (ok) return;

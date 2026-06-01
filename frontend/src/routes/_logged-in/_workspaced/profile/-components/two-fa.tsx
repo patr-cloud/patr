@@ -10,7 +10,7 @@ import { VsRefresh } from "solid-icons/vs";
 interface ModalContainerProps {
 	isMfaEnabled: boolean;
 	closeFn: (prev: boolean) => void;
-	refetchUserInfo: () => void;
+	refetchUserInfo: () => void | Promise<unknown>;
 }
 
 const TwoFactorAuthModal = (props: ModalContainerProps) => {
@@ -75,7 +75,9 @@ const TwoFactorAuthModal = (props: ModalContainerProps) => {
 		}
 
 		toast(`Two-Factor Authentication ${props.isMfaEnabled ? "disabled" : "enabled"} successfully!`, "success");
-		props.refetchUserInfo();
+		// Wait for the user-info query to refetch so the modal's parent
+		// re-renders with the fresh `isMfaEnabled` value when it closes.
+		await props.refetchUserInfo();
 		props.closeFn(false);
 	};
 

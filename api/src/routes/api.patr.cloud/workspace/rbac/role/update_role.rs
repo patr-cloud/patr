@@ -59,14 +59,20 @@ pub async fn update_role(
 			name = COALESCE($1, name),
 			description = COALESCE($2, description)
 		WHERE
-			id = $3;
+			id = $3 AND
+			owner_id = $4;
 		"#,
 		name.as_deref(),
 		description.as_deref(),
 		role_id as _,
+		workspace_id as _,
 	)
 	.execute(&mut **database)
-	.await?
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(err) if err.is_unique_violation() => ErrorType::RoleAlreadyExists,
+		err => ErrorType::server_error(err),
+	})?
 	.rows_affected();
 
 	if rows_updated == 0 {
@@ -169,7 +175,13 @@ pub async fn update_role(
 						&resources.into_iter().map(|r| r.into()).collect::<Vec<_>>(),
 					)
 					.execute(&mut **database)
-					.await?;
+					.await
+					.map_err(|err| match err {
+						sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+							ErrorType::ResourceDoesNotExist
+						}
+						other => ErrorType::server_error(other),
+					})?;
 				}
 				ResourcePermissionType::Exclude(resources) => {
 					query!(
@@ -194,7 +206,13 @@ pub async fn update_role(
 						&resources.into_iter().map(|r| r.into()).collect::<Vec<_>>(),
 					)
 					.execute(&mut **database)
-					.await?;
+					.await
+					.map_err(|err| match err {
+						sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+							ErrorType::ResourceDoesNotExist
+						}
+						other => ErrorType::server_error(other),
+					})?;
 				}
 			};
 		}

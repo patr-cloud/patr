@@ -18,18 +18,13 @@ export async function openSignupPage(page: Page): Promise<void> {
   await page.goto('/sign-up');
 }
 
-export async function fillSignupForm(
-  page: Page,
-  fields: SignupFields,
-): Promise<void> {
+export async function fillSignupForm(page: Page, fields: SignupFields): Promise<void> {
   await page.locator('#username').fill(fields.username);
   await page.locator('#first-name').fill(fields.firstName);
   await page.locator('#last-name').fill(fields.lastName);
   await page.locator('#email').fill(fields.email);
   await page.locator('#password').fill(fields.password);
-  await page
-    .locator('#confirm-password')
-    .fill(fields.confirmPassword ?? fields.password);
+  await page.locator('#confirm-password').fill(fields.confirmPassword ?? fields.password);
 }
 
 export async function submitSignup(page: Page): Promise<void> {

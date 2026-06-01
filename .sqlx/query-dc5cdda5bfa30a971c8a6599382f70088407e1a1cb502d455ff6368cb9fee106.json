@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM user_api_token_resource_permissions_exclude WHERE token_id = $1 AND workspace_id = $2;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dc5cdda5bfa30a971c8a6599382f70088407e1a1cb502d455ff6368cb9fee106"
+}

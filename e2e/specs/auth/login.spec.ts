@@ -4,13 +4,9 @@ import {
   newContext,
   createUserAccount,
   randomIPv4,
+  TURNSTILE_TOKEN,
 } from '@/prelude';
-import {
-  openLoginPage,
-  fillLoginForm,
-  submitLogin,
-  waitForLoggedIn,
-} from '@/helpers/ui/login';
+import { openLoginPage, fillLoginForm, submitLogin, waitForLoggedIn } from '@/helpers/ui/login';
 
 async function loginWith(
   browser: import('@playwright/test').Browser,
@@ -37,14 +33,7 @@ test.describe('login — happy paths', () => {
     });
   });
 
-  // Login by recovery email is NOT supported by the current API: the user_id
-  // preprocessor regex (`^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$`) rejects `@`.
-  // Documenting this here rather than silently skipping — fix the regex or
-  // route emails through a different field and the test below becomes real.
-  test.skip('login with recovery email instead of username', async ({
-    browser,
-    api,
-  }) => {
+  test('login with recovery email instead of username', async ({ browser, api }) => {
     await using user = await createUserAccount(api);
     await loginWith(browser, async (page) => {
       await fillLoginForm(page, { userId: user.email, password: user.password });
@@ -72,10 +61,7 @@ test.describe('login — server-side rejection', () => {
     await expect(page.getByText(matcher)).toBeVisible();
   }
 
-  test('wrong password → inline "Incorrect password" alert', async ({
-    browser,
-    api,
-  }) => {
+  test('wrong password → inline "Incorrect password" alert', async ({ browser, api }) => {
     await using user = await createUserAccount(api);
     await loginWith(browser, async (page) => {
       await fillLoginForm(page, {
@@ -100,9 +86,7 @@ test.describe('login — server-side rejection', () => {
   // Email-format input fails the userId regex preprocessor → server returns
   // a generic WrongParameters error. The frontend's only inline-alert branch
   // is `userNotFound | invalidEmail`; everything else hits the toast default.
-  test('email-formatted nonexistent user → request rejected', async ({
-    browser,
-  }) => {
+  test('email-formatted nonexistent user → request rejected', async ({ browser }) => {
     await loginWith(browser, async (page) => {
       await fillLoginForm(page, {
         userId: `nobody${Date.now()}@example.com`,
@@ -118,10 +102,7 @@ test.describe('login — server-side rejection', () => {
     });
   });
 
-  test('empty password blocks submit (no network request)', async ({
-    browser,
-    api,
-  }) => {
+  test('empty password blocks submit (no network request)', async ({ browser, api }) => {
     await using user = await createUserAccount(api);
     await loginWith(browser, async (page) => {
       await page.locator('#userId').fill(user.username);
@@ -139,43 +120,36 @@ test.describe('login — server-side rejection', () => {
     });
   });
 
-  test('SQLi attempt in username → server returns user-not-found', async ({
-    browser,
-  }) => {
-    await loginWith(browser, async (page) => {
-      await fillLoginForm(page, {
-        userId: "admin' OR 1=1--",
-        password: 'E2eTest!1Password',
-      });
-      const respPromise = page.waitForResponse(
-        (r) => r.url().includes('/auth/sign-in') && r.request().method() === 'POST',
-      );
-      await submitLogin(page);
-      const resp = await respPromise;
-      expect(resp.ok()).toBe(false);
-    });
+  test('SQLi attempt in user_id is rejected by the API (400 from validator)', async ({ api }) => {
+    // The frontend's validateUsernameOrEmail gates this before submit, so we
+    // drive the API directly to verify the backend backstop.
+    await expect(
+      api.request('POST', '/auth/sign-in', {
+        clientIp: (await import('@/helpers/ip')).randomIPv4(),
+        body: {
+          userId: "admin' OR 1=1--",
+          password: 'E2eTest!1Password',
+          cfTurnstileToken: TURNSTILE_TOKEN,
+        },
+      }),
+    ).rejects.toThrow(/4\d\d/);
   });
 });
 
 test.describe('login — case sensitivity', () => {
-  test('username with wrong case (uppercase) is treated as different user', async ({
-    browser,
-    api,
-  }) => {
+  test('uppercase username is rejected by the API (case-sensitive)', async ({ api }) => {
     await using user = await createUserAccount(api);
-    await loginWith(browser, async (page) => {
-      await fillLoginForm(page, {
-        userId: user.username.toUpperCase(),
-        password: user.password,
-      });
-      const respPromise = page.waitForResponse(
-        (r) => r.url().includes('/auth/sign-in') && r.request().method() === 'POST',
-      );
-      await submitLogin(page);
-      const resp = await respPromise;
-      // We don't assert exactly which error, just that it fails.
-      expect(resp.ok()).toBe(false);
-    });
+    // Frontend pattern rejects uppercase too, so drive API directly.
+    await expect(
+      api.request('POST', '/auth/sign-in', {
+        clientIp: user.clientIp,
+        body: {
+          userId: user.username.toUpperCase(),
+          password: user.password,
+          cfTurnstileToken: TURNSTILE_TOKEN,
+        },
+      }),
+    ).rejects.toThrow(/4\d\d/);
   });
 });
 
@@ -183,10 +157,7 @@ test.describe('login — concurrency & state', () => {
   // page.reload() hangs against Vinxi dev (HMR-related). Instead, verify
   // session persistence by navigating to a guarded route in a fresh tab that
   // shares the same context (cookies persist).
-  test('login then open new tab in same context → still logged in', async ({
-    browser,
-    api,
-  }) => {
+  test('login then open new tab in same context → still logged in', async ({ browser, api }) => {
     await using user = await createUserAccount(api);
     const context = await newContext(browser);
     const page = await context.newPage();
@@ -204,10 +175,7 @@ test.describe('login — concurrency & state', () => {
     }
   });
 
-  test('two parallel contexts logging into same user both succeed', async ({
-    browser,
-    api,
-  }) => {
+  test('two parallel contexts logging into same user both succeed', async ({ browser, api }) => {
     await using user = await createUserAccount(api);
     const doLogin = async () => {
       const context = await newContext(browser);
@@ -232,9 +200,7 @@ test.describe('login — rate limiting (per-IP wiring sanity)', () => {
   // We reuse one IP across 25 sign-in attempts and assert at least one comes
   // back as 429 — proving the limiter is wired through. The exact threshold
   // is timing-sensitive so we don't assert "exactly the 21st".
-  test('21+ rapid requests from one IP triggers 429 at least once', async ({
-    browser,
-  }) => {
+  test('21+ rapid requests from one IP triggers 429 at least once', async ({ browser }) => {
     const ip = randomIPv4();
     const context = await newContext(browser, ip);
     const page = await context.newPage();
@@ -242,22 +208,25 @@ test.describe('login — rate limiting (per-IP wiring sanity)', () => {
       await openLoginPage(page);
       // Hit /auth/sign-in directly from the browser so the route()
       // X-Real-IP override applies. Each call is independent.
-      const statuses = await page.evaluate(async () => {
+      const statuses = await page.evaluate(async (cfTurnstileToken) => {
         const out: number[] = [];
         for (let i = 0; i < 25; i++) {
-          const r = await fetch('http://localhost:3001/api/auth/sign-in', {
+          // Relative URL — resolves against the dashboard origin Playwright
+          // loaded the page from (baseURL in playwright.config). Keeps this
+          // browser-context evaluate() free of localhost literals.
+          const r = await fetch('/api/auth/sign-in', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               userId: 'doesnotexist',
               password: 'X',
-              cfTurnstileToken: 'placeholder',
+              cfTurnstileToken,
             }),
           });
           out.push(r.status);
         }
         return out;
-      });
+      }, TURNSTILE_TOKEN);
       expect(statuses.some((s) => s === 429)).toBe(true);
     } finally {
       await context.close();

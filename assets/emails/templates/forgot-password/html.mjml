@@ -80,7 +80,7 @@
       <mj-section padding="10px 40px">
         <mj-column>
           <mj-button
-            href="https://app.patr.cloud/reset-password?email={{ email }}&amp;code={{ otp_code }}"
+            href="https://app.patr.cloud/reset-password?userId={{ email|urlencode }}&amp;otp={{ otp_code|urlencode }}"
             >Reset Password</mj-button
           >
           <mj-text
@@ -89,9 +89,8 @@
             color="#9990a8"
             padding="5px 0 0 0"
           >
-            https://app.patr.cloud/reset-password?email={{ email }}&amp;code={{
-              otp_code
-            }}
+            https://app.patr.cloud/reset-password?userId={{ email|urlencode
+            }}&amp;otp={{ otp_code|urlencode }}
           </mj-text>
         </mj-column>
       </mj-section>

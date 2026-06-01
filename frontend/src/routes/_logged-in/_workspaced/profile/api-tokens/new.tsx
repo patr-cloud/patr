@@ -180,7 +180,7 @@ const CreateApiTokens = () => {
 											onInput={(e) => {
 												setFromDate(e.currentTarget.valueAsDate);
 											}}
-											name="token-validity"
+											name="token-nbf"
 											placeholder="Enter Token Validity in days"
 											type={InputType.Date}
 										/>
@@ -192,7 +192,7 @@ const CreateApiTokens = () => {
 												setToDate(e.currentTarget.valueAsDate);
 											}}
 											value={toDate() ? toDate()!.toISOString().split("T")[0] : ""}
-											name="token-validity"
+											name="token-exp"
 											placeholder="Enter Token Validity in days"
 											type={InputType.Date}
 										/>

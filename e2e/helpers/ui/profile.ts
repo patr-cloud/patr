@@ -15,7 +15,12 @@ import { expect } from '@playwright/test';
 //     submit "Verify".
 
 export async function openProfile(page: Page): Promise<void> {
-  await page.goto('/profile');
+  await page.goto('/profile', { waitUntil: 'domcontentloaded' });
+  // Wait for SPA hydration — first-name input is the page's stable anchor.
+  await page.locator('#first-name').first().waitFor({
+    state: 'visible',
+    timeout: 15_000,
+  });
 }
 
 // Opens the user dropdown and clicks Logout. Works from any logged-in page.
@@ -49,19 +54,14 @@ export async function fillChangePassword(
     confirmPassword?: string;
   },
 ): Promise<void> {
-  await page
-    .locator('input[name=current-password]')
-    .fill(fields.currentPassword);
+  await page.locator('input[name=current-password]').fill(fields.currentPassword);
   await page.locator('input[name=new-password]').fill(fields.newPassword);
   await page
     .locator('input[name=confirm-password]')
     .fill(fields.confirmPassword ?? fields.newPassword);
 }
 
-export async function fillChangePasswordMfa(
-  page: Page,
-  otp: string,
-): Promise<void> {
+export async function fillChangePasswordMfa(page: Page, otp: string): Promise<void> {
   for (let i = 0; i < 6; i++) {
     await page.locator(`#otp-${i}`).fill(otp[i] ?? '');
   }
@@ -92,4 +92,76 @@ export async function submitMfaModal(page: Page): Promise<void> {
   const submit = page.getByRole('button', { name: /^Verify$/ });
   await expect(submit).toBeEnabled();
   await submit.click();
+}
+
+// --- Account info (name) section ---
+
+export async function fillNameForm(
+  page: Page,
+  fields: { firstName?: string; lastName?: string },
+): Promise<void> {
+  if (fields.firstName !== undefined) {
+    await page.locator('#first-name').fill(fields.firstName);
+  }
+  if (fields.lastName !== undefined) {
+    await page.locator('#last-name').fill(fields.lastName);
+  }
+}
+
+export async function getFirstNameValue(page: Page): Promise<string> {
+  return page.locator('#first-name').inputValue();
+}
+
+export async function getLastNameValue(page: Page): Promise<string> {
+  return page.locator('#last-name').inputValue();
+}
+
+export async function getRecoveryEmailValue(page: Page): Promise<string> {
+  return page.locator('#recovery-email').inputValue();
+}
+
+// The Update button on /profile is also used by other forms ("Update Password",
+// 2FA modal). Scope to the form that contains #first-name.
+function nameUpdateButton(page: Page) {
+  return page
+    .locator('form')
+    .filter({ has: page.locator('#first-name') })
+    .getByRole('button', { name: /^Update$/ });
+}
+
+export async function submitNameUpdate(page: Page): Promise<void> {
+  await nameUpdateButton(page).click();
+}
+
+export async function submitNameUpdateAndWaitResponse(
+  page: Page,
+): Promise<{ status: number; ok: boolean }> {
+  const respPromise = page.waitForResponse(
+    (r) => r.url().endsWith('/api/user') && r.request().method() === 'PATCH',
+    { timeout: 30_000 },
+  );
+  await submitNameUpdate(page);
+  const resp = await respPromise;
+  return { status: resp.status(), ok: resp.ok() };
+}
+
+export async function expectUserInfoUpdateToast(
+  page: Page,
+  kind: 'success' | 'error',
+): Promise<void> {
+  const matcher =
+    kind === 'success' ? /User info updated successfully/i : /Failed to update user info/i;
+  await expect(page.getByText(matcher).first()).toBeVisible({ timeout: 10_000 });
+}
+
+// localInfo is hydrated by a createEffect once GET /user resolves; wait until
+// the first-name input has the expected value before mutating it.
+export async function reloadProfileAndWaitForUserInfo(
+  page: Page,
+  expectedFirstName: string,
+): Promise<void> {
+  await page.goto('/profile', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#first-name')).toHaveValue(expectedFirstName, {
+    timeout: 10_000,
+  });
 }

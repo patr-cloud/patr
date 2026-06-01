@@ -9,9 +9,37 @@ export type { ApiClient } from '@/helpers/api';
 export {
   createUserAccount,
   createUserWithWorkspace,
+  createUserWithWorkspaces,
   createPendingSignup,
+  addMemberToWorkspace,
+  createSecondMemberWithRole,
+  createSecondUserNoMembership,
+  getOwnUserId,
 } from '@/helpers/user';
 export type { User, UserHandle, PendingSignup } from '@/helpers/user';
+
+export {
+  getPermissionId,
+  listPermissions,
+  createRoleAPI,
+  updateRoleAPI,
+  deleteRoleAPI,
+  listRolesAPI,
+  getRoleAPI,
+  setUserRolesAPI,
+  removeMemberAPI,
+  currentPermissionsAPI,
+} from '@/helpers/api/rbac';
+
+export { loginAs } from '@/helpers/ui/session';
+export { expectUrl, expectUrlNot } from '@/helpers/ui/workspace';
+
+export { createApiTokenAPI, patchApiTokenAPI, callWithApiToken } from '@/helpers/api-token';
+export type {
+  ApiTokenHandle,
+  CreateApiTokenOpts,
+  WorkspacePermissionInput,
+} from '@/helpers/api-token';
 
 export { RunnerHandle } from '@/helpers/runner';
 export type { RunnerOpts } from '@/helpers/runner';
@@ -30,8 +58,16 @@ export {
   exhaustPasswordResetAttempts,
   backdateWebLoginExpiry,
   deleteWebLogin,
+  sql,
 } from '@/helpers/db';
 
-// Debug builds always emit OTP `000000` (api/src/utils/mod.rs OTP_RANGE 0..=0).
-// Re-exported so specs don't have to redefine the magic constant.
-export const DEBUG_OTP = '000000';
+// Shared test-harness configuration — re-exported so specs can import from
+// '@/prelude' without knowing the helper layout.
+export {
+  DEBUG_OTP,
+  HYDRATION_TIMEOUT,
+  USER_AGENT,
+  JWT_SECRET,
+  TURNSTILE_TOKEN,
+} from '@/helpers/config';
+export { DASHBOARD_URL, API_DIRECT_URL, VINXI_DEV_URL } from '@/helpers/urls';

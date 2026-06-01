@@ -56,9 +56,9 @@ async function enableMfaViaUi(
   await fillMfaModalOtp(page, otp);
   await submitMfaModal(page);
   // Modal closes — assert toast or absence of modal.
-  await expect(
-    page.getByText(/Two-Factor Authentication enabled/i),
-  ).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(/Two-Factor Authentication enabled/i)).toBeVisible({
+    timeout: 10_000,
+  });
   return secret;
 }
 
@@ -83,9 +83,7 @@ test.describe('mfa — enable flow', () => {
       );
       await fillMfaModalOtp(page, '000000'); // random/wrong
       await submitMfaModal(page);
-      await expect(
-        page.getByText(/Failed to verify OTP/i),
-      ).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText(/Failed to verify OTP/i)).toBeVisible({ timeout: 10_000 });
     } finally {
       await context.close();
     }
@@ -107,9 +105,9 @@ test.describe('mfa — disable flow', () => {
       // The toast fires + auto-dismisses in 5s; race-prone to assert on it.
       // Instead, assert the button text flips back to "Enable 2FA Settings"
       // — that's the durable post-disable signal.
-      await expect(
-        page.getByRole('button', { name: /Enable 2FA Settings/ }),
-      ).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByRole('button', { name: /Enable 2FA Settings/ })).toBeVisible({
+        timeout: 10_000,
+      });
     } finally {
       await context.close();
     }
@@ -122,9 +120,7 @@ test.describe('mfa — disable flow', () => {
       await openMfaModal(page);
       await fillMfaModalOtp(page, '111111');
       await submitMfaModal(page);
-      await expect(
-        page.getByText(/Failed to verify OTP/i),
-      ).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText(/Failed to verify OTP/i)).toBeVisible({ timeout: 10_000 });
     } finally {
       await context.close();
     }
@@ -164,10 +160,7 @@ test.describe('mfa — login with MFA', () => {
     }
   });
 
-  test('user with MFA: wrong TOTP keeps user on /login', async ({
-    browser,
-    api,
-  }) => {
+  test('user with MFA: wrong TOTP keeps user on /login', async ({ browser, api }) => {
     const { context, page, user } = await login(browser, api);
     try {
       await enableMfaViaUi(page, user.username);
@@ -185,8 +178,7 @@ test.describe('mfa — login with MFA', () => {
       await expect(page2.locator('#otp-0')).toBeVisible({ timeout: 10_000 });
       await fillMfaOtp(page2, '000000');
       const respPromise = page2.waitForResponse(
-        (r) =>
-          r.url().includes('/auth/sign-in') && r.request().method() === 'POST',
+        (r) => r.url().includes('/auth/sign-in') && r.request().method() === 'POST',
       );
       await submitLogin(page2);
       const resp = await respPromise;

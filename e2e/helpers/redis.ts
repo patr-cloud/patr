@@ -27,7 +27,7 @@ export async function readMfaSetupSecret(username: string): Promise<string> {
   if (!secret) {
     throw new Error(
       `No MFA secret in Redis for user ${username} (${user.id}); ` +
-      `was GET /user/mfa called and within the 5-min TTL?`,
+        `was GET /user/mfa called and within the 5-min TTL?`,
     );
   }
   return secret;

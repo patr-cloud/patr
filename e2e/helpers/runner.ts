@@ -68,15 +68,16 @@ export class RunnerHandle implements AsyncDisposable {
 
       proc.once('exit', (code) => {
         if (code !== null && code !== 0) {
-          console.error(`runner ${runnerId} exited early with code ${code}; ` +
-            `logs at ${logDir}`);
+          console.error(
+            `runner ${runnerId} exited early with code ${code}; ` + `logs at ${logDir}`,
+          );
         }
       });
 
-      await waitFor(
-        async () => isRunnerConnected(opts.api, opts.user, runnerId),
-        { timeoutMs: 30_000, label: `runner ${runnerId} connected` },
-      );
+      await waitFor(async () => isRunnerConnected(opts.api, opts.user, runnerId), {
+        timeoutMs: 30_000,
+        label: `runner ${runnerId} connected`,
+      });
 
       return new RunnerHandle(proc, dind, runnerId, workspaceId, bindPort, logDir);
     } catch (err) {
@@ -100,9 +101,7 @@ async function provisionRunner(opts: RunnerOpts): Promise<{
   // NOTE: workspace + runner creation endpoints — exact request shapes need
   // to be wired up once we have a deploy spec. For now this throws if called
   // (login spec doesn't use this path).
-  throw new Error(
-    'provisionRunner not yet implemented — wire up when adding first @docker spec',
-  );
+  throw new Error('provisionRunner not yet implemented — wire up when adding first @docker spec');
 }
 
 async function isRunnerConnected(

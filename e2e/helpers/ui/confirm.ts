@@ -4,10 +4,7 @@ import { expect } from '@playwright/test';
 // Frontend reference: frontend/src/routes/_logged-out/confirm-signup.tsx
 // OTP inputs: #otp-0..#otp-5 (per OtpInput component).
 
-export async function openConfirmSignup(
-  page: Page,
-  username?: string,
-): Promise<void> {
+export async function openConfirmSignup(page: Page, username?: string): Promise<void> {
   const path = username
     ? `/confirm-signup?username=${encodeURIComponent(username)}`
     : '/confirm-signup';

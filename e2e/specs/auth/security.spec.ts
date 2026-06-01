@@ -4,122 +4,81 @@ import {
   newContext,
   createUserAccount,
   createUserWithWorkspace,
+  TURNSTILE_TOKEN,
+  VINXI_DEV_URL,
 } from '@/prelude';
-import {
-  openSignupPage,
-  fillSignupForm,
-  submitSignup,
-} from '@/helpers/ui/signup';
-import {
-  openConfirmSignup,
-  fillOtp,
-  submitConfirm,
-} from '@/helpers/ui/confirm';
-import {
-  openLoginPage,
-  fillLoginForm,
-  submitLogin,
-  waitForLoggedIn,
-} from '@/helpers/ui/login';
+import { openSignupPage, fillSignupForm, submitSignup } from '@/helpers/ui/signup';
+import { openConfirmSignup, fillOtp, submitConfirm } from '@/helpers/ui/confirm';
+import { openLoginPage, fillLoginForm, submitLogin, waitForLoggedIn } from '@/helpers/ui/login';
 import { openProfile } from '@/helpers/ui/profile';
 
-test.describe('security — XSS payloads in name fields render as text', () => {
-  // Setup-via-API for speed: create a user with an XSS payload in firstName,
-  // then only drive the post-signup browser visit (login + any landed page)
-  // to verify the payload renders as text and never executes.
-  // FIXME: login → waitForLoggedIn hangs reliably for this user. Suspect
-  // the SPA's rendering of the topbar / dropdown stalls when firstName
-  // contains an unescaped <script>...</script>. Worth investigating —
-  // probably a SolidStart rendering quirk, possibly a real issue. Skipped
-  // so it doesn't block the rest of the suite. Re-run with
-  // `XSS_RENDER_FIXED=1` once investigated.
-  const XSS_FIXED = process.env.XSS_RENDER_FIXED === '1';
-  test.skip(
-    !XSS_FIXED,
-    'XSS in firstName hangs the SPA topbar render (under investigation)',
-  );
-
-  test('script tag in first name does not execute', async ({ browser, api }) => {
-    const xss = `<script>window.__pwned=true</script>`;
-    // Inline mini-signup: call the API directly with XSS firstName so we don't
-    // need a UI fillSignupForm round-trip just to seed a user.
+test.describe('security — XSS payloads in name fields rejected at ingest', () => {
+  test('signup rejects a script-tag firstName with 400', async ({ api }) => {
     const suffix = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
     const username = `xssuser${suffix}`;
-    const password = 'E2eTest!1Password';
-    const email = `${username}@example.com`;
     const clientIp = (await import('@/helpers/ip')).randomIPv4();
-    await api.request('POST', '/auth/sign-up', {
-      clientIp,
-      body: {
-        username,
-        password,
-        firstName: xss,
-        lastName: 'User',
-        recoveryEmail: email,
-        cfTurnstileToken: 'e2e-placeholder-token',
-      },
-    });
-    await api.request('POST', '/auth/join', {
-      clientIp,
-      body: {
-        username,
-        verificationToken: '000000',
-        cfTurnstileToken: 'e2e-placeholder-token',
-      },
-    });
+    await expect(
+      api.request('POST', '/auth/sign-up', {
+        clientIp,
+        body: {
+          username,
+          password: 'E2eTest!1Password',
+          firstName: `<script>window.__pwned=true</script>`,
+          lastName: 'User',
+          recoveryMethod: { recoveryEmail: `${username}@example.com` },
+          cfTurnstileToken: TURNSTILE_TOKEN,
+        },
+      }),
+    ).rejects.toThrow(/400/);
+  });
 
-    const context = await newContext(browser);
-    const page = await context.newPage();
-    let alertFired = false;
-    page.on('dialog', () => {
-      alertFired = true;
-    });
-    try {
-      await openLoginPage(page);
-      await fillLoginForm(page, { userId: username, password });
-      await submitLogin(page);
-      await waitForLoggedIn(page);
-      // Give the SPA a moment to render the topbar / dropdown / wherever
-      // the name lands. Any injected <script> would have run by now.
-      await page.waitForTimeout(1_500);
-      const pwned = await page.evaluate(() => (window as any).__pwned ?? false);
-      expect(pwned).toBe(false);
-      expect(alertFired).toBe(false);
-    } finally {
-      await context.close();
-    }
+  test('signup rejects an HTML-bracket lastName with 400', async ({ api }) => {
+    const suffix = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+    const username = `xssuser${suffix}`;
+    const clientIp = (await import('@/helpers/ip')).randomIPv4();
+    await expect(
+      api.request('POST', '/auth/sign-up', {
+        clientIp,
+        body: {
+          username,
+          password: 'E2eTest!1Password',
+          firstName: 'Ada',
+          lastName: '<img onerror=foo()>',
+          recoveryMethod: { recoveryEmail: `${username}@example.com` },
+          cfTurnstileToken: TURNSTILE_TOKEN,
+        },
+      }),
+    ).rejects.toThrow(/400/);
   });
 });
 
 test.describe('security — SQLi payloads handled as opaque strings', () => {
-  test('SQLi in login userId does not crash the server', async ({ browser }) => {
-    const context = await newContext(browser);
-    const page = await context.newPage();
+  test('SQLi in login userId does not crash the server', async ({ api }) => {
+    // Frontend pattern rejects this shape before it leaves the browser, so
+    // drive the API directly to verify the backend backstop. Whatever the
+    // status code (400 from validator or 401 from handler), the server must
+    // not 5xx.
+    let status = 0;
     try {
-      await openLoginPage(page);
-      await fillLoginForm(page, {
-        userId: "'; DROP TABLE \"user\"; --",
-        password: 'E2eTest!1Password',
+      await api.request('POST', '/auth/sign-in', {
+        clientIp: (await import('@/helpers/ip')).randomIPv4(),
+        body: {
+          userId: '\'; DROP TABLE "user"; --',
+          password: 'E2eTest!1Password',
+          cfTurnstileToken: TURNSTILE_TOKEN,
+        },
       });
-      const respPromise = page.waitForResponse(
-        (r) =>
-          r.url().includes('/auth/sign-in') && r.request().method() === 'POST',
-      );
-      await submitLogin(page);
-      const resp = await respPromise;
-      // We don't care about the status code, only that the server didn't 500.
-      expect(resp.status()).toBeLessThan(500);
-    } finally {
-      await context.close();
+    } catch (err) {
+      const match = String((err as Error).message).match(/(\d{3})/);
+      status = match ? Number(match[1]) : 0;
     }
+    expect(status).toBeGreaterThanOrEqual(400);
+    expect(status).toBeLessThan(500);
   });
 });
 
 test.describe('security — cookie tampering', () => {
-  test('garbage authState cookie → SPA treats as logged out', async ({
-    browser,
-    api,
-  }) => {
+  test('garbage authState cookie → SPA treats as logged out', async ({ browser, api }) => {
     await using user = await createUserWithWorkspace(api);
     const context = await newContext(browser);
     const page = await context.newPage();
@@ -134,7 +93,7 @@ test.describe('security — cookie tampering', () => {
         {
           name: 'authState',
           value: 'not-json-garbage',
-          url: 'http://localhost:13030',
+          url: VINXI_DEV_URL,
         },
       ]);
       // Navigate to a guarded route.
@@ -181,33 +140,23 @@ test.describe('security — cookie tampering', () => {
 });
 
 test.describe('security — autocomplete attributes', () => {
-  test('login password input has autocomplete="current-password"', async ({
-    browser,
-  }) => {
+  test('login password input has autocomplete="current-password"', async ({ browser }) => {
     const context = await newContext(browser);
     const page = await context.newPage();
     try {
       await openLoginPage(page);
-      await expect(page.locator('#password')).toHaveAttribute(
-        'autocomplete',
-        'current-password',
-      );
+      await expect(page.locator('#password')).toHaveAttribute('autocomplete', 'current-password');
     } finally {
       await context.close();
     }
   });
 
-  test('signup password inputs have autocomplete="new-password"', async ({
-    browser,
-  }) => {
+  test('signup password inputs have autocomplete="new-password"', async ({ browser }) => {
     const context = await newContext(browser);
     const page = await context.newPage();
     try {
       await openSignupPage(page);
-      await expect(page.locator('#password')).toHaveAttribute(
-        'autocomplete',
-        'new-password',
-      );
+      await expect(page.locator('#password')).toHaveAttribute('autocomplete', 'new-password');
       await expect(page.locator('#confirm-password')).toHaveAttribute(
         'autocomplete',
         'new-password',

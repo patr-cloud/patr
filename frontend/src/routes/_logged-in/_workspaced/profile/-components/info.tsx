@@ -1,6 +1,5 @@
-import { createEffect, createSignal } from "solid-js";
-import { GetUserInfoResponse } from "~/bindings";
-import { Button, ButtonVariant, Input, InputType, InputWithLabel, Modal, useToast } from "~/components";
+import { Show, createEffect, createSignal } from "solid-js";
+import { Alert, Button, ButtonVariant, Input, InputType, InputWithLabel, Modal, useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useUserInfoQuery } from "~/hooks/fetch";
 import { userInfoKeys } from "~/hooks/query-keys";
@@ -8,6 +7,7 @@ import { useQueryClient } from "@tanstack/solid-query";
 import TwoFactorAuthModal from "./two-fa";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
+import { validateNameField } from "~/utils/validation";
 
 const UserSettingsInfoSection = () => {
 	const [authState] = useAuthState();
@@ -16,18 +16,24 @@ const UserSettingsInfoSection = () => {
 
 	const userInfoQuery = useUserInfoQuery();
 
-	// Local state for form editing
-	const [localInfo, setLocalInfo] = createSignal<GetUserInfoResponse | undefined>(undefined);
+	// Editable form drafts. Seeded from the query once on first load, then
+	// untouched by background updates — the user's typing is the source of
+	// truth for these until they hit Update. Non-editable fields (email,
+	// MFA status) read from `userInfoQuery.data` directly.
+	const [firstName, setFirstName] = createSignal<string | undefined>();
+	const [lastName, setLastName] = createSignal<string | undefined>();
+	const [firstNameError, setFirstNameError] = createSignal<string | undefined>(undefined);
+	const [lastNameError, setLastNameError] = createSignal<string | undefined>(undefined);
 
 	createEffect(() => {
-		if (userInfoQuery.data && !localInfo()) {
-			setLocalInfo(userInfoQuery.data);
-		}
+		const info = userInfoQuery.data;
+		if (!info) return;
+		if (firstName() === undefined) setFirstName(info.firstName ?? "");
+		if (lastName() === undefined) setLastName(info.lastName ?? "");
 	});
 
-	const refetchUserInfo = () => {
+	const refetchUserInfo = () =>
 		queryClient.invalidateQueries({ queryKey: userInfoKeys.current() });
-	};
 
 	const onUpdateName = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
 		e.preventDefault();
@@ -38,12 +44,18 @@ const UserSettingsInfoSection = () => {
 			return;
 		}
 
+		const fnErr = validateNameField(firstName() ?? "");
+		const lnErr = validateNameField(lastName() ?? "");
+		setFirstNameError(fnErr);
+		setLastNameError(lnErr);
+		if (fnErr || lnErr) return;
+
 		try {
 			const response = await httpRequest(`${import.meta.env.VITE_BASE_URL}/api/user`, {
 				method: "PATCH",
 				body: JSON.stringify({
-					firstName: localInfo()?.firstName,
-					lastName: localInfo()?.lastName,
+					firstName: firstName(),
+					lastName: lastName(),
 				}),
 			});
 
@@ -66,7 +78,7 @@ const UserSettingsInfoSection = () => {
 				<InputWithLabel for="first-name" label="Name">
 					<div class="flex flex-col md:flex-row gap-2 w-full">
 						<Input
-							value={localInfo()?.firstName || ""}
+							value={firstName() ?? ""}
 							class="md:flex-1"
 							id="first-name"
 							name="first-name"
@@ -74,13 +86,12 @@ const UserSettingsInfoSection = () => {
 							placeholder="First Name"
 							type={InputType.Text}
 							onInput={(e) => {
-								setLocalInfo((prev: GetUserInfoResponse | undefined) =>
-									prev ? { ...prev, firstName: e.currentTarget.value } : undefined
-								);
+								setFirstName(e.currentTarget.value);
+								setFirstNameError(undefined);
 							}}
 						/>
 						<Input
-							value={localInfo()?.lastName || ""}
+							value={lastName() ?? ""}
 							class="md:flex-1"
 							id="last-name"
 							name="last-name"
@@ -88,21 +99,26 @@ const UserSettingsInfoSection = () => {
 							placeholder="Last Name"
 							type={InputType.Text}
 							onInput={(e) => {
-								setLocalInfo((prev: GetUserInfoResponse | undefined) =>
-									prev ? { ...prev, lastName: e.currentTarget.value } : undefined
-								);
+								setLastName(e.currentTarget.value);
+								setLastNameError(undefined);
 							}}
 						/>
 						<Button type="submit" variant={ButtonVariant.Contained}>
 							Update
 						</Button>
 					</div>
+					<Show when={firstNameError()}>
+						<Alert message={firstNameError()!} type="error" />
+					</Show>
+					<Show when={lastNameError()}>
+						<Alert message={lastNameError()!} type="error" />
+					</Show>
 				</InputWithLabel>
 			</form>
 
 			<InputWithLabel for="recovery-email" label="Email">
 				<Input
-					value={localInfo()?.recoveryEmail || ""}
+					value={userInfoQuery.data?.recoveryEmail || ""}
 					id="recovery-email"
 					name="recovery-email"
 					autocomplete="email"
@@ -122,12 +138,12 @@ const UserSettingsInfoSection = () => {
 								class="text-primary"
 								onClick={() => open(true)}
 							>
-								{localInfo()?.isMfaEnabled ? "Disable" : "Enable"} 2FA Settings
+								{userInfoQuery.data?.isMfaEnabled ? "Disable" : "Enable"} 2FA Settings
 							</Button>
 						)}
 						renderModalContent={(close) => (
 							<TwoFactorAuthModal
-								isMfaEnabled={!!localInfo()?.isMfaEnabled}
+								isMfaEnabled={!!userInfoQuery.data?.isMfaEnabled}
 								refetchUserInfo={refetchUserInfo}
 								closeFn={close}
 							/>

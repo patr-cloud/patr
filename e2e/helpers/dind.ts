@@ -14,20 +14,24 @@ export class DindHandle implements AsyncDisposable {
     const name = `e2e-dind-${crypto.randomUUID().slice(0, 8)}`;
 
     const { stdout: cid } = await execa('docker', [
-      'run', '--rm', '-d', '--privileged',
-      '--name', name,
-      '-p', '0:2375',
+      'run',
+      '--rm',
+      '-d',
+      '--privileged',
+      '--name',
+      name,
+      '-p',
+      '0:2375',
       `docker:${version}-dind`,
-      'dockerd', '--host=tcp://0.0.0.0:2375',
+      'dockerd',
+      '--host=tcp://0.0.0.0:2375',
     ]);
 
     const containerId = cid.trim();
 
     let hostPort: number;
     try {
-      const { stdout: portMap } = await execa('docker', [
-        'port', containerId, '2375/tcp',
-      ]);
+      const { stdout: portMap } = await execa('docker', ['port', containerId, '2375/tcp']);
       const match = portMap.match(/:(\d+)$/m);
       if (!match) throw new Error(`could not parse port mapping: ${portMap}`);
       hostPort = Number(match[1]);

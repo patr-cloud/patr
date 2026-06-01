@@ -1,5 +1,6 @@
 import type { ApiClient } from '@/helpers/api';
 import { randomIPv4 } from '@/helpers/ip';
+import { DEBUG_OTP, TURNSTILE_TOKEN } from '@/helpers/config';
 
 export type User = {
   username: string;
@@ -13,14 +14,6 @@ export type User = {
 };
 
 export type UserHandle = User & AsyncDisposable;
-
-// Debug builds use the always-passes Turnstile secret, which accepts any
-// non-empty token. Send a placeholder so the request validates.
-const TURNSTILE_TOKEN = 'e2e-placeholder-token';
-
-// Debug builds generate OTPs from the range 0..=0, formatted as a 6-digit
-// zero-padded string (api/src/utils/mod.rs `OTP_RANGE` + create_account.rs).
-const DEBUG_OTP = '000000';
 
 export type PendingSignup = {
   username: string;
@@ -86,6 +79,94 @@ export async function createUserWithWorkspace(
     body: { name: `wks-${user.username}` },
   });
   return Object.assign(user, { workspaceId: resp.id });
+}
+
+// Creates a verified user and N named workspaces. Names are passed in so the
+// caller knows what to switch to in the UI without race-prone DB lookups.
+// First workspace becomes the active one (matches the frontend's auto-select-
+// first behavior on _workspaced load).
+export async function createUserWithWorkspaces(
+  api: ApiClient,
+  names: string[],
+): Promise<UserHandle & { workspaces: { id: string; name: string }[] }> {
+  if (names.length === 0) {
+    throw new Error('createUserWithWorkspaces: provide at least one name');
+  }
+  const user = await createUserAccount(api);
+  const workspaces: { id: string; name: string }[] = [];
+  for (const name of names) {
+    const resp = await api.request<{ id: string }>('POST', '/workspace', {
+      token: user.accessToken,
+      clientIp: user.clientIp,
+      body: { name },
+    });
+    workspaces.push({ id: resp.id, name });
+  }
+  return Object.assign(user, { workspaces });
+}
+
+// Resolves a user's UUID via GET /user (using their own token). Cheaper than
+// touching the DB and avoids leaking id into every UserHandle.
+export async function getOwnUserId(
+  api: ApiClient,
+  user: { accessToken: string; clientIp: string },
+): Promise<string> {
+  const me = await api.request<{ id: string }>('GET', '/user', {
+    token: user.accessToken,
+    clientIp: user.clientIp,
+  });
+  return me.id;
+}
+
+// Adds an existing user to `workspaceId` with the given roleIds. roleIds must
+// come from the owner's seeded defaults (e.g. one of the 36 default roles
+// looked up via GET /rbac/role). Looks up the invitee's user_id on the fly.
+export async function addMemberToWorkspace(
+  api: ApiClient,
+  owner: { accessToken: string; clientIp: string },
+  workspaceId: string,
+  invitee: { accessToken: string; clientIp: string },
+  roleIds: string[],
+): Promise<void> {
+  const inviteeId = await getOwnUserId(api, invitee);
+  await api.request('POST', `/workspace/${workspaceId}/rbac/user/${inviteeId}`, {
+    token: owner.accessToken,
+    clientIp: owner.clientIp,
+    body: { roles: roleIds },
+  });
+}
+
+// Creates a second user, creates a role in owner's workspace with the given
+// permissions, adds the user as a member with that role. Returns the new
+// user + role id. This is the cornerstone of all RBAC enforcement tests.
+export async function createSecondMemberWithRole(
+  api: ApiClient,
+  owner: UserHandle & { workspaceId: string },
+  permissions: Record<string, { permissionType: 'include' | 'exclude'; resources: string[] }>,
+): Promise<UserHandle & { roleId: string }> {
+  const invitee = await createUserAccount(api);
+  const roleName = `e2e-role-${crypto.randomUUID().slice(0, 8)}`;
+  const role = await api.request<{ id: string }>(
+    'POST',
+    `/workspace/${owner.workspaceId}/rbac/role`,
+    {
+      token: owner.accessToken,
+      clientIp: owner.clientIp,
+      body: {
+        name: roleName,
+        description: roleName,
+        permissions,
+      },
+    },
+  );
+  await addMemberToWorkspace(api, owner, owner.workspaceId, invitee, [role.id]);
+  return Object.assign(invitee, { roleId: role.id });
+}
+
+// Creates a second user with NO roles in the workspace (still a valid user,
+// just not a workspace member).
+export async function createSecondUserNoMembership(api: ApiClient): Promise<UserHandle> {
+  return createUserAccount(api);
 }
 
 export async function createUserAccount(api: ApiClient): Promise<UserHandle> {

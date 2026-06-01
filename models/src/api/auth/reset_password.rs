@@ -1,9 +1,6 @@
 use crate::{
 	prelude::*,
-	utils::{
-		constants::{OTP_VERIFICATION_TOKEN_REGEX, USERNAME_VALIDITY_REGEX},
-		validate_password,
-	},
+	utils::{constants::OTP_VERIFICATION_TOKEN_REGEX, validate_password},
 };
 
 macros::declare_api_endpoint!(
@@ -17,8 +14,9 @@ macros::declare_api_endpoint!(
 		pub user_agent: UserAgent,
 	},
 	request = {
-		/// The user ID of the user
-		#[preprocess(trim, length(min = 2), regex = USERNAME_VALIDITY_REGEX)]
+		/// The user ID of the user — can be a username, email, or phone, all
+		/// of which the handler accepts for the recovery lookup.
+		#[preprocess(trim, length(min = 2))]
 		pub user_id: String,
 		/// The new password entered by the user
 		#[preprocess(trim, length(min = 8), custom = "validate_password")]
@@ -26,6 +24,9 @@ macros::declare_api_endpoint!(
 		/// The OTP sent to the recovery method
 		#[preprocess(trim, length(equal = 6), regex = OTP_VERIFICATION_TOKEN_REGEX)]
 		pub verification_token: String,
+		/// The Cloudflare Turnstile token to verify that the request is made by a human
+		#[preprocess(trim, length(min = 1))]
+		pub cf_turnstile_token: String,
 	},
 	audit_log = NoAuditLogger,
 );

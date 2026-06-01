@@ -8,14 +8,14 @@ import { createAsyncAction } from "~/hooks";
 
 const ForgotPassword = () => {
 	const toast = useToast();
-	const [email, setEmail] = createSignal("");
-	const [emailError, setEmailError] = createSignal("");
+	const [userId, setUserId] = createSignal("");
+	const [userIdError, setUserIdError] = createSignal("");
 	const [submitted, setSubmitted] = createSignal(false);
 	const [turnstileToken, setTurnstileToken] = createSignal<string>("");
 
 	const { execute: handleSubmit, isLoading } = createAsyncAction(async () => {
-		if (!email().trim()) {
-			setEmailError("Email address is required.");
+		if (!userId().trim()) {
+			setUserIdError("Username or email is required.");
 			return;
 		}
 
@@ -27,7 +27,8 @@ const ForgotPassword = () => {
 		const resp = await httpRequest("/api/auth/forgot-password", {
 			method: "POST",
 			body: JSON.stringify({
-				email: email(),
+				userId: userId(),
+				preferredRecoveryOption: "recoveryEmail",
 				cfTurnstileToken: turnstileToken(),
 			}),
 		});
@@ -86,8 +87,8 @@ const ForgotPassword = () => {
 								</div>
 								<h2 class="text-xl font-semibold text-white mb-2">Check Your Email</h2>
 								<p class="text-grey text-sm">
-									We've sent password reset instructions to&nbsp;
-									<span class="text-primary font-medium">{email()}</span>
+									We've sent password reset instructions to the recovery email for&nbsp;
+									<span class="text-white font-medium">{userId()}</span>
 								</p>
 							</div>
 							<div class="mt-8 pt-6 border-t border-border-color">
@@ -108,22 +109,22 @@ const ForgotPassword = () => {
 					{/* Form */}
 					<div>
 						<Input
-							type={InputType.Email}
-							placeholder="Email Address"
-							autocomplete="email"
+							type={InputType.Text}
+							placeholder="Username or email"
+							autocomplete="username"
 							required={true}
-							name="email"
-							id="email"
-							value={email}
+							name="userId"
+							id="userId"
+							value={userId}
 							onInput={(e: Event) => {
-								setEmail((e.currentTarget as HTMLInputElement).value);
-								setEmailError("");
+								setUserId((e.currentTarget as HTMLInputElement).value);
+								setUserIdError("");
 							}}
 							styleVariant="medium"
 						/>
-						<Show when={emailError()}>
+						<Show when={userIdError()}>
 							<div class="mt-1">
-								<Alert message={emailError()} type="error" />
+								<Alert message={userIdError()} type="error" />
 							</div>
 						</Show>
 

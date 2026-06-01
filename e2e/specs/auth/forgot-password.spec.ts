@@ -1,30 +1,10 @@
-import {
-  test,
-  expect,
-  newContext,
-  createUserAccount,
-  backdatePasswordResetToken,
-} from '@/prelude';
+import { test, expect, newContext, createUserAccount, backdatePasswordResetToken } from '@/prelude';
 import {
   openForgotPassword,
   fillForgotEmail,
   submitForgot,
   expectCheckEmailView,
 } from '@/helpers/ui/forgot';
-
-// KNOWN FRONTEND BUG: forgot-password.tsx sends `{ email, cfTurnstileToken }`
-// but the API expects `{ userId, preferredRecoveryOption }` (see
-// models/src/api/auth/forgot_password.rs). Every call from the page fails
-// server-side validation, so "Check Your Email" never shows — only the
-// generic toast "Failed to send reset link" appears.
-//
-// Skipped by default. Set FORGOT_PASSWORD_FIXED=1 once the frontend body
-// matches the API contract.
-const FRONTEND_FIXED = process.env.FORGOT_PASSWORD_FIXED === '1';
-test.skip(
-  !FRONTEND_FIXED,
-  'forgot-password frontend sends wrong body shape (frontend bug; set FORGOT_PASSWORD_FIXED=1)',
-);
 
 async function withContext(
   browser: import('@playwright/test').Browser,

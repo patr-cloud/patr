@@ -4,6 +4,62 @@ import { getRequestEvent, isServer } from "solid-js/web";
 import { cookieStorage } from "@solid-primitives/storage";
 import type { AuthState } from "~/hooks/state-hooks";
 
+// Module-level dedup: when many requests hit 401 in parallel (common on page
+// load), they used to each fire their own /auth/access-token call. The first
+// one rotates the refresh token, the rest send the now-stale one and fail.
+// Hold a single in-flight promise and let concurrent callers share it.
+let inFlightRefresh: Promise<RenewAccessTokenResponse | null> | null = null;
+
+async function refreshAccessToken(): Promise<RenewAccessTokenResponse | null> {
+	// Refresh tokens are single-use and rotate on every renew. Doing this on
+	// the server during SSR would burn the token before the browser ever
+	// sees it — the SSR can't propagate the new cookie back via Set-Cookie
+	// reliably from inside a SolidJS data fetch. Skip on server; the browser
+	// will re-fire the failed request on hydration and refresh from there.
+	if (isServer) return null;
+	if (inFlightRefresh) return inFlightRefresh;
+	inFlightRefresh = (async () => {
+		const currentAuthState = cookieStorage.getItem("authState");
+		if (!currentAuthState) return null;
+		const authState = JSON.parse(currentAuthState) as AuthState | null;
+		if (!authState || authState.type !== "LoggedIn") return null;
+
+		const refreshResp = await fetch(`${import.meta.env.VITE_BASE_URL}/api/auth/access-token`, {
+			method: "GET",
+			headers: { Authorization: `Bearer ${authState.refreshToken}` },
+		});
+
+		if (!refreshResp.ok) return null;
+
+		const refreshData = (await refreshResp.json()) as RenewAccessTokenResponse;
+
+		cookieStorage.setItem(
+			"authState",
+			JSON.stringify({
+				...authState,
+				accessToken: refreshData.accessToken,
+				refreshToken: refreshData.refreshToken,
+			}),
+			{
+				expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7),
+				path: "/",
+				sameSite: "Strict",
+			}
+		);
+
+		if (!isServer) {
+			sessionStorage.clear();
+		}
+
+		return refreshData;
+	})();
+	try {
+		return await inFlightRefresh;
+	} finally {
+		inFlightRefresh = null;
+	}
+}
+
 /**
  * A wrapper around the Fetch API, adds a few things, such as:
  * - Default headers, including Content-Type application/json
@@ -72,55 +128,13 @@ const httpRequest = async <T>(url: string, options?: RequestInit): Promise<Fetch
 		}
 
 		if (errorData.error === "authorizationTokenInvalid") {
-			const currentAuthState = cookieStorage.getItem("authState");
-			if (!currentAuthState) {
-				return defaultErrorReturn;
-			}
-
-			const authState = JSON.parse(currentAuthState) as AuthState | null;
-
-			if (!authState || authState.type !== "LoggedIn") {
-				if (!isServer) {
-					window.location.href = "/login";
-				}
-				return defaultErrorReturn;
-			}
-
-			const refreshResp = await fetch(`${import.meta.env.VITE_BASE_URL}/api/auth/access-token`, {
-				method: "GET",
-				headers: {
-					Authorization: `Bearer ${authState.refreshToken}`,
-				},
-			});
-
-			if (!refreshResp.ok) {
+			const refreshData = await refreshAccessToken();
+			if (!refreshData) {
 				cookieStorage.removeItem("authState");
 				if (!isServer) {
 					window.location.href = "/login";
 				}
 				return defaultErrorReturn;
-			}
-
-			const refreshData = (await refreshResp.json()) as RenewAccessTokenResponse;
-
-			cookieStorage.setItem(
-				"authState",
-				JSON.stringify({
-					...authState,
-					accessToken: refreshData.accessToken,
-					refreshToken: refreshData.refreshToken,
-				}),
-				{
-					expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7 days
-					path: "/",
-					sameSite: "Strict",
-				}
-			);
-
-			if (!isServer) {
-				console.log("Access token refreshed, removing stuff from sessionStorage");
-				sessionStorage.clear();
-				console.log("cleared session");
 			}
 
 			// Retry the original request with the new access token

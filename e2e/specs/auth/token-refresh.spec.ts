@@ -5,13 +5,9 @@ import {
   createUserAccount,
   backdateWebLoginExpiry,
   deleteWebLogin,
+  DASHBOARD_URL,
 } from '@/prelude';
-import {
-  openLoginPage,
-  fillLoginForm,
-  submitLogin,
-  waitForLoggedIn,
-} from '@/helpers/ui/login';
+import { openLoginPage, fillLoginForm, submitLogin, waitForLoggedIn } from '@/helpers/ui/login';
 
 // Token refresh isn't a user-driven UI flow — the SPA does it automatically.
 // We log in via the UI (real browser flow), then do the refresh-token calls
@@ -37,7 +33,7 @@ async function readAuthFromBrowser(page: import('@playwright/test').Page): Promi
 }
 
 async function refreshAccessToken(refreshToken: string): Promise<number> {
-  const r = await fetch('http://localhost:3001/api/auth/access-token', {
+  const r = await fetch(`${DASHBOARD_URL}/api/auth/access-token`, {
     method: 'GET',
     headers: { Authorization: `Bearer ${refreshToken}` },
   });
@@ -80,10 +76,7 @@ test.describe('token-refresh', () => {
     }
   });
 
-  test('refresh with backdated web_login.token_expiry fails', async ({
-    browser,
-    api,
-  }) => {
+  test('refresh with backdated web_login.token_expiry fails', async ({ browser, api }) => {
     const { context, page } = await login(browser, api);
     try {
       const { refreshToken, loginId } = await readAuthFromBrowser(page);

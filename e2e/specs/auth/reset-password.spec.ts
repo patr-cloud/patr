@@ -13,31 +13,11 @@ import {
   submitForgot,
   expectCheckEmailView,
 } from '@/helpers/ui/forgot';
-import {
-  openResetPassword,
-  fillResetForm,
-  submitReset,
-} from '@/helpers/ui/reset';
-import {
-  openLoginPage,
-  fillLoginForm,
-  submitLogin,
-  waitForLoggedIn,
-} from '@/helpers/ui/login';
+import { openResetPassword, fillResetForm, submitReset } from '@/helpers/ui/reset';
+import { openLoginPage, fillLoginForm, submitLogin, waitForLoggedIn } from '@/helpers/ui/login';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// reset-password.spec.ts
-//
-// **THIS SPEC IS WRITTEN AHEAD OF THE UI.** No /reset-password page exists
-// yet. All tests are skipped by default to avoid burning ~12 minutes timing
-// out on the missing route. Once the UI lands, drop the `RESET_PASSWORD_UI=1`
-// gate or just remove the `test.skip` to flip the spec on.
-//
-// Assumed UI contract documented in @/helpers/ui/reset.ts.
-// ─────────────────────────────────────────────────────────────────────────────
-
-const UI_READY = process.env.RESET_PASSWORD_UI === '1';
-test.skip(!UI_READY, 'reset-password page is not built yet (set RESET_PASSWORD_UI=1 to run)');
+// UI contract documented in @/helpers/ui/reset.ts and implemented in
+// frontend/src/routes/_logged-out/reset-password.tsx.
 
 async function withContext(
   browser: import('@playwright/test').Browser,
@@ -52,10 +32,7 @@ async function withContext(
   }
 }
 
-async function requestResetFor(
-  browser: import('@playwright/test').Browser,
-  email: string,
-) {
+async function requestResetFor(browser: import('@playwright/test').Browser, email: string) {
   await withContext(browser, async (page) => {
     await openForgotPassword(page);
     await fillForgotEmail(page, email);
@@ -196,9 +173,7 @@ test.describe('reset-password [needs-ui] — server-side rejection', () => {
         newPassword: 'NewPassw0rd!Test',
       });
       const respPromise = page.waitForResponse(
-        (r) =>
-          r.url().includes('/auth/reset-password') &&
-          r.request().method() === 'POST',
+        (r) => r.url().includes('/auth/reset-password') && r.request().method() === 'POST',
       );
       await submitReset(page);
       const resp = await respPromise;
@@ -206,10 +181,7 @@ test.describe('reset-password [needs-ui] — server-side rejection', () => {
     });
   });
 
-  test('userId without a pending reset → same generic error', async ({
-    browser,
-    api,
-  }) => {
+  test('userId without a pending reset → same generic error', async ({ browser, api }) => {
     await using user = await createUserAccount(api);
     // No requestResetFor call — user has no pending reset.
     await withContext(browser, async (page) => {
@@ -220,9 +192,7 @@ test.describe('reset-password [needs-ui] — server-side rejection', () => {
         newPassword: 'NewPassw0rd!Test',
       });
       const respPromise = page.waitForResponse(
-        (r) =>
-          r.url().includes('/auth/reset-password') &&
-          r.request().method() === 'POST',
+        (r) => r.url().includes('/auth/reset-password') && r.request().method() === 'POST',
       );
       await submitReset(page);
       const resp = await respPromise;
@@ -239,9 +209,7 @@ test.describe('reset-password [needs-ui] — server-side rejection', () => {
         newPassword: 'NewPassw0rd!Test',
       });
       const respPromise = page.waitForResponse(
-        (r) =>
-          r.url().includes('/auth/reset-password') &&
-          r.request().method() === 'POST',
+        (r) => r.url().includes('/auth/reset-password') && r.request().method() === 'POST',
       );
       await submitReset(page);
       const resp = await respPromise;
@@ -249,10 +217,7 @@ test.describe('reset-password [needs-ui] — server-side rejection', () => {
     });
   });
 
-  test('expired reset token → InvalidPasswordResetToken', async ({
-    browser,
-    api,
-  }) => {
+  test('expired reset token → InvalidPasswordResetToken', async ({ browser, api }) => {
     await using user = await createUserAccount(api);
     await requestResetFor(browser, user.email);
     await backdatePasswordResetToken(user.username, '20 min');
@@ -264,9 +229,7 @@ test.describe('reset-password [needs-ui] — server-side rejection', () => {
         newPassword: 'NewPassw0rd!Test',
       });
       const respPromise = page.waitForResponse(
-        (r) =>
-          r.url().includes('/auth/reset-password') &&
-          r.request().method() === 'POST',
+        (r) => r.url().includes('/auth/reset-password') && r.request().method() === 'POST',
       );
       await submitReset(page);
       const resp = await respPromise;
@@ -289,9 +252,7 @@ test.describe('reset-password [needs-ui] — server-side rejection', () => {
         newPassword: 'NewPassw0rd!Test',
       });
       const respPromise = page.waitForResponse(
-        (r) =>
-          r.url().includes('/auth/reset-password') &&
-          r.request().method() === 'POST',
+        (r) => r.url().includes('/auth/reset-password') && r.request().method() === 'POST',
       );
       await submitReset(page);
       const resp = await respPromise;

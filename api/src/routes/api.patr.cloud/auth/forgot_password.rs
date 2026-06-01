@@ -6,7 +6,7 @@ use models::api::auth::*;
 use rand::RngExt;
 use time::OffsetDateTime;
 
-use crate::prelude::*;
+use crate::{prelude::*, utils::cloudflare::validate_turnstile_token};
 
 pub async fn forgot_password(
 	AppRequest {
@@ -19,14 +19,34 @@ pub async fn forgot_password(
 					ForgotPasswordRequestProcessed {
 						user_id,
 						preferred_recovery_option,
+						cf_turnstile_token,
 					},
 			},
 		database,
 		redis: _,
-		client_ip: _,
+		client_ip,
 		state,
 	}: AppRequest<'_, ForgotPasswordRequest>,
 ) -> Result<AppResponse<ForgotPasswordRequest>, ErrorType> {
+	trace!("Validating Cloudflare Turnstile token");
+	let cf_turnstile_response = validate_turnstile_token(
+		&state.config.cloudflare.turnstile_secret,
+		&cf_turnstile_token,
+		Some(client_ip),
+	)
+	.await
+	.inspect_err(|err| {
+		error!("Error verifying Cloudflare Turnstile token: `{}`", err);
+	})?;
+
+	if !cf_turnstile_response.success {
+		return Err(ErrorType::TurnstileVerificationFailed);
+	}
+
+	if !cfg!(debug_assertions) && &cf_turnstile_response.action != "forgot-password" {
+		return Err(ErrorType::TurnstileVerificationActionMismatch);
+	}
+
 	info!("Initiating forgot password request for user: `{user_id}`");
 
 	let user_data = query!(

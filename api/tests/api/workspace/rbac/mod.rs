@@ -855,3 +855,140 @@ async fn remove_user_from_workspace_not_member() {
 		response.status_code()
 	);
 }
+
+/// Helper: attempt CreateNewRole with a given `description`, return the
+/// response.
+async fn create_role_with_description(
+	setup: &TestSetup,
+	user: &TestUser,
+	workspace_id: Uuid,
+	description: &str,
+) -> ::axum_test::TestResponse {
+	let mut permissions = BTreeMap::new();
+	permissions.insert(
+		setup.get_permission_id(Permission::ViewRoles),
+		ResourcePermissionType::Include(Default::default()),
+	);
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateNewRoleRequest>::builder()
+				.path(CreateNewRolePath { workspace_id })
+				.headers(CreateNewRoleRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateNewRoleRequest {
+					name: random_name(8),
+					description: description.to_string(),
+					permissions,
+				})
+				.build(),
+		)
+		.await
+}
+
+#[tokio::test]
+async fn create_role_rejects_xss_in_description() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let response =
+		create_role_with_description(&setup, &user, workspace.id, "<script>alert(1)</script>")
+			.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"expected 4xx for HTML in description, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn create_role_rejects_over_500_char_description() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let response =
+		create_role_with_description(&setup, &user, workspace.id, &"a".repeat(501)).await;
+	assert!(
+		response.status_code().is_client_error(),
+		"expected 4xx for over-length description, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn create_role_substitutes_default_text_for_empty_description() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	// Empty description should NOT 4xx — the handler substitutes a default.
+	let response = create_role_with_description(&setup, &user, workspace.id, "").await;
+	assert!(
+		response.status_code().is_success(),
+		"empty description should be accepted (default substituted), got {}",
+		response.status_code()
+	);
+
+	// Fetch the role and confirm the default was stored.
+	let role_id = response
+		.json::<ApiSuccessResponseBody<CreateNewRoleResponse>>()
+		.response
+		.id
+		.id;
+
+	let role = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetRoleInfoRequest>::builder()
+				.path(GetRoleInfoPath {
+					workspace_id: workspace.id,
+					role_id,
+				})
+				.headers(GetRoleInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetRoleInfoResponse>>();
+
+	assert_eq!("No description provided", role.response.role.description);
+}
+
+#[tokio::test]
+async fn update_role_rejects_xss_in_description() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let role = setup
+		.create_test_role(&user.access_token, workspace.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateRoleRequest>::builder()
+				.path(UpdateRolePath {
+					workspace_id: workspace.id,
+					role_id: role.id,
+				})
+				.headers(UpdateRoleRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateRoleRequest {
+					name: None,
+					description: Some("<script>alert(1)</script>".to_string()),
+					permissions: None,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"expected 4xx for HTML in updated description, got {}",
+		response.status_code()
+	);
+}

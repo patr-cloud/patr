@@ -97,6 +97,38 @@ impl IsEmpty for () {
 	}
 }
 
+/// Accepts either a username (matching [`constants::USERNAME_VALIDITY_REGEX`])
+/// or an email-shaped string. Rejects phone numbers and other shapes. Used on
+/// the login endpoint where the handler already does a username-or-email
+/// lookup. The email check here is intentionally loose — the handler does the
+/// authoritative DB lookup.
+///
+/// # Errors
+/// Returns an error if the value is neither a valid username nor a
+/// vaguely-email-shaped string.
+pub fn validate_username_or_email(value: Cow<'_, str>) -> Result<Cow<'_, str>, preprocess::Error> {
+	use std::sync::LazyLock;
+
+	use preprocess::Error;
+	use regex::Regex;
+
+	static USERNAME_RE: LazyLock<Regex> =
+		LazyLock::new(|| Regex::new(constants::USERNAME_VALIDITY_REGEX).unwrap());
+
+	let v = value.as_ref();
+	if v.contains('@') {
+		// Loose email-shape check; handler does the real DB lookup.
+		if v.contains('.') && v.len() >= 5 {
+			return Ok(value);
+		}
+		return Err(Error::new("Not a valid email address"));
+	}
+	if USERNAME_RE.is_match(v) {
+		return Ok(value);
+	}
+	Err(Error::new("Must be a valid username or email"))
+}
+
 /// The function to validate if a password has:
 /// - A minimum of 8 characters
 /// - Must contain atleast one digit
@@ -198,6 +230,23 @@ pub mod constants {
 	/// Matches a string that is between 4 and 255 characters long and can have
 	/// digits, letters, hyphens, underscores, spaces and dots.
 	pub const RESOURCE_NAME_REGEX: &str = macros::verify_regex!(r"^[a-zA-Z0-9\-_ \.]{4,255}$");
+
+	/// The Regex to validate a person's first or last name.
+	///
+	/// Matches 1–100 characters of anything that is not an HTML-relevant
+	/// metacharacter (`<`, `>`, `&`), a control character, or a whitespace
+	/// other than space (newline, tab, carriage return). Keeps unicode
+	/// letters, emoji, apostrophes, hyphens, accents — i.e. the kind of names
+	/// real people actually have.
+	pub const USER_NAME_REGEX: &str = macros::verify_regex!(r"^[^<>&\n\r\t\x00-\x1f]{1,100}$");
+
+	/// The Regex to validate a role description.
+	///
+	/// Same metacharacter restrictions as [`USER_NAME_REGEX`], but allows
+	/// empty (length 0–500). The role create/update handler substitutes a
+	/// default string when the description is empty.
+	pub const ROLE_DESCRIPTION_REGEX: &str =
+		macros::verify_regex!(r"^[^<>&\n\r\t\x00-\x1f]{0,500}$");
 
 	/// The Regex to validate a DNS record name.
 	///

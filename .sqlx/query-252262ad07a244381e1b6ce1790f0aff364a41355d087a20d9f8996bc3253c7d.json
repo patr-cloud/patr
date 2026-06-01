@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE role SET name = COALESCE($1, name), description = COALESCE($2, description) WHERE id = $3 AND owner_id = $4;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "252262ad07a244381e1b6ce1790f0aff364a41355d087a20d9f8996bc3253c7d"
+}

@@ -57,12 +57,20 @@ pub struct UserApiToken {
 	pub permissions: BTreeMap<Uuid, WorkspacePermission>,
 	/// Any token that is used before the nbf (not before) should be rejected.
 	/// Tokens are only valid after this time.
-	#[serde(default, skip_serializing_if = "Option::is_none")]
+	#[serde(
+		default,
+		skip_serializing_if = "Option::is_none",
+		with = "time::serde::rfc3339::option"
+	)]
 	#[ts(type = "Date")]
 	pub token_nbf: Option<OffsetDateTime>,
 	/// Any token that is used after the exp (expiry) should be rejected. Tokens
 	/// are only valid before this time.
-	#[serde(default, skip_serializing_if = "Option::is_none")]
+	#[serde(
+		default,
+		skip_serializing_if = "Option::is_none",
+		with = "time::serde::rfc3339::option"
+	)]
 	#[ts(type = "Date")]
 	pub token_exp: Option<OffsetDateTime>,
 	/// The IP addresses that are allowed to use this token. If this is not

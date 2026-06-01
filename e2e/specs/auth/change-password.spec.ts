@@ -6,12 +6,7 @@ import {
   readMfaSetupSecret,
   computeTotp,
 } from '@/prelude';
-import {
-  openLoginPage,
-  fillLoginForm,
-  submitLogin,
-  waitForLoggedIn,
-} from '@/helpers/ui/login';
+import { openLoginPage, fillLoginForm, submitLogin, waitForLoggedIn } from '@/helpers/ui/login';
 import {
   openProfile,
   openMfaModal,
@@ -47,9 +42,9 @@ test.describe('change-password — happy path', () => {
         newPassword,
       });
       await submitChangePassword(page);
-      await expect(
-        page.getByText(/Password updated successfully/i),
-      ).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText(/Password updated successfully/i)).toBeVisible({
+        timeout: 10_000,
+      });
     } finally {
       await context.close();
     }
@@ -116,10 +111,7 @@ test.describe('change-password — client-side validation', () => {
 });
 
 test.describe('change-password — server-side rejection', () => {
-  test('wrong current password → "Current password is incorrect"', async ({
-    browser,
-    api,
-  }) => {
+  test('wrong current password → "Current password is incorrect"', async ({ browser, api }) => {
     const { context, page } = await loginAsNew(browser, api);
     try {
       await openProfile(page);
@@ -128,18 +120,15 @@ test.describe('change-password — server-side rejection', () => {
         newPassword: 'NewPass!1Word',
       });
       await submitChangePassword(page);
-      await expect(
-        page.getByText(/Current password is incorrect/i),
-      ).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText(/Current password is incorrect/i)).toBeVisible({
+        timeout: 10_000,
+      });
     } finally {
       await context.close();
     }
   });
 
-  test('new == current → server returns InvalidPassword', async ({
-    browser,
-    api,
-  }) => {
+  test('new == current → server returns InvalidPassword', async ({ browser, api }) => {
     const { context, page, user } = await loginAsNew(browser, api);
     try {
       await openProfile(page);
@@ -148,9 +137,7 @@ test.describe('change-password — server-side rejection', () => {
         newPassword: user.password,
       });
       const respPromise = page.waitForResponse(
-        (r) =>
-          r.url().includes('/user/change-password') &&
-          r.request().method() === 'POST',
+        (r) => r.url().includes('/user/change-password') && r.request().method() === 'POST',
       );
       await submitChangePassword(page);
       const resp = await respPromise;
@@ -180,9 +167,9 @@ test.describe('change-password — MFA branch', () => {
       const enableOtp = computeTotp(secret);
       await fillMfaModalOtp(page, enableOtp);
       await submitMfaModal(page);
-      await expect(
-        page.getByText(/Two-Factor Authentication enabled/i),
-      ).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText(/Two-Factor Authentication enabled/i)).toBeVisible({
+        timeout: 10_000,
+      });
 
       // Change password — first submit returns mfaRequired, MFA field appears.
       await openProfile(page); // re-render to ensure fresh component state
@@ -196,9 +183,9 @@ test.describe('change-password — MFA branch', () => {
       const otp = computeTotp(secret);
       await fillChangePasswordMfa(page, otp);
       await submitChangePassword(page);
-      await expect(
-        page.getByText(/Password updated successfully/i),
-      ).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByText(/Password updated successfully/i)).toBeVisible({
+        timeout: 15_000,
+      });
     } finally {
       await context.close();
     }

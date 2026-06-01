@@ -217,6 +217,29 @@ pub async fn update_api_token(
 				}
 				WorkspacePermission::Member { permissions } => {
 					trace!("Inserting permission as member");
+					// The per-permission rows below FK onto this parent row, so it
+					// has to land first. create_api_token does the same.
+					query!(
+						r#"
+						INSERT INTO
+							user_api_token_workspace_permission_type(
+								token_id,
+								workspace_id,
+								token_permission_type
+							)
+						VALUES
+							(
+								$1,
+								$2,
+								'member'
+							);
+						"#,
+						token_id as _,
+						workspace_id as _,
+					)
+					.execute(&mut **database)
+					.await?;
+
 					for (permission_id, resource_permission) in permissions {
 						query!(
 							r#"

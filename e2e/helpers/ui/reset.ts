@@ -25,18 +25,13 @@ export type ResetFields = {
   confirmPassword?: string;
 };
 
-export async function fillResetForm(
-  page: Page,
-  fields: ResetFields,
-): Promise<void> {
+export async function fillResetForm(page: Page, fields: ResetFields): Promise<void> {
   await page.locator('#userId').fill(fields.userId);
   for (let i = 0; i < 6; i++) {
     await page.locator(`#otp-${i}`).fill(fields.otp[i] ?? '');
   }
   await page.locator('#new-password').fill(fields.newPassword);
-  await page
-    .locator('#confirm-password')
-    .fill(fields.confirmPassword ?? fields.newPassword);
+  await page.locator('#confirm-password').fill(fields.confirmPassword ?? fields.newPassword);
 }
 
 export async function submitReset(page: Page): Promise<void> {

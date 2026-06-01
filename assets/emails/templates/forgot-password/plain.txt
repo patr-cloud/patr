@@ -4,7 +4,7 @@ Your password reset code is:
 
 {{ otp_code }}
 
-This code expires in {{ otp_expiry }}. Enter it on the password reset page to set a new password. You can also visit: https://app.patr.cloud/reset-password?email={{ email }}&code={{ otp_code }}
+This code expires in {{ otp_expiry }}. Enter it on the password reset page to set a new password. You can also visit: https://app.patr.cloud/reset-password?userId={{ email|urlencode }}&otp={{ otp_code|urlencode }}
 
 If you didn't request this, your account may be at risk. Change your password immediately and contact us on Discord.
 

@@ -15,13 +15,16 @@ import {
 } from "~/components";
 import { createAsyncAction, useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
+import { workspacesKeys } from "~/hooks/query-keys";
+import { useQueryClient } from "@tanstack/solid-query";
 import { httpRequest } from "~/utils/http-request";
 
 const CreateWorkspace = () => {
 	const [authState] = useAuthState();
-	const [currentWorkspaceName, setCurrentWorkspaceName] = useLastWorkspaceId();
+	const [, setCurrentWorkspaceName] = useLastWorkspaceId();
 	const toast = useToast();
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 
 	const [workspaceName, setWorkspaceName] = createSignal("");
 	const [nameError, setNameError] = createSignal("");
@@ -51,9 +54,17 @@ const CreateWorkspace = () => {
 
 		toast("Workspace created successfully", "success");
 
-		if (!currentWorkspaceName() && response.data.id) {
+		// Always switch to the new workspace. The previous guard
+		// `!currentWorkspaceName()` was dead code — by the time we're on
+		// `/workspace/new` the lastWorkspaceId cookie is always set (the
+		// `_workspaced` layout requires it), so the cookie was never updated
+		// and the user stayed on the old workspace.
+		if (response.data.id) {
 			setCurrentWorkspaceName(response.data.id);
+			toast(`Switched to ${name}`, "success");
 		}
+
+		await queryClient.invalidateQueries({ queryKey: workspacesKeys.list() });
 
 		navigate({ to: "/workspace" });
 	});

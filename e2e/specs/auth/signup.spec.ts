@@ -6,11 +6,7 @@ import {
   createPendingSignup,
   randomIPv4,
 } from '@/prelude';
-import {
-  openSignupPage,
-  fillSignupForm,
-  submitSignup,
-} from '@/helpers/ui/signup';
+import { openSignupPage, fillSignupForm, submitSignup } from '@/helpers/ui/signup';
 
 // Frontend sets `noValidate` on the form, so browser-level pattern/email
 // validation is bypassed. Client-side validation is the JS `validateInputs`
@@ -81,13 +77,7 @@ test.describe('sign-up — client-side field validation', () => {
   // Note: empty `confirm-password` doesn't surface "required" — it surfaces
   // "Passwords do not match" (validateInputs only checks `!password()` for
   // required, then compares `password() !== confirmPassword()`).
-  for (const field of [
-    'username',
-    'first-name',
-    'last-name',
-    'email',
-    'password',
-  ] as const) {
+  for (const field of ['username', 'first-name', 'last-name', 'email', 'password'] as const) {
     test(`empty ${field} blocks submit`, async ({ browser }) => {
       await withSignupContext(browser, async (page) => {
         const creds = newCreds();
@@ -224,10 +214,7 @@ test.describe('sign-up — server-side rejection (bypass client validation)', ()
     await expect(page.getByText(matcher)).toBeVisible();
   }
 
-  test('username already taken (active user) → inline alert', async ({
-    browser,
-    api,
-  }) => {
+  test('username already taken (active user) → inline alert', async ({ browser, api }) => {
     await using existing = await createUserAccount(api);
     await withSignupContext(browser, async (page) => {
       const creds = newCreds();
@@ -236,10 +223,7 @@ test.describe('sign-up — server-side rejection (bypass client validation)', ()
     });
   });
 
-  test('username already taken by pending (unconfirmed) signup', async ({
-    browser,
-    api,
-  }) => {
+  test('username already taken by pending (unconfirmed) signup', async ({ browser, api }) => {
     const pending = await createPendingSignup(api);
     await withSignupContext(browser, async (page) => {
       const creds = newCreds();
@@ -312,10 +296,7 @@ test.describe('sign-up — server-side rejection (bypass client validation)', ()
       await fillSignupForm(page, creds);
       let signupCalls = 0;
       page.on('request', (req) => {
-        if (
-          req.url().includes('/auth/sign-up') &&
-          req.method() === 'POST'
-        ) {
+        if (req.url().includes('/auth/sign-up') && req.method() === 'POST') {
           signupCalls++;
         }
       });
@@ -359,5 +340,37 @@ test.describe('sign-up — concurrency', () => {
     };
     const results = await Promise.all([run(), run()]);
     expect(results.some(Boolean)).toBe(true);
+  });
+});
+
+test.describe('sign-up — XSS-character validation', () => {
+  test('rejects script-tag firstName with inline error', async ({ browser }) => {
+    await withSignupContext(browser, async (page) => {
+      const creds = newCreds();
+      await fillSignupForm(page, creds);
+      await page.locator('#first-name').fill('<script>x</script>');
+      let fired = false;
+      page.on('request', (req) => {
+        if (req.url().includes('/auth/sign-up')) fired = true;
+      });
+      await submitSignup(page);
+      await expect(
+        page.getByText(/Names cannot contain <, >, &, or control characters/).first(),
+      ).toBeVisible({ timeout: 5_000 });
+      await page.waitForTimeout(500);
+      expect(fired).toBe(false);
+    });
+  });
+
+  test('rejects bracket char in lastName with inline error', async ({ browser }) => {
+    await withSignupContext(browser, async (page) => {
+      const creds = newCreds();
+      await fillSignupForm(page, creds);
+      await page.locator('#last-name').fill('Doe<');
+      await submitSignup(page);
+      await expect(
+        page.getByText(/Names cannot contain <, >, &, or control characters/).first(),
+      ).toBeVisible({ timeout: 5_000 });
+    });
   });
 });

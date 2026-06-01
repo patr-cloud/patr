@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT \"user\".*, web_login.token_expiry FROM \"user\" INNER JOIN user_login ON \"user\".id = user_login.user_id INNER JOIN web_login ON user_login.login_id = web_login.login_id WHERE user_login.login_id = $1 AND user_login.login_type = 'web_login';",
+  "query": "SELECT \"user\".* FROM \"user\" INNER JOIN user_login ON \"user\".id = user_login.user_id INNER JOIN web_login ON user_login.login_id = web_login.login_id WHERE user_login.login_id = $1 AND user_login.login_type = 'web_login';",
   "describe": {
     "columns": [
       {
@@ -72,11 +72,6 @@
         "ordinal": 13,
         "name": "mfa_secret",
         "type_info": "Text"
-      },
-      {
-        "ordinal": 14,
-        "name": "token_expiry",
-        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
@@ -98,9 +93,8 @@
       true,
       true,
       true,
-      true,
-      false
+      true
     ]
   },
-  "hash": "bbbd93707e20f0e6ac5975f58d488c728204e483361a8f12e1a9901d551f2c5d"
+  "hash": "4d944dc56cb9284043f21a17e5ba2b2405b3fbc59ea8d42e2cb8fe6052a23b8e"
 }

@@ -37,6 +37,12 @@ type ButtonProps = {
 	 * Loading Content
 	 */
 	loadingContent?: () => JSX.Element;
+	/**
+	 * Accessible label for screen readers / a11y tools, forwarded to the
+	 * underlying `<button>` element. Use this when the button's visual content
+	 * (icon-only, for example) doesn't describe its purpose.
+	 */
+	"aria-label"?: string;
 };
 
 const Button = (rawProps: ParentProps<ButtonProps>) => {
@@ -74,6 +80,7 @@ const Button = (rawProps: ParentProps<ButtonProps>) => {
 			disabled={props.disabled || get(props.loading)}
 			type={props.type}
 			class={derivedClass()}
+			aria-label={props["aria-label"]}
 			onClick={(e) => props.onClick?.(e)}
 		>
 			{get(props.loading) && props.loadingContent ? (

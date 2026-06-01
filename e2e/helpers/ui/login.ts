@@ -33,10 +33,8 @@ export async function submitLogin(page: Page): Promise<void> {
 // Waits for the authState cookie to land AND for the URL to leave /login.
 // The cookie write is what unblocks the route guard.
 export async function waitForLoggedIn(page: Page): Promise<void> {
-  await page.waitForFunction(
-    () => document.cookie.includes('authState='),
-    null,
-    { timeout: 10_000 },
-  );
+  await page.waitForFunction(() => document.cookie.includes('authState='), null, {
+    timeout: 10_000,
+  });
   await expect(page).not.toHaveURL(/\/login/, { timeout: 10_000 });
 }

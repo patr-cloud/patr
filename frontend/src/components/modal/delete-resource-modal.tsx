@@ -24,7 +24,11 @@ const DeleteModal = (props: {
 			setIsOpen={(v) => (props.setIsOpen ?? internalSetIsOpen)(v)}
 			renderModalContent={(close) => (
 				<ModalContainer closeFn={() => close(false)} class="w-full">
-					<form class="w-full">
+					<form
+						class="w-full"
+						noValidate
+						onSubmit={(e) => e.preventDefault()}
+					>
 						<h2 class="text-md text-primary font-semibold mb-4">{props.title}</h2>
 						<p class="mb-4 text-sm text-white">
 							This action cannot be undone. To Confirm, type &nbsp;

@@ -95,6 +95,15 @@ where
 	fn call(&mut self, mut req: Request<Body>) -> Self::Future {
 		let mut inner = self.inner.clone();
 		async {
+			// If the request already carries an Authorization header (e.g.
+			// /auth/access-token sends `Bearer {refresh_token}`), don't
+			// overwrite it — the caller intentionally chose a different
+			// credential than the access token in the authState cookie.
+			if req.headers().contains_key(header::AUTHORIZATION) {
+				trace!("Authorization header present; not injecting from cookie");
+				return inner.call(req).await;
+			}
+
 			let cookie = req
 				.headers()
 				.typed_get::<Cookie>()
@@ -109,7 +118,7 @@ where
 				refresh_token: _,
 			}) = cookie
 			{
-				debug!("Overwriting Authorization header with access token from authState cookie");
+				debug!("Injecting Authorization header with access token from authState cookie");
 
 				if let Ok(access_token) = Authorization::bearer(&access_token).inspect_err(|err| {
 					warn!("Failed to create Authorization header from access token: {err}");

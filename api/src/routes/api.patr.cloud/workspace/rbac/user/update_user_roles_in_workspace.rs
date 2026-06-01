@@ -33,6 +33,37 @@ pub async fn update_user_roles_in_workspace(
 ) -> Result<AppResponse<UpdateUserRolesInWorkspaceRequest>, ErrorType> {
 	info!("Updating user `{user_id}`'s roles in workspace `{workspace_id}`");
 
+	let expected_role_count = roles.len();
+
+	// When the caller passes an empty roles list, the intent is "remove this
+	// user from the workspace". The DELETE below silently no-ops on a
+	// non-member; surface UserNotFound explicitly so callers don't think a
+	// removal happened when it didn't.
+	if roles.is_empty() {
+		let is_member = query!(
+			r#"
+			SELECT EXISTS(
+				SELECT
+					1
+				FROM
+					workspace_user
+				WHERE
+					workspace_id = $1 AND
+					user_id = $2
+			) AS "exists!: bool";
+			"#,
+			workspace_id as _,
+			user_id as _,
+		)
+		.fetch_one(&mut **database)
+		.await?
+		.exists;
+
+		if !is_member {
+			return Err(ErrorType::UserNotFound);
+		}
+	}
+
 	query!(
 		r#"
 		DELETE FROM
@@ -47,23 +78,34 @@ pub async fn update_user_roles_in_workspace(
 	.execute(&mut **database)
 	.await?;
 
-	query!(
+	// Use a CTE that filters role_ids by workspace ownership before inserting.
+	// If any role_id is missing or belongs to a different workspace, fewer rows
+	// will be inserted than requested — surface that as RoleDoesNotExist.
+	let inserted = query!(
 		r#"
+		WITH valid_roles AS (
+			SELECT
+				id
+			FROM
+				role
+			WHERE
+				id = ANY($3::UUID[]) AND
+				owner_id = $1
+		)
 		INSERT INTO
 			workspace_user(
 				workspace_id,
 				user_id,
 				role_id
 			)
-		VALUES
-			($1, $2, UNNEST($3::UUID[]));
+		SELECT
+			$1, $2, id
+		FROM
+			valid_roles;
 		"#,
 		workspace_id as _,
 		user_id as _,
-		&roles
-			.into_iter()
-			.map(|role| role.into())
-			.collect::<Vec<_>>(),
+		roles as _,
 	)
 	.execute(&mut **database)
 	.await
@@ -76,7 +118,12 @@ pub async fn update_user_roles_in_workspace(
 			}
 		}
 		other => ErrorType::server_error(other),
-	})?;
+	})?
+	.rows_affected() as usize;
+
+	if inserted != expected_role_count {
+		return Err(ErrorType::RoleDoesNotExist);
+	}
 
 	info!("User's roles updated. Setting revocation timestamp");
 

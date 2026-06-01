@@ -67,6 +67,11 @@
         "ordinal": 12,
         "name": "metadata",
         "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 13,
+        "name": "idempotency_key",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -77,6 +82,7 @@
       ]
     },
     "nullable": [
+      null,
       null,
       null,
       null,

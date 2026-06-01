@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test';
+import { DASHBOARD_URL } from './helpers/urls';
 
 export default defineConfig({
   testDir: './specs',
@@ -8,7 +9,7 @@ export default defineConfig({
   workers: process.env.TEST_THREADS ? Number(process.env.TEST_THREADS) : 1,
   timeout: 60_000,
   use: {
-    baseURL: 'http://localhost:3001',
+    baseURL: DASHBOARD_URL,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
