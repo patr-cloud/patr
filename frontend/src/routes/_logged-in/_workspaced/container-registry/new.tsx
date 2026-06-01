@@ -4,7 +4,6 @@ import { FiInfo } from "solid-icons/fi";
 import { createSignal, Show } from "solid-js";
 import { CreateContainerRepositoryRequest, CreateContainerRepositoryResponse } from "~/bindings";
 import {
-	Alert,
 	Button,
 	ButtonVariant,
 	CopyableField,
@@ -20,6 +19,7 @@ import {
 import { createFormAction } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
+import { validateRepositoryName } from "~/utils/validation";
 
 const CreateContainerRepository = () => {
 	const [workspaceId] = useLastWorkspaceId();
@@ -29,11 +29,14 @@ const CreateContainerRepository = () => {
 	const [repositoryName, setRepositoryName] = createSignal("");
 	const [nameError, setNameError] = createSignal("");
 
+	const checkName = (): boolean => {
+		const r = validateRepositoryName(repositoryName());
+		setNameError(r.valid ? "" : (r.error ?? ""));
+		return r.valid;
+	};
+
 	const { onSubmit, isLoading } = createFormAction(async ({ workspaceId: wsId }) => {
-		if (!repositoryName().trim()) {
-			setNameError("Repository name is required.");
-			return;
-		}
+		if (!checkName()) return;
 
 		const requestBody: CreateContainerRepositoryRequest = {
 			name: repositoryName().trim(),
@@ -84,16 +87,13 @@ const CreateContainerRepository = () => {
 											setRepositoryName(e.currentTarget.value);
 											setNameError("");
 										}}
+										onBlur={() => checkName()}
+										error={nameError}
 										id="repository-name"
 										name="repository-name"
 										placeholder="Enter Repository Name"
 										type={InputType.Text}
 									/>
-									<Show when={nameError()}>
-										<div class="mt-1">
-											<Alert message={nameError()} type="error" />
-										</div>
-									</Show>
 								</div>
 							</div>
 							<Show when={repositoryName().trim()}>

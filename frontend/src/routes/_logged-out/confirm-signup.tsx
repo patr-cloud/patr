@@ -2,9 +2,10 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createSignal, onMount, Show } from "solid-js";
 import { CompleteSignUpRequest } from "~/bindings";
-import { Alert, Button, ButtonVariant, Input, InputType, OtpInput, useToast, Turnstile } from "~/components";
+import { Button, ButtonVariant, Input, InputType, OtpInput, useToast, Turnstile } from "~/components";
 import { createAsyncAction } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
+import { validateOtp, validateUsername } from "~/utils/validation";
 
 const ConfirmSignUp = () => {
 	const navigate = useNavigate();
@@ -35,9 +36,18 @@ const ConfirmSignUp = () => {
 		}
 	});
 
+	const checkUsername = (): boolean => {
+		const r = validateUsername(username());
+		setUsernameError(r.valid ? "" : (r.error ?? ""));
+		return r.valid;
+	};
+
 	const { execute: submitConfirmation, isLoading } = createAsyncAction(async () => {
-		if (!username().trim()) {
-			setUsernameError("Username is required.");
+		if (!usernameWasPreFilled && !checkUsername()) return;
+
+		const otpRes = validateOtp(otpDigits().join(""));
+		if (!otpRes.valid) {
+			toast(otpRes.error ?? "Invalid verification code.", "error");
 			return;
 		}
 
@@ -113,13 +123,10 @@ const ConfirmSignUp = () => {
 							setUsername(e.currentTarget.value);
 							setUsernameError("");
 						}}
+						onBlur={() => checkUsername()}
+						error={usernameError}
 						styleVariant="medium"
 					/>
-					<Show when={usernameError()}>
-						<div class="mt-1">
-							<Alert message={usernameError()} type="error" />
-						</div>
-					</Show>
 				</Show>
 
 				{/* Show username as text if it was pre-filled */}

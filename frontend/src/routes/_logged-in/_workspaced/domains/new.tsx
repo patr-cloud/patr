@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createSignal, Show } from "solid-js";
 import {
-	Alert,
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
@@ -16,11 +15,7 @@ import {
 import { createFormAction } from "~/hooks";
 import { AddDomainToWorkspaceRequest, AddDomainToWorkspaceResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
-
-function looksLikeUrl(input: string): boolean {
-	const trimmed = input.trim();
-	return /^https?:\/\//i.test(trimmed) || trimmed.includes("/") || trimmed.includes("?") || trimmed.includes("#");
-}
+import { validateDomain } from "~/utils/validation";
 
 function extractHostname(input: string): string {
 	let trimmed = input.trim();
@@ -43,20 +38,19 @@ const CreateDomainPage = () => {
 		setSuggestedDomain("");
 	};
 
+	const checkDomain = (): boolean => {
+		const r = validateDomain(domainInput());
+		setError(r.valid ? "" : (r.error ?? ""));
+		if (!r.valid) {
+			const hostname = extractHostname(domainInput());
+			if (hostname && hostname !== domainInput().trim()) setSuggestedDomain(hostname);
+		}
+		return r.valid;
+	};
+
 	const { onSubmit, isLoading } = createFormAction(async ({ workspaceId: wsId }) => {
-		const domain = domainInput().trim();
-
-		if (!domain) {
-			setError("Domain is required.");
-			return;
-		}
-
-		if (looksLikeUrl(domain)) {
-			const hostname = extractHostname(domain);
-			setError("Enter a base domain only, without protocols, paths, or query strings.");
-			setSuggestedDomain(hostname);
-			return;
-		}
+		if (!checkDomain()) return;
+		const domain = domainInput().trim().toLowerCase();
 
 		const requestBody: AddDomainToWorkspaceRequest = {
 			domain,
@@ -113,12 +107,9 @@ const CreateDomainPage = () => {
 											setError("");
 											setSuggestedDomain("");
 										}}
+										onBlur={() => checkDomain()}
+										error={error}
 									/>
-									<Show when={error()}>
-										<div class="mt-1">
-											<Alert message={error()} type="error" />
-										</div>
-									</Show>
 									<Show when={suggestedDomain()}>
 										<p class="text-grey text-sm mt-1">
 											Did you mean{" "}

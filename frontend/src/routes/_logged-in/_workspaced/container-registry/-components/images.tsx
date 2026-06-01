@@ -3,7 +3,7 @@ import { createSignal, Show } from "solid-js";
 import { FiTrash2 } from "solid-icons/fi";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
-import { useToast, Table, Link, CopyableField, CopyableFieldVariant } from "~/components";
+import { useToast, Table, TableRow, TableCell, Link, CopyableField, CopyableFieldVariant } from "~/components";
 import { formatRelativeTime, get, formatSize } from "~/utils/func";
 import { ListContainerRepositoryManifestsResponse, ContainerRepositoryManifestInfo } from "~/bindings";
 import { MaybeAccessor } from "~/utils/types";
@@ -81,8 +81,8 @@ const ImageRow = (props: { manifest: ContainerRepositoryManifestInfo; refetch?: 
 	};
 
 	return (
-		<tr class="table-row">
-			<td class="flex-2 flex items-center gap-2 overflow-hidden">
+		<TableRow>
+			<TableCell index={0} class="gap-2 overflow-hidden">
 				<span class="truncate text-gray-300 font-mono text-sm" title={props.manifest.tags.join(", ")}>
 					{props.manifest.tags.length > 0 ? (
 						props.manifest.tags.join(", ")
@@ -90,18 +90,18 @@ const ImageRow = (props: { manifest: ContainerRepositoryManifestInfo; refetch?: 
 						<span class="text-gray-500 italic">No tags</span>
 					)}
 				</span>
-			</td>
-			<td class="flex-2 text-gray-400 text-sm">{props.manifest.platform}</td>
-			<td class="flex-2 text-gray-400 text-sm">{formatSize(props.manifest.size)}</td>
-			<td class="flex-2 text-gray-400 text-sm">{formatRelativeTime(props.manifest.created)}</td>
-			<td class="flex-2 flex items-center gap-2 overflow-hidden">
+			</TableCell>
+			<TableCell index={1} class="text-gray-400 text-sm">{props.manifest.platform}</TableCell>
+			<TableCell index={2} class="text-gray-400 text-sm">{formatSize(props.manifest.size)}</TableCell>
+			<TableCell index={3} class="text-gray-400 text-sm">{formatRelativeTime(props.manifest.created)}</TableCell>
+			<TableCell index={4} class="gap-2 overflow-hidden">
 				<CopyableField
 					variant={CopyableFieldVariant.Text}
 					value={props.manifest.digest}
 					innerClass="font-mono truncate max-w-37.5"
 				/>
-			</td>
-			<td class="flex-2 flex items-center justify-center">
+			</TableCell>
+			<TableCell index={5} align="center">
 				{deleteSelected() ? (
 					<div class="flex flex-row items-center gap-2">
 						<button
@@ -130,7 +130,7 @@ const ImageRow = (props: { manifest: ContainerRepositoryManifestInfo; refetch?: 
 						<FiTrash2 size={16} />
 					</button>
 				)}
-			</td>
-		</tr>
+			</TableCell>
+		</TableRow>
 	);
 };

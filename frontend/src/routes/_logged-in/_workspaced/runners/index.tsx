@@ -14,6 +14,8 @@ import {
 	PageContainerHead,
 	Pagination,
 	Table,
+	TableRow,
+	TableCell,
 	StatusChip,
 } from "~/components";
 import { useIsAllowed, createPaginationState } from "~/hooks";
@@ -121,25 +123,14 @@ const ListRunnersPage = () => {
 												search: { tab: "deployments" },
 											});
 										return (
-											<tr
-												role="row"
-												tabIndex={0}
-												class="table-row cursor-pointer focus-visible:outline-primary"
-												onClick={goToDetail}
-												onKeyDown={(e) => {
-													if (e.key === "Enter" || e.key === " ") {
-														e.preventDefault();
-														goToDetail();
-													}
-												}}
-											>
-												<td role="cell" class="flex-4 flex items-center justify-start min-w-0">
+											<TableRow onClick={goToDetail} aria-label={`Open runner ${item.name}`}>
+												<TableCell index={0}>
 													<span class="truncate font-medium text-white">{item.name}</span>
-												</td>
-												<td role="cell" class="flex-2 flex items-center justify-center min-w-0">
+												</TableCell>
+												<TableCell index={1} align="center">
 													<StatusChip status={item.connected ? "connected" : "unreachable"} />
-												</td>
-												<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
+												</TableCell>
+												<TableCell index={2}>
 													<span class="text-grey">
 														{item.connected
 															? "-"
@@ -147,16 +138,16 @@ const ListRunnersPage = () => {
 																? formatRelativeTime(item.lastSeen)
 																: "Never"}
 													</span>
-												</td>
-												<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
+												</TableCell>
+												<TableCell index={3}>
 													<CopyableField
 														variant={CopyableFieldVariant.Text}
 														value={item.id}
 														class="truncate"
 														innerClass="text-grey font-log text-xs"
 													/>
-												</td>
-											</tr>
+												</TableCell>
+											</TableRow>
 										);
 									}}
 								/>

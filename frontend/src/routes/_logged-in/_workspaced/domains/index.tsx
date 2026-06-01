@@ -7,6 +7,8 @@ import {
 	PageContainerBody,
 	PageContainerHead,
 	Table,
+	TableRow,
+	TableCell,
 	Button,
 	ButtonVariant,
 	useToast,
@@ -88,25 +90,25 @@ const DNSRecords = (props: { domainId: string; domainName: string; closeFn: (pre
 					headings={["Type", "Name", "Value"]}
 					rows={[verificationRecord()]}
 					renderRow={(record) => (
-						<tr class="table-row text-sm">
-							<td class="flex-2 flex items-center justify-center">
+						<TableRow class="text-sm">
+							<TableCell index={0} align="center">
 								<CopyableField variant={CopyableFieldVariant.Text} value={record.type} />
-							</td>
-							<td class="flex-5 flex items-center justify-center min-w-0">
+							</TableCell>
+							<TableCell index={1} align="center">
 								<CopyableField
 									variant={CopyableFieldVariant.Text}
 									value={record.name}
 									innerClass="truncate max-w-full"
 								/>
-							</td>
-							<td class="flex-5 flex items-center justify-center min-w-0">
+							</TableCell>
+							<TableCell index={2} align="center">
 								<CopyableField
 									variant={CopyableFieldVariant.Text}
 									value={record.target}
 									innerClass="truncate max-w-full"
 								/>
-							</td>
-						</tr>
+							</TableCell>
+						</TableRow>
 					)}
 				/>
 				<p class="text-gray-400 text-xs mt-2">
@@ -248,27 +250,16 @@ const ListDomainsPage = () => {
 									renderRow={(item) => {
 										const goToDetail = () => navigate({ to: `/domains/${item.id}` });
 										return (
-											<tr
-												role="row"
-												tabIndex={0}
-												onClick={goToDetail}
-												onKeyDown={(e) => {
-													if (e.key === "Enter" || e.key === " ") {
-														e.preventDefault();
-														goToDetail();
-													}
-												}}
-												class="table-row cursor-pointer focus-visible:outline-primary"
-											>
-												<td role="cell" class="flex-5 flex items-center justify-start min-w-0">
+											<TableRow onClick={goToDetail} aria-label={`Open domain ${item.name}`}>
+												<TableCell index={0}>
 													<span class="truncate font-medium text-white">{item.name}</span>
-												</td>
-												<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
+												</TableCell>
+												<TableCell index={1}>
 													<span class="text-grey">
 														{item.nameserverType === "patr" ? "Patr Managed" : "External"}
 													</span>
-												</td>
-												<td role="cell" class="flex-4 flex items-center justify-start min-w-0">
+												</TableCell>
+												<TableCell index={2}>
 													<div class="flex items-center gap-2">
 														<StatusChip
 															status={item.isVerified ? "verified" : "not verified"}
@@ -277,8 +268,8 @@ const ListDomainsPage = () => {
 															<VerificationIcon domain={item} />
 														</Show>
 													</div>
-												</td>
-											</tr>
+												</TableCell>
+											</TableRow>
 										);
 									}}
 								/>

@@ -32,6 +32,13 @@ import { httpRequest } from "~/utils/http-request";
 import ProbeInput from "./-components/probe-input";
 import ConfigMount from "./-components/config-mount";
 import { useNavigate } from "@tanstack/solid-router";
+import {
+	validateDeploymentName,
+	validateImageName,
+	validateImageTag,
+	validateRequired,
+	validateScaleRange,
+} from "~/utils/validation";
 
 const PATR_REGISTRY = "registry.patr.cloud";
 
@@ -66,7 +73,39 @@ const CreateDeploymentPage = () => {
 	const [portsValid, setPortsValid] = createSignal(true);
 	const [configMountsValid, setConfigMountsValid] = createSignal(true);
 
+	const [nameError, setNameError] = createSignal("");
+	const [imageNameError, setImageNameError] = createSignal("");
+	const [imageTagError, setImageTagError] = createSignal("");
+	const [repositoryError, setRepositoryError] = createSignal("");
+	const [runnerError, setRunnerError] = createSignal("");
+
 	const isPatrRegistry = () => registry() === PATR_REGISTRY;
+
+	const checkName = (): boolean => {
+		const r = validateDeploymentName(name());
+		setNameError(r.valid ? "" : (r.error ?? ""));
+		return r.valid;
+	};
+	const checkImageName = (): boolean => {
+		const r = validateImageName(imageName());
+		setImageNameError(r.valid ? "" : (r.error ?? ""));
+		return r.valid;
+	};
+	const checkImageTag = (): boolean => {
+		const r = validateImageTag(imageTag());
+		setImageTagError(r.valid ? "" : (r.error ?? ""));
+		return r.valid;
+	};
+	const checkRepository = (): boolean => {
+		const r = validateRequired(repositoryId(), "Repository");
+		setRepositoryError(r.valid ? "" : (r.error ?? ""));
+		return r.valid;
+	};
+	const checkRunner = (): boolean => {
+		const r = validateRequired(runner(), "Runner");
+		setRunnerError(r.valid ? "" : (r.error ?? ""));
+		return r.valid;
+	};
 
 	// Debounce tag filter updates to avoid hammering the API on every keystroke
 	let tagFilterTimer: ReturnType<typeof setTimeout> | undefined;
@@ -86,6 +125,16 @@ const CreateDeploymentPage = () => {
 		repositoriesQuery.data?.repositories.map((r) => ({ label: r.name, value: r.id })) ?? [];
 
 	const { onSubmit, isLoading } = createFormAction(async ({ workspaceId }) => {
+		const okName = checkName();
+		const okTag = checkImageTag();
+		const okImg = isPatrRegistry() ? checkRepository() : checkImageName();
+		const okRunner = checkRunner();
+		const scaleRes = validateScaleRange(minScale(), maxScale());
+		if (!scaleRes.valid) {
+			toast(scaleRes.error ?? "Invalid scale range", "error");
+		}
+		if (!okName || !okTag || !okImg || !okRunner || !scaleRes.valid) return;
+
 		if (!envValid() || !portsValid() || !configMountsValid()) {
 			toast("Please fix the highlighted errors before submitting", "error");
 			return;
@@ -150,15 +199,19 @@ const CreateDeploymentPage = () => {
 				/>
 				<PageContainerBody class="flex flex-col justify-between gap-8">
 					<form onSubmit={onSubmit} class="flex flex-col gap-6 justify-between w-full flex-1">
-						<div class="flex flex-col gap-5  items-start w-full">
+						<div class="flex flex-col gap-8 items-start w-full">
 							<div class="flex gap-8 items-center w-full">
 								<InputLabel parentClass="flex-2" for="deployment-name" label="Name" />
 								<Input
+									id="deployment-name"
 									value={name()}
 									onInput={(e) => {
 										e.preventDefault();
 										setName(e.currentTarget.value);
+										setNameError("");
 									}}
+									onBlur={() => checkName()}
+									error={nameError}
 									class="flex-10"
 									name="deployment-name"
 									placeholder="Enter Deployment Name"
@@ -191,25 +244,35 @@ const CreateDeploymentPage = () => {
 										when={isPatrRegistry()}
 										fallback={
 											<Input
-												class="flex-6"
+												id="image-name"
+												class="flex-5"
 												placeholder="Image Name"
 												type={InputType.Text}
 												value={imageName()}
-												onInput={(e) => setImageName(e.currentTarget.value)}
+												onInput={(e) => {
+													setImageName(e.currentTarget.value);
+													setImageNameError("");
+												}}
+												onBlur={() => checkImageName()}
+												error={imageNameError}
 											/>
 										}
 									>
 										<Input
-											class="flex-6"
+											id="repository"
+											class="flex-5"
 											placeholder="Select Repository"
 											suggestions={repoSuggestions()}
 											allowCustomValue={false}
 											value={repositoryId()}
 											onSelect={(id) => {
 												setRepositoryId(id);
+												setRepositoryError("");
 												setImageTag("");
 												setTagFilter("");
 											}}
+											onBlur={() => checkRepository()}
+											error={repositoryError}
 										/>
 									</Show>
 
@@ -217,25 +280,38 @@ const CreateDeploymentPage = () => {
 										when={isPatrRegistry()}
 										fallback={
 											<Input
-												class="flex-2"
+												id="image-tag"
+												class="flex-3"
 												placeholder="Image Tag"
 												type={InputType.Text}
 												value={imageTag()}
-												onInput={(e) => setImageTag(e.currentTarget.value)}
+												onInput={(e) => {
+													setImageTag(e.currentTarget.value);
+													setImageTagError("");
+												}}
+												onBlur={() => checkImageTag()}
+												error={imageTagError}
 											/>
 										}
 									>
 										<Input
-											class="flex-2"
+											id="image-tag"
+											class="flex-3"
 											placeholder="Image Tag"
 											value={imageTag()}
 											suggestions={tagSuggestions()}
 											allowCustomValue={true}
 											onInput={(e) => {
 												setImageTag(e.currentTarget.value);
+												setImageTagError("");
 												debouncedSetTagFilter(e.currentTarget.value);
 											}}
-											onSelect={setImageTag}
+											onSelect={(t) => {
+												setImageTag(t);
+												setImageTagError("");
+											}}
+											onBlur={() => checkImageTag()}
+											error={imageTagError}
 										/>
 									</Show>
 								</div>
@@ -245,6 +321,7 @@ const CreateDeploymentPage = () => {
 								<InputLabel parentClass="flex-2" for="deployment-runner" label="Runner" />
 								<div class="flex-10 flex items-center gap-4 w-full">
 									<InputDropdown
+										id="deployment-runner"
 										options={
 											runnersQuery.data?.runners.map((runner) => ({
 												value: runner.id,
@@ -252,7 +329,12 @@ const CreateDeploymentPage = () => {
 											})) ?? []
 										}
 										value={runner()}
-										onSelect={setRunner}
+										onSelect={(v) => {
+											setRunner(v);
+											setRunnerError("");
+										}}
+										onBlur={() => checkRunner()}
+										error={runnerError}
 										class="flex-4"
 										name="deployment-runner"
 										placeholder="Select Runner"

@@ -24,6 +24,7 @@ import { EventT } from "~/utils/types";
 import EnvInput from "./env-input";
 import PortInput from "./port";
 import ConfigMount from "./config-mount";
+import { validateDeploymentName, validateImageTag } from "~/utils/validation";
 
 interface DeploymentInfoProps {
 	deploymentId: string;
@@ -56,6 +57,19 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	const [envValid, setEnvValid] = createSignal(true);
 	const [portsValid, setPortsValid] = createSignal(true);
 	const [configMountsValid, setConfigMountsValid] = createSignal(true);
+	const [nameError, setNameError] = createSignal("");
+	const [tagError, setTagError] = createSignal("");
+
+	const checkName = (): boolean => {
+		const r = validateDeploymentName(localInfo()?.name ?? "");
+		setNameError(r.valid ? "" : (r.error ?? ""));
+		return r.valid;
+	};
+	const checkTag = (): boolean => {
+		const r = validateImageTag(localInfo()?.imageTag ?? "");
+		setTagError(r.valid ? "" : (r.error ?? ""));
+		return r.valid;
+	};
 
 	type DeployInfo = GetDeploymentInfoResponse | undefined;
 	const updateLocal = (fn: (prev: DeployInfo) => DeployInfo) => {
@@ -91,6 +105,10 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 			toast("Please fix the highlighted errors before saving", "error");
 			return;
 		}
+
+		const okName = checkName();
+		const okTag = checkTag();
+		if (!okName || !okTag) return;
 
 		const info = localInfo();
 		if (!info) {
@@ -149,6 +167,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				<div class="flex gap-8 items-start w-full">
 					<InputLabel parentClass="flex-2 pt-2.5" for="deployment-name" label="Name" />
 					<Input
+						id="deployment-name"
 						class="flex-10"
 						name="deployment-name"
 						placeholder="Deployment Name"
@@ -157,7 +176,10 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						value={localInfo()?.name}
 						onInput={(e) => {
 							updateLocal((prev) => (prev ? { ...prev, name: e.currentTarget.value } : undefined));
+							setNameError("");
 						}}
+						onBlur={() => checkName()}
+						error={nameError}
 					/>
 				</div>
 
@@ -235,6 +257,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						/>
 
 						<Input
+							id="deployment-image-tag"
 							class="flex-2"
 							disabled={!deploymentPermissions().edit}
 							placeholder="Image Tag"
@@ -244,7 +267,10 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 								updateLocal((prev) =>
 									prev ? { ...prev, imageTag: e.currentTarget.value } : undefined
 								);
+								setTagError("");
 							}}
+							onBlur={() => checkTag()}
+							error={tagError}
 						/>
 					</div>
 				</div>
@@ -321,7 +347,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 			</div>
 
 			<Show when={deploymentPermissions().edit}>
-				<div class="w-full flex justify-end items-center">
+				<div class="sticky bottom-0 w-full flex justify-end items-center bg-secondary-dark border-t border-border-color py-3">
 					<Button
 						disabled={
 							!deploymentPermissions().edit ||

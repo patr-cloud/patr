@@ -37,6 +37,10 @@ interface InputDropdownProps {
 	endIcon?: () => JSX.Element;
 	/** @deprecated Ignored. */
 	onClickEndIcon?: () => void;
+	/** Validation error message to display below the dropdown. */
+	error?: MaybeAccessor<string | undefined>;
+	/** Called when the underlying input loses focus. */
+	onBlur?: () => void;
 }
 
 const InputDropdown = (props: InputDropdownProps) => (
@@ -52,6 +56,8 @@ const InputDropdown = (props: InputDropdownProps) => (
 		required={props.required}
 		id={props.id}
 		name={props.name}
+		error={props.error}
+		onBlur={() => props.onBlur?.()}
 	/>
 );
 

@@ -1,14 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createEffect, createSignal, ParentProps, Show, Suspense } from "solid-js";
+import { createEffect, createSignal, ParentProps } from "solid-js";
 import { CreateWorkspaceResponse } from "~/bindings";
-import { Alert, BgOnboard, Button, Input, InputType, useToast } from "~/components";
+import { BgOnboard, Button, Input, InputType, useToast } from "~/components";
 
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useWorkspacesQuery } from "~/hooks/fetch";
 import { ButtonVariant } from "~/utils/color";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
+import { validateWorkspaceName } from "~/utils/validation";
 
 const WorkspaceOnboardPage = (_props: ParentProps) => {
 	return <WorkspaceOnboard />;
@@ -24,12 +25,21 @@ const WorkspaceOnboard = () => {
 
 	const [, setWorkspaceId] = useLastWorkspaceId();
 	const workspacesQuery = useWorkspacesQuery();
+	let redirected = false;
 
 	createEffect(() => {
-		if ((workspacesQuery.data?.workspaces?.length || 0) > 0) {
+		if (redirected || workspacesQuery.isPending) return;
+		if ((workspacesQuery.data?.workspaces?.length ?? 0) > 0) {
+			redirected = true;
 			navigate({ to: "/", replace: true });
 		}
 	});
+
+	const checkName = (): boolean => {
+		const r = validateWorkspaceName(workspaceName());
+		setNameError(r.valid ? "" : (r.error ?? ""));
+		return r.valid;
+	};
 
 	const onCreateWorkspace = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
 		e.preventDefault();
@@ -40,11 +50,8 @@ const WorkspaceOnboard = () => {
 			return;
 		}
 
+		if (!checkName()) return;
 		const name = workspaceName().trim();
-		if (!name) {
-			setNameError("Workspace name is required.");
-			return;
-		}
 
 		setIsLoading(true);
 		try {
@@ -77,63 +84,58 @@ const WorkspaceOnboard = () => {
 	return (
 		<>
 			<Title>Create Workspace | Patr</Title>
-			<Suspense fallback={<div>Loading...</div>}>
-				<main class="min-h-screen w-full bg-secondary flex items-center justify-center p-4 relative overflow-hidden">
-					<BgOnboard />
+			<main class="min-h-screen w-full bg-secondary flex items-center justify-center p-4 relative overflow-hidden">
+				<BgOnboard />
 
-					<form
-						noValidate
-						onSubmit={onCreateWorkspace}
-						class="bg-secondary p-12 rounded-sm shadow-2xl w-full max-w-128 relative flex flex-col items-start justify-start gap-3 z-10 border border-secondary-medium"
-					>
-						<div class="text-left">
-							<h1 class="text-2xl font-bold text-white">Create Workspace</h1>
-							<p class="text-gray-400 text-sm">Set up your workspace to get started with Patr.</p>
-						</div>
-
-						<div class="w-full">
-							<div class="w-full mb-4">
-								<Input
-									type={InputType.Text}
-									placeholder="Enter your workspace name"
-									name="workspace-name"
-									id="workspace-name"
-									value={workspaceName}
-									onInput={(e: Event) => {
-										setWorkspaceName((e.currentTarget as HTMLInputElement).value);
-										setNameError("");
-									}}
-									styleVariant="medium"
-								/>
-								<Show when={nameError()}>
-									<div class="mt-1">
-										<Alert message={nameError()} type="error" />
-									</div>
-								</Show>
-							</div>
-
-							<div class="flex items-center justify-end">
-								<Button
-									loading={isLoading()}
-									loadingContent={() => <span>Creating...</span>}
-									variant={ButtonVariant.Contained}
-									class="w-full py-4 text-base font-semibold"
-									type="submit"
-								>
-									Create Workspace
-								</Button>
-							</div>
-						</div>
-					</form>
-
-					{/* Footer */}
-					<div class="absolute bottom-6 left-0 right-0 text-center">
-						<p class="text-gray-500 text-xs">
-							&copy; {new Date().getFullYear()} Patr. All rights reserved.
-						</p>
+				<form
+					noValidate
+					onSubmit={onCreateWorkspace}
+					class="bg-secondary p-12 rounded-sm shadow-2xl w-full max-w-128 relative flex flex-col items-start justify-start gap-3 z-10 border border-secondary-medium"
+				>
+					<div class="text-left">
+						<h1 class="text-2xl font-bold text-white">Create Workspace</h1>
+						<p class="text-gray-400 text-sm">Set up your workspace to get started with Patr.</p>
 					</div>
-				</main>
-			</Suspense>
+
+					<div class="w-full">
+						<div class="w-full mb-4">
+							<Input
+								type={InputType.Text}
+								placeholder="Enter your workspace name"
+								name="workspace-name"
+								id="workspace-name"
+								value={workspaceName}
+								onInput={(e: Event) => {
+									setWorkspaceName((e.currentTarget as HTMLInputElement).value);
+									setNameError("");
+								}}
+								onBlur={() => checkName()}
+								error={nameError}
+								styleVariant="medium"
+							/>
+						</div>
+
+						<div class="flex items-center justify-end">
+							<Button
+								loading={isLoading()}
+								loadingContent={() => <span>Creating...</span>}
+								variant={ButtonVariant.Contained}
+								class="w-full py-4 text-base font-semibold"
+								type="submit"
+							>
+								Create Workspace
+							</Button>
+						</div>
+					</div>
+				</form>
+
+				{/* Footer */}
+				<div class="absolute bottom-6 left-0 right-0 text-center">
+					<p class="text-gray-500 text-xs">
+						&copy; {new Date().getFullYear()} Patr. All rights reserved.
+					</p>
+				</div>
+			</main>
 		</>
 	);
 };

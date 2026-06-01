@@ -1,6 +1,15 @@
 import { useNavigate } from "@tanstack/solid-router";
 import { createEffect, ErrorBoundary, Show } from "solid-js";
-import { CopyableField, CopyableFieldVariant, EmptyState, Pagination, StatusChip, Table } from "~/components";
+import {
+	CopyableField,
+	CopyableFieldVariant,
+	EmptyState,
+	Pagination,
+	StatusChip,
+	Table,
+	TableRow,
+	TableCell,
+} from "~/components";
 import { createPaginationState } from "~/hooks";
 import { useRunnerDeploymentsQuery } from "~/hooks/fetch";
 import DeploymentImageName from "~/components/deployment-image-name";
@@ -47,11 +56,11 @@ const RunnerDeployments = (props: RunnerDeploymentsProps) => {
 					rows={deploymentsQuery.data?.deployments || []}
 					headings={["ID", "Name", "Status", "Image"]}
 					renderRow={(item) => (
-						<tr
+						<TableRow
 							onClick={() => navigate({ to: `/deployments/${item.id}` })}
-							class="table-row cursor-pointer"
+							aria-label={`Open deployment ${item.name}`}
 						>
-							<td class="flex-3 flex items-center justify-center min-w-0">
+							<TableCell index={0} align="center">
 								<CopyableField
 									variant={CopyableFieldVariant.Text}
 									value={item.id}
@@ -59,17 +68,17 @@ const RunnerDeployments = (props: RunnerDeploymentsProps) => {
 									innerClass="text-white"
 									buttonPosition="start"
 								/>
-							</td>
-							<td class="flex-3 flex items-center justify-center min-w-0">
+							</TableCell>
+							<TableCell index={1} align="center">
 								<span class="truncate">{item.name}</span>
-							</td>
-							<td class="flex-2 flex items-center justify-center min-w-0">
+							</TableCell>
+							<TableCell index={2} align="center">
 								<StatusChip status={item.status} />
-							</td>
-							<td class="flex-4 flex items-center justify-start min-w-0">
+							</TableCell>
+							<TableCell index={3}>
 								<DeploymentImageName item={item} />
-							</td>
-						</tr>
+							</TableCell>
+						</TableRow>
 					)}
 				/>
 				<Pagination

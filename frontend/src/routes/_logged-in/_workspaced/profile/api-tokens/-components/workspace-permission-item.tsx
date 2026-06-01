@@ -1,5 +1,5 @@
 import { createEffect, createMemo, createSignal, Show } from "solid-js";
-import { Checkbox, Radio, Table } from "~/components";
+import { Checkbox, Radio, Table, TableRow, TableCell } from "~/components";
 import { ResourcePermissionType, WithId, Workspace, WorkspacePermission } from "~/bindings";
 import PermissionSelector from "~/routes/_logged-in/_workspaced/workspace/roles/-components/permission-selector";
 import { usePermissionsQuery } from "~/hooks/fetch";
@@ -110,14 +110,14 @@ const WorkspacePermissionItem = (props: WorkspacePermissionItemProps) => {
 										a.permission.localeCompare(b.permission)
 								)}
 								renderRow={(perm) => (
-									<tr class="table-row">
-										<td class="flex-4 flex items-center justify-center">
+									<TableRow>
+										<TableCell index={0} align="center">
 											<span class="truncate">{parseCamelCase(perm.resourceType)}</span>
-										</td>
-										<td class="flex-3 flex items-center justify-center">
+										</TableCell>
+										<TableCell index={1} align="center">
 											<span>{parseCamelCase(perm.permission)}</span>
-										</td>
-										<td class="flex-4 flex items-center justify-center">
+										</TableCell>
+										<TableCell index={2} align="center">
 											<Show
 												when={perm.resources.length > 0}
 												fallback={<span class="text-gray-400">All resources</span>}
@@ -128,18 +128,22 @@ const WorkspacePermissionItem = (props: WorkspacePermissionItemProps) => {
 													{perm.resources.length !== 1 ? "s" : ""}
 												</span>
 											</Show>
-										</td>
-										<td
-											class="flex-1 cursor-pointer"
-											onClick={() => {
-												const newPermissionsData = { ...permissionsData() };
-												delete newPermissionsData[perm.permissionId];
-												setPermissionsData(newPermissionsData);
-											}}
-										>
-											<FiTrash2 color="red" />
-										</td>
-									</tr>
+										</TableCell>
+										<TableCell index={3} align="center">
+											<button
+												type="button"
+												aria-label="Remove permission"
+												class="cursor-pointer"
+												onClick={() => {
+													const newPermissionsData = { ...permissionsData() };
+													delete newPermissionsData[perm.permissionId];
+													setPermissionsData(newPermissionsData);
+												}}
+											>
+												<FiTrash2 color="red" />
+											</button>
+										</TableCell>
+									</TableRow>
 								)}
 							/>
 						</Show>

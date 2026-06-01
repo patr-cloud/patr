@@ -14,6 +14,8 @@ import {
 	PageContainerBody,
 	Pagination,
 	Table,
+	TableRow,
+	TableCell,
 	useToast,
 } from "~/components";
 import { Color } from "~/utils/color";
@@ -63,16 +65,16 @@ const RoleRow = (props: { role: WithId<Role>; onDeleted: () => void }) => {
 	};
 
 	return (
-		<tr role="row" class="table-row">
-			<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
+		<TableRow>
+			<TableCell index={0}>
 				<span class="truncate font-medium text-white">{props.role.name}</span>
-			</td>
-			<td role="cell" class="flex-5 flex items-center justify-start min-w-0">
+			</TableCell>
+			<TableCell index={1}>
 				<span class={props.role.description ? "truncate" : "truncate text-grey italic"}>
 					{props.role.description || "No description"}
 				</span>
-			</td>
-			<td role="cell" class="flex-3 flex items-center justify-center min-w-0">
+			</TableCell>
+			<TableCell index={2} align="center">
 				<Link
 					href={`/workspace/roles/${props.role.id}`}
 					buttonVariant={ButtonVariant.Plain}
@@ -80,8 +82,8 @@ const RoleRow = (props: { role: WithId<Role>; onDeleted: () => void }) => {
 				>
 					Manage Role
 				</Link>
-			</td>
-			<td role="cell" class="flex-1 flex items-center justify-center min-w-0">
+			</TableCell>
+			<TableCell index={3} align="center">
 				<DeleteModal
 					title={`Delete Role "${props.role.name}"`}
 					resourceName={props.role.name}
@@ -105,8 +107,8 @@ const RoleRow = (props: { role: WithId<Role>; onDeleted: () => void }) => {
 						);
 					}}
 				/>
-			</td>
-		</tr>
+			</TableCell>
+		</TableRow>
 	);
 };
 

@@ -28,18 +28,16 @@ const extractItems = (data: Record<string, { id: string; name: string }[]>) => {
 	);
 };
 
-const ListResources = (props: {
-	workspaceId: MaybeAccessor<string>;
-	resourceType: MaybeAccessor<string>;
-	selectedResources: MaybeAccessor<Set<string>>;
-	toggleResource: (resourceId: string) => void;
-}) => {
+export const useResourceListQuery = (
+	workspaceId: MaybeAccessor<string>,
+	resourceType: MaybeAccessor<string>
+) => {
 	const [authState] = useAuthState();
 
-	const resourcesQuery = createInfiniteQuery(() => {
+	return createInfiniteQuery(() => {
 		const auth = authState();
-		const wsId = get(props.workspaceId);
-		const type = get(props.resourceType);
+		const wsId = get(workspaceId);
+		const type = get(resourceType);
 		const endpoint = type ? getResourceEndpoint(type) : undefined;
 		return {
 			queryKey: resourceKeys.list(wsId ?? "", type ?? ""),
@@ -69,6 +67,18 @@ const ListResources = (props: {
 			},
 		};
 	});
+};
+
+const ListResources = (props: {
+	workspaceId: MaybeAccessor<string>;
+	resourceType: MaybeAccessor<string>;
+	selectedResources: MaybeAccessor<Set<string>>;
+	toggleResource: (resourceId: string) => void;
+}) => {
+	const resourcesQuery = useResourceListQuery(
+		() => get(props.workspaceId),
+		() => get(props.resourceType)
+	);
 
 	const allResources = () => resourcesQuery.data?.pages.flatMap((page) => page.items) ?? [];
 

@@ -15,7 +15,7 @@ import InputLabel from "~/components/input-label";
 import InputDropdown from "~/components/input-dropdown";
 import InputDropdownCheckBox from "~/components/input-dropdown-checkbox";
 import { ButtonVariant, CopyableFieldVariant } from "~/utils/color";
-import Table from "~/components/table";
+import Table, { TableRow, TableCell } from "~/components/table";
 import StatusBadge from "~/components/status-badge";
 import ContainerGrid from "~/components/container-grid";
 import BgOnboard from "~/components/bg-onboard";
@@ -63,6 +63,8 @@ export {
 	InputDropdown,
 	InputDropdownCheckBox,
 	Table,
+	TableRow,
+	TableCell,
 	StatusBadge,
 	ContainerGrid,
 	ToastProvider,

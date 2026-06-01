@@ -1,10 +1,11 @@
-import { FiTrash2 } from "solid-icons/fi";
+import { FiTrash2, FiUpload } from "solid-icons/fi";
 import { createEffect, createMemo, createSignal, createUniqueId, Index, Show } from "solid-js";
 import { EnvironmentVariableValue } from "~/bindings";
 import { Button, ButtonVariant, Input, InputType, InputLabel } from "~/components";
 import { Color } from "~/utils/color";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
+import EnvUploadModal from "./env-upload-modal";
 
 interface EnvInputProps {
 	/** Current environment variables (source of truth). */
@@ -126,6 +127,34 @@ const EnvInput = (props: EnvInputProps) => {
 		});
 	};
 
+	const [uploadOpen, setUploadOpen] = createSignal(false);
+
+	const applyUploadedEnvs = (entries: Array<{ key: string; value: string }>) => {
+		const pending = new Map(entries.map((e) => [e.key, e.value] as const));
+		setRows((prev) => {
+			const next: Row[] = [];
+			for (const row of prev) {
+				if (row.key !== "" && pending.has(row.key)) {
+					next.push({ ...row, value: pending.get(row.key)! });
+					pending.delete(row.key);
+				} else {
+					next.push(row);
+				}
+			}
+			// Drop any trailing draft row before appending the new entries.
+			while (next.length > 0) {
+				const last = next[next.length - 1];
+				if (last.key === "" && valueIsEmpty(last.value)) next.pop();
+				else break;
+			}
+			for (const [key, value] of pending) {
+				next.push({ id: createUniqueId(), key, value });
+			}
+			next.push(makeDraftRow());
+			return next;
+		});
+	};
+
 	const handleBlur = (id: string) => {
 		setRows((prev) => {
 			const row = prev.find((r) => r.id === id);
@@ -142,7 +171,7 @@ const EnvInput = (props: EnvInputProps) => {
 		<div class={`flex gap-8 items-start w-full ${get(props.class) ?? ""}`}>
 			<InputLabel parentClass="flex-2 pt-2.5" label="Environment Variables" />
 
-			<div class="flex flex-col flex-10 gap-4 w-full">
+			<div class="flex flex-col flex-10 gap-1 w-full">
 				<Index each={rows()}>
 					{(row) => {
 						const errs = () => rowError(row());
@@ -207,23 +236,36 @@ const EnvInput = (props: EnvInputProps) => {
 								</div>
 
 								<Show when={keyErr() || valueErr()}>
-									<div class="flex gap-4 pl-0 text-error text-sm">
+									<div class="flex flex-col gap-0.5 text-error text-sm">
 										<Show when={keyErr()}>
-											<span class="flex-5">{keyErr()}</span>
-										</Show>
-										<Show when={!keyErr()}>
-											<span class="flex-5" />
+											<span>{keyErr()}</span>
 										</Show>
 										<Show when={valueErr()}>
-											<span class="flex-7">{valueErr()}</span>
+											<span>{valueErr()}</span>
 										</Show>
-										<span class="flex-1" />
 									</div>
 								</Show>
 							</div>
 						);
 					}}
 				</Index>
+
+				<Show when={!get(props.disabled)}>
+					<Button
+						type="button"
+						variant={ButtonVariant.Plain}
+						onClick={() => setUploadOpen(true)}
+						class="self-start mt-1 flex items-center gap-2 text-sm cursor-pointer"
+					>
+						<FiUpload size={14} />
+						Upload your .env file
+					</Button>
+					<EnvUploadModal
+						isOpen={uploadOpen}
+						setIsOpen={setUploadOpen}
+						onSubmit={applyUploadedEnvs}
+					/>
+				</Show>
 			</div>
 		</div>
 	);

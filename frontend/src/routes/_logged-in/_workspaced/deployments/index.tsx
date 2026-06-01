@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createEffect, createMemo, ErrorBoundary, Show, Suspense } from "solid-js";
+import { createEffect, createMemo, ErrorBoundary, For, Show, Suspense } from "solid-js";
 import { Deployment, WithId } from "~/bindings";
 import {
 	Button,
@@ -17,20 +17,22 @@ import {
 	Pagination,
 	StatusChip,
 	Table,
+	TableRow,
+	TableCell,
 } from "~/components";
 import { useDeploymentsQuery, useRunnersQuery } from "~/hooks/fetch";
 import { useIsAllowed, createPaginationState } from "~/hooks";
 import DeploymentImageName from "~/components/deployment-image-name";
 
-const DeploymentListRow = (props: { item: WithId<Deployment>; runnerName: string }) => {
+const DeploymentCard = (props: { item: WithId<Deployment>; runnerName: string }) => {
 	const navigate = useNavigate();
-
 	const goToDetail = () => navigate({ to: `/deployments/${props.item.id}` });
 
 	return (
-		<tr
-			role="row"
+		<article
+			role="button"
 			tabIndex={0}
+			aria-label={`Open deployment ${props.item.name}`}
 			onClick={goToDetail}
 			onKeyDown={(e) => {
 				if (e.key === "Enter" || e.key === " ") {
@@ -38,29 +40,61 @@ const DeploymentListRow = (props: { item: WithId<Deployment>; runnerName: string
 					goToDetail();
 				}
 			}}
-			class="table-row cursor-pointer focus-visible:outline-primary"
+			class="bg-secondary-light rounded-xs p-md border border-border-color cursor-pointer hover:bg-secondary-medium focus-visible:outline-2 focus-visible:outline-primary focus-visible:-outline-offset-2 transition-colors"
 		>
-			<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
-				<span class="truncate font-medium text-white">{props.item.name}</span>
-			</td>
-			<td role="cell" class="flex-2 flex items-center justify-center min-w-0">
+			<div class="flex justify-between items-start gap-2 mb-2">
+				<h3 class="font-medium text-white truncate min-w-0">{props.item.name}</h3>
 				<StatusChip status={props.item.status} />
-			</td>
-			<td role="cell" class="flex-2 flex items-center justify-start min-w-0">
+			</div>
+			<dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs text-grey">
+				<dt>Runner</dt>
+				<dd class="text-white truncate">{props.runnerName}</dd>
+				<dt>Image</dt>
+				<dd class="text-white truncate">
+					<DeploymentImageName item={props.item} />
+				</dd>
+				<dt>ID</dt>
+				<dd class="min-w-0" onClick={(e) => e.stopPropagation()}>
+					<CopyableField
+						variant={CopyableFieldVariant.Text}
+						value={props.item.id}
+						class="truncate"
+						innerClass="text-grey font-log text-xs"
+					/>
+				</dd>
+			</dl>
+		</article>
+	);
+};
+
+const DeploymentListRow = (props: { item: WithId<Deployment>; runnerName: string }) => {
+	const navigate = useNavigate();
+
+	const goToDetail = () => navigate({ to: `/deployments/${props.item.id}` });
+
+	return (
+		<TableRow onClick={goToDetail} aria-label={`Open deployment ${props.item.name}`}>
+			<TableCell index={0}>
+				<span class="truncate font-medium text-white">{props.item.name}</span>
+			</TableCell>
+			<TableCell index={1} align="center">
+				<StatusChip status={props.item.status} />
+			</TableCell>
+			<TableCell index={2}>
 				<span class="truncate">{props.runnerName}</span>
-			</td>
-			<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
+			</TableCell>
+			<TableCell index={3}>
 				<DeploymentImageName item={props.item} />
-			</td>
-			<td role="cell" class="flex-2 flex items-center justify-start min-w-0">
+			</TableCell>
+			<TableCell index={4}>
 				<CopyableField
 					variant={CopyableFieldVariant.Text}
 					value={props.item.id}
 					class="truncate"
 					innerClass="text-grey font-log text-xs"
 				/>
-			</td>
-		</tr>
+			</TableCell>
+		</TableRow>
 	);
 };
 
@@ -157,17 +191,29 @@ const ListDeploymentsPage = () => {
 									/>
 								}
 							>
-								<Table
-									column_grids={["flex-3", "flex-2", "flex-2", "flex-3", "flex-2"]}
-									rows={deploymentsQuery.data?.deployments || []}
-									headings={["Name", "Status", "Runner", "Image", "ID"]}
-									renderRow={(item) => (
-										<DeploymentListRow
-											item={item}
-											runnerName={runnerNameMap().get(item.runner) ?? "Unknown"}
-										/>
-									)}
-								/>
+								<div class="md:hidden flex flex-col gap-2">
+									<For each={deploymentsQuery.data?.deployments || []}>
+										{(item) => (
+											<DeploymentCard
+												item={item}
+												runnerName={runnerNameMap().get(item.runner) ?? "Unknown"}
+											/>
+										)}
+									</For>
+								</div>
+								<div class="hidden md:block">
+									<Table
+										column_grids={["flex-3", "flex-2", "flex-2", "flex-3", "flex-2"]}
+										rows={deploymentsQuery.data?.deployments || []}
+										headings={["Name", "Status", "Runner", "Image", "ID"]}
+										renderRow={(item) => (
+											<DeploymentListRow
+												item={item}
+												runnerName={runnerNameMap().get(item.runner) ?? "Unknown"}
+											/>
+										)}
+									/>
+								</div>
 								<Pagination
 									state={pagination}
 									loading={deploymentsQuery.isFetching}

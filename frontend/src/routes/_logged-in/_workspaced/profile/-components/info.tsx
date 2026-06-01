@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/solid-query";
 import TwoFactorAuthModal from "./two-fa";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
+import { validateFirstName, validateLastName } from "~/utils/validation";
 
 const UserSettingsInfoSection = () => {
 	const [authState] = useAuthState();
@@ -29,6 +30,20 @@ const UserSettingsInfoSection = () => {
 		queryClient.invalidateQueries({ queryKey: userInfoKeys.current() });
 	};
 
+	const [firstNameError, setFirstNameError] = createSignal("");
+	const [lastNameError, setLastNameError] = createSignal("");
+
+	const checkFirstName = (): boolean => {
+		const r = validateFirstName(localInfo()?.firstName ?? "");
+		setFirstNameError(r.valid ? "" : (r.error ?? ""));
+		return r.valid;
+	};
+	const checkLastName = (): boolean => {
+		const r = validateLastName(localInfo()?.lastName ?? "");
+		setLastNameError(r.valid ? "" : (r.error ?? ""));
+		return r.valid;
+	};
+
 	const onUpdateName = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
 		e.preventDefault();
 		const auth = authState();
@@ -37,6 +52,10 @@ const UserSettingsInfoSection = () => {
 			toast("You must be logged in to update your name", "error");
 			return;
 		}
+
+		const okF = checkFirstName();
+		const okL = checkLastName();
+		if (!okF || !okL) return;
 
 		try {
 			const response = await httpRequest(`${import.meta.env.VITE_BASE_URL}/api/user`, {
@@ -76,7 +95,10 @@ const UserSettingsInfoSection = () => {
 						setLocalInfo((prev: GetUserInfoResponse | undefined) =>
 							prev ? { ...prev, firstName: e.currentTarget.value } : undefined
 						);
+						setFirstNameError("");
 					}}
+					onBlur={() => checkFirstName()}
+					error={firstNameError}
 				/>
 				<Input
 					value={localInfo()?.lastName || ""}
@@ -90,7 +112,10 @@ const UserSettingsInfoSection = () => {
 						setLocalInfo((prev: GetUserInfoResponse | undefined) =>
 							prev ? { ...prev, lastName: e.currentTarget.value } : undefined
 						);
+						setLastNameError("");
 					}}
+					onBlur={() => checkLastName()}
+					error={lastNameError}
 				/>
 				<Button type="submit" variant={ButtonVariant.Contained}>
 					Update

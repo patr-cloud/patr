@@ -2,7 +2,17 @@ import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createMemo, createSignal, Show } from "solid-js";
 import { useNavigate } from "@tanstack/solid-router";
-import { Button, ButtonVariant, Input, PageContainer, PageContainerBody, Table, useToast } from "~/components";
+import {
+	Button,
+	ButtonVariant,
+	Input,
+	PageContainer,
+	PageContainerBody,
+	Table,
+	TableRow,
+	TableCell,
+	useToast,
+} from "~/components";
 import { createAuthenticatedAction } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { CreateNewRoleRequest } from "~/bindings/CreateNewRoleRequest";
@@ -14,6 +24,7 @@ import PermissionSelector from "./-components/permission-selector";
 import { usePermissionsQuery, useWorkspaceInfoQuery } from "~/hooks/fetch";
 import { parsePermissionName, parseCamelCase } from "~/utils/func";
 import { FiTrash2 } from "solid-icons/fi";
+import { validateRoleName } from "~/utils/validation";
 
 const CreateRoles = () => {
 	const [workspaceId] = useLastWorkspaceId();
@@ -21,7 +32,14 @@ const CreateRoles = () => {
 	const navigate = useNavigate();
 
 	const [roleName, setRoleName] = createSignal("");
+	const [nameError, setNameError] = createSignal("");
 	const [roleDescription, setRoleDescription] = createSignal("");
+
+	const checkName = (): boolean => {
+		const r = validateRoleName(roleName());
+		setNameError(r.valid ? "" : (r.error ?? ""));
+		return r.valid;
+	};
 	const [permissionsData, setPermissionsData] = createSignal<{ [key: string]: ResourcePermissionType }>({});
 
 	const allPermissionsQuery = usePermissionsQuery(() => workspaceId()!);
@@ -53,10 +71,7 @@ const CreateRoles = () => {
 	const workspaceInfoQuery = useWorkspaceInfoQuery();
 
 	const { execute: handleSubmit, isLoading: isSubmitting } = createAuthenticatedAction(async ({ workspaceId }) => {
-		if (!roleName().trim()) {
-			toast("Please enter a role name", "error");
-			return;
-		}
+		if (!checkName()) return;
 
 		if (Object.keys(permissionsData()).length === 0) {
 			toast("Please select at least one permission", "error");
@@ -99,10 +114,16 @@ const CreateRoles = () => {
 						<div class="flex flex-col gap-2">
 							<label class="text-white text-sm">Role Name</label>
 							<Input
+								id="role-name"
 								type="text"
 								placeholder="Enter Name"
 								value={roleName()}
-								onInput={(e) => setRoleName(e.currentTarget.value)}
+								onInput={(e) => {
+									setRoleName(e.currentTarget.value);
+									setNameError("");
+								}}
+								onBlur={() => checkName()}
+								error={nameError}
 							/>
 						</div>
 
@@ -133,14 +154,14 @@ const CreateRoles = () => {
 											a.action.localeCompare(b.action)
 									)}
 									renderRow={(perm) => (
-										<tr class="table-row">
-											<td class="flex-4 flex items-center justify-center">
+										<TableRow>
+											<TableCell index={0} align="center">
 												<span class="truncate">{parseCamelCase(perm.resourceType)}</span>
-											</td>
-											<td class="flex-3 flex items-center justify-center">
+											</TableCell>
+											<TableCell index={1} align="center">
 												<span>{parseCamelCase(perm.action)}</span>
-											</td>
-											<td class="flex-4 flex items-center justify-center">
+											</TableCell>
+											<TableCell index={2} align="center">
 												<Show
 													when={perm.resources.length > 0}
 													fallback={<span class="text-gray-400">All resources</span>}
@@ -151,18 +172,25 @@ const CreateRoles = () => {
 														{perm.resources.length !== 1 ? "s" : ""}
 													</span>
 												</Show>
-											</td>
-											<td
-												class="flex-1 cursor-pointer"
-												onClick={() => {
-													const newPermissionsData = { ...permissionsData() };
-													delete newPermissionsData[perm.permissionId];
-													setPermissionsData(newPermissionsData);
-												}}
+											</TableCell>
+											<TableCell
+												index={3}
+												align="center"
+												class="cursor-pointer"
 											>
-												<FiTrash2 color="red" />
-											</td>
-										</tr>
+												<button
+													type="button"
+													aria-label="Remove permission"
+													onClick={() => {
+														const newPermissionsData = { ...permissionsData() };
+														delete newPermissionsData[perm.permissionId];
+														setPermissionsData(newPermissionsData);
+													}}
+												>
+													<FiTrash2 color="red" />
+												</button>
+											</TableCell>
+										</TableRow>
 									)}
 								/>
 							</Show>

@@ -1,6 +1,6 @@
-import { Button, ButtonVariant, Table, useToast } from "~/components";
+import { Button, ButtonVariant, Table, TableRow, TableCell, useToast } from "~/components";
 import PermissionSelector from "./permission-selector";
-import { createEffect, createMemo, createSignal, Show, Suspense } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Show, Suspense } from "solid-js";
 import { useParams } from "@tanstack/solid-router";
 import { httpRequest } from "~/utils/http-request";
 import { UpdateRoleRequest } from "~/bindings/UpdateRoleRequest";
@@ -10,8 +10,92 @@ import { ResourcePermissionType } from "~/bindings";
 import { usePermissionsQuery, useRoleInfoQuery } from "~/hooks/fetch";
 import { roleKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
-import { FiTrash2 } from "solid-icons/fi";
+import { FiTrash2, FiX } from "solid-icons/fi";
 import { parsePermissionName, parseCamelCase } from "~/utils/func";
+import { useResourceListQuery } from "~/components/list-resources";
+
+const MAX_AUTO_PAGES = 10;
+
+const ResourcesCell = (props: {
+	workspaceId: string;
+	resourceType: string;
+	resourceIds: string[];
+	permissionType: "include" | "exclude";
+	onRemove: (resourceId: string) => void;
+}) => {
+	const resourcesQuery = useResourceListQuery(
+		() => props.workspaceId,
+		() => props.resourceType
+	);
+
+	const nameMap = createMemo(() => {
+		const map = new Map<string, string>();
+		resourcesQuery.data?.pages.forEach((page) => {
+			page.items.forEach((item) => map.set(item.id, item.name));
+		});
+		return map;
+	});
+
+	const unresolvedCount = createMemo(() => {
+		const map = nameMap();
+		return props.resourceIds.filter((id) => !map.has(id)).length;
+	});
+
+	let autoPagesFetched = 0;
+	createEffect(() => {
+		if (
+			unresolvedCount() > 0 &&
+			resourcesQuery.hasNextPage &&
+			!resourcesQuery.isFetchingNextPage &&
+			autoPagesFetched < MAX_AUTO_PAGES
+		) {
+			autoPagesFetched += 1;
+			resourcesQuery.fetchNextPage();
+		}
+	});
+
+	return (
+		<div class="flex flex-wrap items-center gap-1.5">
+			<span class="text-sm text-gray-400 mr-1">
+				{props.permissionType === "include" ? "Only:" : "All except:"}
+			</span>
+			<For each={props.resourceIds}>
+				{(id) => {
+					const resolved = () => nameMap().get(id);
+					const label = () => resolved() ?? `${id.slice(0, 8)}…`;
+					return (
+						<span class={`chip-tag ${resolved() ? "" : "opacity-60"}`}>
+							{label()}
+							<button
+								type="button"
+								class="flex items-center justify-center w-4 h-4 rounded-sm bg-white/10 hover:bg-white/20 transition-colors"
+								aria-label={`Remove ${label()}`}
+								onClick={(e) => {
+									e.stopPropagation();
+									props.onRemove(id);
+								}}
+							>
+								<FiX size={10} color="#9ca3af" />
+							</button>
+						</span>
+					);
+				}}
+			</For>
+			<Show when={unresolvedCount() > 0 && resourcesQuery.hasNextPage}>
+				<button
+					type="button"
+					class="text-xs text-primary hover:underline disabled:opacity-50"
+					disabled={resourcesQuery.isFetchingNextPage}
+					onClick={() => resourcesQuery.fetchNextPage()}
+				>
+					{resourcesQuery.isFetchingNextPage
+						? "Loading…"
+						: `+ Show ${unresolvedCount()} more`}
+				</button>
+			</Show>
+		</div>
+	);
+};
 
 const EditPermissions = () => {
 	const [permissionsData, setPermissionsData] = createSignal<{ [key: string]: ResourcePermissionType }>({});
@@ -116,25 +200,49 @@ const EditPermissions = () => {
 						(a, b) => a.resourceType.localeCompare(b.resourceType) || a.action.localeCompare(b.action)
 					)}
 					renderRow={(perm) => (
-						<tr role="row" class="table-row">
-							<td role="cell" class="flex-4 flex items-center justify-start">
+						<TableRow>
+							<TableCell index={0}>
 								<span class="truncate">{parseCamelCase(perm.resourceType)}</span>
-							</td>
-							<td role="cell" class="flex-3 flex items-center justify-start">
+							</TableCell>
+							<TableCell index={1}>
 								<span>{parseCamelCase(perm.action)}</span>
-							</td>
-							<td role="cell" class="flex-4 flex items-center justify-start">
+							</TableCell>
+							<TableCell index={2}>
 								<Show
 									when={perm.resources.length > 0}
 									fallback={<span class="text-gray-400">All resources</span>}
 								>
-									<span class="text-sm">
-										{perm.permissionType === "include" ? "Only " : "All except "}
-										{perm.resources.length} resource{perm.resources.length !== 1 ? "s" : ""}
-									</span>
+									<ResourcesCell
+										workspaceId={workspaceId()!}
+										resourceType={perm.resourceType}
+										resourceIds={perm.resources}
+										permissionType={perm.permissionType as "include" | "exclude"}
+										onRemove={(resourceId) => {
+											setPermissionsData((prev) => {
+												const current = prev[perm.permissionId];
+												if (!current) return prev;
+												const nextResources = current.resources.filter((r) => r !== resourceId);
+												if (
+													current.permissionType === "include" &&
+													nextResources.length === 0
+												) {
+													const next = { ...prev };
+													delete next[perm.permissionId];
+													return next;
+												}
+												return {
+													...prev,
+													[perm.permissionId]: {
+														...current,
+														resources: nextResources,
+													},
+												};
+											});
+										}}
+									/>
 								</Show>
-							</td>
-							<td role="cell" class="flex-1 flex items-center justify-center">
+							</TableCell>
+							<TableCell index={3} align="center">
 								<button
 									type="button"
 									aria-label="Remove permission"
@@ -147,8 +255,8 @@ const EditPermissions = () => {
 								>
 									<FiTrash2 size={16} />
 								</button>
-							</td>
-						</tr>
+							</TableCell>
+						</TableRow>
 					)}
 				/>
 			</div>

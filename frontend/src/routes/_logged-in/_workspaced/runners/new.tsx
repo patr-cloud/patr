@@ -1,9 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createSignal, Show } from "solid-js";
+import { createSignal } from "solid-js";
 import { AddRunnerToWorkspaceResponse } from "~/bindings";
 import {
-	Alert,
 	Button,
 	ButtonVariant,
 	Input,
@@ -16,6 +15,7 @@ import {
 } from "~/components";
 import { createFormAction } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
+import { validateRunnerName } from "~/utils/validation";
 
 const CreateRunnerPage = () => {
 	const [name, setName] = createSignal<string>("");
@@ -23,11 +23,14 @@ const CreateRunnerPage = () => {
 	const navigate = useNavigate();
 	const toast = useToast();
 
+	const checkName = (): boolean => {
+		const r = validateRunnerName(name());
+		setNameError(r.valid ? "" : (r.error ?? ""));
+		return r.valid;
+	};
+
 	const { onSubmit, isLoading } = createFormAction(async ({ workspaceId }) => {
-		if (!name().trim()) {
-			setNameError("Runner name is required.");
-			return;
-		}
+		if (!checkName()) return;
 
 		const response = await httpRequest<AddRunnerToWorkspaceResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/runner`,
@@ -79,12 +82,9 @@ const CreateRunnerPage = () => {
 										setName(e.currentTarget.value);
 										setNameError("");
 									}}
+									onBlur={() => checkName()}
+									error={nameError}
 								/>
-								<Show when={nameError()}>
-									<div class="mt-1">
-										<Alert message={nameError()} type="error" />
-									</div>
-								</Show>
 							</div>
 						</div>
 

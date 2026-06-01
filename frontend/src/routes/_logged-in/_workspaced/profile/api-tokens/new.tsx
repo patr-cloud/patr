@@ -21,6 +21,7 @@ import { CreateApiTokenRequest, CreateApiTokenResponse, WorkspacePermission } fr
 import { useNavigate } from "@tanstack/solid-router";
 import ApiTokenModal from "./-components/api-token-modal";
 import WorkspacePermissionItem from "./-components/workspace-permission-item";
+import { validateApiTokenName, validateIp } from "~/utils/validation";
 
 const CreateApiTokens = () => {
 	const [authState] = useAuthState();
@@ -34,29 +35,32 @@ const CreateApiTokens = () => {
 	const workspacesQuery = useWorkspacesQuery();
 
 	const [name, setName] = createSignal<string>("");
+	const [nameError, setNameError] = createSignal("");
 	const [allowedIps, setAllowedIps] = createSignal<string[]>([]);
 	const [fromDate, setFromDate] = createSignal<Date | null>(null);
 	const [toDate, setToDate] = createSignal<Date | null>(null);
+	const [dateError, setDateError] = createSignal("");
 
-	const validateIp = (value: string): string | undefined => {
-		// Match IPv4, IPv4/CIDR, IPv6, IPv6/CIDR
-		const ipv4 = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/;
-		const ipv6 = /^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(\/\d{1,3})?$/;
-		if (!ipv4.test(value) && !ipv6.test(value)) {
-			return "Invalid IP address or CIDR notation";
+	const checkName = (): boolean => {
+		const r = validateApiTokenName(name());
+		setNameError(r.valid ? "" : (r.error ?? ""));
+		return r.valid;
+	};
+
+	const checkDates = (): boolean => {
+		const f = fromDate();
+		const t = toDate();
+		const now = new Date();
+		if (t && t <= now) {
+			setDateError("Valid-to must be in the future.");
+			return false;
 		}
-		// Validate IPv4 octets
-		if (ipv4.test(value)) {
-			const [ip, cidr] = value.split("/");
-			const octets = ip.split(".").map(Number);
-			if (octets.some((o) => o < 0 || o > 255)) {
-				return "Invalid IP address: octets must be 0-255";
-			}
-			if (cidr !== undefined && (Number(cidr) < 0 || Number(cidr) > 32)) {
-				return "Invalid CIDR: must be 0-32 for IPv4";
-			}
+		if (f && t && f > t) {
+			setDateError("Valid-from must be on or before Valid-to.");
+			return false;
 		}
-		return undefined;
+		setDateError("");
+		return true;
 	};
 
 	const [enabledWorkspaces, setEnabledWorkspaces] = createSignal<Set<string>>(new Set());
@@ -90,6 +94,8 @@ const CreateApiTokens = () => {
 			toast("User is not logged in", "error");
 			return;
 		}
+
+		if (!checkName() || !checkDates()) return;
 
 		const perms = workspacePermissions();
 		if (Object.keys(perms).length === 0) {
@@ -153,10 +159,14 @@ const CreateApiTokens = () => {
 							<div class="flex gap-8 items-center w-full">
 								<InputLabel parentClass="flex-2" for="token-name" label="Token Name" />
 								<Input
+									id="token-name"
 									value={name()}
 									onInput={(e) => {
 										setName(e.currentTarget.value);
+										setNameError("");
 									}}
+									onBlur={() => checkName()}
+									error={nameError}
 									class="flex-10"
 									name="token-name"
 									placeholder="Enter Token Name"
@@ -186,30 +196,39 @@ const CreateApiTokens = () => {
 									comments="By default, the token will be valid forever from the date created."
 								/>
 
-								<div class="flex items-center flex-10 gap-4">
-									<InputLabel parentClass="flex-2" for="token-validity-from" label="Valid From" />
-									<Input
-										class="flex-10"
-										value={fromDate() ? (fromDate()?.toISOString().split("T")[0] ?? "") : ""}
-										onInput={(e) => {
-											setFromDate(e.currentTarget.valueAsDate);
-										}}
-										name="token-validity"
-										placeholder="Enter Token Validity in days"
-										type={InputType.Date}
-									/>
+								<div class="flex flex-col flex-10 gap-1">
+									<div class="flex items-center gap-4">
+										<InputLabel parentClass="flex-2" for="token-validity-from" label="Valid From" />
+										<Input
+											id="token-validity-from"
+											class="flex-10"
+											value={fromDate() ? (fromDate()?.toISOString().split("T")[0] ?? "") : ""}
+											onInput={(e) => {
+												setFromDate(e.currentTarget.valueAsDate);
+												setDateError("");
+											}}
+											onBlur={() => checkDates()}
+											name="token-validity"
+											placeholder="Enter Token Validity in days"
+											type={InputType.Date}
+										/>
 
-									<InputLabel parentClass="flex-2 items-center" for="token-validity-to" label="to" />
-									<Input
-										onInput={(e) => {
-											setToDate(e.currentTarget.valueAsDate);
-										}}
-										value={toDate() ? toDate()!.toISOString().split("T")[0] : ""}
-										class="flex-10"
-										name="token-validity"
-										placeholder="Enter Token Validity in days"
-										type={InputType.Date}
-									/>
+										<InputLabel parentClass="flex-2 items-center" for="token-validity-to" label="to" />
+										<Input
+											id="token-validity-to"
+											onInput={(e) => {
+												setToDate(e.currentTarget.valueAsDate);
+												setDateError("");
+											}}
+											onBlur={() => checkDates()}
+											value={toDate() ? toDate()!.toISOString().split("T")[0] : ""}
+											class="flex-10"
+											name="token-validity"
+											placeholder="Enter Token Validity in days"
+											type={InputType.Date}
+											error={dateError}
+										/>
+									</div>
 								</div>
 							</div>
 

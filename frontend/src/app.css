@@ -262,7 +262,7 @@ body {
 
 .table-row {
 	@apply border border-border-color min-h-10
-    flex items-center justify-center w-full px-xl
+    flex items-center justify-center w-full px-md md:px-xl
     bg-secondary-light last-of-type:rounded-b-xs hover:bg-secondary-medium;
 	transition:
 		background-color 150ms ease,

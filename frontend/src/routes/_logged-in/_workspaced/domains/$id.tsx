@@ -20,6 +20,8 @@ import {
 	PageContainerBody,
 	PageContainerHead,
 	Table,
+	TableRow,
+	TableCell,
 	useToast,
 } from "~/components";
 import { createAuthenticatedAction, createFormAction } from "~/hooks";
@@ -346,28 +348,28 @@ const DomainInfo = () => {
 											},
 										]}
 										renderRow={(record) => (
-											<tr class="table-row text-sm">
-												<td class="flex-2 pl-3 flex items-center justify-center">
+											<TableRow class="text-sm">
+												<TableCell index={0} align="center" class="pl-3">
 													<CopyableField
 														value={record.type}
 														variant={CopyableFieldVariant.Text}
 													/>
-												</td>
-												<td class="flex-5 flex items-center justify-center min-w-0">
+												</TableCell>
+												<TableCell index={1} align="center">
 													<CopyableField
 														value={record.name}
 														variant={CopyableFieldVariant.Text}
 														innerClass="max-w-full"
 													/>
-												</td>
-												<td class="flex-5 pl-20 flex items-center justify-center min-w-0">
+												</TableCell>
+												<TableCell index={2} align="center" class="pl-20">
 													<CopyableField
 														value={record.target}
 														variant={CopyableFieldVariant.Text}
 														innerClass="max-w-full"
 													/>
-												</td>
-											</tr>
+												</TableCell>
+											</TableRow>
 										)}
 									/>
 								</div>

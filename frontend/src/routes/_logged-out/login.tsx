@@ -1,7 +1,6 @@
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import {
-	Alert,
 	Button,
 	Input,
 	InputType,
@@ -16,7 +15,7 @@ import { createSignal, Show } from "solid-js";
 import { SocialLoginInitiateResponse, LoginRequest, LoginResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
 import { createAsyncAction, useAuthState } from "~/hooks";
-import { USERNAME_VALIDITY_PATTERN } from "~/utils/validation";
+import { USERNAME_VALIDITY_PATTERN, validateUsername, validateRequired } from "~/utils/validation";
 
 interface InputFields {
 	userId: string;
@@ -53,32 +52,26 @@ const Login = () => {
 		setInputError((prev) => ({ ...prev, [id]: "" }));
 	};
 
+	const validateField = (field: keyof InputFields): boolean => {
+		const v = inputs()[field];
+		let res: { valid: boolean; error?: string };
+		if (field === "userId") res = validateUsername(v);
+		else if (field === "password") res = validateRequired(v, "Password");
+		else res = { valid: true };
+		setInputError((prev) => ({ ...prev, [field]: res.valid ? "" : (res.error ?? "") }));
+		return res.valid;
+	};
+
 	const validateInputs = (): boolean => {
-		const { password } = inputs();
-
-		// FIXME: Poor regex, improve this
-		// if (!USERNAME_VALIDITY_REGEX.test(userId)) {
-		//   setInputError((prev) => ({
-		//     ...prev,
-		//     userId: "Invalid Username format.",
-		//   }));
-		//   return false;
-		// }
-
-		if (password.length === 0) {
-			setInputError((prev) => ({
-				...prev,
-				password: "Password cannot be empty.",
-			}));
-			return false;
-		}
+		const okUser = validateField("userId");
+		const okPass = validateField("password");
 
 		if (!turnstileToken()) {
 			toast("Please complete the security verification", "error");
 			return false;
 		}
 
-		return true;
+		return okUser && okPass;
 	};
 
 	const handleGithubSignIn = async () => {
@@ -201,12 +194,9 @@ const Login = () => {
 						styleVariant="medium"
 						value={inputs().userId}
 						onInput={handleInput}
+						onBlur={() => validateField("userId")}
+						error={() => inputError().userId}
 					/>
-					<Show when={inputError().userId}>
-						<div class="flex justify-start items-center mt-1">
-							<Alert message={inputError().userId} type="error" />
-						</div>
-					</Show>
 
 					<PasswordInput
 						required={true}
@@ -218,12 +208,9 @@ const Login = () => {
 						styleVariant="medium"
 						value={inputs().password}
 						onInput={handleInput}
+						onBlur={() => validateField("password")}
+						error={() => inputError().password}
 					/>
-					<Show when={inputError().password}>
-						<div class="flex justify-start items-center mt-1">
-							<Alert message={inputError().password} type="error" />
-						</div>
-					</Show>
 
 					<Show when={showMfa()}>
 						<p class="mt-4 text-sm text-grey">Enter the 6-digit code from your authenticator app</p>

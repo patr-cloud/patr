@@ -13,6 +13,8 @@ import {
 	PageContainerHead,
 	Pagination,
 	Table,
+	TableRow,
+	TableCell,
 } from "~/components";
 import { createPaginationState } from "~/hooks";
 import { useApiTokensQuery } from "~/hooks/fetch";
@@ -109,32 +111,21 @@ const ListApiTokens = () => {
 									renderRow={(token) => {
 										const goToDetail = () => navigate({ to: `/profile/api-tokens/${token.id}` });
 										return (
-											<tr
-												role="row"
-												tabIndex={0}
-												onClick={goToDetail}
-												onKeyDown={(e) => {
-													if (e.key === "Enter" || e.key === " ") {
-														e.preventDefault();
-														goToDetail();
-													}
-												}}
-												class="table-row cursor-pointer focus-visible:outline-primary"
-											>
-												<td role="cell" class="flex-4 flex items-center justify-start min-w-0">
+											<TableRow onClick={goToDetail} aria-label={`Open API token ${token.name}`}>
+												<TableCell index={0}>
 													<span class="truncate font-medium text-white">{token.name}</span>
-												</td>
-												<td role="cell" class="flex-4 flex items-center justify-start min-w-0">
+												</TableCell>
+												<TableCell index={1}>
 													<span class="text-grey">
 														{formatRelativeTime(token.created) || "Unknown"}
 													</span>
-												</td>
-												<td role="cell" class="flex-4 flex items-center justify-start min-w-0">
+												</TableCell>
+												<TableCell index={2}>
 													<span class="text-grey">
 														{token.tokenExp ? formatRelativeTime(token.tokenExp) : "Never"}
 													</span>
-												</td>
-											</tr>
+												</TableCell>
+											</TableRow>
 										);
 									}}
 								/>

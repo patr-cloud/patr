@@ -1,9 +1,10 @@
-import { FiChevronDown, FiEye, FiEyeOff } from "solid-icons/fi";
+import { FiAlertCircle, FiChevronDown, FiEye, FiEyeOff } from "solid-icons/fi";
 import { createEffect, createSignal, For, mergeProps, onCleanup, Show, JSX } from "solid-js";
 import { Portal } from "solid-js/web";
 import { useClickOutside } from "~/hooks";
 import { get, variantBgClass } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
+import Alert from "./alert";
 
 /// The Type of the input
 const InputType = {
@@ -196,6 +197,11 @@ interface InputProps {
 	 * Receives the suggestion's `value` (not label).
 	 */
 	onSelect?: (value: string) => void;
+	/**
+	 * Validation error message. When set (non-empty), the input renders with an
+	 * error border, marks itself aria-invalid, and shows an Alert below.
+	 */
+	error?: MaybeAccessor<string | undefined>;
 }
 
 const Input = (rawProps: InputProps) => {
@@ -352,11 +358,16 @@ const Input = (rawProps: InputProps) => {
 		}
 	};
 
-	const containerClass = () => `relative rounded-xs flex justify-start
-    items-center border border-secondary-medium
+	const errorMsg = () => {
+		const e = get(props.error);
+		return e && e.length > 0 ? e : undefined;
+	};
+
+	const containerClass = () => `relative rounded-xs flex justify-start w-full
+    items-center border ${errorMsg() ? "border-error focus-within:border-error" : "border-secondary-medium focus-within:border-primary"}
     transition-all duration-125
-    focus-within:border-primary focus-within:shadow-md focus-within:bg-secondary-light
-    ${variantBgClass(get(props.styleVariant))} ${get(props.class)} ${
+    focus-within:shadow-md focus-within:bg-secondary-light
+    ${variantBgClass(get(props.styleVariant))} ${
 		get(props.disabled) ? "bg-secondary-primary cursor-not-allowed" : ""
 	} ${
 		hasSuggestions() && showDropdown()
@@ -376,7 +387,10 @@ const Input = (rawProps: InputProps) => {
 		return "py-xs px-lg";
 	};
 
+	const errorId = () => (props.id ? `${props.id}-error` : undefined);
+
 	return (
+		<div class={`relative flex flex-col min-w-0 pb-5 ${get(props.class) ?? ""}`}>
 		<div ref={hasSuggestions() ? setContainerRef : undefined} class={containerClass()}>
 			{props.label && <label>{get(props.label)}</label>}
 			{props.startIcon && <>{props.startIcon()}</>}
@@ -385,6 +399,8 @@ const Input = (rawProps: InputProps) => {
 				form={props.form}
 				autocomplete={props.autocomplete}
 				required={props.required}
+				aria-invalid={errorMsg() ? "true" : undefined}
+				aria-describedby={errorMsg() ? errorId() : undefined}
 				class={`overflow-hidden text-ellipsis w-full text-white border-none bg-transparent disabled:text-disabled focus:outline-none placeholder:text-grey text-sm font-thin ${paddingClass()} ${get(
 					props.innerClass
 				)}`}
@@ -444,6 +460,7 @@ const Input = (rawProps: InputProps) => {
 			</Show>
 
 			<Show when={hasSuggestions() && showDropdown()}>
+				{/* dropdown portal below */}
 				<Portal>
 					<div
 						ref={setDropdownRef}
@@ -483,6 +500,16 @@ const Input = (rawProps: InputProps) => {
 					</div>
 				</Portal>
 			</Show>
+		</div>
+		<Show when={errorMsg()}>
+			<div
+				id={errorId()}
+				class="absolute top-full left-0 right-0 mt-1 pointer-events-none text-error text-xs flex items-center gap-1"
+			>
+				<FiAlertCircle size={12} class="text-error shrink-0" />
+				<span>{errorMsg()}</span>
+			</div>
+		</Show>
 		</div>
 	);
 };

@@ -1,9 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createSignal, Show } from "solid-js";
+import { createSignal } from "solid-js";
 import { CreateWorkspaceResponse } from "~/bindings";
 import {
-	Alert,
 	Button,
 	ButtonVariant,
 	Input,
@@ -16,6 +15,7 @@ import {
 import { createAsyncAction, useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
+import { validateWorkspaceName } from "~/utils/validation";
 
 const CreateWorkspace = () => {
 	const [authState] = useAuthState();
@@ -26,6 +26,12 @@ const CreateWorkspace = () => {
 	const [workspaceName, setWorkspaceName] = createSignal("");
 	const [nameError, setNameError] = createSignal("");
 
+	const checkName = (): boolean => {
+		const r = validateWorkspaceName(workspaceName());
+		setNameError(r.valid ? "" : (r.error ?? ""));
+		return r.valid;
+	};
+
 	const { execute: createWorkspace, isLoading } = createAsyncAction(async () => {
 		const auth = authState();
 		if (!auth || auth.type !== "LoggedIn") {
@@ -33,11 +39,8 @@ const CreateWorkspace = () => {
 			return;
 		}
 
+		if (!checkName()) return;
 		const name = workspaceName().trim();
-		if (!name) {
-			setNameError("Workspace name is required.");
-			return;
-		}
 
 		const response = await httpRequest<CreateWorkspaceResponse>(`${import.meta.env.VITE_BASE_URL}/api/workspace`, {
 			method: "POST",
@@ -96,14 +99,11 @@ const CreateWorkspace = () => {
 										setWorkspaceName(e.currentTarget.value);
 										setNameError("");
 									}}
+									onBlur={() => checkName()}
+									error={nameError}
 									placeholder="Enter Workspace Name"
 									type="text"
 								/>
-								<Show when={nameError()}>
-									<div class="mt-1">
-										<Alert message={nameError()} type="error" />
-									</div>
-								</Show>
 							</div>
 						</div>
 

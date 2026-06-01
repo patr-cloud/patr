@@ -12,6 +12,8 @@ import {
 	PageContainerHead,
 	Pagination,
 	Table,
+	TableRow,
+	TableCell,
 } from "~/components";
 import { createPaginationState, useIsAllowed } from "~/hooks";
 import { WithId, ContainerRepository } from "~/bindings";
@@ -115,31 +117,23 @@ const ListContainerRepositories = () => {
 									headings={["Repository", "Last Updated", "Size", "Created"]}
 									rows={repositoriesQuery.data?.repositories || []}
 									renderRow={(repo: WithId<ContainerRepository>) => (
-										<tr
-											role="row"
-											tabIndex={0}
-											class="table-row cursor-pointer focus-visible:outline-primary"
+										<TableRow
 											onClick={() => navigate({ to: `/container-registry/${repo.id}` })}
-											onKeyDown={(e) => {
-												if (e.key === "Enter" || e.key === " ") {
-													e.preventDefault();
-													navigate({ to: `/container-registry/${repo.id}` });
-												}
-											}}
+											aria-label={`Open repository ${repo.name}`}
 										>
-											<td role="cell" class="flex-4 min-w-0">
+											<TableCell index={0}>
 												<span class="truncate font-medium text-white">{repo.name}</span>
-											</td>
-											<td role="cell" class="flex-3">
+											</TableCell>
+											<TableCell index={1}>
 												{formatRelativeTime(repo.lastUpdated)}
-											</td>
-											<td role="cell" class="flex-2">
+											</TableCell>
+											<TableCell index={2}>
 												{formatSize(repo.size)}
-											</td>
-											<td role="cell" class="flex-3">
+											</TableCell>
+											<TableCell index={3}>
 												{formatRelativeTime(repo.created)}
-											</td>
-										</tr>
+											</TableCell>
+										</TableRow>
 									)}
 								/>
 								<Pagination

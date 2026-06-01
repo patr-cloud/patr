@@ -1,12 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createSignal, Show } from "solid-js";
+import { createSignal } from "solid-js";
 import { CreateAccountRequest, SocialLoginInitiateResponse } from "~/bindings";
-import { Alert, Button, Input, InputType, useToast, Turnstile } from "~/components";
+import { Button, Input, InputType, useToast, Turnstile } from "~/components";
 import { createAsyncAction } from "~/hooks";
 import { ButtonVariant } from "~/utils/color";
 import { httpRequest } from "~/utils/http-request";
-import { validatePassword } from "~/utils/validation";
+import {
+	validateEmail,
+	validateFirstName,
+	validateLastName,
+	validatePassword,
+	validateUsername,
+} from "~/utils/validation";
 
 interface FieldErrors {
 	username: string;
@@ -65,42 +71,35 @@ const SignUp = () => {
 		setErrors((prev) => ({ ...prev, [field]: "" }));
 	};
 
-	const validateInputs = (): boolean => {
-		const newErrors = { ...emptyErrors };
-		let valid = true;
+	const validators: Record<keyof FieldErrors, () => { valid: boolean; error?: string }> = {
+		username: () => validateUsername(username()),
+		firstName: () => validateFirstName(firstName()),
+		lastName: () => validateLastName(lastName()),
+		email: () => validateEmail(email()),
+		password: () => validatePassword(password()),
+		confirmPassword: () =>
+			password() === confirmPassword()
+				? { valid: true }
+				: { valid: false, error: "Passwords do not match." },
+	};
 
-		if (!username().trim()) {
-			newErrors.username = "Username is required.";
-			valid = false;
-		}
-		if (!firstName().trim()) {
-			newErrors.firstName = "First name is required.";
-			valid = false;
-		}
-		if (!lastName().trim()) {
-			newErrors.lastName = "Last name is required.";
-			valid = false;
-		}
-		if (!email().trim()) {
-			newErrors.email = "Email is required.";
-			valid = false;
-		}
-		if (!password()) {
-			newErrors.password = "Password is required.";
-			valid = false;
-		} else {
-			const passwordValidation = validatePassword(password());
-			if (!passwordValidation.valid) {
-				newErrors.password = passwordValidation.error || "Invalid password.";
+	const validateField = (field: keyof FieldErrors): boolean => {
+		const r = validators[field]();
+		setErrors((prev) => ({ ...prev, [field]: r.valid ? "" : (r.error ?? "") }));
+		return r.valid;
+	};
+
+	const validateInputs = (): boolean => {
+		const next = { ...emptyErrors };
+		let valid = true;
+		for (const k of Object.keys(emptyErrors) as (keyof FieldErrors)[]) {
+			const r = validators[k]();
+			if (!r.valid) {
+				next[k] = r.error ?? "";
 				valid = false;
 			}
 		}
-		if (password() !== confirmPassword()) {
-			newErrors.confirmPassword = "Passwords do not match.";
-			valid = false;
-		}
-
-		setErrors(newErrors);
+		setErrors(next);
 		return valid;
 	};
 
@@ -184,16 +183,13 @@ const SignUp = () => {
 							setUsername(e.currentTarget.value);
 							clearError("username");
 						}}
+						onBlur={() => validateField("username")}
+						error={() => errors().username}
 						styleVariant="medium"
 					/>
-					<Show when={errors().username}>
-						<div class="mt-1">
-							<Alert message={errors().username} type="error" />
-						</div>
-					</Show>
 
 					{/* Name Inputs */}
-					<div class="flex items-center gap-4 mt-4">
+					<div class="flex items-start gap-4 mt-4">
 						<div class="flex-1">
 							<Input
 								type={InputType.Text}
@@ -207,13 +203,10 @@ const SignUp = () => {
 									setFirstName(e.currentTarget.value);
 									clearError("firstName");
 								}}
+								onBlur={() => validateField("firstName")}
+								error={() => errors().firstName}
 								styleVariant="medium"
 							/>
-							<Show when={errors().firstName}>
-								<div class="mt-1">
-									<Alert message={errors().firstName} type="error" />
-								</div>
-							</Show>
 						</div>
 						<div class="flex-1">
 							<Input
@@ -228,13 +221,10 @@ const SignUp = () => {
 									setLastName(e.currentTarget.value);
 									clearError("lastName");
 								}}
+								onBlur={() => validateField("lastName")}
+								error={() => errors().lastName}
 								styleVariant="medium"
 							/>
-							<Show when={errors().lastName}>
-								<div class="mt-1">
-									<Alert message={errors().lastName} type="error" />
-								</div>
-							</Show>
 						</div>
 					</div>
 
@@ -250,14 +240,11 @@ const SignUp = () => {
 							setEmail(e.currentTarget.value);
 							clearError("email");
 						}}
+						onBlur={() => validateField("email")}
+						error={() => errors().email}
 						class="mt-4"
 						styleVariant="medium"
 					/>
-					<Show when={errors().email}>
-						<div class="mt-1">
-							<Alert message={errors().email} type="error" />
-						</div>
-					</Show>
 
 					<Input
 						type={InputType.Password}
@@ -271,14 +258,11 @@ const SignUp = () => {
 							setPassword(e.currentTarget.value);
 							clearError("password");
 						}}
+						onBlur={() => validateField("password")}
+						error={() => errors().password}
 						class="mt-4"
 						styleVariant="medium"
 					/>
-					<Show when={errors().password}>
-						<div class="mt-1">
-							<Alert message={errors().password} type="error" />
-						</div>
-					</Show>
 
 					<Input
 						type={InputType.Password}
@@ -292,14 +276,11 @@ const SignUp = () => {
 							setConfirmPassword(e.currentTarget.value);
 							clearError("confirmPassword");
 						}}
+						onBlur={() => validateField("confirmPassword")}
+						error={() => errors().confirmPassword}
 						class="mt-4"
 						styleVariant="medium"
 					/>
-					<Show when={errors().confirmPassword}>
-						<div class="mt-1">
-							<Alert message={errors().confirmPassword} type="error" />
-						</div>
-					</Show>
 
 					{/* Turnstile Widget */}
 					<div class="mt-6 flex justify-center">

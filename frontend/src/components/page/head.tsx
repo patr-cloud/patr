@@ -35,7 +35,7 @@ const HeadTab = (rawProps: HeadTabProps) => {
 	);
 
 	return (
-		<div class={`w-full text-white flex gap-4 ${get(props.class)}`}>
+		<div class={`w-full text-white flex gap-4 overflow-x-auto ${get(props.class)}`}>
 			<For each={props.tabItems}>
 				{(item) => (
 					<button
@@ -86,10 +86,10 @@ const PageContainerHead = (rawProps: PageContainerHeadProps) => {
 
 	return (
 		<>
-			<header class={`h-full bg-secondary-light rounded-t-xs p-xl py-lg ${props.class}`}>
-				<div class="mx-auto w-full max-w-300 flex justify-between items-center gap-2">
-					<div class="flex flex-col gap-2 justify-start">
-						<div class="flex gap-4 items-center select-none">
+			<header class={`h-full bg-secondary-light rounded-t-xs p-md py-md md:p-xl md:py-lg ${props.class}`}>
+				<div class="mx-auto w-full max-w-300 flex flex-col items-start gap-3 md:flex-row md:justify-between md:items-center md:gap-2">
+					<div class="flex flex-col gap-2 justify-start min-w-0 w-full md:w-auto">
+						<div class="flex gap-4 items-center select-none flex-wrap">
 							<For each={props.breadcrumbs}>
 								{(crumb, index) => {
 									return (
@@ -112,12 +112,12 @@ const PageContainerHead = (rawProps: PageContainerHeadProps) => {
 						<p class="text-grey text-xs">{props.subText}</p>
 					</div>
 
-					<div>{props.actions?.()}</div>
+					<div class="w-full md:w-auto flex flex-wrap gap-2">{props.actions?.()}</div>
 				</div>
 			</header>
 			{props.bottomContent && (
-				<div class="bg-secondary-light px-xl">
-					<div class="mx-auto w-full max-w-300">{props.bottomContent?.()}</div>
+				<div class="bg-secondary-light px-md md:px-xl">
+					<div class="mx-auto w-full max-w-300 overflow-x-auto">{props.bottomContent?.()}</div>
 				</div>
 			)}
 		</>

@@ -4,6 +4,7 @@ import { EventT } from "~/utils/types";
 import { ChangePasswordRequest, ChangePasswordResponse } from "~/bindings";
 import { useAuthState } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
+import { validateOtp, validatePassword, validateRequired } from "~/utils/validation";
 
 const ChangePasswordSection = () => {
 	const [authState] = useAuthState();
@@ -24,6 +25,20 @@ const ChangePasswordSection = () => {
 		error: "",
 	});
 
+	const checkField = (field: "oldPassword" | "newPassword" | "confirmPassword" | "mfaOtp"): boolean => {
+		let res: { valid: boolean; error?: string };
+		if (field === "oldPassword") res = validateRequired(oldPassword(), "Current password");
+		else if (field === "newPassword") res = validatePassword(newPassword());
+		else if (field === "confirmPassword")
+			res =
+				newPassword() === confirmPassword()
+					? { valid: true }
+					: { valid: false, error: "Passwords do not match." };
+		else res = validateOtp(mfaOtp());
+		setInputError((prev) => ({ ...prev, [field]: res.valid ? "" : (res.error ?? "") }));
+		return res.valid;
+	};
+
 	const onUpdatePassword = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
 		e.preventDefault();
 
@@ -32,6 +47,12 @@ const ChangePasswordSection = () => {
 			toast("You must be logged in to update your password", "error");
 			return;
 		}
+
+		const okO = checkField("oldPassword");
+		const okN = checkField("newPassword");
+		const okC = checkField("confirmPassword");
+		const okM = !showMfa() || checkField("mfaOtp");
+		if (!okO || !okN || !okC || !okM) return;
 
 		try {
 			const body: ChangePasswordRequest = {
@@ -98,17 +119,17 @@ const ChangePasswordSection = () => {
 
 						<div class="flex-[10.75]">
 							<PasswordInput
+								id="current-password"
 								value={oldPassword()}
 								name="current-password"
 								placeholder="Current Password"
-								onInput={(e) => setOldPassword(e.currentTarget.value)}
+								onInput={(e) => {
+									setOldPassword(e.currentTarget.value);
+									setInputError((p) => ({ ...p, oldPassword: "" }));
+								}}
+								onBlur={() => checkField("oldPassword")}
+								error={() => inputError().oldPassword}
 							/>
-
-							<Show when={inputError().oldPassword}>
-								<div class="flex justify-start items-center mt-1">
-									<Alert message={inputError().oldPassword} type="error" />
-								</div>
-							</Show>
 						</div>
 					</div>
 
@@ -117,17 +138,17 @@ const ChangePasswordSection = () => {
 
 						<div class="flex-[10.75]">
 							<PasswordInput
+								id="new-password"
 								value={newPassword()}
 								name="new-password"
 								placeholder="New Password"
-								onInput={(e) => setNewPassword(e.currentTarget.value)}
+								onInput={(e) => {
+									setNewPassword(e.currentTarget.value);
+									setInputError((p) => ({ ...p, newPassword: "", confirmPassword: "" }));
+								}}
+								onBlur={() => checkField("newPassword")}
+								error={() => inputError().newPassword}
 							/>
-
-							<Show when={inputError().newPassword}>
-								<div class="flex justify-start items-center mt-1">
-									<Alert message={inputError().newPassword} type="error" />
-								</div>
-							</Show>
 						</div>
 					</div>
 
@@ -135,17 +156,17 @@ const ChangePasswordSection = () => {
 						<InputLabel parentClass="flex-[1.25]" for="confirm-password" label="Confirm Password" />
 						<div class="flex-[10.75]">
 							<PasswordInput
+								id="confirm-password"
 								value={confirmPassword()}
 								name="confirm-password"
 								placeholder="Confirm Password"
-								onInput={(e) => setConfirmPassword(e.currentTarget.value)}
+								onInput={(e) => {
+									setConfirmPassword(e.currentTarget.value);
+									setInputError((p) => ({ ...p, confirmPassword: "" }));
+								}}
+								onBlur={() => checkField("confirmPassword")}
+								error={() => inputError().confirmPassword}
 							/>
-
-							<Show when={inputError().confirmPassword}>
-								<div class="flex justify-start items-center mt-1">
-									<Alert message={inputError().confirmPassword} type="error" />
-								</div>
-							</Show>
 						</div>
 					</div>
 
@@ -170,7 +191,7 @@ const ChangePasswordSection = () => {
 					</Show>
 				</div>
 
-				<div class="flex items-center justify-end w-full">
+				<div class="sticky bottom-0 flex items-center justify-end w-full bg-secondary-dark border-t border-border-color py-3">
 					<Button
 						disabled={!oldPassword() || !newPassword() || newPassword() !== confirmPassword()}
 						type="submit"

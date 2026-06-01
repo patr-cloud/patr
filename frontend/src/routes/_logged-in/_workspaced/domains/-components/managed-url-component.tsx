@@ -6,7 +6,17 @@ import {
 	UpdateManagedURLResponse,
 	WithId,
 } from "~/bindings";
-import { Button, ButtonVariant, Input, InputDropdown, LoadingSpinner, useToast, InfoPopup } from "~/components";
+import {
+	Button,
+	ButtonVariant,
+	Input,
+	InputDropdown,
+	LoadingSpinner,
+	useToast,
+	InfoPopup,
+	TableRow,
+	TableCell,
+} from "~/components";
 import { createAuthenticatedAction, createFormAction } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
@@ -65,8 +75,8 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 					</td>
 				</tr>
 			) : (
-				<tr class="table-row cursor-auto">
-					<td class="flex-4 flex items-center justify-center">
+				<TableRow class="cursor-auto">
+					<TableCell index={0} align="center">
 						<a
 							href={`https://${props.managedUrl.subDomain}.${props.domainInfo.name}${props.managedUrl.path}`}
 							target="_blank"
@@ -75,10 +85,10 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 							{props.managedUrl.subDomain}.{props.domainInfo.name}
 							{props.managedUrl.path}
 						</a>
-					</td>
-					<td class="flex-2 flex items-center justify-center">{domainTypeToTitle(props.managedUrl.type)}</td>
+					</TableCell>
+					<TableCell index={1} align="center">{domainTypeToTitle(props.managedUrl.type)}</TableCell>
 
-					<td class="flex-2 flex items-center justify-center">
+					<TableCell index={2} align="center">
 						<div class="flex gap-2 items-center">
 							{props.managedUrl.isActive ? (
 								<span class="text-green-400 text-sm">Yes</span>
@@ -109,9 +119,9 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 								</>
 							)}
 						</div>
-					</td>
+					</TableCell>
 
-					<td class="flex-4 flex items-center justify-center">
+					<TableCell index={3} align="center">
 						<div class="flex gap-2 items-center">
 							{shouldDelete() ? (
 								<>
@@ -133,10 +143,8 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 							) : (
 								<>
 									<button
-										onClick={() => {
-											console.log("Edit clicked");
-											setOpenEdit(true);
-										}}
+										onClick={() => setOpenEdit(true)}
+										aria-label="Edit managed URL"
 										class="text-gray-400 hover:bg-white/10 p-1 rounded transition-colors cursor-pointer"
 									>
 										<FiEdit2 size={18} />
@@ -146,6 +154,7 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 											e.stopPropagation();
 											setShouldDelete(true);
 										}}
+										aria-label="Delete managed URL"
 										class="text-red-500 hover:bg-white/10 p-1 rounded transition-colors cursor-pointer"
 									>
 										<FiTrash size={18} />
@@ -153,8 +162,8 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 								</>
 							)}
 						</div>
-					</td>
-				</tr>
+					</TableCell>
+				</TableRow>
 			)}
 		</>
 	);

@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createSignal, Show } from "solid-js";
-import { Alert, Button, Input, InputType, useToast, Turnstile } from "~/components";
+import { Button, Input, InputType, useToast, Turnstile } from "~/components";
 import { ButtonVariant } from "~/utils/color";
 import { httpRequest } from "~/utils/http-request";
 import { createAsyncAction } from "~/hooks";
+import { validateEmail } from "~/utils/validation";
 
 const ForgotPassword = () => {
 	const toast = useToast();
@@ -13,11 +14,14 @@ const ForgotPassword = () => {
 	const [submitted, setSubmitted] = createSignal(false);
 	const [turnstileToken, setTurnstileToken] = createSignal<string>("");
 
+	const checkEmail = (): boolean => {
+		const r = validateEmail(email());
+		setEmailError(r.valid ? "" : (r.error ?? ""));
+		return r.valid;
+	};
+
 	const { execute: handleSubmit, isLoading } = createAsyncAction(async () => {
-		if (!email().trim()) {
-			setEmailError("Email address is required.");
-			return;
-		}
+		if (!checkEmail()) return;
 
 		if (!turnstileToken()) {
 			toast("Please complete the security verification", "error");
@@ -119,13 +123,10 @@ const ForgotPassword = () => {
 								setEmail((e.currentTarget as HTMLInputElement).value);
 								setEmailError("");
 							}}
+							onBlur={() => checkEmail()}
+							error={emailError}
 							styleVariant="medium"
 						/>
-						<Show when={emailError()}>
-							<div class="mt-1">
-								<Alert message={emailError()} type="error" />
-							</div>
-						</Show>
 
 						{/* Turnstile Widget */}
 						<div class="mt-6 flex justify-center">

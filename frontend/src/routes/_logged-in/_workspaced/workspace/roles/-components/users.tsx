@@ -1,6 +1,6 @@
 import { useParams } from "@tanstack/solid-router";
 import { Show } from "solid-js";
-import { Initials, Table } from "~/components";
+import { Initials, Table, TableRow, TableCell } from "~/components";
 import { useRoleUsersQuery } from "~/hooks/fetch";
 
 const UsersAssignedToRole = () => {
@@ -23,12 +23,12 @@ const UsersAssignedToRole = () => {
 					headings={["Username"]}
 					rows={usersQuery.data ?? []}
 					renderRow={(item) => (
-						<tr class="table-row">
-							<td class="flex-1 flex items-center justify-center gap-2">
+						<TableRow>
+							<TableCell index={0} align="center" class="gap-2">
 								<Initials firstName={item.firstName} lastName={item.lastName} size="xs" />
 								<span class="truncate font-mono">{item.username}</span>
-							</td>
-						</tr>
+							</TableCell>
+						</TableRow>
 					)}
 				/>
 			</Show>
