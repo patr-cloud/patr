@@ -2,6 +2,7 @@ import {
   test,
   expect,
   newContext,
+  createUserAccount,
   createUserWithWorkspace,
   createApiTokenAPI,
   callWithApiToken,
@@ -110,6 +111,66 @@ test.describe('api token > security', () => {
       expect(dialogFired).toBe(false);
     } finally {
       await context.close();
+    }
+  });
+
+  test('rejects a PATCH targeting another user\'s token with a permissions body (IDOR)', async ({
+    api,
+  }) => {
+    await using userA = await createUserWithWorkspace(api);
+    await using userB = await createUserAccount(api);
+
+    // A mints a token.
+    const tA = await createApiTokenAPI(api, userA, {
+      permissions: { [userA.workspaceId]: { type: 'superAdmin' } },
+    });
+
+    // B tries to PATCH A's token. Without the rows_affected guard the DELETE
+    // block below the UPDATE would wipe A's permission rows even though the
+    // UPDATE itself no-ops (token_id doesn't belong to B's user_id).
+    const resp = await api
+      .request('PATCH', `/user/api-token/${tA.id}`, {
+        token: userB.accessToken,
+        clientIp: userB.clientIp,
+        body: {
+          permissions: { [userA.workspaceId]: { type: 'superAdmin' } },
+        },
+      })
+      .catch((err) => ({ err: String(err) }));
+    expect(resp).toMatchObject({ err: expect.stringMatching(/404/) });
+
+    // A's token still works against the workspace.
+    const probe = await callWithApiToken(api, tA.token, {
+      clientIp: userA.clientIp,
+      path: `/workspace/${userA.workspaceId}/deployment`,
+    });
+    expect(probe.status).toBe(200);
+  });
+
+  test('API tokens cannot activate or deactivate MFA on their owning user', async ({
+    api,
+  }) => {
+    await using user = await createUserWithWorkspace(api);
+    const t = await createApiTokenAPI(api, user, {
+      permissions: { [user.workspaceId]: { type: 'superAdmin' } },
+    });
+
+    // activate, deactivate, and get-secret are all api = false — the API-token
+    // router doesn't mount these routes at all, so the response is a 4xx
+    // (exact code is Axum's "missing route" shape, not load-bearing here).
+    for (const method of ['GET', 'POST', 'DELETE'] as const) {
+      const res = await fetch('http://localhost:3000/user/mfa', {
+        method,
+        headers: {
+          Authorization: t.token,
+          'User-Agent': USER_AGENT,
+          'X-Forwarded-For': user.clientIp,
+          ...(method === 'GET' ? {} : { 'Content-Type': 'application/json' }),
+        },
+        body: method === 'GET' ? undefined : JSON.stringify({ otp: '000000' }),
+      });
+      expect(res.status).toBeGreaterThanOrEqual(400);
+      expect(res.status).toBeLessThan(500);
     }
   });
 });

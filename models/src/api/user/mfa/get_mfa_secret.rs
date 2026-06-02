@@ -4,6 +4,7 @@ macros::declare_api_endpoint!(
 	/// Get a mfa secret which will be used for verification
 	GetMfaSecret,
 	GET "/user/mfa",
+	api = false,
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,

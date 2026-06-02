@@ -4705,9 +4705,9 @@ dependencies = [
 
 [[package]]
 name = "preprocess"
-version = "0.5.10"
+version = "0.5.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a1c607f5356b5bec26ca5754c17d2930d54a291b65cd90f4106a47f0f3e9663"
+checksum = "83f7e6b3249760478c37620a48dff73d74818bcf377d9aecec3cfc56b9a7977d"
 dependencies = [
  "dashmap",
  "idna",
@@ -4718,9 +4718,9 @@ dependencies = [
 
 [[package]]
 name = "preprocess-macro"
-version = "0.5.10"
+version = "0.5.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe706fa66bafd8c48968633187387a6589a4dab658e5145761e4a0d2bcf8a111"
+checksum = "161fcfe65b01fa03cac6e43cc614e32284c7f08923170ddd091b3986067957fa"
 dependencies = [
  "proc-macro2",
  "quote",

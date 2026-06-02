@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT token_nbf, token_exp FROM user_api_token WHERE token_id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "token_nbf",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 1,
+        "name": "token_exp",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "da7a863cd038390040d9e804174452e813c2256f963d3eb6798dc02dad3fd2e5"
+}

@@ -53,34 +53,34 @@ export const useMembersQuery = (page: Accessor<string | undefined>, count: Acces
 
 				const totalCount = Number(response.headers.get("x-total-count") ?? 0);
 
-				const userDetailsPromises: Promise<WorkspaceMember | null>[] = Object.keys(
-					response.data.users
-				).map(async (userId) => {
-					const userResponse = await httpRequest<GetUserDetailsResponse>(
-						`${import.meta.env.VITE_BASE_URL}/api/user/${userId}`,
-						{ method: "GET" }
-					);
+				const userDetailsPromises: Promise<WorkspaceMember | null>[] = Object.keys(response.data.users).map(
+					async (userId) => {
+						const userResponse = await httpRequest<GetUserDetailsResponse>(
+							`${import.meta.env.VITE_BASE_URL}/api/user/${userId}`,
+							{ method: "GET" }
+						);
 
-					if (!userResponse.ok) {
-						return null;
+						if (!userResponse.ok) {
+							return null;
+						}
+
+						const user = userResponse.data;
+						const firstName = user.firstName || "";
+						const lastName = user.lastName || "";
+						const username = user.username || "";
+						const id = user.id || "";
+
+						return {
+							userId: id,
+							firstName,
+							lastName,
+							fullName: `${firstName} ${lastName}`,
+							username,
+							roleIds: response.data.users[userId] || [],
+							isOwner: false,
+						};
 					}
-
-					const user = userResponse.data;
-					const firstName = user.firstName || "";
-					const lastName = user.lastName || "";
-					const username = user.username || "";
-					const id = user.id || "";
-
-					return {
-						userId: id,
-						firstName,
-						lastName,
-						fullName: `${firstName} ${lastName}`,
-						username,
-						roleIds: response.data.users[userId] || [],
-						isOwner: false,
-					};
-				});
+				);
 
 				const members = (await Promise.all(userDetailsPromises)).filter(
 					(m): m is WorkspaceMember => m !== null
@@ -99,9 +99,7 @@ export const useMembersQuery = (page: Accessor<string | undefined>, count: Acces
  * the already-known `superAdminId` from `useWorkspaceInfoQuery`, which
  * avoids doubling the network round-trips on every workspace switch.
  */
-export const useWorkspaceOwnerQuery = (
-	superAdminId: Accessor<string | undefined>
-) => {
+export const useWorkspaceOwnerQuery = (superAdminId: Accessor<string | undefined>) => {
 	const [authState] = useAuthState();
 
 	return createQuery<WorkspaceMember | null>(() => {

@@ -149,7 +149,7 @@ pub enum EmailTemplateType {
 	DeleteResource(delete_resource::_DeleteResourceEmail),
 	/// The forgot password email template. This email is sent to the user
 	/// when they request a password reset.
-	ForgotPassword(forgot_password::_ForgotPasswordEmail),
+	ForgotPassword(forgot_password::ForgotPasswordEmail),
 	/// The domain added email template. This email is sent to the user when
 	/// a domain is added to their workspace, prompting DNS verification.
 	DomainAdded(domain_added::_DomainAddedEmail),

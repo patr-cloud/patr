@@ -39,7 +39,7 @@ pub async fn stream_deployment_logs(
 					workspace_id,
 					deployment_id,
 				},
-				query: StreamDeploymentLogsQuery { start_time },
+				query: StreamDeploymentLogsQueryProcessed { start_time },
 				headers:
 					StreamDeploymentLogsRequestHeaders {
 						authorization: _,

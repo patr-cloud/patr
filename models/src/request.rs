@@ -13,6 +13,7 @@ pub struct ApiRequest<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	<E::RequestQuery as Preprocessable>::Processed: Send,
 {
 	/// The path of the request. This is the part of the URL after the domain
 	/// and port.
@@ -38,12 +39,16 @@ pub struct ProcessedApiRequest<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	<E::RequestQuery as Preprocessable>::Processed: Send,
 {
 	/// The path of the request. This is the part of the URL after the domain
 	/// and port.
 	pub path: E::RequestPath,
 	/// The query of the request. This is the part of the URL after the `?`.
-	pub query: E::RequestQuery,
+	/// Passed through the preprocess pipeline so range/length/regex
+	/// validators on query fields fire at the request boundary instead of
+	/// being decorative.
+	pub query: <E::RequestQuery as Preprocessable>::Processed,
 	/// The headers of the request.
 	pub headers: E::RequestHeaders,
 	/// The body of the request. This is the actual data that was sent by the
@@ -55,6 +60,7 @@ impl<E> TryFrom<ApiRequest<E>> for ProcessedApiRequest<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	<E::RequestQuery as Preprocessable>::Processed: Send,
 {
 	type Error = preprocess::Error;
 
@@ -67,7 +73,7 @@ where
 		} = value;
 		Ok(ProcessedApiRequest {
 			path,
-			query,
+			query: query.preprocess()?,
 			headers,
 			body: body.preprocess()?,
 		})

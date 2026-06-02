@@ -22,12 +22,7 @@ import { WithId } from "~/bindings/WithId";
 import { BasicUserInfo } from "~/bindings/BasicUserInfo";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "./-components/workspace-header";
-import {
-	useWorkspaceInfoQuery,
-	useAllRolesQuery,
-	useMembersQuery,
-	useWorkspaceOwnerQuery,
-} from "~/hooks/fetch";
+import { useWorkspaceInfoQuery, useAllRolesQuery, useMembersQuery, useWorkspaceOwnerQuery } from "~/hooks/fetch";
 import { useQueryClient } from "@tanstack/solid-query";
 import { memberKeys } from "~/hooks/query-keys";
 
@@ -55,9 +50,7 @@ const ManageWorkspace = () => {
 		() => search().page,
 		() => search().count
 	);
-	const ownerQuery = useWorkspaceOwnerQuery(
-		() => workspaceInfoQuery.data?.superAdminId
-	);
+	const ownerQuery = useWorkspaceOwnerQuery(() => workspaceInfoQuery.data?.superAdminId);
 	const canModifyMembers = useIsAllowed("modifyRoles", "edit");
 
 	// Prepend the synthesised owner row (pinned first) on page 0 only.
@@ -242,7 +235,9 @@ const ManageWorkspace = () => {
 										checked={currentRoleIds()}
 										onToggle={(value) =>
 											setCurrentRoleIds((prev) =>
-												prev.includes(value) ? prev.filter((id) => id !== value) : [...prev, value]
+												prev.includes(value)
+													? prev.filter((id) => id !== value)
+													: [...prev, value]
 											)
 										}
 									/>

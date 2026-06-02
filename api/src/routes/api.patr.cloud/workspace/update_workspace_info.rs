@@ -37,7 +37,7 @@ pub async fn update_workspace_info(
 		let available = super::is_name_available(AuthenticatedAppRequest {
 			request: ProcessedApiRequest {
 				path: IsWorkspaceNameAvailablePath,
-				query: IsWorkspaceNameAvailableQuery {
+				query: IsWorkspaceNameAvailableQueryProcessed {
 					name: name.to_string(),
 				},
 				headers: IsWorkspaceNameAvailableRequestHeaders {

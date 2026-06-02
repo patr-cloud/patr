@@ -25,7 +25,7 @@ pub async fn forgot_password(
 		database,
 		redis: _,
 		client_ip,
-		state,
+		mut state,
 	}: AppRequest<'_, ForgotPasswordRequest>,
 ) -> Result<AppResponse<ForgotPasswordRequest>, ErrorType> {
 	trace!("Validating Cloudflare Turnstile token");
@@ -152,14 +152,17 @@ pub async fn forgot_password(
 			.into_result();
 	}
 
+	// Deliberately do NOT reset password_reset_attempts here. Zeroing on
+	// every re-request would let a slow-drip attacker pull a fresh
+	// MAX_PASSWORD_RESET_ATTEMPTS budget every OTP cycle. The counter is
+	// already nulled in reset_password on a successful reset.
 	query!(
 		r#"
 		UPDATE
 			"user"
 		SET
 			password_reset_token = $1,
-			password_reset_token_expiry = $2,
-			password_reset_attempts = 0
+			password_reset_token_expiry = $2
 		WHERE
 			id = $3;
 		"#,
@@ -172,7 +175,32 @@ pub async fn forgot_password(
 
 	trace!("Password reset token for user `{}` updated", user_data.id);
 
-	// TODO send OTP by the preferred recovery option
+	// Deliver the OTP via the user's chosen recovery channel. Email is wired
+	// today; SMS is left as a TODO until the SMS sender is available.
+	match preferred_recovery_option {
+		PreferredRecoveryOption::RecoveryEmail => {
+			if let Some(recovery_email) = user_data.recovery_email {
+				state
+					.worker
+					.send_email(
+						recovery_email.clone(),
+						ForgotPasswordEmail {
+							username: user_data.username,
+							email: recovery_email,
+							otp_code: password_reset_token,
+							otp_expiry: constants::OTP_VALIDITY.to_string(),
+						},
+					)
+					.await?;
+			}
+		}
+		PreferredRecoveryOption::RecoveryPhoneNumber => {
+			// TODO: dispatch the OTP to the user's recovery phone once the
+			// SMS sender is wired up. Until then, a phone-only user will
+			// hit this branch silently — same shape as the existing
+			// silent-success paths above, so we don't leak that detail.
+		}
+	}
 
 	AppResponse::builder()
 		.body(ForgotPasswordResponse)

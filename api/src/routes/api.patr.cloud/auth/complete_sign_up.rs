@@ -82,6 +82,30 @@ pub async fn complete_sign_up(
 
 	trace!("Found a row with the given username");
 
+	// Mirror reset_password's attempt counter — gate at the same MAX so a
+	// brute-force attempt on the 6-digit OTP exhausts cheaply and
+	// cumulatively (no per-cycle reset). The increment fires for every
+	// check, success or not; on success the row is DELETEd below so the
+	// value never matters again.
+	if row.sign_up_attempts >= constants::MAX_SIGN_UP_ATTEMPTS {
+		debug!("Sign up attempts exceeded");
+		return Err(ErrorType::UserNotFound);
+	}
+
+	query!(
+		r#"
+		UPDATE
+			user_to_sign_up
+		SET
+			sign_up_attempts = sign_up_attempts + 1
+		WHERE
+			username = $1;
+		"#,
+		&username,
+	)
+	.execute(&mut **database)
+	.await?;
+
 	let success = argon2::Argon2::new_with_secret(
 		state.config.password_pepper.as_ref(),
 		Algorithm::Argon2id,

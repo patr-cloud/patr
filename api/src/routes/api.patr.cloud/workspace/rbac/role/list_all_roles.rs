@@ -14,7 +14,7 @@ pub async fn list_all_roles(
 			ProcessedApiRequest {
 				path: ListAllRolesPath { workspace_id },
 				query:
-					ListResourceQuery {
+					ListResourceQueryProcessed {
 						sort: sort_order,
 						search:
 							RoleSearchParams {

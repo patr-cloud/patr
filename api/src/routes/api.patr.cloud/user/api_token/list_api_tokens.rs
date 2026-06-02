@@ -11,7 +11,7 @@ pub async fn list_api_tokens(
 			ProcessedApiRequest {
 				path: ListApiTokensPath,
 				query:
-					ListResourceQuery {
+					ListResourceQueryProcessed {
 						sort: sort_order,
 						search:
 							UserApiTokenSearchParams {

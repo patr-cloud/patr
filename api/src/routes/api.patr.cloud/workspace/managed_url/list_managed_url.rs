@@ -11,7 +11,7 @@ pub async fn list_managed_url(
 			ProcessedApiRequest {
 				path: ListManagedURLPath { workspace_id },
 				query:
-					ListResourceQuery {
+					ListResourceQueryProcessed {
 						sort: sort_order,
 						search:
 							ManagedUrlSearchParams {
@@ -92,8 +92,8 @@ pub async fn list_managed_url(
 		path_filter as _,
 		url_type_filter as _,
 		is_active_filter as _,
-		count as i32,
-		(count * page) as i32,
+		count as i64,
+		(count * page) as i64,
 	)
 	.fetch_all(&mut **database)
 	.await?

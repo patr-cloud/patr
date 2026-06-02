@@ -13,7 +13,7 @@ pub async fn list_repository_manifests(
 						repository_id,
 					},
 				query:
-					ListResourceQuery {
+					ListResourceQueryProcessed {
 						sort: _,
 						search:
 							ContainerRepositoryManifestInfoSearchParams {

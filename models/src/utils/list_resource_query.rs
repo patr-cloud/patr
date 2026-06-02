@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use preprocess::Preprocessable;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 use super::{AddTuple, RequiresResponseHeaders};
@@ -40,28 +41,40 @@ impl ListableResource for () {
 /// 14 (assuming the items are zero-indexed). This means that the offset is the
 /// index of the first item that should be returned and the count is the number
 /// of items that should be returned.
+#[preprocess::sync]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ListResourceQuery<R, Q = ()>
-where
+pub struct ListResourceQuery<
 	R: ListableResource,
-{
+	Q: Preprocessable<
+			Processed: Debug + Clone + Serialize + DeserializeOwned + PartialEq,
+		> = (),
+> {
 	/// Sort order of the items.
 	#[serde(flatten, default = "None", skip_serializing_if = "Option::is_none")]
+	#[preprocess(none)]
 	pub sort: Option<SortDetails<R>>,
 	/// Search query that can be used to filter items in the list based on the
 	/// fields that are available in the resource.
 	#[serde(default, skip_serializing_if = "IsEmpty::is_empty")]
+	#[preprocess(none)]
 	pub search: R::SearchStruct,
-	/// The number of items that should be returned per page.
+	/// The number of items that should be returned per page. Validated at
+	/// the preprocess pass against [1, MAX_PAGE_SIZE] so callers can't
+	/// request 0 (empty page with no signal) or absurd sizes (DoS-lite,
+	/// plus the `usize → i32` cast in some downstream handlers would
+	/// otherwise overflow).
 	#[serde(default = "default_page_size")]
+	#[preprocess(range(min = 1, max = MAX_PAGE_SIZE))]
 	pub count: usize,
 	/// The page number that should be returned. This is zero-indexed. So to get
 	/// the first page, you should set this to 0, and to get the second page,
 	/// you should set this to 1, etc.
 	#[serde(default)]
+	#[preprocess(none)]
 	pub page: usize,
 	/// Any other query parameters that should be included in the request.
 	#[serde(flatten)]
+	#[preprocess]
 	pub additional_query: Q,
 }
 
@@ -79,11 +92,18 @@ const fn default_page_size() -> usize {
 	ListResourceQuery::DEFAULT_PAGE_SIZE
 }
 
+/// The hard upper bound for `count` on any paginated request. Callers can
+/// request fewer items, but never more — this keeps the `usize → i32` casts
+/// in some downstream handlers safe and discourages clients from pulling the
+/// entire table in one round trip.
+pub const MAX_PAGE_SIZE: usize = 100;
+
 impl<T, Q> Default for ListResourceQuery<T, Q>
 where
 	T: ListableResource,
 	T::SearchStruct: Default,
-	Q: Default,
+	Q: Preprocessable<Processed: Debug + Clone + Serialize + DeserializeOwned + PartialEq>
+		+ Default,
 {
 	fn default() -> Self {
 		Self {
@@ -99,7 +119,8 @@ where
 impl<T, Q> RequiresResponseHeaders for ListResourceQuery<T, Q>
 where
 	T: ListableResource,
-	Q: AddTuple<TotalCountHeader>,
+	Q: Preprocessable<Processed: Debug + Clone + Serialize + DeserializeOwned + PartialEq>
+		+ AddTuple<TotalCountHeader>,
 {
 	type RequiredResponseHeaders = <Q as AddTuple<TotalCountHeader>>::ResultantTuple;
 }

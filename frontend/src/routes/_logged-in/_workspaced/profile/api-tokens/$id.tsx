@@ -8,7 +8,6 @@ import {
 	ButtonVariant,
 	DeleteModal,
 	Input,
-	InputLabel,
 	InputType,
 	InputWithLabel,
 	PageContainer,
@@ -69,20 +68,16 @@ const ApiTokenInfo = () => {
 
 		setIsUpdatingName(true);
 		try {
-			const resp = await httpRequest(
-				`${import.meta.env.VITE_BASE_URL}/api/user/api-token/${params().id}`,
-				{
-					method: "PATCH",
-					body: JSON.stringify({ name: newName }),
-				}
-			);
+			const resp = await httpRequest(`${import.meta.env.VITE_BASE_URL}/api/user/api-token/${params().id}`, {
+				method: "PATCH",
+				body: JSON.stringify({ name: newName }),
+			});
 			if (!resp.ok) {
 				toast(resp.data?.error || "Failed to update token name", "error");
 				return;
 			}
-			queryClient.setQueryData<GetApiTokenInfoResponse>(
-				apiTokenKeys.detail(params().id),
-				(prev) => (prev ? { ...prev, name: newName } : prev)
+			queryClient.setQueryData<GetApiTokenInfoResponse>(apiTokenKeys.detail(params().id), (prev) =>
+				prev ? { ...prev, name: newName } : prev
 			);
 			toast("Token name updated", "success");
 		} finally {
@@ -273,31 +268,31 @@ const ApiTokenInfo = () => {
 								/>
 							</InputWithLabel>
 
-							<form
-								onSubmit={onSaveTokenName}
-								class="flex gap-8 items-center w-full"
-							>
-								<InputLabel parentClass="flex-2" for="token-name" label="Name" />
-								<Input
-									value={tokenName() ?? ""}
-									class="flex-10"
-									id="token-name"
-									name="token-name"
-									placeholder="Token Name"
-									type={InputType.Text}
-									onInput={(e) => setTokenName(e.currentTarget.value)}
-								/>
-								<Button
-									type="submit"
-									variant={ButtonVariant.Contained}
-									disabled={
-										isUpdatingName() ||
-										(tokenName() ?? "").trim() === "" ||
-										(tokenName() ?? "").trim() === (apiTokenInfo()?.name ?? "")
-									}
-								>
-									Save
-								</Button>
+							<form onSubmit={onSaveTokenName} class="w-full">
+								<InputWithLabel for="token-name" label="Name">
+									<div class="flex gap-2 items-center w-full">
+										<Input
+											value={tokenName() ?? ""}
+											class="flex-1"
+											id="token-name"
+											name="token-name"
+											placeholder="Token Name"
+											type={InputType.Text}
+											onInput={(e) => setTokenName(e.currentTarget.value)}
+										/>
+										<Button
+											type="submit"
+											variant={ButtonVariant.Contained}
+											disabled={
+												isUpdatingName() ||
+												(tokenName() ?? "").trim() === "" ||
+												(tokenName() ?? "").trim() === (apiTokenInfo()?.name ?? "")
+											}
+										>
+											Save
+										</Button>
+									</div>
+								</InputWithLabel>
 							</form>
 						</div>
 

@@ -9,7 +9,7 @@ pub async fn list_runners_for_workspace(
 			ProcessedApiRequest {
 				path: ListRunnersForWorkspacePath { workspace_id },
 				query:
-					ListResourceQuery {
+					ListResourceQueryProcessed {
 						sort: sort_order,
 						search:
 							RunnerSearchParams {
@@ -71,8 +71,8 @@ pub async fn list_runners_for_workspace(
 		connected_filter,
 		last_seen_filter.as_ref().map(|last_seen| last_seen.start()) as _,
 		last_seen_filter.as_ref().map(|last_seen| last_seen.end()) as _,
-		count as i32,
-		(count * page) as i32,
+		count as i64,
+		(count * page) as i64,
 	)
 	.fetch_all(&mut **database)
 	.await?

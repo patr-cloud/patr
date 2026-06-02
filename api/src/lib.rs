@@ -60,6 +60,7 @@ pub mod prelude {
 			DockerContentDigest,
 			DockerDistributionApiVersion,
 			ListResourceQuery,
+			ListResourceQueryProcessed,
 			LoginId,
 			OneOrMore,
 			OptionalHeader,

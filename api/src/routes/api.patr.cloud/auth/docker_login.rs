@@ -10,7 +10,7 @@ pub async fn docker_login(
 		request:
 			ProcessedApiRequest {
 				path: DockerLoginPath,
-				query: DockerLoginQuery { service: _ },
+				query: DockerLoginQueryProcessed { service: _ },
 				headers: DockerLoginRequestHeaders {
 					user_agent: _,
 					authorization,

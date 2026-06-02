@@ -17,7 +17,7 @@ pub async fn delete_role(
 					workspace_id,
 					role_id,
 				},
-				query: DeleteRoleQuery { remove_users },
+				query: DeleteRoleQueryProcessed { remove_users },
 				headers: DeleteRoleRequestHeaders {
 					authorization: _,
 					user_agent: _,

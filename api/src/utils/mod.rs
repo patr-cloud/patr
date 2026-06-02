@@ -104,6 +104,11 @@ pub mod constants {
 	/// before getting banned altogether
 	pub const MAX_PASSWORD_RESET_ATTEMPTS: i32 = 5;
 
+	/// The maximum number of OTP-verification attempts a pending sign-up may
+	/// make before the row is effectively locked. The legitimate user must
+	/// wait for the OTP to expire and re-trigger sign-up to try again.
+	pub const MAX_SIGN_UP_ATTEMPTS: i32 = 5;
+
 	/// The issuer to be used for TOTP generation
 	pub const TOTP_ISSUER: &str = "app.patr.cloud";
 

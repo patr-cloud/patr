@@ -177,7 +177,7 @@ async fn list_database(
 			ProcessedApiRequest {
 				path: ListDatabasePath { workspace_id },
 				query:
-					ListResourceQuery {
+					ListResourceQueryProcessed {
 						sort: sort_order,
 						search: filter,
 						count,

@@ -32,8 +32,7 @@ const UserSettingsInfoSection = () => {
 		if (lastName() === undefined) setLastName(info.lastName ?? "");
 	});
 
-	const refetchUserInfo = () =>
-		queryClient.invalidateQueries({ queryKey: userInfoKeys.current() });
+	const refetchUserInfo = () => queryClient.invalidateQueries({ queryKey: userInfoKeys.current() });
 
 	const onUpdateName = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
 		e.preventDefault();

@@ -8,9 +8,14 @@ use argon2::{
 };
 use axum::http::StatusCode;
 use models::api::auth::*;
+use rustis::commands::StringCommands as _;
 use time::OffsetDateTime;
 
-use crate::{prelude::*, utils::cloudflare::validate_turnstile_token};
+use crate::{
+	prelude::*,
+	redis::keys as redis,
+	utils::cloudflare::validate_turnstile_token,
+};
 
 pub async fn reset_password(
 	AppRequest {
@@ -28,7 +33,7 @@ pub async fn reset_password(
 					},
 			},
 		database,
-		redis: _,
+		redis,
 		client_ip,
 		state,
 	}: AppRequest<'_, ResetPasswordRequest>,
@@ -101,7 +106,7 @@ pub async fn reset_password(
 		return Err(ErrorType::InvalidPasswordResetToken);
 	}
 
-	if user_data.password_reset_attempts.unwrap_or(0) > constants::MAX_PASSWORD_RESET_ATTEMPTS {
+	if user_data.password_reset_attempts.unwrap_or(0) >= constants::MAX_PASSWORD_RESET_ATTEMPTS {
 		debug!("Password reset attempts exceeded");
 		return Err(ErrorType::InvalidPasswordResetToken);
 	}
@@ -165,12 +170,17 @@ pub async fn reset_password(
 	.map_err(ErrorType::server_error)?
 	.to_string();
 
+	// Update the password and consume the reset token in one statement so the
+	// same OTP can't be replayed within its TTL.
 	query!(
 		r#"
 		UPDATE
 			"user"
 		SET
-			password = $1
+			password = $1,
+			password_reset_token = NULL,
+			password_reset_token_expiry = NULL,
+			password_reset_attempts = NULL
 		WHERE
 			id = $2;
 		"#,
@@ -179,6 +189,32 @@ pub async fn reset_password(
 	)
 	.execute(&mut **database)
 	.await?;
+
+	// Reset has no caller session, so drop every web login the user had.
+	query!(
+		r#"
+		DELETE FROM
+			web_login
+		WHERE
+			user_id = $1;
+		"#,
+		user_data.id,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	redis
+		.setex(
+			redis::user_id_revocation_timestamp(&user_data.id.into()),
+			constants::CACHED_PERMISSIONS_VALIDITY
+				.whole_seconds()
+				.unsigned_abs(),
+			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
+		)
+		.await
+		.inspect_err(|err| {
+			error!("Error setting user_id_revocation_timestamp: `{}`", err);
+		})?;
 
 	AppResponse::builder()
 		.body(ResetPasswordResponse)

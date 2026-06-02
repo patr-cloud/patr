@@ -45,6 +45,18 @@ pub async fn create_api_token(
 		return Err(ErrorType::WrongParameters);
 	}
 
+	if let (Some(nbf), Some(exp)) = (token_nbf, token_exp) {
+		if nbf > exp {
+			return Err(ErrorType::WrongParameters);
+		}
+	}
+
+	// An empty whitelist would otherwise permanently lock the token (the
+	// authenticator's `.any(...)` over an empty list always returns false).
+	// Treat `[]` as "no whitelist" — semantically the user wanted no IP
+	// restriction anyway, and we don't get a footgun in the DB.
+	let allowed_ips = allowed_ips.filter(|ips| !ips.is_empty());
+
 	let now = OffsetDateTime::now_utc();
 
 	let refresh_token = Uuid::new_v4();

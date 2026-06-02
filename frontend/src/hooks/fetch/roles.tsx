@@ -46,10 +46,7 @@ export const useRolesQuery = (page: Accessor<string | undefined>, count: Accesso
 	});
 };
 
-export const useAllRolesQuery = (
-	page: Accessor<string | undefined>,
-	count: Accessor<string | undefined>
-) => {
+export const useAllRolesQuery = (page: Accessor<string | undefined>, count: Accessor<string | undefined>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 

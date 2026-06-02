@@ -34,7 +34,7 @@ pub async fn get_deployment_logs(
 					workspace_id,
 					deployment_id,
 				},
-				query: GetDeploymentLogsQuery {
+				query: GetDeploymentLogsQueryProcessed {
 					end_time,
 					limit,
 					search,

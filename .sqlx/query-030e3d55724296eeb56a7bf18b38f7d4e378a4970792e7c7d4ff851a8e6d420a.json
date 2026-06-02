@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE \"user\" SET password = $1, password_reset_token = NULL, password_reset_token_expiry = NULL, password_reset_attempts = NULL WHERE id = $2;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "030e3d55724296eeb56a7bf18b38f7d4e378a4970792e7c7d4ff851a8e6d420a"
+}

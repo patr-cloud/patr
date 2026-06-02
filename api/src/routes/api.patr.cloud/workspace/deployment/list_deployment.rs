@@ -11,7 +11,7 @@ pub async fn list_deployment(
 			ProcessedApiRequest {
 				path: ListDeploymentPath { workspace_id },
 				query:
-					ListResourceQuery {
+					ListResourceQueryProcessed {
 						sort: sort_order,
 						search:
 							DeploymentSearchParams {

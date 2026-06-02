@@ -13,7 +13,7 @@ pub async fn list_repository_tags(
 						repository_id,
 					},
 				query:
-					ListResourceQuery {
+					ListResourceQueryProcessed {
 						sort: sort_order,
 						search:
 							ContainerRepositoryTagAndDigestInfoSearchParams {

@@ -8,7 +8,7 @@ pub async fn authorize(
 			ProcessedApiRequest {
 				path: OAuthAuthorizePath,
 				query:
-					OAuthAuthorizeQuery {
+					OAuthAuthorizeQueryProcessed {
 						response_type,
 						client_id,
 						redirect_uri,

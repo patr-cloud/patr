@@ -9,7 +9,7 @@ pub async fn list_domains_in_workspace(
 			ProcessedApiRequest {
 				path: ListDomainsInWorkspacePath { workspace_id },
 				query:
-					ListResourceQuery {
+					ListResourceQueryProcessed {
 						sort: sort_order,
 						search:
 							WorkspaceDomainSearchParams {

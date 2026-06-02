@@ -14,7 +14,7 @@ pub async fn list_deploy_history(
 					deployment_id,
 				},
 				query:
-					ListResourceQuery {
+					ListResourceQueryProcessed {
 						sort: sort_order,
 						search:
 							DeploymentDeployHistorySearchParams {

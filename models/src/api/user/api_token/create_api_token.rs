@@ -1,4 +1,4 @@
-use super::{UserApiToken, UserApiTokenProcessed};
+use super::UserApiToken;
 use crate::prelude::*;
 
 macros::declare_api_endpoint!(

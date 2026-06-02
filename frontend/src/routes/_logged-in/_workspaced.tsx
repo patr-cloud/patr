@@ -20,6 +20,12 @@ const WorkspacedLayout = () => {
 				navigate({ to: "/onboard", replace: true });
 			} else if (!workspaceId()) {
 				setWorkspaceId(ws[0].id);
+			} else if (!ws.some((w) => w.id === workspaceId())) {
+				// The cookie points at a workspace the user is no longer in
+				// (removed by an owner, deleted, or never existed). Fall back
+				// to the first workspace we DO have access to so the rest of
+				// the tree doesn't 403 on every query.
+				setWorkspaceId(ws[0].id);
 			}
 		}
 	});

@@ -9,7 +9,7 @@ pub async fn list_repositories(
 			ProcessedApiRequest {
 				path: ListContainerRepositoriesPath { workspace_id },
 				query:
-					ListResourceQuery {
+					ListResourceQueryProcessed {
 						sort: sort_order,
 						search:
 							ContainerRepositorySearchParams {

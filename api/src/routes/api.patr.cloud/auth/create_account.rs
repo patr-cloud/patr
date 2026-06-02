@@ -60,8 +60,8 @@ pub async fn create_account(
 			.headers(IsUsernameValidRequestHeaders {
 				user_agent: user_agent.clone(),
 			})
-			.query(IsUsernameValidQuery {
-				username: username.to_string(),
+			.query(IsUsernameValidQueryProcessed {
+				username: username.clone(),
 			})
 			.path(IsUsernameValidPath)
 			.body(IsUsernameValidRequestProcessed)
@@ -103,8 +103,8 @@ pub async fn create_account(
 					.headers(IsEmailValidRequestHeaders {
 						user_agent: user_agent.clone(),
 					})
-					.query(IsEmailValidQuery {
-						email: recovery_email.clone(),
+					.query(IsEmailValidQueryProcessed {
+						email: recovery_email.clone().into(),
 					})
 					.path(IsEmailValidPath)
 					.body(IsEmailValidRequestProcessed)
@@ -199,7 +199,8 @@ pub async fn create_account(
 				recovery_phone_number,
 
 				otp_hash,
-				otp_expiry
+				otp_expiry,
+				sign_up_attempts
 			)
 		VALUES
 			(
@@ -211,9 +212,10 @@ pub async fn create_account(
 				$5,
 				$6,
 				$7,
-				
+
 				$8,
-				$9
+				$9,
+				0
 			)
 		ON CONFLICT
 			(username)

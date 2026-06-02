@@ -56,9 +56,8 @@ const CreateRoles = () => {
 	const workspaceInfoQuery = useWorkspaceInfoQuery();
 
 	const { execute: handleSubmit, isLoading: isSubmitting } = createAuthenticatedAction(async ({ workspaceId }) => {
-		const nameError = validateNameField(roleName()) === "Required"
-			? "Please enter a role name"
-			: validateNameField(roleName());
+		const nameError =
+			validateNameField(roleName()) === "Required" ? "Please enter a role name" : validateNameField(roleName());
 		const descriptionError = validateRoleDescription(roleDescription());
 		setRoleNameError(nameError);
 		setRoleDescriptionError(descriptionError);

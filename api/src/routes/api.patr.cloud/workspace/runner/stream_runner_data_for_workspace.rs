@@ -33,8 +33,14 @@ use models::{
 use rustis::{
 	ClientError,
 	Error as RedisError,
-	client::Client as RedisClient,
-	commands::{GenericCommands, SetCondition, SetExpiration, StringCommands},
+	client::{BatchPreparedCommand as _, Client as RedisClient},
+	commands::{
+		GenericCommands,
+		SetCondition,
+		SetExpiration,
+		StringCommands,
+		TransactionCommands as _,
+	},
 };
 use tokio_util::sync::CancellationToken;
 
@@ -241,26 +247,49 @@ async fn handle_websocket(
 				debug!("Failed to send ping to websocket");
 				break;
 			};
-			let Ok(true) = redis
-				.set_with_options(
-					redis::keys::runner_connection_lock(&runner_id),
-					random_connection_id.to_string(),
-					SetCondition::XX,
-					SetExpiration::Ex(
-						const {
-							if cfg!(debug_assertions) {
-								5 // 5 seconds
-							} else {
-								120 // 2 mins
-							}
-						},
-					),
-				)
-				.await
-			else {
-				info!("Runner connection lock expired, closing websocket");
+			// Compare-and-renew: WATCH the lock, GET to confirm we still own it,
+			// then MULTI/PEXPIRE/EXEC to extend the TTL. EXEC returns
+			// `Error::Aborted` if anything (including our own client) wrote
+			// to the key between WATCH and EXEC, in which case we bail
+			// without touching the lock further. Replaces the previous
+			// `SET XX` which would happily extend another runner's lock
+			// after a TTL-expiry race.
+			let lock_key = redis::keys::runner_connection_lock(&runner_id);
+			let my_uuid = random_connection_id.to_string();
+			let ttl_seconds: u64 = if cfg!(debug_assertions) { 5 } else { 120 };
+
+			if redis.watch(lock_key.clone()).await.is_err() {
+				info!("Failed to WATCH runner connection lock, closing websocket");
 				break;
+			}
+			let current = match redis.get::<Option<String>>(lock_key.clone()).await {
+				Ok(v) => v,
+				Err(_) => {
+					let _ = redis.unwatch().await;
+					info!("Failed to GET runner connection lock, closing websocket");
+					break;
+				}
 			};
+			if current.as_deref() != Some(my_uuid.as_str()) {
+				let _ = redis.unwatch().await;
+				info!("Runner connection lock no longer owned by us, closing websocket");
+				break;
+			}
+
+			let mut tx = redis.create_transaction();
+			tx.pexpire(lock_key.clone(), ttl_seconds * 1000, None)
+				.queue();
+			match tx.execute::<()>().await {
+				Ok(_) => {}
+				Err(RedisError::Aborted) => {
+					info!("Runner connection lock changed during renewal, closing websocket");
+					break;
+				}
+				Err(err) => {
+					error!("Failed to renew runner connection lock: {:?}", err);
+					break;
+				}
+			}
 			continue;
 		};
 
@@ -362,10 +391,29 @@ async fn handle_websocket(
 		.unsubscribe(&redis_channel)
 		.await
 		.inspect_err(|err| error!("Error streaming runner data: {:?}", err));
-	_ = redis
-		.del(redis::keys::runner_connection_lock(&runner_id))
-		.await
-		.inspect_err(|err| error!("Error releasing runner connection lock: {:?}", err));
+	// Compare-and-delete on shutdown so we never wipe a lock that another
+	// runner has since taken (the original blip-and-resume sequence the
+	// previous unconditional DEL was vulnerable to). Aborted just means
+	// someone else has the lock now — also fine.
+	let lock_key = redis::keys::runner_connection_lock(&runner_id);
+	let my_uuid = random_connection_id.to_string();
+	let release_result = async {
+		redis.watch(lock_key.clone()).await?;
+		let current: Option<String> = redis.get(lock_key.clone()).await?;
+		if current.as_deref() != Some(my_uuid.as_str()) {
+			return redis.unwatch().await;
+		}
+		let mut tx = redis.create_transaction();
+		tx.del(lock_key.clone()).queue();
+		match tx.execute::<()>().await {
+			Ok(_) | Err(RedisError::Aborted) => Ok(()),
+			Err(e) => Err(e),
+		}
+	}
+	.await;
+	if let Err(err) = release_result {
+		error!("Error releasing runner connection lock: {:?}", err);
+	}
 	_ = websocket.close().await;
 }
 

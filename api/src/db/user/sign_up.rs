@@ -20,7 +20,8 @@ pub async fn initialize_user_sign_up_tables(
 			recovery_phone_number VARCHAR(15),
 
 			otp_hash TEXT NOT NULL,
-			otp_expiry TIMESTAMPTZ NOT NULL
+			otp_expiry TIMESTAMPTZ NOT NULL,
+			sign_up_attempts INTEGER NOT NULL
 		);
 		"#
 	)

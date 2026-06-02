@@ -22,7 +22,7 @@ macros::declare_api_endpoint!(
 		/// Accepts either a username (per [`USERNAME_VALIDITY_REGEX`]) or an email.
 		/// Phone-shaped input is rejected at this layer (the backend handler still
 		/// supports phone lookup, but we don't expose it from the login UI yet).
-		#[preprocess(trim, length(min = 4), custom = "validate_username_or_email")]
+		#[preprocess(trim, length(min = 2), custom = "validate_username_or_email")]
 		pub user_id: String,
 		/// The password of the user policy:
 		/// Minimum length (often at least 8 characters).
