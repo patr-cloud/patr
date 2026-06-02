@@ -191,7 +191,7 @@ impl TestSetup {
 			.acquire()
 			.await
 			.expect("failed to acquire connection");
-		db_helpers::create_deployment_in_database(
+		db_helpers::upsert_deployment_in_database(
 			&mut conn,
 			WithId::new(id, deployment),
 			running_details,

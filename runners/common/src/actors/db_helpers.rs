@@ -7,13 +7,20 @@ use models::api::workspace::deployment::*;
 
 use crate::prelude::*;
 
-/// Create a deployment and all its related data in the local SQLite database.
+/// Insert or update a deployment and all its related data in the local SQLite
+/// database.
 ///
 /// Stores the raw `DeploymentRegistry` data (including `repository_id` for
 /// PatrRegistry) without resolving image names. Resolution happens at upsert
 /// time in the DeploymentActor / executor.
+///
+/// Owned child tables (`deployment_exposed_port`,
+/// `deployment_environment_variable`, `deployment_config_mounts`,
+/// `deployment_volume_mount`) are cleared and re-inserted; `managed_url` and
+/// `deployment_deploy_history` are NOT touched so a `DeploymentUpdated` event
+/// from upstream doesn't cascade-wipe the runner's managed URL state.
 #[instrument(skip(connection))]
-pub async fn create_deployment_in_database(
+pub async fn upsert_deployment_in_database(
 	connection: &mut DatabaseConnection,
 	WithId {
 		id: deployment_id,
@@ -40,8 +47,15 @@ pub async fn create_deployment_in_database(
 		volumes,
 	}: DeploymentRunningDetails,
 ) -> Result<(), RunnerError> {
-	trace!("Creating deployment in database with ID: {}", deployment_id);
+	trace!(
+		"Upserting deployment in database with ID: {}",
+		deployment_id
+	);
 
+	// Insert with NULL probe FKs (they reference `deployment_exposed_port` rows
+	// we're about to recreate). On conflict, also clear probes so the delete
+	// below can drop the old `deployment_exposed_port` rows without violating
+	// the FK; we re-set them at the end once the new rows exist.
 	query(
 		r#"
 		INSERT INTO
@@ -87,7 +101,26 @@ pub async fn create_deployment_in_database(
 				NULL,
 				$12,
 				NULL
-			);
+			)
+		ON CONFLICT(id) DO UPDATE SET
+			name = excluded.name,
+			registry = excluded.registry,
+			image_name = excluded.image_name,
+			repository_id = excluded.repository_id,
+			image_tag = excluded.image_tag,
+			status = excluded.status,
+			machine_type = excluded.machine_type,
+			min_horizontal_scale = excluded.min_horizontal_scale,
+			max_horizontal_scale = excluded.max_horizontal_scale,
+			deploy_on_push = excluded.deploy_on_push,
+			startup_probe_port = NULL,
+			startup_probe_path = NULL,
+			startup_probe_port_type = NULL,
+			liveness_probe_port = NULL,
+			liveness_probe_path = NULL,
+			liveness_probe_port_type = NULL,
+			current_live_digest = excluded.current_live_digest,
+			deleted = excluded.deleted;
 		"#,
 	)
 	.bind(deployment_id)
@@ -102,6 +135,54 @@ pub async fn create_deployment_in_database(
 	.bind(max_horizontal_scale)
 	.bind(deploy_on_push)
 	.bind(current_live_digest)
+	.execute(&mut *connection)
+	.await?;
+
+	// Clear owned child rows so we can re-insert the latest set. Probes were
+	// nulled above, so `deployment_exposed_port` is no longer referenced from
+	// `deployment` and can be deleted safely.
+	query(
+		r#"
+		DELETE FROM
+			deployment_volume_mount
+		WHERE
+			deployment_id = $1;
+		"#,
+	)
+	.bind(deployment_id)
+	.execute(&mut *connection)
+	.await?;
+	query(
+		r#"
+		DELETE FROM
+			deployment_config_mounts
+		WHERE
+			deployment_id = $1;
+		"#,
+	)
+	.bind(deployment_id)
+	.execute(&mut *connection)
+	.await?;
+	query(
+		r#"
+		DELETE FROM
+			deployment_environment_variable
+		WHERE
+			deployment_id = $1;
+		"#,
+	)
+	.bind(deployment_id)
+	.execute(&mut *connection)
+	.await?;
+	query(
+		r#"
+		DELETE FROM
+			deployment_exposed_port
+		WHERE
+			deployment_id = $1;
+		"#,
+	)
+	.bind(deployment_id)
 	.execute(&mut *connection)
 	.await?;
 
