@@ -158,9 +158,9 @@ const LogTerminal = (props: LogTerminalProps) => {
 		const params = new URLSearchParams();
 		params.set("limit", "100");
 		if (typeof oldestLog.timestamp === "string") {
-			params.set("end_time", oldestLog.timestamp);
+			params.set("endTime", oldestLog.timestamp);
 		} else {
-			params.set("end_time", oldestLog.timestamp.toISOString());
+			params.set("endTime", oldestLog.timestamp.toISOString());
 		}
 		if (debouncedSearch()) {
 			params.set("search", debouncedSearch());
