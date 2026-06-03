@@ -89,8 +89,6 @@ services:
     user: root
     expose:
       - 3100
-    ports:
-      - "3003:3100"
     volumes:
       - ../config/loki.yaml:/etc/loki/loki.yaml:ro
       - loki-data:/var/lib/loki
@@ -105,8 +103,6 @@ services:
     restart: unless-stopped
     expose:
       - 8080
-    ports:
-      - "3005:8080"
     hostname: metrics
     networks:
       vpc:
