@@ -6,7 +6,14 @@ import { useClickOutside } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useWorkspacesQuery } from "~/hooks/fetch";
 
-const WorkspaceSwitcher = () => {
+interface WorkspaceSwitcherProps {
+	/** Where the workspace list pops up relative to the trigger. Defaults to "top" (sidebar footer). */
+	placement?: "top" | "bottom";
+	/** Compact trigger — icon + short name, used in the mobile TopBar. */
+	compact?: boolean;
+}
+
+const WorkspaceSwitcher = (props: WorkspaceSwitcherProps = {}) => {
 	const [workspaceId, setWorkspaceId] = useLastWorkspaceId();
 	const [workspaceRef, setWorkspaceRef] = createSignal<HTMLDivElement>();
 	useClickOutside(workspaceRef, () => setShowSwitcher(false));
@@ -20,33 +27,59 @@ const WorkspaceSwitcher = () => {
 		return workspaces.find((ws) => ws.id === workspaceId());
 	};
 
+	const placement = () => props.placement ?? "top";
+	const compact = () => props.compact ?? false;
+
 	return (
 		<div class="relative select-none" ref={setWorkspaceRef}>
-			<div
-				class="flex justify-between items-center py-sm px-md cursor-pointer hover:bg-secondary-dark rounded-xs w-full br-sm bg-secondary-dark gap-xxs"
-				onClick={() => setShowSwitcher(!showSwitcher())}
+			<Show
+				when={!compact()}
+				fallback={
+					<button
+						type="button"
+						class="flex items-center gap-2 px-2 py-1.5 rounded-xs hover:bg-white/5 cursor-pointer border border-white/10"
+						onClick={() => setShowSwitcher(!showSwitcher())}
+						aria-label="Switch workspace"
+					>
+						<Initials
+							firstName={() => currentWorkspaceInfo()?.name ?? ".."}
+							size="sm"
+							class="bg-secondary!"
+						/>
+						<span class="text-sm text-white truncate max-w-28">
+							{currentWorkspaceInfo() ? currentWorkspaceInfo()!.name : "Select"}
+						</span>
+					</button>
+				}
 			>
-				<div class="flex flex-row items-center justify-start w-full">
-					<Initials
-						firstName={() => currentWorkspaceInfo()?.name ?? ".."}
-						size="lg"
-						class="mr-3 bg-secondary!"
-					/>
-					<p class="text-sm text-white text-ellipsis overflow-hidden">
-						{currentWorkspaceInfo() ? currentWorkspaceInfo()!.name : "Select A Workspace"}
-					</p>
-				</div>
+				<div
+					class="flex justify-between items-center py-sm px-md cursor-pointer hover:bg-secondary-dark rounded-xs w-full br-sm bg-secondary-dark gap-xxs"
+					onClick={() => setShowSwitcher(!showSwitcher())}
+				>
+					<div class="flex flex-row items-center justify-start w-full">
+						<Initials
+							firstName={() => currentWorkspaceInfo()?.name ?? ".."}
+							size="lg"
+							class="mr-3 bg-secondary!"
+						/>
+						<p class="text-sm text-white text-ellipsis overflow-hidden">
+							{currentWorkspaceInfo() ? currentWorkspaceInfo()!.name : "Select A Workspace"}
+						</p>
+					</div>
 
-				<RouterLink to="/workspace" class="text-xs text-gray-400">
-					<FiSettings />
-				</RouterLink>
-			</div>
+					<RouterLink to="/workspace" class="text-xs text-gray-400">
+						<FiSettings />
+					</RouterLink>
+				</div>
+			</Show>
 
 			<Show when={showSwitcher()}>
 				<div
-					class="absolute bottom-18 left-0 min-w-72 max-h-160
-          shadow-high rounded-xs z-10 bg-secondary-light text-white
-          border border-border-color flex flex-col items-start justify-start py-md px-sm pb-0"
+					class={`absolute ${
+						placement() === "bottom" ? "top-full mt-2 left-0" : "bottom-18 left-0"
+					} min-w-72 max-w-[calc(100vw-1rem)] max-h-160
+          shadow-high rounded-xs z-50 bg-secondary-light text-white
+          border border-border-color flex flex-col items-start justify-start py-md px-sm pb-0`}
 				>
 					<p class="text-center w-full text-md mb-sm">Workspaces</p>
 

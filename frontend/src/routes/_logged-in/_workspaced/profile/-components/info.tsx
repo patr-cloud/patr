@@ -1,6 +1,6 @@
 import { createEffect, createSignal } from "solid-js";
 import { GetUserInfoResponse } from "~/bindings";
-import { Button, ButtonVariant, Input, InputType, InputLabel, Modal, useToast } from "~/components";
+import { Button, ButtonVariant, Input, InputType, InputWithLabel, Modal, useToast } from "~/components";
 import { useAuthState } from "~/hooks";
 import { useUserInfoQuery } from "~/hooks/fetch";
 import { userInfoKeys } from "~/hooks/query-keys";
@@ -62,47 +62,47 @@ const UserSettingsInfoSection = () => {
 	};
 	return (
 		<>
-			<form onSubmit={onUpdateName} class="flex gap-4 items-center w-full">
-				<InputLabel parentClass="flex-1" for="first-name" label="Name" />
-				<Input
-					value={localInfo()?.firstName || ""}
-					class="flex-5"
-					id="first-name"
-					name="first-name"
-					autocomplete="given-name"
-					placeholder="First Name"
-					type={InputType.Text}
-					onInput={(e) => {
-						setLocalInfo((prev: GetUserInfoResponse | undefined) =>
-							prev ? { ...prev, firstName: e.currentTarget.value } : undefined
-						);
-					}}
-				/>
-				<Input
-					value={localInfo()?.lastName || ""}
-					class="flex-5"
-					id="last-name"
-					name="last-name"
-					autocomplete="family-name"
-					placeholder="Last Name"
-					type={InputType.Text}
-					onInput={(e) => {
-						setLocalInfo((prev: GetUserInfoResponse | undefined) =>
-							prev ? { ...prev, lastName: e.currentTarget.value } : undefined
-						);
-					}}
-				/>
-				<Button type="submit" variant={ButtonVariant.Contained}>
-					Update
-				</Button>
+			<form onSubmit={onUpdateName} class="w-full">
+				<InputWithLabel for="first-name" label="Name">
+					<div class="flex flex-col md:flex-row gap-2 w-full">
+						<Input
+							value={localInfo()?.firstName || ""}
+							class="md:flex-1"
+							id="first-name"
+							name="first-name"
+							autocomplete="given-name"
+							placeholder="First Name"
+							type={InputType.Text}
+							onInput={(e) => {
+								setLocalInfo((prev: GetUserInfoResponse | undefined) =>
+									prev ? { ...prev, firstName: e.currentTarget.value } : undefined
+								);
+							}}
+						/>
+						<Input
+							value={localInfo()?.lastName || ""}
+							class="md:flex-1"
+							id="last-name"
+							name="last-name"
+							autocomplete="family-name"
+							placeholder="Last Name"
+							type={InputType.Text}
+							onInput={(e) => {
+								setLocalInfo((prev: GetUserInfoResponse | undefined) =>
+									prev ? { ...prev, lastName: e.currentTarget.value } : undefined
+								);
+							}}
+						/>
+						<Button type="submit" variant={ButtonVariant.Contained}>
+							Update
+						</Button>
+					</div>
+				</InputWithLabel>
 			</form>
 
-			<div class="flex gap-4 items-center w-full">
-				<InputLabel parentClass="flex-1" for="recovery-email" label="Email" />
-
+			<InputWithLabel for="recovery-email" label="Email">
 				<Input
 					value={localInfo()?.recoveryEmail || ""}
-					class="flex-11"
 					id="recovery-email"
 					name="recovery-email"
 					autocomplete="email"
@@ -110,12 +110,10 @@ const UserSettingsInfoSection = () => {
 					type={InputType.Text}
 					disabled
 				/>
-			</div>
+			</InputWithLabel>
 
-			<form class="flex gap-4 items-start w-full">
-				<InputLabel parentClass="flex-1" label="Two-Factor Authentication" />
-
-				<div class="flex-11">
+			<InputWithLabel label="Two-Factor Authentication">
+				<div>
 					<Modal
 						renderTrigger={(open) => (
 							<Button
@@ -136,7 +134,7 @@ const UserSettingsInfoSection = () => {
 						)}
 					/>
 				</div>
-			</form>
+			</InputWithLabel>
 		</>
 	);
 };

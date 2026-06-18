@@ -73,10 +73,10 @@ const WorkspacePermissionItem = (props: WorkspacePermissionItemProps) => {
 			/>
 
 			<Show when={props.enabled}>
-				<div class="flex flex-col gap-4 w-full pl-7">
+				<div class="flex flex-col gap-4 w-full">
 					{/* Super Admin toggle (only shown if current user is super admin of this workspace) */}
 					<Show when={props.isSuperAdmin}>
-						<div class="flex items-center gap-6">
+						<div class="flex flex-row items-center gap-6 mt-2">
 							<Radio
 								name={`perm-mode-${props.workspace.id}`}
 								checked={superAdminMode()}

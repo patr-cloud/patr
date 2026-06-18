@@ -42,10 +42,10 @@ const EmptyState = (props: EmptyStateProps) => {
 			</div>
 
 			{/* Text content — sits above the image */}
-			<div class="relative flex flex-col items-center gap-4 pt-16 pb-8 z-10">
-				<h2 class="text-xl font-medium text-white">{get(props.title)}</h2>
+			<div class="relative flex flex-col items-center gap-3 md:gap-4 pt-8 md:pt-16 pb-4 md:pb-8 px-4 z-10 text-center max-w-full">
+				<h2 class="text-lg md:text-xl font-medium text-white">{get(props.title)}</h2>
 				<Show when={props.description}>
-					<p class="text-sm text-grey">{get(props.description!)}</p>
+					<p class="text-xs md:text-sm text-grey">{get(props.description!)}</p>
 				</Show>
 				<Show when={props.action}>
 					<div class="mt-2 bg-secondary-dark">{props.action}</div>

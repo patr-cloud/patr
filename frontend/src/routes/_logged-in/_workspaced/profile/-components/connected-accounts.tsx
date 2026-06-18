@@ -1,6 +1,6 @@
 import { createResource, For, Show } from "solid-js";
 import { ConnectSocialLoginInitiateResponse, LinkedSocialLogin, ListSocialLoginsResponse } from "~/bindings";
-import { Button, ButtonVariant, InputLabel, LoadingSpinner, useToast } from "~/components";
+import { Button, ButtonVariant, InputWithLabel, LoadingSpinner, useToast } from "~/components";
 import { formatRelativeTime } from "~/utils/func";
 import { httpRequest } from "~/utils/http-request";
 
@@ -46,10 +46,8 @@ const ConnectedAccountsSection = () => {
 	};
 
 	return (
-		<div class="flex gap-4 items-start w-full">
-			<InputLabel parentClass="flex-1" label="Connected Accounts" />
-
-			<div class="flex-11 flex flex-col gap-3">
+		<InputWithLabel label="Connected Accounts">
+			<div class="flex flex-col gap-3">
 				<Show
 					when={!logins.loading}
 					fallback={
@@ -119,7 +117,7 @@ const ConnectedAccountsSection = () => {
 					</Show>
 				</Show>
 			</div>
-		</div>
+		</InputWithLabel>
 	);
 };
 

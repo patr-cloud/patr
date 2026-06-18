@@ -1,14 +1,17 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/solid-router";
-import { createEffect, ErrorBoundary } from "solid-js";
+import { createFileRoute, Outlet, useLocation, useNavigate } from "@tanstack/solid-router";
+import { createEffect, createSignal, ErrorBoundary, Show } from "solid-js";
 import { useWorkspacesQuery, useUserPermissionsQuery } from "~/hooks/fetch";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { Sidebar, TopBar } from "~/components";
+import { SidebarContext } from "~/components/sidebar/context";
 
 const WorkspacedLayout = () => {
 	const workspacesQuery = useWorkspacesQuery();
 	useUserPermissionsQuery();
 	const navigate = useNavigate();
+	const location = useLocation();
 	const [workspaceId, setWorkspaceId] = useLastWorkspaceId();
+	const [isMobileOpen, setMobileOpen] = createSignal(false);
 
 	createEffect(() => {
 		if (!workspacesQuery.isPending) {
@@ -21,24 +24,46 @@ const WorkspacedLayout = () => {
 		}
 	});
 
+	// Close drawer on navigation
+	createEffect(() => {
+		const _ = location().pathname;
+		void _;
+		setMobileOpen(false);
+	});
+
+	const sidebarCtx = {
+		isMobileOpen,
+		setMobileOpen,
+		toggleMobile: () => setMobileOpen(!isMobileOpen()),
+	};
+
 	return (
-		<main class="bg-secondary w-full min-h-screen h-screen flex">
-			<Sidebar />
-			<div class="flex-1 flex flex-col overflow-hidden">
-				<TopBar />
-				<div class="flex-1 overflow-auto">
-					<ErrorBoundary
-						fallback={(err) => (
-							<div class="flex items-center justify-center h-full text-white">
-								<p>Something went wrong: {err.message}</p>
-							</div>
-						)}
-					>
-						<Outlet />
-					</ErrorBoundary>
+		<SidebarContext.Provider value={sidebarCtx}>
+			<main class="bg-secondary w-full min-h-screen h-screen flex">
+				<Sidebar />
+				<Show when={isMobileOpen()}>
+					<div
+						class="fixed inset-0 bg-black/50 z-30 md:hidden"
+						onClick={() => setMobileOpen(false)}
+						aria-hidden="true"
+					/>
+				</Show>
+				<div class="flex-1 flex flex-col overflow-hidden min-w-0">
+					<TopBar />
+					<div class="flex-1 overflow-auto">
+						<ErrorBoundary
+							fallback={(err) => (
+								<div class="flex items-center justify-center h-full text-white">
+									<p>Something went wrong: {err.message}</p>
+								</div>
+							)}
+						>
+							<Outlet />
+						</ErrorBoundary>
+					</div>
 				</div>
-			</div>
-		</main>
+			</main>
+		</SidebarContext.Provider>
 	);
 };
 

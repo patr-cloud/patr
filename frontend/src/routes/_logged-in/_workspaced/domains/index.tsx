@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createEffect, createSignal, ErrorBoundary, Suspense, Show } from "solid-js";
+import { createEffect, createSignal, ErrorBoundary, For, Suspense, Show } from "solid-js";
 import { FiAlertCircle } from "solid-icons/fi";
 import {
 	PageContainer,
@@ -151,6 +151,43 @@ const VerificationIcon = (props: { domain: WorkspaceDomain }) => {
 	);
 };
 
+const DomainCard = (props: { item: WorkspaceDomain }) => {
+	const navigate = useNavigate();
+	const goToDetail = () => navigate({ to: `/domains/${props.item.id}` });
+
+	return (
+		<article
+			role="button"
+			tabIndex={0}
+			aria-label={`Open domain ${props.item.name}`}
+			onClick={goToDetail}
+			onKeyDown={(e) => {
+				if (e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					goToDetail();
+				}
+			}}
+			class="bg-secondary-light rounded-xs p-md border border-border-color cursor-pointer hover:bg-secondary-medium focus-visible:outline-2 focus-visible:outline-primary focus-visible:-outline-offset-2 transition-colors"
+		>
+			<div class="flex justify-between items-start gap-2 mb-2">
+				<h3 class="font-medium text-white truncate min-w-0">{props.item.name}</h3>
+				<div class="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+					<StatusChip status={props.item.isVerified ? "verified" : "not verified"} />
+					<Show when={!props.item.isVerified}>
+						<VerificationIcon domain={props.item} />
+					</Show>
+				</div>
+			</div>
+			<dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs text-grey">
+				<dt>Type</dt>
+				<dd class="text-white truncate">
+					{props.item.nameserverType === "patr" ? "Patr Managed" : "External"}
+				</dd>
+			</dl>
+		</article>
+	);
+};
+
 const ListDomainsPage = () => {
 	const navigate = useNavigate();
 
@@ -241,47 +278,54 @@ const ListDomainsPage = () => {
 									/>
 								}
 							>
-								<Table
-									column_grids={["flex-5", "flex-3", "flex-4"]}
-									rows={domainsQuery.data?.domains || []}
-									headings={["Domain", "Type", "Status"]}
-									renderRow={(item) => {
-										const goToDetail = () => navigate({ to: `/domains/${item.id}` });
-										return (
-											<tr
-												role="row"
-												tabIndex={0}
-												onClick={goToDetail}
-												onKeyDown={(e) => {
-													if (e.key === "Enter" || e.key === " ") {
-														e.preventDefault();
-														goToDetail();
-													}
-												}}
-												class="table-row cursor-pointer focus-visible:outline-primary"
-											>
-												<td role="cell" class="flex-5 flex items-center justify-start min-w-0">
-													<span class="truncate font-medium text-white">{item.name}</span>
-												</td>
-												<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
-													<span class="text-grey">
-														{item.nameserverType === "patr" ? "Patr Managed" : "External"}
-													</span>
-												</td>
-												<td role="cell" class="flex-4 flex items-center justify-start min-w-0">
-													<div class="flex items-center gap-2">
-														<StatusChip
-															status={item.isVerified ? "verified" : "not verified"}
-														/>
-														<Show when={!item.isVerified}>
-															<VerificationIcon domain={item} />
-														</Show>
-													</div>
-												</td>
-											</tr>
-										);
-									}}
-								/>
+								<div class="md:hidden flex flex-col gap-2">
+									<For each={domainsQuery.data?.domains || []}>
+										{(item) => <DomainCard item={item} />}
+									</For>
+								</div>
+								<div class="hidden md:block">
+									<Table
+										column_grids={["flex-5", "flex-3", "flex-4"]}
+										rows={domainsQuery.data?.domains || []}
+										headings={["Domain", "Type", "Status"]}
+										renderRow={(item) => {
+											const goToDetail = () => navigate({ to: `/domains/${item.id}` });
+											return (
+												<tr
+													role="row"
+													tabIndex={0}
+													onClick={goToDetail}
+													onKeyDown={(e) => {
+														if (e.key === "Enter" || e.key === " ") {
+															e.preventDefault();
+															goToDetail();
+														}
+													}}
+													class="table-row cursor-pointer focus-visible:outline-primary"
+												>
+													<td role="cell" class="flex-5 flex items-center justify-start min-w-0">
+														<span class="truncate font-medium text-white">{item.name}</span>
+													</td>
+													<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
+														<span class="text-grey">
+															{item.nameserverType === "patr" ? "Patr Managed" : "External"}
+														</span>
+													</td>
+													<td role="cell" class="flex-4 flex items-center justify-start min-w-0">
+														<div class="flex items-center gap-2">
+															<StatusChip
+																status={item.isVerified ? "verified" : "not verified"}
+															/>
+															<Show when={!item.isVerified}>
+																<VerificationIcon domain={item} />
+															</Show>
+														</div>
+													</td>
+												</tr>
+											);
+										}}
+									/>
+								</div>
 								<Pagination
 									state={pagination}
 									loading={domainsQuery.isFetching}

@@ -117,7 +117,7 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 
 	return (
 		<Suspense fallback={<div class="text-gray-400 text-sm">Loading permissions...</div>}>
-			<div class={`flex gap-3 items-center ${props.class || ""}`}>
+			<div class={`flex flex-col md:flex-row gap-3 md:items-center ${props.class || ""}`}>
 				{/* Dropdown 1: Resource Type */}
 				<div class="flex-1 min-w-0">
 					<InputDropdown

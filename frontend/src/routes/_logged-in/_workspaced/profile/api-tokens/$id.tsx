@@ -9,7 +9,7 @@ import {
 	DeleteModal,
 	Input,
 	InputType,
-	InputLabel,
+	InputWithLabel,
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
@@ -210,31 +210,27 @@ const ApiTokenInfo = () => {
 					/>
 					<PageContainerBody class="flex flex-col gap-8">
 						<div class="flex flex-col gap-4 items-start w-full">
-							<div class="flex gap-8 items-center w-full">
-								<InputLabel parentClass="flex-2" for="token-id" label="ID" />
+							<InputWithLabel for="token-id" label="ID">
 								<Input
 									value={apiTokenInfo()?.id || ""}
 									disabled={true}
-									class="flex-10"
 									id="token-id"
 									name="token-id"
 									placeholder="Token ID"
 									type={InputType.Text}
 								/>
-							</div>
+							</InputWithLabel>
 
-							<div class="flex gap-8 items-center w-full">
-								<InputLabel parentClass="flex-2" for="token-name" label="Name" />
+							<InputWithLabel for="token-name" label="Name">
 								<Input
 									value={apiTokenInfo()?.name || ""}
-									class="flex-10"
 									id="token-name"
 									name="token-name"
 									placeholder="Token Name"
 									type={InputType.Text}
 									disabled={true}
 								/>
-							</div>
+							</InputWithLabel>
 						</div>
 
 						{/* Workspace Permissions Section */}

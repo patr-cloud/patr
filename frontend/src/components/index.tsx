@@ -12,6 +12,7 @@ import Input, {
 	type AutocompleteSuggestion,
 } from "~/components/input";
 import InputLabel from "~/components/input-label";
+import InputWithLabel from "~/components/input-with-label";
 import InputDropdown from "~/components/input-dropdown";
 import InputDropdownCheckBox from "~/components/input-dropdown-checkbox";
 import { ButtonVariant, CopyableFieldVariant } from "~/utils/color";
@@ -60,6 +61,7 @@ export {
 	PasswordInput,
 	FileInput,
 	InputLabel,
+	InputWithLabel,
 	InputDropdown,
 	InputDropdownCheckBox,
 	Table,
