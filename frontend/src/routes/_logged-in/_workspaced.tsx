@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, useLocation, useNavigate } from "@tanstack/solid-router";
-import { createEffect, createSignal, ErrorBoundary, Show } from "solid-js";
+import { createEffect, createSignal, ErrorBoundary, on, Show } from "solid-js";
 import { useWorkspacesQuery, useUserPermissionsQuery } from "~/hooks/fetch";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { Sidebar, TopBar } from "~/components";
@@ -24,12 +24,12 @@ const WorkspacedLayout = () => {
 		}
 	});
 
-	// Close drawer on navigation
-	createEffect(() => {
-		const _ = location().pathname;
-		void _;
-		setMobileOpen(false);
-	});
+	createEffect(
+		on(
+			() => location().pathname,
+			() => setMobileOpen(false),
+		),
+	);
 
 	const sidebarCtx = {
 		isMobileOpen,

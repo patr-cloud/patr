@@ -20,7 +20,9 @@ import {
 } from "~/components";
 import { useDeploymentsQuery, useRunnersQuery } from "~/hooks/fetch";
 import { useIsAllowed, createPaginationState } from "~/hooks";
-import DeploymentImageName from "~/components/deployment-image-name";const DeploymentCard = (props: { item: WithId<Deployment>; runnerName: string }) => {
+import DeploymentImageName from "~/components/deployment-image-name";
+
+const DeploymentCard = (props: { item: WithId<Deployment>; runnerName: string }) => {
 	const navigate = useNavigate();
 	const goToDetail = () => navigate({ to: `/deployments/${props.item.id}` });
 
