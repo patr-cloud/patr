@@ -303,15 +303,26 @@ const ListDomainsPage = () => {
 													}}
 													class="table-row cursor-pointer focus-visible:outline-primary"
 												>
-													<td role="cell" class="flex-5 flex items-center justify-start min-w-0">
+													<td
+														role="cell"
+														class="flex-5 flex items-center justify-start min-w-0"
+													>
 														<span class="truncate font-medium text-white">{item.name}</span>
 													</td>
-													<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
+													<td
+														role="cell"
+														class="flex-3 flex items-center justify-start min-w-0"
+													>
 														<span class="text-grey">
-															{item.nameserverType === "patr" ? "Patr Managed" : "External"}
+															{item.nameserverType === "patr"
+																? "Patr Managed"
+																: "External"}
 														</span>
 													</td>
-													<td role="cell" class="flex-4 flex items-center justify-start min-w-0">
+													<td
+														role="cell"
+														class="flex-4 flex items-center justify-start min-w-0"
+													>
 														<div class="flex items-center gap-2">
 															<StatusChip
 																status={item.isVerified ? "verified" : "not verified"}

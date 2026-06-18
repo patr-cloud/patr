@@ -188,13 +188,24 @@ const ListRunnersPage = () => {
 														}
 													}}
 												>
-													<td role="cell" class="flex-4 flex items-center justify-start min-w-0">
+													<td
+														role="cell"
+														class="flex-4 flex items-center justify-start min-w-0"
+													>
 														<span class="truncate font-medium text-white">{item.name}</span>
 													</td>
-													<td role="cell" class="flex-2 flex items-center justify-center min-w-0">
-														<StatusChip status={item.connected ? "connected" : "unreachable"} />
+													<td
+														role="cell"
+														class="flex-2 flex items-center justify-center min-w-0"
+													>
+														<StatusChip
+															status={item.connected ? "connected" : "unreachable"}
+														/>
 													</td>
-													<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
+													<td
+														role="cell"
+														class="flex-3 flex items-center justify-start min-w-0"
+													>
 														<span class="text-grey">
 															{item.connected
 																? "-"
@@ -203,7 +214,10 @@ const ListRunnersPage = () => {
 																	: "Never"}
 														</span>
 													</td>
-													<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
+													<td
+														role="cell"
+														class="flex-3 flex items-center justify-start min-w-0"
+													>
 														<CopyableField
 															variant={CopyableFieldVariant.Text}
 															value={item.id}

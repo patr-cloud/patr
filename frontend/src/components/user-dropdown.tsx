@@ -37,7 +37,9 @@ const UserDropdown = () => {
 				class="flex items-center gap-2 px-2 md:px-4 py-2 rounded-xs bg-secondary-light hover:bg-secondary-medium transition-colors duration-200 border border-white/10 cursor-pointer"
 			>
 				<Initials firstName={userInfoQuery.data?.firstName} lastName={userInfoQuery.data?.lastName} size="sm" />
-				<span class="hidden sm:inline text-sm font-medium text-white truncate max-w-32">{getDisplayName()}</span>
+				<span class="hidden sm:inline text-sm font-medium text-white truncate max-w-32">
+					{getDisplayName()}
+				</span>
 			</button>
 
 			<Show when={isOpen()}>

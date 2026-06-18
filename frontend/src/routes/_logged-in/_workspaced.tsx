@@ -27,8 +27,8 @@ const WorkspacedLayout = () => {
 	createEffect(
 		on(
 			() => location().pathname,
-			() => setMobileOpen(false),
-		),
+			() => setMobileOpen(false)
+		)
 	);
 
 	const sidebarCtx = {
