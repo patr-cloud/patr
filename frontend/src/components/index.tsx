@@ -11,7 +11,7 @@ import Input, {
 	FileInput,
 	type AutocompleteSuggestion,
 } from "~/components/input";
-import InputLabel from "~/components/input-label";
+import Label from "~/components/label";
 import InputWithLabel from "~/components/input-with-label";
 import InputDropdown from "~/components/input-dropdown";
 import InputDropdownCheckBox from "~/components/input-dropdown-checkbox";
@@ -60,7 +60,7 @@ export {
 	InputType,
 	PasswordInput,
 	FileInput,
-	InputLabel,
+	Label,
 	InputWithLabel,
 	InputDropdown,
 	InputDropdownCheckBox,

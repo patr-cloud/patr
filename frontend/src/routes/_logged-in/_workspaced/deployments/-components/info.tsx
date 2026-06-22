@@ -8,7 +8,7 @@ import {
 	Input,
 	InputType,
 	InputDropdown,
-	InputLabel,
+	Label,
 	RangeSlider,
 	ToggleSwitch,
 	useToast,
@@ -137,7 +137,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 		<form onSubmit={onSubmitUpdate} class="flex flex-col gap-6 justify-between w-full flex-1">
 			<div class="flex flex-col gap-4 items-start w-full">
 				<div class="flex gap-8 items-start w-full">
-					<InputLabel parentClass="flex-2 pt-2.5" for="deployment-id" label="ID" />
+					<Label parentClass="flex-2 pt-2.5" for="deployment-id" label="ID" />
 					<CopyableField
 						value={localInfo()?.id ?? ""}
 						variant={CopyableFieldVariant.Input}
@@ -147,7 +147,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				</div>
 
 				<div class="flex gap-8 items-start w-full">
-					<InputLabel parentClass="flex-2 pt-2.5" for="deployment-name" label="Name" />
+					<Label parentClass="flex-2 pt-2.5" for="deployment-name" label="Name" />
 					<Input
 						class="flex-10"
 						name="deployment-name"
@@ -162,7 +162,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				</div>
 
 				<div class="flex gap-8 items-start w-full">
-					<InputLabel
+					<Label
 						parentClass="flex-2 pt-2.5"
 						label="Current Digest"
 						comments="Image hash running in production"
@@ -183,7 +183,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				</div>
 
 				<div class="flex gap-8 items-start w-full">
-					<InputLabel parentClass="flex-2 pt-2.5" for="deployment-runner" label="Runner" />
+					<Label parentClass="flex-2 pt-2.5" for="deployment-runner" label="Runner" />
 
 					<InputDropdown
 						class="flex-10"
@@ -209,7 +209,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				</div>
 
 				<div class="flex gap-8 items-start w-full">
-					<InputLabel parentClass="flex-2 pt-2.5" for="deployment-registry" label="Image" />
+					<Label parentClass="flex-2 pt-2.5" for="deployment-registry" label="Image" />
 					<div class="flex-10 flex items-center gap-4 w-full">
 						<Input
 							value={localInfo()?.registry ?? ""}
@@ -253,7 +253,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				<div class="border-t border-border-color w-full mt-2" />
 
 				<div class="flex gap-8 items-center w-full">
-					<InputLabel parentClass="flex-2" label="Horizontal Scale" comments="Min & max replica count" />
+					<Label parentClass="flex-2" label="Horizontal Scale" comments="Min & max replica count" />
 					<div class="flex-10">
 						<RangeSlider
 							min={1}
@@ -273,7 +273,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 
 				<Show when={isPatrRegistry()}>
 					<div class="flex gap-8 items-center w-full">
-						<InputLabel parentClass="flex-2" label="Deploy on Push" comments="Redeploy on new image push" />
+						<Label parentClass="flex-2" label="Deploy on Push" comments="Redeploy on new image push" />
 						<div class="flex-10">
 							<ToggleSwitch
 								checked={() => localInfo()?.deployOnPush ?? false}

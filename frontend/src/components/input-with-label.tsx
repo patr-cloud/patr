@@ -1,5 +1,5 @@
 import { JSX, mergeProps } from "solid-js";
-import InputLabel from "~/components/input-label";
+import Label from "~/components/label";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
@@ -29,7 +29,7 @@ const InputWithLabel = (rawProps: InputWithLabelProps) => {
 
 	return (
 		<div class={`w-full flex flex-col md:flex-row md:items-center gap-2 md:gap-4 ${get(props.class) ?? ""}`}>
-			<InputLabel
+			<Label
 				for={props.for}
 				label={props.label}
 				comments={props.comments}

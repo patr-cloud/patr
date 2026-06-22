@@ -1,7 +1,7 @@
 import { FiPlus, FiTrash } from "solid-icons/fi";
 import { createEffect, createMemo, createSignal, createUniqueId, Index, Show } from "solid-js";
 import { Base64String } from "~/bindings";
-import { Button, ButtonVariant, FileInput, Input, InputLabel, InputType } from "~/components";
+import { Button, ButtonVariant, FileInput, Input, Label, InputType } from "~/components";
 import { Color } from "~/utils/color";
 import { convertFileToBase64, get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
@@ -146,7 +146,7 @@ const ConfigMount = (props: ConfigMountProps) => {
 		<div class="flex flex-col gap-0 w-full">
 			<Show when={!get(props.disabled)}>
 				<div class="flex gap-8 items-center w-full">
-					<InputLabel parentClass="flex-2" label="Config File" />
+					<Label parentClass="flex-2" label="Config File" />
 					<section class="flex-10 flex items-center gap-4 w-full">
 						<Input
 							type={InputType.Text}
@@ -192,7 +192,7 @@ const ConfigMount = (props: ConfigMountProps) => {
 
 			<Show when={get(props.disabled) && rows().length > 0}>
 				<div class="flex gap-8 items-center w-full">
-					<InputLabel parentClass="flex-2" label="Config File" />
+					<Label parentClass="flex-2" label="Config File" />
 					<div class="flex-10" />
 				</div>
 			</Show>

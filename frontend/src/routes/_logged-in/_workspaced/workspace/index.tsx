@@ -5,7 +5,7 @@ import {
 	CopyableField,
 	Input,
 	InputType,
-	InputLabel,
+	Label,
 	PageContainer,
 	PageContainerBody,
 	useToast,
@@ -88,7 +88,7 @@ const General = () => {
 					<form onSubmit={onSubmit} class="flex flex-col gap-6 justify-between w-full flex-1">
 						<div class="flex flex-col gap-4 items-start w-full">
 							<div class="flex gap-8 items-center w-full">
-								<InputLabel parentClass="flex-2" label="Workspace ID" />
+								<Label parentClass="flex-2" label="Workspace ID" />
 								<CopyableField
 									value={workspaceId() || "Loading..."}
 									class="flex-10"
@@ -96,7 +96,7 @@ const General = () => {
 								/>
 							</div>
 							<div class="flex gap-8 items-center w-full">
-								<InputLabel parentClass="flex-2" for="workspace-name" label="Workspace Name" />
+								<Label parentClass="flex-2" for="workspace-name" label="Workspace Name" />
 								<Input
 									value={name()}
 									onInput={(e) => {

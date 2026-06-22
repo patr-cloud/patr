@@ -2,7 +2,7 @@ import { mergeProps } from "solid-js";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
-interface InputLabelProps {
+interface LabelProps {
 	/** Label text */
 	label: string;
 	/** For attribute to associate the label with an input */
@@ -17,7 +17,7 @@ interface InputLabelProps {
 	id?: string;
 }
 
-const InputLabel = (rawProps: InputLabelProps) => {
+const Label = (rawProps: LabelProps) => {
 	const props = mergeProps(
 		{
 			parentClass: "",
@@ -37,4 +37,4 @@ const InputLabel = (rawProps: InputLabelProps) => {
 	);
 };
 
-export default InputLabel;
+export default Label;
