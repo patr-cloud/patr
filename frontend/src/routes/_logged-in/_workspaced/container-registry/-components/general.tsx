@@ -1,7 +1,7 @@
 import { Show } from "solid-js";
 import { FiExternalLink } from "solid-icons/fi";
 import { GetContainerRepositoryInfoResponse } from "~/bindings";
-import { CopyableField, CopyableFieldVariant, Input, InputType, InputLabel, Link, Tooltip } from "~/components";
+import { CopyableField, CopyableFieldVariant, Input, InputType, InputWithLabel, Link, Tooltip } from "~/components";
 import { formatRelativeTime, formatSize, formatDate, get } from "~/utils/func";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { MaybeAccessor } from "~/utils/types";
@@ -20,36 +20,28 @@ const General = (props: GeneralInfoProps) => {
 					{/* Repository Details */}
 					<div>
 						<div class="space-y-4">
-							{/* Repo Name */}
-							<div class="flex items-center gap-4">
-								<InputLabel parentClass="flex-2" for="repository-name" label="Repository Name" />
+							<InputWithLabel for="repository-name" label="Repository Name">
 								<CopyableField
 									variant={CopyableFieldVariant.Input}
 									value={`registry.patr.cloud/${workspaceId()}/${get(props.repositoryInfo)?.repository?.name}`}
 									buttonPosition="start"
-									class="flex-10"
 								/>
-							</div>
+							</InputWithLabel>
 
-							{/* Size */}
-							<div class="flex items-center gap-4">
-								<InputLabel parentClass="flex-2" for="repository-size" label="Size" />
+							<InputWithLabel for="repository-size" label="Size">
 								<Input
 									value={formatSize(get(props.repositoryInfo)?.repository?.size)}
 									disabled={true}
-									class="flex-10"
 									name="repository-size"
 									placeholder="Repository Size"
 									type={InputType.Text}
 								/>
-							</div>
+							</InputWithLabel>
 
-							{/* Last Updated */}
-							<div class="flex items-center gap-4">
-								<InputLabel parentClass="flex-2" for="repository-last-updated" label="Last Updated" />
+							<InputWithLabel for="repository-last-updated" label="Last Updated">
 								<Tooltip
 									content={formatDate(get(props.repositoryInfo)?.repository?.lastUpdated || "")}
-									class="flex-10 text-white"
+									class="text-white"
 								>
 									<Input
 										value={
@@ -60,18 +52,17 @@ const General = (props: GeneralInfoProps) => {
 												: "N/A"
 										}
 										disabled={true}
-										class="flex-10"
 										name="repository-last-updated"
 										placeholder="Repository last updated"
 										type={InputType.Text}
 									/>
 								</Tooltip>
-							</div>
-							<div class="flex items-center gap-4">
-								<InputLabel parentClass="flex-2" for="repository-created" label="Created" />
+							</InputWithLabel>
+
+							<InputWithLabel for="repository-created" label="Created">
 								<Tooltip
 									content={formatDate(get(props.repositoryInfo)?.repository?.created || "")}
-									class="flex-10 text-white"
+									class="text-white"
 								>
 									<Input
 										value={
@@ -82,13 +73,12 @@ const General = (props: GeneralInfoProps) => {
 												: "N/A"
 										}
 										disabled={true}
-										class="flex-10"
 										name="repository-created"
 										placeholder="Repository created"
 										type={InputType.Text}
 									/>
 								</Tooltip>
-							</div>
+							</InputWithLabel>
 						</div>
 					</div>
 					<PushInstructions repositoryName={get(props.repositoryInfo)?.repository?.name} />

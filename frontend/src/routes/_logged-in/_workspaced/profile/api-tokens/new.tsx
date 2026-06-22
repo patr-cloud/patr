@@ -7,7 +7,7 @@ import {
 	ChipInput,
 	Input,
 	InputType,
-	InputLabel,
+	InputWithLabel,
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
@@ -140,7 +140,7 @@ const CreateApiTokens = () => {
 							url: "/profile/api-tokens",
 						},
 						{
-							label: "Create New API Token",
+							label: "New",
 						},
 					]}
 					subText="Create API Token"
@@ -148,70 +148,57 @@ const CreateApiTokens = () => {
 				<PageContainerBody class="flex flex-col justify-between gap-8">
 					<form onSubmit={onSubmit} class="flex w-full flex-col justify-between gap-8 h-full flex-1">
 						<div class="flex flex-col gap-6 items-start w-full">
-							<h1 class="text-md">Create API Tokens</h1>
-
-							<div class="flex gap-8 items-center w-full">
-								<InputLabel parentClass="flex-2" for="token-name" label="Token Name" />
+							<InputWithLabel for="token-name" label="Token Name">
 								<Input
 									value={name()}
 									onInput={(e) => {
 										setName(e.currentTarget.value);
 									}}
-									class="flex-10"
 									name="token-name"
 									placeholder="Enter Token Name"
 									type={InputType.Text}
 								/>
-							</div>
+							</InputWithLabel>
 
-							<div class="flex gap-8 items-start w-full">
-								<InputLabel
-									parentClass="flex-2 pt-2.5"
-									label="Allowed IP(s)"
-									comments="Leave empty to allow all IPs."
-								/>
+							<InputWithLabel label="Allowed IP(s)" comments="Leave empty to allow all IPs.">
 								<ChipInput
-									class="flex-10"
 									values={allowedIps}
 									onChange={setAllowedIps}
 									validate={validateIp}
 									placeholder="Type an IP address and press Enter, Space, or Comma"
 								/>
-							</div>
+							</InputWithLabel>
 
-							<div class="flex gap-8 items-center w-full">
-								<InputLabel
-									parentClass="flex-2"
-									label="Token Validity"
-									comments="By default, the token will be valid forever from the date created."
-								/>
+							<InputWithLabel
+								label="Token Validity"
+								comments="By default, the token will be valid forever from the date created."
+							>
+								<div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 w-full">
+									<InputWithLabel for="token-validity-from" label="Valid From" class="md:flex-1">
+										<Input
+											value={fromDate() ? (fromDate()?.toISOString().split("T")[0] ?? "") : ""}
+											onInput={(e) => {
+												setFromDate(e.currentTarget.valueAsDate);
+											}}
+											name="token-validity"
+											placeholder="Enter Token Validity in days"
+											type={InputType.Date}
+										/>
+									</InputWithLabel>
 
-								<div class="flex items-center flex-10 gap-4">
-									<InputLabel parentClass="flex-2" for="token-validity-from" label="Valid From" />
-									<Input
-										class="flex-10"
-										value={fromDate() ? (fromDate()?.toISOString().split("T")[0] ?? "") : ""}
-										onInput={(e) => {
-											setFromDate(e.currentTarget.valueAsDate);
-										}}
-										name="token-validity"
-										placeholder="Enter Token Validity in days"
-										type={InputType.Date}
-									/>
-
-									<InputLabel parentClass="flex-2 items-center" for="token-validity-to" label="to" />
-									<Input
-										onInput={(e) => {
-											setToDate(e.currentTarget.valueAsDate);
-										}}
-										value={toDate() ? toDate()!.toISOString().split("T")[0] : ""}
-										class="flex-10"
-										name="token-validity"
-										placeholder="Enter Token Validity in days"
-										type={InputType.Date}
-									/>
+									<InputWithLabel for="token-validity-to" label="to" class="md:flex-1">
+										<Input
+											onInput={(e) => {
+												setToDate(e.currentTarget.valueAsDate);
+											}}
+											value={toDate() ? toDate()!.toISOString().split("T")[0] : ""}
+											name="token-validity"
+											placeholder="Enter Token Validity in days"
+											type={InputType.Date}
+										/>
+									</InputWithLabel>
 								</div>
-							</div>
+							</InputWithLabel>
 
 							<Suspense
 								fallback={
@@ -220,30 +207,30 @@ const CreateApiTokens = () => {
 									</div>
 								}
 							>
-								<div class="flex flex-col gap-4 items-start w-full">
-									<InputLabel parentClass="flex-2" label="Workspace Permissions" />
+								<InputWithLabel label="Workspace Permissions">
+									<div class="flex flex-col gap-4 w-full">
+										<For
+											each={workspacesQuery.data?.workspaces || []}
+											fallback={<div class="text-gray-400">No workspaces available</div>}
+										>
+											{(ws) => (
+												<WorkspacePermissionItem
+													workspace={ws}
+													isSuperAdmin={userInfo()?.id === ws.superAdminId}
+													enabled={enabledWorkspaces().has(ws.id)}
+													onToggle={handleWorkspaceToggle}
+													onPermissionChange={handlePermissionChange}
+												/>
+											)}
+										</For>
+									</div>
+								</InputWithLabel>
 
-									<For
-										each={workspacesQuery.data?.workspaces || []}
-										fallback={<div class="text-gray-400">No workspaces available</div>}
-									>
-										{(ws) => (
-											<WorkspacePermissionItem
-												workspace={ws}
-												isSuperAdmin={userInfo()?.id === ws.superAdminId}
-												enabled={enabledWorkspaces().has(ws.id)}
-												onToggle={handleWorkspaceToggle}
-												onPermissionChange={handlePermissionChange}
-											/>
-										)}
-									</For>
-
-									{!hasEnabledWorkspaces() && (workspacesQuery.data?.workspaces?.length ?? 0) > 0 && (
-										<p class="text-sm text-gray-400">
-											Enable at least one workspace to create an API token.
-										</p>
-									)}
-								</div>
+								{!hasEnabledWorkspaces() && (workspacesQuery.data?.workspaces?.length ?? 0) > 0 && (
+									<p class="text-sm text-gray-400 md:ml-[16.66%] md:pl-4">
+										Enable at least one workspace to create an API token.
+									</p>
+								)}
 							</Suspense>
 						</div>
 

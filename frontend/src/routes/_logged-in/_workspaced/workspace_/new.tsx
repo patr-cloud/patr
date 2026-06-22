@@ -7,7 +7,7 @@ import {
 	Button,
 	ButtonVariant,
 	Input,
-	InputLabel,
+	Label,
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
@@ -86,7 +86,7 @@ const CreateWorkspace = () => {
 						}}
 					>
 						<div class="flex gap-8 items-center w-full">
-							<InputLabel for="workspace-name" label="Workspace Name" parentClass="flex-2" />
+							<Label for="workspace-name" label="Workspace Name" parentClass="flex-2" />
 							<div class="flex-10 flex flex-col">
 								<Input
 									id="workspace-name"

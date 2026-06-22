@@ -44,8 +44,8 @@ const WorkspaceSwitcher = () => {
 
 			<Show when={showSwitcher()}>
 				<div
-					class="absolute bottom-18 left-0 min-w-72 max-h-160
-          shadow-high rounded-xs z-10 bg-secondary-light text-white
+					class="absolute bottom-18 left-0 min-w-72 max-w-[calc(100vw-1rem)] max-h-160
+          shadow-high rounded-xs z-50 bg-secondary-light text-white
           border border-border-color flex flex-col items-start justify-start py-md px-sm pb-0"
 				>
 					<p class="text-center w-full text-md mb-sm">Workspaces</p>

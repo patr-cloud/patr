@@ -11,7 +11,7 @@ import {
 	Input,
 	InputType,
 	useToast,
-	InputLabel,
+	Label,
 } from "~/components";
 import { createFormAction } from "~/hooks";
 import { AddDomainToWorkspaceRequest, AddDomainToWorkspaceResponse } from "~/bindings";
@@ -100,7 +100,7 @@ const CreateDomainPage = () => {
 					<form noValidate onSubmit={onSubmit} class="flex flex-col gap-8 w-full">
 						<div class="flex flex-col gap-4 w-full">
 							<div class="flex gap-8 items-start w-full">
-								<InputLabel parentClass="flex-2 pt-2.5" for="domain-name" label="Domain Name" />
+								<Label parentClass="flex-2 pt-2.5" for="domain-name" label="Domain Name" />
 								<div class="flex-10 flex flex-col">
 									<Input
 										id="domain-name"

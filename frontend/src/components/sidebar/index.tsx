@@ -2,6 +2,7 @@ import { Link, useLocation } from "@tanstack/solid-router";
 import { FiHome, FiBox, FiCpu, FiGlobe, FiSettings, FiChevronDown, FiChevronRight, FiPackage } from "solid-icons/fi";
 import { Component, createSignal, For, Show } from "solid-js";
 import WorkspaceSwitcher from "./workspace-switcher";
+import { useSidebar } from "./context";
 
 interface SidebarItemProps {
 	label: string;
@@ -32,25 +33,28 @@ const SidebarItem = (props: SidebarItemProps) => {
 		<div class="w-full">
 			<Link
 				to={props.href || "#"}
-				class={`flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors duration-200 ${
+				title={props.label}
+				class={`flex items-center justify-between px-4 py-3 md:px-2 md:justify-center lg:px-4 lg:justify-between text-sm font-medium transition-colors duration-200 ${
 					isActive()
 						? "text-white bg-primary/10 border-r-2 border-primary"
 						: "text-gray-400 hover:text-white hover:bg-white/5"
 				}`}
 				onClick={handleClick}
 			>
-				<div class="flex items-center gap-3">
+				<div class="flex items-center gap-3 md:gap-0 lg:gap-3">
 					<div class="w-4.5 h-4.5 flex items-center justify-center">
 						<props.icon />
 					</div>
-					<span>{props.label}</span>
+					<span class="md:hidden lg:inline">{props.label}</span>
 				</div>
 				<Show when={props.children}>
-					<div class="text-gray-500">{isOpen() ? <FiChevronDown /> : <FiChevronRight />}</div>
+					<div class="text-gray-500 md:hidden lg:block">
+						{isOpen() ? <FiChevronDown /> : <FiChevronRight />}
+					</div>
 				</Show>
 			</Link>
 			<Show when={props.children && isOpen()}>
-				<div class="bg-black/20">
+				<div class="bg-black/20 md:hidden lg:block">
 					<For each={props.children}>
 						{(child) => (
 							<Link
@@ -72,6 +76,8 @@ const SidebarItem = (props: SidebarItemProps) => {
 };
 
 const Sidebar: Component = () => {
+	const sidebar = useSidebar();
+
 	const items: SidebarItemProps[] = [
 		{
 			label: "Home",
@@ -106,8 +112,12 @@ const Sidebar: Component = () => {
 	];
 
 	return (
-		<aside class="w-64 h-screen bg-secondary border-r border-white/5 flex flex-col">
-			<div class="p-6 flex items-center gap-3">
+		<aside
+			class={`fixed inset-y-0 left-0 z-40 w-64 md:static md:w-14 lg:w-64 h-screen bg-secondary border-r border-white/5 flex flex-col transition-transform duration-200 md:translate-x-0 ${
+				sidebar.isMobileOpen() ? "translate-x-0" : "-translate-x-full"
+			}`}
+		>
+			<div class="p-6 md:p-3 md:justify-center lg:p-6 lg:justify-start flex items-center gap-3">
 				<img src="/images/patr-lowercase.png" alt="Patr Cloud" class="h-8 w-auto" />
 			</div>
 
@@ -115,7 +125,7 @@ const Sidebar: Component = () => {
 				<For each={items}>{(item) => <SidebarItem {...item} />}</For>
 			</nav>
 
-			<div class="px-4 py-8 border-t border-white/5">
+			<div class="block md:hidden lg:block px-4 py-8 border-t border-white/5">
 				<WorkspaceSwitcher />
 			</div>
 		</aside>

@@ -34,14 +34,16 @@ const UserDropdown = () => {
 				onClick={() => {
 					setIsOpen(!isOpen());
 				}}
-				class="flex items-center gap-2 px-4 py-2 rounded-xs bg-secondary-light hover:bg-secondary-medium transition-colors duration-200 border border-white/10 cursor-pointer"
+				class="flex items-center gap-2 px-2 md:px-4 py-2 rounded-xs bg-secondary-light hover:bg-secondary-medium transition-colors duration-200 border border-white/10 cursor-pointer"
 			>
 				<Initials firstName={userInfoQuery.data?.firstName} lastName={userInfoQuery.data?.lastName} size="sm" />
-				<span class="text-sm font-medium text-white">{getDisplayName()}</span>
+				<span class="hidden sm:inline text-sm font-medium text-white truncate max-w-32">
+					{getDisplayName()}
+				</span>
 			</button>
 
 			<Show when={isOpen()}>
-				<div class="absolute right-0 mt-2 w-80 bg-secondary-medium border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
+				<div class="absolute right-0 mt-2 w-[calc(100vw-1rem)] max-w-80 sm:w-80 bg-secondary-medium border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
 					<div class="p-4 border-b border-white/10">
 						<div class="flex items-center gap-3 mb-3">
 							<Initials

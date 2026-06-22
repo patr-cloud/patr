@@ -11,7 +11,7 @@ import {
 	CopyableFieldVariant,
 	Input,
 	InputType,
-	InputLabel,
+	Label,
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
@@ -76,7 +76,7 @@ const CreateContainerRepository = () => {
 					<form noValidate onSubmit={onSubmit} class="flex flex-col gap-8 w-full">
 						<div class="flex flex-col gap-6 w-full">
 							<div class="flex gap-8 items-center w-full">
-								<InputLabel parentClass="flex-2" for="repository-name" label="Repository Name" />
+								<Label parentClass="flex-2" for="repository-name" label="Repository Name" />
 								<div class="flex-10 flex flex-col">
 									<Input
 										value={repositoryName()}

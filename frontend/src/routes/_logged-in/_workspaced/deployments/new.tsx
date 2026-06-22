@@ -10,7 +10,7 @@ import {
 	InputDropdown,
 	ButtonVariant,
 	Button,
-	InputLabel,
+	Label,
 	ToggleSwitch,
 	RangeSlider,
 	useToast,
@@ -152,7 +152,7 @@ const CreateDeploymentPage = () => {
 					<form onSubmit={onSubmit} class="flex flex-col gap-6 justify-between w-full flex-1">
 						<div class="flex flex-col gap-5  items-start w-full">
 							<div class="flex gap-8 items-center w-full">
-								<InputLabel parentClass="flex-2" for="deployment-name" label="Name" />
+								<Label parentClass="flex-2" for="deployment-name" label="Name" />
 								<Input
 									value={name()}
 									onInput={(e) => {
@@ -167,7 +167,7 @@ const CreateDeploymentPage = () => {
 							</div>
 
 							<div class="flex gap-8 items-center w-full">
-								<InputLabel parentClass="flex-2" for="deployment-registry" label="Image" />
+								<Label parentClass="flex-2" for="deployment-registry" label="Image" />
 								<div class="flex-10 flex items-center gap-4 w-full">
 									<InputDropdown
 										options={[
@@ -242,7 +242,7 @@ const CreateDeploymentPage = () => {
 							</div>
 
 							<div class="flex gap-8 items-center w-full">
-								<InputLabel parentClass="flex-2" for="deployment-runner" label="Runner" />
+								<Label parentClass="flex-2" for="deployment-runner" label="Runner" />
 								<div class="flex-10 flex items-center gap-4 w-full">
 									<InputDropdown
 										options={
@@ -261,7 +261,7 @@ const CreateDeploymentPage = () => {
 							</div>
 
 							<div class="flex gap-8 items-center w-full">
-								<InputLabel
+								<Label
 									parentClass="flex-2"
 									label="Horizontal Scale"
 									comments="Min & max replica count"
@@ -300,7 +300,7 @@ const CreateDeploymentPage = () => {
 							<div class="border-t border-border-color mt-2" />
 
 							<div class="flex gap-8 items-center w-full">
-								<InputLabel
+								<Label
 									parentClass="flex-2"
 									label="Deploy on Create"
 									comments="Start the deployment immediately after creation"
@@ -312,7 +312,7 @@ const CreateDeploymentPage = () => {
 
 							<Show when={isPatrRegistry()}>
 								<div class="flex gap-8 items-center w-full">
-									<InputLabel
+									<Label
 										parentClass="flex-2"
 										label="Deploy on Push"
 										comments="Redeploy when a new image is pushed to the registry"

@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createEffect, ErrorBoundary, Show, Suspense } from "solid-js";
+import { createEffect, ErrorBoundary, For, Show, Suspense } from "solid-js";
 import {
 	Button,
 	ButtonVariant,
@@ -17,6 +17,37 @@ import { createPaginationState, useIsAllowed } from "~/hooks";
 import { WithId, ContainerRepository } from "~/bindings";
 import { useContainerRegistriesQuery } from "~/hooks/fetch";
 import { formatRelativeTime, formatSize } from "~/utils/func";
+
+const RepositoryCard = (props: { item: WithId<ContainerRepository> }) => {
+	const navigate = useNavigate();
+	const goToDetail = () => navigate({ to: `/container-registry/${props.item.id}` });
+
+	return (
+		<article
+			role="button"
+			tabIndex={0}
+			aria-label={`Open repository ${props.item.name}`}
+			onClick={goToDetail}
+			onKeyDown={(e) => {
+				if (e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					goToDetail();
+				}
+			}}
+			class="bg-secondary-light rounded-xs p-md border border-border-color cursor-pointer hover:bg-secondary-medium focus-visible:outline-2 focus-visible:outline-primary focus-visible:-outline-offset-2 transition-colors"
+		>
+			<h3 class="font-medium text-white truncate min-w-0 mb-2">{props.item.name}</h3>
+			<dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs text-grey">
+				<dt>Size</dt>
+				<dd class="text-white truncate">{formatSize(props.item.size)}</dd>
+				<dt>Last Updated</dt>
+				<dd class="text-white truncate">{formatRelativeTime(props.item.lastUpdated)}</dd>
+				<dt>Created</dt>
+				<dd class="text-white truncate">{formatRelativeTime(props.item.created)}</dd>
+			</dl>
+		</article>
+	);
+};
 
 const ListContainerRepositories = () => {
 	const navigate = useNavigate();
@@ -110,38 +141,45 @@ const ListContainerRepositories = () => {
 									/>
 								}
 							>
-								<Table
-									column_grids={["flex-4", "flex-3", "flex-2", "flex-3"]}
-									headings={["Repository", "Last Updated", "Size", "Created"]}
-									rows={repositoriesQuery.data?.repositories || []}
-									renderRow={(repo: WithId<ContainerRepository>) => (
-										<tr
-											role="row"
-											tabIndex={0}
-											class="table-row cursor-pointer focus-visible:outline-primary"
-											onClick={() => navigate({ to: `/container-registry/${repo.id}` })}
-											onKeyDown={(e) => {
-												if (e.key === "Enter" || e.key === " ") {
-													e.preventDefault();
-													navigate({ to: `/container-registry/${repo.id}` });
-												}
-											}}
-										>
-											<td role="cell" class="flex-4 min-w-0">
-												<span class="truncate font-medium text-white">{repo.name}</span>
-											</td>
-											<td role="cell" class="flex-3">
-												{formatRelativeTime(repo.lastUpdated)}
-											</td>
-											<td role="cell" class="flex-2">
-												{formatSize(repo.size)}
-											</td>
-											<td role="cell" class="flex-3">
-												{formatRelativeTime(repo.created)}
-											</td>
-										</tr>
-									)}
-								/>
+								<div class="md:hidden flex flex-col gap-2">
+									<For each={repositoriesQuery.data?.repositories || []}>
+										{(item) => <RepositoryCard item={item} />}
+									</For>
+								</div>
+								<div class="hidden md:block">
+									<Table
+										column_grids={["flex-4", "flex-3", "flex-2", "flex-3"]}
+										headings={["Repository", "Last Updated", "Size", "Created"]}
+										rows={repositoriesQuery.data?.repositories || []}
+										renderRow={(repo: WithId<ContainerRepository>) => (
+											<tr
+												role="row"
+												tabIndex={0}
+												class="table-row cursor-pointer focus-visible:outline-primary"
+												onClick={() => navigate({ to: `/container-registry/${repo.id}` })}
+												onKeyDown={(e) => {
+													if (e.key === "Enter" || e.key === " ") {
+														e.preventDefault();
+														navigate({ to: `/container-registry/${repo.id}` });
+													}
+												}}
+											>
+												<td role="cell" class="flex-4 min-w-0">
+													<span class="truncate font-medium text-white">{repo.name}</span>
+												</td>
+												<td role="cell" class="flex-3">
+													{formatRelativeTime(repo.lastUpdated)}
+												</td>
+												<td role="cell" class="flex-2">
+													{formatSize(repo.size)}
+												</td>
+												<td role="cell" class="flex-3">
+													{formatRelativeTime(repo.created)}
+												</td>
+											</tr>
+										)}
+									/>
+								</div>
 								<Pagination
 									state={pagination}
 									loading={repositoriesQuery.isFetching}

@@ -51,7 +51,7 @@ const Table = <TItem extends Record<string, unknown>>(rawProps: TableProps<TItem
 		<div class="w-full overflow-x-auto">
 			<table role="table" class={`rounded-xs w-full min-w-150 text-white ${get(props.class)}`}>
 				<thead class="flex items-center justify-center py-sm bg-secondary-medium w-full rounded-t-xs">
-					<tr role="row" class="flex items-center justify-center px-xl w-full">
+					<tr role="row" class="flex items-center justify-center px-md md:px-xl w-full">
 						<For each={props.headings}>
 							{(heading, index) => (
 								<th

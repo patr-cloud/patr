@@ -8,7 +8,7 @@ import {
 	ButtonVariant,
 	Input,
 	InputType,
-	InputLabel,
+	Label,
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
@@ -67,7 +67,7 @@ const CreateRunnerPage = () => {
 				<PageContainerBody class="flex flex-col">
 					<form noValidate onSubmit={onSubmit} class="flex flex-col gap-8 w-full">
 						<div class="flex gap-8 items-center w-full">
-							<InputLabel parentClass="flex-2" for="runner-name" label="Runner Name" />
+							<Label parentClass="flex-2" for="runner-name" label="Runner Name" />
 							<div class="flex-10 flex flex-col">
 								<Input
 									id="runner-name"

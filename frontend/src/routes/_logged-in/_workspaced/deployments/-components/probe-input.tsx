@@ -1,6 +1,6 @@
 import { createSignal, Signal } from "solid-js";
 import { DeploymentProbe } from "~/bindings";
-import { Input, InputType, InputDropdown, InputLabel } from "~/components";
+import { Input, InputType, InputDropdown, Label } from "~/components";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
@@ -32,7 +32,7 @@ const ProbeInput = (props: ProbeInputProps) => {
 
 	return (
 		<div class={`${get(props.class)} flex gap-8 items-start w-full`}>
-			<InputLabel parentClass="flex-2 pt-3" label="Startup Probe" />
+			<Label parentClass="flex-2 pt-3" label="Startup Probe" />
 
 			<div class="flex flex-10 gap-4 w-full">
 				<Input

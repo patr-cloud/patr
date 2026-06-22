@@ -97,9 +97,9 @@ const Pagination = (rawProps: PaginationProps) => {
 				</Show>
 			</p>
 
-			{/* Centre: page buttons — hidden (but space preserved) when only one page */}
-			<Show when={props.state.totalPages() > 1} fallback={<div class="h-8" />}>
-				<div class="flex items-center gap-xs">
+			{/* Centre: page buttons */}
+			<Show when={props.state.totalPages() > 1}>
+				<div class="flex items-center gap-xs flex-wrap">
 					{/* First page */}
 					<button
 						type="button"
@@ -147,9 +147,9 @@ const Pagination = (rawProps: PaginationProps) => {
 				</div>
 			</Show>
 
-			{/* Right: jump-to-page + page-size selector — also hidden when single page */}
-			<Show when={props.state.totalPages() > 1} fallback={<div class="flex-1" />}>
-				<div class="flex items-center justify-end gap-sm flex-1">
+			{/* Right: jump-to-page + page-size selector */}
+			<Show when={props.state.totalPages() > 1}>
+				<div class="flex items-center justify-start sm:justify-end gap-sm flex-wrap flex-1">
 					{/* Jump to page */}
 					<Show when={props.showGoToPage}>
 						<div class="flex items-center gap-xs">

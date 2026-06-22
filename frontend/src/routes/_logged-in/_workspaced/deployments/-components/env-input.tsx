@@ -1,7 +1,7 @@
 import { FiTrash2 } from "solid-icons/fi";
 import { createEffect, createMemo, createSignal, createUniqueId, Index, Show } from "solid-js";
 import { EnvironmentVariableValue } from "~/bindings";
-import { Button, ButtonVariant, Input, InputType, InputLabel } from "~/components";
+import { Button, ButtonVariant, Input, InputType, Label } from "~/components";
 import { Color } from "~/utils/color";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
@@ -140,7 +140,7 @@ const EnvInput = (props: EnvInputProps) => {
 
 	return (
 		<div class={`flex gap-8 items-start w-full ${get(props.class) ?? ""}`}>
-			<InputLabel parentClass="flex-2 pt-2.5" label="Environment Variables" />
+			<Label parentClass="flex-2 pt-2.5" label="Environment Variables" />
 
 			<div class="flex flex-col flex-10 gap-4 w-full">
 				<Index each={rows()}>
