@@ -48,7 +48,7 @@ async fn registry_push_without_permission() {
 			},
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&other_token.token).unwrap(),
-				content_length: ContentLength(data.len() as u64),
+				content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
 				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 			},
 			body: Body::from(data),
@@ -92,7 +92,7 @@ async fn push_to_nonexistent_repo() {
 			},
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				content_length: ContentLength(data.len() as u64),
+				content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
 				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 			},
 			body: Body::from(data),
@@ -182,7 +182,7 @@ async fn push_to_deleted_repo() {
 			},
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				content_length: ContentLength(data.len() as u64),
+				content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
 				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 			},
 			body: Body::from(data),
@@ -234,7 +234,7 @@ async fn cross_workspace_push_denied() {
 			},
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&token_b.token).unwrap(),
-				content_length: ContentLength(data.len() as u64),
+				content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
 				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 			},
 			body: Body::from(data),
@@ -309,7 +309,7 @@ async fn initiate_upload_without_push_permission_returns_not_found() {
 			},
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&token_b.token).unwrap(),
-				content_length: ContentLength(data.len() as u64),
+				content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
 				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 			},
 			body: Body::from(data),
@@ -321,6 +321,103 @@ async fn initiate_upload_without_push_permission_returns_not_found() {
 		response.status_code(),
 		StatusCode::NOT_FOUND,
 		"expected 404 for push without permission, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn registry_invalid_token_returns_401_with_challenge() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+
+	let data: Vec<u8> = (0..32u8).collect();
+	let digest = sha256_digest(&data);
+
+	// Well-formed but nonexistent token — auth must fail with a clean 401 +
+	// WWW-Authenticate challenge, not an opaque 500.
+	let response = setup
+		.make_registry_call(RegistryUnprocessedApiRequest::<InitiateBlobUploadPath> {
+			path: InitiateBlobUploadPath {
+				workspace_id: workspace.id,
+				repo_name: repo.name.clone(),
+			},
+			query: InitiateBlobUploadQuery {
+				mount: None,
+				from: None,
+				digest: Some(digest),
+			},
+			headers: InitiateBlobUploadRequestHeaders {
+				authorization: BearerToken::from_str(
+					"patrv1.deadbeefdeadbeefdeadbeefdeadbeef.\
+					 deadbeefdeadbeefdeadbeefdeadbeef",
+				)
+				.unwrap(),
+				content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
+				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
+			},
+			body: Body::from(data),
+		})
+		.await;
+
+	assert_eq!(
+		response.status_code(),
+		StatusCode::UNAUTHORIZED,
+		"invalid token must yield 401, got {}",
+		response.status_code()
+	);
+	assert!(
+		response
+			.headers()
+			.contains_key(http::header::WWW_AUTHENTICATE),
+		"401 response must carry a WWW-Authenticate challenge"
+	);
+}
+
+#[tokio::test]
+async fn initiate_chunked_upload_without_content_length() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+
+	// Chunked-init POST (no digest) with no Content-Length — OCI allows this and
+	// it must not be rejected as "Invalid Headers".
+	let response = setup
+		.make_registry_call(RegistryUnprocessedApiRequest::<InitiateBlobUploadPath> {
+			path: InitiateBlobUploadPath {
+				workspace_id: workspace.id,
+				repo_name: repo.name.clone(),
+			},
+			query: InitiateBlobUploadQuery {
+				mount: None,
+				from: None,
+				digest: None,
+			},
+			headers: InitiateBlobUploadRequestHeaders {
+				authorization: BearerToken::from_str(&api_token.token).unwrap(),
+				content_length: OptionalHeader::new(None),
+				content_type: OptionalHeader::new(None),
+			},
+			body: Body::empty(),
+		})
+		.await;
+
+	assert_eq!(
+		response.status_code(),
+		StatusCode::ACCEPTED,
+		"chunked-init without Content-Length should be accepted, got {}",
 		response.status_code()
 	);
 }

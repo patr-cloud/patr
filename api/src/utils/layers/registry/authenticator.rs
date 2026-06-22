@@ -121,17 +121,37 @@ where
 			)
 			.await
 			.map_err(|err| {
-				RegistryError::builder()
-					.status(StatusCode::INTERNAL_SERVER_ERROR)
-					.code(ErrorCode::Unsupported)
-					.message(
-						if cfg!(debug_assertions) {
-							err.to_string()
-						} else {
-							"Authentication failed".to_string()
-						},
-					)
-					.build()
+				// Auth-class failures (invalid/expired token, disallowed IP,
+				// malformed token) are client errors — return a proper 401 with
+				// a WWW-Authenticate challenge so docker re-auths or reports
+				// "unauthorized" instead of choking on an opaque 500. Genuine
+				// server errors (DB/redis down) stay 500.
+				if err.default_status_code().is_client_error() {
+					RegistryError::builder()
+						.status(StatusCode::UNAUTHORIZED)
+						.code(ErrorCode::Unauthorized)
+						.message(
+							if cfg!(debug_assertions) {
+								err.to_string()
+							} else {
+								"authentication required".to_string()
+							},
+						)
+						.www_authenticate(www_authenticate_challenge())
+						.build()
+				} else {
+					RegistryError::builder()
+						.status(StatusCode::INTERNAL_SERVER_ERROR)
+						.code(ErrorCode::Unsupported)
+						.message(
+							if cfg!(debug_assertions) {
+								err.to_string()
+							} else {
+								"internal server error".to_string()
+							},
+						)
+						.build()
+				}
 			})?;
 
 			debug!("User authenticated successfully: {}", user_data.id);

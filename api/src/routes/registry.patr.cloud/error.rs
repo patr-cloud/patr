@@ -33,6 +33,10 @@ pub struct RegistryError {
 	detail: Option<String>,
 	/// HTTP status code to return
 	status: StatusCode,
+	/// Optional `WWW-Authenticate` challenge header, set on auth failures so
+	/// docker clients know to (re-)fetch a token from the realm.
+	#[builder(default, setter(strip_option))]
+	www_authenticate: Option<http::HeaderValue>,
 }
 
 impl RegistryError {
@@ -49,6 +53,7 @@ impl RegistryError {
 			message: message.into(),
 			detail: None,
 			status,
+			www_authenticate: None,
 		}
 	}
 
@@ -230,7 +235,13 @@ impl IntoResponse for RegistryError {
 			"Registry error response"
 		);
 
-		(status, Json(oci_response)).into_response()
+		let mut response = (status, Json(oci_response)).into_response();
+		if let Some(challenge) = self.www_authenticate {
+			response
+				.headers_mut()
+				.insert(http::header::WWW_AUTHENTICATE, challenge);
+		}
+		response
 	}
 }
 

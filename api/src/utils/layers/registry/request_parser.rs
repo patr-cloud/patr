@@ -24,7 +24,7 @@ use axum::{
 	response::{IntoResponse, Response},
 };
 use headers::HeaderMapExt as _;
-use http::{HeaderMap, HeaderValue, header};
+use http::{HeaderMap, header};
 use models::utils::Headers;
 use oci_spec::distribution::ErrorCode;
 use preprocess::Preprocessable;
@@ -172,16 +172,7 @@ where
 				return Ok((
 					{
 						let mut headers = HeaderMap::new();
-						headers.insert(
-							header::WWW_AUTHENTICATE,
-							HeaderValue::from_static(
-								if cfg!(debug_assertions) {
-									"Bearer realm=\"http://localhost:3000/auth/docker-login\",service=\"registry.patr.cloud\""
-								} else {
-									"Bearer realm=\"https://api.patr.cloud/auth/docker-login\",service=\"registry.patr.cloud\""
-								},
-							),
-						);
+						headers.insert(header::WWW_AUTHENTICATE, www_authenticate_challenge());
 						headers
 					},
 					RegistryError::builder()

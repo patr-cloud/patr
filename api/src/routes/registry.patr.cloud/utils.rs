@@ -23,6 +23,20 @@ use sync_wrapper::SyncWrapper;
 
 use crate::routes::registry_patr_cloud::prelude::*;
 
+/// The `WWW-Authenticate` Bearer challenge advertised to docker clients so they
+/// know where to fetch a registry token. Shared by the request parser (missing
+/// auth header) and the authenticator (invalid/expired token) so the two can't
+/// drift.
+pub fn www_authenticate_challenge() -> http::HeaderValue {
+	http::HeaderValue::from_static(
+		if cfg!(debug_assertions) {
+			"Bearer realm=\"http://localhost:3000/auth/docker-login\",service=\"registry.patr.cloud\""
+		} else {
+			"Bearer realm=\"https://api.patr.cloud/auth/docker-login\",service=\"registry.patr.cloud\""
+		},
+	)
+}
+
 /// Wrapper to convert Axum Body into a type compatible with AWS SDK S3
 /// [`ByteStream`].
 pub struct BodyStreamWrapper(SyncWrapper<BodyDataStream>);

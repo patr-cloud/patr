@@ -1,6 +1,6 @@
 use headers::{Authorization, authorization::Basic};
 
-use crate::prelude::*;
+use crate::{prelude::*, utils::OptionalHeader};
 
 macros::declare_api_endpoint!(
 	/// Route to login and start a new user session. This route will generate all
@@ -8,8 +8,11 @@ macros::declare_api_endpoint!(
 	DockerLogin,
 	GET "/auth/docker-login",
 	request_headers = {
-		/// The user-agent used to access this API
-		pub user_agent: UserAgent,
+		/// The user-agent used to access this API. Optional: docker-distribution
+		/// clients hitting the token realm don't always send a parseable
+		/// User-Agent, and we never read it — a missing one must not 400 the
+		/// token request and break the whole push.
+		pub user_agent: OptionalHeader<UserAgent>,
 		/// The credentials provided in the Authorization header
 		pub authorization: Authorization<Basic>,
 	},

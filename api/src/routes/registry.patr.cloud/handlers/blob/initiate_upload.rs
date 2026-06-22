@@ -31,8 +31,10 @@ macros::declare_registry_endpoint!(
 	request_headers = {
 		/// The authorization header
 		pub authorization: BearerToken,
-		/// Content-Length header, if provided
-		pub content_length: ContentLength,
+		/// Content-Length header. Optional: the OCI spec allows the chunked-init
+		/// `POST .../blobs/uploads/` to omit it (zero-length body). Only the
+		/// single-POST (`?digest=`) path actually needs it.
+		pub content_length: OptionalHeader<ContentLength>,
 		/// Content-Type header, if provided
 		pub content_type: OptionalHeader<ContentType>,
 	},
@@ -189,6 +191,17 @@ pub async fn initiate_upload(
 				.into_result();
 		}
 
+		// The single-POST path carries the blob body, so Content-Length is
+		// required here even though the chunked-init path may omit it.
+		let content_length = content_length.into_option().ok_or_else(|| {
+			warn!("Content-Length required for single-POST blob upload");
+			RegistryError::builder()
+				.code(ErrorCode::BlobUploadInvalid)
+				.message("Content-Length is required for single-POST blob upload")
+				.status(StatusCode::BAD_REQUEST)
+				.build()
+		})?;
+
 		query!(
 			r#"
 			INSERT INTO
@@ -235,7 +248,11 @@ pub async fn initiate_upload(
 		let session_id = Uuid::new_v4();
 		debug!("Generated new upload session ID: {session_id}");
 
-		if content_length.0 != 0 {
+		// A chunked-init POST should carry no body. Per the OCI spec the header
+		// may be absent (treated as zero); only reject an explicit non-zero one.
+		if let Some(content_length) = content_length.into_option() &&
+			content_length.0 != 0
+		{
 			warn!(
 				content_length = content_length.0,
 				"Non-zero Content-Length provided for chunked upload initiation"
