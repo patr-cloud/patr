@@ -100,6 +100,10 @@ test *args:
     # `kill $cargo_pid` and leaks.
     set -muo pipefail
     mkdir -p .pids
+    # The docker runner requires config/runner.docker.* to exist (the harness's
+    # PATR__* env vars layer on top of it). It's gitignored, so seed it from the
+    # committed sample on a fresh checkout / in CI.
+    [ -f ../config/runner.docker.json ] || cp ../config/runner.docker.sample.json ../config/runner.docker.json
     cleanup() {
         for f in .pids/api.pid .pids/frontend.pid .pids/cloudflare.pid .pids/observability.pid; do
             [ -f "$f" ] && kill -TERM -$(cat "$f") 2>/dev/null || true
